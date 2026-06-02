@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>PrepForge Chess</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">PrepForge</div>
+      <nav class="tabs" aria-label="Workspace">
+        <button class="tab is-active" data-view="dashboard" data-testid="nav-dashboard">Dashboard</button>
+        <button class="tab" data-view="analyze" data-testid="nav-analyze">Analyze</button>
+        <button class="tab" data-view="build" data-testid="nav-build">Build</button>
+        <button class="tab" data-view="train" data-testid="nav-train">Train</button>
+        <button class="tab" data-view="replay" data-testid="nav-replay">Replay</button>
+        <button class="tab" data-view="settings" data-testid="nav-settings">Settings</button>
+      </nav>
+      <button class="lichess-chip" id="lichess-chip" data-testid="lichess-chip" title="Connect a Lichess account">
+        <span class="lichess-label" id="lichess-label">Connect Lichess</span>
+      </button>
+      <div class="status" id="app-status" data-testid="app-status">Ready</div>
+    </header>
+
+    <main class="workspace">
+      <section class="view is-active" id="view-dashboard" data-testid="view-dashboard">
+        <div class="metrics" id="dashboard-metrics"></div>
+        <section class="card">
+          <div class="card-head">
+            <h2>Repertoires</h2>
+            <div class="tools">
+              <button class="btn ghost" id="dashboard-new-rep" data-testid="dashboard-new-rep">New</button>
+              <button class="btn ghost" id="dashboard-import-pgn" data-testid="dashboard-import-pgn">Import PGN</button>
+            </div>
+          </div>
+          <p class="muted hint">Right-click an item for actions (train · edit · rename · disable · delete).</p>
+          <div id="dashboard-repertoires" class="list-stack"></div>
+          <input type="file" id="dashboard-import-input" accept=".pgn,.json,application/x-chess-pgn,application/json" hidden />
+        </section>
+      </section>
+
+      <section class="view" id="view-analyze" data-testid="view-analyze">
+        <div class="study">
+          <div class="board-area">
+            <div class="board-stack">
+              <div class="chessboard" id="analysis-board" data-testid="analysis-board"></div>
+              <svg class="annotations" id="analysis-annotations"></svg>
+            </div>
+            <div class="board-bar">
+              <button class="ib" id="analysis-start" title="Start" aria-label="Go to start">⏮</button>
+              <button class="ib" id="analysis-prev" title="Previous" aria-label="Previous move">◀</button>
+              <button class="ib" id="analysis-next" title="Next" aria-label="Next move">▶</button>
+              <button class="ib" id="analysis-end" title="End" aria-label="Go to end">⏭</button>
+              <span class="sep"></span>
+              <button class="ib" id="analysis-flip" title="Flip board" aria-label="Flip board">⇅</button>
+              <span class="sep"></span>
+              <span class="board-label" id="analysis-board-label">Initial position</span>
+            </div>
+          </div>
+
+          <aside class="sidebar" id="analyze-sidebar">
+            <div class="tools">
+              <button class="btn ghost" id="open-engine-widget" data-testid="open-engine-widget">Engine</button>
+              <button class="btn ghost" id="fetch-my-game" data-testid="fetch-my-game" title="Load my latest Lichess game">My game</button>
+              <button class="btn primary" id="run-analysis" data-testid="run-analysis">Analyze</button>
+            </div>
+            <div class="reveal" id="analysis-results" hidden>
+              <svg class="eval-chart" id="eval-chart" viewBox="0 0 640 96" role="img"></svg>
+              <div class="movelist tree" id="analysis-moves" data-testid="analysis-moves"></div>
+              <div class="tags muted-row" id="analysis-summary"></div>
+            </div>
+            <details class="drawer" id="pgn-drawer">
+              <summary>PGN</summary>
+              <textarea
+                id="pgn-input"
+                data-testid="pgn-input"
+                spellcheck="false"
+                placeholder="[Event &quot;Training Game&quot;]&#10;&#10;1. e4 e5 2. Nf3 Nc6 *"
+              ></textarea>
+            </details>
+            <details class="drawer" id="history-drawer" data-testid="history-drawer">
+              <summary>History</summary>
+              <div class="analysis-history" id="analysis-history" data-testid="analysis-history"></div>
+            </details>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view" id="view-build" data-testid="view-build">
+        <div class="study">
+          <div class="board-area">
+            <div class="board-stack">
+              <div class="chessboard" id="build-board" data-testid="build-board"></div>
+              <svg class="annotations" id="build-annotations"></svg>
+            </div>
+            <div class="board-bar">
+              <button class="ib" id="build-root" title="Root" aria-label="Go to root">⏮</button>
+              <button class="ib" id="build-parent" title="Back (parent)" aria-label="Back to parent move">◀</button>
+              <button class="ib" id="build-next" title="Forward (mainline)" aria-label="Forward along mainline">▶</button>
+              <button class="ib" id="build-end" title="To end of line" aria-label="Go to end of line">⏭</button>
+              <span class="sep"></span>
+              <button class="ib" id="build-generate-node" title="Generate from this position" aria-label="Generate from this position">Gen</button>
+              <span class="sep"></span>
+              <button class="ib" id="build-flip" title="Flip board" aria-label="Flip board">⇅</button>
+              <button class="ib" id="build-rename" title="Rename repertoire" aria-label="Rename repertoire">✎</button>
+              <span class="sep"></span>
+              <span class="board-label" id="build-board-label">No repertoire</span>
+            </div>
+          </div>
+
+          <aside class="sidebar">
+            <div class="tools">
+              <button class="btn ghost" id="open-engine-widget-build" data-testid="open-engine-widget-build">Engine</button>
+              <button class="btn primary" id="build-new" data-testid="build-new">New</button>
+              <button class="btn ghost" id="export-build-pgn" data-testid="export-build-pgn">Export PGN</button>
+            </div>
+            <div class="movelist tree" id="builder-tree" data-testid="builder-tree"></div>
+            <!-- legacy hooks kept for app.js compatibility; hidden -->
+            <button id="import-build-file" hidden></button>
+            <button id="export-build-json" hidden></button>
+            <input id="build-import-input" type="file" hidden />
+            <button id="import-build-json" hidden></button>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view" id="view-train" data-testid="view-train">
+        <div class="study">
+          <div class="board-area">
+            <div class="train-banner" id="train-banner" data-state="idle" data-testid="train-feedback">
+              <span class="train-banner-icon" id="train-banner-icon" aria-hidden="true"></span>
+              <div class="train-banner-text">
+                <span class="train-banner-title" id="train-banner-title" data-testid="train-prompt">Press Start to begin</span>
+                <span class="train-banner-sub" id="train-banner-sub"></span>
+              </div>
+              <span class="train-turn-badge" id="train-turn-badge" hidden></span>
+            </div>
+            <div class="board-stack">
+              <div class="chessboard" id="train-board" data-testid="train-board"></div>
+              <svg class="annotations" id="train-annotations"></svg>
+            </div>
+            <div class="board-bar">
+              <button class="ib" id="train-flip" title="Flip board" aria-label="Flip board">⇅</button>
+              <button class="ib" id="train-hint" title="Hint (show the piece to move)" aria-label="Show hint">💡</button>
+              <button class="ib" id="train-skip" title="Skip this line" aria-label="Skip this line">⏭</button>
+              <span class="sep"></span>
+              <span class="board-label" id="train-board-label">Pick a repertoire and start</span>
+            </div>
+          </div>
+
+          <aside class="sidebar train-sidebar">
+            <div class="train-setup">
+              <label class="train-picker-label" for="train-repertoire-select">Repertoire</label>
+              <select id="train-repertoire-select" data-testid="train-repertoire-select"></select>
+              <div class="train-modes" id="train-modes" role="group" aria-label="Training mode">
+                <button type="button" class="train-mode is-active" data-mode="all_lines">All lines</button>
+                <button type="button" class="train-mode" data-mode="high_priority">Weak lines</button>
+                <button type="button" class="train-mode" data-mode="mistakes_only">Due review</button>
+              </div>
+              <button class="btn primary train-start" id="start-train" data-testid="start-train">Start training</button>
+            </div>
+
+            <div class="train-progress-panel" id="train-progress-panel" hidden>
+              <div class="train-progress-head">
+                <span id="train-line-label">Line 1 / 1</span>
+                <span class="train-accuracy" id="train-accuracy">100%</span>
+              </div>
+              <div class="train-progress-track">
+                <div class="train-progress-fill" id="train-progress-fill"></div>
+              </div>
+              <div class="train-stats">
+                <div class="train-stat">
+                  <span class="ts-value" id="train-stat-streak">0</span>
+                  <span class="ts-label">Streak</span>
+                </div>
+                <div class="train-stat">
+                  <span class="ts-value good" id="train-stat-correct">0</span>
+                  <span class="ts-label">Correct</span>
+                </div>
+                <div class="train-stat">
+                  <span class="ts-value bad" id="train-stat-mistakes">0</span>
+                  <span class="ts-label">Mistakes</span>
+                </div>
+              </div>
+              <div class="train-line-trail-label">This line</div>
+              <div class="train-line-trail" id="train-line-trail">
+                <span class="trail-empty">No moves yet</span>
+              </div>
+            </div>
+
+            <!-- legacy hooks kept for app.js compatibility; hidden -->
+            <input id="train-import-input" type="file" hidden />
+            <button id="import-train-json" hidden></button>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view" id="view-replay" data-testid="view-replay">
+        <div class="replay-layout">
+          <section class="card">
+            <div class="card-head">
+              <h2>Lichess replay vs repertoire</h2>
+              <button class="btn primary" id="lichess-compare-btn" data-testid="lichess-compare">
+                Fetch &amp; compare
+              </button>
+            </div>
+            <p class="muted hint">
+              Connect a Lichess account, then fetch your recent games to see which entered prep, where you left it,
+              and whether the mistake was yours or your opponent's novelty.
+            </p>
+            <div class="replay-controls">
+              <label>
+                <span class="muted">Username</span>
+                <input id="replay-username" type="text" placeholder="not connected" disabled />
+              </label>
+              <label>
+                <span class="muted">Recent games</span>
+                <input id="replay-count" type="number" min="1" max="50" value="10" />
+              </label>
+            </div>
+            <div id="replay-results" class="replay-results"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-settings" data-testid="view-settings">
+        <div class="replay-layout">
+          <section class="card">
+            <div class="card-head">
+              <h2>Stockfish</h2>
+              <button class="btn ghost" id="settings-refresh">Refresh</button>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Binary</div>
+                <div class="settings-value" id="settings-stockfish-path">—</div>
+              </div>
+              <div>
+                <div class="settings-label">Version</div>
+                <div class="settings-value" id="settings-stockfish-version">—</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <label class="settings-field">
+                <span class="settings-label">Analysis depth</span>
+                <input id="settings-depth-input" type="number" min="1" max="30" value="16" />
+              </label>
+              <button class="btn primary" id="settings-depth-save">Save depth</button>
+            </div>
+            <div class="settings-row engine-action-row">
+              <button class="btn primary engine-action" id="settings-stockfish-install">
+                <span class="ea-spinner" aria-hidden="true"></span>
+                <span class="ea-label">Install / Update</span>
+              </button>
+              <span class="muted" id="settings-stockfish-status"></span>
+            </div>
+          </section>
+          <section class="card">
+            <div class="card-head"><h2>Maia3</h2></div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Model</div>
+                <div class="settings-value" id="settings-maia-model">--</div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Source</div>
+                <div class="settings-value" id="settings-maia-repo">--</div>
+              </div>
+            </div>
+            <div class="settings-row engine-action-row">
+              <button class="btn primary engine-action" id="settings-maia-install">
+                <span class="ea-spinner" aria-hidden="true"></span>
+                <span class="ea-label">Install / Update</span>
+              </button>
+            </div>
+            <p class="muted" id="settings-maia-status"></p>
+          </section>
+          <section class="card">
+            <div class="card-head"><h2>Board</h2></div>
+            <div class="settings-label">Piece set</div>
+            <div class="piece-style-picker" id="piece-style-picker"></div>
+            <div class="settings-label" style="margin-top:14px">Feedback</div>
+            <div class="board-prefs" id="board-prefs"></div>
+          </section>
+          <section class="card">
+            <div class="card-head"><h2>About</h2></div>
+            <p class="muted">PrepForge Chess — local opening preparation and replay tool.</p>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <div class="context-menu" id="node-context-menu" hidden></div>
+    <div class="context-menu" id="repertoire-context-menu" hidden></div>
+
+    <div class="engine-window" id="engine-window" data-testid="engine-window" hidden>
+      <header class="engine-window-head" id="engine-window-head">
+        <div class="engine-head-meta">
+          <span class="engine-head-label">SF</span>
+          <span class="engine-head-eval" id="engine-head-eval">—</span>
+          <span class="engine-head-depth" id="engine-window-depth-readout">—</span>
+        </div>
+        <div class="engine-head-tools">
+          <div class="engine-lines" title="Lines shown">
+            <button class="engine-step" id="engine-lines-down" type="button" title="Fewer lines" aria-label="Fewer lines">−</button>
+            <span class="engine-lines-readout" id="engine-lines-readout">1</span>
+            <button class="engine-step" id="engine-lines-up" type="button" title="More lines" aria-label="More lines">+</button>
+          </div>
+          <button class="engine-window-close" id="engine-window-close" type="button" title="Close" aria-label="Close">×</button>
+        </div>
+      </header>
+      <div class="engine-window-body">
+        <div class="engine-bar" id="engine-eval-bar" aria-hidden="true">
+          <div class="engine-bar-white" id="engine-eval-bar-white"></div>
+          <div class="engine-bar-text" id="engine-eval-bar-text">+0.00</div>
+        </div>
+        <div class="engine-window-pvs" id="engine-window-pvs"></div>
+      </div>
+      <div class="engine-window-resize" id="engine-window-resize" aria-hidden="true"></div>
+    </div>
+
+    <div class="newgame-host" id="newgame-host" data-testid="newgame-host"></div>
+
+    <div class="toast-stack" id="toast-stack" data-testid="toast-stack"></div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

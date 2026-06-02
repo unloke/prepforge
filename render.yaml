@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: prepforge-chess
+    runtime: docker
+    plan: starter
+    envVars:
+      - key: PREPFORGE_DB_PATH
+        value: /data/prepforge.sqlite3
+    disk:
+      name: prepforge-data
+      mountPath: /data
+      sizeGB: 1
