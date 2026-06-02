@@ -80,7 +80,7 @@ def install_stockfish(
             archive.extractall(install_dir)
     elif archive_path.suffix.lower() == ".tar":
         with tarfile.open(archive_path) as archive:
-            archive.extractall(install_dir)
+            _extract_tar_safely(archive, install_dir)
     else:
         raise ValueError("Unsupported Stockfish archive type: {0}".format(archive_path.name))
 
@@ -159,3 +159,14 @@ def _mark_extracted_binaries_executable(directory: Path) -> None:
     for candidate in directory.rglob("stockfish*"):
         if candidate.is_file():
             candidate.chmod(candidate.stat().st_mode | 0o755)
+
+
+def _extract_tar_safely(archive: tarfile.TarFile, target_dir: Path) -> None:
+    target_root = target_dir.resolve()
+    for member in archive.getmembers():
+        destination = (target_dir / member.name).resolve()
+        try:
+            destination.relative_to(target_root)
+        except ValueError:
+            raise ValueError("Unsafe path in Stockfish archive: {0}".format(member.name))
+    archive.extractall(target_dir)
