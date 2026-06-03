@@ -1,3 +1,6 @@
+import "./styles.css";
+import { createServerEngineProvider } from "./engine/provider.js";
+
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const DEMO_PGN = `[Event "PrepForge UI Demo"]
 [Site "https://lichess.org/prepforge-ui"]
@@ -606,6 +609,9 @@ class EngineWidget {
     this.multipv = 1;
     this.maxMultipv = 5;
     this.minMultipv = 1;
+    // Engine compute seam. Phase 0: server-backed. Phase 1 will swap in a
+    // browser Stockfish-WASM provider with the same interface.
+    this.engine = createServerEngineProvider({ api, postJson });
   }
 
   bind() {
@@ -664,7 +670,7 @@ class EngineWidget {
       if (!this.el.classList.contains("is-visible")) this.el.hidden = true;
     }, 240);
     try {
-      await postJson("/api/engine/close", {});
+      await this.engine.close();
     } catch (_) {
       // best-effort
     }
@@ -678,7 +684,7 @@ class EngineWidget {
     this.lastFen = fen;
     this._clearAnalysisView();
     try {
-      const snapshot = await postJson("/api/engine/update", { fen, multipv: this.multipv });
+      const snapshot = await this.engine.update({ fen, multipv: this.multipv });
       this._renderSnapshot(snapshot);
       this._startPolling();
     } catch (error) {
@@ -690,10 +696,9 @@ class EngineWidget {
     this.lastFen = this.currentFen();
     this._clearAnalysisView();
     try {
-      const snapshot = await postJson("/api/engine/open", {
+      const snapshot = await this.engine.open({
         fen: this.lastFen,
         multipv: this.multipv,
-        engine: "stockfish",
       });
       // Render the response immediately so depth/PVs appear without waiting
       // for the first poll.
@@ -711,7 +716,7 @@ class EngineWidget {
     if (!this.open) return;
     this._clearAnalysisView();
     try {
-      const snapshot = await postJson("/api/engine/update", {
+      const snapshot = await this.engine.update({
         fen: this.lastFen || this.currentFen(),
         multipv: this.multipv,
       });
@@ -759,7 +764,7 @@ class EngineWidget {
     this._stopPolling();
     this.pollTimer = setInterval(async () => {
       try {
-        const snapshot = await api("/api/engine/snapshot");
+        const snapshot = await this.engine.snapshot();
         this._renderSnapshot(snapshot);
       } catch (_) {
         // Ignore transient polling errors.

@@ -18,6 +18,10 @@ out/
 *.sqlite
 *.sqlite3
 
+# Node / Vite frontend build tooling (build output in web/static IS committed)
+node_modules/
+.vite/
+
 # Editor and OS files
 .idea/
 .vscode/

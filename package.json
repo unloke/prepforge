@@ -1,0 +1,16 @@
+{
+  "name": "prepforge-chess-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "PrepForge Chess web frontend (Vite build into the Python package's static dir).",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:watch": "vite build --watch",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^6"
+  }
+}
