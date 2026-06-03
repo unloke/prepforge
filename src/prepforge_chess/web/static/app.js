@@ -216,6 +216,13 @@ const appState = {
   analysisPolling: false,
   analysisPly: 0,
   analysisBoardFen: START_FEN,
+  // Study variations explored on the Analyze board: a small client-side tree
+  // hanging off the analyzed mainline so the player can branch out and compare
+  // lines without losing the original game.
+  analysisVarNodes: new Map(),
+  analysisVarCounter: 0,
+  analysisCurrentNodeId: "root",
+  analysisTree: null,
   evalChartPoints: [],
   build: null,
   buildNodeById: new Map(),
@@ -231,52 +238,117 @@ const LICHESS_KEY = "prepforge.lichess_username";
 
 const boards = {};
 
+// Delays (ms) for auto-collapsing/auto-dismissing a card. The countdown only
+// runs while the user is *not* actively pointing at the card (see _holdDismiss).
+const TOAST_MINIMIZE_DELAY = 7500;
+const TOAST_DONE_DELAY = 12000;
+const TOAST_FAILED_DELAY = 6000;
+const TOAST_CANCELLED_DELAY = 4500;
+// How long the pointer must rest motionless over a card before its countdown
+// is allowed to resume.
+const TOAST_IDLE_RESUME_MS = 1100;
+
 // A single notification card. Each job owns its own Toast (DOM + timers) so
 // consecutive jobs never cross-talk; an old card's auto-dismiss can never
 // reach into a newer card the way a shared, reused element used to.
+//
+// Two flavours share this one card system so they stack in a single column
+// instead of overlapping:
+//   - "job"  : a progress card with a Stop button (Analyze / Build gen).
+//   - "info" : a notification with custom action buttons (e.g. "new game").
 class Toast {
-  constructor(stack, { id, title, tab, total }) {
+  constructor(stack, opts = {}) {
+    const { id, title, tab, total, variant, onCancel, message, actions } = opts;
     this.stack = stack;
     this.id = id;
     this.tab = tab || null;
-    this.state = "running";
+    this.variant = variant === "info" ? "info" : "job";
+    this.state = this.variant === "info" ? "info" : "running";
     this.minimized = false;
     this.activeTotal = Math.max(1, Number(total) || 1);
     this.lastDisplayedPercent = 0;
     this.onClick = null;
-    this.minimizeTimer = null;
-    this.completionTimer = null;
+    this.onCancel = typeof onCancel === "function" ? onCancel : null;
+    this.cancelRequested = false;
     this.removed = false;
-    this.el = this._build(title);
+    // Single auto-action timer, gated by pointer activity.
+    this.dismissTimer = null;
+    this.dismissDelay = 0;
+    this.dismissAction = null;
+    this.idleTimer = null;
+    this.hovering = false;
+    this.pointerActive = false;
+    this.el = this._build(title || "Working...", message, actions);
     stack.container.appendChild(this.el);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => this.el.classList.add("is-visible"));
     });
-    this._scheduleAutoMinimize();
+    if (this.variant === "job") {
+      this._arm(TOAST_MINIMIZE_DELAY, () => {
+        if (this.state === "running") this.toggleMinimize(true);
+      });
+    }
   }
 
-  _build(title) {
+  _build(title, message, actions) {
     const el = document.createElement("div");
-    el.className = "job-toast state-running";
-    el.dataset.state = "running";
+    el.className = `job-toast state-${this.state} variant-${this.variant}`;
+    el.dataset.state = this.state;
+    const stopBtn = this.onCancel
+      ? '<button class="job-toast-stop" type="button" title="Stop job">Stop</button>'
+      : "";
+    let bodyInner;
+    if (this.variant === "info") {
+      bodyInner =
+        `<div class="job-toast-message">${escapeHtml(message || "")}</div>` +
+        '<div class="job-toast-actions"></div>';
+    } else {
+      // Track and Stop share one row so they never crowd each other, and the
+      // track stays visible when the card is minimized.
+      bodyInner =
+        '<div class="job-toast-message">Queued</div>' +
+        '<div class="job-toast-progress">' +
+        '<div class="job-toast-track"><div class="job-toast-fill"></div></div>' +
+        stopBtn +
+        "</div>";
+    }
     el.innerHTML =
       '<div class="job-toast-head">' +
       '<span class="job-toast-icon" aria-hidden="true"></span>' +
-      `<span class="job-toast-title">${escapeHtml(title || "Working...")}</span>` +
+      `<span class="job-toast-title">${escapeHtml(title)}</span>` +
       '<button class="job-toast-collapse" type="button" title="Minimize" aria-label="Minimize">_</button>' +
       "</div>" +
-      '<div class="job-toast-body">' +
-      '<div class="job-toast-message">Queued</div>' +
-      '<div class="job-toast-track"><div class="job-toast-fill"></div></div>' +
-      "</div>";
+      `<div class="job-toast-body">${bodyInner}</div>`;
     this.titleEl = el.querySelector(".job-toast-title");
     this.messageEl = el.querySelector(".job-toast-message");
     this.fillEl = el.querySelector(".job-toast-fill");
     this.collapseBtn = el.querySelector(".job-toast-collapse");
+    this.stopBtn = el.querySelector(".job-toast-stop");
     this.collapseBtn.addEventListener("click", (event) => {
       event.stopPropagation();
       this.toggleMinimize(true);
     });
+    if (this.stopBtn) {
+      this.stopBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.requestCancel();
+      });
+    }
+    if (this.variant === "info" && Array.isArray(actions)) {
+      const host = el.querySelector(".job-toast-actions");
+      actions.forEach((action) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `btn ${action.primary ? "primary" : "ghost"} toast-action`;
+        btn.textContent = action.label || "OK";
+        btn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          if (typeof action.onClick === "function") action.onClick();
+          if (action.closeOnClick !== false) this.dismiss();
+        });
+        host.appendChild(btn);
+      });
+    }
     el.addEventListener("click", () => {
       if (this.state === "done" && this.onClick) {
         this.onClick();
@@ -285,6 +357,7 @@ class Toast {
         this.toggleMinimize(false);
       }
     });
+    this._bindHoverGating(el);
     return el;
   }
 
@@ -297,7 +370,23 @@ class Toast {
     const display = Math.min(0.95, pessimistic);
     if (display > this.lastDisplayedPercent) this.lastDisplayedPercent = display;
     this._renderFill(this.lastDisplayedPercent);
-    if (message) this.messageEl.textContent = message;
+    if (message && !this.cancelRequested) this.messageEl.textContent = message;
+  }
+
+  requestCancel() {
+    if (this.cancelRequested || !this.onCancel) return;
+    this.cancelRequested = true;
+    this.el.classList.add("is-cancelling");
+    if (this.stopBtn) {
+      this.stopBtn.disabled = true;
+      this.stopBtn.textContent = "Stopping...";
+    }
+    if (this.messageEl) this.messageEl.textContent = "Stopping job...";
+    try {
+      this.onCancel();
+    } catch (_) {
+      /* best-effort */
+    }
   }
 
   complete({ title, message, onClick } = {}) {
@@ -309,8 +398,7 @@ class Toast {
     if (message) this.messageEl.textContent = message;
     this.lastDisplayedPercent = 1;
     this._renderFill(1);
-    this._clearAutoMinimize();
-    this.completionTimer = setTimeout(() => this.dismiss(), 12000);
+    this._arm(TOAST_DONE_DELAY, () => this.dismiss());
   }
 
   fail(message) {
@@ -318,25 +406,37 @@ class Toast {
     this._applyState();
     this.titleEl.textContent = "Job failed";
     this.messageEl.textContent = message || "Unknown error";
-    this._clearAutoMinimize();
-    this.completionTimer = setTimeout(() => this.dismiss(), 5000);
+    this._arm(TOAST_FAILED_DELAY, () => this.dismiss());
+  }
+
+  // A job the user stopped: acknowledge briefly, then fade out.
+  cancelled(message) {
+    this.state = "cancelled";
+    this.minimized = false;
+    this._applyState();
+    this.titleEl.textContent = "Stopped";
+    if (message) this.messageEl.textContent = message;
+    this._renderFill(this.lastDisplayedPercent);
+    this._arm(TOAST_CANCELLED_DELAY, () => this.dismiss());
   }
 
   toggleMinimize(force) {
     const next = typeof force === "boolean" ? force : !this.minimized;
     this.minimized = next;
     this.el.classList.toggle("is-minimized", next);
-    if (!next) this._scheduleAutoMinimize();
+    // Re-arm the running-job minimize timer when the user expands it again.
+    if (!next && this.state === "running") {
+      this._arm(TOAST_MINIMIZE_DELAY, () => {
+        if (this.state === "running") this.toggleMinimize(true);
+      });
+    }
   }
 
   dismiss() {
     if (this.removed) return;
     this.removed = true;
-    this._clearAutoMinimize();
-    if (this.completionTimer) {
-      clearTimeout(this.completionTimer);
-      this.completionTimer = null;
-    }
+    this._clearDismiss();
+    this._clearIdle();
     // Collapse out: slide away + shrink height so the cards below rise smoothly.
     this.el.classList.remove("is-visible");
     this.el.classList.add("is-leaving");
@@ -348,7 +448,13 @@ class Toast {
 
   _applyState() {
     this.el.dataset.state = this.state;
-    this.el.classList.remove("state-running", "state-done", "state-failed");
+    this.el.classList.remove(
+      "state-running",
+      "state-done",
+      "state-failed",
+      "state-cancelled",
+      "state-info"
+    );
     this.el.classList.add(`state-${this.state}`);
     this.el.classList.toggle("is-minimized", this.minimized);
   }
@@ -358,25 +464,78 @@ class Toast {
     this.fillEl.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
   }
 
-  _scheduleAutoMinimize() {
-    this._clearAutoMinimize();
-    this.minimizeTimer = setTimeout(() => {
-      if (this.state === "running") this.toggleMinimize(true);
-    }, 7500);
+  // ---- Pointer-gated auto-dismiss --------------------------------------
+  // Arms a single deferred action (minimize or dismiss). The countdown is
+  // suspended while the pointer is actively moving over the card and only
+  // (re)starts once the pointer leaves or goes still — so a card never
+  // collapses out from under a user who is reading or reaching for it.
+  _arm(delay, action) {
+    this.dismissDelay = delay;
+    this.dismissAction = action;
+    this._evaluateDismiss();
   }
 
-  _clearAutoMinimize() {
-    if (this.minimizeTimer) {
-      clearTimeout(this.minimizeTimer);
-      this.minimizeTimer = null;
+  _evaluateDismiss() {
+    if (!this.dismissAction) return;
+    const hold = this.hovering && this.pointerActive;
+    if (hold) {
+      this._clearDismiss();
+      return;
     }
+    if (this.dismissTimer) return; // already counting
+    this.dismissTimer = setTimeout(() => {
+      this.dismissTimer = null;
+      const action = this.dismissAction;
+      this.dismissAction = null;
+      if (action) action();
+    }, this.dismissDelay);
+  }
+
+  _clearDismiss() {
+    if (this.dismissTimer) {
+      clearTimeout(this.dismissTimer);
+      this.dismissTimer = null;
+    }
+  }
+
+  _clearIdle() {
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
+  }
+
+  _bindHoverGating(el) {
+    el.addEventListener("pointerenter", () => {
+      this.hovering = true;
+      this.pointerActive = true;
+      this._evaluateDismiss();
+    });
+    el.addEventListener("pointermove", () => {
+      if (!this.hovering) this.hovering = true;
+      this.pointerActive = true;
+      this._clearIdle();
+      this._evaluateDismiss();
+      // Resume the countdown once the pointer rests motionless for a moment.
+      this.idleTimer = setTimeout(() => {
+        this.idleTimer = null;
+        this.pointerActive = false;
+        this._evaluateDismiss();
+      }, TOAST_IDLE_RESUME_MS);
+    });
+    el.addEventListener("pointerleave", () => {
+      this.hovering = false;
+      this.pointerActive = false;
+      this._clearIdle();
+      this._evaluateDismiss();
+    });
   }
 }
 
-// Manages a vertical stack of independent Toasts. Jobs are sequential (the
-// server runs one heavy job at a time), so the manager tracks the current job
-// as `active` for update/complete/fail, but every card lives and dies on its
-// own.
+// Manages a vertical stack of independent Toasts. Heavy jobs are sequential
+// (the server runs one at a time), so the manager tracks the current job as
+// `active` for update/complete/fail/cancel, but every card — including info
+// notifications — lives and dies on its own.
 class ToastStack {
   constructor() {
     this.container = null;
@@ -397,6 +556,12 @@ class ToastStack {
     return this.active;
   }
 
+  // Standalone notification card (shares the stack so nothing overlaps).
+  notify(opts) {
+    if (!this.container) return null;
+    return new Toast(this, { ...opts, variant: "info" });
+  }
+
   updateJob(data) {
     if (this.active) this.active.update(data);
   }
@@ -407,6 +572,10 @@ class ToastStack {
 
   failJob(message) {
     if (this.active) this.active.fail(message);
+  }
+
+  cancelJob(message) {
+    if (this.active) this.active.cancelled(message);
   }
 
   _forget(toast) {
@@ -473,10 +642,9 @@ class EngineWidget {
   }
 
   async openForCurrent() {
-    if (jobToast.isBusy()) {
-      setStatus("Another job is already running");
-      return;
-    }
+    // The engine widget runs its own lightweight Stockfish session and is
+    // intentionally *not* gated on heavy Analyze/Build jobs — the user can keep
+    // probing positions while a long job runs in the background.
     this.open = true;
     this.el.hidden = false;
     requestAnimationFrame(() => {
@@ -1409,22 +1577,19 @@ function buildArrowPath(from, to) {
 
 function renderAnnotations(overlay, arrows, orientation = "white", engineArrow = null) {
   overlay.setAttribute("viewBox", "0 0 100 100");
-  const userColor = "rgba(214, 92, 50, 0.92)";
-  const engineColor = "rgba(74, 137, 100, 0.92)";
   overlay.innerHTML = "";
-  const drawArrow = (arrow, color) => {
+  // Colours and stroke come from CSS tokens (.annot-arrow rules) so board
+  // arrows stay in step with the rest of the theme.
+  const drawArrow = (arrow, kind) => {
     const from = squareCenter(arrow.slice(0, 2), orientation);
     const to = squareCenter(arrow.slice(2, 4), orientation);
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", buildArrowPath(from, to));
-    path.setAttribute("fill", color);
-    path.setAttribute("stroke", "rgba(0, 0, 0, 0.18)");
-    path.setAttribute("stroke-width", "0.35");
-    path.setAttribute("stroke-linejoin", "round");
+    path.setAttribute("class", `annot-arrow annot-${kind}`);
     overlay.appendChild(path);
   };
-  arrows.forEach((arrow) => drawArrow(arrow, userColor));
-  if (engineArrow && engineArrow.length >= 4) drawArrow(engineArrow, engineColor);
+  arrows.forEach((arrow) => drawArrow(arrow, "user"));
+  if (engineArrow && engineArrow.length >= 4) drawArrow(engineArrow, "engine");
 }
 
 function squareCenter(square, orientation = "white") {
@@ -1627,42 +1792,67 @@ async function checkLatestLichessGame() {
   if (!appState.lichessUsername) return;
   let latest;
   try {
-    latest = await api("/api/lichess/latest");
+    // Lightweight headers-only probe — fast, and enough to decide whether to
+    // surface the nudge. The full PGN is fetched only if the user acts on it.
+    latest = await api("/api/lichess/latest?light=1");
   } catch (_) {
     return;
   }
   if (latest.has_game && latest.is_new) showNewGameWidget(latest);
 }
 
-// Bottom-right card nudging the player to analyze the game they just finished.
+// Surface a "you just finished a game" nudge. It lives in the shared toast
+// stack (so it never overlaps the job cards or engine window) and auto-cleans
+// itself after a while if the player ignores it.
 function showNewGameWidget(game) {
   if (appState.newGameWidgetId === game.lichess_id) return;
   appState.newGameWidgetId = game.lichess_id;
-  const host = document.getElementById("newgame-host") || document.body;
-  const card = document.createElement("div");
-  card.className = "newgame-widget";
-  card.innerHTML =
-    `<div class="ngw-body">` +
-    `<div class="ngw-title">You just finished a game!</div>` +
-    `<div class="ngw-sub">${escapeHtml(game.white || "?")} vs ${escapeHtml(game.black || "?")}` +
-    `${game.result ? " · " + escapeHtml(game.result) : ""}</div>` +
-    `</div>` +
-    `<div class="ngw-actions">` +
-    `<button class="btn ghost ngw-dismiss" type="button">Dismiss</button>` +
-    `<button class="btn primary ngw-analyze" type="button">Analyze</button>` +
-    `</div>`;
-  host.appendChild(card);
-  const cleanup = () => {
-    card.remove();
+  const sub =
+    `${game.white || "?"} vs ${game.black || "?"}` +
+    `${game.result ? " · " + game.result : ""}`;
+  const toast = jobToast.notify({
+    id: `newgame-${game.lichess_id}`,
+    title: "You just finished a game!",
+    message: sub,
+    actions: [
+      {
+        label: "Dismiss",
+        primary: false,
+        onClick: () => {
+          appState.newGameWidgetId = null;
+          markLichessSeen(game.lichess_id);
+        },
+      },
+      {
+        label: "Analyze",
+        primary: true,
+        onClick: async () => {
+          appState.newGameWidgetId = null;
+          markLichessSeen(game.lichess_id);
+          switchView("analyze");
+          // Pull the full PGN now (the probe above skipped move text).
+          let pgn = game.pgn || "";
+          if (!pgn) {
+            try {
+              const full = await api("/api/lichess/latest");
+              pgn = full.pgn || "";
+            } catch (_) {
+              /* fall through with empty pgn */
+            }
+          }
+          document.getElementById("pgn-input").value = pgn;
+          await runAnalysis();
+        },
+      },
+    ],
+  });
+  // Auto-dismiss after ~45s of being ignored; the pointer-gating keeps it alive
+  // while the user is actually interacting with it. Mark the game seen so the
+  // watcher doesn't keep re-surfacing the same finished game.
+  if (toast) toast._arm(45000, () => {
+    appState.newGameWidgetId = null;
     markLichessSeen(game.lichess_id);
-  };
-  card.querySelector(".ngw-dismiss").addEventListener("click", cleanup);
-  card.querySelector(".ngw-analyze").addEventListener("click", async () => {
-    card.remove();
-    markLichessSeen(game.lichess_id);
-    switchView("analyze");
-    document.getElementById("pgn-input").value = game.pgn || "";
-    await runAnalysis();
+    toast.dismiss();
   });
 }
 
@@ -1739,6 +1929,7 @@ async function recallAnalysis(gameId) {
   try {
     const payload = await api(`/api/analyses/${encodeURIComponent(gameId)}`);
     appState.analysis = payload;
+    resetAnalysisVariations();
     showAnalysisPly(0);
     renderAnalysis(payload);
     revealAnalysisResults();
@@ -2145,9 +2336,11 @@ async function runAnalysis() {
       title: "Analyzing game",
       tab: "analyze",
       total: started.total_plies || started.total || 0,
+      onCancel: () => cancelHeavyJob("/api/analyze/cancel", started.job_id),
     });
     const payload = await pollAnalysisJob(started.job_id);
     appState.analysis = payload;
+    resetAnalysisVariations();
     showAnalysisPly(0);
     renderAnalysis(payload);
     setStatus(`Analysis ready: ${payload.moves.length} plies`);
@@ -2158,10 +2351,26 @@ async function runAnalysis() {
     });
     revealAnalysisResults();
   } catch (error) {
-    setStatus(error.message);
-    jobToast.failJob(error.message);
+    if (error && error.cancelled) {
+      setStatus("Analysis stopped");
+      jobToast.cancelJob(error.message || "Analysis stopped");
+    } else {
+      setStatus(error.message);
+      jobToast.failJob(error.message);
+    }
   } finally {
     runButton.disabled = false;
+  }
+}
+
+// Ask the server to stop a running heavy job (analyze / build gen) and kill the
+// in-flight engine work. Best-effort: the poll loop reports the final state.
+async function cancelHeavyJob(endpoint, jobId) {
+  if (!jobId) return;
+  try {
+    await postJson(endpoint, { job_id: jobId });
+  } catch (_) {
+    /* the job may have already finished */
   }
 }
 
@@ -2196,6 +2405,11 @@ async function pollAnalysisJob(jobId) {
     if (status.status === "completed") {
       if (!status.result) throw new Error("Analysis completed without a result");
       return status.result;
+    }
+    if (status.status === "cancelled") {
+      const err = new Error(status.message || "Analysis stopped");
+      err.cancelled = true;
+      throw err;
     }
     if (status.status === "failed") {
       throw new Error(status.error || "Analysis failed");
@@ -2323,6 +2537,7 @@ async function showAnalysisPly(ply) {
   const moves = appState.analysis ? appState.analysis.moves : [];
   const boundedPly = Math.max(0, Math.min(ply, moves.length));
   appState.analysisPly = boundedPly;
+  appState.analysisCurrentNodeId = boundedPly === 0 ? "root" : `m${boundedPly}`;
   const move = boundedPly > 0 ? moves[boundedPly - 1] : null;
   const fen = move ? move.fen_after : moves[0]?.fen_before || START_FEN;
   const info = await boardInfo(fen);
@@ -2344,78 +2559,316 @@ async function showAnalysisPly(ply) {
   if (engineWidget) engineWidget.onBoardChanged();
 }
 
-function renderMovePairs(moves) {
-  const container = document.getElementById("analysis-moves");
-  if (!moves || !moves.length) {
-    container.innerHTML =
-      '<div class="empty-state">Load a PGN and click Analyze to see the move list.</div>';
-    return;
-  }
-  // Render mainline using the same Build-style branch layout. This keeps
-  // the visual language consistent and leaves room for variations later.
-  const inner = moves
-    .map((move, i) => {
-      const prev = i > 0 ? moves[i - 1] : null;
-      const isWhite = move.side === "white";
-      const needNumber =
-        i === 0 ||
-        isWhite ||
-        !prev ||
-        prev.side !== "white" ||
-        prev.move_number !== move.move_number;
-      const numberHtml = needNumber
-        ? `<span class="move-num">${move.move_number}${isWhite ? "." : "..."}</span>`
-        : "";
-      return numberHtml + analysisInlineMove(move);
-    })
-    .join("");
-  container.innerHTML = `<div class="branch main">${inner}</div>`;
-  document.querySelectorAll("#analysis-moves .inline-move[data-ply]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      showAnalysisPly(Number(button.dataset.ply));
-      event.currentTarget.blur();
-    });
-  });
+function resetAnalysisVariations() {
+  appState.analysisVarNodes = new Map();
+  appState.analysisVarCounter = 0;
+  appState.analysisCurrentNodeId = "root";
+  appState.analysisTree = null;
 }
 
-function analysisInlineMove(move) {
-  const cls = escapeHtml(move.classification || "unknown");
+// `renderMovePairs` keeps its name (callers in renderAnalysis) but now renders
+// the mainline together with any study variations the player explored.
+function renderMovePairs(moves) {
+  renderAnalysisTree(moves);
+}
+
+// ---------------------------------------------------------------------------
+// Shared move-tree renderer — used by both Analyze (study lines) and Build
+// (repertoire). Variations render as DOM-nested blocks: a variation lives
+// *inside* its parent's block, so each level indents one step further by pure
+// nesting (no depth arithmetic) and a sub-variation can never jump to the
+// front. The only highlight is the single current move plus a faint trail along
+// the line that leads to it — both computed from real node ids, so no phantom
+// lines ever light up.
+//
+//   root: { children: [node, ...] }   children[0] is the mainline continuation
+//   node: { id, san, moveNumber, side: "white"|"black", children: [...] }
+//   opts: {
+//     currentId,                         id of the selected node
+//     pathIds: Set<id>,                  nodes on the trail to currentId
+//     decorate(node) -> { classes?, suffix?, title? },
+//     collapsible, isCollapsed(node)->bool,
+//   }
+// ---------------------------------------------------------------------------
+function renderMoveTree(root, opts) {
+  const kids = root.children || [];
+  if (!kids.length) {
+    return (
+      '<div class="mtree"><div class="empty-state">' +
+      escapeHtml(opts.emptyText || "No moves yet.") +
+      "</div></div>"
+    );
+  }
+  const main = kids[0];
+  const alts = kids.slice(1);
+  let body = renderMoveLine(main, opts);
+  for (const alt of alts) body += renderMoveVariation(alt, opts);
+  return `<div class="mtree"><div class="mtree-line is-main">${body}</div></div>`;
+}
+
+// Follow the mainline chain from `startNode`, inserting a variation block for
+// every alternative move encountered along the way.
+function renderMoveLine(startNode, opts) {
+  let html = "";
+  let cur = startNode;
+  let forceNumber = true; // first move of any line is always numbered
+  while (cur) {
+    html += renderMoveToken(cur, opts, forceNumber);
+    forceNumber = false;
+    const kids = cur.children || [];
+    const main = kids[0] || null;
+    for (let i = 1; i < kids.length; i += 1) {
+      html += renderMoveVariation(kids[i], opts);
+      forceNumber = true; // a block interrupted the flow → re-number on resume
+    }
+    cur = main;
+  }
+  return html;
+}
+
+function renderMoveVariation(firstNode, opts) {
+  const collapsed =
+    opts.collapsible && opts.isCollapsed && opts.isCollapsed(firstNode);
+  const toggle = opts.collapsible
+    ? `<button class="mtree-collapse" type="button" data-collapse-id="${escapeHtml(
+        String(firstNode.id)
+      )}" title="${collapsed ? "Expand" : "Collapse"} variation">${
+        collapsed ? "▸" : "▾"
+      }</button>`
+    : "";
+  const inner = collapsed
+    ? '<span class="mtree-collapsed">…</span>'
+    : renderMoveLine(firstNode, opts);
+  return `<div class="mtree-var">${toggle}${inner}</div>`;
+}
+
+function renderMoveToken(node, opts, forceNumber) {
+  const isWhite = node.side === "white";
+  const numHtml =
+    isWhite || forceNumber
+      ? `<span class="mtree-num">${node.moveNumber}${isWhite ? "." : "…"}</span>`
+      : "";
+  const deco = (opts.decorate && opts.decorate(node)) || {};
+  const classes = ["mtree-move"];
+  if (deco.classes) classes.push(...deco.classes);
+  if (node.id === opts.currentId) classes.push("is-current");
+  else if (opts.pathIds && opts.pathIds.has(node.id)) classes.push("on-path");
+  const title = deco.title ? ` title="${escapeHtml(String(deco.title))}"` : "";
   return (
-    `<button class="inline-move class-${cls}" data-ply="${Number(move.ply)}" ` +
-    `title="${cls}"><span>${escapeHtml(move.san)}</span>` +
-    `<span class="move-class-dot"></span></button>`
+    `${numHtml}<button class="${classes.join(" ")}" data-node-id="${escapeHtml(
+      String(node.id)
+    )}"${title}><span class="mtree-san">${escapeHtml(node.san)}</span>${
+      deco.suffix || ""
+    }</button>`
   );
 }
 
-function highlightCurrentMove() {
-  let current = null;
-  document.querySelectorAll("#analysis-moves .inline-move").forEach((button) => {
-    const isCurrent = Number(button.dataset.ply) === appState.analysisPly;
-    button.classList.toggle("is-current", isCurrent);
-    if (isCurrent) current = button;
+// Wire click (and optional right-click) handlers onto every move in a tree.
+function bindMoveTreeClicks(container, onSelect, onContext) {
+  container.querySelectorAll(".mtree-move[data-node-id]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      onSelect(button.dataset.nodeId);
+      event.currentTarget.blur();
+    });
+    if (onContext) {
+      button.addEventListener("contextmenu", (event) =>
+        onContext(event, button.dataset.nodeId)
+      );
+    }
   });
-  if (current) current.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+
+// Assemble the analyzed mainline plus user-explored variations into a single
+// navigable tree. Mainline nodes get stable ids (`m{ply}`); the start position
+// is `root`. Variation nodes (`v{n}`) are stored in appState and re-attached on
+// every build so they survive re-renders.
+function buildAnalysisTree(moves) {
+  const startFen = (moves && moves[0] && moves[0].fen_before) || START_FEN;
+  const root = {
+    id: "root",
+    san: null,
+    fenAfter: startFen,
+    ply: 0,
+    isMainline: true,
+    isVariation: false,
+    parent: null,
+    children: [],
+  };
+  const byId = new Map([["root", root]]);
+  let prev = root;
+  (moves || []).forEach((move) => {
+    const node = {
+      id: `m${move.ply}`,
+      ply: Number(move.ply),
+      san: move.san,
+      uci: move.uci,
+      fenBefore: move.fen_before,
+      fenAfter: move.fen_after,
+      moveNumber: move.move_number,
+      side: move.side,
+      classification: move.classification,
+      isMainline: true,
+      isVariation: false,
+      parent: prev,
+      children: [],
+    };
+    byId.set(node.id, node);
+    prev.children.push(node);
+    prev = node;
+  });
+  // Attach variations in creation order so a parent always exists first.
+  const pending = Array.from(appState.analysisVarNodes.values()).sort(
+    (a, b) => a.seq - b.seq
+  );
+  for (const v of pending) {
+    const parent = byId.get(v.parentId);
+    if (!parent) continue; // parent vanished (mainline reloaded) — drop quietly
+    const node = {
+      id: v.id,
+      ply: -1,
+      san: v.san,
+      uci: v.uci,
+      fenBefore: v.fenBefore,
+      fenAfter: v.fenAfter,
+      moveNumber: v.moveNumber,
+      side: v.side,
+      classification: null,
+      isMainline: false,
+      isVariation: true,
+      parent,
+      children: [],
+    };
+    byId.set(node.id, node);
+    parent.children.push(node);
+  }
+  return { root, byId };
+}
+
+function analysisPathIds(nodeId, tree) {
+  const set = new Set();
+  let node = tree.byId.get(nodeId || "root");
+  while (node) {
+    set.add(node.id);
+    node = node.parent;
+  }
+  return set;
+}
+
+function renderAnalysisTree(movesArg) {
+  const container = document.getElementById("analysis-moves");
+  if (!container) return;
+  const moves = movesArg || (appState.analysis ? appState.analysis.moves : []);
+  if (!moves || !moves.length) {
+    container.innerHTML =
+      '<div class="empty-state">Load a PGN and click Analyze to see the move list. ' +
+      "Play moves on the board to branch into study variations.</div>";
+    return;
+  }
+  const tree = buildAnalysisTree(moves);
+  appState.analysisTree = tree;
+  const pathIds = analysisPathIds(appState.analysisCurrentNodeId, tree);
+  container.innerHTML = renderMoveTree(tree.root, {
+    currentId: appState.analysisCurrentNodeId,
+    pathIds,
+    decorate: (node) => {
+      if (node.isVariation) {
+        return { classes: ["is-variation"], title: "variation" };
+      }
+      const cls = String(node.classification || "unknown");
+      return {
+        classes: [`cls-${cls}`],
+        suffix: '<span class="mtree-dot"></span>',
+        title: cls,
+      };
+    },
+  });
+  bindMoveTreeClicks(container, (id) => selectAnalysisNode(id));
+  const focus = container.querySelector(".mtree-move.is-current");
+  if (focus) focus.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+
+// Highlight the active move + sync the eval-chart cursor. The list itself is
+// re-rendered from appState.analysisCurrentNodeId so highlighting and variation
+// structure can never drift apart.
+function highlightCurrentMove() {
+  renderAnalysisTree();
   updateEvalChartCursor();
+}
+
+async function selectAnalysisNode(nodeId) {
+  const tree = appState.analysisTree;
+  const node = tree ? tree.byId.get(nodeId) : null;
+  if (!node) return;
+  if (node.isMainline) {
+    await showAnalysisPly(node.ply);
+    return;
+  }
+  // Variation node: drive the board straight to its resulting position.
+  appState.analysisCurrentNodeId = node.id;
+  appState.analysisPly = -1;
+  const fen = node.fenAfter;
+  const info = await boardInfo(fen);
+  appState.analysisBoardFen = fen;
+  boards.analysis.setPosition({
+    fen,
+    legalMoves: info.legal_moves,
+    lastMove: node.uci,
+  });
+  boards.analysis.setMoveBadge(null, null, "");
+  document.getElementById("analysis-board-label").textContent = `${node.moveNumber}${
+    node.side === "black" ? "..." : "."
+  } ${node.san} · variation`;
+  highlightCurrentMove();
+  if (engineWidget) engineWidget.onBoardChanged();
 }
 
 async function onAnalysisBoardMove(moveUci, fen) {
   try {
-    const knownMove = (appState.analysis?.moves || []).find(
-      (move) => move.fen_before === fen && move.uci === moveUci
-    );
-    if (knownMove) {
-      await showAnalysisPly(Number(knownMove.ply));
-      return;
+    const tree = appState.analysisTree;
+    const currentId =
+      appState.analysisCurrentNodeId ||
+      (appState.analysisPly > 0 ? `m${appState.analysisPly}` : "root");
+    const currentNode = tree ? tree.byId.get(currentId) : null;
+    // Replaying the existing continuation (mainline or a known variation) just
+    // steps forward instead of forking a duplicate line.
+    if (currentNode) {
+      const existing = currentNode.children.find((child) => child.uci === moveUci);
+      if (existing) {
+        await selectAnalysisNode(existing.id);
+        return;
+      }
     }
+    // New move from here → record it as a study variation branching off the
+    // current node.
     const payload = await boardAfterMove(fen, moveUci);
-    appState.analysisBoardFen = payload.board.fen;
+    const parts = fen.split(" ");
+    const side = parts[1] === "b" ? "black" : "white";
+    const moveNumber = Number(parts[5]) || 1;
+    const seq = (appState.analysisVarCounter = (appState.analysisVarCounter || 0) + 1);
+    const id = `v${seq}`;
+    appState.analysisVarNodes.set(id, {
+      id,
+      seq,
+      parentId: currentId,
+      uci: moveUci,
+      san: payload.move.san,
+      fenBefore: fen,
+      fenAfter: payload.board.fen,
+      moveNumber,
+      side,
+    });
+    appState.analysisCurrentNodeId = id;
     appState.analysisPly = -1;
+    appState.analysisBoardFen = payload.board.fen;
     boards.analysis.setPosition({
       fen: payload.board.fen,
       legalMoves: payload.board.legal_moves,
       lastMove: moveUci,
     });
-    document.getElementById("analysis-board-label").textContent = `Explore: ${payload.move.san}`;
+    boards.analysis.setMoveBadge(null, null, "");
+    document.getElementById("analysis-board-label").textContent = `${moveNumber}${
+      side === "black" ? "..." : "."
+    } ${payload.move.san} · variation`;
     highlightCurrentMove();
     if (engineWidget) engineWidget.onBoardChanged();
   } catch (error) {
@@ -2661,6 +3114,35 @@ async function selectBuildNode(nodeId) {
   if (engineWidget) engineWidget.onBoardChanged();
 }
 
+// Normalize the flat repertoire node list into the shared tree shape, with the
+// mainline child first at every branch point.
+function buildNormalizedTree() {
+  if (!appState.build) return null;
+  const childrenByParent = new Map();
+  let rootNode = null;
+  for (const node of appState.build.nodes) {
+    if (node.depth === 0) {
+      rootNode = node;
+      continue;
+    }
+    if (!childrenByParent.has(node.parent_id)) childrenByParent.set(node.parent_id, []);
+    childrenByParent.get(node.parent_id).push(node);
+  }
+  for (const list of childrenByParent.values()) {
+    list.sort((a, b) => Number(b.is_mainline) - Number(a.is_mainline));
+  }
+  if (!rootNode) return null;
+  const make = (bnode) => ({
+    id: bnode.id,
+    san: bnode.san,
+    moveNumber: bnode.move_number,
+    side: bnode.move_side,
+    raw: bnode,
+    children: (childrenByParent.get(bnode.id) || []).map(make),
+  });
+  return make(rootNode);
+}
+
 function renderBuilderTree() {
   const container = document.getElementById("builder-tree");
   if (!appState.build) {
@@ -2668,63 +3150,52 @@ function renderBuilderTree() {
       '<div class="empty-state">No repertoire loaded. Press <b>New</b> or import one from the Dashboard.</div>';
     return;
   }
-  const childrenByParent = new Map();
-  let rootId = null;
-  for (const node of appState.build.nodes) {
-    if (node.depth === 0) {
-      rootId = node.id;
-      continue;
-    }
-    if (!childrenByParent.has(node.parent_id)) childrenByParent.set(node.parent_id, []);
-    childrenByParent.get(node.parent_id).push(node);
-  }
-  // Mainline first, then preserve original (DFS) order for stable display.
-  for (const list of childrenByParent.values()) {
-    list.sort((a, b) => Number(b.is_mainline) - Number(a.is_mainline));
-  }
-  const segments = [];
-  visitChildren(rootId, 0, segments, childrenByParent, null, []);
-  let usedSegments = segments.filter((s) => s.nodes.length);
-  if (!usedSegments.length) {
+  const root = buildNormalizedTree();
+  if (!root || !root.children.length) {
     container.innerHTML =
+      renderBuildBreadcrumb() +
       '<div class="empty-state">Play a move on the board to add it to the repertoire.</div>';
     return;
   }
-  // Which variation keys actually have sub-variations under them; only those
-  // get a collapse toggle.
-  const keysWithDescendants = new Set();
-  usedSegments.forEach((s) => (s.ancestors || []).forEach((k) => keysWithDescendants.add(k)));
   const collapsed = appState.buildCollapsed || (appState.buildCollapsed = new Set());
-  // Hide any segment living under a collapsed variation.
-  const visibleSegments = usedSegments.filter(
-    (s) => !(s.ancestors || []).some((k) => collapsed.has(k))
-  );
-
-  const currentPath = new Set(buildPath(appState.buildCurrentNodeId).map((n) => n.id));
-  const body = visibleSegments
-    .map((s) => renderBuildSegment(s, currentPath, keysWithDescendants, collapsed, ""))
-    .join("");
-  container.innerHTML =
-    renderBuildBreadcrumb() + `<div class="build-tree-body">${body}</div>`;
-  container.querySelectorAll(".branch-collapse[data-key]").forEach((toggle) => {
+  const pathIds = new Set(buildPath(appState.buildCurrentNodeId).map((n) => n.id));
+  const treeHtml = renderMoveTree(root, {
+    currentId: appState.buildCurrentNodeId,
+    pathIds,
+    collapsible: true,
+    isCollapsed: (node) => collapsed.has(node.id),
+    decorate: (node) => {
+      const b = node.raw;
+      const classes = [];
+      if (b.mastery) classes.push(`m-${b.mastery}`);
+      if (!b.is_enabled) classes.push("is-disabled");
+      if (b.is_mainline) classes.push("is-main");
+      if (b.is_prepared) classes.push("is-prep");
+      return { classes };
+    },
+  });
+  container.innerHTML = renderBuildBreadcrumb() + treeHtml;
+  container.querySelectorAll(".mtree-collapse[data-collapse-id]").forEach((toggle) => {
     toggle.addEventListener("click", (event) => {
       event.stopPropagation();
-      const key = toggle.dataset.key;
-      if (collapsed.has(key)) collapsed.delete(key);
-      else collapsed.add(key);
+      const id = toggle.dataset.collapseId;
+      if (collapsed.has(id)) collapsed.delete(id);
+      else collapsed.add(id);
       renderBuilderTree();
     });
   });
-  container.querySelectorAll(".inline-move[data-node-id]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      selectBuildNode(button.dataset.nodeId);
+  bindMoveTreeClicks(
+    container,
+    (id) => selectBuildNode(id),
+    (event, id) => openNodeContextMenu(event, id)
+  );
+  container.querySelectorAll(".mtree-crumb[data-node-id]").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      selectBuildNode(btn.dataset.nodeId);
       event.currentTarget.blur();
     });
-    button.addEventListener("contextmenu", (event) =>
-      openNodeContextMenu(event, button.dataset.nodeId)
-    );
   });
-  const focusBtn = container.querySelector(".build-tree-body .inline-move.is-current");
+  const focusBtn = container.querySelector(".mtree .mtree-move.is-current");
   if (focusBtn) focusBtn.scrollIntoView({ block: "nearest", inline: "nearest" });
 }
 
@@ -2745,110 +3216,17 @@ function renderBuildBreadcrumb() {
       const isWhite = node.move_side === "white";
       const needNumber = i === 0 || isWhite || !prev || prev.move_side !== "white";
       const numberHtml = needNumber
-        ? `<span class="move-num">${node.move_number}${isWhite ? "." : "..."}</span>`
+        ? `<span class="mtree-num">${node.move_number}${isWhite ? "." : "…"}</span>`
         : "";
       const cur = node.id === appState.buildCurrentNodeId ? " is-current" : "";
       return (
         numberHtml +
-        `<button class="inline-move crumb${cur}" data-node-id="${escapeHtml(node.id)}">` +
+        `<button class="mtree-crumb${cur}" data-node-id="${escapeHtml(node.id)}">` +
         `${escapeHtml(node.san)}</button>`
       );
     })
-    .join(" ");
-  return `<div class="build-breadcrumb">${inner}</div>`;
-}
-
-function visitChildren(parentId, depth, segments, childrenByParent, segment, ancestors) {
-  if (!parentId) return;
-  const ancestorKeys = ancestors || [];
-  let cur = parentId;
-  let seg = segment;
-  while (true) {
-    const children = childrenByParent.get(cur);
-    if (!children || children.length === 0) return;
-    const main = children[0];
-    const alts = children.slice(1);
-    if (!seg) {
-      seg = { depth, nodes: [], ancestors: ancestorKeys, key: null };
-      segments.push(seg);
-    }
-    seg.nodes.push(main);
-    for (const alt of alts) {
-      // Each variation gets a stable key (its first move's node id); its own
-      // deeper sub-variations carry that key in `ancestors`, so collapsing the
-      // variation hides exactly its descendants.
-      const altSeg = { depth: depth + 1, nodes: [alt], ancestors: ancestorKeys, key: alt.id };
-      segments.push(altSeg);
-      visitChildren(alt.id, depth + 1, segments, childrenByParent, altSeg, ancestorKeys.concat(alt.id));
-    }
-    if (alts.length > 0) {
-      seg = { depth, nodes: [], ancestors: ancestorKeys, key: null };
-      segments.push(seg);
-    }
-    cur = main.id;
-  }
-}
-
-function renderBuildSegment(segment, currentPath, keysWithDescendants, collapsed, query) {
-  const onPathBranch = segment.nodes.some((node) => currentPath.has(node.id));
-  const inner = segment.nodes
-    .map((node, i) => {
-      const prev = i > 0 ? segment.nodes[i - 1] : null;
-      const isWhite = node.move_side === "white";
-      const needNumber =
-        i === 0 ||
-        isWhite ||
-        !prev ||
-        prev.move_side !== "white" ||
-        prev.move_number !== node.move_number;
-      const numberHtml = needNumber
-        ? `<span class="move-num">${node.move_number}${isWhite ? "." : "..."}</span>`
-        : "";
-      return numberHtml + renderInlineMove(node, currentPath, query);
-    })
     .join("");
-  const depthClass = `depth-${Math.min(4, Math.max(0, segment.depth))}`;
-  const cls = [
-    "branch",
-    segment.depth === 0 ? "main" : "alt",
-    depthClass,
-    segment.key ? "starts-variation" : "continues-line",
-    onPathBranch ? "is-path-branch" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-  const indent = segment.depth === 0 ? 0 : (segment.depth - 1) * 14;
-  // A collapse toggle sits at the head of any variation that has descendants.
-  let toggle = "";
-  if (segment.key && keysWithDescendants && keysWithDescendants.has(segment.key)) {
-    const isCollapsed = collapsed && collapsed.has(segment.key);
-    toggle =
-      `<button class="branch-collapse" data-key="${escapeHtml(segment.key)}" ` +
-      `title="${isCollapsed ? "Expand variation" : "Collapse variation"}" ` +
-      `aria-label="${isCollapsed ? "Expand" : "Collapse"} variation">` +
-      `${isCollapsed ? "+" : "-"}</button>`;
-  }
-  return `<div class="${cls}" style="--branch-indent:${indent}px">${toggle}${inner}</div>`;
-}
-
-function renderInlineMove(node, currentPath, query) {
-  const safeId = escapeHtml(node.id);
-  const isCurrent = node.id === appState.buildCurrentNodeId;
-  const onPath = currentPath.has(node.id);
-  const isFound = !!query && String(node.san || "").toLowerCase().includes(query);
-  const classes = [
-    "inline-move",
-    node.mastery ? `m-${node.mastery}` : "",
-    isCurrent ? "is-current" : "",
-    onPath && !isCurrent ? "on-path" : "",
-    isFound ? "is-found" : "",
-    node.is_enabled ? "" : "is-disabled",
-    node.is_mainline ? "is-main" : "",
-    node.is_prepared ? "is-prep" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-  return `<button class="${classes}" data-node-id="${safeId}">${escapeHtml(node.san)}</button>`;
+  return `<div class="build-breadcrumb">${inner}</div>`;
 }
 
 function buildPath(nodeId) {
@@ -3138,6 +3516,7 @@ async function generateFromCurrentNode() {
       title: "Generating moves",
       tab: "build",
       total: started.estimated_total || started.total || ply_depth * 8,
+      onCancel: () => cancelHeavyJob("/api/build/generate/cancel", started.job_id),
     });
     const payload = await pollBuildJob(started.job_id);
     await hydrateBuild(payload, nodeId);
@@ -3151,8 +3530,22 @@ async function generateFromCurrentNode() {
       onClick: () => switchView("build"),
     });
   } catch (error) {
-    setStatus(error.message);
-    jobToast.failJob(error.message);
+    if (error && error.cancelled) {
+      setStatus("Generation stopped");
+      jobToast.cancelJob(error.message || "Generation stopped");
+      // Refresh the tree so any nodes added before the stop show up.
+      try {
+        const reload = await api(
+          `/api/build/load?repertoire_id=${encodeURIComponent(appState.build.repertoire_id)}`
+        );
+        await hydrateBuild(reload, nodeId);
+      } catch (_) {
+        /* ignore */
+      }
+    } else {
+      setStatus(error.message);
+      jobToast.failJob(error.message);
+    }
   }
 }
 
@@ -3167,6 +3560,11 @@ async function pollBuildJob(jobId) {
     if (status.status === "completed") {
       if (!status.result) throw new Error("Generation completed without a result");
       return status.result;
+    }
+    if (status.status === "cancelled") {
+      const err = new Error(status.message || "Generation stopped");
+      err.cancelled = true;
+      throw err;
     }
     if (status.status === "failed") {
       throw new Error(status.error || "Generation failed");
@@ -3518,7 +3916,9 @@ function renderTraining(payloadOrPrompt) {
   if (badge) {
     badge.hidden = false;
     badge.dataset.side = side;
-    badge.textContent = side === "white" ? "W" : "B";
+    // Show the side-to-move as a real piece (king of that colour), not a bare
+    // letter. Pieces are inline SVG (see pieceSvg) — there is no PNG asset.
+    badge.innerHTML = pieceSvg(side === "white" ? "K" : "k");
   }
   const total = prompt.total_lines || 1;
   document.getElementById("train-line-label").textContent = `Line ${(prompt.current_index || 0) + 1} / ${total}`;
@@ -3668,7 +4068,9 @@ async function showReviewItem() {
   if (badge) {
     badge.hidden = false;
     badge.dataset.side = side;
-    badge.textContent = side === "white" ? "W" : "B";
+    // Show the side-to-move as a real piece (king of that colour), not a bare
+    // letter. Pieces are inline SVG (see pieceSvg) — there is no PNG asset.
+    badge.innerHTML = pieceSvg(side === "white" ? "K" : "k");
   }
   setTrainBanner("review", `Recovery - ${review.index + 1} / ${review.queue.length}`, `${side === "white" ? "White" : "Black"} to move - the one you missed`);
   document.getElementById("train-board-label").textContent = "Recovery round - get it right to recover your streak";

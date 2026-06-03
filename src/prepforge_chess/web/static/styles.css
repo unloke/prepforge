@@ -24,6 +24,16 @@
   --last-move: rgba(255, 220, 90, 0.55);
   --highlight: rgba(214, 92, 50, 0.55);
   --arrow: rgba(214, 92, 50, 0.78);
+  /* Board annotation arrows, tuned to the warm theme so they read as part of
+     the same product rather than a generic overlay. User arrows pick up the
+     accent amber; the engine's best-move arrow uses the calm "good" green. */
+  --arrow-user: rgba(196, 124, 48, 0.92);
+  --arrow-user-stroke: rgba(105, 64, 20, 0.30);
+  --arrow-engine: rgba(74, 137, 100, 0.92);
+  --arrow-engine-stroke: rgba(30, 66, 46, 0.32);
+  /* Board coordinate labels. */
+  --coord-on-light: rgba(120, 96, 64, 0.78);
+  --coord-on-dark: rgba(247, 236, 216, 0.82);
   font-family: "Inter", "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
   font-size: 14px;
 }
@@ -627,6 +637,26 @@ h2 {
   pointer-events: none;
 }
 
+/* Filled triangular annotation arrows (paths built in app.js). Colours are
+   tokenised so they match the warm theme; a soft shadow lifts them off busy
+   board textures. */
+.annot-arrow {
+  stroke-width: 0.35;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0.3px 0.4px rgba(0, 0, 0, 0.25));
+  transition: opacity 120ms ease;
+}
+
+.annot-user {
+  fill: var(--arrow-user);
+  stroke: var(--arrow-user-stroke);
+}
+
+.annot-engine {
+  fill: var(--arrow-engine);
+  stroke: var(--arrow-engine-stroke);
+}
+
 .board-arrow {
   stroke: var(--arrow);
   stroke-width: 1.6;
@@ -791,13 +821,15 @@ h2 {
 /* Board coordinates (toggle: .show-coords on the board) */
 .coord {
   position: absolute;
-  font-size: 9px;
-  font-weight: 700;
+  font-size: 9.5px;
+  font-weight: 600;
   line-height: 1;
-  opacity: 0.7;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
   pointer-events: none;
   display: none;
   z-index: 4;
+  user-select: none;
 }
 
 .square:focus-visible {
@@ -880,21 +912,21 @@ h2 {
 }
 
 .coord-file {
-  right: 2px;
-  bottom: 1px;
+  right: 3px;
+  bottom: 2px;
 }
 
 .coord-rank {
-  left: 2px;
-  top: 1px;
+  left: 3px;
+  top: 2px;
 }
 
 .square.light > .coord {
-  color: var(--square-dark);
+  color: var(--coord-on-light);
 }
 
 .square.dark > .coord {
-  color: var(--square-light);
+  color: var(--coord-on-dark);
 }
 
 /* Last-move pulse */
@@ -1105,8 +1137,11 @@ h2 {
   flex-shrink: 0;
   border: 1px solid var(--line);
 }
-.train-turn-badge[data-side="white"] { background: #f4f1e8; color: #2a2a2a; }
-.train-turn-badge[data-side="black"] { background: #2a2a2a; color: #f4f1e8; }
+/* Contrasting circle so the king of the side-to-move always pops: a white king
+   sits on the dark disc, a black king on the cream disc. */
+.train-turn-badge[data-side="white"] { background: #2f2a22; }
+.train-turn-badge[data-side="black"] { background: #f4f1e8; }
+.train-turn-badge .piece { width: 78%; height: 78%; }
 
 /* Train sidebar */
 .train-sidebar { display: flex; flex-direction: column; gap: 14px; }
@@ -1631,12 +1666,19 @@ h2 {
   white-space: nowrap;
 }
 
-/* Build tree (Lichess-style: mainline flow + indented sub-variations) */
+/* ===========================================================================
+   Move tree (shared by Analyze study lines + Build repertoire)
+
+   The mainline is a flowing run of inline moves. A variation is a block that
+   interrupts the flow and is *nested in the DOM* under the move it branches
+   from, so each level indents one notch further by pure nesting — a
+   variation-within-a-variation can never slide back to the margin.
+   =========================================================================== */
 
 .movelist.tree {
-  padding: 8px 10px;
+  padding: 6px 10px 10px;
   display: block;
-  line-height: 1.85;
+  line-height: 1.9;
   font-size: 14px;
   font-variant-numeric: tabular-nums;
   max-height: 64vh;
@@ -1650,12 +1692,12 @@ h2 {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0 2px;
-  margin: -8px -10px 8px;
-  padding: 8px 10px;
-  background: var(--panel);
+  gap: 1px 1px;
+  margin: -6px -10px 8px;
+  padding: 7px 10px;
+  background: var(--panel-soft);
   border-bottom: 1px solid var(--line-soft);
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .build-breadcrumb .crumb-empty {
@@ -1663,178 +1705,185 @@ h2 {
   font-size: 12px;
 }
 
-.build-breadcrumb .crumb {
-  font-weight: 600;
-}
-
-.branch {
-  position: relative;
-  margin: 2px 0 2px var(--branch-indent, 0px);
-  padding: 2px 0;
-  border-radius: 5px;
-}
-
-.branch.main {
-  color: #1c1c1c;
-  padding-left: 8px;
-  border-left: 3px solid rgba(185, 114, 42, 0.55);
-  background: linear-gradient(90deg, rgba(252, 238, 224, 0.42), rgba(252, 238, 224, 0) 78%);
-}
-
-.branch.alt {
-  border-left: 2px solid #c9c3ba;
-  padding: 3px 8px 3px 12px;
-  background: linear-gradient(90deg, rgba(28, 28, 28, 0.045), rgba(28, 28, 28, 0) 82%);
-  color: #555;
-}
-
-.branch.alt::before {
-  content: "";
-  position: absolute;
-  left: -2px;
-  top: 15px;
-  width: 9px;
-  border-top: 2px solid #c9c3ba;
-}
-
-.branch.alt.is-path-branch {
-  border-left-color: rgba(185, 114, 42, 0.78);
-  background: linear-gradient(90deg, rgba(252, 238, 224, 0.7), rgba(252, 238, 224, 0.18) 74%, transparent);
-  color: #2b2721;
-}
-
-.branch.alt.is-path-branch::before {
-  border-top-color: rgba(185, 114, 42, 0.78);
-}
-
-.branch.depth-2 {
-  border-left-color: #d8d2c8;
-  color: #64605a;
-}
-
-.branch.depth-3,
-.branch.depth-4 {
-  border-left-color: #e1dcd4;
-  color: #706b64;
-}
-
-.branch.main .inline-move {
-  font-weight: 600;
-}
-
-.branch.alt .inline-move {
-  font-weight: 500;
-}
-
-.inline-move {
+.mtree-crumb {
   border: 0;
   background: transparent;
-  padding: 1px 5px;
-  margin: 0;
-  border-radius: 3px;
-  color: inherit;
+  color: var(--text);
   font: inherit;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  padding: 1px 5px;
+  border-radius: 4px;
   cursor: pointer;
 }
+.mtree-crumb:hover {
+  background: var(--surface-hover);
+}
+.mtree-crumb.is-current {
+  background: var(--accent);
+  color: #fff;
+}
 
-.inline-move:hover {
+/* ---- Tree body --------------------------------------------------------- */
+.mtree {
+  display: block;
+}
+
+.mtree-line {
+  display: block;
+}
+
+/* A variation block. Indentation + the guide rail come from nesting depth. */
+.mtree-var {
+  display: block;
+  margin: 2px 0 2px 6px;
+  padding: 0 0 0 10px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+}
+.mtree-var .mtree-var {
+  border-left-color: var(--line-soft);
+}
+/* The variation that leads to the current move gets an accent rail. */
+.mtree-var:has(> .mtree-move.is-current),
+.mtree-var:has(> .mtree-move.on-path) {
+  border-left-color: var(--accent-line);
+}
+
+.mtree-num {
+  color: var(--label);
+  font-size: 12px;
+  margin-right: 1px;
+  padding-left: 2px;
+}
+
+/* ---- A single move ----------------------------------------------------- */
+.mtree-move {
+  border: 0;
+  background: transparent;
+  padding: 1px 6px;
+  margin: 0 1px;
+  border-radius: 5px;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 110ms ease, color 110ms ease, box-shadow 110ms ease;
+}
+
+.mtree-line.is-main > .mtree-move {
+  color: var(--text);
+}
+
+.mtree-move:hover {
   background: var(--surface-hover);
 }
 
-.inline-move.is-current {
-  background: #fceee0;
-  color: #b9722a;
-  font-weight: 700;
+/* The single selected move — the only strong highlight in the tree. */
+.mtree-move.is-current {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(185, 114, 42, 0.35);
 }
 
-.inline-move.on-path {
-  background: rgba(252, 238, 224, 0.45);
+/* A faint trail marking the line that leads to the current move. */
+.mtree-move.on-path {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
-.inline-move.is-disabled {
+/* Study variations read as italic "what-if" moves. */
+.mtree-move.is-variation {
+  font-weight: 500;
+  font-style: italic;
+}
+
+.mtree-move.is-disabled {
   opacity: 0.45;
   text-decoration: line-through;
 }
 
-/* Classification dot for inline moves in the Analyze tree. */
-.inline-move .move-class-dot {
+/* Classification dot (Analyze). */
+.mtree-dot {
   display: inline-block;
   vertical-align: middle;
   width: 6px;
   height: 6px;
-  margin-left: 4px;
+  margin-left: 5px;
   border-radius: 50%;
   background: transparent;
 }
-
-.inline-move.class-brilliant .move-class-dot {
+.mtree-move.cls-brilliant .mtree-dot {
   background: var(--brilliant);
 }
-
-.inline-move.class-excellent .move-class-dot,
-.inline-move.class-best .move-class-dot {
+.mtree-move.cls-excellent .mtree-dot,
+.mtree-move.cls-best .mtree-dot {
   background: #6aa84f;
 }
-
-.inline-move.class-good .move-class-dot {
+.mtree-move.cls-good .mtree-dot,
+.mtree-move.cls-book .mtree-dot {
   background: #93b370;
 }
-
-.inline-move.class-inaccuracy .move-class-dot {
+.mtree-move.cls-inaccuracy .mtree-dot {
   background: #d6a23c;
 }
-
-.inline-move.class-mistake .move-class-dot {
+.mtree-move.cls-mistake .mtree-dot {
   background: var(--warn);
 }
-
-.inline-move.class-blunder .move-class-dot {
+.mtree-move.cls-blunder .mtree-dot {
   background: var(--danger);
 }
-
-.move-num {
-  color: var(--label);
-  font-size: 12px;
-  margin: 0 2px 0 4px;
+.mtree-move.cls-missed_win .mtree-dot,
+.mtree-move.cls-missed_tactic .mtree-dot {
+  background: #8a6db5;
+}
+/* When selected, keep the dot legible on the accent fill. */
+.mtree-move.is-current .mtree-dot {
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85);
 }
 
-.branch > .inline-move:first-child,
-.branch > .move-num:first-child {
-  margin-left: 0;
+/* Build-only decorations. */
+.mtree-move.is-main {
+  font-weight: 700;
 }
-
-/* Mastery heatmap: a colored underline on trained own-side moves. Untrained
-   moves stay plain so only nodes with real data draw the eye. */
-.inline-move.m-mastered {
+.mtree-move.is-prep {
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 2px;
+}
+/* Mastery heatmap: a colored underline on trained own-side moves. */
+.mtree-move.m-mastered {
   box-shadow: inset 0 -2px 0 var(--good);
 }
-.inline-move.m-learning {
+.mtree-move.m-learning {
   box-shadow: inset 0 -2px 0 #9bb7d4;
 }
-.inline-move.m-due {
+.mtree-move.m-due {
   box-shadow: inset 0 -2px 0 var(--warn);
 }
-.inline-move.m-weak {
+.mtree-move.m-weak {
   box-shadow: inset 0 -2px 0 var(--danger);
-}
-.inline-move.is-found {
-  background: #fff4cc;
-  outline: 1px solid #e6c34a;
 }
 
 /* Per-variation collapse toggle. */
-.branch-collapse {
+.mtree-collapse {
   border: 0;
   background: transparent;
   cursor: pointer;
   color: var(--label);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1;
-  padding: 0 3px 0 0;
+  padding: 0 4px 0 0;
+  vertical-align: baseline;
 }
-.branch-collapse:hover {
-  color: var(--text);
+.mtree-collapse:hover {
+  color: var(--accent-strong);
+}
+.mtree-collapsed {
+  color: var(--muted);
+  font-style: italic;
 }
 
 .tag {
@@ -2048,52 +2097,6 @@ h2 {
   pointer-events: none;
 }
 
-/* "You just finished a game" widget — bottom-right, above the toast stack. */
-.newgame-host {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 1100;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: flex-end;
-}
-.newgame-widget {
-  width: 300px;
-  background: var(--panel);
-  border: 1px solid var(--accent-line);
-  border-left: 3px solid var(--accent);
-  border-radius: 8px;
-  padding: 12px 14px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
-  animation: ngw-in 0.22s ease;
-}
-@keyframes ngw-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.ngw-title {
-  font-weight: 700;
-}
-.ngw-sub {
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 2px;
-}
-.ngw-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 10px;
-}
-
 /* Analyze "History" list. */
 .analysis-history {
   display: flex;
@@ -2121,11 +2124,6 @@ h2 {
   color: var(--muted);
   font-size: 11px;
   white-space: nowrap;
-}
-@media (prefers-reduced-motion: reduce) {
-  .newgame-widget {
-    animation: none;
-  }
 }
 
 .job-toast {
@@ -2170,20 +2168,66 @@ h2 {
   overflow: hidden;
 }
 
-.job-toast.is-minimized {
-  width: 180px;
-  padding: 8px 12px;
-  gap: 6px;
-  cursor: pointer;
+.job-toast-body {
+  display: grid;
+  gap: 9px;
 }
 
+/* Progress track + Stop button share one row. */
+.job-toast-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.job-toast-progress .job-toast-track {
+  flex: 1 1 auto;
+}
+
+.job-toast.is-minimized {
+  width: 200px;
+  padding: 8px 12px;
+  gap: 7px;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, width 280ms ease,
+    padding 280ms ease, opacity 240ms ease;
+}
+
+/* When minimized, keep the progress bar visible but drop the chatty bits. */
 .job-toast.is-minimized .job-toast-message,
+.job-toast.is-minimized .job-toast-stop,
+.job-toast.is-minimized .job-toast-actions,
 .job-toast.is-minimized .job-toast-collapse {
   display: none;
 }
 
+.job-toast.is-minimized .job-toast-body {
+  gap: 0;
+}
+
 .job-toast.is-minimized .job-toast-title {
   font-size: 12px;
+}
+
+/* Hover affordance on a minimized card: lift it slightly and nudge a "click to
+   expand" cue so it's obviously interactive. */
+.job-toast.is-minimized:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 22px 44px rgba(28, 28, 28, 0.22), 0 6px 14px rgba(28, 28, 28, 0.1);
+}
+
+.job-toast.is-minimized.state-running .job-toast-icon {
+  animation: jobToastPulse 1.4s ease-in-out infinite;
+}
+
+.job-toast.is-minimized:hover .job-toast-icon {
+  animation: jobToastWiggle 0.5s ease;
+}
+
+@keyframes jobToastWiggle {
+  0%, 100% { transform: scale(1) rotate(0); }
+  30% { transform: scale(1.18) rotate(-8deg); }
+  60% { transform: scale(1.12) rotate(8deg); }
 }
 
 .job-toast-head {
@@ -2311,6 +2355,76 @@ h2 {
   40%  { transform: translateY(-6px) scale(1.04); }
   70%  { transform: translateY(0) scale(0.98); }
   100% { transform: translateY(0) scale(1); }
+}
+
+/* ---- Stop control (cancel a running heavy job) ------------------------- */
+.job-toast-stop {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.job-toast-stop:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.job-toast-stop:disabled {
+  cursor: default;
+  opacity: 0.6;
+  color: var(--muted);
+  background: var(--panel-soft);
+}
+
+.job-toast.is-cancelling .job-toast-fill {
+  opacity: 0.5;
+  filter: grayscale(0.4);
+}
+
+/* ---- Cancelled state -------------------------------------------------- */
+.job-toast.state-cancelled .job-toast-icon {
+  background: var(--muted);
+}
+
+.job-toast.state-cancelled .job-toast-title {
+  color: var(--muted);
+}
+
+.job-toast.state-cancelled .job-toast-fill {
+  background: var(--muted);
+}
+
+.job-toast.state-cancelled .job-toast-controls {
+  display: none;
+}
+
+/* ---- Info variant: a notification card with action buttons ------------ */
+.job-toast.variant-info {
+  border-left: 3px solid var(--accent);
+}
+
+.job-toast.variant-info .job-toast-icon {
+  background: linear-gradient(45deg, var(--accent), var(--accent-strong));
+  animation: none;
+}
+
+.job-toast-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.job-toast-actions .toast-action {
+  padding: 5px 12px;
+  font-size: 12px;
 }
 
 /* ----- Engine widget (floating, draggable, resizable) ------------------ */

@@ -60,14 +60,18 @@ def fetch_recent_pgns(
     count: int,
     *,
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    include_moves: bool = True,
 ) -> List[FetchedGame]:
     if not username or not username.strip():
         raise ValueError("lichess username is empty")
     safe_count = max(1, min(int(count), MAX_FETCH))
     safe_user = urllib.parse.quote(username.strip(), safe="")
+    # When the caller only needs to know *whether* a new game exists (the
+    # background "you just finished a game" watcher), skip the move text so
+    # Lichess returns just the tag pairs — a much smaller, faster response.
     url = LICHESS_USER_PGN_URL.format(username=safe_user) + "?" + urllib.parse.urlencode({
         "max": safe_count,
-        "moves": "true",
+        "moves": "true" if include_moves else "false",
         "clocks": "false",
         "evals": "false",
         "opening": "false",

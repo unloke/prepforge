@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import html
 import json
+import mimetypes
 import os
+import re
 import threading
 import uuid
 from dataclasses import dataclass, field
@@ -15,7 +17,13 @@ from urllib.parse import parse_qs, urlparse
 
 from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import Color, MoveSource, TrainingMode
-from prepforge_chess.services.analysis import AnalysisConfig, AnalysisProgress, AnalysisService
+from prepforge_chess.services.analysis import (
+    AnalysisCancelled,
+    AnalysisConfig,
+    AnalysisProgress,
+    AnalysisService,
+    CancellationToken,
+)
 from prepforge_chess.services.analysis_report import AnalysisReportBuilder
 from prepforge_chess.services.brilliant import BrilliantAnalyzer
 from prepforge_chess.services.app_settings import (
@@ -68,6 +76,47 @@ STATIC_DIR = Path(__file__).with_name("static")
 DEFAULT_DB_PATH = Path("data") / "prepforge.sqlite3"
 ENGINE_SESSION_MAX_MULTIPV = 5
 
+# Explicit MIME types for the assets the browser-engine work will serve from
+# STATIC_DIR (wasm/onnx/workers). mimetypes alone is unreliable for these on
+# Windows, and a wrong type (e.g. text/plain for .wasm) breaks instantiation.
+_STATIC_MIME = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".mjs": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".map": "application/json; charset=utf-8",
+    ".wasm": "application/wasm",
+    ".onnx": "application/octet-stream",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".woff2": "font/woff2",
+}
+
+
+def _static_mime(path: Path) -> str:
+    ext = path.suffix.lower()
+    if ext in _STATIC_MIME:
+        return _STATIC_MIME[ext]
+    guessed, _ = mimetypes.guess_type(str(path))
+    return guessed or "application/octet-stream"
+
+
+# Content-stable engine/model artifacts can be cached forever.
+_IMMUTABLE_EXT = {".wasm", ".onnx", ".nnue"}
+# Vite content-hashed bundle names, e.g. "index-D4f8aB12.js". Only these (not
+# every file under assets/, which may hold icons/metadata) are safe to mark
+# immutable -- the hash changes whenever the content does.
+_HASHED_NAME = re.compile(r"-[A-Za-z0-9_]{8,}\.[A-Za-z0-9]+$")
+
+
+def _cache_control(path: Path) -> str:
+    if path.suffix.lower() in _IMMUTABLE_EXT or _HASHED_NAME.search(path.name):
+        return "public, max-age=31536000, immutable"
+    # App shell + unhashed/dev assets (index.html, app.js, styles.css, icons):
+    # always revalidate so deploys/edits are picked up immediately.
+    return "no-cache"
+
 
 def _normalize_color(value: Optional[str]) -> Optional[str]:
     """Return 'white'/'black' if value names a side, else None."""
@@ -87,6 +136,10 @@ DEMO_PGN = """
 """
 
 
+class BuildCancelled(RuntimeError):
+    """Raised inside the build-generate progress callback to stop a running job."""
+
+
 @dataclass
 class AnalysisJob:
     id: str
@@ -99,6 +152,7 @@ class AnalysisJob:
     result: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
     lock: threading.Lock = field(default_factory=threading.Lock)
+    cancel_token: CancellationToken = field(default_factory=CancellationToken)
 
     def snapshot(self) -> Dict[str, Any]:
         with self.lock:
@@ -139,6 +193,7 @@ class BuildJob:
     result: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
     lock: threading.Lock = field(default_factory=threading.Lock)
+    cancel_requested: bool = False
 
     def snapshot(self) -> Dict[str, Any]:
         with self.lock:
@@ -636,6 +691,28 @@ class PrepForgeWebApp:
             raise ValueError("build job not found: {0}".format(job_id))
         return job.snapshot()
 
+    def cancel_analysis_payload(self, job_id: str) -> Dict[str, Any]:
+        with self.analysis_jobs_lock:
+            job = self.analysis_jobs.get(job_id)
+        if job is None:
+            raise ValueError("analysis job not found: {0}".format(job_id))
+        job.cancel_token.cancel()
+        with job.lock:
+            if job.status in ("queued", "running", "finalizing"):
+                job.message = "Stopping..."
+        return {"ok": True, "job_id": job_id, "cancelling": True}
+
+    def cancel_build_generate_payload(self, job_id: str) -> Dict[str, Any]:
+        with self.build_jobs_lock:
+            job = self.build_jobs.get(job_id)
+        if job is None:
+            raise ValueError("build job not found: {0}".format(job_id))
+        with job.lock:
+            job.cancel_requested = True
+            if job.status in ("queued", "running"):
+                job.message = "Stopping..."
+        return {"ok": True, "job_id": job_id, "cancelling": True}
+
     # ---- Engine widget session --------------------------------------------
 
     def engine_session_open_payload(
@@ -748,7 +825,9 @@ class PrepForgeWebApp:
                     job.san = progress.san
                     job.message = progress.message or progress.phase
 
-            result = self._run_analysis_for_game_id(job.game_id or "", progress_callback)
+            result = self._run_analysis_for_game_id(
+                job.game_id or "", progress_callback, cancel_token=job.cancel_token
+            )
             payload = self._analysis_payload(result)
             with job.lock:
                 job.status = "completed"
@@ -756,6 +835,10 @@ class PrepForgeWebApp:
                 job.total_plies = len(result.move_results)
                 job.message = "analysis completed"
                 job.result = payload
+        except AnalysisCancelled:
+            with job.lock:
+                job.status = "cancelled"
+                job.message = "Analysis stopped"
         except Exception as exc:
             with job.lock:
                 job.status = "failed"
@@ -770,6 +853,11 @@ class PrepForgeWebApp:
         builder = self._create_builder()
 
         def progress_callback(event: str, *, added: int, total_hint: int) -> None:
+            # Cooperative cancellation: the builder calls this after every node
+            # it adds, so raising here unwinds the generation cleanly and the
+            # finally-block below tears down the engine subprocess.
+            if job.cancel_requested:
+                raise BuildCancelled("Generation stopped")
             with job.lock:
                 job.status = "running" if event != "completed" else job.status
                 job.added_nodes = added
@@ -810,6 +898,10 @@ class PrepForgeWebApp:
                 job.estimated_total = max(job.estimated_total, summary.added_nodes, 1)
                 job.message = "added {0} new nodes".format(summary.added_nodes)
                 job.result = workspace
+        except BuildCancelled:
+            with job.lock:
+                job.status = "cancelled"
+                job.message = "Generation stopped (+{0} kept)".format(job.added_nodes)
         except Exception as exc:
             with job.lock:
                 job.status = "failed"
@@ -823,6 +915,7 @@ class PrepForgeWebApp:
         self,
         game_id: str,
         progress_callback=None,
+        cancel_token: Optional[CancellationToken] = None,
     ):
         game = self.repository.load_game(game_id)
         total_plies = len(game.moves) if game is not None else 0
@@ -860,6 +953,7 @@ class PrepForgeWebApp:
                     persist=True,
                 ),
                 progress_callback=progress_callback,
+                cancel_token=cancel_token,
             )
         finally:
             self._close_engine(engine)
@@ -1070,27 +1164,31 @@ class PrepForgeWebApp:
         self.settings.set("lichess.username", None)
         return {"connected": False, "username": None}
 
-    def lichess_latest_payload(self) -> Dict[str, Any]:
+    def lichess_latest_payload(self, *, include_moves: bool = True) -> Dict[str, Any]:
         username = self.settings.get("lichess.username")
         if not username:
             raise ValueError("Lichess is not connected")
         try:
-            games = fetch_recent_pgns(username, 1)
+            games = fetch_recent_pgns(username, 1, include_moves=include_moves)
         except LichessFetchError as exc:
             raise ValueError(str(exc))
         if not games:
             return {"has_game": False}
         game = games[0]
         last_seen = self.settings.get("lichess.last_seen_game_id")
-        return {
+        payload = {
             "has_game": True,
             "lichess_id": game.lichess_id,
-            "pgn": game.pgn,
             "white": game.white,
             "black": game.black,
             "result": game.result,
             "is_new": bool(game.lichess_id) and game.lichess_id != last_seen,
         }
+        # The lightweight watcher path omits the (absent) move text; consumers
+        # that actually load the game ask for the full PGN explicitly.
+        if include_moves:
+            payload["pgn"] = game.pgn
+        return payload
 
     def lichess_mark_seen_payload(self, lichess_id: Optional[str]) -> Dict[str, Any]:
         if lichess_id:
@@ -1674,7 +1772,30 @@ def _handler_for_app(app: PrepForgeWebApp):
     request_lock = threading.Lock()
 
     class PrepForgeRequestHandler(BaseHTTPRequestHandler):
+        def end_headers(self) -> None:
+            # Cross-origin isolation lets the browser use SharedArrayBuffer, which
+            # multi-threaded WASM engines (browser Stockfish) require. CORP keeps
+            # our own same-origin assets loadable under COEP: require-corp.
+            # (Lichess OAuth uses a popup + postMessage, but already falls back to
+            # polling /api/lichess/status, so COOP severing the opener is benign.)
+            self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+            self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
+            self.send_header("Cross-Origin-Resource-Policy", "same-origin")
+            super().end_headers()
+
         def do_GET(self) -> None:
+            parsed = urlparse(self.path)
+            # Static assets touch only the filesystem, never shared app state, so
+            # they are served WITHOUT the global request lock. This keeps a large
+            # or slow asset download (e.g. the ~45 MB Maia ONNX) from blocking
+            # concurrent API/static requests. Files are streamed in chunks (see
+            # _send_file), so a download does not load the whole asset into RAM.
+            # NOTE: this is still the stdlib handler -- no range requests / sendfile.
+            # For public scale, large engine assets (.onnx/.wasm/.nnue) should be
+            # offloaded to a CDN / object store rather than served from here.
+            if parsed.path == "/" or parsed.path.startswith("/static/"):
+                self._handle_static(parsed)
+                return
             with request_lock:
                 self._handle_get()
 
@@ -1682,18 +1803,20 @@ def _handler_for_app(app: PrepForgeWebApp):
             with request_lock:
                 self._handle_post()
 
-        def _handle_get(self) -> None:
-            parsed = urlparse(self.path)
+        def _handle_static(self, parsed) -> None:
             try:
                 if parsed.path == "/":
                     self._send_file(STATIC_DIR / "index.html", "text/html; charset=utf-8")
                     return
-                if parsed.path == "/static/app.js":
-                    self._send_file(STATIC_DIR / "app.js", "text/javascript; charset=utf-8")
-                    return
-                if parsed.path == "/static/styles.css":
-                    self._send_file(STATIC_DIR / "styles.css", "text/css; charset=utf-8")
-                    return
+                self._serve_static(parsed.path[len("/static/"):])
+            except Exception as exc:  # noqa: BLE001
+                self._send_error(str(exc), HTTPStatus.INTERNAL_SERVER_ERROR)
+
+        def _handle_get(self) -> None:
+            parsed = urlparse(self.path)
+            try:
+                # Static paths ("/" and "/static/*") are handled before the lock
+                # in do_GET via _handle_static and never reach here.
                 if parsed.path == "/api/dashboard":
                     self._send_json(app.dashboard_payload())
                     return
@@ -1761,7 +1884,8 @@ def _handler_for_app(app: PrepForgeWebApp):
                     self._send_json(app.lichess_status_payload())
                     return
                 if parsed.path == "/api/lichess/latest":
-                    self._send_json(app.lichess_latest_payload())
+                    light = parse_qs(parsed.query).get("light", ["0"])[0] in ("1", "true")
+                    self._send_json(app.lichess_latest_payload(include_moves=not light))
                     return
                 if parsed.path == "/api/analyses":
                     self._send_json(app.list_analyses_payload())
@@ -1791,6 +1915,9 @@ def _handler_for_app(app: PrepForgeWebApp):
                     return
                 if parsed.path == "/api/analyze/pgn/start":
                     self._send_json(app.start_analysis_payload(payload.get("pgn", "")))
+                    return
+                if parsed.path == "/api/analyze/cancel":
+                    self._send_json(app.cancel_analysis_payload(payload.get("job_id", "")))
                     return
                 if parsed.path == "/api/build/demo":
                     self._send_json(app.build_demo_payload())
@@ -1827,6 +1954,9 @@ def _handler_for_app(app: PrepForgeWebApp):
                             own_color=payload.get("own_color"),
                         )
                     )
+                    return
+                if parsed.path == "/api/build/generate/cancel":
+                    self._send_json(app.cancel_build_generate_payload(payload.get("job_id", "")))
                     return
                 if parsed.path == "/api/engine/open":
                     self._send_json(
@@ -2064,16 +2194,40 @@ def _handler_for_app(app: PrepForgeWebApp):
             self.end_headers()
             self.wfile.write(body)
 
+        def _serve_static(self, rel_path: str) -> None:
+            base = STATIC_DIR.resolve()
+            target = (base / rel_path).resolve()
+            # Reject path traversal outside STATIC_DIR.
+            if target != base and base not in target.parents:
+                self._send_error("not found", HTTPStatus.NOT_FOUND)
+                return
+            if not target.is_file():
+                self._send_error("not found", HTTPStatus.NOT_FOUND)
+                return
+            self._send_file(target, _static_mime(target))
+
         def _send_file(self, path: Path, content_type: str) -> None:
-            if not path.exists():
+            try:
+                size = path.stat().st_size
+            except OSError:
                 self._send_error("file not found", HTTPStatus.NOT_FOUND)
                 return
-            body = path.read_bytes()
+            if not path.is_file():
+                self._send_error("file not found", HTTPStatus.NOT_FOUND)
+                return
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", content_type)
-            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Content-Length", str(size))
+            self.send_header("Cache-Control", _cache_control(path))
             self.end_headers()
-            self.wfile.write(body)
+            # Stream in chunks so a large asset (e.g. the ~45 MB Maia ONNX) is not
+            # read fully into memory per concurrent download.
+            with path.open("rb") as handle:
+                while True:
+                    chunk = handle.read(64 * 1024)
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
 
         def _send_json(self, payload: Dict[str, Any], status: HTTPStatus = HTTPStatus.OK) -> None:
             body = json.dumps(payload, ensure_ascii=True).encode("utf-8")
