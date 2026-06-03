@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-CRCcLsDN.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-D7j9Flgv.js"></script>
     <link rel="stylesheet" crossorigin href="/static/assets/index-CMEkXezG.css">
   </head>
   <body>
@@ -231,55 +231,38 @@
         <div class="replay-layout">
           <section class="card">
             <div class="card-head">
-              <h2>Stockfish</h2>
+              <h2>Engine</h2>
               <button class="btn ghost" id="settings-refresh">Refresh</button>
             </div>
             <div class="settings-row">
               <div>
-                <div class="settings-label">Binary</div>
-                <div class="settings-value" id="settings-stockfish-path">—</div>
+                <div class="settings-label">Mode</div>
+                <div class="settings-value">Browser only — analysis runs on your device</div>
               </div>
               <div>
-                <div class="settings-label">Version</div>
-                <div class="settings-value" id="settings-stockfish-version">—</div>
+                <div class="settings-label">Engine</div>
+                <div class="settings-value">Stockfish 18 lite (WASM)</div>
               </div>
             </div>
             <div class="settings-row">
-              <label class="settings-field">
-                <span class="settings-label">Analysis depth</span>
-                <input id="settings-depth-input" type="number" min="1" max="30" value="16" />
-              </label>
-              <button class="btn primary" id="settings-depth-save">Save depth</button>
+              <div>
+                <div class="settings-label">Browser Stockfish</div>
+                <div class="settings-value" id="settings-browser-engine-status">checking…</div>
+              </div>
             </div>
-            <div class="settings-row engine-action-row">
-              <button class="btn primary engine-action" id="settings-stockfish-install">
-                <span class="ea-spinner" aria-hidden="true"></span>
-                <span class="ea-label">Install / Update</span>
-              </button>
-              <span class="muted" id="settings-stockfish-status"></span>
-            </div>
+            <p class="muted" id="settings-stockfish-status"></p>
           </section>
           <section class="card">
-            <div class="card-head"><h2>Maia3</h2></div>
+            <div class="card-head"><h2>Maia3 (human model)</h2></div>
             <div class="settings-row">
               <div>
-                <div class="settings-label">Model</div>
-                <div class="settings-value" id="settings-maia-model">--</div>
+                <div class="settings-label">Browser Maia3</div>
+                <div class="settings-value" id="settings-maia-model">not yet available</div>
               </div>
             </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Source</div>
-                <div class="settings-value" id="settings-maia-repo">--</div>
-              </div>
-            </div>
-            <div class="settings-row engine-action-row">
-              <button class="btn primary engine-action" id="settings-maia-install">
-                <span class="ea-spinner" aria-hidden="true"></span>
-                <span class="ea-label">Install / Update</span>
-              </button>
-            </div>
-            <p class="muted" id="settings-maia-status"></p>
+            <p class="muted" id="settings-maia-status">
+              Human-move prediction (Maia3) will run in your browser in a later phase.
+            </p>
           </section>
           <section class="card">
             <div class="card-head"><h2>Board</h2></div>

@@ -1,13 +1,18 @@
 import { Chess } from "chess.js";
-import { createServerEngineProvider } from "./provider.js";
 
 // Browser Stockfish (nmrugg stockfish.js, lite multi-threaded SF18) running in
-// a Web Worker over UCI. Implements the same EngineProvider interface as the
-// server provider (open/update/snapshot/close -> snapshot), so EngineWidget is
-// unchanged. Needs cross-origin isolation (COOP/COEP) for threads.
+// a Web Worker over UCI. Implements the EngineProvider interface
+// (open/update/snapshot/close -> snapshot), so EngineWidget is unchanged.
+// Needs cross-origin isolation (COOP/COEP) for threads.
+//
+// `stockfish-18-lite` is the same Stockfish 18 search code with an embedded
+// SMALL net: weaker than the full ~113 MB net, but appropriate for the browser
+// widget. All chess compute runs locally — there is NO server fallback (hard
+// product rule: the server must never run engine compute in the public flow).
 
 const ENGINE_URL = "/static/engine/stockfish-18-lite.js";
 const DEFAULT_MAX_DEPTH = 18;
+const READY_TIMEOUT_MS = 15000;
 
 function uid() {
   return "sfw-" + Math.random().toString(36).slice(2, 10);
@@ -38,7 +43,31 @@ export function createStockfishWasmProvider({ maxDepth = DEFAULT_MAX_DEPTH } = {
   let readyPromise = null;
   let readyResolve = null;
   let readyReject = null;
+  let readyTimer = null;
   let newGameSent = false;
+
+  function failReady(message) {
+    state.error = message;
+    state.running = false;
+    if (readyTimer) {
+      clearTimeout(readyTimer);
+      readyTimer = null;
+    }
+    if (worker) {
+      try {
+        worker.terminate();
+      } catch (_) {
+        /* ignore */
+      }
+      worker = null;
+    }
+    if (readyReject) {
+      const reject = readyReject;
+      readyReject = null;
+      readyResolve = null;
+      reject(new Error(message));
+    }
+  }
 
   const state = {
     session_id: null,
@@ -55,9 +84,15 @@ export function createStockfishWasmProvider({ maxDepth = DEFAULT_MAX_DEPTH } = {
 
   function handleLine(line) {
     if (line === "readyok") {
+      if (readyTimer) {
+        clearTimeout(readyTimer);
+        readyTimer = null;
+      }
+      readyReject = null;
       if (readyResolve) {
-        readyResolve();
+        const resolve = readyResolve;
         readyResolve = null;
+        resolve();
       }
       return;
     }
@@ -123,10 +158,24 @@ export function createStockfishWasmProvider({ maxDepth = DEFAULT_MAX_DEPTH } = {
 
   function ensureWorker() {
     if (worker) return readyPromise;
-    worker = new Worker(ENGINE_URL);
+    try {
+      worker = new Worker(ENGINE_URL);
+    } catch (err) {
+      readyPromise = Promise.reject(
+        new Error("Browser engine could not start: " + (err && err.message)),
+      );
+      return readyPromise;
+    }
     readyPromise = new Promise((resolve, reject) => {
       readyResolve = resolve;
       readyReject = reject;
+      readyTimer = setTimeout(() => {
+        readyTimer = null;
+        failReady(
+          "Browser engine timed out starting up. Analysis must run locally; " +
+            "server fallback is disabled.",
+        );
+      }, READY_TIMEOUT_MS);
     });
     worker.onmessage = (event) => {
       const line =
@@ -134,13 +183,7 @@ export function createStockfishWasmProvider({ maxDepth = DEFAULT_MAX_DEPTH } = {
       if (typeof line === "string") handleLine(line);
     };
     worker.onerror = (event) => {
-      const message = (event && event.message) || "engine worker failed to load";
-      state.error = message;
-      state.running = false;
-      if (readyReject) {
-        readyReject(new Error(message));
-        readyReject = null;
-      }
+      failReady((event && event.message) || "engine worker failed to load");
     };
     worker.postMessage("uci");
     worker.postMessage("isready");
@@ -183,6 +226,10 @@ export function createStockfishWasmProvider({ maxDepth = DEFAULT_MAX_DEPTH } = {
       return { ...state, pvs: state.pvs.map((pv) => ({ ...pv })) };
     },
     close() {
+      if (readyTimer) {
+        clearTimeout(readyTimer);
+        readyTimer = null;
+      }
       if (worker) {
         try {
           worker.postMessage("quit");
@@ -204,50 +251,49 @@ export function createStockfishWasmProvider({ maxDepth = DEFAULT_MAX_DEPTH } = {
 }
 
 /**
- * Pick the best available engine provider: browser Stockfish when the page is
- * cross-origin isolated (threads available), otherwise the server. The browser
- * provider transparently falls back to the server if its worker fails at
- * runtime (e.g. asset missing), so the widget always has a working engine.
+ * Provider stub used when the browser engine cannot run. It never touches the
+ * server — per the hard product rule, engine compute is browser-only and there
+ * is NO server fallback. open/update reject with a clear, actionable message;
+ * snapshot surfaces the same error so the widget renders it.
  */
-export function createEngineProvider({ api, postJson }) {
-  const server = createServerEngineProvider({ api, postJson });
-  if (!self.crossOriginIsolated) return server;
-
-  let wasm;
-  try {
-    wasm = createStockfishWasmProvider();
-  } catch (_) {
-    return server;
-  }
-
-  let active = wasm;
-  let fellBack = false;
-
-  async function call(method, arg) {
-    try {
-      return await active[method](arg);
-    } catch (err) {
-      if (!fellBack && active === wasm) {
-        fellBack = true;
-        active = server;
-        try {
-          await wasm.close();
-        } catch (_) {
-          /* ignore */
-        }
-        return active[method](arg);
-      }
-      throw err;
-    }
-  }
-
+function createUnavailableProvider(message) {
   return {
-    get kind() {
-      return active.kind;
+    kind: "unavailable",
+    open() {
+      return Promise.reject(new Error(message));
     },
-    open: (arg) => call("open", arg),
-    update: (arg) => call("update", arg),
-    snapshot: () => active.snapshot(),
-    close: () => active.close(),
+    update() {
+      return Promise.reject(new Error(message));
+    },
+    snapshot() {
+      return { session_id: null, running: false, pvs: [], error: message };
+    },
+    close() {
+      return Promise.resolve();
+    },
   };
+}
+
+/**
+ * The engine provider for the public flow: browser Stockfish only. If the page
+ * is not cross-origin isolated, or the engine cannot be constructed, return a
+ * provider that surfaces an actionable error — it NEVER falls back to the
+ * server (hard product rule: no server-side engine compute in the public flow).
+ */
+export function createEngineProvider() {
+  if (!self.crossOriginIsolated) {
+    return createUnavailableProvider(
+      "Browser engine unavailable: this page is not cross-origin isolated " +
+        "(COOP/COEP required). Analysis must run locally in a supported browser; " +
+        "server fallback is disabled.",
+    );
+  }
+  try {
+    return createStockfishWasmProvider();
+  } catch (_) {
+    return createUnavailableProvider(
+      "Browser engine unavailable. Analysis must run locally; server fallback " +
+        "is disabled.",
+    );
+  }
 }

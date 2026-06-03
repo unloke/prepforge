@@ -1,9 +1,37 @@
-from prepforge_chess.web.server import PrepForgeWebApp
+from prepforge_chess.web.server import PrepForgeWebApp, ServerEngineDisabled
 import time
+
+import pytest
+
+
+def test_server_engine_disabled_by_default_blocks_engine_endpoints(tmp_path):
+    # Hard product rule: the public/default flow must never run a server engine.
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    assert app.server_engine_enabled is False
+
+    with pytest.raises(ServerEngineDisabled):
+        app.analyze_pgn_payload("1. e4 e5 *")
+    with pytest.raises(ServerEngineDisabled):
+        app.start_analysis_payload("1. e4 e5 *")
+    with pytest.raises(ServerEngineDisabled):
+        app.build_demo_payload()
+    with pytest.raises(ServerEngineDisabled):
+        app.engine_session_open_payload(
+            fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+        )
+    with pytest.raises(ServerEngineDisabled):
+        app.install_stockfish_payload()
+
+    # Non-compute engine-session calls stay available for cleanup.
+    assert app.engine_session_snapshot_payload()["running"] is False
 
 
 def test_web_dashboard_and_board_payload(tmp_path):
-    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    app = PrepForgeWebApp(
+        db_path=tmp_path / "ui.sqlite3",
+        prefer_real_engines=False,
+        server_engine_enabled=True,
+    )
 
     dashboard = app.dashboard_payload()
     board = app.board_payload("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
@@ -23,7 +51,11 @@ def test_web_dashboard_and_board_payload(tmp_path):
 
 
 def test_web_analysis_history_lists_and_recalls(tmp_path):
-    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    app = PrepForgeWebApp(
+        db_path=tmp_path / "ui.sqlite3",
+        prefer_real_engines=False,
+        server_engine_enabled=True,
+    )
     app.analyze_pgn_payload(
         """
 [Event "History Game"]
@@ -49,7 +81,11 @@ def test_web_analysis_history_lists_and_recalls(tmp_path):
 
 
 def test_web_analyze_and_build_demo_payloads(tmp_path):
-    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    app = PrepForgeWebApp(
+        db_path=tmp_path / "ui.sqlite3",
+        prefer_real_engines=False,
+        server_engine_enabled=True,
+    )
 
     analysis = app.analyze_pgn_payload(
         """
@@ -90,7 +126,11 @@ def test_web_analyze_and_build_demo_payloads(tmp_path):
 
 
 def test_web_analysis_job_reports_progress_and_result(tmp_path):
-    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    app = PrepForgeWebApp(
+        db_path=tmp_path / "ui.sqlite3",
+        prefer_real_engines=False,
+        server_engine_enabled=True,
+    )
 
     started = app.start_analysis_payload(
         """
@@ -119,7 +159,11 @@ def test_web_analysis_job_reports_progress_and_result(tmp_path):
 
 
 def test_web_build_can_add_generate_export_and_import_repertoire(tmp_path):
-    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    app = PrepForgeWebApp(
+        db_path=tmp_path / "ui.sqlite3",
+        prefer_real_engines=False,
+        server_engine_enabled=True,
+    )
 
     build = app.build_demo_payload()
     root_id = build["nodes"][0]["id"]
@@ -146,7 +190,11 @@ def test_web_build_can_add_generate_export_and_import_repertoire(tmp_path):
 
 
 def test_web_can_start_training_from_imported_repertoire(tmp_path):
-    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    app = PrepForgeWebApp(
+        db_path=tmp_path / "ui.sqlite3",
+        prefer_real_engines=False,
+        server_engine_enabled=True,
+    )
 
     build = app.build_demo_payload()
     exported = app.build_export_payload(build["repertoire_id"], "json")
@@ -159,7 +207,11 @@ def test_web_can_start_training_from_imported_repertoire(tmp_path):
 
 
 def test_web_training_demo_accepts_wrong_then_correct_move(tmp_path):
-    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    app = PrepForgeWebApp(
+        db_path=tmp_path / "ui.sqlite3",
+        prefer_real_engines=False,
+        server_engine_enabled=True,
+    )
 
     started = app.start_training_demo_payload(seed=5)
     prompt = started["prompt"]

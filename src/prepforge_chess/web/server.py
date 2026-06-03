@@ -140,6 +140,23 @@ class BuildCancelled(RuntimeError):
     """Raised inside the build-generate progress callback to stop a running job."""
 
 
+class ServerEngineDisabled(RuntimeError):
+    """Raised when a server-side engine-compute endpoint is hit while disabled.
+
+    Hard product rule: in the public/default flow the server must never run a
+    chess engine — Stockfish/Maia compute happens in the browser. These APIs
+    remain in the codebase for a future server/admin mode, gated behind
+    ``PREPFORGE_SERVER_ENGINE_ENABLED`` (default off). Mapped to HTTP 403.
+    """
+
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
 @dataclass
 class AnalysisJob:
     id: str
@@ -431,13 +448,28 @@ class EngineSession:
 
 
 class PrepForgeWebApp:
-    def __init__(self, db_path: Path = DEFAULT_DB_PATH, *, prefer_real_engines: bool = True):
+    def __init__(
+        self,
+        db_path: Path = DEFAULT_DB_PATH,
+        *,
+        prefer_real_engines: bool = True,
+        server_engine_enabled: Optional[bool] = None,
+    ):
         self.db_path = Path(db_path)
         self.connection = initialize_database(self.db_path)
         self.repository = PrepForgeRepository(self.connection)
         self.chess_core = ChessCore()
         self.settings = AppSettingsService(self.connection)
         self.prefer_real_engines = prefer_real_engines
+        # Hard product rule: no server-side engine compute in the public flow.
+        # All Stockfish/Maia work runs in the browser. The server engine APIs
+        # stay for a future server/admin mode, off unless explicitly enabled
+        # (env PREPFORGE_SERVER_ENGINE_ENABLED, or the constructor override).
+        self.server_engine_enabled = (
+            _env_flag("PREPFORGE_SERVER_ENGINE_ENABLED", False)
+            if server_engine_enabled is None
+            else bool(server_engine_enabled)
+        )
         self.analysis_jobs: Dict[str, AnalysisJob] = {}
         self.analysis_jobs_lock = threading.Lock()
         self.build_jobs: Dict[str, BuildJob] = {}
@@ -453,6 +485,14 @@ class PrepForgeWebApp:
         # Maia3 model is expensive to load; share one instance for Brilliant.
         self._brilliant_maia_adapter = None
         self._brilliant_maia_lock = threading.Lock()
+
+    def _require_server_engine(self) -> None:
+        if not self.server_engine_enabled:
+            raise ServerEngineDisabled(
+                "Server-side engine compute is disabled. Chess analysis runs in "
+                "your browser. (Operators may set PREPFORGE_SERVER_ENGINE_ENABLED=1 "
+                "to enable the server/admin engine APIs.)"
+            )
 
     def settings_payload(self) -> Dict[str, Any]:
         path = find_stockfish_executable()
@@ -474,6 +514,7 @@ class PrepForgeWebApp:
                 # Brilliant detection (human policy + value glance) runs on Maia3.
                 "brilliant_ready": Maia3Adapter.is_available(),
             },
+            "server_engine_enabled": self.server_engine_enabled,
             "stockfish_depth": self.settings.get_stockfish_depth(),
             "stockfish_depth_range": {
                 "min": STOCKFISH_DEPTH_MIN,
@@ -488,6 +529,7 @@ class PrepForgeWebApp:
         return self.settings_payload()
 
     def install_stockfish_payload(self) -> Dict[str, Any]:
+        self._require_server_engine()
         result = install_stockfish()
         status = stockfish_status(result.executable_path)
         return {
@@ -498,6 +540,7 @@ class PrepForgeWebApp:
         }
 
     def install_maia3_payload(self) -> Dict[str, Any]:
+        self._require_server_engine()
         return ensure_maia3()
 
     def _engine_config(self, *, multipv: int = 1) -> EngineAnalysisConfig:
@@ -593,6 +636,7 @@ class PrepForgeWebApp:
         return self.analyze_pgn_payload(DEMO_PGN)
 
     def analyze_pgn_payload(self, pgn_text: str) -> Dict[str, Any]:
+        self._require_server_engine()
         game_id = self._import_pgn_for_analysis(pgn_text)
         result = self._run_analysis_for_game_id(game_id)
         return self._analysis_payload(result)
@@ -624,6 +668,7 @@ class PrepForgeWebApp:
         }
 
     def start_analysis_payload(self, pgn_text: str) -> Dict[str, Any]:
+        self._require_server_engine()
         game_id = self._import_pgn_for_analysis(pgn_text)
         job = AnalysisJob(id=str(uuid.uuid4()), game_id=game_id)
         game = self.repository.load_game(game_id)
@@ -652,6 +697,7 @@ class PrepForgeWebApp:
         maia_rating: int = 2200,
         own_color: Optional[str] = None,
     ) -> Dict[str, Any]:
+        self._require_server_engine()
         mode = (detail_mode or "balanced").lower()
         if mode not in {"simple", "balanced", "deep"}:
             raise ValueError("detail_mode must be one of simple, balanced, deep")
@@ -722,6 +768,7 @@ class PrepForgeWebApp:
         multipv: int = 1,
         engine: str = "stockfish",
     ) -> Dict[str, Any]:
+        self._require_server_engine()
         if not fen:
             raise ValueError("fen is required")
         max_depth = self.settings.get_stockfish_depth()
@@ -746,6 +793,7 @@ class PrepForgeWebApp:
     def engine_session_update_payload(
         self, *, fen: str, multipv: int = 1
     ) -> Dict[str, Any]:
+        self._require_server_engine()
         with self.engine_session_lock:
             session = self.engine_session
         if session is None:
@@ -1008,6 +1056,7 @@ class PrepForgeWebApp:
         }
 
     def build_demo_payload(self) -> Dict[str, Any]:
+        self._require_server_engine()
         builder = self._create_builder()
         try:
             repertoire = builder.create_repertoire(
@@ -1348,6 +1397,7 @@ class PrepForgeWebApp:
         maia_rating: int = 2200,
         own_color: Optional[str] = None,
     ) -> Dict[str, Any]:
+        self._require_server_engine()
         builder = self._create_builder()
         mode = (detail_mode or "balanced").lower()
         if mode not in {"simple", "balanced", "deep"}:
@@ -1898,6 +1948,8 @@ def _handler_for_app(app: PrepForgeWebApp):
                     self._send_json(app.analysis_recall_payload(game_id))
                     return
                 self._send_error("not found", HTTPStatus.NOT_FOUND)
+            except ServerEngineDisabled as exc:
+                self._send_error(str(exc), HTTPStatus.FORBIDDEN)
             except (ValueError, KeyError) as exc:
                 self._send_error(str(exc), HTTPStatus.BAD_REQUEST)
             except Exception as exc:
@@ -2115,6 +2167,8 @@ def _handler_for_app(app: PrepForgeWebApp):
                     )
                     return
                 self._send_error("not found", HTTPStatus.NOT_FOUND)
+            except ServerEngineDisabled as exc:
+                self._send_error(str(exc), HTTPStatus.FORBIDDEN)
             except (ValueError, KeyError, json.JSONDecodeError) as exc:
                 self._send_error(str(exc), HTTPStatus.BAD_REQUEST)
             except Exception as exc:

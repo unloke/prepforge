@@ -4,16 +4,30 @@ Goal: move Stockfish/Maia compute from server to browser so the public multi-use
 
 Target: public multi-user web app, frontend built with npm + Vite.
 
+## HARD PRODUCT RULE (overrides everything below)
+
+**All chess-engine compute MUST run in the user's browser. The server must NEVER
+run engine compute in the public/default flow, and there is NO automatic
+fallback to a server engine.** If the browser engine is unavailable, the UI
+shows an actionable error (unsupported browser / COOP-COEP) — it does not quietly
+use the server.
+
+The server engine APIs (`/api/engine/*`, `/api/analyze/*`, `/api/build/generate/*`,
+installs) remain in the codebase **only** for a future server/admin mode, gated
+behind `PREPFORGE_SERVER_ENGINE_ENABLED` (**default off** → 403). Any mention of
+"fallback"/"optional server engine" below is historical and subordinate to this rule.
+
 ## Locked Decisions
 
 - Deployment: public multi-user web app.
 - Bundler: Vite.
-- Stockfish: Lichess `@lichess-org/stockfish-web` path for prototype.
+- Stockfish: **nmrugg `stockfish`@18.0.7** `stockfish-18-lite` (browser WASM). (The
+  Lichess build was evaluated but is harder to integrate; revisit for net-size
+  switching later.)
 - Maia: Maia3 in browser via ONNX, mirroring MaiaChess.
-- Maia runtime: choose fastest available backend at runtime/implementation time:
+- Maia runtime: choose fastest available backend at runtime:
   - try WebGPU when available and stable,
-  - otherwise use ORT Web WASM/SIMD/threaded,
-  - keep fallback path explicit.
+  - otherwise use ORT Web WASM/SIMD/threaded.
 - Tenancy: in scope. Public launch requires per-user isolation + auth.
 - Asset hosting: self-host wasm/nnue/onnx.
 - Licensing: deferred for prototype; must be reviewed before public release.
@@ -64,7 +78,7 @@ Browser per user:
   - IndexedDB/cache
   - fastest viable backend selected at runtime
 - `ServerEngineProvider`
-  - optional fallback only
+  - future/admin mode ONLY (PREPFORGE_SERVER_ENGINE_ENABLED); never used in the public flow, no auto-fallback
 
 Server shared:
 - Auth/session
@@ -72,7 +86,7 @@ Server shared:
 - Per-user Lichess OAuth
 - Repertoire/progress/analysis storage
 - Analysis save/classification endpoints
-- Optional queued/rate-limited server engine fallback
+- Server engine APIs exist for future/admin mode only (default off); not a public-flow fallback
 
 Assets:
 - self-host `.wasm`, `.nnue`, `.onnx`, worker files
@@ -111,7 +125,7 @@ Implementation strategy:
   - ORT Web WASM/SIMD/threaded otherwise
 
 Important:
-- Server-side Maia3 fallback is optional.
+- Server-side Maia3 is NOT a fallback; browser Maia3 only (server Maia stays admin-mode only).
 - Current Docker does not include Maia3.
 - Do not depend on server Maia3 for the first browser prototype.
 
@@ -173,6 +187,13 @@ Risk:
 
 ## Phase 1: Browser Stockfish Widget
 
+**Status (2026-06-03) — DONE & verified, committed (not pushed).**
+- Package choice: **nmrugg `stockfish`@18.0.7** (real SF18 WASM), not `@lichess-org/stockfish-web`. The Lichess build ships NNUE separately and its own README calls it "not straight-forward… check out nmrugg for a simpler browser Stockfish." Build used: **`stockfish-18-lite` (multi-threaded, ~7 MB, embedded small net)** — your "smallnet" choice; needs the COOP/COEP we added. **Strength note:** lite is the same Stockfish 18 *search code* with an embedded SMALL net — weaker than the full ~113 MB net, but appropriate for the browser widget prototype.
+- `+ chess.js` for UCI→SAN (the widget renders `pv_san`).
+- `web-src/engine/stockfish-provider.js`: `StockfishWasmProvider` (Worker + UCI + snapshot shape + White-POV scores + 15 s readiness timeout) and `createEngineProvider` — browser engine only; when not `crossOriginIsolated` or the worker fails, returns an "unavailable" provider that surfaces an actionable error. **No server fallback.**
+- Assets: `scripts/sync-stockfish.mjs` copies the lite `.js/.wasm` from node_modules into `web-src/public/engine/` (gitignored); the built copy in `web/static/engine/` is committed + in `pyproject` package-data (Docker has no Node).
+- **Verified:** depth 18/18 with real PVs + SAN, MultiPV=3 shows 3 lines, **zero `/api/engine/*` calls** (compute fully client-side), 0 console errors; wheel ships `static/{assets,engine}`.
+
 Move only the live engine widget first.
 
 Tasks:
@@ -190,7 +211,7 @@ Tasks:
 - Match current PV snapshot shape.
 - Add download/warmup UI.
 - Cache assets where useful.
-- Fallback to `ServerEngineProvider` if browser engine unavailable.
+- If the browser engine is unavailable, show an actionable error (no server fallback).
 
 Acceptance:
 - Engine widget streams PVs from browser.
@@ -251,7 +272,7 @@ Tasks:
   - policy decoding
   - value decoding
 - Wire Build human candidate generation to browser Maia3.
-- Keep server fallback optional only.
+- No server fallback; browser Maia3 only (server Maia stays admin-mode only).
 
 Acceptance:
 - Build can produce human-like candidate moves with server Maia disabled.
@@ -278,11 +299,15 @@ Tasks:
   - Maia3 model status
   - Download Maia model
   - Clear cached model
-  - Engine mode
+  - Engine mode: Browser only
   - Depth
   - Threads/performance mode
-  - Server fallback toggle
 - Store settings per user.
+
+NOTE: much of this already landed early (alongside the hard-rule guards) — the
+public Settings now shows browser engine status (available/unavailable) + "Maia3
+not yet available" and the server install buttons + first-run install prompt were
+removed.
 
 Acceptance:
 - Settings no longer pretends to install engines on the public server.
@@ -309,7 +334,7 @@ Tasks:
 - Ensure all repository queries filter by `user_id`.
 - Migrate existing single-user data to an owner/admin user.
 - Add per-user Lichess OAuth.
-- Add rate limiting for server fallback.
+- Add rate limiting for the admin-only server engine APIs (if ever enabled).
 - Consider FastAPI/ASGI migration.
 
 Acceptance:
@@ -342,14 +367,14 @@ Licensing:
   - Maia3 ONNX/model license
   - compatibility with current project license
 
-Server fallback:
-- Optional.
-- Must be queued, rate-limited, and capped.
-- Do not rely on it for scale.
+Server engine (admin mode only — NOT a public fallback):
+- Disabled by default (`PREPFORGE_SERVER_ENGINE_ENABLED=0` → 403).
+- If ever enabled for an admin/server deployment: must be queued, rate-limited, capped.
+- The public flow never uses it and never auto-falls-back to it.
 
 Performance:
 - Desktop Chromium should be the first target.
-- Mobile fallback may need lower depth or server queue.
+- On unsupported/low-end browsers the UI shows "engine unavailable" (lower depth is an option) — it does NOT fall back to a server engine.
 
 ---
 

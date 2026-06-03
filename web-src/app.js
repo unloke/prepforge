@@ -609,9 +609,9 @@ class EngineWidget {
     this.multipv = 1;
     this.maxMultipv = 5;
     this.minMultipv = 1;
-    // Engine compute seam. Prefers browser Stockfish (WASM Worker) when the
-    // page is cross-origin isolated, falling back to the server provider.
-    this.engine = createEngineProvider({ api, postJson });
+    // Engine compute seam: browser Stockfish (WASM Worker) only. No server
+    // fallback — if the browser engine is unavailable the widget shows an error.
+    this.engine = createEngineProvider();
   }
 
   bind() {
@@ -4209,179 +4209,31 @@ async function loadSettings() {
 }
 
 function renderSettings(payload) {
-  const stockfish = payload.stockfish || {};
-  document.getElementById("settings-stockfish-path").textContent = stockfish.path || "(not installed)";
-  document.getElementById("settings-stockfish-version").textContent =
-    stockfish.version || (stockfish.installed ? "(unknown - could not handshake)" : "...");
-  document.getElementById("settings-depth-input").value = payload.stockfish_depth ?? 16;
-  const status = document.getElementById("settings-stockfish-status");
-  if (stockfish.error) {
-    status.textContent = stockfish.error;
-  } else if (!stockfish.installed) {
-    status.textContent = "Use Install / Update Stockfish to fetch the latest release.";
-  } else {
-    status.textContent = "";
-  }
-  const maia3 = payload.maia3 || {};
-  const maiaModel = document.getElementById("settings-maia-model");
-  const maiaRepo = document.getElementById("settings-maia-repo");
-  const maiaStatus = document.getElementById("settings-maia-status");
-  if (maiaModel) {
-    maiaModel.textContent = maia3.model
-      ? `${maia3.model}${maia3.package_installed ? "" : " (package missing)"}`
-      : "(not configured)";
-  }
-  if (maiaRepo) maiaRepo.textContent = maia3.repo || "(not configured)";
-  if (maiaStatus) {
-    maiaStatus.textContent = maia3.brilliant_ready
-      ? "Maia3 is ready - human move prediction and Brilliant detection enabled."
-      : "Install CSSLab Maia3 to enable the real model and Brilliant detection.";
-  }
-}
-
-async function saveStockfishDepth() {
-  const value = Math.max(1, Math.min(30, Number(document.getElementById("settings-depth-input").value) || 16));
-  try {
-    const payload = await postJson("/api/settings", { stockfish_depth: value });
-    renderSettings(payload);
-    setStatus(`Stockfish depth saved: ${value}`);
-  } catch (error) {
-    setStatus(error.message);
-  }
-}
-
-// App-Store-style action: spinner while working, then a check or error badge.
-async function runEngineAction(btnId, request, { working = "Working...", okText } = {}) {
-  const btn = document.getElementById(btnId);
-  if (!btn || btn.classList.contains("is-working")) return;
-  const label = btn.querySelector(".ea-label");
-  const original = label ? label.textContent : "";
-  btn.classList.remove("is-done", "is-error");
-  btn.classList.add("is-working");
-  btn.disabled = true;
-  if (label) label.textContent = working;
-  setStatus(working);
-  try {
-    const payload = await request();
-    btn.classList.remove("is-working");
-    btn.classList.add("is-done");
-    const done = okText ? okText(payload) : "Done";
-    if (label) label.textContent = done;
-    setStatus(done);
-    await loadSettings();
-    window.setTimeout(() => {
-      btn.classList.remove("is-done");
-      if (label) label.textContent = original;
-    }, 2400);
-  } catch (error) {
-    btn.classList.remove("is-working");
-    btn.classList.add("is-error");
-    if (label) label.textContent = "Failed";
-    setStatus(error.message);
-    window.setTimeout(() => {
-      btn.classList.remove("is-error");
-      if (label) label.textContent = original;
-    }, 2800);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-function installStockfish() {
-  return runEngineAction("settings-stockfish-install", () => postJson("/api/stockfish/install", {}), {
-    working: "Downloading Stockfish...",
-    okText: (p) => (p.already_present ? "Already installed" : `Installed ${p.version || ""}`.trim()),
-  });
-}
-
-function installMaia3() {
-  return runEngineAction("settings-maia-install", () => postJson("/api/maia3/install", {}), {
-    working: "Installing Maia3...",
-    okText: (p) => (p.already_present ? "Up to date" : "Installed"),
-  });
-}
-
-const ENGINE_PROMPTED_KEY = "prepforge.engine_prompted";
-
-// First-run nudge: analysis needs Stockfish, so if it's missing on startup,
-// offer a one-click install instead of letting the first Analyze just fail.
-// Only the engine, no training/analysis tutorial (kept intentionally light).
-async function maybePromptEngineSetup() {
-  let prompted = false;
-  try {
-    prompted = localStorage.getItem(ENGINE_PROMPTED_KEY) === "1";
-  } catch (_) {
-    /* ignore storage errors */
-  }
-  if (prompted) return;
-  let settings;
-  try {
-    settings = await api("/api/settings");
-  } catch (_) {
-    return;
-  }
-  if (settings && settings.stockfish && settings.stockfish.installed) return;
-  showEngineSetupModal();
-}
-
-function markEnginePrompted() {
-  try {
-    localStorage.setItem(ENGINE_PROMPTED_KEY, "1");
-  } catch (_) {
-    /* ignore storage errors */
-  }
-}
-
-function showEngineSetupModal() {
-  const overlay = document.createElement("div");
-  overlay.className = "modal-overlay";
-  overlay.innerHTML = `
-    <div class="modal" role="dialog" aria-modal="true" data-testid="engine-setup-modal">
-      <div class="modal-title">Set up the analysis engine</div>
-      <div class="modal-body">
-        <p class="muted">
-          PrepForge uses <b>Stockfish</b> to analyze your games and grade moves.
-          It isn't installed yet - install it now (a one-time download) to enable Analyze.
-        </p>
-        <p class="muted engine-setup-status" id="engine-setup-status" hidden></p>
-      </div>
-      <div class="modal-footer">
-        <button class="btn ghost" data-action="later" type="button">Maybe later</button>
-        <button class="btn primary" data-action="install" type="button">Install Stockfish</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  const close = () => {
-    markEnginePrompted();
-    overlay.remove();
-  };
-  overlay.querySelector('[data-action="later"]').addEventListener("click", close);
-  overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) close();
-  });
-  const installBtn = overlay.querySelector('[data-action="install"]');
-  const statusEl = overlay.querySelector("#engine-setup-status");
-  installBtn.addEventListener("click", async () => {
-    installBtn.disabled = true;
-    statusEl.hidden = false;
-    statusEl.textContent = "Downloading Stockfish...";
-    try {
-      const payload = await postJson("/api/stockfish/install", {});
-      statusEl.textContent = payload.already_present
-        ? "Already installed."
-        : `Installed ${payload.version || "Stockfish"}. Analyze is ready.`;
-      setStatus("Stockfish ready");
-      markEnginePrompted();
-      // Refresh anything that reflects engine availability.
-      if (activeViewName() === "settings") await loadSettings();
-      window.setTimeout(() => overlay.remove(), 1100);
-    } catch (error) {
-      statusEl.textContent = `Install failed: ${error.message}`;
-      installBtn.disabled = false;
+  // Browser-only engine model: report whether the browser can run Stockfish
+  // (cross-origin isolation) rather than any server install state.
+  const browserStatusEl = document.getElementById("settings-browser-engine-status");
+  const note = document.getElementById("settings-stockfish-status");
+  if (browserStatusEl) {
+    if (self.crossOriginIsolated) {
+      browserStatusEl.textContent = "available";
+      if (note) note.textContent = "";
+    } else {
+      browserStatusEl.textContent = "unavailable";
+      if (note) {
+        note.textContent =
+          "This browser is not cross-origin isolated (COOP/COEP). Use a supported browser to run analysis locally.";
+      }
     }
-  });
+  }
+  // Maia3 in the browser is not implemented yet (Phase 3); never advertise the
+  // server model. payload is accepted for forward-compat but unused here.
+  void payload;
 }
+
+// NOTE: server-side engine install (Stockfish/Maia3) and the first-run install
+// prompt were removed — the public flow runs Stockfish in the browser and never
+// installs or runs an engine on the server. Server install endpoints remain in
+// server.py for a future admin mode (gated by PREPFORGE_SERVER_ENGINE_ENABLED).
 
 async function runLichessCompare() {
   if (!appState.lichessUsername) {
@@ -4532,9 +4384,6 @@ function bindEvents() {
 
   // Settings
   document.getElementById("settings-refresh").addEventListener("click", loadSettings);
-  document.getElementById("settings-depth-save").addEventListener("click", saveStockfishDepth);
-  document.getElementById("settings-stockfish-install").addEventListener("click", installStockfish);
-  document.getElementById("settings-maia-install").addEventListener("click", installMaia3);
 
   // Lichess chip
   document.getElementById("lichess-chip").addEventListener("click", promptLichessConnect);
@@ -4709,8 +4558,6 @@ async function init() {
   boards.train.setPosition({ fen: START_FEN, legalMoves: info.legal_moves });
   renderBuilderTree();
   await loadDashboard();
-  // First-run: offer to install Stockfish if it's missing (after the UI is up).
-  maybePromptEngineSetup();
 }
 
 init().catch((error) => setStatus(error.message));

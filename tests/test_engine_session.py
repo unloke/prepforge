@@ -9,7 +9,13 @@ from prepforge_chess.web.server import EngineSession, PrepForgeWebApp
 
 
 def _make_app(tmp_path):
-    return PrepForgeWebApp(db_path=tmp_path / "engine.sqlite3", prefer_real_engines=True)
+    # The live engine session is a server-engine path, gated off by default in
+    # the public flow; these tests exercise the admin/server-enabled behaviour.
+    return PrepForgeWebApp(
+        db_path=tmp_path / "engine.sqlite3",
+        prefer_real_engines=True,
+        server_engine_enabled=True,
+    )
 
 
 def test_engine_snapshot_empty_when_no_session(tmp_path):
