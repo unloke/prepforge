@@ -21,6 +21,9 @@ out/
 # Node / Vite frontend build tooling (build output in web/static IS committed)
 node_modules/
 .vite/
+# Engine assets synced from node_modules by scripts/sync-stockfish.mjs; the
+# BUILT copy under web/static/engine IS committed (Docker has no Node).
+web-src/public/engine/
 
 # Editor and OS files
 .idea/

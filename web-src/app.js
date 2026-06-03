@@ -1,5 +1,5 @@
 import "./styles.css";
-import { createServerEngineProvider } from "./engine/provider.js";
+import { createEngineProvider } from "./engine/stockfish-provider.js";
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const DEMO_PGN = `[Event "PrepForge UI Demo"]
@@ -609,9 +609,9 @@ class EngineWidget {
     this.multipv = 1;
     this.maxMultipv = 5;
     this.minMultipv = 1;
-    // Engine compute seam. Phase 0: server-backed. Phase 1 will swap in a
-    // browser Stockfish-WASM provider with the same interface.
-    this.engine = createServerEngineProvider({ api, postJson });
+    // Engine compute seam. Prefers browser Stockfish (WASM Worker) when the
+    // page is cross-origin isolated, falling back to the server provider.
+    this.engine = createEngineProvider({ api, postJson });
   }
 
   bind() {
