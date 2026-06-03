@@ -129,9 +129,20 @@ No behavior change.
 - [x] **Cache-Control** — `.wasm/.onnx/.nnue` and filenames matching a Vite content-hash pattern (`-[hash8+].ext`) → `public, max-age=31536000, immutable`; everything else — non-hashed files under `assets/` (icons, metadata) and the app shell — → `no-cache`. Rule narrowed from the earlier `"assets" in path.parts`. Verified hashed vs short-hash vs `icon.png`.
 - [x] 7/7 web tests pass after the refactor.
 - [x] **Vite + `web-src/` restructure** — Node 24 / npm 11 installed (`C:\Program Files\nodejs`). Sources moved to `web-src/` (`index.html`, `app.js`, `styles.css`); `app.js` is now an ES-module entry (`<script type="module">`) importing `./styles.css`. `vite.config.js`: `root: web-src`, `base: /static/`, `outDir → src/prepforge_chess/web/static`, sourcemaps on; `npm run build` emits hashed `assets/*` + `index.html`. Build output is **committed** (deploy image runs `pip install .` with no Node — Docker build-stage is a later follow-up). Verified: built app renders identically, `crossOriginIsolated === true`, 0 console errors, the 4707-line module conversion is clean.
-- [x] **`EngineProvider` / `ServerEngineProvider` seam** — `web-src/engine/provider.js` defines the interface (`open/update/snapshot/close` → snapshot) and `createServerEngineProvider({api, postJson})`. `EngineWidget` now delegates all 5 `/api/engine/*` calls through `this.engine`. Verified live: widget reaches depth 16/16 with real PVs through the provider. Phase 1 swaps in `StockfishWasmProvider` with the same interface — no UI change.
+- [x] **Live-engine (widget) provider seam** — `web-src/engine/provider.js` defines the interface (`open/update/snapshot/close` → snapshot) and `createServerEngineProvider({api, postJson})`. `EngineWidget` now delegates all 5 `/api/engine/*` calls through `this.engine`. Verified live: widget reaches depth 16/16 with real PVs through the provider. Phase 1 swaps in `StockfishWasmProvider` with the same interface — no UI change. **Scope note:** this abstracts only the *live engine widget*. **Analyze (`/api/analyze/*`) and Build (`/api/build/generate/*`) still call the server directly** — their provider seams (a per-ply analysis path, Maia-backed build) come in Phase 2 / Phase 3, not here.
+- [x] **`pyproject` package-data** — added `static/assets/*` (the flat `static/*` glob does not match the nested Vite bundles). Verified a clean `python -m build` wheel ships `index.html` + `assets/{js,map,css}`.
 
-**Phase 0 is functionally complete.** 108/108 tests pass. Dev: `npm run dev` (Vite HMR at `/static/`, `/api`+`/oauth` proxied to :8765) or `npm run build:watch`.
+**Phase 0 is functionally complete.** 108/108 tests pass.
+
+**Toolchain / build workflow:**
+- Node **24.16.0** / npm **11.13.0** installed at `C:\Program Files\nodejs` (not added to PATH automatically — prepend it per shell). This is *not* an LTS line; Node 22 LTS is the safer pin if stability matters later.
+- Frontend changes live in `web-src/`. After editing, you **must** rebuild and commit both source and output, or they drift:
+  ```
+  npm run build
+  git add web-src src/prepforge_chess/web/static
+  ```
+- Dev: `npm run dev` (Vite HMR at `/static/`, `/api`+`/oauth` proxied to :8765) or `npm run build:watch`.
+- Follow-up: a Dockerfile Node multi-stage build would let us stop committing build output.
 
 **Phase 0 acceptance — outstanding checks:**
 - [ ] **Lichess connect still completes after COOP severs the popup opener/postMessage** (rely on the `/api/lichess/status` poll fallback). Needs a real connect test — not covered by `crossOriginIsolated === true` alone.

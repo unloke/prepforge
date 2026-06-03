@@ -28,7 +28,10 @@ prepforge-chess = "prepforge_chess.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"prepforge_chess.web" = ["static/*"]
+# static/* matches only direct children; the Vite build emits hashed bundles
+# under static/assets/, so include that nested dir explicitly or the wheel
+# ships index.html without its JS/CSS.
+"prepforge_chess.web" = ["static/*", "static/assets/*"]
 "prepforge_chess.storage" = ["schema.sql"]
 
 [tool.pytest.ini_options]
