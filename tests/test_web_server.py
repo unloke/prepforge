@@ -1,7 +1,18 @@
-from prepforge_chess.web.server import PrepForgeWebApp, ServerEngineDisabled
+from contextlib import contextmanager
+import json
+import threading
 import time
+import urllib.error
+import urllib.request
+from http.server import ThreadingHTTPServer
 
 import pytest
+
+from prepforge_chess.web.server import (
+    PrepForgeWebApp,
+    ServerEngineDisabled,
+    _handler_for_app,
+)
 
 
 def test_server_engine_disabled_by_default_blocks_engine_endpoints(tmp_path):
@@ -9,6 +20,9 @@ def test_server_engine_disabled_by_default_blocks_engine_endpoints(tmp_path):
     app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
     assert app.server_engine_enabled is False
 
+    # Every server-side compute entry point must refuse by default. This list is
+    # the acceptance criteria for "server never carries the engine/model" — keep
+    # it exhaustive so a new compute endpoint can't quietly skip the guard.
     with pytest.raises(ServerEngineDisabled):
         app.analyze_pgn_payload("1. e4 e5 *")
     with pytest.raises(ServerEngineDisabled):
@@ -16,14 +30,98 @@ def test_server_engine_disabled_by_default_blocks_engine_endpoints(tmp_path):
     with pytest.raises(ServerEngineDisabled):
         app.build_demo_payload()
     with pytest.raises(ServerEngineDisabled):
+        app.build_generate_payload(repertoire_id="x", node_id="y")
+    with pytest.raises(ServerEngineDisabled):
+        app.start_build_generate_payload(repertoire_id="x", node_id="y")
+    with pytest.raises(ServerEngineDisabled):
         app.engine_session_open_payload(
             fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
         )
     with pytest.raises(ServerEngineDisabled):
+        app.engine_session_update_payload(
+            fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+        )
+    with pytest.raises(ServerEngineDisabled):
         app.install_stockfish_payload()
+    with pytest.raises(ServerEngineDisabled):
+        app.install_maia3_payload()
 
     # Non-compute engine-session calls stay available for cleanup.
     assert app.engine_session_snapshot_payload()["running"] is False
+
+
+def test_crud_works_with_server_engine_disabled_and_no_maia(tmp_path):
+    # P1 lock: ordinary build/edit (create/add-move/read/rename/delete) must work
+    # in the public/default flow WITHOUT constructing a server Stockfish/Maia. It
+    # uses inert metadata adapters, so this passes even where Maia3 isn't
+    # installed — exercising it here proves CRUD never touches that dependency.
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    assert app.server_engine_enabled is False
+
+    created = app.create_repertoire_payload("My Repertoire", "white")
+    repertoire_id = created["repertoire_id"]
+    root_id = created["nodes"][0]["id"]
+
+    added = app.build_add_move_payload(repertoire_id, root_id, "e2e4")
+    assert added["selected_node_id"] != root_id
+
+    workspace = app._build_workspace_payload(repertoire_id)
+    assert workspace["nodes_total"] >= 2
+
+    renamed = app.rename_repertoire_payload(repertoire_id, "Renamed")
+    assert renamed["name"] == "Renamed"
+
+    deleted = app.delete_repertoire_payload(repertoire_id)
+    assert deleted["deleted"] == repertoire_id
+
+
+@contextmanager
+def _running_app_server(app):
+    handler = _handler_for_app(app)
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    server.daemon_threads = True
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield "http://127.0.0.1:{0}".format(server.server_address[1])
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def _post_status(base_url, path, body):
+    request = urllib.request.Request(
+        base_url + path,
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request) as response:
+            return response.status
+    except urllib.error.HTTPError as exc:
+        return exc.code
+
+
+def test_http_compute_endpoints_return_403_when_disabled(tmp_path):
+    # HTTP-layer lock: ServerEngineDisabled must surface as 403 on the wire for
+    # the public compute endpoints, not a 200 or a 500.
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    assert app.server_engine_enabled is False
+
+    fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    with _running_app_server(app) as base_url:
+        assert _post_status(base_url, "/api/engine/open", {"fen": fen}) == 403
+        assert _post_status(base_url, "/api/analyze/pgn/start", {"pgn": "1. e4 e5 *"}) == 403
+        assert (
+            _post_status(
+                base_url,
+                "/api/build/generate/start",
+                {"repertoire_id": "x", "node_id": "y"},
+            )
+            == 403
+        )
 
 
 def test_web_dashboard_and_board_payload(tmp_path):

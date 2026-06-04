@@ -150,6 +150,53 @@ class ServerEngineDisabled(RuntimeError):
     """
 
 
+class _InertEngine:
+    """Metadata-only engine placeholder for CRUD/workspace builder usage.
+
+    Ordinary repertoire editing (create/add-move/annotate/read) needs an
+    ``OpeningBuilderService`` but no real engine compute. Loading Stockfish for
+    those paths would pull a server-side engine dependency the public build must
+    never touch, so we hand the builder this inert stand-in: it carries a name
+    for repertoire metadata and refuses to analyse. Real generation goes through
+    ``_create_compute_builder`` (gated behind ``_require_server_engine``).
+    """
+
+    name = "browser"
+
+    def analyze_position(self, *args, **kwargs):
+        raise ServerEngineDisabled(
+            "Server-side engine compute is disabled. This builder was created "
+            "for metadata/CRUD only; engine analysis runs in the browser."
+        )
+
+    def close(self) -> None:  # parity with real engines for _close_engine
+        pass
+
+
+class _InertMaia:
+    """Metadata-only human-model placeholder, mirroring :class:`_InertEngine`.
+
+    ``OpeningBuilderService`` requires a Maia adapter, but CRUD/workspace paths
+    only read its ``name``. Building the real Maia3 adapter here would raise on
+    deployments without the model installed (the public build) and pull a
+    server-side dependency, so we inject this inert stand-in instead.
+    """
+
+    name = "browser"
+
+    def predictions(self, *args, **kwargs):
+        raise ServerEngineDisabled(
+            "Server-side Maia compute is disabled. This builder was created for "
+            "metadata/CRUD only; human-model prediction runs in the browser."
+        )
+
+    def move_assessment(self, *args, **kwargs):
+        raise ServerEngineDisabled(
+            "Server-side Maia compute is disabled. This builder was created for "
+            "metadata/CRUD only; human-model prediction runs in the browser."
+        )
+
+
 def _env_flag(name: str, default: bool = False) -> bool:
     raw = os.environ.get(name)
     if raw is None:
@@ -586,12 +633,32 @@ class PrepForgeWebApp:
             return capped(6 if high_depth else 4)
         return capped(8)
 
-    def _create_builder(self, *, engine=None) -> OpeningBuilderService:
+    def _create_builder(self, *, engine=None, maia=None) -> OpeningBuilderService:
+        """Builder for CRUD/workspace operations (create/edit/read/export).
+
+        These paths never compute, so by default we inject inert metadata-only
+        adapters rather than a real Stockfish/Maia. That keeps ordinary
+        repertoire editing free of server-side engine dependencies and stops it
+        from raising on deployments where Maia3 isn't installed (the public
+        build). Compute paths must use ``_create_compute_builder`` instead.
+        """
         return OpeningBuilderService(
             self.repository,
             chess_core=self.chess_core,
-            engine=engine or self._create_primary_engine(),
+            engine=engine or _InertEngine(),
             engine_config=self._engine_config(),
+            maia=maia or _InertMaia(),
+        )
+
+    def _create_compute_builder(self) -> OpeningBuilderService:
+        """Builder wired with the real server-side engine + Maia for generation.
+
+        Only for admin-enabled generate paths. Callers MUST gate on
+        ``_require_server_engine()`` first so the public build never reaches the
+        real engine/model construction below.
+        """
+        return self._create_builder(
+            engine=self._create_primary_engine(),
             maia=create_maia3_adapter(chess_core=self.chess_core),
         )
 
@@ -898,7 +965,8 @@ class PrepForgeWebApp:
     def _run_build_generate_job(self, job_id: str) -> None:
         with self.build_jobs_lock:
             job = self.build_jobs[job_id]
-        builder = self._create_builder()
+        # Gated upstream by start_build_generate_payload -> _require_server_engine.
+        builder = self._create_compute_builder()
 
         def progress_callback(event: str, *, added: int, total_hint: int) -> None:
             # Cooperative cancellation: the builder calls this after every node
@@ -1057,7 +1125,7 @@ class PrepForgeWebApp:
 
     def build_demo_payload(self) -> Dict[str, Any]:
         self._require_server_engine()
-        builder = self._create_builder()
+        builder = self._create_compute_builder()
         try:
             repertoire = builder.create_repertoire(
                 CreateRepertoireRequest(
@@ -1398,7 +1466,7 @@ class PrepForgeWebApp:
         own_color: Optional[str] = None,
     ) -> Dict[str, Any]:
         self._require_server_engine()
-        builder = self._create_builder()
+        builder = self._create_compute_builder()
         mode = (detail_mode or "balanced").lower()
         if mode not in {"simple", "balanced", "deep"}:
             raise ValueError("detail_mode must be one of simple, balanced, deep")

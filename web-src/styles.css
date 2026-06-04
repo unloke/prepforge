@@ -445,6 +445,29 @@ h2 {
   background: var(--surface-hover);
 }
 
+.btn:disabled,
+.ib:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Compute actions not yet ported to the browser (public build): clearly inert
+   rather than looking like a live button that errors on click. Covers both the
+   primary `.btn` (Analyze) and the icon button `.ib` (Build → Gen). */
+.btn.is-coming-soon,
+.ib.is-coming-soon {
+  background: #f4f1ec;
+  border-color: var(--line-strong);
+  color: #6b6256;
+  cursor: not-allowed;
+}
+
+.btn.is-coming-soon:hover,
+.ib.is-coming-soon:hover {
+  background: #f4f1ec;
+  border-color: var(--line-strong);
+}
+
 .link {
   border: 0;
   background: transparent;

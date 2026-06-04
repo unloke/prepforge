@@ -235,9 +235,18 @@ const appState = {
   lichessUsername: null,
   replayResults: null,
   pieceStyle: "berlin",
+  // Whether the server exposes engine/Maia compute (admin builds only). The
+  // public/default flow runs compute in the browser, so full-game Analyze and
+  // Build → Generate (not yet ported to the browser) are gated off here rather
+  // than letting the user click through to a raw 403. See applyServerEngineGating.
+  serverEngineEnabled: false,
 };
 
 const LICHESS_KEY = "prepforge.lichess_username";
+
+// Shown when a not-yet-browser-ported compute action is gated off in the public
+// build. Phase 2/3 will replace these stubs with in-browser analysis/generation.
+const BROWSER_COMPUTE_SOON = "Local browser analysis coming soon";
 
 const boards = {};
 
@@ -2317,6 +2326,10 @@ async function loadDemoAndAnalyze() {
 }
 
 async function runAnalysis() {
+  if (!appState.serverEngineEnabled) {
+    setStatus(BROWSER_COMPUTE_SOON);
+    return;
+  }
   const pgn = document.getElementById("pgn-input").value.trim();
   if (!pgn) {
     setStatus("Paste PGN before analyzing");
@@ -3460,6 +3473,10 @@ async function fillPgnInputFromFile(file) {
 }
 
 async function generateFromCurrentNode() {
+  if (!appState.serverEngineEnabled) {
+    setStatus(BROWSER_COMPUTE_SOON);
+    return;
+  }
   const nodeId = appState.buildCurrentNodeId;
   if (!appState.build || !nodeId) {
     setStatus("Open or create a repertoire first");
@@ -4202,9 +4219,43 @@ async function loadSettings() {
   try {
     const payload = await api("/api/settings");
     appState.settings = payload;
+    appState.serverEngineEnabled = !!payload.server_engine_enabled;
+    applyServerEngineGating();
     renderSettings(payload);
   } catch (error) {
     setStatus(error.message);
+  }
+}
+
+// Gate compute actions that have no browser implementation yet. In the public
+// build (server engine disabled) full-game Analyze and Build → Generate would
+// hit a 403, so disable those buttons and explain instead of surfacing a raw
+// error. Single-position engine analysis already runs in the browser and is
+// left untouched. No-op for admin builds where the server engine is enabled.
+function applyServerEngineGating() {
+  const enabled = !!appState.serverEngineEnabled;
+  const gated = [
+    document.getElementById("run-analysis"),
+    document.getElementById("build-generate-node"),
+  ];
+  for (const button of gated) {
+    if (!button) continue;
+    button.disabled = !enabled;
+    button.classList.toggle("is-coming-soon", !enabled);
+    if (!enabled) {
+      if (!button.dataset.enabledTitle) {
+        button.dataset.enabledTitle = button.getAttribute("title") || "";
+      }
+      button.setAttribute("title", BROWSER_COMPUTE_SOON);
+      button.setAttribute("aria-disabled", "true");
+    } else {
+      button.removeAttribute("aria-disabled");
+      if (button.dataset.enabledTitle) {
+        button.setAttribute("title", button.dataset.enabledTitle);
+      } else {
+        button.removeAttribute("title");
+      }
+    }
   }
 }
 
@@ -4538,6 +4589,17 @@ async function init() {
   jobToast.bind();
   engineWidget.bind();
   bindEvents();
+  // Learn whether the server exposes engine compute (admin builds) so the
+  // gated Analyze / Generate buttons reflect reality on first paint. On failure
+  // we keep the safe public default (disabled) rather than dangling a 403.
+  try {
+    const settings = await api("/api/settings");
+    appState.settings = settings;
+    appState.serverEngineEnabled = !!settings.server_engine_enabled;
+  } catch (_) {
+    appState.serverEngineEnabled = false;
+  }
+  applyServerEngineGating();
   renderPieceStylePicker();
   renderPrefsToggles();
   prefillDemoPgn();

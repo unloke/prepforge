@@ -77,7 +77,7 @@ Browser per user:
   - Maia3 ONNX model
   - IndexedDB/cache
   - fastest viable backend selected at runtime
-- `ServerEngineProvider`
+- `AdminServerEngineProvider` (`web-src/engine/admin-server-provider.js`, `createAdminServerEngineProvider`)
   - future/admin mode ONLY (PREPFORGE_SERVER_ENGINE_ENABLED); never used in the public flow, no auto-fallback
 
 Server shared:
@@ -171,7 +171,7 @@ Tasks:
 - Keep Python server serving static build.
 - Add COOP/COEP headers.
 - Add `EngineProvider` interface.
-- Wrap current server APIs as `ServerEngineProvider`.
+- Wrap current server APIs as `AdminServerEngineProvider` (admin-only; renamed from `ServerEngineProvider`).
 
 Acceptance:
 - UI works exactly as today.
