@@ -222,7 +222,28 @@ Acceptance:
 
 ## Phase 2: Browser Whole-Game Analysis
 
-Move Stockfish eval compute to browser.
+**Status (2026-06-03) — DONE & verified, committed (not pushed).**
+- Browser computes one eval per position; server only parses + classifies + saves.
+- `web-src/engine/game-analyzer.js`: `analyzeGamePositions` drives the browser
+  Stockfish provider over all FENs to the target depth (progress + cancel),
+  returning one White-POV eval per FEN. `createEngineProvider({maxDepth})` +
+  `isBrowserEngineAvailable()` added to `stockfish-provider.js`.
+- `src/prepforge_chess/services/replay_engine.py`: `ReplayEngine` feeds those
+  evals into the **existing** `AnalysisService` by FEN, so classification /
+  report / persistence run unchanged with zero server compute.
+- Server endpoints (both ungated — no engine runs): `POST /api/analyze/prepare`
+  (import PGN → positions + move skeleton) and `POST /api/analyze/classify-save`
+  (→ existing `_analysis_payload`). Old `/api/analyze/pgn[/start|/status]` stay
+  for admin mode.
+- `app.js` `runAnalysis`: prepare → browser analysis → classify-save → render.
+  Analyze button gated on browser-engine availability; Build → Gen still gated
+  on the server engine (Phase 3 / browser Maia). No Maia ⇒ no brilliancies yet.
+- Fixed a latent re-analysis bug: a duplicate non-lichess PGN reported a fresh,
+  unsaved game id; the import dedup now resolves to the stored game id
+  (`existing_move_signature_ids`).
+- **Verified** (server engine off): only `/api/analyze/prepare` +
+  `/api/analyze/classify-save` fire — zero `/api/engine/*`, zero
+  `/api/analyze/pgn*`; eval chart + classifications render; 0 console errors.
 
 Recommended first pass:
 - Browser computes per-ply Stockfish results.
