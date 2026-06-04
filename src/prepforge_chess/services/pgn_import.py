@@ -69,7 +69,7 @@ class PgnImportService:
         # Signatures of games already stored, plus ones seen earlier in this same
         # batch, so the same game pasted/dropped twice is skipped rather than
         # duplicated. Lichess games are also deduped by id below.
-        seen_signatures = self.repository.existing_move_signatures()
+        signature_to_id = self.repository.existing_move_signature_ids()
 
         for index, game in enumerate(games):
             # python-chess happily returns a Game for non-PGN junk or a header
@@ -90,10 +90,12 @@ class PgnImportService:
                     continue
 
             signature = " ".join(move.uci for move in game.moves)
-            if signature in seen_signatures:
-                result.skipped_game_ids.append(game.id)
+            existing_signature_id = signature_to_id.get(signature)
+            if existing_signature_id is not None:
+                # Duplicate of an already-stored game: report the EXISTING id so
+                # callers (re-analysis) can load it, not the fresh unsaved one.
+                result.skipped_game_ids.append(existing_signature_id)
                 continue
-            seen_signatures.add(signature)
 
             try:
                 self.repository.save_game(game)
@@ -102,6 +104,7 @@ class PgnImportService:
                 result.errors.append("{0}: {1}".format(label, exc))
                 continue
 
+            signature_to_id[signature] = game.id
             result.imported_game_ids.append(game.id)
 
         return result

@@ -280,7 +280,7 @@ function createUnavailableProvider(message) {
  * provider that surfaces an actionable error — it NEVER falls back to the
  * server (hard product rule: no server-side engine compute in the public flow).
  */
-export function createEngineProvider() {
+export function createEngineProvider(options = {}) {
   if (!self.crossOriginIsolated) {
     return createUnavailableProvider(
       "Browser engine unavailable: this page is not cross-origin isolated " +
@@ -289,11 +289,16 @@ export function createEngineProvider() {
     );
   }
   try {
-    return createStockfishWasmProvider();
+    return createStockfishWasmProvider(options);
   } catch (_) {
     return createUnavailableProvider(
       "Browser engine unavailable. Analysis must run locally; server fallback " +
         "is disabled.",
     );
   }
+}
+
+/** True when the browser can run the local engine (cross-origin isolated). */
+export function isBrowserEngineAvailable() {
+  return Boolean(self.crossOriginIsolated);
 }

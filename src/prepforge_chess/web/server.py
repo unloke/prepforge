@@ -61,6 +61,7 @@ from prepforge_chess.services.maia import (
     ensure_maia3,
 )
 from prepforge_chess.services.pgn_import import PgnImportOptions, PgnImportService
+from prepforge_chess.services.replay_engine import ReplayEngine, ReplayEngineError
 from prepforge_chess.services.progress import compute_health, mastery_map
 from prepforge_chess.services.repertoire_export import RepertoireExportService
 from prepforge_chess.services.stockfish_download import (
@@ -706,6 +707,106 @@ class PrepForgeWebApp:
         self._require_server_engine()
         game_id = self._import_pgn_for_analysis(pgn_text)
         result = self._run_analysis_for_game_id(game_id)
+        return self._analysis_payload(result)
+
+    # ---- Browser analysis (Phase 2): server classifies, browser computes -----
+    # These two endpoints run NO engine, so they are intentionally NOT gated by
+    # _require_server_engine(): the browser computes every eval, the server only
+    # imports the PGN, classifies the supplied evals, and persists.
+
+    def prepare_analysis_payload(self, pgn_text: str) -> Dict[str, Any]:
+        """Import a PGN and return the positions the browser must evaluate.
+
+        ``positions`` is every distinct ``fen_before`` plus the final
+        ``fen_after`` — the complete set the classifier needs, since
+        ``fen_after(N) == fen_before(N+1)``.
+        """
+        game_id = self._import_pgn_for_analysis(pgn_text)
+        game = self.repository.load_game(game_id)
+        if game is None:
+            raise ValueError("game not found after import: {0}".format(game_id))
+
+        positions: List[str] = []
+        seen = set()
+
+        def _add(fen: str) -> None:
+            if fen and fen not in seen:
+                seen.add(fen)
+                positions.append(fen)
+
+        moves_skeleton: List[Dict[str, Any]] = []
+        for move in game.moves:
+            _add(move.fen_before)
+            moves_skeleton.append(
+                {
+                    "ply": move.ply,
+                    "move_number": move.move_number,
+                    "side": move.side_to_move.value,
+                    "san": move.san,
+                    "uci": move.uci,
+                    "fen_before": move.fen_before,
+                    "fen_after": move.fen_after,
+                }
+            )
+        if game.moves:
+            _add(game.moves[-1].fen_after)
+
+        return {
+            "game_id": game_id,
+            "engine": "stockfish (browser)",
+            "depth": self.settings.get_stockfish_depth(),
+            "positions": positions,
+            "moves": moves_skeleton,
+        }
+
+    def classify_save_payload(
+        self,
+        *,
+        game_id: str,
+        engine: str = "stockfish (browser)",
+        depth: Optional[int] = None,
+        positions: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Classify + persist a game from browser-computed per-position evals.
+
+        Reuses the full AnalysisService pipeline via a ReplayEngine seeded with
+        the client's evals, so classification/report/persistence stay identical
+        to the server-engine path. No Maia → no brilliant detection (Phase 3).
+        """
+        if not game_id:
+            raise ValueError("game_id is required")
+        position_map: Dict[str, Dict[str, Any]] = {}
+        for item in positions or []:
+            fen = item.get("fen")
+            if not fen:
+                raise ValueError("each position requires a fen")
+            position_map[fen] = item
+        if not position_map:
+            raise ValueError("positions are required")
+
+        engine_name = (engine or "stockfish (browser)").strip() or "stockfish (browser)"
+        resolved_depth = int(depth) if depth is not None else self.settings.get_stockfish_depth()
+        resolved_depth = max(1, min(resolved_depth, 60))
+
+        replay = ReplayEngine(position_map, name=engine_name, chess_core=self.chess_core)
+        service = AnalysisService(
+            self.repository,
+            engine=replay,
+            engine_name=engine_name,
+            brilliant_analyzer=None,
+        )
+        try:
+            result = service.analyze_game_id(
+                game_id,
+                config=AnalysisConfig(
+                    engine=EngineAnalysisConfig(depth=resolved_depth, multipv=1),
+                    max_workers=1,
+                    persist=True,
+                ),
+            )
+        except ReplayEngineError as exc:
+            # Incomplete client payload (a position was never evaluated).
+            raise ValueError(str(exc))
         return self._analysis_payload(result)
 
     def _try_acquire_heavy_job(self, kind: str, job_id: str) -> None:
@@ -2035,6 +2136,19 @@ def _handler_for_app(app: PrepForgeWebApp):
                     return
                 if parsed.path == "/api/analyze/pgn/start":
                     self._send_json(app.start_analysis_payload(payload.get("pgn", "")))
+                    return
+                if parsed.path == "/api/analyze/prepare":
+                    self._send_json(app.prepare_analysis_payload(payload.get("pgn", "")))
+                    return
+                if parsed.path == "/api/analyze/classify-save":
+                    self._send_json(
+                        app.classify_save_payload(
+                            game_id=payload.get("game_id", ""),
+                            engine=str(payload.get("engine", "stockfish (browser)")),
+                            depth=payload.get("depth"),
+                            positions=list(payload.get("positions", [])),
+                        )
+                    )
                     return
                 if parsed.path == "/api/analyze/cancel":
                     self._send_json(app.cancel_analysis_payload(payload.get("job_id", "")))

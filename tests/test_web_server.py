@@ -304,6 +304,112 @@ def test_web_can_start_training_from_imported_repertoire(tmp_path):
     assert "expected_move_uci" not in started["prompt"]
 
 
+def _seed_browser_evals(prep, *, score_cp=20, best_is_played=True, overrides=None):
+    """Build a classify-save `positions` payload from a prepare() result.
+
+    Mimics what the browser sends: one eval per position. By default every
+    position scores `score_cp` and names the played move as best (→ all "best").
+    `overrides` maps a position index to a dict patched onto that position.
+    """
+    played_by_fen = {m["fen_before"]: m["uci"] for m in prep["moves"]}
+    positions = []
+    for index, fen in enumerate(prep["positions"]):
+        item = {
+            "fen": fen,
+            "score_cp": score_cp,
+            "mate_in": None,
+            "best_move_uci": played_by_fen.get(fen) if best_is_played else None,
+            "pv": [],
+        }
+        if overrides and index in overrides:
+            item.update(overrides[index])
+        positions.append(item)
+    return positions
+
+
+def test_browser_analysis_prepare_and_classify_save_default_off(tmp_path):
+    # Phase 2: whole-game analysis runs in the browser; the server only parses
+    # the PGN and classifies/persists the supplied evals — no engine. So both
+    # endpoints must work in the public/default flow (server engine disabled).
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    assert app.server_engine_enabled is False
+
+    prep = app.prepare_analysis_payload(
+        """
+[Event "Browser PGN"]
+[Site "https://lichess.org/browserpgn1"]
+[White "Alice"]
+[Black "Bob"]
+[Result "*"]
+
+1. e4 e5 2. Nf3 Nc6 *
+"""
+    )
+    assert len(prep["moves"]) == 4
+    # positions = every fen_before plus the final fen_after = plies + 1.
+    assert len(prep["positions"]) == 5
+    assert prep["positions"][-1] == prep["moves"][-1]["fen_after"]
+
+    positions = _seed_browser_evals(prep, score_cp=20)
+    payload = app.classify_save_payload(
+        game_id=prep["game_id"], depth=12, positions=positions
+    )
+    assert payload["engine"] == "stockfish (browser)"
+    assert payload["depth"] == 12
+    assert len(payload["moves"]) == 4
+    # Equal evals + best == played ⇒ every move is "best".
+    assert all(m["classification"] == "best" for m in payload["moves"])
+    assert payload["eval_graph"]
+    assert "summary" in payload and "critical_moments" in payload
+
+
+def test_browser_analysis_classifies_blunder_persists_and_recalls(tmp_path):
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    prep = app.prepare_analysis_payload("1. e4 e5 2. Nf3 Nc6 *")
+
+    # Make White's first move a blunder: the best line (a different move) is
+    # winning for White (+1000), but after the move played White is lost
+    # (the next position evaluates to -1000 White-POV).
+    positions = _seed_browser_evals(
+        prep,
+        score_cp=0,
+        overrides={
+            0: {"score_cp": 1000, "best_move_uci": "d2d4"},  # fen_before(ply 1)
+            1: {"score_cp": -1000},                          # fen_before(ply 2) = after e4
+        },
+    )
+    payload = app.classify_save_payload(game_id=prep["game_id"], positions=positions)
+    assert payload["moves"][0]["classification"] == "blunder"
+
+    # Persisted: shows up in history and recalls with the same classification.
+    listed = app.list_analyses_payload()["analyses"]
+    assert any(a["game_id"] == prep["game_id"] for a in listed)
+    recalled = app.analysis_recall_payload(prep["game_id"])
+    assert recalled["moves"][0]["classification"] == "blunder"
+
+
+def test_prepare_reanalyze_resolves_to_existing_game(tmp_path):
+    # Re-analyzing the same (non-lichess) PGN must resolve to the already-stored
+    # game, not a fresh unsaved id — otherwise prepare 400s on the second run.
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    pgn = "1. e4 e5 2. Nf3 Nc6 *"
+    first = app.prepare_analysis_payload(pgn)
+    second = app.prepare_analysis_payload(pgn)
+    assert second["game_id"] == first["game_id"]
+    # The resolved id is loadable (would have raised "game not found" otherwise).
+    assert second["positions"] == first["positions"]
+
+
+def test_browser_analysis_missing_position_eval_errors(tmp_path):
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    prep = app.prepare_analysis_payload("1. e4 e5 2. Nf3 Nc6 *")
+    positions = _seed_browser_evals(prep)
+    # Drop a required position — incomplete client payload must fail loudly.
+    del positions[1]
+    with pytest.raises(ValueError):
+        app.classify_save_payload(game_id=prep["game_id"], positions=positions)
+
+
 def test_web_training_demo_accepts_wrong_then_correct_move(tmp_path):
     app = PrepForgeWebApp(
         db_path=tmp_path / "ui.sqlite3",

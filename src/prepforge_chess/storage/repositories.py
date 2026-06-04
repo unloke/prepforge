@@ -468,16 +468,23 @@ class PrepForgeRepository:
             is_mastered=_int_to_bool(row["is_mastered"]),
         )
 
-    def existing_move_signatures(self) -> set:
-        """A set of UCI move-sequence signatures for every stored game, so a
-        re-imported game (no lichess id) can be detected as a duplicate."""
+    def existing_move_signature_ids(self) -> Dict[str, str]:
+        """Map each stored game's UCI move-sequence signature to its game id, so a
+        re-imported game (no lichess id) is detected as a duplicate AND resolved
+        back to the already-stored game rather than a fresh, unsaved candidate."""
         rows = self.connection.execute(
             "SELECT game_id, uci FROM moves WHERE game_id IS NOT NULL ORDER BY game_id, ply"
         ).fetchall()
         by_game: Dict[str, List[str]] = {}
         for row in rows:
             by_game.setdefault(row["game_id"], []).append(row["uci"])
-        return {" ".join(moves) for moves in by_game.values() if moves}
+        signatures: Dict[str, str] = {}
+        for game_id, moves in by_game.items():
+            if not moves:
+                continue
+            # Keep the first game id seen for a signature (stable across calls).
+            signatures.setdefault(" ".join(moves), game_id)
+        return signatures
 
     def list_training_progress(
         self,

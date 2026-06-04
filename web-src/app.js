@@ -1,5 +1,9 @@
 import "./styles.css";
-import { createEngineProvider } from "./engine/stockfish-provider.js";
+import {
+  createEngineProvider,
+  isBrowserEngineAvailable,
+} from "./engine/stockfish-provider.js";
+import { analyzeGamePositions } from "./engine/game-analyzer.js";
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const DEMO_PGN = `[Event "PrepForge UI Demo"]
@@ -245,8 +249,13 @@ const appState = {
 const LICHESS_KEY = "prepforge.lichess_username";
 
 // Shown when a not-yet-browser-ported compute action is gated off in the public
-// build. Phase 2/3 will replace these stubs with in-browser analysis/generation.
+// build. Phase 3 will replace this stub with in-browser generation (Maia).
 const BROWSER_COMPUTE_SOON = "Local browser analysis coming soon";
+
+// Shown when whole-game analysis can't run because the browser engine is
+// unavailable (page not cross-origin isolated). Analysis is browser-only.
+const BROWSER_ENGINE_UNAVAILABLE =
+  "Browser engine unavailable — open in a cross-origin-isolated browser to analyze locally";
 
 const boards = {};
 
@@ -2326,8 +2335,11 @@ async function loadDemoAndAnalyze() {
 }
 
 async function runAnalysis() {
-  if (!appState.serverEngineEnabled) {
-    setStatus(BROWSER_COMPUTE_SOON);
+  // Phase 2: whole-game analysis runs in the browser. The server only parses
+  // the PGN (/api/analyze/prepare) and classifies + saves the browser-computed
+  // evals (/api/analyze/classify-save) — it never runs an engine.
+  if (!isBrowserEngineAvailable()) {
+    setStatus(BROWSER_ENGINE_UNAVAILABLE);
     return;
   }
   const pgn = document.getElementById("pgn-input").value.trim();
@@ -2343,20 +2355,60 @@ async function runAnalysis() {
   hideAnalysisResults();
   const runButton = document.getElementById("run-analysis");
   runButton.disabled = true;
+
+  let cancelled = false;
+  const jobId = `browser-analysis-${Date.now()}`;
   try {
-    const started = await api("/api/analyze/pgn/start", {
-      method: "POST",
-      body: JSON.stringify({ pgn }),
-    });
-    appState.analysisJobId = started.job_id;
+    const prep = await postJson("/api/analyze/prepare", { pgn });
+    const positions = prep.positions || [];
+    if (!positions.length) throw new Error("No positions to analyze");
+
     jobToast.startJob({
-      id: started.job_id,
+      id: jobId,
       title: "Analyzing game",
       tab: "analyze",
-      total: started.total_plies || started.total || 0,
-      onCancel: () => cancelHeavyJob("/api/analyze/cancel", started.job_id),
+      total: positions.length,
+      onCancel: () => {
+        cancelled = true;
+      },
     });
-    const payload = await pollAnalysisJob(started.job_id);
+
+    const evals = await analyzeGamePositions({
+      positions,
+      depth: prep.depth,
+      multipv: 1,
+      onProgress: (done, total) => {
+        jobToast.updateJob({
+          current: done,
+          total,
+          message: `evaluating ${done}/${total} positions`,
+        });
+      },
+      shouldCancel: () => cancelled,
+    });
+
+    jobToast.updateJob({
+      current: positions.length,
+      total: positions.length,
+      message: "classifying",
+    });
+
+    const payload = await postJson("/api/analyze/classify-save", {
+      game_id: prep.game_id,
+      engine: prep.engine || "stockfish (browser)",
+      depth: prep.depth,
+      positions: positions.map((fen) => {
+        const ev = evals.get(fen) || {};
+        return {
+          fen,
+          score_cp: ev.score_cp ?? null,
+          mate_in: ev.mate_in ?? null,
+          best_move_uci: ev.best_move_uci ?? null,
+          pv: ev.pv || [],
+        };
+      }),
+    });
+
     appState.analysis = payload;
     resetAnalysisVariations();
     showAnalysisPly(0);
@@ -2410,30 +2462,6 @@ function revealAnalysisResults() {
       rescaleEvalMarkers();
     });
   });
-}
-
-async function pollAnalysisJob(jobId) {
-  while (true) {
-    const status = await api(`/api/analyze/status?job_id=${encodeURIComponent(jobId)}`);
-    jobToast.updateJob({
-      current: status.current_ply || status.current || 0,
-      total: status.total_plies || status.total || 0,
-      message: status.message || status.status,
-    });
-    if (status.status === "completed") {
-      if (!status.result) throw new Error("Analysis completed without a result");
-      return status.result;
-    }
-    if (status.status === "cancelled") {
-      const err = new Error(status.message || "Analysis stopped");
-      err.cancelled = true;
-      throw err;
-    }
-    if (status.status === "failed") {
-      throw new Error(status.error || "Analysis failed");
-    }
-    await sleep(500);
-  }
 }
 
 function sleep(ms) {
@@ -4227,36 +4255,45 @@ async function loadSettings() {
   }
 }
 
-// Gate compute actions that have no browser implementation yet. In the public
-// build (server engine disabled) full-game Analyze and Build → Generate would
-// hit a 403, so disable those buttons and explain instead of surfacing a raw
-// error. Single-position engine analysis already runs in the browser and is
-// left untouched. No-op for admin builds where the server engine is enabled.
-function applyServerEngineGating() {
-  const enabled = !!appState.serverEngineEnabled;
-  const gated = [
-    document.getElementById("run-analysis"),
-    document.getElementById("build-generate-node"),
-  ];
-  for (const button of gated) {
-    if (!button) continue;
-    button.disabled = !enabled;
-    button.classList.toggle("is-coming-soon", !enabled);
-    if (!enabled) {
-      if (!button.dataset.enabledTitle) {
-        button.dataset.enabledTitle = button.getAttribute("title") || "";
-      }
-      button.setAttribute("title", BROWSER_COMPUTE_SOON);
-      button.setAttribute("aria-disabled", "true");
+// Apply one button's gated state: disable + greyed style + explanatory title,
+// or restore its original title when enabled.
+function setButtonGated(button, gated, message) {
+  if (!button) return;
+  button.disabled = gated;
+  button.classList.toggle("is-coming-soon", gated);
+  if (gated) {
+    if (!button.dataset.enabledTitle) {
+      button.dataset.enabledTitle = button.getAttribute("title") || "";
+    }
+    button.setAttribute("title", message);
+    button.setAttribute("aria-disabled", "true");
+  } else {
+    button.removeAttribute("aria-disabled");
+    if (button.dataset.enabledTitle) {
+      button.setAttribute("title", button.dataset.enabledTitle);
     } else {
-      button.removeAttribute("aria-disabled");
-      if (button.dataset.enabledTitle) {
-        button.setAttribute("title", button.dataset.enabledTitle);
-      } else {
-        button.removeAttribute("title");
-      }
+      button.removeAttribute("title");
     }
   }
+}
+
+// Gate compute actions by where the compute can actually run.
+//   - Analyze (whole-game): runs in the BROWSER (Phase 2). Enabled whenever the
+//     browser engine is available (cross-origin isolated); disabled with an
+//     actionable message otherwise. Independent of the server engine.
+//   - Build → Generate: still server/Maia only (Phase 3 will port it to the
+//     browser). Gated on the server engine flag with a "coming soon" message.
+function applyServerEngineGating() {
+  setButtonGated(
+    document.getElementById("run-analysis"),
+    !isBrowserEngineAvailable(),
+    BROWSER_ENGINE_UNAVAILABLE,
+  );
+  setButtonGated(
+    document.getElementById("build-generate-node"),
+    !appState.serverEngineEnabled,
+    BROWSER_COMPUTE_SOON,
+  );
 }
 
 function renderSettings(payload) {
