@@ -28,6 +28,13 @@ behind `PREPFORGE_SERVER_ENGINE_ENABLED` (**default off** → 403). Any mention 
 - Maia runtime: choose fastest available backend at runtime:
   - try WebGPU when available and stable,
   - otherwise use ORT Web WASM/SIMD/threaded.
+- Maia artifacts: do **not** use one int8-for-all. Per-backend selection by the
+  provider. **Phase 3a (2026-06-04):** int8 is overturned — behavioral parity
+  shows int8 (even per-channel) flips Build Generate's 10%/30% branch thresholds,
+  so it's experimental opt-in only. Current plan ships **`maia3-fp16.onnx` (44 MB)
+  for both WebGPU and WASM**, but this is **PROVISIONAL** — decided on the Python
+  CPU EP; Phase 3b must confirm fp16 loads + performs on `onnxruntime-web` WASM
+  (where fp16 may be slower/heavier than fp32) and WebGPU before it's final.
 - Tenancy: in scope. Public launch requires per-user isolation + auth.
 - Asset hosting: self-host wasm/nnue/onnx.
 - Licensing: deferred for prototype; must be reviewed before public release.
@@ -279,33 +286,214 @@ Later optimization:
 
 Move human-like move prediction to browser.
 
-Tasks:
-- Self-host `maia3_simplified.onnx`.
-- Add `onnxruntime-web`.
-- Add Maia worker.
-- Add IndexedDB model cache.
-- Add download/progress UX.
-- Add `Maia3Provider`.
-- Implement/port:
-  - board preprocessing
-  - legal move mask
-  - move index mapping
-  - policy decoding
-  - value decoding
-- Wire Build human candidate generation to browser Maia3.
+### Re-scope (2026-06-04, after peer review)
+
+A peer review surfaced four method-level problems in the original Phase-3 sketch.
+All four were checked against the code and are **valid**; Phase 3 is restructured
+accordingly. The original sketch (one int8 model + "wire Build to browser Maia")
+is replaced by the sub-phases below.
+
+Verified facts (code citations):
+- **Model graph** (`maia3/models.py:351-399`): one forward
+  `model(tokens, self_elos, oppo_elos)` → `logits_move (B,4352=4096+256 promo)`,
+  `logits_value (B,3 WDL)`, `logits_ponder (B,1)`. Inputs: `tokens`
+  `(B,64,12*history[+3 time])`, `self_elos (B,)`, `oppo_elos (B,)`.
+- **Two inference shapes** (`services/maia.py`): `predictions()` runs ONE forward
+  and reads policy only. `move_assessment()` runs TWO forwards — policy on the
+  current position, then **value on the after-move tokens with self/oppo Elo
+  swapped, WDL inverted back to the mover** (`maia.py:169-181`). Brilliancy uses
+  the second shape; it is not a free by-product of `predictions()`.
+- **Generation is a server-side recursion** (`opening_builder.py:_expand`,
+  228-330+): it alternates Stockfish multipv candidates (`_engine_candidates`,
+  multipv=count, 587-594) on our turn and `maia.predictions()` on the opponent's
+  turn, **creating repertoire nodes during the recursion**. Moving only the Maia
+  call to the browser cannot complete generation while the server computes nothing.
+- **Bare-FEN parity** (`maia.py:99,143`): both adapter paths call
+  `engine._reset_history()` and feed only the current board (tiled), so they do
+  not use real ancestor history today. Browser parity = same bare-FEN behavior;
+  but repertoire nodes *do* have ancestor moves, so the input contract must
+  reserve real history for later.
+- **RMSNorm export risk** (`maia3/models.py:4,197`, `model_registry.py:44`): the
+  net uses `torch.nn.RMSNorm` with `use_rms_norm: True`; ONNX export of that op is
+  torch/opset-version-sensitive — hence the monkeypatch, which must be pinned and
+  asserted.
+
+### Phase 3a — ONNX export pipeline (artifacts + parity + manifest)
+
+**Status (2026-06-04, rev. after 2nd peer review) — implemented & green;
+`scripts/export_maia3_onnx.py`.**
+- Loads `UofTCSSLab/Maia3-23M` via the live adapter, CPU, eval.
+- RMSNorm monkeypatch (`torch.nn.RMSNorm.forward` → functional rms); asserts the
+  module count — **default `--expect-rms-norm 16`** (was None → now fails by
+  default on structural drift; `-1` disables). **Confirmed exactly 16**
+  (`transformer.layers.0..7.norm1/norm2`), names in the manifest.
+- **Legacy TorchScript exporter (`dynamo=False`)** — the torch-2.12 default dynamo
+  path needs `onnxscript`, prints a `✅` that crashes Windows `cp950`, and its
+  graph **fails ORT quantization** (opset conversion + symbolic shape inference).
+- **fp16 now works (44 MB)** and serves **both backends**. The
+  `onnxconverter-common` 1.16 fp16 path left a mistyped Cast (`/model/Cast_1`: the
+  int64→float Elo cast feeding `Div_1`); fix = neutralize its buggy
+  `remove_unnecessary_cast_node` cleanup + keep the Elo/RMSNorm scalar math in
+  fp32 via `op_block_list` (the size win is the MatMul/Gemm/Einsum weights).
+- **int8 is DEMOTED to experimental opt-in (`--int8`), NOT shipped by default.**
+  Parity proved per-tensor AND per-channel int8 shift the policy head enough to
+  **flip Build Generate's 10%/30% branch thresholds** (`f8c5` crosses 30%, `f2f4`
+  crosses 10%) — int8 Δprob ≈ 0.017. So the review's "int8 for WASM" assumption is
+  overturned: **fp16 serves WASM too.** int8 never gates the build.
+- **Behavioral parity vs the live `Maia3Adapter`** (not the raw torch wrapper)
+  over 5 curated probes (start, white-to-move, black-to-move, promotion,
+  castling): legal-masked policy, **top-1 move**, **10%/30% kept-move SETS**, and
+  the **`move_assessment` after-move value path**. Results (tol 2e-2):
+  **fp32 Δprob 2e-6**, **fp16 Δprob 3.4e-3 / Δassess 1.7e-3, top-1 OK, probe
+  thresholds OK**.
+- **fp16 is NOT claimed "threshold-safe."** 5 probes cannot prove safety (a move
+  sitting on a 0.10/0.30 boundary can always flip under fp16's ~3.4e-3 delta). The
+  manifest field is `probe_threshold_sets_match` (curated probes only), plus an
+  empirical **`threshold_flip_sweep`** over 200 random positions across Elos:
+  **1 flip / 200 (0.5%)**, max Δprob 3.3e-3. So fp16 has a *low but nonzero*
+  threshold-flip rate vs the fp32 reference — recorded as evidence, not a proof.
+  (Larger near-threshold sweeps on real repertoire positions are a follow-up.)
+- **Asymmetric-Elo AND after-move value-swap genuinely tested** (the adapter API
+  takes one rating → self==oppo there, so this is graph-level). `raw_asym_check`
+  feeds self=1100 / oppo=2200, and for an applied move builds the **after-move
+  tokens** (`_history_after_move`) and compares ONNX vs torch for: policy
+  (Δ=6e-5), the **value head under BOTH (A,B) and (B,A)** orderings (Δ=2.7e-4),
+  and the **WDL-inverted win-chance** Brilliancy consumes (Δ=1e-3). Also asserts
+  swapping changes both policy (`policy_inputs_distinct`) and value
+  (`value_swap_changes_output`) — both Elo inputs are live and the swap is a real
+  operation, not a no-op, for A≠B. **Distinctness is measured on the ONNX graph
+  itself** (`onnx(.,A,B)` vs `onnx(.,B,A)`, including a dedicated `o_pol_ba` run),
+  not on Torch: a Torch-only check would pass even if the export dropped an Elo
+  input, since a genuine swap delta below the `tol=0.02` ONNX/Torch parity bound
+  would let a swap-blind graph slip through. (Production brilliancy/build pass
+  self==oppo, so the swap is a numeric no-op there; the graph supports + is
+  verified for asymmetry.)
+- **Atomic output via content-addressed filenames.** Artifacts are staged in a
+  temp dir **inside** `out_dir` (same filesystem → promotion is an `os.replace`
+  rename, never a cross-drive copy+delete). On gating success each artifact is
+  renamed to `maia3-<label>-<sha12>.onnx` (a new build never overwrites a live
+  file), then the **manifest is `os.replace`d as the single atomic commit point**
+  that switches which files the app loads. The export path **never deletes** —
+  the swap only guarantees consistency for new readers, while a client holding the
+  prior manifest may not have started downloading its model yet, so deleting it
+  would 404 that fetch. Stale artifacts are reaped only by a **separate standalone
+  reaper**, `scripts/gc_maia3_artifacts.py` — stdlib-only (no torch/chess/maia
+  imports), so it runs in a Maia-free deploy environment. It loads the *current*
+  manifest (never exports, never rewrites it — so it can't leave a just-committed
+  manifest pointing at a file it deleted) and deletes unreferenced content-addressed
+  artifacts older than `--grace-hours` (default 72h), with `--dry-run` to preview.
+  It resolves each kept model's **ONNX external-data references**, so a live model's
+  `.onnx.data` weight blob is never reaped (single-file today, but toolchain drift
+  could reintroduce external data); if any model fails to parse, no `.onnx.data`
+  is touched that pass. **Publish and GC share one exclusive `publish_lock`** over
+  `out_dir` (O_CREAT|O_EXCL lockfile, stale-lock breaking after 30 min): the
+  promotion+manifest-swap runs under it and so does the whole GC pass, so a
+  concurrent reaper can't read the old manifest, have publish swap a new one, then
+  delete a file the new manifest references (the stat/replace/unlink interleaving).
+  The temp manifest is written inside the staging dir (not `out_dir`), so the
+  single `try/finally` wrapping export+verify+promote removes it on any crash — the
+  staging dir is always cleaned even if export/fp16/int8 throws. Verified: forced
+  failure → exit 1, manifest + artifacts byte-identical, no stage/tmp leak; GC
+  fixture-tested (referenced kept, within-grace kept, unreferenced+aged deleted,
+  parse-failure protects `.onnx.data`, no-manifest refuses, lock mutual-exclusion +
+  stale-break).
+- Artifacts (git-ignored; CDN-host; only the manifest is tracked):
+  `maia3-fp16-<sha>.onnx` (44 MB, both backends), `maia3-fp32-<sha>.onnx` (87 MB,
+  reference + WebGPU fallback). Both **single-file** (fp32 embeds weights — 0
+  external refs; the earlier "external-data" note was wrong).
+- `maia3.manifest.json` records `source_revision` (HF commit `51a0145a…`),
+  content-addressed filename + SHA-256 per artifact, opset 17, pinned versions,
+  per-artifact parity, the flip sweep, the asym/value-swap result, and
+  `verification_backend` (**CPU EP only**). `backend_artifact` (webgpu+wasm →
+  fp16) is marked **`backend_artifact_status: provisional`** — see below.
+
+**Outstanding 3a items (carry into Phase 3b):**
+- [ ] **Browser validation — the backend map is still PROVISIONAL.** All parity is
+  via the ORT **CPU** EP in Python. fp16-for-both-backends is a CPU-EP decision:
+  on `onnxruntime-web` **WASM**, fp16 may need conversion or lack fast half ops and
+  could be slower/heavier than fp32. Must load `maia3-fp16.onnx` in a Chromium
+  worker on **both** the WASM and WebGPU EPs and measure load, numerics, memory,
+  and latency before finalizing the map. Opens **Phase 3b** (needs the worker).
+- [ ] Larger threshold-flip sweep on real repertoire/game positions, deliberately
+  covering near-boundary moves, before relying on fp16 for Build Generate parity.
+- [ ] Pin the export toolchain in a requirements/lock file (currently only
+  recorded in the manifest).
+
+Goal: reproducible export producing the browser artifact, with behavioral parity.
+
+- `scripts/export_maia3_onnx.py`:
+  - Load the same checkpoint the server uses (`UofTCSSLab/Maia3-23M`) via the
+    maia3 package, eval mode, CPU.
+  - Apply the RMSNorm export monkeypatch; **assert the exact number of patched
+    modules and log their qualified names** — fail loudly if the count drifts
+    (a silent miss → a wrong export).
+  - Export an fp32 base graph: 3 inputs (`tokens`,`self_elos`,`oppo_elos`) →
+    `logits_move`,`logits_value` (`logits_ponder` dropped).
+  - Derive `maia3-fp16.onnx` (the shipped artifact, both backends). int8 is an
+    opt-in experiment only (see Status: not threshold-safe).
+  - Behavioral parity (not raw graph numerics) vs the **live `Maia3Adapter`**:
+    legal-masked policy, top-1 move, 10%/30% kept-move sets, and the
+    `move_assessment` after-move value path.
+  - Emit `maia3.manifest.json`: source repo + **revision/commit hash**, SHA-256
+    per artifact, opset, patched-module count, pinned versions, per-artifact
+    parity. (Implemented — see Status above.)
+- The Maia provider loads `backend_artifact[webgpu|wasm]` from the manifest
+  (both → fp16 today).
+
+### Phase 3b — Maia3 provider API (two methods, history-ready contract)
+
+`web-src/engine/maia3-provider.js` (+ `maia3-worker.js`, IndexedDB cache):
+- `predictions({ fen, historyFens?, rating }) -> [{ move_uci, probability, rank }]`
+  — one forward, policy only. Port board tokenization, legal-move mask, and the
+  side-to-move (mirrored) index→move mapping (the `_move_from_index` frame: a
+  naive softmax+dict lookup returns ~0 for black-to-move — see
+  `brilliant-search-cap` memory).
+- `moveAssessment({ fen, moveUci, historyFens?, rating }) -> { humanProbability, winChanceAfter }`
+  — **separate** method: builds after-move tokens, **swaps self/oppo Elo**,
+  inverts WDL to the mover. Support **batch** (`moveAssessmentBatch`) so a node's
+  candidate set is one padded forward, not N.
+- `historyFens` is **accepted but ignored for now** (bare-FEN parity); reserving
+  it avoids an input-contract rewrite when we later feed real ancestor history.
+
+### Phase 3c — Build Generate architecture (browser recursion → tree plan)
+
+The server must never compute, so the recursion + node creation moves to the
+browser; the server only validates and persists. Chosen model: **browser runs
+the whole generation, then submits a tree-mutation plan**.
+
+- Port the `_expand` recursion to JS (or reuse the existing **pure** planner
+  `opening_generation.generate_from_position`, which already returns a plan of
+  `planned_add`/`updated` changes without persistence — the natural seam).
+- Browser drives both engines locally: Stockfish multipv candidates (our turn) +
+  Maia `predictions` (opponent's turn), building an in-memory subtree with the
+  same thresholds (10% mainline / 30% branch).
+- New server endpoint `POST /api/build/generate/apply-plan` (ungated, no compute):
+  takes `{ repertoire_id, root_node_id, plan }`, **re-validates move legality and
+  parentage server-side**, then mutates + saves the repertoire. Old
+  `/api/build/generate[/start|/status|/cancel]` stay for admin mode only.
+- Acceptance: Build → Generate completes end-to-end with
+  `PREPFORGE_SERVER_ENGINE_ENABLED=0`.
+
+### Phase 3d — Brilliancy in the browser (independent feature)
+
+Treat as its own deliverable, not optional wiring.
+- Use `moveAssessmentBatch` over the candidates the analyzer needs.
+- Reproduce `BrilliantAnalyzer` thresholds (unintuitive ≤0.10, reveal ≥0.30,
+  sound) — port the classifier or send `(humanProbability, winChanceAfter)` +
+  Stockfish evals to a server `classify` endpoint (no compute) that reuses the
+  existing Python `BrilliantAnalyzer`.
+- Acceptance: the Gold Coin game (`brilliant-search-cap` memory) still flags
+  exactly `23...Qg3` in the browser path.
+
+### Shared tasks
+- Add `onnxruntime-web`, Maia worker, IndexedDB model cache, download/progress UX.
 - No server fallback; browser Maia3 only (server Maia stays admin-mode only).
 
-Acceptance:
-- Build can produce human-like candidate moves with server Maia disabled.
-- First model download shows progress.
-- Subsequent loads use cached model.
-- Works on at least one Chromium browser.
-
-Risk:
-- ONNX input/output contract mismatch.
-- 45MB first download.
-- browser backend differences.
-- mobile performance.
+### Risk
+- ONNX input/output contract mismatch (mitigated by 3a golden parity vs live adapter).
+- WebGPU quantized-op support (mitigated by shipping fp16 for WebGPU).
+- 25–45 MB first download; backend differences; mobile performance.
+- RMSNorm export drift across torch versions (mitigated by pinning + module-count assert).
 
 ---
 

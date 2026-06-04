@@ -1,0 +1,110 @@
+{
+  "generated_utc": "2026-06-04T14:15:26.781433+00:00",
+  "model": "maia3-23m",
+  "source_repo": "UofTCSSLab/Maia3-23M",
+  "source_revision": "51a0145a8178046f7de23119160b136672deeb2b",
+  "opset": 17,
+  "history": 8,
+  "include_time_info": false,
+  "token_dim": 97,
+  "rms_norm_module_count": 16,
+  "rms_norm_modules": [
+    "transformer.layers.0.norm1",
+    "transformer.layers.0.norm2",
+    "transformer.layers.1.norm1",
+    "transformer.layers.1.norm2",
+    "transformer.layers.2.norm1",
+    "transformer.layers.2.norm2",
+    "transformer.layers.3.norm1",
+    "transformer.layers.3.norm2",
+    "transformer.layers.4.norm1",
+    "transformer.layers.4.norm2",
+    "transformer.layers.5.norm1",
+    "transformer.layers.5.norm2",
+    "transformer.layers.6.norm1",
+    "transformer.layers.6.norm2",
+    "transformer.layers.7.norm1",
+    "transformer.layers.7.norm2"
+  ],
+  "io": {
+    "inputs": [
+      "tokens",
+      "self_elos",
+      "oppo_elos"
+    ],
+    "outputs": [
+      "logits_move",
+      "logits_value"
+    ],
+    "logits_move_dim": 4352,
+    "logits_value_dim": 3
+  },
+  "parity_tolerance": 0.02,
+  "parity": {
+    "fp32": {
+      "max_prob_delta": 2.0265579223632812e-06,
+      "max_assess_delta": 1.430511474609375e-06,
+      "top1_match": true,
+      "probe_threshold_sets_match": true,
+      "assess_within_tol": true,
+      "curated_probes_pass": true,
+      "gates_build": true
+    },
+    "fp16": {
+      "max_prob_delta": 0.003430962562561035,
+      "max_assess_delta": 0.0016843974590301514,
+      "top1_match": true,
+      "probe_threshold_sets_match": true,
+      "assess_within_tol": true,
+      "curated_probes_pass": true,
+      "gates_build": true
+    }
+  },
+  "threshold_flip_sweep": {
+    "positions": 200,
+    "threshold_flips": 1,
+    "flip_rate": 0.005,
+    "max_prob_delta": 0.0033261775970458984,
+    "flip_examples": [
+      {
+        "fen": "r1bqk1nr/ppppp2p/2n5/5pp1/3P1b2/2N3PP/PPP1PP1R/1RBQKBN1 w kq - 3 7",
+        "elo": 1100
+      }
+    ]
+  },
+  "asymmetric_elo": {
+    "elo_a": 1100,
+    "elo_b": 2200,
+    "policy_onnx_vs_torch_max_delta": 6.247125566005707e-05,
+    "value_onnx_vs_torch_max_delta": 0.00027094781398773193,
+    "winchance_onnx_vs_torch_max_delta": 0.0010000000000000009,
+    "policy_inputs_distinct": true,
+    "value_swap_changes_output": true
+  },
+  "verification_backend": "onnxruntime CPUExecutionProvider (Python). NOT yet verified on onnxruntime-web WASM/WebGPU \u2014 see Phase 3b.",
+  "versions": {
+    "torch": "2.12.0+cpu",
+    "onnx": "1.21.0",
+    "onnxruntime": "1.26.0",
+    "onnxconverter-common": "1.16.0",
+    "maia3": "0.1.0"
+  },
+  "artifacts": {
+    "fp32": {
+      "file": "maia3-fp32-052a3aff15c6.onnx",
+      "bytes": 91183396,
+      "sha256": "052a3aff15c682d0b95a83b4b65e091c454760f65cc4419aeff83548cef99f03"
+    },
+    "fp16": {
+      "file": "maia3-fp16-eb6611735488.onnx",
+      "bytes": 46417576,
+      "sha256": "eb66117354887c05bab6bdba9d2f48fd3c80a2f15c4baf402dfd8394d07159e5"
+    }
+  },
+  "backend_artifact": {
+    "webgpu": "maia3-fp16-eb6611735488.onnx",
+    "wasm": "maia3-fp16-eb6611735488.onnx"
+  },
+  "backend_artifact_status": "provisional (pending onnxruntime-web validation)",
+  "int8_experimental": false
+}
