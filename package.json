@@ -9,10 +9,12 @@
     "dev": "npm run sync-engine && vite",
     "build": "npm run sync-engine && vite build",
     "build:watch": "npm run sync-engine && vite build --watch",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "devDependencies": {
-    "vite": "^6"
+    "vite": "^6",
+    "vitest": "^4.1.8"
   },
   "dependencies": {
     "chess.js": "^1.4.0",

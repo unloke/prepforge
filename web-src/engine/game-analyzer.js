@@ -19,10 +19,21 @@ class AnalysisCancelled extends Error {
   }
 }
 
+// True when the position has no legal continuation (checkmate, stalemate,
+// insufficient material, threefold, 50-move) — the engine returns only
+// `bestmove` with no depth info for these, so we must not wait on it.
+export function isTerminalPosition(fen) {
+  try {
+    return new Chess(fen).isGameOver();
+  } catch (_) {
+    return false;
+  }
+}
+
 // Decisive evaluation for a position with no engine line (game already over):
 // checkmate-on-board saturates the score for the side that delivered mate;
 // stalemate / dead position is a draw. Keeps every FEN classifiable.
-function terminalEval(fen) {
+export function terminalEval(fen) {
   try {
     const game = new Chess(fen);
     if (game.isCheckmate()) {
@@ -85,6 +96,15 @@ export async function analyzeGamePositions({
     for (let i = 0; i < total; i += 1) {
       if (cancelled()) throw new AnalysisCancelled();
       const fen = positions[i];
+
+      // Game-over positions (e.g. the final fen_after of a checkmating PGN)
+      // produce no engine info — Stockfish just returns `bestmove (none)`. Skip
+      // the engine entirely so we don't block on the per-position timeout.
+      if (isTerminalPosition(fen)) {
+        results.set(fen, terminalEval(fen));
+        if (typeof onProgress === "function") onProgress(i + 1, total);
+        continue;
+      }
 
       // Reuse one worker/session across positions: open the first, update the rest.
       if (!opened) {

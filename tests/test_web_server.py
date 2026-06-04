@@ -410,6 +410,59 @@ def test_browser_analysis_missing_position_eval_errors(tmp_path):
         app.classify_save_payload(game_id=prep["game_id"], positions=positions)
 
 
+@pytest.mark.parametrize(
+    "bad_positions",
+    [
+        None,
+        "not-a-list",
+        {"fen": "x"},          # an object, not a list
+        [123],                 # list of non-objects
+        ["e4"],                # list of strings
+        [{"score_cp": 1}],     # object without a fen
+    ],
+)
+def test_classify_save_rejects_malformed_positions(tmp_path, bad_positions):
+    # Malformed `positions` must be a clean 400 (ValueError), never a 500.
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    prep = app.prepare_analysis_payload("1. e4 e5 *")
+    with pytest.raises(ValueError):
+        app.classify_save_payload(game_id=prep["game_id"], positions=bad_positions)
+
+
+def test_http_classify_save_malformed_positions_returns_400(tmp_path):
+    # At the HTTP boundary, malformed input is a 400, not a 500.
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    prep = app.prepare_analysis_payload("1. e4 e5 *")
+    with _running_app_server(app) as base_url:
+        status = _post_status(
+            base_url,
+            "/api/analyze/classify-save",
+            {"game_id": prep["game_id"], "positions": "not-a-list"},
+        )
+        assert status == 400
+
+
+def test_browser_analysis_handles_checkmate_pgn(tmp_path):
+    # A PGN that ends in checkmate puts a terminal (game-over) position in the
+    # positions list. The server must classify + persist it end-to-end (the
+    # browser supplies a decisive eval for that final position).
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    prep = app.prepare_analysis_payload(
+        "1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0"
+    )
+    assert len(prep["moves"]) == 7
+    # The final position (after Qxf7#) is checkmate and must be in positions.
+    assert prep["positions"][-1] == prep["moves"][-1]["fen_after"]
+
+    positions = _seed_browser_evals(prep)
+    # Black is checkmated in the final position → decisive for White.
+    positions[-1]["score_cp"] = 100000
+    payload = app.classify_save_payload(game_id=prep["game_id"], positions=positions)
+    assert len(payload["moves"]) == 7
+    recalled = app.analysis_recall_payload(prep["game_id"])
+    assert len(recalled["moves"]) == 7
+
+
 def test_web_training_demo_accepts_wrong_then_correct_move(tmp_path):
     app = PrepForgeWebApp(
         db_path=tmp_path / "ui.sqlite3",

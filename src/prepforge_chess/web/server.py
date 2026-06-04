@@ -775,11 +775,15 @@ class PrepForgeWebApp:
         """
         if not game_id:
             raise ValueError("game_id is required")
+        if not isinstance(positions, list):
+            raise ValueError("positions must be a list")
         position_map: Dict[str, Dict[str, Any]] = {}
-        for item in positions or []:
+        for item in positions:
+            if not isinstance(item, dict):
+                raise ValueError("each position must be an object")
             fen = item.get("fen")
-            if not fen:
-                raise ValueError("each position requires a fen")
+            if not fen or not isinstance(fen, str):
+                raise ValueError("each position requires a fen string")
             position_map[fen] = item
         if not position_map:
             raise ValueError("positions are required")
@@ -2146,7 +2150,9 @@ def _handler_for_app(app: PrepForgeWebApp):
                             game_id=payload.get("game_id", ""),
                             engine=str(payload.get("engine", "stockfish (browser)")),
                             depth=payload.get("depth"),
-                            positions=list(payload.get("positions", [])),
+                            # Pass the raw value through; classify_save_payload
+                            # validates its shape and raises ValueError (→ 400).
+                            positions=payload.get("positions"),
                         )
                     )
                     return
