@@ -4,6 +4,13 @@ import {
   isBrowserEngineAvailable,
 } from "./engine/stockfish-provider.js";
 import { analyzeGamePositions } from "./engine/game-analyzer.js";
+import { runBrowserBuildGenerate } from "./engine/build-generate-runner.js";
+import {
+  getSharedMaia3Provider,
+  disposeSharedMaia3Provider,
+  resolveModelBase,
+} from "./engine/maia3-provider.js";
+import { getCachedWeights, clearWeightCache } from "./engine/maia3-weight-cache.js";
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const DEMO_PGN = `[Event "PrepForge UI Demo"]
@@ -236,7 +243,16 @@ const appState = {
   buildCurrentNodeId: null,
   trainingRepertoireId: null,
   training: null,
+  // The LIVE Lichess token's username (drives latest-game fetch / replay). Null when
+  // the token is absent/expired even if still signed in.
   lichessUsername: null,
+  // The account's stable Lichess username from auth status — persists across a token
+  // drop and is what the user-name button shows. Null only for a true guest.
+  accountUsername: null,
+  // Whether this browser's session is bound to a real account (vs a fresh guest). The
+  // app is pure Lichess-OAuth, so signed-in ⇒ a username exists. Guests see a single
+  // "Connect Lichess" action; signed-in users get the user-name button → Sign out.
+  signedIn: false,
   replayResults: null,
   pieceStyle: "berlin",
   // Whether the server exposes engine/Maia compute (admin builds only). The
@@ -248,14 +264,20 @@ const appState = {
 
 const LICHESS_KEY = "prepforge.lichess_username";
 
-// Shown when a not-yet-browser-ported compute action is gated off in the public
-// build. Phase 3 will replace this stub with in-browser generation (Maia).
-const BROWSER_COMPUTE_SOON = "Local browser analysis coming soon";
-
-// Shown when whole-game analysis can't run because the browser engine is
-// unavailable (page not cross-origin isolated). Analysis is browser-only.
+// Shown when a browser-only compute action (whole-game Analyze, Build → Generate)
+// can't run because the browser engine is unavailable (page not cross-origin
+// isolated). Both run browser-only — there is no server fallback.
 const BROWSER_ENGINE_UNAVAILABLE =
-  "Browser engine unavailable — open in a cross-origin-isolated browser to analyze locally";
+  "Browser engine unavailable — open in a cross-origin-isolated browser to run engines locally";
+
+// Browser Build → Generate (Phase 3c) ceilings. Deliberately conservative: the
+// recursion runs on the USER's machine (deep × branches is slow) and a large tree
+// risks exceeding the server apply-plan caps (≤2000 changes / depth ≤64). The
+// modal enforces these; GEN_PLAN_CHANGES_SOFT_CAP mirrors the server MAX_PLAN_CHANGES
+// so we fail with an actionable message instead of a raw 400 after the work is done.
+const GEN_MAX_PLY_DEPTH = 12;
+const GEN_MAX_BRANCHES = 3;
+const GEN_PLAN_CHANGES_SOFT_CAP = 2000;
 
 const boards = {};
 
@@ -410,9 +432,33 @@ class Toast {
     }
   }
 
+  // Make the job non-cancellable from here on and remove the Stop affordance.
+  // Used once a result is committed to a server save: aborting the fetch can't
+  // un-persist an atomic apply, so the UI must stop implying a cancel that
+  // wouldn't hold. No-op if the user already requested cancel.
+  lockCancel(message) {
+    this._dropStop();
+    if (message && this.messageEl && !this.cancelRequested) {
+      this.messageEl.textContent = message;
+    }
+  }
+
+  // Remove the Stop affordance and detach the cancel handler. Used both by the
+  // saving-phase lock and by every terminal state below: once a job is done/failed/
+  // stopped, cancellation has no meaning, so the finished card must not keep a Stop
+  // button that visually implies it can still be cancelled.
+  _dropStop() {
+    this.onCancel = null;
+    if (this.stopBtn) {
+      this.stopBtn.remove();
+      this.stopBtn = null;
+    }
+  }
+
   complete({ title, message, onClick } = {}) {
     this.state = "done";
     this.minimized = false;
+    this._dropStop();
     this.onClick = typeof onClick === "function" ? onClick : null;
     this._applyState();
     if (title) this.titleEl.textContent = title;
@@ -424,6 +470,7 @@ class Toast {
 
   fail(message) {
     this.state = "failed";
+    this._dropStop();
     this._applyState();
     this.titleEl.textContent = "Job failed";
     this.messageEl.textContent = message || "Unknown error";
@@ -434,6 +481,7 @@ class Toast {
   cancelled(message) {
     this.state = "cancelled";
     this.minimized = false;
+    this._dropStop();
     this._applyState();
     this.titleEl.textContent = "Stopped";
     if (message) this.messageEl.textContent = message;
@@ -597,6 +645,11 @@ class ToastStack {
 
   cancelJob(message) {
     if (this.active) this.active.cancelled(message);
+  }
+
+  // Disable cancellation on the active job (remove its Stop button).
+  lockJob(message) {
+    if (this.active) this.active.lockCancel(message);
   }
 
   _forget(toast) {
@@ -1400,10 +1453,13 @@ async function api(path, options = {}) {
   return payload;
 }
 
-function postJson(path, body) {
+function postJson(path, body, options = {}) {
+  // `options` (e.g. an AbortSignal) is forwarded to fetch via api(); it spreads
+  // last so a caller can pass `signal` for a cancellable request.
   return api(path, {
     method: "POST",
     body: JSON.stringify(body || {}),
+    ...options,
   });
 }
 
@@ -1445,6 +1501,10 @@ function activeBoardController() {
 }
 
 function switchView(name) {
+  appState.currentView = name;
+  // Navigating is user activity; if the Lichess watch is running, switching to
+  // Analyze (where a fresh game matters most) tightens the poll cadence briefly.
+  noteLichessActivity();
   document.querySelectorAll(".tab").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.view === name);
   });
@@ -1684,24 +1744,132 @@ function setLichessUsername(username) {
       localStorage.removeItem(LICHESS_KEY);
     } catch (_) { /* ignore */ }
   }
-  renderLichessChip();
+  renderAccountChip();
   syncReplayControls();
 }
 
-function renderLichessChip() {
-  const chip = document.getElementById("lichess-chip");
-  const label = document.getElementById("lichess-label");
+// The single user-name button in the topbar. The app is pure Lichess-OAuth, so there's
+// no meaningful difference between "sign out of PrepForge" and "disconnect Lichess" — both
+// live behind this one button as a single Sign out action. A guest instead sees a plain
+// "Connect Lichess" action that goes straight to OAuth.
+function renderAccountChip() {
+  const chip = document.getElementById("account-chip");
+  const label = document.getElementById("account-label");
   if (!chip || !label) return;
-  const u = appState.lichessUsername;
-  if (u) {
+  const name = appState.accountUsername || appState.lichessUsername;
+  if (appState.signedIn) {
     chip.classList.add("is-connected");
-    label.textContent = u;
-    chip.title = `Lichess: connected as ${u} (click to change)`;
+    label.textContent = name || "Account";
+    chip.setAttribute("aria-haspopup", "menu");
+    chip.title = `Signed in as ${name || "your account"}`;
   } else {
     chip.classList.remove("is-connected");
     label.textContent = "Connect Lichess";
+    // A guest chip is a single action, not a menu — drop the popup affordance.
+    chip.removeAttribute("aria-haspopup");
+    chip.setAttribute("aria-expanded", "false");
     chip.title = "Connect a Lichess account";
   }
+}
+
+// Guest → the chip is a single Connect action (straight to OAuth). Signed in → the
+// chip toggles the account menu.
+function onAccountChipClick() {
+  if (!appState.signedIn) {
+    startLichessOAuth();
+    return;
+  }
+  toggleAccountMenu();
+}
+
+function openAccountMenu() {
+  const chip = document.getElementById("account-chip");
+  const menu = document.getElementById("account-menu");
+  if (!chip || !menu) return;
+  const name = appState.accountUsername || appState.lichessUsername || "your account";
+  const items = [
+    `<div class="context-section">Signed in as ${escapeHtml(name)}</div>`,
+    `<button type="button" role="menuitem" data-action="signout">Sign out</button>`,
+  ];
+  menu.innerHTML = items.join("");
+  menu.hidden = false;
+  chip.setAttribute("aria-expanded", "true");
+  // Drop the menu under the chip, right-aligned to it and clamped to the viewport.
+  const cr = chip.getBoundingClientRect();
+  const rect = menu.getBoundingClientRect();
+  const left = Math.max(8, Math.min(cr.right - rect.width, window.innerWidth - rect.width - 8));
+  const top = Math.max(8, Math.min(cr.bottom + 6, window.innerHeight - rect.height - 8));
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+  menu.querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => handleAccountMenuAction(button.dataset.action));
+  });
+}
+
+function closeAccountMenu() {
+  const menu = document.getElementById("account-menu");
+  if (menu) menu.hidden = true;
+  const chip = document.getElementById("account-chip");
+  if (chip) chip.setAttribute("aria-expanded", "false");
+}
+
+function toggleAccountMenu() {
+  const menu = document.getElementById("account-menu");
+  if (menu && !menu.hidden) closeAccountMenu();
+  else openAccountMenu();
+}
+
+async function handleAccountMenuAction(action) {
+  closeAccountMenu();
+  if (action === "signout") {
+    await signOut();
+  }
+}
+
+// Ask the server whether this browser's session is a real account or a guest, and
+// capture the account's stable username for the user-name button.
+async function refreshAuthStatus() {
+  try {
+    const status = await api("/api/auth/status");
+    appState.signedIn = !!status.signed_in;
+    appState.accountUsername = status.username || null;
+  } catch (_) {
+    appState.signedIn = false;
+    appState.accountUsername = null;
+  }
+  renderAccountChip();
+}
+
+// Sign out of PrepForge on this browser: rotate the session to a fresh guest so the
+// account's repertoires/games are no longer visible here. The new guest session also
+// has no Lichess token, so this is the single "log out" action for the app.
+async function signOut() {
+  const confirmed = await showConfirmModal({
+    title: "Sign out?",
+    body:
+      "Signs you out on this browser. Your saved repertoires and games stay on your " +
+      "account and return when you sign back in with Lichess.",
+    okLabel: "Sign out",
+    cancelLabel: "Stay signed in",
+    tone: "danger",
+  });
+  if (!confirmed) return;
+  try {
+    await postJson("/api/auth/signout", {});
+  } catch (_) {
+    // The session was NOT rotated server-side; reloading would drop the user right
+    // back into the same account while flashing "Signed out". Stay put and report.
+    setStatus("Sign out failed — you are still signed in. Try again.");
+    return;
+  }
+  try {
+    localStorage.removeItem(LICHESS_KEY);
+  } catch (_) {
+    /* ignore */
+  }
+  setStatus("Signed out");
+  // Reload so every view reflects the fresh guest session cleanly.
+  window.location.reload();
 }
 
 function syncReplayControls() {
@@ -1715,31 +1883,7 @@ function syncReplayControls() {
   if (btn) btn.disabled = !appState.lichessUsername;
 }
 
-// Clicking the chip connects via OAuth when signed out, or disconnects when
-// signed in.
-async function promptLichessConnect() {
-  if (appState.lichessUsername) {
-    const confirmed = await showConfirmModal({
-      title: "Disconnect Lichess?",
-      body: `You are connected as ${appState.lichessUsername}. Disconnecting stops latest-game fetch and replay comparison until you connect again.`,
-      okLabel: "Disconnect",
-      cancelLabel: "Stay connected",
-      tone: "danger",
-    });
-    if (!confirmed) return;
-    try {
-      await postJson("/api/lichess/disconnect", {});
-    } catch (_) {
-      /* ignore */
-    }
-    setLichessUsername("");
-    stopLichessGameWatch();
-    setStatus("Lichess disconnected");
-    return;
-  }
-  startLichessOAuth();
-}
-
+// Drop the Lichess OAuth token. This is NOT a sign-out: the browser stays bound to
 // Pull the server's stored connection state (the source of truth with OAuth).
 async function refreshLichessStatus() {
   try {
@@ -1747,7 +1891,7 @@ async function refreshLichessStatus() {
     setLichessUsername(status.connected ? status.username : "");
     if (status.connected) startLichessGameWatch();
   } catch (_) {
-    renderLichessChip();
+    renderAccountChip();
   }
 }
 
@@ -1769,6 +1913,8 @@ function startLichessOAuth() {
     window.removeEventListener("message", onMessage);
     if (event.data.ok) {
       refreshLichessStatus();
+      // Login rebinds the session to the account profile → now signed in.
+      refreshAuthStatus();
       setStatus(`Lichess: ${event.data.detail}`);
     } else {
       setStatus(`Lichess sign-in failed: ${event.data.detail}`);
@@ -1784,6 +1930,7 @@ function startLichessOAuth() {
         window.clearInterval(poll);
         window.removeEventListener("message", onMessage);
         setLichessUsername(status.username);
+        refreshAuthStatus();
         startLichessGameWatch();
         setStatus(`Lichess: ${status.username}`);
         return;
@@ -1795,33 +1942,126 @@ function startLichessOAuth() {
   }, 1500);
 }
 
-// Background watch: while connected, periodically check whether a newer game
-// has appeared and, if so, surface the "you just finished a game" widget. The
-// 90s cadence stays inside the prompt-cache window and is plenty for "just".
+// Background watch for "you just finished a game". Design goals (vs the old
+// "latest id != last_seen → pop", which fired for ANY historical game on a fresh
+// app load):
+//   1. Silent baseline: on watch start we record the current latest game id
+//      WITHOUT popping, so opening the app never resurfaces an old game.
+//   2. Recency gate: only auto-pop a game whose true FINISH time (Lichess
+//      lastMoveAt) is within LICHESS_RECENT_WINDOW_MS, so a stale baseline can
+//      never surface an hours-old game. Strict: a game with no usable timestamp
+//      is never auto-popped — it gets a non-intrusive status hint instead.
+//   3. Adaptive cadence: short polling right after activity (focus, tab visible,
+//      navigation) or on Analyze; back off to a low idle frequency otherwise —
+//      instead of a fixed 90s timer that runs even on a hidden tab.
+const LICHESS_RECENT_WINDOW_MS = 6 * 60 * 60 * 1000; // 6h: "recently finished"
+const LICHESS_POLL_ACTIVE_MS = 25 * 1000; // short cadence while active / on Analyze
+const LICHESS_POLL_IDLE_MS = 3 * 60 * 1000; // idle back-off
+const LICHESS_ACTIVE_WINDOW_MS = 3 * 60 * 1000; // how long activity keeps us "active"
+
 function startLichessGameWatch() {
   stopLichessGameWatch();
-  appState.lichessWatch = window.setInterval(checkLatestLichessGame, 90000);
-  window.setTimeout(checkLatestLichessGame, 4000);
+  appState.lichessWatchStartedAt = Date.now();
+  appState.lichessBaselineId = null;
+  appState.lichessLastActivity = Date.now();
+  // Re-check promptly when the user returns to the tab/window (and treat it as
+  // activity so the cadence tightens). Bound once; refs kept for clean removal.
+  appState.lichessOnFocus = () => {
+    noteLichessActivity();
+    checkLatestLichessGame();
+  };
+  appState.lichessOnVisible = () => {
+    if (document.visibilityState === "visible") appState.lichessOnFocus();
+  };
+  window.addEventListener("focus", appState.lichessOnFocus);
+  document.addEventListener("visibilitychange", appState.lichessOnVisible);
+  // Establish the silent baseline shortly after connecting, then start polling.
+  window.setTimeout(async () => {
+    await checkLatestLichessGame({ baselineOnly: true });
+    scheduleLichessPoll();
+  }, 5000);
 }
 
 function stopLichessGameWatch() {
-  if (appState.lichessWatch) {
-    window.clearInterval(appState.lichessWatch);
-    appState.lichessWatch = null;
+  if (appState.lichessPollTimer) {
+    window.clearTimeout(appState.lichessPollTimer);
+    appState.lichessPollTimer = null;
   }
+  if (appState.lichessOnFocus) {
+    window.removeEventListener("focus", appState.lichessOnFocus);
+    appState.lichessOnFocus = null;
+  }
+  if (appState.lichessOnVisible) {
+    document.removeEventListener("visibilitychange", appState.lichessOnVisible);
+    appState.lichessOnVisible = null;
+  }
+  appState.lichessBaselineId = null;
 }
 
-async function checkLatestLichessGame() {
+// Record user activity so the poll cadence stays short for a short window after.
+function noteLichessActivity() {
+  appState.lichessLastActivity = Date.now();
+}
+
+// Self-rescheduling poll: short cadence while recently active or on Analyze (where
+// a just-finished game is most relevant), otherwise a low idle frequency. Skips the
+// work entirely while the tab is hidden (the focus/visibility handlers catch up).
+function scheduleLichessPoll() {
+  if (appState.lichessPollTimer) window.clearTimeout(appState.lichessPollTimer);
+  if (!appState.lichessUsername) return;
+  const recentlyActive =
+    Date.now() - (appState.lichessLastActivity || 0) < LICHESS_ACTIVE_WINDOW_MS;
+  const active = recentlyActive || appState.currentView === "analyze";
+  const delay = active ? LICHESS_POLL_ACTIVE_MS : LICHESS_POLL_IDLE_MS;
+  appState.lichessPollTimer = window.setTimeout(async () => {
+    if (document.visibilityState !== "hidden") await checkLatestLichessGame();
+    scheduleLichessPoll();
+  }, delay);
+}
+
+// Tri-state recency: true = finished within the window, false = finished but stale,
+// null = no usable timestamp. We keep null distinct so the caller can degrade to a
+// non-intrusive hint rather than guessing (strict gate — never auto-pop on unknown).
+function finishedRecently(finishedAt) {
+  if (!finishedAt) return null;
+  const t = Date.parse(finishedAt);
+  if (Number.isNaN(t)) return null;
+  return Date.now() - t <= LICHESS_RECENT_WINDOW_MS;
+}
+
+// baselineOnly: record the current latest id without popping (used once at watch
+// start so the pre-existing latest game is never treated as "just finished").
+async function checkLatestLichessGame({ baselineOnly = false } = {}) {
   if (!appState.lichessUsername) return;
   let latest;
   try {
-    // Lightweight headers-only probe — fast, and enough to decide whether to
-    // surface the nudge. The full PGN is fetched only if the user acts on it.
+    // Lightweight NDJSON metadata probe (no move text) — fast, and enough to decide
+    // whether to surface the nudge. The full PGN is fetched only if the user acts on it.
     latest = await api("/api/lichess/latest?light=1");
   } catch (_) {
     return;
   }
-  if (latest.has_game && latest.is_new) showNewGameWidget(latest);
+  if (!latest.has_game) return;
+  if (baselineOnly || appState.lichessBaselineId === null) {
+    // First sighting this session: adopt as baseline, never pop.
+    appState.lichessBaselineId = latest.lichess_id;
+    return;
+  }
+  const isNewerThanBaseline = latest.lichess_id !== appState.lichessBaselineId;
+  // Advance the baseline regardless, so we evaluate each newly-latest game once.
+  appState.lichessBaselineId = latest.lichess_id;
+  if (!isNewerThanBaseline || !latest.is_new) return;
+  const recent = finishedRecently(latest.finished_at);
+  if (recent === true) {
+    showNewGameWidget(latest);
+  } else if (recent === null) {
+    // Passed the baseline + is_new gates but we can't confirm it finished recently.
+    // Strict gate: don't pop the widget — just surface a quiet, dismissible hint.
+    setStatus(
+      `New Lichess game synced: ${latest.white || "?"} vs ${latest.black || "?"}`
+    );
+  }
+  // recent === false: a genuinely older game; stay silent.
 }
 
 // Surface a "you just finished a game" nudge. It lives in the shared toast
@@ -2334,6 +2574,50 @@ async function loadDemoAndAnalyze() {
   await runAnalysis();
 }
 
+// Phase 3d: compute each played move's Maia3 assessment (humanProbability,
+// winChanceAfter) IN THE BROWSER so the server's BrilliantAnalyzer (via ReplayMaia) can
+// flag brilliancies with zero server compute. Best-effort: if Maia is unavailable (no
+// weights) or any inference fails, we return what we have (possibly []), and the analysis
+// still completes without brilliancies — exactly the server's no-Maia degradation.
+//
+// `rating` MUST be the rating the server advertised (prep.brilliant.rating) so the numbers
+// match what its analyzer expects. We assess every played move; the server only consults
+// the eligible (Best/Excellent) ones, so over-supplying is harmless (and avoids porting the
+// win-chance/classification math to JS just to pre-filter).
+async function computeBrilliantAssessments({ moves, rating, onProgress, shouldCancel }) {
+  const provider = getSharedMaia3Provider();
+  const assessments = [];
+  const total = moves.length;
+  const cancelledError = () => {
+    const err = new Error("Analysis stopped");
+    err.cancelled = true;
+    return err;
+  };
+  for (let i = 0; i < total; i++) {
+    // Before kicking off each assessment. The FIRST iteration's moveAssessment also drives
+    // the model download + session init, so this is the pre-init checkpoint too.
+    if (shouldCancel && shouldCancel()) throw cancelledError();
+    const m = moves[i];
+    if (m && m.fen_before && m.uci) {
+      const a = await provider.moveAssessment({ fen: m.fen_before, moveUci: m.uci, rating });
+      // The await above can span a long download/init/inference; honour a Stop that arrived
+      // during it so we neither record this result nor proceed to the next move. (Aborting the
+      // in-flight fetch itself is the future AbortSignal work; this stops at the next seam.)
+      if (shouldCancel && shouldCancel()) throw cancelledError();
+      if (a && Number.isFinite(a.humanProbability) && Number.isFinite(a.winChanceAfter)) {
+        assessments.push({
+          fen: m.fen_before,
+          uci: m.uci,
+          human_probability: a.humanProbability,
+          win_chance_after: a.winChanceAfter,
+        });
+      }
+    }
+    if (onProgress) onProgress(i + 1, total);
+  }
+  return assessments;
+}
+
 async function runAnalysis() {
   // Phase 2: whole-game analysis runs in the browser. The server only parses
   // the PGN (/api/analyze/prepare) and classifies + saves the browser-computed
@@ -2387,6 +2671,53 @@ async function runAnalysis() {
       shouldCancel: () => cancelled,
     });
 
+    // Phase 3d: browser Brilliant detection. Compute Maia assessments for the played
+    // moves (best-effort) so the server can flag brilliancies with no server compute.
+    // Maia's ~46 MB model downloads once (then cached); progress shows in the toast.
+    // Any failure (no weights / inference error) is swallowed → analysis without
+    // brilliancies, mirroring the server's no-Maia path.
+    let maiaAssessments = [];
+    if (prep.brilliant && prep.brilliant.enabled && Array.isArray(prep.moves) && prep.moves.length) {
+      try {
+        const provider = getSharedMaia3Provider();
+        provider.setInitProgressHandler(({ phase, loaded, total }) => {
+          if (phase === "download") {
+            const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
+            jobToast.updateJob({ message: `loading Maia model · ${pct}%` });
+          } else if (phase === "cache") {
+            jobToast.updateJob({ message: "loading cached Maia model" });
+          }
+        });
+        try {
+          maiaAssessments = await computeBrilliantAssessments({
+            moves: prep.moves,
+            rating: prep.brilliant.rating,
+            shouldCancel: () => cancelled,
+            onProgress: (done, total) =>
+              jobToast.updateJob({ current: done, total, message: `checking brilliancies ${done}/${total}` }),
+          });
+        } finally {
+          provider.setInitProgressHandler(null);
+        }
+      } catch (brilliantErr) {
+        if (brilliantErr && brilliantErr.cancelled) throw brilliantErr;
+        // Non-fatal: proceed with no brilliancies (e.g. Maia weights unavailable).
+        maiaAssessments = [];
+      }
+    }
+
+    // Final cancellation checkpoint: even if eval/Maia work completed, a Stop that arrived
+    // during it must prevent persistence. classify-save is the write — don't post past a Stop.
+    if (cancelled) {
+      const err = new Error("Analysis stopped");
+      err.cancelled = true;
+      throw err;
+    }
+
+    // Past this point we're persisting (classify-save). Like Build Generate's apply phase,
+    // the save is not cancellable, so remove the Stop affordance rather than imply a cancel
+    // that wouldn't hold.
+    jobToast.lockJob();
     jobToast.updateJob({
       current: positions.length,
       total: positions.length,
@@ -2407,6 +2738,7 @@ async function runAnalysis() {
           pv: ev.pv || [],
         };
       }),
+      maia_assessments: maiaAssessments,
     });
 
     appState.analysis = payload;
@@ -2430,17 +2762,6 @@ async function runAnalysis() {
     }
   } finally {
     runButton.disabled = false;
-  }
-}
-
-// Ask the server to stop a running heavy job (analyze / build gen) and kill the
-// in-flight engine work. Best-effort: the poll loop reports the final state.
-async function cancelHeavyJob(endpoint, jobId) {
-  if (!jobId) return;
-  try {
-    await postJson(endpoint, { job_id: jobId });
-  } catch (_) {
-    /* the job may have already finished */
   }
 }
 
@@ -3501,8 +3822,12 @@ async function fillPgnInputFromFile(file) {
 }
 
 async function generateFromCurrentNode() {
-  if (!appState.serverEngineEnabled) {
-    setStatus(BROWSER_COMPUTE_SOON);
+  // Phase 3c: generation runs in the BROWSER. Stockfish (our turn) + Maia3
+  // (opponent) drive the recursion locally into a tree-mutation plan; the server
+  // only re-validates + persists via /api/build/generate/apply-plan. No server
+  // compute, no fallback.
+  if (!isBrowserEngineAvailable()) {
+    setStatus(BROWSER_ENGINE_UNAVAILABLE);
     return;
   }
   const nodeId = appState.buildCurrentNodeId;
@@ -3529,7 +3854,18 @@ async function generateFromCurrentNode() {
           { value: "black", label: "Black" + (repColor === "black" ? " - your repertoire" : " - explore opponent") },
         ],
       },
-      { name: "ply_depth", label: "Ply depth", type: "number", default: 8, min: 1, max: 20 },
+      // Kept conservative on purpose: the recursion runs locally (deep × branches
+      // is slow on the user's machine) and a huge tree risks exceeding the server
+      // apply-plan caps. See GEN_MAX_* / GEN_PLAN_CHANGES_SOFT_CAP.
+      { name: "ply_depth", label: `Ply depth (1-${GEN_MAX_PLY_DEPTH})`, type: "number", default: 6, min: 1, max: GEN_MAX_PLY_DEPTH },
+      {
+        name: "own_side_candidate_count",
+        label: `Your-move branches per node (1-${GEN_MAX_BRANCHES})`,
+        type: "number",
+        default: 1,
+        min: 1,
+        max: GEN_MAX_BRANCHES,
+      },
       {
         name: "detail_mode",
         label: "Detail mode",
@@ -3545,30 +3881,105 @@ async function generateFromCurrentNode() {
     ],
   });
   if (!values) return;
-  const own_color = values.own_color === "black" ? "black" : "white";
-  const ply_depth = Math.max(1, Math.min(20, Number(values.ply_depth) || 8));
-  const detail_mode = ["simple", "balanced", "deep"].includes(values.detail_mode)
+  const ownColor = values.own_color === "black" ? "black" : "white";
+  const plyDepth = Math.max(1, Math.min(GEN_MAX_PLY_DEPTH, Number(values.ply_depth) || 6));
+  const ownSideCandidateCount = Math.max(
+    1,
+    Math.min(GEN_MAX_BRANCHES, Number(values.own_side_candidate_count) || 1),
+  );
+  const detailMode = ["simple", "balanced", "deep"].includes(values.detail_mode)
     ? values.detail_mode
     : "balanced";
-  const maia_rating = Math.max(600, Math.min(2600, Number(values.maia_rating) || 2200));
+  const maiaRating = Math.max(600, Math.min(2600, Number(values.maia_rating) || 2200));
+
+  const jobId = `browser-generate-${Date.now()}`;
+  // Cancel model has two phases. GENERATION (local, before the POST) is
+  // cancellable: jobToast's Stop aborts the controller, the recursion checks the
+  // signal, and an explicit re-check below bails before the POST — so Stop here
+  // persists NOTHING. SAVING (the apply-plan POST) is NOT cancellable: an atomic
+  // server apply can't be un-persisted by aborting the fetch, so we remove the
+  // Stop button before the POST rather than imply a cancel that wouldn't hold.
+  const controller = new AbortController();
   try {
-    setStatus("Generating moves");
-    const started = await postJson("/api/build/generate/start", {
-      repertoire_id: appState.build.repertoire_id,
-      node_id: nodeId,
-      ply_depth,
-      detail_mode,
-      maia_rating,
-      own_color,
-    });
+    setStatus("Loading engines and generating moves");
     jobToast.startJob({
-      id: started.job_id,
+      id: jobId,
       title: "Generating moves",
       tab: "build",
-      total: started.estimated_total || started.total || ply_depth * 8,
-      onCancel: () => cancelHeavyJob("/api/build/generate/cancel", started.job_id),
+      total: 0,
+      onCancel: () => controller.abort(),
     });
-    const payload = await pollBuildJob(started.job_id);
+
+    const plan = await runBrowserBuildGenerate({
+      build: appState.build,
+      rootNodeId: nodeId,
+      ownColor,
+      plyDepth,
+      detailMode,
+      maiaRating,
+      ownSideCandidateCount,
+      signal: controller.signal,
+      // Reuse ONE warm Maia worker/session across Generate runs (Stage 4b) — the first run
+      // downloads + caches the ~46 MB model, later runs skip both the fetch and the session
+      // create. The orchestrator borrows it and never terminates it.
+      maiaProvider: getSharedMaia3Provider(),
+      onProgress: (added) => {
+        jobToast.updateJob({ current: added, total: 0, message: `building tree · +${added} nodes` });
+      },
+      // Cold-init weight download/verify/session progress (only on the first run / a cache
+      // miss). A warm run emits nothing, so the node-building message above just takes over.
+      onMaiaInitProgress: ({ phase, loaded, total }) => {
+        if (phase === "download") {
+          const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
+          jobToast.updateJob({ current: loaded, total: total || 0, message: `downloading Maia model · ${pct}%` });
+        } else if (phase === "cache") {
+          jobToast.updateJob({ message: "loading cached Maia model" });
+        } else if (phase === "verify") {
+          jobToast.updateJob({ message: "verifying Maia model" });
+        } else if (phase === "session") {
+          jobToast.updateJob({ message: "starting Maia engine" });
+        }
+      },
+    });
+
+    // Stop pressed during generation (or in the final stretch before we got
+    // here) must mean NOTHING is persisted: bail before the POST. The recursion
+    // also checks the signal, but it can resolve a tick after the last check.
+    if (controller.signal.aborted) {
+      const err = new Error("Generation stopped");
+      err.name = "AbortError";
+      throw err;
+    }
+
+    const changeCount = (plan.changes && plan.changes.length) || 0;
+    if (changeCount > GEN_PLAN_CHANGES_SOFT_CAP) {
+      // The server would reject this with a 400; fail with an actionable message
+      // before wasting the round trip.
+      throw new Error(
+        `That produced ${changeCount} changes, more than the server accepts ` +
+          `(${GEN_PLAN_CHANGES_SOFT_CAP}). Lower the ply depth or branch count and try again.`,
+      );
+    }
+
+    // Committing to the save now. Aborting the apply-plan fetch can't un-persist
+    // an atomic server apply, so the saving phase is NOT cancellable: remove the
+    // Stop button (synchronously, before the awaited POST, so no late click can
+    // land in the gap) rather than let the UI imply a cancel that wouldn't hold.
+    jobToast.updateJob({
+      current: plan.addedCount || 0,
+      total: plan.addedCount || 0,
+      message: "saving",
+    });
+    jobToast.lockJob("saving — finishing up");
+    const payload = await postJson(
+      "/api/build/generate/apply-plan",
+      {
+        repertoire_id: appState.build.repertoire_id,
+        root_node_id: nodeId,
+        plan,
+      },
+      { signal: controller.signal },
+    );
     await hydrateBuild(payload, nodeId);
     const summary = payload.summary || {};
     setStatus(
@@ -3580,46 +3991,14 @@ async function generateFromCurrentNode() {
       onClick: () => switchView("build"),
     });
   } catch (error) {
-    if (error && error.cancelled) {
+    if (error && (error.name === "AbortError" || error.cancelled)) {
+      // Aborted before the POST: nothing persisted, existing tree still rendered.
       setStatus("Generation stopped");
-      jobToast.cancelJob(error.message || "Generation stopped");
-      // Refresh the tree so any nodes added before the stop show up.
-      try {
-        const reload = await api(
-          `/api/build/load?repertoire_id=${encodeURIComponent(appState.build.repertoire_id)}`
-        );
-        await hydrateBuild(reload, nodeId);
-      } catch (_) {
-        /* ignore */
-      }
+      jobToast.cancelJob("Generation stopped");
     } else {
       setStatus(error.message);
       jobToast.failJob(error.message);
     }
-  }
-}
-
-async function pollBuildJob(jobId) {
-  while (true) {
-    const status = await api(`/api/build/generate/status?job_id=${encodeURIComponent(jobId)}`);
-    jobToast.updateJob({
-      current: status.added_nodes || status.current || 0,
-      total: status.estimated_total || status.total || 0,
-      message: status.message || status.status,
-    });
-    if (status.status === "completed") {
-      if (!status.result) throw new Error("Generation completed without a result");
-      return status.result;
-    }
-    if (status.status === "cancelled") {
-      const err = new Error(status.message || "Generation stopped");
-      err.cancelled = true;
-      throw err;
-    }
-    if (status.status === "failed") {
-      throw new Error(status.error || "Generation failed");
-    }
-    await sleep(450);
   }
 }
 
@@ -4277,22 +4656,21 @@ function setButtonGated(button, gated, message) {
   }
 }
 
-// Gate compute actions by where the compute can actually run.
-//   - Analyze (whole-game): runs in the BROWSER (Phase 2). Enabled whenever the
-//     browser engine is available (cross-origin isolated); disabled with an
-//     actionable message otherwise. Independent of the server engine.
-//   - Build → Generate: still server/Maia only (Phase 3 will port it to the
-//     browser). Gated on the server engine flag with a "coming soon" message.
+// Gate compute actions by where the compute can actually run. BOTH whole-game
+// Analyze (Phase 2) and Build → Generate (Phase 3c) now run in the BROWSER, so
+// each is gated only on the browser engine being available (cross-origin
+// isolated) — independent of the server engine, with no server fallback.
 function applyServerEngineGating() {
+  const gated = !isBrowserEngineAvailable();
   setButtonGated(
     document.getElementById("run-analysis"),
-    !isBrowserEngineAvailable(),
+    gated,
     BROWSER_ENGINE_UNAVAILABLE,
   );
   setButtonGated(
     document.getElementById("build-generate-node"),
-    !appState.serverEngineEnabled,
-    BROWSER_COMPUTE_SOON,
+    gated,
+    BROWSER_ENGINE_UNAVAILABLE,
   );
 }
 
@@ -4313,9 +4691,126 @@ function renderSettings(payload) {
       }
     }
   }
-  // Maia3 in the browser is not implemented yet (Phase 3); never advertise the
-  // server model. payload is accepted for forward-compat but unused here.
+  // Maia3 now runs IN THE BROWSER (Build → Generate, and Brilliant detection during
+  // Analyze): the ~46 MB model loads on demand and is cached in IndexedDB. Probe the real
+  // client-side state rather than advertising the server model. payload is accepted for
+  // forward-compat but unused.
   void payload;
+  // Fire-and-forget: the probe is async (manifest fetch + IndexedDB lookup) but renderSettings
+  // is sync; any failure resolves to an "unavailable" line inside the helper.
+  renderMaia3Status();
+}
+
+// Report the real browser Maia3 state in Settings: a warm provider's live state when it has
+// one, otherwise probe the manifest + IndexedDB weight cache to distinguish "ready (cached)"
+// from "available on demand" from "unavailable". Best-effort: never throws.
+async function renderMaia3Status() {
+  const modelEl = document.getElementById("settings-maia-model");
+  const noteEl = document.getElementById("settings-maia-status");
+  const errEl = document.getElementById("settings-maia-error");
+  if (!modelEl) return;
+  const set = (model, note = "", error = "") => {
+    modelEl.textContent = model;
+    if (noteEl) noteEl.textContent = note;
+    if (errEl) {
+      errEl.textContent = error ? `Last error: ${error}` : "";
+      errEl.hidden = !error;
+    }
+  };
+  try {
+    const provider = getSharedMaia3Provider();
+    // A provider that has been exercised this session has authoritative live state.
+    if (provider.state === "ready") {
+      const info = provider.info || {};
+      const base = info.url || provider.assetBase || "";
+      set("available", base ? `Loaded this session · ${base}` : "Loaded this session.");
+      return;
+    }
+    if (provider.state === "initializing") {
+      set("initializing…", "Downloading / preparing the model.");
+      return;
+    }
+    if (provider.state === "unavailable") {
+      // Surface the REAL failure (init timeout / worker crash / ORT / weight fetch) so
+      // the user can tell a transient hiccup from a stale-cache or environment problem.
+      const err = provider.lastError;
+      set(
+        "unavailable",
+        "Last load failed. Use Retry now, or Reset cache if it keeps failing.",
+        err ? `${err.message}${err.phase ? ` (${err.phase})` : ""}` : "",
+      );
+      return;
+    }
+    // Idle (never used yet this session): probe whether the model can load and is cached.
+    let manifest;
+    try {
+      const resp = await fetch("/static/maia3/maia3.manifest.json");
+      if (!resp.ok) throw new Error(`manifest ${resp.status}`);
+      manifest = await resp.json();
+    } catch {
+      set("unavailable", "Model manifest is not reachable from this server.");
+      return;
+    }
+    const base = resolveModelBase(manifest);
+    const key =
+      (manifest.backend_artifact && manifest.backend_artifact.wasm) ||
+      (manifest.artifacts && manifest.artifacts.fp16 && manifest.artifacts.fp16.file) ||
+      null;
+    const bytes =
+      (manifest.artifacts && manifest.artifacts.fp16 && manifest.artifacts.fp16.bytes) || 0;
+    const sizeMb = bytes ? `${Math.round(bytes / (1024 * 1024))} MB` : "~46 MB";
+    const cached = key ? await getCachedWeights(key) : null;
+    if (cached) {
+      set("ready (cached)", `${sizeMb} cached in this browser · ${base}`);
+    } else {
+      set("available on demand", `Downloads ${sizeMb} on first use, then cached · ${base}`);
+    }
+  } catch {
+    set("unavailable", "Could not determine the browser Maia3 state.");
+  }
+}
+
+// Settings "Retry now": force the shared provider to re-init right away instead of
+// waiting for the next analysis. predictions() drives _ensureReady, which on a prior
+// failure spins up a fresh worker and re-downloads (or reuses the cached weights).
+async function retryMaia3() {
+  const btn = document.getElementById("settings-maia-retry");
+  if (btn) btn.disabled = true;
+  setStatus("Retrying Maia3…");
+  try {
+    const provider = getSharedMaia3Provider();
+    renderMaia3Status(); // reflect "initializing…" while it loads
+    await provider.predictions({ fen: START_FEN });
+    setStatus("Maia3 ready");
+  } catch (err) {
+    setStatus(`Maia3 retry failed: ${err.message}`);
+  } finally {
+    if (btn) btn.disabled = false;
+    renderMaia3Status();
+  }
+}
+
+// Settings "Reset cache": recovery path for a stale/corrupt IndexedDB weight store.
+// Tears down the warm provider, drops the cached model, and reloads so the worker/ORT
+// state starts clean — the model re-downloads on next use.
+async function resetMaia3Cache() {
+  const confirmed = await showConfirmModal({
+    title: "Reset Maia cache?",
+    body:
+      "Deletes the cached Maia model from this browser, then reloads. The model " +
+      "(~46 MB) re-downloads on next use. Use this if Maia keeps failing to load.",
+    okLabel: "Reset & reload",
+    cancelLabel: "Cancel",
+  });
+  if (!confirmed) return;
+  setStatus("Clearing Maia cache…");
+  try {
+    disposeSharedMaia3Provider();
+  } catch (_) {
+    /* ignore */
+  }
+  await clearWeightCache();
+  window.location.reload();
 }
 
 // NOTE: server-side engine install (Stockfish/Maia3) and the first-run install
@@ -4326,8 +4821,8 @@ function renderSettings(payload) {
 async function runLichessCompare() {
   if (!appState.lichessUsername) {
     setStatus("Connect a Lichess account first");
-    await promptLichessConnect();
-    if (!appState.lichessUsername) return;
+    startLichessOAuth();
+    return;
   }
   const countInput = document.getElementById("replay-count");
   const count = Math.max(1, Math.min(50, Number(countInput.value) || 10));
@@ -4472,9 +4967,13 @@ function bindEvents() {
 
   // Settings
   document.getElementById("settings-refresh").addEventListener("click", loadSettings);
+  const maiaRetryBtn = document.getElementById("settings-maia-retry");
+  if (maiaRetryBtn) maiaRetryBtn.addEventListener("click", retryMaia3);
+  const maiaResetBtn = document.getElementById("settings-maia-reset");
+  if (maiaResetBtn) maiaResetBtn.addEventListener("click", resetMaia3Cache);
 
-  // Lichess chip
-  document.getElementById("lichess-chip").addEventListener("click", promptLichessConnect);
+  // Account chip (folds in the old standalone Sign out button as a menu action)
+  document.getElementById("account-chip").addEventListener("click", onAccountChipClick);
 
   // Dashboard repertoire actions
   document.getElementById("dashboard-new-rep").addEventListener("click", () =>
@@ -4591,11 +5090,17 @@ function bindEvents() {
     if (event.key === "Escape") {
       closeNodeContextMenu();
       closeRepertoireContextMenu();
+      closeAccountMenu();
     }
   });
   document.addEventListener("click", (event) => {
     if (!event.target.closest("#node-context-menu")) closeNodeContextMenu();
     if (!event.target.closest("#repertoire-context-menu")) closeRepertoireContextMenu();
+    // The chip's own click toggles the menu; ignore it here so we don't immediately
+    // re-close what the toggle just opened.
+    if (!event.target.closest("#account-menu") && !event.target.closest("#account-chip")) {
+      closeAccountMenu();
+    }
   });
 }
 
@@ -4645,11 +5150,12 @@ async function init() {
   try {
     const stored = localStorage.getItem(LICHESS_KEY);
     if (stored) setLichessUsername(stored);
-    else renderLichessChip();
+    else renderAccountChip();
   } catch (_) {
-    renderLichessChip();
+    renderAccountChip();
   }
   refreshLichessStatus();
+  refreshAuthStatus();
   syncReplayControls();
   const info = await boardInfo(START_FEN);
   boards.analysis.setPosition({ fen: START_FEN, legalMoves: info.legal_moves });

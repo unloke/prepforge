@@ -782,11 +782,24 @@ def main() -> int:
                     "maia3": pkg_version("maia3"),
                 },
                 "artifacts": final_files,
-                # PROVISIONAL: both backends point at the float artifact, decided
-                # on CPU-EP evidence only. Phase 3b must confirm fp16 loads +
-                # performs on onnxruntime-web WASM and WebGPU before this is final.
+                # Both backends point at the fp16 artifact as a DELIBERATE
+                # download-size product choice (46 MB vs 91 MB), NOT the
+                # latency-optimal pick: the Phase 3b onnxruntime-web smoke found
+                # fp32/WASM faster warm AND more accurate. Still provisional pending
+                # broader-device + threaded-WASM benchmarking. See the status string
+                # and docs/browser-engine-migration.md Phase 3b.
                 "backend_artifact": {"webgpu": webgpu_name, "wasm": webgpu_name},
-                "backend_artifact_status": "provisional (pending onnxruntime-web validation)",
+                "backend_artifact_status": (
+                    "deliberate product choice, not latency-optimal: fp16 (46 MB) "
+                    "maps to BOTH backends to halve the cross-origin download vs fp32 "
+                    "(91 MB). The single-threaded onnxruntime-web smoke measured "
+                    "fp32/WASM FASTER warm (~70 ms vs ~95 ms) AND more accurate "
+                    "(parity ~1e-6 vs ~1e-3), so this trades latency + precision for "
+                    "download size on purpose. onnxruntime-web single-threaded "
+                    "WASM+WebGPU validated (Phase 3b smoke). STILL PROVISIONAL pending "
+                    "broader-device + threaded-WASM benchmarking; keep a runtime "
+                    "capability/benchmark override."
+                ),
                 "int8_experimental": (
                     bool(args.int8)
                     and "int8 dynamic quantization flips Build Generate 10%/30% branch "

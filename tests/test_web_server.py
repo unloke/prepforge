@@ -8,9 +8,13 @@ from http.server import ThreadingHTTPServer
 
 import pytest
 
+from stub_maia import StubMaia
+
+from prepforge_chess.web import server as server_module
 from prepforge_chess.web.server import (
     PrepForgeWebApp,
     ServerEngineDisabled,
+    _dev_maia3_fallback,
     _handler_for_app,
 )
 
@@ -124,6 +128,86 @@ def test_http_compute_endpoints_return_403_when_disabled(tmp_path):
         )
 
 
+def _get_text(base_url, path):
+    with urllib.request.urlopen(base_url + path) as response:
+        return response.status, response.read().decode("utf-8")
+
+
+def test_index_html_omits_asset_base_when_env_unset(tmp_path, monkeypatch):
+    # Default/local flow: with no runtime CDN knob, the browser bundle keeps its
+    # in-image /static/maia3/ fallback, so the server must inject nothing.
+    monkeypatch.delenv("PREPFORGE_MAIA3_ASSET_BASE", raising=False)
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    with _running_app_server(app) as base_url:
+        status, body = _get_text(base_url, "/")
+    assert status == 200
+    assert "__MAIA3_ASSET_BASE" not in body
+
+
+def test_html_injects_runtime_asset_base_from_env(tmp_path, monkeypatch):
+    # Production seam (P1): the ONNX weights are CDN-hosted and never in the deploy
+    # image, so a committed-static deploy sets PREPFORGE_MAIA3_ASSET_BASE and the
+    # server renders window.__MAIA3_ASSET_BASE into the served HTML -- the browser
+    # engine then fetches weights from the CDN with NO rebuild. The injection is
+    # page-agnostic (_inject_asset_base rewrites any served HTML), so we assert it on the
+    # deploy-shipped app shell, right after <head> (before any module script reads the
+    # global). The maia3 diagnostic pages are dev-only now (vite harnessInputs,
+    # MAIA3_HARNESS=1) and aren't in the deploy build, so they aren't asserted here.
+    cdn = "https://cdn.example.com/maia3/"
+    monkeypatch.setenv("PREPFORGE_MAIA3_ASSET_BASE", cdn)
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    with _running_app_server(app) as base_url:
+        _, index_body = _get_text(base_url, "/")
+    expected = '<script>window.__MAIA3_ASSET_BASE="{0}";</script>'.format(cdn)
+    assert "<head>" + expected in index_body
+
+
+def test_dev_maia3_fallback_resolves_only_safe_maia_files(tmp_path, monkeypatch):
+    # A production build strips the ONNX weights from static/maia3/ (CDN-hosted), so
+    # local runs fall back to the developer's source copy. The resolver must accept a
+    # real maia3 file, but reject non-maia paths, missing files, and traversal.
+    dev_dir = tmp_path / "public-maia3"
+    dev_dir.mkdir()
+    (dev_dir / "maia3-fp16-abc.onnx").write_bytes(b"weightbytes")
+    monkeypatch.setattr(server_module, "DEV_MAIA3_DIR", dev_dir)
+
+    hit = _dev_maia3_fallback("maia3/maia3-fp16-abc.onnx")
+    assert hit is not None and hit.read_bytes() == b"weightbytes"
+    assert _dev_maia3_fallback("maia3/missing.onnx") is None  # not present
+    assert _dev_maia3_fallback("engine/ort/x.wasm") is None  # not a maia3 path
+    assert _dev_maia3_fallback("maia3/../../secret") is None  # traversal guard
+
+
+def test_dev_maia3_fallback_disabled_when_source_dir_absent(tmp_path, monkeypatch):
+    # In a pip-installed deploy there is no web-src/, so the fallback dir doesn't exist
+    # and the resolver no-ops (production serves weights from the CDN asset base).
+    monkeypatch.setattr(server_module, "DEV_MAIA3_DIR", tmp_path / "does-not-exist")
+    assert _dev_maia3_fallback("maia3/maia3-fp16-abc.onnx") is None
+
+
+def test_static_maia3_weight_served_from_dev_fallback(tmp_path, monkeypatch):
+    # End-to-end over HTTP: a maia3 weight absent from static/ but present in the dev
+    # source dir is served (200) via the fallback, so local Maia3 "just works".
+    dev_dir = tmp_path / "public-maia3"
+    dev_dir.mkdir()
+    (dev_dir / "maia3-fp16-served.onnx").write_bytes(b"\x00\x01\x02onnx")
+    monkeypatch.setattr(server_module, "DEV_MAIA3_DIR", dev_dir)
+
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    with _running_app_server(app) as base_url:
+        with urllib.request.urlopen(
+            base_url + "/static/maia3/maia3-fp16-served.onnx"
+        ) as response:
+            assert response.status == 200
+            assert response.read() == b"\x00\x01\x02onnx"
+        # A genuinely missing weight is still a 404.
+        try:
+            urllib.request.urlopen(base_url + "/static/maia3/nope.onnx")
+            assert False, "expected 404"
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 404
+
+
 def test_web_dashboard_and_board_payload(tmp_path):
     app = PrepForgeWebApp(
         db_path=tmp_path / "ui.sqlite3",
@@ -183,6 +267,7 @@ def test_web_analyze_and_build_demo_payloads(tmp_path):
         db_path=tmp_path / "ui.sqlite3",
         prefer_real_engines=False,
         server_engine_enabled=True,
+        maia_factory=StubMaia,
     )
 
     analysis = app.analyze_pgn_payload(
@@ -261,6 +346,7 @@ def test_web_build_can_add_generate_export_and_import_repertoire(tmp_path):
         db_path=tmp_path / "ui.sqlite3",
         prefer_real_engines=False,
         server_engine_enabled=True,
+        maia_factory=StubMaia,
     )
 
     build = app.build_demo_payload()
@@ -292,6 +378,7 @@ def test_web_can_start_training_from_imported_repertoire(tmp_path):
         db_path=tmp_path / "ui.sqlite3",
         prefer_real_engines=False,
         server_engine_enabled=True,
+        maia_factory=StubMaia,
     )
 
     build = app.build_demo_payload()
@@ -442,6 +529,87 @@ def test_http_classify_save_malformed_positions_returns_400(tmp_path):
         assert status == 400
 
 
+def test_prepare_advertises_brilliant_rating_for_the_browser(tmp_path):
+    # Phase 3d: the browser must compute its Brilliant move_assessment at the rating
+    # the server's BrilliantAnalyzer expects, so prepare() advertises it.
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    prep = app.prepare_analysis_payload("1. e4 e5 *")
+    assert prep["brilliant"]["enabled"] is True
+    assert prep["brilliant"]["rating"] == 1900
+
+
+def test_browser_brilliant_flagged_from_client_maia_assessment(tmp_path):
+    # Phase 3d: with a browser-supplied Maia assessment, a Best move that is
+    # unintuitive (low human prob), looks bad at a glance (low maia win-chance) but is
+    # objectively winning (high Stockfish truth) is upgraded to BRILLIANT — server runs
+    # NO Maia (ReplayMaia replays the client numbers into the validated analyzer).
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    assert app.server_engine_enabled is False
+    prep = app.prepare_analysis_payload("1. e4 *")
+    start_fen = prep["moves"][0]["fen_before"]
+
+    # +300cp everywhere ⇒ e2e4 is Best and the truth win-chance ≈ 0.75 (sound).
+    positions = _seed_browser_evals(prep, score_cp=300)
+    payload = app.classify_save_payload(
+        game_id=prep["game_id"],
+        positions=positions,
+        maia_assessments=[
+            {"fen": start_fen, "uci": "e2e4", "human_probability": 0.02, "win_chance_after": 0.10},
+        ],
+    )
+    assert payload["moves"][0]["classification"] == "brilliant"
+    # Persisted as brilliant too.
+    recalled = app.analysis_recall_payload(prep["game_id"])
+    assert recalled["moves"][0]["classification"] == "brilliant"
+
+
+def test_browser_intuitive_move_not_brilliant(tmp_path):
+    # Same winning Best move, but a HIGH human probability (intuitive) ⇒ not Brilliant.
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    prep = app.prepare_analysis_payload("1. e4 *")
+    start_fen = prep["moves"][0]["fen_before"]
+    positions = _seed_browser_evals(prep, score_cp=300)
+    payload = app.classify_save_payload(
+        game_id=prep["game_id"],
+        positions=positions,
+        maia_assessments=[
+            {"fen": start_fen, "uci": "e2e4", "human_probability": 0.80, "win_chance_after": 0.10},
+        ],
+    )
+    assert payload["moves"][0]["classification"] == "best"
+
+
+def test_browser_no_maia_assessments_means_no_brilliant(tmp_path):
+    # Omitting maia_assessments keeps the Phase-2 behaviour: no Brilliant detection.
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    prep = app.prepare_analysis_payload("1. e4 *")
+    positions = _seed_browser_evals(prep, score_cp=300)
+    payload = app.classify_save_payload(game_id=prep["game_id"], positions=positions)
+    assert payload["moves"][0]["classification"] == "best"
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "not-a-list",
+        [123],                                                            # non-object item
+        [{"uci": "e2e4", "human_probability": 0.1, "win_chance_after": 0.1}],  # no fen
+        [{"fen": "x", "human_probability": 0.1, "win_chance_after": 0.1}],     # no uci
+        [{"fen": "x", "uci": "e2e4", "human_probability": 1.5, "win_chance_after": 0.1}],  # >1
+        [{"fen": "x", "uci": "e2e4", "human_probability": 0.1, "win_chance_after": -0.1}], # <0
+        [{"fen": "x", "uci": "e2e4", "human_probability": "lo", "win_chance_after": 0.1}], # non-number
+    ],
+)
+def test_classify_save_rejects_malformed_maia_assessments(tmp_path, bad):
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    prep = app.prepare_analysis_payload("1. e4 *")
+    positions = _seed_browser_evals(prep, score_cp=300)
+    with pytest.raises(ValueError):
+        app.classify_save_payload(
+            game_id=prep["game_id"], positions=positions, maia_assessments=bad
+        )
+
+
 def test_browser_analysis_handles_checkmate_pgn(tmp_path):
     # A PGN that ends in checkmate puts a terminal (game-over) position in the
     # positions list. The server must classify + persist it end-to-end (the
@@ -494,3 +662,121 @@ def test_web_training_demo_accepts_wrong_then_correct_move(tmp_path):
     assert correct["mistakes"] == []
     assert correct["prompt"] is not None
     assert "expected_move_uci" not in correct["prompt"]
+
+
+def _post_json(base_url, path, body):
+    request = urllib.request.Request(
+        base_url + path,
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request) as response:
+            return response.status, json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        return exc.code, None
+
+
+def test_build_apply_plan_runs_with_server_engine_disabled(tmp_path):
+    # Phase 3c: the browser ran both engines and submits a tree-mutation plan.
+    # apply-plan runs NO compute, so it must succeed in the public/default flow
+    # (server engine disabled, no Maia) — the server only re-validates + persists.
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    assert app.server_engine_enabled is False
+
+    created = app.create_repertoire_payload("Plan", "white")
+    repertoire_id = created["repertoire_id"]
+    root_id = created["nodes"][0]["id"]
+
+    plan = {
+        "rootNodeId": root_id,
+        "changes": [
+            {
+                "action": "planned_add",
+                "tempId": "tmp-1",
+                "parentRef": root_id,
+                "moveUci": "e2e4",
+                "source": "generated_stockfish",
+                "intendedMainline": True,
+                "engineEvaluation": {
+                    "engine": "stockfish (browser)",
+                    "depth": 8,
+                    "score_cp": 30,
+                    "mate_in": None,
+                    "best_move_uci": "e2e4",
+                    "pv": ["e2e4"],
+                    "wdl": None,
+                },
+            }
+        ],
+    }
+
+    with _running_app_server(app) as base_url:
+        status, body = _post_json(
+            base_url,
+            "/api/build/generate/apply-plan",
+            {"repertoire_id": repertoire_id, "root_node_id": root_id, "plan": plan},
+        )
+        assert status == 200
+        assert body["summary"]["added_nodes"] == 1
+        assert any(node.get("uci") == "e2e4" for node in body["nodes"])
+
+        # An illegal move in the plan must surface as a 400, not a 500 or 200.
+        bad_plan = {
+            "changes": [
+                {
+                    "action": "planned_add",
+                    "tempId": "tmp-1",
+                    "parentRef": root_id,
+                    "moveUci": "e2e5",  # illegal from the start position
+                    "source": "generated_stockfish",
+                    "intendedMainline": True,
+                }
+            ]
+        }
+        bad_status, _ = _post_json(
+            base_url,
+            "/api/build/generate/apply-plan",
+            {"repertoire_id": repertoire_id, "root_node_id": root_id, "plan": bad_plan},
+        )
+        assert bad_status == 400
+
+
+def test_build_apply_plan_rejects_too_many_changes_over_http(tmp_path):
+    # apply-plan is public + untrusted: an oversized plan (too many changes) must
+    # be refused at the HTTP boundary (400), never applied unbounded. (The body
+    # Content-Length cap in _read_json is a separate defensive layer; it's not
+    # exercised over a real socket here because rejecting before draining a >2 MB
+    # body would race the client's upload — it's covered by review + the constant.)
+    from prepforge_chess.services.opening_builder import MAX_PLAN_CHANGES
+
+    app = PrepForgeWebApp(db_path=tmp_path / "ui.sqlite3", prefer_real_engines=False)
+    created = app.create_repertoire_payload("Plan", "white")
+    repertoire_id = created["repertoire_id"]
+    root_id = created["nodes"][0]["id"]
+
+    with _running_app_server(app) as base_url:
+        too_many = {
+            "changes": [
+                {
+                    "action": "planned_add",
+                    "tempId": "tmp-{0}".format(i),
+                    "parentRef": root_id,
+                    "moveUci": "e2e4",
+                    "source": "generated_stockfish",
+                    "intendedMainline": True,
+                }
+                for i in range(MAX_PLAN_CHANGES + 1)
+            ]
+        }
+        status, _ = _post_json(
+            base_url,
+            "/api/build/generate/apply-plan",
+            {"repertoire_id": repertoire_id, "root_node_id": root_id, "plan": too_many},
+        )
+        assert status == 400
+
+    # Nothing from the rejected plan was persisted.
+    workspace = app._build_workspace_payload(repertoire_id)
+    assert workspace["nodes_total"] == 1  # root only

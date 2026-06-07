@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+import re
 import uuid
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional, Set, Tuple
@@ -67,6 +69,122 @@ class OpeningTreeReport:
     color: Color
     total_nodes: int
     visible_nodes: List[OpeningTreeItem]
+
+
+# Sources a browser-submitted generation plan may add or upgrade. The plan comes
+# from an untrusted client, so it can only carry GENERATED moves — never inject a
+# MANUAL / IMPORTED_PGN authorship that would dodge the protected-source guards.
+_PLAN_GENERATED_SOURCES = frozenset(
+    {MoveSource.GENERATED_STOCKFISH, MoveSource.GENERATED_MAIA3}
+)
+
+# apply-plan is an UNTRUSTED, public, no-compute endpoint, so a single submitted
+# plan must not be able to force the server into unbounded apply/tree-walk/save
+# work (or a too-deep tree that overruns Python's recursion limit). These caps
+# sit far above any legitimate UI configuration (ply depth caps at 20, branch
+# count is small) — they only fence off hostile/buggy payloads.
+MAX_PLAN_CHANGES = 2000
+MAX_PLAN_DEPTH = 64  # planned-node depth measured from the anchor
+MAX_PLAN_PV_LENGTH = 64
+
+# A coordinate UCI move: from-square, to-square, optional promotion piece.
+_UCI_RE = re.compile(r"^[a-h][1-8][a-h][1-8][qrbnQRBN]?$")
+
+
+def _looks_like_uci(value) -> bool:
+    return isinstance(value, str) and bool(_UCI_RE.match(value))
+
+
+def _engine_eval_from_payload(data) -> Optional[EngineEvaluation]:
+    """Rebuild an EngineEvaluation (White-POV) from a build plan's JSON, or None.
+
+    The browser computed the Stockfish eval; the server runs NO engine, it only
+    stores what the client sent (mirrors Phase 2 classify-save trusting browser
+    evals). Reverse of ``web.server._engine_eval_to_json``. A malformed shape
+    raises ValueError (→ 400); a missing eval is simply None (eval is optional
+    metadata, not a hard requirement of a generated node). Validation is shape
+    only — bounded ``pv`` of UCI-ish strings, finite numeric ``wdl`` — to keep
+    garbage out of the DB, not to re-derive any chess truth.
+    """
+    if data is None:
+        return None
+    if not isinstance(data, dict):
+        raise ValueError("engineEvaluation must be an object or null")
+
+    def _opt_int(value) -> Optional[int]:
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            raise ValueError("engineEvaluation numeric fields must be integers")
+
+    pv = data.get("pv") or []
+    if not isinstance(pv, list):
+        raise ValueError("engineEvaluation.pv must be a list")
+    if len(pv) > MAX_PLAN_PV_LENGTH:
+        raise ValueError(
+            "engineEvaluation.pv is too long ({0} > {1})".format(len(pv), MAX_PLAN_PV_LENGTH)
+        )
+    parsed_pv: List[str] = []
+    for move in pv:
+        if not _looks_like_uci(move):
+            raise ValueError("engineEvaluation.pv entries must be UCI strings")
+        parsed_pv.append(move)
+
+    best_move = data.get("best_move_uci")
+    if best_move is not None and not _looks_like_uci(best_move):
+        raise ValueError("engineEvaluation.best_move_uci must be a UCI string or null")
+
+    wdl = data.get("wdl")
+    parsed_wdl: Optional[dict] = None
+    if wdl is not None:
+        if not isinstance(wdl, dict):
+            raise ValueError("engineEvaluation.wdl must be an object or null")
+        parsed_wdl = {}
+        for key, raw in wdl.items():
+            try:
+                value = float(raw)
+            except (TypeError, ValueError):
+                raise ValueError("engineEvaluation.wdl values must be numbers")
+            if not math.isfinite(value):
+                raise ValueError("engineEvaluation.wdl values must be finite")
+            parsed_wdl[str(key)] = value
+
+    return EngineEvaluation(
+        engine=str(data.get("engine") or "stockfish (browser)"),
+        depth=_opt_int(data.get("depth")),
+        score_cp=_opt_int(data.get("score_cp")),
+        mate_in=_opt_int(data.get("mate_in")),
+        best_move_uci=best_move,
+        pv=parsed_pv,
+        wdl=parsed_wdl,
+    )
+
+
+def _coerce_plan_probability(value) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        prob = float(value)
+    except (TypeError, ValueError):
+        raise ValueError("maiaProbability must be a number or null")
+    if not math.isfinite(prob) or prob < 0.0 or prob > 1.0:
+        raise ValueError("maiaProbability must be a finite number in [0, 1]")
+    return prob
+
+
+def _validate_plan_source(value) -> MoveSource:
+    try:
+        source = MoveSource(value)
+    except ValueError:
+        raise ValueError("plan source must be a valid move source, got {0!r}".format(value))
+    if source not in _PLAN_GENERATED_SOURCES:
+        raise ValueError(
+            "plan may only add/upgrade generated moves (generated_stockfish / "
+            "generated_maia3), not {0}".format(source.value)
+        )
+    return source
 
 
 class OpeningBuilderService:
@@ -224,6 +342,254 @@ class OpeningBuilderService:
         except (TypeError, ValueError):
             value = 2200
         return max(600, min(2600, value))
+
+    def apply_generation_plan(
+        self,
+        repertoire_id: str,
+        root_node_id: str,
+        plan: dict,
+    ) -> Tuple[Repertoire, GenerationSummary]:
+        """Apply a browser-produced Build-Generate plan (Phase 3c, no compute).
+
+        The browser ran the whole generation recursion locally (Stockfish +
+        Maia3 in the user's browser) and submits a tree-mutation plan; the server
+        runs NO engine. It RE-VALIDATES every move's legality and parentage,
+        RECOMPUTES the persisted flags (``is_mainline`` /
+        ``is_user_prepared_move``) itself rather than trusting the client, and
+        persists. Parity with ``_upsert_child`` / ``_expand``.
+
+        All-or-nothing: the repertoire is saved once at the very end, so a
+        malformed change (illegal move, unknown parent, bad source) raises before
+        any persistence — a partial plan never lands.
+        """
+        if not isinstance(plan, dict):
+            raise ValueError("plan must be an object")
+        # A stale or wrong-anchor plan must NOT be applied to a different anchor:
+        # the planner returns the root it was built from, so a mismatch means the
+        # plan and the request disagree about where it lands — reject, never guess.
+        plan_root = plan.get("rootNodeId") or plan.get("root_node_id")
+        if plan_root and plan_root != root_node_id:
+            raise ValueError("plan.rootNodeId does not match root_node_id")
+        changes = plan.get("changes")
+        if not isinstance(changes, list):
+            raise ValueError("plan.changes must be a list")
+        if len(changes) > MAX_PLAN_CHANGES:
+            raise ValueError(
+                "plan has too many changes ({0} > {1})".format(
+                    len(changes), MAX_PLAN_CHANGES
+                )
+            )
+
+        repertoire = self._load_repertoire_or_raise(repertoire_id)
+        anchor = self._find_node_or_raise(repertoire.root_node, root_node_id)
+
+        # parentRef / nodeId resolve ONLY within the anchor subtree: the browser
+        # generated under this anchor, so scoping every write here stops a stray
+        # or hostile plan from mutating nodes elsewhere in the repertoire. Depths
+        # are tracked alongside so a new node's depth-from-anchor can be capped.
+        nodes_by_id: dict = {}
+        depth_by_id: dict = {}
+        self._index_subtree(anchor, 0, nodes_by_id, depth_by_id)
+        # Freshly planned nodes are addressed by a same-run tempId so a child
+        # change can parent onto a sibling added earlier in the same plan; the
+        # plan is emitted in DFS order (parents first), so a single forward pass
+        # resolves every reference. tempIds are validated unique + 'tmp-'-prefixed
+        # so a forged/duplicate id can't silently rebind a later parentRef.
+        temp_to_node: dict = {}
+        seen_temp_ids: set = set()
+
+        summary = GenerationSummary()
+        for change in changes:
+            if not isinstance(change, dict):
+                raise ValueError("each plan change must be an object")
+            action = change.get("action")
+            if action == "planned_add":
+                self._apply_plan_add(
+                    change,
+                    repertoire,
+                    nodes_by_id,
+                    depth_by_id,
+                    temp_to_node,
+                    seen_temp_ids,
+                    summary,
+                )
+            elif action == "updated":
+                self._apply_plan_update(change, nodes_by_id, summary)
+            else:
+                raise ValueError("unknown plan change action: {0!r}".format(action))
+
+        self.repository.save_repertoire(repertoire)
+        return repertoire, summary
+
+    def _index_subtree(
+        self, node: OpeningNode, depth: int, nodes_into: dict, depth_into: dict
+    ) -> None:
+        nodes_into[node.id] = node
+        depth_into[node.id] = depth
+        for child in node.children:
+            self._index_subtree(child, depth + 1, nodes_into, depth_into)
+
+    def _resolve_plan_parent(
+        self, parent_ref, nodes_by_id: dict, temp_to_node: dict
+    ) -> OpeningNode:
+        if not parent_ref or not isinstance(parent_ref, str):
+            raise ValueError("planned_add requires a parentRef string")
+        # A same-run tempId wins over a node id (they never collide: tmp- prefix).
+        if parent_ref in temp_to_node:
+            return temp_to_node[parent_ref]
+        parent = nodes_by_id.get(parent_ref)
+        if parent is None:
+            raise ValueError(
+                "planned_add parentRef {0!r} is not a node in this subtree".format(
+                    parent_ref
+                )
+            )
+        return parent
+
+    @staticmethod
+    def _validate_plan_temp_id(temp_id, seen_temp_ids: set, nodes_by_id: dict) -> str:
+        # Every planned add MUST carry a unique, well-formed temp id so later
+        # children can parent onto it deterministically; a duplicate or a value
+        # colliding with a real node id could rebind a later parentRef to the
+        # wrong node and let a malformed plan be accepted as a different tree.
+        if not isinstance(temp_id, str) or not temp_id.startswith("tmp-"):
+            raise ValueError(
+                "planned_add requires a tempId string with a 'tmp-' prefix"
+            )
+        if temp_id in seen_temp_ids:
+            raise ValueError("duplicate tempId in plan: {0}".format(temp_id))
+        if temp_id in nodes_by_id:
+            raise ValueError(
+                "tempId collides with an existing node id: {0}".format(temp_id)
+            )
+        return temp_id
+
+    def _apply_plan_add(
+        self,
+        change: dict,
+        repertoire: Repertoire,
+        nodes_by_id: dict,
+        depth_by_id: dict,
+        temp_to_node: dict,
+        seen_temp_ids: set,
+        summary: GenerationSummary,
+    ) -> None:
+        move_uci = change.get("moveUci")
+        if not move_uci or not isinstance(move_uci, str):
+            raise ValueError("planned_add requires a moveUci string")
+        temp_id = self._validate_plan_temp_id(
+            change.get("tempId"), seen_temp_ids, nodes_by_id
+        )
+        seen_temp_ids.add(temp_id)
+        source = _validate_plan_source(change.get("source"))
+        parent = self._resolve_plan_parent(
+            change.get("parentRef"), nodes_by_id, temp_to_node
+        )
+        evaluation = _engine_eval_from_payload(change.get("engineEvaluation"))
+        probability = _coerce_plan_probability(change.get("maiaProbability"))
+
+        # Server state may have drifted since the browser loaded the tree (a
+        # concurrent edit added this move): if it already exists under the parent,
+        # MERGE instead of creating a duplicate — same as _upsert_child's
+        # existing-child branch. The tempId still maps to the resolved node so
+        # later children parented on it resolve (and inherit its depth).
+        existing = child_by_uci(parent, move_uci)
+        if existing is not None:
+            self._merge_plan_fields(existing, evaluation, probability, source, summary)
+            temp_to_node[temp_id] = existing
+            return
+
+        child_depth = depth_by_id[parent.id] + 1
+        if child_depth > MAX_PLAN_DEPTH:
+            raise ValueError(
+                "plan exceeds the max depth {0} from the anchor".format(MAX_PLAN_DEPTH)
+            )
+
+        # New child — re-validate legality SERVER-SIDE. apply_uci raises on an
+        # illegal/unparseable move, which aborts the whole apply before any save.
+        move = self.chess_core.apply_uci(parent.fen, move_uci, source=source)
+        # is_mainline / is_user_prepared_move are RECOMPUTED here, never taken from
+        # the plan (intendedMainline is INTENT only): a node can't claim mainline
+        # if a sibling already owns it, and prepared is keyed to repertoire color.
+        is_mainline = bool(change.get("intendedMainline")) and not any(
+            child.is_mainline for child in parent.children
+        )
+        child = OpeningNode(
+            id=str(uuid.uuid4()),
+            repertoire_id=repertoire.id,
+            parent_id=parent.id,
+            move=move,
+            fen=move.fen_after,
+            side_to_move=self.chess_core.side_to_move(move.fen_after),
+            engine_evaluation=evaluation,
+            maia_probability=probability,
+            is_mainline=is_mainline,
+            is_user_prepared_move=parent.side_to_move is repertoire.color,
+            source=source,
+        )
+        parent.children.append(child)
+        nodes_by_id[child.id] = child
+        depth_by_id[child.id] = child_depth
+        temp_to_node[temp_id] = child
+        summary.added_nodes += 1
+        summary.changes.append(GeneratedNodeChange(child.id, move_uci, "added", source))
+        if probability is not None and probability >= MAINLINE_THRESHOLD:
+            summary.high_probability_unprepared += 1
+
+    def _apply_plan_update(
+        self, change: dict, nodes_by_id: dict, summary: GenerationSummary
+    ) -> None:
+        node_id = change.get("nodeId")
+        if not node_id or not isinstance(node_id, str):
+            raise ValueError("updated change requires a nodeId string")
+        node = nodes_by_id.get(node_id)
+        if node is None:
+            raise ValueError(
+                "updated change nodeId {0!r} is not a node in this subtree".format(
+                    node_id
+                )
+            )
+        evaluation = _engine_eval_from_payload(change.get("engineEvaluation"))
+        probability = _coerce_plan_probability(change.get("maiaProbability"))
+        raw_source = change.get("source")
+        source = _validate_plan_source(raw_source) if raw_source is not None else None
+        self._merge_plan_fields(node, evaluation, probability, source, summary)
+
+    def _merge_plan_fields(
+        self,
+        node: OpeningNode,
+        evaluation: Optional[EngineEvaluation],
+        probability: Optional[float],
+        source: Optional[MoveSource],
+        summary: GenerationSummary,
+    ) -> None:
+        # Fill-only-when-null + protected-source guard — identical to the
+        # existing-child branch of _upsert_child (never overwrite a value the
+        # node already has, never relabel a user-authored move).
+        changed = False
+        if evaluation is not None and node.engine_evaluation is None:
+            node.engine_evaluation = evaluation
+            changed = True
+        if probability is not None and node.maia_probability is None:
+            node.maia_probability = probability
+            changed = True
+        if (
+            source is not None
+            and node.source not in {MoveSource.MANUAL, MoveSource.IMPORTED_PGN}
+            and node.source != source
+        ):
+            node.source = source
+            changed = True
+        if changed:
+            summary.updated_nodes += 1
+            summary.changes.append(
+                GeneratedNodeChange(
+                    node.id,
+                    node.move.uci if node.move else "",
+                    "updated",
+                    node.source,
+                )
+            )
 
     def _expand(
         self,

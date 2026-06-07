@@ -22,7 +22,10 @@ CREATE TABLE IF NOT EXISTS games (
     site TEXT,
     played_at TEXT,
     pgn TEXT,
-    lichess_id TEXT UNIQUE,
+    -- Not globally UNIQUE: multi-tenancy dedups Lichess games per owner, so two
+    -- users may each hold their own row for the same lichess_id. Uniqueness is
+    -- enforced per-owner by idx_games_owner_lichess (see _apply_multitenancy_migration).
+    lichess_id TEXT,
     tags_json TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL

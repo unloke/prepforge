@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Maia3 onnxruntime-web smoke test</title>
+    <style>
+      body { font: 14px/1.5 ui-monospace, monospace; margin: 1.5rem; max-width: 60rem; }
+      h1 { font-size: 1.1rem; }
+      table { border-collapse: collapse; margin: 1rem 0; }
+      th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: right; }
+      th:first-child, td:first-child { text-align: left; }
+      .ok { color: #0a7d28; } .bad { color: #c0211f; }
+      pre { background: #f5f5f5; padding: 1rem; overflow: auto; white-space: pre-wrap; }
+      #status { font-weight: bold; }
+    </style>
+  </head>
+  <body>
+    <h1>Maia3 onnxruntime-web smoke test</h1>
+    <div id="status" data-testid="smoke-status">starting…</div>
+    <div id="env"></div>
+    <div id="table"></div>
+    <details><summary>raw report</summary><pre id="raw"></pre></details>
+    <script type="module">
+      import { runSmoke } from "./engine/maia3-smoke.js";
+
+      const status = document.getElementById("status");
+      const setStatus = (s) => { status.textContent = s; };
+
+      function renderTable(report) {
+        const rows = report.combos
+          .map((c) => {
+            const cls = c.ok ? "ok" : "bad";
+            const verdict = c.skipped
+              ? `SKIPPED: ${c.error}`
+              : c.error
+                ? `ERROR: ${c.error}`
+                : c.ok
+                  ? "OK"
+                  : "MISMATCH";
+            const vdiff = c.cases ? Math.max(...c.cases.map((x) => x.maxValueDiff)).toFixed(4) : "-";
+            const pdiff = c.cases ? Math.max(...c.cases.map((x) => x.maxPolicyDiff)).toFixed(4) : "-";
+            return `<tr class="${cls}">
+              <td>${c.label}</td><td>${c.ep}</td>
+              <td>${(c.modelBytes / 1e6).toFixed(1)}</td>
+              <td>${c.createMs ?? "-"}</td>
+              <td>${c.firstInferMs ?? "-"}</td>
+              <td>${c.warmMedianMs ?? "-"}</td>
+              <td>${vdiff}</td>
+              <td>${pdiff}</td>
+              <td>${verdict}</td>
+            </tr>`;
+          })
+          .join("");
+        document.getElementById("table").innerHTML = `<table>
+          <tr><th>artifact</th><th>EP</th><th>MB</th><th>create ms</th>
+          <th>1st infer ms</th><th>warm med ms</th><th>max valΔ</th><th>max polΔ</th><th>verdict</th></tr>
+          ${rows}</table>`;
+        const warn = (report.warnings && report.warnings.length)
+          ? `<div class="bad">⚠ ${report.warnings.map((w) => w.replace(/</g, "&lt;")).join(" · ")}</div>`
+          : "";
+        document.getElementById("env").innerHTML =
+          `WebGPU available: <b>${report.webgpuAvailable}</b> · ` +
+          `crossOriginIsolated: <b>${report.crossOriginIsolated}</b> · ` +
+          `wasm threads: <b>${report.wasmNumThreads}</b> (single-threaded scope) · ` +
+          `model base: <b>${report.modelBase}</b> · ` +
+          `heapUsedMB: <b>${report.heapUsedMB ?? "n/a"}</b>` + warn;
+        document.getElementById("raw").textContent = JSON.stringify(report, null, 2);
+      }
+
+      (async () => {
+        try {
+          const report = await runSmoke(setStatus);
+          window.__SMOKE_RESULT = report;
+          renderTable(report);
+          // A stale fixture (fixtureMatchesManifest === false) invalidates every
+          // numeric comparison, so it can never report "all OK" even if combos ran.
+          const allOk =
+            report.combos.length > 0 &&
+            report.fixtureMatchesManifest &&
+            report.combos.every((c) => c.ok);
+          setStatus(
+            allOk
+              ? "DONE: all combos OK"
+              : report.fixtureMatchesManifest
+                ? "DONE: see table (some combos failed)"
+                : "DONE: STALE FIXTURE — comparisons invalid, see ⚠ above",
+          );
+        } catch (err) {
+          window.__SMOKE_RESULT = { fatal: String(err && err.stack ? err.stack : err) };
+          setStatus("FATAL: " + String(err));
+          document.getElementById("raw").textContent = window.__SMOKE_RESULT.fatal;
+        }
+      })();
+    </script>
+  </body>
+</html>

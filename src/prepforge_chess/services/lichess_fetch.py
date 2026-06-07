@@ -34,6 +34,12 @@ class FetchedGame:
     result: str
     lichess_id: Optional[str]
     event: Optional[str]
+    # ISO-8601 UTC *finish* time, from Lichess's `lastMoveAt` (None if unknown).
+    # The "you just finished a game" watcher gates on this so it only surfaces a
+    # genuinely-recent game — correct for correspondence/classical too, not just
+    # bullet/blitz where start≈finish. Only the lightweight NDJSON probe populates
+    # it; the PGN import path leaves it None (no consumer there needs it).
+    finished_at: Optional[str] = None
 
 
 @dataclass
@@ -134,6 +140,115 @@ def _build_fetched_game(pgn_block: str) -> FetchedGame:
     )
 
 
+def fetch_latest_games_meta(
+    username: str,
+    count: int,
+    *,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+) -> List[FetchedGame]:
+    """Lightweight metadata probe for the "you just finished a game" watcher.
+
+    Unlike fetch_recent_pgns (which pulls PGN move text for the importer), this asks
+    Lichess for NDJSON so we get `lastMoveAt` — the game's true *finish* time — which
+    the recency gate needs. Move text is skipped; `pgn` is left empty and the full
+    PGN is fetched separately only if the user acts on the nudge."""
+    if not username or not username.strip():
+        raise ValueError("lichess username is empty")
+    safe_count = max(1, min(int(count), MAX_FETCH))
+    safe_user = urllib.parse.quote(username.strip(), safe="")
+    url = LICHESS_USER_PGN_URL.format(username=safe_user) + "?" + urllib.parse.urlencode({
+        "max": safe_count,
+        "moves": "false",
+        "clocks": "false",
+        "evals": "false",
+        "opening": "false",
+        "literate": "false",
+    })
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/x-ndjson",
+            "User-Agent": "PrepForge/0.1 (local-tool)",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            raw = response.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as exc:
+        raise LichessFetchError(
+            "Lichess responded with HTTP {0} for user {1}".format(exc.code, username)
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise LichessFetchError(
+            "Could not reach Lichess: {0}".format(exc.reason)
+        ) from exc
+    return _parse_ndjson_games(raw)
+
+
+def _parse_ndjson_games(text: str) -> List[FetchedGame]:
+    games: List[FetchedGame] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        games.append(_build_fetched_game_from_json(obj))
+    return games
+
+
+def _build_fetched_game_from_json(obj: dict) -> FetchedGame:
+    players = obj.get("players") or {}
+    return FetchedGame(
+        pgn="",
+        white=_player_name(players.get("white")),
+        black=_player_name(players.get("black")),
+        result=_result_from_json(obj),
+        lichess_id=obj.get("id"),
+        event=obj.get("perf"),
+        finished_at=_iso_from_epoch_ms(obj.get("lastMoveAt")),
+    )
+
+
+def _player_name(side: Optional[dict]) -> Optional[str]:
+    """Lichess nests the account under players.<color>.user.name; AI/anonymous
+    opponents have no user object."""
+    if not isinstance(side, dict):
+        return None
+    user = side.get("user")
+    if isinstance(user, dict):
+        return user.get("name") or user.get("id")
+    if side.get("aiLevel"):
+        return "Stockfish level {0}".format(side["aiLevel"])
+    return None
+
+
+def _result_from_json(obj: dict) -> str:
+    winner = obj.get("winner")
+    if winner == "white":
+        return "1-0"
+    if winner == "black":
+        return "0-1"
+    # Finished games without a winner are draws; anything still running is unknown.
+    if obj.get("status") in (None, "started", "created"):
+        return "*"
+    return "1/2-1/2"
+
+
+def _iso_from_epoch_ms(value) -> Optional[str]:
+    """Convert Lichess's millisecond epoch (`lastMoveAt`) to ISO-8601 UTC."""
+    from datetime import datetime, timezone
+
+    if not isinstance(value, (int, float)):
+        return None
+    try:
+        return datetime.fromtimestamp(value / 1000, tz=timezone.utc).isoformat()
+    except (ValueError, OSError, OverflowError):
+        return None
+
+
 def _parse_pgn_headers(pgn_block: str) -> dict:
     headers: dict = {}
     for line in pgn_block.splitlines():
@@ -178,10 +293,12 @@ def compare_recent_games(
     *,
     chess_core: Optional[ChessCore] = None,
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    owner_user_id: Optional[str] = None,
 ) -> List[GameMatchSummary]:
     fetched = fetch_recent_pgns(username, count, timeout=timeout)
     core = chess_core or ChessCore()
-    all_repertoires = repository.list_repertoires()
+    # Owner-scoped: only compare against this user's own repertoires, never everyone's.
+    all_repertoires = repository.list_repertoires(owner_user_id=owner_user_id)
     active_repertoires = [rep for rep in all_repertoires if getattr(rep, "is_active", True)]
 
     summaries: List[GameMatchSummary] = []

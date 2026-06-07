@@ -12,6 +12,10 @@ import { Chess } from "chess.js";
 
 const ENGINE_URL = "/static/engine/stockfish-18-lite.js";
 const DEFAULT_MAX_DEPTH = 18;
+// MultiPV ceiling. The engine widget only ever shows a few lines, but Build Generate
+// (Phase 3c) needs `branchLimit + manualPreparedCount` candidates so it can skip preserved
+// manual moves and still find a new branch — so the cap is configurable per provider.
+const DEFAULT_MAX_MULTIPV = 5;
 const READY_TIMEOUT_MS = 15000;
 
 function uid() {
@@ -38,7 +42,10 @@ function uciToSan(fen, uciMoves) {
   return san;
 }
 
-export function createStockfishWasmProvider({ maxDepth = DEFAULT_MAX_DEPTH } = {}) {
+export function createStockfishWasmProvider({
+  maxDepth = DEFAULT_MAX_DEPTH,
+  maxMultipv = DEFAULT_MAX_MULTIPV,
+} = {}) {
   let worker = null;
   let readyPromise = null;
   let readyResolve = null;
@@ -193,7 +200,7 @@ export function createStockfishWasmProvider({ maxDepth = DEFAULT_MAX_DEPTH } = {
   function go(fen, multipv) {
     state.fen = fen;
     state.side_to_move = fen.split(" ")[1] === "b" ? "black" : "white";
-    state.multipv = Math.max(1, Math.min(5, multipv || 1));
+    state.multipv = Math.max(1, Math.min(maxMultipv, multipv || 1));
     state.current_depth = 0;
     state.pvs = [];
     state.running = true;

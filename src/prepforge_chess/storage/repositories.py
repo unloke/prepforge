@@ -65,16 +65,155 @@ class PrepForgeRepository:
     def __init__(self, connection: sqlite3.Connection):
         self.connection = connection
 
-    def save_game(self, game: Game) -> None:
+    # ---- Identity / sessions (multi-tenancy foundation) -----------------------
+    # Browsers carry an opaque session token in a cookie; the server stores only its
+    # hash here and maps it to a ``user_profiles`` row. A not-logged-in browser gets a
+    # "guest" profile; a Lichess login finds-or-creates a profile keyed by username and
+    # migrates the guest's data into it (see PrepForgeWebApp).
+
+    def create_user_profile(
+        self, *, display_name: str, lichess_username: Optional[str] = None
+    ) -> str:
+        profile_id = str(uuid.uuid4())
+        now = _now_text()
+        with self.connection:
+            self.connection.execute(
+                """
+                INSERT INTO user_profiles (id, display_name, lichess_username, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (profile_id, display_name, lichess_username, now, now),
+            )
+        return profile_id
+
+    def session_user(self, token_hash: str) -> Optional[str]:
+        """Return the user_profile_id for a session token hash (and touch last_seen)."""
+        row = self.connection.execute(
+            "SELECT user_profile_id FROM user_sessions WHERE token_hash = ?",
+            (token_hash,),
+        ).fetchone()
+        if row is None:
+            return None
+        with self.connection:
+            self.connection.execute(
+                "UPDATE user_sessions SET last_seen_at = ? WHERE token_hash = ?",
+                (_now_text(), token_hash),
+            )
+        return row["user_profile_id"]
+
+    def create_guest_session(self, token_hash: str) -> str:
+        """Mint a fresh guest profile + session for a new browser. Returns the profile id."""
+        profile_id = self.create_user_profile(display_name="Guest")
+        now = _now_text()
+        with self.connection:
+            self.connection.execute(
+                """
+                INSERT INTO user_sessions (token_hash, user_profile_id, created_at, last_seen_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (token_hash, profile_id, now, now),
+            )
+        return profile_id
+
+    def rebind_session(self, token_hash: str, user_profile_id: str) -> None:
+        """Point an existing session at a different profile (e.g. guest → Lichess account)."""
+        with self.connection:
+            self.connection.execute(
+                "UPDATE user_sessions SET user_profile_id = ?, last_seen_at = ? WHERE token_hash = ?",
+                (user_profile_id, _now_text(), token_hash),
+            )
+
+    def delete_session(self, token_hash: str) -> None:
+        """Drop a session row so its cookie can no longer authenticate (sign out). The
+        underlying user_profile and its owned data are left intact."""
+        with self.connection:
+            self.connection.execute(
+                "DELETE FROM user_sessions WHERE token_hash = ?",
+                (token_hash,),
+            )
+
+    def find_profile_by_lichess(self, username: str) -> Optional[str]:
+        row = self.connection.execute(
+            "SELECT id FROM user_profiles WHERE lichess_username = ? COLLATE NOCASE",
+            (username,),
+        ).fetchone()
+        return row["id"] if row is not None else None
+
+    def ensure_lichess_profile(self, username: str) -> str:
+        existing = self.find_profile_by_lichess(username)
+        if existing is not None:
+            return existing
+        return self.create_user_profile(display_name=username, lichess_username=username)
+
+    def profile_lichess_username(self, profile_id: str) -> Optional[str]:
+        row = self.connection.execute(
+            "SELECT lichess_username FROM user_profiles WHERE id = ?",
+            (profile_id,),
+        ).fetchone()
+        return row["lichess_username"] if row is not None else None
+
+    def get_profile_setting(
+        self, profile_id: str, key: str, default: Any = None
+    ) -> Any:
+        """Read one key from a profile's ``settings_json`` blob (per-user state such
+        as the Lichess OAuth token). Unknown profile/key returns ``default``."""
+        row = self.connection.execute(
+            "SELECT settings_json FROM user_profiles WHERE id = ?",
+            (profile_id,),
+        ).fetchone()
+        if row is None:
+            return default
+        data = _json_load(row["settings_json"], {})
+        return data.get(key, default) if isinstance(data, dict) else default
+
+    def set_profile_setting(self, profile_id: str, key: str, value: Any) -> None:
+        """Upsert one key into a profile's ``settings_json`` (per-user state). A
+        ``None`` value deletes the key. Raises if the profile does not exist so a
+        token can never be written to a phantom owner."""
+        with self.connection:
+            row = self.connection.execute(
+                "SELECT settings_json FROM user_profiles WHERE id = ?",
+                (profile_id,),
+            ).fetchone()
+            if row is None:
+                raise ValueError("unknown profile: {0}".format(profile_id))
+            data = _json_load(row["settings_json"], {})
+            if not isinstance(data, dict):
+                data = {}
+            if value is None:
+                data.pop(key, None)
+            else:
+                data[key] = value
+            self.connection.execute(
+                "UPDATE user_profiles SET settings_json = ?, updated_at = ? WHERE id = ?",
+                (_json_dump(data), _now_text(), profile_id),
+            )
+
+    def reassign_owner(self, from_user_id: str, to_user_id: str) -> None:
+        """Move every owned top-level row from one profile to another (guest → account)."""
+        if from_user_id == to_user_id:
+            return
+        with self.connection:
+            self.connection.execute(
+                "UPDATE games SET owner_user_id = ? WHERE owner_user_id = ?",
+                (to_user_id, from_user_id),
+            )
+            self.connection.execute(
+                "UPDATE repertoires SET user_profile_id = ? WHERE user_profile_id = ?",
+                (to_user_id, from_user_id),
+            )
+
+    def save_game(self, game: Game, owner_user_id: Optional[str] = None) -> None:
         now = _now_text()
         with self.connection:
             self.connection.execute(
                 """
                 INSERT INTO games (
                     id, source, initial_fen, white, black, result, event, site,
-                    played_at, pgn, lichess_id, tags_json, created_at, updated_at
+                    played_at, pgn, lichess_id, tags_json, owner_user_id,
+                    created_at, updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     source = excluded.source,
                     initial_fen = excluded.initial_fen,
@@ -87,6 +226,8 @@ class PrepForgeRepository:
                     pgn = excluded.pgn,
                     lichess_id = excluded.lichess_id,
                     tags_json = excluded.tags_json,
+                    -- Never let a re-save reassign an existing owner; only fill a gap.
+                    owner_user_id = COALESCE(games.owner_user_id, excluded.owner_user_id),
                     updated_at = excluded.updated_at
                 """,
                 (
@@ -102,6 +243,7 @@ class PrepForgeRepository:
                     game.pgn,
                     game.lichess_id,
                     _json_dump(game.tags),
+                    owner_user_id,
                     now,
                     now,
                 ),
@@ -114,9 +256,13 @@ class PrepForgeRepository:
                     game_id=game.id,
                 )
 
-    def load_game(self, game_id: str) -> Optional[Game]:
+    def load_game(self, game_id: str, owner_user_id: Optional[str] = None) -> Optional[Game]:
         row = self.connection.execute("SELECT * FROM games WHERE id = ?", (game_id,)).fetchone()
         if row is None:
+            return None
+        # Ownership gate: when an owner is supplied, a game owned by someone else is
+        # treated as not-found (no IDOR via a guessed/known id).
+        if owner_user_id is not None and row["owner_user_id"] != owner_user_id:
             return None
 
         moves = [
@@ -143,33 +289,53 @@ class PrepForgeRepository:
             tags=_json_load(row["tags_json"], {}),
         )
 
-    def find_game_id_by_lichess_id(self, lichess_id: str) -> Optional[str]:
-        row = self.connection.execute(
-            "SELECT id FROM games WHERE lichess_id = ?",
-            (lichess_id,),
-        ).fetchone()
+    def find_game_id_by_lichess_id(
+        self, lichess_id: str, owner_user_id: Optional[str] = None
+    ) -> Optional[str]:
+        """Dedup lookup for a Lichess game. Owner-scoped: when an owner is supplied
+        only that owner's own copy counts, so two users importing the same game each
+        keep their own row instead of colliding on a shared one. Unscoped (None)
+        keeps the legacy global behaviour for CLI/internal callers."""
+        if owner_user_id is None:
+            row = self.connection.execute(
+                "SELECT id FROM games WHERE lichess_id = ?",
+                (lichess_id,),
+            ).fetchone()
+        else:
+            row = self.connection.execute(
+                "SELECT id FROM games WHERE lichess_id = ? AND owner_user_id = ?",
+                (lichess_id, owner_user_id),
+            ).fetchone()
         return row["id"] if row is not None else None
 
     def has_game(self, game_id: str) -> bool:
         row = self.connection.execute("SELECT 1 FROM games WHERE id = ?", (game_id,)).fetchone()
         return row is not None
 
-    def list_games(self) -> List[Game]:
-        rows = self.connection.execute("SELECT id FROM games ORDER BY created_at DESC").fetchall()
+    def list_games(self, owner_user_id: Optional[str] = None) -> List[Game]:
+        if owner_user_id is None:
+            rows = self.connection.execute(
+                "SELECT id FROM games ORDER BY created_at DESC"
+            ).fetchall()
+        else:
+            rows = self.connection.execute(
+                "SELECT id FROM games WHERE owner_user_id = ? ORDER BY created_at DESC",
+                (owner_user_id,),
+            ).fetchall()
         return [game for game in (self.load_game(row["id"]) for row in rows) if game is not None]
 
-    def save_repertoire(self, repertoire: Repertoire) -> None:
+    def save_repertoire(self, repertoire: Repertoire, owner_user_id: Optional[str] = None) -> None:
         now = _now_text()
         with self.connection:
             self.connection.execute(
                 """
                 INSERT INTO repertoires (
-                    id, name, color, root_fen, root_node_id, main_engine,
+                    id, user_profile_id, name, color, root_fen, root_node_id, main_engine,
                     human_model, branch_depth, opponent_branch_threshold,
                     sub_branch_threshold, max_total_nodes, max_line_length,
                     notes, tags_json, is_active, created_at, updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     name = excluded.name,
                     color = excluded.color,
@@ -185,10 +351,13 @@ class PrepForgeRepository:
                     notes = excluded.notes,
                     tags_json = excluded.tags_json,
                     is_active = excluded.is_active,
+                    -- Never let a re-save reassign an existing owner; only fill a gap.
+                    user_profile_id = COALESCE(repertoires.user_profile_id, excluded.user_profile_id),
                     updated_at = excluded.updated_at
                 """,
                 (
                     repertoire.id,
+                    owner_user_id,
                     repertoire.name,
                     repertoire.color.value,
                     repertoire.root_fen,
@@ -211,12 +380,17 @@ class PrepForgeRepository:
             for node in self._walk_nodes(repertoire.root_node):
                 self._save_opening_node(node)
 
-    def load_repertoire(self, repertoire_id: str) -> Optional[Repertoire]:
+    def load_repertoire(
+        self, repertoire_id: str, owner_user_id: Optional[str] = None
+    ) -> Optional[Repertoire]:
         rep_row = self.connection.execute(
             "SELECT * FROM repertoires WHERE id = ?",
             (repertoire_id,),
         ).fetchone()
         if rep_row is None:
+            return None
+        # Ownership gate: a repertoire owned by someone else is not-found to this owner.
+        if owner_user_id is not None and rep_row["user_profile_id"] != owner_user_id:
             return None
 
         node_rows = self.connection.execute(
@@ -290,8 +464,16 @@ class PrepForgeRepository:
             ),
         )
 
-    def list_repertoires(self) -> List[Repertoire]:
-        rows = self.connection.execute("SELECT id FROM repertoires ORDER BY updated_at DESC").fetchall()
+    def list_repertoires(self, owner_user_id: Optional[str] = None) -> List[Repertoire]:
+        if owner_user_id is None:
+            rows = self.connection.execute(
+                "SELECT id FROM repertoires ORDER BY updated_at DESC"
+            ).fetchall()
+        else:
+            rows = self.connection.execute(
+                "SELECT id FROM repertoires WHERE user_profile_id = ? ORDER BY updated_at DESC",
+                (owner_user_id,),
+            ).fetchall()
         return [
             repertoire
             for repertoire in (self.load_repertoire(row["id"]) for row in rows)
@@ -468,13 +650,31 @@ class PrepForgeRepository:
             is_mastered=_int_to_bool(row["is_mastered"]),
         )
 
-    def existing_move_signature_ids(self) -> Dict[str, str]:
+    def existing_move_signature_ids(
+        self, owner_user_id: Optional[str] = None
+    ) -> Dict[str, str]:
         """Map each stored game's UCI move-sequence signature to its game id, so a
         re-imported game (no lichess id) is detected as a duplicate AND resolved
-        back to the already-stored game rather than a fresh, unsaved candidate."""
-        rows = self.connection.execute(
-            "SELECT game_id, uci FROM moves WHERE game_id IS NOT NULL ORDER BY game_id, ply"
-        ).fetchall()
+        back to the already-stored game rather than a fresh, unsaved candidate.
+
+        Owner-scoped: when an owner is supplied only that owner's games are
+        considered, so one user pasting a PGN another user already stored gets their
+        own owned copy rather than being bounced to the other user's game."""
+        if owner_user_id is None:
+            rows = self.connection.execute(
+                "SELECT game_id, uci FROM moves WHERE game_id IS NOT NULL ORDER BY game_id, ply"
+            ).fetchall()
+        else:
+            rows = self.connection.execute(
+                """
+                SELECT m.game_id AS game_id, m.uci AS uci
+                FROM moves m
+                JOIN games g ON g.id = m.game_id
+                WHERE g.owner_user_id = ?
+                ORDER BY m.game_id, m.ply
+                """,
+                (owner_user_id,),
+            ).fetchall()
         by_game: Dict[str, List[str]] = {}
         for row in rows:
             by_game.setdefault(row["game_id"], []).append(row["uci"])
@@ -544,9 +744,12 @@ class PrepForgeRepository:
                 ),
             )
 
-    def list_analyzed_games(self) -> List[Dict[str, Any]]:
+    def list_analyzed_games(self, owner_user_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Metadata for every game that has a saved analysis (latest per game),
-        newest first — powers the Analyze "History" list."""
+        newest first — powers the Analyze "History" list. Analyses are owned
+        transitively through their game, so scoping joins on ``games.owner_user_id``."""
+        owner_clause = "WHERE g.owner_user_id = ?" if owner_user_id is not None else ""
+        params = (owner_user_id,) if owner_user_id is not None else ()
         rows = self.connection.execute(
             """
             SELECT a.game_id AS game_id, a.analyzed_at AS analyzed_at,
@@ -560,8 +763,10 @@ class PrepForgeRepository:
                 FROM analysis_results GROUP BY game_id
             ) latest
               ON latest.game_id = a.game_id AND latest.max_at = a.analyzed_at
+            {0}
             ORDER BY a.analyzed_at DESC
-            """
+            """.format(owner_clause),
+            params,
         ).fetchall()
         return [
             {
@@ -579,7 +784,16 @@ class PrepForgeRepository:
             for row in rows
         ]
 
-    def load_latest_analysis_result(self, game_id: str) -> Optional[AnalysisResult]:
+    def load_latest_analysis_result(
+        self, game_id: str, owner_user_id: Optional[str] = None
+    ) -> Optional[AnalysisResult]:
+        # The analysis is owned through its game; gate on the game's owner first.
+        if owner_user_id is not None:
+            game_row = self.connection.execute(
+                "SELECT owner_user_id FROM games WHERE id = ?", (game_id,)
+            ).fetchone()
+            if game_row is None or game_row["owner_user_id"] != owner_user_id:
+                return None
         row = self.connection.execute(
             """
             SELECT * FROM analysis_results

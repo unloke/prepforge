@@ -5,11 +5,13 @@
   "type": "module",
   "description": "PrepForge Chess web frontend (Vite build into the Python package's static dir).",
   "scripts": {
-    "sync-engine": "node scripts/sync-stockfish.mjs",
+    "sync-engine": "node scripts/sync-stockfish.mjs && node scripts/sync-ort.mjs",
     "dev": "npm run sync-engine && vite",
     "build": "npm run sync-engine && vite build",
     "build:watch": "npm run sync-engine && vite build --watch",
     "preview": "vite preview",
+    "smoke:two-origin": "node scripts/two-origin-smoke.mjs",
+    "gate:cross-origin": "node scripts/run-provider-harness-headless.mjs",
     "test": "vitest run"
   },
   "devDependencies": {
@@ -18,6 +20,7 @@
   },
   "dependencies": {
     "chess.js": "^1.4.0",
+    "onnxruntime-web": "^1.26.0",
     "stockfish": "^18.0.7"
   }
 }

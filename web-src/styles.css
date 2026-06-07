@@ -166,6 +166,14 @@ h2 {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  cursor: pointer;
+}
+
+/* Caret hint that the signed-in chip opens a menu (a guest chip has no popup). */
+.lichess-chip[aria-haspopup="menu"]::after {
+  content: "▾";
+  font-size: 9px;
+  color: var(--label);
 }
 
 .lichess-chip:hover {
@@ -182,6 +190,17 @@ h2 {
 .lichess-chip.is-connected::before {
   content: "●";
   color: #4a8964;
+}
+
+/* The account menu reuses .context-menu chrome. Sign out is the only destructive
+   action here; Disconnect Lichess is deliberately styled as an ordinary item so it
+   doesn't read like ending the session. */
+.account-menu button[data-action="signout"] {
+  color: var(--danger);
+}
+
+.account-menu button[data-action="signout"]:hover {
+  background: #f8e4e3;
 }
 
 /* Dashboard list item right-click */
@@ -347,6 +366,18 @@ h2 {
 .settings-field {
   display: grid;
   gap: 4px;
+}
+
+/* The real Maia load failure, shown under the status line when state is unavailable. */
+.settings-error {
+  color: var(--danger);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.settings-error[hidden] {
+  display: none;
 }
 
 .settings-field input {

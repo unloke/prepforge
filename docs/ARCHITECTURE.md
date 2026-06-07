@@ -23,7 +23,7 @@ flowchart TB
     Builder["OpeningBuilderService"]
     Trainer["TrainingService"]
     Match["OpeningMatchingService"]
-    Engines["EngineService\nStockfish / Lc0"]
+    Engines["EngineService\nStockfish"]
     Maia["MaiaService\nMaia3 predictions"]
     Lichess["LichessService"]
     Storage["StorageService\nSQLite + JSON export"]
@@ -55,7 +55,7 @@ flowchart TB
   - Should use a proven chess rules library or a thoroughly tested internal wrapper.
 
 - **EngineService**
-  - Runs Stockfish and later Lc0 as cancellable jobs.
+  - Runs Stockfish as cancellable jobs.
   - Caches evaluations by `(fen, engine, depth/nodes/time, options)`.
   - Exposes candidate lines and best move evaluations to services.
 
@@ -607,7 +607,7 @@ Find opponent moves that are:
 
 ### Multi-Engine Disagreement
 
-Flag positions where Stockfish, Lc0, and Maia disagree:
+Flag positions where Stockfish and Maia disagree:
 
 - Engine disagreement
 - Human trap
@@ -634,7 +634,7 @@ Flag positions where Stockfish, Lc0, and Maia disagree:
 - move classification
 - eval graph data
 - best move and alternative line display
-- simplified brilliant scoring with Lc0 extension interface
+- brilliant scoring (Maia human model vs. Stockfish truth; SEE-based sacrifice detection)
 
 ### Phase 3: Opening Builder
 

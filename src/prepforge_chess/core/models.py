@@ -18,7 +18,6 @@ class Color(str, Enum):
 class MoveSource(str, Enum):
     HUMAN_GAME = "human_game"
     STOCKFISH = "stockfish"
-    LC0 = "lc0"
     MAIA3 = "maia3"
     MANUAL = "manual"
     IMPORTED_PGN = "imported_pgn"

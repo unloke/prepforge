@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Maia3 provider live harness</title>
+    <style>
+      body { font: 14px/1.5 ui-monospace, monospace; margin: 1.5rem; max-width: 60rem; }
+      h1 { font-size: 1.1rem; }
+      h2 { font-size: 1rem; margin: 1.5rem 0 0.5rem; }
+      table { border-collapse: collapse; margin: 0.5rem 0; width: 100%; }
+      th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; vertical-align: top; }
+      .ok { color: #0a7d28; } .bad { color: #c0211f; }
+      pre { background: #f5f5f5; padding: 1rem; overflow: auto; white-space: pre-wrap; }
+      #status { font-weight: bold; }
+    </style>
+  </head>
+  <body>
+    <h1>Maia3 provider live harness</h1>
+    <p>
+      Drives the real main-thread provider → Web Worker → onnxruntime-web path
+      (the bundle path the unit tests' fake worker can't reach). Add
+      <code>?backend=all</code> to also boot a WebGPU worker.
+    </p>
+    <div id="status" data-testid="harness-status">starting…</div>
+    <div id="env"></div>
+    <div id="results"></div>
+    <details><summary>raw report</summary><pre id="raw"></pre></details>
+    <script type="module">
+      import { runHarness } from "./engine/maia3-provider-harness.js";
+
+      const status = document.getElementById("status");
+      const setStatus = (s) => { status.textContent = s; };
+
+      function esc(s) { return String(s).replace(/</g, "&lt;"); }
+
+      function renderBackend(b) {
+        if (b.skipped) {
+          return `<h2 class="bad">backend ${esc(b.backend)} — SKIPPED</h2>`;
+        }
+        const rows = b.checks
+          .map((c) => {
+            const cls = c.ok ? "ok" : "bad";
+            const verdict = c.ok ? "OK" : `FAIL: ${esc(c.issues.join("; "))}`;
+            const detail = c.detail ? esc(JSON.stringify(c.detail)) : "";
+            return `<tr class="${cls}"><td>${esc(c.name)}</td><td>${verdict}</td><td>${detail}</td></tr>`;
+          })
+          .join("");
+        const t = b.timings || {};
+        const timing =
+          `init ${t.initMs ?? "-"} ms · batch ${t.batchMs ?? "-"} ms` +
+          (t.predMs ? ` · pred [${t.predMs.join(", ")}] ms` : "");
+        return `<h2 class="${b.ok ? "ok" : "bad"}">backend ${esc(b.backend)} — ${b.ok ? "ALL OK" : "FAILURES"} `
+          + `<small>(ref ${esc(b.refLabel)})</small></h2>`
+          + `<div>${timing}</div>`
+          + `<table><tr><th>check</th><th>result</th><th>detail</th></tr>${rows}</table>`;
+        }
+
+      (async () => {
+        try {
+          const report = await runHarness(setStatus);
+          window.__HARNESS_RESULT = report;
+          document.getElementById("env").innerHTML =
+            `WebGPU available: <b>${report.webgpuAvailable}</b> · ` +
+            `crossOriginIsolated: <b>${report.crossOriginIsolated}</b> · ` +
+            `asset base injected: <b>${report.assetBaseInjected}</b>`;
+          document.getElementById("results").innerHTML = report.backends.map(renderBackend).join("");
+          document.getElementById("raw").textContent = JSON.stringify(report, null, 2);
+          setStatus(report.ok ? "DONE: all checks OK" : "DONE: see failures above");
+        } catch (err) {
+          window.__HARNESS_RESULT = { fatal: String(err && err.stack ? err.stack : err) };
+          setStatus("FATAL: " + String(err));
+          document.getElementById("raw").textContent = window.__HARNESS_RESULT.fatal;
+        }
+      })();
+    </script>
+  </body>
+</html>

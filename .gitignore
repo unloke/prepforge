@@ -32,6 +32,11 @@ web-src/public/maia3/*.onnx.data
 web-src/public/maia3/.stage-*/
 web-src/public/maia3/.maia3.publish.lock
 !web-src/public/maia3/maia3.manifest.json
+# Safety net: a build copies public/ into the committed static dir; the Vite
+# `exclude-maia3-weights` plugin strips the weights from the output, but never let
+# them be committed even if that plugin is bypassed. The manifest still ships.
+src/prepforge_chess/web/static/maia3/*.onnx
+src/prepforge_chess/web/static/maia3/*.onnx.data
 
 # Editor and OS files
 .idea/

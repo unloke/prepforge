@@ -52,7 +52,11 @@ class PgnImportService:
         self,
         pgn_text: str,
         options: PgnImportOptions = PgnImportOptions(),
+        owner_user_id: Optional[str] = None,
     ) -> PgnImportResult:
+        """Import games, owner-scoped when ``owner_user_id`` is given: dedup looks
+        only at that owner's existing games and saved games are stamped with the
+        owner, so two users importing the same game keep independent copies."""
         result = PgnImportResult()
 
         try:
@@ -69,7 +73,7 @@ class PgnImportService:
         # Signatures of games already stored, plus ones seen earlier in this same
         # batch, so the same game pasted/dropped twice is skipped rather than
         # duplicated. Lichess games are also deduped by id below.
-        signature_to_id = self.repository.existing_move_signature_ids()
+        signature_to_id = self.repository.existing_move_signature_ids(owner_user_id)
 
         for index, game in enumerate(games):
             # python-chess happily returns a Game for non-PGN junk or a header
@@ -84,7 +88,9 @@ class PgnImportService:
                 continue
 
             if options.skip_duplicate_lichess_games and game.lichess_id:
-                existing_id = self.repository.find_game_id_by_lichess_id(game.lichess_id)
+                existing_id = self.repository.find_game_id_by_lichess_id(
+                    game.lichess_id, owner_user_id
+                )
                 if existing_id is not None:
                     result.skipped_game_ids.append(existing_id)
                     continue
@@ -98,7 +104,7 @@ class PgnImportService:
                 continue
 
             try:
-                self.repository.save_game(game)
+                self.repository.save_game(game, owner_user_id=owner_user_id)
             except Exception as exc:
                 label = game.lichess_id or game.id
                 result.errors.append("{0}: {1}".format(label, exc))

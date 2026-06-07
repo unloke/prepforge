@@ -28,10 +28,26 @@ prepforge-chess = "prepforge_chess.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-# static/* matches only direct children; the Vite build emits hashed bundles
-# under static/assets/, so include that nested dir explicitly or the wheel
-# ships index.html without its JS/CSS.
-"prepforge_chess.web" = ["static/*", "static/assets/*", "static/engine/*"]
+# Each glob matches only its own directory level (setuptools package-data is not
+# recursive), so every nested static/ dir the Vite build emits must be listed
+# explicitly or the wheel silently drops it:
+#   static/assets/*       hashed JS/CSS bundles (else index.html ships without its app)
+#   static/engine/*       stockfish-18-lite.{js,wasm}
+#   static/engine/ort/*   vendored onnxruntime-web runtime (.asyncify.{mjs,wasm})
+#   static/maia3/maia3.manifest.json  ONLY the manifest. Listed by EXACT filename,
+#                          not a `static/maia3/*` glob: the 137 MB ONNX weights are
+#                          CDN-hosted and must NEVER enter the wheel. A glob would
+#                          repackage any .onnx that happens to sit in that dir if the
+#                          Vite trim plugin is skipped, a build half-fails, or a dev
+#                          drops weights there. The exact filename makes "wheel never
+#                          ships ONNX" structural, not dependent on the trim step.
+"prepforge_chess.web" = [
+    "static/*",
+    "static/assets/*",
+    "static/engine/*",
+    "static/engine/ort/*",
+    "static/maia3/maia3.manifest.json",
+]
 "prepforge_chess.storage" = ["schema.sql"]
 
 [tool.pytest.ini_options]

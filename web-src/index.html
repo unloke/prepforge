@@ -18,8 +18,8 @@
         <button class="tab" data-view="replay" data-testid="nav-replay">Replay</button>
         <button class="tab" data-view="settings" data-testid="nav-settings">Settings</button>
       </nav>
-      <button class="lichess-chip" id="lichess-chip" data-testid="lichess-chip" title="Connect a Lichess account">
-        <span class="lichess-label" id="lichess-label">Connect Lichess</span>
+      <button class="lichess-chip" id="account-chip" data-testid="account-chip" aria-haspopup="menu" aria-expanded="false" title="Connect a Lichess account">
+        <span class="lichess-label" id="account-label">Connect Lichess</span>
       </button>
       <div class="status" id="app-status" data-testid="app-status">Ready</div>
     </header>
@@ -251,16 +251,21 @@
             <p class="muted" id="settings-stockfish-status"></p>
           </section>
           <section class="card">
-            <div class="card-head"><h2>Maia3 (human model)</h2></div>
+            <div class="card-head">
+              <h2>Maia3</h2>
+              <div class="tools">
+                <button class="btn ghost" id="settings-maia-retry" data-testid="settings-maia-retry">Retry now</button>
+                <button class="btn ghost" id="settings-maia-reset" data-testid="settings-maia-reset">Reset cache</button>
+              </div>
+            </div>
             <div class="settings-row">
               <div>
                 <div class="settings-label">Browser Maia3</div>
-                <div class="settings-value" id="settings-maia-model">not yet available</div>
+                <div class="settings-value" id="settings-maia-model">checking…</div>
               </div>
             </div>
-            <p class="muted" id="settings-maia-status">
-              Human-move prediction (Maia3) will run in your browser in a later phase.
-            </p>
+            <p class="muted" id="settings-maia-status"></p>
+            <p class="muted settings-error" id="settings-maia-error" hidden></p>
           </section>
           <section class="card">
             <div class="card-head"><h2>Board</h2></div>
@@ -279,6 +284,7 @@
 
     <div class="context-menu" id="node-context-menu" hidden></div>
     <div class="context-menu" id="repertoire-context-menu" hidden></div>
+    <div class="context-menu account-menu" id="account-menu" role="menu" hidden></div>
 
     <div class="engine-window" id="engine-window" data-testid="engine-window" hidden>
       <header class="engine-window-head" id="engine-window-head">
