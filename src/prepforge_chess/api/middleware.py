@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import secrets
+from collections.abc import Iterable
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -24,9 +25,6 @@ from prepforge_chess.api.config import get_settings
 CSRF_COOKIE = "pf_csrf"
 CSRF_HEADER = "X-CSRF-Token"
 _SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
-# Paths that must bypass CSRF (machine-to-machine, signature-verified elsewhere).
-# Stripe's webhook lands here in Phase 4.
-CSRF_EXEMPT_PATHS: set[str] = set()
 
 # Engines run client-side via WASM + Web Workers, so the CSP must permit them
 # while still blocking arbitrary remote script. 'wasm-unsafe-eval' enables WASM
@@ -62,6 +60,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 class CSRFMiddleware(BaseHTTPMiddleware):
+    """Stateless double-submit CSRF. Exempt paths (machine-to-machine, verified
+    by their own signature — e.g. the Stripe webhook) are injected at
+    ``create_app()`` time rather than mutated on a module-level global."""
+
+    def __init__(self, app, exempt_paths: Iterable[str] | None = None):
+        super().__init__(app)
+        self._exempt_paths = frozenset(exempt_paths or ())
+
     async def dispatch(self, request: Request, call_next):
         cookie_token = request.cookies.get(CSRF_COOKIE)
         # Mint a token up front when none exists, so a bootstrap endpoint
@@ -71,7 +77,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
         if (
             request.method not in _SAFE_METHODS
-            and request.url.path not in CSRF_EXEMPT_PATHS
+            and request.url.path not in self._exempt_paths
         ):
             header_token = request.headers.get(CSRF_HEADER)
             # Validate against the SUBMITTED cookie only — a freshly minted token

@@ -76,6 +76,14 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = Field(default="")
     stripe_price_pro: str = Field(default="")
 
+    # Free-plan quota: max repertoires a Free user may own. Pro is unlimited.
+    free_repertoire_limit: int = Field(default=5)
+
+    @property
+    def billing_enabled(self) -> bool:
+        """True once a Stripe secret key is configured (Checkout/portal need it)."""
+        return bool(self.stripe_secret_key)
+
     @property
     def is_production(self) -> bool:
         return self.env.lower() == "production"

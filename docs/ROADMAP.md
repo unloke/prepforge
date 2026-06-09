@@ -392,15 +392,33 @@ done so the SPA can actually talk to the API):
 - Acceptance: prod runs on Postgres via uvicorn+FastAPI; `alembic upgrade head` applied
   on deploy; load test shows concurrent writes don't lock.
 
-### Phase 4 — Billing (Stripe) ⬜
-Stripe Checkout + customer portal + webhook (`/api/stripe/webhook`, CSRF-exempt,
-signature-verified). Free/Pro quota gates (repertoire count, storage). Set
-`users.plan` from webhook events.
-- Acceptance: upgrade→Pro flips plan; quota enforced; webhook idempotent.
-- Note: when adding the webhook to CSRF exemptions, replace the mutable
-  module-level `CSRF_EXEMPT_PATHS` set in `api/middleware.py` with constructor
-  injection (pass the path set into `CSRFMiddleware` at `create_app()` time, or
-  source it from `Settings`). Mutating a global set from elsewhere is fragile.
+### Phase 4 — Billing (Stripe) 🔶 CODE DONE (needs Stripe keys to go live)
+Implemented in `api/routers/billing.py` (registered in `main.py`):
+- `GET /api/billing/status` → `{plan, billing_enabled, price_configured}`.
+- `POST /api/billing/checkout` → Stripe Checkout (mode=subscription) for the Pro
+  price; creates/reuses the Stripe customer (`users.stripe_customer_id`); returns the
+  redirect URL. 503 if unconfigured, 409 if already Pro.
+- `POST /api/billing/portal` → Stripe customer portal URL (manage/cancel). 400 if the
+  user has no customer yet.
+- `POST /api/stripe/webhook` → **CSRF-exempt, signature-verified, idempotent**; the
+  authority on `users.plan`. Handles `checkout.session.completed` (→ Pro),
+  `customer.subscription.updated` (active/trialing → Pro, else Free), and
+  `customer.subscription.deleted` (→ Free). Each event id is recorded in the new
+  `stripe_events` table inside the same txn, so a redelivery is a no-op.
+- **Free/Pro quota:** Free users are capped at `PREPFORGE_FREE_REPERTOIRE_LIMIT`
+  (default 5) repertoires — `POST /api/repertoires/create` returns **402** past the cap
+  (new lightweight `repository.count_repertoires`); Pro is unlimited.
+- **CSRF note resolved:** `CSRFMiddleware` now takes `exempt_paths` via its constructor
+  (injected at `create_app()` as `{billing.WEBHOOK_PATH}`) — the mutable module-level
+  `CSRF_EXEMPT_PATHS` global is gone.
+- Migration `f6818a5e1449` (`stripe_events`); `alembic check` zero-drift.
+- 15 tests `tests/test_api_billing.py` (Stripe SDK fully mocked): status/gating, checkout
+  customer-create + URL + 409, portal 400/URL, webhook 503/bad-signature-400/plan-flip/
+  idempotent/downgrade, and the Free quota 402 + Pro bypass. **Acceptance met:**
+  upgrade→Pro flips plan, quota enforced, webhook idempotent.
+- **To go live (user):** set `PREPFORGE_STRIPE_SECRET_KEY`, `PREPFORGE_STRIPE_WEBHOOK_SECRET`,
+  `PREPFORGE_STRIPE_PRICE_PRO`; register the webhook endpoint in the Stripe dashboard.
+  *(Stripe SDK already ships in `.[server]`.)*
 
 ### Phase 5 — Teams / classroom ⬜
 Add `team_id` + `visibility (private|shared|team)` to repertoires (now in

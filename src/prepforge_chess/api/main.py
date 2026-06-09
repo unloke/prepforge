@@ -18,7 +18,7 @@ from slowapi.errors import RateLimitExceeded
 from prepforge_chess.api.config import get_settings
 from prepforge_chess.api.middleware import CSRFMiddleware, SecurityHeadersMiddleware
 from prepforge_chess.api.ratelimit import limiter
-from prepforge_chess.api.routers import analyze, auth, lichess, train, workspace
+from prepforge_chess.api.routers import analyze, auth, billing, lichess, train, workspace
 from prepforge_chess.api.routers import settings as settings_router
 from prepforge_chess.api.static import register_static
 
@@ -44,7 +44,9 @@ def create_app() -> FastAPI:
     # CSRF/rate-limit rejections carry CORS headers (so the browser can read
     # them), then CSRF, then security headers innermost.
     app.add_middleware(SecurityHeadersMiddleware)
-    app.add_middleware(CSRFMiddleware)
+    # The Stripe webhook authenticates by signature, not the session cookie, so it
+    # bypasses CSRF. Inject the exempt path here rather than mutating a global.
+    app.add_middleware(CSRFMiddleware, exempt_paths={billing.WEBHOOK_PATH})
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.origins,
@@ -61,6 +63,7 @@ def create_app() -> FastAPI:
     app.include_router(analyze.router)
     app.include_router(train.router)
     app.include_router(settings_router.router)
+    app.include_router(billing.router)
 
     @app.get("/healthz", tags=["ops"])
     def healthz() -> dict[str, str]:

@@ -17,7 +17,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
 
-from prepforge_chess.api.deps import current_owner, get_repository
+from prepforge_chess.api.config import Settings, get_settings
+from prepforge_chess.api.deps import current_owner, current_user, get_repository
+from prepforge_chess.api.models import Plan, User
 from prepforge_chess.core.models import Color, MoveSource, OpeningNode
 from prepforge_chess.services.opening_builder import (
     CreateRepertoireRequest,
@@ -244,10 +246,24 @@ class CreateRepertoireBody(BaseModel):
 @router.post("/repertoires/create")
 def create_repertoire(
     body: CreateRepertoireBody,
+    user: User = Depends(current_user),
     owner: str = Depends(current_owner),
     repo: PrepForgeRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    """Create a new repertoire owned by the caller and return its Build payload."""
+    """Create a new repertoire owned by the caller and return its Build payload.
+
+    Free-plan users are capped at ``settings.free_repertoire_limit`` repertoires;
+    exceeding it returns 402 so the SPA can prompt an upgrade. Pro is unlimited."""
+    if user.plan != Plan.pro:
+        if repo.count_repertoires(owner_user_id=owner) >= settings.free_repertoire_limit:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=(
+                    "Free plan is limited to {0} repertoires. Upgrade to Pro for "
+                    "unlimited.".format(settings.free_repertoire_limit)
+                ),
+            )
     name = body.name.strip() or "Untitled repertoire"
     try:
         color = Color(body.color)

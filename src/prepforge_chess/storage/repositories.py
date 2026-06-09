@@ -520,6 +520,15 @@ class PrepForgeRepository:
             if repertoire is not None
         ]
 
+    def count_repertoires(self, owner_user_id: Optional[str] = None) -> int:
+        """Number of repertoires owned by ``owner_user_id`` (all rows if None),
+        without loading any opening trees — used by the Free-plan quota gate."""
+        stmt = select(func.count()).select_from(t.repertoires)
+        if owner_user_id is not None:
+            stmt = stmt.where(t.repertoires.c.user_profile_id == owner_user_id)
+        with self.engine.connect() as conn:
+            return int(conn.execute(stmt).scalar_one())
+
     def repertoire_meta(self, repertoire_id: str) -> Optional[Dict[str, Any]]:
         """Lightweight ``(id, name, is_active, owner_user_id)`` for owner-gating and
         write responses, without loading the whole opening tree. ``None`` if absent;

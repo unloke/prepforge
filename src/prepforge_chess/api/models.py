@@ -134,6 +134,20 @@ class TeamMember(Base):
     team: Mapped[Team] = relationship(back_populates="members")
 
 
+class StripeEvent(Base):
+    """A processed Stripe webhook event, recorded for idempotency.
+
+    Stripe may deliver the same event more than once (retries, at-least-once
+    delivery). The webhook handler records each event id here inside the same
+    transaction that applies its effect, so a redelivery is a no-op."""
+
+    __tablename__ = "stripe_events"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)  # Stripe event id (evt_...)
+    type: Mapped[str] = mapped_column(String(120), nullable=False)
+    processed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
 class AuthSession(Base):
     """Server-side session. Only the SHA-256 of the cookie token is stored, so a
     DB leak does not hand out live sessions (same discipline as the legacy
