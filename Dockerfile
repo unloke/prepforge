@@ -23,7 +23,7 @@ RUN python -m pip install --no-cache-dir --upgrade pip \
 
 EXPOSE 8000
 
-# Migrations own prod DDL (the app never create_all()s in production); Render runs
-# `alembic upgrade head` as a preDeployCommand before this starts. --proxy-headers
-# lets uvicorn see the real client IP through Render's proxy (rate-limit/IP logic).
-CMD ["sh", "-c", "uvicorn prepforge_chess.api.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers"]
+# Run migrations then start the server. Baked into CMD because Render's
+# preDeployCommand is a paid feature; this gives the same fail-fast behaviour
+# (migration error aborts startup before serving traffic).
+CMD ["sh", "-c", "alembic upgrade head && uvicorn prepforge_chess.api.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers"]
