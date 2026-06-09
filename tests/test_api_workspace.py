@@ -1,0 +1,428 @@
+"""Phase 2b: ported read-only workspace endpoints + the identity bridge.
+
+Proves the strangler wiring end-to-end: a FastAPI email/password ``User`` ->
+``current_owner`` bridge (profile id == user id) -> SQLAlchemy repository ->
+owner-scoped data, with no legacy ``request_lock``.
+"""
+from __future__ import annotations
+
+from fastapi.testclient import TestClient
+
+from api_helpers import csrf_headers
+
+
+def _register(client: TestClient, email: str, *, display_name: str | None = None) -> str:
+    """Register a user on ``client`` (leaving it logged in) and return the user id."""
+    r = client.post(
+        "/api/auth/register",
+        json={"email": email, "password": "longpassword1", "display_name": display_name},
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 201, r.text
+    return r.json()["id"]
+
+
+def _client() -> TestClient:
+    from prepforge_chess.api import main
+
+    return TestClient(main.app)
+
+
+def _seed_repertoire(owner_user_id: str, name: str) -> str:
+    """Persist one repertoire owned by ``owner_user_id`` on the app's shared engine
+    (the repertoire-create endpoint is a later write-path slice; this stands in)."""
+    import uuid
+
+    from prepforge_chess.api.db import get_engine
+    from prepforge_chess.core.models import Color, OpeningNode, Repertoire
+    from prepforge_chess.storage.repositories import PrepForgeRepository
+
+    rep_id = uuid.uuid4().hex
+    start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    rep = Repertoire(
+        id=rep_id,
+        name=name,
+        color=Color.WHITE,
+        root_fen=start_fen,
+        root_node=OpeningNode(
+            id=uuid.uuid4().hex,
+            repertoire_id=rep_id,
+            fen=start_fen,
+            side_to_move=Color.WHITE,
+            is_mainline=True,
+        ),
+    )
+    repo = PrepForgeRepository(get_engine())
+    repo.ensure_profile(owner_user_id, display_name="seed")
+    repo.save_repertoire(rep, owner_user_id=owner_user_id)
+    return rep.id
+
+
+# ---- Auth gating -----------------------------------------------------------
+
+
+def test_workspace_reads_require_auth(client):
+    assert client.get("/api/dashboard").status_code == 401
+    assert client.get("/api/repertoires").status_code == 401
+
+
+def test_auth_status_signed_out(client):
+    r = client.get("/api/auth/status")
+    assert r.status_code == 200
+    assert r.json() == {"signed_in": False, "username": None}
+
+
+# ---- Happy path ------------------------------------------------------------
+
+
+def test_new_user_sees_empty_owner_scoped_workspace(client):
+    _register(client, "coach@example.com", display_name="Coach")
+
+    dash = client.get("/api/dashboard")
+    assert dash.status_code == 200, dash.text
+    body = dash.json()
+    assert body["games"] == 0
+    assert body["repertoires"] == 0
+    assert body["training_sessions"] == 0
+    assert body["open_mistakes"] == 0
+    assert body["due_reviews"] == 0
+    assert len(body["recommendations"]) == 3
+
+    reps = client.get("/api/repertoires")
+    assert reps.status_code == 200
+    assert reps.json() == {"repertoires": []}
+
+
+def test_auth_status_signed_in_reports_display_name(client):
+    _register(client, "coach@example.com", display_name="Coach")
+    r = client.get("/api/auth/status")
+    assert r.status_code == 200
+    assert r.json() == {"signed_in": True, "username": "Coach"}
+
+
+def test_auth_status_falls_back_to_email(client):
+    _register(client, "noname@example.com", display_name=None)
+    assert client.get("/api/auth/status").json()["username"] == "noname@example.com"
+
+
+# ---- Owner isolation (the bridge passes the right owner) --------------------
+
+
+def test_repertoires_isolated_between_users(client):
+    user_a = _register(client, "a@example.com", display_name="A")
+    # Touch an owned endpoint so the bridge materializes A's profile, then seed.
+    assert client.get("/api/dashboard").status_code == 200
+    _seed_repertoire(user_a, "A's London")
+
+    a_reps = client.get("/api/repertoires").json()["repertoires"]
+    assert [r["name"] for r in a_reps] == ["A's London"]
+    assert client.get("/api/dashboard").json()["repertoires"] == 1
+
+    other = _client()
+    _register(other, "b@example.com", display_name="B")
+    assert other.get("/api/repertoires").json() == {"repertoires": []}
+    assert other.get("/api/dashboard").json()["repertoires"] == 0
+
+
+# ---- Build view (2b-2b: Maia-free workspace payload) -----------------------
+
+
+def test_build_load_requires_auth(client):
+    assert client.get("/api/build/load?repertoire_id=x").status_code == 401
+
+
+def test_build_load_returns_workspace_payload(client):
+    owner = _register(client, "a@example.com", display_name="A")
+    assert client.get("/api/dashboard").status_code == 200
+    rep_id = _seed_repertoire(owner, "A's London")
+
+    r = client.get(f"/api/build/load?repertoire_id={rep_id}")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["repertoire_id"] == rep_id
+    assert body["name"] == "A's London"
+    assert body["color"] == "white"
+    # A freshly-seeded repertoire is just its root node.
+    assert body["selected_node_id"] == body["nodes"][0]["id"]
+    assert body["nodes_total"] == 1
+    assert len(body["nodes"]) == 1
+    assert body["nodes"][0]["san"] == "root"
+    assert "health" in body and "mastery_pct" in body["health"]
+
+
+def test_build_load_is_owner_gated(client):
+    owner = _register(client, "a@example.com", display_name="A")
+    assert client.get("/api/dashboard").status_code == 200
+    rep_id = _seed_repertoire(owner, "A's London")
+
+    other = _client()
+    _register(other, "b@example.com", display_name="B")
+    assert other.get(f"/api/build/load?repertoire_id={rep_id}").status_code == 404
+
+
+# ---- Repertoire mutations (2b-2a: write path) ------------------------------
+
+
+def test_delete_requires_csrf(client):
+    _register(client, "coach@example.com")
+    # No X-CSRF-Token header -> rejected by the CSRF middleware before the handler.
+    r = client.post("/api/repertoires/delete", json={"repertoire_id": "x"})
+    assert r.status_code == 403
+
+
+def test_delete_requires_auth(client):
+    # Valid CSRF but no session -> the owner dependency rejects it.
+    r = client.post(
+        "/api/repertoires/delete",
+        json={"repertoire_id": "x"},
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 401
+
+
+def test_delete_own_repertoire(client):
+    owner = _register(client, "a@example.com", display_name="A")
+    assert client.get("/api/dashboard").status_code == 200
+    rep_id = _seed_repertoire(owner, "A's London")
+    assert client.get("/api/dashboard").json()["repertoires"] == 1
+
+    r = client.post(
+        "/api/repertoires/delete",
+        json={"repertoire_id": rep_id},
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 200
+    assert r.json() == {"deleted": rep_id}
+    assert client.get("/api/repertoires").json() == {"repertoires": []}
+    assert client.get("/api/dashboard").json()["repertoires"] == 0
+
+
+def test_cannot_delete_another_users_repertoire(client):
+    owner = _register(client, "a@example.com", display_name="A")
+    assert client.get("/api/dashboard").status_code == 200
+    rep_id = _seed_repertoire(owner, "A's London")
+
+    other = _client()
+    _register(other, "b@example.com", display_name="B")
+    r = other.post(
+        "/api/repertoires/delete",
+        json={"repertoire_id": rep_id},
+        headers=csrf_headers(other),
+    )
+    assert r.status_code == 404  # foreign repertoire is not-found, not forbidden
+    # A's repertoire survives B's attempt.
+    assert [x["id"] for x in client.get("/api/repertoires").json()["repertoires"]] == [rep_id]
+
+
+def test_set_active_toggles_and_is_owner_gated(client):
+    owner = _register(client, "a@example.com", display_name="A")
+    assert client.get("/api/dashboard").status_code == 200
+    rep_id = _seed_repertoire(owner, "A's London")  # seeded is_active=True
+
+    r = client.post(
+        "/api/repertoires/set-active",
+        json={"repertoire_id": rep_id, "active": False},
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 200
+    assert r.json() == {"id": rep_id, "name": "A's London", "is_active": False}
+    # The flag round-trips through the list read.
+    reps = client.get("/api/repertoires").json()["repertoires"]
+    assert reps[0]["is_active"] is False
+
+    other = _client()
+    _register(other, "b@example.com", display_name="B")
+    r = other.post(
+        "/api/repertoires/set-active",
+        json={"repertoire_id": rep_id, "active": True},
+        headers=csrf_headers(other),
+    )
+    assert r.status_code == 404
+
+
+# ---- Build write path (2b-2c: create / rename / add-move) -------------------
+
+
+def test_create_requires_csrf(client):
+    _register(client, "coach@example.com")
+    r = client.post("/api/repertoires/create", json={"name": "X", "color": "white"})
+    assert r.status_code == 403
+
+
+def test_create_requires_auth(client):
+    r = client.post(
+        "/api/repertoires/create",
+        json={"name": "X", "color": "white"},
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 401
+
+
+def test_create_returns_build_payload_and_claims_ownership(client):
+    _register(client, "a@example.com", display_name="A")
+    assert client.get("/api/dashboard").status_code == 200
+
+    r = client.post(
+        "/api/repertoires/create",
+        json={"name": "My London", "color": "white"},
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["name"] == "My London"
+    assert body["color"] == "white"
+    # Fresh repertoire is just its root node, and that root is selected.
+    assert body["nodes_total"] == 1
+    assert body["selected_node_id"] == body["nodes"][0]["id"]
+    rep_id = body["repertoire_id"]
+
+    # Claimed for the caller: it shows in their list + dashboard counter.
+    reps = client.get("/api/repertoires").json()["repertoires"]
+    assert [x["id"] for x in reps] == [rep_id]
+    assert client.get("/api/dashboard").json()["repertoires"] == 1
+
+
+def test_create_blank_name_defaults(client):
+    _register(client, "a@example.com")
+    r = client.post(
+        "/api/repertoires/create",
+        json={"name": "   ", "color": "black"},
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["name"] == "Untitled repertoire"
+    assert body["color"] == "black"
+
+
+def test_create_rejects_bad_color(client):
+    _register(client, "a@example.com")
+    r = client.post(
+        "/api/repertoires/create",
+        json={"name": "X", "color": "purple"},
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 400
+
+
+def test_created_repertoire_is_owner_isolated(client):
+    _register(client, "a@example.com", display_name="A")
+    rep_id = client.post(
+        "/api/repertoires/create",
+        json={"name": "A's", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()["repertoire_id"]
+
+    other = _client()
+    _register(other, "b@example.com", display_name="B")
+    assert other.get("/api/repertoires").json() == {"repertoires": []}
+    # B cannot rename or add to A's repertoire (foreign -> 404).
+    assert other.post(
+        "/api/build/rename",
+        json={"repertoire_id": rep_id, "name": "stolen"},
+        headers=csrf_headers(other),
+    ).status_code == 404
+
+
+def test_rename_updates_and_returns_payload(client):
+    _register(client, "a@example.com")
+    rep_id = client.post(
+        "/api/repertoires/create",
+        json={"name": "Old", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()["repertoire_id"]
+
+    r = client.post(
+        "/api/build/rename",
+        json={"repertoire_id": rep_id, "name": "New Name"},
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["name"] == "New Name"
+    assert client.get("/api/repertoires").json()["repertoires"][0]["name"] == "New Name"
+
+
+def test_rename_rejects_empty_name(client):
+    _register(client, "a@example.com")
+    rep_id = client.post(
+        "/api/repertoires/create",
+        json={"name": "Old", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()["repertoire_id"]
+
+    r = client.post(
+        "/api/build/rename",
+        json={"repertoire_id": rep_id, "name": "   "},
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 400
+
+
+def test_add_move_appends_prepared_move(client):
+    _register(client, "a@example.com")
+    create = client.post(
+        "/api/repertoires/create",
+        json={"name": "White e4", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+    rep_id = create["repertoire_id"]
+    root_id = create["selected_node_id"]
+
+    r = client.post(
+        "/api/build/add-move",
+        json={"repertoire_id": rep_id, "parent_node_id": root_id, "move_uci": "e2e4"},
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["nodes_total"] == 2
+    assert body["summary"]["added_nodes"] == 1
+    new_node = next(n for n in body["nodes"] if n["id"] == body["selected_node_id"])
+    assert new_node["uci"] == "e2e4"
+    assert new_node["san"] == "e4"
+    # White's move in a White repertoire is a prepared move and the new mainline.
+    assert new_node["is_prepared"] is True
+    assert new_node["is_mainline"] is True
+    assert "prepared" in new_node["tags"]
+
+
+def test_add_move_rejects_illegal_move(client):
+    _register(client, "a@example.com")
+    create = client.post(
+        "/api/repertoires/create",
+        json={"name": "X", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+
+    r = client.post(
+        "/api/build/add-move",
+        json={
+            "repertoire_id": create["repertoire_id"],
+            "parent_node_id": create["selected_node_id"],
+            "move_uci": "e2e5",
+        },
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 400
+
+
+def test_add_move_is_owner_gated(client):
+    _register(client, "a@example.com", display_name="A")
+    create = client.post(
+        "/api/repertoires/create",
+        json={"name": "A's", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+
+    other = _client()
+    _register(other, "b@example.com", display_name="B")
+    r = other.post(
+        "/api/build/add-move",
+        json={
+            "repertoire_id": create["repertoire_id"],
+            "parent_node_id": create["selected_node_id"],
+            "move_uci": "e2e4",
+        },
+        headers=csrf_headers(other),
+    )
+    assert r.status_code == 404

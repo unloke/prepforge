@@ -27,9 +27,17 @@ CREATE TABLE IF NOT EXISTS games (
     -- enforced per-owner by idx_games_owner_lichess (see _apply_multitenancy_migration).
     lichess_id TEXT,
     tags_json TEXT NOT NULL DEFAULT '{}',
+    -- Multi-tenancy isolation root for owned games (see sa_tables / ROADMAP Phase 2).
+    owner_user_id TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_games_owner ON games(owner_user_id);
+-- Per-owner Lichess dedup. NULLs are distinct, so ownerless / non-Lichess rows
+-- are never constrained.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_games_owner_lichess
+    ON games(owner_user_id, lichess_id);
 
 CREATE TABLE IF NOT EXISTS positions (
     id TEXT PRIMARY KEY,
@@ -136,6 +144,8 @@ CREATE TABLE IF NOT EXISTS repertoires (
     updated_at TEXT NOT NULL,
     FOREIGN KEY (user_profile_id) REFERENCES user_profiles(id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_repertoires_owner ON repertoires(user_profile_id);
 
 CREATE TABLE IF NOT EXISTS opening_nodes (
     id TEXT PRIMARY KEY,
@@ -289,3 +299,15 @@ CREATE TABLE IF NOT EXISTS app_settings (
     value_json TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+
+-- Maps a browser cookie (token hash) to a user_profiles row. Legacy guest /
+-- Lichess sessions live here (the multi-tenancy session table).
+CREATE TABLE IF NOT EXISTS user_sessions (
+    token_hash TEXT PRIMARY KEY,
+    user_profile_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL,
+    FOREIGN KEY (user_profile_id) REFERENCES user_profiles(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_sessions_profile ON user_sessions(user_profile_id);

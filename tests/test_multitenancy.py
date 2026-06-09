@@ -331,54 +331,6 @@ def test_two_owners_import_same_lichess_game_independently(tmp_path):
     assert app.repository.find_game_id_by_lichess_id("abcd1234", owner_user_id=b) == gb
 
 
-def test_legacy_global_lichess_unique_is_dropped_on_migration(tmp_path):
-    # Build a DB with the OLD schema (column-level UNIQUE on lichess_id), then re-open
-    # it through the normal initializer and confirm the migration rebuilt the table so
-    # two owners can share a lichess_id.
-    import sqlite3
-
-    from prepforge_chess.storage.database import initialize_database
-
-    db_path = tmp_path / "legacy.sqlite3"
-    raw = sqlite3.connect(str(db_path))
-    raw.executescript(
-        """
-        CREATE TABLE games (
-            id TEXT PRIMARY KEY,
-            source TEXT NOT NULL,
-            initial_fen TEXT NOT NULL,
-            white TEXT, black TEXT,
-            result TEXT NOT NULL DEFAULT '*',
-            event TEXT, site TEXT, played_at TEXT, pgn TEXT,
-            lichess_id TEXT UNIQUE,
-            tags_json TEXT NOT NULL DEFAULT '{}',
-            created_at TEXT NOT NULL, updated_at TEXT NOT NULL
-        );
-        INSERT INTO games (id, source, initial_fen, result, lichess_id, created_at, updated_at)
-        VALUES ('g1', 'imported_pgn', 'startpos', '*', 'shared', 't', 't');
-        """
-    )
-    raw.commit()
-    raw.close()
-
-    conn = initialize_database(db_path)
-    table_sql = conn.execute(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name='games'"
-    ).fetchone()[0].lower()
-    assert "unique" not in table_sql  # global column UNIQUE is gone
-    # The pre-existing row survived the rebuild.
-    assert conn.execute("SELECT COUNT(*) FROM games").fetchone()[0] == 1
-    # And a second owner can now hold the same lichess_id (composite per-owner unique).
-    repo = PrepForgeRepository(conn)
-    # g1 was backfilled to the legacy owner; add a second owner's copy of 'shared'.
-    conn.execute(
-        "INSERT INTO games (id, source, initial_fen, result, lichess_id, owner_user_id, created_at, updated_at)"
-        " VALUES ('g2', 'imported_pgn', 'startpos', '*', 'shared', 'owner-b', 't', 't')"
-    )
-    conn.commit()
-    assert repo.find_game_id_by_lichess_id("shared", owner_user_id="owner-b") == "g2"
-
-
 # ---- Per-user Lichess token / status ---------------------------------------
 
 

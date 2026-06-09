@@ -1,0 +1,54 @@
+name: CI
+
+# Gate every push/PR on the same checks the deploy preflight runs locally:
+# Python (pytest + ruff + alembic drift) and JS (vitest + Vite build). Green CI is
+# a launch requirement (ROADMAP Phase 6 / Phase 3e guardrails).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install (server + dev extras)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[server,dev]"
+      - name: Ruff
+        run: python -m ruff check src tests
+      - name: Pytest
+        run: python -m pytest -q
+      - name: Alembic upgrade + drift check
+        # `alembic check` diffs the metadata against a migrated DB, so apply
+        # migrations to a throwaway SQLite first; then assert zero drift.
+        env:
+          DATABASE_URL: sqlite:///ci_alembic.sqlite3
+        run: |
+          python -m alembic upgrade head
+          python -m alembic check
+
+  js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Vitest
+        run: npm test -- --run
+      - name: Build SPA
+        run: npm run build

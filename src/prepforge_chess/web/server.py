@@ -75,6 +75,8 @@ from prepforge_chess.services.stockfish_download import (
     install_stockfish,
 )
 from prepforge_chess.services.training import TrainingService
+from sqlalchemy import text
+
 from prepforge_chess.storage.database import initialize_database
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
@@ -614,10 +616,10 @@ class PrepForgeWebApp:
         maia_factory: Optional[Callable[[], Any]] = None,
     ):
         self.db_path = Path(db_path)
-        self.connection = initialize_database(self.db_path)
-        self.repository = PrepForgeRepository(self.connection)
+        self.engine = initialize_database(self.db_path)
+        self.repository = PrepForgeRepository(self.engine)
         self.chess_core = ChessCore()
-        self.settings = AppSettingsService(self.connection)
+        self.settings = AppSettingsService(self.engine)
         self.prefer_real_engines = prefer_real_engines
         # Hard product rule: no server-side engine compute in the public flow.
         # All Stockfish/Maia work runs in the browser. The server engine APIs
@@ -796,38 +798,50 @@ class PrepForgeWebApp:
         # owner link: training_sessions has no owner column, and training_progress's
         # user_profile_id is nullable). Unscoped (owner None) keeps the global totals.
         now_iso = datetime.now(timezone.utc).isoformat()
-        if owner_user_id is None:
-            session_count = self.connection.execute(
-                "SELECT COUNT(*) AS count FROM training_sessions"
-            ).fetchone()["count"]
-            mistake_count = self.connection.execute(
-                "SELECT COUNT(*) AS count FROM training_progress "
-                "WHERE attempts > correct_attempts"
-            ).fetchone()["count"]
-            due_count = self.connection.execute(
-                "SELECT COUNT(*) AS count FROM training_progress "
-                "WHERE due_at IS NOT NULL AND due_at <= ?",
-                (now_iso,),
-            ).fetchone()["count"]
-        else:
-            session_count = self.connection.execute(
-                "SELECT COUNT(*) AS count FROM training_sessions ts "
-                "JOIN repertoires r ON r.id = ts.repertoire_id "
-                "WHERE r.user_profile_id = ?",
-                (owner_user_id,),
-            ).fetchone()["count"]
-            mistake_count = self.connection.execute(
-                "SELECT COUNT(*) AS count FROM training_progress tp "
-                "JOIN repertoires r ON r.id = tp.repertoire_id "
-                "WHERE tp.attempts > tp.correct_attempts AND r.user_profile_id = ?",
-                (owner_user_id,),
-            ).fetchone()["count"]
-            due_count = self.connection.execute(
-                "SELECT COUNT(*) AS count FROM training_progress tp "
-                "JOIN repertoires r ON r.id = tp.repertoire_id "
-                "WHERE tp.due_at IS NOT NULL AND tp.due_at <= ? AND r.user_profile_id = ?",
-                (now_iso, owner_user_id),
-            ).fetchone()["count"]
+        with self.engine.connect() as conn:
+            if owner_user_id is None:
+                session_count = conn.execute(
+                    text("SELECT COUNT(*) AS count FROM training_sessions")
+                ).scalar_one()
+                mistake_count = conn.execute(
+                    text(
+                        "SELECT COUNT(*) AS count FROM training_progress "
+                        "WHERE attempts > correct_attempts"
+                    )
+                ).scalar_one()
+                due_count = conn.execute(
+                    text(
+                        "SELECT COUNT(*) AS count FROM training_progress "
+                        "WHERE due_at IS NOT NULL AND due_at <= :now"
+                    ),
+                    {"now": now_iso},
+                ).scalar_one()
+            else:
+                session_count = conn.execute(
+                    text(
+                        "SELECT COUNT(*) AS count FROM training_sessions ts "
+                        "JOIN repertoires r ON r.id = ts.repertoire_id "
+                        "WHERE r.user_profile_id = :owner"
+                    ),
+                    {"owner": owner_user_id},
+                ).scalar_one()
+                mistake_count = conn.execute(
+                    text(
+                        "SELECT COUNT(*) AS count FROM training_progress tp "
+                        "JOIN repertoires r ON r.id = tp.repertoire_id "
+                        "WHERE tp.attempts > tp.correct_attempts AND r.user_profile_id = :owner"
+                    ),
+                    {"owner": owner_user_id},
+                ).scalar_one()
+                due_count = conn.execute(
+                    text(
+                        "SELECT COUNT(*) AS count FROM training_progress tp "
+                        "JOIN repertoires r ON r.id = tp.repertoire_id "
+                        "WHERE tp.due_at IS NOT NULL AND tp.due_at <= :now "
+                        "AND r.user_profile_id = :owner"
+                    ),
+                    {"now": now_iso, "owner": owner_user_id},
+                ).scalar_one()
         return {
             "games": len(games),
             "repertoires": len(repertoires),
@@ -947,12 +961,12 @@ class PrepForgeWebApp:
                 raise ValueError("each maia_assessment requires a fen string")
             if not uci or not isinstance(uci, str):
                 raise ValueError("each maia_assessment requires a uci string")
-            for field in ("human_probability", "win_chance_after"):
-                value = item.get(field)
+            for key in ("human_probability", "win_chance_after"):
+                value = item.get(key)
                 if not isinstance(value, (int, float)) or isinstance(value, bool):
-                    raise ValueError("maia_assessment {0} must be a number".format(field))
+                    raise ValueError("maia_assessment {0} must be a number".format(key))
                 if not math.isfinite(value) or value < 0.0 or value > 1.0:
-                    raise ValueError("maia_assessment {0} must be in [0, 1]".format(field))
+                    raise ValueError("maia_assessment {0} must be in [0, 1]".format(key))
             cleaned.append(item)
         replay_maia = ReplayMaia(cleaned, chess_core=self.chess_core)
         return BrilliantAnalyzer(maia=replay_maia)
@@ -2327,14 +2341,18 @@ class PrepForgeWebApp:
         pre-owned (per-owner game dedup is a documented follow-up)."""
         if owner_user_id is None:
             return
-        with self.connection:
-            self.connection.execute(
-                "UPDATE games SET owner_user_id = ? WHERE id = ? AND owner_user_id IS NULL",
-                (owner_user_id, game_id),
+        with self.engine.begin() as conn:
+            conn.execute(
+                text(
+                    "UPDATE games SET owner_user_id = :owner "
+                    "WHERE id = :id AND owner_user_id IS NULL"
+                ),
+                {"owner": owner_user_id, "id": game_id},
             )
-        row = self.connection.execute(
-            "SELECT owner_user_id FROM games WHERE id = ?", (game_id,)
-        ).fetchone()
+            row = conn.execute(
+                text("SELECT owner_user_id FROM games WHERE id = :id"),
+                {"id": game_id},
+            ).mappings().first()
         if row is not None and row["owner_user_id"] not in (None, owner_user_id):
             # Don't reveal another owner's game.
             raise ValueError("game not found: {0}".format(game_id))
@@ -2348,10 +2366,11 @@ class PrepForgeWebApp:
         for unscoped/internal callers. Mirrors _claim_or_verify_game / _assert_session_owner."""
         if owner_user_id is None:
             return
-        row = self.connection.execute(
-            "SELECT user_profile_id FROM repertoires WHERE id = ?",
-            (repertoire_id,),
-        ).fetchone()
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                text("SELECT user_profile_id FROM repertoires WHERE id = :id"),
+                {"id": repertoire_id},
+            ).mappings().first()
         if row is None:
             raise ValueError("repertoire not found: {0}".format(repertoire_id))
         if row["user_profile_id"] not in (None, owner_user_id):
@@ -2362,11 +2381,13 @@ class PrepForgeWebApp:
         """Stamp ownership on a just-created repertoire (the builder saves it ownerless)."""
         if owner_user_id is None:
             return
-        with self.connection:
-            self.connection.execute(
-                "UPDATE repertoires SET user_profile_id = ? "
-                "WHERE id = ? AND user_profile_id IS NULL",
-                (owner_user_id, repertoire_id),
+        with self.engine.begin() as conn:
+            conn.execute(
+                text(
+                    "UPDATE repertoires SET user_profile_id = :owner "
+                    "WHERE id = :id AND user_profile_id IS NULL"
+                ),
+                {"owner": owner_user_id, "id": repertoire_id},
             )
 
     def _assert_session_owner(
@@ -2381,10 +2402,11 @@ class PrepForgeWebApp:
         session = self.repository.load_training_session(session_id)
         if session is None:
             raise ValueError("training session not found: {0}".format(session_id))
-        row = self.connection.execute(
-            "SELECT user_profile_id FROM repertoires WHERE id = ?",
-            (session.repertoire_id,),
-        ).fetchone()
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                text("SELECT user_profile_id FROM repertoires WHERE id = :id"),
+                {"id": session.repertoire_id},
+            ).mappings().first()
         rep_owner = row["user_profile_id"] if row is not None else None
         if rep_owner is not None and rep_owner != owner_user_id:
             # Don't reveal another owner's training session.

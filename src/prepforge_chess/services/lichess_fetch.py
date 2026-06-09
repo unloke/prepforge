@@ -6,7 +6,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from typing import Iterable, List, Optional, Tuple
+from typing import List, Optional
 
 from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import Color, MoveSource, Game
