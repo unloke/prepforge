@@ -90,7 +90,7 @@ def test_new_user_sees_empty_owner_scoped_workspace(client):
 
     reps = client.get("/api/repertoires")
     assert reps.status_code == 200
-    assert reps.json() == {"repertoires": []}
+    assert reps.json() == {"repertoires": [], "shared": []}
 
 
 def test_auth_status_signed_in_reports_display_name(client):
@@ -120,7 +120,7 @@ def test_repertoires_isolated_between_users(client):
 
     other = _client()
     _register(other, "b@example.com", display_name="B")
-    assert other.get("/api/repertoires").json() == {"repertoires": []}
+    assert other.get("/api/repertoires").json() == {"repertoires": [], "shared": []}
     assert other.get("/api/dashboard").json()["repertoires"] == 0
 
 
@@ -193,7 +193,7 @@ def test_delete_own_repertoire(client):
     )
     assert r.status_code == 200
     assert r.json() == {"deleted": rep_id}
-    assert client.get("/api/repertoires").json() == {"repertoires": []}
+    assert client.get("/api/repertoires").json() == {"repertoires": [], "shared": []}
     assert client.get("/api/dashboard").json()["repertoires"] == 0
 
 
@@ -315,7 +315,7 @@ def test_created_repertoire_is_owner_isolated(client):
 
     other = _client()
     _register(other, "b@example.com", display_name="B")
-    assert other.get("/api/repertoires").json() == {"repertoires": []}
+    assert other.get("/api/repertoires").json() == {"repertoires": [], "shared": []}
     # B cannot rename or add to A's repertoire (foreign -> 404).
     assert other.post(
         "/api/build/rename",

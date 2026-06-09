@@ -142,10 +142,13 @@ CREATE TABLE IF NOT EXISTS repertoires (
     is_active INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
+    team_id TEXT,
+    visibility TEXT,
     FOREIGN KEY (user_profile_id) REFERENCES user_profiles(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_repertoires_owner ON repertoires(user_profile_id);
+CREATE INDEX IF NOT EXISTS idx_repertoires_team ON repertoires(team_id);
 
 CREATE TABLE IF NOT EXISTS opening_nodes (
     id TEXT PRIMARY KEY,

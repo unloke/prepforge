@@ -530,9 +530,10 @@ class PrepForgeRepository:
             return int(conn.execute(stmt).scalar_one())
 
     def repertoire_meta(self, repertoire_id: str) -> Optional[Dict[str, Any]]:
-        """Lightweight ``(id, name, is_active, owner_user_id)`` for owner-gating and
-        write responses, without loading the whole opening tree. ``None`` if absent;
-        ``owner_user_id`` is ``None`` for an unclaimed/legacy row."""
+        """Lightweight ``(id, name, is_active, owner_user_id, team_id, visibility)`` for
+        owner/share-gating and write responses, without loading the whole opening tree.
+        ``None`` if absent; ``owner_user_id``/``team_id`` are ``None`` for an
+        unclaimed/unshared row, and ``visibility`` defaults to ``"private"``."""
         with self.engine.connect() as conn:
             row = conn.execute(
                 select(
@@ -540,6 +541,8 @@ class PrepForgeRepository:
                     t.repertoires.c.name,
                     t.repertoires.c.is_active,
                     t.repertoires.c.user_profile_id,
+                    t.repertoires.c.team_id,
+                    t.repertoires.c.visibility,
                 ).where(t.repertoires.c.id == repertoire_id)
             ).mappings().first()
         if row is None:
@@ -549,7 +552,53 @@ class PrepForgeRepository:
             "name": row["name"],
             "is_active": _int_to_bool(row["is_active"]),
             "owner_user_id": row["user_profile_id"],
+            "team_id": row["team_id"],
+            "visibility": row["visibility"] or "private",
         }
+
+    def set_repertoire_sharing(
+        self, repertoire_id: str, team_id: Optional[str], visibility: str
+    ) -> None:
+        """Set the team a repertoire is shared with and its visibility. Pass
+        ``team_id=None`` + ``visibility='private'`` to unshare."""
+        with self.engine.begin() as conn:
+            conn.execute(
+                update(t.repertoires)
+                .where(t.repertoires.c.id == repertoire_id)
+                .values(team_id=team_id, visibility=visibility, updated_at=_now_text())
+            )
+
+    def list_team_shared_repertoires(self, team_ids: List[str]) -> List[Dict[str, Any]]:
+        """Lightweight metas of every repertoire shared (``visibility='team'``) to any
+        of ``team_ids`` — for the team members' read-only listing. Empty list if no
+        team_ids, so a non-member never widens the query."""
+        if not team_ids:
+            return []
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(
+                    t.repertoires.c.id,
+                    t.repertoires.c.name,
+                    t.repertoires.c.color,
+                    t.repertoires.c.root_fen,
+                    t.repertoires.c.user_profile_id,
+                    t.repertoires.c.team_id,
+                )
+                .where(t.repertoires.c.team_id.in_(team_ids))
+                .where(t.repertoires.c.visibility == "team")
+                .order_by(t.repertoires.c.updated_at.desc())
+            ).mappings().all()
+        return [
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "color": r["color"],
+                "root_fen": r["root_fen"],
+                "owner_user_id": r["user_profile_id"],
+                "team_id": r["team_id"],
+            }
+            for r in rows
+        ]
 
     def set_repertoire_active(self, repertoire_id: str, active: bool) -> None:
         with self.engine.begin() as conn:

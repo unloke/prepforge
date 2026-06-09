@@ -420,11 +420,30 @@ Implemented in `api/routers/billing.py` (registered in `main.py`):
   `PREPFORGE_STRIPE_PRICE_PRO`; register the webhook endpoint in the Stripe dashboard.
   *(Stripe SDK already ships in `.[server]`.)*
 
-### Phase 5 — Teams / classroom ⬜
-Add `team_id` + `visibility (private|shared|team)` to repertoires (now in
-SQLAlchemy). Sharing, membership roles, classroom teacher/student views. "Create
-team" gated to Pro. No seat billing.
-- Acceptance: shared repertoire visible to team members per role.
+### Phase 5 — Teams / classroom 🔶 BACKEND DONE (SPA UI deferred)
+Repertoires gained `team_id` + `visibility` (`private`|`team`, NULL=private) in
+`sa_tables`/`schema.sql` + migration `2bf1a51905b1` (no DB-level FK to `teams` on
+purpose — it would couple every legacy `create_all` to importing `api.models`, and a
+dangling `team_id` fails closed in the read gate; integrity is app-enforced). New
+`api/routers/teams.py`:
+- `POST /api/teams` (**Pro-gated** via `require_pro`; enrolls caller as owner),
+  `GET /api/teams` (caller's teams + role + member_count), `GET /api/teams/{id}`
+  (members; member-only → 404 otherwise), `POST /api/teams/{id}/members` (add by email;
+  owner/admin only → 403; unknown email → 404; dup → 409; can't add a 2nd owner),
+  `DELETE /api/teams/{id}/members/{user_id}` (manager removes others / self-leave;
+  can't remove the owner).
+- **Sharing** (`POST /api/repertoires/share` in `workspace.py`): only the repertoire
+  **owner** may set `team_id`+`visibility`; sharing to a team requires caller membership
+  (404 otherwise). New `repository.set_repertoire_sharing` + extended `repertoire_meta`.
+- **Read widening, write-safe:** `build_load` now uses a `_readable_repertoire` gate
+  (owner OR member of the shared team); **mutations keep `_owned_repertoire`** so sharing
+  never grants writes. `GET /api/repertoires` adds a `shared` list (others' team-shared
+  reps) via `repository.list_team_shared_repertoires`.
+- **Acceptance met:** a shared repertoire is readable by team members and invisible to
+  non-members; members cannot mutate it; unshare revokes access. 16 tests
+  `tests/test_api_teams.py`. **296 green, ruff clean, alembic zero-drift.**
+- **Deferred:** the SPA has no teams UI yet (backend/API only); classroom
+  teacher/student affordances ride on `kind='classroom'` later.
 
 ### Phase 6 — Ops / launch ⬜
 Sentry, structured logging, DB backups, graceful shutdown, expired-session purge

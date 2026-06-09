@@ -182,7 +182,16 @@ repertoires = Table(
     Column("is_active", Integer, nullable=False),
     Column("created_at", Text, nullable=False),
     Column("updated_at", Text, nullable=False),
+    # Phase 5 (teams/sharing): nullable so the existing repository insert is
+    # untouched — NULL visibility is treated as "private". A repertoire shared to a
+    # team carries team_id + visibility='team'. No DB-level FK to the ORM ``teams``
+    # table on purpose: it would couple every legacy ``create_all`` to importing
+    # api.models, and a dangling team_id fails closed (the read gate checks live
+    # membership), so referential integrity is enforced in app logic instead.
+    Column("team_id", Text),
+    Column("visibility", Text),
     Index("idx_repertoires_owner", "user_profile_id"),
+    Index("idx_repertoires_team", "team_id"),
 )
 
 opening_nodes = Table(

@@ -18,7 +18,7 @@ from slowapi.errors import RateLimitExceeded
 from prepforge_chess.api.config import get_settings
 from prepforge_chess.api.middleware import CSRFMiddleware, SecurityHeadersMiddleware
 from prepforge_chess.api.ratelimit import limiter
-from prepforge_chess.api.routers import analyze, auth, billing, lichess, train, workspace
+from prepforge_chess.api.routers import analyze, auth, billing, lichess, teams, train, workspace
 from prepforge_chess.api.routers import settings as settings_router
 from prepforge_chess.api.static import register_static
 
@@ -64,6 +64,7 @@ def create_app() -> FastAPI:
     app.include_router(train.router)
     app.include_router(settings_router.router)
     app.include_router(billing.router)
+    app.include_router(teams.router)
 
     @app.get("/healthz", tags=["ops"])
     def healthz() -> dict[str, str]:

@@ -16,10 +16,13 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from prepforge_chess.api.config import Settings, get_settings
+from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_owner, current_user, get_repository
 from prepforge_chess.api.models import Plan, User
+from prepforge_chess.api.routers.teams import user_team_ids
 from prepforge_chess.core.models import Color, MoveSource, OpeningNode
 from prepforge_chess.services.opening_builder import (
     CreateRepertoireRequest,
@@ -43,6 +46,22 @@ def _owned_repertoire(repo: PrepForgeRepository, repertoire_id: str, owner: str)
     if meta is None or meta["owner_user_id"] not in (None, owner):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
     return meta
+
+
+def _readable_repertoire(
+    repo: PrepForgeRepository, repertoire_id: str, owner: str, team_ids: set[str]
+) -> dict[str, Any]:
+    """Read gate (Phase 5): the owner, OR a member of the team a ``visibility='team'``
+    repertoire is shared with. 404 otherwise. Widens reads only — mutations keep using
+    ``_owned_repertoire`` so sharing never grants write access."""
+    meta = repo.repertoire_meta(repertoire_id)
+    if meta is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
+    if meta["owner_user_id"] in (None, owner):
+        return meta
+    if meta["visibility"] == "team" and meta["team_id"] in team_ids:
+        return meta
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
 
 # Static next-action hints the dashboard surfaces (carried over verbatim from the
 # legacy server so the existing SPA renders unchanged).
@@ -105,10 +124,20 @@ def dashboard(
 
 @router.get("/repertoires")
 def list_repertoires(
+    user: User = Depends(current_user),
     owner: str = Depends(current_owner),
     repo: PrepForgeRepository = Depends(get_repository),
+    db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """This owner's repertoires, each with a computed health summary."""
+    """The caller's own repertoires (each with a computed health summary), plus a
+    lightweight ``shared`` list of repertoires other members have shared to the
+    caller's teams (read-only; no health/tree load to keep this cheap)."""
+    team_ids = user_team_ids(db, user.id)
+    shared = [
+        item
+        for item in repo.list_team_shared_repertoires(list(team_ids))
+        if item["owner_user_id"] != owner  # the caller's own shared reps already appear above
+    ]
     return {
         "repertoires": [
             {
@@ -126,20 +155,71 @@ def list_repertoires(
                 ).to_dict(),
             }
             for rep in repo.list_repertoires(owner_user_id=owner)
-        ]
+        ],
+        "shared": [
+            {
+                "id": item["id"],
+                "name": item["name"],
+                "color": item["color"],
+                "root_fen": item["root_fen"],
+                "team_id": item["team_id"],
+            }
+            for item in shared
+        ],
     }
 
 
 @router.get("/build/load")
 def build_load(
     repertoire_id: str,
+    user: User = Depends(current_user),
     owner: str = Depends(current_owner),
     repo: PrepForgeRepository = Depends(get_repository),
+    db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """The Build-view payload for one of this owner's repertoires (read-only). Computes
-    no chess — pure serialization of the stored tree + training progress."""
-    _owned_repertoire(repo, repertoire_id, owner)
+    """The Build-view payload for a repertoire the caller can read (read-only). The
+    owner always can; a team member can read one shared to their team. Computes no
+    chess — pure serialization of the stored tree + training progress."""
+    _readable_repertoire(repo, repertoire_id, owner, user_team_ids(db, user.id))
     return build_workspace_payload(repo, repertoire_id)
+
+
+class ShareRepertoireBody(BaseModel):
+    repertoire_id: str
+    team_id: str | None = None
+    visibility: str = "private"
+
+
+@router.post("/repertoires/share")
+def share_repertoire(
+    body: ShareRepertoireBody,
+    user: User = Depends(current_user),
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Share (or unshare) one of the caller's OWN repertoires with a team. Only the
+    owner may change sharing; sharing to a team requires the caller to be a member of
+    that team (404 otherwise, to avoid revealing teams). ``visibility='private'``
+    unshares."""
+    _owned_repertoire(repo, body.repertoire_id, owner)
+    if body.visibility not in ("private", "team"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="visibility must be 'private' or 'team'",
+        )
+    if body.visibility == "team":
+        if not body.team_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="team_id is required to share with a team",
+            )
+        if body.team_id not in user_team_ids(db, user.id):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="team not found")
+        repo.set_repertoire_sharing(body.repertoire_id, body.team_id, "team")
+        return {"repertoire_id": body.repertoire_id, "visibility": "team", "team_id": body.team_id}
+    repo.set_repertoire_sharing(body.repertoire_id, None, "private")
+    return {"repertoire_id": body.repertoire_id, "visibility": "private", "team_id": None}
 
 
 class DeleteRepertoireRequest(BaseModel):
