@@ -133,8 +133,13 @@ def login(
 ) -> User:
     user = db.scalar(select(User).where(User.email == body.email.lower()))
     # Verify even on miss against a dummy hash would be ideal; keep simple but
-    # avoid leaking which half failed via the message.
-    if user is None or not verify_password(body.password, user.password_hash):
+    # avoid leaking which half failed via the message. A NULL hash means an
+    # OAuth-only (Google) account that has no password — reject password login.
+    if (
+        user is None
+        or user.password_hash is None
+        or not verify_password(body.password, user.password_hash)
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid email or password"
         )
@@ -183,6 +188,18 @@ def signout(
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(current_user)) -> User:
     return user
+
+
+class AuthProviders(BaseModel):
+    google: bool
+    password: bool = True
+
+
+@router.get("/providers", response_model=AuthProviders)
+def providers(settings: Settings = Depends(get_settings)) -> AuthProviders:
+    """Public: which sign-in methods the deployment offers, so the SPA can show the
+    right buttons (Google when configured; email/password always available)."""
+    return AuthProviders(google=settings.google_oauth_enabled, password=True)
 
 
 class AuthStatus(BaseModel):

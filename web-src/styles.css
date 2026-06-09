@@ -2052,6 +2052,36 @@ h2 {
   min-width: 0;
 }
 
+/* Sign-in / create-account modal extras. */
+.auth-modal .auth-google {
+  width: 100%;
+  justify-content: center;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.auth-error {
+  margin: 8px 0 0;
+  color: #b42318;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .modal-field > span {
   font-size: 12px;
   color: var(--muted);

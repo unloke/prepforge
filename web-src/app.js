@@ -1461,10 +1461,26 @@ async function api(path, options = {}) {
     ...options,
     headers,
   });
-  const payload = await response.json();
+  // Read as text first so a non-JSON body (a 500 "Internal Server Error", a 502
+  // from the proxy, an HTML error page) surfaces a clear message instead of a raw
+  // "Unexpected token 'I' ... is not valid JSON" from response.json().
+  const raw = await response.text();
+  let payload = {};
+  if (raw) {
+    try {
+      payload = JSON.parse(raw);
+    } catch (_) {
+      if (!response.ok) {
+        throw new Error(`Server error ${response.status} ${response.statusText}`.trim());
+      }
+      throw new Error("Unexpected non-JSON response from server");
+    }
+  }
   // Legacy server returned {error}; FastAPI returns {detail}. Accept both so the
   // SPA surfaces real messages during and after the cutover.
-  if (!response.ok) throw new Error(payload.error || payload.detail || "Request failed");
+  if (!response.ok) {
+    throw new Error(payload.error || payload.detail || `Request failed (${response.status})`);
+  }
   return payload;
 }
 
@@ -1779,19 +1795,133 @@ function renderAccountChip() {
     chip.title = `Signed in as ${name || "your account"}`;
   } else {
     chip.classList.remove("is-connected");
-    label.textContent = "Connect Lichess";
+    label.textContent = "Sign in";
     // A guest chip is a single action, not a menu — drop the popup affordance.
     chip.removeAttribute("aria-haspopup");
     chip.setAttribute("aria-expanded", "false");
-    chip.title = "Connect a Lichess account";
+    chip.title = "Sign in to PrepForge";
   }
+}
+
+// Which sign-in methods the server offers (Google when configured; email/password
+// always). Fetched once; drives which buttons the auth modal shows.
+async function refreshAuthProviders() {
+  try {
+    appState.authProviders = await api("/api/auth/providers");
+  } catch (_) {
+    appState.authProviders = { google: false, password: true };
+  }
+}
+
+// The sign-in / create-account modal. Google (when configured) is the primary path;
+// email/password is the always-available fallback.
+function openAuthModal(mode = "login") {
+  const existing = document.querySelector(".modal-overlay.auth-overlay");
+  if (existing) existing.remove();
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay auth-overlay";
+  const providers = appState.authProviders || { google: false, password: true };
+  const render = (currentMode) => {
+    const isRegister = currentMode === "register";
+    const title = isRegister ? "Create account" : "Sign in";
+    const googleBlock = providers.google
+      ? `<button class="btn primary auth-google" data-action="google" type="button">Continue with Google</button>
+         <div class="auth-divider"><span>or use email</span></div>`
+      : "";
+    overlay.innerHTML = `
+      <div class="modal auth-modal" role="dialog" aria-modal="true" aria-label="${title}">
+        <div class="modal-title">${title}</div>
+        <div class="modal-body">
+          ${googleBlock}
+          <label class="modal-field"><span>Email</span>
+            <input type="email" data-auth="email" autocomplete="email" /></label>
+          <label class="modal-field"><span>Password</span>
+            <input type="password" data-auth="password"
+              autocomplete="${isRegister ? "new-password" : "current-password"}" /></label>
+          <p class="auth-error" data-auth="error" role="alert" hidden></p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn ghost" data-action="toggle" type="button">${
+            isRegister ? "Have an account? Sign in" : "New here? Create account"
+          }</button>
+          <button class="btn primary" data-action="submit" type="button">${
+            isRegister ? "Create account" : "Sign in"
+          }</button>
+        </div>
+      </div>`;
+    overlay.dataset.mode = currentMode;
+    const emailInput = overlay.querySelector('[data-auth="email"]');
+    if (emailInput) emailInput.focus();
+  };
+  render(mode);
+  document.body.appendChild(overlay);
+
+  const close = () => {
+    document.removeEventListener("keydown", onKey);
+    overlay.remove();
+  };
+  const showError = (msg) => {
+    const el = overlay.querySelector('[data-auth="error"]');
+    if (el) {
+      el.textContent = msg;
+      el.hidden = !msg;
+    }
+  };
+  const submit = async () => {
+    const currentMode = overlay.dataset.mode;
+    const email = overlay.querySelector('[data-auth="email"]').value.trim();
+    const password = overlay.querySelector('[data-auth="password"]').value;
+    if (!email || !password) {
+      showError("Enter your email and password.");
+      return;
+    }
+    if (currentMode === "register" && password.length < 8) {
+      showError("Password must be at least 8 characters.");
+      return;
+    }
+    showError("");
+    const submitBtn = overlay.querySelector('[data-action="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+    try {
+      const endpoint = currentMode === "register" ? "/api/auth/register" : "/api/auth/login";
+      await postJson(endpoint, { email, password });
+      close();
+      // A fresh session changes every owner-scoped view — reload for a clean slate.
+      window.location.reload();
+    } catch (error) {
+      showError(error.message || "Sign-in failed.");
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  };
+  const onKey = (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      close();
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      submit();
+    }
+  };
+  document.addEventListener("keydown", onKey);
+  overlay.addEventListener("click", (event) => {
+    const action = event.target?.dataset?.action;
+    if (event.target === overlay) {
+      close();
+    } else if (action === "google") {
+      window.location.assign("/api/auth/google/login");
+    } else if (action === "toggle") {
+      render(overlay.dataset.mode === "register" ? "login" : "register");
+    } else if (action === "submit") {
+      submit();
+    }
+  });
 }
 
 // Guest → the chip is a single Connect action (straight to OAuth). Signed in → the
 // chip toggles the account menu.
 function onAccountChipClick() {
   if (!appState.signedIn) {
-    startLichessOAuth();
+    openAuthModal("login");
     return;
   }
   toggleAccountMenu();
@@ -1802,8 +1932,14 @@ function openAccountMenu() {
   const menu = document.getElementById("account-menu");
   if (!chip || !menu) return;
   const name = appState.accountUsername || appState.lichessUsername || "your account";
+  // Signed in: offer the Lichess link as a secondary connection. Show the linked
+  // username when present, otherwise a "Connect Lichess" action.
+  const lichessItem = appState.lichessUsername
+    ? `<div class="context-section">Lichess: ${escapeHtml(appState.lichessUsername)}</div>`
+    : `<button type="button" role="menuitem" data-action="connect-lichess">Connect Lichess</button>`;
   const items = [
     `<div class="context-section">Signed in as ${escapeHtml(name)}</div>`,
+    lichessItem,
     `<button type="button" role="menuitem" data-action="signout">Sign out</button>`,
   ];
   menu.innerHTML = items.join("");
@@ -1838,6 +1974,8 @@ async function handleAccountMenuAction(action) {
   closeAccountMenu();
   if (action === "signout") {
     await signOut();
+  } else if (action === "connect-lichess") {
+    startLichessOAuth();
   }
 }
 
@@ -4696,9 +4834,11 @@ function applyServerEngineGating() {
   );
 }
 
-function renderSettings(payload) {
-  // Browser-only engine model: report whether the browser can run Stockfish
-  // (cross-origin isolation) rather than any server install state.
+// Browser-only engine state depends ONLY on the browser (cross-origin isolation),
+// not on any server call. Kept separate from renderSettings so init() can paint it
+// immediately even for a signed-out visitor — otherwise a failed /api/settings (401)
+// left the widget stuck on its initial "checking…" placeholder forever.
+function renderBrowserEngineStatus() {
   const browserStatusEl = document.getElementById("settings-browser-engine-status");
   const note = document.getElementById("settings-stockfish-status");
   if (browserStatusEl) {
@@ -4713,14 +4853,14 @@ function renderSettings(payload) {
       }
     }
   }
-  // Maia3 now runs IN THE BROWSER (Build → Generate, and Brilliant detection during
-  // Analyze): the ~46 MB model loads on demand and is cached in IndexedDB. Probe the real
-  // client-side state rather than advertising the server model. payload is accepted for
-  // forward-compat but unused.
-  void payload;
-  // Fire-and-forget: the probe is async (manifest fetch + IndexedDB lookup) but renderSettings
-  // is sync; any failure resolves to an "unavailable" line inside the helper.
+  // Maia3 runs IN THE BROWSER; probe the real client-side state (manifest + IndexedDB).
   renderMaia3Status();
+}
+
+function renderSettings(payload) {
+  // payload accepted for forward-compat but unused — engine status is browser-derived.
+  void payload;
+  renderBrowserEngineStatus();
 }
 
 // Report the real browser Maia3 state in Settings: a warm provider's live state when it has
@@ -5153,9 +5293,30 @@ async function init() {
   jobToast.bind();
   engineWidget.bind();
   bindEvents();
-  // Learn whether the server exposes engine compute (admin builds) so the
-  // gated Analyze / Generate buttons reflect reality on first paint. On failure
-  // we keep the safe public default (disabled) rather than dangling a 403.
+  renderPieceStylePicker();
+  renderPrefsToggles();
+  prefillDemoPgn();
+  // Engine status is browser-derived (cross-origin isolation) — paint it now, even
+  // for a signed-out visitor, so it never sticks on the initial "checking…".
+  renderBrowserEngineStatus();
+  applyServerEngineGating();
+
+  // Learn the auth state BEFORE any owner-scoped calls. A signed-out visitor must
+  // not fire /api/settings, /api/dashboard, /api/board, /api/lichess — they 401 and
+  // spam the console. Gate that whole workspace load behind a real session.
+  await refreshAuthProviders();
+  await refreshAuthStatus();
+  if (appState.signedIn) {
+    await loadSignedInWorkspace();
+  } else {
+    setStatus("Sign in to build and train your repertoires.");
+    renderBuilderTree();
+  }
+}
+
+// Everything that needs an authenticated session. Called from init only when
+// signed in, and after a successful sign-in.
+async function loadSignedInWorkspace() {
   try {
     const settings = await api("/api/settings");
     appState.settings = settings;
@@ -5164,25 +5325,22 @@ async function init() {
     appState.serverEngineEnabled = false;
   }
   applyServerEngineGating();
-  renderPieceStylePicker();
-  renderPrefsToggles();
-  prefillDemoPgn();
-  // Show any cached username instantly, then reconcile with the server (OAuth
-  // connection state is stored server-side and is the source of truth).
   try {
     const stored = localStorage.getItem(LICHESS_KEY);
     if (stored) setLichessUsername(stored);
-    else renderAccountChip();
   } catch (_) {
-    renderAccountChip();
+    /* ignore storage errors */
   }
   refreshLichessStatus();
-  refreshAuthStatus();
   syncReplayControls();
-  const info = await boardInfo(START_FEN);
-  boards.analysis.setPosition({ fen: START_FEN, legalMoves: info.legal_moves });
-  boards.build.setPosition({ fen: START_FEN, legalMoves: info.legal_moves });
-  boards.train.setPosition({ fen: START_FEN, legalMoves: info.legal_moves });
+  try {
+    const info = await boardInfo(START_FEN);
+    boards.analysis.setPosition({ fen: START_FEN, legalMoves: info.legal_moves });
+    boards.build.setPosition({ fen: START_FEN, legalMoves: info.legal_moves });
+    boards.train.setPosition({ fen: START_FEN, legalMoves: info.legal_moves });
+  } catch (_) {
+    /* board init is best-effort */
+  }
   renderBuilderTree();
   await loadDashboard();
 }

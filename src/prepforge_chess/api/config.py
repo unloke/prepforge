@@ -73,6 +73,18 @@ class Settings(BaseSettings):
     # Allowed browser origins for CORS / CSRF origin checks. Comma-separated.
     allowed_origins: str = Field(default="http://localhost:5173,http://localhost:8765")
 
+    # Google OAuth (primary sign-in). Empty until configured; the Google login
+    # routes 503 when unset. Read with the env_prefix (PREPFORGE_GOOGLE_CLIENT_ID)
+    # OR the bare GOOGLE_CLIENT_ID, matching how most Google libs document it.
+    google_client_id: str = Field(
+        default="",
+        validation_alias=AliasChoices("GOOGLE_CLIENT_ID", "PREPFORGE_GOOGLE_CLIENT_ID"),
+    )
+    google_client_secret: str = Field(
+        default="",
+        validation_alias=AliasChoices("GOOGLE_CLIENT_SECRET", "PREPFORGE_GOOGLE_CLIENT_SECRET"),
+    )
+
     # Stripe (billing phase). Empty until configured; billing routes guard on this.
     stripe_secret_key: str = Field(default="")
     stripe_webhook_secret: str = Field(default="")
@@ -89,6 +101,11 @@ class Settings(BaseSettings):
     def billing_enabled(self) -> bool:
         """True once a Stripe secret key is configured (Checkout/portal need it)."""
         return bool(self.stripe_secret_key)
+
+    @property
+    def google_oauth_enabled(self) -> bool:
+        """True once both Google OAuth credentials are configured."""
+        return bool(self.google_client_id and self.google_client_secret)
 
     @property
     def is_production(self) -> bool:

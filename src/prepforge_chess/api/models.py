@@ -57,7 +57,9 @@ class User(Base):
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False, index=True)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Nullable: OAuth-only users (Google sign-in) have no password. Password login
+    # rejects users whose hash is NULL (see routers.auth.login).
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     plan: Mapped[Plan] = mapped_column(
         SAEnum(Plan, native_enum=False, length=16), nullable=False, default=Plan.free
     )

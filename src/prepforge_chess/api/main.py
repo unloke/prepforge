@@ -25,6 +25,7 @@ from prepforge_chess.api.routers import (
     analyze,
     auth,
     billing,
+    google_auth,
     legal,
     lichess,
     teams,
@@ -83,6 +84,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(auth.router)
+    app.include_router(google_auth.router)
     app.include_router(lichess.router)
     # Unprefixed legacy SPA seam (/oauth/login) until web-src/app.js migrates.
     app.include_router(lichess.legacy_router)
