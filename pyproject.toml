@@ -9,7 +9,7 @@ description = "A local chess analysis, opening preparation, and repertoire train
 readme = "README.md"
 # Maia3 needs Python 3.10+; running under 3.8/3.9 silently falls back to MockMaia.
 requires-python = ">=3.10"
-license = { text = "GPL-3.0-or-later" }
+license = { text = "AGPL-3.0-or-later" }
 authors = [{ name = "PrepForge" }]
 dependencies = [
     "python-chess>=1.999,<2",
