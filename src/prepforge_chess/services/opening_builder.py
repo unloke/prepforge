@@ -10,7 +10,6 @@ from prepforge_chess.core.chess_core import STARTING_FEN, ChessCore
 from prepforge_chess.core.models import (
     Color,
     EngineEvaluation,
-    MoveRecord,
     MoveSource,
     OpeningNode,
     Repertoire,
@@ -25,7 +24,6 @@ from prepforge_chess.services.opening_generation import (
     MAINLINE_THRESHOLD,
     child_by_uci,
     maia_threshold_for_depth,
-    merge_existing_node,
 )
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
@@ -200,15 +198,23 @@ class OpeningBuilderService:
         self.chess_core = chess_core or ChessCore()
         self.engine = engine or MockEngine(self.chess_core)
         self.engine_config = engine_config or EngineAnalysisConfig(depth=8)
-        if maia is None:
-            # No silent fake: a stand-in for the human model has to be supplied
-            # explicitly (real Maia3 in production, a deterministic stub in tests)
-            # so a missing model surfaces loudly instead of producing fake data.
+        # Maia is optional at construction. Pure data operations — create/rename/delete
+        # and `tree_report` serialization — never touch the human model, so the
+        # "server stores data, never computes chess" path (the FastAPI port) can build a
+        # service without one. The no-silent-fake guarantee is preserved, just deferred:
+        # the loud failure now fires on `self.maia` access (the `maia` property), which
+        # only the move-generation path reaches, instead of at construction.
+        self._maia = maia
+
+    @property
+    def maia(self) -> MaiaAdapter:
+        if self._maia is None:
             raise ValueError(
-                "OpeningBuilderService requires a Maia adapter. Pass "
-                "create_maia3_adapter(...) in production, or an explicit stub in tests."
+                "OpeningBuilderService requires a Maia adapter for move generation. "
+                "Pass create_maia3_adapter(...) in production, or an explicit stub in "
+                "tests. (Pure data/serialization operations do not need one.)"
             )
-        self.maia = maia
+        return self._maia
 
     def create_repertoire(self, request: CreateRepertoireRequest) -> Repertoire:
         repertoire_id = str(uuid.uuid4())
@@ -227,7 +233,9 @@ class OpeningBuilderService:
             root_fen=root.fen,
             root_node=root,
             main_engine=self.engine.name,
-            human_model=self.maia.name,
+            # Label only (the human model this repertoire will be generated with);
+            # fall back to the default when no Maia is wired (data-only construction).
+            human_model=self._maia.name if self._maia is not None else "maia3",
             notes=request.notes,
             tags=list(request.tags),
         )

@@ -11,6 +11,7 @@ import {
   resolveModelBase,
 } from "./engine/maia3-provider.js";
 import { getCachedWeights, clearWeightCache } from "./engine/maia3-weight-cache.js";
+import { createCsrfTokenSource, isSafeMethod, CSRF_HEADER } from "./csrf.js";
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const DEMO_PGN = `[Event "PrepForge UI Demo"]
@@ -1443,13 +1444,27 @@ function setStatus(message) {
   document.getElementById("app-status").textContent = message;
 }
 
+const getCsrfToken = createCsrfTokenSource();
+
 async function api(path, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
+  // Merge caller headers over the JSON default, then attach the CSRF token on
+  // unsafe methods (bootstrapping /api/csrf if the cookie isn't set yet). The
+  // FastAPI backend 403s any unsafe request that doesn't echo the cookie.
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  if (!isSafeMethod(method)) {
+    const token = await getCsrfToken();
+    if (token) headers[CSRF_HEADER] = token;
+  }
   const response = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     ...options,
+    headers,
   });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || "Request failed");
+  // Legacy server returned {error}; FastAPI returns {detail}. Accept both so the
+  // SPA surfaces real messages during and after the cutover.
+  if (!response.ok) throw new Error(payload.error || payload.detail || "Request failed");
   return payload;
 }
 
@@ -4303,10 +4318,17 @@ async function startTraining(mode) {
   setStatus("Starting trainer");
   const repertoireId = selectedTrainRepertoireId();
   appState.trainingRepertoireId = repertoireId;
-  const endpoint = repertoireId ? "/api/train/start" : "/api/train/demo/start";
-  const body = repertoireId ? { seed: 13, mode, repertoire_id: repertoireId } : { seed: 13, mode };
+  // No unauthenticated demo in the SaaS model: training is always against one of the
+  // user's own repertoires. Without one, prompt them to build first instead of
+  // hitting a (now-removed) demo endpoint.
+  if (!repertoireId) {
+    setStatus("Create a repertoire in Build first, then train it.");
+    setTrainBanner("done", "No repertoire to train", "Build a repertoire, then start the trainer.");
+    return;
+  }
+  const body = { seed: 13, mode, repertoire_id: repertoireId };
   try {
-    const payload = await postJson(endpoint, body);
+    const payload = await postJson("/api/train/start", body);
     appState.training = payload;
     trainStatsReset();
     if (boards.train && payload.color) {

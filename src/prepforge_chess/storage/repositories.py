@@ -4,9 +4,12 @@ import json
 import uuid
 from datetime import datetime, timezone
 from hashlib import sha256
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Mapping, Optional
 
-import sqlite3
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.engine import Connection, Engine
 
 from prepforge_chess.core.models import (
     AnalysisResult,
@@ -23,6 +26,13 @@ from prepforge_chess.core.models import (
     TrainingProgress,
     TrainingSession,
 )
+from prepforge_chess.storage import sa_tables as t
+
+# ``user_profiles`` columns that ``schema.sql`` defaulted server-side. ``sa_tables``
+# carries no server defaults (the design choice: the repository supplies defaults in
+# Python), so ``create_user_profile`` provides them explicitly here.
+_DEFAULT_ENGINE = "stockfish"
+_DEFAULT_ANALYSIS_DEPTH = 16
 
 
 def _now_text() -> str:
@@ -55,15 +65,45 @@ def _int_to_bool(value: int) -> bool:
     return bool(value)
 
 
+def _insert(conn: Connection, table):
+    """Dialect-aware INSERT so ``on_conflict_do_update`` (upsert) works on both
+    backends: Postgres and SQLite spell ``ON CONFLICT`` differently."""
+    if conn.dialect.name == "postgresql":
+        return pg_insert(table)
+    return sqlite_insert(table)
+
+
+def _upsert(
+    conn: Connection,
+    table,
+    values: Dict[str, Any],
+    *,
+    conflict: List,
+    update_cols: Iterable[str],
+    coalesce_cols: Iterable[str] = (),
+) -> None:
+    """INSERT ... ON CONFLICT DO UPDATE. ``update_cols`` are set from the proposed
+    (``excluded``) row; ``coalesce_cols`` keep the existing value when present and
+    only fill a gap — used so a re-save never reassigns an established owner."""
+    stmt = _insert(conn, table).values(**values)
+    set_ = {name: stmt.excluded[name] for name in update_cols}
+    for name in coalesce_cols:
+        set_[name] = func.coalesce(table.c[name], stmt.excluded[name])
+    stmt = stmt.on_conflict_do_update(index_elements=conflict, set_=set_)
+    conn.execute(stmt)
+
+
 class PrepForgeRepository:
-    """SQLite persistence for shared domain models.
+    """SQLAlchemy persistence for shared domain models.
 
     The repository is intentionally narrow: it stores and loads domain objects
-    without putting analysis, training, or generation decisions into SQL code.
+    without putting analysis, training, or generation decisions into SQL code. It
+    runs against the ``storage/sa_tables`` Core tables, so the same code drives
+    SQLite (dev/tests) and Postgres (prod).
     """
 
-    def __init__(self, connection: sqlite3.Connection):
-        self.connection = connection
+    def __init__(self, engine: Engine):
+        self.engine = engine
 
     # ---- Identity / sessions (multi-tenancy foundation) -----------------------
     # Browsers carry an opaque session token in a cookie; the server stores only its
@@ -76,67 +116,105 @@ class PrepForgeRepository:
     ) -> str:
         profile_id = str(uuid.uuid4())
         now = _now_text()
-        with self.connection:
-            self.connection.execute(
-                """
-                INSERT INTO user_profiles (id, display_name, lichess_username, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (profile_id, display_name, lichess_username, now, now),
+        with self.engine.begin() as conn:
+            conn.execute(
+                t.user_profiles.insert().values(
+                    id=profile_id,
+                    display_name=display_name,
+                    lichess_username=lichess_username,
+                    preferred_engine=_DEFAULT_ENGINE,
+                    default_analysis_depth=_DEFAULT_ANALYSIS_DEPTH,
+                    settings_json="{}",
+                    created_at=now,
+                    updated_at=now,
+                )
             )
+        return profile_id
+
+    def ensure_profile(self, profile_id: str, *, display_name: str) -> str:
+        """Idempotently create the ``user_profiles`` row a FastAPI ``User`` owns.
+
+        Phase 2b bridge: the SaaS identity (``users.id``) IS the legacy data-owner id
+        (``user_profiles.id``). The first time an authenticated user touches an
+        owned-data endpoint we materialize their profile here; ``ON CONFLICT DO
+        NOTHING`` keeps the call a no-op (and never clobbers ``display_name`` /
+        ``settings_json``) on every subsequent request. Returns ``profile_id``.
+        """
+        now = _now_text()
+        with self.engine.begin() as conn:
+            stmt = (
+                _insert(conn, t.user_profiles)
+                .values(
+                    id=profile_id,
+                    display_name=display_name,
+                    lichess_username=None,
+                    preferred_engine=_DEFAULT_ENGINE,
+                    default_analysis_depth=_DEFAULT_ANALYSIS_DEPTH,
+                    settings_json="{}",
+                    created_at=now,
+                    updated_at=now,
+                )
+                .on_conflict_do_nothing(index_elements=["id"])
+            )
+            conn.execute(stmt)
         return profile_id
 
     def session_user(self, token_hash: str) -> Optional[str]:
         """Return the user_profile_id for a session token hash (and touch last_seen)."""
-        row = self.connection.execute(
-            "SELECT user_profile_id FROM user_sessions WHERE token_hash = ?",
-            (token_hash,),
-        ).fetchone()
-        if row is None:
-            return None
-        with self.connection:
-            self.connection.execute(
-                "UPDATE user_sessions SET last_seen_at = ? WHERE token_hash = ?",
-                (_now_text(), token_hash),
+        with self.engine.begin() as conn:
+            row = conn.execute(
+                select(t.user_sessions.c.user_profile_id).where(
+                    t.user_sessions.c.token_hash == token_hash
+                )
+            ).mappings().first()
+            if row is None:
+                return None
+            conn.execute(
+                update(t.user_sessions)
+                .where(t.user_sessions.c.token_hash == token_hash)
+                .values(last_seen_at=_now_text())
             )
-        return row["user_profile_id"]
+            return row["user_profile_id"]
 
     def create_guest_session(self, token_hash: str) -> str:
         """Mint a fresh guest profile + session for a new browser. Returns the profile id."""
         profile_id = self.create_user_profile(display_name="Guest")
         now = _now_text()
-        with self.connection:
-            self.connection.execute(
-                """
-                INSERT INTO user_sessions (token_hash, user_profile_id, created_at, last_seen_at)
-                VALUES (?, ?, ?, ?)
-                """,
-                (token_hash, profile_id, now, now),
+        with self.engine.begin() as conn:
+            conn.execute(
+                t.user_sessions.insert().values(
+                    token_hash=token_hash,
+                    user_profile_id=profile_id,
+                    created_at=now,
+                    last_seen_at=now,
+                )
             )
         return profile_id
 
     def rebind_session(self, token_hash: str, user_profile_id: str) -> None:
         """Point an existing session at a different profile (e.g. guest → Lichess account)."""
-        with self.connection:
-            self.connection.execute(
-                "UPDATE user_sessions SET user_profile_id = ?, last_seen_at = ? WHERE token_hash = ?",
-                (user_profile_id, _now_text(), token_hash),
+        with self.engine.begin() as conn:
+            conn.execute(
+                update(t.user_sessions)
+                .where(t.user_sessions.c.token_hash == token_hash)
+                .values(user_profile_id=user_profile_id, last_seen_at=_now_text())
             )
 
     def delete_session(self, token_hash: str) -> None:
         """Drop a session row so its cookie can no longer authenticate (sign out). The
         underlying user_profile and its owned data are left intact."""
-        with self.connection:
-            self.connection.execute(
-                "DELETE FROM user_sessions WHERE token_hash = ?",
-                (token_hash,),
+        with self.engine.begin() as conn:
+            conn.execute(
+                delete(t.user_sessions).where(t.user_sessions.c.token_hash == token_hash)
             )
 
     def find_profile_by_lichess(self, username: str) -> Optional[str]:
-        row = self.connection.execute(
-            "SELECT id FROM user_profiles WHERE lichess_username = ? COLLATE NOCASE",
-            (username,),
-        ).fetchone()
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                select(t.user_profiles.c.id).where(
+                    func.lower(t.user_profiles.c.lichess_username) == func.lower(username)
+                )
+            ).mappings().first()
         return row["id"] if row is not None else None
 
     def ensure_lichess_profile(self, username: str) -> str:
@@ -146,10 +224,12 @@ class PrepForgeRepository:
         return self.create_user_profile(display_name=username, lichess_username=username)
 
     def profile_lichess_username(self, profile_id: str) -> Optional[str]:
-        row = self.connection.execute(
-            "SELECT lichess_username FROM user_profiles WHERE id = ?",
-            (profile_id,),
-        ).fetchone()
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                select(t.user_profiles.c.lichess_username).where(
+                    t.user_profiles.c.id == profile_id
+                )
+            ).mappings().first()
         return row["lichess_username"] if row is not None else None
 
     def get_profile_setting(
@@ -157,10 +237,12 @@ class PrepForgeRepository:
     ) -> Any:
         """Read one key from a profile's ``settings_json`` blob (per-user state such
         as the Lichess OAuth token). Unknown profile/key returns ``default``."""
-        row = self.connection.execute(
-            "SELECT settings_json FROM user_profiles WHERE id = ?",
-            (profile_id,),
-        ).fetchone()
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                select(t.user_profiles.c.settings_json).where(
+                    t.user_profiles.c.id == profile_id
+                )
+            ).mappings().first()
         if row is None:
             return default
         data = _json_load(row["settings_json"], {})
@@ -170,11 +252,12 @@ class PrepForgeRepository:
         """Upsert one key into a profile's ``settings_json`` (per-user state). A
         ``None`` value deletes the key. Raises if the profile does not exist so a
         token can never be written to a phantom owner."""
-        with self.connection:
-            row = self.connection.execute(
-                "SELECT settings_json FROM user_profiles WHERE id = ?",
-                (profile_id,),
-            ).fetchone()
+        with self.engine.begin() as conn:
+            row = conn.execute(
+                select(t.user_profiles.c.settings_json).where(
+                    t.user_profiles.c.id == profile_id
+                )
+            ).mappings().first()
             if row is None:
                 raise ValueError("unknown profile: {0}".format(profile_id))
             data = _json_load(row["settings_json"], {})
@@ -184,94 +267,84 @@ class PrepForgeRepository:
                 data.pop(key, None)
             else:
                 data[key] = value
-            self.connection.execute(
-                "UPDATE user_profiles SET settings_json = ?, updated_at = ? WHERE id = ?",
-                (_json_dump(data), _now_text(), profile_id),
+            conn.execute(
+                update(t.user_profiles)
+                .where(t.user_profiles.c.id == profile_id)
+                .values(settings_json=_json_dump(data), updated_at=_now_text())
             )
 
     def reassign_owner(self, from_user_id: str, to_user_id: str) -> None:
         """Move every owned top-level row from one profile to another (guest → account)."""
         if from_user_id == to_user_id:
             return
-        with self.connection:
-            self.connection.execute(
-                "UPDATE games SET owner_user_id = ? WHERE owner_user_id = ?",
-                (to_user_id, from_user_id),
+        with self.engine.begin() as conn:
+            conn.execute(
+                update(t.games)
+                .where(t.games.c.owner_user_id == from_user_id)
+                .values(owner_user_id=to_user_id)
             )
-            self.connection.execute(
-                "UPDATE repertoires SET user_profile_id = ? WHERE user_profile_id = ?",
-                (to_user_id, from_user_id),
+            conn.execute(
+                update(t.repertoires)
+                .where(t.repertoires.c.user_profile_id == from_user_id)
+                .values(user_profile_id=to_user_id)
             )
 
     def save_game(self, game: Game, owner_user_id: Optional[str] = None) -> None:
         now = _now_text()
-        with self.connection:
-            self.connection.execute(
-                """
-                INSERT INTO games (
-                    id, source, initial_fen, white, black, result, event, site,
-                    played_at, pgn, lichess_id, tags_json, owner_user_id,
-                    created_at, updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    source = excluded.source,
-                    initial_fen = excluded.initial_fen,
-                    white = excluded.white,
-                    black = excluded.black,
-                    result = excluded.result,
-                    event = excluded.event,
-                    site = excluded.site,
-                    played_at = excluded.played_at,
-                    pgn = excluded.pgn,
-                    lichess_id = excluded.lichess_id,
-                    tags_json = excluded.tags_json,
-                    -- Never let a re-save reassign an existing owner; only fill a gap.
-                    owner_user_id = COALESCE(games.owner_user_id, excluded.owner_user_id),
-                    updated_at = excluded.updated_at
-                """,
-                (
-                    game.id,
-                    game.source.value,
-                    game.initial_fen,
-                    game.white,
-                    game.black,
-                    game.result.value,
-                    game.event,
-                    game.site,
-                    _dt_to_text(game.played_at),
-                    game.pgn,
-                    game.lichess_id,
-                    _json_dump(game.tags),
-                    owner_user_id,
-                    now,
-                    now,
+        with self.engine.begin() as conn:
+            _upsert(
+                conn,
+                t.games,
+                {
+                    "id": game.id,
+                    "source": game.source.value,
+                    "initial_fen": game.initial_fen,
+                    "white": game.white,
+                    "black": game.black,
+                    "result": game.result.value,
+                    "event": game.event,
+                    "site": game.site,
+                    "played_at": _dt_to_text(game.played_at),
+                    "pgn": game.pgn,
+                    "lichess_id": game.lichess_id,
+                    "tags_json": _json_dump(game.tags),
+                    "owner_user_id": owner_user_id,
+                    "created_at": now,
+                    "updated_at": now,
+                },
+                conflict=[t.games.c.id],
+                update_cols=(
+                    "source", "initial_fen", "white", "black", "result", "event",
+                    "site", "played_at", "pgn", "lichess_id", "tags_json", "updated_at",
                 ),
+                # Never let a re-save reassign an existing owner; only fill a gap.
+                coalesce_cols=("owner_user_id",),
             )
 
             for move in game.moves:
                 self._save_move(
+                    conn,
                     move=move,
                     move_id=self._game_move_id(game.id, move.ply),
                     game_id=game.id,
                 )
 
     def load_game(self, game_id: str, owner_user_id: Optional[str] = None) -> Optional[Game]:
-        row = self.connection.execute("SELECT * FROM games WHERE id = ?", (game_id,)).fetchone()
-        if row is None:
-            return None
-        # Ownership gate: when an owner is supplied, a game owned by someone else is
-        # treated as not-found (no IDOR via a guessed/known id).
-        if owner_user_id is not None and row["owner_user_id"] != owner_user_id:
-            return None
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                select(t.games).where(t.games.c.id == game_id)
+            ).mappings().first()
+            if row is None:
+                return None
+            # Ownership gate: when an owner is supplied, a game owned by someone else is
+            # treated as not-found (no IDOR via a guessed/known id).
+            if owner_user_id is not None and row["owner_user_id"] != owner_user_id:
+                return None
 
-        moves = [
-            self._move_from_row(move_row)
-            for move_row in self.connection.execute(
-                "SELECT * FROM moves WHERE game_id = ? ORDER BY ply",
-                (game_id,),
-            ).fetchall()
-        ]
+            move_rows = conn.execute(
+                select(t.moves).where(t.moves.c.game_id == game_id).order_by(t.moves.c.ply)
+            ).mappings().all()
+            moves = [self._move_from_row(conn, move_row) for move_row in move_rows]
 
         return Game(
             id=row["id"],
@@ -296,142 +369,115 @@ class PrepForgeRepository:
         only that owner's own copy counts, so two users importing the same game each
         keep their own row instead of colliding on a shared one. Unscoped (None)
         keeps the legacy global behaviour for CLI/internal callers."""
-        if owner_user_id is None:
-            row = self.connection.execute(
-                "SELECT id FROM games WHERE lichess_id = ?",
-                (lichess_id,),
-            ).fetchone()
-        else:
-            row = self.connection.execute(
-                "SELECT id FROM games WHERE lichess_id = ? AND owner_user_id = ?",
-                (lichess_id, owner_user_id),
-            ).fetchone()
+        stmt = select(t.games.c.id).where(t.games.c.lichess_id == lichess_id)
+        if owner_user_id is not None:
+            stmt = stmt.where(t.games.c.owner_user_id == owner_user_id)
+        with self.engine.connect() as conn:
+            row = conn.execute(stmt).mappings().first()
         return row["id"] if row is not None else None
 
     def has_game(self, game_id: str) -> bool:
-        row = self.connection.execute("SELECT 1 FROM games WHERE id = ?", (game_id,)).fetchone()
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                select(t.games.c.id).where(t.games.c.id == game_id)
+            ).first()
         return row is not None
 
     def list_games(self, owner_user_id: Optional[str] = None) -> List[Game]:
-        if owner_user_id is None:
-            rows = self.connection.execute(
-                "SELECT id FROM games ORDER BY created_at DESC"
-            ).fetchall()
-        else:
-            rows = self.connection.execute(
-                "SELECT id FROM games WHERE owner_user_id = ? ORDER BY created_at DESC",
-                (owner_user_id,),
-            ).fetchall()
-        return [game for game in (self.load_game(row["id"]) for row in rows) if game is not None]
+        stmt = select(t.games.c.id).order_by(t.games.c.created_at.desc())
+        if owner_user_id is not None:
+            stmt = stmt.where(t.games.c.owner_user_id == owner_user_id)
+        with self.engine.connect() as conn:
+            ids = [row["id"] for row in conn.execute(stmt).mappings().all()]
+        return [game for game in (self.load_game(game_id) for game_id in ids) if game is not None]
 
     def save_repertoire(self, repertoire: Repertoire, owner_user_id: Optional[str] = None) -> None:
         now = _now_text()
-        with self.connection:
-            self.connection.execute(
-                """
-                INSERT INTO repertoires (
-                    id, user_profile_id, name, color, root_fen, root_node_id, main_engine,
-                    human_model, branch_depth, opponent_branch_threshold,
-                    sub_branch_threshold, max_total_nodes, max_line_length,
-                    notes, tags_json, is_active, created_at, updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    name = excluded.name,
-                    color = excluded.color,
-                    root_fen = excluded.root_fen,
-                    root_node_id = excluded.root_node_id,
-                    main_engine = excluded.main_engine,
-                    human_model = excluded.human_model,
-                    branch_depth = excluded.branch_depth,
-                    opponent_branch_threshold = excluded.opponent_branch_threshold,
-                    sub_branch_threshold = excluded.sub_branch_threshold,
-                    max_total_nodes = excluded.max_total_nodes,
-                    max_line_length = excluded.max_line_length,
-                    notes = excluded.notes,
-                    tags_json = excluded.tags_json,
-                    is_active = excluded.is_active,
-                    -- Never let a re-save reassign an existing owner; only fill a gap.
-                    user_profile_id = COALESCE(repertoires.user_profile_id, excluded.user_profile_id),
-                    updated_at = excluded.updated_at
-                """,
-                (
-                    repertoire.id,
-                    owner_user_id,
-                    repertoire.name,
-                    repertoire.color.value,
-                    repertoire.root_fen,
-                    repertoire.root_node.id,
-                    repertoire.main_engine,
-                    repertoire.human_model,
-                    repertoire.branch_depth,
-                    repertoire.opponent_branch_threshold,
-                    repertoire.sub_branch_threshold,
-                    repertoire.max_total_nodes,
-                    repertoire.max_line_length,
-                    repertoire.notes,
-                    _json_dump(repertoire.tags),
-                    1 if getattr(repertoire, "is_active", True) else 0,
-                    now,
-                    now,
+        with self.engine.begin() as conn:
+            _upsert(
+                conn,
+                t.repertoires,
+                {
+                    "id": repertoire.id,
+                    "user_profile_id": owner_user_id,
+                    "name": repertoire.name,
+                    "color": repertoire.color.value,
+                    "root_fen": repertoire.root_fen,
+                    "root_node_id": repertoire.root_node.id,
+                    "main_engine": repertoire.main_engine,
+                    "human_model": repertoire.human_model,
+                    "branch_depth": repertoire.branch_depth,
+                    "opponent_branch_threshold": repertoire.opponent_branch_threshold,
+                    "sub_branch_threshold": repertoire.sub_branch_threshold,
+                    "max_total_nodes": repertoire.max_total_nodes,
+                    "max_line_length": repertoire.max_line_length,
+                    "notes": repertoire.notes,
+                    "tags_json": _json_dump(repertoire.tags),
+                    "is_active": 1 if getattr(repertoire, "is_active", True) else 0,
+                    "created_at": now,
+                    "updated_at": now,
+                },
+                conflict=[t.repertoires.c.id],
+                update_cols=(
+                    "name", "color", "root_fen", "root_node_id", "main_engine",
+                    "human_model", "branch_depth", "opponent_branch_threshold",
+                    "sub_branch_threshold", "max_total_nodes", "max_line_length",
+                    "notes", "tags_json", "is_active", "updated_at",
                 ),
+                # Never let a re-save reassign an existing owner; only fill a gap.
+                coalesce_cols=("user_profile_id",),
             )
 
             for node in self._walk_nodes(repertoire.root_node):
-                self._save_opening_node(node)
+                self._save_opening_node(conn, node)
 
     def load_repertoire(
         self, repertoire_id: str, owner_user_id: Optional[str] = None
     ) -> Optional[Repertoire]:
-        rep_row = self.connection.execute(
-            "SELECT * FROM repertoires WHERE id = ?",
-            (repertoire_id,),
-        ).fetchone()
-        if rep_row is None:
-            return None
-        # Ownership gate: a repertoire owned by someone else is not-found to this owner.
-        if owner_user_id is not None and rep_row["user_profile_id"] != owner_user_id:
-            return None
+        with self.engine.connect() as conn:
+            rep_row = conn.execute(
+                select(t.repertoires).where(t.repertoires.c.id == repertoire_id)
+            ).mappings().first()
+            if rep_row is None:
+                return None
+            # Ownership gate: a repertoire owned by someone else is not-found to this owner.
+            if owner_user_id is not None and rep_row["user_profile_id"] != owner_user_id:
+                return None
 
-        node_rows = self.connection.execute(
-            "SELECT * FROM opening_nodes WHERE repertoire_id = ?",
-            (repertoire_id,),
-        ).fetchall()
+            node_rows = conn.execute(
+                select(t.opening_nodes).where(t.opening_nodes.c.repertoire_id == repertoire_id)
+            ).mappings().all()
 
-        nodes: Dict[str, OpeningNode] = {}
-        for row in node_rows:
-            move = self._load_move_by_id(row["move_id"]) if row["move_id"] else None
-            evaluation = (
-                self._load_engine_evaluation(row["engine_evaluation_id"])
-                if row["engine_evaluation_id"]
-                else None
-            )
-            nodes[row["id"]] = OpeningNode(
-                id=row["id"],
-                repertoire_id=row["repertoire_id"],
-                parent_id=row["parent_id"],
-                move=move,
-                fen=row["fen"],
-                side_to_move=Color(row["side_to_move"]),
-                engine_evaluation=evaluation,
-                maia_probability=row["maia_probability"],
-                is_mainline=_int_to_bool(row["is_mainline"]),
-                is_user_prepared_move=_int_to_bool(row["is_user_prepared_move"]),
-                is_enabled=_int_to_bool(row["is_enabled"]),
-                priority=row["priority"],
-                comment=row["comment"],
-                tags=_json_load(row["tags_json"], []),
-                arrows=_json_load(
-                    row["arrows_json"] if "arrows_json" in row.keys() else None, []
-                ),
-                circles=_json_load(
-                    row["circles_json"] if "circles_json" in row.keys() else None, []
-                ),
-                tactical_warning=row["tactical_warning"],
-                strategic_idea=row["strategic_idea"],
-                typical_plan=row["typical_plan"],
-                source=MoveSource(row["source"]),
-            )
+            nodes: Dict[str, OpeningNode] = {}
+            for row in node_rows:
+                move = self._load_move_by_id(conn, row["move_id"]) if row["move_id"] else None
+                evaluation = (
+                    self._load_engine_evaluation(conn, row["engine_evaluation_id"])
+                    if row["engine_evaluation_id"]
+                    else None
+                )
+                nodes[row["id"]] = OpeningNode(
+                    id=row["id"],
+                    repertoire_id=row["repertoire_id"],
+                    parent_id=row["parent_id"],
+                    move=move,
+                    fen=row["fen"],
+                    side_to_move=Color(row["side_to_move"]),
+                    engine_evaluation=evaluation,
+                    maia_probability=row["maia_probability"],
+                    is_mainline=_int_to_bool(row["is_mainline"]),
+                    is_user_prepared_move=_int_to_bool(row["is_user_prepared_move"]),
+                    is_enabled=_int_to_bool(row["is_enabled"]),
+                    priority=row["priority"],
+                    comment=row["comment"],
+                    tags=_json_load(row["tags_json"], []),
+                    arrows=_json_load(row["arrows_json"], []),
+                    circles=_json_load(row["circles_json"], []),
+                    tactical_warning=row["tactical_warning"],
+                    strategic_idea=row["strategic_idea"],
+                    typical_plan=row["typical_plan"],
+                    source=MoveSource(row["source"]),
+                )
 
         for node in nodes.values():
             if node.parent_id and node.parent_id in nodes:
@@ -459,101 +505,201 @@ class PrepForgeRepository:
             max_line_length=rep_row["max_line_length"],
             notes=rep_row["notes"],
             tags=_json_load(rep_row["tags_json"], []),
-            is_active=_int_to_bool(
-                rep_row["is_active"] if "is_active" in rep_row.keys() else 1
-            ),
+            is_active=_int_to_bool(rep_row["is_active"]),
         )
 
     def list_repertoires(self, owner_user_id: Optional[str] = None) -> List[Repertoire]:
-        if owner_user_id is None:
-            rows = self.connection.execute(
-                "SELECT id FROM repertoires ORDER BY updated_at DESC"
-            ).fetchall()
-        else:
-            rows = self.connection.execute(
-                "SELECT id FROM repertoires WHERE user_profile_id = ? ORDER BY updated_at DESC",
-                (owner_user_id,),
-            ).fetchall()
+        stmt = select(t.repertoires.c.id).order_by(t.repertoires.c.updated_at.desc())
+        if owner_user_id is not None:
+            stmt = stmt.where(t.repertoires.c.user_profile_id == owner_user_id)
+        with self.engine.connect() as conn:
+            ids = [row["id"] for row in conn.execute(stmt).mappings().all()]
         return [
             repertoire
-            for repertoire in (self.load_repertoire(row["id"]) for row in rows)
+            for repertoire in (self.load_repertoire(rep_id) for rep_id in ids)
             if repertoire is not None
         ]
 
+    def count_repertoires(self, owner_user_id: Optional[str] = None) -> int:
+        """Number of repertoires owned by ``owner_user_id`` (all rows if None),
+        without loading any opening trees — used by the Free-plan quota gate."""
+        stmt = select(func.count()).select_from(t.repertoires)
+        if owner_user_id is not None:
+            stmt = stmt.where(t.repertoires.c.user_profile_id == owner_user_id)
+        with self.engine.connect() as conn:
+            return int(conn.execute(stmt).scalar_one())
+
+    def repertoire_meta(self, repertoire_id: str) -> Optional[Dict[str, Any]]:
+        """Lightweight ``(id, name, is_active, owner_user_id, team_id, visibility)`` for
+        owner/share-gating and write responses, without loading the whole opening tree.
+        ``None`` if absent; ``owner_user_id``/``team_id`` are ``None`` for an
+        unclaimed/unshared row, and ``visibility`` defaults to ``"private"``."""
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                select(
+                    t.repertoires.c.id,
+                    t.repertoires.c.name,
+                    t.repertoires.c.is_active,
+                    t.repertoires.c.user_profile_id,
+                    t.repertoires.c.team_id,
+                    t.repertoires.c.visibility,
+                ).where(t.repertoires.c.id == repertoire_id)
+            ).mappings().first()
+        if row is None:
+            return None
+        return {
+            "id": row["id"],
+            "name": row["name"],
+            "is_active": _int_to_bool(row["is_active"]),
+            "owner_user_id": row["user_profile_id"],
+            "team_id": row["team_id"],
+            "visibility": row["visibility"] or "private",
+        }
+
+    def set_repertoire_sharing(
+        self, repertoire_id: str, team_id: Optional[str], visibility: str
+    ) -> None:
+        """Set the team a repertoire is shared with and its visibility. Pass
+        ``team_id=None`` + ``visibility='private'`` to unshare."""
+        with self.engine.begin() as conn:
+            conn.execute(
+                update(t.repertoires)
+                .where(t.repertoires.c.id == repertoire_id)
+                .values(team_id=team_id, visibility=visibility, updated_at=_now_text())
+            )
+
+    def list_team_shared_repertoires(self, team_ids: List[str]) -> List[Dict[str, Any]]:
+        """Lightweight metas of every repertoire shared (``visibility='team'``) to any
+        of ``team_ids`` — for the team members' read-only listing. Empty list if no
+        team_ids, so a non-member never widens the query."""
+        if not team_ids:
+            return []
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(
+                    t.repertoires.c.id,
+                    t.repertoires.c.name,
+                    t.repertoires.c.color,
+                    t.repertoires.c.root_fen,
+                    t.repertoires.c.user_profile_id,
+                    t.repertoires.c.team_id,
+                )
+                .where(t.repertoires.c.team_id.in_(team_ids))
+                .where(t.repertoires.c.visibility == "team")
+                .order_by(t.repertoires.c.updated_at.desc())
+            ).mappings().all()
+        return [
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "color": r["color"],
+                "root_fen": r["root_fen"],
+                "owner_user_id": r["user_profile_id"],
+                "team_id": r["team_id"],
+            }
+            for r in rows
+        ]
+
+    def set_repertoire_active(self, repertoire_id: str, active: bool) -> None:
+        with self.engine.begin() as conn:
+            conn.execute(
+                update(t.repertoires)
+                .where(t.repertoires.c.id == repertoire_id)
+                .values(is_active=_bool_to_int(active), updated_at=_now_text())
+            )
+
+    def claim_repertoire(self, repertoire_id: str, owner_user_id: str) -> None:
+        """Stamp ownership on a just-created repertoire (the builder saves it
+        ownerless). No-op if the row already has an owner — never reassign one
+        user's repertoire to another."""
+        with self.engine.begin() as conn:
+            conn.execute(
+                update(t.repertoires)
+                .where(
+                    t.repertoires.c.id == repertoire_id,
+                    t.repertoires.c.user_profile_id.is_(None),
+                )
+                .values(user_profile_id=owner_user_id)
+            )
+
+    def claim_or_verify_game(self, game_id: str, owner_user_id: str) -> bool:
+        """Stamp ownership on an unowned game (first writer wins) and report whether
+        the caller may access it. Returns ``False`` when the game is missing or owned
+        by a *different* user — the caller treats that as not-found (don't reveal
+        another owner's game). Mirrors the legacy server's ``_claim_or_verify_game``."""
+        with self.engine.begin() as conn:
+            conn.execute(
+                update(t.games)
+                .where(t.games.c.id == game_id, t.games.c.owner_user_id.is_(None))
+                .values(owner_user_id=owner_user_id)
+            )
+            row = conn.execute(
+                select(t.games.c.owner_user_id).where(t.games.c.id == game_id)
+            ).mappings().first()
+        return row is not None and row["owner_user_id"] == owner_user_id
+
     def delete_repertoire(self, repertoire_id: str) -> None:
-        with self.connection:
-            self.connection.execute("DELETE FROM repertoires WHERE id = ?", (repertoire_id,))
+        with self.engine.begin() as conn:
+            conn.execute(delete(t.repertoires).where(t.repertoires.c.id == repertoire_id))
 
     def delete_opening_nodes(self, repertoire_id: str, node_ids: List[str]) -> None:
         if not node_ids:
             return
-        placeholders = ",".join("?" for _ in node_ids)
-        with self.connection:
+        with self.engine.begin() as conn:
             # Clear references that don't cascade, otherwise the node delete trips
             # a FOREIGN KEY constraint (e.g. a live training session still points
             # at one of these nodes via current_node_id).
-            self.connection.execute(
-                "UPDATE training_sessions SET current_node_id = NULL "
-                "WHERE current_node_id IN ({0})".format(placeholders),
-                node_ids,
+            conn.execute(
+                update(t.training_sessions)
+                .where(t.training_sessions.c.current_node_id.in_(node_ids))
+                .values(current_node_id=None)
             )
-            self.connection.execute(
-                "UPDATE practical_opening_matches SET last_matched_node_id = NULL "
-                "WHERE last_matched_node_id IN ({0})".format(placeholders),
-                node_ids,
+            conn.execute(
+                update(t.practical_opening_matches)
+                .where(t.practical_opening_matches.c.last_matched_node_id.in_(node_ids))
+                .values(last_matched_node_id=None)
             )
-            self.connection.execute(
-                "DELETE FROM generation_runs WHERE root_node_id IN ({0})".format(placeholders),
-                node_ids,
+            conn.execute(
+                delete(t.generation_runs).where(t.generation_runs.c.root_node_id.in_(node_ids))
             )
-            self.connection.execute(
-                "DELETE FROM opening_nodes WHERE repertoire_id = ? AND id IN ({0})".format(
-                    placeholders
-                ),
-                [repertoire_id, *node_ids],
+            conn.execute(
+                delete(t.opening_nodes).where(
+                    t.opening_nodes.c.repertoire_id == repertoire_id,
+                    t.opening_nodes.c.id.in_(node_ids),
+                )
             )
 
     def save_training_session(self, session: TrainingSession) -> None:
-        with self.connection:
-            self.connection.execute(
-                """
-                INSERT INTO training_sessions (
-                    id, repertoire_id, mode, line_order_json, current_index,
-                    current_node_id, mistakes_json, mastered_nodes_json, seed,
-                    created_at, updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    repertoire_id = excluded.repertoire_id,
-                    mode = excluded.mode,
-                    line_order_json = excluded.line_order_json,
-                    current_index = excluded.current_index,
-                    current_node_id = excluded.current_node_id,
-                    mistakes_json = excluded.mistakes_json,
-                    mastered_nodes_json = excluded.mastered_nodes_json,
-                    seed = excluded.seed,
-                    updated_at = excluded.updated_at
-                """,
-                (
-                    session.id,
-                    session.repertoire_id,
-                    session.mode.value,
-                    _json_dump(session.line_order),
-                    session.current_index,
-                    session.current_node_id,
-                    _json_dump(session.mistakes),
-                    _json_dump(session.mastered_nodes),
-                    session.seed,
-                    _dt_to_text(session.created_at),
-                    _dt_to_text(session.updated_at),
+        with self.engine.begin() as conn:
+            _upsert(
+                conn,
+                t.training_sessions,
+                {
+                    "id": session.id,
+                    "repertoire_id": session.repertoire_id,
+                    "mode": session.mode.value,
+                    "line_order_json": _json_dump(session.line_order),
+                    "current_index": session.current_index,
+                    "current_node_id": session.current_node_id,
+                    "mistakes_json": _json_dump(session.mistakes),
+                    "mastered_nodes_json": _json_dump(session.mastered_nodes),
+                    "seed": session.seed,
+                    "created_at": _dt_to_text(session.created_at),
+                    "updated_at": _dt_to_text(session.updated_at),
+                },
+                conflict=[t.training_sessions.c.id],
+                update_cols=(
+                    "repertoire_id", "mode", "line_order_json", "current_index",
+                    "current_node_id", "mistakes_json", "mastered_nodes_json", "seed",
+                    "updated_at",
                 ),
             )
 
     def load_training_session(self, session_id: str) -> Optional[TrainingSession]:
-        row = self.connection.execute(
-            "SELECT * FROM training_sessions WHERE id = ?",
-            (session_id,),
-        ).fetchone()
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                select(t.training_sessions).where(t.training_sessions.c.id == session_id)
+            ).mappings().first()
         return self._training_session_from_row(row) if row is not None else None
 
     def load_latest_training_session(
@@ -561,26 +707,16 @@ class PrepForgeRepository:
         repertoire_id: str,
         mode: Optional[TrainingMode] = None,
     ) -> Optional[TrainingSession]:
-        if mode is None:
-            row = self.connection.execute(
-                """
-                SELECT * FROM training_sessions
-                WHERE repertoire_id = ?
-                ORDER BY updated_at DESC
-                LIMIT 1
-                """,
-                (repertoire_id,),
-            ).fetchone()
-        else:
-            row = self.connection.execute(
-                """
-                SELECT * FROM training_sessions
-                WHERE repertoire_id = ? AND mode = ?
-                ORDER BY updated_at DESC
-                LIMIT 1
-                """,
-                (repertoire_id, mode.value),
-            ).fetchone()
+        stmt = (
+            select(t.training_sessions)
+            .where(t.training_sessions.c.repertoire_id == repertoire_id)
+            .order_by(t.training_sessions.c.updated_at.desc())
+            .limit(1)
+        )
+        if mode is not None:
+            stmt = stmt.where(t.training_sessions.c.mode == mode.value)
+        with self.engine.connect() as conn:
+            row = conn.execute(stmt).mappings().first()
         return self._training_session_from_row(row) if row is not None else None
 
     def save_training_progress(
@@ -592,37 +728,28 @@ class PrepForgeRepository:
     ) -> None:
         progress_id = self._training_progress_id(user_profile_id, repertoire_id, progress.node_id)
         now = _now_text()
-        with self.connection:
-            self.connection.execute(
-                """
-                INSERT INTO training_progress (
-                    id, user_profile_id, repertoire_id, node_id, attempts,
-                    correct_attempts, last_reviewed_at, spaced_repetition_score,
-                    due_at, is_mastered, created_at, updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    attempts = excluded.attempts,
-                    correct_attempts = excluded.correct_attempts,
-                    last_reviewed_at = excluded.last_reviewed_at,
-                    spaced_repetition_score = excluded.spaced_repetition_score,
-                    due_at = excluded.due_at,
-                    is_mastered = excluded.is_mastered,
-                    updated_at = excluded.updated_at
-                """,
-                (
-                    progress_id,
-                    user_profile_id,
-                    repertoire_id,
-                    progress.node_id,
-                    progress.attempts,
-                    progress.correct_attempts,
-                    _dt_to_text(progress.last_reviewed_at),
-                    progress.spaced_repetition_score,
-                    _dt_to_text(progress.due_at),
-                    _bool_to_int(progress.is_mastered),
-                    now,
-                    now,
+        with self.engine.begin() as conn:
+            _upsert(
+                conn,
+                t.training_progress,
+                {
+                    "id": progress_id,
+                    "user_profile_id": user_profile_id,
+                    "repertoire_id": repertoire_id,
+                    "node_id": progress.node_id,
+                    "attempts": progress.attempts,
+                    "correct_attempts": progress.correct_attempts,
+                    "last_reviewed_at": _dt_to_text(progress.last_reviewed_at),
+                    "spaced_repetition_score": progress.spaced_repetition_score,
+                    "due_at": _dt_to_text(progress.due_at),
+                    "is_mastered": _bool_to_int(progress.is_mastered),
+                    "created_at": now,
+                    "updated_at": now,
+                },
+                conflict=[t.training_progress.c.id],
+                update_cols=(
+                    "attempts", "correct_attempts", "last_reviewed_at",
+                    "spaced_repetition_score", "due_at", "is_mastered", "updated_at",
                 ),
             )
 
@@ -634,21 +761,13 @@ class PrepForgeRepository:
         user_profile_id: Optional[str] = None,
     ) -> Optional[TrainingProgress]:
         progress_id = self._training_progress_id(user_profile_id, repertoire_id, node_id)
-        row = self.connection.execute(
-            "SELECT * FROM training_progress WHERE id = ?",
-            (progress_id,),
-        ).fetchone()
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                select(t.training_progress).where(t.training_progress.c.id == progress_id)
+            ).mappings().first()
         if row is None:
             return None
-        return TrainingProgress(
-            node_id=row["node_id"],
-            attempts=row["attempts"],
-            correct_attempts=row["correct_attempts"],
-            last_reviewed_at=_dt_from_text(row["last_reviewed_at"]),
-            spaced_repetition_score=row["spaced_repetition_score"],
-            due_at=_dt_from_text(row["due_at"]),
-            is_mastered=_int_to_bool(row["is_mastered"]),
-        )
+        return self._training_progress_from_row(row)
 
     def existing_move_signature_ids(
         self, owner_user_id: Optional[str] = None
@@ -661,20 +780,20 @@ class PrepForgeRepository:
         considered, so one user pasting a PGN another user already stored gets their
         own owned copy rather than being bounced to the other user's game."""
         if owner_user_id is None:
-            rows = self.connection.execute(
-                "SELECT game_id, uci FROM moves WHERE game_id IS NOT NULL ORDER BY game_id, ply"
-            ).fetchall()
+            stmt = (
+                select(t.moves.c.game_id, t.moves.c.uci)
+                .where(t.moves.c.game_id.is_not(None))
+                .order_by(t.moves.c.game_id, t.moves.c.ply)
+            )
         else:
-            rows = self.connection.execute(
-                """
-                SELECT m.game_id AS game_id, m.uci AS uci
-                FROM moves m
-                JOIN games g ON g.id = m.game_id
-                WHERE g.owner_user_id = ?
-                ORDER BY m.game_id, m.ply
-                """,
-                (owner_user_id,),
-            ).fetchall()
+            stmt = (
+                select(t.moves.c.game_id, t.moves.c.uci)
+                .select_from(t.moves.join(t.games, t.games.c.id == t.moves.c.game_id))
+                .where(t.games.c.owner_user_id == owner_user_id)
+                .order_by(t.moves.c.game_id, t.moves.c.ply)
+            )
+        with self.engine.connect() as conn:
+            rows = conn.execute(stmt).mappings().all()
         by_game: Dict[str, List[str]] = {}
         for row in rows:
             by_game.setdefault(row["game_id"], []).append(row["uci"])
@@ -693,54 +812,37 @@ class PrepForgeRepository:
         user_profile_id: Optional[str] = None,
     ) -> List[TrainingProgress]:
         """All stored progress rows for a repertoire (for heatmap / due queue)."""
-        rows = self.connection.execute(
-            """
-            SELECT * FROM training_progress
-            WHERE repertoire_id = ?
-              AND (user_profile_id IS ? OR user_profile_id = ?)
-            """,
-            (repertoire_id, user_profile_id, user_profile_id),
-        ).fetchall()
-        return [
-            TrainingProgress(
-                node_id=row["node_id"],
-                attempts=row["attempts"],
-                correct_attempts=row["correct_attempts"],
-                last_reviewed_at=_dt_from_text(row["last_reviewed_at"]),
-                spaced_repetition_score=row["spaced_repetition_score"],
-                due_at=_dt_from_text(row["due_at"]),
-                is_mastered=_int_to_bool(row["is_mastered"]),
-            )
-            for row in rows
-        ]
+        tp = t.training_progress
+        if user_profile_id is None:
+            owner_cond = tp.c.user_profile_id.is_(None)
+        else:
+            owner_cond = tp.c.user_profile_id == user_profile_id
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(tp).where(tp.c.repertoire_id == repertoire_id, owner_cond)
+            ).mappings().all()
+        return [self._training_progress_from_row(row) for row in rows]
 
     def save_analysis_result(self, result: AnalysisResult) -> None:
         analysis_id = self._analysis_result_id(result)
-        with self.connection:
-            self.connection.execute(
-                """
-                INSERT INTO analysis_results (
-                    id, game_id, analyzed_at, engine, depth, summary_json,
-                    critical_ply_json, config_json
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    analyzed_at = excluded.analyzed_at,
-                    engine = excluded.engine,
-                    depth = excluded.depth,
-                    summary_json = excluded.summary_json,
-                    critical_ply_json = excluded.critical_ply_json,
-                    config_json = excluded.config_json
-                """,
-                (
-                    analysis_id,
-                    result.game_id,
-                    _dt_to_text(result.analyzed_at),
-                    result.engine,
-                    result.depth,
-                    _json_dump(result.summary),
-                    _json_dump(result.critical_ply),
-                    _json_dump({}),
+        with self.engine.begin() as conn:
+            _upsert(
+                conn,
+                t.analysis_results,
+                {
+                    "id": analysis_id,
+                    "game_id": result.game_id,
+                    "analyzed_at": _dt_to_text(result.analyzed_at),
+                    "engine": result.engine,
+                    "depth": result.depth,
+                    "summary_json": _json_dump(result.summary),
+                    "critical_ply_json": _json_dump(result.critical_ply),
+                    "config_json": _json_dump({}),
+                },
+                conflict=[t.analysis_results.c.id],
+                update_cols=(
+                    "analyzed_at", "engine", "depth", "summary_json",
+                    "critical_ply_json", "config_json",
                 ),
             )
 
@@ -748,26 +850,41 @@ class PrepForgeRepository:
         """Metadata for every game that has a saved analysis (latest per game),
         newest first — powers the Analyze "History" list. Analyses are owned
         transitively through their game, so scoping joins on ``games.owner_user_id``."""
-        owner_clause = "WHERE g.owner_user_id = ?" if owner_user_id is not None else ""
-        params = (owner_user_id,) if owner_user_id is not None else ()
-        rows = self.connection.execute(
-            """
-            SELECT a.game_id AS game_id, a.analyzed_at AS analyzed_at,
-                   a.engine AS engine, a.depth AS depth, a.summary_json AS summary_json,
-                   g.white AS white, g.black AS black, g.result AS result,
-                   g.played_at AS played_at, g.lichess_id AS lichess_id
-            FROM analysis_results a
-            JOIN games g ON g.id = a.game_id
-            JOIN (
-                SELECT game_id, MAX(analyzed_at) AS max_at
-                FROM analysis_results GROUP BY game_id
-            ) latest
-              ON latest.game_id = a.game_id AND latest.max_at = a.analyzed_at
-            {0}
-            ORDER BY a.analyzed_at DESC
-            """.format(owner_clause),
-            params,
-        ).fetchall()
+        ar = t.analysis_results
+        g = t.games
+        latest = (
+            select(
+                ar.c.game_id.label("game_id"),
+                func.max(ar.c.analyzed_at).label("max_at"),
+            )
+            .group_by(ar.c.game_id)
+            .subquery()
+        )
+        stmt = (
+            select(
+                ar.c.game_id.label("game_id"),
+                ar.c.analyzed_at.label("analyzed_at"),
+                ar.c.engine.label("engine"),
+                ar.c.depth.label("depth"),
+                ar.c.summary_json.label("summary_json"),
+                g.c.white.label("white"),
+                g.c.black.label("black"),
+                g.c.result.label("result"),
+                g.c.played_at.label("played_at"),
+                g.c.lichess_id.label("lichess_id"),
+            )
+            .select_from(
+                ar.join(g, g.c.id == ar.c.game_id).join(
+                    latest,
+                    (latest.c.game_id == ar.c.game_id) & (latest.c.max_at == ar.c.analyzed_at),
+                )
+            )
+            .order_by(ar.c.analyzed_at.desc())
+        )
+        if owner_user_id is not None:
+            stmt = stmt.where(g.c.owner_user_id == owner_user_id)
+        with self.engine.connect() as conn:
+            rows = conn.execute(stmt).mappings().all()
         return [
             {
                 "game_id": row["game_id"],
@@ -787,22 +904,20 @@ class PrepForgeRepository:
     def load_latest_analysis_result(
         self, game_id: str, owner_user_id: Optional[str] = None
     ) -> Optional[AnalysisResult]:
-        # The analysis is owned through its game; gate on the game's owner first.
-        if owner_user_id is not None:
-            game_row = self.connection.execute(
-                "SELECT owner_user_id FROM games WHERE id = ?", (game_id,)
-            ).fetchone()
-            if game_row is None or game_row["owner_user_id"] != owner_user_id:
-                return None
-        row = self.connection.execute(
-            """
-            SELECT * FROM analysis_results
-            WHERE game_id = ?
-            ORDER BY analyzed_at DESC
-            LIMIT 1
-            """,
-            (game_id,),
-        ).fetchone()
+        with self.engine.connect() as conn:
+            # The analysis is owned through its game; gate on the game's owner first.
+            if owner_user_id is not None:
+                game_row = conn.execute(
+                    select(t.games.c.owner_user_id).where(t.games.c.id == game_id)
+                ).mappings().first()
+                if game_row is None or game_row["owner_user_id"] != owner_user_id:
+                    return None
+            row = conn.execute(
+                select(t.analysis_results)
+                .where(t.analysis_results.c.game_id == game_id)
+                .order_by(t.analysis_results.c.analyzed_at.desc())
+                .limit(1)
+            ).mappings().first()
         if row is None:
             return None
 
@@ -817,134 +932,101 @@ class PrepForgeRepository:
             critical_ply=_json_load(row["critical_ply_json"], []),
         )
 
-    def _save_move(self, *, move: MoveRecord, move_id: str, game_id: Optional[str]) -> None:
+    def _save_move(
+        self, conn: Connection, *, move: MoveRecord, move_id: str, game_id: Optional[str]
+    ) -> None:
         now = _now_text()
         engine_eval_before_id = self._save_engine_evaluation(
-            move.engine_eval_before,
-            move.fen_before,
+            conn, move.engine_eval_before, move.fen_before
         )
-        engine_eval_after_id = self._save_engine_evaluation(move.engine_eval_after, move.fen_after)
-        best_move_eval_id = self._save_engine_evaluation(move.best_move_eval, move.fen_before)
+        engine_eval_after_id = self._save_engine_evaluation(
+            conn, move.engine_eval_after, move.fen_after
+        )
+        best_move_eval_id = self._save_engine_evaluation(
+            conn, move.best_move_eval, move.fen_before
+        )
 
-        self.connection.execute(
-            """
-            INSERT INTO moves (
-                id, game_id, ply, move_number, side_to_move, uci, san,
-                fen_before, fen_after, engine_eval_before_id, engine_eval_after_id,
-                best_move_uci, best_move_eval_id, classification, comment,
-                tags_json, source, created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                game_id = excluded.game_id,
-                ply = excluded.ply,
-                move_number = excluded.move_number,
-                side_to_move = excluded.side_to_move,
-                uci = excluded.uci,
-                san = excluded.san,
-                fen_before = excluded.fen_before,
-                fen_after = excluded.fen_after,
-                engine_eval_before_id = excluded.engine_eval_before_id,
-                engine_eval_after_id = excluded.engine_eval_after_id,
-                best_move_uci = excluded.best_move_uci,
-                best_move_eval_id = excluded.best_move_eval_id,
-                classification = excluded.classification,
-                comment = excluded.comment,
-                tags_json = excluded.tags_json,
-                source = excluded.source
-            """,
-            (
-                move_id,
-                game_id,
-                move.ply,
-                move.move_number,
-                move.side_to_move.value,
-                move.uci,
-                move.san,
-                move.fen_before,
-                move.fen_after,
-                engine_eval_before_id,
-                engine_eval_after_id,
-                move.best_move_uci,
-                best_move_eval_id,
-                move.classification.value,
-                move.comment,
-                _json_dump(move.tags),
-                move.source.value,
-                now,
+        _upsert(
+            conn,
+            t.moves,
+            {
+                "id": move_id,
+                "game_id": game_id,
+                "ply": move.ply,
+                "move_number": move.move_number,
+                "side_to_move": move.side_to_move.value,
+                "uci": move.uci,
+                "san": move.san,
+                "fen_before": move.fen_before,
+                "fen_after": move.fen_after,
+                "engine_eval_before_id": engine_eval_before_id,
+                "engine_eval_after_id": engine_eval_after_id,
+                "best_move_uci": move.best_move_uci,
+                "best_move_eval_id": best_move_eval_id,
+                "classification": move.classification.value,
+                "comment": move.comment,
+                "tags_json": _json_dump(move.tags),
+                "source": move.source.value,
+                "created_at": now,
+            },
+            conflict=[t.moves.c.id],
+            update_cols=(
+                "game_id", "ply", "move_number", "side_to_move", "uci", "san",
+                "fen_before", "fen_after", "engine_eval_before_id",
+                "engine_eval_after_id", "best_move_uci", "best_move_eval_id",
+                "classification", "comment", "tags_json", "source",
             ),
         )
 
-    def _save_opening_node(self, node: OpeningNode) -> None:
+    def _save_opening_node(self, conn: Connection, node: OpeningNode) -> None:
         now = _now_text()
         move_id = None
         if node.move is not None:
             move_id = self._opening_move_id(node.id)
-            self._save_move(move=node.move, move_id=move_id, game_id=None)
+            self._save_move(conn, move=node.move, move_id=move_id, game_id=None)
 
-        engine_evaluation_id = self._save_engine_evaluation(node.engine_evaluation, node.fen)
+        engine_evaluation_id = self._save_engine_evaluation(conn, node.engine_evaluation, node.fen)
 
-        self.connection.execute(
-            """
-            INSERT INTO opening_nodes (
-                id, repertoire_id, parent_id, move_id, fen, side_to_move,
-                engine_evaluation_id, maia_probability, is_mainline,
-                is_user_prepared_move, is_enabled, priority, comment, tags_json,
-                arrows_json, circles_json,
-                tactical_warning, strategic_idea, typical_plan, source,
-                created_at, updated_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                repertoire_id = excluded.repertoire_id,
-                parent_id = excluded.parent_id,
-                move_id = excluded.move_id,
-                fen = excluded.fen,
-                side_to_move = excluded.side_to_move,
-                engine_evaluation_id = excluded.engine_evaluation_id,
-                maia_probability = excluded.maia_probability,
-                is_mainline = excluded.is_mainline,
-                is_user_prepared_move = excluded.is_user_prepared_move,
-                is_enabled = excluded.is_enabled,
-                priority = excluded.priority,
-                comment = excluded.comment,
-                tags_json = excluded.tags_json,
-                arrows_json = excluded.arrows_json,
-                circles_json = excluded.circles_json,
-                tactical_warning = excluded.tactical_warning,
-                strategic_idea = excluded.strategic_idea,
-                typical_plan = excluded.typical_plan,
-                source = excluded.source,
-                updated_at = excluded.updated_at
-            """,
-            (
-                node.id,
-                node.repertoire_id,
-                node.parent_id,
-                move_id,
-                node.fen,
-                node.side_to_move.value,
-                engine_evaluation_id,
-                node.maia_probability,
-                _bool_to_int(node.is_mainline),
-                _bool_to_int(node.is_user_prepared_move),
-                _bool_to_int(node.is_enabled),
-                node.priority,
-                node.comment,
-                _json_dump(node.tags),
-                _json_dump(node.arrows),
-                _json_dump(node.circles),
-                node.tactical_warning,
-                node.strategic_idea,
-                node.typical_plan,
-                node.source.value,
-                now,
-                now,
+        _upsert(
+            conn,
+            t.opening_nodes,
+            {
+                "id": node.id,
+                "repertoire_id": node.repertoire_id,
+                "parent_id": node.parent_id,
+                "move_id": move_id,
+                "fen": node.fen,
+                "side_to_move": node.side_to_move.value,
+                "engine_evaluation_id": engine_evaluation_id,
+                "maia_probability": node.maia_probability,
+                "is_mainline": _bool_to_int(node.is_mainline),
+                "is_user_prepared_move": _bool_to_int(node.is_user_prepared_move),
+                "is_enabled": _bool_to_int(node.is_enabled),
+                "priority": node.priority,
+                "comment": node.comment,
+                "tags_json": _json_dump(node.tags),
+                "arrows_json": _json_dump(node.arrows),
+                "circles_json": _json_dump(node.circles),
+                "tactical_warning": node.tactical_warning,
+                "strategic_idea": node.strategic_idea,
+                "typical_plan": node.typical_plan,
+                "source": node.source.value,
+                "created_at": now,
+                "updated_at": now,
+            },
+            conflict=[t.opening_nodes.c.id],
+            update_cols=(
+                "repertoire_id", "parent_id", "move_id", "fen", "side_to_move",
+                "engine_evaluation_id", "maia_probability", "is_mainline",
+                "is_user_prepared_move", "is_enabled", "priority", "comment",
+                "tags_json", "arrows_json", "circles_json", "tactical_warning",
+                "strategic_idea", "typical_plan", "source", "updated_at",
             ),
         )
 
     def _save_engine_evaluation(
         self,
+        conn: Connection,
         evaluation: Optional[EngineEvaluation],
         fen: str,
     ) -> Optional[str]:
@@ -953,46 +1035,38 @@ class PrepForgeRepository:
 
         evaluation_id = self._engine_evaluation_id(fen, evaluation)
         now = _now_text()
-        self.connection.execute(
-            """
-            INSERT INTO engine_evaluations (
-                id, fen, engine, depth, nodes, time_ms, score_cp, mate_in,
-                best_move_uci, pv_json, wdl_json, created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                engine = excluded.engine,
-                depth = excluded.depth,
-                nodes = excluded.nodes,
-                time_ms = excluded.time_ms,
-                score_cp = excluded.score_cp,
-                mate_in = excluded.mate_in,
-                best_move_uci = excluded.best_move_uci,
-                pv_json = excluded.pv_json,
-                wdl_json = excluded.wdl_json
-            """,
-            (
-                evaluation_id,
-                fen,
-                evaluation.engine,
-                evaluation.depth,
-                evaluation.nodes,
-                evaluation.time_ms,
-                evaluation.score_cp,
-                evaluation.mate_in,
-                evaluation.best_move_uci,
-                _json_dump(evaluation.pv),
-                _json_dump(evaluation.wdl) if evaluation.wdl is not None else None,
-                now,
+        _upsert(
+            conn,
+            t.engine_evaluations,
+            {
+                "id": evaluation_id,
+                "fen": fen,
+                "engine": evaluation.engine,
+                "depth": evaluation.depth,
+                "nodes": evaluation.nodes,
+                "time_ms": evaluation.time_ms,
+                "score_cp": evaluation.score_cp,
+                "mate_in": evaluation.mate_in,
+                "best_move_uci": evaluation.best_move_uci,
+                "pv_json": _json_dump(evaluation.pv),
+                "wdl_json": _json_dump(evaluation.wdl) if evaluation.wdl is not None else None,
+                "created_at": now,
+            },
+            conflict=[t.engine_evaluations.c.id],
+            update_cols=(
+                "engine", "depth", "nodes", "time_ms", "score_cp", "mate_in",
+                "best_move_uci", "pv_json", "wdl_json",
             ),
         )
         return evaluation_id
 
-    def _load_move_by_id(self, move_id: str) -> Optional[MoveRecord]:
-        row = self.connection.execute("SELECT * FROM moves WHERE id = ?", (move_id,)).fetchone()
-        return self._move_from_row(row) if row is not None else None
+    def _load_move_by_id(self, conn: Connection, move_id: str) -> Optional[MoveRecord]:
+        row = conn.execute(
+            select(t.moves).where(t.moves.c.id == move_id)
+        ).mappings().first()
+        return self._move_from_row(conn, row) if row is not None else None
 
-    def _move_from_row(self, row: sqlite3.Row) -> MoveRecord:
+    def _move_from_row(self, conn: Connection, row: Mapping[str, Any]) -> MoveRecord:
         return MoveRecord(
             uci=row["uci"],
             san=row["san"],
@@ -1002,14 +1076,14 @@ class PrepForgeRepository:
             ply=row["ply"],
             side_to_move=Color(row["side_to_move"]),
             source=MoveSource(row["source"]),
-            engine_eval_before=self._load_engine_evaluation(row["engine_eval_before_id"])
+            engine_eval_before=self._load_engine_evaluation(conn, row["engine_eval_before_id"])
             if row["engine_eval_before_id"]
             else None,
-            engine_eval_after=self._load_engine_evaluation(row["engine_eval_after_id"])
+            engine_eval_after=self._load_engine_evaluation(conn, row["engine_eval_after_id"])
             if row["engine_eval_after_id"]
             else None,
             best_move_uci=row["best_move_uci"],
-            best_move_eval=self._load_engine_evaluation(row["best_move_eval_id"])
+            best_move_eval=self._load_engine_evaluation(conn, row["best_move_eval_id"])
             if row["best_move_eval_id"]
             else None,
             classification=MoveClassification(row["classification"]),
@@ -1017,11 +1091,12 @@ class PrepForgeRepository:
             tags=_json_load(row["tags_json"], []),
         )
 
-    def _load_engine_evaluation(self, evaluation_id: str) -> Optional[EngineEvaluation]:
-        row = self.connection.execute(
-            "SELECT * FROM engine_evaluations WHERE id = ?",
-            (evaluation_id,),
-        ).fetchone()
+    def _load_engine_evaluation(
+        self, conn: Connection, evaluation_id: str
+    ) -> Optional[EngineEvaluation]:
+        row = conn.execute(
+            select(t.engine_evaluations).where(t.engine_evaluations.c.id == evaluation_id)
+        ).mappings().first()
         if row is None:
             return None
 
@@ -1037,7 +1112,7 @@ class PrepForgeRepository:
             wdl=_json_load(row["wdl_json"], None),
         )
 
-    def _training_session_from_row(self, row: sqlite3.Row) -> TrainingSession:
+    def _training_session_from_row(self, row: Mapping[str, Any]) -> TrainingSession:
         created_at = _dt_from_text(row["created_at"]) or datetime.now(timezone.utc)
         updated_at = _dt_from_text(row["updated_at"]) or created_at
         return TrainingSession(
@@ -1052,6 +1127,17 @@ class PrepForgeRepository:
             created_at=created_at,
             updated_at=updated_at,
             seed=row["seed"],
+        )
+
+    def _training_progress_from_row(self, row: Mapping[str, Any]) -> TrainingProgress:
+        return TrainingProgress(
+            node_id=row["node_id"],
+            attempts=row["attempts"],
+            correct_attempts=row["correct_attempts"],
+            last_reviewed_at=_dt_from_text(row["last_reviewed_at"]),
+            spaced_repetition_score=row["spaced_repetition_score"],
+            due_at=_dt_from_text(row["due_at"]),
+            is_mastered=_int_to_bool(row["is_mastered"]),
         )
 
     def _walk_nodes(self, root: OpeningNode) -> Iterable[OpeningNode]:

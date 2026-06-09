@@ -1,5 +1,8 @@
+import pytest
+
 from prepforge_chess.cli import main
 from prepforge_chess.services.game_navigation import GameNavigationService
+from prepforge_chess.services.maia import Maia3Adapter
 from prepforge_chess.services.pgn_import import PgnImportService
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories import PrepForgeRepository
@@ -63,6 +66,13 @@ def test_analyze_demo_cli_runs_mock_pipeline(capsys):
 
 
 def test_demo_build_cli_generates_tree(capsys):
+    # `demo-build` exercises real tree generation, which requires the actual
+    # Maia3 model (production never silently fakes it — see services/maia.py).
+    # CI runners have no Maia weights, so skip there, mirroring the Stockfish
+    # skip in test_stockfish_engine.py.
+    if not Maia3Adapter.is_available():
+        pytest.skip("Maia3 model is not installed.")
+
     exit_code = main(["demo-build", "--depth", "2", "--max-nodes", "8", "--demo-operations"])
 
     captured = capsys.readouterr()

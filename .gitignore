@@ -38,8 +38,24 @@ web-src/public/maia3/.maia3.publish.lock
 src/prepforge_chess/web/static/maia3/*.onnx
 src/prepforge_chess/web/static/maia3/*.onnx.data
 
+# Secrets / runtime config — never commit real credentials (Stripe keys,
+# SECRET_KEY, DATABASE_URL). Track .env.example as the documented template.
+.env
+.env.*
+!.env.example
+
+# Local screen recordings / scratch logs (dev artifacts, not source)
+Captures/
+*.log
+
 # Editor and OS files
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Local Claude Code agent config (launch.json / settings.local.json are per-machine)
+.claude/
+
+# Scratch analysis fixtures dropped at the repo root during manual testing
+/analysis_test.pgn

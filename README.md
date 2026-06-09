@@ -37,7 +37,6 @@ prepforge-chess analyze-demo --depth 8
 prepforge-chess demo-build --depth 3 --max-nodes 12
 prepforge-chess demo-build --depth 3 --max-nodes 12 --export
 prepforge-chess demo-train --seed 13
-prepforge-chess ui
 ```
 
 The current core uses `python-chess` behind the `ChessCore` adapter. Future phases can add a UI layer, Stockfish process adapter, Maia model adapter, and Lichess API client behind the service boundaries already defined here.
@@ -103,14 +102,24 @@ prepforge-chess demo-train --seed 13 --mode high_priority
 
 The trainer service loads trainable lines from a repertoire tree, creates a saved random line order, resumes the latest session instead of re-randomizing it, keeps wrong moves on the same prompt, removes corrected mistakes, advances to the next prepared move, and persists session/progress state in SQLite.
 
-Local Web UI:
+Web app (FastAPI SaaS API + browser SPA):
+
+The web UI is now served by the multi-tenant FastAPI app (`prepforge_chess.api`),
+which stores data and enforces ownership but **never computes chess** — Stockfish and
+Maia3 run in the browser (WASM). The legacy single-tenant stdlib server has been retired.
 
 ```powershell
-prepforge-chess ui
-prepforge-chess ui --port 8765 --db-path data\prepforge.sqlite3
+py -m pip install -e ".[server,dev]"   # FastAPI/SQLAlchemy/Alembic extras
+npm ci; npm run build                   # build the SPA into web/static
+py -m alembic upgrade head               # create the dev SQLite schema
+uvicorn prepforge_chess.api.main:app --reload
 ```
 
-The first web UI slice is available at `http://127.0.0.1:8765`. It exposes Dashboard, Analyze, Build, and Train workspaces backed by the same services as the CLI. Analyze supports pasted PGN text. The trainer hides prepared moves and line notation before the user answers, then reveals the expected move only after a wrong attempt. The UI has been browser-tested for dashboard loading, PGN analysis generation, move-row board navigation, demo repertoire generation, SVG piece rendering, trainer board-click move entry, correct move submission, and mistake retry.
+The app boots at `http://127.0.0.1:8000` (interactive API docs at `/docs` in dev).
+It exposes Dashboard, Analyze, Build, and Train workspaces with email/password accounts,
+per-user data isolation, CSRF protection, and Lichess account linking for game import.
+Production runs the same app under uvicorn against Postgres — see `docs/ROADMAP.md`
+(Phase 3) and `render.yaml`/`Dockerfile`.
 
 To install and use official Stockfish:
 

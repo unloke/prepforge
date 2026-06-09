@@ -7,7 +7,6 @@ import pytest
 
 import chess
 
-from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import (
     Color,
     EngineEvaluation,
@@ -17,7 +16,6 @@ from prepforge_chess.core.models import (
 from prepforge_chess.services.engine import (
     EngineAnalysisConfig,
     EngineCandidate,
-    MockEngine,
     PositionAnalysis,
 )
 from prepforge_chess.services.opening_builder import (

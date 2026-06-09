@@ -1,20 +1,29 @@
+# PrepForge Chess — SaaS production image (FastAPI + uvicorn).
+#
+# The server stores data and enforces ownership; it never computes chess. Engines
+# run in the browser (WASM). So this image carries NO Stockfish/Maia binaries and
+# installs the ".[server]" extra (FastAPI, SQLAlchemy, Alembic, psycopg) only.
+#
+# The built SPA (Vite output) is committed under src/prepforge_chess/web/static, so
+# COPY src ships it — no Node build stage is required in the image. Rebuild assets
+# with `npm run build` before building this image if web-src/ changed.
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV PREPFORGE_DB_PATH=/data/prepforge.sqlite3
 
 WORKDIR /app
 
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md alembic.ini ./
+COPY migrations ./migrations
 COPY src ./src
 
 RUN python -m pip install --no-cache-dir --upgrade pip \
-    && python -m pip install --no-cache-dir .
+    && python -m pip install --no-cache-dir ".[server]"
 
-RUN mkdir -p /data /app/engines/stockfish \
-    && python -m prepforge_chess install-stockfish
+EXPOSE 8000
 
-EXPOSE 8765
-
-CMD ["sh", "-c", "python -m prepforge_chess ui --host 0.0.0.0 --port ${PORT:-8765} --db-path ${PREPFORGE_DB_PATH:-/data/prepforge.sqlite3}"]
+# Migrations own prod DDL (the app never create_all()s in production); Render runs
+# `alembic upgrade head` as a preDeployCommand before this starts. --proxy-headers
+# lets uvicorn see the real client IP through Render's proxy (rate-limit/IP logic).
+CMD ["sh", "-c", "uvicorn prepforge_chess.api.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers"]
