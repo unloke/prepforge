@@ -364,9 +364,9 @@ boot (`/docs` 404, `/` serves the SPA with COOP/COEP, register→status→CSRF-4
 and the built wheel was confirmed to bundle the SPA shell + JS/CSS + both WASM engines +
 manifest with **zero ONNX weights**. **Remaining = operational (needs the user's Render
 account):** connect the repo, set `PREPFORGE_SECRET_KEY` in the dashboard, deploy, then run
-the Phase 3d production smoke checklist. The legacy `web/server.py` deletion (Phase 2b
-finish-line items 2–3) is deferred hygiene — the new image never imports it, so it is not
-a launch blocker.
+the Phase 3d production smoke checklist. The legacy `web/server.py` (+ `request_lock` + the
+CLI `ui` command) has now been **deleted** (Phase 2b finish-line complete), so there is no
+hidden legacy production path — a rollback is a git revert, not a second live entrypoint.
 
 Provision Render managed Postgres; run Alembic; connection pool; honor proxy
 headers (`uvicorn --proxy-headers`) so rate-limit/IP logic sees real client IPs.
@@ -638,11 +638,19 @@ browser with `crossOriginIsolated` true and zero console errors. Remaining:
    is untested. A deeper pass could also drive build action/annotation/export, import
    (json+pgn), analyze classify-save, and train move through clicks, but the wire surface
    for all of these is green (333 tests) and the `api()` path is now browser-proven.
-2. **Retire `request_lock`** — legacy global write lock; FastAPI runs without it (one
-   shared engine/pool), so it's dead-code removed with `web/server.py`.
-3. **Delete `web/server.py`** + the frozen legacy `_*_payload` serializers (and the now
-   superseded legacy static-serving code), now that the smoke test passes.
-See `memory/saas-direction.md`.
+2. ~~**Retire `request_lock`**~~ **DONE** — removed with `web/server.py` (it lived only
+   there; FastAPI runs lock-free on one shared engine/pool).
+3. ~~**Delete `web/server.py`**~~ **DONE (2026-06-08).** Deleted the 3168-line stdlib
+   server + its frozen `_*_payload` serializers + the superseded legacy static-serving
+   code. Also removed the CLI `ui` command (`run_ui`, the `ui` subparser, and the
+   `DEFAULT_DB_PATH`/`run_web_server` import) and the four legacy server test files
+   (`test_web_server`, `test_engine_session`, `test_lichess_oauth`, `test_multitenancy`
+   — they drove `PrepForgeWebApp`/`EngineSession` over `ThreadingHTTPServer`; the
+   multi-tenant isolation they covered now lives in the `test_api_*` suite). README
+   updated to run `uvicorn prepforge_chess.api.main:app` instead of `prepforge-chess ui`.
+   `services.lichess_oauth` stays (the new `api/routers/lichess.py` uses it). **265 green,
+   ruff clean.** No remaining live `web.server` imports.
+**Phase 2b is now fully complete.** See `memory/saas-direction.md`.
 
 **Infra peer-review fixes (2026-06-08):**
 - **API SQLite FK pragma (resolved):** `api/db.py::make_engine` set `PRAGMA

@@ -28,7 +28,6 @@ from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories import PrepForgeRepository
 from prepforge_chess.ui.terminal_viewer import TerminalBoardRenderer, TerminalGameViewer
 from prepforge_chess.ui.analysis_terminal import TerminalAnalysisRenderer
-from prepforge_chess.web.server import DEFAULT_DB_PATH, run_web_server
 
 
 SMOKE_PGN = """
@@ -475,22 +474,6 @@ def run_demo_train(args: argparse.Namespace) -> int:
         return 1
 
 
-def run_ui(args: argparse.Namespace) -> int:
-    try:
-        run_web_server(
-            host=args.host,
-            port=args.port,
-            db_path=Path(args.db_path),
-        )
-        return 0
-    except KeyboardInterrupt:
-        return 0
-    except Exception as exc:
-        print("ui: failed")
-        print("error: {0}".format(exc))
-        return 1
-
-
 def _create_demo_training_repertoire(repository: PrepForgeRepository):
     builder = OpeningBuilderService(repository, engine=MockEngine())
     repertoire = builder.create_repertoire(
@@ -728,18 +711,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         default=TrainingMode.ALL_LINES.value,
         help="Training mode for the demo session.",
     )
-    ui_parser = subparsers.add_parser(
-        "ui",
-        help="Run the local PrepForge web UI.",
-    )
-    ui_parser.add_argument("--host", default="127.0.0.1", help="Host to bind.")
-    ui_parser.add_argument("--port", type=int, default=8765, help="Port to bind.")
-    ui_parser.add_argument(
-        "--db-path",
-        default=str(DEFAULT_DB_PATH),
-        help="SQLite database path for the local UI.",
-    )
-
     args = parser.parse_args(argv)
     if args.command == "smoke":
         return run_smoke()
@@ -757,8 +728,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return run_demo_build(args)
     if args.command == "demo-train":
         return run_demo_train(args)
-    if args.command == "ui":
-        return run_ui(args)
 
     parser.print_help()
     return 0
