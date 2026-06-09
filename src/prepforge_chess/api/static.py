@@ -52,7 +52,17 @@ _DOCUMENT_ISOLATION = {
     "Cross-Origin-Embedder-Policy": "require-corp",
     "Cross-Origin-Resource-Policy": "same-origin",
 }
-_ASSET_ISOLATION = {"Cross-Origin-Resource-Policy": "same-origin"}
+# Assets carry CORP so they load under the document's require-corp policy. They ALSO
+# carry COEP: a worker script (Stockfish / onnxruntime) loaded via new Worker() only
+# becomes cross-origin isolated — and can therefore create the SharedArrayBuffer that
+# threaded WASM / pthreads need — when ITS OWN response sets COEP. Without it the
+# worker's crossOriginIsolated is false and pthread startup fails in-browser with
+# "Specify a Cross-Origin Embedder Policy to prevent this frame from being blocked".
+# COEP on non-worker assets (css/img/wasm) is harmless.
+_ASSET_ISOLATION = {
+    "Cross-Origin-Resource-Policy": "same-origin",
+    "Cross-Origin-Embedder-Policy": "require-corp",
+}
 
 # Explicit MIME types for the engine artifacts (wasm/onnx/workers). mimetypes
 # alone is unreliable for these on Windows, and a wrong type (e.g. text/plain for

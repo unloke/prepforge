@@ -39,6 +39,9 @@ def test_hashed_asset_served_immutable_with_corp(client):
     assert resp.headers["cache-control"] == "public, max-age=31536000, immutable"
     # Subresource must carry CORP to load under the document's require-corp policy.
     assert resp.headers["cross-origin-resource-policy"] == "same-origin"
+    # And COEP, so a worker script (Stockfish/onnxruntime) loaded from it becomes
+    # cross-origin isolated and can use SharedArrayBuffer (threaded WASM / pthreads).
+    assert resp.headers["cross-origin-embedder-policy"] == "require-corp"
 
 
 def test_missing_asset_is_404(client):
