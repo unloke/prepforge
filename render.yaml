@@ -1,38 +1,29 @@
-# Render blueprint — PrepForge Chess SaaS (FastAPI + managed Postgres).
+# Render blueprint reference — PrepForge Chess SaaS (FastAPI + managed Postgres).
 #
-# The web service runs the FastAPI app via uvicorn (Dockerfile CMD). Engines run
-# in the browser, so there is NO Stockfish/Maia on the server and NO SQLite disk —
-# all state lives in managed Postgres. `alembic upgrade head` runs as a
-# preDeployCommand before each release because the app never create_all()s in prod.
+# NOTE: preDeployCommand and managed databases require Render paid plans.
+# Free-tier deployments: set DATABASE_URL + PREPFORGE_ALLOWED_ORIGINS manually
+# in the dashboard. Migrations run via the Dockerfile CMD (alembic upgrade head
+# before uvicorn), so no preDeployCommand is needed.
 databases:
   - name: prepforge-chess-db
-    plan: starter
+    plan: free
 
 services:
   - type: web
     name: prepforge-chess
     runtime: docker
-    plan: starter
-    # Run migrations against the (already-provisioned) DB before the new image
-    # serves traffic. Fails the deploy if a migration errors, so prod never boots
-    # against a half-migrated schema.
-    preDeployCommand: alembic upgrade head
+    plan: free
     healthCheckPath: /healthz
     envVars:
       - key: PREPFORGE_ENV
         value: production
-      # Strong random signing key. Set in the Render dashboard (sync:false keeps it
-      # out of git). require_production_secret() fails loudly if left at the default.
+      # Set in the Render dashboard — never commit this value.
       - key: PREPFORGE_SECRET_KEY
         sync: false
-      # Render injects the internal Postgres connection string. config.py pins the
-      # scheme to postgresql+psycopg:// automatically (psycopg v3 ships in .[server]),
-      # so a bare postgres:// or postgresql:// URL boots correctly.
+      # Set manually in the dashboard with your Postgres Internal Database URL.
+      # config.py auto-pins postgres:// -> postgresql+psycopg:// (psycopg v3).
       - key: DATABASE_URL
-        fromDatabase:
-          name: prepforge-chess-db
-          property: connectionString
-      # CORS / CSRF origin allow-list. Update if a custom domain is attached.
+        sync: false
+      # Update to match your actual service URL (e.g. https://prepforge-w0c5.onrender.com).
       - key: PREPFORGE_ALLOWED_ORIGINS
         value: https://prepforge-chess.onrender.com
-      # Stripe vars are intentionally omitted until Phase 4 (billing) ships.
