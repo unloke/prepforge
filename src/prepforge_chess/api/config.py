@@ -67,6 +67,8 @@ class Settings(BaseSettings):
     # Session cookie.
     session_cookie_name: str = Field(default="pf_session")
     session_ttl_days: int = Field(default=30)
+    # Cap concurrent sessions per user (oldest pruned on new login). 0 disables.
+    session_max_per_user: int = Field(default=10)
 
     # Allowed browser origins for CORS / CSRF origin checks. Comma-separated.
     allowed_origins: str = Field(default="http://localhost:5173,http://localhost:8765")
@@ -78,6 +80,10 @@ class Settings(BaseSettings):
 
     # Free-plan quota: max repertoires a Free user may own. Pro is unlimited.
     free_repertoire_limit: int = Field(default=5)
+
+    # Observability. Sentry stays dark until a DSN is set (no-op otherwise).
+    sentry_dsn: str = Field(default="")
+    log_level: str = Field(default="INFO")
 
     @property
     def billing_enabled(self) -> bool:

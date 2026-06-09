@@ -60,9 +60,39 @@ def _set_session_cookie(response: Response, settings: Settings, token: str) -> N
     )
 
 
+def _purge_expired(db: Session, settings: Settings) -> int:
+    """Delete sessions idle longer than ``session_ttl_days``. Does NOT commit — the
+    caller owns the transaction (called inside ``_open_session``)."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.session_ttl_days)
+    rows = db.scalars(select(AuthSession).where(AuthSession.last_seen_at < cutoff)).all()
+    for row in rows:
+        db.delete(row)
+    return len(rows)
+
+
+def _enforce_session_cap(db: Session, settings: Settings, user_id: str) -> None:
+    """Keep at most ``session_max_per_user`` live sessions per user — prune the oldest
+    so a stolen-then-rotated cookie or an unbounded device list can't accumulate
+    forever. ``0`` disables the cap."""
+    cap = settings.session_max_per_user
+    if cap <= 0:
+        return
+    sessions = db.scalars(
+        select(AuthSession)
+        .where(AuthSession.user_id == user_id)
+        .order_by(AuthSession.created_at.desc())
+    ).all()
+    for stale in sessions[cap:]:
+        db.delete(stale)
+
+
 def _open_session(db: Session, response: Response, settings: Settings, user: User) -> None:
     token = new_session_token()
     db.add(AuthSession(token_hash=hash_session_token(token), user_id=user.id))
+    db.flush()
+    _enforce_session_cap(db, settings, user.id)
+    # Opportunistic global cleanup of long-idle sessions (no scheduler needed).
+    _purge_expired(db, settings)
     db.commit()
     _set_session_cookie(response, settings, token)
 
@@ -171,11 +201,3 @@ def status_(user: User | None = Depends(current_user_optional)) -> AuthStatus:
     return AuthStatus(signed_in=True, username=user.display_name or user.email)
 
 
-def _purge_expired(db: Session, settings: Settings) -> int:
-    """Housekeeping helper (wire to a periodic task later)."""
-    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.session_ttl_days)
-    rows = db.scalars(select(AuthSession).where(AuthSession.last_seen_at < cutoff)).all()
-    for row in rows:
-        db.delete(row)
-    db.commit()
-    return len(rows)

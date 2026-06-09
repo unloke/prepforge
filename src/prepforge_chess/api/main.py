@@ -10,6 +10,8 @@ with::
 """
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
@@ -17,15 +19,39 @@ from slowapi.errors import RateLimitExceeded
 
 from prepforge_chess.api.config import get_settings
 from prepforge_chess.api.middleware import CSRFMiddleware, SecurityHeadersMiddleware
+from prepforge_chess.api.observability import configure_logging, init_sentry
 from prepforge_chess.api.ratelimit import limiter
-from prepforge_chess.api.routers import analyze, auth, billing, lichess, teams, train, workspace
+from prepforge_chess.api.routers import (
+    analyze,
+    auth,
+    billing,
+    legal,
+    lichess,
+    teams,
+    train,
+    workspace,
+)
 from prepforge_chess.api.routers import settings as settings_router
 from prepforge_chess.api.static import register_static
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    # Startup: nothing to warm (the engine builds lazily on first request).
+    yield
+    # Graceful shutdown: dispose the SQLAlchemy pool so in-flight connections close
+    # cleanly when uvicorn receives SIGTERM (Render sends it on deploy/scale-down).
+    from prepforge_chess.api import db
+
+    if db._engine is not None:
+        db._engine.dispose()
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
     settings.require_production_secret()
+    configure_logging(settings)
+    init_sentry(settings)
 
     app = FastAPI(
         title="PrepForge Chess API",
@@ -33,6 +59,7 @@ def create_app() -> FastAPI:
         # Hide interactive docs in production; keep them in dev.
         docs_url=None if settings.is_production else "/docs",
         redoc_url=None,
+        lifespan=_lifespan,
     )
 
     # Rate limiting (slowapi): the limiter lives on app.state and raises
@@ -65,6 +92,7 @@ def create_app() -> FastAPI:
     app.include_router(settings_router.router)
     app.include_router(billing.router)
     app.include_router(teams.router)
+    app.include_router(legal.router)
 
     @app.get("/healthz", tags=["ops"])
     def healthz() -> dict[str, str]:

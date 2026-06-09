@@ -445,11 +445,27 @@ dangling `team_id` fails closed in the read gate; integrity is app-enforced). Ne
 - **Deferred:** the SPA has no teams UI yet (backend/API only); classroom
   teacher/student affordances ride on `kind='classroom'` later.
 
-### Phase 6 — Ops / launch ⬜
-Sentry, structured logging, DB backups, graceful shutdown, expired-session purge
-+ session cap (deferred from 1b), CDN for ONNX weights, CI (GitHub Actions:
-pytest + ruff), legal pages (ToS/Privacy/GDPR).
-- Acceptance: green CI; monitored; backed up; can onboard a real paying user.
+### Phase 6 — Ops / launch 🔶 CODE DONE (DB backups + CDN are Render-side config)
+- [x] **CI** — `.github/workflows/ci.yml` (pytest + ruff + alembic drift; vitest + build).
+- [x] **Expired-session purge + per-user session cap** (deferred from 1b) — `auth.py`:
+      `_enforce_session_cap` prunes the oldest beyond `PREPFORGE_SESSION_MAX_PER_USER`
+      (default 10; 0 disables) and `_purge_expired` (idle > `session_ttl_days`) runs
+      opportunistically inside `_open_session` (no scheduler). Tests in `test_api_ops.py`.
+- [x] **Graceful shutdown** — FastAPI `lifespan` disposes the SQLAlchemy pool on SIGTERM
+      (Render sends it on deploy/scale-down).
+- [x] **Structured logging + Sentry** — `api/observability.py`: `configure_logging`
+      (level/format from `PREPFORGE_LOG_LEVEL`) + `init_sentry` (dark unless
+      `PREPFORGE_SENTRY_DSN` set *and* `sentry-sdk` installed — `.[server]` doesn't pull
+      it, so default installs are unchanged). Both called in `create_app`.
+- [x] **Legal pages** — `GET /terms` + `/privacy` (`api/routers/legal.py`), shipped as
+      **honest placeholders** clearly marked "template — review with counsel" before
+      onboarding paying users.
+- [ ] **DB backups** — Render managed-Postgres automated backups (enable in the Render
+      dashboard; not code).
+- [ ] **CDN for ONNX weights** — already supported via `PREPFORGE_MAIA3_ASSET_BASE`; point
+      it at a CDN/object-store base in prod (ops config, optional).
+- Acceptance: green CI ✅; monitored (Sentry-ready) ✅; backups = enable on Render;
+  legal/session/shutdown ✅ — ready to onboard a paying user once Stripe + backups are on.
 
 ---
 
