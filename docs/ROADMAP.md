@@ -596,11 +596,22 @@ Postgres, migrations run before boot, the production smoke checklist passes, and
 no dependency on the legacy SQLite `/data` deployment path.
 
 ## Current status
-**Phases 1a + 1b DONE; Phase 2 endpoint/static cutover work DONE; Phase 3 deploy
-cutover NEXT.** Latest known verification: **333 Python tests green** after FastAPI
-static serving/browser smoke, JS suite **154 green**, ruff clean on the touched SaaS API
-surface. The currently committed deploy files still point at the legacy server until
-Phase 3 changes `Dockerfile`/`render.yaml`.
+**ALL ROADMAP PHASES 1–6 ARE CODE-COMPLETE (2026-06-08).** Phase 2 (endpoint port +
+static serving), Phase 3 (FastAPI/Postgres deploy cutover: `Dockerfile`→uvicorn,
+`render.yaml`→managed Postgres + preDeploy `alembic upgrade head`, URL pinning, CI),
+the Phase 2b finish-line (legacy `web/server.py` + `request_lock` + CLI `ui` deleted),
+Phase 4 (Stripe billing + Free/Pro quota), Phase 5 (teams/sharing, read-only-for-members),
+and Phase 6 (session cap/purge, graceful shutdown, logging, dark-by-default Sentry, legal
+pages) are all implemented, tested, and committed on `main` (5 commits, **not pushed**).
+Verification: **301 Python tests green, 154 JS tests green, ruff clean, `alembic check`
+zero-drift**, and a production-mode uvicorn boot serves every router (legal 200,
+billing/teams 401, webhook 503-dark, `/docs` 404, SPA `/` 200).
+
+**Going LIVE is now purely user-side** (cannot be done from here — needs your accounts):
+`git push origin main` → connect the repo to Render (blueprint provisions Postgres) →
+set `PREPFORGE_SECRET_KEY` in the dashboard → deploy → set the Stripe keys for billing →
+run the **Phase 3d production smoke checklist** below. DB backups + ONNX-weights CDN are
+Render-side config. The deploy files now target FastAPI, not the (deleted) legacy server.
 - 1b test-infra note: `csrf_headers` lives in `tests/api_helpers.py` (a plain
   top-level module, like `stub_maia`), NOT imported from `conftest`. Do **not**
   add `tests/__init__.py` / `pythonpath="."` — it makes `tests/` a package and
