@@ -25,6 +25,8 @@ Three things make this more than a bare ``StaticFiles`` mount:
 """
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import mimetypes
 import os
@@ -33,6 +35,8 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse, Response
+
+from prepforge_chess.api.middleware import build_csp
 
 STATIC_DIR = Path(__file__).resolve().parents[1] / "web" / "static"
 
@@ -109,25 +113,55 @@ def _maia3_asset_base() -> str:
     return os.environ.get(MAIA3_ASSET_BASE_ENV, "").strip()
 
 
-def _inject_asset_base(html_bytes: bytes) -> bytes:
-    """Inject ``window.__MAIA3_ASSET_BASE`` (from the env) into an HTML document.
+def _asset_base_script() -> str | None:
+    """The inline bootstrap script body (no ``<script>`` tags), or None when unset.
 
-    No-op when the env var is unset, so local dev keeps the in-image
-    ``/static/maia3/`` fallback. The tag is placed right after ``<head>`` so it runs
-    before the module scripts that read the global. The value is JSON-encoded and
-    its ``</`` sequences are escaped to prevent a ``</script>`` breakout.
+    This is the exact text the browser sees between the tags — both the injected
+    tag and the CSP sha256 hash are derived from it, so they always match. The
+    value is JSON-encoded and its ``</`` sequences are escaped to prevent a
+    ``</script>`` breakout.
     """
     base = _maia3_asset_base()
     if not base:
-        return html_bytes
+        return None
     literal = json.dumps(base).replace("</", "<\\/")
-    tag = "<script>window.__MAIA3_ASSET_BASE={0};</script>".format(literal).encode("utf-8")
+    return "window.__MAIA3_ASSET_BASE={0};".format(literal)
+
+
+def _csp_script_hash(script_body: str) -> str:
+    """CSP ``sha256-...`` source-expression for an inline script's exact body."""
+    digest = hashlib.sha256(script_body.encode("utf-8")).digest()
+    return "sha256-" + base64.b64encode(digest).decode("ascii")
+
+
+def _inject_asset_base(html_bytes: bytes) -> bytes:
+    """Inject the ``window.__MAIA3_ASSET_BASE`` bootstrap ``<script>`` into the shell.
+
+    No-op when the env var is unset, so local dev keeps the in-image
+    ``/static/maia3/`` fallback. The tag is placed right after ``<head>`` so it runs
+    before the module scripts that read the global. The strict CSP blocks inline
+    script, so the document response must also allow this exact script by its
+    sha256 hash — see ``_render_index`` / ``_document_csp``.
+    """
+    script_body = _asset_base_script()
+    if not script_body:
+        return html_bytes
+    tag = "<script>{0}</script>".format(script_body).encode("utf-8")
     marker = b"<head>"
     idx = html_bytes.find(marker)
     if idx == -1:
         return tag + html_bytes
     insert_at = idx + len(marker)
     return html_bytes[:insert_at] + tag + html_bytes[insert_at:]
+
+
+def _document_csp() -> str:
+    """CSP for the app shell: the baseline policy plus a hash for the one inline
+    bootstrap script (when injected), so it runs under ``script-src`` without
+    relaxing the policy to ``'unsafe-inline'``."""
+    script_body = _asset_base_script()
+    hashes = (_csp_script_hash(script_body),) if script_body else ()
+    return build_csp(script_hashes=hashes)
 
 
 def _dev_maia3_fallback(rel_path: str) -> Path | None:
@@ -155,7 +189,11 @@ def _render_index() -> Response:
         return Response("app shell not found", status_code=404)
     return HTMLResponse(
         content=body,
-        headers={"Cache-Control": _cache_control(index), **_DOCUMENT_ISOLATION},
+        headers={
+            "Cache-Control": _cache_control(index),
+            "Content-Security-Policy": _document_csp(),
+            **_DOCUMENT_ISOLATION,
+        },
     )
 
 
@@ -180,7 +218,11 @@ def _serve_asset(rel_path: str) -> Response:
         body = _inject_asset_base(target.read_bytes())
         return HTMLResponse(
             content=body,
-            headers={"Cache-Control": _cache_control(target), **_DOCUMENT_ISOLATION},
+            headers={
+                "Cache-Control": _cache_control(target),
+                "Content-Security-Policy": _document_csp(),
+                **_DOCUMENT_ISOLATION,
+            },
         )
     return FileResponse(
         target,

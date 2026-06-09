@@ -26,21 +26,42 @@ CSRF_COOKIE = "pf_csrf"
 CSRF_HEADER = "X-CSRF-Token"
 _SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
 
+# Hosts the Maia3 ONNX weights are fetched from at runtime (the worker downloads
+# them cross-origin from the configured CDN). Hugging Face serves resolve/ URLs
+# that 302 to its LFS/Xet CDN (e.g. cas-bridge.xethub.hf.co under hf.co), and CSP
+# re-checks every redirect hop against connect-src — so both the apex and the
+# wildcard subdomains must be allowed or the weight fetch is blocked.
+_WEIGHT_CDN_HOSTS = (
+    "https://huggingface.co",
+    "https://*.huggingface.co",
+    "https://*.hf.co",
+)
+
+
 # Engines run client-side via WASM + Web Workers, so the CSP must permit them
 # while still blocking arbitrary remote script. 'wasm-unsafe-eval' enables WASM
 # compilation without enabling JS eval(); worker-src blob: covers the workers
-# Stockfish/onnxruntime create.
-_CSP = (
-    "default-src 'self'; "
-    "script-src 'self' 'wasm-unsafe-eval'; "
-    "worker-src 'self' blob:; "
-    "style-src 'self' 'unsafe-inline'; "
-    "img-src 'self' data:; "
-    "connect-src 'self'; "
-    "object-src 'none'; "
-    "base-uri 'self'; "
-    "frame-ancestors 'none'"
-)
+# Stockfish/onnxruntime create; connect-src lists the weight CDN. ``script_hashes``
+# lets a specific response (the app shell, which carries one tiny inline bootstrap
+# <script> setting window.__MAIA3_ASSET_BASE) opt that exact script in by sha256 —
+# so we never have to relax the policy to 'unsafe-inline'.
+def build_csp(*, script_hashes: tuple[str, ...] = ()) -> str:
+    script_src = "'self' 'wasm-unsafe-eval'" + "".join(f" '{h}'" for h in script_hashes)
+    connect_src = " ".join(("'self'", *_WEIGHT_CDN_HOSTS))
+    return (
+        "default-src 'self'; "
+        f"script-src {script_src}; "
+        "worker-src 'self' blob:; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        f"connect-src {connect_src}; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "frame-ancestors 'none'"
+    )
+
+
+_CSP = build_csp()
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

@@ -76,3 +76,47 @@ def test_asset_base_injection_escapes_script_breakout(monkeypatch):
     html = static_mod._inject_asset_base(b"<head></head>").decode("utf-8")
     assert "</script><b>" not in html
     assert "<\\/script>" in html
+
+
+def test_document_csp_allows_the_injected_inline_script_by_hash(monkeypatch):
+    # The strict CSP blocks inline script, so the shell's bootstrap <script> must be
+    # opted in by the sha256 of its EXACT body — recompute it and confirm the match,
+    # otherwise the browser silently drops the script and the asset base is never set.
+    monkeypatch.setenv(static_mod.MAIA3_ASSET_BASE_ENV, "https://cdn.example.com/maia3/")
+    body = static_mod._asset_base_script()
+    assert body is not None
+    expected = static_mod._csp_script_hash(body)
+    csp = static_mod._document_csp()
+    assert f"'{expected}'" in csp
+    assert "script-src 'self' 'wasm-unsafe-eval'" in csp
+
+
+def test_document_csp_has_no_script_hash_when_env_unset(monkeypatch):
+    monkeypatch.delenv(static_mod.MAIA3_ASSET_BASE_ENV, raising=False)
+    csp = static_mod._document_csp()
+    assert "sha256-" not in csp
+
+
+def test_index_csp_allows_weight_cdn_and_inline_bootstrap(client, monkeypatch):
+    # End-to-end on the served shell: connect-src must reach the HF weight CDN (the
+    # worker fetches the ONNX cross-origin) and the inline bootstrap must be hashed in.
+    monkeypatch.setenv(static_mod.MAIA3_ASSET_BASE_ENV, "https://cdn.example.com/maia3/")
+    resp = client.get("/")
+    csp = resp.headers["content-security-policy"]
+    assert "connect-src 'self' https://huggingface.co" in csp
+    assert "https://*.hf.co" in csp
+    assert "sha256-" in csp
+
+
+def test_worker_script_csp_allows_weight_cdn(client):
+    # The ONNX fetch happens INSIDE the Maia worker, governed by the CSP on the
+    # worker script's OWN response (the middleware default) — it must reach the CDN.
+    assets = static_mod.STATIC_DIR / "assets"
+    worker = next(
+        (p for p in assets.iterdir() if "maia3-worker" in p.name and p.suffix == ".js"),
+        None,
+    )
+    if worker is None:  # built tree may name it differently; fall back to any asset
+        worker = next(p for p in assets.iterdir() if p.suffix == ".js" and ".map" not in p.name)
+    resp = client.get(f"/static/assets/{worker.name}")
+    assert "https://*.hf.co" in resp.headers["content-security-policy"]
