@@ -1519,6 +1519,85 @@ h2 {
   transform: translateY(0);
 }
 
+/* Coach panel — the plain-language read of the Analyze position. Always visible
+   in Analyze (unlike .reveal), so it reads as a permanent companion to the board. */
+.explain-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-soft);
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.explain-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.explain-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+.explain-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  user-select: none;
+  cursor: pointer;
+}
+
+.explain-toggle input {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.explain-headline {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.explain-idea {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+
+.explain-idea[hidden] {
+  display: none;
+}
+
+.explain-points {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+
+.explain-points li {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.explain-points:empty {
+  display: none;
+}
+
 .tags {
   display: flex;
   flex-wrap: wrap;

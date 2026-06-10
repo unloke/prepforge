@@ -66,6 +66,18 @@
               <button class="btn ghost" id="fetch-my-game" data-testid="fetch-my-game" title="Load my latest Lichess game">My game</button>
               <button class="btn primary" id="run-analysis" data-testid="run-analysis">Analyze</button>
             </div>
+            <section class="explain-card" id="analysis-explain" data-testid="analysis-explain">
+              <div class="explain-head">
+                <span class="explain-title">Coach</span>
+                <label class="explain-toggle" title="Show the engine's suggested move as a board arrow">
+                  <input type="checkbox" id="explain-engine-toggle" checked />
+                  <span>Engine idea</span>
+                </label>
+              </div>
+              <div class="explain-headline" id="explain-headline">Move a piece or load a game to get a read on the position.</div>
+              <div class="explain-idea" id="explain-idea" hidden></div>
+              <ul class="explain-points" id="explain-points"></ul>
+            </section>
             <div class="reveal" id="analysis-results" hidden>
               <svg class="eval-chart" id="eval-chart" viewBox="0 0 640 96" role="img"></svg>
               <div class="movelist tree" id="analysis-moves" data-testid="analysis-moves"></div>

@@ -12,6 +12,8 @@ import {
 } from "./engine/maia3-provider.js";
 import { getCachedWeights, clearWeightCache } from "./engine/maia3-weight-cache.js";
 import { createCsrfTokenSource, isSafeMethod, CSRF_HEADER } from "./csrf.js";
+import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
+import { describePosition, explainEngineIdea } from "./explain.js";
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const DEMO_PGN = `[Event "PrepForge UI Demo"]
@@ -238,6 +240,8 @@ const appState = {
   analysisVarCounter: 0,
   analysisCurrentNodeId: "root",
   analysisTree: null,
+  // Last position fed to the coach panel: { fen, lastUci, lastSan }.
+  explainContext: { fen: START_FEN, lastUci: null, lastSan: null },
   evalChartPoints: [],
   build: null,
   buildNodeById: new Map(),
@@ -883,6 +887,8 @@ class EngineWidget {
       setEngineBestArrow(null);
       this.pvsEl.innerHTML = '<div class="empty-state">Calculating...</div>';
     }
+    // Keep the coach's one-line rationale in sync with this (deeper) search.
+    if (typeof positionCoach !== "undefined") positionCoach.onWidgetSnapshot(snapshot);
     // Once the engine reaches max depth it stops; no point polling further
     // until the position changes (open/update restart polling).
     if (snapshot.running === false) this._stopPolling();
@@ -1026,6 +1032,160 @@ class EngineWidget {
 }
 
 const engineWidget = new EngineWidget();
+
+// ---------------------------------------------------------------------------
+// Position coach — the "basic explanation" layer for Analyze. Every position
+// change gets instant, engine-free heuristic text (describePosition): material
+// read, what the last move did, whose move it is, loose pieces. On top of that
+// the engine's suggested move is drawn as a green board arrow with a one-line
+// rationale — that arrow IS "the idea shown on the board".
+//
+// The engine half is debounced + token-cancellable so a flurry of next-clicks
+// never queues stale searches. When the full Engine window is open we mirror its
+// (deeper) top line via onWidgetSnapshot instead of spinning a second worker and
+// fighting over the arrow.
+// ---------------------------------------------------------------------------
+class PositionCoach {
+  constructor() {
+    this.engine = null;
+    this.fen = null;
+    this.ctx = {};
+    this.enabled = true;
+    this.timer = null;
+    this.token = 0;
+  }
+
+  bind() {
+    const toggle = document.getElementById("explain-engine-toggle");
+    if (!toggle) return;
+    this.enabled = toggle.checked;
+    toggle.addEventListener("change", () => {
+      this.enabled = toggle.checked;
+      if (this.enabled) this.update(this.fen, this.ctx);
+      else this._clearIdea();
+    });
+  }
+
+  _clearIdea() {
+    setIdeaLine("");
+    if (!engineWidget.isOpen()) setEngineBestArrow(null);
+  }
+
+  // Called on every Analyze position change. Renders nothing itself (the heuristic
+  // text is rendered by renderExplain); it owns only the engine "idea".
+  update(fen, ctx) {
+    this.fen = fen;
+    this.ctx = ctx || {};
+    if (!fen) return;
+    if (!this.enabled) {
+      this._clearIdea();
+      return;
+    }
+    if (activeViewName() !== "analyze") return;
+    if (!isBrowserEngineAvailable()) {
+      setIdeaLine("Engine idea needs a cross-origin-isolated browser.");
+      return;
+    }
+    // The Engine window already runs Stockfish and draws the arrow — mirror it.
+    if (engineWidget.isOpen()) {
+      this._fromWidget(fen);
+      return;
+    }
+    window.clearTimeout(this.timer);
+    setIdeaLine("Thinking…");
+    this.timer = window.setTimeout(() => this._run(fen), 280);
+  }
+
+  _fromWidget(fen) {
+    const snap = engineWidget.lastSnapshot;
+    if (snap && snap.fen === fen && snap.pvs && snap.pvs.length) this._renderIdea(snap, fen);
+    else setIdeaLine("Thinking…");
+  }
+
+  // Forwarded by EngineWidget after each snapshot render so the coach text tracks
+  // the open window's deeper search without running its own engine.
+  onWidgetSnapshot(snapshot) {
+    if (!this.enabled || activeViewName() !== "analyze") return;
+    if (!snapshot || snapshot.fen !== this.fen) return;
+    if (snapshot.pvs && snapshot.pvs.length) this._renderIdea(snapshot, this.fen);
+  }
+
+  async _run(fen) {
+    if (fen !== this.fen) return;
+    const token = ++this.token;
+    try {
+      if (!this.engine) this.engine = createEngineProvider();
+      await this.engine.open({ fen, multipv: 1 });
+      // Short, bounded think: stop at a usable depth or ~1.4s, whichever first.
+      const deadline = Date.now() + 1400;
+      let snap = this.engine.snapshot();
+      while (Date.now() < deadline) {
+        await sleep(170);
+        if (token !== this.token || fen !== this.fen) return; // superseded
+        snap = this.engine.snapshot();
+        const ready = snap && snap.pvs && snap.pvs.length;
+        if (ready && (snap.running === false || snap.current_depth >= 14)) break;
+      }
+      if (token !== this.token || fen !== this.fen) return;
+      this._renderIdea(snap, fen);
+    } catch (_) {
+      setIdeaLine("");
+    }
+  }
+
+  _renderIdea(snap, fen) {
+    const top = snap && snap.pvs && snap.pvs[0];
+    if (!top || !top.pv_uci || !top.pv_uci.length) {
+      setIdeaLine("");
+      return;
+    }
+    const bestUci = top.pv_uci[0];
+    const bestSan = (top.pv_san && top.pv_san[0]) || bestUci;
+    const sideToMove = fen.split(" ")[1] === "b" ? "black" : "white";
+    // Snapshot scores are White-POV; flip to the mover's POV for the sentence.
+    const flip = sideToMove === "black" ? -1 : 1;
+    const scoreCp =
+      top.score_cp === null || top.score_cp === undefined ? null : top.score_cp * flip;
+    const mateIn =
+      top.mate_in === null || top.mate_in === undefined ? null : top.mate_in * flip;
+    setIdeaLine(explainEngineIdea({ bestSan, scoreCp, mateIn, sideToMove }));
+    // The arrow is the on-board idea; let the Engine window own it when open.
+    if (!engineWidget.isOpen()) setEngineBestArrow(bestUci);
+  }
+}
+
+const positionCoach = new PositionCoach();
+
+function setIdeaLine(text) {
+  const el = document.getElementById("explain-idea");
+  if (!el) return;
+  if (!text) {
+    el.hidden = true;
+    el.textContent = "";
+    return;
+  }
+  el.hidden = false;
+  el.textContent = text;
+}
+
+// Drive both halves of the coach from one position-change call.
+function refreshAnalysisExplain(ctx) {
+  appState.explainContext = ctx || {};
+  renderExplain();
+  positionCoach.update(ctx ? ctx.fen : null, ctx || {});
+}
+
+// Instant heuristic read of the current Analyze position (no engine).
+function renderExplain() {
+  const headlineEl = document.getElementById("explain-headline");
+  const pointsEl = document.getElementById("explain-points");
+  if (!headlineEl || !pointsEl) return;
+  const ctx = appState.explainContext || {};
+  const fen = ctx.fen || appState.analysisBoardFen || START_FEN;
+  const info = describePosition(fen, { lastSan: ctx.lastSan, lastUci: ctx.lastUci });
+  headlineEl.textContent = info.headline || "—";
+  pointsEl.innerHTML = (info.points || []).map((p) => `<li>${escapeHtml(p)}</li>`).join("");
+}
 
 class BoardController {
   constructor(config) {
@@ -1717,15 +1877,15 @@ function squareCenter(square, orientation = "white") {
   };
 }
 
+// Board legality/state is computed in the browser (chess.js) — no server hop, no
+// auth needed. Kept async so every existing `await boardInfo(...)` call site is
+// untouched; they resolve instantly. See chess-local.js for the why.
 async function boardAfterMove(fen, moveUci) {
-  return api("/api/board/move", {
-    method: "POST",
-    body: JSON.stringify({ fen, move_uci: moveUci }),
-  });
+  return localBoardAfterMove(fen, moveUci);
 }
 
 async function boardInfo(fen) {
-  return api(`/api/board?fen=${encodeURIComponent(fen)}`);
+  return localBoardInfo(fen);
 }
 
 async function loadDashboard() {
@@ -3076,7 +3236,26 @@ async function showAnalysisPly(ply) {
     ? `${move.move_number}${move.side === "black" ? "..." : "."} ${move.san}`
     : "Initial position";
   highlightCurrentMove();
+  refreshAnalysisExplain({ fen, lastUci: move ? move.uci : null, lastSan: move ? move.san : null });
   if (engineWidget) engineWidget.onBoardChanged();
+}
+
+// Tree-aware Analyze navigation (start/prev/next/end). Works for both the analysed
+// mainline and free-exploration variations, because it walks the live node tree by
+// id rather than a flat ply index. `next` follows the mainline child (children[0]).
+function analysisTreeNav(kind) {
+  const tree =
+    appState.analysisTree ||
+    buildAnalysisTree(appState.analysis ? appState.analysis.moves : []);
+  appState.analysisTree = tree;
+  let node = tree.byId.get(appState.analysisCurrentNodeId || "root") || tree.root;
+  if (kind === "start") node = tree.root;
+  else if (kind === "prev") node = node.parent || node;
+  else if (kind === "next") node = (node.children && node.children[0]) || node;
+  else if (kind === "end") {
+    while (node.children && node.children[0]) node = node.children[0];
+  }
+  selectAnalysisNode(node.id);
 }
 
 function resetAnalysisVariations() {
@@ -3278,14 +3457,22 @@ function renderAnalysisTree(movesArg) {
   const container = document.getElementById("analysis-moves");
   if (!container) return;
   const moves = movesArg || (appState.analysis ? appState.analysis.moves : []);
-  if (!moves || !moves.length) {
-    container.innerHTML =
-      '<div class="empty-state">Load a PGN and click Analyze to see the move list. ' +
-      "Play moves on the board to branch into study variations.</div>";
-    return;
-  }
+  // Always build the tree so navigation + free-exploration branching have a live
+  // structure even before any game is loaded. A move played on the board attaches
+  // a variation node off `root`, so the tree has content the moment the user explores.
   const tree = buildAnalysisTree(moves);
   appState.analysisTree = tree;
+  const hasContent = (tree.root.children || []).length > 0;
+  if (!hasContent) {
+    container.innerHTML =
+      '<div class="empty-state">Play moves on the board to branch into study lines, ' +
+      "or load a PGN and click Analyze for a full review.</div>";
+    return;
+  }
+  // Reveal the results panel as soon as there's a line to show (loaded game or a
+  // user-explored variation); it stays tucked away on a blank start.
+  const panel = document.getElementById("analysis-results");
+  if (panel && panel.hidden) revealAnalysisResults();
   const pathIds = analysisPathIds(appState.analysisCurrentNodeId, tree);
   container.innerHTML = renderMoveTree(tree.root, {
     currentId: appState.analysisCurrentNodeId,
@@ -3339,6 +3526,7 @@ async function selectAnalysisNode(nodeId) {
     node.side === "black" ? "..." : "."
   } ${node.san} · variation`;
   highlightCurrentMove();
+  refreshAnalysisExplain({ fen, lastUci: node.uci, lastSan: node.san });
   if (engineWidget) engineWidget.onBoardChanged();
 }
 
@@ -3390,6 +3578,11 @@ async function onAnalysisBoardMove(moveUci, fen) {
       side === "black" ? "..." : "."
     } ${payload.move.san} · variation`;
     highlightCurrentMove();
+    refreshAnalysisExplain({
+      fen: payload.board.fen,
+      lastUci: moveUci,
+      lastSan: payload.move.san,
+    });
     if (engineWidget) engineWidget.onBoardChanged();
   } catch (error) {
     setStatus(error.message);
@@ -5170,16 +5363,10 @@ function bindEvents() {
     .getElementById("open-engine-widget-build")
     .addEventListener("click", () => engineWidget.openForCurrent());
   bindEvalChart();
-  document.getElementById("analysis-start").addEventListener("click", () => showAnalysisPly(0));
-  document
-    .getElementById("analysis-prev")
-    .addEventListener("click", () => showAnalysisPly(appState.analysisPly - 1));
-  document
-    .getElementById("analysis-next")
-    .addEventListener("click", () => showAnalysisPly(appState.analysisPly + 1));
-  document
-    .getElementById("analysis-end")
-    .addEventListener("click", () => showAnalysisPly(appState.analysis?.moves.length || 0));
+  document.getElementById("analysis-start").addEventListener("click", () => analysisTreeNav("start"));
+  document.getElementById("analysis-prev").addEventListener("click", () => analysisTreeNav("prev"));
+  document.getElementById("analysis-next").addEventListener("click", () => analysisTreeNav("next"));
+  document.getElementById("analysis-end").addEventListener("click", () => analysisTreeNav("end"));
 
   document
     .getElementById("build-new")
@@ -5237,12 +5424,12 @@ function bindEvents() {
     if (event.key === "ArrowLeft") {
       event.preventDefault();
       if (inBuild) buildGoBack();
-      else showAnalysisPly(appState.analysisPly - 1);
+      else analysisTreeNav("prev");
     }
     if (event.key === "ArrowRight") {
       event.preventDefault();
       if (inBuild) buildGoForward();
-      else showAnalysisPly(appState.analysisPly + 1);
+      else analysisTreeNav("next");
     }
     // j/k step through sibling variations of the current move in Build.
     if (inBuild && (event.key === "j" || event.key === "k")) {
@@ -5292,10 +5479,23 @@ async function init() {
   });
   jobToast.bind();
   engineWidget.bind();
+  positionCoach.bind();
   bindEvents();
   renderPieceStylePicker();
   renderPrefsToggles();
   prefillDemoPgn();
+  // Paint the starting position on every board up front — board state is now
+  // browser-computed (chess.js), so a signed-out visitor sees real pieces and can
+  // explore freely instead of staring at an empty grid waiting on a 401'd /api/board.
+  try {
+    const startInfo = await boardInfo(START_FEN);
+    boards.analysis.setPosition({ fen: START_FEN, legalMoves: startInfo.legal_moves });
+    boards.build.setPosition({ fen: START_FEN, legalMoves: startInfo.legal_moves });
+    boards.train.setPosition({ fen: START_FEN, legalMoves: startInfo.legal_moves });
+  } catch (_) {
+    /* board init is best-effort */
+  }
+  renderAnalysisTree();
   // Engine status is browser-derived (cross-origin isolation) — paint it now, even
   // for a signed-out visitor, so it never sticks on the initial "checking…".
   renderBrowserEngineStatus();
@@ -5333,14 +5533,8 @@ async function loadSignedInWorkspace() {
   }
   refreshLichessStatus();
   syncReplayControls();
-  try {
-    const info = await boardInfo(START_FEN);
-    boards.analysis.setPosition({ fen: START_FEN, legalMoves: info.legal_moves });
-    boards.build.setPosition({ fen: START_FEN, legalMoves: info.legal_moves });
-    boards.train.setPosition({ fen: START_FEN, legalMoves: info.legal_moves });
-  } catch (_) {
-    /* board init is best-effort */
-  }
+  // Boards are already seeded with the start position in init() (browser-computed),
+  // so signing in doesn't need to re-fetch them.
   renderBuilderTree();
   await loadDashboard();
 }
