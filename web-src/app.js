@@ -13,7 +13,7 @@ import {
 import { getCachedWeights, clearWeightCache } from "./engine/maia3-weight-cache.js";
 import { createCsrfTokenSource, isSafeMethod, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
-import { describePosition, explainEngineIdea } from "./explain.js";
+import { describePosition, explainEngineIdea, classifyMove, cpToWin } from "./explain.js";
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const DEMO_PGN = `[Event "PrepForge UI Demo"]
@@ -1053,6 +1053,22 @@ class PositionCoach {
     this.enabled = true;
     this.timer = null;
     this.token = 0;
+    // fen -> White-POV win % (Lichess model). Lets us grade the move just played
+    // by comparing the position before and after, the way a Game Review does.
+    this.winCache = new Map();
+  }
+
+  _cacheWin(fen, scoreCp, mateIn) {
+    if (!fen) return;
+    let win;
+    if (mateIn !== null && mateIn !== undefined) win = mateIn > 0 ? 100 : 0;
+    else if (scoreCp !== null && scoreCp !== undefined) win = cpToWin(scoreCp);
+    else return;
+    this.winCache.set(fen, win);
+    if (this.winCache.size > 60) {
+      // Trim oldest; Map keeps insertion order.
+      this.winCache.delete(this.winCache.keys().next().value);
+    }
   }
 
   bind() {
@@ -1068,6 +1084,7 @@ class PositionCoach {
 
   _clearIdea() {
     setIdeaLine("");
+    setVerdictLine(null);
     if (!engineWidget.isOpen()) setEngineBestArrow(null);
   }
 
@@ -1092,6 +1109,7 @@ class PositionCoach {
       return;
     }
     window.clearTimeout(this.timer);
+    setVerdictLine(null);
     setIdeaLine("Thinking…");
     this.timer = window.setTimeout(() => this._run(fen), 280);
   }
@@ -1142,21 +1160,57 @@ class PositionCoach {
     const bestUci = top.pv_uci[0];
     const bestSan = (top.pv_san && top.pv_san[0]) || bestUci;
     const sideToMove = fen.split(" ")[1] === "b" ? "black" : "white";
-    // Snapshot scores are White-POV; flip to the mover's POV for the sentence.
+    // Snapshot scores are White-POV.
+    const whiteCp =
+      top.score_cp === null || top.score_cp === undefined ? null : top.score_cp;
+    const whiteMate =
+      top.mate_in === null || top.mate_in === undefined ? null : top.mate_in;
+    this._cacheWin(fen, whiteCp, whiteMate);
+
+    // explainEngineIdea wants the score from the mover's POV; flip for Black.
     const flip = sideToMove === "black" ? -1 : 1;
-    const scoreCp =
-      top.score_cp === null || top.score_cp === undefined ? null : top.score_cp * flip;
-    const mateIn =
-      top.mate_in === null || top.mate_in === undefined ? null : top.mate_in * flip;
-    setIdeaLine(explainEngineIdea({ bestSan, scoreCp, mateIn, sideToMove }));
+    const idea = explainEngineIdea({
+      fen,
+      bestUci,
+      bestSan,
+      scoreCp: whiteCp === null ? null : whiteCp * flip,
+      mateIn: whiteMate === null ? null : whiteMate * flip,
+      sideToMove,
+    });
+    setIdeaLine(idea.text, idea.tone);
+
+    // Grade the move actually played, when we evaluated the prior position too.
+    this._renderVerdict(fen, bestUci);
+
     // The arrow is the on-board idea; let the Engine window own it when open.
     if (!engineWidget.isOpen()) setEngineBestArrow(bestUci);
+  }
+
+  // Compare the cached win % of the position before the last move to this one and
+  // grade what was played (Best / Inaccuracy / Mistake / Blunder), Game-Review style.
+  _renderVerdict(fen, bestUci) {
+    const ctx = this.ctx || {};
+    const prevFen = ctx.prevFen;
+    const winAfter = this.winCache.get(fen);
+    const winBefore = prevFen ? this.winCache.get(prevFen) : undefined;
+    if (winBefore === undefined || winAfter === undefined || !ctx.lastUci) {
+      setVerdictLine(null);
+      return;
+    }
+    // The move was played by whoever was NOT to move now; win % is White-POV.
+    const mover = fen.split(" ")[1] === "b" ? "white" : "black";
+    // `bestUci` is the engine's choice for the *current* position, not the prior
+    // one, so it can't tell us if the played move was best — only the win-% drop can.
+    const verdict = classifyMove({ winBefore, winAfter, mover, isBest: false });
+    setVerdictLine(verdict);
   }
 }
 
 const positionCoach = new PositionCoach();
 
-function setIdeaLine(text) {
+const IDEA_TONES = ["good", "warn", "danger", "info"];
+
+function setIdeaLine(text, tone = "info") {
   const el = document.getElementById("explain-idea");
   if (!el) return;
   if (!text) {
@@ -1166,6 +1220,21 @@ function setIdeaLine(text) {
   }
   el.hidden = false;
   el.textContent = text;
+  for (const t of IDEA_TONES) el.classList.toggle(`is-${t}`, t === tone);
+}
+
+// The "what you just played" grade (Best / Inaccuracy / Mistake / Blunder), or null.
+function setVerdictLine(verdict) {
+  const el = document.getElementById("explain-verdict");
+  if (!el) return;
+  if (!verdict) {
+    el.hidden = true;
+    el.textContent = "";
+    return;
+  }
+  el.hidden = false;
+  el.textContent = `${verdict.glyph} ${verdict.label}`;
+  for (const t of IDEA_TONES) el.classList.toggle(`is-${t}`, t === verdict.tone);
 }
 
 // Drive both halves of the coach from one position-change call.
@@ -1182,7 +1251,11 @@ function renderExplain() {
   if (!headlineEl || !pointsEl) return;
   const ctx = appState.explainContext || {};
   const fen = ctx.fen || appState.analysisBoardFen || START_FEN;
-  const info = describePosition(fen, { lastSan: ctx.lastSan, lastUci: ctx.lastUci });
+  const info = describePosition(fen, {
+    lastSan: ctx.lastSan,
+    lastUci: ctx.lastUci,
+    prevFen: ctx.prevFen,
+  });
   headlineEl.textContent = info.headline || "—";
   pointsEl.innerHTML = (info.points || []).map((p) => `<li>${escapeHtml(p)}</li>`).join("");
 }
@@ -3236,7 +3309,12 @@ async function showAnalysisPly(ply) {
     ? `${move.move_number}${move.side === "black" ? "..." : "."} ${move.san}`
     : "Initial position";
   highlightCurrentMove();
-  refreshAnalysisExplain({ fen, lastUci: move ? move.uci : null, lastSan: move ? move.san : null });
+  refreshAnalysisExplain({
+    fen,
+    lastUci: move ? move.uci : null,
+    lastSan: move ? move.san : null,
+    prevFen: move ? move.fen_before : null,
+  });
   if (engineWidget) engineWidget.onBoardChanged();
 }
 
@@ -3526,7 +3604,7 @@ async function selectAnalysisNode(nodeId) {
     node.side === "black" ? "..." : "."
   } ${node.san} · variation`;
   highlightCurrentMove();
-  refreshAnalysisExplain({ fen, lastUci: node.uci, lastSan: node.san });
+  refreshAnalysisExplain({ fen, lastUci: node.uci, lastSan: node.san, prevFen: node.fenBefore });
   if (engineWidget) engineWidget.onBoardChanged();
 }
 
@@ -3582,6 +3660,7 @@ async function onAnalysisBoardMove(moveUci, fen) {
       fen: payload.board.fen,
       lastUci: moveUci,
       lastSan: payload.move.san,
+      prevFen: fen,
     });
     if (engineWidget) engineWidget.onBoardChanged();
   } catch (error) {
