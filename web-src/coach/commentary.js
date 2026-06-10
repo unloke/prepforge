@@ -19,6 +19,7 @@
 // different voice — while each bank stays short enough to tweak in isolation.
 import { describeMove } from "../explain.js";
 import { PIECE_NAME, materialPhrase } from "./material.js";
+import { describeThreat, describeAnyThreat } from "./tactics.js";
 import {
   choose,
   tailComma,
@@ -65,6 +66,15 @@ import {
   POINT_TARGET,
   POINT_ENDGAME,
   STAND_TAIL,
+  GOOD_SOLID,
+  GOOD_THREAT_FORK,
+  GOOD_THREAT_PIN,
+  GOOD_THREAT_PIN_ABS,
+  GOOD_THREAT_SKEWER,
+  ERROR_OPP_THREAT_FORK,
+  ERROR_OPP_THREAT_PIN,
+  ERROR_OPP_THREAT_PIN_ABS,
+  ERROR_OPP_THREAT_SKEWER,
 } from "./phrasebank.js";
 
 function cap(s) {
@@ -229,6 +239,47 @@ function brilliantWhyClause(f, me) {
 }
 
 // ---------------------------------------------------------------------------
+// Tactics — the concrete motif a move creates, or the one it hands the opponent.
+// ---------------------------------------------------------------------------
+
+function moverLetter(f) {
+  return f.mover === "white" ? "w" : "b";
+}
+function oppLetter(f) {
+  return f.mover === "white" ? "b" : "w";
+}
+
+// A leading-space sentence naming the tactic the move just played creates (fork / pin /
+// skewer), for a strong move's "why". "" when the move makes no concrete threat.
+function threatPoint(f, me, opp) {
+  const motif = describeThreat(f.fenAfter, f.uci, moverLetter(f));
+  if (!motif) return "";
+  if (motif.kind === "fork") return choose(f, "goodForkThreat", GOOD_THREAT_FORK, { targets: motif.targets, me, opp });
+  if (motif.kind === "skewer")
+    return choose(f, "goodSkewerThreat", GOOD_THREAT_SKEWER, { front: motif.front, back: motif.back, me, opp });
+  if (motif.kind === "pin") {
+    const bank = motif.absolute ? GOOD_THREAT_PIN_ABS : GOOD_THREAT_PIN;
+    return choose(f, "goodPinThreat", bank, { front: motif.front, back: motif.back, me, opp });
+  }
+  return "";
+}
+
+// A leading-space sentence naming the tactic a weak move hands the opponent. "" when
+// there's nothing concrete to point at.
+function oppThreatClause(f, opp) {
+  const motif = describeAnyThreat(f.fenAfter, oppLetter(f));
+  if (!motif) return "";
+  if (motif.kind === "fork") return choose(f, "oppForkThreat", ERROR_OPP_THREAT_FORK, { targets: motif.targets, opp });
+  if (motif.kind === "skewer")
+    return choose(f, "oppSkewerThreat", ERROR_OPP_THREAT_SKEWER, { front: motif.front, back: motif.back, opp });
+  if (motif.kind === "pin") {
+    const bank = motif.absolute ? ERROR_OPP_THREAT_PIN_ABS : ERROR_OPP_THREAT_PIN;
+    return choose(f, "oppPinThreat", bank, { front: motif.front, back: motif.back, opp });
+  }
+  return "";
+}
+
+// ---------------------------------------------------------------------------
 // The prose.
 // ---------------------------------------------------------------------------
 
@@ -258,6 +309,7 @@ function buildProse(f) {
 
     let why;
     let namedBetterAlready = false;
+    let quiet = false; // a quiet error — the place a "now the opponent threatens X" fits
 
     if (f.inMateNet && f.replySan) {
       // Walking into a forced mate — the heaviest consequence there is.
@@ -277,7 +329,7 @@ function buildProse(f) {
       const punish = f.replySan
         ? choose(f, "hangPunish", HANG_PUNISH_WITH_REPLY, { reply: f.replySan, opp, standing })
         : choose(f, "hangPunishNo", HANG_PUNISH_NO_REPLY, { opp, standing });
-      why = `${desc} — ${punish}`;
+      why = `${desc}. ${punish}`;
     } else if (f.missedWin && f.looseBefore[0] && f.bestSan) {
       // Left a free piece on the board and didn't take it.
       const t = f.looseBefore[0];
@@ -292,6 +344,7 @@ function buildProse(f) {
       // Quiet error: no single piece hangs, but the line still costs something. Lead
       // with what the move was trying to do, then the concrete cost — material if the
       // forcing line wins it, otherwise the initiative.
+      quiet = true;
       const idea = moveIdea(f);
       const opener = idea ? choose(f, "opener", OPENER_WITH_IDEA, { san: f.san, idea }) : f.san;
       const loss = playedLineLoss(f);
@@ -318,24 +371,38 @@ function buildProse(f) {
         const standingTail = choose(f, "standingTail", STANDING_TAIL, { opp, standing });
         if (f.replySan) {
           const punish = replyWithTail(f);
-          why = choose(f, "initiativeWith", INITIATIVE_WITH_PUNISH, { opener, phaseHint, punish, standingTail });
+          why = choose(f, "initiativeWith", INITIATIVE_WITH_PUNISH, {
+            opener,
+            phaseHint,
+            punish,
+            punishCap: cap(punish),
+            standingTail,
+            opp,
+            standing,
+          });
         } else {
           why = choose(f, "initiativeNo", INITIATIVE_NO_PUNISH, {
             opener,
             phaseHint,
             standingTail,
             standingTailCap: cap(standingTail),
+            opp,
+            standing,
           });
         }
       }
     }
+
+    // On a quiet error, spell out the concrete tactic it hands the opponent, if any —
+    // the "this lets Black fork the rook and king" the read was missing.
+    const consequence = quiet ? oppThreatClause(f, opp) : "";
 
     // Only name a "better move" when we haven't already named one inside `why`.
     const better =
       !namedBetterAlready && f.bestSan && !f.isBest
         ? ` ${choose(f, "betterMove", BETTER_MOVE, { bestSan: f.bestSan, merit: betterMerit(f) })}`
         : "";
-    return `${lead} ${why}${better}`;
+    return `${lead} ${why}${consequence}${better}`;
   }
 
   // Inaccuracy — gentle; mention the cleaner move, and flag it if it actually flipped
@@ -364,13 +431,18 @@ function buildProse(f) {
     if (/x/.test(f.san) && up >= 3 && materialPhrase(up)) {
       return choose(f, "greatDecisive", GREAT_DECISIVE, { san: f.san, phrase: materialPhrase(up), me }) + mate;
     }
+    const threat = mate ? "" : threatPoint(f, me, opp);
     const stand =
-      !mate && f.winAfterMover >= 57 ? choose(f, "greatStand", STAND_TAIL, { me, standing: standingWord(f.winAfterMover) }) : "";
-    return choose(f, "greatOnly", GREAT_ONLY_MOVE, { san: f.san, me }) + (mate || stand);
+      !mate && !threat && f.winAfterMover >= 57
+        ? choose(f, "greatStand", STAND_TAIL, { me, standing: standingWord(f.winAfterMover) })
+        : "";
+    return choose(f, "greatOnly", GREAT_ONLY_MOVE, { san: f.san, me }) + (mate || threat || stand);
   }
 
   // Best / good — keep it warm and short, with one positive, factual point. A forced
-  // mate trumps everything else; otherwise pick whichever fact is most telling.
+  // mate trumps everything; then a concrete tactic the move sets up (fork/pin/skewer);
+  // then material, a pressured target, the endgame edge, the standing, and failing all
+  // that a plain word on why it's sound — so even a quiet good move gets a "because".
   const lead = code === "best" ? choose(f, "leadBest", LEAD_BEST, {}) : choose(f, "leadGood", LEAD_GOOD, {});
 
   const gist = gistOf(f);
@@ -380,16 +452,20 @@ function buildProse(f) {
   let point = "";
   if (mate) {
     point = mate;
+  } else if (threatPoint(f, me, opp)) {
+    point = threatPoint(f, me, opp);
   } else if (/x/.test(f.san) && up >= 1 && materialPhrase(up)) {
     point = choose(f, "pointMaterial", POINT_MATERIAL, { me, phrase: materialPhrase(up) });
   } else if (target && target.worth >= 3) {
     point = choose(f, "pointTarget", POINT_TARGET, { piece: PIECE_NAME[target.type], sq: target.square });
   } else if (f.phase === "endgame" && up >= 1 && materialPhrase(up)) {
     point = choose(f, "pointEndgame", POINT_ENDGAME, { phrase: materialPhrase(up) });
+  } else if (f.winAfterMover >= 68) {
+    point = choose(f, "standTailGood", STAND_TAIL, { me, standing: standingWord(f.winAfterMover) });
+  } else {
+    point = choose(f, "goodSolid", GOOD_SOLID, {});
   }
-  const stand =
-    !point && f.winAfterMover >= 68 ? choose(f, "standTailGood", STAND_TAIL, { me, standing: standingWord(f.winAfterMover) }) : "";
-  return `${lead} ${gist}.${point}${stand}`;
+  return `${lead} ${gist}.${point}`;
 }
 
 export function buildCommentary(features) {

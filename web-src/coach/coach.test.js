@@ -220,6 +220,73 @@ describe("buildCommentary (prose)", () => {
     expect(c.prose).not.toMatch(/%/);
   });
 
+  it("spells out the fork a strong move creates", () => {
+    // White knight e6 lands on c7, forking the king on e8 and the rook on a8.
+    const f = buildMoveFeatures({
+      moveNumber: 12,
+      mover: "white",
+      uci: "e6c7",
+      san: "Nc7+",
+      fenBefore: "r3k3/8/4N3/8/8/8/6K1/8 w - - 0 1",
+      fenAfter: "r3k3/2N5/8/8/8/8/6K1/8 b - - 1 1",
+      beforeEval: {
+        lines: [
+          { uci: "e6c7", san: "Nc7+", cp: 300, mate: null, pvUci: ["e6c7"], pvSan: ["Nc7+"] },
+          { uci: "g2g3", san: "Kg3", cp: 20, mate: null, pvUci: ["g2g3"], pvSan: ["Kg3"] },
+        ],
+      },
+      afterEval: { cp: 300, mate: null, pvUci: [] },
+    });
+    const c = buildCommentary(f);
+    expect(c.prose).toMatch(/fork/i);
+    expect(c.prose).toMatch(/king/);
+    expect(c.prose).toMatch(/rook/);
+    expect(c.prose).not.toMatch(/—/);
+  });
+
+  it("spells out the pin a strong move creates", () => {
+    // Bishop to g5 pins the f6 knight to the d8 queen.
+    const f = buildMoveFeatures({
+      moveNumber: 8,
+      mover: "white",
+      uci: "h4g5",
+      san: "Bg5",
+      fenBefore: "3q2k1/8/5n2/7B/8/8/6K1/8 w - - 0 1",
+      fenAfter: "3q2k1/8/5n2/6B1/8/8/6K1/8 b - - 1 1",
+      beforeEval: {
+        lines: [
+          { uci: "h4g5", san: "Bg5", cp: 80, mate: null, pvUci: ["h4g5"], pvSan: ["Bg5"] },
+          { uci: "g2g3", san: "Kg3", cp: 10, mate: null, pvUci: ["g2g3"], pvSan: ["Kg3"] },
+        ],
+      },
+      afterEval: { cp: 80, mate: null, pvUci: [] },
+    });
+    const c = buildCommentary(f);
+    expect(c.prose).toMatch(/pin/i);
+    expect(c.prose).toMatch(/knight/);
+    expect(c.prose).toMatch(/queen/);
+  });
+
+  it("never uses an em-dash anywhere in its prose", () => {
+    // House style: em-dashes read as machine-written. Sweep every branch.
+    const inputs = [
+      hangingBishopInput(),
+      {
+        mover: "white", uci: "g1g2", san: "Kg2",
+        fenBefore: "6k1/8/2p5/8/8/8/8/5BK1 w - - 0 1",
+        fenAfter: "6k1/8/2p5/8/8/8/6K1/5B2 b - - 1 1",
+        beforeEval: { lines: [{ uci: "f1e2", san: "Be2", cp: 120, mate: null, pvUci: ["f1e2"] }] },
+        afterEval: { cp: -100, mate: null, pvUci: [] },
+      },
+    ];
+    for (const inp of inputs) {
+      for (let ply = 0; ply < 40; ply++) {
+        const prose = buildCommentary(buildMoveFeatures({ ...inp, ply })).prose;
+        expect(prose).not.toMatch(/—|--/);
+      }
+    }
+  });
+
   it("varies its wording widely across positions while staying grammatical", () => {
     const seen = new Set();
     for (let ply = 0; ply < 80; ply++) {
