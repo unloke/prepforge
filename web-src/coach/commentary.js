@@ -1,8 +1,9 @@
 // Commentary — turns a move's feature vector into something a human coach would say.
 //
 // The output is ONE short conversational paragraph (1–3 sentences) that points out
-// the few things that matter about the move just played: what it did, the key
-// consequence, and — when it went wrong — what to play instead. No grades-as-data,
+// the few things that matter about the move just played: what it was trying to do,
+// the concrete consequence (named, with the line and the material at stake), and —
+// when it went wrong — the better move and what it would have kept. No grades-as-data,
 // no percentages, no bullet lists. Just a coach talking.
 //
 //   buildCommentary(features) -> { tone, grade, prose }
@@ -10,12 +11,61 @@
 //     grade  — human label of the move quality (kept for aria / optional display)
 //     prose  — the sentence(s) to show
 //
-// Every clause traces to a computed fact in `features`; we just say it like a person.
-// To keep it from sounding like a stuck record, most lines draw their framing from a
-// small bank of phrasings picked by a per-move seed — same position, same words; a
-// different move, a different turn of phrase. The *facts* never vary, only the voice.
+// Every clause traces to a computed fact in `features`. The actual WORDING comes from
+// phrasebank.js: each "slot" (lead-in, hang description, punishing reply, recommended
+// fix, ...) is a small bank of interchangeable templates, and `choose()` picks one per
+// slot from a per-move-per-slot deterministic seed. Slots vary independently, so a
+// handful of small banks compose into thousands of distinct sentences — same facts,
+// different voice — while each bank stays short enough to tweak in isolation.
 import { describeMove } from "../explain.js";
 import { PIECE_NAME, materialPhrase } from "./material.js";
+import {
+  choose,
+  tailComma,
+  tailDash,
+  tailParen,
+  MATE_DELIVERED,
+  BRILLIANT_LEAD,
+  LOOKS_HANGS,
+  LOOKS_PLAIN,
+  RARITY_TIER1,
+  RARITY_TIER2,
+  RARITY_TIER3,
+  RARITY_TIER4,
+  BRILLIANT_WHY,
+  BLUNDER_LEAD,
+  MISTAKE_LEAD,
+  IN_MATE_NET,
+  MISSED_MATE,
+  HANG_DESC,
+  HANG_PUNISH_WITH_REPLY,
+  HANG_PUNISH_NO_REPLY,
+  MISSED_WIN,
+  OPENER_WITH_IDEA,
+  LOSE_MATERIAL_VERB,
+  LOSE_MATERIAL_TEMPLATE,
+  PUNISH_WITH_REPLY_COUNT,
+  PUNISH_NO_REPLY_COUNT,
+  PHASE_HINT_OPENING,
+  PHASE_HINT_MIDDLEGAME,
+  PHASE_HINT_ENDGAME,
+  STANDING_TAIL,
+  INITIATIVE_WITH_PUNISH,
+  INITIATIVE_NO_PUNISH,
+  BETTER_MOVE,
+  INACC_HEAD_WITH_IDEA,
+  INACC_HEAD_PLAIN,
+  INACC_CLEANER,
+  INACC_FLIP,
+  GREAT_DECISIVE,
+  GREAT_ONLY_MOVE,
+  LEAD_BEST,
+  LEAD_GOOD,
+  POINT_MATERIAL,
+  POINT_TARGET,
+  POINT_ENDGAME,
+  STAND_TAIL,
+} from "./phrasebank.js";
 
 function cap(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
@@ -38,18 +88,13 @@ function standingWord(winPct) {
   return "lost";
 }
 
-// Stable per-move variety: the same move in the same spot always reads the same way,
-// but two different moves won't open with the same words. Deterministic so tests pin.
-function hashStr(s) {
-  let h = 0;
-  for (let i = 0; i < (s || "").length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-function seedOf(f) {
-  return Number.isFinite(f.ply) ? f.ply : hashStr((f.san || "") + (f.uci || ""));
-}
-function pick(seed, arr) {
-  return arr[((seed % arr.length) + arr.length) % arr.length];
+// ---------------------------------------------------------------------------
+// Material read of the lines (mover-POV, in pawns).
+// ---------------------------------------------------------------------------
+
+// Net material the mover holds after the move, in pawns (mover-POV, + = ahead).
+function moverMaterialAfter(f) {
+  return f.mover === "white" ? f.materialAfter : -f.materialAfter;
 }
 
 // Material the best line nets the mover over the move played (relative, honest).
@@ -61,13 +106,73 @@ function lineMaterialDiff(f) {
   return b - p;
 }
 
-// Net material the mover holds after the move, in pawns (mover-POV, + = ahead).
-function moverMaterialAfter(f) {
-  return f.mover === "white" ? f.materialAfter : -f.materialAfter;
+// Pawns the mover actually drops over the line they played (best play by both sides
+// from the engine's PV). 0 when the line is materially level — that's the "positional"
+// case where the cost is initiative, not wood. This is the "loses two pawns" number.
+function playedLineLoss(f) {
+  if (!f.playedLine) return 0;
+  const swingMover = f.mover === "white" ? f.playedLine.swing : -f.playedLine.swing;
+  return swingMover < 0 ? Math.round(-swingMover) : 0;
 }
 
-// A short clause for the recommended move's payoff: keeps material it dropped, wins
-// material outright, or just holds the balance.
+// ---------------------------------------------------------------------------
+// Move-idea narration — what a move *does*, reusing the motif detector. We split
+// describeMove()'s comma-joined clauses and keep the "idea" tail (the consequence),
+// dropping the bare relocation/capture clause the SAN already encodes.
+// ---------------------------------------------------------------------------
+
+function moveClauses(fen, uci, san) {
+  const d = describeMove(fen, uci, san) || "";
+  return d
+    .split(", ")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+const RELOCATION_RE = /^(develops|brings|pushes|takes|castles|fianchettoes|promotes)\b/;
+
+// Drop the leading bare relocation/capture (the SAN already says "piece to square"),
+// keep what the move accomplishes: "forking the rook and queen", "with check",
+// "claiming the centre", "and now eyes the bishop on c4".
+function ideaTail(clauses) {
+  if (!clauses.length) return "";
+  return RELOCATION_RE.test(clauses[0]) ? clauses.slice(1).join(", ") : clauses.join(", ");
+}
+
+// The value-add idea of the move just played (no "piece to square" — the SAN has it).
+function moveIdea(f) {
+  return ideaTail(moveClauses(f.fenBefore, f.uci, f.san));
+}
+
+// "Nf3, with an eye on the centre" / "Kf2" — SAN, plus the idea when there is one.
+function gistOf(f) {
+  const idea = moveIdea(f);
+  return idea ? `${f.san}, ${idea}` : f.san;
+}
+
+// ---------------------------------------------------------------------------
+// The refutation — the opponent's reply, named with its own idea.
+// ---------------------------------------------------------------------------
+
+// "after Nxc4, forking the queen and rook," — reply SAN plus the threat it sets up,
+// folded into a sentence (lowercase-start, trailing comma). "" when there's no reply.
+function replyWithTail(f) {
+  if (!f.replySan) return "";
+  const tail = ideaTail(moveClauses(f.fenAfter, f.replyUci, f.replySan));
+  return tail ? `after ${f.replySan}, ${tail},` : `after ${f.replySan},`;
+}
+
+// The opponent's standing after the move (used when a move goes wrong).
+function oppStanding(f) {
+  return standingWord(100 - f.winAfterMover);
+}
+
+// ---------------------------------------------------------------------------
+// The better move — what to play instead, and what it would have kept.
+// ---------------------------------------------------------------------------
+
+// A short clause for the recommended move's material payoff: keeps material it dropped,
+// wins material outright, or "" when the gain isn't about wood.
 function betterPayoff(f) {
   const diff = lineMaterialDiff(f);
   if (diff !== null && diff >= 2) {
@@ -79,22 +184,29 @@ function betterPayoff(f) {
   return "";
 }
 
-// The opponent's standing after the move (used when a move goes wrong).
-function oppStanding(f) {
-  return standingWord(100 - f.winAfterMover);
+// What the best move *keeps* in positional terms — the standing the engine's top line
+// holds for the mover (winBeforeMover is that line's win%). Used when the gain isn't a
+// clean material count: "keeping White clearly better", "holding the balance".
+function meritStanding(f) {
+  const w = f.winBeforeMover;
+  const me = sideWord(f.mover);
+  if (w >= 57) return `keeping ${me} ${standingWord(w)}`;
+  if (w > 43) return "holding the balance";
+  if (w > 32) return `keeping ${me} in the game`;
+  return "limiting the damage";
 }
 
-// How rarely a human finds this, translated from Maia's policy probability into
-// words — the concrete "why" behind a Brilliant call, not just the label.
-function maiaRarityPhrase(p) {
-  if (p < 0.01) return "virtually no human player would even consider it";
-  if (p < 0.03) return "maybe one player in fifty would try it";
-  if (p < 0.06) return "only a handful of players would go for it";
-  return "few players would risk it";
+// The trailing clause on a "X was the move" recommendation: material payoff if there is
+// one, otherwise what the move keeps.
+function betterMerit(f) {
+  return betterPayoff(f) || `, ${meritStanding(f)}`;
 }
 
-// "It's mate in 3." / "It's mate next move." when the move just played forces mate —
-// a fact straight from the engine's own read of the resulting position.
+// ---------------------------------------------------------------------------
+// Brilliant — grounded in the Maia/Stockfish disagreement, not just a label.
+// ---------------------------------------------------------------------------
+
+// "It's mate in 3." / "It's mate next move." when the move just played forces mate.
 function mateInClause(f) {
   if (!f.hasMateAfter || !Number.isFinite(f.mateAfter)) return "";
   const n = Math.abs(f.mateAfter);
@@ -102,114 +214,146 @@ function mateInClause(f) {
 }
 
 // The grounded "why" behind a Brilliant call: how rarely a human finds it, and how
-// differently a human model reads the position — the actual Maia/Stockfish gap that
-// decided the call, not just a label.
+// differently a human model reads the position — the actual Maia/Stockfish gap.
 function brilliantWhyClause(f, me) {
   const mate = mateInClause(f);
   if (!f.maia || !Number.isFinite(f.maia.humanProb) || !Number.isFinite(f.maia.winChanceAfter)) {
     return mate;
   }
-  const rarity = maiaRarityPhrase(f.maia.humanProb);
+  const p = f.maia.humanProb;
+  const rarityBank = p < 0.01 ? RARITY_TIER1 : p < 0.03 ? RARITY_TIER2 : p < 0.06 ? RARITY_TIER3 : RARITY_TIER4;
+  const rarity = choose(f, "rarity", rarityBank, {});
   const maiaStand = standingWord(f.maia.winChanceAfter * 100);
-  return ` ${cap(rarity)} — most players would read this position as ${maiaStand} for ${me}, while Stockfish already sees the truth.${mate}`;
+  const why = choose(f, "brilliantWhy", BRILLIANT_WHY, { rarityCap: cap(rarity), maiaStand, me });
+  return ` ${why}${mate}`;
 }
 
-// The SAN plus the *value-add* idea of the move, without restating "piece to square"
-// (the SAN already says that). describeMove() joins clauses with ", "; its first clause
-// is the bare relocation/capture motif the SAN encodes, so we drop it and keep the rest
-// ("with an eye on the centre", "forking the rook and queen", "getting the king safe").
-function moveIdea(f) {
-  const desc = describeMove(f.fenBefore, f.uci, f.san) || "";
-  const segs = desc.split(", ").filter(Boolean);
-  if (!segs.length) return "";
-  return /^(develops|brings|pushes|takes|castles)\b/.test(segs[0])
-    ? segs.slice(1).join(", ")
-    : segs.join(", ");
-}
-
-// "Nf3, with an eye on the centre" / "Kf2" — SAN, plus the idea when there is one.
-function gistOf(f) {
-  const idea = moveIdea(f);
-  return idea ? `${f.san}, ${idea}` : f.san;
-}
+// ---------------------------------------------------------------------------
+// The prose.
+// ---------------------------------------------------------------------------
 
 function buildProse(f) {
-  const seed = seedOf(f);
   const me = sideWord(f.mover);
   const opp = oppWord(f.mover);
   const code = f.classification.code;
 
   // Checkmate delivered — the SAN already carries the '#'.
   if (/#/.test(f.san)) {
-    return pick(seed, [
-      `Checkmate — ${f.san} ends it. Game over.`,
-      `That's mate. ${f.san}, and there's nothing to be done about it.`,
-      `Checkmate! ${f.san} brings the curtain down.`,
-    ]);
+    return choose(f, "mateDelivered", MATE_DELIVERED, { san: f.san });
   }
 
   // Brilliant — the engine loves it, humans wouldn't find it (Maia disagreement).
   if (code === "brilliant") {
-    const looks = f.hangingOwnTop
-      ? `it looks like it just hangs the ${PIECE_NAME[f.hangingOwnTop.type]}, but`
-      : `it looks wrong at a glance, but`;
     const stand = standingWord(f.winAfterMover);
-    const base = pick(seed, [
-      `Brilliant! Almost no one would find ${f.san} — ${looks} it's the best move on the board and keeps ${me} ${stand}.`,
-      `Brilliant — ${f.san} is the kind of move you don't expect a person to find. ${cap(looks)} it's simply best, and ${me} stays ${stand}.`,
-      `Brilliant! ${cap(looks)} ${f.san} is exactly right, holding ${me} ${stand}.`,
-    ]);
-    return `${base}${brilliantWhyClause(f, me)}`;
+    const looks = f.hangingOwnTop
+      ? choose(f, "looksHangs", LOOKS_HANGS, { piece: PIECE_NAME[f.hangingOwnTop.type] })
+      : choose(f, "looksPlain", LOOKS_PLAIN, {});
+    const lead = choose(f, "brilliantLead", BRILLIANT_LEAD, { san: f.san, looks, looksCap: cap(looks), me, stand });
+    return `${lead}${brilliantWhyClause(f, me)}`;
   }
 
   // Blunder / mistake — say what broke and (when there's a clean fix) what to play.
   if (code === "blunder" || code === "mistake") {
-    const lead =
-      code === "blunder"
-        ? pick(seed, [`Ouch — that's a blunder.`, `That's a blunder, I'm afraid.`, `Careful — that's a blunder.`])
-        : pick(seed, [`Not quite — that's a slip.`, `Hmm, that's a mistake.`, `That's a bit of a slip.`]);
+    const lead = choose(f, "lead", code === "blunder" ? BLUNDER_LEAD : MISTAKE_LEAD, {});
 
     let why;
+    let namedBetterAlready = false;
+
     if (f.inMateNet && f.replySan) {
-      why = `${f.san} walks into a forced mate — after ${f.replySan}, ${opp} finishes by force.`;
+      // Walking into a forced mate — the heaviest consequence there is.
+      const tail = ideaTail(moveClauses(f.fenAfter, f.replyUci, f.replySan));
+      const extra = tail ? `${tail}, and ` : "";
+      why = choose(f, "inMateNet", IN_MATE_NET, { san: f.san, reply: f.replySan, extra, opp });
     } else if (f.missedMate && f.bestSan) {
-      why = `${me} walks straight past a forced mate — ${f.bestSan} ended it on the spot.`;
+      // A forced mate was on the board and the move stepped past it.
+      why = choose(f, "missedMate", MISSED_MATE, { me, bestSan: f.bestSan });
+      namedBetterAlready = true;
     } else if (f.hangingOwnTop && f.hangingOwnTop.worth >= 3) {
-      const reply = f.replySan ? `after ${f.replySan} ` : "";
-      why = `${f.san} just drops the ${PIECE_NAME[f.hangingOwnTop.type]} on ${f.hangingOwnTop.square} — ${reply}${opp} is ${oppStanding(f)}.`;
+      // Hangs a piece outright — name it, the punishment, and the resulting standing.
+      const piece = PIECE_NAME[f.hangingOwnTop.type];
+      const sq = f.hangingOwnTop.square;
+      const desc = choose(f, "hangDesc", HANG_DESC, { san: f.san, piece, sq });
+      const standing = oppStanding(f);
+      const punish = f.replySan
+        ? choose(f, "hangPunish", HANG_PUNISH_WITH_REPLY, { reply: f.replySan, opp, standing })
+        : choose(f, "hangPunishNo", HANG_PUNISH_NO_REPLY, { opp, standing });
+      why = `${desc} — ${punish}`;
     } else if (f.missedWin && f.looseBefore[0] && f.bestSan) {
+      // Left a free piece on the board and didn't take it.
       const t = f.looseBefore[0];
-      why = `${f.san} misses it — there was a free ${PIECE_NAME[t.type]} on ${t.square} going begging, and ${f.bestSan} grabs it instead.`;
+      why = choose(f, "missedWin", MISSED_WIN, {
+        san: f.san,
+        piece: PIECE_NAME[t.type],
+        sq: t.square,
+        bestSan: f.bestSan,
+      });
+      namedBetterAlready = true;
     } else {
-      const phaseHint =
-        f.phase === "opening"
-          ? "gives away precious development time"
-          : f.phase === "endgame"
-          ? "gives up a tempo the endgame can't spare"
-          : "hands over the initiative";
-      why = `${f.san} ${phaseHint} — ${opp} is now ${oppStanding(f)}.`;
+      // Quiet error: no single piece hangs, but the line still costs something. Lead
+      // with what the move was trying to do, then the concrete cost — material if the
+      // forcing line wins it, otherwise the initiative.
+      const idea = moveIdea(f);
+      const opener = idea ? choose(f, "opener", OPENER_WITH_IDEA, { san: f.san, idea }) : f.san;
+      const loss = playedLineLoss(f);
+      if (loss >= 1 && materialPhrase(loss)) {
+        const phrase = materialPhrase(loss);
+        const replyTail = ideaTail(moveClauses(f.fenAfter, f.replyUci, f.replySan));
+        const punish = f.replySan
+          ? choose(f, "punishCount", PUNISH_WITH_REPLY_COUNT, {
+              reply: f.replySan,
+              opp,
+              phrase,
+              tailComma: tailComma(replyTail),
+              tailDash: tailDash(replyTail),
+              tailParen: tailParen(replyTail),
+            })
+          : choose(f, "punishCountNo", PUNISH_NO_REPLY_COUNT, { opp, phrase });
+        const verb = choose(f, "loseVerb", LOSE_MATERIAL_VERB, {});
+        why = choose(f, "loseTemplate", LOSE_MATERIAL_TEMPLATE, { opener, verb, punish });
+      } else {
+        const phaseBank =
+          f.phase === "opening" ? PHASE_HINT_OPENING : f.phase === "endgame" ? PHASE_HINT_ENDGAME : PHASE_HINT_MIDDLEGAME;
+        const phaseHint = choose(f, "phaseHint", phaseBank, {});
+        const standing = oppStanding(f);
+        const standingTail = choose(f, "standingTail", STANDING_TAIL, { opp, standing });
+        if (f.replySan) {
+          const punish = replyWithTail(f);
+          why = choose(f, "initiativeWith", INITIATIVE_WITH_PUNISH, { opener, phaseHint, punish, standingTail });
+        } else {
+          why = choose(f, "initiativeNo", INITIATIVE_NO_PUNISH, {
+            opener,
+            phaseHint,
+            standingTail,
+            standingTailCap: cap(standingTail),
+          });
+        }
+      }
     }
 
     // Only name a "better move" when we haven't already named one inside `why`.
-    const namedBetterAlready = f.missedMate || f.missedWin;
     const better =
-      !namedBetterAlready && f.bestSan && !f.isBest ? ` ${f.bestSan} was the move${betterPayoff(f)}.` : "";
+      !namedBetterAlready && f.bestSan && !f.isBest
+        ? ` ${choose(f, "betterMove", BETTER_MOVE, { bestSan: f.bestSan, merit: betterMerit(f) })}`
+        : "";
     return `${lead} ${why}${better}`;
   }
 
   // Inaccuracy — gentle; mention the cleaner move, and flag it if it actually flipped
   // who's better (a "small" slip that changes the verdict is worth knowing about).
   if (code === "inaccuracy") {
-    const cleaner = f.bestSan && !f.isBest ? ` ${f.bestSan} would have kept things tidier.` : "";
+    const idea = moveIdea(f);
+    const head = idea
+      ? choose(f, "inaccHead", INACC_HEAD_WITH_IDEA, { san: f.san, idea })
+      : choose(f, "inaccHeadPlain", INACC_HEAD_PLAIN, { me });
+    const cleaner =
+      f.bestSan && !f.isBest
+        ? choose(f, "inaccCleaner", INACC_CLEANER, { bestSan: f.bestSan, payoff: betterPayoff(f) })
+        : "";
     const flip =
-      f.winAfterMover < 50 ? ` ${opp} edges ahead now — ${me} is ${standingWord(f.winAfterMover)}.` : "";
-    return (
-      pick(seed, [
-        `A touch loose — ${me} lets a little of the edge slip.${cleaner}`,
-        `Slightly inaccurate — no real harm done, just not the sharpest try.${cleaner}`,
-        `A small inaccuracy — the position's still fine, only a hair less precise.${cleaner}`,
-      ]) + flip
-    );
+      f.winAfterMover < 50
+        ? choose(f, "inaccFlip", INACC_FLIP, { opp, me, standing: standingWord(f.winAfterMover) })
+        : "";
+    return `${head}${cleaner}${flip}`;
   }
 
   // Great — far and away the best move. Two flavours: a decisive winning blow, or the
@@ -218,30 +362,16 @@ function buildProse(f) {
     const up = moverMaterialAfter(f);
     const mate = mateInClause(f);
     if (/x/.test(f.san) && up >= 3 && materialPhrase(up)) {
-      return (
-        pick(seed, [
-          `${f.san} — the strongest move on the board, and ${me} comes out up ${materialPhrase(up)}. Clean.`,
-          `Great — ${f.san} snaps off ${materialPhrase(up)} and nothing else came close. Nicely done.`,
-          `Best of the bunch — ${f.san} wins ${materialPhrase(up)}, and only this move does it so cleanly.`,
-        ]) + mate
-      );
+      return choose(f, "greatDecisive", GREAT_DECISIVE, { san: f.san, phrase: materialPhrase(up), me }) + mate;
     }
-    const stand = !mate && f.winAfterMover >= 57 ? ` ${me} is now ${standingWord(f.winAfterMover)}.` : "";
-    return (
-      pick(seed, [
-        `Great find — ${f.san} was the only move that holds everything together. Well spotted.`,
-        `Great move. ${f.san} is the one move that keeps ${me} afloat — nicely found.`,
-        `The only move, and you found it — ${f.san} is the lifeline here. That's how games get saved.`,
-      ]) + (mate || stand)
-    );
+    const stand =
+      !mate && f.winAfterMover >= 57 ? choose(f, "greatStand", STAND_TAIL, { me, standing: standingWord(f.winAfterMover) }) : "";
+    return choose(f, "greatOnly", GREAT_ONLY_MOVE, { san: f.san, me }) + (mate || stand);
   }
 
   // Best / good — keep it warm and short, with one positive, factual point. A forced
   // mate trumps everything else; otherwise pick whichever fact is most telling.
-  const lead =
-    code === "best"
-      ? pick(seed, [`Good move —`, `Nice —`, `Solid —`])
-      : pick(seed, [`Looks fine —`, `Reasonable —`, `That works —`]);
+  const lead = code === "best" ? choose(f, "leadBest", LEAD_BEST, {}) : choose(f, "leadGood", LEAD_GOOD, {});
 
   const gist = gistOf(f);
   const up = moverMaterialAfter(f);
@@ -251,13 +381,14 @@ function buildProse(f) {
   if (mate) {
     point = mate;
   } else if (/x/.test(f.san) && up >= 1 && materialPhrase(up)) {
-    point = ` ${me} is up ${materialPhrase(up)} now.`;
+    point = choose(f, "pointMaterial", POINT_MATERIAL, { me, phrase: materialPhrase(up) });
   } else if (target && target.worth >= 3) {
-    point = ` Now the ${PIECE_NAME[target.type]} on ${target.square} is feeling the heat.`;
+    point = choose(f, "pointTarget", POINT_TARGET, { piece: PIECE_NAME[target.type], sq: target.square });
   } else if (f.phase === "endgame" && up >= 1 && materialPhrase(up)) {
-    point = ` The extra ${materialPhrase(up)} should tell in the endgame.`;
+    point = choose(f, "pointEndgame", POINT_ENDGAME, { phrase: materialPhrase(up) });
   }
-  const stand = !point && f.winAfterMover >= 68 ? ` ${me} is ${standingWord(f.winAfterMover)}.` : "";
+  const stand =
+    !point && f.winAfterMover >= 68 ? choose(f, "standTailGood", STAND_TAIL, { me, standing: standingWord(f.winAfterMover) }) : "";
   return `${lead} ${gist}.${point}${stand}`;
 }
 

@@ -172,6 +172,72 @@ describe("buildCommentary (prose)", () => {
     expect(c.prose).toMatch(/mate in 2/i);
   });
 
+  it("names the punishing reply and the material it wins, from the played line", () => {
+    // White's Kd1 hangs nothing outright, but a rook mops up two pawns by force.
+    const f = buildMoveFeatures({
+      ply: 11,
+      moveNumber: 6,
+      mover: "white",
+      uci: "e1d1",
+      san: "Kd1",
+      fenBefore: "r3k3/8/8/8/8/8/P5P1/4K3 w - - 0 1",
+      fenAfter: "r3k3/8/8/8/8/8/P5P1/3K4 b - - 1 1",
+      beforeEval: {
+        lines: [
+          { uci: "a2a4", san: "a4", cp: 180, mate: null, pvUci: ["a2a4"], pvSan: ["a4"] },
+          { uci: "g2g4", san: "g4", cp: 150, mate: null, pvUci: ["g2g4"], pvSan: ["g4"] },
+        ],
+      },
+      afterEval: { cp: -150, mate: null, pvUci: ["a8a2", "d1e1", "a2g2"], pvSan: ["Rxa2", "Ke1", "Rxg2"] },
+    });
+    // No PIECE hangs (only a pawn) — so the prose takes the forcing-line path, not the
+    // "drops the bishop"-style hang branch (which gates on worth >= 3).
+    expect(f.hangingOwnTop.worth).toBeLessThan(3);
+    const c = buildCommentary(f);
+    expect(c.prose).toMatch(/Rxa2/); // the punishing reply, named
+    expect(c.prose).toMatch(/two pawns/); // the count, from the line's material swing
+    expect(c.prose).toMatch(/a4/); // the fix
+    expect(c.prose).toMatch(/saving two pawns/);
+    expect(c.prose).not.toMatch(/%/);
+  });
+
+  it("recommends the better move with a positional merit when there's no material to save", () => {
+    // A quiet mistake (no piece hangs, no material swings) — the fix is named with the
+    // standing it keeps, not a pawn count.
+    const f = buildMoveFeatures({
+      mover: "white",
+      uci: "g1g2",
+      san: "Kg2",
+      fenBefore: "6k1/8/2p5/8/8/8/8/5BK1 w - - 0 1",
+      fenAfter: "6k1/8/2p5/8/8/8/6K1/5B2 b - - 1 1",
+      beforeEval: { lines: [{ uci: "f1e2", san: "Be2", cp: 120, mate: null, pvUci: ["f1e2"], pvSan: ["Be2"] }] },
+      afterEval: { cp: -100, mate: null, pvUci: [] },
+    });
+    expect(f.classification.code).toBe("mistake");
+    const c = buildCommentary(f);
+    expect(c.prose).toMatch(/Be2/);
+    expect(c.prose).toMatch(/keeping White|holding the balance|in the game|limiting the damage/);
+    expect(c.prose).not.toMatch(/%/);
+  });
+
+  it("varies its wording widely across positions while staying grammatical", () => {
+    const seen = new Set();
+    for (let ply = 0; ply < 80; ply++) {
+      const inp = hangingBishopInput();
+      inp.ply = ply;
+      const c = buildCommentary(buildMoveFeatures(inp));
+      // No leftover template placeholders, no double spaces/punctuation.
+      expect(c.prose).not.toMatch(/\{[a-zA-Z]+\}/);
+      expect(c.prose).not.toMatch(/  /);
+      expect(c.prose).not.toMatch(/[ ,]\./);
+      expect(c.prose).toMatch(/^[A-Z]/);
+      expect(c.prose).toMatch(/[.!]$/);
+      seen.add(c.prose);
+    }
+    // Same fact pattern, many distinct phrasings — the phrase-bank composition at work.
+    expect(seen.size).toBeGreaterThan(30);
+  });
+
   it("flags a missed mate conversationally", () => {
     const fenBefore = "6k1/5ppp/8/8/8/8/5PPP/4Q1K1 w - - 0 1";
     const fenAfter = "6k1/5ppp/8/8/8/8/5PPP/5QK1 b - - 1 1";
