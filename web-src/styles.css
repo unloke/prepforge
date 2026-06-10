@@ -54,6 +54,12 @@ body {
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
+  /* Column shell so the workspace can claim the full viewport height. Study
+     views (Analyze/Build/Train) then fit the board + a scrolling sidebar into
+     one screen instead of pushing content below the fold. */
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 
 button,
@@ -410,6 +416,11 @@ h2 {
   padding: 18px;
   max-width: 1280px;
   margin: 0 auto;
+  width: 100%;
+  /* Fill the space the topbar leaves. Short views (Dashboard/Settings) sit at
+     the top with room to grow; study views fill it exactly and scroll inside. */
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .view {
@@ -418,6 +429,7 @@ h2 {
 
 .view.is-active {
   display: block;
+  height: 100%;
 }
 
 .muted {
@@ -652,22 +664,49 @@ h2 {
 /* Study layout */
 
 .study {
+  /* Available height under the topbar (44px) and the workspace's 18px padding.
+     The board is sized off this so it grows to fill the screen instead of being
+     capped tiny. --board-chrome is the vertical room the board's own controls
+     take (bar, and on Train the feedback banner), subtracted so the square fits. */
+  --study-h: calc(100dvh - 44px - 36px);
+  --board-chrome: 42px;
   display: grid;
-  grid-template-columns: minmax(360px, min(64vh, 620px)) minmax(320px, 1fr);
+  /* Board square is the smallest of: height budget, a hard cap, and the WIDTH
+     budget (viewport minus workspace padding 36, grid gap 16, and the sidebar's
+     340 min). The width term is essential — without it a narrow-but-tall window
+     sizes the board off height alone and shoves the sidebar off-screen. */
+  grid-template-columns:
+    min(
+      calc(var(--study-h) - var(--board-chrome)),
+      680px,
+      calc(min(100vw, 1280px) - 392px)
+    )
+    minmax(340px, 1fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
+  height: 100%;
+  min-height: 0;
 }
 
 .board-area {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
-  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Train carries a feedback banner above the board, so the square has less
+   vertical room — reserve it here (banner + bar + gaps) so the board still fits
+   the screen without overflowing. */
+#view-train .study {
+  --board-chrome: 120px;
 }
 
 .board-stack {
   position: relative;
   width: 100%;
-  max-width: min(64vh, 560px);
+  max-width: 100%;
   aspect-ratio: 1;
   border: 1px solid #8d7656;
   border-radius: 4px;
@@ -1429,9 +1468,17 @@ h2 {
 /* Sidebar */
 
 .sidebar {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   min-width: 0;
+  /* Bounded to the study height and scrolls inside, so a long move list or
+     coach note never pushes the board or the controls off-screen. */
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
 }
 
 .tools {
@@ -1713,6 +1760,27 @@ h2 {
   background: var(--panel);
   max-height: 60vh;
   overflow-y: auto;
+}
+
+/* Analyze move list: a drag-to-resize panel. The native resize handle lets the
+   reader trade move-list height against the move-class summary + PGN/History
+   that sit below it in the scrolling sidebar. */
+#analysis-moves {
+  resize: vertical;
+  height: clamp(160px, 32vh, 460px);
+  min-height: 120px;
+  max-height: none;
+  overflow: auto;
+  flex: 0 0 auto;
+}
+
+/* Build repertoire tree: the sidebar's primary surface, so it grows to fill the
+   height under the toolbar/branch bar and scrolls within. */
+#builder-tree {
+  flex: 1 1 auto;
+  min-height: 160px;
+  max-height: none;
+  overflow: auto;
 }
 
 .move-pair-row {
@@ -2287,8 +2355,27 @@ h2 {
 /* Responsive */
 
 @media (max-width: 1020px) {
+  /* Stacked: board over sidebar. Drop the one-screen fit and let the page scroll
+     normally — a fixed height here would crush the board on a phone. */
   .study {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+  }
+
+  .board-stack {
+    max-width: min(72vh, 560px);
+    margin: 0 auto;
+  }
+
+  .sidebar {
+    height: auto;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  #builder-tree {
+    max-height: 64vh;
   }
 
   .dashboard-grid {
