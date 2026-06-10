@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-DZMZFeqj.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-Co1uWo9h.css">
+    <script type="module" crossorigin src="/static/assets/index-DaS_X8UE.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-BJELQeA6.css">
   </head>
   <body>
     <header class="topbar">
@@ -71,15 +71,12 @@
             <section class="explain-card" id="analysis-explain" data-testid="analysis-explain">
               <div class="explain-head">
                 <span class="explain-title">Coach</span>
-                <label class="explain-toggle" title="Show the engine's suggested move as a board arrow">
+                <label class="explain-toggle" title="Use the engine to review each move you play">
                   <input type="checkbox" id="explain-engine-toggle" checked />
-                  <span>Engine idea</span>
+                  <span>Engine</span>
                 </label>
               </div>
-              <div class="explain-headline" id="explain-headline">Move a piece or load a game to get a read on the position.</div>
-              <div class="explain-verdict" id="explain-verdict" hidden></div>
-              <div class="explain-idea" id="explain-idea" hidden></div>
-              <ul class="explain-points" id="explain-points"></ul>
+              <p class="coach-prose" id="coach-prose" data-testid="coach-prose">Make a move and I'll tell you what I think.</p>
             </section>
             <div class="reveal" id="analysis-results" hidden>
               <svg class="eval-chart" id="eval-chart" viewBox="0 0 640 96" role="img"></svg>

@@ -132,19 +132,20 @@ export function buildMoveFeatures(input) {
   const materialBefore = before ? materialBalance(before) : 0;
   const materialAfter = after ? materialBalance(after) : 0;
 
-  // --- Classification (win-drop, with Great/Brilliant overrides) -----------
-  const classification = classifyMoveRich({
-    winDelta,
-    winAfterMover,
-    isBest,
-    onlyMove,
-    phase,
-    hangingOwnValue: hangingOwnTop ? hangingOwnTop.worth : 0,
-    san,
-    captured: /x/.test(san),
-    playedSwingMover:
-      playedLine && mover === "white" ? playedLine.swing : playedLine ? -playedLine.swing : 0,
-  });
+  // The opponent's best reply (the punishment) after the move — "after Nxh4…".
+  const replySan = afterEval && afterEval.pvSan ? afterEval.pvSan[0] || null : null;
+  const replyUci = afterEval && afterEval.pvUci ? afterEval.pvUci[0] || null : null;
+
+  // --- Classification (win-drop, with the Great override) ------------------
+  // NB: Brilliant is NOT decided here. It needs Maia (a human-move model): a move
+  // is brilliant only when the engine loves it but humans wouldn't find/like it.
+  // The orchestration runs that check async and upgrades via markBrilliant().
+  const classification = classifyMoveRich({ winDelta, winAfterMover, isBest, onlyMove });
+
+  // Worth asking Maia about? Brilliant doesn't require literally the engine's #1 line —
+  // a "Best" or "Excellent"-tier move (winDelta <= 5) that keeps the side at least level
+  // is the "Sound" layer of the server-side definition; Maia settles the rest.
+  const brilliantCandidate = winDelta <= 5 && winAfterMover >= 50;
 
   return {
     ply: input.ply ?? null,
@@ -193,33 +194,46 @@ export function buildMoveFeatures(input) {
     hangingOwnTop,
     missedMate,
     missedWin,
+    replySan,
+    replyUci,
 
+    brilliantCandidate,
+    maia: null, // filled in by markBrilliant() if the orchestration runs the Maia check
     classification,
   };
 }
 
-// Grade the move. Base tiers come from the win% drop (Lichess/chess.com style);
-// Great and Brilliant are *upgrades* only the best move can earn.
-export function classifyMoveRich({
-  winDelta,
-  winAfterMover,
-  isBest,
-  onlyMove,
-  phase,
-  hangingOwnValue,
-  captured,
-}) {
-  // Brilliant: the top move that gives up real material yet stays winning — a sound
-  // sacrifice. Kept deliberately tight so the label means something.
-  if (
-    isBest &&
-    winDelta <= 2 &&
-    winAfterMover >= 55 &&
-    hangingOwnValue >= 3 &&
-    phase !== "opening"
-  ) {
-    return { code: "brilliant", label: "Brilliant", glyph: "!!", tone: "brilliant" };
-  }
+// Decide brilliancy from the Maia (human-move model) read of the SAME move — a
+// Maia/Stockfish disagreement, no SEE and no sacrifice test. These thresholds mirror
+// the canonical server-side detector (services/brilliant.py) so a move flagged live by
+// the coach is the same one a full-game analysis would star:
+//   1. Unintuitive — humans almost never find it: maiaHumanProb <= 0.10.
+//   2. Reveal      — the engine's truth is far above the human's first-glance read:
+//                    engineWin - maiaWin >= 30 points (server min_reveal_score 0.30).
+//   3. Sound       — the move stays at least level (engine-best, winAfterMover >= 50);
+//                    enforced by the candidate gate before we ever query Maia.
+//   maiaHumanProb — Maia's probability a human plays this move (0..1)
+//   maiaWinAfter  — Maia's win chance for the mover after the move (0..1)
+export const BRILLIANT_MAX_HUMAN_PROB = 0.1; // (1) humans rarely find it
+export const BRILLIANT_MIN_WIN_GAP = 30; // (2) engine win% over Maia win%, in points
+export function isBrilliantByMaia(features, { maiaHumanProb, maiaWinAfter }) {
+  if (!features || !features.brilliantCandidate) return false;
+  if (!Number.isFinite(maiaHumanProb) || !Number.isFinite(maiaWinAfter)) return false;
+  const engineWin = features.winAfterMover; // %, mover POV (Stockfish)
+  const humanWin = maiaWinAfter * 100; // %, mover POV (Maia)
+  return maiaHumanProb <= BRILLIANT_MAX_HUMAN_PROB && engineWin - humanWin >= BRILLIANT_MIN_WIN_GAP;
+}
+
+// Upgrade a feature vector to Brilliant in place once the Maia check confirms it.
+export function markBrilliant(features, maia) {
+  features.maia = maia || null;
+  features.classification = { code: "brilliant", label: "Brilliant", glyph: "!!", tone: "brilliant" };
+  return features;
+}
+
+// Grade the move from the win% drop (Lichess/chess.com style). Great is the only
+// in-here upgrade; Brilliant is decided separately via the Maia check (isBrilliantByMaia).
+export function classifyMoveRich({ winDelta, winAfterMover, isBest, onlyMove }) {
   // Great: the only move that holds the position together — finding it mattered.
   if (isBest && onlyMove && winAfterMover >= 25) {
     return { code: "great", label: "Great move", glyph: "!", tone: "good" };

@@ -13,8 +13,8 @@ import {
 import { getCachedWeights, clearWeightCache } from "./engine/maia3-weight-cache.js";
 import { createCsrfTokenSource, isSafeMethod, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
-import { describePosition } from "./explain.js";
-import { buildMoveFeatures } from "./coach/features.js";
+import { describeMove } from "./explain.js";
+import { buildMoveFeatures, isBrilliantByMaia, markBrilliant } from "./coach/features.js";
 import { buildCommentary } from "./coach/commentary.js";
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -1068,48 +1068,29 @@ class PositionCoach {
     toggle.addEventListener("change", () => {
       this.enabled = toggle.checked;
       if (this.enabled) this.update(this.fen, this.ctx);
-      else this._clear();
+      else renderInstantCoach(); // engine off → fall back to the plain read
     });
   }
 
-  _clear() {
-    setVerdictLine(null);
-    setIdeaLine("");
-    setEngineBestArrow(null);
-  }
-
-  // Kept as a no-op: the coach now runs its own searches and draws no competing
-  // arrow, so it no longer needs to mirror the Engine window's snapshots.
+  // Kept as a no-op: the coach runs its own searches and draws no competing arrow,
+  // so it no longer needs to mirror the Engine window's snapshots.
   onWidgetSnapshot() {}
 
-  // Called on every Analyze position change. The instant heuristic read is already
-  // on screen (renderExplain); this owns the engine grade + commentary on the move
-  // that was JUST PLAYED — never an instruction for the next move.
+  // Called on every Analyze position change. The instant plain-language read is
+  // already on screen (renderInstantCoach); this replaces it with the engine's
+  // verdict on the move that was JUST PLAYED — never a next-move instruction.
   update(fen, ctx) {
     this.fen = fen;
     this.ctx = ctx || {};
-    setEngineBestArrow(null); // commentary mode: the board shows your move, not a hint
+    setEngineBestArrow(null); // review mode: the board shows your move, not a hint
     if (!fen) return;
-    if (!this.enabled) {
-      this._clear();
-      return;
-    }
+    if (!this.enabled) return; // engine off → leave the instant read
     if (activeViewName() !== "analyze") return;
     const hasMove = !!(this.ctx.prevFen && this.ctx.lastUci);
-    if (!hasMove) {
-      // Nothing was played into this position (start / root) — keep the instant
-      // read, no grade to give.
-      this._clear();
-      return;
-    }
-    if (!isBrowserEngineAvailable()) {
-      setVerdictLine(null);
-      setIdeaLine("Engine analysis needs a cross-origin-isolated browser.", "info");
-      return;
-    }
+    if (!hasMove) return; // nothing played in → leave the instant read
+    if (!isBrowserEngineAvailable()) return; // no engine → leave the instant read
     window.clearTimeout(this.timer);
-    setVerdictLine(null);
-    setIdeaLine("Analyzing your move…", "info");
+    setCoachProse("Let me look at that…", "info");
     const target = fen;
     this.timer = window.setTimeout(() => this._run(target), 280);
   }
@@ -1126,10 +1107,7 @@ class PositionCoach {
       if (token !== this.token || fen !== this.fen) return;
       const after = await this._eval(fen, token);
       if (token !== this.token || fen !== this.fen) return;
-      if (!before || !after || !before.lines.length) {
-        setIdeaLine("");
-        return;
-      }
+      if (!before || !after || !before.lines.length) return;
 
       const mover = fen.split(" ")[1] === "b" ? "white" : "black";
       const top = after.lines[0] || {};
@@ -1144,9 +1122,37 @@ class PositionCoach {
         beforeEval: { lines: before.lines },
         afterEval: { cp: top.cp ?? null, mate: top.mate ?? null, pvUci: top.pvUci || [], pvSan: top.pvSan || [] },
       });
-      renderCommentary(buildCommentary(features));
+      renderCoachProse(buildCommentary(features));
+      // A move can only be "brilliant" if the engine loves it but humans wouldn't —
+      // confirm that against Maia in the background and upgrade the read if so.
+      if (features.brilliantCandidate) {
+        this._checkBrilliant(features, prevFen, ctx.lastUci, fen, token);
+      }
     } catch (_) {
-      setIdeaLine("");
+      /* leave the instant read on screen */
+    }
+  }
+
+  // Maia (a ~human-strength move model) confirms a brilliancy: it rates the move
+  // poorly and assigns it a tiny human-probability, yet the engine had it as best.
+  // Best-effort and async — Maia may be unavailable (e.g. weights not served), in
+  // which case we simply keep the engine read with no brilliancy. Lazily inits Maia
+  // on the first candidate; the shared provider caches the model after that.
+  async _checkBrilliant(features, prevFen, uci, fen, token) {
+    try {
+      const provider = getSharedMaia3Provider();
+      const a = await provider.moveAssessment({ fen: prevFen, moveUci: uci });
+      if (token !== this.token || fen !== this.fen || !a) return;
+      const brilliant = isBrilliantByMaia(features, {
+        maiaHumanProb: a.humanProbability,
+        maiaWinAfter: a.winChanceAfter,
+      });
+      if (brilliant) {
+        markBrilliant(features, { humanProb: a.humanProbability, winChanceAfter: a.winChanceAfter });
+        renderCoachProse(buildCommentary(features));
+      }
+    } catch (_) {
+      /* Maia unavailable → no brilliancy; the engine read stands. */
     }
   }
 
@@ -1185,70 +1191,44 @@ class PositionCoach {
 
 const positionCoach = new PositionCoach();
 
-const IDEA_TONES = ["good", "warn", "danger", "info", "brilliant"];
+const COACH_TONES = ["good", "warn", "danger", "info", "brilliant"];
 
-// Render the engine's verdict on the move just played: headline (what it did),
-// grade pill, the one teaching sentence, and supporting notes.
-function renderCommentary(c) {
+// The Coach speaks in one short paragraph. Set its text + tone (subtle colour).
+function setCoachProse(text, tone = "info") {
+  const el = document.getElementById("coach-prose");
+  if (!el) return;
+  el.textContent = text || "";
+  for (const t of COACH_TONES) el.classList.toggle(`is-${t}`, t === tone);
+}
+
+// Render the engine's read of the move just played, in the coach's own voice.
+function renderCoachProse(c) {
   if (!c) return;
-  const headlineEl = document.getElementById("explain-headline");
-  if (headlineEl && c.headline) headlineEl.textContent = c.headline;
-  setVerdictLine(c.verdict || null);
-  setIdeaLine(c.primary ? c.primary.text : "", c.primary ? c.primary.tone : "info");
-  const pointsEl = document.getElementById("explain-points");
-  if (pointsEl) {
-    pointsEl.innerHTML = (c.notes || []).map((n) => `<li>${escapeHtml(n)}</li>`).join("");
-  }
+  setCoachProse(c.prose, c.tone);
 }
 
-function setIdeaLine(text, tone = "info") {
-  const el = document.getElementById("explain-idea");
-  if (!el) return;
-  if (!text) {
-    el.hidden = true;
-    el.textContent = "";
-    return;
-  }
-  el.hidden = false;
-  el.textContent = text;
-  for (const t of IDEA_TONES) el.classList.toggle(`is-${t}`, t === tone);
-}
-
-// The "what you just played" grade (Best / Inaccuracy / Mistake / Blunder), or null.
-function setVerdictLine(verdict) {
-  const el = document.getElementById("explain-verdict");
-  if (!el) return;
-  if (!verdict) {
-    el.hidden = true;
-    el.textContent = "";
-    return;
-  }
-  el.hidden = false;
-  el.textContent = `${verdict.glyph} ${verdict.label}`;
-  for (const t of IDEA_TONES) el.classList.toggle(`is-${t}`, t === verdict.tone);
-}
-
-// Drive both halves of the coach from one position-change call.
+// Drive the coach from one position-change call: show an instant plain-language read
+// immediately, then let the engine replace it with a graded verdict.
 function refreshAnalysisExplain(ctx) {
   appState.explainContext = ctx || {};
-  renderExplain();
+  renderInstantCoach();
   positionCoach.update(ctx ? ctx.fen : null, ctx || {});
 }
 
-// Instant heuristic read of the current Analyze position (no engine).
-function renderExplain() {
-  const headlineEl = document.getElementById("explain-headline");
-  const pointsEl = document.getElementById("explain-points");
-  if (!headlineEl || !pointsEl) return;
+// Instant, engine-free sentence: what the last move did, or whose move it is. This is
+// the placeholder the engine commentary upgrades a beat later.
+function renderInstantCoach() {
   const ctx = appState.explainContext || {};
   const fen = ctx.fen || appState.analysisBoardFen || START_FEN;
-  const info = describePosition(fen, {
-    lastSan: ctx.lastSan,
-    lastUci: ctx.lastUci,
-    prevFen: ctx.prevFen,
-  });
-  headlineEl.textContent = info.headline || "—";
-  pointsEl.innerHTML = (info.points || []).map((p) => `<li>${escapeHtml(p)}</li>`).join("");
+  const turn = fen.split(" ")[1] === "b" ? "black" : "white";
+  if (ctx.prevFen && ctx.lastSan) {
+    const mover = turn === "white" ? "Black" : "White"; // the side that just moved
+    const did = describeMove(ctx.prevFen, ctx.lastUci, ctx.lastSan);
+    setCoachProse(did ? `${mover} ${did}.` : `${mover} plays ${ctx.lastSan}.`, "info");
+  } else {
+    const side = turn === "white" ? "White" : "Black";
+    setCoachProse(`${side} to move. Make a move and I'll tell you what I think.`, "info");
+  }
 }
 
 class BoardController {
