@@ -220,6 +220,26 @@ describe("buildCommentary (prose)", () => {
     expect(c.prose).not.toMatch(/%/);
   });
 
+  it("calls an even trade a trade, not a phantom material gain", () => {
+    // Qxd8+ on the open d-file: the black king recaptures (Kxd8), so it is a clean
+    // queen swap. The raw board right after shows White +9, but the settled count is
+    // level — the coach must say "trade", never "up a queen".
+    const f = buildMoveFeatures({
+      mover: "white",
+      uci: "d1d8",
+      san: "Qxd8+",
+      fenBefore: "3qk3/8/8/8/8/8/8/3QK3 w - - 0 1",
+      fenAfter: "3Qk3/8/8/8/8/8/8/4K3 b - - 0 1",
+      beforeEval: { lines: [{ uci: "d1d8", san: "Qxd8+", cp: 0, mate: null, pvUci: ["d1d8", "e8d8"], pvSan: ["Qxd8+", "Kxd8"] }] },
+      afterEval: { cp: 0, mate: null, pvUci: ["e8d8"], pvSan: ["Kxd8"] },
+    });
+    expect(f.materialAfter).toBe(9); // raw, mid-exchange (queen taken, not yet recaptured)
+    expect(f.materialAfterSettled).toBe(0); // settled: the recapture is priced in
+    const c = buildCommentary(f);
+    expect(c.prose).toMatch(/trade|swap|exchange/i);
+    expect(c.prose).not.toMatch(/up a queen|up a pawn|up a piece/i);
+  });
+
   it("spells out the fork a strong move creates", () => {
     // White knight e6 lands on c7, forking the king on e8 and the rook on a8.
     const f = buildMoveFeatures({

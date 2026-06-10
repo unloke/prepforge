@@ -63,6 +63,8 @@ import {
   LEAD_BEST,
   LEAD_GOOD,
   POINT_MATERIAL,
+  POINT_TRADE,
+  POINT_TRADE_AHEAD,
   POINT_TARGET,
   POINT_ENDGAME,
   STAND_TAIL,
@@ -102,26 +104,53 @@ function standingWord(winPct) {
 // Material read of the lines (mover-POV, in pawns).
 // ---------------------------------------------------------------------------
 
-// Net material the mover holds after the move, in pawns (mover-POV, + = ahead).
+// Net material the mover holds after the move, in pawns (mover-POV, + = ahead). Uses the
+// exchange-resolved count so a move that captures into an even trade reads as level, not
+// "a pawn up" (the recapture is already priced in). Falls back to the raw count if the
+// settled figure is ever absent.
 function moverMaterialAfter(f) {
-  return f.mover === "white" ? f.materialAfter : -f.materialAfter;
+  const after = Number.isFinite(f.materialAfterSettled) ? f.materialAfterSettled : f.materialAfter;
+  return f.mover === "white" ? after : -after;
 }
 
-// Material the best line nets the mover over the move played (relative, honest).
+// Net material the mover held BEFORE the move, mover-POV, in pawns.
+function moverMaterialBefore(f) {
+  return f.mover === "white" ? f.materialBefore : -f.materialBefore;
+}
+
+// A capturing move whose settled material is unchanged from before — a clean, even
+// trade. Leans on the exchange-resolved count so a recapture reads as a swap, not a
+// phantom material gain. Returns false for a capture that actually wins or loses wood.
+function isEvenTrade(f) {
+  if (!/x/.test(f.san || "")) return false;
+  return moverMaterialAfter(f) === moverMaterialBefore(f);
+}
+
+// Material the best line nets the mover over the move played (relative, honest). Compared
+// at the SETTLED end of each line so two PVs that happen to stop at different points in a
+// capture sequence don't read a phantom piece of difference between them.
 function lineMaterialDiff(f) {
-  const end = (line) => (line ? (f.mover === "white" ? line.endBalance : -line.endBalance) : null);
+  const end = (line) => {
+    if (!line) return null;
+    const bal = Number.isFinite(line.settledEndBalance) ? line.settledEndBalance : line.endBalance;
+    return f.mover === "white" ? bal : -bal;
+  };
   const b = end(f.bestLine);
   const p = end(f.playedLine);
   if (b === null || p === null) return null;
   return b - p;
 }
 
-// Pawns the mover actually drops over the line they played (best play by both sides
-// from the engine's PV). 0 when the line is materially level — that's the "positional"
-// case where the cost is initiative, not wood. This is the "loses two pawns" number.
+// Pawns the mover actually drops over the line they played (best play by both sides from
+// the engine's PV), measured on the exchange-resolved swing so a clean recapture doesn't
+// register as a loss. 0 when the line is materially level — the "positional" case where
+// the cost is initiative, not wood. This is the "loses two pawns" number.
 function playedLineLoss(f) {
   if (!f.playedLine) return 0;
-  const swingMover = f.mover === "white" ? f.playedLine.swing : -f.playedLine.swing;
+  const swing = Number.isFinite(f.playedLine.settledSwing)
+    ? f.playedLine.settledSwing
+    : f.playedLine.swing;
+  const swingMover = f.mover === "white" ? swing : -swing;
   return swingMover < 0 ? Math.round(-swingMover) : 0;
 }
 
@@ -187,8 +216,12 @@ function betterPayoff(f) {
   const diff = lineMaterialDiff(f);
   if (diff !== null && diff >= 2) {
     const phrase = materialPhrase(diff);
+    const playedEnd =
+      f.playedLine && Number.isFinite(f.playedLine.settledEndBalance)
+        ? f.playedLine.settledEndBalance
+        : f.playedLine && f.playedLine.endBalance;
     const droppedMaterial =
-      f.playedLine && (f.mover === "white" ? f.playedLine.endBalance : -f.playedLine.endBalance) <= -1;
+      f.playedLine && (f.mover === "white" ? playedEnd : -playedEnd) <= -1;
     if (phrase) return droppedMaterial ? `, saving ${phrase}` : `, winning ${phrase}`;
   }
   return "";
@@ -456,6 +489,11 @@ function buildProse(f) {
     point = threatPoint(f, me, opp);
   } else if (/x/.test(f.san) && up >= 1 && materialPhrase(up)) {
     point = choose(f, "pointMaterial", POINT_MATERIAL, { me, phrase: materialPhrase(up) });
+  } else if (isEvenTrade(f)) {
+    point =
+      up >= 2
+        ? choose(f, "pointTradeAhead", POINT_TRADE_AHEAD, { me })
+        : choose(f, "pointTrade", POINT_TRADE, { me });
   } else if (target && target.worth >= 3) {
     point = choose(f, "pointTarget", POINT_TARGET, { piece: PIECE_NAME[target.type], sq: target.square });
   } else if (f.phase === "endgame" && up >= 1 && materialPhrase(up)) {

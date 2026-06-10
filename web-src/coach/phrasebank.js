@@ -444,6 +444,26 @@ export const POINT_MATERIAL = [
   " That's {phrase} in {me}'s pocket.",
 ];
 
+// A clean, even trade (a capture the settled count says nets nothing) — narrated
+// honestly as a swap, never as "winning a pawn". This is what the exchange-resolved
+// material read buys us: a recaptured trade no longer pretends to be a material gain.
+export const POINT_TRADE = [
+  " It trades pieces and keeps the position simple.",
+  " That swaps a pair off, easing any pressure.",
+  " A clean trade, nothing lost on either side.",
+  " It exchanges pieces and simplifies toward a clearer game.",
+  " Pieces come off evenly, which keeps things tidy.",
+  " A fair swap that takes the sting out of the position.",
+];
+
+// A trade made while ahead — simplification is the right idea, so say so.
+export const POINT_TRADE_AHEAD = [
+  " Trading while ahead is the right idea, steering toward a won ending.",
+  " With {me} ahead, swapping pieces brings the win closer.",
+  " A good trade: fewer pieces favours the side with more, and that's {me}.",
+  " Exchanging down suits {me}, who is the one ahead on material.",
+];
+
 export const POINT_TARGET = [
   " Now the {piece} on {sq} is feeling the heat.",
   " The {piece} on {sq} is in trouble now.",

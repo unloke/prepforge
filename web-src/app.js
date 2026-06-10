@@ -1244,6 +1244,7 @@ class BoardController {
     this.dragFrom = null;
     this.ghost = null;
     this.engineArrow = null;
+    this.branchArrows = [];
     this.moveBadge = null;
     this._hadPosition = false;
     this.annotationStart = null;
@@ -1273,13 +1274,23 @@ class BoardController {
   }
 
   _renderArrows() {
-    renderAnnotations(this.overlay, this.arrows, this.orientation, this.engineArrow);
+    renderAnnotations(this.overlay, this.arrows, this.orientation, this.engineArrow, this.branchArrows);
   }
 
   setEngineArrow(uci) {
     const next = uci || null;
     if (this.engineArrow === next) return;
     this.engineArrow = next;
+    this._renderArrows();
+  }
+
+  // Faint arrows for the next-move branch options at the current position, so a branch
+  // point is visible on the board itself (the keyboard branch switcher's on-board echo).
+  setBranchArrows(list) {
+    const next = Array.isArray(list) ? list.filter((u) => typeof u === "string" && u.length >= 4) : [];
+    const same = next.length === this.branchArrows.length && next.every((u, i) => u === this.branchArrows[i]);
+    if (same) return;
+    this.branchArrows = next;
     this._renderArrows();
   }
 
@@ -1893,7 +1904,7 @@ function buildArrowPath(from, to) {
   ].join(" ");
 }
 
-function renderAnnotations(overlay, arrows, orientation = "white", engineArrow = null) {
+function renderAnnotations(overlay, arrows, orientation = "white", engineArrow = null, branchArrows = []) {
   overlay.setAttribute("viewBox", "0 0 100 100");
   overlay.innerHTML = "";
   // Colours and stroke come from CSS tokens (.annot-arrow rules) so board
@@ -1906,6 +1917,8 @@ function renderAnnotations(overlay, arrows, orientation = "white", engineArrow =
     path.setAttribute("class", `annot-arrow annot-${kind}`);
     overlay.appendChild(path);
   };
+  // Branch hints sit under the user/engine arrows so an explicit annotation always wins.
+  (branchArrows || []).forEach((arrow) => arrow && arrow.length >= 4 && drawArrow(arrow, "branch"));
   arrows.forEach((arrow) => drawArrow(arrow, "user"));
   if (engineArrow && engineArrow.length >= 4) drawArrow(engineArrow, "engine");
 }
@@ -3908,9 +3921,12 @@ function buildNormalizedTree() {
 
 function renderBuilderTree() {
   const container = document.getElementById("builder-tree");
+  const branchBar = document.getElementById("build-branchbar");
   if (!appState.build) {
     container.innerHTML =
       '<div class="empty-state">No repertoire loaded. Press <b>New</b> or import one from the Dashboard.</div>';
+    if (branchBar) branchBar.hidden = true;
+    if (boards.build) boards.build.setBranchArrows([]);
     return;
   }
   const root = buildNormalizedTree();
@@ -3918,6 +3934,8 @@ function renderBuilderTree() {
     container.innerHTML =
       renderBuildBreadcrumb() +
       '<div class="empty-state">Play a move on the board to add it to the repertoire.</div>';
+    if (branchBar) branchBar.hidden = true;
+    if (boards.build) boards.build.setBranchArrows([]);
     return;
   }
   const collapsed = appState.buildCollapsed || (appState.buildCollapsed = new Set());
@@ -3960,6 +3978,7 @@ function renderBuilderTree() {
   });
   const focusBtn = container.querySelector(".mtree .mtree-move.is-current");
   if (focusBtn) focusBtn.scrollIntoView({ block: "nearest", inline: "nearest" });
+  renderBuildBranchBar();
 }
 
 // A sticky one-line trail from the opening move to the selected node, so the
@@ -4015,21 +4034,6 @@ function buildMainlineChild(nodeId) {
   return kids.find((k) => k.is_mainline) || kids[0];
 }
 
-// Move selection to the previous/next sibling variation at the current move,
-// so j/k cycles through the alternatives at a branch point.
-function buildStepSibling(direction) {
-  if (!appState.build || !appState.buildCurrentNodeId) return;
-  const current = appState.buildNodeById.get(appState.buildCurrentNodeId);
-  if (!current) return;
-  const siblings = appState.build.nodes
-    .filter((n) => n.parent_id === current.parent_id && n.depth > 0)
-    .sort((a, b) => Number(b.is_mainline) - Number(a.is_mainline));
-  if (siblings.length < 2) return;
-  const idx = siblings.findIndex((n) => n.id === current.id);
-  const next = siblings[(idx + direction + siblings.length) % siblings.length];
-  if (next) selectBuildNode(next.id);
-}
-
 function buildGoRoot() {
   const id = buildRootId();
   if (id) selectBuildNode(id);
@@ -4053,6 +4057,122 @@ function buildGoToEnd() {
     child = buildMainlineChild(cur);
   }
   if (cur && cur !== appState.buildCurrentNodeId) selectBuildNode(cur);
+}
+
+// Branch alternatives at the SAME move (siblings sharing a parent), mainline first.
+function buildSiblingsOf(node) {
+  if (!appState.build || !node) return [];
+  return appState.build.nodes
+    .filter((n) => n.parent_id === node.parent_id && n.depth > 0)
+    .sort((a, b) => Number(b.is_mainline) - Number(a.is_mainline));
+}
+
+// The next-move branches from a node (its children), mainline first.
+function buildChildrenOf(nodeId) {
+  if (!appState.build || !nodeId) return [];
+  return appState.build.nodes
+    .filter((n) => n.parent_id === nodeId)
+    .sort((a, b) => Number(b.is_mainline) - Number(a.is_mainline));
+}
+
+// The branch picture at the current node: either the alternatives to the current move
+// ("current" — switch between them with up/down), or, when the current move is forced,
+// the next-move branches ahead ("next" — step into one with →). Drives both the on-screen
+// branch bar and the up/down key behaviour so the two always agree.
+function buildBranchContext() {
+  if (!appState.build || !appState.buildCurrentNodeId) return null;
+  const current = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  if (!current) return null;
+  const siblings = buildSiblingsOf(current);
+  if (siblings.length >= 2) {
+    return { mode: "current", node: current, options: siblings, activeId: current.id };
+  }
+  const children = buildChildrenOf(current.id);
+  if (children.length >= 2) {
+    return { mode: "next", node: current, options: children, activeId: null };
+  }
+  return { mode: "none", node: current, options: [], activeId: null };
+}
+
+// Up/Down on the Build board. With alternatives at the current move, they switch between
+// those branches (no mouse needed). With none, they fall back to plain forward/back so
+// the move list never feels "stuck" under the arrow keys.
+function buildBranchKey(direction) {
+  const ctx = buildBranchContext();
+  if (ctx && ctx.mode === "current") {
+    const opts = ctx.options;
+    const idx = opts.findIndex((n) => n.id === ctx.node.id);
+    const next = opts[(idx + direction + opts.length) % opts.length];
+    if (next) selectBuildNode(next.id);
+    return;
+  }
+  if (ctx && ctx.mode === "next" && direction > 0) {
+    // Sitting on a branch point with the line forced up to here: dive into the first
+    // next-move branch, where up/down then switch among the siblings.
+    selectBuildNode(ctx.options[0].id);
+    return;
+  }
+  // Nothing to switch here — keep arrow nav smooth.
+  if (direction > 0) buildGoForward();
+  else buildGoBack();
+}
+
+// The on-screen branch switcher: a compact strip of the branch options at the current
+// point, the active one lit, with a key hint. Mirrors what up/down will do. Also paints
+// faint arrows on the board for the next-move branches so a fork is visible there too.
+function renderBuildBranchBar() {
+  const bar = document.getElementById("build-branchbar");
+  if (!bar) return;
+  const ctx = buildBranchContext();
+  if (!ctx || ctx.mode === "none") {
+    bar.hidden = true;
+    bar.innerHTML = "";
+    if (boards.build) boards.build.setBranchArrows([]);
+    return;
+  }
+  const label = ctx.mode === "current" ? "Branches at this move" : "Next-move branches";
+  const hint = ctx.mode === "current" ? "↑ ↓ to switch" : "→ to enter · ↑ ↓ once inside";
+  const activeIdx =
+    ctx.mode === "current" ? Math.max(0, ctx.options.findIndex((n) => n.id === ctx.activeId)) : -1;
+  const chips = ctx.options
+    .map((n, i) => {
+      const isWhite = n.move_side === "white";
+      const num = `${n.move_number}${isWhite ? "." : "…"}`;
+      const cls = [
+        "branch-chip",
+        n.id === ctx.activeId ? "is-active" : "",
+        n.is_mainline ? "is-main" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      return (
+        `<button class="${cls}" type="button" data-node-id="${escapeHtml(String(n.id))}" ` +
+        `title="Go to ${escapeHtml(n.san)}"><span class="branch-num">${num}</span>` +
+        `<span class="branch-san">${escapeHtml(n.san)}</span></button>`
+      );
+    })
+    .join("");
+  const counter =
+    ctx.mode === "current" && ctx.options.length > 1
+      ? `<span class="branchbar-count">${activeIdx + 1}/${ctx.options.length}</span>`
+      : `<span class="branchbar-count">${ctx.options.length}</span>`;
+  bar.hidden = false;
+  bar.innerHTML =
+    `<div class="branchbar-head"><span class="branchbar-label">${label}</span>${counter}` +
+    `<span class="branchbar-hint">${hint}</span></div>` +
+    `<div class="branchbar-chips">${chips}</div>`;
+  bar.querySelectorAll(".branch-chip[data-node-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectBuildNode(btn.dataset.nodeId);
+      btn.blur();
+    });
+  });
+  // Board echo: only the next-move branches map cleanly onto the current position.
+  if (boards.build) {
+    boards.build.setBranchArrows(
+      ctx.mode === "next" ? ctx.options.map((n) => n.uci).filter(Boolean) : []
+    );
+  }
 }
 
 async function saveBuildAnnotations(arrows, circles) {
@@ -5481,10 +5601,16 @@ function bindEvents() {
       if (inBuild) buildGoForward();
       else analysisTreeNav("next");
     }
-    // j/k step through sibling variations of the current move in Build.
-    if (inBuild && (event.key === "j" || event.key === "k")) {
+    // Up/Down (and j/k) switch between branch alternatives at the current move in Build,
+    // so a fork can be navigated entirely from the keyboard. The on-screen branch bar
+    // mirrors the choice. With no alternatives, they fall back to forward/back nav.
+    if (inBuild && (event.key === "ArrowDown" || event.key === "j")) {
       event.preventDefault();
-      buildStepSibling(event.key === "j" ? 1 : -1);
+      buildBranchKey(1);
+    }
+    if (inBuild && (event.key === "ArrowUp" || event.key === "k")) {
+      event.preventDefault();
+      buildBranchKey(-1);
     }
     if (event.key === "Escape") {
       closeNodeContextMenu();

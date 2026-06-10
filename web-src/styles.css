@@ -711,6 +711,14 @@ h2 {
   stroke: var(--arrow-engine-stroke);
 }
 
+/* Next-move branch hints — faint, so they read as "options here" and never compete
+   with explicit user/engine arrows drawn on top of them. */
+.annot-branch {
+  fill: var(--accent);
+  stroke: var(--accent-strong);
+  opacity: 0.32;
+}
+
 .board-arrow {
   stroke: var(--arrow);
   stroke-width: 1.6;
@@ -1841,6 +1849,89 @@ h2 {
 .mtree-crumb.is-current {
   background: var(--accent);
   color: #fff;
+}
+
+/* ---- Branch switcher strip --------------------------------------------- */
+/* The keyboard branch selector's on-screen face: the alternatives available at the
+   current point, the active one lit, so switching a branch never needs the mouse. */
+.build-branchbar {
+  margin-bottom: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--accent-line);
+  border-radius: 6px;
+  background: var(--accent-soft);
+}
+.build-branchbar[hidden] {
+  display: none;
+}
+.branchbar-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.branchbar-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+.branchbar-count {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 0 7px;
+  line-height: 17px;
+}
+.branchbar-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.branchbar-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.branch-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  border: 1px solid var(--accent-line);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 9px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 80ms ease;
+}
+.branch-chip:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+}
+.branch-chip.is-active {
+  background: var(--accent);
+  border-color: var(--accent-strong);
+  color: #fff;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.branch-chip .branch-num {
+  font-size: 11px;
+  opacity: 0.7;
+}
+.branch-chip.is-main:not(.is-active) .branch-san {
+  text-decoration: underline;
+  text-decoration-color: var(--accent-line);
+  text-underline-offset: 2px;
 }
 
 /* ---- Tree body --------------------------------------------------------- */

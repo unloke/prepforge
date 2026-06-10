@@ -14,6 +14,7 @@ import {
   walkLine,
   gamePhase,
   materialBalance,
+  squareExchange,
 } from "./material.js";
 
 // White-POV win% from a (cp|mate) eval. Mate is decisive.
@@ -131,6 +132,17 @@ export function buildMoveFeatures(input) {
   const phase = gamePhase(fenBefore);
   const materialBefore = before ? materialBalance(before) : 0;
   const materialAfter = after ? materialBalance(after) : 0;
+  // Honest material once THIS move's own trade resolves. Reading the raw board right
+  // after a capture counts you up the piece you just took before the recapture lands —
+  // the "phantom pawn". Settle the contested square (only when the move was a capture;
+  // a quiet move starts no exchange) so an even trade reads as level, not "a pawn up".
+  const moveDest = uci ? uci.slice(2, 4) : null;
+  const moveWasCapture = /x/.test(san || "");
+  let materialAfterSettled = materialAfter;
+  if (after && moveWasCapture && moveDest) {
+    const probe = safeChess(fenAfter);
+    if (probe) materialAfterSettled = squareExchange(probe, moveDest);
+  }
 
   // The opponent's best reply (the punishment) after the move — "after Nxh4…".
   const replySan = afterEval && afterEval.pvSan ? afterEval.pvSan[0] || null : null;
@@ -183,6 +195,7 @@ export function buildMoveFeatures(input) {
     phase,
     materialBefore,
     materialAfter,
+    materialAfterSettled,
 
     wasInCheck,
     isCheck,

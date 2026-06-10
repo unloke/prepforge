@@ -76,6 +76,57 @@ export function advantageSide(balance) {
   return "none";
 }
 
+// Static exchange evaluation on a SINGLE square — the honest "who comes out ahead once
+// the trade on this square plays itself out" number, in White-POV pawns.
+//
+// This is the antidote to the "phantom pawns" bug: a PV (or the position right after a
+// capture) often stops mid-exchange — you've taken on d5 but the recapture hasn't been
+// played yet — so a naive piece count reads you a whole pawn (or piece) up when the
+// position is dead level. We resolve ONLY the capture battle on `square`: each side, in
+// turn, may recapture with its cheapest attacker or decline (stand pat) if continuing
+// would lose material. Crucially we never touch captures elsewhere on the board, so we
+// never "win" a pawn the engine's line deliberately left alone (e.g. a poisoned pawn the
+// PV declined for tactical reasons). It finishes the trade in front of us, nothing more.
+//
+// `chess` is mutated and restored (move/undo); the caller's position is left intact.
+export function squareExchange(chess, square) {
+  const standPat = materialBalance(chess); // White-POV, "if I don't capture here"
+  let caps;
+  try {
+    caps = chess.moves({ verbose: true });
+  } catch (_) {
+    return standPat;
+  }
+  // Only recaptures that land ON the contested square, cheapest attacker first (SEE).
+  caps = caps
+    .filter((m) => m.to === square && m.captured)
+    .sort((a, b) => (PIECE_VALUE[a.piece] || 0) - (PIECE_VALUE[b.piece] || 0));
+  if (!caps.length) return standPat;
+  const white = chess.turn() === "w";
+  const m = caps[0];
+  let resolved;
+  try {
+    chess.move(m);
+    resolved = squareExchange(chess, square);
+    chess.undo();
+  } catch (_) {
+    return standPat;
+  }
+  // The side to move keeps the better of "capture and play on" vs "stand pat". White
+  // wants the balance high, Black wants it low.
+  return white ? Math.max(standPat, resolved) : Math.min(standPat, resolved);
+}
+
+// Settle the contested square left by `move` (a chess.js move object) in `chess`, if and
+// only if that move was a capture. A capture leaves an exchange that may still be
+// unresolved (the recapture); a quiet move does not, and we must NOT invent captures the
+// engine's line chose to forgo. Returns the White-POV balance after settling.
+export function settledBalanceAfter(chess, move) {
+  const raw = materialBalance(chess);
+  if (!move || !move.captured || !move.to) return raw;
+  return squareExchange(chess, move.to);
+}
+
 // "a pawn", "two pawns", "a knight", "the exchange", "a piece and a pawn"... a human
 // summary of a White-perspective pawn delta. Returns "" when level.
 export function materialPhrase(balance) {
@@ -120,6 +171,8 @@ export function walkLine(fenStart, uciMoves, cap = 12) {
   const byBlack = {};
   const sanSeq = [];
   let plies = 0;
+  let firstMove = null;
+  let lastMove = null;
   for (const uci of (uciMoves || []).slice(0, cap)) {
     let move;
     try {
@@ -132,6 +185,8 @@ export function walkLine(fenStart, uciMoves, cap = 12) {
       break;
     }
     if (!move) break;
+    if (!firstMove) firstMove = move;
+    lastMove = move;
     sanSeq.push(move.san);
     if (move.captured) {
       const bin = move.color === "w" ? byWhite : byBlack;
@@ -140,11 +195,28 @@ export function walkLine(fenStart, uciMoves, cap = 12) {
     plies += 1;
   }
   const endBalance = materialBalance(chess);
+  // Settle the trades at BOTH ends so the swing is honest even when the line (or its
+  // start position) stops mid-exchange. We resolve only the square each end's capture
+  // landed on, so the count reflects "once the trade finishes", not "mid-recapture".
+  const settledEndBalance = settledBalanceAfter(chess, lastMove);
+  let settledStartBalance = startBalance;
+  if (firstMove && firstMove.captured) {
+    let startChess;
+    try {
+      startChess = new Chess(fenStart);
+      settledStartBalance = squareExchange(startChess, firstMove.to);
+    } catch (_) {
+      settledStartBalance = startBalance;
+    }
+  }
   return {
     endFen: chess.fen(),
     startBalance,
     endBalance,
     swing: endBalance - startBalance, // White-POV material change over the line
+    settledStartBalance,
+    settledEndBalance,
+    settledSwing: settledEndBalance - settledStartBalance, // honest, exchange-resolved
     byWhite,
     byBlack,
     insufficient: chess.isInsufficientMaterial(),
