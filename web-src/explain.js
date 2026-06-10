@@ -60,6 +60,14 @@ export function cpToWin(cp) {
   return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * c)) - 1);
 }
 
+// Lichess's single-move accuracy: how faithful a move was to the best, from the
+// drop in win % it caused (both already from the mover's POV). 100 = perfect.
+export function moveAccuracy(winBeforeMover, winAfterMover) {
+  const loss = Math.max(0, winBeforeMover - winAfterMover);
+  const acc = 103.1668 * Math.exp(-0.04354 * loss) - 3.1669;
+  return Math.max(0, Math.min(100, acc));
+}
+
 // One short clause describing where the eval stands, from the mover's point of view.
 // Accepts White-POV cp / mate; `mover` is "white" | "black".
 function verdictClause({ cp, mate, mover }) {

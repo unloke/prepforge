@@ -13,7 +13,9 @@ import {
 import { getCachedWeights, clearWeightCache } from "./engine/maia3-weight-cache.js";
 import { createCsrfTokenSource, isSafeMethod, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
-import { describePosition, explainEngineIdea, classifyMove, cpToWin } from "./explain.js";
+import { describePosition } from "./explain.js";
+import { buildMoveFeatures } from "./coach/features.js";
+import { buildCommentary } from "./coach/commentary.js";
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const DEMO_PGN = `[Event "PrepForge UI Demo"]
@@ -1053,22 +1055,10 @@ class PositionCoach {
     this.enabled = true;
     this.timer = null;
     this.token = 0;
-    // fen -> White-POV win % (Lichess model). Lets us grade the move just played
-    // by comparing the position before and after, the way a Game Review does.
-    this.winCache = new Map();
-  }
-
-  _cacheWin(fen, scoreCp, mateIn) {
-    if (!fen) return;
-    let win;
-    if (mateIn !== null && mateIn !== undefined) win = mateIn > 0 ? 100 : 0;
-    else if (scoreCp !== null && scoreCp !== undefined) win = cpToWin(scoreCp);
-    else return;
-    this.winCache.set(fen, win);
-    if (this.winCache.size > 60) {
-      // Trim oldest; Map keeps insertion order.
-      this.winCache.delete(this.winCache.keys().next().value);
-    }
+    // fen -> engine read { lines:[{uci,san,cp,mate,pvUci,pvSan}], depth } (White-POV).
+    // Cached so stepping forward (this position was last turn's "after") costs one
+    // new search, not two — the prior position is already in here.
+    this.evalCache = new Map();
   }
 
   bind() {
@@ -1078,137 +1068,138 @@ class PositionCoach {
     toggle.addEventListener("change", () => {
       this.enabled = toggle.checked;
       if (this.enabled) this.update(this.fen, this.ctx);
-      else this._clearIdea();
+      else this._clear();
     });
   }
 
-  _clearIdea() {
-    setIdeaLine("");
+  _clear() {
     setVerdictLine(null);
-    if (!engineWidget.isOpen()) setEngineBestArrow(null);
+    setIdeaLine("");
+    setEngineBestArrow(null);
   }
 
-  // Called on every Analyze position change. Renders nothing itself (the heuristic
-  // text is rendered by renderExplain); it owns only the engine "idea".
+  // Kept as a no-op: the coach now runs its own searches and draws no competing
+  // arrow, so it no longer needs to mirror the Engine window's snapshots.
+  onWidgetSnapshot() {}
+
+  // Called on every Analyze position change. The instant heuristic read is already
+  // on screen (renderExplain); this owns the engine grade + commentary on the move
+  // that was JUST PLAYED — never an instruction for the next move.
   update(fen, ctx) {
     this.fen = fen;
     this.ctx = ctx || {};
+    setEngineBestArrow(null); // commentary mode: the board shows your move, not a hint
     if (!fen) return;
     if (!this.enabled) {
-      this._clearIdea();
+      this._clear();
       return;
     }
     if (activeViewName() !== "analyze") return;
-    if (!isBrowserEngineAvailable()) {
-      setIdeaLine("Engine idea needs a cross-origin-isolated browser.");
+    const hasMove = !!(this.ctx.prevFen && this.ctx.lastUci);
+    if (!hasMove) {
+      // Nothing was played into this position (start / root) — keep the instant
+      // read, no grade to give.
+      this._clear();
       return;
     }
-    // The Engine window already runs Stockfish and draws the arrow — mirror it.
-    if (engineWidget.isOpen()) {
-      this._fromWidget(fen);
+    if (!isBrowserEngineAvailable()) {
+      setVerdictLine(null);
+      setIdeaLine("Engine analysis needs a cross-origin-isolated browser.", "info");
       return;
     }
     window.clearTimeout(this.timer);
     setVerdictLine(null);
-    setIdeaLine("Thinking…");
-    this.timer = window.setTimeout(() => this._run(fen), 280);
-  }
-
-  _fromWidget(fen) {
-    const snap = engineWidget.lastSnapshot;
-    if (snap && snap.fen === fen && snap.pvs && snap.pvs.length) this._renderIdea(snap, fen);
-    else setIdeaLine("Thinking…");
-  }
-
-  // Forwarded by EngineWidget after each snapshot render so the coach text tracks
-  // the open window's deeper search without running its own engine.
-  onWidgetSnapshot(snapshot) {
-    if (!this.enabled || activeViewName() !== "analyze") return;
-    if (!snapshot || snapshot.fen !== this.fen) return;
-    if (snapshot.pvs && snapshot.pvs.length) this._renderIdea(snapshot, this.fen);
+    setIdeaLine("Analyzing your move…", "info");
+    const target = fen;
+    this.timer = window.setTimeout(() => this._run(target), 280);
   }
 
   async _run(fen) {
     if (fen !== this.fen) return;
+    const ctx = this.ctx;
+    const prevFen = ctx.prevFen;
     const token = ++this.token;
     try {
       if (!this.engine) this.engine = createEngineProvider();
-      await this.engine.open({ fen, multipv: 1 });
-      // Short, bounded think: stop at a usable depth or ~1.4s, whichever first.
-      const deadline = Date.now() + 1400;
-      let snap = this.engine.snapshot();
-      while (Date.now() < deadline) {
-        await sleep(170);
-        if (token !== this.token || fen !== this.fen) return; // superseded
-        snap = this.engine.snapshot();
-        const ready = snap && snap.pvs && snap.pvs.length;
-        if (ready && (snap.running === false || snap.current_depth >= 14)) break;
-      }
+      // The position BEFORE the move (best line + best alternative) and AFTER it.
+      const before = await this._eval(prevFen, token);
       if (token !== this.token || fen !== this.fen) return;
-      this._renderIdea(snap, fen);
+      const after = await this._eval(fen, token);
+      if (token !== this.token || fen !== this.fen) return;
+      if (!before || !after || !before.lines.length) {
+        setIdeaLine("");
+        return;
+      }
+
+      const mover = fen.split(" ")[1] === "b" ? "white" : "black";
+      const top = after.lines[0] || {};
+      const features = buildMoveFeatures({
+        ply: ctx.ply ?? null,
+        moveNumber: Number(prevFen.split(" ")[5]) || null,
+        mover,
+        uci: ctx.lastUci,
+        san: ctx.lastSan,
+        fenBefore: prevFen,
+        fenAfter: fen,
+        beforeEval: { lines: before.lines },
+        afterEval: { cp: top.cp ?? null, mate: top.mate ?? null, pvUci: top.pvUci || [], pvSan: top.pvSan || [] },
+      });
+      renderCommentary(buildCommentary(features));
     } catch (_) {
       setIdeaLine("");
     }
   }
 
-  _renderIdea(snap, fen) {
-    const top = snap && snap.pvs && snap.pvs[0];
-    if (!top || !top.pv_uci || !top.pv_uci.length) {
-      setIdeaLine("");
-      return;
+  // Run (or reuse a cached) MultiPV-2 read of `fen`, White-POV, on a short budget.
+  async _eval(fen, token) {
+    if (!fen) return null;
+    const cached = this.evalCache.get(fen);
+    if (cached) return cached;
+    await this.engine.open({ fen, multipv: 2 });
+    const deadline = Date.now() + 1200;
+    let snap = this.engine.snapshot();
+    while (Date.now() < deadline) {
+      await sleep(150);
+      if (token !== this.token) return null;
+      snap = this.engine.snapshot();
+      const ready = snap && snap.pvs && snap.pvs.length && snap.pvs[0].pv_uci.length;
+      if (ready && (snap.running === false || snap.current_depth >= 14)) break;
     }
-    const bestUci = top.pv_uci[0];
-    const bestSan = (top.pv_san && top.pv_san[0]) || bestUci;
-    const sideToMove = fen.split(" ")[1] === "b" ? "black" : "white";
-    // Snapshot scores are White-POV.
-    const whiteCp =
-      top.score_cp === null || top.score_cp === undefined ? null : top.score_cp;
-    const whiteMate =
-      top.mate_in === null || top.mate_in === undefined ? null : top.mate_in;
-    this._cacheWin(fen, whiteCp, whiteMate);
-
-    // explainEngineIdea wants the score from the mover's POV; flip for Black.
-    const flip = sideToMove === "black" ? -1 : 1;
-    const idea = explainEngineIdea({
-      fen,
-      bestUci,
-      bestSan,
-      scoreCp: whiteCp === null ? null : whiteCp * flip,
-      mateIn: whiteMate === null ? null : whiteMate * flip,
-      sideToMove,
-    });
-    setIdeaLine(idea.text, idea.tone);
-
-    // Grade the move actually played, when we evaluated the prior position too.
-    this._renderVerdict(fen, bestUci);
-
-    // The arrow is the on-board idea; let the Engine window own it when open.
-    if (!engineWidget.isOpen()) setEngineBestArrow(bestUci);
-  }
-
-  // Compare the cached win % of the position before the last move to this one and
-  // grade what was played (Best / Inaccuracy / Mistake / Blunder), Game-Review style.
-  _renderVerdict(fen, bestUci) {
-    const ctx = this.ctx || {};
-    const prevFen = ctx.prevFen;
-    const winAfter = this.winCache.get(fen);
-    const winBefore = prevFen ? this.winCache.get(prevFen) : undefined;
-    if (winBefore === undefined || winAfter === undefined || !ctx.lastUci) {
-      setVerdictLine(null);
-      return;
-    }
-    // The move was played by whoever was NOT to move now; win % is White-POV.
-    const mover = fen.split(" ")[1] === "b" ? "white" : "black";
-    // `bestUci` is the engine's choice for the *current* position, not the prior
-    // one, so it can't tell us if the played move was best — only the win-% drop can.
-    const verdict = classifyMove({ winBefore, winAfter, mover, isBest: false });
-    setVerdictLine(verdict);
+    const lines = (snap.pvs || [])
+      .filter((pv) => pv.pv_uci && pv.pv_uci.length)
+      .map((pv) => ({
+        uci: pv.pv_uci[0],
+        san: (pv.pv_san && pv.pv_san[0]) || pv.pv_uci[0],
+        cp: pv.score_cp ?? null,
+        mate: pv.mate_in ?? null,
+        pvUci: pv.pv_uci.slice(),
+        pvSan: (pv.pv_san || []).slice(),
+      }));
+    if (!lines.length) return null;
+    const result = { fen, depth: snap.current_depth || 0, lines };
+    this.evalCache.set(fen, result);
+    if (this.evalCache.size > 50) this.evalCache.delete(this.evalCache.keys().next().value);
+    return result;
   }
 }
 
 const positionCoach = new PositionCoach();
 
-const IDEA_TONES = ["good", "warn", "danger", "info"];
+const IDEA_TONES = ["good", "warn", "danger", "info", "brilliant"];
+
+// Render the engine's verdict on the move just played: headline (what it did),
+// grade pill, the one teaching sentence, and supporting notes.
+function renderCommentary(c) {
+  if (!c) return;
+  const headlineEl = document.getElementById("explain-headline");
+  if (headlineEl && c.headline) headlineEl.textContent = c.headline;
+  setVerdictLine(c.verdict || null);
+  setIdeaLine(c.primary ? c.primary.text : "", c.primary ? c.primary.tone : "info");
+  const pointsEl = document.getElementById("explain-points");
+  if (pointsEl) {
+    pointsEl.innerHTML = (c.notes || []).map((n) => `<li>${escapeHtml(n)}</li>`).join("");
+  }
+}
 
 function setIdeaLine(text, tone = "info") {
   const el = document.getElementById("explain-idea");
