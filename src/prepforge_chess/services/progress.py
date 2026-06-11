@@ -108,6 +108,30 @@ def due_node_ids(
     return due
 
 
+def due_forecast(
+    root: OpeningNode,
+    color: Color,
+    progress_by_id: Dict[str, TrainingProgress],
+    *,
+    now: Optional[datetime] = None,
+    horizon_hours: int = 24,
+) -> int:
+    """Trainable nodes that are not due yet but fall due within the next
+    ``horizon_hours`` — the session-summary "X reviews land tomorrow" line."""
+    now = now or _now()
+    count = 0
+    for node in _walk(root):
+        if not _is_trainable(node, color):
+            continue
+        progress = progress_by_id.get(node.id)
+        if progress is None or progress.due_at is None:
+            continue
+        due_at = _as_utc(progress.due_at)
+        if now < due_at and (due_at - now).total_seconds() <= horizon_hours * 3600:
+            count += 1
+    return count
+
+
 @dataclass(frozen=True)
 class RepertoireHealth:
     trainable: int

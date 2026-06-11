@@ -251,6 +251,11 @@ const appState = {
   buildCurrentNodeId: null,
   trainingRepertoireId: null,
   training: null,
+  // Which trainer the Start button launches: "smart" (card queue, default) or
+  // "all_lines" (legacy whole-line rehearsal, kept for pre-game prep).
+  trainMode: "smart",
+  // Live smart-queue session state (see the Smart queue trainer section).
+  smart: null,
   // The LIVE Lichess token's username (drives latest-game fetch / replay). Null when
   // the token is absent/expired even if still signed in.
   lichessUsername: null,
@@ -1997,8 +2002,9 @@ async function loadDashboard() {
   if (dueMetric) {
     dueMetric.addEventListener("click", () => {
       switchView("train");
-      appState.trainMode = "mistakes_only";
-      const btn = document.querySelector('#train-modes .train-mode[data-mode="mistakes_only"]');
+      // The smart queue already front-loads due reviews — just preselect it.
+      appState.trainMode = "smart";
+      const btn = document.querySelector('#train-modes .train-mode[data-mode="smart"]');
       if (btn) btn.click();
       setStatus("Due review - pick a repertoire and start");
     });
@@ -2837,7 +2843,7 @@ async function editRepertoire(repertoireId) {
 async function trainRepertoire(repertoireId) {
   appState.trainingRepertoireId = repertoireId;
   switchView("train");
-  await startTraining("all_lines");
+  await startTraining();
 }
 
 function openRepertoireContextMenu(event, repertoireId, isActive) {
@@ -3872,6 +3878,10 @@ async function renameRepertoire() {
 }
 
 async function skipTrainingLine() {
+  if (appState.smart) {
+    await skipSmartCard();
+    return;
+  }
   const prompt = currentTrainingPrompt();
   if (!prompt) {
     setStatus("No active training line");
@@ -4832,8 +4842,15 @@ function renderTrainStats() {
 }
 
 async function startTraining(mode) {
-  mode = mode || appState.trainMode || "all_lines";
+  mode = mode || appState.trainMode || "smart";
   appState.trainMode = mode;
+  if (mode === "smart") {
+    await startSmartTraining();
+    return;
+  }
+  // ----- legacy line rehearsal (all_lines) below -----
+  appState.smart = null;
+  setSmartPanelsHidden();
   setStatus("Starting trainer");
   const repertoireId = selectedTrainRepertoireId();
   appState.trainingRepertoireId = repertoireId;
@@ -4882,14 +4899,7 @@ function renderTraining(payloadOrPrompt) {
   });
   const side = sideToMoveFromFen(prompt.fen_before);
   setTrainBanner("move", `${side === "white" ? "White" : "Black"} to move`, "Play your prepared move on the board");
-  const badge = document.getElementById("train-turn-badge");
-  if (badge) {
-    badge.hidden = false;
-    badge.dataset.side = side;
-    // Show the side-to-move as a real piece (king of that colour), not a bare
-    // letter. Pieces are inline SVG (see pieceSvg) — there is no PNG asset.
-    badge.innerHTML = pieceSvg(side === "white" ? "K" : "k");
-  }
+  updateTrainTurnBadge(side);
   const total = prompt.total_lines || 1;
   document.getElementById("train-line-label").textContent = `Line ${(prompt.current_index || 0) + 1} / ${total}`;
   document.getElementById("train-progress-fill").style.width =
@@ -4900,6 +4910,9 @@ function renderTraining(payloadOrPrompt) {
 }
 
 async function submitTrainingMove(playedUci) {
+  if (appState.smart) {
+    return submitSmartMove(playedUci);
+  }
   if (appState.trainReview && appState.trainReview.active) {
     return submitReviewMove(playedUci);
   }
@@ -5034,14 +5047,7 @@ async function showReviewItem() {
   boards.train.setEngineArrow(null);
   boards.train.setPosition({ fen: item.fen, legalMoves: info.legal_moves || [], lastMove: null });
   const side = sideToMoveFromFen(item.fen);
-  const badge = document.getElementById("train-turn-badge");
-  if (badge) {
-    badge.hidden = false;
-    badge.dataset.side = side;
-    // Show the side-to-move as a real piece (king of that colour), not a bare
-    // letter. Pieces are inline SVG (see pieceSvg) — there is no PNG asset.
-    badge.innerHTML = pieceSvg(side === "white" ? "K" : "k");
-  }
+  updateTrainTurnBadge(side);
   setTrainBanner("review", `Recovery - ${review.index + 1} / ${review.queue.length}`, `${side === "white" ? "White" : "Black"} to move - the one you missed`);
   document.getElementById("train-board-label").textContent = "Recovery round - get it right to recover your streak";
 }
@@ -5130,6 +5136,10 @@ function celebrate() {
 // Progressive hint: idea, piece, full answer (with arrow). Each click reveals
 // one more level, so it teaches rather than just spoiling the move.
 async function trainHint() {
+  if (appState.smart) {
+    smartHint();
+    return;
+  }
   const prompt = currentTrainingPrompt();
   if (!prompt) {
     setStatus("Start a session first");
@@ -5161,6 +5171,439 @@ async function trainHint() {
 
 function currentTrainingPrompt() {
   return appState.training ? appState.training.prompt : null;
+}
+
+function updateTrainTurnBadge(side) {
+  const badge = document.getElementById("train-turn-badge");
+  if (!badge) return;
+  badge.hidden = false;
+  badge.dataset.side = side;
+  // Show the side-to-move as a real piece (king of that colour), not a bare
+  // letter. Pieces are inline SVG (see pieceSvg) — there is no PNG asset.
+  badge.innerHTML = pieceSvg(side === "white" ? "K" : "k");
+}
+
+// ===== Smart queue trainer (Train v2) ========================================
+//
+// Card-based scheduler client over /api/train/smart/*. The flow per card:
+// run-in animation (the approach plays itself, the opponent's last move is the
+// recall cue) → prompt. New cards are taught first (arrow + idea, play it
+// once); everything else is tested cold. Failure is two-stage: first miss
+// auto-hints and lets the player retry (attempt 2, ungraded server-side),
+// second miss reveals the answer and the card returns a few positions later.
+// Only attempt 1 is graded, so the accuracy chips match the server's
+// spaced-repetition writes.
+
+const SMART_KIND_LABELS = {
+  weak: "Weak spot",
+  due: "Due review",
+  new: "New move",
+  polish: "Polish",
+};
+
+function setSmartPanelsHidden() {
+  const queue = document.getElementById("train-queue");
+  if (queue) queue.hidden = true;
+  const summary = document.getElementById("train-summary");
+  if (summary) summary.hidden = true;
+  const dots = document.getElementById("train-card-dots");
+  if (dots) dots.innerHTML = "";
+}
+
+async function startSmartTraining() {
+  setStatus("Building your queue");
+  const repertoireId = selectedTrainRepertoireId();
+  appState.trainingRepertoireId = repertoireId;
+  if (!repertoireId) {
+    setStatus("Create a repertoire in Build first, then train it.");
+    setTrainBanner("done", "No repertoire to train", "Build a repertoire, then start the trainer.");
+    return;
+  }
+  let payload;
+  try {
+    payload = await postJson("/api/train/smart/start", { repertoire_id: repertoireId });
+  } catch (error) {
+    setStatus(error.message);
+    setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Build, then train.");
+    return;
+  }
+  trainStatsReset();
+  appState.training = null; // leave legacy mode if it was active
+  // A restart can interrupt an in-flight run-in; its early-return leaves the
+  // busy flag set, so clear it before the new session takes the board.
+  appState.trainBusy = false;
+  appState.smart = {
+    sessionId: payload.session_id,
+    repertoireId: payload.repertoire_id,
+    repertoireName: payload.repertoire_name,
+    color: payload.color,
+    totalCards: payload.total_cards,
+    counts: { ...payload.counts },
+    healthBefore: payload.health || null,
+    prompt: null,
+    attempt: 1,
+    cardsDone: 0,
+    retriesFixed: 0,
+  };
+  if (boards.train && payload.color) {
+    boards.train.setOrientation(payload.color === "black" ? "black" : "white");
+  }
+  document.getElementById("train-progress-panel").hidden = false;
+  setSmartPanelsHidden();
+  renderSmartQueueStrip();
+  renderTrainStats();
+  document.getElementById("train-board-label").textContent =
+    `${payload.repertoire_name} - you play ${payload.color}`;
+  const resumed = payload.card_index > 0 ? " (resumed)" : "";
+  setStatus(`Queue ready: ${payload.total_cards} cards${resumed}`);
+  await presentSmartPrompt(payload.prompt);
+}
+
+// The queue composition strip: one proportional segment + legend chip per kind.
+function renderSmartQueueStrip() {
+  const smart = appState.smart;
+  const wrap = document.getElementById("train-queue");
+  if (!wrap) return;
+  const counts = smart && smart.counts;
+  const kinds = ["weak", "due", "new", "polish"].filter((k) => counts && counts[k] > 0);
+  if (!kinds.length) {
+    wrap.hidden = true;
+    return;
+  }
+  wrap.hidden = false;
+  document.getElementById("train-queue-bar").innerHTML = kinds
+    .map((k) => `<span class="tq-seg tq-${k}" style="flex:${counts[k]}"></span>`)
+    .join("");
+  document.getElementById("train-queue-legend").innerHTML = kinds
+    .map((k) => `<span class="tq-chip tq-${k}">${counts[k]} ${k}</span>`)
+    .join("");
+}
+
+function renderSmartProgress(prompt) {
+  const total = Math.max(1, prompt.total_cards);
+  document.getElementById("train-line-label").textContent =
+    `Card ${Math.min(prompt.card_index + 1, total)} / ${total} · ${SMART_KIND_LABELS[prompt.kind] || prompt.kind}`;
+  document.getElementById("train-progress-fill").style.width =
+    `${Math.round((prompt.card_index / total) * 100)}%`;
+  // Multi-target cards get one dot per own move so "where am I in this card"
+  // is visible at a glance; single-target cards need no dots.
+  const dots = document.getElementById("train-card-dots");
+  if (dots) {
+    dots.innerHTML =
+      prompt.targets_total > 1
+        ? Array.from({ length: prompt.targets_total }, (_, i) => {
+            const cls = i < prompt.target_index ? "done" : i === prompt.target_index ? "now" : "";
+            return `<span class="card-dot ${cls}"></span>`;
+          }).join("")
+        : "";
+  }
+}
+
+// Show one card prompt: animate the run-in (unless the board is already on the
+// position, i.e. mid-card right after the opponent's reply), then open the
+// board for the answer — teach-first when the card is new.
+async function presentSmartPrompt(prompt) {
+  const smart = appState.smart;
+  if (!smart || !prompt) return;
+  smart.prompt = prompt;
+  smart.attempt = 1;
+  appState.trainHintLevel = 0;
+  renderSmartProgress(prompt);
+  const board = boards.train;
+  board.setEngineArrow(null);
+  let cueUci = board.lastMove || null;
+  if (board.fen !== prompt.fen_before) {
+    appState.trainBusy = true;
+    const runIn = prompt.run_in || [];
+    if (runIn.length) {
+      let fen = prompt.start_fen;
+      board.setPosition({ fen, legalMoves: [], lastMove: null });
+      setTrainBanner("runin", "Finding the position…", runIn.map((m) => m.san).join(" "));
+      await sleep(480);
+      for (const mv of runIn) {
+        if (appState.smart !== smart || smart.prompt !== prompt) return; // superseded
+        try {
+          const after = await boardAfterMove(fen, mv.uci);
+          fen = after.board.fen;
+          board.setPosition({ fen, legalMoves: [], lastMove: mv.uci });
+          cueUci = mv.uci;
+        } catch (_) {
+          break; // jump-cut to fen_before below
+        }
+        await sleep(430);
+      }
+      await sleep(160);
+    }
+    if (appState.smart !== smart || smart.prompt !== prompt) return;
+    appState.trainBusy = false;
+  }
+  board.setPosition({
+    fen: prompt.fen_before,
+    legalMoves: prompt.legal_moves || [],
+    lastMove: cueUci,
+  });
+  const side = sideToMoveFromFen(prompt.fen_before);
+  updateTrainTurnBadge(side);
+  if (prompt.kind === "new") {
+    // Teach-then-test: show the move and its idea; playing it (graded) is the
+    // first, easy rep — the real test comes when spaced repetition brings it back.
+    setTrainBanner(
+      "teach",
+      `New move: ${prompt.expected_san}`,
+      prompt.hint.strategy || "Watch the arrow, then play the move."
+    );
+    board.setEngineArrow(prompt.expected_uci);
+  } else {
+    setTrainBanner(
+      "move",
+      `${side === "white" ? "White" : "Black"} to move`,
+      `${SMART_KIND_LABELS[prompt.kind] || "Review"} - play your prepared move`
+    );
+  }
+}
+
+async function submitSmartMove(playedUci) {
+  const smart = appState.smart;
+  if (!smart || !smart.prompt || !playedUci || appState.trainBusy) return;
+  const prompt = smart.prompt;
+  const attempt = smart.attempt;
+  let result;
+  try {
+    result = await postJson("/api/train/smart/move", {
+      session_id: smart.sessionId,
+      played_uci: playedUci,
+      attempt,
+    });
+  } catch (error) {
+    setStatus(error.message);
+    return;
+  }
+  const stats = appState.trainStats || (trainStatsReset(), appState.trainStats);
+  smart.totalCards = result.total_cards;
+
+  if (!result.correct) {
+    // Only the first answer is graded (matches the server's SR write); the
+    // accuracy chips therefore never count retries.
+    if (attempt === 1) {
+      stats.mistakes += 1;
+      stats.history.push(false);
+      renderTrainStats();
+    }
+    appState.trainBusy = true;
+    try {
+      const after = await boardAfterMove(prompt.fen_before, playedUci);
+      boards.train.setPosition({
+        fen: after.board.fen,
+        legalMoves: [],
+        lastMove: playedUci,
+      });
+    } catch (_) {
+      // Wrong-move preview is cosmetic; grading already happened server-side.
+    }
+    playSound("capture");
+    if (attempt === 1) {
+      // First miss: auto-hint and a free retry, streak intact, no reveal.
+      setTrainBanner(
+        "wrong",
+        "Not that one - try again",
+        prompt.hint.strategy || prompt.hint.piece || "Think about the idea behind the line."
+      );
+    } else {
+      // Second miss: reveal, let the answer be played, and the card returns
+      // a few positions later (replaces the old end-of-session recovery round).
+      stats.streak = 0;
+      renderTrainStats();
+      if (result.requeued) {
+        smart.counts[prompt.kind] = (smart.counts[prompt.kind] || 0) + 1;
+        renderSmartQueueStrip();
+      }
+      setTrainBanner(
+        "reveal",
+        `It's ${result.expected_san}`,
+        result.requeued ? "Play it to continue - this card comes back in a few cards." : "Play it to continue."
+      );
+    }
+    await sleep(950);
+    if (appState.smart !== smart || smart.prompt !== prompt) return;
+    boards.train.setPosition({
+      fen: prompt.fen_before,
+      legalMoves: prompt.legal_moves || [],
+      lastMove: null,
+    });
+    if (attempt >= 2) boards.train.setEngineArrow(result.expected_uci);
+    appState.trainBusy = false;
+    smart.attempt = attempt + 1;
+    return;
+  }
+
+  if (attempt === 1) {
+    stats.correct += 1;
+    stats.streak += 1;
+    stats.best = Math.max(stats.best, stats.streak);
+    stats.history.push(true);
+  } else {
+    smart.retriesFixed += 1;
+  }
+  renderTrainStats();
+  appState.trainBusy = true;
+  boards.train.setEngineArrow(null);
+
+  // 1) Land the player's move, 2) after a beat the opponent replies, 3) flow
+  // straight into the next prompt (same-card prompts skip the run-in because
+  // the board is already on the position).
+  boards.train.setPosition({
+    fen: result.fen_after_player || prompt.fen_before,
+    legalMoves: [],
+    lastMove: result.played_uci,
+  });
+  const praise =
+    attempt > 1 ? "Got it this time" : prompt.kind === "new" ? "Learned!" : "Correct!";
+  setTrainBanner("correct", praise, result.played_san ? `You played ${result.played_san}` : "");
+  if (result.reply_uci && result.fen_after_reply) {
+    await sleep(520);
+    boards.train.setPosition({
+      fen: result.fen_after_reply,
+      legalMoves: [],
+      lastMove: result.reply_uci,
+    });
+    setTrainBanner("move", "Opponent replies", result.reply_san || "");
+    await sleep(440);
+  } else {
+    await sleep(480);
+  }
+  if (appState.smart !== smart) return;
+  if (result.card_completed) smart.cardsDone += 1;
+  appState.trainBusy = false;
+  if (result.prompt) {
+    await presentSmartPrompt(result.prompt);
+  } else {
+    await finishSmartSession();
+  }
+}
+
+async function skipSmartCard() {
+  const smart = appState.smart;
+  if (!smart || !smart.prompt) {
+    setStatus("No active card");
+    return;
+  }
+  if (appState.trainBusy) return;
+  try {
+    const result = await postJson("/api/train/smart/skip", { session_id: smart.sessionId });
+    if (result.prompt) {
+      setStatus("Skipped to the next card");
+      await presentSmartPrompt(result.prompt);
+    } else {
+      setStatus("Session complete");
+      await finishSmartSession();
+    }
+  } catch (error) {
+    setStatus(error.message);
+  }
+}
+
+// Progressive hint, fully local — the prompt already carries the idea, the
+// piece, and the answer (it's the player's own repertoire, not a quiz).
+function smartHint() {
+  const smart = appState.smart;
+  const prompt = smart && smart.prompt;
+  if (!prompt) {
+    setStatus("Start a session first");
+    return;
+  }
+  appState.trainHintLevel = Math.min(3, (appState.trainHintLevel || 0) + 1);
+  const level = appState.trainHintLevel;
+  if (level === 1) {
+    boards.train.setEngineArrow(null);
+    setTrainBanner("move", "Hint 1 · Idea", prompt.hint.strategy || "Follow your preparation");
+  } else if (level === 2) {
+    boards.train.setEngineArrow(null);
+    setTrainBanner("move", "Hint 2 · Piece", prompt.hint.piece || "Find the move");
+  } else {
+    setTrainBanner("move", "Hint 3 · Answer", `Play ${prompt.expected_san}`);
+    boards.train.setEngineArrow(prompt.expected_uci);
+  }
+}
+
+async function finishSmartSession() {
+  const smart = appState.smart;
+  if (!smart) return;
+  const stats = appState.trainStats || {};
+  smart.prompt = null;
+  boards.train.setEngineArrow(null);
+  document.getElementById("train-progress-fill").style.width = "100%";
+  const dots = document.getElementById("train-card-dots");
+  if (dots) dots.innerHTML = "";
+  const fixed = smart.retriesFixed ? ` - ${smart.retriesFixed} fixed on retry` : "";
+  setTrainBanner(
+    "done",
+    "Session complete!",
+    `${stats.correct || 0} first-try correct - ${stats.mistakes || 0} missed${fixed}`
+  );
+  document.getElementById("train-board-label").textContent = "Press Start for a fresh queue";
+  celebrate();
+  // End-of-session report: what this session changed, and what lands tomorrow.
+  let after = null;
+  try {
+    after = await api(
+      `/api/train/smart/summary?repertoire_id=${encodeURIComponent(smart.repertoireId)}`
+    );
+  } catch (_) {
+    // The summary is a bonus — never block the finish on it.
+  }
+  renderSmartSummary(smart, stats, after);
+}
+
+function renderSmartSummary(smart, stats, after) {
+  const panel = document.getElementById("train-summary");
+  if (!panel) return;
+  const queue = document.getElementById("train-queue");
+  if (queue) queue.hidden = true; // the summary replaces the composition strip
+  const firstTries = (stats.correct || 0) + (stats.mistakes || 0);
+  const acc = firstTries ? Math.round(((stats.correct || 0) / firstTries) * 100) : 100;
+  document.getElementById("train-summary-stats").innerHTML = [
+    [smart.cardsDone, "cards"],
+    [`${acc}%`, "first try"],
+    [stats.best || 0, "best streak"],
+  ]
+    .map(
+      ([value, label]) =>
+        `<div class="tsum-stat"><span class="tsum-value">${value}</span><span class="tsum-label">${label}</span></div>`
+    )
+    .join("");
+  const deltaEl = document.getElementById("train-summary-delta");
+  const footEl = document.getElementById("train-summary-foot");
+  const before = smart.healthBefore;
+  if (before && after && after.health) {
+    // goodDir: which direction is good news for this row (+1 = growing is
+    // good, -1 = shrinking is good, 0 = neutral churn).
+    deltaEl.innerHTML = [
+      ["mastered", "Mastered", "good", 1],
+      ["learning", "Learning", "", 0],
+      ["due", "Due", "warn", -1],
+      ["weak", "Weak", "bad", -1],
+      ["untrained", "New", "", -1],
+    ]
+      .map(([key, label, cls, goodDir]) => {
+        const now = after.health[key] || 0;
+        const diff = now - (before[key] || 0);
+        const tone = diff * goodDir > 0 ? "up" : diff * goodDir < 0 ? "down" : "";
+        const delta =
+          diff === 0
+            ? ""
+            : `<span class="tsum-delta ${tone}">${diff > 0 ? "+" : ""}${diff}</span>`;
+        return `<div class="tsum-row ${cls}"><span>${label}</span><span class="tsum-num">${now}${delta}</span></div>`;
+      })
+      .join("");
+    footEl.textContent =
+      after.due_tomorrow > 0
+        ? `${after.due_tomorrow} review${after.due_tomorrow === 1 ? "" : "s"} due tomorrow - come back!`
+        : "Nothing due tomorrow - the queue is clear.";
+  } else {
+    deltaEl.innerHTML = "";
+    footEl.textContent = "";
+  }
+  panel.hidden = false;
 }
 
 async function loadSettings() {

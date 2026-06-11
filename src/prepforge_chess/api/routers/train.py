@@ -24,7 +24,8 @@ from pydantic import BaseModel
 from prepforge_chess.api.deps import current_owner, get_repository
 from prepforge_chess.api.routers.workspace import _owned_repertoire
 from prepforge_chess.core.chess_core import ChessCore
-from prepforge_chess.core.models import TrainingMode, TrainingSession
+from prepforge_chess.core.models import Repertoire, TrainingMode, TrainingSession
+from prepforge_chess.services.progress import compute_health, due_forecast
 from prepforge_chess.services.training import TrainingService
 from prepforge_chess.services.training_smart import SmartTrainingService
 from prepforge_chess.services.training_view import (
@@ -142,6 +143,25 @@ def _clamp(value: int | None, low: int, high: int) -> int | None:
     return None if value is None else max(low, min(high, value))
 
 
+def _smart_summary_payload(
+    repo: PrepForgeRepository, repertoire: Repertoire
+) -> dict[str, Any]:
+    """Repertoire health + tomorrow's due forecast — the smart session's
+    bookends. Shipped with ``/smart/start`` (the before snapshot) and from
+    ``/smart/summary`` (the after, for the end-of-session mastery delta)."""
+    progress_by_id = {
+        p.node_id: p for p in repo.list_training_progress(repertoire.id)
+    }
+    return {
+        "health": compute_health(
+            repertoire.root_node, repertoire.color, progress_by_id
+        ).to_dict(),
+        "due_tomorrow": due_forecast(
+            repertoire.root_node, repertoire.color, progress_by_id
+        ),
+    }
+
+
 @router.post("/smart/start")
 def smart_start(
     body: SmartStartBody,
@@ -182,7 +202,24 @@ def smart_start(
         "card_index": session.current_index,
         "counts": service.counts(session),
         "prompt": smart_prompt_to_json(prompt, _CHESS),
+        # Pre-session health snapshot: the client diffs it against
+        # /smart/summary at the end to show what the session changed.
+        **_smart_summary_payload(repo, repertoire),
     }
+
+
+@router.get("/smart/summary")
+def smart_summary(
+    repertoire_id: str,
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+) -> dict[str, Any]:
+    """Fresh health + tomorrow's due forecast for the end-of-session screen."""
+    _owned_repertoire(repo, repertoire_id, owner)
+    repertoire = repo.load_repertoire(repertoire_id)
+    if repertoire is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
+    return _smart_summary_payload(repo, repertoire)
 
 
 @router.post("/smart/move")

@@ -155,7 +155,7 @@
             <div class="board-bar">
               <button class="ib" id="train-flip" title="Flip board" aria-label="Flip board">⇅</button>
               <button class="ib" id="train-hint" title="Hint (show the piece to move)" aria-label="Show hint">💡</button>
-              <button class="ib" id="train-skip" title="Skip this line" aria-label="Skip this line">⏭</button>
+              <button class="ib" id="train-skip" title="Skip this card" aria-label="Skip this card">⏭</button>
               <span class="sep"></span>
               <span class="board-label" id="train-board-label">Pick a repertoire and start</span>
             </div>
@@ -166,16 +166,20 @@
               <label class="train-picker-label" for="train-repertoire-select">Repertoire</label>
               <select id="train-repertoire-select" data-testid="train-repertoire-select"></select>
               <div class="train-modes" id="train-modes" role="group" aria-label="Training mode">
-                <button type="button" class="train-mode is-active" data-mode="all_lines">All lines</button>
-                <button type="button" class="train-mode" data-mode="high_priority">Weak lines</button>
-                <button type="button" class="train-mode" data-mode="mistakes_only">Due review</button>
+                <button type="button" class="train-mode is-active" data-mode="smart">Smart queue</button>
+                <button type="button" class="train-mode" data-mode="all_lines">Line rehearsal</button>
               </div>
               <button class="btn primary train-start" id="start-train" data-testid="start-train">Start training</button>
             </div>
 
             <div class="train-progress-panel" id="train-progress-panel" hidden>
+              <div class="train-queue" id="train-queue" hidden>
+                <div class="train-queue-bar" id="train-queue-bar" role="img" aria-label="Queue composition"></div>
+                <div class="train-queue-legend" id="train-queue-legend"></div>
+              </div>
               <div class="train-progress-head">
-                <span id="train-line-label">Line 1 / 1</span>
+                <span id="train-line-label">Card 1 / 1</span>
+                <span class="train-card-dots" id="train-card-dots" title="Moves in this card"></span>
                 <span class="train-accuracy" id="train-accuracy">100%</span>
               </div>
               <div class="train-progress-track">
@@ -195,10 +199,17 @@
                   <span class="ts-label">Mistakes</span>
                 </div>
               </div>
-              <div class="train-line-trail-label">This line</div>
+              <div class="train-line-trail-label">This session</div>
               <div class="train-line-trail" id="train-line-trail">
                 <span class="trail-empty">No moves yet</span>
               </div>
+            </div>
+
+            <div class="train-summary" id="train-summary" hidden data-testid="train-summary">
+              <div class="train-summary-title" id="train-summary-title">Session complete</div>
+              <div class="train-summary-stats" id="train-summary-stats"></div>
+              <div class="train-summary-delta" id="train-summary-delta"></div>
+              <div class="train-summary-foot" id="train-summary-foot"></div>
             </div>
 
             <!-- legacy hooks kept for app.js compatibility; hidden -->

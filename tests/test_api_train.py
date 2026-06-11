@@ -249,6 +249,45 @@ def test_smart_retry_attempt_is_not_graded(client):
     assert third["correct"] is True and third["sr_written"] is False
 
 
+def test_smart_start_ships_health_snapshot(client):
+    """The start payload carries the pre-session health + tomorrow forecast so
+    the client can diff them against /smart/summary at the end."""
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    body = _smart_start(client, rep, seed=5).json()
+    assert body["health"]["trainable"] == 1
+    assert body["health"]["untrained"] == 1
+    assert body["due_tomorrow"] == 0
+
+
+def test_smart_summary_reflects_graded_session(client):
+    """After a graded correct answer the node leaves "untrained" and its next
+    review (one day out) shows up in the tomorrow forecast."""
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    session_id = _smart_start(client, rep, seed=5).json()["session_id"]
+    client.post(
+        "/api/train/smart/move",
+        json={"session_id": session_id, "played_uci": "e2e4"},
+        headers=csrf_headers(client),
+    )
+    r = client.get(f"/api/train/smart/summary?repertoire_id={rep}")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["health"]["untrained"] == 0
+    assert body["health"]["learning"] == 1
+    assert body["due_tomorrow"] == 1
+
+
+def test_smart_summary_requires_auth(client):
+    assert client.get("/api/train/smart/summary?repertoire_id=x").status_code == 401
+
+
+def test_smart_summary_foreign_repertoire_is_404(client):
+    _register(client, "a@example.com")
+    assert client.get("/api/train/smart/summary?repertoire_id=nope").status_code == 404
+
+
 def test_smart_skip_advances_past_the_card(client):
     _register(client, "a@example.com")
     rep = _white_repertoire_with_e4(client)
