@@ -21,6 +21,7 @@ import {
   buildPredictions,
   makeHumanProbabilityLookup,
   winChanceAfter,
+  wdlCurrent,
 } from "./maia3-inference.js";
 import { loadVerifiedWeights } from "./maia3-weights-loader.js";
 
@@ -116,6 +117,20 @@ async function predictions({ fen, rating }) {
   return buildPredictions(out.logits_move.data, fen);
 }
 
+// positionRead(): one forward → BOTH the human-move distribution and the position's WDL
+// (side-to-move POV). The coach uses the policy for "obvious vs spread" and the WDL for
+// phase-relative sharpness; reading both off the SAME forward keeps it to one inference.
+// { predictions: [...], wdl: { win, draw, loss } } | null (malformed FEN).
+async function positionRead({ fen, rating }) {
+  if (!isValidFen(fen)) return null;
+  const elo = rating || defaultRating;
+  const out = await session.run(feeds(tokensFromFen(fen), 1, [elo], [elo]));
+  return {
+    predictions: buildPredictions(out.logits_move.data, fen),
+    wdl: wdlCurrent(out.logits_value.data),
+  };
+}
+
 // moveAssessment(): { humanProbability, winChanceAfter } or null when the FEN is
 // malformed or the move is unparseable/illegal (no forward pass in that case).
 async function moveAssessment({ fen, moveUci, rating }) {
@@ -176,7 +191,7 @@ async function moveAssessmentBatch({ fen, moves, rating }) {
   return results;
 }
 
-const HANDLERS = { init, predictions, moveAssessment, moveAssessmentBatch };
+const HANDLERS = { init, predictions, positionRead, moveAssessment, moveAssessmentBatch };
 
 self.onmessage = async (ev) => {
   const { id, type } = ev.data || {};

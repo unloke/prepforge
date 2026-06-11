@@ -14,17 +14,6 @@ export const PIECE_NAME = {
   q: "queen",
   k: "king",
 };
-const PLURAL = {
-  pawn: "pawns",
-  knight: "knights",
-  bishop: "bishops",
-  rook: "rooks",
-  queen: "queens",
-};
-
-// A full starting army, used to derive "what has each side captured" from a FEN.
-const FULL_ARMY = { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 };
-
 export function countPieces(chess) {
   const out = { w: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 }, b: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 } };
   for (const row of chess.board()) {
@@ -52,22 +41,6 @@ export function perPieceDiff(chess) {
   const out = {};
   for (const t of ["p", "n", "b", "r", "q"]) out[t] = c.w[t] - c.b[t];
   return out;
-}
-
-// Pieces each side has captured, inferred from what's missing vs a full army.
-// captured-by-White = Black's missing men, and vice-versa. Approximate under heavy
-// promotion, but accurate for the trade-counting the coach actually narrates.
-export function capturedLists(chess) {
-  const c = countPieces(chess);
-  const byWhite = {}; // black pieces White removed
-  const byBlack = {};
-  for (const t of ["p", "n", "b", "r", "q"]) {
-    const missingBlack = Math.max(0, FULL_ARMY[t] - c.b[t]);
-    const missingWhite = Math.max(0, FULL_ARMY[t] - c.w[t]);
-    if (missingBlack) byWhite[t] = missingBlack;
-    if (missingWhite) byBlack[t] = missingWhite;
-  }
-  return { byWhite, byBlack };
 }
 
 export function advantageSide(balance) {
@@ -143,18 +116,6 @@ export function materialPhrase(balance) {
   return "decisive material";
 }
 
-// Name a single captured piece type with the right article/plural.
-export function pieceListPhrase(list) {
-  const parts = [];
-  for (const t of ["q", "r", "b", "n", "p"]) {
-    const n = list[t];
-    if (!n) continue;
-    const name = PIECE_NAME[t];
-    parts.push(n === 1 ? `a ${name}` : `${n} ${PLURAL[name] || name + "s"}`);
-  }
-  return parts.join(", ");
-}
-
 // Replay a line of UCI moves from `fenStart` and report the material story: where it
 // ends, the running trade tally, and whether it dries up into a dead draw. Capped so
 // a noisy PV tail can't run away. Both the played line and the engine line are walked
@@ -227,9 +188,47 @@ export function walkLine(fenStart, uciMoves, cap = 12) {
   };
 }
 
-// Rough game phase from the non-pawn material left on the board (and the move number
-// for the opening cutoff). Drives tone ("in the opening, develop" vs "in the endgame,
-// the extra pawn tells").
+// Game phase, ported from lichess/scalachess `Divider` so it matches the phase labels our
+// sharpness thresholds were calibrated against (scripts/maia3_sharpness_probe.py). The
+// move number is NOT used — phase is read purely from the board, which is what makes a
+// transposition or an early queen trade land in the right phase. Drives tone (opening:
+// develop / endgame: the extra pawn tells) AND the phase-relative sharpness band.
+//
+//   endgame   when majors+minors <= 6
+//   middlegame when majors+minors <= 10, OR a back rank is sparse, OR mixedness > 150
+//   opening   otherwise
+// "majors and minors" = every piece that isn't a king or a pawn. "back rank sparse" =
+// fewer than 4 pieces left on White's first / Black's last rank (development has begun).
+// "mixedness" sums a small lookup over every 2x2 window: it rises as the two armies
+// interpenetrate (the hallmark of a middlegame) and stays low while the camps are apart.
+const MIXEDNESS_SCORE = {
+  "0,0": 0, "1,0": 1, "2,0": 2, "3,0": 3, "4,0": 3,
+  "0,1": 1, "1,1": 5, "2,1": 4, "3,1": 3,
+  "0,2": 2, "1,2": 4, "2,2": 7,
+  "0,3": 3, "1,3": 3,
+  "0,4": 3,
+};
+
+// board[r][f]: r=0 is rank 8 .. r=7 is rank 1; f=0 is file a. Square (file x, 0-indexed
+// rank y from the bottom) is board[7 - y][x].
+function mixedness(board) {
+  let total = 0;
+  for (let y = 0; y <= 6; y++) {
+    for (let x = 0; x <= 6; x++) {
+      let w = 0;
+      let b = 0;
+      for (let dy = 0; dy <= 1; dy++) {
+        for (let dx = 0; dx <= 1; dx++) {
+          const piece = board[7 - (y + dy)][x + dx];
+          if (piece) (piece.color === "w" ? (w += 1) : (b += 1));
+        }
+      }
+      total += MIXEDNESS_SCORE[`${w},${b}`] || 0;
+    }
+  }
+  return total;
+}
+
 export function gamePhase(fen) {
   let chess;
   try {
@@ -237,11 +236,21 @@ export function gamePhase(fen) {
   } catch (_) {
     return "middlegame";
   }
-  const c = countPieces(chess);
-  let nonPawn = 0;
-  for (const t of ["n", "b", "r", "q"]) nonPawn += (c.w[t] + c.b[t]) * PIECE_VALUE[t];
-  const fullmove = Number(fen.split(" ")[5]) || 1;
-  if (nonPawn <= 14) return "endgame"; // ~ a rook + minor per side or less
-  if (fullmove <= 10) return "opening";
-  return "middlegame";
+  const board = chess.board();
+  let majorsMinors = 0;
+  let whiteOnFirst = 0; // White pieces still on rank 1
+  let blackOnLast = 0; // Black pieces still on rank 8
+  for (let r = 0; r < 8; r++) {
+    for (let f = 0; f < 8; f++) {
+      const piece = board[r][f];
+      if (!piece) continue;
+      if (piece.type !== "k" && piece.type !== "p") majorsMinors += 1;
+      if (r === 7 && piece.color === "w") whiteOnFirst += 1;
+      if (r === 0 && piece.color === "b") blackOnLast += 1;
+    }
+  }
+  if (majorsMinors <= 6) return "endgame";
+  const backrankSparse = whiteOnFirst < 4 || blackOnLast < 4;
+  if (majorsMinors <= 10 || backrankSparse || mixedness(board) > 150) return "middlegame";
+  return "opening";
 }

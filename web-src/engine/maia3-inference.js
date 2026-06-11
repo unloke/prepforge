@@ -120,3 +120,14 @@ export function winChanceAfter(valueLogits) {
   const [, permDraw, permLoss] = probabilitiesToPermille([pWin, pDraw, pLoss]);
   return (permLoss + 0.5 * permDraw) / 1000;
 }
+
+// WDL (permille, summing to 1000) for the CURRENT position, from the SIDE-TO-MOVE's
+// perspective. Unlike winChanceAfter there is NO inversion: the value logits are already
+// the to-move player's, and the to-move player IS the mover whose position we're reading.
+// valueLogits is [loss, draw, win] (the same head winChanceAfter consumes). Used to read
+// position "sharpness" from the draw/decisiveness split — see coach/intuition.js.
+export function wdlCurrent(valueLogits) {
+  const [pLoss, pDraw, pWin] = softmax3(valueLogits);
+  const [permLoss, permDraw, permWin] = probabilitiesToPermille([pLoss, pDraw, pWin]);
+  return { win: permWin, draw: permDraw, loss: permLoss };
+}

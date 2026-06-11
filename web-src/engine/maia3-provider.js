@@ -181,6 +181,14 @@ class Maia3Provider {
     return this._request("predictions", { fen, rating: rating ?? this._defaultRating });
   }
 
+  // positionRead({ fen, historyFens?, rating }) → { predictions, wdl } from ONE forward
+  // (policy + value). null for a malformed FEN. historyFens accepted but ignored.
+  async positionRead({ fen, historyFens, rating } = {}) {
+    void historyFens;
+    await this._ensureReady();
+    return this._request("positionRead", { fen, rating: rating ?? this._defaultRating });
+  }
+
   // moveAssessment({ fen, moveUci, historyFens?, rating }) →
   // { humanProbability, winChanceAfter } | null (malformed FEN or illegal move).
   async moveAssessment({ fen, moveUci, historyFens, rating } = {}) {

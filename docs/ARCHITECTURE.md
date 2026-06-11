@@ -10,9 +10,63 @@ PrepForge Chess is one local-first application with three workspaces:
 
 The central design rule is that every module shares the same chess core, data model, engine adapters, and storage layer. UI modules display state and trigger commands; they do not own chess rules or engine logic.
 
-## 2. Recommended Technical Architecture
+## 1a. Current Architecture (as built, SaaS)
 
-Phase 1 in this repo starts with a Python core because the current environment has Python and git available, while Node/npm are not usable. The architecture still allows a future React/Electron, Qt, or web UI.
+> This section describes what is actually deployed today. Section 2 onward is the
+> original pre-implementation design document — the conceptual service boundaries it
+> describes still hold, but two things changed during implementation (full migration
+> history in `docs/ROADMAP.md`):
+> - **Stockfish and Maia3 run in the browser** (WASM / ONNX), not as a server-side
+>   `EngineService`/`MaiaService`. The server never computes chess.
+> - **Storage is SQLAlchemy Core on Postgres in production** (SQLite for dev/tests),
+>   not raw SQLite, with Alembic migrations as the live drift guard.
+
+PrepForge Chess is a multi-tenant FastAPI + Postgres SaaS, live on Render, with the
+chess engines running client-side:
+
+- **Backend** (`src/prepforge_chess/api/`): FastAPI app — `main.py` wires routers
+  (`routers/auth.py`, `google_auth.py`, `lichess.py`, `workspace.py`, `analyze.py`,
+  `train.py`, `settings.py`, `billing.py`, `teams.py`, `legal.py`), session-cookie auth
+  + CSRF (`security.py`, `middleware.py`), and `static.py` serves the built SPA with the
+  cross-origin-isolation headers (COOP/COEP/CORP) the browser engines need for
+  `SharedArrayBuffer`.
+- **Domain services** (`src/prepforge_chess/services/`): pure data/business logic, no
+  engine calls — `opening_builder.py` (repertoire tree CRUD/generation-plan apply),
+  `training.py` (SRS trainer), `analysis.py` / `analysis_view.py` / `brilliant.py`
+  (classification + Brilliant detection over evals the browser already computed),
+  `replay_engine.py` / `replay_maia.py` (replay browser-submitted evals server-side for
+  persistence), `lichess_oauth.py` / `lichess_fetch.py`, `app_settings.py` (per-owner
+  settings), `repertoire_export.py`.
+- **Storage** (`src/prepforge_chess/storage/`): `sa_tables.py` defines the full schema
+  (identity + the 19 legacy domain tables) as SQLAlchemy Core on one `Base.metadata`;
+  Postgres in prod (`DATABASE_URL`, auto-pinned to `postgresql+psycopg://`), SQLite for
+  dev/tests. `migrations/` (Alembic) is the live drift guard (`alembic check`);
+  `schema.sql` is a static reference with no runtime reader.
+- **Frontend SPA** (`web-src/`): `app.js` is the shell for the three workspaces
+  (Analyze/Build/Train) plus auth/billing/teams UI; `csrf.js` handles CSRF token
+  bootstrap; `chess-local.js` does client-side legality (chess.js) so the board never
+  needs a server round-trip.
+- **Browser engines** (`web-src/engine/`): `stockfish-provider.js` (Stockfish WASM) and
+  `maia3-provider.js` / `maia3-inference.js` / `maia3-tokenizer.js` /
+  `maia3-weights-loader.js` (Maia3 ONNX via onnxruntime-web, weights cached via
+  `maia3-weight-cache.js`) run all analysis/generation client-side; `game-analyzer.js`
+  and `build-generator.js` / `build-generate-runner.js` orchestrate full-game analysis
+  and opening-tree generation in the browser, then submit results to the API for
+  persistence.
+- **Coach** (`web-src/coach/`): conversational move explanations layered on the
+  Analyze evals — `features.js` (factual layer: classification, material, mate nets;
+  mirrors `services/brilliant.py`'s thresholds for live Brilliant flagging),
+  `material.js` (SEE/material bookkeeping), `tactics.js` (fork/pin/skewer detection),
+  `phrasebank.js` + `commentary.js` (prose generation).
+- **Identity/billing**: email+password is the primary account; Google OAuth
+  (`google_auth.py`) and Lichess OAuth (`lichess.py`, account-linking only) are
+  alternates/links. Stripe (`billing.py`) gates Free/Pro via `users.plan`.
+- **Maia3 weights**: ~45MB ONNX weights are stripped from the deploy image and served
+  from an external host (Hugging Face) via `PREPFORGE_MAIA3_ASSET_BASE`.
+
+## 2. Recommended Technical Architecture (original design — see §1a for current)
+
+Phase 1 in this repo started with a Python core because the original environment had Python and git available, while Node/npm were not usable. The architecture allowed (and the project grew into) a separate web frontend.
 
 ```mermaid
 flowchart TB
@@ -58,11 +112,16 @@ flowchart TB
   - Runs Stockfish as cancellable jobs.
   - Caches evaluations by `(fen, engine, depth/nodes/time, options)`.
   - Exposes candidate lines and best move evaluations to services.
+  - **Now implemented client-side** as `web-src/engine/stockfish-provider.js`
+    (Stockfish WASM, in the browser) — see §1a.
 
 - **MaiaService**
   - Returns human move probability distribution for a FEN.
   - Supports rating buckets later.
   - Caches predictions by `(fen, model, rating_bucket)`.
+  - **Now implemented client-side** as `web-src/engine/maia3-provider.js`
+    (Maia3 ONNX via onnxruntime-web, weights served from `PREPFORGE_MAIA3_ASSET_BASE`)
+    — see §1a.
 
 - **AnalysisService**
   - Imports move list, asks EngineService for before/after/best evaluations, classifies moves, computes eval graph, identifies key moments.
@@ -84,6 +143,8 @@ flowchart TB
 
 - **StorageService**
   - SQLite persistence, backups, PGN/JSON/repertoire package export.
+  - **Now SQLAlchemy Core on Postgres in production / SQLite for dev+tests**
+    (`storage/sa_tables.py` + Alembic migrations), not raw SQLite — see §1a.
 
 ## 3. Core Data Models
 
@@ -125,7 +186,10 @@ SAN is display text, not identity.
 
 ## 4. Database Schema
 
-The SQLite DDL is in `src/prepforge_chess/storage/schema.sql`.
+The live schema is `src/prepforge_chess/storage/sa_tables.py` (SQLAlchemy Core,
+identity + the legacy domain tables on one `Base.metadata`), applied via Alembic
+migrations (`migrations/`); Postgres in production, SQLite for dev/tests.
+`storage/schema.sql` is a static reference with no runtime reader.
 
 Main tables:
 
@@ -617,6 +681,10 @@ Flag positions where Stockfish and Maia disagree:
 
 ## 15. MVP Implementation Plan
 
+> **Historical:** the original pre-SaaS implementation plan. All phases below are
+> complete — see `docs/ROADMAP.md` for what was actually built and §1a for the current
+> architecture.
+
 ### Phase 1: Shared Core and Board
 
 - choose chess rules library or implement adapter
@@ -658,6 +726,9 @@ Flag positions where Stockfish and Maia disagree:
 
 ## 16. Suggested File Structure
 
+> **Historical:** the original suggested layout, predating the SaaS split. See §1a for
+> the current `api/` / `services/` / `storage/` / `web-src/` layout.
+
 ```text
 PrepForge Chess/
   docs/
@@ -690,6 +761,8 @@ PrepForge Chess/
 ```
 
 ## 17. First Implementable Task List
+
+> **Historical:** the original bootstrap task list. All items below are complete.
 
 1. Add database migration runner and repository layer.
 2. Add ChessCore adapter using a legal move library.

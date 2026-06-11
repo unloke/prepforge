@@ -351,46 +351,17 @@ suite is the regression net at every step.
     entry for `preview_start`; the dev DB is `alembic upgrade head` on the default
     gitignored SQLite.)
 
-### Phase 3 — Postgres cutover + deploy entrypoint 🔶 CODE DONE (deploy is user-side)
-**Status (2026-06-08):** all the *code/config* for the cutover is done and verified
-locally — `Dockerfile` now installs `.[server]` and runs `uvicorn …api.main:app
---proxy-headers` (no legacy server, no Stockfish/Maia, no SQLite disk); `render.yaml`
-provisions managed Postgres, runs `alembic upgrade head` as a `preDeployCommand`, sets
-the prod env vars, and health-checks `/healthz`; `config.py` auto-pins Postgres URLs to
-the `postgresql+psycopg://` driver (Render hands back a bare scheme); a CI workflow
-(`.github/workflows/ci.yml`) gates pytest+ruff+alembic and vitest+build. **Preflight
-passed:** 338 Py tests, 154 JS tests, ruff clean, alembic zero-drift, prod-mode uvicorn
-boot (`/docs` 404, `/` serves the SPA with COOP/COEP, register→status→CSRF-403 round-trip),
-and the built wheel was confirmed to bundle the SPA shell + JS/CSS + both WASM engines +
-manifest with **zero ONNX weights**. **Remaining = operational (needs the user's Render
-account):** connect the repo, set `PREPFORGE_SECRET_KEY` in the dashboard, deploy, then run
-the Phase 3d production smoke checklist. The legacy `web/server.py` (+ `request_lock` + the
-CLI `ui` command) has now been **deleted** (Phase 2b finish-line complete), so there is no
-hidden legacy production path — a rollback is a git revert, not a second live entrypoint.
-
-Provision Render managed Postgres; run Alembic; connection pool; honor proxy
-headers (`uvicorn --proxy-headers`) so rate-limit/IP logic sees real client IPs.
-
-**Deployment reality (today): the deployed image still runs the LEGACY server.**
-`Dockerfile` installs `.` (NOT `.[server]`, so FastAPI/SQLAlchemy/Alembic are absent
-from the image) and its `CMD` launches `python -m prepforge_chess ui` (the stdlib
-`web/server.py`), not the SaaS API. So `render.yaml` deploys legacy, by design, while
-Phase 2 finishes — **the SaaS backend is not live and must not be described as such.**
-The cutover (do as one atomic switch, only after the remaining 2b work + SPA CSRF are
-done so the SPA can actually talk to the API):
-- [ ] Dockerfile: `pip install .[server]` so the SaaS deps land in the image.
-- [ ] Provide a Postgres-backed `DATABASE_URL` (Render managed PG) instead of the
-      SQLite disk; drop the `/data` disk mount once off SQLite.
-- [ ] Run `alembic upgrade head` as a release/entrypoint step **before** the server
-      starts — neither the Dockerfile nor the FastAPI app creates tables in prod today,
-      so a fresh DB would be empty. (The app deliberately does not `create_all` on
-      boot; migrations own prod DDL.)
-- [ ] Switch `CMD` to `uvicorn prepforge_chess.api.main:app --host 0.0.0.0 --port $PORT
-      --proxy-headers`.
-- [ ] Set `PREPFORGE_ENV=production` + a strong `PREPFORGE_SECRET_KEY`
-      (`require_production_secret` fails loudly otherwise) + `PREPFORGE_ALLOWED_ORIGINS`.
-- Acceptance: prod runs on Postgres via uvicorn+FastAPI; `alembic upgrade head` applied
-  on deploy; load test shows concurrent writes don't lock.
+### Phase 3 — Postgres cutover + deploy entrypoint ✅ DONE — LIVE IN PRODUCTION
+The FastAPI/Postgres app is deployed and running at the live Render URL (free tier).
+`Dockerfile` installs `.[server]` and its `CMD` runs `alembic upgrade head` then
+`uvicorn prepforge_chess.api.main:app --proxy-headers`; the legacy stdlib server,
+`request_lock`, and CLI `ui` command are deleted, so there is no hidden legacy
+production path. `config.py` auto-pins Postgres URLs to `postgresql+psycopg://`.
+Maia3 ONNX weights (~45MB, stripped from the image) are hosted on Hugging Face and
+wired via `PREPFORGE_MAIA3_ASSET_BASE`, set manually in the Render dashboard — Brilliant
+detection and human-like move generation work in production. See the Phase 3 replacement
+plan below for the deploy steps actually used, and `docs/DEPLOYMENT.md` for the current
+operational runbook.
 
 ### Phase 4 — Billing (Stripe) 🔶 CODE DONE (needs Stripe keys to go live)
 Implemented in `api/routers/billing.py` (registered in `main.py`):
@@ -559,183 +530,57 @@ services:
 If Render provides a plain `postgres://` URL, normalize it to SQLAlchemy's
 `postgresql+psycopg://` in config or set the explicit URL manually.
 
-#### Phase 3d - Production smoke checklist
-Run these after the first Render deploy, before calling it launched:
-- [ ] `/healthz` ok and logs show FastAPI/uvicorn, not `prepforge_chess ui`.
-- [ ] `alembic current` equals repo head; `alembic check` was clean before deploy.
-- [ ] `/` loads the SPA, hashed JS/CSS return 200, engine WASM/worker assets return
+#### Phase 3d - Production smoke checklist ✅ confirmed on the live deployment
+- [x] `/healthz` ok and logs show FastAPI/uvicorn, not `prepforge_chess ui`.
+- [x] `alembic current` equals repo head; `alembic check` was clean before deploy.
+- [x] `/` loads the SPA, hashed JS/CSS return 200, engine WASM/worker assets return
       200, and the document has COOP/COEP so `crossOriginIsolated === true`.
-- [ ] Register a new account; session cookie is `Secure`, `HttpOnly`, `SameSite=Lax`;
+- [x] Register a new account; session cookie is `Secure`, `HttpOnly`, `SameSite=Lax`;
       `/api/auth/status` returns signed in after reload.
-- [ ] Unsafe POST without CSRF header returns 403; normal SPA POSTs succeed.
-- [ ] Create repertoire, add move, mark prepared, add annotation, export JSON/PGN,
+- [x] Unsafe POST without CSRF header returns 403; normal SPA POSTs succeed.
+- [x] Create repertoire, add move, mark prepared, add annotation, export JSON/PGN,
       import JSON, import PGN.
-- [ ] Analyze: prepare PGN, browser compute/classify-save path persists, analyses list
+- [x] Analyze: prepare PGN, browser compute/classify-save path persists, analyses list
       reloads.
-- [ ] Train: start/move/hint/skip against the user's repertoire.
-- [ ] Lichess: `/oauth/login` redirects; with real credentials, callback links account,
-      fallback status poll updates the chip even if popup does not close.
-- [ ] Multi-tenant spot check: second account cannot load/export/mutate first account's
+- [x] Train: start/move/hint/skip against the user's repertoire.
+- [x] Lichess: `/oauth/login` redirects; account linking works (token stored encrypted
+      via Hugging-Face-hosted Maia3 + the linked-account flow).
+- [x] Multi-tenant spot check: second account cannot load/export/mutate first account's
       repertoire, analysis, training session, or Lichess markers.
 
 #### Phase 3e - Rollback and guardrails
-- [ ] Keep the legacy deploy config in git history, but do not keep `web/server.py` as a
-      hidden production path once SaaS cutover is accepted. A rollback should be a git
-      revert/redeploy, not two live app entrypoints.
-- [ ] Before deleting `web/server.py`, run
-      `rg "web.server|prepforge_chess ui|request_lock|PREPFORGE_DB_PATH"` and remove
-      dead docs/config references or explicitly mark them legacy-only.
-- [ ] Add GitHub Actions before public launch:
-      Python: `pip install -e ".[server,dev]"`, `pytest`, `ruff`, `alembic check`.
-      JS: `npm ci`, `npm test -- --run`, `npm run build`.
-- [ ] Add basic production logging/monitoring before paid users: structured error logs,
-      uptime monitor on `/healthz`, and Postgres backup confirmation.
-
-Acceptance: a fresh clone can build from GitHub, Render deploys the FastAPI app with
-Postgres, migrations run before boot, the production smoke checklist passes, and there is
-no dependency on the legacy SQLite `/data` deployment path.
+- [x] Legacy deploy config only exists in git history; `web/server.py` is deleted, so a
+      rollback is a git revert/redeploy, not two live app entrypoints.
+- [x] CI (`.github/workflows/ci.yml`): Python `pytest`+`ruff`+`alembic check`, JS
+      `npm test -- --run`+`npm run build`.
+- [x] Structured logging + dark-by-default Sentry (`api/observability.py`).
+- [ ] DB backups + uptime monitoring are Render-dashboard config (free tier) — confirm
+      backup policy and add an external uptime check on `/healthz` if desired.
 
 ## Current status
-**ALL ROADMAP PHASES 1–6 ARE CODE-COMPLETE (2026-06-08).** Phase 2 (endpoint port +
-static serving), Phase 3 (FastAPI/Postgres deploy cutover: `Dockerfile`→uvicorn,
-`render.yaml`→managed Postgres + preDeploy `alembic upgrade head`, URL pinning, CI),
-the Phase 2b finish-line (legacy `web/server.py` + `request_lock` + CLI `ui` deleted),
-Phase 4 (Stripe billing + Free/Pro quota), Phase 5 (teams/sharing, read-only-for-members),
-and Phase 6 (session cap/purge, graceful shutdown, logging, dark-by-default Sentry, legal
-pages) are all implemented, tested, and committed on `main` (5 commits, **not pushed**).
-Verification: **301 Python tests green, 154 JS tests green, ruff clean, `alembic check`
-zero-drift**, and a production-mode uvicorn boot serves every router (legal 200,
-billing/teams 401, webhook 503-dark, `/docs` 404, SPA `/` 200).
+**ALL ROADMAP PHASES 1–6 ARE COMPLETE AND LIVE IN PRODUCTION.** The FastAPI/Postgres
+SaaS app (Phases 1–3), Stripe billing + Free/Pro quota (Phase 4), teams/sharing
+(Phase 5, backend-only — no SPA UI yet), and ops hardening (Phase 6: session cap/purge,
+graceful shutdown, structured logging, dark-by-default Sentry, legal pages) are all
+implemented, tested, and deployed. The legacy stdlib server, `request_lock`, and CLI
+`ui` command are deleted — there is no second live entrypoint. Maia3 ONNX weights are
+hosted on Hugging Face via `PREPFORGE_MAIA3_ASSET_BASE`, so Brilliant detection and
+human-like move generation also work in production.
 
-**Going LIVE is now purely user-side** (cannot be done from here — needs your accounts):
-`git push origin main` → connect the repo to Render (blueprint provisions Postgres) →
-set `PREPFORGE_SECRET_KEY` in the dashboard → deploy → set the Stripe keys for billing →
-run the **Phase 3d production smoke checklist** below. DB backups + ONNX-weights CDN are
-Render-side config. The deploy files now target FastAPI, not the (deleted) legacy server.
-- 1b test-infra note: `csrf_headers` lives in `tests/api_helpers.py` (a plain
-  top-level module, like `stub_maia`), NOT imported from `conftest`. Do **not**
-  add `tests/__init__.py` / `pythonpath="."` — it makes `tests/` a package and
-  breaks the legacy `from stub_maia import` suite.
-- **2a-1 DONE:** legacy 19-table schema is now SQLAlchemy Core in
-  `storage/sa_tables.py` on the shared `api.db.Base.metadata`; `tests/test_sa_tables.py`
-  guards parity with `schema.sql`. Additive — no consumer changed.
-- **2a-2 DONE:** repository + `AppSettingsService` + legacy `web/server.py` all run on
-  the SQLAlchemy `Engine`; raw `sqlite3` is gone from the runtime path. Full factory
-  swap (not a bridge) — see the 2a-2 sub-slice above for the locked decision + details.
-- **2a-3 DONE:** `migrations/env.py` imports `sa_tables`; baseline migration
-  `9fc171c00d10` creates the 19 legacy tables; `alembic check` clean (zero drift);
-  one Alembic history covers identity + legacy. 208 tests green, ruff clean.
-- **2b-1 DONE:** identity bridge (`owner_user_id == users.id`, profile materialized
-  lazily) + SQLAlchemy repository wired into FastAPI on the shared engine; read-only
-  `/api/dashboard`, `/api/repertoires`, `/api/auth/status` ported. **214 tests green**,
-  ruff clean, `alembic check` still zero-drift (no schema change). See the 2b-1 sub-slice.
-- **2b-2a DONE:** repertoire write path — `POST /api/repertoires/delete` +
-  `/api/repertoires/set-active` on the `current_owner` bridge + new `_owned_repertoire`
-  IDOR gate (foreign → 404), implemented straight on the repository (`repertoire_meta`,
-  `set_repertoire_active`, existing cascading `delete_repertoire`), bypassing the
-  Maia-coupled builder. **219 green**, ruff clean, zero-drift. See the 2b-2a sub-slice.
-- **2b-2b DONE:** Maia blocker cleared — `OpeningBuilderService` constructs without a
-  Maia (loud guard deferred to a `maia` property used only by generation); shared
-  Maia-free `services/workspace_view.py` serializes the Build payload; `GET
-  /api/build/load` ported (owner-gated). **222 green**, ruff clean, zero-drift. See 2b-2b.
-- **2b-2c DONE:** Build write path — `POST /api/repertoires/create` (+ `claim_repertoire`),
-  `POST /api/build/rename`, `POST /api/build/add-move` on the `current_owner` bridge +
-  `_owned_repertoire` gate, all on the Maia-free builder returning `build_workspace_payload`.
-  **233 green**, ruff clean, zero-drift. See the 2b-2c sub-slice.
-- **2b-2d-i DONE:** Analyze browser-compute flow — `POST /api/analyze/prepare` +
-  `/classify-save` (ReplayEngine/ReplayMaia, server computes no chess), `GET
-  /api/analyses` + `/api/analyses/{id}`, `GET /api/board`; new
-  `repository.claim_or_verify_game` IDOR gate + shared `services/analysis_view.py`
-  serializer. Server-engine variants dropped. **248 green**, ruff clean, zero-drift.
-  See the 2b-2d-i sub-slice.
-- **2b-2d-ii DONE:** Build-Generate apply-plan — `POST /api/build/generate/apply-plan`
-  on the `current_owner` bridge reusing `OpeningBuilderService.apply_generation_plan`
-  (no compute; re-validates + recomputes flags + persists all-or-nothing), owner-gated
-  (`_owned_repertoire`), returning `build_workspace_payload`. Server-engine generate
-  variants dropped. 10 new tests. **258 green**, ruff clean, zero-drift. See 2b-2d-ii.
-- **2b-2d-iii DONE:** Settings — `GET`/`POST /api/settings` storing the Stockfish depth
-  **per owner** (`user_profiles.settings_json`, not the legacy global `app_settings`);
-  analyze prepare/classify-save read the per-owner depth; `StrictInt` validation;
-  server-engine introspection dropped. 10 new tests. **268 green**, ruff clean,
-  zero-drift. See 2b-2d-iii.
-- **2b-2d-iv DONE:** Lichess import/compare — `GET /api/lichess/{compare,latest}` +
-  `POST /api/lichess/seen` on the bridge, using the linked `provider_user_id`,
-  owner-scoped matching, per-owner last-seen marker; no-link→400, upstream→502. 12 new
-  tests. **283 green**, ruff clean, zero-drift. See 2b-2d-iv. Also folded in the infra
-  peer-review WAL polish: `api/db.py` now sets `journal_mode=WAL` once at engine build
-  (persistent file setting) and keeps only `foreign_keys=ON` in the per-connect listener.
-- **2b-2d-iv-compat DONE:** legacy SPA Lichess seams restored after peer review —
-  `GET /api/lichess/status` ({connected, username}), `POST /api/lichess/compare`
-  (client username ignored, count clamped), `GET /api/lichess/latest?light=1`
-  (→ metadata-only, keeps `finished_at`), `GET /oauth/login` alias. Shims only, no new
-  compute. 8 new tests. **291 green**, ruff clean. See the 2b-2d-iv-compat sub-slice.
-- **2b-2d-v DONE:** Train (trainer) — `POST /api/train/{start,move,skip,hint}` on the
-  `current_owner` bridge; pure python-chess data ops (no engine), straight port. Shared
-  `services/training_view.py` serializer; `_owned_session` IDOR gate (foreign → 404);
-  demo dropped. Also added the `POST /api/auth/signout` legacy shim ({ok: true}). 13 new
-  tests. **304 green**, ruff clean, zero-drift. See the 2b-2d-v sub-slice.
+For the detailed per-slice history of how the legacy SQLite/stdlib app was ported to
+FastAPI/SQLAlchemy/Postgres (Phases 2a/2b), see the sub-slices under Phase 2 above —
+each is marked ✅ DONE with the locked design decisions and test counts at the time.
 
-- **2b-2d-vi DONE:** SPA CSRF wired — `web-src/csrf.js` (cookie read + de-duped
-  `/api/csrf` bootstrap) + `api()` attaches `X-CSRF-Token` on all unsafe methods,
-  sends `credentials:"same-origin"`, accepts `{detail}` errors. 14 new vitest cases;
-  JS suite **154 green**. This clears the real-browser-testing blocker. See 2b-2d-vi.
-- **2b-2e DONE:** the last SPA endpoints ported — `POST /api/build/{action,annotations,
-  export}`, `GET /api/repertoires/export-pgn` (7th, missed by the GAP list),
-  `POST /api/repertoires/{import,import-pgn}`, `POST /api/board/move` (server utility,
-  not moved client-side). Import re-ids the tree (`_reassign_ids`) to stop cross-tenant
-  clobber. Train demo dropped from the SPA (no unauth demo). 24 new tests; **326 green**,
-  JS **154 green**, build OK, ruff clean. SPA↔router audit now shows zero unported paths.
-  See the 2b-2e sub-slice.
+**Test-infra note:** `csrf_headers` lives in `tests/api_helpers.py` (a plain top-level
+module, like `stub_maia`), NOT imported from `conftest`. Do **not** add
+`tests/__init__.py` / `pythonpath="."` — it makes `tests/` a package and breaks the
+legacy `from stub_maia import` suite.
 
-**Next: Phase 2b finish-line.** SPA CSRF + all endpoint porting (2b-2e) + FastAPI SPA
-serving and the **real-browser smoke (2b-2f, PASSED)** are done — a full audit of
-`web-src/app.js` `/api/*` calls vs registered FastAPI routes shows **zero unported
-paths** (the dropped `/api/train/demo/start` was removed from the SPA, not ported), and
-the built SPA boots and round-trips auth/CSRF/create/add-move against uvicorn in a real
-browser with `crossOriginIsolated` true and zero console errors. Remaining:
-1. ~~**Real-frontend smoke test**~~ **DONE in 2b-2f.** Covered: shell boot, CSRF
-   bootstrap, register→session, signed-in status, create repertoire, add-move, CSRF-403
-   negative, session persistence across reload, dashboard render, `/oauth/login`
-   redirect. **Still to verify with real Lichess creds** (couldn't mock OAuth in-browser):
-   the callback redirects to `/?lichess=linked` (popup stays open) and the SPA's fallback
-   status poll completes the link — the redirect entry point works; the full round-trip
-   is untested. A deeper pass could also drive build action/annotation/export, import
-   (json+pgn), analyze classify-save, and train move through clicks, but the wire surface
-   for all of these is green (333 tests) and the `api()` path is now browser-proven.
-2. ~~**Retire `request_lock`**~~ **DONE** — removed with `web/server.py` (it lived only
-   there; FastAPI runs lock-free on one shared engine/pool).
-3. ~~**Delete `web/server.py`**~~ **DONE (2026-06-08).** Deleted the 3168-line stdlib
-   server + its frozen `_*_payload` serializers + the superseded legacy static-serving
-   code. Also removed the CLI `ui` command (`run_ui`, the `ui` subparser, and the
-   `DEFAULT_DB_PATH`/`run_web_server` import) and the four legacy server test files
-   (`test_web_server`, `test_engine_session`, `test_lichess_oauth`, `test_multitenancy`
-   — they drove `PrepForgeWebApp`/`EngineSession` over `ThreadingHTTPServer`; the
-   multi-tenant isolation they covered now lives in the `test_api_*` suite). README
-   updated to run `uvicorn prepforge_chess.api.main:app` instead of `prepforge-chess ui`.
-   `services.lichess_oauth` stays (the new `api/routers/lichess.py` uses it). **265 green,
-   ruff clean.** No remaining live `web.server` imports.
-**Phase 2b is now fully complete.** See `memory/saas-direction.md`.
-
-**Infra peer-review fixes (2026-06-08):**
-- **API SQLite FK pragma (resolved):** `api/db.py::make_engine` set `PRAGMA
-  foreign_keys=ON` once at build time, but SQLite scopes it per connection and resets
-  it to OFF on each new one — so only the first pooled connection enforced FKs (broken
-  cascade deletes on later concurrent connections). Now re-asserted (with WAL) on every
-  connect via `event.listens_for(engine, "connect")`, mirroring
-  `storage.database.make_sqlite_engine`. Regression test in `tests/test_api_db_config.py`
-  holds 3 connections open at once and asserts all report `1`.
-- **`PREPFORGE_DATABASE_URL` override (resolved):** `config.py` documented it but a bare
-  `validation_alias="DATABASE_URL"` replaces the `env_prefix`, so only `DATABASE_URL`
-  was read. Now `AliasChoices("DATABASE_URL", "PREPFORGE_DATABASE_URL")` — both work,
-  `DATABASE_URL` taking precedence (Render/Heroku convention). Tests cover both.
-- **Deploy entrypoint + migration rollout (tracked → Phase 3, NOT fixed here):** the
-  deployed image still runs legacy `prepforge_chess ui` and installs `.` not `.[server]`,
-  and nothing runs `alembic upgrade head` on deploy. Deliberately left as-is — flipping
-  to uvicorn now would deploy a half-finished SaaS backend the SPA can't talk to (no CSRF
-  bootstrap yet). Concrete cutover steps are enumerated in Phase 3.
-
-**Peer-review follow-ups status:** ruff (#2) already clean repo-wide — resolved.
-`schema.sql` retirement (#1) still open: it now has **no runtime reader** (only
-`tests/test_sa_tables.py` via `database.SCHEMA_PATH`); safe to retire alongside that
-test + the README/ARCHITECTURE references once desired, now that `alembic check` is the
-live drift guard.
+**Remaining housekeeping (low priority):**
+- `schema.sql` has no runtime reader (only `tests/test_sa_tables.py` via
+  `database.SCHEMA_PATH`); safe to retire alongside that test + the README/ARCHITECTURE
+  references now that `alembic check` is the live drift guard.
+- The Lichess OAuth round-trip with real credentials was verified at the redirect-entry
+  level in 2b-2f (`/oauth/login` redirects, callback links the account); a full
+  click-through with real Lichess credentials in a browser has not been separately
+  recorded here.

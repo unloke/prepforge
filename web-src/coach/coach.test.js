@@ -8,6 +8,7 @@ import {
   BRILLIANT_MIN_WIN_GAP,
 } from "./features.js";
 import { buildCommentary } from "./commentary.js";
+import { attachIntuition } from "./intuition.js";
 
 // A blunder that hangs a bishop: from a quiet K+B vs K+pawn position, White plays
 // Bb5?? where the c6 pawn just takes it.
@@ -340,6 +341,253 @@ describe("buildCommentary (prose)", () => {
     const c = buildCommentary(f);
     expect(c.prose).toMatch(/mate/i);
     expect(c.prose).toMatch(/Qe8#/);
+  });
+});
+
+describe("buildCommentary — additional prose branches", () => {
+  it("calls a delivered checkmate by name", () => {
+    // White: Qe1, Kg1, pawns f2/g2/h2. Black: Kg8, pawns f7/g7/h7. Qe1-e8 is back-rank mate.
+    const f = buildMoveFeatures({
+      mover: "white",
+      uci: "e1e8",
+      san: "Qe8#",
+      fenBefore: "6k1/5ppp/8/8/8/8/5PPP/4Q1K1 w - - 0 1",
+      fenAfter: "4Q1k1/5ppp/8/8/8/8/5PPP/6K1 b - - 1 1",
+      beforeEval: { lines: [{ uci: "e1e8", san: "Qe8#", cp: null, mate: 1, pvUci: ["e1e8"] }] },
+      afterEval: { cp: null, mate: null, pvUci: [] },
+    });
+    const c = buildCommentary(f);
+    expect(c.prose).toMatch(/checkmate|mate/i);
+    expect(c.prose).toMatch(/Qe8#/);
+    expect(c.prose).not.toMatch(/%/);
+  });
+
+  it("a decisive winning capture says what it grabbed (Great)", () => {
+    // White: Rd1, Kg1; Black: Rd8 (undefended), Kh8. Rxd8 wins the rook outright and is
+    // far ahead of the alternative, so it grades as Great with the GREAT_DECISIVE voice.
+    const f = buildMoveFeatures({
+      mover: "white",
+      uci: "d1d8",
+      san: "Rxd8",
+      fenBefore: "3r3k/8/8/8/8/8/8/3R2K1 w - - 0 1",
+      fenAfter: "3R3k/8/8/8/8/8/8/6K1 b - - 1 1",
+      beforeEval: {
+        lines: [
+          { uci: "d1d8", san: "Rxd8", cp: 500, mate: null, pvUci: ["d1d8"] },
+          { uci: "g1g2", san: "Kg2", cp: 0, mate: null, pvUci: ["g1g2"] },
+        ],
+      },
+      afterEval: { cp: 500, mate: null, pvUci: [] },
+    });
+    expect(f.classification.code).toBe("great");
+    const c = buildCommentary(f);
+    expect(c.prose).toMatch(/Rxd8/);
+    expect(c.prose).toMatch(/a rook/);
+    expect(c.prose).not.toMatch(/%/);
+  });
+
+  it("the only move that holds the position together says so (Great, no capture)", () => {
+    // White: Bf1, Kg1; Black: Kg8, pawn c6. Be2 is far better than the alternative
+    // (which hangs the bishop), so it's the only sound move and stays comfortably ahead.
+    const f = buildMoveFeatures({
+      mover: "white",
+      uci: "f1e2",
+      san: "Be2",
+      fenBefore: "6k1/8/2p5/8/8/8/8/5BK1 w - - 0 1",
+      fenAfter: "6k1/8/2p5/8/8/8/4B3/6K1 b - - 1 1",
+      beforeEval: {
+        lines: [
+          { uci: "f1e2", san: "Be2", cp: 80, mate: null, pvUci: ["f1e2"] },
+          { uci: "f1b5", san: "Bb5", cp: -300, mate: null, pvUci: ["f1b5"] },
+        ],
+      },
+      afterEval: { cp: 80, mate: null, pvUci: [] },
+    });
+    expect(f.classification.code).toBe("great");
+    const c = buildCommentary(f);
+    expect(c.prose).toMatch(/Be2/);
+    expect(c.prose).toMatch(/better|winning|level|holds|holding/i);
+    expect(c.prose).not.toMatch(/a rook|a pawn|a piece|a queen/);
+  });
+
+  it("walking into a forced mate names the mating reply", () => {
+    // A quiet king move that (per the synthetic eval) allows a forced mate next move.
+    const f = buildMoveFeatures({
+      mover: "white",
+      uci: "g1g2",
+      san: "Kg2",
+      fenBefore: "6k1/8/2p5/8/8/8/8/5BK1 w - - 0 1",
+      fenAfter: "6k1/8/2p5/8/8/8/6K1/5B2 b - - 1 1",
+      beforeEval: { lines: [{ uci: "f1e2", san: "Be2", cp: 80, mate: null, pvUci: ["f1e2"] }] },
+      afterEval: { cp: null, mate: -1, pvUci: ["a8a1"], pvSan: ["Ra1#"] },
+    });
+    expect(f.inMateNet).toBe(true);
+    expect(f.classification.code).toBe("blunder");
+    const c = buildCommentary(f);
+    expect(c.tone).toBe("danger");
+    expect(c.prose).toMatch(/Kg2/);
+    expect(c.prose).toMatch(/mate/i);
+    expect(c.prose).toMatch(/Ra1#/);
+  });
+
+  it("passing up a free piece names the piece, the square and the grab", () => {
+    // White: Rd1, Kg1; Black: Kg8, Nd4 (undefended, hanging to the rook). White plays a
+    // quiet king move instead of Rxd4.
+    const f = buildMoveFeatures({
+      mover: "white",
+      uci: "g1h1",
+      san: "Kh1",
+      fenBefore: "6k1/8/8/8/3n4/8/8/3R2K1 w - - 0 1",
+      fenAfter: "6k1/8/8/8/3n4/8/8/3R3K b - - 1 1",
+      beforeEval: { lines: [{ uci: "d1d4", san: "Rxd4", cp: 300, mate: null, pvUci: ["d1d4"] }] },
+      afterEval: { cp: 0, mate: null, pvUci: [] },
+    });
+    expect(f.missedWin).toBe(true);
+    expect(f.classification.code).toBe("blunder");
+    const c = buildCommentary(f);
+    expect(c.prose).toMatch(/Kh1/);
+    expect(c.prose).toMatch(/knight/i);
+    expect(c.prose).toMatch(/d4/);
+    expect(c.prose).toMatch(/Rxd4/);
+  });
+});
+
+describe("forced moves (only one legal move)", () => {
+  // Black: Kh8, pawn h7. White: Ra8 (checks along the 8th rank), Kc1. The 8th rank is
+  // covered and h7 is blocked by Black's own pawn, so Kg7 is the ONE legal move — nothing
+  // to "find".
+  function forcedCheckInput() {
+    const fenBefore = "R6k/7p/8/8/8/8/8/2K5 b - - 0 1";
+    const fenAfter = "R7/6kp/8/8/8/8/8/2K5 w - - 1 2";
+    return {
+      mover: "black",
+      uci: "h8g7",
+      san: "Kg7",
+      fenBefore,
+      fenAfter,
+      beforeEval: { lines: [{ uci: "h8g7", san: "Kg7", cp: 600, mate: null, pvUci: ["h8g7"], pvSan: ["Kg7"] }] },
+      afterEval: { cp: 600, mate: null, pvUci: [] },
+    };
+  }
+
+  it("classifies a single-legal-move position as forced, not great", () => {
+    const f = buildMoveFeatures(forcedCheckInput());
+    expect(f.forced).toBe(true);
+    expect(f.onlyMove).toBe(false); // not a "find" — there was no choice
+    expect(f.classification.code).toBe("forced");
+  });
+
+  it("says the move was forced rather than praising a find", () => {
+    const c = buildCommentary(buildMoveFeatures(forcedCheckInput()));
+    expect(c.tone).toBe("info");
+    expect(c.prose).toMatch(/forced|only (legal )?move|no choice|only way|one way out|only legal/i);
+    expect(c.prose).not.toMatch(/great|well spotted|well found|nicely found|found it/i);
+    expect(c.prose).not.toMatch(/%/);
+  });
+
+  it("a genuine only-move with real alternatives is still a Great find, not forced", () => {
+    // Plenty of legal moves, but only Be2 holds (the alternative hangs the bishop) — a
+    // real choice the player had to get right. This stays Great, distinct from forced.
+    const f = buildMoveFeatures({
+      mover: "white",
+      uci: "f1e2",
+      san: "Be2",
+      fenBefore: "6k1/8/2p5/8/8/8/8/5BK1 w - - 0 1",
+      fenAfter: "6k1/8/2p5/8/8/8/4B3/6K1 b - - 1 1",
+      beforeEval: {
+        lines: [
+          { uci: "f1e2", san: "Be2", cp: 80, mate: null, pvUci: ["f1e2"] },
+          { uci: "f1b5", san: "Bb5", cp: -300, mate: null, pvUci: ["f1b5"] },
+        ],
+      },
+      afterEval: { cp: 80, mate: null, pvUci: [] },
+    });
+    expect(f.forced).toBe(false);
+    expect(f.onlyMove).toBe(true);
+    expect(f.classification.code).toBe("great");
+  });
+});
+
+describe("intuition notes (Maia position-texture, folded into the prose)", () => {
+  // A blunder (hangs the bishop) in an OBVIOUS position where the natural move (Kf2) was
+  // also the engine's best -> reads as a slip, not a misjudgement.
+  it("calls a blunder in an obvious position a slip", () => {
+    const f = buildMoveFeatures(hangingBishopInput()); // best line is g1f2 (Kf2)
+    attachIntuition(f, [
+      { move_uci: "g1f2", probability: 0.8 }, // the obvious, best move
+      { move_uci: "g1g2", probability: 0.15 },
+      { move_uci: "f1b5", probability: 0.05 }, // what was actually played
+    ]);
+    const c = buildCommentary(f);
+    expect(c.prose).toMatch(/slip|lapse|autopilot|instinct|leaps out|plays itself/i);
+    expect(c.prose).toMatch(/Kf2/); // names the obvious move
+  });
+
+  // The same blunder, but the position is SHARP for its phase (balanced WDL -> high
+  // sharpness) -> a sympathetic "this was genuinely hard". This is the WDL-based fix for
+  // "stop calling a knife-fight calm" (policy spread alone got this wrong).
+  it("calls a blunder in a sharp position a hard choice, not a calm one", () => {
+    const f = buildMoveFeatures(hangingBishopInput());
+    attachIntuition(f, {
+      predictions: [
+        { move_uci: "g1g2", probability: 0.3 }, // no dominant move -> texture not "obvious"
+        { move_uci: "f1b5", probability: 0.28 },
+        { move_uci: "f1e2", probability: 0.22 },
+      ],
+      wdl: { win: 490, draw: 20, loss: 490 }, // balanced, low draw -> sharp band
+    });
+    expect(f.intuition.sharpness.band === "sharp" || f.intuition.sharpness.band === "lively").toBe(true);
+    const c = buildCommentary(f);
+    expect(c.prose).toMatch(/rich|complex|double-edged|tricky|demanding|sharp|knotty|many/i);
+  });
+
+  it("credits a strong move played over the tempting, natural one", () => {
+    // Kf2 is the engine's best, but the obvious human move is something else (Kg2), which
+    // humans play far more often -> the coach credits seeing past the natural move.
+    const inp = hangingBishopInput();
+    inp.uci = "g1f2";
+    inp.san = "Kf2";
+    inp.fenAfter = "6k1/8/2p5/8/8/8/5K2/5B2 b - - 1 1";
+    inp.afterEval = { cp: 0, mate: null, pvUci: [] };
+    const f = buildMoveFeatures(inp);
+    attachIntuition(f, [
+      { move_uci: "g1g2", probability: 0.7 }, // the obvious human move (not played, not best)
+      { move_uci: "g1f2", probability: 0.08 }, // what was played: strong but unusual
+      { move_uci: "f1e2", probability: 0.22 },
+    ]);
+    const c = buildCommentary(f);
+    expect(c.prose).toMatch(/Kf2/);
+    expect(c.prose).toMatch(
+      /less obvious|road less|sidestepped|creative|original|less travelled|quieter path|resisted|saw past|didn't take the bait|isn't best|inferior|natural/i
+    );
+  });
+
+  it("adds no texture note when there is no Maia read", () => {
+    const a = buildCommentary(buildMoveFeatures(hangingBishopInput())).prose;
+    const f = buildMoveFeatures(hangingBishopInput());
+    f.intuition = null;
+    const b = buildCommentary(f).prose;
+    expect(a).toBe(b); // identical to the engine-only read
+  });
+
+  it("never leaves placeholders or double spaces with a texture note attached", () => {
+    for (let ply = 0; ply < 30; ply++) {
+      const f = buildMoveFeatures({ ...hangingBishopInput(), ply });
+      attachIntuition(f, {
+        predictions: [
+          { move_uci: "g1g2", probability: 0.3 },
+          { move_uci: "f1b5", probability: 0.28 },
+          { move_uci: "f1e2", probability: 0.22 },
+        ],
+        wdl: { win: 480, draw: 30, loss: 490 }, // sharp band -> exercises the HARD note
+      });
+      const prose = buildCommentary(f).prose;
+      expect(prose).not.toMatch(/\{[a-zA-Z]+\}/);
+      expect(prose).not.toMatch(/  /);
+      expect(prose).not.toMatch(/[ ,]\./);
+      expect(prose).not.toMatch(/—|--/);
+      expect(prose).toMatch(/[.!]$/);
+    }
   });
 });
 

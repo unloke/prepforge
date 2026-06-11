@@ -107,9 +107,19 @@ export function buildMoveFeatures(input) {
   const wasInCheck = before ? before.isCheck() : false;
   const isCheck = after ? after.isCheck() : false; // the move gives check
   const legalBefore = before ? before.moves().length : 0;
+  // Forced = there was literally one legal move. The player made no decision, so this is
+  // NOT something they "found" — it's the only thing the rules allowed. Kept distinct from
+  // onlyMove below so the prose says "this is forced", not "great find".
+  const forced = legalBefore === 1;
+  // "Only move" = a real choice existed (more than one legal move) but just one keeps the
+  // position, the engine's best a clear cut above its own second choice (>=15 win% points)
+  // — finding it actually mattered. 15 is deliberately above the "good"/"best" noise band
+  // (winDelta <= 5) so a routine best move with a close second isn't over-praised.
   const onlyMove =
-    legalBefore <= 1 ||
-    (isBest && altWinMover !== null && winBeforeMover - altWinMover >= 15);
+    !forced &&
+    isBest &&
+    altWinMover !== null &&
+    winBeforeMover - altWinMover >= 15;
 
   // Undefended/winnable enemy targets — before (what was on offer) and after
   // (what the move now threatens). And: did the move hang our own material?
@@ -152,7 +162,7 @@ export function buildMoveFeatures(input) {
   // NB: Brilliant is NOT decided here. It needs Maia (a human-move model): a move
   // is brilliant only when the engine loves it but humans wouldn't find/like it.
   // The orchestration runs that check async and upgrades via markBrilliant().
-  const classification = classifyMoveRich({ winDelta, winAfterMover, isBest, onlyMove });
+  const classification = classifyMoveRich({ winDelta, winAfterMover, isBest, onlyMove, forced });
 
   // Worth asking Maia about? Brilliant doesn't require literally the engine's #1 line —
   // a "Best" or "Excellent"-tier move (winDelta <= 5) that keeps the side at least level
@@ -199,6 +209,7 @@ export function buildMoveFeatures(input) {
 
     wasInCheck,
     isCheck,
+    forced,
     isForced: wasInCheck && legalBefore <= 1,
     onlyMove,
     looseBefore,
@@ -246,8 +257,18 @@ export function markBrilliant(features, maia) {
 
 // Grade the move from the win% drop (Lichess/chess.com style). Great is the only
 // in-here upgrade; Brilliant is decided separately via the Maia check (isBrilliantByMaia).
-export function classifyMoveRich({ winDelta, winAfterMover, isBest, onlyMove }) {
+export function classifyMoveRich({ winDelta, winAfterMover, isBest, onlyMove, forced }) {
+  // Forced: only one legal move existed. The player had no decision to make, so we neither
+  // praise it as a find nor blame it as an error — we just note that it was forced. This
+  // must come first: a forced move is "best" by default (it's the only line the engine has)
+  // and would otherwise be mislabelled "Great move / the only move you found".
+  if (forced) {
+    return { code: "forced", label: "Forced", glyph: "□", tone: "info" };
+  }
   // Great: the only move that holds the position together — finding it mattered.
+  // The winAfterMover >= 25 floor keeps "Great" for moves that actually rescue the
+  // position (or better); below that the mover is still losing even after finding the
+  // only try, which reads as "Best" (still correct, just not a save worth celebrating).
   if (isBest && onlyMove && winAfterMover >= 25) {
     return { code: "great", label: "Great move", glyph: "!", tone: "good" };
   }

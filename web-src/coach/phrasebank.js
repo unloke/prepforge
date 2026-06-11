@@ -390,6 +390,30 @@ export const INACC_FLIP = [
 ];
 
 // =====================================================================================
+// Forced — there was exactly one legal move. Nothing to find, nothing to fault; the
+// rules left no choice. Never praise this as a "find". {stand} is the resulting standing.
+// =====================================================================================
+export const FORCED_MOVE = [
+  "Forced. {san} is the only legal move on the board.",
+  "No choice here: {san} is the only legal move.",
+  "{san} is forced, the only legal move available.",
+  "This one plays itself: {san} is the only legal move.",
+  "Nothing to decide, {san} is the only legal move.",
+  "{san}, the only legal move in the position.",
+  "Forced move: {san} was the one and only legal option.",
+];
+
+// Forced specifically because the king was in check — one legal way to meet it.
+export const FORCED_CHECK = [
+  "Forced. {san} is the only legal reply to the check.",
+  "The only way to meet the check is {san}.",
+  "{san} is forced, the only legal escape from check.",
+  "No choice: {san} is the one move that answers the check.",
+  "In check with one way out: {san}.",
+  "{san}, the only legal response to the check.",
+];
+
+// =====================================================================================
 // Great — the only move, or a decisive winning blow.
 // =====================================================================================
 export const GREAT_DECISIVE = [
@@ -562,4 +586,89 @@ export const ERROR_OPP_THREAT_SKEWER = [
   " On top of that, {opp} has a skewer on the {front} and {back}.",
   " Now {opp} skewers the {front}, and the {back} drops.",
   " And {opp} can skewer the {front} to win the {back}.",
+];
+
+// =====================================================================================
+// Intuition — the position's "texture" from Maia's human-move distribution, crossed with
+// Stockfish's verdict. These are trailing, capitalised sentences (a leading space) folded
+// onto the end of the move's commentary. {obviousSan} is the human-obvious move; {san} the
+// move actually played. See intuition.js for how each case is selected.
+// =====================================================================================
+
+// An error in an OBVIOUS position where the natural move was also best — reads as a slip
+// of the hand or a momentary lapse, not a real misjudgement.
+export const INTUITION_SLIP = [
+  " This was a natural spot, and {obviousSan} is almost everyone's move here, so it looks more like a slip than a real misread.",
+  " In a position this clear, {obviousSan} plays itself, so this reads like a momentary lapse rather than a misjudgement.",
+  " Most players find {obviousSan} on autopilot here, which makes this look like a slip of the hand.",
+  " {obviousSan} was the natural, obvious choice, so going astray feels like a brief lapse in focus.",
+  " The position pointed straight at {obviousSan}, so this looks like a slip rather than a genuine misread.",
+  " Almost everyone plays {obviousSan} on instinct here, so chalk this one up to a momentary slip.",
+  " This was an intuitive position where {obviousSan} stands out, so it has the feel of a careless slip.",
+  " {obviousSan} is the move that leaps out here, which makes this look like a lapse rather than a real error of judgement.",
+  " With {obviousSan} so obvious, this comes across as a slip more than a misunderstanding.",
+];
+
+// An error in a RICH position — several plausible moves, no single obvious one. A hard
+// place to go wrong, so the read is sympathetic rather than scolding.
+export const INTUITION_HARD = [
+  " To be fair, this is a rich, double-edged position with several tempting tries, so it's an easy place to go wrong.",
+  " In fairness, the position is complex with a lot of reasonable-looking moves, so it's a hard one to get right.",
+  " This was a genuinely tricky spot, with several candidate moves pulling in different directions.",
+  " The position is sharp and full of options, so missing the best one here is understandable.",
+  " It's a demanding position with no single obvious move, so this is a forgivable place to stumble.",
+  " There were several plausible tries here, so this rich position made the right path hard to see.",
+  " This is a knotty, double-edged position, the kind where even strong players go astray.",
+  " With so many tempting moves on the board, this was a hard position to navigate cleanly.",
+  " No shame in this one: the position bristles with options and the right move was well hidden.",
+];
+
+// A strong move that ISN'T the human-obvious one, in an otherwise obvious position — you
+// took the road less travelled and it works.
+export const INTUITION_OWN_PATH = [
+  " Most players would reach for {obviousSan} here; you found a less obvious route in {san} that's every bit as strong.",
+  " The natural move was {obviousSan}, but {san} is a quieter path to the same end. Nicely seen.",
+  " Where most would play {obviousSan}, you chose the less travelled {san}, and it holds up well.",
+  " {obviousSan} was the obvious try; {san} is the road less taken, and it works just as well.",
+  " A creative choice: most reach for {obviousSan}, but {san} gets there by a different route.",
+  " You sidestepped the natural {obviousSan} for {san}, an equally sound idea with its own flavour.",
+  " Interesting: {obviousSan} is what most would play, yet {san} is just as good and rather more original.",
+  " Few would pass up {obviousSan}, but {san} is an inventive way to the same result.",
+];
+
+// The human-obvious move was NOT best, and you played the engine's best instead — you saw
+// past the tempting natural move (a small trap dodged).
+export const INTUITION_AVOIDED = [
+  " Note that the instinctive {obviousSan} isn't best here; you saw past it to {san}.",
+  " The natural-looking {obviousSan} falls short, and {san} is the stronger, less obvious choice you found.",
+  " Many would play the tempting {obviousSan}, but {san} is sharper, and you spotted it.",
+  " {obviousSan} is what the position seems to ask for, yet {san} is better, and you didn't take the bait.",
+  " You resisted the obvious {obviousSan} and played the stronger {san} instead. Well judged.",
+  " The eye goes to {obviousSan}, but it isn't best; {san} is, and you found it.",
+  " Good discipline: {obviousSan} is the natural move and the inferior one, while {san} is the real best.",
+  " It would be easy to play {obviousSan} on instinct, but {san} is the better move, and you saw it.",
+];
+
+// A sound move in a RICH position — well-chosen among many tempting tries.
+export const INTUITION_RICH_HANDLED = [
+  " This was a rich position with several candidate moves, and {san} is a strong pick among them.",
+  " A complex spot with lots of plausible tries, and you landed on a good one in {san}.",
+  " The position offered many tempting moves, and {san} steers a sound course through them.",
+  " In a double-edged position full of options, {san} keeps you on the right side of things.",
+  " Plenty of reasonable moves here, and {san} is one of the best of them.",
+  " A sharp, many-sided position, navigated well with {san}.",
+  " There was a lot to weigh here, and {san} is a confident, healthy choice.",
+  " The board was full of candidates, and {san} is a clear-headed pick.",
+];
+
+// A sound move that IS the human-obvious one — natural and correct. Kept mild so an
+// everyday recapture isn't over-praised.
+export const INTUITION_NATURAL = [
+  " The natural move, and the right one.",
+  " That's the move the position calls for, played without fuss.",
+  " The obvious choice here, and a sound one.",
+  " Exactly what most would play, and correctly so.",
+  " The intuitive move, and it holds up.",
+  " Straightforward and correct, just as the position suggests.",
+  " The move that plays itself, and it's the right one.",
 ];

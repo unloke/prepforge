@@ -15,6 +15,7 @@ import { createCsrfTokenSource, isSafeMethod, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
 import { describeMove } from "./explain.js";
 import { buildMoveFeatures, isBrilliantByMaia, markBrilliant } from "./coach/features.js";
+import { attachIntuition } from "./coach/intuition.js";
 import { buildCommentary } from "./coach/commentary.js";
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -1123,12 +1124,17 @@ class PositionCoach {
         afterEval: { cp: top.cp ?? null, mate: top.mate ?? null, pvUci: top.pvUci || [], pvSan: top.pvSan || [] },
       });
       renderCoachProse(buildCommentary(features));
+      // Read the position's "texture" from Maia's human-move distribution (one obvious
+      // move vs. a rich spread) and fold it into the commentary — best-effort and async,
+      // reusing the same Maia worker the brilliant check uses.
+      this._checkIntuition(features, prevFen, fen, token);
       // A move can only be "brilliant" if the engine loves it but humans wouldn't —
       // confirm that against Maia in the background and upgrade the read if so.
       if (features.brilliantCandidate) {
         this._checkBrilliant(features, prevFen, ctx.lastUci, fen, token);
       }
-    } catch (_) {
+    } catch (err) {
+      console.warn("Coach: failed to build move commentary", err);
       /* leave the instant read on screen */
     }
   }
@@ -1151,8 +1157,29 @@ class PositionCoach {
         markBrilliant(features, { humanProb: a.humanProbability, winChanceAfter: a.winChanceAfter });
         renderCoachProse(buildCommentary(features));
       }
-    } catch (_) {
+    } catch (err) {
+      console.warn("Coach: Maia brilliancy check unavailable", err);
       /* Maia unavailable → no brilliancy; the engine read stands. */
+    }
+  }
+
+  // Fold Maia's view of the position's TEXTURE into the read: its human-move distribution
+  // over the position before the move says whether one move was obvious (a recapture) or
+  // many looked reasonable (a sharp middlegame). Crossed with the move's quality, that's
+  // what lets the coach call an error in an obvious spot a slip, and an error in a rich
+  // one a hard choice. Best-effort and async — if Maia is unavailable the engine read
+  // simply stands with no texture note. One Maia forward per move, reusing the shared
+  // worker (the model is loaded once and cached), so it rides the existing budget.
+  async _checkIntuition(features, prevFen, fen, token) {
+    try {
+      const provider = getSharedMaia3Provider();
+      const read = await provider.positionRead({ fen: prevFen }); // policy + WDL, one forward
+      if (token !== this.token || fen !== this.fen || !read) return;
+      attachIntuition(features, read);
+      renderCoachProse(buildCommentary(features));
+    } catch (err) {
+      console.warn("Coach: Maia intuition read unavailable", err);
+      /* Maia unavailable → no texture/sharpness note; the engine read stands. */
     }
   }
 

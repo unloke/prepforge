@@ -24,6 +24,8 @@ services:
       # config.py auto-pins postgres:// -> postgresql+psycopg:// (psycopg v3).
       - key: DATABASE_URL
         sync: false
-      # Update to match your actual service URL (e.g. https://prepforge-w0c5.onrender.com).
+      # Placeholder — the live deploy overrides this in the Render dashboard with
+      # its actual service URL (e.g. https://prepforge-w0c5.onrender.com). Update
+      # this value too if you ever recreate the service from this blueprint.
       - key: PREPFORGE_ALLOWED_ORIGINS
         value: https://prepforge-chess.onrender.com

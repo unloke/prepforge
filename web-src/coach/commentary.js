@@ -26,6 +26,8 @@ import {
   tailDash,
   tailParen,
   MATE_DELIVERED,
+  FORCED_MOVE,
+  FORCED_CHECK,
   BRILLIANT_LEAD,
   LOOKS_HANGS,
   LOOKS_PLAIN,
@@ -77,6 +79,12 @@ import {
   ERROR_OPP_THREAT_PIN,
   ERROR_OPP_THREAT_PIN_ABS,
   ERROR_OPP_THREAT_SKEWER,
+  INTUITION_SLIP,
+  INTUITION_HARD,
+  INTUITION_OWN_PATH,
+  INTUITION_AVOIDED,
+  INTUITION_RICH_HANDLED,
+  INTUITION_NATURAL,
 } from "./phrasebank.js";
 
 function cap(s) {
@@ -151,6 +159,9 @@ function playedLineLoss(f) {
     ? f.playedLine.settledSwing
     : f.playedLine.swing;
   const swingMover = f.mover === "white" ? swing : -swing;
+  // swing/settledSwing are differences of materialBalance() sums, which add up whole
+  // PIECE_VALUE points — always an integer. Math.round is just a defensive guard
+  // against future fractional piece values, not a real rounding step today.
   return swingMover < 0 ? Math.round(-swingMover) : 0;
 }
 
@@ -313,6 +324,63 @@ function oppThreatClause(f, opp) {
 }
 
 // ---------------------------------------------------------------------------
+// Intuition — the position's texture (from Maia) crossed with the move's quality. A
+// trailing sentence that explains WHY a move went the way it did: a slip in an obvious
+// spot, a hard choice in a rich one, an inventive path, a trap dodged. "" when there's no
+// Maia read (it arrives async) or the texture adds nothing to this particular move.
+// ---------------------------------------------------------------------------
+// A position that is sharp FOR ITS PHASE (top quartile/decile of the WDL sharpness band) —
+// the honest "easy to mess up" read that policy entropy got wrong (many calm options also
+// spread the policy). "lively" or "sharp" both count as worth flagging.
+function isSharp(intu) {
+  const s = intu && intu.sharpness;
+  return !!s && (s.band === "sharp" || s.band === "lively");
+}
+
+function intuitionNote(f) {
+  const intu = f.intuition;
+  if (!intu) return "";
+  const code = f.classification.code;
+  const isError = code === "blunder" || code === "mistake" || code === "inaccuracy";
+  const isGood = code === "best" || code === "good" || code === "great";
+
+  if (isError) {
+    // Obvious position, the natural move was best, you played something else: a slip.
+    if (intu.texture === "obvious" && intu.obviousIsBest && !intu.playedWasObvious && intu.obviousSan) {
+      return choose(f, "intuSlip", INTUITION_SLIP, { obviousSan: intu.obviousSan });
+    }
+    // Sharp-for-its-phase position: a sympathetic "this was genuinely hard".
+    if (isSharp(intu)) return choose(f, "intuHard", INTUITION_HARD, {});
+    return "";
+  }
+
+  if (isGood) {
+    // The human-obvious move wasn't best, and you played the engine's best instead.
+    if (
+      (code === "best" || code === "great") &&
+      intu.texture === "obvious" &&
+      !intu.obviousIsBest &&
+      !intu.playedWasObvious &&
+      intu.obviousSan
+    ) {
+      return choose(f, "intuAvoided", INTUITION_AVOIDED, { obviousSan: intu.obviousSan, san: f.san });
+    }
+    // Obvious position, but you found a strong move humans rarely pick: your own path.
+    if (intu.texture === "obvious" && intu.surprise && !intu.playedWasObvious && intu.obviousSan) {
+      return choose(f, "intuOwnPath", INTUITION_OWN_PATH, { obviousSan: intu.obviousSan, san: f.san });
+    }
+    // A sharp position navigated well.
+    if (isSharp(intu)) return choose(f, "intuRichGood", INTUITION_RICH_HANDLED, { san: f.san });
+    // An obvious position, played the obvious move: natural and correct (kept mild).
+    if (intu.texture === "obvious" && intu.playedWasObvious) {
+      return choose(f, "intuNatural", INTUITION_NATURAL, {});
+    }
+    return "";
+  }
+  return "";
+}
+
+// ---------------------------------------------------------------------------
 // The prose.
 // ---------------------------------------------------------------------------
 
@@ -324,6 +392,13 @@ function buildProse(f) {
   // Checkmate delivered — the SAN already carries the '#'.
   if (/#/.test(f.san)) {
     return choose(f, "mateDelivered", MATE_DELIVERED, { san: f.san });
+  }
+
+  // Forced — only one legal move existed. State that plainly; there was nothing to find
+  // and nothing to fault, so no praise and no grade-shaming.
+  if (code === "forced") {
+    const bank = f.wasInCheck ? FORCED_CHECK : FORCED_MOVE;
+    return choose(f, "forced", bank, { san: f.san });
   }
 
   // Brilliant — the engine loves it, humans wouldn't find it (Maia disagreement).
@@ -435,7 +510,7 @@ function buildProse(f) {
       !namedBetterAlready && f.bestSan && !f.isBest
         ? ` ${choose(f, "betterMove", BETTER_MOVE, { bestSan: f.bestSan, merit: betterMerit(f) })}`
         : "";
-    return `${lead} ${why}${consequence}${better}`;
+    return `${lead} ${why}${consequence}${better}${intuitionNote(f)}`;
   }
 
   // Inaccuracy — gentle; mention the cleaner move, and flag it if it actually flipped
@@ -453,7 +528,7 @@ function buildProse(f) {
       f.winAfterMover < 50
         ? choose(f, "inaccFlip", INACC_FLIP, { opp, me, standing: standingWord(f.winAfterMover) })
         : "";
-    return `${head}${cleaner}${flip}`;
+    return `${head}${cleaner}${flip}${intuitionNote(f)}`;
   }
 
   // Great — far and away the best move. Two flavours: a decisive winning blow, or the
@@ -462,14 +537,14 @@ function buildProse(f) {
     const up = moverMaterialAfter(f);
     const mate = mateInClause(f);
     if (/x/.test(f.san) && up >= 3 && materialPhrase(up)) {
-      return choose(f, "greatDecisive", GREAT_DECISIVE, { san: f.san, phrase: materialPhrase(up), me }) + mate;
+      return choose(f, "greatDecisive", GREAT_DECISIVE, { san: f.san, phrase: materialPhrase(up), me }) + mate + intuitionNote(f);
     }
     const threat = mate ? "" : threatPoint(f, me, opp);
     const stand =
       !mate && !threat && f.winAfterMover >= 57
         ? choose(f, "greatStand", STAND_TAIL, { me, standing: standingWord(f.winAfterMover) })
         : "";
-    return choose(f, "greatOnly", GREAT_ONLY_MOVE, { san: f.san, me }) + (mate || threat || stand);
+    return choose(f, "greatOnly", GREAT_ONLY_MOVE, { san: f.san, me }) + (mate || threat || stand) + intuitionNote(f);
   }
 
   // Best / good — keep it warm and short, with one positive, factual point. A forced
@@ -500,10 +575,15 @@ function buildProse(f) {
     point = choose(f, "pointEndgame", POINT_ENDGAME, { phrase: materialPhrase(up) });
   } else if (f.winAfterMover >= 68) {
     point = choose(f, "standTailGood", STAND_TAIL, { me, standing: standingWord(f.winAfterMover) });
+  } else if (isSharp(f.intuition)) {
+    // A position that's sharp for its phase (WDL sharpness band): don't reach for the bland
+    // "keeps it simple and sound" line — that's the "calls a knife-fight stable" misread.
+    // Let the intuition note below ("a sharp, many-sided position...") carry the point.
+    point = "";
   } else {
     point = choose(f, "goodSolid", GOOD_SOLID, {});
   }
-  return `${lead} ${gist}.${point}`;
+  return `${lead} ${gist}.${point}${intuitionNote(f)}`;
 }
 
 export function buildCommentary(features) {

@@ -3,13 +3,10 @@ import { describe, it, expect } from "vitest";
 import {
   materialBalance,
   perPieceDiff,
-  capturedLists,
   materialPhrase,
-  pieceListPhrase,
   walkLine,
   gamePhase,
   squareExchange,
-  settledBalanceAfter,
 } from "./material.js";
 import { Chess } from "chess.js";
 
@@ -24,7 +21,6 @@ describe("material counting", () => {
   it("scores a missing black queen as +9 for White", () => {
     const fen = "rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     expect(materialBalance(new Chess(fen))).toBe(9);
-    expect(capturedLists(new Chess(fen)).byWhite).toEqual({ q: 1 });
   });
 });
 
@@ -35,12 +31,6 @@ describe("materialPhrase", () => {
     expect(materialPhrase(3)).toBe("a piece");
     expect(materialPhrase(5)).toBe("a rook");
     expect(materialPhrase(-9)).toBe("a queen");
-  });
-});
-
-describe("pieceListPhrase", () => {
-  it("lists captured pieces richest-first", () => {
-    expect(pieceListPhrase({ p: 2, n: 1 })).toBe("a knight, 2 pawns");
   });
 });
 
@@ -110,9 +100,26 @@ describe("walkLine settled swing — honest exchange accounting", () => {
   });
 });
 
-describe("gamePhase", () => {
+describe("gamePhase (lichess/scalachess Divider port)", () => {
   it("calls the start an opening and a bare-pieces position an endgame", () => {
     expect(gamePhase(START)).toBe("opening");
     expect(gamePhase("4k3/8/8/8/8/8/4P3/4K3 w - - 0 40")).toBe("endgame");
+  });
+
+  it("calls a position with <= 6 majors+minors an endgame regardless of move number", () => {
+    // Each side has only R+R+N (3 non-K/P pieces) -> majorsAndMinors = 6 -> endgame.
+    expect(gamePhase("r3k1nr/pppppppp/8/8/8/8/PPPPPPPP/R3K1NR w - - 0 5")).toBe("endgame");
+  });
+
+  it("calls a reduced (<= 10 majors+minors) position a middlegame", () => {
+    // 4 non-K/P pieces per side -> majorsAndMinors = 8 -> middlegame even with full pawns.
+    expect(gamePhase("rnbqk3/pppppppp/8/8/8/8/PPPPPPPP/RNBQK3 w - - 0 8")).toBe("middlegame");
+  });
+
+  it("calls a back-rank-sparse position a middlegame (development under way)", () => {
+    // White has only R(a1), R(f1), K(g1) left on the first rank (< 4) -> back-rank sparse
+    // -> middlegame, even with a full complement of pieces still on the board.
+    expect(gamePhase("r2q1rk1/pppbbppp/2n2n2/3pp3/3PP3/2NQBN2/PPP1BPPP/R4RK1 w - - 0 10"))
+      .toBe("middlegame");
   });
 });

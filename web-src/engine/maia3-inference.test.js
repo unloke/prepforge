@@ -9,6 +9,7 @@ import {
   softmax3,
   probabilitiesToPermille,
   winChanceAfter,
+  wdlCurrent,
 } from "./maia3-inference.js";
 
 const POLICY_DIM = 4352;
@@ -139,5 +140,27 @@ describe("winChanceAfter (invert_wdl + permille, mover perspective)", () => {
 
   it("→0 when the AFTER position is won for the side to move there (mover loses)", () => {
     expect(winChanceAfter([-10, -10, 10])).toBeCloseTo(0, 6);
+  });
+});
+
+describe("wdlCurrent (side-to-move WDL, no inversion)", () => {
+  it("permille sums to 1000", () => {
+    const { win, draw, loss } = wdlCurrent([0.3, -0.1, 0.7]);
+    expect(win + draw + loss).toBe(1000);
+  });
+
+  it("equal logits → ~even WDL (no swap, unlike winChanceAfter)", () => {
+    // [loss,draw,win] equal → permille [334,333,333] in input order [loss,draw,win].
+    const { win, draw, loss } = wdlCurrent([0, 0, 0]);
+    expect(win).toBe(333);
+    expect(draw).toBe(333);
+    expect(loss).toBe(334);
+  });
+
+  it("reads a winning position as high win, low loss (mover POV, not inverted)", () => {
+    // Big WIN logit (index 2) → mover's win prob high. winChanceAfter would invert this.
+    const { win, loss } = wdlCurrent([-10, -10, 10]);
+    expect(win).toBeGreaterThan(990);
+    expect(loss).toBeLessThan(10);
   });
 });
