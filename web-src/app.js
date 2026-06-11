@@ -6392,6 +6392,158 @@ function renderReplayDetail(game) {
   return lines.join("<br />");
 }
 
+// ----- Opponent scouting (Replay tab) -----------------------------------------
+// Fetches the opponent's recent games from Lichess's PUBLIC export straight from
+// the browser (CORS-open, no token, zero server involvement), aggregates their
+// opening tendencies, and grades the user's own repertoires against the lines the
+// opponent actually plays. Module is dynamically imported on first use.
+
+let scoutModule = null;
+let scoutClient = null;
+
+async function runScout() {
+  const usernameInput = document.getElementById("scout-username");
+  const results = document.getElementById("scout-results");
+  const button = document.getElementById("scout-btn");
+  const username = (usernameInput.value || "").trim();
+  if (!username) {
+    setStatus("Enter an opponent's Lichess username");
+    usernameInput.focus();
+    return;
+  }
+  const count = Math.max(20, Math.min(100, Number(document.getElementById("scout-count").value) || 60));
+  button.disabled = true;
+  results.innerHTML = '<div class="muted hint">Fetching games from Lichess…</div>';
+  setStatus(`Scouting ${username}`);
+  try {
+    if (!scoutModule) {
+      scoutModule = await import("./scout.js");
+      scoutClient = scoutModule.createScoutClient({});
+    }
+    const games = await scoutClient.fetchGames(username, { max: count });
+    if (!games.length) {
+      results.innerHTML = '<div class="empty-state">No finished games found for this player.</div>';
+      return;
+    }
+    // My active repertoires, tree-loaded for coverage walks. My BLACK prep answers
+    // their White games and vice versa. Capped so a hoarder's account stays cheap.
+    const myReps = ((await api("/api/repertoires")).repertoires || []).filter(
+      (rep) => rep.is_active !== false,
+    );
+    const lookups = { white: [], black: [] };
+    for (const rep of myReps.slice(0, 6)) {
+      try {
+        const payload = await api(`/api/build/load?repertoire_id=${encodeURIComponent(rep.id)}`);
+        lookups[rep.color].push({
+          rep,
+          lookup: scoutModule.repertoireChildLookup(payload.nodes),
+        });
+      } catch (_) {
+        /* unreadable repertoire — skip it */
+      }
+    }
+    const sections = [
+      renderScoutSection(games, "white", lookups.black, username),
+      renderScoutSection(games, "black", lookups.white, username),
+    ].filter(Boolean);
+    results.innerHTML = sections.length
+      ? sections.join("")
+      : '<div class="empty-state">Not enough opening data in these games.</div>';
+    results.querySelectorAll("[data-prep-rep]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        await editRepertoire(btn.dataset.prepRep);
+        if (btn.dataset.prepNode) await selectBuildNode(btn.dataset.prepNode);
+      });
+    });
+    setStatus(`Scouted ${games.length} games for ${username}`);
+  } catch (error) {
+    results.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+    setStatus(error.message);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+// Format a scout line's SAN list with move numbers: "1. e4 c5 2. Nf3 d6".
+function scoutLineText(sans) {
+  const parts = [];
+  sans.forEach((san, index) => {
+    if (index % 2 === 0) parts.push(`${index / 2 + 1}.`);
+    parts.push(san);
+  });
+  return parts.join(" ");
+}
+
+// One half of the report: everything the opponent does as `oppColor`, graded
+// against MY repertoires of the opposite colour.
+function renderScoutSection(games, oppColor, myLookups, username) {
+  const trie = scoutModule.buildOpeningTrie(games, oppColor);
+  if (!trie.count) return "";
+  const dist = scoutModule.moveDistribution(trie).slice(0, 4);
+  const lines = scoutModule.topLines(trie);
+  // Grade each line against the best-covering of my repertoires.
+  const graded = lines.map((line) => {
+    let best = null;
+    for (const { rep, lookup } of myLookups) {
+      const g = scoutModule.gradeLines(lookup, [line])[0];
+      if (!best || g.covered > best.covered) {
+        best = { ...g, repId: rep.id, repName: rep.name };
+      }
+    }
+    return best || { ...line, covered: 0, prepared: false, repId: null };
+  });
+  const prepared = graded.filter((g) => g.prepared).length;
+  const verdict = myLookups.length
+    ? `<span class="scout-verdict ${prepared === graded.length ? "good" : "warn"}">${prepared}/${graded.length} of their favourite lines are in your prep</span>`
+    : '<span class="scout-verdict muted">no repertoire of yours answers this colour yet</span>';
+
+  const firstMoves = dist
+    .map(
+      (m) => `
+      <div class="scout-dist-row">
+        <span class="scout-dist-san">${escapeHtml(m.san)}</span>
+        <span class="scout-dist-bar"><span style="width:${Math.round(m.share * 100)}%"></span></span>
+        <span class="scout-dist-share">${Math.round(m.share * 100)}%</span>
+        <span class="scout-dist-score" title="Their score with this move">${m.scorePct}%</span>
+      </div>`,
+    )
+    .join("");
+
+  const lineRows = graded
+    .map((line) => {
+      const badge = line.prepared
+        ? `<span class="scout-badge good" title="Your prep follows this line">&#10003; prepared</span>`
+        : line.covered > 0
+          ? `<span class="scout-badge warn" title="Your prep runs out mid-line">gap after ply ${line.covered}</span>`
+          : `<span class="scout-badge bad" title="This line is not in your prep">not prepared</span>`;
+      const prepBtn =
+        !line.prepared && line.repId
+          ? `<button class="btn ghost scout-prep-btn" data-prep-rep="${escapeHtml(line.repId)}" data-prep-node="${escapeHtml(line.deepestNodeId || "")}" title="Open ${escapeHtml(line.repName)} where the gap starts">Prep this</button>`
+          : "";
+      return `
+      <div class="scout-line">
+        <span class="scout-line-count" title="${line.count} of their games">&times;${line.count}</span>
+        <span class="scout-line-moves">${escapeHtml(scoutLineText(line.sans))}</span>
+        <span class="scout-line-score" title="Their score in this line">${line.scorePct}%</span>
+        ${badge}
+        ${prepBtn}
+      </div>`;
+    })
+    .join("");
+
+  const heading = oppColor === "white" ? "With White" : "With Black";
+  return `
+    <div class="scout-section">
+      <div class="scout-section-head">
+        <h3>${escapeHtml(username)} &middot; ${heading} <span class="muted">(${trie.count} games)</span></h3>
+        ${verdict}
+      </div>
+      <div class="scout-dist">${firstMoves}</div>
+      <div class="scout-lines">${lineRows}</div>
+    </div>
+  `;
+}
+
 function bindEvents() {
   document.querySelectorAll(".tab").forEach((button) => {
     button.addEventListener("click", () => {
@@ -6448,6 +6600,16 @@ function bindEvents() {
 
   // Replay tab
   document.getElementById("lichess-compare-btn").addEventListener("click", runLichessCompare);
+  const scoutBtn = document.getElementById("scout-btn");
+  if (scoutBtn) {
+    scoutBtn.addEventListener("click", runScout);
+    const scoutName = document.getElementById("scout-username");
+    if (scoutName) {
+      scoutName.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") runScout();
+      });
+    }
+  }
 
   document.getElementById("run-analysis").addEventListener("click", runAnalysis);
   document.getElementById("fetch-my-game").addEventListener("click", fetchMyLichessGame);

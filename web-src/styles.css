@@ -1778,6 +1778,122 @@ h2 {
   background: var(--panel-soft);
 }
 
+/* Opponent scout report (Replay tab) */
+
+.scout-results {
+  display: grid;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.scout-section {
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--panel-soft);
+}
+
+.scout-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.scout-section-head h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.scout-verdict {
+  font-size: 12px;
+  font-weight: 600;
+}
+.scout-verdict.good { color: var(--good); }
+.scout-verdict.warn { color: var(--warn); }
+.scout-verdict.muted { color: var(--muted); font-weight: 400; }
+
+.scout-dist {
+  display: grid;
+  gap: 3px;
+  margin: 8px 0 10px;
+  max-width: 360px;
+}
+
+.scout-dist-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 38px 38px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.scout-dist-san { font-weight: 600; }
+
+.scout-dist-bar {
+  height: 10px;
+  border-radius: 3px;
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  overflow: hidden;
+}
+
+.scout-dist-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  opacity: 0.75;
+}
+
+.scout-dist-share { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.scout-dist-score { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+
+.scout-lines {
+  display: grid;
+  gap: 4px;
+}
+
+.scout-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.scout-line-count {
+  color: var(--muted);
+  min-width: 28px;
+  font-variant-numeric: tabular-nums;
+}
+
+.scout-line-moves {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+}
+
+.scout-line-score {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.scout-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid;
+}
+.scout-badge.good { color: var(--good); border-color: var(--good); background: rgba(74, 137, 100, 0.08); }
+.scout-badge.warn { color: var(--warn); border-color: var(--warn); background: rgba(201, 132, 57, 0.08); }
+.scout-badge.bad { color: var(--danger); border-color: var(--danger); background: rgba(196, 82, 77, 0.08); }
+
+.scout-prep-btn {
+  padding: 1px 8px;
+  font-size: 11px;
+}
+
 /* Opening explorer (Build sidebar drawer) */
 
 .explorer-head {

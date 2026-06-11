@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-DimxZ2Ki.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-ZduKVgOl.css">
+    <script type="module" crossorigin src="/static/assets/index-DVg7YaTk.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-B2r4QSeL.css">
   </head>
   <body>
     <header class="topbar">
@@ -264,6 +264,27 @@
               </label>
             </div>
             <div id="replay-results" class="replay-results"></div>
+          </section>
+          <section class="card">
+            <div class="card-head">
+              <h2>Scout an opponent</h2>
+              <button class="btn primary" id="scout-btn" data-testid="scout-btn">Scout</button>
+            </div>
+            <p class="muted hint">
+              Fetch any player's recent Lichess games to see what they actually open with -
+              and whether your repertoires cover their pet lines.
+            </p>
+            <div class="replay-controls">
+              <label>
+                <span class="muted">Lichess username</span>
+                <input id="scout-username" type="text" placeholder="opponent" />
+              </label>
+              <label>
+                <span class="muted">Recent games</span>
+                <input id="scout-count" type="number" min="20" max="100" value="60" />
+              </label>
+            </div>
+            <div id="scout-results" class="scout-results"></div>
           </section>
         </div>
       </section>
