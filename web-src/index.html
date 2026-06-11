@@ -298,6 +298,25 @@
             <p class="muted settings-error" id="settings-maia-error" hidden></p>
           </section>
           <section class="card">
+            <div class="card-head"><h2>Playing strength</h2></div>
+            <div class="settings-label">Stockfish analysis depth</div>
+            <div class="strength-row">
+              <input type="range" id="settings-depth" min="1" max="30" value="16" aria-label="Stockfish analysis depth" />
+              <span class="strength-readout" id="settings-depth-readout">16</span>
+            </div>
+            <p class="muted">Higher is stronger but slower. Analysis runs on your device.</p>
+            <div class="settings-label" style="margin-top:14px">Maia3 strength (human model)</div>
+            <label class="strength-auto">
+              <input type="checkbox" id="settings-maia-auto" checked />
+              <span id="settings-maia-auto-label">Auto — match my Lichess rating</span>
+            </label>
+            <div class="strength-row">
+              <input type="range" id="settings-maia-rating" min="600" max="2600" step="50" value="1500" aria-label="Maia3 rating" />
+              <span class="strength-readout" id="settings-maia-rating-readout">1500</span>
+            </div>
+            <p class="muted">Sets how human the coach's intuition reads feel and the default strength for Build → Generate.</p>
+          </section>
+          <section class="card">
             <div class="card-head"><h2>Board</h2></div>
             <div class="settings-label">Piece set</div>
             <div class="piece-style-picker" id="piece-style-picker"></div>

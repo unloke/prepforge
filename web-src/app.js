@@ -268,6 +268,10 @@ const appState = {
   signedIn: false,
   replayResults: null,
   pieceStyle: "berlin",
+  // Maia3 strength: a Settings-pinned rating (null = AUTO), and the auto-resolved
+  // rating from the linked Lichess account's public profile (null until fetched).
+  maiaRatingPinned: null,
+  maiaAutoRating: null,
   // Whether the server exposes engine/Maia compute (admin builds only). The
   // public/default flow runs compute in the browser, so full-game Analyze and
   // Build → Generate (not yet ported to the browser) are gated off here rather
@@ -276,6 +280,61 @@ const appState = {
 };
 
 const LICHESS_KEY = "prepforge.lichess_username";
+
+// ---- Maia3 strength resolution ---------------------------------------------------
+// A pinned Settings value wins; otherwise AUTO matches the player's own Lichess
+// rating (public profile, cached locally for a day); otherwise the model default.
+// Personalizes the coach's human-feel reads and the Build → Generate default.
+const MAIA_FALLBACK_RATING = 1500; // mirrors engine/maia3-provider DEFAULT_RATING
+const MAIA_AUTO_CACHE_KEY = "prepforge.maia_auto_rating";
+const MAIA_AUTO_TTL_MS = 24 * 60 * 60 * 1000;
+
+function effectiveMaiaRating() {
+  if (Number.isFinite(appState.maiaRatingPinned)) return appState.maiaRatingPinned;
+  if (Number.isFinite(appState.maiaAutoRating)) return appState.maiaAutoRating;
+  return MAIA_FALLBACK_RATING;
+}
+
+// Best-effort: resolve the player's strength from the linked Lichess account's public
+// profile (CORS-open, no token, one tiny GET a day thanks to the cache). Uses the
+// most-played live perf so a blitz player gets their blitz number, not a provisional
+// classical one. Failure just leaves AUTO at the fallback — never throws.
+async function refreshAutoMaiaRating() {
+  const username = appState.lichessUsername;
+  if (!username) {
+    appState.maiaAutoRating = null;
+    return;
+  }
+  try {
+    const cached = JSON.parse(localStorage.getItem(MAIA_AUTO_CACHE_KEY) || "null");
+    if (cached && cached.username === username && Date.now() - cached.at < MAIA_AUTO_TTL_MS) {
+      appState.maiaAutoRating = cached.rating;
+      renderStrengthControls();
+      return;
+    }
+  } catch (_) { /* corrupt cache — refetch */ }
+  try {
+    const resp = await fetch(`https://lichess.org/api/user/${encodeURIComponent(username)}`);
+    if (!resp.ok) return;
+    const perfs = (await resp.json()).perfs || {};
+    let best = null;
+    for (const key of ["bullet", "blitz", "rapid", "classical"]) {
+      const p = perfs[key];
+      if (p && Number.isFinite(p.rating) && !p.prov) {
+        if (!best || (p.games || 0) > best.games) best = { rating: p.rating, games: p.games || 0 };
+      }
+    }
+    if (!best) return;
+    appState.maiaAutoRating = Math.max(600, Math.min(2600, Math.round(best.rating)));
+    try {
+      localStorage.setItem(
+        MAIA_AUTO_CACHE_KEY,
+        JSON.stringify({ username, rating: appState.maiaAutoRating, at: Date.now() }),
+      );
+    } catch (_) { /* storage full — fine, refetch next time */ }
+    renderStrengthControls();
+  } catch (_) { /* offline or blocked — AUTO falls back silently */ }
+}
 
 // Shown when a browser-only compute action (whole-game Analyze, Build → Generate)
 // can't run because the browser engine is unavailable (page not cross-origin
@@ -1178,7 +1237,9 @@ class PositionCoach {
   async _checkIntuition(features, prevFen, fen, token) {
     try {
       const provider = getSharedMaia3Provider();
-      const read = await provider.positionRead({ fen: prevFen }); // policy + WDL, one forward
+      // Personalized: the texture read runs at the player's own strength (Settings →
+      // Playing strength), so "one obvious move" means obvious to THEM.
+      const read = await provider.positionRead({ fen: prevFen, rating: effectiveMaiaRating() });
       if (token !== this.token || fen !== this.fen || !read) return;
       attachIntuition(features, read);
       renderCoachProse(buildCommentary(features));
@@ -1283,6 +1344,8 @@ class BoardController {
     this.highlights = new Set();
     this.arrows = [];
     this.squares = new Map();
+    this._badgeEl = null;       // tracks the one square holding a .square-badge
+    this._lastMoveSqs = null;   // tracks the [from, to] squares of the current last-move
     this.orientation = "white";
     this._buildGrid();
     this._bindBoardEvents();
@@ -1523,6 +1586,20 @@ class BoardController {
     this._cancelDrag();
     const fenChanged = this.fen !== fen;
     const prevFen = this.fen;
+
+    // Read slide offsets NOW, before any DOM writes, so _animateSlide never
+    // triggers a mid-write forced reflow to measure layout.
+    let preSlide = null;
+    if (fenChanged && this._hadPosition && lastMove && pref("moveAnim")) {
+      const from = lastMove.slice(0, 2);
+      const to = lastMove.slice(2, 4);
+      const fromSq = this.squares.get(from);
+      const toSq = this.squares.get(to);
+      if (fromSq && toSq) {
+        preSlide = { dx: fromSq.offsetLeft - toSq.offsetLeft, dy: fromSq.offsetTop - toSq.offsetTop, to };
+      }
+    }
+
     this.fen = fen;
     this.legalMoves = legalMoves;
     this.selected = null;
@@ -1533,7 +1610,7 @@ class BoardController {
     if (fenChanged) {
       this._renderPieces();
       if (this._hadPosition && lastMove) {
-        this._feedbackForMove(prevFen, fen, lastMove);
+        this._feedbackForMove(prevFen, fen, lastMove, preSlide);
       }
     }
     this._hadPosition = true;
@@ -1556,8 +1633,8 @@ class BoardController {
 
   // Slide the moved piece in, pulse the destination, and chirp a sound, all
   // driven off the final rendered position so a quick "skip" never leaves anything stranded.
-  _feedbackForMove(prevFen, fen, lastMove) {
-    const from = lastMove.slice(0, 2);
+  // preSlide is pre-computed {dx, dy, to} read before DOM writes to avoid forced reflow.
+  _feedbackForMove(prevFen, fen, lastMove, preSlide) {
     const to = lastMove.slice(2, 4);
     const wasCapture = (() => {
       try {
@@ -1569,21 +1646,19 @@ class BoardController {
       }
     })();
     playSound(wasCapture ? "capture" : "move");
-    if (pref("moveAnim")) this._animateSlide(from, to);
+    if (pref("moveAnim") && preSlide) this._animateSlide(preSlide);
     if (pref("lastMovePulse")) this._pulseSquare(to);
   }
 
-  _animateSlide(from, to) {
-    const fromSq = this.squares.get(from);
+  // preSlide = { dx, dy, to } — offsets already read before DOM writes.
+  _animateSlide({ dx, dy, to }) {
     const toSq = this.squares.get(to);
-    if (!fromSq || !toSq) return;
+    if (!toSq) return;
     const piece = toSq.querySelector(".piece");
     if (!piece) return;
-    const dx = fromSq.offsetLeft - toSq.offsetLeft;
-    const dy = fromSq.offsetTop - toSq.offsetTop;
     piece.style.transition = "none";
     piece.style.transform = `translate(${dx}px, ${dy}px)`;
-    void piece.offsetWidth;
+    void piece.offsetWidth; // one reflow to commit the start state before transitioning
     piece.style.transition = "transform 170ms ease-out";
     piece.style.transform = "translate(0, 0)";
     window.setTimeout(() => {
@@ -1596,9 +1671,11 @@ class BoardController {
     const el = this.squares.get(square);
     if (!el) return;
     el.classList.remove("move-pulse");
-    void el.offsetWidth;
-    el.classList.add("move-pulse");
-    window.setTimeout(() => el.classList.remove("move-pulse"), 500);
+    // rAF lets the removal commit to a frame before re-adding, avoiding forced reflow.
+    requestAnimationFrame(() => {
+      el.classList.add("move-pulse");
+      window.setTimeout(() => el.classList.remove("move-pulse"), 500);
+    });
   }
 
   clearMarkers() {
@@ -1641,22 +1718,33 @@ class BoardController {
       square.classList.toggle("selected", this.selected === squareName);
       square.classList.toggle("legal", legalTargets.has(squareName));
       square.classList.toggle("highlighted", this.highlights.has(squareName));
-      square.classList.toggle(
-        "last-move",
-        Boolean(this.lastMove) && this.lastMove.includes(squareName)
-      );
     });
+    // Update last-move only on the squares that actually changed (prev vs next).
+    const next = this.lastMove
+      ? [this.lastMove.slice(0, 2), this.lastMove.slice(2, 4)]
+      : [];
+    const prev = this._lastMoveSqs || [];
+    const toUpdate = new Set([...prev, ...next]);
+    const nextSet = new Set(next);
+    toUpdate.forEach((sq) => {
+      const el = this.squares.get(sq);
+      if (el) el.classList.toggle("last-move", nextSet.has(sq));
+    });
+    this._lastMoveSqs = next;
     this._syncMoveBadge();
   }
 
   _syncMoveBadge() {
-    this.squares.forEach((square) => {
-      const existing = square.querySelector(".square-badge");
+    // Clear previous badge from exactly the one tracked square (not a 64-square scan).
+    if (this._badgeEl) {
+      const existing = this._badgeEl.querySelector(".square-badge");
       if (existing) existing.remove();
-    });
+      this._badgeEl = null;
+    }
     if (!this.moveBadge) return;
     const square = this.squares.get(this.moveBadge.square);
     if (!square) return;
+    this._badgeEl = square;
     const cls = this.moveBadge.classification.replace(/[^a-z0-9_-]/g, "");
     const label = escapeHtml(this.moveBadge.label);
     square.insertAdjacentHTML(
@@ -2083,6 +2171,9 @@ function setLichessUsername(username) {
   }
   renderAccountChip();
   syncReplayControls();
+  // The player's own strength feeds Maia's AUTO rating; resolve it (cached) whenever
+  // the linked account changes. Fire-and-forget — AUTO falls back until it lands.
+  refreshAutoMaiaRating();
 }
 
 // The single user-name button in the topbar. The app is pure Lichess-OAuth, so there's
@@ -4477,7 +4568,9 @@ async function generateFromCurrentNode() {
           { value: "deep", label: "deep - same as balanced, intended for shallower depth" },
         ],
       },
-      { name: "maia_rating", label: "Maia rating (600-2600)", type: "number", default: 2200, min: 600, max: 2600 },
+      // Defaults to the player's own strength (Settings → Playing strength), so the
+      // generated tree leans toward replies THEIR opponents actually play.
+      { name: "maia_rating", label: "Maia rating (600-2600)", type: "number", default: effectiveMaiaRating(), min: 600, max: 2600 },
     ],
   });
   if (!values) return;
@@ -4490,7 +4583,7 @@ async function generateFromCurrentNode() {
   const detailMode = ["simple", "balanced", "deep"].includes(values.detail_mode)
     ? values.detail_mode
     : "balanced";
-  const maiaRating = Math.max(600, Math.min(2600, Number(values.maia_rating) || 2200));
+  const maiaRating = Math.max(600, Math.min(2600, Number(values.maia_rating) || effectiveMaiaRating()));
 
   const jobId = `browser-generate-${Date.now()}`;
   // Cancel model has two phases. GENERATION (local, before the POST) is
@@ -5780,12 +5873,59 @@ function renderSmartSummary(smart, stats, after) {
 async function loadSettings() {
   try {
     const payload = await api("/api/settings");
-    appState.settings = payload;
-    appState.serverEngineEnabled = !!payload.server_engine_enabled;
+    applySettingsPayload(payload);
     applyServerEngineGating();
     renderSettings(payload);
   } catch (error) {
     setStatus(error.message);
+  }
+}
+
+// Fold a /api/settings payload into state: the blob itself, the server-engine flag,
+// and the pinned Maia rating (null = AUTO). Shared by init, loadSettings and saves.
+function applySettingsPayload(payload) {
+  appState.settings = payload;
+  appState.serverEngineEnabled = !!payload.server_engine_enabled;
+  appState.maiaRatingPinned = Number.isFinite(payload.maia_rating) ? payload.maia_rating : null;
+  renderStrengthControls();
+}
+
+// Persist a partial settings patch ({stockfish_depth} / {maia_rating}) and re-render.
+async function saveSettings(patch) {
+  try {
+    const payload = await api("/api/settings", { method: "POST", body: JSON.stringify(patch) });
+    applySettingsPayload(payload);
+  } catch (error) {
+    setStatus(error.message);
+  }
+}
+
+// Paint the Playing-strength card from state. Cheap and idempotent — called whenever
+// settings or the auto-resolved rating change.
+function renderStrengthControls() {
+  const depthEl = document.getElementById("settings-depth");
+  const depthOut = document.getElementById("settings-depth-readout");
+  const autoEl = document.getElementById("settings-maia-auto");
+  const autoLabel = document.getElementById("settings-maia-auto-label");
+  const ratingEl = document.getElementById("settings-maia-rating");
+  const ratingOut = document.getElementById("settings-maia-rating-readout");
+  if (!depthEl || !autoEl || !ratingEl) return;
+  const settings = appState.settings || {};
+  if (Number.isFinite(settings.stockfish_depth)) {
+    depthEl.value = String(settings.stockfish_depth);
+  }
+  if (depthOut) depthOut.textContent = depthEl.value;
+  const auto = !Number.isFinite(appState.maiaRatingPinned);
+  autoEl.checked = auto;
+  ratingEl.disabled = auto;
+  ratingEl.value = String(effectiveMaiaRating());
+  if (ratingOut) ratingOut.textContent = ratingEl.value;
+  if (autoLabel) {
+    autoLabel.textContent = appState.lichessUsername
+      ? Number.isFinite(appState.maiaAutoRating)
+        ? `Auto — match my Lichess rating (~${appState.maiaAutoRating})`
+        : "Auto — match my Lichess rating"
+      : `Auto — Lichess not linked, using ${MAIA_FALLBACK_RATING}`;
   }
 }
 
@@ -6129,6 +6269,33 @@ function bindEvents() {
   const maiaResetBtn = document.getElementById("settings-maia-reset");
   if (maiaResetBtn) maiaResetBtn.addEventListener("click", resetMaia3Cache);
 
+  // Playing strength: readouts track the drag (input), the save fires on release
+  // (change) so a slider sweep is ONE settings POST, not thirty.
+  const depthSlider = document.getElementById("settings-depth");
+  if (depthSlider) {
+    depthSlider.addEventListener("input", () => {
+      const out = document.getElementById("settings-depth-readout");
+      if (out) out.textContent = depthSlider.value;
+    });
+    depthSlider.addEventListener("change", () =>
+      saveSettings({ stockfish_depth: Number(depthSlider.value) })
+    );
+  }
+  const maiaAuto = document.getElementById("settings-maia-auto");
+  const maiaSlider = document.getElementById("settings-maia-rating");
+  if (maiaAuto && maiaSlider) {
+    maiaAuto.addEventListener("change", () =>
+      saveSettings({ maia_rating: maiaAuto.checked ? "auto" : Number(maiaSlider.value) })
+    );
+    maiaSlider.addEventListener("input", () => {
+      const out = document.getElementById("settings-maia-rating-readout");
+      if (out) out.textContent = maiaSlider.value;
+    });
+    maiaSlider.addEventListener("change", () => {
+      if (!maiaAuto.checked) saveSettings({ maia_rating: Number(maiaSlider.value) });
+    });
+  }
+
   // Account chip (folds in the old standalone Sign out button as a menu action)
   document.getElementById("account-chip").addEventListener("click", onAccountChipClick);
 
@@ -6334,9 +6501,7 @@ async function init() {
 // signed in, and after a successful sign-in.
 async function loadSignedInWorkspace() {
   try {
-    const settings = await api("/api/settings");
-    appState.settings = settings;
-    appState.serverEngineEnabled = !!settings.server_engine_enabled;
+    applySettingsPayload(await api("/api/settings"));
   } catch (_) {
     appState.serverEngineEnabled = false;
   }

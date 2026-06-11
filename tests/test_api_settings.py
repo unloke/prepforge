@@ -97,6 +97,51 @@ def test_post_settings_rejects_non_integer_depth(client):
     assert _set_depth(client, "deep").status_code == 422
 
 
+# ---- maia rating (pinned strength vs auto/match-the-player) -----------------
+
+
+def _set_maia(client: TestClient, rating) -> "object":
+    return client.post(
+        "/api/settings", json={"maia_rating": rating}, headers=csrf_headers(client)
+    )
+
+
+def test_maia_rating_defaults_to_auto(client):
+    _register(client, "a@example.com")
+    body = client.get("/api/settings").json()
+    assert body["maia_rating"] is None
+    assert body["maia_rating_range"] == {"min": 600, "max": 2600}
+
+
+def test_maia_rating_round_trip_and_auto_reset(client):
+    _register(client, "a@example.com")
+    assert _set_maia(client, 1740).json()["maia_rating"] == 1740
+    assert client.get("/api/settings").json()["maia_rating"] == 1740
+    # "auto" clears the pin back to match-the-player.
+    assert _set_maia(client, "auto").json()["maia_rating"] is None
+    assert client.get("/api/settings").json()["maia_rating"] is None
+
+
+def test_maia_rating_clamps_and_rejects_junk(client):
+    _register(client, "a@example.com")
+    rng = client.get("/api/settings").json()["maia_rating_range"]
+    assert _set_maia(client, 99999).json()["maia_rating"] == rng["max"]
+    assert _set_maia(client, 1).json()["maia_rating"] == rng["min"]
+    # StrictInt | "auto": bool/float/other strings are 422s, not silent coercions.
+    assert _set_maia(client, True).status_code == 422
+    assert _set_maia(client, 1700.5).status_code == 422
+    assert _set_maia(client, "strong").status_code == 422
+
+
+def test_maia_rating_does_not_touch_depth(client):
+    _register(client, "a@example.com")
+    _set_depth(client, 12)
+    _set_maia(client, 2000)
+    body = client.get("/api/settings").json()
+    assert body["stockfish_depth"] == 12
+    assert body["maia_rating"] == 2000
+
+
 # ---- multi-tenant isolation ------------------------------------------------
 
 

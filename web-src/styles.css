@@ -374,6 +374,43 @@ h2 {
   gap: 4px;
 }
 
+/* Playing strength sliders (Stockfish depth / Maia3 rating). */
+
+.strength-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.strength-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.strength-row input[type="range"]:disabled {
+  opacity: 0.45;
+}
+
+.strength-readout {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 44px;
+  text-align: right;
+}
+
+.strength-auto {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  padding: 2px 0 6px;
+}
+
 /* The real Maia load failure, shown under the status line when state is unavailable. */
 .settings-error {
   color: var(--danger);
