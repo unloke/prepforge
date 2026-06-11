@@ -522,6 +522,18 @@ export const GOOD_SOLID = [
   " It holds the position together nicely.",
 ];
 
+// A sound move played from a clearly worse position — the move is fine, but the position
+// isn't, so the tone acknowledges the disadvantage instead of praising it as "solid".
+// Uses {me}, {opp}, {standing} (the mover's qualitative standing, e.g. "clearly worse").
+export const GOOD_HOLD = [
+  " {me} is {standing} here, but this is the toughest way to hold it together.",
+  " It won't undo the damage — {me} is {standing} — but it's the best practical try.",
+  " {me} is {standing}, and this is about the best the position has to offer.",
+  " The position is difficult for {me}, but this keeps fighting for it.",
+  " It makes {opp} work for the win, with {me} {standing}.",
+  " Best under the circumstances — {me} is {standing}, but this puts up the most resistance.",
+];
+
 // =====================================================================================
 // Tactic threats CREATED by a strong move (leading space, full sentence).
 // =====================================================================================

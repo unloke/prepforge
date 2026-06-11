@@ -14,7 +14,9 @@ import {
   walkLine,
   gamePhase,
   materialBalance,
+  perPieceDiff,
   squareExchange,
+  squareExchangeBoard,
 } from "./material.js";
 
 // White-POV win% from a (cp|mate) eval. Mate is decisive.
@@ -149,9 +151,15 @@ export function buildMoveFeatures(input) {
   const moveDest = uci ? uci.slice(2, 4) : null;
   const moveWasCapture = /x/.test(san || "");
   let materialAfterSettled = materialAfter;
+  // The settled piece composition (White-POV count delta), so the commentary can tell
+  // "the exchange" from "two pawns". For a capture we read it off the square once the
+  // trade resolves; for a quiet move the board already is the settled position.
+  let materialDiffAfter = after ? perPieceDiff(after) : null;
   if (after && moveWasCapture && moveDest) {
     const probe = safeChess(fenAfter);
     if (probe) materialAfterSettled = squareExchange(probe, moveDest);
+    const probe2 = safeChess(fenAfter);
+    if (probe2) materialDiffAfter = perPieceDiff(squareExchangeBoard(probe2, moveDest));
   }
 
   // The opponent's best reply (the punishment) after the move — "after Nxh4…".
@@ -206,6 +214,7 @@ export function buildMoveFeatures(input) {
     materialBefore,
     materialAfter,
     materialAfterSettled,
+    materialDiffAfter,
 
     wasInCheck,
     isCheck,

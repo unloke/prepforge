@@ -591,6 +591,37 @@ describe("intuition notes (Maia position-texture, folded into the prose)", () =>
   });
 });
 
+describe("tone from a losing position (no 'simple and sound' when clearly worse)", () => {
+  // White is down a rook and plays the engine's best, quiet move (h3). It's graded well —
+  // there was nothing better — but the position is lost, so the prose must not praise it as
+  // "solid and sound"; it should name the disadvantage and frame the move as the best try.
+  function bestMoveWhileLosing() {
+    return {
+      mover: "white",
+      uci: "h2h3",
+      san: "h3",
+      fenBefore: "r5k1/8/8/8/8/8/5PPP/6K1 w - - 0 1", // White down a rook
+      fenAfter: "r5k1/8/8/8/8/7P/5PP1/6K1 b - - 0 1", // after the quiet, best h3
+      beforeEval: {
+        lines: [
+          { uci: "h2h3", san: "h3", cp: -500, mate: null, pvUci: ["h2h3"] },
+          { uci: "g2g3", san: "g3", cp: -520, mate: null, pvUci: ["g2g3"] },
+        ],
+      },
+      afterEval: { cp: -500, mate: null, pvUci: [] },
+    };
+  }
+
+  it("acknowledges the disadvantage instead of calling it solid", () => {
+    const f = buildMoveFeatures(bestMoveWhileLosing());
+    expect(["best", "good"]).toContain(f.classification.code);
+    expect(f.winAfterMover).toBeLessThan(33);
+    const prose = buildCommentary(f).prose;
+    expect(prose).not.toMatch(/simple and sound|solid and safe|nothing fancy|no loose ends/i);
+    expect(prose).toMatch(/lost|worse|toughest|practical|difficult|resistance|fighting|circumstances|hold it/i);
+  });
+});
+
 describe("Brilliant detection (Maia vs engine, no SEE)", () => {
   // Kf2 here stands in for "engine's best, keeps the side on top" — a brilliant
   // CANDIDATE. The Maia numbers (synthetic) decide brilliancy, not any sacrifice test.

@@ -18,7 +18,7 @@
 // handful of small banks compose into thousands of distinct sentences — same facts,
 // different voice — while each bank stays short enough to tweak in isolation.
 import { describeMove } from "../explain.js";
-import { PIECE_NAME, materialPhrase } from "./material.js";
+import { PIECE_NAME, materialPhrase, materialEdgePhrase } from "./material.js";
 import { describeThreat, describeAnyThreat } from "./tactics.js";
 import {
   choose,
@@ -71,6 +71,7 @@ import {
   POINT_ENDGAME,
   STAND_TAIL,
   GOOD_SOLID,
+  GOOD_HOLD,
   GOOD_THREAT_FORK,
   GOOD_THREAT_PIN,
   GOOD_THREAT_PIN_ABS,
@@ -124,6 +125,26 @@ function moverMaterialAfter(f) {
 // Net material the mover held BEFORE the move, mover-POV, in pawns.
 function moverMaterialBefore(f) {
   return f.mover === "white" ? f.materialBefore : -f.materialBefore;
+}
+
+// Negate a White-POV per-piece count delta to the other side's point of view.
+function negateDiff(d) {
+  if (!d) return d;
+  const out = {};
+  for (const k of Object.keys(d)) out[k] = -d[k];
+  return out;
+}
+
+// The mover's current material edge as a human phrase, composition-aware: "the exchange"
+// for a rook-for-minor imbalance, otherwise the plain "two pawns" / "a piece" magnitude.
+// `up` is the mover-POV pawn magnitude (the fallback when the shape isn't an exchange).
+function moverEdgePhrase(f, up) {
+  const diff = f.materialDiffAfter
+    ? f.mover === "white"
+      ? f.materialDiffAfter
+      : negateDiff(f.materialDiffAfter)
+    : null;
+  return materialEdgePhrase(diff, up);
 }
 
 // A capturing move whose settled material is unchanged from before — a clean, even
@@ -369,8 +390,11 @@ function intuitionNote(f) {
     if (intu.texture === "obvious" && intu.surprise && !intu.playedWasObvious && intu.obviousSan) {
       return choose(f, "intuOwnPath", INTUITION_OWN_PATH, { obviousSan: intu.obviousSan, san: f.san });
     }
-    // A sharp position navigated well.
-    if (isSharp(intu)) return choose(f, "intuRichGood", INTUITION_RICH_HANDLED, { san: f.san });
+    // A sharp position navigated well — but not while clearly worse, where "handled it
+    // well" would jar against the prose's own "this is the best you can do here" read.
+    if (isSharp(intu) && f.winAfterMover >= 33) {
+      return choose(f, "intuRichGood", INTUITION_RICH_HANDLED, { san: f.san });
+    }
     // An obvious position, played the obvious move: natural and correct (kept mild).
     if (intu.texture === "obvious" && intu.playedWasObvious) {
       return choose(f, "intuNatural", INTUITION_NATURAL, {});
@@ -537,7 +561,7 @@ function buildProse(f) {
     const up = moverMaterialAfter(f);
     const mate = mateInClause(f);
     if (/x/.test(f.san) && up >= 3 && materialPhrase(up)) {
-      return choose(f, "greatDecisive", GREAT_DECISIVE, { san: f.san, phrase: materialPhrase(up), me }) + mate + intuitionNote(f);
+      return choose(f, "greatDecisive", GREAT_DECISIVE, { san: f.san, phrase: moverEdgePhrase(f, up), me }) + mate + intuitionNote(f);
     }
     const threat = mate ? "" : threatPoint(f, me, opp);
     const stand =
@@ -563,7 +587,7 @@ function buildProse(f) {
   } else if (threatPoint(f, me, opp)) {
     point = threatPoint(f, me, opp);
   } else if (/x/.test(f.san) && up >= 1 && materialPhrase(up)) {
-    point = choose(f, "pointMaterial", POINT_MATERIAL, { me, phrase: materialPhrase(up) });
+    point = choose(f, "pointMaterial", POINT_MATERIAL, { me, phrase: moverEdgePhrase(f, up) });
   } else if (isEvenTrade(f)) {
     point =
       up >= 2
@@ -575,6 +599,10 @@ function buildProse(f) {
     point = choose(f, "pointEndgame", POINT_ENDGAME, { phrase: materialPhrase(up) });
   } else if (f.winAfterMover >= 68) {
     point = choose(f, "standTailGood", STAND_TAIL, { me, standing: standingWord(f.winAfterMover) });
+  } else if (f.winAfterMover < 33) {
+    // The move is sound, but the side is clearly worse — calling a losing position "simple
+    // and sound" reads as oblivious. Name the disadvantage and frame it as the best try.
+    point = choose(f, "goodHold", GOOD_HOLD, { me, opp, standing: standingWord(f.winAfterMover) });
   } else if (isSharp(f.intuition)) {
     // A position that's sharp for its phase (WDL sharpness band): don't reach for the bland
     // "keeps it simple and sound" line — that's the "calls a knife-fight stable" misread.

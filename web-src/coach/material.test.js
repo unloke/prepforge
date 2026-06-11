@@ -4,9 +4,11 @@ import {
   materialBalance,
   perPieceDiff,
   materialPhrase,
+  materialEdgePhrase,
   walkLine,
   gamePhase,
   squareExchange,
+  squareExchangeBoard,
 } from "./material.js";
 import { Chess } from "chess.js";
 
@@ -31,6 +33,46 @@ describe("materialPhrase", () => {
     expect(materialPhrase(3)).toBe("a piece");
     expect(materialPhrase(5)).toBe("a rook");
     expect(materialPhrase(-9)).toBe("a queen");
+  });
+});
+
+describe("materialEdgePhrase (composition: the exchange vs two pawns)", () => {
+  it("names a rook-for-minor imbalance 'the exchange', not 'two pawns'", () => {
+    expect(materialEdgePhrase({ p: 0, n: 0, b: -1, r: 1, q: 0 }, 2)).toBe("the exchange");
+    expect(materialEdgePhrase({ p: 0, n: -1, b: 0, r: 1, q: 0 }, 2)).toBe("the exchange");
+  });
+
+  it("rides extra pawns onto the exchange", () => {
+    expect(materialEdgePhrase({ p: 1, b: -1, r: 1, q: 0 }, 3)).toBe("the exchange and a pawn");
+    expect(materialEdgePhrase({ p: 2, b: -1, r: 1, q: 0 }, 4)).toBe("the exchange and pawns");
+    expect(materialEdgePhrase({ p: -1, b: -1, r: 1, q: 0 }, 1)).toBe("the exchange for a pawn");
+  });
+
+  it("falls back to the magnitude phrase for non-exchange shapes", () => {
+    expect(materialEdgePhrase({ p: 2, n: 0, b: 0, r: 0, q: 0 }, 2)).toBe("two pawns");
+    expect(materialEdgePhrase(null, 2)).toBe("two pawns");
+    // A queen-level edge is not "the exchange" even with a rook/minor swap riding along.
+    expect(materialEdgePhrase({ q: 1, r: 1, b: -1 }, 11)).toBe("decisive material");
+  });
+});
+
+describe("squareExchangeBoard (settled board for composition)", () => {
+  it("resolves the recapture so the composition reads 'up the exchange'", () => {
+    // Black has just played Bxa1, snapping a rook; White recaptures Qxa1. Once it settles,
+    // Black is up a rook for a bishop — the exchange — with the queens still on.
+    const afterBxa1 = "1r4kr/4q3/3b4/8/8/8/8/bQB2BKR w - - 0 1";
+    const settled = squareExchangeBoard(new Chess(afterBxa1), "a1");
+    const diff = perPieceDiff(settled); // White-POV
+    expect(diff.r).toBe(-1); // White is down a rook
+    expect(diff.b).toBe(1); //  ...but up a bishop
+    expect(diff.q).toBe(0); // queens level — White's recaptured
+    const moverDiff = { p: -diff.p, n: -diff.n, b: -diff.b, r: -diff.r, q: -diff.q };
+    expect(materialEdgePhrase(moverDiff, 2)).toBe("the exchange");
+  });
+
+  it("leaves a quiet (non-capture) position untouched", () => {
+    const settled = squareExchangeBoard(new Chess(START), "e4");
+    expect(perPieceDiff(settled)).toEqual({ p: 0, n: 0, b: 0, r: 0, q: 0 });
   });
 });
 

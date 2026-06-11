@@ -90,6 +90,54 @@ export function squareExchange(chess, square) {
   return white ? Math.max(standPat, resolved) : Math.min(standPat, resolved);
 }
 
+// The board once the capture battle on `square` settles under optimal SEE play, returned
+// as a fresh Chess (the caller's position is left untouched). Mirrors squareExchange's
+// decisions but APPLIES the chosen recaptures, so callers can read the resulting piece
+// COMPOSITION — which is what tells "up the exchange" (a rook for a minor) apart from "up
+// two pawns": both are +2 in raw value, but only the composition knows which it is.
+export function squareExchangeBoard(chess, square) {
+  let work;
+  try {
+    work = new Chess(chess.fen());
+  } catch (_) {
+    return chess;
+  }
+  for (;;) {
+    const standPat = materialBalance(work);
+    let caps;
+    try {
+      caps = work.moves({ verbose: true });
+    } catch (_) {
+      break;
+    }
+    caps = caps
+      .filter((m) => m.to === square && m.captured)
+      .sort((a, b) => (PIECE_VALUE[a.piece] || 0) - (PIECE_VALUE[b.piece] || 0));
+    if (!caps.length) break;
+    const white = work.turn() === "w";
+    let resolved;
+    try {
+      work.move(caps[0]);
+      resolved = squareExchange(work, square); // best play from here, with the capture made
+    } catch (_) {
+      break;
+    }
+    // Keep the capture only if it strictly improves the side-to-move's settled balance —
+    // SEE never makes a losing capture, and a value-neutral recapture would only distort
+    // the resulting composition (and could loop). Otherwise undo it and stand pat.
+    const improves = white ? resolved > standPat : resolved < standPat;
+    if (!improves) {
+      try {
+        work.undo();
+      } catch (_) {
+        /* leave the position as-is */
+      }
+      break;
+    }
+  }
+  return work;
+}
+
 // Settle the contested square left by `move` (a chess.js move object) in `chess`, if and
 // only if that move was a capture. A capture leaves an exchange that may still be
 // unresolved (the recapture); a quiet move does not, and we must NOT invent captures the
@@ -114,6 +162,28 @@ export function materialPhrase(balance) {
   if (abs < 9) return "a rook or more";
   if (abs === 9) return "a queen";
   return "decisive material";
+}
+
+// Describe a material edge by its piece COMPOSITION, so a rook-for-minor imbalance reads
+// as "the exchange" instead of its bare ~2-pawn magnitude ("two pawns"). `diff` is the
+// mover-POV per-piece count delta (mover minus opponent: { p, n, b, r, q }); `balance` is
+// the mover-POV pawn magnitude for the ordinary up-a-pawn / up-a-piece cases. Falls back
+// to materialPhrase whenever the composition isn't a clean "exchange" shape.
+export function materialEdgePhrase(diff, balance) {
+  if (diff) {
+    const minor = (diff.n || 0) + (diff.b || 0);
+    const rooks = diff.r || 0;
+    const queens = diff.q || 0;
+    const pawns = diff.p || 0;
+    // Exactly a rook for a minor, queens level → "the exchange" (± any riding pawns).
+    if (queens === 0 && rooks === 1 && minor === -1) {
+      if (pawns === 0) return "the exchange";
+      if (pawns === 1) return "the exchange and a pawn";
+      if (pawns >= 2) return "the exchange and pawns";
+      return "the exchange for a pawn"; // up the exchange but a pawn down
+    }
+  }
+  return materialPhrase(balance);
 }
 
 // Replay a line of UCI moves from `fenStart` and report the material story: where it
