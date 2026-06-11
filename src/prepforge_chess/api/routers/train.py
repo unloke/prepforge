@@ -26,9 +26,11 @@ from prepforge_chess.api.routers.workspace import _owned_repertoire
 from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import TrainingMode, TrainingSession
 from prepforge_chess.services.training import TrainingService
+from prepforge_chess.services.training_smart import SmartTrainingService
 from prepforge_chess.services.training_view import (
     heuristic_strategy,
     prompt_to_json,
+    smart_prompt_to_json,
     training_line_to_json,
     walk_opening_nodes,
 )
@@ -116,6 +118,130 @@ def start(
 
 class SessionBody(BaseModel):
     session_id: str
+
+
+# ----- Smart queue (Train v2): card-based scheduler endpoints ----------------
+
+
+class SmartStartBody(BaseModel):
+    repertoire_id: str
+    fresh: bool = False
+    session_size: int | None = None
+    new_cap: int | None = None
+    seed: int | None = None  # deterministic queues for tests
+
+
+class SmartMoveBody(BaseModel):
+    session_id: str
+    played_uci: str
+    # 1 = first (graded) answer; 2+ = retry / play-after-reveal, never graded.
+    attempt: int = 1
+
+
+def _clamp(value: int | None, low: int, high: int) -> int | None:
+    return None if value is None else max(low, min(high, value))
+
+
+@router.post("/smart/start")
+def smart_start(
+    body: SmartStartBody,
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+) -> dict[str, Any]:
+    """Begin (or resume) a card-queue session and return the queue composition
+    plus the first card prompt."""
+    _owned_repertoire(repo, body.repertoire_id, owner)
+    repertoire = repo.load_repertoire(body.repertoire_id)
+    if repertoire is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
+    service = SmartTrainingService(repo)
+    try:
+        session = service.start_or_resume(
+            repertoire.id,
+            fresh=body.fresh,
+            session_size=_clamp(body.session_size, 4, 30),
+            new_cap=_clamp(body.new_cap, 0, 10),
+            seed=body.seed,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    prompt = service.current_prompt(session.id)
+    if prompt is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="repertoire has no trainable moves yet",
+        )
+    return {
+        "repertoire_id": repertoire.id,
+        "repertoire_name": repertoire.name,
+        "color": repertoire.color.value,
+        "session_id": session.id,
+        "seed": session.seed,
+        "mode": TrainingMode.SMART.value,
+        "total_cards": len(session.line_order),
+        "card_index": session.current_index,
+        "counts": service.counts(session),
+        "prompt": smart_prompt_to_json(prompt, _CHESS),
+    }
+
+
+@router.post("/smart/move")
+def smart_move(
+    body: SmartMoveBody,
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+) -> dict[str, Any]:
+    """Grade the player's move against the current card. Only ``attempt`` 1
+    writes spaced-repetition progress; a second wrong attempt re-queues the
+    card later in the same session."""
+    _owned_session(repo, body.session_id, owner)
+    try:
+        result = SmartTrainingService(repo).submit_move(
+            body.session_id, body.played_uci, attempt=max(1, body.attempt)
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return {
+        "correct": result.correct,
+        "attempt": result.attempt,
+        "sr_written": result.sr_written,
+        "played_uci": result.played_uci,
+        "expected_uci": result.expected_uci,
+        "expected_san": result.expected_san,
+        "card_completed": result.card_completed,
+        "session_completed": result.session_completed,
+        "requeued": result.requeued,
+        "total_cards": len(result.session.line_order),
+        "card_index": result.session.current_index,
+        "mistakes": result.session.mistakes,
+        "progress": None
+        if result.progress is None
+        else {
+            "node_id": result.progress.node_id,
+            "attempts": result.progress.attempts,
+            "correct_attempts": result.progress.correct_attempts,
+            "spaced_repetition_score": result.progress.spaced_repetition_score,
+            "is_mastered": result.progress.is_mastered,
+        },
+        "prompt": smart_prompt_to_json(result.next_prompt, _CHESS),
+        "played_san": result.played_san,
+        "fen_after_player": result.fen_after_player,
+        "reply_uci": result.reply_uci,
+        "reply_san": result.reply_san,
+        "fen_after_reply": result.fen_after_reply,
+    }
+
+
+@router.post("/smart/skip")
+def smart_skip(
+    body: SessionBody,
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+) -> dict[str, Any]:
+    """Skip the current card; return the next prompt (or ``None`` at the end)."""
+    _owned_session(repo, body.session_id, owner)
+    prompt = SmartTrainingService(repo).skip_card(body.session_id)
+    return {"prompt": smart_prompt_to_json(prompt, _CHESS)}
 
 
 @router.post("/skip")

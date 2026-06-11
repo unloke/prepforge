@@ -53,6 +53,9 @@ class TrainingMode(str, Enum):
     HIGH_PRIORITY = "high_priority"
     RECENT_PRACTICAL = "recent_practical"
     OPENING_ONLY = "opening_only"
+    # Card-based smart queue (Train v2): line_order holds encoded cards
+    # (see services/scheduler.py), not leaf-line node ids.
+    SMART = "smart"
 
 
 def utc_now() -> datetime:
