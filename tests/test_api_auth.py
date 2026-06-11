@@ -26,9 +26,17 @@ def test_register_me_logout_login(client):
     assert r.status_code == 200
     assert r.json()["email"] == "coach@example.com"
 
-    assert client.post("/api/auth/logout", headers=h).status_code == 204
+    assert "pf_csrf" in client.cookies
+    r = client.post("/api/auth/logout", headers=h)
+    assert r.status_code == 204
     assert client.get("/api/auth/me").status_code == 401
+    # Logout clears both the session cookie and the CSRF cookie.
+    set_cookies = r.headers.get_list("set-cookie")
+    assert any(c.startswith("pf_session=") and "Max-Age=0" in c for c in set_cookies)
+    assert any(c.startswith("pf_csrf=") and "Max-Age=0" in c for c in set_cookies)
 
+    # Logout cleared the CSRF cookie, so the SPA must re-bootstrap a token.
+    h = csrf_headers(client)
     r = client.post(
         "/api/auth/login",
         json={"email": "coach@example.com", "password": "hunter2pass"},
@@ -51,6 +59,7 @@ def test_wrong_password_rejected(client):
         "/api/auth/register", json={"email": "a@b.com", "password": "rightpassword"}, headers=h
     )
     client.post("/api/auth/logout", headers=h)
+    h = csrf_headers(client)  # logout cleared the CSRF cookie; re-bootstrap
     r = client.post(
         "/api/auth/login", json={"email": "a@b.com", "password": "wrongpassword"}, headers=h
     )

@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_user, current_user_optional
+from prepforge_chess.api.middleware import CSRF_COOKIE
 from prepforge_chess.api.models import AuthSession, Plan, User
 from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.api.security import (
@@ -166,7 +167,12 @@ def logout(
 ) -> Response:
     _close_session(request, db, settings)
     response.delete_cookie(settings.session_cookie_name, path="/")
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    response.delete_cookie(CSRF_COOKIE, path="/")
+    # Returning the injected `response` (rather than a fresh Response) is required
+    # for the delete_cookie headers above to actually reach the client — FastAPI
+    # discards the injected response's headers if the handler returns a new object.
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
 
 
 @router.post("/signout")
@@ -182,6 +188,7 @@ def signout(
     no guest sessions — you are either authenticated or anonymous)."""
     _close_session(request, db, settings)
     response.delete_cookie(settings.session_cookie_name, path="/")
+    response.delete_cookie(CSRF_COOKIE, path="/")
     return {"ok": True}
 
 
