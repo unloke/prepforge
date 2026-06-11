@@ -4121,27 +4121,18 @@ function buildBranchContext() {
   return { mode: "none", node: current, options: [], activeId: null };
 }
 
-// Up/Down on the Build board. With alternatives at the current move, they switch between
-// those branches (no mouse needed). With none, they fall back to plain forward/back so
-// the move list never feels "stuck" under the arrow keys.
+// Up/Down on the Build board switch between the branch ALTERNATIVES at the current move
+// (no mouse needed) and do nothing else. They deliberately do NOT fall back to forward/
+// back: stepping along the line is ← →'s job, and having ↑ ↓ also move the cursor through
+// the move list made the two feel tangled and jumpy. With no alternatives here, ↑ ↓ are
+// inert — ← → still navigates, and → enters a forced branch point.
 function buildBranchKey(direction) {
   const ctx = buildBranchContext();
-  if (ctx && ctx.mode === "current") {
-    const opts = ctx.options;
-    const idx = opts.findIndex((n) => n.id === ctx.node.id);
-    const next = opts[(idx + direction + opts.length) % opts.length];
-    if (next) selectBuildNode(next.id);
-    return;
-  }
-  if (ctx && ctx.mode === "next" && direction > 0) {
-    // Sitting on a branch point with the line forced up to here: dive into the first
-    // next-move branch, where up/down then switch among the siblings.
-    selectBuildNode(ctx.options[0].id);
-    return;
-  }
-  // Nothing to switch here — keep arrow nav smooth.
-  if (direction > 0) buildGoForward();
-  else buildGoBack();
+  if (!ctx || ctx.mode !== "current") return;
+  const opts = ctx.options;
+  const idx = opts.findIndex((n) => n.id === ctx.node.id);
+  const next = opts[(idx + direction + opts.length) % opts.length];
+  if (next) selectBuildNode(next.id);
 }
 
 // The on-screen branch switcher: a compact strip of the branch options at the current
@@ -5630,7 +5621,7 @@ function bindEvents() {
     }
     // Up/Down (and j/k) switch between branch alternatives at the current move in Build,
     // so a fork can be navigated entirely from the keyboard. The on-screen branch bar
-    // mirrors the choice. With no alternatives, they fall back to forward/back nav.
+    // mirrors the choice. With no alternatives they do nothing (← → handle stepping).
     if (inBuild && (event.key === "ArrowDown" || event.key === "j")) {
       event.preventDefault();
       buildBranchKey(1);

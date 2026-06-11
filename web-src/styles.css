@@ -1921,13 +1921,34 @@ h2 {
 
 /* ---- Branch switcher strip --------------------------------------------- */
 /* The keyboard branch selector's on-screen face: the alternatives available at the
-   current point, the active one lit, so switching a branch never needs the mouse. */
+   current point, the active one lit, so switching a branch never needs the mouse.
+   It FLOATS over the bottom of the move list (absolute, pinned to the sidebar) rather
+   than sitting in the flow — appearing/disappearing as you step through branch points
+   used to reflow the move list and make it jump. As an overlay it never moves the list;
+   the list reserves scroll space (scroll-padding-bottom) so the active row stays clear. */
+#view-build .sidebar {
+  position: relative;
+}
+/* The Build move list fills the sidebar and scrolls inside itself, so the floating bar
+   has a stable bottom edge to pin to (the sidebar itself never scrolls). */
+#builder-tree {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  scroll-padding-bottom: 104px;
+}
 .build-branchbar {
-  margin-bottom: 8px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  margin: 0;
   padding: 7px 9px;
   border: 1px solid var(--accent-line);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--accent-soft);
+  box-shadow: 0 -1px 0 var(--accent-line), 0 14px 30px -10px rgba(0, 0, 0, 0.45);
 }
 .build-branchbar[hidden] {
   display: none;
