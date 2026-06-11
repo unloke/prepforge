@@ -688,6 +688,30 @@ describe("Brilliant detection (Maia vs engine, no SEE)", () => {
   });
 
   it("a near-best (Excellent-tier) move is a brilliant candidate too, not just the literal #1", () => {
+    // winDelta <= 3 (the server's EXCELLENT band, win-chance loss <= 0.03) but not the
+    // engine's literal #1 — still eligible to be queried, matching services/brilliant.py.
+    const fenBefore = "6k1/8/2p5/8/8/8/8/5BK1 w - - 0 1";
+    const f = buildMoveFeatures({
+      mover: "white",
+      uci: "g1f2",
+      san: "Kf2",
+      fenBefore,
+      fenAfter: "6k1/8/2p5/8/8/8/5K2/5B2 b - - 1 1",
+      beforeEval: { lines: [{ uci: "g1g2", san: "Kg2", cp: 90, mate: null, pvUci: ["g1g2"] }] },
+      afterEval: { cp: 64, mate: null, pvUci: [] },
+    });
+    expect(f.isBest).toBe(false);
+    expect(f.classification.code).toBe("good");
+    expect(f.winDelta).toBeGreaterThan(2);
+    expect(f.winDelta).toBeLessThanOrEqual(3);
+    expect(f.brilliantCandidate).toBe(true);
+  });
+
+  it("a Good-tier move beyond the Excellent band is NOT a candidate (aligned with analyze)", () => {
+    // winDelta in (3, 5]: the browser classifier still calls this "good", but the server
+    // classifies it GOOD (not EXCELLENT), so its full-game analysis would never consider
+    // it brilliant. The coach must agree — the old winDelta <= 5 gate was the source of
+    // moves flagged "Brilliant" live that the report never starred.
     const fenBefore = "6k1/8/2p5/8/8/8/8/5BK1 w - - 0 1";
     const f = buildMoveFeatures({
       mover: "white",
@@ -698,10 +722,151 @@ describe("Brilliant detection (Maia vs engine, no SEE)", () => {
       beforeEval: { lines: [{ uci: "g1g2", san: "Kg2", cp: 100, mate: null, pvUci: ["g1g2"] }] },
       afterEval: { cp: 56, mate: null, pvUci: [] },
     });
-    expect(f.isBest).toBe(false);
     expect(f.classification.code).toBe("good");
-    expect(f.winDelta).toBeGreaterThan(2);
+    expect(f.winDelta).toBeGreaterThan(3);
     expect(f.winDelta).toBeLessThanOrEqual(5);
-    expect(f.brilliantCandidate).toBe(true);
+    expect(f.brilliantCandidate).toBe(false);
   });
+});
+
+describe("voice sweep — every archetype stays well-formed across many phrasings", () => {
+  // The existing grammar sweeps only exercise the blunder/mistake branches. The phrase
+  // banks are large and vary per ply, so a bad template (leftover {placeholder}, a double
+  // space, a stray em-dash, a comma-then-period) can hide in a branch no other test hits.
+  // This walks one feature vector per branch over many plies and enforces the house-style
+  // invariants on the resulting prose, so expanding any bank can't silently regress them.
+  const base = "6k1/8/2p5/8/8/8/8/5BK1 w - - 0 1";
+
+  // Each factory builds a fresh feature vector for a given ply (so the per-slot seed
+  // varies) and applies any async upgrade (Maia brilliancy / intuition texture) the
+  // branch needs. Keyed by the branch of buildProse() it is meant to reach.
+  const archetypes = {
+    brilliant: (ply) => {
+      const f = buildMoveFeatures({
+        ply, mover: "white", uci: "g1f2", san: "Kf2", fenBefore: base,
+        fenAfter: "6k1/8/2p5/8/8/8/5K2/5B2 b - - 1 1",
+        beforeEval: { lines: [{ uci: "g1f2", san: "Kf2", cp: 0, mate: null, pvUci: ["g1f2"] }] },
+        afterEval: { cp: 0, mate: null, pvUci: [] },
+      });
+      // Cycle the human-probability across the rarity tiers so every RARITY/BRILLIANT_WHY
+      // bank gets exercised, not just one tier.
+      const probs = [0.005, 0.02, 0.05, 0.09];
+      markBrilliant(f, { humanProb: probs[ply % probs.length], winChanceAfter: 0.2 });
+      return f;
+    },
+    greatDecisive: (ply) =>
+      buildMoveFeatures({
+        ply, mover: "white", uci: "d1d8", san: "Rxd8",
+        fenBefore: "3r3k/8/8/8/8/8/8/3R2K1 w - - 0 1",
+        fenAfter: "3R3k/8/8/8/8/8/8/6K1 b - - 1 1",
+        beforeEval: { lines: [ { uci: "d1d8", san: "Rxd8", cp: 500, mate: null, pvUci: ["d1d8"] }, { uci: "g1g2", san: "Kg2", cp: 0, mate: null, pvUci: ["g1g2"] } ] },
+        afterEval: { cp: 500, mate: null, pvUci: [] },
+      }),
+    greatOnlyMove: (ply) =>
+      buildMoveFeatures({
+        ply, mover: "white", uci: "f1e2", san: "Be2", fenBefore: base,
+        fenAfter: "6k1/8/2p5/8/8/8/4B3/6K1 b - - 1 1",
+        beforeEval: { lines: [ { uci: "f1e2", san: "Be2", cp: 80, mate: null, pvUci: ["f1e2"] }, { uci: "f1b5", san: "Bb5", cp: -300, mate: null, pvUci: ["f1b5"] } ] },
+        afterEval: { cp: 80, mate: null, pvUci: [] },
+      }),
+    mateDelivered: (ply) =>
+      buildMoveFeatures({
+        ply, mover: "white", uci: "e1e8", san: "Qe8#",
+        fenBefore: "6k1/5ppp/8/8/8/8/5PPP/4Q1K1 w - - 0 1",
+        fenAfter: "4Q1k1/5ppp/8/8/8/8/5PPP/6K1 b - - 1 1",
+        beforeEval: { lines: [{ uci: "e1e8", san: "Qe8#", cp: null, mate: 1, pvUci: ["e1e8"] }] },
+        afterEval: { cp: null, mate: null, pvUci: [] },
+      }),
+    forced: (ply) =>
+      buildMoveFeatures({
+        ply, mover: "black", uci: "h8g7", san: "Kg7",
+        fenBefore: "R6k/7p/8/8/8/8/8/2K5 b - - 0 1",
+        fenAfter: "R7/6kp/8/8/8/8/8/2K5 w - - 1 2",
+        beforeEval: { lines: [{ uci: "h8g7", san: "Kg7", cp: 600, mate: null, pvUci: ["h8g7"], pvSan: ["Kg7"] }] },
+        afterEval: { cp: 600, mate: null, pvUci: [] },
+      }),
+    hangingBlunder: (ply) => buildMoveFeatures({ ...hangingBishopInput(), ply }),
+    inMateNet: (ply) =>
+      buildMoveFeatures({
+        ply, mover: "white", uci: "g1g2", san: "Kg2", fenBefore: base,
+        fenAfter: "6k1/8/2p5/8/8/8/6K1/5B2 b - - 1 1",
+        beforeEval: { lines: [{ uci: "f1e2", san: "Be2", cp: 80, mate: null, pvUci: ["f1e2"] }] },
+        afterEval: { cp: null, mate: -1, pvUci: ["a8a1"], pvSan: ["Ra1#"] },
+      }),
+    missedWin: (ply) =>
+      buildMoveFeatures({
+        ply, mover: "white", uci: "g1h1", san: "Kh1",
+        fenBefore: "6k1/8/8/8/3n4/8/8/3R2K1 w - - 0 1",
+        fenAfter: "6k1/8/8/8/3n4/8/8/3R3K b - - 1 1",
+        beforeEval: { lines: [{ uci: "d1d4", san: "Rxd4", cp: 300, mate: null, pvUci: ["d1d4"] }] },
+        afterEval: { cp: 0, mate: null, pvUci: [] },
+      }),
+    quietMistakeInitiative: (ply) =>
+      buildMoveFeatures({
+        ply, mover: "white", uci: "g1g2", san: "Kg2", fenBefore: base,
+        fenAfter: "6k1/8/2p5/8/8/8/6K1/5B2 b - - 1 1",
+        beforeEval: { lines: [{ uci: "f1e2", san: "Be2", cp: 120, mate: null, pvUci: ["f1e2"], pvSan: ["Be2"] }] },
+        afterEval: { cp: -100, mate: null, pvUci: [] },
+      }),
+    quietMistakeMaterial: (ply) =>
+      buildMoveFeatures({
+        ply, moveNumber: 6, mover: "white", uci: "e1d1", san: "Kd1",
+        fenBefore: "r3k3/8/8/8/8/8/P5P1/4K3 w - - 0 1",
+        fenAfter: "r3k3/8/8/8/8/8/P5P1/3K4 b - - 1 1",
+        beforeEval: { lines: [ { uci: "a2a4", san: "a4", cp: 180, mate: null, pvUci: ["a2a4"], pvSan: ["a4"] }, { uci: "g2g4", san: "g4", cp: 150, mate: null, pvUci: ["g2g4"], pvSan: ["g4"] } ] },
+        afterEval: { cp: -150, mate: null, pvUci: ["a8a2", "d1e1", "a2g2"], pvSan: ["Rxa2", "Ke1", "Rxg2"] },
+      }),
+    inaccuracyFlip: (ply) =>
+      buildMoveFeatures({
+        ply, mover: "white", uci: "g1f2", san: "Kf2", fenBefore: base,
+        fenAfter: "6k1/8/2p5/8/8/8/5K2/5B2 b - - 1 1",
+        beforeEval: { lines: [{ uci: "g1g2", san: "Kg2", cp: 100, mate: null, pvUci: ["g1g2"] }] },
+        afterEval: { cp: -4, mate: null, pvUci: [] },
+      }),
+    goodFork: (ply) =>
+      buildMoveFeatures({
+        ply, moveNumber: 12, mover: "white", uci: "e6c7", san: "Nc7+",
+        fenBefore: "r3k3/8/4N3/8/8/8/6K1/8 w - - 0 1",
+        fenAfter: "r3k3/2N5/8/8/8/8/6K1/8 b - - 1 1",
+        beforeEval: { lines: [ { uci: "e6c7", san: "Nc7+", cp: 300, mate: null, pvUci: ["e6c7"], pvSan: ["Nc7+"] }, { uci: "g2g3", san: "Kg3", cp: 20, mate: null, pvUci: ["g2g3"], pvSan: ["Kg3"] } ] },
+        afterEval: { cp: 300, mate: null, pvUci: [] },
+      }),
+    evenTrade: (ply) =>
+      buildMoveFeatures({
+        ply, mover: "white", uci: "d1d8", san: "Qxd8+",
+        fenBefore: "3qk3/8/8/8/8/8/8/3QK3 w - - 0 1",
+        fenAfter: "3Qk3/8/8/8/8/8/8/4K3 b - - 0 1",
+        beforeEval: { lines: [{ uci: "d1d8", san: "Qxd8+", cp: 0, mate: null, pvUci: ["d1d8", "e8d8"], pvSan: ["Qxd8+", "Kxd8"] }] },
+        afterEval: { cp: 0, mate: null, pvUci: ["e8d8"], pvSan: ["Kxd8"] },
+      }),
+    goodHoldLosing: (ply) =>
+      buildMoveFeatures({
+        ply, mover: "white", uci: "h2h3", san: "h3",
+        fenBefore: "r5k1/8/8/8/8/8/5PPP/6K1 w - - 0 1",
+        fenAfter: "r5k1/8/8/8/8/7P/5PP1/6K1 b - - 0 1",
+        beforeEval: { lines: [ { uci: "h2h3", san: "h3", cp: -500, mate: null, pvUci: ["h2h3"] }, { uci: "g2g3", san: "g3", cp: -520, mate: null, pvUci: ["g2g3"] } ] },
+        afterEval: { cp: -500, mate: null, pvUci: [] },
+      }),
+    // A good move in a sharp position, with an intuition texture note folded on.
+    goodSharpIntuition: (ply) => {
+      const f = buildMoveFeatures({ ...hangingBishopInput(), uci: "g1f2", san: "Kf2", fenAfter: "6k1/8/2p5/8/8/8/5K2/5B2 b - - 1 1", afterEval: { cp: 0, mate: null, pvUci: [] }, ply });
+      attachIntuition(f, { predictions: [ { move_uci: "g1g2", probability: 0.3 }, { move_uci: "f1b5", probability: 0.28 }, { move_uci: "f1e2", probability: 0.22 } ], wdl: { win: 485, draw: 25, loss: 490 } });
+      return f;
+    },
+  };
+
+  for (const [name, make] of Object.entries(archetypes)) {
+    it(`${name}: clean, well-formed prose for every ply`, () => {
+      for (let ply = 0; ply < 60; ply++) {
+        const prose = buildCommentary(make(ply)).prose;
+        expect(prose, `${name} ply ${ply}: "${prose}"`).not.toMatch(/\{[a-zA-Z]+\}/); // no leftover placeholder
+        expect(prose, `${name} ply ${ply}: "${prose}"`).not.toMatch(/  /); // no double space
+        expect(prose, `${name} ply ${ply}: "${prose}"`).not.toMatch(/[ ,]\./); // no " ." or ",."
+        expect(prose, `${name} ply ${ply}: "${prose}"`).not.toMatch(/—|--/); // no em-dash
+        expect(prose, `${name} ply ${ply}: "${prose}"`).not.toMatch(/%/); // no raw percentages
+        expect(prose, `${name} ply ${ply}: "${prose}"`).toMatch(/^[A-Z"]/); // starts capitalised
+        expect(prose, `${name} ply ${ply}: "${prose}"`).toMatch(/[.!]$/); // ends on a stop
+      }
+    });
+  }
 });

@@ -172,10 +172,15 @@ export function buildMoveFeatures(input) {
   // The orchestration runs that check async and upgrades via markBrilliant().
   const classification = classifyMoveRich({ winDelta, winAfterMover, isBest, onlyMove, forced });
 
-  // Worth asking Maia about? Brilliant doesn't require literally the engine's #1 line —
-  // a "Best" or "Excellent"-tier move (winDelta <= 5) that keeps the side at least level
-  // is the "Sound" layer of the server-side definition; Maia settles the rest.
-  const brilliantCandidate = winDelta <= 5 && winAfterMover >= 50;
+  // Worth asking Maia about? Mirror the server's brilliant eligibility exactly: only a
+  // Best or Excellent-tier move qualifies (services/brilliant.py, gated on the
+  // classifier's BEST/EXCELLENT). The server calls a move Excellent when its win-chance
+  // loss is at most 0.03 (services/classification.py) — i.e. winDelta <= 3 here, since
+  // winDelta IS that loss in percentage points. A "Good"-tier move (winDelta in (3, 5])
+  // is NOT brilliant-eligible: the old <= 5 gate over-flagged moves the full-game
+  // analysis would never star. The move must also stay at least level (winAfterMover
+  // >= 50, the server's min_high_win_chance = 0.50). Maia settles the rest.
+  const brilliantCandidate = winDelta <= 3 && winAfterMover >= 50;
 
   return {
     ply: input.ply ?? null,
