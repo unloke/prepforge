@@ -698,6 +698,13 @@ h2 {
   font-size: 12px;
   margin-top: 2px;
 }
+.today-recap {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.today-recap .up { color: var(--good); }
+.today-recap .down { color: var(--danger); }
 
 .dashboard-grid {
   display: grid;

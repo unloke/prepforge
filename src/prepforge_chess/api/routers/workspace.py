@@ -131,6 +131,34 @@ def dashboard(
                 reps.c.user_profile_id == owner,
             )
         ).scalar_one()
+        # Weekly recap inputs. Text comparison is safe for last_reviewed_at: it is
+        # always written as an ISO-8601 UTC string (same convention as due_at).
+        week_ago_iso = (now - timedelta(days=7)).isoformat()
+        reviews_7d = conn.execute(
+            select(func.count())
+            .select_from(joined)
+            .where(
+                tp.c.last_reviewed_at.is_not(None),
+                tp.c.last_reviewed_at >= week_ago_iso,
+                reps.c.user_profile_id == owner,
+            )
+        ).scalar_one()
+        mastered_now = conn.execute(
+            select(func.count())
+            .select_from(joined)
+            .where(tp.c.is_mastered == 1, reps.c.user_profile_id == owner)
+        ).scalar_one()
+        # Mirrors progress.node_mastery's "weak": tried twice+, under 50% accuracy.
+        weak_now = conn.execute(
+            select(func.count())
+            .select_from(joined)
+            .where(
+                tp.c.attempts >= 2,
+                tp.c.correct_attempts * 2 < tp.c.attempts,
+                reps.c.user_profile_id == owner,
+            )
+        ).scalar_one()
+    local_day = streak.resolve_day(local_date)
     return {
         "games": games,
         "repertoires": repertoires,
@@ -140,9 +168,50 @@ def dashboard(
         "due_soon": due_soon,
         "streak": streak.as_view(
             repo.get_profile_setting(owner, streak.STREAK_KEY),
-            streak.resolve_day(local_date),
+            local_day,
+        ),
+        "recap": _weekly_recap(
+            repo, owner, local_day,
+            reviews_7d=reviews_7d, mastered_now=mastered_now, weak_now=weak_now,
         ),
         "recommendations": _RECOMMENDATIONS,
+    }
+
+
+# Per-owner mastery snapshot taken at the start of each (player-local) week, so the
+# recap can phrase progress as a delta ("5 mastered, +2 this week") without a history
+# table. Lives on the profile blob; refreshing it is an idempotent once-a-week write.
+_RECAP_SNAPSHOT_KEY = "recap.weekly_snapshot"
+
+
+def _weekly_recap(
+    repo: PrepForgeRepository,
+    owner: str,
+    local_day,
+    *,
+    reviews_7d: int,
+    mastered_now: int,
+    weak_now: int,
+) -> dict[str, Any]:
+    week_start = (local_day - timedelta(days=local_day.weekday())).isoformat()
+    snap = repo.get_profile_setting(owner, _RECAP_SNAPSHOT_KEY, None)
+    if not isinstance(snap, dict) or snap.get("week_start") != week_start:
+        snap = {"week_start": week_start, "mastered": mastered_now, "weak": weak_now}
+        repo.set_profile_setting(owner, _RECAP_SNAPSHOT_KEY, snap)
+
+    def _baseline(key: str, current: int) -> int:
+        try:
+            return int(snap.get(key, current))
+        except (TypeError, ValueError):
+            return current
+
+    return {
+        "week_start": week_start,
+        "reviews_7d": reviews_7d,
+        "mastered_now": mastered_now,
+        "mastered_delta": mastered_now - _baseline("mastered", mastered_now),
+        "weak_now": weak_now,
+        "weak_delta": weak_now - _baseline("weak", weak_now),
     }
 
 

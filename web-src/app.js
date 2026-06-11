@@ -2103,6 +2103,26 @@ function renderDashboardToday(payload) {
   if (due > 0) queueBits.push(`<b>${due}</b> due now`);
   if (soon > 0) queueBits.push(`<b>${soon}</b> coming up in 24h`);
   const queueText = queueBits.length ? queueBits.join(" &middot; ") : "Queue is clear";
+  // One narrative line about the week: reviews done, mastery movement. Deltas are
+  // against a snapshot taken at the start of the player's week (server-side).
+  const recap = payload.recap || null;
+  let recapHtml = "";
+  if (recap && (recap.reviews_7d > 0 || recap.mastered_now > 0 || recap.weak_now > 0)) {
+    // Tone follows meaning, not sign: more mastered is good, more weak spots is bad.
+    const delta = (n, goodWhenUp) => {
+      if (!n) return "";
+      const cls = (n > 0) === goodWhenUp ? "up" : "down";
+      return ` <span class="${cls}">(${n > 0 ? "+" : ""}${n})</span>`;
+    };
+    const bits = [
+      `<b>${recap.reviews_7d}</b> review${recap.reviews_7d === 1 ? "" : "s"} this week`,
+      `<b>${recap.mastered_now}</b> mastered${delta(recap.mastered_delta, true)}`,
+    ];
+    if (recap.weak_now > 0 || recap.weak_delta !== 0) {
+      bits.push(`<b>${recap.weak_now}</b> weak spot${recap.weak_now === 1 ? "" : "s"}${delta(recap.weak_delta, false)}`);
+    }
+    recapHtml = `<div class="today-recap">${bits.join(" &middot; ")}</div>`;
+  }
   card.innerHTML = `
     <div class="today-streak" data-lit="${streak.current > 0 ? "1" : "0"}">
       <span class="today-flame" aria-hidden="true">\u{1F525}</span>
@@ -2112,6 +2132,7 @@ function renderDashboardToday(payload) {
     <div class="today-text">
       <div class="today-note">${note}</div>
       <div class="today-queue">${queueText}</div>
+      ${recapHtml}
     </div>
     <button class="btn primary" id="dashboard-train-now" data-testid="dashboard-train-now">Train now</button>
   `;

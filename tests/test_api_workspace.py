@@ -87,10 +87,54 @@ def test_new_user_sees_empty_owner_scoped_workspace(client):
     assert body["open_mistakes"] == 0
     assert body["due_reviews"] == 0
     assert len(body["recommendations"]) == 3
+    # Weekly recap: empty but well-formed for a brand-new user.
+    recap = body["recap"]
+    assert recap["reviews_7d"] == 0
+    assert recap["mastered_now"] == 0 and recap["mastered_delta"] == 0
+    assert recap["weak_now"] == 0 and recap["weak_delta"] == 0
+    assert recap["week_start"]
 
     reps = client.get("/api/repertoires")
     assert reps.status_code == 200
     assert reps.json() == {"repertoires": [], "shared": []}
+
+
+def test_dashboard_recap_counts_this_weeks_reviews(client):
+    """The recap counts progress rows touched in the last 7 days; the week-start
+    snapshot keeps deltas at zero until mastery actually moves."""
+    _register(client, "coach@example.com", display_name="Coach")
+    client.get("/api/dashboard")  # snapshot at zero
+
+    created = client.post(
+        "/api/repertoires/create",
+        json={"name": "KP", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+    client.post(
+        "/api/build/add-move",
+        json={
+            "repertoire_id": created["repertoire_id"],
+            "parent_node_id": created["selected_node_id"],
+            "move_uci": "e2e4",
+        },
+        headers=csrf_headers(client),
+    )
+    start = client.post(
+        "/api/train/smart/start",
+        json={"repertoire_id": created["repertoire_id"], "seed": 5},
+        headers=csrf_headers(client),
+    ).json()
+    client.post(
+        "/api/train/smart/move",
+        json={"session_id": start["session_id"], "played_uci": "e2e4", "attempt": 1},
+        headers=csrf_headers(client),
+    )
+
+    recap = client.get("/api/dashboard").json()["recap"]
+    assert recap["reviews_7d"] == 1
+    # One correct attempt is not mastery yet; nothing weak either.
+    assert recap["mastered_now"] == 0 and recap["mastered_delta"] == 0
+    assert recap["weak_now"] == 0 and recap["weak_delta"] == 0
 
 
 def test_auth_status_signed_in_reports_display_name(client):
