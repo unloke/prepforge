@@ -5366,6 +5366,18 @@ const SMART_KIND_LABELS = {
   polish: "Polish",
 };
 
+// "Why this move", engine-free, for the moments the answer is on screen (teach
+// cards and the second-miss reveal). The repertoire author's own annotation wins;
+// otherwise describe what the move actually does on the board (chess.js only, so
+// Train keeps needing no engine); the server's generic heuristic is the last resort.
+function teachWhy(prompt, fallback) {
+  const hint = (prompt && prompt.hint) || {};
+  if (hint.annotated && hint.strategy) return hint.strategy;
+  const did = describeMove(prompt.fen_before, prompt.expected_uci, prompt.expected_san);
+  if (did) return `${did.charAt(0).toUpperCase()}${did.slice(1)}.`;
+  return hint.strategy || fallback;
+}
+
 function setSmartPanelsHidden() {
   const queue = document.getElementById("train-queue");
   if (queue) queue.hidden = true;
@@ -5596,7 +5608,7 @@ async function presentSmartPrompt(prompt) {
     setTrainBanner(
       "teach",
       `New move: ${prompt.expected_san}`,
-      prompt.hint.strategy || "Watch the arrow, then play the move."
+      teachWhy(prompt, "Watch the arrow, then play the move.")
     );
     board.setEngineArrow(prompt.expected_uci);
     clearBlitzTimer(); // learning is never against the clock
@@ -5672,10 +5684,13 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
         smart.counts[prompt.kind] = (smart.counts[prompt.kind] || 0) + 1;
         renderSmartQueueStrip();
       }
+      // The answer is on screen anyway, so say WHY it's the move — a reveal that
+      // teaches sticks better than a bare "it's Nf3".
+      const why = teachWhy(prompt, "");
       setTrainBanner(
         "reveal",
         `It's ${result.expected_san}`,
-        result.requeued ? "Play it to continue - this card comes back in a few cards." : "Play it to continue."
+        `${why ? `${why} ` : ""}${result.requeued ? "Play it to continue - this card comes back in a few cards." : "Play it to continue."}`
       );
     }
     await sleep(950);

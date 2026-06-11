@@ -74,6 +74,10 @@ class SmartPrompt:
     run_in: List[OpeningNode]
     hint_strategy: str
     hint_piece: str
+    # True when hint_strategy is the AUTHOR's own annotation (strategic idea / plan /
+    # comment) rather than a generic heuristic — the client keeps author words
+    # verbatim but replaces heuristics with a board-derived explanation.
+    hint_is_annotation: bool = False
 
 
 @dataclass(frozen=True)
@@ -284,10 +288,10 @@ class SmartTrainingService:
         ]
         start_fen = run_in[0].move.fen_before if run_in else move.fen_before
         piece = piece_name_at(move.fen_before, move.uci)
-        strategy = (
-            (expected.strategic_idea or expected.typical_plan or (expected.comment or "")).strip()
-            or heuristic_strategy(move.san, piece)
-        )
+        annotation = (
+            expected.strategic_idea or expected.typical_plan or (expected.comment or "")
+        ).strip()
+        strategy = annotation or heuristic_strategy(move.san, piece)
         return SmartPrompt(
             session_id=context.session.id,
             repertoire_id=context.session.repertoire_id,
@@ -304,6 +308,7 @@ class SmartTrainingService:
             run_in=run_in,
             hint_strategy=strategy,
             hint_piece="Move the {0}".format(piece) if piece else "Find the move",
+            hint_is_annotation=bool(annotation),
         )
 
     # ------------------------------------------------------------------- move

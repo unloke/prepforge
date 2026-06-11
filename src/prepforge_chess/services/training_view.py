@@ -85,7 +85,13 @@ def smart_prompt_to_json(
             for node in prompt.run_in
             if node.move is not None
         ],
-        "hint": {"strategy": prompt.hint_strategy, "piece": prompt.hint_piece},
+        "hint": {
+            "strategy": prompt.hint_strategy,
+            "piece": prompt.hint_piece,
+            # Author annotation vs generic heuristic — the client shows author words
+            # verbatim, but upgrades heuristics to a board-derived explanation.
+            "annotated": prompt.hint_is_annotation,
+        },
         "legal_moves": chess_core.legal_moves(prompt.fen_before),
     }
 

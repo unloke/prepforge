@@ -193,6 +193,9 @@ def test_smart_start_returns_queue_and_prompt(client):
     assert prompt["expected_uci"] == "e2e4"
     assert prompt["run_in"] == []  # first move: nothing to animate in
     assert prompt["hint"]["piece"] == "Move the pawn"
+    # No author annotation on this node -> the strategy is a heuristic, flagged so
+    # the client can swap in its board-derived explanation.
+    assert prompt["hint"]["annotated"] is False
     assert "e2e4" in prompt["legal_moves"]
 
 

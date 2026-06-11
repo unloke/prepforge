@@ -161,6 +161,30 @@ def test_deep_card_prompt_carries_run_in_context():
     assert run_in_sans == ["e5", "Nf3", "Nc6"]
     assert prompt.start_fen != prompt.fen_before
     assert prompt.hint_piece == "Move the bishop"
+    # No author annotation on the node -> heuristic strategy, flagged as such.
+    assert prompt.hint_is_annotation is False
+
+
+def test_prompt_flags_author_annotation():
+    """A node's own strategic idea rides the hint verbatim and is flagged, so the
+    client shows the author's words instead of a derived explanation."""
+    repository = _repository()
+    repertoire, ids = _build(repository)
+
+    def _mark(node):
+        if node.id == ids["e4"]:
+            node.strategic_idea = "Stake the centre before Black settles."
+        for child in node.children:
+            _mark(child)
+
+    _mark(repertoire.root_node)
+    repository.save_repertoire(repertoire)
+    service = SmartTrainingService(repository)
+    session = service.start_or_resume(repertoire.id, seed=5, session_size=1)
+    prompt = service.current_prompt(session.id)
+    assert prompt.expected_move_uci == "e2e4"
+    assert prompt.hint_is_annotation is True
+    assert prompt.hint_strategy == "Stake the centre before Black settles."
 
 
 def test_first_move_card_has_no_run_in():
