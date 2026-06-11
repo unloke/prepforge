@@ -300,6 +300,98 @@ def test_smart_skip_advances_past_the_card(client):
     assert body["prompt"] is None  # only card skipped -> session over
 
 
+# ---- daily streak (Train v2 Phase 3) ----------------------------------------
+
+
+def _smart_move(client: TestClient, session_id: str, uci: str, **extra):
+    return client.post(
+        "/api/train/smart/move",
+        json={"session_id": session_id, "played_uci": uci, **extra},
+        headers=csrf_headers(client),
+    ).json()
+
+
+def test_first_move_of_the_day_starts_the_streak(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    session_id = _smart_start(client, rep, seed=5).json()["session_id"]
+    body = _smart_move(client, session_id, "e2e4")
+    assert body["day_streak"] == {"current": 1, "best": 1, "trained_today": True}
+
+
+def test_streak_is_idempotent_within_a_day_and_extends_next_day(client):
+    """Two moves on one day count once; training again the next (client) day
+    extends the streak. Uses real-clock-relative dates: resolve_day clamps
+    anything further than a day from UTC today."""
+    from datetime import datetime, timedelta, timezone
+
+    today = datetime.now(timezone.utc).date()
+    yesterday = (today - timedelta(days=1)).isoformat()
+
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    session_id = _smart_start(client, rep, seed=5).json()["session_id"]
+    first = _smart_move(client, session_id, "d2d4", local_date=yesterday)
+    assert first["day_streak"]["current"] == 1
+    again = _smart_move(client, session_id, "c2c4", attempt=2, local_date=yesterday)
+    assert again["day_streak"]["current"] == 1  # same day: no double count
+    next_day = _smart_move(
+        client, session_id, "e2e4", attempt=3, local_date=today.isoformat()
+    )
+    assert next_day["day_streak"] == {
+        "current": 2,
+        "best": 2,
+        "trained_today": True,
+    }
+
+
+def test_streak_falls_back_to_utc_on_garbage_local_date(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    session_id = _smart_start(client, rep, seed=5).json()["session_id"]
+    body = _smart_move(client, session_id, "e2e4", local_date="3000-01-01")
+    assert body["day_streak"]["trained_today"] is True
+
+
+def test_legacy_rehearsal_move_also_counts_for_the_streak(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    session_id = _start(client, rep).json()["session_id"]
+    body = client.post(
+        "/api/train/move",
+        json={"session_id": session_id, "played_uci": "e2e4"},
+        headers=csrf_headers(client),
+    ).json()
+    assert body["day_streak"]["current"] == 1
+
+
+def test_streak_is_per_user(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    session_id = _smart_start(client, rep, seed=5).json()["session_id"]
+    _smart_move(client, session_id, "e2e4")
+
+    from prepforge_chess.api import main
+
+    other = TestClient(main.app)
+    _register(other, "b@example.com")
+    dash = other.get("/api/dashboard").json()
+    assert dash["streak"] == {"current": 0, "best": 0, "trained_today": False}
+
+
+def test_dashboard_reports_streak_and_due_soon(client):
+    """After a graded correct answer the dashboard shows today's streak and the
+    review that lands within 24h (due_at = now + 1 day) as due_soon."""
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    session_id = _smart_start(client, rep, seed=5).json()["session_id"]
+    _smart_move(client, session_id, "e2e4")
+    dash = client.get("/api/dashboard").json()
+    assert dash["streak"] == {"current": 1, "best": 1, "trained_today": True}
+    assert dash["due_reviews"] == 0
+    assert dash["due_soon"] == 1
+
+
 # ---- multi-tenant isolation ------------------------------------------------
 
 

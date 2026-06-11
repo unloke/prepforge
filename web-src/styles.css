@@ -610,6 +610,58 @@ h2 {
   }
 }
 
+/* "Today" hero card: daily streak + what the review queue holds, with one
+   button into the smart trainer. */
+.today-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 14px;
+}
+.today-card[hidden] {
+  display: none;
+}
+.today-streak {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+.today-flame {
+  font-size: 22px;
+}
+/* A streak at 0 shows a dimmed flame — the slot is there to be lit. */
+.today-streak[data-lit="0"] .today-flame {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+.today-count {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.today-unit {
+  color: var(--muted);
+  font-size: 12px;
+}
+.today-text {
+  flex: 1;
+  min-width: 0;
+}
+.today-note {
+  font-weight: 600;
+  font-size: 14px;
+}
+.today-queue {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
@@ -1268,6 +1320,38 @@ h2 {
 }
 
 .train-modes { display: flex; gap: 4px; }
+
+/* Blitz toggle (smart queue only) + the per-card answer clock. The clock is a
+   width transition, not an animation: it carries real information (time left),
+   so it stays on under prefers-reduced-motion. */
+.train-blitz-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+.train-blitz-row[hidden] { display: none; }
+.train-blitz-row input { accent-color: var(--accent-strong); }
+.train-blitz-bar {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+  margin: 4px 0;
+}
+/* Hidden = not a blitz session: take no space at all. During a blitz session
+   the bar stays mounted (just emptied between cards) so the board never jumps. */
+.train-blitz-bar[hidden] { display: none; }
+.train-blitz-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--warn), var(--danger));
+}
 .train-mode {
   flex: 1;
   padding: 6px 4px;

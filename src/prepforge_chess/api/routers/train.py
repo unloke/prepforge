@@ -25,6 +25,7 @@ from prepforge_chess.api.deps import current_owner, get_repository
 from prepforge_chess.api.routers.workspace import _owned_repertoire
 from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import Repertoire, TrainingMode, TrainingSession
+from prepforge_chess.services import streak
 from prepforge_chess.services.progress import compute_health, due_forecast
 from prepforge_chess.services.training import TrainingService
 from prepforge_chess.services.training_smart import SmartTrainingService
@@ -137,10 +138,28 @@ class SmartMoveBody(BaseModel):
     played_uci: str
     # 1 = first (graded) answer; 2+ = retry / play-after-reveal, never graded.
     attempt: int = 1
+    # The player's local calendar date (YYYY-MM-DD) for the daily streak; the
+    # server clamps it and falls back to UTC today (see services/streak.py).
+    local_date: str | None = None
 
 
 def _clamp(value: int | None, low: int, high: int) -> int | None:
     return None if value is None else max(low, min(high, value))
+
+
+def _touch_streak(
+    repo: PrepForgeRepository, owner: str, local_date: str | None
+) -> dict[str, Any]:
+    """Mark "trained today" on the owner's daily streak and return the view the
+    client renders. Called from the graded move endpoints — submitting any move
+    is what counts as training, so one call per day actually changes state and
+    the rest no-op (skipping the settings write)."""
+    day = streak.resolve_day(local_date)
+    stored = repo.get_profile_setting(owner, streak.STREAK_KEY)
+    advanced = streak.advance(stored, day)
+    if advanced != stored:
+        repo.set_profile_setting(owner, streak.STREAK_KEY, advanced)
+    return streak.as_view(advanced, day)
 
 
 def _smart_summary_payload(
@@ -242,6 +261,7 @@ def smart_move(
         "correct": result.correct,
         "attempt": result.attempt,
         "sr_written": result.sr_written,
+        "day_streak": _touch_streak(repo, owner, body.local_date),
         "played_uci": result.played_uci,
         "expected_uci": result.expected_uci,
         "expected_san": result.expected_san,
@@ -346,6 +366,8 @@ def hint(
 class MoveBody(BaseModel):
     session_id: str
     played_uci: str
+    # Same daily-streak day hint as SmartMoveBody — rehearsal counts as training.
+    local_date: str | None = None
 
 
 @router.post("/move")
@@ -367,6 +389,7 @@ def move(
         "expected_uci": result.expected_uci,
         "expected_san": result.expected_san,
         "completed_line": result.completed_line,
+        "day_streak": _touch_streak(repo, owner, body.local_date),
         "mistakes": result.session.mistakes,
         "current_index": result.session.current_index,
         "progress": {

@@ -10,7 +10,7 @@ user never sees or mutates another's data; mutations additionally pass through
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -28,6 +28,7 @@ from prepforge_chess.services.opening_builder import (
     CreateRepertoireRequest,
     OpeningBuilderService,
 )
+from prepforge_chess.services import streak
 from prepforge_chess.services.progress import compute_health
 from prepforge_chess.services.repertoire_export import RepertoireExportService
 from prepforge_chess.services.workspace_view import build_workspace_payload
@@ -74,13 +75,18 @@ _RECOMMENDATIONS = [
 
 @router.get("/dashboard")
 def dashboard(
+    local_date: str | None = None,
     owner: str = Depends(current_owner),
     repo: PrepForgeRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Owner-scoped counters for the home screen. Training counters reach the owner
     through repertoire ownership (the reliable link: ``training_sessions`` has no
-    owner column and ``training_progress.user_profile_id`` is nullable)."""
-    now_iso = datetime.now(timezone.utc).isoformat()
+    owner column and ``training_progress.user_profile_id`` is nullable).
+    ``local_date`` is the client's calendar day, used only to phrase the daily
+    streak (is it alive? trained today?) in the player's timezone."""
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    soon_iso = (now + timedelta(hours=24)).isoformat()
     reps = t.repertoires
     with repo.engine.connect() as conn:
         games = conn.execute(
@@ -112,12 +118,30 @@ def dashboard(
                 reps.c.user_profile_id == owner,
             )
         ).scalar_one()
+        # Reviews landing within the next 24h — the "coming up today" half of
+        # the dashboard's today card. Text comparison is safe: due_at is always
+        # written as an ISO-8601 UTC string (same convention as due_reviews).
+        due_soon = conn.execute(
+            select(func.count())
+            .select_from(joined)
+            .where(
+                tp.c.due_at.is_not(None),
+                tp.c.due_at > now_iso,
+                tp.c.due_at <= soon_iso,
+                reps.c.user_profile_id == owner,
+            )
+        ).scalar_one()
     return {
         "games": games,
         "repertoires": repertoires,
         "training_sessions": sessions,
         "open_mistakes": open_mistakes,
         "due_reviews": due_reviews,
+        "due_soon": due_soon,
+        "streak": streak.as_view(
+            repo.get_profile_setting(owner, streak.STREAK_KEY),
+            streak.resolve_day(local_date),
+        ),
         "recommendations": _RECOMMENDATIONS,
     }
 

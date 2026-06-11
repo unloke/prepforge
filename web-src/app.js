@@ -1792,6 +1792,11 @@ function switchView(name) {
   if (name === "train") {
     loadTrainRepertoireOptions();
   }
+  // Coming back to the dashboard refreshes its counters — after a training
+  // session the streak / due numbers on the today card would otherwise be stale.
+  if (name === "dashboard" && appState.signedIn) {
+    loadDashboard().catch(() => { /* counters refresh is best-effort */ });
+  }
   // The engine widget is shared across tabs: it stays open while navigating and
   // re-syncs to whichever board the new tab shows (Analyze or Build).
   if (engineWidget && engineWidget.isOpen && engineWidget.isOpen()) {
@@ -1977,8 +1982,64 @@ async function boardInfo(fen) {
   return localBoardInfo(fen);
 }
 
+// Deep-link into the smart queue (it already front-loads due reviews).
+function goToSmartTraining(statusMessage) {
+  switchView("train");
+  appState.trainMode = "smart";
+  const btn = document.querySelector('#train-modes .train-mode[data-mode="smart"]');
+  if (btn) btn.click();
+  setStatus(statusMessage);
+}
+
+// The "Today" hero card: the daily streak plus what the queue holds right now
+// and within 24h — one glance, one button into the smart queue.
+function renderDashboardToday(payload) {
+  const card = document.getElementById("dashboard-today");
+  if (!card) return;
+  const streak = payload.streak || { current: 0, best: 0, trained_today: false };
+  const due = payload.due_reviews || 0;
+  const soon = payload.due_soon || 0;
+  // Nothing to say to a brand-new user without repertoires; the empty-state
+  // repertoire card below already points them at Build.
+  if (!payload.repertoires) {
+    card.hidden = true;
+    return;
+  }
+  const note = streak.trained_today
+    ? `Trained today - day ${streak.current} ✓`
+    : streak.current > 0
+      ? `Train today to keep your ${streak.current}-day streak`
+      : "Train today to start a streak";
+  const best = streak.best > 1 ? ` &middot; best ${streak.best}` : "";
+  const queueBits = [];
+  if (due > 0) queueBits.push(`<b>${due}</b> due now`);
+  if (soon > 0) queueBits.push(`<b>${soon}</b> coming up in 24h`);
+  const queueText = queueBits.length ? queueBits.join(" &middot; ") : "Queue is clear";
+  card.innerHTML = `
+    <div class="today-streak" data-lit="${streak.current > 0 ? "1" : "0"}">
+      <span class="today-flame" aria-hidden="true">\u{1F525}</span>
+      <span class="today-count">${streak.current}</span>
+      <span class="today-unit">day streak${best}</span>
+    </div>
+    <div class="today-text">
+      <div class="today-note">${note}</div>
+      <div class="today-queue">${queueText}</div>
+    </div>
+    <button class="btn primary" id="dashboard-train-now" data-testid="dashboard-train-now">Train now</button>
+  `;
+  card.hidden = false;
+  document.getElementById("dashboard-train-now").addEventListener("click", () =>
+    goToSmartTraining(
+      due > 0 ? "Due review - pick a repertoire and start" : "Pick a repertoire and start"
+    )
+  );
+}
+
 async function loadDashboard() {
-  const payload = await api("/api/dashboard");
+  // local_date phrases the streak in the player's calendar, not UTC's.
+  const payload = await api(`/api/dashboard?local_date=${localDateString()}`);
+  if (payload.streak) appState.dayStreak = payload.streak;
+  renderDashboardToday(payload);
   const due = payload.due_reviews || 0;
   const metrics = [
     ["Games", payload.games, ""],
@@ -2000,14 +2061,9 @@ async function loadDashboard() {
     .join("");
   const dueMetric = document.querySelector('#dashboard-metrics [data-action="due-review"]');
   if (dueMetric) {
-    dueMetric.addEventListener("click", () => {
-      switchView("train");
-      // The smart queue already front-loads due reviews — just preselect it.
-      appState.trainMode = "smart";
-      const btn = document.querySelector('#train-modes .train-mode[data-mode="smart"]');
-      if (btn) btn.click();
-      setStatus("Due review - pick a repertoire and start");
-    });
+    dueMetric.addEventListener("click", () =>
+      goToSmartTraining("Due review - pick a repertoire and start")
+    );
   }
   await loadDashboardRepertoires();
   setStatus("Ready");
@@ -4793,6 +4849,15 @@ function sideToMoveFromFen(fen) {
   return (fen || "").split(" ")[1] === "b" ? "black" : "white";
 }
 
+// The player's calendar day in their own timezone (not UTC) — the server keys
+// the daily training streak off this so a late-evening session counts for the
+// day the player actually lived it.
+function localDateString() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 function setTrainBanner(state, title, sub) {
   const banner = document.getElementById("train-banner");
   if (!banner) return;
@@ -4850,6 +4915,8 @@ async function startTraining(mode) {
   }
   // ----- legacy line rehearsal (all_lines) below -----
   appState.smart = null;
+  clearBlitzTimer();
+  setBlitzBarVisible(false);
   setSmartPanelsHidden();
   setStatus("Starting trainer");
   const repertoireId = selectedTrainRepertoireId();
@@ -4922,12 +4989,17 @@ async function submitTrainingMove(playedUci) {
   try {
     result = await api("/api/train/move", {
       method: "POST",
-      body: JSON.stringify({ session_id: prompt.session_id, played_uci: playedUci }),
+      body: JSON.stringify({
+        session_id: prompt.session_id,
+        played_uci: playedUci,
+        local_date: localDateString(),
+      }),
     });
   } catch (error) {
     setStatus(error.message);
     return;
   }
+  if (result.day_streak) appState.dayStreak = result.day_streak;
   const stats = appState.trainStats || (trainStatsReset(), appState.trainStats);
   const review = appState.trainReview;
   appState.trainHintLevel = 0;
@@ -5210,6 +5282,82 @@ function setSmartPanelsHidden() {
   if (dots) dots.innerHTML = "";
 }
 
+// ----- Blitz mode: an answer clock per card (smart queue only) ---------------
+//
+// Entirely client-side. A timeout submits the null move "0000" as attempt 1, so
+// the server grades an honest first-attempt miss — in blitz, not producing the
+// move in time means it isn't known cold. Teach prompts (kind=new) and retries
+// are untimed; the toggle is read once at session start.
+
+const BLITZ_KEY = "prepforge-blitz";
+const BLITZ_SECONDS = 10;
+
+function blitzEnabled() {
+  try {
+    return localStorage.getItem(BLITZ_KEY) === "1";
+  } catch (_) {
+    return false;
+  }
+}
+
+function setBlitzEnabled(on) {
+  try {
+    if (on) localStorage.setItem(BLITZ_KEY, "1");
+    else localStorage.removeItem(BLITZ_KEY);
+  } catch (_) { /* private mode: the toggle just won't persist */ }
+}
+
+// Mount/unmount the clock for a whole session. During a blitz session the bar
+// stays in the layout (merely emptied between cards) so the board never jumps.
+function setBlitzBarVisible(on) {
+  const bar = document.getElementById("train-blitz");
+  if (bar) bar.hidden = !on;
+}
+
+function clearBlitzTimer() {
+  if (appState.blitzTimer) {
+    window.clearTimeout(appState.blitzTimer);
+    appState.blitzTimer = null;
+  }
+  const fill = document.getElementById("train-blitz-fill");
+  if (fill) {
+    fill.style.transition = "none";
+    fill.style.width = "0%";
+  }
+}
+
+function startBlitzTimer(smart, prompt) {
+  clearBlitzTimer();
+  const fill = document.getElementById("train-blitz-fill");
+  if (fill) {
+    // Restart the shrink from full: kill the transition, snap to 100%, reflow,
+    // then let one linear transition spend the whole budget.
+    fill.style.transition = "none";
+    fill.style.width = "100%";
+    void fill.offsetWidth;
+    fill.style.transition = `width ${BLITZ_SECONDS}s linear`;
+    fill.style.width = "0%";
+  }
+  appState.blitzTimer = window.setTimeout(() => {
+    appState.blitzTimer = null;
+    const current = appState.smart;
+    // Fire only when this exact first attempt is still waiting on screen;
+    // a backgrounded tab or a navigated-away view forfeits the clock, not
+    // the card.
+    const live =
+      current === smart &&
+      current.prompt === prompt &&
+      current.attempt === 1 &&
+      !appState.trainBusy &&
+      appState.currentView === "train" &&
+      !document.hidden;
+    clearBlitzTimer();
+    if (!live) return;
+    smart.timeouts = (smart.timeouts || 0) + 1;
+    submitSmartMove("0000", { timedOut: true });
+  }, BLITZ_SECONDS * 1000);
+}
+
 async function startSmartTraining() {
   setStatus("Building your queue");
   const repertoireId = selectedTrainRepertoireId();
@@ -5232,6 +5380,7 @@ async function startSmartTraining() {
   // A restart can interrupt an in-flight run-in; its early-return leaves the
   // busy flag set, so clear it before the new session takes the board.
   appState.trainBusy = false;
+  clearBlitzTimer();
   appState.smart = {
     sessionId: payload.session_id,
     repertoireId: payload.repertoire_id,
@@ -5244,7 +5393,11 @@ async function startSmartTraining() {
     attempt: 1,
     cardsDone: 0,
     retriesFixed: 0,
+    // Snapshot the toggle so flipping it mid-session can't change the rules.
+    blitz: blitzEnabled(),
+    timeouts: 0,
   };
+  setBlitzBarVisible(appState.smart.blitz);
   if (boards.train && payload.color) {
     boards.train.setOrientation(payload.color === "black" ? "black" : "white");
   }
@@ -5353,18 +5506,22 @@ async function presentSmartPrompt(prompt) {
       prompt.hint.strategy || "Watch the arrow, then play the move."
     );
     board.setEngineArrow(prompt.expected_uci);
+    clearBlitzTimer(); // learning is never against the clock
   } else {
     setTrainBanner(
       "move",
       `${side === "white" ? "White" : "Black"} to move`,
       `${SMART_KIND_LABELS[prompt.kind] || "Review"} - play your prepared move`
     );
+    if (smart.blitz) startBlitzTimer(smart, prompt);
+    else clearBlitzTimer();
   }
 }
 
-async function submitSmartMove(playedUci) {
+async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   const smart = appState.smart;
   if (!smart || !smart.prompt || !playedUci || appState.trainBusy) return;
+  clearBlitzTimer(); // answered (or timed out) — stop the countdown right away
   const prompt = smart.prompt;
   const attempt = smart.attempt;
   let result;
@@ -5373,11 +5530,13 @@ async function submitSmartMove(playedUci) {
       session_id: smart.sessionId,
       played_uci: playedUci,
       attempt,
+      local_date: localDateString(),
     });
   } catch (error) {
     setStatus(error.message);
     return;
   }
+  if (result.day_streak) appState.dayStreak = result.day_streak;
   const stats = appState.trainStats || (trainStatsReset(), appState.trainStats);
   smart.totalCards = result.total_cards;
 
@@ -5398,14 +5557,17 @@ async function submitSmartMove(playedUci) {
         lastMove: playedUci,
       });
     } catch (_) {
-      // Wrong-move preview is cosmetic; grading already happened server-side.
+      // Wrong-move preview is cosmetic (a blitz timeout has no move to show);
+      // grading already happened server-side.
     }
     playSound("capture");
     if (attempt === 1) {
       // First miss: auto-hint and a free retry, streak intact, no reveal.
+      // The blitz retry is deliberately untimed — the clock tests recall,
+      // the retry rebuilds it.
       setTrainBanner(
         "wrong",
-        "Not that one - try again",
+        timedOut ? "Time's up - try again" : "Not that one - try again",
         prompt.hint.strategy || prompt.hint.piece || "Think about the idea behind the line."
       );
     } else {
@@ -5488,6 +5650,7 @@ async function skipSmartCard() {
     return;
   }
   if (appState.trainBusy) return;
+  clearBlitzTimer();
   try {
     const result = await postJson("/api/train/smart/skip", { session_id: smart.sessionId });
     if (result.prompt) {
@@ -5530,15 +5693,18 @@ async function finishSmartSession() {
   if (!smart) return;
   const stats = appState.trainStats || {};
   smart.prompt = null;
+  clearBlitzTimer();
+  setBlitzBarVisible(false);
   boards.train.setEngineArrow(null);
   document.getElementById("train-progress-fill").style.width = "100%";
   const dots = document.getElementById("train-card-dots");
   if (dots) dots.innerHTML = "";
   const fixed = smart.retriesFixed ? ` - ${smart.retriesFixed} fixed on retry` : "";
+  const blitzed = smart.blitz && smart.timeouts ? ` (${smart.timeouts} timed out)` : "";
   setTrainBanner(
     "done",
-    "Session complete!",
-    `${stats.correct || 0} first-try correct - ${stats.mistakes || 0} missed${fixed}`
+    smart.blitz ? "Blitz session complete!" : "Session complete!",
+    `${stats.correct || 0} first-try correct - ${stats.mistakes || 0} missed${blitzed}${fixed}`
   );
   document.getElementById("train-board-label").textContent = "Press Start for a fresh queue";
   celebrate();
@@ -5561,11 +5727,16 @@ function renderSmartSummary(smart, stats, after) {
   if (queue) queue.hidden = true; // the summary replaces the composition strip
   const firstTries = (stats.correct || 0) + (stats.mistakes || 0);
   const acc = firstTries ? Math.round(((stats.correct || 0) / firstTries) * 100) : 100;
-  document.getElementById("train-summary-stats").innerHTML = [
+  const statCells = [
     [smart.cardsDone, "cards"],
     [`${acc}%`, "first try"],
     [stats.best || 0, "best streak"],
-  ]
+  ];
+  // The daily streak (server-tracked, all repertoires) earns its slot once the
+  // first graded move of the session reported it.
+  const day = appState.dayStreak;
+  if (day && day.current > 0) statCells.push([`\u{1F525}${day.current}`, "day streak"]);
+  document.getElementById("train-summary-stats").innerHTML = statCells
     .map(
       ([value, label]) =>
         `<div class="tsum-stat"><span class="tsum-value">${value}</span><span class="tsum-label">${label}</span></div>`
@@ -6023,12 +6194,20 @@ function bindEvents() {
 
   document.getElementById("start-train").addEventListener("click", () => startTraining());
   document.getElementById("train-hint").addEventListener("click", trainHint);
+  const blitzRow = document.getElementById("train-blitz-row");
+  const blitzToggle = document.getElementById("train-blitz-toggle");
+  if (blitzToggle) {
+    blitzToggle.checked = blitzEnabled();
+    blitzToggle.addEventListener("change", () => setBlitzEnabled(blitzToggle.checked));
+  }
   document.querySelectorAll("#train-modes .train-mode").forEach((btn) => {
     btn.addEventListener("click", () => {
       document
         .querySelectorAll("#train-modes .train-mode")
         .forEach((b) => b.classList.toggle("is-active", b === btn));
       appState.trainMode = btn.dataset.mode;
+      // The answer clock only exists in the smart queue; rehearsal is untimed.
+      if (blitzRow) blitzRow.hidden = btn.dataset.mode !== "smart";
     });
   });
   const trainSelect = document.getElementById("train-repertoire-select");

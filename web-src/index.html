@@ -26,6 +26,7 @@
 
     <main class="workspace">
       <section class="view is-active" id="view-dashboard" data-testid="view-dashboard">
+        <div class="today-card" id="dashboard-today" data-testid="dashboard-today" hidden></div>
         <div class="metrics" id="dashboard-metrics"></div>
         <section class="card">
           <div class="card-head">
@@ -148,6 +149,9 @@
               </div>
               <span class="train-turn-badge" id="train-turn-badge" hidden></span>
             </div>
+            <div class="train-blitz-bar" id="train-blitz" hidden aria-hidden="true">
+              <div class="train-blitz-fill" id="train-blitz-fill"></div>
+            </div>
             <div class="board-stack">
               <div class="chessboard" id="train-board" data-testid="train-board"></div>
               <svg class="annotations" id="train-annotations"></svg>
@@ -169,6 +173,10 @@
                 <button type="button" class="train-mode is-active" data-mode="smart">Smart queue</button>
                 <button type="button" class="train-mode" data-mode="all_lines">Line rehearsal</button>
               </div>
+              <label class="train-blitz-row" id="train-blitz-row" title="10 seconds per move - running out counts as a miss (the retry is untimed)">
+                <input type="checkbox" id="train-blitz-toggle" data-testid="train-blitz-toggle" />
+                <span>&#9889; Blitz &middot; 10s per move</span>
+              </label>
               <button class="btn primary train-start" id="start-train" data-testid="start-train">Start training</button>
             </div>
 
