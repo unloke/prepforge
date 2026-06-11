@@ -14,12 +14,25 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY pyproject.toml README.md alembic.ini ./
+# --- Dependency layer (cached across app/asset changes) -----------------------
+# Install the heavy third-party deps against a STUB package so this slow layer is
+# keyed on pyproject.toml alone. Without the stub, "COPY src" — which holds the
+# frequently-rebuilt JS bundle under web/static — would invalidate this layer and
+# force a full reinstall of fastapi/sqlalchemy/psycopg/cryptography on every deploy.
+COPY pyproject.toml README.md ./
+RUN mkdir -p src/prepforge_chess \
+    && touch src/prepforge_chess/__init__.py \
+    && python -m pip install --no-cache-dir --upgrade pip \
+    && python -m pip install --no-cache-dir ".[server]"
+
+# --- Application layer (rebuilt only when src/ or migrations change) -----------
+COPY alembic.ini ./
 COPY migrations ./migrations
 COPY src ./src
-
-RUN python -m pip install --no-cache-dir --upgrade pip \
-    && python -m pip install --no-cache-dir ".[server]"
+# Reinstall ONLY the package (deps already satisfied above) so the real modules
+# and committed static assets replace the stub. --force-reinstall is required
+# because the version is unchanged, so pip would otherwise treat it as installed.
+RUN python -m pip install --no-cache-dir --no-deps --force-reinstall ".[server]"
 
 EXPOSE 8000
 
