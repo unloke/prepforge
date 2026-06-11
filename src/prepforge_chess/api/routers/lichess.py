@@ -12,6 +12,9 @@ so the flow works across multiple workers without a shared store.
 from __future__ import annotations
 
 import json
+import time
+import urllib.parse
+from collections import OrderedDict
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
@@ -197,6 +200,86 @@ def unlink(user: User = Depends(current_user), db: Session = Depends(get_db)) ->
         db.delete(link)
         db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ---- Opening explorer proxy --------------------------------------------------
+# explorer.lichess.ovh dropped anonymous access in early 2026 (DDoS mitigation), so
+# the SPA can no longer call it directly. This thin proxy attaches the caller's own
+# linked-account token server-side — the token never reaches the page — and memoises
+# responses in-process. Opening stats are public, slow-moving data, so one user's
+# lookup serves everyone (the first few plies cover most traffic), and the SPA keeps
+# its own week-long cache + debounce + 429 cooldown on top (web-src/explorer.js).
+
+_EXPLORER_DBS = ("masters", "lichess")
+_EXPLORER_RATINGS = {"600", "1000", "1200", "1400", "1600", "1800", "2000", "2200", "2500"}
+_EXPLORER_CACHE_TTL_SECONDS = 24 * 3600
+_EXPLORER_CACHE_CAP = 500
+_explorer_cache: OrderedDict[str, tuple[float, dict]] = OrderedDict()
+
+
+def _linked_token(db: Session, user_id: str) -> str | None:
+    link = _link_for(db, user_id)
+    if link is None or not link.encrypted_token:
+        return None
+    try:
+        return json.loads(decrypt_token(link.encrypted_token)).get("access_token")
+    except Exception:  # noqa: BLE001 - an undecryptable token is just "not linked"
+        return None
+
+
+@router.get("/explorer/{db_name}")
+def explorer_proxy(
+    db_name: str,
+    fen: str,
+    ratings: str | None = None,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Opening-explorer stats for one position (masters or the player pool).
+
+    Query params beyond ``fen``/``ratings`` are pinned server-side, so this can't
+    be used as a general-purpose proxy. The ratings list is validated against the
+    explorer's own buckets."""
+    if db_name not in _EXPLORER_DBS:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown explorer database")
+    params: dict[str, str] = {"fen": fen, "moves": "12", "topGames": "0"}
+    if db_name == "lichess":
+        params["variant"] = "standard"
+        params["speeds"] = "blitz,rapid,classical"
+        buckets = [r for r in (ratings or "").split(",") if r in _EXPLORER_RATINGS]
+        params["ratings"] = ",".join(buckets) if buckets else "1600,1800"
+        params["recentGames"] = "0"
+    url = "{0}/{1}?{2}".format(
+        lichess_fetch.EXPLORER_BASE_URL, db_name, urllib.parse.urlencode(params)
+    )
+
+    now = time.time()
+    hit = _explorer_cache.get(url)
+    if hit and now - hit[0] < _EXPLORER_CACHE_TTL_SECONDS:
+        _explorer_cache.move_to_end(url)
+        return hit[1]
+
+    token = _linked_token(db, user.id)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="link your Lichess account to use the opening explorer",
+        )
+    try:
+        data = lichess_fetch.fetch_explorer_json(url, token)
+    except lichess_fetch.ExplorerRateLimitedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Lichess explorer rate limit - try again shortly",
+        ) from exc
+    except lichess_fetch.LichessFetchError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    _explorer_cache[url] = (now, data)
+    _explorer_cache.move_to_end(url)
+    while len(_explorer_cache) > _EXPLORER_CACHE_CAP:
+        _explorer_cache.popitem(last=False)
+    return data
 
 
 # ---- Game import / compare (Phase 2b-2d-iv) --------------------------------

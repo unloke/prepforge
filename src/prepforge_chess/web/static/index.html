@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-CCPtQukx.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-DHmfK_9d.css">
+    <script type="module" crossorigin src="/static/assets/index-C4D3lD3A.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-4Im2f09A.css">
   </head>
   <body>
     <header class="topbar">
@@ -130,6 +130,17 @@
               <button class="btn ghost" id="export-build-pgn" data-testid="export-build-pgn">Export PGN</button>
             </div>
             <div class="build-branchbar" id="build-branchbar" data-testid="build-branchbar" hidden></div>
+            <details class="drawer" id="explorer-drawer" data-testid="explorer-drawer">
+              <summary>Opening explorer</summary>
+              <div class="explorer-head">
+                <div class="explorer-dbs" role="group" aria-label="Database">
+                  <button type="button" class="explorer-db is-active" data-db="masters">Masters</button>
+                  <button type="button" class="explorer-db" data-db="lichess">Players</button>
+                </div>
+                <span class="explorer-opening" id="explorer-opening"></span>
+              </div>
+              <div class="explorer-rows" id="explorer-rows"></div>
+            </details>
             <div class="movelist tree" id="builder-tree" data-testid="builder-tree"></div>
             <!-- legacy hooks kept for app.js compatibility; hidden -->
             <button id="import-build-file" hidden></button>

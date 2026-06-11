@@ -4072,6 +4072,100 @@ async function selectBuildNode(nodeId) {
   document.getElementById("build-board-label").textContent = label;
   renderBuilderTree();
   if (engineWidget) engineWidget.onBoardChanged();
+  scheduleExplorerRefresh();
+}
+
+// ----- Opening explorer (Build sidebar) ---------------------------------------
+// Real-game stats for the current Build position, fetched straight from Lichess's
+// public CORS-open explorer — the PrepForge server never proxies a byte. The
+// module is dynamically imported on first open so its code stays out of the boot
+// bundle; the client inside it handles caching, request dedup, and 429 cooldown
+// (see explorer.js). Here we only debounce navigation and skip work while closed.
+
+let explorerModule = null;
+let explorerClient = null;
+let explorerDb = "masters";
+let explorerTimer = null;
+let explorerSeq = 0;
+
+function explorerDrawerOpen() {
+  const drawer = document.getElementById("explorer-drawer");
+  return !!(drawer && drawer.open);
+}
+
+// Arrow-keying through a line fires selectBuildNode per ply; one trailing fetch
+// 350ms after the player settles is plenty (and most settles hit the cache).
+function scheduleExplorerRefresh() {
+  if (!explorerDrawerOpen()) return;
+  window.clearTimeout(explorerTimer);
+  explorerTimer = window.setTimeout(refreshExplorerPanel, 350);
+}
+
+async function refreshExplorerPanel() {
+  const rows = document.getElementById("explorer-rows");
+  if (!rows || !explorerDrawerOpen()) return;
+  const node =
+    appState.buildCurrentNodeId && appState.buildNodeById.get(appState.buildCurrentNodeId);
+  const fen = node ? node.fen : null;
+  if (!fen) {
+    rows.innerHTML = '<div class="muted hint">Open a repertoire to see real-game stats.</div>';
+    return;
+  }
+  const seq = ++explorerSeq;
+  try {
+    if (!explorerModule) {
+      rows.innerHTML = '<div class="muted hint">Loading explorer…</div>';
+      explorerModule = await import("./explorer.js");
+      explorerClient = explorerModule.createExplorerClient({});
+    }
+    const stats = await explorerClient.fetchStats(explorerDb, fen, {
+      rating: effectiveMaiaRating(),
+    });
+    if (seq !== explorerSeq || !explorerDrawerOpen()) return; // superseded
+    renderExplorerRows(stats);
+  } catch (error) {
+    if (seq !== explorerSeq) return;
+    if (explorerModule && error instanceof explorerModule.ExplorerRateLimited) {
+      const secs = Math.max(1, Math.ceil(error.retryInMs / 1000));
+      rows.innerHTML = `<div class="muted hint">Lichess asks for a short pause - try again in ~${secs}s.</div>`;
+    } else {
+      rows.innerHTML = `<div class="muted hint">Explorer unavailable: ${escapeHtml(error.message)}</div>`;
+    }
+  }
+}
+
+function renderExplorerRows(stats) {
+  const rows = document.getElementById("explorer-rows");
+  if (!rows) return;
+  const openingEl = document.getElementById("explorer-opening");
+  if (openingEl) openingEl.textContent = stats.opening || "";
+  if (!stats.moves.length) {
+    rows.innerHTML = '<div class="muted hint">No games reached this position - true novelty territory.</div>';
+    return;
+  }
+  // Dot the continuations already in the repertoire at this node, so gaps between
+  // "what people actually play" and "what I've prepared" jump out.
+  const current = appState.buildCurrentNodeId;
+  const inRep = new Set(
+    (appState.build ? appState.build.nodes : [])
+      .filter((n) => n.parent_id === current && n.depth > 0)
+      .map((n) => n.uci),
+  );
+  rows.innerHTML = stats.moves
+    .map(
+      (m) => `
+    <button type="button" class="explorer-row" data-uci="${escapeHtml(m.uci)}" title="Add ${escapeHtml(m.san)} to the repertoire">
+      <span class="explorer-san">${escapeHtml(m.san)}${inRep.has(m.uci) ? '<span class="explorer-inrep" title="In your repertoire">&#9679;</span>' : ""}</span>
+      <span class="explorer-games">${explorerModule.formatGames(m.total)}</span>
+      <span class="explorer-bar" aria-label="White ${m.whitePct}% / draw ${m.drawPct}% / Black ${m.blackPct}%">
+        <span class="explorer-bar-w" style="width:${m.whitePct}%"></span><span class="explorer-bar-d" style="width:${m.drawPct}%"></span><span class="explorer-bar-b" style="width:${m.blackPct}%"></span>
+      </span>
+    </button>`,
+    )
+    .join("");
+  rows.querySelectorAll(".explorer-row").forEach((btn) => {
+    btn.addEventListener("click", () => onBuildBoardMove(btn.dataset.uci));
+  });
 }
 
 // Normalize the flat repertoire node list into the shared tree shape, with the
@@ -6343,6 +6437,24 @@ function bindEvents() {
       if (historyDrawer.open) loadAnalysisHistory();
     });
   }
+  // Opening explorer: fetch on open, switch databases in place. Closing cancels
+  // any pending debounce via the drawer-open guard.
+  const explorerDrawer = document.getElementById("explorer-drawer");
+  if (explorerDrawer) {
+    explorerDrawer.addEventListener("toggle", () => {
+      if (explorerDrawer.open) refreshExplorerPanel();
+    });
+    explorerDrawer.querySelectorAll(".explorer-db").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        explorerDb = btn.dataset.db === "lichess" ? "lichess" : "masters";
+        explorerDrawer.querySelectorAll(".explorer-db").forEach((b) => {
+          b.classList.toggle("is-active", b === btn);
+        });
+        refreshExplorerPanel();
+      });
+    });
+  }
+
   // Drag-and-drop: a PGN onto the Analyze box loads it; a PGN/JSON onto the
   // dashboard repertoires card imports it.
   bindDropZone(document.getElementById("pgn-input"), fillPgnInputFromFile);

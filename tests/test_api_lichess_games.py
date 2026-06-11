@@ -152,6 +152,104 @@ def test_compare_maps_upstream_failure_to_502(client, monkeypatch):
     assert client.get("/api/lichess/compare").status_code == 502
 
 
+# ---- opening explorer proxy --------------------------------------------------
+
+_START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+_EXPLORER_RAW = {
+    "white": 10,
+    "draws": 5,
+    "black": 5,
+    "moves": [{"uci": "e2e4", "san": "e4", "white": 10, "draws": 5, "black": 5}],
+}
+
+
+@pytest.fixture(autouse=True)
+def _clear_explorer_cache():
+    from prepforge_chess.api.routers import lichess as lichess_router
+
+    lichess_router._explorer_cache.clear()
+    yield
+    lichess_router._explorer_cache.clear()
+
+
+def test_explorer_requires_auth(client):
+    assert client.get(f"/api/lichess/explorer/masters?fen={_START_FEN}").status_code == 401
+
+
+def test_explorer_unknown_db_is_404(client):
+    _register(client, "a@example.com")
+    assert client.get(f"/api/lichess/explorer/bogus?fen={_START_FEN}").status_code == 404
+
+
+def test_explorer_requires_link(client):
+    _register(client, "a@example.com")
+    r = client.get("/api/lichess/explorer/masters", params={"fen": _START_FEN})
+    assert r.status_code == 400
+    assert "link your lichess" in r.json()["detail"].lower()
+
+
+def test_explorer_proxies_with_token_and_caches(client, monkeypatch):
+    _register(client, "a@example.com")
+    _link(client)
+    calls = []
+
+    def _fake_fetch(url, token, **kwargs):
+        calls.append((url, token))
+        return dict(_EXPLORER_RAW)
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_explorer_json", _fake_fetch
+    )
+    first = client.get("/api/lichess/explorer/masters", params={"fen": _START_FEN})
+    assert first.status_code == 200, first.text
+    assert first.json()["moves"][0]["san"] == "e4"
+    # The linked token rode along server-side.
+    assert calls and calls[0][1] == "lichess-tok"
+    # Second hit is served from the in-process cache: no upstream call.
+    second = client.get("/api/lichess/explorer/masters", params={"fen": _START_FEN})
+    assert second.status_code == 200
+    assert len(calls) == 1
+
+
+def test_explorer_validates_ratings_and_pins_params(client, monkeypatch):
+    _register(client, "a@example.com")
+    _link(client)
+    seen = {}
+
+    def _fake_fetch(url, token, **kwargs):
+        seen["url"] = url
+        return dict(_EXPLORER_RAW)
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_explorer_json", _fake_fetch
+    )
+    r = client.get(
+        "/api/lichess/explorer/lichess",
+        params={"fen": _START_FEN, "ratings": "1800,evil,99"},
+    )
+    assert r.status_code == 200
+    # Junk buckets dropped, upstream params pinned server-side.
+    assert "ratings=1800" in seen["url"] and "evil" not in seen["url"]
+    assert "speeds=blitz%2Crapid%2Cclassical" in seen["url"]
+    assert "variant=standard" in seen["url"]
+
+
+def test_explorer_passes_through_rate_limit(client, monkeypatch):
+    _register(client, "a@example.com")
+    _link(client)
+
+    def _fake_fetch(url, token, **kwargs):
+        from prepforge_chess.services.lichess_fetch import ExplorerRateLimitedError
+
+        raise ExplorerRateLimitedError("explorer rate limit")
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_explorer_json", _fake_fetch
+    )
+    r = client.get("/api/lichess/explorer/masters", params={"fen": _START_FEN})
+    assert r.status_code == 429
+
+
 # ---- departure -> training miss (play→train loop) ---------------------------
 
 _DEPARTURE_PGN = """[Event "Rated Blitz game"]

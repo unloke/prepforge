@@ -19,12 +19,51 @@ from prepforge_chess.storage.repositories import PrepForgeRepository
 
 
 LICHESS_USER_PGN_URL = "https://lichess.org/api/games/user/{username}"
+EXPLORER_BASE_URL = "https://explorer.lichess.ovh"
 DEFAULT_TIMEOUT_SECONDS = 15
 MAX_FETCH = 50
 
 
 class LichessFetchError(RuntimeError):
     pass
+
+
+class ExplorerRateLimitedError(LichessFetchError):
+    """The upstream opening explorer returned 429 — caller should cool down."""
+
+
+def fetch_explorer_json(
+    url: str, token: str, *, timeout: float = DEFAULT_TIMEOUT_SECONDS
+) -> dict:
+    """GET one opening-explorer URL with the user's OAuth token.
+
+    Since early 2026 explorer.lichess.ovh requires a logged-in request (DDoS
+    mitigation), so the linked account's token rides along — server-side only,
+    never handed to the browser. 429 raises the dedicated rate-limit error so
+    the API layer can pass the status through to the client's cooldown."""
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "Authorization": "Bearer {0}".format(token),
+            "User-Agent": "PrepForge/0.1 (local-tool)",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return json.loads(response.read().decode("utf-8", errors="replace"))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 429:
+            raise ExplorerRateLimitedError("Lichess explorer rate limit") from exc
+        raise LichessFetchError(
+            "Lichess explorer responded with HTTP {0}".format(exc.code)
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise LichessFetchError(
+            "Could not reach the Lichess explorer: {0}".format(exc.reason)
+        ) from exc
+    except json.JSONDecodeError as exc:
+        raise LichessFetchError("Lichess explorer returned malformed JSON") from exc
 
 
 @dataclass
