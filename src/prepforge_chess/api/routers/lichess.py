@@ -235,9 +235,15 @@ def _run_compare(
     except lichess_fetch.LichessFetchError as exc:
         # Upstream Lichess failed -- this server proxied the fetch, so 502.
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    # Close the play→train loop: a game where the user left their own prep becomes a
+    # recall miss on the forgotten node, so it surfaces in the next smart session.
+    misses_recorded = lichess_fetch.record_departure_misses(
+        repo, summaries, owner_user_id=owner
+    )
     return {
         "username": username,
         "count": len(summaries),
+        "misses_recorded": misses_recorded,
         "games": [
             {
                 "lichess_id": s.lichess_id,
@@ -255,6 +261,7 @@ def _run_compare(
                 "move_san_history": s.move_san_history,
                 "expected_move_uci": s.expected_move_uci,
                 "expected_move_san": s.expected_move_san,
+                "training_recorded": s.training_recorded,
             }
             for s in summaries
         ],

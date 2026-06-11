@@ -5,15 +5,16 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import List, Optional
 
 from prepforge_chess.core.chess_core import ChessCore
-from prepforge_chess.core.models import Color, MoveSource, Game
+from prepforge_chess.core.models import Color, MoveSource, Game, TrainingProgress
 from prepforge_chess.services.repertoire_matching import (
     RepertoireMatchResult,
     match_game_against_repertoires,
 )
+from prepforge_chess.services.training import update_spaced_repetition
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
 
@@ -59,6 +60,10 @@ class GameMatchSummary:
     move_san_history: List[str]
     expected_move_uci: Optional[str]
     expected_move_san: Optional[str]
+    # The repertoire node of the move the user should have played (departures only).
+    expected_node_id: Optional[str] = None
+    # True once this game's departure has been recorded as a training miss.
+    training_recorded: bool = False
 
 
 def fetch_recent_pgns(
@@ -325,6 +330,62 @@ def compare_recent_games(
     return summaries
 
 
+# Per-owner list of lichess game ids whose departure already became a training miss,
+# so re-running compare on the same games never double-counts. Capped: 50 games is the
+# compare fetch maximum, so 300 remembered ids is several full pages of history.
+DEPARTURE_INGESTED_KEY = "lichess.departure_misses_ingested"
+_DEPARTURE_INGESTED_CAP = 300
+
+
+def record_departure_misses(
+    repository: PrepForgeRepository,
+    summaries: List[GameMatchSummary],
+    *,
+    owner_user_id: Optional[str] = None,
+) -> int:
+    """Close the play→train loop: each game where the USER left their own prep is
+    recorded as a recall miss on the expected repertoire node, so the smart queue
+    schedules exactly the move they forgot (due within minutes; weak if repeated).
+
+    Opponent novelties are NOT misses — there was nothing to recall. Idempotent per
+    game via a per-owner ingested-ids list; marks each summary it recorded through
+    ``training_recorded`` so the UI can say "added to training". Returns the count.
+    """
+    if owner_user_id is None:
+        return 0
+    stored = repository.get_profile_setting(owner_user_id, DEPARTURE_INGESTED_KEY, [])
+    ingested = [str(item) for item in stored] if isinstance(stored, list) else []
+    seen = set(ingested)
+    recorded = 0
+    for summary in summaries:
+        if summary.departure_reason != "user_left_preparation":
+            continue
+        if not (summary.lichess_id and summary.repertoire_id and summary.expected_node_id):
+            continue
+        if summary.lichess_id in seen:
+            continue
+        # NB: progress rows are keyed on the repertoire alone (the trainer reads and
+        # writes them with no user_profile_id — isolation rides on repertoire
+        # ownership), so the miss is stored the same way or Train would never see it.
+        progress = repository.load_training_progress(
+            summary.repertoire_id, summary.expected_node_id
+        ) or TrainingProgress(node_id=summary.expected_node_id)
+        updated = update_spaced_repetition(progress, correct=False)
+        # An in-session miss retries after 10 minutes; a miss from a REAL game should
+        # land in the very next session, so it is due immediately.
+        updated = replace(updated, due_at=updated.last_reviewed_at)
+        repository.save_training_progress(summary.repertoire_id, updated)
+        seen.add(summary.lichess_id)
+        ingested.append(summary.lichess_id)
+        summary.training_recorded = True
+        recorded += 1
+    if recorded:
+        repository.set_profile_setting(
+            owner_user_id, DEPARTURE_INGESTED_KEY, ingested[-_DEPARTURE_INGESTED_CAP:]
+        )
+    return recorded
+
+
 def _build_summary(
     entry: FetchedGame,
     user_color: Color,
@@ -367,4 +428,5 @@ def _build_summary(
         move_san_history=san_history,
         expected_move_uci=match.expected_move_uci,
         expected_move_san=match.expected_move_san,
+        expected_node_id=match.expected_node_id,
     )

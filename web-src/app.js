@@ -6133,7 +6133,12 @@ async function runLichessCompare() {
     });
     appState.replayResults = payload;
     renderReplayResults(payload);
-    setStatus(`Fetched ${payload.count} games for ${payload.username}`);
+    const queued = Number(payload.misses_recorded) || 0;
+    setStatus(
+      queued > 0
+        ? `Fetched ${payload.count} games · ${queued} forgotten move${queued === 1 ? "" : "s"} added to training`
+        : `Fetched ${payload.count} games for ${payload.username}`
+    );
   } catch (error) {
     setStatus(error.message);
   } finally {
@@ -6241,7 +6246,10 @@ function renderReplayDetail(game) {
     const expected = game.expected_move_san ? ` (expected <strong>${escapeHtml(game.expected_move_san)}</strong>)` : "";
     const playedSan = replayDepartureSan(game);
     const played = playedSan ? ` <strong>${escapeHtml(playedSan)}</strong>` : "";
-    lines.push(`You diverged on ply ${game.departure_ply}${played}${expected}. Adding to review queue is a planned follow-up.`);
+    const queued = game.training_recorded
+      ? " Added to your training queue - the move you forgot is due now."
+      : " Already in your training queue.";
+    lines.push(`You diverged on ply ${game.departure_ply}${played}${expected}.${queued}`);
   } else if (game.departure_reason === "opponent_unprepared_branch") {
     const playedSan = replayDepartureSan(game);
     const played = playedSan ? ` <strong>${escapeHtml(playedSan)}</strong>` : "";

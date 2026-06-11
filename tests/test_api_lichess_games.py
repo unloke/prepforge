@@ -152,6 +152,101 @@ def test_compare_maps_upstream_failure_to_502(client, monkeypatch):
     assert client.get("/api/lichess/compare").status_code == 502
 
 
+# ---- departure -> training miss (play→train loop) ---------------------------
+
+_DEPARTURE_PGN = """[Event "Rated Blitz game"]
+[Site "https://lichess.org/dep001"]
+[White "TestUser"]
+[Black "Opponent"]
+[Result "0-1"]
+
+1. d4 d5 0-1
+"""
+
+
+def _departure_game() -> FetchedGame:
+    return FetchedGame(
+        pgn=_DEPARTURE_PGN,
+        white="TestUser",
+        black="Opponent",
+        result="0-1",
+        lichess_id="dep001",
+        event="Rated Blitz game",
+        finished_at="2026-06-08T00:00:00Z",
+    )
+
+
+def _make_e4_repertoire(client) -> dict:
+    created = client.post(
+        "/api/repertoires/create",
+        json={"name": "King's Pawn", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+    add = client.post(
+        "/api/build/add-move",
+        json={
+            "repertoire_id": created["repertoire_id"],
+            "parent_node_id": created["selected_node_id"],
+            "move_uci": "e2e4",
+        },
+        headers=csrf_headers(client),
+    ).json()
+    return {"repertoire_id": created["repertoire_id"], "add": add}
+
+
+def test_departure_records_training_miss_once(client, monkeypatch):
+    """A game where the user left their own prep (played 1.d4 with an 1.e4 book)
+    becomes ONE recall miss on the expected node — due immediately — and re-running
+    compare on the same game does not double-count."""
+    _register(client, "a@example.com")
+    _link(client)
+    rep = _make_e4_repertoire(client)
+    _mock_fetch(monkeypatch, games=[_departure_game()])
+
+    body = client.get("/api/lichess/compare").json()
+    g = body["games"][0]
+    assert g["departure_reason"] == "user_left_preparation"
+    assert g["expected_move_san"] == "e4"
+    assert g["training_recorded"] is True
+    assert body["misses_recorded"] == 1
+
+    # The miss is visible to the trainer: the repertoire now has a due review.
+    summary = client.get(
+        "/api/train/smart/summary", params={"repertoire_id": rep["repertoire_id"]}
+    ).json()
+    assert summary["health"]["due"] >= 1 or summary["health"]["weak"] >= 1
+
+    # Same game again -> deduped, nothing recorded.
+    again = client.get("/api/lichess/compare").json()
+    assert again["misses_recorded"] == 0
+    assert again["games"][0]["training_recorded"] is False
+
+
+def test_opponent_novelty_records_nothing(client, monkeypatch):
+    """The OPPONENT leaving book is not a recall miss — nothing to drill."""
+    _register(client, "a@example.com")
+    _link(client)
+    _make_e4_repertoire(client)
+    pgn = _PGN.replace("1. e4 e5 2. Nf3 Nc6", "1. e4 d5")  # 1...d5 not in book
+    _mock_fetch(
+        monkeypatch,
+        games=[
+            FetchedGame(
+                pgn=pgn,
+                white="TestUser",
+                black="Opponent",
+                result="1-0",
+                lichess_id="nov001",
+                event="Rated Blitz game",
+                finished_at="2026-06-08T00:00:00Z",
+            )
+        ],
+    )
+    body = client.get("/api/lichess/compare").json()
+    assert body["games"][0]["departure_reason"] == "opponent_unprepared_branch"
+    assert body["misses_recorded"] == 0
+
+
 # ---- latest watcher + seen -------------------------------------------------
 
 

@@ -17,6 +17,9 @@ class RepertoireMatchResult:
     departure_reason: str
     expected_move_uci: Optional[str] = None
     expected_move_san: Optional[str] = None
+    # The repertoire node holding the move the user SHOULD have played (the expected
+    # child). Lets a departure feed straight back into training as a recall miss.
+    expected_node_id: Optional[str] = None
 
 
 def _find_child(node: OpeningNode, move_uci: str) -> Optional[OpeningNode]:
@@ -53,6 +56,7 @@ def match_game_to_repertoire(
                 reason,
                 expected_move_uci=expected.move.uci if expected and expected.move else None,
                 expected_move_san=expected.move.san if expected and expected.move else None,
+                expected_node_id=expected.id if expected else None,
             )
         node = child
         matched_plies += 1
