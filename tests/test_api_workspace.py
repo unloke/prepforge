@@ -470,3 +470,104 @@ def test_add_move_is_owner_gated(client):
         headers=csrf_headers(other),
     )
     assert r.status_code == 404
+
+
+# ---- Public share links ------------------------------------------------------
+
+
+def _create_with_move(client, name="Shared KP"):
+    create = client.post(
+        "/api/repertoires/create",
+        json={"name": name, "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+    client.post(
+        "/api/build/add-move",
+        json={
+            "repertoire_id": create["repertoire_id"],
+            "parent_node_id": create["selected_node_id"],
+            "move_uci": "e2e4",
+        },
+        headers=csrf_headers(client),
+    )
+    return create
+
+
+def test_share_link_round_trip_public_read(client):
+    """Owner mints a link; ANYONE (no auth) can read the tree through it, minus
+    the owner's training colour (health/mastery)."""
+    _register(client, "a@example.com", display_name="A")
+    create = _create_with_move(client)
+    r = client.post(
+        "/api/repertoires/share-link",
+        json={"repertoire_id": create["repertoire_id"]},
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 200, r.text
+    url = r.json()["url"]
+    token = r.json()["token"]
+    assert url == f"/?shared={token}"
+
+    anon = _client()  # fresh client: no session at all
+    shared = anon.get(f"/api/shared/{token}")
+    assert shared.status_code == 200, shared.text
+    body = shared.json()
+    assert body["shared"] is True
+    assert body["name"] == "Shared KP"
+    assert "health" not in body
+    sans = [n.get("san") for n in body["nodes"] if n.get("san")]
+    assert "e4" in sans
+    assert all("mastery" not in n for n in body["nodes"])
+
+
+def test_share_link_is_owner_gated_and_tamper_proof(client):
+    _register(client, "a@example.com", display_name="A")
+    create = _create_with_move(client)
+
+    other = _client()
+    _register(other, "b@example.com", display_name="B")
+    # B cannot mint a link for A's repertoire.
+    r = other.post(
+        "/api/repertoires/share-link",
+        json={"repertoire_id": create["repertoire_id"]},
+        headers=csrf_headers(other),
+    )
+    assert r.status_code == 404
+    # A doctored token is rejected.
+    good = client.post(
+        "/api/repertoires/share-link",
+        json={"repertoire_id": create["repertoire_id"]},
+        headers=csrf_headers(client),
+    ).json()["token"]
+    rid, sig = good.split(".", 1)
+    assert client.get(f"/api/shared/{rid}.{'0' * len(sig)}").status_code == 404
+    assert client.get("/api/shared/garbage").status_code == 404
+
+
+def test_fork_copies_under_caller_with_fresh_ids(client):
+    _register(client, "a@example.com", display_name="A")
+    create = _create_with_move(client)
+    token = client.post(
+        "/api/repertoires/share-link",
+        json={"repertoire_id": create["repertoire_id"]},
+        headers=csrf_headers(client),
+    ).json()["token"]
+
+    other = _client()
+    _register(other, "b@example.com", display_name="B")
+    # Fork requires auth + CSRF.
+    assert _client().post(f"/api/shared/{token}/fork").status_code in (401, 403)
+    fork = other.post(f"/api/shared/{token}/fork", headers=csrf_headers(other))
+    assert fork.status_code == 200, fork.text
+    new_id = fork.json()["repertoire_id"]
+    assert new_id != create["repertoire_id"]
+    # B now owns an independent copy with the same moves.
+    mine = other.get("/api/repertoires").json()["repertoires"]
+    assert any(rep["id"] == new_id and rep["name"] == "Shared KP" for rep in mine)
+    loaded = other.get(f"/api/build/load?repertoire_id={new_id}")
+    assert loaded.status_code == 200
+    assert "e4" in [n.get("san") for n in loaded.json()["nodes"] if n.get("san")]
+    # A's original is untouched and still A's.
+    assert client.get(
+        f"/api/build/load?repertoire_id={create['repertoire_id']}"
+    ).status_code == 200

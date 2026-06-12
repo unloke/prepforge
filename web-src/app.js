@@ -3022,6 +3022,7 @@ function openRepertoireContextMenu(event, repertoireId, isActive) {
     ["train", "Start training"],
     ["edit", "Edit in builder"],
     ["rename", "Rename..."],
+    ["share-link", "Share link..."],
     ["toggle-active", isActive ? "Disable" : "Enable"],
     ["delete", "Delete..."],
   ];
@@ -3085,6 +3086,31 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       await postJson("/api/build/rename", { repertoire_id: repertoireId, name });
       await loadDashboardRepertoires();
       setStatus(`Renamed to ${name}`);
+      return;
+    }
+    if (action === "share-link") {
+      const payload = await postJson("/api/repertoires/share-link", {
+        repertoire_id: repertoireId,
+      });
+      const url = `${window.location.origin}${payload.url}`;
+      let copied = false;
+      try {
+        await navigator.clipboard.writeText(url);
+        copied = true;
+      } catch (_) {
+        /* clipboard blocked — the modal below still shows the URL */
+      }
+      await showInputModal({
+        title: copied ? "Share link copied!" : "Share link",
+        okLabel: "Done",
+        fields: [
+          {
+            name: "url",
+            label: "Anyone with this link can view (not edit) the repertoire",
+            default: url,
+          },
+        ],
+      });
       return;
     }
     if (action === "toggle-active") {
@@ -4467,6 +4493,7 @@ function renderBuildBranchBar() {
 
 async function saveBuildAnnotations(arrows, circles) {
   if (activeViewName() !== "build") return;
+  if (appState.sharedToken) return; // read-only shared view: nothing to persist
   if (!appState.build || !appState.buildCurrentNodeId) return;
   const nodeId = appState.buildCurrentNodeId;
   const node = appState.buildNodeById.get(nodeId);
@@ -4487,6 +4514,10 @@ async function saveBuildAnnotations(arrows, circles) {
 }
 
 async function onBuildBoardMove(moveUci) {
+  if (appState.sharedToken) {
+    setStatus("This is a read-only shared view - copy it to your account to edit");
+    return;
+  }
   try {
     if (!appState.build || !appState.buildCurrentNodeId) {
       const created = await createRepertoirePrompt({
@@ -4632,6 +4663,10 @@ async function generateFromCurrentNode() {
   // (opponent) drive the recursion locally into a tree-mutation plan; the server
   // only re-validates + persists via /api/build/generate/apply-plan. No server
   // compute, no fallback.
+  if (appState.sharedToken) {
+    setStatus("This is a read-only shared view - copy it to your account to edit");
+    return;
+  }
   if (!isBrowserEngineAvailable()) {
     setStatus(BROWSER_ENGINE_UNAVAILABLE);
     return;
@@ -4812,6 +4847,7 @@ async function generateFromCurrentNode() {
 
 function openNodeContextMenu(event, nodeId) {
   event.preventDefault();
+  if (appState.sharedToken) return; // read-only shared view: no node mutations
   const node = appState.buildNodeById.get(nodeId);
   if (!node) return;
   const menu = document.getElementById("node-context-menu");
@@ -6392,6 +6428,82 @@ function renderReplayDetail(game) {
   return lines.join("<br />");
 }
 
+// ----- Shared repertoire viewer (read-only Build) -------------------------------
+// A share URL (/?shared=<token>) opens the Build view as a guest-readable,
+// mutation-free viewer of someone else's repertoire. "Copy to my account" forks
+// it server-side; signing in reloads the page with the token still in the URL,
+// so the viewer (and the Copy button) come right back.
+
+async function maybeOpenSharedView() {
+  let token = null;
+  try {
+    token = new URLSearchParams(window.location.search).get("shared");
+  } catch (_) {
+    return false;
+  }
+  if (!token) return false;
+  try {
+    setStatus("Loading shared repertoire");
+    const payload = await api(`/api/shared/${encodeURIComponent(token)}`);
+    appState.sharedToken = token;
+    await hydrateBuild(payload, payload.selected_node_id);
+    renderSharedBanner(payload);
+    switchView("build");
+    setStatus(`Viewing shared repertoire "${payload.name}" (read-only)`);
+    return true;
+  } catch (error) {
+    setStatus(`Share link problem: ${error.message}`);
+    return false;
+  }
+}
+
+function renderSharedBanner(payload) {
+  const sidebar = document.querySelector("#view-build .sidebar");
+  if (!sidebar) return;
+  let banner = document.getElementById("shared-banner");
+  if (!banner) {
+    banner = document.createElement("div");
+    banner.id = "shared-banner";
+    banner.className = "shared-banner";
+    sidebar.prepend(banner);
+  }
+  banner.innerHTML = `
+    <div class="shared-banner-text">
+      <b>${escapeHtml(payload.name)}</b> &middot; shared with you (read-only)
+    </div>
+    <button class="btn primary" id="shared-fork-btn" data-testid="shared-fork-btn">Copy to my account</button>
+  `;
+  document.getElementById("shared-fork-btn").addEventListener("click", forkSharedRepertoire);
+}
+
+async function forkSharedRepertoire() {
+  if (!appState.sharedToken) return;
+  if (!appState.signedIn) {
+    // Sign-in reloads with ?shared= intact, bringing the viewer (and this button)
+    // back for a signed-in click.
+    setStatus("Sign in (or create an account) to copy this repertoire");
+    openAuthModal("login");
+    return;
+  }
+  try {
+    const result = await postJson(
+      `/api/shared/${encodeURIComponent(appState.sharedToken)}/fork`,
+      {},
+    );
+    appState.sharedToken = null;
+    const banner = document.getElementById("shared-banner");
+    if (banner) banner.remove();
+    try {
+      window.history.replaceState(null, "", window.location.pathname);
+    } catch (_) { /* cosmetic */ }
+    await editRepertoire(result.repertoire_id);
+    await loadDashboardRepertoires();
+    setStatus(`Copied "${result.name}" to your account - it's yours now`);
+  } catch (error) {
+    setStatus(error.message);
+  }
+}
+
 // ----- Coverage scan (Build sidebar) -------------------------------------------
 // Maia3 walks my repertoire and measures how much of real human play (at the
 // player's strength) my prepared replies answer — reach-weighted, so a hole on
@@ -6913,6 +7025,9 @@ async function init() {
     setStatus("Sign in to build and train your repertoires.");
     renderBuilderTree();
   }
+  // A share URL opens the read-only viewer last, so it lands on top of whatever
+  // workspace state loaded — and works for signed-out visitors too.
+  await maybeOpenSharedView();
 }
 
 // Everything that needs an authenticated session. Called from init only when

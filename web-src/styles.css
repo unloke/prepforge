@@ -1894,6 +1894,25 @@ h2 {
   font-size: 11px;
 }
 
+/* Shared repertoire viewer */
+
+.shared-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--accent-line);
+  border-radius: 6px;
+  background: var(--accent-soft);
+  flex-wrap: wrap;
+}
+
+.shared-banner-text {
+  font-size: 13px;
+  color: var(--text);
+}
+
 /* Coverage scan (Build sidebar drawer) */
 
 .coverage-head {

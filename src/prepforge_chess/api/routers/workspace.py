@@ -9,6 +9,9 @@ user never sees or mutates another's data; mutations additionally pass through
 """
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -450,6 +453,118 @@ def create_repertoire(
     return build_workspace_payload(
         repo, repertoire.id, selected_node_id=repertoire.root_node.id
     )
+
+
+# ---- Public share links -------------------------------------------------------
+# A share link is a stateless signed token: base64url(rep_id) + "." + HMAC slice.
+# No new table, no expiry — the link lives exactly as long as the repertoire does.
+# Knowing the link grants READ of the tree (name + moves + comments) and nothing
+# else: the public payload is stripped of the owner's training state, and every
+# mutating endpoint still checks ownership. Forking copies the tree under the
+# CALLER with fresh ids (same mechanics as package import).
+
+
+def _share_signature(repertoire_id: str, secret: str) -> str:
+    digest = hmac.new(
+        secret.encode("utf-8"),
+        "share:{0}".format(repertoire_id).encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return digest[:32]
+
+
+def mint_share_token(repertoire_id: str, secret: str) -> str:
+    rid = base64.urlsafe_b64encode(repertoire_id.encode("utf-8")).decode("ascii").rstrip("=")
+    return "{0}.{1}".format(rid, _share_signature(repertoire_id, secret))
+
+
+def parse_share_token(token: str, secret: str) -> str | None:
+    """The repertoire id a valid token names, else None. Constant-time compare."""
+    try:
+        rid, signature = token.split(".", 1)
+        padded = rid + "=" * (-len(rid) % 4)
+        repertoire_id = base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
+    except (ValueError, UnicodeDecodeError):
+        return None
+    if not repertoire_id:
+        return None
+    if hmac.compare_digest(signature, _share_signature(repertoire_id, secret)):
+        return repertoire_id
+    return None
+
+
+class ShareLinkBody(BaseModel):
+    repertoire_id: str
+
+
+@router.post("/repertoires/share-link")
+def create_share_link(
+    body: ShareLinkBody,
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Mint the public read-only link for one of the caller's OWN repertoires."""
+    _owned_repertoire(repo, body.repertoire_id, owner)
+    token = mint_share_token(body.repertoire_id, settings.secret_key)
+    return {"token": token, "url": "/?shared={0}".format(token)}
+
+
+@router.get("/shared/{token}")
+def shared_repertoire(
+    token: str,
+    repo: PrepForgeRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Public (unauthenticated) read of a shared repertoire's tree.
+
+    Reuses the Build payload shape so the SPA's viewer is the Build view in
+    read-only mode — minus the owner's training colour (health/mastery)."""
+    repertoire_id = parse_share_token(token, settings.secret_key)
+    if repertoire_id is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown share link")
+    try:
+        payload = build_workspace_payload(repo, repertoire_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="unknown share link"
+        ) from None
+    payload.pop("health", None)
+    payload.pop("summary", None)
+    for node in payload.get("nodes", []):
+        node.pop("mastery", None)
+    payload["shared"] = True
+    return payload
+
+
+@router.post("/shared/{token}/fork")
+def fork_shared_repertoire(
+    token: str,
+    user: User = Depends(current_user),
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Copy a shared repertoire into the caller's account (fresh ids, caller-owned).
+    Same free-plan cap as creating one from scratch."""
+    repertoire_id = parse_share_token(token, settings.secret_key)
+    if repertoire_id is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown share link")
+    repertoire = repo.load_repertoire(repertoire_id)
+    if repertoire is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown share link")
+    if user.plan != Plan.pro:
+        if repo.count_repertoires(owner_user_id=owner) >= settings.free_repertoire_limit:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=(
+                    "Free plan is limited to {0} repertoires. Upgrade to Pro for "
+                    "unlimited.".format(settings.free_repertoire_limit)
+                ),
+            )
+    _reassign_ids(repertoire)  # fresh ids -> caller's own copy, no cross-tenant clobber
+    repo.save_repertoire(repertoire, owner_user_id=owner)
+    return {"repertoire_id": repertoire.id, "name": repertoire.name}
 
 
 class RenameRepertoireBody(BaseModel):
