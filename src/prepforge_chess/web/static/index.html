@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-DVg7YaTk.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-B2r4QSeL.css">
+    <script type="module" crossorigin src="/static/assets/index-CKCkOpY4.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-BFOB0YYc.css">
   </head>
   <body>
     <header class="topbar">
@@ -140,6 +140,18 @@
                 <span class="explorer-opening" id="explorer-opening"></span>
               </div>
               <div class="explorer-rows" id="explorer-rows"></div>
+            </details>
+            <details class="drawer" id="coverage-drawer" data-testid="coverage-drawer">
+              <summary>Coverage scan</summary>
+              <div class="coverage-head">
+                <button class="btn ghost" id="coverage-run" data-testid="coverage-run">Scan with Maia3</button>
+                <span class="coverage-score" id="coverage-score" hidden></span>
+              </div>
+              <p class="muted hint coverage-hint">
+                How much of real human play (at your strength) does this repertoire answer?
+                Runs Maia3 on your device.
+              </p>
+              <div class="coverage-gaps" id="coverage-gaps"></div>
             </details>
             <div class="movelist tree" id="builder-tree" data-testid="builder-tree"></div>
             <!-- legacy hooks kept for app.js compatibility; hidden -->

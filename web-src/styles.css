@@ -1894,6 +1894,64 @@ h2 {
   font-size: 11px;
 }
 
+/* Coverage scan (Build sidebar drawer) */
+
+.coverage-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px 4px;
+}
+
+.coverage-score {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--good);
+}
+
+.coverage-hint {
+  padding: 0 10px 8px;
+  margin: 0;
+}
+
+.coverage-gaps {
+  display: grid;
+  gap: 3px;
+  padding: 0 10px 10px;
+}
+
+.coverage-gap {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.coverage-gap:hover {
+  background: var(--surface-hover);
+}
+
+.coverage-gap-move {
+  font-weight: 700;
+  color: var(--danger);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.coverage-gap-meta {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.coverage-gap-add {
+  padding: 1px 8px;
+  font-size: 11px;
+}
+
 /* Opening explorer (Build sidebar drawer) */
 
 .explorer-head {

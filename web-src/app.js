@@ -6392,6 +6392,102 @@ function renderReplayDetail(game) {
   return lines.join("<br />");
 }
 
+// ----- Coverage scan (Build sidebar) -------------------------------------------
+// Maia3 walks my repertoire and measures how much of real human play (at the
+// player's strength) my prepared replies answer — reach-weighted, so a hole on
+// their main line outweighs one in a rare sideline. All compute runs on the
+// user's device via the shared Maia worker; the module is lazily imported.
+
+let coverageModule = null;
+let coverageController = null;
+
+async function runCoverageScanUI() {
+  if (!appState.build || !appState.build.nodes || appState.build.nodes.length < 2) {
+    setStatus("Open a repertoire with some moves first");
+    return;
+  }
+  if (!isBrowserEngineAvailable()) {
+    setStatus(BROWSER_ENGINE_UNAVAILABLE);
+    return;
+  }
+  const button = document.getElementById("coverage-run");
+  if (button) button.disabled = true;
+  const rating = effectiveMaiaRating();
+  coverageController = new AbortController();
+  const jobId = `coverage-${Date.now()}`;
+  jobToast.startJob({
+    id: jobId,
+    title: "Scanning coverage",
+    tab: "build",
+    total: 0,
+    onCancel: () => coverageController.abort(),
+  });
+  try {
+    if (!coverageModule) coverageModule = await import("./coverage.js");
+    const result = await coverageModule.runCoverageScan({
+      nodes: appState.build.nodes,
+      myColor: appState.build.color,
+      rating,
+      provider: getSharedMaia3Provider(),
+      signal: coverageController.signal,
+      onProgress: ({ scanned }) =>
+        jobToast.updateJob({ current: scanned, total: 0, message: `Maia read · ${scanned} positions` }),
+    });
+    renderCoverageResult(result, rating);
+    jobToast.completeJob({
+      message: `${Math.round(result.coverage * 100)}% of human play covered`,
+    });
+  } catch (error) {
+    if (error && error.name === "AbortError") jobToast.cancelJob("Scan stopped");
+    else jobToast.failJob(error.message);
+  } finally {
+    if (button) button.disabled = false;
+    coverageController = null;
+  }
+}
+
+function renderCoverageResult(result, rating) {
+  const score = document.getElementById("coverage-score");
+  if (score) {
+    score.hidden = false;
+    score.textContent = `${Math.round(result.coverage * 100)}% covered at ~${rating}${result.truncated ? " (partial scan)" : ""}`;
+  }
+  const gapsEl = document.getElementById("coverage-gaps");
+  if (!gapsEl) return;
+  if (!result.gaps.length) {
+    gapsEl.innerHTML = '<div class="muted hint">No notable holes found - the likely human moves all have an answer.</div>';
+    return;
+  }
+  gapsEl.innerHTML = result.gaps
+    .map(
+      (gap) => `
+    <div class="coverage-gap" data-node="${escapeHtml(gap.nodeId)}" role="button" tabindex="0"
+         title="Jump to this position">
+      <span class="coverage-gap-move">${escapeHtml(gap.moveSan)}</span>
+      <span class="coverage-gap-meta">${Math.round(gap.prob * 100)}% play it here · hits ${(gap.impact * 100).toFixed(1)}% of games</span>
+      <button class="btn ghost coverage-gap-add" data-node="${escapeHtml(gap.nodeId)}" data-uci="${escapeHtml(gap.moveUci)}"
+              title="Add ${escapeHtml(gap.moveSan)} to the tree and prep a reply">+ Add</button>
+    </div>`,
+    )
+    .join("");
+  gapsEl.querySelectorAll(".coverage-gap").forEach((row) => {
+    row.addEventListener("click", () => selectBuildNode(row.dataset.node));
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectBuildNode(row.dataset.node);
+      }
+    });
+  });
+  gapsEl.querySelectorAll(".coverage-gap-add").forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      await selectBuildNode(btn.dataset.node);
+      await onBuildBoardMove(btn.dataset.uci); // lands on the new node, ready to prep a reply
+    });
+  });
+}
+
 // ----- Opponent scouting (Replay tab) -----------------------------------------
 // Fetches the opponent's recent games from Lichess's PUBLIC export straight from
 // the browser (CORS-open, no token, zero server involvement), aggregates their
@@ -6620,6 +6716,10 @@ function bindEvents() {
       if (historyDrawer.open) loadAnalysisHistory();
     });
   }
+  // Coverage scan: explicit button — never runs implicitly (it's a Maia batch).
+  const coverageRun = document.getElementById("coverage-run");
+  if (coverageRun) coverageRun.addEventListener("click", runCoverageScanUI);
+
   // Opening explorer: fetch on open, switch databases in place. Closing cancels
   // any pending debounce via the drawer-open guard.
   const explorerDrawer = document.getElementById("explorer-drawer");

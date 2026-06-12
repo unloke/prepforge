@@ -139,6 +139,18 @@
               </div>
               <div class="explorer-rows" id="explorer-rows"></div>
             </details>
+            <details class="drawer" id="coverage-drawer" data-testid="coverage-drawer">
+              <summary>Coverage scan</summary>
+              <div class="coverage-head">
+                <button class="btn ghost" id="coverage-run" data-testid="coverage-run">Scan with Maia3</button>
+                <span class="coverage-score" id="coverage-score" hidden></span>
+              </div>
+              <p class="muted hint coverage-hint">
+                How much of real human play (at your strength) does this repertoire answer?
+                Runs Maia3 on your device.
+              </p>
+              <div class="coverage-gaps" id="coverage-gaps"></div>
+            </details>
             <div class="movelist tree" id="builder-tree" data-testid="builder-tree"></div>
             <!-- legacy hooks kept for app.js compatibility; hidden -->
             <button id="import-build-file" hidden></button>
