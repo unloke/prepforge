@@ -2097,6 +2097,27 @@ async function boardInfo(fen) {
   return localBoardInfo(fen);
 }
 
+// Optimistically land a just-dragged move on `board` using the local chess
+// engine, before any server round-trip confirms it. Without this the board
+// drag system restores the piece to its origin on drop and only re-renders the
+// move once the handler awaits the network — so the piece visibly snaps back,
+// then jumps forward a round-trip later. The handlers below all re-issue
+// setPosition with the authoritative FEN afterwards; when that FEN matches the
+// optimistic one (the common case) it's a no-op, so there's no second animation
+// or sound. The board is locked (no legal moves) until that authoritative
+// render lands, so a second drop can't race the in-flight request. Best-effort:
+// a failed local apply just leaves the pre-move position for the server to fix.
+async function optimisticBoardMove(board, fenBefore, moveUci) {
+  if (!board || !fenBefore || !moveUci) return false;
+  try {
+    const after = await boardAfterMove(fenBefore, moveUci);
+    board.setPosition({ fen: after.board.fen, legalMoves: [], lastMove: moveUci });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 // Deep-link into the smart queue (it already front-loads due reviews).
 function goToSmartTraining(statusMessage) {
   switchView("train");
@@ -4621,6 +4642,21 @@ async function onBuildBoardMove(moveUci) {
     setStatus("This is a read-only shared view - copy it to your account to edit");
     return;
   }
+  // Show the move immediately, then reconcile with the server below. Snapshot
+  // the pre-move position so a failed request (or a cancelled repertoire-
+  // creation prompt) can roll the board back. The first-move case (no
+  // repertoire yet) skips the optimistic render — it opens a modal instead.
+  const prevFen = boards.build.fen;
+  const prevLegal = boards.build.legalMoves;
+  const optimistic =
+    appState.build && appState.buildCurrentNodeId
+      ? await optimisticBoardMove(boards.build, prevFen, moveUci)
+      : false;
+  const rollback = () => {
+    if (optimistic && prevFen) {
+      boards.build.setPosition({ fen: prevFen, legalMoves: prevLegal, lastMove: null });
+    }
+  };
   try {
     if (!appState.build || !appState.buildCurrentNodeId) {
       const created = await createRepertoirePrompt({
@@ -4629,6 +4665,7 @@ async function onBuildBoardMove(moveUci) {
       });
       if (!created) {
         setStatus("Cancelled - playing the move would create a new repertoire");
+        rollback();
         return;
       }
     }
@@ -4640,6 +4677,7 @@ async function onBuildBoardMove(moveUci) {
     await hydrateBuild(payload, payload.selected_node_id);
     setStatus(`Added ${moveUci}`);
   } catch (error) {
+    rollback();
     setStatus(error.message);
   }
 }
@@ -5332,6 +5370,9 @@ async function submitTrainingMove(playedUci) {
   }
   const prompt = currentTrainingPrompt();
   if (!prompt || !playedUci || appState.trainBusy) return;
+  // Land the dragged move on the board right away; the server response below
+  // decides whether it advances (correct) or resets (wrong).
+  await optimisticBoardMove(boards.train, prompt.fen_before, playedUci);
   let result;
   try {
     result = await api("/api/train/move", {
@@ -5892,6 +5933,8 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   clearBlitzTimer(); // answered (or timed out) — stop the countdown right away
   const prompt = smart.prompt;
   const attempt = smart.attempt;
+  // Land the dragged move immediately; a blitz timeout has no real move to show.
+  if (!timedOut) await optimisticBoardMove(boards.train, prompt.fen_before, playedUci);
   let result;
   try {
     result = await postJson("/api/train/smart/move", {
