@@ -11,7 +11,7 @@ import {
   resolveModelBase,
 } from "./engine/maia3-provider.js";
 import { getCachedWeights, clearWeightCache } from "./engine/maia3-weight-cache.js";
-import { createCsrfTokenSource, isSafeMethod, CSRF_HEADER } from "./csrf.js";
+import { createCsrfTokenSource, isSafeMethod, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
 import { describeMove } from "./explain.js";
 import { buildMoveFeatures, isBrilliantByMaia, markBrilliant } from "./coach/features.js";
@@ -249,6 +249,17 @@ const appState = {
   build: null,
   buildNodeById: new Map(),
   buildCurrentNodeId: null,
+  buildBranchChoiceId: null,
+  // ---- Local-first Build sync (docs/local-first-sync-plan.md Phase 1) ----------
+  // Moves land in the local tree instantly (no per-move round-trip) and flush to
+  // the server in debounced batches via POST /api/build/add-moves.
+  buildPending: [], // queued { tempId, parentRef, uci, node } awaiting a flush
+  buildTmpCounter: 0, // monotonic source of `tmp-N` provisional ids
+  buildIdMap: {}, // tmp -> real id, accumulated across reconciles this session
+  buildFlushTimer: null, // idle-debounce handle
+  buildFlushing: null, // in-flight flush promise (hard flush awaits it)
+  buildSyncState: "saved", // saved | dirty | syncing | error
+  buildSyncRetry: 0, // exponential-backoff attempt counter
   trainingRepertoireId: null,
   training: null,
   // Which trainer the Start button launches: "smart" (card queue, default) or
@@ -1820,7 +1831,9 @@ async function api(path, options = {}) {
       payload = JSON.parse(raw);
     } catch (_) {
       if (!response.ok) {
-        throw new Error(`Server error ${response.status} ${response.statusText}`.trim());
+        const err = new Error(`Server error ${response.status} ${response.statusText}`.trim());
+        err.status = response.status;
+        throw err;
       }
       throw new Error("Unexpected non-JSON response from server");
     }
@@ -1828,7 +1841,9 @@ async function api(path, options = {}) {
   // Legacy server returned {error}; FastAPI returns {detail}. Accept both so the
   // SPA surfaces real messages during and after the cutover.
   if (!response.ok) {
-    throw new Error(payload.error || payload.detail || `Request failed (${response.status})`);
+    const err = new Error(payload.error || payload.detail || `Request failed (${response.status})`);
+    err.status = response.status; // lets callers (e.g. Build sync) tell 4xx from 5xx/network
+    throw err;
   }
   return payload;
 }
@@ -3070,6 +3085,14 @@ function showConfirmModal({
 }
 
 async function editRepertoire(repertoireId) {
+  // Switching repertoires replaces the local Build tree — flush pending moves of
+  // the current one first so they aren't dropped.
+  try {
+    await hardFlushBuild();
+  } catch (error) {
+    setStatus(error.message);
+    return;
+  }
   setStatus("Loading repertoire");
   try {
     const payload = await api(
@@ -3085,6 +3108,14 @@ async function editRepertoire(repertoireId) {
 }
 
 async function trainRepertoire(repertoireId) {
+  // Training reads the server's repertoire tree — make sure any pending Build edits
+  // are persisted before we leave the builder.
+  try {
+    await hardFlushBuild();
+  } catch (error) {
+    setStatus(error.message);
+    return;
+  }
   appState.trainingRepertoireId = repertoireId;
   switchView("train");
   await startTraining();
@@ -3218,10 +3249,18 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       }
       await postJson("/api/repertoires/delete", { repertoire_id: repertoireId });
       if (appState.build && appState.build.repertoire_id === repertoireId) {
+        // Drop any local-first sync state — flushing into a deleted rep is pointless
+        // and a pending timer would fire against a now-null tree.
+        clearTimeout(appState.buildFlushTimer);
+        appState.buildFlushTimer = null;
+        appState.buildPending = [];
+        appState.buildIdMap = {};
+        appState.buildSyncState = "saved";
         appState.build = null;
         appState.buildNodeById = new Map();
         appState.buildCurrentNodeId = null;
         renderBuilderTree();
+        renderBuildSync();
         document.getElementById("build-board-label").textContent = "No repertoire";
       }
       if (appState.trainingRepertoireId === repertoireId) {
@@ -4112,12 +4151,26 @@ function bindEvalChart() {
 }
 
 async function hydrateBuild(payload, selectedNodeId = null) {
+  // Opening/switching to a DIFFERENT repertoire drops any local-first sync state
+  // from the previous one (callers hard-flush before switching, so nothing is
+  // lost). A reconcile re-hydrate keeps the same id, so its pending queue + id map
+  // survive — that's the load-bearing distinction for the in-flight-move case.
+  const prevRepId = appState.build && appState.build.repertoire_id;
+  if (payload.repertoire_id !== prevRepId) {
+    clearTimeout(appState.buildFlushTimer);
+    appState.buildFlushTimer = null;
+    appState.buildPending = [];
+    appState.buildIdMap = {};
+    appState.buildSyncState = "saved";
+    appState.buildSyncRetry = 0;
+  }
   appState.build = payload;
   appState.buildNodeById = new Map(payload.nodes.map((node) => [node.id, node]));
   if (boards.build) boards.build.setOrientation(payload.color === "black" ? "black" : "white");
   renderBuildRepHeader();
   const nextNodeId = selectedNodeId || payload.selected_node_id || payload.nodes[0]?.id;
   await selectBuildNode(nextNodeId);
+  renderBuildSync();
 }
 
 // The sidebar's repertoire identity line: which repertoire is open and for which
@@ -4619,7 +4672,15 @@ async function saveBuildAnnotations(arrows, circles) {
   if (activeViewName() !== "build") return;
   if (appState.sharedToken) return; // read-only shared view: nothing to persist
   if (!appState.build || !appState.buildCurrentNodeId) return;
-  const nodeId = appState.buildCurrentNodeId;
+  // The annotation POST keys off a real node id — drain any pending local moves so
+  // a freshly-played (tmp) node has been reconciled first.
+  try {
+    await hardFlushBuild();
+  } catch (error) {
+    setStatus(error.message);
+    return;
+  }
+  const nodeId = resolveBuildId(appState.buildCurrentNodeId);
   const node = appState.buildNodeById.get(nodeId);
   if (node) {
     node.arrows = arrows.slice();
@@ -4637,49 +4698,358 @@ async function saveBuildAnnotations(arrows, circles) {
   }
 }
 
+// ===== Local-first Build sync ================================================
+// docs/local-first-sync-plan.md Phase 1. A played move mutates the local tree
+// immediately and is queued; a debounced batch flush reconciles with the server,
+// which owns id assignment + flag recomputation. The client never waits on the
+// network to render a move (降延遲) and writes are batched (降消耗).
+
+const BUILD_FLUSH_IDLE_MS = 2000;
+const BUILD_FLUSH_MAX_BACKOFF_MS = 30000;
+
+function mintBuildTmpId() {
+  return `tmp-${++appState.buildTmpCounter}`;
+}
+
+// True when the parent already has at least one enabled child — used to decide a
+// provisional move's display-only `is_mainline` (first move wins). The server
+// recomputes the authoritative value on reconcile.
+function someEnabledChildOf(parentId) {
+  if (!appState.build) return false;
+  return appState.build.nodes.some((n) => n.parent_id === parentId && n.is_enabled);
+}
+
+// Resolve a possibly-stale `tmp-` id to its real id once a flush has reconciled
+// it. Used by hard-flush call sites that captured a tmp node id before sync.
+function resolveBuildId(id) {
+  return (id && appState.buildIdMap[id]) || id;
+}
+
+// Build a provisional Build node matching the serializer shape (workspace_view.py
+// opening_item_to_json) so it renders and is selectable exactly like a real one.
+// Flags here are display-only; the server overwrites them on reconcile.
+function buildProvisionalNode(parent, uci, after) {
+  const parts = String(parent.fen || "").split(" ");
+  const moveSide = parts[1] === "b" ? "black" : "white";
+  const moveNumber = Number(parts[5]) || parent.move_number || 1;
+  const repColor = appState.build && appState.build.color === "black" ? "black" : "white";
+  return {
+    id: mintBuildTmpId(),
+    parent_id: parent.id,
+    depth: (parent.depth || 0) + 1,
+    san: after.move.san,
+    uci,
+    fen: after.board.fen,
+    fen_before: parent.fen,
+    fen_after: after.board.fen,
+    move_number: moveNumber,
+    ply: (parent.ply || 0) + 1,
+    move_side: moveSide,
+    side_to_move: after.move.side_to_move,
+    source: "manual",
+    is_mainline: !someEnabledChildOf(parent.id),
+    is_prepared: moveSide === repColor,
+    is_enabled: true,
+    maia_probability: null,
+    engine_evaluation: null,
+    tags: [],
+    comment: "",
+    arrows: [],
+    circles: [],
+    mastery: null,
+  };
+}
+
+// ----- Sync indicator (Google-Docs style chip by the Build board label) -------
+function setBuildSync(state) {
+  appState.buildSyncState = state;
+  renderBuildSync();
+}
+
+function renderBuildSync() {
+  const el = document.getElementById("build-sync");
+  if (!el) return;
+  // Nothing to show without an editable repertoire (read-only shared view = no
+  // local edits ever happen).
+  if (!appState.build || appState.sharedToken) {
+    el.hidden = true;
+    return;
+  }
+  const variants = {
+    saved: { cls: "is-saved", text: "✓ Saved" },
+    dirty: { cls: "is-dirty", text: "• Unsaved changes" },
+    syncing: { cls: "is-syncing", text: "↻ Saving…" },
+    error: { cls: "is-error", text: "⚠ Offline — will retry" },
+  };
+  const v = variants[appState.buildSyncState] || variants.saved;
+  el.hidden = false;
+  el.className = `build-sync ${v.cls}`;
+  el.textContent = v.text;
+}
+
+// ----- Debounce + flush -------------------------------------------------------
+function scheduleBuildFlush() {
+  clearTimeout(appState.buildFlushTimer);
+  appState.buildFlushTimer = setTimeout(() => {
+    appState.buildFlushTimer = null;
+    flushBuildMoves();
+  }, BUILD_FLUSH_IDLE_MS);
+}
+
+// Flush the pending batch. Resolves to true on success, false on failure (the
+// batch is requeued + a backoff retry is armed). If a flush is already in flight
+// the same promise is returned, so hard-flush callers can simply await it.
+function flushBuildMoves() {
+  if (appState.buildFlushing) return appState.buildFlushing;
+  if (!appState.build || !appState.buildPending.length) return Promise.resolve(true);
+  clearTimeout(appState.buildFlushTimer);
+  appState.buildFlushTimer = null;
+
+  // Snapshot the in-flight batch; moves made DURING the round-trip accumulate in a
+  // fresh queue and must survive the reconcile (§1.4 — the load-bearing bit).
+  const batch = appState.buildPending;
+  appState.buildPending = [];
+  const repertoireId = appState.build.repertoire_id;
+  setBuildSync("syncing");
+
+  appState.buildFlushing = (async () => {
+    try {
+      const payload = await postJson("/api/build/add-moves", {
+        repertoire_id: repertoireId,
+        moves: batch.map((m) => ({ tempId: m.tempId, parentRef: m.parentRef, uci: m.uci })),
+      });
+      const idMap = payload.id_map || {};
+      Object.assign(appState.buildIdMap, idMap);
+
+      // Translate the current selection + branch pick through tmp -> real.
+      const prevSelection = appState.buildCurrentNodeId;
+      const translatedSelection = idMap[prevSelection] || prevSelection;
+      const branchPick = appState.buildBranchChoiceId
+        ? idMap[appState.buildBranchChoiceId] || appState.buildBranchChoiceId
+        : null;
+
+      // Re-point still-pending nodes whose parentRef was a tmp from THIS batch.
+      const stillPending = appState.buildPending;
+      for (const m of stillPending) {
+        if (idMap[m.parentRef]) {
+          m.parentRef = idMap[m.parentRef];
+          m.node.parent_id = m.parentRef;
+        }
+      }
+
+      // hydrate needs a selection that exists in the authoritative payload; if the
+      // user is sitting on a still-pending tmp node, pick a safe anchor now and
+      // restore the tmp selection after we re-insert it below.
+      const payloadHasSelection = payload.nodes.some((n) => n.id === translatedSelection);
+      await hydrateBuild(payload, payloadHasSelection ? translatedSelection : null);
+      if (branchPick) appState.buildBranchChoiceId = branchPick;
+
+      reapplyPendingBuildNodes(stillPending, idMap);
+
+      // Restore the user's selection if it was a still-pending tmp node (now back
+      // in the tree after reapply) and hydrate couldn't land on it.
+      if (
+        !payloadHasSelection &&
+        appState.buildNodeById.has(prevSelection) &&
+        prevSelection !== appState.buildCurrentNodeId
+      ) {
+        await selectBuildNode(prevSelection);
+      }
+
+      appState.buildSyncRetry = 0;
+      if (appState.buildPending.length) {
+        setBuildSync("dirty");
+        scheduleBuildFlush();
+      } else {
+        setBuildSync("saved");
+      }
+      return true;
+    } catch (error) {
+      const status = error && error.status;
+      if (status && status >= 400 && status < 500) {
+        // Validation 4xx shouldn't happen for legal moves, but defend: drop the bad
+        // batch and re-hydrate from server truth so the local tree can't drift.
+        setStatus(error.message);
+        try {
+          const fresh = await api(
+            `/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`
+          );
+          await hydrateBuild(fresh, fresh.selected_node_id);
+        } catch (_) {
+          /* best-effort resync */
+        }
+        if (appState.buildPending.length) {
+          setBuildSync("dirty");
+          scheduleBuildFlush();
+        } else {
+          setBuildSync("saved");
+        }
+        return false;
+      }
+      // Network / 5xx: requeue the in-flight batch ahead of any newer moves and
+      // back off exponentially. The next played move also re-arms a flush.
+      appState.buildPending = batch.concat(appState.buildPending);
+      appState.buildSyncRetry = Math.min(appState.buildSyncRetry + 1, 6);
+      setBuildSync("error");
+      const delay = Math.min(
+        BUILD_FLUSH_MAX_BACKOFF_MS,
+        1000 * 2 ** (appState.buildSyncRetry - 1)
+      );
+      appState.buildFlushTimer = setTimeout(() => {
+        appState.buildFlushTimer = null;
+        flushBuildMoves();
+      }, delay);
+      return false;
+    } finally {
+      appState.buildFlushing = null;
+    }
+  })();
+  return appState.buildFlushing;
+}
+
+// Re-insert still-pending provisional nodes onto the freshly hydrated tree (which
+// dropped them when it rebuilt buildNodeById from the server payload). Insertion
+// order preserves parent-before-child, so a tmp parent re-inserted earlier in the
+// loop is already present for its child.
+function reapplyPendingBuildNodes(pending, idMap) {
+  if (!pending.length) return;
+  for (const entry of pending) {
+    const node = entry.node;
+    const realParent = idMap[entry.parentRef] || entry.parentRef;
+    entry.parentRef = realParent;
+    node.parent_id = realParent;
+    const parent = appState.buildNodeById.get(realParent);
+    if (parent) node.depth = (parent.depth || 0) + 1;
+    // Dedupe: the server may have already materialised this child (e.g. the same
+    // line existed). If so, adopt the real id and drop the provisional.
+    const dup = appState.build.nodes.find(
+      (n) => n.parent_id === realParent && n.uci === node.uci && n.id !== node.id
+    );
+    if (dup) {
+      appState.buildIdMap[node.id] = dup.id;
+      continue;
+    }
+    appState.build.nodes.push(node);
+    appState.buildNodeById.set(node.id, node);
+  }
+  renderBuilderTree();
+}
+
+// Drain every pending move before an operation that needs server truth or a real
+// node id (Generate anchor, export, node actions, repertoire switch). Throws if a
+// move can't be synced so the caller can abort rather than 400 on a tmp id.
+async function hardFlushBuild() {
+  if (!appState.build) return;
+  if (appState.buildFlushing) await appState.buildFlushing.catch(() => {});
+  while (appState.buildPending.length) {
+    const ok = await flushBuildMoves();
+    if (appState.buildFlushing) await appState.buildFlushing.catch(() => {});
+    if (!ok) {
+      throw new Error("Couldn't sync your latest moves — check your connection and try again");
+    }
+  }
+}
+
+// Last-ditch flush on page unload. navigator.sendBeacon can't set the CSRF header
+// the API requires, so a keepalive fetch (which can) is used instead — fire and
+// forget; the next load re-hydrates from server truth regardless.
+function beaconFlushBuild() {
+  if (!appState.build || !appState.buildPending.length) return;
+  const token = readCsrfCookie();
+  const body = JSON.stringify({
+    repertoire_id: appState.build.repertoire_id,
+    moves: appState.buildPending.map((m) => ({
+      tempId: m.tempId,
+      parentRef: m.parentRef,
+      uci: m.uci,
+    })),
+  });
+  try {
+    fetch("/api/build/add-moves", {
+      method: "POST",
+      credentials: "same-origin",
+      keepalive: true,
+      headers: { "Content-Type": "application/json", ...(token ? { [CSRF_HEADER]: token } : {}) },
+      body,
+    }).catch(() => {});
+  } catch (_) {
+    /* best-effort */
+  }
+}
+
 async function onBuildBoardMove(moveUci) {
   if (appState.sharedToken) {
     setStatus("This is a read-only shared view - copy it to your account to edit");
     return;
   }
-  // Show the move immediately, then reconcile with the server below. Snapshot
-  // the pre-move position so a failed request (or a cancelled repertoire-
-  // creation prompt) can roll the board back. The first-move case (no
-  // repertoire yet) skips the optimistic render — it opens a modal instead.
+  // Show the move immediately. Snapshot the pre-move position so a failed local
+  // apply (or a cancelled repertoire-creation prompt) can roll the board back.
+  // The first-move case (no repertoire yet) skips the optimistic render — it
+  // opens a modal instead.
   const prevFen = boards.build.fen;
   const prevLegal = boards.build.legalMoves;
-  const optimistic =
-    appState.build && appState.buildCurrentNodeId
-      ? await optimisticBoardMove(boards.build, prevFen, moveUci)
-      : false;
+  const hadRep = appState.build && appState.buildCurrentNodeId;
+  const optimistic = hadRep ? await optimisticBoardMove(boards.build, prevFen, moveUci) : false;
   const rollback = () => {
     if (optimistic && prevFen) {
       boards.build.setPosition({ fen: prevFen, legalMoves: prevLegal, lastMove: null });
     }
   };
-  try {
-    if (!appState.build || !appState.buildCurrentNodeId) {
-      const created = await createRepertoirePrompt({
+
+  // Bootstrap: the very first move on an empty workspace still creates the
+  // repertoire server-side (a modal), then we play onto its real root locally.
+  if (!hadRep) {
+    let created;
+    try {
+      created = await createRepertoirePrompt({
         title: "Start a new repertoire",
         defaultName: "New repertoire",
       });
-      if (!created) {
-        setStatus("Cancelled - playing the move would create a new repertoire");
-        rollback();
-        return;
-      }
+    } catch (error) {
+      rollback();
+      setStatus(error.message);
+      return;
     }
-    const payload = await postJson("/api/build/add-move", {
-      repertoire_id: appState.build.repertoire_id,
-      parent_node_id: appState.buildCurrentNodeId,
-      move_uci: moveUci,
-    });
-    await hydrateBuild(payload, payload.selected_node_id);
-    setStatus(`Added ${moveUci}`);
-  } catch (error) {
-    rollback();
-    setStatus(error.message);
+    if (!created) {
+      setStatus("Cancelled - playing the move would create a new repertoire");
+      rollback();
+      return;
+    }
   }
+
+  const parentId = appState.buildCurrentNodeId;
+  const parent = appState.buildNodeById.get(parentId);
+  if (!parent) {
+    rollback();
+    return;
+  }
+
+  // Dedupe (parity with the server): replaying an existing line just navigates to
+  // the child — no provisional node, no dirty state.
+  const existing = appState.build.nodes.find(
+    (n) => n.parent_id === parentId && n.uci === moveUci
+  );
+  if (existing) {
+    await selectBuildNode(existing.id);
+    return;
+  }
+
+  let after;
+  try {
+    after = await boardAfterMove(parent.fen, moveUci);
+  } catch (_) {
+    rollback();
+    setStatus("Illegal move");
+    return;
+  }
+
+  const node = buildProvisionalNode(parent, moveUci, after);
+  appState.build.nodes.push(node);
+  appState.buildNodeById.set(node.id, node);
+  appState.buildPending.push({ tempId: node.id, parentRef: parentId, uci: moveUci, node });
+  await selectBuildNode(node.id);
+  setBuildSync("dirty");
+  scheduleBuildFlush();
 }
 
 async function createRepertoirePrompt({ title, defaultName, openAfter = true } = {}) {
@@ -4812,7 +5182,7 @@ async function generateFromCurrentNode() {
     setStatus(BROWSER_ENGINE_UNAVAILABLE);
     return;
   }
-  const nodeId = appState.buildCurrentNodeId;
+  let nodeId = appState.buildCurrentNodeId;
   if (!appState.build || !nodeId) {
     setStatus("Open or create a repertoire first");
     return;
@@ -4821,6 +5191,15 @@ async function generateFromCurrentNode() {
     setStatus("Another job is already running");
     return;
   }
+  // apply-plan anchors on a REAL node id — a tmp anchor would 400. Drain any
+  // pending local moves first, then re-resolve the (now-real) anchor id.
+  try {
+    await hardFlushBuild();
+  } catch (error) {
+    setStatus(error.message);
+    return;
+  }
+  nodeId = resolveBuildId(nodeId);
   const repColor = appState.build.color === "black" ? "black" : "white";
   const values = await showInputModal({
     title: "Generate moves from this position",
@@ -5057,8 +5436,19 @@ function openNodeContextMenu(event, nodeId) {
 
 async function handleNodeContextAction(action, nodeId) {
   closeNodeContextMenu();
-  const node = appState.buildNodeById.get(nodeId);
+  let node = appState.buildNodeById.get(nodeId);
   if (!node) return;
+  // Every action here references the node by id on the server (or, for generate,
+  // anchors apply-plan on it). Drain pending local moves so a tmp id is real, then
+  // resolve this node's id (it may have just been minted locally) + re-read it.
+  try {
+    await hardFlushBuild();
+  } catch (error) {
+    setStatus(error.message);
+    return;
+  }
+  nodeId = resolveBuildId(nodeId);
+  node = appState.buildNodeById.get(nodeId) || node;
   try {
     if (action === "generate") {
       appState.buildCurrentNodeId = nodeId;
@@ -5156,6 +5546,14 @@ async function exportBuild(format, nodeId = null) {
     setStatus("Open a repertoire first");
     return;
   }
+  // Export reads server-side tree state (and may scope to a node id) — sync first.
+  try {
+    await hardFlushBuild();
+  } catch (error) {
+    setStatus(error.message);
+    return;
+  }
+  if (nodeId) nodeId = resolveBuildId(nodeId);
   // Full tree-with-variations PGN for top-level "Export PGN" calls
   if (format === "pgn" && !nodeId) {
     const payload = await api(
@@ -6920,6 +7318,15 @@ function bindEvents() {
       if (button.dataset.view === "settings") loadSettings();
     });
   });
+
+  // Local-first Build sync: persist pending moves when the tab is backgrounded
+  // (best-effort hard flush) and on unload (keepalive beacon — sendBeacon can't
+  // carry the CSRF header the API needs). The next load re-hydrates from server
+  // truth regardless, so both paths are best-effort.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") hardFlushBuild().catch(() => {});
+  });
+  window.addEventListener("beforeunload", beaconFlushBuild);
 
   // Settings
   document.getElementById("settings-refresh").addEventListener("click", loadSettings);

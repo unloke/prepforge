@@ -634,6 +634,59 @@ def build_add_move(
     )
 
 
+# ---- Build local-first: batched manual moves (Phase 1) ----------------------
+# The manual sibling of apply-plan. The SPA plays moves locally (optimistic
+# render) and flushes a batch of `{tempId, parentRef, uci}` on idle/hard-flush;
+# the server runs NO engine. It re-validates legality + parentage, forces
+# MANUAL source, recomputes the persisted flags, and persists all-or-nothing.
+# The refreshed payload carries `id_map` (tmp -> real) so the client reconciles
+# its optimistic nodes. Owner-gated like every other Build mutation.
+
+
+class AddMovesItem(BaseModel):
+    tempId: str
+    parentRef: str
+    uci: str
+
+
+class AddMovesBody(BaseModel):
+    repertoire_id: str
+    moves: list[AddMovesItem] = []
+
+
+@router.post("/build/add-moves")
+def build_add_moves(
+    body: AddMovesBody,
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+) -> dict[str, Any]:
+    """Apply a batch of manual moves (local-first Build flush) and return the
+    refreshed Build payload plus an ``id_map`` of ``tempId -> real node id``.
+
+    No compute: the service re-validates legality + parentage and recomputes the
+    persisted flags itself, so a malformed batch raises ``ValueError`` → 400
+    before anything lands. Owner-gated so a user can't flush onto another's tree."""
+    _owned_repertoire(repo, body.repertoire_id, owner)
+    try:
+        _repertoire, summary, id_map = OpeningBuilderService(repo).add_moves_batch(
+            body.repertoire_id,
+            [item.model_dump() for item in body.moves],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    payload = build_workspace_payload(
+        repo,
+        body.repertoire_id,
+        summary={
+            "added_nodes": summary.added_nodes,
+            "updated_nodes": summary.updated_nodes,
+            "high_probability_unprepared": summary.high_probability_unprepared,
+        },
+    )
+    payload["id_map"] = id_map
+    return payload
+
+
 # ---- Build generate: apply-plan (2b-2d-ii) ----------------------------------
 # The browser ran the whole generation recursion locally (Stockfish + Maia3 in
 # WebAssembly) and submits a tree-mutation plan; the server runs NO engine. It

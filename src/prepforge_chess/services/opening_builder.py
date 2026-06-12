@@ -85,6 +85,12 @@ MAX_PLAN_CHANGES = 2000
 MAX_PLAN_DEPTH = 64  # planned-node depth measured from the anchor
 MAX_PLAN_PV_LENGTH = 64
 
+# A local-first Build flush (add_moves_batch) is also an untrusted, no-compute
+# write. Same intent as MAX_PLAN_CHANGES: fence off a hostile/buggy batch from
+# forcing unbounded apply + tree-walk work. Sits far above any realistic burst of
+# hand-played moves a user could queue between debounced flushes.
+MAX_ADD_MOVES_BATCH = 500
+
 # A coordinate UCI move: from-square, to-square, optional promotion piece.
 _UCI_RE = re.compile(r"^[a-h][1-8][a-h][1-8][qrbnQRBN]?$")
 
@@ -428,6 +434,126 @@ class OpeningBuilderService:
 
         self.repository.save_repertoire(repertoire)
         return repertoire, summary
+
+    def add_moves_batch(
+        self,
+        repertoire_id: str,
+        moves: list,
+    ) -> Tuple[Repertoire, GenerationSummary, dict]:
+        """Append a batch of MANUAL moves in one all-or-nothing persist.
+
+        The manual sibling of ``apply_generation_plan``: the browser plays moves
+        locally (local-first Build) and flushes them as a debounced batch; the
+        server runs NO chess engine. It RE-VALIDATES every move's legality and
+        parentage, RECOMPUTES the persisted flags (``is_mainline`` /
+        ``is_user_prepared_move``) itself rather than trusting the client, FORCES
+        ``source = MANUAL``, dedupes against existing children, and persists once
+        at the very end (a single malformed move raises before anything lands).
+        Returns the repertoire, a summary, and the ``tmp- -> real`` id_map the
+        client uses to reconcile its optimistic nodes.
+
+        Differences from apply-plan, by design: these are hand-played moves, so
+        the source is always MANUAL (apply-plan forbids it as anti-spoof) and a
+        move may parent anywhere in the repertoire — ``parentRef`` resolves
+        against the WHOLE tree, not a single anchor subtree. Per-move flag rules
+        mirror the ``/api/build/add-move`` endpoint (prepared on the owner's
+        turn; the first enabled child of a parent becomes the mainline).
+        """
+        if not isinstance(moves, list):
+            raise ValueError("moves must be a list")
+        if len(moves) > MAX_ADD_MOVES_BATCH:
+            raise ValueError(
+                "too many moves in batch ({0} > {1})".format(
+                    len(moves), MAX_ADD_MOVES_BATCH
+                )
+            )
+
+        repertoire = self._load_repertoire_or_raise(repertoire_id)
+        # parentRef / tempId resolve against the whole tree (manual moves can
+        # attach anywhere). depth_by_id from the index is unused for the cap below.
+        nodes_by_id: dict = {}
+        depth_by_id: dict = {}
+        self._index_subtree(repertoire.root_node, 0, nodes_by_id, depth_by_id)
+
+        temp_to_node: dict = {}
+        seen_temp_ids: set = set()
+        # Batch-relative depth: every already-persisted node is a valid anchor at
+        # depth 0, so the cap bounds only how deep THIS batch extends a line. A
+        # long pre-existing repertoire line is never penalised, but a hostile
+        # 500-link chain still can't overrun the recursion limit on the next walk.
+        temp_depth: dict = {}
+
+        summary = GenerationSummary()
+        id_map: dict = {}
+        for move in moves:
+            if not isinstance(move, dict):
+                raise ValueError("each move must be an object")
+            move_uci = move.get("uci")
+            if not move_uci or not isinstance(move_uci, str):
+                raise ValueError("each move requires a uci string")
+            temp_id = self._validate_plan_temp_id(
+                move.get("tempId"), seen_temp_ids, nodes_by_id
+            )
+            seen_temp_ids.add(temp_id)
+            parent_ref = move.get("parentRef")
+            parent = self._resolve_plan_parent(parent_ref, nodes_by_id, temp_to_node)
+
+            is_prepared = parent.side_to_move is repertoire.color
+            existing = child_by_uci(parent, move_uci)
+            if existing is not None:
+                # Dedupe — parity with add_move's existing-child branch: prepared
+                # is OR-merged and the prepared tag added once; no new node, no
+                # added count. A real persisted node is a fresh anchor (depth 0).
+                existing.is_user_prepared_move = (
+                    existing.is_user_prepared_move or is_prepared
+                )
+                if is_prepared and "prepared" not in existing.tags:
+                    existing.tags.append("prepared")
+                temp_to_node[temp_id] = existing
+                temp_depth[temp_id] = 0
+                id_map[temp_id] = existing.id
+                continue
+
+            child_depth = temp_depth.get(parent_ref, 0) + 1
+            if child_depth > MAX_PLAN_DEPTH:
+                raise ValueError(
+                    "batch exceeds the max depth {0} from an existing node".format(
+                        MAX_PLAN_DEPTH
+                    )
+                )
+
+            # New child — re-validate legality SERVER-SIDE. apply_uci raises on an
+            # illegal/unparseable move, aborting the whole batch before any save.
+            move_obj = self.chess_core.apply_uci(
+                parent.fen, move_uci, source=MoveSource.MANUAL
+            )
+            # is_mainline / is_user_prepared_move are RECOMPUTED, never trusted
+            # from the client — same rule the add-move endpoint applies.
+            is_mainline = not any(child.is_enabled for child in parent.children)
+            child = OpeningNode(
+                id=str(uuid.uuid4()),
+                repertoire_id=repertoire.id,
+                parent_id=parent.id,
+                move=move_obj,
+                fen=move_obj.fen_after,
+                side_to_move=self.chess_core.side_to_move(move_obj.fen_after),
+                is_mainline=is_mainline,
+                is_user_prepared_move=is_prepared,
+                tags=["prepared"] if is_prepared else [],
+                source=MoveSource.MANUAL,
+            )
+            parent.children.append(child)
+            nodes_by_id[child.id] = child
+            temp_to_node[temp_id] = child
+            temp_depth[temp_id] = child_depth
+            id_map[temp_id] = child.id
+            summary.added_nodes += 1
+            summary.changes.append(
+                GeneratedNodeChange(child.id, move_uci, "added", MoveSource.MANUAL)
+            )
+
+        self.repository.save_repertoire(repertoire)
+        return repertoire, summary, id_map
 
     def _index_subtree(
         self, node: OpeningNode, depth: int, nodes_into: dict, depth_into: dict

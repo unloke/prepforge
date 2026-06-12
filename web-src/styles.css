@@ -1773,6 +1773,46 @@ h2 {
   white-space: nowrap;
 }
 
+/* Google-Docs-style save indicator for local-first Build sync. A quiet chip that
+   only earns attention when something's wrong (error). Tokens keep it on-theme. */
+.build-sync {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  white-space: nowrap;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+.build-sync.is-saved {
+  color: var(--good);
+  border-color: color-mix(in srgb, var(--good) 35%, var(--line));
+}
+.build-sync.is-dirty {
+  color: var(--muted);
+}
+.build-sync.is-syncing {
+  color: var(--accent-strong);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.build-sync.is-error {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
+  background: color-mix(in srgb, var(--warn) 8%, var(--panel-soft));
+}
+@media (prefers-reduced-motion: reduce) {
+  .build-sync {
+    transition: none;
+  }
+}
+
 /* Sidebar */
 
 .sidebar {

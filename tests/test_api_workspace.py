@@ -472,6 +472,89 @@ def test_add_move_is_owner_gated(client):
     assert r.status_code == 404
 
 
+# ---- Build local-first batch (add-moves) -------------------------------------
+
+
+def test_add_moves_appends_batch_and_returns_id_map(client):
+    _register(client, "a@example.com")
+    create = client.post(
+        "/api/repertoires/create",
+        json={"name": "White e4", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+    rep_id = create["repertoire_id"]
+    root_id = create["selected_node_id"]
+
+    r = client.post(
+        "/api/build/add-moves",
+        json={
+            "repertoire_id": rep_id,
+            "moves": [
+                {"tempId": "tmp-1", "parentRef": root_id, "uci": "e2e4"},
+                {"tempId": "tmp-2", "parentRef": "tmp-1", "uci": "e7e5"},
+            ],
+        },
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["nodes_total"] == 3  # root + 2 moves
+    assert body["summary"]["added_nodes"] == 2
+    id_map = body["id_map"]
+    assert set(id_map) == {"tmp-1", "tmp-2"}
+    by_id = {n["id"]: n for n in body["nodes"]}
+    e4 = by_id[id_map["tmp-1"]]
+    assert e4["uci"] == "e2e4" and e4["is_mainline"] is True and e4["is_prepared"] is True
+    e5 = by_id[id_map["tmp-2"]]
+    assert e5["uci"] == "e7e5" and e5["parent_id"] == id_map["tmp-1"]
+
+
+def test_add_moves_rejects_illegal_move(client):
+    _register(client, "a@example.com")
+    create = client.post(
+        "/api/repertoires/create",
+        json={"name": "X", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+    r = client.post(
+        "/api/build/add-moves",
+        json={
+            "repertoire_id": create["repertoire_id"],
+            "moves": [
+                {"tempId": "tmp-1", "parentRef": create["selected_node_id"], "uci": "e2e5"},
+            ],
+        },
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 400
+    # All-or-nothing: nothing landed.
+    load = client.get(f"/api/build/load?repertoire_id={create['repertoire_id']}").json()
+    assert load["nodes_total"] == 1
+
+
+def test_add_moves_is_owner_gated(client):
+    _register(client, "a@example.com", display_name="A")
+    create = client.post(
+        "/api/repertoires/create",
+        json={"name": "A's", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+
+    other = _client()
+    _register(other, "b@example.com", display_name="B")
+    r = other.post(
+        "/api/build/add-moves",
+        json={
+            "repertoire_id": create["repertoire_id"],
+            "moves": [
+                {"tempId": "tmp-1", "parentRef": create["selected_node_id"], "uci": "e2e4"},
+            ],
+        },
+        headers=csrf_headers(other),
+    )
+    assert r.status_code == 404
+
+
 # ---- Public share links ------------------------------------------------------
 
 

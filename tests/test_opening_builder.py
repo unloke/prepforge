@@ -9,6 +9,7 @@ from prepforge_chess.services.engine import (
     PositionAnalysis,
 )
 from prepforge_chess.services.opening_builder import (
+    MAX_ADD_MOVES_BATCH,
     MAX_PLAN_CHANGES,
     MAX_PLAN_DEPTH,
     MAX_PLAN_PV_LENGTH,
@@ -576,6 +577,160 @@ def test_apply_plan_rejects_out_of_range_probability():
                 root_id,
                 {"changes": [_planned_add("tmp-1", root_id, "e7e5", maiaProbability=bad_prob)]},
             )
+    assert repository.load_repertoire(rep.id).root_node.children == []
+
+
+# --- Phase 1: add_moves_batch (local-first Build flush, MANUAL moves) ---
+
+
+def _knight_chain_moves(root_id, length):
+    # A legal, arbitrarily deep line of {tempId, parentRef, uci} dicts: knights
+    # shuffle, each link parenting onto the previous tempId (one deep chain).
+    white = ["g1f3", "f3g1"]
+    black = ["g8f6", "f6g8"]
+    moves = []
+    parent = root_id
+    for i in range(length):
+        uci = white[(i // 2) % 2] if i % 2 == 0 else black[(i // 2) % 2]
+        temp = "tmp-{0}".format(i + 1)
+        moves.append({"tempId": temp, "parentRef": parent, "uci": uci})
+        parent = temp
+    return moves
+
+
+def test_add_moves_batch_chains_tempids_and_returns_id_map():
+    repository, builder = _builder()
+    rep = _white_repertoire(builder)
+    root_id = rep.root_node.id
+
+    moves = [
+        {"tempId": "tmp-1", "parentRef": root_id, "uci": "e2e4"},
+        {"tempId": "tmp-2", "parentRef": "tmp-1", "uci": "e7e5"},  # parents on sibling
+    ]
+    _rep, summary, id_map = builder.add_moves_batch(rep.id, moves)
+    assert summary.added_nodes == 2
+    assert set(id_map) == {"tmp-1", "tmp-2"}
+    assert not any(v.startswith("tmp-") for v in id_map.values())  # all real ids
+
+    loaded = repository.load_repertoire(rep.id)
+    e4 = loaded.root_node.children[0]
+    assert e4.id == id_map["tmp-1"]
+    assert e4.move.uci == "e2e4"
+    assert e4.source is MoveSource.MANUAL
+    assert e4.is_mainline is True
+    assert e4.is_user_prepared_move is True  # White move in a White repertoire
+    assert "prepared" in e4.tags
+    e5 = e4.children[0]
+    assert e5.id == id_map["tmp-2"]
+    assert e5.move.uci == "e7e5"
+    assert e5.source is MoveSource.MANUAL
+    assert e5.is_user_prepared_move is False  # Black move != White repertoire color
+    assert e5.tags == []
+
+
+def test_add_moves_batch_recomputes_first_enabled_child_as_mainline():
+    repository, builder = _builder()
+    rep = _white_repertoire(builder)
+    root_id = rep.root_node.id
+    moves = [
+        {"tempId": "tmp-1", "parentRef": root_id, "uci": "e2e4"},
+        {"tempId": "tmp-2", "parentRef": root_id, "uci": "d2d4"},
+    ]
+    builder.add_moves_batch(rep.id, moves)
+    loaded = repository.load_repertoire(rep.id)
+    mainline = {c.move.uci: c.is_mainline for c in loaded.root_node.children}
+    assert mainline == {"e2e4": True, "d2d4": False}
+
+
+def test_add_moves_batch_dedupes_existing_child_without_duplicate():
+    repository, builder = _builder()
+    rep = _white_repertoire(builder)
+    root_id = rep.root_node.id
+    manual = builder.add_move(
+        rep.id, root_id, "e2e4", is_mainline=True, is_user_prepared_move=True
+    )
+
+    _rep, summary, id_map = builder.add_moves_batch(
+        rep.id, [{"tempId": "tmp-1", "parentRef": root_id, "uci": "e2e4"}]
+    )
+    assert summary.added_nodes == 0
+    assert id_map == {"tmp-1": manual.id}  # tmp resolves to the existing node
+
+    loaded = repository.load_repertoire(rep.id)
+    assert len(loaded.root_node.children) == 1  # no duplicate
+
+
+def test_add_moves_batch_rejects_illegal_move_without_persisting():
+    repository, builder = _builder()
+    rep = _white_repertoire(builder)
+    root_id = rep.root_node.id
+    moves = [
+        {"tempId": "tmp-1", "parentRef": root_id, "uci": "e2e4"},
+        {"tempId": "tmp-2", "parentRef": "tmp-1", "uci": "e2e5"},  # illegal
+    ]
+    with pytest.raises(ValueError):
+        builder.add_moves_batch(rep.id, moves)
+    # All-or-nothing: the legal first move never lands either.
+    assert repository.load_repertoire(rep.id).root_node.children == []
+
+
+def test_add_moves_batch_rejects_unknown_parent():
+    repository, builder = _builder()
+    rep = _white_repertoire(builder)
+    root_id = rep.root_node.id
+    with pytest.raises(ValueError):
+        builder.add_moves_batch(
+            rep.id, [{"tempId": "tmp-1", "parentRef": "does-not-exist", "uci": "e2e4"}]
+        )
+    assert repository.load_repertoire(rep.id).root_node.children == []
+
+
+def test_add_moves_batch_rejects_too_many_without_persisting():
+    repository, builder = _builder()
+    rep = _white_repertoire(builder)
+    root_id = rep.root_node.id
+    moves = [
+        {"tempId": "tmp-{0}".format(i), "parentRef": root_id, "uci": "e2e4"}
+        for i in range(MAX_ADD_MOVES_BATCH + 1)
+    ]
+    with pytest.raises(ValueError):
+        builder.add_moves_batch(rep.id, moves)
+    assert repository.load_repertoire(rep.id).root_node.children == []
+
+
+def test_add_moves_batch_rejects_too_deep_chain_but_accepts_at_limit():
+    repository, builder = _builder()
+    rep = _white_repertoire(builder)
+    root_id = rep.root_node.id
+
+    over = _knight_chain_moves(root_id, MAX_PLAN_DEPTH + 1)
+    with pytest.raises(ValueError):
+        builder.add_moves_batch(rep.id, over)
+    assert repository.load_repertoire(rep.id).root_node.children == []
+
+    at_limit = _knight_chain_moves(root_id, MAX_PLAN_DEPTH)
+    _rep, summary, _id_map = builder.add_moves_batch(rep.id, at_limit)
+    assert summary.added_nodes == MAX_PLAN_DEPTH
+
+
+def test_add_moves_batch_requires_well_formed_temp_id():
+    repository, builder = _builder()
+    rep = _white_repertoire(builder)
+    root_id = rep.root_node.id
+    # tempId without the 'tmp-' prefix is rejected (parity with apply-plan).
+    with pytest.raises(ValueError):
+        builder.add_moves_batch(
+            rep.id, [{"tempId": "x-1", "parentRef": root_id, "uci": "e2e4"}]
+        )
+    # Duplicate tempId is rejected.
+    with pytest.raises(ValueError):
+        builder.add_moves_batch(
+            rep.id,
+            [
+                {"tempId": "tmp-1", "parentRef": root_id, "uci": "e2e4"},
+                {"tempId": "tmp-1", "parentRef": root_id, "uci": "d2d4"},
+            ],
+        )
     assert repository.load_repertoire(rep.id).root_node.children == []
 
 
