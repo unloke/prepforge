@@ -1338,6 +1338,7 @@ class BoardController {
     this.ghost = null;
     this.engineArrow = null;
     this.branchArrows = [];
+    this.branchPick = null;
     this.moveBadge = null;
     this._hadPosition = false;
     this.annotationStart = null;
@@ -1369,7 +1370,14 @@ class BoardController {
   }
 
   _renderArrows() {
-    renderAnnotations(this.overlay, this.arrows, this.orientation, this.engineArrow, this.branchArrows);
+    renderAnnotations(
+      this.overlay,
+      this.arrows,
+      this.orientation,
+      this.engineArrow,
+      this.branchArrows,
+      this.branchPick
+    );
   }
 
   setEngineArrow(uci) {
@@ -1379,13 +1387,19 @@ class BoardController {
     this._renderArrows();
   }
 
-  // Faint arrows for the next-move branch options at the current position, so a branch
-  // point is visible on the board itself (the keyboard branch switcher's on-board echo).
-  setBranchArrows(list) {
+  // Faint arrows for the fork's next-move options at the current position, so a
+  // branch point is visible on the board itself (the fork picker's on-board echo).
+  // ``pickUci`` is the currently picked option, drawn stronger than its siblings.
+  setBranchArrows(list, pickUci = null) {
     const next = Array.isArray(list) ? list.filter((u) => typeof u === "string" && u.length >= 4) : [];
-    const same = next.length === this.branchArrows.length && next.every((u, i) => u === this.branchArrows[i]);
+    const pick = typeof pickUci === "string" && pickUci.length >= 4 ? pickUci : null;
+    const same =
+      pick === this.branchPick &&
+      next.length === this.branchArrows.length &&
+      next.every((u, i) => u === this.branchArrows[i]);
     if (same) return;
     this.branchArrows = next;
+    this.branchPick = pick;
     this._renderArrows();
   }
 
@@ -2029,7 +2043,14 @@ function buildArrowPath(from, to) {
   ].join(" ");
 }
 
-function renderAnnotations(overlay, arrows, orientation = "white", engineArrow = null, branchArrows = []) {
+function renderAnnotations(
+  overlay,
+  arrows,
+  orientation = "white",
+  engineArrow = null,
+  branchArrows = [],
+  branchPick = null
+) {
   overlay.setAttribute("viewBox", "0 0 100 100");
   overlay.innerHTML = "";
   // Colours and stroke come from CSS tokens (.annot-arrow rules) so board
@@ -2042,8 +2063,14 @@ function renderAnnotations(overlay, arrows, orientation = "white", engineArrow =
     path.setAttribute("class", `annot-arrow annot-${kind}`);
     overlay.appendChild(path);
   };
-  // Branch hints sit under the user/engine arrows so an explicit annotation always wins.
-  (branchArrows || []).forEach((arrow) => arrow && arrow.length >= 4 && drawArrow(arrow, "branch"));
+  // Branch hints sit under the user/engine arrows so an explicit annotation always
+  // wins; the picked fork option is drawn stronger than its siblings.
+  (branchArrows || []).forEach(
+    (arrow) =>
+      arrow &&
+      arrow.length >= 4 &&
+      drawArrow(arrow, arrow === branchPick ? "branch is-pick" : "branch")
+  );
   arrows.forEach((arrow) => drawArrow(arrow, "user"));
   if (engineArrow && engineArrow.length >= 4) drawArrow(engineArrow, "engine");
 }
@@ -2114,17 +2141,20 @@ function renderDashboardToday(payload) {
       const cls = (n > 0) === goodWhenUp ? "up" : "down";
       return ` <span class="${cls}">(${n > 0 ? "+" : ""}${n})</span>`;
     };
+    // "Mastered"/"weak" carry exact meanings (services/progress.py) the dashboard
+    // otherwise never explains — give the words hover definitions.
     const bits = [
       `<b>${recap.reviews_7d}</b> review${recap.reviews_7d === 1 ? "" : "s"} this week`,
-      `<b>${recap.mastered_now}</b> mastered${delta(recap.mastered_delta, true)}`,
+      `<b>${recap.mastered_now}</b> <span title="Recalled correctly 3+ times with no recent misses - reviews days apart">mastered</span>${delta(recap.mastered_delta, true)}`,
     ];
     if (recap.weak_now > 0 || recap.weak_delta !== 0) {
-      bits.push(`<b>${recap.weak_now}</b> weak spot${recap.weak_now === 1 ? "" : "s"}${delta(recap.weak_delta, false)}`);
+      bits.push(`<b>${recap.weak_now}</b> <span title="Missed more often than answered">weak spot${recap.weak_now === 1 ? "" : "s"}</span>${delta(recap.weak_delta, false)}`);
     }
     recapHtml = `<div class="today-recap">${bits.join(" &middot; ")}</div>`;
   }
   card.innerHTML = `
-    <div class="today-streak" data-lit="${streak.current > 0 ? "1" : "0"}">
+    <div class="today-streak" data-lit="${streak.current > 0 ? "1" : "0"}"
+         title="Day streak: calendar days in a row (your local time) with at least one graded training move. One card a day keeps it alive.">
       <span class="today-flame" aria-hidden="true">\u{1F525}</span>
       <span class="today-count">${streak.current}</span>
       <span class="today-unit">day streak${best}</span>
@@ -2791,22 +2821,47 @@ async function loadDashboardRepertoires() {
         const cls = active ? "list-item" : "list-item is-disabled";
         const status = active ? "" : ' <span class="sub">· disabled</span>';
         return `
-          <button class="${cls}" data-repertoire-id="${id}" data-active="${active ? "1" : "0"}">
+          <div class="${cls}" role="button" tabindex="0" data-repertoire-id="${id}" data-active="${active ? "1" : "0"}">
             <span>
               <span class="color-dot ${color}"></span>
               <span class="name">${name}</span>
               <span class="sub"> · ${color}</span>${status}
             </span>
             ${healthBadgeHtml(item.health)}
-          </button>
+            <button type="button" class="ib row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-haspopup="menu">⋯</button>
+          </div>
         `;
       })
       .join("");
-    container.querySelectorAll(".list-item").forEach((button) => {
-      button.addEventListener("click", () => editRepertoire(button.dataset.repertoireId));
-      button.addEventListener("contextmenu", (event) =>
-        openRepertoireContextMenu(event, button.dataset.repertoireId, button.dataset.active === "1")
+    container.querySelectorAll(".list-item").forEach((row) => {
+      const open = () => editRepertoire(row.dataset.repertoireId);
+      row.addEventListener("click", (event) => {
+        if (event.target.closest(".row-menu-btn")) return; // the menu button owns that click
+        open();
+      });
+      row.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          open();
+        }
+      });
+      row.addEventListener("contextmenu", (event) =>
+        openRepertoireContextMenu(event, row.dataset.repertoireId, row.dataset.active === "1")
       );
+    });
+    // The same action menu right-click opens, but discoverable: every row carries
+    // a visible ⋯ button (right-click-only actions were invisible to most users).
+    container.querySelectorAll(".row-menu-btn").forEach((btn) => {
+      btn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const row = btn.closest(".list-item");
+        const rect = btn.getBoundingClientRect();
+        openRepertoireContextMenu(
+          { preventDefault: () => {}, clientX: rect.left, clientY: rect.bottom + 4 },
+          row.dataset.repertoireId,
+          row.dataset.active === "1"
+        );
+      });
     });
   } catch (error) {
     container.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
@@ -2821,14 +2876,14 @@ function healthBadgeHtml(health) {
     return '<span class="rep-health rep-health-empty">no moves yet</span>';
   }
   const parts = [];
-  if (health.weak) parts.push(`<span class="rh-weak">${health.weak} weak</span>`);
-  if (health.due) parts.push(`<span class="rh-due">${health.due} due</span>`);
-  if (health.untrained) parts.push(`<span class="rh-untrained">${health.untrained} new</span>`);
+  if (health.weak) parts.push(`<span class="rh-weak" title="Missed more often than answered">${health.weak} weak</span>`);
+  if (health.due) parts.push(`<span class="rh-due" title="Spaced repetition: review now">${health.due} due</span>`);
+  if (health.untrained) parts.push(`<span class="rh-untrained" title="Never trained yet">${health.untrained} new</span>`);
   const pct = health.mastery_pct || 0;
   const tier = pct >= 80 ? "high" : pct >= 40 ? "mid" : "low";
   return (
     `<span class="rep-health">` +
-    `<span class="rh-pct tier-${tier}">${pct}% mastered</span>` +
+    `<span class="rh-pct tier-${tier}" title="Mastered moves: recalled correctly 3+ times with no recent misses (${health.mastered}/${health.trainable})">${pct}% mastered</span>` +
     (parts.length ? `<span class="rh-detail">${parts.join(" · ")}</span>` : "") +
     `</span>`
   );
@@ -4039,8 +4094,66 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   appState.build = payload;
   appState.buildNodeById = new Map(payload.nodes.map((node) => [node.id, node]));
   if (boards.build) boards.build.setOrientation(payload.color === "black" ? "black" : "white");
+  renderBuildRepHeader();
   const nextNodeId = selectedNodeId || payload.selected_node_id || payload.nodes[0]?.id;
   await selectBuildNode(nextNodeId);
+}
+
+// The sidebar's repertoire identity line: which repertoire is open and for which
+// colour. The ⋯ button next to it carries the repertoire-scoped actions.
+function renderBuildRepHeader() {
+  const nameEl = document.getElementById("build-rep-name");
+  if (!nameEl) return;
+  if (!appState.build) {
+    nameEl.textContent = "No repertoire open";
+    return;
+  }
+  nameEl.innerHTML =
+    `<span class="color-dot ${escapeHtml(appState.build.color)}"></span>` +
+    `${escapeHtml(appState.build.name)}` +
+    `<span class="rep-color-sub"> · ${escapeHtml(appState.build.color)}</span>`;
+}
+
+// The ⋯ menu in the Build sidebar header: every repertoire-scoped action in one
+// place (the board bar keeps only position navigation, the tools row only
+// position-scoped work). Reuses the shared context-menu element.
+function openBuildMenu(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  const menu = document.getElementById("repertoire-context-menu");
+  if (!menu) return;
+  const hasRep = !!appState.build && !appState.sharedToken;
+  const items = [
+    ...(hasRep
+      ? [
+          ["build-rename", "Rename..."],
+          ["build-export-pgn", "Export PGN"],
+        ]
+      : []),
+    ["build-new-rep", "New repertoire..."],
+  ];
+  menu.innerHTML = items
+    .map(
+      ([action, label]) =>
+        `<button type="button" data-action="${escapeHtml(action)}">${escapeHtml(label)}</button>`
+    )
+    .join("");
+  menu.hidden = false;
+  const anchor = event.currentTarget.getBoundingClientRect();
+  const rect = menu.getBoundingClientRect();
+  menu.style.left = `${Math.max(8, Math.min(anchor.right - rect.width, window.innerWidth - rect.width - 8))}px`;
+  menu.style.top = `${Math.min(anchor.bottom + 4, window.innerHeight - rect.height - 8)}px`;
+  menu.querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", async () => {
+      closeRepertoireContextMenu();
+      const action = button.dataset.action;
+      if (action === "build-rename") await renameRepertoire();
+      else if (action === "build-export-pgn") await exportBuild("pgn");
+      else if (action === "build-new-rep") {
+        await createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" });
+      }
+    });
+  });
 }
 
 async function renameRepertoire() {
@@ -4104,6 +4217,8 @@ async function skipTrainingLine() {
 async function selectBuildNode(nodeId) {
   if (!appState.buildNodeById.has(nodeId)) return;
   appState.buildCurrentNodeId = nodeId;
+  // Landing on a position resets the fork pick to the mainline continuation.
+  appState.buildBranchChoiceId = null;
   const node = appState.buildNodeById.get(nodeId);
   const info = await boardInfo(node.fen);
   boards.build.setPosition({
@@ -4249,7 +4364,8 @@ function renderBuilderTree() {
   const branchBar = document.getElementById("build-branchbar");
   if (!appState.build) {
     container.innerHTML =
-      '<div class="empty-state">No repertoire loaded. Press <b>New</b> or import one from the Dashboard.</div>';
+      '<div class="empty-state">No repertoire open. Play a move on the board to start one, ' +
+      'use the <b>⋯</b> menu above, or open one from the Dashboard.</div>';
     if (branchBar) branchBar.hidden = true;
     if (boards.build) boards.build.setBranchArrows([]);
     return;
@@ -4370,6 +4486,13 @@ function buildGoBack() {
 }
 
 function buildGoForward() {
+  // At a fork, → plays the picked continuation (mainline unless ↑/↓ changed it);
+  // anywhere else it just walks the line.
+  const ctx = buildBranchContext();
+  if (ctx) {
+    selectBuildNode(ctx.choiceId);
+    return;
+  }
   const child = buildMainlineChild(appState.buildCurrentNodeId);
   if (child) selectBuildNode(child.id);
 }
@@ -4384,14 +4507,6 @@ function buildGoToEnd() {
   if (cur && cur !== appState.buildCurrentNodeId) selectBuildNode(cur);
 }
 
-// Branch alternatives at the SAME move (siblings sharing a parent), mainline first.
-function buildSiblingsOf(node) {
-  if (!appState.build || !node) return [];
-  return appState.build.nodes
-    .filter((n) => n.parent_id === node.parent_id && n.depth > 0)
-    .sort((a, b) => Number(b.is_mainline) - Number(a.is_mainline));
-}
-
 // The next-move branches from a node (its children), mainline first.
 function buildChildrenOf(nodeId) {
   if (!appState.build || !nodeId) return [];
@@ -4400,82 +4515,69 @@ function buildChildrenOf(nodeId) {
     .sort((a, b) => Number(b.is_mainline) - Number(a.is_mainline));
 }
 
-// The branch picture at the current node: either the alternatives to the current move
-// ("current" — switch between them with up/down), or, when the current move is forced,
-// the next-move branches ahead ("next" — step into one with →). Drives both the on-screen
-// branch bar and the up/down key behaviour so the two always agree.
+// The fork picker. ONE mental model everywhere: you stand on a position, and when
+// your prep has two or more continuations from it, the bar (and the board arrows)
+// show the choice of NEXT moves. ↑/↓ move the pick, →/Enter plays it, click plays
+// it directly. To revisit the alternatives of a move you already played, step back
+// with ← — the fork is right there. (The old design flipped between "alternatives
+// at this move" and "next-move branches" depending on the node, which meant the
+// same keys did different things at different times.)
 function buildBranchContext() {
   if (!appState.build || !appState.buildCurrentNodeId) return null;
-  const current = appState.buildNodeById.get(appState.buildCurrentNodeId);
-  if (!current) return null;
-  const siblings = buildSiblingsOf(current);
-  if (siblings.length >= 2) {
-    return { mode: "current", node: current, options: siblings, activeId: current.id };
-  }
-  const children = buildChildrenOf(current.id);
-  if (children.length >= 2) {
-    return { mode: "next", node: current, options: children, activeId: null };
-  }
-  return { mode: "none", node: current, options: [], activeId: null };
+  const options = buildChildrenOf(appState.buildCurrentNodeId);
+  if (options.length < 2) return null; // no fork: plain ← → walking
+  const picked = options.find((n) => n.id === appState.buildBranchChoiceId) || options[0];
+  return { options, choiceId: picked.id };
 }
 
-// Up/Down on the Build board switch between the branch ALTERNATIVES at the current move
-// (no mouse needed) and do nothing else. They deliberately do NOT fall back to forward/
-// back: stepping along the line is ← →'s job, and having ↑ ↓ also move the cursor through
-// the move list made the two feel tangled and jumpy. With no alternatives here, ↑ ↓ are
-// inert — ← → still navigates, and → enters a forced branch point.
+// ↑/↓ move the pick around the fork's options without leaving the position;
+// the bar and the board arrows follow. With no fork they are inert.
 function buildBranchKey(direction) {
   const ctx = buildBranchContext();
-  if (!ctx || ctx.mode !== "current") return;
-  const opts = ctx.options;
-  const idx = opts.findIndex((n) => n.id === ctx.node.id);
-  const next = opts[(idx + direction + opts.length) % opts.length];
-  if (next) selectBuildNode(next.id);
+  if (!ctx) return;
+  const idx = ctx.options.findIndex((n) => n.id === ctx.choiceId);
+  const next = ctx.options[(idx + direction + ctx.options.length) % ctx.options.length];
+  appState.buildBranchChoiceId = next.id;
+  renderBuildBranchBar();
 }
 
-// The on-screen branch switcher: a compact strip of the branch options at the current
-// point, the active one lit, with a key hint. Mirrors what up/down will do. Also paints
-// faint arrows on the board for the next-move branches so a fork is visible there too.
+// The on-screen fork picker: one chip per prepared continuation, the picked one
+// lit, mirrored by arrows on the board (the picked arrow drawn stronger).
 function renderBuildBranchBar() {
   const bar = document.getElementById("build-branchbar");
   if (!bar) return;
   const ctx = buildBranchContext();
-  if (!ctx || ctx.mode === "none") {
+  if (!ctx) {
     bar.hidden = true;
     bar.innerHTML = "";
     if (boards.build) boards.build.setBranchArrows([]);
     return;
   }
-  const label = ctx.mode === "current" ? "Branches at this move" : "Next-move branches";
-  const hint = ctx.mode === "current" ? "↑ ↓ to switch" : "→ to enter · ↑ ↓ once inside";
-  const activeIdx =
-    ctx.mode === "current" ? Math.max(0, ctx.options.findIndex((n) => n.id === ctx.activeId)) : -1;
+  const picked = ctx.options.find((n) => n.id === ctx.choiceId);
   const chips = ctx.options
-    .map((n, i) => {
+    .map((n) => {
       const isWhite = n.move_side === "white";
       const num = `${n.move_number}${isWhite ? "." : "…"}`;
       const cls = [
         "branch-chip",
-        n.id === ctx.activeId ? "is-active" : "",
+        n.id === ctx.choiceId ? "is-active" : "",
         n.is_mainline ? "is-main" : "",
       ]
         .filter(Boolean)
         .join(" ");
+      const mainMark = n.is_mainline ? '<span class="branch-main-mark" title="Mainline">★</span>' : "";
       return (
         `<button class="${cls}" type="button" data-node-id="${escapeHtml(String(n.id))}" ` +
-        `title="Go to ${escapeHtml(n.san)}"><span class="branch-num">${num}</span>` +
-        `<span class="branch-san">${escapeHtml(n.san)}</span></button>`
+        `title="Play ${escapeHtml(n.san)}"><span class="branch-num">${num}</span>` +
+        `<span class="branch-san">${escapeHtml(n.san)}</span>${mainMark}</button>`
       );
     })
     .join("");
-  const counter =
-    ctx.mode === "current" && ctx.options.length > 1
-      ? `<span class="branchbar-count">${activeIdx + 1}/${ctx.options.length}</span>`
-      : `<span class="branchbar-count">${ctx.options.length}</span>`;
   bar.hidden = false;
   bar.innerHTML =
-    `<div class="branchbar-head"><span class="branchbar-label">${label}</span>${counter}` +
-    `<span class="branchbar-hint">${hint}</span></div>` +
+    `<div class="branchbar-head"><span class="branchbar-label">Fork — pick the next move</span>` +
+    `<span class="branchbar-count">${ctx.options.length}</span>` +
+    `<span class="branchbar-hint">↑ ↓ pick · → play · ← back</span></div>` +
     `<div class="branchbar-chips">${chips}</div>`;
   bar.querySelectorAll(".branch-chip[data-node-id]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -4483,10 +4585,11 @@ function renderBuildBranchBar() {
       btn.blur();
     });
   });
-  // Board echo: only the next-move branches map cleanly onto the current position.
+  // Board echo: every option gets a faint arrow, the picked one a stronger one.
   if (boards.build) {
     boards.build.setBranchArrows(
-      ctx.mode === "next" ? ctx.options.map((n) => n.uci).filter(Boolean) : []
+      ctx.options.map((n) => n.uci).filter(Boolean),
+      picked ? picked.uci : null
     );
   }
 }
@@ -5279,7 +5382,7 @@ async function submitTrainingMove(playedUci) {
     }
     const expectedSan = result.expected_san || "the prepared move";
     const sub = review.savedStreak > 0
-      ? `Prepared move: ${expectedSan}. Fix it in recovery to save your streak.`
+      ? `Prepared move: ${expectedSan}. Fix it in recovery to win your run back.`
       : `Prepared move: ${expectedSan}. Resetting the position.`;
     setTrainBanner(
       "wrong",
@@ -5342,7 +5445,7 @@ async function enterReviewRound() {
   review.active = true;
   review.index = 0;
   boards.train.setEngineArrow(null);
-  setTrainBanner("review", "Recovery round", `Fix ${review.queue.length} missed move${review.queue.length === 1 ? "" : "s"} to win your streak back`);
+  setTrainBanner("review", "Recovery round", `Fix ${review.queue.length} missed move${review.queue.length === 1 ? "" : "s"} to win your run back`);
   await sleep(700);
   showReviewItem();
 }
@@ -5365,7 +5468,7 @@ async function showReviewItem() {
   const side = sideToMoveFromFen(item.fen);
   updateTrainTurnBadge(side);
   setTrainBanner("review", `Recovery - ${review.index + 1} / ${review.queue.length}`, `${side === "white" ? "White" : "Black"} to move - the one you missed`);
-  document.getElementById("train-board-label").textContent = "Recovery round - get it right to recover your streak";
+  document.getElementById("train-board-label").textContent = "Recovery round - get it right to win your run back";
 }
 
 async function submitReviewMove(playedUci) {
@@ -5411,7 +5514,7 @@ function finishReviewRound() {
     stats.streak = review.savedStreak;
     stats.best = Math.max(stats.best, review.savedStreak);
     renderTrainStats();
-    setTrainBanner("done", "Streak recovered!", `Fixed ${review.recovered} - streak back to ${review.savedStreak} - best ${stats.best}`);
+    setTrainBanner("done", "Run recovered!", `Fixed ${review.recovered} - back to ${review.savedStreak} in a row - best ${stats.best}`);
   } else {
     setTrainBanner("done", "All cleaned up!", `Fixed ${review.recovered} missed move${review.recovered === 1 ? "" : "s"}`);
   }
@@ -5423,7 +5526,7 @@ function finishTrainingSession() {
   const stats = appState.trainStats;
   boards.train.setEngineArrow(null);
   document.getElementById("train-progress-fill").style.width = "100%";
-  setTrainBanner("done", "Session complete!", `${stats.correct} correct - ${stats.mistakes} mistakes - best streak ${stats.best}`);
+  setTrainBanner("done", "Session complete!", `${stats.correct} correct - ${stats.mistakes} mistakes - best run ${stats.best}`);
   document.getElementById("train-board-label").textContent = "Press Start to train again";
   celebrate();
 }
@@ -5515,6 +5618,15 @@ const SMART_KIND_LABELS = {
   due: "Due review",
   new: "New move",
   polish: "Polish",
+};
+
+// Hover definitions for the queue-composition chips ("3 weak · 4 due · ...").
+// Same meanings as the Train help drawer and services/progress.py.
+const SMART_KIND_TITLES = {
+  weak: "Missed more often than answered — always scheduled first",
+  due: "Spaced repetition says review these now",
+  new: "Never trained — taught with an arrow first, then tested",
+  polish: "Known material kept warm with an occasional rep",
 };
 
 // "Why this move", engine-free, for the moments the answer is on screen (teach
@@ -5684,7 +5796,7 @@ function renderSmartQueueStrip() {
     .map((k) => `<span class="tq-seg tq-${k}" style="flex:${counts[k]}"></span>`)
     .join("");
   document.getElementById("train-queue-legend").innerHTML = kinds
-    .map((k) => `<span class="tq-chip tq-${k}">${counts[k]} ${k}</span>`)
+    .map((k) => `<span class="tq-chip tq-${k}" title="${escapeHtml(SMART_KIND_TITLES[k] || "")}">${counts[k]} ${k}</span>`)
     .join("");
 }
 
@@ -5989,7 +6101,7 @@ function renderSmartSummary(smart, stats, after) {
   const statCells = [
     [smart.cardsDone, "cards"],
     [`${acc}%`, "first try"],
-    [stats.best || 0, "best streak"],
+    [stats.best || 0, "best in a row"],
   ];
   // The daily streak (server-tracked, all repertoires) earns its slot once the
   // first graded move of the session reported it.
@@ -6665,8 +6777,14 @@ async function runScout() {
     });
     setStatus(`Scouted ${games.length} games for ${username}`);
   } catch (error) {
-    results.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
-    setStatus(error.message);
+    // fetch() reports any network/blocked failure as a bare TypeError
+    // ("Failed to fetch") — say something a user can actually act on.
+    const message =
+      error instanceof TypeError
+        ? "Couldn't reach Lichess from this browser - check your connection and try again."
+        : error.message;
+    results.innerHTML = `<div class="empty-state">${escapeHtml(message)}</div>`;
+    setStatus(message);
   } finally {
     button.disabled = false;
   }
@@ -6867,24 +6985,12 @@ function bindEvents() {
   document.getElementById("analysis-next").addEventListener("click", () => analysisTreeNav("next"));
   document.getElementById("analysis-end").addEventListener("click", () => analysisTreeNav("end"));
 
-  document
-    .getElementById("build-new")
-    .addEventListener("click", () =>
-      createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" })
-    );
   document.getElementById("build-root").addEventListener("click", buildGoRoot);
   document.getElementById("build-parent").addEventListener("click", buildGoBack);
   document.getElementById("build-next").addEventListener("click", buildGoForward);
   document.getElementById("build-end").addEventListener("click", buildGoToEnd);
   document.getElementById("build-generate-node").addEventListener("click", generateFromCurrentNode);
-  document.getElementById("export-build-json").addEventListener("click", () => exportBuild("json"));
-  document.getElementById("export-build-pgn").addEventListener("click", () => exportBuild("pgn"));
-  document
-    .getElementById("import-build-file")
-    .addEventListener("click", () => document.getElementById("build-import-input").click());
-  document
-    .getElementById("import-build-json")
-    .addEventListener("click", () => importRepertoireFromInput("build-import-input"));
+  document.getElementById("build-menu").addEventListener("click", openBuildMenu);
   document
     .getElementById("import-train-json")
     .addEventListener("click", () => importRepertoireFromInput("train-import-input"));
@@ -6915,11 +7021,10 @@ function bindEvents() {
     });
   }
 
-  // Board flip + rename + skip
+  // Board flip + skip
   document.getElementById("analysis-flip").addEventListener("click", () => boards.analysis.flip());
   document.getElementById("build-flip").addEventListener("click", () => boards.build.flip());
   document.getElementById("train-flip").addEventListener("click", () => boards.train.flip());
-  document.getElementById("build-rename").addEventListener("click", renameRepertoire);
   document.getElementById("train-skip").addEventListener("click", skipTrainingLine);
 
   document.addEventListener("keydown", (event) => {
@@ -6938,9 +7043,9 @@ function bindEvents() {
       if (inBuild) buildGoForward();
       else analysisTreeNav("next");
     }
-    // Up/Down (and j/k) switch between branch alternatives at the current move in Build,
-    // so a fork can be navigated entirely from the keyboard. The on-screen branch bar
-    // mirrors the choice. With no alternatives they do nothing (← → handle stepping).
+    // Up/Down (and j/k) move the fork pick — which prepared continuation → will
+    // play next. The on-screen fork bar and the board arrows mirror the pick.
+    // With no fork at the current position they do nothing (← → step the line).
     if (inBuild && (event.key === "ArrowDown" || event.key === "j")) {
       event.preventDefault();
       buildBranchKey(1);

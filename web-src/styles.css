@@ -531,9 +531,9 @@ h2 {
   cursor: not-allowed;
 }
 
-/* Compute actions not yet ported to the browser (public build): clearly inert
-   rather than looking like a live button that errors on click. Covers both the
-   primary `.btn` (Analyze) and the icon button `.ib` (Build → Gen). */
+/* Compute actions whose engine is unavailable in this browser: clearly inert
+   rather than looking like a live button that errors on click. Covers the
+   primary `.btn` (Analyze, Build → Generate moves) and icon buttons. */
 .btn.is-coming-soon,
 .ib.is-coming-soon {
   background: #f4f1ec;
@@ -735,6 +735,23 @@ h2 {
   font-weight: 600;
 }
 
+/* The visible per-row actions button — the same menu right-click opens, but
+   discoverable. Subtle until the row is hovered or focused. */
+.list-item .row-menu-btn {
+  flex: none;
+  min-width: 28px;
+  padding: 0 6px;
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.45;
+}
+
+.list-item:hover .row-menu-btn,
+.list-item:focus-within .row-menu-btn,
+.list-item .row-menu-btn:focus-visible {
+  opacity: 1;
+}
+
 .list-item .sub {
   color: var(--muted);
   font-size: 12px;
@@ -846,12 +863,17 @@ h2 {
   stroke: var(--arrow-engine-stroke);
 }
 
-/* Next-move branch hints — faint, so they read as "options here" and never compete
-   with explicit user/engine arrows drawn on top of them. */
+/* Fork-option hints — faint, so they read as "options here" and never compete
+   with explicit user/engine arrows drawn on top of them. The picked option
+   (the one → will play) is drawn noticeably stronger. */
 .annot-branch {
   fill: var(--accent);
   stroke: var(--accent-strong);
   opacity: 0.32;
+}
+
+.annot-branch.is-pick {
+  opacity: 0.78;
 }
 
 .board-arrow {
@@ -1533,6 +1555,59 @@ h2 {
   box-shadow: 0 0 0 1px rgba(196, 82, 77, 0.5) inset;
 }
 .train-stat.at-risk .ts-label::after { content: " · at risk"; color: var(--danger); }
+
+/* "How training works" drawer: plain-language definitions for the mastery
+   states and the two streak-like numbers. Colour chips match the queue strip
+   and the Build tree's mastery underlines, so the legend doubles for both. */
+.train-help-body {
+  padding: 0 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.help-intro {
+  margin: 0;
+  color: var(--muted);
+}
+
+.help-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.help-row > span:last-child {
+  color: var(--text);
+}
+
+.help-key {
+  flex: none;
+  min-width: 64px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.hk-weak { background: var(--danger); }
+.hk-due { background: var(--warn); }
+.hk-new { background: var(--brilliant); }
+.hk-learning { background: #9bb7d4; }
+.hk-mastered { background: var(--good); }
+
+.help-streaks {
+  margin: 2px 0 0;
+  padding-top: 7px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--muted);
+}
 @keyframes streakPop {
   0% { transform: scale(1); }
   45% { transform: scale(1.18); }
@@ -1718,6 +1793,52 @@ h2 {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+/* Sidebar identity header (Build): which repertoire is open, plus the ⋯ menu
+   that owns every repertoire-scoped action (rename / export / new). Keeps the
+   board bar pure navigation and the tools row pure position work. */
+.rep-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+}
+
+.rep-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 14px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rep-name .color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  flex: none;
+}
+
+.rep-name .color-dot.white { background: #f8f4ea; }
+.rep-name .color-dot.black { background: #1c1c1c; }
+
+.rep-color-sub {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.rep-menu-btn {
+  margin-left: auto;
+  flex: none;
+  font-size: 16px;
+  line-height: 1;
 }
 
 .train-picker-label {
@@ -2551,6 +2672,12 @@ h2 {
   text-decoration: underline;
   text-decoration-color: var(--accent-line);
   text-underline-offset: 2px;
+}
+
+.branch-chip .branch-main-mark {
+  font-size: 10px;
+  opacity: 0.75;
+  align-self: center;
 }
 
 /* ---- Tree body --------------------------------------------------------- */

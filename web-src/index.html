@@ -36,7 +36,7 @@
               <button class="btn ghost" id="dashboard-import-pgn" data-testid="dashboard-import-pgn">Import PGN</button>
             </div>
           </div>
-          <p class="muted hint">Right-click an item for actions (train · edit · rename · disable · delete).</p>
+          <p class="muted hint">Click a repertoire to edit it in Build &middot; use &#8943; for more actions (train &middot; rename &middot; share &middot; delete).</p>
           <div id="dashboard-repertoires" class="list-stack"></div>
           <input type="file" id="dashboard-import-input" accept=".pgn,.json,application/x-chess-pgn,application/json" hidden />
         </section>
@@ -63,16 +63,16 @@
 
           <aside class="sidebar" id="analyze-sidebar">
             <div class="tools">
-              <button class="btn ghost" id="open-engine-widget" data-testid="open-engine-widget">Engine</button>
-              <button class="btn ghost" id="fetch-my-game" data-testid="fetch-my-game" title="Load my latest Lichess game">My game</button>
-              <button class="btn primary" id="run-analysis" data-testid="run-analysis">Analyze</button>
+              <button class="btn ghost" id="open-engine-widget" data-testid="open-engine-widget" title="Open the Stockfish evaluation window">Engine</button>
+              <button class="btn ghost" id="fetch-my-game" data-testid="fetch-my-game" title="Load my latest Lichess game">My last game</button>
+              <button class="btn primary" id="run-analysis" data-testid="run-analysis" title="Run a full-game engine analysis on your device">Analyze game</button>
             </div>
             <section class="explain-card" id="analysis-explain" data-testid="analysis-explain">
               <div class="explain-head">
                 <span class="explain-title">Coach</span>
-                <label class="explain-toggle" title="Use the engine to review each move you play">
+                <label class="explain-toggle" title="Have the engine review each move you play on the board">
                   <input type="checkbox" id="explain-engine-toggle" checked />
-                  <span>Engine</span>
+                  <span>Review my moves</span>
                 </label>
               </div>
               <p class="coach-prose" id="coach-prose" data-testid="coach-prose">Make a move and I'll tell you what I think.</p>
@@ -107,25 +107,25 @@
               <svg class="annotations" id="build-annotations"></svg>
             </div>
             <div class="board-bar">
-              <button class="ib" id="build-root" title="Root" aria-label="Go to root">⏮</button>
-              <button class="ib" id="build-parent" title="Back (parent)" aria-label="Back to parent move">◀</button>
-              <button class="ib" id="build-next" title="Forward (mainline)" aria-label="Forward along mainline">▶</button>
+              <button class="ib" id="build-root" title="Go to start" aria-label="Go to start">⏮</button>
+              <button class="ib" id="build-parent" title="Back one move" aria-label="Back one move">◀</button>
+              <button class="ib" id="build-next" title="Forward one move" aria-label="Forward one move">▶</button>
               <button class="ib" id="build-end" title="To end of line" aria-label="Go to end of line">⏭</button>
               <span class="sep"></span>
-              <button class="ib" id="build-generate-node" title="Generate from this position" aria-label="Generate from this position">Gen</button>
-              <span class="sep"></span>
               <button class="ib" id="build-flip" title="Flip board" aria-label="Flip board">⇅</button>
-              <button class="ib" id="build-rename" title="Rename repertoire" aria-label="Rename repertoire">✎</button>
               <span class="sep"></span>
               <span class="board-label" id="build-board-label">No repertoire</span>
             </div>
           </div>
 
           <aside class="sidebar">
+            <div class="rep-header" id="build-rep-header">
+              <span class="rep-name" id="build-rep-name" data-testid="build-rep-name">No repertoire open</span>
+              <button class="ib rep-menu-btn" id="build-menu" data-testid="build-menu" title="Repertoire actions (rename, export, new)" aria-haspopup="menu" aria-expanded="false">⋯</button>
+            </div>
             <div class="tools">
-              <button class="btn ghost" id="open-engine-widget-build" data-testid="open-engine-widget-build">Engine</button>
-              <button class="btn primary" id="build-new" data-testid="build-new">New</button>
-              <button class="btn ghost" id="export-build-pgn" data-testid="export-build-pgn">Export PGN</button>
+              <button class="btn ghost" id="open-engine-widget-build" data-testid="open-engine-widget-build" title="Open the Stockfish evaluation window">Engine</button>
+              <button class="btn primary" id="build-generate-node" data-testid="build-generate-node" title="Generate human-likely continuations from the current position">Generate moves</button>
             </div>
             <div class="build-branchbar" id="build-branchbar" data-testid="build-branchbar" hidden></div>
             <details class="drawer" id="explorer-drawer" data-testid="explorer-drawer">
@@ -152,11 +152,6 @@
               <div class="coverage-gaps" id="coverage-gaps"></div>
             </details>
             <div class="movelist tree" id="builder-tree" data-testid="builder-tree"></div>
-            <!-- legacy hooks kept for app.js compatibility; hidden -->
-            <button id="import-build-file" hidden></button>
-            <button id="export-build-json" hidden></button>
-            <input id="build-import-input" type="file" hidden />
-            <button id="import-build-json" hidden></button>
           </aside>
         </div>
       </section>
@@ -217,15 +212,15 @@
                 <div class="train-progress-fill" id="train-progress-fill"></div>
               </div>
               <div class="train-stats">
-                <div class="train-stat">
+                <div class="train-stat" title="Consecutive first-try correct answers in this session (not the day streak)">
                   <span class="ts-value" id="train-stat-streak">0</span>
-                  <span class="ts-label">Streak</span>
+                  <span class="ts-label">In a row</span>
                 </div>
-                <div class="train-stat">
+                <div class="train-stat" title="First-try correct answers this session">
                   <span class="ts-value good" id="train-stat-correct">0</span>
                   <span class="ts-label">Correct</span>
                 </div>
-                <div class="train-stat">
+                <div class="train-stat" title="First-try misses this session (retries are never counted)">
                   <span class="ts-value bad" id="train-stat-mistakes">0</span>
                   <span class="ts-label">Mistakes</span>
                 </div>
@@ -242,6 +237,22 @@
               <div class="train-summary-delta" id="train-summary-delta"></div>
               <div class="train-summary-foot" id="train-summary-foot"></div>
             </div>
+
+            <details class="drawer train-help" id="train-help" data-testid="train-help">
+              <summary>How training works</summary>
+              <div class="train-help-body">
+                <p class="help-intro">Every prepared move of yours has one of five states. The queue always drills the most urgent first:</p>
+                <div class="help-row"><span class="help-key hk-weak">Weak</span><span>Missed more often than answered — these always come first.</span></div>
+                <div class="help-row"><span class="help-key hk-due">Due</span><span>Spaced repetition says it's time to review this move now.</span></div>
+                <div class="help-row"><span class="help-key hk-new">New</span><span>Never trained. Taught first (arrow + idea), then tested later.</span></div>
+                <div class="help-row"><span class="help-key hk-learning">Learning</span><span>Answered before, still being spaced out.</span></div>
+                <div class="help-row"><span class="help-key hk-mastered">Mastered</span><span>Recalled correctly 3+ times with no recent misses — reviews now arrive days apart. (&ldquo;Polish&rdquo; cards keep this material warm.)</span></div>
+                <p class="help-streaks">
+                  <b>&ldquo;In a row&rdquo;</b> is this session only: consecutive first-try correct answers.<br />
+                  <b>Day streak 🔥</b> counts calendar days (your local time) with at least one graded training move — one card a day keeps it alive.
+                </p>
+              </div>
+            </details>
 
             <!-- legacy hooks kept for app.js compatibility; hidden -->
             <input id="train-import-input" type="file" hidden />

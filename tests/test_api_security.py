@@ -14,6 +14,9 @@ def test_security_headers_present(client):
     assert "camera=()" in r.headers["Permissions-Policy"]
     assert "wasm-unsafe-eval" in r.headers["Content-Security-Policy"]
     assert "worker-src 'self' blob:" in r.headers["Content-Security-Policy"]
+    # Scout + AUTO Maia rating fetch Lichess's public API straight from the
+    # browser; connect-src must allow the host or both fail as "Failed to fetch".
+    assert "https://lichess.org" in r.headers["Content-Security-Policy"]
     # HSTS is prod-only.
     assert "Strict-Transport-Security" not in r.headers
 

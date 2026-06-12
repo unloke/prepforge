@@ -37,6 +37,14 @@ _WEIGHT_CDN_HOSTS = (
     "https://*.hf.co",
 )
 
+# Browser-side features that talk to Lichess's public, CORS-open API directly
+# (no token, so no proxy needed): opponent scouting fetches recent games
+# (web-src/scout.js) and the AUTO Maia strength reads the linked player's
+# public profile rating (web-src/app.js refreshAutoMaiaRating). Without this
+# host in connect-src both fetches die as a generic "Failed to fetch" and
+# AUTO silently falls back to the model default.
+_LICHESS_API_HOSTS = ("https://lichess.org",)
+
 
 # Engines run client-side via WASM + Web Workers, so the CSP must permit them
 # while still blocking arbitrary remote script. 'wasm-unsafe-eval' enables WASM
@@ -47,7 +55,7 @@ _WEIGHT_CDN_HOSTS = (
 # so we never have to relax the policy to 'unsafe-inline'.
 def build_csp(*, script_hashes: tuple[str, ...] = ()) -> str:
     script_src = "'self' 'wasm-unsafe-eval'" + "".join(f" '{h}'" for h in script_hashes)
-    connect_src = " ".join(("'self'", *_WEIGHT_CDN_HOSTS))
+    connect_src = " ".join(("'self'", *_WEIGHT_CDN_HOSTS, *_LICHESS_API_HOSTS))
     return (
         "default-src 'self'; "
         f"script-src {script_src}; "
