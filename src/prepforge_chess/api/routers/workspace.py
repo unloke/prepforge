@@ -687,6 +687,37 @@ def build_add_moves(
     return payload
 
 
+class DeleteNodesBody(BaseModel):
+    repertoire_id: str
+    node_ids: list[str] = []
+
+
+@router.post("/build/delete-nodes")
+def build_delete_nodes(
+    body: DeleteNodesBody,
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+) -> dict[str, Any]:
+    """Delete a batch of subtrees (local-first Build flush) and return the
+    refreshed Build payload.
+
+    The sibling of ``/build/add-moves`` for the delete half of the local-first
+    queue: the SPA prunes the subtree from its tree immediately and flushes the
+    subtree-root ids on the same debounce. Idempotent per id (an id deleted by
+    an earlier subtree in the batch, or by a previous flush, is skipped) so an
+    optimistic over-delete can't fail the whole flush. Owner-gated."""
+    _owned_repertoire(repo, body.repertoire_id, owner)
+    try:
+        removed = OpeningBuilderService(repo).delete_nodes_batch(
+            body.repertoire_id, list(body.node_ids)
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    payload = build_workspace_payload(repo, body.repertoire_id)
+    payload["removed_node_ids"] = removed
+    return payload
+
+
 # ---- Build generate: apply-plan (2b-2d-ii) ----------------------------------
 # The browser ran the whole generation recursion locally (Stockfish + Maia3 in
 # WebAssembly) and submits a tree-mutation plan; the server runs NO engine. It

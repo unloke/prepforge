@@ -221,6 +221,10 @@ def smart_start(
         "card_index": session.current_index,
         "counts": service.counts(session),
         "prompt": smart_prompt_to_json(prompt, _CHESS),
+        # The full queue, expanded per target (expected move, run-in, hint,
+        # reply): the client runs the whole session locally off this bundle and
+        # only syncs graded attempts back in batches (/smart/sync).
+        "cards": service.session_card_bundle(session, repertoire),
         # Pre-session health snapshot: the client diffs it against
         # /smart/summary at the end to show what the session changed.
         **_smart_summary_payload(repo, repertoire),
@@ -286,6 +290,47 @@ def smart_move(
         "reply_uci": result.reply_uci,
         "reply_san": result.reply_san,
         "fen_after_reply": result.fen_after_reply,
+    }
+
+
+class SmartSyncAttempt(BaseModel):
+    node_id: str
+    correct: bool
+
+
+class SmartSyncBody(BaseModel):
+    session_id: str
+    # Graded FIRST attempts only, in play order — retries are never graded, so
+    # the client doesn't send them. Replayed through record_attempt server-side.
+    attempts: list[SmartSyncAttempt] = []
+    # Where the local session stands, so an interrupted session resumes sanely.
+    card_index: int | None = None
+    queue: list[str] | None = None  # encoded cards incl. local requeues
+    local_date: str | None = None
+
+
+@router.post("/smart/sync")
+def smart_sync(
+    body: SmartSyncBody,
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+) -> dict[str, Any]:
+    """Persist a batch of locally graded attempts plus the session position —
+    the local-first Train flush (replaces per-move ``/smart/move`` calls).
+    Touches the daily streak once per batch that actually graded something."""
+    _owned_session(repo, body.session_id, owner)
+    try:
+        written = SmartTrainingService(repo).sync_progress(
+            body.session_id,
+            [a.model_dump() for a in body.attempts],
+            card_index=body.card_index,
+            queue=body.queue,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return {
+        "synced": written,
+        "day_streak": _touch_streak(repo, owner, body.local_date) if written else None,
     }
 
 

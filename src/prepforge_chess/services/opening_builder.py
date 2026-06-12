@@ -91,6 +91,11 @@ MAX_PLAN_PV_LENGTH = 64
 # hand-played moves a user could queue between debounced flushes.
 MAX_ADD_MOVES_BATCH = 500
 
+# A local-first delete flush removes whole subtrees by their root ids; the cap
+# bounds the per-request tree walks, not the subtree sizes (deleting a node
+# always removes every descendant, exactly like the single delete_node).
+MAX_DELETE_NODES_BATCH = 200
+
 # A coordinate UCI move: from-square, to-square, optional promotion piece.
 _UCI_RE = re.compile(r"^[a-h][1-8][a-h][1-8][qrbnQRBN]?$")
 
@@ -1004,6 +1009,51 @@ class OpeningBuilderService:
         self.repository.save_repertoire(repertoire)
         self.repository.delete_opening_nodes(repertoire_id, removed_ids)
         return parent.id
+
+    def delete_nodes_batch(self, repertoire_id: str, node_ids: List[str]) -> List[str]:
+        """Delete a batch of subtrees in one load + one persist (local-first flush).
+
+        Idempotent per id: an id that no longer exists — already deleted, or
+        removed as a descendant of an earlier id in the same batch — is skipped,
+        because the client queues deletes optimistically and an over-delete must
+        not fail the whole flush. The root position is never deletable. Returns
+        every removed node id (subtree roots plus their descendants).
+        """
+        if not isinstance(node_ids, list):
+            raise ValueError("node_ids must be a list")
+        if len(node_ids) > MAX_DELETE_NODES_BATCH:
+            raise ValueError(
+                "too many nodes in batch ({0} > {1})".format(
+                    len(node_ids), MAX_DELETE_NODES_BATCH
+                )
+            )
+        repertoire = self._load_repertoire_or_raise(repertoire_id)
+
+        removed_ids: List[str] = []
+
+        def collect(target: OpeningNode) -> None:
+            removed_ids.append(target.id)
+            for child in target.children:
+                collect(child)
+
+        for node_id in node_ids:
+            if not node_id or not isinstance(node_id, str):
+                raise ValueError("each node id must be a non-empty string")
+            node = self._find_node(repertoire.root_node, node_id)
+            if node is None:
+                continue  # already gone — idempotent skip
+            if node.parent_id is None:
+                raise ValueError("cannot delete the root position")
+            parent = self._find_node(repertoire.root_node, node.parent_id)
+            if parent is None:
+                continue
+            collect(node)
+            parent.children = [c for c in parent.children if c.id != node_id]
+
+        if removed_ids:
+            self.repository.save_repertoire(repertoire)
+            self.repository.delete_opening_nodes(repertoire_id, removed_ids)
+        return removed_ids
 
     def rename_repertoire(self, repertoire_id: str, new_name: str) -> Repertoire:
         cleaned = (new_name or "").strip()

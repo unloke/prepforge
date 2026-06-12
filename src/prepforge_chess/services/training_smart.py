@@ -52,7 +52,15 @@ from prepforge_chess.storage.repositories import PrepForgeRepository
 
 # A re-queued card comes back after this many other cards — soon enough that
 # the position is still warm, far enough that it's recall rather than echo.
+# The client-side scheduler (app.js submitSmartMove) mirrors this constant.
 REQUEUE_GAP = 3
+
+# Caps for the local-first sync flush (/api/train/smart/sync): an untrusted,
+# no-compute write, fenced like opening_builder.MAX_ADD_MOVES_BATCH. A session
+# queue caps at ~30 cards × ~3 targets, and requeues only ever re-insert
+# existing cards, so legitimate batches sit far below these.
+MAX_SYNC_ATTEMPTS = 500
+MAX_SYNC_QUEUE = 500
 
 
 @dataclass(frozen=True)
@@ -311,6 +319,149 @@ class SmartTrainingService:
             hint_is_annotation=bool(annotation),
         )
 
+    # ----------------------------------------------------------------- bundle
+
+    def session_card_bundle(
+        self, session: TrainingSession, repertoire: Repertoire
+    ) -> List[dict]:
+        """Expand the session's queue into self-contained card data so the
+        client can run the whole session locally (local-first Train): per
+        target — the expected move, the run-in to animate, the hint texts and
+        the opponent reply. Cards whose targets were edited away in Build are
+        skipped, mirroring ``_context``'s stale-card skip."""
+        cards: List[dict] = []
+        for raw in session.line_order:
+            card = decode_card(raw)
+            if card is None:
+                continue
+            try:
+                path = path_to_node(repertoire.root_node, card.last_target_id)
+            except ValueError:
+                continue
+            own = own_move_nodes_on(path, repertoire.color)
+            first_index = next(
+                (i for i, node in enumerate(own) if node.id == card.first_target_id),
+                None,
+            )
+            if first_index is None:
+                continue
+            targets = []
+            for node in own[first_index:]:
+                move = node.move
+                if move is None:
+                    continue
+                path_pos = next(i for i, p in enumerate(path) if p.id == node.id)
+                run_in = [
+                    p
+                    for p in path[max(0, path_pos - RUN_IN_PLIES) : path_pos]
+                    if p.move is not None
+                ]
+                piece = piece_name_at(move.fen_before, move.uci)
+                annotation = (
+                    node.strategic_idea or node.typical_plan or (node.comment or "")
+                ).strip()
+                reply = self._reply_after(path, node)
+                targets.append(
+                    {
+                        "node_id": node.id,
+                        "uci": move.uci,
+                        "san": move.san,
+                        "fen_before": move.fen_before,
+                        "fen_after": move.fen_after,
+                        "start_fen": run_in[0].move.fen_before if run_in else move.fen_before,
+                        "run_in": [
+                            {"uci": p.move.uci, "san": p.move.san} for p in run_in
+                        ],
+                        "hint": {
+                            "strategy": annotation
+                            or heuristic_strategy(move.san, piece),
+                            "piece": "Move the {0}".format(piece)
+                            if piece
+                            else "Find the move",
+                            "annotated": bool(annotation),
+                        },
+                        "reply": None
+                        if reply is None or reply.move is None
+                        else {
+                            "uci": reply.move.uci,
+                            "san": reply.move.san,
+                            "fen_after": reply.move.fen_after,
+                        },
+                    }
+                )
+            if targets:
+                cards.append({"kind": card.kind, "encoded": raw, "targets": targets})
+        return cards
+
+    # ------------------------------------------------------------------- sync
+
+    def sync_progress(
+        self,
+        session_id: str,
+        attempts: List[dict],
+        *,
+        card_index: Optional[int] = None,
+        queue: Optional[List[str]] = None,
+    ) -> int:
+        """Persist a batch of locally graded first attempts plus the session's
+        position — the local-first Train flush. Replays each attempt through
+        ``record_attempt`` in order, so the stored spaced-repetition state is
+        identical to what the same moves would have written one-by-one via
+        ``submit_move``. Attempts on nodes edited out of the tree are skipped
+        with a light clamp, not an error. Returns how many attempts landed.
+
+        Trust note (docs/local-first-sync-plan.md §2.2): the client grades its
+        own answers, so a tampered client can fake its own SR progress — that
+        only distorts that user's own training queue, an accepted trade-off.
+        """
+        if len(attempts) > MAX_SYNC_ATTEMPTS:
+            raise ValueError(
+                "too many attempts in batch ({0} > {1})".format(
+                    len(attempts), MAX_SYNC_ATTEMPTS
+                )
+            )
+        session = self._load_session_or_raise(session_id)
+        repertoire = self._load_repertoire_or_raise(session.repertoire_id)
+        valid_ids = set()
+        stack = [repertoire.root_node]
+        while stack:
+            node = stack.pop()
+            valid_ids.add(node.id)
+            stack.extend(node.children)
+
+        written = 0
+        for item in attempts:
+            node_id = item.get("node_id")
+            if node_id not in valid_ids:
+                continue
+            stored = self.repository.load_training_progress(
+                repertoire.id, node_id
+            ) or TrainingProgress(node_id=node_id)
+            session, progress = record_attempt(
+                session=session,
+                progress=stored,
+                node_id=node_id,
+                correct=bool(item.get("correct")),
+            )
+            self.repository.save_training_progress(repertoire.id, progress)
+            written += 1
+
+        if queue is not None:
+            if len(queue) > MAX_SYNC_QUEUE:
+                raise ValueError(
+                    "queue too long ({0} > {1})".format(len(queue), MAX_SYNC_QUEUE)
+                )
+            # Only well-formed encoded cards land; a malformed entry is dropped
+            # rather than poisoning the stored session.
+            cleaned = [raw for raw in queue if decode_card(raw) is not None]
+            session = replace(session, line_order=cleaned)
+        if card_index is not None:
+            clamped = max(0, min(int(card_index), len(session.line_order)))
+            session = replace(session, current_index=clamped, current_node_id=None)
+        session = replace(session, updated_at=_utc_now())
+        self.repository.save_training_session(session)
+        return written
+
     # ------------------------------------------------------------------- move
 
     def submit_move(
@@ -371,7 +522,7 @@ class SmartTrainingService:
         if correct:
             played_san = move.san
             fen_after_player = move.fen_after
-            reply = self._reply_after(context, expected)
+            reply = self._reply_after(context.path, expected)
             if reply is not None and reply.move is not None:
                 reply_uci = reply.move.uci
                 reply_san = reply.move.san
@@ -416,15 +567,15 @@ class SmartTrainingService:
         return replace(session, line_order=line_order, updated_at=_utc_now()), True
 
     def _reply_after(
-        self, context: _CardContext, expected: OpeningNode
+        self, path: List[OpeningNode], expected: OpeningNode
     ) -> Optional[OpeningNode]:
         """The opponent move the client animates after a correct answer: the
         next node on the card's path, or — past the last target — the first
         enabled child, so even a card's final move gets its "it worked" beat."""
-        for index, node in enumerate(context.path):
+        for index, node in enumerate(path):
             if node.id == expected.id:
-                if index + 1 < len(context.path):
-                    return context.path[index + 1]
+                if index + 1 < len(path):
+                    return path[index + 1]
                 break
         return next((c for c in expected.children if c.is_enabled), None)
 

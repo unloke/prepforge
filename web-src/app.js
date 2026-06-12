@@ -13,6 +13,7 @@ import {
 import { getCachedWeights, clearWeightCache } from "./engine/maia3-weight-cache.js";
 import { createCsrfTokenSource, isSafeMethod, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
+import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { describeMove } from "./explain.js";
 import { buildMoveFeatures, isBrilliantByMaia, markBrilliant } from "./coach/features.js";
 import { attachIntuition } from "./coach/intuition.js";
@@ -254,12 +255,18 @@ const appState = {
   // Moves land in the local tree instantly (no per-move round-trip) and flush to
   // the server in debounced batches via POST /api/build/add-moves.
   buildPending: [], // queued { tempId, parentRef, uci, node } awaiting a flush
+  buildPendingDeletes: [], // queued subtree-root node ids awaiting a delete flush
   buildTmpCounter: 0, // monotonic source of `tmp-N` provisional ids
   buildIdMap: {}, // tmp -> real id, accumulated across reconciles this session
   buildFlushTimer: null, // idle-debounce handle
   buildFlushing: null, // in-flight flush promise (hard flush awaits it)
   buildSyncState: "saved", // saved | dirty | syncing | error
   buildSyncRetry: 0, // exponential-backoff attempt counter
+  // Subtree-root ids pruned locally but still inside their undo window — not yet
+  // queued for the server. A reconcile re-hydrate must re-prune these too.
+  buildUndoDeletes: new Set(),
+  // Repertoire ids hidden from lists while their delete-undo window is open.
+  pendingRepDeletes: new Set(),
   trainingRepertoireId: null,
   training: null,
   // Which trainer the Start button launches: "smart" (card queue, default) or
@@ -267,6 +274,18 @@ const appState = {
   trainMode: "smart",
   // Live smart-queue session state (see the Smart queue trainer section).
   smart: null,
+  // ---- Local-first Train sync (plan §2) -----------------------------------
+  // The smart session runs entirely in the browser off the /smart/start card
+  // bundle; graded first attempts + the session position flush in debounced
+  // batches via POST /api/train/smart/sync.
+  trainSync: {
+    pending: [], // queued { session_id, node_id, correct } graded attempts
+    dirty: false, // position (card_index/queue) changed since the last flush
+    timer: null, // idle-debounce handle
+    flushing: null, // in-flight flush promise
+    retry: 0, // exponential-backoff attempt counter
+  },
+  trainSyncState: "saved", // saved | dirty | syncing | error (Train save chip)
   // The LIVE Lichess token's username (drives latest-game fetch / replay). Null when
   // the token is absent/expired even if still signed in.
   lichessUsername: null,
@@ -741,6 +760,62 @@ class ToastStack {
 }
 
 const jobToast = new ToastStack();
+
+// ===== Undo notifications =====================================================
+// Destructive actions apply to the UI instantly but only reach the server once
+// the undo window closes — no type-to-confirm friction, and a mid-window Undo
+// costs zero server requests. Commits are forced (commitPendingUndos) before
+// anything that needs server truth or before the page goes away.
+const UNDO_TOAST_MS = 5000;
+const pendingUndoCommits = new Set();
+
+function showUndoToast({ title, message, onUndo, onCommit }) {
+  let settled = false;
+  let toast = null;
+  const commit = () => {
+    if (settled) return;
+    settled = true;
+    pendingUndoCommits.delete(commit);
+    try {
+      onCommit();
+    } catch (_) {
+      /* best-effort */
+    }
+    if (toast) toast.dismiss();
+  };
+  pendingUndoCommits.add(commit);
+  toast = jobToast.notify({
+    title,
+    message,
+    actions: [
+      {
+        label: "Undo",
+        primary: true,
+        onClick: () => {
+          if (settled) return;
+          settled = true;
+          pendingUndoCommits.delete(commit);
+          try {
+            onUndo();
+          } catch (_) {
+            /* best-effort */
+          }
+        },
+      },
+    ],
+  });
+  // Hovering the card pauses the countdown (Toast's pointer gating), so the
+  // window never closes while the user is reaching for Undo.
+  toast._arm(UNDO_TOAST_MS, commit);
+  return commit;
+}
+
+// Close every open undo window NOW. Called before hard flushes (an operation
+// needs server truth) and on page hide/unload (the commits use keepalive-safe
+// requests where needed).
+function commitPendingUndos() {
+  for (const commit of [...pendingUndoCommits]) commit();
+}
 
 class EngineWidget {
   constructor() {
@@ -2843,12 +2918,17 @@ async function loadDashboardRepertoires() {
   const container = document.getElementById("dashboard-repertoires");
   try {
     const payload = await api("/api/repertoires");
-    if (!payload.repertoires || !payload.repertoires.length) {
+    // Hide rows whose delete is still inside its undo window — the server hasn't
+    // been told yet, so its list still contains them.
+    const visible = (payload.repertoires || []).filter(
+      (item) => !appState.pendingRepDeletes.has(String(item.id))
+    );
+    if (!visible.length) {
       container.innerHTML =
         '<div class="empty-state">No repertoires yet. Use Build to create one.</div>';
       return;
     }
-    container.innerHTML = payload.repertoires
+    container.innerHTML = visible
       .map((item) => {
         const id = escapeHtml(item.id);
         const name = escapeHtml(item.name);
@@ -3231,29 +3311,21 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       return;
     }
     if (action === "delete") {
-      const confirmed = await showInputModal({
-        title: "Delete repertoire?",
-        okLabel: "Delete",
-        fields: [
-          {
-            name: "confirm",
-            label: "This removes the repertoire and every move in it. Type \"delete\" to confirm.",
-            default: "",
-          },
-        ],
-      });
-      if (!confirmed) return;
-      if ((confirmed.confirm || "").trim().toLowerCase() !== "delete") {
-        setStatus("Delete cancelled");
-        return;
-      }
-      await postJson("/api/repertoires/delete", { repertoire_id: repertoireId });
-      if (appState.build && appState.build.repertoire_id === repertoireId) {
+      // Undo-toast model (no type-to-confirm): hide the repertoire everywhere
+      // immediately; the server delete only fires once the undo window closes.
+      const repKey = String(repertoireId);
+      if (appState.pendingRepDeletes.has(repKey)) return;
+      const meta = await fetchRepertoireMeta(repertoireId).catch(() => null);
+      appState.pendingRepDeletes.add(repKey);
+      if (appState.build && String(appState.build.repertoire_id) === repKey) {
         // Drop any local-first sync state — flushing into a deleted rep is pointless
-        // and a pending timer would fire against a now-null tree.
+        // and a pending timer would fire against a now-null tree. This happens at
+        // delete time (not commit time) so the doomed tree can't keep taking edits.
         clearTimeout(appState.buildFlushTimer);
         appState.buildFlushTimer = null;
         appState.buildPending = [];
+        appState.buildPendingDeletes = [];
+        appState.buildUndoDeletes = new Set();
         appState.buildIdMap = {};
         appState.buildSyncState = "saved";
         appState.build = null;
@@ -3263,11 +3335,44 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
         renderBuildSync();
         document.getElementById("build-board-label").textContent = "No repertoire";
       }
-      if (appState.trainingRepertoireId === repertoireId) {
+      if (String(appState.trainingRepertoireId) === repKey) {
         appState.trainingRepertoireId = null;
       }
       await loadDashboardRepertoires();
-      setStatus("Deleted repertoire");
+      showUndoToast({
+        title: "Repertoire deleted",
+        message: `"${meta?.name || "Repertoire"}" and every move in it will be removed.`,
+        onUndo: () => {
+          appState.pendingRepDeletes.delete(repKey);
+          setStatus("Delete undone");
+          loadDashboardRepertoires();
+        },
+        onCommit: () => {
+          // keepalive so a commit forced by beforeunload still reaches the server.
+          const token = readCsrfCookie();
+          fetch("/api/repertoires/delete", {
+            method: "POST",
+            credentials: "same-origin",
+            keepalive: true,
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { [CSRF_HEADER]: token } : {}),
+            },
+            body: JSON.stringify({ repertoire_id: repertoireId }),
+          })
+            .then((response) => {
+              appState.pendingRepDeletes.delete(repKey);
+              if (!response.ok) {
+                setStatus("Delete failed — repertoire restored");
+                loadDashboardRepertoires();
+              }
+            })
+            .catch(() => {
+              appState.pendingRepDeletes.delete(repKey);
+              loadDashboardRepertoires();
+            });
+        },
+      });
       return;
     }
   } catch (error) {
@@ -4160,6 +4265,10 @@ async function hydrateBuild(payload, selectedNodeId = null) {
     clearTimeout(appState.buildFlushTimer);
     appState.buildFlushTimer = null;
     appState.buildPending = [];
+    appState.buildPendingDeletes = [];
+    // Stale undo windows from the old repertoire become no-ops (their commit
+    // guards on repertoire id), but their ids must not prune the new tree.
+    appState.buildUndoDeletes = new Set();
     appState.buildIdMap = {};
     appState.buildSyncState = "saved";
     appState.buildSyncRetry = 0;
@@ -4766,6 +4875,20 @@ function setBuildSync(state) {
   renderBuildSync();
 }
 
+const SYNC_CHIP_VARIANTS = {
+  saved: { cls: "is-saved", text: "✓ Saved" },
+  dirty: { cls: "is-dirty", text: "• Unsaved changes" },
+  syncing: { cls: "is-syncing", text: "↻ Saving…" },
+  error: { cls: "is-error", text: "⚠ Offline — will retry" },
+};
+
+function renderSyncChip(el, state) {
+  const v = SYNC_CHIP_VARIANTS[state] || SYNC_CHIP_VARIANTS.saved;
+  el.hidden = false;
+  el.className = `build-sync ${v.cls}`;
+  el.textContent = v.text;
+}
+
 function renderBuildSync() {
   const el = document.getElementById("build-sync");
   if (!el) return;
@@ -4775,16 +4898,25 @@ function renderBuildSync() {
     el.hidden = true;
     return;
   }
-  const variants = {
-    saved: { cls: "is-saved", text: "✓ Saved" },
-    dirty: { cls: "is-dirty", text: "• Unsaved changes" },
-    syncing: { cls: "is-syncing", text: "↻ Saving…" },
-    error: { cls: "is-error", text: "⚠ Offline — will retry" },
-  };
-  const v = variants[appState.buildSyncState] || variants.saved;
-  el.hidden = false;
-  el.className = `build-sync ${v.cls}`;
-  el.textContent = v.text;
+  renderSyncChip(el, appState.buildSyncState);
+}
+
+// Train's counterpart chip (same look/classes): visible during a smart session
+// or while abandoned-session attempts still wait to land.
+function setTrainSyncState(state) {
+  appState.trainSyncState = state;
+  renderTrainSync();
+}
+
+function renderTrainSync() {
+  const el = document.getElementById("train-sync");
+  if (!el) return;
+  const sync = appState.trainSync;
+  if (!appState.smart && !sync.pending.length && !sync.dirty) {
+    el.hidden = true;
+    return;
+  }
+  renderSyncChip(el, appState.trainSyncState);
 }
 
 // ----- Debounce + flush -------------------------------------------------------
@@ -4796,28 +4928,60 @@ function scheduleBuildFlush() {
   }, BUILD_FLUSH_IDLE_MS);
 }
 
-// Flush the pending batch. Resolves to true on success, false on failure (the
-// batch is requeued + a backoff retry is armed). If a flush is already in flight
-// the same promise is returned, so hard-flush callers can simply await it.
+// Flush the pending batches (deletes first, then adds). Resolves to true on
+// success, false on failure (the batches are requeued + a backoff retry is
+// armed). If a flush is already in flight the same promise is returned, so
+// hard-flush callers can simply await it.
 function flushBuildMoves() {
   if (appState.buildFlushing) return appState.buildFlushing;
-  if (!appState.build || !appState.buildPending.length) return Promise.resolve(true);
+  if (!appState.build || (!appState.buildPending.length && !appState.buildPendingDeletes.length))
+    return Promise.resolve(true);
   clearTimeout(appState.buildFlushTimer);
   appState.buildFlushTimer = null;
 
-  // Snapshot the in-flight batch; moves made DURING the round-trip accumulate in a
-  // fresh queue and must survive the reconcile (§1.4 — the load-bearing bit).
+  // Snapshot the in-flight batches; moves made DURING the round-trip accumulate
+  // in fresh queues and must survive the reconcile (§1.4 — the load-bearing bit).
   const batch = appState.buildPending;
   appState.buildPending = [];
+  const deleteBatch = appState.buildPendingDeletes;
+  appState.buildPendingDeletes = [];
   const repertoireId = appState.build.repertoire_id;
   setBuildSync("syncing");
 
   appState.buildFlushing = (async () => {
     try {
-      const payload = await postJson("/api/build/add-moves", {
-        repertoire_id: repertoireId,
-        moves: batch.map((m) => ({ tempId: m.tempId, parentRef: m.parentRef, uci: m.uci })),
-      });
+      // Deletes go FIRST: replaying a just-deleted move must create a fresh
+      // node, not dedupe against the dying server one. A still-tmp id means the
+      // node never reached the server (its pending add was cancelled) — drop it.
+      const deleteIds = [
+        ...new Set(deleteBatch.map(resolveBuildId).filter((id) => !String(id).startsWith("tmp-"))),
+      ];
+      let payload = null;
+      if (deleteIds.length) {
+        payload = await postJson("/api/build/delete-nodes", {
+          repertoire_id: repertoireId,
+          node_ids: deleteIds,
+        });
+      }
+      if (batch.length) {
+        // The add response supersedes the delete payload (it's newer truth).
+        payload = await postJson("/api/build/add-moves", {
+          repertoire_id: repertoireId,
+          moves: batch.map((m) => ({ tempId: m.tempId, parentRef: m.parentRef, uci: m.uci })),
+        });
+      }
+      // Both batches can drain to nothing (e.g. deletes of never-flushed tmp
+      // nodes): nothing reached the server, so there's nothing to reconcile.
+      if (!payload) {
+        appState.buildSyncRetry = 0;
+        if (appState.buildPending.length || appState.buildPendingDeletes.length) {
+          setBuildSync("dirty");
+          scheduleBuildFlush();
+        } else {
+          setBuildSync("saved");
+        }
+        return true;
+      }
       const idMap = payload.id_map || {};
       Object.assign(appState.buildIdMap, idMap);
 
@@ -4845,6 +5009,10 @@ function flushBuildMoves() {
       if (branchPick) appState.buildBranchChoiceId = branchPick;
 
       reapplyPendingBuildNodes(stillPending, idMap);
+      // Subtrees deleted DURING the round-trip were resurrected by the hydrate
+      // (the server still had them) — prune them again; their delete ops are
+      // queued and flush next cycle.
+      reapplyPendingBuildDeletes();
 
       // Restore the user's selection if it was a still-pending tmp node (now back
       // in the tree after reapply) and hydrate couldn't land on it.
@@ -4857,7 +5025,7 @@ function flushBuildMoves() {
       }
 
       appState.buildSyncRetry = 0;
-      if (appState.buildPending.length) {
+      if (appState.buildPending.length || appState.buildPendingDeletes.length) {
         setBuildSync("dirty");
         scheduleBuildFlush();
       } else {
@@ -4868,17 +5036,18 @@ function flushBuildMoves() {
       const status = error && error.status;
       if (status && status >= 400 && status < 500) {
         // Validation 4xx shouldn't happen for legal moves, but defend: drop the bad
-        // batch and re-hydrate from server truth so the local tree can't drift.
+        // batches and re-hydrate from server truth so the local tree can't drift.
         setStatus(error.message);
         try {
           const fresh = await api(
             `/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`
           );
           await hydrateBuild(fresh, fresh.selected_node_id);
+          reapplyPendingBuildDeletes();
         } catch (_) {
           /* best-effort resync */
         }
-        if (appState.buildPending.length) {
+        if (appState.buildPending.length || appState.buildPendingDeletes.length) {
           setBuildSync("dirty");
           scheduleBuildFlush();
         } else {
@@ -4886,9 +5055,14 @@ function flushBuildMoves() {
         }
         return false;
       }
-      // Network / 5xx: requeue the in-flight batch ahead of any newer moves and
+      // Network / 5xx: requeue the in-flight batches ahead of any newer ops and
       // back off exponentially. The next played move also re-arms a flush.
-      appState.buildPending = batch.concat(appState.buildPending);
+      // Adds whose node was deleted locally while the batch was in flight stay
+      // dropped — recreating them server-side would resurrect a deleted branch.
+      appState.buildPending = batch
+        .filter((m) => appState.buildNodeById.has(m.tempId))
+        .concat(appState.buildPending);
+      appState.buildPendingDeletes = deleteBatch.concat(appState.buildPendingDeletes);
       appState.buildSyncRetry = Math.min(appState.buildSyncRetry + 1, 6);
       setBuildSync("error");
       const delay = Math.min(
@@ -4935,13 +5109,144 @@ function reapplyPendingBuildNodes(pending, idMap) {
   renderBuilderTree();
 }
 
+// Collect a subtree (the flat list keys children by parent_id) and remove it
+// from the local tree. Returns the removed ids; rendering is the caller's job.
+function pruneLocalBuildSubtree(rootId) {
+  const doomed = new Set([rootId]);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const n of appState.build.nodes) {
+      if (!doomed.has(n.id) && doomed.has(n.parent_id)) {
+        doomed.add(n.id);
+        grew = true;
+      }
+    }
+  }
+  appState.build.nodes = appState.build.nodes.filter((n) => !doomed.has(n.id));
+  for (const id of doomed) appState.buildNodeById.delete(id);
+  return doomed;
+}
+
+// Re-prune subtrees whose delete is still queued after a hydrate resurrected
+// them (the server hasn't seen the delete yet). Mirrors reapplyPendingBuildNodes
+// for the delete half of the local-first queue.
+function reapplyPendingBuildDeletes() {
+  // Undo-window prunes count too: the server still has those subtrees, so a
+  // hydrate resurrects them just like queued-but-unflushed deletes.
+  const ids = [...appState.buildPendingDeletes, ...appState.buildUndoDeletes];
+  if (!appState.build || !ids.length) return;
+  let pruned = false;
+  for (const id of ids) {
+    const resolved = resolveBuildId(id);
+    const node = appState.buildNodeById.get(resolved);
+    if (!node) continue;
+    const parentId = node.parent_id;
+    const doomed = pruneLocalBuildSubtree(resolved);
+    pruned = true;
+    if (doomed.has(appState.buildCurrentNodeId) && appState.buildNodeById.has(parentId)) {
+      selectBuildNode(parentId);
+    }
+  }
+  if (pruned) renderBuilderTree();
+}
+
+// Local-first delete (no confirmation by design — pruning lines is a routine
+// Build edit, and the flush model makes it cheap): drop the subtree from the
+// client tree immediately, cancel any pending adds inside it, and queue the
+// subtree root for the debounced delete flush. A node that never reached the
+// server (its add is still pending) is cancelled outright — no server op at all.
+async function deleteBuildNodeLocal(nodeId) {
+  const node = appState.buildNodeById.get(nodeId);
+  if (!node || !appState.build) return;
+  if (!node.parent_id) {
+    setStatus("Can't delete the starting position");
+    return;
+  }
+  const repId = appState.build.repertoire_id;
+  const parentId = node.parent_id;
+  const prevSelection = appState.buildCurrentNodeId;
+  const prevBranchChoice = appState.buildBranchChoiceId;
+  const nodesBefore = appState.build.nodes;
+  const doomed = pruneLocalBuildSubtree(nodeId);
+  const removedNodes = nodesBefore.filter((n) => doomed.has(n.id));
+  // Park pending adds inside the subtree with the undo entry. If the root itself
+  // was one of them the server never saw it, so no delete needs to flush for it;
+  // descendants of a real root are deleted server-side by the subtree delete anyway.
+  const rootWasLocalOnly = appState.buildPending.some((m) => m.tempId === nodeId);
+  const parkedAdds = appState.buildPending.filter((m) => doomed.has(m.tempId));
+  appState.buildPending = appState.buildPending.filter((m) => !doomed.has(m.tempId));
+  if (appState.buildBranchChoiceId && doomed.has(appState.buildBranchChoiceId)) {
+    appState.buildBranchChoiceId = null;
+  }
+  if (doomed.has(appState.buildCurrentNodeId)) {
+    await selectBuildNode(parentId);
+  } else {
+    renderBuilderTree();
+  }
+  // The delete doesn't queue for the server until the undo window closes; until
+  // then it lives in buildUndoDeletes so a reconcile re-hydrate re-prunes it.
+  appState.buildUndoDeletes.add(nodeId);
+  const extra = doomed.size > 1 ? ` (+${doomed.size - 1} after it)` : "";
+  showUndoToast({
+    title: "Move deleted",
+    message: `${node.san || "Move"}${extra} removed`,
+    onCommit: () => {
+      appState.buildUndoDeletes.delete(nodeId);
+      if (!appState.build || appState.build.repertoire_id !== repId) return;
+      if (!rootWasLocalOnly) appState.buildPendingDeletes.push(nodeId);
+      if (appState.buildPending.length || appState.buildPendingDeletes.length) {
+        setBuildSync("dirty");
+        scheduleBuildFlush();
+      }
+    },
+    onUndo: async () => {
+      appState.buildUndoDeletes.delete(nodeId);
+      if (!appState.build || appState.build.repertoire_id !== repId) return;
+      for (const n of removedNodes) {
+        if (!appState.buildNodeById.has(n.id)) {
+          appState.build.nodes.push(n);
+          appState.buildNodeById.set(n.id, n);
+        }
+      }
+      for (const m of parkedAdds) {
+        // The parent may have reconciled tmp -> real while the add was parked.
+        m.parentRef = resolveBuildId(m.parentRef);
+        m.node.parent_id = m.parentRef;
+        appState.buildPending.push(m);
+      }
+      if (
+        !appState.buildBranchChoiceId &&
+        prevBranchChoice &&
+        appState.buildNodeById.has(prevBranchChoice)
+      ) {
+        appState.buildBranchChoiceId = prevBranchChoice;
+      }
+      if (prevSelection && appState.buildNodeById.has(prevSelection)) {
+        await selectBuildNode(prevSelection);
+      } else {
+        renderBuilderTree();
+      }
+      if (parkedAdds.length) {
+        setBuildSync("dirty");
+        scheduleBuildFlush();
+      }
+      setStatus(`Restored ${node.san || "move"}`);
+    },
+  });
+  setStatus(`Deleted ${node.san || "move"}`);
+}
+
 // Drain every pending move before an operation that needs server truth or a real
 // node id (Generate anchor, export, node actions, repertoire switch). Throws if a
 // move can't be synced so the caller can abort rather than 400 on a tmp id.
 async function hardFlushBuild() {
+  // Open undo windows must close first: server truth has to include those
+  // deletes (or the undone restore) before any operation depends on it.
+  commitPendingUndos();
   if (!appState.build) return;
   if (appState.buildFlushing) await appState.buildFlushing.catch(() => {});
-  while (appState.buildPending.length) {
+  while (appState.buildPending.length || appState.buildPendingDeletes.length) {
     const ok = await flushBuildMoves();
     if (appState.buildFlushing) await appState.buildFlushing.catch(() => {});
     if (!ok) {
@@ -4954,26 +5259,49 @@ async function hardFlushBuild() {
 // the API requires, so a keepalive fetch (which can) is used instead — fire and
 // forget; the next load re-hydrates from server truth regardless.
 function beaconFlushBuild() {
-  if (!appState.build || !appState.buildPending.length) return;
+  // Close undo windows so their deletes ride this last-ditch flush (the rep
+  // delete commit is itself keepalive-safe).
+  commitPendingUndos();
+  if (!appState.build) return;
+  if (!appState.buildPending.length && !appState.buildPendingDeletes.length) return;
   const token = readCsrfCookie();
-  const body = JSON.stringify({
-    repertoire_id: appState.build.repertoire_id,
-    moves: appState.buildPending.map((m) => ({
-      tempId: m.tempId,
-      parentRef: m.parentRef,
-      uci: m.uci,
-    })),
-  });
-  try {
-    fetch("/api/build/add-moves", {
-      method: "POST",
-      credentials: "same-origin",
-      keepalive: true,
-      headers: { "Content-Type": "application/json", ...(token ? { [CSRF_HEADER]: token } : {}) },
-      body,
-    }).catch(() => {});
-  } catch (_) {
-    /* best-effort */
+  const send = (path, payload) => {
+    try {
+      fetch(path, {
+        method: "POST",
+        credentials: "same-origin",
+        keepalive: true,
+        headers: { "Content-Type": "application/json", ...(token ? { [CSRF_HEADER]: token } : {}) },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+    } catch (_) {
+      /* best-effort */
+    }
+  };
+  // Same order as the real flush: deletes before adds. Both fire-and-forget;
+  // the next page load re-hydrates from server truth regardless.
+  const deleteIds = [
+    ...new Set(
+      appState.buildPendingDeletes
+        .map(resolveBuildId)
+        .filter((id) => !String(id).startsWith("tmp-"))
+    ),
+  ];
+  if (deleteIds.length) {
+    send("/api/build/delete-nodes", {
+      repertoire_id: appState.build.repertoire_id,
+      node_ids: deleteIds,
+    });
+  }
+  if (appState.buildPending.length) {
+    send("/api/build/add-moves", {
+      repertoire_id: appState.build.repertoire_id,
+      moves: appState.buildPending.map((m) => ({
+        tempId: m.tempId,
+        parentRef: m.parentRef,
+        uci: m.uci,
+      })),
+    });
   }
 }
 
@@ -5438,7 +5766,14 @@ async function handleNodeContextAction(action, nodeId) {
   closeNodeContextMenu();
   let node = appState.buildNodeById.get(nodeId);
   if (!node) return;
-  // Every action here references the node by id on the server (or, for generate,
+  // Delete is local-first (and confirmation-free): prune the subtree from the
+  // client tree immediately and let the debounced flush tell the server. No
+  // hard flush — the delete queue handles tmp/real resolution itself.
+  if (action === "delete") {
+    await deleteBuildNodeLocal(nodeId);
+    return;
+  }
+  // Every other action references the node by id on the server (or, for generate,
   // anchors apply-plan on it). Drain pending local moves so a tmp id is real, then
   // resolve this node's id (it may have just been minted locally) + re-read it.
   try {
@@ -5472,32 +5807,6 @@ async function handleNodeContextAction(action, nodeId) {
       });
       await navigator.clipboard.writeText(payload.content);
       setStatus("Line PGN copied");
-      return;
-    }
-    if (action === "delete") {
-      const confirmed = await showInputModal({
-        title: "Delete this move and its branch?",
-        okLabel: "Delete",
-        fields: [
-          {
-            name: "confirm",
-            label: `Type "delete" to confirm removing ${node.san}`,
-            default: "",
-          },
-        ],
-      });
-      if (!confirmed) return;
-      if ((confirmed.confirm || "").trim().toLowerCase() !== "delete") {
-        setStatus("Delete cancelled (confirmation text didn't match)");
-        return;
-      }
-      const payload = await postJson("/api/build/action", {
-        repertoire_id: appState.build.repertoire_id,
-        node_id: nodeId,
-        action: "delete",
-      });
-      await hydrateBuild(payload, payload.selected_node_id);
-      setStatus(`Deleted ${node.san}`);
       return;
     }
     let value = null;
@@ -5710,6 +6019,14 @@ async function startTraining(mode) {
   if (!repertoireId) {
     setStatus("Create a repertoire in Build first, then train it.");
     setTrainBanner("done", "No repertoire to train", "Build a repertoire, then start the trainer.");
+    return;
+  }
+  // Same freshness rule as the smart queue: unsynced Build edits must land
+  // before the server walks the tree into lines.
+  try {
+    await hardFlushBuild();
+  } catch (error) {
+    setStatus(error.message);
     return;
   }
   const body = { seed: 13, mode, repertoire_id: repertoireId };
@@ -6174,9 +6491,31 @@ async function startSmartTraining() {
     setTrainBanner("done", "No repertoire to train", "Build a repertoire, then start the trainer.");
     return;
   }
+  // Train must see the latest tree: drain unsynced Build edits (adds + deletes)
+  // before the server builds the queue, else a just-added line wouldn't be in
+  // it and a just-deleted one would.
+  try {
+    await hardFlushBuild();
+  } catch (error) {
+    setStatus(error.message);
+    return;
+  }
+  // Land any leftover graded attempts (an abandoned previous session) before
+  // the new queue is scheduled from SR state. Strict: starting anyway would
+  // schedule the queue off stale SR state, so block until the sync lands.
+  const trainSynced = await flushTrainSync().catch(() => false);
+  if (!trainSynced) {
+    setStatus("Couldn't sync your last session — check your connection and try again.");
+    return;
+  }
   let payload;
   try {
-    payload = await postJson("/api/train/smart/start", { repertoire_id: repertoireId });
+    // fresh: always rebuild the queue from the current tree + SR state — a
+    // resumed stale queue is exactly the desync this avoids.
+    payload = await postJson("/api/train/smart/start", {
+      repertoire_id: repertoireId,
+      fresh: true,
+    });
   } catch (error) {
     setStatus(error.message);
     setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Build, then train.");
@@ -6188,12 +6527,23 @@ async function startSmartTraining() {
   // busy flag set, so clear it before the new session takes the board.
   appState.trainBusy = false;
   clearBlitzTimer();
+  // The whole session runs locally off this card bundle (grading, advancement,
+  // requeue, skip); only graded attempts + the position sync back, batched.
+  const queue = (payload.cards || []).filter((c) => c.targets && c.targets.length);
+  if (!queue.length) {
+    setStatus("Nothing to train yet");
+    setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Build, then train.");
+    return;
+  }
   appState.smart = {
     sessionId: payload.session_id,
     repertoireId: payload.repertoire_id,
     repertoireName: payload.repertoire_name,
     color: payload.color,
-    totalCards: payload.total_cards,
+    queue,
+    cardIndex: 0,
+    targetIndex: 0,
+    totalCards: queue.length,
     counts: { ...payload.counts },
     healthBefore: payload.health || null,
     prompt: null,
@@ -6212,11 +6562,44 @@ async function startSmartTraining() {
   setSmartPanelsHidden();
   renderSmartQueueStrip();
   renderTrainStats();
+  setTrainSyncState("saved");
   document.getElementById("train-board-label").textContent =
     `${payload.repertoire_name} - you play ${payload.color}`;
-  const resumed = payload.card_index > 0 ? " (resumed)" : "";
-  setStatus(`Queue ready: ${payload.total_cards} cards${resumed}`);
-  await presentSmartPrompt(payload.prompt);
+  setStatus(`Queue ready: ${queue.length} cards`);
+  await presentSmartPrompt(smartLocalPrompt(appState.smart));
+}
+
+// Build the current prompt from the local queue — the client-side counterpart
+// of the server's _prompt_from_context. Legal moves come from chess.js, the
+// rest is precomputed in the start bundle.
+function smartLocalPrompt(smart) {
+  const card = smart.queue[smart.cardIndex];
+  if (!card) return null;
+  const target = card.targets[smart.targetIndex];
+  if (!target) return null;
+  let legal = [];
+  try {
+    legal = localBoardInfo(target.fen_before).legal_moves;
+  } catch (_) {
+    /* malformed FEN: the board just won't accept moves */
+  }
+  return {
+    session_id: smart.sessionId,
+    card_index: smart.cardIndex,
+    total_cards: smart.queue.length,
+    kind: card.kind,
+    target_index: smart.targetIndex,
+    targets_total: card.targets.length,
+    expected_node_id: target.node_id,
+    expected_uci: target.uci,
+    expected_san: target.san,
+    fen_before: target.fen_before,
+    start_fen: target.start_fen,
+    run_in: target.run_in || [],
+    hint: target.hint || {},
+    legal_moves: legal,
+    target,
+  };
 }
 
 // The queue composition strip: one proportional segment + legend chip per kind.
@@ -6325,6 +6708,22 @@ async function presentSmartPrompt(prompt) {
   }
 }
 
+// Mirror of services/training_smart.REQUEUE_GAP — keep in sync.
+const SMART_REQUEUE_GAP = 3;
+
+// After a second wrong attempt the card returns a few positions later — unless
+// an identical copy is already pending, so a stubborn miss queues one retry at
+// a time. Parity with SmartTrainingService._requeue_card.
+function requeueSmartCard(smart) {
+  const card = smart.queue[smart.cardIndex];
+  if (!card) return false;
+  const pendingAhead = smart.queue.slice(smart.cardIndex + 1);
+  if (pendingAhead.some((c) => c.encoded === card.encoded)) return false;
+  const insertAt = Math.min(smart.cardIndex + SMART_REQUEUE_GAP, smart.queue.length);
+  smart.queue.splice(insertAt, 0, card);
+  return true;
+}
+
 async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   const smart = appState.smart;
   if (!smart || !smart.prompt || !playedUci || appState.trainBusy) return;
@@ -6333,24 +6732,15 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   const attempt = smart.attempt;
   // Land the dragged move immediately; a blitz timeout has no real move to show.
   if (!timedOut) await optimisticBoardMove(boards.train, prompt.fen_before, playedUci);
-  let result;
-  try {
-    result = await postJson("/api/train/smart/move", {
-      session_id: smart.sessionId,
-      played_uci: playedUci,
-      attempt,
-      local_date: localDateString(),
-    });
-  } catch (error) {
-    setStatus(error.message);
-    return;
-  }
-  if (result.day_streak) appState.dayStreak = result.day_streak;
+  // Grade locally — the prompt carries the answer (it's the player's own
+  // repertoire). Only the first attempt writes spaced repetition; it lands on
+  // the server in the next debounced /smart/sync batch, not per move.
+  const correct = playedUci === prompt.expected_uci;
+  if (attempt === 1) queueTrainAttempt(smart, prompt.expected_node_id, correct);
   const stats = appState.trainStats || (trainStatsReset(), appState.trainStats);
-  smart.totalCards = result.total_cards;
 
-  if (!result.correct) {
-    // Only the first answer is graded (matches the server's SR write); the
+  if (!correct) {
+    // Only the first answer is graded (matches the synced SR write); the
     // accuracy chips therefore never count retries.
     if (attempt === 1) {
       stats.mistakes += 1;
@@ -6367,7 +6757,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       });
     } catch (_) {
       // Wrong-move preview is cosmetic (a blitz timeout has no move to show);
-      // grading already happened server-side.
+      // grading already happened above.
     }
     playSound("capture");
     if (attempt === 1) {
@@ -6384,17 +6774,20 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       // a few positions later (replaces the old end-of-session recovery round).
       stats.streak = 0;
       renderTrainStats();
-      if (result.requeued) {
+      const requeued = requeueSmartCard(smart);
+      if (requeued) {
+        smart.totalCards = smart.queue.length;
         smart.counts[prompt.kind] = (smart.counts[prompt.kind] || 0) + 1;
         renderSmartQueueStrip();
+        markTrainPositionDirty();
       }
       // The answer is on screen anyway, so say WHY it's the move — a reveal that
       // teaches sticks better than a bare "it's Nf3".
       const why = teachWhy(prompt, "");
       setTrainBanner(
         "reveal",
-        `It's ${result.expected_san}`,
-        `${why ? `${why} ` : ""}${result.requeued ? "Play it to continue - this card comes back in a few cards." : "Play it to continue."}`
+        `It's ${prompt.expected_san}`,
+        `${why ? `${why} ` : ""}${requeued ? "Play it to continue - this card comes back in a few cards." : "Play it to continue."}`
       );
     }
     await sleep(950);
@@ -6404,7 +6797,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       legalMoves: prompt.legal_moves || [],
       lastMove: null,
     });
-    if (attempt >= 2) boards.train.setEngineArrow(result.expected_uci);
+    if (attempt >= 2) boards.train.setEngineArrow(prompt.expected_uci);
     appState.trainBusy = false;
     smart.attempt = attempt + 1;
     return;
@@ -6425,31 +6818,42 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   // 1) Land the player's move, 2) after a beat the opponent replies, 3) flow
   // straight into the next prompt (same-card prompts skip the run-in because
   // the board is already on the position).
+  const target = prompt.target;
   boards.train.setPosition({
-    fen: result.fen_after_player || prompt.fen_before,
+    fen: target.fen_after || prompt.fen_before,
     legalMoves: [],
-    lastMove: result.played_uci,
+    lastMove: playedUci,
   });
   const praise =
     attempt > 1 ? "Got it this time" : prompt.kind === "new" ? "Learned!" : "Correct!";
-  setTrainBanner("correct", praise, result.played_san ? `You played ${result.played_san}` : "");
-  if (result.reply_uci && result.fen_after_reply) {
+  setTrainBanner("correct", praise, target.san ? `You played ${target.san}` : "");
+  if (target.reply && target.reply.uci && target.reply.fen_after) {
     await sleep(520);
     boards.train.setPosition({
-      fen: result.fen_after_reply,
+      fen: target.reply.fen_after,
       legalMoves: [],
-      lastMove: result.reply_uci,
+      lastMove: target.reply.uci,
     });
-    setTrainBanner("move", "Opponent replies", result.reply_san || "");
+    setTrainBanner("move", "Opponent replies", target.reply.san || "");
     await sleep(440);
   } else {
     await sleep(480);
   }
   if (appState.smart !== smart) return;
-  if (result.card_completed) smart.cardsDone += 1;
+  // Advance the local session: next target inside the card, else next card.
+  const card = smart.queue[smart.cardIndex];
+  if (card && smart.targetIndex + 1 < card.targets.length) {
+    smart.targetIndex += 1;
+  } else {
+    smart.cardsDone += 1;
+    smart.cardIndex += 1;
+    smart.targetIndex = 0;
+  }
+  markTrainPositionDirty();
   appState.trainBusy = false;
-  if (result.prompt) {
-    await presentSmartPrompt(result.prompt);
+  const next = smartLocalPrompt(smart);
+  if (next) {
+    await presentSmartPrompt(next);
   } else {
     await finishSmartSession();
   }
@@ -6463,17 +6867,18 @@ async function skipSmartCard() {
   }
   if (appState.trainBusy) return;
   clearBlitzTimer();
-  try {
-    const result = await postJson("/api/train/smart/skip", { session_id: smart.sessionId });
-    if (result.prompt) {
-      setStatus("Skipped to the next card");
-      await presentSmartPrompt(result.prompt);
-    } else {
-      setStatus("Session complete");
-      await finishSmartSession();
-    }
-  } catch (error) {
-    setStatus(error.message);
+  // Local advance — the position syncs with the next debounced flush.
+  smart.cardIndex += 1;
+  smart.targetIndex = 0;
+  smart.attempt = 1;
+  markTrainPositionDirty();
+  const next = smartLocalPrompt(smart);
+  if (next) {
+    setStatus("Skipped to the next card");
+    await presentSmartPrompt(next);
+  } else {
+    setStatus("Session complete");
+    await finishSmartSession();
   }
 }
 
@@ -6521,6 +6926,9 @@ async function finishSmartSession() {
   document.getElementById("train-board-label").textContent = "Press Start for a fresh queue";
   celebrate();
   // End-of-session report: what this session changed, and what lands tomorrow.
+  // Flush the graded attempts FIRST so the "after" health actually includes
+  // this session's spaced-repetition writes.
+  await flushTrainSync().catch(() => {});
   let after = null;
   try {
     after = await api(
@@ -6530,6 +6938,138 @@ async function finishSmartSession() {
     // The summary is a bonus — never block the finish on it.
   }
   renderSmartSummary(smart, stats, after);
+}
+
+// ----- Local-first Train sync (plan §2) ---------------------------------------
+// The smart session runs locally; graded first attempts + the session position
+// flush in debounced batches. One request per quiet stretch instead of one per
+// move — sync speed is deliberately traded for fewer round-trips.
+
+const TRAIN_SYNC_IDLE_MS = 4000;
+const TRAIN_SYNC_MAX_BACKOFF_MS = 30000;
+
+function queueTrainAttempt(smart, nodeId, correct) {
+  appState.trainSync.pending.push({
+    session_id: smart.sessionId,
+    node_id: nodeId,
+    correct,
+  });
+  setTrainSyncState("dirty");
+  scheduleTrainSync();
+}
+
+// The card_index/queue moved without a graded attempt (skip, requeue, card
+// advance) — make sure the next flush carries the new position.
+function markTrainPositionDirty() {
+  appState.trainSync.dirty = true;
+  setTrainSyncState("dirty");
+  scheduleTrainSync();
+}
+
+function scheduleTrainSync() {
+  const sync = appState.trainSync;
+  clearTimeout(sync.timer);
+  sync.timer = setTimeout(() => {
+    sync.timer = null;
+    flushTrainSync();
+  }, TRAIN_SYNC_IDLE_MS);
+}
+
+// Flush pending graded attempts + the session position. Serialized like the
+// Build flush: an in-flight flush is awaited by returning its promise. On
+// failure the batch is requeued and a backoff retry armed — training never
+// blocks on the network.
+function flushTrainSync() {
+  const sync = appState.trainSync;
+  if (sync.flushing) return sync.flushing;
+  if (!sync.pending.length && !sync.dirty) return Promise.resolve(true);
+  clearTimeout(sync.timer);
+  sync.timer = null;
+
+  const batch = sync.pending;
+  sync.pending = [];
+  sync.dirty = false;
+  // Group by session: leftovers from an abandoned session flush to THEIR
+  // session, not the current one. Play order is preserved within each group.
+  // Grouping/partial-failure semantics live in train-sync.js (tested): retry
+  // unit is the session group — record_attempt is NOT idempotent server-side,
+  // so a group that POSTed successfully must never be requeued when a later
+  // group fails; 4xx drops only its own group.
+  const smart = appState.smart;
+  const groups = groupAttempts(batch, smart ? smart.sessionId : null);
+  setTrainSyncState("syncing");
+
+  sync.flushing = (async () => {
+    let outcome;
+    try {
+      outcome = await flushGroups(groups, async (sessionId, attempts) => {
+        const body = { session_id: sessionId, attempts, local_date: localDateString() };
+        if (smart && sessionId === smart.sessionId) {
+          body.card_index = smart.cardIndex;
+          body.queue = smart.queue.map((c) => c.encoded);
+        }
+        const result = await postJson("/api/train/smart/sync", body);
+        if (result.day_streak) appState.dayStreak = result.day_streak;
+      });
+    } finally {
+      sync.flushing = null;
+    }
+    if (!outcome.retriable) {
+      sync.retry = 0;
+      if (sync.pending.length || sync.dirty) {
+        setTrainSyncState("dirty");
+        scheduleTrainSync();
+      } else {
+        setTrainSyncState("saved");
+      }
+      return true;
+    }
+    setTrainSyncState("error");
+    // Requeue failed groups ahead of newer attempts and back off. SR deltas
+    // are precious but small; they also flush on hide/unload and session end.
+    sync.pending = ungroupAttempts(outcome.failedGroups).concat(sync.pending);
+    // Only re-mark the position dirty if the current session's group is the
+    // one that failed — other sessions carry no position payload.
+    if (smart && outcome.failedGroups.some(([sessionId]) => sessionId === smart.sessionId)) {
+      sync.dirty = true;
+    }
+    sync.retry = Math.min(sync.retry + 1, 6);
+    const delay = Math.min(TRAIN_SYNC_MAX_BACKOFF_MS, 1000 * 2 ** (sync.retry - 1));
+    sync.timer = setTimeout(() => {
+      sync.timer = null;
+      flushTrainSync();
+    }, delay);
+    return false;
+  })();
+  return sync.flushing;
+}
+
+// Last-ditch flush on page unload — keepalive fetch, fire-and-forget (same
+// mechanics as beaconFlushBuild; sendBeacon can't carry the CSRF header).
+function beaconFlushTrain() {
+  const sync = appState.trainSync;
+  if (!sync.pending.length && !sync.dirty) return;
+  const token = readCsrfCookie();
+  const smart = appState.smart;
+  const groups = groupAttempts(sync.pending, smart ? smart.sessionId : null);
+  for (const [sessionId, attempts] of groups) {
+    const body = { session_id: sessionId, attempts, local_date: localDateString() };
+    if (smart && sessionId === smart.sessionId) {
+      body.card_index = smart.cardIndex;
+      body.queue = smart.queue.map((c) => c.encoded);
+    }
+    try {
+      fetch("/api/train/smart/sync", {
+        method: "POST",
+        credentials: "same-origin",
+        keepalive: true,
+        headers: { "Content-Type": "application/json", ...(token ? { [CSRF_HEADER]: token } : {}) },
+        body: JSON.stringify(body),
+      }).catch(() => {});
+    } catch (_) {
+      /* best-effort */
+    }
+  }
 }
 
 function renderSmartSummary(smart, stats, after) {
@@ -7319,14 +7859,20 @@ function bindEvents() {
     });
   });
 
-  // Local-first Build sync: persist pending moves when the tab is backgrounded
-  // (best-effort hard flush) and on unload (keepalive beacon — sendBeacon can't
-  // carry the CSRF header the API needs). The next load re-hydrates from server
-  // truth regardless, so both paths are best-effort.
+  // Local-first sync (Build edits + Train SR deltas): persist pending state
+  // when the tab is backgrounded (best-effort flush) and on unload (keepalive
+  // fetch — sendBeacon can't carry the CSRF header the API needs). The next
+  // load re-hydrates from server truth regardless, so all paths are best-effort.
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") hardFlushBuild().catch(() => {});
+    if (document.visibilityState === "hidden") {
+      hardFlushBuild().catch(() => {});
+      flushTrainSync().catch(() => {});
+    }
   });
-  window.addEventListener("beforeunload", beaconFlushBuild);
+  window.addEventListener("beforeunload", () => {
+    beaconFlushBuild();
+    beaconFlushTrain();
+  });
 
   // Settings
   document.getElementById("settings-refresh").addEventListener("click", loadSettings);

@@ -157,6 +157,108 @@ def test_action_delete_removes_node(client):
     assert body["selected_node_id"] == root_id
 
 
+# ---- build/delete-nodes (local-first delete flush) ---------------------------
+
+
+def _add_move(client: TestClient, rep_id: str, parent_id: str, uci: str) -> str:
+    body = client.post(
+        "/api/build/add-move",
+        json={"repertoire_id": rep_id, "parent_node_id": parent_id, "move_uci": uci},
+        headers=csrf_headers(client),
+    ).json()
+    return body["selected_node_id"]
+
+
+def _delete_nodes(client: TestClient, rep_id: str, node_ids: list[str]):
+    return client.post(
+        "/api/build/delete-nodes",
+        json={"repertoire_id": rep_id, "node_ids": node_ids},
+        headers=csrf_headers(client),
+    )
+
+
+def test_delete_nodes_requires_csrf(client):
+    _register(client, "a@example.com")
+    rep_id, _root, node_id = _create_with_move(client)
+    r = client.post(
+        "/api/build/delete-nodes",
+        json={"repertoire_id": rep_id, "node_ids": [node_id]},
+    )
+    assert r.status_code == 403
+
+
+def test_delete_nodes_removes_whole_subtree(client):
+    """Deleting a subtree root removes every descendant; the payload and the
+    removed_node_ids echo agree."""
+    _register(client, "a@example.com")
+    rep_id, _root, e4 = _create_with_move(client)
+    e5 = _add_move(client, rep_id, e4, "e7e5")
+    nf3 = _add_move(client, rep_id, e5, "g1f3")
+    r = _delete_nodes(client, rep_id, [e4])
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["nodes_total"] == 1  # only root remains
+    assert set(body["removed_node_ids"]) == {e4, e5, nf3}
+
+
+def test_delete_nodes_is_idempotent_per_id(client):
+    """An id already removed (by an earlier subtree in the same batch, or by a
+    previous flush) is skipped, not an error — the client over-deletes freely."""
+    _register(client, "a@example.com")
+    rep_id, _root, e4 = _create_with_move(client)
+    e5 = _add_move(client, rep_id, e4, "e7e5")
+    # e5 dies twice: as e4's descendant and by its own id; plus a bogus id.
+    r = _delete_nodes(client, rep_id, [e4, e5, "no-such-node"])
+    assert r.status_code == 200, r.text
+    assert set(r.json()["removed_node_ids"]) == {e4, e5}
+    # A second flush of the same batch is a no-op.
+    again = _delete_nodes(client, rep_id, [e4, e5])
+    assert again.status_code == 200
+    assert again.json()["removed_node_ids"] == []
+
+
+def test_delete_nodes_rejects_the_root(client):
+    _register(client, "a@example.com")
+    rep_id, root_id, _node = _create_with_move(client)
+    assert _delete_nodes(client, rep_id, [root_id]).status_code == 400
+
+
+def test_delete_nodes_caps_batch_size(client):
+    _register(client, "a@example.com")
+    rep_id, _root, _node = _create_with_move(client)
+    too_many = [f"id-{i}" for i in range(201)]
+    assert _delete_nodes(client, rep_id, too_many).status_code == 400
+
+
+def test_delete_nodes_is_owner_gated(client):
+    _register(client, "a@example.com", display_name="A")
+    rep_id, _root, node_id = _create_with_move(client)
+    other = _client()
+    _register(other, "b@example.com", display_name="B")
+    assert _delete_nodes(other, rep_id, [node_id]).status_code == 404
+
+
+def test_delete_then_readd_creates_a_fresh_node(client):
+    """The client flushes deletes before adds so a replayed move lands as a new
+    node instead of deduping against the dying one."""
+    _register(client, "a@example.com")
+    rep_id, root_id, e4 = _create_with_move(client)
+    assert _delete_nodes(client, rep_id, [e4]).status_code == 200
+    r = client.post(
+        "/api/build/add-moves",
+        json={
+            "repertoire_id": rep_id,
+            "moves": [{"tempId": "tmp-1", "parentRef": root_id, "uci": "e2e4"}],
+        },
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    new_id = body["id_map"]["tmp-1"]
+    assert new_id != e4
+    assert any(n["id"] == new_id and n["uci"] == "e2e4" for n in body["nodes"])
+
+
 def test_action_unknown_is_400(client):
     _register(client, "a@example.com")
     rep_id, _root, node_id = _create_with_move(client)

@@ -303,6 +303,161 @@ def test_smart_skip_advances_past_the_card(client):
     assert body["prompt"] is None  # only card skipped -> session over
 
 
+# ---- smart card bundle + sync (local-first Train) ----------------------------
+
+
+def _smart_sync(client: TestClient, session_id: str, **extra):
+    return client.post(
+        "/api/train/smart/sync",
+        json={"session_id": session_id, **extra},
+        headers=csrf_headers(client),
+    )
+
+
+def test_smart_start_ships_card_bundle(client):
+    """The start payload expands the whole queue so the client can run the
+    session locally: per target — expected move, run-in, hint, reply."""
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    body = _smart_start(client, rep, seed=5).json()
+    cards = body["cards"]
+    assert len(cards) == body["total_cards"] == 1
+    card = cards[0]
+    assert card["kind"] == "new"
+    assert card["encoded"].startswith("new:")
+    target = card["targets"][0]
+    assert target["uci"] == "e2e4"
+    assert target["san"] == "e4"
+    assert target["fen_before"].startswith("rnbqkbnr/pppppppp")
+    assert target["run_in"] == []  # first move: nothing to animate in
+    assert target["hint"]["piece"] == "Move the pawn"
+    assert target["hint"]["annotated"] is False
+    assert target["reply"] is None  # no opponent move stored after 1.e4
+
+
+def test_smart_start_fresh_rebuilds_from_current_tree(client):
+    """fresh=true always rebuilds the queue, so a move added in Build after the
+    previous session shows up immediately — the desync the local-first client
+    avoids by never resuming."""
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    first = _smart_start(client, rep, seed=5).json()
+    assert first["total_cards"] == 1
+    # Grow the tree: 1.e4 e5 2.Nf3 adds a second own move.
+    e4 = first["cards"][0]["targets"][0]["node_id"]
+    e5 = client.post(
+        "/api/build/add-move",
+        json={"repertoire_id": rep, "parent_node_id": e4, "move_uci": "e7e5"},
+        headers=csrf_headers(client),
+    ).json()["selected_node_id"]
+    client.post(
+        "/api/build/add-move",
+        json={"repertoire_id": rep, "parent_node_id": e5, "move_uci": "g1f3"},
+        headers=csrf_headers(client),
+    )
+    fresh = _smart_start(client, rep, fresh=True, seed=5).json()
+    assert fresh["card_index"] == 0
+    targets = {t["uci"] for c in fresh["cards"] for t in c["targets"]}
+    assert "g1f3" in targets
+
+
+def test_smart_sync_replays_graded_attempts(client):
+    """A synced correct attempt writes the same spaced-repetition progress a
+    per-move /smart/move would have: the node leaves untrained and lands in
+    tomorrow's forecast. The batch also touches the day streak exactly once."""
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    start = _smart_start(client, rep, seed=5).json()
+    node_id = start["cards"][0]["targets"][0]["node_id"]
+    r = _smart_sync(
+        client,
+        start["session_id"],
+        attempts=[{"node_id": node_id, "correct": True}],
+        card_index=1,
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["synced"] == 1
+    assert body["day_streak"] == {"current": 1, "best": 1, "trained_today": True}
+    summary = client.get(f"/api/train/smart/summary?repertoire_id={rep}").json()
+    assert summary["health"]["untrained"] == 0
+    assert summary["health"]["learning"] == 1
+    assert summary["due_tomorrow"] == 1
+
+
+def test_smart_sync_skips_unknown_nodes_and_spares_the_streak(client):
+    """Attempts on nodes edited out of the tree are clamped away, and a batch
+    that grades nothing leaves the streak untouched."""
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    session_id = _smart_start(client, rep, seed=5).json()["session_id"]
+    body = _smart_sync(
+        client,
+        session_id,
+        attempts=[{"node_id": "edited-away", "correct": True}],
+    ).json()
+    assert body["synced"] == 0
+    assert body["day_streak"] is None
+    dash = client.get("/api/dashboard").json()
+    assert dash["streak"]["trained_today"] is False
+
+
+def test_smart_sync_persists_position_for_resume(client):
+    """card_index + queue land on the stored session, so a non-fresh start can
+    resume where the local session stood (e.g. after a mid-session reload)."""
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    start = _smart_start(client, rep, seed=5).json()
+    encoded = start["cards"][0]["encoded"]
+    # The local session requeued the card once (two copies) and sits on card 1.
+    r = _smart_sync(
+        client,
+        start["session_id"],
+        attempts=[],
+        card_index=1,
+        queue=[encoded, encoded, "garbage-entry"],
+    )
+    assert r.status_code == 200, r.text
+    resumed = _smart_start(client, rep).json()  # no fresh -> resume
+    assert resumed["session_id"] == start["session_id"]
+    assert resumed["total_cards"] == 2  # malformed entry dropped
+    assert resumed["card_index"] == 1
+
+
+def test_smart_sync_caps_batch_sizes(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    session_id = _smart_start(client, rep, seed=5).json()["session_id"]
+    too_many = [{"node_id": "n", "correct": True}] * 501
+    assert _smart_sync(client, session_id, attempts=too_many).status_code == 400
+    huge_queue = ["new:a:b"] * 501
+    assert _smart_sync(client, session_id, queue=huge_queue).status_code == 400
+
+
+def test_smart_sync_requires_csrf(client):
+    _register(client, "a@example.com")
+    assert client.post(
+        "/api/train/smart/sync", json={"session_id": "x"}
+    ).status_code == 403
+
+
+def test_smart_sync_is_owner_gated(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    session_id = _smart_start(client, rep, seed=5).json()["session_id"]
+
+    from prepforge_chess.api import main
+
+    other = TestClient(main.app)
+    _register(other, "b@example.com")
+    r = other.post(
+        "/api/train/smart/sync",
+        json={"session_id": session_id, "attempts": []},
+        headers=csrf_headers(other),
+    )
+    assert r.status_code == 404
+
+
 # ---- daily streak (Train v2 Phase 3) ----------------------------------------
 
 

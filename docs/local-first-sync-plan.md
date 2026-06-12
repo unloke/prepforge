@@ -16,6 +16,31 @@
 fallback. Phase 2 (Train) is **deferred**: revisit after Build's sync model has
 baked in production. The fallback section is kept for reference only.
 
+## Status update (2026-06-12) — everything below is SHIPPED
+
+User pulled Phase 2 forward (requirements: minimal server load, Train always
+starts from fresh data, no jank, confirmation-free local-first delete). What
+landed, where it differs from the plan text below:
+
+- **Build delete flush** (not in the original plan): `deleteBuildNodeLocal`
+  prunes the subtree locally with NO confirmation, cancels pending adds inside
+  it, queues the subtree root in `buildPendingDeletes`; `flushBuildMoves`
+  sends deletes **before** adds via `POST /api/build/delete-nodes`
+  (`delete_nodes_batch`: idempotent per id, root-protected, cap 200);
+  `reapplyPendingBuildDeletes` re-prunes after reconcile hydrates.
+- **Phase 2 Train, with one design change**: instead of porting the SR formula
+  to JS (§2.1), `/smart/start` ships a per-target `cards` bundle and the new
+  `POST /api/train/smart/sync` **replays `record_attempt` server-side** over
+  the batched attempt-1 results — exact SR parity with zero formula port. The
+  client owns grading/advancement/requeue/skip (`smartLocalPrompt`,
+  `requeueSmartCard` mirroring `REQUEUE_GAP`); `/smart/move`+`/smart/skip` are
+  no longer called (kept for rollback). Flush: 4s debounce, visibility-hidden,
+  keepalive unload beacon, and forced before `/smart/summary`.
+- **Start is always fresh**: `startSmartTraining` hard-flushes Build then sends
+  `fresh: true` — never resumes a stale queue. The sync still persists
+  card_index+queue so the stored session stays resumable in principle.
+- Day streak stays server-side (§2.3), touched once per sync batch that graded.
+
 ## Status / context
 
 - Phase 0 (the board snapback fix) is **already shipped**: `optimisticBoardMove`
