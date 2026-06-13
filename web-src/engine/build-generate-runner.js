@@ -180,6 +180,7 @@ export async function runBrowserBuildGenerate({
   depth = DEFAULT_GEN_DEPTH,
   signal = null,
   onProgress = () => {},
+  onEvent = () => {},
   onMaiaInitProgress = null,
   maiaProvider: borrowedMaia = null,
   createEngine = (opts) => createEngineProvider(opts),
@@ -238,6 +239,7 @@ export async function runBrowserBuildGenerate({
       maia: createMaiaPredictionAdapter(maiaProvider, { signal }),
       chess: createChessAdapter(),
       onProgress,
+      onEvent,
       signal,
     });
   } finally {

@@ -138,6 +138,11 @@ export async function generateBuildPlan({
   maia,
   chess,
   onProgress = () => {},
+  // Optional fine-grained lifecycle stream for the progress UI: the planner emits
+  // { type: "search", engine: "stockfish"|"maia", fen } before each engine call and
+  // { type: "expanded", relativePly } after a node finishes expanding. Purely
+  // observational — it never affects the plan, so determinism is unchanged.
+  onEvent = () => {},
   signal = null,
 } = {}) {
   if (!engine || !maia || !chess) throw new Error("generateBuildPlan requires engine, maia, and chess adapters");
@@ -169,6 +174,17 @@ export async function generateBuildPlan({
 
   const checkAbort = () => {
     if (signal && signal.aborted) throw abortError();
+  };
+
+  // onEvent is purely observational (documented above): a throwing UI/test callback must
+  // NEVER abort plan generation. Emit through this guard so a faulty listener can't change
+  // planner behavior — failures in the stream are swallowed, the plan is unaffected.
+  const emit = (event) => {
+    try {
+      onEvent(event);
+    } catch {
+      /* observational stream — a listener error must not fail the run */
+    }
   };
 
   // _upsert_child (opening_builder.py:357-424). Returns the existing-or-new working node;
@@ -256,6 +272,7 @@ export async function generateBuildPlan({
   const expand = async (node, relativePly, onMainlinePath) => {
     if (relativePly >= depthLimit) return;
     checkAbort();
+    emit({ type: "expanded", relativePly });
 
     const userTurn = node.sideToMove === resolvedOwnColor;
     if (userTurn) {
@@ -265,6 +282,7 @@ export async function generateBuildPlan({
       const candidateCount = branchLimit + manualPreparedUcis.size;
 
       checkAbort();
+      emit({ type: "search", engine: "stockfish", fen: node.fen });
       const candidates = (await engine.candidates(node.fen, candidateCount)) || [];
       checkAbort();
       if (candidates.length === 0) return;
@@ -294,10 +312,29 @@ export async function generateBuildPlan({
     // single child (Stockfish source/eval, Maia probability supplemented) — never twice.
     const threshold = onMainlinePath ? MAINLINE_THRESHOLD : BRANCH_THRESHOLD;
     checkAbort();
-    const sfCandidates = (await engine.candidates(node.fen, 1)) || [];
+    // Stockfish (the mainline best move) and Maia (the human branches) are INDEPENDENT
+    // reads of the same FEN backed by SEPARATE providers, so run them concurrently rather
+    // than one-after-the-other — this overlaps the two slowest per-node operations and is
+    // deterministic (we await both before using either, and neither result depends on the
+    // other's completion order).
+    emit({ type: "search", engine: "stockfish", fen: node.fen });
+    emit({ type: "search", engine: "maia", fen: node.fen });
+    // Run both reads concurrently but FAIL FAST: Promise.all rejects on the FIRST provider
+    // error, so a single failing read aborts the run immediately instead of waiting for the
+    // healthy-but-slow sibling to settle (the regression in a prior allSettled version). The
+    // no-op catches keep a sibling that rejects *after* the first failure — e.g. an abort that
+    // rejects BOTH — from surfacing as an unhandled rejection.
+    // Start each read inside a .then() so a SYNCHRONOUS throw from an adapter becomes a rejected
+    // promise too — both reads are still launched and observed, and the throw flows through the
+    // same fail-fast path as an async rejection (rather than escaping before maiaPromise exists).
+    const sfPromise = Promise.resolve().then(() => engine.candidates(node.fen, 1));
+    const maiaPromise = Promise.resolve().then(() => maia.predictions(node.fen, rating));
+    sfPromise.catch(() => {});
+    maiaPromise.catch(() => {});
+    const [sfValue, maiaValue] = await Promise.all([sfPromise, maiaPromise]);
     checkAbort();
-    const raw = (await maia.predictions(node.fen, rating)) || [];
-    checkAbort();
+    const sfCandidates = sfValue || [];
+    const raw = maiaValue || [];
     if (sfCandidates.length === 0 && raw.length === 0) return;
 
     const predictions = raw.slice().sort((a, b) => b.probability - a.probability);

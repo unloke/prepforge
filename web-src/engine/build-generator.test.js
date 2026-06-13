@@ -712,3 +712,134 @@ describe("maiaRating clamping (mirrors _clamp_rating)", () => {
     expect(seen[0]).toBe(2200);
   });
 });
+
+describe("onEvent lifecycle stream (observational, never affects the plan)", () => {
+  it("emits stockfish/maia search events and node-expanded events", async () => {
+    const events = [];
+    // White (user) at root → one Stockfish search; under e2e4 it's Black (opponent) →
+    // Stockfish best + Maia branches.
+    const engine = {
+      candidates: async (fen, count) => {
+        void count;
+        return fen[0] === "w" ? [cand("e2e4", 1)] : [cand("e7e5", 1)];
+      },
+    };
+    const maia = { predictions: async () => [pred("e7e5", 0.5), pred("c7c5", 0.4)] };
+
+    const plan = await run({ rootFen: W_ROOT, plyDepth: 2, engine, maia, onEvent: (e) => events.push(e) });
+
+    const searches = events.filter((e) => e.type === "search");
+    expect(searches.some((e) => e.engine === "stockfish")).toBe(true);
+    expect(searches.some((e) => e.engine === "maia")).toBe(true);
+    expect(events.some((e) => e.type === "expanded" && e.relativePly === 0)).toBe(true);
+    expect(events.some((e) => e.type === "expanded" && e.relativePly === 1)).toBe(true);
+    // The stream is observational: the plan still has the expected adds.
+    expect(plannedAdds(plan).length).toBeGreaterThan(0);
+  });
+
+  it("produces an identical plan whether or not onEvent is supplied (determinism)", async () => {
+    const engine = {
+      candidates: async (fen) => (fen[0] === "w" ? [cand("e2e4", 1)] : [cand("e7e5", 1)]),
+    };
+    const maia = { predictions: async () => [pred("e7e5", 0.5), pred("c7c5", 0.4)] };
+
+    const withCb = await run({ rootFen: W_ROOT, plyDepth: 3, engine, maia, onEvent: () => {} });
+    const without = await run({ rootFen: W_ROOT, plyDepth: 3, engine, maia });
+    expect(JSON.stringify(withCb.changes)).toBe(JSON.stringify(without.changes));
+  });
+
+  it("a throwing onEvent listener never aborts plan generation (observational contract)", async () => {
+    const engine = {
+      candidates: async (fen) => (fen[0] === "w" ? [cand("e2e4", 1)] : [cand("e7e5", 1)]),
+    };
+    const maia = { predictions: async () => [pred("e7e5", 0.5), pred("c7c5", 0.4)] };
+
+    // A listener that throws on every event must not change behavior: the plan must still
+    // complete with the same adds as the no-op-listener run.
+    const baseline = await run({ rootFen: W_ROOT, plyDepth: 3, engine, maia });
+    const withThrow = await run({
+      rootFen: W_ROOT,
+      plyDepth: 3,
+      engine,
+      maia,
+      onEvent: () => {
+        throw new Error("listener boom");
+      },
+    });
+    expect(JSON.stringify(withThrow.changes)).toBe(JSON.stringify(baseline.changes));
+  });
+});
+
+describe("opponent turn — concurrent reads fail fast", () => {
+  it("throws immediately on a provider error without waiting for the slow sibling", async () => {
+    // Stockfish rejects fast; Maia would resolve much later. Fail-fast means we throw on the
+    // Stockfish error promptly rather than blocking on Maia's slow settle (the allSettled bug).
+    let maiaSettled = false;
+    let maiaTimer;
+    const engine = { candidates: async () => { throw new Error("stockfish died"); } };
+    const maia = {
+      predictions: async () =>
+        new Promise((resolve) => {
+          maiaTimer = setTimeout(() => {
+            maiaSettled = true;
+            resolve([pred("e7e5", 0.5)]);
+          }, 1000);
+        }),
+    };
+
+    const started = Date.now();
+    await expect(run({ rootFen: B_ROOT, engine, maia })).rejects.toThrow(/stockfish died/);
+    // We rejected before the 1s Maia timer fired — i.e. we did NOT wait on the slow sibling.
+    expect(maiaSettled).toBe(false);
+    expect(Date.now() - started).toBeLessThan(500);
+    clearTimeout(maiaTimer); // don't leave the slow-sibling timer alive past the assertion
+  });
+});
+
+describe("opponent turn — Stockfish and Maia run concurrently (deterministic)", () => {
+  // Both reads are slow (50ms). If they ran sequentially the opponent node would take
+  // ~100ms; concurrently it is ~50ms. We assert the two were IN FLIGHT at the same time,
+  // which only holds if the planner overlaps them.
+  it("overlaps the two engine reads of the same opponent FEN", async () => {
+    let sfInFlight = 0;
+    let maiaInFlight = 0;
+    let observedOverlap = false;
+    const slow = (fn) => async (...args) => {
+      const isMaia = fn === "maia";
+      if (isMaia) maiaInFlight += 1;
+      else sfInFlight += 1;
+      if (sfInFlight > 0 && maiaInFlight > 0) observedOverlap = true;
+      await new Promise((r) => setTimeout(r, 50));
+      if (isMaia) maiaInFlight -= 1;
+      else sfInFlight -= 1;
+      return isMaia ? [pred("e7e5", 0.5)] : [cand("e7e5", 1)];
+    };
+    const engine = { candidates: slow("sf") };
+    const maia = { predictions: slow("maia") };
+
+    await run({ rootFen: B_ROOT, plyDepth: 1, engine, maia });
+    expect(observedOverlap).toBe(true);
+  });
+
+  it("produces the same plan regardless of which read resolves first", async () => {
+    const mk = (sfDelay, maiaDelay) => ({
+      engine: {
+        candidates: async (fen) => {
+          await new Promise((r) => setTimeout(r, sfDelay));
+          return fen[0] === "w" ? [cand("e2e4", 1)] : [cand("e7e5", 1)];
+        },
+      },
+      maia: {
+        predictions: async () => {
+          await new Promise((r) => setTimeout(r, maiaDelay));
+          return [pred("e7e5", 0.5), pred("c7c5", 0.4)];
+        },
+      },
+    });
+    const sfFirst = mk(0, 30);
+    const maiaFirst = mk(30, 0);
+    const planA = await run({ rootFen: W_ROOT, plyDepth: 3, ...sfFirst });
+    const planB = await run({ rootFen: W_ROOT, plyDepth: 3, ...maiaFirst });
+    expect(JSON.stringify(planA.changes)).toBe(JSON.stringify(planB.changes));
+  });
+});

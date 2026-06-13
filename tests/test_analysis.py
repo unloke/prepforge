@@ -138,6 +138,74 @@ def test_parallel_analysis_preserves_move_order_and_classifies_all_moves():
     assert all(move.classification is not MoveClassification.UNKNOWN for move in result.move_results)
 
 
+class _CountingEngine:
+    """Wraps a real engine and records every distinct position searched, so a test can
+    prove the per-run cache stops the analyzer from recomputing overlapping FENs
+    (fen_after(N) == fen_before(N+1)) and repeated positions."""
+
+    def __init__(self, inner=None):
+        self._inner = inner or MockEngine()
+        self.name = self._inner.name
+        self.analyze_calls = []
+        self.evaluate_calls = []
+
+    def analyze_position(self, fen, config=None):
+        self.analyze_calls.append(fen)
+        return self._inner.analyze_position(fen, config) if config else self._inner.analyze_position(fen)
+
+    def evaluate_position(self, fen, config=None):
+        self.evaluate_calls.append(fen)
+        return self._inner.evaluate_position(fen, config) if config else self._inner.evaluate_position(fen)
+
+
+def test_per_run_cache_searches_each_distinct_position_once():
+    repository, game_id = _repository_with_game()
+    engine = _CountingEngine()
+    service = AnalysisService(repository, engine=engine, engine_name="mockfish")
+
+    result = service.analyze_game_id(game_id, config=AnalysisConfig(persist=False))
+
+    # 6 plies → 7 distinct board positions (start + one per ply). Without the cache the
+    # service would issue 6 analyze + 6 evaluate = 12 searches; the overlap means several
+    # of those are the SAME FEN. With the cache every distinct position is searched once.
+    all_searched = engine.analyze_calls + engine.evaluate_calls
+    assert len(set(all_searched)) == 7
+    assert len(all_searched) == 7  # no FEN searched twice
+    assert engine.evaluate_calls == []  # multipv-1 path serves fen_after via analysis
+
+    # Results are unaffected: every move still classified with evals present.
+    assert len(result.move_results) == 6
+    assert all(m.classification is not MoveClassification.UNKNOWN for m in result.move_results)
+    assert all(m.engine_eval_after is not None for m in result.move_results)
+
+
+def test_per_run_cache_keeps_results_identical_to_uncached():
+    # Same game analyzed via the cache (default) must match a direct/no-cache analysis.
+    repo_a, game_a = _repository_with_game()
+    repo_b, game_b = _repository_with_game()
+
+    cached = AnalysisService(repo_a, engine=MockEngine()).analyze_game_id(
+        game_a, config=AnalysisConfig(persist=False)
+    )
+
+    # Force the uncached path by calling _analyze_move with eval_cache=None semantics via a
+    # fresh service whose cache we bypass: compare the public per-move evals/classifications.
+    service_b = AnalysisService(repo_b, engine=MockEngine())
+    game_obj = repo_b.load_game(game_b)
+    from copy import deepcopy as _dc
+
+    uncached_moves = [
+        service_b._analyze_move(_dc(m), None, service_b.engine, AnalysisConfig(), None)
+        for m in game_obj.moves
+    ]
+
+    for cm, um in zip(cached.move_results, uncached_moves):
+        assert cm.classification == um.classification
+        assert cm.engine_eval_after.score_cp == um.engine_eval_after.score_cp
+        assert cm.engine_eval_before.score_cp == um.engine_eval_before.score_cp
+        assert cm.best_move_uci == um.best_move_uci
+
+
 def test_analysis_requires_brilliant_flag_before_promoting_classification():
     repository, game_id = _repository_with_game()
 
