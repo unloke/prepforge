@@ -266,6 +266,10 @@ const appState = {
   // Subtree-root ids pruned locally but still inside their undo window — not yet
   // queued for the server. A reconcile re-hydrate must re-prune these too.
   buildUndoDeletes: new Set(),
+  // `${parentId}:${uci}` -> commit fn for a parked subtree delete. Lets a replay of
+  // the SAME move force its delete to flush first (server still has the old node,
+  // so an add ahead of the delete would dedupe into the doomed node).
+  buildUndoCommitByMove: new Map(),
   // Repertoire ids hidden from lists while their delete-undo window is open.
   pendingRepDeletes: new Set(),
   trainingRepertoireId: null,
@@ -3640,6 +3644,7 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
         appState.buildPending = [];
         appState.buildPendingDeletes = [];
         appState.buildUndoDeletes = new Set();
+        appState.buildUndoCommitByMove = new Map();
         appState.buildIdMap = {};
         appState.buildSyncState = "saved";
         appState.build = null;
@@ -4583,6 +4588,7 @@ async function hydrateBuild(payload, selectedNodeId = null) {
     // Stale undo windows from the old repertoire become no-ops (their commit
     // guards on repertoire id), but their ids must not prune the new tree.
     appState.buildUndoDeletes = new Set();
+    appState.buildUndoCommitByMove = new Map();
     appState.buildIdMap = {};
     appState.buildSyncState = "saved";
     appState.buildSyncRetry = 0;
@@ -5525,11 +5531,15 @@ async function deleteBuildNodeLocal(nodeId) {
   // The delete doesn't queue for the server until the undo window closes; until
   // then it lives in buildUndoDeletes so a reconcile re-hydrate re-prunes it.
   appState.buildUndoDeletes.add(nodeId);
+  // Keyed by the deleted move's slot so a replay of the SAME move can commit this
+  // delete first (see onBuildBoardMove). The slot is freed in both settle paths.
+  const undoMoveKey = `${parentId}:${node.uci}`;
   const extra = doomed.size > 1 ? ` (+${doomed.size - 1} after it)` : "";
-  showUndoToast({
+  const undoCommit = showUndoToast({
     title: "Move deleted",
     message: `${node.san || "Move"}${extra} removed`,
     onCommit: () => {
+      appState.buildUndoCommitByMove.delete(undoMoveKey);
       appState.buildUndoDeletes.delete(nodeId);
       if (!appState.build || appState.build.repertoire_id !== repId) return;
       if (!rootWasLocalOnly) appState.buildPendingDeletes.push(nodeId);
@@ -5539,6 +5549,7 @@ async function deleteBuildNodeLocal(nodeId) {
       }
     },
     onUndo: async () => {
+      appState.buildUndoCommitByMove.delete(undoMoveKey);
       appState.buildUndoDeletes.delete(nodeId);
       if (!appState.build || appState.build.repertoire_id !== repId) return;
       for (const n of removedNodes) {
@@ -5572,6 +5583,7 @@ async function deleteBuildNodeLocal(nodeId) {
       setStatus(`Restored ${node.san || "move"}`);
     },
   });
+  appState.buildUndoCommitByMove.set(undoMoveKey, undoCommit);
   setStatus(`Deleted ${node.san || "move"}`);
 }
 
@@ -5689,6 +5701,15 @@ async function onBuildBoardMove(moveUci) {
     rollback();
     return;
   }
+
+  // Replaying a move whose old subtree is still inside its undo window: that delete
+  // hasn't reached the server yet, so the server still has the old child. Commit the
+  // delete NOW so it flushes BEFORE this re-add lands in the same batch — otherwise
+  // add-moves dedupes the replay into the still-living old node, and the queued
+  // delete then destroys it (taking the replayed move with it). This is the
+  // delete-before-add invariant, enforced across the undo-window boundary.
+  const parkedDeleteCommit = appState.buildUndoCommitByMove.get(`${parentId}:${moveUci}`);
+  if (parkedDeleteCommit) parkedDeleteCommit();
 
   // Dedupe (parity with the server): replaying an existing line just navigates to
   // the child — no provisional node, no dirty state.
@@ -6231,7 +6252,14 @@ async function handleNodeContextAction(action, nodeId) {
   node = appState.buildNodeById.get(nodeId) || node;
   try {
     if (action === "generate") {
-      appState.buildCurrentNodeId = nodeId;
+      // The flush above may have reconciled/removed this node. Never anchor Generate
+      // on a node that no longer exists (it would open a modal that silently can't
+      // apply). Select through the normal path so board + tree + current id stay in sync.
+      if (!appState.buildNodeById.has(nodeId)) {
+        setStatus("That position is no longer in your repertoire — try again");
+        return;
+      }
+      await selectBuildNode(nodeId);
       await generateFromCurrentNode();
       return;
     }
