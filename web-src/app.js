@@ -5848,6 +5848,10 @@ function estimateBuildGenerateTotal({ plyDepth, ownSideCandidateCount, detailMod
   if (detailMode === "balanced") total *= 1.8; // recurses sidelines
   else if (detailMode === "deep") total *= 2.4;
   else total *= 1.15; // simple
+  // Deliberately over-estimate by ~30%: it is far better for the bar to finish a touch
+  // early (a satisfying jump to 100% as "saving" lands) than to peg at the ceiling and
+  // sit there while real work continues. A too-small ceiling is the worse failure.
+  total *= 1.3;
   return Math.max(12, Math.ceil(total));
 }
 
@@ -6009,8 +6013,28 @@ async function generateFromCurrentNode() {
         jobToast.updateJob({
           current: progress.done,
           total: progress.total,
-          message: `building tree · +${added} moves`,
+          message: progress.plannedMoves
+            ? `expanding branches · +${added} moves`
+            : "expanding branches",
         });
+      },
+      // Real lifecycle stream from the planner. We only use it to keep the MESSAGE honest
+      // about what the engine is doing right now ("searching candidates" vs "consulting
+      // Maia") — the bar itself stays on the estimated-unit scale that onProgress and the
+      // nudge timer drive, so a chatty stream can't fake completion. Skipped while the Maia
+      // cold-init owns the toast (its download % is more useful there).
+      onEvent: (ev) => {
+        if (!jobToast.isBusy()) return;
+        if (Date.now() - lastInitAt < 2000) return;
+        if (ev && ev.type === "search") {
+          const base = progress.plannedMoves ? `+${progress.plannedMoves} moves · ` : "";
+          jobToast.updateJob({
+            message:
+              ev.engine === "maia"
+                ? `${base}consulting Maia for human replies`
+                : `${base}searching candidate moves`,
+          });
+        }
       },
       // Cold-init weight download/verify/session progress (only on the first run / a cache
       // miss). A warm run emits nothing, so the node-building message above just takes over.

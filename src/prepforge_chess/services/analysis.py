@@ -17,8 +17,94 @@ from prepforge_chess.services.classification import (
     ClassificationConfig,
     classify_move,
 )
-from prepforge_chess.services.engine import EngineAdapter, EngineAnalysisConfig, MockEngine
+from prepforge_chess.services.engine import (
+    EngineAdapter,
+    EngineAnalysisConfig,
+    EngineEvaluation,
+    MockEngine,
+    PositionAnalysis,
+)
 from prepforge_chess.storage.repositories import PrepForgeRepository
+
+
+class _PositionEvalCache:
+    """Per-run memo of engine work over board positions.
+
+    A game's positions overlap: ``fen_after(N) == fen_before(N+1)``, and positions
+    can repeat outright (transpositions, threefold). Without a cache the parallel
+    analyzer recomputes those — the analyst's note that "one worker computes move N's
+    after while another computes move N+1's before" is exactly this. This cache makes
+    each distinct FEN's engine search happen ONCE per run:
+
+      * ``analysis_for`` memoises ``analyze_position`` (eval + candidates) by FEN.
+      * ``eval_for`` memoises ``evaluate_position`` by FEN, and — when the run uses
+        ``multipv == 1`` — is served from a cached analysis's ``.evaluation`` instead
+        (the engine's top line at multipv 1 IS the position eval, so this is
+        value-identical; for ``MockEngine`` ``analyze`` literally calls
+        ``evaluate_position`` so it is always identical).
+
+    Thread-safe and *coalescing*: concurrent workers that need the same FEN wait on a
+    per-FEN lock so only one search runs, instead of racing to both compute it. Returns
+    the same values as calling the engine directly, so classification/persistence are
+    unchanged — only redundant compute is removed.
+    """
+
+    def __init__(self, config: EngineAnalysisConfig) -> None:
+        self._config = config
+        self._guard = threading.Lock()
+        self._analysis: Dict[str, PositionAnalysis] = {}
+        self._eval: Dict[str, EngineEvaluation] = {}
+        self._analysis_locks: Dict[str, threading.Lock] = {}
+        self._eval_locks: Dict[str, threading.Lock] = {}
+        # Observability for tests / tuning: how many searches the cache avoided.
+        self.analysis_hits = 0
+        self.eval_hits = 0
+
+    def _key_lock(self, locks: Dict[str, threading.Lock], fen: str) -> threading.Lock:
+        with self._guard:
+            lock = locks.get(fen)
+            if lock is None:
+                lock = threading.Lock()
+                locks[fen] = lock
+            return lock
+
+    def analysis_for(self, engine: EngineAdapter, fen: str) -> PositionAnalysis:
+        with self._guard:
+            cached = self._analysis.get(fen)
+            if cached is not None:
+                self.analysis_hits += 1
+                return cached
+        with self._key_lock(self._analysis_locks, fen):
+            with self._guard:
+                cached = self._analysis.get(fen)
+                if cached is not None:
+                    self.analysis_hits += 1
+                    return cached
+            result = engine.analyze_position(fen, self._config)
+            with self._guard:
+                self._analysis[fen] = result
+                # Value-safe cross-seed: at multipv 1 the top line equals the static
+                # eval, so a later eval_for(fen) reuses it instead of re-searching.
+                if self._config.multipv == 1 and fen not in self._eval:
+                    self._eval[fen] = result.evaluation
+            return result
+
+    def eval_for(self, engine: EngineAdapter, fen: str) -> EngineEvaluation:
+        with self._guard:
+            cached = self._eval.get(fen)
+            if cached is not None:
+                self.eval_hits += 1
+                return cached
+        with self._key_lock(self._eval_locks, fen):
+            with self._guard:
+                cached = self._eval.get(fen)
+                if cached is not None:
+                    self.eval_hits += 1
+                    return cached
+            result = engine.evaluate_position(fen, self._config)
+            with self._guard:
+                self._eval[fen] = result
+            return result
 
 
 @dataclass(frozen=True)
@@ -126,10 +212,13 @@ class AnalysisService:
             ),
         )
 
+        # One cache per run so overlapping/repeated positions are searched once. Shared
+        # across worker threads in the parallel path (it is internally synchronised).
+        eval_cache = _PositionEvalCache(config.engine)
         if config.max_workers <= 1:
-            self._analyze_game_sequential(game, config, progress_callback, token)
+            self._analyze_game_sequential(game, config, progress_callback, token, eval_cache)
         else:
-            self._analyze_game_parallel(game, config, progress_callback, token)
+            self._analyze_game_parallel(game, config, progress_callback, token, eval_cache)
 
         critical = [
             move.ply
@@ -179,6 +268,7 @@ class AnalysisService:
         config: AnalysisConfig,
         progress_callback: Optional[ProgressCallback],
         token: CancellationToken,
+        eval_cache: Optional["_PositionEvalCache"] = None,
     ) -> None:
         engine = self.engine
         close_engine = False
@@ -191,7 +281,7 @@ class AnalysisService:
                 token.raise_if_cancelled()
                 self._emit_analyzing_progress(progress_callback, token, game.id, move, len(game.moves))
                 previous_move = deepcopy(game.moves[index - 1]) if index > 0 else None
-                analyzed = self._analyze_move(deepcopy(move), previous_move, engine, config)
+                analyzed = self._analyze_move(deepcopy(move), previous_move, engine, config, eval_cache)
                 game.moves[index] = analyzed
                 self._emit_move_complete_progress(
                     progress_callback,
@@ -210,6 +300,7 @@ class AnalysisService:
         config: AnalysisConfig,
         progress_callback: Optional[ProgressCallback],
         token: CancellationToken,
+        eval_cache: Optional["_PositionEvalCache"] = None,
     ) -> None:
         if self.engine_factory is None:
             raise ValueError("Parallel analysis requires an engine_factory.")
@@ -238,6 +329,7 @@ class AnalysisService:
                 previous_move,
                 engine_for_thread(),
                 config,
+                eval_cache,
             )
 
         def submit_next(executor: ThreadPoolExecutor) -> bool:
@@ -287,11 +379,26 @@ class AnalysisService:
         previous_move,
         engine: EngineAdapter,
         config: AnalysisConfig,
+        eval_cache: Optional["_PositionEvalCache"] = None,
     ):
         del previous_move  # Brilliant detection no longer needs prior context.
 
-        position_analysis = engine.analyze_position(move.fen_before, config.engine)
-        played_eval_after = engine.evaluate_position(move.fen_after, config.engine)
+        # Route engine work through the per-run cache when present so overlapping /
+        # repeated positions are searched once; fall back to direct calls otherwise.
+        if eval_cache is not None:
+            position_analysis = eval_cache.analysis_for(engine, move.fen_before)
+            if config.engine.multipv == 1:
+                # fen_after is (almost always) the NEXT move's fen_before, so analyze it
+                # once and cache it rather than a separate evaluate that the next move's
+                # analyze_position would recompute. At multipv 1 an analysis's evaluation
+                # equals evaluate_position, so this is value-identical — it just halves the
+                # searches on the shared fen_after(N) == fen_before(N+1) positions.
+                played_eval_after = eval_cache.analysis_for(engine, move.fen_after).evaluation
+            else:
+                played_eval_after = eval_cache.eval_for(engine, move.fen_after)
+        else:
+            position_analysis = engine.analyze_position(move.fen_before, config.engine)
+            played_eval_after = engine.evaluate_position(move.fen_after, config.engine)
         best_eval_after = position_analysis.best_evaluation_after or played_eval_after
 
         move.engine_eval_before = position_analysis.evaluation
