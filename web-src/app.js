@@ -5836,22 +5836,37 @@ async function fillPgnInputFromFile(file) {
 }
 
 // Rough up-front size of a Build → Generate run, used only to give the progress bar a
-// believable ceiling: NOT accurate, just enough that a small job doesn't snap to 100%
-// in a second and a big one keeps inching forward. Scales with tree depth × our-side
-// branching, with a multiplier for the recursive detail modes. Floored so even a
-// one-move job has room to move.
+// believable ceiling. The tree is EXPONENTIAL: user turn branches b times, opponent turn
+// merges Stockfish mainline + Maia predictions above threshold (~2.5 moves on average).
+// Simple mode only recurses the opponent's mainline but still creates ~2 Maia leaf nodes
+// per opponent position. A 20% over-estimate buffer ensures the bar finishes a touch early.
 function estimateBuildGenerateTotal({ plyDepth, ownSideCandidateCount, detailMode }) {
   const depth = Math.max(1, Number(plyDepth) || 1);
-  const branches = Math.max(1, Number(ownSideCandidateCount) || 1);
-  let total = depth * 2; // at least one engine/maia call per ply
-  total *= branches; // more of our branches ⇒ more searches/nodes
-  if (detailMode === "balanced") total *= 1.8; // recurses sidelines
-  else if (detailMode === "deep") total *= 2.4;
-  else total *= 1.15; // simple
-  // Deliberately over-estimate by ~30%: it is far better for the bar to finish a touch
-  // early (a satisfying jump to 100% as "saving" lands) than to peg at the ceiling and
-  // sit there while real work continues. A too-small ceiling is the worse failure.
-  total *= 1.3;
+  const b = Math.max(1, Number(ownSideCandidateCount) || 1);
+  const mode = String(detailMode || "balanced").toLowerCase();
+
+  // Opponent branches that get recursed per position: Stockfish mainline + Maia above
+  // threshold (10% on mainline path, 30% off it) → real-world average ~2.5.
+  // Simple mode only recurses the mainline so effective recursion factor = 1.
+  const oppRecurse = mode === "simple" ? 1.0 : 2.5;
+
+  // Accumulate nodes at each ply by alternating user-turn (×b) and opponent-turn (×oppRecurse).
+  // Assumes user moves first from the anchor (common case; opponent-first anchors run ~25%
+  // smaller — the slight over-estimate is acceptable).
+  let nodesAtPly = 1; // anchor
+  let total = 0;
+  let oppNodes = 0; // opponent positions, for simple-mode leaf accounting
+  for (let ply = 1; ply <= depth; ply++) {
+    nodesAtPly *= ply % 2 === 1 ? b : oppRecurse;
+    total += nodesAtPly;
+    if (ply % 2 === 0) oppNodes += nodesAtPly;
+  }
+
+  // Simple mode: Maia branches are CREATED (≈2 extra per opp position) but not recursed.
+  if (mode === "simple") total += oppNodes * 2;
+
+  // 20% over-estimate so the bar finishes a touch early rather than pegging at the ceiling.
+  total *= 1.2;
   return Math.max(12, Math.ceil(total));
 }
 
