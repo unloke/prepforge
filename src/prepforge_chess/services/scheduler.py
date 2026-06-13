@@ -20,6 +20,13 @@ Cards are encoded as compact ``kind:first:last`` strings and stored in the
 existing ``TrainingSession.line_order`` JSON column — no schema change. The
 path root→``last_target`` is unique in a tree, so those two node ids fully
 determine the run-in, the prompts in between, and the opponent replies.
+
+Mixed sessions (one queue over ALL active repertoires) extend the encoding to
+``kind:repertoire_id:first:last`` — ``decode_card`` accepts both, so legacy
+single-repertoire sessions keep working. ``mix_plans`` interleaves per-
+repertoire plans in small same-repertoire chunks: positions from one opening
+stay together (switching openings every card is exhausting), but no single
+repertoire monopolises a stretch of the queue.
 """
 from __future__ import annotations
 
@@ -59,6 +66,9 @@ class TrainingCard:
     kind: str
     first_target_id: str
     last_target_id: str
+    # Which repertoire the targets live in. ``None`` = the session's own
+    # repertoire (legacy single-repertoire sessions); set for mixed sessions.
+    repertoire_id: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -70,18 +80,31 @@ class SessionPlan:
 
 
 def encode_card(card: TrainingCard) -> str:
+    if card.repertoire_id:
+        return "{0}:{1}:{2}:{3}".format(
+            card.kind, card.repertoire_id, card.first_target_id, card.last_target_id
+        )
     return "{0}:{1}:{2}".format(card.kind, card.first_target_id, card.last_target_id)
 
 
 def decode_card(raw: object) -> Optional[TrainingCard]:
-    """Parse an encoded card; ``None`` for anything malformed (a legacy line id
-    that leaked into a smart session, a kind we no longer know, ...)."""
+    """Parse an encoded card (3-part legacy or 4-part mixed); ``None`` for
+    anything malformed (a legacy line id that leaked into a smart session, a
+    kind we no longer know, ...)."""
     if not isinstance(raw, str):
         return None
     parts = raw.split(":")
-    if len(parts) != 3 or parts[0] not in _KIND_PRIORITY or not parts[1] or not parts[2]:
-        return None
-    return TrainingCard(kind=parts[0], first_target_id=parts[1], last_target_id=parts[2])
+    if parts and parts[0] in _KIND_PRIORITY and all(parts):
+        if len(parts) == 3:
+            return TrainingCard(kind=parts[0], first_target_id=parts[1], last_target_id=parts[2])
+        if len(parts) == 4:
+            return TrainingCard(
+                kind=parts[0],
+                repertoire_id=parts[1],
+                first_target_id=parts[2],
+                last_target_id=parts[3],
+            )
+    return None
 
 
 def card_counts(cards: Iterable[Optional[TrainingCard]]) -> Dict[str, int]:
@@ -328,3 +351,59 @@ def _order_cards(
                 ordered[i], ordered[j] = ordered[j], ordered[i]
                 break
     return ordered
+
+
+# --------------------------------------------------------------------------
+# Mixed sessions: one queue over several repertoires.
+
+# Consecutive same-repertoire cards per stretch. Two is the sweet spot the UX
+# asks for: positions from one opening stay together briefly (a switch every
+# card is exhausting — different repertoires mean very different positions),
+# yet no repertoire monopolises the queue long enough to feel like a grind.
+MIX_CHUNK = 2
+
+
+def mix_plans(
+    plans: Sequence[Tuple[str, SessionPlan]],
+    *,
+    seed: Optional[int] = None,
+    chunk_size: int = MIX_CHUNK,
+) -> SessionPlan:
+    """Interleave per-repertoire plans into one queue.
+
+    Each plan keeps its internal urgency order (weak → due → new → polish, as
+    ``build_session_plan`` emitted it); cards get tagged with their repertoire
+    id. The queue then round-robins ``chunk_size``-card stretches across the
+    repertoires, starting with the one holding the most urgent head card, so a
+    weak spot anywhere still leads the session."""
+    rng = random.Random(seed)
+    queues: List[List[TrainingCard]] = []
+    for repertoire_id, plan in plans:
+        if not plan.cards:
+            continue
+        queues.append(
+            [
+                TrainingCard(
+                    kind=card.kind,
+                    first_target_id=card.first_target_id,
+                    last_target_id=card.last_target_id,
+                    repertoire_id=repertoire_id,
+                )
+                for card in plan.cards
+            ]
+        )
+    rng.shuffle(queues)  # tie-break order between equally urgent repertoires
+    queues.sort(key=lambda cards: _KIND_PRIORITY[cards[0].kind])
+
+    ordered: List[TrainingCard] = []
+    chunk = max(1, chunk_size)
+    while queues:
+        cards = queues.pop(0)
+        ordered.extend(cards[:chunk])
+        rest = cards[chunk:]
+        if rest:
+            queues.append(rest)
+
+    counts = card_counts(ordered)
+    counts["targets"] = sum(plan.counts.get("targets", 0) for _, plan in plans)
+    return SessionPlan(cards=ordered, counts=counts)

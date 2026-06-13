@@ -101,6 +101,9 @@ class GameMatchSummary:
     expected_move_san: Optional[str]
     # The repertoire node of the move the user should have played (departures only).
     expected_node_id: Optional[str] = None
+    # The deepest repertoire node the game still matched — the Build deep-link
+    # target for backlogging an opponent novelty right where it appeared.
+    last_matched_node_id: Optional[str] = None
     # True once this game's departure has been recorded as a training miss.
     training_recorded: bool = False
 
@@ -468,4 +471,5 @@ def _build_summary(
         expected_move_uci=match.expected_move_uci,
         expected_move_san=match.expected_move_san,
         expected_node_id=match.expected_node_id,
+        last_matched_node_id=match.last_matched_node_id,
     )

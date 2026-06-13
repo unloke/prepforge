@@ -344,6 +344,8 @@ def _run_compare(
                 "move_san_history": s.move_san_history,
                 "expected_move_uci": s.expected_move_uci,
                 "expected_move_san": s.expected_move_san,
+                "expected_node_id": s.expected_node_id,
+                "last_matched_node_id": s.last_matched_node_id,
                 "training_recorded": s.training_recorded,
             }
             for s in summaries

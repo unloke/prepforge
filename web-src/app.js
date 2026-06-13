@@ -4,6 +4,7 @@ import {
   isBrowserEngineAvailable,
 } from "./engine/stockfish-provider.js";
 import { analyzeGamePositions } from "./engine/game-analyzer.js";
+import { buildBookline } from "./coach/bookline.js";
 import { runBrowserBuildGenerate } from "./engine/build-generate-runner.js";
 import {
   getSharedMaia3Provider,
@@ -297,6 +298,8 @@ const appState = {
   // "Connect Lichess" action; signed-in users get the user-name button → Sign out.
   signedIn: false,
   replayResults: null,
+  replayFilter: null, // summary-chip filter: an outcome kind, or null = all
+  replayOpen: new Set(), // indexes of expanded game rows
   pieceStyle: "berlin",
   // Maia3 strength: a Settings-pinned rating (null = AUTO), and the auto-resolved
   // rating from the linked Lichess account's public profile (null until fetched).
@@ -1392,6 +1395,7 @@ function refreshAnalysisExplain(ctx) {
   appState.explainContext = ctx || {};
   renderInstantCoach();
   positionCoach.update(ctx ? ctx.fen : null, ctx || {});
+  updateBookline().catch(() => { /* book read is best-effort */ });
 }
 
 // Instant, engine-free sentence: what the last move did, or whose move it is. This is
@@ -1407,6 +1411,207 @@ function renderInstantCoach() {
   } else {
     const side = turn === "white" ? "White" : "Black";
     setCoachProse(`${side} to move. Make a move and I'll tell you what I think.`, "info");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Analyze ↔ repertoire sync ("the book"). Lazily loads the user's ACTIVE
+// repertoire trees once per visit and, on every Analyze position change, walks
+// the explored move path against them (path-based, like the recap's departure
+// detection — transpositions intentionally don't count). The coach only speaks
+// on the in-book → out-of-book TRANSITION: if a branch was never prepped the
+// in-book state never held, so nothing nags (and in-book shows nothing at all).
+//   - opponent leaves the book → "Add it in Build" inline action at the
+//     departure node
+//   - the player leaves their own book → "Train it" records one recall miss
+//     (POST /api/train/record-miss) so the move leads the next smart session
+// ---------------------------------------------------------------------------
+const bookState = {
+  loaded: false,
+  loading: null,
+  reps: [], // { id, name, color, rootId, children: Map("parentId|uci" -> node), kids: Map(parentId -> [node]) }
+};
+
+// Build edits make this copy stale; drop it so the next Analyze look refetches.
+function invalidateBook() {
+  bookState.loaded = false;
+  bookState.loading = null;
+  bookState.reps = [];
+}
+
+async function ensureBookLoaded() {
+  if (bookState.loaded) return;
+  if (bookState.loading) return bookState.loading;
+  bookState.loading = (async () => {
+    let reps = [];
+    try {
+      const payload = await api("/api/repertoires");
+      const active = (payload.repertoires || []).filter(
+        (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id))
+      );
+      reps = (
+        await Promise.all(
+          active.map(async (meta) => {
+            const data = await api(
+              `/api/build/load?repertoire_id=${encodeURIComponent(meta.id)}`
+            );
+            const children = new Map();
+            const kids = new Map();
+            let rootId = null;
+            for (const node of data.nodes || []) {
+              if (!node.parent_id) {
+                rootId = node.id;
+                continue;
+              }
+              if (node.is_enabled === false || !node.uci) continue;
+              children.set(`${node.parent_id}|${node.uci}`, node);
+              if (!kids.has(node.parent_id)) kids.set(node.parent_id, []);
+              kids.get(node.parent_id).push(node);
+            }
+            return rootId
+              ? { id: data.repertoire_id, name: data.name, color: data.color, rootId, children, kids }
+              : null;
+          })
+        )
+      ).filter(Boolean);
+    } catch (_) {
+      /* guest / fetch failure → no book; the banner simply stays hidden */
+    }
+    bookState.reps = reps;
+    bookState.loaded = true;
+    bookState.loading = null;
+  })();
+  return bookState.loading;
+}
+
+// Deepest full-prefix match of `ucis` across the loaded repertoires.
+// Returns { rep, node, matched } for the best rep, or null when none loaded.
+function bookMatch(ucis) {
+  let best = null;
+  for (const rep of bookState.reps) {
+    let cur = rep.rootId;
+    let node = null;
+    let matched = 0;
+    for (const uci of ucis) {
+      const child = rep.children.get(`${cur}|${uci}`);
+      if (!child) break;
+      node = child;
+      cur = child.id;
+      matched += 1;
+    }
+    if (!best || matched > best.matched) best = { rep, node, nodeId: cur, matched };
+  }
+  return best;
+}
+
+// The uci path from the analysis-tree root down to `node` (mainline or variation).
+function analysisNodePath(node) {
+  const path = [];
+  for (let cur = node; cur && cur.parent; cur = cur.parent) path.push(cur.uci);
+  return path.reverse();
+}
+
+function hideBookline() {
+  const el = document.getElementById("coach-bookline");
+  if (el) {
+    el.hidden = true;
+    el.innerHTML = "";
+  }
+}
+
+// Called on every Analyze position change (via refreshAnalysisExplain). Async and
+// best-effort: the first call kicks off the lazy load and re-renders when it lands.
+//
+// The departure note is part of the coach's CONVERSATION, not a status widget:
+// while the line is in book, nothing is shown (the screen only carries what's
+// useful right now); at the exact ply a move steps out of the book, the coach
+// adds one sentence from the bookline phrase bank, with the single useful
+// action (train the forgotten move / add the novelty in Build) as an inline
+// chip at the end of the sentence, like a spoken link.
+async function updateBookline() {
+  const el = document.getElementById("coach-bookline");
+  if (!el) return;
+  if (!appState.signedIn) return hideBookline();
+  const nodeId = appState.analysisCurrentNodeId || "root";
+  await ensureBookLoaded();
+  // Re-read after the await — the user may have navigated while the trees loaded.
+  if ((appState.analysisCurrentNodeId || "root") !== nodeId) return;
+  if (!bookState.reps.length) return hideBookline();
+  const tree = appState.analysisTree;
+  const node = tree && tree.byId.get(nodeId);
+  if (!node || !node.parent) return hideBookline(); // root: nothing played yet
+  const path = analysisNodePath(node);
+  const cur = bookMatch(path);
+  // Still in book: the coach has nothing to flag, so it says nothing.
+  if (cur && cur.matched === path.length) return hideBookline();
+  // Out of book. Only speak at the departure ply: the PARENT was fully in book.
+  // When the parent position sits in SEVERAL books, prefer the repertoire where
+  // the mover is the player — forgetting your own prep outranks a novelty note.
+  const prefix = path.slice(0, -1);
+  const fullPrev = bookState.reps
+    .map((rep) => {
+      let walk = rep.rootId;
+      for (const uci of prefix) {
+        const child = rep.children.get(`${walk}|${uci}`);
+        if (!child) return null;
+        walk = child.id;
+      }
+      return { rep, nodeId: walk };
+    })
+    .filter(Boolean);
+  if (!fullPrev.length) return hideBookline();
+  const prev = fullPrev.find((m) => node.side === m.rep.color) || fullPrev[0];
+  const rep = prev.rep;
+  const moverIsUser = node.side === rep.color;
+
+  if (moverIsUser) {
+    // The player left their own prep: say what the script wanted, offer to drill it.
+    const prescribed = (rep.kids.get(prev.nodeId) || [])
+      .sort((a, b) => Number(b.is_mainline) - Number(a.is_mainline))[0];
+    if (!prescribed) return hideBookline(); // book actually ends here — no miss
+    const text = buildBookline({
+      kind: "user",
+      san: node.san,
+      uci: node.uci,
+      ply: path.length,
+      repName: rep.name,
+      expectedSan: prescribed.san,
+    });
+    el.innerHTML =
+      `${escapeHtml(text)} ` +
+      `<button class="coach-bookaction" type="button" data-act="train">Train it<span class="cba-arrow" aria-hidden="true">›</span></button>`;
+    el.hidden = false;
+    el.querySelector('[data-act="train"]').addEventListener("click", async (event) => {
+      const btn = event.currentTarget;
+      btn.disabled = true;
+      try {
+        await postJson("/api/train/record-miss", {
+          repertoire_id: rep.id,
+          node_id: prescribed.id,
+        });
+        btn.textContent = "Queued ✓";
+        setStatus(`${prescribed.san} will lead your next smart session`);
+      } catch (error) {
+        btn.disabled = false;
+        setStatus(error.message);
+      }
+    });
+  } else {
+    // Opponent novelty: nothing to recall — offer to extend the book instead.
+    const text = buildBookline({
+      kind: "opponent",
+      san: node.san,
+      uci: node.uci,
+      ply: path.length,
+      repName: rep.name,
+    });
+    el.innerHTML =
+      `${escapeHtml(text)} ` +
+      `<button class="coach-bookaction" type="button" data-act="build">Add it in Build<span class="cba-arrow" aria-hidden="true">›</span></button>`;
+    el.hidden = false;
+    el.querySelector('[data-act="build"]').addEventListener("click", () =>
+      editRepertoire(rep.id, prev.nodeId)
+    );
   }
 }
 
@@ -1984,6 +2189,13 @@ function switchView(name) {
   if (name === "train") {
     loadTrainRepertoireOptions();
   }
+  // Warm the Analyze book (active repertoire trees) so the first explored move
+  // can be matched without waiting on the lazy load.
+  if (name === "analyze" && appState.signedIn) {
+    ensureBookLoaded()
+      .then(() => updateBookline())
+      .catch(() => { /* best-effort */ });
+  }
   // Coming back to the dashboard refreshes its counters — after a training
   // session the streak / due numbers on the today card would otherwise be stale.
   if (name === "dashboard" && appState.signedIn) {
@@ -2236,6 +2448,21 @@ function renderDashboardToday(payload) {
     : streak.current > 0
       ? `Train today to keep your ${streak.current}-day streak`
       : "Train today to start a streak";
+  // Streak-at-risk warning: the streak runs on the player's local calendar, so
+  // "tonight's deadline" is local midnight. Only worth shouting about when a
+  // live streak would actually break — under 5h left, nothing trained yet.
+  let warningHtml = "";
+  if (!streak.trained_today && streak.current > 0) {
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const msLeft = midnight - now;
+    if (msLeft < 5 * 60 * 60 * 1000) {
+      const h = Math.floor(msLeft / 3600000);
+      const m = Math.floor((msLeft % 3600000) / 60000);
+      const left = h > 0 ? `${h}h ${m}m` : `${m}m`;
+      warningHtml = `<div class="today-warning" role="alert">⏰ ${left} left to keep your ${streak.current}-day streak — one card is enough</div>`;
+    }
+  }
   const best = streak.best > 1 ? ` &middot; best ${streak.best}` : "";
   const queueBits = [];
   if (due > 0) queueBits.push(`<b>${due}</b> due now`);
@@ -2271,7 +2498,7 @@ function renderDashboardToday(payload) {
       <span class="today-unit">day streak${best}</span>
     </div>
     <div class="today-text">
-      <div class="today-note">${note}</div>
+      ${warningHtml || `<div class="today-note">${note}</div>`}
       <div class="today-queue">${queueText}</div>
       ${recapHtml}
     </div>
@@ -2280,7 +2507,7 @@ function renderDashboardToday(payload) {
   card.hidden = false;
   document.getElementById("dashboard-train-now").addEventListener("click", () =>
     goToSmartTraining(
-      due > 0 ? "Due review - pick a repertoire and start" : "Pick a repertoire and start"
+      due > 0 ? "Due review - press Start to train" : "Press Start to train"
     )
   );
 }
@@ -2312,7 +2539,7 @@ async function loadDashboard() {
   const dueMetric = document.querySelector('#dashboard-metrics [data-action="due-review"]');
   if (dueMetric) {
     dueMetric.addEventListener("click", () =>
-      goToSmartTraining("Due review - pick a repertoire and start")
+      goToSmartTraining("Due review - press Start to train")
     );
   }
   await loadDashboardRepertoires();
@@ -2585,11 +2812,10 @@ async function signOut() {
 }
 
 function syncReplayControls() {
-  const input = document.getElementById("replay-username");
-  if (input) {
-    input.value = appState.lichessUsername || "";
-    input.disabled = !appState.lichessUsername;
-    input.placeholder = appState.lichessUsername ? "" : "not connected";
+  const chip = document.getElementById("replay-account");
+  if (chip) {
+    chip.textContent = appState.lichessUsername || "not connected";
+    chip.classList.toggle("is-connected", !!appState.lichessUsername);
   }
   const btn = document.getElementById("lichess-compare-btn");
   if (btn) btn.disabled = !appState.lichessUsername;
@@ -3164,9 +3390,10 @@ function showConfirmModal({
   });
 }
 
-async function editRepertoire(repertoireId) {
+async function editRepertoire(repertoireId, nodeId = null) {
   // Switching repertoires replaces the local Build tree — flush pending moves of
-  // the current one first so they aren't dropped.
+  // the current one first so they aren't dropped. An optional `nodeId` opens the
+  // builder at that position (Analyze's "Open in Build" deep link).
   try {
     await hardFlushBuild();
   } catch (error) {
@@ -3178,7 +3405,8 @@ async function editRepertoire(repertoireId) {
     const payload = await api(
       `/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`
     );
-    await hydrateBuild(payload, payload.selected_node_id);
+    const target = nodeId && payload.nodes.some((n) => n.id === nodeId) ? nodeId : null;
+    await hydrateBuild(payload, target || payload.selected_node_id);
     appState.trainingRepertoireId = payload.repertoire_id;
     switchView("build");
     setStatus(`Editing ${payload.name}`);
@@ -3306,6 +3534,7 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
         repertoire_id: repertoireId,
         active: !isActive,
       });
+      invalidateBook(); // the active set defines Analyze's book
       await loadDashboardRepertoires();
       setStatus(`${verb}d repertoire`);
       return;
@@ -3317,6 +3546,7 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       if (appState.pendingRepDeletes.has(repKey)) return;
       const meta = await fetchRepertoireMeta(repertoireId).catch(() => null);
       appState.pendingRepDeletes.add(repKey);
+      invalidateBook();
       if (appState.build && String(appState.build.repertoire_id) === repKey) {
         // Drop any local-first sync state — flushing into a deleted rep is pointless
         // and a pending timer would fire against a now-null tree. This happens at
@@ -4275,6 +4505,8 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   }
   appState.build = payload;
   appState.buildNodeById = new Map(payload.nodes.map((node) => [node.id, node]));
+  // Any (re)hydrate means the repertoire may have changed — drop Analyze's book copy.
+  invalidateBook();
   if (boards.build) boards.build.setOrientation(payload.color === "black" ? "black" : "white");
   renderBuildRepHeader();
   const nextNodeId = selectedNodeId || payload.selected_node_id || payload.nodes[0]?.id;
@@ -5924,6 +6156,16 @@ async function loadTrainRepertoireOptions() {
   }
 }
 
+// The smart queue trains ALL active repertoires in one mixed session, so its
+// setup needs no repertoire picker; line rehearsal (legacy) keeps it.
+function syncTrainPickerVisibility() {
+  const smart = (appState.trainMode || "smart") === "smart";
+  const select = document.getElementById("train-repertoire-select");
+  const label = document.querySelector(".train-picker-label");
+  if (select) select.hidden = smart;
+  if (label) label.hidden = smart;
+}
+
 function selectedTrainRepertoireId() {
   const select = document.getElementById("train-repertoire-select");
   if (!select) return appState.trainingRepertoireId;
@@ -6484,13 +6726,6 @@ function startBlitzTimer(smart, prompt) {
 
 async function startSmartTraining() {
   setStatus("Building your queue");
-  const repertoireId = selectedTrainRepertoireId();
-  appState.trainingRepertoireId = repertoireId;
-  if (!repertoireId) {
-    setStatus("Create a repertoire in Build first, then train it.");
-    setTrainBanner("done", "No repertoire to train", "Build a repertoire, then start the trainer.");
-    return;
-  }
   // Train must see the latest tree: drain unsynced Build edits (adds + deletes)
   // before the server builds the queue, else a just-added line wouldn't be in
   // it and a just-deleted one would.
@@ -6510,10 +6745,11 @@ async function startSmartTraining() {
   }
   let payload;
   try {
-    // fresh: always rebuild the queue from the current tree + SR state — a
-    // resumed stale queue is exactly the desync this avoids.
+    // mixed: one queue over ALL active repertoires (the picker only matters
+    // for line rehearsal). fresh: always rebuild the queue from the current
+    // tree + SR state — a resumed stale queue is exactly the desync this avoids.
     payload = await postJson("/api/train/smart/start", {
-      repertoire_id: repertoireId,
+      mixed: true,
       fresh: true,
     });
   } catch (error) {
@@ -6521,6 +6757,7 @@ async function startSmartTraining() {
     setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Build, then train.");
     return;
   }
+  appState.trainingRepertoireId = payload.repertoire_id;
   trainStatsReset();
   appState.training = null; // leave legacy mode if it was active
   // A restart can interrupt an in-flight run-in; its early-return leaves the
@@ -6540,6 +6777,7 @@ async function startSmartTraining() {
     repertoireId: payload.repertoire_id,
     repertoireName: payload.repertoire_name,
     color: payload.color,
+    mixed: !!payload.mixed,
     queue,
     cardIndex: 0,
     targetIndex: 0,
@@ -6654,6 +6892,14 @@ async function presentSmartPrompt(prompt) {
   renderSmartProgress(prompt);
   const board = boards.train;
   board.setEngineArrow(null);
+  // Mixed sessions hop between repertoires: orient the board and name the
+  // repertoire per card (the bundle carries color/name on every card).
+  const cardMeta = smart.queue[smart.cardIndex];
+  if (cardMeta && cardMeta.color) {
+    board.setOrientation(cardMeta.color === "black" ? "black" : "white");
+    document.getElementById("train-board-label").textContent =
+      `${cardMeta.repertoire_name || smart.repertoireName} - you play ${cardMeta.color}`;
+  }
   let cueUci = board.lastMove || null;
   if (board.fen !== prompt.fen_before) {
     appState.trainBusy = true;
@@ -6932,7 +7178,9 @@ async function finishSmartSession() {
   let after = null;
   try {
     after = await api(
-      `/api/train/smart/summary?repertoire_id=${encodeURIComponent(smart.repertoireId)}`
+      smart.mixed
+        ? "/api/train/smart/summary?mixed=true"
+        : `/api/train/smart/summary?repertoire_id=${encodeURIComponent(smart.repertoireId)}`
     );
   } catch (_) {
     // The summary is a bonus — never block the finish on it.
@@ -7391,6 +7639,8 @@ async function runLichessCompare() {
       count,
     });
     appState.replayResults = payload;
+    appState.replayFilter = null;
+    appState.replayOpen = new Set();
     renderReplayResults(payload);
     const queued = Number(payload.misses_recorded) || 0;
     setStatus(
@@ -7405,61 +7655,173 @@ async function runLichessCompare() {
   }
 }
 
+// One bucket per game: how the prep held up. Drives the row accent, the badge
+// and the summary-strip filters.
+const REPLAY_KINDS = {
+  "in-prep": { icon: "✓", badge: "Stayed in prep", label: "stayed in prep" },
+  "user-error": { icon: "✗", badge: "You left prep", label: "you left prep" },
+  "left-prep": { icon: "⚡", badge: "Opponent novelty", label: "novelties" },
+  "no-prep": { icon: "—", badge: "No repertoire", label: "not covered" },
+};
+
+function replayGameKind(game) {
+  if (game.in_repertoire && game.departure_reason === "game_stayed_in_preparation")
+    return "in-prep";
+  if (game.departure_reason === "user_left_preparation") return "user-error";
+  if (game.departure_reason === "opponent_unprepared_branch") return "left-prep";
+  return "no-prep";
+}
+
+// The one-glance digest above the list: counts per outcome (clickable filters)
+// plus how many forgotten moves the fetch just queued for training.
+function renderReplaySummary(payload) {
+  const el = document.getElementById("replay-summary");
+  if (!el) return;
+  const games = (payload && payload.games) || [];
+  if (!games.length) {
+    el.hidden = true;
+    return;
+  }
+  const counts = { "in-prep": 0, "user-error": 0, "left-prep": 0, "no-prep": 0 };
+  games.forEach((game) => {
+    counts[replayGameKind(game)] += 1;
+  });
+  const chips = Object.entries(REPLAY_KINDS)
+    .filter(([kind]) => counts[kind] > 0)
+    .map(
+      ([kind, meta]) =>
+        `<button type="button" class="replay-chip rk-${kind}${
+          appState.replayFilter === kind ? " is-on" : ""
+        }" data-filter="${kind}" title="Show only these games">${meta.icon} ${counts[kind]} ${meta.label}</button>`
+    );
+  const queued = Number(payload.misses_recorded) || 0;
+  const queuedHtml = queued
+    ? `<span class="replay-queued" title="Each forgotten move was recorded as a recall miss — it leads your next smart session">+${queued} queued for training</span>`
+    : "";
+  el.innerHTML = chips.join("") + queuedHtml;
+  el.hidden = false;
+  el.querySelectorAll("[data-filter]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      appState.replayFilter =
+        appState.replayFilter === btn.dataset.filter ? null : btn.dataset.filter;
+      renderReplayResults(appState.replayResults);
+    });
+  });
+}
+
 function renderReplayResults(payload) {
   const container = document.getElementById("replay-results");
+  renderReplaySummary(payload);
   if (!payload || !payload.games || !payload.games.length) {
     container.innerHTML =
       '<div class="empty-state">No games found, or none played as a color you have a repertoire for.</div>';
     return;
   }
-  container.innerHTML = payload.games.map(renderReplayCard).join("");
-  container.querySelectorAll("[data-train-rep]").forEach((btn) => {
-    btn.addEventListener("click", () => trainRepertoire(btn.dataset.trainRep));
+  const filter = appState.replayFilter;
+  const rows = payload.games
+    .map((game, index) => ({ game, index }))
+    .filter(({ game }) => !filter || replayGameKind(game) === filter);
+  container.innerHTML = rows.length
+    ? rows.map(({ game, index }) => renderReplayCard(game, index)).join("")
+    : '<div class="empty-state">No games in this bucket.</div>';
+  // Row click expands/collapses; the action buttons stop propagation.
+  container.querySelectorAll(".replay-row-head").forEach((head) => {
+    head.addEventListener("click", () => {
+      const idx = Number(head.dataset.index);
+      if (appState.replayOpen.has(idx)) appState.replayOpen.delete(idx);
+      else appState.replayOpen.add(idx);
+      renderReplayResults(appState.replayResults);
+    });
   });
-  container.querySelectorAll("[data-edit-rep]").forEach((btn) => {
-    btn.addEventListener("click", () => editRepertoire(btn.dataset.editRep));
+  container.querySelectorAll("[data-act]").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const game = payload.games[Number(btn.dataset.index)];
+      if (!game) return;
+      const act = btn.dataset.act;
+      if (act === "train") {
+        goToSmartTraining("Your missed move is due now — press Start");
+      } else if (act === "build") {
+        editRepertoire(game.repertoire_id, game.last_matched_node_id || null);
+      } else if (act === "analyze") {
+        replayToAnalyze(game);
+      }
+    });
   });
 }
 
-function renderReplayCard(game) {
-  const players = `${escapeHtml(game.white || "?")} vs ${escapeHtml(game.black || "?")} · ${escapeHtml(game.result || "*")}`;
+// "Review in Analyze": rebuild the game's PGN from the fetched move list and
+// hand it to the Analyze tab — same flow as "My last game" (press Analyze for
+// the full engine review; the book banner tracks your prep as you step through).
+function replayToAnalyze(game) {
+  const history = game.move_san_history || [];
+  if (!history.length) return;
+  const safe = (s) => String(s || "?").replace(/"/g, "'");
+  const headers = [
+    `[Event "Lichess game"]`,
+    `[Site "https://lichess.org/${safe(game.lichess_id || "")}"]`,
+    `[White "${safe(game.white)}"]`,
+    `[Black "${safe(game.black)}"]`,
+    `[Result "${safe(game.result || "*")}"]`,
+  ].join("\n");
+  const movetext = history
+    .map((san, i) => (i % 2 === 0 ? `${i / 2 + 1}. ${san}` : san))
+    .join(" ");
+  const input = document.getElementById("pgn-input");
+  if (input) input.value = `${headers}\n\n${movetext} ${game.result || "*"}`;
+  const drawer = document.getElementById("pgn-drawer");
+  if (drawer) drawer.open = true;
+  switchView("analyze");
+  setStatus(
+    `Loaded ${game.white || "?"} vs ${game.black || "?"} — press Analyze game`
+  );
+}
+
+function renderReplayCard(game, index) {
+  const kind = replayGameKind(game);
+  const meta = REPLAY_KINDS[kind];
+  const open = appState.replayOpen.has(index);
+  const players = `${escapeHtml(game.white || "?")} <span class="muted">vs</span> ${escapeHtml(game.black || "?")}`;
+  const preview = (game.move_san_history || []).slice(0, 6).join(" ");
   const lichessLink = game.lichess_id
-    ? ` <a class="link" target="_blank" rel="noopener noreferrer" href="https://lichess.org/${escapeHtml(game.lichess_id)}">open</a>`
+    ? `<a class="link" target="_blank" rel="noopener noreferrer" href="https://lichess.org/${escapeHtml(game.lichess_id)}" title="Open on Lichess">lichess ↗</a>`
     : "";
-  let cls = "no-prep";
-  let badge = "No matching repertoire";
-  let badgeClass = "muted";
-  if (game.in_repertoire && game.departure_reason === "game_stayed_in_preparation") {
-    cls = "in-prep";
-    badge = "Stayed in prep";
-  } else if (game.departure_reason === "user_left_preparation") {
-    cls = "user-error";
-    badge = "You left prep";
-  } else if (game.departure_reason === "opponent_unprepared_branch") {
-    cls = "left-prep";
-    badge = "Opponent novelty";
-  } else if (game.departure_reason === "no_repertoire_for_color") {
-    cls = "no-prep";
-    badge = "No repertoire";
+
+  const actions = [];
+  if (kind === "user-error") {
+    actions.push(
+      `<button class="btn primary" data-act="train" data-index="${index}" title="The forgotten move is already queued — train it now">Train it now</button>`
+    );
+  }
+  if (kind === "left-prep" && game.repertoire_id) {
+    actions.push(
+      `<button class="btn primary" data-act="build" data-index="${index}" title="Open Build at the position where the novelty appeared">Add reply in Build</button>`
+    );
+  }
+  if ((game.move_san_history || []).length) {
+    actions.push(
+      `<button class="btn ghost" data-act="analyze" data-index="${index}" title="Load this game into the Analyze tab">Review in Analyze</button>`
+    );
   }
 
-  const moveLine = renderReplayMoveLine(game);
-  const detail = renderReplayDetail(game);
-  const actions = game.repertoire_id
-    ? `<div class="tools" style="margin-top:6px">
-        <button class="btn ghost" data-edit-rep="${escapeHtml(game.repertoire_id)}">Open in builder</button>
-        <button class="btn ghost" data-train-rep="${escapeHtml(game.repertoire_id)}">Train this</button>
+  const body = open
+    ? `<div class="replay-row-body">
+        <div class="replay-line">${renderReplayMoveLine(game)}</div>
+        <div class="replay-detail">${renderReplayDetail(game)}</div>
+        <div class="replay-actions">${actions.join("")}${lichessLink}</div>
       </div>`
     : "";
   return `
-    <div class="replay-card ${cls}">
-      <div class="replay-head">
-        <div><span class="players">${players}</span>${lichessLink}</div>
-        <span class="pill" data-badge-class="${badgeClass}">${escapeHtml(badge)}</span>
-      </div>
-      <div class="replay-line">${moveLine}</div>
-      <div class="replay-detail">${detail}</div>
-      ${actions}
+    <div class="replay-row rk-${kind}${open ? " is-open" : ""}">
+      <button type="button" class="replay-row-head" data-index="${index}" aria-expanded="${open}">
+        <span class="replay-icon" aria-hidden="true">${meta.icon}</span>
+        <span class="players">${players}</span>
+        <span class="replay-result">${escapeHtml(game.result || "*")}</span>
+        ${open ? "" : `<span class="replay-preview">${escapeHtml(preview)}…</span>`}
+        <span class="replay-badge">${escapeHtml(meta.badge)}</span>
+        <span class="replay-caret" aria-hidden="true">${open ? "▾" : "▸"}</span>
+      </button>
+      ${body}
     </div>
   `;
 }
@@ -7512,7 +7874,7 @@ function renderReplayDetail(game) {
   } else if (game.departure_reason === "opponent_unprepared_branch") {
     const playedSan = replayDepartureSan(game);
     const played = playedSan ? ` <strong>${escapeHtml(playedSan)}</strong>` : "";
-    lines.push(`Opponent took an unprepared branch on ply ${game.departure_ply}${played}. Backlog this in Builder.`);
+    lines.push(`Opponent took an unprepared branch on ply ${game.departure_ply}${played}. Add your reply in Build so it never surprises you again.`);
   } else if (game.departure_reason === "game_stayed_in_preparation") {
     lines.push("Game stayed entirely within preparation. Nice.");
   } else if (game.departure_reason === "no_repertoire_for_color") {
@@ -8007,8 +8369,10 @@ function bindEvents() {
       appState.trainMode = btn.dataset.mode;
       // The answer clock only exists in the smart queue; rehearsal is untimed.
       if (blitzRow) blitzRow.hidden = btn.dataset.mode !== "smart";
+      syncTrainPickerVisibility();
     });
   });
+  syncTrainPickerVisibility();
   const trainSelect = document.getElementById("train-repertoire-select");
   if (trainSelect) {
     trainSelect.addEventListener("change", () => {

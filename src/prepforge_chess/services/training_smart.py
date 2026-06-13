@@ -36,6 +36,8 @@ from prepforge_chess.core.models import (
     TrainingSession,
 )
 from prepforge_chess.services.scheduler import (
+    DEFAULT_NEW_CAP,
+    DEFAULT_SESSION_SIZE,
     RUN_IN_PLIES,
     SessionPlan,
     TrainingCard,
@@ -43,6 +45,7 @@ from prepforge_chess.services.scheduler import (
     card_counts,
     decode_card,
     encode_card,
+    mix_plans,
     own_move_nodes_on,
     path_to_node,
 )
@@ -187,6 +190,161 @@ class SmartTrainingService:
         self.repository.save_training_session(session)
         return session
 
+    # --------------------------------------------------------- mixed sessions
+
+    def active_repertoires(self, owner_user_id: str) -> List[Repertoire]:
+        return [
+            rep
+            for rep in self.repository.list_repertoires(owner_user_id=owner_user_id)
+            if getattr(rep, "is_active", True)
+        ]
+
+    def start_or_resume_mixed(
+        self,
+        owner_user_id: str,
+        *,
+        fresh: bool = False,
+        session_size: Optional[int] = None,
+        new_cap: Optional[int] = None,
+        seed: Optional[int] = None,
+    ) -> TrainingSession:
+        """One smart session across ALL of the owner's active repertoires.
+
+        The session row needs a real repertoire (FK), so it anchors on the
+        active repertoire with the smallest id — stable across restarts — and
+        mixedness lives in the cards themselves (4-part ``kind:rep:first:last``
+        encoding). With a single active repertoire this simply delegates to the
+        plain per-repertoire start."""
+        reps = self.active_repertoires(owner_user_id)
+        if not reps:
+            raise ValueError("no active repertoires to train")
+        if len(reps) == 1:
+            return self.start_or_resume(
+                reps[0].id,
+                fresh=fresh,
+                session_size=session_size,
+                new_cap=new_cap,
+                seed=seed,
+            )
+        anchor = min(reps, key=lambda rep: rep.id)
+        existing = self.repository.load_latest_training_session(
+            anchor.id, TrainingMode.SMART
+        )
+        if existing is not None and not fresh and self._resumable_mixed(existing, reps):
+            return existing
+
+        actual_seed = seed if seed is not None else random.SystemRandom().randint(1, 2**31 - 1)
+        # Split the session budget across repertoires (ceil, so small counts
+        # still get a slot); build_session_plan handles the per-rep urgency.
+        total_size = session_size if session_size is not None else DEFAULT_SESSION_SIZE
+        total_new = new_cap if new_cap is not None else DEFAULT_NEW_CAP
+        per_size = max(2, -(-total_size // len(reps)))
+        per_new = max(1, -(-total_new // len(reps)))
+        plans: List[tuple[str, SessionPlan]] = []
+        for index, rep in enumerate(reps):
+            progress_by_id = {
+                p.node_id: p for p in self.repository.list_training_progress(rep.id)
+            }
+            plans.append(
+                (
+                    rep.id,
+                    build_session_plan(
+                        rep.root_node,
+                        rep.color,
+                        progress_by_id,
+                        seed=actual_seed + index,
+                        session_size=per_size,
+                        new_cap=per_new,
+                    ),
+                )
+            )
+        mixed = mix_plans(plans, seed=actual_seed)
+        if not mixed.cards:
+            raise ValueError("repertoires have no trainable moves yet")
+
+        line_order = [encode_card(card) for card in mixed.cards]
+        if existing is not None:
+            session = replace(
+                existing,
+                line_order=line_order,
+                current_index=0,
+                current_node_id=None,
+                mistakes=[],
+                seed=actual_seed,
+                updated_at=_utc_now(),
+            )
+        else:
+            session = TrainingSession(
+                id=str(uuid.uuid4()),
+                repertoire_id=anchor.id,
+                mode=TrainingMode.SMART,
+                line_order=line_order,
+                current_index=0,
+                seed=actual_seed,
+            )
+        self.repository.save_training_session(session)
+        return session
+
+    def _resumable_mixed(
+        self, session: TrainingSession, reps: List[Repertoire]
+    ) -> bool:
+        if not session.line_order or session.current_index >= len(session.line_order):
+            return False
+        ids_by_rep: Dict[str, set] = {}
+        for rep in reps:
+            node_ids = set()
+            stack = [rep.root_node]
+            while stack:
+                node = stack.pop()
+                node_ids.add(node.id)
+                stack.extend(node.children)
+            ids_by_rep[rep.id] = node_ids
+        for raw in session.line_order:
+            card = decode_card(raw)
+            # A 3-part card means this is a plain single-repertoire session
+            # parked on the anchor — never resume it as a mixed one.
+            if card is None or not card.repertoire_id:
+                return False
+            node_ids = ids_by_rep.get(card.repertoire_id)
+            if (
+                node_ids is None
+                or card.first_target_id not in node_ids
+                or card.last_target_id not in node_ids
+            ):
+                return False
+        return True
+
+    def _card_repertoire(
+        self,
+        session: TrainingSession,
+        card: TrainingCard,
+        cache: Dict[str, Optional[Repertoire]],
+    ) -> Optional[Repertoire]:
+        """Resolve the repertoire a card's targets live in. Foreign-repertoire
+        cards (mixed sessions) are honoured only when that repertoire belongs
+        to the SAME, NON-NULL owner as the session's anchor — a tampered synced
+        queue must never read or write another user's data. Requiring a non-null
+        owner is essential: ``None == None`` is truthy, so without it a legacy/
+        unclaimed anchor could pull in any other unclaimed repertoire's tree."""
+        rep_id = card.repertoire_id or session.repertoire_id
+        if rep_id in cache:
+            return cache[rep_id]
+        rep: Optional[Repertoire] = None
+        if rep_id == session.repertoire_id:
+            rep = self.repository.load_repertoire(rep_id)
+        else:
+            anchor_meta = self.repository.repertoire_meta(session.repertoire_id)
+            meta = self.repository.repertoire_meta(rep_id)
+            if (
+                anchor_meta is not None
+                and meta is not None
+                and anchor_meta["owner_user_id"] is not None
+                and meta["owner_user_id"] == anchor_meta["owner_user_id"]
+            ):
+                rep = self.repository.load_repertoire(rep_id)
+        cache[rep_id] = rep
+        return rep
+
     def counts(self, session: TrainingSession) -> Dict[str, int]:
         return card_counts(decode_card(raw) for raw in session.line_order)
 
@@ -234,10 +392,17 @@ class SmartTrainingService:
         self, session: TrainingSession, repertoire: Repertoire
     ) -> Optional[_CardContext]:
         """Resolve the current card to live tree nodes, skipping (and
-        persisting past) cards whose targets were edited away in Build."""
+        persisting past) cards whose targets were edited away in Build.
+        Mixed-session cards carry their own repertoire id and resolve against
+        THAT tree; ``repertoire`` (the session's anchor) seeds the cache."""
+        cache: Dict[str, Optional[Repertoire]] = {repertoire.id: repertoire}
         while session.current_index < len(session.line_order):
             card = decode_card(session.line_order[session.current_index])
-            context = self._card_context(session, repertoire, card) if card else None
+            context = None
+            if card is not None:
+                card_rep = self._card_repertoire(session, card, cache)
+                if card_rep is not None:
+                    context = self._card_context(session, card_rep, card)
             if context is not None:
                 return context
             session = replace(
@@ -302,7 +467,7 @@ class SmartTrainingService:
         strategy = annotation or heuristic_strategy(move.san, piece)
         return SmartPrompt(
             session_id=context.session.id,
-            repertoire_id=context.session.repertoire_id,
+            repertoire_id=context.repertoire.id,
             card_index=context.session.current_index,
             total_cards=len(context.session.line_order),
             kind=context.card.kind,
@@ -328,17 +493,23 @@ class SmartTrainingService:
         client can run the whole session locally (local-first Train): per
         target — the expected move, the run-in to animate, the hint texts and
         the opponent reply. Cards whose targets were edited away in Build are
-        skipped, mirroring ``_context``'s stale-card skip."""
+        skipped, mirroring ``_context``'s stale-card skip. Every card names its
+        repertoire (id/name/colour) so the client can flip the board and label
+        the position per card in mixed sessions."""
         cards: List[dict] = []
+        cache: Dict[str, Optional[Repertoire]] = {repertoire.id: repertoire}
         for raw in session.line_order:
             card = decode_card(raw)
             if card is None:
                 continue
+            card_rep = self._card_repertoire(session, card, cache)
+            if card_rep is None:
+                continue
             try:
-                path = path_to_node(repertoire.root_node, card.last_target_id)
+                path = path_to_node(card_rep.root_node, card.last_target_id)
             except ValueError:
                 continue
-            own = own_move_nodes_on(path, repertoire.color)
+            own = own_move_nodes_on(path, card_rep.color)
             first_index = next(
                 (i for i, node in enumerate(own) if node.id == card.first_target_id),
                 None,
@@ -390,7 +561,16 @@ class SmartTrainingService:
                     }
                 )
             if targets:
-                cards.append({"kind": card.kind, "encoded": raw, "targets": targets})
+                cards.append(
+                    {
+                        "kind": card.kind,
+                        "encoded": raw,
+                        "repertoire_id": card_rep.id,
+                        "repertoire_name": card_rep.name,
+                        "color": card_rep.color.value,
+                        "targets": targets,
+                    }
+                )
         return cards
 
     # ------------------------------------------------------------------- sync
@@ -422,20 +602,36 @@ class SmartTrainingService:
             )
         session = self._load_session_or_raise(session_id)
         repertoire = self._load_repertoire_or_raise(session.repertoire_id)
-        valid_ids = set()
-        stack = [repertoire.root_node]
-        while stack:
-            node = stack.pop()
-            valid_ids.add(node.id)
-            stack.extend(node.children)
+        # Map node id -> owning repertoire across every repertoire the queue
+        # references (mixed sessions span several; ownership is enforced by
+        # _card_repertoire, so a tampered queue can't pull in foreign trees).
+        cache: Dict[str, Optional[Repertoire]] = {repertoire.id: repertoire}
+        rep_of_node: Dict[str, str] = {}
+
+        def _index(rep: Repertoire) -> None:
+            stack = [rep.root_node]
+            while stack:
+                node = stack.pop()
+                rep_of_node.setdefault(node.id, rep.id)
+                stack.extend(node.children)
+
+        _index(repertoire)
+        for raw in session.line_order:
+            card = decode_card(raw)
+            if card is None or not card.repertoire_id or card.repertoire_id in cache:
+                continue
+            card_rep = self._card_repertoire(session, card, cache)
+            if card_rep is not None:
+                _index(card_rep)
 
         written = 0
         for item in attempts:
             node_id = item.get("node_id")
-            if node_id not in valid_ids:
+            rep_id = rep_of_node.get(node_id)
+            if rep_id is None:
                 continue
             stored = self.repository.load_training_progress(
-                repertoire.id, node_id
+                rep_id, node_id
             ) or TrainingProgress(node_id=node_id)
             session, progress = record_attempt(
                 session=session,
@@ -443,7 +639,7 @@ class SmartTrainingService:
                 node_id=node_id,
                 correct=bool(item.get("correct")),
             )
-            self.repository.save_training_progress(repertoire.id, progress)
+            self.repository.save_training_progress(rep_id, progress)
             written += 1
 
         if queue is not None:
@@ -473,6 +669,7 @@ class SmartTrainingService:
         if context is None:
             raise ValueError("training session has no current prompt")
         session = context.session  # _context may have skipped stale cards
+        card_rep = context.repertoire  # the card's own repertoire (mixed sessions)
         expected = context.expected
         move = expected.move
         correct = played_uci == move.uci
@@ -481,7 +678,7 @@ class SmartTrainingService:
         sr_written = attempt <= 1
         if sr_written:
             stored = self.repository.load_training_progress(
-                repertoire.id, expected.id
+                card_rep.id, expected.id
             ) or TrainingProgress(node_id=expected.id)
             session, progress = record_attempt(
                 session=session,
@@ -489,7 +686,7 @@ class SmartTrainingService:
                 node_id=expected.id,
                 correct=correct,
             )
-            self.repository.save_training_progress(repertoire.id, progress)
+            self.repository.save_training_progress(card_rep.id, progress)
 
         card_completed = False
         requeued = False

@@ -15,6 +15,7 @@ owner's session (``_owned_session``, mirroring the legacy ``_assert_session_owne
 """
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 import chess
@@ -24,10 +25,15 @@ from pydantic import BaseModel
 from prepforge_chess.api.deps import current_owner, get_repository
 from prepforge_chess.api.routers.workspace import _owned_repertoire
 from prepforge_chess.core.chess_core import ChessCore
-from prepforge_chess.core.models import Repertoire, TrainingMode, TrainingSession
+from prepforge_chess.core.models import (
+    Repertoire,
+    TrainingMode,
+    TrainingProgress,
+    TrainingSession,
+)
 from prepforge_chess.services import streak
 from prepforge_chess.services.progress import compute_health, due_forecast
-from prepforge_chess.services.training import TrainingService
+from prepforge_chess.services.training import TrainingService, update_spaced_repetition
 from prepforge_chess.services.training_smart import SmartTrainingService
 from prepforge_chess.services.training_view import (
     heuristic_strategy,
@@ -122,11 +128,50 @@ class SessionBody(BaseModel):
     session_id: str
 
 
+class RecordMissBody(BaseModel):
+    repertoire_id: str
+    node_id: str
+
+
+@router.post("/record-miss")
+def record_miss(
+    body: RecordMissBody,
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+) -> dict[str, Any]:
+    """Record a single recall miss on a repertoire node — the Analyze board's
+    "you left your prep here" action. Mirrors ``record_departure_misses`` (the
+    recap path): one spaced-repetition miss, due immediately, so the forgotten
+    move leads the very next smart session."""
+    _owned_repertoire(repo, body.repertoire_id, owner)
+    repertoire = repo.load_repertoire(body.repertoire_id)
+    if repertoire is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
+    node = next(
+        (n for n in walk_opening_nodes(repertoire.root_node) if n.id == body.node_id),
+        None,
+    )
+    if node is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="opening node not found")
+    progress = repo.load_training_progress(body.repertoire_id, body.node_id) or TrainingProgress(
+        node_id=body.node_id
+    )
+    updated = update_spaced_repetition(progress, correct=False)
+    # An in-session miss retries after 10 minutes; a miss spotted on the Analyze
+    # board should land in the very next session, so it is due immediately.
+    updated = replace(updated, due_at=updated.last_reviewed_at)
+    repo.save_training_progress(body.repertoire_id, updated)
+    return {"recorded": True, "node_id": body.node_id}
+
+
 # ----- Smart queue (Train v2): card-based scheduler endpoints ----------------
 
 
 class SmartStartBody(BaseModel):
-    repertoire_id: str
+    # mixed=True trains ALL active repertoires in one interleaved queue and
+    # ignores repertoire_id; otherwise repertoire_id is required.
+    repertoire_id: str | None = None
+    mixed: bool = False
     fresh: bool = False
     session_size: int | None = None
     new_cap: int | None = None
@@ -181,6 +226,25 @@ def _smart_summary_payload(
     }
 
 
+def _mixed_summary_payload(
+    repo: PrepForgeRepository, reps: list[Repertoire]
+) -> dict[str, Any]:
+    """The mixed-session bookend: per-repertoire health summed into one view
+    (mastery_pct recomputed over the combined trainable count)."""
+    health: dict[str, int] = {}
+    due_tomorrow = 0
+    for rep in reps:
+        part = _smart_summary_payload(repo, rep)
+        for key, value in part["health"].items():
+            health[key] = health.get(key, 0) + value
+        due_tomorrow += part["due_tomorrow"]
+    trainable = health.get("trainable", 0)
+    health["mastery_pct"] = (
+        round(health.get("mastered", 0) / trainable * 100) if trainable else 0
+    )
+    return {"health": health, "due_tomorrow": due_tomorrow}
+
+
 @router.post("/smart/start")
 def smart_start(
     body: SmartStartBody,
@@ -188,32 +252,55 @@ def smart_start(
     repo: PrepForgeRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Begin (or resume) a card-queue session and return the queue composition
-    plus the first card prompt."""
-    _owned_repertoire(repo, body.repertoire_id, owner)
-    repertoire = repo.load_repertoire(body.repertoire_id)
-    if repertoire is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
+    plus the first card prompt. ``mixed=True`` builds one interleaved queue
+    over ALL of the caller's active repertoires."""
     service = SmartTrainingService(repo)
     try:
-        session = service.start_or_resume(
-            repertoire.id,
-            fresh=body.fresh,
-            session_size=_clamp(body.session_size, 4, 30),
-            new_cap=_clamp(body.new_cap, 0, 10),
-            seed=body.seed,
-        )
+        if body.mixed:
+            session = service.start_or_resume_mixed(
+                owner,
+                fresh=body.fresh,
+                session_size=_clamp(body.session_size, 4, 30),
+                new_cap=_clamp(body.new_cap, 0, 10),
+                seed=body.seed,
+            )
+        else:
+            if not body.repertoire_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="repertoire_id is required unless mixed=true",
+                )
+            _owned_repertoire(repo, body.repertoire_id, owner)
+            session = service.start_or_resume(
+                body.repertoire_id,
+                fresh=body.fresh,
+                session_size=_clamp(body.session_size, 4, 30),
+                new_cap=_clamp(body.new_cap, 0, 10),
+                seed=body.seed,
+            )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    # The session anchors on a real repertoire either way (mixed sessions pick
+    # a stable anchor); load it for the bundle's fallback tree + the labels.
+    repertoire = repo.load_repertoire(session.repertoire_id)
+    if repertoire is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
     prompt = service.current_prompt(session.id)
     if prompt is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="repertoire has no trainable moves yet",
         )
+    summary = (
+        _mixed_summary_payload(repo, service.active_repertoires(owner))
+        if body.mixed
+        else _smart_summary_payload(repo, repertoire)
+    )
     return {
         "repertoire_id": repertoire.id,
-        "repertoire_name": repertoire.name,
+        "repertoire_name": "All repertoires" if body.mixed else repertoire.name,
         "color": repertoire.color.value,
+        "mixed": body.mixed,
         "session_id": session.id,
         "seed": session.seed,
         "mode": TrainingMode.SMART.value,
@@ -227,17 +314,28 @@ def smart_start(
         "cards": service.session_card_bundle(session, repertoire),
         # Pre-session health snapshot: the client diffs it against
         # /smart/summary at the end to show what the session changed.
-        **_smart_summary_payload(repo, repertoire),
+        **summary,
     }
 
 
 @router.get("/smart/summary")
 def smart_summary(
-    repertoire_id: str,
+    repertoire_id: str | None = None,
+    mixed: bool = False,
     owner: str = Depends(current_owner),
     repo: PrepForgeRepository = Depends(get_repository),
 ) -> dict[str, Any]:
-    """Fresh health + tomorrow's due forecast for the end-of-session screen."""
+    """Fresh health + tomorrow's due forecast for the end-of-session screen.
+    ``mixed=true`` aggregates over all the caller's active repertoires."""
+    if mixed:
+        return _mixed_summary_payload(
+            repo, SmartTrainingService(repo).active_repertoires(owner)
+        )
+    if not repertoire_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="repertoire_id is required unless mixed=true",
+        )
     _owned_repertoire(repo, repertoire_id, owner)
     repertoire = repo.load_repertoire(repertoire_id)
     if repertoire is None:

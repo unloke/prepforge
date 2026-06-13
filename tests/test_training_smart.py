@@ -354,3 +354,142 @@ def test_session_completes_after_last_card():
     assert result.session_completed is True
     assert result.next_prompt is None
     assert service.current_prompt(session.id) is None
+
+
+# ---- mixed sessions (one queue over all active repertoires) -----------------
+
+
+def _build_black(repository, owner=None):
+    """Black repertoire: 1.e4 e5 2.Nf3 Nc6 (own moves e5, Nc6)."""
+    builder = OpeningBuilderService(repository, engine=MockEngine(), maia=StubMaia())
+    repertoire = builder.create_repertoire(
+        CreateRepertoireRequest(name="SmartBlack", color=Color.BLACK)
+    )
+    e4 = builder.add_move(repertoire.id, repertoire.root_node.id, "e2e4")
+    e5 = builder.add_move(repertoire.id, e4.id, "e7e5", is_user_prepared_move=True)
+    nf3 = builder.add_move(repertoire.id, e5.id, "g1f3")
+    builder.add_move(repertoire.id, nf3.id, "b8c6", is_user_prepared_move=True)
+    loaded = repository.load_repertoire(repertoire.id)
+    assert loaded is not None
+    return loaded
+
+
+def _claim(repository, owner, *repertoires):
+    repository.ensure_profile(owner, display_name=owner)
+    for rep in repertoires:
+        repository.claim_repertoire(rep.id, owner)
+
+
+def test_mixed_session_spans_repertoires_in_chunks():
+    repository = _repository()
+    white, _ = _build(repository)
+    black = _build_black(repository)
+    owner = "owner-1"
+    _claim(repository, owner, white, black)
+    service = SmartTrainingService(repository)
+    session = service.start_or_resume_mixed(owner, seed=5)
+    cards = [decode_card(raw) for raw in session.line_order]
+    assert all(card is not None and card.repertoire_id for card in cards)
+    rep_ids = {card.repertoire_id for card in cards}
+    assert rep_ids == {white.id, black.id}
+    # The session row anchors on the smaller repertoire id (stable home).
+    assert session.repertoire_id == min(white.id, black.id)
+    # Grouped-but-mixed: never more than MIX_CHUNK consecutive same-rep cards
+    # while another repertoire still has cards pending.
+    from prepforge_chess.services.scheduler import MIX_CHUNK
+
+    run = 1
+    for prev, cur in zip(cards, cards[1:]):
+        run = run + 1 if cur.repertoire_id == prev.repertoire_id else 1
+        remaining_other = any(
+            c.repertoire_id != cur.repertoire_id for c in cards[cards.index(cur) :]
+        )
+        if remaining_other:
+            assert run <= MIX_CHUNK
+
+
+def test_mixed_bundle_names_each_repertoire():
+    repository = _repository()
+    white, _ = _build(repository)
+    black = _build_black(repository)
+    owner = "owner-2"
+    _claim(repository, owner, white, black)
+    service = SmartTrainingService(repository)
+    session = service.start_or_resume_mixed(owner, seed=5)
+    anchor = repository.load_repertoire(session.repertoire_id)
+    bundle = service.session_card_bundle(session, anchor)
+    assert bundle
+    by_rep = {card["repertoire_id"] for card in bundle}
+    assert by_rep == {white.id, black.id}
+    for card in bundle:
+        assert card["color"] in ("white", "black")
+        assert card["repertoire_name"]
+        assert card["targets"]
+
+
+def test_mixed_single_active_repertoire_delegates_to_plain_start():
+    repository = _repository()
+    white, _ = _build(repository)
+    owner = "owner-3"
+    _claim(repository, owner, white)
+    service = SmartTrainingService(repository)
+    session = service.start_or_resume_mixed(owner, seed=5)
+    assert session.repertoire_id == white.id
+    cards = [decode_card(raw) for raw in session.line_order]
+    assert all(card is not None and card.repertoire_id is None for card in cards)
+
+
+def test_mixed_sync_routes_progress_to_each_repertoire():
+    repository = _repository()
+    white, _ = _build(repository)
+    black = _build_black(repository)
+    owner = "owner-4"
+    _claim(repository, owner, white, black)
+    service = SmartTrainingService(repository)
+    session = service.start_or_resume_mixed(owner, seed=5)
+    anchor = repository.load_repertoire(session.repertoire_id)
+    bundle = service.session_card_bundle(session, anchor)
+    # One graded attempt on the first target of each repertoire's first card.
+    picks = {}
+    for card in bundle:
+        picks.setdefault(card["repertoire_id"], card["targets"][0]["node_id"])
+    assert set(picks) == {white.id, black.id}
+    written = service.sync_progress(
+        session.id,
+        [{"node_id": node_id, "correct": True} for node_id in picks.values()],
+    )
+    assert written == 2
+    for rep_id, node_id in picks.items():
+        progress = repository.load_training_progress(rep_id, node_id)
+        assert progress is not None and progress.attempts == 1
+        other = black.id if rep_id == white.id else white.id
+        assert repository.load_training_progress(other, node_id) is None
+
+
+def test_mixed_ignores_foreign_repertoire_cards():
+    repository = _repository()
+    white, _ = _build(repository)
+    black = _build_black(repository)
+    _claim(repository, "owner-5", white)
+    _claim(repository, "owner-6", black)  # belongs to someone else
+    service = SmartTrainingService(repository)
+    session = service.start_or_resume_mixed("owner-5", seed=5)
+    # Tamper: splice a card pointing into the other owner's repertoire.
+    foreign_node = black.root_node.children[0].children[0]  # ...e5 (own move)
+    from dataclasses import replace as dc_replace
+
+    tampered = dc_replace(
+        session,
+        line_order=session.line_order
+        + ["due:{0}:{1}:{2}".format(black.id, foreign_node.id, foreign_node.id)],
+    )
+    repository.save_training_session(tampered)
+    anchor = repository.load_repertoire(session.repertoire_id)
+    bundle = service.session_card_bundle(tampered, anchor)
+    assert all(card["repertoire_id"] != black.id for card in bundle)
+    # And a synced attempt on the foreign node never lands.
+    written = service.sync_progress(
+        session.id, [{"node_id": foreign_node.id, "correct": True}]
+    )
+    assert written == 0
+    assert repository.load_training_progress(black.id, foreign_node.id) is None

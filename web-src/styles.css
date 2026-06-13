@@ -252,67 +252,193 @@ h2 {
   font-size: 12px;
 }
 
-/* Replay tab */
+/* Replay tab — "My recent games" digest + opponent scout, side by side on
+   wide screens. Game rows are collapsed one-liners; clicking expands the move
+   line, the explanation and the contextual actions. */
 
 .replay-layout {
   max-width: 980px;
   margin: 0 auto;
 }
+/* Only the Replay view goes two-column (Settings shares .replay-layout). */
+#view-replay .replay-layout {
+  max-width: 1280px;
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  #view-replay .replay-layout {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 980px;
+  }
+}
 
-.replay-controls {
+/* One toolbar row per card: account chip / inputs + count + the single action. */
+.replay-toolbar {
   display: flex;
-  gap: 12px;
-  margin: 10px 0 14px;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
 }
-
-.replay-controls label {
-  display: grid;
-  gap: 4px;
-  font-size: 12px;
-}
-
-.replay-controls input {
+.replay-toolbar select,
+.replay-toolbar input {
   height: 30px;
-  padding: 0 10px;
+  padding: 0 8px;
   border: 1px solid var(--line);
   border-radius: 4px;
-  min-width: 180px;
+  background: var(--panel);
+  font-size: 12px;
+}
+.replay-toolbar input {
+  min-width: 150px;
+}
+.replay-account {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-soft);
+}
+.replay-account.is-connected {
+  color: var(--text);
+  font-weight: 600;
 }
 
-.replay-controls input[disabled] {
+/* Outcome digest: count chips double as filters, plus the queued-misses note. */
+.replay-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.replay-summary[hidden] {
+  display: none;
+}
+.replay-chip {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.replay-chip.is-on {
+  border-color: var(--accent);
   background: var(--panel-soft);
-  color: var(--muted);
+  font-weight: 700;
+}
+.replay-chip.rk-in-prep { color: #4a8964; }
+.replay-chip.rk-user-error { color: #c4524d; }
+.replay-chip.rk-left-prep { color: #c98439; }
+.replay-chip.rk-no-prep { color: var(--muted); }
+.replay-queued {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warn);
 }
 
 .replay-results {
   display: grid;
-  gap: 8px;
-}
-
-.replay-card {
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--panel);
-  padding: 12px 14px;
-  display: grid;
   gap: 6px;
 }
 
-.replay-card.in-prep { border-left: 4px solid #4a8964; padding-left: 11px; }
-.replay-card.left-prep { border-left: 4px solid #c98439; padding-left: 11px; }
-.replay-card.user-error { border-left: 4px solid #c4524d; padding-left: 11px; }
-.replay-card.no-prep { border-left: 4px solid #d8d4ce; padding-left: 11px; opacity: 0.85; }
+.replay-row {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  overflow: hidden;
+}
+.replay-row.rk-in-prep { border-left: 4px solid #4a8964; }
+.replay-row.rk-left-prep { border-left: 4px solid #c98439; }
+.replay-row.rk-user-error { border-left: 4px solid #c4524d; }
+.replay-row.rk-no-prep { border-left: 4px solid #d8d4ce; opacity: 0.85; }
 
-.replay-head {
+/* The whole header is the expand/collapse button. */
+.replay-row-head {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: baseline;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.replay-row-head:hover {
+  background: var(--panel-soft);
+}
+.replay-icon {
+  flex: none;
+  width: 18px;
+  text-align: center;
+  font-weight: 700;
+}
+.rk-in-prep .replay-icon { color: #4a8964; }
+.rk-user-error .replay-icon { color: #c4524d; }
+.rk-left-prep .replay-icon { color: #c98439; }
+.rk-no-prep .replay-icon { color: var(--muted); }
+.replay-row-head .players {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.replay-result {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.replay-preview {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.replay-badge {
+  flex: none;
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 8px;
+  background: var(--panel-soft);
+}
+.replay-caret {
+  flex: none;
+  color: var(--muted);
 }
 
-.replay-head .players { font-weight: 700; }
-.replay-head .pill { background: var(--panel-soft); }
+.replay-row-body {
+  display: grid;
+  gap: 6px;
+  padding: 0 12px 10px 32px;
+}
+.replay-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.replay-actions .btn {
+  padding: 3px 12px;
+  font-size: 12px;
+}
+.replay-actions .link {
+  font-size: 12px;
+  margin-left: auto;
+}
 
 .replay-line {
   font-variant-numeric: tabular-nums;
@@ -705,6 +831,56 @@ h2 {
 }
 .today-recap .up { color: var(--good); }
 .today-recap .down { color: var(--danger); }
+/* Streak-at-risk: replaces the note line when local midnight is <5h away and
+   nothing has been trained yet — same slot, louder voice. */
+.today-warning {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--warn);
+}
+
+/* Book-departure line: a second coach sentence (same voice as .coach-prose)
+   that only appears at the ply a move leaves the repertoire, with the one
+   useful action inline at the end of the sentence, like a spoken link. */
+.coach-bookline {
+  margin: 6px 0 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text);
+  border-left: 3px solid var(--accent-line);
+  padding: 2px 0 2px 11px;
+}
+.coach-bookline[hidden] {
+  display: none;
+}
+.coach-bookaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 2px;
+  padding: 1px 9px 2px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  vertical-align: baseline;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.coach-bookaction:hover {
+  background: var(--accent-line);
+  border-color: var(--accent-strong);
+}
+.coach-bookaction:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.coach-bookaction .cba-arrow {
+  font-weight: 700;
+}
 
 .dashboard-grid {
   display: grid;

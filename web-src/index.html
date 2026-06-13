@@ -76,6 +76,7 @@
                 </label>
               </div>
               <p class="coach-prose" id="coach-prose" data-testid="coach-prose">Make a move and I'll tell you what I think.</p>
+              <p class="coach-bookline" id="coach-bookline" data-testid="coach-bookline" hidden></p>
             </section>
             <div class="reveal" id="analysis-results" hidden>
               <svg class="eval-chart" id="eval-chart" viewBox="0 0 640 96" role="img"></svg>
@@ -180,7 +181,7 @@
               <button class="ib" id="train-hint" title="Hint (show the piece to move)" aria-label="Show hint">💡</button>
               <button class="ib" id="train-skip" title="Skip this card" aria-label="Skip this card">⏭</button>
               <span class="sep"></span>
-              <span class="board-label" id="train-board-label">Pick a repertoire and start</span>
+              <span class="board-label" id="train-board-label">Press Start to train</span>
               <span class="build-sync" id="train-sync" aria-live="polite" hidden></span>
             </div>
           </div>
@@ -265,48 +266,43 @@
 
       <section class="view" id="view-replay" data-testid="view-replay">
         <div class="replay-layout">
-          <section class="card">
+          <section class="card replay-card-games">
             <div class="card-head">
-              <h2>Lichess replay vs repertoire</h2>
-              <button class="btn primary" id="lichess-compare-btn" data-testid="lichess-compare">
-                Fetch &amp; compare
-              </button>
+              <h2>My recent games</h2>
+              <div class="replay-toolbar">
+                <span class="replay-account" id="replay-account" title="Games are fetched for your linked Lichess account">not connected</span>
+                <select id="replay-count" title="How many recent games to check">
+                  <option value="10" selected>last 10</option>
+                  <option value="20">last 20</option>
+                  <option value="30">last 30</option>
+                  <option value="50">last 50</option>
+                </select>
+                <button class="btn primary" id="lichess-compare-btn" data-testid="lichess-compare">Check my games</button>
+              </div>
             </div>
             <p class="muted hint">
-              Connect a Lichess account, then fetch your recent games to see which entered prep, where you left it,
-              and whether the mistake was yours or your opponent's novelty.
+              How did your prep hold up? Forgotten moves are queued for training automatically;
+              opponent novelties can go straight into Build.
             </p>
-            <div class="replay-controls">
-              <label>
-                <span class="muted">Username</span>
-                <input id="replay-username" type="text" placeholder="not connected" disabled />
-              </label>
-              <label>
-                <span class="muted">Recent games</span>
-                <input id="replay-count" type="number" min="1" max="50" value="10" />
-              </label>
-            </div>
+            <div id="replay-summary" class="replay-summary" hidden></div>
             <div id="replay-results" class="replay-results"></div>
           </section>
-          <section class="card">
+          <section class="card replay-card-scout">
             <div class="card-head">
               <h2>Scout an opponent</h2>
-              <button class="btn primary" id="scout-btn" data-testid="scout-btn">Scout</button>
+              <div class="replay-toolbar">
+                <input id="scout-username" type="text" placeholder="lichess username" />
+                <select id="scout-count" title="How many of their recent games to read">
+                  <option value="40">40 games</option>
+                  <option value="60" selected>60 games</option>
+                  <option value="100">100 games</option>
+                </select>
+                <button class="btn primary" id="scout-btn" data-testid="scout-btn">Scout</button>
+              </div>
             </div>
             <p class="muted hint">
-              Fetch any player's recent Lichess games to see what they actually open with -
-              and whether your repertoires cover their pet lines.
+              What do they actually open with — and do your repertoires cover their pet lines?
             </p>
-            <div class="replay-controls">
-              <label>
-                <span class="muted">Lichess username</span>
-                <input id="scout-username" type="text" placeholder="opponent" />
-              </label>
-              <label>
-                <span class="muted">Recent games</span>
-                <input id="scout-count" type="number" min="20" max="100" value="60" />
-              </label>
-            </div>
             <div id="scout-results" class="scout-results"></div>
           </section>
         </div>
