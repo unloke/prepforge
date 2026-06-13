@@ -103,7 +103,7 @@ describe("buildCommentary (prose)", () => {
     expect(c.prose).toMatch(/blunder/i);
     expect(c.prose).toMatch(/bishop on b5/i);
     expect(c.prose).toMatch(/Kf2/); // the move to play instead
-    expect(c.prose).toMatch(/saving a piece/); // rescues, not "wins"
+    expect(c.prose).toMatch(/saving (a piece|a bishop)/); // rescues, not "wins"
     // No data dump: no "Accuracy", no percentages.
     expect(c.prose).not.toMatch(/Accuracy/i);
     expect(c.prose).not.toMatch(/%/);
@@ -200,6 +200,26 @@ describe("buildCommentary (prose)", () => {
     expect(c.prose).toMatch(/a4/); // the fix
     expect(c.prose).toMatch(/saving two pawns/);
     expect(c.prose).not.toMatch(/%/);
+  });
+
+  it("names a knight-for-pawn loss by composition, not as two pawns", () => {
+    const f = buildMoveFeatures({
+      ply: 1,
+      mover: "white",
+      uci: "d4f5",
+      san: "Nxf5",
+      fenBefore: "8/8/4k3/5p2/3N4/8/8/6K1 w - - 0 1",
+      fenAfter: "8/8/4k3/5N2/8/8/8/6K1 b - - 0 1",
+      beforeEval: {
+        lines: [{ uci: "g1f2", san: "Kf2", cp: 0, mate: null, pvUci: ["g1f2"], pvSan: ["Kf2"] }],
+      },
+      afterEval: { cp: -300, mate: null, pvUci: ["e6f5"], pvSan: ["Kxf5"] },
+    });
+    expect(f.playedLine.settledDiffSwing).toMatchObject({ p: 1, n: -1 });
+    const c = buildCommentary(f);
+    expect(c.prose).toMatch(/knight for a pawn/);
+    expect(c.prose).toMatch(/saving a knight for a pawn/);
+    expect(c.prose).not.toMatch(/two pawns/);
   });
 
   it("recommends the better move with a positional merit when there's no material to save", () => {

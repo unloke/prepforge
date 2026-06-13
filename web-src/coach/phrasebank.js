@@ -351,6 +351,9 @@ export const LOSE_MATERIAL_TEMPLATE = [
   "{opener} {verb} along the way. {punish}",
   "{opener} {verb} in the process. {punish}",
   "{opener} quietly {verb}. {punish}",
+  "{opener} doesn't solve the tactics. {punish}",
+  "{opener} lets the exchange settle the wrong way. {punish}",
+  "{opener} walks into a poor trade. {punish}",
 ];
 
 // The forcing line's material count, named with the punishing reply. Standalone,
@@ -365,6 +368,9 @@ export const PUNISH_WITH_REPLY_COUNT = [
   "{reply} does the damage: {opp} is {phrase} up{tailParen}.",
   "After {reply}, {tailComma}{opp} walks off {phrase} ahead.",
   "Once {reply} hits, {tailComma}{opp} banks {phrase}.",
+  "{reply} clears it up, and the trade leaves {opp} with {phrase}.",
+  "The point is {reply}: after that, {opp} has won {phrase}.",
+  "After {reply}, {tailComma}the material story is {phrase} for {opp}.",
 ];
 
 export const PUNISH_NO_REPLY_COUNT = [
@@ -376,6 +382,9 @@ export const PUNISH_NO_REPLY_COUNT = [
   "The line runs out with {opp} {phrase} ahead.",
   "When it all settles, {opp} is {phrase} to the good.",
   "{opp} pockets {phrase} out of it.",
+  "The trade resolves as {phrase} for {opp}.",
+  "Once the dust clears, {opp} has taken {phrase}.",
+  "The resulting exchange favours {opp} by {phrase}.",
 ];
 
 // What the move costs when nothing is materially lost — initiative/tempo, by phase.
@@ -620,6 +629,9 @@ export const POINT_MATERIAL = [
   " {me} pockets {phrase} from it.",
   " That nets {me} {phrase}.",
   " {me} is {phrase} to the good now.",
+  " The material count now favours {me} by {phrase}.",
+  " That trade leaves {me} with {phrase} in hand.",
+  " {me} gets the better side of the exchange: {phrase}.",
 ];
 
 // A clean, even trade (a capture the settled count says nets nothing) — narrated
@@ -692,6 +704,9 @@ export const GOOD_SOLID = [
   " It maintains a healthy, comfortable position.",
   " No fuss, just a sound and useful move.",
   " It keeps the structure intact and the pieces happy.",
+  " It improves the position without giving the opponent a target.",
+  " It keeps the plan coherent and avoids unnecessary weaknesses.",
+  " A practical move: the pieces stay coordinated and nothing is loose.",
 ];
 
 // A sound move played from a clearly worse position — the move is fine, but the position

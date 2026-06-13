@@ -18,7 +18,7 @@
 // handful of small banks compose into thousands of distinct sentences — same facts,
 // different voice — while each bank stays short enough to tweak in isolation.
 import { describeMove } from "../explain.js";
-import { PIECE_NAME, materialPhrase, materialEdgePhrase } from "./material.js";
+import { PIECE_NAME, materialPhrase, materialEdgePhrase, materialSwingPhrase } from "./material.js";
 import { describeThreat, describeAnyThreat } from "./tactics.js";
 import {
   choose,
@@ -170,6 +170,22 @@ function lineMaterialDiff(f) {
   return b - p;
 }
 
+function linePieceDiff(f) {
+  const end = (line) => {
+    if (!line) return null;
+    return line.settledEndDiff || line.perPieceDiff || null;
+  };
+  const b = end(f.bestLine);
+  const p = end(f.playedLine);
+  if (!b || !p) return null;
+  const out = {};
+  for (const k of ["p", "n", "b", "r", "q"]) {
+    const v = (b[k] || 0) - (p[k] || 0);
+    out[k] = f.mover === "white" ? v : -v;
+  }
+  return out;
+}
+
 // Pawns the mover actually drops over the line they played (best play by both sides from
 // the engine's PV), measured on the exchange-resolved swing so a clean recapture doesn't
 // register as a loss. 0 when the line is materially level — the "positional" case where
@@ -184,6 +200,14 @@ function playedLineLoss(f) {
   // PIECE_VALUE points — always an integer. Math.round is just a defensive guard
   // against future fractional piece values, not a real rounding step today.
   return swingMover < 0 ? Math.round(-swingMover) : 0;
+}
+
+function playedLineLossPhrase(f) {
+  const loss = playedLineLoss(f);
+  if (loss < 1) return "";
+  const diff = f.playedLine?.settledDiffSwing || null;
+  const moverDiff = diff ? (f.mover === "white" ? diff : negateDiff(diff)) : null;
+  return materialSwingPhrase(moverDiff, -loss) || materialPhrase(loss);
 }
 
 // ---------------------------------------------------------------------------
@@ -247,13 +271,8 @@ function oppStanding(f) {
 function betterPayoff(f) {
   const diff = lineMaterialDiff(f);
   if (diff !== null && diff >= 2) {
-    const phrase = materialPhrase(diff);
-    const playedEnd =
-      f.playedLine && Number.isFinite(f.playedLine.settledEndBalance)
-        ? f.playedLine.settledEndBalance
-        : f.playedLine && f.playedLine.endBalance;
-    const droppedMaterial =
-      f.playedLine && (f.mover === "white" ? playedEnd : -playedEnd) <= -1;
+    const phrase = materialSwingPhrase(linePieceDiff(f), diff) || materialPhrase(diff);
+    const droppedMaterial = playedLineLoss(f) >= 1;
     if (phrase) return droppedMaterial ? `, saving ${phrase}` : `, winning ${phrase}`;
   }
   return "";
@@ -480,8 +499,9 @@ function buildProse(f) {
       const idea = moveIdea(f);
       const opener = idea ? choose(f, "opener", OPENER_WITH_IDEA, { san: f.san, idea }) : f.san;
       const loss = playedLineLoss(f);
-      if (loss >= 1 && materialPhrase(loss)) {
-        const phrase = materialPhrase(loss);
+      const lossPhrase = playedLineLossPhrase(f);
+      if (loss >= 1 && lossPhrase) {
+        const phrase = lossPhrase;
         const replyTail = ideaTail(moveClauses(f.fenAfter, f.replyUci, f.replySan));
         const punish = f.replySan
           ? choose(f, "punishCount", PUNISH_WITH_REPLY_COUNT, {

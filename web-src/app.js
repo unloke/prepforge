@@ -8106,11 +8106,12 @@ async function runScout() {
       }
     }
     const sections = [
-      renderScoutSection(games, "white", lookups.black, username),
-      renderScoutSection(games, "black", lookups.white, username),
+      renderScoutSection(games, "white", lookups.black),
+      renderScoutSection(games, "black", lookups.white),
     ].filter(Boolean);
+    const reportHead = `<div class="scout-report-head"><strong>${escapeHtml(username)}</strong><span class="muted">last ${games.length} games &middot; openings only</span></div>`;
     results.innerHTML = sections.length
-      ? sections.join("")
+      ? reportHead + sections.join("")
       : '<div class="empty-state">Not enough opening data in these games.</div>';
     results.querySelectorAll("[data-prep-rep]").forEach((btn) => {
       btn.addEventListener("click", async () => {
@@ -8145,7 +8146,7 @@ function scoutLineText(sans) {
 
 // One half of the report: everything the opponent does as `oppColor`, graded
 // against MY repertoires of the opposite colour.
-function renderScoutSection(games, oppColor, myLookups, username) {
+function renderScoutSection(games, oppColor, myLookups) {
   const trie = scoutModule.buildOpeningTrie(games, oppColor);
   if (!trie.count) return "";
   const dist = scoutModule.moveDistribution(trie).slice(0, 4);
@@ -8167,15 +8168,17 @@ function renderScoutSection(games, oppColor, myLookups, username) {
     : '<span class="scout-verdict muted">no repertoire of yours answers this colour yet</span>';
 
   const firstMoves = dist
-    .map(
-      (m) => `
-      <div class="scout-dist-row">
+    .map((m) => {
+      // Tint the bar by how well the move scores FOR THEM: a hot weapon reads red.
+      const heat = m.scorePct >= 55 ? " is-hot" : m.scorePct <= 45 ? " is-cold" : "";
+      return `
+      <div class="scout-dist-row${heat}">
         <span class="scout-dist-san">${escapeHtml(m.san)}</span>
         <span class="scout-dist-bar"><span style="width:${Math.round(m.share * 100)}%"></span></span>
         <span class="scout-dist-share">${Math.round(m.share * 100)}%</span>
         <span class="scout-dist-score" title="Their score with this move">${m.scorePct}%</span>
-      </div>`,
-    )
+      </div>`;
+    })
     .join("");
 
   const lineRows = graded
@@ -8189,13 +8192,13 @@ function renderScoutSection(games, oppColor, myLookups, username) {
         !line.prepared && line.repId
           ? `<button class="btn ghost scout-prep-btn" data-prep-rep="${escapeHtml(line.repId)}" data-prep-node="${escapeHtml(line.deepestNodeId || "")}" title="Open ${escapeHtml(line.repName)} where the gap starts">Prep this</button>`
           : "";
+      const moves = scoutLineText(line.sans);
       return `
       <div class="scout-line">
         <span class="scout-line-count" title="${line.count} of their games">&times;${line.count}</span>
-        <span class="scout-line-moves">${escapeHtml(scoutLineText(line.sans))}</span>
+        <span class="scout-line-moves" title="${escapeHtml(moves)}">${escapeHtml(moves)}</span>
         <span class="scout-line-score" title="Their score in this line">${line.scorePct}%</span>
-        ${badge}
-        ${prepBtn}
+        <span class="scout-line-end">${badge}${prepBtn}</span>
       </div>`;
     })
     .join("");
@@ -8204,11 +8207,21 @@ function renderScoutSection(games, oppColor, myLookups, username) {
   return `
     <div class="scout-section">
       <div class="scout-section-head">
-        <h3>${escapeHtml(username)} &middot; ${heading} <span class="muted">(${trie.count} games)</span></h3>
+        <span class="scout-color-dot ${oppColor}" aria-hidden="true"></span>
+        <h3>${heading}</h3>
+        <span class="scout-games-count">${trie.count} games</span>
         ${verdict}
       </div>
-      <div class="scout-dist">${firstMoves}</div>
-      <div class="scout-lines">${lineRows}</div>
+      <div class="scout-body">
+        <div class="scout-col">
+          <div class="scout-col-label">First moves</div>
+          <div class="scout-dist">${firstMoves}</div>
+        </div>
+        <div class="scout-col">
+          <div class="scout-col-label">Favourite lines</div>
+          <div class="scout-lines">${lineRows}</div>
+        </div>
+      </div>
     </div>
   `;
 }

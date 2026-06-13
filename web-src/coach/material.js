@@ -164,6 +164,68 @@ export function materialPhrase(balance) {
   return "decisive material";
 }
 
+const PIECE_PLURAL = {
+  p: "pawns",
+  n: "knights",
+  b: "bishops",
+  r: "rooks",
+  q: "queens",
+};
+const COUNT_WORD = { 2: "two", 3: "three", 4: "four" };
+
+function pieceList(counts) {
+  const parts = [];
+  for (const t of ["q", "r", "b", "n", "p"]) {
+    const n = Math.abs(Math.round(counts[t] || 0));
+    if (!n) continue;
+    if (n === 1) parts.push(`a ${PIECE_NAME[t]}`);
+    else parts.push(`${COUNT_WORD[n] || n} ${PIECE_PLURAL[t]}`);
+  }
+  if (!parts.length) return "";
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
+function splitSwing(diff, sign) {
+  const main = {};
+  const offset = {};
+  for (const t of ["p", "n", "b", "r", "q"]) {
+    const v = Math.round(diff?.[t] || 0) * sign;
+    if (v > 0) main[t] = v;
+    if (v < 0) offset[t] = -v;
+  }
+  return { main, offset };
+}
+
+// Composition-aware material change. `diff` is the mover-POV per-piece count change
+// over a line. Positive `balance` means the mover gained material; negative means they
+// lost it. This names exchanges such as "a knight for a pawn" instead of flattening the
+// same two-point gap into "two pawns".
+export function materialSwingPhrase(diff, balance) {
+  const abs = Math.round(Math.abs(balance));
+  if (abs < 1) return "";
+  if (!diff) return materialPhrase(balance);
+
+  const sign = balance > 0 ? 1 : -1;
+  const { main, offset } = splitSwing(diff, sign);
+  const mainMinor = (main.n || 0) + (main.b || 0);
+  const offsetMinor = (offset.n || 0) + (offset.b || 0);
+
+  if ((main.r || 0) === 1 && offsetMinor === 1 && !(main.q || 0)) {
+    return offset.p ? "a rook for a minor and a pawn" : "a rook for a minor";
+  }
+  if (mainMinor === 1 && (offset.p || 0) === 1 && !(main.q || 0) && !(main.r || 0)) {
+    return `${pieceList(main)} for a pawn`;
+  }
+
+  const mainText = pieceList(main);
+  const offsetText = pieceList(offset);
+  if (mainText && offsetText) return `${mainText} for ${offsetText}`;
+  if (mainText) return mainText;
+  return materialPhrase(balance);
+}
+
 // Describe a material edge by its piece COMPOSITION, so a rook-for-minor imbalance reads
 // as "the exchange" instead of its bare ~2-pawn magnitude ("two pawns"). `diff` is the
 // mover-POV per-piece count delta (mover minus opponent: { p, n, b, r, q }); `balance` is
@@ -182,8 +244,20 @@ export function materialEdgePhrase(diff, balance) {
       if (pawns >= 2) return "the exchange and pawns";
       return "the exchange for a pawn"; // up the exchange but a pawn down
     }
+    if (queens === 0 && rooks === -1 && minor === 1) {
+      if (pawns === 0) return "down the exchange";
+      if (pawns === 1) return "down the exchange but up a pawn";
+      if (pawns >= 2) return "down the exchange but up pawns";
+      return "down the exchange and a pawn";
+    }
   }
   return materialPhrase(balance);
+}
+
+function diffMinus(a, b) {
+  const out = {};
+  for (const t of ["p", "n", "b", "r", "q"]) out[t] = (a?.[t] || 0) - (b?.[t] || 0);
+  return out;
 }
 
 // Replay a line of UCI moves from `fenStart` and report the material story: where it
@@ -231,13 +305,28 @@ export function walkLine(fenStart, uciMoves, cap = 12) {
   // landed on, so the count reflects "once the trade finishes", not "mid-recapture".
   const settledEndBalance = settledBalanceAfter(chess, lastMove);
   let settledStartBalance = startBalance;
+  let settledEndDiff = perPieceDiff(chess);
+  let settledStartDiff;
+  try {
+    settledStartDiff = perPieceDiff(new Chess(fenStart));
+  } catch (_) {
+    settledStartDiff = null;
+  }
   if (firstMove && firstMove.captured) {
     let startChess;
     try {
       startChess = new Chess(fenStart);
       settledStartBalance = squareExchange(startChess, firstMove.to);
+      settledStartDiff = perPieceDiff(squareExchangeBoard(new Chess(fenStart), firstMove.to));
     } catch (_) {
       settledStartBalance = startBalance;
+    }
+  }
+  if (lastMove && lastMove.captured) {
+    try {
+      settledEndDiff = perPieceDiff(squareExchangeBoard(new Chess(chess.fen()), lastMove.to));
+    } catch (_) {
+      settledEndDiff = perPieceDiff(chess);
     }
   }
   return {
@@ -248,6 +337,9 @@ export function walkLine(fenStart, uciMoves, cap = 12) {
     settledStartBalance,
     settledEndBalance,
     settledSwing: settledEndBalance - settledStartBalance, // honest, exchange-resolved
+    settledStartDiff,
+    settledEndDiff,
+    settledDiffSwing: settledStartDiff ? diffMinus(settledEndDiff, settledStartDiff) : null,
     byWhite,
     byBlack,
     insufficient: chess.isInsufficientMaterial(),

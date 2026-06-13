@@ -260,19 +260,14 @@ h2 {
   max-width: 980px;
   margin: 0 auto;
 }
-/* Only the Replay view goes two-column (Settings shares .replay-layout). */
-#view-replay .replay-layout {
-  max-width: 1280px;
+/* Replay stacks its two cards full-width so game rows and the scout report
+   both get room to breathe (Settings keeps the plain .replay-layout). */
+.replay-stack {
+  max-width: 920px;
+  margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  gap: 14px;
+  gap: 16px;
   align-items: start;
-}
-@media (max-width: 1100px) {
-  #view-replay .replay-layout {
-    grid-template-columns: minmax(0, 1fr);
-    max-width: 980px;
-  }
 }
 
 /* One toolbar row per card: account chip / inputs + count + the single action. */
@@ -348,14 +343,18 @@ h2 {
 
 .replay-row {
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--panel);
   overflow: hidden;
 }
-.replay-row.rk-in-prep { border-left: 4px solid #4a8964; }
-.replay-row.rk-left-prep { border-left: 4px solid #c98439; }
-.replay-row.rk-user-error { border-left: 4px solid #c4524d; }
-.replay-row.rk-no-prep { border-left: 4px solid #d8d4ce; opacity: 0.85; }
+.replay-row.is-open {
+  border-color: var(--line-strong);
+  box-shadow: 0 1px 4px rgba(28, 28, 28, 0.06);
+}
+.replay-row.rk-in-prep { border-left: 3px solid #4a8964; }
+.replay-row.rk-left-prep { border-left: 3px solid #c98439; }
+.replay-row.rk-user-error { border-left: 3px solid #c4524d; }
+.replay-row.rk-no-prep { border-left: 3px solid #d8d4ce; opacity: 0.85; }
 
 /* The whole header is the expand/collapse button. */
 .replay-row-head {
@@ -399,7 +398,8 @@ h2 {
   flex: 1;
   min-width: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -408,12 +408,17 @@ h2 {
   flex: none;
   margin-left: auto;
   font-size: 11px;
+  font-weight: 600;
   color: var(--muted);
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 1px 8px;
   background: var(--panel-soft);
+  white-space: nowrap;
 }
+.rk-in-prep .replay-badge { color: var(--good); border-color: rgba(74, 137, 100, 0.4); background: rgba(74, 137, 100, 0.08); }
+.rk-user-error .replay-badge { color: var(--danger); border-color: rgba(196, 82, 77, 0.4); background: rgba(196, 82, 77, 0.08); }
+.rk-left-prep .replay-badge { color: var(--warn); border-color: rgba(201, 132, 57, 0.4); background: rgba(201, 132, 57, 0.08); }
 .replay-caret {
   flex: none;
   color: var(--muted);
@@ -421,8 +426,10 @@ h2 {
 
 .replay-row-body {
   display: grid;
-  gap: 6px;
-  padding: 0 12px 10px 32px;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--line-soft);
+  background: var(--panel-soft);
 }
 .replay-actions {
   display: flex;
@@ -2119,31 +2126,60 @@ h2 {
 
 .scout-results {
   display: grid;
-  gap: 14px;
-  margin-top: 10px;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+/* One report header (who + how many games), then one card per colour. */
+.scout-report-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+.scout-report-head strong {
+  font-size: 14px;
 }
 
 .scout-section {
-  border: 1px solid var(--line-soft);
-  border-radius: 6px;
-  padding: 10px 12px;
-  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  overflow: hidden;
 }
 
 .scout-section-head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
+  padding: 9px 12px;
+  background: var(--panel-soft);
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .scout-section-head h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
+}
+
+.scout-color-dot {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+}
+.scout-color-dot.white { background: #fdfdfb; }
+.scout-color-dot.black { background: #3a3a3a; }
+
+.scout-games-count {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .scout-verdict {
+  margin-left: auto;
   font-size: 12px;
   font-weight: 600;
 }
@@ -2151,16 +2187,37 @@ h2 {
 .scout-verdict.warn { color: var(--warn); }
 .scout-verdict.muted { color: var(--muted); font-weight: 400; }
 
+/* Body: first-move distribution on the left, favourite lines on the right. */
+.scout-body {
+  display: grid;
+  grid-template-columns: minmax(190px, 250px) minmax(0, 1fr);
+  gap: 8px 20px;
+  padding: 10px 12px 12px;
+}
+@media (max-width: 720px) {
+  .scout-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.scout-col-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--label);
+  margin-bottom: 6px;
+}
+
 .scout-dist {
   display: grid;
-  gap: 3px;
-  margin: 8px 0 10px;
-  max-width: 360px;
+  gap: 4px;
+  align-content: start;
 }
 
 .scout-dist-row {
   display: grid;
-  grid-template-columns: 44px 1fr 38px 38px;
+  grid-template-columns: 42px 1fr 36px 36px;
   align-items: center;
   gap: 8px;
   font-size: 12px;
@@ -2169,9 +2226,9 @@ h2 {
 .scout-dist-san { font-weight: 600; }
 
 .scout-dist-bar {
-  height: 10px;
-  border-radius: 3px;
-  background: var(--panel);
+  height: 12px;
+  border-radius: 999px;
+  background: var(--bg);
   border: 1px solid var(--line-soft);
   overflow: hidden;
 }
@@ -2179,40 +2236,57 @@ h2 {
 .scout-dist-bar > span {
   display: block;
   height: 100%;
+  border-radius: 999px;
   background: var(--accent);
-  opacity: 0.75;
+  opacity: 0.8;
 }
+/* The bar tints by how WELL the move scores for them: red = dangerous weapon. */
+.scout-dist-row.is-hot .scout-dist-bar > span { background: var(--danger); }
+.scout-dist-row.is-cold .scout-dist-bar > span { background: var(--good); }
 
-.scout-dist-share { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.scout-dist-share { color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
 .scout-dist-score { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
 
 .scout-lines {
   display: grid;
-  gap: 4px;
+  align-content: start;
 }
 
 .scout-line {
-  display: flex;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 36px auto;
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  flex-wrap: wrap;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--line-soft);
 }
+.scout-line:last-child { border-bottom: 0; }
 
 .scout-line-count {
   color: var(--muted);
-  min-width: 28px;
   font-variant-numeric: tabular-nums;
 }
 
 .scout-line-moves {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .scout-line-score {
   color: var(--muted);
+  text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.scout-line-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .scout-badge {

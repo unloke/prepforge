@@ -5,6 +5,7 @@ import {
   perPieceDiff,
   materialPhrase,
   materialEdgePhrase,
+  materialSwingPhrase,
   walkLine,
   gamePhase,
   squareExchange,
@@ -53,6 +54,20 @@ describe("materialEdgePhrase (composition: the exchange vs two pawns)", () => {
     expect(materialEdgePhrase(null, 2)).toBe("two pawns");
     // A queen-level edge is not "the exchange" even with a rook/minor swap riding along.
     expect(materialEdgePhrase({ q: 1, r: 1, b: -1 }, 11)).toBe("decisive material");
+  });
+});
+
+describe("materialSwingPhrase (composition-aware line losses)", () => {
+  it("names a knight-for-pawn loss instead of flattening it to two pawns", () => {
+    expect(materialSwingPhrase({ p: 1, n: -1, b: 0, r: 0, q: 0 }, -2)).toBe("a knight for a pawn");
+  });
+
+  it("names a rook-for-knight loss as an exchange shape, not two pawns", () => {
+    expect(materialSwingPhrase({ p: 0, n: 1, b: 0, r: -1, q: 0 }, -2)).toBe("a rook for a minor");
+  });
+
+  it("still uses pawn counts for plain pawn losses", () => {
+    expect(materialSwingPhrase({ p: -2, n: 0, b: 0, r: 0, q: 0 }, -2)).toBe("two pawns");
   });
 });
 
@@ -139,6 +154,14 @@ describe("walkLine settled swing — honest exchange accounting", () => {
     const line = walkLine(fen, ["e4d5"]);
     expect(line.swing).toBe(1); // raw, mid-exchange
     expect(line.settledSwing).toBe(0); // honest
+  });
+
+  it("keeps the settled composition of a knight-for-pawn sequence", () => {
+    const fen = "8/8/4k3/5p2/3N4/8/8/6K1 w - - 0 1";
+    const line = walkLine(fen, ["d4f5", "e6f5"]);
+    expect(line.settledSwing).toBe(-2);
+    expect(line.settledDiffSwing).toMatchObject({ p: 1, n: -1 });
+    expect(materialSwingPhrase(line.settledDiffSwing, line.settledSwing)).toBe("a knight for a pawn");
   });
 });
 
