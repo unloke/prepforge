@@ -146,7 +146,8 @@ def test_user_turn_uses_stockfish_top1(fresh_repository):
 
 def test_opponent_mainline_keeps_moves_above_10_percent(fresh_repository):
     after_e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
-    engine = ScriptedEngine({START_FEN: "e2e4"})
+    # Opponent mainline is Stockfish's best; here it coincides with Maia's top move.
+    engine = ScriptedEngine({START_FEN: "e2e4", after_e4: "e7e5"})
     maia = ScriptedMaia({after_e4: [("e7e5", 0.5), ("c7c5", 0.2), ("d7d6", 0.05)]})
     builder, rep = _white_repertoire(fresh_repository, engine, maia)
     builder.generate_from_node(
@@ -157,11 +158,13 @@ def test_opponent_mainline_keeps_moves_above_10_percent(fresh_repository):
     reloaded = fresh_repository.load_repertoire(rep.id)
     white_first = reloaded.root_node.children[0]
     opponent_moves = {child.move.uci for child in white_first.children}
-    assert "e7e5" in opponent_moves   # 50% >= 10%
-    assert "c7c5" in opponent_moves   # 20% >= 10%
+    assert "e7e5" in opponent_moves   # Stockfish mainline (also 50% in Maia)
+    assert "c7c5" in opponent_moves   # 20% >= 10% Maia branch
     assert "d7d6" not in opponent_moves  # 5% below
     mainline_reply = next(c for c in white_first.children if c.move.uci == "e7e5")
     assert mainline_reply.is_mainline is True
+    assert mainline_reply.source is MoveSource.GENERATED_STOCKFISH  # opponent mainline = Stockfish
+    assert mainline_reply.maia_probability == 0.5  # Maia probability supplemented onto it
 
 
 # ---------- 3. opponent branch uses 30% threshold --------------------------------
@@ -202,7 +205,9 @@ def test_opponent_branch_uses_30_percent_threshold(fresh_repository):
 
 def test_no_move_above_threshold_keeps_highest(fresh_repository):
     after_e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
-    engine = ScriptedEngine({START_FEN: "e2e4"})
+    # Stockfish opponent mainline (a7a6) differs from every Maia move; none clear 10%, so the
+    # single highest Maia move (e7e5) is kept as a fallback BRANCH alongside the SF mainline.
+    engine = ScriptedEngine({START_FEN: "e2e4", after_e4: "a7a6"})
     maia = ScriptedMaia({after_e4: [("e7e5", 0.05), ("c7c5", 0.04), ("d7d6", 0.01)]})
     builder, rep = _white_repertoire(fresh_repository, engine, maia)
     builder.generate_from_node(
@@ -213,9 +218,13 @@ def test_no_move_above_threshold_keeps_highest(fresh_repository):
     reloaded = fresh_repository.load_repertoire(rep.id)
     white_first = reloaded.root_node.children[0]
     opponent_moves = {child.move.uci for child in white_first.children}
-    assert opponent_moves == {"e7e5"}
-    e5_node = next(c for c in white_first.children if c.move.uci == "e7e5")
-    assert e5_node.is_mainline is True
+    assert opponent_moves == {"a7a6", "e7e5"}
+    mainline = next(c for c in white_first.children if c.move.uci == "a7a6")
+    assert mainline.is_mainline is True
+    assert mainline.source is MoveSource.GENERATED_STOCKFISH
+    fallback = next(c for c in white_first.children if c.move.uci == "e7e5")
+    assert fallback.is_mainline is False
+    assert fallback.source is MoveSource.GENERATED_MAIA3  # highest Maia move, kept as fallback
 
 
 # ---------- 5. ply_depth stops generation ---------------------------------------
@@ -293,7 +302,9 @@ def test_manual_flags_are_preserved(fresh_repository):
 
 def test_simple_mode_does_not_recurse_into_branches(fresh_repository):
     after_e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
-    engine = ScriptedEngine({START_FEN: "e2e4"})
+    # Opponent mainline (Stockfish) coincides with Maia's e7e5; the mainline recurses, the
+    # Maia branches (c7c5, d7d6) do not.
+    engine = ScriptedEngine({START_FEN: "e2e4", after_e4: "e7e5"})
     maia = ScriptedMaia({after_e4: [("e7e5", 0.5), ("c7c5", 0.3), ("d7d6", 0.15)]})
     builder, rep = _white_repertoire(fresh_repository, engine, maia)
     builder.generate_from_node(

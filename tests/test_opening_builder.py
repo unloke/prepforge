@@ -1,7 +1,12 @@
 import pytest
 
 from prepforge_chess.core.chess_core import STARTING_FEN
-from prepforge_chess.core.models import Color, EngineEvaluation, MoveSource
+from prepforge_chess.core.models import (
+    Color,
+    EngineEvaluation,
+    MaiaMovePrediction,
+    MoveSource,
+)
 from prepforge_chess.services.engine import (
     EngineAnalysisConfig,
     EngineCandidate,
@@ -168,6 +173,227 @@ def test_generate_preserves_manual_prepared_child_and_adds_branch():
     assert by_uci["d2d4"].source is MoveSource.GENERATED_STOCKFISH
     assert by_uci["d2d4"].is_mainline is False
     assert by_uci["d2d4"].children
+
+
+class _OpponentEngine(MockEngine):
+    """Forces a fixed best move (``g8f6``) on the opponent's (black) turn so the
+    opponent-mainline source is deterministic; defers to MockEngine elsewhere."""
+
+    def analyze_position(self, fen, config=EngineAnalysisConfig()):
+        if fen.split(" ")[1] == "b":
+            candidate = EngineCandidate(
+                move_uci="g8f6",
+                evaluation_after=EngineEvaluation(engine="opp-engine", score_cp=15),
+                rank=1,
+                pv=["g8f6"],
+            )
+            return PositionAnalysis(
+                fen=fen,
+                evaluation=EngineEvaluation(engine="opp-engine", score_cp=0),
+                candidates=[candidate],
+            )
+        return super().analyze_position(fen, config)
+
+
+class _OpponentMaia(StubMaia):
+    """Fixed human replies on the opponent's (black) turn: e7e5 0.50, c7c5 0.20,
+    g8f6 0.15 (also the engine best), b8c6 0.05 (below the 10% mainline threshold)."""
+
+    def predictions(self, fen, *, rating=None):
+        if fen.split(" ")[1] == "b":
+            return [
+                MaiaMovePrediction(fen=fen, move_uci="e7e5", probability=0.50, model="opp", rank=1),
+                MaiaMovePrediction(fen=fen, move_uci="c7c5", probability=0.20, model="opp", rank=2),
+                MaiaMovePrediction(fen=fen, move_uci="g8f6", probability=0.15, model="opp", rank=3),
+                MaiaMovePrediction(fen=fen, move_uci="b8c6", probability=0.05, model="opp", rank=4),
+            ]
+        return super().predictions(fen, rating=rating)
+
+
+def _opponent_builder():
+    """White repertoire anchored after 1.e4 so generation starts on the opponent's
+    (black) turn, with controlled engine + Maia stubs."""
+    connection = connect_database()
+    apply_schema(connection)
+    repository = PrepForgeRepository(connection)
+    builder = OpeningBuilderService(
+        repository, engine=_OpponentEngine(), maia=_OpponentMaia()
+    )
+    repertoire = builder.create_repertoire(
+        CreateRepertoireRequest(name="Opp", color=Color.WHITE)
+    )
+    anchor = builder.add_move(
+        repertoire.id,
+        repertoire.root_node.id,
+        "e2e4",
+        is_mainline=True,
+        is_user_prepared_move=True,
+        source=MoveSource.MANUAL,
+    )
+    return repository, builder, repertoire, anchor
+
+
+def test_generate_opponent_mainline_is_stockfish_and_merges_maia_branches():
+    repository, builder, repertoire, anchor = _opponent_builder()
+
+    builder.generate_from_node(
+        repertoire.id,
+        anchor.id,
+        GenerateConfig(depth_plies=1, detail_mode="balanced"),
+    )
+
+    loaded = repository.load_repertoire(repertoire.id)
+    e4 = loaded.root_node.children[0]
+    by_uci = {c.move.uci: c for c in e4.children}
+
+    # Opponent mainline = Stockfish best (g8f6) even though Maia's top move is e7e5.
+    assert by_uci["g8f6"].source is MoveSource.GENERATED_STOCKFISH
+    assert by_uci["g8f6"].is_mainline is True
+    assert by_uci["g8f6"].engine_evaluation is not None
+    # …and the Maia probability for that same move is supplemented onto the one child.
+    assert by_uci["g8f6"].maia_probability == 0.15
+    assert sum(1 for c in e4.children if c.move.uci == "g8f6") == 1  # never duplicated
+
+    # Maia branches survive the 10% mainline-path threshold, sourced from Maia.
+    assert by_uci["e7e5"].source is MoveSource.GENERATED_MAIA3
+    assert by_uci["e7e5"].is_mainline is False
+    assert by_uci["c7c5"].source is MoveSource.GENERATED_MAIA3
+    # b8c6 (0.05) is below the 10% threshold and is dropped entirely.
+    assert "b8c6" not in by_uci
+
+
+def test_generate_opponent_branch_recursion_respects_detail_mode():
+    # simple: the Maia branch (e7e5) is created but NOT recursed.
+    repository, builder, repertoire, anchor = _opponent_builder()
+    builder.generate_from_node(
+        repertoire.id, anchor.id, GenerateConfig(depth_plies=2, detail_mode="simple")
+    )
+    loaded = repository.load_repertoire(repertoire.id)
+    e4 = loaded.root_node.children[0]
+    e7e5 = next(c for c in e4.children if c.move.uci == "e7e5")
+    assert e7e5.children == []
+
+    # balanced: the same Maia branch IS recursed (gets a generated child).
+    repository, builder, repertoire, anchor = _opponent_builder()
+    builder.generate_from_node(
+        repertoire.id, anchor.id, GenerateConfig(depth_plies=2, detail_mode="balanced")
+    )
+    loaded = repository.load_repertoire(repertoire.id)
+    e4 = loaded.root_node.children[0]
+    e7e5 = next(c for c in e4.children if c.move.uci == "e7e5")
+    assert e7e5.children
+
+
+class _StockfishBestEngine(MockEngine):
+    """Forces a fixed best move on the opponent's (black) turn so regeneration has a
+    deterministic Stockfish mainline to promote."""
+
+    def __init__(self, black_best: str):
+        super().__init__()
+        self._black_best = black_best
+
+    def analyze_position(self, fen, config=EngineAnalysisConfig()):
+        if fen.split(" ")[1] == "b":
+            candidate = EngineCandidate(
+                move_uci=self._black_best,
+                evaluation_after=EngineEvaluation(engine="sf-best", score_cp=12),
+                rank=1,
+                pv=[self._black_best],
+            )
+            return PositionAnalysis(
+                fen=fen,
+                evaluation=EngineEvaluation(engine="sf-best", score_cp=0),
+                candidates=[candidate],
+            )
+        return super().analyze_position(fen, config)
+
+
+def _promotion_builder(black_best: str):
+    """White repertoire with manual 1.e4, ready to regenerate opponent replies under it."""
+    connection = connect_database()
+    apply_schema(connection)
+    repository = PrepForgeRepository(connection)
+    builder = OpeningBuilderService(
+        repository, engine=_StockfishBestEngine(black_best), maia=StubMaia()
+    )
+    repertoire = builder.create_repertoire(
+        CreateRepertoireRequest(name="Promote", color=Color.WHITE)
+    )
+    e4 = builder.add_move(
+        repertoire.id,
+        repertoire.root_node.id,
+        "e2e4",
+        is_mainline=True,
+        is_user_prepared_move=True,
+        source=MoveSource.MANUAL,
+    )
+    return repository, builder, repertoire, e4
+
+
+def test_generate_promotes_existing_generated_branch_to_stockfish_best_mainline():
+    # Peer-review P1 regression: regenerating must rebalance is_mainline, not leave it stale.
+    repository, builder, repertoire, e4 = _promotion_builder(black_best="g8f6")
+    builder.add_move(repertoire.id, e4.id, "e7e5", is_mainline=True, source=MoveSource.GENERATED_MAIA3)
+    builder.add_move(repertoire.id, e4.id, "g8f6", is_mainline=False, source=MoveSource.GENERATED_MAIA3)
+
+    builder.generate_from_node(
+        repertoire.id, e4.id, GenerateConfig(depth_plies=1, detail_mode="balanced")
+    )
+
+    loaded = repository.load_repertoire(repertoire.id)
+    e4n = loaded.root_node.children[0]
+    by_uci = {c.move.uci: c for c in e4n.children}
+    assert by_uci["g8f6"].is_mainline is True  # promoted to the new Stockfish mainline
+    assert by_uci["e7e5"].is_mainline is False  # old generated mainline demoted
+    assert by_uci["g8f6"].source is MoveSource.GENERATED_STOCKFISH  # source upgraded
+    assert sum(1 for c in e4n.children if c.move.uci == "g8f6") == 1  # never duplicated
+
+
+def test_generate_does_not_demote_a_manual_mainline_reply():
+    repository, builder, repertoire, e4 = _promotion_builder(black_best="g8f6")
+    # The existing mainline opponent reply is MANUAL → Generate must preserve it.
+    builder.add_move(repertoire.id, e4.id, "e7e5", is_mainline=True, source=MoveSource.MANUAL)
+    builder.add_move(repertoire.id, e4.id, "g8f6", is_mainline=False, source=MoveSource.GENERATED_MAIA3)
+
+    builder.generate_from_node(
+        repertoire.id, e4.id, GenerateConfig(depth_plies=1, detail_mode="balanced")
+    )
+
+    loaded = repository.load_repertoire(repertoire.id)
+    e4n = loaded.root_node.children[0]
+    by_uci = {c.move.uci: c for c in e4n.children}
+    assert by_uci["e7e5"].is_mainline is True  # user-authored mainline preserved
+    assert by_uci["g8f6"].is_mainline is False
+
+
+def test_apply_plan_set_mainline_promotes_generated_sibling():
+    repository, builder = _builder()
+    rep = builder.create_repertoire(CreateRepertoireRequest(name="SetMain", color=Color.WHITE))
+    root_id = rep.root_node.id
+    builder.add_move(rep.id, root_id, "e2e4", is_mainline=True, source=MoveSource.GENERATED_STOCKFISH)
+    b = builder.add_move(rep.id, root_id, "d2d4", is_mainline=False, source=MoveSource.GENERATED_STOCKFISH)
+
+    builder.apply_generation_plan(
+        rep.id, root_id, {"rootNodeId": root_id, "changes": [{"action": "set_mainline", "nodeRef": b.id}]}
+    )
+    loaded = repository.load_repertoire(rep.id)
+    flags = {c.move.uci: c.is_mainline for c in loaded.root_node.children}
+    assert flags == {"e2e4": False, "d2d4": True}  # generated mainline rebalanced
+
+
+def test_apply_plan_set_mainline_preserves_manual_mainline():
+    repository, builder = _builder()
+    rep = builder.create_repertoire(CreateRepertoireRequest(name="SetMain2", color=Color.WHITE))
+    root_id = rep.root_node.id
+    builder.add_move(rep.id, root_id, "e2e4", is_mainline=True, source=MoveSource.MANUAL)
+    b = builder.add_move(rep.id, root_id, "d2d4", is_mainline=False, source=MoveSource.GENERATED_STOCKFISH)
+
+    builder.apply_generation_plan(
+        rep.id, root_id, {"rootNodeId": root_id, "changes": [{"action": "set_mainline", "nodeRef": b.id}]}
+    )
+    loaded = repository.load_repertoire(rep.id)
+    flags = {c.move.uci: c.is_mainline for c in loaded.root_node.children}
+    assert flags == {"e2e4": True, "d2d4": False}  # manual mainline never demoted
 
 
 def test_node_operations_update_tree_metadata():

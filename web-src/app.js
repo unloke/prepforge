@@ -7967,6 +7967,7 @@ async function forkSharedRepertoire() {
 
 let coverageModule = null;
 let coverageController = null;
+let coverageGaps = []; // last scan's gaps, mapped by checkbox data-index for batch complete
 
 async function runCoverageScanUI() {
   if (!appState.build || !appState.build.nodes || appState.build.nodes.length < 2) {
@@ -8022,37 +8023,163 @@ function renderCoverageResult(result, rating) {
   const gapsEl = document.getElementById("coverage-gaps");
   if (!gapsEl) return;
   if (!result.gaps.length) {
+    coverageGaps = [];
     gapsEl.innerHTML = '<div class="muted hint">No notable holes found - the likely human moves all have an answer.</div>';
     return;
   }
-  gapsEl.innerHTML = result.gaps
+  // Keep the gaps so the batch-complete handler can map checkboxes back to {nodeId, moveUci}.
+  coverageGaps = result.gaps.slice();
+  // Gmail-style multi-select: every gap starts checked, the user unchecks any line they
+  // don't want, then "Complete" auto-builds a real reply (≥2 of my own moves deep) for the rest.
+  const rows = coverageGaps
     .map(
-      (gap) => `
-    <div class="coverage-gap" data-node="${escapeHtml(gap.nodeId)}" role="button" tabindex="0"
-         title="Jump to this position">
-      <span class="coverage-gap-move">${escapeHtml(gap.moveSan)}</span>
-      <span class="coverage-gap-meta">${Math.round(gap.prob * 100)}% play it here · hits ${(gap.impact * 100).toFixed(1)}% of games</span>
-      <button class="btn ghost coverage-gap-add" data-node="${escapeHtml(gap.nodeId)}" data-uci="${escapeHtml(gap.moveUci)}"
-              title="Add ${escapeHtml(gap.moveSan)} to the tree and prep a reply">+ Add</button>
+      (gap, i) => `
+    <div class="coverage-gap" data-index="${i}" data-node="${escapeHtml(gap.nodeId)}">
+      <input type="checkbox" class="coverage-gap-check" data-index="${i}" checked
+             aria-label="Complete ${escapeHtml(gap.moveSan)}" />
+      <span class="coverage-gap-body" role="button" tabindex="0" title="Jump to this position">
+        <span class="coverage-gap-move">${escapeHtml(gap.moveSan)}</span>
+        <span class="coverage-gap-meta">${Math.round(gap.prob * 100)}% play it here · hits ${(gap.impact * 100).toFixed(1)}% of games</span>
+      </span>
     </div>`,
     )
     .join("");
-  gapsEl.querySelectorAll(".coverage-gap").forEach((row) => {
-    row.addEventListener("click", () => selectBuildNode(row.dataset.node));
-    row.addEventListener("keydown", (event) => {
+  gapsEl.innerHTML = `
+    <div class="coverage-complete-bar">
+      <label class="coverage-selall"><input type="checkbox" id="coverage-selectall" checked /> Select all</label>
+      <button class="btn primary" id="coverage-complete" data-testid="coverage-complete">Complete ${coverageGaps.length} lines</button>
+    </div>
+    ${rows}`;
+
+  const checks = () => Array.from(gapsEl.querySelectorAll(".coverage-gap-check"));
+  const selectAll = gapsEl.querySelector("#coverage-selectall");
+  const completeBtn = gapsEl.querySelector("#coverage-complete");
+  const syncCompleteBtn = () => {
+    const n = checks().filter((c) => c.checked).length;
+    completeBtn.textContent = n ? `Complete ${n} line${n === 1 ? "" : "s"}` : "Complete";
+    completeBtn.disabled = n === 0;
+    const all = checks();
+    selectAll.checked = n > 0 && n === all.length;
+    selectAll.indeterminate = n > 0 && n < all.length;
+  };
+  selectAll.addEventListener("change", () => {
+    checks().forEach((c) => (c.checked = selectAll.checked));
+    syncCompleteBtn();
+  });
+  checks().forEach((c) => c.addEventListener("change", syncCompleteBtn));
+  completeBtn.addEventListener("click", () => {
+    const chosen = checks()
+      .filter((c) => c.checked)
+      .map((c) => coverageGaps[Number(c.dataset.index)])
+      .filter(Boolean);
+    completeSelectedGaps(chosen);
+  });
+  // Clicking the move text (not the checkbox) jumps to the position to prep manually.
+  gapsEl.querySelectorAll(".coverage-gap-body").forEach((body) => {
+    const node = body.closest(".coverage-gap").dataset.node;
+    body.addEventListener("click", () => selectBuildNode(node));
+    body.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        selectBuildNode(row.dataset.node);
+        selectBuildNode(node);
       }
     });
   });
-  gapsEl.querySelectorAll(".coverage-gap-add").forEach((btn) => {
-    btn.addEventListener("click", async (event) => {
-      event.stopPropagation();
-      await selectBuildNode(btn.dataset.node);
-      await onBuildBoardMove(btn.dataset.uci); // lands on the new node, ready to prep a reply
-    });
+  syncCompleteBtn();
+}
+
+// Auto-complete the chosen coverage gaps: for each, add the unanswered human move and
+// generate a real reply (Stockfish ours / Maia theirs) deep enough to clear the "shallow
+// line" bar (≥2 of my own moves). Sequential so the local-first add + apply-plan for each
+// line settles before the next; one job toast tracks the batch and Stop aborts cleanly.
+async function completeSelectedGaps(gaps) {
+  if (appState.sharedToken) {
+    setStatus("This is a read-only shared view - copy it to your account to edit");
+    return;
+  }
+  if (!isBrowserEngineAvailable()) {
+    setStatus(BROWSER_ENGINE_UNAVAILABLE);
+    return;
+  }
+  if (!gaps || !gaps.length) return;
+  if (jobToast.isBusy()) {
+    setStatus("Another job is already running");
+    return;
+  }
+  const controller = new AbortController();
+  jobToast.startJob({
+    id: `coverage-complete-${Date.now()}`,
+    title: "Completing lines",
+    tab: "build",
+    total: gaps.length,
+    onCancel: () => controller.abort(),
   });
+  let done = 0;
+  let added = 0;
+  let failed = 0;
+  try {
+    for (const gap of gaps) {
+      if (controller.signal.aborted) break;
+      jobToast.updateJob({ current: done, total: gaps.length, message: `${gap.moveSan} · ${done + 1}/${gaps.length}` });
+      try {
+        added += await completeOneGap(gap, controller.signal);
+      } catch (error) {
+        if (error && error.name === "AbortError") break;
+        failed += 1; // a single line failing must not abort the whole batch
+      }
+      done += 1;
+    }
+    jobToast.completeJob({
+      title: "Lines completed",
+      message: `+${added} moves across ${done - failed} line${done - failed === 1 ? "" : "s"}${failed ? ` · ${failed} failed` : ""}`,
+      onClick: () => switchView("build"),
+    });
+    setStatus(`Coverage: completed ${done - failed}/${gaps.length} lines (+${added} moves)`);
+  } catch (error) {
+    jobToast.failJob(error.message);
+  }
+}
+
+async function completeOneGap(gap, signal) {
+  // Add the opponent's unanswered human move, landing on the resulting (my-turn) node.
+  await selectBuildNode(gap.nodeId);
+  const before = appState.buildCurrentNodeId;
+  await onBuildBoardMove(gap.moveUci);
+  // onBuildBoardMove bails (without moving) on an illegal/blocked move — guard so we never
+  // generate from the gap node itself (which would build the opponent's tree, not a reply).
+  if (appState.buildCurrentNodeId === before) {
+    throw new Error(`could not play ${gap.moveSan}`);
+  }
+  // apply-plan anchors on a REAL node id, so drain pending local adds and re-resolve.
+  await hardFlushBuild();
+  const nodeId = resolveBuildId(appState.buildCurrentNodeId);
+  const plan = await runBrowserBuildGenerate({
+    build: appState.build,
+    rootNodeId: nodeId,
+    ownColor: appState.build.color,
+    plyDepth: 3, // my move → their reply → my move ⇒ 2 own moves on the line ("deep enough")
+    detailMode: "simple", // keep the per-line tree small for a batch run on the user's device
+    ownSideCandidateCount: 1,
+    maiaRating: effectiveMaiaRating(),
+    maiaProvider: getSharedMaia3Provider(),
+    signal,
+  });
+  if (signal && signal.aborted) {
+    const err = new Error("Completion stopped");
+    err.name = "AbortError";
+    throw err;
+  }
+  // Committing to the save now. Generation above is cancellable, but aborting the
+  // apply-plan fetch can't un-persist an atomic server apply — so the save does NOT
+  // take the abort signal. A Stop click during the POST still ends the batch (the
+  // outer loop re-checks signal.aborted before the next line), but THIS line finishes
+  // and hydrateBuild runs, so the client never drifts from server truth.
+  const payload = await postJson(
+    "/api/build/generate/apply-plan",
+    { repertoire_id: appState.build.repertoire_id, root_node_id: nodeId, plan },
+  );
+  await hydrateBuild(payload, nodeId);
+  return (payload.summary && payload.summary.added_nodes) || 0;
 }
 
 // ----- Opponent scouting (Replay tab) -----------------------------------------
@@ -8183,22 +8310,31 @@ function renderScoutSection(games, oppColor, myLookups) {
 
   const lineRows = graded
     .map((line) => {
-      const badge = line.prepared
-        ? `<span class="scout-badge good" title="Your prep follows this line">&#10003; prepared</span>`
-        : line.covered > 0
-          ? `<span class="scout-badge warn" title="Your prep runs out mid-line">gap after ply ${line.covered}</span>`
-          : `<span class="scout-badge bad" title="This line is not in your prep">not prepared</span>`;
-      const prepBtn =
-        !line.prepared && line.repId
-          ? `<button class="btn ghost scout-prep-btn" data-prep-rep="${escapeHtml(line.repId)}" data-prep-node="${escapeHtml(line.deepestNodeId || "")}" title="Open ${escapeHtml(line.repName)} where the gap starts">Prep this</button>`
-          : "";
+      // The badge doubles as the action: when a line isn't prepared and we know
+      // which repertoire answers it, render the badge itself as a button that
+      // jumps to the gap — no separate "Prep this" control needed.
+      const gap = line.covered > 0;
+      const label = line.prepared
+        ? `&#10003; prepared`
+        : gap
+          ? `gap after ply ${line.covered}`
+          : `not prepared`;
+      const tone = line.prepared ? "good" : gap ? "warn" : "bad";
+      let badge;
+      if (!line.prepared && line.repId) {
+        const tip = `Open ${escapeHtml(line.repName)} where the gap starts`;
+        badge = `<button class="scout-badge ${tone} scout-prep-btn" data-prep-rep="${escapeHtml(line.repId)}" data-prep-node="${escapeHtml(line.deepestNodeId || "")}" title="${tip}">${label} &rsaquo;</button>`;
+      } else {
+        const tip = line.prepared ? "Your prep follows this line" : "This line is not in your prep";
+        badge = `<span class="scout-badge ${tone}" title="${tip}">${label}</span>`;
+      }
       const moves = scoutLineText(line.sans);
       return `
       <div class="scout-line">
         <span class="scout-line-count" title="${line.count} of their games">&times;${line.count}</span>
         <span class="scout-line-moves" title="${escapeHtml(moves)}">${escapeHtml(moves)}</span>
         <span class="scout-line-score" title="Their score in this line">${line.scorePct}%</span>
-        <span class="scout-line-end">${badge}${prepBtn}</span>
+        <span class="scout-line-end">${badge}</span>
       </div>`;
     })
     .join("");
@@ -8426,6 +8562,14 @@ function bindEvents() {
     if (inBuild && (event.key === "ArrowUp" || event.key === "k")) {
       event.preventDefault();
       buildBranchKey(-1);
+    }
+    // F flips the active tab's board (Analyze / Build / Train all have one).
+    if (event.key === "f" || event.key === "F") {
+      const board = activeBoardController();
+      if (board) {
+        event.preventDefault();
+        board.flip();
+      }
     }
     if (event.key === "Escape") {
       closeNodeContextMenu();

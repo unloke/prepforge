@@ -2300,9 +2300,18 @@ h2 {
 .scout-badge.warn { color: var(--warn); border-color: var(--warn); background: rgba(201, 132, 57, 0.08); }
 .scout-badge.bad { color: var(--danger); border-color: var(--danger); background: rgba(196, 82, 77, 0.08); }
 
-.scout-prep-btn {
-  padding: 1px 8px;
-  font-size: 11px;
+/* When a line is unprepared, the pill badge is itself the action. Keep the
+   pill look but add a button affordance (pointer + hover lift). */
+button.scout-badge {
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color 0.12s ease, box-shadow 0.12s ease;
+}
+button.scout-badge.warn:hover { background: rgba(201, 132, 57, 0.18); }
+button.scout-badge.bad:hover { background: rgba(196, 82, 77, 0.18); }
+button.scout-badge:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* Shared repertoire viewer */
@@ -2351,19 +2360,52 @@ h2 {
   padding: 0 10px 10px;
 }
 
+.coverage-complete-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 6px 8px;
+}
+
+.coverage-selall {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.coverage-complete-bar .btn {
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
 .coverage-gap {
   display: grid;
-  grid-template-columns: 52px 1fr auto;
+  grid-template-columns: auto 1fr;
   align-items: center;
   gap: 8px;
   padding: 4px 6px;
   border-radius: 4px;
-  cursor: pointer;
   font-size: 12px;
 }
 
-.coverage-gap:hover {
-  background: var(--surface-hover);
+.coverage-gap-check {
+  cursor: pointer;
+}
+
+.coverage-gap-body {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.coverage-gap-body:hover .coverage-gap-move {
+  text-decoration: underline;
 }
 
 .coverage-gap-move {
@@ -2374,11 +2416,6 @@ h2 {
 
 .coverage-gap-meta {
   color: var(--muted);
-  font-size: 11px;
-}
-
-.coverage-gap-add {
-  padding: 1px 8px;
   font-size: 11px;
 }
 
