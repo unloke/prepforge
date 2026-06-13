@@ -2461,6 +2461,15 @@ button.scout-badge:focus-visible {
   white-space: nowrap;
 }
 
+.explorer-scope {
+  font-size: 11px;
+  padding: 0 10px 6px;
+}
+
+.explorer-scope:empty {
+  display: none;
+}
+
 .explorer-rows {
   display: grid;
   gap: 2px;
@@ -3279,6 +3288,12 @@ button.scout-badge:focus-visible {
   display: grid;
   gap: 4px;
   min-width: 0;
+}
+
+.modal-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
 }
 
 /* Sign-in / create-account modal extras. */
