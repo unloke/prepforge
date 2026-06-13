@@ -6,10 +6,10 @@
 // creation move to the browser; this module builds an in-memory subtree and emits a
 // TREE-MUTATION PLAN that the server re-validates and persists (no compute).
 //
-// PARITY: this mirrors `_expand` line-by-line and adds NO rules of its own. It does NOT
-// follow `services/opening_generation.py`, which has drifted from production `_expand`
-// (different manual-prepared gating, repertoire-vs-own color, a Stockfish opponent path).
-// The oracle for the tests is `tests/test_opening_builder.py`.
+// PARITY: this mirrors `_expand` and adds NO rules of its own. On the user's turn it uses
+// Stockfish best candidates; on the OPPONENT's turn it merges Stockfish (best move = the
+// mainline) with Maia (human branches over the 10%/30% threshold), de-duplicating a move
+// that is both. The oracle for the tests is `tests/test_opening_builder.py`.
 //
 // PURE: depends only on injected adapters — no DOM, no fetch/API, no ORT/Stockfish import —
 // so it unit-tests in node against fakes (like maia3-inference.js). Adapters:
@@ -238,6 +238,20 @@ export async function generateBuildPlan({
     return child;
   };
 
+  // Make `child` the opponent mainline among its siblings when it isn't already and a
+  // *generated* sibling currently holds it (e.g. the previous run's Maia mainline, or a
+  // freshly-added Stockfish best that an old mainline blocked). A user-authored (MANUAL /
+  // IMPORTED_PGN) mainline is NEVER demoted. Rebalances the working tree and records the
+  // INTENT as a `set_mainline` change; the server re-validates and applies the same rule.
+  const promoteOpponentMainline = (parent, child) => {
+    if (child.isMainline) return;
+    const blocking = parent.children.filter((c) => c !== child && c.isMainline);
+    if (blocking.length === 0) return; // nothing claims mainline → upsertChild's rule suffices
+    if (blocking.some((c) => PROTECTED_SOURCES.has(c.source))) return; // preserve user's mainline
+    for (const c of parent.children) c.isMainline = c === child;
+    changes.push({ action: "set_mainline", nodeRef: child.id ?? child.tempId });
+  };
+
   // _expand (opening_builder.py:228-355).
   const expand = async (node, relativePly, onMainlinePath) => {
     if (relativePly >= depthLimit) return;
@@ -274,31 +288,55 @@ export async function generateBuildPlan({
       return;
     }
 
-    // Opponent's turn → Maia only (no Stockfish), threshold 10% on mainline path else 30%.
+    // Opponent's turn → the engine's best move is the MAINLINE; Maia supplies the human
+    // BRANCHES. Threshold is 10% on the mainline path else 30% (unchanged). The two sources
+    // are MERGED so a move that is both Stockfish's best AND a likely human reply lands as a
+    // single child (Stockfish source/eval, Maia probability supplemented) — never twice.
     const threshold = onMainlinePath ? MAINLINE_THRESHOLD : BRANCH_THRESHOLD;
+    checkAbort();
+    const sfCandidates = (await engine.candidates(node.fen, 1)) || [];
     checkAbort();
     const raw = (await maia.predictions(node.fen, rating)) || [];
     checkAbort();
-    if (raw.length === 0) return;
+    if (sfCandidates.length === 0 && raw.length === 0) return;
 
     const predictions = raw.slice().sort((a, b) => b.probability - a.probability);
-    let kept = predictions.filter((p) => p.probability >= threshold);
-    if (kept.length === 0) kept = [predictions[0]];
+    const probByUci = new Map(predictions.map((p) => [p.move_uci, p.probability]));
 
-    const mainlinePred = kept[0];
-    const branchPreds = kept.slice(1);
-
-    const mainChild = upsertChild(
-      node,
-      mainlinePred.move_uci,
-      SOURCE.GENERATED_MAIA3,
-      null,
-      mainlinePred.probability,
-      true,
-    );
+    // Mainline: Stockfish's best when the engine offers one (carrying its eval, plus the Maia
+    // probability when that move is also a human reply); only when Stockfish offers nothing
+    // (terminal / engine-less) do we fall back to the most human-likely move as the mainline.
+    let mainlineUci = null;
+    let mainChild = null;
+    if (sfCandidates.length > 0) {
+      const sfTop = sfCandidates[0];
+      mainlineUci = sfTop.moveUci;
+      mainChild = upsertChild(
+        node,
+        sfTop.moveUci,
+        SOURCE.GENERATED_STOCKFISH,
+        sfTop.evaluation ?? null,
+        probByUci.has(sfTop.moveUci) ? probByUci.get(sfTop.moveUci) : null,
+        true,
+      );
+    } else {
+      const top = predictions[0];
+      mainlineUci = top.move_uci;
+      mainChild = upsertChild(node, top.move_uci, SOURCE.GENERATED_MAIA3, null, top.probability, true);
+    }
+    // An existing generated mainline (or any old mainline that blocked a fresh Stockfish best)
+    // must yield to the engine's choice; rebalance before recursing so the path stays honest.
+    promoteOpponentMainline(node, mainChild);
     await expand(mainChild, relativePly + 1, onMainlinePath); // mainline path unchanged
 
-    for (const branchPred of branchPreds) {
+    // Maia branches: every human reply over threshold EXCEPT the mainline move (no duplicate
+    // child). If nothing clears the threshold, keep the single top move as a fallback branch —
+    // unless it's already the Stockfish mainline, in which case there's nothing to add.
+    let kept = predictions.filter((p) => p.probability >= threshold);
+    if (kept.length === 0 && predictions.length > 0) kept = [predictions[0]];
+
+    for (const branchPred of kept) {
+      if (branchPred.move_uci === mainlineUci) continue; // already the mainline child
       const branchChild = upsertChild(
         node,
         branchPred.move_uci,

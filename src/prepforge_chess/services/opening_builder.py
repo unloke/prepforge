@@ -434,6 +434,10 @@ class OpeningBuilderService:
                 )
             elif action == "updated":
                 self._apply_plan_update(change, nodes_by_id, summary)
+            elif action == "set_mainline":
+                self._apply_plan_set_mainline(
+                    change, nodes_by_id, temp_to_node, summary
+                )
             else:
                 raise ValueError("unknown plan change action: {0!r}".format(action))
 
@@ -694,6 +698,54 @@ class OpeningBuilderService:
         source = _validate_plan_source(raw_source) if raw_source is not None else None
         self._merge_plan_fields(node, evaluation, probability, source, summary)
 
+    def _apply_plan_set_mainline(
+        self,
+        change: dict,
+        nodes_by_id: dict,
+        temp_to_node: dict,
+        summary: GenerationSummary,
+    ) -> None:
+        # Promote a node to the mainline among its siblings (the browser emits this when the
+        # opponent's Stockfish best should take over from a generated mainline). Re-validated
+        # here: scoped to the anchor subtree, and a user-authored (MANUAL / IMPORTED_PGN)
+        # mainline sibling is NEVER demoted — never trust the client to clobber user intent.
+        ref = change.get("nodeRef")
+        if not ref or not isinstance(ref, str):
+            raise ValueError("set_mainline requires a nodeRef string")
+        node = temp_to_node.get(ref) or nodes_by_id.get(ref)
+        if node is None:
+            raise ValueError(
+                "set_mainline nodeRef {0!r} is not a node in this subtree".format(ref)
+            )
+        if node.parent_id is None:
+            return  # the anchor has no siblings to rebalance
+        parent = nodes_by_id.get(node.parent_id)
+        if parent is None:
+            return
+        if any(
+            sibling.is_mainline
+            and sibling.source in {MoveSource.MANUAL, MoveSource.IMPORTED_PGN}
+            for sibling in parent.children
+            if sibling is not node
+        ):
+            return  # preserve a user-authored mainline
+        changed = False
+        for sibling in parent.children:
+            target = sibling is node
+            if sibling.is_mainline != target:
+                sibling.is_mainline = target
+                changed = True
+        if changed:
+            summary.updated_nodes += 1
+            summary.changes.append(
+                GeneratedNodeChange(
+                    node.id,
+                    node.move.uci if node.move else "",
+                    "mainline",
+                    node.source,
+                )
+            )
+
     def _merge_plan_fields(
         self,
         node: OpeningNode,
@@ -791,33 +843,53 @@ class OpeningBuilderService:
                     break
             return
 
-        # Opponent's turn → Maia
+        # Opponent's turn → the engine's best move is the MAINLINE; Maia supplies the human
+        # BRANCHES. Threshold is 10% on the mainline path else 30%. The two sources are
+        # MERGED so a move that is both Stockfish's best AND a likely human reply lands as a
+        # single child (Stockfish source/eval, Maia probability supplemented) — never twice.
         threshold = MAINLINE_THRESHOLD if on_mainline_path else BRANCH_THRESHOLD
+        sf_candidates = self._engine_candidates(node.fen, 1)
         predictions = sorted(
             self.maia.predictions(node.fen, rating=maia_rating),
             key=lambda item: item.probability,
             reverse=True,
         )
-        if not predictions:
+        if not sf_candidates and not predictions:
             return
-        kept = [p for p in predictions if p.probability >= threshold]
-        if not kept:
-            kept = [predictions[0]]
 
-        mainline_pred = kept[0]
-        branch_preds = kept[1:]
+        prob_by_uci = {p.move_uci: p.probability for p in predictions}
 
-        main_child = self._upsert_child(
-            parent=node,
-            repertoire=repertoire,
-            move_uci=mainline_pred.move_uci,
-            source=MoveSource.GENERATED_MAIA3,
-            evaluation=None,
-            probability=mainline_pred.probability,
-            intended_mainline=True,
-            summary=summary,
-        )
+        # Mainline: Stockfish's best when the engine offers one (carrying its eval, plus the
+        # Maia probability when that move is also a human reply); only when Stockfish offers
+        # nothing do we fall back to the most human-likely move as the mainline.
+        if sf_candidates:
+            sf_top = sf_candidates[0]
+            mainline_uci = sf_top.move_uci
+            main_child = self._upsert_child(
+                parent=node,
+                repertoire=repertoire,
+                move_uci=sf_top.move_uci,
+                source=MoveSource.GENERATED_STOCKFISH,
+                evaluation=sf_top.evaluation,
+                probability=prob_by_uci.get(sf_top.move_uci),
+                intended_mainline=True,
+                summary=summary,
+            )
+        else:
+            top = predictions[0]
+            mainline_uci = top.move_uci
+            main_child = self._upsert_child(
+                parent=node,
+                repertoire=repertoire,
+                move_uci=top.move_uci,
+                source=MoveSource.GENERATED_MAIA3,
+                evaluation=None,
+                probability=top.probability,
+                intended_mainline=True,
+                summary=summary,
+            )
         if main_child is not None:
+            self._promote_opponent_mainline(node, main_child)
             self._expand(
                 node=main_child,
                 repertoire=repertoire,
@@ -830,7 +902,16 @@ class OpeningBuilderService:
                 config=config,
             )
 
-        for branch_pred in branch_preds:
+        # Maia branches: every human reply over threshold EXCEPT the mainline move (no
+        # duplicate child). If nothing clears the threshold, keep the single top move as a
+        # fallback branch — unless it's already the Stockfish mainline.
+        kept = [p for p in predictions if p.probability >= threshold]
+        if not kept and predictions:
+            kept = [predictions[0]]
+
+        for branch_pred in kept:
+            if branch_pred.move_uci == mainline_uci:
+                continue  # already the mainline child
             branch_child = self._upsert_child(
                 parent=node,
                 repertoire=repertoire,
@@ -927,6 +1008,23 @@ class OpeningBuilderService:
                 total_hint=max(getattr(self, "_progress_total_hint", 0), summary.added_nodes),
             )
         return child
+
+    def _promote_opponent_mainline(
+        self, parent: OpeningNode, child: OpeningNode
+    ) -> None:
+        """Make ``child`` the mainline among its siblings when a *generated* sibling
+        currently holds it (e.g. the previous run's Maia mainline, or an old mainline
+        blocking a freshly-chosen Stockfish best). A user-authored (MANUAL / IMPORTED_PGN)
+        mainline is never demoted. Mirrors the browser's ``set_mainline`` plan change."""
+        if child.is_mainline:
+            return
+        blocking = [c for c in parent.children if c is not child and c.is_mainline]
+        if not blocking:
+            return
+        if any(c.source in {MoveSource.MANUAL, MoveSource.IMPORTED_PGN} for c in blocking):
+            return
+        for sibling in parent.children:
+            sibling.is_mainline = sibling is child
 
     def set_as_mainline(self, repertoire_id: str, node_id: str) -> OpeningNode:
         repertoire = self._load_repertoire_or_raise(repertoire_id)
