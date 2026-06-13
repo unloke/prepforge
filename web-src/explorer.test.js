@@ -57,6 +57,16 @@ describe("explorerUrl", () => {
     expect(url).toMatch(/^\/api\/lichess\/explorer\/lichess\?/);
     expect(url).toContain("ratings=1600%2C1800");
   });
+  it("changes the Players URL with rating but leaves Masters rating-independent", () => {
+    const playersLow = explorerUrl("lichess", FEN, { rating: 1100 });
+    const playersHigh = explorerUrl("lichess", FEN, { rating: 2300 });
+    expect(playersLow).not.toBe(playersHigh); // pool tracks strength
+
+    const mastersLow = explorerUrl("masters", FEN, { rating: 1100 });
+    const mastersHigh = explorerUrl("masters", FEN, { rating: 2300 });
+    expect(mastersLow).toBe(mastersHigh); // rating never enters the masters query
+    expect(mastersLow).not.toContain("ratings=");
+  });
 });
 
 describe("normalizeExplorer", () => {

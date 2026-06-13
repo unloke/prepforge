@@ -193,6 +193,45 @@ describe("orchestrator runBrowserBuildGenerate", () => {
     expect(maia.terminated).toBe(true);
   });
 
+  it("builds the engine at the requested Stockfish depth (Settings → maxDepth)", async () => {
+    const engine = fakeEngineProvider({ [START_FEN]: [pv(1, ["e2e4"], 30)] });
+    const maia = fakeMaiaProvider({});
+    let engineOpts = null;
+    await runBrowserBuildGenerate({
+      build,
+      rootNodeId: "anchor",
+      plyDepth: 1,
+      maiaRating: 1500,
+      depth: 22, // a non-default Settings depth must reach the provider factory
+      createEngine: (opts) => {
+        engineOpts = opts;
+        return engine;
+      },
+      createMaia: () => maia,
+      isEngineAvailable: () => true,
+    });
+    expect(engineOpts).toMatchObject({ maxDepth: 22 });
+  });
+
+  it("defaults the engine depth when none is supplied", async () => {
+    const engine = fakeEngineProvider({ [START_FEN]: [pv(1, ["e2e4"], 30)] });
+    const maia = fakeMaiaProvider({});
+    let engineOpts = null;
+    await runBrowserBuildGenerate({
+      build,
+      rootNodeId: "anchor",
+      plyDepth: 1,
+      maiaRating: 1500,
+      createEngine: (opts) => {
+        engineOpts = opts;
+        return engine;
+      },
+      createMaia: () => maia,
+      isEngineAvailable: () => true,
+    });
+    expect(engineOpts.maxDepth).toBe(8); // DEFAULT_GEN_DEPTH
+  });
+
   it("borrows a shared maia provider: reuses it, never terminates it, and routes+clears its init-progress handler (Stage 4b)", async () => {
     const engine = fakeEngineProvider({ [START_FEN]: [pv(1, ["e2e4"], 30)] });
     const handlerLog = [];

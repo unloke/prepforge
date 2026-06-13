@@ -328,6 +328,22 @@ function effectiveMaiaRating() {
   return MAIA_FALLBACK_RATING;
 }
 
+// ---- Stockfish depth resolution -------------------------------------------------
+// Settings is the single source of truth for how deep each browser-Stockfish search
+// runs — the PER-POSITION search depth, NOT the Build tree's ply depth. Every local
+// Stockfish consumer (Engine widget, Position coach, Build → Generate, Coverage
+// complete) reads this so the slider in Settings actually steers them. Mirrors the
+// Settings slider clamp (1-30) and falls back to 16 when unset.
+const STOCKFISH_FALLBACK_DEPTH = 16;
+const STOCKFISH_MIN_DEPTH = 1;
+const STOCKFISH_MAX_DEPTH = 30;
+
+function effectiveStockfishDepth() {
+  const raw = appState.settings && Number(appState.settings.stockfish_depth);
+  const depth = Number.isFinite(raw) ? raw : STOCKFISH_FALLBACK_DEPTH;
+  return Math.max(STOCKFISH_MIN_DEPTH, Math.min(STOCKFISH_MAX_DEPTH, Math.round(depth)));
+}
+
 // Best-effort: resolve the player's strength from the linked Lichess account's public
 // profile (CORS-open, no token, one tiny GET a day thanks to the cache). Uses the
 // most-played live perf so a blitz player gets their blitz number, not a provisional
@@ -843,7 +859,47 @@ class EngineWidget {
     this.minMultipv = 1;
     // Engine compute seam: browser Stockfish (WASM Worker) only. No server
     // fallback — if the browser engine is unavailable the widget shows an error.
-    this.engine = createEngineProvider();
+    // Built lazily (on first open) at the Settings depth, and rebuilt if that
+    // depth changes — so the slider in Settings actually steers the widget.
+    this.engine = null;
+    this.engineDepth = null;
+  }
+
+  // Build the provider on demand at the current Settings depth. If the depth changed
+  // since we last built (the user dragged the slider), close the stale provider and
+  // make a fresh one — the depth readout then naturally shows `current / new max`.
+  _ensureEngine() {
+    const depth = effectiveStockfishDepth();
+    if (this.engine && this.engineDepth === depth) return;
+    if (this.engine) {
+      try {
+        this.engine.close();
+      } catch (_) {
+        /* best-effort */
+      }
+    }
+    this.engine = createEngineProvider({ maxDepth: depth });
+    this.engineDepth = depth;
+  }
+
+  // Settings depth changed: if open, rebuild at the new depth and re-analyze the
+  // current board; if closed, drop the stale provider so the next open rebuilds.
+  async onDepthSettingChanged() {
+    if (this.engineDepth === effectiveStockfishDepth()) return;
+    if (!this.open) {
+      if (this.engine) {
+        try {
+          await this.engine.close();
+        } catch (_) {
+          /* best-effort */
+        }
+      }
+      this.engine = null;
+      this.engineDepth = null;
+      return;
+    }
+    await this._restartForCurrentBoard();
+    this._startPolling();
   }
 
   bind() {
@@ -902,7 +958,7 @@ class EngineWidget {
       if (!this.el.classList.contains("is-visible")) this.el.hidden = true;
     }, 240);
     try {
-      await this.engine.close();
+      if (this.engine) await this.engine.close();
     } catch (_) {
       // best-effort
     }
@@ -913,6 +969,7 @@ class EngineWidget {
     if (!this.open) return;
     const fen = this.currentFen();
     if (fen === this.lastFen) return;
+    this._ensureEngine();
     this.lastFen = fen;
     this._clearAnalysisView();
     try {
@@ -925,6 +982,7 @@ class EngineWidget {
   }
 
   async _restartForCurrentBoard() {
+    this._ensureEngine();
     this.lastFen = this.currentFen();
     this._clearAnalysisView();
     try {
@@ -1204,15 +1262,34 @@ const engineWidget = new EngineWidget();
 class PositionCoach {
   constructor() {
     this.engine = null;
+    this.engineDepth = null;
     this.fen = null;
     this.ctx = {};
     this.enabled = true;
     this.timer = null;
     this.token = 0;
-    // fen -> engine read { lines:[{uci,san,cp,mate,pvUci,pvSan}], depth } (White-POV).
-    // Cached so stepping forward (this position was last turn's "after") costs one
-    // new search, not two — the prior position is already in here.
+    // `${depth}|fen` -> engine read { lines:[{uci,san,cp,mate,pvUci,pvSan}], depth }
+    // (White-POV). Cached so stepping forward (this position was last turn's "after")
+    // costs one new search, not two. The depth is part of the key so a Settings depth
+    // change can't serve a shallower read for a position seen at the old depth.
     this.evalCache = new Map();
+  }
+
+  // Build the coach's own Stockfish at the current Settings depth, rebuilding (and
+  // dropping the now-stale eval cache) if that depth changed since we last built.
+  _ensureEngine() {
+    const depth = effectiveStockfishDepth();
+    if (this.engine && this.engineDepth === depth) return;
+    if (this.engine) {
+      try {
+        this.engine.close();
+      } catch (_) {
+        /* best-effort */
+      }
+    }
+    this.engine = createEngineProvider({ maxDepth: depth });
+    this.engineDepth = depth;
+    this.evalCache.clear();
   }
 
   bind() {
@@ -1255,7 +1332,7 @@ class PositionCoach {
     const prevFen = ctx.prevFen;
     const token = ++this.token;
     try {
-      if (!this.engine) this.engine = createEngineProvider();
+      this._ensureEngine();
       // The position BEFORE the move (best line + best alternative) and AFTER it.
       const before = await this._eval(prevFen, token);
       if (token !== this.token || fen !== this.fen) return;
@@ -1300,7 +1377,9 @@ class PositionCoach {
   async _checkBrilliant(features, prevFen, uci, fen, token) {
     try {
       const provider = getSharedMaia3Provider();
-      const a = await provider.moveAssessment({ fen: prevFen, moveUci: uci });
+      // Personalized: "humans wouldn't find it" is judged at the player's own strength
+      // (Settings → Playing strength), so a move can be brilliant FOR THEM.
+      const a = await provider.moveAssessment({ fen: prevFen, moveUci: uci, rating: effectiveMaiaRating() });
       if (token !== this.token || fen !== this.fen || !a) return;
       const brilliant = isBrilliantByMaia(features, {
         maiaHumanProb: a.humanProbability,
@@ -1341,7 +1420,8 @@ class PositionCoach {
   // Run (or reuse a cached) MultiPV-2 read of `fen`, White-POV, on a short budget.
   async _eval(fen, token) {
     if (!fen) return null;
-    const cached = this.evalCache.get(fen);
+    const key = `${this.engineDepth}|${fen}`;
+    const cached = this.evalCache.get(key);
     if (cached) return cached;
     await this.engine.open({ fen, multipv: 2 });
     const deadline = Date.now() + 1200;
@@ -1365,7 +1445,7 @@ class PositionCoach {
       }));
     if (!lines.length) return null;
     const result = { fen, depth: snap.current_depth || 0, lines };
-    this.evalCache.set(fen, result);
+    this.evalCache.set(key, result);
     if (this.evalCache.size > 50) this.evalCache.delete(this.evalCache.keys().next().value);
     return result;
   }
@@ -3250,6 +3330,10 @@ function showInputModal({ title, fields, okLabel = "OK" }) {
         const safeName = escapeHtml(field.name);
         const safeLabel = escapeHtml(field.label || field.name);
         const safeValue = escapeHtml(field.default == null ? "" : String(field.default));
+        if (field.type === "note") {
+          // Read-only informational line (no input, never collected).
+          return `<p class="modal-note muted">${safeLabel}</p>`;
+        }
         if (field.type === "textarea") {
           return `
             <label class="modal-field">
@@ -4688,12 +4772,14 @@ async function refreshExplorerPanel() {
     rows.innerHTML = '<div class="muted hint">Open a repertoire to see real-game stats.</div>';
     return;
   }
+  renderExplorerScope();
   const seq = ++explorerSeq;
   try {
     if (!explorerModule) {
       rows.innerHTML = '<div class="muted hint">Loading explorer…</div>';
       explorerModule = await import("./explorer.js");
       explorerClient = explorerModule.createExplorerClient({});
+      renderExplorerScope(); // now that ratingBucketsFor is available, show the pool
     }
     const stats = await explorerClient.fetchStats(explorerDb, fen, {
       rating: effectiveMaiaRating(),
@@ -4709,6 +4795,26 @@ async function refreshExplorerPanel() {
       rows.innerHTML = `<div class="muted hint">Explorer unavailable: ${escapeHtml(error.message)}</div>`;
     }
   }
+}
+
+// Small readout under the DB tabs: make it obvious that Masters ignores rating while
+// Players is pooled near the player's strength (shared with the Maia model strength).
+function renderExplorerScope() {
+  const el = document.getElementById("explorer-scope");
+  if (!el) return;
+  if (explorerDb !== "lichess") {
+    el.textContent = "Master games — strong-player games, not filtered by rating.";
+    return;
+  }
+  const rating = effectiveMaiaRating();
+  const buckets =
+    explorerModule && typeof explorerModule.ratingBucketsFor === "function"
+      ? explorerModule.ratingBucketsFor(rating)
+      : null;
+  el.textContent =
+    buckets && buckets.length
+      ? `Players near ~${rating} (rating pool ${buckets.join(", ")}).`
+      : `Players near ~${rating}.`;
 }
 
 function renderExplorerRows(stats) {
@@ -5729,6 +5835,22 @@ async function fillPgnInputFromFile(file) {
   }
 }
 
+// Rough up-front size of a Build → Generate run, used only to give the progress bar a
+// believable ceiling: NOT accurate, just enough that a small job doesn't snap to 100%
+// in a second and a big one keeps inching forward. Scales with tree depth × our-side
+// branching, with a multiplier for the recursive detail modes. Floored so even a
+// one-move job has room to move.
+function estimateBuildGenerateTotal({ plyDepth, ownSideCandidateCount, detailMode }) {
+  const depth = Math.max(1, Number(plyDepth) || 1);
+  const branches = Math.max(1, Number(ownSideCandidateCount) || 1);
+  let total = depth * 2; // at least one engine/maia call per ply
+  total *= branches; // more of our branches ⇒ more searches/nodes
+  if (detailMode === "balanced") total *= 1.8; // recurses sidelines
+  else if (detailMode === "deep") total *= 2.4;
+  else total *= 1.15; // simple
+  return Math.max(12, Math.ceil(total));
+}
+
 async function generateFromCurrentNode() {
   // Phase 3c: generation runs in the BROWSER. Stockfish (our turn) + Maia3
   // (opponent) drive the recursion locally into a tree-mutation plan; the server
@@ -5801,6 +5923,10 @@ async function generateFromCurrentNode() {
       // Defaults to the player's own strength (Settings → Playing strength), so the
       // generated tree leans toward replies THEIR opponents actually play.
       { name: "maia_rating", label: "Maia rating (600-2600)", type: "number", default: effectiveMaiaRating(), min: 600, max: 2600 },
+      // Ply depth (above) = how far the tree grows; Stockfish depth (here) = how deep
+      // each our-turn search runs. The latter comes from Settings to avoid a second
+      // depth knob that could fight it; shown read-only so the distinction is clear.
+      { name: "stockfish_depth_note", label: `Stockfish search depth: ${effectiveStockfishDepth()} (from Settings)`, type: "note" },
     ],
   });
   if (!values) return;
@@ -5823,15 +5949,39 @@ async function generateFromCurrentNode() {
   // server apply can't be un-persisted by aborting the fetch, so we remove the
   // Stop button before the POST rather than imply a cancel that wouldn't hold.
   const controller = new AbortController();
+  // Believable progress: estimate a ceiling, advance a little whenever the planner adds
+  // nodes, and — when the engine is busy but quiet — inch forward on a timer so the bar
+  // never looks stuck. It is capped just below `total` until generation truly finishes,
+  // so it can't fake completion. `lastInitAt` lets the Maia cold-download own the toast.
+  const progress = {
+    done: 0,
+    total: estimateBuildGenerateTotal({ plyDepth, ownSideCandidateCount, detailMode }),
+    plannedMoves: 0,
+  };
+  let lastInitAt = 0;
+  let nudgeTimer = null;
   try {
     setStatus("Loading engines and generating moves");
     jobToast.startJob({
       id: jobId,
       title: "Generating moves",
       tab: "build",
-      total: 0,
+      total: progress.total,
       onCancel: () => controller.abort(),
     });
+
+    nudgeTimer = setInterval(() => {
+      if (!jobToast.isBusy()) return;
+      if (Date.now() - lastInitAt < 2000) return; // let Maia cold-init progress own the toast
+      progress.done = Math.min(progress.total - 3, progress.done + 1);
+      jobToast.updateJob({
+        current: progress.done,
+        total: progress.total,
+        message: progress.plannedMoves
+          ? `building tree · +${progress.plannedMoves} moves`
+          : "searching candidate moves",
+      });
+    }, 1800);
 
     const plan = await runBrowserBuildGenerate({
       build: appState.build,
@@ -5841,20 +5991,38 @@ async function generateFromCurrentNode() {
       detailMode,
       maiaRating,
       ownSideCandidateCount,
+      // Per-position Stockfish search depth from Settings (NOT the tree's ply depth).
+      depth: effectiveStockfishDepth(),
       signal: controller.signal,
       // Reuse ONE warm Maia worker/session across Generate runs (Stage 4b) — the first run
       // downloads + caches the ~46 MB model, later runs skip both the fetch and the session
       // create. The orchestrator borrows it and never terminates it.
       maiaProvider: getSharedMaia3Provider(),
       onProgress: (added) => {
-        jobToast.updateJob({ current: added, total: 0, message: `building tree · +${added} nodes` });
+        // `added` is planned nodes, not engine work — so don't map it 1:1 onto the bar.
+        // Each report nudges forward a bit, capped just short of `total`.
+        progress.plannedMoves = added;
+        progress.done = Math.min(
+          progress.total - 2,
+          Math.max(progress.done + 1, Math.ceil(added * 0.75)),
+        );
+        jobToast.updateJob({
+          current: progress.done,
+          total: progress.total,
+          message: `building tree · +${added} moves`,
+        });
       },
       // Cold-init weight download/verify/session progress (only on the first run / a cache
       // miss). A warm run emits nothing, so the node-building message above just takes over.
+      // MESSAGE-ONLY on purpose: the download's byte-sized current/total would ratchet the
+      // toast's activeTotal to ~46M and (since the fill is monotonic) peg the bar near 95%
+      // while tree generation + saving still run. The % rides in the message instead; the
+      // bar stays on the estimated-unit scale that onProgress/the nudge timer drive.
       onMaiaInitProgress: ({ phase, loaded, total }) => {
+        lastInitAt = Date.now();
         if (phase === "download") {
           const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
-          jobToast.updateJob({ current: loaded, total: total || 0, message: `downloading Maia model · ${pct}%` });
+          jobToast.updateJob({ message: `downloading Maia model · ${pct}%` });
         } else if (phase === "cache") {
           jobToast.updateJob({ message: "loading cached Maia model" });
         } else if (phase === "verify") {
@@ -5864,6 +6032,10 @@ async function generateFromCurrentNode() {
         }
       },
     });
+    if (nudgeTimer) {
+      clearInterval(nudgeTimer);
+      nudgeTimer = null;
+    }
 
     // Stop pressed during generation (or in the final stretch before we got
     // here) must mean NOTHING is persisted: bail before the POST. The recursion
@@ -5889,8 +6061,8 @@ async function generateFromCurrentNode() {
     // Stop button (synchronously, before the awaited POST, so no late click can
     // land in the gap) rather than let the UI imply a cancel that wouldn't hold.
     jobToast.updateJob({
-      current: plan.addedCount || 0,
-      total: plan.addedCount || 0,
+      current: progress.total,
+      total: progress.total,
       message: "saving",
     });
     jobToast.lockJob("saving — finishing up");
@@ -5922,6 +6094,8 @@ async function generateFromCurrentNode() {
       setStatus(error.message);
       jobToast.failJob(error.message);
     }
+  } finally {
+    if (nudgeTimer) clearInterval(nudgeTimer);
   }
 }
 
@@ -7402,6 +7576,17 @@ async function saveSettings(patch) {
   try {
     const payload = await api("/api/settings", { method: "POST", body: JSON.stringify(patch) });
     applySettingsPayload(payload);
+    // A depth change must reach the live Stockfish consumers. The Position coach
+    // rebuilds lazily (its _ensureEngine sees the new depth on the next run), but an
+    // open Engine widget needs an explicit nudge to rebuild + re-analyze right now.
+    if (patch && Object.prototype.hasOwnProperty.call(patch, "stockfish_depth")) {
+      engineWidget.onDepthSettingChanged().catch(() => { /* best-effort */ });
+    }
+    // A Maia-rating change moves the Explorer Players pool (and its scope readout), which
+    // both read effectiveMaiaRating() at fetch time — re-render if the drawer is open.
+    if (patch && Object.prototype.hasOwnProperty.call(patch, "maia_rating") && explorerDrawerOpen()) {
+      refreshExplorerPanel();
+    }
   } catch (error) {
     setStatus(error.message);
   }
@@ -7974,10 +8159,9 @@ async function runCoverageScanUI() {
     setStatus("Open a repertoire with some moves first");
     return;
   }
-  if (!isBrowserEngineAvailable()) {
-    setStatus(BROWSER_ENGINE_UNAVAILABLE);
-    return;
-  }
+  // No Stockfish gate here: the scan is Maia-only. Gating it on cross-origin
+  // isolation (a Stockfish requirement) wrongly blocked a Maia-only feature; if the
+  // Maia worker itself can't start, the provider surfaces that error below instead.
   const button = document.getElementById("coverage-run");
   if (button) button.disabled = true;
   const rating = effectiveMaiaRating();
@@ -8161,6 +8345,8 @@ async function completeOneGap(gap, signal) {
     detailMode: "simple", // keep the per-line tree small for a batch run on the user's device
     ownSideCandidateCount: 1,
     maiaRating: effectiveMaiaRating(),
+    // Per-position Stockfish search depth from Settings (NOT the tree's ply depth).
+    depth: effectiveStockfishDepth(),
     maiaProvider: getSharedMaia3Provider(),
     signal,
   });
