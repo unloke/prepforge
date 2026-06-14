@@ -520,6 +520,32 @@ class PrepForgeRepository:
             if repertoire is not None
         ]
 
+    def list_repertoire_metas(
+        self, owner_user_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Lightweight ``(id, name, is_active)`` rows for the owner's
+        repertoires, newest first — same set and order as ``list_repertoires``
+        but without loading any opening tree. Lets a caller decide *which*
+        repertoires to act on (e.g. the active ones for a mixed session) before
+        paying to load the trees it actually needs."""
+        stmt = select(
+            t.repertoires.c.id,
+            t.repertoires.c.name,
+            t.repertoires.c.is_active,
+        ).order_by(t.repertoires.c.updated_at.desc())
+        if owner_user_id is not None:
+            stmt = stmt.where(t.repertoires.c.user_profile_id == owner_user_id)
+        with self.engine.connect() as conn:
+            rows = conn.execute(stmt).mappings().all()
+        return [
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "is_active": _int_to_bool(row["is_active"]),
+            }
+            for row in rows
+        ]
+
     def count_repertoires(self, owner_user_id: Optional[str] = None) -> int:
         """Number of repertoires owned by ``owner_user_id`` (all rows if None),
         without loading any opening trees — used by the Free-plan quota gate."""

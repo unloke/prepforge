@@ -40,7 +40,7 @@ from prepforge_chess.services.progress import (
     MASTERY_DUE,
     MASTERY_UNTRAINED,
     MASTERY_WEAK,
-    mastery_map,
+    node_mastery,
 )
 
 CARD_WEAK = "weak"
@@ -122,9 +122,47 @@ def card_counts(cards: Iterable[Optional[TrainingCard]]) -> Dict[str, int]:
 # semantics as TrainingService._path_to_node).
 
 
-def path_to_node(root: OpeningNode, node_id: str) -> List[OpeningNode]:
+def index_nodes(root: OpeningNode) -> Dict[str, OpeningNode]:
+    """Map every node id in the tree to its node, in one pass. Built once per
+    repertoire load and reused for O(1) lookups and parent-walk paths, so the
+    hot read paths (resume checks, per-card bundle) never re-DFS the whole tree."""
+    out: Dict[str, OpeningNode] = {}
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        out[node.id] = node
+        stack.extend(node.children)
+    return out
+
+
+def path_to_node(
+    root: OpeningNode,
+    node_id: str,
+    *,
+    index: Optional[Dict[str, OpeningNode]] = None,
+) -> List[OpeningNode]:
     """Nodes from the first move down to ``node_id`` inclusive (root excluded).
-    Raises ``ValueError`` when the node is not in the tree."""
+    Raises ``ValueError`` when the node is not in the tree.
+
+    When ``index`` (an ``index_nodes`` map for the same tree) is supplied the
+    path is rebuilt by walking ``parent_id`` pointers up to the root — O(depth)
+    and no per-call tree DFS. The fallback DFS keeps the helper usable without a
+    prebuilt index (and preserves the exact not-found semantics: a node that is
+    not a descendant of ``root`` raises)."""
+    if root.id == node_id:
+        return []
+
+    if index is not None:
+        chain: List[OpeningNode] = []
+        cur: Optional[OpeningNode] = index.get(node_id)
+        while cur is not None and cur.id != root.id:
+            chain.append(cur)
+            cur = index.get(cur.parent_id) if cur.parent_id else None
+        if cur is None or cur.id != root.id:
+            raise ValueError("opening node not found: {0}".format(node_id))
+        chain.reverse()
+        return chain
+
     path: List[OpeningNode] = []
 
     def visit(node: OpeningNode, current: List[OpeningNode]) -> bool:
@@ -136,8 +174,6 @@ def path_to_node(root: OpeningNode, node_id: str) -> List[OpeningNode]:
                 return True
         return False
 
-    if root.id == node_id:
-        return []
     if not visit(root, []):
         raise ValueError("opening node not found: {0}".format(node_id))
     return path
@@ -209,14 +245,18 @@ def build_session_plan(
     candidates = _collect_candidates(root, color)
     if not candidates:
         return SessionPlan(cards=[], counts=card_counts([]))
-    states = mastery_map(root, color, progress_by_id, now=now)
+    # Classify mastery only for the candidates we actually schedule. The old
+    # ``mastery_map`` did a second full-tree walk that also descended into
+    # disabled subtrees (which ``_collect_candidates`` already pruned) and
+    # produced states for nodes the plan never reads.
+    eval_now = now or datetime.now(timezone.utc)
 
     weak: List[_Candidate] = []
     due: List[_Candidate] = []
     new: List[_Candidate] = []
     polish: List[_Candidate] = []
     for cand in candidates:
-        state = states.get(cand.node.id)
+        state = node_mastery(progress_by_id.get(cand.node.id), now=eval_now)
         if state == MASTERY_WEAK:
             weak.append(cand)
         elif state == MASTERY_DUE:

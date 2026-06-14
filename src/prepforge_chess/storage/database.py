@@ -50,9 +50,25 @@ def connect_database(path: PathLike = ":memory:") -> Engine:
     return engine
 
 
+def _ensure_indexes(engine: Engine) -> None:
+    """Create any legacy-table index that doesn't exist yet.
+
+    ``create_all`` with its default ``checkfirst`` skips a table that already
+    exists *and every index defined on it*, so an index added to ``sa_tables``
+    after a table was first created never reaches a live database. Creating each
+    index individually with ``checkfirst=True`` is idempotent (a no-op when the
+    index is already there) and works on both SQLite and Postgres, so newly
+    added performance indexes land on existing deployments without an Alembic
+    migration."""
+    for table in sa_tables.LEGACY_TABLES:
+        for index in table.indexes:
+            index.create(bind=engine, checkfirst=True)
+
+
 def apply_schema(engine: Engine) -> None:
     """Create the legacy domain tables (idempotent) from the SQLAlchemy metadata."""
     sa_tables.metadata.create_all(engine, tables=list(sa_tables.LEGACY_TABLES))
+    _ensure_indexes(engine)
 
 
 def initialize_database(path: PathLike) -> Engine:

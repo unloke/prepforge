@@ -199,6 +199,30 @@ def test_smart_start_returns_queue_and_prompt(client):
     assert "e2e4" in prompt["legal_moves"]
 
 
+def test_smart_start_loads_each_tree_once(client, monkeypatch):
+    """Regression guard: /smart/start reads each repertoire tree from the DB at
+    most once. The pre-cache path loaded the anchor tree three times (the plan,
+    the router's label/bundle load, and current_prompt) — the per-request
+    repertoire cache collapses those to a single load."""
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+
+    from prepforge_chess.storage.repositories import PrepForgeRepository
+
+    calls: list[str] = []
+    original = PrepForgeRepository.load_repertoire
+
+    def counting(self, repertoire_id, *args, **kwargs):
+        calls.append(repertoire_id)
+        return original(self, repertoire_id, *args, **kwargs)
+
+    monkeypatch.setattr(PrepForgeRepository, "load_repertoire", counting)
+
+    r = _smart_start(client, rep, seed=5)
+    assert r.status_code == 200, r.text
+    assert calls == [rep], f"expected a single tree load, got {calls}"
+
+
 def test_smart_start_on_empty_repertoire_is_400(client):
     _register(client, "a@example.com")
     created = client.post(

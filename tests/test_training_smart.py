@@ -333,7 +333,11 @@ def test_stale_card_is_skipped():
     # Build deletes the first card's target out from under the session.
     first_card = decode_card(session.line_order[0])
     repository.delete_opening_nodes(repertoire.id, [first_card.last_target_id])
-    prompt = service.current_prompt(session.id)
+    # The Build edit and the resumed read are separate HTTP requests in
+    # production, each with its own service (a service caches the repertoire tree
+    # for one request's lifetime). A fresh service reads the post-edit tree and
+    # skips the now-missing card.
+    prompt = SmartTrainingService(repository).current_prompt(session.id)
     second_card = decode_card(session.line_order[1])
     assert prompt is not None
     assert prompt.expected_node_id == second_card.last_target_id

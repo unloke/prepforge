@@ -281,8 +281,9 @@ def smart_start(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     # The session anchors on a real repertoire either way (mixed sessions pick
-    # a stable anchor); load it for the bundle's fallback tree + the labels.
-    repertoire = repo.load_repertoire(session.repertoire_id)
+    # a stable anchor); reuse the tree the service already loaded while building
+    # the session (cached per request) rather than reading it from the DB again.
+    repertoire = service.repertoire(session.repertoire_id)
     if repertoire is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
     prompt = service.current_prompt(session.id)

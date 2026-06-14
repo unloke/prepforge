@@ -282,6 +282,15 @@ training_sessions = Table(
     Column("seed", Integer),
     Column("created_at", Text, nullable=False),
     Column("updated_at", Text, nullable=False),
+    # load_latest_training_session(): WHERE repertoire_id [AND mode] ORDER BY
+    # updated_at DESC LIMIT 1 — without this the resume lookup full-scans the
+    # session history, which grows with every session a user trains.
+    Index(
+        "idx_training_sessions_rep_mode_updated",
+        "repertoire_id",
+        "mode",
+        "updated_at",
+    ),
 )
 
 training_progress = Table(
@@ -310,6 +319,11 @@ training_progress = Table(
     Column("created_at", Text, nullable=False),
     Column("updated_at", Text, nullable=False),
     UniqueConstraint("user_profile_id", "repertoire_id", "node_id"),
+    # list_training_progress(): WHERE repertoire_id AND user_profile_id. The
+    # unique constraint leads with user_profile_id, so it can't serve this
+    # repertoire-leading scan; this index does (read on every smart session and
+    # health summary).
+    Index("idx_training_progress_rep_user", "repertoire_id", "user_profile_id"),
 )
 
 training_mistakes = Table(

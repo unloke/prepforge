@@ -45,6 +45,7 @@ from prepforge_chess.services.scheduler import (
     card_counts,
     decode_card,
     encode_card,
+    index_nodes,
     mix_plans,
     own_move_nodes_on,
     path_to_node,
@@ -130,6 +131,37 @@ def _utc_now() -> datetime:
 class SmartTrainingService:
     def __init__(self, repository: PrepForgeRepository):
         self.repository = repository
+        # Per-request caches. A service instance is created fresh per request
+        # (see api/routers/train.py), so a repertoire and its node index are
+        # loaded/built at most once even though /smart/start touches the same
+        # tree from several angles (resume check, plan, current prompt, bundle,
+        # summary). Caching None for a missing repertoire is fine — it does not
+        # come back within one request.
+        self._rep_cache: Dict[str, Optional[Repertoire]] = {}
+        self._index_cache: Dict[str, Dict[str, OpeningNode]] = {}
+
+    # ------------------------------------------------------------- repertoire cache
+
+    def repertoire(self, repertoire_id: str) -> Optional[Repertoire]:
+        """Load a repertoire once per request and memoise it with its node
+        index. Every other load path (``_load_repertoire_or_raise``,
+        ``_card_repertoire``, ``active_repertoires``, the router's bundle/label
+        load) funnels through here so the tree is read from the DB a single
+        time."""
+        if repertoire_id in self._rep_cache:
+            return self._rep_cache[repertoire_id]
+        rep = self.repository.load_repertoire(repertoire_id)
+        self._rep_cache[repertoire_id] = rep
+        if rep is not None:
+            self._index_cache[repertoire_id] = index_nodes(rep.root_node)
+        return rep
+
+    def _node_index(self, repertoire_id: str) -> Dict[str, OpeningNode]:
+        index = self._index_cache.get(repertoire_id)
+        if index is None:
+            rep = self.repertoire(repertoire_id)
+            index = self._index_cache.get(repertoire_id, {}) if rep is not None else {}
+        return index
 
     # ------------------------------------------------------------------ start
 
@@ -193,11 +225,18 @@ class SmartTrainingService:
     # --------------------------------------------------------- mixed sessions
 
     def active_repertoires(self, owner_user_id: str) -> List[Repertoire]:
-        return [
-            rep
-            for rep in self.repository.list_repertoires(owner_user_id=owner_user_id)
-            if getattr(rep, "is_active", True)
-        ]
+        """The owner's active repertoires, full trees. Decides "which" from
+        lightweight metas (no tree load for inactive ones) and loads each active
+        tree through the per-request cache, so the second call in a request (the
+        mixed summary) reuses the trees the first call already loaded."""
+        reps: List[Repertoire] = []
+        for meta in self.repository.list_repertoire_metas(owner_user_id=owner_user_id):
+            if not meta.get("is_active", True):
+                continue
+            rep = self.repertoire(meta["id"])
+            if rep is not None:
+                reps.append(rep)
+        return reps
 
     def start_or_resume_mixed(
         self,
@@ -290,22 +329,17 @@ class SmartTrainingService:
     ) -> bool:
         if not session.line_order or session.current_index >= len(session.line_order):
             return False
-        ids_by_rep: Dict[str, set] = {}
-        for rep in reps:
-            node_ids = set()
-            stack = [rep.root_node]
-            while stack:
-                node = stack.pop()
-                node_ids.add(node.id)
-                stack.extend(node.children)
-            ids_by_rep[rep.id] = node_ids
+        # Reuse the per-request node indexes (built when each rep was loaded);
+        # the check is then O(cards) membership instead of a full-tree DFS per
+        # repertoire on every resume.
+        index_by_rep = {rep.id: self._node_index(rep.id) for rep in reps}
         for raw in session.line_order:
             card = decode_card(raw)
             # A 3-part card means this is a plain single-repertoire session
             # parked on the anchor — never resume it as a mixed one.
             if card is None or not card.repertoire_id:
                 return False
-            node_ids = ids_by_rep.get(card.repertoire_id)
+            node_ids = index_by_rep.get(card.repertoire_id)
             if (
                 node_ids is None
                 or card.first_target_id not in node_ids
@@ -331,7 +365,7 @@ class SmartTrainingService:
             return cache[rep_id]
         rep: Optional[Repertoire] = None
         if rep_id == session.repertoire_id:
-            rep = self.repository.load_repertoire(rep_id)
+            rep = self.repertoire(rep_id)
         else:
             anchor_meta = self.repository.repertoire_meta(session.repertoire_id)
             meta = self.repository.repertoire_meta(rep_id)
@@ -341,7 +375,10 @@ class SmartTrainingService:
                 and anchor_meta["owner_user_id"] is not None
                 and meta["owner_user_id"] == anchor_meta["owner_user_id"]
             ):
-                rep = self.repository.load_repertoire(rep_id)
+                # Only cache the tree globally once ownership is cleared; a
+                # rejected foreign rep stays out of the per-request rep cache and
+                # is memoised as None in the caller's local ``cache`` instead.
+                rep = self.repertoire(rep_id)
         cache[rep_id] = rep
         return rep
 
@@ -351,12 +388,9 @@ class SmartTrainingService:
     def _resumable(self, session: TrainingSession, repertoire: Repertoire) -> bool:
         if not session.line_order or session.current_index >= len(session.line_order):
             return False
-        node_ids = set()
-        stack = [repertoire.root_node]
-        while stack:
-            node = stack.pop()
-            node_ids.add(node.id)
-            stack.extend(node.children)
+        # The node index was built when the repertoire was loaded; resuming is
+        # then an O(cards) membership check, not a whole-tree walk.
+        node_ids = self._node_index(repertoire.id)
         for raw in session.line_order:
             card = decode_card(raw)
             if card is None:
@@ -421,7 +455,11 @@ class SmartTrainingService:
         card: TrainingCard,
     ) -> Optional[_CardContext]:
         try:
-            path = path_to_node(repertoire.root_node, card.last_target_id)
+            path = path_to_node(
+                repertoire.root_node,
+                card.last_target_id,
+                index=self._node_index(repertoire.id),
+            )
         except ValueError:
             return None
         own = own_move_nodes_on(path, repertoire.color)
@@ -506,7 +544,11 @@ class SmartTrainingService:
             if card_rep is None:
                 continue
             try:
-                path = path_to_node(card_rep.root_node, card.last_target_id)
+                path = path_to_node(
+                    card_rep.root_node,
+                    card.last_target_id,
+                    index=self._node_index(card_rep.id),
+                )
             except ValueError:
                 continue
             own = own_move_nodes_on(path, card_rep.color)
@@ -779,7 +821,7 @@ class SmartTrainingService:
     # ---------------------------------------------------------------- loaders
 
     def _load_repertoire_or_raise(self, repertoire_id: str) -> Repertoire:
-        repertoire = self.repository.load_repertoire(repertoire_id)
+        repertoire = self.repertoire(repertoire_id)
         if repertoire is None:
             raise ValueError("repertoire not found: {0}".format(repertoire_id))
         return repertoire
