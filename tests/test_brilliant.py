@@ -130,6 +130,6 @@ def test_config_defaults():
     config = BrilliantConfig()
     assert config.rating == 1900
     assert config.max_human_probability == 0.10
-    assert config.min_reveal_score == 0.30
+    assert config.min_reveal_score == 0.17
     assert config.min_high_win_chance == 0.50
     assert config.max_high_drop_vs_before == 0.05

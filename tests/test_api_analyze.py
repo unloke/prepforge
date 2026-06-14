@@ -74,7 +74,11 @@ def test_prepare_returns_positions_and_move_skeleton(client):
     # 4 plies => 4 fen_before + the final fen_after = 5 distinct positions.
     assert len(body["positions"]) == 5
     assert [m["san"] for m in body["moves"]] == ["e4", "e5", "Nf3", "Nc6"]
-    assert body["brilliant"]["rating"] >= 1
+    # rating echoes the owner's pinned Maia3 strength; a fresh user is unset → AUTO
+    # (None), resolved client-side. When pinned it is a positive int.
+    assert body["brilliant"]["enabled"] is True
+    rating = body["brilliant"]["rating"]
+    assert rating is None or rating >= 1
 
 
 def test_prepare_rejects_empty_pgn(client):

@@ -247,13 +247,13 @@ export function buildMoveFeatures(input) {
 // the coach is the same one a full-game analysis would star:
 //   1. Unintuitive — humans almost never find it: maiaHumanProb <= 0.10.
 //   2. Reveal      — the engine's truth is far above the human's first-glance read:
-//                    engineWin - maiaWin >= 30 points (server min_reveal_score 0.30).
+//                    engineWin - maiaWin >= 17 points (server min_reveal_score 0.17).
 //   3. Sound       — the move stays at least level (engine-best, winAfterMover >= 50);
 //                    enforced by the candidate gate before we ever query Maia.
 //   maiaHumanProb — Maia's probability a human plays this move (0..1)
 //   maiaWinAfter  — Maia's win chance for the mover after the move (0..1)
 export const BRILLIANT_MAX_HUMAN_PROB = 0.1; // (1) humans rarely find it
-export const BRILLIANT_MIN_WIN_GAP = 30; // (2) engine win% over Maia win%, in points
+export const BRILLIANT_MIN_WIN_GAP = 17; // (2) engine win% over Maia win%, in points
 export function isBrilliantByMaia(features, { maiaHumanProb, maiaWinAfter }) {
   if (!features || !features.brilliantCandidate) return false;
   if (!Number.isFinite(maiaHumanProb) || !Number.isFinite(maiaWinAfter)) return false;

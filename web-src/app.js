@@ -1340,12 +1340,25 @@ class PositionCoach {
       // The position BEFORE the move (best line + best alternative) and AFTER it.
       const before = await this._eval(prevFen, token);
       if (token !== this.token || fen !== this.fen) return;
-      const after = await this._eval(fen, token);
-      if (token !== this.token || fen !== this.fen) return;
-      if (!before || !after || !before.lines.length) return;
+      if (!before || !before.lines.length) return;
 
       const mover = fen.split(" ")[1] === "b" ? "white" : "black";
-      const top = after.lines[0] || {};
+
+      // A move that ends the game (checkmate/stalemate) leaves no position for the
+      // engine to search — _eval(fen) comes back empty and we'd silently produce no
+      // commentary at all for the final move. Synthesize the "after" read instead.
+      let top;
+      const status = localBoardInfo(fen).status;
+      if (status.is_checkmate) {
+        top = { cp: null, mate: mover === "white" ? 1 : -1, pvUci: [], pvSan: [] };
+      } else if (status.is_stalemate) {
+        top = { cp: 0, mate: null, pvUci: [], pvSan: [] };
+      } else {
+        const after = await this._eval(fen, token);
+        if (token !== this.token || fen !== this.fen) return;
+        if (!after) return;
+        top = after.lines[0] || {};
+      }
       const features = buildMoveFeatures({
         ply: ctx.ply ?? null,
         moveNumber: Number(prevFen.split(" ")[5]) || null,
@@ -3716,10 +3729,13 @@ async function loadDemoAndAnalyze() {
 // weights) or any inference fails, we return what we have (possibly []), and the analysis
 // still completes without brilliancies — exactly the server's no-Maia degradation.
 //
-// `rating` MUST be the rating the server advertised (prep.brilliant.rating) so the numbers
-// match what its analyzer expects. We assess every played move; the server only consults
-// the eligible (Best/Excellent) ones, so over-supplying is harmless (and avoids porting the
-// win-chance/classification math to JS just to pre-filter).
+// `rating` is the player's effective Maia3 strength (Settings-pinned, else AUTO from the
+// linked Lichess account, else the model default) — the SAME effectiveMaiaRating() the live
+// coach uses, so a brilliancy flagged in full-game analysis matches one the coach stars live,
+// and the read is personalized ("因材施教"). The server's ReplayMaia ignores its own rating and
+// trusts these numbers, so the client is the single source of truth for strength. We assess
+// every played move; the server only consults the eligible (Best/Excellent) ones, so
+// over-supplying is harmless (and avoids porting the win-chance/classification math to JS).
 async function computeBrilliantAssessments({ moves, rating, onProgress, shouldCancel }) {
   const provider = getSharedMaia3Provider();
   const assessments = [];
@@ -3827,7 +3843,7 @@ async function runAnalysis() {
         try {
           maiaAssessments = await computeBrilliantAssessments({
             moves: prep.moves,
-            rating: prep.brilliant.rating,
+            rating: effectiveMaiaRating(),
             shouldCancel: () => cancelled,
             onProgress: (done, total) =>
               jobToast.updateJob({ current: done, total, message: `checking brilliancies ${done}/${total}` }),

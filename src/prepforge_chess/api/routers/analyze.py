@@ -30,7 +30,7 @@ from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import MoveSource
 from prepforge_chess.services.analysis import AnalysisConfig, AnalysisService
 from prepforge_chess.services.analysis_view import analysis_result_to_payload
-from prepforge_chess.services.app_settings import owner_stockfish_depth
+from prepforge_chess.services.app_settings import owner_maia_rating, owner_stockfish_depth
 from prepforge_chess.services.brilliant import BrilliantAnalyzer, BrilliantConfig
 from prepforge_chess.services.engine import EngineAnalysisConfig
 from prepforge_chess.services.pgn_import import PgnImportOptions, PgnImportService
@@ -161,11 +161,14 @@ def analyze_prepare(
         "depth": owner_stockfish_depth(repo, owner),
         "positions": positions,
         "moves": moves_skeleton,
-        # The rating the browser must use for Brilliant move_assessment so its
-        # (humanProbability, winChanceAfter) match what BrilliantAnalyzer expects.
+        # Brilliant detection toggle. The Maia3 strength used for the move
+        # assessments is resolved CLIENT-side (effectiveMaiaRating: Settings-pinned,
+        # else AUTO from the linked Lichess account, else default) so the read is
+        # personalized and matches the live coach. ``rating`` is echoed only as the
+        # owner's pinned preference (null = AUTO); ReplayMaia ignores it server-side.
         "brilliant": {
             "enabled": BrilliantConfig().enabled,
-            "rating": BrilliantConfig().rating,
+            "rating": owner_maia_rating(repo, owner),
         },
     }
 

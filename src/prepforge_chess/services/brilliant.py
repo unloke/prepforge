@@ -33,7 +33,7 @@ class BrilliantConfig:
     enabled: bool = True
     rating: int = 1900
     max_human_probability: float = 0.10
-    min_reveal_score: float = 0.30
+    min_reveal_score: float = 0.17
     max_high_drop_vs_before: float = 0.05
     min_high_win_chance: float = 0.50
 
