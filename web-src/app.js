@@ -4191,6 +4191,27 @@ function renderMoveToken(node, opts, forceNumber) {
 }
 
 // Wire click (and optional right-click) handlers onto every move in a tree.
+// Keep the active move row visible by scrolling ONLY its own container, never
+// Element.scrollIntoView. scrollIntoView walks every scrollable ancestor
+// (including document/body) applying `nearest`; on mobile the sidebar is
+// page-scrolled (overflow:visible) while the movelist keeps its own overflow
+// box, so the browser also pans the whole page and shoves the board off-screen
+// each time the user hits Next. Mutating container.scrollTop alone can't move
+// the document — and if the container itself is off-screen we just update its
+// internal position, leaving the page where the user left it.
+function scrollIntoViewWithin(container, el) {
+  if (!container || !el) return;
+  const cRect = container.getBoundingClientRect();
+  const eRect = el.getBoundingClientRect();
+  const overTop = eRect.top - cRect.top;
+  const overBottom = eRect.bottom - cRect.bottom;
+  // Fully visible, or taller than the box and straddling it: leave it alone.
+  if (overTop >= 0 && overBottom <= 0) return;
+  if (overTop < 0 && overBottom > 0) return;
+  // Minimal scroll to reveal the row (nearest semantics).
+  container.scrollTop += overTop < 0 ? overTop : overBottom;
+}
+
 function bindMoveTreeClicks(container, onSelect, onContext) {
   container.querySelectorAll(".mtree-move[data-node-id]").forEach((button) => {
     button.addEventListener("click", (event) => {
@@ -4319,7 +4340,7 @@ function renderAnalysisTree(movesArg) {
   });
   bindMoveTreeClicks(container, (id) => selectAnalysisNode(id));
   const focus = container.querySelector(".mtree-move.is-current");
-  if (focus) focus.scrollIntoView({ block: "nearest", inline: "nearest" });
+  if (focus) scrollIntoViewWithin(container, focus);
 }
 
 // Highlight the active move + sync the eval-chart cursor. The list itself is
@@ -4945,7 +4966,7 @@ function renderBuilderTree() {
     });
   });
   const focusBtn = container.querySelector(".mtree .mtree-move.is-current");
-  if (focusBtn) focusBtn.scrollIntoView({ block: "nearest", inline: "nearest" });
+  if (focusBtn) scrollIntoViewWithin(container, focusBtn);
   renderBuildBranchBar();
 }
 

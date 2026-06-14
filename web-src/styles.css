@@ -114,6 +114,11 @@ h2 {
   background: var(--panel);
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
+  /* The body is a flex column; without this the topbar (default flex-shrink:1)
+     gets compressed on tall, scrolling views (e.g. Settings) below the height
+     its wrapped rows need, so the tab row spills past the bar's bottom border
+     and bleeds into the content. Never let the bar shrink under its content. */
+  flex-shrink: 0;
 }
 
 .brand {
