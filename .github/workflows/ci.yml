@@ -52,3 +52,5 @@ jobs:
         run: npm test -- --run
       - name: Build SPA
         run: npm run build
+      - name: Bundle-size gate
+        run: node scripts/check-bundle-size.mjs

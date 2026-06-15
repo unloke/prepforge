@@ -198,12 +198,15 @@ def _touch_streak(
     """Mark "trained today" on the owner's daily streak and return the view the
     client renders. Called from the graded move endpoints — submitting any move
     is what counts as training, so one call per day actually changes state and
-    the rest no-op (skipping the settings write)."""
+    the rest no-op (skipping the settings write).
+
+    The read->advance->write is one atomic mutation (row-locked) so a concurrent
+    settings write -- e.g. the dashboard's weekly recap snapshot -- can't read
+    the pre-advance blob and clobber the streak back to yesterday (lost update)."""
     day = streak.resolve_day(local_date)
-    stored = repo.get_profile_setting(owner, streak.STREAK_KEY)
-    advanced = streak.advance(stored, day)
-    if advanced != stored:
-        repo.set_profile_setting(owner, streak.STREAK_KEY, advanced)
+    advanced = repo.mutate_profile_setting(
+        owner, streak.STREAK_KEY, lambda stored: streak.advance(stored, day)
+    )
     return streak.as_view(advanced, day)
 
 
@@ -323,25 +326,37 @@ def smart_start(
 def smart_summary(
     repertoire_id: str | None = None,
     mixed: bool = False,
+    local_date: str | None = None,
     owner: str = Depends(current_owner),
     repo: PrepForgeRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Fresh health + tomorrow's due forecast for the end-of-session screen.
-    ``mixed=true`` aggregates over all the caller's active repertoires."""
+    ``mixed=true`` aggregates over all the caller's active repertoires.
+
+    Carries the authoritative ``day_streak`` so the summary screen renders the
+    server's truth rather than a possibly-stale client cache: the final sync
+    before this fetch usually writes no new attempts, so ``/smart/sync`` returns
+    ``day_streak: null`` and never refreshes the client value."""
     if mixed:
-        return _mixed_summary_payload(
+        payload = _mixed_summary_payload(
             repo, SmartTrainingService(repo).active_repertoires(owner)
         )
-    if not repertoire_id:
+    elif not repertoire_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="repertoire_id is required unless mixed=true",
         )
-    _owned_repertoire(repo, repertoire_id, owner)
-    repertoire = repo.load_repertoire(repertoire_id)
-    if repertoire is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-    return _smart_summary_payload(repo, repertoire)
+    else:
+        _owned_repertoire(repo, repertoire_id, owner)
+        repertoire = repo.load_repertoire(repertoire_id)
+        if repertoire is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
+        payload = _smart_summary_payload(repo, repertoire)
+    day = streak.resolve_day(local_date)
+    payload["day_streak"] = streak.as_view(
+        repo.get_profile_setting(owner, streak.STREAK_KEY), day
+    )
+    return payload
 
 
 @router.post("/smart/move")

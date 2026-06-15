@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -70,7 +71,14 @@ def create_app() -> FastAPI:
 
     # Middleware order: last added is outermost. We want CORS outermost so even
     # CSRF/rate-limit rejections carry CORS headers (so the browser can read
-    # them), then CSRF, then security headers innermost.
+    # them), then CSRF, then security headers, then gzip innermost.
+    #
+    # GZip is added first (innermost) so it compresses the route/static response
+    # body before the outer header middlewares wrap it. Render's free tier has no
+    # CDN, so on-the-fly compression here cuts the first-load text payload
+    # (index JS ~280 KB, CSS ~61 KB) by ~70%. Binary engine assets (.wasm) are
+    # already compact and the ONNX weights are CDN-hosted, so they rarely hit this.
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.add_middleware(SecurityHeadersMiddleware)
     # The Stripe webhook authenticates by signature, not the session cookie, so it
     # bypasses CSRF. Inject the exempt path here rather than mutating a global.

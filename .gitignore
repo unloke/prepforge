@@ -37,6 +37,10 @@ web-src/public/maia3/.maia3.publish.lock
 # them be committed even if that plugin is bypassed. The manifest still ships.
 src/prepforge_chess/web/static/maia3/*.onnx
 src/prepforge_chess/web/static/maia3/*.onnx.data
+# Source maps: the deploy build ships without them (vite sourcemap defaults off).
+# A local `VITE_SOURCEMAP=1` build emits .map files — never commit them (they
+# bloat the wheel and publish the original source).
+src/prepforge_chess/web/static/assets/*.map
 
 # Secrets / runtime config — never commit real credentials (Stripe keys,
 # SECRET_KEY, DATABASE_URL). Track .env.example as the documented template.

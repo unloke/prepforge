@@ -1,3 +1,5 @@
+import pytest
+
 from prepforge_chess.core.chess_core import STARTING_FEN, ChessCore
 from prepforge_chess.core.models import (
     Color,
@@ -219,3 +221,58 @@ def test_training_session_and_progress_round_trip():
     assert loaded_progress.correct_attempts == 2
     assert loaded_progress.spaced_repetition_score == 3.5
     assert not loaded_progress.is_mastered
+
+
+# ---- settings_json mutation (atomic read-modify-write) ----------------------
+# settings_json is one shared blob (streak, recap snapshot, Lichess token, ...).
+# These pin the contract that prevents the daily-streak lost update: a mutation
+# must fold over the *current* committed value and must never clobber a sibling
+# key. True cross-transaction serialization is enforced by ``FOR UPDATE`` on
+# Postgres (a no-op on SQLite, where these run), so we test the logic, not locks.
+
+
+def test_mutate_profile_setting_folds_over_current_value():
+    repo = _repository()
+    pid = repo.create_user_profile(display_name="t")
+
+    def bump(current):
+        return {"n": (current or {}).get("n", 0) + 1}
+
+    assert repo.mutate_profile_setting(pid, "streak", bump) == {"n": 1}
+    assert repo.mutate_profile_setting(pid, "streak", bump) == {"n": 2}
+    assert repo.get_profile_setting(pid, "streak") == {"n": 2}
+
+
+def test_mutate_does_not_clobber_a_sibling_key():
+    # The exact daily-streak bug: the dashboard's recap-snapshot write and a
+    # streak advance share one blob. A streak mutation must keep the recap key
+    # another writer just set, and fold over the latest streak value — not a
+    # stale pre-recap snapshot.
+    repo = _repository()
+    pid = repo.create_user_profile(display_name="t")
+    repo.set_profile_setting(pid, "streak", {"current": 4})
+    repo.set_profile_setting(pid, "recap", {"week": "w24"})  # other key, other writer
+
+    seen = {}
+
+    def advance(current):
+        seen["value"] = current
+        return {"current": (current or {}).get("current", 0) + 1}
+
+    repo.mutate_profile_setting(pid, "streak", advance)
+
+    assert seen["value"] == {"current": 4}  # read the latest, not a stale blob
+    assert repo.get_profile_setting(pid, "streak") == {"current": 5}
+    assert repo.get_profile_setting(pid, "recap") == {"week": "w24"}  # untouched
+
+
+def test_mutate_profile_setting_deletes_on_none_and_rejects_unknown():
+    repo = _repository()
+    pid = repo.create_user_profile(display_name="t")
+    repo.set_profile_setting(pid, "token", "abc")
+
+    assert repo.mutate_profile_setting(pid, "token", lambda _c: None) is None
+    assert repo.get_profile_setting(pid, "token", "MISSING") == "MISSING"
+
+    with pytest.raises(ValueError):
+        repo.mutate_profile_setting("no-such-profile", "token", lambda _c: "x")

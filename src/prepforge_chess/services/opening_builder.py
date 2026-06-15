@@ -23,7 +23,6 @@ from prepforge_chess.services.opening_generation import (
     GenerationSummary,
     MAINLINE_THRESHOLD,
     child_by_uci,
-    maia_threshold_for_depth,
 )
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
@@ -1197,40 +1196,6 @@ class OpeningBuilderService:
             total_nodes=len(all_items),
             visible_nodes=visible,
         )
-
-    def _candidate_moves(
-        self,
-        *,
-        repertoire: Repertoire,
-        node: OpeningNode,
-        relative_ply: int,
-        config: GenerateConfig,
-    ):
-        if node.side_to_move is (config.own_color or repertoire.color):
-            if self._has_manual_prepared_child(node) and config.preserve_manual_prepared_moves:
-                return
-            for candidate in self._engine_candidates(node.fen, config.own_side_candidate_count):
-                yield candidate.move_uci, MoveSource.GENERATED_STOCKFISH, candidate.evaluation, None
-            return
-
-        emitted = set()
-        if config.opponent_mainline_source in {"stockfish", "mixed"}:
-            for candidate in self._engine_candidates(node.fen, 1):
-                emitted.add(candidate.move_uci)
-                yield candidate.move_uci, MoveSource.GENERATED_STOCKFISH, candidate.evaluation, None
-
-        threshold = maia_threshold_for_depth(relative_ply, config)
-        for prediction in sorted(
-            self.maia.predictions(node.fen),
-            key=lambda item: item.probability,
-            reverse=True,
-        ):
-            if prediction.probability < threshold:
-                continue
-            if prediction.move_uci in emitted:
-                continue
-            emitted.add(prediction.move_uci)
-            yield prediction.move_uci, MoveSource.GENERATED_MAIA3, None, prediction.probability
 
     def _engine_candidates(self, fen: str, count: int) -> List[EngineMoveCandidate]:
         engine_config = EngineAnalysisConfig(

@@ -903,7 +903,6 @@ def test_add_moves_batch_rejects_illegal_move_without_persisting():
 def test_add_moves_batch_rejects_unknown_parent():
     repository, builder = _builder()
     rep = _white_repertoire(builder)
-    root_id = rep.root_node.id
     with pytest.raises(ValueError):
         builder.add_moves_batch(
             rep.id, [{"tempId": "tmp-1", "parentRef": "does-not-exist", "uci": "e2e4"}]

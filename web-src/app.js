@@ -7455,10 +7455,11 @@ async function finishSmartSession() {
   await flushTrainSync().catch(() => {});
   let after = null;
   try {
+    const ld = encodeURIComponent(localDateString());
     after = await api(
       smart.mixed
-        ? "/api/train/smart/summary?mixed=true"
-        : `/api/train/smart/summary?repertoire_id=${encodeURIComponent(smart.repertoireId)}`
+        ? `/api/train/smart/summary?mixed=true&local_date=${ld}`
+        : `/api/train/smart/summary?repertoire_id=${encodeURIComponent(smart.repertoireId)}&local_date=${ld}`
     );
   } catch (_) {
     // The summary is a bonus — never block the finish on it.
@@ -7610,9 +7611,12 @@ function renderSmartSummary(smart, stats, after) {
     [`${acc}%`, "first try"],
     [stats.best || 0, "best in a row"],
   ];
-  // The daily streak (server-tracked, all repertoires) earns its slot once the
-  // first graded move of the session reported it.
-  const day = appState.dayStreak;
+  // The daily streak (server-tracked, all repertoires). Trust the summary
+  // fetch's authoritative value over the client cache: the final sync usually
+  // writes no new attempts, so /smart/sync returns no day_streak and the cache
+  // would otherwise show the pre-session count. Refresh the cache too.
+  const day = (after && after.day_streak) || appState.dayStreak;
+  if (after && after.day_streak) appState.dayStreak = after.day_streak;
   if (day && day.current > 0) statCells.push([`\u{1F525}${day.current}`, "day streak"]);
   document.getElementById("train-summary-stats").innerHTML = statCells
     .map(

@@ -197,10 +197,16 @@ def _weekly_recap(
     weak_now: int,
 ) -> dict[str, Any]:
     week_start = (local_day - timedelta(days=local_day.weekday())).isoformat()
-    snap = repo.get_profile_setting(owner, _RECAP_SNAPSHOT_KEY, None)
-    if not isinstance(snap, dict) or snap.get("week_start") != week_start:
-        snap = {"week_start": week_start, "mastered": mastered_now, "weak": weak_now}
-        repo.set_profile_setting(owner, _RECAP_SNAPSHOT_KEY, snap)
+
+    def _roll(current: Any) -> dict[str, Any]:
+        # Keep this week's existing baseline; only (re)seed on a new week. Done
+        # as an atomic mutation so this dashboard write can't clobber a streak
+        # advance racing on the same settings blob (lost update).
+        if isinstance(current, dict) and current.get("week_start") == week_start:
+            return current
+        return {"week_start": week_start, "mastered": mastered_now, "weak": weak_now}
+
+    snap = repo.mutate_profile_setting(owner, _RECAP_SNAPSHOT_KEY, _roll)
 
     def _baseline(key: str, current: int) -> int:
         try:

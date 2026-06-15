@@ -4,7 +4,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 from hashlib import sha256
-from typing import Any, Dict, Iterable, List, Mapping, Optional
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -248,30 +248,57 @@ class PrepForgeRepository:
         data = _json_load(row["settings_json"], {})
         return data.get(key, default) if isinstance(data, dict) else default
 
-    def set_profile_setting(self, profile_id: str, key: str, value: Any) -> None:
-        """Upsert one key into a profile's ``settings_json`` (per-user state). A
-        ``None`` value deletes the key. Raises if the profile does not exist so a
-        token can never be written to a phantom owner."""
+    def mutate_profile_setting(
+        self, profile_id: str, key: str, mutator: "Callable[[Any], Any]"
+    ) -> Any:
+        """Atomically read-modify-write one key of a profile's ``settings_json``.
+
+        ``settings_json`` is a single shared blob (streak, recap snapshot, Lichess
+        token, …). A get-then-set across two transactions clobbers concurrent
+        writes to *other* keys, because each ``set`` rewrites the whole blob from
+        a value it read earlier — a classic lost update (e.g. a streak advance
+        racing the once-a-week recap-snapshot write, silently dropping the
+        streak). Here the read→apply→write happens in ONE transaction with the
+        profile row locked (``FOR UPDATE``), so concurrent mutators serialise.
+
+        ``mutator`` receives the current value (or ``None`` if unset) and returns
+        the new one; returning ``None`` deletes the key. Returns the new value.
+        Skips the write (but still held the lock) when the value is unchanged, so
+        idempotent touches — a streak no-op on an already-trained day — stay cheap.
+        Raises if the profile does not exist so state can never be written to a
+        phantom owner."""
         with self.engine.begin() as conn:
             row = conn.execute(
-                select(t.user_profiles.c.settings_json).where(
-                    t.user_profiles.c.id == profile_id
-                )
+                select(t.user_profiles.c.settings_json)
+                .where(t.user_profiles.c.id == profile_id)
+                .with_for_update()
             ).mappings().first()
             if row is None:
                 raise ValueError("unknown profile: {0}".format(profile_id))
             data = _json_load(row["settings_json"], {})
             if not isinstance(data, dict):
                 data = {}
-            if value is None:
+            current = data.get(key)
+            new_value = mutator(current)
+            if new_value == current and (new_value is not None or key in data):
+                return new_value
+            if new_value is None:
                 data.pop(key, None)
             else:
-                data[key] = value
+                data[key] = new_value
             conn.execute(
                 update(t.user_profiles)
                 .where(t.user_profiles.c.id == profile_id)
                 .values(settings_json=_json_dump(data), updated_at=_now_text())
             )
+        return new_value
+
+    def set_profile_setting(self, profile_id: str, key: str, value: Any) -> None:
+        """Upsert one key into a profile's ``settings_json`` (per-user state). A
+        ``None`` value deletes the key. Raises if the profile does not exist so a
+        token can never be written to a phantom owner. Atomic against concurrent
+        writers to the same blob (see :meth:`mutate_profile_setting`)."""
+        self.mutate_profile_setting(profile_id, key, lambda _current: value)
 
     def reassign_owner(self, from_user_id: str, to_user_id: str) -> None:
         """Move every owned top-level row from one profile to another (guest → account)."""

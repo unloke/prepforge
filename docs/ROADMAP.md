@@ -58,7 +58,12 @@ Harden the public surface before porting endpoints.
   per-user session cap → **Phase 6**; trust `X-Forwarded-For` for rate-limit key
   once behind Render proxy → **Phase 3**.
 
-### Phase 2 — Port legacy endpoints 🔶 IN PROGRESS
+### Phase 2 — Port legacy endpoints ✅ DONE
+> All sub-slices below shipped; `web/server.py` and `request_lock` are deleted and
+> the FastAPI app is live in production (see **Current status** at the foot of this
+> file). The "IN PROGRESS" framing and the present-tense sub-slice notes are kept
+> verbatim as the historical porting record.
+
 Move `web/server.py` `/api/*` handlers into FastAPI routers; rewrite
 `storage/repositories.py` (raw sqlite3) to SQLAlchemy so it runs on Postgres.
 Carry over the existing `owner_user_id` isolation; bridge legacy `user_profiles`

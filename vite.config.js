@@ -85,7 +85,12 @@ export default defineConfig({
       new URL("./src/prepforge_chess/web/static", import.meta.url),
     ),
     emptyOutDir: true,
-    sourcemap: true,
+    // Source maps are OFF for the committed deploy build: they added ~1.6 MB of
+    // .map files to the wheel (index ~1 MB, maia3-worker ~0.5 MB), were served as
+    // public static assets, and effectively published the original source. Opt in
+    // for a local debugging build with `VITE_SOURCEMAP=1 npm run build`. The dev
+    // server (`npm run dev`) always has source maps regardless of this flag.
+    sourcemap: process.env.VITE_SOURCEMAP === "1",
     rollupOptions: {
       input: {
         index: fileURLToPath(new URL("./web-src/index.html", import.meta.url)),

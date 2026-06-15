@@ -68,6 +68,13 @@ where = ["src"]
 ]
 "prepforge_chess.storage" = ["schema.sql"]
 
+[tool.setuptools.exclude-package-data]
+# Structural guard: even if a `.map` is ever generated into static/assets/ (a
+# local `VITE_SOURCEMAP=1` build, a half-finished build), the wheel must never
+# ship source maps — they bloat the image and publish the original source. The
+# `static/assets/*` glob above would otherwise sweep them in.
+"prepforge_chess.web" = ["static/assets/*.map"]
+
 [tool.pytest.ini_options]
 # "src" puts the package on the path; the tests/ dir is auto-prepended by pytest
 # (default prepend import mode, no tests/__init__.py) so sibling helper modules
