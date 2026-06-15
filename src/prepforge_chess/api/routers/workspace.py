@@ -173,6 +173,14 @@ def dashboard(
             repo.get_profile_setting(owner, streak.STREAK_KEY),
             local_day,
         ),
+        # TEMP DEBUG (remove after diagnosing the stuck-streak report): raw
+        # stored state + the server's resolved "today", so a frozen streak can
+        # be told apart from a last_day that's ahead of today.
+        "streak_debug": {
+            "raw": repo.get_profile_setting(owner, streak.STREAK_KEY),
+            "local_date_param": local_date,
+            "resolved_local_day": local_day.isoformat(),
+        },
         "recap": _weekly_recap(
             repo, owner, local_day,
             reviews_7d=reviews_7d, mastered_now=mastered_now, weak_now=weak_now,
