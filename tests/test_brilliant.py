@@ -126,10 +126,23 @@ def test_returns_none_when_disabled():
     assert _evaluate(analyzer) is None
 
 
+def test_glance_already_winning_is_not_brilliant():
+    # Unintuitive (policy mass spread thin among several adequate moves), sound, and
+    # reveal clears the bar — but Maia's own glance at the result (0.70) already looks
+    # comfortably winning, so there's no hidden resource to "reveal".
+    analyzer = BrilliantAnalyzer(maia=_FakeMaia(human_probability=0.0, glance_wc=0.70))
+    result = _evaluate(analyzer)
+    assert result is not None
+    assert result.reveal_score >= 0.17
+    assert result.maia_glance_wc > 0.60
+    assert not result.is_brilliant
+
+
 def test_config_defaults():
     config = BrilliantConfig()
     assert config.rating == 1900
     assert config.max_human_probability == 0.10
     assert config.min_reveal_score == 0.17
+    assert config.max_glance_win_chance == 0.60
     assert config.min_high_win_chance == 0.50
     assert config.max_high_drop_vs_before == 0.05

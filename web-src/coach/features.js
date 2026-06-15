@@ -248,18 +248,29 @@ export function buildMoveFeatures(input) {
 //   1. Unintuitive — humans almost never find it: maiaHumanProb <= 0.10.
 //   2. Reveal      — the engine's truth is far above the human's first-glance read:
 //                    engineWin - maiaWin >= 17 points (server min_reveal_score 0.17).
-//   3. Sound       — the move stays at least level (engine-best, winAfterMover >= 50);
+//   3. Still unclear at a glance — the first-glance read itself isn't already
+//                    comfortably winning: maiaWin <= 60 (server max_glance_win_chance
+//                    0.60). Without this, a low maiaHumanProb can just mean policy mass
+//                    spread thin across several roughly-equal moves (e.g. a pawn-race
+//                    endgame), not a hidden resource — Maia's value already agrees the
+//                    result is winning, so there's nothing to "reveal".
+//   4. Sound       — the move stays at least level (engine-best, winAfterMover >= 50);
 //                    enforced by the candidate gate before we ever query Maia.
 //   maiaHumanProb — Maia's probability a human plays this move (0..1)
 //   maiaWinAfter  — Maia's win chance for the mover after the move (0..1)
 export const BRILLIANT_MAX_HUMAN_PROB = 0.1; // (1) humans rarely find it
 export const BRILLIANT_MIN_WIN_GAP = 17; // (2) engine win% over Maia win%, in points
+export const BRILLIANT_MAX_GLANCE_WIN = 60; // (3) Maia's win% for the mover after the move, in points
 export function isBrilliantByMaia(features, { maiaHumanProb, maiaWinAfter }) {
   if (!features || !features.brilliantCandidate) return false;
   if (!Number.isFinite(maiaHumanProb) || !Number.isFinite(maiaWinAfter)) return false;
   const engineWin = features.winAfterMover; // %, mover POV (Stockfish)
   const humanWin = maiaWinAfter * 100; // %, mover POV (Maia)
-  return maiaHumanProb <= BRILLIANT_MAX_HUMAN_PROB && engineWin - humanWin >= BRILLIANT_MIN_WIN_GAP;
+  return (
+    maiaHumanProb <= BRILLIANT_MAX_HUMAN_PROB &&
+    engineWin - humanWin >= BRILLIANT_MIN_WIN_GAP &&
+    humanWin <= BRILLIANT_MAX_GLANCE_WIN
+  );
 }
 
 // Upgrade a feature vector to Brilliant in place once the Maia check confirms it.

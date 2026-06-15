@@ -13,7 +13,7 @@ from prepforge_chess.services.maia import MaiaAdapter
 class BrilliantConfig:
     """Thresholds for Brilliant detection, powered by Maia3 + Stockfish.
 
-    A Brilliant move clears three layers, all required:
+    A Brilliant move clears four layers, all required:
 
     1. **Unintuitive** — a human is unlikely to find it: the Maia3 policy
        probability of the move is at most ``max_human_probability``.
@@ -22,7 +22,15 @@ class BrilliantConfig:
        is Maia3's value of the position after the move; the truth is the
        Stockfish eval already computed during analysis. ``reveal = sf_truth −
        maia_glance ≥ min_reveal_score``.
-    3. **Sound** — already Best/Excellent by Stockfish, and the Stockfish truth
+    3. **Still looks unclear at a glance** — the first-glance read itself must
+       not already look comfortably winning (``maia_glance_wc ≤
+       max_glance_win_chance``). Without this, a low ``human_probability`` can
+       come from policy mass being spread thin across many roughly-equal moves
+       in a chaotic position (e.g. a pawn-race endgame with several adequate
+       rook moves) rather than from the move hiding a real resource — Maia's
+       *value* of the result already agrees it's winning, so there is nothing
+       to "reveal".
+    4. **Sound** — already Best/Excellent by Stockfish, and the Stockfish truth
        stays winning/equal (``≥ min_high_win_chance``, and not a drop of more
        than ``max_high_drop_vs_before`` from the pre-move eval).
 
@@ -34,6 +42,7 @@ class BrilliantConfig:
     rating: int = 1900
     max_human_probability: float = 0.10
     min_reveal_score: float = 0.17
+    max_glance_win_chance: float = 0.60
     max_high_drop_vs_before: float = 0.05
     min_high_win_chance: float = 0.50
 
@@ -122,6 +131,7 @@ class BrilliantAnalyzer:
         is_brilliant = (
             human_probability <= effective.max_human_probability
             and reveal_score >= effective.min_reveal_score
+            and maia_glance_wc <= effective.max_glance_win_chance
             and sf_truth_wc >= sf_before_wc - effective.max_high_drop_vs_before
             and sf_truth_wc >= effective.min_high_win_chance
         )
