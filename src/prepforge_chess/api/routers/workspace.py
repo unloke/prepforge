@@ -76,6 +76,31 @@ _RECOMMENDATIONS = [
 ]
 
 
+class _DebugFixStreakBody(BaseModel):
+    local_date: str | None = None
+
+
+@router.post("/dashboard/debug-fix-streak")
+def debug_fix_streak(
+    body: _DebugFixStreakBody,
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+) -> dict[str, Any]:
+    """TEMP one-off repair: clamp a ``last_day`` that drifted to "tomorrow" back
+    to "yesterday" (relative to ``local_date``), so the next training session
+    extends the streak normally instead of being stuck in the advance() "day <=
+    last" no-op branch forever. ``current``/``best`` are left untouched. Caller-
+    scoped (own profile only). Remove this endpoint once used."""
+    day = streak.resolve_day(body.local_date)
+
+    def _fix(stored: Any) -> Any:
+        stored = stored if isinstance(stored, dict) else {}
+        return {**stored, "last_day": (day - timedelta(days=1)).isoformat()}
+
+    fixed = repo.mutate_profile_setting(owner, streak.STREAK_KEY, _fix)
+    return {"streak": streak.as_view(fixed, day), "raw": fixed}
+
+
 @router.get("/dashboard")
 def dashboard(
     local_date: str | None = None,
