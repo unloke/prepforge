@@ -126,23 +126,38 @@ def test_returns_none_when_disabled():
     assert _evaluate(analyzer) is None
 
 
-def test_glance_already_winning_is_not_brilliant():
-    # Unintuitive (policy mass spread thin among several adequate moves), sound, and
-    # reveal clears the bar — but Maia's own glance at the result (0.70) already looks
-    # comfortably winning, so there's no hidden resource to "reveal".
-    analyzer = BrilliantAnalyzer(maia=_FakeMaia(human_probability=0.0, glance_wc=0.70))
-    result = _evaluate(analyzer)
+def test_pawn_race_dilution_dud_is_not_brilliant():
+    # The real-world false positive: in a chaotic pawn race several rook moves are
+    # roughly equal, so Maia's policy mass is spread thin (low human_probability)
+    # without the move hiding anything. Its reveal is modest (~0.20) and falls
+    # below the 0.30 bar, so it is correctly rejected. glance_wc 0.66 mirrors the
+    # probed dud; truth ~0.86 (sf_after -800 below) gives reveal ~0.20.
+    analyzer = BrilliantAnalyzer(maia=_FakeMaia(human_probability=0.029, glance_wc=0.66))
+    result = _evaluate(analyzer, sf_after_cp=-500, sf_before_cp=-500)
     assert result is not None
-    assert result.reveal_score >= 0.17
-    assert result.maia_glance_wc > 0.60
+    assert result.reveal_score < 0.30
     assert not result.is_brilliant
+
+
+def test_already_winning_sacrifice_still_brilliant():
+    # A sound sacrifice is typically *already* winning by Stockfish truth (the
+    # best-play eval contains the sac), and can even glance above 0.60 — like the
+    # Immortal 11.Qxh7+ (glance ~0.61). There is no glance cap: as long as the
+    # reveal clears 0.30 it stays brilliant. truth ~0.975 (sf -1000) − glance 0.61
+    # = reveal ~0.37.
+    analyzer = BrilliantAnalyzer(maia=_FakeMaia(human_probability=0.003, glance_wc=0.61))
+    result = _evaluate(analyzer, sf_after_cp=-1000, sf_before_cp=-1000)
+    assert result is not None
+    assert result.maia_glance_wc > 0.60
+    assert result.reveal_score >= 0.30
+    assert result.is_brilliant
 
 
 def test_config_defaults():
     config = BrilliantConfig()
     assert config.rating == 1900
     assert config.max_human_probability == 0.10
-    assert config.min_reveal_score == 0.17
-    assert config.max_glance_win_chance == 0.60
+    assert config.min_reveal_score == 0.30
+    assert not hasattr(config, "max_glance_win_chance")
     assert config.min_high_win_chance == 0.50
     assert config.max_high_drop_vs_before == 0.05
