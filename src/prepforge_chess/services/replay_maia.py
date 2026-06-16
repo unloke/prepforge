@@ -27,12 +27,13 @@ class ReplayMaia:
     ``assessments`` is an iterable of dicts shaped like the browser payload::
 
         {"fen": <fen_before>, "uci": <played_move>,
-         "human_probability": <0..1>, "win_chance_after": <0..1>}
+         "human_probability": <0..1>, "win_chance_after": <0..1>,
+         "trap_gap": <-1..1, optional>}
 
-    Only :meth:`move_assessment` is implemented — that is the sole method
-    ``BrilliantAnalyzer`` calls. :meth:`predictions` raises, since the public
-    classify path never generates moves (that is the Build-Generate browser path,
-    which uses its own provider).
+    :meth:`move_assessment` and :meth:`precomputed_trap_gap` are the two methods
+    ``BrilliantAnalyzer`` consults; both replay browser-computed numbers.
+    :meth:`predictions` raises, since the public classify path never generates
+    moves (that is the Build-Generate browser path, which uses its own provider).
     """
 
     name = "maia3 (browser)"
@@ -45,15 +46,23 @@ class ReplayMaia:
     ) -> None:
         self.chess_core = chess_core or ChessCore()
         self._by_key: Dict[Tuple[str, str], Tuple[float, float]] = {}
+        # Browser-supplied trap_gap per (fen, played move). Optional per item: a move
+        # the browser never deemed eligible (or had no Maia for) carries no trap_gap,
+        # and the analyzer treats its absence as "trap layer un-evaluable" → not flagged.
+        self._trap_by_key: Dict[Tuple[str, str], float] = {}
         for item in assessments:
             fen = item.get("fen")
             uci = item.get("uci")
             if not isinstance(fen, str) or not isinstance(uci, str):
                 continue
-            self._by_key[self._key(fen, uci)] = (
+            key = self._key(fen, uci)
+            self._by_key[key] = (
                 float(item["human_probability"]),
                 float(item["win_chance_after"]),
             )
+            trap = item.get("trap_gap")
+            if isinstance(trap, (int, float)) and not isinstance(trap, bool):
+                self._trap_by_key[key] = float(trap)
 
     def _key(self, fen: str, uci: str) -> Tuple[str, str]:
         try:
@@ -74,6 +83,23 @@ class ReplayMaia:
         # the prepare payload). None → analyzer skips Brilliant for this move.
         del rating
         return self._by_key.get(self._key(fen, move_uci))
+
+    def precomputed_trap_gap(
+        self,
+        fen: str,
+        move_uci: str,
+    ) -> Optional[float]:
+        """The browser-computed ``trap_gap`` for (fen, played move), or None.
+
+        The browser computes ``trap_gap = sf_truth(played) − sf_truth(Maia's
+        top-policy move)`` locally — it has both Maia3 and Stockfish — and ships it
+        in the assessment, because the public server runs no engine and so cannot
+        evaluate the hypothetical natural-move position itself. ``BrilliantAnalyzer``
+        consults this instead of its engine path when present (mirroring how
+        :meth:`move_assessment` is replayed). None → the trap layer is un-evaluable
+        for this move → it is not flagged Brilliant.
+        """
+        return self._trap_by_key.get(self._key(fen, move_uci))
 
     def predictions(self, *args, **kwargs):  # pragma: no cover - never called here
         raise NotImplementedError(

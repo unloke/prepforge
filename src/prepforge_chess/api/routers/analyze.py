@@ -69,7 +69,8 @@ def _brilliant_analyzer_from_client(
     """Build a BrilliantAnalyzer over browser-supplied Maia move assessments, or None.
 
     Validates the untrusted payload: each item needs a FEN + UCI string and finite
-    ``human_probability`` / ``win_chance_after`` in [0, 1]. A malformed item raises
+    ``human_probability`` / ``win_chance_after`` in [0, 1], plus an OPTIONAL finite
+    ``trap_gap`` in [-1, 1] (the browser-computed trap layer). A malformed item raises
     ValueError (→ 400). Empty/omitted → None (no Brilliant detection — the browser
     has no Maia)."""
     if not maia_assessments:
@@ -96,7 +97,22 @@ def _brilliant_analyzer_from_client(
                 raise ValueError("maia_assessment {0} must be a number".format(key))
             if not math.isfinite(value) or value < 0.0 or value > 1.0:
                 raise ValueError("maia_assessment {0} must be in [0, 1]".format(key))
+        # trap_gap is optional (only the browser's eligible/unintuitive moves carry one):
+        # validate it when present, leave it absent otherwise. It is a difference of two
+        # win chances, so it ranges over [-1, 1] rather than [0, 1].
+        trap = item.get("trap_gap")
+        if trap is not None:
+            if not isinstance(trap, (int, float)) or isinstance(trap, bool):
+                raise ValueError("maia_assessment trap_gap must be a number")
+            if not math.isfinite(trap) or trap < -1.0 or trap > 1.0:
+                raise ValueError("maia_assessment trap_gap must be in [-1, 1]")
         cleaned.append(item)
+    # No engine is wired here (Stockfish + Maia3 run in the browser), so the trap layer's
+    # extra eval can't run server-side. Instead the browser computes each eligible move's
+    # trap_gap locally and ships it in the assessment; ReplayMaia replays it
+    # (precomputed_trap_gap) and BrilliantAnalyzer uses that value, so the public flow
+    # flags brilliancies with zero server compute. A move with no trap_gap (the browser
+    # had no Maia, or the move wasn't unintuitive) simply isn't flagged.
     return BrilliantAnalyzer(maia=ReplayMaia(cleaned))
 
 

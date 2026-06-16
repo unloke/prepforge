@@ -6,7 +6,12 @@ import {
   markBrilliant,
   BRILLIANT_MAX_HUMAN_PROB,
   BRILLIANT_MIN_WIN_GAP,
+  BRILLIANT_MIN_TRAP_GAP,
 } from "./features.js";
+
+// A passing trap_gap (well over the 0.05 bar) for the brilliant tests that isolate the
+// other layers — the natural human move throws away ~half a win chance.
+const TRAP_OK = 0.5;
 import { buildCommentary } from "./commentary.js";
 import { attachIntuition } from "./intuition.js";
 
@@ -661,17 +666,31 @@ describe("Brilliant detection (Maia vs engine, no SEE)", () => {
 
   it("is brilliant when humans wouldn't play it and Maia rates it far worse", () => {
     const f = bestMoveFeatures();
-    expect(isBrilliantByMaia(f, { maiaHumanProb: 0.02, maiaWinAfter: 0.2 })).toBe(true);
+    expect(isBrilliantByMaia(f, { maiaHumanProb: 0.02, maiaWinAfter: 0.2, trapGap: TRAP_OK })).toBe(true);
   });
 
   it("is NOT brilliant when humans would happily play it", () => {
     const f = bestMoveFeatures();
-    expect(isBrilliantByMaia(f, { maiaHumanProb: 0.55, maiaWinAfter: 0.2 })).toBe(false);
+    expect(isBrilliantByMaia(f, { maiaHumanProb: 0.55, maiaWinAfter: 0.2, trapGap: TRAP_OK })).toBe(false);
   });
 
   it("is NOT brilliant when Maia agrees the move is strong", () => {
     const f = bestMoveFeatures();
-    expect(isBrilliantByMaia(f, { maiaHumanProb: 0.03, maiaWinAfter: 0.52 })).toBe(false);
+    expect(isBrilliantByMaia(f, { maiaHumanProb: 0.03, maiaWinAfter: 0.52, trapGap: TRAP_OK })).toBe(false);
+  });
+
+  it("is NOT brilliant when the natural move is not a trap (trap-gap layer)", () => {
+    // Unintuitive + big reveal, but the move a human would naturally play is just as good:
+    // trap_gap below the bar → finding this move didn't actually matter → not brilliant.
+    const f = bestMoveFeatures();
+    expect(isBrilliantByMaia(f, { maiaHumanProb: 0.02, maiaWinAfter: 0.2, trapGap: 0.01 })).toBe(false);
+  });
+
+  it("is NOT brilliant when the trap is un-evaluable (no trap value)", () => {
+    // Maia had no policy / the natural move couldn't be evaluated → trapGap null → we can't
+    // judge the trap layer, so the move is not flagged (fail closed, matching the server).
+    const f = bestMoveFeatures();
+    expect(isBrilliantByMaia(f, { maiaHumanProb: 0.02, maiaWinAfter: 0.2, trapGap: null })).toBe(false);
   });
 
   it("honours the win-gap threshold exactly (engine win% over Maia win%)", () => {
@@ -680,15 +699,22 @@ describe("Brilliant detection (Maia vs engine, no SEE)", () => {
     // gap = 50 - maiaWin%. The threshold is BRILLIANT_MIN_WIN_GAP points.
     const atThreshold = (50 - BRILLIANT_MIN_WIN_GAP) / 100; // gap == threshold → brilliant
     const justUnder = (50 - (BRILLIANT_MIN_WIN_GAP - 1)) / 100; // gap one short → not
-    expect(isBrilliantByMaia(f, { maiaHumanProb: 0.02, maiaWinAfter: atThreshold })).toBe(true);
-    expect(isBrilliantByMaia(f, { maiaHumanProb: 0.02, maiaWinAfter: justUnder })).toBe(false);
+    expect(isBrilliantByMaia(f, { maiaHumanProb: 0.02, maiaWinAfter: atThreshold, trapGap: TRAP_OK })).toBe(true);
+    expect(isBrilliantByMaia(f, { maiaHumanProb: 0.02, maiaWinAfter: justUnder, trapGap: TRAP_OK })).toBe(false);
+  });
+
+  it("honours the trap-gap threshold exactly", () => {
+    const f = bestMoveFeatures();
+    const justUnder = BRILLIANT_MIN_TRAP_GAP - 0.001; // one hair short → not
+    expect(isBrilliantByMaia(f, { maiaHumanProb: 0.02, maiaWinAfter: 0.2, trapGap: BRILLIANT_MIN_TRAP_GAP })).toBe(true);
+    expect(isBrilliantByMaia(f, { maiaHumanProb: 0.02, maiaWinAfter: 0.2, trapGap: justUnder })).toBe(false);
   });
 
   it("requires humans to almost never play it (probability cap)", () => {
     const f = bestMoveFeatures();
     const overCap = BRILLIANT_MAX_HUMAN_PROB + 0.001;
-    expect(isBrilliantByMaia(f, { maiaHumanProb: overCap, maiaWinAfter: 0.2 })).toBe(false);
-    expect(isBrilliantByMaia(f, { maiaHumanProb: BRILLIANT_MAX_HUMAN_PROB, maiaWinAfter: 0.2 })).toBe(true);
+    expect(isBrilliantByMaia(f, { maiaHumanProb: overCap, maiaWinAfter: 0.2, trapGap: TRAP_OK })).toBe(false);
+    expect(isBrilliantByMaia(f, { maiaHumanProb: BRILLIANT_MAX_HUMAN_PROB, maiaWinAfter: 0.2, trapGap: TRAP_OK })).toBe(true);
   });
 
   it("upgrades the prose to a brilliancy once confirmed", () => {

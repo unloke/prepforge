@@ -157,6 +157,34 @@ def test_classify_save_rejects_bad_maia_assessment(client):
     assert r.status_code == 400
 
 
+def test_classify_save_rejects_out_of_range_trap_gap(client):
+    _register(client, "a@example.com")
+    prepared = _prepare(client)
+    # trap_gap is a difference of win chances, so it must stay in [-1, 1]; 2.0 is rejected.
+    r = _classify_save(
+        client,
+        prepared,
+        maia_assessments=[{"fen": "f", "uci": "e2e4", "human_probability": 0.05,
+                           "win_chance_after": 0.5, "trap_gap": 2.0}],
+    )
+    assert r.status_code == 400
+
+
+def test_classify_save_accepts_optional_trap_gap(client):
+    _register(client, "a@example.com")
+    prepared = _prepare(client)
+    # A well-formed assessment WITH a trap_gap is accepted (the browser-supplied trap
+    # layer); the move just isn't brilliant on this trivial flat-eval game.
+    r = _classify_save(
+        client,
+        prepared,
+        maia_assessments=[{"fen": prepared["positions"][0], "uci": "e2e4",
+                           "human_probability": 0.05, "win_chance_after": 0.5,
+                           "trap_gap": 0.2}],
+    )
+    assert r.status_code == 200, r.text
+
+
 # ---- owner isolation -------------------------------------------------------
 
 

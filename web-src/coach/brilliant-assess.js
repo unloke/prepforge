@@ -108,11 +108,11 @@ export async function attachClientTrapGaps({ candidates, evals, depth, rating, p
     }
     if (shouldCancel && shouldCancel()) throw cancelledError();
     if (!naturalUci) {
-      plan.push({ cand }); // no policy → trap un-evaluable
+      plan.push({ cand, naturalUci: null }); // no policy → trap un-evaluable
       continue;
     }
     if (naturalUci.toLowerCase() === String(cand.item.uci).toLowerCase()) {
-      plan.push({ cand, sameAsPlayed: true });
+      plan.push({ cand, sameAsPlayed: true, naturalUci });
       continue;
     }
     let humanFen = null;
@@ -125,7 +125,7 @@ export async function attachClientTrapGaps({ candidates, evals, depth, rating, p
       seen.add(humanFen);
       humanFens.push(humanFen);
     }
-    plan.push({ cand, humanFen });
+    plan.push({ cand, humanFen, naturalUci });
   }
 
   let humanEvals = new Map();
@@ -141,12 +141,25 @@ export async function attachClientTrapGaps({ candidates, evals, depth, rating, p
   for (const p of plan) {
     if (p.sameAsPlayed) {
       p.cand.item.trap_gap = 0;
+      // [TEMP DEBUG trap] remove after diagnosing 40...Re8 / 55...Ka8 false positives
+      console.log("[TRAP]", p.cand.item.uci, "rating=", rating, "natural=", p.naturalUci,
+        "(== played, trap=0)");
       continue;
     }
-    if (!p.humanFen) continue; // un-evaluable → leave trap_gap absent
+    if (!p.humanFen) {
+      // [TEMP DEBUG trap]
+      console.log("[TRAP]", p.cand.item.uci, "rating=", rating, "natural=", p.naturalUci,
+        "humanFen=null → trap UNSET");
+      continue; // un-evaluable → leave trap_gap absent
+    }
     const playedEval = evals.get(p.cand.playedAfterFen);
     const humanEval = humanEvals.get(p.humanFen);
-    if (!playedEval || !humanEval) continue;
+    if (!playedEval || !humanEval) {
+      // [TEMP DEBUG trap]
+      console.log("[TRAP]", p.cand.item.uci, "rating=", rating, "natural=", p.naturalUci,
+        "playedEval?", !!playedEval, "humanEval?", !!humanEval, "→ trap UNSET");
+      continue;
+    }
     const playedWc = moverWinChanceAfter(
       { cp: playedEval.score_cp ?? null, mate: playedEval.mate_in ?? null },
       p.cand.side,
@@ -156,5 +169,12 @@ export async function attachClientTrapGaps({ candidates, evals, depth, rating, p
       p.cand.side,
     );
     p.cand.item.trap_gap = playedWc - humanWc;
+    // [TEMP DEBUG trap] uci / rating / natural move / side / both win-chances / trap
+    console.log("[TRAP]", p.cand.item.uci, "rating=", rating, "natural=", p.naturalUci,
+      "side=", p.cand.side,
+      "playedEval=", { cp: playedEval.score_cp, mate: playedEval.mate_in },
+      "humanEval=", { cp: humanEval.score_cp, mate: humanEval.mate_in },
+      "playedWc=", playedWc.toFixed(3), "humanWc=", humanWc.toFixed(3),
+      "trap_gap=", p.cand.item.trap_gap.toFixed(3));
   }
 }
