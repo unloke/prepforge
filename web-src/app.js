@@ -23,6 +23,7 @@ import {
   markBrilliant,
   moverWinChanceAfter,
   BRILLIANT_MAX_HUMAN_PROB,
+  BRILLIANT_MIN_WIN_GAP,
 } from "./coach/features.js";
 import { attachIntuition } from "./coach/intuition.js";
 import { buildCommentary } from "./coach/commentary.js";
@@ -419,6 +420,13 @@ const TOAST_MINIMIZE_DELAY = 7500;
 const TOAST_DONE_DELAY = 12000;
 const TOAST_FAILED_DELAY = 6000;
 const TOAST_CANCELLED_DELAY = 4500;
+// Minimum gap between progress repaints. A tight loop (e.g. per-ply Brilliant checks, where
+// most plies are ineligible and iterate with no awaits between them) can call update() hundreds
+// of times back-to-back; repainting the bar + message every tick is wasted layout. We coalesce
+// to ~one repaint per this interval. Skipped ticks lose nothing — percent/message are stashed
+// and the next allowed tick (or the terminal complete/fail/cancel, which paint directly) shows
+// the final state — so this is a pure throughput win with no effect on what the user ends up seeing.
+const TOAST_PROGRESS_RENDER_MS = 90;
 // How long the pointer must rest motionless over a card before its countdown
 // is allowed to resume.
 const TOAST_IDLE_RESUME_MS = 1100;
@@ -442,6 +450,12 @@ class Toast {
     this.minimized = false;
     this.activeTotal = Math.max(1, Number(total) || 1);
     this.lastDisplayedPercent = 0;
+    // Progress-repaint coalescing (see update()): timestamp of the last DOM paint, the most
+    // recent message we were asked to show but may have skipped painting, and a single
+    // trailing-flush timer that guarantees the latest skipped state is eventually drawn.
+    this._lastProgressRenderAt = 0;
+    this._pendingMessage = null;
+    this._progressFlushTimer = null;
     this.onClick = null;
     this.onCancel = typeof onCancel === "function" ? onCancel : null;
     this.cancelRequested = false;
@@ -544,8 +558,44 @@ class Toast {
     const pessimistic = Math.pow(ratio, 1.5);
     const display = Math.min(0.95, pessimistic);
     if (display > this.lastDisplayedPercent) this.lastDisplayedPercent = display;
+    if (message) this._pendingMessage = message;
+    // Coalesce rapid ticks: repaint at most once per TOAST_PROGRESS_RENDER_MS. A tick inside
+    // the window doesn't paint NOW, but it arms a single trailing flush for the end of the
+    // window — so the latest stashed percent/message is GUARANTEED to be drawn even if no
+    // further tick (and no terminal complete/fail/cancel) ever arrives. No skipped state is lost.
+    const now = Date.now();
+    const elapsed = now - this._lastProgressRenderAt;
+    if (elapsed < TOAST_PROGRESS_RENDER_MS) {
+      if (!this._progressFlushTimer) {
+        this._progressFlushTimer = setTimeout(
+          () => this._flushProgress(),
+          TOAST_PROGRESS_RENDER_MS - elapsed,
+        );
+      }
+      return;
+    }
+    this._flushProgress();
+  }
+
+  // Paint the latest stashed progress (bar + message). Cancels any pending trailing flush so
+  // the leading and trailing edges never double-paint. No-op once the job has left "running":
+  // the terminal states (complete/fail/cancelled) paint their own final frame, and a late
+  // trailing flush must not stomp it back to ~95% / a stale message.
+  _flushProgress() {
+    this._clearProgressFlush();
+    if (this.state !== "running") return;
+    this._lastProgressRenderAt = Date.now();
     this._renderFill(this.lastDisplayedPercent);
-    if (message && !this.cancelRequested) this.messageEl.textContent = message;
+    if (this._pendingMessage && !this.cancelRequested) {
+      this.messageEl.textContent = this._pendingMessage;
+    }
+  }
+
+  _clearProgressFlush() {
+    if (this._progressFlushTimer) {
+      clearTimeout(this._progressFlushTimer);
+      this._progressFlushTimer = null;
+    }
   }
 
   requestCancel() {
@@ -568,9 +618,17 @@ class Toast {
   // Used once a result is committed to a server save: aborting the fetch can't
   // un-persist an atomic apply, so the UI must stop implying a cancel that
   // wouldn't hold. No-op if the user already requested cancel.
+  //
+  // The job stays "running" through the save phase, so the _flushProgress state-guard does
+  // NOT protect this message: a trailing flush armed by a throttled progress tick just before
+  // the lock would otherwise fire ~90ms later and stomp the lock text back to the stale
+  // progress message. Cancel that pending flush AND adopt the lock message as the new stash,
+  // so neither the pending flush nor any later one can overwrite it.
   lockCancel(message) {
+    this._clearProgressFlush();
     this._dropStop();
     if (message && this.messageEl && !this.cancelRequested) {
+      this._pendingMessage = message;
       this.messageEl.textContent = message;
     }
   }
@@ -590,6 +648,7 @@ class Toast {
   complete({ title, message, onClick } = {}) {
     this.state = "done";
     this.minimized = false;
+    this._clearProgressFlush();
     this._dropStop();
     this.onClick = typeof onClick === "function" ? onClick : null;
     this._applyState();
@@ -602,6 +661,7 @@ class Toast {
 
   fail(message) {
     this.state = "failed";
+    this._clearProgressFlush();
     this._dropStop();
     this._applyState();
     this.titleEl.textContent = "Job failed";
@@ -613,6 +673,7 @@ class Toast {
   cancelled(message) {
     this.state = "cancelled";
     this.minimized = false;
+    this._clearProgressFlush();
     this._dropStop();
     this._applyState();
     this.titleEl.textContent = "Stopped";
@@ -636,6 +697,7 @@ class Toast {
   dismiss() {
     if (this.removed) return;
     this.removed = true;
+    this._clearProgressFlush();
     this._clearDismiss();
     this._clearIdle();
     // Collapse out: slide away + shrink height so the cards below rise smoothly.
@@ -1270,6 +1332,31 @@ const engineWidget = new EngineWidget();
 // (deeper) top line via onWidgetSnapshot instead of spinning a second worker and
 // fighting over the arrow.
 // ---------------------------------------------------------------------------
+// The saved full-game analysis move matching an exact (fen_before, played move, fen_after),
+// or null. Lets the coach reuse Analyze's persisted verdict on a mainline ply instead of
+// recomputing it. A free-exploration variation never matches (its fen/uci aren't on the saved
+// mainline), so the coach still computes those live. Cheap linear scan — a game is well under
+// a few hundred plies and this runs once per (debounced) position change.
+function savedAnalysisMove(prevFen, uci, fen) {
+  const analysis = appState.analysis;
+  const moves = analysis && analysis.moves;
+  if (!Array.isArray(moves) || !prevFen || !uci || !fen) return null;
+  // Index lazily, memoised on the analysis object and rebuilt only when its `moves` array is
+  // replaced (a new analysis run). Move objects are upgraded in place (markBrilliant) without
+  // changing their fen/uci, so the index stays valid across those mutations. Keep first-match
+  // semantics (a repeated position keeps its earliest ply) to mirror the old linear scan exactly.
+  if (analysis._moveIndexSrc !== moves) {
+    const index = new Map();
+    for (const m of moves) {
+      const key = `${m.fen_before}|${m.uci}|${m.fen_after}`;
+      if (!index.has(key)) index.set(key, m);
+    }
+    analysis._moveIndex = index;
+    analysis._moveIndexSrc = moves;
+  }
+  return analysis._moveIndex.get(`${prevFen}|${uci}|${fen}`) || null;
+}
+
 class PositionCoach {
   constructor() {
     this.engine = null;
@@ -1382,9 +1469,21 @@ class PositionCoach {
       // move vs. a rich spread) and fold it into the commentary — best-effort and async,
       // reusing the same Maia worker the brilliant check uses.
       this._checkIntuition(features, prevFen, fen, token);
-      // A move can only be "brilliant" if the engine loves it but humans wouldn't —
-      // confirm that against Maia in the background and upgrade the read if so.
-      if (features.brilliantCandidate) {
+      // A move can only be "brilliant" if the engine loves it but humans wouldn't. If a
+      // full-game analysis already ran the complete Maia/Stockfish Brilliant check on THIS
+      // exact move and saved its verdict (we're stepping through an analysed mainline), defer
+      // to that verdict UNCONDITIONALLY — Analyze searched deeper than this debounced live
+      // read, so it is authoritative, and deferring keeps the coach consistent with the saved
+      // analysis even when the two disagree on eligibility. It also skips the per-click
+      // recompute (a Maia assessment + policy read + a Stockfish eval). Only free exploration
+      // (a variation with no saved move) is judged by the live brilliantCandidate gate here.
+      const saved = savedAnalysisMove(prevFen, ctx.lastUci, fen);
+      if (saved) {
+        if (saved.classification === "brilliant") {
+          this._showSavedBrilliant(features, prevFen, ctx.lastUci, fen, token);
+        }
+        // A saved non-brilliant verdict is authoritative → leave the base read as is.
+      } else if (features.brilliantCandidate) {
         this._checkBrilliant(features, prevFen, ctx.lastUci, fen, token);
       }
     } catch (err) {
@@ -1406,10 +1505,15 @@ class PositionCoach {
       // (Settings → Playing strength), so a move can be brilliant FOR THEM.
       const a = await provider.moveAssessment({ fen: prevFen, moveUci: uci, rating });
       if (token !== this.token || fen !== this.fen || !a) return;
-      // Only an unintuitive move can be brilliant. Skip the extra trap-gap work (one Maia
-      // policy read + one Stockfish eval of the natural move) otherwise — this mirrors the
-      // server, which only consults trap_gap once the probability cap is cleared.
+      // Brilliant has three layers, cheapest-first (see brilliant-assess.js). The two cheap
+      // ones gate the costly trap_gap (a Maia policy read + a Stockfish eval of the natural
+      // move), so we never pay for it on a move a free check already ruled out:
+      //   • Unintuitive — a human rarely finds it.
       if (!(a.humanProbability <= BRILLIANT_MAX_HUMAN_PROB)) return;
+      //   • Reveal — Stockfish's truth sits far above Maia's first-glance read. (Free: both
+      //     numbers are already in hand.) This is the gate that used to be checked only after
+      //     trap_gap had already run, inside isBrilliantByMaia.
+      if (features.winAfterMover - a.winChanceAfter * 100 < BRILLIANT_MIN_WIN_GAP) return;
       const trapGap = await this._trapGap(features, prevFen, uci, fen, token, rating);
       if (token !== this.token || fen !== this.fen) return;
       const brilliant = isBrilliantByMaia(features, {
@@ -1425,6 +1529,25 @@ class PositionCoach {
       console.warn("Coach: Maia brilliancy check unavailable", err);
       /* Maia unavailable → no brilliancy; the engine read stands. */
     }
+  }
+
+  // Render the Brilliant verdict a full-game analysis already saved for this move — no
+  // recompute. We still fetch ONE cheap Maia move assessment (not the costly trap_gap) so the
+  // prose can name how rarely a human finds it; if Maia is unavailable the star still shows,
+  // just without that grounding detail. The verdict itself comes from Analyze, so the live
+  // coach never disagrees with the saved analysis on a mainline move.
+  async _showSavedBrilliant(features, prevFen, uci, fen, token) {
+    let maia = null;
+    try {
+      const provider = getSharedMaia3Provider();
+      const a = await provider.moveAssessment({ fen: prevFen, moveUci: uci, rating: effectiveMaiaRating() });
+      if (a) maia = { humanProb: a.humanProbability, winChanceAfter: a.winChanceAfter };
+    } catch (_) {
+      /* Maia unavailable → brilliant read with no rarity detail */
+    }
+    if (token !== this.token || fen !== this.fen) return; // navigated away during the fetch
+    markBrilliant(features, maia);
+    renderCoachProse(buildCommentary(features));
   }
 
   // trap_gap = sf_truth(played) − sf_truth(the move Maia thinks a human would naturally

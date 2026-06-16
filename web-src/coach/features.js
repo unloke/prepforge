@@ -183,18 +183,22 @@ export function buildMoveFeatures(input) {
 
   // Worth asking Maia about? Mirror the server's brilliant eligibility exactly: only a
   // Best or Excellent-tier move qualifies (services/brilliant.py, gated on the
-  // classifier's BEST/EXCELLENT). The server calls a move Excellent when its win-chance
-  // loss is at most 0.03 (services/classification.py) — i.e. winDelta <= 3 here, since
-  // winDelta IS that loss in percentage points. A "Good"-tier move (winDelta in (3, 5])
-  // is NOT brilliant-eligible: the old <= 5 gate over-flagged moves the full-game
-  // analysis would never star. (There is no extra win-floor: the server's old "stays
-  // at least level" sound layer was replaced by the trap_gap check — see
+  // classifier's BEST/EXCELLENT). The server lands there two ways (services/classification.py):
+  // it returns BEST the instant the played move is its first choice (isBest) REGARDLESS of
+  // any eval delta, else Excellent when the win-chance loss is at most 0.03 — i.e.
+  // `isBest || winDelta <= 3` here, since winDelta IS that loss in percentage points. The
+  // isBest leg matters because winBefore (best line of fenBefore) and winAfter (the fenAfter
+  // read) are separate searches that can disagree by > 3 pts on a sharp line, which would
+  // otherwise drop a literal best move — a prime brilliancy candidate. A "Good"-tier move
+  // (not best, winDelta in (3, 5]) is NOT brilliant-eligible: the old <= 5 gate over-flagged
+  // moves the full-game analysis would never star. (There is no extra win-floor: the server's
+  // old "stays at least level" sound layer was replaced by the trap_gap check — see
   // isBrilliantByMaia. Dropping the floor is deliberate, not implied by the other
   // layers: a reveal of 0.30 only forces the engine's truth to >= 0.30 for the mover
   // (the human read can't dip below 0), NOT that the mover is winning — so a brilliant
   // resource in a worse-but-defensible position still qualifies. The trap_gap, not a
   // win floor, is what keeps the false positives out.)
-  const brilliantCandidate = winDelta <= 3;
+  const brilliantCandidate = isBest || winDelta <= BRILLIANT_MAX_CANDIDATE_WIN_DELTA;
 
   return {
     ply: input.ply ?? null,
@@ -281,6 +285,11 @@ export function buildMoveFeatures(input) {
 export const BRILLIANT_MAX_HUMAN_PROB = 0.1; // (1) humans rarely find it
 export const BRILLIANT_MIN_WIN_GAP = 30; // (2) engine win% over Maia win%, in points
 export const BRILLIANT_MIN_TRAP_GAP = 0.05; // (3) win chance the natural move throws away
+// Brilliant is only considered for a Best/Excellent-tier move: a win-chance loss of at
+// most this many points (winDelta <= 3 ⇔ the server's <= 0.03 EXCELLENT cutoff). This is
+// the cheapest layer of all — it's pure arithmetic over evals already in hand — so the
+// full-game path checks it BEFORE spending a Maia forward on the move (see brilliant-assess).
+export const BRILLIANT_MAX_CANDIDATE_WIN_DELTA = 3;
 export function isBrilliantByMaia(features, { maiaHumanProb, maiaWinAfter, trapGap }) {
   if (!features || !features.brilliantCandidate) return false;
   if (!Number.isFinite(maiaHumanProb) || !Number.isFinite(maiaWinAfter)) return false;

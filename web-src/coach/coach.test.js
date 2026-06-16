@@ -773,6 +773,26 @@ describe("Brilliant detection (Maia vs engine, no SEE)", () => {
     expect(f.winDelta).toBeLessThanOrEqual(5);
     expect(f.brilliantCandidate).toBe(false);
   });
+
+  it("the engine's best move stays a candidate even when before/after searches disagree by > the cap (BEST bypass)", () => {
+    // isBest (played === best line), but the fenBefore best-line eval (cp 300) and the fenAfter
+    // read (cp 0) disagree by > 3 win% pts — as two independent fixed-depth searches can on a
+    // sharp line. The server returns BEST on played===best_move_uci regardless of loss, so the
+    // coach must keep it a candidate too rather than drop a prime brilliancy before Maia.
+    const fenBefore = "6k1/8/2p5/8/8/8/8/5BK1 w - - 0 1";
+    const f = buildMoveFeatures({
+      mover: "white",
+      uci: "g1f2",
+      san: "Kf2",
+      fenBefore,
+      fenAfter: "6k1/8/2p5/8/8/8/5K2/5B2 b - - 1 1",
+      beforeEval: { lines: [{ uci: "g1f2", san: "Kf2", cp: 300, mate: null, pvUci: ["g1f2"] }] },
+      afterEval: { cp: 0, mate: null, pvUci: [] },
+    });
+    expect(f.isBest).toBe(true);
+    expect(f.winDelta).toBeGreaterThan(3);
+    expect(f.brilliantCandidate).toBe(true);
+  });
 });
 
 describe("voice sweep — every archetype stays well-formed across many phrasings", () => {

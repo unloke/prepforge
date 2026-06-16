@@ -141,11 +141,18 @@ describe("attachClientTrapGaps", () => {
 describe("computeBrilliantAssessments (first + second pass together)", () => {
   const moves = [{ fen_before: START_FEN, uci: "e2e4", fen_after: AFTER_E4, side: "white" }];
 
-  it("assesses each move and attaches a trap_gap to the unintuitive candidate", async () => {
+  // Eligible (winDelta 0: both before/after cp 200) so the move is assessed, AND the reveal
+  // gap clears (engineWin ≈ 67.6 vs Maia 30).
+  const ELIGIBLE_REVEALING_EVALS = new Map([
+    [START_FEN, { score_cp: 200, mate_in: null }],
+    [AFTER_E4, { score_cp: 200, mate_in: null }],
+  ]);
+
+  it("assesses each move and attaches a trap_gap to a candidate that clears every cheaper layer", async () => {
     const progress = [];
     const out = await computeBrilliantAssessments({
       moves,
-      evals: new Map([[AFTER_E4, { score_cp: 200, mate_in: null }]]),
+      evals: ELIGIBLE_REVEALING_EVALS,
       depth: 12,
       rating: 1500,
       provider: fakeProvider({ naturalUci: "d2d4", assessment: { humanProbability: 0.02, winChanceAfter: 0.3 } }),
@@ -162,7 +169,7 @@ describe("computeBrilliantAssessments (first + second pass together)", () => {
   it("does NOT attach a trap_gap to an intuitive move (never a candidate, so no extra engine work)", async () => {
     const out = await computeBrilliantAssessments({
       moves,
-      evals: new Map([[AFTER_E4, { score_cp: 200, mate_in: null }]]),
+      evals: ELIGIBLE_REVEALING_EVALS,
       depth: 12,
       rating: 1500,
       // humanProbability 0.5 is well over the cap → not unintuitive → not a candidate
@@ -174,10 +181,88 @@ describe("computeBrilliantAssessments (first + second pass together)", () => {
     expect("trap_gap" in out[0]).toBe(false);
   });
 
+  it("does NOT assess a Brilliant-ineligible move (winDelta over the cap) — the cheap gate spares a Maia forward", async () => {
+    let assessCalls = 0;
+    const provider = {
+      moveAssessment: async () => {
+        assessCalls += 1;
+        return { humanProbability: 0.02, winChanceAfter: 0.3 }; // would be unintuitive if asked
+      },
+      predictions: async () => [{ move_uci: "d2d4" }],
+    };
+    const out = await computeBrilliantAssessments({
+      moves,
+      // winBefore ≈ 0.90 (cp 600) but winAfter 0.50 (cp 0) → winDelta ≈ 40 pts > 3, AND the
+      // played e2e4 is NOT the engine's best (d2d4 is) → neither eligibility leg passes.
+      evals: new Map([
+        [START_FEN, { score_cp: 600, mate_in: null, best_move_uci: "d2d4" }],
+        [AFTER_E4, { score_cp: 0, mate_in: null }],
+      ]),
+      depth: 12,
+      rating: 1500,
+      provider,
+      analyzeFn: fakeAnalyzeFn({ [AFTER_D4]: -100 }),
+      shouldCancel: () => false,
+    });
+    expect(out).toHaveLength(0);
+    expect(assessCalls).toBe(0); // layer 0 (free) ran first, so no model call at all
+  });
+
+  it("treats the engine's literal best move as eligible even when the two searches disagree by > the cap (server BEST bypass)", async () => {
+    let assessCalls = 0;
+    const provider = {
+      moveAssessment: async () => {
+        assessCalls += 1;
+        return { humanProbability: 0.02, winChanceAfter: 0.3 };
+      },
+      predictions: async () => [{ move_uci: "d2d4" }],
+    };
+    const out = await computeBrilliantAssessments({
+      moves,
+      // winDelta ≈ 40 pts (well over the cap) BUT e2e4 IS best_move_uci → the server would call
+      // it BEST, so the assessment must still ship or the server could never flag it brilliant.
+      evals: new Map([
+        [START_FEN, { score_cp: 600, mate_in: null, best_move_uci: "e2e4" }],
+        [AFTER_E4, { score_cp: 0, mate_in: null }],
+      ]),
+      depth: 12,
+      rating: 1500,
+      provider,
+      analyzeFn: fakeAnalyzeFn({ [AFTER_D4]: -100 }),
+      shouldCancel: () => false,
+    });
+    expect(out).toHaveLength(1);
+    expect(assessCalls).toBe(1);
+  });
+
+  it("records the assessment but SKIPS trap_gap when the reveal gap is too small (the costly layer is gated)", async () => {
+    let predictionCalls = 0;
+    const provider = {
+      moveAssessment: async () => ({ humanProbability: 0.02, winChanceAfter: 0.62 }), // unintuitive, but...
+      predictions: async () => {
+        predictionCalls += 1;
+        return [{ move_uci: "d2d4" }];
+      },
+    };
+    const out = await computeBrilliantAssessments({
+      moves,
+      // engineWin ≈ 67.6 (cp 200) vs Maia 62 → reveal ≈ 5.6 < 30, so trap_gap must not run
+      evals: ELIGIBLE_REVEALING_EVALS,
+      depth: 12,
+      rating: 1500,
+      provider,
+      analyzeFn: fakeAnalyzeFn({ [AFTER_D4]: -100 }),
+      shouldCancel: () => false,
+    });
+    expect(out).toHaveLength(1);
+    expect("trap_gap" in out[0]).toBe(false);
+    expect(predictionCalls).toBe(0); // reveal gate ran before the policy read
+  });
+
   it("skips a move whose assessment is non-finite (Maia inference failed)", async () => {
     const out = await computeBrilliantAssessments({
       moves,
-      evals: new Map([[AFTER_E4, { score_cp: 200, mate_in: null }]]),
+      evals: ELIGIBLE_REVEALING_EVALS,
       depth: 12,
       rating: 1500,
       provider: fakeProvider({ naturalUci: "d2d4", assessment: { humanProbability: NaN, winChanceAfter: 0.3 } }),

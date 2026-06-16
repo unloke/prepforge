@@ -490,3 +490,64 @@ describe("terminal / illegal pass-through", () => {
     void workers;
   });
 });
+
+describe("read cache", () => {
+  // Behavior: ack init, and answer each read with a payload that records the worker id, so a
+  // re-served (cached) result is distinguishable from a fresh worker round trip.
+  function ackInitAnswerReads(msg, worker) {
+    if (msg.type === "init") worker.reply(msg.id, {});
+    else if (msg.type === "predictions") worker.reply(msg.id, [{ move_uci: "e2e4", probability: 1, rank: 1, id: msg.id }]);
+    else if (msg.type === "moveAssessment") worker.reply(msg.id, { humanProbability: 0.1, winChanceAfter: 0.5, id: msg.id });
+  }
+
+  it("serves a repeated (rating, fen) read from cache without a second worker round trip", async () => {
+    const { provider, workers } = makeProvider(ackInitAnswerReads);
+    const first = await provider.predictions({ fen: "f", rating: 1500 });
+    const again = await provider.predictions({ fen: "f", rating: 1500 });
+    expect(workers[0].idsOf("predictions").length).toBe(1); // only ONE search ran
+    expect(again).toBe(first); // same cached array reference
+  });
+
+  it("coalesces concurrent identical reads onto one in-flight request", async () => {
+    const { provider, workers } = makeProvider(ackInitElsePend);
+    const a = provider.moveAssessment({ fen: "f", moveUci: "g1f3", rating: 1500 });
+    const b = provider.moveAssessment({ fen: "f", moveUci: "g1f3", rating: 1500 });
+    await tick();
+    const w = workers[0];
+    expect(w.idsOf("moveAssessment").length).toBe(1); // one round trip for both callers
+    w.reply(w.idsOf("moveAssessment")[0], { humanProbability: 0.2, winChanceAfter: 0.6 });
+    expect(await a).toEqual({ humanProbability: 0.2, winChanceAfter: 0.6 });
+    expect(await b).toBe(await a);
+  });
+
+  it("keys on rating and move, so a different rating or move misses", async () => {
+    const { provider, workers } = makeProvider(ackInitAnswerReads);
+    await provider.predictions({ fen: "f", rating: 1500 });
+    await provider.predictions({ fen: "f", rating: 1900 }); // different rating → fresh search
+    expect(workers[0].idsOf("predictions").length).toBe(2);
+    await provider.moveAssessment({ fen: "f", moveUci: "a", rating: 1500 });
+    await provider.moveAssessment({ fen: "f", moveUci: "b", rating: 1500 }); // different move → fresh
+    expect(workers[0].idsOf("moveAssessment").length).toBe(2);
+  });
+
+  it("does not cache a rejected read — a retry re-runs", async () => {
+    const { provider, workers } = makeProvider(ackInitElsePend);
+    const a = provider.predictions({ fen: "f", rating: 1500 });
+    await tick();
+    const w = workers[0];
+    w.replyError(w.idsOf("predictions")[0], "inference blew up");
+    await expect(a).rejects.toThrow(/inference blew up/);
+    const retry = provider.predictions({ fen: "f", rating: 1500 });
+    await tick();
+    expect(w.idsOf("predictions").length).toBe(2); // not served from a poisoned cache
+    w.reply(w.idsOf("predictions")[1], []);
+    expect(await retry).toEqual([]);
+  });
+
+  it("bypasses the cache entirely when the cap is 0", async () => {
+    const { provider, workers } = makeProvider(ackInitAnswerReads, { readCacheCap: 0 });
+    await provider.predictions({ fen: "f", rating: 1500 });
+    await provider.predictions({ fen: "f", rating: 1500 });
+    expect(workers[0].idsOf("predictions").length).toBe(2); // every call hits the worker
+  });
+});

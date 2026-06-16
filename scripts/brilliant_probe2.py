@@ -1,33 +1,24 @@
-"""Brilliant-detection feature probe over a labeled set of real moves.
+"""Extended brilliant-detection feature probe.
 
-Rather than sweeping every ply of a whole game, this probe targets a small,
-hand-labeled set of moves -- known true brilliancies and
-known false positives -- and dumps the *full* candidate feature vector for each
-so we can see, empirically, which signal (or threshold) actually separates the
-real brilliancies from the duds.
+Combines the original hand-picked reference brilliancies/dud
+(``brilliant_probe.py``'s IMMORTAL/ROTLEWI/MARSHALL/BLITZ_RD2) with a
+**human-labeled** set of real moves pulled from the 1000-game account scan
+(``scripts/out/brilliant_anonymousub.jsonl``). The user reviewed all 21
+auto-flagged "Brilliant" candidates and labeled each yes/no/controversial;
+controversial ones are dropped here.
 
-    py -3.13 scripts/brilliant_probe.py
+Goal: every move in both groups already clears the CURRENT production gate
+(unintuitive p<=0.10, reveal>=0.30, sound). So the existing features can't
+separate them -- that's exactly the false-positive problem. This probe dumps
+the *full* candidate feature vector (including the still-unshipped trap_gap,
+policy_entropy, sac_invest, sf_draw, only_move_gap, etc.) for all of them and
+reports which single feature, if any, cleanly separates yes from no.
 
-Each TARGET is (label, expected, pgn, fullmove, side, san). ``expected`` is one
-of "yes" (should be flagged Brilliant), "no" (must NOT be), or "meh" (borderline,
-informational only). The probe locates the move by (fullmove, side, san), runs
-the real Stockfish + Maia3 stack on that one ply, and reports:
-
-    human_p       Maia3 policy prob of the played move (low = unintuitive)
-    top_policy    Maia3 policy prob of its single most-likely move
-    policy_margin top_policy - human_p (high = humans clearly prefer something else)
-    maia_glance   Maia3 value of the resulting position, mover POV (low = looks bad)
-    sf_before     Stockfish win-chance BEFORE the move, mover POV (high = already winning)
-    sf_truth      Stockfish win-chance AFTER the move, mover POV
-    reveal        sf_truth - maia_glance (high = looks bad but is good)
-
-Then it scores each candidate gate by whether a single threshold cleanly
-separates every "yes" from every "no".
+    py -3.13 scripts/brilliant_probe2.py
 """
 from __future__ import annotations
 
 import os
-import sys
 from dataclasses import dataclass
 from io import StringIO
 from typing import List, Optional, Tuple
@@ -49,8 +40,11 @@ STOCKFISH = os.path.abspath(
 )
 DEPTH = 18
 MAIA_RATING = 1900
-ELIGIBLE = {"best", "excellent"}
 
+
+# ---------------------------------------------------------------------------
+# Reference games (known true brilliancies + one known dud), from brilliant_probe.py
+# ---------------------------------------------------------------------------
 
 IMMORTAL = """
 [White "lawtrafalgar02"]
@@ -100,12 +94,11 @@ Rd2 40. Kc7 a4 41. c6 a3 42. Kb8 Rb2+ 43. Ka7 a2 44. c7 Rb1 45. c8=Q Bxc8 0-1
 
 
 # (label, expected, pgn, fullmove, side, san)
-TARGETS: List[Tuple[str, str, str, int, Color, str]] = [
+PGN_TARGETS: List[Tuple[str, str, str, int, Color, str]] = [
     ("Immortal Qxh7+", "yes", IMMORTAL, 11, Color.WHITE, "Qxh7+"),
     ("Rubinstein Rxc3", "yes", ROTLEWI, 22, Color.BLACK, "Rxc3"),
     ("Rubinstein Rd2", "yes", ROTLEWI, 23, Color.BLACK, "Rd2"),
     ("Marshall Qg3", "yes", MARSHALL, 23, Color.BLACK, "Qg3"),
-    ("Marshall Rh6", "meh", MARSHALL, 21, Color.BLACK, "Rh6"),
     ("Blitz Rd2 (dud)", "no", BLITZ_RD2, 39, Color.BLACK, "Rd2"),
 ]
 
@@ -115,7 +108,7 @@ def _norm(san: str) -> str:
 
 
 def locate(pgn_text: str, fullmove: int, side: Color, san: str):
-    """Return (fen_before, fen_after, uci, san) for the targeted move."""
+    """Return (fen_before, uci) for the targeted move."""
     game = chess.pgn.read_game(StringIO(pgn_text.strip()))
     board = game.board()
     want_white = side is Color.WHITE
@@ -124,18 +117,43 @@ def locate(pgn_text: str, fullmove: int, side: Color, san: str):
         this_white = board.turn == chess.WHITE
         this_san = board.san(mv)
         if this_full == fullmove and this_white == want_white and _norm(this_san) == _norm(san):
-            fen_before = board.fen()
-            board.push(mv)
-            return fen_before, board.fen(), mv.uci(), this_san
+            return board.fen(), mv.uci()
         board.push(mv)
     raise LookupError("move not found: {0} {1}{2}".format(fullmove, "" if want_white else "...", san))
+
+
+# ---------------------------------------------------------------------------
+# Account-scan hits, human-labeled (controversial ones dropped)
+# (label, expected, fen_before, uci, side)
+# ---------------------------------------------------------------------------
+
+FEN_TARGETS: List[Tuple[str, str, str, str, Color]] = [
+    ("#5 28.Qxe4", "yes", "8/1bq3kp/p3Qbp1/1p6/1P1NnP2/P3P3/6PP/4B1K1 w - - 3 28", "e6e4", Color.WHITE),
+    ("#6 54...Rxg4", "yes", "6r1/R7/3k1p2/1p2pP2/6P1/1P1p1K2/P7/8 b - - 1 54", "g8g4", Color.BLACK),
+    ("#13 29...Bg3", "yes", "r3r1k1/1p3pp1/p6p/2p1b3/P1QpP1P1/4q3/BPP2RR1/6K1 b - - 9 29", "e5g3", Color.BLACK),
+    ("#18 13.axb4", "yes", "r4rk1/pp1bppbp/3p2p1/q1pP4/1nP1P3/P1N5/1P1QNPPP/RB3RK1 w - - 1 13", "a3b4", Color.WHITE),
+
+    ("#2 40...Re8", "no", "3k2r1/pb6/1pp1Q3/8/3P1P2/P1P4P/KP6/6r1 b - - 2 40", "g8e8", Color.BLACK),
+    ("#4 53.Rf3+", "no", "8/1R6/8/4p3/8/r1nk2P1/1p3RKP/8 w - - 6 53", "f2f3", Color.WHITE),
+    ("#7 41.Kf2", "no", "3n1r2/1k1P1P1p/8/4N3/2p5/7p/1P5P/3RK3 w - - 3 41", "e1f2", Color.WHITE),
+    ("#8 45...Kc8", "no", "8/3k1p2/3P1Ppp/3K4/6PP/8/8/8 b - - 2 45", "d7c8", Color.BLACK),
+    ("#9 65.Qd1", "no", "8/8/3K4/6k1/5n2/8/2Q5/8 w - - 9 65", "c2d1", Color.WHITE),
+    ("#10 66...Kg6", "no", "8/5N2/8/6k1/r5p1/6K1/8/8 b - - 7 66", "g5g6", Color.BLACK),
+    ("#11 41...Kg7", "no", "8/p6k/4P1p1/q6p/7P/1P1R2P1/2P1K3/8 b - - 4 41", "h7g7", Color.BLACK),
+    ("#12 34.Rbf7+", "no", "5k2/1R4R1/7p/3p4/3Pn3/4P2P/1p4PK/1r6 w - - 5 34", "b7f7", Color.WHITE),
+    ("#15 35...Qa1+", "no", "4r2k/5p2/2p2prN/p2pp2Q/4P3/4PR2/1q4PP/5K2 b - - 5 35", "b2a1", Color.BLACK),
+    ("#16 66.Qc2", "no", "8/1K3p2/5n1k/6pp/8/8/8/2Q5 w - - 0 66", "c1c2", Color.WHITE),
+    ("#17 88...Be4", "no", "1R6/8/4p1p1/3n1bk1/3P4/8/5K2/8 b - - 15 88", "f5e4", Color.BLACK),
+    ("#19 5.c3", "no", "r1bqk1nr/ppp2ppp/2np4/4p3/8/1P6/PBPPPPPP/RN1QKBNR w KQkq - 0 5", "c2c3", Color.WHITE),
+    ("#20 41.Qb7+", "no", "5R2/6kp/6p1/3pP2q/1Q1Pn3/B3P1P1/2p3K1/8 w - - 0 41", "b4b7", Color.WHITE),
+    ("#21 33...Re8", "no", "2r4k/6p1/p4p1p/3NnQ2/1p2P3/6KP/Pq6/3B4 b - - 1 33", "c8e8", Color.BLACK),
+]
 
 
 _PIECE_VAL = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 0}
 
 
 def _mover_advantage(board: chess.Board, mover_is_white: bool) -> float:
-    """Material balance in pawns from the mover's POV."""
     adv = 0.0
     for piece in board.piece_map().values():
         v = _PIECE_VAL[piece.piece_type]
@@ -167,23 +185,28 @@ class Probe:
     sf_before: Optional[float] = None
     sf_truth: Optional[float] = None
     reveal: Optional[float] = None
-    # --- untested candidates ---
-    only_move_gap: Optional[float] = None   # SF: wc(best) - wc(2nd best), mover POV
-    trap_gap: Optional[float] = None        # SF: truth(played) - truth(human's top-policy move)
-    maia_trap_gap: Optional[float] = None   # MAIA value: glance(played) - glance(human's top move) [free, no SF]
-    maia_glance_human: Optional[float] = None  # MAIA value after the human's top-policy move
-    policy_entropy: Optional[float] = None  # Maia: entropy of policy over top-N (bits)
-    sac_invest: Optional[float] = None      # material the mover is down 2-ply later (pawns)
-    sf_draw: Optional[float] = None         # SF WDL draw prob after the move (sharpness; low = decisive)
+    only_move_gap: Optional[float] = None
+    trap_gap: Optional[float] = None
+    maia_trap_gap: Optional[float] = None
+    maia_glance_human: Optional[float] = None
+    policy_entropy: Optional[float] = None
+    sac_invest: Optional[float] = None
+    sf_draw: Optional[float] = None
     is_capture: Optional[bool] = None
     is_check: Optional[bool] = None
 
 
-def probe_move(label, expected, pgn, fullmove, side, san, engine, maia) -> Probe:
-    fen_before, fen_after, uci, real_san = locate(pgn, fullmove, side, san)
+def probe(label, expected, fen_before, uci, side, engine, maia) -> Probe:
     cfg = EngineAnalysisConfig(depth=DEPTH, multipv=1)
     cfg2 = EngineAnalysisConfig(depth=DEPTH, multipv=2)
     mover_white = side is Color.WHITE
+
+    board_before = chess.Board(fen_before)
+    mv = chess.Move.from_uci(uci)
+    real_san = board_before.san(mv)
+    board_after = board_before.copy()
+    board_after.push(mv)
+    fen_after = board_after.fen()
 
     pa = engine.analyze_position(fen_before, cfg2)
     eval_after = engine.analyze_position(fen_after, cfg).evaluation
@@ -199,12 +222,9 @@ def probe_move(label, expected, pgn, fullmove, side, san, engine, maia) -> Probe
 
     p = Probe(label=label, expected=expected, san=real_san, classification=cls.classification.value)
 
-    board_before = chess.Board(fen_before)
-    mv = chess.Move.from_uci(uci)
     p.is_capture = board_before.is_capture(mv)
     p.is_check = board_before.gives_check(mv)
 
-    # only-move gap: how far the best move stands above the 2nd best.
     if len(pa.candidates) >= 2:
         wc_best = win_chance_for_side(pa.candidates[0].evaluation_after, side)
         wc_2nd = win_chance_for_side(pa.candidates[1].evaluation_after, side)
@@ -229,9 +249,6 @@ def probe_move(label, expected, pgn, fullmove, side, san, engine, maia) -> Probe
             p.top_move = preds[0].move_uci
         if p.human_p is not None:
             p.policy_margin = p.top_policy - p.human_p
-        # trap gaps: how much worse is the move a human would actually pick?
-        # SF version (objective truth, costs 1 extra SF eval) and the Maia-value
-        # version (human glance, free -- just one more Maia forward).
         if preds[0].move_uci != uci:
             human_assess = maia.move_assessment(fen_before, preds[0].move_uci, rating=MAIA_RATING)
             if human_assess is not None and p.maia_glance is not None:
@@ -246,8 +263,6 @@ def probe_move(label, expected, pgn, fullmove, side, san, engine, maia) -> Probe
                 except Exception:
                     pass
 
-    # sacrifice investment: material the mover is down two plies later (after the
-    # opponent's best reply). Positive = the move gave material up.
     adv_before = _mover_advantage(board_before, mover_white)
     b2 = chess.Board(fen_after)
     reply_pv = eval_after.pv or []
@@ -259,7 +274,7 @@ def probe_move(label, expected, pgn, fullmove, side, san, engine, maia) -> Probe
     p.sac_invest = adv_before - _mover_advantage(b2, mover_white)
 
     if eval_after.wdl:
-        p.sf_draw = eval_after.wdl.get("white_draw")  # draw prob is side-agnostic
+        p.sf_draw = eval_after.wdl.get("white_draw")
     return p
 
 
@@ -267,13 +282,12 @@ def fmt(v, spec="{0:.3f}"):
     return spec.format(v) if v is not None else "   -  "
 
 
-# (name, accessor, direction) -- direction "low" means a brilliancy wants a LOW
-# value (so the gate is value <= threshold); "high" means it wants a HIGH value.
 GATES = [
     ("human_p (low)", lambda p: p.human_p, "low"),
     ("maia_glance (low)", lambda p: p.maia_glance, "low"),
     ("reveal (high)", lambda p: p.reveal, "high"),
     ("sf_before (low)", lambda p: p.sf_before, "low"),
+    ("sf_truth (high)", lambda p: p.sf_truth, "high"),
     ("top_policy (high)", lambda p: p.top_policy, "high"),
     ("policy_margin (high)", lambda p: p.policy_margin, "high"),
     ("only_move_gap (high)", lambda p: p.only_move_gap, "high"),
@@ -281,26 +295,29 @@ GATES = [
     ("maia_trap_gap (high)", lambda p: p.maia_trap_gap, "high"),
     ("maia_trap_gap (low)", lambda p: p.maia_trap_gap, "low"),
     ("policy_entropy (low)", lambda p: p.policy_entropy, "low"),
+    ("policy_entropy (high)", lambda p: p.policy_entropy, "high"),
     ("sac_invest (high)", lambda p: p.sac_invest, "high"),
     ("sf_draw (low)", lambda p: p.sf_draw, "low"),
+    ("sf_draw (high)", lambda p: p.sf_draw, "high"),
 ]
 
 
 def separation(probes: List[Probe]):
-    """For each candidate gate, can one threshold split every yes from every no?"""
     yes = [p for p in probes if p.expected == "yes"]
     no = [p for p in probes if p.expected == "no"]
     print("\n\n================ GATE SEPARATION (yes vs no) ================")
+    print("yes={0}, no={1}".format(len(yes), len(no)))
     print("A gate 'separates' if one threshold keeps every YES and drops every NO.\n")
+    found_any = False
     for name, acc, direction in GATES:
         ys = [acc(p) for p in yes if acc(p) is not None]
         ns = [acc(p) for p in no if acc(p) is not None]
         if not ys or not ns:
-            print("  {0:<22} (insufficient data)".format(name))
+            print("  {0:<24} (insufficient data: yes={1} no={2})".format(name, len(ys), len(ns)))
             continue
         if direction == "low":
-            worst_yes = max(ys)   # the yes that is hardest to keep
-            best_no = min(ns)     # the no that is hardest to drop
+            worst_yes = max(ys)
+            best_no = min(ns)
             ok = worst_yes < best_no
             window = "yes<= up to {0:.3f}, no>= down to {1:.3f}".format(worst_yes, best_no)
         else:
@@ -310,9 +327,15 @@ def separation(probes: List[Probe]):
             window = "yes>= down to {0:.3f}, no<= up to {1:.3f}".format(worst_yes, best_no)
         gap = abs(worst_yes - best_no)
         spread = (max(ys) - min(ys)) or 1e-9
-        norm = gap / spread  # robustness: gap relative to how scattered the YESes are
-        verdict = "SEP gap={0:.3f} norm={1:.2f}".format(gap, norm) if ok else "overlaps"
-        print("  {0:<22} {1:<24} {2}".format(name, verdict, window))
+        norm = gap / spread
+        if ok:
+            found_any = True
+            verdict = "** SEPARATES ** gap={0:.3f} norm={1:.2f}".format(gap, norm)
+        else:
+            verdict = "overlaps"
+        print("  {0:<24} {1:<28} {2}".format(name, verdict, window))
+    if not found_any:
+        print("\n  No single feature cleanly separates yes from no.")
 
 
 def main():
@@ -321,17 +344,22 @@ def main():
 
     probes: List[Probe] = []
     try:
-        for label, expected, pgn, fullmove, side, san in TARGETS:
-            p = probe_move(label, expected, pgn, fullmove, side, san, engine, maia)
+        for label, expected, pgn, fullmove, side, san in PGN_TARGETS:
+            fen_before, uci = locate(pgn, fullmove, side, san)
+            p = probe(label, expected, fen_before, uci, side, engine, maia)
             probes.append(p)
-            print("done: {0}".format(label))
+            print("done: {0} ({1})".format(label, expected))
+        for label, expected, fen_before, uci, side in FEN_TARGETS:
+            p = probe(label, expected, fen_before, uci, side, engine, maia)
+            probes.append(p)
+            print("done: {0} ({1})".format(label, expected))
     finally:
         engine.close()
 
-    cols = "{0:<18} {1:<4} {2:<10} {3:<8} {4:<8} {5:<8} {6:<9} {7:<10} {8:<8} {9:<8} {10:<8} {11:<8} {12:<8}"
+    cols = "{0:<16} {1:<4} {2:<10} {3:<8} {4:<8} {5:<8} {6:<9} {7:<10} {8:<10} {9:<8} {10:<8} {11:<8} {12:<8} {13:<8}"
     print("\n" + cols.format(
         "move", "exp", "class", "human_p", "glance", "reveal",
-        "trap_SF", "trap_maia", "p_entr", "margin", "sac", "sf_draw", "sf_tru",
+        "trap_SF", "trap_maia", "p_entr", "margin", "sac", "sf_draw", "sf_tru", "sf_bef",
     ))
     for p in probes:
         print(cols.format(
@@ -339,7 +367,7 @@ def main():
             fmt(p.human_p), fmt(p.maia_glance), fmt(p.reveal, "{0:+.3f}"),
             fmt(p.trap_gap, "{0:+.3f}"), fmt(p.maia_trap_gap, "{0:+.3f}"),
             fmt(p.policy_entropy, "{0:.2f}"), fmt(p.policy_margin),
-            fmt(p.sac_invest, "{0:+.1f}"), fmt(p.sf_draw), fmt(p.sf_truth),
+            fmt(p.sac_invest, "{0:+.1f}"), fmt(p.sf_draw), fmt(p.sf_truth), fmt(p.sf_before),
         ))
 
     separation(probes)

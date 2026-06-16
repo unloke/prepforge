@@ -1,5 +1,41 @@
 import { localBoardAfterMove } from "../chess-local.js";
-import { moverWinChanceAfter, BRILLIANT_MAX_HUMAN_PROB } from "./features.js";
+import {
+  moverWinChanceAfter,
+  BRILLIANT_MAX_HUMAN_PROB,
+  BRILLIANT_MIN_WIN_GAP,
+  BRILLIANT_MAX_CANDIDATE_WIN_DELTA,
+} from "./features.js";
+
+// Mover-POV win chance (0..1) from an analysis eval-map entry ({score_cp, mate_in},
+// White-POV), or null when that position wasn't evaluated.
+function moverWinChanceFromEval(ev, side) {
+  if (!ev) return null;
+  return moverWinChanceAfter({ cp: ev.score_cp ?? null, mate: ev.mate_in ?? null }, side);
+}
+
+// Layer 0 — is this move even Brilliant-eligible (Best/Excellent tier)? Mirrors the server's
+// classifier (classification.py), which lands Best/Excellent two distinct ways:
+//   • BEST — the played move IS the engine's first choice (played === best_move_uci). The
+//     server returns BEST here BEFORE it computes any loss, and best_move_uci is the same
+//     browser-supplied value we hold, so we must short-circuit the same way: the analysis
+//     runs two independent fixed-depth searches (fen_before and fen_after) that can disagree
+//     by more than the cap on a sharp line, and without this bypass a literal best move — a
+//     prime brilliancy candidate — could be dropped before Maia ever sees it.
+//   • EXCELLENT — otherwise the win-chance loss is within the cap: winDelta = win%(before,
+//     best play) − win%(after the played move) <= BRILLIANT_MAX_CANDIDATE_WIN_DELTA. winDelta
+//     equals the server's loss (same evals, same 0.00368208 sigmoid).
+// Pure arithmetic over evals already in hand — no model call — so it is the first thing
+// checked. A position the analysis somehow didn't evaluate is treated as ineligible (it
+// can't be flagged without its eval anyway).
+function brilliantEligible(evalMap, move) {
+  const evBefore = evalMap.get(move.fen_before);
+  const evAfter = evalMap.get(move.fen_after);
+  if (!evBefore || !evAfter) return false;
+  if (evBefore.best_move_uci && evBefore.best_move_uci === move.uci) return true; // BEST
+  const before = moverWinChanceFromEval(evBefore, move.side);
+  const after = moverWinChanceFromEval(evAfter, move.side);
+  return (before - after) * 100 <= BRILLIANT_MAX_CANDIDATE_WIN_DELTA; // EXCELLENT-tier
+}
 
 // Browser-side computation of the per-move Maia3 assessment + trap_gap that the server's
 // BrilliantAnalyzer (via ReplayMaia) consumes. Extracted from app.js so the fragile wiring
@@ -21,21 +57,33 @@ import { moverWinChanceAfter, BRILLIANT_MAX_HUMAN_PROB } from "./features.js";
 // linked Lichess account, else the model default) — the SAME effectiveMaiaRating() the live
 // coach uses, so a brilliancy flagged in full-game analysis matches one the coach stars live,
 // and the read is personalized ("因材施教"). The server's ReplayMaia ignores its own rating and
-// trusts these numbers, so the client is the single source of truth for strength. We assess
-// every played move; the server only consults the eligible (Best/Excellent) ones, so
-// over-supplying is harmless (and avoids porting the win-chance/classification math to JS).
+// trusts these numbers, so the client is the single source of truth for strength.
 //
-// The third brilliant layer is trap_gap (services/brilliant.py): sf_truth(played) −
-// sf_truth(the move a human would NATURALLY play). The server can't compute it (no engine),
-// so we do it here and ship it. It needs an extra Stockfish eval of the natural move, so we
-// only compute it for the moves that can possibly clear the gate — the UNINTUITIVE ones
-// (humanProbability <= the cap). That cap is browser-sourced and used verbatim server-side,
-// so gating on it never skips a move the server would flag, and it keeps the extra engine
-// work to the rare handful of candidate moves rather than every ply. `evals` is the analysis
-// run's per-FEN eval map (so sf_truth(played) = eval of fen_after, reused, not recomputed).
+// Brilliant has three layers (services/brilliant.py / isBrilliantByMaia), and they get
+// steadily more expensive — so we check them CHEAPEST-FIRST and only ever pay for a layer
+// once everything cheaper has passed:
+//   0. Eligible (free): winDelta <= candidate cap — pure arithmetic over `evals`, no model
+//      call at all. A move that isn't Best/Excellent can't be brilliant, so this gate spares
+//      a Maia forward on the (many) clearly-suboptimal plies.
+//   1. Unintuitive (one Maia value forward, shared with the assessment): humanProbability
+//      <= the cap.
+//   2. Reveal (free, from the numbers already in hand): Stockfish's win% sits far above
+//      Maia's first-glance read.
+//   3. trap_gap (the costly one): sf_truth(played) − sf_truth(the move a human would
+//      NATURALLY play). The server can't compute it (no engine), so we do it here and ship
+//      it. It alone needs an extra Maia POLICY read AND an extra Stockfish eval, so it runs
+//      only for the handful of candidates that already cleared layers 0–2 — never on a move
+//      a free check already ruled out. (This ordering is the fix for the trap_gap layer
+//      slowing whole-game analysis: it used to fire on every UNINTUITIVE ply, blunders
+//      included.) `evals` is the analysis run's per-FEN eval map (so sf_truth(played) =
+//      eval of fen_after, reused, not recomputed).
+//
+// We only ship assessments for eligible moves; the server consults assessments solely for
+// the Best/Excellent ones it classifies, so dropping the rest is both safe and faster.
 export async function computeBrilliantAssessments({ moves, evals, depth, rating, onProgress, shouldCancel, provider, analyzeFn }) {
   const assessments = [];
-  const candidates = []; // unintuitive moves needing a trap_gap: { item, side, playedAfterFen }
+  const candidates = []; // moves through layers 0–2 needing a trap_gap: { item, side, playedAfterFen }
+  const evalMap = evals && typeof evals.get === "function" ? evals : new Map();
   const total = moves.length;
   const cancelledError = () => {
     const err = new Error("Analysis stopped");
@@ -47,7 +95,7 @@ export async function computeBrilliantAssessments({ moves, evals, depth, rating,
     // the model download + session init, so this is the pre-init checkpoint too.
     if (shouldCancel && shouldCancel()) throw cancelledError();
     const m = moves[i];
-    if (m && m.fen_before && m.uci) {
+    if (m && m.fen_before && m.uci && brilliantEligible(evalMap, m)) {
       const a = await provider.moveAssessment({ fen: m.fen_before, moveUci: m.uci, rating });
       // The await above can span a long download/init/inference; honour a Stop that arrived
       // during it so we neither record this result nor proceed to the next move. (Aborting the
@@ -61,7 +109,12 @@ export async function computeBrilliantAssessments({ moves, evals, depth, rating,
           win_chance_after: a.winChanceAfter,
         };
         assessments.push(item);
-        if (a.humanProbability <= BRILLIANT_MAX_HUMAN_PROB) {
+        // Layers 1 & 2, both free now that we hold the assessment: unintuitive AND reveal.
+        // Only a move clearing both earns the costly trap_gap layer below.
+        const unintuitive = a.humanProbability <= BRILLIANT_MAX_HUMAN_PROB;
+        const engineWin = moverWinChanceFromEval(evalMap.get(m.fen_after), m.side) * 100;
+        const revealClears = engineWin - a.winChanceAfter * 100 >= BRILLIANT_MIN_WIN_GAP;
+        if (unintuitive && revealClears) {
           candidates.push({ item, side: m.side, playedAfterFen: m.fen_after });
         }
       }
@@ -85,7 +138,8 @@ export async function computeBrilliantAssessments({ moves, evals, depth, rating,
   return assessments;
 }
 
-// For each unintuitive candidate, ask Maia for the move a human would naturally play, then
+// For each candidate (a move that already cleared the eligible + unintuitive + reveal layers
+// in computeBrilliantAssessments), ask Maia for the move a human would naturally play, then
 // run Stockfish once on the position it leads to; trap_gap = sf_truth(played) − sf_truth(that
 // natural move), mover POV (0..1). The natural-move positions are de-duplicated and evaluated
 // in ONE Stockfish batch (analyzeFn), so even several candidates cost a small, shared pool
@@ -141,24 +195,15 @@ export async function attachClientTrapGaps({ candidates, evals, depth, rating, p
   for (const p of plan) {
     if (p.sameAsPlayed) {
       p.cand.item.trap_gap = 0;
-      // [TEMP DEBUG trap] remove after diagnosing 40...Re8 / 55...Ka8 false positives
-      console.log("[TRAP]", p.cand.item.uci, "rating=", rating, "natural=", p.naturalUci,
-        "(== played, trap=0)");
       continue;
     }
     if (!p.humanFen) {
-      // [TEMP DEBUG trap]
-      console.log("[TRAP]", p.cand.item.uci, "rating=", rating, "natural=", p.naturalUci,
-        "humanFen=null → trap UNSET");
       continue; // un-evaluable → leave trap_gap absent
     }
     const playedEval = evals.get(p.cand.playedAfterFen);
     const humanEval = humanEvals.get(p.humanFen);
     if (!playedEval || !humanEval) {
-      // [TEMP DEBUG trap]
-      console.log("[TRAP]", p.cand.item.uci, "rating=", rating, "natural=", p.naturalUci,
-        "playedEval?", !!playedEval, "humanEval?", !!humanEval, "→ trap UNSET");
-      continue;
+      continue; // a missing eval → trap layer un-evaluable, leave trap_gap absent
     }
     const playedWc = moverWinChanceAfter(
       { cp: playedEval.score_cp ?? null, mate: playedEval.mate_in ?? null },
@@ -169,12 +214,5 @@ export async function attachClientTrapGaps({ candidates, evals, depth, rating, p
       p.cand.side,
     );
     p.cand.item.trap_gap = playedWc - humanWc;
-    // [TEMP DEBUG trap] uci / rating / natural move / side / both win-chances / trap
-    console.log("[TRAP]", p.cand.item.uci, "rating=", rating, "natural=", p.naturalUci,
-      "side=", p.cand.side,
-      "playedEval=", { cp: playedEval.score_cp, mate: playedEval.mate_in },
-      "humanEval=", { cp: humanEval.score_cp, mate: humanEval.mate_in },
-      "playedWc=", playedWc.toFixed(3), "humanWc=", humanWc.toFixed(3),
-      "trap_gap=", p.cand.item.trap_gap.toFixed(3));
   }
 }

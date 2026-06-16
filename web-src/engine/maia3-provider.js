@@ -19,6 +19,13 @@ const DEFAULT_RATING = 1500;
 // _request("init") pending forever and the UI stuck on "loading". On timeout we tear
 // the worker down and clear the cached promise so the next call re-inits cleanly.
 const DEFAULT_INIT_TIMEOUT_MS = 120000;
+// Cap on the shared read cache (see _cachedRead). A Maia read is fully determined by
+// (method, rating, fen) for a given model, so caching avoids re-running inference when a
+// position recurs — the live coach stepping back over plies it already assessed, or the
+// coach/coverage/Build-Generate/Brilliant paths all touching the same opening positions.
+// Bounded so a long session can't grow it without limit; eviction is oldest-first (the
+// Map's insertion order), refreshed to MRU on a hit.
+const DEFAULT_READ_CACHE_CAP = 4096;
 
 // Resolve the weight base URL at RUNTIME (no rebuild / no Node at deploy). First match
 // wins: injected global (the production knob the server renders into the page) →
@@ -110,6 +117,7 @@ class Maia3Provider {
     initTimeoutMs = DEFAULT_INIT_TIMEOUT_MS,
     onInitProgress = null,
     numThreads = null,
+    readCacheCap = DEFAULT_READ_CACHE_CAP,
   } = {}) {
     this._createWorker = createWorker;
     this._manifestOption = manifest;
@@ -121,6 +129,12 @@ class Maia3Provider {
     this._onInitProgress = typeof onInitProgress === "function" ? onInitProgress : null;
     // Explicit ORT WASM thread override (null → auto from page capabilities at init).
     this._numThreadsOption = Number.isInteger(numThreads) && numThreads >= 1 ? numThreads : null;
+    // Shared, bounded cache of in-flight/settled read promises keyed by (method|rating|fen[|move]).
+    // A hit returns the SAME promise, so concurrent callers also coalesce onto one worker round
+    // trip. Cap <= 0 disables it. Survives crash-recovery re-inits (the model is unchanged); only
+    // an explicit terminate() (model switch / teardown) clears it.
+    this._readCacheCap = Number.isFinite(readCacheCap) ? Math.floor(readCacheCap) : 0;
+    this._readCache = new Map();
 
     this._worker = null;
     this._ready = null; // cached init promise; cleared on failure so init can retry
@@ -178,7 +192,10 @@ class Maia3Provider {
   async predictions({ fen, historyFens, rating } = {}) {
     void historyFens;
     await this._ensureReady();
-    return this._request("predictions", { fen, rating: rating ?? this._defaultRating });
+    const r = rating ?? this._defaultRating;
+    return this._cachedRead(`predictions|${r}|${fen}`, () =>
+      this._request("predictions", { fen, rating: r }),
+    );
   }
 
   // positionRead({ fen, historyFens?, rating }) → { predictions, wdl } from ONE forward
@@ -186,7 +203,10 @@ class Maia3Provider {
   async positionRead({ fen, historyFens, rating } = {}) {
     void historyFens;
     await this._ensureReady();
-    return this._request("positionRead", { fen, rating: rating ?? this._defaultRating });
+    const r = rating ?? this._defaultRating;
+    return this._cachedRead(`positionRead|${r}|${fen}`, () =>
+      this._request("positionRead", { fen, rating: r }),
+    );
   }
 
   // moveAssessment({ fen, moveUci, historyFens?, rating }) →
@@ -194,7 +214,10 @@ class Maia3Provider {
   async moveAssessment({ fen, moveUci, historyFens, rating } = {}) {
     void historyFens;
     await this._ensureReady();
-    return this._request("moveAssessment", { fen, moveUci, rating: rating ?? this._defaultRating });
+    const r = rating ?? this._defaultRating;
+    return this._cachedRead(`moveAssessment|${r}|${fen}|${moveUci}`, () =>
+      this._request("moveAssessment", { fen, moveUci, rating: r }),
+    );
   }
 
   // moveAssessmentBatch({ fen, moves, historyFens?, rating }) → array aligned to `moves`
@@ -216,9 +239,37 @@ class Maia3Provider {
     this._ready = null;
     this._state = "idle";
     this._lastError = null;
+    // Drop cached reads: a terminate means a model switch / teardown, after which the cached
+    // values may no longer correspond to the loaded weights. (Crash-recovery does NOT call
+    // this — same model — so its cache legitimately survives.)
+    this._readCache.clear();
   }
 
   // ---- internals ------------------------------------------------------------
+
+  // Memoise a read by `key`, caching the in-flight PROMISE so concurrent callers share one
+  // worker round trip and a recurring position is served without re-running inference. A
+  // rejected read is evicted so a transient failure stays retryable (only deterministic
+  // successes — and the legitimate null/[] for an illegal move / terminal position — persist).
+  // On a hit the entry is re-inserted to mark it most-recently-used for the oldest-first cap.
+  _cachedRead(key, compute) {
+    if (this._readCacheCap <= 0) return compute();
+    const hit = this._readCache.get(key);
+    if (hit !== undefined) {
+      this._readCache.delete(key);
+      this._readCache.set(key, hit);
+      return hit;
+    }
+    const promise = compute();
+    this._readCache.set(key, promise);
+    promise.catch(() => {
+      if (this._readCache.get(key) === promise) this._readCache.delete(key);
+    });
+    while (this._readCache.size > this._readCacheCap) {
+      this._readCache.delete(this._readCache.keys().next().value);
+    }
+    return promise;
+  }
 
   _ensureReady() {
     if (this._ready) return this._ready;
