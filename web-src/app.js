@@ -5,6 +5,7 @@ import {
 } from "./engine/stockfish-provider.js";
 import { analyzeGamePositions } from "./engine/game-analyzer.js";
 import { buildBookline } from "./coach/bookline.js";
+import { computeBrilliantAssessments } from "./coach/brilliant-assess.js";
 import { runBrowserBuildGenerate } from "./engine/build-generate-runner.js";
 import {
   getSharedMaia3Provider,
@@ -16,7 +17,13 @@ import { createCsrfTokenSource, isSafeMethod, readCsrfCookie, CSRF_HEADER } from
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { describeMove } from "./explain.js";
-import { buildMoveFeatures, isBrilliantByMaia, markBrilliant } from "./coach/features.js";
+import {
+  buildMoveFeatures,
+  isBrilliantByMaia,
+  markBrilliant,
+  moverWinChanceAfter,
+  BRILLIANT_MAX_HUMAN_PROB,
+} from "./coach/features.js";
 import { attachIntuition } from "./coach/intuition.js";
 import { buildCommentary } from "./coach/commentary.js";
 
@@ -1394,13 +1401,21 @@ class PositionCoach {
   async _checkBrilliant(features, prevFen, uci, fen, token) {
     try {
       const provider = getSharedMaia3Provider();
+      const rating = effectiveMaiaRating();
       // Personalized: "humans wouldn't find it" is judged at the player's own strength
       // (Settings → Playing strength), so a move can be brilliant FOR THEM.
-      const a = await provider.moveAssessment({ fen: prevFen, moveUci: uci, rating: effectiveMaiaRating() });
+      const a = await provider.moveAssessment({ fen: prevFen, moveUci: uci, rating });
       if (token !== this.token || fen !== this.fen || !a) return;
+      // Only an unintuitive move can be brilliant. Skip the extra trap-gap work (one Maia
+      // policy read + one Stockfish eval of the natural move) otherwise — this mirrors the
+      // server, which only consults trap_gap once the probability cap is cleared.
+      if (!(a.humanProbability <= BRILLIANT_MAX_HUMAN_PROB)) return;
+      const trapGap = await this._trapGap(features, prevFen, uci, fen, token, rating);
+      if (token !== this.token || fen !== this.fen) return;
       const brilliant = isBrilliantByMaia(features, {
         maiaHumanProb: a.humanProbability,
         maiaWinAfter: a.winChanceAfter,
+        trapGap,
       });
       if (brilliant) {
         markBrilliant(features, { humanProb: a.humanProbability, winChanceAfter: a.winChanceAfter });
@@ -1410,6 +1425,31 @@ class PositionCoach {
       console.warn("Coach: Maia brilliancy check unavailable", err);
       /* Maia unavailable → no brilliancy; the engine read stands. */
     }
+  }
+
+  // trap_gap = sf_truth(played) − sf_truth(the move Maia thinks a human would naturally
+  // play), mover POV (0..1) — the third brilliant layer. Asks Maia for the top-policy
+  // move, then runs Stockfish on the position it leads to. Returns null when Maia has no
+  // policy or the natural move can't be evaluated (→ not flagged, failing closed like the
+  // server); 0 when the natural move IS the played one (no trap to avoid).
+  async _trapGap(features, prevFen, playedUci, fen, token, rating) {
+    const provider = getSharedMaia3Provider();
+    const preds = await provider.predictions({ fen: prevFen, rating });
+    if (token !== this.token || fen !== this.fen) return null;
+    const naturalUci = preds && preds.length ? preds[0].move_uci : null;
+    if (!naturalUci) return null;
+    if (naturalUci.toLowerCase() === String(playedUci).toLowerCase()) return 0;
+    let humanFen;
+    try {
+      humanFen = localBoardAfterMove(prevFen, naturalUci).move.fen_after;
+    } catch (_) {
+      return null; // illegal/unparseable natural move → trap un-evaluable
+    }
+    const read = await this._eval(humanFen, token);
+    if (token !== this.token || fen !== this.fen || !read || !read.lines.length) return null;
+    const line = read.lines[0];
+    const humanWc = moverWinChanceAfter({ cp: line.cp ?? null, mate: line.mate ?? null }, features.mover);
+    return features.winAfterMover / 100 - humanWc;
   }
 
   // Fold Maia's view of the position's TEXTURE into the read: its human-move distribution
@@ -3723,53 +3763,6 @@ async function loadDemoAndAnalyze() {
   await runAnalysis();
 }
 
-// Phase 3d: compute each played move's Maia3 assessment (humanProbability,
-// winChanceAfter) IN THE BROWSER so the server's BrilliantAnalyzer (via ReplayMaia) can
-// flag brilliancies with zero server compute. Best-effort: if Maia is unavailable (no
-// weights) or any inference fails, we return what we have (possibly []), and the analysis
-// still completes without brilliancies — exactly the server's no-Maia degradation.
-//
-// `rating` is the player's effective Maia3 strength (Settings-pinned, else AUTO from the
-// linked Lichess account, else the model default) — the SAME effectiveMaiaRating() the live
-// coach uses, so a brilliancy flagged in full-game analysis matches one the coach stars live,
-// and the read is personalized ("因材施教"). The server's ReplayMaia ignores its own rating and
-// trusts these numbers, so the client is the single source of truth for strength. We assess
-// every played move; the server only consults the eligible (Best/Excellent) ones, so
-// over-supplying is harmless (and avoids porting the win-chance/classification math to JS).
-async function computeBrilliantAssessments({ moves, rating, onProgress, shouldCancel }) {
-  const provider = getSharedMaia3Provider();
-  const assessments = [];
-  const total = moves.length;
-  const cancelledError = () => {
-    const err = new Error("Analysis stopped");
-    err.cancelled = true;
-    return err;
-  };
-  for (let i = 0; i < total; i++) {
-    // Before kicking off each assessment. The FIRST iteration's moveAssessment also drives
-    // the model download + session init, so this is the pre-init checkpoint too.
-    if (shouldCancel && shouldCancel()) throw cancelledError();
-    const m = moves[i];
-    if (m && m.fen_before && m.uci) {
-      const a = await provider.moveAssessment({ fen: m.fen_before, moveUci: m.uci, rating });
-      // The await above can span a long download/init/inference; honour a Stop that arrived
-      // during it so we neither record this result nor proceed to the next move. (Aborting the
-      // in-flight fetch itself is the future AbortSignal work; this stops at the next seam.)
-      if (shouldCancel && shouldCancel()) throw cancelledError();
-      if (a && Number.isFinite(a.humanProbability) && Number.isFinite(a.winChanceAfter)) {
-        assessments.push({
-          fen: m.fen_before,
-          uci: m.uci,
-          human_probability: a.humanProbability,
-          win_chance_after: a.winChanceAfter,
-        });
-      }
-    }
-    if (onProgress) onProgress(i + 1, total);
-  }
-  return assessments;
-}
-
 async function runAnalysis() {
   // Phase 2: whole-game analysis runs in the browser. The server only parses
   // the PGN (/api/analyze/prepare) and classifies + saves the browser-computed
@@ -3843,7 +3836,11 @@ async function runAnalysis() {
         try {
           maiaAssessments = await computeBrilliantAssessments({
             moves: prep.moves,
+            evals,
+            depth: prep.depth,
             rating: effectiveMaiaRating(),
+            provider,
+            analyzeFn: analyzeGamePositions,
             shouldCancel: () => cancelled,
             onProgress: (done, total) =>
               jobToast.updateJob({ current: done, total, message: `checking brilliancies ${done}/${total}` }),

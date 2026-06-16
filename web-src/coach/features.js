@@ -30,6 +30,15 @@ function toMover(winWhiteVal, mover) {
   return mover === "white" ? winWhiteVal : 100 - winWhiteVal;
 }
 
+// Mover-POV win CHANCE (0..1) from a White-POV {cp, mate} eval — the same fraction the
+// server's win_chance_for_side produces, so a browser-computed trap_gap lands on the
+// server's scale (compared against min_trap_gap = 0.05). (A mate maps to 1/0 here; the
+// server maps it to ~0.975/0.025 — a negligible gap that only shows when the human's
+// natural move walks into a forced mate, which a "trap" alternative essentially never is.)
+export function moverWinChanceAfter(evalWhite, mover) {
+  return toMover(winWhite(evalWhite || {}), mover) / 100;
+}
+
 // Enemy pieces `byColor` can capture that are undefended, or defended by less than
 // they are worth (i.e. winnable material). Returns richest-first.
 function captureTargets(chess, byColor) {
@@ -178,9 +187,14 @@ export function buildMoveFeatures(input) {
   // loss is at most 0.03 (services/classification.py) — i.e. winDelta <= 3 here, since
   // winDelta IS that loss in percentage points. A "Good"-tier move (winDelta in (3, 5])
   // is NOT brilliant-eligible: the old <= 5 gate over-flagged moves the full-game
-  // analysis would never star. The move must also stay at least level (winAfterMover
-  // >= 50, the server's min_high_win_chance = 0.50). Maia settles the rest.
-  const brilliantCandidate = winDelta <= 3 && winAfterMover >= 50;
+  // analysis would never star. (There is no extra win-floor: the server's old "stays
+  // at least level" sound layer was replaced by the trap_gap check — see
+  // isBrilliantByMaia. Dropping the floor is deliberate, not implied by the other
+  // layers: a reveal of 0.30 only forces the engine's truth to >= 0.30 for the mover
+  // (the human read can't dip below 0), NOT that the mover is winning — so a brilliant
+  // resource in a worse-but-defensible position still qualifies. The trap_gap, not a
+  // win floor, is what keeps the false positives out.)
+  const brilliantCandidate = winDelta <= 3;
 
   return {
     ply: input.ply ?? null,
@@ -242,32 +256,43 @@ export function buildMoveFeatures(input) {
 }
 
 // Decide brilliancy from the Maia (human-move model) read of the SAME move — a
-// Maia/Stockfish disagreement, no SEE and no sacrifice test. These thresholds mirror
+// Maia/Stockfish disagreement, no SEE and no sacrifice test. These three layers mirror
 // the canonical server-side detector (services/brilliant.py) so a move flagged live by
 // the coach is the same one a full-game analysis would star:
 //   1. Unintuitive — humans almost never find it: maiaHumanProb <= 0.10.
 //   2. Reveal      — the engine's truth is far above the human's first-glance read:
 //                    engineWin - maiaWin >= 30 points (server min_reveal_score 0.30).
-//                    The reveal gap carries the load against false positives: real
-//                    sacrifices reveal >= 36 points, while a chaotic pawn-race dud —
+//                    The reveal gap carries much of the load against false positives:
+//                    real sacrifices reveal >= 36 points, while a chaotic pawn-race dud —
 //                    where policy mass is merely spread thin across several roughly-
 //                    equal rook moves — reveals only ~20. (An earlier "looks already
 //                    won" glance cap was removed: its window was razor-thin and it
 //                    wrongly rejected the Immortal queen sac 11.Qxh7+, glance ~61.)
-//   3. Sound       — the move stays at least level (engine-best, winAfterMover >= 50);
-//                    enforced by the candidate gate before we ever query Maia.
+//   3. Trap        — the move a human would NATURALLY play instead throws the advantage
+//                    away: trapGap = sf_truth(played) - sf_truth(Maia's top-policy move),
+//                    mover POV, >= 0.05 (server min_trap_gap). This replaced the old
+//                    "stays at least level (winAfterMover >= 50)" sound layer, which kept
+//                    far more false positives on the labeled set. trapGap is computed by
+//                    the orchestration (it needs an extra Stockfish read of the natural
+//                    move) and passed in; un-evaluable (null/NaN) → not brilliant.
 //   maiaHumanProb — Maia's probability a human plays this move (0..1)
 //   maiaWinAfter  — Maia's win chance for the mover after the move (0..1)
+//   trapGap       — win chance the natural human move throws away vs the played one (0..1)
 export const BRILLIANT_MAX_HUMAN_PROB = 0.1; // (1) humans rarely find it
 export const BRILLIANT_MIN_WIN_GAP = 30; // (2) engine win% over Maia win%, in points
-export function isBrilliantByMaia(features, { maiaHumanProb, maiaWinAfter }) {
+export const BRILLIANT_MIN_TRAP_GAP = 0.05; // (3) win chance the natural move throws away
+export function isBrilliantByMaia(features, { maiaHumanProb, maiaWinAfter, trapGap }) {
   if (!features || !features.brilliantCandidate) return false;
   if (!Number.isFinite(maiaHumanProb) || !Number.isFinite(maiaWinAfter)) return false;
+  // No trap value (Maia had no policy, or the natural move couldn't be evaluated) → we
+  // can't judge the trap layer, so we don't flag it. Fail closed, matching the server.
+  if (!Number.isFinite(trapGap)) return false;
   const engineWin = features.winAfterMover; // %, mover POV (Stockfish)
   const humanWin = maiaWinAfter * 100; // %, mover POV (Maia)
   return (
     maiaHumanProb <= BRILLIANT_MAX_HUMAN_PROB &&
-    engineWin - humanWin >= BRILLIANT_MIN_WIN_GAP
+    engineWin - humanWin >= BRILLIANT_MIN_WIN_GAP &&
+    trapGap >= BRILLIANT_MIN_TRAP_GAP
   );
 }
 
