@@ -166,6 +166,32 @@ describe("computeBrilliantAssessments (first + second pass together)", () => {
     expect(progress).toEqual([[1, 1]]);
   });
 
+  it("reports trap-phase progress through onTrapProgress while the Stockfish batch runs (#2)", async () => {
+    const trapProgress = [];
+    // A batch fake that drives onProgress like the real analyzeGamePositions does.
+    const progressingAnalyzeFn = async ({ positions, onProgress }) => {
+      const out = new Map();
+      positions.forEach((p, i) => {
+        out.set(p, { score_cp: -100, mate_in: null });
+        if (onProgress) onProgress(i + 1, positions.length);
+      });
+      return out;
+    };
+    const out = await computeBrilliantAssessments({
+      moves,
+      evals: ELIGIBLE_REVEALING_EVALS,
+      depth: 12,
+      rating: 1500,
+      provider: fakeProvider({ naturalUci: "d2d4", assessment: { humanProbability: 0.02, winChanceAfter: 0.3 } }),
+      analyzeFn: progressingAnalyzeFn,
+      onTrapProgress: (done, total) => trapProgress.push([done, total]),
+      shouldCancel: () => false,
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0].trap_gap).toBeGreaterThan(0);
+    expect(trapProgress).toEqual([[1, 1]]); // one distinct natural-move position, evaluated once
+  });
+
   it("does NOT attach a trap_gap to an intuitive move (never a candidate, so no extra engine work)", async () => {
     const out = await computeBrilliantAssessments({
       moves,
@@ -282,6 +308,49 @@ describe("computeBrilliantAssessments (first + second pass together)", () => {
         provider: fakeProvider(),
         analyzeFn: fakeAnalyzeFn({ [AFTER_D4]: -100 }),
         shouldCancel: () => true,
+      }),
+    ).rejects.toMatchObject({ cancelled: true });
+  });
+
+  it("keeps the first-pass assessments when the trap_gap batch throws (#7)", async () => {
+    // Eligible + unintuitive + revealing → the move becomes a trap_gap candidate, then the
+    // batched Stockfish call in the SECOND pass blows up. The assessment must survive (just
+    // without a trap_gap), not vanish along with the whole game's brilliancies.
+    const explodingAnalyzeFn = async () => {
+      throw new Error("stockfish batch exploded");
+    };
+    const out = await computeBrilliantAssessments({
+      moves,
+      evals: ELIGIBLE_REVEALING_EVALS,
+      depth: 12,
+      rating: 1500,
+      provider: fakeProvider({ naturalUci: "d2d4", assessment: { humanProbability: 0.02, winChanceAfter: 0.3 } }),
+      analyzeFn: explodingAnalyzeFn,
+      shouldCancel: () => false,
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ fen: START_FEN, uci: "e2e4", human_probability: 0.02 });
+    expect("trap_gap" in out[0]).toBe(false); // fail closed on the trap layer only
+  });
+
+  it("still propagates a cancel raised during the trap_gap batch (Stop is never swallowed)", async () => {
+    // The first pass checks shouldCancel twice for one move (loop top + after the assessment);
+    // attachClientTrapGaps' own loop-top check is the 3rd call. Flip true there so the cancel
+    // originates inside the SECOND pass — the path the new try/catch must re-throw, not swallow.
+    let calls = 0;
+    const shouldCancel = () => {
+      calls += 1;
+      return calls >= 3;
+    };
+    await expect(
+      computeBrilliantAssessments({
+        moves,
+        evals: ELIGIBLE_REVEALING_EVALS,
+        depth: 12,
+        rating: 1500,
+        provider: fakeProvider({ naturalUci: "d2d4", assessment: { humanProbability: 0.02, winChanceAfter: 0.3 } }),
+        analyzeFn: fakeAnalyzeFn({ [AFTER_D4]: -100 }),
+        shouldCancel,
       }),
     ).rejects.toMatchObject({ cancelled: true });
   });

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 import {
   isTerminalPosition,
@@ -186,5 +186,40 @@ describe("analyzeGamePositions (worker pool)", () => {
         createProvider: makeFakeProviderFactory({ order: NON_TERMINAL, opensThrow: true }),
       }),
     ).rejects.toThrow("provider exploded");
+  });
+
+  it("throws on a wedged non-terminal search instead of fabricating a 0.00 eval", async () => {
+    // A provider whose search never produces a line and never stops — the wedged-engine shape.
+    // waitForEval must NOT fall through to terminalEval's draw-ish 0 for a non-terminal FEN.
+    const wedgedFactory = () => ({
+      async open() {},
+      async update() {},
+      snapshot() {
+        return { running: true, current_depth: 0, pvs: [], error: null, fen: null };
+      },
+      async close() {},
+    });
+
+    vi.useFakeTimers();
+    try {
+      const settled = analyzeGamePositions({
+        positions: [START_FEN], // non-terminal
+        depth: 12,
+        concurrency: 1,
+        createProvider: wedgedFactory,
+      }).then(
+        () => ({ ok: true }),
+        (err) => ({ err }),
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(31000); // drive the poll loop past PER_POSITION_TIMEOUT_MS
+      const result = await settled;
+      expect(result.ok).toBeUndefined();
+      expect(result.err).toBeInstanceOf(Error);
+      expect(result.err.message).toMatch(/no evaluation/i);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

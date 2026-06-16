@@ -450,6 +450,11 @@ class Toast {
     this.minimized = false;
     this.activeTotal = Math.max(1, Number(total) || 1);
     this.lastDisplayedPercent = 0;
+    // The named phase the bar is currently tracking (e.g. "evaluating" → "brilliancies" →
+    // "traps" → "classifying"). A job that runs several phases with DIFFERENT scales resets the
+    // denominator + bar when the phase label changes (see update()); null until the first
+    // labelled tick.
+    this._phase = null;
     // Progress-repaint coalescing (see update()): timestamp of the last DOM paint, the most
     // recent message we were asked to show but may have skipped painting, and a single
     // trailing-flush timer that guarantees the latest skipped state is eventually drawn.
@@ -550,9 +555,20 @@ class Toast {
     return el;
   }
 
-  update({ current, total, message }) {
+  update({ current, total, message, phase }) {
     if (this.state !== "running") return;
-    if (total && total > this.activeTotal) this.activeTotal = total;
+    if (phase && phase !== this._phase) {
+      // Entering a new phase with its own scale: adopt its denominator — which may be SMALLER
+      // than the previous phase's (e.g. 48 positions → 47 moves) — and restart the bar. The
+      // monotonic "activeTotal only grows / percent only climbs" rule below is right WITHIN a
+      // phase, but across phases it pinned a smaller-denominator phase near the 95% cap, so the
+      // job looked frozen at "47/48". A phase change is the one place both may move backward.
+      this._phase = phase;
+      if (total) this.activeTotal = Math.max(1, total);
+      this.lastDisplayedPercent = 0;
+    } else if (total && total > this.activeTotal) {
+      this.activeTotal = total;
+    }
     const ratio = Math.max(0, Math.min(1, (Number(current) || 0) / this.activeTotal));
     // Slightly pessimistic curve so the final segment feels fast.
     const pessimistic = Math.pow(ratio, 1.5);
@@ -1043,30 +1059,40 @@ class EngineWidget {
     const fen = this.currentFen();
     if (fen === this.lastFen) return;
     this._ensureEngine();
+    const engine = this.engine;
     this.lastFen = fen;
     this._clearAnalysisView();
     try {
-      const snapshot = await this.engine.update({ fen, multipv: this.multipv });
+      const snapshot = await engine.update({ fen, multipv: this.multipv });
+      // Bail if the world moved while update() was in flight: the panel closed, a NEWER board
+      // change set a different lastFen, or a depth change swapped the provider out. Otherwise we'd
+      // paint this (now stale) FEN's eval onto the current board, or poll the wrong provider.
+      // provider.serialize() orders engine commands, not these UI continuations.
+      if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
       this._renderSnapshot(snapshot);
       this._startPolling();
     } catch (error) {
+      if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
       this._showError(error.message);
     }
   }
 
   async _restartForCurrentBoard() {
     this._ensureEngine();
-    this.lastFen = this.currentFen();
+    const engine = this.engine;
+    const fen = this.currentFen();
+    this.lastFen = fen;
     this._clearAnalysisView();
     try {
-      const snapshot = await this.engine.open({
-        fen: this.lastFen,
-        multipv: this.multipv,
-      });
+      const snapshot = await engine.open({ fen, multipv: this.multipv });
+      // Bail if the panel closed, the board moved on, or a depth change swapped the provider
+      // while open() was in flight (see onBoardChanged).
+      if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
       // Render the response immediately so depth/PVs appear without waiting
       // for the first poll.
       this._renderSnapshot(snapshot);
     } catch (error) {
+      if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
       this._showError(error.message);
     }
   }
@@ -1078,14 +1104,25 @@ class EngineWidget {
     this._renderLinesReadout();
     if (!this.open) return;
     this._clearAnalysisView();
+    const engine = this.engine;
+    const fen = this.lastFen || this.currentFen();
     try {
-      const snapshot = await this.engine.update({
-        fen: this.lastFen || this.currentFen(),
-        multipv: this.multipv,
-      });
+      const snapshot = await engine.update({ fen, multipv: clamped });
+      // Bail if the world moved while update() was in flight: panel closed, provider swapped, the
+      // board changed, or the line count was clicked again (this.multipv !== clamped). See
+      // onBoardChanged.
+      if (
+        !this.open ||
+        engine !== this.engine ||
+        fen !== this.lastFen ||
+        this.multipv !== clamped
+      ) {
+        return;
+      }
       this._renderSnapshot(snapshot);
       this._startPolling();
     } catch (error) {
+      if (!this.open || engine !== this.engine || this.multipv !== clamped) return;
       this._showError(error.message);
     }
   }
@@ -1124,10 +1161,15 @@ class EngineWidget {
   }
 
   _startPolling() {
+    // Never poll a closed panel. openForCurrent()/onDepthSettingChanged() call this right after
+    // awaiting _restartForCurrentBoard(), so the user may have closed the widget mid-await — guard
+    // here to cover every call site at once (a stray 450ms interval on a hidden panel otherwise).
+    if (!this.open) return;
     this._stopPolling();
     this.pollTimer = setInterval(async () => {
       try {
         const snapshot = await this.engine.snapshot();
+        if (!this.open) return; // closed between the _stopPolling() in close() and this tick
         this._renderSnapshot(snapshot);
       } catch (_) {
         // Ignore transient polling errors.
@@ -1357,6 +1399,21 @@ function savedAnalysisMove(prevFen, uci, fen) {
   return analysis._moveIndex.get(`${prevFen}|${uci}|${fen}`) || null;
 }
 
+// The saved move for the position the coach is showing. On the analysed MAINLINE we know the
+// exact `ply`, so we index straight into `moves[ply - 1]` — O(1), and immune to any future where
+// a verdict stops being a pure function of the (fen_before, uci, fen_after) transition (today it
+// is, so the fen-key path can't return a *wrong* verdict, but ply is the more direct, more
+// robust lookup). We still verify the transition matches before trusting the index, then fall
+// back to the fen-key scan for free-exploration variations (no ply) or any mismatch.
+function savedMainlineMove(ply, prevFen, uci, fen) {
+  const moves = appState.analysis && appState.analysis.moves;
+  if (Array.isArray(moves) && Number.isInteger(ply) && ply >= 1 && ply <= moves.length) {
+    const m = moves[ply - 1];
+    if (m && m.fen_before === prevFen && m.uci === uci && m.fen_after === fen) return m;
+  }
+  return savedAnalysisMove(prevFen, uci, fen);
+}
+
 class PositionCoach {
   constructor() {
     this.engine = null;
@@ -1477,7 +1534,7 @@ class PositionCoach {
       // analysis even when the two disagree on eligibility. It also skips the per-click
       // recompute (a Maia assessment + policy read + a Stockfish eval). Only free exploration
       // (a variation with no saved move) is judged by the live brilliantCandidate gate here.
-      const saved = savedAnalysisMove(prevFen, ctx.lastUci, fen);
+      const saved = savedMainlineMove(ctx.ply, prevFen, ctx.lastUci, fen);
       if (saved) {
         if (saved.classification === "brilliant") {
           this._showSavedBrilliant(features, prevFen, ctx.lastUci, fen, token);
@@ -1537,17 +1594,27 @@ class PositionCoach {
   // just without that grounding detail. The verdict itself comes from Analyze, so the live
   // coach never disagrees with the saved analysis on a mainline move.
   async _showSavedBrilliant(features, prevFen, uci, fen, token) {
-    let maia = null;
+    // The saved verdict is authoritative and already says Brilliant, so commit the star to the
+    // screen NOW — don't make the user stare at the base "Best" read while Maia loads. (On a
+    // direct jump to a brilliant ply there's no warm cache; awaiting Maia FIRST meant Best
+    // showed first, and if the user jumped on before it answered, the token invalidated and the
+    // star never appeared at all.) We're called synchronously from _run right after the base
+    // render, so the token is still current here; guard anyway for safety.
+    if (token !== this.token || fen !== this.fen) return;
+    markBrilliant(features, null);
+    renderCoachProse(buildCommentary(features));
+    // Then enrich — non-blocking — with how rarely a human finds it. This is a cosmetic detail
+    // on top of an already-shown Brilliant; a re-render only if the user is still on this move
+    // when Maia answers. Maia unavailable → the star simply stays without the rarity grounding.
     try {
       const provider = getSharedMaia3Provider();
       const a = await provider.moveAssessment({ fen: prevFen, moveUci: uci, rating: effectiveMaiaRating() });
-      if (a) maia = { humanProb: a.humanProbability, winChanceAfter: a.winChanceAfter };
+      if (!a || token !== this.token || fen !== this.fen) return;
+      markBrilliant(features, { humanProb: a.humanProbability, winChanceAfter: a.winChanceAfter });
+      renderCoachProse(buildCommentary(features));
     } catch (_) {
       /* Maia unavailable → brilliant read with no rarity detail */
     }
-    if (token !== this.token || fen !== this.fen) return; // navigated away during the fetch
-    markBrilliant(features, maia);
-    renderCoachProse(buildCommentary(features));
   }
 
   // trap_gap = sf_truth(played) − sf_truth(the move Maia thinks a human would naturally
@@ -3933,6 +4000,7 @@ async function runAnalysis() {
         jobToast.updateJob({
           current: done,
           total,
+          phase: "evaluating",
           message: `evaluating ${done}/${total} positions`,
         });
       },
@@ -3966,7 +4034,12 @@ async function runAnalysis() {
             analyzeFn: analyzeGamePositions,
             shouldCancel: () => cancelled,
             onProgress: (done, total) =>
-              jobToast.updateJob({ current: done, total, message: `checking brilliancies ${done}/${total}` }),
+              jobToast.updateJob({ current: done, total, phase: "brilliancies", message: `checking brilliancies ${done}/${total}` }),
+            // The trap_gap second pass (Stockfish over the candidates' natural-move lines) gets
+            // its own phase so the bar reflects it instead of sitting frozen at the end of the
+            // brilliancies count while the batch runs.
+            onTrapProgress: (done, total) =>
+              jobToast.updateJob({ current: done, total, phase: "traps", message: `checking traps ${done}/${total}` }),
           });
         } finally {
           provider.setInitProgressHandler(null);
@@ -3993,6 +4066,7 @@ async function runAnalysis() {
     jobToast.updateJob({
       current: positions.length,
       total: positions.length,
+      phase: "classifying",
       message: "classifying",
     });
 
@@ -4200,6 +4274,9 @@ async function showAnalysisPly(ply) {
     lastUci: move ? move.uci : null,
     lastSan: move ? move.san : null,
     prevFen: move ? move.fen_before : null,
+    // Mainline ply (1-based) so the coach can resolve the saved verdict by index rather than
+    // by fen-key. Omitted for the initial position (no move); variations pass no ply.
+    ply: move ? boundedPly : null,
   });
   if (engineWidget) engineWidget.onBoardChanged();
 }

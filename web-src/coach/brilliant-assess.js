@@ -80,7 +80,7 @@ function brilliantEligible(evalMap, move) {
 //
 // We only ship assessments for eligible moves; the server consults assessments solely for
 // the Best/Excellent ones it classifies, so dropping the rest is both safe and faster.
-export async function computeBrilliantAssessments({ moves, evals, depth, rating, onProgress, shouldCancel, provider, analyzeFn }) {
+export async function computeBrilliantAssessments({ moves, evals, depth, rating, onProgress, onTrapProgress, shouldCancel, provider, analyzeFn }) {
   const assessments = [];
   const candidates = []; // moves through layers 0–2 needing a trap_gap: { item, side, playedAfterFen }
   const evalMap = evals && typeof evals.get === "function" ? evals : new Map();
@@ -123,17 +123,29 @@ export async function computeBrilliantAssessments({ moves, evals, depth, rating,
   }
 
   // Second pass: attach trap_gap to the unintuitive candidates (in place, on their items).
+  // A failure HERE must not discard the first-pass assessments we already computed for the
+  // whole game: a candidate that ends up with no trap_gap simply fails closed on the server
+  // (its trap layer is un-judgeable, so it won't be flagged), which is the correct local
+  // degradation — losing every move's assessment over one batched-Stockfish hiccup is not. A
+  // cancel still propagates, so a Stop can't be swallowed into a "finished" analysis.
   if (candidates.length) {
-    await attachClientTrapGaps({
-      candidates,
-      evals: evals || new Map(),
-      depth,
-      rating,
-      provider,
-      analyzeFn,
-      shouldCancel,
-      cancelledError,
-    });
+    try {
+      await attachClientTrapGaps({
+        candidates,
+        evals: evals || new Map(),
+        depth,
+        rating,
+        provider,
+        analyzeFn,
+        onProgress: onTrapProgress,
+        shouldCancel,
+        cancelledError,
+      });
+    } catch (err) {
+      if (err && err.cancelled) throw err;
+      // Non-cancel trap failure: keep the assessments already in hand; affected candidates
+      // just ship without a trap_gap.
+    }
   }
   return assessments;
 }
@@ -147,7 +159,7 @@ export async function computeBrilliantAssessments({ moves, evals, depth, rating,
 // natural move / missing eval) is left with no trap_gap — the server then can't judge its
 // trap layer and won't flag it (fail closed). A natural move equal to the played one is a
 // real 0 (no trap), shipped as such.
-export async function attachClientTrapGaps({ candidates, evals, depth, rating, provider, analyzeFn, shouldCancel, cancelledError }) {
+export async function attachClientTrapGaps({ candidates, evals, depth, rating, provider, analyzeFn, onProgress, shouldCancel, cancelledError }) {
   const plan = []; // { cand, humanFen?, sameAsPlayed? }
   const humanFens = [];
   const seen = new Set();
@@ -188,6 +200,9 @@ export async function attachClientTrapGaps({ candidates, evals, depth, rating, p
       positions: humanFens,
       depth,
       multipv: 1,
+      // Surface the trap-line Stockfish batch as its own progress (the toast's "traps" phase),
+      // so a game with brilliancy candidates doesn't look frozen while this batch runs.
+      onProgress,
       shouldCancel,
     });
   }

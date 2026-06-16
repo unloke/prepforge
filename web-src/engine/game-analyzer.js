@@ -103,7 +103,18 @@ async function waitForEval(provider, fen, targetDepth, cancelled) {
     const done = !snapshot.running && snapshot.current_depth > 0;
     const reached = snapshot.current_depth >= targetDepth && snapshot.pvs.length > 0;
     if (done || reached) break;
-    if (Date.now() - started > PER_POSITION_TIMEOUT_MS) break;
+    if (Date.now() - started > PER_POSITION_TIMEOUT_MS) {
+      // Timed out. If the search produced a usable (if shallow) line, accept it. But if it
+      // produced NOTHING for a non-terminal position (terminal ones are filtered before we get
+      // here), the engine wedged — falling through to evalFromSnapshot would fabricate
+      // terminalEval's 0.00 and persist a bogus "equal" classification. Fail loudly instead, so
+      // the whole-game run errors the same way Build Generate already does on this shape.
+      const top = snapshot.pvs && snapshot.pvs[0];
+      if (top && (top.score_cp !== null || top.mate_in !== null)) break;
+      throw new Error(
+        `Engine timed out after ${PER_POSITION_TIMEOUT_MS}ms with no evaluation for ${fen}`,
+      );
+    }
     if (cancelled()) throw new AnalysisCancelled();
     await sleep(POLL_MS);
   }

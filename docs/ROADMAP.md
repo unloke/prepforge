@@ -582,6 +582,18 @@ module, like `stub_maia`), NOT imported from `conftest`. Do **not** add
 legacy `from stub_maia import` suite.
 
 **Remaining housekeeping (low priority):**
+- **Front/back mate win-chance scale mismatch (Brilliant boundary).** The browser maps a
+  mate to win-chance `1/0` (`web-src/coach/features.js` `winWhite`), while the server uses
+  `cp_to_win_chance(±CP_CLAMP)` ≈ `0.976/0.024`
+  (`src/prepforge_chess/services/classification.py` `evaluation_to_white_win_chance`). The
+  browser computes Brilliant eligibility/reveal/trap_gap on its own scale and the server
+  replays those numbers, so the comparison is internally consistent and the gap is normally
+  invisible. The one place it can bite: a Brilliant candidate whose line involves a **forced
+  mate** could land on the eligibility/reveal/`trap_gap >= 0.05` boundary differently on the
+  two sides, dropping a flag. **Trigger to revisit:** if a clearly-brilliant forced-mate move
+  is ever missed, check this scale difference first. Fix would be to make
+  `moverWinChanceAfter()`'s mate mapping match the server's sigmoid clamp and add a
+  cross-stack consistency test. (Acknowledged in the `moverWinChanceAfter` comment.)
 - `schema.sql` has no runtime reader (only `tests/test_sa_tables.py` via
   `database.SCHEMA_PATH`); safe to retire alongside that test + the README/ARCHITECTURE
   references now that `alembic check` is the live drift guard.
