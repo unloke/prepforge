@@ -22,13 +22,15 @@ function createStockfishWorker() {
     return new Worker(ENGINE_SCRIPT_URL);
   }
   const wasmUrl = `${remoteBase}stockfish-18-lite.wasm`;
+  // importScripts requires an absolute URL inside a blob worker (blob: origin has no base).
+  const absoluteScriptUrl = new URL(ENGINE_SCRIPT_URL, location.origin).href;
   const code = [
     "self.Module = self.Module || {};",
     "self.Module.locateFile = function(path) {",
     `  if (path.endsWith(".wasm")) return ${JSON.stringify(wasmUrl)};`,
     `  return ${JSON.stringify(remoteBase)} + path;`,
     "};",
-    `importScripts(${JSON.stringify(ENGINE_SCRIPT_URL)});`,
+    `importScripts(${JSON.stringify(absoluteScriptUrl)});`,
   ].join("\n");
   return new Worker(URL.createObjectURL(new Blob([code], { type: "application/javascript" })));
 }
