@@ -66,15 +66,26 @@ window.addEventListener("unhandledrejection", (e) => reportClientError({
 
 ---
 
-## #3 — Stockfish/ORT WASM 搬上 Hugging Face(效率 + 伺服器壓力)  規模 M  🔄 3a/3b ✅ → 待 3c prod 驗證
+## #3 — Stockfish/ORT WASM 搬上 Hugging Face(效率 + 伺服器壓力)  規模 M  🔄 3a/3b/3b2 ✅ → 待 3c prod 驗證
 
 **現況**:`PREPFORGE_ENGINE_ASSET_BASE` 已設為
-`https://huggingface.co/Andy108/prepforge-maia3/resolve/main/`,檔案已上傳。
-但程式還寫死本機路徑:
-- Stockfish:`web-src/engine/stockfish-provider.js:13` `ENGINE_URL = "/static/engine/stockfish-18-lite.js"`
-- ORT wasm:`web-src/engine/maia3-worker.js:28` `ort.env.wasm.wasmPaths = "/static/engine/ort/"`
+`https://huggingface.co/Andy108/prepforge-maia3/resolve/main/`(可保持 SET)。
+HF 已上傳 `engine/ort/ort-wasm-simd-threaded.asyncify.wasm`(23MB)和 `stockfish-18-lite.wasm`
+(後者目前未用,見下)。
 
-**策略**:只搬大的 `.wasm`(ORT 24M + SF 7M),小的 `.js` shim 留本機。
+> ⚠️ **血淚教訓(2026-06-17,踩過 prod 全炸)**:Stockfish-lite 與 ORT 都是**多執行緒 Emscripten**
+> 模組。Emscripten 的 pthread bootstrap 會用「主 worker 的 `location.href`」去解析子 worker 腳本 URL;
+> 當主 worker 是 **blob** 或**跨源**,這個解析會壞掉(實測畸形 URL `...onrender.comhttps//...9cbd...`
+> → `importScripts` 失敗、引擎全死)。
+>
+> **正確切法**:**會執行、會 spawn 執行緒的 glue(`.js`/`.mjs`)必須留同源**;只有**純 `.wasm` 二進位**
+> (用 `fetch` 抓的資料,抓完編譯成 module 再 transfer 給 pthread workers)可以跨源。
+>
+> **修正後的策略**:
+> - **Stockfish(~6.8MB)**:整包留同源(`new Worker("/static/engine/stockfish-18-lite.js")`,wasm 也同源)。
+>   bandwidth 省的不值得 pthread 風險。HF 上那份 `stockfish-18-lite.wasm` 目前用不到,可日後刪。
+> - **ORT(~23MB,真正大頭)**:用 ORT 1.26 的 `wasmPaths` **物件形式** `{ mjs: 本機, wasm: HF }`——
+>   `.mjs` glue 留同源,只有 23MB 的 `.wasm` 從 HF 抓。實作在 `engine-base.js` `ortWasmPaths()`。
 
 ### 3a 後端:注入 `window.__ENGINE_ASSET_BASE`  ✅ DONE (c198640)
 - `static.py`:新增 `ENGINE_ASSET_BASE_ENV = "PREPFORGE_ENGINE_ASSET_BASE"`,
@@ -87,20 +98,27 @@ window.addEventListener("unhandledrejection", (e) => reportClientError({
   輸出;若拆成第二段 `<script>`,第二段沒 hash、會被 CSP 擋掉。
 - 更新 `tests/test_api_static.py`:加 `__ENGINE_ASSET_BASE` 注入 / 未設時 no-op / script-breakout 轉義 的 test。
 
-### 3b 前端:讓引擎讀 base  ✅ DONE (c198640)
-- 新增 `resolveEngineBase()`(仿 `maia3-provider.js:42` `resolveModelBase`):
-  `globalThis.__ENGINE_ASSET_BASE` → 空字串 fallback 回 `/static/engine/`。
-- Stockfish:`ENGINE_URL`/wasm `locateFile` → `${engineBase || "/static/engine/"}stockfish-18-lite.wasm`。
-  小 `.js` 留本機。
-- ORT:`ort.env.wasm.wasmPaths = engineBase ? \`${engineBase}engine/ort/\` : "/static/engine/ort/"`。
-  注意 worker 看不到 `window.*`,base 要在**主執行緒解析後傳進 worker**(Maia 已是這模式,照抄)。
+### 3b 前端:讓引擎讀 base  ✅ DONE (c198640) → 🔧 修正 (2d43e69)
+- `resolveEngineBase()`(`engine-base.js`):`globalThis.__ENGINE_ASSET_BASE` → Vite var → null。
+- **(已撤)** Stockfish blob-worker + `locateFile`:撤回,因 pthread URL 解析炸掉(見上方教訓)。
+- **(已撤)** ORT 用字串 prefix `${base}engine/ort/`:會連 `.mjs` 也跨源 → 同樣 pthread 風險。
 
-### 3c COEP 驗證(成敗關鍵,務必做)
+### 3b2 修正後實作  ✅ DONE (2d43e69)
+- Stockfish:`createWorker = () => new Worker("/static/engine/stockfish-18-lite.js")`(純同源)。
+- ORT:`ortWasmPaths()` 回 `{ mjs: "/static/engine/ort/…mjs", wasm: "${base}engine/ort/…wasm" }`;
+  worker init 把它原封 `ort.env.wasm.wasmPaths = ortPaths`(物件可結構化複製,過 postMessage OK)。
+- base 仍在主執行緒解析後經 init message 傳進 worker(worker 看不到 `window.*`)。
+
+### 3c COEP 驗證(成敗關鍵,務必做)  ⏳ 待 prod 驗證 (deploy 2d43e69 後)
 頁面為了多執行緒 WASM 開了 `crossOriginIsolated`(`COOP + COEP: require-corp`)。
 跨來源的 HF 檔案**必須帶 CORS / CORP**,否則被瀏覽器擋、引擎直接死。
-- HF CDN 會送 `Access-Control-Allow-Origin: *`,理論可行。
-- 部署後**在瀏覽器 console 確認**:`crossOriginIsolated === true`,且 Analyze 能起 Stockfish + Maia。
-- 跨源 wasm 抓取確認用 CORS 模式(`crossorigin` / fetch mode cors)。
+- HF CDN 會送 `Access-Control-Allow-Origin: *`,理論可行(只剩 ORT `.wasm` 跨源,純資料 fetch)。
+- 部署後**在瀏覽器 console 確認**(`PREPFORGE_ENGINE_ASSET_BASE` 保持 SET):
+  - `crossOriginIsolated === true`
+  - Network → Wasm:`ort-wasm-simd-threaded.asyncify.wasm` 來自 `huggingface.co`;
+    `ort-wasm-simd-threaded.asyncify.mjs` 與 `stockfish-18-lite.{js,wasm}` 來自**同源** `/static/engine/`
+  - Analyze 能同時起 Stockfish(eval bar)+ Maia(Brilliant)
+- **若 ORT 仍炸**:退而求其次把 ORT 也整包留同源(`ortWasmPaths` 永遠回本機字串),只損失 23MB bandwidth。
 
 ### 3d 版本失效(順手修掉潛在 bug)
 HF `resolve/main/` 是**會變動的分支 ref**;重傳同檔名 → URL 不變 → 舊使用者吃到舊引擎快取。
@@ -114,9 +132,14 @@ HF `resolve/main/` 是**會變動的分支 ref**;重傳同檔名 → URL 不變 
 - 進階(可選):讓 SF/ORT wasm 也走 `loadVerifiedWeights` + IndexedDB(manifest+sha256),
   一次解決 HF 託管 + 持久快取 + 版本失效;但工作量較大,v1 可先用釘版本的簡單法。
 
-### 3e Dockerfile 瘦身(搬完才做)
-確認 HF 路徑可用後,`Dockerfile` 可不再 COPY 那 31MB wasm → image 變小、deploy 變快。
-**保留本機 fallback**(env 未設時仍能跑),別把本機檔全刪。
+### 3e Dockerfile 瘦身(3c 驗過才做)
+3c 確認 ORT 從 HF 載入 OK 後,可只把 **23MB 的 ORT `.wasm`** 從 image 拿掉(`.dockerignore`):
+```
+src/prepforge_chess/web/static/engine/ort/ort-wasm-simd-threaded.asyncify.wasm
+```
+**不要動** Stockfish 的 `.js/.wasm` 和 ORT 的 `.mjs`——它們現在(且永遠)同源載入,刪了會 404。
+env 未設時 ORT `.wasm` 也走同源 → 那個情境下這個檔不能刪,故只在「prod 確定走 HF」時瘦身,
+且本機 dev(env 未設)仍需要它 → 結論:**用 `.dockerignore` 只排除 deploy image,本機保留**。
 
 **完成定義**:設了 env 的環境下,Network 顯示 wasm 從 HF 載入;`crossOriginIsolated === true`;
 Analyze/Build 引擎正常;未設 env 時 fallback 本機仍正常;`npm test` + `pytest` 綠。
