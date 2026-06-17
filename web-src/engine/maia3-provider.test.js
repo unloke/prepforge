@@ -116,7 +116,7 @@ describe("init", () => {
     expect(provider.isAvailable()).toBe(false);
   });
 
-  it("passes ortWasmPaths from the resolved engine base global", async () => {
+  it("passes ortWasmPaths (mjs local, wasm on CDN) from the engine base global", async () => {
     const saved = globalThis.__ENGINE_ASSET_BASE;
     globalThis.__ENGINE_ASSET_BASE = "https://cdn.test/repo/";
     try {
@@ -124,7 +124,10 @@ describe("init", () => {
       const p = provider.predictions({ fen: "startpos" });
       await tick();
       const initMsg = workers[0].posted.find((m) => m.type === "init");
-      expect(initMsg.ortWasmPaths).toBe("https://cdn.test/repo/engine/ort/");
+      expect(initMsg.ortWasmPaths).toEqual({
+        mjs: "/static/engine/ort/ort-wasm-simd-threaded.asyncify.mjs",
+        wasm: "https://cdn.test/repo/engine/ort/ort-wasm-simd-threaded.asyncify.wasm",
+      });
       workers[0].reply(workers[0].idsOf("predictions")[0], []);
       await p;
     } finally {
