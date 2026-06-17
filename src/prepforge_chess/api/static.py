@@ -14,10 +14,13 @@ Three things make this more than a bare ``StaticFiles`` mount:
   must carry ``CORP: same-origin`` (or be CORS). We set those here rather than in
   the global security middleware so the dev ``/docs`` page and the JSON API (which
   would otherwise break under ``require-corp``) stay unaffected.
-* **Runtime Maia3 asset base.** The ~45 MB ONNX weights are CDN/object-store
-  hosted and stripped from the deploy image, so the shell resolves their base URL
-  at runtime from ``window.__MAIA3_ASSET_BASE`` — injected into the HTML from
-  ``PREPFORGE_MAIA3_ASSET_BASE`` (empty → in-image ``/static/maia3/`` dev fallback).
+* **Runtime asset bases (Maia3 + engine WASM).** Large artifacts (Maia3 ONNX,
+  Stockfish/ORT ``.wasm``) are CDN/object-store hosted and stripped from the deploy
+  image. The shell resolves their base URLs at runtime from globals injected into a
+  single inline bootstrap ``<script>``: ``window.__MAIA3_ASSET_BASE`` from
+  ``PREPFORGE_MAIA3_ASSET_BASE`` and ``window.__ENGINE_ASSET_BASE`` from
+  ``PREPFORGE_ENGINE_ASSET_BASE`` (each empty → in-image ``/static/…`` dev fallback).
+  Both assignments share one script body so the CSP sha256 hash stays in sync.
 * **Dev weights fallback.** A locally built tree has only the manifest under
   ``static/maia3/``; the real weights live (git-ignored) in
   ``web-src/public/maia3/``. We fall back to that source copy so local Maia3 "just
@@ -47,6 +50,7 @@ STATIC_DIR = Path(__file__).resolve().parents[1] / "web" / "static"
 DEV_MAIA3_DIR = Path(__file__).resolve().parents[3] / "web-src" / "public" / "maia3"
 
 MAIA3_ASSET_BASE_ENV = "PREPFORGE_MAIA3_ASSET_BASE"
+ENGINE_ASSET_BASE_ENV = "PREPFORGE_ENGINE_ASSET_BASE"
 
 # Cross-origin isolation headers. The document carries COOP+COEP (so it becomes
 # cross-origin isolated and can use SharedArrayBuffer); subresources carry CORP so
@@ -113,19 +117,35 @@ def _maia3_asset_base() -> str:
     return os.environ.get(MAIA3_ASSET_BASE_ENV, "").strip()
 
 
+def _engine_asset_base() -> str:
+    return os.environ.get(ENGINE_ASSET_BASE_ENV, "").strip()
+
+
+def _window_global_assignment(name: str, value: str) -> str:
+    """One ``window.<name> = …;`` assignment, JSON-encoded with breakout escape."""
+    literal = json.dumps(value).replace("</", "<\\/")
+    return "window.{0}={1};".format(name, literal)
+
+
 def _asset_base_script() -> str | None:
     """The inline bootstrap script body (no ``<script>`` tags), or None when unset.
 
     This is the exact text the browser sees between the tags — both the injected
-    tag and the CSP sha256 hash are derived from it, so they always match. The
-    value is JSON-encoded and its ``</`` sequences are escaped to prevent a
-    ``</script>`` breakout.
+    tag and the CSP sha256 hash are derived from it, so they always match. Maia3
+    and engine bases are emitted in the *same* body when configured so CSP only
+    needs one hash. Each value is JSON-encoded and its ``</`` sequences are
+    escaped to prevent a ``</script>`` breakout.
     """
-    base = _maia3_asset_base()
-    if not base:
+    parts: list[str] = []
+    maia3 = _maia3_asset_base()
+    if maia3:
+        parts.append(_window_global_assignment("__MAIA3_ASSET_BASE", maia3))
+    engine = _engine_asset_base()
+    if engine:
+        parts.append(_window_global_assignment("__ENGINE_ASSET_BASE", engine))
+    if not parts:
         return None
-    literal = json.dumps(base).replace("</", "<\\/")
-    return "window.__MAIA3_ASSET_BASE={0};".format(literal)
+    return "".join(parts)
 
 
 def _csp_script_hash(script_body: str) -> str:
@@ -135,10 +155,11 @@ def _csp_script_hash(script_body: str) -> str:
 
 
 def _inject_asset_base(html_bytes: bytes) -> bytes:
-    """Inject the ``window.__MAIA3_ASSET_BASE`` bootstrap ``<script>`` into the shell.
+    """Inject the runtime asset-base bootstrap ``<script>`` into the shell.
 
-    No-op when the env var is unset, so local dev keeps the in-image
-    ``/static/maia3/`` fallback. The tag is placed right after ``<head>`` so it runs
+    No-op when neither env var is set, so local dev keeps the in-image
+    ``/static/maia3/`` and ``/static/engine/`` fallbacks. The tag is placed right
+    after ``<head>`` so it runs
     before the module scripts that read the global. The strict CSP blocks inline
     script, so the document response must also allow this exact script by its
     sha256 hash — see ``_render_index`` / ``_document_csp``.

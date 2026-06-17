@@ -1,4 +1,5 @@
 import { Chess } from "chess.js";
+import { resolveEngineBase } from "./engine-base.js";
 
 // Browser Stockfish (nmrugg stockfish.js, lite multi-threaded SF18) running in
 // a Web Worker over UCI. Implements the EngineProvider interface
@@ -10,7 +11,27 @@ import { Chess } from "chess.js";
 // widget. All chess compute runs locally — there is NO server fallback (hard
 // product rule: the server must never run engine compute in the public flow).
 
-const ENGINE_URL = "/static/engine/stockfish-18-lite.js";
+const ENGINE_SCRIPT_URL = "/static/engine/stockfish-18-lite.js";
+
+// When PREPFORGE_ENGINE_ASSET_BASE is set, only the .wasm is fetched cross-origin;
+// the small .js shim stays on-origin. Emscripten asks for "stockfish.wasm" — map it
+// to our content-addressed filename on the CDN via Module.locateFile in a blob worker.
+function createStockfishWorker() {
+  const remoteBase = resolveEngineBase();
+  if (!remoteBase) {
+    return new Worker(ENGINE_SCRIPT_URL);
+  }
+  const wasmUrl = `${remoteBase}stockfish-18-lite.wasm`;
+  const code = [
+    "self.Module = self.Module || {};",
+    "self.Module.locateFile = function(path) {",
+    `  if (path.endsWith(".wasm")) return ${JSON.stringify(wasmUrl)};`,
+    `  return ${JSON.stringify(remoteBase)} + path;`,
+    "};",
+    `importScripts(${JSON.stringify(ENGINE_SCRIPT_URL)});`,
+  ].join("\n");
+  return new Worker(URL.createObjectURL(new Blob([code], { type: "application/javascript" })));
+}
 const DEFAULT_MAX_DEPTH = 18;
 // MultiPV ceiling. The engine widget only ever shows a few lines, but Build Generate
 // (Phase 3c) needs `branchLimit + manualPreparedCount` candidates so it can skip preserved
@@ -54,7 +75,7 @@ export function createStockfishWasmProvider({
   // Injectable for tests; the live flow always constructs the real Web Worker. A factory
   // (not a worker instance) so the provider still owns the worker lifecycle and can rebuild
   // it after a fatal error exactly as before.
-  createWorker = () => new Worker(ENGINE_URL),
+  createWorker = createStockfishWorker,
 } = {}) {
   let worker = null;
   let readyPromise = null;

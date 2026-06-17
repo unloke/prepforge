@@ -67,8 +67,33 @@ def test_asset_base_injection_when_env_set(monkeypatch):
 
 def test_asset_base_injection_noop_when_env_unset(monkeypatch):
     monkeypatch.delenv(static_mod.MAIA3_ASSET_BASE_ENV, raising=False)
+    monkeypatch.delenv(static_mod.ENGINE_ASSET_BASE_ENV, raising=False)
     original = b"<head></head>"
     assert static_mod._inject_asset_base(original) == original
+
+
+def test_engine_asset_base_injection_when_env_set(monkeypatch):
+    monkeypatch.delenv(static_mod.MAIA3_ASSET_BASE_ENV, raising=False)
+    monkeypatch.setenv(
+        static_mod.ENGINE_ASSET_BASE_ENV, "https://cdn.example.com/engine-repo/"
+    )
+    html = static_mod._inject_asset_base(b"<head><title>x</title></head>")
+    text = html.decode("utf-8")
+    assert "window.__ENGINE_ASSET_BASE=" in text
+    assert "https://cdn.example.com/engine-repo/" in text
+    assert "__MAIA3_ASSET_BASE" not in text
+    assert text.index("__ENGINE_ASSET_BASE") < text.index("<title>")
+
+
+def test_asset_base_injection_emits_both_globals_in_one_script(monkeypatch):
+    monkeypatch.setenv(static_mod.MAIA3_ASSET_BASE_ENV, "https://cdn.example.com/maia3/")
+    monkeypatch.setenv(static_mod.ENGINE_ASSET_BASE_ENV, "https://cdn.example.com/engine/")
+    body = static_mod._asset_base_script()
+    assert body is not None
+    assert "window.__MAIA3_ASSET_BASE=" in body
+    assert "window.__ENGINE_ASSET_BASE=" in body
+    html = static_mod._inject_asset_base(b"<head></head>").decode("utf-8")
+    assert html.count("<script>") == 1
 
 
 def test_asset_base_injection_escapes_script_breakout(monkeypatch):
@@ -93,6 +118,7 @@ def test_document_csp_allows_the_injected_inline_script_by_hash(monkeypatch):
 
 def test_document_csp_has_no_script_hash_when_env_unset(monkeypatch):
     monkeypatch.delenv(static_mod.MAIA3_ASSET_BASE_ENV, raising=False)
+    monkeypatch.delenv(static_mod.ENGINE_ASSET_BASE_ENV, raising=False)
     csp = static_mod._document_csp()
     assert "sha256-" not in csp
 

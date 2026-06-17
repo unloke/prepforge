@@ -68,7 +68,20 @@ function feeds(tokens, count, selfElos, oppoElos) {
   };
 }
 
-async function init({ id, assetBase, manifest, backend = "wasm", numThreads, defaultRating: rating }) {
+async function init({
+  id,
+  assetBase,
+  ortWasmPaths: ortPaths,
+  manifest,
+  backend = "wasm",
+  numThreads,
+  defaultRating: rating,
+}) {
+  // ORT reads wasmPaths when the session is created; the provider resolves the base
+  // on the main thread (this worker can't see window.__ENGINE_ASSET_BASE).
+  if (ortPaths) {
+    ort.env.wasm.wasmPaths = ortPaths;
+  }
   // Contract gate before trusting any token shape / legal mask (history, token_dim,
   // time info, policy dim) against the runtime manifest.
   assertManifestContract(manifest);

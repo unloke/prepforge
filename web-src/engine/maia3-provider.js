@@ -8,6 +8,7 @@
 // Deliberately imports NO onnxruntime-web here — only the worker does — so the provider
 // (and its request/recovery logic) is unit-testable in node against a fake worker.
 import { assertManifestContract } from "./maia3-tokenizer.js";
+import { ortWasmPaths } from "./engine-base.js";
 
 // The manifest is small and ships in-image; the .onnx weights are CDN/object-store
 // hosted and resolved at runtime (see resolveModelBase / the migration doc).
@@ -348,6 +349,7 @@ class Maia3Provider {
     const info = await this._withInitTimeout(
       this._request("init", {
         assetBase,
+        ortWasmPaths: ortWasmPaths(),
         manifest,
         backend,
         numThreads,
