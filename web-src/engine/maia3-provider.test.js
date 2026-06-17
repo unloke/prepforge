@@ -1,7 +1,12 @@
 import { describe, it, expect } from "vitest";
 
 import { MOVE_VOCAB } from "./maia3-tokenizer.js";
-import { createMaia3Provider, resolveThreadCount, MAX_WASM_THREADS } from "./maia3-provider.js";
+import {
+  createMaia3Provider,
+  resolveThreadCount,
+  MAX_WASM_THREADS,
+  MAX_AUTO_WASM_THREADS,
+} from "./maia3-provider.js";
 
 // The provider imports NO onnxruntime-web (only the worker does), so its request
 // correlation + failure/recovery contract is unit-testable here against a FAKE worker —
@@ -412,9 +417,9 @@ describe("resolveThreadCount (Stage 4c)", () => {
     expect(resolveThreadCount({ crossOriginIsolated: false, hardwareConcurrency: 16, requested: 8 })).toBe(1);
     expect(resolveThreadCount({ crossOriginIsolated: false, hardwareConcurrency: 16 })).toBe(1);
   });
-  it("uses min(cores, ceiling) when isolated and no explicit request", () => {
+  it("uses min(cores, auto ceiling) when isolated and no explicit request", () => {
     expect(resolveThreadCount({ crossOriginIsolated: true, hardwareConcurrency: 2 })).toBe(2);
-    expect(resolveThreadCount({ crossOriginIsolated: true, hardwareConcurrency: 16 })).toBe(MAX_WASM_THREADS);
+    expect(resolveThreadCount({ crossOriginIsolated: true, hardwareConcurrency: 16 })).toBe(MAX_AUTO_WASM_THREADS);
   });
   it("honours an explicit request, capped at the ceiling", () => {
     expect(resolveThreadCount({ crossOriginIsolated: true, hardwareConcurrency: 16, requested: 2 })).toBe(2);

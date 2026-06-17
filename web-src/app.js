@@ -10,6 +10,7 @@ import { runBrowserBuildGenerate } from "./engine/build-generate-runner.js";
 import {
   getSharedMaia3Provider,
   disposeSharedMaia3Provider,
+  peekSharedMaia3Provider,
   resolveModelBase,
 } from "./engine/maia3-provider.js";
 import { getCachedWeights, clearWeightCache } from "./engine/maia3-weight-cache.js";
@@ -1414,6 +1415,45 @@ function savedMainlineMove(ply, prevFen, uci, fen) {
   return savedAnalysisMove(prevFen, uci, fen);
 }
 
+function sanLineFromUci(fen, pvUci) {
+  const san = [];
+  let curFen = fen;
+  for (const uci of pvUci || []) {
+    try {
+      const result = localBoardAfterMove(curFen, uci);
+      san.push(result.move.san || uci);
+      curFen = result.move.fen_after;
+    } catch (_) {
+      break;
+    }
+  }
+  return san;
+}
+
+function savedPositionEvalRead(fen, depth) {
+  const positionEvals = appState.analysis && appState.analysis.position_evals;
+  const ev = positionEvals && positionEvals[fen];
+  if (!ev) return null;
+  const pvUci = Array.isArray(ev.pv) ? ev.pv.slice() : [];
+  const firstUci = ev.best_move_uci || pvUci[0] || null;
+  if (!firstUci && ev.score_cp == null && ev.mate_in == null) return null;
+  const pvSan = sanLineFromUci(fen, pvUci);
+  return {
+    fen,
+    depth: ev.depth || depth || 0,
+    lines: [
+      {
+        uci: firstUci,
+        san: pvSan[0] || firstUci || "",
+        cp: ev.score_cp ?? null,
+        mate: ev.mate_in ?? null,
+        pvUci,
+        pvSan,
+      },
+    ],
+  };
+}
+
 class PositionCoach {
   constructor() {
     this.engine = null;
@@ -1670,6 +1710,11 @@ class PositionCoach {
     const key = `${this.engineDepth}|${fen}`;
     const cached = this.evalCache.get(key);
     if (cached) return cached;
+    const saved = savedPositionEvalRead(fen, this.engineDepth);
+    if (saved) {
+      this.evalCache.set(key, saved);
+      return saved;
+    }
     await this.engine.open({ fen, multipv: 2 });
     const deadline = Date.now() + 1200;
     let snap = this.engine.snapshot();
@@ -8853,6 +8898,38 @@ function renderScoutSection(games, oppColor, myLookups) {
   `;
 }
 
+// Maia idle teardown. The browser Maia engine (onnxruntime-web session + WASM heap) is by
+// far the heaviest thing the page holds — tens-to-hundreds of MB of weights + activation
+// arena that ORT never voluntarily releases. Backgrounding a tab only throttles its CPU; it
+// does NOT free that worker/session, so a tab left in the background keeps the whole footprint
+// resident. After the tab has been hidden a while with no Maia work in flight, dispose the
+// shared provider to hand that memory back. It transparently re-inits on the next use, and the
+// IndexedDB weight cache means a re-init skips the ~46 MB download — only the session is rebuilt.
+const MAIA_IDLE_TEARDOWN_MS = 3 * 60 * 1000;
+let maiaIdleTimer = null;
+
+function clearMaiaIdleTeardown() {
+  if (maiaIdleTimer !== null) {
+    clearTimeout(maiaIdleTimer);
+    maiaIdleTimer = null;
+  }
+}
+
+function scheduleMaiaIdleTeardown() {
+  clearMaiaIdleTeardown();
+  maiaIdleTimer = setTimeout(() => {
+    maiaIdleTimer = null;
+    const provider = peekSharedMaia3Provider();
+    if (!provider) return; // nothing live to release
+    // Still working (e.g. a Generate run left in a hidden tab)? Don't abort it — check back later.
+    if (provider.busy) {
+      scheduleMaiaIdleTeardown();
+      return;
+    }
+    disposeSharedMaia3Provider();
+  }, MAIA_IDLE_TEARDOWN_MS);
+}
+
 function bindEvents() {
   document.querySelectorAll(".tab").forEach((button) => {
     button.addEventListener("click", () => {
@@ -8865,10 +8942,15 @@ function bindEvents() {
   // when the tab is backgrounded (best-effort flush) and on unload (keepalive
   // fetch — sendBeacon can't carry the CSRF header the API needs). The next
   // load re-hydrates from server truth regardless, so all paths are best-effort.
+  // Backgrounding also arms the Maia idle-teardown timer (see above); returning to
+  // the foreground cancels it so an active session is never torn down under the user.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
       hardFlushBuild().catch(() => {});
       flushTrainSync().catch(() => {});
+      scheduleMaiaIdleTeardown();
+    } else {
+      clearMaiaIdleTeardown();
     }
   });
   window.addEventListener("beforeunload", () => {

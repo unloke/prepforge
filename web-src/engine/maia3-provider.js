@@ -25,7 +25,13 @@ const DEFAULT_INIT_TIMEOUT_MS = 120000;
 // coach/coverage/Build-Generate/Brilliant paths all touching the same opening positions.
 // Bounded so a long session can't grow it without limit; eviction is oldest-first (the
 // Map's insertion order), refreshed to MRU on a hit.
-const DEFAULT_READ_CACHE_CAP = 4096;
+//
+// Kept deliberately modest: the cache only pays off when a position RECURS. A full-game
+// Analyze pass touches each ply's FEN once (every read a miss), so an oversized cap there
+// is pure retained memory — thousands of prediction arrays + WDL objects held for nothing.
+// A few hundred entries still covers the real recurrence (coach step-back, shared opening
+// positions across paths) while capping that dead weight.
+const DEFAULT_READ_CACHE_CAP = 512;
 
 // Resolve the weight base URL at RUNTIME (no rebuild / no Node at deploy). First match
 // wins: injected global (the production knob the server renders into the page) →
@@ -50,23 +56,31 @@ function defaultBackend() {
   return "wasm";
 }
 
-// Conservative ceiling on ORT WASM worker threads (Stage 4c). The Maia worker shares the
-// machine with the Stockfish widget's own threads and ORT's batch=1 throughput gains
-// plateau quickly, so we don't fan out to every core.
+// Hard ceiling on ORT WASM worker threads for an EXPLICIT override (Stage 4c). The Maia
+// worker shares the machine with the Stockfish widget's own threads and ORT's batch=1
+// throughput gains plateau quickly, so we never fan out past this.
 export const MAX_WASM_THREADS = 4;
+
+// Conservative ceiling for the AUTO (no explicit request) thread count. Each extra ORT
+// thread is another pthread/worker with its own stack + scratch, and at this workload
+// (mostly batch=1 forwards, where throughput plateaus almost immediately) the extra
+// threads buy little speed while adding steady-state memory. Default low; a caller that
+// genuinely wants more can still request it (capped at MAX_WASM_THREADS).
+export const MAX_AUTO_WASM_THREADS = 2;
 
 // Resolve the ORT WASM thread count on the MAIN thread (the provider knows the page's
 // capabilities; the worker just applies the number). Threaded WASM uses SharedArrayBuffer,
 // which only exists under cross-origin isolation (COOP/COEP) — so WITHOUT it we MUST stay
 // single-threaded or session creation would fail trying to allocate a SAB. With it, honour
-// an explicit `requested` override, else pick min(cores, MAX_WASM_THREADS).
+// an explicit `requested` override (capped at MAX_WASM_THREADS), else pick the conservative
+// min(cores, MAX_AUTO_WASM_THREADS).
 export function resolveThreadCount({ crossOriginIsolated, hardwareConcurrency, requested } = {}) {
   if (!crossOriginIsolated) return 1;
   if (Number.isInteger(requested) && requested >= 1) {
     return Math.min(requested, MAX_WASM_THREADS);
   }
   const cores = Number.isInteger(hardwareConcurrency) && hardwareConcurrency >= 1 ? hardwareConcurrency : 1;
-  return Math.max(1, Math.min(cores, MAX_WASM_THREADS));
+  return Math.max(1, Math.min(cores, MAX_AUTO_WASM_THREADS));
 }
 
 // Read the live page capabilities for resolveThreadCount (split out so it's stubbable).
@@ -96,6 +110,13 @@ let sharedProvider = null;
 
 export function getSharedMaia3Provider(options = {}) {
   if (!sharedProvider) sharedProvider = new Maia3Provider(options);
+  return sharedProvider;
+}
+
+// Return the existing shared provider, or null if none has been created (or it was disposed).
+// Unlike getSharedMaia3Provider this never constructs one — for callers that want to act on a
+// LIVE provider only (e.g. idle teardown) without spinning up a worker just to tear it down.
+export function peekSharedMaia3Provider() {
   return sharedProvider;
 }
 
@@ -164,6 +185,13 @@ class Maia3Provider {
 
   isAvailable() {
     return this._state === "ready";
+  }
+
+  // True while at least one request is awaiting the worker. The idle-teardown path checks
+  // this so a backgrounded-but-still-working provider (e.g. a Build Generate run left in a
+  // hidden tab) is never disposed mid-inference, which would reject the in-flight work.
+  get busy() {
+    return this._pending.size > 0;
   }
 
   // The weight base resolved on the main thread (window.__MAIA3_ASSET_BASE → manifest →

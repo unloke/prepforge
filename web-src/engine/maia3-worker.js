@@ -97,6 +97,16 @@ async function init({ id, assetBase, manifest, backend = "wasm", numThreads, def
   session = await ort.InferenceSession.create(new Uint8Array(buf), {
     executionProviders: [backend],
     graphOptimizationLevel: "all",
+    // Memory-footprint controls (both default ON in ORT). They trade a small per-run alloc
+    // cost for a much lower RESIDENT high-water mark — the right call here, where the session
+    // is long-lived and idle most of the time:
+    //   • enableCpuMemArena=false — don't keep a growing CPU arena reserved between runs (ORT
+    //     never hands that arena back, so it pins the peak of every forward for the tab's life).
+    //   • enableMemPattern=false — our value forward has a DYNAMIC batch axis (1 for the coach,
+    //     N for moveAssessmentBatch), so per-shape pattern planning just retains a buffer set
+    //     per distinct batch size for no reuse benefit.
+    enableCpuMemArena: false,
+    enableMemPattern: false,
   });
   // Echo the URL the weights were ACTUALLY fetched from. The provider/harness can't see
   // the worker's fetch directly, so this is the only observable proof of which origin the
