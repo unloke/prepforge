@@ -29,6 +29,43 @@ import {
 import { attachIntuition } from "./coach/intuition.js";
 import { buildCommentary } from "./coach/commentary.js";
 
+// Front-end error beacon (stability plan #1): report uncaught errors so we have a
+// server-side window into browser crashes. Best-effort — sendBeacon never throws
+// back into the app, and the endpoint is CSRF-exempt + needs no auth.
+function reportClientError(payload) {
+  try {
+    navigator.sendBeacon(
+      "/api/clientlog",
+      new Blob([JSON.stringify(payload)], { type: "application/json" }),
+    );
+  } catch {
+    /* best-effort, never throw from the reporter itself */
+  }
+}
+window.addEventListener("error", (e) => {
+  reportClientError({
+    kind: "error",
+    message: e.message,
+    src: e.filename,
+    line: e.lineno,
+    col: e.colno,
+    stack: e.error && e.error.stack,
+    ua: navigator.userAgent,
+    coi: !!self.crossOriginIsolated,
+    t: Date.now(),
+  });
+});
+window.addEventListener("unhandledrejection", (e) => {
+  reportClientError({
+    kind: "rejection",
+    message: String((e.reason && e.reason.message) || e.reason),
+    stack: e.reason && e.reason.stack,
+    ua: navigator.userAgent,
+    coi: !!self.crossOriginIsolated,
+    t: Date.now(),
+  });
+});
+
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const DEMO_PGN = `[Event "PrepForge UI Demo"]
 [Site "https://lichess.org/prepforge-ui"]

@@ -118,3 +118,35 @@ def test_privacy_page_served(client):
     r = client.get("/privacy")
     assert r.status_code == 200
     assert "Privacy Policy" in r.text
+
+
+# ---- client error beacon (stability plan #1) -------------------------------
+
+
+def test_clientlog_accepts_beacon_without_csrf(client, caplog):
+    # sendBeacon can't set a CSRF header; the endpoint is exempt and logs the error.
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="prepforge.clientlog"):
+        r = client.post(
+            "/api/clientlog",
+            json={"kind": "error", "message": "boom", "line": 42},
+        )
+    assert r.status_code == 204
+    assert "boom" in caplog.text
+
+
+def test_clientlog_drops_oversized_body(client):
+    # A body past the 8KB cap is dropped silently (still 204, nothing logged).
+    huge = {"kind": "error", "message": "x" * (9 * 1024)}
+    r = client.post("/api/clientlog", json=huge)
+    assert r.status_code == 204
+
+
+def test_clientlog_tolerates_garbage_body(client):
+    r = client.post(
+        "/api/clientlog",
+        content=b"not json at all",
+        headers={"Content-Type": "application/json"},
+    )
+    assert r.status_code == 204

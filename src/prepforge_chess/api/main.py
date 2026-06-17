@@ -26,6 +26,7 @@ from prepforge_chess.api.routers import (
     analyze,
     auth,
     billing,
+    clientlog,
     google_auth,
     legal,
     lichess,
@@ -81,8 +82,13 @@ def create_app() -> FastAPI:
     app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.add_middleware(SecurityHeadersMiddleware)
     # The Stripe webhook authenticates by signature, not the session cookie, so it
-    # bypasses CSRF. Inject the exempt path here rather than mutating a global.
-    app.add_middleware(CSRFMiddleware, exempt_paths={billing.WEBHOOK_PATH})
+    # bypasses CSRF. The client-error beacon can't set a CSRF header (sendBeacon)
+    # and only writes a log line, so it is exempt too. Inject exempt paths here
+    # rather than mutating a global.
+    app.add_middleware(
+        CSRFMiddleware,
+        exempt_paths={billing.WEBHOOK_PATH, clientlog.CLIENTLOG_PATH},
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.origins,
@@ -103,6 +109,7 @@ def create_app() -> FastAPI:
     app.include_router(billing.router)
     app.include_router(teams.router)
     app.include_router(legal.router)
+    app.include_router(clientlog.router)
 
     @app.get("/healthz", tags=["ops"])
     def healthz() -> dict[str, str]:
