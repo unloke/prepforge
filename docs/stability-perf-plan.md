@@ -13,7 +13,7 @@
 
 ---
 
-## #1 — 前端錯誤回報(觀測,先做,解鎖其他判斷)  規模 S
+## #1 — 前端錯誤回報(觀測,先做,解鎖其他判斷)  規模 S  ✅ DONE (9d6c211)
 
 **做什麼**:全域抓未處理錯誤,beacon 回傳後端寫 log。
 **為什麼**:目前對前端崩潰完全全盲;沒有它,#4 與後續優先級都是猜的。
@@ -51,7 +51,7 @@ window.addEventListener("unhandledrejection", (e) => reportClientError({
 
 ---
 
-## #2 — keep-warm ping `/healthz`(伺服器/UX)  規模 XS
+## #2 — keep-warm ping `/healthz`(伺服器/UX)  規模 XS  ✅ DONE (9d6c211 — GHA workflow)
 
 **做什麼**:外部排程每 ~10 分鐘 ping 一次 `/healthz`,免得 Render free tier 睡著。
 **為什麼**:免費方案閒置會睡,新訪客第一印象是冷啟動轉圈 30–60 秒。
@@ -66,7 +66,7 @@ window.addEventListener("unhandledrejection", (e) => reportClientError({
 
 ---
 
-## #3 — Stockfish/ORT WASM 搬上 Hugging Face(效率 + 伺服器壓力)  規模 M
+## #3 — Stockfish/ORT WASM 搬上 Hugging Face(效率 + 伺服器壓力)  規模 M  🔄 3a/3b ✅ → 待 3c prod 驗證
 
 **現況**:`PREPFORGE_ENGINE_ASSET_BASE` 已設為
 `https://huggingface.co/Andy108/prepforge-maia3/resolve/main/`,檔案已上傳。
@@ -76,7 +76,7 @@ window.addEventListener("unhandledrejection", (e) => reportClientError({
 
 **策略**:只搬大的 `.wasm`(ORT 24M + SF 7M),小的 `.js` shim 留本機。
 
-### 3a 後端:注入 `window.__ENGINE_ASSET_BASE`
+### 3a 後端:注入 `window.__ENGINE_ASSET_BASE`  ✅ DONE (c198640)
 - `static.py`:新增 `ENGINE_ASSET_BASE_ENV = "PREPFORGE_ENGINE_ASSET_BASE"`,
   仿 `_maia3_asset_base()` 加 `_engine_asset_base()`。
 - **關鍵**:在 `_asset_base_script()` 把兩個變數**寫進同一段 inline script**
@@ -87,7 +87,7 @@ window.addEventListener("unhandledrejection", (e) => reportClientError({
   輸出;若拆成第二段 `<script>`,第二段沒 hash、會被 CSP 擋掉。
 - 更新 `tests/test_api_static.py`:加 `__ENGINE_ASSET_BASE` 注入 / 未設時 no-op / script-breakout 轉義 的 test。
 
-### 3b 前端:讓引擎讀 base
+### 3b 前端:讓引擎讀 base  ✅ DONE (c198640)
 - 新增 `resolveEngineBase()`(仿 `maia3-provider.js:42` `resolveModelBase`):
   `globalThis.__ENGINE_ASSET_BASE` → 空字串 fallback 回 `/static/engine/`。
 - Stockfish:`ENGINE_URL`/wasm `locateFile` → `${engineBase || "/static/engine/"}stockfish-18-lite.wasm`。
@@ -104,7 +104,13 @@ window.addEventListener("unhandledrejection", (e) => reportClientError({
 
 ### 3d 版本失效(順手修掉潛在 bug)
 HF `resolve/main/` 是**會變動的分支 ref**;重傳同檔名 → URL 不變 → 舊使用者吃到舊引擎快取。
-- 解法:URL 釘到 commit hash,或檔名帶版本/hash(像 Maia 的 content-addressed)。
+- 解法:URL 釘到 commit hash（Render env var 改一次，不需 rebuild）。
+- **拿 hash 的步驟**:
+  1. 去 `https://huggingface.co/Andy108/prepforge-maia3/tree/main`
+  2. 點任一 wasm 檔旁邊的時鐘圖示（"history"）→ 拿最新 commit 的 40 字元 SHA
+  3. Render 把兩個 env var 的 URL 從 `.../resolve/main/` 換成 `.../resolve/<sha>/`
+  4. 驗證：View Source 確認 `window.__ENGINE_ASSET_BASE` 帶的是 hash URL
+- `.env.example` 已更新，格式見 `PREPFORGE_ENGINE_ASSET_BASE=…resolve/<sha>/` 的範例。
 - 進階(可選):讓 SF/ORT wasm 也走 `loadVerifiedWeights` + IndexedDB(manifest+sha256),
   一次解決 HF 託管 + 持久快取 + 版本失效;但工作量較大,v1 可先用釘版本的簡單法。
 
