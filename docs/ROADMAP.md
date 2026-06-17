@@ -27,10 +27,47 @@ ownership, and bills; it never computes chess.
 ## Conventions
 - New code lives in `prepforge_chess.api.*`. Don't extend `web/server.py`.
 - Every phase ships with tests and leaves `pytest` green.
-- Migrations via Alembic: `py -m alembic revision --autogenerate -m "..."` then
-  `py -m alembic upgrade head`.
+- Migrations via Alembic: `uv run alembic revision --autogenerate -m "..."` then
+  `uv run alembic upgrade head`.
 - Run API locally: `uvicorn prepforge_chess.api.main:app --reload` → http://127.0.0.1:8000/docs
-- Install deps: `py -m pip install -e ".[server,dev]"`
+- Install deps: `uv sync --extra server --extra dev` (from `uv.lock`; Python **3.11**).
+  Fallback: `py -3.11 -m venv .venv` then `pip install -e ".[server,dev]"`.
+
+---
+
+## Current status (2026-06-17)
+
+**ALL ROADMAP PHASES 1–6 ARE COMPLETE AND LIVE IN PRODUCTION.** The FastAPI/Postgres
+SaaS app (Phases 1–3), Stripe billing + Free/Pro quota (Phase 4), teams/sharing
+(Phase 5, backend-only — no SPA UI yet), and ops hardening (Phase 6: session cap/purge,
+graceful shutdown, structured logging, dark-by-default Sentry, legal pages) are all
+implemented, tested, and deployed. The legacy stdlib server, `request_lock`, and CLI
+`ui` command are deleted — there is no second live entrypoint. Maia3 ONNX weights are
+hosted on Hugging Face via `PREPFORGE_MAIA3_ASSET_BASE`, so Brilliant detection and
+human-like move generation also work in production.
+
+**Test-infra note:** `csrf_headers` lives in `tests/api_helpers.py` (a plain top-level
+module, like `stub_maia`), NOT imported from `conftest`. Do **not** add
+`tests/__init__.py` / `pythonpath="."` — it makes `tests/` a package and breaks the
+legacy `from stub_maia import` suite.
+
+### Remaining work (housekeeping / launch ops)
+
+| Priority | Item | Notes |
+|----------|------|-------|
+| P0 | Reproducible Python env | `uv.lock` + `.python-version` (3.11); CI uses `uv sync`. |
+| **P0** | **Stability / perf / UX** | **`docs/stability-perf-plan.md`** — error beacon, keep-warm, HF engine wasm, graceful fail, split `app.js`. |
+| P1 | Backend gate on every change | `ruff`, `pytest`, `alembic upgrade head` + `alembic check`. |
+| P2 | Render DB backups | Free-tier dashboard config — confirm backup policy. |
+| P2 | Stripe production keys | `PREPFORGE_STRIPE_*` env vars + webhook endpoint. |
+| P2 | Legal pages | Placeholder ToS/Privacy need formal review before paid launch. |
+| P2 | Engine assets on HF | `PREPFORGE_ENGINE_ASSET_BASE` set; wire-up tracked in stability plan #3. |
+| P3 | Front/back mate win-chance scale | Brilliant boundary edge case — see detailed note in Phase history below. |
+| P3 | `schema.sql` retirement | Drift guard is `alembic check`; static file only used by `test_sa_tables`. |
+| P3 | Teams SPA UI | Phase 5 backend ships; no sharing UI in the SPA yet. |
+
+For the detailed per-slice porting history (Phases 2a/2b sub-slices, locked design
+decisions, and test counts at the time), see **Phases** below.
 
 ---
 
@@ -61,7 +98,7 @@ Harden the public surface before porting endpoints.
 
 ### Phase 2 — Port legacy endpoints ✅ DONE
 > All sub-slices below shipped; `web/server.py` and `request_lock` are deleted and
-> the FastAPI app is live in production (see **Current status** at the foot of this
+> the FastAPI app is live in production (see **Current status** at the top of this
 > file). The "IN PROGRESS" framing and the present-tense sub-slice notes are kept
 > verbatim as the historical porting record.
 
@@ -571,24 +608,9 @@ If Render provides a plain `postgres://` URL, normalize it to SQLAlchemy's
 - [ ] DB backups + uptime monitoring are Render-dashboard config (free tier) — confirm
       backup policy and add an external uptime check on `/healthz` if desired.
 
-## Current status
-**ALL ROADMAP PHASES 1–6 ARE COMPLETE AND LIVE IN PRODUCTION.** The FastAPI/Postgres
-SaaS app (Phases 1–3), Stripe billing + Free/Pro quota (Phase 4), teams/sharing
-(Phase 5, backend-only — no SPA UI yet), and ops hardening (Phase 6: session cap/purge,
-graceful shutdown, structured logging, dark-by-default Sentry, legal pages) are all
-implemented, tested, and deployed. The legacy stdlib server, `request_lock`, and CLI
-`ui` command are deleted — there is no second live entrypoint. Maia3 ONNX weights are
-hosted on Hugging Face via `PREPFORGE_MAIA3_ASSET_BASE`, so Brilliant detection and
-human-like move generation also work in production.
+## Phase-history notes (detail)
 
-For the detailed per-slice history of how the legacy SQLite/stdlib app was ported to
-FastAPI/SQLAlchemy/Postgres (Phases 2a/2b), see the sub-slices under Phase 2 above —
-each is marked ✅ DONE with the locked design decisions and test counts at the time.
-
-**Test-infra note:** `csrf_headers` lives in `tests/api_helpers.py` (a plain top-level
-module, like `stub_maia`), NOT imported from `conftest`. Do **not** add
-`tests/__init__.py` / `pythonpath="."` — it makes `tests/` a package and breaks the
-legacy `from stub_maia import` suite.
+> **Current status and remaining work** are summarized at the top of this file.
 
 **Remaining housekeeping (low priority):**
 - **Front/back mate win-chance scale mismatch (Brilliant boundary).** The browser maps a

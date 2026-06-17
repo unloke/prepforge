@@ -1,45 +1,82 @@
 # PrepForge Chess
 
-PrepForge Chess is a local-first chess preparation suite that combines:
+PrepForge Chess is a **FastAPI + Postgres SaaS** for chess preparation. The server
+stores accounts, repertoires, analyses, and training progress — it **never computes
+chess**. Stockfish and Maia3 run **in the browser** (WASM / ONNX); the API classifies,
+persists, and enforces per-user ownership.
 
-- Game Analysis: PGN/Lichess import, Stockfish analysis, move classification, eval graph, and critical moment review.
-- Opening Builder: repertoire tree generation using Stockfish for objective choices and Maia-style human move probabilities for practical branches.
-- Opening Trainer: saved review sessions, mistake queues, spaced repetition, and Lichess game matching against all relevant repertoires.
+The product covers:
 
-The repository starts from a shared core architecture. Chess rules, FEN/PGN conversion, move records, engine results, opening nodes, and training progress are shared across every module instead of being duplicated in the UI.
+- **Analyze** — PGN/Lichess import, move classification, eval graph, critical moments.
+- **Build** — repertoire trees with objective (Stockfish) and human-like (Maia3) branches.
+- **Train** — spaced repetition, mistake queues, Lichess practical-game matching.
 
-## Current State
+Shared core models (`src/prepforge_chess/core/`, `services/`, `storage/`) back both the
+web SPA and the optional CLI demos. See `docs/ARCHITECTURE.md` and `docs/ROADMAP.md`
+for the full migration history and current status.
 
-This is the first project baseline:
+## Local development
 
-- Architecture document: `docs/ARCHITECTURE.md`
-- SQLite schema: `src/prepforge_chess/storage/schema.sql`
-- Core data models: `src/prepforge_chess/core/models.py`
-- Phase 1 chess core: `src/prepforge_chess/core/chess_core.py`
-- PGN import service: `src/prepforge_chess/services/pgn_import.py`
-- UI-independent board contract: `src/prepforge_chess/ui/board_contract.py`
-- SQLite initialization helper: `src/prepforge_chess/storage/database.py`
-- SQLite repository layer: `src/prepforge_chess/storage/repositories.py`
-- Stockfish process adapter and official release installer.
-- Game analysis report service with eval curve and critical moment jump targets.
-- Opening Builder tree generation, context-menu style operations, filters, and JSON/PGN export.
-- Training session/progress persistence for saved random line order, mistakes, mastered nodes, and spaced repetition state.
-- Service foundations for classification, brilliant scoring, matching, and practical game matching.
+**Python 3.11** is the project standard (CI and production both use 3.11). Windows
+often defaults `python` to 3.8 — use `py -3.11` or the `.venv` below.
 
-## Local Development
+### Backend (recommended: uv + lock file)
 
 ```powershell
-py -m pip install -e .
-py -m pytest
-prepforge-chess smoke
-prepforge-chess demo-viewer --ply 4
-prepforge-chess analyze-demo --depth 8
-prepforge-chess demo-build --depth 3 --max-nodes 12
-prepforge-chess demo-build --depth 3 --max-nodes 12 --export
-prepforge-chess demo-train --seed 13
+# Install uv once (https://docs.astral.sh/uv/) or: pip install uv
+uv sync --extra server --extra dev    # installs from uv.lock into .venv
+uv run pytest -q
+uv run ruff check src tests
+$env:DATABASE_URL="sqlite:///dev.sqlite3"
+uv run alembic upgrade head
+uvicorn prepforge_chess.api.main:app --reload
 ```
 
-The current core uses `python-chess` behind the `ChessCore` adapter. Future phases can add a UI layer, Stockfish process adapter, Maia model adapter, and Lichess API client behind the service boundaries already defined here.
+### Backend (pip + venv)
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[server,dev]"
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+### Frontend
+
+```powershell
+npm ci
+npm test -- --run
+npm run build    # emits SPA into src/prepforge_chess/web/static/
+```
+
+Open http://127.0.0.1:8000 after starting uvicorn (API docs at `/docs` in dev).
+
+## Web app
+
+The multi-tenant FastAPI app (`prepforge_chess.api`) serves the built SPA with
+email/password accounts, CSRF protection, Lichess account linking, and Free/Pro
+billing hooks. Production runs on Render against managed Postgres — see
+`docs/DEPLOYMENT.md`, `render.yaml`, and `Dockerfile`.
+
+```powershell
+uv sync --extra server --extra dev   # or pip install -e ".[server,dev]"
+npm ci; npm run build
+uv run alembic upgrade head
+uvicorn prepforge_chess.api.main:app --reload
+```
+
+## CLI (development / offline)
+
+The `prepforge-chess` CLI exercises the same services without the web UI. Useful for
+smoke tests, terminal viewers, and server-side Stockfish runs during development.
+
+```powershell
+uv sync --extra dev                  # core + pytest/ruff only
+uv run prepforge-chess smoke
+uv run prepforge-chess demo-viewer --ply 4
+uv run prepforge-chess analyze-demo --depth 8
+uv run prepforge-chess demo-build --depth 3 --max-nodes 12 --export
+uv run prepforge-chess demo-train --seed 13
+```
 
 The smoke command runs a minimal end-to-end check:
 
@@ -100,28 +137,9 @@ prepforge-chess demo-train --seed 13
 prepforge-chess demo-train --seed 13 --mode high_priority
 ```
 
-The trainer service loads trainable lines from a repertoire tree, creates a saved random line order, resumes the latest session instead of re-randomizing it, keeps wrong moves on the same prompt, removes corrected mistakes, advances to the next prepared move, and persists session/progress state in SQLite.
+The trainer service loads trainable lines from a repertoire tree, creates a saved random line order, resumes the latest session instead of re-randomizing it, keeps wrong moves on the same prompt, removes corrected mistakes, advances to the next prepared move, and persists session/progress state.
 
-Web app (FastAPI SaaS API + browser SPA):
-
-The web UI is now served by the multi-tenant FastAPI app (`prepforge_chess.api`),
-which stores data and enforces ownership but **never computes chess** — Stockfish and
-Maia3 run in the browser (WASM). The legacy single-tenant stdlib server has been retired.
-
-```powershell
-py -m pip install -e ".[server,dev]"   # FastAPI/SQLAlchemy/Alembic extras
-npm ci; npm run build                   # build the SPA into web/static
-py -m alembic upgrade head               # create the dev SQLite schema
-uvicorn prepforge_chess.api.main:app --reload
-```
-
-The app boots at `http://127.0.0.1:8000` (interactive API docs at `/docs` in dev).
-It exposes Dashboard, Analyze, Build, and Train workspaces with email/password accounts,
-per-user data isolation, CSRF protection, and Lichess account linking for game import.
-Production runs the same app under uvicorn against Postgres — see `docs/ROADMAP.md`
-(Phase 3) and `render.yaml`/`Dockerfile`.
-
-To install and use official Stockfish:
+To install and use official Stockfish (CLI / server-side analysis only):
 
 ```powershell
 prepforge-chess install-stockfish
@@ -133,27 +151,16 @@ The installer uses the official `official-stockfish/Stockfish` GitHub release as
 
 ## Deployment
 
-PrepForge Chess needs a Python server for its API, SQLite persistence, and engine
-integration, so the full app cannot run on GitHub Pages alone. GitHub can host
-the source repository, then a container host such as Render, Fly.io, Railway, or
-a VPS can run the actual web service.
+The full app needs a Python server (FastAPI + Postgres in production). GitHub Pages
+cannot host `/api/*` — use Render (current production), Docker, or another container host.
 
-This repository includes:
-
-- `Dockerfile` for running the complete web UI and backend.
-- `render.yaml` for Render Blueprint deployment from GitHub.
-- `docs/DEPLOYMENT.md` with step-by-step deployment notes.
-
-Local Docker check:
+- `Dockerfile` — SPA + API image; `alembic upgrade head` runs before uvicorn.
+- `render.yaml` — Render Blueprint reference (free-tier notes inside).
+- `docs/DEPLOYMENT.md` — env vars, Postgres setup, and local Docker check.
 
 ```powershell
 docker build -t prepforge-chess .
-docker run --rm -p 8765:8765 -v prepforge-data:/data prepforge-chess
+docker run --rm -p 8000:8000 prepforge-chess
 ```
 
-## MVP Phases
-
-1. Shared chess core and board model.
-2. Stockfish-backed game analysis.
-3. Opening Builder with repertoire tree generation.
-4. Opening Trainer and Lichess practical matching.
+Roadmap and launch checklist: `docs/ROADMAP.md`.
