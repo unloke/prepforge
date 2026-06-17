@@ -100,6 +100,8 @@ def test_classify_save_persists_and_is_recallable(client):
     assert payload["game_id"] == prepared["game_id"]
     assert [m["san"] for m in payload["moves"]] == ["e4", "e5", "Nf3", "Nc6"]
     assert "summary" in payload and "eval_graph" in payload
+    assert set(payload["position_evals"]) == set(prepared["positions"])
+    assert payload["position_evals"][prepared["positions"][0]]["score_cp"] == 20
 
     # History list shows the one analyzed game.
     analyses = client.get("/api/analyses").json()["analyses"]
@@ -109,6 +111,7 @@ def test_classify_save_persists_and_is_recallable(client):
     recall = client.get(f"/api/analyses/{prepared['game_id']}")
     assert recall.status_code == 200
     assert recall.json()["game_id"] == prepared["game_id"]
+    assert set(recall.json()["position_evals"]) == set(prepared["positions"])
 
 
 def test_classify_save_rejects_missing_game_id(client):

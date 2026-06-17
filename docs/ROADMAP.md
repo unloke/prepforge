@@ -21,7 +21,8 @@ ownership, and bills; it never computes chess.
 - **Identity:** Email + password is the primary account (owns plan + Stripe).
   Lichess OAuth is a *linked account* for game import only.
 - **Billing:** personal paywall, Free/Pro on `users.plan`. Team/classroom schema
-  exists but **no per-seat billing** — a team is a feature, gated by plan logic.
+  exists but **no per-seat billing** — teams are a collaboration feature **open to
+  every signed-in user** (no plan gate).
 
 ## Conventions
 - New code lives in `prepforge_chess.api.*`. Don't extend `web/server.py`.
@@ -396,14 +397,14 @@ Implemented in `api/routers/billing.py` (registered in `main.py`):
   `PREPFORGE_STRIPE_PRICE_PRO`; register the webhook endpoint in the Stripe dashboard.
   *(Stripe SDK already ships in `.[server]`.)*
 
-### Phase 5 — Teams / classroom 🔶 BACKEND DONE (SPA UI deferred)
+### Phase 5 — Teams / classroom ✅ DONE (open to everyone + SPA UI)
 Repertoires gained `team_id` + `visibility` (`private`|`team`, NULL=private) in
 `sa_tables`/`schema.sql` + migration `2bf1a51905b1` (no DB-level FK to `teams` on
 purpose — it would couple every legacy `create_all` to importing `api.models`, and a
 dangling `team_id` fails closed in the read gate; integrity is app-enforced). New
 `api/routers/teams.py`:
-- `POST /api/teams` (**Pro-gated** via `require_pro`; enrolls caller as owner),
-  `GET /api/teams` (caller's teams + role + member_count), `GET /api/teams/{id}`
+- `POST /api/teams` (**open to every signed-in user** — no Pro gate; enrolls caller
+  as owner), `GET /api/teams` (caller's teams + role + member_count), `GET /api/teams/{id}`
   (members; member-only → 404 otherwise), `POST /api/teams/{id}/members` (add by email;
   owner/admin only → 403; unknown email → 404; dup → 409; can't add a 2nd owner),
   `DELETE /api/teams/{id}/members/{user_id}` (manager removes others / self-leave;
@@ -417,9 +418,17 @@ dangling `team_id` fails closed in the read gate; integrity is app-enforced). Ne
   reps) via `repository.list_team_shared_repertoires`.
 - **Acceptance met:** a shared repertoire is readable by team members and invisible to
   non-members; members cannot mutate it; unshare revokes access. 16 tests
-  `tests/test_api_teams.py`. **296 green, ruff clean, alembic zero-drift.**
-- **Deferred:** the SPA has no teams UI yet (backend/API only); classroom
-  teacher/student affordances ride on `kind='classroom'` later.
+  `tests/test_api_teams.py`. **ruff clean, alembic zero-drift.**
+- **SPA UI (shipped):** a **Teams** tab (`web-src/index.html` / `app.js`) lists the
+  caller's teams, drills into one to manage members (add by email, remove/leave),
+  and surfaces repertoires shared *to* the caller (read-only, opens in Build). A
+  repertoire's **"Share with team…"** context-menu action drives
+  `POST /api/repertoires/share`. `/api/auth/status` now also returns `user_id` so the
+  view can spot the caller in a member list (remove-self / leave).
+- **Open to everyone:** team creation dropped the `require_pro` gate — any signed-in
+  user can create/own a team (`tests/test_api_teams.py::test_free_user_can_create_team`).
+- **Deferred:** classroom teacher/student affordances ride on `kind='classroom'` later
+  (the create flow already offers the kind; no special UI yet).
 
 ### Phase 6 — Ops / launch 🔶 CODE DONE (DB backups + CDN are Render-side config)
 - [x] **CI** — `.github/workflows/ci.yml` (pytest + ruff + alembic drift; vitest + build).

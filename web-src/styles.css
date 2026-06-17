@@ -2338,6 +2338,26 @@ button.scout-badge:focus-visible {
   color: var(--text);
 }
 
+.team-shared-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0 4px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.ib.danger {
+  color: var(--danger, #c44);
+}
+
+.shared-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* Coverage scan (Build sidebar drawer) */
 
 .coverage-head {
@@ -4078,4 +4098,92 @@ button.scout-badge:focus-visible {
   .confetti-layer {
     display: none !important;
   }
+}
+
+/* ----- Teams view ------------------------------------------------------- */
+/* Reuses the Replay stack + .card + .list-item primitives; these rules add the
+   team-specific row affordances (role badges, member tails, selected row). */
+.teams-stack {
+  max-width: 920px;
+}
+.team-row.is-selected {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.team-role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  border: 1px solid var(--line-soft);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.team-role-badge.sm {
+  padding: 1px 7px;
+  font-size: 11px;
+}
+.team-members-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 4px 0 8px;
+}
+.team-member-row {
+  cursor: default;
+}
+.team-member-row:hover {
+  background: transparent;
+  border-color: var(--line-soft);
+}
+.team-member-tail {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.team-remove {
+  width: auto;
+  min-width: 26px;
+  padding: 0 8px;
+  height: 26px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.team-remove:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.team-detail-foot {
+  margin-top: 8px;
+}
+.shared-rep-row .color-dot {
+  margin-right: 6px;
+}
+/* Inline role promote/demote control on a member row (managers only). */
+.team-role-select {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+/* "Copy to my account" on a shared repertoire the caller doesn't own. */
+.team-copy {
+  width: auto;
+  min-width: 26px;
+  padding: 0 10px;
+  height: 26px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.team-copy:hover {
+  color: var(--accent-strong);
+  border-color: var(--accent-line);
 }

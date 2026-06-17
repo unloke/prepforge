@@ -115,6 +115,12 @@ class Team(Base):
     members: Mapped[list["TeamMember"]] = relationship(
         back_populates="team", cascade="all, delete-orphan"
     )
+    # One shareable join link per team (``team_invites.team_id`` is unique). The DB
+    # FK is ON DELETE CASCADE; passive_deletes lets that fire instead of SQLAlchemy
+    # loading + nulling the row on team delete.
+    invite: Mapped["TeamInvite | None"] = relationship(
+        cascade="all, delete-orphan", uselist=False, passive_deletes=True
+    )
 
 
 class TeamMember(Base):
@@ -134,6 +140,36 @@ class TeamMember(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     team: Mapped[Team] = relationship(back_populates="members")
+
+
+class TeamInvite(Base):
+    """A team's shareable join link.
+
+    Only the SHA-256 of the code is stored (same discipline as ``AuthSession``):
+    a DB leak never yields a working invite, and the raw code is shown exactly
+    once -- at mint time. ``team_id`` is unique, so a team has at most one live
+    invite; regenerating replaces the hash in place and revoking deletes the row.
+    Joining via an invite always enrolls a plain ``member`` (promote afterwards).
+    """
+
+    __tablename__ = "team_invites"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    team_id: Mapped[str] = mapped_column(
+        ForeignKey("teams.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    # The minter; SET NULL (not CASCADE) so deleting the creator's account does not
+    # silently drop a team's working invite.
+    created_by_user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    # NULL == never expires (v1 default); revocation is the primary control.
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class StripeEvent(Base):

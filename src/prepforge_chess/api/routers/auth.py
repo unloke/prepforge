@@ -212,6 +212,9 @@ def providers(settings: Settings = Depends(get_settings)) -> AuthProviders:
 class AuthStatus(BaseModel):
     signed_in: bool
     username: str | None = None
+    # The account id, so the SPA can recognise the caller in member lists (e.g. the
+    # Teams view's "leave team" / remove-self affordance). None for a guest.
+    user_id: str | None = None
 
 
 @router.get("/status", response_model=AuthStatus)
@@ -222,6 +225,8 @@ def status_(user: User | None = Depends(current_user_optional)) -> AuthStatus:
     session and ``username`` shows the account's display name."""
     if user is None:
         return AuthStatus(signed_in=False)
-    return AuthStatus(signed_in=True, username=user.display_name or user.email)
+    return AuthStatus(
+        signed_in=True, username=user.display_name or user.email, user_id=user.id
+    )
 
 

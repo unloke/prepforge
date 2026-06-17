@@ -306,6 +306,9 @@ const appState = {
   // The account's stable Lichess username from auth status — persists across a token
   // drop and is what the user-name button shows. Null only for a true guest.
   accountUsername: null,
+  // The account's user id (from auth status); lets the Teams view spot the caller in
+  // a member list (remove-self / leave). Null for a guest.
+  accountUserId: null,
   // Whether this browser's session is bound to a real account (vs a fresh guest). The
   // app is pure Lichess-OAuth, so signed-in ⇒ a username exists. Guests see a single
   // "Connect Lichess" action; signed-in users get the user-name button → Sign out.
@@ -313,6 +316,13 @@ const appState = {
   replayResults: null,
   replayFilter: null, // summary-chip filter: an outcome kind, or null = all
   replayOpen: new Set(), // indexes of expanded game rows
+  // Teams view: cache of the caller's teams (for the rep-share picker) and the
+  // currently-expanded team's id (so a member add/remove re-renders the right one).
+  teams: [],
+  selectedTeamId: null,
+  // Public share-link viewer (?shared=token). Team-shared read-only uses
+  // build.writable === false instead — see isBuildReadOnly().
+  sharedToken: null,
   pieceStyle: "berlin",
   // Maia3 strength: a Settings-pinned rating (null = AUTO), and the auto-resolved
   // rating from the linked Lichess account's public profile (null until fetched).
@@ -2573,6 +2583,10 @@ function switchView(name) {
   if (name === "dashboard" && appState.signedIn) {
     loadDashboard().catch(() => { /* counters refresh is best-effort */ });
   }
+  // Entering Teams (re)loads the caller's teams + shared list.
+  if (name === "teams" && appState.signedIn) {
+    loadTeams().catch(() => { /* best-effort */ });
+  }
   // The engine widget is shared across tabs: it stays open while navigating and
   // re-syncs to whichever board the new tab shows (Analyze or Build).
   if (engineWidget && engineWidget.isOpen && engineWidget.isOpen()) {
@@ -3144,9 +3158,11 @@ async function refreshAuthStatus() {
     const status = await api("/api/auth/status");
     appState.signedIn = !!status.signed_in;
     appState.accountUsername = status.username || null;
+    appState.accountUserId = status.user_id || null;
   } catch (_) {
     appState.signedIn = false;
     appState.accountUsername = null;
+    appState.accountUserId = null;
   }
   renderAccountChip();
 }
@@ -3515,6 +3531,14 @@ async function recallAnalysis(gameId) {
 async function loadDashboardRepertoires() {
   const container = document.getElementById("dashboard-repertoires");
   try {
+    if (appState.signedIn && !appState.teams.length) {
+      try {
+        const teamsPayload = await api("/api/teams");
+        appState.teams = teamsPayload.teams || [];
+      } catch (_) {
+        /* team names for share badges are optional */
+      }
+    }
     const payload = await api("/api/repertoires");
     // Hide rows whose delete is still inside its undo window — the server hasn't
     // been told yet, so its list still contains them.
@@ -3534,12 +3558,20 @@ async function loadDashboardRepertoires() {
         const active = item.is_active !== false;
         const cls = active ? "list-item" : "list-item is-disabled";
         const status = active ? "" : ' <span class="sub">· disabled</span>';
+        const team =
+          item.visibility === "team" && item.team_id
+            ? appState.teams.find((tm) => tm.id === item.team_id)
+            : null;
+        const shareBadge =
+          item.visibility === "team" && item.team_id
+            ? ` <span class="team-role-badge sm" title="Shared with ${escapeHtml(team ? team.name : "team")}">shared</span>`
+            : "";
         return `
           <div class="${cls}" role="button" tabindex="0" data-repertoire-id="${id}" data-active="${active ? "1" : "0"}">
             <span>
               <span class="color-dot ${color}"></span>
               <span class="name">${name}</span>
-              <span class="sub"> · ${color}</span>${status}
+              <span class="sub"> · ${color}</span>${status}${shareBadge}
             </span>
             ${healthBadgeHtml(item.health)}
             <button type="button" class="ib row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-haspopup="menu">⋯</button>
@@ -3601,6 +3633,712 @@ function healthBadgeHtml(health) {
     (parts.length ? `<span class="rh-detail">${parts.join(" · ")}</span>` : "") +
     `</span>`
   );
+}
+
+// ---- Teams (Phase 5 UI) -----------------------------------------------------
+// A team is a free, read-only sharing group: a repertoire owner shares to it
+// (POST /api/repertoires/share) and every member can *read* (never edit) it.
+// This view lists the caller's teams, drills into one to manage membership, and
+// surfaces repertoires shared *to* the caller. Open to everyone — no Pro gate.
+
+const TEAM_ROLE_LABELS = { owner: "Owner", admin: "Admin", member: "Member" };
+
+function teamRoleLabel(role) {
+  return TEAM_ROLE_LABELS[role] || role;
+}
+
+function teamMemberCountLabel(count) {
+  const n = Number(count) || 0;
+  return `${n} member${n === 1 ? "" : "s"}`;
+}
+
+function teamById(teamId) {
+  return appState.teams.find((tm) => tm.id === teamId) || null;
+}
+
+async function loadTeams() {
+  const list = document.getElementById("teams-list");
+  const shared = document.getElementById("teams-shared");
+  if (!list) return;
+  if (!appState.signedIn) {
+    list.innerHTML = '<div class="empty-state">Sign in to create and join teams.</div>';
+    if (shared) shared.innerHTML = "";
+    hideTeamDetail();
+    return;
+  }
+  list.innerHTML = '<div class="empty-state">Loading…</div>';
+  try {
+    const payload = await api("/api/teams");
+    appState.teams = payload.teams || [];
+    renderTeamsList();
+    // Re-open an expanded team after a reload so a member add/remove stays in view.
+    if (appState.selectedTeamId && appState.teams.some((tm) => tm.id === appState.selectedTeamId)) {
+      openTeamDetail(appState.selectedTeamId);
+    } else {
+      hideTeamDetail();
+    }
+  } catch (error) {
+    list.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+  }
+  loadSharedRepertoires();
+}
+
+function renderTeamsList() {
+  const list = document.getElementById("teams-list");
+  if (!list) return;
+  if (!appState.teams.length) {
+    list.innerHTML = '<div class="empty-state">No teams yet. Create one to start sharing.</div>';
+    return;
+  }
+  list.innerHTML = appState.teams
+    .map((team) => {
+      const id = escapeHtml(team.id);
+      const name = escapeHtml(team.name);
+      const role = escapeHtml(teamRoleLabel(team.role));
+      const countLabel = escapeHtml(teamMemberCountLabel(team.member_count));
+      const selectedCls = appState.selectedTeamId === team.id ? " is-selected" : "";
+      return `
+        <div class="list-item team-row${selectedCls}" role="button" tabindex="0" data-team-id="${id}">
+          <span>
+            <span class="name">${name}</span>
+            <span class="sub"> · ${countLabel}</span>
+          </span>
+          <span class="team-role-badge">${role}</span>
+        </div>`;
+    })
+    .join("");
+  list.querySelectorAll(".team-row").forEach((row) => {
+    const open = () => openTeamDetail(row.dataset.teamId);
+    row.addEventListener("click", open);
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        open();
+      }
+    });
+  });
+}
+
+function hideTeamDetail() {
+  appState.selectedTeamId = null;
+  const card = document.getElementById("team-detail-card");
+  if (card) card.hidden = true;
+  renderTeamsList();
+}
+
+async function openTeamDetail(teamId) {
+  appState.selectedTeamId = teamId;
+  renderTeamsList(); // reflect the selected row
+  const card = document.getElementById("team-detail-card");
+  const membersEl = document.getElementById("team-members");
+  const foot = document.getElementById("team-detail-foot");
+  if (!card || !membersEl) return;
+  card.hidden = false;
+  membersEl.innerHTML = '<div class="empty-state">Loading…</div>';
+  if (foot) foot.innerHTML = "";
+  let detail;
+  try {
+    detail = await api(`/api/teams/${encodeURIComponent(teamId)}`);
+  } catch (error) {
+    membersEl.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+    return;
+  }
+  const myRole = detail.role;
+  const canManage = myRole === "owner" || myRole === "admin";
+  document.getElementById("team-detail-name").textContent = detail.name;
+  const roleBadge = document.getElementById("team-detail-role");
+  if (roleBadge) roleBadge.textContent = teamRoleLabel(myRole);
+  const addBtn = document.getElementById("team-add-member");
+  if (addBtn) {
+    addBtn.hidden = !canManage;
+    addBtn.onclick = () => addTeamMember(teamId);
+  }
+  const inviteBtn = document.getElementById("team-detail-invite");
+  if (inviteBtn) {
+    inviteBtn.hidden = !canManage;
+    inviteBtn.onclick = () => teamInvite(teamId);
+  }
+  const shareBtn = document.getElementById("team-share-rep");
+  if (shareBtn) {
+    // Any member may share one of their OWN repertoires with the team.
+    shareBtn.hidden = false;
+    shareBtn.onclick = () => shareRepertoireIntoTeam(teamId);
+  }
+  const renameBtn = document.getElementById("team-detail-rename");
+  if (renameBtn) {
+    renameBtn.hidden = !canManage;
+    renameBtn.onclick = () => renameTeam(teamId, detail.name);
+  }
+  const deleteBtn = document.getElementById("team-detail-delete");
+  if (deleteBtn) {
+    deleteBtn.hidden = myRole !== "owner";
+    deleteBtn.onclick = () => deleteTeam(teamId, detail.name);
+  }
+  const members = detail.members || [];
+  membersEl.innerHTML = members
+    .map((m) => {
+      const name = escapeHtml(m.display_name || m.email);
+      const sub = m.display_name ? ` <span class="sub">· ${escapeHtml(m.email)}</span>` : "";
+      const isMe = m.user_id === appState.accountUserId;
+      const isOwner = m.role === "owner";
+      const uid = escapeHtml(m.user_id);
+      const uname = escapeHtml(m.display_name || m.email);
+      // Owner row is fixed. Managers get an inline role control on every other row
+      // (incl. their own, so an admin can step down) plus remove; a plain member only
+      // sees a read-only badge and a Leave button on their own row. The server
+      // enforces all of this too.
+      let tail;
+      if (isOwner) {
+        tail = `<span class="team-role-badge sm">${escapeHtml(teamRoleLabel("owner"))}</span>`;
+      } else if (canManage) {
+        const opts = ["member", "admin"]
+          .map(
+            (r) =>
+              `<option value="${r}"${m.role === r ? " selected" : ""}>${escapeHtml(teamRoleLabel(r))}</option>`
+          )
+          .join("");
+        const removeBtn = `<button type="button" class="ib team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="${isMe ? "1" : "0"}" title="${isMe ? "Leave team" : "Remove member"}">${isMe ? "Leave" : "×"}</button>`;
+        tail = `<select class="team-role-select" data-user-id="${uid}" aria-label="Role for ${uname}">${opts}</select>${removeBtn}`;
+      } else {
+        const leaveBtn = isMe
+          ? `<button type="button" class="ib team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="1" title="Leave team">Leave</button>`
+          : "";
+        tail = `<span class="team-role-badge sm">${escapeHtml(teamRoleLabel(m.role))}</span>${leaveBtn}`;
+      }
+      return `
+        <div class="list-item team-member-row">
+          <span><span class="name">${name}${isMe ? ' <span class="sub">(you)</span>' : ""}</span>${sub}</span>
+          <span class="team-member-tail">${tail}</span>
+        </div>`;
+    })
+    .join("");
+  membersEl.querySelectorAll(".team-role-select").forEach((sel) => {
+    sel.addEventListener("change", () =>
+      updateMemberRole(teamId, sel.dataset.userId, sel.value)
+    );
+  });
+  membersEl.querySelectorAll(".team-remove").forEach((btn) => {
+    btn.addEventListener("click", () =>
+      removeTeamMember(teamId, btn.dataset.userId, btn.dataset.userName, btn.dataset.self === "1")
+    );
+  });
+  renderTeamSharedRepertoires(teamId, detail.shared_repertoires || []);
+}
+
+function renderTeamSharedRepertoires(teamId, sharedReps) {
+  const container = document.getElementById("team-shared-repertoires");
+  if (!container) return;
+  if (!sharedReps.length) {
+    container.innerHTML =
+      '<div class="empty-state">No repertoires shared yet. Use “Share a repertoire” above to add one.</div>';
+    return;
+  }
+  container.innerHTML = sharedReps
+    .map((item) => {
+      const id = escapeHtml(item.id);
+      const name = escapeHtml(item.name);
+      const color = escapeHtml(item.color);
+      const owner = escapeHtml(item.owner_display_name || item.owner_email || "member");
+      const isMine = item.owner_user_id === appState.accountUserId;
+      // Your own shared rep: Unshare. Someone else's: Copy to your account (fork).
+      const action = isMine
+        ? `<button type="button" class="ib team-unshare" data-rep-id="${id}" data-rep-name="${name}" title="Stop sharing">Unshare</button>`
+        : `<button type="button" class="ib team-copy" data-rep-id="${id}" title="Copy to my account">Copy</button>`;
+      return `
+        <div class="list-item team-shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}">
+          <span>
+            <span class="color-dot ${color}"></span>
+            <span class="name">${name}</span>
+            <span class="sub"> · ${owner}</span>
+          </span>
+          <span class="team-member-tail">${action}</span>
+        </div>`;
+    })
+    .join("");
+  container.querySelectorAll(".team-shared-rep-row").forEach((row) => {
+    const open = () => editRepertoire(row.dataset.repertoireId);
+    row.addEventListener("click", (event) => {
+      if (event.target.closest(".team-unshare") || event.target.closest(".team-copy")) return;
+      open();
+    });
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        open();
+      }
+    });
+  });
+  container.querySelectorAll(".team-unshare").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      unshareRepertoireFromTeam(teamId, btn.dataset.repId, btn.dataset.repName);
+    });
+  });
+  container.querySelectorAll(".team-copy").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      copySharedRepertoire(btn.dataset.repId);
+    });
+  });
+}
+
+async function unshareRepertoireFromTeam(teamId, repertoireId, name) {
+  const confirmed = await showConfirmModal({
+    title: `Stop sharing "${name}"?`,
+    body: "Team members will lose read access. You can share it again later.",
+    okLabel: "Unshare",
+    cancelLabel: "Cancel",
+    tone: "danger",
+  });
+  if (!confirmed) return;
+  try {
+    await postJson("/api/repertoires/share", {
+      repertoire_id: repertoireId,
+      visibility: "private",
+    });
+    setStatus(`"${name}" is private again`);
+    await loadDashboardRepertoires();
+    await openTeamDetail(teamId);
+  } catch (error) {
+    setStatus(error.message);
+  }
+}
+
+async function createTeam() {
+  if (!appState.signedIn) {
+    openAuthModal("login");
+    return;
+  }
+  const result = await showInputModal({
+    title: "New team",
+    okLabel: "Create",
+    fields: [{ name: "name", label: "Team name", default: "" }],
+  });
+  if (!result) return;
+  const name = (result.name || "").trim();
+  if (!name) {
+    setStatus("Team name is empty");
+    return;
+  }
+  try {
+    const team = await postJson("/api/teams", { name });
+    appState.selectedTeamId = team.id;
+    setStatus(`Created team "${name}"`);
+    await loadTeams();
+  } catch (error) {
+    setStatus(error.message);
+  }
+}
+
+async function renameTeam(teamId, currentName) {
+  const result = await showInputModal({
+    title: "Rename team",
+    okLabel: "Save",
+    fields: [{ name: "name", label: "Team name", default: currentName }],
+  });
+  if (!result) return;
+  const name = (result.name || "").trim();
+  if (!name) {
+    setStatus("Name is empty");
+    return;
+  }
+  try {
+    await api(`/api/teams/${encodeURIComponent(teamId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    });
+    setStatus(`Renamed to "${name}"`);
+    await loadTeams();
+  } catch (error) {
+    setStatus(error.message);
+  }
+}
+
+async function deleteTeam(teamId, name) {
+  const confirmed = await showConfirmModal({
+    title: "Delete team?",
+    body: `"${name}" will be removed and all shared repertoires will become private again. Members lose access.`,
+    okLabel: "Delete",
+    cancelLabel: "Cancel",
+    tone: "danger",
+  });
+  if (!confirmed) return;
+  try {
+    await api(`/api/teams/${encodeURIComponent(teamId)}`, { method: "DELETE" });
+    hideTeamDetail();
+    setStatus(`Deleted team "${name}"`);
+    await loadTeams();
+    await loadDashboardRepertoires();
+  } catch (error) {
+    setStatus(error.message);
+  }
+}
+
+async function addTeamMember(teamId) {
+  const result = await showInputModal({
+    title: "Add member",
+    okLabel: "Add",
+    fields: [
+      { name: "lichess_username", label: "Their Lichess username", default: "" },
+      {
+        name: "role",
+        label: "Role",
+        type: "select",
+        default: "member",
+        options: [
+          { value: "member", label: "Member" },
+          { value: "admin", label: "Admin (can manage members)" },
+        ],
+      },
+      {
+        type: "note",
+        label:
+          "They need a PrepForge account with Lichess linked. No account yet? Send them the invite link instead.",
+      },
+    ],
+  });
+  if (!result) return;
+  const handle = (result.lichess_username || "").trim();
+  if (!handle) {
+    setStatus("Lichess username is empty");
+    return;
+  }
+  try {
+    await postJson(`/api/teams/${encodeURIComponent(teamId)}/members`, {
+      lichess_username: handle,
+      role: result.role || "member",
+    });
+    setStatus(`Added ${handle}`);
+    await loadTeams();
+  } catch (error) {
+    // The server returns an actionable message (e.g. "...send them an invite link").
+    setStatus(error.message);
+  }
+}
+
+async function updateMemberRole(teamId, userId, role) {
+  try {
+    await api(
+      `/api/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}`,
+      { method: "PATCH", body: JSON.stringify({ role }) }
+    );
+    setStatus(role === "admin" ? "Promoted to admin" : "Set to member");
+  } catch (error) {
+    setStatus(error.message);
+  }
+  // Re-render either way: on success to reflect any rights change, on failure to
+  // revert the <select> back to the server's truth.
+  await openTeamDetail(teamId);
+}
+
+async function removeTeamMember(teamId, userId, label, isSelf) {
+  const confirmed = await showConfirmModal({
+    title: isSelf ? "Leave team?" : "Remove member?",
+    body: isSelf
+      ? "You'll lose access to repertoires shared with this team. You can be re-added later."
+      : `Remove ${label} from the team? They'll lose access to its shared repertoires.`,
+    okLabel: isSelf ? "Leave" : "Remove",
+    cancelLabel: "Cancel",
+    tone: "danger",
+  });
+  if (!confirmed) return;
+  try {
+    await api(
+      `/api/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}`,
+      { method: "DELETE" }
+    );
+    setStatus(isSelf ? "Left team" : `Removed ${label}`);
+    if (isSelf) hideTeamDetail();
+    await loadTeams();
+  } catch (error) {
+    setStatus(error.message);
+  }
+}
+
+// The team's shareable join link. The raw code is returned ONLY at mint time (it's
+// hashed at rest), so opening this rotates the link and shows the fresh one; any
+// previously shared link stops working.
+async function teamInvite(teamId) {
+  let payload;
+  try {
+    payload = await postJson(`/api/teams/${encodeURIComponent(teamId)}/invite`, {});
+  } catch (error) {
+    setStatus(error.message);
+    return;
+  }
+  const url = `${window.location.origin}${payload.url}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    setStatus("Invite link copied");
+  } catch (_) {
+    /* clipboard blocked — the modal still shows the link to copy by hand */
+  }
+  const choice = await showInviteModal({ url });
+  if (choice === "revoke") {
+    try {
+      await api(`/api/teams/${encodeURIComponent(teamId)}/invite`, { method: "DELETE" });
+      setStatus("Invite link revoked");
+    } catch (error) {
+      setStatus(error.message);
+    }
+  }
+  await openTeamDetail(teamId);
+}
+
+function showInviteModal({ url }) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true">
+        <div class="modal-title">Team invite link</div>
+        <div class="modal-body">
+          <p class="modal-note muted">Anyone signed in who opens this link joins the team as a member. For security it's shown only once and replaces any previous link — copy it now. Revoke to disable joining by link.</p>
+          <label class="modal-field">
+            <span>Invite link</span>
+            <input type="text" value="${escapeHtml(url)}" data-invite-url readonly />
+          </label>
+        </div>
+        <div class="modal-footer">
+          <button class="btn danger" data-action="revoke" type="button">Revoke</button>
+          <button class="btn ghost" data-action="copy" type="button">Copy</button>
+          <button class="btn primary" data-action="done" type="button">Done</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const input = overlay.querySelector("[data-invite-url]");
+    if (input) {
+      input.focus();
+      if (input.select) input.select();
+    }
+    const cleanup = () => {
+      document.removeEventListener("keydown", onKey);
+      overlay.remove();
+    };
+    const close = (value) => {
+      cleanup();
+      resolve(value);
+    };
+    const onKey = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close(null);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    overlay.querySelector('[data-action="copy"]').addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        setStatus("Invite link copied");
+      } catch (_) {
+        if (input) {
+          input.focus();
+          if (input.select) input.select();
+        }
+      }
+    });
+    overlay.querySelector('[data-action="revoke"]').addEventListener("click", () => close("revoke"));
+    overlay.querySelector('[data-action="done"]').addEventListener("click", () => close("done"));
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) close(null);
+    });
+  });
+}
+
+// In-team "add a repertoire": share one of the caller's OWN repertoires with this
+// team. A repertoire can be shared with one team at a time, so picking one already
+// shared elsewhere moves it here.
+async function shareRepertoireIntoTeam(teamId) {
+  let reps = [];
+  try {
+    const payload = await api("/api/repertoires");
+    reps = payload.repertoires || [];
+  } catch (error) {
+    setStatus(error.message);
+    return;
+  }
+  const candidates = reps.filter((r) => !(r.visibility === "team" && r.team_id === teamId));
+  if (!candidates.length) {
+    setStatus(
+      reps.length ? "All your repertoires are already shared here" : "You have no repertoires to share"
+    );
+    return;
+  }
+  const result = await showInputModal({
+    title: "Share a repertoire",
+    okLabel: "Share",
+    fields: [
+      {
+        name: "repertoire",
+        label: "Repertoire",
+        type: "select",
+        default: candidates[0].id,
+        options: candidates.map((r) => ({
+          value: r.id,
+          label: r.visibility === "team" ? `${r.name} (shared elsewhere → moves here)` : r.name,
+        })),
+      },
+      {
+        type: "note",
+        label: "Members get read-only access. A repertoire can be shared with one team at a time.",
+      },
+    ],
+  });
+  if (!result || !result.repertoire) return;
+  try {
+    await postJson("/api/repertoires/share", {
+      repertoire_id: result.repertoire,
+      team_id: teamId,
+      visibility: "team",
+    });
+    setStatus("Shared with the team");
+    await loadDashboardRepertoires();
+    await openTeamDetail(teamId);
+  } catch (error) {
+    setStatus(error.message);
+  }
+}
+
+// Copy a team-shared repertoire the caller doesn't own into their own account.
+async function copySharedRepertoire(repertoireId) {
+  try {
+    const result = await postJson("/api/repertoires/fork", { repertoire_id: repertoireId });
+    setStatus(`Copied "${result.name}" to your repertoires`);
+    await loadDashboardRepertoires();
+  } catch (error) {
+    setStatus(error.message);
+  }
+}
+
+async function loadSharedRepertoires() {
+  const container = document.getElementById("teams-shared");
+  if (!container) return;
+  try {
+    const payload = await api("/api/repertoires");
+    const shared = payload.shared || [];
+    if (!shared.length) {
+      container.innerHTML = '<div class="empty-state">Nothing shared with you yet.</div>';
+      return;
+    }
+    container.innerHTML = shared
+      .map((item) => {
+        const id = escapeHtml(item.id);
+        const name = escapeHtml(item.name);
+        const color = escapeHtml(item.color || "white");
+        const team = teamById(item.team_id);
+        const via = `via ${escapeHtml(team ? team.name : "a team")}`;
+        return `
+          <div class="list-item shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}">
+            <span>
+              <span class="color-dot ${color}"></span>
+              <span class="name">${name}</span>
+              <span class="sub"> · ${via}</span>
+            </span>
+            <span class="team-member-tail">
+              <span class="team-role-badge sm">read-only</span>
+              <button type="button" class="ib team-copy" data-rep-id="${id}" title="Copy to my account">Copy</button>
+            </span>
+          </div>`;
+      })
+      .join("");
+    container.querySelectorAll(".shared-rep-row").forEach((row) => {
+      const open = () => openSharedRepertoire(row.dataset.repertoireId);
+      row.addEventListener("click", (event) => {
+        if (event.target.closest(".team-copy")) return;
+        open();
+      });
+      row.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          open();
+        }
+      });
+    });
+    container.querySelectorAll(".team-copy").forEach((btn) => {
+      btn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        copySharedRepertoire(btn.dataset.repId);
+      });
+    });
+  } catch (error) {
+    container.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+async function openSharedRepertoire(repertoireId) {
+  await editRepertoire(repertoireId);
+}
+
+// Rep context-menu action: share (or unshare) one of the caller's OWN repertoires
+// with a team. Needs the caller's team list; if they have none, nudge them to the
+// Teams view to make one first.
+async function shareRepertoireWithTeam(repertoireId) {
+  try {
+    if (!appState.teams.length) {
+      const payload = await api("/api/teams");
+      appState.teams = payload.teams || [];
+    }
+  } catch (_) {
+    /* fall through with whatever we have */
+  }
+  if (!appState.teams.length) {
+    const go = await showConfirmModal({
+      title: "No teams yet",
+      body: "You need a team to share a repertoire with. Create one now?",
+      okLabel: "Go to Teams",
+      cancelLabel: "Cancel",
+    });
+    if (go) {
+      switchView("teams");
+      loadTeams();
+    }
+    return;
+  }
+  const result = await showInputModal({
+    title: "Share with team",
+    okLabel: "Apply",
+    fields: [
+      {
+        name: "team",
+        label: "Share with",
+        type: "select",
+        default: appState.teams[0].id,
+        options: [
+          { value: "", label: "Private (don't share)" },
+          ...appState.teams.map((tm) => ({
+            value: tm.id,
+            label: tm.name,
+          })),
+        ],
+      },
+      {
+        type: "note",
+        label:
+          "Members get read-only access. A repertoire can be shared with one team at a time.",
+      },
+    ],
+  });
+  if (!result) return;
+  try {
+    if (result.team) {
+      await postJson("/api/repertoires/share", {
+        repertoire_id: repertoireId,
+        team_id: result.team,
+        visibility: "team",
+      });
+      const team = appState.teams.find((tm) => tm.id === result.team);
+      setStatus(`Shared with ${team ? team.name : "team"}`);
+    } else {
+      await postJson("/api/repertoires/share", {
+        repertoire_id: repertoireId,
+        visibility: "private",
+      });
+      setStatus("Repertoire is now private");
+    }
+  } catch (error) {
+    setStatus(error.message);
+  }
 }
 
 function escapeHtml(text) {
@@ -3766,6 +4504,12 @@ function showConfirmModal({
   });
 }
 
+function isBuildReadOnly() {
+  return !!(
+    appState.sharedToken || (appState.build && appState.build.writable === false)
+  );
+}
+
 async function editRepertoire(repertoireId, nodeId = null) {
   // Switching repertoires replaces the local Build tree — flush pending moves of
   // the current one first so they aren't dropped. An optional `nodeId` opens the
@@ -3776,6 +4520,7 @@ async function editRepertoire(repertoireId, nodeId = null) {
     setStatus(error.message);
     return;
   }
+  appState.sharedToken = null;
   setStatus("Loading repertoire");
   try {
     const payload = await api(
@@ -3785,10 +4530,55 @@ async function editRepertoire(repertoireId, nodeId = null) {
     await hydrateBuild(payload, target || payload.selected_node_id);
     appState.trainingRepertoireId = payload.repertoire_id;
     switchView("build");
-    setStatus(`Editing ${payload.name}`);
+    updateBuildReadOnlyUi(payload);
   } catch (error) {
     setStatus(error.message);
   }
+}
+
+function updateBuildReadOnlyUi(payload) {
+  if (appState.sharedToken) return;
+  if (payload.writable === false) {
+    renderReadOnlyBanner(payload);
+    setStatus(`Viewing shared repertoire "${payload.name}" (read-only)`);
+  } else {
+    removeReadOnlyBanner();
+    setStatus(`Editing ${payload.name}`);
+  }
+  syncCoverageReadOnlyState();
+}
+
+function removeReadOnlyBanner() {
+  const banner = document.getElementById("shared-banner");
+  if (banner) banner.remove();
+  syncCoverageReadOnlyState();
+}
+
+function syncCoverageReadOnlyState() {
+  const button = document.getElementById("coverage-run");
+  const gapsEl = document.getElementById("coverage-gaps");
+  const scoreEl = document.getElementById("coverage-score");
+  const drawer = document.getElementById("coverage-drawer");
+  const readOnly = isBuildReadOnly();
+  if (button) {
+    button.disabled = readOnly;
+    button.title = readOnly ? "Read-only — copy to your account first" : "";
+  }
+  if (readOnly) {
+    if (coverageController) {
+      coverageController.abort();
+      coverageController = null;
+      jobToast.cancelJob("Scan stopped");
+    }
+    if (drawer) drawer.open = false;
+    if (gapsEl) gapsEl.innerHTML = "";
+    if (scoreEl) scoreEl.hidden = true;
+    coverageGaps = [];
+  }
+}
+
+function coverageScanStillValid(scanRepId) {
+  return !isBuildReadOnly() && appState.build && appState.build.repertoire_id === scanRepId;
 }
 
 async function trainRepertoire(repertoireId) {
@@ -3814,6 +4604,7 @@ function openRepertoireContextMenu(event, repertoireId, isActive) {
     ["edit", "Edit in builder"],
     ["rename", "Rename..."],
     ["share-link", "Share link..."],
+    ["share-team", "Share with team..."],
     ["toggle-active", isActive ? "Disable" : "Enable"],
     ["delete", "Delete..."],
   ];
@@ -3902,6 +4693,10 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
           },
         ],
       });
+      return;
+    }
+    if (action === "share-team") {
+      await shareRepertoireWithTeam(repertoireId);
       return;
     }
     if (action === "toggle-active") {
@@ -4906,7 +5701,7 @@ function openBuildMenu(event) {
   event.stopPropagation();
   const menu = document.getElementById("repertoire-context-menu");
   if (!menu) return;
-  const hasRep = !!appState.build && !appState.sharedToken;
+  const hasRep = !!appState.build && !isBuildReadOnly();
   const items = [
     ...(hasRep
       ? [
@@ -5402,7 +6197,7 @@ function renderBuildBranchBar() {
 
 async function saveBuildAnnotations(arrows, circles) {
   if (activeViewName() !== "build") return;
-  if (appState.sharedToken) return; // read-only shared view: nothing to persist
+  if (isBuildReadOnly()) return;
   if (!appState.build || !appState.buildCurrentNodeId) return;
   // The annotation POST keys off a real node id — drain any pending local moves so
   // a freshly-played (tmp) node has been reconciled first.
@@ -5517,7 +6312,7 @@ function renderBuildSync() {
   if (!el) return;
   // Nothing to show without an editable repertoire (read-only shared view = no
   // local edits ever happen).
-  if (!appState.build || appState.sharedToken) {
+  if (!appState.build || isBuildReadOnly()) {
     el.hidden = true;
     return;
   }
@@ -5935,8 +6730,8 @@ function beaconFlushBuild() {
 }
 
 async function onBuildBoardMove(moveUci) {
-  if (appState.sharedToken) {
-    setStatus("This is a read-only shared view - copy it to your account to edit");
+  if (isBuildReadOnly()) {
+    setStatus("Read-only — copy to your account to edit");
     return;
   }
   // Show the move immediately. Snapshot the pre-move position so a failed local
@@ -6175,8 +6970,8 @@ async function generateFromCurrentNode() {
   // (opponent) drive the recursion locally into a tree-mutation plan; the server
   // only re-validates + persists via /api/build/generate/apply-plan. No server
   // compute, no fallback.
-  if (appState.sharedToken) {
-    setStatus("This is a read-only shared view - copy it to your account to edit");
+  if (isBuildReadOnly()) {
+    setStatus("Read-only — copy to your account to edit");
     return;
   }
   if (!isBrowserEngineAvailable()) {
@@ -6440,7 +7235,7 @@ async function generateFromCurrentNode() {
 
 function openNodeContextMenu(event, nodeId) {
   event.preventDefault();
-  if (appState.sharedToken) return; // read-only shared view: no node mutations
+  if (isBuildReadOnly()) return;
   const node = appState.buildNodeById.get(nodeId);
   if (!node) return;
   const menu = document.getElementById("node-context-menu");
@@ -8439,6 +9234,7 @@ async function maybeOpenSharedView() {
     await hydrateBuild(payload, payload.selected_node_id);
     renderSharedBanner(payload);
     switchView("build");
+    syncCoverageReadOnlyState();
     setStatus(`Viewing shared repertoire "${payload.name}" (read-only)`);
     return true;
   } catch (error) {
@@ -8447,7 +9243,71 @@ async function maybeOpenSharedView() {
   }
 }
 
-function renderSharedBanner(payload) {
+// A join URL (/?join=<code>) redeems a team invite. Mirrors the shared viewer:
+// signed-out visitors are nudged to sign in (the ?join= survives the reload), then
+// we preview the team and let them confirm before joining. Idempotent server-side.
+async function maybeHandleJoinLink() {
+  let code = null;
+  try {
+    code = new URLSearchParams(window.location.search).get("join");
+  } catch (_) {
+    return false;
+  }
+  if (!code) return false;
+  if (!appState.signedIn) {
+    setStatus("Sign in (or create an account) to join the team");
+    openAuthModal("login");
+    return false; // ?join= stays in the URL; we resume after the sign-in reload
+  }
+  let preview;
+  try {
+    preview = await api(`/api/teams/join/${encodeURIComponent(code)}`);
+  } catch (error) {
+    setStatus(`Invite link problem: ${error.message}`);
+    clearJoinParam();
+    return false;
+  }
+  const members = `${preview.member_count} member${preview.member_count === 1 ? "" : "s"}`;
+  const confirmed = await showConfirmModal({
+    title: preview.already_member ? `Open ${preview.name}?` : `Join ${preview.name}?`,
+    body: preview.already_member
+      ? "You're already a member of this team."
+      : `Join "${preview.name}" (${members})? You'll get read-only access to repertoires shared with the team.`,
+    okLabel: preview.already_member ? "Open" : "Join",
+    cancelLabel: "Cancel",
+  });
+  clearJoinParam();
+  if (!confirmed) return false;
+  let result;
+  try {
+    result = await postJson(`/api/teams/join/${encodeURIComponent(code)}`, {});
+  } catch (error) {
+    setStatus(`Couldn't join: ${error.message}`);
+    return false;
+  }
+  const team = result.team;
+  setStatus(result.joined ? `Joined ${team.name}` : `You're already in ${team.name}`);
+  appState.selectedTeamId = team.id;
+  switchView("teams");
+  await loadTeams();
+  return true;
+}
+
+function clearJoinParam() {
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("join");
+    window.history.replaceState(null, "", url.pathname + url.search);
+  } catch (_) {
+    /* cosmetic */
+  }
+}
+
+function readOnlyBannerText(payload) {
+  return `<b>${escapeHtml(payload.name)}</b> &middot; shared with you (read-only)`;
+}
+
+function renderReadOnlyBanner(payload) {
   const sidebar = document.querySelector("#view-build .sidebar");
   if (!sidebar) return;
   let banner = document.getElementById("shared-banner");
@@ -8459,36 +9319,47 @@ function renderSharedBanner(payload) {
   }
   banner.innerHTML = `
     <div class="shared-banner-text">
-      <b>${escapeHtml(payload.name)}</b> &middot; shared with you (read-only)
+      ${readOnlyBannerText(payload)}
     </div>
     <button class="btn primary" id="shared-fork-btn" data-testid="shared-fork-btn">Copy to my account</button>
   `;
-  document.getElementById("shared-fork-btn").addEventListener("click", forkSharedRepertoire);
+  document.getElementById("shared-fork-btn").addEventListener("click", forkReadableRepertoire);
 }
 
-async function forkSharedRepertoire() {
-  if (!appState.sharedToken) return;
+function renderSharedBanner(payload) {
+  renderReadOnlyBanner(payload);
+}
+
+async function forkReadableRepertoire() {
+  const viaToken = !!appState.sharedToken;
+  const viaTeam = appState.build && appState.build.writable === false;
+  if (!viaToken && !viaTeam) return;
   if (!appState.signedIn) {
-    // Sign-in reloads with ?shared= intact, bringing the viewer (and this button)
-    // back for a signed-in click.
     setStatus("Sign in (or create an account) to copy this repertoire");
     openAuthModal("login");
     return;
   }
   try {
-    const result = await postJson(
-      `/api/shared/${encodeURIComponent(appState.sharedToken)}/fork`,
-      {},
-    );
+    const result = viaToken
+      ? await postJson(
+          `/api/shared/${encodeURIComponent(appState.sharedToken)}/fork`,
+          {},
+        )
+      : await postJson("/api/repertoires/fork", {
+          repertoire_id: appState.build.repertoire_id,
+        });
     appState.sharedToken = null;
-    const banner = document.getElementById("shared-banner");
-    if (banner) banner.remove();
-    try {
-      window.history.replaceState(null, "", window.location.pathname);
-    } catch (_) { /* cosmetic */ }
+    removeReadOnlyBanner();
+    if (viaToken) {
+      try {
+        window.history.replaceState(null, "", window.location.pathname);
+      } catch (_) {
+        /* cosmetic */
+      }
+    }
     await editRepertoire(result.repertoire_id);
     await loadDashboardRepertoires();
-    setStatus(`Copied "${result.name}" to your account - it's yours now`);
+    setStatus(`Copied "${result.name}" to your account — it's yours now`);
   } catch (error) {
     setStatus(error.message);
   }
@@ -8505,6 +9376,10 @@ let coverageController = null;
 let coverageGaps = []; // last scan's gaps, mapped by checkbox data-index for batch complete
 
 async function runCoverageScanUI() {
+  if (isBuildReadOnly()) {
+    setStatus("Read-only — copy to your account first");
+    return;
+  }
   if (!appState.build || !appState.build.nodes || appState.build.nodes.length < 2) {
     setStatus("Open a repertoire with some moves first");
     return;
@@ -8514,6 +9389,7 @@ async function runCoverageScanUI() {
   // Maia worker itself can't start, the provider surfaces that error below instead.
   const button = document.getElementById("coverage-run");
   if (button) button.disabled = true;
+  const scanRepId = appState.build.repertoire_id;
   const rating = effectiveMaiaRating();
   coverageController = new AbortController();
   const jobId = `coverage-${Date.now()}`;
@@ -8535,6 +9411,10 @@ async function runCoverageScanUI() {
       onProgress: ({ scanned }) =>
         jobToast.updateJob({ current: scanned, total: 0, message: `Maia read · ${scanned} positions` }),
     });
+    if (!coverageScanStillValid(scanRepId)) {
+      jobToast.cancelJob("Scan discarded");
+      return;
+    }
     renderCoverageResult(result, rating);
     jobToast.completeJob({
       message: `${Math.round(result.coverage * 100)}% of human play covered`,
@@ -8543,7 +9423,7 @@ async function runCoverageScanUI() {
     if (error && error.name === "AbortError") jobToast.cancelJob("Scan stopped");
     else jobToast.failJob(error.message);
   } finally {
-    if (button) button.disabled = false;
+    if (button && !isBuildReadOnly()) button.disabled = false;
     coverageController = null;
   }
 }
@@ -8627,8 +9507,8 @@ function renderCoverageResult(result, rating) {
 // line" bar (≥2 of my own moves). Sequential so the local-first add + apply-plan for each
 // line settles before the next; one job toast tracks the batch and Stop aborts cleanly.
 async function completeSelectedGaps(gaps) {
-  if (appState.sharedToken) {
-    setStatus("This is a read-only shared view - copy it to your account to edit");
+  if (isBuildReadOnly()) {
+    setStatus("Read-only — copy to your account to edit");
     return;
   }
   if (!isBrowserEngineAvailable()) {
@@ -8935,8 +9815,15 @@ function bindEvents() {
     button.addEventListener("click", () => {
       switchView(button.dataset.view);
       if (button.dataset.view === "settings") loadSettings();
+      if (button.dataset.view === "teams") loadTeams();
     });
   });
+
+  // Teams view actions.
+  const teamsNewBtn = document.getElementById("teams-new");
+  if (teamsNewBtn) teamsNewBtn.addEventListener("click", createTeam);
+  const teamDetailClose = document.getElementById("team-detail-close");
+  if (teamDetailClose) teamDetailClose.addEventListener("click", hideTeamDetail);
 
   // Local-first sync (Build edits + Train SR deltas): persist pending state
   // when the tab is backgrounded (best-effort flush) and on unload (keepalive
@@ -9223,6 +10110,8 @@ async function init() {
   // A share URL opens the read-only viewer last, so it lands on top of whatever
   // workspace state loaded — and works for signed-out visitors too.
   await maybeOpenSharedView();
+  // A join URL (/?join=<code>) redeems a team invite (requires sign-in).
+  await maybeHandleJoinLink();
 }
 
 // Everything that needs an authenticated session. Called from init only when

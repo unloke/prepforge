@@ -69,7 +69,7 @@ def test_workspace_reads_require_auth(client):
 def test_auth_status_signed_out(client):
     r = client.get("/api/auth/status")
     assert r.status_code == 200
-    assert r.json() == {"signed_in": False, "username": None}
+    assert r.json() == {"signed_in": False, "username": None, "user_id": None}
 
 
 # ---- Happy path ------------------------------------------------------------
@@ -138,10 +138,10 @@ def test_dashboard_recap_counts_this_weeks_reviews(client):
 
 
 def test_auth_status_signed_in_reports_display_name(client):
-    _register(client, "coach@example.com", display_name="Coach")
+    user_id = _register(client, "coach@example.com", display_name="Coach")
     r = client.get("/api/auth/status")
     assert r.status_code == 200
-    assert r.json() == {"signed_in": True, "username": "Coach"}
+    assert r.json() == {"signed_in": True, "username": "Coach", "user_id": user_id}
 
 
 def test_auth_status_falls_back_to_email(client):

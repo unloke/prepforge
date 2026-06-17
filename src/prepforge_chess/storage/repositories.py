@@ -653,6 +653,39 @@ class PrepForgeRepository:
             for r in rows
         ]
 
+    def list_repertoires_shared_to_team(self, team_id: str) -> List[Dict[str, Any]]:
+        """Lightweight metas of repertoires shared (``visibility='team'``) to one team."""
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(
+                    t.repertoires.c.id,
+                    t.repertoires.c.name,
+                    t.repertoires.c.color,
+                    t.repertoires.c.user_profile_id,
+                )
+                .where(t.repertoires.c.team_id == team_id)
+                .where(t.repertoires.c.visibility == "team")
+                .order_by(t.repertoires.c.updated_at.desc())
+            ).mappings().all()
+        return [
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "color": r["color"],
+                "owner_user_id": r["user_profile_id"],
+            }
+            for r in rows
+        ]
+
+    def unshare_all_for_team(self, team_id: str) -> None:
+        """Make every repertoire shared to ``team_id`` private again (team delete)."""
+        with self.engine.begin() as conn:
+            conn.execute(
+                update(t.repertoires)
+                .where(t.repertoires.c.team_id == team_id)
+                .values(team_id=None, visibility="private", updated_at=_now_text())
+            )
+
     def set_repertoire_active(self, repertoire_id: str, active: bool) -> None:
         with self.engine.begin() as conn:
             conn.execute(

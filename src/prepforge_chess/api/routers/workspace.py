@@ -67,6 +67,18 @@ def _readable_repertoire(
         return meta
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
 
+
+def _strip_readonly_build_payload(payload: dict[str, Any]) -> None:
+    """Remove the owner's personal training colour from a read-only Build payload.
+
+    Public share links and team-shared read views must not leak health, summary, or
+    per-node mastery derived from the owner's training progress."""
+    payload.pop("health", None)
+    payload.pop("summary", None)
+    for node in payload.get("nodes", []):
+        node.pop("mastery", None)
+
+
 # Static next-action hints the dashboard surfaces (carried over verbatim from the
 # legacy server so the existing SPA renders unchanged).
 _RECOMMENDATIONS = [
@@ -250,6 +262,8 @@ def list_repertoires(
                 "notes": rep.notes,
                 "tags": rep.tags,
                 "is_active": getattr(rep, "is_active", True),
+                "team_id": sharing["team_id"],
+                "visibility": sharing["visibility"],
                 "health": compute_health(
                     rep.root_node,
                     rep.color,
@@ -257,6 +271,7 @@ def list_repertoires(
                 ).to_dict(),
             }
             for rep in repo.list_repertoires(owner_user_id=owner)
+            if (sharing := repo.repertoire_meta(rep.id)) is not None
         ],
         "shared": [
             {
@@ -279,11 +294,18 @@ def build_load(
     repo: PrepForgeRepository = Depends(get_repository),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """The Build-view payload for a repertoire the caller can read (read-only). The
-    owner always can; a team member can read one shared to their team. Computes no
-    chess — pure serialization of the stored tree + training progress."""
-    _readable_repertoire(repo, repertoire_id, owner, user_team_ids(db, user.id))
-    return build_workspace_payload(repo, repertoire_id)
+    """The Build-view payload for a repertoire the caller can read. The owner always
+    can write; a team member can read one shared to their team (``writable=false``).
+    Computes no chess — pure serialization of the stored tree + training progress."""
+    meta = _readable_repertoire(repo, repertoire_id, owner, user_team_ids(db, user.id))
+    payload = build_workspace_payload(repo, repertoire_id)
+    payload["writable"] = meta["owner_user_id"] in (None, owner)
+    if not payload["writable"]:
+        _strip_readonly_build_payload(payload)
+        payload["shared"] = True
+        if meta.get("visibility") == "team" and meta.get("team_id"):
+            payload["share_team_id"] = meta["team_id"]
+    return payload
 
 
 class ShareRepertoireBody(BaseModel):
@@ -535,10 +557,7 @@ def shared_repertoire(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="unknown share link"
         ) from None
-    payload.pop("health", None)
-    payload.pop("summary", None)
-    for node in payload.get("nodes", []):
-        node.pop("mastery", None)
+    _strip_readonly_build_payload(payload)
     payload["shared"] = True
     return payload
 
@@ -569,6 +588,49 @@ def fork_shared_repertoire(
                 ),
             )
     _reassign_ids(repertoire)  # fresh ids -> caller's own copy, no cross-tenant clobber
+    repo.save_repertoire(repertoire, owner_user_id=owner)
+    return {"repertoire_id": repertoire.id, "name": repertoire.name}
+
+
+class ForkRepertoireBody(BaseModel):
+    repertoire_id: str
+
+
+@router.post("/repertoires/fork")
+def fork_repertoire(
+    body: ForkRepertoireBody,
+    user: User = Depends(current_user),
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Copy a readable (team-shared or owned) repertoire into the caller's account.
+
+    Team members use this to fork a coach's shared repertoire into their own
+    workspace. The source must pass the read gate; callers who already own it get
+    400 — there is nothing to fork."""
+    meta = _readable_repertoire(
+        repo, body.repertoire_id, owner, user_team_ids(db, user.id)
+    )
+    if meta["owner_user_id"] in (None, owner):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="repertoire is already yours",
+        )
+    repertoire = repo.load_repertoire(body.repertoire_id)
+    if repertoire is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
+    if user.plan != Plan.pro:
+        if repo.count_repertoires(owner_user_id=owner) >= settings.free_repertoire_limit:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=(
+                    "Free plan is limited to {0} repertoires. Upgrade to Pro for "
+                    "unlimited.".format(settings.free_repertoire_limit)
+                ),
+            )
+    _reassign_ids(repertoire)
     repo.save_repertoire(repertoire, owner_user_id=owner)
     return {"repertoire_id": repertoire.id, "name": repertoire.name}
 

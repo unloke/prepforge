@@ -16,6 +16,7 @@
         <button class="tab" data-view="build" data-testid="nav-build">Build</button>
         <button class="tab" data-view="train" data-testid="nav-train">Train</button>
         <button class="tab" data-view="replay" data-testid="nav-replay">Replay</button>
+        <button class="tab" data-view="teams" data-testid="nav-teams">Teams</button>
         <button class="tab" data-view="settings" data-testid="nav-settings">Settings</button>
       </nav>
       <button class="lichess-chip" id="account-chip" data-testid="account-chip" aria-haspopup="menu" aria-expanded="false" title="Connect a Lichess account">
@@ -305,6 +306,52 @@
               What do they actually open with — and do your repertoires cover their pet lines?
             </p>
             <div id="scout-results" class="scout-results"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-teams" data-testid="view-teams">
+        <div class="replay-stack teams-stack">
+          <section class="card">
+            <div class="card-head">
+              <h2>My teams</h2>
+              <button class="btn primary" id="teams-new" data-testid="teams-new">New team</button>
+            </div>
+            <p class="muted hint">
+              Share repertoires read-only with students or training partners. Add members by
+              their Lichess username, or send an invite link &mdash; sharing never grants edit access.
+            </p>
+            <div id="teams-list" class="list-stack" data-testid="teams-list"></div>
+          </section>
+
+          <section class="card team-detail-card" id="team-detail-card" data-testid="team-detail-card" hidden>
+            <div class="card-head">
+              <h2 id="team-detail-name">Team</h2>
+              <div class="tools">
+                <span class="team-role-badge" id="team-detail-role"></span>
+                <button class="ib" id="team-detail-invite" data-testid="team-detail-invite" title="Invite link" hidden>🔗</button>
+                <button class="ib" id="team-detail-rename" data-testid="team-detail-rename" title="Rename" hidden>✎</button>
+                <button class="ib danger" id="team-detail-delete" data-testid="team-detail-delete" title="Delete team" hidden>🗑</button>
+                <button class="ib" id="team-detail-close" title="Close" aria-label="Close team details">×</button>
+              </div>
+            </div>
+            <div class="team-members-head">
+              <span class="settings-label">Members</span>
+              <button class="btn ghost" id="team-add-member" data-testid="team-add-member" hidden>Add member</button>
+            </div>
+            <div id="team-members" class="list-stack" data-testid="team-members"></div>
+            <div class="team-shared-head">
+              <span class="settings-label">Shared repertoires</span>
+              <button class="btn ghost" id="team-share-rep" data-testid="team-share-rep" hidden>Share a repertoire</button>
+            </div>
+            <div id="team-shared-repertoires" class="list-stack" data-testid="team-shared-repertoires"></div>
+            <div class="team-detail-foot" id="team-detail-foot"></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><h2 id="teams-shared-title">Shared with me</h2></div>
+            <p class="muted hint" id="teams-shared-hint">Repertoires teammates shared with your teams. Open to review (read-only).</p>
+            <div id="teams-shared" class="list-stack" data-testid="teams-shared"></div>
           </section>
         </div>
       </section>
