@@ -4,9 +4,6 @@ import {
   isBrowserEngineAvailable,
 } from "./engine/stockfish-provider.js";
 import { analyzeGamePositions } from "./engine/game-analyzer.js";
-import { buildBookline } from "./coach/bookline.js";
-import { computeBrilliantAssessments } from "./coach/brilliant-assess.js";
-import { runBrowserBuildGenerate } from "./engine/build-generate-runner.js";
 import {
   getSharedMaia3Provider,
   disposeSharedMaia3Provider,
@@ -18,16 +15,28 @@ import { createCsrfTokenSource, isSafeMethod, readCsrfCookie, CSRF_HEADER } from
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { describeMove } from "./explain.js";
-import {
-  buildMoveFeatures,
-  isBrilliantByMaia,
-  markBrilliant,
-  moverWinChanceAfter,
-  BRILLIANT_MAX_HUMAN_PROB,
-  BRILLIANT_MIN_WIN_GAP,
-} from "./coach/features.js";
-import { attachIntuition } from "./coach/intuition.js";
-import { buildCommentary } from "./coach/commentary.js";
+
+let _coachReady = null;
+function preloadCoach() {
+  if (!_coachReady) {
+    _coachReady = import("./coach/bundle.js").catch((err) => {
+      _coachReady = null;
+      throw err;
+    });
+  }
+  return _coachReady;
+}
+
+let _buildGenReady = null;
+function preloadBuildGen() {
+  if (!_buildGenReady) {
+    _buildGenReady = import("./engine/build-generate-runner.js").catch((err) => {
+      _buildGenReady = null;
+      throw err;
+    });
+  }
+  return _buildGenReady;
+}
 
 // Front-end error beacon (stability plan #1): report uncaught errors so we have a
 // server-side window into browser crashes. Best-effort — sendBeacon never throws
@@ -1574,6 +1583,7 @@ class PositionCoach {
     const prevFen = ctx.prevFen;
     const token = ++this.token;
     try {
+      const c = await (_coachReady || preloadCoach());
       this._ensureEngine();
       // The position BEFORE the move (best line + best alternative) and AFTER it.
       const before = await this._eval(prevFen, token);
@@ -1597,7 +1607,7 @@ class PositionCoach {
         if (!after) return;
         top = after.lines[0] || {};
       }
-      const features = buildMoveFeatures({
+      const features = c.buildMoveFeatures({
         ply: ctx.ply ?? null,
         moveNumber: Number(prevFen.split(" ")[5]) || null,
         mover,
@@ -1608,7 +1618,7 @@ class PositionCoach {
         beforeEval: { lines: before.lines },
         afterEval: { cp: top.cp ?? null, mate: top.mate ?? null, pvUci: top.pvUci || [], pvSan: top.pvSan || [] },
       });
-      renderCoachProse(buildCommentary(features));
+      renderCoachProse(c.buildCommentary(features));
       // Read the position's "texture" from Maia's human-move distribution (one obvious
       // move vs. a rich spread) and fold it into the commentary — best-effort and async,
       // reusing the same Maia worker the brilliant check uses.
@@ -1624,7 +1634,7 @@ class PositionCoach {
       const saved = savedMainlineMove(ctx.ply, prevFen, ctx.lastUci, fen);
       if (saved) {
         if (saved.classification === "brilliant") {
-          this._showSavedBrilliant(features, prevFen, ctx.lastUci, fen, token);
+          this._showSavedBrilliant(c, features, prevFen, ctx.lastUci, fen, token);
         }
         // A saved non-brilliant verdict is authoritative → leave the base read as is.
       } else if (features.brilliantCandidate) {
@@ -1643,6 +1653,7 @@ class PositionCoach {
   // on the first candidate; the shared provider caches the model after that.
   async _checkBrilliant(features, prevFen, uci, fen, token) {
     try {
+      const c = await (_coachReady || preloadCoach());
       const provider = getSharedMaia3Provider();
       const rating = effectiveMaiaRating();
       // Personalized: "humans wouldn't find it" is judged at the player's own strength
@@ -1653,21 +1664,21 @@ class PositionCoach {
       // ones gate the costly trap_gap (a Maia policy read + a Stockfish eval of the natural
       // move), so we never pay for it on a move a free check already ruled out:
       //   • Unintuitive — a human rarely finds it.
-      if (!(a.humanProbability <= BRILLIANT_MAX_HUMAN_PROB)) return;
+      if (!(a.humanProbability <= c.BRILLIANT_MAX_HUMAN_PROB)) return;
       //   • Reveal — Stockfish's truth sits far above Maia's first-glance read. (Free: both
       //     numbers are already in hand.) This is the gate that used to be checked only after
       //     trap_gap had already run, inside isBrilliantByMaia.
-      if (features.winAfterMover - a.winChanceAfter * 100 < BRILLIANT_MIN_WIN_GAP) return;
+      if (features.winAfterMover - a.winChanceAfter * 100 < c.BRILLIANT_MIN_WIN_GAP) return;
       const trapGap = await this._trapGap(features, prevFen, uci, fen, token, rating);
       if (token !== this.token || fen !== this.fen) return;
-      const brilliant = isBrilliantByMaia(features, {
+      const brilliant = c.isBrilliantByMaia(features, {
         maiaHumanProb: a.humanProbability,
         maiaWinAfter: a.winChanceAfter,
         trapGap,
       });
       if (brilliant) {
-        markBrilliant(features, { humanProb: a.humanProbability, winChanceAfter: a.winChanceAfter });
-        renderCoachProse(buildCommentary(features));
+        c.markBrilliant(features, { humanProb: a.humanProbability, winChanceAfter: a.winChanceAfter });
+        renderCoachProse(c.buildCommentary(features));
       }
     } catch (err) {
       console.warn("Coach: Maia brilliancy check unavailable", err);
@@ -1680,7 +1691,7 @@ class PositionCoach {
   // prose can name how rarely a human finds it; if Maia is unavailable the star still shows,
   // just without that grounding detail. The verdict itself comes from Analyze, so the live
   // coach never disagrees with the saved analysis on a mainline move.
-  async _showSavedBrilliant(features, prevFen, uci, fen, token) {
+  async _showSavedBrilliant(c, features, prevFen, uci, fen, token) {
     // The saved verdict is authoritative and already says Brilliant, so commit the star to the
     // screen NOW — don't make the user stare at the base "Best" read while Maia loads. (On a
     // direct jump to a brilliant ply there's no warm cache; awaiting Maia FIRST meant Best
@@ -1688,8 +1699,8 @@ class PositionCoach {
     // star never appeared at all.) We're called synchronously from _run right after the base
     // render, so the token is still current here; guard anyway for safety.
     if (token !== this.token || fen !== this.fen) return;
-    markBrilliant(features, null);
-    renderCoachProse(buildCommentary(features));
+    c.markBrilliant(features, null);
+    renderCoachProse(c.buildCommentary(features));
     // Then enrich — non-blocking — with how rarely a human finds it. This is a cosmetic detail
     // on top of an already-shown Brilliant; a re-render only if the user is still on this move
     // when Maia answers. Maia unavailable → the star simply stays without the rarity grounding.
@@ -1697,8 +1708,8 @@ class PositionCoach {
       const provider = getSharedMaia3Provider();
       const a = await provider.moveAssessment({ fen: prevFen, moveUci: uci, rating: effectiveMaiaRating() });
       if (!a || token !== this.token || fen !== this.fen) return;
-      markBrilliant(features, { humanProb: a.humanProbability, winChanceAfter: a.winChanceAfter });
-      renderCoachProse(buildCommentary(features));
+      c.markBrilliant(features, { humanProb: a.humanProbability, winChanceAfter: a.winChanceAfter });
+      renderCoachProse(c.buildCommentary(features));
     } catch (_) {
       /* Maia unavailable → brilliant read with no rarity detail */
     }
@@ -1710,6 +1721,7 @@ class PositionCoach {
   // policy or the natural move can't be evaluated (→ not flagged, failing closed like the
   // server); 0 when the natural move IS the played one (no trap to avoid).
   async _trapGap(features, prevFen, playedUci, fen, token, rating) {
+    const c = await (_coachReady || preloadCoach());
     const provider = getSharedMaia3Provider();
     const preds = await provider.predictions({ fen: prevFen, rating });
     if (token !== this.token || fen !== this.fen) return null;
@@ -1725,7 +1737,7 @@ class PositionCoach {
     const read = await this._eval(humanFen, token);
     if (token !== this.token || fen !== this.fen || !read || !read.lines.length) return null;
     const line = read.lines[0];
-    const humanWc = moverWinChanceAfter({ cp: line.cp ?? null, mate: line.mate ?? null }, features.mover);
+    const humanWc = c.moverWinChanceAfter({ cp: line.cp ?? null, mate: line.mate ?? null }, features.mover);
     return features.winAfterMover / 100 - humanWc;
   }
 
@@ -1738,13 +1750,14 @@ class PositionCoach {
   // worker (the model is loaded once and cached), so it rides the existing budget.
   async _checkIntuition(features, prevFen, fen, token) {
     try {
+      const c = await (_coachReady || preloadCoach());
       const provider = getSharedMaia3Provider();
       // Personalized: the texture read runs at the player's own strength (Settings →
       // Playing strength), so "one obvious move" means obvious to THEM.
       const read = await provider.positionRead({ fen: prevFen, rating: effectiveMaiaRating() });
       if (token !== this.token || fen !== this.fen || !read) return;
-      attachIntuition(features, read);
-      renderCoachProse(buildCommentary(features));
+      c.attachIntuition(features, read);
+      renderCoachProse(c.buildCommentary(features));
     } catch (err) {
       console.warn("Coach: Maia intuition read unavailable", err);
       /* Maia unavailable → no texture/sharpness note; the engine read stands. */
@@ -1951,6 +1964,7 @@ async function updateBookline() {
   const el = document.getElementById("coach-bookline");
   if (!el) return;
   if (!appState.signedIn) return hideBookline();
+  const { buildBookline } = await (_coachReady || preloadCoach());
   const nodeId = appState.analysisCurrentNodeId || "root";
   await ensureBookLoaded();
   // Re-read after the await — the user may have navigated while the trees loaded.
@@ -2605,8 +2619,21 @@ function switchView(name) {
   document.querySelectorAll(".view").forEach((view) => {
     view.classList.toggle("is-active", view.id === `view-${name}`);
   });
+  if (name === "analyze") {
+    preloadCoach().catch(() => {});
+    preloadAnalyzeView().catch(() => {});
+  }
+  if (name === "build") {
+    preloadCoach().catch(() => {});
+    preloadBuildGen().catch(() => {});
+    preloadBuildView().catch(() => {});
+  }
   if (name === "train") {
+    preloadTrainView().catch(() => {});
     loadTrainRepertoireOptions();
+  }
+  if (name === "replay") {
+    preloadReplayView().catch(() => {});
   }
   // Warm the Analyze book (active repertoire trees) so the first explored move
   // can be matched without waiting on the lazy load.
@@ -2621,8 +2648,9 @@ function switchView(name) {
     loadDashboard().catch(() => { /* counters refresh is best-effort */ });
   }
   // Entering Teams (re)loads the caller's teams + shared list.
-  if (name === "teams" && appState.signedIn) {
-    loadTeams().catch(() => { /* best-effort */ });
+  if (name === "teams") {
+    preloadTeamsView().catch(() => {});
+    if (appState.signedIn) loadTeams().catch(() => { /* best-effort */ });
   }
   // The engine widget is shared across tabs: it stays open while navigating and
   // re-syncs to whichever board the new tab shows (Analyze or Build).
@@ -3557,7 +3585,7 @@ async function recallAnalysis(gameId) {
     appState.analysis = payload;
     resetAnalysisVariations();
     showAnalysisPly(0);
-    renderAnalysis(payload);
+    await renderAnalysis(payload);
     revealAnalysisResults();
     setStatus(`Recalled analysis: ${payload.moves.length} plies`);
   } catch (error) {
@@ -3684,76 +3712,49 @@ function teamRoleLabel(role) {
   return TEAM_ROLE_LABELS[role] || role;
 }
 
-function teamMemberCountLabel(count) {
-  const n = Number(count) || 0;
-  return `${n} member${n === 1 ? "" : "s"}`;
-}
-
 function teamById(teamId) {
   return appState.teams.find((tm) => tm.id === teamId) || null;
 }
 
+let teamsModule = null;
+let teamsView = null;
+
+function preloadTeamsView() {
+  if (!teamsModule) {
+    teamsModule = import("./views/teams.js").catch((err) => {
+      teamsModule = null;
+      throw err;
+    });
+  }
+  return teamsModule;
+}
+
+async function ensureTeamsView() {
+  const mod = await preloadTeamsView();
+  if (!teamsView) {
+    teamsView = mod.createTeamsView({
+      appState,
+      api,
+      escapeHtml,
+      hideTeamDetail,
+      openTeamDetail,
+      loadSharedRepertoires,
+      editRepertoire,
+      unshareRepertoireFromTeam,
+      copySharedRepertoire,
+      teamRoleLabel,
+    });
+  }
+  return teamsView;
+}
+
 async function loadTeams() {
-  const list = document.getElementById("teams-list");
-  const shared = document.getElementById("teams-shared");
-  if (!list) return;
-  if (!appState.signedIn) {
-    list.innerHTML = '<div class="empty-state">Sign in to create and join teams.</div>';
-    if (shared) shared.innerHTML = "";
-    hideTeamDetail();
-    return;
-  }
-  list.innerHTML = '<div class="empty-state">Loading…</div>';
-  try {
-    const payload = await api("/api/teams");
-    appState.teams = payload.teams || [];
-    renderTeamsList();
-    // Re-open an expanded team after a reload so a member add/remove stays in view.
-    if (appState.selectedTeamId && appState.teams.some((tm) => tm.id === appState.selectedTeamId)) {
-      openTeamDetail(appState.selectedTeamId);
-    } else {
-      hideTeamDetail();
-    }
-  } catch (error) {
-    list.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
-  }
-  loadSharedRepertoires();
+  return (await ensureTeamsView()).loadTeams();
 }
 
 function renderTeamsList() {
-  const list = document.getElementById("teams-list");
-  if (!list) return;
-  if (!appState.teams.length) {
-    list.innerHTML = '<div class="empty-state">No teams yet. Create one to start sharing.</div>';
-    return;
-  }
-  list.innerHTML = appState.teams
-    .map((team) => {
-      const id = escapeHtml(team.id);
-      const name = escapeHtml(team.name);
-      const role = escapeHtml(teamRoleLabel(team.role));
-      const countLabel = escapeHtml(teamMemberCountLabel(team.member_count));
-      const selectedCls = appState.selectedTeamId === team.id ? " is-selected" : "";
-      return `
-        <div class="list-item team-row${selectedCls}" role="button" tabindex="0" data-team-id="${id}">
-          <span>
-            <span class="name">${name}</span>
-            <span class="sub"> · ${countLabel}</span>
-          </span>
-          <span class="team-role-badge">${role}</span>
-        </div>`;
-    })
-    .join("");
-  list.querySelectorAll(".team-row").forEach((row) => {
-    const open = () => openTeamDetail(row.dataset.teamId);
-    row.addEventListener("click", open);
-    row.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        open();
-      }
-    });
-  });
+  if (teamsView) return teamsView.renderTeamsList();
+  void ensureTeamsView().then((view) => view.renderTeamsList()).catch(() => {});
 }
 
 function hideTeamDetail() {
@@ -3863,60 +3864,10 @@ async function openTeamDetail(teamId) {
 }
 
 function renderTeamSharedRepertoires(teamId, sharedReps) {
-  const container = document.getElementById("team-shared-repertoires");
-  if (!container) return;
-  if (!sharedReps.length) {
-    container.innerHTML =
-      '<div class="empty-state">No repertoires shared yet. Use “Share a repertoire” above to add one.</div>';
-    return;
-  }
-  container.innerHTML = sharedReps
-    .map((item) => {
-      const id = escapeHtml(item.id);
-      const name = escapeHtml(item.name);
-      const color = escapeHtml(item.color);
-      const owner = escapeHtml(item.owner_display_name || item.owner_email || "member");
-      const isMine = item.owner_user_id === appState.accountUserId;
-      // Your own shared rep: Unshare. Someone else's: Copy to your account (fork).
-      const action = isMine
-        ? `<button type="button" class="ib team-unshare" data-rep-id="${id}" data-rep-name="${name}" title="Stop sharing">Unshare</button>`
-        : `<button type="button" class="ib team-copy" data-rep-id="${id}" title="Copy to my account">Copy</button>`;
-      return `
-        <div class="list-item team-shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}">
-          <span>
-            <span class="color-dot ${color}"></span>
-            <span class="name">${name}</span>
-            <span class="sub"> · ${owner}</span>
-          </span>
-          <span class="team-member-tail">${action}</span>
-        </div>`;
-    })
-    .join("");
-  container.querySelectorAll(".team-shared-rep-row").forEach((row) => {
-    const open = () => editRepertoire(row.dataset.repertoireId);
-    row.addEventListener("click", (event) => {
-      if (event.target.closest(".team-unshare") || event.target.closest(".team-copy")) return;
-      open();
-    });
-    row.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        open();
-      }
-    });
-  });
-  container.querySelectorAll(".team-unshare").forEach((btn) => {
-    btn.addEventListener("click", (event) => {
-      event.stopPropagation();
-      unshareRepertoireFromTeam(teamId, btn.dataset.repId, btn.dataset.repName);
-    });
-  });
-  container.querySelectorAll(".team-copy").forEach((btn) => {
-    btn.addEventListener("click", (event) => {
-      event.stopPropagation();
-      copySharedRepertoire(btn.dataset.repId);
-    });
-  });
+  if (teamsView) return teamsView.renderTeamSharedRepertoires(teamId, sharedReps);
+  void ensureTeamsView()
+    .then((view) => view.renderTeamSharedRepertoires(teamId, sharedReps))
+    .catch(() => {});
 }
 
 async function unshareRepertoireFromTeam(teamId, repertoireId, name) {
@@ -4902,6 +4853,7 @@ async function runAnalysis() {
           }
         });
         try {
+          const { computeBrilliantAssessments } = await (_coachReady || preloadCoach());
           maiaAssessments = await computeBrilliantAssessments({
             moves: prep.moves,
             evals,
@@ -4967,7 +4919,7 @@ async function runAnalysis() {
     appState.analysis = payload;
     resetAnalysisVariations();
     showAnalysisPly(0);
-    renderAnalysis(payload);
+    await renderAnalysis(payload);
     setStatus(`Analysis ready: ${payload.moves.length} plies`);
     jobToast.completeJob({
       title: "Analysis ready",
@@ -5012,115 +4964,120 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function renderAnalysis(payload) {
-  renderMovePairs(payload.moves);
-  renderEvalChart(payload.eval_graph);
-  renderClassificationBars(payload.moves);
+let analyzeModule = null;
+let analyzeView = null;
+let moveTreeModule = null;
+let moveTreeRenderer = null;
+
+function preloadAnalyzeView() {
+  if (!analyzeModule) {
+    analyzeModule = import("./views/analyze.js").catch((err) => {
+      analyzeModule = null;
+      throw err;
+    });
+  }
+  return analyzeModule;
 }
 
-// Group raw move classifications into the handful of buckets a human actually
-// reads at a glance. Order here is the left-to-right order on the bar.
-const CLASS_GROUPS = [
-  { key: "brilliant", label: "Brilliant", members: ["brilliant"] },
-  { key: "good", label: "Good", members: ["best", "excellent", "good", "book"] },
-  { key: "inaccuracy", label: "Inaccuracy", members: ["inaccuracy"] },
-  { key: "mistake", label: "Mistake", members: ["mistake"] },
-  { key: "blunder", label: "Blunder", members: ["blunder"] },
-  { key: "missed", label: "Missed", members: ["missed_win", "missed_tactic"] },
-];
-const CLASS_GROUP_OF = (() => {
-  const map = {};
-  CLASS_GROUPS.forEach((g) => g.members.forEach((m) => (map[m] = g.key)));
-  return map;
-})();
+async function ensureAnalyzeView() {
+  const mod = await preloadAnalyzeView();
+  if (!analyzeView) {
+    analyzeView = mod.createAnalyzeView({
+      appState,
+      escapeHtml,
+      START_FEN,
+      showAnalysisPly,
+      selectAnalysisNode,
+      revealAnalysisResults,
+    });
+  }
+  return analyzeView;
+}
+
+function preloadMoveTreeRenderer() {
+  if (!moveTreeModule) {
+    moveTreeModule = import("./views/shared/movetree.js").catch((err) => {
+      moveTreeModule = null;
+      throw err;
+    });
+  }
+  return moveTreeModule;
+}
+
+async function ensureMoveTreeRenderer() {
+  const mod = await preloadMoveTreeRenderer();
+  if (!moveTreeRenderer) {
+    moveTreeRenderer = mod.createMoveTreeRenderer({ escapeHtml });
+  }
+  return moveTreeRenderer;
+}
+
+async function renderAnalysis(payload) {
+  return (await ensureAnalyzeView()).renderAnalysis(payload);
+}
+
+// Inline badge symbols so move badges render correctly before analyze.js loads.
+const ANALYSIS_CLASS_GROUP_OF = {
+  brilliant: "brilliant",
+  best: "good",
+  excellent: "good",
+  good: "good",
+  book: "good",
+  inaccuracy: "inaccuracy",
+  mistake: "mistake",
+  blunder: "blunder",
+  missed_win: "missed",
+  missed_tactic: "missed",
+};
 function classBadgeSymbol(classification) {
-  const group = CLASS_GROUP_OF[String(classification || "").toLowerCase()];
-  return {
-    brilliant: "!!",
-    good: "+",
-    inaccuracy: "?!",
-    mistake: "?",
-    blunder: "!",
-    missed: "x",
-  }[group] || ".";
+  if (analyzeView) return analyzeView.classBadgeSymbol(classification);
+  const group = ANALYSIS_CLASS_GROUP_OF[String(classification || "").toLowerCase()];
+  return (
+    {
+      brilliant: "!!",
+      good: "+",
+      inaccuracy: "?!",
+      mistake: "?",
+      blunder: "!",
+      missed: "x",
+    }[group] || "."
+  );
 }
 
-// Per-side segmented bars: White on top, Black below. Each segment's width is
-// proportional to how many of that side's moves fell in the bucket; clicking a
-// segment jumps the board to that side's first move of that kind. Replaces the
-// old alphabetical pill soup that new players couldn't parse.
-function renderClassificationBars(moves) {
-  const host = document.getElementById("analysis-summary");
-  if (!host) return;
-  if (!moves || !moves.length) {
-    host.innerHTML = "";
+function analysisTreeHasContent(movesArg) {
+  const moves = movesArg || (appState.analysis ? appState.analysis.moves : []);
+  if (moves && moves.length) return true;
+  return !!(appState.analysisVarNodes && appState.analysisVarNodes.size);
+}
+
+function renderAnalysisTreeEmptyState() {
+  const container = document.getElementById("analysis-moves");
+  if (!container) return;
+  appState.analysisTree = null;
+  container.innerHTML =
+    '<div class="empty-state">Play moves on the board to branch into study lines, ' +
+    "or load a PGN and click Analyze for a full review.</div>";
+}
+
+function renderAnalysisTree(movesArg) {
+  if (!analysisTreeHasContent(movesArg)) {
+    renderAnalysisTreeEmptyState();
     return;
   }
-  const tally = { white: {}, black: {} };
-  moves.forEach((move) => {
-    const side = move.side === "black" ? "black" : "white";
-    const group = CLASS_GROUP_OF[move.classification];
-    if (!group) return;
-    tally[side][group] = (tally[side][group] || 0) + 1;
-  });
-
-  const rowHtml = (side, label) => {
-    const counts = tally[side];
-    const total = CLASS_GROUPS.reduce((sum, g) => sum + (counts[g.key] || 0), 0);
-    const segs = CLASS_GROUPS.filter((g) => counts[g.key] > 0)
-      .map((g) => {
-        const n = counts[g.key];
-        const pct = Math.round((n / total) * 100);
-        return (
-          `<button class="cbar-seg seg-${g.key}" style="flex:${n}" ` +
-          `data-side="${side}" data-group="${g.key}" ` +
-          `title="${g.label}: ${n}" aria-label="${label} ${g.label}: ${n}">` +
-          `<span class="cbar-seg-n">${pct >= 10 ? n : ""}</span></button>`
-        );
-      })
-      .join("");
-    const track = total
-      ? segs
-      : '<span class="cbar-empty">no scored moves</span>';
-    return (
-      `<div class="cbar-row">` +
-      `<span class="cbar-side">${label}</span>` +
-      `<span class="cbar-track">${track}</span>` +
-      `</div>`
-    );
-  };
-
-  const legend = CLASS_GROUPS.map(
-    (g) => `<span class="cbar-key"><i class="seg-${g.key}"></i>${g.label}</span>`
-  ).join("");
-
-  host.innerHTML =
-    `<div class="class-bars">` +
-    rowHtml("white", "White") +
-    rowHtml("black", "Black") +
-    `<div class="cbar-legend">${legend}</div>` +
-    `</div>`;
-
-  host.querySelectorAll(".cbar-seg").forEach((seg) => {
-    seg.addEventListener("click", () => {
-      jumpToClassGroup(seg.dataset.side, seg.dataset.group);
-      seg.blur();
-    });
-  });
+  if (analyzeView) return analyzeView.renderAnalysisTree(movesArg);
+  void ensureAnalyzeView()
+    .then((view) => view.renderAnalysisTree(movesArg))
+    .catch(() => {});
 }
 
-// Jump to the next matching move after the current ply; wrap only when the
-// rest of the game has no more moves in that bucket.
-function jumpToClassGroup(side, groupKey) {
-  const moves = appState.analysis ? appState.analysis.moves : [];
-  const current = Number(appState.analysisPly) || 0;
-  const matches = (move) =>
-    (move.side === "black" ? "black" : "white") === side &&
-    CLASS_GROUP_OF[move.classification] === groupKey;
-  const match =
-    moves.find((m) => Number(m.ply) > current && matches(m)) ||
-    moves.find((m) => Number(m.ply) <= current && matches(m));
-  if (match) showAnalysisPly(Number(match.ply));
+function rescaleEvalMarkers() {
+  if (analyzeView) return analyzeView.rescaleEvalMarkers();
+  void ensureAnalyzeView().then((view) => view.rescaleEvalMarkers()).catch(() => {});
+}
+
+function updateEvalChartCursor() {
+  if (analyzeView) return analyzeView.updateEvalChartCursor();
+  void ensureAnalyzeView().then((view) => view.updateEvalChartCursor()).catch(() => {});
 }
 
 async function showAnalysisPly(ply) {
@@ -5161,10 +5118,11 @@ async function showAnalysisPly(ply) {
 // Tree-aware Analyze navigation (start/prev/next/end). Works for both the analysed
 // mainline and free-exploration variations, because it walks the live node tree by
 // id rather than a flat ply index. `next` follows the mainline child (children[0]).
-function analysisTreeNav(kind) {
+async function analysisTreeNav(kind) {
+  const view = await ensureAnalyzeView();
   const tree =
     appState.analysisTree ||
-    buildAnalysisTree(appState.analysis ? appState.analysis.moves : []);
+    view.buildAnalysisTree(appState.analysis ? appState.analysis.moves : []);
   appState.analysisTree = tree;
   let node = tree.byId.get(appState.analysisCurrentNodeId || "root") || tree.root;
   if (kind === "start") node = tree.root;
@@ -5173,7 +5131,7 @@ function analysisTreeNav(kind) {
   else if (kind === "end") {
     while (node.children && node.children[0]) node = node.children[0];
   }
-  selectAnalysisNode(node.id);
+  await selectAnalysisNode(node.id);
 }
 
 function resetAnalysisVariations() {
@@ -5181,256 +5139,6 @@ function resetAnalysisVariations() {
   appState.analysisVarCounter = 0;
   appState.analysisCurrentNodeId = "root";
   appState.analysisTree = null;
-}
-
-// `renderMovePairs` keeps its name (callers in renderAnalysis) but now renders
-// the mainline together with any study variations the player explored.
-function renderMovePairs(moves) {
-  renderAnalysisTree(moves);
-}
-
-// ---------------------------------------------------------------------------
-// Shared move-tree renderer — used by both Analyze (study lines) and Build
-// (repertoire). Variations render as DOM-nested blocks: a variation lives
-// *inside* its parent's block, so each level indents one step further by pure
-// nesting (no depth arithmetic) and a sub-variation can never jump to the
-// front. The only highlight is the single current move plus a faint trail along
-// the line that leads to it — both computed from real node ids, so no phantom
-// lines ever light up.
-//
-//   root: { children: [node, ...] }   children[0] is the mainline continuation
-//   node: { id, san, moveNumber, side: "white"|"black", children: [...] }
-//   opts: {
-//     currentId,                         id of the selected node
-//     pathIds: Set<id>,                  nodes on the trail to currentId
-//     decorate(node) -> { classes?, suffix?, title? },
-//     collapsible, isCollapsed(node)->bool,
-//   }
-// ---------------------------------------------------------------------------
-function renderMoveTree(root, opts) {
-  const kids = root.children || [];
-  if (!kids.length) {
-    return (
-      '<div class="mtree"><div class="empty-state">' +
-      escapeHtml(opts.emptyText || "No moves yet.") +
-      "</div></div>"
-    );
-  }
-  const main = kids[0];
-  const alts = kids.slice(1);
-  let body = renderMoveLine(main, opts);
-  for (const alt of alts) body += renderMoveVariation(alt, opts);
-  return `<div class="mtree"><div class="mtree-line is-main">${body}</div></div>`;
-}
-
-// Follow the mainline chain from `startNode`, inserting a variation block for
-// every alternative move encountered along the way.
-function renderMoveLine(startNode, opts) {
-  let html = "";
-  let cur = startNode;
-  let forceNumber = true; // first move of any line is always numbered
-  while (cur) {
-    html += renderMoveToken(cur, opts, forceNumber);
-    forceNumber = false;
-    const kids = cur.children || [];
-    const main = kids[0] || null;
-    for (let i = 1; i < kids.length; i += 1) {
-      html += renderMoveVariation(kids[i], opts);
-      forceNumber = true; // a block interrupted the flow → re-number on resume
-    }
-    cur = main;
-  }
-  return html;
-}
-
-function renderMoveVariation(firstNode, opts) {
-  const collapsed =
-    opts.collapsible && opts.isCollapsed && opts.isCollapsed(firstNode);
-  const toggle = opts.collapsible
-    ? `<button class="mtree-collapse" type="button" data-collapse-id="${escapeHtml(
-        String(firstNode.id)
-      )}" title="${collapsed ? "Expand" : "Collapse"} variation">${
-        collapsed ? "▸" : "▾"
-      }</button>`
-    : "";
-  const inner = collapsed
-    ? '<span class="mtree-collapsed">…</span>'
-    : renderMoveLine(firstNode, opts);
-  return `<div class="mtree-var">${toggle}${inner}</div>`;
-}
-
-function renderMoveToken(node, opts, forceNumber) {
-  const isWhite = node.side === "white";
-  const numHtml =
-    isWhite || forceNumber
-      ? `<span class="mtree-num">${node.moveNumber}${isWhite ? "." : "…"}</span>`
-      : "";
-  const deco = (opts.decorate && opts.decorate(node)) || {};
-  const classes = ["mtree-move"];
-  if (deco.classes) classes.push(...deco.classes);
-  if (node.id === opts.currentId) classes.push("is-current");
-  else if (opts.pathIds && opts.pathIds.has(node.id)) classes.push("on-path");
-  const title = deco.title ? ` title="${escapeHtml(String(deco.title))}"` : "";
-  return (
-    `${numHtml}<button class="${classes.join(" ")}" data-node-id="${escapeHtml(
-      String(node.id)
-    )}"${title}><span class="mtree-san">${escapeHtml(node.san)}</span>${
-      deco.suffix || ""
-    }</button>`
-  );
-}
-
-// Wire click (and optional right-click) handlers onto every move in a tree.
-// Keep the active move row visible by scrolling ONLY its own container, never
-// Element.scrollIntoView. scrollIntoView walks every scrollable ancestor
-// (including document/body) applying `nearest`; on mobile the sidebar is
-// page-scrolled (overflow:visible) while the movelist keeps its own overflow
-// box, so the browser also pans the whole page and shoves the board off-screen
-// each time the user hits Next. Mutating container.scrollTop alone can't move
-// the document — and if the container itself is off-screen we just update its
-// internal position, leaving the page where the user left it.
-function scrollIntoViewWithin(container, el) {
-  if (!container || !el) return;
-  const cRect = container.getBoundingClientRect();
-  const eRect = el.getBoundingClientRect();
-  const overTop = eRect.top - cRect.top;
-  const overBottom = eRect.bottom - cRect.bottom;
-  // Fully visible, or taller than the box and straddling it: leave it alone.
-  if (overTop >= 0 && overBottom <= 0) return;
-  if (overTop < 0 && overBottom > 0) return;
-  // Minimal scroll to reveal the row (nearest semantics).
-  container.scrollTop += overTop < 0 ? overTop : overBottom;
-}
-
-function bindMoveTreeClicks(container, onSelect, onContext) {
-  container.querySelectorAll(".mtree-move[data-node-id]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      onSelect(button.dataset.nodeId);
-      event.currentTarget.blur();
-    });
-    if (onContext) {
-      button.addEventListener("contextmenu", (event) =>
-        onContext(event, button.dataset.nodeId)
-      );
-    }
-  });
-}
-
-// Assemble the analyzed mainline plus user-explored variations into a single
-// navigable tree. Mainline nodes get stable ids (`m{ply}`); the start position
-// is `root`. Variation nodes (`v{n}`) are stored in appState and re-attached on
-// every build so they survive re-renders.
-function buildAnalysisTree(moves) {
-  const startFen = (moves && moves[0] && moves[0].fen_before) || START_FEN;
-  const root = {
-    id: "root",
-    san: null,
-    fenAfter: startFen,
-    ply: 0,
-    isMainline: true,
-    isVariation: false,
-    parent: null,
-    children: [],
-  };
-  const byId = new Map([["root", root]]);
-  let prev = root;
-  (moves || []).forEach((move) => {
-    const node = {
-      id: `m${move.ply}`,
-      ply: Number(move.ply),
-      san: move.san,
-      uci: move.uci,
-      fenBefore: move.fen_before,
-      fenAfter: move.fen_after,
-      moveNumber: move.move_number,
-      side: move.side,
-      classification: move.classification,
-      isMainline: true,
-      isVariation: false,
-      parent: prev,
-      children: [],
-    };
-    byId.set(node.id, node);
-    prev.children.push(node);
-    prev = node;
-  });
-  // Attach variations in creation order so a parent always exists first.
-  const pending = Array.from(appState.analysisVarNodes.values()).sort(
-    (a, b) => a.seq - b.seq
-  );
-  for (const v of pending) {
-    const parent = byId.get(v.parentId);
-    if (!parent) continue; // parent vanished (mainline reloaded) — drop quietly
-    const node = {
-      id: v.id,
-      ply: -1,
-      san: v.san,
-      uci: v.uci,
-      fenBefore: v.fenBefore,
-      fenAfter: v.fenAfter,
-      moveNumber: v.moveNumber,
-      side: v.side,
-      classification: null,
-      isMainline: false,
-      isVariation: true,
-      parent,
-      children: [],
-    };
-    byId.set(node.id, node);
-    parent.children.push(node);
-  }
-  return { root, byId };
-}
-
-function analysisPathIds(nodeId, tree) {
-  const set = new Set();
-  let node = tree.byId.get(nodeId || "root");
-  while (node) {
-    set.add(node.id);
-    node = node.parent;
-  }
-  return set;
-}
-
-function renderAnalysisTree(movesArg) {
-  const container = document.getElementById("analysis-moves");
-  if (!container) return;
-  const moves = movesArg || (appState.analysis ? appState.analysis.moves : []);
-  // Always build the tree so navigation + free-exploration branching have a live
-  // structure even before any game is loaded. A move played on the board attaches
-  // a variation node off `root`, so the tree has content the moment the user explores.
-  const tree = buildAnalysisTree(moves);
-  appState.analysisTree = tree;
-  const hasContent = (tree.root.children || []).length > 0;
-  if (!hasContent) {
-    container.innerHTML =
-      '<div class="empty-state">Play moves on the board to branch into study lines, ' +
-      "or load a PGN and click Analyze for a full review.</div>";
-    return;
-  }
-  // Reveal the results panel as soon as there's a line to show (loaded game or a
-  // user-explored variation); it stays tucked away on a blank start.
-  const panel = document.getElementById("analysis-results");
-  if (panel && panel.hidden) revealAnalysisResults();
-  const pathIds = analysisPathIds(appState.analysisCurrentNodeId, tree);
-  container.innerHTML = renderMoveTree(tree.root, {
-    currentId: appState.analysisCurrentNodeId,
-    pathIds,
-    decorate: (node) => {
-      if (node.isVariation) {
-        return { classes: ["is-variation"], title: "variation" };
-      }
-      const cls = String(node.classification || "unknown");
-      return {
-        classes: [`cls-${cls}`],
-        suffix: '<span class="mtree-dot"></span>',
-        title: cls,
-      };
-    },
-  });
-  bindMoveTreeClicks(container, (id) => selectAnalysisNode(id));
-  const focus = container.querySelector(".mtree-move.is-current");
-  if (focus) scrollIntoViewWithin(container, focus);
 }
 
 // Highlight the active move + sync the eval-chart cursor. The list itself is
@@ -5529,149 +5237,6 @@ async function onAnalysisBoardMove(moveUci, fen) {
   }
 }
 
-// Colors for key-moment dots on the eval chart. Keep in sync with the
-// classification dot colors in styles.css (--brilliant / --warn / --danger).
-const EVAL_MARKER_COLORS = {
-  brilliant: "#2f7fe0",
-  inaccuracy: "#cda04b",
-  mistake: "#c98439",
-  blunder: "#c4524d",
-  missed: "#8a6db5",
-};
-
-function renderEvalChart(points) {
-  const chart = document.getElementById("eval-chart");
-  chart.innerHTML = "";
-  appState.evalChartPoints = points || [];
-  const width = 640;
-  const height = 96;
-  chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  chart.setAttribute("preserveAspectRatio", "none");
-  chart.setAttribute("aria-label", "Evaluation trend by move");
-  chart.style.cursor = points && points.length ? "pointer" : "default";
-
-  const axis = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  axis.setAttribute("x1", "0");
-  axis.setAttribute("x2", String(width));
-  axis.setAttribute("y1", String(height / 2));
-  axis.setAttribute("y2", String(height / 2));
-  axis.setAttribute("stroke", "#d6d2cb");
-  axis.setAttribute("stroke-dasharray", "4 4");
-  chart.appendChild(axis);
-  if (!points || !points.length) return;
-
-  const coords = points.map((point, index) => {
-    const x = points.length === 1 ? width / 2 : (index / (points.length - 1)) * width;
-    const y = height / 2 - (point.bounded_score_cp / 1000) * (height / 2 - 8);
-    return { x, y, ply: point.ply, classification: point.classification };
-  });
-
-  const area = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-  const areaPoints = [
-    `0,${height / 2}`,
-    ...coords.map((c) => `${c.x},${c.y}`),
-    `${width},${height / 2}`,
-  ].join(" ");
-  area.setAttribute("points", areaPoints);
-  area.setAttribute("fill", "rgba(209, 139, 63, 0.18)");
-  chart.appendChild(area);
-
-  const svgNS = "http://www.w3.org/2000/svg";
-  const polyline = document.createElementNS(svgNS, "polyline");
-  polyline.setAttribute("points", coords.map((c) => `${c.x},${c.y}`).join(" "));
-  polyline.setAttribute("fill", "none");
-  polyline.setAttribute("stroke", "#b9722a");
-  polyline.setAttribute("stroke-width", "2");
-  polyline.setAttribute("stroke-linecap", "round");
-  polyline.setAttribute("stroke-linejoin", "round");
-  chart.appendChild(polyline);
-
-  // Key-moment markers so a player can jump straight to their brilliancies and
-  // errors. preserveAspectRatio="none" stretches the viewBox horizontally, so
-  // the radius is compensated per-axis in rescaleEvalMarkers() to keep the dots
-  // round on screen; rerun there because this can render while still hidden.
-  coords.forEach((c) => {
-    const raw = String(c.classification || "").toLowerCase();
-    const cls = CLASS_GROUP_OF[raw] || raw;
-    const color = EVAL_MARKER_COLORS[cls];
-    if (!color) return;
-    const dot = document.createElementNS(svgNS, "ellipse");
-    dot.classList.add("eval-marker");
-    dot.setAttribute("cx", String(c.x));
-    dot.setAttribute("cy", String(c.y));
-    dot.setAttribute("fill", color);
-    dot.setAttribute("stroke", "#fff");
-    dot.setAttribute("stroke-width", "1.5");
-    dot.setAttribute("vector-effect", "non-scaling-stroke");
-    dot.setAttribute("data-ply", String(c.ply));
-    dot.dataset.baseR = "4.5";
-    dot.style.cursor = "pointer";
-    const title = document.createElementNS(svgNS, "title");
-    title.textContent = cls.charAt(0).toUpperCase() + cls.slice(1);
-    dot.appendChild(title);
-    dot.addEventListener("click", (event) => {
-      event.stopPropagation();
-      showAnalysisPly(c.ply);
-    });
-    chart.appendChild(dot);
-  });
-  rescaleEvalMarkers();
-
-  const marker = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  marker.setAttribute("id", "eval-chart-cursor");
-  marker.setAttribute("y1", "0");
-  marker.setAttribute("y2", String(height));
-  marker.setAttribute("stroke", "#b9722a");
-  marker.setAttribute("stroke-width", "1.5");
-  marker.setAttribute("stroke-dasharray", "3 3");
-  marker.setAttribute("x1", "-10");
-  marker.setAttribute("x2", "-10");
-  chart.appendChild(marker);
-
-  updateEvalChartCursor();
-}
-
-// Keep the round look of key-moment dots despite the chart's non-uniform
-// stretch. Safe to call any time (after render, on reveal, on resize).
-function rescaleEvalMarkers() {
-  const chart = document.getElementById("eval-chart");
-  if (!chart) return;
-  const markers = chart.querySelectorAll(".eval-marker");
-  if (!markers.length) return;
-  const viewWidth = 640;
-  const viewHeight = 96;
-  const rect = chart.getBoundingClientRect();
-  const xScale = rect.width > 0 ? viewWidth / rect.width : 1;
-  const yScale = rect.height > 0 ? viewHeight / rect.height : 1;
-  markers.forEach((dot) => {
-    const baseR = Number(dot.dataset.baseR) || 4;
-    dot.setAttribute("rx", String(baseR * xScale));
-    dot.setAttribute("ry", String(baseR * yScale));
-  });
-}
-
-function updateEvalChartCursor() {
-  const marker = document.getElementById("eval-chart-cursor");
-  if (!marker) return;
-  const points = appState.evalChartPoints || [];
-  if (!points.length) {
-    marker.setAttribute("x1", "-10");
-    marker.setAttribute("x2", "-10");
-    return;
-  }
-  const ply = appState.analysisPly;
-  const idx = points.findIndex((p) => p.ply === ply);
-  if (idx < 0) {
-    marker.setAttribute("x1", "-10");
-    marker.setAttribute("x2", "-10");
-    return;
-  }
-  const width = 640;
-  const x = points.length === 1 ? width / 2 : (idx / (points.length - 1)) * width;
-  marker.setAttribute("x1", String(x));
-  marker.setAttribute("x2", String(x));
-}
-
 function bindEvalChart() {
   const chart = document.getElementById("eval-chart");
   chart.addEventListener("click", (event) => {
@@ -5715,6 +5280,36 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   renderBuildSync();
 }
 
+let buildModule = null;
+let buildView = null;
+
+function preloadBuildView() {
+  if (!buildModule) {
+    buildModule = import("./views/build.js").catch((err) => {
+      buildModule = null;
+      throw err;
+    });
+  }
+  return buildModule;
+}
+
+async function ensureBuildView() {
+  const mod = await preloadBuildView();
+  if (!buildView) {
+    buildView = mod.createBuildView({
+      appState,
+      escapeHtml,
+      boards,
+      getMoveTreeRenderer: () => moveTreeRenderer,
+      ensureMoveTreeRenderer,
+      selectBuildNode,
+      openNodeContextMenu,
+      buildBranchContext,
+    });
+  }
+  return buildView;
+}
+
 // The sidebar's repertoire identity line: which repertoire is open and for which
 // colour. The ⋯ button next to it carries the repertoire-scoped actions.
 function renderBuildRepHeader() {
@@ -5724,10 +5319,8 @@ function renderBuildRepHeader() {
     nameEl.textContent = "No repertoire open";
     return;
   }
-  nameEl.innerHTML =
-    `<span class="color-dot ${escapeHtml(appState.build.color)}"></span>` +
-    `${escapeHtml(appState.build.name)}` +
-    `<span class="rep-color-sub"> · ${escapeHtml(appState.build.color)}</span>`;
+  if (buildView) return buildView.renderBuildRepHeader();
+  void ensureBuildView().then((view) => view.renderBuildRepHeader()).catch(() => {});
 }
 
 // The ⋯ menu in the Build sidebar header: every repertoire-scoped action in one
@@ -5814,7 +5407,7 @@ async function skipTrainingLine() {
     const result = await postJson("/api/train/skip", { session_id: prompt.session_id });
     if (result.prompt) {
       appState.training.prompt = result.prompt;
-      renderTraining(result.prompt);
+      await renderTraining(result.prompt);
       setStatus("Skipped to next line");
     } else {
       appState.training.prompt = null;
@@ -5968,136 +5561,24 @@ function renderExplorerRows(stats) {
   });
 }
 
-// Normalize the flat repertoire node list into the shared tree shape, with the
-// mainline child first at every branch point.
-function buildNormalizedTree() {
-  if (!appState.build) return null;
-  const childrenByParent = new Map();
-  let rootNode = null;
-  for (const node of appState.build.nodes) {
-    if (node.depth === 0) {
-      rootNode = node;
-      continue;
-    }
-    if (!childrenByParent.has(node.parent_id)) childrenByParent.set(node.parent_id, []);
-    childrenByParent.get(node.parent_id).push(node);
-  }
-  for (const list of childrenByParent.values()) {
-    list.sort((a, b) => Number(b.is_mainline) - Number(a.is_mainline));
-  }
-  if (!rootNode) return null;
-  const make = (bnode) => ({
-    id: bnode.id,
-    san: bnode.san,
-    moveNumber: bnode.move_number,
-    side: bnode.move_side,
-    raw: bnode,
-    children: (childrenByParent.get(bnode.id) || []).map(make),
-  });
-  return make(rootNode);
+function renderBuilderTreeEmptyState() {
+  const container = document.getElementById("builder-tree");
+  const branchBar = document.getElementById("build-branchbar");
+  if (!container) return;
+  container.innerHTML =
+    '<div class="empty-state">No repertoire open. Play a move on the board to start one, ' +
+    'use the <b>⋯</b> menu above, or open one from the Dashboard.</div>';
+  if (branchBar) branchBar.hidden = true;
+  if (boards.build) boards.build.setBranchArrows([]);
 }
 
 function renderBuilderTree() {
-  const container = document.getElementById("builder-tree");
-  const branchBar = document.getElementById("build-branchbar");
   if (!appState.build) {
-    container.innerHTML =
-      '<div class="empty-state">No repertoire open. Play a move on the board to start one, ' +
-      'use the <b>⋯</b> menu above, or open one from the Dashboard.</div>';
-    if (branchBar) branchBar.hidden = true;
-    if (boards.build) boards.build.setBranchArrows([]);
+    renderBuilderTreeEmptyState();
     return;
   }
-  const root = buildNormalizedTree();
-  if (!root || !root.children.length) {
-    container.innerHTML =
-      renderBuildBreadcrumb() +
-      '<div class="empty-state">Play a move on the board to add it to the repertoire.</div>';
-    if (branchBar) branchBar.hidden = true;
-    if (boards.build) boards.build.setBranchArrows([]);
-    return;
-  }
-  const collapsed = appState.buildCollapsed || (appState.buildCollapsed = new Set());
-  const pathIds = new Set(buildPath(appState.buildCurrentNodeId).map((n) => n.id));
-  const treeHtml = renderMoveTree(root, {
-    currentId: appState.buildCurrentNodeId,
-    pathIds,
-    collapsible: true,
-    isCollapsed: (node) => collapsed.has(node.id),
-    decorate: (node) => {
-      const b = node.raw;
-      const classes = [];
-      if (b.mastery) classes.push(`m-${b.mastery}`);
-      if (!b.is_enabled) classes.push("is-disabled");
-      if (b.is_mainline) classes.push("is-main");
-      if (b.is_prepared) classes.push("is-prep");
-      return { classes };
-    },
-  });
-  container.innerHTML = renderBuildBreadcrumb() + treeHtml;
-  container.querySelectorAll(".mtree-collapse[data-collapse-id]").forEach((toggle) => {
-    toggle.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const id = toggle.dataset.collapseId;
-      if (collapsed.has(id)) collapsed.delete(id);
-      else collapsed.add(id);
-      renderBuilderTree();
-    });
-  });
-  bindMoveTreeClicks(
-    container,
-    (id) => selectBuildNode(id),
-    (event, id) => openNodeContextMenu(event, id)
-  );
-  container.querySelectorAll(".mtree-crumb[data-node-id]").forEach((btn) => {
-    btn.addEventListener("click", (event) => {
-      selectBuildNode(btn.dataset.nodeId);
-      event.currentTarget.blur();
-    });
-  });
-  const focusBtn = container.querySelector(".mtree .mtree-move.is-current");
-  if (focusBtn) scrollIntoViewWithin(container, focusBtn);
-  renderBuildBranchBar();
-}
-
-// A sticky one-line trail from the opening move to the selected node, so the
-// active line is always easy to read regardless of how branchy the tree is.
-function renderBuildBreadcrumb() {
-  const path = buildPath(appState.buildCurrentNodeId).filter((n) => n.depth > 0);
-  if (!path.length) {
-    return (
-      '<div class="build-breadcrumb">' +
-      '<span class="crumb-empty">Start position - play a move or pick a line below</span>' +
-      "</div>"
-    );
-  }
-  const inner = path
-    .map((node, i) => {
-      const prev = i > 0 ? path[i - 1] : null;
-      const isWhite = node.move_side === "white";
-      const needNumber = i === 0 || isWhite || !prev || prev.move_side !== "white";
-      const numberHtml = needNumber
-        ? `<span class="mtree-num">${node.move_number}${isWhite ? "." : "…"}</span>`
-        : "";
-      const cur = node.id === appState.buildCurrentNodeId ? " is-current" : "";
-      return (
-        numberHtml +
-        `<button class="mtree-crumb${cur}" data-node-id="${escapeHtml(node.id)}">` +
-        `${escapeHtml(node.san)}</button>`
-      );
-    })
-    .join("");
-  return `<div class="build-breadcrumb">${inner}</div>`;
-}
-
-function buildPath(nodeId) {
-  const path = [];
-  let current = appState.buildNodeById.get(nodeId);
-  while (current) {
-    path.push(current);
-    current = current.parent_id ? appState.buildNodeById.get(current.parent_id) : null;
-  }
-  return path.reverse();
+  if (buildView) return buildView.renderBuilderTree();
+  void ensureBuildView().then((view) => view.renderBuilderTree()).catch(() => {});
 }
 
 function buildRootId() {
@@ -6182,54 +5663,8 @@ function buildBranchKey(direction) {
 // The on-screen fork picker: one chip per prepared continuation, the picked one
 // lit, mirrored by arrows on the board (the picked arrow drawn stronger).
 function renderBuildBranchBar() {
-  const bar = document.getElementById("build-branchbar");
-  if (!bar) return;
-  const ctx = buildBranchContext();
-  if (!ctx) {
-    bar.hidden = true;
-    bar.innerHTML = "";
-    if (boards.build) boards.build.setBranchArrows([]);
-    return;
-  }
-  const picked = ctx.options.find((n) => n.id === ctx.choiceId);
-  const chips = ctx.options
-    .map((n) => {
-      const isWhite = n.move_side === "white";
-      const num = `${n.move_number}${isWhite ? "." : "…"}`;
-      const cls = [
-        "branch-chip",
-        n.id === ctx.choiceId ? "is-active" : "",
-        n.is_mainline ? "is-main" : "",
-      ]
-        .filter(Boolean)
-        .join(" ");
-      const mainMark = n.is_mainline ? '<span class="branch-main-mark" title="Mainline">★</span>' : "";
-      return (
-        `<button class="${cls}" type="button" data-node-id="${escapeHtml(String(n.id))}" ` +
-        `title="Play ${escapeHtml(n.san)}"><span class="branch-num">${num}</span>` +
-        `<span class="branch-san">${escapeHtml(n.san)}</span>${mainMark}</button>`
-      );
-    })
-    .join("");
-  bar.hidden = false;
-  bar.innerHTML =
-    `<div class="branchbar-head"><span class="branchbar-label">Fork — pick the next move</span>` +
-    `<span class="branchbar-count">${ctx.options.length}</span>` +
-    `<span class="branchbar-hint">↑ ↓ pick · → play · ← back</span></div>` +
-    `<div class="branchbar-chips">${chips}</div>`;
-  bar.querySelectorAll(".branch-chip[data-node-id]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      selectBuildNode(btn.dataset.nodeId);
-      btn.blur();
-    });
-  });
-  // Board echo: every option gets a faint arrow, the picked one a stronger one.
-  if (boards.build) {
-    boards.build.setBranchArrows(
-      ctx.options.map((n) => n.uci).filter(Boolean),
-      picked ? picked.uci : null
-    );
-  }
+  if (buildView) return buildView.renderBuildBranchBar();
+  void ensureBuildView().then((view) => view.renderBuildBranchBar()).catch(() => {});
 }
 
 async function saveBuildAnnotations(arrows, circles) {
@@ -6356,14 +5791,48 @@ function renderBuildSync() {
   renderSyncChip(el, appState.buildSyncState);
 }
 
+let trainModule = null;
+let trainView = null;
+
+function preloadTrainView() {
+  if (!trainModule) {
+    trainModule = import("./views/train.js").catch((err) => {
+      trainModule = null;
+      throw err;
+    });
+  }
+  return trainModule;
+}
+
+async function ensureTrainView() {
+  const mod = await preloadTrainView();
+  if (!trainView) {
+    trainView = mod.createTrainView({
+      appState,
+      boards,
+      escapeHtml,
+      renderSyncChip,
+      setTrainBanner,
+      updateTrainTurnBadge,
+      smartKindLabels: SMART_KIND_LABELS,
+      smartKindTitles: SMART_KIND_TITLES,
+      onStreakRendered: (streak) => {
+        const s = appState.trainStats;
+        if (s) s.lastStreak = streak;
+      },
+    });
+  }
+  return trainView;
+}
+
 // Train's counterpart chip (same look/classes): visible during a smart session
 // or while abandoned-session attempts still wait to land.
 function setTrainSyncState(state) {
   appState.trainSyncState = state;
-  renderTrainSync();
+  void renderTrainSync().catch(() => {});
 }
 
-function renderTrainSync() {
+async function renderTrainSync() {
   const el = document.getElementById("train-sync");
   if (!el) return;
   const sync = appState.trainSync;
@@ -6371,7 +5840,38 @@ function renderTrainSync() {
     el.hidden = true;
     return;
   }
-  renderSyncChip(el, appState.trainSyncState);
+  return (await ensureTrainView()).renderTrainSync();
+}
+
+async function renderTrainStats() {
+  return (await ensureTrainView()).renderTrainStats();
+}
+
+function applyTrainingPromptState(prompt) {
+  if (appState.training) appState.training.prompt = prompt;
+  appState.trainHintLevel = 0;
+  appState.trainHintInfo = null;
+}
+
+async function renderTraining(payloadOrPrompt) {
+  const prompt = payloadOrPrompt?.prompt || payloadOrPrompt;
+  if (!prompt) return;
+  applyTrainingPromptState(prompt);
+  return (await ensureTrainView()).renderTraining(prompt);
+}
+
+async function renderSmartQueueStrip() {
+  return (await ensureTrainView()).renderSmartQueueStrip();
+}
+
+async function renderSmartProgress(prompt) {
+  return (await ensureTrainView()).renderSmartProgress(prompt);
+}
+
+async function renderSmartSummary(smart, stats, after) {
+  if (after?.day_streak) appState.dayStreak = after.day_streak;
+  const dayStreak = after?.day_streak || appState.dayStreak;
+  return (await ensureTrainView()).renderSmartSummary(smart, stats, after, dayStreak);
 }
 
 // ----- Debounce + flush -------------------------------------------------------
@@ -7134,6 +6634,7 @@ async function generateFromCurrentNode() {
       });
     }, 1800);
 
+    const { runBrowserBuildGenerate } = await (_buildGenReady || preloadBuildGen());
     const plan = await runBrowserBuildGenerate({
       build: appState.build,
       rootNodeId: nodeId,
@@ -7557,41 +7058,6 @@ function setTrainBanner(state, title, sub) {
   }
 }
 
-function renderTrainStats() {
-  const s = appState.trainStats || { correct: 0, mistakes: 0, streak: 0, history: [], lastStreak: 0 };
-  const streakEl = document.getElementById("train-stat-streak");
-  const flame = "";
-  streakEl.innerHTML = `${s.streak}${flame}`;
-  // Pop the streak chip whenever it grows; mark at-risk if recovery is pending.
-  const chip = streakEl.closest(".train-stat");
-  if (chip) {
-    chip.classList.toggle("at-risk", !!(appState.trainReview && appState.trainReview.savedStreak > 0 && s.streak === 0));
-    if (s.streak > (s.lastStreak || 0)) {
-      chip.classList.remove("pop");
-      void chip.offsetWidth;
-      chip.classList.add("pop");
-      if (s.streak > 0 && s.streak % 5 === 0) chip.classList.add("milestone");
-      else chip.classList.remove("milestone");
-    }
-  }
-  s.lastStreak = s.streak;
-  document.getElementById("train-stat-correct").textContent = s.correct;
-  document.getElementById("train-stat-mistakes").textContent = s.mistakes;
-  const total = s.correct + s.mistakes;
-  document.getElementById("train-accuracy").textContent = total
-    ? `${Math.round((s.correct / total) * 100)}%`
-    : "100%";
-  const trail = document.getElementById("train-line-trail");
-  if (!s.history.length) {
-    trail.innerHTML = '<span class="trail-empty">No moves yet</span>';
-  } else {
-    trail.innerHTML = s.history
-      .slice(-26)
-      .map((ok) => `<span class="trail-pip ${ok ? "ok" : "no"}"></span>`)
-      .join("");
-  }
-}
-
 async function startTraining(mode) {
   mode = mode || appState.trainMode || "smart";
   appState.trainMode = mode;
@@ -7632,9 +7098,9 @@ async function startTraining(mode) {
       boards.train.setOrientation(payload.color === "black" ? "black" : "white");
     }
     document.getElementById("train-progress-panel").hidden = false;
-    renderTrainStats();
+    await renderTrainStats();
     if (payload.prompt) {
-      renderTraining(payload);
+      await renderTraining(payload);
     } else {
       boards.train.setEngineArrow(null);
       setTrainBanner("done", "No trainable lines here", "Add prepared moves in Build, then train.");
@@ -7644,30 +7110,6 @@ async function startTraining(mode) {
   } catch (error) {
     setStatus(error.message);
   }
-}
-
-function renderTraining(payloadOrPrompt) {
-  const prompt = payloadOrPrompt.prompt || payloadOrPrompt;
-  if (!prompt) return;
-  if (appState.training) appState.training.prompt = prompt;
-  appState.trainHintLevel = 0;
-  appState.trainHintInfo = null;
-  boards.train.setEngineArrow(null); // clear any lingering hint arrow
-  boards.train.setPosition({
-    fen: prompt.fen_before,
-    legalMoves: prompt.legal_moves || [],
-    lastMove: null,
-  });
-  const side = sideToMoveFromFen(prompt.fen_before);
-  setTrainBanner("move", `${side === "white" ? "White" : "Black"} to move`, "Play your prepared move on the board");
-  updateTrainTurnBadge(side);
-  const total = prompt.total_lines || 1;
-  document.getElementById("train-line-label").textContent = `Line ${(prompt.current_index || 0) + 1} / ${total}`;
-  document.getElementById("train-progress-fill").style.width =
-    `${Math.round(((prompt.current_index || 0) / Math.max(1, total)) * 100)}%`;
-  const name = (appState.training && appState.training.repertoire_name) || "Repertoire";
-  const color = (appState.training && appState.training.color) || "white";
-  document.getElementById("train-board-label").textContent = `${name} - you play ${color}`;
 }
 
 async function submitTrainingMove(playedUci) {
@@ -7716,7 +7158,7 @@ async function submitTrainingMove(playedUci) {
         expected_san: result.expected_san,
       });
     }
-    renderTrainStats();
+    await renderTrainStats();
     appState.trainBusy = true;
     let playedSan = result.played_san || "";
     try {
@@ -7743,7 +7185,7 @@ async function submitTrainingMove(playedUci) {
     if (appState.training) appState.training.prompt = result.prompt;
     await sleep(1450);
     appState.trainBusy = false;
-    if (result.prompt) renderTraining(result.prompt);
+    if (result.prompt) await renderTraining(result.prompt);
     return;
   }
 
@@ -7751,7 +7193,7 @@ async function submitTrainingMove(playedUci) {
   stats.streak += 1;
   stats.best = Math.max(stats.best, stats.streak);
   stats.history.push(true);
-  renderTrainStats();
+  await renderTrainStats();
   if (appState.training) appState.training.prompt = result.prompt;
   appState.trainBusy = true;
   boards.train.setEngineArrow(null);
@@ -7780,7 +7222,7 @@ async function submitTrainingMove(playedUci) {
 
   appState.trainBusy = false;
   if (result.prompt) {
-    renderTraining(result.prompt);
+    await renderTraining(result.prompt);
   } else if (review.queue.length) {
     enterReviewRound();
   } else {
@@ -7839,7 +7281,7 @@ async function submitReviewMove(playedUci) {
     }
     review.recovered += 1;
     stats.history.push(true);
-    renderTrainStats();
+    await renderTrainStats();
     setTrainBanner("correct", "Recovered!", "Mistake fixed - nice save");
     playSound("move");
     await sleep(640);
@@ -7848,7 +7290,7 @@ async function submitReviewMove(playedUci) {
     showReviewItem();
   } else {
     stats.history.push(false);
-    renderTrainStats();
+    await renderTrainStats();
     setTrainBanner("wrong", "Still not it", "Try again - you've got this");
     playSound("capture");
   }
@@ -7863,7 +7305,7 @@ function finishReviewRound() {
   if (review.savedStreak > 0) {
     stats.streak = review.savedStreak;
     stats.best = Math.max(stats.best, review.savedStreak);
-    renderTrainStats();
+    void renderTrainStats().catch(() => {});
     setTrainBanner("done", "Run recovered!", `Fixed ${review.recovered} - back to ${review.savedStreak} in a row - best ${stats.best}`);
   } else {
     setTrainBanner("done", "All cleaned up!", `Fixed ${review.recovered} missed move${review.recovered === 1 ? "" : "s"}`);
@@ -8150,8 +7592,8 @@ async function startSmartTraining() {
   }
   document.getElementById("train-progress-panel").hidden = false;
   setSmartPanelsHidden();
-  renderSmartQueueStrip();
-  renderTrainStats();
+  await renderSmartQueueStrip();
+  await renderTrainStats();
   setTrainSyncState("saved");
   document.getElementById("train-board-label").textContent =
     `${payload.repertoire_name} - you play ${payload.color}`;
@@ -8192,46 +7634,6 @@ function smartLocalPrompt(smart) {
   };
 }
 
-// The queue composition strip: one proportional segment + legend chip per kind.
-function renderSmartQueueStrip() {
-  const smart = appState.smart;
-  const wrap = document.getElementById("train-queue");
-  if (!wrap) return;
-  const counts = smart && smart.counts;
-  const kinds = ["weak", "due", "new", "polish"].filter((k) => counts && counts[k] > 0);
-  if (!kinds.length) {
-    wrap.hidden = true;
-    return;
-  }
-  wrap.hidden = false;
-  document.getElementById("train-queue-bar").innerHTML = kinds
-    .map((k) => `<span class="tq-seg tq-${k}" style="flex:${counts[k]}"></span>`)
-    .join("");
-  document.getElementById("train-queue-legend").innerHTML = kinds
-    .map((k) => `<span class="tq-chip tq-${k}" title="${escapeHtml(SMART_KIND_TITLES[k] || "")}">${counts[k]} ${k}</span>`)
-    .join("");
-}
-
-function renderSmartProgress(prompt) {
-  const total = Math.max(1, prompt.total_cards);
-  document.getElementById("train-line-label").textContent =
-    `Card ${Math.min(prompt.card_index + 1, total)} / ${total} · ${SMART_KIND_LABELS[prompt.kind] || prompt.kind}`;
-  document.getElementById("train-progress-fill").style.width =
-    `${Math.round((prompt.card_index / total) * 100)}%`;
-  // Multi-target cards get one dot per own move so "where am I in this card"
-  // is visible at a glance; single-target cards need no dots.
-  const dots = document.getElementById("train-card-dots");
-  if (dots) {
-    dots.innerHTML =
-      prompt.targets_total > 1
-        ? Array.from({ length: prompt.targets_total }, (_, i) => {
-            const cls = i < prompt.target_index ? "done" : i === prompt.target_index ? "now" : "";
-            return `<span class="card-dot ${cls}"></span>`;
-          }).join("")
-        : "";
-  }
-}
-
 // Show one card prompt: animate the run-in (unless the board is already on the
 // position, i.e. mid-card right after the opponent's reply), then open the
 // board for the answer — teach-first when the card is new.
@@ -8241,7 +7643,7 @@ async function presentSmartPrompt(prompt) {
   smart.prompt = prompt;
   smart.attempt = 1;
   appState.trainHintLevel = 0;
-  renderSmartProgress(prompt);
+  await renderSmartProgress(prompt);
   const board = boards.train;
   board.setEngineArrow(null);
   // Mixed sessions hop between repertoires: orient the board and name the
@@ -8343,7 +7745,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
     if (attempt === 1) {
       stats.mistakes += 1;
       stats.history.push(false);
-      renderTrainStats();
+      await renderTrainStats();
     }
     appState.trainBusy = true;
     try {
@@ -8371,12 +7773,12 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       // Second miss: reveal, let the answer be played, and the card returns
       // a few positions later (replaces the old end-of-session recovery round).
       stats.streak = 0;
-      renderTrainStats();
+      await renderTrainStats();
       const requeued = requeueSmartCard(smart);
       if (requeued) {
         smart.totalCards = smart.queue.length;
         smart.counts[prompt.kind] = (smart.counts[prompt.kind] || 0) + 1;
-        renderSmartQueueStrip();
+        await renderSmartQueueStrip();
         markTrainPositionDirty();
       }
       // The answer is on screen anyway, so say WHY it's the move — a reveal that
@@ -8409,7 +7811,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   } else {
     smart.retriesFixed += 1;
   }
-  renderTrainStats();
+  await renderTrainStats();
   appState.trainBusy = true;
   boards.train.setEngineArrow(null);
 
@@ -8538,7 +7940,7 @@ async function finishSmartSession() {
   } catch (_) {
     // The summary is a bonus — never block the finish on it.
   }
-  renderSmartSummary(smart, stats, after);
+  await renderSmartSummary(smart, stats, after);
 }
 
 // ----- Local-first Train sync (plan §2) ---------------------------------------
@@ -8671,66 +8073,6 @@ function beaconFlushTrain() {
       /* best-effort */
     }
   }
-}
-
-function renderSmartSummary(smart, stats, after) {
-  const panel = document.getElementById("train-summary");
-  if (!panel) return;
-  const queue = document.getElementById("train-queue");
-  if (queue) queue.hidden = true; // the summary replaces the composition strip
-  const firstTries = (stats.correct || 0) + (stats.mistakes || 0);
-  const acc = firstTries ? Math.round(((stats.correct || 0) / firstTries) * 100) : 100;
-  const statCells = [
-    [smart.cardsDone, "cards"],
-    [`${acc}%`, "first try"],
-    [stats.best || 0, "best in a row"],
-  ];
-  // The daily streak (server-tracked, all repertoires). Trust the summary
-  // fetch's authoritative value over the client cache: the final sync usually
-  // writes no new attempts, so /smart/sync returns no day_streak and the cache
-  // would otherwise show the pre-session count. Refresh the cache too.
-  const day = (after && after.day_streak) || appState.dayStreak;
-  if (after && after.day_streak) appState.dayStreak = after.day_streak;
-  if (day && day.current > 0) statCells.push([`\u{1F525}${day.current}`, "day streak"]);
-  document.getElementById("train-summary-stats").innerHTML = statCells
-    .map(
-      ([value, label]) =>
-        `<div class="tsum-stat"><span class="tsum-value">${value}</span><span class="tsum-label">${label}</span></div>`
-    )
-    .join("");
-  const deltaEl = document.getElementById("train-summary-delta");
-  const footEl = document.getElementById("train-summary-foot");
-  const before = smart.healthBefore;
-  if (before && after && after.health) {
-    // goodDir: which direction is good news for this row (+1 = growing is
-    // good, -1 = shrinking is good, 0 = neutral churn).
-    deltaEl.innerHTML = [
-      ["mastered", "Mastered", "good", 1],
-      ["learning", "Learning", "", 0],
-      ["due", "Due", "warn", -1],
-      ["weak", "Weak", "bad", -1],
-      ["untrained", "New", "", -1],
-    ]
-      .map(([key, label, cls, goodDir]) => {
-        const now = after.health[key] || 0;
-        const diff = now - (before[key] || 0);
-        const tone = diff * goodDir > 0 ? "up" : diff * goodDir < 0 ? "down" : "";
-        const delta =
-          diff === 0
-            ? ""
-            : `<span class="tsum-delta ${tone}">${diff > 0 ? "+" : ""}${diff}</span>`;
-        return `<div class="tsum-row ${cls}"><span>${label}</span><span class="tsum-num">${now}${delta}</span></div>`;
-      })
-      .join("");
-    footEl.textContent =
-      after.due_tomorrow > 0
-        ? `${after.due_tomorrow} review${after.due_tomorrow === 1 ? "" : "s"} due tomorrow - come back!`
-        : "Nothing due tomorrow - the queue is clear.";
-  } else {
-    deltaEl.innerHTML = "";
-    footEl.textContent = "";
-  }
-  panel.hidden = false;
 }
 
 async function loadSettings() {
@@ -9008,7 +8350,7 @@ async function runLichessCompare() {
     appState.replayResults = payload;
     appState.replayFilter = null;
     appState.replayOpen = new Set();
-    renderReplayResults(payload);
+    await renderReplayResults(payload);
     const queued = Number(payload.misses_recorded) || 0;
     setStatus(
       queued > 0
@@ -9022,99 +8364,47 @@ async function runLichessCompare() {
   }
 }
 
-// One bucket per game: how the prep held up. Drives the row accent, the badge
-// and the summary-strip filters.
-const REPLAY_KINDS = {
-  "in-prep": { icon: "✓", badge: "Stayed in prep", label: "stayed in prep" },
-  "user-error": { icon: "✗", badge: "You left prep", label: "you left prep" },
-  "left-prep": { icon: "⚡", badge: "Opponent novelty", label: "novelties" },
-  "no-prep": { icon: "—", badge: "No repertoire", label: "not covered" },
-};
+let replayModule = null;
+let replayView = null;
 
-function replayGameKind(game) {
-  if (game.in_repertoire && game.departure_reason === "game_stayed_in_preparation")
-    return "in-prep";
-  if (game.departure_reason === "user_left_preparation") return "user-error";
-  if (game.departure_reason === "opponent_unprepared_branch") return "left-prep";
-  return "no-prep";
+function preloadReplayView() {
+  if (!replayModule) {
+    replayModule = import("./views/replay.js").catch((err) => {
+      replayModule = null;
+      throw err;
+    });
+  }
+  return replayModule;
 }
 
-// The one-glance digest above the list: counts per outcome (clickable filters)
-// plus how many forgotten moves the fetch just queued for training.
-function renderReplaySummary(payload) {
-  const el = document.getElementById("replay-summary");
-  if (!el) return;
-  const games = (payload && payload.games) || [];
-  if (!games.length) {
-    el.hidden = true;
-    return;
-  }
-  const counts = { "in-prep": 0, "user-error": 0, "left-prep": 0, "no-prep": 0 };
-  games.forEach((game) => {
-    counts[replayGameKind(game)] += 1;
-  });
-  const chips = Object.entries(REPLAY_KINDS)
-    .filter(([kind]) => counts[kind] > 0)
-    .map(
-      ([kind, meta]) =>
-        `<button type="button" class="replay-chip rk-${kind}${
-          appState.replayFilter === kind ? " is-on" : ""
-        }" data-filter="${kind}" title="Show only these games">${meta.icon} ${counts[kind]} ${meta.label}</button>`
-    );
-  const queued = Number(payload.misses_recorded) || 0;
-  const queuedHtml = queued
-    ? `<span class="replay-queued" title="Each forgotten move was recorded as a recall miss — it leads your next smart session">+${queued} queued for training</span>`
-    : "";
-  el.innerHTML = chips.join("") + queuedHtml;
-  el.hidden = false;
-  el.querySelectorAll("[data-filter]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      appState.replayFilter =
-        appState.replayFilter === btn.dataset.filter ? null : btn.dataset.filter;
-      renderReplayResults(appState.replayResults);
+async function ensureReplayView() {
+  const mod = await preloadReplayView();
+  if (!replayView) {
+    replayView = mod.createReplayView({
+      escapeHtml,
+      getReplayFilter: () => appState.replayFilter,
+      isGameOpen: (index) => appState.replayOpen.has(index),
+      onToggleFilter: (kind) => {
+        appState.replayFilter = appState.replayFilter === kind ? null : kind;
+        void renderReplayResults(appState.replayResults).catch(() => {});
+      },
+      onToggleGame: (index) => {
+        if (appState.replayOpen.has(index)) appState.replayOpen.delete(index);
+        else appState.replayOpen.add(index);
+        void renderReplayResults(appState.replayResults).catch(() => {});
+      },
+      onTrainMiss: () =>
+        goToSmartTraining("Your missed move is due now — press Start"),
+      onBuildReply: (game) =>
+        editRepertoire(game.repertoire_id, game.last_matched_node_id || null),
+      onAnalyze: (game) => replayToAnalyze(game),
     });
-  });
+  }
+  return replayView;
 }
 
-function renderReplayResults(payload) {
-  const container = document.getElementById("replay-results");
-  renderReplaySummary(payload);
-  if (!payload || !payload.games || !payload.games.length) {
-    container.innerHTML =
-      '<div class="empty-state">No games found, or none played as a color you have a repertoire for.</div>';
-    return;
-  }
-  const filter = appState.replayFilter;
-  const rows = payload.games
-    .map((game, index) => ({ game, index }))
-    .filter(({ game }) => !filter || replayGameKind(game) === filter);
-  container.innerHTML = rows.length
-    ? rows.map(({ game, index }) => renderReplayCard(game, index)).join("")
-    : '<div class="empty-state">No games in this bucket.</div>';
-  // Row click expands/collapses; the action buttons stop propagation.
-  container.querySelectorAll(".replay-row-head").forEach((head) => {
-    head.addEventListener("click", () => {
-      const idx = Number(head.dataset.index);
-      if (appState.replayOpen.has(idx)) appState.replayOpen.delete(idx);
-      else appState.replayOpen.add(idx);
-      renderReplayResults(appState.replayResults);
-    });
-  });
-  container.querySelectorAll("[data-act]").forEach((btn) => {
-    btn.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const game = payload.games[Number(btn.dataset.index)];
-      if (!game) return;
-      const act = btn.dataset.act;
-      if (act === "train") {
-        goToSmartTraining("Your missed move is due now — press Start");
-      } else if (act === "build") {
-        editRepertoire(game.repertoire_id, game.last_matched_node_id || null);
-      } else if (act === "analyze") {
-        replayToAnalyze(game);
-      }
-    });
-  });
+async function renderReplayResults(payload) {
+  return (await ensureReplayView()).renderReplayResults(payload);
 }
 
 // "Review in Analyze": rebuild the game's PGN from the fetched move list and
@@ -9142,112 +8432,6 @@ function replayToAnalyze(game) {
   setStatus(
     `Loaded ${game.white || "?"} vs ${game.black || "?"} — press Analyze game`
   );
-}
-
-function renderReplayCard(game, index) {
-  const kind = replayGameKind(game);
-  const meta = REPLAY_KINDS[kind];
-  const open = appState.replayOpen.has(index);
-  const players = `${escapeHtml(game.white || "?")} <span class="muted">vs</span> ${escapeHtml(game.black || "?")}`;
-  const preview = (game.move_san_history || []).slice(0, 6).join(" ");
-  const lichessLink = game.lichess_id
-    ? `<a class="link" target="_blank" rel="noopener noreferrer" href="https://lichess.org/${escapeHtml(game.lichess_id)}" title="Open on Lichess">lichess ↗</a>`
-    : "";
-
-  const actions = [];
-  if (kind === "user-error") {
-    actions.push(
-      `<button class="btn primary" data-act="train" data-index="${index}" title="The forgotten move is already queued — train it now">Train it now</button>`
-    );
-  }
-  if (kind === "left-prep" && game.repertoire_id) {
-    actions.push(
-      `<button class="btn primary" data-act="build" data-index="${index}" title="Open Build at the position where the novelty appeared">Add reply in Build</button>`
-    );
-  }
-  if ((game.move_san_history || []).length) {
-    actions.push(
-      `<button class="btn ghost" data-act="analyze" data-index="${index}" title="Load this game into the Analyze tab">Review in Analyze</button>`
-    );
-  }
-
-  const body = open
-    ? `<div class="replay-row-body">
-        <div class="replay-line">${renderReplayMoveLine(game)}</div>
-        <div class="replay-detail">${renderReplayDetail(game)}</div>
-        <div class="replay-actions">${actions.join("")}${lichessLink}</div>
-      </div>`
-    : "";
-  return `
-    <div class="replay-row rk-${kind}${open ? " is-open" : ""}">
-      <button type="button" class="replay-row-head" data-index="${index}" aria-expanded="${open}">
-        <span class="replay-icon" aria-hidden="true">${meta.icon}</span>
-        <span class="players">${players}</span>
-        <span class="replay-result">${escapeHtml(game.result || "*")}</span>
-        ${open ? "" : `<span class="replay-preview">${escapeHtml(preview)}…</span>`}
-        <span class="replay-badge">${escapeHtml(meta.badge)}</span>
-        <span class="replay-caret" aria-hidden="true">${open ? "▾" : "▸"}</span>
-      </button>
-      ${body}
-    </div>
-  `;
-}
-
-function renderReplayMoveLine(game) {
-  const history = game.move_san_history || [];
-  if (!history.length) return '<span class="muted">No moves recorded.</span>';
-  const departPly = game.departure_ply; // 1-indexed ply of the departing move
-  const matched = Number(game.matched_plies) || 0;
-  const parts = [];
-  history.forEach((san, index) => {
-    const ply = index + 1;
-    const moveNumber = Math.ceil(ply / 2);
-    const isWhite = ply % 2 === 1;
-    if (isWhite) parts.push(`<span class="move-num">${moveNumber}.</span>`);
-    else if (ply === 1 || ply === matched + 1) parts.push(`<span class="move-num">${moveNumber}...</span>`);
-    const inPrep = ply <= matched;
-    const isDepart = ply === departPly;
-    const classes = [];
-    if (inPrep) classes.push("prep");
-    if (isDepart) classes.push("ply-mark");
-    parts.push(`<span class="${classes.join(" ")}">${escapeHtml(san)}</span>`);
-  });
-  return parts.join(" ");
-}
-
-function replayDepartureSan(game) {
-  const history = game.move_san_history || [];
-  const index = Number(game.departure_ply || 0) - 1;
-  return index >= 0 && index < history.length ? history[index] : "";
-}
-
-function renderReplayDetail(game) {
-  const lines = [];
-  if (game.repertoire_name) {
-    lines.push(
-      `Repertoire: <strong>${escapeHtml(game.repertoire_name)}</strong> · matched ${game.matched_plies} plies`
-    );
-  } else {
-    lines.push(`Played as ${escapeHtml(game.user_color)}, but no active repertoire matched.`);
-  }
-  if (game.departure_reason === "user_left_preparation") {
-    const expected = game.expected_move_san ? ` (expected <strong>${escapeHtml(game.expected_move_san)}</strong>)` : "";
-    const playedSan = replayDepartureSan(game);
-    const played = playedSan ? ` <strong>${escapeHtml(playedSan)}</strong>` : "";
-    const queued = game.training_recorded
-      ? " Added to your training queue - the move you forgot is due now."
-      : " Already in your training queue.";
-    lines.push(`You diverged on ply ${game.departure_ply}${played}${expected}.${queued}`);
-  } else if (game.departure_reason === "opponent_unprepared_branch") {
-    const playedSan = replayDepartureSan(game);
-    const played = playedSan ? ` <strong>${escapeHtml(playedSan)}</strong>` : "";
-    lines.push(`Opponent took an unprepared branch on ply ${game.departure_ply}${played}. Add your reply in Build so it never surprises you again.`);
-  } else if (game.departure_reason === "game_stayed_in_preparation") {
-    lines.push("Game stayed entirely within preparation. Nice.");
-  } else if (game.departure_reason === "no_repertoire_for_color") {
-    lines.push("No active repertoire defined for the colour you played.");
-  }
-  return lines.join("<br />");
 }
 
 // ----- Shared repertoire viewer (read-only Build) -------------------------------
@@ -9604,6 +8788,7 @@ async function completeOneGap(gap, signal) {
   // apply-plan anchors on a REAL node id, so drain pending local adds and re-resolve.
   await hardFlushBuild();
   const nodeId = resolveBuildId(appState.buildCurrentNodeId);
+  const { runBrowserBuildGenerate } = await (_buildGenReady || preloadBuildGen());
   const plan = await runBrowserBuildGenerate({
     build: appState.build,
     rootNodeId: nodeId,
@@ -9852,7 +9037,7 @@ function bindEvents() {
     button.addEventListener("click", () => {
       switchView(button.dataset.view);
       if (button.dataset.view === "settings") loadSettings();
-      if (button.dataset.view === "teams") loadTeams();
+      if (button.dataset.view === "teams") loadTeams().catch(() => {});
     });
   });
 
@@ -9984,10 +9169,18 @@ function bindEvents() {
     .getElementById("open-engine-widget-build")
     .addEventListener("click", () => engineWidget.openForCurrent());
   bindEvalChart();
-  document.getElementById("analysis-start").addEventListener("click", () => analysisTreeNav("start"));
-  document.getElementById("analysis-prev").addEventListener("click", () => analysisTreeNav("prev"));
-  document.getElementById("analysis-next").addEventListener("click", () => analysisTreeNav("next"));
-  document.getElementById("analysis-end").addEventListener("click", () => analysisTreeNav("end"));
+  document.getElementById("analysis-start").addEventListener("click", () => {
+    void analysisTreeNav("start").catch(() => {});
+  });
+  document.getElementById("analysis-prev").addEventListener("click", () => {
+    void analysisTreeNav("prev").catch(() => {});
+  });
+  document.getElementById("analysis-next").addEventListener("click", () => {
+    void analysisTreeNav("next").catch(() => {});
+  });
+  document.getElementById("analysis-end").addEventListener("click", () => {
+    void analysisTreeNav("end").catch(() => {});
+  });
 
   document.getElementById("build-root").addEventListener("click", buildGoRoot);
   document.getElementById("build-parent").addEventListener("click", buildGoBack);
@@ -10042,12 +9235,12 @@ function bindEvents() {
     if (event.key === "ArrowLeft") {
       event.preventDefault();
       if (inBuild) buildGoBack();
-      else analysisTreeNav("prev");
+      else void analysisTreeNav("prev").catch(() => {});
     }
     if (event.key === "ArrowRight") {
       event.preventDefault();
       if (inBuild) buildGoForward();
-      else analysisTreeNav("next");
+      else void analysisTreeNav("next").catch(() => {});
     }
     // Up/Down (and j/k) move the fork pick — which prepared continuation → will
     // play next. The on-screen fork bar and the board arrows mirror the pick.
