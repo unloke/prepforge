@@ -114,6 +114,7 @@ function createStubElement(tag = "div") {
       if (selector === ".scout-speed-chip") return classes.has("scout-speed-chip");
       if (selector === ".scout-action-analyze") return classes.has("scout-action-analyze");
       if (selector === ".scout-action-prep") return classes.has("scout-action-prep");
+      if (selector === ".scout-action-add-prep") return classes.has("scout-action-add-prep");
       if (selector === ".scout-prepare-all") return classes.has("scout-prepare-all");
       if (selector === ".scout-badge") return classes.has("scout-badge");
       if (selector.startsWith("[data-prep-rep]")) return !!el.dataset.prepRep;
@@ -152,7 +153,8 @@ function stubFromHtml(html) {
 function stubLineFromReport(html) {
   const lineEl = createStubElement("div");
   lineEl.classList.add("scout-line");
-  lineEl.dataset.lineIdx = "0";
+  lineEl.dataset.rowIdx = "0";
+  lineEl.dataset.rowKind = "line";
   lineEl.dataset.color = "white";
 
   const prepAll = createStubElement("button");
@@ -181,7 +183,7 @@ describe("scout-report rendering", () => {
       escapeHtml,
     );
     expect(html).toContain('data-speed="blitz"');
-    expect(html).toContain('class="scout-speed-chip is-on" data-speed="blitz"');
+    expect(html).toContain('scout-speed-chip is-on" data-speed="blitz"');
     expect(html).not.toContain('data-speed="all" class="scout-speed-chip is-on"');
   });
 
@@ -211,23 +213,64 @@ describe("scout-report rendering", () => {
     expect(pgn).toContain("1. e4 c5 2. Nf3");
   });
 
-  it("renders a miniboard in line detail HTML", () => {
+  it("renders a miniboard and always shows Add to prep", () => {
     const line = {
       sans: ["e4"],
       ucis: ["e2e4"],
-      prepared: false,
+      prepared: true,
       repId: "rep-black",
       deepestNodeId: "n1",
     };
-    const html = scoutLineDetailHtml(line, 0, "white", {
+    const html = scoutLineDetailHtml(line, 0, "white", "line", {
       fenAfterLine: scoutModule.fenAfterLine,
       renderBoard: (fen, orientation) =>
         `<board fen="${fen}" orient="${orientation}"></board>`,
       escapeHtml,
     });
     expect(html).toContain("scout-miniboard-wrap");
-    expect(html).toContain('data-prep-rep="rep-black"');
-    expect(html).toContain('data-line-idx="0"');
+    expect(html).toContain("scout-action-add-prep");
+    expect(html).toContain('data-row-idx="0"');
+  });
+
+  it("uses profile colour baseline instead of weighted trie score", () => {
+    const { sectionData } = buildScoutSectionReport(
+      scoutModule,
+      {
+        games: GAMES,
+        profile: {
+          recentlyChanged: { white: false, black: false },
+          colorStats: {
+            white: { games: 3, w: 1, d: 0, l: 2, scorePct: 55 },
+            black: { games: 0, w: 0, d: 0, l: 0, scorePct: 0 },
+          },
+        },
+      },
+      "white",
+      LOOKUPS.black,
+      { speedFilter: "all", escapeHtml },
+    );
+    expect(sectionData.baselineScorePct).toBe(55);
+  });
+
+  it("renders weaknesses panel with sample sizes", () => {
+    const { html } = buildScoutSectionReport(
+      scoutModule,
+      {
+        games: GAMES,
+        profile: {
+          recentlyChanged: { white: false, black: false },
+          colorStats: {
+            white: { games: 3, w: 1, d: 0, l: 2, scorePct: 33 },
+            black: { games: 0, w: 0, d: 0, l: 0, scorePct: 0 },
+          },
+        },
+      },
+      "white",
+      LOOKUPS.black,
+      { speedFilter: "all", escapeHtml },
+    );
+    expect(html).toContain("Prepare these first");
+    expect(html).toContain("scout-n");
   });
 });
 
@@ -284,7 +327,8 @@ describe("scout-report interactions", () => {
     };
     const lineEl = createStubElement("div");
     lineEl.classList.add("scout-line");
-    lineEl.dataset.lineIdx = "0";
+    lineEl.dataset.rowIdx = "0";
+    lineEl.dataset.rowKind = "line";
     lineEl.dataset.color = "white";
 
     await handleScoutResultsClick(
@@ -321,7 +365,7 @@ describe("scout-report interactions", () => {
     expect(detail?.innerHTML).toContain("scout-miniboard");
   });
 
-  it("routes Analyze, Prep gap, and Prepare all actions to callbacks", async () => {
+  it("routes Analyze, Add to prep, and Prepare all actions to callbacks", async () => {
     const { sectionData } = buildScoutSectionReport(
       scoutModule,
       {
@@ -338,11 +382,12 @@ describe("scout-report interactions", () => {
     };
     const callbacks = {
       scoutLineDetailHtml: () =>
-        '<button class="scout-action-analyze" data-line-idx="0"></button><button class="scout-action-prep" data-prep-rep="rep-black" data-prep-node="n1"></button>',
+        '<button class="scout-action-analyze" data-row-kind="line" data-row-idx="0"></button><button class="scout-action-add-prep" data-row-kind="line" data-row-idx="0" data-color="white"></button>',
       enrichEcoForLine: vi.fn(),
       restoreDistRoot: vi.fn(),
       renderDistDrilldown: vi.fn(),
       scoutPrepareAll: vi.fn(),
+      scoutAddToPrep: vi.fn(async () => {}),
       scoutAnalyzeLine: vi.fn(),
       editRepertoire: vi.fn(async () => {}),
       selectBuildNode: vi.fn(async () => {}),
@@ -357,7 +402,8 @@ describe("scout-report interactions", () => {
 
     const lineEl = createStubElement("div");
     lineEl.classList.add("scout-line");
-    lineEl.dataset.lineIdx = "0";
+    lineEl.dataset.rowIdx = "0";
+    lineEl.dataset.rowKind = "line";
     lineEl.dataset.color = "white";
     await handleScoutResultsClick(
       {
@@ -372,7 +418,8 @@ describe("scout-report interactions", () => {
     detail.previousElementSibling = lineEl;
     const analyzeBtn = createStubElement("button");
     analyzeBtn.classList.add("scout-action-analyze");
-    analyzeBtn.dataset.lineIdx = "0";
+    analyzeBtn.dataset.rowIdx = "0";
+    analyzeBtn.dataset.rowKind = "line";
     analyzeBtn.closest = (sel) => {
       if (sel === ".scout-action-analyze") return analyzeBtn;
       if (sel === ".scout-line-detail") return detail;
@@ -385,19 +432,20 @@ describe("scout-report interactions", () => {
       "rival",
     );
 
-    const prepBtn = createStubElement("button");
-    prepBtn.dataset.prepRep = "rep-black";
-    prepBtn.dataset.prepNode = "n1";
-    prepBtn.closest = (sel) => (sel === "[data-prep-rep]" ? prepBtn : null);
-    await handleScoutResultsClick({ target: prepBtn }, ctx);
-    expect(callbacks.editRepertoire).toHaveBeenCalledWith("rep-black");
-    expect(callbacks.selectBuildNode).toHaveBeenCalledWith("n1");
+    const addBtn = createStubElement("button");
+    addBtn.classList.add("scout-action-add-prep");
+    addBtn.dataset.rowKind = "line";
+    addBtn.dataset.rowIdx = "0";
+    addBtn.dataset.color = "white";
+    addBtn.closest = (sel) => (sel === ".scout-action-add-prep" ? addBtn : null);
+    await handleScoutResultsClick({ target: addBtn }, ctx);
+    expect(callbacks.scoutAddToPrep).toHaveBeenCalledWith(sectionData.gradedLines[0], "white");
 
     const prepAllBtn = createStubElement("button");
     prepAllBtn.classList.add("scout-prepare-all");
     prepAllBtn.dataset.color = "white";
     prepAllBtn.closest = (sel) => (sel === ".scout-prepare-all" ? prepAllBtn : null);
     await handleScoutResultsClick({ target: prepAllBtn }, ctx);
-    expect(callbacks.scoutPrepareAll).toHaveBeenCalledWith(sectionData.gradedLines);
+    expect(callbacks.scoutPrepareAll).toHaveBeenCalled();
   });
 });

@@ -6,6 +6,13 @@ import {
   BRILLIANT_MAX_CANDIDATE_WIN_DELTA,
 } from "./features.js";
 
+// Stockfish concurrency for the trap-line batch. This pass runs WHILE the ~1 GB Maia session is
+// still resident (it needs Maia's policy to pick each human-natural move), so an extra 6-worker
+// Stockfish pool on top is what pushed peak memory to ~1.2 GB. It only ever evaluates a handful
+// of de-duplicated candidate positions, so a small pool barely costs wall-clock while meaningfully
+// trimming that peak — capped here (game-analyzer still clamps to the position count).
+const TRAP_STOCKFISH_CONCURRENCY = 2;
+
 // Mover-POV win chance (0..1) from an analysis eval-map entry ({score_cp, mate_in},
 // White-POV), or null when that position wasn't evaluated.
 function moverWinChanceFromEval(ev, side) {
@@ -200,6 +207,9 @@ export async function attachClientTrapGaps({ candidates, evals, depth, rating, p
       positions: humanFens,
       depth,
       multipv: 1,
+      // Keep the trap pool small: it runs alongside the resident Maia session, so a big
+      // Stockfish fan-out here is the main avoidable contributor to the memory peak.
+      concurrency: TRAP_STOCKFISH_CONCURRENCY,
       // Surface the trap-line Stockfish batch as its own progress (the toast's "traps" phase),
       // so a game with brilliancy candidates doesn't look frozen while this batch runs.
       onProgress,

@@ -3,15 +3,44 @@
 // the user's own repertoires against the lines that opponent actually plays.
 //
 // Everything runs in the browser — the PrepForge server is never involved in the
-// fetch or the number-crunching. Only the openings matter here, so parsing stops
-// at MAX_PLIES; sixty games cost a few milliseconds.
+// fetch or the number-crunching. Parsing keeps deeper moves for weakness/engine
+// analysis while the display trie still caps at MAX_PLIES.
 //
 // Pure functions + an injected-deps fetcher, unit-testable without network/DOM.
 
 import { Chess } from "chess.js";
 
-export const SCOUT_MAX_GAMES = 100;
-export const MAX_PLIES = 16; // opening book depth we care about
+export const SCOUT_MAX_GAMES = 500;
+export const MAX_PLIES = 16; // opening book depth for the display trie
+export const ANALYZE_PLIES = 24; // deeper capture for weakness / engine scan
+export const WEAKNESS_MIN_GAMES = 7;
+
+export function triePathKey(ucis, maxPlies = MAX_PLIES) {
+  return ucis.slice(0, maxPlies).join(">");
+}
+
+// After add-moves flush, map a provisional tmp-* id to its reconciled server id.
+export function nodeIdAfterFlush(nodeId, idMap) {
+  return (nodeId && idMap && idMap[nodeId]) || nodeId;
+}
+
+export function mergeEngineIntoTargets(targets, enginePatterns) {
+  if (!enginePatterns?.size) return targets;
+  return targets.map((target) => {
+    const pathKey = triePathKey(target.ucis);
+    let pattern = enginePatterns.get(pathKey);
+    if (!pattern) {
+      for (const [key, value] of enginePatterns) {
+        if (pathKey.startsWith(key) || key.startsWith(pathKey)) {
+          pattern = value;
+          break;
+        }
+      }
+    }
+    if (!pattern) return target;
+    return { ...target, enginePattern: pattern, hasEngineMistake: true };
+  });
+}
 const CACHE_KEY = "prepforge.scout.cache.v2";
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // opponents play new games constantly
 const CACHE_CAP = 8;
@@ -34,6 +63,12 @@ function parseSpeedBucket(timeControl) {
   if (n < 480) return "blitz";
   if (n < 1500) return "rapid";
   return "classical";
+}
+
+function parseGameId(block) {
+  const site = headerValue(block, "Site") || "";
+  const match = site.match(/lichess\.org\/([a-zA-Z0-9]+)/);
+  return match ? match[1] : null;
 }
 
 // Movetext -> SAN tokens, openings only. Strips comments, variations, NAGs,
@@ -81,10 +116,11 @@ export function parseGameBlock(block, username) {
 
   const timeControl = headerValue(block, "TimeControl");
   const speed = parseSpeedBucket(timeControl);
+  const gameId = parseGameId(block);
 
   const moveStart = block.search(/\n\s*\n/);
   const movetext = moveStart >= 0 ? block.slice(moveStart) : block;
-  const sans = movetextSans(movetext);
+  const sans = movetextSans(movetext, ANALYZE_PLIES);
   if (!sans.length) return null;
 
   // Replay for UCIs (needed to walk repertoire trees, which key moves by uci).
@@ -103,7 +139,7 @@ export function parseGameBlock(block, username) {
     replayedSans.push(move.san);
   }
   if (!ucis.length) return null;
-  return { color, score, sans: replayedSans, ucis, rating, datestamp, speed };
+  return { color, score, sans: replayedSans, ucis, rating, datestamp, speed, gameId };
 }
 
 export function parseMultiPgn(text, username) {
@@ -121,7 +157,13 @@ export function parseMultiPgn(text, username) {
 // ---------------------------------------------------------------------------
 
 function trieNode() {
-  return { count: 0, score: 0, gameCount: 0, children: new Map() };
+  return { count: 0, score: 0, gameCount: 0, w: 0, d: 0, l: 0, children: new Map() };
+}
+
+function incrementResult(node, score) {
+  if (score === 1) node.w += 1;
+  else if (score === 0.5) node.d += 1;
+  else node.l += 1;
 }
 
 function gameWeight(games, game, recency) {
@@ -134,6 +176,25 @@ function gameWeight(games, game, recency) {
   const range = newestTs - oldestTs;
   if (range === 0) return 1;
   return 0.5 + 0.5 * ((game.datestamp - oldestTs) / range);
+}
+
+function nodeScorePct(node) {
+  return node.count > 0 ? Math.round((node.score / node.count) * 100) : 0;
+}
+
+function nodeToLineGroup(root, node, sans, ucis, pathKey) {
+  return {
+    line: pathKey,
+    sans: [...sans],
+    ucis: [...ucis],
+    games: node.gameCount,
+    w: node.w,
+    d: node.d,
+    l: node.l,
+    scorePct: nodeScorePct(node),
+    share: root.count > 0 ? node.count / root.count : 0,
+    count: node.count,
+  };
 }
 
 // Aggregate the games one colour at a time. Each path through the trie is a line
@@ -152,6 +213,7 @@ export function buildOpeningTrie(
     root.count += w;
     root.score += game.score * w;
     root.gameCount += 1;
+    incrementResult(root, game.score);
     let node = root;
     for (let i = 0; i < Math.min(game.ucis.length, maxPlies); i += 1) {
       const key = `${game.ucis[i]}|${game.sans[i]}`;
@@ -160,9 +222,60 @@ export function buildOpeningTrie(
       node.count += w;
       node.score += game.score * w;
       node.gameCount += 1;
+      incrementResult(node, game.score);
     }
   }
   return root;
+}
+
+// Walk the trie to first-move families plus distinct lines at 2–4 plies.
+export function openingBreakdown(root, { minGames = 1 } = {}) {
+  const groups = [];
+  const seen = new Set();
+
+  const add = (node, sans, ucis, pathKey) => {
+    if (node.gameCount < minGames) return;
+    if (seen.has(pathKey)) return;
+    seen.add(pathKey);
+    groups.push(nodeToLineGroup(root, node, sans, ucis, pathKey));
+  };
+
+  for (const [key, child] of root.children) {
+    const [uci, san] = key.split("|");
+    add(child, [san], [uci], key);
+  }
+
+  const walk = (node, depth, sans, ucis, pathKeys) => {
+    if (depth >= 2 && depth <= 4) {
+      add(node, sans, ucis, pathKeys.join(">"));
+    }
+    if (depth >= 4) return;
+    for (const [key, child] of node.children) {
+      const [uci, san] = key.split("|");
+      walk(child, depth + 1, [...sans, san], [...ucis, uci], [...pathKeys, key]);
+    }
+  };
+  walk(root, 0, [], [], []);
+
+  return groups;
+}
+
+// Rank lines by frequency × how far below the opponent's own baseline they score.
+export function recommendTargets(breakdown, baselineScorePct, { limit = 8, minGames = WEAKNESS_MIN_GAMES } = {}) {
+  return breakdown
+    .filter((g) => g.games >= minGames)
+    .map((g) => {
+      const belowBaseline = baselineScorePct - g.scorePct;
+      return {
+        ...g,
+        belowBaseline,
+        opportunity: g.share * Math.max(0, belowBaseline),
+        smallSample: false,
+      };
+    })
+    .filter((g) => g.belowBaseline > 0)
+    .sort((a, b) => b.opportunity - a.opportunity)
+    .slice(0, limit);
 }
 
 // The opponent's most-travelled paths: walk the trie greedily from the most
@@ -177,7 +290,7 @@ export function topLines(root, { limit = 12, minCount = 1.5 } = {}) {
       if (!best || child.count > best.child.count) best = { key, child };
     }
     if (!best || best.child.count < minCount) {
-      return { sans, ucis, count: node.count, score: node.score };
+      return { sans, ucis, count: node.count, score: node.score, w: node.w, d: node.d, l: node.l };
     }
     const [uci, san] = best.key.split("|");
     return walk(best.child, [...sans, san], [...ucis, uci]);
@@ -194,8 +307,11 @@ export function topLines(root, { limit = 12, minCount = 1.5 } = {}) {
       ucis: tip.ucis,
       count: child.count,
       gameCount: child.gameCount,
+      w: child.w,
+      d: child.d,
+      l: child.l,
       share: root.count > 0 ? child.count / root.count : 0,
-      scorePct: child.count > 0 ? Math.round((child.score / child.count) * 100) : 0,
+      scorePct: nodeScorePct(child),
     };
     lines.push(line);
   }
@@ -221,8 +337,11 @@ export function moveDistribution(root) {
         san,
         count: child.count,
         gameCount: child.gameCount,
+        w: child.w,
+        d: child.d,
+        l: child.l,
         share: child.count / total,
-        scorePct: child.count > 0 ? Math.round((child.score / child.count) * 100) : 0,
+        scorePct: nodeScorePct(child),
         node: child,
       };
     })
@@ -323,6 +442,28 @@ function detectRecentChange(last20, prev20) {
   return { white: changed("white"), black: changed("black") };
 }
 
+function colorResultStats(games, color) {
+  const filtered = games.filter((g) => g.color === color);
+  let w = 0;
+  let d = 0;
+  let l = 0;
+  let scoreSum = 0;
+  for (const g of filtered) {
+    if (g.score === 1) w += 1;
+    else if (g.score === 0.5) d += 1;
+    else l += 1;
+    scoreSum += g.score;
+  }
+  const n = filtered.length;
+  return {
+    games: n,
+    w,
+    d,
+    l,
+    scorePct: n > 0 ? Math.round((scoreSum / n) * 100) : 0,
+  };
+}
+
 export function opponentProfile(games) {
   const ratingsSeen = games.map((g) => g.rating).filter((r) => r > 0);
   const speedCounts = { bullet: 0, blitz: 0, rapid: 0, classical: 0, unknown: 0 };
@@ -338,6 +479,10 @@ export function opponentProfile(games) {
     ratingLast: games[0]?.rating || null,
     speedCounts,
     recentlyChanged: detectRecentChange(last20, prev20),
+    colorStats: {
+      white: colorResultStats(games, "white"),
+      black: colorResultStats(games, "black"),
+    },
   };
 }
 
@@ -348,12 +493,12 @@ export function opponentProfile(games) {
 export function scoutUrl(username, max) {
   const safe = encodeURIComponent(String(username || "").trim());
   const params = new URLSearchParams({
-    max: String(Math.max(10, Math.min(SCOUT_MAX_GAMES, Number(max) || 60))),
+    max: String(Math.max(10, Math.min(SCOUT_MAX_GAMES, Number(max) || 100))),
     moves: "true",
     clocks: "false",
     evals: "false",
     opening: "false",
-    perfType: "blitz,rapid,classical",
+    perfType: "bullet,blitz,rapid,classical",
   });
   return `https://lichess.org/api/games/user/${safe}?${params}`;
 }
@@ -377,7 +522,7 @@ export function createScoutClient({ fetchImpl, storage, now } = {}) {
   }
 
   // fetchGames(username, {max}) -> parsed game records (cached for a few hours).
-  async function fetchGames(username, { max = 60, signal } = {}) {
+  async function fetchGames(username, { max = 100, signal } = {}) {
     const key = `${username.toLowerCase()}:${max}`;
     const cache = readCache();
     const hit = cache.entries[key];

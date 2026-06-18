@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  ANALYZE_PLIES,
+  MAX_PLIES,
   buildOpeningTrie,
   createScoutClient,
   fenAfterLine,
@@ -8,12 +10,16 @@ import {
   lineCoverage,
   moveDistribution,
   movetextSans,
+  openingBreakdown,
   opponentProfile,
   parseGameBlock,
   parseMultiPgn,
+  nodeIdAfterFlush,
+  recommendTargets,
   repertoireChildLookup,
   scoutUrl,
   topLines,
+  WEAKNESS_MIN_GAMES,
 } from "./scout.js";
 
 function pgn({
@@ -180,6 +186,14 @@ describe("buildOpeningTrie + distribution + topLines", () => {
     expect(lines[0].subLines).toBeDefined();
     expect(lines[0].subLines.length).toBeGreaterThan(0);
   });
+  it("tracks W/D/L counters per trie node", () => {
+    const trie = buildOpeningTrie(GAMES, "white", { recency: false });
+    expect(trie.w).toBe(2);
+    expect(trie.d).toBe(1);
+    expect(trie.l).toBe(1);
+    const dist = moveDistribution(trie);
+    expect(dist[0].w + dist[0].d + dist[0].l).toBe(dist[0].gameCount);
+  });
   it("tracks raw gameCount separately from weighted count", () => {
     const trie = buildOpeningTrie(GAMES, "white", { recency: true });
     expect(trie.gameCount).toBe(4);
@@ -233,6 +247,34 @@ describe("fenAfterLine", () => {
   });
 });
 
+describe("openingBreakdown + recommendTargets", () => {
+  it("groups first-move families and deeper lines", () => {
+    const trie = buildOpeningTrie(GAMES, "white", { recency: false });
+    const breakdown = openingBreakdown(trie, { minGames: 1 });
+    expect(breakdown.some((g) => g.sans.length === 1 && g.sans[0] === "e4")).toBe(true);
+    expect(breakdown.some((g) => g.sans.length >= 2)).toBe(true);
+  });
+
+  it("ranks frequent lines below the opponent baseline", () => {
+    const trie = buildOpeningTrie(GAMES, "white", { recency: false });
+    const breakdown = openingBreakdown(trie, { minGames: 1 });
+    const baseline = 50;
+    const targets = recommendTargets(breakdown, baseline, { minGames: 2, limit: 5 });
+    for (const t of targets) {
+      expect(t.games).toBeGreaterThanOrEqual(2);
+      expect(t.scorePct).toBeLessThan(baseline);
+      expect(t.opportunity).toBeGreaterThan(0);
+    }
+  });
+
+  it("excludes thin samples from recommendations", () => {
+    const trie = buildOpeningTrie(GAMES, "white", { recency: false });
+    const breakdown = openingBreakdown(trie, { minGames: 1 });
+    const targets = recommendTargets(breakdown, 40, { minGames: WEAKNESS_MIN_GAMES });
+    expect(targets.every((t) => t.games >= WEAKNESS_MIN_GAMES)).toBe(true);
+  });
+});
+
 describe("opponentProfile", () => {
   it("summarizes ratings and speed counts", () => {
     const profile = opponentProfile(GAMES);
@@ -241,6 +283,12 @@ describe("opponentProfile", () => {
     expect(profile.ratingMax).toBe(1800);
     expect(profile.speedCounts.blitz).toBe(4);
     expect(profile.speedCounts.rapid).toBe(1);
+  });
+  it("includes per-colour W/D/L and score baseline", () => {
+    const profile = opponentProfile(GAMES);
+    expect(profile.colorStats.white.games).toBe(4);
+    expect(profile.colorStats.white.w + profile.colorStats.white.d + profile.colorStats.white.l).toBe(4);
+    expect(profile.colorStats.white.scorePct).toBeGreaterThanOrEqual(0);
   });
   it("detects recent opening changes when both windows have enough games", () => {
     const recent = Array.from({ length: 20 }, () => ({
@@ -268,6 +316,15 @@ describe("opponentProfile", () => {
     const older = [{ color: "white", ucis: ["e2e4"], rating: 0, speed: "blitz" }];
     const profile = opponentProfile([...recent, ...older]);
     expect(profile.recentlyChanged.white).toBe(false);
+  });
+});
+
+describe("nodeIdAfterFlush", () => {
+  it("maps provisional tmp ids to reconciled server ids after flush", () => {
+    const idMap = { "tmp-abc": "node-real-42" };
+    expect(nodeIdAfterFlush("tmp-abc", idMap)).toBe("node-real-42");
+    expect(nodeIdAfterFlush("node-existing", idMap)).toBe("node-existing");
+    expect(nodeIdAfterFlush(null, idMap)).toBeNull();
   });
 });
 
@@ -340,7 +397,13 @@ describe("createScoutClient", () => {
   it("builds a bounded export URL", () => {
     const url = scoutUrl("Foe", 9999);
     expect(url).toContain("/api/games/user/Foe?");
-    expect(url).toContain("max=100");
-    expect(url).toContain("perfType=blitz%2Crapid%2Cclassical");
+    expect(url).toContain("max=500");
+    expect(url).toContain("perfType=bullet%2Cblitz%2Crapid%2Cclassical");
+  });
+
+  it("parses deeper movetext for analysis", () => {
+    const sans = movetextSans(Array(30).fill("e4").join(" "), ANALYZE_PLIES);
+    expect(sans.length).toBe(ANALYZE_PLIES);
+    expect(ANALYZE_PLIES).toBeGreaterThan(MAX_PLIES);
   });
 });

@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-CiZaqS5z.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-uLfmxlbi.css">
+    <script type="module" crossorigin src="/static/assets/index-D2P9Ls9g.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-CXdMu4mw.css">
   </head>
   <body>
     <header class="topbar">
@@ -297,15 +297,16 @@
               <div class="replay-toolbar">
                 <input id="scout-username" type="text" placeholder="lichess username" />
                 <select id="scout-count" title="How many of their recent games to read">
-                  <option value="40">40 games</option>
-                  <option value="60" selected>60 games</option>
-                  <option value="100">100 games</option>
+                  <option value="50">50 games</option>
+                  <option value="100" selected>100 games</option>
+                  <option value="300">300 games</option>
+                  <option value="500">500 games</option>
                 </select>
                 <button class="btn primary" id="scout-btn" data-testid="scout-btn">Scout</button>
               </div>
             </div>
             <p class="muted hint">
-              What do they actually open with — and do your repertoires cover their pet lines?
+              What do they actually open with — where do they go wrong — and do your repertoires cover their pet lines?
             </p>
             <div id="scout-profile" class="scout-profile" hidden></div>
             <div id="scout-results" class="scout-results"></div>

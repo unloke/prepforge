@@ -18,12 +18,16 @@ import { describeMove } from "./explain.js";
 import {
   buildScoutAnalyzePgn,
   buildScoutSectionReport,
+  buildScoutShareText,
   handleScoutProfileClick,
   handleScoutResultsClick,
+  mergeEnginePatternsIntoSections,
   renderMiniBoardHtml as renderScoutMiniBoardHtml,
   renderScoutProfile,
   scoutLineDetailHtml,
   scoutLineText,
+  scoutWdlHtml,
+  scoutScoreWithSample,
 } from "./scout-report.js";
 
 let _coachReady = null;
@@ -4857,9 +4861,14 @@ async function runAnalysis() {
         provider.setInitProgressHandler(({ phase, loaded, total }) => {
           if (phase === "download") {
             const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
-            jobToast.updateJob({ message: `loading Maia model · ${pct}%` });
+            jobToast.updateJob({ message: `downloading Maia model · ${pct}%` });
           } else if (phase === "cache") {
-            jobToast.updateJob({ message: "loading cached Maia model" });
+            jobToast.updateJob({ message: "loading Maia model from cache" });
+          } else if (phase === "verify" || phase === "session") {
+            // Cached weights still need an ORT session rebuild (the slow part). Say so, rather
+            // than leaving the stale "downloading" message up — that's what made a cached
+            // re-init (after an idle teardown) look like a fresh 46 MB download.
+            jobToast.updateJob({ message: "preparing Maia engine…" });
           }
         });
         try {
@@ -6360,13 +6369,13 @@ async function onBuildBoardMove(moveUci) {
   scheduleBuildFlush();
 }
 
-async function createRepertoirePrompt({ title, defaultName, openAfter = true } = {}) {
+async function createRepertoirePrompt({ title, defaultName, openAfter = true, defaultColor = "white" } = {}) {
   const result = await showInputModal({
     title: title || "New repertoire",
     okLabel: "Create",
     fields: [
       { name: "name", label: "Name", default: defaultName || "New repertoire" },
-      { name: "color", label: "Your color (white / black)", default: "white" },
+      { name: "color", label: "Your color (white / black)", default: defaultColor },
     ],
   });
   if (!result) return null;
@@ -8851,7 +8860,7 @@ async function runScout() {
     usernameInput.focus();
     return;
   }
-  const count = Math.max(20, Math.min(100, Number(document.getElementById("scout-count").value) || 60));
+  const count = Math.max(20, Math.min(500, Number(document.getElementById("scout-count").value) || 100));
   const results = document.getElementById("scout-results");
   const profile = document.getElementById("scout-profile");
   button.disabled = true;
@@ -8909,6 +8918,7 @@ async function fetchAndBuildScoutState(username, count) {
     profile: profileData,
     lookups,
     activeSpeed: scoutState?.username === username ? scoutState.activeSpeed : "all",
+    engineByColor: scoutState?.username === username ? scoutState.engineByColor || {} : {},
     sections: {},
   };
 }
@@ -8927,7 +8937,11 @@ function renderScoutReport() {
     profileEl.hidden = false;
   }
   scoutState.sections = {};
-  const speedOpts = { speedFilter: scoutState.activeSpeed, escapeHtml };
+  const speedOpts = {
+    speedFilter: scoutState.activeSpeed,
+    escapeHtml,
+    enginePatterns: scoutState.engineByColor?.white || null,
+  };
   const whiteReport = buildScoutSectionReport(
     scoutModule,
     scoutState,
@@ -8941,9 +8955,15 @@ function renderScoutReport() {
     scoutState,
     "black",
     scoutState.lookups.white,
-    speedOpts,
+    {
+      ...speedOpts,
+      enginePatterns: scoutState.engineByColor?.black || null,
+    },
   );
   if (blackReport.sectionData) scoutState.sections.black = blackReport.sectionData;
+  if (scoutState.engineByColor && Object.keys(scoutState.engineByColor).length) {
+    mergeEnginePatternsIntoSections(scoutState.sections, scoutState.engineByColor);
+  }
   const sections = [whiteReport.html, blackReport.html].filter(Boolean);
   if (results) {
     results.innerHTML = sections.length
@@ -8952,8 +8972,8 @@ function renderScoutReport() {
   }
 }
 
-function localScoutLineDetailHtml(line, idx, oppColor) {
-  return scoutLineDetailHtml(line, idx, oppColor, {
+function localScoutLineDetailHtml(line, idx, oppColor, rowKind = "line") {
+  return scoutLineDetailHtml(line, idx, oppColor, rowKind, {
     fenAfterLine: (ucis) => scoutModule.fenAfterLine(ucis),
     renderBoard: (fen, orientation) =>
       renderScoutMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg }),
@@ -8987,40 +9007,227 @@ function scoutAnalyzeLine(line, oppColor, username) {
   setStatus(`Loaded ${username}'s line — press "Analyze game" to start`);
 }
 
-async function scoutPrepareAll(gradedLines) {
-  const gaps = gradedLines.filter((l) => !l.prepared && l.repId);
-  if (!gaps.length) {
-    setStatus("No gaps to prepare");
+async function scoutPickRepertoire(oppColor) {
+  const myColor = oppColor === "white" ? "black" : "white";
+  let reps = [];
+  try {
+    const payload = await api("/api/repertoires");
+    reps = (payload.repertoires || []).filter(
+      (r) => r.is_active !== false && r.color === myColor,
+    );
+  } catch (error) {
+    setStatus(error.message);
+    return null;
+  }
+  const options = [
+    ...reps.map((r) => ({ value: r.id, label: `${r.name} (${r.color})` })),
+    { value: "__new__", label: "Create new repertoire…" },
+  ];
+  const result = await showInputModal({
+    title: "Add line to prep",
+    okLabel: "Continue",
+    fields: [
+      {
+        name: "repertoire",
+        label: "Target repertoire",
+        type: "select",
+        default: reps[0]?.id || "__new__",
+        options,
+      },
+    ],
+  });
+  if (!result?.repertoire) return null;
+  if (result.repertoire === "__new__") {
+    const created = await createRepertoirePrompt({
+      title: "New repertoire for scout prep",
+      defaultName: scoutState?.username ? `vs ${scoutState.username}` : "Opponent prep",
+      defaultColor: myColor,
+      openAfter: false,
+    });
+    return created?.repertoire_id || null;
+  }
+  return result.repertoire;
+}
+
+async function scoutWriteLineToRep(line, repId, { reload = true } = {}) {
+  if (!scoutModule) scoutModule = await import("./scout.js");
+  if (reload || !appState.build || appState.build.repertoire_id !== repId) {
+    await editRepertoire(repId);
+  }
+  if (!appState.build || appState.build.repertoire_id !== repId) return null;
+
+  const lookup = scoutModule.repertoireChildLookup(appState.build.nodes);
+  const { covered, deepestNodeId } = scoutModule.lineCoverage(lookup, line.ucis);
+  const remaining = line.ucis.slice(covered);
+  let parentId = deepestNodeId;
+  let parent = appState.buildNodeById.get(parentId);
+  let lastNodeId = parentId;
+
+  for (const uci of remaining) {
+    const existing = appState.build.nodes.find((n) => n.parent_id === parentId && n.uci === uci);
+    if (existing) {
+      parentId = existing.id;
+      parent = appState.buildNodeById.get(parentId);
+      lastNodeId = parentId;
+      continue;
+    }
+    if (!parent) break;
+    let after;
+    try {
+      after = await boardAfterMove(parent.fen, uci);
+    } catch (_) {
+      break;
+    }
+    const node = buildProvisionalNode(parent, uci, after);
+    appState.build.nodes.push(node);
+    appState.buildNodeById.set(node.id, node);
+    appState.buildPending.push({ tempId: node.id, parentRef: parentId, uci, node });
+    parentId = node.id;
+    parent = node;
+    lastNodeId = node.id;
+    setBuildSync("dirty");
+  }
+
+  try {
+    await hardFlushBuild();
+  } catch (error) {
+    setStatus(error.message);
+    return null;
+  }
+  const resolvedId = resolveBuildId(lastNodeId);
+  await selectBuildNode(resolvedId);
+  switchView("build");
+  return resolvedId;
+}
+
+async function scoutAddToPrep(line, oppColor) {
+  const repId = await scoutPickRepertoire(oppColor);
+  if (!repId) return;
+  const nodeId = await scoutWriteLineToRep(line, repId);
+  if (nodeId) setStatus(`Added line to prep — opened at ${line.sans.at(-1) || "position"}`);
+}
+
+async function scoutPrepareAll(lines, oppColor) {
+  const unique = [];
+  const seen = new Set();
+  for (const line of lines) {
+    const key = line.ucis.join(">");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(line);
+  }
+  if (!unique.length) {
+    setStatus("No lines to add");
     return;
   }
   if (jobToast.isBusy()) {
     setStatus("Another job is running");
     return;
   }
+  const repId = await scoutPickRepertoire(oppColor);
+  if (!repId) return;
+
   const ctrl = new AbortController();
   jobToast.startJob({
     id: `scout-prep-${Date.now()}`,
-    title: "Prep Scout Gaps",
+    title: "Add Scout Lines",
     tab: "build",
-    total: gaps.length,
+    total: unique.length,
     onCancel: () => ctrl.abort(),
   });
   let done = 0;
-  for (const gap of gaps) {
+  for (const line of unique) {
     if (ctrl.signal.aborted) break;
     jobToast.updateJob({
       current: done,
-      total: gaps.length,
-      message: `${gap.sans.at(-1)} · ${done + 1}/${gaps.length}`,
+      total: unique.length,
+      message: `${line.sans.at(-1) || "line"} · ${done + 1}/${unique.length}`,
     });
-    await editRepertoire(gap.repId);
-    if (gap.deepestNodeId) await selectBuildNode(gap.deepestNodeId);
+    await scoutWriteLineToRep(line, repId, { reload: done === 0 });
     done++;
   }
   jobToast.completeJob({
-    title: "Gaps ready",
-    message: `Opened ${done} gap${done === 1 ? "" : "s"} in Build`,
+    title: "Lines added",
+    message: `Wrote ${done} line${done === 1 ? "" : "s"} into prep`,
   });
+}
+
+async function copyScoutReport() {
+  if (!scoutState) return;
+  const text = buildScoutShareText(scoutState);
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus("Scout report copied to clipboard");
+  } catch (_) {
+    setStatus("Could not copy — check clipboard permissions");
+  }
+}
+
+async function scoutRunDeepScan() {
+  if (!scoutState?.games?.length) {
+    setStatus("Scout an opponent first");
+    return;
+  }
+  if (jobToast.isBusy()) {
+    setStatus("Another job is running");
+    return;
+  }
+  if (!scoutModule) {
+    scoutModule = await import("./scout.js");
+  }
+  const engineMod = await import("./scout-engine.js");
+  const ctrl = new AbortController();
+  const colors = ["white", "black"].filter((c) =>
+    scoutState.games.some((g) => g.color === c),
+  );
+  const total = colors.length;
+  jobToast.startJob({
+    id: `scout-deep-${Date.now()}`,
+    title: "Scout Deep Scan",
+    tab: "replay",
+    total,
+    onCancel: () => ctrl.abort(),
+  });
+  scoutState.engineByColor = scoutState.engineByColor || {};
+  let done = 0;
+  try {
+    for (const color of colors) {
+      if (ctrl.signal.aborted) break;
+      jobToast.updateJob({
+        current: done,
+        total,
+        message: `Scanning ${color} openings…`,
+      });
+      const patterns = await engineMod.runScoutDeepScan({
+        games: scoutState.games,
+        oppColor: color,
+        speedFilter: scoutState.activeSpeed,
+        shouldCancel: () => ctrl.signal.aborted,
+        onProgress: (cur, tot) => {
+          jobToast.updateJob({
+            current: done,
+            total,
+            message: `${color}: game ${cur}/${tot}`,
+          });
+        },
+      });
+      scoutState.engineByColor[color] = patterns;
+      done++;
+    }
+    renderScoutReport();
+    bindScoutEvents();
+    jobToast.completeJob({
+      title: "Deep scan done",
+      message: `Engine patterns for ${done} colour${done === 1 ? "" : "s"}`,
+    });
+  } catch (error) {
+    if (error?.cancelled) {
+      jobToast.cancelJob("Deep scan stopped");
+    } else {
+      jobToast.failJob(error.message || "Deep scan failed");
+      setStatus(error.message);
+    }
+  }
 }
 
 function renderDistDrilldown(distRowEl, sectionEl, oppColor) {
@@ -9042,15 +9249,17 @@ function renderDistDrilldown(distRowEl, sectionEl, oppColor) {
 
   const subDist = scoutModule.moveDistribution(childNode).slice(0, 6);
   const parentSan = distRowEl.querySelector(".scout-dist-san")?.textContent || uci;
+  const baseline = scoutState.profile?.colorStats?.[oppColor]?.scorePct;
   const rows = subDist
     .map((m) => {
       const heat = m.scorePct >= 55 ? " is-hot" : m.scorePct <= 45 ? " is-cold" : "";
       return `
-      <div class="scout-dist-row${heat}">
-        <span class="scout-dist-san">${escapeHtml(m.san)}</span>
-        <span class="scout-dist-bar"><span style="width:${Math.round(m.share * 100)}%"></span></span>
-        <span class="scout-dist-share">${Math.round(m.share * 100)}%</span>
-        <span class="scout-dist-score">${m.scorePct}%</span>
+      <div class="scout-row scout-dist-row${heat}">
+        <span class="scout-row-count scout-dist-san">${escapeHtml(m.san)}</span>
+        <span class="scout-row-main scout-dist-bar"><span style="width:${Math.round(m.share * 100)}%"></span></span>
+        <span class="scout-row-share">${Math.round(m.share * 100)}%</span>
+        <span class="scout-row-score">${scoutScoreWithSample(m.scorePct, m.gameCount, { baseline })}</span>
+        <span class="scout-row-end">${scoutWdlHtml(m.w || 0, m.d || 0, m.l || 0, { compact: true })}</span>
       </div>`;
     })
     .join("");
@@ -9068,15 +9277,17 @@ function restoreDistRoot(sectionEl, oppColor) {
   const dist = scoutModule.moveDistribution(sectionData.trie).slice(0, 4);
   const distCol = sectionEl.querySelector("[data-dist-root]");
   if (!distCol) return;
+  const baseline = scoutState.profile?.colorStats?.[oppColor]?.scorePct;
   distCol.innerHTML = dist
     .map((m) => {
       const heat = m.scorePct >= 55 ? " is-hot" : m.scorePct <= 45 ? " is-cold" : "";
       return `
-      <div class="scout-dist-row${heat}" data-first-uci="${escapeHtml(m.uci)}" role="button" tabindex="0">
-        <span class="scout-dist-san">${escapeHtml(m.san)}</span>
-        <span class="scout-dist-bar"><span style="width:${Math.round(m.share * 100)}%"></span></span>
-        <span class="scout-dist-share">${Math.round(m.share * 100)}%</span>
-        <span class="scout-dist-score" title="Their score with this move">${m.scorePct}%</span>
+      <div class="scout-row scout-dist-row${heat}" data-first-uci="${escapeHtml(m.uci)}" role="button" tabindex="0">
+        <span class="scout-row-count scout-dist-san">${escapeHtml(m.san)}</span>
+        <span class="scout-row-main scout-dist-bar"><span style="width:${Math.round(m.share * 100)}%"></span></span>
+        <span class="scout-row-share">${Math.round(m.share * 100)}%</span>
+        <span class="scout-row-score" title="Their score with this move">${scoutScoreWithSample(m.scorePct, m.gameCount, { baseline })}</span>
+        <span class="scout-row-end">${scoutWdlHtml(m.w || 0, m.d || 0, m.l || 0, { compact: true })}</span>
       </div>`;
     })
     .join("");
@@ -9093,6 +9304,10 @@ function bindScoutEvents() {
       handleScoutProfileClick(e, {
         getState: () => scoutState,
         onSpeedChange: () => renderScoutReport(),
+        callbacks: {
+          copyScoutReport,
+          runDeepScan: scoutRunDeepScan,
+        },
       });
     });
   }
@@ -9108,7 +9323,9 @@ function bindScoutEvents() {
       restoreDistRoot,
       renderDistDrilldown,
       scoutPrepareAll,
+      scoutAddToPrep,
       scoutAnalyzeLine,
+      copyScoutReport,
       editRepertoire,
       selectBuildNode,
       scoutLineDetailHtml: localScoutLineDetailHtml,
@@ -9138,7 +9355,15 @@ function bindScoutEvents() {
 // resident. After the tab has been hidden a while with no Maia work in flight, dispose the
 // shared provider to hand that memory back. It transparently re-inits on the next use, and the
 // IndexedDB weight cache means a re-init skips the ~46 MB download — only the session is rebuilt.
-const MAIA_IDLE_TEARDOWN_MS = 3 * 60 * 1000;
+//
+// The window is deliberately generous (10 min). A re-init still has to rebuild the ORT session
+// (graph-optimizing a 23M-param transformer — seconds, the genuinely slow part), so tearing down
+// after a SHORT hidden spell punished the common dev/study loop of tabbing to an editor and back:
+// every return rebuilt the session and the "loading model" toast read like a fresh download. Only
+// a tab parked in the background for a long stretch — where reclaiming ~1 GB clearly wins — should
+// pay that rebuild cost. (Returning to the foreground cancels the timer, so an active tab never
+// tears down.)
+const MAIA_IDLE_TEARDOWN_MS = 10 * 60 * 1000;
 let maiaIdleTimer = null;
 
 function clearMaiaIdleTeardown() {
