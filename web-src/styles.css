@@ -504,13 +504,20 @@ h2 {
 .settings-value {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 13px;
-  color: #1c1c1c;
+  color: var(--text);
   word-break: break-all;
 }
 
 .settings-field {
   display: grid;
   gap: 4px;
+}
+
+/* Visual separator between sub-sections within a settings card. */
+.settings-section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
 }
 
 /* Playing strength sliders (Stockfish depth / Maia3 rating). */
