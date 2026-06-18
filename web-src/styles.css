@@ -71,6 +71,7 @@ input {
 
 button {
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 /* Unified keyboard focus ring — visible only for keyboard users, never on
@@ -2014,7 +2015,11 @@ h2 {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: 4px;
+  scrollbar-width: none;
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none;
 }
 
 .tools {
@@ -3835,6 +3840,17 @@ h2 {
   transition: width 320ms ease;
 }
 
+.job-toast.state-running .job-toast-fill.is-indeterminate {
+  width: 25% !important;
+  animation: toast-scan 1.6s ease-in-out infinite;
+}
+
+@keyframes toast-scan {
+  0%   { margin-left: 0; }
+  50%  { margin-left: 75%; }
+  100% { margin-left: 0; }
+}
+
 .job-toast.state-done .job-toast-fill {
   background: var(--good);
   width: 100% !important;
@@ -3976,7 +3992,8 @@ h2 {
   padding: 5px 6px 5px 10px;
   background: var(--panel-soft);
   border-bottom: 1px solid var(--line-soft);
-  cursor: move;
+  touch-action: none;
+  cursor: grab;
   user-select: none;
   min-height: 34px;
   flex-shrink: 0;

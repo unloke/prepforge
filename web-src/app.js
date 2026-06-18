@@ -136,6 +136,7 @@ const DEFAULT_PREFS = {
   moveAnim: true,
   sounds: true,
   bestArrow: true,
+  brilliantDetection: false,
 };
 const PREF_LABELS = {
   coordinates: "Board coordinates",
@@ -636,6 +637,7 @@ class Toast {
       this._phase = phase;
       if (total) this.activeTotal = Math.max(1, total);
       this.lastDisplayedPercent = 0;
+      this._lastProgressRenderAt = 0;
     } else if (total && total > this.activeTotal) {
       this.activeTotal = total;
     }
@@ -644,6 +646,13 @@ class Toast {
     const pessimistic = Math.pow(ratio, 1.5);
     const display = Math.min(0.95, pessimistic);
     if (display > this.lastDisplayedPercent) this.lastDisplayedPercent = display;
+    if (this.fillEl) {
+      const hasRealProgress = (Number(current) || 0) > 0;
+      this.fillEl.classList.toggle(
+        "is-indeterminate",
+        !hasRealProgress && this.lastDisplayedPercent === 0,
+      );
+    }
     if (message) this._pendingMessage = message;
     // Coalesce rapid ticks: repaint at most once per TOAST_PROGRESS_RENDER_MS. A tick inside
     // the window doesn't paint NOW, but it arms a single trailing flush for the end of the
@@ -811,6 +820,7 @@ class Toast {
   _renderFill(ratio) {
     if (!this.fillEl) return;
     this.fillEl.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
+    if (ratio > 0) this.fillEl.classList.remove("is-indeterminate");
   }
 
   // ---- Pointer-gated auto-dismiss --------------------------------------
@@ -1387,6 +1397,8 @@ class EngineWidget {
     };
     this.head.addEventListener("pointerdown", (event) => {
       if (event.target.closest("button")) return;
+      event.preventDefault();
+      this.head.setPointerCapture(event.pointerId);
       dragging = true;
       const rect = this.el.getBoundingClientRect();
       startX = event.clientX;
@@ -1650,7 +1662,7 @@ class PositionCoach {
           this._showSavedBrilliant(c, features, prevFen, ctx.lastUci, fen, token);
         }
         // A saved non-brilliant verdict is authoritative → leave the base read as is.
-      } else if (features.brilliantCandidate) {
+      } else if (features.brilliantCandidate && pref("brilliantDetection")) {
         this._checkBrilliant(features, prevFen, ctx.lastUci, fen, token);
       }
     } catch (err) {
@@ -2736,7 +2748,7 @@ function renderPieceStylePicker() {
 function renderPrefsToggles() {
   const host = document.getElementById("board-prefs");
   if (!host) return;
-  host.innerHTML = Object.keys(DEFAULT_PREFS)
+  host.innerHTML = Object.keys(PREF_LABELS)
     .map((key) => {
       const on = pref(key) ? " is-on" : "";
       return (
@@ -4854,20 +4866,41 @@ async function runAnalysis() {
     // Any failure (no weights / inference error) is swallowed → analysis without
     // brilliancies, mirroring the server's no-Maia path.
     let maiaAssessments = [];
-    if (prep.brilliant && prep.brilliant.enabled && Array.isArray(prep.moves) && prep.moves.length) {
+    if (
+      prep.brilliant &&
+      prep.brilliant.enabled &&
+      pref("brilliantDetection") &&
+      Array.isArray(prep.moves) &&
+      prep.moves.length
+    ) {
       try {
         const provider = getSharedMaia3Provider();
         provider.setInitProgressHandler(({ phase, loaded, total }) => {
           if (phase === "download") {
             const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
-            jobToast.updateJob({ message: `downloading Maia model · ${pct}%` });
+            jobToast.updateJob({
+              current: 0,
+              total: 1,
+              phase: "maia-init",
+              message: `downloading Maia model · ${pct}%`,
+            });
           } else if (phase === "cache") {
-            jobToast.updateJob({ message: "loading Maia model from cache" });
+            jobToast.updateJob({
+              current: 0,
+              total: 1,
+              phase: "maia-init",
+              message: "loading Maia model from cache",
+            });
           } else if (phase === "verify" || phase === "session") {
             // Cached weights still need an ORT session rebuild (the slow part). Say so, rather
             // than leaving the stale "downloading" message up — that's what made a cached
             // re-init (after an idle teardown) look like a fresh 46 MB download.
-            jobToast.updateJob({ message: "preparing Maia engine…" });
+            jobToast.updateJob({
+              current: 0,
+              total: 1,
+              phase: "maia-init",
+              message: "preparing Maia engine…",
+            });
           }
         });
         try {
@@ -6704,21 +6737,40 @@ async function generateFromCurrentNode() {
       },
       // Cold-init weight download/verify/session progress (only on the first run / a cache
       // miss). A warm run emits nothing, so the node-building message above just takes over.
-      // MESSAGE-ONLY on purpose: the download's byte-sized current/total would ratchet the
-      // toast's activeTotal to ~46M and (since the fill is monotonic) peg the bar near 95%
-      // while tree generation + saving still run. The % rides in the message instead; the
-      // bar stays on the estimated-unit scale that onProgress/the nudge timer drive.
+      // Zero-progress maia-init phase on purpose: byte-sized current/total would ratchet
+      // activeTotal to ~46M and peg the bar near 95%; the download % rides in the message
+      // instead while the bar scans until tree generation resumes onProgress ticks.
       onMaiaInitProgress: ({ phase, loaded, total }) => {
         lastInitAt = Date.now();
         if (phase === "download") {
           const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
-          jobToast.updateJob({ message: `downloading Maia model · ${pct}%` });
+          jobToast.updateJob({
+            current: 0,
+            total: 1,
+            phase: "maia-init",
+            message: `downloading Maia model · ${pct}%`,
+          });
         } else if (phase === "cache") {
-          jobToast.updateJob({ message: "loading cached Maia model" });
+          jobToast.updateJob({
+            current: 0,
+            total: 1,
+            phase: "maia-init",
+            message: "loading cached Maia model",
+          });
         } else if (phase === "verify") {
-          jobToast.updateJob({ message: "verifying Maia model" });
+          jobToast.updateJob({
+            current: 0,
+            total: 1,
+            phase: "maia-init",
+            message: "verifying Maia model",
+          });
         } else if (phase === "session") {
-          jobToast.updateJob({ message: "starting Maia engine" });
+          jobToast.updateJob({
+            current: 0,
+            total: 1,
+            phase: "maia-init",
+            message: "starting Maia engine",
+          });
         }
       },
     });
@@ -9402,6 +9454,13 @@ function bindEvents() {
   if (maiaRetryBtn) maiaRetryBtn.addEventListener("click", retryMaia3);
   const maiaResetBtn = document.getElementById("settings-maia-reset");
   if (maiaResetBtn) maiaResetBtn.addEventListener("click", resetMaia3Cache);
+  const brilliantToggle = document.getElementById("settings-brilliant-toggle");
+  if (brilliantToggle) {
+    brilliantToggle.checked = !!pref("brilliantDetection");
+    brilliantToggle.addEventListener("change", () =>
+      setPref("brilliantDetection", brilliantToggle.checked),
+    );
+  }
 
   // Playing strength: readouts track the drag (input), the save fires on release
   // (change) so a slider sweep is ONE settings POST, not thirty.
