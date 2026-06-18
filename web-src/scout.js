@@ -260,9 +260,21 @@ export function openingBreakdown(root, { minGames = 1 } = {}) {
   return groups;
 }
 
-// Rank lines by frequency × how far below the opponent's own baseline they score.
+// Two lines are nested when one's move path is a prefix of the other's (e.g. "1.e4 c5"
+// and "1.e4 c5 2.Nf3" are the same Sicilian seen at different depths). We compare on the
+// ">"-joined uci path so a partial-uci coincidence can't false-match.
+function isNestedLine(a, b) {
+  const x = a.line || triePathKey(a.ucis || []);
+  const y = b.line || triePathKey(b.ucis || []);
+  return x === y || x.startsWith(`${y}>`) || y.startsWith(`${x}>`);
+}
+
+// Rank lines by frequency × how far below the opponent's own baseline they score, then
+// collapse nested duplicates: among ancestor/descendant lines of one opening we keep only
+// the single best-opportunity representative, so "Prepare these first" reads as distinct
+// weaknesses rather than the same line repeated at every depth.
 export function recommendTargets(breakdown, baselineScorePct, { limit = 8, minGames = WEAKNESS_MIN_GAMES } = {}) {
-  return breakdown
+  const ranked = breakdown
     .filter((g) => g.games >= minGames)
     .map((g) => {
       const belowBaseline = baselineScorePct - g.scorePct;
@@ -274,8 +286,15 @@ export function recommendTargets(breakdown, baselineScorePct, { limit = 8, minGa
       };
     })
     .filter((g) => g.belowBaseline > 0)
-    .sort((a, b) => b.opportunity - a.opportunity)
-    .slice(0, limit);
+    .sort((a, b) => b.opportunity - a.opportunity);
+
+  const chosen = [];
+  for (const g of ranked) {
+    if (chosen.some((c) => isNestedLine(c, g))) continue;
+    chosen.push(g);
+    if (chosen.length >= limit) break;
+  }
+  return chosen;
 }
 
 // The opponent's most-travelled paths: walk the trie greedily from the most

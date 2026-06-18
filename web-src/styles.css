@@ -2192,33 +2192,7 @@ h2 {
 .scout-verdict.warn { color: var(--warn); }
 .scout-verdict.muted { color: var(--muted); font-weight: 400; }
 
-/* Shared row grid: count | main | share | score | end */
-.scout-row {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 40px 88px 108px;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-.scout-row-count { color: var(--muted); text-align: right; }
-.scout-row-main { min-width: 0; }
-.scout-row-share { text-align: right; color: var(--text); }
-.scout-row-score { text-align: right; color: var(--muted); font-size: 11px; line-height: 1.25; }
-.scout-row-end {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  min-width: 0;
-}
-.scout-n { font-size: 10px; color: var(--label); font-weight: 500; }
-.scout-baseline-gap { font-size: 10px; color: var(--warn); }
-.scout-stat-faded { opacity: 0.65; }
-.scout-small-sample {
-  font-size: 9px; font-weight: 700; text-transform: uppercase;
-  color: var(--label); letter-spacing: 0.03em;
-}
+.scout-n { font-size: 10px; color: var(--label); font-weight: 500; white-space: nowrap; }
 .scout-btn {
   font-size: 11px;
   font-weight: 600;
@@ -2228,6 +2202,8 @@ h2 {
   white-space: nowrap;
   font-family: inherit;
 }
+
+/* Header W/D/L as small pills (roomy context). */
 .scout-wdl { display: inline-flex; gap: 2px; }
 .scout-wdl-pill {
   font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px;
@@ -2237,6 +2213,18 @@ h2 {
 .scout-wdl-d { color: var(--muted); }
 .scout-wdl-l { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
 .scout-wdl-compact .scout-wdl-pill { padding: 0 3px; }
+
+/* In-row W/D/L as one compact proportional bar — fixed width, never wraps. */
+.scout-wdlbar {
+  display: inline-flex; width: 100%; max-width: 60px; height: 8px;
+  border-radius: 3px; overflow: hidden; border: 1px solid var(--line-soft);
+  background: var(--bg);
+}
+.scout-wdlbar > span { display: block; height: 100%; }
+.scout-wdlbar-w { background: var(--good); }
+.scout-wdlbar-d { background: var(--line-strong); }
+.scout-wdlbar-l { background: var(--danger); }
+
 .scout-err-marker { color: var(--warn); font-size: 11px; }
 .scout-engine-note {
   font-size: 11px; color: var(--warn);
@@ -2244,7 +2232,8 @@ h2 {
   background: color-mix(in srgb, var(--warn) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--warn) 20%, transparent);
 }
-.scout-section-wdl, .scout-section-score { font-size: 11px; }
+.scout-section-wdl { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
+.scout-section-score { font-size: 11px; }
 .scout-col-hint { font-weight: 400; text-transform: none; letter-spacing: 0; }
 .scout-profile-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
@@ -2252,17 +2241,13 @@ h2 {
 .scout-body {
   display: grid;
   grid-template-columns: minmax(190px, 250px) minmax(0, 1fr);
-  gap: 8px 20px;
+  gap: 12px 20px;
   padding: 10px 12px 12px;
 }
 .scout-col-weaknesses { grid-column: 1 / -1; }
 @media (max-width: 720px) {
   .scout-body {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .scout-row {
-    grid-template-columns: 36px minmax(0, 1fr) 34px 72px 96px;
-    gap: 6px;
   }
 }
 
@@ -2275,22 +2260,28 @@ h2 {
   margin-bottom: 6px;
 }
 
+/* First moves: narrow, simple grid (move | bar | share | score). */
 .scout-dist {
   display: grid;
   gap: 4px;
   align-content: start;
 }
-
-.scout-dist-row .scout-dist-san { font-weight: 600; text-align: left; }
-
+.scout-dist-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 34px 36px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.scout-dist-san { font-weight: 600; text-align: left; }
 .scout-dist-bar {
-  height: 12px;
+  height: 10px;
   border-radius: 999px;
   background: var(--bg);
   border: 1px solid var(--line-soft);
   overflow: hidden;
 }
-
 .scout-dist-bar > span {
   display: block;
   height: 100%;
@@ -2301,20 +2292,33 @@ h2 {
 /* The bar tints by how WELL the move scores for them: red = dangerous weapon. */
 .scout-dist-row.is-hot .scout-dist-bar > span { background: var(--danger); }
 .scout-dist-row.is-cold .scout-dist-bar > span { background: var(--good); }
+.scout-dist-share { text-align: right; color: var(--text); }
+.scout-dist-score { text-align: right; color: var(--muted); }
 
-
-
+/* Favourite-line + weakness rows: one robust grid. Prep status is the coloured left
+   border (+ row tooltip); the score is a stacked cell; W/D/L is a compact bar; the
+   action is a single "+" icon. Fixed cells keep the columns aligned at any width. */
 .scout-lines {
   display: grid;
   align-content: start;
 }
-
-.scout-line {
-  padding: 4px 0;
+.scout-line-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 64px 60px 26px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  padding: 5px 4px 5px 7px;
+  border-left: 3px solid transparent;
   border-bottom: 1px dashed var(--line-soft);
 }
-.scout-line:last-child { border-bottom: 0; }
-
+.scout-line-row:last-child { border-bottom: 0; }
+.scout-line-row.is-prepared { border-left-color: var(--good); }
+.scout-line-row.is-gap { border-left-color: var(--warn); }
+.scout-line-row.is-new { border-left-color: var(--danger); }
+.scout-lr-count { color: var(--muted); text-align: right; }
+.scout-lr-main { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .scout-line-moves {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--text);
@@ -2322,33 +2326,29 @@ h2 {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-
-
-.scout-badge {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 1px 7px;
-  border-radius: 999px;
-  border: 1px solid;
+.scout-line-hint { color: var(--warn); font-family: inherit; }
+.scout-lr-score { min-width: 0; }
+.scout-score-cell { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
+.scout-score-pct { color: var(--text); font-weight: 600; }
+.scout-gap { font-size: 9px; color: var(--warn); white-space: nowrap; }
+.scout-lr-wdl { display: flex; justify-content: flex-end; }
+.scout-lr-action { display: flex; align-items: center; justify-content: flex-end; gap: 3px; }
+.scout-add-icon {
+  width: 22px; height: 22px; flex: none; padding: 0;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--panel); color: var(--muted);
+  font-size: 15px; line-height: 1; cursor: pointer; font-family: inherit;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
-.scout-badge.good { color: var(--good); border-color: var(--good); background: rgba(74, 137, 100, 0.08); }
-.scout-badge.warn { color: var(--warn); border-color: var(--warn); background: rgba(201, 132, 57, 0.08); }
-.scout-badge.bad { color: var(--danger); border-color: var(--danger); background: rgba(196, 82, 77, 0.08); }
+.scout-add-icon:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.scout-add-icon:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-/* When a line is unprepared, the pill badge is itself the action. Keep the
-   pill look but add a button affordance (pointer + hover lift). */
-button.scout-badge {
-  cursor: pointer;
-  font-family: inherit;
-  transition: background-color 0.12s ease, box-shadow 0.12s ease;
-}
-button.scout-badge.warn:hover { background: rgba(201, 132, 57, 0.18); }
-button.scout-badge.bad:hover { background: rgba(196, 82, 77, 0.18); }
-button.scout-badge:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
+/* Status + actions inside the expanded detail panel. */
+.scout-line-status { font-size: 11px; font-weight: 600; }
+.scout-line-status.good { color: var(--good); }
+.scout-line-status.warn { color: var(--warn); }
+.scout-line-status.bad { color: var(--danger); }
+.scout-line-action-row { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .scout-profile { margin-top: 8px; }
 .scout-profile-card {
@@ -2399,14 +2399,13 @@ button.scout-badge:focus-visible {
 
 .scout-line { cursor: pointer; transition: background 0.1s; }
 .scout-line:hover { background: var(--surface-hover); }
-.scout-line.is-expanded { background: var(--accent-soft); border-color: var(--accent-line); }
-.scout-line-main { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.scout-line.is-expanded { background: var(--accent-soft); }
 .scout-line-eco {
   font-size: 10px; color: var(--muted); font-weight: 500;
   text-transform: uppercase; letter-spacing: 0.04em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  min-height: 12px;
 }
+.scout-line-eco:empty { display: none; }
 .scout-line-detail {
   display: flex; gap: 12px; padding: 10px 12px;
   border-top: 1px solid var(--line-soft); border-left: 3px solid var(--accent-line);
@@ -2448,8 +2447,9 @@ button.scout-badge:focus-visible {
   .scout-miniboard-wrap { width: 96px; height: 96px; }
   .scout-speed-chips { margin-left: 0; justify-content: flex-start; }
   .scout-profile-actions { width: 100%; }
-  .scout-row-end .scout-action-add-prep { display: none; }
-  .scout-row-end .scout-action-add-prep + .scout-wdl { margin-left: auto; }
+  /* Drop the W/D/L bar on phones to give the moves more room; the score% stays. */
+  .scout-line-row { grid-template-columns: 30px minmax(0, 1fr) 56px 26px; gap: 6px; }
+  .scout-lr-wdl { display: none; }
 }
 
 /* Shared repertoire viewer */

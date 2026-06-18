@@ -19,6 +19,7 @@ export function scoutCoverageTone(prepared, total) {
   return "bad";
 }
 
+// Win/draw/loss as three small pills. Used in the roomy section header.
 export function scoutWdlHtml(w, d, l, { compact = false } = {}) {
   const cls = compact ? "scout-wdl scout-wdl-compact" : "scout-wdl";
   return `<span class="${cls}" aria-label="${w} wins, ${d} draws, ${l} losses">
@@ -28,15 +29,29 @@ export function scoutWdlHtml(w, d, l, { compact = false } = {}) {
   </span>`;
 }
 
-export function scoutScoreWithSample(scorePct, games, { baseline, faded = false } = {}) {
-  const fadedCls = faded ? " scout-stat-faded" : "";
-  let text = `${scorePct}% <span class="scout-n">n=${games}</span>`;
-  if (baseline != null && baseline > scorePct) {
-    const delta = baseline - scorePct;
-    text += ` <span class="scout-baseline-gap${fadedCls}" title="vs their overall ${baseline}%">−${delta} vs ${baseline}%</span>`;
-  }
-  if (faded) text += ' <span class="scout-small-sample">small sample</span>';
-  return text;
+// Win/draw/loss as one compact proportional bar — fixed width, never wraps, so it
+// stays aligned inside a row. The pill version above is for the header where there's room.
+export function scoutWdlBar(w, d, l) {
+  const total = w + d + l || 1;
+  const pct = (n) => `${(n / total) * 100}%`;
+  return `<span class="scout-wdlbar" title="W${w} D${d} L${l}" aria-label="${w} wins, ${d} draws, ${l} losses">
+    <span class="scout-wdlbar-w" style="width:${pct(w)}"></span>
+    <span class="scout-wdlbar-d" style="width:${pct(d)}"></span>
+    <span class="scout-wdlbar-l" style="width:${pct(l)}"></span>
+  </span>`;
+}
+
+// Stacked score cell: the score% on top, the sample size below, plus (for weakness
+// rows) how far the line sits under the opponent's own baseline. Fixed width, no wrap.
+export function scoutScoreCell(scorePct, games, { baseline, showGap = false } = {}) {
+  const gap =
+    showGap && baseline != null && baseline > scorePct
+      ? `<span class="scout-gap" title="${baseline - scorePct} points below their overall ${baseline}%">−${baseline - scorePct} vs ${baseline}%</span>`
+      : "";
+  return `<span class="scout-score-cell">
+      <span class="scout-score-pct">${scorePct}%</span>
+      <span class="scout-n">n=${games}</span>${gap}
+    </span>`;
 }
 
 export function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg }) {
@@ -87,12 +102,33 @@ export function renderScoutProfile(profile, username, activeSpeed, escapeHtml) {
     </div>`;
 }
 
+// Compact per-row affordance: a single "+" icon. The full labelled button lives in
+// the expanded detail panel (scoutLineDetailHtml), so the row itself stays narrow.
 function scoutAddPrepBtn(rowKind, idx, oppColor) {
-  return `<button type="button" class="scout-btn btn ghost scout-action-add-prep" data-row-kind="${rowKind}" data-row-idx="${idx}" data-color="${oppColor}">Add to prep ▾</button>`;
+  return `<button type="button" class="scout-add-icon scout-action-add-prep" title="Add this line to a repertoire" aria-label="Add to prep" data-row-kind="${rowKind}" data-row-idx="${idx}" data-color="${oppColor}">+</button>`;
+}
+
+function scoutPrepStatus(line) {
+  if (line.covered === undefined) return { cls: "", text: "", tone: "" };
+  if (line.prepared) {
+    return { cls: "is-prepared", tone: "good", text: "In your prep" };
+  }
+  if (line.covered > 0) {
+    return {
+      cls: "is-gap",
+      tone: "warn",
+      text: `Gap in ${line.repName || "your prep"} after ${line.covered} plies`,
+    };
+  }
+  return { cls: "is-new", tone: "bad", text: "Not in your prep" };
 }
 
 export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine, renderBoard, escapeHtml }) {
   const fen = fenAfterLine(line.ucis);
+  const status = scoutPrepStatus(line);
+  const statusLine = status.text
+    ? `<div class="scout-line-status ${status.tone}">${escapeHtml(status.text)}</div>`
+    : "";
   const engineNote =
     line.enginePattern && line.hasEngineMistake
       ? `<div class="scout-engine-note" title="Recurring mistake from deep scan">Often errs: …${escapeHtml(line.enginePattern.playedSan)} (−${(line.enginePattern.avgCpLoss / 100).toFixed(1)}) in ${line.enginePattern.occurrences} games</div>`
@@ -112,8 +148,11 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
   return `
       <div class="scout-miniboard-wrap">${renderBoard(fen, oppColor)}</div>
       <div class="scout-line-actions">
-        <button type="button" class="scout-btn btn ghost scout-action-analyze" data-row-kind="${rowKind}" data-row-idx="${idx}">Analyze ›</button>
-        ${scoutAddPrepBtn(rowKind, idx, oppColor)}
+        ${statusLine}
+        <div class="scout-line-action-row">
+          <button type="button" class="scout-btn btn ghost scout-action-analyze" data-row-kind="${rowKind}" data-row-idx="${idx}">Analyze ›</button>
+          <button type="button" class="scout-btn btn ghost scout-action-add-prep" data-row-kind="${rowKind}" data-row-idx="${idx}" data-color="${oppColor}">Add to prep ▾</button>
+        </div>
         ${engineNote}
         ${subLines}
       </div>`;
@@ -125,72 +164,54 @@ export function buildScoutAnalyzePgn(line, oppColor, username) {
   return `${headers}\n\n${scoutLineText(line.sans)} *`;
 }
 
-function scoutDistRowHtml(m, escapeHtml, { clickable = true } = {}) {
+// First-move distribution row — lives in the narrow left column, so it stays simple:
+// move, frequency bar, share%, score%. Its own grid (not the wide line-row grid).
+export function scoutDistRowHtml(m, escapeHtml, { clickable = true } = {}) {
   const heat = m.scorePct >= 55 ? " is-hot" : m.scorePct <= 45 ? " is-cold" : "";
   const clickAttrs = clickable && m.uci
     ? ` data-first-uci="${escapeHtml(m.uci)}" role="button" tabindex="0"`
     : "";
   return `
-      <div class="scout-row scout-dist-row${heat}"${clickAttrs}>
-        <span class="scout-row-count scout-dist-san">${escapeHtml(m.san)}</span>
-        <span class="scout-row-main scout-dist-bar"><span style="width:${Math.round(m.share * 100)}%"></span></span>
-        <span class="scout-row-share">${Math.round(m.share * 100)}%</span>
-        <span class="scout-row-score" title="Their score with this move">${scoutScoreWithSample(m.scorePct, m.gameCount)}</span>
-        <span class="scout-row-end">${scoutWdlHtml(m.w || 0, m.d || 0, m.l || 0, { compact: true })}</span>
+      <div class="scout-dist-row${heat}"${clickAttrs}>
+        <span class="scout-dist-san">${escapeHtml(m.san)}</span>
+        <span class="scout-dist-bar"><span style="width:${Math.round(m.share * 100)}%"></span></span>
+        <span class="scout-dist-share">${Math.round(m.share * 100)}%</span>
+        <span class="scout-dist-score" title="Their score with this move · n=${m.gameCount}">${m.scorePct}%</span>
       </div>`;
 }
 
+// One shared markup for favourite-line and weakness rows. Prep status is shown as a
+// coloured left border + tooltip (no wrapping badge), the score is a stacked cell, the
+// result is a compact W/D/L bar, and the action is a single "+" icon. Fixed-width cells
+// mean the columns line up and nothing overlaps regardless of column width.
 function scoutLineRowHtml(line, i, oppColor, baseline, escapeHtml, { rowKind = "line" } = {}) {
-  const gap = line.covered > 0;
-  const label = line.prepared
-    ? "&#10003; prepared"
-    : gap
-      ? `gap @${line.covered}`
-      : "not in prep";
-  const tone = line.prepared ? "good" : gap ? "warn" : "bad";
-  const tip = line.prepared
-    ? "Your prep follows this line"
-    : gap
-      ? `Gap in ${line.repName || "your prep"}`
-      : "This line is not in your prep";
-  const badge = `<span class="scout-badge ${tone}" title="${escapeHtml(tip)}">${label}</span>`;
+  const weakness = rowKind === "weakness";
+  const status = scoutPrepStatus(line);
   const moves = scoutLineText(line.sans);
-  const rawCount = line.gameCount ?? Math.round(line.count);
+  const rawCount = line.gameCount ?? Math.round(line.count ?? line.games ?? 0);
+  const engineHint =
+    weakness && line.enginePattern && line.hasEngineMistake
+      ? `<span class="scout-line-hint"> · often …${escapeHtml(line.enginePattern.playedSan)}</span>`
+      : "";
   const engineFlag = line.hasEngineMistake
     ? '<span class="scout-err-marker" title="Recurring mistake in deep scan">⚠</span>'
     : "";
+  const rowTitle = status.text ? ` title="${escapeHtml(status.text)}"` : "";
   return `
-      <div class="scout-row scout-line" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false">
-        <span class="scout-row-count" title="${rawCount} of their games">&times;${rawCount}</span>
-        <div class="scout-row-main scout-line-main">
+      <div class="scout-line scout-line-row ${status.cls}${weakness ? " scout-weakness-row" : ""}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
+        <span class="scout-lr-count" title="${rawCount} of their games">&times;${rawCount}</span>
+        <div class="scout-lr-main">
           <span class="scout-line-eco"></span>
-          <span class="scout-line-moves" title="${escapeHtml(moves)}">${escapeHtml(moves)}</span>
+          <span class="scout-line-moves" title="${escapeHtml(moves)}">${escapeHtml(moves)}${engineHint}</span>
         </div>
-        <span class="scout-row-share">${Math.round((line.share || 0) * 100)}%</span>
-        <span class="scout-row-score" title="Their score in this line">${scoutScoreWithSample(line.scorePct, rawCount, { baseline })}</span>
-        <span class="scout-row-end">${engineFlag}${badge}${scoutAddPrepBtn(rowKind, i, oppColor)}</span>
+        <span class="scout-lr-score">${scoutScoreCell(line.scorePct, rawCount, { baseline, showGap: weakness })}</span>
+        <span class="scout-lr-wdl">${scoutWdlBar(line.w || 0, line.d || 0, line.l || 0)}</span>
+        <span class="scout-lr-action">${engineFlag}${scoutAddPrepBtn(rowKind, i, oppColor)}</span>
       </div>`;
 }
 
 function scoutWeaknessRowHtml(target, i, oppColor, baseline, escapeHtml) {
-  const moves = scoutLineText(target.sans);
-  const engineFlag = target.hasEngineMistake
-    ? '<span class="scout-err-marker" title="Recurring mistake in deep scan">⚠</span>'
-    : "";
-  const engineHint =
-    target.enginePattern && target.hasEngineMistake
-      ? ` · often …${escapeHtml(target.enginePattern.playedSan)}`
-      : "";
-  return `
-      <div class="scout-row scout-line scout-weakness-row" data-row-kind="weakness" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false">
-        <span class="scout-row-count" title="${target.games} games">&times;${target.games}</span>
-        <div class="scout-row-main scout-line-main">
-          <span class="scout-line-moves" title="${escapeHtml(moves)}">${escapeHtml(moves)}${engineHint}</span>
-        </div>
-        <span class="scout-row-share">${Math.round(target.share * 100)}%</span>
-        <span class="scout-row-score">${scoutScoreWithSample(target.scorePct, target.games, { baseline })}</span>
-        <span class="scout-row-end">${engineFlag}${scoutWdlHtml(target.w, target.d, target.l, { compact: true })}${scoutAddPrepBtn("weakness", i, oppColor)}</span>
-      </div>`;
+  return scoutLineRowHtml(target, i, oppColor, baseline, escapeHtml, { rowKind: "weakness" });
 }
 
 export function buildScoutSectionReport(
@@ -427,9 +448,7 @@ export async function handleScoutResultsClick(event, ctx) {
   const lineEl = event.target.closest?.(".scout-line");
   if (
     lineEl &&
-    !event.target.closest?.(
-      ".scout-badge, .scout-action-add-prep, .scout-action-analyze, .scout-action-prep, [data-prep-rep]",
-    )
+    !event.target.closest?.(".scout-add-icon, .scout-action-add-prep, .scout-action-analyze")
   ) {
     const color = lineEl.dataset.color;
     const rowKind = lineEl.dataset.rowKind || "line";

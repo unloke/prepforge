@@ -24,10 +24,9 @@ import {
   mergeEnginePatternsIntoSections,
   renderMiniBoardHtml as renderScoutMiniBoardHtml,
   renderScoutProfile,
+  scoutDistRowHtml,
   scoutLineDetailHtml,
   scoutLineText,
-  scoutWdlHtml,
-  scoutScoreWithSample,
 } from "./scout-report.js";
 
 let _coachReady = null;
@@ -9249,25 +9248,12 @@ function renderDistDrilldown(distRowEl, sectionEl, oppColor) {
 
   const subDist = scoutModule.moveDistribution(childNode).slice(0, 6);
   const parentSan = distRowEl.querySelector(".scout-dist-san")?.textContent || uci;
-  const baseline = scoutState.profile?.colorStats?.[oppColor]?.scorePct;
-  const rows = subDist
-    .map((m) => {
-      const heat = m.scorePct >= 55 ? " is-hot" : m.scorePct <= 45 ? " is-cold" : "";
-      return `
-      <div class="scout-row scout-dist-row${heat}">
-        <span class="scout-row-count scout-dist-san">${escapeHtml(m.san)}</span>
-        <span class="scout-row-main scout-dist-bar"><span style="width:${Math.round(m.share * 100)}%"></span></span>
-        <span class="scout-row-share">${Math.round(m.share * 100)}%</span>
-        <span class="scout-row-score">${scoutScoreWithSample(m.scorePct, m.gameCount, { baseline })}</span>
-        <span class="scout-row-end">${scoutWdlHtml(m.w || 0, m.d || 0, m.l || 0, { compact: true })}</span>
-      </div>`;
-    })
-    .join("");
+  const rows = subDist.map((m) => scoutDistRowHtml(m, escapeHtml, { clickable: false })).join("");
 
   distCol.innerHTML = `
     <div class="scout-dist-drill-head muted">${escapeHtml(parentSan)} — their replies</div>
     ${rows}
-    <button type="button" class="btn ghost scout-dist-back">Back ↑</button>`;
+    <button type="button" class="scout-btn btn ghost scout-dist-back">Back ↑</button>`;
   distCol.dataset.drillUci = uci;
 }
 
@@ -9277,20 +9263,7 @@ function restoreDistRoot(sectionEl, oppColor) {
   const dist = scoutModule.moveDistribution(sectionData.trie).slice(0, 4);
   const distCol = sectionEl.querySelector("[data-dist-root]");
   if (!distCol) return;
-  const baseline = scoutState.profile?.colorStats?.[oppColor]?.scorePct;
-  distCol.innerHTML = dist
-    .map((m) => {
-      const heat = m.scorePct >= 55 ? " is-hot" : m.scorePct <= 45 ? " is-cold" : "";
-      return `
-      <div class="scout-row scout-dist-row${heat}" data-first-uci="${escapeHtml(m.uci)}" role="button" tabindex="0">
-        <span class="scout-row-count scout-dist-san">${escapeHtml(m.san)}</span>
-        <span class="scout-row-main scout-dist-bar"><span style="width:${Math.round(m.share * 100)}%"></span></span>
-        <span class="scout-row-share">${Math.round(m.share * 100)}%</span>
-        <span class="scout-row-score" title="Their score with this move">${scoutScoreWithSample(m.scorePct, m.gameCount, { baseline })}</span>
-        <span class="scout-row-end">${scoutWdlHtml(m.w || 0, m.d || 0, m.l || 0, { compact: true })}</span>
-      </div>`;
-    })
-    .join("");
+  distCol.innerHTML = dist.map((m) => scoutDistRowHtml(m, escapeHtml)).join("");
   delete distCol.dataset.drillUci;
 }
 
