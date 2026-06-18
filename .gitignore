@@ -55,6 +55,7 @@ Captures/
 # Editor and OS files
 .idea/
 .vscode/
+terminals/
 .DS_Store
 Thumbs.db
 
