@@ -76,6 +76,11 @@ where = ["src"]
 "prepforge_chess.web" = ["static/assets/*.map"]
 
 [tool.pytest.ini_options]
+markers = [
+    "e2e: browser E2E smoke tests (may skip without Playwright/Chromium)",
+]
+# Default suite excludes E2E — needs Playwright, Chromium, and live Lichess.
+addopts = "-m 'not e2e'"
 # "src" puts the package on the path; the tests/ dir is auto-prepended by pytest
 # (default prepend import mode, no tests/__init__.py) so sibling helper modules
 # like stub_maia and api_helpers import top-level. Do NOT add tests/ as a package

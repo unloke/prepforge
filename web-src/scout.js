@@ -11,6 +11,20 @@
 import { Chess } from "chess.js";
 
 export const SCOUT_MAX_GAMES = 500;
+
+export const SCOUT_ERR_RATE_LIMIT =
+  "Lichess rate limit — please wait a minute and try again.";
+export const SCOUT_ERR_NO_GAMES =
+  "No games found for this player with the selected filters.";
+export const SCOUT_ERR_NETWORK = "Could not reach Lichess. Check your connection.";
+
+/** Map fetch-layer errors to user-facing Scout messages. */
+export function scoutFetchErrorMessage(error) {
+  if (error instanceof TypeError) return SCOUT_ERR_NETWORK;
+  const msg = error?.message || "";
+  if (/rate limit/i.test(msg)) return SCOUT_ERR_RATE_LIMIT;
+  return null;
+}
 export const MAX_PLIES = 16; // opening book depth for the display trie
 export const ANALYZE_PLIES = 24; // deeper capture for weakness / engine scan
 export const WEAKNESS_MIN_GAMES = 7;
@@ -552,7 +566,7 @@ export function createScoutClient({ fetchImpl, storage, now } = {}) {
       signal,
     });
     if (resp.status === 404) throw new Error(`No Lichess user named "${username}"`);
-    if (resp.status === 429) throw new Error("Lichess rate limit - wait a minute and retry");
+    if (resp.status === 429) throw new Error(SCOUT_ERR_RATE_LIMIT);
     if (!resp.ok) throw new Error(`Lichess responded ${resp.status}`);
     const games = parseMultiPgn(await resp.text(), username);
 

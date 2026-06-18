@@ -5,6 +5,9 @@ import {
   MAX_PLIES,
   buildOpeningTrie,
   createScoutClient,
+  SCOUT_ERR_NETWORK,
+  SCOUT_ERR_RATE_LIMIT,
+  scoutFetchErrorMessage,
   fenAfterLine,
   gradeLines,
   lineCoverage,
@@ -379,6 +382,12 @@ describe("createScoutClient", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(first).toHaveLength(2);
     expect(second).toEqual(first);
+  });
+
+  it("maps fetch errors to user-facing messages", () => {
+    expect(scoutFetchErrorMessage(new TypeError("fetch failed"))).toBe(SCOUT_ERR_NETWORK);
+    expect(scoutFetchErrorMessage(new Error(SCOUT_ERR_RATE_LIMIT))).toBe(SCOUT_ERR_RATE_LIMIT);
+    expect(scoutFetchErrorMessage(new Error("other"))).toBeNull();
   });
 
   it("maps 404 and 429 to friendly errors", async () => {

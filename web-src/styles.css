@@ -2141,6 +2141,16 @@ h2 {
 
 /* Opponent scout report (Replay tab) */
 
+.scout-error {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  color: var(--text);
+  font-size: 13px;
+}
+
 .scout-results {
   display: grid;
   gap: 12px;

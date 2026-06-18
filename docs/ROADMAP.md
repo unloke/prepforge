@@ -35,16 +35,41 @@ ownership, and bills; it never computes chess.
 
 ---
 
-## Current status (2026-06-17)
+## Current status (2026-06-18)
 
 **ALL ROADMAP PHASES 1–6 ARE COMPLETE AND LIVE IN PRODUCTION.** The FastAPI/Postgres
 SaaS app (Phases 1–3), Stripe billing + Free/Pro quota (Phase 4), teams/sharing
-(Phase 5, backend-only — no SPA UI yet), and ops hardening (Phase 6: session cap/purge,
-graceful shutdown, structured logging, dark-by-default Sentry, legal pages) are all
-implemented, tested, and deployed. The legacy stdlib server, `request_lock`, and CLI
-`ui` command are deleted — there is no second live entrypoint. Maia3 ONNX weights are
-hosted on Hugging Face via `PREPFORGE_MAIA3_ASSET_BASE`, so Brilliant detection and
-human-like move generation also work in production.
+(Phase 5 — SPA UI shipped), and ops hardening (Phase 6) are implemented, tested, and
+deployed. Engines run in-browser (Stockfish + Maia3 WASM/ONNX); Maia3/ORT large binaries
+are CDN-hosted via Hugging Face env vars.
+
+### Tab completion snapshot
+
+| Tab | Status | Known gaps |
+|-----|--------|------------|
+| Dashboard | ✅ | — |
+| Analyze | ✅ | Engine graceful fail banner pending clientlog data (D2) |
+| Build | ✅ | Main chunk still >200 KiB gzip target |
+| Train | ✅ | — |
+| Replay | ✅ | Lichess OAuth required for "my games" compare |
+| Scout (Replay card) | ✅ productized | E2E smoke in `tests/e2e/`; error UX wired |
+| Teams | ✅ basic UI | Per-seat billing not planned |
+| Settings | ✅ | Stripe billing UI dark until keys set |
+| Billing | ⏸ deferred | `PREPFORGE_STRIPE_*` not wired in prod |
+
+### Active stability work (`docs/stability-perf-plan.md`)
+
+| Item | Status |
+|------|--------|
+| Client error beacon `/api/clientlog` | ✅ shipped — monitor Render logs |
+| Keep-warm cron | ✅ `.github/workflows/keep-warm.yml` |
+| ORT wasm on HF (#3c) | ⏳ verify with `npm run smoke:prod-engine` |
+| HF commit pin (#3d) | 📋 SHA `77fcb556…` documented — **Render dashboard still on `main`** |
+| Scout E2E | ✅ `tests/e2e/test_scout_smoke.py` |
+| `app.js` split | 🔄 `views/scout.js` extracted; settings/dashboard next |
+| Engine graceful fail (D2) | ⏸ wait for clientlog data |
+| Render DB backups | ❌ not enabled (free tier) — documented in `DEPLOYMENT.md` |
+| External uptime monitor | 📋 documented; not yet configured |
 
 **Test-infra note:** `csrf_headers` lives in `tests/api_helpers.py` (a plain top-level
 module, like `stub_maia`), NOT imported from `conftest`. Do **not** add
@@ -55,16 +80,16 @@ legacy `from stub_maia import` suite.
 
 | Priority | Item | Notes |
 |----------|------|-------|
-| P0 | Reproducible Python env | `uv.lock` + `.python-version` (3.11); CI uses `uv sync`. |
-| **P0** | **Stability / perf / UX** | **`docs/stability-perf-plan.md`** — error beacon, keep-warm, HF engine wasm, graceful fail, split `app.js`. |
+| P0 | HF pin in Render | Change both asset-base env vars from `main` → commit SHA |
+| P0 | Prod engine smoke | `npm run smoke:prod-engine` after pin |
 | P1 | Backend gate on every change | `ruff`, `pytest`, `alembic upgrade head` + `alembic check`. |
-| P2 | Render DB backups | Free-tier dashboard config — confirm backup policy. |
-| P2 | Stripe production keys | `PREPFORGE_STRIPE_*` env vars + webhook endpoint. |
+| P2 | Render DB backups | Free-tier — manual `pg_dump` or upgrade plan |
+| P2 | UptimeRobot on `/healthz` | See `docs/DEPLOYMENT.md` |
+| P2 | Stripe production keys | `PREPFORGE_STRIPE_*` — deferred per product plan |
 | P2 | Legal pages | Placeholder ToS/Privacy need formal review before paid launch. |
-| P2 | Engine assets on HF | `PREPFORGE_ENGINE_ASSET_BASE` set; wire-up tracked in stability plan #3. |
-| P3 | Front/back mate win-chance scale | Brilliant boundary edge case — see detailed note in Phase history below. |
-| P3 | `schema.sql` retirement | Drift guard is `alembic check`; static file only used by `test_sa_tables`. |
-| P3 | Teams SPA UI | Phase 5 backend ships; no sharing UI in the SPA yet. |
+| P3 | `app.js` split continue | `views/settings.js`, `views/dashboard.js` |
+| P3 | Engine graceful fail | After 1–2 days clientlog |
+| P3 | `schema.sql` retirement | Drift guard is `alembic check` |
 
 For the detailed per-slice porting history (Phases 2a/2b sub-slices, locked design
 decisions, and test counts at the time), see **Phases** below.

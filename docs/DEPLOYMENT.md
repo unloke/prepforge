@@ -51,10 +51,62 @@ The live deploy runs on Render's **free tier**.
 - [ ] Unsafe POST without `X-CSRF-Token` → 403.
 - [ ] Create repertoire, analyze a game, run a train session.
 - [ ] Lichess OAuth redirect works (if enabled).
-- [ ] **DB backups** enabled in Render dashboard (free-tier policy — confirm retention).
-- [ ] External uptime monitor on `/healthz` (optional).
+- [ ] **DB backups** — see [Database backups](#database-backups) below.
+- [ ] **Uptime monitoring** — see [External uptime monitoring](#external-uptime-monitoring) below.
+- [ ] **Engine CDN** — `npm run smoke:prod-engine` passes (`crossOriginIsolated`, ORT wasm from HF).
+- [ ] **HF asset pins** — View Source shows `resolve/<sha>/`, not `resolve/main/` (see below).
 
 See `src/prepforge_chess/api/config.py` for the full settings list and defaults.
+
+### Hugging Face asset pin (required in production)
+
+Both `PREPFORGE_MAIA3_ASSET_BASE` and `PREPFORGE_ENGINE_ASSET_BASE` must use a **commit
+hash URL**, not `/resolve/main/`. Branch refs can drift silently when files are re-uploaded.
+
+Current pinned commit (Andy108/prepforge-maia3 HEAD as of 2026-06-17):
+
+```
+https://huggingface.co/Andy108/prepforge-maia3/resolve/77fcb55654f1fad83ee9e987b973ddee7d7fa459/
+```
+
+Set both env vars in the Render dashboard to that base (with trailing slash). No rebuild
+needed — only a service restart. Re-pin when you upload new ONNX/WASM artifacts.
+
+### Database backups
+
+Render **free-tier Postgres** does not include automatic point-in-time recovery. As of
+2026-06, backups are **not enabled** on the live deploy — treat this as a known gap.
+
+**Action (manual):** Render dashboard → your Postgres instance → **Backups** tab. On paid
+plans you can enable scheduled backups; on free tier, schedule a periodic `pg_dump` via a
+cron job or export manually before schema changes.
+
+Document your retention policy here once configured.
+
+### External uptime monitoring
+
+Point a free external monitor at the public health endpoint:
+
+- **URL:** `https://prepforge-w0c5.onrender.com/healthz` (replace with your service URL)
+- **Interval:** 5–10 minutes (enough to reduce cold starts without burning Render hours)
+- **Expected:** HTTP 200, body `{"status":"ok"}`
+
+[UptimeRobot](https://uptimerobot.com/) free tier works well. Alternatively, the repo's
+`.github/workflows/keep-warm.yml` pings `/healthz` on a schedule — keep one external
+monitor for alerts even if keep-warm runs.
+
+### Client error observability (`/api/clientlog`)
+
+The SPA beacons uncaught errors to `POST /api/clientlog` (CSRF-exempt, `sendBeacon`).
+Logs appear in the Render log stream under the `prepforge.clientlog` logger at WARNING.
+
+**Verify after deploy:**
+
+1. Open prod → DevTools → Console → `throw new Error("clientlog smoke")`
+2. Render dashboard → your web service → **Logs** → filter for `clientlog` or the message
+3. Optional: set `PREPFORGE_SENTRY_DSN` for structured error reporting
+
+Use clientlog volume to decide engine graceful-failure priority (stability plan D2).
 
 ## Local development
 
@@ -94,6 +146,13 @@ uv run alembic check
 npm test -- --run
 npm run build
 node scripts/check-bundle-size.mjs
+```
+
+E2E (opt-in — Playwright + Chromium + live Lichess; excluded from default `pytest -q`):
+
+```powershell
+npx playwright install chromium   # one-time
+uv run pytest -q -m e2e tests/e2e
 ```
 
 ## Local Docker check

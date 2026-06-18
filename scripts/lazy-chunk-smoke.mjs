@@ -30,6 +30,7 @@ function chunkKind(url) {
   if (/^movetree-/.test(name)) return "movetree";
   if (/^build-P/.test(name) || /^build-[A-Za-z0-9]+\.js$/.test(name)) return "build-view";
   if (/^teams-/.test(name)) return "teams";
+  if (/^scout-/.test(name) && !/^scout-engine-/.test(name)) return "scout-view";
   if (/^index-/.test(name)) return "index";
   return null;
 }
@@ -156,6 +157,7 @@ async function browserChecks() {
     await page.click('[data-testid="nav-replay"]');
     await page.waitForTimeout(1200);
     assert(loaded.has("replay"), "replay tab should fetch replay chunk");
+    assert(!loaded.has("scout-view"), "replay tab open must not fetch scout view chunk");
 
     console.log("[lazy-chunk-smoke] browser capture ok");
     console.log(`[lazy-chunk-smoke] chunks observed: ${[...loaded].sort().join(", ")}`);
