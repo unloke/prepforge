@@ -11,8 +11,8 @@
 import { Chess } from "chess.js";
 
 export const SCOUT_MAX_GAMES = 100;
-export const MAX_PLIES = 12; // opening book depth we care about
-const CACHE_KEY = "prepforge.scout.cache.v1";
+export const MAX_PLIES = 16; // opening book depth we care about
+const CACHE_KEY = "prepforge.scout.cache.v2";
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // opponents play new games constantly
 const CACHE_CAP = 8;
 
@@ -23,6 +23,17 @@ const CACHE_CAP = 8;
 function headerValue(block, name) {
   const match = block.match(new RegExp(`\\[${name}\\s+"([^"]*)"\\]`));
   return match ? match[1] : null;
+}
+
+function parseSpeedBucket(timeControl) {
+  if (!timeControl) return "unknown";
+  const match = String(timeControl).match(/^(\d+)\+(\d+)$/);
+  if (!match) return "unknown";
+  const n = Number(match[1]);
+  if (n < 180) return "bullet";
+  if (n < 480) return "blitz";
+  if (n < 1500) return "rapid";
+  return "classical";
 }
 
 // Movetext -> SAN tokens, openings only. Strips comments, variations, NAGs,
@@ -61,6 +72,16 @@ export function parseGameBlock(block, username) {
   else if (result === "0-1") score = color === "black" ? 1 : 0;
   else return null; // unfinished
 
+  const ratingHeader = color === "white" ? "WhiteElo" : "BlackElo";
+  const ratingRaw = headerValue(block, ratingHeader);
+  const rating = ratingRaw ? Number(ratingRaw) || 0 : 0;
+
+  const dateRaw = headerValue(block, "UTCDate");
+  const datestamp = dateRaw ? Date.parse(dateRaw.replace(/\./g, "-")) || 0 : 0;
+
+  const timeControl = headerValue(block, "TimeControl");
+  const speed = parseSpeedBucket(timeControl);
+
   const moveStart = block.search(/\n\s*\n/);
   const movetext = moveStart >= 0 ? block.slice(moveStart) : block;
   const sans = movetextSans(movetext);
@@ -82,7 +103,7 @@ export function parseGameBlock(block, username) {
     replayedSans.push(move.san);
   }
   if (!ucis.length) return null;
-  return { color, score, sans: replayedSans, ucis };
+  return { color, score, sans: replayedSans, ucis, rating, datestamp, speed };
 }
 
 export function parseMultiPgn(text, username) {
@@ -100,24 +121,45 @@ export function parseMultiPgn(text, username) {
 // ---------------------------------------------------------------------------
 
 function trieNode() {
-  return { count: 0, score: 0, children: new Map() };
+  return { count: 0, score: 0, gameCount: 0, children: new Map() };
+}
+
+function gameWeight(games, game, recency) {
+  if (!recency) return 1;
+  if (!game.datestamp || game.datestamp <= 0) return 0.5;
+  const stamps = games.map((g) => g.datestamp).filter((d) => d > 0);
+  if (!stamps.length) return 1;
+  const oldestTs = Math.min(...stamps);
+  const newestTs = Math.max(...stamps);
+  const range = newestTs - oldestTs;
+  if (range === 0) return 1;
+  return 0.5 + 0.5 * ((game.datestamp - oldestTs) / range);
 }
 
 // Aggregate the games one colour at a time. Each path through the trie is a line
 // the opponent has actually played, with how often and how well they scored.
-export function buildOpeningTrie(games, color, maxPlies = MAX_PLIES) {
+export function buildOpeningTrie(
+  games,
+  color,
+  { maxPlies = MAX_PLIES, speedFilter = "all", recency = true } = {},
+) {
   const root = trieNode();
-  for (const game of games) {
+  const filtered =
+    speedFilter !== "all" ? games.filter((g) => g.speed === speedFilter) : games;
+  for (const game of filtered) {
     if (game.color !== color) continue;
-    root.count += 1;
-    root.score += game.score;
+    const w = gameWeight(filtered, game, recency);
+    root.count += w;
+    root.score += game.score * w;
+    root.gameCount += 1;
     let node = root;
     for (let i = 0; i < Math.min(game.ucis.length, maxPlies); i += 1) {
       const key = `${game.ucis[i]}|${game.sans[i]}`;
       if (!node.children.has(key)) node.children.set(key, trieNode());
       node = node.children.get(key);
-      node.count += 1;
-      node.score += game.score;
+      node.count += w;
+      node.score += game.score * w;
+      node.gameCount += 1;
     }
   }
   return root;
@@ -126,7 +168,7 @@ export function buildOpeningTrie(games, color, maxPlies = MAX_PLIES) {
 // The opponent's most-travelled paths: walk the trie greedily from the most
 // common child down, splitting off one line per top-level branch (and per second
 // branch under the most common reply) so the list reads like a repertoire sketch.
-export function topLines(root, { limit = 6, minCount = 2 } = {}) {
+export function topLines(root, { limit = 12, minCount = 1.5 } = {}) {
   const lines = [];
 
   const walk = (node, sans, ucis) => {
@@ -147,14 +189,24 @@ export function topLines(root, { limit = 6, minCount = 2 } = {}) {
     if (lines.length >= limit || child.count < minCount) break;
     const [uci, san] = key.split("|");
     const tip = walk(child, [san], [uci]);
-    lines.push({
+    const line = {
       sans: tip.sans,
       ucis: tip.ucis,
       count: child.count,
+      gameCount: child.gameCount,
       share: root.count > 0 ? child.count / root.count : 0,
       scorePct: child.count > 0 ? Math.round((child.score / child.count) * 100) : 0,
-    });
+    };
+    lines.push(line);
   }
+
+  // Sub-lines for the top 2 first-move branches.
+  for (let i = 0; i < Math.min(2, firstMoves.length); i += 1) {
+    const [, child] = firstMoves[i];
+    const subLines = topLines(child, { limit: 3, minCount: 1 });
+    if (subLines.length && lines[i]) lines[i].subLines = subLines;
+  }
+
   return lines;
 }
 
@@ -168,6 +220,7 @@ export function moveDistribution(root) {
         uci,
         san,
         count: child.count,
+        gameCount: child.gameCount,
         share: child.count / total,
         scorePct: child.count > 0 ? Math.round((child.score / child.count) * 100) : 0,
         node: child,
@@ -220,6 +273,72 @@ export function gradeLines(lookup, lines) {
     const prepared = covered >= Math.min(line.ucis.length, PREPARED_PLIES);
     return { ...line, covered, deepestNodeId, prepared };
   });
+}
+
+// ---------------------------------------------------------------------------
+// FEN + opponent profile
+// ---------------------------------------------------------------------------
+
+export function fenAfterLine(ucis) {
+  const chess = new Chess();
+  for (const uci of ucis) {
+    try {
+      chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
+    } catch (_) {
+      break;
+    }
+  }
+  return chess.fen();
+}
+
+function mostCommonFirstMove(games, color) {
+  const counts = new Map();
+  for (const g of games) {
+    if (g.color !== color || !g.ucis.length) continue;
+    const key = g.ucis[0];
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  let best = null;
+  for (const [uci, count] of counts) {
+    if (!best || count > best.count) best = { uci, count };
+  }
+  return best ? best.uci : null;
+}
+
+export const RECENT_CHANGE_MIN_GAMES = 3;
+
+function colorGamesWithMoves(games, color) {
+  return games.filter((g) => g.color === color && g.ucis.length);
+}
+
+function detectRecentChange(last20, prev20) {
+  const changed = (color) => {
+    const last = colorGamesWithMoves(last20, color);
+    const prev = colorGamesWithMoves(prev20, color);
+    if (last.length < RECENT_CHANGE_MIN_GAMES || prev.length < RECENT_CHANGE_MIN_GAMES) {
+      return false;
+    }
+    return mostCommonFirstMove(last20, color) !== mostCommonFirstMove(prev20, color);
+  };
+  return { white: changed("white"), black: changed("black") };
+}
+
+export function opponentProfile(games) {
+  const ratingsSeen = games.map((g) => g.rating).filter((r) => r > 0);
+  const speedCounts = { bullet: 0, blitz: 0, rapid: 0, classical: 0, unknown: 0 };
+  games.forEach((g) => {
+    speedCounts[g.speed] = (speedCounts[g.speed] || 0) + 1;
+  });
+  const last20 = games.slice(0, 20);
+  const prev20 = games.slice(20, 40);
+  return {
+    total: games.length,
+    ratingMin: ratingsSeen.length ? Math.min(...ratingsSeen) : null,
+    ratingMax: ratingsSeen.length ? Math.max(...ratingsSeen) : null,
+    ratingLast: games[0]?.rating || null,
+    speedCounts,
+    recentlyChanged: detectRecentChange(last20, prev20),
+  };
 }
 
 // ---------------------------------------------------------------------------

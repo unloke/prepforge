@@ -15,6 +15,16 @@ import { createCsrfTokenSource, isSafeMethod, readCsrfCookie, CSRF_HEADER } from
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { describeMove } from "./explain.js";
+import {
+  buildScoutAnalyzePgn,
+  buildScoutSectionReport,
+  handleScoutProfileClick,
+  handleScoutResultsClick,
+  renderMiniBoardHtml as renderScoutMiniBoardHtml,
+  renderScoutProfile,
+  scoutLineDetailHtml,
+  scoutLineText,
+} from "./scout-report.js";
 
 let _coachReady = null;
 function preloadCoach() {
@@ -8828,10 +8838,12 @@ async function completeOneGap(gap, signal) {
 
 let scoutModule = null;
 let scoutClient = null;
+let scoutExplorerClient = null;
+let scoutState = null;
+let scoutEventsBound = false;
 
 async function runScout() {
   const usernameInput = document.getElementById("scout-username");
-  const results = document.getElementById("scout-results");
   const button = document.getElementById("scout-btn");
   const username = (usernameInput.value || "").trim();
   if (!username) {
@@ -8840,104 +8852,227 @@ async function runScout() {
     return;
   }
   const count = Math.max(20, Math.min(100, Number(document.getElementById("scout-count").value) || 60));
+  const results = document.getElementById("scout-results");
+  const profile = document.getElementById("scout-profile");
   button.disabled = true;
-  results.innerHTML = '<div class="muted hint">Fetching games from Lichess…</div>';
+  if (results) results.innerHTML = '<div class="muted hint">Fetching games from Lichess…</div>';
+  if (profile) profile.hidden = true;
   setStatus(`Scouting ${username}`);
   try {
-    if (!scoutModule) {
-      scoutModule = await import("./scout.js");
-      scoutClient = scoutModule.createScoutClient({});
-    }
-    const games = await scoutClient.fetchGames(username, { max: count });
-    if (!games.length) {
-      results.innerHTML = '<div class="empty-state">No finished games found for this player.</div>';
+    await fetchAndBuildScoutState(username, count);
+    if (!scoutState.games.length) {
+      if (results) results.innerHTML = '<div class="empty-state">No finished games found for this player.</div>';
       return;
     }
-    // My active repertoires, tree-loaded for coverage walks. My BLACK prep answers
-    // their White games and vice versa. Capped so a hoarder's account stays cheap.
-    const myReps = ((await api("/api/repertoires")).repertoires || []).filter(
-      (rep) => rep.is_active !== false,
-    );
-    const lookups = { white: [], black: [] };
-    for (const rep of myReps.slice(0, 6)) {
-      try {
-        const payload = await api(`/api/build/load?repertoire_id=${encodeURIComponent(rep.id)}`);
-        lookups[rep.color].push({
-          rep,
-          lookup: scoutModule.repertoireChildLookup(payload.nodes),
-        });
-      } catch (_) {
-        /* unreadable repertoire — skip it */
-      }
-    }
-    const sections = [
-      renderScoutSection(games, "white", lookups.black),
-      renderScoutSection(games, "black", lookups.white),
-    ].filter(Boolean);
-    const reportHead = `<div class="scout-report-head"><strong>${escapeHtml(username)}</strong><span class="muted">last ${games.length} games &middot; openings only</span></div>`;
-    results.innerHTML = sections.length
-      ? reportHead + sections.join("")
-      : '<div class="empty-state">Not enough opening data in these games.</div>';
-    results.querySelectorAll("[data-prep-rep]").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        await editRepertoire(btn.dataset.prepRep);
-        if (btn.dataset.prepNode) await selectBuildNode(btn.dataset.prepNode);
-      });
-    });
-    setStatus(`Scouted ${games.length} games for ${username}`);
+    renderScoutReport();
+    bindScoutEvents();
+    setStatus(`Scouted ${scoutState.games.length} games for ${username}`);
   } catch (error) {
-    // fetch() reports any network/blocked failure as a bare TypeError
-    // ("Failed to fetch") — say something a user can actually act on.
     const message =
       error instanceof TypeError
         ? "Couldn't reach Lichess from this browser - check your connection and try again."
         : error.message;
-    results.innerHTML = `<div class="empty-state">${escapeHtml(message)}</div>`;
+    if (results) results.innerHTML = `<div class="empty-state">${escapeHtml(message)}</div>`;
+    if (profile) profile.hidden = true;
+    scoutState = null;
     setStatus(message);
   } finally {
     button.disabled = false;
   }
 }
 
-// Format a scout line's SAN list with move numbers: "1. e4 c5 2. Nf3 d6".
-function scoutLineText(sans) {
-  const parts = [];
-  sans.forEach((san, index) => {
-    if (index % 2 === 0) parts.push(`${index / 2 + 1}.`);
-    parts.push(san);
-  });
-  return parts.join(" ");
+async function fetchAndBuildScoutState(username, count) {
+  if (!scoutModule) {
+    scoutModule = await import("./scout.js");
+    scoutClient = scoutModule.createScoutClient({});
+  }
+  const games = await scoutClient.fetchGames(username, { max: count });
+  const profileData = scoutModule.opponentProfile(games);
+  const myReps = ((await api("/api/repertoires")).repertoires || []).filter(
+    (rep) => rep.is_active !== false,
+  );
+  const lookups = { white: [], black: [] };
+  for (const rep of myReps.slice(0, 6)) {
+    try {
+      const payload = await api(`/api/build/load?repertoire_id=${encodeURIComponent(rep.id)}`);
+      lookups[rep.color].push({
+        rep,
+        lookup: scoutModule.repertoireChildLookup(payload.nodes),
+      });
+    } catch (_) {
+      /* unreadable repertoire — skip it */
+    }
+  }
+  scoutState = {
+    username,
+    games,
+    profile: profileData,
+    lookups,
+    activeSpeed: scoutState?.username === username ? scoutState.activeSpeed : "all",
+    sections: {},
+  };
 }
 
-// One half of the report: everything the opponent does as `oppColor`, graded
-// against MY repertoires of the opposite colour.
-function renderScoutSection(games, oppColor, myLookups) {
-  const trie = scoutModule.buildOpeningTrie(games, oppColor);
-  if (!trie.count) return "";
-  const dist = scoutModule.moveDistribution(trie).slice(0, 4);
-  const lines = scoutModule.topLines(trie);
-  // Grade each line against the best-covering of my repertoires.
-  const graded = lines.map((line) => {
-    let best = null;
-    for (const { rep, lookup } of myLookups) {
-      const g = scoutModule.gradeLines(lookup, [line])[0];
-      if (!best || g.covered > best.covered) {
-        best = { ...g, repId: rep.id, repName: rep.name };
-      }
-    }
-    return best || { ...line, covered: 0, prepared: false, repId: null };
-  });
-  const prepared = graded.filter((g) => g.prepared).length;
-  const verdict = myLookups.length
-    ? `<span class="scout-verdict ${prepared === graded.length ? "good" : "warn"}">${prepared}/${graded.length} of their favourite lines are in your prep</span>`
-    : '<span class="scout-verdict muted">no repertoire of yours answers this colour yet</span>';
+function renderScoutReport() {
+  if (!scoutState) return;
+  const profileEl = document.getElementById("scout-profile");
+  const results = document.getElementById("scout-results");
+  if (profileEl) {
+    profileEl.innerHTML = renderScoutProfile(
+      scoutState.profile,
+      scoutState.username,
+      scoutState.activeSpeed,
+      escapeHtml,
+    );
+    profileEl.hidden = false;
+  }
+  scoutState.sections = {};
+  const speedOpts = { speedFilter: scoutState.activeSpeed, escapeHtml };
+  const whiteReport = buildScoutSectionReport(
+    scoutModule,
+    scoutState,
+    "white",
+    scoutState.lookups.black,
+    speedOpts,
+  );
+  if (whiteReport.sectionData) scoutState.sections.white = whiteReport.sectionData;
+  const blackReport = buildScoutSectionReport(
+    scoutModule,
+    scoutState,
+    "black",
+    scoutState.lookups.white,
+    speedOpts,
+  );
+  if (blackReport.sectionData) scoutState.sections.black = blackReport.sectionData;
+  const sections = [whiteReport.html, blackReport.html].filter(Boolean);
+  if (results) {
+    results.innerHTML = sections.length
+      ? sections.join("")
+      : '<div class="empty-state">Not enough opening data in these games.</div>';
+  }
+}
 
-  const firstMoves = dist
+function localScoutLineDetailHtml(line, idx, oppColor) {
+  return scoutLineDetailHtml(line, idx, oppColor, {
+    fenAfterLine: (ucis) => scoutModule.fenAfterLine(ucis),
+    renderBoard: (fen, orientation) =>
+      renderScoutMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg }),
+    escapeHtml,
+  });
+}
+
+async function enrichEcoForLine(lineEl, fen) {
+  try {
+    if (!explorerModule) {
+      explorerModule = await import("./explorer.js");
+      if (!scoutExplorerClient) scoutExplorerClient = explorerModule.createExplorerClient({});
+    }
+    const stats = await scoutExplorerClient.fetchStats("masters", fen, {});
+    if (stats?.opening) {
+      const eco = lineEl.querySelector(".scout-line-eco");
+      if (eco) eco.textContent = stats.opening;
+    }
+  } catch (_) {
+    /* best-effort */
+  }
+}
+
+function scoutAnalyzeLine(line, oppColor, username) {
+  const pgn = buildScoutAnalyzePgn(line, oppColor, username);
+  const input = document.getElementById("pgn-input");
+  if (input) input.value = pgn;
+  const drawer = document.getElementById("pgn-drawer");
+  if (drawer) drawer.open = true;
+  switchView("analyze");
+  setStatus(`Loaded ${username}'s line — press "Analyze game" to start`);
+}
+
+async function scoutPrepareAll(gradedLines) {
+  const gaps = gradedLines.filter((l) => !l.prepared && l.repId);
+  if (!gaps.length) {
+    setStatus("No gaps to prepare");
+    return;
+  }
+  if (jobToast.isBusy()) {
+    setStatus("Another job is running");
+    return;
+  }
+  const ctrl = new AbortController();
+  jobToast.startJob({
+    id: `scout-prep-${Date.now()}`,
+    title: "Prep Scout Gaps",
+    tab: "build",
+    total: gaps.length,
+    onCancel: () => ctrl.abort(),
+  });
+  let done = 0;
+  for (const gap of gaps) {
+    if (ctrl.signal.aborted) break;
+    jobToast.updateJob({
+      current: done,
+      total: gaps.length,
+      message: `${gap.sans.at(-1)} · ${done + 1}/${gaps.length}`,
+    });
+    await editRepertoire(gap.repId);
+    if (gap.deepestNodeId) await selectBuildNode(gap.deepestNodeId);
+    done++;
+  }
+  jobToast.completeJob({
+    title: "Gaps ready",
+    message: `Opened ${done} gap${done === 1 ? "" : "s"} in Build`,
+  });
+}
+
+function renderDistDrilldown(distRowEl, sectionEl, oppColor) {
+  const uci = distRowEl.dataset.firstUci;
+  if (!uci) return;
+  const sectionData = scoutState.sections[oppColor];
+  if (!sectionData) return;
+  const distCol = sectionEl.querySelector("[data-dist-root]");
+  if (!distCol) return;
+
+  let childNode = null;
+  for (const [key, node] of sectionData.trie.children) {
+    if (key.startsWith(`${uci}|`)) {
+      childNode = node;
+      break;
+    }
+  }
+  if (!childNode) return;
+
+  const subDist = scoutModule.moveDistribution(childNode).slice(0, 6);
+  const parentSan = distRowEl.querySelector(".scout-dist-san")?.textContent || uci;
+  const rows = subDist
     .map((m) => {
-      // Tint the bar by how well the move scores FOR THEM: a hot weapon reads red.
       const heat = m.scorePct >= 55 ? " is-hot" : m.scorePct <= 45 ? " is-cold" : "";
       return `
       <div class="scout-dist-row${heat}">
+        <span class="scout-dist-san">${escapeHtml(m.san)}</span>
+        <span class="scout-dist-bar"><span style="width:${Math.round(m.share * 100)}%"></span></span>
+        <span class="scout-dist-share">${Math.round(m.share * 100)}%</span>
+        <span class="scout-dist-score">${m.scorePct}%</span>
+      </div>`;
+    })
+    .join("");
+
+  distCol.innerHTML = `
+    <div class="scout-dist-drill-head muted">${escapeHtml(parentSan)} — their replies</div>
+    ${rows}
+    <button type="button" class="btn ghost scout-dist-back">Back ↑</button>`;
+  distCol.dataset.drillUci = uci;
+}
+
+function restoreDistRoot(sectionEl, oppColor) {
+  const sectionData = scoutState.sections[oppColor];
+  if (!sectionData) return;
+  const dist = scoutModule.moveDistribution(sectionData.trie).slice(0, 4);
+  const distCol = sectionEl.querySelector("[data-dist-root]");
+  if (!distCol) return;
+  distCol.innerHTML = dist
+    .map((m) => {
+      const heat = m.scorePct >= 55 ? " is-hot" : m.scorePct <= 45 ? " is-cold" : "";
+      return `
+      <div class="scout-dist-row${heat}" data-first-uci="${escapeHtml(m.uci)}" role="button" tabindex="0">
         <span class="scout-dist-san">${escapeHtml(m.san)}</span>
         <span class="scout-dist-bar"><span style="width:${Math.round(m.share * 100)}%"></span></span>
         <span class="scout-dist-share">${Math.round(m.share * 100)}%</span>
@@ -8945,59 +9080,55 @@ function renderScoutSection(games, oppColor, myLookups) {
       </div>`;
     })
     .join("");
+  delete distCol.dataset.drillUci;
+}
 
-  const lineRows = graded
-    .map((line) => {
-      // The badge doubles as the action: when a line isn't prepared and we know
-      // which repertoire answers it, render the badge itself as a button that
-      // jumps to the gap — no separate "Prep this" control needed.
-      const gap = line.covered > 0;
-      const label = line.prepared
-        ? `&#10003; prepared`
-        : gap
-          ? `gap after ply ${line.covered}`
-          : `not prepared`;
-      const tone = line.prepared ? "good" : gap ? "warn" : "bad";
-      let badge;
-      if (!line.prepared && line.repId) {
-        const tip = `Open ${escapeHtml(line.repName)} where the gap starts`;
-        badge = `<button class="scout-badge ${tone} scout-prep-btn" data-prep-rep="${escapeHtml(line.repId)}" data-prep-node="${escapeHtml(line.deepestNodeId || "")}" title="${tip}">${label} &rsaquo;</button>`;
-      } else {
-        const tip = line.prepared ? "Your prep follows this line" : "This line is not in your prep";
-        badge = `<span class="scout-badge ${tone}" title="${tip}">${label}</span>`;
-      }
-      const moves = scoutLineText(line.sans);
-      return `
-      <div class="scout-line">
-        <span class="scout-line-count" title="${line.count} of their games">&times;${line.count}</span>
-        <span class="scout-line-moves" title="${escapeHtml(moves)}">${escapeHtml(moves)}</span>
-        <span class="scout-line-score" title="Their score in this line">${line.scorePct}%</span>
-        <span class="scout-line-end">${badge}</span>
-      </div>`;
-    })
-    .join("");
+function bindScoutEvents() {
+  if (scoutEventsBound) return;
+  scoutEventsBound = true;
 
-  const heading = oppColor === "white" ? "With White" : "With Black";
-  return `
-    <div class="scout-section">
-      <div class="scout-section-head">
-        <span class="scout-color-dot ${oppColor}" aria-hidden="true"></span>
-        <h3>${heading}</h3>
-        <span class="scout-games-count">${trie.count} games</span>
-        ${verdict}
-      </div>
-      <div class="scout-body">
-        <div class="scout-col">
-          <div class="scout-col-label">First moves</div>
-          <div class="scout-dist">${firstMoves}</div>
-        </div>
-        <div class="scout-col">
-          <div class="scout-col-label">Favourite lines</div>
-          <div class="scout-lines">${lineRows}</div>
-        </div>
-      </div>
-    </div>
-  `;
+  const profileEl = document.getElementById("scout-profile");
+  if (profileEl) {
+    profileEl.addEventListener("click", (e) => {
+      handleScoutProfileClick(e, {
+        getState: () => scoutState,
+        onSpeedChange: () => renderScoutReport(),
+      });
+    });
+  }
+
+  const results = document.getElementById("scout-results");
+  if (!results) return;
+
+  const scoutClickCtx = () => ({
+    getState: () => scoutState,
+    scoutModule,
+    escapeHtml,
+    callbacks: {
+      restoreDistRoot,
+      renderDistDrilldown,
+      scoutPrepareAll,
+      scoutAnalyzeLine,
+      editRepertoire,
+      selectBuildNode,
+      scoutLineDetailHtml: localScoutLineDetailHtml,
+      enrichEcoForLine,
+    },
+  });
+
+  results.addEventListener("click", async (e) => {
+    await handleScoutResultsClick(e, scoutClickCtx());
+  });
+
+  results.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const lineEl = e.target.closest(".scout-line");
+    const distRow = e.target.closest(".scout-dist-row[data-first-uci]");
+    if (lineEl || distRow) {
+      e.preventDefault();
+      e.target.click();
+    }
+  });
 }
 
 // Maia idle teardown. The browser Maia engine (onnxruntime-web session + WASM heap) is by
