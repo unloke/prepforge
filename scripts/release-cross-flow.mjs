@@ -296,6 +296,20 @@ async function main() {
     const squares = uciToSquares(firstTarget?.uci);
     if (!squares) throw new Error("no expected uci in smart start payload");
 
+    // Deeper first cards (random seed picks any prepared move) replay a run-in
+    // animation — board steps through the line before settling at fen_before and
+    // accepting input. The "runin" banner is also a valid start state, so waiting
+    // only for active (above) can fire a click mid-animation that never lands.
+    // Wait until the run-in finished: banner flips to teach/move and the board is
+    // settled with the moving piece on the from-square.
+    await page
+      .locator('#train-banner[data-state="teach"], #train-banner[data-state="move"]')
+      .first()
+      .waitFor({ timeout: 60_000 });
+    await page
+      .locator(`#train-board [data-square="${squares.from}"][data-piece]:not([data-piece=""])`)
+      .waitFor({ timeout: 60_000 });
+
     const beforeCorrect = await page.evaluate(() => ({
       correct: document.getElementById("train-stat-correct")?.textContent?.trim() || "0",
       mistakes: document.getElementById("train-stat-mistakes")?.textContent?.trim() || "0",

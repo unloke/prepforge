@@ -2214,6 +2214,34 @@ class BoardController {
     this.board.addEventListener("pointerup", (event) => {
       if (event.button === 2) this._finishAnnotation(event);
     });
+
+    // Keyboard parity for the click-to-move model: squares are <button>s, so they
+    // already take focus and Tab order. Enter/Space on a square selects a movable
+    // piece, then selects a legal target to play — the pointer path minus the drag
+    // (which keyboards can't do). Without this, keyboard users could focus squares
+    // but never move (flagged P2 in the Build and Train friction audits).
+    this.board.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " " && event.key !== "Spacebar") return;
+      const square = event.target.closest(".square");
+      if (!square) return;
+      const squareName = square.dataset.square;
+      // Swallow the default button activation so Space doesn't also scroll and
+      // Enter doesn't fire a redundant synthetic click.
+      event.preventDefault();
+      if (this.selected && this.selected !== squareName) {
+        const move = legalMoveFor(this.selected, squareName, this.legalMoves);
+        if (move) {
+          this._setSelected(null);
+          this.play(move);
+          return;
+        }
+      }
+      if (this.hasLegalFrom(squareName)) {
+        this._setSelected(squareName);
+      } else {
+        this._setSelected(null);
+      }
+    });
   }
 
   _beginDrag(squareName, event) {

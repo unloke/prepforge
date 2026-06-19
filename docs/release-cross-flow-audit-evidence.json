@@ -1,12 +1,12 @@
 {
-  "runAt": "2026-06-19T20:05:09.860Z",
+  "runAt": "2026-06-19T20:23:44.177Z",
   "baseUrl": "http://127.0.0.1:8001",
   "database": "sqlite:///release.sqlite3",
   "auth": {
     "method": "single-register-journey",
     "credentialsInEvidence": false,
     "signedInVerified": true,
-    "userId": "8230fdc7b6d346e7a5149d17a1d5147c"
+    "userId": "9c4a6bf1216549a19ef51924cc80c945"
   },
   "steps": [
     {
@@ -15,8 +15,8 @@
       "required": true,
       "expected": "Single fresh account registered and session active",
       "actual": {
-        "email": "release-1781899510304@…",
-        "userId": "8230fdc7b6d346e7a5149d17a1d5147c"
+        "email": "release-1781900625371@…",
+        "userId": "9c4a6bf1216549a19ef51924cc80c945"
       },
       "pass": true,
       "priority": "P3 — auth OK"
@@ -47,11 +47,11 @@
       "required": true,
       "expected": "Turn this game into a repertoire → name/color modal → Build opens",
       "actual": {
-        "repName": "Release Journey 1781899510304",
+        "repName": "Release Journey 1781900625371",
         "afterHandoff": {
           "viewBuildActive": true,
-          "repName": "Release Journey 1781899510304 · white",
-          "status": "Repertoire “Release Journey 1781899510304” created — edit it in Build"
+          "repName": "Release Journey 1781900625371 · white",
+          "status": "Repertoire “Release Journey 1781900625371” created — edit it in Build"
         }
       },
       "pass": true,
@@ -65,11 +65,11 @@
       "actual": {
         "buildSnap": {
           "treeText": "Start position - play a move or pick a line below1.e4e52.Nf3Nc63.Bb5a6",
-          "repName": "Release Journey 1781899510304 · white",
+          "repName": "Release Journey 1781900625371 · white",
           "boardSquares": 64
         },
         "hasRepServer": true,
-        "repName": "Release Journey 1781899510304"
+        "repName": "Release Journey 1781900625371"
       },
       "pass": true,
       "priority": "P3 — build tree OK"
@@ -84,7 +84,7 @@
           "hidden": false,
           "options": [
             "Demo repertoire",
-            "Release Journey 1781899510304 (white)"
+            "Release Journey 1781900625371 (white)"
           ],
           "hasRep": true
         },
@@ -128,10 +128,10 @@
       "required": true,
       "expected": "Reload: repertoire on Dashboard; Train restarts; fresh session stats; no stuck error sync",
       "actual": {
-        "repName": "Release Journey 1781899510304",
+        "repName": "Release Journey 1781900625371",
         "dashBeforeTrain": {
           "names": [
-            "Release Journey 1781899510304"
+            "Release Journey 1781900625371"
           ],
           "hasRep": true
         },
@@ -155,7 +155,7 @@
       "actual": {
         "dashFinal": {
           "names": [
-            "Release Journey 1781899510304"
+            "Release Journey 1781900625371"
           ],
           "hasRep": true
         },
@@ -171,17 +171,17 @@
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781899510399
+      "t": 1781900625480
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781899514574
+      "t": 1781900630287
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781899524570
+      "t": 1781900640252
     }
   ],
   "clientlogRequests": [],
