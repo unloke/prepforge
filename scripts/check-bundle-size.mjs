@@ -5,6 +5,10 @@
 // build if the main `assets/index-*.js` grows past a budget, catching an
 // accidental heavy import before it ships. Raise LIMITS intentionally (with the
 // reason) when a real feature legitimately grows a bundle.
+//
+// Baseline after Settings + Dashboard lazy chunks (2026-06): main index
+// 210.8 KiB raw / 66.7 KiB gzip. Main JS budgets carry ~23% headroom (260 KiB
+// raw, 82 KiB gzip) so normal growth passes but an accidental heavy import fails.
 import { readdirSync, statSync, readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { fileURLToPath, URL } from "node:url";
@@ -13,11 +17,16 @@ const ASSETS_DIR = fileURLToPath(
   new URL("../src/prepforge_chess/web/static/assets", import.meta.url),
 );
 
-// Per-chunk raw-byte budgets. Keyed by the chunk's stable prefix (Vite appends a
-// content hash). Current sizes (2026-06): index ~280 KB, maia3-worker ~157 KB.
-// Budgets carry ~25% headroom so normal growth passes but a doubling fails.
+// Per-chunk budgets. Keyed by the chunk's stable prefix (Vite appends a content
+// hash). maxGzipBytes is checked only when set (main app chunk today).
 const LIMITS = [
-  { prefix: "index-", suffix: ".js", maxBytes: 360_000, label: "main app chunk" },
+  {
+    prefix: "index-",
+    suffix: ".js",
+    maxBytes: 266_240,
+    maxGzipBytes: 83_968,
+    label: "main app chunk",
+  },
   { prefix: "maia3-worker-", suffix: ".js", maxBytes: 220_000, label: "maia3 worker chunk" },
   { prefix: "index-", suffix: ".css", maxBytes: 90_000, label: "main stylesheet" },
 ];
@@ -31,7 +40,7 @@ try {
 }
 
 const failures = [];
-for (const { prefix, suffix, maxBytes, label } of LIMITS) {
+for (const { prefix, suffix, maxBytes, maxGzipBytes, label } of LIMITS) {
   const matches = files.filter((f) => f.startsWith(prefix) && f.endsWith(suffix) && !f.endsWith(".map"));
   if (matches.length === 0) {
     failures.push(`missing chunk: ${prefix}*${suffix} (${label}) — build output incomplete?`);
@@ -42,13 +51,25 @@ for (const { prefix, suffix, maxBytes, label } of LIMITS) {
     const gz = gzipSync(readFileSync(`${ASSETS_DIR}/${name}`)).length;
     const kib = (bytes / 1024).toFixed(1);
     const gzKib = (gz / 1024).toFixed(1);
-    const status = bytes > maxBytes ? "FAIL" : "ok";
+    const rawOk = bytes <= maxBytes;
+    const gzipOk = maxGzipBytes == null || gz <= maxGzipBytes;
+    const status = rawOk && gzipOk ? "ok" : "FAIL";
+    const rawBudgetKib = (maxBytes / 1024).toFixed(0);
+    const budgetText =
+      maxGzipBytes != null
+        ? `budget raw ${rawBudgetKib} KiB / gz ${(maxGzipBytes / 1024).toFixed(0)} KiB`
+        : `budget ${rawBudgetKib} KiB`;
     console.log(
-      `[bundle-size] ${status}  ${name}  ${kib} KiB (gz ${gzKib})  budget ${(maxBytes / 1024).toFixed(0)} KiB  — ${label}`,
+      `[bundle-size] ${status}  ${name}  ${kib} KiB (gz ${gzKib})  ${budgetText}  — ${label}`,
     );
-    if (bytes > maxBytes) {
+    if (!rawOk) {
       failures.push(
-        `${name} is ${kib} KiB, over the ${(maxBytes / 1024).toFixed(0)} KiB budget for the ${label}.`,
+        `${name} is ${kib} KiB raw, over the ${rawBudgetKib} KiB raw budget for the ${label}.`,
+      );
+    }
+    if (!gzipOk) {
+      failures.push(
+        `${name} is ${gzKib} KiB gzip, over the ${(maxGzipBytes / 1024).toFixed(0)} KiB gzip budget for the ${label}.`,
       );
     }
   }
