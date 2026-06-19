@@ -518,14 +518,16 @@ async function main() {
         actual: { empty, repName, layout, afterMove },
         recovery: "Use Build ⋯ → New repertoire on narrow viewports",
         priority:
-          layout.menuHeight >= 44
+          layout.menuWidth >= 44 && layout.menuHeight >= 44
             ? "P3 — mobile core OK"
-            : `P1 — Build ⋯ menu height ${layout.menuHeight}px (<44px touch target)`,
+            : `P1 — Build ⋯ menu ${layout.menuWidth}×${layout.menuHeight}px (<44×44px touch target)`,
         pass:
           empty.treeHasEmptyState &&
           afterMove.repName.includes(repName) &&
           /e4/i.test(afterMove.treeText) &&
-          layout.viewportW <= 400,
+          layout.viewportW <= 400 &&
+          layout.menuWidth >= 44 &&
+          layout.menuHeight >= 44,
       });
     } catch (err) {
       record("1-signed-in", "mobile-375", {

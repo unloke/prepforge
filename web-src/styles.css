@@ -3635,6 +3635,15 @@ h2 {
     min-height: 44px;
     height: 44px;
   }
+
+  /* Build repertoire ⋯ menu: 44×44px touch target (desktop .ib stays 28px). */
+  #view-build #build-menu {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
 }
 
 /* ----- Notification-style job toast (bottom-right) ---------------------- */

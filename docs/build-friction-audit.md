@@ -1,7 +1,7 @@
 # Build friction audit (free tier)
 
 **Date:** 2026-06-19  
-**Build:** `index-BPkZlyio.js`, local `http://127.0.0.1:8000`  
+**Build:** `index-GAWjW1KI.js`, local `http://127.0.0.1:8000`  
 **Method:** Playwright harness with `createSignedInContext()` (`scripts/build-friction-audit.mjs`)  
 **Raw evidence:** [`build-friction-audit-evidence.json`](./build-friction-audit-evidence.json)
 
@@ -23,7 +23,7 @@
 
 **Recovery (not gated):** Generate button correctly gated without COI; simulated `add-moves` 503 surfaces `⚠ Offline — will retry` then recovers to `✓ Saved`; Dashboard list refreshes after create (black color dot correct).
 
-**Top P1 for next product commit:** Build **⋯ menu** touch target **28px** tall on 375px viewport (<44px guideline). Functional mobile core flow passes; polish only.
+**P1 fixed (follow-up commit):** Build **⋯ menu** raised to **44×44px** on `max-width: 720px`; desktop stays compact `.ib` sizing.
 
 **P2 notes:** Board move input uses `pointerdown` only — keyboard cannot play moves on squares (modal + branch keys OK). Sync chip may read `• Unsaved changes` while server already has the move (reload still succeeds).
 
@@ -76,10 +76,10 @@
 | | |
 |--|--|
 | **Expected** | Empty → create via ⋯ menu → play `e4` on 375px |
-| **Actual** | Core flow completes; board width 349px; **⋯ menu height 28px** |
+| **Actual** | Core flow completes; board width 349px; **⋯ menu 44×44px** (required gate) |
 | **Evidence** | `1-signed-in/mobile-375` |
 | **Recovery** | Use Dashboard → New if ⋯ hard to tap |
-| **Priority** | **P1** — touch target (functional pass) |
+| **Priority** | **P3** — mobile core + touch target OK |
 
 ### Path 1c — Keyboard core flow
 
@@ -117,7 +117,7 @@
 
 | Issue | Evidence | Priority |
 |-------|----------|----------|
-| Build ⋯ menu **28px** touch target on 375px | `mobile-375` `menuHeight: 28` | **P1** |
+| ~~Build ⋯ menu 28px touch target on 375px~~ | `mobile-375` — now **44×44px** | **Done** |
 | Board squares listen to `pointerdown` only — no keyboard move play | `keyboard` scenario uses pointer for e4/d4 setup | **P2** |
 | Fork bar only at parent node — must step back to see alternatives | `first-move-branch` `beforeSwitch` vs `afterSwitch` | **P2** — learnability |
 | Sync chip `dirty` while server already persisted move | `reload-persist` `syncBefore.is-dirty` | **P2** |
@@ -127,17 +127,13 @@
 
 ## Priority stack (Build rubric)
 
-1. **P1 — Mobile touch target** — raise Build ⋯ menu (and audit other Build chrome) to ≥44px on 375px
+1. ~~**P1 — Mobile touch target** — Build ⋯ menu 44×44px on 375px~~ **Done**
 2. **P2 — Keyboard board play** — Space/Enter on focused square + legal target
 3. **P2 — Sync chip accuracy** — reflect server-persisted state after flush/beacon
 4. **P2 — Dashboard metrics** — repertoire count after create
 5. **P3 — Core signed-in flow** — empty → create → move → branch → reload → handoff (all gated green)
 
 ---
-
-## Next commit scope (one friction only)
-
-**Build P1 — ⋯ menu touch target on mobile (375px).** Do not bundle keyboard board play or sync-chip work.
 
 ---
 
