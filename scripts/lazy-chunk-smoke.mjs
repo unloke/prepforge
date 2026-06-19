@@ -32,6 +32,7 @@ function chunkKind(url) {
   if (/^teams-/.test(name)) return "teams";
   if (/^scout-/.test(name) && !/^scout-engine-/.test(name)) return "scout-view";
   if (/^settings-/.test(name)) return "settings";
+  if (/^dashboard-/.test(name)) return "dashboard";
   if (/^index-/.test(name)) return "index";
   return null;
 }
@@ -65,9 +66,21 @@ async function staticChecks() {
   assert(/movetree-/.test(index.text), "index chunk should lazy-map movetree");
   assert(/analyze-/.test(index.text), "index chunk should lazy-map analyze");
   assert(/settings-/.test(index.text), "index chunk should lazy-map settings");
+  assert(/dashboard-/.test(index.text), "index chunk should lazy-map dashboard");
 
   await readAsset(/^settings-/);
+  const dashboard = await readAsset(/^dashboard-/);
   assert(!/maia3-weight-cache/.test(index.text), "index chunk must not static-import maia3-weight-cache");
+  for (const prefix of ["analyze-", "train-", "settings-", "build-"]) {
+    assert(
+      !new RegExp(`${prefix}[A-Za-z0-9_-]+\\.js`).test(dashboard.text),
+      `${dashboard.name} must not reference ${prefix}* chunk asset`,
+    );
+  }
+  assert(
+    !/\.\/views\/(analyze|train|settings|build)\.js/.test(dashboard.text),
+    `${dashboard.name} must not static-import other view modules`,
+  );
 
   console.log("[lazy-chunk-smoke] static checks ok");
 }
@@ -141,7 +154,18 @@ async function browserChecks() {
     assert(!afterDashboard.has("replay"), "dashboard load fetched replay chunk");
     assert(!afterDashboard.has("movetree"), "dashboard load fetched movetree chunk");
     assert(!afterDashboard.has("settings"), "dashboard load fetched settings chunk");
+    assert(!afterDashboard.has("dashboard"), "unsigned initial load fetched dashboard chunk");
     assert(afterDashboard.has("index"), "dashboard load should fetch index chunk");
+
+    await page.click('[data-testid="nav-build"]');
+    await page.waitForTimeout(1200);
+    await page.click('[data-testid="nav-dashboard"]');
+    await page.waitForTimeout(1200);
+    assert(loaded.has("dashboard"), "switching to dashboard tab should fetch dashboard chunk");
+    const afterDashView = new Set(loaded);
+    assert(!afterDashView.has("analyze"), "dashboard tab fetched analyze chunk");
+    assert(!afterDashView.has("train"), "dashboard tab fetched train chunk");
+    assert(!afterDashView.has("settings"), "dashboard tab fetched settings chunk");
 
     await page.click('[data-testid="nav-build"]');
     await page.waitForTimeout(1200);
