@@ -117,7 +117,7 @@ async function main() {
     }));
   }
 
-  // --- Path 1: Happy path (desktop) ---
+  // --- Path 1: Guest auth gate (desktop) — P0 recovery UX ---
   {
     const { ctx, page } = await newContext({ width: 1280, height: 800 });
     try {
@@ -125,52 +125,43 @@ async function main() {
       const coi = await coiState(page);
       await page.fill('[data-testid="pgn-input"]', DEMO_PGN);
       await page.click('[data-testid="run-analysis"]');
-      await page.waitForFunction(
-        () => {
-          const panel = document.getElementById("analysis-results");
-          return panel && !panel.hidden;
-        },
-        { timeout: 120000 },
-      );
-      const results = await page.evaluate(() => ({
+      await page.waitForTimeout(800);
+      const snap = await page.evaluate(() => ({
+        status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+        authModalOpen: !!document.querySelector(".auth-overlay"),
         resultsVisible: !document.getElementById("analysis-results")?.hidden,
-        moveCount: document.querySelectorAll("#analysis-moves .tree-node, #analysis-moves .movelist-row").length,
-        summary: document.getElementById("analysis-summary")?.textContent?.slice(0, 120) || "",
-        status: document.querySelector(".status")?.textContent?.trim() || "",
-        jobToast: document.querySelector(".toast-stack .toast, .job-toast")?.textContent?.slice(0, 80) || "",
+        runDisabled: document.getElementById("run-analysis")?.disabled,
       }));
-      record("1-happy-path", "desktop-1280", {
-        expected: "Paste PGN → Analyze → results panel with moves and summary",
-        actual: results,
-        coi,
-        status: results.status,
-        recovery: "N/A — success path",
-        priority: "P3 — baseline OK",
-        pass: results.resultsVisible && results.moveCount > 0,
+      record("1-happy-path", "desktop-1280-guest", {
+        expected: "Guest Analyze opens sign-in modal with actionable status (not raw 401)",
+        actual: { ...snap, coi },
+        recovery: "Sign in via modal, then Analyze again",
+        priority: snap.authModalOpen ? "P3 — auth gate OK" : "P0 — no sign-in CTA",
+        pass:
+          snap.authModalOpen &&
+          /sign in/i.test(snap.status) &&
+          !snap.resultsVisible &&
+          snap.runDisabled === false,
       });
     } catch (err) {
-      record("1-happy-path", "desktop-1280", {
-        expected: "Paste PGN → Analyze → results panel",
+      record("1-happy-path", "desktop-1280-guest", {
+        expected: "Guest Analyze prompts sign-in",
         actual: { error: err.message, status: await getAppStatus(page) },
-        recovery: "Retry Analyze after checking engine/network",
-        priority: "P0 — core value broken",
+        priority: "P0",
         pass: false,
       });
     }
     await ctx.close();
   }
 
-  // --- Path 1b: Happy path mobile 375px ---
+  // --- Path 1b: Guest auth gate mobile 375px ---
   {
     const { ctx, page } = await newContext({ width: 375, height: 812 });
     try {
       await gotoAnalyze(page);
       await page.fill('[data-testid="pgn-input"]', DEMO_PGN);
       await page.click('[data-testid="run-analysis"]');
-      await page.waitForFunction(
-        () => !document.getElementById("analysis-results")?.hidden,
-        { timeout: 120000 },
-      );
+      await page.waitForTimeout(800);
       const layout = await page.evaluate(() => {
         const run = document.getElementById("run-analysis");
         const pgn = document.getElementById("pgn-input");
@@ -181,16 +172,23 @@ async function main() {
           runHeight: rr?.height,
           pgnWidth: pr?.width,
           viewportW: window.innerWidth,
+          authModalOpen: !!document.querySelector(".auth-overlay"),
           resultsVisible: !document.getElementById("analysis-results")?.hidden,
-          status: document.querySelector(".status")?.textContent?.trim() || "",
+          status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+          runDisabled: document.getElementById("run-analysis")?.disabled,
         };
       });
-      record("1-happy-path", "mobile-375", {
-        expected: "Analyze usable on 375px; results visible",
+      record("1-happy-path", "mobile-375-guest", {
+        expected: "Guest mobile Analyze opens sign-in modal; touch targets usable",
         actual: layout,
-        recovery: "N/A",
+        recovery: "Sign in via modal, then Analyze again",
         priority: layout.runWidth >= 44 && layout.runHeight >= 36 ? "P3" : "P1 — touch targets",
-        pass: layout.resultsVisible && layout.runWidth >= 40,
+        pass:
+          layout.authModalOpen &&
+          /sign in/i.test(layout.status) &&
+          !layout.resultsVisible &&
+          layout.runDisabled === false &&
+          layout.runWidth >= 40,
       });
     } catch (err) {
       record("1-happy-path", "mobile-375", {
@@ -217,18 +215,22 @@ async function main() {
       await page.fill('[data-testid="pgn-input"]', DEMO_PGN);
       await page.focus('[data-testid="run-analysis"]');
       await page.keyboard.press("Enter");
+      await page.waitForTimeout(800);
       const afterEnter = await page.evaluate(() => ({
-        status: document.querySelector(".status")?.textContent?.trim() || "",
+        status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
         runDisabled: document.getElementById("run-analysis")?.disabled,
+        authModalOpen: !!document.querySelector(".auth-overlay"),
         activeId: document.activeElement?.id,
       }));
-      await page.waitForTimeout(3000);
-      record("1-happy-path", "keyboard", {
-        expected: "Tab reaches controls; Enter on Analyze starts job",
+      record("1-happy-path", "keyboard-guest", {
+        expected: "Enter on focused Analyze opens sign-in for guest; button stays enabled",
         actual: { initialFocus: focused, afterEnter },
-        recovery: "Mouse click fallback always available",
-        priority: afterEnter.runDisabled ? "P2 — keyboard starts job" : "P1 — Enter may not activate button",
-        pass: afterEnter.runDisabled === true,
+        recovery: "Complete sign-in in modal, then retry Analyze",
+        priority: afterEnter.authModalOpen ? "P3 — keyboard auth gate OK" : "P1 — Enter does not activate Analyze",
+        pass:
+          afterEnter.authModalOpen &&
+          /sign in/i.test(afterEnter.status) &&
+          afterEnter.runDisabled === false,
       });
     } catch (err) {
       record("1-happy-path", "keyboard", { actual: { error: err.message }, pass: false, priority: "P2" });
@@ -254,24 +256,25 @@ async function main() {
         resultsHidden: document.getElementById("analysis-results")?.hidden,
         runDisabled: document.getElementById("run-analysis")?.disabled,
       }));
+      const authModal = await page.evaluate(() => !!document.querySelector(".auth-overlay"));
       const ok =
         label === "empty-pgn"
           ? /paste pgn/i.test(snap.status)
           : label === "invalid-pgn"
-            ? snap.status.length > 0 && snap.resultsHidden !== false
+            ? authModal && /sign in/i.test(snap.status)
             : snap.status.length > 0;
       record("2-import-failure", label, {
         expected:
           label === "empty-pgn"
             ? "Status: Paste PGN before analyzing; no API call"
             : label === "invalid-pgn"
-              ? "Actionable error; button re-enabled"
+              ? "Guest: sign-in prompt before parse; button re-enabled"
               : "Graceful handling of very large input",
-        actual: snap,
+        actual: { ...snap, authModal },
         recovery:
           label === "empty-pgn"
             ? "Open PGN drawer and paste"
-            : "Fix PGN text and retry",
+            : "Sign in, then fix PGN if needed",
         priority: ok ? "P3" : "P1 — unclear error or stuck UI",
         pass: ok && snap.runDisabled === false,
       });
@@ -319,7 +322,7 @@ async function main() {
     await ctx.close();
   }
 
-  // --- Path 4: Long task + cancel ---
+  // --- Path 4: Guest auth gate (long-task path deferred until signed-in smoke) ---
   {
     const longPgn =
       "[Event \"Long\"]\n\n" +
@@ -330,32 +333,23 @@ async function main() {
       await gotoAnalyze(page);
       await page.fill('[data-testid="pgn-input"]', longPgn);
       await page.click('[data-testid="run-analysis"]');
-      await page.waitForTimeout(2000);
-      const during = await page.evaluate(() => ({
-        status: document.querySelector(".status")?.textContent?.trim() || "",
-        toast: document.querySelector(".toast-stack .toast, .job-card")?.textContent?.slice(0, 120) || "",
-        stopVisible: !!document.querySelector('[data-action="cancel"], .toast-stop, button:has-text("Stop")'),
-        runDisabled: document.getElementById("run-analysis")?.disabled,
-      }));
-      const stopBtn = page.locator('button:has-text("Stop"), [data-action="cancel"]').first();
-      if (await stopBtn.count()) {
-        await stopBtn.click();
-        await page.waitForTimeout(2000);
-      }
-      const after = await page.evaluate(() => ({
-        status: document.querySelector(".status")?.textContent?.trim() || "",
+      await page.waitForTimeout(800);
+      const snap = await page.evaluate(() => ({
+        status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+        authModalOpen: !!document.querySelector(".auth-overlay"),
         runDisabled: document.getElementById("run-analysis")?.disabled,
         resultsHidden: document.getElementById("analysis-results")?.hidden,
       }));
-      record("4-long-task", "progress-and-stop", {
-        expected: "Progress in toast/status; Stop cancels; button re-enabled; can retry",
-        actual: { during, after },
-        recovery: "Wait or Stop, then Analyze again",
-        priority:
-          after.runDisabled === false && /stopped|analyzing/i.test(after.status + during.status)
-            ? "P2"
-            : "P1 — cancel/retry friction",
-        pass: after.runDisabled === false,
+      record("4-long-task", "guest-auth-gate", {
+        expected: "Guest blocked before long job; sign-in modal; button re-enabled for retry",
+        actual: snap,
+        recovery: "Sign in, then re-run Analyze for progress/Stop audit",
+        priority: snap.authModalOpen ? "P3 — deferred to signed-in smoke" : "P1 — guest can start uncancellable job",
+        pass:
+          snap.authModalOpen &&
+          /sign in/i.test(snap.status) &&
+          snap.runDisabled === false &&
+          snap.resultsHidden !== false,
       });
     } catch (err) {
       record("4-long-task", "progress-and-stop", { actual: { error: err.message }, pass: false, priority: "P1" });
@@ -363,30 +357,34 @@ async function main() {
     await ctx.close();
   }
 
-  // --- Path 5: Result handoff (signed-in guest session) ---
+  // --- Path 5: Result handoff (guest — auth gate before results) ---
   {
     const { ctx, page } = await newContext({ width: 1280, height: 800 });
     try {
       await gotoAnalyze(page);
       await page.fill('[data-testid="pgn-input"]', DEMO_PGN);
       await page.click('[data-testid="run-analysis"]');
-      await page.waitForFunction(() => !document.getElementById("analysis-results")?.hidden, {
-        timeout: 120000,
-      });
+      await page.waitForTimeout(800);
       const handoff = await page.evaluate(() => ({
+        authModalOpen: !!document.querySelector(".auth-overlay"),
         booklineHidden: document.getElementById("coach-bookline")?.hidden,
         booklineText: document.getElementById("coach-bookline")?.textContent?.slice(0, 100) || "",
         trainNav: !!document.querySelector('[data-testid="nav-train"]'),
         buildNav: !!document.querySelector('[data-testid="nav-build"]'),
-        coachProse: document.getElementById("coach-prose")?.textContent?.slice(0, 80) || "",
-        status: document.querySelector(".status")?.textContent?.trim() || "",
+        resultsHidden: document.getElementById("analysis-results")?.hidden,
+        status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
       }));
-      record("5-handoff", "unsigned-after-analysis", {
-        expected: "Bookline chips to Train/Build when signed in + repertoire match; else manual tab switch",
+      record("5-handoff", "guest-before-results", {
+        expected: "Guest sees sign-in CTA; Build/Train nav still reachable; bookline deferred",
         actual: handoff,
-        recovery: "Sign in → Build repertoire → re-analyze for bookline actions",
-        priority: handoff.booklineHidden ? "P1 — no guided next step for new users" : "P2",
-        pass: true,
+        recovery: "Sign in → analyze → bookline chips when repertoire exists",
+        priority: handoff.authModalOpen && handoff.trainNav && handoff.buildNav ? "P2 — manual nav OK" : "P1",
+        pass:
+          handoff.authModalOpen &&
+          /sign in/i.test(handoff.status) &&
+          handoff.resultsHidden !== false &&
+          handoff.trainNav &&
+          handoff.buildNav,
       });
     } catch (err) {
       record("5-handoff", "unsigned-after-analysis", { actual: { error: err.message }, pass: false, priority: "P1" });

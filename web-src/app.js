@@ -4641,6 +4641,11 @@ async function runAnalysis() {
     setStatus("Another job is already running");
     return;
   }
+  if (!appState.signedIn) {
+    setStatus("Sign in (or create an account) to analyze and save games");
+    openAuthModal("login");
+    return;
+  }
   setStatus("Analyzing PGN");
   hideAnalysisResults();
   const runButton = document.getElementById("run-analysis");
@@ -4800,6 +4805,10 @@ async function runAnalysis() {
     if (error && error.cancelled) {
       setStatus("Analysis stopped");
       jobToast.cancelJob(error.message || "Analysis stopped");
+    } else if (error && error.status === 401) {
+      setStatus("Sign in (or create an account) to analyze and save games");
+      openAuthModal("login");
+      jobToast.failJob("Sign in required");
     } else {
       setStatus(error.message);
       jobToast.failJob(error.message);

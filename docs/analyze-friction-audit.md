@@ -1,25 +1,26 @@
 # Analyze friction audit (free tier)
 
 **Date:** 2026-06-19  
-**Build:** `4fcedf8` (local `http://127.0.0.1:8000`, committed static SPA)  
+**Build:** post-P0 fix (`index-DBqBJsd1.js`, local `http://127.0.0.1:8000`)  
 **Method:** Code review + Playwright harness (`scripts/analyze-friction-audit.mjs`) + API tests (`tests/test_api_analyze.py`)  
 **Raw evidence:** [`analyze-friction-audit-evidence.json`](./analyze-friction-audit-evidence.json)
 
-**Observability this run**
+**Observability (post-P0 re-run)**
 
 | Signal | Result |
 |--------|--------|
-| `POST /api/clientlog` beacons | **0** (no uncaught exceptions during scenarios) |
-| Browser console | **7** messages — one `404` asset + **six `401 Unauthorized`** on analyze/workspace calls |
+| `POST /api/clientlog` beacons | **0** |
+| Browser console | **7** messages — one `404` asset + auth-modal DOM warnings (no `401` on guest Analyze) |
 | Guest session | Default SPA boot (no sign-in) |
+| Harness | **7 / 9** pass flags (P0 paths green; `huge-pgn` fill timeout + `no-coi` click-on-disabled are harness gaps) |
 
 ---
 
 ## Executive summary
 
-The highest-impact friction is **guest Analyze hitting a hard auth wall with no recovery UX**. Demo PGN is prefilled and the Analyze button is enabled (when COI is OK), but `/api/analyze/prepare` requires `current_owner` → **401 `not authenticated`**. The status bar shows that raw API detail with **no sign-in prompt, no modal, no inline CTA**.
+**P0 fixed:** Guest Analyze now checks `!appState.signedIn` before `postJson("/api/analyze/prepare")` and on `error.status === 401`. Status shows **“Sign in (or create an account) to analyze and save games”** and **`openAuthModal("login")`** opens immediately. No raw `not authenticated` string; button stays enabled for retry after sign-in.
 
-**Recommended single fix for next commit (P0):** In `runAnalysis()`, detect `!appState.signedIn` or `error.status === 401` and surface an actionable message (e.g. “Sign in to analyze and save games”) plus `openAuthModal("login")` / focus account chip — before or instead of a generic `setStatus(error.message)`.
+**Next single fix candidate (P1):** Result handoff for signed-in users without a repertoire — bookline stays hidden with no guided “create repertoire from this game” step.
 
 ---
 
@@ -28,13 +29,13 @@ The highest-impact friction is **guest Analyze hitting a hard auth wall with no 
 | | |
 |--|--|
 | **Expected** | Paste/load valid PGN → click Analyze → progress → eval chart + move list + summary |
-| **Actual (guest)** | `prefillDemoPgn()` runs on `init()`; PGN drawer **closed** but textarea has demo PGN. Click Analyze → status **“Analyzing PGN”** briefly → **`not authenticated`**; `#analysis-results` stays hidden; `#run-analysis` re-enabled |
-| **Evidence** | `evidence.json` path `1-happy-path/desktop-1280`; console `401` on prepare; `tests/test_api_analyze.py::test_prepare_requires_auth` |
-| **Recovery today** | User must discover top-bar **Sign in** alone; no link from status or Analyze sidebar |
-| **Desktop 1280** | Fail (auth) |
-| **Mobile 375** | Not completed (harness CSP `waitForFunction` issue); layout of controls not blocking |
-| **Keyboard** | **Pass partial:** Enter on focused `#run-analysis` starts job (`runDisabled: true`, status “Analyzing PGN”) — `evidence.json` `1-happy-path/keyboard`. First Tab lands on **`nav-build`**, not Analyze content |
-| **Priority** | **P0** — core free-tier promise blocked |
+| **Actual (guest, post-fix)** | Click Analyze → status **“Sign in (or create an account) to analyze and save games”** + auth modal; no API call; `#analysis-results` hidden; `#run-analysis` stays enabled |
+| **Evidence** | `evidence.json` `1-happy-path/desktop-1280-guest`, `mobile-375-guest`, `keyboard-guest` |
+| **Recovery** | Complete sign-in in modal, then Analyze again |
+| **Desktop 1280** | **Pass** (auth gate + CTA) |
+| **Mobile 375** | **Pass** (auth modal; touch target height 32px — P1 mobile polish) |
+| **Keyboard** | **Pass:** Enter on focused `#run-analysis` opens auth modal. First Tab still lands on **`nav-build`** (P2 tab order) |
+| **Priority** | **P3** — guest gate OK; signed-in happy path still needs manual smoke |
 
 **Signed-in note:** API prepare/classify path is covered by pytest (`test_prepare_returns_positions_and_move_skeleton`). Full browser Stockfish WASM completion was not re-captured in this harness run (registration UI flow blocked automation); treat engine happy path as **provisionally OK** pending manual signed-in smoke.
 
@@ -56,9 +57,9 @@ The highest-impact friction is **guest Analyze hitting a hard auth wall with no 
 | | |
 |--|--|
 | **Expected** | Parse/import error (400) with fix hint |
-| **Actual** | **`not authenticated`** (401 on prepare before parse) — **misleading** |
-| **Recovery** | User may try to “fix PGN” when they need to sign in |
-| **Priority** | **P1** — wrong failure class (folds into P0 auth UX) |
+| **Actual (post-fix)** | Same auth gate as valid PGN — sign-in modal before parse |
+| **Recovery** | Sign in first, then fix PGN if still invalid |
+| **Priority** | **P3** — no longer misleading |
 
 ### 2c Huge / interrupted input
 
@@ -131,9 +132,9 @@ The highest-impact friction is **guest Analyze hitting a hard auth wall with no 
 
 ## Priority stack (UI/UX rubric order)
 
-1. **P0 — Auth gate UX on Analyze** (error/retry feedback): guest sees `not authenticated` with no CTA → **fix next commit**
-2. **P1 — Misleading errors** when guest pastes bad PGN (same 401 string)
-3. **P1 — Result handoff** for users with no repertoire (after auth fixed)
+1. ~~**P0 — Auth gate UX on Analyze**~~ **Done** (`runAnalysis` pre-check + 401 catch)
+2. ~~**P1 — Misleading errors** on invalid PGN for guests~~ **Resolved** by P0
+3. **P1 — Result handoff** for users with no repertoire (signed-in smoke)
 4. **P2 — Keyboard / discoverability** (tab order, open PGN drawer hint, engine status in status bar)
 5. **P2 — Huge paste** guard
 6. **P3 — Empty PGN** (already good)
@@ -142,12 +143,7 @@ The highest-impact friction is **guest Analyze hitting a hard auth wall with no 
 
 ## Next commit scope (one friction only)
 
-Implement **P0 auth recovery on Analyze** only:
-
-- Before `postJson("/api/analyze/prepare")` **or** in `catch` when `error.status === 401`
-- Set status: e.g. “Sign in to analyze and save games”
-- Call `openAuthModal("login")` (or highlight `#account-chip`)
-- Do **not** expand into Build/Train handoff or engine banner work in the same commit
+**P1 result handoff** or **P2 keyboard/discoverability** — pick one after signed-in Analyze smoke confirms engine path. Do not bundle with auth work.
 
 ---
 

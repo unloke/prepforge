@@ -1,33 +1,48 @@
 {
-  "runAt": "2026-06-19T18:35:21.876Z",
+  "runAt": "2026-06-19T18:42:16.968Z",
   "baseUrl": "http://127.0.0.1:8000",
   "paths": [
     {
       "path": "1-happy-path",
-      "scenario": "desktop-1280",
-      "expected": "Paste PGN → Analyze → results panel",
+      "scenario": "desktop-1280-guest",
+      "expected": "Guest Analyze opens sign-in modal with actionable status (not raw 401)",
       "actual": {
-        "error": "page.waitForFunction: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self' 'wasm-unsafe-eval'\".\n\n    at eval (<anonymous>)\n    at predicate (eval at evaluate (:234:30), <anonymous>:11:37)\n    at next (eval at evaluate (:234:30), <anonymous>:32:31)",
-        "status": "not authenticated"
+        "status": "Sign in (or create an account) to analyze and save games",
+        "authModalOpen": true,
+        "resultsVisible": false,
+        "runDisabled": false,
+        "coi": {
+          "crossOriginIsolated": true,
+          "runDisabled": false,
+          "runTitle": ""
+        }
       },
-      "recovery": "Retry Analyze after checking engine/network",
-      "priority": "P0 — core value broken",
-      "pass": false
+      "recovery": "Sign in via modal, then Analyze again",
+      "priority": "P3 — auth gate OK",
+      "pass": true
     },
     {
       "path": "1-happy-path",
-      "scenario": "mobile-375",
-      "expected": "Mobile analyze completes",
+      "scenario": "mobile-375-guest",
+      "expected": "Guest mobile Analyze opens sign-in modal; touch targets usable",
       "actual": {
-        "error": "page.waitForFunction: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self' 'wasm-unsafe-eval'\".\n\n    at eval (<anonymous>)\n    at predicate (eval at evaluate (:234:30), <anonymous>:11:37)\n    at next (eval at evaluate (:234:30), <anonymous>:32:31)"
+        "runWidth": 119.03125,
+        "runHeight": 32,
+        "pgnWidth": 329,
+        "viewportW": 375,
+        "authModalOpen": true,
+        "resultsVisible": false,
+        "status": "Sign in (or create an account) to analyze and save games",
+        "runDisabled": false
       },
-      "priority": "P1",
-      "pass": false
+      "recovery": "Sign in via modal, then Analyze again",
+      "priority": "P1 — touch targets",
+      "pass": true
     },
     {
       "path": "1-happy-path",
-      "scenario": "keyboard",
-      "expected": "Tab reaches controls; Enter on Analyze starts job",
+      "scenario": "keyboard-guest",
+      "expected": "Enter on focused Analyze opens sign-in for guest; button stays enabled",
       "actual": {
         "initialFocus": {
           "tag": "BUTTON",
@@ -35,13 +50,14 @@
           "testid": "nav-build"
         },
         "afterEnter": {
-          "status": "Analyzing PGN",
-          "runDisabled": true,
-          "activeId": ""
+          "status": "Sign in (or create an account) to analyze and save games",
+          "runDisabled": false,
+          "authModalOpen": true,
+          "activeId": "run-analysis"
         }
       },
-      "recovery": "Mouse click fallback always available",
-      "priority": "P2 — keyboard starts job",
+      "recovery": "Complete sign-in in modal, then retry Analyze",
+      "priority": "P3 — keyboard auth gate OK",
       "pass": true
     },
     {
@@ -51,7 +67,8 @@
       "actual": {
         "status": "Paste PGN before analyzing",
         "resultsHidden": true,
-        "runDisabled": false
+        "runDisabled": false,
+        "authModal": false
       },
       "recovery": "Open PGN drawer and paste",
       "priority": "P3",
@@ -60,13 +77,14 @@
     {
       "path": "2-import-failure",
       "scenario": "invalid-pgn",
-      "expected": "Actionable error; button re-enabled",
+      "expected": "Guest: sign-in prompt before parse; button re-enabled",
       "actual": {
-        "status": "not authenticated",
+        "status": "Sign in (or create an account) to analyze and save games",
         "resultsHidden": true,
-        "runDisabled": false
+        "runDisabled": false,
+        "authModal": true
       },
-      "recovery": "Fix PGN text and retry",
+      "recovery": "Sign in, then fix PGN if needed",
       "priority": "P3",
       "pass": true
     },
@@ -83,65 +101,78 @@
       "path": "3-engine-unavailable",
       "scenario": "no-coi",
       "actual": {
-        "error": "page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"run-analysis\"]')\n    - locator resolved to <button disabled id=\"run-analysis\" aria-disabled=\"true\" data-testid=\"run-analysis\" class=\"btn primary is-coming-soon\" data-enabled-title=\"Run a full-game engine analysis on your device\" title=\"Browser engine unavailable — open in a cross-origin-isolated browser to run engines locally\">Analyze game</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 100ms\n    59 × waiting for element to be visible, enabled and stable\n       - element is not enabled\n     - retrying click action\n       - waiting 500ms\n"
+        "error": "page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('[data-testid=\"run-analysis\"]')\n    - locator resolved to <button disabled id=\"run-analysis\" aria-disabled=\"true\" data-testid=\"run-analysis\" class=\"btn primary is-coming-soon\" data-enabled-title=\"Run a full-game engine analysis on your device\" title=\"Browser engine unavailable — open in a cross-origin-isolated browser to run engines locally\">Analyze game</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 100ms\n    58 × waiting for element to be visible, enabled and stable\n       - element is not enabled\n     - retrying click action\n       - waiting 500ms\n"
       },
       "pass": false,
       "priority": "P0"
     },
     {
       "path": "4-long-task",
-      "scenario": "progress-and-stop",
+      "scenario": "guest-auth-gate",
+      "expected": "Guest blocked before long job; sign-in modal; button re-enabled for retry",
       "actual": {
-        "error": "page.evaluate: SyntaxError: Failed to execute 'querySelector' on 'Document': '[data-action=\"cancel\"], .toast-stop, button:has-text(\"Stop\")' is not a valid selector.\n    at eval (eval at evaluate (:234:30), <anonymous>:4:33)\n    at UtilityScript.evaluate (<anonymous>:236:17)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+        "status": "Sign in (or create an account) to analyze and save games",
+        "authModalOpen": true,
+        "runDisabled": false,
+        "resultsHidden": true
       },
-      "pass": false,
-      "priority": "P1"
+      "recovery": "Sign in, then re-run Analyze for progress/Stop audit",
+      "priority": "P3 — deferred to signed-in smoke",
+      "pass": true
     },
     {
       "path": "5-handoff",
-      "scenario": "unsigned-after-analysis",
+      "scenario": "guest-before-results",
+      "expected": "Guest sees sign-in CTA; Build/Train nav still reachable; bookline deferred",
       "actual": {
-        "error": "page.waitForFunction: EvalError: Evaluating a string as JavaScript violates the following Content Security Policy directive because 'unsafe-eval' is not an allowed source of script: script-src 'self' 'wasm-unsafe-eval'\".\n\n    at eval (<anonymous>)\n    at predicate (eval at evaluate (:234:30), <anonymous>:11:37)\n    at next (eval at evaluate (:234:30), <anonymous>:32:31)"
+        "authModalOpen": true,
+        "booklineHidden": true,
+        "booklineText": "",
+        "trainNav": true,
+        "buildNav": true,
+        "resultsHidden": true,
+        "status": "Sign in (or create an account) to analyze and save games"
       },
-      "pass": false,
-      "priority": "P1"
+      "recovery": "Sign in → analyze → bookline chips when repertoire exists",
+      "priority": "P2 — manual nav OK",
+      "pass": true
     }
   ],
   "console": [
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781894122431
+      "t": 1781894537486
     },
     {
-      "type": "error",
-      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
-      "t": 1781894123854
+      "type": "verbose",
+      "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
+      "t": 1781894539022
     },
     {
-      "type": "error",
-      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
-      "t": 1781894125411
+      "type": "verbose",
+      "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
+      "t": 1781894541391
     },
     {
-      "type": "error",
-      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
-      "t": 1781894126945
+      "type": "verbose",
+      "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
+      "t": 1781894543723
     },
     {
-      "type": "error",
-      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
-      "t": 1781894135547
+      "type": "verbose",
+      "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
+      "t": 1781894550130
     },
     {
-      "type": "error",
-      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
-      "t": 1781894203159
+      "type": "verbose",
+      "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
+      "t": 1781894617741
     },
     {
-      "type": "error",
-      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
-      "t": 1781894206711
+      "type": "verbose",
+      "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
+      "t": 1781894620094
     }
   ],
   "clientlogRequests": [],
