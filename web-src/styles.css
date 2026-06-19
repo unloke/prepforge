@@ -3629,6 +3629,12 @@ h2 {
   .workspace {
     padding: 12px;
   }
+
+  /* Analyze sidebar tools: 44px touch targets on narrow viewports (desktop stays 32px). */
+  #view-analyze .tools .btn {
+    min-height: 44px;
+    height: 44px;
+  }
 }
 
 /* ----- Notification-style job toast (bottom-right) ---------------------- */

@@ -455,7 +455,8 @@ async function main() {
           layout.resultsVisible &&
           layout.moveListChildCount > 0 &&
           layout.summaryHasBars &&
-          /analysis ready/i.test(layout.status),
+          /analysis ready/i.test(layout.status) &&
+          layout.runHeight >= 44,
       });
     } catch (err) {
       record("1-signed-in", "mobile-375", {
