@@ -1,11 +1,11 @@
 {
-  "runAt": "2026-06-19T19:48:33.117Z",
+  "runAt": "2026-06-19T19:56:48.489Z",
   "baseUrl": "http://127.0.0.1:8000",
   "auth": {
     "method": "register-via-api",
     "credentialsInEvidence": false,
     "signedInVerified": true,
-    "lastUserId": "b7cc84c774f84f14aec540725e8fa309"
+    "lastUserId": "fdb9acae407f4942a8876a3ff672c2b7"
   },
   "paths": [
     {
@@ -56,7 +56,7 @@
       "required": true,
       "expected": "After Build prepared move: Line rehearsal picker lists repertoire; Smart queue starts first prompt",
       "actual": {
-        "repName": "Audit Train 1781898516193",
+        "repName": "Audit Train 1781899011653",
         "picker": {
           "hidden": false,
           "options": [
@@ -65,11 +65,11 @@
               "text": "Demo repertoire"
             },
             {
-              "value": "dfbebcd5-8abf-49d8-84f3-bf8cb825cd41",
-              "text": "Audit Train 1781898516193 (white)"
+              "value": "797e82ef-f5db-43a9-806d-7456565a0e90",
+              "text": "Audit Train 1781899011653 (white)"
             }
           ],
-          "selectedText": "Audit Train 1781898516193 (white)",
+          "selectedText": "Audit Train 1781899011653 (white)",
           "hasRep": true
         },
         "startPayload": {
@@ -102,7 +102,7 @@
       "required": true,
       "expected": "Correct e4: stats/progress update; banner shows success or next prompt",
       "actual": {
-        "repName": "Audit Correct 1781898521190",
+        "repName": "Audit Correct 1781899016683",
         "before": {
           "correct": "0",
           "mistakes": "0",
@@ -143,7 +143,7 @@
       "required": true,
       "expected": "Wrong move: clear retry prompt; correct on retry advances without double mistake count",
       "actual": {
-        "repName": "Audit Wrong 1781898528937",
+        "repName": "Audit Wrong 1781899024437",
         "before": {
           "correct": "0",
           "mistakes": "0",
@@ -198,7 +198,7 @@
       "required": true,
       "expected": "After graded move + reload: can restart training cleanly; session UI resets without errors (sync prevents double-count server-side)",
       "actual": {
-        "repName": "Audit Reload 1781898538085",
+        "repName": "Audit Reload 1781899033612",
         "beforeReload": {
           "correct": "1",
           "mistakes": "0",
@@ -237,7 +237,7 @@
       "scenario": "mobile-375",
       "id": "1-signed-in/mobile-375",
       "required": true,
-      "expected": "375px: start, wrong retry, correct finish; record primary control dimensions",
+      "expected": "375px: start, wrong retry, correct finish; Start + flip/hint/skip ≥44×44px; no horizontal scroll",
       "actual": {
         "empty": {
           "viewTrainActive": true,
@@ -251,31 +251,38 @@
           "navBuild": true,
           "pickerHidden": true,
           "smartModeActive": true,
-          "status": "Created Audit Mobile 1781898546779"
+          "status": "Created Audit Mobile 1781899042377"
         },
-        "repName": "Audit Mobile 1781898546779",
+        "repName": "Audit Mobile 1781899042377",
         "layout": {
           "viewportW": 375,
+          "scrollWidth": 375,
+          "noHorizontalScroll": true,
           "startTrain": {
             "width": 321,
-            "height": 32
+            "height": 44
           },
           "hint": {
-            "width": 39.859375,
-            "height": 28
+            "width": 44,
+            "height": 44
           },
           "skip": {
-            "width": 34,
-            "height": 28
+            "width": 44,
+            "height": 44
           },
           "flip": {
-            "width": 34,
-            "height": 28
+            "width": 44,
+            "height": 44
           },
-          "smartMode": {},
           "smartModeEl": {
             "width": 158.5,
             "height": 30
+          },
+          "targetsOk": {
+            "startTrain": true,
+            "hint": true,
+            "skip": true,
+            "flip": true
           }
         },
         "wrong": {
@@ -308,7 +315,7 @@
         }
       },
       "recovery": "Use Start training sidebar on narrow viewports",
-      "priority": "P1 — Start button 321×32px (<44×44px touch target)",
+      "priority": "P3 — mobile Train OK",
       "pass": true
     },
     {
@@ -318,7 +325,7 @@
       "required": true,
       "expected": "Enter on Start begins session; board squares need pointer (document as P2 if keyboard play fails)",
       "actual": {
-        "repName": "Audit Keys 1781898555939",
+        "repName": "Audit Keys 1781899051565",
         "afterStart": {
           "correct": "0",
           "mistakes": "0",
@@ -351,11 +358,11 @@
       "required": true,
       "expected": "Build → Train: freshly created repertoire appears in picker and Smart queue starts",
       "actual": {
-        "repName": "Audit Handoff 1781898559880",
+        "repName": "Audit Handoff 1781899055564",
         "picker": {
           "options": [
             "Demo repertoire",
-            "Audit Handoff 1781898559880 (white)"
+            "Audit Handoff 1781899055564 (white)"
           ],
           "hasRep": true
         },
@@ -385,7 +392,7 @@
       "required": false,
       "expected": "Repertoire without prepared moves → Nothing to train yet + Build hint",
       "actual": {
-        "repName": "Audit Empty 1781898564694",
+        "repName": "Audit Empty 1781899060357",
         "snap": {
           "correct": "0",
           "mistakes": "0",
@@ -412,7 +419,7 @@
       "required": false,
       "expected": "smart/sync 503 → error/dirty chip; recovers after route restored",
       "actual": {
-        "repName": "Audit Sync 1781898567943",
+        "repName": "Audit Sync 1781899063625",
         "errorSnap": {
           "syncText": "⚠ Offline — will retry",
           "syncClass": "build-sync is-error",
@@ -435,7 +442,7 @@
       "required": false,
       "expected": "Reload mid-session (pre-sync): UI restarts; document whether in-memory session restores",
       "actual": {
-        "repName": "Audit Interrupt 1781898579737",
+        "repName": "Audit Interrupt 1781899075345",
         "before": {
           "correct": "1",
           "mistakes": "0",
@@ -474,72 +481,72 @@
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781898513757
+      "t": 1781899009196
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 400 (Bad Request)",
-      "t": 1781898514982
+      "t": 1781899010434
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781898518064
+      "t": 1781899013564
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781898522557
+      "t": 1781899018119
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781898530292
+      "t": 1781899025800
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781898539430
+      "t": 1781899034995
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781898548126
+      "t": 1781899043807
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781898557272
+      "t": 1781899052992
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781898561335
+      "t": 1781899057015
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 400 (Bad Request)",
-      "t": 1781898566429
+      "t": 1781899062117
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
-      "t": 1781898572459
+      "t": 1781899068076
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
-      "t": 1781898573464
+      "t": 1781899069080
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
-      "t": 1781898575481
+      "t": 1781899071098
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781898581116
+      "t": 1781899076709
     }
   ],
   "clientlogRequests": [],

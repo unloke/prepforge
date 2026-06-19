@@ -1,7 +1,7 @@
 # Train friction audit (free tier)
 
 **Date:** 2026-06-19  
-**Build:** `index-GAWjW1KI.js`, local `http://127.0.0.1:8000`  
+**Build:** `index-CTpIEz7N.js`, local `http://127.0.0.1:8000`  
 **Method:** Playwright harness with `createSignedInContext()` (`scripts/train-friction-audit.mjs`)  
 **Raw evidence:** [`train-friction-audit-evidence.json`](./train-friction-audit-evidence.json)
 
@@ -23,7 +23,7 @@
 
 **Recovery (not gated):** Empty repertoire (no prepared moves) gates with Build hint; simulated `smart/sync` 503 → `⚠ Offline — will retry` then recovers; mid-session reload restarts UI (in-memory session not restored — expected).
 
-**Top P1 for next product commit:** **Start training** button **321×32px** on 375px (<44×44px). Board bar controls (hint/skip/flip) **28px** tall. Functional mobile flow passes; touch-target polish only.
+**P1 fixed (follow-up commit):** **Start training** + board-bar **flip/hint/skip** raised to **≥44×44px** on `max-width: 720px`; mobile gate also checks `scrollWidth <= innerWidth`.
 
 **P2 notes:** Train board squares use `pointerdown` only — keyboard Enter on square does not play moves (Start via Enter works).
 
@@ -86,10 +86,10 @@
 | | |
 |--|--|
 | **Expected** | Start, answer, wrong retry, finish on 375px; record control dimensions |
-| **Actual** | Core flow completes; **Start** `321×32px`; hint/skip/flip `28px`; smart-mode chip `30px` tall |
+| **Actual** | Core flow completes; **Start** + flip/hint/skip **≥44×44px**; no horizontal scroll (required gate) |
 | **Evidence** | `1-signed-in/mobile-375` |
 | **Recovery** | Functional on mobile today |
-| **Priority** | **P1** — touch targets (functional pass) |
+| **Priority** | **P3** — mobile + touch targets OK |
 
 ### Path 1c — Keyboard
 
@@ -127,9 +127,8 @@
 
 | Issue | Evidence | Priority |
 |-------|----------|----------|
-| **Start training** button **32px** tall on 375px (full width) | `mobile-375` `startTrain: 321×32` | **P1** |
-| Board bar **hint / skip / flip** **28px** on mobile | `mobile-375` layout | **P1** |
-| Smart mode chip **30px** tall | `mobile-375` `smartModeEl` | **P2** |
+| ~~Start + board-bar touch targets on 375px~~ | `mobile-375` — now **≥44×44px** | **Done** |
+| Smart mode chip **30px** tall | `mobile-375` `smartModeEl` | **P2** (out of cluster scope) |
 | Board `pointerdown` only — no keyboard move play | `keyboard` `boardNeedsPointer` | **P2** |
 | Banner copy in `#train-banner-title`, not `#train-prompt` | harness notes | **P3** — audit selector |
 
@@ -137,16 +136,10 @@
 
 ## Priority stack (Train rubric)
 
-1. **P1 — Mobile touch targets** — Start training + board-bar icons ≥44px on `max-width: 720px`
+1. ~~**P1 — Mobile touch targets** — Start + flip/hint/skip ≥44×44px on 375px~~ **Done**
 2. **P2 — Keyboard board play** — Space/Enter on focused square + legal target
 3. **P2 — Session resume** — document/consider resuming in-memory Smart session after reload (today: fresh queue)
 4. **P3 — Core signed-in flow** — empty → Build prep → start → correct/wrong/reload → handoff (all gated green)
-
----
-
-## Next commit scope (one friction only)
-
-**Train P1 — Start training button touch target on mobile (375px).** Match Analyze/Build pattern (`min-height: 44px` at `max-width: 720px`). Do not bundle keyboard board play.
 
 ---
 

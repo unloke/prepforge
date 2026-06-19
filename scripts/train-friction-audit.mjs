@@ -293,18 +293,26 @@ async function main() {
         const r = el?.getBoundingClientRect();
         return { width: r?.width, height: r?.height };
       };
+      const targetOk = (box) => (box?.width ?? 0) >= 44 && (box?.height ?? 0) >= 44;
       return {
         viewportW: window.innerWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        noHorizontalScroll: document.documentElement.scrollWidth <= window.innerWidth,
         startTrain: rect("start-train"),
         hint: rect("train-hint"),
         skip: rect("train-skip"),
         flip: rect("train-flip"),
-        smartMode: rect(document.querySelector('#train-modes .train-mode[data-mode="smart"]')?.id || ""),
         smartModeEl: (() => {
           const el = document.querySelector('#train-modes .train-mode[data-mode="smart"]');
           const r = el?.getBoundingClientRect();
           return { width: r?.width, height: r?.height };
         })(),
+        targetsOk: {
+          startTrain: targetOk(rect("start-train")),
+          hint: targetOk(rect("train-hint")),
+          skip: targetOk(rect("train-skip")),
+          flip: targetOk(rect("train-flip")),
+        },
       };
     });
   }
@@ -562,23 +570,29 @@ async function main() {
       await page.waitForTimeout(TRAIN_ANIM_MS);
       const done = await getTrainStats(page);
 
-      const startH = layout.startTrain?.height ?? 0;
-      const startW = layout.startTrain?.width ?? 0;
+      const t = layout.targetsOk || {};
+      const start = layout.startTrain || {};
       record("1-signed-in", "mobile-375", {
-        expected: "375px: start, wrong retry, correct finish; record primary control dimensions",
+        expected:
+          "375px: start, wrong retry, correct finish; Start + flip/hint/skip ≥44×44px; no horizontal scroll",
         actual: { empty, repName, layout, wrong, done },
         recovery: "Use Start training sidebar on narrow viewports",
         priority:
-          startH >= 44 && startW >= 44
+          t.startTrain && t.flip && t.hint && t.skip && layout.noHorizontalScroll
             ? "P3 — mobile Train OK"
-            : `P1 — Start button ${startW}×${startH}px (<44×44px touch target)`,
+            : `P1 — touch targets or scroll (start ${start.width}×${start.height})`,
         pass:
           empty.startVisible &&
           (wrong.bannerState === "wrong" ||
             /try again|not that/i.test(wrong.bannerTitle + wrong.bannerSub)) &&
           (/fixed on retry|correct|learned|got it/i.test(done.bannerTitle + done.bannerSub) ||
             Number(done.correct) >= 1) &&
-          layout.viewportW <= 400,
+          layout.viewportW <= 400 &&
+          t.startTrain &&
+          t.flip &&
+          t.hint &&
+          t.skip &&
+          layout.noHorizontalScroll,
       });
     } catch (err) {
       record("1-signed-in", "mobile-375", {

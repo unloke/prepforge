@@ -3644,6 +3644,20 @@ h2 {
     min-height: 44px;
     padding: 0;
   }
+
+  /* Train Start + board-bar icons: 44px touch targets (desktop stays 32px / 28px). */
+  #view-train #start-train {
+    min-height: 44px;
+    height: 44px;
+  }
+
+  #view-train .board-bar .ib {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
 }
 
 /* ----- Notification-style job toast (bottom-right) ---------------------- */
