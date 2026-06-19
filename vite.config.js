@@ -1,7 +1,81 @@
 import { defineConfig } from "vite";
 import { fileURLToPath, URL } from "node:url";
-import { readdirSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, rmSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+
+// Dev-only save endpoint for the coach-review harness: it POSTs its ratings here and we
+// write them straight to coach-review-ratings.json at the repo root, so the rate→tweak
+// loop doesn't go through a browser download. The path is deliberately NOT under /api (so
+// the proxy to the Python server never claims it) and the whole thing is serve-only, so it
+// never exists in a built/deployed image.
+function coachReviewSavePlugin() {
+  const out = fileURLToPath(new URL("./coach-review-ratings.json", import.meta.url));
+  return {
+    name: "coach-review-save",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== "POST" || (req.url || "").split("?")[0] !== "/__save-coach-review") {
+          return next();
+        }
+        let body = "";
+        req.on("data", (chunk) => (body += chunk));
+        req.on("end", () => {
+          try {
+            const parsed = JSON.parse(body || "[]");
+            writeFileSync(out, JSON.stringify(parsed, null, 2), "utf-8");
+            res.statusCode = 200;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ ok: true, count: Array.isArray(parsed) ? parsed.length : 0 }));
+          } catch (err) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ ok: false, error: String(err) }));
+          }
+        });
+      });
+    },
+  };
+}
+
+// ORT's threaded WASM runtime does import('/engine/ort/ort-wasm-simd-threaded.asyncify.mjs')
+// at runtime. In Vite dev mode, Vite's module resolver intercepts this *before* any
+// middleware runs and throws "file is in /public … should not be imported from source
+// code." The fix: claim the path in resolveId (preventing the public-dir guard) and
+// return the file content in load. The middleware serves it as a plain HTTP asset for
+// the non-import fetch path (e.g. <script src>). Build is unaffected — Vite copies
+// public/ as-is; ORT fetches the .mjs via wasmPaths, never through Rollup.
+function publicMjsPlugin() {
+  const publicDir = fileURLToPath(new URL("./web-src/public", import.meta.url));
+  return {
+    name: "public-mjs-serve",
+    apply: "serve",
+    resolveId(id) {
+      if (id.endsWith(".mjs") && id.startsWith("/engine/")) return "\0public-mjs:" + id;
+    },
+    load(id) {
+      if (!id.startsWith("\0public-mjs:")) return;
+      const path = id.slice("\0public-mjs:".length);
+      const abs = resolve(publicDir, "." + path);
+      if (!abs.startsWith(publicDir)) return; // path traversal guard
+      try {
+        return readFileSync(abs, "utf-8");
+      } catch (_) {}
+    },
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = (req.url || "").split("?")[0];
+        if (!url.endsWith(".mjs") || !url.startsWith("/engine/")) return next();
+        const abs = resolve(publicDir, "." + url);
+        if (!abs.startsWith(publicDir)) return next();
+        let content;
+        try { content = readFileSync(abs, "utf-8"); } catch (_) { return next(); }
+        res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+        res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+        res.end(content);
+      });
+    },
+  };
+}
 
 // Keeps two kinds of large, redundant binaries out of the committed static/ deploy
 // image. Both would otherwise bloat the image with bytes the runtime never serves.
@@ -79,7 +153,7 @@ function harnessInputs() {
 export default defineConfig({
   root: "web-src",
   base: "/static/",
-  plugins: [trimDeployAssets()],
+  plugins: [publicMjsPlugin(), coachReviewSavePlugin(), trimDeployAssets()],
   build: {
     outDir: fileURLToPath(
       new URL("./src/prepforge_chess/web/static", import.meta.url),
@@ -115,6 +189,17 @@ export default defineConfig({
     proxy: {
       "/api": "http://127.0.0.1:8765",
       "/oauth": "http://127.0.0.1:8765",
+    },
+    // Cross-origin isolation in dev, mirroring the production static server EXACTLY
+    // (api/static.py already serves COOP: same-origin + COEP: require-corp). The browser
+    // engines (Stockfish / onnxruntime threaded WASM) need crossOriginIsolated, which
+    // requires these on the document — without them `npm run dev` runs engines OFF and
+    // the Analyze coach / coach-review harness can't evaluate. Safe by construction: any
+    // resource the app loads already works under require-corp in prod, so matching it in
+    // dev cannot break anything prod doesn't.
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
     },
   },
 });

@@ -34,8 +34,17 @@ describe("tactics — pins and skewers", () => {
   });
 
   it("sees a rook skewer the queen, winning the rook behind it", () => {
-    const m = describeThreat("4r1k1/8/8/4q3/8/8/8/4R1K1 b - - 0 1", "e2e1", "w");
+    // The skewering rook on e1 is guarded by the king on d1, so the queen can't just take
+    // it — a genuine skewer (front queen must move, the rook behind it falls).
+    const m = describeThreat("4r1k1/8/8/4q3/8/8/8/3KR3 b - - 0 1", "e2e1", "w");
     expect(m).toEqual({ kind: "skewer", front: "queen", back: "rook" });
+  });
+
+  it("does NOT call it a skewer when the front piece can just take the attacker", () => {
+    // Rook lands on e1 undefended: the queen simply captures it (Qxe1), so this is no
+    // skewer of the rook behind — the exact "Rxc8 isn't a skewer" case from review.
+    const m = describeThreat("4r1k1/8/8/4q3/8/8/8/4R1K1 b - - 0 1", "e2e1", "w");
+    expect(m).toBeNull();
   });
 });
 

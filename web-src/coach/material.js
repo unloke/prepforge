@@ -148,6 +148,62 @@ export function settledBalanceAfter(chess, move) {
   return squareExchange(chess, move.to);
 }
 
+// Flip the side to move in a FEN (and void en-passant), so SEE can evaluate a capture
+// initiated by a side that isn't currently to move — the "what this move now threatens"
+// read, where the mover has just moved and it is the opponent's turn on the board.
+function fenWithTurn(fen, color) {
+  const parts = (fen || "").split(" ");
+  if (parts.length < 2) return null;
+  parts[1] = color;
+  if (parts.length >= 4) parts[3] = "-"; // an en-passant right can't survive a turn flip
+  return parts.join(" ");
+}
+
+// Static exchange evaluation of GRABBING a square: the mover-POV net pawns if `byColor`
+// initiates the capture battle on `targetSq` with its cheapest attacker, under optimal
+// SEE play by both sides afterwards. > 0 means the target is genuinely winnable; <= 0
+// means it only LOOKS free — it's defended enough that taking it loses material. This is
+// the antidote to the "cheapest attacker is worth less than the victim" heuristic, which
+// flags an adequately-defended piece as hanging (the fake "eyes the knight" / fake fork).
+//
+// Works even when `byColor` is not the side to move (it flips the turn to ask "what does
+// this side now threaten"). Returns null when it can't be evaluated — an illegal turn
+// flip (e.g. the move gave check), or no capturing attacker — so callers fall back to
+// their existing cheap heuristic rather than silently dropping a real threat.
+export function seeCapture(chess, targetSq, byColor) {
+  let work;
+  try {
+    work = chess.turn() === byColor ? new Chess(chess.fen()) : null;
+    if (!work) {
+      const flipped = fenWithTurn(chess.fen(), byColor);
+      if (!flipped) return null;
+      work = new Chess(flipped);
+    }
+  } catch (_) {
+    return null;
+  }
+  const before = materialBalance(work); // White-POV
+  let caps;
+  try {
+    caps = work.moves({ verbose: true });
+  } catch (_) {
+    return null;
+  }
+  caps = caps
+    .filter((m) => m.to === targetSq && m.captured)
+    .sort((a, b) => (PIECE_VALUE[a.piece] || 0) - (PIECE_VALUE[b.piece] || 0));
+  if (!caps.length) return null;
+  let settled;
+  try {
+    work.move(caps[0]); // cheapest attacker initiates, then both sides play optimally
+    settled = squareExchange(work, targetSq);
+  } catch (_) {
+    return null;
+  }
+  const deltaWhite = settled - before;
+  return byColor === "w" ? deltaWhite : -deltaWhite;
+}
+
 // "a pawn", "two pawns", "a knight", "the exchange", "a piece and a pawn"... a human
 // summary of a White-perspective pawn delta. Returns "" when level.
 export function materialPhrase(balance) {

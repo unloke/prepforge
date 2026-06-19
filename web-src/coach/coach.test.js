@@ -643,7 +643,10 @@ describe("tone from a losing position (no 'simple and sound' when clearly worse)
     expect(f.winAfterMover).toBeLessThan(33);
     const prose = buildCommentary(f).prose;
     expect(prose).not.toMatch(/simple and sound|solid and safe|nothing fancy|no loose ends/i);
-    expect(prose).toMatch(/lost|worse|toughest|practical|difficult|resistance|fighting|circumstances|hold it/i);
+    // It either acknowledges the difficulty or names a stubborn/practical try — but it does NOT
+    // keep harping "you're clearly worse" when the position was already lost before the move
+    // (the user's repeated complaint), nor falsely praise it as solid.
+    expect(prose).toMatch(/lost|worse|toughest|practical|difficult|resistance|resilient|stubborn|stiffest|fighting|circumstances|hold it|hard as possible/i);
   });
 });
 
@@ -725,12 +728,13 @@ describe("Brilliant detection (Maia vs engine, no SEE)", () => {
     expect(c.prose).toMatch(/Brilliant/);
   });
 
-  it("grounds the brilliancy in the Maia numbers — rarity and the disagreement", () => {
+  it("grounds the brilliancy in the Maia numbers — rarity, and credits the player", () => {
     const f = bestMoveFeatures();
     markBrilliant(f, { humanProb: 0.02, winChanceAfter: 0.2 });
     const c = buildCommentary(f);
     expect(c.prose).toMatch(/players/i);
-    expect(c.prose).toMatch(/Stockfish/);
+    // The praise goes to the player who found the move, not to the engine.
+    expect(c.prose).toMatch(/\byou\b/i);
   });
 
   it("a near-best (Excellent-tier) move is a brilliant candidate too, not just the literal #1", () => {

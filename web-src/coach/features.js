@@ -17,6 +17,7 @@ import {
   perPieceDiff,
   squareExchange,
   squareExchangeBoard,
+  seeCapture,
 } from "./material.js";
 
 // White-POV win% from a (cp|mate) eval. Mate is decisive.
@@ -55,7 +56,14 @@ function captureTargets(chess, byColor) {
         ...attackers.map((sq) => PIECE_VALUE[chess.get(sq).type] || 0)
       );
       const hanging = !defenders.length;
-      if (hanging || cheapestAttacker < worth) {
+      // SEE is authoritative: only call a piece winnable if actually GRABBING it nets
+      // material once the recaptures resolve. The old "cheapest attacker is cheaper than
+      // the victim" test flagged adequately-defended pieces as free (a bishop "eyeing" a
+      // knight that's solidly guarded). Fall back to that heuristic only when SEE can't be
+      // evaluated (illegal turn flip etc.), so a real threat is never silently dropped.
+      const see = seeCapture(chess, piece.square, byColor);
+      const winnable = see !== null ? see > 0 : hanging || cheapestAttacker < worth;
+      if (winnable) {
         out.push({ square: piece.square, type: piece.type, worth, hanging });
       }
     }

@@ -85,26 +85,26 @@ export const MATE_DELIVERED = [
 // Brilliant — grounded in the Maia/Stockfish disagreement.
 // =====================================================================================
 export const BRILLIANT_LEAD = [
-  "Brilliant! Almost no one would find {san}. {looksCap} it's the best move on the board, and {me} stays {stand}.",
-  "Brilliant. {san} is the kind of move you don't expect a person to find. {looksCap} it's simply best, and {me} stays {stand}.",
-  "Brilliant! {looksCap} {san} is exactly right, holding {me} {stand}.",
-  "A real brilliancy, {san}. {looksCap} it's the only move that works, leaving {me} {stand}.",
-  "Brilliant! {san} is a move engines find and humans don't. {looksCap} it keeps {me} {stand}.",
-  "That's brilliant. {looksCap} {san} turns out to be the best move on the board, and {me} stays {stand}.",
-  "Wow, {san} is brilliant. {looksCap} it's correct, and {me} comes out {stand}.",
-  "Brilliant move, {san}. {looksCap} it's the engine's top choice, keeping {me} {stand}.",
+  "Brilliant! Almost no one would find {san}, and you did. {looksCap} it's the best move on the board, and {me} stays {stand}.",
+  "Brilliant. {san} is the kind of move you don't expect a person to find, but you found it. {looksCap} it's simply best, and {me} stays {stand}.",
+  "Brilliant! {looksCap} {san} is exactly right, and you saw it, holding {me} {stand}.",
+  "A real brilliancy, {san}. {looksCap} it's the only move that works, and you played it, leaving {me} {stand}.",
+  "Brilliant! {san} is a move humans almost never find, and you did. {looksCap} it keeps {me} {stand}.",
+  "That's brilliant. {looksCap} {san} turns out to be the best move on the board, and you spotted it, so {me} stays {stand}.",
+  "Wow, {san} is brilliant. {looksCap} you got it exactly right, and {me} comes out {stand}.",
+  "Brilliant move, {san}. {looksCap} it's the best there is, and you found it, keeping {me} {stand}.",
   "Brilliant find, {san}. {looksCap} it holds everything together, and {me} is {stand}.",
-  "{san} is brilliant. {looksCap} nothing else even comes close, and {me} stays {stand}.",
-  "Brilliant! {looksCap} {san} is precisely the move, and {me} is left {stand}.",
-  "A brilliant stroke, {san}. {looksCap} it is the one move that delivers, and {me} stays {stand}.",
-  "Brilliant! {looksCap} {san} is the one the engine reaches for, and {me} is {stand}.",
-  "That's a brilliancy. {looksCap} {san} works to perfection, leaving {me} {stand}.",
-  "Brilliant, {san}. {looksCap} it's the hidden best move, and {me} keeps {stand}.",
-  "Pure brilliance: {san}. {looksCap} it's the only road that holds, and {me} stays {stand}.",
-  "Brilliant! {san} is a move almost no one sees. {looksCap} it's best, and {me} is {stand}.",
-  "What a move. {san} is brilliant: {looks} it's exactly right, and {me} stays {stand}.",
-  "Brilliant! {looksCap} {san} is the engine's choice through and through, and {me} is {stand}.",
-  "A flash of brilliance, {san}. {looksCap} it's the truth of the position, and {me} stays {stand}.",
+  "{san} is brilliant. {looksCap} nothing else even comes close, and you saw it, so {me} stays {stand}.",
+  "Brilliant! {looksCap} {san} is precisely the move, and you found it, leaving {me} {stand}.",
+  "A brilliant stroke, {san}. {looksCap} it is the one move that delivers, and you played it, so {me} stays {stand}.",
+  "Brilliant! {looksCap} {san} is the hardest move to see here, and you saw it, so {me} is {stand}.",
+  "That's a brilliancy. {looksCap} {san} works to perfection, and you found it, leaving {me} {stand}.",
+  "Brilliant, {san}. {looksCap} it's the hidden best move, and you uncovered it, keeping {me} {stand}.",
+  "Pure brilliance: {san}. {looksCap} it's the only road that holds, and you took it, so {me} stays {stand}.",
+  "Brilliant! {san} is a move almost no one sees, and you did. {looksCap} it's best, and {me} is {stand}.",
+  "What a move. {san} is brilliant: {looks} it's exactly right, and you found it, so {me} stays {stand}.",
+  "Brilliant! {looksCap} {san} is the move to play here through and through, and you nailed it, so {me} is {stand}.",
+  "A flash of brilliance, {san}. {looksCap} it's the truth of the position, and you saw it, so {me} stays {stand}.",
 ];
 
 export const LOOKS_HANGS = [
@@ -183,16 +183,16 @@ export const RARITY_TIER4 = [ // else
 // The grounded "why": the rarity (capitalised, sentence-initial) plus the Maia/Stockfish
 // gap. All entries name "players" and "Stockfish" (Brilliant-grounding test).
 export const BRILLIANT_WHY = [
-  "{rarityCap}. Most players would read this position as {maiaStand} for {me}, while Stockfish already sees the truth.",
-  "{rarityCap}. To most players this looks {maiaStand} for {me}, but Stockfish already knows better.",
-  "{rarityCap}. To most players this looks {maiaStand} for {me}, and yet Stockfish has already found the truth.",
-  "{rarityCap}, and to most players the position reads as {maiaStand} for {me}. Stockfish sees further.",
-  "{rarityCap}. Where most players see {maiaStand} for {me}, Stockfish sees a path most never spot.",
-  "{rarityCap}. The human eye reads this as {maiaStand} for {me}, yet Stockfish has the real verdict.",
-  "{rarityCap}, because to most players it looks {maiaStand} for {me}. Stockfish knows otherwise.",
-  "{rarityCap}. Most players would write the position off as {maiaStand} for {me}; Stockfish says think again.",
-  "{rarityCap}. Players see {maiaStand} for {me} at a glance, but Stockfish has already done the hard work.",
-  "{rarityCap}, and the position looks {maiaStand} for {me} to nearly everyone. Stockfish disagrees, and it's right.",
+  "{rarityCap}. Most players would read this position as {maiaStand} for {me}, and you saw the move they'd all miss.",
+  "{rarityCap}. To most players this looks {maiaStand} for {me}, yet you found the truth of it.",
+  "{rarityCap}. To most players this looks {maiaStand} for {me}, and you saw further than they would.",
+  "{rarityCap}, and to most players the position reads as {maiaStand} for {me}. You looked deeper.",
+  "{rarityCap}. Where most players see {maiaStand} for {me}, you spotted the path almost no one finds.",
+  "{rarityCap}. The human eye reads this as {maiaStand} for {me}, and you cut straight through it.",
+  "{rarityCap}, because to most players it looks {maiaStand} for {me}. You knew otherwise.",
+  "{rarityCap}. Most players would write the position off as {maiaStand} for {me}; you didn't, and you were right.",
+  "{rarityCap}. Players see {maiaStand} for {me} at a glance, and you did the hard work to see past it.",
+  "{rarityCap}, and the position looks {maiaStand} for {me} to nearly everyone. You found what they couldn't, and Stockfish confirms it.",
 ];
 
 // =====================================================================================
@@ -324,7 +324,7 @@ export const MISSED_WIN = [
 // over the initiative". When there's no idea, commentary.js uses the bare SAN instead.
 export const OPENER_WITH_IDEA = [
   "{san}, {idea},",
-  "{san} ({idea})",
+  "{san}, {idea},",
   "{san}, with the idea of {idea},",
   "{san}, intending {idea},",
   "{san}, the point being {idea},",
@@ -474,15 +474,17 @@ export const BETTER_MOVE = [
 // =====================================================================================
 // Inaccuracy.
 // =====================================================================================
+// NB: no parentheses around {idea} — they read as machine-generated footnotes; fold the
+// idea in with commas instead.
 export const INACC_HEAD_WITH_IDEA = [
-  "{san} is a touch loose. The idea ({idea}) is fine, only it isn't the sharpest try.",
+  "{san} is a touch loose. The idea, {idea}, is fine, only it isn't the sharpest try.",
   "A shade inaccurate: {san}, {idea}, but there was something cleaner.",
-  "{san} ({idea}) is reasonable, just not quite the most precise.",
+  "{san}, {idea}, is reasonable, just not quite the most precise.",
   "Nothing's broken with {san}, {idea}, but it's a touch inaccurate.",
   "{san}, {idea}, is playable, though a hair imprecise.",
   "{san}, {idea}, is sound enough, only it isn't the most exact.",
   "No harm in {san}, {idea}, though there was a crisper option.",
-  "{san} ({idea}) does the job, just not as cleanly as it could.",
+  "{san}, {idea}, does the job, just not as cleanly as it could.",
 ];
 
 export const INACC_HEAD_PLAIN = [
@@ -508,6 +510,17 @@ export const INACC_CLEANER = [
   " {bestSan} was a shade more exact{payoff}.",
   " {bestSan} would have squeezed a bit more{payoff}.",
   " A touch better was {bestSan}{payoff}.",
+];
+
+// The opponent's strong reply to an inaccuracy, named with what it does — the concrete "why"
+// behind "this wasn't the sharpest" ("...because Ne5 hits the queen and improves the knight").
+// {tail} is the reply's idea, already lowercased and comma-shaped.
+export const INACC_PUNISH = [
+  " {opp} gets to play {reply}, {tail}.",
+  " It lets {opp} in with {reply}, {tail}.",
+  " {opp} can answer {reply}, {tail}.",
+  " Now {opp} has {reply}, {tail}.",
+  " {opp} replies {reply}, {tail}.",
 ];
 
 // All entries say "edges ahead" (the inaccuracy-flip test checks for it).
@@ -568,18 +581,35 @@ export const GREAT_DECISIVE = [
   "Textbook. {san} wins {phrase}, and nothing else was close.",
 ];
 
+// The "only move that holds" — kept matter-of-fact. These often fire on a forced-feeling
+// recapture or the lone legal-ish reply, so the wording states the fact ("this was the one
+// move that holds") without the breathless "that's how games get saved / brilliant find"
+// hype, which jarred when the move was the obvious or near-forced one.
 export const GREAT_ONLY_MOVE = [
-  "Great find. {san} was the only move that holds everything together. Well spotted.",
-  "Great move. {san} is the one move that keeps {me} afloat. Nicely found.",
-  "The only move, and you found it. {san} is the lifeline here. That's how games get saved.",
+  "{san} was the only move that holds things together, and you played it.",
+  "{san} is the one move that keeps {me} afloat, and you found it.",
+  "Important: {san} was the only move here, the rest let it slip.",
   "{san}, and it's the only move. Everything else loses, this one survives.",
-  "Superb. {san} was the single move that kept {me} in the game.",
-  "Right on the only square. {san} is the one move that doesn't lose. Great find.",
-  "Spot on. {san} is the lone path that holds, and you took it.",
-  "Great. {san} is the only move that holds the line, and you played it.",
-  "The single saving move was {san}, and you didn't miss it. Well played.",
-  "Only {san} keeps {me} standing, and that's exactly what you found.",
-  "Excellent. {san} was the one move that holds, the rest fall apart.",
+  "{san} was the single move that keeps {me} in the game.",
+  "{san} is the one move that doesn't lose, and you played it.",
+  "{san} is the lone move that holds, and you took it.",
+  "{san} is the only move that holds the line, and you found it.",
+  "The one saving move was {san}, and you didn't miss it.",
+  "Only {san} keeps {me} standing, and that's what you played.",
+  "{san} was the one move that holds; the rest fall apart.",
+];
+
+// A "Great"/"only move" that is really just a forced-feeling RECAPTURE or even trade — taking
+// the wood back is the one move that holds, but the breathless "you found the saving move!"
+// hype jarred ("save 了什麼鬼"). State it plainly: it's a recapture, and it was the only move
+// that kept things level.
+export const GREAT_RECAPTURE = [
+  "{san} takes the material back, and it's the one move that keeps {me} level.",
+  "{san} recaptures, the only move that holds the balance.",
+  "{san} wins the piece back, the cleanest way to stay even.",
+  "{san} is the recapture, and the only move here that doesn't lose ground.",
+  "{san} takes it back; anything else would have let the edge slip.",
+  "{san} is the necessary recapture, and you played it.",
 ];
 
 // =====================================================================================
@@ -660,15 +690,18 @@ export const POINT_TRADE_AHEAD = [
   " A welcome swap: trading down plays to {me}'s extra material.",
 ];
 
+// NB: kept to honest "under pressure / has to move" wording. The old "nowhere comfortable to
+// go" / "in trouble" / "in the crosshairs" lines over-claimed — a pawn kicking a knight that
+// has perfectly good retreats isn't trapping it, it's putting the question to it.
 export const POINT_TARGET = [
   " Now the {piece} on {sq} is feeling the heat.",
-  " The {piece} on {sq} is in trouble now.",
-  " That piles the pressure on the {piece} on {sq}.",
+  " The {piece} on {sq} is under pressure now.",
+  " That piles pressure on the {piece} on {sq}.",
   " The {piece} on {sq} is a target now.",
-  " The {piece} on {sq} has nowhere comfortable to go.",
-  " The {piece} on {sq} is under real pressure now.",
-  " That leaves the {piece} on {sq} with problems.",
-  " The {piece} on {sq} is squarely in the crosshairs.",
+  " The {piece} on {sq} has to find a square.",
+  " The {piece} on {sq} is put to the question.",
+  " That leans on the {piece} on {sq}.",
+  " The {piece} on {sq} has to watch its step.",
 ];
 
 export const POINT_ENDGAME = [
@@ -693,20 +726,20 @@ export const STAND_TAIL = [
 
 // A mild, honest "why" for a sound move with nothing flashy to point at — so even a
 // quiet good move gets a word of explanation rather than a bare label.
+// Kept SHORT and humble. We're here only because nothing concrete (a capture, threat,
+// target, mate) was found to point at, so a brief "solid, no weaknesses" is honest — but
+// the long, self-important variants ("maintains a healthy, comfortable position", "keeps
+// the plan coherent and avoids unnecessary weaknesses") read as padding and drew the most
+// "nothing-burger" complaints, so they're gone.
 export const GOOD_SOLID = [
-  " It keeps the position simple and sound.",
-  " Nothing fancy, just solid and safe.",
-  " A clean, healthy move that keeps control.",
-  " It keeps everything where it should be.",
-  " Steady and sensible, no loose ends.",
-  " It holds the position together nicely.",
-  " A tidy move that keeps things under control.",
-  " It maintains a healthy, comfortable position.",
-  " No fuss, just a sound and useful move.",
-  " It keeps the structure intact and the pieces happy.",
-  " It improves the position without giving the opponent a target.",
-  " It keeps the plan coherent and avoids unnecessary weaknesses.",
-  " A practical move: the pieces stay coordinated and nothing is loose.",
+  " Solid and sound.",
+  " Nothing fancy, just safe.",
+  " A clean, healthy move.",
+  " Steady, no loose ends.",
+  " It holds things together.",
+  " A tidy, sound move.",
+  " No fuss, just useful.",
+  " Sensible and solid.",
 ];
 
 // A sound move played from a clearly worse position — the move is fine, but the position
@@ -724,6 +757,19 @@ export const GOOD_HOLD = [
   " {me} is {standing}, yet this is the practical choice that fights on the longest.",
   " Hard going for {me} at {standing}, though this keeps the most resistance alive.",
   " {me} is {standing}, but this is the toughest nut for {opp} to crack.",
+];
+
+// A sound move from a position that was ALREADY lost before it — so we neither praise it as
+// "solid" (oblivious) nor restate "you're clearly worse" yet again (the user already knows,
+// and the harping wore thin). Just a neutral nod to its being the toughest practical try, with
+// NO standing word.
+export const GOOD_HOLD_QUIET = [
+  " It's the most resilient try here.",
+  " This puts up the stiffest resistance.",
+  " About the best practical chance.",
+  " The toughest defence on offer.",
+  " It keeps the game as hard as possible for the other side.",
+  " A sensible, stubborn choice.",
 ];
 
 // =====================================================================================
@@ -913,4 +959,262 @@ export const INTUITION_NATURAL = [
   " The natural choice, and there's nothing better to find.",
   " Just what the position asks for, played without fuss.",
   " The obvious move here, and rightly so.",
+];
+
+// =====================================================================================
+// Intent — the quiet, strategic POINT of a move that wins nothing and forces nothing.
+// Slotted below the concrete tactics/material points, above the generic "sound move" line.
+// =====================================================================================
+
+// DEFEND — a friendly piece stayed put but is now safely covered.
+export const INTENT_DEFEND = [
+  " It shores up the {piece} on {sq}.",
+  " That defends the {piece} on {sq}.",
+  " Now the {piece} on {sq} is properly covered.",
+  " It takes care of the loose {piece} on {sq}.",
+  " The {piece} on {sq} is safe again.",
+  " That props up the {piece} on {sq}.",
+  " It gives the {piece} on {sq} the support it needed.",
+  " The {piece} on {sq} is no longer hanging.",
+];
+
+// DEFEND — the threatened piece itself stepped out of danger.
+export const INTENT_DEFEND_AWAY = [
+  " It gets the {piece} out of the firing line.",
+  " That tucks the {piece} away from danger.",
+  " The {piece} slips out of harm's way.",
+  " It saves the {piece} before it could be taken.",
+  " That moves the {piece} to safety.",
+  " The {piece} steps clear of the threat.",
+  " It rescues the {piece} just in time.",
+  " That gets the {piece} off a sore square.",
+];
+
+// OPEN LINE — clears a diagonal or file for a friendly bishop/rook/queen.
+export const INTENT_OPEN_LINE = [
+  " It opens {line} for the {piece}.",
+  " That clears {line} for the {piece}.",
+  " Now the {piece} has {line} to itself.",
+  " It frees {line} for the {piece} to bite.",
+  " The {piece} springs to life along {line}.",
+  " That lets the {piece} breathe down {line}.",
+  " It hands the {piece} an open {line}.",
+  " Now {line} is the {piece}'s highway.",
+];
+
+// PROPHYLAXIS — removes a tactic the opponent had been threatening.
+export const INTENT_PROPHYLAXIS = [
+  " It takes the sting out of the {stopped}.",
+  " That snuffs out the {stopped} before it could land.",
+  " The {stopped} is off the table now.",
+  " It quietly defuses the {stopped}.",
+  " That shuts the door on the {stopped}.",
+  " No more {stopped} to worry about.",
+  " It heads off the {stopped} in good time.",
+  " The threatened {stopped} is dealt with.",
+];
+
+// TRADE — offers an even swap of equal pieces.
+export const INTENT_TRADE = [
+  " It offers a trade of {piece}s.",
+  " That puts a {piece} swap on the table.",
+  " It invites the {piece} trade.",
+  " A {piece} trade is on offer.",
+  " It proposes swapping the {piece}s off.",
+  " That angles for a {piece} exchange.",
+];
+
+// TRADE while ahead — simplifying toward a won game.
+export const INTENT_TRADE_AHEAD = [
+  " It offers to swap {piece}s, simplifying while ahead.",
+  " Trading {piece}s here is exactly right with the extra material.",
+  " It invites the {piece} trade, and fewer pieces favour the side that's up.",
+  " A {piece} swap suits {me} just fine with material in the bank.",
+  " That offers the {piece} trade, the classic way to convert an edge.",
+  " Swapping {piece}s eases the win along.",
+];
+
+// KING ATTACK — a wing pawn storming the castled king.
+export const INTENT_KING_STORM = [
+  " It gets the pawn storm rolling against the king.",
+  " That pawn joins the attack on the king.",
+  " The pawns start rolling at the enemy king.",
+  " It cracks open the air around the king.",
+  " That's the storm beginning on the king's doorstep.",
+  " The pawn advance leans on the king's cover.",
+];
+
+// KING ATTACK — a piece lifting into the king's quadrant.
+export const INTENT_KING_PIECE = [
+  " It swings a piece toward the enemy king.",
+  " That brings another attacker into the king's zone.",
+  " The piece joins the hunt around the king.",
+  " It points fresh fire at the king.",
+  " That adds weight to the attack on the king.",
+  " Another piece arrives near the king.",
+];
+
+// AVOID TRADE — a major piece sidesteps an offered swap, keeping the heavy pieces on.
+export const INTENT_AVOID_TRADE = [
+  " It declines the {piece} trade and keeps the pieces on.",
+  " That sidesteps the {piece} swap, keeping more pieces on the board.",
+  " It dodges the {piece} exchange to keep the tension.",
+  " Rather than swap, it keeps the {piece}s on.",
+  " It steps the {piece} aside instead of trading.",
+  " That keeps the {piece}s on, declining the offered swap.",
+];
+
+// FIANCHETTO — the bishop reaching its long-diagonal post.
+export const INTENT_FIANCHETTO = [
+  " The bishop takes up the fianchetto on {sq}, raking the long diagonal.",
+  " That fianchettoes the bishop on {sq}, eyeing the long diagonal.",
+  " The bishop settles on {sq}, the long diagonal now its own.",
+  " It completes the fianchetto, the bishop on {sq} biting down the long diagonal.",
+  " The fianchettoed bishop on {sq} sweeps the long diagonal.",
+  " That puts the bishop on {sq}, its best post on the long diagonal.",
+];
+
+// FIANCHETTO PREP — a wing pawn step clearing the way for the bishop.
+export const INTENT_FIANCHETTO_PREP = [
+  " It clears the way to fianchetto the bishop.",
+  " That prepares the fianchetto for the bishop.",
+  " It opens the door for the bishop to fianchetto.",
+  " The pawn step sets up the fianchetto.",
+  " That readies the bishop's fianchetto.",
+];
+
+// CENTER — a bishop centralised on a strong square.
+export const INTENT_CENTER = [
+  " It centralises the bishop on {sq}.",
+  " The bishop takes a strong central post on {sq}.",
+  " That plants the bishop in the centre on {sq}.",
+  " The bishop sits proudly in the centre on {sq}.",
+  " It stakes out the centre with the bishop on {sq}.",
+];
+
+// CENTER — a knight on a central outpost (the most pressing of the centralisers).
+export const INTENT_CENTER_KNIGHT = [
+  " The knight lands on a commanding central outpost on {sq}.",
+  " It plants the knight on {sq}, a dominant central square.",
+  " The knight on {sq} is a monster in the middle of the board.",
+  " That posts the knight on {sq}, right in the heart of the position.",
+  " The knight digs into the centre on {sq}, cramping everything around it.",
+  " It parks the knight on the strong central square {sq}, and it won't be easy to budge.",
+];
+
+// DEVELOP — a back-rank minor coming into play.
+export const INTENT_DEVELOP = [
+  " It develops the {piece}, bringing a fresh piece into the game.",
+  " That gets the {piece} into play.",
+  " The {piece} comes off the back rank and into the game.",
+  " It brings the {piece} out, another piece in the fight.",
+  " A healthy developing move, the {piece} joining the action.",
+  " That puts the {piece} to work.",
+  " The {piece} gets into the game, just what the opening asks for.",
+  " It mobilises the {piece}, building toward a finished setup.",
+];
+
+// DEVELOP — a rook claiming an open or half-open file.
+export const INTENT_DEVELOP_ROOK = [
+  " The rook takes the {openFile} {file}-file.",
+  " It swings the rook onto the {openFile} {file}-file.",
+  " That activates the rook down the {openFile} {file}-file.",
+  " The rook claims the {openFile} {file}-file, eyeing straight down it.",
+  " It plants the rook on the {openFile} {file}-file.",
+  " The rook seizes the {openFile} {file}-file.",
+];
+
+// CENTER STRIKE — a pawn challenging an enemy pawn in the centre.
+export const INTENT_CENTER_STRIKE = [
+  " It challenges the centre, striking at the pawn on {sq}.",
+  " That hits back at the centre, putting the question to the {sq} pawn.",
+  " It contests the centre by striking the {sq} pawn.",
+  " The push challenges the {sq} pawn and fights for the centre.",
+  " It strikes at the centre pawn on {sq}.",
+  " That puts the {sq} pawn under question and stakes a claim in the centre.",
+];
+
+// SPACE — a central pawn advancing into the opponent's half, taking squares away. {squares}
+// is a ready-made phrase ("the c6 and e6 squares" / "the d6 square" / "space").
+export const INTENT_SPACE = [
+  " It grabs space and takes {squares} away from {opp}.",
+  " It gains space, clamping down on {squares}.",
+  " It stakes out space, denying {opp} {squares}.",
+  " That seizes space and takes {squares} from {opp}.",
+  " It cramps {opp}, with a firm grip on {squares}.",
+  " It claims central space, controlling {squares}.",
+];
+
+// PRESSURE — a heavy piece trains fire on an enemy base pawn (a single attacker).
+export const INTENT_PRESSURE = [
+  " It leans on the {sq} pawn.",
+  " It brings the {piece} to bear on the {sq} pawn.",
+  " That trains fire on the {sq} pawn.",
+  " It puts the {sq} pawn under pressure.",
+  " The {sq} pawn comes under fire.",
+  " It eyes the {sq} pawn.",
+];
+
+// PRESSURE (reinforced) — a second heavy piece joins the attack on the base pawn (a battery
+// doubling on the file). The "Rb8 reinforces the threat on b2" the bare "rook takes the
+// b-file" line was missing.
+export const INTENT_PRESSURE_REINFORCE = [
+  " It doubles up on the {file}-file, piling pressure on the {sq} pawn.",
+  " It reinforces the pressure on the {sq} pawn.",
+  " That stacks another attacker on the {sq} pawn.",
+  " It joins the attack on the {sq} pawn, doubling on the {file}-file.",
+  " More weight comes down on the {sq} pawn.",
+  " It adds a second attacker to the {sq} pawn.",
+];
+
+// SUPPORT — a move that adds a defender to a friendly pawn under attack (incl. a king
+// covering an advanced pawn).
+export const INTENT_SUPPORT = [
+  " It shores up the {sq} pawn.",
+  " That adds a defender to the {sq} pawn.",
+  " It covers the {sq} pawn.",
+  " The {sq} pawn is properly held now.",
+  " It backs up the {sq} pawn under fire.",
+  " That props up the attacked {sq} pawn.",
+];
+
+// RECAPTURE — a capture that wins back material the opponent had just taken, levelling
+// the count (named honestly as "taking back", never as a fresh material gain).
+export const POINT_RECAPTURE = [
+  " It takes the {piece} back, squaring the material.",
+  " That recaptures the {piece}, restoring the balance.",
+  " It wins the {piece} back, and the material is level again.",
+  " The {piece} comes straight back, evening the count.",
+  " That's the recapture, the {piece} restored and the material level.",
+  " It recovers the {piece}, keeping the material even.",
+];
+
+// PAWN PRESSURE — a quiet move that leans on a loose enemy pawn.
+export const POINT_PAWN_PRESSURE = [
+  " It leans on the pawn on {sq}.",
+  " That puts the pawn on {sq} under pressure.",
+  " The pawn on {sq} is feeling the heat now.",
+  " It eyes the loose pawn on {sq}.",
+  " That piles pressure on the {sq} pawn.",
+  " The {sq} pawn is awkward to defend now.",
+];
+
+// PAWN PRESSURE — a move that hits two loose enemy pawns at once.
+export const POINT_PAWN_DOUBLE = [
+  " It attacks both loose pawns, on {sq1} and {sq2}.",
+  " That hits two undefended pawns at once, {sq1} and {sq2}.",
+  " Both the {sq1} and {sq2} pawns come under fire, and one must fall.",
+  " It forks the loose pawns on {sq1} and {sq2}.",
+  " The {sq1} and {sq2} pawns are both hanging now, and only one can be saved.",
+];
+
+// A short "still, the position is what it is" tag appended after a positive idea when the
+// mover is nonetheless clearly worse — so the encouragement doesn't ignore the scoreboard,
+// but we lead with the constructive idea instead of harping on the disadvantage. Each entry
+// names the standing (so the "worse"-position test still sees it).
+export const GOOD_HOLD_TAG = [
+  " Even so, {me} is {standing}.",
+  " It won't change that {me} is {standing}, but it's the right way to keep fighting.",
+  " {me} is still {standing}, yet this keeps the most resistance.",
+  " The position stays {standing} for {me}, but this is the way to scrap on.",
 ];
