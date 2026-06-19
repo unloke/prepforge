@@ -287,6 +287,8 @@ function playSound(type) {
 
 const appState = {
   analysis: null,
+  // Raw PGN from the most recent in-session Analyze run (not history recall).
+  analysisSourcePgn: null,
   analysisJobId: null,
   analysisPolling: false,
   analysisPly: 0,
@@ -2925,6 +2927,7 @@ async function ensureDashboardView() {
       createRepertoirePrompt,
       hydrateBuild,
       showInputModal,
+      promptImportRepertoireFromPgn,
     });
     dashboardView.bind();
   }
@@ -2945,6 +2948,55 @@ async function loadDashboard() {
 function refreshDashboardRepertoires() {
   if (!dashboardView) return Promise.resolve();
   return dashboardView.loadDashboardRepertoires();
+}
+
+function defaultRepertoireNameFromPgn(pgnText) {
+  const pgn = String(pgnText || "");
+  const event = pgn.match(/\[Event\s+"([^"]+)"/i);
+  if (event) return event[1].trim().slice(0, 80);
+  const white = pgn.match(/\[White\s+"([^"]+)"/i);
+  const black = pgn.match(/\[Black\s+"([^"]+)"/i);
+  if (white && black) return `${white[1].trim()} vs ${black[1].trim()}`.slice(0, 80);
+  return "Imported game";
+}
+
+async function importRepertoireFromPgnText(pgnText, { name, color }) {
+  const payload = await postJson("/api/repertoires/import-pgn", {
+    pgn: pgnText,
+    name,
+    color,
+  });
+  await hydrateBuild(payload, payload.selected_node_id);
+  appState.trainingRepertoireId = payload.repertoire_id;
+  await refreshDashboardRepertoires();
+  return payload;
+}
+
+async function promptImportRepertoireFromPgn(pgnText, { defaultName = "Imported game", switchToBuild = false } = {}) {
+  const meta = await showInputModal({
+    title: "Import PGN as repertoire",
+    okLabel: "Import",
+    fields: [
+      { name: "name", label: "Name", default: defaultName },
+      { name: "color", label: "Your color (white / black)", default: "white" },
+    ],
+  });
+  if (!meta) return null;
+  const name = (meta.name || "").trim() || "Imported";
+  const color = (meta.color || "white").trim().toLowerCase() === "black" ? "black" : "white";
+  try {
+    const payload = await importRepertoireFromPgnText(pgnText, { name, color });
+    if (switchToBuild) switchView("build");
+    setStatus(
+      switchToBuild
+        ? `Repertoire “${payload.name}” created — edit it in Build`
+        : `Imported ${payload.name}`,
+    );
+    return payload;
+  } catch (error) {
+    setStatus(error.message);
+    throw error;
+  }
 }
 
 function setLichessUsername(username) {
@@ -3530,6 +3582,8 @@ async function loadAnalysisHistory() {
 
 async function recallAnalysis(gameId) {
   setStatus("Loading saved analysis...");
+  appState.analysisSourcePgn = null;
+  hideAnalysisHandoff();
   try {
     const payload = await api(`/api/analyses/${encodeURIComponent(gameId)}`);
     appState.analysis = payload;
@@ -4800,9 +4854,13 @@ async function runAnalysis() {
       message: `${payload.moves.length} plies classified`,
       onClick: () => switchView("analyze"),
     });
+    appState.analysisSourcePgn = pgn;
     revealAnalysisResults();
+    await updateAnalysisHandoff();
   } catch (error) {
     if (error && error.cancelled) {
+      appState.analysisSourcePgn = null;
+      hideAnalysisHandoff();
       setStatus("Analysis stopped");
       jobToast.cancelJob(error.message || "Analysis stopped");
     } else if (error && error.status === 401) {
@@ -4818,11 +4876,69 @@ async function runAnalysis() {
   }
 }
 
+function hideAnalysisHandoff() {
+  const handoff = document.getElementById("analysis-handoff");
+  if (handoff) handoff.hidden = true;
+  const btn = document.getElementById("create-repertoire-from-game");
+  if (btn) btn.disabled = false;
+}
+
+async function userHasAnyRepertoire() {
+  try {
+    const payload = await api("/api/repertoires");
+    const visible = (payload.repertoires || []).filter(
+      (item) => !appState.pendingRepDeletes.has(String(item.id)),
+    );
+    return visible.length > 0;
+  } catch (_) {
+    return true;
+  }
+}
+
+async function updateAnalysisHandoff() {
+  const handoff = document.getElementById("analysis-handoff");
+  if (!handoff) return;
+  const pgn = (appState.analysisSourcePgn || "").trim();
+  const show =
+    appState.signedIn && pgn.length > 0 && !(await userHasAnyRepertoire());
+  handoff.hidden = !show;
+}
+
+async function onCreateRepertoireFromGameClick() {
+  const pgn = (appState.analysisSourcePgn || "").trim();
+  if (!pgn || !appState.signedIn) return;
+  const btn = document.getElementById("create-repertoire-from-game");
+  const meta = await showInputModal({
+    title: "Turn this game into a repertoire",
+    okLabel: "Create",
+    fields: [
+      { name: "name", label: "Repertoire name", default: defaultRepertoireNameFromPgn(pgn) },
+      { name: "color", label: "Your color (white / black)", default: "white" },
+    ],
+  });
+  if (!meta) return;
+  const name = (meta.name || "").trim() || "Imported game";
+  const color = (meta.color || "white").trim().toLowerCase() === "black" ? "black" : "white";
+  if (btn) btn.disabled = true;
+  try {
+    const payload = await importRepertoireFromPgnText(pgn, { name, color });
+    switchView("build");
+    setStatus(`Repertoire “${payload.name}” created — edit it in Build`);
+    appState.analysisSourcePgn = null;
+    hideAnalysisHandoff();
+  } catch (error) {
+    setStatus(error.message || "Could not create repertoire — try again");
+    if (btn) btn.disabled = false;
+  }
+}
+
 function hideAnalysisResults() {
   const panel = document.getElementById("analysis-results");
   if (!panel) return;
   panel.classList.remove("is-visible");
   panel.hidden = true;
+  appState.analysisSourcePgn = null;
+  hideAnalysisHandoff();
 }
 
 function revealAnalysisResults() {
@@ -8701,6 +8817,12 @@ function bindEvents() {
   bindScoutControlsLazy();
 
   document.getElementById("run-analysis").addEventListener("click", runAnalysis);
+  const createRepFromGame = document.getElementById("create-repertoire-from-game");
+  if (createRepFromGame) {
+    createRepFromGame.addEventListener("click", () => {
+      onCreateRepertoireFromGameClick().catch(() => {});
+    });
+  }
   document.getElementById("fetch-my-game").addEventListener("click", fetchMyLichessGame);
   // Lazy-load the analysis history list the first time its drawer is opened.
   const historyDrawer = document.getElementById("history-drawer");

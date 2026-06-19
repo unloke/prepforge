@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-DBqBJsd1.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-SOPHrIQC.css">
+    <script type="module" crossorigin src="/static/assets/index-B6al6x0n.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-CXLifG0B.css">
   </head>
   <body>
     <header class="topbar">
@@ -85,6 +85,19 @@
               <svg class="eval-chart" id="eval-chart" viewBox="0 0 640 96" role="img"></svg>
               <div class="movelist tree" id="analysis-moves" data-testid="analysis-moves"></div>
               <div class="tags muted-row" id="analysis-summary"></div>
+              <div class="analysis-handoff" id="analysis-handoff" data-testid="analysis-handoff" hidden>
+                <p class="analysis-handoff-hint muted">
+                  Create a repertoire from this game&rsquo;s moves &mdash; edit lines in Build and practice them in Train.
+                </p>
+                <button
+                  class="btn primary"
+                  id="create-repertoire-from-game"
+                  data-testid="create-repertoire-from-game"
+                  type="button"
+                >
+                  Turn this game into a repertoire
+                </button>
+              </div>
             </div>
             <details class="drawer" id="pgn-drawer">
               <summary>PGN</summary>

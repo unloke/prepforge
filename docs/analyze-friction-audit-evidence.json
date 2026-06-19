@@ -1,11 +1,11 @@
 {
-  "runAt": "2026-06-19T19:05:21.106Z",
+  "runAt": "2026-06-19T19:19:26.604Z",
   "baseUrl": "http://127.0.0.1:8000",
   "auth": {
     "method": "register-via-api",
     "credentialsInEvidence": false,
     "signedInVerified": true,
-    "lastUserId": "a4486e79b4794fa7a6675b26d6515609"
+    "lastUserId": "0d9d2c95132542b3af72c7e3814eef4d"
   },
   "paths": [
     {
@@ -87,7 +87,8 @@
         "booklineHidden": true,
         "booklineText": "",
         "coachProse": "White to move. Make a move and I'll tell you what I think.",
-        "repertoireCta": false,
+        "handoffVisible": true,
+        "repertoireCta": true,
         "buildNav": true,
         "trainNav": true,
         "coi": {
@@ -221,7 +222,8 @@
           "booklineHidden": true,
           "booklineText": "",
           "coachProse": "White to move. Make a move and I'll tell you what I think.",
-          "repertoireCta": false,
+          "handoffVisible": true,
+          "repertoireCta": true,
           "buildNav": true,
           "trainNav": true
         }
@@ -235,25 +237,33 @@
       "scenario": "handoff-no-repertoire",
       "id": "5-signed-in/handoff-no-repertoire",
       "required": true,
-      "expected": "Fresh user with no repertoire: capture whether results page guides next step",
+      "expected": "Fresh user: CTA visible after analysis; click creates repertoire via import-pgn and opens Build",
       "actual": {
-        "resultsVisible": true,
-        "resultsHasVisibleClass": true,
-        "moveListChildCount": 1,
-        "summaryHasBars": true,
-        "summaryText": "White3Black3BrilliantGoodInaccuracyMistakeBlunderMissed",
-        "status": "Analysis ready: 6 plies",
-        "booklineHidden": true,
-        "booklineText": "",
-        "coachProse": "White to move. Make a move and I'll tell you what I think.",
-        "repertoireCta": false,
-        "buildNav": true,
-        "trainNav": true,
-        "guidedNextStep": false,
-        "friction": "No bookline CTA and no create-repertoire affordance on results panel"
+        "beforeClick": {
+          "resultsVisible": true,
+          "resultsHasVisibleClass": true,
+          "moveListChildCount": 1,
+          "summaryHasBars": true,
+          "summaryText": "White3Black3BrilliantGoodInaccuracyMistakeBlunderMissed",
+          "status": "Analysis ready: 6 plies",
+          "booklineHidden": true,
+          "booklineText": "",
+          "coachProse": "White to move. Make a move and I'll tell you what I think.",
+          "handoffVisible": true,
+          "repertoireCta": true,
+          "buildNav": true,
+          "trainNav": true
+        },
+        "afterCreate": {
+          "viewBuildActive": true,
+          "buildRepName": "Audit Handoff 1781896799662 · white",
+          "status": "Repertoire “Audit Handoff 1781896799662” created — edit it in Build",
+          "handoffHidden": true
+        },
+        "repName": "Audit Handoff 1781896799662"
       },
-      "recovery": "Manual Build/Train tabs only — candidate P1 product fix",
-      "priority": "P1 — missing guided next step for new users",
+      "recovery": "Retry Create on analysis results panel",
+      "priority": "P3 — handoff OK",
       "pass": true
     },
     {
@@ -276,37 +286,37 @@
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781895921963
+      "t": 1781896767453
     },
     {
       "type": "verbose",
       "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
-      "t": 1781895923485
+      "t": 1781896768973
     },
     {
       "type": "verbose",
       "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
-      "t": 1781895925814
+      "t": 1781896771290
     },
     {
       "type": "verbose",
       "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
-      "t": 1781895928138
+      "t": 1781896773637
     },
     {
       "type": "verbose",
       "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
-      "t": 1781895941801
+      "t": 1781896787301
     },
     {
       "type": "verbose",
       "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
-      "t": 1781895945876
+      "t": 1781896791371
     },
     {
       "type": "verbose",
       "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
-      "t": 1781895959414
+      "t": 1781896805264
     }
   ],
   "clientlogRequests": [],

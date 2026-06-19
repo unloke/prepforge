@@ -39,6 +39,7 @@ export function createDashboardView({
   createRepertoirePrompt,
   hydrateBuild,
   showInputModal,
+  promptImportRepertoireFromPgn,
 }) {
   let eventsBound = false;
 
@@ -282,25 +283,12 @@ export function createDashboardView({
       }
       return;
     }
-    const meta = await showInputModal({
-      title: "Import PGN as repertoire",
-      okLabel: "Import",
-      fields: [
-        { name: "name", label: "Name", default: file.name.replace(/\.[^.]+$/, "") },
-        { name: "color", label: "Your color (white / black)", default: "white" },
-      ],
-    });
-    if (!meta) return;
-    const name = (meta.name || "").trim() || "Imported";
-    const color = (meta.color || "white").trim().toLowerCase() === "black" ? "black" : "white";
     try {
-      const payload = await postJson("/api/repertoires/import-pgn", { pgn: text, name, color });
-      await hydrateBuild(payload, payload.selected_node_id);
-      appState.trainingRepertoireId = payload.repertoire_id;
-      await loadDashboardRepertoires();
-      setStatus(`Imported ${name}`);
-    } catch (error) {
-      setStatus(error.message);
+      await promptImportRepertoireFromPgn(text, {
+        defaultName: file.name.replace(/\.[^.]+$/, ""),
+      });
+    } catch (_) {
+      /* status already set */
     }
   }
 

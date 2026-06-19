@@ -23,10 +23,9 @@
 
 **Signed-in baseline (E2E evidence):** Fresh registered user can complete browser Stockfish analysis on desktop and 375px mobile; results show move tree + classification summary (`Analysis ready: 6 plies`). Long task shows job toast + **Stop**; cancel → `Analysis stopped` + retry succeeds. COI gating verified without clicking disabled Analyze.
 
-**Confirmed P1 frictions for next product commit:**
+**P1 result handoff — implemented:** `#analysis-handoff` + `create-repertoire-from-game` CTA; shared `importRepertoireFromPgnText()`; E2E gate clicks through modal → Build with repertoire name.
 
-1. **Result handoff** — `5-signed-in/handoff-no-repertoire`: `guidedNextStep: false`; `coach-bookline` hidden; no create-repertoire CTA; only manual Build/Train nav.
-2. **Mobile touch target** — Analyze button height **32px** on 375px (`mobile-375-guest` + `1-signed-in/mobile-375`); below 44px guideline.
+**Remaining P1 (separate commit):** Mobile touch target — Analyze button height **32px** on 375px.
 
 ---
 
@@ -149,7 +148,7 @@
 
 ## Next commit scope (one friction only)
 
-Implement **P1 result handoff**: explicit “create repertoire from this game” (or equivalent) on the Analyze results panel when `bookline` is hidden and user has no repertoire. Do not bundle touch-target or keyboard work.
+**Mobile touch target** — raise Analyze primary button to ≥44px on 375px. Do not bundle with keyboard/discoverability work.
 
 ---
 

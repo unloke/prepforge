@@ -229,9 +229,8 @@ async function main() {
       booklineHidden: document.getElementById("coach-bookline")?.hidden,
       booklineText: (document.getElementById("coach-bookline")?.textContent || "").trim().slice(0, 120),
       coachProse: (document.getElementById("coach-prose")?.textContent || "").trim().slice(0, 120),
-      repertoireCta: !!document.querySelector(
-        '[data-testid="create-repertoire-from-game"], [data-action="create-repertoire"], .analysis-handoff-cta',
-      ),
+      handoffVisible: !document.getElementById("analysis-handoff")?.hidden,
+      repertoireCta: !!document.querySelector('[data-testid="create-repertoire-from-game"]'),
       buildNav: !!document.querySelector('[data-testid="nav-build"]'),
       trainNav: !!document.querySelector('[data-testid="nav-train"]'),
     }));
@@ -610,42 +609,53 @@ async function main() {
     if (ctx) await ctx.close();
   }
 
-  // --- Path 5-signed-in: Handoff without repertoire (REQUIRED evidence) ---
+  // --- Path 5-signed-in: Handoff CTA + create repertoire (REQUIRED) ---
   {
     let ctx;
     let page;
+    const repName = `Audit Handoff ${Date.now()}`;
     try {
       ({ ctx, page } = await createSignedInContext({ width: 1280, height: 800 }));
       await gotoAnalyze(page);
       await fillPgn(page, DEMO_PGN);
       await clickAnalyze(page);
       await waitForAnalysisResults(page);
-      const handoff = await snapshotResults(page);
-      const guidedNextStep =
-        handoff.repertoireCta ||
-        (!handoff.booklineHidden && /train|build|repertoire/i.test(handoff.booklineText));
+      const beforeClick = await snapshotResults(page);
+      if (!beforeClick.handoffVisible || !beforeClick.repertoireCta) {
+        throw new Error("create-repertoire CTA not visible after fresh-user analysis");
+      }
+
+      await page.click('[data-testid="create-repertoire-from-game"]');
+      await page.locator(".modal-overlay").waitFor({ state: "visible", timeout: 10000 });
+      await page.fill('.modal-overlay input[name="name"]', repName);
+      await page.click('.modal-overlay [data-action="ok"]');
+      await page.locator("#view-build.is-active").waitFor({ state: "attached", timeout: 60000 });
+      await page.locator("#build-rep-name", { hasText: repName }).waitFor({ timeout: 30000 });
+
+      const afterCreate = await page.evaluate((expectedName) => ({
+        viewBuildActive: document.getElementById("view-build")?.classList.contains("is-active"),
+        buildRepName: document.getElementById("build-rep-name")?.textContent?.trim() || "",
+        status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+        handoffHidden: document.getElementById("analysis-handoff")?.hidden,
+      }), repName);
+
       record("5-signed-in", "handoff-no-repertoire", {
-        expected: "Fresh user with no repertoire: capture whether results page guides next step",
-        actual: {
-          ...handoff,
-          guidedNextStep,
-          friction: guidedNextStep
-            ? null
-            : "No bookline CTA and no create-repertoire affordance on results panel",
-        },
-        recovery: guidedNextStep
-          ? "Use inline CTA"
-          : "Manual Build/Train tabs only — candidate P1 product fix",
-        priority: guidedNextStep ? "P3 — handoff present" : "P1 — missing guided next step for new users",
+        expected:
+          "Fresh user: CTA visible after analysis; click creates repertoire via import-pgn and opens Build",
+        actual: { beforeClick, afterCreate, repName },
+        recovery: "Retry Create on analysis results panel",
+        priority: afterCreate.viewBuildActive ? "P3 — handoff OK" : "P1 — handoff broken",
         pass:
-          handoff.resultsVisible &&
-          handoff.moveListChildCount > 0 &&
-          handoff.summaryHasBars,
+          beforeClick.handoffVisible &&
+          beforeClick.repertoireCta &&
+          afterCreate.viewBuildActive &&
+          afterCreate.buildRepName.includes(repName) &&
+          /created|imported|editing/i.test(afterCreate.status),
       });
     } catch (err) {
       record("5-signed-in", "handoff-no-repertoire", {
-        expected: "Signed-in analysis then handoff evidence",
-        actual: { error: err.message },
+        expected: "Signed-in handoff CTA and repertoire creation",
+        actual: { error: err.message, repName },
         priority: "P0 — blocks audit baseline",
         pass: false,
       });

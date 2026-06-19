@@ -873,6 +873,26 @@ h2 {
 .coach-bookline[hidden] {
   display: none;
 }
+
+.analysis-handoff {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+.analysis-handoff[hidden] {
+  display: none;
+}
+.analysis-handoff-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
 .coach-bookaction {
   display: inline-flex;
   align-items: center;
