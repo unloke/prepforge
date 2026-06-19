@@ -1,26 +1,32 @@
 # Analyze friction audit (free tier)
 
 **Date:** 2026-06-19  
-**Build:** post-P0 fix (`index-DBqBJsd1.js`, local `http://127.0.0.1:8000`)  
-**Method:** Code review + Playwright harness (`scripts/analyze-friction-audit.mjs`) + API tests (`tests/test_api_analyze.py`)  
+**Build:** `index-DBqBJsd1.js`, local `http://127.0.0.1:8000`  
+**Method:** Playwright harness with `createSignedInContext()` (`scripts/analyze-friction-audit.mjs`)  
 **Raw evidence:** [`analyze-friction-audit-evidence.json`](./analyze-friction-audit-evidence.json)
 
-**Observability (post-P0 re-run)**
+**Observability (signed-in baseline run)**
 
 | Signal | Result |
 |--------|--------|
 | `POST /api/clientlog` beacons | **0** |
-| Browser console | **7** messages — one `404` asset + auth-modal DOM warnings (no `401` on guest Analyze) |
-| Guest session | Default SPA boot (no sign-in) |
-| Harness | **7 / 9** pass flags (P0 paths green; `huge-pgn` fill timeout + `no-coi` click-on-disabled are harness gaps) |
+| Browser console | **7** messages — one `404` favicon + auth-modal DOM warnings |
+| Required signed-in paths | **4 / 4** pass (`desktop-happy`, `mobile-375`, `long-task-stop-retry`, `handoff-no-repertoire`) |
+| Guest + engine paths | **8 / 8** informational passes (12 total scenarios) |
+| Harness exit | **0** when required paths pass; **1** on any required failure |
 
 ---
 
 ## Executive summary
 
-**P0 fixed:** Guest Analyze now checks `!appState.signedIn` before `postJson("/api/analyze/prepare")` and on `error.status === 401`. Status shows **“Sign in (or create an account) to analyze and save games”** and **`openAuthModal("login")`** opens immediately. No raw `not authenticated` string; button stays enabled for retry after sign-in.
+**P0 fixed:** Guest auth gate + sign-in modal (see prior commit).
 
-**Next single fix candidate (P1):** Result handoff for signed-in users without a repertoire — bookline stays hidden with no guided “create repertoire from this game” step.
+**Signed-in baseline (E2E evidence):** Fresh registered user can complete browser Stockfish analysis on desktop and 375px mobile; results show move tree + classification summary (`Analysis ready: 6 plies`). Long task shows job toast + **Stop**; cancel → `Analysis stopped` + retry succeeds. COI gating verified without clicking disabled Analyze.
+
+**Confirmed P1 frictions for next product commit:**
+
+1. **Result handoff** — `5-signed-in/handoff-no-repertoire`: `guidedNextStep: false`; `coach-bookline` hidden; no create-repertoire CTA; only manual Build/Train nav.
+2. **Mobile touch target** — Analyze button height **32px** on 375px (`mobile-375-guest` + `1-signed-in/mobile-375`); below 44px guideline.
 
 ---
 
@@ -37,7 +43,7 @@
 | **Keyboard** | **Pass:** Enter on focused `#run-analysis` opens auth modal. First Tab still lands on **`nav-build`** (P2 tab order) |
 | **Priority** | **P3** — guest gate OK; signed-in happy path still needs manual smoke |
 
-**Signed-in note:** API prepare/classify path is covered by pytest (`test_prepare_returns_positions_and_move_skeleton`). Full browser Stockfish WASM completion was not re-captured in this harness run (registration UI flow blocked automation); treat engine happy path as **provisionally OK** pending manual signed-in smoke.
+**Signed-in (E2E):** **Pass** — `1-signed-in/desktop-happy`: results visible, classification summary, status `Analysis ready: 6 plies`, `crossOriginIsolated: true`.
 
 ---
 
@@ -99,11 +105,10 @@
 | | |
 |--|--|
 | **Expected** | Job toast with `evaluating N/M`, **Stop** (`job-toast-stop`), cancel → “Analysis stopped”, button re-enabled, retry works |
-| **Actual (guest)** | Cannot reach engine phase — fails at prepare 401 |
-| **Actual (code review)** | `jobToast.startJob` + `onCancel` → `cancelled` flag; post-eval checkpoint; `lockJob()` before classify-save (save not cancellable) |
-| **Harness** | Long-PGN scenario aborted (invalid `querySelector` pseudo + guest auth) |
-| **Recovery** | Stop then Analyze again (when authed) |
-| **Priority** | **P1** — validate signed-in after P0; code path looks sound |
+| **Actual (signed-in E2E)** | Toast `Analyzing game` + **Stop** visible; cancel → `Analysis stopped`; button re-enabled; DEMO PGN retry → results |
+| **Evidence** | `4-signed-in/long-task-stop-retry` |
+| **Recovery** | Stop then Analyze again |
+| **Priority** | **P3** — controls OK |
 
 ---
 
@@ -112,10 +117,10 @@
 | | |
 |--|--|
 | **Expected** | After analysis, clear next step (bookline → Train / Add in Build) |
-| **Actual (guest)** | No results → no handoff |
-| **Actual (signed-in, code)** | `updateBookline()` shows coach chip **Train it** / **Add it in Build** only when `appState.signedIn` + repertoire match + out-of-book ply; otherwise hidden. No generic “Create repertoire from this game” on Analyze results |
-| **Recovery** | Manual **Build** / **Train** tabs; sign in + build book first |
-| **Priority** | **P1** for new users (no guided next step); **P3** for established users with reps |
+| **Actual (signed-in E2E, no repertoire)** | Results visible; `booklineHidden: true`; `repertoireCta: false`; `guidedNextStep: false` |
+| **Evidence** | `5-signed-in/handoff-no-repertoire` |
+| **Recovery** | Manual **Build** / **Train** tabs only today |
+| **Priority** | **P1** — missing guided next step for new users |
 
 ---
 
@@ -134,26 +139,28 @@
 
 1. ~~**P0 — Auth gate UX on Analyze**~~ **Done** (`runAnalysis` pre-check + 401 catch)
 2. ~~**P1 — Misleading errors** on invalid PGN for guests~~ **Resolved** by P0
-3. **P1 — Result handoff** for users with no repertoire (signed-in smoke)
-4. **P2 — Keyboard / discoverability** (tab order, open PGN drawer hint, engine status in status bar)
-5. **P2 — Huge paste** guard
-6. **P3 — Empty PGN** (already good)
+3. **P1 — Result handoff** — E2E confirmed: no CTA after analysis for fresh user (**next product fix**)
+4. **P1 — Mobile touch target** — Analyze button 32px tall on 375px
+5. **P2 — Keyboard / discoverability** (tab order, open PGN drawer hint)
+6. **P2 — Huge paste** guard (signed-in path not yet audited)
+7. **P3 — Empty PGN** (already good)
 
 ---
 
 ## Next commit scope (one friction only)
 
-**P1 result handoff** or **P2 keyboard/discoverability** — pick one after signed-in Analyze smoke confirms engine path. Do not bundle with auth work.
+Implement **P1 result handoff**: explicit “create repertoire from this game” (or equivalent) on the Analyze results panel when `bookline` is hidden and user has no repertoire. Do not bundle touch-target or keyboard work.
 
 ---
 
 ## Re-run harness
 
 ```powershell
-# Terminal 1
+# Terminal 1 — migrate once per dev DB
 $env:DATABASE_URL="sqlite:///dev.sqlite3"
+.\.venv\Scripts\python.exe -m alembic upgrade head
 .\.venv\Scripts\python.exe -m uvicorn prepforge_chess.api.main:app --host 127.0.0.1 --port 8000
 
-# Terminal 2
+# Terminal 2 — exits 1 if any required signed-in scenario fails
 node scripts/analyze-friction-audit.mjs
 ```
