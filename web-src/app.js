@@ -8,9 +8,7 @@ import {
   getSharedMaia3Provider,
   disposeSharedMaia3Provider,
   peekSharedMaia3Provider,
-  resolveModelBase,
 } from "./engine/maia3-provider.js";
-import { getCachedWeights, clearWeightCache } from "./engine/maia3-weight-cache.js";
 import { createCsrfTokenSource, isSafeMethod, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
@@ -427,7 +425,7 @@ async function refreshAutoMaiaRating() {
     const cached = JSON.parse(localStorage.getItem(MAIA_AUTO_CACHE_KEY) || "null");
     if (cached && cached.username === username && Date.now() - cached.at < MAIA_AUTO_TTL_MS) {
       appState.maiaAutoRating = cached.rating;
-      renderStrengthControls();
+      settingsView?.renderStrengthControls();
       return;
     }
   } catch (_) { /* corrupt cache — refetch */ }
@@ -450,7 +448,7 @@ async function refreshAutoMaiaRating() {
         JSON.stringify({ username, rating: appState.maiaAutoRating, at: Date.now() }),
       );
     } catch (_) { /* storage full — fine, refetch next time */ }
-    renderStrengthControls();
+    settingsView?.renderStrengthControls();
   } catch (_) { /* offline or blocked — AUTO falls back silently */ }
 }
 
@@ -2646,6 +2644,9 @@ function switchView(name) {
   if (name === "replay") {
     preloadReplayView().catch(() => {});
     bindScoutControlsLazy();
+  }
+  if (name === "settings") {
+    preloadSettingsView().catch(() => {});
   }
   // Warm the Analyze book (active repertoire trees) so the first explored move
   // can be matched without waiting on the lazy load.
@@ -8132,12 +8133,49 @@ function beaconFlushTrain() {
   }
 }
 
+// ----- Settings tab — lazy view chunk -----------------------------------------
+let settingsModulePromise = null;
+let settingsView = null;
+
+function preloadSettingsView() {
+  if (!settingsModulePromise) {
+    settingsModulePromise = import("./views/settings.js").catch((err) => {
+      settingsModulePromise = null;
+      throw err;
+    });
+  }
+  return settingsModulePromise;
+}
+
+async function ensureSettingsView() {
+  const mod = await preloadSettingsView();
+  if (!settingsView) {
+    settingsView = mod.createSettingsView({
+      appState,
+      setStatus,
+      saveSettings,
+      loadSettings,
+      pref,
+      setPref,
+      effectiveMaiaRating,
+      maiaFallbackRating: MAIA_FALLBACK_RATING,
+      getSharedMaia3Provider,
+      disposeSharedMaia3Provider,
+      showConfirmModal,
+      startFen: START_FEN,
+    });
+    settingsView.bind();
+  }
+  return settingsView;
+}
+
 async function loadSettings() {
   try {
+    const view = await ensureSettingsView();
     const payload = await api("/api/settings");
     applySettingsPayload(payload);
     applyServerEngineGating();
-    renderSettings(payload);
+    view.renderSettings(payload);
   } catch (error) {
     setStatus(error.message);
   }
@@ -8149,7 +8187,7 @@ function applySettingsPayload(payload) {
   appState.settings = payload;
   appState.serverEngineEnabled = !!payload.server_engine_enabled;
   appState.maiaRatingPinned = Number.isFinite(payload.maia_rating) ? payload.maia_rating : null;
-  renderStrengthControls();
+  settingsView?.renderStrengthControls();
 }
 
 // Persist a partial settings patch ({stockfish_depth} / {maia_rating}) and re-render.
@@ -8170,35 +8208,6 @@ async function saveSettings(patch) {
     }
   } catch (error) {
     setStatus(error.message);
-  }
-}
-
-// Paint the Playing-strength card from state. Cheap and idempotent — called whenever
-// settings or the auto-resolved rating change.
-function renderStrengthControls() {
-  const depthEl = document.getElementById("settings-depth");
-  const depthOut = document.getElementById("settings-depth-readout");
-  const autoEl = document.getElementById("settings-maia-auto");
-  const autoLabel = document.getElementById("settings-maia-auto-label");
-  const ratingEl = document.getElementById("settings-maia-rating");
-  const ratingOut = document.getElementById("settings-maia-rating-readout");
-  if (!depthEl || !autoEl || !ratingEl) return;
-  const settings = appState.settings || {};
-  if (Number.isFinite(settings.stockfish_depth)) {
-    depthEl.value = String(settings.stockfish_depth);
-  }
-  if (depthOut) depthOut.textContent = depthEl.value;
-  const auto = !Number.isFinite(appState.maiaRatingPinned);
-  autoEl.checked = auto;
-  ratingEl.disabled = auto;
-  ratingEl.value = String(effectiveMaiaRating());
-  if (ratingOut) ratingOut.textContent = ratingEl.value;
-  if (autoLabel) {
-    autoLabel.textContent = appState.lichessUsername
-      ? Number.isFinite(appState.maiaAutoRating)
-        ? `Auto — match my Lichess rating (~${appState.maiaAutoRating})`
-        : "Auto — match my Lichess rating"
-      : `Auto — Lichess not linked, using ${MAIA_FALLBACK_RATING}`;
   }
 }
 
@@ -8242,146 +8251,7 @@ function applyServerEngineGating() {
   );
 }
 
-// Browser-only engine state depends ONLY on the browser (cross-origin isolation),
-// not on any server call. Kept separate from renderSettings so init() can paint it
-// immediately even for a signed-out visitor — otherwise a failed /api/settings (401)
-// left the widget stuck on its initial "checking…" placeholder forever.
-function renderBrowserEngineStatus() {
-  const browserStatusEl = document.getElementById("settings-browser-engine-status");
-  const note = document.getElementById("settings-stockfish-status");
-  if (browserStatusEl) {
-    if (self.crossOriginIsolated) {
-      browserStatusEl.textContent = "available";
-      if (note) note.textContent = "";
-    } else {
-      browserStatusEl.textContent = "unavailable";
-      if (note) {
-        note.textContent =
-          "This browser is not cross-origin isolated (COOP/COEP). Use a supported browser to run analysis locally.";
-      }
-    }
-  }
-  // Maia3 runs IN THE BROWSER; probe the real client-side state (manifest + IndexedDB).
-  renderMaia3Status();
-}
 
-function renderSettings(payload) {
-  // payload accepted for forward-compat but unused — engine status is browser-derived.
-  void payload;
-  renderBrowserEngineStatus();
-}
-
-// Report the real browser Maia3 state in Settings: a warm provider's live state when it has
-// one, otherwise probe the manifest + IndexedDB weight cache to distinguish "ready (cached)"
-// from "available on demand" from "unavailable". Best-effort: never throws.
-async function renderMaia3Status() {
-  const modelEl = document.getElementById("settings-maia-model");
-  const noteEl = document.getElementById("settings-maia-status");
-  const errEl = document.getElementById("settings-maia-error");
-  if (!modelEl) return;
-  const set = (model, note = "", error = "") => {
-    modelEl.textContent = model;
-    if (noteEl) noteEl.textContent = note;
-    if (errEl) {
-      errEl.textContent = error ? `Last error: ${error}` : "";
-      errEl.hidden = !error;
-    }
-  };
-  try {
-    const provider = getSharedMaia3Provider();
-    // A provider that has been exercised this session has authoritative live state.
-    if (provider.state === "ready") {
-      const info = provider.info || {};
-      const base = info.url || provider.assetBase || "";
-      set("available", base ? `Loaded this session · ${base}` : "Loaded this session.");
-      return;
-    }
-    if (provider.state === "initializing") {
-      set("initializing…", "Downloading / preparing the model.");
-      return;
-    }
-    if (provider.state === "unavailable") {
-      // Surface the REAL failure (init timeout / worker crash / ORT / weight fetch) so
-      // the user can tell a transient hiccup from a stale-cache or environment problem.
-      const err = provider.lastError;
-      set(
-        "unavailable",
-        "Last load failed. Use Retry now, or Reset cache if it keeps failing.",
-        err ? `${err.message}${err.phase ? ` (${err.phase})` : ""}` : "",
-      );
-      return;
-    }
-    // Idle (never used yet this session): probe whether the model can load and is cached.
-    let manifest;
-    try {
-      const resp = await fetch("/static/maia3/maia3.manifest.json");
-      if (!resp.ok) throw new Error(`manifest ${resp.status}`);
-      manifest = await resp.json();
-    } catch {
-      set("unavailable", "Model manifest is not reachable from this server.");
-      return;
-    }
-    const base = resolveModelBase(manifest);
-    const key =
-      (manifest.backend_artifact && manifest.backend_artifact.wasm) ||
-      (manifest.artifacts && manifest.artifacts.fp16 && manifest.artifacts.fp16.file) ||
-      null;
-    const bytes =
-      (manifest.artifacts && manifest.artifacts.fp16 && manifest.artifacts.fp16.bytes) || 0;
-    const sizeMb = bytes ? `${Math.round(bytes / (1024 * 1024))} MB` : "~46 MB";
-    const cached = key ? await getCachedWeights(key) : null;
-    if (cached) {
-      set("ready (cached)", `${sizeMb} cached in this browser · ${base}`);
-    } else {
-      set("available on demand", `Downloads ${sizeMb} on first use, then cached · ${base}`);
-    }
-  } catch {
-    set("unavailable", "Could not determine the browser Maia3 state.");
-  }
-}
-
-// Settings "Retry now": force the shared provider to re-init right away instead of
-// waiting for the next analysis. predictions() drives _ensureReady, which on a prior
-// failure spins up a fresh worker and re-downloads (or reuses the cached weights).
-async function retryMaia3() {
-  const btn = document.getElementById("settings-maia-retry");
-  if (btn) btn.disabled = true;
-  setStatus("Retrying Maia3…");
-  try {
-    const provider = getSharedMaia3Provider();
-    renderMaia3Status(); // reflect "initializing…" while it loads
-    await provider.predictions({ fen: START_FEN });
-    setStatus("Maia3 ready");
-  } catch (err) {
-    setStatus(`Maia3 retry failed: ${err.message}`);
-  } finally {
-    if (btn) btn.disabled = false;
-    renderMaia3Status();
-  }
-}
-
-// Settings "Reset cache": recovery path for a stale/corrupt IndexedDB weight store.
-// Tears down the warm provider, drops the cached model, and reloads so the worker/ORT
-// state starts clean — the model re-downloads on next use.
-async function resetMaia3Cache() {
-  const confirmed = await showConfirmModal({
-    title: "Reset Maia cache?",
-    body:
-      "Deletes the cached Maia model from this browser, then reloads. The model " +
-      "(~46 MB) re-downloads on next use. Use this if Maia keeps failing to load.",
-    okLabel: "Reset & reload",
-    cancelLabel: "Cancel",
-  });
-  if (!confirmed) return;
-  setStatus("Clearing Maia cache…");
-  try {
-    disposeSharedMaia3Provider();
-  } catch (_) {
-    /* ignore */
-  }
-  await clearWeightCache();
-  window.location.reload();
-}
 
 // NOTE: server-side engine install (Stockfish/Maia3) and the first-run install
 // prompt were removed — the public flow runs Stockfish in the browser and never
@@ -9032,46 +8902,7 @@ function bindEvents() {
     beaconFlushTrain();
   });
 
-  // Settings
-  document.getElementById("settings-refresh").addEventListener("click", loadSettings);
-  const maiaRetryBtn = document.getElementById("settings-maia-retry");
-  if (maiaRetryBtn) maiaRetryBtn.addEventListener("click", retryMaia3);
-  const maiaResetBtn = document.getElementById("settings-maia-reset");
-  if (maiaResetBtn) maiaResetBtn.addEventListener("click", resetMaia3Cache);
-  const brilliantToggle = document.getElementById("settings-brilliant-toggle");
-  if (brilliantToggle) {
-    brilliantToggle.checked = !!pref("brilliantDetection");
-    brilliantToggle.addEventListener("change", () =>
-      setPref("brilliantDetection", brilliantToggle.checked),
-    );
-  }
 
-  // Playing strength: readouts track the drag (input), the save fires on release
-  // (change) so a slider sweep is ONE settings POST, not thirty.
-  const depthSlider = document.getElementById("settings-depth");
-  if (depthSlider) {
-    depthSlider.addEventListener("input", () => {
-      const out = document.getElementById("settings-depth-readout");
-      if (out) out.textContent = depthSlider.value;
-    });
-    depthSlider.addEventListener("change", () =>
-      saveSettings({ stockfish_depth: Number(depthSlider.value) })
-    );
-  }
-  const maiaAuto = document.getElementById("settings-maia-auto");
-  const maiaSlider = document.getElementById("settings-maia-rating");
-  if (maiaAuto && maiaSlider) {
-    maiaAuto.addEventListener("change", () =>
-      saveSettings({ maia_rating: maiaAuto.checked ? "auto" : Number(maiaSlider.value) })
-    );
-    maiaSlider.addEventListener("input", () => {
-      const out = document.getElementById("settings-maia-rating-readout");
-      if (out) out.textContent = maiaSlider.value;
-    });
-    maiaSlider.addEventListener("change", () => {
-      if (!maiaAuto.checked) saveSettings({ maia_rating: Number(maiaSlider.value) });
-    });
-  }
 
   // Account chip (folds in the old standalone Sign out button as a menu action)
   document.getElementById("account-chip").addEventListener("click", onAccountChipClick);
@@ -9284,9 +9115,6 @@ async function init() {
     /* board init is best-effort */
   }
   renderAnalysisTree();
-  // Engine status is browser-derived (cross-origin isolation) — paint it now, even
-  // for a signed-out visitor, so it never sticks on the initial "checking…".
-  renderBrowserEngineStatus();
   applyServerEngineGating();
 
   // Learn the auth state BEFORE any owner-scoped calls. A signed-out visitor must

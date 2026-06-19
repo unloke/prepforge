@@ -31,6 +31,7 @@ function chunkKind(url) {
   if (/^build-P/.test(name) || /^build-[A-Za-z0-9]+\.js$/.test(name)) return "build-view";
   if (/^teams-/.test(name)) return "teams";
   if (/^scout-/.test(name) && !/^scout-engine-/.test(name)) return "scout-view";
+  if (/^settings-/.test(name)) return "settings";
   if (/^index-/.test(name)) return "index";
   return null;
 }
@@ -63,6 +64,10 @@ async function staticChecks() {
   const index = await readAsset(/^index-/);
   assert(/movetree-/.test(index.text), "index chunk should lazy-map movetree");
   assert(/analyze-/.test(index.text), "index chunk should lazy-map analyze");
+  assert(/settings-/.test(index.text), "index chunk should lazy-map settings");
+
+  await readAsset(/^settings-/);
+  assert(!/maia3-weight-cache/.test(index.text), "index chunk must not static-import maia3-weight-cache");
 
   console.log("[lazy-chunk-smoke] static checks ok");
 }
@@ -135,6 +140,7 @@ async function browserChecks() {
     assert(!afterDashboard.has("train"), "dashboard load fetched train chunk");
     assert(!afterDashboard.has("replay"), "dashboard load fetched replay chunk");
     assert(!afterDashboard.has("movetree"), "dashboard load fetched movetree chunk");
+    assert(!afterDashboard.has("settings"), "dashboard load fetched settings chunk");
     assert(afterDashboard.has("index"), "dashboard load should fetch index chunk");
 
     await page.click('[data-testid="nav-build"]');
@@ -158,6 +164,10 @@ async function browserChecks() {
     await page.waitForTimeout(1200);
     assert(loaded.has("replay"), "replay tab should fetch replay chunk");
     assert(!loaded.has("scout-view"), "replay tab open must not fetch scout view chunk");
+
+    await page.click('[data-testid="nav-settings"]');
+    await page.waitForTimeout(1200);
+    assert(loaded.has("settings"), "settings tab should fetch settings chunk");
 
     console.log("[lazy-chunk-smoke] browser capture ok");
     console.log(`[lazy-chunk-smoke] chunks observed: ${[...loaded].sort().join(", ")}`);
