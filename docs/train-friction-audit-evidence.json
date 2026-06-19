@@ -1,0 +1,549 @@
+{
+  "runAt": "2026-06-19T19:48:33.117Z",
+  "baseUrl": "http://127.0.0.1:8000",
+  "auth": {
+    "method": "register-via-api",
+    "credentialsInEvidence": false,
+    "signedInVerified": true,
+    "lastUserId": "b7cc84c774f84f14aec540725e8fa309"
+  },
+  "paths": [
+    {
+      "path": "1-signed-in",
+      "scenario": "empty-state",
+      "id": "1-signed-in/empty-state",
+      "required": true,
+      "expected": "Fresh user on Train: clear prerequisites + Build path; Start without repertoire explains next step",
+      "actual": {
+        "beforeStart": {
+          "viewTrainActive": true,
+          "bannerTitle": "Press Start to begin",
+          "prompt": "",
+          "bannerState": "idle",
+          "bannerSub": "",
+          "boardLabel": "Press Start to train",
+          "helpVisible": true,
+          "startVisible": true,
+          "navBuild": true,
+          "pickerHidden": true,
+          "smartModeActive": true,
+          "status": "Ready"
+        },
+        "afterStart": {
+          "correct": "0",
+          "mistakes": "0",
+          "streak": "0",
+          "accuracy": "100%",
+          "bannerTitle": "Nothing to train yet",
+          "prompt": "",
+          "bannerState": "done",
+          "bannerSub": "Add prepared moves in Build, then train.",
+          "lineLabel": "Card 1 / 1",
+          "progressHidden": true,
+          "syncText": "",
+          "syncClass": "build-sync"
+        },
+        "status": "no active repertoires to train"
+      },
+      "recovery": "Build a repertoire with prepared moves, then return to Train",
+      "priority": "P3 — empty state OK",
+      "pass": true
+    },
+    {
+      "path": "2-signed-in",
+      "scenario": "ready-to-start",
+      "id": "2-signed-in/ready-to-start",
+      "required": true,
+      "expected": "After Build prepared move: Line rehearsal picker lists repertoire; Smart queue starts first prompt",
+      "actual": {
+        "repName": "Audit Train 1781898516193",
+        "picker": {
+          "hidden": false,
+          "options": [
+            {
+              "value": "__demo__",
+              "text": "Demo repertoire"
+            },
+            {
+              "value": "dfbebcd5-8abf-49d8-84f3-bf8cb825cd41",
+              "text": "Audit Train 1781898516193 (white)"
+            }
+          ],
+          "selectedText": "Audit Train 1781898516193 (white)",
+          "hasRep": true
+        },
+        "startPayload": {
+          "cards": 1,
+          "session_id": true
+        },
+        "active": {
+          "correct": "0",
+          "mistakes": "0",
+          "streak": "0",
+          "accuracy": "100%",
+          "bannerTitle": "New move: e4",
+          "prompt": "",
+          "bannerState": "teach",
+          "bannerSub": "Pushes a pawn to e4, claiming the centre.",
+          "lineLabel": "Card 1 / 1 · New move",
+          "progressHidden": false,
+          "syncText": "✓ Saved",
+          "syncClass": "build-sync is-saved"
+        }
+      },
+      "recovery": "Flush Build sync, then Start training",
+      "priority": "P3 — ready OK",
+      "pass": true
+    },
+    {
+      "path": "3-signed-in",
+      "scenario": "correct-move",
+      "id": "3-signed-in/correct-move",
+      "required": true,
+      "expected": "Correct e4: stats/progress update; banner shows success or next prompt",
+      "actual": {
+        "repName": "Audit Correct 1781898521190",
+        "before": {
+          "correct": "0",
+          "mistakes": "0",
+          "streak": "0",
+          "accuracy": "100%",
+          "bannerTitle": "New move: e4",
+          "prompt": "",
+          "bannerState": "teach",
+          "bannerSub": "Pushes a pawn to e4, claiming the centre.",
+          "lineLabel": "Card 1 / 1 · New move",
+          "progressHidden": false,
+          "syncText": "✓ Saved",
+          "syncClass": "build-sync is-saved"
+        },
+        "after": {
+          "correct": "1",
+          "mistakes": "0",
+          "streak": "1",
+          "accuracy": "100%",
+          "bannerTitle": "Session complete!",
+          "prompt": "",
+          "bannerState": "done",
+          "bannerSub": "1 first-try correct - 0 missed",
+          "lineLabel": "Card 1 / 1 · New move",
+          "progressHidden": false,
+          "syncText": "✓ Saved",
+          "syncClass": "build-sync is-saved"
+        }
+      },
+      "recovery": "Retry the prepared move shown in teach banner or hints",
+      "priority": "P3 — correct flow OK",
+      "pass": true
+    },
+    {
+      "path": "4-signed-in",
+      "scenario": "wrong-retry",
+      "id": "4-signed-in/wrong-retry",
+      "required": true,
+      "expected": "Wrong move: clear retry prompt; correct on retry advances without double mistake count",
+      "actual": {
+        "repName": "Audit Wrong 1781898528937",
+        "before": {
+          "correct": "0",
+          "mistakes": "0",
+          "streak": "0",
+          "accuracy": "100%",
+          "bannerTitle": "New move: e4",
+          "prompt": "",
+          "bannerState": "teach",
+          "bannerSub": "Pushes a pawn to e4, claiming the centre.",
+          "lineLabel": "Card 1 / 1 · New move",
+          "progressHidden": false,
+          "syncText": "✓ Saved",
+          "syncClass": "build-sync is-saved"
+        },
+        "wrong": {
+          "correct": "0",
+          "mistakes": "1",
+          "streak": "0",
+          "accuracy": "0%",
+          "bannerTitle": "Not that one - try again",
+          "prompt": "",
+          "bannerState": "wrong",
+          "bannerSub": "Fight for the centre.",
+          "lineLabel": "Card 1 / 1 · New move",
+          "progressHidden": false,
+          "syncText": "• Unsaved changes",
+          "syncClass": "build-sync is-dirty"
+        },
+        "after": {
+          "correct": "0",
+          "mistakes": "1",
+          "streak": "0",
+          "accuracy": "0%",
+          "bannerTitle": "Session complete!",
+          "prompt": "",
+          "bannerState": "done",
+          "bannerSub": "0 first-try correct - 1 missed - 1 fixed on retry",
+          "lineLabel": "Card 1 / 1 · New move",
+          "progressHidden": false,
+          "syncText": "✓ Saved",
+          "syncClass": "build-sync is-saved"
+        }
+      },
+      "recovery": "Read banner hint; play expected prepared move on retry",
+      "priority": "P3 — wrong/retry OK",
+      "pass": true
+    },
+    {
+      "path": "5-signed-in",
+      "scenario": "reload-persist",
+      "id": "5-signed-in/reload-persist",
+      "required": true,
+      "expected": "After graded move + reload: can restart training cleanly; session UI resets without errors (sync prevents double-count server-side)",
+      "actual": {
+        "repName": "Audit Reload 1781898538085",
+        "beforeReload": {
+          "correct": "1",
+          "mistakes": "0",
+          "streak": "1",
+          "accuracy": "100%",
+          "bannerTitle": "Session complete!",
+          "prompt": "",
+          "bannerState": "done",
+          "bannerSub": "1 first-try correct - 0 missed",
+          "lineLabel": "Card 1 / 1 · New move",
+          "progressHidden": false,
+          "syncText": "✓ Saved",
+          "syncClass": "build-sync is-saved"
+        },
+        "afterReload": {
+          "correct": "0",
+          "mistakes": "0",
+          "streak": "0",
+          "accuracy": "100%",
+          "bannerTitle": "White to move",
+          "prompt": "",
+          "bannerState": "move",
+          "bannerSub": "Polish - play your prepared move",
+          "lineLabel": "Card 1 / 1 · Polish",
+          "progressHidden": false,
+          "syncText": "✓ Saved",
+          "syncClass": "build-sync is-saved"
+        }
+      },
+      "recovery": "Start training again; prior attempts should have flushed via sync/beacon",
+      "priority": "P3 — reload re-entry OK",
+      "pass": true
+    },
+    {
+      "path": "1-signed-in",
+      "scenario": "mobile-375",
+      "id": "1-signed-in/mobile-375",
+      "required": true,
+      "expected": "375px: start, wrong retry, correct finish; record primary control dimensions",
+      "actual": {
+        "empty": {
+          "viewTrainActive": true,
+          "bannerTitle": "Press Start to begin",
+          "prompt": "",
+          "bannerState": "idle",
+          "bannerSub": "",
+          "boardLabel": "Press Start to train",
+          "helpVisible": true,
+          "startVisible": true,
+          "navBuild": true,
+          "pickerHidden": true,
+          "smartModeActive": true,
+          "status": "Created Audit Mobile 1781898546779"
+        },
+        "repName": "Audit Mobile 1781898546779",
+        "layout": {
+          "viewportW": 375,
+          "startTrain": {
+            "width": 321,
+            "height": 32
+          },
+          "hint": {
+            "width": 39.859375,
+            "height": 28
+          },
+          "skip": {
+            "width": 34,
+            "height": 28
+          },
+          "flip": {
+            "width": 34,
+            "height": 28
+          },
+          "smartMode": {},
+          "smartModeEl": {
+            "width": 158.5,
+            "height": 30
+          }
+        },
+        "wrong": {
+          "correct": "0",
+          "mistakes": "1",
+          "streak": "0",
+          "accuracy": "0%",
+          "bannerTitle": "Not that one - try again",
+          "prompt": "",
+          "bannerState": "wrong",
+          "bannerSub": "Fight for the centre.",
+          "lineLabel": "Card 1 / 1 · New move",
+          "progressHidden": false,
+          "syncText": "• Unsaved changes",
+          "syncClass": "build-sync is-dirty"
+        },
+        "done": {
+          "correct": "0",
+          "mistakes": "1",
+          "streak": "0",
+          "accuracy": "0%",
+          "bannerTitle": "Session complete!",
+          "prompt": "",
+          "bannerState": "done",
+          "bannerSub": "0 first-try correct - 1 missed - 1 fixed on retry",
+          "lineLabel": "Card 1 / 1 · New move",
+          "progressHidden": false,
+          "syncText": "✓ Saved",
+          "syncClass": "build-sync is-saved"
+        }
+      },
+      "recovery": "Use Start training sidebar on narrow viewports",
+      "priority": "P1 — Start button 321×32px (<44×44px touch target)",
+      "pass": true
+    },
+    {
+      "path": "1-signed-in",
+      "scenario": "keyboard",
+      "id": "1-signed-in/keyboard",
+      "required": true,
+      "expected": "Enter on Start begins session; board squares need pointer (document as P2 if keyboard play fails)",
+      "actual": {
+        "repName": "Audit Keys 1781898555939",
+        "afterStart": {
+          "correct": "0",
+          "mistakes": "0",
+          "streak": "0",
+          "accuracy": "100%",
+          "bannerTitle": "New move: e4",
+          "prompt": "",
+          "bannerState": "teach",
+          "bannerSub": "Pushes a pawn to e4, claiming the centre.",
+          "lineLabel": "Card 1 / 1 · New move",
+          "progressHidden": false,
+          "syncText": "✓ Saved",
+          "syncClass": "build-sync is-saved"
+        },
+        "boardNeedsPointer": {
+          "tested": true,
+          "before": "teach",
+          "after": "teach",
+          "tag": "BUTTON"
+        }
+      },
+      "recovery": "Tab to Start/controls; use pointer for board moves",
+      "priority": "P2 — board needs pointer (controls OK)",
+      "pass": true
+    },
+    {
+      "path": "6-signed-in",
+      "scenario": "handoff-entry",
+      "id": "6-signed-in/handoff-entry",
+      "required": true,
+      "expected": "Build → Train: freshly created repertoire appears in picker and Smart queue starts",
+      "actual": {
+        "repName": "Audit Handoff 1781898559880",
+        "picker": {
+          "options": [
+            "Demo repertoire",
+            "Audit Handoff 1781898559880 (white)"
+          ],
+          "hasRep": true
+        },
+        "active": {
+          "correct": "0",
+          "mistakes": "0",
+          "streak": "0",
+          "accuracy": "100%",
+          "bannerTitle": "New move: e4",
+          "prompt": "",
+          "bannerState": "teach",
+          "bannerSub": "Pushes a pawn to e4, claiming the centre.",
+          "lineLabel": "Card 1 / 1 · New move",
+          "progressHidden": false,
+          "syncText": "✓ Saved",
+          "syncClass": "build-sync is-saved"
+        }
+      },
+      "recovery": "Open Train after Build sync; use Line rehearsal picker if needed",
+      "priority": "P3 — handoff OK",
+      "pass": true
+    },
+    {
+      "path": "4-recovery",
+      "scenario": "no-trainable-moves",
+      "id": "4-recovery/no-trainable-moves",
+      "required": false,
+      "expected": "Repertoire without prepared moves → Nothing to train yet + Build hint",
+      "actual": {
+        "repName": "Audit Empty 1781898564694",
+        "snap": {
+          "correct": "0",
+          "mistakes": "0",
+          "streak": "0",
+          "accuracy": "100%",
+          "bannerTitle": "Nothing to train yet",
+          "prompt": "",
+          "bannerState": "done",
+          "bannerSub": "Add prepared moves in Build, then train.",
+          "lineLabel": "Card 1 / 1",
+          "progressHidden": true,
+          "syncText": "",
+          "syncClass": "build-sync"
+        }
+      },
+      "recovery": "Add prepared moves in Build",
+      "priority": "P3 — gate OK",
+      "pass": true
+    },
+    {
+      "path": "5-recovery",
+      "scenario": "sync-failure",
+      "id": "5-recovery/sync-failure",
+      "required": false,
+      "expected": "smart/sync 503 → error/dirty chip; recovers after route restored",
+      "actual": {
+        "repName": "Audit Sync 1781898567943",
+        "errorSnap": {
+          "syncText": "⚠ Offline — will retry",
+          "syncClass": "build-sync is-error",
+          "syncHidden": false
+        },
+        "recovered": {
+          "hidden": false,
+          "cls": "build-sync is-saved",
+          "text": "✓ Saved"
+        }
+      },
+      "recovery": "Wait for backoff retry; session continues locally",
+      "priority": "P2 — error surfaced",
+      "pass": true
+    },
+    {
+      "path": "6-recovery",
+      "scenario": "reload-interrupt",
+      "id": "6-recovery/reload-interrupt",
+      "required": false,
+      "expected": "Reload mid-session (pre-sync): UI restarts; document whether in-memory session restores",
+      "actual": {
+        "repName": "Audit Interrupt 1781898579737",
+        "before": {
+          "correct": "1",
+          "mistakes": "0",
+          "streak": "1",
+          "accuracy": "100%",
+          "bannerTitle": "Session complete!",
+          "prompt": "",
+          "bannerState": "done",
+          "bannerSub": "1 first-try correct - 0 missed",
+          "lineLabel": "Card 1 / 1 · New move",
+          "progressHidden": false,
+          "syncText": "✓ Saved",
+          "syncClass": "build-sync is-saved"
+        },
+        "after": {
+          "correct": "0",
+          "mistakes": "0",
+          "streak": "0",
+          "accuracy": "100%",
+          "bannerTitle": "White to move",
+          "prompt": "",
+          "bannerState": "move",
+          "bannerSub": "Polish - play your prepared move",
+          "lineLabel": "Card 1 / 1 · Polish",
+          "progressHidden": false,
+          "syncText": "✓ Saved",
+          "syncClass": "build-sync is-saved"
+        }
+      },
+      "recovery": "Start again; beacon/keepalive may have flushed attempts",
+      "priority": "P2 — informational",
+      "pass": true
+    }
+  ],
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781898513757
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+      "t": 1781898514982
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781898518064
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781898522557
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781898530292
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781898539430
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781898548126
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781898557272
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781898561335
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+      "t": 1781898566429
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "t": 1781898572459
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "t": 1781898573464
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "t": 1781898575481
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781898581116
+    }
+  ],
+  "clientlogRequests": [],
+  "notes": [
+    "Audit registers ~10 fresh users per run. Start API with limiter.enabled=False before uvicorn (local audit server only)."
+  ]
+}
