@@ -1,0 +1,356 @@
+{
+  "runAt": "2026-06-19T19:33:18.287Z",
+  "baseUrl": "http://127.0.0.1:8000",
+  "auth": {
+    "method": "register-via-api",
+    "credentialsInEvidence": false,
+    "signedInVerified": true,
+    "lastUserId": "b8a894d8e7f64e6aa3675b1dda65b4ea"
+  },
+  "paths": [
+    {
+      "path": "1-signed-in",
+      "scenario": "empty-state",
+      "id": "1-signed-in/empty-state",
+      "required": true,
+      "expected": "Fresh user on Build: clear empty state; primary create paths visible (tree hint, ⋯ menu, Dashboard New)",
+      "actual": {
+        "build": {
+          "viewBuildActive": true,
+          "repName": "No repertoire open",
+          "boardLabel": "No repertoire",
+          "treeText": "No repertoire open. Play a move on the board to start one, use the ⋯ menu above, or open one from the Dashboard.",
+          "treeHasEmptyState": true,
+          "buildMenuVisible": true,
+          "dashboardNewRep": true,
+          "dashboardEmptyText": "No repertoires yet. Use Build to create one.",
+          "status": "Ready"
+        },
+        "dashboard": {
+          "newRepVisible": true,
+          "repertoiresText": "No repertoires yet. Use Build to create one."
+        }
+      },
+      "recovery": "Use Dashboard → New, Build ⋯ → New repertoire, or play first move on board",
+      "priority": "P3 — empty state OK",
+      "pass": true
+    },
+    {
+      "path": "2-signed-in",
+      "scenario": "create-repertoire",
+      "id": "2-signed-in/create-repertoire",
+      "required": true,
+      "expected": "Dashboard New → name/color modal → Build opens with rep name, board, and tree scaffold",
+      "actual": {
+        "repName": "Audit Build 1781897600531",
+        "snap": {
+          "viewBuildActive": true,
+          "repName": "Audit Build 1781897600531 · white",
+          "boardLabel": "Audit Build 1781897600531 - white",
+          "treeChildCount": 0,
+          "treeText": "Start position - play a move or pick a line belowPlay a move on the board to add it to the repertoire.",
+          "branchBarVisible": false,
+          "branchChipCount": 0,
+          "branchChipSans": [],
+          "syncText": "✓ Saved",
+          "syncClass": "build-sync is-saved",
+          "syncHidden": false,
+          "boardSquareCount": 64,
+          "status": "Created Audit Build 1781897600531"
+        },
+        "boardState": {
+          "squareCount": 64,
+          "hasPieces": true,
+          "orientation": "white-default"
+        }
+      },
+      "recovery": "Retry Dashboard → New or Build ⋯ → New repertoire",
+      "priority": "P3 — create OK",
+      "pass": true
+    },
+    {
+      "path": "3-signed-in",
+      "scenario": "first-move-branch",
+      "id": "3-signed-in/first-move-branch",
+      "required": true,
+      "expected": "Play e4, add d4 branch at root, switch via branch bar between mainline and alt",
+      "actual": {
+        "repName": "Audit Moves 1781897601986",
+        "beforeSwitch": {
+          "viewBuildActive": true,
+          "repName": "Audit Moves 1781897601986 · white",
+          "boardLabel": "Audit Moves 1781897601986 - white",
+          "treeChildCount": 0,
+          "treeText": "Start position - play a move or pick a line below1.e4▾1.d4",
+          "branchBarVisible": true,
+          "branchChipCount": 2,
+          "branchChipSans": [
+            "e4",
+            "d4"
+          ],
+          "syncText": "• Unsaved changes",
+          "syncClass": "build-sync is-dirty",
+          "syncHidden": false,
+          "boardSquareCount": 64,
+          "status": "Created Audit Moves 1781897601986"
+        },
+        "afterSwitch": {
+          "viewBuildActive": true,
+          "repName": "Audit Moves 1781897601986 · white",
+          "boardLabel": "1. d4",
+          "treeChildCount": 0,
+          "treeText": "1.d41.e4▾1.d4",
+          "branchBarVisible": false,
+          "branchChipCount": 0,
+          "branchChipSans": [],
+          "syncText": "• Unsaved changes",
+          "syncClass": "build-sync is-dirty",
+          "syncHidden": false,
+          "boardSquareCount": 64,
+          "status": "Created Audit Moves 1781897601986"
+        }
+      },
+      "recovery": "Use ← to revisit fork; click branch chips or ↑↓ then →",
+      "priority": "P3 — move + branch OK",
+      "pass": true
+    },
+    {
+      "path": "4-signed-in",
+      "scenario": "reload-persist",
+      "id": "4-signed-in/reload-persist",
+      "required": true,
+      "expected": "After save + reload, Dashboard opens repertoire with e4 still in tree",
+      "actual": {
+        "repName": "Audit Reload 1781897605392",
+        "syncBefore": {
+          "text": "• Unsaved changes",
+          "cls": "build-sync is-dirty"
+        },
+        "afterReload": {
+          "viewBuildActive": true,
+          "repName": "Audit Reload 1781897605392 · white",
+          "boardLabel": "Audit Reload 1781897605392 - white",
+          "treeChildCount": 0,
+          "treeText": "Start position - play a move or pick a line below1.e4",
+          "branchBarVisible": false,
+          "branchChipCount": 0,
+          "branchChipSans": [],
+          "syncText": "✓ Saved",
+          "syncClass": "build-sync is-saved",
+          "syncHidden": false,
+          "boardSquareCount": 64,
+          "status": "Editing Audit Reload 1781897605392"
+        }
+      },
+      "recovery": "Open repertoire from Dashboard; check sync chip if moves missing",
+      "priority": "P3 — persist OK",
+      "pass": true
+    },
+    {
+      "path": "1-signed-in",
+      "scenario": "mobile-375",
+      "id": "1-signed-in/mobile-375",
+      "required": true,
+      "expected": "375px: empty state → create via ⋯ menu → play e4; record touch targets",
+      "actual": {
+        "empty": {
+          "viewBuildActive": true,
+          "repName": "No repertoire open",
+          "boardLabel": "No repertoire",
+          "treeText": "No repertoire open. Play a move on the board to start one, use the ⋯ menu above, or open one from the Dashboard.",
+          "treeHasEmptyState": true,
+          "buildMenuVisible": true,
+          "dashboardNewRep": true,
+          "dashboardEmptyText": "No repertoires yet. Use Build to create one.",
+          "status": "Ready"
+        },
+        "repName": "Audit Mobile 1781897608206",
+        "layout": {
+          "viewportW": 375,
+          "boardWidth": 349,
+          "menuHeight": 28,
+          "menuWidth": 37
+        },
+        "afterMove": {
+          "viewBuildActive": true,
+          "repName": "Audit Mobile 1781897608206 · white",
+          "boardLabel": "1. e4",
+          "treeChildCount": 0,
+          "treeText": "1.e41.e4",
+          "branchBarVisible": false,
+          "branchChipCount": 0,
+          "branchChipSans": [],
+          "syncText": "• Unsaved changes",
+          "syncClass": "build-sync is-dirty",
+          "syncHidden": false,
+          "boardSquareCount": 64,
+          "status": "Created Audit Mobile 1781897608206"
+        }
+      },
+      "recovery": "Use Build ⋯ → New repertoire on narrow viewports",
+      "priority": "P1 — Build ⋯ menu height 28px (<44px touch target)",
+      "pass": true
+    },
+    {
+      "path": "1-signed-in",
+      "scenario": "keyboard",
+      "id": "1-signed-in/keyboard",
+      "required": true,
+      "expected": "Keyboard: ⋯ menu → modal Enter creates rep; ArrowUp/ArrowRight switches branch at fork",
+      "actual": {
+        "repName": "Audit Keys 1781897610430",
+        "afterKeys": {
+          "viewBuildActive": true,
+          "repName": "Audit Keys 1781897610430 · white",
+          "boardLabel": "1. d4",
+          "treeChildCount": 0,
+          "treeText": "1.d41.e4▾1.d4",
+          "branchBarVisible": false,
+          "branchChipCount": 0,
+          "branchChipSans": [],
+          "syncText": "• Unsaved changes",
+          "syncClass": "build-sync is-dirty",
+          "syncHidden": false,
+          "boardSquareCount": 64,
+          "status": "Created Audit Keys 1781897610430"
+        }
+      },
+      "recovery": "Modal supports Enter; branch bar mirrors ↑↓ pick and → play",
+      "priority": "P3 — keyboard partial OK (board moves need pointer)",
+      "pass": true
+    },
+    {
+      "path": "5-signed-in",
+      "scenario": "handoff-entry",
+      "id": "5-signed-in/handoff-entry",
+      "required": true,
+      "expected": "Analyze CTA → modal → Build with imported game tree (handoff entry path)",
+      "actual": {
+        "beforeHandoff": {
+          "handoffVisible": true,
+          "repertoireCta": true
+        },
+        "afterHandoff": {
+          "viewBuildActive": true,
+          "repName": "Audit Handoff 1781897613306 · white",
+          "boardLabel": "Audit Handoff 1781897613306 - white",
+          "treeChildCount": 0,
+          "treeText": "Start position - play a move or pick a line below1.e4e52.Nf3Nc63.Bb5a6",
+          "branchBarVisible": false,
+          "branchChipCount": 0,
+          "branchChipSans": [],
+          "syncText": "✓ Saved",
+          "syncClass": "build-sync is-saved",
+          "syncHidden": false,
+          "boardSquareCount": 64,
+          "status": "Repertoire “Audit Handoff 1781897613306” created — edit it in Build"
+        },
+        "repName": "Audit Handoff 1781897613306",
+        "treeHasMoves": true
+      },
+      "recovery": "Retry Create on analysis results panel",
+      "priority": "P3 — handoff entry OK",
+      "pass": true
+    },
+    {
+      "path": "3-recovery",
+      "scenario": "engine-gate",
+      "id": "3-recovery/engine-gate",
+      "required": false,
+      "expected": "No COI → Generate disabled with recovery title (inspect only)",
+      "actual": {
+        "crossOriginIsolated": false,
+        "genDisabled": true,
+        "genAriaDisabled": "true",
+        "genGated": true,
+        "genTitle": "Browser engine unavailable — open in a cross-origin-isolated browser to run engines locally",
+        "status": "Sign in to build and train your repertoires."
+      },
+      "recovery": "Use COOP/COEP-capable browser; Settings engine panel",
+      "priority": "P2 — gating OK",
+      "pass": true
+    },
+    {
+      "path": "4-recovery",
+      "scenario": "sync-failure",
+      "id": "4-recovery/sync-failure",
+      "required": false,
+      "expected": "add-moves 503 → dirty/error chip; recovers to saved after route restored",
+      "actual": {
+        "repName": "Audit Sync 1781897617421",
+        "errorSnap": {
+          "syncText": "⚠ Offline — will retry",
+          "syncClass": "build-sync is-error",
+          "syncHidden": false,
+          "status": "Created Audit Sync 1781897617421"
+        },
+        "recovered": {
+          "text": "✓ Saved",
+          "cls": "build-sync is-saved"
+        }
+      },
+      "recovery": "Wait for backoff retry or reload after connection returns",
+      "priority": "P2 — error state OK",
+      "pass": true
+    },
+    {
+      "path": "5-recovery",
+      "scenario": "dashboard-refresh",
+      "id": "5-recovery/dashboard-refresh",
+      "required": false,
+      "expected": "After create, Dashboard lists new repertoire with correct name/color",
+      "actual": {
+        "repName": "Audit Dash 1781897621992",
+        "dash": {
+          "names": [
+            "Audit Dash 1781897621992"
+          ],
+          "colors": [
+            "black"
+          ],
+          "hasRep": true,
+          "metricsRepertoires": "0"
+        }
+      },
+      "recovery": "Refresh dashboard or switch tabs if list stale",
+      "priority": "P3 — dashboard refresh OK",
+      "pass": true
+    }
+  ],
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781897598900
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781897603894
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781897606894
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781897610123
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781897611920
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+      "t": 1781897620855
+    }
+  ],
+  "clientlogRequests": [],
+  "notes": [
+    "Audit registers ~10 fresh users per run. Start API with rate limiting disabled: PREPFORGE_DISABLE_RATE_LIMIT=1 or limiter.enabled=False before uvicorn."
+  ]
+}
