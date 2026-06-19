@@ -1,11 +1,11 @@
 {
-  "runAt": "2026-06-19T19:24:36.338Z",
-  "baseUrl": "http://127.0.0.1:8000",
+  "runAt": "2026-06-19T20:02:48.690Z",
+  "baseUrl": "http://127.0.0.1:8001",
   "auth": {
     "method": "register-via-api",
     "credentialsInEvidence": false,
     "signedInVerified": true,
-    "lastUserId": "68b4ec2e91204921b777831696ca8f18"
+    "lastUserId": "e988d95e1e444748aebbc98c45e4f253"
   },
   "paths": [
     {
@@ -256,11 +256,11 @@
         },
         "afterCreate": {
           "viewBuildActive": true,
-          "buildRepName": "Audit Handoff 1781897109427 · white",
-          "status": "Repertoire “Audit Handoff 1781897109427” created — edit it in Build",
+          "buildRepName": "Audit Handoff 1781899401735 · white",
+          "status": "Repertoire “Audit Handoff 1781899401735” created — edit it in Build",
           "handoffHidden": true
         },
-        "repName": "Audit Handoff 1781897109427"
+        "repName": "Audit Handoff 1781899401735"
       },
       "recovery": "Retry Create on analysis results panel",
       "priority": "P3 — handoff OK",
@@ -286,37 +286,37 @@
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781897077182
+      "t": 1781899369519
     },
     {
       "type": "verbose",
       "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
-      "t": 1781897078709
+      "t": 1781899371055
     },
     {
       "type": "verbose",
       "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
-      "t": 1781897081048
+      "t": 1781899373396
     },
     {
       "type": "verbose",
       "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
-      "t": 1781897083386
+      "t": 1781899375737
     },
     {
       "type": "verbose",
       "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
-      "t": 1781897097075
+      "t": 1781899389422
     },
     {
       "type": "verbose",
       "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
-      "t": 1781897101134
+      "t": 1781899393489
     },
     {
       "type": "verbose",
       "text": "[DOM] Password field is not contained in a form: (More info: https://www.chromium.org/developers/design-documents/create-amazing-password-forms) %o",
-      "t": 1781897115002
+      "t": 1781899407436
     }
   ],
   "clientlogRequests": [],

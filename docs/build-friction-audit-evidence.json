@@ -1,11 +1,11 @@
 {
-  "runAt": "2026-06-19T19:41:27.255Z",
-  "baseUrl": "http://127.0.0.1:8000",
+  "runAt": "2026-06-19T20:03:28.361Z",
+  "baseUrl": "http://127.0.0.1:8001",
   "auth": {
     "method": "register-via-api",
     "credentialsInEvidence": false,
     "signedInVerified": true,
-    "lastUserId": "922a722672ed453489826f870e97df73"
+    "lastUserId": "2164ce5417f44185bef95612cff9feb7"
   },
   "paths": [
     {
@@ -42,11 +42,11 @@
       "required": true,
       "expected": "Dashboard New → name/color modal → Build opens with rep name, board, and tree scaffold",
       "actual": {
-        "repName": "Audit Build 1781898089580",
+        "repName": "Audit Build 1781899410692",
         "snap": {
           "viewBuildActive": true,
-          "repName": "Audit Build 1781898089580 · white",
-          "boardLabel": "Audit Build 1781898089580 - white",
+          "repName": "Audit Build 1781899410692 · white",
+          "boardLabel": "Audit Build 1781899410692 - white",
           "treeChildCount": 0,
           "treeText": "Start position - play a move or pick a line belowPlay a move on the board to add it to the repertoire.",
           "branchBarVisible": false,
@@ -56,7 +56,7 @@
           "syncClass": "build-sync is-saved",
           "syncHidden": false,
           "boardSquareCount": 64,
-          "status": "Created Audit Build 1781898089580"
+          "status": "Created Audit Build 1781899410692"
         },
         "boardState": {
           "squareCount": 64,
@@ -75,11 +75,11 @@
       "required": true,
       "expected": "Play e4, add d4 branch at root, switch via branch bar between mainline and alt",
       "actual": {
-        "repName": "Audit Moves 1781898091029",
+        "repName": "Audit Moves 1781899412122",
         "beforeSwitch": {
           "viewBuildActive": true,
-          "repName": "Audit Moves 1781898091029 · white",
-          "boardLabel": "Audit Moves 1781898091029 - white",
+          "repName": "Audit Moves 1781899412122 · white",
+          "boardLabel": "Audit Moves 1781899412122 - white",
           "treeChildCount": 0,
           "treeText": "Start position - play a move or pick a line below1.e4▾1.d4",
           "branchBarVisible": true,
@@ -92,11 +92,11 @@
           "syncClass": "build-sync is-dirty",
           "syncHidden": false,
           "boardSquareCount": 64,
-          "status": "Created Audit Moves 1781898091029"
+          "status": "Created Audit Moves 1781899412122"
         },
         "afterSwitch": {
           "viewBuildActive": true,
-          "repName": "Audit Moves 1781898091029 · white",
+          "repName": "Audit Moves 1781899412122 · white",
           "boardLabel": "1. d4",
           "treeChildCount": 0,
           "treeText": "1.d41.e4▾1.d4",
@@ -107,7 +107,7 @@
           "syncClass": "build-sync is-dirty",
           "syncHidden": false,
           "boardSquareCount": 64,
-          "status": "Created Audit Moves 1781898091029"
+          "status": "Created Audit Moves 1781899412122"
         }
       },
       "recovery": "Use ← to revisit fork; click branch chips or ↑↓ then →",
@@ -121,15 +121,15 @@
       "required": true,
       "expected": "After save + reload, Dashboard opens repertoire with e4 still in tree",
       "actual": {
-        "repName": "Audit Reload 1781898094452",
+        "repName": "Audit Reload 1781899415582",
         "syncBefore": {
           "text": "• Unsaved changes",
           "cls": "build-sync is-dirty"
         },
         "afterReload": {
           "viewBuildActive": true,
-          "repName": "Audit Reload 1781898094452 · white",
-          "boardLabel": "Audit Reload 1781898094452 - white",
+          "repName": "Audit Reload 1781899415582 · white",
+          "boardLabel": "Audit Reload 1781899415582 - white",
           "treeChildCount": 0,
           "treeText": "Start position - play a move or pick a line below1.e4",
           "branchBarVisible": false,
@@ -139,7 +139,7 @@
           "syncClass": "build-sync is-saved",
           "syncHidden": false,
           "boardSquareCount": 64,
-          "status": "Editing Audit Reload 1781898094452"
+          "status": "Editing Audit Reload 1781899415582"
         }
       },
       "recovery": "Open repertoire from Dashboard; check sync chip if moves missing",
@@ -164,7 +164,7 @@
           "dashboardEmptyText": "No repertoires yet. Use Build to create one.",
           "status": "Ready"
         },
-        "repName": "Audit Mobile 1781898097240",
+        "repName": "Audit Mobile 1781899418381",
         "layout": {
           "viewportW": 375,
           "boardWidth": 349,
@@ -173,7 +173,7 @@
         },
         "afterMove": {
           "viewBuildActive": true,
-          "repName": "Audit Mobile 1781898097240 · white",
+          "repName": "Audit Mobile 1781899418381 · white",
           "boardLabel": "1. e4",
           "treeChildCount": 0,
           "treeText": "1.e41.e4",
@@ -184,7 +184,7 @@
           "syncClass": "build-sync is-dirty",
           "syncHidden": false,
           "boardSquareCount": 64,
-          "status": "Created Audit Mobile 1781898097240"
+          "status": "Created Audit Mobile 1781899418381"
         }
       },
       "recovery": "Use Build ⋯ → New repertoire on narrow viewports",
@@ -198,10 +198,10 @@
       "required": true,
       "expected": "Keyboard: ⋯ menu → modal Enter creates rep; ArrowUp/ArrowRight switches branch at fork",
       "actual": {
-        "repName": "Audit Keys 1781898099448",
+        "repName": "Audit Keys 1781899420636",
         "afterKeys": {
           "viewBuildActive": true,
-          "repName": "Audit Keys 1781898099448 · white",
+          "repName": "Audit Keys 1781899420636 · white",
           "boardLabel": "1. d4",
           "treeChildCount": 0,
           "treeText": "1.d41.e4▾1.d4",
@@ -212,7 +212,7 @@
           "syncClass": "build-sync is-dirty",
           "syncHidden": false,
           "boardSquareCount": 64,
-          "status": "Created Audit Keys 1781898099448"
+          "status": "Created Audit Keys 1781899420636"
         }
       },
       "recovery": "Modal supports Enter; branch bar mirrors ↑↓ pick and → play",
@@ -232,8 +232,8 @@
         },
         "afterHandoff": {
           "viewBuildActive": true,
-          "repName": "Audit Handoff 1781898102311 · white",
-          "boardLabel": "Audit Handoff 1781898102311 - white",
+          "repName": "Audit Handoff 1781899423484 · white",
+          "boardLabel": "Audit Handoff 1781899423484 - white",
           "treeChildCount": 0,
           "treeText": "Start position - play a move or pick a line below1.e4e52.Nf3Nc63.Bb5a6",
           "branchBarVisible": false,
@@ -243,9 +243,9 @@
           "syncClass": "build-sync is-saved",
           "syncHidden": false,
           "boardSquareCount": 64,
-          "status": "Repertoire “Audit Handoff 1781898102311” created — edit it in Build"
+          "status": "Repertoire “Audit Handoff 1781899423484” created — edit it in Build"
         },
-        "repName": "Audit Handoff 1781898102311",
+        "repName": "Audit Handoff 1781899423484",
         "treeHasMoves": true
       },
       "recovery": "Retry Create on analysis results panel",
@@ -277,12 +277,12 @@
       "required": false,
       "expected": "add-moves 503 → dirty/error chip; recovers to saved after route restored",
       "actual": {
-        "repName": "Audit Sync 1781898106442",
+        "repName": "Audit Sync 1781899427724",
         "errorSnap": {
           "syncText": "⚠ Offline — will retry",
           "syncClass": "build-sync is-error",
           "syncHidden": false,
-          "status": "Created Audit Sync 1781898106442"
+          "status": "Created Audit Sync 1781899427724"
         },
         "recovered": {
           "text": "✓ Saved",
@@ -300,10 +300,10 @@
       "required": false,
       "expected": "After create, Dashboard lists new repertoire with correct name/color",
       "actual": {
-        "repName": "Audit Dash 1781898111041",
+        "repName": "Audit Dash 1781899432328",
         "dash": {
           "names": [
-            "Audit Dash 1781898111041"
+            "Audit Dash 1781899432328"
           ],
           "colors": [
             "black"
@@ -321,32 +321,32 @@
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781898087910
+      "t": 1781899409056
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781898092998
+      "t": 1781899414081
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781898095908
+      "t": 1781899417098
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781898099167
+      "t": 1781899420355
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "t": 1781898100921
+      "t": 1781899422101
     },
     {
       "type": "error",
       "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
-      "t": 1781898109933
+      "t": 1781899431202
     }
   ],
   "clientlogRequests": [],

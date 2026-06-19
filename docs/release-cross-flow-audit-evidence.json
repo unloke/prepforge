@@ -1,0 +1,192 @@
+{
+  "runAt": "2026-06-19T20:05:09.860Z",
+  "baseUrl": "http://127.0.0.1:8001",
+  "database": "sqlite:///release.sqlite3",
+  "auth": {
+    "method": "single-register-journey",
+    "credentialsInEvidence": false,
+    "signedInVerified": true,
+    "userId": "8230fdc7b6d346e7a5149d17a1d5147c"
+  },
+  "steps": [
+    {
+      "step": "signed-in",
+      "id": "release/signed-in",
+      "required": true,
+      "expected": "Single fresh account registered and session active",
+      "actual": {
+        "email": "release-1781899510304@…",
+        "userId": "8230fdc7b6d346e7a5149d17a1d5147c"
+      },
+      "pass": true,
+      "priority": "P3 — auth OK"
+    },
+    {
+      "step": "analyze-results",
+      "id": "release/analyze-results",
+      "required": true,
+      "expected": "Valid PGN → move list + classification summary; no client errors",
+      "actual": {
+        "analyzeSnap": {
+          "resultsVisible": true,
+          "moveListChildCount": 1,
+          "summaryHasBars": true,
+          "status": "Analysis ready: 6 plies",
+          "handoffVisible": true,
+          "repertoireCta": true
+        },
+        "consoleErrorsSoFar": 0,
+        "clientlogBeacons": 0
+      },
+      "pass": true,
+      "priority": "P3 — analyze OK"
+    },
+    {
+      "step": "handoff-create",
+      "id": "release/handoff-create",
+      "required": true,
+      "expected": "Turn this game into a repertoire → name/color modal → Build opens",
+      "actual": {
+        "repName": "Release Journey 1781899510304",
+        "afterHandoff": {
+          "viewBuildActive": true,
+          "repName": "Release Journey 1781899510304 · white",
+          "status": "Repertoire “Release Journey 1781899510304” created — edit it in Build"
+        }
+      },
+      "pass": true,
+      "priority": "P3 — handoff OK"
+    },
+    {
+      "step": "build-tree",
+      "id": "release/build-tree",
+      "required": true,
+      "expected": "Build shows imported PGN tree; repertoire persisted server-side",
+      "actual": {
+        "buildSnap": {
+          "treeText": "Start position - play a move or pick a line below1.e4e52.Nf3Nc63.Bb5a6",
+          "repName": "Release Journey 1781899510304 · white",
+          "boardSquares": 64
+        },
+        "hasRepServer": true,
+        "repName": "Release Journey 1781899510304"
+      },
+      "pass": true,
+      "priority": "P3 — build tree OK"
+    },
+    {
+      "step": "train-start",
+      "id": "release/train-start",
+      "required": true,
+      "expected": "Train: repertoire in Line picker; Smart queue starts first prompt",
+      "actual": {
+        "picker": {
+          "hidden": false,
+          "options": [
+            "Demo repertoire",
+            "Release Journey 1781899510304 (white)"
+          ],
+          "hasRep": true
+        },
+        "cards": 3,
+        "trainStart": {
+          "bannerState": "teach",
+          "bannerTitle": "New move: e4",
+          "progressHidden": false,
+          "syncClass": "build-sync is-saved"
+        }
+      },
+      "pass": true,
+      "priority": "P3 — train start OK"
+    },
+    {
+      "step": "train-correct",
+      "id": "release/train-correct",
+      "required": true,
+      "expected": "First expected move grades correct; stats/progress update",
+      "actual": {
+        "expectedUci": "e2e4",
+        "expectedSan": "e4",
+        "beforeCorrect": {
+          "correct": "0",
+          "mistakes": "0"
+        },
+        "afterCorrect": {
+          "correct": "1",
+          "mistakes": "0",
+          "bannerState": "teach",
+          "bannerTitle": "New move: Nf3",
+          "bannerSub": "Develops the knight to f3."
+        }
+      },
+      "pass": true,
+      "priority": "P3 — train correct OK"
+    },
+    {
+      "step": "reload-persist",
+      "id": "release/reload-persist",
+      "required": true,
+      "expected": "Reload: repertoire on Dashboard; Train restarts; fresh session stats; no stuck error sync",
+      "actual": {
+        "repName": "Release Journey 1781899510304",
+        "dashBeforeTrain": {
+          "names": [
+            "Release Journey 1781899510304"
+          ],
+          "hasRep": true
+        },
+        "correctBeforeReload": "1",
+        "afterReload": {
+          "correct": "0",
+          "trainSync": "build-sync is-saved",
+          "trainSyncText": "✓ Saved",
+          "buildSync": "build-sync",
+          "bannerState": "runin"
+        }
+      },
+      "pass": true,
+      "priority": "P3 — reload OK"
+    },
+    {
+      "step": "dashboard-verify",
+      "id": "release/dashboard-verify",
+      "required": true,
+      "expected": "Dashboard lists repertoire; no console errors or clientlog beacons across tabs",
+      "actual": {
+        "dashFinal": {
+          "names": [
+            "Release Journey 1781899510304"
+          ],
+          "hasRep": true
+        },
+        "consoleErrorCount": 0,
+        "consoleErrors": [],
+        "clientlogBeacons": 0
+      },
+      "pass": true,
+      "priority": "P3 — dashboard + observability OK"
+    }
+  ],
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781899510399
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781899514574
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "t": 1781899524570
+    }
+  ],
+  "clientlogRequests": [],
+  "notes": [
+    "One browser context, one fresh user for the full Analyze → Build → Train journey.",
+    "Use sqlite:///release.sqlite3 for isolated release verification."
+  ]
+}
