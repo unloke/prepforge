@@ -147,19 +147,24 @@ function attackedTargets(chess, byColor, victimColor) {
       if (!attackers.length) continue;
       const defenders = piece.type === "k" ? [] : chess.attackers(piece.square, victimColor);
       const worth = PIECE_VALUE[piece.type] || 0;
-      const cheapestAttacker = Math.min(
-        ...attackers.map((sq) => PIECE_VALUE[chess.get(sq).type] || 0)
-      );
+      // The cheapest NON-KING attacker. A king (worth 0) is excluded here: it can never win
+      // a DEFENDED piece (the capture would be moving into check, an illegal move), so a king
+      // bearing on a guarded piece must not read as "eyes the bishop" via the cheap-attacker
+      // fallback — that produced the fake "Kg4 leans on the defended bishop on h4".
+      const nonKingAttackers = attackers
+        .map((sq) => PIECE_VALUE[chess.get(sq).type] || 0)
+        .filter((v) => v > 0);
+      const cheapestNonKing = nonKingAttackers.length ? Math.min(...nonKingAttackers) : Infinity;
       // The king is always a "target" (a check); for everything else SEE decides whether
       // grabbing the piece actually wins material, so a solidly-defended piece no longer
       // reads as "eyes the knight" / a fake fork partner. Fall back to the cheap heuristic
-      // only when SEE is unevaluable.
+      // only when SEE is unevaluable — and then a king attacker only wins an undefended piece.
       if (piece.type === "k") {
         out.push({ square: piece.square, type: piece.type, worth });
         continue;
       }
       const see = seeCapture(chess, piece.square, byColor);
-      const winnable = see !== null ? see > 0 : !defenders.length || cheapestAttacker < worth;
+      const winnable = see !== null ? see > 0 : !defenders.length || cheapestNonKing < worth;
       if (winnable) {
         out.push({ square: piece.square, type: piece.type, worth });
       }

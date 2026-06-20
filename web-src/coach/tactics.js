@@ -124,8 +124,18 @@ function detectPinsSkewers(chess, moverColor) {
           front: { square: front.square, type: front.piece.type },
           back: { square: back.square, type: back.piece.type },
         };
-        if (back.piece.type === "k" || v2 > v1) {
-          pins.push({ ...common, absolute: back.piece.type === "k" });
+        if (back.piece.type === "k") {
+          pins.push({ ...common, absolute: true });
+        } else if (v2 > v1) {
+          // A RELATIVE pin (to a piece, not the king) is only worth announcing when the pinned
+          // piece can actually be piled on and won. A PAWN defending it makes that hopeless —
+          // every attacker is met by a cheap pawn recapture, so the pin "bites" nothing. This
+          // is the user's "Qh5 pins the knight" flag: the knight on f3 was shielded by the g2
+          // pawn, dead safe. A pin to a piece guarded only by other pieces still reads.
+          const pawnShielded = chess
+            .attackers(front.square, enemy)
+            .some((sq) => (chess.get(sq) || {}).type === "p");
+          if (!pawnShielded) pins.push({ ...common, absolute: false });
         } else if (v1 > v2 && v2 >= 3) {
           skewers.push(common);
         }

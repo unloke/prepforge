@@ -52,9 +52,13 @@ function captureTargets(chess, byColor) {
       if (!attackers.length) continue;
       const defenders = chess.attackers(piece.square, victim);
       const worth = PIECE_VALUE[piece.type] || 0;
-      const cheapestAttacker = Math.min(
-        ...attackers.map((sq) => PIECE_VALUE[chess.get(sq).type] || 0)
-      );
+      // The cheapest NON-KING attacker (king worth 0 is dropped): a king can never win a
+      // DEFENDED piece — that capture moves into check — so it must not flag a guarded piece
+      // as winnable through the fallback ("Kg4 eyes the defended bishop on h4").
+      const nonKingAttackers = attackers
+        .map((sq) => PIECE_VALUE[chess.get(sq).type] || 0)
+        .filter((v) => v > 0);
+      const cheapestNonKing = nonKingAttackers.length ? Math.min(...nonKingAttackers) : Infinity;
       const hanging = !defenders.length;
       // SEE is authoritative: only call a piece winnable if actually GRABBING it nets
       // material once the recaptures resolve. The old "cheapest attacker is cheaper than
@@ -62,7 +66,7 @@ function captureTargets(chess, byColor) {
       // knight that's solidly guarded). Fall back to that heuristic only when SEE can't be
       // evaluated (illegal turn flip etc.), so a real threat is never silently dropped.
       const see = seeCapture(chess, piece.square, byColor);
-      const winnable = see !== null ? see > 0 : hanging || cheapestAttacker < worth;
+      const winnable = see !== null ? see > 0 : hanging || cheapestNonKing < worth;
       if (winnable) {
         out.push({ square: piece.square, type: piece.type, worth, hanging });
       }

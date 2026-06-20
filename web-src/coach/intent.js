@@ -165,6 +165,8 @@ function detectOpenLine(before, after, from, to, moverColor) {
     const r = fileRank(sq)[1];
     return moverColor === "w" ? r >= 4 : r <= 3; // ranks 5-8 for White, 1-4 for Black
   };
+  const movedPiece = after.get(to);
+  const movedIsPawn = movedPiece && movedPiece.type === "p";
   let best = null; // the cheapest slider whose line the move freed
   for (const row of after.board()) {
     for (const slider of row) {
@@ -179,11 +181,19 @@ function detectOpenLine(before, after, from, to, moverColor) {
         // Was this ray blocked by the piece that just moved?
         const b = firstAlong(before, slider.square, df, dr);
         if (!b.piece || b.square !== from || b.piece.color !== moverColor) continue;
-        // After the move, the freed ray must run somewhere worth mentioning: onto an enemy
-        // piece, or at least into the enemy half of the board.
+        // After the move, the freed ray must run somewhere worth mentioning.
         const a = firstAlong(after, slider.square, df, dr);
+        // Still blocked by one of our OWN pieces — the line isn't open. This is the pawn that
+        // advanced one square up its own file and STILL sits in front of the rook ("c5 hands
+        // the rook the open c-file" when the c5 pawn re-blocks it).
+        if (a.piece && a.piece.color === moverColor) continue;
         const hitsEnemy = a.piece && a.piece.color === other(moverColor);
-        const reaches = hitsEnemy || a.path.some(enemyHalf);
+        // A pawn's job includes prying lines open, so a freed ray running into the enemy half
+        // is worth naming even if no enemy piece sits on it yet. A NON-pawn move that merely
+        // vacates a slider's path (a rook stepping off the diagonal) only counts when the ray
+        // actually bears on an enemy piece — otherwise we credit "frees the bishop's diagonal
+        // to bite" when there's nothing on it (the Rc2 misread, an empty long diagonal).
+        const reaches = hitsEnemy || (movedIsPawn && a.path.some(enemyHalf));
         if (!reaches) continue;
         const diagonal = df !== 0 && dr !== 0;
         const line = diagonal
@@ -246,7 +256,12 @@ function detectTrade(after, from, to, san, moverColor) {
 
 // 5) KING ATTACK — the move advances on a castled enemy king: a wing pawn storming forward,
 // or a piece lifting into the king's quadrant. Strict, because it is the easiest to overcall.
-function detectKingAttack(after, from, to, moverColor) {
+function detectKingAttack(after, from, to, moverColor, phase) {
+  // In a genuine piece-endgame the enemy king is an active piece, not a castled target to
+  // storm. "The pawn storm rolls against the king" misreads a routine endgame push (the
+  // user's ...g6 that simply gives its own king luft). A pure king-and-pawn race still reads
+  // as a storm, so only bail when real pieces remain on the board.
+  if (phase === "endgame" && hasNonPawnPieces(after)) return null;
   const opp = other(moverColor);
   const kSq = findKing(after, opp);
   if (!kSq) return null;
@@ -279,6 +294,17 @@ function detectKingAttack(after, from, to, moverColor) {
     return { kind: "kingAttack", via: "piece" };
   }
   return null;
+}
+
+// Any non-king, non-pawn piece left on the board? (Tells a real piece-endgame apart from a
+// bare king-and-pawn race, where a wing pawn advance can still read as a storm.)
+function hasNonPawnPieces(chess) {
+  for (const row of chess.board()) {
+    for (const p of row) {
+      if (p && p.type !== "k" && p.type !== "p") return true;
+    }
+  }
+  return false;
 }
 
 // Does the piece on `sq` attack any square immediately around `kSq` (the 8-square ring)?
@@ -370,8 +396,14 @@ function detectDevelop(after, from, to, san, moverColor, phase) {
   // is, if anything, more important in the endgame. (The endgame guard below only excludes
   // minor-piece "development", which reads oddly once the opening is long gone.)
   if (moved.type === "r") {
+    // The rook must actually ARRIVE on the file — either lifting off the back rank into play,
+    // or switching onto the open file from another. A rook that was already on this file and
+    // just slides along it hasn't "seized" anything ("Ra7 swings onto the open a-file" when it
+    // sat on a4 the whole time — the user's flag); that's repositioning, not activation.
+    const back = BACK_RANK[moverColor];
+    const cameIntoPlay = from[1] === back || from[0] !== to[0];
     const open = fileOpenness(after, to[0], moverColor);
-    if (open && safe()) return { kind: "develop", piece: "rook", file: to[0], openFile: open };
+    if (cameIntoPlay && open && safe()) return { kind: "develop", piece: "rook", file: to[0], openFile: open };
     return null;
   }
   if (phase === "endgame") return null;
@@ -438,8 +470,14 @@ function detectSpace(after, from, to, san, moverColor) {
     const nf = f + df;
     const nr = r + fwd;
     if (nf < 0 || nf > 7 || nr < 0 || nr > 7) continue;
-    squares.push(squareOf(nf, nr));
+    const sq = squareOf(nf, nr);
+    // Only EMPTY squares are space being "taken away" from the enemy. A forward square that
+    // holds an enemy piece is contact — "f5 takes the g6 square" reads wrong when a black pawn
+    // sits on g6 (the move attacks it; let the pawn-pressure read carry that, not "space").
+    if (after.get(sq)) continue;
+    squares.push(sq);
   }
+  if (!squares.length) return null; // the push only made contact — not a clean space grab
   return { kind: "space", squares };
 }
 
@@ -532,7 +570,7 @@ export function detectIntent(fenBefore, fenAfter, uci, san, moverColor) {
     detectSpace(after, from, to, san, moverColor) ||
     detectPressure(before, after, from, to, san, moverColor) ||
     detectTrade(after, from, to, san, moverColor) ||
-    detectKingAttack(after, from, to, moverColor) ||
+    detectKingAttack(after, from, to, moverColor, phase) ||
     detectDevelop(after, from, to, san, moverColor, phase) ||
     null
   );

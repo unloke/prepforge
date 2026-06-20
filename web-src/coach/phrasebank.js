@@ -998,7 +998,7 @@ export const INTENT_OPEN_LINE = [
   " It frees {line} for the {piece} to bite.",
   " The {piece} springs to life along {line}.",
   " That lets the {piece} breathe down {line}.",
-  " It hands the {piece} an open {line}.",
+  " Now {line} is open for the {piece}.",
   " Now {line} is the {piece}'s highway.",
 ];
 

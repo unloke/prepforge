@@ -70,7 +70,6 @@ import {
   POINT_TRADE,
   POINT_TRADE_AHEAD,
   POINT_TARGET,
-  POINT_ENDGAME,
   STAND_TAIL,
   GOOD_SOLID,
   GOOD_HOLD,
@@ -448,56 +447,81 @@ function oppThreatClause(f, opp) {
 // A leading-space sentence, or "" when the move has no readable strategic point. Slotted
 // below the concrete tactic/material points, above the generic "sound move" filler.
 // ---------------------------------------------------------------------------
-function intentPoint(f, me, opp) {
-  const intent = detectIntent(f.fenBefore, f.fenAfter, f.uci, f.san, moverLetter(f));
+
+// Core formatter: given a pre-computed intent object, return the phrase. `prefix` lets the
+// caller vary the choose() key so played-move and best-move intent can draw from the same
+// bank without always landing on the same template.
+function intentPointFromObj(intent, f, me, opp, prefix = "") {
   if (!intent) return "";
+  const k = (s) => `${prefix}${s}`;
   switch (intent.kind) {
     case "defend": {
       const bank = intent.moved ? INTENT_DEFEND_AWAY : INTENT_DEFEND;
-      return choose(f, "intentDefend", bank, { piece: intent.piece, sq: intent.sq });
+      return choose(f, k("intentDefend"), bank, { piece: intent.piece, sq: intent.sq });
     }
     case "openLine":
-      return choose(f, "intentOpenLine", INTENT_OPEN_LINE, { piece: intent.piece, line: intent.line });
+      return choose(f, k("intentOpenLine"), INTENT_OPEN_LINE, { piece: intent.piece, line: intent.line });
     case "prophylaxis":
-      return choose(f, "intentProphylaxis", INTENT_PROPHYLAXIS, { stopped: intent.stopped });
+      return choose(f, k("intentProphylaxis"), INTENT_PROPHYLAXIS, { stopped: intent.stopped });
     case "trade": {
       const bank = intent.ahead ? INTENT_TRADE_AHEAD : INTENT_TRADE;
-      return choose(f, "intentTrade", bank, { piece: intent.piece, me });
+      return choose(f, k("intentTrade"), bank, { piece: intent.piece, me });
     }
     case "kingAttack": {
       const bank = intent.via === "pawn storm" ? INTENT_KING_STORM : INTENT_KING_PIECE;
-      return choose(f, "intentKing", bank, { me, opp });
+      return choose(f, k("intentKing"), bank, { me, opp });
     }
     case "avoidTrade":
-      return choose(f, "intentAvoid", INTENT_AVOID_TRADE, { piece: intent.piece });
+      return choose(f, k("intentAvoid"), INTENT_AVOID_TRADE, { piece: intent.piece });
     case "fianchetto":
-      return choose(f, "intentFian", INTENT_FIANCHETTO, { sq: intent.sq });
+      return choose(f, k("intentFian"), INTENT_FIANCHETTO, { sq: intent.sq });
     case "fianchettoPrep":
-      return choose(f, "intentFianPrep", INTENT_FIANCHETTO_PREP, {});
+      return choose(f, k("intentFianPrep"), INTENT_FIANCHETTO_PREP, {});
     case "center": {
       const bank = intent.knight ? INTENT_CENTER_KNIGHT : INTENT_CENTER;
-      return choose(f, "intentCenter", bank, { piece: intent.piece, sq: intent.sq });
+      return choose(f, k("intentCenter"), bank, { piece: intent.piece, sq: intent.sq });
     }
     case "centerStrike":
-      return choose(f, "intentStrike", INTENT_CENTER_STRIKE, { sq: intent.sq });
+      return choose(f, k("intentStrike"), INTENT_CENTER_STRIKE, { sq: intent.sq });
     case "develop":
       return intent.file
-        ? choose(f, "intentDevRook", INTENT_DEVELOP_ROOK, { file: intent.file, openFile: intent.openFile })
-        : choose(f, "intentDevelop", INTENT_DEVELOP, { piece: intent.piece });
+        ? choose(f, k("intentDevRook"), INTENT_DEVELOP_ROOK, { file: intent.file, openFile: intent.openFile })
+        : choose(f, k("intentDevelop"), INTENT_DEVELOP, { piece: intent.piece });
     case "space": {
       const sqs = intent.squares || [];
       const squares =
         sqs.length >= 2 ? `the ${sqs[0]} and ${sqs[1]} squares` : sqs.length === 1 ? `the ${sqs[0]} square` : "key squares";
-      return choose(f, "intentSpace", INTENT_SPACE, { squares, opp });
+      return choose(f, k("intentSpace"), INTENT_SPACE, { squares, opp });
     }
     case "pressure": {
       const bank = intent.reinforce ? INTENT_PRESSURE_REINFORCE : INTENT_PRESSURE;
-      return choose(f, "intentPressure", bank, { piece: intent.piece, sq: intent.sq, file: intent.file });
+      return choose(f, k("intentPressure"), bank, { piece: intent.piece, sq: intent.sq, file: intent.file });
     }
     case "support":
-      return choose(f, "intentSupport", INTENT_SUPPORT, { sq: intent.sq });
+      return choose(f, k("intentSupport"), INTENT_SUPPORT, { sq: intent.sq });
     default:
       return "";
+  }
+}
+
+function intentPoint(f, me, opp) {
+  const intent = detectIntent(f.fenBefore, f.fenAfter, f.uci, f.san, moverLetter(f));
+  return intentPointFromObj(intent, f, me, opp);
+}
+
+// The strategic idea behind the ENGINE'S recommended move — what makes it better.
+// Plays bestUci on fenBefore with chess.js (no engine call), runs detectIntent, and
+// returns an intent sentence like " It develops the knight to an active square." or "".
+// Falls back to "" for pure repositioning moves detectIntent can't classify.
+function bestMoveIdea(f, me, opp) {
+  if (!f.bestSan || !f.bestUci || f.isBest) return "";
+  try {
+    const c = new Chess(f.fenBefore);
+    c.move({ from: f.bestUci.slice(0, 2), to: f.bestUci.slice(2, 4), promotion: f.bestUci[4] || undefined });
+    const intent = detectIntent(f.fenBefore, c.fen(), f.bestUci, f.bestSan, moverLetter(f));
+    return intentPointFromObj(intent, f, me, opp, "best_");
+  } catch (_) {
+    return "";
   }
 }
 
@@ -690,9 +714,10 @@ function buildProse(f) {
     const consequence = quiet ? oppThreatClause(f, opp) : "";
 
     // Only name a "better move" when we haven't already named one inside `why`.
+    const betterIdea = !namedBetterAlready && f.bestSan && !f.isBest ? bestMoveIdea(f, me, opp) : "";
     const better =
       !namedBetterAlready && f.bestSan && !f.isBest
-        ? ` ${choose(f, "betterMove", BETTER_MOVE, { bestSan: f.bestSan, merit: betterMerit(f) })}`
+        ? ` ${choose(f, "betterMove", BETTER_MOVE, { bestSan: f.bestSan, merit: betterMerit(f) })}${betterIdea}`
         : "";
     return `${lead} ${why}${consequence}${better}${intuitionNote(f)}`;
   }
@@ -709,9 +734,10 @@ function buildProse(f) {
     // reply with no point — "after Kg7," adds nothing.
     const replyTail = ideaTail(moveClauses(f.fenAfter, f.replyUci, f.replySan));
     const punish = f.replySan && replyTail ? choose(f, "inaccPunish", INACC_PUNISH, { opp, reply: f.replySan, tail: replyTail }) : "";
+    const cleanerIdea = f.bestSan && !f.isBest ? bestMoveIdea(f, me, opp) : "";
     const cleaner =
       f.bestSan && !f.isBest
-        ? choose(f, "inaccCleaner", INACC_CLEANER, { bestSan: f.bestSan, payoff: betterPayoff(f) })
+        ? choose(f, "inaccCleaner", INACC_CLEANER, { bestSan: f.bestSan, payoff: betterPayoff(f) }) + cleanerIdea
         : "";
     // Only call it a "flip" when the move actually tipped the balance — the side was at least
     // even before and is worse after. Restating "you're worse" on a position that was already
@@ -783,11 +809,6 @@ function buildProse(f) {
   } else if (pawnHits.length >= 2) {
     // The move hits two loose enemy pawns at once — a pawn-level double attack.
     point = choose(f, "pointPawnDouble", POINT_PAWN_DOUBLE, { sq1: pawnHits[0], sq2: pawnHits[1] });
-  } else if (f.phase === "endgame" && up >= 1 && f.winAfterMover >= 60 && materialPhrase(up)) {
-    // "The extra pawn should tell in the endgame" / "decides endings" only when the side is
-    // actually better. In a dead-drawn rook ending the mover is a pawn up on the board yet
-    // the result is 50/50 — calling that pawn "significant" or "decisive" is just wrong.
-    point = choose(f, "pointEndgame", POINT_ENDGAME, { phrase: materialPhrase(up) });
   } else if (pawnHits.length === 1) {
     // A quiet move that leans on a single loose enemy pawn ("puts the c4 pawn under
     // pressure") — concrete, and what the generic "solid move" line was glossing over.

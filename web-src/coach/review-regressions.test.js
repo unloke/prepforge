@@ -7,6 +7,7 @@ import { Chess } from "chess.js";
 import { detectIntent } from "./intent.js";
 import { describeThreat, forkWinsMaterial } from "./tactics.js";
 import { describeMove } from "../explain.js";
+import { buildCommentary } from "./commentary.js";
 
 function play(fen, san) {
   const c = new Chess(fen);
@@ -125,5 +126,121 @@ describe("review regressions — round 3 (intent gaps + over-claims)", () => {
   it("Nxe5 doesn't 'eye' a follow-up — it's en prise and gets recaptured", () => {
     const d = describeMove("rr4k1/3nppbp/bq1p2p1/2pPn3/4P3/2N2NPP/PPQ2PB1/R1B1R1K1 w - - 1 15", "f3e5", "Nxe5");
     expect(d).not.toMatch(/eyes/i);
+  });
+});
+
+describe("review regressions — round 4 (false pressure / mislabelled moves)", () => {
+  it("a king bearing on a DEFENDED bishop doesn't 'eye' it (king can't win it)", () => {
+    // Kf3-g4 attacks the h4 bishop, but the g5 pawn defends it — Kxh4 is illegal. The old
+    // cheap-attacker fallback (king worth 0) flagged it as winnable: the fake "eyes the h4 bishop".
+    const d = describeMove("8/4k3/1p3p2/p4Pp1/P6b/5K1P/4B3/8 w - - 5 48", "f3g4", "Kg4");
+    expect(d).not.toMatch(/eyes|bishop on h4/i);
+  });
+
+  it("a pawn advancing in front of its own rook doesn't 'open the file' (it re-blocks)", () => {
+    // c4-c5 with a white rook on c3: the pawn still sits on the c-file, blocking the rook.
+    const i = intentOf("6k1/5ppp/4p3/8/r1P5/2R1PP2/5P1P/6K1 w - - 0 31", "c5", "w");
+    expect(i === null || i.kind !== "openLine").toBe(true);
+  });
+
+  it("a rook stepping off a slider's diagonal doesn't 'free' an empty diagonal", () => {
+    // Rc6-c2 vacates Bf3's long diagonal, but it runs into empty space — nothing to bite.
+    const i = intentOf("5rk1/p4p1p/1pR3p1/4b3/8/5B2/P4PKP/8 w - - 0 30", "Rc2", "w");
+    expect(i === null || i.kind !== "openLine").toBe(true);
+  });
+
+  it("a rook already on an open file that slides along it isn't 'seizing' it", () => {
+    // Ra4-a7: the rook was on the open a-file the whole time — repositioning, not development.
+    const i = intentOf("6k1/5ppp/4p3/2P5/r7/2R1PP2/5P1P/6K1 b - - 0 31", "Ra7", "b");
+    expect(i === null || i.kind !== "develop").toBe(true);
+  });
+
+  it("a central pawn push doesn't claim a square an enemy pawn occupies", () => {
+    // f4-f5 controls e6 (empty) and attacks g6 (a black pawn). Space is only the empty square.
+    const i = intentOf("8/6k1/1p3pp1/p1b4p/P3KP2/1B5P/8/8 w - - 2 43", "f5", "w");
+    if (i && i.kind === "space") {
+      expect(i.squares).not.toContain("g6");
+      expect(i.squares).toContain("e6");
+    }
+  });
+
+  it("a wing pawn push in a piece-endgame isn't a 'pawn storm' on the king", () => {
+    // ...g7-g6 in a rook-and-minor endgame just gives the king luft — no castled king to storm.
+    const i = intentOf("5rk1/5ppp/4p3/3n4/PpB5/1PrRPP2/5P1P/4R1K1 b - - 4 26", "g6", "b");
+    expect(i === null || i.kind !== "kingAttack").toBe(true);
+  });
+
+  it("a knight pinned to the queen but shielded by a pawn isn't a real pin", () => {
+    // ...Qh5 lines up on Nf3/Qe2, but the g2 pawn guards f3 — the pin bites nothing.
+    const { after, uci } = play("2r2rk1/1b3ppp/p3pn2/1p1q4/8/1P1BPN2/P3QPPP/3RR1K1 b - - 6 20", "Qh5");
+    const m = describeThreat(after, uci, "b");
+    expect(m === null || m.kind !== "pin").toBe(true);
+  });
+});
+
+// Minimal feature vector for buildCommentary tests (only fields the commentary path reads).
+function makeFeatures(overrides = {}) {
+  return {
+    classification: { code: "inaccuracy", label: "Inaccuracy", glyph: "?!", tone: "warn" },
+    mover: "black",
+    san: "a6",
+    uci: "a7a6",
+    fenBefore: "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1",
+    fenAfter: "rnbqkbnr/1ppppppp/p7/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2",
+    winBeforeMover: 50, winAfterMover: 45,
+    winDelta: 5,
+    bestSan: "Nf6", bestUci: "g8f6", isBest: false,
+    altSan: null, altWinMover: null,
+    replySan: null, replyUci: null,
+    intuition: null, maia: null,
+    phase: "opening",
+    materialBefore: 0, materialAfter: 0, materialAfterSettled: 0, materialDiffAfter: null,
+    hangingOwnTop: null, looseAfter: [], looseBefore: [], hangingOwn: [],
+    missedMate: false, missedWin: false, hadMateBefore: false, hasMateAfter: false,
+    inMateNet: false, wasInCheck: false, isCheck: false, forced: false, isForced: false, onlyMove: false,
+    mateBefore: null, mateAfter: null,
+    bestLine: null, altLine: null, playedLine: null,
+    evalBeforeCp: 0, evalAfterCp: -15,
+    brilliantCandidate: false,
+    ply: 2, moveNumber: 1,
+    ...overrides,
+  };
+}
+
+describe("review regressions — best-move idea in prose", () => {
+  it("inaccuracy prose adds developmental intent for best move Nf6", () => {
+    const { prose } = buildCommentary(makeFeatures());
+    // Nf6 as best → detectIntent → develop/knight → an intent phrase appended after INACC_CLEANER
+    // The phrase may say "developing move", "knight joining", "brings the knight" etc.
+    expect(prose).toMatch(/Nf6/);
+    expect(prose).toMatch(/develop|knight.*join|join.*action|brings.*knight|knight.*play/i);
+  });
+
+  it("inaccuracy prose adds intent for best move d5 (opens line or grabs space)", () => {
+    // Black played a6 (inaccuracy), best was d5
+    const c = new Chess("rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1");
+    c.move("a6");
+    const { prose } = buildCommentary(makeFeatures({
+      san: "a6", uci: "a7a6",
+      fenBefore: "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1",
+      fenAfter: c.fen(),
+      bestSan: "d5", bestUci: "d7d5",
+    }));
+    // d5 fires either openLine/bishop or space — either way the intent is named
+    expect(prose).toMatch(/d5/);
+    expect(prose).toMatch(/bishop|diagonal|space|squares|clamp|breathe/i);
+  });
+
+  it("inaccuracy prose mentions best move even when it has no detectable intent (no throw)", () => {
+    // Best move is a6 — pure flank move; detectIntent returns null; prose should still name a6
+    const c = new Chess("rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1");
+    c.move("Nf6");
+    const { prose } = buildCommentary(makeFeatures({
+      san: "Nf6", uci: "g8f6",
+      fenBefore: "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1",
+      fenAfter: c.fen(),
+      bestSan: "a6", bestUci: "a7a6",
+    }));
+    expect(prose).toMatch(/a6/);
   });
 });
