@@ -408,6 +408,68 @@ describe("rankedOpeningLines + rankGamePlan", () => {
     }
   });
 
+  it("With White keeps distinct d4 lines ending on White's move", () => {
+    const londonGames = [
+      ...Array.from({ length: 10 }, (_, i) => ({
+        color: "white",
+        score: 0.5,
+        sans: ["d4", "Nf6", "c4"],
+        ucis: ["d2d4", "g8f6", "c2c4"],
+        rating: 1800,
+        datestamp: 3000 - i,
+        speed: "blitz",
+      })),
+      ...Array.from({ length: 8 }, (_, i) => ({
+        color: "white",
+        score: 0,
+        sans: ["d4", "d5", "c4"],
+        ucis: ["d2d4", "d7d5", "c2c4"],
+        rating: 1800,
+        datestamp: 2000 - i,
+        speed: "blitz",
+      })),
+    ];
+    const trie = buildOpeningTrie(londonGames, "white", { recency: false });
+    const lines = rankedOpeningLines(trie, { oppColor: "white" });
+    const nf6 = lines.find((l) => l.ucis.join(">") === "d2d4>g8f6>c2c4");
+    const d5 = lines.find((l) => l.ucis.join(">") === "d2d4>d7d5>c2c4");
+    expect(nf6).toBeDefined();
+    expect(d5).toBeDefined();
+    expect(terminalMoveIsOpponent(nf6.ucis, "white")).toBe(true);
+    expect(terminalMoveIsOpponent(d5.ucis, "white")).toBe(true);
+    const collapsed = lines.find((l) => l.ucis.length === 1 && l.ucis[0] === "d2d4");
+    expect(collapsed).toBeUndefined();
+  });
+
+  it("With Black ends lines on Black's move with White context bridged", () => {
+    const games = [
+      ...Array.from({ length: 6 }, () => ({
+        color: "black",
+        score: 1,
+        sans: ["e4", "c5", "Nf3"],
+        ucis: ["e2e4", "c7c5", "g1f3"],
+        rating: 1750,
+        datestamp: 1000,
+        speed: "blitz",
+      })),
+      ...Array.from({ length: 4 }, () => ({
+        color: "black",
+        score: 0,
+        sans: ["e4", "e5", "Nf3"],
+        ucis: ["e2e4", "e7e5", "g1f3"],
+        rating: 1750,
+        datestamp: 2000,
+        speed: "blitz",
+      })),
+    ];
+    const trie = buildOpeningTrie(games, "black", { recency: false });
+    const lines = rankedOpeningLines(trie, { oppColor: "black" });
+    const sicilian = lines.find((l) => l.ucis.join(">") === "e2e4>c7c5");
+    expect(sicilian).toBeDefined();
+    expect(terminalMoveIsOpponent(sicilian.ucis, "black")).toBe(true);
+    expect(sicilian.sans).toEqual(["e4", "c5"]);
+  });
+
   it("reuses opening-phase cache across shared path prefixes", () => {
     clearOpeningPhaseCache();
     const trie = buildOpeningTrie(GAMES, "white", { recency: false });
@@ -745,9 +807,9 @@ describe("createScoutClient", () => {
     expect(url).toContain("perfType=bullet%2Cblitz%2Crapid%2Cclassical");
   });
 
-  it("caps an explicit max at SCOUT_MAX_GAMES", () => {
+  it("passes an explicit max through without capping", () => {
     const url = scoutUrl("Foe", 9999);
-    expect(url).toContain("max=500");
+    expect(url).toContain("max=9999");
   });
 
   it("builds a streaming URL with colour and pagination params", () => {

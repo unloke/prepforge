@@ -25,6 +25,17 @@ import { colorRecommendation } from "../scout-stats.js";
 import { buildColorRecommendationBanner } from "../scout-summary.js";
 import { engineScanPatterns } from "../scout-engine.js";
 import {
+  MAIA_ENRICH_LOADING,
+  classifyMaiaEnrichState,
+  computeMaiaScopeKey,
+  countMaiaOutcomes,
+  enrichOpeningLinesWithMaia,
+  markUnattemptedMaiaFailures,
+  medianOpponentRating,
+  openingLinesNeedMaia,
+  resetMaiaScopeCache,
+} from "../scout-maia.js";
+import {
   SCOUT_ERR_NETWORK,
   SCOUT_ERR_NO_GAMES,
   scoutFetchErrorMessage,
@@ -32,6 +43,13 @@ import {
 
 const RENDER_DEBOUNCE_MS = 400;
 const RENDER_FORCE_EVERY_INITIAL = 25;
+
+// Maia must evaluate the FULL opening-line set (not just the displayed 12) so a thin
+// but weak line — low share, meaningless empirical win-rate — can still be surfaced by
+// its Maia score. share can't tell a weak n=1 from a slip n=1; only a Maia read can.
+// Cap by share so a pathologically active opponent can't trigger hundreds of forwards,
+// and the most-likely lines resolve first if the pass is cancelled mid-way.
+const MAIA_MAX_CANDIDATES = 48;
 
 /** Games between forced full rerenders while streaming — grows with history size. */
 export function scoutRenderForceEvery(gameCount) {
@@ -51,6 +69,7 @@ export function scoutRenderDebounceMs(gameCount) {
 }
 const EXPLORER_ENRICH_DEBOUNCE_MS = 800;
 const ENGINE_AGG_DEBOUNCE_MS = 400;
+const MAIA_ENRICH_DEBOUNCE_MS = 600;
 
 function scoutErrorHtml(message, escapeHtml) {
   return `<div class="scout-error" role="alert">${escapeHtml(message)}</div>`;
@@ -91,6 +110,9 @@ export function createScoutView(deps) {
   let scoutEventsBound = false;
   let explorerEnrichTimer = null;
   let explorerEnrichSeq = 0;
+  let maiaEnrichTimer = null;
+  let maiaEnrichSeq = 0;
+  let maiaEnrichInFlight = false;
   let engineAggTimer = null;
   let engineAggSeq = 0;
   let scoutOpGen = 0;
@@ -173,6 +195,18 @@ export function createScoutView(deps) {
       profileEl.hidden = false;
     }
     scoutState.sections = {};
+    scoutState.maiaResults = scoutState.maiaResults || new Map();
+    if (scoutState.games?.length) {
+      scoutState.maiaRatings = {
+        white: medianOpponentRating(scoutState.games, "white"),
+        black: medianOpponentRating(scoutState.games, "black"),
+      };
+    }
+    const maiaOpts = {
+      maiaResults: scoutState.maiaResults,
+      maiaRatings: scoutState.maiaRatings,
+      maiaEnrichState: scoutState.maiaEnrichState || "idle",
+    };
     const speedOpts = {
       speedFilter: scoutState.activeSpeed,
       escapeHtml,
@@ -180,6 +214,7 @@ export function createScoutView(deps) {
       explorerReads: scoutState.explorerByColor?.white || null,
       engineAgg: engineAggForColor("white"),
       engineScan: engineScanForColor("white"),
+      ...maiaOpts,
     };
     const whiteReport = buildScoutSectionReport(
       scoutModule,
@@ -227,6 +262,7 @@ export function createScoutView(deps) {
       }
     }
     if (force) updateLiveCounter();
+    if (!maiaEnrichInFlight) scheduleMaiaEnrich();
   }
 
   function scheduleRender({ force = false } = {}) {
@@ -273,6 +309,156 @@ export function createScoutView(deps) {
     renderScoutReport();
     scheduleExplorerEnrich();
     scheduleEngineAggregation();
+  }
+
+  function scheduleMaiaEnrich() {
+    clearTimeout(maiaEnrichTimer);
+    const gen = ++maiaEnrichSeq;
+    maiaEnrichTimer = setTimeout(() => {
+      maiaEnrichTimer = null;
+      enrichMaiaReads(gen);
+    }, MAIA_ENRICH_DEBOUNCE_MS);
+  }
+
+  function syncMaiaScope() {
+    if (!scoutState?.games?.length) return;
+    scoutState.maiaRatings = {
+      white: medianOpponentRating(scoutState.games, "white"),
+      black: medianOpponentRating(scoutState.games, "black"),
+    };
+    const scopeKey = computeMaiaScopeKey({
+      activeSpeed: scoutState.activeSpeed,
+      gameCount: scoutState.games.length,
+      ratings: scoutState.maiaRatings,
+    });
+    resetMaiaScopeCache(scoutState, scopeKey);
+  }
+
+  /** Full opening-line set for one colour, share-sorted and capped, for Maia enrichment. */
+  function maiaCandidateLines(section, oppColor) {
+    if (!section?.trie || !scoutModule?.rankedOpeningLines) return [];
+    const lines = scoutModule.rankedOpeningLines(section.trie, { oppColor }) || [];
+    if (lines.length <= MAIA_MAX_CANDIDATES) return lines;
+    return [...lines]
+      .sort((a, b) => (b.share || 0) - (a.share || 0) || (b.count || 0) - (a.count || 0))
+      .slice(0, MAIA_MAX_CANDIDATES);
+  }
+
+  function summarizeMaiaOutcomes() {
+    if (!scoutState?.maiaResults || !scoutModule) {
+      return { resolved: 0, failed: 0, missing: 0, expected: 0 };
+    }
+    let resolved = 0;
+    let failed = 0;
+    let missing = 0;
+    let expected = 0;
+    for (const oppColor of ["white", "black"]) {
+      const section = scoutState.sections?.[oppColor];
+      if (!section?.trie) continue;
+      const rating = scoutState.maiaRatings?.[oppColor];
+      const lines = maiaCandidateLines(section, oppColor);
+      const part = countMaiaOutcomes(lines, {
+        maiaResults: scoutState.maiaResults,
+        rating,
+        fenAfterLine: scoutModule.fenAfterLine,
+      });
+      resolved += part.resolved;
+      failed += part.failed;
+      missing += part.missing;
+      expected += part.expected;
+    }
+    return { resolved, failed, missing, expected };
+  }
+
+  function maiaWorkRemaining() {
+    if (!scoutState?.maiaResults || !scoutModule) return false;
+    return ["white", "black"].some((oppColor) => {
+      const section = scoutState.sections?.[oppColor];
+      if (!section?.trie) return false;
+      const lines = maiaCandidateLines(section, oppColor);
+      return openingLinesNeedMaia(lines, {
+        maiaResults: scoutState.maiaResults,
+        rating: scoutState.maiaRatings?.[oppColor],
+        fenAfterLine: scoutModule.fenAfterLine,
+      });
+    });
+  }
+
+  async function enrichMaiaReads(gen) {
+    if (!scoutState?.games?.length || !scoutModule) return;
+    if (gen !== maiaEnrichSeq) return;
+    scoutState.maiaResults = scoutState.maiaResults || new Map();
+    scoutState.maiaCache = scoutState.maiaCache || new Map();
+    syncMaiaScope();
+
+    const needsWork = maiaWorkRemaining();
+    if (!needsWork) {
+      const outcomes = summarizeMaiaOutcomes();
+      const nextState = classifyMaiaEnrichState(outcomes);
+      if (scoutState.maiaEnrichState !== nextState) {
+        scoutState.maiaEnrichState = nextState;
+        renderScoutReport();
+      }
+      return;
+    }
+
+    maiaEnrichInFlight = true;
+    scoutState.maiaEnrichState = MAIA_ENRICH_LOADING;
+    renderScoutReport();
+
+    try {
+      const { getSharedMaia3Provider } = await import("../engine/maia3-provider.js");
+      if (gen !== maiaEnrichSeq) return;
+      const provider = getSharedMaia3Provider();
+
+      for (const oppColor of ["white", "black"]) {
+        if (gen !== maiaEnrichSeq) return;
+        const section = scoutState.sections?.[oppColor];
+        if (!section?.trie) continue;
+        const rating = scoutState.maiaRatings[oppColor];
+        const baseline = section.baselineScorePct ?? 0;
+        const openingLines = maiaCandidateLines(section, oppColor);
+        if (
+          !openingLinesNeedMaia(openingLines, {
+            maiaResults: scoutState.maiaResults,
+            rating,
+            fenAfterLine: scoutModule.fenAfterLine,
+          })
+        ) {
+          continue;
+        }
+        await enrichOpeningLinesWithMaia(openingLines, {
+          provider,
+          rating,
+          oppColor,
+          baselineScorePct: baseline,
+          fenAfterLine: scoutModule.fenAfterLine,
+          cache: scoutState.maiaCache,
+          maiaResults: scoutState.maiaResults,
+          shouldCancel: () => gen !== maiaEnrichSeq,
+        });
+      }
+
+      if (gen !== maiaEnrichSeq) return;
+      scoutState.maiaEnrichState = classifyMaiaEnrichState(summarizeMaiaOutcomes());
+    } catch (_) {
+      if (gen === maiaEnrichSeq && scoutState) {
+        for (const oppColor of ["white", "black"]) {
+          const section = scoutState.sections?.[oppColor];
+          if (!section?.trie) continue;
+          const lines = maiaCandidateLines(section, oppColor);
+          markUnattemptedMaiaFailures(lines, {
+            maiaResults: scoutState.maiaResults,
+            rating: scoutState.maiaRatings?.[oppColor],
+            fenAfterLine: scoutModule.fenAfterLine,
+          });
+        }
+        scoutState.maiaEnrichState = classifyMaiaEnrichState(summarizeMaiaOutcomes());
+      }
+    } finally {
+      maiaEnrichInFlight = false;
+      if (gen === maiaEnrichSeq && scoutState) renderScoutReport();
+    }
   }
 
   function scheduleEngineAggregation() {
@@ -884,6 +1070,11 @@ export function createScoutView(deps) {
       explorerByColor: keepExplorer,
       sections: {},
       ecoCache: scoutState?.username === username ? scoutState.ecoCache || new Map() : new Map(),
+      maiaResults:
+        scoutState?.username === username ? scoutState.maiaResults || new Map() : new Map(),
+      maiaCache:
+        scoutState?.username === username ? scoutState.maiaCache || new Map() : new Map(),
+      maiaEnrichState: scoutState?.username === username ? scoutState.maiaEnrichState : "idle",
     };
     scoutSession = {
       username,

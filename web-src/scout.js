@@ -12,8 +12,6 @@ import { Chess } from "chess.js";
 
 import { gamePhase } from "./coach/material.js";
 
-export const SCOUT_MAX_GAMES = 500;
-
 export const SCOUT_ERR_RATE_LIMIT =
   "Lichess rate limit — please wait a minute and try again.";
 export const SCOUT_ERR_NO_GAMES =
@@ -29,8 +27,15 @@ export function scoutFetchErrorMessage(error) {
 }
 export const MAX_PLIES = 16; // opening book depth for the display trie
 export const ANALYZE_PLIES = 24; // deeper capture for weakness / engine scan
+/** Minimum games for game-plan lines (ranking filters slips; no hard ply gate). */
+export const GAME_PLAN_MIN_GAMES = 1;
+/** Max game-plan rows shown per colour. The floor is gone, so the cap (not n≥7)
+ * is what keeps the list readable and bounds the Maia enrichment cost. */
+export const SCOUT_GAME_PLAN_LIMIT = 12;
+/** Legacy floor kept for recommendTargets / refutation repertoire gates. */
 export const WEAKNESS_MIN_GAMES = 7;
 export const SLIP_MIN_GAMES = 3;
+const BRIDGE_TOP_N = 2;
 const MS_PER_DAY = 86_400_000;
 const RECENCY_HALF_LIFE_DAYS = 45;
 
@@ -374,18 +379,21 @@ function isNestedLine(a, b) {
 // weakness to punish nor a weapon to fear, so it stays neutral (no badge, not a target).
 export const SCOUT_ATTACK_MIN_MARGIN = 6;
 
-export function enrichPrepTarget(g, baselineScorePct) {
+export function enrichPrepTarget(g, baselineScorePct, { maiaScorePct = null } = {}) {
+  const useMaia = maiaScorePct != null;
+  const scoreForBadge = useMaia ? maiaScorePct : g.scorePct;
   const wilsonLower = wilsonScorePct(g.w ?? 0, g.d ?? 0, g.l ?? 0);
   const wilsonUpper = wilsonScoreUpperPct(g.w ?? 0, g.d ?? 0, g.l ?? 0);
-  const below = baselineScorePct - g.scorePct;
-  const wilsonMargin = Math.max(0, baselineScorePct - wilsonUpper);
+  const below = baselineScorePct - scoreForBadge;
+  const wilsonMargin = useMaia ? 0 : Math.max(0, baselineScorePct - wilsonUpper);
   const isAttack = below > 0 && (wilsonMargin > 0 || below >= SCOUT_ATTACK_MIN_MARGIN);
-  const isWeapon = !isAttack && g.scorePct >= baselineScorePct;
+  const isWeapon = !isAttack && scoreForBadge >= baselineScorePct;
   const opportunity =
     g.share *
     (wilsonMargin > 0 ? wilsonMargin : below >= SCOUT_ATTACK_MIN_MARGIN ? below * 0.25 : 0);
   return {
     ...g,
+    maiaScorePct: useMaia ? maiaScorePct : g.maiaScorePct,
     wilsonScorePct: wilsonLower,
     wilsonScoreUpperPct: wilsonUpper,
     belowBaseline: isAttack ? below : 0,
@@ -462,29 +470,61 @@ function openingPhaseAt(ucis, cache = openingPhaseCache) {
   return phase;
 }
 
-// Walk each branch to the opening boundary (gamePhase), following the most-played child.
-export function rankedOpeningLines(root, { minGames = 1, phaseCache = openingPhaseCache } = {}) {
+function nextMoverAt(ucis) {
+  return ucis.length % 2 === 0 ? "white" : "black";
+}
+
+function sortedTrieChildren(node, floor) {
+  return [...node.children.entries()]
+    .map(([key, child]) => {
+      const [uci, san] = key.split("|");
+      return { key, child, uci, san };
+    })
+    .filter(({ child }) => child.gameCount >= floor)
+    .sort((a, b) => b.child.count - a.child.count || a.uci.localeCompare(b.uci));
+}
+
+// Walk each branch to the opening boundary. With oppColor, emitted lines end on the
+// opponent's move while in-between plies bridge via the most common replies.
+export function rankedOpeningLines(
+  root,
+  { minGames = GAME_PLAN_MIN_GAMES, oppColor = null, phaseCache = openingPhaseCache } = {},
+) {
   const groups = [];
   const seen = new Set();
 
   const emit = (node, sans, ucis) => {
     if (node.gameCount < minGames || !sans.length) return;
+    if (oppColor && !terminalMoveIsOpponent(ucis, oppColor)) return;
     const pathKey = triePathKey(ucis);
     if (seen.has(pathKey)) return;
     seen.add(pathKey);
     groups.push(nodeToLineGroup(root, node, sans, ucis, pathKey));
   };
 
-  const eligibleChildren = (node) =>
-    [...node.children.entries()]
-      .map(([key, child]) => {
-        const [uci, san] = key.split("|");
-        return { key, child, uci, san };
-      })
-      .filter(({ child }) => child.gameCount >= minGames)
-      .sort((a, b) => b.child.count - a.child.count);
+  const descendLegacy = (node, sans, ucis) => {
+    if (sans.length >= MAX_PLIES) {
+      emit(node, sans, ucis);
+      return;
+    }
+    if (openingPhaseAt(ucis, phaseCache) !== "opening") {
+      emit(node, sans, ucis);
+      return;
+    }
+    const children = sortedTrieChildren(node, minGames);
+    if (!children.length) {
+      emit(node, sans, ucis);
+      return;
+    }
+    for (let i = 1; i < children.length; i += 1) {
+      const { child, uci, san } = children[i];
+      descendLegacy(child, [...sans, san], [...ucis, uci]);
+    }
+    const { child, uci, san } = children[0];
+    descendLegacy(child, [...sans, san], [...ucis, uci]);
+  };
 
-  const descendMain = (node, sans, ucis) => {
+  const descendColorAware = (node, sans, ucis) => {
     if (sans.length >= MAX_PLIES) {
       emit(node, sans, ucis);
       return;
@@ -494,24 +534,40 @@ export function rankedOpeningLines(root, { minGames = 1, phaseCache = openingPha
       return;
     }
 
-    const children = eligibleChildren(node);
+    const mover = nextMoverAt(ucis);
+    if (mover === oppColor) {
+      const children = sortedTrieChildren(node, minGames);
+      if (!children.length) return;
+      for (const { child, uci, san } of children) {
+        const childSans = [...sans, san];
+        const childUcis = [...ucis, uci];
+        emit(child, childSans, childUcis);
+        if (
+          childSans.length < MAX_PLIES &&
+          openingPhaseAt(childUcis, phaseCache) === "opening"
+        ) {
+          descendColorAware(child, childSans, childUcis);
+        }
+      }
+      return;
+    }
+
+    const children = sortedTrieChildren(node, GAME_PLAN_MIN_GAMES);
     if (!children.length) {
       emit(node, sans, ucis);
       return;
     }
-
-    for (let i = 1; i < children.length; i += 1) {
-      const { child, uci, san } = children[i];
-      descendMain(child, [...sans, san], [...ucis, uci]);
+    for (const { child, uci, san } of children.slice(0, BRIDGE_TOP_N)) {
+      descendColorAware(child, [...sans, san], [...ucis, uci]);
     }
-    const { child, uci, san } = children[0];
-    descendMain(child, [...sans, san], [...ucis, uci]);
   };
+
+  const descend = oppColor ? descendColorAware : descendLegacy;
 
   for (const [key, child] of root.children) {
     if (child.gameCount < minGames) continue;
     const [uci, san] = key.split("|");
-    descendMain(child, [san], [uci]);
+    descend(child, [san], [uci]);
   }
 
   return groups;
@@ -521,7 +577,7 @@ export function rankedOpeningLines(root, { minGames = 1, phaseCache = openingPha
 export function rankGamePlan(
   lines,
   baselineScorePct,
-  { minGames = WEAKNESS_MIN_GAMES, oppColor = null } = {},
+  { minGames = GAME_PLAN_MIN_GAMES, oppColor = null, limit = SCOUT_GAME_PLAN_LIMIT } = {},
 ) {
   const eligible = lines
     .filter((g) => g.games >= minGames)
@@ -530,12 +586,26 @@ export function rankGamePlan(
       const normalized = normalizeToOpponentTerminal(g.ucis, g.sans, oppColor);
       if (!normalized) return null;
       return enrichPrepTarget(
-        { ...g, ucis: normalized.ucis, sans: normalized.sans, line: triePathKey(normalized.ucis) },
+        {
+          ...g,
+          ucis: normalized.ucis,
+          sans: normalized.sans,
+          line: triePathKey(normalized.ucis),
+          maiaWdl: g.maiaWdl,
+        },
         baselineScorePct,
+        { maiaScorePct: g.maiaScorePct ?? null },
       );
     })
     .filter(Boolean)
-    .sort((a, b) => b.opportunity - a.opportunity || b.games - a.games);
+    .sort((a, b) => {
+      const aHasMaia = a.maiaScorePct != null;
+      const bHasMaia = b.maiaScorePct != null;
+      if (aHasMaia !== bHasMaia) return aHasMaia ? -1 : 1;
+      if (aHasMaia) return b.opportunity - a.opportunity || b.games - a.games;
+      // No Maia yet: rank by share only; empirical scorePct on n=1 lines is 0%/100% noise
+      return b.share - a.share || b.games - a.games;
+    });
 
   const chosen = [];
   for (const g of eligible) {
@@ -548,7 +618,9 @@ export function rankGamePlan(
     }
     chosen.push(g);
   }
-  return chosen;
+  // Already sorted by opportunity; slips/flukes sink to the bottom, so capping the
+  // top N keeps the panel readable without a hard game-count floor.
+  return limit > 0 ? chosen.slice(0, limit) : chosen;
 }
 
 /** Prefer an enabled mainline child; otherwise pick deterministically by UCI. */
@@ -860,7 +932,7 @@ export function scoutUrl(username, max) {
   });
   const maxN = Number(max);
   if (max != null && Number.isFinite(maxN) && maxN > 0) {
-    params.set("max", String(Math.max(10, Math.min(SCOUT_MAX_GAMES, maxN))));
+    params.set("max", String(Math.max(10, Math.round(maxN))));
   }
   return `https://lichess.org/api/games/user/${safe}?${params}`;
 }
@@ -877,7 +949,7 @@ export function scoutStreamUrl(username, { color = "both", since, until, max } =
   });
   const maxN = Number(max);
   if (max != null && Number.isFinite(maxN) && maxN > 0) {
-    params.set("max", String(Math.max(10, Math.min(SCOUT_MAX_GAMES, maxN))));
+    params.set("max", String(Math.max(10, Math.round(maxN))));
   }
   if (color && color !== "both") params.set("color", color);
   if (since != null) params.set("since", String(since));

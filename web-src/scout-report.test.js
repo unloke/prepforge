@@ -19,8 +19,17 @@ import {
   scoutLineKey,
   scoutSparkline,
   scoutSvgBar,
+  scoutScoreCell,
+  scoutWdlBar,
+  scoutLineWdlCounts,
+  patchScoutLineMaiaCells,
   buildScoutIntelligenceA11ySummary,
 } from "./scout-report.js";
+import {
+  MAIA_ENRICH_LOADING,
+  MAIA_ENRICH_READY,
+  rememberMaiaResult,
+} from "./scout-maia.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -712,6 +721,155 @@ describe("scout-report interactions", () => {
   });
 });
 
+describe("Maia estimate rendering", () => {
+  it("scoutLineWdlCounts maps Maia win/draw/loss for full renderer path", () => {
+    const counts = scoutLineWdlCounts({
+      maiaWdl: { win: 150, draw: 250, loss: 600 },
+      w: 9,
+      d: 0,
+      l: 1,
+    });
+    expect(counts).toEqual({ w: 150, d: 250, l: 600 });
+    const bar = scoutWdlBar(counts.w, counts.d, counts.l, { maiaEstimate: true });
+    expect(bar).toContain('style="width:15%"');
+    expect(bar).toContain('style="width:60%"');
+  });
+
+  it("re-render keeps Maia WDL after section rebuild with maiaResults cache", () => {
+    const maiaResults = new Map();
+    const lineUcis = ["e2e4", "c7c5", "g1f3"];
+    const fen = scoutModule.fenAfterLine(lineUcis);
+    rememberMaiaResult(maiaResults, fen, 1800, {
+      maiaWdl: { win: 120, draw: 180, loss: 700 },
+      maiaScorePct: 27,
+    });
+    const base = {
+      games: PLAN_GAMES,
+      username: "rival",
+      profile: { recentlyChanged: { white: false, black: false } },
+    };
+    const opts = {
+      speedFilter: "all",
+      escapeHtml,
+      maiaResults,
+      maiaRatings: { white: 1800, black: 1800 },
+      maiaEnrichState: MAIA_ENRICH_READY,
+    };
+    const first = buildScoutSectionReport(scoutModule, base, "white", LOOKUPS.black, opts);
+    const second = buildScoutSectionReport(scoutModule, base, "white", LOOKUPS.black, opts);
+    const sicilianKey = scoutLineKey(lineUcis);
+    const firstRow = first.sectionData.prepTargets.find((t) => scoutLineKey(t.ucis) === sicilianKey);
+    const secondRow = second.sectionData.prepTargets.find(
+      (t) => scoutLineKey(t.ucis) === sicilianKey,
+    );
+    expect(firstRow?.maiaScorePct).toBe(27);
+    expect(secondRow?.maiaScorePct).toBe(27);
+    expect(first.html).toContain("scout-maia-estimate");
+    expect(second.html).toContain('style="width:70%"');
+    expect(second.html).toContain("score/WDL are Maia estimates");
+  });
+
+  it("re-ranks prep rows when Maia scores change exploitability", () => {
+    const maiaResults = new Map();
+    const d4Fen = scoutModule.fenAfterLine(["d2d4", "d7d5"]);
+    const sicilianFen = scoutModule.fenAfterLine(["e2e4", "c7c5", "g1f3"]);
+    rememberMaiaResult(maiaResults, d4Fen, 1800, {
+      maiaWdl: { win: 800, draw: 100, loss: 100 },
+      maiaScorePct: 82,
+    });
+    rememberMaiaResult(maiaResults, sicilianFen, 1800, {
+      maiaWdl: { win: 100, draw: 100, loss: 800 },
+      maiaScorePct: 15,
+    });
+    const { sectionData } = buildScoutSectionReport(
+      scoutModule,
+      {
+        games: PLAN_GAMES,
+        username: "rival",
+        profile: { recentlyChanged: { white: false, black: false } },
+      },
+      "white",
+      LOOKUPS.black,
+      {
+        speedFilter: "all",
+        escapeHtml,
+        maiaResults,
+        maiaRatings: { white: 1800, black: 1800 },
+        maiaEnrichState: MAIA_ENRICH_READY,
+      },
+    );
+    expect(sectionData.prepTargets[0].ucis).toEqual(["e2e4", "c7c5", "g1f3"]);
+    expect(sectionData.prepTargets[0].maiaScorePct).toBe(15);
+  });
+
+  it("shows loading note while Maia enrichment is in flight", () => {
+    const { html } = buildScoutSectionReport(
+      scoutModule,
+      {
+        games: PLAN_GAMES,
+        username: "rival",
+        profile: { recentlyChanged: { white: false, black: false } },
+      },
+      "white",
+      LOOKUPS.black,
+      { speedFilter: "all", escapeHtml, maiaEnrichState: MAIA_ENRICH_LOADING },
+    );
+    expect(html).toContain("Maia estimates loading");
+    expect(html).not.toContain("score/WDL are Maia estimates");
+  });
+
+  it("scoutScoreCell and scoutWdlBar tag Maia estimates", () => {
+    expect(scoutScoreCell(42, 5, { maiaEstimate: true })).toContain("scout-maia-estimate");
+    expect(scoutScoreCell(42, 5, { maiaEstimate: true })).toContain("Maia strength estimate");
+    expect(scoutWdlBar(300, 200, 500, { maiaEstimate: true })).toContain("scout-maia-estimate");
+    expect(scoutWdlBar(300, 200, 500, { maiaEstimate: true })).toContain("Maia W/D/L estimate");
+  });
+
+  it("patchScoutLineMaiaCells updates score and WDL cells in place", () => {
+    const scoreEl = createStubElement("span");
+    scoreEl.classList.add("scout-lr-score");
+    scoreEl.innerHTML = '<span class="scout-score-pct">70%</span>';
+    const wdlEl = createStubElement("span");
+    wdlEl.classList.add("scout-lr-wdl");
+    wdlEl.innerHTML = '<span class="scout-wdlbar"></span>';
+    const movesEl = createStubElement("span");
+    movesEl.classList.add("scout-line-moves");
+    movesEl.innerHTML =
+      '<span class="scout-prep-chip scout-prep-chip-attack">attack</span>';
+    const row = createStubElement("div");
+    row.querySelector = (sel) => {
+      if (sel === ".scout-lr-score") return scoreEl;
+      if (sel === ".scout-lr-wdl") return wdlEl;
+      if (sel === ".scout-line-moves") return movesEl;
+      return null;
+    };
+    const chipStub = createStubElement("span");
+    chipStub.remove = () => {
+      movesEl.innerHTML = "";
+    };
+    movesEl.querySelectorAll = (sel) => {
+      if (sel === ".scout-prep-chip" && movesEl.innerHTML.includes("scout-prep-chip")) {
+        return [chipStub];
+      }
+      return [];
+    };
+    movesEl.insertAdjacentHTML = (_pos, html) => {
+      movesEl.innerHTML += html;
+    };
+    patchScoutLineMaiaCells(row, {
+      maiaScorePct: 38,
+      maiaWdl: { win: 200, draw: 300, loss: 500 },
+      games: 4,
+      belowBaseline: 12,
+      prepCategory: "attack",
+    }, 50);
+    expect(scoreEl.innerHTML).toContain("38%");
+    expect(scoreEl.innerHTML).toContain("scout-maia-estimate");
+    expect(wdlEl.innerHTML).toContain("scout-maia-estimate");
+    expect(movesEl.innerHTML).toContain("scout-prep-chip-attack");
+  });
+});
+
 describe("scout intelligence panel", () => {
   it("renders worst-performance panel and NL summary in section HTML", () => {
     const { html, sectionData } = buildScoutSectionReport(
@@ -728,6 +886,7 @@ describe("scout intelligence panel", () => {
     expect(html).toContain("scout-intel-summary-only");
     expect(html).toContain("scout-intel-charts-strip");
     expect(html).toContain("scout-ranked-list");
+    expect(html).toContain("scout-ranked-note");
     expect(html).toContain("scout-lr-rank");
     expect(html).toContain("Worst performance");
     expect(html).toContain("Activity");

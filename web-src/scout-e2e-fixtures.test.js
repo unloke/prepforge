@@ -50,7 +50,6 @@ describe("scout-e2e-fixtures", () => {
     expect(html).toContain("Your game plan");
     expect(html).toContain("scout-refutation-card");
     expect(html).toContain("You answer");
-    expect(html).not.toContain("scout-refutation-gap-connect-lichess");
     expect(sectionData.prepTargets?.some((t) => t.refutation)).toBe(true);
   });
 

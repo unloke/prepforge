@@ -11,10 +11,15 @@ import {
   fenAfterLine,
   mergeEngineIntoTargets,
   scoutLineText,
-  WEAKNESS_MIN_GAMES,
 } from "./scout.js";
 import { formatLastSeenLabel, lineLastSeen } from "./scout-stats.js";
 import { buildScoutStats } from "./scout-stats.js";
+import {
+  applyMaiaToLines,
+  medianOpponentRating,
+  scoutLineWdlCounts,
+  scoutMaiaRankedNote,
+} from "./scout-maia.js";
 import { buildScoutSectionSummary } from "./scout-summary.js";
 
 export function scoutLineKey(ucis) {
@@ -123,10 +128,14 @@ export function scoutWdlHtml(w, d, l, { compact = false } = {}) {
 
 // Win/draw/loss as one compact proportional bar — fixed width, never wraps, so it
 // stays aligned inside a row. The pill version above is for the header where there's room.
-export function scoutWdlBar(w, d, l) {
+export function scoutWdlBar(w, d, l, { maiaEstimate = false } = {}) {
   const total = w + d + l || 1;
   const pct = (n) => `${(n / total) * 100}%`;
-  return `<span class="scout-wdlbar" title="W${w} D${d} L${l}" aria-label="${w} wins, ${d} draws, ${l} losses">
+  const title = maiaEstimate
+    ? "Maia W/D/L estimate (not from their games)"
+    : `W${w} D${d} L${l}`;
+  const cls = maiaEstimate ? " scout-maia-estimate" : "";
+  return `<span class="scout-wdlbar${cls}" title="${title}" aria-label="${title}">
     <span class="scout-wdlbar-w" style="width:${pct(w)}"></span>
     <span class="scout-wdlbar-d" style="width:${pct(d)}"></span>
     <span class="scout-wdlbar-l" style="width:${pct(l)}"></span>
@@ -648,15 +657,44 @@ export function renderScoutIntelligencePanel(
 
 // Stacked score cell: the score% on top, the sample size below, plus (for weakness
 // rows) how far the line sits under the opponent's own baseline. Fixed width, no wrap.
-export function scoutScoreCell(scorePct, games, { baseline, showGap = false } = {}) {
+export function scoutScoreCell(scorePct, games, { baseline, showGap = false, maiaEstimate = false } = {}) {
   const gap =
     showGap && baseline != null && baseline > scorePct
       ? `<span class="scout-gap" title="${baseline - scorePct} points below their overall ${baseline}%">−${baseline - scorePct} vs ${baseline}%</span>`
       : "";
-  return `<span class="scout-score-cell">
+  const estTitle = maiaEstimate ? ' title="Maia strength estimate"' : "";
+  const estCls = maiaEstimate ? " scout-maia-estimate" : "";
+  return `<span class="scout-score-cell${estCls}"${estTitle}>
       <span class="scout-score-pct">${scorePct}%</span>
       <span class="scout-n">n=${games}</span>${gap}
     </span>`;
+}
+
+/** Patch score/WDL cells on a rendered game-plan row after Maia results arrive. */
+export { scoutLineWdlCounts };
+
+export function patchScoutLineMaiaCells(rowEl, line, baseline) {
+  if (!rowEl || line?.maiaScorePct == null || !line?.maiaWdl) return;
+  const scoreEl = rowEl.querySelector(".scout-lr-score");
+  const wdlEl = rowEl.querySelector(".scout-lr-wdl");
+  if (scoreEl) {
+    scoreEl.innerHTML = scoutScoreCell(line.maiaScorePct, line.games, {
+      baseline,
+      showGap: line.belowBaseline > 0,
+      maiaEstimate: true,
+    });
+  }
+  if (wdlEl) {
+    wdlEl.innerHTML = scoutWdlBar(line.maiaWdl.win, line.maiaWdl.draw, line.maiaWdl.loss, {
+      maiaEstimate: true,
+    });
+  }
+  const movesEl = rowEl.querySelector(".scout-line-moves");
+  if (movesEl) {
+    for (const chip of movesEl.querySelectorAll(".scout-prep-chip")) chip.remove();
+    const badge = scoutPrepCategoryBadge(line);
+    if (badge) movesEl.insertAdjacentHTML("beforeend", ` ${badge}`);
+  }
 }
 
 export function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg }) {
@@ -848,6 +886,9 @@ function scoutLineRowHtml(
     weakness && line.share != null
       ? `<span class="scout-lr-share" title="Share of their games">${Math.round(line.share * 100)}%</span>`
       : "";
+  const maiaEstimate = line.maiaScorePct != null;
+  const displayScore = maiaEstimate ? line.maiaScorePct : line.scorePct;
+  const wdl = scoutLineWdlCounts(line);
   return `
       <div class="scout-line scout-line-row ${status.cls}${weakness ? " scout-weakness-row scout-ranked-row" : ""}" data-line-key="${escapeHtml(lineKey)}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
         ${rankCell}
@@ -857,8 +898,8 @@ function scoutLineRowHtml(
           <span class="scout-line-moves">${framing}${categoryBadge ? ` ${categoryBadge}` : ""}${lastSeenBadge ? ` ${lastSeenBadge}` : ""}</span>
           ${refCard}
         </div>
-        <span class="scout-lr-score">${scoutScoreCell(line.scorePct, rawCount, { baseline, showGap: weakness && line.belowBaseline > 0 })}</span>
-        <span class="scout-lr-wdl">${scoutWdlBar(line.w || 0, line.d || 0, line.l || 0)}</span>
+        <span class="scout-lr-score">${scoutScoreCell(displayScore, rawCount, { baseline, showGap: weakness && line.belowBaseline > 0, maiaEstimate })}</span>
+        <span class="scout-lr-wdl">${scoutWdlBar(wdl.w, wdl.d, wdl.l, { maiaEstimate })}</span>
         <span class="scout-lr-action">${engineFlag}${addBtn}</span>
       </div>`;
 }
@@ -883,6 +924,9 @@ export function buildScoutSectionReport(
     explorerReads = null,
     engineAgg = null,
     engineScan = null,
+    maiaResults = null,
+    maiaRatings = null,
+    maiaEnrichState = "idle",
   },
 ) {
   const trie = scoutModule.buildOpeningTrie(games, oppColor, { speedFilter });
@@ -908,11 +952,19 @@ export function buildScoutSectionReport(
   });
 
   const breakdown = scoutModule.openingBreakdown(trie, { minGames: 1 });
-  const openingLines = scoutModule.rankedOpeningLines(trie, { minGames: WEAKNESS_MIN_GAMES });
-  let weaknessTargets = scoutModule.rankGamePlan(openingLines, baseline, {
-    minGames: WEAKNESS_MIN_GAMES,
-    oppColor,
-  });
+  const sectionRating = maiaRatings?.[oppColor] ?? medianOpponentRating(games, oppColor);
+  let openingLines = scoutModule.rankedOpeningLines(trie, { oppColor });
+  if (maiaResults?.size) {
+    openingLines = applyMaiaToLines(openingLines, {
+      maiaResults,
+      rating: sectionRating,
+      oppColor,
+      baselineScorePct: baseline,
+      fenAfterLine: scoutModule.fenAfterLine,
+      enrichPrepTarget: scoutModule.enrichPrepTarget,
+    });
+  }
+  let weaknessTargets = scoutModule.rankGamePlan(openingLines, baseline, { oppColor });
   if (enginePatterns instanceof Map) {
     weaknessTargets = mergeEngineIntoTargets(weaknessTargets, enginePatterns);
     graded = mergeEngineIntoTargets(graded, enginePatterns);
@@ -995,9 +1047,7 @@ export function buildScoutSectionReport(
   const prepRows = prepTargets
     .map((t, i) => scoutWeaknessRowHtml(t, i, oppColor, baseline, escapeHtml))
     .join("");
-  const rankedNote = prepTargets.length
-    ? `<div class="scout-ranked-note muted hint">Ranked by exploitability · n≥${WEAKNESS_MIN_GAMES}</div>`
-    : "";
+  const rankedNote = scoutMaiaRankedNote(prepTargets, maiaEnrichState);
   const prepPanel = prepRows
     ? `<div class="scout-game-plan">
           <div class="scout-game-plan-head">
@@ -1020,7 +1070,7 @@ export function buildScoutSectionReport(
             </div>
           </div>
           ${gapActionsHtml}
-          <div class="muted hint">No line yet has n≥${WEAKNESS_MIN_GAMES} — fetch more games or lower the filter.</div>
+          <div class="muted hint">No actionable lines yet — fetch more games or try a broader speed filter.</div>
         </div>`;
 
   const heading = oppColor === "white" ? "With White" : "With Black";
