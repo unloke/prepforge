@@ -2293,6 +2293,24 @@ h2 {
 .scout-wdlbar-d { background: var(--line-strong); }
 .scout-wdlbar-l { background: var(--danger); }
 
+/* Maia-modelled score/WDL: a dashed frame + leading "~" signal "estimate, not their
+ * actual results", so a thin-sample line still reads as a projection. */
+.scout-wdlbar.scout-maia-estimate {
+  border-style: dashed;
+  border-color: var(--line-strong);
+}
+.scout-score-cell.scout-maia-estimate .scout-score-pct {
+  font-style: italic;
+  text-decoration: underline dotted var(--line-strong);
+  text-underline-offset: 2px;
+}
+.scout-score-cell.scout-maia-estimate .scout-score-pct::before {
+  content: "~";
+  color: var(--muted);
+  font-style: normal;
+  margin-right: 1px;
+}
+
 .scout-err-marker { color: var(--warn); font-size: 11px; }
 .scout-engine-note {
   font-size: 11px; color: var(--warn);
