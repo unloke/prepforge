@@ -564,6 +564,7 @@ class PrepForgeRepository:
                 t.repertoires.c.is_active,
                 t.repertoires.c.team_id,
                 t.repertoires.c.visibility,
+                t.repertoires.c.health_json,
             )
             .where(t.repertoires.c.user_profile_id == owner_user_id)
             .order_by(t.repertoires.c.updated_at.desc())
@@ -581,9 +582,24 @@ class PrepForgeRepository:
                 "is_active": _int_to_bool(row["is_active"]),
                 "team_id": row["team_id"],
                 "visibility": row["visibility"] or "private",
+                # Cached coverage summary (NULL until the rep is first opened/trained).
+                "health": _json_load(row["health_json"], None),
             }
             for row in rows
         ]
+
+    def set_repertoire_health(
+        self, repertoire_id: str, health: Optional[Dict[str, Any]]
+    ) -> None:
+        """Persist the denormalized health summary for the dashboard list. Called
+        from the spots that already compute health off a loaded tree (Build payload,
+        train summary), so it adds a single cheap UPDATE and no extra tree walk."""
+        with self.engine.begin() as conn:
+            conn.execute(
+                update(t.repertoires)
+                .where(t.repertoires.c.id == repertoire_id)
+                .values(health_json=_json_dump(health) if health is not None else None)
+            )
 
     def list_repertoire_metas(
         self, owner_user_id: Optional[str] = None

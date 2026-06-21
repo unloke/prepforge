@@ -190,6 +190,10 @@ repertoires = Table(
     # membership), so referential integrity is enforced in app logic instead.
     Column("team_id", Text),
     Column("visibility", Text),
+    # Denormalized RepertoireHealth.to_dict() JSON, refreshed wherever the tree is
+    # already loaded (Build payload + train summary). Lets the dashboard list render
+    # the coverage badge without an O(N) per-row tree walk. NULL = never computed yet.
+    Column("health_json", Text),
     Index("idx_repertoires_owner", "user_profile_id"),
     Index("idx_repertoires_team", "team_id"),
 )

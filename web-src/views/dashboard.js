@@ -44,7 +44,8 @@ export function createDashboardView({
   let eventsBound = false;
 
   function healthBadgeHtml(health) {
-    // List endpoint is metadata-only; health loads on drill-in (/api/build/load).
+    // The list carries a cached health badge (refreshed off Build/train, no per-row tree
+    // walk). It is null until the rep is first opened/trained — then just omit the badge.
     if (!health) return "";
     if (!health.trainable) {
       return '<span class="rep-health rep-health-empty">no moves yet</span>';

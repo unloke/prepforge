@@ -242,8 +242,9 @@ def list_repertoires(
     repo: PrepForgeRepository = Depends(get_repository),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """The caller's own repertoires (metadata only — no tree load, no health
-    compute; health is on ``/api/build/load`` when a repertoire is opened), plus a
+    """The caller's own repertoires (metadata + a cached ``health`` badge — no tree
+    load and no per-row health walk; the badge is refreshed off the Build payload and
+    train summary, and is ``None`` until a rep is first opened/trained), plus a
     lightweight ``shared`` list of repertoires other members have shared to the
     caller's teams (read-only; no health/tree load to keep this cheap)."""
     team_ids = user_team_ids(db, user.id)
@@ -264,6 +265,8 @@ def list_repertoires(
                 "is_active": row["is_active"],
                 "team_id": row["team_id"],
                 "visibility": row["visibility"],
+                # Cached coverage badge (None until first opened/trained); not recomputed here.
+                "health": row["health"],
             }
             for row in repo.list_owner_repertoire_listings(owner_user_id=owner)
         ],

@@ -96,6 +96,9 @@ def build_workspace_payload(
     progress_by_id = {p.node_id: p for p in repository.list_training_progress(repertoire.id)}
     mastery = mastery_map(repertoire.root_node, repertoire.color, progress_by_id)
     health = compute_health(repertoire.root_node, repertoire.color, progress_by_id)
+    # Refresh the dashboard's cached badge off this already-computed walk. Every Build
+    # mutation funnels back through here, so the cache stays current with no extra cost.
+    repository.set_repertoire_health(repertoire.id, health.to_dict())
     return {
         "repertoire_id": repertoire.id,
         "name": repertoire.name,
