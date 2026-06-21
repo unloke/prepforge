@@ -156,8 +156,6 @@ export function scoutSparkline(
 export function scoutSvgBar(
   items,
   {
-    width = 140,
-    barWidth = 72,
     valueKey = "scorePct",
     labelKey = "san",
     maxValue = 100,
@@ -168,22 +166,28 @@ export function scoutSvgBar(
   if (!items?.length) {
     return `<div class="scout-bar-chart scout-bar-empty muted hint">No family data yet.</div>`;
   }
-  const barH = 10;
-  const gap = 14;
   const scale = maxValue > 0 ? maxValue : 100;
-  const rows = items.slice(0, 6).map((item, i) => {
+  const rows = items.slice(0, 6).map((item) => {
     const val = item[valueKey] ?? 0;
-    const w = Math.max(2, (val / scale) * barWidth);
-    const tone = valueSuffix === "%" && val <= 40 ? " is-cold" : valueSuffix === "%" && val >= 55 ? " is-hot" : val >= scale * 0.55 ? " is-hot" : val <= scale * 0.25 ? " is-cold" : "";
+    const pct = Math.max(2, Math.round((val / scale) * 100));
+    const tone =
+      valueSuffix === "%" && val <= 40
+        ? " is-cold"
+        : valueSuffix === "%" && val >= 55
+          ? " is-hot"
+          : val >= scale * 0.55
+            ? " is-hot"
+            : val <= scale * 0.25
+              ? " is-cold"
+              : "";
     const label = escapeHtml ? escapeHtml(String(item[labelKey] || "?")) : String(item[labelKey] || "?");
-    return `<g class="scout-bar-row${tone}" transform="translate(0,${i * gap})">
-      <text x="0" y="8" class="scout-bar-label">${label}</text>
-      <rect x="28" y="0" width="${w}" height="${barH}" rx="2" class="scout-bar-fill"/>
-      <text x="${28 + barWidth + 4}" y="8" class="scout-bar-val">${val}${valueSuffix}</text>
-    </g>`;
+    return `<div class="scout-bar-row${tone}">
+      <span class="scout-bar-label">${label}</span>
+      <span class="scout-bar-track"><span class="scout-bar-fill" style="width:${pct}%"></span></span>
+      <span class="scout-bar-val">${val}${valueSuffix}</span>
+    </div>`;
   }).join("");
-  const svgH = Math.min(items.length, 6) * gap;
-  return `<svg class="scout-bar-chart" width="${width}" height="${svgH}" viewBox="0 0 ${width} ${svgH}" aria-hidden="true">${rows}</svg>`;
+  return `<div class="scout-bar-chart">${rows}</div>`;
 }
 
 export function renderScoutEnginePanel(engineAgg, escapeHtml) {
@@ -552,11 +556,32 @@ function renderScoutRepertoireReads(stats, escapeHtml) {
   return `<div class="scout-repertoire-reads">${chips.join("")}</div>`;
 }
 
-export function renderScoutIntelligencePanel(
+export function renderScoutIntelSummary(
   stats,
   summary,
   escapeHtml,
-  { explorerReads = null, engineAgg = null, refutations = null } = {},
+  { explorerReads = null } = {},
+) {
+  const bullets = (summary?.bullets || [])
+    .slice(1)
+    .map((b) => `<li>${escapeHtml(b)}</li>`)
+    .join("");
+  const headline = summary?.headline ? escapeHtml(summary.headline) : "";
+  const repertoireReads = renderScoutRepertoireReads(stats, escapeHtml);
+  const explorerReadsHtml = renderScoutExplorerReads(explorerReads, escapeHtml);
+  return `
+      <div class="scout-intel-summary">
+        <div class="scout-intel-headline">${headline}</div>
+        ${bullets ? `<ul class="scout-intel-bullets">${bullets}</ul>` : ""}
+        ${repertoireReads}
+        ${explorerReadsHtml}
+      </div>`;
+}
+
+export function renderScoutIntelChartsStrip(
+  stats,
+  escapeHtml,
+  { engineAgg = null, explorerReads = null, refutations = null } = {},
 ) {
   const families = stats?.scoreByFamily?.families?.slice(0, 6) || [];
   const scoreBars = scoutSvgBar(families, { escapeHtml, valueKey: "scorePct" });
@@ -574,14 +599,6 @@ export function renderScoutIntelligencePanel(
     max: stats?.activitySeries?.max || 1,
     className: "scout-activity-spark",
   });
-
-  // summary.bullets[0] is also the headline (see buildScoutSectionSummary) — skip it
-  // here so the panel doesn't show the same sentence twice.
-  const bullets = (summary?.bullets || [])
-    .slice(1)
-    .map((b) => `<li>${escapeHtml(b)}</li>`)
-    .join("");
-  const headline = summary?.headline ? escapeHtml(summary.headline) : "";
   const chartSummary = [
     buildScoutIntelligenceA11ySummary(stats),
     explorerA11ySummary(explorerReads),
@@ -593,19 +610,10 @@ export function renderScoutIntelligencePanel(
   const a11yBlock = chartSummary
     ? `<p class="visually-hidden">${escapeHtml(chartSummary)}</p>`
     : "";
-  const repertoireReads = renderScoutRepertoireReads(stats, escapeHtml);
-  const explorerReadsHtml = renderScoutExplorerReads(explorerReads, escapeHtml);
   const enginePanel = renderScoutEnginePanel(engineAgg, escapeHtml);
 
   return `
-    <div class="scout-intel">
       ${a11yBlock}
-      <div class="scout-intel-summary">
-        <div class="scout-intel-headline">${headline}</div>
-        ${bullets ? `<ul class="scout-intel-bullets">${bullets}</ul>` : ""}
-        ${repertoireReads}
-        ${explorerReadsHtml}
-      </div>
       <div class="scout-intel-charts">
         <div class="scout-intel-panel">
           <div class="scout-col-label">Worst performance <span class="scout-col-hint muted">by score · n≥3</span></div>
@@ -616,11 +624,25 @@ export function renderScoutIntelligencePanel(
         <div class="scout-intel-panel scout-intel-trends">
           <div class="scout-col-label">Activity</div>
           <div class="scout-spark-row">
-            <span class="scout-spark-label">Repertoire focus</span>${repChangeSpark}
-            <span class="scout-spark-label">Games</span>${activitySpark}
+            <span class="scout-spark-label">Repertoire focus</span>
+            <span class="scout-spark-box">${repChangeSpark}</span>
+            <span class="scout-spark-label">Games</span>
+            <span class="scout-spark-box">${activitySpark}</span>
           </div>
         </div>
-      </div>
+      </div>`;
+}
+
+export function renderScoutIntelligencePanel(
+  stats,
+  summary,
+  escapeHtml,
+  { explorerReads = null, engineAgg = null, refutations = null } = {},
+) {
+  return `
+    <div class="scout-intel">
+      ${renderScoutIntelSummary(stats, summary, escapeHtml, { explorerReads })}
+      ${renderScoutIntelChartsStrip(stats, escapeHtml, { engineAgg, explorerReads, refutations })}
     </div>`;
 }
 
@@ -780,10 +802,10 @@ function scoutPrepFramingHtml(line, escapeHtml) {
 
 function scoutPrepCategoryBadge(line) {
   if (line.prepCategory === "attack") {
-    return '<span class="scout-prep-badge scout-prep-badge-attack" title="Below their baseline">Attack</span>';
+    return '<span class="scout-prep-chip scout-prep-chip-attack" title="Below their baseline">attack</span>';
   }
   if (line.prepCategory === "weapon") {
-    return '<span class="scout-prep-badge scout-prep-badge-weapon" title="Main repertoire line">Main line</span>';
+    return '<span class="scout-prep-chip scout-prep-chip-weapon" title="Strong repertoire line">main</span>';
   }
   return "";
 }
@@ -795,7 +817,7 @@ function scoutLineRowHtml(
   oppColor,
   baseline,
   escapeHtml,
-  { rowKind = "line", renderBoard = null } = {},
+  { rowKind = "line", renderBoard = null, rank = null } = {},
 ) {
   const weakness = rowKind === "weakness" || rowKind === "prep";
   const status = scoutPrepStatus(line);
@@ -809,7 +831,7 @@ function scoutLineRowHtml(
   const lastSeenBadge = line.lastSeen
     ? `<span class="scout-last-seen">${escapeHtml(formatLastSeenLabel(line.lastSeen))}</span>`
     : "";
-  const categoryBadge = scoutPrepCategoryBadge(line);
+  const categoryBadge = weakness ? scoutPrepCategoryBadge(line) : "";
   const refCard =
     weakness && line.refutation
       ? renderInlineRefutationCard(line, oppColor, escapeHtml, { renderBoard })
@@ -818,13 +840,21 @@ function scoutLineRowHtml(
     ? `Add your reply ${formatReplyLabel(line.suggestedReply)} to prep`
     : "Add this line to a repertoire";
   const addBtn = `<button type="button" class="scout-add-icon scout-action-add-prep" title="${escapeHtml(addTitle)}" aria-label="Add to prep" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}">+</button>`;
+  const rankCell =
+    rank != null
+      ? `<span class="scout-lr-rank" title="Exploitability rank">#${rank + 1}</span>`
+      : `<span class="scout-lr-count" title="${rawCount} of their games">&times;${rawCount}</span>`;
+  const shareCell =
+    weakness && line.share != null
+      ? `<span class="scout-lr-share" title="Share of their games">${Math.round(line.share * 100)}%</span>`
+      : "";
   return `
-      <div class="scout-line scout-line-row ${status.cls}${weakness ? " scout-weakness-row" : ""}" data-line-key="${escapeHtml(lineKey)}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
-        <span class="scout-lr-count" title="${rawCount} of their games">&times;${rawCount}</span>
+      <div class="scout-line scout-line-row ${status.cls}${weakness ? " scout-weakness-row scout-ranked-row" : ""}" data-line-key="${escapeHtml(lineKey)}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
+        ${rankCell}
+        ${shareCell}
         <div class="scout-lr-main">
           <span class="scout-line-eco"></span>
-          <span class="scout-line-moves">${framing}${lastSeenBadge ? ` ${lastSeenBadge}` : ""}</span>
-          ${categoryBadge}
+          <span class="scout-line-moves">${framing}${categoryBadge ? ` ${categoryBadge}` : ""}${lastSeenBadge ? ` ${lastSeenBadge}` : ""}</span>
           ${refCard}
         </div>
         <span class="scout-lr-score">${scoutScoreCell(line.scorePct, rawCount, { baseline, showGap: weakness && line.belowBaseline > 0 })}</span>
@@ -834,7 +864,11 @@ function scoutLineRowHtml(
 }
 
 function scoutWeaknessRowHtml(target, i, oppColor, baseline, escapeHtml, opts = {}) {
-  return scoutLineRowHtml(target, i, oppColor, baseline, escapeHtml, { rowKind: "prep", ...opts });
+  return scoutLineRowHtml(target, i, oppColor, baseline, escapeHtml, {
+    rowKind: "prep",
+    rank: i,
+    ...opts,
+  });
 }
 
 export function buildScoutSectionReport(
@@ -874,7 +908,8 @@ export function buildScoutSectionReport(
   });
 
   const breakdown = scoutModule.openingBreakdown(trie, { minGames: 1 });
-  let weaknessTargets = scoutModule.recommendTargets(breakdown, baseline, {
+  const openingLines = scoutModule.rankedOpeningLines(trie, { minGames: WEAKNESS_MIN_GAMES });
+  let weaknessTargets = scoutModule.rankGamePlan(openingLines, baseline, {
     minGames: WEAKNESS_MIN_GAMES,
     oppColor,
   });
@@ -909,31 +944,6 @@ export function buildScoutSectionReport(
     target.lastSeen = seen;
     lastSeenByLine.set(key, seen);
   }
-
-  for (const line of graded) {
-    if (prepTargets.length >= 12) break;
-    const normalized = scoutModule.normalizeToOpponentTerminal?.(line.ucis, line.sans, oppColor);
-    if (!normalized) continue;
-    // Dedupe on the NORMALISED key, prefix-aware: "1.Nf3" and "1.Nf3 Nf6" collapse to
-    // the same opponent-terminal line, so a weakness already listed isn't repeated here.
-    const normKey = scoutLineKey(normalized.ucis);
-    const isDup = prepTargets.some((p) => {
-      const pk = scoutLineKey(p.ucis);
-      return pk === normKey || pk.startsWith(`${normKey}>`) || normKey.startsWith(`${pk}>`);
-    });
-    if (isDup) continue;
-    // Categorise favourite-line fills with the same shared rule the prep targets use, so
-    // a 0%-scoring top line reads as "Attack" and a near-baseline one stays neutral —
-    // never the old hardcoded "main weapon".
-    const enriched = scoutModule.enrichPrepTarget(
-      { ...line, ucis: normalized.ucis, sans: normalized.sans },
-      baseline,
-    );
-    prepTargets.push({
-      ...enriched,
-      lastSeen: lineLastSeen(games, normalized.ucis, { color: oppColor, speedFilter }),
-    });
-  }
   prepTargets = attachPrepReplies(prepTargets, { lookups, refutations, oppColor });
 
   const summary = buildScoutSectionSummary(stats, {
@@ -943,7 +953,8 @@ export function buildScoutSectionReport(
     prepTargets,
     lastSeenByLine,
   });
-  const intelPanel = renderScoutIntelligencePanel(stats, summary, escapeHtml, {
+  const intelSummary = renderScoutIntelSummary(stats, summary, escapeHtml, { explorerReads });
+  const intelCharts = renderScoutIntelChartsStrip(stats, escapeHtml, {
     explorerReads,
     engineAgg,
     refutations,
@@ -984,16 +995,32 @@ export function buildScoutSectionReport(
   const prepRows = prepTargets
     .map((t, i) => scoutWeaknessRowHtml(t, i, oppColor, baseline, escapeHtml))
     .join("");
+  const rankedNote = prepTargets.length
+    ? `<div class="scout-ranked-note muted hint">Ranked by exploitability · n≥${WEAKNESS_MIN_GAMES}</div>`
+    : "";
   const prepPanel = prepRows
-    ? `<div class="scout-col scout-col-prep">
-          <div class="scout-col-label">Your game plan <span class="scout-col-hint muted">when they play X → you play Y</span></div>
+    ? `<div class="scout-game-plan">
+          <div class="scout-game-plan-head">
+            <div class="scout-col-label">Your game plan <span class="scout-col-hint muted">most exploitable first · when they play X → you play Y</span></div>
+            <div class="scout-first-moves">
+              <span class="scout-first-moves-label muted">First moves</span>
+              <div class="scout-dist scout-dist-compact" data-dist-root="true">${firstMoves}</div>
+            </div>
+          </div>
           ${gapActionsHtml}
-          <div class="scout-lines">${prepRows}</div>
+          <div class="scout-lines scout-ranked-list">${prepRows}</div>
+          ${rankedNote}
         </div>`
-    : `<div class="scout-col scout-col-prep">
-          <div class="scout-col-label">Your game plan</div>
+    : `<div class="scout-game-plan">
+          <div class="scout-game-plan-head">
+            <div class="scout-col-label">Your game plan</div>
+            <div class="scout-first-moves">
+              <span class="scout-first-moves-label muted">First moves</span>
+              <div class="scout-dist scout-dist-compact" data-dist-root="true">${firstMoves}</div>
+            </div>
+          </div>
           ${gapActionsHtml}
-          <div class="muted hint">No sufficiently-sampled prep targets yet (n≥${WEAKNESS_MIN_GAMES}). Run Deep scan for engine replies.</div>
+          <div class="muted hint">No line yet has n≥${WEAKNESS_MIN_GAMES} — fetch more games or lower the filter.</div>
         </div>`;
 
   const heading = oppColor === "white" ? "With White" : "With Black";
@@ -1014,14 +1041,9 @@ export function buildScoutSectionReport(
         <span class="scout-coverage-label">${preparedCount}/${totalLines} lines covered</span>
         ${prepareAll}
       </div>
-      ${intelPanel}
-      <div class="scout-body scout-body-prep">
-        <div class="scout-col">
-          <div class="scout-col-label">First moves <span class="scout-col-hint muted">n≥3</span></div>
-          <div class="scout-dist" data-dist-root="true">${firstMoves}</div>
-        </div>
-        ${prepPanel}
-      </div>
+      <div class="scout-intel scout-intel-summary-only">${intelSummary}</div>
+      ${prepPanel}
+      <div class="scout-intel-charts-strip">${intelCharts}</div>
     </div>
   `;
   return { html, sectionData };
@@ -1054,7 +1076,7 @@ export function buildScoutShareText({ username, profile, sections, activeSpeed }
     const prep = section.prepTargets || section.weaknessTargets;
     if (prep?.length) {
       lines.push("", "**Your game plan:**");
-      for (const t of prep.slice(0, 6)) {
+      for (const t of prep) {
         const their = scoutLineText(t.sans);
         const reply = t.suggestedReply?.uci ? ` → you play ${t.suggestedReply.uci}` : " → needs prep";
         let row = `- When they play ${their}${reply} — ${Math.round(t.share * 100)}% share, ${t.scorePct}% score (n=${t.games})`;

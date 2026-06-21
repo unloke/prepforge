@@ -2245,7 +2245,7 @@ h2 {
   text-align: right;
 }
 .scout-live-count::after {
-  content: " games";
+  content: " games analyzed";
   font-weight: 500;
   font-size: 11px;
 }
@@ -2378,6 +2378,23 @@ h2 {
   color: var(--muted);
   white-space: nowrap;
 }
+.scout-intel-summary-only {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  background: color-mix(in srgb, var(--panel-soft) 70%, transparent);
+}
+.scout-intel-charts-strip {
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--line-soft);
+  background: color-mix(in srgb, var(--panel-soft) 45%, transparent);
+}
+.scout-intel-charts-strip .scout-intel-charts {
+  gap: 8px;
+}
+.scout-intel-charts-strip .scout-col-label {
+  font-size: 10px;
+  margin-bottom: 4px;
+}
 .scout-intel-charts {
   display: grid;
   gap: 10px;
@@ -2444,28 +2461,111 @@ h2 {
 .scout-sparkline {
   color: var(--accent-strong);
   flex: none;
+  display: block;
+}
+.scout-spark-box {
+  display: inline-flex;
+  width: 72px;
+  flex: none;
+  overflow: hidden;
 }
 .scout-repchange-spark { color: var(--accent-strong); }
 .scout-activity-spark { color: var(--muted); }
-.scout-bar-chart { display: block; margin-top: 4px; }
+.scout-bar-chart {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+}
+.scout-bar-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
 .scout-bar-label {
   font-size: 10px;
-  fill: var(--muted);
+  color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
 }
-.scout-bar-fill { fill: var(--accent-strong); }
-.scout-bar-row.is-cold .scout-bar-fill { fill: var(--good); }
-.scout-bar-row.is-hot .scout-bar-fill { fill: var(--danger); }
+.scout-bar-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--line-soft);
+  overflow: hidden;
+}
+.scout-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent-strong);
+  opacity: 0.85;
+}
+.scout-bar-row.is-cold .scout-bar-fill { background: var(--good); }
+.scout-bar-row.is-hot .scout-bar-fill { background: var(--danger); }
 .scout-bar-val {
   font-size: 10px;
-  fill: var(--text);
+  color: var(--text);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-align: right;
 }
 
-.scout-body-prep {
-  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+.scout-game-plan {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-soft);
 }
-.scout-col-prep { min-width: 0; }
+.scout-game-plan-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+/* First-moves split is context above the list — a tidy fixed-width strip, not a
+   flex item that stretches (a vertical flex-basis blew it up to 220px tall before). */
+.scout-first-moves {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.scout-first-moves-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: var(--label);
+}
+.scout-first-moves .scout-dist-compact {
+  flex: none;
+  width: 100%;
+  max-width: 280px;
+}
+.scout-dist-compact .scout-dist-row {
+  grid-template-columns: 28px minmax(0, 1fr) 34px 36px;
+  gap: 8px;
+  font-size: 11px;
+}
+.scout-ranked-list .scout-ranked-row {
+  grid-template-columns: 28px 36px minmax(0, 1fr) 64px 60px 26px;
+}
+.scout-lr-rank {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--label);
+  text-align: right;
+}
+.scout-lr-share {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: right;
+}
+.scout-ranked-note { margin-top: 6px; font-size: 11px; }
 /* The "when they play X → you play Y" framing is the centrepiece, so let it wrap
    to as many lines as it needs instead of being ellipsis-truncated to "When th…". */
 .scout-weakness-row { align-items: start; }
@@ -2495,27 +2595,24 @@ h2 {
   color: var(--warn);
   font-weight: 600;
 }
-.scout-prep-badge {
-  display: inline-block;
-  align-self: flex-start;
+.scout-prep-chip {
+  display: inline;
   white-space: nowrap;
   font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 1px 5px;
-  border-radius: 999px;
-  margin-top: 4px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0 4px;
+  border-radius: 3px;
+  margin-left: 4px;
+  vertical-align: baseline;
 }
-.scout-prep-badge-attack {
+.scout-prep-chip-attack {
   color: var(--good);
-  background: color-mix(in srgb, var(--good) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--good) 30%, transparent);
+  background: color-mix(in srgb, var(--good) 10%, transparent);
 }
-.scout-prep-badge-weapon {
+.scout-prep-chip-weapon {
   color: var(--accent-strong);
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-line);
+  background: color-mix(in srgb, var(--accent-strong) 10%, transparent);
 }
 .scout-last-seen {
   display: inline-block;
@@ -2735,6 +2832,13 @@ h2 {
 .scout-dist-drill-head { font-size: 11px; margin-bottom: 4px; }
 .scout-dist-back { margin-top: 6px; }
 
+@media (max-width: 720px) {
+  .scout-ranked-list .scout-ranked-row {
+    grid-template-columns: 24px 32px minmax(0, 1fr) 52px 26px;
+    gap: 6px;
+  }
+  .scout-ranked-list .scout-lr-wdl { display: none; }
+}
 @media (max-width: 600px) {
   .scout-line-detail { flex-direction: column; }
   .scout-miniboard-wrap { width: 96px; height: 96px; }
