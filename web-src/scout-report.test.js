@@ -60,6 +60,29 @@ const GAMES = [
   },
 ];
 
+const PLAN_GAMES = [
+  ...Array.from({ length: 8 }, (_, i) => ({
+    color: "white",
+    score: i % 3 === 0 ? 1 : 0,
+    sans: ["e4", "c5", "Nf3"],
+    ucis: ["e2e4", "c7c5", "g1f3"],
+    rating: 1800,
+    datestamp: 4000 - i * 100,
+    speed: "blitz",
+    gameId: `sicilian-${i}`,
+  })),
+  ...Array.from({ length: 7 }, (_, i) => ({
+    color: "white",
+    score: i % 2 === 0 ? 1 : 0,
+    sans: ["d4", "d5"],
+    ucis: ["d2d4", "d7d5"],
+    rating: 1800,
+    datestamp: 3000 - i * 100,
+    speed: "blitz",
+    gameId: `london-${i}`,
+  })),
+];
+
 const LOOKUPS = {
   white: [],
   black: [
@@ -397,7 +420,7 @@ describe("scout-report rendering", () => {
     const { html } = buildScoutSectionReport(
       scoutModule,
       {
-        games: GAMES,
+        games: PLAN_GAMES,
         profile: {
           recentlyChanged: { white: false, black: false },
         },
@@ -406,8 +429,9 @@ describe("scout-report rendering", () => {
       LOOKUPS.black,
       { speedFilter: "all", escapeHtml },
     );
-    expect(html).toContain('<span class="scout-games-count">3 games</span>');
-    expect(html).toContain("&times;2");
+    expect(html).toContain('<span class="scout-games-count">15 games</span>');
+    expect(html).toContain("scout-lr-rank");
+    expect(html).toContain("scout-n");
     expect(html).not.toMatch(/games-count">\d+\.\d/);
   });
 
@@ -458,15 +482,15 @@ describe("scout-report rendering", () => {
     expect(sectionData.baselineScorePct).toBe(55);
   });
 
-  it("renders weaknesses panel with sample sizes", () => {
+  it("renders ranked game plan with sample sizes", () => {
     const { html } = buildScoutSectionReport(
       scoutModule,
       {
-        games: GAMES,
+        games: PLAN_GAMES,
         profile: {
           recentlyChanged: { white: false, black: false },
           colorStats: {
-            white: { games: 3, w: 1, d: 0, l: 2, scorePct: 33 },
+            white: { games: 15, w: 7, d: 0, l: 8, scorePct: 47 },
             black: { games: 0, w: 0, d: 0, l: 0, scorePct: 0 },
           },
         },
@@ -477,7 +501,41 @@ describe("scout-report rendering", () => {
     );
     expect(html).toContain("Your game plan");
     expect(html).toContain("When they play");
+    expect(html).toContain("scout-ranked-list");
+    expect(html).toContain("scout-lr-rank");
     expect(html).toContain("scout-n");
+  });
+
+  it("ranked prep rows expose six grid cells for desktop layout", () => {
+    const { html } = buildScoutSectionReport(
+      scoutModule,
+      {
+        games: PLAN_GAMES,
+        profile: {
+          recentlyChanged: { white: false, black: false },
+          colorStats: {
+            white: { games: 15, w: 7, d: 0, l: 8, scorePct: 47 },
+            black: { games: 0, w: 0, d: 0, l: 0, scorePct: 0 },
+          },
+        },
+      },
+      "white",
+      LOOKUPS.black,
+      { speedFilter: "all", escapeHtml },
+    );
+    const rowStart = html.indexOf("scout-ranked-row");
+    expect(rowStart).toBeGreaterThan(-1);
+    const rowSlice = html.slice(rowStart, rowStart + 2500);
+    for (const cell of [
+      "scout-lr-rank",
+      "scout-lr-share",
+      "scout-lr-main",
+      "scout-lr-score",
+      "scout-lr-wdl",
+      "scout-lr-action",
+    ]) {
+      expect(rowSlice).toContain(cell);
+    }
   });
 });
 
@@ -521,7 +579,7 @@ describe("scout-report interactions", () => {
     const { sectionData } = buildScoutSectionReport(
       scoutModule,
       {
-        games: GAMES,
+        games: PLAN_GAMES,
         profile: { recentlyChanged: { white: false, black: false } },
       },
       "white",
@@ -576,7 +634,7 @@ describe("scout-report interactions", () => {
     const { sectionData } = buildScoutSectionReport(
       scoutModule,
       {
-        games: GAMES,
+        games: PLAN_GAMES,
         profile: { recentlyChanged: { white: false, black: false } },
       },
       "white",
@@ -659,7 +717,7 @@ describe("scout intelligence panel", () => {
     const { html, sectionData } = buildScoutSectionReport(
       scoutModule,
       {
-        games: GAMES,
+        games: PLAN_GAMES,
         username: "rival",
         profile: { recentlyChanged: { white: false, black: false } },
       },
@@ -667,7 +725,10 @@ describe("scout intelligence panel", () => {
       LOOKUPS.black,
       { speedFilter: "all", escapeHtml },
     );
-    expect(html).toContain("scout-intel");
+    expect(html).toContain("scout-intel-summary-only");
+    expect(html).toContain("scout-intel-charts-strip");
+    expect(html).toContain("scout-ranked-list");
+    expect(html).toContain("scout-lr-rank");
     expect(html).toContain("Worst performance");
     expect(html).toContain("Activity");
     expect(html).toContain("Repertoire focus");
@@ -686,7 +747,7 @@ describe("scout intelligence panel", () => {
     const { html, sectionData } = buildScoutSectionReport(
       scoutModule,
       {
-        games: GAMES,
+        games: PLAN_GAMES,
         username: "rival",
         profile: { recentlyChanged: { white: false, black: false } },
       },
@@ -867,11 +928,12 @@ describe("scout intelligence panel", () => {
     expect(stats).toContain("last 3 weeks: 3 games");
   });
 
-  it("scoutSparkline and scoutSvgBar emit inline SVG", () => {
+  it("scoutSparkline emits inline SVG and scoutSvgBar emits HTML bars", () => {
     expect(scoutSparkline([40, 55, 30])).toContain("<polyline");
-    expect(scoutSvgBar([{ san: "e4", scorePct: 42 }], { escapeHtml })).toContain(
-      "scout-bar-fill",
-    );
+    const bars = scoutSvgBar([{ san: "e4", scorePct: 42 }], { escapeHtml });
+    expect(bars).toContain("scout-bar-fill");
+    expect(bars).toContain("scout-bar-row");
+    expect(bars).not.toContain("<svg");
   });
 
   it("renderInlineRefutationCard shows positive swing for a black opponent blunder", () => {

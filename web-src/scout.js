@@ -10,6 +10,8 @@
 
 import { Chess } from "chess.js";
 
+import { gamePhase } from "./coach/material.js";
+
 export const SCOUT_MAX_GAMES = 500;
 
 export const SCOUT_ERR_RATE_LIMIT =
@@ -379,11 +381,9 @@ export function enrichPrepTarget(g, baselineScorePct) {
   const wilsonMargin = Math.max(0, baselineScorePct - wilsonUpper);
   const isAttack = below > 0 && (wilsonMargin > 0 || below >= SCOUT_ATTACK_MIN_MARGIN);
   const isWeapon = !isAttack && g.scorePct >= baselineScorePct;
-  // Rank attacks by how CONFIDENTLY they sit below baseline (Wilson margin), with a small
-  // raw-margin floor so a clear-but-modest-sample weakness still outranks coin-flips.
-  const opportunity = isAttack
-    ? g.share * (wilsonMargin > 0 ? wilsonMargin : below * 0.25)
-    : 0;
+  const opportunity =
+    g.share *
+    (wilsonMargin > 0 ? wilsonMargin : below >= SCOUT_ATTACK_MIN_MARGIN ? below * 0.25 : 0);
   return {
     ...g,
     wilsonScorePct: wilsonLower,
@@ -443,6 +443,111 @@ export function recommendTargets(
   };
   pickFrom(attacks, attackLimit);
   if (chosen.length < limit) pickFrom(weapons, weaponLimit);
+  return chosen;
+}
+
+const openingPhaseCache = new Map();
+
+/** Clear cached opening-phase lookups (tests or long sessions). */
+export function clearOpeningPhaseCache() {
+  openingPhaseCache.clear();
+}
+
+function openingPhaseAt(ucis, cache = openingPhaseCache) {
+  const key = triePathKey(ucis);
+  const hit = cache.get(key);
+  if (hit != null) return hit;
+  const phase = gamePhase(fenAfterLine(ucis));
+  cache.set(key, phase);
+  return phase;
+}
+
+// Walk each branch to the opening boundary (gamePhase), following the most-played child.
+export function rankedOpeningLines(root, { minGames = 1, phaseCache = openingPhaseCache } = {}) {
+  const groups = [];
+  const seen = new Set();
+
+  const emit = (node, sans, ucis) => {
+    if (node.gameCount < minGames || !sans.length) return;
+    const pathKey = triePathKey(ucis);
+    if (seen.has(pathKey)) return;
+    seen.add(pathKey);
+    groups.push(nodeToLineGroup(root, node, sans, ucis, pathKey));
+  };
+
+  const eligibleChildren = (node) =>
+    [...node.children.entries()]
+      .map(([key, child]) => {
+        const [uci, san] = key.split("|");
+        return { key, child, uci, san };
+      })
+      .filter(({ child }) => child.gameCount >= minGames)
+      .sort((a, b) => b.child.count - a.child.count);
+
+  const descendMain = (node, sans, ucis) => {
+    if (sans.length >= MAX_PLIES) {
+      emit(node, sans, ucis);
+      return;
+    }
+    if (openingPhaseAt(ucis, phaseCache) !== "opening") {
+      emit(node, sans, ucis);
+      return;
+    }
+
+    const children = eligibleChildren(node);
+    if (!children.length) {
+      emit(node, sans, ucis);
+      return;
+    }
+
+    for (let i = 1; i < children.length; i += 1) {
+      const { child, uci, san } = children[i];
+      descendMain(child, [...sans, san], [...ucis, uci]);
+    }
+    const { child, uci, san } = children[0];
+    descendMain(child, [...sans, san], [...ucis, uci]);
+  };
+
+  for (const [key, child] of root.children) {
+    if (child.gameCount < minGames) continue;
+    const [uci, san] = key.split("|");
+    descendMain(child, [san], [uci]);
+  }
+
+  return groups;
+}
+
+// Unified ranked game plan: exploitability first, collapse nested prefixes, no row cap.
+export function rankGamePlan(
+  lines,
+  baselineScorePct,
+  { minGames = WEAKNESS_MIN_GAMES, oppColor = null } = {},
+) {
+  const eligible = lines
+    .filter((g) => g.games >= minGames)
+    .map((g) => {
+      if (!oppColor) return enrichPrepTarget(g, baselineScorePct);
+      const normalized = normalizeToOpponentTerminal(g.ucis, g.sans, oppColor);
+      if (!normalized) return null;
+      return enrichPrepTarget(
+        { ...g, ucis: normalized.ucis, sans: normalized.sans, line: triePathKey(normalized.ucis) },
+        baselineScorePct,
+      );
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.opportunity - a.opportunity || b.games - a.games);
+
+  const chosen = [];
+  for (const g of eligible) {
+    const gPath = g.line || triePathKey(g.ucis || []);
+    const nestedIdx = chosen.findIndex((c) => isNestedLine(c, g));
+    if (nestedIdx >= 0) {
+      const cPath = chosen[nestedIdx].line || triePathKey(chosen[nestedIdx].ucis || []);
+      if (gPath.startsWith(`${cPath}>`)) chosen[nestedIdx] = g;
+      continue;
+    }
+    chosen.push(g);
+  }
   return chosen;
 }
 
@@ -747,13 +852,16 @@ export function opponentProfile(games) {
 export function scoutUrl(username, max) {
   const safe = encodeURIComponent(String(username || "").trim());
   const params = new URLSearchParams({
-    max: String(Math.max(10, Math.min(SCOUT_MAX_GAMES, Number(max) || 100))),
     moves: "true",
     clocks: "false",
     evals: "false",
     opening: "false",
     perfType: "bullet,blitz,rapid,classical",
   });
+  const maxN = Number(max);
+  if (max != null && Number.isFinite(maxN) && maxN > 0) {
+    params.set("max", String(Math.max(10, Math.min(SCOUT_MAX_GAMES, maxN))));
+  }
   return `https://lichess.org/api/games/user/${safe}?${params}`;
 }
 
@@ -761,13 +869,16 @@ export function scoutUrl(username, max) {
 export function scoutStreamUrl(username, { color = "both", since, until, max } = {}) {
   const safe = encodeURIComponent(String(username || "").trim());
   const params = new URLSearchParams({
-    max: String(Math.max(10, Math.min(SCOUT_MAX_GAMES, Number(max) || SCOUT_MAX_GAMES))),
     moves: "true",
     clocks: "false",
     evals: "false",
     opening: "false",
     perfType: "bullet,blitz,rapid,classical",
   });
+  const maxN = Number(max);
+  if (max != null && Number.isFinite(maxN) && maxN > 0) {
+    params.set("max", String(Math.max(10, Math.min(SCOUT_MAX_GAMES, maxN))));
+  }
   if (color && color !== "both") params.set("color", color);
   if (since != null) params.set("since", String(since));
   if (until != null) params.set("until", String(until));
@@ -842,8 +953,8 @@ export function createScoutClient({ fetchImpl, storage, now } = {}) {
   }
 
   // fetchGames(username, {max}) -> parsed game records (cached for a few hours).
-  async function fetchGames(username, { max = 100, signal } = {}) {
-    const key = `${username.toLowerCase()}:${max}`;
+  async function fetchGames(username, { max, signal } = {}) {
+    const key = `${username.toLowerCase()}:${max ?? "all"}`;
     const cache = readCache();
     const hit = cache.entries[key];
     if (hit && clock() - hit.at < CACHE_TTL_MS) return hit.games;

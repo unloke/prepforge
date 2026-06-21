@@ -31,7 +31,24 @@ import {
 } from "../scout.js";
 
 const RENDER_DEBOUNCE_MS = 400;
-const RENDER_FORCE_EVERY = 25;
+const RENDER_FORCE_EVERY_INITIAL = 25;
+
+/** Games between forced full rerenders while streaming — grows with history size. */
+export function scoutRenderForceEvery(gameCount) {
+  const n = Number(gameCount) || 0;
+  if (n < 100) return RENDER_FORCE_EVERY_INITIAL;
+  if (n < 300) return 50;
+  if (n < 600) return 100;
+  return 200;
+}
+
+/** Debounce delay for batched rerenders — longer waits as history grows. */
+export function scoutRenderDebounceMs(gameCount) {
+  const n = Number(gameCount) || 0;
+  if (n < 200) return RENDER_DEBOUNCE_MS;
+  if (n < 500) return 800;
+  return 1200;
+}
 const EXPLORER_ENRICH_DEBOUNCE_MS = 800;
 const ENGINE_AGG_DEBOUNCE_MS = 400;
 
@@ -215,7 +232,8 @@ export function createScoutView(deps) {
   function scheduleRender({ force = false } = {}) {
     if (!scoutSession) return;
     scoutSession.gamesSinceRender += 1;
-    if (force || scoutSession.gamesSinceRender >= RENDER_FORCE_EVERY) {
+    const forceEvery = scoutRenderForceEvery(scoutState?.games?.length || 0);
+    if (force || scoutSession.gamesSinceRender >= forceEvery) {
       clearTimeout(scoutSession.renderTimer);
       scoutSession.renderTimer = null;
       flushRender();
@@ -223,11 +241,12 @@ export function createScoutView(deps) {
       return;
     }
     if (scoutSession.renderTimer) return;
+    const debounceMs = scoutRenderDebounceMs(scoutState?.games?.length || 0);
     scoutSession.renderTimer = setTimeout(() => {
       scoutSession.renderTimer = null;
       flushRender();
       scoutSession.gamesSinceRender = 0;
-    }, RENDER_DEBOUNCE_MS);
+    }, debounceMs);
   }
 
   function engineScanForColor(color) {

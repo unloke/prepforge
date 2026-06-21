@@ -18,6 +18,9 @@ import {
   parseGameBlock,
   parseMultiPgn,
   nodeIdAfterFlush,
+  clearOpeningPhaseCache,
+  rankGamePlan,
+  rankedOpeningLines,
   recommendTargets,
   normalizeToOpponentTerminal,
   terminalMoveIsOpponent,
@@ -393,6 +396,117 @@ describe("openingBreakdown + recommendTargets", () => {
   });
 });
 
+describe("rankedOpeningLines + rankGamePlan", () => {
+  it("collects opening-boundary lines from the trie", () => {
+    const trie = buildOpeningTrie(GAMES, "white", { recency: false });
+    const lines = rankedOpeningLines(trie, { minGames: 1 });
+    expect(lines.some((g) => g.sans[0] === "e4")).toBe(true);
+    expect(lines.some((g) => g.sans[0] === "d4")).toBe(true);
+    for (const line of lines) {
+      expect(line.sans.length).toBeGreaterThan(0);
+      expect(line.sans.length).toBeLessThanOrEqual(MAX_PLIES);
+    }
+  });
+
+  it("reuses opening-phase cache across shared path prefixes", () => {
+    clearOpeningPhaseCache();
+    const trie = buildOpeningTrie(GAMES, "white", { recency: false });
+    const cache = new Map();
+    rankedOpeningLines(trie, { minGames: 1, phaseCache: cache });
+    const sizeAfterFirst = cache.size;
+    rankedOpeningLines(trie, { minGames: 1, phaseCache: cache });
+    expect(sizeAfterFirst).toBeGreaterThan(0);
+    expect(cache.size).toBe(sizeAfterFirst);
+  });
+
+  it("ranks most-exploitable lines first and collapses nested prefixes", () => {
+    const weak = {
+      line: "e2e4>c7c5>g1f3",
+      sans: ["e4", "c5", "Nf3"],
+      ucis: ["e2e4", "c7c5", "g1f3"],
+      games: 12,
+      w: 2,
+      d: 1,
+      l: 9,
+      scorePct: 21,
+      share: 0.45,
+      count: 12,
+    };
+    const strong = {
+      line: "d2d4",
+      sans: ["d4"],
+      ucis: ["d2d4"],
+      games: 10,
+      w: 8,
+      d: 0,
+      l: 2,
+      scorePct: 80,
+      share: 0.35,
+      count: 10,
+    };
+    const nested = {
+      line: "e2e4",
+      sans: ["e4"],
+      ucis: ["e2e4"],
+      games: 12,
+      w: 2,
+      d: 1,
+      l: 9,
+      scorePct: 21,
+      share: 0.45,
+      count: 12,
+    };
+    const ranked = rankGamePlan([strong, nested, weak], 50, { minGames: 7, oppColor: "white" });
+    expect(ranked).toHaveLength(2);
+    expect(ranked[0].ucis).toEqual(["e2e4", "c7c5", "g1f3"]);
+    expect(ranked[0].opportunity).toBeGreaterThan(ranked[1].opportunity);
+    expect(terminalMoveIsOpponent(ranked[0].ucis, "white")).toBe(true);
+  });
+
+  it("returns all qualifying lines without an artificial cap", () => {
+    const lines = [
+      {
+        line: "e2e4",
+        sans: ["e4"],
+        ucis: ["e2e4"],
+        games: 8,
+        w: 2,
+        d: 0,
+        l: 6,
+        scorePct: 25,
+        share: 0.2,
+        count: 8,
+      },
+      {
+        line: "d2d4",
+        sans: ["d4"],
+        ucis: ["d2d4"],
+        games: 9,
+        w: 1,
+        d: 0,
+        l: 8,
+        scorePct: 11,
+        share: 0.18,
+        count: 9,
+      },
+      {
+        line: "g1f3",
+        sans: ["Nf3"],
+        ucis: ["g1f3"],
+        games: 7,
+        w: 3,
+        d: 0,
+        l: 4,
+        scorePct: 43,
+        share: 0.15,
+        count: 7,
+      },
+    ];
+    const ranked = rankGamePlan(lines, 55, { minGames: 7, oppColor: "white" });
+    expect(ranked.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
 describe("opponentProfile", () => {
   it("summarizes ratings and speed counts", () => {
     const profile = opponentProfile(GAMES);
@@ -593,6 +707,18 @@ describe("createScoutClient", () => {
     expect(second).toEqual(first);
   });
 
+  it("fetchGames omits max from the export URL by default", async () => {
+    let fetchedUrl = "";
+    const fetchImpl = vi.fn(async (url) => {
+      fetchedUrl = String(url);
+      return { ok: true, status: 200, text: async () => EXPORT };
+    });
+    const client = createScoutClient({ fetchImpl, storage: memoryStorage() });
+    await client.fetchGames("Foe");
+    expect(fetchedUrl).not.toContain("max=");
+    expect(fetchedUrl).toContain("/api/games/user/Foe");
+  });
+
   it("maps fetch errors to user-facing messages", () => {
     expect(scoutFetchErrorMessage(new TypeError("fetch failed"))).toBe(SCOUT_ERR_NETWORK);
     expect(scoutFetchErrorMessage(new Error(SCOUT_ERR_RATE_LIMIT))).toBe(SCOUT_ERR_RATE_LIMIT);
@@ -612,11 +738,16 @@ describe("createScoutClient", () => {
     await expect(client429.fetchGames("foe")).rejects.toThrow(/rate limit/i);
   });
 
-  it("builds a bounded export URL", () => {
-    const url = scoutUrl("Foe", 9999);
+  it("builds an export URL without max by default", () => {
+    const url = scoutUrl("Foe");
     expect(url).toContain("/api/games/user/Foe?");
-    expect(url).toContain("max=500");
+    expect(url).not.toContain("max=");
     expect(url).toContain("perfType=bullet%2Cblitz%2Crapid%2Cclassical");
+  });
+
+  it("caps an explicit max at SCOUT_MAX_GAMES", () => {
+    const url = scoutUrl("Foe", 9999);
+    expect(url).toContain("max=500");
   });
 
   it("builds a streaming URL with colour and pagination params", () => {
@@ -624,7 +755,9 @@ describe("createScoutClient", () => {
     expect(url).toContain("color=white");
     expect(url).toContain("until=1700000000");
     expect(url).toContain("max=120");
-    expect(scoutStreamUrl("Foe", { color: "both" })).not.toContain("color=");
+    const defaultUrl = scoutStreamUrl("Foe", { color: "both" });
+    expect(defaultUrl).not.toContain("color=");
+    expect(defaultUrl).not.toContain("max=");
   });
 
   it("streams PGN chunks split mid-game and emits complete games", async () => {
