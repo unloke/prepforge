@@ -323,6 +323,7 @@ def test_create_returns_build_payload_and_claims_ownership(client):
     # Claimed for the caller: it shows in their list + dashboard counter.
     reps = client.get("/api/repertoires").json()["repertoires"]
     assert [x["id"] for x in reps] == [rep_id]
+    assert "health" not in reps[0]  # list is metadata-only; health is on build/load
     assert client.get("/api/dashboard").json()["repertoires"] == 1
 
 

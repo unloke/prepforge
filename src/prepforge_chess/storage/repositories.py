@@ -547,6 +547,44 @@ class PrepForgeRepository:
             if repertoire is not None
         ]
 
+    def list_owner_repertoire_listings(
+        self, owner_user_id: str
+    ) -> List[Dict[str, Any]]:
+        """Lightweight owner listing rows for the dashboard — metadata only, no
+        opening-tree load and no training-progress scan. Health is computed on
+        drill-in (``/api/build/load``) instead of here."""
+        stmt = (
+            select(
+                t.repertoires.c.id,
+                t.repertoires.c.name,
+                t.repertoires.c.color,
+                t.repertoires.c.root_fen,
+                t.repertoires.c.notes,
+                t.repertoires.c.tags_json,
+                t.repertoires.c.is_active,
+                t.repertoires.c.team_id,
+                t.repertoires.c.visibility,
+            )
+            .where(t.repertoires.c.user_profile_id == owner_user_id)
+            .order_by(t.repertoires.c.updated_at.desc())
+        )
+        with self.engine.connect() as conn:
+            rows = conn.execute(stmt).mappings().all()
+        return [
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "color": row["color"],
+                "root_fen": row["root_fen"],
+                "notes": row["notes"],
+                "tags": _json_load(row["tags_json"], []),
+                "is_active": _int_to_bool(row["is_active"]),
+                "team_id": row["team_id"],
+                "visibility": row["visibility"] or "private",
+            }
+            for row in rows
+        ]
+
     def list_repertoire_metas(
         self, owner_user_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:

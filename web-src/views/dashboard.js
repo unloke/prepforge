@@ -44,7 +44,9 @@ export function createDashboardView({
   let eventsBound = false;
 
   function healthBadgeHtml(health) {
-    if (!health || !health.trainable) {
+    // List endpoint is metadata-only; health loads on drill-in (/api/build/load).
+    if (!health) return "";
+    if (!health.trainable) {
       return '<span class="rep-health rep-health-empty">no moves yet</span>';
     }
     const parts = [];
