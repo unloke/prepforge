@@ -93,6 +93,27 @@ export function createStockfishWasmProvider({
   // on reopen (app.js _ensureEngine keeps `this.engine` after close). Note we must NOT reset this
   // inside the serialized task body, or a queued pre-close op would wrongly "revive" the provider.
   let generation = 0;
+  // Event-driven waiters for waitForSearchComplete — woken on worker UCI lines, not timers.
+  let searchWaiters = [];
+
+  function notifySearchWaiters() {
+    if (!searchWaiters.length) return;
+    const pending = [];
+    for (const w of searchWaiters) {
+      if (!w.check()) pending.push(w);
+    }
+    searchWaiters = pending;
+  }
+
+  function rejectAllSearchWaiters(message) {
+    const pending = searchWaiters;
+    searchWaiters = [];
+    const err = new Error(message);
+    for (const w of pending) {
+      w.cleanup();
+      w.reject(err);
+    }
+  }
 
   function failReady(message) {
     state.error = message;
@@ -125,6 +146,7 @@ export function createStockfishWasmProvider({
       readyResolve = null;
       reject(new Error(message));
     }
+    notifySearchWaiters();
   }
 
   const state = {
@@ -198,6 +220,7 @@ export function createStockfishWasmProvider({
         return;
       }
       state.running = false;
+      notifySearchWaiters();
       return;
     }
     if (line.startsWith("info ") && line.includes(" pv ")) {
@@ -257,6 +280,7 @@ export function createStockfishWasmProvider({
       pv_uci: pv,
       pv_san: uciToSan(state.fen, pv),
     };
+    notifySearchWaiters();
   }
 
   function ensureWorker() {
@@ -411,6 +435,97 @@ export function createStockfishWasmProvider({
     snapshot() {
       return { ...state, pvs: state.pvs.map((pv) => ({ ...pv })) };
     },
+    // Resolve when the in-flight search finishes (worker `info`/`bestmove` driven).
+    // A 1s cancel poll is the only timer — Chromium clamps hidden-tab timers to ≥1s anyway,
+    // so this avoids the old 90ms poll loop that made background Analyze ~10× slower.
+    waitForSearchComplete({
+      targetDepth,
+      cancelled,
+      timeoutMs,
+      started = Date.now(),
+      acceptShallowOnTimeout = false,
+      fen = null,
+      onCancel,
+    } = {}) {
+      const depth = targetDepth ?? state.max_depth;
+      return new Promise((resolve, reject) => {
+        let timeoutTimer = null;
+        let cancelTimer = null;
+        let waiter = null;
+
+        const cleanup = () => {
+          if (timeoutTimer) {
+            clearTimeout(timeoutTimer);
+            timeoutTimer = null;
+          }
+          if (cancelTimer) {
+            clearInterval(cancelTimer);
+            cancelTimer = null;
+          }
+          if (waiter) {
+            searchWaiters = searchWaiters.filter((w) => w !== waiter);
+          }
+        };
+
+        const check = () => {
+          if (state.error) {
+            cleanup();
+            reject(new Error(state.error));
+            return true;
+          }
+          if (cancelled && cancelled()) {
+            cleanup();
+            if (typeof onCancel === "function") {
+              reject(onCancel());
+            } else {
+              const err = new Error("cancelled");
+              err.cancelled = true;
+              reject(err);
+            }
+            return true;
+          }
+          const done = !state.running && state.current_depth > 0;
+          const reached = state.current_depth >= depth && state.pvs.length > 0;
+          if (done || reached) {
+            cleanup();
+            resolve(this.snapshot());
+            return true;
+          }
+          if (Date.now() - started >= timeoutMs) {
+            if (acceptShallowOnTimeout) {
+              const top = state.pvs[0];
+              if (top && (top.score_cp !== null || top.mate_in !== null)) {
+                cleanup();
+                resolve(this.snapshot());
+                return true;
+              }
+              cleanup();
+              const suffix = fen ? ` for ${fen}` : "";
+              reject(
+                new Error(`Engine timed out after ${timeoutMs}ms with no evaluation${suffix}`),
+              );
+              return true;
+            }
+            cleanup();
+            const suffix = fen ? ` at ${fen}` : "";
+            reject(new Error(`Browser Stockfish timed out after ${timeoutMs}ms${suffix}`));
+            return true;
+          }
+          return false;
+        };
+
+        if (check()) return;
+
+        waiter = { check, cleanup, reject };
+        searchWaiters.push(waiter);
+
+        const remaining = Math.max(0, timeoutMs - (Date.now() - started));
+        timeoutTimer = setTimeout(() => check(), remaining);
+        if (cancelled) {
+          cancelTimer = setInterval(() => check(), 1000);
+        }
+      });
+    },
     close() {
       // Bump generation BEFORE releasing the drain: the awaited startSearch resumes synchronously
       // off finishDrain()'s resolve, and must see the new generation so it bails instead of
@@ -449,6 +564,7 @@ export function createStockfishWasmProvider({
       newGameSent = false;
       state.session_id = null;
       state.running = false;
+      rejectAllSearchWaiters("Browser engine closed");
       return Promise.resolve();
     },
   };

@@ -219,10 +219,13 @@ def _smart_summary_payload(
     progress_by_id = {
         p.node_id: p for p in repo.list_training_progress(repertoire.id)
     }
+    health = compute_health(
+        repertoire.root_node, repertoire.color, progress_by_id
+    ).to_dict()
+    # Keep the dashboard's cached badge in step with post-session mastery gains.
+    repo.set_repertoire_health(repertoire.id, health)
     return {
-        "health": compute_health(
-            repertoire.root_node, repertoire.color, progress_by_id
-        ).to_dict(),
+        "health": health,
         "due_tomorrow": due_forecast(
             repertoire.root_node, repertoire.color, progress_by_id
         ),

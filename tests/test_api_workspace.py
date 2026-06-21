@@ -323,6 +323,9 @@ def test_create_returns_build_payload_and_claims_ownership(client):
     # Claimed for the caller: it shows in their list + dashboard counter.
     reps = client.get("/api/repertoires").json()["repertoires"]
     assert [x["id"] for x in reps] == [rep_id]
+    # The list carries a cached health badge, refreshed off the create/build payload
+    # (no per-row tree walk). A fresh rep is just its root, so nothing is trainable yet.
+    assert reps[0]["health"]["trainable"] == 0
     assert client.get("/api/dashboard").json()["repertoires"] == 1
 
 

@@ -144,6 +144,7 @@ CREATE TABLE IF NOT EXISTS repertoires (
     updated_at TEXT NOT NULL,
     team_id TEXT,
     visibility TEXT,
+    health_json TEXT,
     FOREIGN KEY (user_profile_id) REFERENCES user_profiles(id)
 );
 

@@ -32,7 +32,6 @@ from prepforge_chess.services.opening_builder import (
     OpeningBuilderService,
 )
 from prepforge_chess.services import streak
-from prepforge_chess.services.progress import compute_health
 from prepforge_chess.services.repertoire_export import RepertoireExportService
 from prepforge_chess.services.workspace_view import build_workspace_payload
 from prepforge_chess.storage import sa_tables as t
@@ -243,7 +242,9 @@ def list_repertoires(
     repo: PrepForgeRepository = Depends(get_repository),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """The caller's own repertoires (each with a computed health summary), plus a
+    """The caller's own repertoires (metadata + a cached ``health`` badge — no tree
+    load and no per-row health walk; the badge is refreshed off the Build payload and
+    train summary, and is ``None`` until a rep is first opened/trained), plus a
     lightweight ``shared`` list of repertoires other members have shared to the
     caller's teams (read-only; no health/tree load to keep this cheap)."""
     team_ids = user_team_ids(db, user.id)
@@ -255,23 +256,19 @@ def list_repertoires(
     return {
         "repertoires": [
             {
-                "id": rep.id,
-                "name": rep.name,
-                "color": rep.color.value,
-                "root_fen": rep.root_fen,
-                "notes": rep.notes,
-                "tags": rep.tags,
-                "is_active": getattr(rep, "is_active", True),
-                "team_id": sharing["team_id"],
-                "visibility": sharing["visibility"],
-                "health": compute_health(
-                    rep.root_node,
-                    rep.color,
-                    {p.node_id: p for p in repo.list_training_progress(rep.id)},
-                ).to_dict(),
+                "id": row["id"],
+                "name": row["name"],
+                "color": row["color"],
+                "root_fen": row["root_fen"],
+                "notes": row["notes"],
+                "tags": row["tags"],
+                "is_active": row["is_active"],
+                "team_id": row["team_id"],
+                "visibility": row["visibility"],
+                # Cached coverage badge (None until first opened/trained); not recomputed here.
+                "health": row["health"],
             }
-            for rep in repo.list_repertoires(owner_user_id=owner)
-            if (sharing := repo.repertoire_meta(rep.id)) is not None
+            for row in repo.list_owner_repertoire_listings(owner_user_id=owner)
         ],
         "shared": [
             {
