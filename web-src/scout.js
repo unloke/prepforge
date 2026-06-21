@@ -28,9 +28,82 @@ export function scoutFetchErrorMessage(error) {
 export const MAX_PLIES = 16; // opening book depth for the display trie
 export const ANALYZE_PLIES = 24; // deeper capture for weakness / engine scan
 export const WEAKNESS_MIN_GAMES = 7;
+export const SLIP_MIN_GAMES = 3;
+const MS_PER_DAY = 86_400_000;
+const RECENCY_HALF_LIFE_DAYS = 45;
+
+function wilsonInterval(w, d, l, tail) {
+  const n = (w || 0) + (d || 0) + (l || 0);
+  if (!n) return 0.5;
+  const p = ((w || 0) + 0.5 * (d || 0)) / n;
+  const z = 1.96;
+  const denom = 1 + (z * z) / n;
+  const center = p + (z * z) / (2 * n);
+  const margin = z * Math.sqrt((p * (1 - p) + (z * z) / (4 * n)) / n);
+  return tail === "upper" ? (center + margin) / denom : (center - margin) / denom;
+}
+
+/** Wilson lower bound of score% (draw = 0.5). Used for ranking, not display. */
+export function wilsonScorePct(w, d, l) {
+  return Math.round(wilsonInterval(w, d, l, "lower") * 100);
+}
+
+/** Wilson upper bound — weakness must clear this to count as a proven attack target. */
+export function wilsonScoreUpperPct(w, d, l) {
+  return Math.round(wilsonInterval(w, d, l, "upper") * 100);
+}
+
+/** Convert one UCI move from a FEN; falls back to the UCI string on replay failure. */
+export function uciToSan(fen, uci) {
+  if (!fen || !uci) return uci || "";
+  try {
+    const chess = new Chess(fen);
+    const move = chess.move({
+      from: uci.slice(0, 2),
+      to: uci.slice(2, 4),
+      promotion: uci[4] || undefined,
+    });
+    return move?.san || uci;
+  } catch (_) {
+    return uci;
+  }
+}
+
+/** True when the last move in the path is the scouted opponent's move. */
+export function terminalMoveIsOpponent(pathUcis, oppColor) {
+  if (!pathUcis?.length || !oppColor) return false;
+  const lastIdx = pathUcis.length - 1;
+  const mover = lastIdx % 2 === 0 ? "white" : "black";
+  return mover === oppColor;
+}
+
+/** Truncate or keep a line so it ends on the opponent's move. */
+export function normalizeToOpponentTerminal(ucis, sans, oppColor) {
+  if (!ucis?.length || !sans?.length || !oppColor) return null;
+  if (terminalMoveIsOpponent(ucis, oppColor)) {
+    return { ucis: [...ucis], sans: [...sans] };
+  }
+  if (ucis.length > 1) {
+    const trimmedUcis = ucis.slice(0, -1);
+    const trimmedSans = sans.slice(0, -1);
+    if (terminalMoveIsOpponent(trimmedUcis, oppColor)) {
+      return { ucis: trimmedUcis, sans: trimmedSans };
+    }
+  }
+  return null;
+}
 
 export function triePathKey(ucis, maxPlies = MAX_PLIES) {
   return ucis.slice(0, maxPlies).join(">");
+}
+
+export function scoutLineText(sans) {
+  const parts = [];
+  (sans || []).forEach((san, index) => {
+    if (index % 2 === 0) parts.push(`${index / 2 + 1}.`);
+    parts.push(san);
+  });
+  return parts.join(" ");
 }
 
 // After add-moves flush, map a provisional tmp-* id to its reconciled server id.
@@ -122,8 +195,11 @@ export function parseGameBlock(block, username) {
   else return null; // unfinished
 
   const ratingHeader = color === "white" ? "WhiteElo" : "BlackElo";
+  const opponentRatingHeader = color === "white" ? "BlackElo" : "WhiteElo";
   const ratingRaw = headerValue(block, ratingHeader);
+  const opponentRatingRaw = headerValue(block, opponentRatingHeader);
   const rating = ratingRaw ? Number(ratingRaw) || 0 : 0;
+  const opponentRating = opponentRatingRaw ? Number(opponentRatingRaw) || 0 : 0;
 
   const dateRaw = headerValue(block, "UTCDate");
   const datestamp = dateRaw ? Date.parse(dateRaw.replace(/\./g, "-")) || 0 : 0;
@@ -153,7 +229,17 @@ export function parseGameBlock(block, username) {
     replayedSans.push(move.san);
   }
   if (!ucis.length) return null;
-  return { color, score, sans: replayedSans, ucis, rating, datestamp, speed, gameId };
+  return {
+    color,
+    score,
+    sans: replayedSans,
+    ucis,
+    rating,
+    opponentRating,
+    datestamp,
+    speed,
+    gameId,
+  };
 }
 
 export function parseMultiPgn(text, username) {
@@ -182,14 +268,11 @@ function incrementResult(node, score) {
 
 function gameWeight(games, game, recency) {
   if (!recency) return 1;
-  if (!game.datestamp || game.datestamp <= 0) return 0.5;
+  if (!game.datestamp || game.datestamp <= 0) return 0.3;
   const stamps = games.map((g) => g.datestamp).filter((d) => d > 0);
-  if (!stamps.length) return 1;
-  const oldestTs = Math.min(...stamps);
-  const newestTs = Math.max(...stamps);
-  const range = newestTs - oldestTs;
-  if (range === 0) return 1;
-  return 0.5 + 0.5 * ((game.datestamp - oldestTs) / range);
+  const newestTs = stamps.length ? Math.max(...stamps) : Date.now();
+  const ageDays = Math.max(0, (newestTs - game.datestamp) / MS_PER_DAY);
+  return Math.pow(0.5, ageDays / RECENCY_HALF_LIFE_DAYS);
 }
 
 function nodeScorePct(node) {
@@ -283,32 +366,163 @@ function isNestedLine(a, b) {
   return x === y || x.startsWith(`${y}>`) || y.startsWith(`${x}>`);
 }
 
-// Rank lines by frequency × how far below the opponent's own baseline they score, then
-// collapse nested duplicates: among ancestor/descendant lines of one opening we keep only
-// the single best-opportunity representative, so "Prepare these first" reads as distinct
-// weaknesses rather than the same line repeated at every depth.
-export function recommendTargets(breakdown, baselineScorePct, { limit = 8, minGames = WEAKNESS_MIN_GAMES } = {}) {
-  const ranked = breakdown
+// A line only earns the "Attack" badge when they sit MEANINGFULLY below their own
+// baseline — either Wilson-confidently (upper bound still under baseline) or by a clear
+// raw margin on a real sample. A line a couple of points under baseline is neither a
+// weakness to punish nor a weapon to fear, so it stays neutral (no badge, not a target).
+export const SCOUT_ATTACK_MIN_MARGIN = 6;
+
+export function enrichPrepTarget(g, baselineScorePct) {
+  const wilsonLower = wilsonScorePct(g.w ?? 0, g.d ?? 0, g.l ?? 0);
+  const wilsonUpper = wilsonScoreUpperPct(g.w ?? 0, g.d ?? 0, g.l ?? 0);
+  const below = baselineScorePct - g.scorePct;
+  const wilsonMargin = Math.max(0, baselineScorePct - wilsonUpper);
+  const isAttack = below > 0 && (wilsonMargin > 0 || below >= SCOUT_ATTACK_MIN_MARGIN);
+  const isWeapon = !isAttack && g.scorePct >= baselineScorePct;
+  // Rank attacks by how CONFIDENTLY they sit below baseline (Wilson margin), with a small
+  // raw-margin floor so a clear-but-modest-sample weakness still outranks coin-flips.
+  const opportunity = isAttack
+    ? g.share * (wilsonMargin > 0 ? wilsonMargin : below * 0.25)
+    : 0;
+  return {
+    ...g,
+    wilsonScorePct: wilsonLower,
+    wilsonScoreUpperPct: wilsonUpper,
+    belowBaseline: isAttack ? below : 0,
+    opportunity,
+    prepCategory: isAttack ? "attack" : isWeapon ? "weapon" : "neutral",
+  };
+}
+
+// Rank by recency-weighted share × Wilson-below-baseline; collapse nested lines; split
+// attack targets (below baseline) from main-weapon lines (high share, at/above baseline).
+export function recommendTargets(
+  breakdown,
+  baselineScorePct,
+  {
+    limit = 8,
+    minGames = WEAKNESS_MIN_GAMES,
+    oppColor = null,
+    weaponShareMin = 0.12,
+    attackLimit = 5,
+    weaponLimit = 3,
+  } = {},
+) {
+  const eligible = breakdown
     .filter((g) => g.games >= minGames)
     .map((g) => {
-      const belowBaseline = baselineScorePct - g.scorePct;
-      return {
-        ...g,
-        belowBaseline,
-        opportunity: g.share * Math.max(0, belowBaseline),
-        smallSample: false,
-      };
+      if (!oppColor) return enrichPrepTarget(g, baselineScorePct);
+      const normalized = normalizeToOpponentTerminal(g.ucis, g.sans, oppColor);
+      if (!normalized) return null;
+      // Refresh `line` to the normalised path: two deeper lines can truncate to the same
+      // opponent-terminal move (e.g. "1.d4 Nf6" and "1.d4 g6" → "1.d4"), and the nested
+      // dedup below keys off `line`, so a stale original path would leak duplicate rows.
+      return enrichPrepTarget(
+        { ...g, ucis: normalized.ucis, sans: normalized.sans, line: triePathKey(normalized.ucis) },
+        baselineScorePct,
+      );
     })
-    .filter((g) => g.belowBaseline > 0)
+    .filter(Boolean);
+
+  const attacks = eligible
+    .filter((g) => g.prepCategory === "attack")
     .sort((a, b) => b.opportunity - a.opportunity);
+  const weapons = eligible
+    .filter((g) => g.prepCategory === "weapon" && g.share >= weaponShareMin)
+    .sort((a, b) => b.share - a.share || b.games - a.games);
 
   const chosen = [];
-  for (const g of ranked) {
-    if (chosen.some((c) => isNestedLine(c, g))) continue;
-    chosen.push(g);
-    if (chosen.length >= limit) break;
-  }
+  const pickFrom = (list, cap) => {
+    let n = 0;
+    for (const g of list) {
+      if (chosen.some((c) => isNestedLine(c, g))) continue;
+      chosen.push(g);
+      n += 1;
+      if (n >= cap || chosen.length >= limit) break;
+    }
+  };
+  pickFrom(attacks, attackLimit);
+  if (chosen.length < limit) pickFrom(weapons, weaponLimit);
   return chosen;
+}
+
+/** Prefer an enabled mainline child; otherwise pick deterministically by UCI. */
+function pickRepertoireReplyChild(children) {
+  if (!children?.size) return null;
+  const entries = [...children.entries()].map(([uci, meta]) => ({
+    uci,
+    id: meta.id,
+    is_mainline: !!meta.is_mainline,
+    is_enabled: meta.is_enabled !== false,
+  }));
+  const enabled = entries.filter((e) => e.is_enabled);
+  if (!enabled.length) return null;
+  const mainlines = enabled.filter((e) => e.is_mainline);
+  if (mainlines.length) {
+    mainlines.sort((a, b) => a.uci.localeCompare(b.uci));
+    return mainlines[0];
+  }
+  enabled.sort((a, b) => a.uci.localeCompare(b.uci));
+  return enabled[0];
+}
+
+/** Next move in the player's repertoire after the opponent line (mainline-aware). */
+export function suggestReplyFromRepertoire(lookup, lineUcis) {
+  const { covered, deepestNodeId } = lineCoverage(lookup, lineUcis);
+  if (covered < lineUcis.length || !deepestNodeId) return null;
+  const children = lookup.childUci.get(deepestNodeId);
+  const picked = pickRepertoireReplyChild(children);
+  return picked?.uci ? { uci: picked.uci, source: "repertoire" } : null;
+}
+
+/** Attach a recommended player reply from repertoire coverage or engine refutation. */
+export function attachPrepReplies(targets, { lookups = [], refutations = [], oppColor } = {}) {
+  const refByKey = new Map();
+  for (const item of refutations || []) {
+    const key = triePathKey(item.candidate?.pathUcis || []);
+    if (key && item.refutation) refByKey.set(key, item.refutation);
+  }
+  return (targets || []).map((target) => {
+    const pathKey = triePathKey(target.ucis || []);
+    let suggestedReply = null;
+    for (const { lookup } of lookups || []) {
+      const fromRep = suggestReplyFromRepertoire(lookup, target.ucis);
+      if (fromRep) {
+        suggestedReply = fromRep;
+        break;
+      }
+    }
+    if (!suggestedReply) {
+      const ref = refByKey.get(pathKey);
+      if (ref?.suggestedUci) {
+        const replyFen = fenAfterLine([...(target.ucis || [])]);
+        suggestedReply = {
+          uci: ref.suggestedUci,
+          san: ref.suggestedSan || uciToSan(replyFen, ref.suggestedUci),
+          source: "engine",
+          cpLoss: ref.cpLoss,
+          ourReplyPv: ref.ourReplyPv,
+          playedSan: ref.playedSan,
+          playedUci: ref.playedUci,
+        };
+      }
+    }
+    if (suggestedReply?.uci && !suggestedReply.san) {
+      const replyFen = fenAfterLine([...(target.ucis || [])]);
+      suggestedReply = {
+        ...suggestedReply,
+        san: uciToSan(replyFen, suggestedReply.uci),
+      };
+    }
+    const refutation = refByKey.get(pathKey) || null;
+    return {
+      ...target,
+      suggestedReply,
+      needsPrep: !suggestedReply,
+      refutation,
+      oppColor,
+    };
+  });
 }
 
 // The opponent's most-travelled paths: walk the trie greedily from the most
@@ -360,7 +574,7 @@ export function topLines(root, { limit = 12, minCount = 1.5 } = {}) {
 }
 
 // First-move distribution (or the reply distribution under a given first move).
-export function moveDistribution(root) {
+export function moveDistribution(root, { slipMinGames = SLIP_MIN_GAMES } = {}) {
   const total = root.count || 1;
   return [...root.children.entries()]
     .map(([key, child]) => {
@@ -375,9 +589,11 @@ export function moveDistribution(root) {
         l: child.l,
         share: child.count / total,
         scorePct: nodeScorePct(child),
+        wilsonScorePct: wilsonScorePct(child.w, child.d, child.l),
         node: child,
       };
     })
+    .filter((m) => m.gameCount >= slipMinGames)
     .sort((a, b) => b.count - a.count);
 }
 
@@ -387,15 +603,20 @@ export function moveDistribution(root) {
 
 // Build a parent->children uci lookup from a /api/build/load payload's flat nodes.
 export function repertoireChildLookup(nodes) {
-  const childUci = new Map(); // parentId -> Map<uci, nodeId>
+  const childUci = new Map(); // parentId -> Map<uci, { id, is_mainline, is_enabled }>
   let rootId = null;
   for (const node of nodes || []) {
     if (node.depth === 0) {
       rootId = node.id;
       continue;
     }
+    if (node.is_enabled === false) continue;
     if (!childUci.has(node.parent_id)) childUci.set(node.parent_id, new Map());
-    childUci.get(node.parent_id).set(node.uci, node.id);
+    childUci.get(node.parent_id).set(node.uci, {
+      id: node.id,
+      is_mainline: !!node.is_mainline,
+      is_enabled: node.is_enabled !== false,
+    });
   }
   return { rootId, childUci };
 }
@@ -409,7 +630,7 @@ export function lineCoverage(lookup, lineUcis) {
     const children = lookup.childUci.get(nodeId);
     const next = children ? children.get(uci) : null;
     if (!next) break;
-    nodeId = next;
+    nodeId = next.id;
     covered += 1;
   }
   return { covered, deepestNodeId: nodeId };
@@ -536,6 +757,72 @@ export function scoutUrl(username, max) {
   return `https://lichess.org/api/games/user/${safe}?${params}`;
 }
 
+/** Streaming export URL — adds colour filter and since/until for resume pagination. */
+export function scoutStreamUrl(username, { color = "both", since, until, max } = {}) {
+  const safe = encodeURIComponent(String(username || "").trim());
+  const params = new URLSearchParams({
+    max: String(Math.max(10, Math.min(SCOUT_MAX_GAMES, Number(max) || SCOUT_MAX_GAMES))),
+    moves: "true",
+    clocks: "false",
+    evals: "false",
+    opening: "false",
+    perfType: "bullet,blitz,rapid,classical",
+  });
+  if (color && color !== "both") params.set("color", color);
+  if (since != null) params.set("since", String(since));
+  if (until != null) params.set("until", String(until));
+  return `https://lichess.org/api/games/user/${safe}?${params}`;
+}
+
+// Lichess exports separate games by a blank line before the next [Event tag.
+export const PGN_BLOCK_BOUNDARY = /\n\s*\n(?=\[Event )/;
+
+async function streamPgn(resp, username, onGame, signal) {
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let accepted = 0;
+  let lastDatestamp = null;
+
+  const emitBlock = (block) => {
+    const trimmed = String(block || "").trim();
+    if (!trimmed) return;
+    const game = parseGameBlock(trimmed, username);
+    if (!game) return;
+    if (onGame(game) === false) return;
+    accepted += 1;
+    if (game.datestamp > 0 && (lastDatestamp == null || game.datestamp < lastDatestamp)) {
+      lastDatestamp = game.datestamp;
+    }
+  };
+
+  try {
+    while (true) {
+      if (signal?.aborted) break;
+      let chunk;
+      try {
+        chunk = await reader.read();
+      } catch (error) {
+        if (error?.name === "AbortError" || signal?.aborted) break;
+        throw error;
+      }
+      if (chunk.done) break;
+      buffer += decoder.decode(chunk.value, { stream: true });
+      const parts = buffer.split(PGN_BLOCK_BOUNDARY);
+      buffer = parts.pop() || "";
+      for (const part of parts) emitBlock(part);
+    }
+  } finally {
+    try {
+      reader.cancel?.();
+    } catch (_) {
+      /* reader may already be closed */
+    }
+    if (!signal?.aborted) emitBlock(buffer);
+  }
+  return { accepted, emitted: accepted, lastDatestamp };
+}
+
 export function createScoutClient({ fetchImpl, storage, now } = {}) {
   const doFetch = fetchImpl || ((...args) => fetch(...args));
   const clock = now || (() => Date.now());
@@ -587,5 +874,17 @@ export function createScoutClient({ fetchImpl, storage, now } = {}) {
     return games;
   }
 
-  return { fetchGames };
+  // streamGames(username, {color, since, until, onGame, signal}) -> {accepted, lastDatestamp}
+  async function streamGames(username, { color, since, until, max, onGame, signal } = {}) {
+    const resp = await doFetch(scoutStreamUrl(username, { color, since, until, max }), {
+      headers: { Accept: "application/x-chess-pgn" },
+      signal,
+    });
+    if (resp.status === 404) throw new Error(`No Lichess user named "${username}"`);
+    if (resp.status === 429) throw new Error(SCOUT_ERR_RATE_LIMIT);
+    if (!resp.ok) throw new Error(`Lichess responded ${resp.status}`);
+    return streamPgn(resp, username, onGame, signal);
+  }
+
+  return { fetchGames, streamGames };
 }

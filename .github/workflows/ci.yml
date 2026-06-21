@@ -52,3 +52,28 @@ jobs:
         run: npm run build
       - name: Bundle-size gate
         run: node scripts/check-bundle-size.mjs
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install (server + dev extras)
+        run: uv sync --extra server --extra dev
+      - name: Install JS + Playwright Chromium
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Build SPA (E2E)
+        env:
+          VITE_ENABLE_SCOUT_E2E: "1"
+        run: npm run build
+      - name: Scout E2E smoke
+        run: uv run pytest -m e2e tests/e2e/test_scout_smoke.py -q

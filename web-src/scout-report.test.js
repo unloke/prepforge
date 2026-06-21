@@ -4,10 +4,22 @@ import * as scoutModule from "./scout.js";
 import {
   buildScoutAnalyzePgn,
   buildScoutSectionReport,
+  captureScoutExpanded,
+  consumeEcoCacheEntry,
   handleScoutProfileClick,
   handleScoutResultsClick,
+  renderScoutEnginePanel,
+  renderScoutRefutationPanel,
+  renderInlineRefutationCard,
+  handleScoutRefutationGapClick,
+  refutationA11ySummary,
   renderScoutProfile,
+  restoreScoutExpanded,
   scoutLineDetailHtml,
+  scoutLineKey,
+  scoutSparkline,
+  scoutSvgBar,
+  buildScoutIntelligenceA11ySummary,
 } from "./scout-report.js";
 
 function escapeHtml(value) {
@@ -174,6 +186,200 @@ function stubLineFromReport(html) {
   return { container, lineEl, prepAll };
 }
 
+describe("consumeEcoCacheEntry", () => {
+  it("returns null for rejected promises without throwing", async () => {
+    await expect(consumeEcoCacheEntry(Promise.reject(new Error("explorer down")))).resolves.toBeNull();
+  });
+
+  it("resolves string cache entries synchronously", async () => {
+    await expect(consumeEcoCacheEntry("B90 Sicilian")).resolves.toBe("B90 Sicilian");
+  });
+});
+
+describe("captureScoutExpanded / restoreScoutExpanded", () => {
+  it("does not leave unhandled rejections for cached ECO promises", async () => {
+    const { sectionData } = buildScoutSectionReport(
+      scoutModule,
+      {
+        games: GAMES,
+        profile: { recentlyChanged: { white: false, black: false } },
+      },
+      "white",
+      LOOKUPS.black,
+      { speedFilter: "all", escapeHtml },
+    );
+    const line = sectionData.prepTargets?.[0] || sectionData.gradedLines[0];
+    const key = scoutLineKey(line.ucis);
+    const lineEl = createStubElement("div");
+    lineEl.classList.add("scout-line");
+    lineEl.dataset.lineKey = key;
+    lineEl.dataset.color = "white";
+    lineEl.dataset.rowIdx = "0";
+    lineEl.dataset.rowKind = "line";
+    const ecoEl = createStubElement("span");
+    ecoEl.classList.add("scout-line-eco");
+    lineEl.querySelector = (sel) => (sel === ".scout-line-eco" ? ecoEl : null);
+
+    const results = createStubElement("div");
+    results._lines = [lineEl];
+    results.querySelectorAll = (sel) =>
+      sel === ".scout-line[data-line-key]" ? results._lines : [];
+
+    const rejected = Promise.reject(new Error("offline"));
+    rejected.catch(() => {});
+
+    await expect(
+      Promise.resolve(
+        restoreScoutExpanded(
+          results,
+          { white: sectionData },
+          { expandedKeys: new Set([key]), scrollTop: 0 },
+          {
+            scoutModule,
+            escapeHtml,
+            ecoCache: new Map([[key, rejected]]),
+            createElement: createStubElement,
+            callbacks: {
+              scoutLineDetailHtml: () => "",
+              enrichEcoForLine: vi.fn(),
+            },
+          },
+        ),
+      ),
+    ).resolves.toBeUndefined();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(ecoEl.textContent ?? "").toBe("");
+  });
+  it("captures expanded line keys by uci path, not row index", () => {
+    const results = createStubElement("div");
+    const line = createStubElement("div");
+    line.classList.add("scout-line", "is-expanded");
+    line.dataset.lineKey = "e2e4>c7c5>g1f3";
+    results._lines = [line];
+    results.querySelectorAll = (sel) => {
+      if (sel === ".scout-line.is-expanded[data-line-key]") return results._lines;
+      if (sel === ".scout-line[data-line-key]") return results._lines;
+      return [];
+    };
+    results.scrollTop = 120;
+    const captured = captureScoutExpanded(results);
+    expect(captured.expandedKeys.has("e2e4>c7c5>g1f3")).toBe(true);
+    expect(captured.scrollTop).toBe(120);
+    expect(scoutLineKey(["e2e4", "c7c5", "g1f3"])).toBe("e2e4>c7c5>g1f3");
+  });
+
+  it("restores expansion by line key after a rebuild", () => {
+    const { sectionData } = buildScoutSectionReport(
+      scoutModule,
+      {
+        games: GAMES,
+        profile: { recentlyChanged: { white: false, black: false } },
+      },
+      "white",
+      LOOKUPS.black,
+      { speedFilter: "all", escapeHtml },
+    );
+    const line = sectionData.prepTargets?.[0] || sectionData.gradedLines[0];
+    const key = scoutLineKey(line.ucis);
+    const lineEl = createStubElement("div");
+    lineEl.classList.add("scout-line");
+    lineEl.dataset.lineKey = key;
+    lineEl.dataset.color = "white";
+    lineEl.dataset.rowIdx = "0";
+    lineEl.dataset.rowKind = "prep";
+    const results = createStubElement("div");
+    results._line = lineEl;
+    results.querySelectorAll = (sel) =>
+      sel === ".scout-line[data-line-key]" ? [lineEl] : [];
+    results.scrollTop = 0;
+    restoreScoutExpanded(
+      results,
+      { white: sectionData },
+      { expandedKeys: new Set([key]), scrollTop: 88 },
+      {
+        scoutModule,
+        escapeHtml,
+        ecoCache: new Map(),
+        createElement: createStubElement,
+        callbacks: {
+          scoutLineDetailHtml: () => '<div class="scout-miniboard"></div>',
+          enrichEcoForLine: vi.fn(),
+        },
+      },
+    );
+    expect(lineEl.classList.contains("is-expanded")).toBe(true);
+    expect(lineEl.getAttribute("aria-expanded")).toBe("true");
+    expect(lineEl.nextElementSibling?.classList.contains("scout-line-detail")).toBe(true);
+    expect(results.scrollTop).toBe(88);
+  });
+
+  it("preserves expansion across a simulated live re-render", () => {
+    const { sectionData } = buildScoutSectionReport(
+      scoutModule,
+      {
+        games: GAMES,
+        profile: { recentlyChanged: { white: false, black: false } },
+      },
+      "white",
+      LOOKUPS.black,
+      { speedFilter: "all", escapeHtml },
+    );
+    const line = sectionData.prepTargets?.[0] || sectionData.gradedLines[0];
+    const key = scoutLineKey(line.ucis);
+
+    const lineElBefore = createStubElement("div");
+    lineElBefore.classList.add("scout-line", "is-expanded");
+    lineElBefore.dataset.lineKey = key;
+    lineElBefore.dataset.color = "white";
+    const resultsBefore = createStubElement("div");
+    resultsBefore._lines = [lineElBefore];
+    resultsBefore.querySelectorAll = (sel) =>
+      sel === ".scout-line.is-expanded[data-line-key]" ? resultsBefore._lines : [];
+    resultsBefore.scrollTop = 64;
+    const captured = captureScoutExpanded(resultsBefore);
+
+    const { sectionData: sectionData2 } = buildScoutSectionReport(
+      scoutModule,
+      {
+        games: [...GAMES, { ...GAMES[0], datestamp: 4000 }],
+        profile: { recentlyChanged: { white: false, black: false } },
+      },
+      "white",
+      LOOKUPS.black,
+      { speedFilter: "all", escapeHtml },
+    );
+    const lineElAfter = createStubElement("div");
+    lineElAfter.classList.add("scout-line");
+    lineElAfter.dataset.lineKey = key;
+    lineElAfter.dataset.color = "white";
+    lineElAfter.dataset.rowIdx = "0";
+    lineElAfter.dataset.rowKind = "prep";
+    const resultsAfter = createStubElement("div");
+    resultsAfter._lines = [lineElAfter];
+    resultsAfter.querySelectorAll = (sel) =>
+      sel === ".scout-line[data-line-key]" ? resultsAfter._lines : [];
+    restoreScoutExpanded(
+      resultsAfter,
+      { white: sectionData2 },
+      captured,
+      {
+        scoutModule,
+        escapeHtml,
+        ecoCache: new Map(),
+        createElement: createStubElement,
+        callbacks: {
+          scoutLineDetailHtml: () => '<div class="scout-miniboard"></div>',
+          enrichEcoForLine: vi.fn(),
+        },
+      },
+    );
+
+    expect(lineElAfter.classList.contains("is-expanded")).toBe(true);
+    expect(lineElAfter.nextElementSibling?.classList.contains("scout-line-detail")).toBe(true);
+    expect(resultsAfter.scrollTop).toBe(64);
+  });
+});
+
 describe("scout-report rendering", () => {
   it("renders speed chips with the active filter highlighted", () => {
     const html = renderScoutProfile(
@@ -269,7 +475,8 @@ describe("scout-report rendering", () => {
       LOOKUPS.black,
       { speedFilter: "all", escapeHtml },
     );
-    expect(html).toContain("Prepare these first");
+    expect(html).toContain("Your game plan");
+    expect(html).toContain("When they play");
     expect(html).toContain("scout-n");
   });
 });
@@ -328,7 +535,7 @@ describe("scout-report interactions", () => {
     const lineEl = createStubElement("div");
     lineEl.classList.add("scout-line");
     lineEl.dataset.rowIdx = "0";
-    lineEl.dataset.rowKind = "line";
+    lineEl.dataset.rowKind = "prep";
     lineEl.dataset.color = "white";
 
     await handleScoutResultsClick(
@@ -382,7 +589,7 @@ describe("scout-report interactions", () => {
     };
     const callbacks = {
       scoutLineDetailHtml: () =>
-        '<button class="scout-action-analyze" data-row-kind="line" data-row-idx="0"></button><button class="scout-action-add-prep" data-row-kind="line" data-row-idx="0" data-color="white"></button>',
+        '<button class="scout-action-analyze" data-row-kind="prep" data-row-idx="0"></button><button class="scout-action-add-prep" data-row-kind="prep" data-row-idx="0" data-color="white"></button>',
       enrichEcoForLine: vi.fn(),
       restoreDistRoot: vi.fn(),
       renderDistDrilldown: vi.fn(),
@@ -403,7 +610,7 @@ describe("scout-report interactions", () => {
     const lineEl = createStubElement("div");
     lineEl.classList.add("scout-line");
     lineEl.dataset.rowIdx = "0";
-    lineEl.dataset.rowKind = "line";
+    lineEl.dataset.rowKind = "prep";
     lineEl.dataset.color = "white";
     await handleScoutResultsClick(
       {
@@ -419,27 +626,24 @@ describe("scout-report interactions", () => {
     const analyzeBtn = createStubElement("button");
     analyzeBtn.classList.add("scout-action-analyze");
     analyzeBtn.dataset.rowIdx = "0";
-    analyzeBtn.dataset.rowKind = "line";
+    analyzeBtn.dataset.rowKind = "prep";
     analyzeBtn.closest = (sel) => {
       if (sel === ".scout-action-analyze") return analyzeBtn;
       if (sel === ".scout-line-detail") return detail;
       return null;
     };
     await handleScoutResultsClick({ target: analyzeBtn }, ctx);
-    expect(callbacks.scoutAnalyzeLine).toHaveBeenCalledWith(
-      sectionData.gradedLines[0],
-      "white",
-      "rival",
-    );
+    const prepLine = sectionData.prepTargets?.[0] || sectionData.gradedLines[0];
+    expect(callbacks.scoutAnalyzeLine).toHaveBeenCalledWith(prepLine, "white", "rival");
 
     const addBtn = createStubElement("button");
     addBtn.classList.add("scout-action-add-prep");
-    addBtn.dataset.rowKind = "line";
+    addBtn.dataset.rowKind = "prep";
     addBtn.dataset.rowIdx = "0";
     addBtn.dataset.color = "white";
     addBtn.closest = (sel) => (sel === ".scout-action-add-prep" ? addBtn : null);
     await handleScoutResultsClick({ target: addBtn }, ctx);
-    expect(callbacks.scoutAddToPrep).toHaveBeenCalledWith(sectionData.gradedLines[0], "white");
+    expect(callbacks.scoutAddToPrep).toHaveBeenCalledWith(prepLine, "white");
 
     const prepAllBtn = createStubElement("button");
     prepAllBtn.classList.add("scout-prepare-all");
@@ -447,5 +651,246 @@ describe("scout-report interactions", () => {
     prepAllBtn.closest = (sel) => (sel === ".scout-prepare-all" ? prepAllBtn : null);
     await handleScoutResultsClick({ target: prepAllBtn }, ctx);
     expect(callbacks.scoutPrepareAll).toHaveBeenCalled();
+  });
+});
+
+describe("scout intelligence panel", () => {
+  it("renders worst-performance panel and NL summary in section HTML", () => {
+    const { html, sectionData } = buildScoutSectionReport(
+      scoutModule,
+      {
+        games: GAMES,
+        username: "rival",
+        profile: { recentlyChanged: { white: false, black: false } },
+      },
+      "white",
+      LOOKUPS.black,
+      { speedFilter: "all", escapeHtml },
+    );
+    expect(html).toContain("scout-intel");
+    expect(html).toContain("Worst performance");
+    expect(html).toContain("Activity");
+    expect(html).toContain("Repertoire focus");
+    expect(html).toContain("scout-sparkline");
+    expect(html).toContain("scout-bar-chart");
+    expect(html).toContain("visually-hidden");
+    expect(html).toContain("scout-repertoire-reads");
+    expect(html).toContain("scout-read-chip");
+    expect(html).toContain("Engine ACPL");
+    expect(html).toContain("Engine scan: run Deep scan");
+    expect(sectionData.stats).toBeDefined();
+    expect(sectionData.summary?.headline).toBeTruthy();
+  });
+
+  it("does not repeat the headline as the first bullet", () => {
+    const { html, sectionData } = buildScoutSectionReport(
+      scoutModule,
+      {
+        games: GAMES,
+        username: "rival",
+        profile: { recentlyChanged: { white: false, black: false } },
+      },
+      "white",
+      LOOKUPS.black,
+      { speedFilter: "all", escapeHtml },
+    );
+    const headline = sectionData.summary.headline;
+    const bulletItems = html.match(/<li>[\s\S]*?<\/li>/g) || [];
+    // The headline shows once in .scout-intel-headline; it must not also appear as a <li>.
+    expect(bulletItems.some((li) => li.includes(escapeHtml(headline)))).toBe(false);
+  });
+
+  it("renderScoutEnginePanel shows insufficient coverage or ACPL bars", () => {
+    expect(renderScoutEnginePanel(null, escapeHtml)).toContain("run Deep scan");
+    expect(
+      renderScoutEnginePanel(
+        {
+          sufficient: false,
+          analyzedGames: 1,
+          eligibleGames: 4,
+          coveragePct: 25,
+          minAnalyzedGames: 3,
+          minCoveragePct: 60,
+        },
+        escapeHtml,
+      ),
+    ).toContain("coverage insufficient");
+    expect(
+      renderScoutEnginePanel(
+        {
+          sufficient: true,
+          families: [{ san: "e4", acpl: 42, firstInaccuracyPly: 3, analyzedGames: 5 }],
+        },
+        escapeHtml,
+      ),
+    ).toContain("42 cp");
+    expect(
+      renderScoutEnginePanel(
+        {
+          sufficient: true,
+          scopeLimited: true,
+          maxGames: 60,
+          families: [{ san: "e4", acpl: 42, firstInaccuracyPly: 3, analyzedGames: 5 }],
+        },
+        escapeHtml,
+      ),
+    ).toContain("based on latest 60 games");
+  });
+
+  it("renderScoutRefutationPanel shows only confirmed refutations", () => {
+    const html = renderScoutRefutationPanel(
+      [
+        {
+          refutation: { suggestedUci: "b1c3" },
+          candidate: { pathSans: ["e4", "c5"] },
+          evidence: [
+            { layer: "engine", acpl: 42, analyzedGames: 5, scopeLimited: true, maxGames: 60 },
+            { layer: "explorer", mastersSharePct: 12 },
+          ],
+        },
+        {
+          refutation: null,
+          blockedBy: [{ layer: "engine", code: "no-scan" }],
+        },
+      ],
+      escapeHtml,
+    );
+    expect(html).toContain("scout-refutation-hit");
+    expect(html).toContain("1.e4 c5");
+    expect(html).toContain("b1c3");
+    expect(html).toContain("42 cp ACPL");
+    expect(html).toContain("12% masters");
+    expect(html).toContain("latest 60 games");
+    expect(html).not.toContain("no-scan");
+  });
+
+  it("renderScoutRefutationPanel shows actionable gaps instead of blocked refutations", () => {
+    const html = renderScoutRefutationPanel(
+      [
+        {
+          refutation: null,
+          blockedBy: [{ layer: "engine", code: "no-scan" }],
+        },
+      ],
+      escapeHtml,
+    );
+    expect(html).toContain("Run Deep scan");
+    expect(html).toContain('data-testid="scout-refutation-gap-deep-scan"');
+    expect(html).toContain('data-refutation-gap="deep-scan"');
+    expect(html).toContain('aria-label="Run deep engine scan to generate refutations"');
+    expect(html).not.toContain("scout-refutation-hit");
+  });
+
+  it("renderScoutRefutationPanel renders connect-lichess gap CTA", () => {
+    const html = renderScoutRefutationPanel(
+      [
+        {
+          refutation: null,
+          blockedBy: [{ layer: "explorer", code: "auth" }],
+        },
+      ],
+      escapeHtml,
+    );
+    expect(html).toContain('data-testid="scout-refutation-gap-connect-lichess"');
+    expect(html).toContain('data-refutation-gap="connect-lichess"');
+    expect(html).toContain("Connect Lichess account");
+  });
+
+  it("handleScoutRefutationGapClick delegates deep scan and lichess connect", () => {
+    const runDeepScan = vi.fn();
+    const connectLichess = vi.fn();
+    const deepHandled = handleScoutRefutationGapClick(
+      {
+        target: {
+          closest(sel) {
+            return sel === "[data-refutation-gap]"
+              ? { dataset: { refutationGap: "deep-scan" } }
+              : null;
+          },
+        },
+      },
+      { callbacks: { runDeepScan, connectLichess } },
+    );
+    expect(deepHandled).toBe(true);
+    expect(runDeepScan).toHaveBeenCalledTimes(1);
+    expect(connectLichess).not.toHaveBeenCalled();
+
+    const lichessHandled = handleScoutRefutationGapClick(
+      {
+        target: {
+          closest(sel) {
+            return sel === "[data-refutation-gap]"
+              ? { dataset: { refutationGap: "connect-lichess" } }
+              : null;
+          },
+        },
+      },
+      { callbacks: { runDeepScan, connectLichess } },
+    );
+    expect(lichessHandled).toBe(true);
+    expect(connectLichess).toHaveBeenCalledTimes(1);
+  });
+
+  it("refutationA11ySummary describes hits and actionable gaps", () => {
+    expect(
+      refutationA11ySummary([
+        {
+          refutation: { suggestedUci: "g1f3" },
+          candidate: { pathSans: ["e4", "c5"] },
+          evidence: [
+            { layer: "engine", acpl: 30, analyzedGames: 4 },
+            { layer: "explorer", mastersSharePct: 18 },
+          ],
+        },
+      ]),
+    ).toContain("After 1.e4 c5, play g1f3");
+    expect(
+      refutationA11ySummary([
+        {
+          refutation: null,
+          blockedBy: [{ layer: "explorer", code: "auth" }],
+        },
+      ]),
+    ).toContain("Connect Lichess account");
+  });
+
+  it("buildScoutIntelligenceA11ySummary describes families and trends", () => {
+    const stats = buildScoutIntelligenceA11ySummary({
+      scoreByFamily: {
+        families: [{ san: "e4", scorePct: 40, games: 5 }],
+      },
+      repertoireChangeTrend: { points: [40, 55, 70], trend: "up" },
+      activitySeries: { recentWindow: [{ count: 2 }, { count: 0 }, { count: 1 }], recentGames: 3, recentBuckets: 3 },
+    });
+    expect(stats).toContain("1.e4 40%");
+    expect(stats).toContain("Repertoire concentration trend improving");
+    expect(stats).toContain("last 3 weeks: 3 games");
+  });
+
+  it("scoutSparkline and scoutSvgBar emit inline SVG", () => {
+    expect(scoutSparkline([40, 55, 30])).toContain("<polyline");
+    expect(scoutSvgBar([{ san: "e4", scorePct: 42 }], { escapeHtml })).toContain(
+      "scout-bar-fill",
+    );
+  });
+
+  it("renderInlineRefutationCard shows positive swing for a black opponent blunder", () => {
+    const html = renderInlineRefutationCard(
+      {
+        ucis: ["e2e4", "c7c5"],
+        refutation: {
+          playedSan: "c5",
+          cpLoss: 40,
+          suggestedUci: "b1c3",
+          suggestedSan: "Nc3",
+        },
+      },
+      "black",
+      escapeHtml,
+    );
+    expect(html).toContain("scout-refutation-card");
+    expect(html).toContain("+0.4");
+    expect(html).not.toContain("-0.4");
+    expect(html).toContain("Nc3");
   });
 });

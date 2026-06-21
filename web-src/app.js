@@ -8723,9 +8723,52 @@ async function ensureScoutView() {
         appState.build.nodes.push(node);
         appState.buildNodeById.set(node.id, node);
       },
+      connectLichess: startLichessOAuth,
     });
   }
   return scoutView;
+}
+
+const SCOUT_E2E_BUILD_ENABLED = import.meta.env.VITE_ENABLE_SCOUT_E2E === "1";
+
+function installScoutE2eHook() {
+  if (window.__prepforgeScoutE2e) return;
+  const oauthOpens = [];
+  const nativeOpen = window.open.bind(window);
+  window.open = function scoutE2eOpen(url, target, features) {
+    oauthOpens.push({
+      url: String(url ?? ""),
+      target: String(target ?? ""),
+      features: String(features ?? ""),
+      ts: Date.now(),
+    });
+    try {
+      return nativeOpen(url, target, features);
+    } catch {
+      return null;
+    }
+  };
+  window.__prepforgeScoutE2e = {
+    async mountRefutationScenario(scenarioId) {
+      switchView("replay");
+      const view = await ensureScoutView();
+      view.bindControls();
+      return view.mountE2eRefutationScenario(scenarioId);
+    },
+    getOauthOpens() {
+      return oauthOpens.map((entry) => ({ ...entry }));
+    },
+    resetOauthOpens() {
+      oauthOpens.length = 0;
+    },
+  };
+}
+
+if (
+  SCOUT_E2E_BUILD_ENABLED &&
+  new URLSearchParams(location.search).get("scout_e2e") === "1"
+) {
+  installScoutE2eHook();
 }
 
 // Scout chunk loads on first Scout click/Enter — not at app boot. A tiny static

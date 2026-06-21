@@ -307,13 +307,14 @@
               <h2>Scout an opponent</h2>
               <div class="replay-toolbar">
                 <input id="scout-username" type="text" placeholder="lichess username" />
-                <select id="scout-count" title="How many of their recent games to read">
-                  <option value="50">50 games</option>
-                  <option value="100" selected>100 games</option>
-                  <option value="300">300 games</option>
-                  <option value="500">500 games</option>
+                <select id="scout-color" title="Which colour games to fetch">
+                  <option value="both" selected>Both</option>
+                  <option value="white">White</option>
+                  <option value="black">Black</option>
                 </select>
-                <button class="btn primary" id="scout-btn" data-testid="scout-btn">Scout</button>
+                <button class="btn primary" id="scout-btn" data-testid="scout-btn" data-scout-action="start">Start</button>
+                <button class="btn ghost" id="scout-reset-btn" type="button" hidden>Reset</button>
+                <span id="scout-live-count" class="scout-live-count" data-testid="scout-live-count" aria-live="polite">0</span>
               </div>
             </div>
             <p class="muted hint">

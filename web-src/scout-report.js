@@ -1,15 +1,107 @@
 // Scout report rendering + delegated interaction handlers (testable without app.js).
 
-import { mergeEngineIntoTargets, WEAKNESS_MIN_GAMES } from "./scout.js";
+import { engineScanPatterns } from "./scout-engine.js";
+import {
+  buildRefutations,
+  collectActionableRefutationGapActions,
+  collectActionableRefutationGaps,
+} from "./scout-refutation.js";
+import {
+  attachPrepReplies,
+  fenAfterLine,
+  mergeEngineIntoTargets,
+  scoutLineText,
+  WEAKNESS_MIN_GAMES,
+} from "./scout.js";
+import { formatLastSeenLabel, lineLastSeen } from "./scout-stats.js";
+import { buildScoutStats } from "./scout-stats.js";
+import { buildScoutSectionSummary } from "./scout-summary.js";
 
-export function scoutLineText(sans) {
-  const parts = [];
-  sans.forEach((san, index) => {
-    if (index % 2 === 0) parts.push(`${index / 2 + 1}.`);
-    parts.push(san);
-  });
-  return parts.join(" ");
+export function scoutLineKey(ucis) {
+  return (ucis || []).join(">");
 }
+
+/** Best-effort read of a cached ECO string or in-flight Promise. */
+export async function consumeEcoCacheEntry(cached) {
+  try {
+    return cached instanceof Promise ? await cached : cached;
+  } catch (_) {
+    return null;
+  }
+}
+
+export function captureScoutExpanded(resultsEl) {
+  if (!resultsEl) return { expandedKeys: new Set(), scrollTop: 0 };
+  const expandedKeys = new Set();
+  const expanded =
+    resultsEl.querySelectorAll?.(".scout-line.is-expanded[data-line-key]") || [];
+  for (const el of expanded) {
+    if (el.dataset.lineKey) expandedKeys.add(el.dataset.lineKey);
+  }
+  return { expandedKeys, scrollTop: resultsEl.scrollTop };
+}
+
+function findLineByKey(sections, color, lineKey) {
+  const section = sections?.[color];
+  if (!section || !lineKey) return null;
+  for (const line of section.prepTargets || section.weaknessTargets || []) {
+    if (scoutLineKey(line.ucis) === lineKey) return { line, rowKind: "prep" };
+  }
+  for (const line of section.gradedLines || []) {
+    if (scoutLineKey(line.ucis) === lineKey) return { line, rowKind: "line" };
+  }
+  return null;
+}
+
+export function restoreScoutExpanded(resultsEl, sections, captured, ctx) {
+  if (!resultsEl || !captured?.expandedKeys?.size) {
+    if (resultsEl && captured) resultsEl.scrollTop = captured.scrollTop || 0;
+    return;
+  }
+  const { expandedKeys, scrollTop } = captured;
+  const { scoutModule, escapeHtml, callbacks, createElement } = ctx;
+  const makeEl = createElement || (typeof document !== "undefined" ? (tag) => document.createElement(tag) : null);
+  if (!makeEl) {
+    resultsEl.scrollTop = scrollTop || 0;
+    return;
+  }
+  const rows = resultsEl.querySelectorAll?.(".scout-line[data-line-key]") || [];
+  for (const el of rows) {
+    const key = el.dataset.lineKey;
+    if (!expandedKeys.has(key)) continue;
+    const color = el.dataset.color;
+    const match = findLineByKey(sections, color, key);
+    if (!match) continue;
+    const { line, rowKind } = match;
+    const idx = parseInt(el.dataset.rowIdx, 10);
+    el.classList.add("is-expanded");
+    el.setAttribute("aria-expanded", "true");
+    if (!el.nextElementSibling?.classList.contains("scout-line-detail")) {
+      const detail = makeEl("div");
+      detail.className = "scout-line-detail";
+      detail.innerHTML = callbacks.scoutLineDetailHtml(line, idx, color, rowKind);
+      el.insertAdjacentElement("afterend", detail);
+      const ecoCached = ctx.ecoCache?.get(key);
+      const ecoEl = el.querySelector(".scout-line-eco");
+      if (ecoCached && ecoEl) {
+        if (ecoCached instanceof Promise) {
+          ecoCached
+            .then((opening) => {
+              if (opening) ecoEl.textContent = opening;
+            })
+            .catch(() => {});
+        } else {
+          ecoEl.textContent = ecoCached;
+        }
+      } else if (scoutModule && callbacks.enrichEcoForLine) {
+        callbacks.enrichEcoForLine(el, scoutModule.fenAfterLine(line.ucis), key);
+      }
+    }
+  }
+  resultsEl.scrollTop = scrollTop || 0;
+}
+
+export { scoutLineText };
 
 export function scoutCoverageTone(prepared, total) {
   if (!total) return "bad";
@@ -39,6 +131,497 @@ export function scoutWdlBar(w, d, l) {
     <span class="scout-wdlbar-d" style="width:${pct(d)}"></span>
     <span class="scout-wdlbar-l" style="width:${pct(l)}"></span>
   </span>`;
+}
+
+export function scoutSparkline(
+  points,
+  { width = 80, height = 24, min = null, max = null, className = "" } = {},
+) {
+  if (!points?.length) {
+    return `<svg class="scout-sparkline ${className}" width="${width}" height="${height}" aria-hidden="true"></svg>`;
+  }
+  const lo = min ?? Math.min(...points);
+  const hi = max ?? Math.max(...points);
+  const range = hi - lo || 1;
+  const coords = points.map((v, i) => {
+    const x = (i / Math.max(1, points.length - 1)) * (width - 2) + 1;
+    const y = height - 1 - ((v - lo) / range) * (height - 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  return `<svg class="scout-sparkline ${className}" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" aria-hidden="true">
+    <polyline points="${coords.join(" ")}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+
+export function scoutSvgBar(
+  items,
+  {
+    width = 140,
+    barWidth = 72,
+    valueKey = "scorePct",
+    labelKey = "san",
+    maxValue = 100,
+    valueSuffix = "%",
+    escapeHtml,
+  } = {},
+) {
+  if (!items?.length) {
+    return `<div class="scout-bar-chart scout-bar-empty muted hint">No family data yet.</div>`;
+  }
+  const barH = 10;
+  const gap = 14;
+  const scale = maxValue > 0 ? maxValue : 100;
+  const rows = items.slice(0, 6).map((item, i) => {
+    const val = item[valueKey] ?? 0;
+    const w = Math.max(2, (val / scale) * barWidth);
+    const tone = valueSuffix === "%" && val <= 40 ? " is-cold" : valueSuffix === "%" && val >= 55 ? " is-hot" : val >= scale * 0.55 ? " is-hot" : val <= scale * 0.25 ? " is-cold" : "";
+    const label = escapeHtml ? escapeHtml(String(item[labelKey] || "?")) : String(item[labelKey] || "?");
+    return `<g class="scout-bar-row${tone}" transform="translate(0,${i * gap})">
+      <text x="0" y="8" class="scout-bar-label">${label}</text>
+      <rect x="28" y="0" width="${w}" height="${barH}" rx="2" class="scout-bar-fill"/>
+      <text x="${28 + barWidth + 4}" y="8" class="scout-bar-val">${val}${valueSuffix}</text>
+    </g>`;
+  }).join("");
+  const svgH = Math.min(items.length, 6) * gap;
+  return `<svg class="scout-bar-chart" width="${width}" height="${svgH}" viewBox="0 0 ${width} ${svgH}" aria-hidden="true">${rows}</svg>`;
+}
+
+export function renderScoutEnginePanel(engineAgg, escapeHtml) {
+  if (!engineAgg) {
+    return `<div class="scout-engine-panel muted hint">Engine scan: run Deep scan for eval trends</div>`;
+  }
+  if (!engineAgg.sufficient) {
+    const analyzed = engineAgg.analyzedGames ?? 0;
+    const eligible = engineAgg.eligibleGames ?? 0;
+    const coverage = engineAgg.coveragePct ?? 0;
+    const staleNote =
+      engineAgg.status === "stale" ? " — new games arrived, re-run Deep scan" : "";
+    return `<div class="scout-engine-panel scout-engine-insufficient muted hint">Deep scan coverage insufficient (${analyzed}/${eligible} games analyzed, ${coverage}% coverage — need ≥${engineAgg.minAnalyzedGames} games and ≥${engineAgg.minCoveragePct}%)${escapeHtml(staleNote)}</div>`;
+  }
+  const families = engineAgg.families?.slice(0, 6) || [];
+  const maxAcpl = Math.max(120, ...families.map((f) => f.acpl || 0));
+  const bars = scoutSvgBar(families, {
+    escapeHtml,
+    valueKey: "acpl",
+    maxValue: maxAcpl,
+    valueSuffix: " cp",
+  });
+  const worst = families[0];
+  const scopeNote =
+    engineAgg.scopeLimited && engineAgg.maxGames
+      ? ` — based on latest ${engineAgg.maxGames} games`
+      : "";
+  const summary = worst
+    ? `<div class="scout-engine-summary muted hint">Highest ACPL: 1.${escapeHtml(worst.san)} (${worst.acpl} cp${worst.firstInaccuracyPly != null ? `, first inaccuracy ~ply ${worst.firstInaccuracyPly}` : ""})${escapeHtml(scopeNote)}</div>`
+    : engineAgg.scopeLimited && engineAgg.maxGames
+      ? `<div class="scout-engine-summary muted hint">Based on latest ${engineAgg.maxGames} games</div>`
+      : "";
+  return `<div class="scout-engine-panel">${bars}${summary}</div>`;
+}
+
+function formatRefutationLine(pathSans) {
+  if (!pathSans?.length) return "?";
+  return pathSans.map((san, i) => (i === 0 ? `1.${san}` : san)).join(" ");
+}
+
+export function refutationA11ySummary(refutations) {
+  const hits = (refutations || []).filter((r) => r.refutation).slice(0, 3);
+  if (!hits.length) {
+    const gaps = collectActionableRefutationGaps(refutations);
+    if (!gaps.length) return "";
+    return `Refutation prep gaps: ${gaps.join(", ")}.`;
+  }
+  const parts = hits.map((item) => {
+    const line = formatRefutationLine(item.candidate?.pathSans);
+    const reply = item.refutation?.suggestedUci || "?";
+    const engineEv = item.evidence?.find((e) => e.layer === "engine");
+    const explorerEv = item.evidence?.find((e) => e.layer === "explorer");
+    const acpl = engineEv?.acpl != null ? `, ACPL ${engineEv.acpl} cp` : "";
+    const sample =
+      engineEv?.analyzedGames != null ? ` over ${engineEv.analyzedGames} games` : "";
+    const masters =
+      explorerEv?.mastersSharePct != null
+        ? `, masters ${explorerEv.mastersSharePct}%`
+        : "";
+    return `After ${line}, play ${reply}${acpl}${sample}${masters}`;
+  });
+  return `Engine refutations: ${parts.join("; ")}.`;
+}
+
+export function renderScoutRefutationGapActions(actions, escapeHtml) {
+  if (!actions?.length) return "";
+  const buttons = actions
+    .map(
+      (action) =>
+        `<button type="button" class="scout-btn btn ghost scout-refutation-gap-btn" data-refutation-gap="${escapeHtml(action.id)}" data-testid="${escapeHtml(action.testId)}" aria-label="${escapeHtml(action.ariaLabel)}">${escapeHtml(action.label)}</button>`,
+    )
+    .join("");
+  return `<div class="scout-refutation-gap-actions" role="group" aria-label="Refutation preparation actions">${buttons}</div>`;
+}
+
+export function handleScoutRefutationGapClick(event, { callbacks } = {}) {
+  const gapBtn = event.target.closest?.("[data-refutation-gap]");
+  if (!gapBtn) return false;
+  const action = gapBtn.dataset.refutationGap;
+  if (action === "deep-scan") {
+    callbacks?.runDeepScan?.();
+    return true;
+  }
+  if (action === "connect-lichess") {
+    callbacks?.connectLichess?.();
+    return true;
+  }
+  return false;
+}
+
+function formatPlayerSwingFromCpLoss(cpLoss) {
+  if (cpLoss == null || !Number.isFinite(cpLoss)) return null;
+  const val = cpLoss / 100;
+  return `${val > 0 ? "+" : ""}${val.toFixed(1)}`;
+}
+
+function formatReplyLabel(reply) {
+  if (!reply) return "?";
+  if (typeof reply === "string") return reply;
+  return reply.san || reply.uci || "?";
+}
+
+export function renderInlineRefutationCard(line, oppColor, escapeHtml, { renderBoard } = {}) {
+  const ref = line.refutation;
+  if (!ref?.suggestedUci) return "";
+  const playerColor = oppColor === "white" ? "black" : "white";
+  const theirMove = ref.playedSan || ref.playedUci || "?";
+  const cpSwing = ref.cpLoss != null ? formatPlayerSwingFromCpLoss(ref.cpLoss) : null;
+  const replyLabel = escapeHtml(ref.suggestedSan || line.suggestedReply?.san || ref.suggestedUci);
+  const recurrence = line.enginePattern?.occurrences || line.refutationGames || null;
+  const recurrenceNote =
+    recurrence != null ? `In ${recurrence} games here they played …${escapeHtml(theirMove)}` : `They played …${escapeHtml(theirMove)}`;
+  const swingNote = cpSwing ? ` <span class="scout-refutation-swing">(${cpSwing})</span>` : "";
+  const replyFen = fenAfterLine([...(line.ucis || []), ref.suggestedUci].filter(Boolean));
+  const boardHtml = renderBoard
+    ? `<div class="scout-refutation-card-board">${renderBoard(replyFen, playerColor)}</div>`
+    : "";
+  return `<div class="scout-refutation-card" data-testid="scout-refutation-card">
+    <div class="scout-refutation-card-copy">${recurrenceNote}${swingNote}. You answer <strong class="scout-refutation-reply-san">${replyLabel}</strong>.</div>
+    ${boardHtml}
+  </div>`;
+}
+
+export function renderScoutRefutationPanel(refutations, escapeHtml) {
+  const hits = (refutations || []).filter((r) => r.refutation).slice(0, 3);
+  if (!hits.length) {
+    const actions = collectActionableRefutationGapActions(refutations);
+    if (!actions.length) {
+      return `<div class="scout-refutation-panel muted hint">No refutation lines yet.</div>`;
+    }
+    const gapActions = renderScoutRefutationGapActions(actions, escapeHtml);
+    const labels = collectActionableRefutationGaps(refutations)
+      .map((gap) => escapeHtml(gap))
+      .join(" · ");
+    return `<div class="scout-refutation-panel scout-refutation-gaps" role="region" aria-label="Refutation preparation gaps">
+      <p class="scout-refutation-gaps-copy muted hint">${labels}</p>
+      ${gapActions}
+    </div>`;
+  }
+  const rows = hits
+    .map((item) => {
+      const line = escapeHtml(formatRefutationLine(item.candidate?.pathSans));
+      const reply = escapeHtml(item.refutation.suggestedUci || "?");
+      const engineEv = item.evidence?.find((e) => e.layer === "engine");
+      const explorerEv = item.evidence?.find((e) => e.layer === "explorer");
+      const acpl =
+        engineEv?.acpl != null
+          ? `<span class="scout-refutation-stat">${engineEv.acpl} cp ACPL</span>`
+          : "";
+      const sample =
+        engineEv?.analyzedGames != null
+          ? `<span class="scout-refutation-stat">n=${engineEv.analyzedGames}</span>`
+          : "";
+      const masters =
+        explorerEv?.mastersSharePct != null
+          ? `<span class="scout-refutation-stat">${explorerEv.mastersSharePct}% masters</span>`
+          : "";
+      const scopeNote =
+        engineEv?.scopeLimited && engineEv?.maxGames
+          ? `<span class="scout-refutation-stat">latest ${engineEv.maxGames} games</span>`
+          : "";
+      return `<div class="scout-refutation-hit" data-testid="scout-refutation-hit">
+        <div class="scout-refutation-line">${line}</div>
+        <div class="scout-refutation-reply muted hint">Play <code class="scout-refutation-uci">${reply}</code></div>
+        <div class="scout-refutation-meta">${[acpl, sample, masters, scopeNote].filter(Boolean).join("")}</div>
+      </div>`;
+    })
+    .join("");
+  return `<div class="scout-refutation-panel">${rows}</div>`;
+}
+
+function engineA11ySummary(engineAgg) {
+  if (!engineAgg) return "";
+  if (!engineAgg.sufficient) {
+    return `Engine scan coverage insufficient: ${engineAgg.analyzedGames}/${engineAgg.eligibleGames} games, ${engineAgg.coveragePct}% coverage.`;
+  }
+  const worst = engineAgg.families?.[0];
+  if (!worst) return "";
+  return `Engine ACPL by family, worst first: 1.${worst.san} ${worst.acpl} cp over ${worst.analyzedGames} analyzed games.`;
+}
+
+function trendLabel(trend) {
+  if (trend === "up") return "improving";
+  if (trend === "down") return "declining";
+  return "flat";
+}
+
+export function buildScoutIntelligenceA11ySummary(stats) {
+  if (!stats) return "";
+  const parts = [];
+
+  const families = stats.scoreByFamily?.families?.slice(0, 6) || [];
+  if (families.length) {
+    const familyText = families
+      .map((f) => `1.${f.san} ${f.scorePct}% over ${f.games} games`)
+      .join(", ");
+    parts.push(`Opening families by score, worst first: ${familyText}.`);
+  }
+
+  const shift = stats.repertoireChangeTrend;
+  if (shift?.points?.length >= 2) {
+    parts.push(`Repertoire concentration trend ${trendLabel(shift.trend)}.`);
+  }
+
+  const activity = stats.activitySeries;
+  if (activity?.recentWindow?.length) {
+    const weeks = activity.recentBuckets || activity.recentWindow.length;
+    parts.push(
+      `Activity in the last ${weeks} weeks: ${activity.recentGames ?? 0} games.`,
+    );
+  }
+
+  const predict = stats.predictability;
+  if (predict?.topMove) {
+    parts.push(
+      `First-move predictability: ${predict.label}, top move 1.${predict.topMove.san} ${Math.round((predict.topMove.share || 0) * 100)}%.`,
+    );
+  }
+
+  const pets = stats.petLineConcentration;
+  if (pets?.games > 0) {
+    parts.push(`Pet-line concentration: top 3 paths cover ${pets.top3SharePct}% (${pets.label}).`);
+  }
+
+  const breadth = stats.repertoireBreadth;
+  if (breadth?.breadth > 0) {
+    parts.push(`Repertoire breadth: ${breadth.breadth} first moves with at least ${breadth.minGames} games.`);
+  }
+
+  const fresh = stats.repertoireFreshness;
+  if (fresh?.freshFamilies?.length) {
+    const names = fresh.freshFamilies
+      .slice(0, 3)
+      .map((f) => `1.${f.san} (${f.recentGames})`)
+      .join(", ");
+    parts.push(`Fresh families in the last ${fresh.recentWindow} games: ${names}.`);
+  }
+
+  const persona = stats.personaTags;
+  if (persona?.systemSetup?.detected && persona.systemSetup.label) {
+    parts.push(`Persona system: ${persona.systemSetup.label}.`);
+  } else if (persona?.games) {
+    parts.push(
+      `Persona: ${persona.aggression.label} aggression, ${persona.castling.label} castling, ${persona.tradeSpeed.label} queen trades.`,
+    );
+  }
+
+  return parts.join(" ");
+}
+
+function explorerA11ySummary(explorerReads) {
+  if (!explorerReads?.available) return "";
+  const parts = [];
+  const dev = explorerReads.theoryDeviation?.items?.[0];
+  if (explorerReads.theoryDeviation?.available && dev) {
+    parts.push(
+      `Theory deviation: ${dev.label} ${dev.opponentSharePct}% vs ${dev.mastersSharePct}% in masters.`,
+    );
+  }
+  const pool = explorerReads.poolComparison?.items?.[0];
+  if (explorerReads.poolComparison?.available && pool) {
+    parts.push(
+      `Pool gap: ${pool.label} ${pool.opponentSharePct}% vs ${pool.poolSharePct}% in player pool.`,
+    );
+  }
+  const rare = explorerReads.rareWeapons?.items?.[0];
+  if (explorerReads.rareWeapons?.available && rare) {
+    parts.push(
+      `Rare weapon: ${rare.label} scores ${rare.scorePct}% (${rare.mastersSharePct}% in masters).`,
+    );
+  }
+  if (explorerReads.offBook?.available && explorerReads.offBook.sharePct > 0) {
+    parts.push(`Off-book share: ${explorerReads.offBook.sharePct}% of probed games.`);
+  }
+  return parts.join(" ");
+}
+
+function renderScoutExplorerReads(explorerReads, escapeHtml) {
+  if (!explorerReads?.available) return "";
+  const chips = [];
+
+  const dev = explorerReads.theoryDeviation?.items?.[0];
+  if (explorerReads.theoryDeviation?.available && dev) {
+    chips.push(
+      `<span class="scout-read-chip" title="Opponent share vs masters DB">Theory: ${escapeHtml(dev.label)} ${dev.opponentSharePct}% vs ${dev.mastersSharePct}% book</span>`,
+    );
+  }
+
+  const pool = explorerReads.poolComparison?.items?.[0];
+  if (explorerReads.poolComparison?.available && pool) {
+    chips.push(
+      `<span class="scout-read-chip" title="Opponent share vs player pool">Pool: ${escapeHtml(pool.label)} ${pool.opponentSharePct}% vs ${pool.poolSharePct}%</span>`,
+    );
+  }
+
+  const rare = explorerReads.rareWeapons?.items?.[0];
+  if (explorerReads.rareWeapons?.available && rare) {
+    chips.push(
+      `<span class="scout-read-chip" title="Low masters share, strong results">Rare: ${escapeHtml(rare.label)} ${rare.scorePct}% · masters ${rare.mastersSharePct}%</span>`,
+    );
+  }
+
+  if (explorerReads.offBook?.available && explorerReads.offBook.sharePct > 0) {
+    const top = explorerReads.offBook.items?.[0];
+    const move = top ? ` · ${escapeHtml(top.label)}` : "";
+    chips.push(
+      `<span class="scout-read-chip" title="Moves under 5% in masters">Off-book: ${explorerReads.offBook.sharePct}%${move}</span>`,
+    );
+  }
+
+  if (!chips.length) return "";
+  return `<div class="scout-repertoire-reads scout-explorer-reads">${chips.join("")}</div>`;
+}
+
+function renderScoutRepertoireReads(stats, escapeHtml) {
+  const chips = [];
+  const predict = stats?.predictability;
+  if (predict?.topMove && predict.games > 0) {
+    const pct = Math.round((predict.topMove.share || 0) * 100);
+    chips.push(
+      `<span class="scout-read-chip" title="First-move entropy">Predictability: ${escapeHtml(predict.label)} · 1.${escapeHtml(predict.topMove.san)} ${pct}%</span>`,
+    );
+  }
+  const pets = stats?.petLineConcentration;
+  if (pets?.games > 0) {
+    chips.push(
+      `<span class="scout-read-chip" title="Share in top 3 opening paths">Pet lines: ${pets.top3SharePct}% top-3 · ${escapeHtml(pets.label)}</span>`,
+    );
+  }
+  const breadth = stats?.repertoireBreadth;
+  if (breadth?.games > 0) {
+    chips.push(
+      `<span class="scout-read-chip" title="First moves with enough sample">Breadth: ${breadth.breadth} main moves (n≥${breadth.minGames})</span>`,
+    );
+  }
+  const fresh = stats?.repertoireFreshness;
+  if (fresh?.freshFamilies?.length) {
+    const top = fresh.freshFamilies[0];
+    chips.push(
+      `<span class="scout-read-chip" title="New families in recent window">Fresh: 1.${escapeHtml(top.san)} (${top.recentGames} recent)</span>`,
+    );
+  }
+  const shift = stats?.repertoireChangeTrend;
+  if (shift?.points?.length >= 2) {
+    const label =
+      shift.trend === "up"
+        ? "concentrating"
+        : shift.trend === "down"
+          ? "experimenting"
+          : "stable";
+    chips.push(
+      `<span class="scout-read-chip" title="First-move mix over time">Repertoire: ${label}</span>`,
+    );
+  }
+  const persona = stats?.personaTags;
+  if (persona?.systemSetup?.detected && persona.systemSetup.label) {
+    chips.push(
+      `<span class="scout-read-chip" title="Recurring system setup">System: ${escapeHtml(persona.systemSetup.label)}</span>`,
+    );
+  } else if (persona?.games >= 5) {
+    chips.push(
+      `<span class="scout-read-chip" title="Opening style tendencies">${escapeHtml(persona.aggression.label)} · ${escapeHtml(persona.castling.label)} · ${escapeHtml(persona.tradeSpeed.label)}</span>`,
+    );
+  }
+  if (!chips.length) return "";
+  return `<div class="scout-repertoire-reads">${chips.join("")}</div>`;
+}
+
+export function renderScoutIntelligencePanel(
+  stats,
+  summary,
+  escapeHtml,
+  { explorerReads = null, engineAgg = null, refutations = null } = {},
+) {
+  const families = stats?.scoreByFamily?.families?.slice(0, 6) || [];
+  const scoreBars = scoutSvgBar(families, { escapeHtml, valueKey: "scorePct" });
+  const repChangeSpark = scoutSparkline(stats?.repertoireChangeTrend?.points || [], {
+    min: 0,
+    max: 100,
+    className: "scout-repchange-spark",
+  });
+  const activityBuckets = stats?.activitySeries?.recentWindow?.length
+    ? stats.activitySeries.recentWindow
+    : stats?.activitySeries?.buckets || [];
+  const activityCounts = activityBuckets.map((b) => b.count);
+  const activitySpark = scoutSparkline(activityCounts, {
+    min: 0,
+    max: stats?.activitySeries?.max || 1,
+    className: "scout-activity-spark",
+  });
+
+  // summary.bullets[0] is also the headline (see buildScoutSectionSummary) — skip it
+  // here so the panel doesn't show the same sentence twice.
+  const bullets = (summary?.bullets || [])
+    .slice(1)
+    .map((b) => `<li>${escapeHtml(b)}</li>`)
+    .join("");
+  const headline = summary?.headline ? escapeHtml(summary.headline) : "";
+  const chartSummary = [
+    buildScoutIntelligenceA11ySummary(stats),
+    explorerA11ySummary(explorerReads),
+    engineA11ySummary(engineAgg),
+    refutationA11ySummary(refutations),
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const a11yBlock = chartSummary
+    ? `<p class="visually-hidden">${escapeHtml(chartSummary)}</p>`
+    : "";
+  const repertoireReads = renderScoutRepertoireReads(stats, escapeHtml);
+  const explorerReadsHtml = renderScoutExplorerReads(explorerReads, escapeHtml);
+  const enginePanel = renderScoutEnginePanel(engineAgg, escapeHtml);
+
+  return `
+    <div class="scout-intel">
+      ${a11yBlock}
+      <div class="scout-intel-summary">
+        <div class="scout-intel-headline">${headline}</div>
+        ${bullets ? `<ul class="scout-intel-bullets">${bullets}</ul>` : ""}
+        ${repertoireReads}
+        ${explorerReadsHtml}
+      </div>
+      <div class="scout-intel-charts">
+        <div class="scout-intel-panel">
+          <div class="scout-col-label">Worst performance <span class="scout-col-hint muted">by score · n≥3</span></div>
+          ${scoreBars}
+          <div class="scout-col-label scout-engine-label">Engine ACPL <span class="scout-col-hint muted">deep scan</span></div>
+          ${enginePanel}
+        </div>
+        <div class="scout-intel-panel scout-intel-trends">
+          <div class="scout-col-label">Activity</div>
+          <div class="scout-spark-row">
+            <span class="scout-spark-label">Repertoire focus</span>${repChangeSpark}
+            <span class="scout-spark-label">Games</span>${activitySpark}
+          </div>
+        </div>
+      </div>
+    </div>`;
 }
 
 // Stacked score cell: the score% on top, the sample size below, plus (for weakness
@@ -71,11 +654,7 @@ export function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg 
   return `${html}</div>`;
 }
 
-export function renderScoutProfile(profile, username, activeSpeed, escapeHtml) {
-  const rating =
-    profile.ratingMin != null
-      ? `<span class="scout-profile-rating">${profile.ratingMin}–${profile.ratingMax}</span>`
-      : "";
+export function renderScoutProfile(profile, username, activeSpeed, escapeHtml, { colorRecHtml = "" } = {}) {
   const speeds = ["bullet", "blitz", "rapid", "classical"];
   const chips = speeds
     .filter((s) => (profile.speedCounts[s] || 0) >= 5)
@@ -89,7 +668,6 @@ export function renderScoutProfile(profile, username, activeSpeed, escapeHtml) {
       <div class="scout-profile-main">
         <a class="scout-username-link" href="https://lichess.org/@/${encodeURIComponent(username)}" target="_blank" rel="noopener">${escapeHtml(username)}</a>
         <span class="scout-profile-games">${profile.total} games analyzed</span>
-        ${rating}
       </div>
       <div class="scout-profile-actions">
         <button type="button" class="scout-btn btn ghost" id="scout-share-btn" title="Copy scout summary">Copy report</button>
@@ -99,7 +677,8 @@ export function renderScoutProfile(profile, username, activeSpeed, escapeHtml) {
         <button type="button" class="scout-btn scout-speed-chip${activeSpeed === "all" ? " is-on" : ""}" data-speed="all">All</button>
         ${chips}
       </div>
-    </div>`;
+    </div>
+    ${colorRecHtml}`;
 }
 
 // Compact per-row affordance: a single "+" icon. The full labelled button lives in
@@ -129,11 +708,16 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
   const statusLine = status.text
     ? `<div class="scout-line-status ${status.tone}">${escapeHtml(status.text)}</div>`
     : "";
+  const replyNote = line.suggestedReply?.uci
+    ? `<div class="scout-line-reply good">Suggested reply: <strong>${escapeHtml(formatReplyLabel(line.suggestedReply))}</strong> (${escapeHtml(line.suggestedReply.source || "engine")})</div>`
+    : line.needsPrep
+      ? `<div class="scout-line-reply warn">No reply in your prep yet — run Deep scan or extend repertoire</div>`
+      : "";
   const engineNote =
     line.enginePattern && line.hasEngineMistake
       ? `<div class="scout-engine-note" title="Recurring mistake from deep scan">Often errs: …${escapeHtml(line.enginePattern.playedSan)} (−${(line.enginePattern.avgCpLoss / 100).toFixed(1)}) in ${line.enginePattern.occurrences} games</div>`
-      : line.hasEngineMistake
-        ? `<div class="scout-engine-note">They often err here</div>`
+      : line.hasEngineMistake || line.refutation
+        ? `<div class="scout-engine-note">Engine refutation available</div>`
         : "";
   const subLines =
     line.subLines && line.subLines.length
@@ -153,6 +737,7 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
           <button type="button" class="scout-btn btn ghost scout-action-analyze" data-row-kind="${rowKind}" data-row-idx="${idx}">Analyze ›</button>
           <button type="button" class="scout-btn btn ghost scout-action-add-prep" data-row-kind="${rowKind}" data-row-idx="${idx}" data-color="${oppColor}">Add to prep ▾</button>
         </div>
+        ${replyNote}
         ${engineNote}
         ${subLines}
       </div>`;
@@ -180,49 +765,96 @@ export function scoutDistRowHtml(m, escapeHtml, { clickable = true } = {}) {
       </div>`;
 }
 
-// One shared markup for favourite-line and weakness rows. Prep status is shown as a
-// coloured left border + tooltip (no wrapping badge), the score is a stacked cell, the
-// result is a compact W/D/L bar, and the action is a single "+" icon. Fixed-width cells
-// mean the columns line up and nothing overlaps regardless of column width.
-function scoutLineRowHtml(line, i, oppColor, baseline, escapeHtml, { rowKind = "line" } = {}) {
-  const weakness = rowKind === "weakness";
+function scoutPrepFramingHtml(line, escapeHtml) {
+  const theirLine = scoutLineText(line.sans);
+  const reply = line.suggestedReply;
+  if (reply?.uci) {
+    const replyLabel = escapeHtml(formatReplyLabel(reply));
+    return `<span class="scout-prep-framing">When they play <span class="scout-prep-them">${escapeHtml(theirLine)}</span> <span class="scout-prep-arrow">→</span> you play <strong class="scout-prep-you">${replyLabel}</strong></span>`;
+  }
+  if (line.needsPrep) {
+    return `<span class="scout-prep-framing">When they play <span class="scout-prep-them">${escapeHtml(theirLine)}</span> <span class="scout-prep-arrow">→</span> <span class="scout-prep-needs">needs prep</span></span>`;
+  }
+  return escapeHtml(theirLine);
+}
+
+function scoutPrepCategoryBadge(line) {
+  if (line.prepCategory === "attack") {
+    return '<span class="scout-prep-badge scout-prep-badge-attack" title="Below their baseline">Attack</span>';
+  }
+  if (line.prepCategory === "weapon") {
+    return '<span class="scout-prep-badge scout-prep-badge-weapon" title="Main repertoire line">Main line</span>';
+  }
+  return "";
+}
+
+// Prep rows: framing, last-seen badge, optional inline refutation card.
+function scoutLineRowHtml(
+  line,
+  i,
+  oppColor,
+  baseline,
+  escapeHtml,
+  { rowKind = "line", renderBoard = null } = {},
+) {
+  const weakness = rowKind === "weakness" || rowKind === "prep";
   const status = scoutPrepStatus(line);
-  const moves = scoutLineText(line.sans);
+  const framing = scoutPrepFramingHtml(line, escapeHtml);
   const rawCount = line.gameCount ?? Math.round(line.count ?? line.games ?? 0);
-  const engineHint =
-    weakness && line.enginePattern && line.hasEngineMistake
-      ? `<span class="scout-line-hint"> · often …${escapeHtml(line.enginePattern.playedSan)}</span>`
-      : "";
-  const engineFlag = line.hasEngineMistake
-    ? '<span class="scout-err-marker" title="Recurring mistake in deep scan">⚠</span>'
+  const engineFlag = line.hasEngineMistake || line.refutation
+    ? '<span class="scout-err-marker" title="Engine-backed refutation available">⚠</span>'
     : "";
+  const lineKey = scoutLineKey(line.ucis);
   const rowTitle = status.text ? ` title="${escapeHtml(status.text)}"` : "";
+  const lastSeenBadge = line.lastSeen
+    ? `<span class="scout-last-seen">${escapeHtml(formatLastSeenLabel(line.lastSeen))}</span>`
+    : "";
+  const categoryBadge = scoutPrepCategoryBadge(line);
+  const refCard =
+    weakness && line.refutation
+      ? renderInlineRefutationCard(line, oppColor, escapeHtml, { renderBoard })
+      : "";
+  const addTitle = line.suggestedReply?.uci
+    ? `Add your reply ${formatReplyLabel(line.suggestedReply)} to prep`
+    : "Add this line to a repertoire";
+  const addBtn = `<button type="button" class="scout-add-icon scout-action-add-prep" title="${escapeHtml(addTitle)}" aria-label="Add to prep" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}">+</button>`;
   return `
-      <div class="scout-line scout-line-row ${status.cls}${weakness ? " scout-weakness-row" : ""}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
+      <div class="scout-line scout-line-row ${status.cls}${weakness ? " scout-weakness-row" : ""}" data-line-key="${escapeHtml(lineKey)}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
         <span class="scout-lr-count" title="${rawCount} of their games">&times;${rawCount}</span>
         <div class="scout-lr-main">
           <span class="scout-line-eco"></span>
-          <span class="scout-line-moves" title="${escapeHtml(moves)}">${escapeHtml(moves)}${engineHint}</span>
+          <span class="scout-line-moves">${framing}${lastSeenBadge ? ` ${lastSeenBadge}` : ""}</span>
+          ${categoryBadge}
+          ${refCard}
         </div>
-        <span class="scout-lr-score">${scoutScoreCell(line.scorePct, rawCount, { baseline, showGap: weakness })}</span>
+        <span class="scout-lr-score">${scoutScoreCell(line.scorePct, rawCount, { baseline, showGap: weakness && line.belowBaseline > 0 })}</span>
         <span class="scout-lr-wdl">${scoutWdlBar(line.w || 0, line.d || 0, line.l || 0)}</span>
-        <span class="scout-lr-action">${engineFlag}${scoutAddPrepBtn(rowKind, i, oppColor)}</span>
+        <span class="scout-lr-action">${engineFlag}${addBtn}</span>
       </div>`;
 }
 
-function scoutWeaknessRowHtml(target, i, oppColor, baseline, escapeHtml) {
-  return scoutLineRowHtml(target, i, oppColor, baseline, escapeHtml, { rowKind: "weakness" });
+function scoutWeaknessRowHtml(target, i, oppColor, baseline, escapeHtml, opts = {}) {
+  return scoutLineRowHtml(target, i, oppColor, baseline, escapeHtml, { rowKind: "prep", ...opts });
 }
 
 export function buildScoutSectionReport(
   scoutModule,
-  { games, profile },
+  { games, profile, username },
   oppColor,
   myLookups,
-  { speedFilter = "all", escapeHtml, enginePatterns = null },
+  {
+    speedFilter = "all",
+    escapeHtml,
+    enginePatterns = null,
+    explorerReads = null,
+    engineAgg = null,
+    engineScan = null,
+  },
 ) {
   const trie = scoutModule.buildOpeningTrie(games, oppColor, { speedFilter });
   if (!trie.gameCount) return { html: "", sectionData: null };
+
+  const stats = buildScoutStats(games, { color: oppColor, speedFilter });
   const baseline =
     profile.colorStats?.[oppColor]?.scorePct ??
     (trie.count ? Math.round((trie.score / trie.count) * 100) : 0);
@@ -244,23 +876,93 @@ export function buildScoutSectionReport(
   const breakdown = scoutModule.openingBreakdown(trie, { minGames: 1 });
   let weaknessTargets = scoutModule.recommendTargets(breakdown, baseline, {
     minGames: WEAKNESS_MIN_GAMES,
+    oppColor,
   });
   if (enginePatterns instanceof Map) {
     weaknessTargets = mergeEngineIntoTargets(weaknessTargets, enginePatterns);
-    // Flag favourite-line rows up front (prefix match, same as the weakness merge) so
-    // the collapsed ⚠ marker renders on this pass too — not only after a later
-    // mergeEnginePatternsIntoSections call, by which point the HTML is already built.
     graded = mergeEngineIntoTargets(graded, enginePatterns);
   }
 
+  const refutations = buildRefutations({
+    weaknessTargets,
+    color: oppColor,
+    speedFilter,
+    baselineScorePct: baseline,
+    explorerReads,
+    mastersByFen: explorerReads?.mastersByFen,
+    poolByFen: explorerReads?.poolByFen,
+    engineAgg,
+    engineScan,
+  });
+
+  const lookups = myLookups.map(({ lookup }) => ({ lookup }));
+  let prepTargets = attachPrepReplies(weaknessTargets, {
+    lookups,
+    refutations,
+    oppColor,
+  });
+
+  const lastSeenByLine = new Map();
+  for (const target of prepTargets) {
+    const key = scoutLineKey(target.ucis);
+    const seen = lineLastSeen(games, target.ucis, { color: oppColor, speedFilter });
+    target.lastSeen = seen;
+    lastSeenByLine.set(key, seen);
+  }
+
+  for (const line of graded) {
+    if (prepTargets.length >= 12) break;
+    const normalized = scoutModule.normalizeToOpponentTerminal?.(line.ucis, line.sans, oppColor);
+    if (!normalized) continue;
+    // Dedupe on the NORMALISED key, prefix-aware: "1.Nf3" and "1.Nf3 Nf6" collapse to
+    // the same opponent-terminal line, so a weakness already listed isn't repeated here.
+    const normKey = scoutLineKey(normalized.ucis);
+    const isDup = prepTargets.some((p) => {
+      const pk = scoutLineKey(p.ucis);
+      return pk === normKey || pk.startsWith(`${normKey}>`) || normKey.startsWith(`${pk}>`);
+    });
+    if (isDup) continue;
+    // Categorise favourite-line fills with the same shared rule the prep targets use, so
+    // a 0%-scoring top line reads as "Attack" and a near-baseline one stays neutral —
+    // never the old hardcoded "main weapon".
+    const enriched = scoutModule.enrichPrepTarget(
+      { ...line, ucis: normalized.ucis, sans: normalized.sans },
+      baseline,
+    );
+    prepTargets.push({
+      ...enriched,
+      lastSeen: lineLastSeen(games, normalized.ucis, { color: oppColor, speedFilter }),
+    });
+  }
+  prepTargets = attachPrepReplies(prepTargets, { lookups, refutations, oppColor });
+
+  const summary = buildScoutSectionSummary(stats, {
+    username: username || "opponent",
+    explorerReads,
+    engineAgg,
+    prepTargets,
+    lastSeenByLine,
+  });
+  const intelPanel = renderScoutIntelligencePanel(stats, summary, escapeHtml, {
+    explorerReads,
+    engineAgg,
+    refutations,
+  });
+
   const sectionData = {
     gradedLines: graded,
-    weaknessTargets,
+    weaknessTargets: prepTargets,
+    prepTargets,
     breakdown,
     trie,
     oppColor,
     baselineScorePct: baseline,
     enginePatterns,
+    stats,
+    summary,
+    explorerReads,
+    engineAgg,
+    refutations,
   };
 
   const preparedCount = graded.filter((g) => g.prepared).length;
@@ -274,22 +976,25 @@ export function buildScoutSectionReport(
     : "";
 
   const firstMoves = dist.map((m) => scoutDistRowHtml(m, escapeHtml)).join("");
-  const weaknessRows = weaknessTargets
+  const refutationGaps = collectActionableRefutationGapActions(refutations);
+  const gapActionsHtml = refutationGaps.length
+    ? renderScoutRefutationGapActions(refutationGaps, escapeHtml)
+    : "";
+
+  const prepRows = prepTargets
     .map((t, i) => scoutWeaknessRowHtml(t, i, oppColor, baseline, escapeHtml))
     .join("");
-  const weaknessPanel = weaknessRows
-    ? `<div class="scout-col scout-col-weaknesses">
-          <div class="scout-col-label">Prepare these first <span class="scout-col-hint muted">weaknesses & opportunities</span></div>
-          <div class="scout-lines">${weaknessRows}</div>
+  const prepPanel = prepRows
+    ? `<div class="scout-col scout-col-prep">
+          <div class="scout-col-label">Your game plan <span class="scout-col-hint muted">when they play X → you play Y</span></div>
+          ${gapActionsHtml}
+          <div class="scout-lines">${prepRows}</div>
         </div>`
-    : `<div class="scout-col scout-col-weaknesses">
-          <div class="scout-col-label">Prepare these first</div>
-          <div class="muted hint">No lines score meaningfully below their ${baseline}% baseline (n≥${WEAKNESS_MIN_GAMES}).</div>
+    : `<div class="scout-col scout-col-prep">
+          <div class="scout-col-label">Your game plan</div>
+          ${gapActionsHtml}
+          <div class="muted hint">No sufficiently-sampled prep targets yet (n≥${WEAKNESS_MIN_GAMES}). Run Deep scan for engine replies.</div>
         </div>`;
-
-  const lineRows = graded
-    .map((line, i) => scoutLineRowHtml(line, i, oppColor, baseline, escapeHtml))
-    .join("");
 
   const heading = oppColor === "white" ? "With White" : "With Black";
   const html = `
@@ -309,27 +1014,26 @@ export function buildScoutSectionReport(
         <span class="scout-coverage-label">${preparedCount}/${totalLines} lines covered</span>
         ${prepareAll}
       </div>
-      <div class="scout-body">
-        ${weaknessPanel}
+      ${intelPanel}
+      <div class="scout-body scout-body-prep">
         <div class="scout-col">
-          <div class="scout-col-label">First moves</div>
+          <div class="scout-col-label">First moves <span class="scout-col-hint muted">n≥3</span></div>
           <div class="scout-dist" data-dist-root="true">${firstMoves}</div>
         </div>
-        <div class="scout-col">
-          <div class="scout-col-label">Favourite lines</div>
-          <div class="scout-lines">${lineRows}</div>
-        </div>
+        ${prepPanel}
       </div>
     </div>
   `;
   return { html, sectionData };
 }
 
-export function mergeEnginePatternsIntoSections(sections, engineByColor) {
+export function mergeEnginePatternsIntoSections(sections, engineByColor, { speedFilter = "all" } = {}) {
   for (const color of ["white", "black"]) {
     const section = sections[color];
-    const patterns = engineByColor?.[color];
+    const scan = engineByColor?.[color];
+    const patterns = engineScanPatterns(scan);
     if (!section || !patterns) continue;
+    if (scan?.speedFilter && scan.speedFilter !== speedFilter) continue;
     section.enginePatterns = patterns;
     section.weaknessTargets = mergeEngineIntoTargets(section.weaknessTargets, patterns);
     section.gradedLines = mergeEngineIntoTargets(section.gradedLines, patterns);
@@ -347,10 +1051,13 @@ export function buildScoutShareText({ username, profile, sections, activeSpeed }
     if (stats) {
       lines.push(`Overall: ${stats.scorePct}% (W${stats.w}/D${stats.d}/L${stats.l}, n=${stats.games})`);
     }
-    if (section.weaknessTargets?.length) {
-      lines.push("", "**Prepare these first:**");
-      for (const t of section.weaknessTargets.slice(0, 6)) {
-        let row = `- ${scoutLineText(t.sans)} — ${Math.round(t.share * 100)}% share, ${t.scorePct}% score (n=${t.games})`;
+    const prep = section.prepTargets || section.weaknessTargets;
+    if (prep?.length) {
+      lines.push("", "**Your game plan:**");
+      for (const t of prep.slice(0, 6)) {
+        const their = scoutLineText(t.sans);
+        const reply = t.suggestedReply?.uci ? ` → you play ${t.suggestedReply.uci}` : " → needs prep";
+        let row = `- When they play ${their}${reply} — ${Math.round(t.share * 100)}% share, ${t.scorePct}% score (n=${t.games})`;
         if (t.enginePattern) {
           row += `; often …${t.enginePattern.playedSan}`;
         }
@@ -387,7 +1094,9 @@ export function handleScoutProfileClick(event, { getState, onSpeedChange, callba
 function resolveRow(state, rowKind, color, idx) {
   const sectionData = state.sections[color];
   if (!sectionData) return null;
-  if (rowKind === "weakness") return sectionData.weaknessTargets?.[idx] || null;
+  if (rowKind === "weakness" || rowKind === "prep") {
+    return sectionData.prepTargets?.[idx] || sectionData.weaknessTargets?.[idx] || null;
+  }
   return sectionData.gradedLines?.[idx] || null;
 }
 
@@ -396,6 +1105,8 @@ export async function handleScoutResultsClick(event, ctx) {
   const makeEl = createElement || ((tag) => document.createElement(tag));
   const state = getState();
   if (!state) return;
+
+  if (handleScoutRefutationGapClick(event, { callbacks })) return;
 
   const backBtn = event.target.closest?.(".scout-dist-back");
   if (backBtn) {
@@ -418,7 +1129,10 @@ export async function handleScoutResultsClick(event, ctx) {
     const color = prepAllBtn.dataset.color;
     const sectionData = state.sections[color];
     if (sectionData) {
-      const lines = [...sectionData.weaknessTargets, ...sectionData.gradedLines.filter((l) => !l.prepared)];
+      const lines = [
+        ...(sectionData.prepTargets || sectionData.weaknessTargets || []),
+        ...sectionData.gradedLines.filter((l) => !l.prepared),
+      ];
       await callbacks.scoutPrepareAll(lines, color);
     }
     return;

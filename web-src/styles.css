@@ -2235,6 +2235,32 @@ h2 {
 .scout-verdict.muted { color: var(--muted); font-weight: 400; }
 
 .scout-n { font-size: 10px; color: var(--label); font-weight: 500; white-space: nowrap; }
+
+.scout-live-count {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  min-width: 3ch;
+  text-align: right;
+}
+.scout-live-count::after {
+  content: " games";
+  font-weight: 500;
+  font-size: 11px;
+}
+.replay-card-scout.is-streaming .scout-live-count {
+  color: var(--accent-strong);
+  animation: scout-pulse 1.2s ease-in-out infinite;
+}
+@keyframes scout-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+#scout-reset-btn:not([hidden]) {
+  margin-left: -4px;
+}
+
 .scout-btn {
   font-size: 11px;
   font-weight: 600;
@@ -2286,7 +2312,232 @@ h2 {
   gap: 12px 20px;
   padding: 10px 12px 12px;
 }
-.scout-col-weaknesses { grid-column: 1 / -1; }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.scout-color-rec {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: var(--accent-soft);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-strong);
+}
+.scout-color-rec-muted {
+  border-color: var(--line);
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.scout-intel {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  background: color-mix(in srgb, var(--panel-soft) 70%, transparent);
+}
+.scout-intel-summary { min-width: 0; }
+.scout-intel-headline {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+}
+.scout-intel-bullets {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.scout-repertoire-reads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.scout-read-chip {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.scout-intel-charts {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 720px) {
+  .scout-intel-charts { grid-template-columns: 1fr; }
+}
+.scout-intel-panel { min-width: 0; }
+.scout-refutation-label { margin-top: 10px; }
+.scout-refutation-panel {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.scout-refutation-hit {
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+}
+.scout-refutation-line {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.scout-refutation-reply { font-size: 11px; margin-top: 2px; }
+.scout-refutation-uci {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+.scout-refutation-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.scout-refutation-stat {
+  font-size: 10px;
+  color: var(--muted);
+}
+.scout-refutation-gaps { font-size: 11px; }
+.scout-refutation-gaps-copy { margin: 0 0 6px; }
+.scout-refutation-gap-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.scout-spark-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.scout-spark-label {
+  font-size: 10px;
+  color: var(--label);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.scout-sparkline {
+  color: var(--accent-strong);
+  flex: none;
+}
+.scout-repchange-spark { color: var(--accent-strong); }
+.scout-activity-spark { color: var(--muted); }
+.scout-bar-chart { display: block; margin-top: 4px; }
+.scout-bar-label {
+  font-size: 10px;
+  fill: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.scout-bar-fill { fill: var(--accent-strong); }
+.scout-bar-row.is-cold .scout-bar-fill { fill: var(--good); }
+.scout-bar-row.is-hot .scout-bar-fill { fill: var(--danger); }
+.scout-bar-val {
+  font-size: 10px;
+  fill: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.scout-body-prep {
+  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+}
+.scout-col-prep { min-width: 0; }
+/* The "when they play X → you play Y" framing is the centrepiece, so let it wrap
+   to as many lines as it needs instead of being ellipsis-truncated to "When th…". */
+.scout-weakness-row { align-items: start; }
+.scout-weakness-row .scout-line-moves {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+.scout-prep-framing {
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: normal;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.scout-prep-them { color: var(--text); font-weight: 600; }
+.scout-prep-arrow { color: var(--muted); margin: 0 2px; }
+.scout-prep-you {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--good);
+  background: color-mix(in srgb, var(--good) 12%, transparent);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+.scout-prep-needs {
+  font-size: 11px;
+  color: var(--warn);
+  font-weight: 600;
+}
+.scout-prep-badge {
+  display: inline-block;
+  align-self: flex-start;
+  white-space: nowrap;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 999px;
+  margin-top: 4px;
+}
+.scout-prep-badge-attack {
+  color: var(--good);
+  background: color-mix(in srgb, var(--good) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--good) 30%, transparent);
+}
+.scout-prep-badge-weapon {
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+}
+.scout-last-seen {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--label);
+  margin-left: 4px;
+}
+.scout-refutation-card {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--good) 8%, var(--panel-soft));
+  border: 1px solid color-mix(in srgb, var(--good) 25%, var(--line));
+  font-size: 11px;
+}
+.scout-refutation-card-copy { line-height: 1.4; }
+.scout-refutation-swing { color: var(--danger); font-weight: 600; }
+.scout-refutation-card-board {
+  margin-top: 6px;
+  width: 96px;
+  height: 96px;
+}
 @media (max-width: 720px) {
   .scout-body {
     grid-template-columns: minmax(0, 1fr);
@@ -2520,7 +2771,7 @@ h2 {
   gap: 8px;
   padding: 10px 0 4px;
   margin-top: 4px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--line-soft);
 }
 
 .ib.danger {

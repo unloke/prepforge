@@ -5,6 +5,7 @@ import { Chess } from "chess.js";
 import { createEngineProvider } from "./engine/stockfish-provider.js";
 import { analyzeGamePositions, isTerminalPosition } from "./engine/game-analyzer.js";
 import { classifyMove, cpToWin } from "./explain.js";
+import { confidence } from "./scout-stats.js";
 import { ANALYZE_PLIES, MAX_PLIES, triePathKey } from "./scout.js";
 
 export { triePathKey };
@@ -12,7 +13,12 @@ export { triePathKey };
 export const SCOUT_ENGINE_DEPTH = 12;
 export const SCOUT_ENGINE_MIN_RECURRENCE = 2;
 export const SCOUT_ENGINE_DEFAULT_GAMES = 60;
-const CACHE_PREFIX = "prepforge.scout.engine.v1";
+export const ENGINE_AGG_MIN_ANALYZED_GAMES = 3;
+export const ENGINE_AGG_MIN_COVERAGE_PCT = 60;
+export const ENGINE_CACHE_SCHEMA = 3;
+const CACHE_PREFIX = "prepforge.scout.engine.v3";
+const LEGACY_CACHE_PREFIX = "prepforge.scout.engine.v1";
+const STALE_CACHE_PREFIXES = [LEGACY_CACHE_PREFIX, "prepforge.scout.engine.v2"];
 
 class ScanCancelled extends Error {
   constructor(message = "Deep scan stopped") {
@@ -25,20 +31,70 @@ function cacheKey(gameId, depth, plies) {
   return `${CACHE_PREFIX}:${gameId}:d${depth}:p${plies}`;
 }
 
-function readGameCache(store, gameId, depth, plies) {
+function staleCacheKey(prefix, gameId, depth, plies) {
+  return `${prefix}:${gameId}:d${depth}:p${plies}`;
+}
+
+function moveHasReplyFields(move) {
+  if (!move || typeof move !== "object") return false;
+  const hasOpponentAlt =
+    Object.prototype.hasOwnProperty.call(move, "opponentBestAlternativeUci") ||
+    Object.prototype.hasOwnProperty.call(move, "bestUci");
+  return (
+    hasOpponentAlt &&
+    Object.prototype.hasOwnProperty.call(move, "ourReplyUci") &&
+    Object.prototype.hasOwnProperty.call(move, "ourReplyPv")
+  );
+}
+
+export function isCompleteScanCacheEntry(cached) {
+  if (!cached?.record || cached.schemaVersion !== ENGINE_CACHE_SCHEMA) return false;
+  const rec = cached.record;
+  if (!Number.isFinite(rec.eligibleOpponentPlies) || !Number.isFinite(rec.analyzedOpponentPlies)) {
+    return false;
+  }
+  if (!Array.isArray(rec.moves) || !Array.isArray(rec.mistakes)) return false;
+  if (rec.complete !== true) return false;
+  if (rec.analyzedOpponentPlies > 0 && rec.moves.length !== rec.analyzedOpponentPlies) {
+    return false;
+  }
+  if (rec.moves.length > 0 && !rec.moves.every(moveHasReplyFields)) {
+    return false;
+  }
+  return true;
+}
+
+function purgeStaleCacheKeys(store, gameId, depth, plies) {
+  for (const prefix of STALE_CACHE_PREFIXES) {
+    const key = staleCacheKey(prefix, gameId, depth, plies);
+    if (store.getItem(key)) store.removeItem(key);
+  }
+}
+
+export function readGameCache(store, gameId, depth, plies) {
   if (!gameId) return null;
   try {
-    const raw = store.getItem(cacheKey(gameId, depth, plies));
-    return raw ? JSON.parse(raw) : null;
+    purgeStaleCacheKeys(store, gameId, depth, plies);
+    const key = cacheKey(gameId, depth, plies);
+    const raw = store.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (isCompleteScanCacheEntry(parsed)) return parsed;
+      store.removeItem(key);
+    }
   } catch (_) {
     return null;
   }
+  return null;
 }
 
 function writeGameCache(store, gameId, depth, plies, payload) {
   if (!gameId) return;
   try {
-    store.setItem(cacheKey(gameId, depth, plies), JSON.stringify(payload));
+    store.setItem(
+      cacheKey(gameId, depth, plies),
+      JSON.stringify({ ...payload, schemaVersion: ENGINE_CACHE_SCHEMA }),
+    );
   } catch (_) {
     /* best-effort */
   }
@@ -113,7 +169,7 @@ function afterPlayedFen(fenBefore, playedUci) {
   }
 }
 
-function buildMoveResults(positions, evalMap) {
+function buildAnalyzedMoveResults(positions, evalMap) {
   const moves = [];
   for (const pos of positions) {
     const beforeEval = evalMap.get(pos.fenBefore);
@@ -130,25 +186,59 @@ function buildMoveResults(positions, evalMap) {
       beforeCp,
       afterCp,
     });
-    if (!classification || classification.label === "Best move" || classification.label === "Good move") {
-      continue;
-    }
+    const label = classification?.label || null;
+    const isInaccuracy =
+      label && label !== "Best move" && label !== "Good move";
     moves.push({
       ...pos,
       cpLoss,
-      classification: classification.label,
+      classification: label,
+      isInaccuracy,
       bestUci: beforeEval.best_move_uci,
+      opponentBestAlternativeUci: beforeEval.best_move_uci,
+      ourReplyUci: afterEval.best_move_uci,
+      ourReplyPv: afterEval.pv?.length ? afterEval.pv.slice() : null,
     });
   }
   return moves;
 }
 
-async function analyzeGameMoves(game, oppColor, { depth, storage, shouldCancel, createProvider }) {
+function buildMistakeMoves(analyzedMoves) {
+  return analyzedMoves.filter((m) => m.isInaccuracy);
+}
+
+function buildGameScanRecord(game, positions, analyzedMoves) {
+  const mistakes = buildMistakeMoves(analyzedMoves);
+  const firstInaccuracyPly = mistakes.length
+    ? Math.min(...mistakes.map((m) => m.ply))
+    : null;
+  return {
+    gameId: game.gameId,
+    firstUci: game.ucis[0] || null,
+    firstSan: game.sans[0] || null,
+    eligibleOpponentPlies: positions.length,
+    analyzedOpponentPlies: analyzedMoves.length,
+    firstInaccuracyPly,
+    moves: analyzedMoves,
+    mistakes,
+    complete: true,
+  };
+}
+
+async function analyzeGameForScan(game, oppColor, { depth, storage, shouldCancel, createProvider }) {
   const cached = readGameCache(storage, game.gameId, depth, ANALYZE_PLIES);
-  if (cached?.moves) return cached.moves;
+  if (cached?.record) {
+    return {
+      mistakes: cached.record.mistakes || buildMistakeMoves(cached.record.moves || []),
+      record: cached.record,
+    };
+  }
 
   const positions = collectOpponentPositions(game, oppColor);
-  if (!positions.length) return [];
+  if (!positions.length) {
+    const empty = buildGameScanRecord(game, [], []);
+    return { mistakes: [], record: empty };
+  }
 
   const fens = [];
   for (const pos of positions) {
@@ -166,9 +256,159 @@ async function analyzeGameMoves(game, oppColor, { depth, storage, shouldCancel, 
     onProgress: () => {},
   });
 
-  const moves = buildMoveResults(positions, evalMap);
-  writeGameCache(storage, game.gameId, depth, ANALYZE_PLIES, { moves, at: Date.now() });
-  return moves;
+  const analyzedMoves = buildAnalyzedMoveResults(positions, evalMap);
+  const record = buildGameScanRecord(game, positions, analyzedMoves);
+  writeGameCache(storage, game.gameId, depth, ANALYZE_PLIES, {
+    record,
+    moves: record.mistakes,
+    at: Date.now(),
+  });
+  return { mistakes: record.mistakes, record };
+}
+
+export function engineScanPatterns(scanResult) {
+  if (!scanResult) return null;
+  if (scanResult instanceof Map) return scanResult;
+  return scanResult.patterns || null;
+}
+
+export function selectEngineScope(
+  games,
+  { color, speedFilter = "all", maxGames = SCOUT_ENGINE_DEFAULT_GAMES } = {},
+) {
+  const filtered = (games || [])
+    .filter((g) => g.color === color)
+    .filter((g) => speedFilter === "all" || g.speed === speedFilter);
+  const scoped = filtered.slice(0, maxGames);
+  const gameIds = scoped.map((g) => g.gameId).filter(Boolean);
+  return {
+    games: scoped,
+    gameIds,
+    totalGames: filtered.length,
+    maxGames,
+    scopeLimited: filtered.length > maxGames,
+  };
+}
+
+function scopeGameIdsMatch(currentIds, scannedIds) {
+  if (currentIds.length !== scannedIds.length) return false;
+  const scanSet = new Set(scannedIds);
+  return currentIds.every((id) => scanSet.has(id));
+}
+
+export function aggregateEngineByFamily(
+  scanRecords,
+  {
+    eligibleGameIds = null,
+    eligibleGames = null,
+    scanGameIds = null,
+    scopeLimited = false,
+    maxGames = SCOUT_ENGINE_DEFAULT_GAMES,
+  } = {},
+) {
+  if (!scanRecords?.length) {
+    return {
+      families: [],
+      analyzedGames: 0,
+      eligibleGames: eligibleGames ?? 0,
+      coveragePct: 0,
+      sufficient: false,
+      status: "none",
+      stale: false,
+      minAnalyzedGames: ENGINE_AGG_MIN_ANALYZED_GAMES,
+      minCoveragePct: ENGINE_AGG_MIN_COVERAGE_PCT,
+    };
+  }
+
+  const currentIds = eligibleGameIds || [];
+  const scannedIds = scanGameIds || scanRecords.map((r) => r.gameId).filter(Boolean);
+  const stale =
+    currentIds.length > 0 &&
+    scannedIds.length > 0 &&
+    !scopeGameIdsMatch(currentIds, scannedIds);
+
+  const idSet = currentIds.length ? new Set(currentIds) : null;
+  const records = idSet
+    ? scanRecords.filter((r) => r.gameId && idSet.has(r.gameId))
+    : scanRecords;
+
+  const byFamily = new Map();
+  const totalEligible = eligibleGames != null ? eligibleGames : records.length;
+  let totalAnalyzed = 0;
+
+  for (const record of records) {
+    const analyzed = (record.analyzedOpponentPlies ?? 0) > 0;
+    if (analyzed) totalAnalyzed += 1;
+
+    const key = record.firstUci || "?";
+    if (!byFamily.has(key)) {
+      byFamily.set(key, {
+        uci: record.firstUci,
+        san: record.firstSan || "?",
+        eligibleGames: 0,
+        analyzedGames: 0,
+        totalCpLoss: 0,
+        totalOpponentPlies: 0,
+        firstInaccuracyPlies: [],
+      });
+    }
+    const fam = byFamily.get(key);
+    fam.eligibleGames += 1;
+    if (analyzed) fam.analyzedGames += 1;
+    for (const move of record.moves || []) {
+      fam.totalCpLoss += move.cpLoss || 0;
+      fam.totalOpponentPlies += 1;
+    }
+    if (record.firstInaccuracyPly != null) {
+      fam.firstInaccuracyPlies.push(record.firstInaccuracyPly);
+    }
+  }
+
+  const families = [...byFamily.values()].map((fam) => {
+    const acpl =
+      fam.totalOpponentPlies > 0 ? Math.round(fam.totalCpLoss / fam.totalOpponentPlies) : 0;
+    const firstInaccuracyPly = fam.firstInaccuracyPlies.length
+      ? Math.round(
+          fam.firstInaccuracyPlies.reduce((sum, ply) => sum + ply, 0) /
+            fam.firstInaccuracyPlies.length,
+        )
+      : null;
+    const coveragePct =
+      fam.eligibleGames > 0 ? Math.round((fam.analyzedGames / fam.eligibleGames) * 100) : 0;
+    return {
+      uci: fam.uci,
+      san: fam.san,
+      acpl,
+      firstInaccuracyPly,
+      analyzedGames: fam.analyzedGames,
+      eligibleGames: fam.eligibleGames,
+      coveragePct,
+      confidence: confidence(fam.analyzedGames),
+    };
+  });
+
+  families.sort((a, b) => b.acpl - a.acpl || b.analyzedGames - a.analyzedGames);
+
+  const coveragePct =
+    totalEligible > 0 ? Math.round((totalAnalyzed / totalEligible) * 100) : 0;
+  const sufficient =
+    !stale &&
+    totalAnalyzed >= ENGINE_AGG_MIN_ANALYZED_GAMES &&
+    coveragePct >= ENGINE_AGG_MIN_COVERAGE_PCT;
+
+  return {
+    families: stale ? [] : families,
+    analyzedGames: totalAnalyzed,
+    eligibleGames: totalEligible,
+    coveragePct,
+    sufficient,
+    stale,
+    status: stale ? "stale" : sufficient ? "ok" : "insufficient",
+    scopeLimited,
+    maxGames,
+    minAnalyzedGames: ENGINE_AGG_MIN_ANALYZED_GAMES,
+    minCoveragePct: ENGINE_AGG_MIN_COVERAGE_PCT,
+  };
 }
 
 export function aggregateEngineByTriePath(allGameMoves) {
@@ -244,26 +484,37 @@ export async function runScoutDeepScan({
       ? { getItem: () => null, setItem: () => {} }
       : localStorage);
 
-  const filtered = games
-    .filter((g) => g.color === oppColor)
-    .filter((g) => speedFilter === "all" || g.speed === speedFilter)
-    .slice(0, maxGames);
+  const scope = selectEngineScope(games, { color: oppColor, speedFilter, maxGames });
+  const filtered = scope.games;
 
   const total = filtered.length;
   const allGameMoves = [];
+  const scanRecords = [];
 
   for (let i = 0; i < filtered.length; i += 1) {
     if (typeof shouldCancel === "function" && shouldCancel()) throw new ScanCancelled();
     const game = filtered[i];
-    const moves = await analyzeGameMoves(game, oppColor, {
+    const { mistakes, record } = await analyzeGameForScan(game, oppColor, {
       depth,
       storage: store,
       shouldCancel,
       createProvider,
     });
-    allGameMoves.push(moves.map((m) => ({ ...m, gameId: game.gameId })));
+    allGameMoves.push(mistakes.map((m) => ({ ...m, gameId: game.gameId })));
+    scanRecords.push(record);
     if (typeof onProgress === "function") onProgress(i + 1, total);
   }
 
-  return aggregateEngineByTriePath(allGameMoves);
+  return {
+    patterns: aggregateEngineByTriePath(allGameMoves),
+    scanRecords,
+    gameIds: scope.gameIds,
+    speedFilter,
+    oppColor,
+    eligibleGames: total,
+    maxGames: scope.maxGames,
+    totalGames: scope.totalGames,
+    scopeLimited: scope.scopeLimited,
+    depth,
+  };
 }

@@ -19,7 +19,15 @@ import {
   parseMultiPgn,
   nodeIdAfterFlush,
   recommendTargets,
+  normalizeToOpponentTerminal,
+  terminalMoveIsOpponent,
+  wilsonScorePct,
+  wilsonScoreUpperPct,
   repertoireChildLookup,
+  suggestReplyFromRepertoire,
+  attachPrepReplies,
+  PGN_BLOCK_BOUNDARY,
+  scoutStreamUrl,
   scoutUrl,
   topLines,
   WEAKNESS_MIN_GAMES,
@@ -34,12 +42,14 @@ function pgn({
   blackElo = "",
   utcDate = "",
   timeControl = "",
+  site = "",
 }) {
   const extras = [];
   if (whiteElo) extras.push(`[WhiteElo "${whiteElo}"]`);
   if (blackElo) extras.push(`[BlackElo "${blackElo}"]`);
   if (utcDate) extras.push(`[UTCDate "${utcDate}"]`);
   if (timeControl) extras.push(`[TimeControl "${timeControl}"]`);
+  if (site) extras.push(`[Site "${site}"]`);
   return `[Event "Rated Blitz game"]\n[White "${white}"]\n[Black "${black}"]\n${extras.join("\n")}${extras.length ? "\n" : ""}[Result "${result}"]\n\n${moves} ${result}\n`;
 }
 
@@ -83,6 +93,21 @@ describe("parseGameBlock / parseMultiPgn", () => {
     expect(game.rating).toBe(1850);
     expect(game.datestamp).toBeGreaterThan(0);
     expect(game.speed).toBe("blitz");
+  });
+  it("parses opponent Elo from the other side", () => {
+    const asWhite = parseGameBlock(
+      pgn({ moves: "1. e4 e5", whiteElo: "1800", blackElo: "1950" }),
+      "foe",
+    );
+    expect(asWhite.rating).toBe(1800);
+    expect(asWhite.opponentRating).toBe(1950);
+
+    const asBlack = parseGameBlock(
+      pgn({ white: "Other", black: "Foe", moves: "1. e4 e5", whiteElo: "2100", blackElo: "2000" }),
+      "foe",
+    );
+    expect(asBlack.rating).toBe(2000);
+    expect(asBlack.opponentRating).toBe(2100);
   });
   it("classifies speed buckets", () => {
     expect(
@@ -163,7 +188,9 @@ describe("buildOpeningTrie + distribution + topLines", () => {
     const dist = moveDistribution(trie);
     expect(dist[0]).toMatchObject({ san: "e4", count: 3 });
     expect(dist[0].share).toBeCloseTo(0.75);
-    expect(dist[1]).toMatchObject({ san: "d4", count: 1 });
+    expect(dist.find((m) => m.san === "d4")).toBeUndefined();
+    const slipVisible = moveDistribution(trie, { slipMinGames: 0 });
+    expect(slipVisible.find((m) => m.san === "d4")).toMatchObject({ san: "d4", count: 1 });
   });
   it("walks the most common continuation into a line per branch", () => {
     const trie = buildOpeningTrie(GAMES, "white", { recency: false });
@@ -262,12 +289,100 @@ describe("openingBreakdown + recommendTargets", () => {
     const trie = buildOpeningTrie(GAMES, "white", { recency: false });
     const breakdown = openingBreakdown(trie, { minGames: 1 });
     const baseline = 50;
-    const targets = recommendTargets(breakdown, baseline, { minGames: 2, limit: 5 });
-    for (const t of targets) {
+    const targets = recommendTargets(breakdown, baseline, {
+      minGames: 2,
+      limit: 5,
+      oppColor: "white",
+    });
+    const attacks = targets.filter((t) => t.prepCategory === "attack");
+    for (const t of attacks) {
       expect(t.games).toBeGreaterThanOrEqual(2);
-      expect(t.scorePct).toBeLessThan(baseline);
+      expect(t.wilsonScorePct).toBeLessThanOrEqual(baseline);
       expect(t.opportunity).toBeGreaterThan(0);
+      expect(terminalMoveIsOpponent(t.ucis, "white")).toBe(true);
     }
+  });
+
+  it("wilsonScorePct returns neutral prior for empty samples", () => {
+    expect(wilsonScorePct(0, 0, 0)).toBe(50);
+    expect(wilsonScorePct(0, 0, 1)).toBeLessThan(wilsonScorePct(3, 2, 15));
+  });
+
+  it("classifies 6/7 wins as Main line against a 50% baseline (not Attack)", () => {
+    const group = {
+      line: "e2e4",
+      sans: ["e4"],
+      ucis: ["e2e4"],
+      games: 7,
+      w: 6,
+      d: 0,
+      l: 1,
+      scorePct: 86,
+      share: 0.5,
+      count: 7,
+    };
+    const targets = recommendTargets([group], 50, { minGames: 7, oppColor: "white" });
+    expect(targets).toHaveLength(1);
+    expect(targets[0].prepCategory).toBe("weapon");
+    expect(targets[0].prepCategory).not.toBe("attack");
+    expect(wilsonScoreUpperPct(6, 0, 1)).toBeGreaterThanOrEqual(50);
+  });
+
+  it("leaves a line only marginally below baseline as neutral, not Attack", () => {
+    // 36% vs a 38% baseline over a sample whose Wilson upper bound is well above
+    // baseline — neither a punishable weakness nor a weapon, so: no badge, not a target.
+    const group = {
+      line: "e2e4",
+      sans: ["e4"],
+      ucis: ["e2e4"],
+      games: 11,
+      w: 4,
+      d: 0,
+      l: 7,
+      scorePct: 36,
+      share: 0.5,
+      count: 11,
+    };
+    const targets = recommendTargets([group], 38, { minGames: 7, oppColor: "white" });
+    expect(targets).toHaveLength(0);
+  });
+
+  it("collapses two lines that normalise to the same opponent-terminal move", () => {
+    // "1.d4 Nf6" and "1.d4 g6" both end on the player's move, so both truncate to "1.d4".
+    // They must surface as a single row, not two identical "When they play 1.d4" entries.
+    const breakdown = [
+      { line: "d2d4>g8f6", sans: ["d4", "Nf6"], ucis: ["d2d4", "g8f6"], games: 11, w: 3, d: 0, l: 8, scorePct: 26, share: 0.4, count: 11 },
+      { line: "d2d4>g7g6", sans: ["d4", "g6"], ucis: ["d2d4", "g7g6"], games: 14, w: 10, d: 1, l: 3, scorePct: 75, share: 0.5, count: 14 },
+    ];
+    const targets = recommendTargets(breakdown, 38, { minGames: 7, oppColor: "white" });
+    const d4Rows = targets.filter((t) => t.ucis.join(">") === "d2d4");
+    expect(d4Rows).toHaveLength(1);
+  });
+
+  it("recommendTargets rejects lines ending on the player move", () => {
+    const breakdown = [
+      {
+        line: "e2e4>c7c5>d2d4",
+        sans: ["e4", "c5", "cxd4"],
+        ucis: ["e2e4", "c7c5", "d2d4"],
+        games: 10,
+        w: 3,
+        d: 1,
+        l: 6,
+        scorePct: 35,
+        share: 0.4,
+        count: 10,
+      },
+    ];
+    const targets = recommendTargets(breakdown, 50, { minGames: 3, oppColor: "black" });
+    expect(targets).toHaveLength(1);
+    expect(targets[0].ucis).toEqual(["e2e4", "c7c5"]);
+    expect(terminalMoveIsOpponent(targets[0].ucis, "black")).toBe(true);
+  });
+
+  it("normalizeToOpponentTerminal truncates player-terminal paths", () => {
+    const out = normalizeToOpponentTerminal(["e2e4", "c7c5", "d2d4"], ["e4", "c5", "cxd4"], "black");
+    expect(out?.ucis).toEqual(["e2e4", "c7c5"]);
   });
 
   it("excludes thin samples from recommendations", () => {
@@ -361,6 +476,100 @@ describe("repertoire coverage", () => {
     expect(graded[1].prepared).toBe(false);
     expect(graded[1].deepestNodeId).toBe("root");
   });
+
+  it("suggestReplyFromRepertoire picks enabled mainline over insertion order", () => {
+    const nodes = [
+      { id: "root", depth: 0, parent_id: null, uci: null },
+      { id: "n1", depth: 1, parent_id: "root", uci: "e2e4" },
+      { id: "n-alt", depth: 2, parent_id: "n1", uci: "b1c3", is_mainline: false, is_enabled: true },
+      { id: "n-main", depth: 2, parent_id: "n1", uci: "g1f3", is_mainline: true, is_enabled: true },
+    ];
+    const lookup = repertoireChildLookup(nodes);
+    expect(suggestReplyFromRepertoire(lookup, ["e2e4"])).toEqual({
+      uci: "g1f3",
+      source: "repertoire",
+    });
+  });
+
+  it("attachPrepReplies writes the mainline reply for prep framing", () => {
+    const nodes = [
+      { id: "root", depth: 0, parent_id: null, uci: null },
+      { id: "n1", depth: 1, parent_id: "root", uci: "e2e4" },
+      { id: "n-alt", depth: 2, parent_id: "n1", uci: "b1c3", is_mainline: false, is_enabled: true },
+      { id: "n-main", depth: 2, parent_id: "n1", uci: "g1f3", is_mainline: true, is_enabled: true },
+    ];
+    const lookup = repertoireChildLookup(nodes);
+    const [target] = attachPrepReplies(
+      [{ sans: ["e4"], ucis: ["e2e4"], games: 10, scorePct: 40, share: 0.5 }],
+      { lookups: [{ lookup }], refutations: [], oppColor: "white" },
+    );
+    expect(target.suggestedReply).toMatchObject({ uci: "g1f3", source: "repertoire" });
+  });
+
+  it("suggestReplyFromRepertoire falls back to UCI order when no mainline is marked", () => {
+    const nodes = [
+      { id: "root", depth: 0, parent_id: null, uci: null },
+      { id: "n1", depth: 1, parent_id: "root", uci: "e2e4" },
+      { id: "n-b", depth: 2, parent_id: "n1", uci: "b1c3", is_mainline: false, is_enabled: true },
+      { id: "n-g", depth: 2, parent_id: "n1", uci: "g1f3", is_mainline: false, is_enabled: true },
+    ];
+    const lookup = repertoireChildLookup(nodes);
+    expect(suggestReplyFromRepertoire(lookup, ["e2e4"])).toEqual({
+      uci: "b1c3",
+      source: "repertoire",
+    });
+  });
+
+  it("suggestReplyFromRepertoire skips disabled siblings for mainline selection", () => {
+    const nodes = [
+      { id: "root", depth: 0, parent_id: null, uci: null },
+      { id: "n1", depth: 1, parent_id: "root", uci: "e2e4" },
+      {
+        id: "n-disabled-main",
+        depth: 2,
+        parent_id: "n1",
+        uci: "b1c3",
+        is_mainline: true,
+        is_enabled: false,
+      },
+      { id: "n-enabled-alt", depth: 2, parent_id: "n1", uci: "g1f3", is_mainline: false, is_enabled: true },
+    ];
+    const lookup = repertoireChildLookup(nodes);
+    expect(suggestReplyFromRepertoire(lookup, ["e2e4"])).toEqual({
+      uci: "g1f3",
+      source: "repertoire",
+    });
+  });
+
+  it("suggestReplyFromRepertoire returns null when every sibling is disabled", () => {
+    const nodes = [
+      { id: "root", depth: 0, parent_id: null, uci: null },
+      { id: "n1", depth: 1, parent_id: "root", uci: "e2e4" },
+      { id: "n-alt", depth: 2, parent_id: "n1", uci: "b1c3", is_mainline: false, is_enabled: false },
+      { id: "n-main", depth: 2, parent_id: "n1", uci: "g1f3", is_mainline: true, is_enabled: false },
+    ];
+    const lookup = repertoireChildLookup(nodes);
+    expect(suggestReplyFromRepertoire(lookup, ["e2e4"])).toBeNull();
+  });
+
+  it("lineCoverage stops at a disabled node and does not mark the line prepared", () => {
+    const nodes = [
+      { id: "root", depth: 0, parent_id: null, uci: null },
+      { id: "n1", depth: 1, parent_id: "root", uci: "e2e4" },
+      { id: "n2", depth: 2, parent_id: "n1", uci: "c7c5", is_enabled: false },
+      { id: "n3", depth: 3, parent_id: "n2", uci: "g1f3" },
+    ];
+    const lookup = repertoireChildLookup(nodes);
+    expect(lineCoverage(lookup, ["e2e4", "c7c5", "g1f3"])).toEqual({
+      covered: 1,
+      deepestNodeId: "n1",
+    });
+    const [graded] = gradeLines(lookup, [
+      { sans: ["e4", "c5", "Nf3"], ucis: ["e2e4", "c7c5", "g1f3"], count: 3 },
+    ]);
+    expect(graded.prepared).toBe(false);
+    expect(graded.covered).toBe(1);
+  });
 });
 
 describe("createScoutClient", () => {
@@ -408,6 +617,139 @@ describe("createScoutClient", () => {
     expect(url).toContain("/api/games/user/Foe?");
     expect(url).toContain("max=500");
     expect(url).toContain("perfType=bullet%2Cblitz%2Crapid%2Cclassical");
+  });
+
+  it("builds a streaming URL with colour and pagination params", () => {
+    const url = scoutStreamUrl("Foe", { color: "white", until: 1_700_000_000, max: 120 });
+    expect(url).toContain("color=white");
+    expect(url).toContain("until=1700000000");
+    expect(url).toContain("max=120");
+    expect(scoutStreamUrl("Foe", { color: "both" })).not.toContain("color=");
+  });
+
+  it("streams PGN chunks split mid-game and emits complete games", async () => {
+    const g1 = pgn({ moves: "1. e4 e5", utcDate: "2026.06.12", white: "Foe" });
+    const g2 = pgn({ moves: "1. d4 d5", utcDate: "2026.06.11", white: "Foe" });
+    const full = `${g1}\n\n${g2}`;
+    const encoder = new TextEncoder();
+    let readCount = 0;
+    const stream = new ReadableStream({
+      pull(controller) {
+        readCount += 1;
+        if (readCount === 1) {
+          controller.enqueue(encoder.encode(full.slice(0, 40)));
+        } else if (readCount === 2) {
+          controller.enqueue(encoder.encode(full.slice(40)));
+          controller.close();
+        }
+      },
+    });
+    const games = [];
+    const client = createScoutClient({
+      fetchImpl: async () => ({ ok: true, status: 200, body: stream }),
+      storage: memoryStorage(),
+    });
+    const result = await client.streamGames("Foe", {
+      onGame: (g) => games.push(g),
+    });
+    expect(games).toHaveLength(2);
+    expect(result.accepted).toBe(2);
+    expect(result.emitted).toBe(2);
+    expect(result.lastDatestamp).toBe(
+      Math.min(games[0].datestamp, games[1].datestamp),
+    );
+  });
+
+  it("treats AbortError as a normal stop and keeps partial emits", async () => {
+    const g1 = pgn({ moves: "1. e4 e5", white: "Foe" });
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(g1));
+      },
+    });
+    const ctrl = new AbortController();
+    const games = [];
+    const client = createScoutClient({
+      fetchImpl: async () => ({ ok: true, status: 200, body: stream }),
+      storage: memoryStorage(),
+    });
+    ctrl.abort();
+    const result = await client.streamGames("Foe", {
+      onGame: (g) => games.push(g),
+      signal: ctrl.signal,
+    });
+    expect(result.accepted).toBe(0);
+    expect(games).toHaveLength(0);
+  });
+
+  it("counts only accepted games when onGame rejects resume duplicates", async () => {
+    const g1 = pgn({
+      moves: "1. e4 e5",
+      white: "Foe",
+      utcDate: "2026.06.10",
+      site: "https://lichess.org/abc123",
+    });
+    const g2 = pgn({
+      moves: "1. d4 d5",
+      white: "Foe",
+      utcDate: "2026.06.09",
+      site: "https://lichess.org/def456",
+    });
+    const full = `${g1}\n\n${g2}\n\n${g1}`;
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(full));
+        controller.close();
+      },
+    });
+    const seen = new Set();
+    const acceptedGames = [];
+    const client = createScoutClient({
+      fetchImpl: async () => ({ ok: true, status: 200, body: stream }),
+      storage: memoryStorage(),
+    });
+    const result = await client.streamGames("Foe", {
+      onGame: (g) => {
+        if (g.gameId && seen.has(g.gameId)) return false;
+        if (g.gameId) seen.add(g.gameId);
+        acceptedGames.push(g);
+        return true;
+      },
+    });
+    expect(acceptedGames).toHaveLength(2);
+    expect(result.accepted).toBe(2);
+    expect(PGN_BLOCK_BOUNDARY.test(`\n\n[Event "x"]`)).toBe(true);
+  });
+
+  it("returns accepted=0 for a resume page of only duplicate gameIds", async () => {
+    const g1 = pgn({
+      moves: "1. e4 e5",
+      white: "Foe",
+      site: "https://lichess.org/duponly",
+    });
+    const full = `${g1}\n\n${g1}`;
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(full));
+        controller.close();
+      },
+    });
+    const seen = new Set(["duponly"]);
+    const client = createScoutClient({
+      fetchImpl: async () => ({ ok: true, status: 200, body: stream }),
+      storage: memoryStorage(),
+    });
+    const result = await client.streamGames("Foe", {
+      onGame: (g) => {
+        if (g.gameId && seen.has(g.gameId)) return false;
+        if (g.gameId) seen.add(g.gameId);
+        return true;
+      },
+    });
+    expect(result.accepted).toBe(0);
   });
 
   it("parses deeper movetext for analysis", () => {
