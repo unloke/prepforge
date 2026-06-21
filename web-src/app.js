@@ -375,9 +375,9 @@ const appState = {
   maiaRatingPinned: null,
   maiaAutoRating: null,
   // Whether the server exposes engine/Maia compute (admin builds only). The
-  // public/default flow runs compute in the browser, so full-game Analyze and
-  // Build → Generate (not yet ported to the browser) are gated off here rather
-  // than letting the user click through to a raw 403. See applyServerEngineGating.
+  // public/default flow runs compute in the browser (Analyze + Build → Generate
+  // via runBrowserBuildGenerate); this flag gates legacy server-engine UI paths
+  // rather than letting the user click through to a raw 403. See applyServerEngineGating.
   serverEngineEnabled: false,
 };
 
