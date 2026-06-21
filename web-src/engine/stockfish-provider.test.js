@@ -301,6 +301,59 @@ describe("createStockfishWasmProvider — search lifecycle", () => {
     expect(provider.snapshot().fen).toBe(FEN_C);
   });
 
+  it("waitForSearchComplete rejects at the exact timeout deadline (>=, not >)", async () => {
+    vi.useFakeTimers();
+    try {
+      const { provider } = makeProvider();
+      await provider.open({ fen: FEN_A, multipv: 1 });
+
+      const waitPromise = provider.waitForSearchComplete({ targetDepth: 20, timeoutMs: 1000 });
+      const assertion = expect(waitPromise).rejects.toThrow(/timed out after 1000ms/);
+      await vi.advanceTimersByTimeAsync(1000);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("close() immediately rejects pending waitForSearchComplete waiters", async () => {
+    const { provider } = makeProvider();
+    await provider.open({ fen: FEN_A, multipv: 1 });
+
+    const waitPromise = provider.waitForSearchComplete({ targetDepth: 20, timeoutMs: 30000 });
+    await provider.close();
+
+    await expect(waitPromise).rejects.toThrow(/Browser engine closed/);
+  });
+
+  it("waitForSearchComplete resolves immediately when the search already finished", async () => {
+    const { provider, fake } = makeProvider();
+    await provider.open({ fen: FEN_A, multipv: 1 });
+    fake.emit("info depth 20 score cp 40 pv e2e4");
+    fake.emit("bestmove e2e4");
+    expect(provider.snapshot().running).toBe(false);
+
+    const snap = await provider.waitForSearchComplete({ targetDepth: 20, timeoutMs: 30000 });
+    expect(snap.current_depth).toBe(20);
+    expect(snap.pvs[0].score_cp).toBe(40);
+  });
+
+  it("waitForSearchComplete resolves on worker messages without polling (background-tab safe)", async () => {
+    const { provider, fake } = makeProvider();
+    await provider.open({ fen: FEN_A, multipv: 1 });
+
+    const waitPromise = provider.waitForSearchComplete({ targetDepth: 20, timeoutMs: 30000 });
+    await tick();
+    fake.emit("info depth 20 score cp 40 pv e2e4");
+    fake.emit("bestmove e2e4");
+
+    const snap = await waitPromise;
+    expect(snap.current_depth).toBe(20);
+    expect(snap.pvs[0].score_cp).toBe(40);
+    // Resolves as soon as target depth is reached — need not wait for bestmove (game-analyzer parity).
+    expect(snap.running).toBe(true);
+  });
+
   it("does not drain when the previous search already finished (no hang)", async () => {
     const { provider, fake } = makeProvider();
     await provider.open({ fen: FEN_A, multipv: 1 });

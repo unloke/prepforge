@@ -1,5 +1,6 @@
 import { Chess } from "chess.js";
 import { createEngineProvider } from "./stockfish-provider.js";
+import { waitForEngineSearch } from "./engine-search-wait.js";
 
 // Whole-game analysis in the browser (Phase 2). Drives the browser Stockfish
 // provider over every position of a game, each to a target depth, and returns
@@ -14,7 +15,6 @@ import { createEngineProvider } from "./stockfish-provider.js";
 // which worker finished what. The UI is unchanged — progress still reports only a
 // completed count and a total.
 
-const POLL_MS = 90;
 // Hard ceiling per position so a stuck search can't hang the whole run.
 const PER_POSITION_TIMEOUT_MS = 30000;
 // Upper bound on concurrent Stockfish providers. Each provider runs its own Web Worker
@@ -32,8 +32,6 @@ export function resolveConcurrency(requested) {
     (typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 4;
   return Math.max(1, Math.min(MAX_CONCURRENCY, hw - 1));
 }
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class AnalysisCancelled extends Error {
   constructor(message = "Analysis stopped") {
@@ -95,30 +93,15 @@ function evalFromSnapshot(fen, snapshot) {
 // `bestmove` the engine emits in response to the `stop` that precedes each new
 // search. Throws AnalysisCancelled if `cancelled()` flips while we wait.
 async function waitForEval(provider, fen, targetDepth, cancelled) {
-  const started = Date.now();
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const snapshot = provider.snapshot();
-    if (snapshot.error) throw new Error(snapshot.error);
-    const done = !snapshot.running && snapshot.current_depth > 0;
-    const reached = snapshot.current_depth >= targetDepth && snapshot.pvs.length > 0;
-    if (done || reached) break;
-    if (Date.now() - started > PER_POSITION_TIMEOUT_MS) {
-      // Timed out. If the search produced a usable (if shallow) line, accept it. But if it
-      // produced NOTHING for a non-terminal position (terminal ones are filtered before we get
-      // here), the engine wedged — falling through to evalFromSnapshot would fabricate
-      // terminalEval's 0.00 and persist a bogus "equal" classification. Fail loudly instead, so
-      // the whole-game run errors the same way Build Generate already does on this shape.
-      const top = snapshot.pvs && snapshot.pvs[0];
-      if (top && (top.score_cp !== null || top.mate_in !== null)) break;
-      throw new Error(
-        `Engine timed out after ${PER_POSITION_TIMEOUT_MS}ms with no evaluation for ${fen}`,
-      );
-    }
-    if (cancelled()) throw new AnalysisCancelled();
-    await sleep(POLL_MS);
-  }
-  return evalFromSnapshot(fen, provider.snapshot());
+  const snapshot = await waitForEngineSearch(provider, {
+    targetDepth,
+    cancelled,
+    timeoutMs: PER_POSITION_TIMEOUT_MS,
+    acceptShallowOnTimeout: true,
+    fen,
+    onCancel: () => new AnalysisCancelled(),
+  });
+  return evalFromSnapshot(fen, snapshot);
 }
 
 /**

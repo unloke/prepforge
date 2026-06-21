@@ -13,15 +13,13 @@ import { Chess } from "chess.js";
 import { createEngineProvider, isBrowserEngineAvailable } from "./stockfish-provider.js";
 import { createMaia3Provider } from "./maia3-provider.js";
 import { isTerminalPosition } from "./game-analyzer.js";
+import { waitForEngineSearch } from "./engine-search-wait.js";
 import { generateBuildPlan, buildExistingSubtreeFromFlatNodes, SOURCE } from "./build-generator.js";
 
 const DEFAULT_GEN_DEPTH = 8; // match the server's GenerateConfig / EngineAnalysisConfig(depth=8)
 const DEFAULT_MAX_MULTIPV = 5; // standalone adapter default; the orchestrator sizes it precisely
 const MULTIPV_CEILING = 256; // Stockfish's hard MultiPV maximum
-const POLL_MS = 90;
 const PER_POSITION_TIMEOUT_MS = 30000; // a stuck search must fail, not silently under-generate
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function abortError() {
   const err = new Error("Build generation aborted");
@@ -42,7 +40,7 @@ function throwIfAborted(signal) {
 // must not be persisted into the repertoire.
 export function createEngineCandidateAdapter(
   provider,
-  { signal = null, maxMultipv = DEFAULT_MAX_MULTIPV, pollMs = POLL_MS, timeoutMs = PER_POSITION_TIMEOUT_MS } = {},
+  { signal = null, maxMultipv = DEFAULT_MAX_MULTIPV, pollMs = 90, timeoutMs = PER_POSITION_TIMEOUT_MS } = {},
 ) {
   let opened = false;
   return {
@@ -66,27 +64,15 @@ export function createEngineCandidateAdapter(
         await provider.update({ fen, multipv: want });
       }
 
-      // Wait for this position to finish: done when no longer running with at least one depth,
-      // or it reached the target depth. The depth guard ignores the spurious `bestmove` the
-      // engine emits for the `stop` that precedes each search (mirrors game-analyzer).
-      const started = Date.now();
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        throwIfAborted(signal);
-        const snap = provider.snapshot();
-        if (snap.error) throw new Error(snap.error);
-        const done = !snap.running && snap.current_depth > 0;
-        const reached = snap.current_depth >= (snap.max_depth || 0) && snap.pvs.length > 0;
-        if (done || reached) break;
-        if (Date.now() - started > timeoutMs) {
-          // Fail fast — Build Generate persists these candidates, so a partial set is wrong.
-          throw new Error(`Browser Stockfish timed out after ${timeoutMs}ms at ${fen}`);
-        }
-        await sleep(pollMs);
-      }
+      // Event-driven wait on worker UCI lines (pollMs fallback for test fakes only).
+      const snap = await waitForEngineSearch(provider, {
+        cancelled: () => signal && signal.aborted,
+        timeoutMs,
+        pollMs,
+        fen,
+        onCancel: abortError,
+      });
       throwIfAborted(signal);
-
-      const snap = provider.snapshot();
       const out = [];
       for (const pv of (snap.pvs || []).slice(0, want)) {
         if (!pv || !pv.pv_uci || pv.pv_uci.length === 0) continue; // empty placeholder slot
