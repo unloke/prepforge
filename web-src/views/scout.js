@@ -47,8 +47,11 @@ const RENDER_FORCE_EVERY_INITIAL = 25;
 // Maia must evaluate the FULL opening-line set (not just the displayed 12) so a thin
 // but weak line — low share, meaningless empirical win-rate — can still be surfaced by
 // its Maia score. share can't tell a weak n=1 from a slip n=1; only a Maia read can.
-// Cap by share so a pathologically active opponent can't trigger hundreds of forwards,
-// and the most-likely lines resolve first if the pass is cancelled mid-way.
+// Cap the forward count so a pathologically active opponent can't trigger hundreds of
+// reads — but cap by EXPLOITABILITY (the same rankGamePlan order that picks the displayed
+// rows), NOT by share. A 1.d4 specialist funnels every game through a few shallow,
+// high-share nodes, so a share cap fills its 48 slots with those and starves the deep
+// n=1 lines that are actually displayed — leaving every shown row stuck on empirical 0%.
 const MAIA_MAX_CANDIDATES = 48;
 
 /** Games between forced full rerenders while streaming — grows with history size. */
@@ -344,11 +347,23 @@ export function createScoutView(deps) {
     resetMaiaScopeCache(scoutState, scopeKey);
   }
 
-  /** Full opening-line set for one colour, share-sorted and capped, for Maia enrichment. */
+  /** Opening lines for one colour, exploitability-ranked and capped, for Maia enrichment. */
   function maiaCandidateLines(section, oppColor) {
     if (!section?.trie || !scoutModule?.rankedOpeningLines) return [];
     const lines = scoutModule.rankedOpeningLines(section.trie, { oppColor }) || [];
     if (lines.length <= MAIA_MAX_CANDIDATES) return lines;
+    // Cap by the same rankGamePlan order the report displays, so the shown rows are always
+    // a prefix of the enriched set (rankGamePlan with a higher limit chooses the same lines
+    // in the same order, just more of them). Ranking by share instead would crowd these
+    // deep n=1 lines out with shallow high-share nodes that never reach the game plan.
+    if (scoutModule.rankGamePlan) {
+      const baseline = section.baselineScorePct ?? 0;
+      const ranked = scoutModule.rankGamePlan(lines, baseline, {
+        oppColor,
+        limit: MAIA_MAX_CANDIDATES,
+      });
+      if (ranked?.length) return ranked;
+    }
     return [...lines]
       .sort((a, b) => (b.share || 0) - (a.share || 0) || (b.count || 0) - (a.count || 0))
       .slice(0, MAIA_MAX_CANDIDATES);
