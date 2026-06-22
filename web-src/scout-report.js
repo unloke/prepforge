@@ -838,6 +838,14 @@ function scoutPrepFramingHtml(line, escapeHtml) {
   return escapeHtml(theirLine);
 }
 
+// A rare line (1 game in a big sample) is a real prep target, not noise — show "<1%"
+// rather than rounding it to a misleading "0%".
+function formatSharePct(share) {
+  const pct = (share || 0) * 100;
+  if (pct > 0 && pct < 1) return "<1%";
+  return `${Math.round(pct)}%`;
+}
+
 function scoutPrepCategoryBadge(line) {
   if (line.prepCategory === "attack") {
     return '<span class="scout-prep-chip scout-prep-chip-attack" title="Below their baseline">attack</span>';
@@ -860,7 +868,9 @@ function scoutLineRowHtml(
   const weakness = rowKind === "weakness" || rowKind === "prep";
   const status = scoutPrepStatus(line);
   const framing = scoutPrepFramingHtml(line, escapeHtml);
-  const rawCount = line.gameCount ?? Math.round(line.count ?? line.games ?? 0);
+  // Real integer game count for display — never the recency-weighted `count`, which
+  // decays toward 0 for old lines and would render a true n=1 line as "n=0".
+  const rawCount = line.gameCount ?? line.games ?? Math.round(line.count ?? 0);
   const engineFlag = line.hasEngineMistake || line.refutation
     ? '<span class="scout-err-marker" title="Engine-backed refutation available">⚠</span>'
     : "";
@@ -882,9 +892,10 @@ function scoutLineRowHtml(
     rank != null
       ? `<span class="scout-lr-rank" title="Exploitability rank">#${rank + 1}</span>`
       : `<span class="scout-lr-count" title="${rawCount} of their games">&times;${rawCount}</span>`;
+  const shareForDisplay = line.rawShare ?? line.share;
   const shareCell =
-    weakness && line.share != null
-      ? `<span class="scout-lr-share" title="Share of their games">${Math.round(line.share * 100)}%</span>`
+    weakness && shareForDisplay != null
+      ? `<span class="scout-lr-share" title="Share of their games">${formatSharePct(shareForDisplay)}</span>`
       : "";
   const maiaEstimate = line.maiaScorePct != null;
   const displayScore = maiaEstimate ? line.maiaScorePct : line.scorePct;

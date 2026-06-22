@@ -408,6 +408,39 @@ describe("rankedOpeningLines + rankGamePlan", () => {
     }
   });
 
+  it("reports a real-count rawShare even when recency decays count to ~0", () => {
+    // One d4 game from long ago: its recency-weighted count/share collapse toward 0,
+    // but the line is still a real n=1 prep target — rawShare/games must reflect that.
+    const old = Date.now() - 400 * 86_400_000;
+    const games = [
+      ...Array.from({ length: 20 }, (_, i) => ({
+        color: "white",
+        score: 1,
+        sans: ["e4", "c5"],
+        ucis: ["e2e4", "c7c5"],
+        rating: 1800,
+        datestamp: Date.now() - i * 86_400_000,
+        speed: "blitz",
+      })),
+      {
+        color: "white",
+        score: 0,
+        sans: ["d4", "d5"],
+        ucis: ["d2d4", "d7d5"],
+        rating: 1800,
+        datestamp: old,
+        speed: "blitz",
+      },
+    ];
+    const trie = buildOpeningTrie(games, "white", { recency: true });
+    const lines = rankedOpeningLines(trie, { minGames: 1 });
+    const d4 = lines.find((l) => l.ucis[0] === "d2d4");
+    expect(d4).toBeDefined();
+    expect(d4.games).toBe(1); // real game count, undecayed
+    expect(Math.round(d4.count)).toBe(0); // recency weight rounds to 0 (the old bug source)
+    expect(d4.rawShare).toBeCloseTo(1 / 21, 4); // raw proportion is non-zero
+  });
+
   it("With White keeps distinct d4 lines ending on White's move", () => {
     const londonGames = [
       ...Array.from({ length: 10 }, (_, i) => ({

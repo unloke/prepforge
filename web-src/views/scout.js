@@ -123,6 +123,14 @@ export function createScoutView(deps) {
     return document.getElementById("scout-results");
   }
 
+  // While games are still streaming in, only the cheap empirical report is rendered.
+  // Maia inference, explorer fetches, and engine aggregation are deferred until the
+  // stream pauses/stops — running them live caused score flicker (re-scoring + re-sort
+  // on every batch) and severe mid-stream lag (ONNX forwards on a growing line set).
+  function isStreaming() {
+    return scoutSession?.state === "running";
+  }
+
   function getProfileEl() {
     return document.getElementById("scout-profile");
   }
@@ -262,7 +270,7 @@ export function createScoutView(deps) {
       }
     }
     if (force) updateLiveCounter();
-    if (!maiaEnrichInFlight) scheduleMaiaEnrich();
+    if (!isStreaming() && !maiaEnrichInFlight) scheduleMaiaEnrich();
   }
 
   function scheduleRender({ force = false } = {}) {
@@ -307,8 +315,10 @@ export function createScoutView(deps) {
     scoutState.explorerByColor = {};
     scoutState.engineAggByColor = {};
     renderScoutReport();
-    scheduleExplorerEnrich();
-    scheduleEngineAggregation();
+    if (!isStreaming()) {
+      scheduleExplorerEnrich();
+      scheduleEngineAggregation();
+    }
   }
 
   function scheduleMaiaEnrich() {
