@@ -120,7 +120,7 @@ export function maiaProviderCacheKey(resultKey) {
   if (pipeIdx < 0) return null;
   const rating = resultKey.slice(0, pipeIdx);
   const fen = resultKey.slice(pipeIdx + 1);
-  return `positionRead|${rating}|${fen}`;
+  return `wdlRead|${rating}|${fen}`;
 }
 
 /** Drop failed leaf entries and their in-flight provider keys; keep successes. */
@@ -232,10 +232,10 @@ export async function readLineMaiaWdl(
     rememberMaiaFailure(maiaResults, fen, r);
     return null;
   }
-  const cacheKey = `positionRead|${r}|${fen}`;
+  const cacheKey = `wdlRead|${r}|${fen}`;
   let pending = cache.get(cacheKey);
   if (!pending) {
-    pending = provider.positionRead({ fen, rating: r }).catch(() => null);
+    pending = provider.wdlRead({ fen, rating: r }).catch(() => null);
     cache.set(cacheKey, pending);
   }
   const read = await pending;

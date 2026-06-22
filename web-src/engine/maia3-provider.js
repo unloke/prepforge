@@ -238,6 +238,18 @@ class Maia3Provider {
     );
   }
 
+  // wdlRead({ fen, rating }) → { wdl: { win, draw, loss } } | null (malformed FEN).
+  // Value head only — skips buildPredictions/legalMoveIndices. Use when only the WDL is
+  // needed (e.g. Scout enrichment): policy post-processing can throw for edge-case positions
+  // even when the forward itself and the value head are perfectly valid.
+  async wdlRead({ fen, rating } = {}) {
+    await this._ensureReady();
+    const r = rating ?? this._defaultRating;
+    return this._cachedRead(`wdlRead|${r}|${fen}`, () =>
+      this._request("wdlRead", { fen, rating: r }),
+    );
+  }
+
   // moveAssessment({ fen, moveUci, historyFens?, rating }) →
   // { humanProbability, winChanceAfter } | null (malformed FEN or illegal move).
   async moveAssessment({ fen, moveUci, historyFens, rating } = {}) {

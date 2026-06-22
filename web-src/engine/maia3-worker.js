@@ -154,6 +154,19 @@ async function positionRead({ fen, rating }) {
   };
 }
 
+// wdlRead(): value head only — skips buildPredictions/legalMoveIndices entirely.
+// Use when ONLY the WDL is needed (e.g. Scout line enrichment): buildPredictions can
+// throw for edge-case positions (vocab/mirror drift in legalMoveIndices) even though
+// the forward itself and the value head are perfectly valid, which would incorrectly
+// mark a position as failed and drop it from enrichment.
+// { wdl: { win, draw, loss } } | null (malformed FEN).
+async function wdlRead({ fen, rating }) {
+  if (!isValidFen(fen)) return null;
+  const elo = rating || defaultRating;
+  const out = await session.run(feeds(tokensFromFen(fen), 1, [elo], [elo]));
+  return { wdl: wdlCurrent(out.logits_value.data) };
+}
+
 // moveAssessment(): { humanProbability, winChanceAfter } or null when the FEN is
 // malformed or the move is unparseable/illegal (no forward pass in that case).
 async function moveAssessment({ fen, moveUci, rating }) {
@@ -214,7 +227,7 @@ async function moveAssessmentBatch({ fen, moves, rating }) {
   return results;
 }
 
-const HANDLERS = { init, predictions, positionRead, moveAssessment, moveAssessmentBatch };
+const HANDLERS = { init, predictions, positionRead, wdlRead, moveAssessment, moveAssessmentBatch };
 
 self.onmessage = async (ev) => {
   const { id, type } = ev.data || {};
