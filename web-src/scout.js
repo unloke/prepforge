@@ -376,6 +376,240 @@ function isNestedLine(a, b) {
   return x === y || x.startsWith(`${y}>`) || y.startsWith(`${x}>`);
 }
 
+/** Stable terminal path key for game-plan dedup, tie-break, and candidate sampling. */
+export function gamePlanPathKey(line) {
+  return line?.line || triePathKey(line?.ucis || []);
+}
+
+/** Original full path before opponent-terminal normalization (secondary tie-break only). */
+export function gamePlanSourcePathKey(line) {
+  return line?.sourcePathKey || gamePlanPathKey(line);
+}
+
+function findTrieChild(node, uci, sanHint) {
+  if (!node?.children?.size) return null;
+  if (sanHint) {
+    const exact = node.children.get(`${uci}|${sanHint}`);
+    if (exact) return exact;
+  }
+  for (const [key, child] of node.children) {
+    if (key.startsWith(`${uci}|`)) return child;
+  }
+  return null;
+}
+
+/** Walk the opening trie to the node for a UCI path; returns resolved SANs from trie keys. */
+export function trieNodeAtPath(root, ucis, sans = []) {
+  if (!root || !ucis?.length) return null;
+  let node = root;
+  const resolvedSans = [];
+  for (let i = 0; i < ucis.length; i += 1) {
+    const child = findTrieChild(node, ucis[i], sans[i]);
+    if (!child) return null;
+    let san = sans[i];
+    if (!san) {
+      for (const key of node.children.keys()) {
+        if (key.startsWith(`${ucis[i]}|`)) {
+          san = key.split("|")[1] || ucis[i];
+          break;
+        }
+      }
+    }
+    resolvedSans.push(san || ucis[i]);
+    node = child;
+  }
+  return { node, sans: resolvedSans, ucis: [...ucis] };
+}
+
+/**
+ * Build line aggregates from a trie { root, node } pair.
+ * share/count use the root's recency-weighted totals; rawShare/games use root.gameCount.
+ */
+export function lineStatsFromTrieNode(root, node, sans, ucis, pathKey) {
+  return nodeToLineGroup(root, node, sans, ucis, pathKey);
+}
+
+function terminalLastSeen(games, ucis, { oppColor, speedFilter, lineLastSeen }) {
+  if (!games?.length || !lineLastSeen || !oppColor || !ucis?.length) return null;
+  return lineLastSeen(games, ucis, { color: oppColor, speedFilter });
+}
+
+/**
+ * Replace internal stats with trie aggregates at the terminal path (root + node).
+ * Clears stale lastSeen; recomputes from normalized terminal ucis when games are provided.
+ */
+export function applyTrieNodeStats(
+  line,
+  root,
+  { oppColor = null, speedFilter = "all", games = null, lineLastSeen = null } = {},
+) {
+  if (!root || !line?.ucis?.length) return line;
+  const hit = trieNodeAtPath(root, line.ucis, line.sans);
+  if (!hit) return line;
+  const pathKey = line.line || triePathKey(hit.ucis);
+  const group = lineStatsFromTrieNode(root, hit.node, hit.sans, hit.ucis, pathKey);
+  const lastSeen = terminalLastSeen(games, hit.ucis, { oppColor, speedFilter, lineLastSeen });
+  return {
+    ...line,
+    sans: group.sans,
+    ucis: group.ucis,
+    line: group.line,
+    games: group.games,
+    gameCount: group.games,
+    w: group.w,
+    d: group.d,
+    l: group.l,
+    scorePct: group.scorePct,
+    share: group.share,
+    rawShare: group.rawShare,
+    count: group.count,
+    ...(lastSeen ? { lastSeen } : { lastSeen: undefined }),
+  };
+}
+
+function trieStatsContext(ctx = {}) {
+  const { oppColor = null, speedFilter = "all", games = null, lineLastSeen = null } = ctx;
+  return { oppColor, speedFilter, games, lineLastSeen };
+}
+
+function prepareGamePlanLine(g, oppColor) {
+  const sourcePathKey = gamePlanPathKey(g);
+  if (!oppColor) {
+    return { ...g, line: sourcePathKey, sourcePathKey };
+  }
+  const normalized = normalizeToOpponentTerminal(g.ucis, g.sans, oppColor);
+  if (!normalized) return null;
+  return {
+    ...g,
+    sourcePathKey,
+    ucis: normalized.ucis,
+    sans: normalized.sans,
+    line: triePathKey(normalized.ucis),
+  };
+}
+
+function mergeSameTerminalLines(a, b, trie, trieCtx) {
+  const merged = {
+    ...a,
+    sourcePathKey:
+      gamePlanSourcePathKey(a).localeCompare(gamePlanSourcePathKey(b)) >= 0
+        ? gamePlanSourcePathKey(a)
+        : gamePlanSourcePathKey(b),
+    line: gamePlanPathKey(a),
+  };
+  return applyTrieNodeStats(merged, trie, trieCtx);
+}
+
+/**
+ * Collapse parent/child prefix routes (sibling branches are never merged).
+ * - Prefix family: keep the deepest opponent-terminal line.
+ * - Same terminal path after normalization: trie-node aggregates; source path key tie-break.
+ * - Never keep a truncated child's share/lastSeen when stats come from the terminal node.
+ */
+export function dedupNestedLines(
+  lines,
+  {
+    oppColor = null,
+    trie = null,
+    games = null,
+    speedFilter = "all",
+    lineLastSeen = null,
+  } = {},
+) {
+  const trieCtx = trieStatsContext({ oppColor, games, speedFilter, lineLastSeen });
+  const prepared = (lines || []).map((g) => prepareGamePlanLine(g, oppColor)).filter(Boolean);
+
+  const sorted = [...prepared].sort((a, b) => {
+    const terminalCmp = gamePlanPathKey(a).localeCompare(gamePlanPathKey(b));
+    if (terminalCmp !== 0) return terminalCmp;
+    return gamePlanSourcePathKey(a).localeCompare(gamePlanSourcePathKey(b));
+  });
+
+  const winners = new Map();
+  for (const g of sorted) {
+    const gKey = gamePlanPathKey(g);
+    let absorbed = false;
+
+    for (const [k, existing] of [...winners.entries()]) {
+      if (!isNestedLine(existing, g)) continue;
+      const eKey = gamePlanPathKey(existing);
+
+      if (gKey === eKey) {
+        winners.set(gKey, mergeSameTerminalLines(existing, g, trie, trieCtx));
+        absorbed = true;
+        break;
+      }
+      if (gKey.startsWith(`${eKey}>`)) {
+        winners.delete(k);
+        winners.set(gKey, applyTrieNodeStats(g, trie, trieCtx));
+        absorbed = true;
+        break;
+      }
+      if (eKey.startsWith(`${gKey}>`)) {
+        absorbed = true;
+        break;
+      }
+    }
+    if (!absorbed) winners.set(gKey, applyTrieNodeStats(g, trie, trieCtx));
+  }
+
+  return [...winners.values()].sort((a, b) =>
+    gamePlanPathKey(a).localeCompare(gamePlanPathKey(b)),
+  );
+}
+
+/** Maia enrich candidate priority: recency → share → path key (sampling only, not ranking). */
+export function compareMaiaCandidatePriority(a, b) {
+  const aStamp = a.lastSeen?.lastDatestamp ?? 0;
+  const bStamp = b.lastSeen?.lastDatestamp ?? 0;
+  if (aStamp !== bStamp) return bStamp - aStamp;
+  const shareDiff = (b.share || 0) - (a.share || 0);
+  if (shareDiff !== 0) return shareDiff;
+  return gamePlanSourcePathKey(a).localeCompare(gamePlanSourcePathKey(b));
+}
+
+/**
+ * Pick which deduped lines receive Maia3 reads. Caps evaluation cost; does not affect
+ * assessed-line sort order (that uses Maia opponent score only).
+ */
+export function selectMaiaEnrichCandidates(
+  lines,
+  {
+    oppColor = null,
+    limit = 48,
+    speedFilter = "all",
+    games = null,
+    lineLastSeen = null,
+    trie = null,
+  } = {},
+) {
+  const deduped = dedupNestedLines(lines, {
+    oppColor,
+    trie,
+    games,
+    speedFilter,
+    lineLastSeen,
+  });
+  if (deduped.length <= limit) return deduped;
+
+  return [...deduped].sort(compareMaiaCandidatePriority).slice(0, limit);
+}
+
+/** Maia3 game-plan ordering: lowest opponent score first; recency + route key tie-break. */
+export function compareMaiaGamePlanRank(a, b) {
+  const aScore = a.maiaScorePct;
+  const bScore = b.maiaScorePct;
+  if (aScore != null && bScore != null && aScore !== bScore) return aScore - bScore;
+  if (aScore != null && bScore == null) return -1;
+  if (aScore == null && bScore != null) return 1;
+
+  const aStamp = a.lastSeen?.lastDatestamp ?? 0;
+  const bStamp = b.lastSeen?.lastDatestamp ?? 0;
+  if (aStamp !== bStamp) return bStamp - aStamp;
+
+  return gamePlanPathKey(a).localeCompare(gamePlanPathKey(b));
+}
+
 // A line only earns the "Attack" badge when they sit MEANINGFULLY below their own
 // baseline — either Wilson-confidently (upper bound still under baseline) or by a clear
 // raw margin on a real sample. A line a couple of points under baseline is neither a
@@ -576,58 +810,58 @@ export function rankedOpeningLines(
   return groups;
 }
 
-// Unified ranked game plan: exploitability first, collapse nested prefixes, no row cap.
+// Unified ranked game plan: dedup nested prefixes first, then Maia3-score order.
+// Lines without a Maia read stay in a separate unassessed bucket (not mixed into rank).
 export function rankGamePlan(
   lines,
   baselineScorePct,
-  { minGames = GAME_PLAN_MIN_GAMES, oppColor = null, limit = SCOUT_GAME_PLAN_LIMIT } = {},
+  {
+    minGames = GAME_PLAN_MIN_GAMES,
+    oppColor = null,
+    limit = SCOUT_GAME_PLAN_LIMIT,
+    trie = null,
+    games = null,
+    speedFilter = "all",
+    lineLastSeen = null,
+  } = {},
 ) {
-  const eligible = lines
+  const deduped = dedupNestedLines(lines, {
+    oppColor,
+    trie,
+    games,
+    speedFilter,
+    lineLastSeen,
+  })
     .filter((g) => g.games >= minGames)
-    .map((g) => {
-      if (!oppColor) return enrichPrepTarget(g, baselineScorePct);
-      const normalized = normalizeToOpponentTerminal(g.ucis, g.sans, oppColor);
-      if (!normalized) return null;
-      return enrichPrepTarget(
+    .map((g) =>
+      enrichPrepTarget(
         {
           ...g,
-          ucis: normalized.ucis,
-          sans: normalized.sans,
-          line: triePathKey(normalized.ucis),
           maiaWdl: g.maiaWdl,
+          lastSeen: g.lastSeen,
         },
         baselineScorePct,
         { maiaScorePct: g.maiaScorePct ?? null },
-      );
-    })
-    .filter(Boolean)
-    .sort((a, b) => {
-      // Opportunity is already noise-damped by enrichPrepTarget (Wilson margin or ×0.25
-      // for thin-sample attacks, 0 for weapons/neutral), so sort all lines by it directly.
-      // Splitting into Maia vs no-Maia groups would bury a confirmed attack (e.g. n=1, 0%)
-      // below all Maia weapon lines (opportunity=0), which is exactly backwards.
-      if (b.opportunity !== a.opportunity) return b.opportunity - a.opportunity;
-      // Equal opportunity: Maia-enriched lines are more reliable — prefer them.
-      const aHasMaia = a.maiaScorePct != null;
-      const bHasMaia = b.maiaScorePct != null;
-      if (aHasMaia !== bHasMaia) return aHasMaia ? -1 : 1;
-      return b.share - a.share || b.games - a.games;
-    });
-
-  const chosen = [];
-  for (const g of eligible) {
-    const gPath = g.line || triePathKey(g.ucis || []);
-    const nestedIdx = chosen.findIndex((c) => isNestedLine(c, g));
-    if (nestedIdx >= 0) {
-      const cPath = chosen[nestedIdx].line || triePathKey(chosen[nestedIdx].ucis || []);
-      if (gPath.startsWith(`${cPath}>`)) chosen[nestedIdx] = g;
-      continue;
-    }
-    chosen.push(g);
+      ),
+    );
+  const assessed = [];
+  const unassessed = [];
+  for (const g of deduped) {
+    if (g.maiaScorePct != null) assessed.push(g);
+    else unassessed.push({ ...g, maiaAssessed: false });
   }
-  // Already sorted by opportunity; slips/flukes sink to the bottom, so capping the
-  // top N keeps the panel readable without a hard game-count floor.
-  return limit > 0 ? chosen.slice(0, limit) : chosen;
+  assessed.sort(compareMaiaGamePlanRank);
+  unassessed.sort((a, b) => {
+    const aStamp = a.lastSeen?.lastDatestamp ?? 0;
+    const bStamp = b.lastSeen?.lastDatestamp ?? 0;
+    if (aStamp !== bStamp) return bStamp - aStamp;
+    return gamePlanPathKey(a).localeCompare(gamePlanPathKey(b));
+  });
+
+  return {
+    assessed: limit > 0 ? assessed.slice(0, limit) : assessed,
+    unassessed,
+  };
 }
 
 /** Prefer an enabled mainline child; otherwise pick deterministically by UCI. */

@@ -20,6 +20,15 @@ import {
   nodeIdAfterFlush,
   clearOpeningPhaseCache,
   rankGamePlan,
+  dedupNestedLines,
+  compareMaiaGamePlanRank,
+  compareMaiaCandidatePriority,
+  selectMaiaEnrichCandidates,
+  gamePlanPathKey,
+  gamePlanSourcePathKey,
+  applyTrieNodeStats,
+  lineStatsFromTrieNode,
+  trieNodeAtPath,
   rankedOpeningLines,
   recommendTargets,
   normalizeToOpponentTerminal,
@@ -35,6 +44,7 @@ import {
   topLines,
   WEAKNESS_MIN_GAMES,
 } from "./scout.js";
+import { lineLastSeen } from "./scout-stats.js";
 
 function pgn({
   white = "Foe",
@@ -514,7 +524,7 @@ describe("rankedOpeningLines + rankGamePlan", () => {
     expect(cache.size).toBe(sizeAfterFirst);
   });
 
-  it("ranks most-exploitable lines first and collapses nested prefixes", () => {
+  it("dedupes nested prefixes before Maia ranking", () => {
     const weak = {
       line: "e2e4>c7c5>g1f3",
       sans: ["e4", "c5", "Nf3"],
@@ -526,6 +536,7 @@ describe("rankedOpeningLines + rankGamePlan", () => {
       scorePct: 21,
       share: 0.45,
       count: 12,
+      maiaScorePct: 18,
     };
     const strong = {
       line: "d2d4",
@@ -538,6 +549,7 @@ describe("rankedOpeningLines + rankGamePlan", () => {
       scorePct: 80,
       share: 0.35,
       count: 10,
+      maiaScorePct: 72,
     };
     const nested = {
       line: "e2e4",
@@ -550,25 +562,178 @@ describe("rankedOpeningLines + rankGamePlan", () => {
       scorePct: 21,
       share: 0.45,
       count: 12,
+      maiaScorePct: 40,
     };
     const ranked = rankGamePlan([strong, nested, weak], 50, { minGames: 7, oppColor: "white" });
-    expect(ranked).toHaveLength(2);
-    expect(ranked[0].ucis).toEqual(["e2e4", "c7c5", "g1f3"]);
-    expect(ranked[0].opportunity).toBeGreaterThan(ranked[1].opportunity);
-    expect(terminalMoveIsOpponent(ranked[0].ucis, "white")).toBe(true);
+    expect(ranked.assessed).toHaveLength(2);
+    expect(ranked.assessed[0].ucis).toEqual(["e2e4", "c7c5", "g1f3"]);
+    expect(ranked.assessed[0].maiaScorePct).toBeLessThan(ranked.assessed[1].maiaScorePct);
+    expect(terminalMoveIsOpponent(ranked.assessed[0].ucis, "white")).toBe(true);
+    expect(dedupNestedLines([nested, weak], { oppColor: "white" })).toHaveLength(1);
   });
 
-  it("attack line (no Maia) ranks above Maia weapon lines with higher opportunity", () => {
-    // Regression: old sort put ALL Maia lines before ALL non-Maia lines, so a confirmed
-    // attack (empirical 0%, opportunity > 0) was buried below Maia weapons (opportunity=0).
-    // Attack line must end on White's move (oppColor="white") so normalizeToOpponentTerminal
-    // doesn't trim it — 3 plies: e4(W) c5(B) Nf3(W). Opponent (White) plays last.
+  it("dedup keeps sibling branches and is independent of input order", () => {
+    const nf6 = {
+      line: "d2d4>g8f6>c2c4",
+      ucis: ["d2d4", "g8f6", "c2c4"],
+      sans: ["d4", "Nf6", "c4"],
+      games: 10,
+    };
+    const d5 = {
+      line: "d2d4>d7d5>c2c4",
+      ucis: ["d2d4", "d7d5", "c2c4"],
+      sans: ["d4", "d5", "c4"],
+      games: 8,
+    };
+    const parent = {
+      line: "d2d4",
+      ucis: ["d2d4"],
+      sans: ["d4"],
+      games: 18,
+    };
+    const forward = dedupNestedLines([parent, nf6, d5], { oppColor: "white" });
+    const reverse = dedupNestedLines([d5, nf6, parent], { oppColor: "white" });
+    expect(forward.map(gamePlanPathKey).sort()).toEqual(
+      reverse.map(gamePlanPathKey).sort(),
+    );
+    expect(forward.map(gamePlanPathKey).sort()).toEqual(
+      ["d2d4>d7d5>c2c4", "d2d4>g8f6>c2c4"].sort(),
+    );
+    expect(forward.some((l) => gamePlanPathKey(l) === "d2d4")).toBe(false);
+  });
+
+  it("lineStatsFromTrieNode uses root weighted totals for share", () => {
+    const games = [
+      { color: "white", score: 1, sans: ["d4"], ucis: ["d2d4"], datestamp: 1, speed: "blitz" },
+      { color: "white", score: 0, sans: ["e4"], ucis: ["e2e4"], datestamp: 2, speed: "blitz" },
+    ];
+    const trie = buildOpeningTrie(games, "white", { recency: false });
+    const d4Hit = trieNodeAtPath(trie, ["d2d4"], ["d4"]);
+    const stats = lineStatsFromTrieNode(trie, d4Hit.node, d4Hit.sans, d4Hit.ucis, "d2d4");
+    expect(stats.games).toBe(1);
+    expect(stats.share).toBeCloseTo(0.5, 4);
+    expect(stats.rawShare).toBeCloseTo(0.5, 4);
+  });
+
+  it("same terminal path uses trie aggregates instead of truncated child stats", () => {
+    const games = [
+      ...Array.from({ length: 10 }, (_, i) => ({
+        color: "white",
+        score: 1,
+        sans: ["d4"],
+        ucis: ["d2d4"],
+        rating: 1800,
+        datestamp: i,
+        speed: "blitz",
+      })),
+      {
+        color: "white",
+        score: 0,
+        sans: ["d4", "Nf6"],
+        ucis: ["d2d4", "g8f6"],
+        rating: 1800,
+        datestamp: 100,
+        speed: "blitz",
+      },
+    ];
+    const trie = buildOpeningTrie(games, "white", { recency: false });
+    const shallow = {
+      line: "d2d4",
+      ucis: ["d2d4"],
+      sans: ["d4"],
+      games: 10,
+      share: 1,
+      count: 10,
+    };
+    const deep = {
+      line: "d2d4>g8f6",
+      ucis: ["d2d4", "g8f6"],
+      sans: ["d4", "Nf6"],
+      games: 1,
+      share: 0.09,
+      count: 1,
+    };
+    const deduped = dedupNestedLines([deep, shallow], { oppColor: "white", trie, games });
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0].games).toBe(11);
+    expect(deduped[0].share).toBeCloseTo(1, 4);
+    expect(deduped[0].ucis).toEqual(["d2d4"]);
+    expect(
+      applyTrieNodeStats(
+        { ...deep, ucis: ["d2d4"], sans: ["d4"], line: "d2d4" },
+        trie,
+      ).games,
+    ).toBe(11);
+    expect(gamePlanSourcePathKey(deduped[0])).toBe("d2d4>g8f6");
+  });
+
+  it("terminal merge recomputes lastSeen on normalized path not child metadata", () => {
+    const games = [
+      ...Array.from({ length: 5 }, (_, i) => ({
+        color: "white",
+        score: 1,
+        sans: ["d4"],
+        ucis: ["d2d4"],
+        datestamp: 8000 + i,
+        speed: "blitz",
+      })),
+      {
+        color: "white",
+        score: 0,
+        sans: ["d4", "Nf6"],
+        ucis: ["d2d4", "g8f6"],
+        datestamp: 1000,
+        speed: "blitz",
+      },
+    ];
+    const trie = buildOpeningTrie(games, "white", { recency: false });
+    const deep = {
+      line: "d2d4>g8f6",
+      ucis: ["d2d4", "g8f6"],
+      sans: ["d4", "Nf6"],
+      games: 1,
+      lastSeen: { lastDatestamp: 1000, daysAgo: 999 },
+    };
+    const deduped = dedupNestedLines([deep], {
+      oppColor: "white",
+      trie,
+      games,
+      lineLastSeen,
+    });
+    expect(deduped[0].lastSeen?.lastDatestamp).toBe(8004);
+  });
+
+  it("selectMaiaEnrichCandidates prefers recent lines when over cap", () => {
+    const lines = [
+      {
+        line: "e2e4",
+        ucis: ["e2e4"],
+        sans: ["e4"],
+        share: 0.5,
+        games: 10,
+        lastSeen: { lastDatestamp: 1000 },
+      },
+      {
+        line: "d2d4",
+        ucis: ["d2d4"],
+        sans: ["d4"],
+        share: 0.1,
+        games: 2,
+        lastSeen: { lastDatestamp: 9000 },
+      },
+    ];
+    const picked = selectMaiaEnrichCandidates(lines, { oppColor: "white", limit: 1 });
+    expect(picked).toHaveLength(1);
+    expect(gamePlanPathKey(picked[0])).toBe("d2d4");
+    expect(compareMaiaCandidatePriority(lines[1], lines[0])).toBeLessThan(0);
+  });
+
+  it("keeps unassessed lines out of the Maia-ranked list", () => {
     const attackNoMaia = {
       line: "e2e4>c7c5>g1f3",
       sans: ["e4", "c5", "Nf3"],
       ucis: ["e2e4", "c7c5", "g1f3"],
       games: 1, w: 0, d: 0, l: 1, scorePct: 0, share: 0.1, count: 1,
-      // No maiaScorePct — Maia failed or hasn't run yet.
     };
     const weaponWithMaia = {
       line: "d2d4",
@@ -578,13 +743,32 @@ describe("rankedOpeningLines + rankGamePlan", () => {
       maiaScorePct: 74, maiaWdl: { win: 74, draw: 13, loss: 13 },
     };
     const ranked = rankGamePlan([weaponWithMaia, attackNoMaia], 50, { oppColor: "white" });
-    // The attack line has opportunity > 0 (below baseline, SCOUT_ATTACK_MIN_MARGIN met).
-    // The weapon has opportunity = 0. Attack must come first despite lacking Maia.
-    expect(ranked[0].ucis).toEqual(["e2e4", "c7c5", "g1f3"]);
-    expect(ranked[0].opportunity).toBeGreaterThan(ranked[1].opportunity);
+    expect(ranked.assessed).toHaveLength(1);
+    expect(ranked.assessed[0].ucis).toEqual(["d2d4"]);
+    expect(ranked.unassessed).toHaveLength(1);
+    expect(ranked.unassessed[0].ucis).toEqual(["e2e4", "c7c5", "g1f3"]);
   });
 
-  it("returns all qualifying lines without an artificial cap", () => {
+  it("tie-breaks equal Maia scores by recency then route key", () => {
+    const older = {
+      line: "d2d4",
+      ucis: ["d2d4"],
+      games: 5,
+      maiaScorePct: 40,
+      lastSeen: { lastDatestamp: 1000 },
+    };
+    const newer = {
+      line: "e2e4",
+      ucis: ["e2e4"],
+      games: 5,
+      maiaScorePct: 40,
+      lastSeen: { lastDatestamp: 2000 },
+    };
+    expect(compareMaiaGamePlanRank(newer, older)).toBeLessThan(0);
+    expect(compareMaiaGamePlanRank(older, newer)).toBeGreaterThan(0);
+  });
+
+  it("returns all qualifying assessed lines without an artificial cap", () => {
     const lines = [
       {
         line: "e2e4",
@@ -597,6 +781,7 @@ describe("rankedOpeningLines + rankGamePlan", () => {
         scorePct: 25,
         share: 0.2,
         count: 8,
+        maiaScorePct: 25,
       },
       {
         line: "d2d4",
@@ -609,6 +794,7 @@ describe("rankedOpeningLines + rankGamePlan", () => {
         scorePct: 11,
         share: 0.18,
         count: 9,
+        maiaScorePct: 11,
       },
       {
         line: "g1f3",
@@ -621,10 +807,11 @@ describe("rankedOpeningLines + rankGamePlan", () => {
         scorePct: 43,
         share: 0.15,
         count: 7,
+        maiaScorePct: 43,
       },
     ];
-    const ranked = rankGamePlan(lines, 55, { minGames: 7, oppColor: "white" });
-    expect(ranked.length).toBeGreaterThanOrEqual(3);
+    const ranked = rankGamePlan(lines, 55, { minGames: 7, oppColor: "white", limit: 0 });
+    expect(ranked.assessed.length).toBeGreaterThanOrEqual(3);
   });
 });
 

@@ -34,11 +34,29 @@ export function wdlToOpponentPerspective(wdl, leafIsUserTurn) {
   return { win: wdl.win, draw: wdl.draw, loss: wdl.loss };
 }
 
+/** Opponent score = (win + 0.5 × draw) / total × 100 from opponent-POV WDL permille. */
 export function maiaScorePctFromWdl(wdl) {
   if (!wdl) return null;
   const total = (wdl.win || 0) + (wdl.draw || 0) + (wdl.loss || 0);
   if (!total) return 50;
   return Math.round((((wdl.win || 0) + 0.5 * (wdl.draw || 0)) / total) * 100);
+}
+
+/** Maia3 judgment bands for leaf positions (opponent score %, exclusive upper bound). */
+export const MAIA3_OPPONENT_YOUR_EDGE_BELOW = 45;
+export const MAIA3_OPPONENT_THEIR_EDGE_ABOVE = 55;
+
+export function maia3OpponentJudgment(pct) {
+  if (pct == null || !Number.isFinite(pct)) {
+    return { tone: "unavailable", label: "Unavailable" };
+  }
+  if (pct < MAIA3_OPPONENT_YOUR_EDGE_BELOW) {
+    return { tone: "good", label: "Your edge" };
+  }
+  if (pct > MAIA3_OPPONENT_THEIR_EDGE_ABOVE) {
+    return { tone: "warn", label: "Their edge" };
+  }
+  return { tone: "neutral", label: "Balanced" };
 }
 
 export function maiaResultKey(fen, rating) {
@@ -184,26 +202,27 @@ export function applyMaiaToLines(
   });
 }
 
-export function scoutMaiaRankedNote(prepTargets, state = MAIA_ENRICH_IDLE) {
-  if (!prepTargets?.length) return "";
-  const withMaia = prepTargets.filter((t) => t.maiaScorePct != null).length;
-  const total = prepTargets.length;
-  if (withMaia === total) {
-    return `<div class="scout-ranked-note muted hint">Ranked by exploitability · score/WDL are Maia estimates</div>`;
+export function scoutMaiaRankedNote(prepTargets, state = MAIA_ENRICH_IDLE, { unassessedCount = 0 } = {}) {
+  if (!prepTargets?.length && !unassessedCount) return "";
+  if (state === MAIA_ENRICH_LOADING) {
+    return `<div class="scout-ranked-note muted hint">Assessed lines re-rank as Maia3 completes · others stay in Awaiting</div>`;
   }
-  if (state === MAIA_ENRICH_LOADING && withMaia < total) {
-    return `<div class="scout-ranked-note muted hint">Ranked by exploitability · Maia estimates loading…</div>`;
+  if (!prepTargets?.length && unassessedCount > 0) {
+    if (state === MAIA_ENRICH_FAILED) {
+      return `<div class="scout-ranked-note muted hint">Maia3 could not assess ${unassessedCount} line${unassessedCount === 1 ? "" : "s"} yet · recency limits which lines are evaluated</div>`;
+    }
+    return `<div class="scout-ranked-note muted hint">Awaiting Maia3 assessment · recency picks evaluation candidates</div>`;
   }
-  if (state === MAIA_ENRICH_PARTIAL && withMaia > 0) {
-    return `<div class="scout-ranked-note muted hint">Ranked by exploitability · partial Maia estimates · empirical score/WDL on remaining lines</div>`;
+  if (unassessedCount > 0 && state === MAIA_ENRICH_PARTIAL) {
+    return `<div class="scout-ranked-note muted hint">Among assessed lines, ranked by Maia3 opponent score · ${unassessedCount} awaiting assessment</div>`;
   }
-  if (state === MAIA_ENRICH_PARTIAL) {
-    return `<div class="scout-ranked-note muted hint">Ranked by exploitability · empirical score/WDL (Maia unavailable on some lines)</div>`;
+  if (unassessedCount > 0 && state === MAIA_ENRICH_FAILED) {
+    return `<div class="scout-ranked-note muted hint">Among assessed lines, ranked by Maia3 opponent score · ${unassessedCount} could not be assessed</div>`;
   }
-  if (state === MAIA_ENRICH_FAILED) {
-    return `<div class="scout-ranked-note muted hint">Ranked by exploitability · empirical score/WDL (Maia unavailable)</div>`;
+  if (prepTargets?.length) {
+    return `<div class="scout-ranked-note muted hint">Among assessed lines, ranked by Maia3 opponent score · recency only limits evaluation coverage</div>`;
   }
-  return `<div class="scout-ranked-note muted hint">Ranked by exploitability · empirical score/WDL</div>`;
+  return "";
 }
 
 export function markUnattemptedMaiaFailures(
@@ -225,7 +244,15 @@ export function markUnattemptedMaiaFailures(
  */
 export async function readLineMaiaWdl(
   line,
-  { provider, rating, oppColor, fenAfterLine, cache = new Map(), maiaResults = null },
+  {
+    provider,
+    rating,
+    oppColor,
+    fenAfterLine,
+    cache = new Map(),
+    maiaResults = null,
+    shouldCancel = () => false,
+  },
 ) {
   if (!line?.ucis?.length || !oppColor || !fenAfterLine) return null;
   const fen = fenAfterLine(line.ucis);
@@ -244,6 +271,7 @@ export async function readLineMaiaWdl(
     cache.set(cacheKey, pending);
   }
   const read = await pending;
+  if (shouldCancel()) return null;
   if (!read?.wdl) {
     rememberMaiaFailure(maiaResults, fen, r);
     return null;
@@ -272,6 +300,7 @@ export async function enrichOpeningLinesWithMaia(
     cache = new Map(),
     maiaResults = null,
     shouldCancel = () => false,
+    onLineResolved = null,
   },
 ) {
   if (!lines?.length) return lines;
@@ -292,9 +321,11 @@ export async function enrichOpeningLinesWithMaia(
       fenAfterLine,
       cache,
       maiaResults,
+      shouldCancel,
     });
     if (!maia || shouldCancel()) continue;
     out[i] = applyMaiaToLine(line, maia, baselineScorePct, enrich);
+    onLineResolved?.(out[i], i);
   }
   return out;
 }

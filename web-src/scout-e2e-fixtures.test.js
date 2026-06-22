@@ -50,7 +50,11 @@ describe("scout-e2e-fixtures", () => {
     expect(html).toContain("Your game plan");
     expect(html).toContain("scout-refutation-card");
     expect(html).toContain("You answer");
-    expect(sectionData.prepTargets?.some((t) => t.refutation)).toBe(true);
+    const planLines = [
+      ...(sectionData.prepTargets || []),
+      ...(sectionData.unassessedTargets || []),
+    ];
+    expect(planLines.some((t) => t.refutation)).toBe(true);
   });
 
   it("buildE2ePrepSection deepScanGap surfaces deep-scan CTA in prep column", () => {

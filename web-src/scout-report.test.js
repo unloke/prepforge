@@ -20,6 +20,7 @@ import {
   scoutSparkline,
   scoutSvgBar,
   scoutScoreCell,
+  scoutMaiaJudgmentCell,
   scoutWdlBar,
   scoutLineWdlCounts,
   patchScoutLineMaiaCells,
@@ -439,8 +440,8 @@ describe("scout-report rendering", () => {
       { speedFilter: "all", escapeHtml },
     );
     expect(html).toContain('<span class="scout-games-count">15 games</span>');
-    expect(html).toContain("scout-lr-rank");
-    expect(html).toContain("scout-n");
+    expect(html).toContain("scout-lr-maia");
+    expect(html).not.toContain("scout-lr-rank");
     expect(html).not.toMatch(/games-count">\d+\.\d/);
   });
 
@@ -491,7 +492,7 @@ describe("scout-report rendering", () => {
     expect(sectionData.baselineScorePct).toBe(55);
   });
 
-  it("renders ranked game plan with sample sizes", () => {
+  it("renders Maia3-ranked game plan without empirical sample sizes", () => {
     const { html } = buildScoutSectionReport(
       scoutModule,
       {
@@ -511,11 +512,12 @@ describe("scout-report rendering", () => {
     expect(html).toContain("Your game plan");
     expect(html).toContain("When they play");
     expect(html).toContain("scout-ranked-list");
-    expect(html).toContain("scout-lr-rank");
-    expect(html).toContain("scout-n");
+    expect(html).toContain("scout-lr-maia");
+    expect(html).not.toContain("scout-lr-rank");
+    expect(html).not.toContain("scout-lr-wdl");
   });
 
-  it("ranked prep rows expose six grid cells for desktop layout", () => {
+  it("ranked prep rows expose the simplified game-plan grid", () => {
     const { html } = buildScoutSectionReport(
       scoutModule,
       {
@@ -535,16 +537,11 @@ describe("scout-report rendering", () => {
     const rowStart = html.indexOf("scout-ranked-row");
     expect(rowStart).toBeGreaterThan(-1);
     const rowSlice = html.slice(rowStart, rowStart + 2500);
-    for (const cell of [
-      "scout-lr-rank",
-      "scout-lr-share",
-      "scout-lr-main",
-      "scout-lr-score",
-      "scout-lr-wdl",
-      "scout-lr-action",
-    ]) {
+    for (const cell of ["scout-lr-main", "scout-lr-maia", "scout-lr-action"]) {
       expect(rowSlice).toContain(cell);
     }
+    expect(rowSlice).not.toContain("scout-lr-rank");
+    expect(rowSlice).not.toContain("scout-lr-wdl");
   });
 });
 
@@ -602,7 +599,8 @@ describe("scout-report interactions", () => {
     const lineEl = createStubElement("div");
     lineEl.classList.add("scout-line");
     lineEl.dataset.rowIdx = "0";
-    lineEl.dataset.rowKind = "prep";
+    const rowKind = sectionData.prepTargets?.length ? "prep" : "unassessed";
+    lineEl.dataset.rowKind = rowKind;
     lineEl.dataset.color = "white";
 
     await handleScoutResultsClick(
@@ -677,7 +675,8 @@ describe("scout-report interactions", () => {
     const lineEl = createStubElement("div");
     lineEl.classList.add("scout-line");
     lineEl.dataset.rowIdx = "0";
-    lineEl.dataset.rowKind = "prep";
+    const rowKind = sectionData.prepTargets?.length ? "prep" : "unassessed";
+    lineEl.dataset.rowKind = rowKind;
     lineEl.dataset.color = "white";
     await handleScoutResultsClick(
       {
@@ -693,19 +692,22 @@ describe("scout-report interactions", () => {
     const analyzeBtn = createStubElement("button");
     analyzeBtn.classList.add("scout-action-analyze");
     analyzeBtn.dataset.rowIdx = "0";
-    analyzeBtn.dataset.rowKind = "prep";
+    analyzeBtn.dataset.rowKind = rowKind;
     analyzeBtn.closest = (sel) => {
       if (sel === ".scout-action-analyze") return analyzeBtn;
       if (sel === ".scout-line-detail") return detail;
       return null;
     };
     await handleScoutResultsClick({ target: analyzeBtn }, ctx);
-    const prepLine = sectionData.prepTargets?.[0] || sectionData.gradedLines[0];
+    const prepLine =
+      sectionData.prepTargets?.[0] ||
+      sectionData.unassessedTargets?.[0] ||
+      sectionData.gradedLines[0];
     expect(callbacks.scoutAnalyzeLine).toHaveBeenCalledWith(prepLine, "white", "rival");
 
     const addBtn = createStubElement("button");
     addBtn.classList.add("scout-action-add-prep");
-    addBtn.dataset.rowKind = "prep";
+    addBtn.dataset.rowKind = rowKind;
     addBtn.dataset.rowIdx = "0";
     addBtn.dataset.color = "white";
     addBtn.closest = (sel) => (sel === ".scout-action-add-prep" ? addBtn : null);
@@ -764,12 +766,15 @@ describe("Maia estimate rendering", () => {
     );
     expect(firstRow?.maiaScorePct).toBe(27);
     expect(secondRow?.maiaScorePct).toBe(27);
-    expect(first.html).toContain("scout-maia-estimate");
-    expect(second.html).toContain('style="width:70%"');
-    expect(second.html).toContain("score/WDL are Maia estimates");
+    expect(first.html).toContain("scout-maia-judgment");
+    expect(second.html).toContain("Your edge");
+    expect(second.html).toContain("opp 27%");
+    expect(second.html).toContain("Among assessed lines");
+    expect(second.html).not.toContain("scout-lr-wdl");
+    expect(second.html).not.toContain("<1%");
   });
 
-  it("re-ranks prep rows when Maia scores change exploitability", () => {
+  it("re-ranks prep rows when Maia scores change", () => {
     const maiaResults = new Map();
     const d4Fen = scoutModule.fenAfterLine(["d2d4", "d7d5"]);
     const sicilianFen = scoutModule.fenAfterLine(["e2e4", "c7c5", "g1f3"]);
@@ -814,8 +819,8 @@ describe("Maia estimate rendering", () => {
       LOOKUPS.black,
       { speedFilter: "all", escapeHtml, maiaEnrichState: MAIA_ENRICH_LOADING },
     );
-    expect(html).toContain("Maia estimates loading");
-    expect(html).not.toContain("score/WDL are Maia estimates");
+    expect(html).toContain("re-rank as Maia3 completes");
+    expect(html).not.toContain("scout-lr-wdl");
   });
 
   it("scoutScoreCell and scoutWdlBar tag Maia estimates", () => {
@@ -825,48 +830,29 @@ describe("Maia estimate rendering", () => {
     expect(scoutWdlBar(300, 200, 500, { maiaEstimate: true })).toContain("Maia W/D/L estimate");
   });
 
-  it("patchScoutLineMaiaCells updates score and WDL cells in place", () => {
-    const scoreEl = createStubElement("span");
-    scoreEl.classList.add("scout-lr-score");
-    scoreEl.innerHTML = '<span class="scout-score-pct">70%</span>';
-    const wdlEl = createStubElement("span");
-    wdlEl.classList.add("scout-lr-wdl");
-    wdlEl.innerHTML = '<span class="scout-wdlbar"></span>';
-    const movesEl = createStubElement("span");
-    movesEl.classList.add("scout-line-moves");
-    movesEl.innerHTML =
-      '<span class="scout-prep-chip scout-prep-chip-attack">attack</span>';
+  it("scoutMaiaJudgmentCell labels player perspective at leaf before your reply", () => {
+    const leaf = scoutMaiaJudgmentCell({ maiaScorePct: 32 });
+    expect(leaf).toContain("Your edge");
+    expect(leaf).toContain("opp 32%");
+    expect(leaf).toContain("before your reply");
+    expect(scoutMaiaJudgmentCell({ maiaScorePct: 44 })).toContain("Your edge");
+    expect(scoutMaiaJudgmentCell({ maiaScorePct: 48 })).toContain("Balanced");
+    expect(scoutMaiaJudgmentCell({ maiaScorePct: 56 })).toContain("Their edge");
+    expect(scoutMaiaJudgmentCell({ maiaScorePct: 62 })).toContain("Their edge");
+    expect(scoutMaiaJudgmentCell({}, { maiaEnrichState: "loading" })).toContain("Evaluating");
+    expect(scoutMaiaJudgmentCell({})).toContain("Unavailable");
+  });
+
+  it("patchScoutLineMaiaCells updates Maia judgment cell in place", () => {
+    const maiaEl = createStubElement("span");
+    maiaEl.classList.add("scout-lr-maia");
+    maiaEl.innerHTML = '<span class="scout-maia-judgment-pending">Evaluating…</span>';
     const row = createStubElement("div");
-    row.querySelector = (sel) => {
-      if (sel === ".scout-lr-score") return scoreEl;
-      if (sel === ".scout-lr-wdl") return wdlEl;
-      if (sel === ".scout-line-moves") return movesEl;
-      return null;
-    };
-    const chipStub = createStubElement("span");
-    chipStub.remove = () => {
-      movesEl.innerHTML = "";
-    };
-    movesEl.querySelectorAll = (sel) => {
-      if (sel === ".scout-prep-chip" && movesEl.innerHTML.includes("scout-prep-chip")) {
-        return [chipStub];
-      }
-      return [];
-    };
-    movesEl.insertAdjacentHTML = (_pos, html) => {
-      movesEl.innerHTML += html;
-    };
-    patchScoutLineMaiaCells(row, {
-      maiaScorePct: 38,
-      maiaWdl: { win: 200, draw: 300, loss: 500 },
-      games: 4,
-      belowBaseline: 12,
-      prepCategory: "attack",
-    }, 50);
-    expect(scoreEl.innerHTML).toContain("38%");
-    expect(scoreEl.innerHTML).toContain("scout-maia-estimate");
-    expect(wdlEl.innerHTML).toContain("scout-maia-estimate");
-    expect(movesEl.innerHTML).toContain("scout-prep-chip-attack");
+    row.querySelector = (sel) => (sel === ".scout-lr-maia" ? maiaEl : null);
+    patchScoutLineMaiaCells(row, { maiaScorePct: 38 }, 50);
+    expect(maiaEl.innerHTML).toContain("Your edge");
+    expect(maiaEl.innerHTML).toContain("opp 38%");
+    expect(maiaEl.innerHTML).toContain("scout-maia-judgment-good");
   });
 });
 
@@ -887,7 +873,7 @@ describe("scout intelligence panel", () => {
     expect(html).toContain("scout-intel-charts-strip");
     expect(html).toContain("scout-ranked-list");
     expect(html).toContain("scout-ranked-note");
-    expect(html).toContain("scout-lr-rank");
+    expect(html).toContain("scout-lr-maia");
     expect(html).toContain("Worst performance");
     expect(html).toContain("Activity");
     expect(html).toContain("Repertoire focus");
