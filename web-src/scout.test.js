@@ -558,6 +558,32 @@ describe("rankedOpeningLines + rankGamePlan", () => {
     expect(terminalMoveIsOpponent(ranked[0].ucis, "white")).toBe(true);
   });
 
+  it("attack line (no Maia) ranks above Maia weapon lines with higher opportunity", () => {
+    // Regression: old sort put ALL Maia lines before ALL non-Maia lines, so a confirmed
+    // attack (empirical 0%, opportunity > 0) was buried below Maia weapons (opportunity=0).
+    // Attack line must end on White's move (oppColor="white") so normalizeToOpponentTerminal
+    // doesn't trim it — 3 plies: e4(W) c5(B) Nf3(W). Opponent (White) plays last.
+    const attackNoMaia = {
+      line: "e2e4>c7c5>g1f3",
+      sans: ["e4", "c5", "Nf3"],
+      ucis: ["e2e4", "c7c5", "g1f3"],
+      games: 1, w: 0, d: 0, l: 1, scorePct: 0, share: 0.1, count: 1,
+      // No maiaScorePct — Maia failed or hasn't run yet.
+    };
+    const weaponWithMaia = {
+      line: "d2d4",
+      sans: ["d4"],
+      ucis: ["d2d4"],
+      games: 1, w: 1, d: 0, l: 0, scorePct: 100, share: 0.1, count: 1,
+      maiaScorePct: 74, maiaWdl: { win: 74, draw: 13, loss: 13 },
+    };
+    const ranked = rankGamePlan([weaponWithMaia, attackNoMaia], 50, { oppColor: "white" });
+    // The attack line has opportunity > 0 (below baseline, SCOUT_ATTACK_MIN_MARGIN met).
+    // The weapon has opportunity = 0. Attack must come first despite lacking Maia.
+    expect(ranked[0].ucis).toEqual(["e2e4", "c7c5", "g1f3"]);
+    expect(ranked[0].opportunity).toBeGreaterThan(ranked[1].opportunity);
+  });
+
   it("returns all qualifying lines without an artificial cap", () => {
     const lines = [
       {
