@@ -53,7 +53,7 @@ describe("scout-maia helpers", () => {
 describe("readLineMaiaWdl", () => {
   it("records failure and does not retry provider reads on a second schedule", async () => {
     const provider = {
-      positionRead: vi.fn().mockRejectedValue(new Error("Maia down")),
+      wdlRead: vi.fn().mockRejectedValue(new Error("Maia down")),
     };
     const line = { ucis: ["d2d4"] };
     const fenAfterLine = () => "fen-after-d4";
@@ -69,14 +69,52 @@ describe("readLineMaiaWdl", () => {
     };
     await readLineMaiaWdl(line, opts);
     await readLineMaiaWdl(line, opts);
-    expect(provider.positionRead).toHaveBeenCalledTimes(1);
+    expect(provider.wdlRead).toHaveBeenCalledTimes(1);
     expect(isMaiaFailed(maiaResults, "fen-after-d4", 1800)).toBe(true);
+    expect(isMaiaAttempted(maiaResults, "fen-after-d4", 1800)).toBe(true);
+  });
+
+  it("uses wdlRead not positionRead — policy post-processing cannot kill the WDL read", async () => {
+    const provider = {
+      wdlRead: vi.fn().mockResolvedValue({ wdl: { win: 500, draw: 200, loss: 300 } }),
+      positionRead: vi.fn().mockRejectedValue(new Error("legalMoveIndices: vocab drift")),
+    };
+    const result = await readLineMaiaWdl({ ucis: ["d2d4", "g8f6", "c2c4"] }, {
+      provider,
+      rating: 1800,
+      oppColor: "white",
+      fenAfterLine: () => "fen-complex",
+      cache: new Map(),
+      maiaResults: new Map(),
+    });
+    expect(provider.wdlRead).toHaveBeenCalledTimes(1);
+    expect(provider.positionRead).not.toHaveBeenCalled();
+    expect(result?.maiaScorePct).toBeDefined();
+  });
+
+  it("retries a legacy positionRead failure (no method tag) via wdlRead", async () => {
+    const provider = {
+      wdlRead: vi.fn().mockResolvedValue({ wdl: { win: 200, draw: 300, loss: 500 } }),
+    };
+    const maiaResults = new Map([["1800|fen-after-d4", { failed: true }]]);
+    const line = { ucis: ["d2d4"] };
+    const result = await readLineMaiaWdl(line, {
+      provider,
+      rating: 1800,
+      oppColor: "white",
+      fenAfterLine: () => "fen-after-d4",
+      cache: new Map(),
+      maiaResults,
+    });
+    expect(provider.wdlRead).toHaveBeenCalledTimes(1);
+    expect(result?.maiaScorePct).toBeDefined();
+    expect(isMaiaFailed(maiaResults, "fen-after-d4", 1800)).toBe(false);
     expect(isMaiaAttempted(maiaResults, "fen-after-d4", 1800)).toBe(true);
   });
 
   it("memoizes provider reads per fen and rating", async () => {
     const provider = {
-      positionRead: vi.fn().mockResolvedValue({
+      wdlRead: vi.fn().mockResolvedValue({
         wdl: { win: 200, draw: 300, loss: 500 },
       }),
     };
@@ -97,7 +135,7 @@ describe("readLineMaiaWdl", () => {
       fenAfterLine,
       cache,
     });
-    expect(provider.positionRead).toHaveBeenCalledTimes(1);
+    expect(provider.wdlRead).toHaveBeenCalledTimes(1);
     expect(first?.maiaScorePct).toBe(second?.maiaScorePct);
     expect(first?.maiaWdl).toEqual({ win: 500, draw: 300, loss: 200 });
     expect(first?.maiaScorePct).toBe(65);
@@ -105,9 +143,9 @@ describe("readLineMaiaWdl", () => {
 });
 
 describe("enrichOpeningLinesWithMaia", () => {
-  it("does not increase positionRead calls when enrichment is scheduled twice after failures", async () => {
+  it("does not increase wdlRead calls when enrichment is scheduled twice after failures", async () => {
     const provider = {
-      positionRead: vi.fn().mockRejectedValue(new Error("Maia down")),
+      wdlRead: vi.fn().mockRejectedValue(new Error("Maia down")),
     };
     const lines = [
       { ucis: ["d2d4"], sans: ["d4"], games: 5, scorePct: 70, share: 0.2, w: 3, d: 1, l: 1 },
@@ -124,13 +162,13 @@ describe("enrichOpeningLinesWithMaia", () => {
     };
     await enrichOpeningLinesWithMaia(lines, common);
     await enrichOpeningLinesWithMaia(lines, common);
-    expect(provider.positionRead).toHaveBeenCalledTimes(1);
+    expect(provider.wdlRead).toHaveBeenCalledTimes(1);
     expect(isMaiaFailed(maiaResults, "fen", 1800)).toBe(true);
   });
 
   it("enriches lines with Maia WDL and re-badges from Maia score", async () => {
     const provider = {
-      positionRead: vi.fn().mockResolvedValue({
+      wdlRead: vi.fn().mockResolvedValue({
         wdl: { win: 100, draw: 100, loss: 800 },
       }),
     };
@@ -188,8 +226,8 @@ describe("resetMaiaScopeCache", () => {
     const successFen = "fen-success";
     const failFen = "fen-fail";
     const maiaCache = new Map([
-      ["positionRead|1800|fen-success", Promise.resolve({ wdl: { win: 1, draw: 0, loss: 0 } })],
-      ["positionRead|1800|fen-fail", Promise.resolve(null)],
+      ["wdlRead|1800|fen-success", Promise.resolve({ wdl: { win: 1, draw: 0, loss: 0 } })],
+      ["wdlRead|1800|fen-fail", Promise.resolve(null)],
       ["other-key", Promise.resolve(null)],
     ]);
     const state = {
@@ -205,8 +243,8 @@ describe("resetMaiaScopeCache", () => {
     expect(state.maiaResults.size).toBe(1);
     expect(state.maiaResults.get(`1800|${successFen}`)?.maiaScorePct).toBe(50);
     expect(state.maiaResults.has(`1800|${failFen}`)).toBe(false);
-    expect(maiaCache.has("positionRead|1800|fen-success")).toBe(true);
-    expect(maiaCache.has("positionRead|1800|fen-fail")).toBe(false);
+    expect(maiaCache.has("wdlRead|1800|fen-success")).toBe(true);
+    expect(maiaCache.has("wdlRead|1800|fen-fail")).toBe(false);
     expect(maiaCache.has("other-key")).toBe(true);
     expect(state.maiaEnrichState).toBe(MAIA_ENRICH_IDLE);
   });
@@ -227,9 +265,9 @@ describe("resetMaiaScopeCache", () => {
 });
 
 describe("scope change streaming", () => {
-  it("does not re-call positionRead for successful FENs after gameCount changes", async () => {
+  it("does not re-call wdlRead for successful FENs after gameCount changes", async () => {
     const provider = {
-      positionRead: vi.fn().mockImplementation(({ fen }) => {
+      wdlRead: vi.fn().mockImplementation(({ fen }) => {
         if (fen === "fen-ok") {
           return Promise.resolve({ wdl: { win: 200, draw: 200, loss: 600 } });
         }
@@ -274,14 +312,14 @@ describe("scope change streaming", () => {
       cache: maiaCache,
     };
     await enrichOpeningLinesWithMaia([okLine, failLine], common);
-    expect(provider.positionRead).toHaveBeenCalledTimes(2);
+    expect(provider.wdlRead).toHaveBeenCalledTimes(2);
 
     resetMaiaScopeCache(state, "all|6|1800|1750");
 
-    provider.positionRead.mockClear();
+    provider.wdlRead.mockClear();
     await enrichOpeningLinesWithMaia([okLine, failLine], common);
-    expect(provider.positionRead).toHaveBeenCalledTimes(1);
-    expect(provider.positionRead).toHaveBeenCalledWith(
+    expect(provider.wdlRead).toHaveBeenCalledTimes(1);
+    expect(provider.wdlRead).toHaveBeenCalledWith(
       expect.objectContaining({ fen: "fen-bad", rating: 1800 }),
     );
     expect(getCachedMaiaResult(maiaResults, "fen-ok", 1800)?.maiaScorePct).toBe(70);

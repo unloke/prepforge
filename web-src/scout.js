@@ -602,11 +602,15 @@ export function rankGamePlan(
     })
     .filter(Boolean)
     .sort((a, b) => {
+      // Opportunity is already noise-damped by enrichPrepTarget (Wilson margin or ×0.25
+      // for thin-sample attacks, 0 for weapons/neutral), so sort all lines by it directly.
+      // Splitting into Maia vs no-Maia groups would bury a confirmed attack (e.g. n=1, 0%)
+      // below all Maia weapon lines (opportunity=0), which is exactly backwards.
+      if (b.opportunity !== a.opportunity) return b.opportunity - a.opportunity;
+      // Equal opportunity: Maia-enriched lines are more reliable — prefer them.
       const aHasMaia = a.maiaScorePct != null;
       const bHasMaia = b.maiaScorePct != null;
       if (aHasMaia !== bHasMaia) return aHasMaia ? -1 : 1;
-      if (aHasMaia) return b.opportunity - a.opportunity || b.games - a.games;
-      // No Maia yet: rank by share only; empirical scorePct on n=1 lines is 0%/100% noise
       return b.share - a.share || b.games - a.games;
     });
 
