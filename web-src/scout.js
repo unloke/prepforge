@@ -297,6 +297,9 @@ function nodeToLineGroup(root, node, sans, ucis, pathKey) {
     l: node.l,
     scorePct: nodeScorePct(node),
     share: root.count > 0 ? node.count / root.count : 0,
+    // Raw (un-decayed) proportion for DISPLAY — recency-weighted `share`/`count`
+    // collapse to ~0 for old lines, which renders as a misleading "0% · n=0".
+    rawShare: root.gameCount > 0 ? node.gameCount / root.gameCount : 0,
     count: node.count,
   };
 }
