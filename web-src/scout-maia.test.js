@@ -74,6 +74,44 @@ describe("readLineMaiaWdl", () => {
     expect(isMaiaAttempted(maiaResults, "fen-after-d4", 1800)).toBe(true);
   });
 
+  it("uses wdlRead not positionRead — policy post-processing cannot kill the WDL read", async () => {
+    const provider = {
+      wdlRead: vi.fn().mockResolvedValue({ wdl: { win: 500, draw: 200, loss: 300 } }),
+      positionRead: vi.fn().mockRejectedValue(new Error("legalMoveIndices: vocab drift")),
+    };
+    const result = await readLineMaiaWdl({ ucis: ["d2d4", "g8f6", "c2c4"] }, {
+      provider,
+      rating: 1800,
+      oppColor: "white",
+      fenAfterLine: () => "fen-complex",
+      cache: new Map(),
+      maiaResults: new Map(),
+    });
+    expect(provider.wdlRead).toHaveBeenCalledTimes(1);
+    expect(provider.positionRead).not.toHaveBeenCalled();
+    expect(result?.maiaScorePct).toBeDefined();
+  });
+
+  it("retries a legacy positionRead failure (no method tag) via wdlRead", async () => {
+    const provider = {
+      wdlRead: vi.fn().mockResolvedValue({ wdl: { win: 200, draw: 300, loss: 500 } }),
+    };
+    const maiaResults = new Map([["1800|fen-after-d4", { failed: true }]]);
+    const line = { ucis: ["d2d4"] };
+    const result = await readLineMaiaWdl(line, {
+      provider,
+      rating: 1800,
+      oppColor: "white",
+      fenAfterLine: () => "fen-after-d4",
+      cache: new Map(),
+      maiaResults,
+    });
+    expect(provider.wdlRead).toHaveBeenCalledTimes(1);
+    expect(result?.maiaScorePct).toBeDefined();
+    expect(isMaiaFailed(maiaResults, "fen-after-d4", 1800)).toBe(false);
+    expect(isMaiaAttempted(maiaResults, "fen-after-d4", 1800)).toBe(true);
+  });
+
   it("memoizes provider reads per fen and rating", async () => {
     const provider = {
       wdlRead: vi.fn().mockResolvedValue({
