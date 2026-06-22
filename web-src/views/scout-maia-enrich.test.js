@@ -27,19 +27,10 @@ vi.mock("../scout.js", async (importOriginal) => {
 import { createScoutView } from "./scout.js";
 
 function makeEl(id, props = {}) {
-  const listeners = {};
   return {
     id, value: "", textContent: "0", disabled: false, hidden: false, innerHTML: "",
     dataset: {}, classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() },
-    focus: vi.fn(),
-    addEventListener(type, fn) {
-      (listeners[type] ||= []).push(fn);
-    },
-    dispatch(type, event = {}) {
-      const e = { ...event, target: event.target || this };
-      for (const fn of listeners[type] || []) fn(e);
-    },
-    ...props,
+    focus: vi.fn(), addEventListener: vi.fn(), ...props,
   };
 }
 
@@ -117,41 +108,6 @@ describe("scout maia enrichment orchestration", () => {
     await vi.runOnlyPendingTimersAsync();
   }
 
-  async function flushStaleMaiaCallbacks() {
-    for (let i = 0; i < 8; i += 1) {
-      await Promise.resolve();
-    }
-  }
-
-  function deferredWdlRead() {
-    let resolve;
-    const promise = new Promise((r) => {
-      resolve = r;
-    });
-    wdlReadMock.mockImplementationOnce(() => promise);
-    return {
-      resolve: (value = { wdl: { win: 100, draw: 100, loss: 800 } }) => resolve(value),
-    };
-  }
-
-  async function startMaiaEnrichInFlight() {
-    const deferred = deferredWdlRead();
-    const runPromise = view.runScout();
-    await vi.runOnlyPendingTimersAsync();
-    await runPromise;
-    await vi.advanceTimersByTimeAsync(700);
-    await vi.runOnlyPendingTimersAsync();
-    expect(wdlReadMock).toHaveBeenCalled();
-    return deferred;
-  }
-
-  function clickSpeedChip(speed) {
-    const chip = { dataset: { speed }, classList: { contains: () => true } };
-    elements.get("scout-profile").dispatch("click", {
-      target: { closest: (sel) => (sel === ".scout-speed-chip" ? chip : null) },
-    });
-  }
-
   it("enriches displayed prep rows with Maia after a clean stream end", async () => {
     const runPromise = view.runScout();
     await vi.runOnlyPendingTimersAsync();
@@ -160,8 +116,8 @@ describe("scout maia enrichment orchestration", () => {
 
     const results = elements.get("scout-results");
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
-    expect(results.innerHTML).toContain("scout-maia-judgment");
-    expect(results.innerHTML).toContain("Among assessed lines");
+    expect(results.innerHTML).toContain("scout-maia-estimate");
+    expect(results.innerHTML).toContain("score/WDL are Maia estimates");
   });
 
   // Regression: a Lichess NDJSON stream that drops mid-fetch (non-abort) AFTER games
@@ -192,31 +148,6 @@ describe("scout maia enrichment orchestration", () => {
 
     const html = elements.get("scout-results").innerHTML;
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
-    expect(html).toContain("scout-maia-judgment");
-  });
-
-  it("does not apply stale Maia enrichment after a speed change resolves a deferred read", async () => {
-    const deferred = await startMaiaEnrichInFlight();
-    const results = elements.get("scout-results");
-    expect(results.innerHTML).toContain("Evaluating…");
-
-    clickSpeedChip("blitz");
-    const htmlAfterSpeedChange = results.innerHTML;
-    deferred.resolve();
-    await flushStaleMaiaCallbacks();
-
-    expect(results.innerHTML).toBe(htmlAfterSpeedChange);
-    expect(results.innerHTML).not.toContain("Maia3: opponent");
-  });
-
-  it("does not apply stale Maia enrichment after reset resolves a deferred read", async () => {
-    const deferred = await startMaiaEnrichInFlight();
-    const results = elements.get("scout-results");
-
-    elements.get("scout-reset-btn").dispatch("click", {});
-    deferred.resolve();
-    await flushStaleMaiaCallbacks();
-
-    expect(results.innerHTML).toBe("");
+    expect(html).toContain("scout-maia-estimate");
   });
 });

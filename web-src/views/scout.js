@@ -21,7 +21,7 @@ import {
 import { createScoutInitGuard } from "../scout-init-guard.js";
 
 const SCOUT_E2E_BUILD_ENABLED = import.meta.env.VITE_ENABLE_SCOUT_E2E === "1";
-import { colorRecommendation, lineLastSeen } from "../scout-stats.js";
+import { colorRecommendation } from "../scout-stats.js";
 import { buildColorRecommendationBanner } from "../scout-summary.js";
 import { engineScanPatterns } from "../scout-engine.js";
 import {
@@ -44,9 +44,16 @@ import {
 const RENDER_DEBOUNCE_MS = 400;
 const RENDER_FORCE_EVERY_INITIAL = 25;
 
-// Maia evaluation candidates: dedup nested prefixes, then sample by recency → share
-// (cost cap only). Final assessed-line order uses Maia opponent score exclusively.
-const MAIA_MAX_CANDIDATES = 48;
+// Maia evaluates a little beyond the displayed game plan (SCOUT_GAME_PLAN_LIMIT=12) so a
+// thin but weak line — low share, meaningless empirical win-rate — can still be promoted
+// into the shown rows by its Maia score (share can't tell a weak n=1 from a slip n=1).
+// But each read is a full in-browser Maia3 forward pass, so the cap is the dominant cost
+// driver: 48×2 colours pinned a core and caused visible stutter. 24 keeps 2× headroom over
+// the display while roughly halving the forward count. Cap by EXPLOITABILITY (the same
+// rankGamePlan order that picks the displayed rows), NOT by share — a 1.d4 specialist
+// funnels every game through a few shallow high-share nodes, so a share cap would starve
+// the deep n=1 lines that are actually displayed.
+const MAIA_MAX_CANDIDATES = 24;
 
 /** Games between forced full rerenders while streaming — grows with history size. */
 export function scoutRenderForceEvery(gameCount) {
@@ -110,8 +117,8 @@ export function createScoutView(deps) {
   let maiaEnrichTimer = null;
   let maiaEnrichSeq = 0;
   let maiaEnrichInFlight = false;
-  let maiaRenderRaf = 0;
-  let maiaRenderRafGen = 0;
+  // Memo for maiaCandidateLines, keyed by trie identity (fresh per report rebuild).
+  const maiaCandidateCache = new WeakMap();
   let engineAggTimer = null;
   let engineAggSeq = 0;
   let scoutOpGen = 0;
@@ -320,17 +327,9 @@ export function createScoutView(deps) {
     }
   }
 
-  function invalidateMaiaEnrich() {
-    clearTimeout(maiaEnrichTimer);
-    maiaEnrichTimer = null;
-    maiaEnrichSeq += 1;
-    cancelMaiaRender();
-    maiaEnrichInFlight = false;
-  }
-
   function scheduleMaiaEnrich() {
-    invalidateMaiaEnrich();
-    const gen = maiaEnrichSeq;
+    clearTimeout(maiaEnrichTimer);
+    const gen = ++maiaEnrichSeq;
     maiaEnrichTimer = setTimeout(() => {
       maiaEnrichTimer = null;
       enrichMaiaReads(gen);
@@ -351,52 +350,44 @@ export function createScoutView(deps) {
     resetMaiaScopeCache(scoutState, scopeKey);
   }
 
-  function isMaiaGenCurrent(gen) {
-    return gen === maiaEnrichSeq;
-  }
-
-  function maybeRenderMaiaReport(gen) {
-    if (!isMaiaGenCurrent(gen) || !scoutState) return false;
-    renderScoutReport();
-    return true;
-  }
-
-  function cancelMaiaRender(gen = null) {
-    if (!maiaRenderRaf) return;
-    if (gen != null && maiaRenderRafGen !== gen) return;
-    cancelAnimationFrame(maiaRenderRaf);
-    maiaRenderRaf = 0;
-    maiaRenderRafGen = 0;
-  }
-
-  /** Coalesce Maia incremental re-renders to one frame; stale gens are dropped. */
-  function scheduleMaiaRender(gen) {
-    if (!isMaiaGenCurrent(gen)) return;
-    if (maiaRenderRaf) return;
-    maiaRenderRafGen = gen;
-    maiaRenderRaf = requestAnimationFrame(() => {
-      const rafGen = maiaRenderRafGen;
-      maiaRenderRaf = 0;
-      maiaRenderRafGen = 0;
-      maybeRenderMaiaReport(rafGen);
-    });
-  }
-
-  /** Deduped Maia enrich candidates for one colour (sampling cap, not ranking). */
+  /** Opening lines for one colour, exploitability-ranked and capped, for Maia enrichment. */
   function maiaCandidateLines(section, oppColor) {
     if (!section?.trie || !scoutModule?.rankedOpeningLines) return [];
+    // maiaCandidateLines is called several times per enrich cycle (work check, outcome
+    // summary, the enrich loop, failure marking). The derivation walks the whole opening
+    // trie and re-ranks every line, so memoize per (trie, colour). The trie is a fresh
+    // object on each report rebuild, so the WeakMap entry goes stale automatically.
+    let byColor = maiaCandidateCache.get(section.trie);
+    if (byColor) {
+      const hit = byColor.get(oppColor);
+      if (hit) return hit;
+    } else {
+      byColor = new Map();
+      maiaCandidateCache.set(section.trie, byColor);
+    }
+    const result = computeMaiaCandidateLines(section, oppColor);
+    byColor.set(oppColor, result);
+    return result;
+  }
+
+  function computeMaiaCandidateLines(section, oppColor) {
     const lines = scoutModule.rankedOpeningLines(section.trie, { oppColor }) || [];
-    if (scoutModule.selectMaiaEnrichCandidates) {
-      return scoutModule.selectMaiaEnrichCandidates(lines, {
+    if (lines.length <= MAIA_MAX_CANDIDATES) return lines;
+    // Cap by the same rankGamePlan order the report displays, so the shown rows are always
+    // a prefix of the enriched set (rankGamePlan with a higher limit chooses the same lines
+    // in the same order, just more of them). Ranking by share instead would crowd these
+    // deep n=1 lines out with shallow high-share nodes that never reach the game plan.
+    if (scoutModule.rankGamePlan) {
+      const baseline = section.baselineScorePct ?? 0;
+      const ranked = scoutModule.rankGamePlan(lines, baseline, {
         oppColor,
         limit: MAIA_MAX_CANDIDATES,
-        speedFilter: scoutState?.activeSpeed ?? "all",
-        games: scoutState?.games ?? null,
-        lineLastSeen,
-        trie: section.trie,
       });
+      if (ranked?.length) return ranked;
     }
-    return scoutModule.dedupNestedLines?.(lines, { oppColor, trie: section.trie }) ?? lines;
+    return [...lines]
+      .sort((a, b) => (b.share || 0) - (a.share || 0) || (b.count || 0) - (a.count || 0))
+      .slice(0, MAIA_MAX_CANDIDATES);
   }
 
   function summarizeMaiaOutcomes() {
@@ -452,15 +443,14 @@ export function createScoutView(deps) {
       const nextState = classifyMaiaEnrichState(outcomes);
       if (scoutState.maiaEnrichState !== nextState) {
         scoutState.maiaEnrichState = nextState;
-        maybeRenderMaiaReport(gen);
+        renderScoutReport();
       }
       return;
     }
 
-    cancelMaiaRender(gen);
     maiaEnrichInFlight = true;
     scoutState.maiaEnrichState = MAIA_ENRICH_LOADING;
-    maybeRenderMaiaReport(gen);
+    renderScoutReport();
 
     try {
       const { getSharedMaia3Provider } = await import("../engine/maia3-provider.js");
@@ -492,9 +482,6 @@ export function createScoutView(deps) {
           cache: scoutState.maiaCache,
           maiaResults: scoutState.maiaResults,
           shouldCancel: () => gen !== maiaEnrichSeq,
-          onLineResolved: () => {
-            scheduleMaiaRender(gen);
-          },
         });
       }
 
@@ -515,11 +502,8 @@ export function createScoutView(deps) {
         scoutState.maiaEnrichState = classifyMaiaEnrichState(summarizeMaiaOutcomes());
       }
     } finally {
-      if (isMaiaGenCurrent(gen)) {
-        maiaEnrichInFlight = false;
-        cancelMaiaRender(gen);
-        maybeRenderMaiaReport(gen);
-      }
+      maiaEnrichInFlight = false;
+      if (gen === maiaEnrichSeq && scoutState) renderScoutReport();
     }
   }
 
@@ -1038,7 +1022,6 @@ export function createScoutView(deps) {
               scoutState.explorerByColor = {};
               scoutState.engineAggByColor = {};
             }
-            invalidateMaiaEnrich();
             renderScoutReport({ force: true });
             scheduleExplorerEnrich();
             scheduleEngineAggregation();
@@ -1115,7 +1098,6 @@ export function createScoutView(deps) {
       }
     }
     if (!initGuard.isCurrent(initToken)) return false;
-    invalidateMaiaEnrich();
     const keepSpeed =
       scoutState?.username === username ? scoutState.activeSpeed : "all";
     const keepEngine =
@@ -1284,7 +1266,6 @@ export function createScoutView(deps) {
   function resetScout() {
     initGuard.invalidate();
     scoutOpGen += 1;
-    invalidateMaiaEnrich();
     deepScanAbort?.abort();
     deepScanAbort = null;
     const ending = scoutSession;

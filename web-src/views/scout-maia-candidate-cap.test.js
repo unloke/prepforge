@@ -120,7 +120,6 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
     for (let i = 0; i < 6; i += 1) {
       await vi.advanceTimersByTimeAsync(2000);
       await vi.runOnlyPendingTimersAsync();
-      await vi.advanceTimersByTimeAsync(16);
     }
   }
 
@@ -132,20 +131,17 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
     await flushDeferredTimers();
 
     const html = elements.get("scout-results").innerHTML;
-    const assessedHtml = html.split("scout-game-plan-unassessed")[0] || html;
-    const assessedRows = (assessedHtml.match(/scout-add-icon/g) || []).length;
-    const maiaRows = (
-      assessedHtml.match(
-        /scout-maia-judgment-good|scout-maia-judgment-neutral|scout-maia-judgment-warn/g,
-      ) || []
-    ).length;
+    const displayedRows = (html.match(/scout-add-icon/g) || []).length;
+    const maiaRows = (html.match(/scout-maia-estimate/g) || []).length;
+    const zeroPctRows = (html.match(/scout-score-pct">0%/g) || []).length;
 
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
-    expect(assessedRows).toBeGreaterThan(0);
-    // Assessed bucket only: every ranked row carries a Maia3 judgment (unassessed stays separate).
-    expect(maiaRows).toBeGreaterThanOrEqual(assessedRows);
-    expect(assessedHtml).not.toContain("Unavailable");
-    expect(html).toContain("Among assessed lines");
-    expect(html).not.toContain("scout-lr-wdl");
+    expect(displayedRows).toBeGreaterThan(0);
+    // Every displayed game-plan row must carry a Maia estimate (score cell + WDL bar each
+    // tag scout-maia-estimate, so ≥1 per row). The bug left every row stuck on the empirical
+    // n=1 0% score because the share-based candidate cap never enriched these deep lines.
+    expect(maiaRows).toBeGreaterThanOrEqual(displayedRows);
+    expect(zeroPctRows).toBe(0);
+    expect(html).toContain("score/WDL are Maia estimates");
   });
 });

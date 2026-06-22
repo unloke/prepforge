@@ -16,7 +16,6 @@ import { formatLastSeenLabel, lineLastSeen } from "./scout-stats.js";
 import { buildScoutStats } from "./scout-stats.js";
 import {
   applyMaiaToLines,
-  maia3OpponentJudgment,
   medianOpponentRating,
   scoutLineWdlCounts,
   scoutMaiaRankedNote,
@@ -52,9 +51,6 @@ function findLineByKey(sections, color, lineKey) {
   if (!section || !lineKey) return null;
   for (const line of section.prepTargets || section.weaknessTargets || []) {
     if (scoutLineKey(line.ucis) === lineKey) return { line, rowKind: "prep" };
-  }
-  for (const line of section.unassessedTargets || []) {
-    if (scoutLineKey(line.ucis) === lineKey) return { line, rowKind: "unassessed" };
   }
   for (const line of section.gradedLines || []) {
     if (scoutLineKey(line.ucis) === lineKey) return { line, rowKind: "line" };
@@ -659,24 +655,6 @@ export function renderScoutIntelligencePanel(
     </div>`;
 }
 
-const MAIA3_LEAF_TITLE =
-  "Maia3 after their line, before your reply — opponent win chance at your turn";
-
-/** Maia3 position judgment for game-plan rows (leaf FEN after opponent move, not after your reply). */
-export function scoutMaiaJudgmentCell(line, { maiaEnrichState = "idle" } = {}) {
-  if (line?.maiaScorePct != null) {
-    const pct = line.maiaScorePct;
-    const { tone, label } = maia3OpponentJudgment(pct);
-    // Two compact lines (verdict + opponent score) so the cell stays inside its
-    // narrow grid column instead of overflowing across the route text.
-    return `<span class="scout-maia-judgment scout-maia-judgment-${tone}" title="${MAIA3_LEAF_TITLE}"><span class="scout-maia-verdict">${label}</span><span class="scout-maia-pct">opp ${pct}%</span></span>`;
-  }
-  if (maiaEnrichState === "loading") {
-    return `<span class="scout-maia-judgment scout-maia-judgment-pending" title="Maia3 assessment in progress">Evaluating…</span>`;
-  }
-  return `<span class="scout-maia-judgment scout-maia-judgment-unavailable" title="Maia3 could not assess this position">Unavailable</span>`;
-}
-
 // Stacked score cell: the score% on top, the sample size below, plus (for weakness
 // rows) how far the line sits under the opponent's own baseline. Fixed width, no wrap.
 export function scoutScoreCell(scorePct, games, { baseline, showGap = false, maiaEstimate = false } = {}) {
@@ -692,14 +670,30 @@ export function scoutScoreCell(scorePct, games, { baseline, showGap = false, mai
     </span>`;
 }
 
-/** Patch Maia judgment cell on a rendered game-plan row after Maia results arrive. */
+/** Patch score/WDL cells on a rendered game-plan row after Maia results arrive. */
 export { scoutLineWdlCounts };
 
-export function patchScoutLineMaiaCells(rowEl, line, _baseline, { maiaEnrichState = "ready" } = {}) {
-  if (!rowEl || line?.maiaScorePct == null) return;
-  const maiaEl = rowEl.querySelector(".scout-lr-maia");
-  if (maiaEl) {
-    maiaEl.innerHTML = scoutMaiaJudgmentCell(line, { maiaEnrichState });
+export function patchScoutLineMaiaCells(rowEl, line, baseline) {
+  if (!rowEl || line?.maiaScorePct == null || !line?.maiaWdl) return;
+  const scoreEl = rowEl.querySelector(".scout-lr-score");
+  const wdlEl = rowEl.querySelector(".scout-lr-wdl");
+  if (scoreEl) {
+    scoreEl.innerHTML = scoutScoreCell(line.maiaScorePct, line.games, {
+      baseline,
+      showGap: line.belowBaseline > 0,
+      maiaEstimate: true,
+    });
+  }
+  if (wdlEl) {
+    wdlEl.innerHTML = scoutWdlBar(line.maiaWdl.win, line.maiaWdl.draw, line.maiaWdl.loss, {
+      maiaEstimate: true,
+    });
+  }
+  const movesEl = rowEl.querySelector(".scout-line-moves");
+  if (movesEl) {
+    for (const chip of movesEl.querySelectorAll(".scout-prep-chip")) chip.remove();
+    const badge = scoutPrepCategoryBadge(line);
+    if (badge) movesEl.insertAdjacentHTML("beforeend", ` ${badge}`);
   }
 }
 
@@ -852,18 +846,30 @@ function formatSharePct(share) {
   return `${Math.round(pct)}%`;
 }
 
-// Prep rows: opponent route, your reply, Maia3 judgment, last-seen context.
+function scoutPrepCategoryBadge(line) {
+  if (line.prepCategory === "attack") {
+    return '<span class="scout-prep-chip scout-prep-chip-attack" title="Below their baseline">attack</span>';
+  }
+  if (line.prepCategory === "weapon") {
+    return '<span class="scout-prep-chip scout-prep-chip-weapon" title="Strong repertoire line">main</span>';
+  }
+  return "";
+}
+
+// Prep rows: framing, last-seen badge, optional inline refutation card.
 function scoutLineRowHtml(
   line,
   i,
   oppColor,
   baseline,
   escapeHtml,
-  { rowKind = "line", renderBoard = null, maiaEnrichState = "idle" } = {},
+  { rowKind = "line", renderBoard = null, rank = null } = {},
 ) {
-  const gamePlan = rowKind === "weakness" || rowKind === "prep" || rowKind === "unassessed";
+  const weakness = rowKind === "weakness" || rowKind === "prep";
   const status = scoutPrepStatus(line);
   const framing = scoutPrepFramingHtml(line, escapeHtml);
+  // Real integer game count for display — never the recency-weighted `count`, which
+  // decays toward 0 for old lines and would render a true n=1 line as "n=0".
   const rawCount = line.gameCount ?? line.games ?? Math.round(line.count ?? 0);
   const engineFlag = line.hasEngineMistake || line.refutation
     ? '<span class="scout-err-marker" title="Engine-backed refutation available">⚠</span>'
@@ -873,37 +879,37 @@ function scoutLineRowHtml(
   const lastSeenBadge = line.lastSeen
     ? `<span class="scout-last-seen">${escapeHtml(formatLastSeenLabel(line.lastSeen))}</span>`
     : "";
+  const categoryBadge = weakness ? scoutPrepCategoryBadge(line) : "";
   const refCard =
-    gamePlan && line.refutation
+    weakness && line.refutation
       ? renderInlineRefutationCard(line, oppColor, escapeHtml, { renderBoard })
       : "";
   const addTitle = line.suggestedReply?.uci
     ? `Add your reply ${formatReplyLabel(line.suggestedReply)} to prep`
     : "Add this line to a repertoire";
   const addBtn = `<button type="button" class="scout-add-icon scout-action-add-prep" title="${escapeHtml(addTitle)}" aria-label="Add to prep" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}">+</button>`;
-  if (gamePlan) {
-    return `
-      <div class="scout-line scout-line-row ${status.cls} scout-weakness-row scout-ranked-row${rowKind === "unassessed" ? " scout-unassessed-row" : ""}" data-line-key="${escapeHtml(lineKey)}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
-        <div class="scout-lr-main">
-          <span class="scout-line-eco"></span>
-          <span class="scout-line-moves">${framing}${lastSeenBadge ? ` ${lastSeenBadge}` : ""}</span>
-          ${refCard}
-        </div>
-        <span class="scout-lr-maia">${scoutMaiaJudgmentCell(line, { maiaEnrichState })}</span>
-        <span class="scout-lr-action">${engineFlag}${addBtn}</span>
-      </div>`;
-  }
+  const rankCell =
+    rank != null
+      ? `<span class="scout-lr-rank" title="Exploitability rank">#${rank + 1}</span>`
+      : `<span class="scout-lr-count" title="${rawCount} of their games">&times;${rawCount}</span>`;
+  const shareForDisplay = line.rawShare ?? line.share;
+  const shareCell =
+    weakness && shareForDisplay != null
+      ? `<span class="scout-lr-share" title="Share of their games">${formatSharePct(shareForDisplay)}</span>`
+      : "";
   const maiaEstimate = line.maiaScorePct != null;
   const displayScore = maiaEstimate ? line.maiaScorePct : line.scorePct;
   const wdl = scoutLineWdlCounts(line);
   return `
-      <div class="scout-line scout-line-row ${status.cls}" data-line-key="${escapeHtml(lineKey)}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
-        <span class="scout-lr-count" title="${rawCount} of their games">&times;${rawCount}</span>
+      <div class="scout-line scout-line-row ${status.cls}${weakness ? " scout-weakness-row scout-ranked-row" : ""}" data-line-key="${escapeHtml(lineKey)}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
+        ${rankCell}
+        ${shareCell}
         <div class="scout-lr-main">
           <span class="scout-line-eco"></span>
-          <span class="scout-line-moves">${framing}</span>
+          <span class="scout-line-moves">${framing}${categoryBadge ? ` ${categoryBadge}` : ""}${lastSeenBadge ? ` ${lastSeenBadge}` : ""}</span>
+          ${refCard}
         </div>
-        <span class="scout-lr-score">${scoutScoreCell(displayScore, rawCount, { baseline, maiaEstimate })}</span>
+        <span class="scout-lr-score">${scoutScoreCell(displayScore, rawCount, { baseline, showGap: weakness && line.belowBaseline > 0, maiaEstimate })}</span>
         <span class="scout-lr-wdl">${scoutWdlBar(wdl.w, wdl.d, wdl.l, { maiaEstimate })}</span>
         <span class="scout-lr-action">${engineFlag}${addBtn}</span>
       </div>`;
@@ -912,13 +918,7 @@ function scoutLineRowHtml(
 function scoutWeaknessRowHtml(target, i, oppColor, baseline, escapeHtml, opts = {}) {
   return scoutLineRowHtml(target, i, oppColor, baseline, escapeHtml, {
     rowKind: "prep",
-    ...opts,
-  });
-}
-
-function scoutUnassessedRowHtml(target, i, oppColor, baseline, escapeHtml, opts = {}) {
-  return scoutLineRowHtml(target, i, oppColor, baseline, escapeHtml, {
-    rowKind: "unassessed",
+    rank: i,
     ...opts,
   });
 }
@@ -965,9 +965,6 @@ export function buildScoutSectionReport(
   const breakdown = scoutModule.openingBreakdown(trie, { minGames: 1 });
   const sectionRating = maiaRatings?.[oppColor] ?? medianOpponentRating(games, oppColor);
   let openingLines = scoutModule.rankedOpeningLines(trie, { oppColor });
-  for (const line of openingLines) {
-    line.lastSeen = lineLastSeen(games, line.ucis, { color: oppColor, speedFilter });
-  }
   if (maiaResults?.size) {
     openingLines = applyMaiaToLines(openingLines, {
       maiaResults,
@@ -978,24 +975,14 @@ export function buildScoutSectionReport(
       enrichPrepTarget: scoutModule.enrichPrepTarget,
     });
   }
-  const gamePlan = scoutModule.rankGamePlan(openingLines, baseline, {
-    oppColor,
-    trie,
-    games,
-    speedFilter,
-    lineLastSeen,
-  });
-  let weaknessTargets = gamePlan.assessed;
-  let unassessedTargets = gamePlan.unassessed;
-  const planTargets = [...weaknessTargets, ...unassessedTargets];
+  let weaknessTargets = scoutModule.rankGamePlan(openingLines, baseline, { oppColor });
   if (enginePatterns instanceof Map) {
     weaknessTargets = mergeEngineIntoTargets(weaknessTargets, enginePatterns);
-    unassessedTargets = mergeEngineIntoTargets(unassessedTargets, enginePatterns);
     graded = mergeEngineIntoTargets(graded, enginePatterns);
   }
 
   const refutations = buildRefutations({
-    weaknessTargets: planTargets,
+    weaknessTargets,
     color: oppColor,
     speedFilter,
     baselineScorePct: baseline,
@@ -1012,19 +999,15 @@ export function buildScoutSectionReport(
     refutations,
     oppColor,
   });
-  unassessedTargets = attachPrepReplies(unassessedTargets, {
-    lookups,
-    refutations,
-    oppColor,
-  });
 
-  // lastSeen is already attached upstream (on openingLines), so this only indexes it
-  // for the summary — no second attachPrepReplies pass is needed.
   const lastSeenByLine = new Map();
-  for (const target of [...prepTargets, ...unassessedTargets]) {
+  for (const target of prepTargets) {
     const key = scoutLineKey(target.ucis);
-    if (target.lastSeen) lastSeenByLine.set(key, target.lastSeen);
+    const seen = lineLastSeen(games, target.ucis, { color: oppColor, speedFilter });
+    target.lastSeen = seen;
+    lastSeenByLine.set(key, seen);
   }
+  prepTargets = attachPrepReplies(prepTargets, { lookups, refutations, oppColor });
 
   const summary = buildScoutSectionSummary(stats, {
     username: username || "opponent",
@@ -1044,7 +1027,6 @@ export function buildScoutSectionReport(
     gradedLines: graded,
     weaknessTargets: prepTargets,
     prepTargets,
-    unassessedTargets,
     breakdown,
     trie,
     oppColor,
@@ -1074,36 +1056,20 @@ export function buildScoutSectionReport(
     : "";
 
   const prepRows = prepTargets
-    .map((t, i) =>
-      scoutWeaknessRowHtml(t, i, oppColor, baseline, escapeHtml, { maiaEnrichState }),
-    )
+    .map((t, i) => scoutWeaknessRowHtml(t, i, oppColor, baseline, escapeHtml))
     .join("");
-  const unassessedRows = unassessedTargets
-    .map((t, i) =>
-      scoutUnassessedRowHtml(t, i, oppColor, baseline, escapeHtml, { maiaEnrichState }),
-    )
-    .join("");
-  const rankedNote = scoutMaiaRankedNote(prepTargets, maiaEnrichState, {
-    unassessedCount: unassessedTargets.length,
-  });
-  const unassessedPanel = unassessedRows
-    ? `<div class="scout-game-plan-unassessed">
-          <div class="scout-col-label muted">Awaiting Maia3 assessment</div>
-          <div class="scout-lines scout-ranked-list scout-unassessed-list">${unassessedRows}</div>
-        </div>`
-    : "";
-  const prepPanel = prepRows || unassessedRows
+  const rankedNote = scoutMaiaRankedNote(prepTargets, maiaEnrichState);
+  const prepPanel = prepRows
     ? `<div class="scout-game-plan">
           <div class="scout-game-plan-head">
-            <div class="scout-col-label">Your game plan <span class="scout-col-hint muted">assessed lines ranked by Maia3 opponent score · when they play X → you play Y</span></div>
+            <div class="scout-col-label">Your game plan <span class="scout-col-hint muted">most exploitable first · when they play X → you play Y</span></div>
             <div class="scout-first-moves">
               <span class="scout-first-moves-label muted">First moves</span>
               <div class="scout-dist scout-dist-compact" data-dist-root="true">${firstMoves}</div>
             </div>
           </div>
           ${gapActionsHtml}
-          ${prepRows ? `<div class="scout-lines scout-ranked-list">${prepRows}</div>` : ""}
-          ${unassessedPanel}
+          <div class="scout-lines scout-ranked-list">${prepRows}</div>
           ${rankedNote}
         </div>`
     : `<div class="scout-game-plan">
@@ -1174,9 +1140,7 @@ export function buildScoutShareText({ username, profile, sections, activeSpeed }
       for (const t of prep) {
         const their = scoutLineText(t.sans);
         const reply = t.suggestedReply?.uci ? ` → you play ${t.suggestedReply.uci}` : " → needs prep";
-        const maiaNote =
-          t.maiaScorePct != null ? ` — Maia3: ${t.maiaScorePct}% for them` : " — awaiting Maia3";
-        let row = `- When they play ${their}${reply}${maiaNote}`;
+        let row = `- When they play ${their}${reply} — ${Math.round(t.share * 100)}% share, ${t.scorePct}% score (n=${t.games})`;
         if (t.enginePattern) {
           row += `; often …${t.enginePattern.playedSan}`;
         }
@@ -1215,9 +1179,6 @@ function resolveRow(state, rowKind, color, idx) {
   if (!sectionData) return null;
   if (rowKind === "weakness" || rowKind === "prep") {
     return sectionData.prepTargets?.[idx] || sectionData.weaknessTargets?.[idx] || null;
-  }
-  if (rowKind === "unassessed") {
-    return sectionData.unassessedTargets?.[idx] || null;
   }
   return sectionData.gradedLines?.[idx] || null;
 }

@@ -11,9 +11,6 @@ import {
   isMaiaAttempted,
   isMaiaFailed,
   maiaScorePctFromWdl,
-  maia3OpponentJudgment,
-  MAIA3_OPPONENT_YOUR_EDGE_BELOW,
-  MAIA3_OPPONENT_THEIR_EDGE_ABOVE,
   medianOpponentRating,
   rememberMaiaResult,
   readLineMaiaWdl,
@@ -44,15 +41,6 @@ describe("scout-maia helpers", () => {
 
   it("maiaScorePctFromWdl matches win + half-draw permille", () => {
     expect(maiaScorePctFromWdl({ win: 400, draw: 200, loss: 400 })).toBe(50);
-  });
-
-  it("maia3OpponentJudgment uses fixed opponent-score bands", () => {
-    expect(MAIA3_OPPONENT_YOUR_EDGE_BELOW).toBe(45);
-    expect(MAIA3_OPPONENT_THEIR_EDGE_ABOVE).toBe(55);
-    expect(maia3OpponentJudgment(44).label).toBe("Your edge");
-    expect(maia3OpponentJudgment(45).label).toBe("Balanced");
-    expect(maia3OpponentJudgment(55).label).toBe("Balanced");
-    expect(maia3OpponentJudgment(56).label).toBe("Their edge");
   });
 
   it("clampMaiaRating bounds to Maia's supported range", () => {
@@ -209,41 +197,6 @@ describe("enrichOpeningLinesWithMaia", () => {
     expect(enriched[0].prepCategory).toBe("weapon");
     expect(maiaResults.size).toBe(1);
   });
-
-  it("does not persist maiaResults or enrich lines when cancelled after a deferred read", async () => {
-    let resolveRead;
-    const provider = {
-      wdlRead: vi.fn(
-        () =>
-          new Promise((resolve) => {
-            resolveRead = resolve;
-          }),
-      ),
-    };
-    const lines = [
-      { ucis: ["d2d4"], sans: ["d4"], games: 5, scorePct: 70, share: 0.2, w: 3, d: 1, l: 1 },
-    ];
-    const maiaResults = new Map();
-    let cancelled = false;
-    const onLineResolved = vi.fn();
-    const enrichPromise = enrichOpeningLinesWithMaia(lines, {
-      provider,
-      rating: 1800,
-      oppColor: "white",
-      baselineScorePct: 55,
-      fenAfterLine: () => "fen",
-      maiaResults,
-      cache: new Map(),
-      shouldCancel: () => cancelled,
-      onLineResolved,
-    });
-    cancelled = true;
-    resolveRead({ wdl: { win: 100, draw: 100, loss: 800 } });
-    const enriched = await enrichPromise;
-    expect(maiaResults.size).toBe(0);
-    expect(enriched[0].maiaScorePct).toBeUndefined();
-    expect(onLineResolved).not.toHaveBeenCalled();
-  });
 });
 
 describe("scoutLineWdlCounts", () => {
@@ -375,26 +328,25 @@ describe("scope change streaming", () => {
 
 describe("scoutMaiaRankedNote", () => {
   it("shows loading copy before Maia results arrive", () => {
-    expect(scoutMaiaRankedNote([{ maiaScorePct: 50 }], "loading")).toContain("re-rank");
-    expect(scoutMaiaRankedNote([{ maiaScorePct: 50 }], "loading")).not.toContain(
-      "Among assessed lines",
+    expect(scoutMaiaRankedNote([{ scorePct: 50 }], "loading")).toContain("loading");
+    expect(scoutMaiaRankedNote([{ scorePct: 50 }], "loading")).not.toContain(
+      "score/WDL are Maia estimates",
     );
   });
 
   it("shows unavailable after all Maia reads fail", () => {
-    const note = scoutMaiaRankedNote([], MAIA_ENRICH_FAILED, { unassessedCount: 2 });
-    expect(note).toContain("could not assess");
-    expect(note).not.toContain("assessing");
+    const note = scoutMaiaRankedNote([{ scorePct: 50 }], MAIA_ENRICH_FAILED);
+    expect(note).toContain("Maia unavailable");
+    expect(note).not.toContain("loading");
   });
 
-  it("shows partial note when some lines remain unassessed", () => {
+  it("shows partial fallback when some lines have Maia", () => {
     const note = scoutMaiaRankedNote(
-      [{ maiaScorePct: 40 }],
+      [{ maiaScorePct: 40, scorePct: 40 }, { scorePct: 55 }],
       MAIA_ENRICH_PARTIAL,
-      { unassessedCount: 1 },
     );
-    expect(note).toContain("Among assessed lines");
-    expect(note).not.toContain("assessing");
+    expect(note).toContain("partial Maia estimates");
+    expect(note).not.toContain("loading");
   });
 });
 
@@ -436,7 +388,7 @@ describe("Maia failure UI", () => {
         maiaEnrichState: MAIA_ENRICH_FAILED,
       },
     );
-    expect(html).toContain("could not assess");
-    expect(html).not.toContain("re-rank as Maia3 completes");
+    expect(html).toContain("Maia unavailable");
+    expect(html).not.toContain("Maia estimates loading");
   });
 });
