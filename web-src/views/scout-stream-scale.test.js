@@ -23,7 +23,7 @@ describe("scout streaming render cadence", () => {
 });
 
 describe("scout ranked list tablet layout (640px)", () => {
-  it("hides W/D/L on ranked rows at 720px so five grid columns match five visible cells", () => {
+  it("hides W/D/L on ranked rows at 720px so three grid columns match three visible cells", () => {
     const css = readFileSync(resolve(here, "../styles.css"), "utf8");
     expect(css).toContain(".scout-ranked-list .scout-ranked-row");
     expect(css).toContain(".scout-ranked-list .scout-lr-wdl { display: none; }");
@@ -31,6 +31,7 @@ describe("scout ranked list tablet layout (640px)", () => {
     const phoneIdx = css.indexOf("@media (max-width: 600px)");
     expect(tabletIdx).toBeGreaterThan(-1);
     const tabletCss = css.slice(tabletIdx, phoneIdx > tabletIdx ? phoneIdx : undefined);
-    expect(tabletCss).toMatch(/grid-template-columns:\s*24px 32px minmax\(0, 1fr\) 52px 26px/);
+    // Rank + share columns removed; tablet: moves, score, action (WDL hidden).
+    expect(tabletCss).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\) 52px 26px/);
   });
 });

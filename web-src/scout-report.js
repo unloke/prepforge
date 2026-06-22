@@ -888,28 +888,33 @@ function scoutLineRowHtml(
     ? `Add your reply ${formatReplyLabel(line.suggestedReply)} to prep`
     : "Add this line to a repertoire";
   const addBtn = `<button type="button" class="scout-add-icon scout-action-add-prep" title="${escapeHtml(addTitle)}" aria-label="Add to prep" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}">+</button>`;
-  const rankCell =
-    rank != null
-      ? `<span class="scout-lr-rank" title="Exploitability rank">#${rank + 1}</span>`
-      : `<span class="scout-lr-count" title="${rawCount} of their games">&times;${rawCount}</span>`;
-  const shareForDisplay = line.rawShare ?? line.share;
-  const shareCell =
-    weakness && shareForDisplay != null
-      ? `<span class="scout-lr-share" title="Share of their games">${formatSharePct(shareForDisplay)}</span>`
-      : "";
   const maiaEstimate = line.maiaScorePct != null;
   const displayScore = maiaEstimate ? line.maiaScorePct : line.scorePct;
   const wdl = scoutLineWdlCounts(line);
-  return `
-      <div class="scout-line scout-line-row ${status.cls}${weakness ? " scout-weakness-row scout-ranked-row" : ""}" data-line-key="${escapeHtml(lineKey)}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
-        ${rankCell}
-        ${shareCell}
+  if (weakness) {
+    // Game-plan rows: no ×N count or share% — on n=1 deep lines these are always
+    // trivially 1 and <1%, so they add visual noise without information.
+    return `
+      <div class="scout-line scout-line-row ${status.cls} scout-weakness-row scout-ranked-row" data-line-key="${escapeHtml(lineKey)}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
         <div class="scout-lr-main">
           <span class="scout-line-eco"></span>
           <span class="scout-line-moves">${framing}${categoryBadge ? ` ${categoryBadge}` : ""}${lastSeenBadge ? ` ${lastSeenBadge}` : ""}</span>
           ${refCard}
         </div>
-        <span class="scout-lr-score">${scoutScoreCell(displayScore, rawCount, { baseline, showGap: weakness && line.belowBaseline > 0, maiaEstimate })}</span>
+        <span class="scout-lr-score">${scoutScoreCell(displayScore, rawCount, { baseline, showGap: line.belowBaseline > 0, maiaEstimate })}</span>
+        <span class="scout-lr-wdl">${scoutWdlBar(wdl.w, wdl.d, wdl.l, { maiaEstimate })}</span>
+        <span class="scout-lr-action">${engineFlag}${addBtn}</span>
+      </div>`;
+  }
+  const countCell = `<span class="scout-lr-count" title="${rawCount} of their games">&times;${rawCount}</span>`;
+  return `
+      <div class="scout-line scout-line-row ${status.cls}" data-line-key="${escapeHtml(lineKey)}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
+        ${countCell}
+        <div class="scout-lr-main">
+          <span class="scout-line-eco"></span>
+          <span class="scout-line-moves">${framing}</span>
+        </div>
+        <span class="scout-lr-score">${scoutScoreCell(displayScore, rawCount, { baseline, maiaEstimate })}</span>
         <span class="scout-lr-wdl">${scoutWdlBar(wdl.w, wdl.d, wdl.l, { maiaEstimate })}</span>
         <span class="scout-lr-action">${engineFlag}${addBtn}</span>
       </div>`;
@@ -975,7 +980,12 @@ export function buildScoutSectionReport(
       enrichPrepTarget: scoutModule.enrichPrepTarget,
     });
   }
-  let weaknessTargets = scoutModule.rankGamePlan(openingLines, baseline, { oppColor });
+  let weaknessTargets = scoutModule.rankGamePlan(openingLines, baseline, {
+    oppColor,
+    games,
+    speedFilter,
+    lineLastSeen,
+  });
   if (enginePatterns instanceof Map) {
     weaknessTargets = mergeEngineIntoTargets(weaknessTargets, enginePatterns);
     graded = mergeEngineIntoTargets(graded, enginePatterns);

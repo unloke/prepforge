@@ -439,7 +439,7 @@ describe("scout-report rendering", () => {
       { speedFilter: "all", escapeHtml },
     );
     expect(html).toContain('<span class="scout-games-count">15 games</span>');
-    expect(html).toContain("scout-lr-rank");
+    expect(html).not.toContain("scout-lr-rank");
     expect(html).toContain("scout-n");
     expect(html).not.toMatch(/games-count">\d+\.\d/);
   });
@@ -511,11 +511,11 @@ describe("scout-report rendering", () => {
     expect(html).toContain("Your game plan");
     expect(html).toContain("When they play");
     expect(html).toContain("scout-ranked-list");
-    expect(html).toContain("scout-lr-rank");
+    expect(html).not.toContain("scout-lr-rank");
     expect(html).toContain("scout-n");
   });
 
-  it("ranked prep rows expose six grid cells for desktop layout", () => {
+  it("ranked prep rows expose four grid cells (no count/share) for desktop layout", () => {
     const { html } = buildScoutSectionReport(
       scoutModule,
       {
@@ -535,14 +535,11 @@ describe("scout-report rendering", () => {
     const rowStart = html.indexOf("scout-ranked-row");
     expect(rowStart).toBeGreaterThan(-1);
     const rowSlice = html.slice(rowStart, rowStart + 2500);
-    for (const cell of [
-      "scout-lr-rank",
-      "scout-lr-share",
-      "scout-lr-main",
-      "scout-lr-score",
-      "scout-lr-wdl",
-      "scout-lr-action",
-    ]) {
+    // Game-plan rows drop ×N count and share% — both are always trivially 1 / <1% on
+    // deep lines. Four cells remain: moves, score, wdl, action.
+    expect(rowSlice).not.toContain("scout-lr-rank");
+    expect(rowSlice).not.toContain("scout-lr-share");
+    for (const cell of ["scout-lr-main", "scout-lr-score", "scout-lr-wdl", "scout-lr-action"]) {
       expect(rowSlice).toContain(cell);
     }
   });
@@ -887,7 +884,7 @@ describe("scout intelligence panel", () => {
     expect(html).toContain("scout-intel-charts-strip");
     expect(html).toContain("scout-ranked-list");
     expect(html).toContain("scout-ranked-note");
-    expect(html).toContain("scout-lr-rank");
+    expect(html).not.toContain("scout-lr-rank");
     expect(html).toContain("Worst performance");
     expect(html).toContain("Activity");
     expect(html).toContain("Repertoire focus");

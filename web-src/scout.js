@@ -580,7 +580,14 @@ export function rankedOpeningLines(
 export function rankGamePlan(
   lines,
   baselineScorePct,
-  { minGames = GAME_PLAN_MIN_GAMES, oppColor = null, limit = SCOUT_GAME_PLAN_LIMIT } = {},
+  {
+    minGames = GAME_PLAN_MIN_GAMES,
+    oppColor = null,
+    limit = SCOUT_GAME_PLAN_LIMIT,
+    games = null,
+    speedFilter = "all",
+    lineLastSeen = null,
+  } = {},
 ) {
   const eligible = lines
     .filter((g) => g.games >= minGames)
@@ -588,7 +595,7 @@ export function rankGamePlan(
       if (!oppColor) return enrichPrepTarget(g, baselineScorePct);
       const normalized = normalizeToOpponentTerminal(g.ucis, g.sans, oppColor);
       if (!normalized) return null;
-      return enrichPrepTarget(
+      const enriched = enrichPrepTarget(
         {
           ...g,
           ucis: normalized.ucis,
@@ -599,19 +606,28 @@ export function rankGamePlan(
         baselineScorePct,
         { maiaScorePct: g.maiaScorePct ?? null },
       );
+      if (!enriched.lastSeen && games && lineLastSeen) {
+        enriched.lastSeen = lineLastSeen(games, enriched.ucis, { color: oppColor, speedFilter });
+      }
+      return enriched;
     })
     .filter(Boolean)
     .sort((a, b) => {
-      // Opportunity is already noise-damped by enrichPrepTarget (Wilson margin or ×0.25
-      // for thin-sample attacks, 0 for weapons/neutral), so sort all lines by it directly.
-      // Splitting into Maia vs no-Maia groups would bury a confirmed attack (e.g. n=1, 0%)
-      // below all Maia weapon lines (opportunity=0), which is exactly backwards.
-      if (b.opportunity !== a.opportunity) return b.opportunity - a.opportunity;
-      // Equal opportunity: Maia-enriched lines are more reliable — prefer them.
+      // Lines with a Maia read rank by opponent score (lowest = most exploitable for user).
+      // Lines without Maia fall after all assessed lines, sorted by recency then share.
       const aHasMaia = a.maiaScorePct != null;
       const bHasMaia = b.maiaScorePct != null;
+      if (aHasMaia && bHasMaia) {
+        if (a.maiaScorePct !== b.maiaScorePct) return a.maiaScorePct - b.maiaScorePct;
+        const aStamp = a.lastSeen?.lastDatestamp ?? 0;
+        const bStamp = b.lastSeen?.lastDatestamp ?? 0;
+        return bStamp - aStamp || b.share - a.share;
+      }
       if (aHasMaia !== bHasMaia) return aHasMaia ? -1 : 1;
-      return b.share - a.share || b.games - a.games;
+      // Both unenriched: recent first, then share.
+      const aStamp = a.lastSeen?.lastDatestamp ?? 0;
+      const bStamp = b.lastSeen?.lastDatestamp ?? 0;
+      return bStamp - aStamp || b.share - a.share || b.games - a.games;
     });
 
   const chosen = [];
@@ -625,8 +641,6 @@ export function rankGamePlan(
     }
     chosen.push(g);
   }
-  // Already sorted by opportunity; slips/flukes sink to the bottom, so capping the
-  // top N keeps the panel readable without a hard game-count floor.
   return limit > 0 ? chosen.slice(0, limit) : chosen;
 }
 

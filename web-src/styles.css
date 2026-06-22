@@ -2569,19 +2569,7 @@ h2 {
   font-size: 11px;
 }
 .scout-ranked-list .scout-ranked-row {
-  grid-template-columns: 28px 36px minmax(0, 1fr) 64px 60px 26px;
-}
-.scout-lr-rank {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--label);
-  text-align: right;
-}
-.scout-lr-share {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text);
-  text-align: right;
+  grid-template-columns: minmax(0, 1fr) 64px 60px 26px;
 }
 .scout-ranked-note { margin-top: 6px; font-size: 11px; }
 /* The "when they play X → you play Y" framing is the centrepiece, so let it wrap
@@ -2852,7 +2840,7 @@ h2 {
 
 @media (max-width: 720px) {
   .scout-ranked-list .scout-ranked-row {
-    grid-template-columns: 24px 32px minmax(0, 1fr) 52px 26px;
+    grid-template-columns: minmax(0, 1fr) 52px 26px;
     gap: 6px;
   }
   .scout-ranked-list .scout-lr-wdl { display: none; }

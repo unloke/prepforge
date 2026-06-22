@@ -558,17 +558,16 @@ describe("rankedOpeningLines + rankGamePlan", () => {
     expect(terminalMoveIsOpponent(ranked[0].ucis, "white")).toBe(true);
   });
 
-  it("attack line (no Maia) ranks above Maia weapon lines with higher opportunity", () => {
-    // Regression: old sort put ALL Maia lines before ALL non-Maia lines, so a confirmed
-    // attack (empirical 0%, opportunity > 0) was buried below Maia weapons (opportunity=0).
-    // Attack line must end on White's move (oppColor="white") so normalizeToOpponentTerminal
-    // doesn't trim it — 3 plies: e4(W) c5(B) Nf3(W). Opponent (White) plays last.
+  it("Maia-assessed lines rank before unenriched lines regardless of empirical opportunity", () => {
+    // New design: rank by Maia3 opponent score (real data), not empirical opportunity
+    // (100%/0% on n=1 is just noise — you can't lose more than 100% of one game).
+    // A Maia weapon at 74% opponent score sorts BEFORE a no-Maia "attack" line.
+    // Three unrelated first-move lines (White is opponent) — no prefix overlap, no dedup.
     const attackNoMaia = {
-      line: "e2e4>c7c5>g1f3",
-      sans: ["e4", "c5", "Nf3"],
-      ucis: ["e2e4", "c7c5", "g1f3"],
-      games: 1, w: 0, d: 0, l: 1, scorePct: 0, share: 0.1, count: 1,
-      // No maiaScorePct — Maia failed or hasn't run yet.
+      line: "e2e4",
+      sans: ["e4"],
+      ucis: ["e2e4"],
+      games: 1, w: 0, d: 0, l: 1, scorePct: 0, share: 0.15, count: 1,
     };
     const weaponWithMaia = {
       line: "d2d4",
@@ -577,11 +576,22 @@ describe("rankedOpeningLines + rankGamePlan", () => {
       games: 1, w: 1, d: 0, l: 0, scorePct: 100, share: 0.1, count: 1,
       maiaScorePct: 74, maiaWdl: { win: 74, draw: 13, loss: 13 },
     };
-    const ranked = rankGamePlan([weaponWithMaia, attackNoMaia], 50, { oppColor: "white" });
-    // The attack line has opportunity > 0 (below baseline, SCOUT_ATTACK_MIN_MARGIN met).
-    // The weapon has opportunity = 0. Attack must come first despite lacking Maia.
-    expect(ranked[0].ucis).toEqual(["e2e4", "c7c5", "g1f3"]);
-    expect(ranked[0].opportunity).toBeGreaterThan(ranked[1].opportunity);
+    const attackWithMaia = {
+      line: "c2c4",
+      sans: ["c4"],
+      ucis: ["c2c4"],
+      games: 1, w: 0, d: 0, l: 1, scorePct: 0, share: 0.1, count: 1,
+      maiaScorePct: 28, maiaWdl: { win: 28, draw: 10, loss: 62 },
+    };
+    const ranked = rankGamePlan([weaponWithMaia, attackNoMaia, attackWithMaia], 50, {
+      oppColor: "white",
+    });
+    // Maia attack (28%) beats Maia weapon (74%) — lower opp score = more exploitable.
+    expect(ranked[0].maiaScorePct).toBe(28);
+    // Maia weapon (74%) beats no-Maia line — real data beats noise.
+    expect(ranked[1].maiaScorePct).toBe(74);
+    // No-Maia line comes last.
+    expect(ranked[2].maiaScorePct).toBeUndefined();
   });
 
   it("returns all qualifying lines without an artificial cap", () => {
