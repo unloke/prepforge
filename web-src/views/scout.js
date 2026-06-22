@@ -1196,13 +1196,26 @@ export function createScoutView(deps) {
         return;
       }
       const message = scoutFetchErrorMessage(error) || error.message;
-      const results = getResultsEl();
-      if (results && !scoutState?.games?.length) {
-        results.innerHTML = scoutErrorHtml(message, escapeHtml);
+      const hasGames = !!scoutState?.games?.length;
+      // Match onStreamEnd's timer cleanup so a render debounce left pending by the
+      // streaming loop can't fire stale after we settle here.
+      clearTimeout(session.renderTimer);
+      session.renderTimer = null;
+      session.gamesSinceRender = 0;
+      session.state = hasGames ? "paused" : "idle";
+      if (hasGames) {
+        // The stream dropped mid-fetch (non-abort) but we already have a rendered
+        // report. Run the SAME deferred enrichment (Maia/explorer/engine) the clean
+        // stream-end path runs — otherwise the report is permanently stuck on
+        // empirical-only scores, because enrichment is gated behind a non-streaming
+        // render that this error path would otherwise never trigger.
+        flushRender();
+      } else {
+        const results = getResultsEl();
+        if (results) results.innerHTML = scoutErrorHtml(message, escapeHtml);
+        const profile = getProfileEl();
+        if (profile) profile.hidden = true;
       }
-      const profile = getProfileEl();
-      if (profile && !scoutState?.games?.length) profile.hidden = true;
-      session.state = scoutState?.games?.length ? "paused" : "idle";
       updateScoutControls();
       setStatus(message);
     }
