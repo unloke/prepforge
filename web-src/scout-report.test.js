@@ -811,7 +811,7 @@ describe("Maia estimate rendering", () => {
       LOOKUPS.black,
       { speedFilter: "all", escapeHtml, maiaEnrichState: MAIA_ENRICH_LOADING },
     );
-    expect(html).toContain("Maia estimates loading");
+    expect(html).toContain("Evaluating");
     expect(html).not.toContain("score/WDL are Maia estimates");
   });
 

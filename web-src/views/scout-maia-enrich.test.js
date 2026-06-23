@@ -23,6 +23,18 @@ vi.mock("../scout.js", async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, createScoutClient: () => ({ streamGames, fetchGames: vi.fn() }) };
 });
+vi.mock("../scout-prefilter.js", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    runStockfishPrefilter: vi.fn(async (lines) => ({
+      ranked: lines.map((line) => ({ line, prefilterScore: 10 })),
+      pool: lines.slice(0, 24),
+      maiaLines: lines.slice(0, 12),
+      cancelled: false,
+    })),
+  };
+});
 
 import { createScoutView } from "./scout.js";
 
@@ -117,7 +129,7 @@ describe("scout maia enrichment orchestration", () => {
     const results = elements.get("scout-results");
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
     expect(results.innerHTML).toContain("scout-maia-estimate");
-    expect(results.innerHTML).toContain("score/WDL are Maia estimates");
+    expect(results.innerHTML).toMatch(/Maia estimates|partial Maia estimates/);
   });
 
   // Regression: a Lichess NDJSON stream that drops mid-fetch (non-abort) AFTER games
@@ -126,6 +138,64 @@ describe("scout maia enrichment orchestration", () => {
   // before the fix the error path settled to "paused" without ever triggering one — so
   // the report was stuck on empirical-only scores with the bare "empirical score/WDL"
   // note (Scout showing zero Maia, the reported symptom).
+  it("re-runs prefilter after resume adds older games", async () => {
+    const { runStockfishPrefilter } = await import("../scout-prefilter.js");
+    streamGames.mockReset();
+    streamGames.mockImplementation(async (_u, opts = {}) => {
+      for (const g of weaknessGames().slice(0, 3)) opts.onGame?.(g);
+      return { accepted: 3, lastDatestamp: 1000 };
+    });
+
+    await view.runScout();
+    await flushDeferredTimers();
+    const callsAfterFirstBatch = runStockfishPrefilter.mock.calls.length;
+    expect(callsAfterFirstBatch).toBeGreaterThan(0);
+
+    streamGames.mockImplementation(async (_u, opts = {}) => {
+      for (const g of weaknessGames().slice(3)) opts.onGame?.(g);
+      return { accepted: 3, lastDatestamp: 999 };
+    });
+    runStockfishPrefilter.mockClear();
+
+    await view.handleScoutAction();
+    await flushDeferredTimers();
+
+    expect(runStockfishPrefilter.mock.calls.length).toBeGreaterThan(0);
+  });
+
+  it("still enriches with Maia when Stockfish returns no CP-loss candidates", async () => {
+    const { runStockfishPrefilter } = await import("../scout-prefilter.js");
+    runStockfishPrefilter.mockImplementation(async () => ({
+      ranked: [],
+      pool: [],
+      maiaLines: [],
+      cancelled: false,
+    }));
+
+    wdlReadMock.mockClear();
+    const runPromise = view.runScout();
+    await vi.runOnlyPendingTimersAsync();
+    await runPromise;
+    await flushDeferredTimers();
+
+    expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
+    expect(elements.get("scout-results").innerHTML).toContain("scout-maia-estimate");
+  });
+
+  it("still enriches with Maia when Stockfish prefilter fails", async () => {
+    const { runStockfishPrefilter } = await import("../scout-prefilter.js");
+    runStockfishPrefilter.mockRejectedValueOnce(new Error("stockfish init failed"));
+
+    wdlReadMock.mockClear();
+    const runPromise = view.runScout();
+    await vi.runOnlyPendingTimersAsync();
+    await runPromise;
+    await flushDeferredTimers();
+
+    expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
+    expect(elements.get("scout-results").innerHTML).toContain("scout-maia-estimate");
+  });
+
   it("still enriches with Maia when the stream errors after games arrive", async () => {
     wdlReadMock.mockClear();
     streamGames.mockReset();

@@ -20,6 +20,18 @@ vi.mock("../scout.js", async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, createScoutClient: () => ({ streamGames, fetchGames: vi.fn() }) };
 });
+vi.mock("../scout-prefilter.js", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    runStockfishPrefilter: vi.fn(async (lines) => ({
+      ranked: lines.map((line) => ({ line, prefilterScore: 10 })),
+      pool: lines.slice(0, 24),
+      maiaLines: lines.slice(0, 12),
+      cancelled: false,
+    })),
+  };
+});
 
 import { createScoutView } from "./scout.js";
 
@@ -137,11 +149,11 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
 
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
     expect(displayedRows).toBeGreaterThan(0);
-    // Every displayed game-plan row must carry a Maia estimate (score cell + WDL bar each
-    // tag scout-maia-estimate, so ≥1 per row). The bug left every row stuck on the empirical
-    // n=1 0% score because the share-based candidate cap never enriched these deep lines.
-    expect(maiaRows).toBeGreaterThanOrEqual(displayedRows);
-    expect(zeroPctRows).toBe(0);
-    expect(html).toContain("score/WDL are Maia estimates");
+    // Global Maia budget is 12 reads shared across colours — not every displayed row
+    // receives a model estimate, but at least some deep lines must be enriched.
+    expect(maiaRows).toBeGreaterThan(0);
+    expect(wdlReadMock.mock.calls.length).toBeLessThanOrEqual(12);
+    expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
+    expect(html).toMatch(/Maia estimates|partial Maia estimates/);
   });
 });

@@ -14,7 +14,9 @@ import {
   medianOpponentRating,
   rememberMaiaResult,
   readLineMaiaWdl,
+  buildGamePlanDisplayLines,
   getCachedMaiaResult,
+  rememberMaiaFailure,
   resetMaiaScopeCache,
   scoutLineWdlCounts,
   scoutMaiaRankedNote,
@@ -199,6 +201,150 @@ describe("enrichOpeningLinesWithMaia", () => {
   });
 });
 
+describe("enrichMaiaUntilFull", () => {
+  it("stops issuing new reads once maxAttempts is exhausted", async () => {
+    const { enrichMaiaUntilFull } = await import("./scout-maia.js");
+    const lines = [
+      { ucis: ["a"], sans: ["a"], games: 1, line: "a" },
+      { ucis: ["b"], sans: ["b"], games: 1, line: "b" },
+      { ucis: ["c"], sans: ["c"], games: 1, line: "c" },
+    ];
+    const provider = {
+      wdlRead: vi.fn(({ fen }) =>
+        Promise.resolve({ wdl: { win: 200, draw: 200, loss: 600, fen } }),
+      ),
+    };
+    const enriched = await enrichMaiaUntilFull(lines, {
+      successTarget: 3,
+      maxAttempts: 1,
+      provider,
+      rating: 1800,
+      oppColor: "white",
+      baselineScorePct: 50,
+      fenAfterLine: (ucis) => `fen-${ucis[0]}`,
+      maiaResults: new Map(),
+    });
+    expect(provider.wdlRead).toHaveBeenCalledTimes(1);
+    expect(enriched).toHaveLength(1);
+  });
+
+  it("pulls backup lines from the ranked pool when earlier reads fail", async () => {
+    const { enrichMaiaUntilFull } = await import("./scout-maia.js");
+    const lines = [
+      { ucis: ["a"], sans: ["a"], games: 1, line: "a" },
+      { ucis: ["b"], sans: ["b"], games: 1, line: "b" },
+      { ucis: ["c"], sans: ["c"], games: 1, line: "c" },
+    ];
+    const provider = {
+      wdlRead: vi.fn(({ fen }) => {
+        if (fen === "fen-b") return Promise.reject(new Error("fail"));
+        return Promise.resolve({ wdl: { win: 200, draw: 200, loss: 600 } });
+      }),
+    };
+    const maiaResults = new Map();
+    const enriched = await enrichMaiaUntilFull(lines, {
+      successTarget: 2,
+      maxAttempts: 3,
+      provider,
+      rating: 1800,
+      oppColor: "white",
+      baselineScorePct: 50,
+      fenAfterLine: (ucis) => `fen-${ucis[0]}`,
+      maiaResults,
+    });
+    expect(enriched).toHaveLength(2);
+    expect(enriched.map((l) => l.ucis[0])).toEqual(["a", "c"]);
+  });
+});
+
+describe("buildGamePlanDisplayLines", () => {
+  it("includes Maia-successful backup lines beyond the Stockfish top 12", () => {
+    const stockfishDisplay = Array.from({ length: 12 }, (_, i) => ({
+      ucis: [`s${i}`],
+      sans: [`s${i}`],
+      games: 1,
+      line: `s${i}`,
+    }));
+    const backup = { ucis: ["backup"], sans: ["backup"], games: 1, line: "backup" };
+    const rankedEntries = [
+      ...stockfishDisplay.map((line) => ({ line, prefilterScore: 100 - Number(line.ucis[0].slice(1)) })),
+      { line: backup, prefilterScore: 1 },
+    ];
+    const maiaResults = new Map();
+    const fenAfterLine = (ucis) => `fen-${ucis[0]}`;
+    rememberMaiaResult(maiaResults, fenAfterLine(backup.ucis), 1800, {
+      maiaWdl: { win: 100, draw: 100, loss: 800 },
+      maiaScorePct: 40,
+    });
+    for (const line of stockfishDisplay) {
+      rememberMaiaFailure(maiaResults, fenAfterLine(line.ucis), 1800);
+    }
+
+    const display = buildGamePlanDisplayLines({
+      rankedEntries,
+      stockfishDisplayLines: stockfishDisplay,
+      maiaResults,
+      rating: 1800,
+      fenAfterLine,
+    });
+
+    expect(display.some((line) => line.ucis[0] === "backup")).toBe(true);
+    expect(display).toHaveLength(12);
+  });
+});
+
+describe("enrichGlobalMaiaPool", () => {
+  it("ranks candidates globally so a higher black score wins over white", async () => {
+    const { enrichGlobalMaiaPool } = await import("./scout-maia.js");
+    const calls = [];
+    const provider = {
+      wdlRead: vi.fn(({ fen }) => {
+        calls.push(fen);
+        return Promise.resolve({ wdl: { win: 200, draw: 200, loss: 600 } });
+      }),
+    };
+    const { mergeGlobalPrefilterRanked } = await import("./scout-prefilter.js");
+    const entries = mergeGlobalPrefilterRanked({
+      white: [{ line: { ucis: ["w1"], sans: ["w1"], games: 1 }, prefilterScore: 10, hasUserReply: true }],
+      black: [{ line: { ucis: ["b1"], sans: ["b1"], games: 1 }, prefilterScore: 50, hasUserReply: true }],
+    });
+    await enrichGlobalMaiaPool(entries, {
+      successTarget: 1,
+      provider,
+      fenAfterLine: (ucis) => `fen-${ucis[0]}`,
+      getRating: () => 1800,
+      getBaselineScorePct: () => 50,
+      maiaResults: new Map(),
+    });
+    expect(calls[0]).toBe("fen-b1");
+  });
+
+  it("can still reach successTarget after failures consume extra attempts", async () => {
+    const { enrichGlobalMaiaPool, SCOUT_MAIA_SUCCESS_TARGET } = await import("./scout-maia.js");
+    const entries = Array.from({ length: 14 }, (_, i) => ({
+      oppColor: i % 2 === 0 ? "white" : "black",
+      line: { ucis: [`m${i}`], sans: [`m${i}`], games: 1 },
+      prefilterScore: 100 - i,
+    }));
+    const provider = {
+      wdlRead: vi.fn(({ fen }) => {
+        if (fen === "fen-m1" || fen === "fen-m3") return Promise.reject(new Error("fail"));
+        return Promise.resolve({ wdl: { win: 100, draw: 100, loss: 800 } });
+      }),
+    };
+    const { successes, attempts } = await enrichGlobalMaiaPool(entries, {
+      successTarget: SCOUT_MAIA_SUCCESS_TARGET,
+      provider,
+      fenAfterLine: (ucis) => `fen-${ucis[0]}`,
+      getRating: () => 1800,
+      getBaselineScorePct: () => 50,
+      maiaResults: new Map(),
+    });
+    expect(successes).toHaveLength(SCOUT_MAIA_SUCCESS_TARGET);
+    expect(attempts).toBeGreaterThan(SCOUT_MAIA_SUCCESS_TARGET);
+  });
+});
+
 describe("scoutLineWdlCounts", () => {
   it("reads Maia permille keys for bar rendering", () => {
     expect(
@@ -328,7 +474,7 @@ describe("scope change streaming", () => {
 
 describe("scoutMaiaRankedNote", () => {
   it("shows loading copy before Maia results arrive", () => {
-    expect(scoutMaiaRankedNote([{ scorePct: 50 }], "loading")).toContain("loading");
+    expect(scoutMaiaRankedNote([{ scorePct: 50 }], "loading")).toContain("Evaluating");
     expect(scoutMaiaRankedNote([{ scorePct: 50 }], "loading")).not.toContain(
       "score/WDL are Maia estimates",
     );
@@ -389,6 +535,6 @@ describe("Maia failure UI", () => {
       },
     );
     expect(html).toContain("Maia unavailable");
-    expect(html).not.toContain("Maia estimates loading");
+    expect(html).not.toContain("Evaluating");
   });
 });

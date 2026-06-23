@@ -1,12 +1,23 @@
 // Maia3 reads for Scout game-plan rows: leaf-FEN WDL from the opponent's perspective.
 
-import { enrichPrepTarget, terminalMoveIsOpponent } from "./scout.js";
+import { enrichPrepTarget, terminalMoveIsOpponent, triePathKey } from "./scout.js";
 
 export const MAIA_ENRICH_IDLE = "idle";
 export const MAIA_ENRICH_LOADING = "loading";
 export const MAIA_ENRICH_READY = "ready";
 export const MAIA_ENRICH_PARTIAL = "partial";
 export const MAIA_ENRICH_FAILED = "failed";
+
+import { SCOUT_PREFILTER_LIMIT, SCOUT_PREFILTER_POOL_SIZE } from "./scout-prefilter.js";
+
+export const SCOUT_MAIA_TARGET_COUNT = 12;
+/** Target successful Maia3 WDL reads per Scout run (global across both colours). */
+export const SCOUT_MAIA_SUCCESS_TARGET = 12;
+/**
+ * Max new wdlRead attempts while chasing successTarget — failures pull backups
+ * without reducing the success goal.
+ */
+export const SCOUT_MAIA_MAX_ATTEMPTS = SCOUT_PREFILTER_POOL_SIZE;
 
 export function clampMaiaRating(rating) {
   const n = Number(rating);
@@ -184,26 +195,33 @@ export function applyMaiaToLines(
   });
 }
 
-export function scoutMaiaRankedNote(prepTargets, state = MAIA_ENRICH_IDLE) {
+export function scoutMaiaRankedNote(
+  prepTargets,
+  state = MAIA_ENRICH_IDLE,
+  { prefilterState = "idle" } = {},
+) {
   if (!prepTargets?.length) return "";
   const withMaia = prepTargets.filter((t) => t.maiaScorePct != null).length;
   const total = prepTargets.length;
-  if (withMaia === total) {
-    return `<div class="scout-ranked-note muted hint">Ranked by exploitability · score/WDL are Maia estimates</div>`;
+  if (prefilterState === "loading") {
+    return `<div class="scout-ranked-note muted hint">Ranking candidates…</div>`;
   }
   if (state === MAIA_ENRICH_LOADING && withMaia < total) {
-    return `<div class="scout-ranked-note muted hint">Ranked by exploitability · Maia estimates loading…</div>`;
+    return `<div class="scout-ranked-note muted hint">Evaluating ${total} candidates…</div>`;
   }
-  if (state === MAIA_ENRICH_PARTIAL && withMaia > 0) {
-    return `<div class="scout-ranked-note muted hint">Ranked by exploitability · partial Maia estimates · empirical score/WDL on remaining lines</div>`;
+  if (withMaia === total) {
+    return `<div class="scout-ranked-note muted hint">Ranked by Maia exploitability · score/WDL are Maia estimates</div>`;
+  }
+  if (withMaia > 0 && withMaia < total) {
+    return `<div class="scout-ranked-note muted hint">Ranked by Maia exploitability · partial Maia estimates · empirical score/WDL on remaining lines</div>`;
   }
   if (state === MAIA_ENRICH_PARTIAL) {
-    return `<div class="scout-ranked-note muted hint">Ranked by exploitability · empirical score/WDL (Maia unavailable on some lines)</div>`;
+    return `<div class="scout-ranked-note muted hint">Ranked by Maia exploitability · empirical score/WDL (Maia unavailable on some lines)</div>`;
   }
   if (state === MAIA_ENRICH_FAILED) {
-    return `<div class="scout-ranked-note muted hint">Ranked by exploitability · empirical score/WDL (Maia unavailable)</div>`;
+    return `<div class="scout-ranked-note muted hint">Ranked by recency · empirical score/WDL (Maia unavailable)</div>`;
   }
-  return `<div class="scout-ranked-note muted hint">Ranked by exploitability · empirical score/WDL</div>`;
+  return `<div class="scout-ranked-note muted hint">Ranked by recency · empirical score/WDL</div>`;
 }
 
 export function markUnattemptedMaiaFailures(
@@ -297,4 +315,226 @@ export async function enrichOpeningLinesWithMaia(
     out[i] = applyMaiaToLine(line, maia, baselineScorePct, enrich);
   }
   return out;
+}
+
+/**
+ * Run Maia on a ranked pool until `successTarget` lines succeed. Failed reads
+ * pull the next Stockfish-ranked backup without surfacing engine data in the UI.
+ */
+export async function enrichMaiaUntilFull(
+  rankedPool,
+  {
+    successTarget = SCOUT_MAIA_TARGET_COUNT,
+    maxAttempts = SCOUT_MAIA_MAX_ATTEMPTS,
+    provider,
+    rating,
+    oppColor,
+    baselineScorePct,
+    fenAfterLine,
+    enrichPrepTarget: enrich = enrichPrepTarget,
+    cache = new Map(),
+    maiaResults = null,
+    shouldCancel = () => false,
+  } = {},
+) {
+  const successes = [];
+  const seenKeys = new Set();
+  let attempts = 0;
+
+  for (const line of rankedPool || []) {
+    if (shouldCancel()) break;
+    if (successes.length >= successTarget) break;
+    if (attempts >= maxAttempts) break;
+    const key = triePathKey(line.ucis);
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+
+    const fen = fenAfterLine(line.ucis);
+    let maia = null;
+    if (isMaiaAttempted(maiaResults, fen, rating)) {
+      maia = getCachedMaiaResult(maiaResults, fen, rating);
+    } else {
+      attempts += 1;
+      maia = await readLineMaiaWdl(line, {
+        provider,
+        rating,
+        oppColor,
+        fenAfterLine,
+        cache,
+        maiaResults,
+      });
+    }
+    if (!maia || shouldCancel()) continue;
+    successes.push(applyMaiaToLine(line, maia, baselineScorePct, enrich));
+  }
+
+  return successes;
+}
+
+/**
+ * Globally ranked Stockfish pool → Maia WDL. Success target and attempt budget are
+ * separate so backup reads can still reach 12 successes after failures.
+ */
+export async function enrichGlobalMaiaPool(
+  rankedEntries,
+  {
+    successTarget = SCOUT_MAIA_SUCCESS_TARGET,
+    maxAttempts = SCOUT_MAIA_MAX_ATTEMPTS,
+    attemptsUsed = 0,
+    provider,
+    fenAfterLine,
+    getRating,
+    getBaselineScorePct,
+    enrichPrepTarget: enrich = enrichPrepTarget,
+    cache = new Map(),
+    maiaResults = null,
+    shouldCancel = () => false,
+  } = {},
+) {
+  const successes = [];
+  const successesByColor = { white: [], black: [] };
+  let attempts = attemptsUsed;
+  const seenKeys = new Set();
+
+  for (const entry of rankedEntries || []) {
+    if (shouldCancel()) break;
+    if (successes.length >= successTarget) break;
+    if (attempts >= maxAttempts) break;
+
+    const line = entry?.line;
+    const oppColor = entry?.oppColor;
+    if (!line?.ucis?.length || !oppColor) continue;
+
+    const key = `${oppColor}|${triePathKey(line.ucis)}`;
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+
+    const rating = getRating(oppColor);
+    const baselineScorePct = getBaselineScorePct(oppColor);
+    const fen = fenAfterLine(line.ucis);
+    let maia = null;
+    if (isMaiaAttempted(maiaResults, fen, rating)) {
+      maia = getCachedMaiaResult(maiaResults, fen, rating);
+    } else {
+      attempts += 1;
+      maia = await readLineMaiaWdl(line, {
+        provider,
+        rating,
+        oppColor,
+        fenAfterLine,
+        cache,
+        maiaResults,
+      });
+    }
+    if (!maia || shouldCancel()) continue;
+    const enriched = applyMaiaToLine(line, maia, baselineScorePct, enrich);
+    successes.push({ oppColor, line: enriched });
+    successesByColor[oppColor].push(enriched);
+  }
+
+  return { successes, successesByColor, attempts };
+}
+
+export function countGlobalMaiaSuccesses(
+  rankedEntries,
+  { maiaResults, getRating, fenAfterLine },
+) {
+  let resolved = 0;
+  for (const entry of rankedEntries || []) {
+    const rating = getRating(entry.oppColor);
+    const fen = fenAfterLine(entry.line.ucis);
+    if (getCachedMaiaResult(maiaResults, fen, rating)) resolved += 1;
+  }
+  return resolved;
+}
+
+export function countGlobalMaiaOutcomes(
+  rankedEntries,
+  { successTarget = SCOUT_MAIA_SUCCESS_TARGET, maiaResults, getRating, fenAfterLine },
+) {
+  const pool = rankedEntries || [];
+  const expected = Math.min(successTarget, pool.length);
+  let resolved = 0;
+  let failed = 0;
+  let missing = 0;
+
+  for (const entry of pool) {
+    const rating = getRating(entry.oppColor);
+    const fen = fenAfterLine(entry.line.ucis);
+    const result = getMaiaResultEntry(maiaResults, fen, rating);
+    if (result?.failed) failed += 1;
+    else if (result?.maiaWdl && result.maiaScorePct != null) resolved += 1;
+    else missing += 1;
+  }
+
+  const targetResolved = Math.min(resolved, expected);
+  return {
+    resolved: targetResolved,
+    failed,
+    missing: Math.max(0, expected - targetResolved),
+    expected,
+  };
+}
+
+/**
+ * Game-plan rows for one colour: Maia successes from the full ranked pool
+ * (including backups beyond the Stockfish top 12), then initial display lines.
+ */
+export function buildGamePlanDisplayLines({
+  rankedEntries = [],
+  stockfishDisplayLines = [],
+  maiaResults,
+  rating,
+  fenAfterLine,
+  limit = SCOUT_PREFILTER_LIMIT,
+} = {}) {
+  const lineKey = (line) => triePathKey(line.ucis || []);
+  const seen = new Set();
+  const out = [];
+
+  for (const entry of rankedEntries) {
+    if (out.length >= limit) break;
+    const line = entry?.line ?? entry;
+    if (!line?.ucis?.length) continue;
+    const key = lineKey(line);
+    if (seen.has(key)) continue;
+    const fen = fenAfterLine(line.ucis);
+    if (!getCachedMaiaResult(maiaResults, fen, rating)) continue;
+    seen.add(key);
+    out.push(line);
+  }
+
+  for (const line of stockfishDisplayLines || []) {
+    if (out.length >= limit) break;
+    const key = lineKey(line);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(line);
+  }
+
+  return out;
+}
+
+export function globalMaiaPoolNeedsWork(
+  rankedEntries,
+  {
+    successTarget = SCOUT_MAIA_SUCCESS_TARGET,
+    maxAttempts = SCOUT_MAIA_MAX_ATTEMPTS,
+    attemptsUsed = 0,
+    maiaResults,
+    getRating,
+    fenAfterLine,
+  },
+) {
+  const pool = rankedEntries || [];
+  if (!pool.length) return false;
+  if (countGlobalMaiaSuccesses(pool, { maiaResults, getRating, fenAfterLine }) >= successTarget) {
+    return false;
+  }
+  if (attemptsUsed >= maxAttempts) return false;
+  return pool.some((entry) => {
+    const rating = getRating(entry.oppColor);
+    const fen = fenAfterLine(entry.line.ucis);
+    return !isMaiaAttempted(maiaResults, fen, rating);
+  });
 }

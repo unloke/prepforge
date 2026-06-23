@@ -943,6 +943,8 @@ export function buildScoutSectionReport(
     maiaResults = null,
     maiaRatings = null,
     maiaEnrichState = "idle",
+    prefilterEnrichState = "idle",
+    prefilteredLines = null,
   },
 ) {
   const trie = scoutModule.buildOpeningTrie(games, oppColor, { speedFilter });
@@ -969,9 +971,18 @@ export function buildScoutSectionReport(
 
   const breakdown = scoutModule.openingBreakdown(trie, { minGames: 1 });
   const sectionRating = maiaRatings?.[oppColor] ?? medianOpponentRating(games, oppColor);
-  let openingLines = scoutModule.rankedOpeningLines(trie, { oppColor });
+  const allOpeningLines = scoutModule.rankedOpeningLines(trie, { oppColor });
+  let gamePlanSource = allOpeningLines;
+  if (prefilteredLines?.length) {
+    const byKey = new Map(
+      allOpeningLines.map((line) => [scoutLineKey(line.ucis), line]),
+    );
+    gamePlanSource = prefilteredLines
+      .map((line) => byKey.get(scoutLineKey(line.ucis)) || line)
+      .filter(Boolean);
+  }
   if (maiaResults?.size) {
-    openingLines = applyMaiaToLines(openingLines, {
+    gamePlanSource = applyMaiaToLines(gamePlanSource, {
       maiaResults,
       rating: sectionRating,
       oppColor,
@@ -980,7 +991,7 @@ export function buildScoutSectionReport(
       enrichPrepTarget: scoutModule.enrichPrepTarget,
     });
   }
-  let weaknessTargets = scoutModule.rankGamePlan(openingLines, baseline, {
+  let weaknessTargets = scoutModule.rankGamePlan(gamePlanSource, baseline, {
     oppColor,
     games,
     speedFilter,
@@ -1068,7 +1079,9 @@ export function buildScoutSectionReport(
   const prepRows = prepTargets
     .map((t, i) => scoutWeaknessRowHtml(t, i, oppColor, baseline, escapeHtml))
     .join("");
-  const rankedNote = scoutMaiaRankedNote(prepTargets, maiaEnrichState);
+  const rankedNote = scoutMaiaRankedNote(prepTargets, maiaEnrichState, {
+    prefilterState: prefilterEnrichState,
+  });
   const prepPanel = prepRows
     ? `<div class="scout-game-plan">
           <div class="scout-game-plan-head">

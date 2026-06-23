@@ -66,3 +66,6 @@ Thumbs.db
 
 # Scratch analysis fixtures dropped at the repo root during manual testing
 /analysis_test.pgn
+
+# Local agent scratch logs (not source)
+agent-tools/
