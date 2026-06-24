@@ -7,17 +7,24 @@ import { analyzeGamePositions } from "./engine/game-analyzer.js";
 import { createEngineProvider } from "./engine/stockfish-provider.js";
 import { cpLossFromEvals } from "./scout-engine.js";
 import {
-  SCOUT_GAME_PLAN_LIMIT,
+  SCOUT_BRANCH_SCORE_CAP,
+  SCOUT_MAIA_LIMIT,
+  SCOUT_SCORING_VERSION,
+  SCOUT_STOCKFISH_DEPTH,
+  hashGameIdsForScope,
+  isNestedLine,
   normalizeToOpponentTerminal,
   terminalMoveIsOpponent,
   triePathKey,
 } from "./scout.js";
 
-export const SCOUT_PREFILTER_DEPTH = 8;
-export const SCOUT_PREFILTER_LIMIT = SCOUT_GAME_PLAN_LIMIT;
-/** Ranked backup pool — Maia pulls replacements from here on per-line failure. */
-export const SCOUT_PREFILTER_POOL_SIZE = 24;
+export const SCOUT_PREFILTER_DEPTH = SCOUT_STOCKFISH_DEPTH;
+export const SCOUT_PREFILTER_LIMIT = SCOUT_BRANCH_SCORE_CAP;
+/** All branch candidates run through Stockfish; Maia takes the top unique lines only. */
+export const SCOUT_PREFILTER_POOL_SIZE = SCOUT_BRANCH_SCORE_CAP;
+export const SCOUT_MAIA_PREFILTER_LIMIT = SCOUT_MAIA_LIMIT;
 export const SCOUT_PREFILTER_CONCURRENCY = 3;
+export const SCOUT_PREFILTER_TIME_BUDGET_MS = 45_000;
 export const SCOUT_PREFILTER_ENGINE_VERSION = "stockfish-18-lite";
 /** Minimum objective leak (cp) to treat a line as worth studying when the opponent missed best. */
 export const SCOUT_PREFILTER_MIN_CP_LOSS = 6;
@@ -27,9 +34,15 @@ export const PREFILTER_LOADING = "loading";
 export const PREFILTER_READY = "ready";
 export const PREFILTER_FAILED = "failed";
 
-/** Scope key — re-run prefilter when speed or ingested game count changes. */
-export function computePrefilterScopeKey({ activeSpeed, gameCount }) {
-  return `${activeSpeed || "all"}|${gameCount || 0}`;
+/** Scope key — username, speed, game-id set, and scoring version (not raw count). */
+export function computePrefilterScopeKey({
+  username,
+  activeSpeed,
+  games,
+  gameCount,
+} = {}) {
+  const idsHash = games?.length ? hashGameIdsForScope(games) : String(gameCount || 0);
+  return `${String(username || "").toLowerCase()}|${activeSpeed || "all"}|${idsHash}|${SCOUT_SCORING_VERSION}`;
 }
 
 function moverFromFen(fen) {
@@ -49,12 +62,6 @@ function fenBeforeLastMove(ucis) {
     }
   }
   return chess.fen();
-}
-
-function isNestedLine(a, b) {
-  const x = a.line || triePathKey(a.ucis || []);
-  const y = b.line || triePathKey(b.ucis || []);
-  return x === y || x.startsWith(`${y}>`) || y.startsWith(`${x}>`);
 }
 
 export function prefilterCacheKey(fen, depth = SCOUT_PREFILTER_DEPTH) {
@@ -97,6 +104,7 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor }) {
   const beforeEval = fenBefore ? evalMap.get(fenBefore) : null;
   const leafEval = fenLeaf ? evalMap.get(fenLeaf) : null;
   if (!beforeEval || !leafEval) return null;
+  if (beforeEval.complete === false || leafEval.complete === false) return null;
 
   const mover = moverFromFen(fenBefore);
   if (mover !== oppColor) return null;
@@ -175,8 +183,17 @@ export function prefilterPoolLines(ranked, poolSize = SCOUT_PREFILTER_POOL_SIZE)
   return (ranked || []).slice(0, poolSize).map((entry) => entry.line);
 }
 
-export function prefilterMaiaLines(ranked, limit = SCOUT_PREFILTER_LIMIT) {
-  return prefilterPoolLines(ranked, limit);
+export function prefilterMaiaLines(ranked, limit = SCOUT_MAIA_PREFILTER_LIMIT) {
+  const seen = new Set();
+  const out = [];
+  for (const entry of ranked || []) {
+    const key = entry.line?.line || triePathKey(entry.line?.ucis || []);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(entry.line);
+    if (out.length >= limit) break;
+  }
+  return out;
 }
 
 /** Ranked-opening fallback when Stockfish prefilter cannot run. */
@@ -192,7 +209,7 @@ export function buildFallbackPrefilterData(
     cpLoss: 0,
     playedIsBest: false,
   }));
-  const maiaLines = pool.slice(0, limit);
+  const maiaLines = prefilterMaiaLines(ranked, limit);
   return { ranked, pool, maiaLines };
 }
 
@@ -244,6 +261,11 @@ export function rememberPrefilterEvals(cache, evalMap, depth = SCOUT_PREFILTER_D
  * Shallow Stockfish pass over all candidate lines. Returns ranked entries and the
  * top pool for Maia (limit + backup headroom). Never writes UI-facing data.
  */
+function wrapEvalComplete(evalResult, complete = true) {
+  if (!evalResult) return { complete: false };
+  return { ...evalResult, complete };
+}
+
 export async function runStockfishPrefilter(
   lines,
   {
@@ -252,32 +274,48 @@ export async function runStockfishPrefilter(
     depth = SCOUT_PREFILTER_DEPTH,
     poolSize = SCOUT_PREFILTER_POOL_SIZE,
     concurrency = SCOUT_PREFILTER_CONCURRENCY,
+    timeBudgetMs = SCOUT_PREFILTER_TIME_BUDGET_MS,
     cache = new Map(),
     shouldCancel = () => false,
     createProvider = createEngineProvider,
+    now = () => Date.now(),
   } = {},
 ) {
   if (!lines?.length || !fenAfterLine || !oppColor) {
-    return { ranked: [], pool: [], maiaLines: [] };
+    return { ranked: [], pool: [], maiaLines: [], incompleteLines: [] };
   }
 
   const allFens = collectPrefilterFens(lines, { fenAfterLine, oppColor });
-  const missing = allFens.filter((fen) => !cache.has(prefilterCacheKey(fen, depth)));
+  const missing = allFens.filter((fen) => {
+    const hit = cache.get(prefilterCacheKey(fen, depth));
+    return !hit || hit.complete !== true;
+  });
+
+  const startedAt = now();
+  const budgetExpired = () => now() - startedAt >= timeBudgetMs;
+  const cancelled = () => shouldCancel() || budgetExpired();
 
   let freshEvals = new Map();
-  if (missing.length && !shouldCancel()) {
+  if (missing.length && !cancelled()) {
     freshEvals = await analyzeGamePositions({
       positions: missing,
       depth,
       concurrency,
-      shouldCancel,
+      shouldCancel: cancelled,
       createProvider: (opts) => createProvider({ ...opts, maxDepth: depth }),
     });
-    rememberPrefilterEvals(cache, freshEvals, depth);
+    for (const [fen, evalResult] of freshEvals) {
+      cache.set(prefilterCacheKey(fen, depth), wrapEvalComplete(evalResult, !cancelled()));
+    }
   }
 
-  if (shouldCancel()) {
-    return { ranked: [], pool: [], maiaLines: [], cancelled: true };
+  const superseded = shouldCancel();
+  const hitTimeBudget = budgetExpired() && !superseded;
+  for (const fen of missing) {
+    const key = prefilterCacheKey(fen, depth);
+    if (!cache.has(key)) {
+      cache.set(key, wrapEvalComplete(null, false));
+    }
   }
 
   const evalMap = evalMapFromCache(allFens, cache, depth);
@@ -287,7 +325,19 @@ export async function runStockfishPrefilter(
 
   const ranked = rankPrefilterCandidates(lines, evalMap, { fenAfterLine, oppColor });
   const pool = prefilterPoolLines(ranked, poolSize);
-  const maiaLines = pool.slice(0, SCOUT_PREFILTER_LIMIT);
+  const maiaLines = prefilterMaiaLines(ranked, SCOUT_MAIA_PREFILTER_LIMIT);
+  const incompleteLines = pool.filter((line) => {
+    const metrics = scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor });
+    return !metrics;
+  });
 
-  return { ranked, pool, maiaLines, cancelled: false };
+  return {
+    ranked,
+    pool,
+    maiaLines,
+    incompleteLines,
+    cancelled: superseded || hitTimeBudget,
+    budgetExpired: hitTimeBudget,
+    superseded,
+  };
 }

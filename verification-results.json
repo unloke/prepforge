@@ -1,0 +1,72 @@
+[
+  {
+    "candidate_line": "scout-maia.js:348",
+    "file": "web-src/scout-maia.js",
+    "vote": "REFUTED",
+    "reasoning": "enrichMaiaUntilFull iterates over rankedPool items that are line objects with ucis property. Line 344 shows: 'for (const line of rankedPool || [])' and line 348 accesses line.ucis directly, which is the correct structure.",
+    "supporting_quote": "Line 344-348: 'for (const line of rankedPool || []) { ... const key = triePathKey(line.ucis);' — rankedPool contains lines, not nested structures."
+  },
+  {
+    "candidate_line": "scout-maia.js:502",
+    "file": "web-src/scout-maia.js",
+    "vote": "REFUTED",
+    "reasoning": "Line 497 uses defensive coding: 'const line = entry?.line ?? entry;' which correctly handles BOTH wrapped entries (with .line property) AND direct line objects. This is intentional polymorphism, not a bug.",
+    "supporting_quote": "Line 497: 'const line = entry?.line ?? entry;' — this pattern safely handles both entry.line.ucis and entry.ucis by accepting either structure."
+  },
+  {
+    "candidate_line": "scout.js:484",
+    "file": "web-src/views/scout.js",
+    "vote": "REFUTED",
+    "reasoning": "Line 485 passes scoutState.prefilterRanked[oppColor], which contains entries created by rankPrefilterCandidates (scout-prefilter.js:160-163) that have structure {line, prefilterScore, ...}, then wrapped with oppColor. These match what buildGamePlanDisplayLines expects at line 497 where it reads entry?.line.",
+    "supporting_quote": "scout.js:485 'rankedEntries: scoutState.prefilterRanked?.[oppColor] || []' and scout-prefilter.js:160-163 'scored.push({line, ...metrics})' combined with scout.js:212 'entries.push({...entry, oppColor})' creates the expected wrapped structure."
+  },
+  {
+    "candidate_line": "scout-maia.js:414",
+    "file": "web-src/scout-maia.js",
+    "vote": "REFUTED",
+    "reasoning": "Line 404 extracts 'const line = entry?.line;' and line 414 safely accesses line.ucis only after confirming line exists at line 406: 'if (!line?.ucis?.length || !oppColor) continue;'. The rankedEntries come from mergeGlobalPrefilterRanked which adds oppColor wrapper around entries containing line property.",
+    "supporting_quote": "scout-maia.js:404-414: entry comes from rankedEntries; line 406 guards 'if (!line?.ucis?.length)'; line 414 'const fen = fenAfterLine(line.ucis);' is safe due to guard."
+  },
+  {
+    "candidate_line": "scout.js:544",
+    "file": "web-src/views/scout.js",
+    "vote": "REFUTED",
+    "reasoning": "Line 544 stores result.ranked from runStockfishPrefilter. This ranked array contains entries with {line, ...metrics} structure (scout-prefilter.js:160-163). When passed to buildGamePlanDisplayLines as rankedEntries, line 497 correctly reads entry?.line to get the actual line object.",
+    "supporting_quote": "scout.js:544 'scoutState.prefilterRanked[oppColor] = result.ranked;' feeds scout-prefilter.js rankPrefilterCandidates output which has structure {line: originalLine, prefilterScore, ...} at lines 160-163."
+  },
+  {
+    "candidate_line": "scout.js:481",
+    "file": "web-src/views/scout.js",
+    "vote": "REFUTED",
+    "reasoning": "stockfishDisplayLines is properly snapshotted during enrichPrefilterReads at line 549: 'snapshotStockfishDisplayLine(oppColor, scoutState.prefilteredLines[oppColor])', ensuring it stays synchronized with the current prefilter output.",
+    "supporting_quote": "scout.js:462-464 'snapshotStockfishDisplayLine(oppColor, lines)' stores into stockfishDisplayLines[oppColor], and line 549 calls this with current prefilteredLines, keeping them in sync."
+  },
+  {
+    "candidate_line": "scout-maia.js:485",
+    "file": "web-src/scout-maia.js",
+    "vote": "REFUTED",
+    "reasoning": "The byKey Map on lines 491-492 is not redundant — it deduplicates lines WITHIN the function call across both rankedEntries and stockfishDisplayLines sources. Deduplication happens at lines 499-500 and 509-511, which is necessary to avoid duplicate rows in the output.",
+    "supporting_quote": "scout-maia.js:491-512: 'const lineKey = (line) => triePathKey(line.ucis || []); const seen = new Set();' tracks seen keys across both loops to prevent duplicates in the output array."
+  },
+  {
+    "candidate_line": "scout.js:612",
+    "file": "web-src/views/scout.js",
+    "vote": "REFUTED",
+    "reasoning": "When needsWork is false (line 610), the function returns early at line 621, so maiaAttemptsUsed is not modified. When needsWork is true, maiaAttemptsUsed is initialized at line 627 and updated at line 655 after enrichment. The logic is correct — attempts only matter when actual enrichment work occurs.",
+    "supporting_quote": "scout.js:610-622: If !needsWork, return early. Only lines 624-680 execute when work is needed, and line 655 updates attempts: 'scoutState.maiaAttemptsUsed = attempts;'"
+  },
+  {
+    "candidate_line": "scout.js:485",
+    "file": "web-src/views/scout.js",
+    "vote": "REFUTED",
+    "reasoning": "At line 485, scoutState.prefilterRanked[oppColor] contains entries with oppColor already added by mergeGlobalPrefilterRanked (line 212: 'entries.push({...entry, oppColor})'). These entries have {line, oppColor, ...} structure, which buildGamePlanDisplayLines expects at line 497 where it reads entry?.line.",
+    "supporting_quote": "scout.js:212 'entries.push({...entry, oppColor});' wraps each prefilter entry with oppColor, matching buildGamePlanDisplayLines at line 497 'const line = entry?.line ?? entry;'."
+  },
+  {
+    "candidate_line": "scout-maia.js:531",
+    "file": "web-src/scout-maia.js",
+    "vote": "REFUTED",
+    "reasoning": "globalMaiaPoolNeedsWork rebuilds the check by iterating through rankedEntries (lines 535-539) to determine if ANY entry has unattempted reads. This is not redundant — the pool might be non-empty but all reads might be completed. The function correctly checks the actual state of Maia attempts, not just pool emptiness.",
+    "supporting_quote": "scout-maia.js:535-539: 'return pool.some((entry) => { ... return !isMaiaAttempted(maiaResults, fen, rating); });' checks if any entry still needs work, which cannot be determined by pool.length alone."
+  }
+]

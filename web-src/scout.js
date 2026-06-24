@@ -35,9 +35,26 @@ export const SCOUT_GAME_PLAN_LIMIT = 12;
 /** Legacy floor kept for recommendTargets / refutation repertoire gates. */
 export const WEAKNESS_MIN_GAMES = 7;
 export const SLIP_MIN_GAMES = 3;
-const BRIDGE_TOP_N = 2;
+
+export const SCOUT_RECENCY_HALF_LIFE_DAYS = 90;
+export const SCOUT_LENGTH_SATURATION_PLIES = 40;
+export const SCOUT_BRANCH_SCORE_CAP = 48;
+export const SCOUT_STOCKFISH_DEPTH = 8;
+export const SCOUT_MAIA_LIMIT = 12;
+export const SCOUT_SCORING_VERSION = 1;
+export const SCOUT_THINK_TIME_CLAMP_MIN = 0.7;
+export const SCOUT_THINK_TIME_CLAMP_MAX = 1.3;
+export const SCOUT_THINK_TIME_Z_SCALE = 0.1;
+/** Minimum per-game think medians before cohort z-scores adjust branch weights. */
+export const SCOUT_THINK_MIN_SAMPLES = 5;
+/** Standard MAD→σ scale for normal-consistent robust z-scores (median absolute deviation). */
+export const MAD_TO_SIGMA = 1.4826;
+
 const MS_PER_DAY = 86_400_000;
-const RECENCY_HALF_LIFE_DAYS = 45;
+const TRIE_RECENCY_HALF_LIFE_DAYS = 45;
+const CLK_ANNOTATION_RE = /\[%clk\s+(\d+:\d+:\d+(?:\.\d+)?)\]/;
+const SAN_TOKEN_RE =
+  /^([NBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:=[NBRQ])?[+#]?|O-O-O[+#]?|O-O[+#]?)/;
 
 function wilsonInterval(w, d, l, tail) {
   const n = (w || 0) + (d || 0) + (l || 0);
@@ -104,6 +121,11 @@ export function triePathKey(ucis, maxPlies = MAX_PLIES) {
   return ucis.slice(0, maxPlies).join(">");
 }
 
+/** Full UCI path for opening-branch identity (no ply cap). */
+export function branchPathKey(ucis) {
+  return (ucis || []).join(">");
+}
+
 export function scoutLineText(sans) {
   const parts = [];
   (sans || []).forEach((san, index) => {
@@ -135,7 +157,7 @@ export function mergeEngineIntoTargets(targets, enginePatterns) {
     return { ...target, enginePattern: pattern, hasEngineMistake: true };
   });
 }
-const CACHE_KEY = "prepforge.scout.cache.v2";
+const CACHE_KEY = "prepforge.scout.cache.v3";
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // opponents play new games constantly
 const CACHE_CAP = 8;
 
@@ -148,11 +170,29 @@ function headerValue(block, name) {
   return match ? match[1] : null;
 }
 
+/** Parse TimeControl header: "180+2" or bare base seconds. */
+export function parseTimeControlHeader(raw) {
+  if (raw == null || raw === "") return null;
+  const inc = String(raw).match(/^(\d+)\+(\d+)$/);
+  if (inc) {
+    return { baseSeconds: Number(inc[1]), incrementSeconds: Number(inc[2]) };
+  }
+  const base = String(raw).match(/^(\d+)$/);
+  if (base) return { baseSeconds: Number(base[1]), incrementSeconds: 0 };
+  return null;
+}
+
+/** Convert [%clk H:MM:SS] to whole seconds. */
+export function parseClkToSeconds(clk) {
+  const m = String(clk || "").match(/(\d+):(\d+):(\d+(?:\.\d+)?)/);
+  if (!m) return null;
+  return Math.floor(Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]));
+}
+
 function parseSpeedBucket(timeControl) {
-  if (!timeControl) return "unknown";
-  const match = String(timeControl).match(/^(\d+)\+(\d+)$/);
-  if (!match) return "unknown";
-  const n = Number(match[1]);
+  const parsed = parseTimeControlHeader(timeControl);
+  if (!parsed) return "unknown";
+  const n = parsed.baseSeconds;
   if (n < 180) return "bullet";
   if (n < 480) return "blitz";
   if (n < 1500) return "rapid";
@@ -165,22 +205,209 @@ function parseGameId(block) {
   return match ? match[1] : null;
 }
 
-// Movetext -> SAN tokens, openings only. Strips comments, variations, NAGs,
-// move numbers, results, and lichess's clock/eval annotations.
+/**
+ * Read one `{ ... }` comment from mainline movetext starting at `{`.
+ * Returns parsed `[%clk H:MM:SS]` when present; unmatched braces consume to EOF.
+ */
+function readMainlineComment(movetext, startIdx) {
+  let i = startIdx;
+  if (movetext[i] !== "{") return { clockSeconds: null, endIdx: i };
+  i += 1;
+  let depth = 1;
+  let content = "";
+  while (i < movetext.length && depth > 0) {
+    if (movetext[i] === "{") depth += 1;
+    else if (movetext[i] === "}") depth -= 1;
+    else if (depth === 1) content += movetext[i];
+    i += 1;
+  }
+  const clk = content.match(CLK_ANNOTATION_RE);
+  return {
+    clockSeconds: clk ? parseClkToSeconds(clk[1]) : null,
+    endIdx: i,
+  };
+}
+
+/** Skip a parenthesized variation starting at `(`; returns index after closing `)`. */
+function skipMainlineVariation(movetext, startIdx) {
+  let i = startIdx;
+  let depth = 0;
+  while (i < movetext.length) {
+    if (movetext[i] === "(") depth += 1;
+    else if (movetext[i] === ")") {
+      depth -= 1;
+      if (depth === 0) {
+        i += 1;
+        break;
+      }
+    }
+    i += 1;
+  }
+  return i;
+}
+
+/** Mainline-only movetext parser; preserves { [%clk H:MM:SS] } per move. */
+export function parseMainlineMoves(movetext) {
+  const moves = [];
+  let i = 0;
+  const text = String(movetext || "");
+
+  while (i < text.length) {
+    while (i < text.length && /\s/.test(text[i])) i += 1;
+    if (i >= text.length) break;
+
+    if (text[i] === "(") {
+      i = skipMainlineVariation(text, i);
+      continue;
+    }
+    if (text[i] === "{") {
+      i = readMainlineComment(text, i).endIdx;
+      continue;
+    }
+    if (text[i] === "$") {
+      while (i < text.length && /\S/.test(text[i])) i += 1;
+      continue;
+    }
+
+    const tail = text.slice(i);
+    if (/^(1-0|0-1|1\/2-1\/2|\*)\b/.test(tail)) break;
+
+    const moveNum = tail.match(/^(\d+)\.(?:\.\.)?/);
+    if (moveNum) {
+      i += moveNum[0].length;
+      while (i < text.length && /\s/.test(text[i])) i += 1;
+    }
+
+    const sanMatch = text.slice(i).match(SAN_TOKEN_RE);
+    if (!sanMatch) {
+      const junk = tail.match(/^(\S+)/);
+      if (!junk) break;
+      i += junk[0].length;
+      continue;
+    }
+
+    const san = sanMatch[1];
+    i += sanMatch[0].length;
+    while (i < text.length && /\s/.test(text[i])) i += 1;
+
+    let clockSeconds = null;
+    if (text[i] === "{") {
+      const comment = readMainlineComment(text, i);
+      clockSeconds = comment.clockSeconds;
+      i = comment.endIdx;
+    }
+
+    moves.push({ san, clockSeconds });
+  }
+  return moves;
+}
+
+// Movetext -> SAN tokens from the mainline parser (clocks stripped from output).
 export function movetextSans(movetext, maxPlies = MAX_PLIES) {
-  const cleaned = movetext
-    .replace(/\{[^}]*\}/g, " ") // comments / %clk
-    .replace(/\([^)]*\)/g, " ") // variations (one level is enough for exports)
-    .replace(/\$\d+/g, " ");
   const sans = [];
-  for (const token of cleaned.split(/\s+/)) {
-    if (!token || /^\d+\.+$/.test(token)) continue;
-    if (token === "1-0" || token === "0-1" || token === "1/2-1/2" || token === "*") break;
-    const san = token.replace(/^\d+\.+/, ""); // "1.e4" glued form
-    if (san) sans.push(san);
+  for (const { san } of parseMainlineMoves(movetext)) {
+    sans.push(san);
     if (sans.length >= maxPlies) break;
   }
   return sans;
+}
+
+/**
+ * Opponent think gaps from Lichess `[%clk H:MM:SS]` annotations (seconds).
+ * `clockAfterPly[p]` is remaining time after ply `p` (0-based); gap at ply `p` is
+ * max(0, clock[p] + increment − clock[p+2]) for each opponent ply.
+ */
+export function computeNextOwnThinkSeconds(clockAfterPly, incrementSeconds, color) {
+  const out = [];
+  const inc = Number(incrementSeconds) || 0;
+  const clocks = clockAfterPly || [];
+  const start = color === "white" ? 0 : 1;
+  for (let p = start; p < clocks.length - 2; p += 2) {
+    const before = clocks[p];
+    const after = clocks[p + 2];
+    if (before == null || after == null) {
+      out.push(null);
+      continue;
+    }
+    out.push(Math.max(0, before + inc - after));
+  }
+  return out;
+}
+
+function medianOf(values) {
+  const nums = values.filter((v) => v != null && Number.isFinite(v)).sort((a, b) => a - b);
+  if (!nums.length) return null;
+  const mid = Math.floor(nums.length / 2);
+  return nums.length % 2 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
+}
+
+function madOf(values, med) {
+  const devs = values
+    .filter((v) => v != null && Number.isFinite(v))
+    .map((v) => Math.abs(v - med))
+    .sort((a, b) => a - b);
+  if (!devs.length) return 0;
+  const mid = Math.floor(devs.length / 2);
+  return devs.length % 2 ? devs[mid] : (devs[mid - 1] + devs[mid]) / 2;
+}
+
+function openingClockAfterPly(game) {
+  const clocks = game.clockAfterPly || [];
+  if (game.openingEndPly > 0) return clocks.slice(0, game.openingEndPly);
+  if (game.openingUcis?.length) return clocks.slice(0, game.openingUcis.length);
+  return clocks;
+}
+
+/** Median opponent "next own think" seconds during the recorded opening segment. */
+export function gameNextOwnThinkMedian(game, oppColor) {
+  const thinks = computeNextOwnThinkSeconds(
+    openingClockAfterPly(game),
+    game.timeControl?.incrementSeconds ?? 0,
+    oppColor,
+  ).filter((t) => t != null && Number.isFinite(t));
+  return medianOf(thinks);
+}
+
+function recencyWeight(game, newestTs, halfLifeDays = SCOUT_RECENCY_HALF_LIFE_DAYS) {
+  if (!game.datestamp || game.datestamp <= 0) return 0.3;
+  const ageDays = Math.max(0, (newestTs - game.datestamp) / MS_PER_DAY);
+  return Math.pow(2, -ageDays / halfLifeDays);
+}
+
+function lengthWeight(totalPly, saturation = SCOUT_LENGTH_SATURATION_PLIES) {
+  const n = Number(totalPly) || 0;
+  return 0.75 + 0.25 * (1 - Math.exp(-n / saturation));
+}
+
+function thinkTimeMultiplier(z) {
+  return Math.max(
+    SCOUT_THINK_TIME_CLAMP_MIN,
+    Math.min(SCOUT_THINK_TIME_CLAMP_MAX, 1 + SCOUT_THINK_TIME_Z_SCALE * z),
+  );
+}
+
+function extractOpponentTerminalOpening(game) {
+  const oppColor = game.color;
+  const ucis = game.openingUcis?.length ? game.openingUcis : game.ucis || [];
+  const sans = game.openingSans?.length
+    ? game.openingSans
+    : (game.sans || []).slice(0, ucis.length);
+  if (!ucis.length || sans.length !== ucis.length) return null;
+  return normalizeToOpponentTerminal(ucis, sans, oppColor);
+}
+
+export function hashGameIdsForScope(games) {
+  const ids = (games || []).map((g) => g.gameId || "").filter(Boolean).sort();
+  let h = 0;
+  const str = ids.join(",");
+  for (let i = 0; i < str.length; i += 1) {
+    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  }
+  return String(h >>> 0);
+}
+
+export function computeScoutBranchScopeKey({ username, activeSpeed, games } = {}) {
+  return `${String(username || "").toLowerCase()}|${activeSpeed || "all"}|${hashGameIdsForScope(games)}|${SCOUT_SCORING_VERSION}`;
 }
 
 // One exported game -> a scout record from the SCOUTED player's point of view.
@@ -211,20 +438,25 @@ export function parseGameBlock(block, username) {
   const dateRaw = headerValue(block, "UTCDate");
   const datestamp = dateRaw ? Date.parse(dateRaw.replace(/\./g, "-")) || 0 : 0;
 
-  const timeControl = headerValue(block, "TimeControl");
-  const speed = parseSpeedBucket(timeControl);
+  const timeControlRaw = headerValue(block, "TimeControl");
+  const timeControl = parseTimeControlHeader(timeControlRaw);
+  const speed = parseSpeedBucket(timeControlRaw);
   const gameId = parseGameId(block);
 
   const moveStart = block.search(/\n\s*\n/);
   const movetext = moveStart >= 0 ? block.slice(moveStart) : block;
-  const sans = movetextSans(movetext, ANALYZE_PLIES);
-  if (!sans.length) return null;
+  const mainline = parseMainlineMoves(movetext);
+  if (!mainline.length) return null;
 
-  // Replay for UCIs (needed to walk repertoire trees, which key moves by uci).
   const chess = new Chess();
   const ucis = [];
   const replayedSans = [];
-  for (const san of sans) {
+  const clockAfterPly = [];
+  const openingUcis = [];
+  const openingSans = [];
+  let openingEndPly = 0;
+
+  for (const { san, clockSeconds } of mainline) {
     let move;
     try {
       move = chess.move(san);
@@ -232,10 +464,28 @@ export function parseGameBlock(block, username) {
       break;
     }
     if (!move) break;
-    ucis.push(move.from + move.to + (move.promotion || ""));
+    const uci = move.from + move.to + (move.promotion || "");
+    ucis.push(uci);
     replayedSans.push(move.san);
+    clockAfterPly.push(clockSeconds ?? null);
+
+    const phase = gamePhase(chess.fen());
+    if (phase === "opening") {
+      openingUcis.push(uci);
+      openingSans.push(move.san);
+      openingEndPly = openingUcis.length;
+    } else if (!openingEndPly) {
+      openingEndPly = ucis.length - 1;
+    }
   }
   if (!ucis.length) return null;
+
+  const nextOwnThinkSeconds = computeNextOwnThinkSeconds(
+    clockAfterPly,
+    timeControl?.incrementSeconds ?? 0,
+    color,
+  );
+
   return {
     color,
     score,
@@ -246,6 +496,13 @@ export function parseGameBlock(block, username) {
     datestamp,
     speed,
     gameId,
+    timeControl,
+    clockAfterPly,
+    totalPly: ucis.length,
+    openingUcis,
+    openingSans,
+    openingEndPly,
+    nextOwnThinkSeconds,
   };
 }
 
@@ -279,7 +536,7 @@ function gameWeight(games, game, recency) {
   const stamps = games.map((g) => g.datestamp).filter((d) => d > 0);
   const newestTs = stamps.length ? Math.max(...stamps) : Date.now();
   const ageDays = Math.max(0, (newestTs - game.datestamp) / MS_PER_DAY);
-  return Math.pow(0.5, ageDays / RECENCY_HALF_LIFE_DAYS);
+  return Math.pow(0.5, ageDays / TRIE_RECENCY_HALF_LIFE_DAYS);
 }
 
 function nodeScorePct(node) {
@@ -370,7 +627,7 @@ export function openingBreakdown(root, { minGames = 1 } = {}) {
 // Two lines are nested when one's move path is a prefix of the other's (e.g. "1.e4 c5"
 // and "1.e4 c5 2.Nf3" are the same Sicilian seen at different depths). We compare on the
 // ">"-joined uci path so a partial-uci coincidence can't false-match.
-function isNestedLine(a, b) {
+export function isNestedLine(a, b) {
   const x = a.line || triePathKey(a.ucis || []);
   const y = b.line || triePathKey(b.ucis || []);
   return x === y || x.startsWith(`${y}>`) || y.startsWith(`${x}>`);
@@ -477,103 +734,134 @@ function nextMoverAt(ucis) {
   return ucis.length % 2 === 0 ? "white" : "black";
 }
 
-function sortedTrieChildren(node, floor) {
-  return [...node.children.entries()]
-    .map(([key, child]) => {
-      const [uci, san] = key.split("|");
-      return { key, child, uci, san };
-    })
-    .filter(({ child }) => child.gameCount >= floor)
-    .sort((a, b) => b.child.count - a.child.count || a.uci.localeCompare(b.uci));
-}
-
-// Walk each branch to the opening boundary. With oppColor, emitted lines end on the
-// opponent's move while in-between plies bridge via the most common replies.
-export function rankedOpeningLines(
-  root,
-  { minGames = GAME_PLAN_MIN_GAMES, oppColor = null, phaseCache = openingPhaseCache } = {},
+// Aggregate one real opening branch per game (no trie bridge / prefix collapse).
+export function aggregateOpeningBranches(
+  games,
+  color,
+  { speedFilter = "all", now = Date.now() } = {},
 ) {
-  const groups = [];
-  const seen = new Set();
+  const filtered = (
+    speedFilter !== "all" ? games.filter((g) => g.speed === speedFilter) : games
+  ).filter((g) => g.color === color);
 
-  const emit = (node, sans, ucis) => {
-    if (node.gameCount < minGames || !sans.length) return;
-    if (oppColor && !terminalMoveIsOpponent(ucis, oppColor)) return;
-    const pathKey = triePathKey(ucis);
-    if (seen.has(pathKey)) return;
-    seen.add(pathKey);
-    groups.push(nodeToLineGroup(root, node, sans, ucis, pathKey));
-  };
+  const stamps = filtered.map((g) => g.datestamp).filter((d) => d > 0);
+  const newestTs = stamps.length ? Math.max(...stamps) : now;
 
-  const descendLegacy = (node, sans, ucis) => {
-    if (sans.length >= MAX_PLIES) {
-      emit(node, sans, ucis);
-      return;
-    }
-    if (openingPhaseAt(ucis, phaseCache) !== "opening") {
-      emit(node, sans, ucis);
-      return;
-    }
-    const children = sortedTrieChildren(node, minGames);
-    if (!children.length) {
-      emit(node, sans, ucis);
-      return;
-    }
-    for (let i = 1; i < children.length; i += 1) {
-      const { child, uci, san } = children[i];
-      descendLegacy(child, [...sans, san], [...ucis, uci]);
-    }
-    const { child, uci, san } = children[0];
-    descendLegacy(child, [...sans, san], [...ucis, uci]);
-  };
+  const thinkSamples = [];
+  const gameThinkMedian = new Map();
+  for (const game of filtered) {
+    const med = gameNextOwnThinkMedian(game, game.color);
+    gameThinkMedian.set(game, med);
+    if (med != null) thinkSamples.push(med);
+  }
+  const cohortMedian = medianOf(thinkSamples);
+  const cohortMad = cohortMedian != null ? madOf(thinkSamples, cohortMedian) : 0;
+  const thinkReady = thinkSamples.length >= SCOUT_THINK_MIN_SAMPLES && cohortMad > 0;
 
-  const descendColorAware = (node, sans, ucis) => {
-    if (sans.length >= MAX_PLIES) {
-      emit(node, sans, ucis);
-      return;
+  const byKey = new Map();
+  let droppedCount = 0;
+
+  for (const game of filtered) {
+    const terminal = extractOpponentTerminalOpening(game);
+    if (!terminal) {
+      droppedCount += 1;
+      continue;
     }
-    if (openingPhaseAt(ucis, phaseCache) !== "opening") {
-      emit(node, sans, ucis);
-      return;
+    const key = terminal.ucis.join(">");
+    if (!byKey.has(key)) {
+      byKey.set(key, {
+        sans: [...terminal.sans],
+        ucis: [...terminal.ucis],
+        games: 0,
+        w: 0,
+        d: 0,
+        l: 0,
+        branchScore: 0,
+        lastDatestamp: 0,
+        seenGameIds: new Set(),
+      });
+    }
+    const row = byKey.get(key);
+    if (game.gameId) {
+      if (row.seenGameIds.has(game.gameId)) continue;
+      row.seenGameIds.add(game.gameId);
     }
 
-    const mover = nextMoverAt(ucis);
-    if (mover === oppColor) {
-      const children = sortedTrieChildren(node, minGames);
-      if (!children.length) return;
-      for (const { child, uci, san } of children) {
-        const childSans = [...sans, san];
-        const childUcis = [...ucis, uci];
-        emit(child, childSans, childUcis);
-        if (
-          childSans.length < MAX_PLIES &&
-          openingPhaseAt(childUcis, phaseCache) === "opening"
-        ) {
-          descendColorAware(child, childSans, childUcis);
-        }
+    const R = recencyWeight(game, newestTs);
+    const L = lengthWeight(game.totalPly ?? game.ucis?.length ?? 0);
+    let T = 1;
+    if (thinkReady) {
+      const gameThink = gameThinkMedian.get(game);
+      if (gameThink != null) {
+        const z = (cohortMedian - gameThink) / (MAD_TO_SIGMA * cohortMad);
+        T = thinkTimeMultiplier(z);
       }
-      return;
     }
-
-    const children = sortedTrieChildren(node, GAME_PLAN_MIN_GAMES);
-    if (!children.length) {
-      emit(node, sans, ucis);
-      return;
-    }
-    for (const { child, uci, san } of children.slice(0, BRIDGE_TOP_N)) {
-      descendColorAware(child, [...sans, san], [...ucis, uci]);
-    }
-  };
-
-  const descend = oppColor ? descendColorAware : descendLegacy;
-
-  for (const [key, child] of root.children) {
-    if (child.gameCount < minGames) continue;
-    const [uci, san] = key.split("|");
-    descend(child, [san], [uci]);
+    row.branchScore += R * L * T;
+    row.games += 1;
+    if (game.score === 1) row.w += 1;
+    else if (game.score === 0.5) row.d += 1;
+    else row.l += 1;
+    if (game.datestamp > row.lastDatestamp) row.lastDatestamp = game.datestamp;
   }
 
-  return groups;
+  const branches = [...byKey.values()].map((row) => {
+    const n = row.games;
+    const pathKey = branchPathKey(row.ucis);
+    return {
+      line: pathKey,
+      sans: row.sans,
+      ucis: row.ucis,
+      games: n,
+      w: row.w,
+      d: row.d,
+      l: row.l,
+      scorePct: n > 0 ? Math.round(((row.w + 0.5 * row.d) / n) * 100) : 0,
+      share: 0,
+      rawShare: 0,
+      count: row.branchScore,
+      branchScore: row.branchScore,
+      lastDatestamp: row.lastDatestamp,
+    };
+  });
+
+  const totalScore = branches.reduce((s, b) => s + b.branchScore, 0) || 1;
+  const totalGames = branches.reduce((s, b) => s + b.games, 0) || 1;
+  for (const b of branches) {
+    b.share = b.branchScore / totalScore;
+    b.rawShare = b.games / totalGames;
+  }
+  return { branches, droppedCount };
+}
+
+/** Rank exact per-game opening branches by branchScore; top N feed Stockfish/Maia. */
+export function rankedOpeningBranches(
+  games,
+  color,
+  { speedFilter = "all", limit = SCOUT_BRANCH_SCORE_CAP, now = Date.now() } = {},
+) {
+  const { branches } = aggregateOpeningBranches(games, color, { speedFilter, now });
+  branches.sort(
+    (a, b) =>
+      b.branchScore - a.branchScore ||
+      (b.lastDatestamp || 0) - (a.lastDatestamp || 0) ||
+      b.games - a.games ||
+      a.line.localeCompare(b.line),
+  );
+  return limit > 0 ? branches.slice(0, limit) : branches;
+}
+
+/** @deprecated Trie bridge removed — use rankedOpeningBranches(games, color). */
+export function rankedOpeningLines(
+  gamesOrTrie,
+  { color, speedFilter = "all", oppColor = null, limit = SCOUT_BRANCH_SCORE_CAP } = {},
+) {
+  if (Array.isArray(gamesOrTrie)) {
+    const c = color ?? oppColor;
+    if (!c) return [];
+    return rankedOpeningBranches(gamesOrTrie, c, { speedFilter, limit });
+  }
+  return [];
 }
 
 // Unified ranked game plan: exploitability first, collapse nested prefixes, no row cap.
@@ -627,7 +915,12 @@ export function rankGamePlan(
       // Both unenriched: recent first, then share.
       const aStamp = a.lastSeen?.lastDatestamp ?? 0;
       const bStamp = b.lastSeen?.lastDatestamp ?? 0;
-      return bStamp - aStamp || b.share - a.share || b.games - a.games;
+      return (
+        bStamp - aStamp ||
+        (b.branchScore || 0) - (a.branchScore || 0) ||
+        b.share - a.share ||
+        b.games - a.games
+      );
     });
 
   const chosen = [];
@@ -946,7 +1239,7 @@ export function scoutUrl(username, max) {
   const safe = encodeURIComponent(String(username || "").trim());
   const params = new URLSearchParams({
     moves: "true",
-    clocks: "false",
+    clocks: "true",
     evals: "false",
     opening: "false",
     perfType: "bullet,blitz,rapid,classical",
@@ -963,7 +1256,7 @@ export function scoutStreamUrl(username, { color = "both", since, until, max } =
   const safe = encodeURIComponent(String(username || "").trim());
   const params = new URLSearchParams({
     moves: "true",
-    clocks: "false",
+    clocks: "true",
     evals: "false",
     opening: "false",
     perfType: "bullet,blitz,rapid,classical",

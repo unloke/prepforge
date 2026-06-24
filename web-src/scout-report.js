@@ -971,7 +971,7 @@ export function buildScoutSectionReport(
 
   const breakdown = scoutModule.openingBreakdown(trie, { minGames: 1 });
   const sectionRating = maiaRatings?.[oppColor] ?? medianOpponentRating(games, oppColor);
-  const allOpeningLines = scoutModule.rankedOpeningLines(trie, { oppColor });
+  const allOpeningLines = scoutModule.rankedOpeningBranches(games, oppColor, { speedFilter });
   let gamePlanSource = allOpeningLines;
   if (prefilteredLines?.length) {
     const byKey = new Map(

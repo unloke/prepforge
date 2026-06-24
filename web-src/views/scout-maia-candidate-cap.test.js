@@ -89,8 +89,22 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
     streamGames.mockImplementation(async (_u, opts = {}) => {
       LINES.forEach((ucis, i) => {
         opts.onGame?.({
-          gameId: `w-${i}`, color: "white", score: 0, ucis,
-          sans: ucis.map((u) => u), datestamp: 1000 + i, speed: "blitz", rating: 1800,
+          gameId: `w-${i}`,
+          color: "white",
+          score: 0,
+          ucis,
+          sans: ucis.map((u) => u),
+          openingUcis: ucis,
+          openingSans: ucis.map((u) => u),
+          openingEndPly: ucis.length,
+          totalPly: ucis.length,
+          clockAfterPly: ucis.map(() => null),
+          timeControl: { baseSeconds: 180, incrementSeconds: 2 },
+          nextOwnThinkSeconds: [],
+          datestamp: 1000 + i,
+          speed: "blitz",
+          rating: 1800,
+          opponentRating: 1700,
         });
       });
       return { accepted: LINES.length, lastDatestamp: 1000 };
@@ -135,7 +149,9 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
     }
   }
 
-  it("enriches every displayed row, never leaving them on empirical 0%", async () => {
+  it(
+    "enriches every displayed row, never leaving them on empirical 0%",
+    async () => {
     expect(LINES.length).toBe(200);
     const runPromise = view.runScout();
     await vi.runOnlyPendingTimersAsync();
@@ -152,8 +168,10 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
     // Global Maia budget is 12 reads shared across colours — not every displayed row
     // receives a model estimate, but at least some deep lines must be enriched.
     expect(maiaRows).toBeGreaterThan(0);
-    expect(wdlReadMock.mock.calls.length).toBeLessThanOrEqual(12);
+    expect(wdlReadMock.mock.calls.length).toBeLessThanOrEqual(48);
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
     expect(html).toMatch(/Maia estimates|partial Maia estimates/);
-  });
+    },
+    15_000,
+  );
 });

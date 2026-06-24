@@ -486,7 +486,7 @@ export function buildGamePlanDisplayLines({
   maiaResults,
   rating,
   fenAfterLine,
-  limit = SCOUT_PREFILTER_LIMIT,
+  limit = SCOUT_MAIA_TARGET_COUNT,
 } = {}) {
   const lineKey = (line) => triePathKey(line.ucis || []);
   const seen = new Set();

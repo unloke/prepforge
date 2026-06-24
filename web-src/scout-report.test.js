@@ -39,8 +39,23 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+function scoutGameRecord(game) {
+  const ucis = game.ucis || [];
+  return {
+    opponentRating: 1700,
+    openingUcis: ucis,
+    openingSans: game.sans || [],
+    openingEndPly: ucis.length,
+    totalPly: ucis.length,
+    clockAfterPly: ucis.map(() => null),
+    timeControl: null,
+    nextOwnThinkSeconds: [],
+    ...game,
+  };
+}
+
 const GAMES = [
-  {
+  scoutGameRecord({
     color: "white",
     score: 1,
     sans: ["e4", "c5", "Nf3"],
@@ -48,8 +63,8 @@ const GAMES = [
     rating: 1800,
     datestamp: 3000,
     speed: "blitz",
-  },
-  {
+  }),
+  scoutGameRecord({
     color: "white",
     score: 0,
     sans: ["e4", "c5", "Nf3"],
@@ -57,8 +72,8 @@ const GAMES = [
     rating: 1800,
     datestamp: 2000,
     speed: "blitz",
-  },
-  {
+  }),
+  scoutGameRecord({
     color: "white",
     score: 1,
     sans: ["d4", "d5"],
@@ -66,30 +81,34 @@ const GAMES = [
     rating: 1800,
     datestamp: 1000,
     speed: "blitz",
-  },
+  }),
 ];
 
 const PLAN_GAMES = [
-  ...Array.from({ length: 8 }, (_, i) => ({
-    color: "white",
-    score: i % 3 === 0 ? 1 : 0,
-    sans: ["e4", "c5", "Nf3"],
-    ucis: ["e2e4", "c7c5", "g1f3"],
-    rating: 1800,
-    datestamp: 4000 - i * 100,
-    speed: "blitz",
-    gameId: `sicilian-${i}`,
-  })),
-  ...Array.from({ length: 7 }, (_, i) => ({
-    color: "white",
-    score: i % 2 === 0 ? 1 : 0,
-    sans: ["d4", "d5"],
-    ucis: ["d2d4", "d7d5"],
-    rating: 1800,
-    datestamp: 3000 - i * 100,
-    speed: "blitz",
-    gameId: `london-${i}`,
-  })),
+  ...Array.from({ length: 8 }, (_, i) =>
+    scoutGameRecord({
+      color: "white",
+      score: i % 3 === 0 ? 1 : 0,
+      sans: ["e4", "c5", "Nf3"],
+      ucis: ["e2e4", "c7c5", "g1f3"],
+      rating: 1800,
+      datestamp: 4000 - i * 100,
+      speed: "blitz",
+      gameId: `sicilian-${i}`,
+    }),
+  ),
+  ...Array.from({ length: 7 }, (_, i) =>
+    scoutGameRecord({
+      color: "white",
+      score: i % 2 === 0 ? 1 : 0,
+      sans: ["d4", "d5", "c4"],
+      ucis: ["d2d4", "d7d5", "c2c4"],
+      rating: 1800,
+      datestamp: 3000 - i * 100,
+      speed: "blitz",
+      gameId: `london-${i}`,
+    }),
+  ),
 ];
 
 const LOOKUPS = {
@@ -739,6 +758,11 @@ describe("Maia estimate rendering", () => {
     rememberMaiaResult(maiaResults, fen, 1800, {
       maiaWdl: { win: 120, draw: 180, loss: 700 },
       maiaScorePct: 27,
+    });
+    const londonUcis = ["d2d4", "d7d5", "c2c4"];
+    rememberMaiaResult(maiaResults, scoutModule.fenAfterLine(londonUcis), 1800, {
+      maiaWdl: { win: 200, draw: 200, loss: 600 },
+      maiaScorePct: 40,
     });
     const base = {
       games: PLAN_GAMES,

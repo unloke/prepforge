@@ -3,7 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ANALYZE_PLIES,
   MAX_PLIES,
+  SCOUT_BRANCH_SCORE_CAP,
+  SCOUT_RECENCY_HALF_LIFE_DAYS,
+  aggregateOpeningBranches,
+  branchPathKey,
   buildOpeningTrie,
+  computeNextOwnThinkSeconds,
+  gameNextOwnThinkMedian,
   createScoutClient,
   SCOUT_ERR_NETWORK,
   SCOUT_ERR_RATE_LIMIT,
@@ -15,15 +21,18 @@ import {
   movetextSans,
   openingBreakdown,
   opponentProfile,
+  parseClkToSeconds,
   parseGameBlock,
+  parseMainlineMoves,
   parseMultiPgn,
+  parseTimeControlHeader,
   nodeIdAfterFlush,
-  clearOpeningPhaseCache,
   rankGamePlan,
-  rankedOpeningLines,
+  rankedOpeningBranches,
   recommendTargets,
   normalizeToOpponentTerminal,
   terminalMoveIsOpponent,
+  triePathKey,
   wilsonScorePct,
   wilsonScoreUpperPct,
   repertoireChildLookup,
@@ -35,6 +44,41 @@ import {
   topLines,
   WEAKNESS_MIN_GAMES,
 } from "./scout.js";
+
+function scoutGame({
+  color = "white",
+  score = 1,
+  sans,
+  ucis,
+  rating = 1800,
+  datestamp = 1000,
+  speed = "blitz",
+  gameId = null,
+  clockAfterPly = null,
+  timeControl = null,
+  totalPly = null,
+}) {
+  const openingUcis = ucis;
+  const openingSans = sans;
+  return {
+    color,
+    score,
+    sans,
+    ucis,
+    openingUcis,
+    openingSans,
+    openingEndPly: ucis.length,
+    totalPly: totalPly ?? ucis.length,
+    clockAfterPly: clockAfterPly ?? ucis.map(() => null),
+    timeControl,
+    nextOwnThinkSeconds: [],
+    rating,
+    opponentRating: 1800,
+    datestamp,
+    speed,
+    gameId,
+  };
+}
 
 function pgn({
   white = "Foe",
@@ -56,7 +100,7 @@ function pgn({
   return `[Event "Rated Blitz game"]\n[White "${white}"]\n[Black "${black}"]\n${extras.join("\n")}${extras.length ? "\n" : ""}[Result "${result}"]\n\n${moves} ${result}\n`;
 }
 
-describe("movetextSans", () => {
+describe("movetextSans + clock parsing", () => {
   it("strips comments, clocks, numbers and results", () => {
     const sans = movetextSans(
       "1. e4 { [%clk 0:03:00] } e5 2. Nf3 $1 (2. f4 exf4) 2... Nc6 1-0",
@@ -65,6 +109,38 @@ describe("movetextSans", () => {
   });
   it("caps at the requested ply depth", () => {
     expect(movetextSans("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6", 3)).toEqual(["e4", "e5", "Nf3"]);
+  });
+  it("parseMainlineMoves preserves [%clk] per move", () => {
+    const moves = parseMainlineMoves("1. e4 { [%clk 0:03:00] } e5 { [%clk 0:02:58] }");
+    expect(moves).toEqual([
+      { san: "e4", clockSeconds: 180 },
+      { san: "e5", clockSeconds: 178 },
+    ]);
+  });
+  it("parseTimeControlHeader handles 180+2 and bare base", () => {
+    expect(parseTimeControlHeader("180+2")).toEqual({
+      baseSeconds: 180,
+      incrementSeconds: 2,
+    });
+    expect(parseTimeControlHeader("180")).toEqual({
+      baseSeconds: 180,
+      incrementSeconds: 0,
+    });
+    expect(parseTimeControlHeader("")).toBeNull();
+    expect(parseTimeControlHeader("daily")).toBeNull();
+  });
+  it("parseClkToSeconds converts H:MM:SS", () => {
+    expect(parseClkToSeconds("0:03:00")).toBe(180);
+    expect(parseClkToSeconds("0:03:01")).toBe(181);
+  });
+  it("computes next-own-think delta for black ...Nf6 then ...g6", () => {
+    const clocks = [180, 180, 180, 181];
+    const thinks = computeNextOwnThinkSeconds(clocks, 2, "black");
+    expect(thinks[0]).toBe(1);
+  });
+  it("scoutUrl requests clocks=true", () => {
+    expect(scoutUrl("Foe")).toContain("clocks=true");
+    expect(scoutStreamUrl("Foe")).toContain("clocks=true");
   });
 });
 
@@ -83,6 +159,27 @@ describe("parseGameBlock / parseMultiPgn", () => {
     expect(game.color).toBe("black");
     expect(game.score).toBe(0);
   });
+  it("parses clocks, time control, and opening metadata from movetext", () => {
+    const game = parseGameBlock(
+      pgn({
+        moves:
+          "1. d4 { [%clk 0:03:00] } Nf6 { [%clk 0:03:00] } 2. e4 { [%clk 0:03:00] } g6 { [%clk 0:03:01] }",
+        timeControl: "180+2",
+        black: "Foe",
+        white: "Rival",
+        result: "0-1",
+      }),
+      "foe",
+    );
+    expect(game.timeControl).toEqual({ baseSeconds: 180, incrementSeconds: 2 });
+    expect(game.clockAfterPly[1]).toBe(180);
+    expect(game.clockAfterPly[3]).toBe(181);
+    expect(game.totalPly).toBe(4);
+    expect(game.openingUcis?.length).toBeGreaterThan(0);
+    const thinks = computeNextOwnThinkSeconds(game.clockAfterPly, 2, "black");
+    expect(thinks[0]).toBe(1);
+  });
+
   it("parses Elo, date, and speed bucket from headers", () => {
     const game = parseGameBlock(
       pgn({
@@ -137,51 +234,39 @@ describe("parseGameBlock / parseMultiPgn", () => {
 });
 
 const GAMES = [
-  {
-    color: "white",
+  scoutGame({
     score: 1,
     sans: ["e4", "e5", "Nf3"],
     ucis: ["e2e4", "e7e5", "g1f3"],
-    rating: 1800,
     datestamp: 1000,
-    speed: "blitz",
-  },
-  {
-    color: "white",
+  }),
+  scoutGame({
     score: 0,
     sans: ["e4", "c5", "Nf3"],
     ucis: ["e2e4", "c7c5", "g1f3"],
-    rating: 1800,
     datestamp: 2000,
-    speed: "blitz",
-  },
-  {
-    color: "white",
+  }),
+  scoutGame({
     score: 1,
     sans: ["e4", "c5", "Nf3"],
     ucis: ["e2e4", "c7c5", "g1f3"],
-    rating: 1800,
     datestamp: 3000,
     speed: "rapid",
-  },
-  {
-    color: "white",
+  }),
+  scoutGame({
     score: 0.5,
     sans: ["d4", "d5"],
     ucis: ["d2d4", "d7d5"],
-    rating: 1800,
     datestamp: 4000,
-    speed: "blitz",
-  },
-  {
+  }),
+  scoutGame({
     color: "black",
     score: 1,
     sans: ["e4", "c5"],
     ucis: ["e2e4", "c7c5"],
     rating: 1750,
     datestamp: 5000,
-    speed: "blitz",
-  },
+  }),
 ];
 
 describe("buildOpeningTrie + distribution + topLines", () => {
@@ -396,122 +481,199 @@ describe("openingBreakdown + recommendTargets", () => {
   });
 });
 
-describe("rankedOpeningLines + rankGamePlan", () => {
-  it("collects opening-boundary lines from the trie", () => {
-    const trie = buildOpeningTrie(GAMES, "white", { recency: false });
-    const lines = rankedOpeningLines(trie, { minGames: 1 });
+describe("rankedOpeningBranches + rankGamePlan", () => {
+  it("collects one real opening branch per game", () => {
+    const lines = rankedOpeningBranches(GAMES, "white");
     expect(lines.some((g) => g.sans[0] === "e4")).toBe(true);
     expect(lines.some((g) => g.sans[0] === "d4")).toBe(true);
     for (const line of lines) {
       expect(line.sans.length).toBeGreaterThan(0);
-      expect(line.sans.length).toBeLessThanOrEqual(MAX_PLIES);
+      expect(terminalMoveIsOpponent(line.ucis, "white")).toBe(true);
     }
   });
 
-  it("reports a real-count rawShare even when recency decays count to ~0", () => {
-    // One d4 game from long ago: its recency-weighted count/share collapse toward 0,
-    // but the line is still a real n=1 prep target — rawShare/games must reflect that.
+  it("keeps raw game counts while branchScore applies recency decay", () => {
     const old = Date.now() - 400 * 86_400_000;
     const games = [
-      ...Array.from({ length: 20 }, (_, i) => ({
-        color: "white",
-        score: 1,
-        sans: ["e4", "c5"],
-        ucis: ["e2e4", "c7c5"],
-        rating: 1800,
-        datestamp: Date.now() - i * 86_400_000,
-        speed: "blitz",
-      })),
-      {
-        color: "white",
-        score: 0,
+      ...Array.from({ length: 20 }, (_, i) =>
+        scoutGame({
+          sans: ["e4", "c5"],
+          ucis: ["e2e4", "c7c5"],
+          datestamp: Date.now() - i * 86_400_000,
+          gameId: `e${i}`,
+        }),
+      ),
+      scoutGame({
         sans: ["d4", "d5"],
         ucis: ["d2d4", "d7d5"],
-        rating: 1800,
         datestamp: old,
-        speed: "blitz",
-      },
+        gameId: "d-old",
+      }),
     ];
-    const trie = buildOpeningTrie(games, "white", { recency: true });
-    const lines = rankedOpeningLines(trie, { minGames: 1 });
+    const lines = rankedOpeningBranches(games, "white");
     const d4 = lines.find((l) => l.ucis[0] === "d2d4");
     expect(d4).toBeDefined();
-    expect(d4.games).toBe(1); // real game count, undecayed
-    expect(Math.round(d4.count)).toBe(0); // recency weight rounds to 0 (the old bug source)
-    expect(d4.rawShare).toBeCloseTo(1 / 21, 4); // raw proportion is non-zero
+    expect(d4.games).toBe(1);
+    expect(d4.branchScore).toBeGreaterThan(0);
+    expect(d4.branchScore).toBeLessThan(0.5);
+    expect(d4.rawShare).toBeCloseTo(1 / 21, 4);
   });
 
-  it("With White keeps distinct d4 lines ending on White's move", () => {
+  it("With White keeps distinct d4 branches without prefix collapse", () => {
     const londonGames = [
-      ...Array.from({ length: 10 }, (_, i) => ({
-        color: "white",
-        score: 0.5,
-        sans: ["d4", "Nf6", "c4"],
-        ucis: ["d2d4", "g8f6", "c2c4"],
-        rating: 1800,
-        datestamp: 3000 - i,
-        speed: "blitz",
-      })),
-      ...Array.from({ length: 8 }, (_, i) => ({
-        color: "white",
-        score: 0,
-        sans: ["d4", "d5", "c4"],
-        ucis: ["d2d4", "d7d5", "c2c4"],
-        rating: 1800,
-        datestamp: 2000 - i,
-        speed: "blitz",
-      })),
+      ...Array.from({ length: 10 }, (_, i) =>
+        scoutGame({
+          score: 0.5,
+          sans: ["d4", "Nf6", "c4"],
+          ucis: ["d2d4", "g8f6", "c2c4"],
+          datestamp: 3000 - i,
+          gameId: `nf6-${i}`,
+        }),
+      ),
+      ...Array.from({ length: 8 }, (_, i) =>
+        scoutGame({
+          score: 0,
+          sans: ["d4", "d5", "c4"],
+          ucis: ["d2d4", "d7d5", "c2c4"],
+          datestamp: 2000 - i,
+          gameId: `d5-${i}`,
+        }),
+      ),
     ];
-    const trie = buildOpeningTrie(londonGames, "white", { recency: false });
-    const lines = rankedOpeningLines(trie, { oppColor: "white" });
+    const lines = rankedOpeningBranches(londonGames, "white");
     const nf6 = lines.find((l) => l.ucis.join(">") === "d2d4>g8f6>c2c4");
     const d5 = lines.find((l) => l.ucis.join(">") === "d2d4>d7d5>c2c4");
     expect(nf6).toBeDefined();
     expect(d5).toBeDefined();
     expect(terminalMoveIsOpponent(nf6.ucis, "white")).toBe(true);
     expect(terminalMoveIsOpponent(d5.ucis, "white")).toBe(true);
-    const collapsed = lines.find((l) => l.ucis.length === 1 && l.ucis[0] === "d2d4");
-    expect(collapsed).toBeUndefined();
+    expect(lines.find((l) => l.ucis.length === 1 && l.ucis[0] === "d2d4")).toBeUndefined();
   });
 
-  it("With Black ends lines on Black's move with White context bridged", () => {
+  it("With Black ends each branch on Black's actual opening move", () => {
     const games = [
-      ...Array.from({ length: 6 }, () => ({
-        color: "black",
-        score: 1,
-        sans: ["e4", "c5", "Nf3"],
-        ucis: ["e2e4", "c7c5", "g1f3"],
-        rating: 1750,
-        datestamp: 1000,
-        speed: "blitz",
-      })),
-      ...Array.from({ length: 4 }, () => ({
-        color: "black",
-        score: 0,
-        sans: ["e4", "e5", "Nf3"],
-        ucis: ["e2e4", "e7e5", "g1f3"],
-        rating: 1750,
-        datestamp: 2000,
-        speed: "blitz",
-      })),
+      ...Array.from({ length: 6 }, (_, i) =>
+        scoutGame({
+          color: "black",
+          score: 1,
+          sans: ["e4", "c5"],
+          ucis: ["e2e4", "c7c5"],
+          datestamp: 1000 + i,
+          gameId: `sic-${i}`,
+        }),
+      ),
+      ...Array.from({ length: 4 }, (_, i) =>
+        scoutGame({
+          color: "black",
+          score: 0,
+          sans: ["e4", "e5"],
+          ucis: ["e2e4", "e7e5"],
+          datestamp: 2000 + i,
+          gameId: `kg-${i}`,
+        }),
+      ),
     ];
-    const trie = buildOpeningTrie(games, "black", { recency: false });
-    const lines = rankedOpeningLines(trie, { oppColor: "black" });
+    const lines = rankedOpeningBranches(games, "black");
     const sicilian = lines.find((l) => l.ucis.join(">") === "e2e4>c7c5");
     expect(sicilian).toBeDefined();
     expect(terminalMoveIsOpponent(sicilian.ucis, "black")).toBe(true);
     expect(sicilian.sans).toEqual(["e4", "c5"]);
   });
 
-  it("reuses opening-phase cache across shared path prefixes", () => {
-    clearOpeningPhaseCache();
-    const trie = buildOpeningTrie(GAMES, "white", { recency: false });
-    const cache = new Map();
-    rankedOpeningLines(trie, { minGames: 1, phaseCache: cache });
-    const sizeAfterFirst = cache.size;
-    rankedOpeningLines(trie, { minGames: 1, phaseCache: cache });
-    expect(sizeAfterFirst).toBeGreaterThan(0);
-    expect(cache.size).toBe(sizeAfterFirst);
+  it("branchPathKey preserves the full UCI path beyond MAX_PLIES", () => {
+    const ucis = Array.from({ length: 20 }, (_, i) => `u${i}`);
+    expect(branchPathKey(ucis)).toBe(ucis.join(">"));
+    expect(branchPathKey(ucis).length).toBeGreaterThan(triePathKey(ucis).length);
+  });
+
+  it("keeps distinct branches that share only the first MAX_PLIES", () => {
+    const shared = Array.from({ length: 16 }, (_, i) => `p${i}`);
+    const branchA = [...shared, "a16"];
+    const branchB = [...shared, "b16"];
+    const games = [
+      scoutGame({
+        sans: branchA,
+        ucis: branchA,
+        gameId: "a",
+        datestamp: 2000,
+      }),
+      scoutGame({
+        sans: branchB,
+        ucis: branchB,
+        gameId: "b",
+        datestamp: 1000,
+      }),
+    ];
+    const { branches } = aggregateOpeningBranches(games, "white");
+    expect(branches).toHaveLength(2);
+    expect(triePathKey(branchA)).toBe(triePathKey(branchB));
+    expect(branches.map((b) => b.line).sort()).toEqual(
+      [branchPathKey(branchA), branchPathKey(branchB)].sort(),
+    );
+  });
+
+  it("gameNextOwnThinkMedian ignores clocks beyond openingEndPly", () => {
+    const clocks = [180, 180, 180, 181, 5, 5, 5, 5, 5, 5];
+    const openingOnly = gameNextOwnThinkMedian(
+      {
+        color: "black",
+        openingEndPly: 4,
+        clockAfterPly: clocks,
+        timeControl: { baseSeconds: 180, incrementSeconds: 2 },
+      },
+      "black",
+    );
+    const fullGame = gameNextOwnThinkMedian(
+      {
+        color: "black",
+        openingEndPly: clocks.length,
+        clockAfterPly: clocks,
+        timeControl: { baseSeconds: 180, incrementSeconds: 2 },
+      },
+      "black",
+    );
+    expect(openingOnly).toBe(1);
+    expect(fullGame).toBeLessThan(5);
+    expect(fullGame).toBeGreaterThan(openingOnly);
+  });
+
+  it("falls back to legacy ucis/sans when opening fields are absent", () => {
+    const legacy = [
+      {
+        color: "white",
+        score: 1,
+        sans: ["e4", "c5", "Nf3"],
+        ucis: ["e2e4", "c7c5", "g1f3"],
+        datestamp: 1000,
+        speed: "blitz",
+        gameId: "legacy-1",
+      },
+      {
+        color: "white",
+        score: 0,
+        sans: ["d4", "d5", "c4"],
+        ucis: ["d2d4", "d7d5", "c2c4"],
+        datestamp: 2000,
+        speed: "blitz",
+        gameId: "legacy-2",
+      },
+    ];
+    const branches = rankedOpeningBranches(legacy, "white");
+    expect(branches).toHaveLength(2);
+    expect(branches.some((b) => b.ucis.join(">") === "e2e4>c7c5>g1f3")).toBe(true);
+    expect(branches.some((b) => b.ucis.join(">") === "d2d4>d7d5>c2c4")).toBe(true);
+  });
+
+  it("caps candidate branches at SCOUT_BRANCH_SCORE_CAP", () => {
+    const games = Array.from({ length: 60 }, (_, i) =>
+      scoutGame({
+        sans: [`m${i}`],
+        ucis: [`u${i}`],
+        gameId: `g${i}`,
+        datestamp: i,
+      }),
+    );
+    expect(rankedOpeningBranches(games, "white")).toHaveLength(SCOUT_BRANCH_SCORE_CAP);
   });
 
   it("ranks most-exploitable lines first and collapses nested prefixes", () => {

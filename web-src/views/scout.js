@@ -377,9 +377,13 @@ export function createScoutView(deps) {
     }, MAIA_ENRICH_DEBOUNCE_MS);
   }
 
-  function allOpeningLinesForColor(section, oppColor) {
-    if (!section?.trie || !scoutModule?.rankedOpeningLines) return [];
-    return scoutModule.rankedOpeningLines(section.trie, { oppColor }) || [];
+  function allOpeningLinesForColor(_section, oppColor) {
+    if (!scoutState?.games?.length || !scoutModule?.rankedOpeningBranches) return [];
+    return (
+      scoutModule.rankedOpeningBranches(scoutState.games, oppColor, {
+        speedFilter: scoutState.activeSpeed,
+      }) || []
+    );
   }
 
   function prefilterPoolForColor(section, oppColor) {
@@ -399,8 +403,9 @@ export function createScoutView(deps) {
 
   function currentPrefilterScopeKey() {
     return computePrefilterScopeKey({
+      username: scoutState.username,
       activeSpeed: scoutState.activeSpeed,
-      gameCount: scoutState.games.length,
+      games: scoutState.games,
     });
   }
 
@@ -465,12 +470,13 @@ export function createScoutView(deps) {
 
   function applyPrefilterFallbackForColor(section, oppColor) {
     const lines = allOpeningLinesForColor(section, oppColor);
+    if (!lines.length) return;
     const fallback = buildFallbackPrefilterData(lines);
     scoutState.prefilterPools[oppColor] = fallback.pool;
     scoutState.prefilterRanked[oppColor] = fallback.ranked;
     scoutState.prefilteredLines[oppColor] = fallback.maiaLines;
     snapshotStockfishDisplayLine(oppColor, fallback.maiaLines);
-    prefilterCandidateCache.delete(section.trie);
+    if (section?.trie) prefilterCandidateCache.delete(section.trie);
   }
 
   function refreshGamePlanDisplayLines() {
@@ -528,15 +534,15 @@ export function createScoutView(deps) {
       for (const oppColor of ["white", "black"]) {
         if (gen !== prefilterEnrichSeq) return;
         const section = scoutState.sections?.[oppColor];
-        if (!section?.trie) continue;
         const lines = allOpeningLinesForColor(section, oppColor);
+        if (!lines.length) continue;
         const result = await runStockfishPrefilter(lines, {
           fenAfterLine: scoutModule.fenAfterLine,
           oppColor,
           cache: scoutState.prefilterCache,
           shouldCancel: () => gen !== prefilterEnrichSeq,
         });
-        if (gen !== prefilterEnrichSeq || result.cancelled) return;
+        if (gen !== prefilterEnrichSeq) return;
         if (!result.ranked?.length) {
           applyPrefilterFallbackForColor(section, oppColor);
         } else {
@@ -547,7 +553,7 @@ export function createScoutView(deps) {
               ? result.maiaLines
               : lines.slice(0, SCOUT_PREFILTER_LIMIT);
           snapshotStockfishDisplayLine(oppColor, scoutState.prefilteredLines[oppColor]);
-          prefilterCandidateCache.delete(section.trie);
+          if (section?.trie) prefilterCandidateCache.delete(section.trie);
         }
       }
       if (gen !== prefilterEnrichSeq) return;
@@ -556,9 +562,8 @@ export function createScoutView(deps) {
     } catch (_) {
       if (gen === prefilterEnrichSeq && scoutState) {
         for (const oppColor of ["white", "black"]) {
-          const section = scoutState.sections?.[oppColor];
-          if (!section?.trie) continue;
           if (scoutState.prefilterPools?.[oppColor]?.length) continue;
+          const section = scoutState.sections?.[oppColor];
           applyPrefilterFallbackForColor(section, oppColor);
         }
         scoutState.prefilterEnrichState = PREFILTER_FAILED;

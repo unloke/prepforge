@@ -61,10 +61,18 @@ function weaknessGames() {
     color: "white",
     score: i % 3 === 0 ? 0 : i % 3 === 1 ? 1 : 0.5,
     ucis,
-    sans: ucis.map((u) => u), // sans irrelevant to FEN/key matching
+    sans: ucis.map((u) => u),
+    openingUcis: ucis,
+    openingSans: ucis.map((u) => u),
+    openingEndPly: ucis.length,
+    totalPly: ucis.length,
+    clockAfterPly: ucis.map(() => null),
+    timeControl: { baseSeconds: 180, incrementSeconds: 2 },
+    nextOwnThinkSeconds: [],
     datestamp: 1000 + i,
     speed: "blitz",
     rating: 1800,
+    opponentRating: 1700,
   }));
 }
 
@@ -119,6 +127,71 @@ describe("scout maia enrichment orchestration", () => {
     await vi.advanceTimersByTimeAsync(2000);
     await vi.runOnlyPendingTimersAsync();
   }
+
+  it("settles prefilter and runs Maia when Stockfish hits the time budget", async () => {
+    const { runStockfishPrefilter } = await import("../scout-prefilter.js");
+    runStockfishPrefilter.mockImplementation(async (lines) => ({
+      ranked: lines.slice(0, 3).map((line) => ({ line, prefilterScore: 12, hasUserReply: true })),
+      pool: lines.slice(0, 3),
+      maiaLines: lines.slice(0, 3),
+      cancelled: true,
+      budgetExpired: true,
+      superseded: false,
+    }));
+
+    wdlReadMock.mockClear();
+    await view.runScout();
+    await flushDeferredTimers();
+
+    expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
+    expect(elements.get("scout-results").innerHTML).toContain("scout-maia-estimate");
+  });
+
+  it("completes Stockfish prefilter on the success path without falling into failed fallback", async () => {
+    const { runStockfishPrefilter } = await import("../scout-prefilter.js");
+    runStockfishPrefilter.mockImplementation(async (lines) => ({
+      ranked: lines.map((line) => ({ line, prefilterScore: 15, hasUserReply: true })),
+      pool: lines,
+      maiaLines: lines.slice(0, 12),
+      cancelled: false,
+    }));
+
+    await view.runScout();
+    await flushDeferredTimers();
+
+    expect(runStockfishPrefilter.mock.calls.length).toBeGreaterThan(0);
+    for (const [lines] of runStockfishPrefilter.mock.calls) {
+      expect(lines.length).toBeGreaterThan(0);
+    }
+    expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
+  });
+
+  it("does not run Stockfish or Maia while games are still streaming", async () => {
+    const { runStockfishPrefilter } = await import("../scout-prefilter.js");
+    runStockfishPrefilter.mockClear();
+    wdlReadMock.mockClear();
+
+    let finishStream;
+    streamGames.mockImplementation((_u, opts = {}) =>
+      new Promise((resolve) => {
+        finishStream = async () => {
+          for (const g of weaknessGames().slice(0, 2)) opts.onGame?.(g);
+          resolve({ accepted: 2, lastDatestamp: 1000 });
+        };
+      }),
+    );
+
+    const runPromise = view.runScout();
+    await vi.runOnlyPendingTimersAsync();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(runStockfishPrefilter.mock.calls.length).toBe(0);
+    expect(wdlReadMock.mock.calls.length).toBe(0);
+
+    await finishStream();
+    await runPromise;
+    await flushDeferredTimers();
+    expect(runStockfishPrefilter.mock.calls.length).toBeGreaterThan(0);
+  });
 
   it("enriches displayed prep rows with Maia after a clean stream end", async () => {
     const runPromise = view.runScout();

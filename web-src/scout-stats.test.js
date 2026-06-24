@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  aggregateOpeningBranches,
+  SCOUT_RECENCY_HALF_LIFE_DAYS,
+} from "./scout.js";
+import {
   ACTIVITY_RECENT_BUCKETS,
   activitySeries,
   BREADTH_MIN_GAMES,
@@ -717,6 +721,165 @@ describe("scoreBySpeed", () => {
     ];
     expect(scoreBySpeed(games, { color: "white" }).buckets.bullet.games).toBe(1);
     expect(scoreBySpeed(games, { color: "black" }).buckets.blitz.games).toBe(1);
+  });
+});
+
+function branchGame({
+  color = "white",
+  ucis,
+  sans,
+  score = 1,
+  datestamp = 1000,
+  gameId = "g1",
+  totalPly = 80,
+  clockAfterPly = null,
+  timeControl = { baseSeconds: 180, incrementSeconds: 2 },
+}) {
+  return {
+    color,
+    score,
+    sans,
+    ucis,
+    openingUcis: ucis,
+    openingSans: sans,
+    openingEndPly: ucis.length,
+    totalPly,
+    clockAfterPly: clockAfterPly ?? ucis.map(() => null),
+    timeControl,
+    nextOwnThinkSeconds: [],
+    datestamp,
+    speed: "blitz",
+    gameId,
+    rating: 1800,
+    opponentRating: 1800,
+  };
+}
+
+describe("aggregateOpeningBranches scoring", () => {
+  const now = Date.parse("2026-06-24");
+
+  it("weights recency, length, and fast-next-move think time", () => {
+    const recentLongFast = branchGame({
+      ucis: ["e2e4", "c7c5", "g1f3"],
+      sans: ["e4", "c5", "Nf3"],
+      datestamp: now,
+      gameId: "fast",
+      totalPly: 80,
+      clockAfterPly: [180, 180, 180, 181, 180, 181],
+    });
+    const oldShortSlow = branchGame({
+      ucis: ["d2d4"],
+      sans: ["d4"],
+      datestamp: now - 200 * 24 * 60 * 60 * 1000,
+      gameId: "slow",
+      totalPly: 12,
+      clockAfterPly: [180, 170],
+    });
+    const { branches } = aggregateOpeningBranches(
+      [recentLongFast, oldShortSlow],
+      "white",
+      { now },
+    );
+    const fast = branches.find((b) => b.ucis[0] === "e2e4");
+    const slow = branches.find((b) => b.ucis[0] === "d2d4");
+    expect(fast.branchScore).toBeGreaterThan(slow.branchScore);
+  });
+
+  it("uses neutral think-time multiplier when clocks are missing", () => {
+    const withClock = branchGame({
+      ucis: ["e2e4", "e7e5", "g1f3"],
+      sans: ["e4", "e5", "Nf3"],
+      gameId: "clk",
+      clockAfterPly: [180, 180, 180, 179, 178],
+    });
+    const noClock = branchGame({
+      ucis: ["d2d4", "d7d5", "c2c4"],
+      sans: ["d4", "d5", "c4"],
+      gameId: "nocl",
+      timeControl: null,
+      clockAfterPly: [null, null, null, null, null, null],
+    });
+    const { branches } = aggregateOpeningBranches([withClock, noClock], "white", { now });
+    expect(branches).toHaveLength(2);
+    for (const branch of branches) {
+      expect(branch.branchScore).toBeGreaterThan(0);
+    }
+  });
+
+  it("lets a single new line outrank an older repeated line", () => {
+    const oldLine = branchGame({
+      ucis: ["e2e4", "e7e5", "g1f3"],
+      sans: ["e4", "e5", "Nf3"],
+      datestamp: now - 120 * 24 * 60 * 60 * 1000,
+      gameId: "old1",
+      totalPly: 20,
+    });
+    const oldLine2 = branchGame({
+      ucis: ["e2e4", "e7e5", "g1f3"],
+      sans: ["e4", "e5", "Nf3"],
+      datestamp: now - 150 * 24 * 60 * 60 * 1000,
+      gameId: "old2",
+      totalPly: 20,
+    });
+    const freshLine = branchGame({
+      ucis: ["d2d4", "d7d5", "c2c4"],
+      sans: ["d4", "d5", "c4"],
+      datestamp: now,
+      gameId: "new1",
+      totalPly: 90,
+      clockAfterPly: [180, 180, 180, 181, 180, 181],
+    });
+    const { branches } = aggregateOpeningBranches(
+      [oldLine, oldLine2, freshLine],
+      "white",
+      { now },
+    );
+    branches.sort((a, b) => b.branchScore - a.branchScore);
+    expect(branches[0].ucis[0]).toBe("d2d4");
+    expect(branches.some((b) => b.line.includes("e2e4>e7e5>g1f3"))).toBe(true);
+  });
+
+  it("does not remove an old branch when a sibling branch appears", () => {
+    const shared = branchGame({
+      ucis: ["e2e4", "e7e5", "g1f3"],
+      sans: ["e4", "e5", "Nf3"],
+      gameId: "e5",
+      datestamp: now - 10 * 24 * 60 * 60 * 1000,
+    });
+    const sibling = branchGame({
+      ucis: ["e2e4", "c7c5", "g1f3"],
+      sans: ["e4", "c5", "Nf3"],
+      gameId: "c5",
+      datestamp: now,
+    });
+    const { branches: before } = aggregateOpeningBranches([shared], "white", { now });
+    const { branches: after } = aggregateOpeningBranches([shared, sibling], "white", { now });
+    expect(after).toHaveLength(2);
+    expect(after.find((b) => b.line.includes("e7e5")).games).toBe(before[0].games);
+  });
+
+  it("uses SCOUT_RECENCY_HALF_LIFE_DAYS for decay", () => {
+    expect(SCOUT_RECENCY_HALF_LIFE_DAYS).toBe(90);
+  });
+
+  it("reports droppedCount for games without a valid opponent-terminal opening", () => {
+    const valid = branchGame({
+      ucis: ["e2e4", "e7e5", "g1f3"],
+      sans: ["e4", "e5", "Nf3"],
+      gameId: "ok",
+    });
+    const invalid = branchGame({
+      ucis: ["e2e4"],
+      sans: ["e4", "e5"],
+      gameId: "bad",
+    });
+    const { branches, droppedCount } = aggregateOpeningBranches(
+      [valid, invalid],
+      "white",
+      { now },
+    );
+    expect(branches).toHaveLength(1);
+    expect(droppedCount).toBe(1);
   });
 });
 
