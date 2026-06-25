@@ -15,6 +15,7 @@ import {
   SCOUT_ERR_RATE_LIMIT,
   scoutFetchErrorMessage,
   fenAfterLine,
+  fenBeforeLastMove,
   gradeLines,
   lineCoverage,
   moveDistribution,
@@ -483,7 +484,7 @@ describe("openingBreakdown + recommendTargets", () => {
 
 describe("rankedOpeningBranches + rankGamePlan", () => {
   it("collects one real opening branch per game", () => {
-    const lines = rankedOpeningBranches(GAMES, "white");
+    const { branches: lines } = rankedOpeningBranches(GAMES, "white");
     expect(lines.some((g) => g.sans[0] === "e4")).toBe(true);
     expect(lines.some((g) => g.sans[0] === "d4")).toBe(true);
     for (const line of lines) {
@@ -510,7 +511,7 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
         gameId: "d-old",
       }),
     ];
-    const lines = rankedOpeningBranches(games, "white");
+    const { branches: lines } = rankedOpeningBranches(games, "white");
     const d4 = lines.find((l) => l.ucis[0] === "d2d4");
     expect(d4).toBeDefined();
     expect(d4.games).toBe(1);
@@ -540,7 +541,7 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
         }),
       ),
     ];
-    const lines = rankedOpeningBranches(londonGames, "white");
+    const { branches: lines } = rankedOpeningBranches(londonGames, "white");
     const nf6 = lines.find((l) => l.ucis.join(">") === "d2d4>g8f6>c2c4");
     const d5 = lines.find((l) => l.ucis.join(">") === "d2d4>d7d5>c2c4");
     expect(nf6).toBeDefined();
@@ -573,7 +574,7 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
         }),
       ),
     ];
-    const lines = rankedOpeningBranches(games, "black");
+    const { branches: lines } = rankedOpeningBranches(games, "black");
     const sicilian = lines.find((l) => l.ucis.join(">") === "e2e4>c7c5");
     expect(sicilian).toBeDefined();
     expect(terminalMoveIsOpponent(sicilian.ucis, "black")).toBe(true);
@@ -584,6 +585,34 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
     const ucis = Array.from({ length: 20 }, (_, i) => `u${i}`);
     expect(branchPathKey(ucis)).toBe(ucis.join(">"));
     expect(branchPathKey(ucis).length).toBeGreaterThan(triePathKey(ucis).length);
+  });
+
+  it("builds ancestor-node frequencies from games reaching fenBefore", () => {
+    const mainLineGames = Array.from({ length: 12 }, (_, i) =>
+      scoutGame({
+        color: "black",
+        sans: ["e4", "c5", "Nf3", "Nc6"],
+        ucis: ["e2e4", "c7c5", "g1f3", "b8c6"],
+        gameId: `main-${i}`,
+        datestamp: 1000 + i,
+      }),
+    );
+    const sideline = scoutGame({
+      color: "black",
+      sans: ["e4", "c5", "Nf3", "a6"],
+      ucis: ["e2e4", "c7c5", "g1f3", "a7a6"],
+      gameId: "sideline",
+      datestamp: 2000,
+    });
+    const { branches, ancestorFreq } = aggregateOpeningBranches(
+      [...mainLineGames, sideline],
+      "black",
+    );
+    expect(branches).toHaveLength(2);
+    const sharedAncestor = fenBeforeLastMove(["e2e4", "c7c5", "g1f3", "b8c6"]);
+    const sharedInfo = ancestorFreq.get(sharedAncestor);
+    expect(sharedInfo?.count).toBe(13);
+    expect(sharedInfo?.frequency).toBeCloseTo(1, 4);
   });
 
   it("keeps distinct branches that share only the first MAX_PLIES", () => {
@@ -658,7 +687,7 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
         gameId: "legacy-2",
       },
     ];
-    const branches = rankedOpeningBranches(legacy, "white");
+    const { branches } = rankedOpeningBranches(legacy, "white");
     expect(branches).toHaveLength(2);
     expect(branches.some((b) => b.ucis.join(">") === "e2e4>c7c5>g1f3")).toBe(true);
     expect(branches.some((b) => b.ucis.join(">") === "d2d4>d7d5>c2c4")).toBe(true);
@@ -673,7 +702,7 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
         datestamp: i,
       }),
     );
-    expect(rankedOpeningBranches(games, "white")).toHaveLength(SCOUT_BRANCH_SCORE_CAP);
+    expect(rankedOpeningBranches(games, "white").branches).toHaveLength(SCOUT_BRANCH_SCORE_CAP);
   });
 
   it("ranks most-exploitable lines first and collapses nested prefixes", () => {

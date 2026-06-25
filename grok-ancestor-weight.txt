@@ -1,0 +1,151 @@
+Fix Scout to actually use ancestor-node frequency weighting (not terminal-line frequency).
+
+## Current bug
+
+In scout.js, aggregateOpeningBranches (line 770-800):
+```javascript
+const key = terminal.ucis.join(">");
+// ...
+row.branchScore += R * L * T;
+```
+
+This keys on the **exact terminal line** (n≈1 for each path). So branchScore doesn't distinguish between:
+- "Opponent plays Najdorf in 12% of games" → enter ancestor Najdorf node 12 times → 12 candidate lines from that
+- "Opponent plays this rare sideline 1 time" → enter ancestor node 1 time → 1 candidate line
+
+## What needs to happen
+
+For each **candidate line** returned by prefilter, weight it by the **ancestor node frequency**:
+
+```
+ancestor node = the position before opponent's terminal move (fenBefore)
+ancestor frequency = count(games reaching this node) / total_games
+line score = ancestor_frequency × stockfish_advantage
+```
+
+## Implementation
+
+### Step 1: Compute ancestor-node frequencies during aggregateOpeningBranches
+
+Build an **ancestor frequency map** alongside the terminal-line results:
+
+```javascript
+const ancestorFreq = new Map();  // fen → { count, games }
+
+for (const game of filtered) {
+  const terminal = extractOpponentTerminalOpening(game);
+  const fenBefore = fenBeforeLastMove(terminal.ucis);
+
+  if (fenBefore && !ancestorFreq.has(fenBefore)) {
+    ancestorFreq.set(fenBefore, { count: 0, total: 0 });
+  }
+  if (fenBefore) {
+    ancestorFreq.get(fenBefore).count += 1;
+  }
+}
+
+// Normalize
+const totalGames = filtered.length;
+for (const info of ancestorFreq.values()) {
+  info.frequency = info.count / totalGames;
+}
+
+return { branches, ancestorFreq, ... };
+```
+
+### Step 2: Attach ancestor frequency to each prefilter candidate
+
+In `scorePrefilterLine` or when building the ranked pool, look up the line's fenBefore in ancestorFreq:
+
+```javascript
+export function scorePrefilterLine(line, evalMap, {
+  fenAfterLine, oppColor, ancestorFreq
+}) {
+  // ... existing code ...
+
+  const fenBefore = fenBeforeLastMove(ucis);
+  const ancestorInfo = ancestorFreq?.get(fenBefore) || { frequency: 0.001 };
+
+  return {
+    cpLoss,
+    userLeafAdvantage,
+    playedIsBest,
+    hasUserReply,
+    prefilterScore: userLeafAdvantage,
+    ancestorFrequency: ancestorInfo.frequency,  // NEW
+  };
+}
+```
+
+### Step 3: Use ancestor frequency in ranking
+
+In `rankGamePlan` (line 903 onwards) or `rankPrefilterCandidates`:
+
+```javascript
+// OLD (wrong):
+if (a.maiaScorePct !== b.maiaScorePct) return a.maiaScorePct - b.maiaScorePct;
+
+// NEW (correct):
+const reproducibilityA = (a.ancestorFrequency ?? 0.001) * (a.prefilterScore ?? 0);
+const reproducibilityB = (b.ancestorFrequency ?? 0.001) * (b.prefilterScore ?? 0);
+
+if (reproducibilityA !== reproducibilityB) {
+  return reproducibilityB - reproducibilityA;  // higher reproducibility first
+}
+// Tiebreak: Maia3 (lower = better)
+if (a.maiaScorePct != null && b.maiaScorePct != null) {
+  return a.maiaScorePct - b.maiaScorePct;
+}
+```
+
+### Step 4: Gate before display
+
+Only show lines where ancestor is reasonably frequent:
+
+```javascript
+const MIN_ANCESTOR_FREQUENCY = 0.01;  // 1% of games
+const MIN_STOCKFISH_ADVANTAGE = 20;   // cp
+
+lines = lines.filter(l =>
+  (l.ancestorFrequency ?? 0) >= MIN_ANCESTOR_FREQUENCY &&
+  (l.prefilterScore ?? 0) >= MIN_STOCKFISH_ADVANTAGE
+);
+```
+
+## Where ancestorFreq flows through
+
+```
+aggregateOpeningBranches() → returns ancestorFreq
+  ↓
+enrichPrepTarget() call site passes ancestorFreq
+  ↓
+scorePrefilterLine() receives it, attaches to result
+  ↓
+rankGamePlan() / rankPrefilterCandidates() sorts by (ancestorFreq × prefilterScore)
+  ↓
+scoutLineRowHtml() displays top N
+```
+
+## Files to change
+
+1. **web-src/scout.js**
+   - aggregateOpeningBranches: compute ancestorFreq map
+   - exports it alongside branches
+   - rankGamePlan: sort by reproducibility score
+
+2. **web-src/scout-prefilter.js**
+   - scorePrefilterLine: accept ancestorFreq param, attach to result
+
+3. **web-src/views/scout.js**
+   - enrichPrepTarget / relevant callers: pass ancestorFreq down
+
+4. **Tests** (scout-prefilter.test.js, if it tests ranking)
+   - Update to include ancestorFrequency in test data
+
+## Expected outcome
+
+After this fix:
+- Lines rooted in opponent's main systems rank higher (they have 5–10% ancestor frequency)
+- Lines from rare sidelines rank lower (they have 0.1–0.5% ancestor frequency)
+- Maia3 score becomes a tiebreaker, not the primary sort
+- Scout output should now correlate with "actual enter frequency"

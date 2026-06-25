@@ -759,6 +759,8 @@ export function aggregateOpeningBranches(
   const thinkReady = thinkSamples.length >= SCOUT_THINK_MIN_SAMPLES && cohortMad > 0;
 
   const byKey = new Map();
+  const ancestorFreq = new Map();
+  const ancestorSeenGameIds = new Map();
   let droppedCount = 0;
 
   for (const game of filtered) {
@@ -766,6 +768,20 @@ export function aggregateOpeningBranches(
     if (!terminal) {
       droppedCount += 1;
       continue;
+    }
+    const fenBefore = fenBeforeLastMove(terminal.ucis);
+    if (fenBefore) {
+      if (!ancestorFreq.has(fenBefore)) {
+        ancestorFreq.set(fenBefore, { count: 0, frequency: 0 });
+        ancestorSeenGameIds.set(fenBefore, new Set());
+      }
+      const seenAncestors = ancestorSeenGameIds.get(fenBefore);
+      const skipAncestor =
+        game.gameId && seenAncestors.has(game.gameId);
+      if (!skipAncestor) {
+        if (game.gameId) seenAncestors.add(game.gameId);
+        ancestorFreq.get(fenBefore).count += 1;
+      }
     }
     const key = terminal.ucis.join(">");
     if (!byKey.has(key)) {
@@ -831,7 +847,11 @@ export function aggregateOpeningBranches(
     b.share = b.branchScore / totalScore;
     b.rawShare = b.games / totalGames;
   }
-  return { branches, droppedCount };
+  const ancestorTotalGames = filtered.length || 1;
+  for (const info of ancestorFreq.values()) {
+    info.frequency = info.count / ancestorTotalGames;
+  }
+  return { branches, droppedCount, ancestorFreq };
 }
 
 /** Rank exact per-game opening branches by branchScore; top N feed Stockfish/Maia. */
@@ -840,7 +860,7 @@ export function rankedOpeningBranches(
   color,
   { speedFilter = "all", limit = SCOUT_BRANCH_SCORE_CAP, now = Date.now() } = {},
 ) {
-  const { branches } = aggregateOpeningBranches(games, color, { speedFilter, now });
+  const { branches, ancestorFreq } = aggregateOpeningBranches(games, color, { speedFilter, now });
   branches.sort(
     (a, b) =>
       b.branchScore - a.branchScore ||
@@ -848,7 +868,8 @@ export function rankedOpeningBranches(
       b.games - a.games ||
       a.line.localeCompare(b.line),
   );
-  return limit > 0 ? branches.slice(0, limit) : branches;
+  const ranked = limit > 0 ? branches.slice(0, limit) : branches;
+  return { branches: ranked, ancestorFreq };
 }
 
 /** @deprecated Trie bridge removed — use rankedOpeningBranches(games, color). */
@@ -859,12 +880,25 @@ export function rankedOpeningLines(
   if (Array.isArray(gamesOrTrie)) {
     const c = color ?? oppColor;
     if (!c) return [];
-    return rankedOpeningBranches(gamesOrTrie, c, { speedFilter, limit });
+    return rankedOpeningBranches(gamesOrTrie, c, { speedFilter, limit }).branches;
   }
   return [];
 }
 
 // Unified ranked game plan: exploitability first, collapse nested prefixes, no row cap.
+function ancestorFrequencyForLine(line, ancestorFreq) {
+  if (!ancestorFreq?.size || !line?.ucis?.length) return line?.ancestorFrequency ?? 0.001;
+  const fenBefore = fenBeforeLastMove(line.ucis);
+  const info = fenBefore ? ancestorFreq.get(fenBefore) : null;
+  return info?.frequency ?? line?.ancestorFrequency ?? 0.001;
+}
+
+function openingReproducibilityScore(line) {
+  const ancestorFrequency = line?.ancestorFrequency ?? 0.001;
+  const prefilterScore = line?.prefilterScore ?? 0;
+  return ancestorFrequency * prefilterScore;
+}
+
 export function rankGamePlan(
   lines,
   baselineScorePct,
@@ -875,6 +909,7 @@ export function rankGamePlan(
     games = null,
     speedFilter = "all",
     lineLastSeen = null,
+    ancestorFreq = null,
   } = {},
 ) {
   const eligible = lines
@@ -890,9 +925,14 @@ export function rankGamePlan(
           sans: normalized.sans,
           line: triePathKey(normalized.ucis),
           maiaWdl: g.maiaWdl,
+          prefilterScore: g.prefilterScore,
         },
         baselineScorePct,
         { maiaScorePct: g.maiaScorePct ?? null },
+      );
+      enriched.ancestorFrequency = ancestorFrequencyForLine(
+        { ...enriched, ucis: normalized.ucis },
+        ancestorFreq,
       );
       if (!enriched.lastSeen && games && lineLastSeen) {
         enriched.lastSeen = lineLastSeen(games, enriched.ucis, { color: oppColor, speedFilter });
@@ -901,18 +941,17 @@ export function rankGamePlan(
     })
     .filter(Boolean)
     .sort((a, b) => {
-      // Lines with a Maia read rank by opponent score (lowest = most exploitable for user).
-      // Lines without Maia fall after all assessed lines, sorted by recency then share.
+      const reproducibilityA = openingReproducibilityScore(a);
+      const reproducibilityB = openingReproducibilityScore(b);
+      if (reproducibilityA !== reproducibilityB) {
+        return reproducibilityB - reproducibilityA;
+      }
       const aHasMaia = a.maiaScorePct != null;
       const bHasMaia = b.maiaScorePct != null;
-      if (aHasMaia && bHasMaia) {
-        if (a.maiaScorePct !== b.maiaScorePct) return a.maiaScorePct - b.maiaScorePct;
-        const aStamp = a.lastSeen?.lastDatestamp ?? 0;
-        const bStamp = b.lastSeen?.lastDatestamp ?? 0;
-        return bStamp - aStamp || b.share - a.share;
+      if (aHasMaia && bHasMaia && a.maiaScorePct !== b.maiaScorePct) {
+        return a.maiaScorePct - b.maiaScorePct;
       }
       if (aHasMaia !== bHasMaia) return aHasMaia ? -1 : 1;
-      // Both unenriched: recent first, then share.
       const aStamp = a.lastSeen?.lastDatestamp ?? 0;
       const bStamp = b.lastSeen?.lastDatestamp ?? 0;
       return (
@@ -1142,6 +1181,20 @@ export function gradeLines(lookup, lines) {
 // ---------------------------------------------------------------------------
 // FEN + opponent profile
 // ---------------------------------------------------------------------------
+
+export function fenBeforeLastMove(ucis) {
+  if (!ucis?.length) return null;
+  const chess = new Chess();
+  for (let i = 0; i < ucis.length - 1; i += 1) {
+    const uci = ucis[i];
+    try {
+      chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
+    } catch (_) {
+      return null;
+    }
+  }
+  return chess.fen();
+}
 
 export function fenAfterLine(ucis) {
   const chess = new Chess();

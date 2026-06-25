@@ -377,13 +377,22 @@ export function createScoutView(deps) {
     }, MAIA_ENRICH_DEBOUNCE_MS);
   }
 
-  function allOpeningLinesForColor(_section, oppColor) {
-    if (!scoutState?.games?.length || !scoutModule?.rankedOpeningBranches) return [];
+  function openingBranchBundleForColor(_section, oppColor) {
+    if (!scoutState?.games?.length || !scoutModule?.rankedOpeningBranches) {
+      return { branches: [], ancestorFreq: new Map() };
+    }
     return (
       scoutModule.rankedOpeningBranches(scoutState.games, oppColor, {
         speedFilter: scoutState.activeSpeed,
-      }) || []
+      }) || { branches: [], ancestorFreq: new Map() }
     );
+  }
+
+  function allOpeningLinesForColor(section, oppColor) {
+    const { branches, ancestorFreq } = openingBranchBundleForColor(section, oppColor);
+    scoutState.ancestorFreq = scoutState.ancestorFreq || { white: new Map(), black: new Map() };
+    scoutState.ancestorFreq[oppColor] = ancestorFreq;
+    return branches;
   }
 
   function prefilterPoolForColor(section, oppColor) {
@@ -417,6 +426,7 @@ export function createScoutView(deps) {
     scoutState.prefilterRanked = { white: [], black: [] };
     scoutState.prefilteredLines = { white: [], black: [] };
     scoutState.stockfishDisplayLines = { white: [], black: [] };
+    scoutState.ancestorFreq = { white: new Map(), black: new Map() };
   }
 
   function syncMaiaScope() {
@@ -539,6 +549,7 @@ export function createScoutView(deps) {
         const result = await runStockfishPrefilter(lines, {
           fenAfterLine: scoutModule.fenAfterLine,
           oppColor,
+          ancestorFreq: scoutState.ancestorFreq?.[oppColor],
           cache: scoutState.prefilterCache,
           shouldCancel: () => gen !== prefilterEnrichSeq,
         });
@@ -1310,6 +1321,7 @@ export function createScoutView(deps) {
       prefilterRanked: { white: [], black: [] },
       prefilteredLines: { white: [], black: [] },
       stockfishDisplayLines: { white: [], black: [] },
+      ancestorFreq: { white: new Map(), black: new Map() },
       prefilterCache:
         scoutState?.username === username ? scoutState.prefilterCache || new Map() : new Map(),
       maiaAttemptsUsed: 0,

@@ -19,6 +19,11 @@ import { fenAfterLine } from "./scout.js";
 
 const OPP = "white";
 
+function ancestorFreqForLine(ucis, frequency = 0.05) {
+  const fenBefore = fenAfterLine(ucis.slice(0, -1));
+  return new Map([[fenBefore, { count: 1, frequency }]]);
+}
+
 function evalMapForLine(ucis, oppColor, { cpLoss = 30, bestUci = null } = {}) {
   const before = ucis.slice(0, -1);
   const fenBefore = fenAfterLine(before);
@@ -49,13 +54,19 @@ describe("scout-prefilter scoring", () => {
   it("scores lines with objective cp loss and a user reply", () => {
     const ucis = ["e2e4", "e7e5", "g1f3"];
     const line = { ucis, sans: ["e4", "e5", "Nf3"], games: 3, share: 0.2 };
-    const metrics = scorePrefilterLine(line, evalMapForLine(ucis, OPP, { cpLoss: 40, bestUci: "g8f6" }), {
-      fenAfterLine,
-      oppColor: OPP,
-    });
+    const metrics = scorePrefilterLine(
+      line,
+      evalMapForLine(ucis, OPP, { cpLoss: 40, bestUci: "g8f6" }),
+      {
+        fenAfterLine,
+        oppColor: OPP,
+        ancestorFreq: ancestorFreqForLine(ucis, 0.12),
+      },
+    );
     expect(metrics?.cpLoss).toBe(40);
     expect(metrics?.hasUserReply).toBe(true);
     expect(metrics?.prefilterScore).toBe(20);   // userLeafAdvantage = -(-20) = 20
+    expect(metrics?.ancestorFrequency).toBe(0.12);
   });
 
   it("excludes lines with no user reply at the leaf", () => {
@@ -107,13 +118,27 @@ describe("scout-prefilter scoring", () => {
     expect(collapsed[0].prefilterScore).toBe(40);
   });
 
-  it("merges both colours by objective score, not section order", () => {
+  it("merges both colours by reproducibility score, not section order", () => {
     const merged = mergeGlobalPrefilterRanked({
-      white: [{ line: { ucis: ["w"], share: 0.9 }, prefilterScore: 12, hasUserReply: true }],
-      black: [{ line: { ucis: ["b"], share: 0.1 }, prefilterScore: 40, hasUserReply: true }],
+      white: [
+        {
+          line: { ucis: ["w"], share: 0.9 },
+          prefilterScore: 40,
+          ancestorFrequency: 0.02,
+          hasUserReply: true,
+        },
+      ],
+      black: [
+        {
+          line: { ucis: ["b"], share: 0.1 },
+          prefilterScore: 40,
+          ancestorFrequency: 0.05,
+          hasUserReply: true,
+        },
+      ],
     });
     expect(merged[0].oppColor).toBe("black");
-    expect(merged[0].prefilterScore).toBe(40);
+    expect(merged[0].ancestorFrequency).toBe(0.05);
   });
 
   it("keeps up to SCOUT_PREFILTER_POOL_SIZE entries for Maia backup headroom", () => {
@@ -146,30 +171,52 @@ describe("scout-prefilter scoring", () => {
     expect(merged.map((entry) => entry.oppColor).sort()).toEqual(["black", "white"]);
   });
 
-  it("ranks higher cp-loss lines first with recency/share as tiebreak only", () => {
-    const deep = {
-      ucis: ["e2e4", "e7e5", "g1f3", "b8c6"],
-      sans: ["e4", "e5", "Nf3", "Nc6"],
-      games: 1,
-      share: 0.01,
-      lastDatestamp: 2000,
-    };
-    const shallow = {
+  it("ranks frequent ancestor systems above rare sidelines at equal advantage", () => {
+    const mainSystem = {
       ucis: ["e2e4", "e7e5"],
       sans: ["e4", "e5"],
       games: 20,
       share: 0.8,
       lastDatestamp: 1000,
     };
+    const rareSideline = {
+      ucis: ["e2e4", "e7e5", "g1f3", "b8c6"],
+      sans: ["e4", "e5", "Nf3", "Nc6"],
+      games: 1,
+      share: 0.01,
+      lastDatestamp: 2000,
+    };
     const evalMap = new Map([
-      ...evalMapForLine(deep.ucis, "black", { cpLoss: 50, bestUci: "a7a6" }),
-      ...evalMapForLine(shallow.ucis, "black", { cpLoss: 10, bestUci: "c7c6" }),
+      ...evalMapForLine(mainSystem.ucis, "black", { cpLoss: 30, bestUci: "c7c6" }),
+      ...evalMapForLine(rareSideline.ucis, "black", { cpLoss: 30, bestUci: "a7a6" }),
     ]);
-    const ranked = rankPrefilterCandidates([shallow, deep], evalMap, {
+    const ancestorFreq = new Map([
+      [fenAfterLine(["e2e4"]), { count: 20, frequency: 0.1 }],
+      [fenAfterLine(["e2e4", "e7e5", "g1f3"]), { count: 1, frequency: 0.005 }],
+    ]);
+    const ranked = rankPrefilterCandidates([rareSideline, mainSystem], evalMap, {
       fenAfterLine,
       oppColor: "black",
+      ancestorFreq,
     });
-    expect(ranked[0].line.ucis).toEqual(deep.ucis);
+    expect(ranked[0].line.ucis).toEqual(mainSystem.ucis);
+    expect(ranked[0].ancestorFrequency).toBe(0.1);
+  });
+
+  it("filters lines below ancestor-frequency or advantage gates", () => {
+    const gatedOut = {
+      ucis: ["e2e4", "e7e5"],
+      sans: ["e4", "e5"],
+      games: 1,
+      share: 0.01,
+    };
+    const evalMap = evalMapForLine(gatedOut.ucis, "black", { cpLoss: 30, bestUci: "c7c6" });
+    const ranked = rankPrefilterCandidates([gatedOut], evalMap, {
+      fenAfterLine,
+      oppColor: "black",
+      ancestorFreq: ancestorFreqForLine(gatedOut.ucis, 0.005),
+    });
+    expect(ranked).toHaveLength(0);
   });
 });
 
@@ -202,30 +249,35 @@ describe("runStockfishPrefilter limits", () => {
     expect(new Set(maia.map((l) => l.line)).size).toBe(SCOUT_MAIA_PREFILTER_LIMIT);
   });
 
-  it("prefilterPoolLines follows Stockfish rank order, not branch input order", () => {
-    const weak = {
+  it("prefilterPoolLines follows reproducibility rank order, not branch input order", () => {
+    const frequentWeak = {
       ucis: ["e2e4", "e7e5", "g1f3"],
       sans: ["e4", "e5", "Nf3"],
       games: 20,
       share: 0.8,
     };
-    const strong = {
+    const rareStrong = {
       ucis: ["d2d4", "d7d5", "c2c4"],
       sans: ["d4", "d5", "c4"],
       games: 1,
       share: 0.01,
     };
     const evalMap = new Map([
-      ...evalMapForLine(strong.ucis, "white", { cpLoss: 50, bestUci: "e7e6" }),
-      ...evalMapForLine(weak.ucis, "white", { cpLoss: 10, bestUci: "b8c6" }),
+      ...evalMapForLine(rareStrong.ucis, "white", { cpLoss: 50, bestUci: "e7e6" }),
+      ...evalMapForLine(frequentWeak.ucis, "white", { cpLoss: 40, bestUci: "b8c6" }),
     ]);
-    const ranked = rankPrefilterCandidates([weak, strong], evalMap, {
+    const ancestorFreq = new Map([
+      [fenAfterLine(["d2d4", "d7d5"]), { count: 1, frequency: 0.01 }],
+      [fenAfterLine(["e2e4", "e7e5"]), { count: 20, frequency: 0.1 }],
+    ]);
+    const ranked = rankPrefilterCandidates([frequentWeak, rareStrong], evalMap, {
       fenAfterLine,
       oppColor: "white",
+      ancestorFreq,
     });
     const pool = prefilterPoolLines(ranked, 2);
-    expect(pool[0].ucis).toEqual(strong.ucis);
-    expect(pool[1].ucis).toEqual(weak.ucis);
+    expect(pool[0].ucis).toEqual(frequentWeak.ucis);
+    expect(pool[1].ucis).toEqual(rareStrong.ucis);
   });
 
   it("reuses FEN transposition cache across branches", () => {

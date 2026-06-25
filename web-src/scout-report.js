@@ -971,7 +971,11 @@ export function buildScoutSectionReport(
 
   const breakdown = scoutModule.openingBreakdown(trie, { minGames: 1 });
   const sectionRating = maiaRatings?.[oppColor] ?? medianOpponentRating(games, oppColor);
-  const allOpeningLines = scoutModule.rankedOpeningBranches(games, oppColor, { speedFilter });
+  const { branches: allOpeningLines, ancestorFreq } = scoutModule.rankedOpeningBranches(
+    games,
+    oppColor,
+    { speedFilter },
+  );
   let gamePlanSource = allOpeningLines;
   if (prefilteredLines?.length) {
     const byKey = new Map(
@@ -996,6 +1000,7 @@ export function buildScoutSectionReport(
     games,
     speedFilter,
     lineLastSeen,
+    ancestorFreq,
   });
   if (enginePatterns instanceof Map) {
     weaknessTargets = mergeEngineIntoTargets(weaknessTargets, enginePatterns);
