@@ -26,7 +26,7 @@ export const SCOUT_MAIA_PREFILTER_LIMIT = SCOUT_MAIA_LIMIT;
 export const SCOUT_PREFILTER_CONCURRENCY = 3;
 export const SCOUT_PREFILTER_TIME_BUDGET_MS = 45_000;
 export const SCOUT_PREFILTER_ENGINE_VERSION = "stockfish-18-lite";
-/** Minimum objective leak (cp) to treat a line as worth studying when the opponent missed best. */
+/** Legacy minimum cp-loss threshold; no longer used in scorePrefilterLine (kept for backward compat). */
 export const SCOUT_PREFILTER_MIN_CP_LOSS = 6;
 
 export const PREFILTER_IDLE = "idle";
@@ -113,17 +113,18 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor }) {
   const afterCp = leafEval.score_cp ?? 0;
   const bestUci = beforeEval.best_move_uci;
   const cpLoss = cpLossFromEvals(beforeCp, afterCp, mover);
+  const userLeafAdvantage = oppColor === 'white' ? -afterCp : afterCp;
   const playedIsBest = !!(playedUci && bestUci && playedUci === bestUci);
   const hasUserReply = !!leafEval.best_move_uci;
 
   if (!hasUserReply) return null;
-  if (cpLoss < SCOUT_PREFILTER_MIN_CP_LOSS) return null;
 
   return {
     cpLoss,
+    userLeafAdvantage,
     playedIsBest,
     hasUserReply,
-    prefilterScore: cpLoss,
+    prefilterScore: userLeafAdvantage,
   };
 }
 

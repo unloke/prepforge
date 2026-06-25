@@ -55,6 +55,7 @@ describe("scout-prefilter scoring", () => {
     });
     expect(metrics?.cpLoss).toBe(40);
     expect(metrics?.hasUserReply).toBe(true);
+    expect(metrics?.prefilterScore).toBe(20);   // userLeafAdvantage = -(-20) = 20
   });
 
   it("excludes lines with no user reply at the leaf", () => {
@@ -81,7 +82,7 @@ describe("scout-prefilter scoring", () => {
     expect(new Set(fens).size).toBe(4);
   });
 
-  it("excludes tiny cp-loss lines even when the played move is not byte-identical to best", () => {
+  it("ranks line by leaf position quality even when last-move cp-loss is small", () => {
     const ucis = ["e2e4", "e7e5", "g1f3"];
     const line = { ucis, sans: ["e4", "e5", "Nf3"], games: 1 };
     const metrics = scorePrefilterLine(
@@ -89,7 +90,7 @@ describe("scout-prefilter scoring", () => {
       evalMapForLine(ucis, OPP, { cpLoss: SCOUT_PREFILTER_MIN_CP_LOSS - 1, bestUci: "b1c3" }),
       { fenAfterLine, oppColor: OPP },
     );
-    expect(metrics).toBeNull();
+    expect(metrics?.prefilterScore).toBe(-15);
   });
 
   it("keeps the higher-scoring parent when a nested descendant scores lower", () => {

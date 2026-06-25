@@ -657,7 +657,7 @@ export function renderScoutIntelligencePanel(
 
 // Stacked score cell: the score% on top, the sample size below, plus (for weakness
 // rows) how far the line sits under the opponent's own baseline. Fixed width, no wrap.
-export function scoutScoreCell(scorePct, games, { baseline, showGap = false, maiaEstimate = false } = {}) {
+export function scoutScoreCell(scorePct, games, { baseline, showGap = false, maiaEstimate = false, showN = true } = {}) {
   const gap =
     showGap && baseline != null && baseline > scorePct
       ? `<span class="scout-gap" title="${baseline - scorePct} points below their overall ${baseline}%">−${baseline - scorePct} vs ${baseline}%</span>`
@@ -666,7 +666,7 @@ export function scoutScoreCell(scorePct, games, { baseline, showGap = false, mai
   const estCls = maiaEstimate ? " scout-maia-estimate" : "";
   return `<span class="scout-score-cell${estCls}"${estTitle}>
       <span class="scout-score-pct">${scorePct}%</span>
-      <span class="scout-n">n=${games}</span>${gap}
+      ${showN ? `<span class="scout-n">n=${games}</span>` : ''}${gap}
     </span>`;
 }
 
@@ -901,7 +901,7 @@ function scoutLineRowHtml(
           <span class="scout-line-moves">${framing}${categoryBadge ? ` ${categoryBadge}` : ""}${lastSeenBadge ? ` ${lastSeenBadge}` : ""}</span>
           ${refCard}
         </div>
-        <span class="scout-lr-score">${scoutScoreCell(displayScore, rawCount, { baseline, showGap: line.belowBaseline > 0, maiaEstimate })}</span>
+        <span class="scout-lr-score">${scoutScoreCell(displayScore, rawCount, { baseline, showGap: line.belowBaseline > 0, maiaEstimate, showN: rawCount > 1 })}</span>
         <span class="scout-lr-wdl">${scoutWdlBar(wdl.w, wdl.d, wdl.l, { maiaEstimate })}</span>
         <span class="scout-lr-action">${engineFlag}${addBtn}</span>
       </div>`;

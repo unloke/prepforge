@@ -620,9 +620,10 @@ export function createScoutView(deps) {
       if (scoutState.maiaEnrichState !== nextState) {
         scoutState.maiaEnrichState = nextState;
         renderScoutReport();
-      } else {
-        renderScoutReport();
       }
+      // No render when state is unchanged — avoids a ~1s render loop:
+      // renderScoutReport → schedulePrefilterEnrich → enrichPrefilterReads (settled)
+      // → scheduleMaiaEnrich → enrichMaiaReads (no work, same state) → renderScoutReport → …
       return;
     }
 
