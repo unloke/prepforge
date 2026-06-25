@@ -41,7 +41,9 @@ export const SCOUT_LENGTH_SATURATION_PLIES = 40;
 export const SCOUT_BRANCH_SCORE_CAP = 48;
 export const SCOUT_STOCKFISH_DEPTH = 8;
 export const SCOUT_MAIA_LIMIT = 12;
-export const SCOUT_SCORING_VERSION = 1;
+export const SCOUT_SCORING_VERSION = 2;
+/** Minimum games before empirical opponent performance gates prefilter candidates. */
+export const SCOUT_PREFILTER_EMPIRICAL_MIN_GAMES = 3;
 export const SCOUT_THINK_TIME_CLAMP_MIN = 0.7;
 export const SCOUT_THINK_TIME_CLAMP_MAX = 1.3;
 export const SCOUT_THINK_TIME_Z_SCALE = 0.1;
@@ -772,7 +774,7 @@ export function aggregateOpeningBranches(
     const fenBefore = fenBeforeLastMove(terminal.ucis);
     if (fenBefore) {
       if (!ancestorFreq.has(fenBefore)) {
-        ancestorFreq.set(fenBefore, { count: 0, frequency: 0 });
+        ancestorFreq.set(fenBefore, { count: 0, frequency: 0, w: 0, d: 0, l: 0, games: 0, scorePct: 0 });
         ancestorSeenGameIds.set(fenBefore, new Set());
       }
       const seenAncestors = ancestorSeenGameIds.get(fenBefore);
@@ -780,7 +782,11 @@ export function aggregateOpeningBranches(
         game.gameId && seenAncestors.has(game.gameId);
       if (!skipAncestor) {
         if (game.gameId) seenAncestors.add(game.gameId);
-        ancestorFreq.get(fenBefore).count += 1;
+        const ancestor = ancestorFreq.get(fenBefore);
+        ancestor.count += 1;
+        if (game.score === 1) ancestor.w += 1;
+        else if (game.score === 0.5) ancestor.d += 1;
+        else ancestor.l += 1;
       }
     }
     const key = terminal.ucis.join(">");
@@ -850,8 +856,54 @@ export function aggregateOpeningBranches(
   const ancestorTotalGames = filtered.length || 1;
   for (const info of ancestorFreq.values()) {
     info.frequency = info.count / ancestorTotalGames;
+    const n = (info.w || 0) + (info.d || 0) + (info.l || 0);
+    info.games = n;
+    info.scorePct = n > 0 ? Math.round(((info.w + 0.5 * info.d) / n) * 100) : 0;
   }
   return { branches, droppedCount, ancestorFreq };
+}
+
+/** Opponent's overall score% in games for one colour (used as the prep baseline). */
+export function opponentColorBaseline(games, color, { speedFilter = "all" } = {}) {
+  const filtered =
+    speedFilter !== "all" ? games.filter((g) => g.speed === speedFilter) : games;
+  const colorGames = filtered.filter((g) => g.color === color);
+  if (!colorGames.length) return 50;
+  const sum = colorGames.reduce((acc, g) => acc + (g.score ?? 0), 0);
+  return Math.round((sum / colorGames.length) * 100);
+}
+
+/**
+ * Downweight prep value when the opponent performs at/above baseline.
+ * Returns 1 when empirical data is missing (do not penalize rare samples).
+ */
+export function opponentStruggleFactor(opponentScorePct, baselineScorePct = 50) {
+  if (opponentScorePct == null) return 1;
+  const baseline = Math.max(baselineScorePct, 1);
+  const ratio = Math.min(1, opponentScorePct / baseline);
+  return 1 - ratio;
+}
+
+/** Frequent branch where opponent empirically performs at/above baseline — not a prep target. */
+export function isOpponentComfortZone(
+  entry,
+  baselineScorePct = 50,
+  { minGames = SCOUT_PREFILTER_EMPIRICAL_MIN_GAMES } = {},
+) {
+  const oppGames = entry?.ancestorGames ?? entry?.games ?? 0;
+  if (oppGames < minGames) return false;
+  const oppScore = entry?.ancestorScorePct ?? entry?.scorePct;
+  if (oppScore == null) return false;
+  return oppScore >= baselineScorePct;
+}
+
+/** Prep value: frequent × Stockfish edge × opponent struggle (empirical performance). */
+export function openingReproducibilityScore(entry, baselineScorePct = 50) {
+  const ancestorFrequency = entry?.ancestorFrequency ?? 0.001;
+  const stockfishAdvantage = Math.max(0, entry?.prefilterScore ?? 0);
+  const empiricalScore = entry?.ancestorScorePct ?? entry?.scorePct ?? null;
+  const struggle = opponentStruggleFactor(empiricalScore, baselineScorePct);
+  return ancestorFrequency * stockfishAdvantage * struggle;
 }
 
 /** Rank exact per-game opening branches by branchScore; top N feed Stockfish/Maia. */
@@ -891,12 +943,6 @@ function ancestorFrequencyForLine(line, ancestorFreq) {
   const fenBefore = fenBeforeLastMove(line.ucis);
   const info = fenBefore ? ancestorFreq.get(fenBefore) : null;
   return info?.frequency ?? line?.ancestorFrequency ?? 0.001;
-}
-
-function openingReproducibilityScore(line) {
-  const ancestorFrequency = line?.ancestorFrequency ?? 0.001;
-  const prefilterScore = line?.prefilterScore ?? 0;
-  return ancestorFrequency * prefilterScore;
 }
 
 export function rankGamePlan(
@@ -941,17 +987,17 @@ export function rankGamePlan(
     })
     .filter(Boolean)
     .sort((a, b) => {
-      const reproducibilityA = openingReproducibilityScore(a);
-      const reproducibilityB = openingReproducibilityScore(b);
-      if (reproducibilityA !== reproducibilityB) {
-        return reproducibilityB - reproducibilityA;
-      }
       const aHasMaia = a.maiaScorePct != null;
       const bHasMaia = b.maiaScorePct != null;
       if (aHasMaia && bHasMaia && a.maiaScorePct !== b.maiaScorePct) {
         return a.maiaScorePct - b.maiaScorePct;
       }
       if (aHasMaia !== bHasMaia) return aHasMaia ? -1 : 1;
+      const reproducibilityA = openingReproducibilityScore(a, baselineScorePct);
+      const reproducibilityB = openingReproducibilityScore(b, baselineScorePct);
+      if (reproducibilityA !== reproducibilityB) {
+        return reproducibilityB - reproducibilityA;
+      }
       const aStamp = a.lastSeen?.lastDatestamp ?? 0;
       const bStamp = b.lastSeen?.lastDatestamp ?? 0;
       return (

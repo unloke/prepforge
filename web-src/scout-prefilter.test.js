@@ -203,6 +203,78 @@ describe("scout-prefilter scoring", () => {
     expect(ranked[0].ancestorFrequency).toBe(0.1);
   });
 
+  it("excludes frequent lines where opponent empirically performs at/above baseline", () => {
+    const comfortable = {
+      ucis: ["e2e4", "e7e5"],
+      sans: ["e4", "e5"],
+      games: 20,
+      w: 12,
+      d: 2,
+      l: 6,
+      scorePct: 65,
+      share: 0.8,
+    };
+    const evalMap = evalMapForLine(comfortable.ucis, "black", { cpLoss: 30, bestUci: "c7c6" });
+    const ancestorFreq = new Map([
+      [
+        fenAfterLine(["e2e4"]),
+        { count: 20, frequency: 0.1, w: 12, d: 2, l: 6, games: 20, scorePct: 65 },
+      ],
+    ]);
+    const ranked = rankPrefilterCandidates([comfortable], evalMap, {
+      fenAfterLine,
+      oppColor: "black",
+      ancestorFreq,
+      baselineScorePct: 50,
+    });
+    expect(ranked).toHaveLength(0);
+  });
+
+  it("ranks struggling frequent lines above comfortable ones at equal Stockfish edge", () => {
+    const comfortable = {
+      ucis: ["e2e4", "e7e5"],
+      sans: ["e4", "e5"],
+      games: 20,
+      w: 12,
+      d: 2,
+      l: 6,
+      scorePct: 65,
+      share: 0.8,
+    };
+    const struggling = {
+      ucis: ["d2d4", "d7d5"],
+      sans: ["d4", "d5"],
+      games: 18,
+      w: 5,
+      d: 2,
+      l: 11,
+      scorePct: 33,
+      share: 0.7,
+    };
+    const evalMap = new Map([
+      ...evalMapForLine(comfortable.ucis, "black", { cpLoss: 30, bestUci: "c7c6" }),
+      ...evalMapForLine(struggling.ucis, "black", { cpLoss: 30, bestUci: "e7e6" }),
+    ]);
+    const ancestorFreq = new Map([
+      [
+        fenAfterLine(["e2e4"]),
+        { count: 20, frequency: 0.1, w: 12, d: 2, l: 6, games: 20, scorePct: 65 },
+      ],
+      [
+        fenAfterLine(["d2d4"]),
+        { count: 18, frequency: 0.09, w: 5, d: 2, l: 11, games: 18, scorePct: 33 },
+      ],
+    ]);
+    const ranked = rankPrefilterCandidates([comfortable, struggling], evalMap, {
+      fenAfterLine,
+      oppColor: "black",
+      ancestorFreq,
+      baselineScorePct: 50,
+    });
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0].line.ucis).toEqual(struggling.ucis);
+  });
+
   it("filters lines below ancestor-frequency or advantage gates", () => {
     const gatedOut = {
       ucis: ["e2e4", "e7e5"],
@@ -231,7 +303,7 @@ describe("computePrefilterScopeKey", () => {
       activeSpeed: "blitz",
       games,
     });
-    expect(key).toMatch(/^rival\|blitz\|\d+\|1$/);
+    expect(key).toMatch(/^rival\|blitz\|\d+\|2$/);
     expect(
       computePrefilterScopeKey({ username: "rival", activeSpeed: "blitz", games }),
     ).toBe(key);

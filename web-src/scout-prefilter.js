@@ -13,7 +13,9 @@ import {
   fenBeforeLastMove,
   hashGameIdsForScope,
   isNestedLine,
+  isOpponentComfortZone,
   normalizeToOpponentTerminal,
+  openingReproducibilityScore,
   terminalMoveIsOpponent,
   triePathKey,
 } from "./scout.js";
@@ -80,12 +82,6 @@ export function collectPrefilterFens(lines, { fenAfterLine, oppColor }) {
  * Score one line from shallow Stockfish reads. Higher prefilterScore = more objectively
  * worth preparing. Returns null when the line should be excluded.
  */
-function openingReproducibilityScore(entry) {
-  const ancestorFrequency = entry?.ancestorFrequency ?? 0.001;
-  const prefilterScore = entry?.prefilterScore ?? 0;
-  return ancestorFrequency * prefilterScore;
-}
-
 export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ancestorFreq }) {
   const normalized = normalizeToOpponentTerminal(line.ucis, line.sans, oppColor);
   if (!normalized) return null;
@@ -122,6 +118,10 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
     hasUserReply,
     prefilterScore: userLeafAdvantage,
     ancestorFrequency: ancestorInfo.frequency,
+    ancestorScorePct: ancestorInfo.scorePct,
+    ancestorGames: ancestorInfo.games,
+    scorePct: line.scorePct,
+    games: line.games,
   };
 }
 
@@ -158,7 +158,11 @@ export function collapseNestedPrefilterLines(sorted) {
  * Rank all opening-line candidates by objective Stockfish signals. Returns scored
  * entries sorted best-first; count/recency are tiebreakers only.
  */
-export function rankPrefilterCandidates(lines, evalMap, { fenAfterLine, oppColor, ancestorFreq }) {
+export function rankPrefilterCandidates(
+  lines,
+  evalMap,
+  { fenAfterLine, oppColor, ancestorFreq, baselineScorePct = 50 },
+) {
   const scored = [];
   for (const line of lines || []) {
     const metrics = scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ancestorFreq });
@@ -168,14 +172,16 @@ export function rankPrefilterCandidates(lines, evalMap, { fenAfterLine, oppColor
       ...metrics,
     });
   }
-  const gated = scored.filter(
-    (entry) =>
-      (entry.ancestorFrequency ?? 0) >= SCOUT_MIN_ANCESTOR_FREQUENCY &&
-      (entry.prefilterScore ?? 0) >= SCOUT_MIN_STOCKFISH_ADVANTAGE,
-  );
+  const gated = scored.filter((entry) => {
+    if ((entry.ancestorFrequency ?? 0) < SCOUT_MIN_ANCESTOR_FREQUENCY) return false;
+    if ((entry.prefilterScore ?? 0) < SCOUT_MIN_STOCKFISH_ADVANTAGE) return false;
+    if (isOpponentComfortZone(entry, baselineScorePct)) return false;
+    return openingReproducibilityScore(entry, baselineScorePct) > 0;
+  });
   gated.sort(
     (a, b) =>
-      openingReproducibilityScore(b) - openingReproducibilityScore(a) ||
+      openingReproducibilityScore(b, baselineScorePct) -
+        openingReproducibilityScore(a, baselineScorePct) ||
       Number(b.hasUserReply) - Number(a.hasUserReply) ||
       tiebreakRecencyShare(a.line, b.line),
   );
@@ -224,7 +230,7 @@ export function buildFallbackPrefilterData(
  */
 export function mergeGlobalPrefilterRanked(
   rankedByColor,
-  { poolSize = SCOUT_PREFILTER_POOL_SIZE } = {},
+  { poolSize = SCOUT_PREFILTER_POOL_SIZE, baselineByColor = {} } = {},
 ) {
   const entries = [];
   for (const oppColor of ["white", "black"]) {
@@ -234,7 +240,8 @@ export function mergeGlobalPrefilterRanked(
   }
   entries.sort(
     (a, b) =>
-      openingReproducibilityScore(b) - openingReproducibilityScore(a) ||
+      openingReproducibilityScore(b, baselineByColor[b.oppColor] ?? 50) -
+        openingReproducibilityScore(a, baselineByColor[a.oppColor] ?? 50) ||
       Number(b.hasUserReply) - Number(a.hasUserReply) ||
       tiebreakRecencyShare(a.line, b.line) ||
       a.oppColor.localeCompare(b.oppColor),
@@ -275,6 +282,7 @@ export async function runStockfishPrefilter(
     fenAfterLine,
     oppColor,
     ancestorFreq = null,
+    baselineScorePct = 50,
     depth = SCOUT_PREFILTER_DEPTH,
     poolSize = SCOUT_PREFILTER_POOL_SIZE,
     concurrency = SCOUT_PREFILTER_CONCURRENCY,
@@ -327,7 +335,12 @@ export async function runStockfishPrefilter(
     if (!evalMap.has(fen)) evalMap.set(fen, evalResult);
   }
 
-  const ranked = rankPrefilterCandidates(lines, evalMap, { fenAfterLine, oppColor, ancestorFreq });
+  const ranked = rankPrefilterCandidates(lines, evalMap, {
+    fenAfterLine,
+    oppColor,
+    ancestorFreq,
+    baselineScorePct,
+  });
   const pool = prefilterPoolLines(ranked, poolSize);
   const maiaLines = prefilterMaiaLines(ranked, SCOUT_MAIA_PREFILTER_LIMIT);
   const incompleteLines = pool.filter((line) => {

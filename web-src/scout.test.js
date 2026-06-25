@@ -613,6 +613,8 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
     const sharedInfo = ancestorFreq.get(sharedAncestor);
     expect(sharedInfo?.count).toBe(13);
     expect(sharedInfo?.frequency).toBeCloseTo(1, 4);
+    expect(sharedInfo?.games).toBe(13);
+    expect(sharedInfo?.scorePct).toBe(100);
   });
 
   it("keeps distinct branches that share only the first MAX_PLIES", () => {
@@ -747,6 +749,44 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
     expect(ranked[0].ucis).toEqual(["e2e4", "c7c5", "g1f3"]);
     expect(ranked[0].opportunity).toBeGreaterThan(ranked[1].opportunity);
     expect(terminalMoveIsOpponent(ranked[0].ucis, "white")).toBe(true);
+  });
+
+  it("Maia exploitability beats Stockfish reproducibility when both lines have Maia", () => {
+    const stockfishFavorite = {
+      line: "e2e4>e7e5",
+      sans: ["e4", "e5"],
+      ucis: ["e2e4", "e7e5"],
+      games: 20,
+      w: 12,
+      d: 2,
+      l: 6,
+      scorePct: 65,
+      share: 0.4,
+      count: 20,
+      prefilterScore: 40,
+      ancestorFrequency: 0.12,
+      maiaScorePct: 58,
+      maiaWdl: { win: 58, draw: 12, loss: 30 },
+    };
+    const maiaAttack = {
+      line: "d2d4>d7d5",
+      sans: ["d4", "d5"],
+      ucis: ["d2d4", "d7d5"],
+      games: 10,
+      w: 3,
+      d: 1,
+      l: 6,
+      scorePct: 35,
+      share: 0.2,
+      count: 10,
+      prefilterScore: 20,
+      ancestorFrequency: 0.05,
+      maiaScorePct: 32,
+      maiaWdl: { win: 32, draw: 10, loss: 58 },
+    };
+    const ranked = rankGamePlan([stockfishFavorite, maiaAttack], 50, { oppColor: "black" });
+    expect(ranked[0].maiaScorePct).toBe(32);
+    expect(ranked[1].maiaScorePct).toBe(58);
   });
 
   it("Maia-assessed lines rank before unenriched lines regardless of empirical opportunity", () => {

@@ -52,6 +52,7 @@ import {
 import {
   SCOUT_ERR_NETWORK,
   SCOUT_ERR_NO_GAMES,
+  opponentColorBaseline,
   scoutFetchErrorMessage,
 } from "../scout.js";
 
@@ -469,8 +470,26 @@ export function createScoutView(deps) {
     return maiaCandidateLines(section, oppColor).slice(0, SCOUT_MAIA_TARGET_COUNT);
   }
 
+  function baselineScorePctForColor(oppColor) {
+    return (
+      scoutState.sections?.[oppColor]?.baselineScorePct ??
+      opponentColorBaseline(scoutState.games, oppColor, {
+        speedFilter: scoutState.activeSpeed,
+      })
+    );
+  }
+
+  function prefilterBaselineByColor() {
+    return {
+      white: baselineScorePctForColor("white"),
+      black: baselineScorePctForColor("black"),
+    };
+  }
+
   function globalMaiaRankedPool() {
-    return mergeGlobalPrefilterRanked(scoutState?.prefilterRanked || {});
+    return mergeGlobalPrefilterRanked(scoutState?.prefilterRanked || {}, {
+      baselineByColor: prefilterBaselineByColor(),
+    });
   }
 
   function snapshotStockfishDisplayLine(oppColor, lines) {
@@ -550,6 +569,7 @@ export function createScoutView(deps) {
           fenAfterLine: scoutModule.fenAfterLine,
           oppColor,
           ancestorFreq: scoutState.ancestorFreq?.[oppColor],
+          baselineScorePct: baselineScorePctForColor(oppColor),
           cache: scoutState.prefilterCache,
           shouldCancel: () => gen !== prefilterEnrichSeq,
         });
