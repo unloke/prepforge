@@ -906,20 +906,147 @@ export function openingReproducibilityScore(entry, baselineScorePct = 50) {
   return ancestorFrequency * stockfishAdvantage * struggle;
 }
 
-/** Rank exact per-game opening branches by branchScore; top N feed Stockfish/Maia. */
+/** Minimum off-modal struggle floor so rare blunders Stockfish can punish stay in the pool. */
+export const SCOUT_STRUGGLE_PRIOR_FLOOR = 0.08;
+/** Off-modal exponent in the exploitability prior (sub-linear so rarity helps but doesn't dominate). */
+export const SCOUT_OFFMODAL_PRIOR_EXP = 0.7;
+
+/**
+ * Walk the opening trie along a UCI path. The trie keys children by `${uci}|${san}`,
+ * so we match on the uci prefix. Returns per-ply nodes with their w/d/l, scorePct, and
+ * `moveShare` (how often, among games that reached the parent, the opponent chose this move).
+ * Stops at the first uci not present in the trie or at the trie's ply cap.
+ */
+export function triePrefixStats(trie, ucis) {
+  const out = [];
+  let node = trie;
+  for (let i = 0; i < (ucis || []).length; i += 1) {
+    if (!node?.children?.size) break;
+    const parentGames = node.gameCount || 0;
+    let child = null;
+    for (const [key, c] of node.children) {
+      const sep = key.indexOf("|");
+      const uci = sep >= 0 ? key.slice(0, sep) : key;
+      if (uci === ucis[i]) {
+        child = c;
+        break;
+      }
+    }
+    if (!child) break;
+    const gc = child.gameCount || 0;
+    out.push({
+      ply: i,
+      uci: ucis[i],
+      gameCount: gc,
+      w: child.w || 0,
+      d: child.d || 0,
+      l: child.l || 0,
+      scorePct: gc > 0 ? Math.round(((child.w + 0.5 * child.d) / gc) * 100) : 0,
+      moveShare: parentGames > 0 ? gc / parentGames : 0,
+    });
+    node = child;
+  }
+  return out;
+}
+
+/**
+ * Empirical "struggle" + rarity for one opening branch, resolved at the deepest prefix
+ * with enough games to trust (n ≥ minGames). Solves the granularity-vs-sample-size
+ * tension: a rare deep leaf borrows its struggle signal from the line family it belongs
+ * to, instead of asserting anything from an n=1 leaf.
+ *   struggle  — 0..1, how far the family's Wilson-upper score sits below the opponent's
+ *               own baseline (0 = at/above baseline, no measured weakness).
+ *   offModal  — 1/moveShare of the terminal move (how rarely they pick it here); rare,
+ *               off-book replies are likelier to be unprepared.
+ *   prefixGames — family sample size backing the struggle signal.
+ */
+export function branchStruggle(trie, ucis, baselineScorePct = 50, { minGames = SLIP_MIN_GAMES } = {}) {
+  const empty = { struggle: 0, offModal: 1, prefixGames: 0, prefixPly: -1, scorePct: null };
+  if (!trie || !ucis?.length) return empty;
+  const stats = triePrefixStats(trie, ucis);
+  if (!stats.length) return empty;
+  let chosen = null;
+  for (let i = stats.length - 1; i >= 0; i -= 1) {
+    if (stats[i].gameCount >= minGames) {
+      chosen = stats[i];
+      break;
+    }
+  }
+  const terminal = stats[stats.length - 1];
+  const offModal = terminal.moveShare > 0 ? Math.min(50, 1 / Math.max(terminal.moveShare, 0.02)) : 1;
+  if (!chosen) {
+    return { struggle: 0, offModal, prefixGames: 0, prefixPly: -1, scorePct: null };
+  }
+  const wilsonUpper = wilsonScoreUpperPct(chosen.w, chosen.d, chosen.l);
+  const struggle = Math.max(0, baselineScorePct - wilsonUpper) / 100;
+  return {
+    struggle,
+    offModal,
+    prefixGames: chosen.gameCount,
+    prefixPly: chosen.ply,
+    scorePct: chosen.scorePct,
+  };
+}
+
+/**
+ * Cheap (no-engine) prior for which branches deserve a Stockfish read. Centred on
+ * exploitability — empirical struggle and off-modal rarity — NOT raw frequency, so
+ * rare lines the opponent can't handle reach the engine pool. Family-level
+ * reproducibility (log of prefix games) keeps truly one-off noise from crowding out
+ * recurring weaknesses. Falls back to branchScore when no trie is available.
+ */
+export function branchExploitabilityPrior(branch, { trie, baselineScorePct = 50 } = {}) {
+  if (!trie) return branch?.branchScore ?? 0;
+  const struggle = branch?.exploitabilityStruggle;
+  const offModal = branch?.offModal;
+  const prefixGames = branch?.prefixGames;
+  const stats = (struggle == null || offModal == null || prefixGames == null)
+    ? branchStruggle(trie, branch?.ucis, baselineScorePct)
+    : null;
+  const s = struggle ?? stats?.struggle ?? 0;
+  const o = offModal ?? stats?.offModal ?? 1;
+  const n = prefixGames ?? stats?.prefixGames ?? 0;
+  const reproducibility = Math.log1p(n) + 0.1;
+  return (s + SCOUT_STRUGGLE_PRIOR_FLOOR) * Math.pow(Math.max(o, 1), SCOUT_OFFMODAL_PRIOR_EXP) * reproducibility;
+}
+
+/**
+ * Rank exact per-game opening branches; top N feed Stockfish/Maia. With a `trie` +
+ * `baselineScorePct`, branches are ranked by the exploitability prior (struggle × rarity
+ * × family reproducibility) and annotated with struggle/offModal/prefixGames for the
+ * downstream prefilter gate. Without a trie, falls back to branchScore ordering.
+ */
 export function rankedOpeningBranches(
   games,
   color,
-  { speedFilter = "all", limit = SCOUT_BRANCH_SCORE_CAP, now = Date.now() } = {},
+  { speedFilter = "all", limit = SCOUT_BRANCH_SCORE_CAP, now = Date.now(), trie = null, baselineScorePct = 50 } = {},
 ) {
   const { branches, ancestorFreq } = aggregateOpeningBranches(games, color, { speedFilter, now });
-  branches.sort(
-    (a, b) =>
-      b.branchScore - a.branchScore ||
-      (b.lastDatestamp || 0) - (a.lastDatestamp || 0) ||
-      b.games - a.games ||
-      a.line.localeCompare(b.line),
-  );
+  if (trie) {
+    for (const b of branches) {
+      const { struggle, offModal, prefixGames } = branchStruggle(trie, b.ucis, baselineScorePct);
+      b.exploitabilityStruggle = struggle;
+      b.offModal = offModal;
+      b.prefixGames = prefixGames;
+      b.exploitabilityPrior = branchExploitabilityPrior(b, { trie, baselineScorePct });
+    }
+    branches.sort(
+      (a, b) =>
+        (b.exploitabilityPrior || 0) - (a.exploitabilityPrior || 0) ||
+        b.branchScore - a.branchScore ||
+        (b.lastDatestamp || 0) - (a.lastDatestamp || 0) ||
+        b.games - a.games ||
+        a.line.localeCompare(b.line),
+    );
+  } else {
+    branches.sort(
+      (a, b) =>
+        b.branchScore - a.branchScore ||
+        (b.lastDatestamp || 0) - (a.lastDatestamp || 0) ||
+        b.games - a.games ||
+        a.line.localeCompare(b.line),
+    );
+  }
   const ranked = limit > 0 ? branches.slice(0, limit) : branches;
   return { branches: ranked, ancestorFreq };
 }

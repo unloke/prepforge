@@ -2572,6 +2572,42 @@ h2 {
   grid-template-columns: minmax(0, 1fr) 64px 60px 26px;
 }
 .scout-ranked-note { margin-top: 6px; font-size: 11px; }
+
+/* Live engine-progress bar — shown while the hidden Stockfish prefilter and Maia
+   enrichment churn through candidate positions, so the user can see it's working. */
+.scout-engine-progress {
+  margin: 4px 0 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--accent-line);
+  border-radius: 8px;
+  background: var(--accent-soft);
+}
+.scout-engine-progress[hidden] { display: none; }
+.scout-progress-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--accent-strong);
+  margin-bottom: 6px;
+}
+.scout-progress-count { font-variant-numeric: tabular-nums; }
+.scout-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+.scout-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scout-progress-fill { transition: none; }
+}
 /* The "when they play X → you play Y" framing is the centrepiece, so let it wrap
    to as many lines as it needs instead of being ellipsis-truncated to "When th…". */
 .scout-weakness-row { align-items: start; }

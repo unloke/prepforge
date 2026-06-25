@@ -171,7 +171,10 @@ describe("scout-prefilter scoring", () => {
     expect(merged.map((entry) => entry.oppColor).sort()).toEqual(["black", "white"]);
   });
 
-  it("ranks frequent ancestor systems above rare sidelines at equal advantage", () => {
+  it("ranks the more reproducible line first at equal advantage and no measured struggle", () => {
+    // Two unrelated (non-nested) lines at equal Stockfish edge and no empirical struggle
+    // signal: the line backed by more games is the more reproducible prep, so it wins on the
+    // log-compressed reproducibility weight — frequency stays a tiebreaker, not a gate.
     const mainSystem = {
       ucis: ["e2e4", "e7e5"],
       sans: ["e4", "e5"],
@@ -180,8 +183,8 @@ describe("scout-prefilter scoring", () => {
       lastDatestamp: 1000,
     };
     const rareSideline = {
-      ucis: ["e2e4", "e7e5", "g1f3", "b8c6"],
-      sans: ["e4", "e5", "Nf3", "Nc6"],
+      ucis: ["c2c4", "e7e5"],
+      sans: ["c4", "e5"],
       games: 1,
       share: 0.01,
       lastDatestamp: 2000,
@@ -192,7 +195,7 @@ describe("scout-prefilter scoring", () => {
     ]);
     const ancestorFreq = new Map([
       [fenAfterLine(["e2e4"]), { count: 20, frequency: 0.1 }],
-      [fenAfterLine(["e2e4", "e7e5", "g1f3"]), { count: 1, frequency: 0.005 }],
+      [fenAfterLine(["c2c4"]), { count: 1, frequency: 0.005 }],
     ]);
     const ranked = rankPrefilterCandidates([rareSideline, mainSystem], evalMap, {
       fenAfterLine,
@@ -201,6 +204,26 @@ describe("scout-prefilter scoring", () => {
     });
     expect(ranked[0].line.ucis).toEqual(mainSystem.ucis);
     expect(ranked[0].ancestorFrequency).toBe(0.1);
+  });
+
+  it("surfaces a rare line where the opponent blundered (no frequency floor)", () => {
+    // The whole point of the tool: a rare reply the opponent walked into a clearly worse
+    // position with must surface, even though the old +20cp AND ancestor-frequency wall
+    // would have dropped it as too infrequent.
+    const rareBlunder = {
+      ucis: ["e2e4", "e7e5"],
+      sans: ["e4", "e5"],
+      games: 1,
+      share: 0.01,
+    };
+    const evalMap = evalMapForLine(rareBlunder.ucis, "black", { cpLoss: 50, bestUci: "c7c6" });
+    const ranked = rankPrefilterCandidates([rareBlunder], evalMap, {
+      fenAfterLine,
+      oppColor: "black",
+      ancestorFreq: ancestorFreqForLine(rareBlunder.ucis, 0.005),
+    });
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0].line.ucis).toEqual(rareBlunder.ucis);
   });
 
   it("excludes frequent lines where opponent empirically performs at/above baseline", () => {
@@ -275,17 +298,19 @@ describe("scout-prefilter scoring", () => {
     expect(ranked[0].line.ucis).toEqual(struggling.ucis);
   });
 
-  it("filters lines below ancestor-frequency or advantage gates", () => {
+  it("filters a line that clears no OR-gate: weak edge, no slip, no struggle, not off-modal", () => {
+    // oppColor white, small cp-loss => userLeafAdvantage = cpLoss - 20 = -15 (< 20), cpLoss 5
+    // (< 12), no annotated struggle/offModal => fails every survival condition.
     const gatedOut = {
-      ucis: ["e2e4", "e7e5"],
-      sans: ["e4", "e5"],
+      ucis: ["e2e4", "e7e5", "g1f3"],
+      sans: ["e4", "e5", "Nf3"],
       games: 1,
       share: 0.01,
     };
-    const evalMap = evalMapForLine(gatedOut.ucis, "black", { cpLoss: 30, bestUci: "c7c6" });
+    const evalMap = evalMapForLine(gatedOut.ucis, "white", { cpLoss: 5, bestUci: "b1c3" });
     const ranked = rankPrefilterCandidates([gatedOut], evalMap, {
       fenAfterLine,
-      oppColor: "black",
+      oppColor: "white",
       ancestorFreq: ancestorFreqForLine(gatedOut.ucis, 0.005),
     });
     expect(ranked).toHaveLength(0);

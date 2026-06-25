@@ -15,7 +15,6 @@ import {
   isNestedLine,
   isOpponentComfortZone,
   normalizeToOpponentTerminal,
-  openingReproducibilityScore,
   terminalMoveIsOpponent,
   triePathKey,
 } from "./scout.js";
@@ -32,6 +31,11 @@ export const SCOUT_PREFILTER_ENGINE_VERSION = "stockfish-18-lite";
 export const SCOUT_PREFILTER_MIN_CP_LOSS = 6;
 export const SCOUT_MIN_ANCESTOR_FREQUENCY = 0.01;
 export const SCOUT_MIN_STOCKFISH_ADVANTAGE = 20;
+/** OR-gate thresholds — a line survives on objective edge, a slip, empirical struggle, or a rare off-book reply. */
+export const SCOUT_PREFILTER_CP_LOSS_GATE = 12;
+export const SCOUT_PREFILTER_STRUGGLE_GATE = 0.15;
+export const SCOUT_PREFILTER_OFFMODAL_GATE = 2;
+export const SCOUT_PREFILTER_OFFMODAL_MIN_ADV = 8;
 
 export const PREFILTER_IDLE = "idle";
 export const PREFILTER_LOADING = "loading";
@@ -122,7 +126,27 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
     ancestorGames: ancestorInfo.games,
     scorePct: line.scorePct,
     games: line.games,
+    // Prefix-resolved exploitability signals, annotated upstream by rankedOpeningBranches.
+    struggle: line.exploitabilityStruggle ?? 0,
+    offModal: line.offModal ?? 0,
+    prefixGames: line.prefixGames ?? 0,
   };
+}
+
+/**
+ * Final exploitability rank for a scored candidate: objective edge, amplified by empirical
+ * struggle, with family reproducibility (log of prefix games) as a compressing weight — NOT a
+ * frequency-dominant score. Frequent main lines and rare-but-recurring weaknesses can both win.
+ */
+export function exploitabilityRank(entry) {
+  const adv = Math.max(0, entry?.prefilterScore ?? 0);
+  const struggle = Math.max(0, entry?.struggle ?? 0);
+  // Reproducibility weight prefers the family sample (prefixGames); 0 means "no n≥3 family
+  // found", so fall back to the leaf branch's own game count rather than treating it as none.
+  const prefixGames = entry?.prefixGames || 0;
+  const leafGames = entry?.games ?? entry?.line?.games ?? 0;
+  const games = prefixGames > 0 ? prefixGames : leafGames;
+  return adv * (1 + struggle) * (0.5 + Math.log1p(Math.max(0, games)));
 }
 
 function tiebreakRecencyShare(a, b) {
@@ -172,17 +196,29 @@ export function rankPrefilterCandidates(
       ...metrics,
     });
   }
+  // OR-gate: a line is worth prepping if the opponent is NOT in a comfort zone there, and
+  // ANY of — Stockfish finds a clear edge, they slipped (cp-loss), the line family empirically
+  // underperforms, or it's a rare off-book reply with a non-trivial edge. This replaces the old
+  // AND-style "+20cp AND frequent" wall that zeroed every main line.
   const gated = scored.filter((entry) => {
-    if ((entry.ancestorFrequency ?? 0) < SCOUT_MIN_ANCESTOR_FREQUENCY) return false;
-    if ((entry.prefilterScore ?? 0) < SCOUT_MIN_STOCKFISH_ADVANTAGE) return false;
     if (isOpponentComfortZone(entry, baselineScorePct)) return false;
-    return openingReproducibilityScore(entry, baselineScorePct) > 0;
+    const adv = entry.prefilterScore ?? 0;
+    const cpLoss = entry.cpLoss ?? 0;
+    const struggle = entry.struggle ?? 0;
+    const offModal = entry.offModal ?? 0;
+    if (adv >= SCOUT_MIN_STOCKFISH_ADVANTAGE) return true;
+    if (cpLoss >= SCOUT_PREFILTER_CP_LOSS_GATE) return true;
+    if (struggle >= SCOUT_PREFILTER_STRUGGLE_GATE && adv > 0) return true;
+    if (offModal >= SCOUT_PREFILTER_OFFMODAL_GATE && adv >= SCOUT_PREFILTER_OFFMODAL_MIN_ADV) {
+      return true;
+    }
+    return false;
   });
   gated.sort(
     (a, b) =>
-      openingReproducibilityScore(b, baselineScorePct) -
-        openingReproducibilityScore(a, baselineScorePct) ||
+      exploitabilityRank(b) - exploitabilityRank(a) ||
       Number(b.hasUserReply) - Number(a.hasUserReply) ||
+      (b.ancestorFrequency ?? 0) - (a.ancestorFrequency ?? 0) ||
       tiebreakRecencyShare(a.line, b.line),
   );
   return collapseNestedPrefilterLines(gated);
@@ -240,9 +276,9 @@ export function mergeGlobalPrefilterRanked(
   }
   entries.sort(
     (a, b) =>
-      openingReproducibilityScore(b, baselineByColor[b.oppColor] ?? 50) -
-        openingReproducibilityScore(a, baselineByColor[a.oppColor] ?? 50) ||
+      exploitabilityRank(b) - exploitabilityRank(a) ||
       Number(b.hasUserReply) - Number(a.hasUserReply) ||
+      (b.ancestorFrequency ?? 0) - (a.ancestorFrequency ?? 0) ||
       tiebreakRecencyShare(a.line, b.line) ||
       a.oppColor.localeCompare(b.oppColor),
   );
@@ -290,6 +326,7 @@ export async function runStockfishPrefilter(
     cache = new Map(),
     shouldCancel = () => false,
     createProvider = createEngineProvider,
+    onProgress = null,
     now = () => Date.now(),
   } = {},
 ) {
@@ -307,6 +344,13 @@ export async function runStockfishPrefilter(
   const budgetExpired = () => now() - startedAt >= timeBudgetMs;
   const cancelled = () => shouldCancel() || budgetExpired();
 
+  // Positions already cached from a prior pass still count toward the bar so it doesn't
+  // jump backwards when transpositions or a re-run shrink the missing set.
+  const cachedCount = allFens.length - missing.length;
+  if (typeof onProgress === "function") {
+    onProgress({ done: cachedCount, total: allFens.length, phase: "stockfish" });
+  }
+
   let freshEvals = new Map();
   if (missing.length && !cancelled()) {
     freshEvals = await analyzeGamePositions({
@@ -314,6 +358,11 @@ export async function runStockfishPrefilter(
       depth,
       concurrency,
       shouldCancel: cancelled,
+      onProgress: (done) => {
+        if (typeof onProgress === "function") {
+          onProgress({ done: cachedCount + done, total: allFens.length, phase: "stockfish" });
+        }
+      },
       createProvider: (opts) => createProvider({ ...opts, maxDepth: depth }),
     });
     for (const [fen, evalResult] of freshEvals) {

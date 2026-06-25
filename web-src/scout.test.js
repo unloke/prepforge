@@ -6,8 +6,11 @@ import {
   SCOUT_BRANCH_SCORE_CAP,
   SCOUT_RECENCY_HALF_LIFE_DAYS,
   aggregateOpeningBranches,
+  branchExploitabilityPrior,
   branchPathKey,
+  branchStruggle,
   buildOpeningTrie,
+  triePrefixStats,
   computeNextOwnThinkSeconds,
   gameNextOwnThinkMedian,
   createScoutClient,
@@ -479,6 +482,107 @@ describe("openingBreakdown + recommendTargets", () => {
     const breakdown = openingBreakdown(trie, { minGames: 1 });
     const targets = recommendTargets(breakdown, 40, { minGames: WEAKNESS_MIN_GAMES });
     expect(targets.every((t) => t.games >= WEAKNESS_MIN_GAMES)).toBe(true);
+  });
+});
+
+describe("triePrefixStats + branchStruggle + exploitability prior", () => {
+  function strugglingFamily() {
+    // Black reaches 1...e5 five times and loses every time (family underperforms), with one
+    // of those games continuing into a rare deeper reply.
+    const shallow = Array.from({ length: 4 }, (_, i) =>
+      scoutGame({
+        color: "black",
+        score: 0,
+        sans: ["e4", "e5"],
+        ucis: ["e2e4", "e7e5"],
+        gameId: `e5-${i}`,
+        datestamp: 1000 + i,
+      }),
+    );
+    const deep = scoutGame({
+      color: "black",
+      score: 0,
+      sans: ["e4", "e5", "Nf3", "Nge7"],
+      ucis: ["e2e4", "e7e5", "g1f3", "g8e7"],
+      gameId: "deep",
+      datestamp: 2000,
+    });
+    return [...shallow, deep];
+  }
+
+  it("triePrefixStats returns per-ply nodes with game counts and move share", () => {
+    const trie = buildOpeningTrie(strugglingFamily(), "black", { recency: false });
+    const stats = triePrefixStats(trie, ["e2e4", "e7e5"]);
+    expect(stats).toHaveLength(2);
+    expect(stats[0].uci).toBe("e2e4");
+    expect(stats[1].uci).toBe("e7e5");
+    expect(stats[1].gameCount).toBe(5);
+    // All five reaching the e4 node chose 1...e5, so the move share is 1.
+    expect(stats[1].moveShare).toBeCloseTo(1, 5);
+    expect(stats[1].scorePct).toBe(0); // lost all five
+  });
+
+  it("branchStruggle resolves an n=1 deep leaf at its n>=3 family prefix", () => {
+    const trie = buildOpeningTrie(strugglingFamily(), "black", { recency: false });
+    const deep = branchStruggle(trie, ["e2e4", "e7e5", "g1f3", "g8e7"], 50);
+    expect(deep.prefixGames).toBe(5); // borrowed the family sample, not the n=1 leaf
+    expect(deep.prefixPly).toBe(1);
+    expect(deep.struggle).toBeGreaterThan(0); // family scores 0% vs a 50% baseline
+  });
+
+  it("branchStruggle reports no struggle when the family is at/above baseline", () => {
+    const winning = Array.from({ length: 5 }, (_, i) =>
+      scoutGame({
+        color: "black",
+        score: 1,
+        sans: ["e4", "e5"],
+        ucis: ["e2e4", "e7e5"],
+        gameId: `win-${i}`,
+        datestamp: 1000 + i,
+      }),
+    );
+    const trie = buildOpeningTrie(winning, "black", { recency: false });
+    expect(branchStruggle(trie, ["e2e4", "e7e5"], 50).struggle).toBe(0);
+  });
+
+  it("exploitability prior ranks a struggling line above a comfortable one", () => {
+    const games = [
+      ...strugglingFamily(),
+      ...Array.from({ length: 6 }, (_, i) =>
+        scoutGame({
+          color: "black",
+          score: 1, // comfortable: wins with the Caro
+          sans: ["e4", "c6"],
+          ucis: ["e2e4", "c7c6"],
+          gameId: `caro-${i}`,
+          datestamp: 1500 + i,
+        }),
+      ),
+    ];
+    const trie = buildOpeningTrie(games, "black", { recency: false });
+    const struggling = branchExploitabilityPrior(
+      { ucis: ["e2e4", "e7e5"], branchScore: 1 },
+      { trie, baselineScorePct: 50 },
+    );
+    const comfortable = branchExploitabilityPrior(
+      { ucis: ["e2e4", "c7c6"], branchScore: 1 },
+      { trie, baselineScorePct: 50 },
+    );
+    expect(struggling).toBeGreaterThan(comfortable);
+  });
+
+  it("rankedOpeningBranches annotates struggle signals when a trie is supplied", () => {
+    const games = strugglingFamily();
+    const trie = buildOpeningTrie(games, "black", { recency: false });
+    const { branches } = rankedOpeningBranches(games, "black", {
+      trie,
+      baselineScorePct: 50,
+    });
+    const e5 = branches.find((b) => b.ucis.join(">") === "e2e4>e7e5");
+    expect(e5).toBeDefined();
+    expect(e5.exploitabilityStruggle).toBeGreaterThan(0);
+    expect(e5.prefixGames).toBeGreaterThanOrEqual(3);
+    expect(typeof e5.exploitabilityPrior).toBe("number");
   });
 });
 

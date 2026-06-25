@@ -158,6 +158,60 @@ export function createScoutView(deps) {
     if (el) el.textContent = String(scoutState?.games?.length || 0);
   }
 
+  function engineProgressLabel(p) {
+    if (p?.phase === "maia") {
+      return p.total > 0
+        ? `Reading human tendencies · ${p.done}/${p.total}`
+        : "Reading human tendencies…";
+    }
+    return p && p.total > 0
+      ? `Analyzing openings · ${p.done}/${p.total}`
+      : "Analyzing openings…";
+  }
+
+  function engineProgressPct(p) {
+    if (!p || !p.total) return 6; // a visible sliver before the first position settles
+    return Math.max(4, Math.min(100, Math.round((p.done / p.total) * 100)));
+  }
+
+  function enginePhaseActive() {
+    return (
+      scoutState?.prefilterEnrichState === PREFILTER_LOADING ||
+      scoutState?.maiaEnrichState === MAIA_ENRICH_LOADING
+    );
+  }
+
+  // Patch the progress bar in place (no full re-render) so it animates smoothly while
+  // Stockfish/Maia churn through positions between the coarse report rerenders.
+  function patchEngineProgressUI() {
+    const el = document.getElementById("scout-engine-progress");
+    if (!el) return;
+    if (!enginePhaseActive()) {
+      el.hidden = true;
+      el.innerHTML = "";
+      return;
+    }
+    const p = scoutState?.engineProgress;
+    const pct = engineProgressPct(p);
+    el.hidden = false;
+    el.setAttribute("role", "progressbar");
+    el.setAttribute("aria-valuemin", "0");
+    el.setAttribute("aria-valuemax", "100");
+    el.setAttribute("aria-valuenow", String(pct));
+    el.innerHTML = `
+      <div class="scout-progress-row">
+        <span class="scout-progress-label">${escapeHtml(engineProgressLabel(p))}</span>
+        <span class="scout-progress-count">${pct}%</span>
+      </div>
+      <div class="scout-progress-track"><div class="scout-progress-fill" style="width:${pct}%"></div></div>`;
+  }
+
+  function setEngineProgress(progress) {
+    if (!scoutState) return;
+    scoutState.engineProgress = progress;
+    patchEngineProgressUI();
+  }
+
   function updateScoutControls() {
     const btn = document.getElementById("scout-btn");
     const resetBtn = document.getElementById("scout-reset-btn");
@@ -273,10 +327,11 @@ export function createScoutView(deps) {
       });
     }
     const sections = [whiteReport.html, blackReport.html].filter(Boolean);
+    const progressHtml = '<div id="scout-engine-progress" class="scout-engine-progress" hidden></div>';
     if (results) {
       results.innerHTML = sections.length
-        ? sections.join("")
-        : '<div class="empty-state">Not enough opening data in these games.</div>';
+        ? progressHtml + sections.join("")
+        : progressHtml + '<div class="empty-state">Not enough opening data in these games.</div>';
       if (captured) {
         restoreScoutExpanded(results, scoutState.sections, captured, {
           scoutModule,
@@ -291,6 +346,7 @@ export function createScoutView(deps) {
       }
     }
     if (force) updateLiveCounter();
+    patchEngineProgressUI();
     if (!isStreaming() && !isEnrichmentInFlight()) {
       schedulePrefilterEnrich();
     }
@@ -378,13 +434,18 @@ export function createScoutView(deps) {
     }, MAIA_ENRICH_DEBOUNCE_MS);
   }
 
-  function openingBranchBundleForColor(_section, oppColor) {
+  function openingBranchBundleForColor(section, oppColor) {
     if (!scoutState?.games?.length || !scoutModule?.rankedOpeningBranches) {
       return { branches: [], ancestorFreq: new Map() };
     }
+    // The trie + baseline make rankedOpeningBranches select Stockfish candidates by the
+    // exploitability prior (struggle × rarity × family reproducibility) instead of raw
+    // frequency, and annotate each branch with prefix-resolved struggle/offModal signals.
     return (
       scoutModule.rankedOpeningBranches(scoutState.games, oppColor, {
         speedFilter: scoutState.activeSpeed,
+        trie: section?.trie || null,
+        baselineScorePct: baselineScorePctForColor(oppColor),
       }) || { branches: [], ancestorFreq: new Map() }
     );
   }
@@ -553,18 +614,24 @@ export function createScoutView(deps) {
     prefilterEnrichActiveGen = gen;
     prefilterEnrichInFlight = true;
     scoutState.prefilterEnrichState = PREFILTER_LOADING;
+    scoutState.engineProgress = { phase: "stockfish", done: 0, total: 0 };
     scoutState.prefilterPools = scoutState.prefilterPools || { white: [], black: [] };
     scoutState.prefilterRanked = scoutState.prefilterRanked || { white: [], black: [] };
     scoutState.prefilteredLines = scoutState.prefilteredLines || { white: [], black: [] };
     scoutState.prefilterCache = scoutState.prefilterCache || new Map();
     renderScoutReport();
 
+    // Carry positions counted in earlier colours so the bar climbs monotonically across
+    // the white→black passes instead of snapping back to 0% when black starts.
+    let sfBaseDone = 0;
+    let sfBaseTotal = 0;
     try {
       for (const oppColor of ["white", "black"]) {
         if (gen !== prefilterEnrichSeq) return;
         const section = scoutState.sections?.[oppColor];
         const lines = allOpeningLinesForColor(section, oppColor);
         if (!lines.length) continue;
+        let lastColorProgress = { done: 0, total: 0 };
         const result = await runStockfishPrefilter(lines, {
           fenAfterLine: scoutModule.fenAfterLine,
           oppColor,
@@ -572,7 +639,18 @@ export function createScoutView(deps) {
           baselineScorePct: baselineScorePctForColor(oppColor),
           cache: scoutState.prefilterCache,
           shouldCancel: () => gen !== prefilterEnrichSeq,
+          onProgress: (p) => {
+            if (gen !== prefilterEnrichSeq) return;
+            lastColorProgress = p;
+            setEngineProgress({
+              phase: "stockfish",
+              done: sfBaseDone + p.done,
+              total: sfBaseTotal + p.total,
+            });
+          },
         });
+        sfBaseDone += lastColorProgress.done;
+        sfBaseTotal += lastColorProgress.total;
         if (gen !== prefilterEnrichSeq) return;
         if (!result.ranked?.length) {
           applyPrefilterFallbackForColor(section, oppColor);
@@ -662,6 +740,7 @@ export function createScoutView(deps) {
     maiaEnrichInFlight = true;
     scoutState.maiaEnrichState = MAIA_ENRICH_LOADING;
     scoutState.maiaAttemptsUsed = scoutState.maiaAttemptsUsed || 0;
+    scoutState.engineProgress = { phase: "maia", done: 0, total: 0 };
     renderScoutReport();
 
     try {
@@ -687,6 +766,9 @@ export function createScoutView(deps) {
           cache: scoutState.maiaCache,
           maiaResults: scoutState.maiaResults,
           shouldCancel: () => gen !== maiaEnrichSeq,
+          onProgress: (p) => {
+            if (gen === maiaEnrichSeq) setEngineProgress(p);
+          },
         });
         if (gen !== maiaEnrichSeq) return;
         scoutState.maiaAttemptsUsed = attempts;

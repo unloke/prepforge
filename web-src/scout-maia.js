@@ -389,12 +389,20 @@ export async function enrichGlobalMaiaPool(
     cache = new Map(),
     maiaResults = null,
     shouldCancel = () => false,
+    onProgress = null,
   } = {},
 ) {
   const successes = [];
   const successesByColor = { white: [], black: [] };
   let attempts = attemptsUsed;
   const seenKeys = new Set();
+  const target = Math.min(successTarget, (rankedEntries || []).length);
+  const reportProgress = () => {
+    if (typeof onProgress === "function") {
+      onProgress({ done: successes.length, total: target, phase: "maia" });
+    }
+  };
+  reportProgress();
 
   for (const entry of rankedEntries || []) {
     if (shouldCancel()) break;
@@ -430,6 +438,7 @@ export async function enrichGlobalMaiaPool(
     const enriched = applyMaiaToLine(line, maia, baselineScorePct, enrich);
     successes.push({ oppColor, line: enriched });
     successesByColor[oppColor].push(enriched);
+    reportProgress();
   }
 
   return { successes, successesByColor, attempts };
