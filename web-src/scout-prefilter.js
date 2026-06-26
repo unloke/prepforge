@@ -396,6 +396,7 @@ export async function runStockfishPrefilter(
     createProvider = createEngineProvider,
     onProgress = null,
     now = () => Date.now(),
+    analyzeGamePositions: injectedAnalyze = analyzeGamePositions,
   } = {},
 ) {
   if (!lines?.length || !fenAfterLine || !oppColor) {
@@ -428,7 +429,7 @@ export async function runStockfishPrefilter(
   let freshEvals = new Map();
   if (missing.length && !cancelled()) {
     try {
-      freshEvals = await analyzeGamePositions({
+      freshEvals = await injectedAnalyze({
         positions: missing,
         depth,
         concurrency,
