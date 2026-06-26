@@ -4,7 +4,6 @@
 
 import { analyzeGamePositions } from "./engine/game-analyzer.js";
 import { createEngineProvider } from "./engine/stockfish-provider.js";
-import { cpLossFromEvals } from "./scout-engine.js";
 import {
   SCOUT_BRANCH_SCORE_CAP,
   SCOUT_MAIA_LIMIT,
@@ -21,21 +20,27 @@ import {
 
 export const SCOUT_PREFILTER_DEPTH = SCOUT_STOCKFISH_DEPTH;
 export const SCOUT_PREFILTER_LIMIT = SCOUT_BRANCH_SCORE_CAP;
-/** All branch candidates run through Stockfish; Maia takes the top unique lines only. */
-export const SCOUT_PREFILTER_POOL_SIZE = SCOUT_BRANCH_SCORE_CAP;
+/** Maia backup pool depth — decoupled from the branch cap. Stockfish access is bounded by
+ * the time budget, not this; this only caps how many ranked entries the Maia chase may dip
+ * into for backups. Maia still resolves SCOUT_MAIA_LIMIT (12) unique lines. */
+export const SCOUT_PREFILTER_POOL_SIZE = 64;
 export const SCOUT_MAIA_PREFILTER_LIMIT = SCOUT_MAIA_LIMIT;
 export const SCOUT_PREFILTER_CONCURRENCY = 3;
 export const SCOUT_PREFILTER_TIME_BUDGET_MS = 45_000;
 export const SCOUT_PREFILTER_ENGINE_VERSION = "stockfish-18-lite";
-/** Legacy minimum cp-loss threshold; no longer used in scorePrefilterLine (kept for backward compat). */
-export const SCOUT_PREFILTER_MIN_CP_LOSS = 6;
 export const SCOUT_MIN_ANCESTOR_FREQUENCY = 0.01;
 export const SCOUT_MIN_STOCKFISH_ADVANTAGE = 20;
-/** OR-gate thresholds — a line survives on objective edge, a slip, empirical struggle, or a rare off-book reply. */
-export const SCOUT_PREFILTER_CP_LOSS_GATE = 12;
+/** OR-gate thresholds — a line survives on objective edge, empirical struggle, a rare
+ * off-book reply, or a strong engine-free exploitability prior. (The old cp-loss gate is
+ * gone: it required a second Stockfish eval of the pre-move position only to confirm "was
+ * the last move bad", which the leaf advantage already captures.) */
 export const SCOUT_PREFILTER_STRUGGLE_GATE = 0.15;
 export const SCOUT_PREFILTER_OFFMODAL_GATE = 2;
 export const SCOUT_PREFILTER_OFFMODAL_MIN_ADV = 8;
+/** Prior-rescue floor: a line with a real exploitability prior (≈ struggle 0.1, off-modal,
+ * a small recurring family) survives even when the depth-8 leaf edge is modest. Derived from
+ * (0.1+0.08)·2^0.7·(log1p(3)+0.1) ≈ 0.43; set slightly conservative. */
+export const SCOUT_PREFILTER_PRIOR_FLOOR = 0.4;
 
 export const PREFILTER_IDLE = "idle";
 export const PREFILTER_LOADING = "loading";
@@ -62,7 +67,14 @@ export function prefilterCacheKey(fen, depth = SCOUT_PREFILTER_DEPTH) {
   return `${SCOUT_PREFILTER_ENGINE_VERSION}|d${depth}|${fen}`;
 }
 
-/** Collect distinct FENs needed to score opening-line candidates. */
+/**
+ * Collect the distinct LEAF FENs needed to score opening-line candidates. Leaf-only: the
+ * line's value is the position the opponent's move reaches (`userLeafAdvantage`), so we no
+ * longer evaluate the pre-move position. Dropping that second eval ~halves the Stockfish
+ * workload, which is what lets the prefilter run uncapped within the same time budget. The
+ * candidates arrive exploitability-prior-sorted and `analyzeGamePositions` drains its queue
+ * front-to-back, so the highest-prior leaves are confirmed first when the budget runs out.
+ */
 export function collectPrefilterFens(lines, { fenAfterLine, oppColor }) {
   const fens = [];
   const seen = new Set();
@@ -71,13 +83,10 @@ export function collectPrefilterFens(lines, { fenAfterLine, oppColor }) {
     if (!normalized) continue;
     const ucis = normalized.ucis;
     if (!terminalMoveIsOpponent(ucis, oppColor)) continue;
-    const before = fenBeforeLastMove(ucis);
     const leaf = fenAfterLine(ucis);
-    for (const fen of [before, leaf]) {
-      if (!fen || seen.has(fen)) continue;
-      seen.add(fen);
-      fens.push(fen);
-    }
+    if (!leaf || seen.has(leaf)) continue;
+    seen.add(leaf);
+    fens.push(leaf);
   }
   return fens;
 }
@@ -86,39 +95,65 @@ export function collectPrefilterFens(lines, { fenAfterLine, oppColor }) {
  * Score one line from shallow Stockfish reads. Higher prefilterScore = more objectively
  * worth preparing. Returns null when the line should be excluded.
  */
-export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ancestorFreq }) {
-  const normalized = normalizeToOpponentTerminal(line.ucis, line.sans, oppColor);
-  if (!normalized) return null;
-  const ucis = normalized.ucis;
-  if (!terminalMoveIsOpponent(ucis, oppColor)) return null;
+export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ancestorFreq, funnel }) {
+  const drop = (key) => {
+    if (funnel?.scoreDrops) {
+      funnel.scoreDrops[key] = (funnel.scoreDrops[key] || 0) + 1;
+    }
+  };
 
+  const normalized = normalizeToOpponentTerminal(line.ucis, line.sans, oppColor);
+  if (!normalized) {
+    drop("notOppTerminal");
+    return null;
+  }
+  const ucis = normalized.ucis;
+  if (!terminalMoveIsOpponent(ucis, oppColor)) {
+    drop("notOppTerminal");
+    return null;
+  }
+
+  // fenBefore is still derived (chess.js, not an engine read) for the mover check and the
+  // ancestor-frequency lookup; only its Stockfish eval is gone.
   const fenBefore = fenBeforeLastMove(ucis);
   const fenLeaf = fenAfterLine(ucis);
-  const playedUci = ucis[ucis.length - 1];
-  const beforeEval = fenBefore ? evalMap.get(fenBefore) : null;
   const leafEval = fenLeaf ? evalMap.get(fenLeaf) : null;
-  if (!beforeEval || !leafEval) return null;
-  if (beforeEval.complete === false || leafEval.complete === false) return null;
+  if (!leafEval) {
+    drop("noEval");
+    return null;
+  }
+  if (leafEval.complete === false) {
+    drop("incompleteEval");
+    return null;
+  }
 
   const mover = moverFromFen(fenBefore);
-  if (mover !== oppColor) return null;
+  if (mover !== oppColor) {
+    drop("moverMismatch");
+    return null;
+  }
 
-  const beforeCp = beforeEval.score_cp ?? 0;
   const afterCp = leafEval.score_cp ?? 0;
-  const bestUci = beforeEval.best_move_uci;
-  const cpLoss = cpLossFromEvals(beforeCp, afterCp, mover);
   const userLeafAdvantage = oppColor === 'white' ? -afterCp : afterCp;
-  const playedIsBest = !!(playedUci && bestUci && playedUci === bestUci);
-  const hasUserReply = !!leafEval.best_move_uci;
+  // Mate counts only when it favours the USER (the side preparing). `mate_in` is White-POV,
+  // so flip its sign for a black-user (oppColor white). Opponent-mate leaves get mateIn 0.
+  const rawMate = leafEval.mate_in ?? 0;
+  const userMate = oppColor === 'white' ? -rawMate : rawMate;
+  const mateIn = userMate > 0 ? userMate : 0;
+  const hasUserReply = !!leafEval.best_move_uci || mateIn > 0;
 
-  if (!hasUserReply) return null;
+  if (!hasUserReply) {
+    drop("noUserReply");
+    return null;
+  }
 
   const ancestorInfo = ancestorFreq?.get(fenBefore) || { frequency: 0.001 };
 
+  if (funnel) funnel.scored = (funnel.scored || 0) + 1;
+
   return {
-    cpLoss,
     userLeafAdvantage,
-    playedIsBest,
+    mateIn,
     hasUserReply,
     prefilterScore: userLeafAdvantage,
     ancestorFrequency: ancestorInfo.frequency,
@@ -130,23 +165,27 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
     struggle: line.exploitabilityStruggle ?? 0,
     offModal: line.offModal ?? 0,
     prefixGames: line.prefixGames ?? 0,
+    exploitabilityPrior: line.exploitabilityPrior ?? 0,
   };
 }
 
 /**
- * Final exploitability rank for a scored candidate: objective edge, amplified by empirical
- * struggle, with family reproducibility (log of prefix games) as a compressing weight — NOT a
- * frequency-dominant score. Frequent main lines and rare-but-recurring weaknesses can both win.
+ * Final exploitability rank = engine-free PRIOR × engine CONFIRMATION × empirical amplifier.
+ *   prior   — the upstream exploitability prior (struggle × off-modal rarity × family
+ *             reproducibility); already carries "is this a recurring weakness worth prepping".
+ *             1 is substituted when no prior exists (no-trie fallback) so the edge still orders.
+ *   edge    — the depth-8 leaf advantage above an 8cp noise floor, log-compressed so a +40cp
+ *             confirm beats a +12cp one without scaling linearly; a user-favourable mate
+ *             saturates it. This is CONFIRMATION, not the ranking driver — it gates noise, the
+ *             prior decides priority. (cp-loss is intentionally absent: it only told us whether
+ *             the last move was bad, which the leaf advantage already reflects.)
+ *   struggle — empirical amplifier on top, once the engine agrees there is an edge.
  */
 export function exploitabilityRank(entry) {
-  const adv = Math.max(0, entry?.prefilterScore ?? 0);
+  const edge = entry?.mateIn ? 1e6 : Math.max(0, (entry?.prefilterScore ?? 0) - 8);
+  const prior = entry?.exploitabilityPrior ?? 0;
   const struggle = Math.max(0, entry?.struggle ?? 0);
-  // Reproducibility weight prefers the family sample (prefixGames); 0 means "no n≥3 family
-  // found", so fall back to the leaf branch's own game count rather than treating it as none.
-  const prefixGames = entry?.prefixGames || 0;
-  const leafGames = entry?.games ?? entry?.line?.games ?? 0;
-  const games = prefixGames > 0 ? prefixGames : leafGames;
-  return adv * (1 + struggle) * (0.5 + Math.log1p(Math.max(0, games)));
+  return (prior > 0 ? prior : 1) * Math.log1p(1 + edge / 12) * (1 + 2 * struggle);
 }
 
 function tiebreakRecencyShare(a, b) {
@@ -185,11 +224,31 @@ export function collapseNestedPrefilterLines(sorted) {
 export function rankPrefilterCandidates(
   lines,
   evalMap,
-  { fenAfterLine, oppColor, ancestorFreq, baselineScorePct = 50 },
+  { fenAfterLine, oppColor, ancestorFreq, baselineScorePct = 50, funnelOut },
 ) {
+  const funnel = {
+    totalLines: (lines || []).length,
+    scoreDrops: {
+      notOppTerminal: 0,
+      noEval: 0,
+      incompleteEval: 0,
+      moverMismatch: 0,
+      noUserReply: 0,
+    },
+    scored: 0,
+    gateDrops: { comfortZone: 0, failedOrGate: 0 },
+    survived: 0,
+    afterCollapse: 0,
+  };
+
   const scored = [];
   for (const line of lines || []) {
-    const metrics = scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ancestorFreq });
+    const metrics = scorePrefilterLine(line, evalMap, {
+      fenAfterLine,
+      oppColor,
+      ancestorFreq,
+      funnel,
+    });
     if (!metrics) continue;
     scored.push({
       line,
@@ -197,23 +256,33 @@ export function rankPrefilterCandidates(
     });
   }
   // OR-gate: a line is worth prepping if the opponent is NOT in a comfort zone there, and
-  // ANY of — Stockfish finds a clear edge, they slipped (cp-loss), the line family empirically
-  // underperforms, or it's a rare off-book reply with a non-trivial edge. This replaces the old
-  // AND-style "+20cp AND frequent" wall that zeroed every main line.
+  // ANY of — the user has a forced mate, Stockfish finds a clear edge, the line family
+  // empirically underperforms, it's a rare off-book reply with a non-trivial edge, or it
+  // carries a strong engine-free prior with some edge. This replaces the old AND-style
+  // "+20cp AND frequent" wall that zeroed every main line (and the cp-loss branch, which
+  // needed a second eval to confirm a now-redundant signal).
   const gated = scored.filter((entry) => {
-    if (isOpponentComfortZone(entry, baselineScorePct)) return false;
+    if (isOpponentComfortZone(entry, baselineScorePct)) {
+      funnel.gateDrops.comfortZone++;
+      return false;
+    }
+    if (entry.mateIn > 0) return true;
     const adv = entry.prefilterScore ?? 0;
-    const cpLoss = entry.cpLoss ?? 0;
     const struggle = entry.struggle ?? 0;
     const offModal = entry.offModal ?? 0;
+    const prior = entry.exploitabilityPrior ?? 0;
     if (adv >= SCOUT_MIN_STOCKFISH_ADVANTAGE) return true;
-    if (cpLoss >= SCOUT_PREFILTER_CP_LOSS_GATE) return true;
     if (struggle >= SCOUT_PREFILTER_STRUGGLE_GATE && adv > 0) return true;
     if (offModal >= SCOUT_PREFILTER_OFFMODAL_GATE && adv >= SCOUT_PREFILTER_OFFMODAL_MIN_ADV) {
       return true;
     }
+    // Prior-rescue (replaces the old cp-loss branch): a rare sideline with a real recurring
+    // exploitability prior survives even when depth-8 undercounts its modest leaf edge.
+    if (prior > SCOUT_PREFILTER_PRIOR_FLOOR && adv > 0) return true;
+    funnel.gateDrops.failedOrGate++;
     return false;
   });
+  funnel.survived = gated.length;
   gated.sort(
     (a, b) =>
       exploitabilityRank(b) - exploitabilityRank(a) ||
@@ -221,7 +290,10 @@ export function rankPrefilterCandidates(
       (b.ancestorFrequency ?? 0) - (a.ancestorFrequency ?? 0) ||
       tiebreakRecencyShare(a.line, b.line),
   );
-  return collapseNestedPrefilterLines(gated);
+  const collapsed = collapseNestedPrefilterLines(gated);
+  funnel.afterCollapse = collapsed.length;
+  if (funnelOut) Object.assign(funnelOut, funnel);
+  return collapsed;
 }
 
 export function prefilterPoolLines(ranked, poolSize = SCOUT_PREFILTER_POOL_SIZE) {
@@ -251,8 +323,8 @@ export function buildFallbackPrefilterData(
     line,
     prefilterScore: 0,
     hasUserReply: true,
-    cpLoss: 0,
-    playedIsBest: false,
+    mateIn: 0,
+    exploitabilityPrior: 0,
   }));
   const maiaLines = prefilterMaiaLines(ranked, limit);
   return { ranked, pool, maiaLines };
@@ -331,7 +403,13 @@ export async function runStockfishPrefilter(
   } = {},
 ) {
   if (!lines?.length || !fenAfterLine || !oppColor) {
-    return { ranked: [], pool: [], maiaLines: [], incompleteLines: [] };
+    return {
+      ranked: [],
+      pool: [],
+      maiaLines: [],
+      incompleteLines: [],
+      funnel: { totalLines: 0 },
+    };
   }
 
   const allFens = collectPrefilterFens(lines, { fenAfterLine, oppColor });
@@ -353,20 +431,31 @@ export async function runStockfishPrefilter(
 
   let freshEvals = new Map();
   if (missing.length && !cancelled()) {
-    freshEvals = await analyzeGamePositions({
-      positions: missing,
-      depth,
-      concurrency,
-      shouldCancel: cancelled,
-      onProgress: (done) => {
-        if (typeof onProgress === "function") {
-          onProgress({ done: cachedCount + done, total: allFens.length, phase: "stockfish" });
-        }
-      },
-      createProvider: (opts) => createProvider({ ...opts, maxDepth: depth }),
-    });
-    for (const [fen, evalResult] of freshEvals) {
-      cache.set(prefilterCacheKey(fen, depth), wrapEvalComplete(evalResult, !cancelled()));
+    try {
+      freshEvals = await analyzeGamePositions({
+        positions: missing,
+        depth,
+        concurrency,
+        shouldCancel: cancelled,
+        onProgress: (done) => {
+          if (typeof onProgress === "function") {
+            onProgress({ done: cachedCount + done, total: allFens.length, phase: "stockfish" });
+          }
+        },
+        createProvider: (opts) => createProvider({ ...opts, maxDepth: depth }),
+      });
+      for (const [fen, evalResult] of freshEvals) {
+        cache.set(prefilterCacheKey(fen, depth), wrapEvalComplete(evalResult, !cancelled()));
+      }
+    } catch (err) {
+      // Budget expiry throws AnalysisCancelled but we want to rank partial results.
+      // User cancellation (shouldCancel without budgetExpired) should be re-thrown.
+      const isBudgetStop = err.cancelled && budgetExpired() && !shouldCancel();
+      if (!isBudgetStop) throw err;
+      // Log the partial evaluations from Stockfish workers before they were cancelled.
+      // Note: freshEvals is empty here (the exception cut the await short), but the
+      // cache was populated by onProgress reports during the run. Let workers finish
+      // cleanup and continue below with whatever partial results cached.
     }
   }
 
@@ -384,11 +473,13 @@ export async function runStockfishPrefilter(
     if (!evalMap.has(fen)) evalMap.set(fen, evalResult);
   }
 
+  const funnel = {};
   const ranked = rankPrefilterCandidates(lines, evalMap, {
     fenAfterLine,
     oppColor,
     ancestorFreq,
     baselineScorePct,
+    funnelOut: funnel,
   });
   const pool = prefilterPoolLines(ranked, poolSize);
   const maiaLines = prefilterMaiaLines(ranked, SCOUT_MAIA_PREFILTER_LIMIT);
@@ -397,11 +488,15 @@ export async function runStockfishPrefilter(
     return !metrics;
   });
 
+  funnel.poolSize = pool.length;
+  funnel.maiaCandidates = maiaLines.length;
+
   return {
     ranked,
     pool,
     maiaLines,
     incompleteLines,
+    funnel,
     cancelled: superseded || hitTimeBudget,
     budgetExpired: hitTimeBudget,
     superseded,

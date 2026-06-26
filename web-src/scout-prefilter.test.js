@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   SCOUT_MAIA_PREFILTER_LIMIT,
-  SCOUT_PREFILTER_MIN_CP_LOSS,
   SCOUT_PREFILTER_LIMIT,
   SCOUT_PREFILTER_POOL_SIZE,
   buildFallbackPrefilterData,
@@ -63,34 +62,52 @@ describe("scout-prefilter scoring", () => {
         ancestorFreq: ancestorFreqForLine(ucis, 0.12),
       },
     );
-    expect(metrics?.cpLoss).toBe(40);
     expect(metrics?.hasUserReply).toBe(true);
     expect(metrics?.prefilterScore).toBe(20);   // userLeafAdvantage = -(-20) = 20
+    expect(metrics?.cpLoss).toBeUndefined();     // cp-loss is gone (leaf-only scoring)
     expect(metrics?.ancestorFrequency).toBe(0.12);
   });
 
-  it("excludes lines with no user reply at the leaf", () => {
-    const ucis = ["e2e4", "e7e5"];
-    const line = { ucis, sans: ["e4", "e5"], games: 1 };
-    const fenBefore = fenAfterLine(["e2e4"]);
+  it("scores a user-favourable mate at the leaf and ignores an opponent mate", () => {
+    const ucis = ["e2e4"]; // white-terminal; user is black (oppColor white)
+    const line = { ucis, sans: ["e4"], games: 1 };
     const fenLeaf = fenAfterLine(ucis);
-    const evalMap = new Map([
-      [fenBefore, { score_cp: 10, best_move_uci: "e7e5" }],
-      [fenLeaf, { score_cp: 10, best_move_uci: null }],
-    ]);
+    // mate_in is White-POV; -3 means Black (the user here) is mating.
+    const userMate = scorePrefilterLine(
+      line,
+      new Map([[fenLeaf, { score_cp: 0, mate_in: -3, best_move_uci: null }]]),
+      { fenAfterLine, oppColor: OPP },
+    );
+    expect(userMate?.mateIn).toBe(3);
+    expect(userMate?.hasUserReply).toBe(true);
+    // +3 means White is mating the user — not a prep target.
+    const oppMate = scorePrefilterLine(
+      line,
+      new Map([[fenLeaf, { score_cp: 0, mate_in: 3, best_move_uci: null }]]),
+      { fenAfterLine, oppColor: OPP },
+    );
+    expect(oppMate).toBeNull();
+  });
+
+  it("excludes lines with no user reply at the leaf", () => {
+    // White-terminal line; its leaf eval has neither a reply move nor a user-favourable mate.
+    const ucis = ["e2e4"];
+    const line = { ucis, sans: ["e4"], games: 1 };
+    const fenLeaf = fenAfterLine(ucis);
+    const evalMap = new Map([[fenLeaf, { score_cp: 10, best_move_uci: null }]]);
     expect(
       scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor: OPP }),
     ).toBeNull();
   });
 
-  it("collects distinct before/leaf FENs across lines", () => {
+  it("collects one distinct leaf FEN per line (leaf-only)", () => {
     const lines = [
       { ucis: ["e2e4", "e7e5", "g1f3"], sans: ["e4", "e5", "Nf3"], games: 1 },
       { ucis: ["e2e4", "c7c5", "g1f3"], sans: ["e4", "c5", "Nf3"], games: 1 },
     ];
     const fens = collectPrefilterFens(lines, { fenAfterLine, oppColor: OPP });
-    expect(fens.length).toBe(4);
-    expect(new Set(fens).size).toBe(4);
+    expect(fens.length).toBe(2);
+    expect(new Set(fens).size).toBe(2);
   });
 
   it("ranks line by leaf position quality even when last-move cp-loss is small", () => {
@@ -98,7 +115,7 @@ describe("scout-prefilter scoring", () => {
     const line = { ucis, sans: ["e4", "e5", "Nf3"], games: 1 };
     const metrics = scorePrefilterLine(
       line,
-      evalMapForLine(ucis, OPP, { cpLoss: SCOUT_PREFILTER_MIN_CP_LOSS - 1, bestUci: "b1c3" }),
+      evalMapForLine(ucis, OPP, { cpLoss: 5, bestUci: "b1c3" }),
       { fenAfterLine, oppColor: OPP },
     );
     expect(metrics?.prefilterScore).toBe(-15);
@@ -142,12 +159,12 @@ describe("scout-prefilter scoring", () => {
   });
 
   it("keeps up to SCOUT_PREFILTER_POOL_SIZE entries for Maia backup headroom", () => {
-    const white = Array.from({ length: 30 }, (_, i) => ({
+    const white = Array.from({ length: 40 }, (_, i) => ({
       line: { ucis: [`w${i}`] },
       prefilterScore: i,
       hasUserReply: true,
     }));
-    const black = Array.from({ length: 30 }, (_, i) => ({
+    const black = Array.from({ length: 40 }, (_, i) => ({
       line: { ucis: [`b${i}`] },
       prefilterScore: 100 - i,
       hasUserReply: true,
@@ -298,6 +315,42 @@ describe("scout-prefilter scoring", () => {
     expect(ranked[0].line.ucis).toEqual(struggling.ucis);
   });
 
+  it("populates funnelOut with per-stage drop counts", () => {
+    const noReply = {
+      ucis: ["e2e4", "e7e5", "g1f3"],
+      sans: ["e4", "e5", "Nf3"],
+      games: 1,
+    };
+    const survives = {
+      ucis: ["d2d4", "d7d5", "c2c4"],
+      sans: ["d4", "d5", "c4"],
+      games: 3,
+      share: 0.2,
+    };
+    const fenBeforeNoReply = fenAfterLine(["e2e4", "e7e5"]);
+    const fenLeafNoReply = fenAfterLine(noReply.ucis);
+    const evalMap = new Map([
+      [fenBeforeNoReply, { score_cp: 10, best_move_uci: "g1f3" }],
+      [fenLeafNoReply, { score_cp: 10, best_move_uci: null }],
+      ...evalMapForLine(survives.ucis, OPP, { cpLoss: 40, bestUci: "e7e6" }),
+    ]);
+    const funnelOut = {};
+    rankPrefilterCandidates([noReply, survives], evalMap, {
+      fenAfterLine,
+      oppColor: OPP,
+      ancestorFreq: new Map([
+        ...ancestorFreqForLine(noReply.ucis, 0.01),
+        ...ancestorFreqForLine(survives.ucis, 0.12),
+      ]),
+      funnelOut,
+    });
+    expect(funnelOut.totalLines).toBe(2);
+    expect(funnelOut.scored).toBe(1);
+    expect(funnelOut.scoreDrops.noUserReply).toBe(1);
+    expect(funnelOut.survived).toBe(1);
+    expect(funnelOut.afterCollapse).toBe(1);
+  });
+
   it("filters a line that clears no OR-gate: weak edge, no slip, no struggle, not off-modal", () => {
     // oppColor white, small cp-loss => userLeafAdvantage = cpLoss - 20 = -15 (< 20), cpLoss 5
     // (< 12), no annotated struggle/offModal => fails every survival condition.
@@ -328,7 +381,7 @@ describe("computePrefilterScopeKey", () => {
       activeSpeed: "blitz",
       games,
     });
-    expect(key).toMatch(/^rival\|blitz\|\d+\|2$/);
+    expect(key).toMatch(/^rival\|blitz\|\d+\|3$/);
     expect(
       computePrefilterScopeKey({ username: "rival", activeSpeed: "blitz", games }),
     ).toBe(key);
@@ -346,18 +399,23 @@ describe("runStockfishPrefilter limits", () => {
     expect(new Set(maia.map((l) => l.line)).size).toBe(SCOUT_MAIA_PREFILTER_LIMIT);
   });
 
-  it("prefilterPoolLines follows reproducibility rank order, not branch input order", () => {
+  it("prefilterPoolLines ranks the higher-prior line above a rare strong-edge line", () => {
+    // Reproducibility now lives in the engine-free exploitabilityPrior (annotated upstream by
+    // rankedOpeningBranches), not in the post-Stockfish rank. The reproducible main system
+    // (high prior) must still outrank a rare line with a bigger raw leaf edge.
     const frequentWeak = {
       ucis: ["e2e4", "e7e5", "g1f3"],
       sans: ["e4", "e5", "Nf3"],
       games: 20,
       share: 0.8,
+      exploitabilityPrior: 4,
     };
     const rareStrong = {
       ucis: ["d2d4", "d7d5", "c2c4"],
       sans: ["d4", "d5", "c4"],
       games: 1,
       share: 0.01,
+      exploitabilityPrior: 0.5,
     };
     const evalMap = new Map([
       ...evalMapForLine(rareStrong.ucis, "white", { cpLoss: 50, bestUci: "e7e6" }),
@@ -377,22 +435,23 @@ describe("runStockfishPrefilter limits", () => {
     expect(pool[1].ucis).toEqual(rareStrong.ucis);
   });
 
-  it("reuses FEN transposition cache across branches", () => {
-    const sharedFen = fenAfterLine(["e2e4"]);
-    const cache = new Map([[prefilterCacheKey(sharedFen), { score_cp: 5, complete: true }]]);
+  it("deduplicates a shared leaf FEN across branches", () => {
+    const sharedLeaf = fenAfterLine(["e2e4", "e7e5", "g1f3"]);
+    const cache = new Map([[prefilterCacheKey(sharedLeaf), { score_cp: 5, complete: true }]]);
     const lines = [
-      { ucis: ["e2e4", "e7e5"], sans: ["e4", "e5"], games: 1 },
-      { ucis: ["e2e4", "c7c5"], sans: ["e4", "c5"], games: 1 },
+      { ucis: ["e2e4", "e7e5", "g1f3"], sans: ["e4", "e5", "Nf3"], games: 1 },
+      { ucis: ["e2e4", "e7e5", "g1f3"], sans: ["e4", "e5", "Nf3"], games: 1 },
     ];
     const fens = collectPrefilterFens(lines, { fenAfterLine, oppColor: "white" });
-    expect(fens.filter((f) => f === sharedFen)).toHaveLength(1);
-    expect(cache.has(prefilterCacheKey(sharedFen))).toBe(true);
+    expect(fens.filter((f) => f === sharedLeaf)).toHaveLength(1);
+    expect(fens).toHaveLength(1);
+    expect(cache.has(prefilterCacheKey(sharedLeaf))).toBe(true);
   });
 });
 
 describe("buildFallbackPrefilterData", () => {
   it("builds ranked pool and display lines from opening-line order", () => {
-    const lines = Array.from({ length: 60 }, (_, i) => ({
+    const lines = Array.from({ length: 70 }, (_, i) => ({
       ucis: [`m${i}`],
       sans: [`m${i}`],
       games: 1,
@@ -403,5 +462,51 @@ describe("buildFallbackPrefilterData", () => {
     expect(maiaLines).toHaveLength(SCOUT_PREFILTER_LIMIT);
     expect(maiaLines[0].ucis).toEqual(["m0"]);
     expect(ranked[0].prefilterScore).toBe(0);
+  });
+});
+
+describe("rankPrefilterCandidates mate gates", () => {
+  it("passes user-favourable mate lines even with cp=0 edge", () => {
+    // Regression: mate lines have score_cp=null so prefilterScore=0, but mateIn > 0
+    // must survive the OR gate. Before the fix, they failed all gates and were dropped.
+    const mateInLine = {
+      ucis: ["e2e4"],
+      sans: ["e4"],
+      games: 1,
+      share: 0.01,
+    };
+    const fenLeaf = fenAfterLine(mateInLine.ucis);
+    // Mate in 2 for black (user, oppColor=white), so mate_in = -2 (White-POV flipped).
+    const evalMap = new Map([
+      [fenLeaf, { score_cp: null, mate_in: -2, best_move_uci: null }],
+    ]);
+    const ranked = rankPrefilterCandidates([mateInLine], evalMap, {
+      fenAfterLine,
+      oppColor: "white",
+      ancestorFreq: ancestorFreqForLine(mateInLine.ucis, 0.005),
+    });
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0].mateIn).toBe(2);
+  });
+
+  it("does not pass opponent-mate lines even with a large cp edge", () => {
+    // Opponent mate (white-favourable when user is black) should not survive.
+    const oppMate = {
+      ucis: ["e2e4"],
+      sans: ["e4"],
+      games: 1,
+      share: 0.01,
+    };
+    const fenLeaf = fenAfterLine(oppMate.ucis);
+    // Mate in 3 for white (opponent, when user is black), so mate_in = 3.
+    const evalMap = new Map([
+      [fenLeaf, { score_cp: 1000, mate_in: 3, best_move_uci: "e4e5" }],
+    ]);
+    const ranked = rankPrefilterCandidates([oppMate], evalMap, {
+      fenAfterLine,
+      oppColor: "white",
+      ancestorFreq: new Map(),
+    });
+    expect(ranked).toHaveLength(0);
   });
 });
