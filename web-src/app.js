@@ -11,6 +11,7 @@ import {
 } from "./engine/maia3-provider.js";
 import { createCsrfTokenSource, isSafeMethod, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
+import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { describeMove } from "./explain.js";
 let _coachReady = null;
@@ -3571,6 +3572,8 @@ async function fetchMyLichessGame() {
   document.getElementById("pgn-input").value = latest.pgn || "";
   const drawer = document.querySelector("#view-analyze .drawer");
   if (drawer) drawer.open = true;
+  // Show the game in the move list right away (steppable before Analyze).
+  void loadPgnIntoAnalyze(latest.pgn || "", { goToEnd: false, quiet: true }).catch(() => {});
   if (latest.lichess_id) markLichessSeen(latest.lichess_id);
   setStatus(`Loaded ${latest.white || "?"} vs ${latest.black || "?"} - press Analyze`);
 }
@@ -3619,6 +3622,12 @@ async function recallAnalysis(gameId) {
     showAnalysisPly(0);
     await renderAnalysis(payload);
     revealAnalysisResults();
+    // Mirror the recalled game into the PGN box so it stays the source of truth
+    // for any board variations the user then explores (and a clean export). The
+    // box has no headers for a recalled game, so syncPgnFromTree writes movetext.
+    const pgnInput = document.getElementById("pgn-input");
+    if (pgnInput) pgnInput.value = "";
+    void syncPgnFromTree().catch(() => {});
     setStatus(`Recalled analysis: ${payload.moves.length} plies`);
   } catch (error) {
     setStatus(error.message);
@@ -5163,6 +5172,145 @@ function resetAnalysisVariations() {
   appState.analysisTree = null;
 }
 
+// ----- Analyze PGN ↔ move-list two-way sync ------------------------------------
+// The PGN drawer and the move list are two views of one game. Typing legal moves
+// into the PGN box rebuilds the move list (and drives the board); playing moves on
+// the board (or stepping into variations) rewrites the PGN box. The two directions
+// are event-driven and guarded against feedback loops:
+//   • board / move-list → PGN  : syncPgnFromTree() — skipped while the textarea is
+//     focused, so a user mid-edit is never clobbered.
+//   • PGN box → board / list   : loadPgnIntoAnalyze() — fired (debounced) on the
+//     textarea `input` event and called directly by every importer.
+// A plain typed/pasted game carries no engine classifications, so its move list
+// shows neutral dots and an empty eval chart until the user presses Analyze.
+let analyzePgnInputTimer = null;
+// True only while we programmatically rewrite #pgn-input from the tree, so the
+// defensive guard below can tell our own writes from user edits. (Assigning
+// `.value` does not fire `input`, so this is belt-and-suspenders.)
+let analyzePgnWriting = false;
+
+// Pull just the `[Tag "Value"]` header lines out of a raw PGN textarea value, so a
+// tree→PGN rewrite can preserve the user's headers and replace only the movetext.
+function analyzePgnHeaderBlock(raw) {
+  return String(raw || "")
+    .split(/\r?\n/)
+    .filter((line) => /^\s*\[[^\]]*\]\s*$/.test(line))
+    .join("\n")
+    .trim();
+}
+
+// Flatten the parser's generic tree (root → children, children[0] = mainline,
+// children[1..] = variations) into the two structures the Analyze view renders
+// from: a flat `moves` array (the mainline) and an `analysisVarNodes` map keyed by
+// `v<seq>` whose `parentId` points at the node a variation branches from. Mirrors
+// the ids buildAnalysisTree() expects (`m<ply>` on the mainline, `root` at start).
+function adaptParsedTree(root) {
+  const moves = [];
+  const varNodes = new Map();
+  let seq = 0;
+  function walk(node, parentId, onMainline, ply) {
+    let id;
+    if (onMainline) {
+      id = `m${ply}`;
+      moves.push({
+        ply,
+        san: node.san,
+        uci: node.uci,
+        fen_before: node.fenBefore,
+        fen_after: node.fenAfter,
+        move_number: node.moveNumber,
+        side: node.side,
+        classification: null,
+      });
+    } else {
+      seq += 1;
+      id = `v${seq}`;
+      varNodes.set(id, {
+        id,
+        seq,
+        parentId,
+        uci: node.uci,
+        san: node.san,
+        fenBefore: node.fenBefore,
+        fenAfter: node.fenAfter,
+        moveNumber: node.moveNumber,
+        side: node.side,
+      });
+    }
+    const kids = node.children || [];
+    if (kids[0]) walk(kids[0], id, onMainline, onMainline ? ply + 1 : 0);
+    for (let i = 1; i < kids.length; i += 1) walk(kids[i], id, false, 0);
+  }
+  const top = root.children || [];
+  if (top[0]) walk(top[0], "root", true, 1);
+  for (let i = 1; i < top.length; i += 1) walk(top[i], "root", false, 0);
+  return { moves, varNodes };
+}
+
+// Board / move-list → PGN box. Serialize the current Analyze tree (analyzed or
+// typed mainline + explored variations) and write it back, preserving the header
+// block. No-op while the textarea is focused (board moves happen with the board
+// focused, so this only fires when it's safe).
+async function syncPgnFromTree() {
+  const input = document.getElementById("pgn-input");
+  if (!input || document.activeElement === input) return;
+  const moves = appState.analysis ? appState.analysis.moves : [];
+  const hasVars = appState.analysisVarNodes && appState.analysisVarNodes.size;
+  if ((!moves || !moves.length) && !hasVars) return;
+  const view = await ensureAnalyzeView();
+  // buildAnalysisTree() folds in appState.analysisVarNodes itself.
+  const root = view.buildAnalysisTree(moves).root;
+  const movetext = treeToMovetext(root);
+  if (!movetext) return;
+  const headers = analyzePgnHeaderBlock(input.value);
+  const next = headers ? `${headers}\n\n${movetext}` : movetext;
+  if (next !== input.value && document.activeElement !== input) {
+    analyzePgnWriting = true;
+    input.value = next;
+    analyzePgnWriting = false;
+  }
+}
+
+// PGN box → board / move list. Parse the text and rebuild the Analyze move tree
+// (mainline + variations) from it. Returns false (and, unless quiet, sets a status
+// hint) when the movetext has an illegal/unparseable move — leaving the existing
+// tree untouched so mid-typing never flickers the list to empty.
+async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false } = {}) {
+  const parsed = parsePgn(pgnText);
+  if (!parsed.ok) {
+    if (!quiet) setStatus(`PGN: ${parsed.error}`);
+    return false;
+  }
+  const { moves, varNodes } = adaptParsedTree(parsed.root);
+  const view = await ensureAnalyzeView();
+  if (!moves.length && !varNodes.size) {
+    // Emptied box → clear the move list and eval chart, drop any analyzed game.
+    appState.analysis = null;
+    resetAnalysisVariations();
+    appState.analysisPly = 0;
+    renderAnalysisTreeEmptyState();
+    view.renderEvalChart([]);
+    view.renderClassificationBars([]);
+    await showAnalysisPly(0);
+    return true;
+  }
+  // A typed/edited game replaces any prior analysis (classifications are dropped
+  // until the user re-runs Analyze). Synthetic payload keeps showAnalysisPly happy.
+  appState.analysis = { moves, eval_graph: [], engine: null, depth: null };
+  appState.analysisVarNodes = varNodes;
+  appState.analysisVarCounter = varNodes.size;
+  appState.analysisCurrentNodeId = "root";
+  appState.analysisTree = null;
+  appState.analysisSourcePgn = null;
+  view.renderAnalysisTree(moves);
+  view.renderEvalChart([]);
+  view.renderClassificationBars([]);
+  hideAnalysisHandoff();
+  revealAnalysisResults();
+  await showAnalysisPly(goToEnd ? moves.length : 0);
+  return true;
+}
+
 // Highlight the active move + sync the eval-chart cursor. The list itself is
 // re-rendered from appState.analysisCurrentNodeId so highlighting and variation
 // structure can never drift apart.
@@ -5254,6 +5402,8 @@ async function onAnalysisBoardMove(moveUci, fen) {
       prevFen: fen,
     });
     if (engineWidget) engineWidget.onBoardChanged();
+    // New branch on the board → mirror it into the PGN box.
+    void syncPgnFromTree().catch(() => {});
   } catch (error) {
     setStatus(error.message);
   }
@@ -6433,6 +6583,7 @@ async function fillPgnInputFromFile(file) {
     document.getElementById("pgn-input").value = text;
     const drawer = document.querySelector("#view-analyze .drawer");
     if (drawer) drawer.open = true;
+    void loadPgnIntoAnalyze(text, { goToEnd: false, quiet: true }).catch(() => {});
     setStatus(`Loaded ${file.name} - press Analyze`);
   } catch (_) {
     setStatus("Could not read file");
@@ -8289,6 +8440,8 @@ function replayToAnalyze(game) {
   const drawer = document.getElementById("pgn-drawer");
   if (drawer) drawer.open = true;
   switchView("analyze");
+  // Populate the move list immediately so the game is steppable before Analyze.
+  if (input) void loadPgnIntoAnalyze(input.value, { goToEnd: false, quiet: true }).catch(() => {});
   setStatus(
     `Loaded ${game.white || "?"} vs ${game.black || "?"} — press Analyze game`
   );
@@ -8927,6 +9080,21 @@ function bindEvents() {
   // Drag-and-drop: a PGN onto the Analyze box loads it; a PGN/JSON onto the
   // dashboard repertoires card imports it.
   bindDropZone(document.getElementById("pgn-input"), fillPgnInputFromFile);
+  // Live PGN → move-list sync: every edit (debounced) re-parses the box and
+  // rebuilds the move list + board. Invalid/half-typed movetext is ignored
+  // (quiet) so the list never flickers mid-keystroke.
+  const pgnInput = document.getElementById("pgn-input");
+  if (pgnInput) {
+    pgnInput.addEventListener("input", () => {
+      if (analyzePgnWriting) return;
+      clearTimeout(analyzePgnInputTimer);
+      analyzePgnInputTimer = setTimeout(() => {
+        void loadPgnIntoAnalyze(pgnInput.value, { goToEnd: true, quiet: true }).catch(
+          () => {}
+        );
+      }, 300);
+    });
+  }
   document
     .getElementById("open-engine-widget")
     .addEventListener("click", () => engineWidget.openForCurrent());
