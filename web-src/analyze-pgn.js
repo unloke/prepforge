@@ -12,7 +12,12 @@ function isFenLegal(fen) {
   if (!/^[KQkq-]*$/.test(castling)) return false;
   if (!/^([a-h][36]|-)?$/.test(enPassant)) return false;
   if (!/^\d+$/.test(halfmove) || !/^\d+$/.test(fullmove)) return false;
-  return true;
+  try {
+    new Chess(fen);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function uciOf(move) {

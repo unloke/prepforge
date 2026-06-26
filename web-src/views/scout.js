@@ -109,6 +109,7 @@ export function createScoutView(deps) {
     setBuildPending,
     pushBuildNode,
     connectLichess,
+    loadPgnIntoAnalyze,
   } = deps;
 
   let scoutModule = null;

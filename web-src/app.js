@@ -8877,6 +8877,7 @@ async function ensureScoutView() {
         appState.buildNodeById.set(node.id, node);
       },
       connectLichess: startLichessOAuth,
+      loadPgnIntoAnalyze,
     });
   }
   return scoutView;
