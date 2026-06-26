@@ -232,7 +232,19 @@ export async function analyzeGamePositions({
   );
 
   const rejection = settled.find((s) => s.status === "rejected");
-  if (rejection) throw rejection.reason;
+  if (rejection) {
+    const err = rejection.reason;
+    // Budget-expiry cancellation (AnalysisCancelled from workers) should include partial
+    // results so the caller can use what was computed before time ran out.
+    if (err instanceof AnalysisCancelled) {
+      const partialResults = new Map();
+      for (const fen of uniqueFens) {
+        if (evalByFen.has(fen)) partialResults.set(fen, evalByFen.get(fen));
+      }
+      err.partialResults = partialResults;
+    }
+    throw err;
+  }
   // External cancellation makes workers exit their loop cleanly (no throw), so
   // re-check here to preserve the original "cancel → throw" contract.
   if (externalCancel()) {

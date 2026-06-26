@@ -150,7 +150,7 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
   }
 
   it(
-    "enriches every displayed row, never leaving them on empirical 0%",
+    "enriches select deep lines with Maia (global 12-read budget per color)",
     async () => {
     expect(LINES.length).toBe(200);
     const runPromise = view.runScout();
@@ -166,7 +166,9 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
     expect(displayedRows).toBeGreaterThan(0);
     // Global Maia budget is 12 reads shared across colours — not every displayed row
-    // receives a model estimate, but at least some deep lines must be enriched.
+    // receives a model estimate. This test verifies that at least some deep lines are
+    // enriched (evidence the prefilter pool isn't being discarded) and none are stuck
+    // on empirical 0% (evidence ranking gates are working).
     expect(maiaRows).toBeGreaterThan(0);
     expect(wdlReadMock.mock.calls.length).toBeLessThanOrEqual(48);
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
