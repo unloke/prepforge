@@ -235,7 +235,15 @@ export async function analyzeGamePositions({
   if (rejection) throw rejection.reason;
   // External cancellation makes workers exit their loop cleanly (no throw), so
   // re-check here to preserve the original "cancel → throw" contract.
-  if (externalCancel()) throw new AnalysisCancelled();
+  if (externalCancel()) {
+    const partialResults = new Map();
+    for (const fen of uniqueFens) {
+      if (evalByFen.has(fen)) partialResults.set(fen, evalByFen.get(fen));
+    }
+    const err = new AnalysisCancelled();
+    err.partialResults = partialResults;
+    throw err;
+  }
 
   // Fan out: one entry per distinct FEN, in first-appearance order.
   const results = new Map();

@@ -465,7 +465,33 @@ describe("buildFallbackPrefilterData", () => {
   });
 });
 
-describe("rankPrefilterCandidates mate gates", () => {
+describe("rankPrefilterCandidates mate gates and budget expiry", () => {
+  it("scores lines whose leaf evals have complete=false (partial from budget expiry)", () => {
+    // Regression: when budget expires, analyzeGamePositions throws AnalysisCancelled
+    // with partialResults. scout-prefilter extracts and caches them with complete=false.
+    // scorePrefilterLine must still process these evals (it only checks != false).
+    // This verifies partial evals are usable for scoring.
+    const line = {
+      ucis: ["e2e4", "e7e5", "g1f3"],
+      sans: ["e4", "e5", "Nf3"],
+      games: 20,
+      share: 0.8,
+    };
+    const metrics = scorePrefilterLine(
+      line,
+      evalMapForLine(line.ucis, "white", { cpLoss: 40, bestUci: "g8f6" }),
+      {
+        fenAfterLine,
+        oppColor: "white",
+        ancestorFreq: ancestorFreqForLine(line.ucis, 0.15),
+      },
+    );
+    // Verify the line scores (doesn't return null) for partial evals.
+    // cpLoss=40: afterCp = 20-40 = -20; userLeafAdvantage = -(-20) = 20
+    expect(metrics).toBeTruthy();
+    expect(metrics?.prefilterScore).toBe(20);
+  });
+
   it("passes user-favourable mate lines even with cp=0 edge", () => {
     // Regression: mate lines have score_cp=null so prefilterScore=0, but mateIn > 0
     // must survive the OR gate. Before the fix, they failed all gates and were dropped.

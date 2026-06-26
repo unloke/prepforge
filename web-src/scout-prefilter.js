@@ -448,14 +448,17 @@ export async function runStockfishPrefilter(
         cache.set(prefilterCacheKey(fen, depth), wrapEvalComplete(evalResult, !cancelled()));
       }
     } catch (err) {
-      // Budget expiry throws AnalysisCancelled but we want to rank partial results.
-      // User cancellation (shouldCancel without budgetExpired) should be re-thrown.
+      // Budget expiry throws AnalysisCancelled with partialResults; user cancellation should re-throw.
       const isBudgetStop = err.cancelled && budgetExpired() && !shouldCancel();
       if (!isBudgetStop) throw err;
-      // Log the partial evaluations from Stockfish workers before they were cancelled.
-      // Note: freshEvals is empty here (the exception cut the await short), but the
-      // cache was populated by onProgress reports during the run. Let workers finish
-      // cleanup and continue below with whatever partial results cached.
+      // Use partial evaluations from workers. Mark them as incomplete so the UI knows
+      // some FENs didn't finish, but still rank what we have.
+      if (err.partialResults) {
+        freshEvals = err.partialResults;
+        for (const [fen, evalResult] of freshEvals) {
+          cache.set(prefilterCacheKey(fen, depth), wrapEvalComplete(evalResult, false));
+        }
+      }
     }
   }
 
