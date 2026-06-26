@@ -50,11 +50,11 @@ import {
   runStockfishPrefilter,
 } from "../scout-prefilter.js";
 import {
-  SCOUT_BRANCH_HARD_CEILING,
   SCOUT_ERR_NETWORK,
   SCOUT_ERR_NO_GAMES,
   opponentColorBaseline,
   scoutFetchErrorMessage,
+  trimRankedBranches,
 } from "../scout.js";
 
 const RENDER_DEBOUNCE_MS = 400;
@@ -193,18 +193,26 @@ export function createScoutView(deps) {
       return;
     }
     const p = scoutState?.engineProgress;
+    // Indeterminate until the first position settles (total unknown): show a sweeping bar
+    // instead of a frozen sliver so the user can tell it's working, not stuck.
+    const indeterminate = !p || !p.total;
     const pct = engineProgressPct(p);
     el.hidden = false;
+    el.classList.toggle("is-indeterminate", indeterminate);
     el.setAttribute("role", "progressbar");
     el.setAttribute("aria-valuemin", "0");
     el.setAttribute("aria-valuemax", "100");
-    el.setAttribute("aria-valuenow", String(pct));
+    if (indeterminate) {
+      el.removeAttribute("aria-valuenow");
+    } else {
+      el.setAttribute("aria-valuenow", String(pct));
+    }
     el.innerHTML = `
       <div class="scout-progress-row">
         <span class="scout-progress-label">${escapeHtml(engineProgressLabel(p))}</span>
-        <span class="scout-progress-count">${pct}%</span>
+        <span class="scout-progress-count">${indeterminate ? "" : `${pct}%`}</span>
       </div>
-      <div class="scout-progress-track"><div class="scout-progress-fill" style="width:${pct}%"></div></div>`;
+      <div class="scout-progress-track"><div class="scout-progress-fill" style="width:${indeterminate ? 40 : pct}%"></div></div>`;
   }
 
   function setEngineProgress(progress) {
@@ -442,17 +450,17 @@ export function createScoutView(deps) {
     // The trie + baseline make rankedOpeningBranches select Stockfish candidates by the
     // exploitability prior (struggle × rarity × family reproducibility) instead of raw
     // frequency, and annotate each branch with prefix-resolved struggle/offModal signals.
-    // limit = hard ceiling (not the old 48 cut): every exploitability-ranked branch feeds the
-    // leaf-only Stockfish pass, which the time budget bounds. The ceiling only guards the cheap
-    // trie-walk/FEN step against pathological corpora.
-    return (
+    // Full ranked list (limit: 0), then trimRankedBranches: primary cut is the prior-signal
+    // floor (drops transposition noise); min-keep fills the Maia backup pool; 300 is only a
+    // pathological-corpus ceiling on the cheap trie-walk/FEN step.
+    const { branches, ancestorFreq } =
       scoutModule.rankedOpeningBranches(scoutState.games, oppColor, {
         speedFilter: scoutState.activeSpeed,
         trie: section?.trie || null,
         baselineScorePct: baselineScorePctForColor(oppColor),
-        limit: SCOUT_BRANCH_HARD_CEILING,
-      }) || { branches: [], ancestorFreq: new Map() }
-    );
+        limit: 0,
+      }) || { branches: [], ancestorFreq: new Map() };
+    return { branches: trimRankedBranches(branches), ancestorFreq };
   }
 
   function allOpeningLinesForColor(section, oppColor) {

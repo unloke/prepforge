@@ -21,12 +21,18 @@ import {
 export const SCOUT_PREFILTER_DEPTH = SCOUT_STOCKFISH_DEPTH;
 export const SCOUT_PREFILTER_LIMIT = SCOUT_BRANCH_SCORE_CAP;
 /** Maia backup pool depth — decoupled from the branch cap. Stockfish access is bounded by
- * the time budget, not this; this only caps how many ranked entries the Maia chase may dip
- * into for backups. Maia still resolves SCOUT_MAIA_LIMIT (12) unique lines. */
+ * the upstream prior-floor trim, not this; this only caps how many ranked entries the Maia
+ * chase may dip into for backups. Maia still resolves SCOUT_MAIA_LIMIT (12) unique lines. */
 export const SCOUT_PREFILTER_POOL_SIZE = 64;
 export const SCOUT_MAIA_PREFILTER_LIMIT = SCOUT_MAIA_LIMIT;
 export const SCOUT_PREFILTER_CONCURRENCY = 3;
-export const SCOUT_PREFILTER_TIME_BUDGET_MS = 45_000;
+/** No wall-clock cut. The candidate set is already bounded logically upstream
+ *  (trimRankedBranches: prior-signal floor, clamped to [SCOUT_BRANCH_MIN_KEEP, 300] leaves)
+ *  and the leaf-only depth-8 reads are cheap, so the prefilter runs to completion rather than
+ *  dropping the lowest-prior tail at an arbitrary 45s. Only user cancellation (shouldCancel)
+ *  stops it early; that path still extracts partial results. Tests pass an explicit
+ *  timeBudgetMs to exercise the (now cancellation-only) partial-results machinery. */
+export const SCOUT_PREFILTER_TIME_BUDGET_MS = Infinity;
 export const SCOUT_PREFILTER_ENGINE_VERSION = "stockfish-18-lite";
 export const SCOUT_MIN_ANCESTOR_FREQUENCY = 0.01;
 export const SCOUT_MIN_STOCKFISH_ADVANTAGE = 20;
@@ -71,9 +77,10 @@ export function prefilterCacheKey(fen, depth = SCOUT_PREFILTER_DEPTH) {
  * Collect the distinct LEAF FENs needed to score opening-line candidates. Leaf-only: the
  * line's value is the position the opponent's move reaches (`userLeafAdvantage`), so we no
  * longer evaluate the pre-move position. Dropping that second eval ~halves the Stockfish
- * workload, which is what lets the prefilter run uncapped within the same time budget. The
- * candidates arrive exploitability-prior-sorted and `analyzeGamePositions` drains its queue
- * front-to-back, so the highest-prior leaves are confirmed first when the budget runs out.
+ * workload, which keeps the now-uncapped prefilter fast. The candidates arrive
+ * exploitability-prior-sorted and `analyzeGamePositions` drains its queue front-to-back, so
+ * the highest-prior leaves are confirmed first — and if the user cancels mid-run, the partial
+ * results favour the highest-prior lines.
  */
 export function collectPrefilterFens(lines, { fenAfterLine, oppColor }) {
   const fens = [];

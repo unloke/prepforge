@@ -44,6 +44,10 @@ export const SCOUT_BRANCH_SCORE_CAP = 48;
  * cheap trie-walk + FEN-enumeration step against pathological corpora (every game a
  * unique deep line) — it is not the old 48 candidate cut. */
 export const SCOUT_BRANCH_HARD_CEILING = 300;
+/** Always feed at least this many branches to the engine so the Maia backup pool (64)
+ *  never starves on a thin opponent. Mirrors SCOUT_PREFILTER_POOL_SIZE (kept local to
+ *  avoid a circular import from scout-prefilter.js). */
+export const SCOUT_BRANCH_MIN_KEEP = 64;
 export const SCOUT_STOCKFISH_DEPTH = 8;
 export const SCOUT_MAIA_LIMIT = 12;
 export const SCOUT_SCORING_VERSION = 3;
@@ -913,6 +917,10 @@ export function openingReproducibilityScore(entry, baselineScorePct = 50) {
 
 /** Minimum off-modal struggle floor so rare blunders Stockfish can punish stay in the pool. */
 export const SCOUT_STRUGGLE_PRIOR_FLOOR = 0.08;
+/** Prior of a modal, non-reproducible one-off (struggle 0, offModal 1, prefixGames 0):
+ *  SCOUT_STRUGGLE_PRIOR_FLOOR * (log1p(0) + 0.1). Branches at/below this carry NO
+ *  exploitability signal at all — they are transposition noise, safe to drop pre-engine. */
+export const SCOUT_PRIOR_NOISE_FLOOR = SCOUT_STRUGGLE_PRIOR_FLOOR * 0.1;
 /** Off-modal exponent in the exploitability prior (sub-linear so rarity helps but doesn't dominate). */
 export const SCOUT_OFFMODAL_PRIOR_EXP = 0.7;
 
@@ -1013,6 +1021,26 @@ export function branchExploitabilityPrior(branch, { trie, baselineScorePct = 50 
   const n = prefixGames ?? stats?.prefixGames ?? 0;
   const reproducibility = Math.log1p(n) + 0.1;
   return (s + SCOUT_STRUGGLE_PRIOR_FLOOR) * Math.pow(Math.max(o, 1), SCOUT_OFFMODAL_PRIOR_EXP) * reproducibility;
+}
+
+/**
+ * Logical replacement for the old slice(0, 300) cut. Given branches already sorted by
+ * exploitabilityPrior (descending), keep every branch whose prior shows a real signal
+ * (> noiseFloor), but always keep at least `minKeep` (so the Maia pool stays full) and
+ * never more than `ceiling` (a pathological-corpus safety net, NOT the primary cut).
+ * Pure: returns a prefix slice of the input, order preserved.
+ */
+export function trimRankedBranches(
+  sortedBranches,
+  { minKeep = SCOUT_BRANCH_MIN_KEEP, ceiling = SCOUT_BRANCH_HARD_CEILING, noiseFloor = SCOUT_PRIOR_NOISE_FLOOR } = {},
+) {
+  if (!sortedBranches?.length) return [];
+  let keep = 0;
+  while (keep < sortedBranches.length && (sortedBranches[keep].exploitabilityPrior ?? 0) > noiseFloor) {
+    keep += 1;
+  }
+  keep = Math.min(ceiling, Math.max(minKeep, keep));
+  return sortedBranches.slice(0, keep);
 }
 
 /**
