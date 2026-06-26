@@ -555,8 +555,8 @@ describe("runStockfishPrefilter budget expiry + partial results", () => {
         share: 0.8,
       },
       {
-        ucis: ["e2e4", "e7e5", "g1f3"],
-        sans: ["e4", "e5", "Nf3"],
+        ucis: ["e2e4", "e7e5", "g1f3", "d7d6"],
+        sans: ["e4", "e5", "Nf3", "d6"],
         games: 30,
         share: 0.6,
       },
@@ -589,7 +589,7 @@ describe("runStockfishPrefilter budget expiry + partial results", () => {
           } else if (fen === fenAfter0) {
             partialResults.set(fen, { score_cp: -5, best_move_uci: "e7e5" });
           } else if (fen === fenAfter1) {
-            partialResults.set(fen, { score_cp: 15, best_move_uci: "g1f3" });
+            partialResults.set(fen, { score_cp: 25, best_move_uci: "g1f3" });
           } else {
             // For any other position, provide a generic eval so scorePrefilterLine works.
             partialResults.set(fen, { score_cp: 10, best_move_uci: "d2d4" });
@@ -620,7 +620,7 @@ describe("runStockfishPrefilter budget expiry + partial results", () => {
 
     const result = await runStockfishPrefilter(lines, {
       fenAfterLine,
-      oppColor: "white",
+      oppColor: "black",
       ancestorFreq: new Map([
         [fenRoot, { count: 100, frequency: 1.0 }],
         [fenAfter0, { count: 80, frequency: 0.8 }],
@@ -655,14 +655,16 @@ describe("runStockfishPrefilter budget expiry + partial results", () => {
     expect(cancelled).toBe(true);
     expect(fakeAnalyze).toHaveBeenCalled();
 
-    // Assertion 2: Lines were at least evaluated and scored (funnel shows work happened).
-    // All 3 lines were scored from partial evals, but failed OR gate. That's OK—
-    // the goal is that partial results were usable for scoring, not that they pass gating.
+    // Assertion 2: Lines were evaluated and scored from partial evals.
     expect(funnel.scored).toBeGreaterThan(0);
     expect(funnel.scored).toBe(3); // All 3 lines were scored from partial evals.
 
-    // Assertion 3: The funnel shows no crashes, just selective ranking output
-    // (some lines dropped by gates; that's expected behavior).
+    // Assertion 3: Partial results produce real ranking and Maia pool output.
+    expect(ranked.length).toBeGreaterThan(0);
+    expect(pool.length).toBeGreaterThan(0);
+    expect(funnel.gateDrops.failedOrGate).toBe(2); // 2 lines failed, 1 passed the OR gate.
+
+    // Assertion 4: The funnel shows no missing eval drops.
     expect(funnel.scoreDrops.noEval).toBe(0); // No lines dropped due to missing evals
     // (our partial evals were used successfully).
   });
