@@ -1007,6 +1007,7 @@ export function createScoutView(deps) {
     const pgn = buildScoutAnalyzePgn(line, oppColor, username);
     const input = document.getElementById("pgn-input");
     if (input) input.value = pgn;
+    void loadPgnIntoAnalyze(pgn, { quiet: true }).catch(() => {});
     const drawer = document.getElementById("pgn-drawer");
     if (drawer) drawer.open = true;
     switchView("analyze");

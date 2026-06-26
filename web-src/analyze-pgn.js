@@ -2,6 +2,19 @@ import { Chess } from "chess.js";
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+function isFenLegal(fen) {
+  if (!fen || typeof fen !== "string") return false;
+  const parts = fen.split(" ");
+  if (parts.length !== 6) return false;
+  const [placement, side, castling, enPassant, halfmove, fullmove] = parts;
+  if (!/^[pnbrqkPNBRQK1-8/]+$/.test(placement)) return false;
+  if (!/^[wb]$/.test(side)) return false;
+  if (!/^[KQkq-]*$/.test(castling)) return false;
+  if (!/^([a-h][36]|-)?$/.test(enPassant)) return false;
+  if (!/^\d+$/.test(halfmove) || !/^\d+$/.test(fullmove)) return false;
+  return true;
+}
+
 function uciOf(move) {
   return move.lan || move.from + move.to + (move.promotion || "");
 }
@@ -85,7 +98,7 @@ function cleanTree(node) {
   }
 }
 
-function parseMovetext(movetext) {
+function parseMovetext(movetext, initialFen = START_FEN) {
   const root = { san: null, children: [], _parent: null };
   const tokens = tokenize(stripMovetext(movetext));
 
@@ -97,7 +110,7 @@ function parseMovetext(movetext) {
   const stack = [{
     parentNode: root,
     lastNode: null,
-    chess: new Chess(START_FEN),
+    chess: new Chess(initialFen),
   }];
 
   for (const token of tokens) {
@@ -144,7 +157,15 @@ function parseMovetext(movetext) {
 export function parsePgn(pgnText) {
   const text = pgnText ?? "";
   const { headers, movetext } = extractHeaders(text);
-  const result = parseMovetext(movetext);
+  let initialFen = START_FEN;
+  if (headers.FEN) {
+    if (isFenLegal(headers.FEN)) {
+      initialFen = headers.FEN;
+    } else {
+      console.warn("Malformed FEN header, using START_FEN:", headers.FEN);
+    }
+  }
+  const result = parseMovetext(movetext, initialFen);
   if (!result.ok) {
     return result;
   }
