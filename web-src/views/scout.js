@@ -50,6 +50,7 @@ import {
   runStockfishPrefilter,
 } from "../scout-prefilter.js";
 import {
+  SCOUT_BRANCH_HARD_CEILING,
   SCOUT_ERR_NETWORK,
   SCOUT_ERR_NO_GAMES,
   opponentColorBaseline,
@@ -441,11 +442,15 @@ export function createScoutView(deps) {
     // The trie + baseline make rankedOpeningBranches select Stockfish candidates by the
     // exploitability prior (struggle × rarity × family reproducibility) instead of raw
     // frequency, and annotate each branch with prefix-resolved struggle/offModal signals.
+    // limit = hard ceiling (not the old 48 cut): every exploitability-ranked branch feeds the
+    // leaf-only Stockfish pass, which the time budget bounds. The ceiling only guards the cheap
+    // trie-walk/FEN step against pathological corpora.
     return (
       scoutModule.rankedOpeningBranches(scoutState.games, oppColor, {
         speedFilter: scoutState.activeSpeed,
         trie: section?.trie || null,
         baselineScorePct: baselineScorePctForColor(oppColor),
+        limit: SCOUT_BRANCH_HARD_CEILING,
       }) || { branches: [], ancestorFreq: new Map() }
     );
   }
@@ -652,6 +657,8 @@ export function createScoutView(deps) {
         sfBaseDone += lastColorProgress.done;
         sfBaseTotal += lastColorProgress.total;
         if (gen !== prefilterEnrichSeq) return;
+        scoutState.funnel = scoutState.funnel || {};
+        scoutState.funnel[oppColor] = result.funnel;
         if (!result.ranked?.length) {
           applyPrefilterFallbackForColor(section, oppColor);
         } else {
@@ -666,6 +673,28 @@ export function createScoutView(deps) {
         }
       }
       if (gen !== prefilterEnrichSeq) return;
+      if (typeof console !== "undefined" && console.table) {
+        const rows = {};
+        for (const c of ["white", "black"]) {
+          const f = scoutState.funnel?.[c];
+          if (!f) continue;
+          rows[c] = {
+            totalLines: f.totalLines,
+            scored: f.scored,
+            comfortZone: f.gateDrops?.comfortZone,
+            failedOrGate: f.gateDrops?.failedOrGate,
+            survived: f.survived,
+            afterCollapse: f.afterCollapse,
+            pool: f.poolSize,
+            maiaCandidates: f.maiaCandidates,
+          };
+        }
+        console.table(rows);
+        console.debug("[scout-funnel] scoreDrops", {
+          white: scoutState.funnel?.white?.scoreDrops,
+          black: scoutState.funnel?.black?.scoreDrops,
+        });
+      }
       scoutState.prefilterEnrichState = PREFILTER_READY;
       scoutState.prefilterScopeKey = scopeKey;
     } catch (_) {
@@ -699,6 +728,19 @@ export function createScoutView(deps) {
     });
   }
 
+  function stashMaiaFunnel(outcomes) {
+    scoutState.funnel = scoutState.funnel || {};
+    scoutState.funnel.maia = {
+      globalPool: globalMaiaRankedPool().length,
+      attempts: scoutState.maiaAttemptsUsed || 0,
+      resolved: outcomes.resolved,
+      failed: outcomes.failed,
+      missing: outcomes.missing,
+      expected: outcomes.expected,
+    };
+    console.debug("[scout-funnel] maia", scoutState.funnel.maia);
+  }
+
   function maiaWorkRemaining() {
     if (!scoutState?.maiaResults || !scoutModule) return false;
     return globalMaiaPoolNeedsWork(globalMaiaRankedPool(), {
@@ -725,6 +767,7 @@ export function createScoutView(deps) {
     if (!needsWork) {
       refreshGamePlanDisplayLines();
       const outcomes = summarizeMaiaOutcomes();
+      stashMaiaFunnel(outcomes);
       const nextState = classifyMaiaEnrichState(outcomes);
       if (scoutState.maiaEnrichState !== nextState) {
         scoutState.maiaEnrichState = nextState;
@@ -776,7 +819,9 @@ export function createScoutView(deps) {
 
       if (gen !== maiaEnrichSeq) return;
       refreshGamePlanDisplayLines();
-      scoutState.maiaEnrichState = classifyMaiaEnrichState(summarizeMaiaOutcomes());
+      const outcomes = summarizeMaiaOutcomes();
+      stashMaiaFunnel(outcomes);
+      scoutState.maiaEnrichState = classifyMaiaEnrichState(outcomes);
     } catch (_) {
       if (gen === maiaEnrichSeq && scoutState) {
         for (const entry of globalMaiaRankedPool()) {
@@ -787,7 +832,9 @@ export function createScoutView(deps) {
           });
         }
         refreshGamePlanDisplayLines();
-        scoutState.maiaEnrichState = classifyMaiaEnrichState(summarizeMaiaOutcomes());
+        const outcomes = summarizeMaiaOutcomes();
+        stashMaiaFunnel(outcomes);
+        scoutState.maiaEnrichState = classifyMaiaEnrichState(outcomes);
       }
     } finally {
       if (gen === maiaEnrichActiveGen) {

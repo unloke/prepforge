@@ -23,7 +23,7 @@ function ancestorFreqForLine(ucis, frequency = 0.05) {
   return new Map([[fenBefore, { count: 1, frequency }]]);
 }
 
-function evalMapForLine(ucis, oppColor, { cpLoss = 30, bestUci = null } = {}) {
+function evalMapForLine(ucis, oppColor, { cpLoss = 30, bestUci = null, complete = true } = {}) {
   const before = ucis.slice(0, -1);
   const fenBefore = fenAfterLine(before);
   const fenLeaf = fenAfterLine(ucis);
@@ -31,6 +31,13 @@ function evalMapForLine(ucis, oppColor, { cpLoss = 30, bestUci = null } = {}) {
   const beforeCp = 20;
   const afterCp =
     oppColor === "white" ? beforeCp - cpLoss : beforeCp + cpLoss;
+  const leafEval = {
+    score_cp: afterCp,
+    best_move_uci: "d2d4",
+  };
+  if (complete !== true) {
+    leafEval.complete = complete;
+  }
   return new Map([
     [
       fenBefore,
@@ -39,13 +46,7 @@ function evalMapForLine(ucis, oppColor, { cpLoss = 30, bestUci = null } = {}) {
         best_move_uci: bestUci || played,
       },
     ],
-    [
-      fenLeaf,
-      {
-        score_cp: afterCp,
-        best_move_uci: "d2d4",
-      },
-    ],
+    [fenLeaf, leafEval],
   ]);
 }
 
@@ -469,7 +470,7 @@ describe("rankPrefilterCandidates mate gates and budget expiry", () => {
   it("scores lines whose leaf evals have complete=false (partial from budget expiry)", () => {
     // Regression: when budget expires, analyzeGamePositions throws AnalysisCancelled
     // with partialResults. scout-prefilter extracts and caches them with complete=false.
-    // scorePrefilterLine must still process these evals (it only checks != false).
+    // scorePrefilterLine must still process these evals (partial evals are valid for ranking).
     // This verifies partial evals are usable for scoring.
     const line = {
       ucis: ["e2e4", "e7e5", "g1f3"],
@@ -479,7 +480,7 @@ describe("rankPrefilterCandidates mate gates and budget expiry", () => {
     };
     const metrics = scorePrefilterLine(
       line,
-      evalMapForLine(line.ucis, "white", { cpLoss: 40, bestUci: "g8f6" }),
+      evalMapForLine(line.ucis, "white", { cpLoss: 40, bestUci: "g8f6", complete: false }),
       {
         fenAfterLine,
         oppColor: "white",

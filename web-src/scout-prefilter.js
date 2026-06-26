@@ -122,10 +122,6 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
     drop("noEval");
     return null;
   }
-  if (leafEval.complete === false) {
-    drop("incompleteEval");
-    return null;
-  }
 
   const mover = moverFromFen(fenBefore);
   if (mover !== oppColor) {

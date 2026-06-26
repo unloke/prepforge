@@ -39,9 +39,14 @@ export const SLIP_MIN_GAMES = 3;
 export const SCOUT_RECENCY_HALF_LIFE_DAYS = 90;
 export const SCOUT_LENGTH_SATURATION_PLIES = 40;
 export const SCOUT_BRANCH_SCORE_CAP = 48;
+/** Scout prefilter feeds ALL exploitability-ranked branches to Stockfish (leaf-only),
+ * bounded by the engine time budget rather than a count. This ceiling only guards the
+ * cheap trie-walk + FEN-enumeration step against pathological corpora (every game a
+ * unique deep line) — it is not the old 48 candidate cut. */
+export const SCOUT_BRANCH_HARD_CEILING = 300;
 export const SCOUT_STOCKFISH_DEPTH = 8;
 export const SCOUT_MAIA_LIMIT = 12;
-export const SCOUT_SCORING_VERSION = 2;
+export const SCOUT_SCORING_VERSION = 3;
 /** Minimum games before empirical opponent performance gates prefilter candidates. */
 export const SCOUT_PREFILTER_EMPIRICAL_MIN_GAMES = 3;
 export const SCOUT_THINK_TIME_CLAMP_MIN = 0.7;
