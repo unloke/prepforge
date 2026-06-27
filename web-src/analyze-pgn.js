@@ -49,7 +49,7 @@ function stripComments(text) {
       if (c === "\n") inLineComment = false;
       continue;
     }
-    if (c === ";") {
+    if (c === ";" && depth === 0) {
       inLineComment = true;
       continue;
     }

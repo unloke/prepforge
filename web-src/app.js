@@ -5117,7 +5117,7 @@ async function showAnalysisPly(ply) {
   appState.analysisPly = boundedPly;
   appState.analysisCurrentNodeId = boundedPly === 0 ? "root" : `m${boundedPly}`;
   const move = boundedPly > 0 ? moves[boundedPly - 1] : null;
-  const fen = move ? move.fen_after : moves[0]?.fen_before || START_FEN;
+  const fen = move ? move.fen_after : moves[0]?.fen_before || appState.analysis?.initialFen || START_FEN;
   const info = await boardInfo(fen);
   appState.analysisBoardFen = fen;
   boards.analysis.setPosition({
@@ -5284,6 +5284,40 @@ async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false } = {
   const { moves, varNodes } = adaptParsedTree(parsed.root);
   const view = await ensureAnalyzeView();
   if (!moves.length && !varNodes.size) {
+    // Check for FEN-only PGN (has FEN header but no moves)
+    const fenHeader = parsed.headers.FEN;
+    if (fenHeader) {
+      try {
+        // FEN-only PGN: show the FEN position without any moves
+        appState.analysis = { moves: [], eval_graph: [], engine: null, depth: null, initialFen: fenHeader };
+        appState.analysisVarNodes = new Map();
+        appState.analysisVarCounter = 0;
+        appState.analysisCurrentNodeId = "root";
+        appState.analysisTree = null;
+        appState.analysisSourcePgn = null;
+        view.renderAnalysisTree([]);
+        view.renderEvalChart([]);
+        view.renderClassificationBars([]);
+        hideAnalysisHandoff();
+        revealAnalysisResults();
+        // Load the board with the FEN position, not START_FEN
+        const info = await boardInfo(fenHeader);
+        appState.analysisPly = 0;
+        appState.analysisBoardFen = fenHeader;
+        boards.analysis.setPosition({
+          fen: fenHeader,
+          legalMoves: info.legal_moves,
+          lastMove: null,
+        });
+        boards.analysis.setMoveBadge(null, null, "");
+        document.getElementById("analysis-board-label").textContent = "Initial position";
+        highlightCurrentMove();
+        return true;
+      } catch (err) {
+        // FEN is invalid or boardInfo failed; fall through to empty-box logic
+        console.warn("Failed to load FEN-only PGN:", err);
+      }
+    }
     // Emptied box → clear the move list and eval chart, drop any analyzed game.
     appState.analysis = null;
     resetAnalysisVariations();

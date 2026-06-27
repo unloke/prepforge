@@ -135,6 +135,13 @@ $1 2. Nf3 $15 Nc6`;
     expect(mainlineSans(root)).toEqual(["e4", "e5", "Nf3", "Nc6"]);
   });
 
+  it("preserves semicolons inside brace comments", () => {
+    const pgn = "1. e4 { clock 0:05; eval +0.2 } e5";
+    const { ok, root } = parsePgn(pgn);
+    expect(ok).toBe(true);
+    expect(mainlineSans(root)).toEqual(["e4", "e5"]);
+  });
+
   it("parses promotions with correct uci and san", () => {
     const pgn = "1. a4 h5 2. a5 h4 3. a6 h3 4. axb7 hxg2 5. bxa8=Q";
     const { ok, root } = parsePgn(pgn);
@@ -144,6 +151,17 @@ $1 2. Nf3 $15 Nc6`;
     const promo = chain[chain.length - 1];
     expect(promo.san).toBe("bxa8=Q");
     expect(promo.uci).toBe("b7a8q");
+  });
+
+  it("parses FEN-only PGN (no moves)", () => {
+    const pgn =
+      '[FEN "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"]';
+    const { ok, root, headers } = parsePgn(pgn);
+    expect(ok).toBe(true);
+    expect(root.children).toHaveLength(0);
+    expect(headers.FEN).toBe(
+      "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+    );
   });
 
   it("returns an empty tree for empty or whitespace input", () => {
