@@ -263,6 +263,55 @@ export function createScoutView(deps) {
     }
   }
 
+  // Rebuild both persistent tries from all games seen so far — used when none exist yet or
+  // the speed filter changed (a one-shot O(N) pass, off the streaming hot path).
+  function rebuildLiveTries() {
+    const speed = scoutState.activeSpeed;
+    const games = scoutState.games || [];
+    const anchorTs = scoutState.liveTrieAnchor || Date.now();
+    scoutState.liveTrieAnchor = anchorTs;
+    const white = scoutModule.createOpeningTrie();
+    const black = scoutModule.createOpeningTrie();
+    for (const g of games) {
+      if (speed !== "all" && g.speed !== speed) continue;
+      scoutModule.insertGameIntoTrie(white, g, "white", { anchorTs });
+      scoutModule.insertGameIntoTrie(black, g, "black", { anchorTs });
+    }
+    scoutState.liveTries = { white, black };
+    scoutState.liveTrieSpeed = speed;
+    scoutState.liveTrieCount = games.length;
+  }
+
+  // The prebuilt trie for a colour, rebuilding lazily if stale (never initialised, speed
+  // filter changed, or the game count drifted from what was inserted incrementally).
+  function liveTrieForColor(oppColor) {
+    if (!scoutState) return null;
+    if (
+      !scoutState.liveTries ||
+      scoutState.liveTrieSpeed !== scoutState.activeSpeed ||
+      scoutState.liveTrieCount !== (scoutState.games?.length || 0)
+    ) {
+      rebuildLiveTries();
+    }
+    return scoutState.liveTries?.[oppColor] || null;
+  }
+
+  // Fold one freshly-streamed game into the live tries in O(opening depth). No-op until the
+  // tries have been built once (the next render builds them and syncs the count); also a
+  // no-op when the game doesn't match the active speed filter, keeping parity with a rebuild.
+  function insertIntoLiveTries(game) {
+    if (!scoutState?.liveTries || scoutState.liveTrieSpeed !== scoutState.activeSpeed) return;
+    const speed = scoutState.activeSpeed;
+    if (speed !== "all" && game.speed !== speed) {
+      scoutState.liveTrieCount = scoutState.games.length;
+      return;
+    }
+    const anchorTs = scoutState.liveTrieAnchor || Date.now();
+    scoutModule.insertGameIntoTrie(scoutState.liveTries.white, game, "white", { anchorTs });
+    scoutModule.insertGameIntoTrie(scoutState.liveTries.black, game, "black", { anchorTs });
+    scoutState.liveTrieCount = scoutState.games.length;
+  }
+
   function renderScoutReport({ force = false } = {}) {
     if (!scoutState) return;
     const profileEl = getProfileEl();
@@ -313,7 +362,7 @@ export function createScoutView(deps) {
       scoutState,
       "white",
       scoutState.lookups.black,
-      speedOpts,
+      { ...speedOpts, trie: liveTrieForColor("white") },
     );
     if (whiteReport.sectionData) scoutState.sections.white = whiteReport.sectionData;
     const blackReport = buildScoutSectionReport(
@@ -328,6 +377,7 @@ export function createScoutView(deps) {
         engineAgg: engineAggForColor("black"),
         engineScan: engineScanForColor("black"),
         prefilteredLines: scoutState.prefilteredLines?.black,
+        trie: liveTrieForColor("black"),
       },
     );
     if (blackReport.sectionData) scoutState.sections.black = blackReport.sectionData;
@@ -1484,6 +1534,14 @@ export function createScoutView(deps) {
       prefilterCache:
         scoutState?.username === username ? scoutState.prefilterCache || new Map() : new Map(),
       maiaAttemptsUsed: 0,
+      // Persistent per-colour opening tries, grown one game at a time as the stream
+      // arrives (see insertIntoLiveTries) instead of rebuilt from every game each batch.
+      // Anchored to session start (later than any past game) so incremental insertion
+      // matches a one-shot build on every displayed stat — see insertGameIntoTrie.
+      liveTries: null,
+      liveTrieAnchor: Date.now(),
+      liveTrieSpeed: null,
+      liveTrieCount: 0,
     };
     scoutSession = {
       username,
@@ -1509,6 +1567,7 @@ export function createScoutView(deps) {
     if (game.gameId && session.seenIds.has(game.gameId)) return false;
     if (game.gameId) session.seenIds.add(game.gameId);
     scoutState.games.push(game);
+    insertIntoLiveTries(game);
     if (game.datestamp > 0) {
       if (session.oldestDatestamp == null || game.datestamp < session.oldestDatestamp) {
         session.oldestDatestamp = game.datestamp;

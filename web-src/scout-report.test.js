@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { Chess } from "chess.js";
 
 import * as scoutModule from "./scout.js";
 import {
@@ -12,6 +13,7 @@ import {
   renderScoutRefutationPanel,
   renderInlineRefutationCard,
   handleScoutRefutationGapClick,
+  legalScoutLineSans,
   refutationA11ySummary,
   renderScoutProfile,
   restoreScoutExpanded,
@@ -469,6 +471,32 @@ describe("scout-report rendering", () => {
     expect(pgn).toContain('[White "rival"]');
     expect(pgn).toContain('[Black "?"]');
     expect(pgn).toContain("1. e4 c5 2. Nf3");
+  });
+
+  it("rebuilds Analyze PGN SAN from UCI so stale scout SAN cannot create illegal lines", () => {
+    const ucis = [
+      "d2d4", "g8f6", "c2c4", "e7e6", "b1c3", "b7b6", "g1f3", "c8b7",
+      "c1g5", "h7h6", "g5h4", "g7g5", "h4g3", "f8g7", "e2e3", "d7d6",
+      "f1e2", "e8g8", "e1g1", "b8d7", "d4d5", "e6e5", "e3e4", "d7c5",
+      "e2d3", "a7a5", "a2a3", "a5a4", "h2h4", "f6h5", "h4g5", "h6g5",
+      "f3e1", "h5f4", "g3f4", "e5f4", "d1g4", "b7c8", "g4f3", "d8f6",
+      "e1c2", "g5g4", "f3d1", "f6h4", "c3e2", "g4g3", "f2g3", "f4g3",
+      "e2g3",
+    ];
+    const staleSans = [
+      "d4", "Nf6", "c4", "e6", "Nc3", "b6", "Nf3", "Bb7", "Bg5", "h6",
+      "Bh4", "g5", "Bg3", "Bg7", "e3", "d6", "Be2", "O-O", "O-O", "Nbd7",
+      "d5", "e5", "e4", "Nc5", "Bd3", "a5", "a3", "a4", "h4", "Nh5",
+      "hxg5", "hxg5", "Ne1", "Nf4", "Bxf4", "exf4", "Qg4", "Bc8", "Qf3",
+      "Qf6", "Qd1", "Qh4", "Ne2", "g3", "fxg3", "fxg3", "Nxg3",
+    ];
+    const rebuilt = legalScoutLineSans({ ucis, sans: staleSans });
+    expect(rebuilt.slice(40, 45)).toEqual(["Nc2", "g4", "Qd1", "Qh4", "Ne2"]);
+
+    const chess = new Chess();
+    for (const san of rebuilt) expect(chess.move(san)).toBeTruthy();
+    const pgn = buildScoutAnalyzePgn({ ucis, sans: staleSans }, "white", "unbrainless87");
+    expect(pgn).toContain("21. Nc2 g4 22. Qd1 Qh4");
   });
 
   it("renders a miniboard and always shows Add to prep", () => {

@@ -140,7 +140,7 @@ describe("buildCommentary (prose)", () => {
       fenBefore,
       fenAfter: "6k1/8/2p5/8/8/8/6K1/5B2 b - - 1 1",
       beforeEval: { lines: [{ uci: "f1e2", san: "Be2", cp: 100, mate: null, pvUci: ["f1e2"] }] },
-      afterEval: { cp: -100, mate: null, pvUci: [] },
+      afterEval: { cp: -40, mate: null, pvUci: [] },
     });
     expect(f.classification.code).toBe("mistake");
     expect(f.hangingOwnTop).toBeNull();
@@ -237,7 +237,7 @@ describe("buildCommentary (prose)", () => {
       fenBefore: "6k1/8/2p5/8/8/8/8/5BK1 w - - 0 1",
       fenAfter: "6k1/8/2p5/8/8/8/6K1/5B2 b - - 1 1",
       beforeEval: { lines: [{ uci: "f1e2", san: "Be2", cp: 120, mate: null, pvUci: ["f1e2"], pvSan: ["Be2"] }] },
-      afterEval: { cp: -100, mate: null, pvUci: [] },
+      afterEval: { cp: -20, mate: null, pvUci: [] },
     });
     expect(f.classification.code).toBe("mistake");
     const c = buildCommentary(f);

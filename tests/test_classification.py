@@ -59,12 +59,12 @@ def test_small_loss_is_excellent():
         best_eval_after=best,
     )
     assert result.classification is MoveClassification.EXCELLENT
-    assert 0.0 < result.win_chance_loss <= 0.03
+    assert 0.0 < result.win_chance_loss <= 0.02
 
 
 def test_moderate_loss_is_good():
     best = EngineEvaluation(engine="stockfish", score_cp=100)
-    played = EngineEvaluation(engine="stockfish", score_cp=30)
+    played = EngineEvaluation(engine="stockfish", score_cp=50)
     result = classify_move(
         side_to_move=Color.WHITE,
         played_move_uci="g1f3",
@@ -73,12 +73,12 @@ def test_moderate_loss_is_good():
         best_eval_after=best,
     )
     assert result.classification is MoveClassification.GOOD
-    assert 0.03 < result.win_chance_loss <= 0.07
+    assert 0.02 < result.win_chance_loss <= 0.05
 
 
 def test_inaccuracy_loss_band():
     best = EngineEvaluation(engine="stockfish", score_cp=200)
-    played = EngineEvaluation(engine="stockfish", score_cp=20)
+    played = EngineEvaluation(engine="stockfish", score_cp=100)
     result = classify_move(
         side_to_move=Color.WHITE,
         played_move_uci="g1f3",
@@ -87,12 +87,12 @@ def test_inaccuracy_loss_band():
         best_eval_after=best,
     )
     assert result.classification is MoveClassification.INACCURACY
-    assert 0.07 < result.win_chance_loss <= 0.23
+    assert 0.05 < result.win_chance_loss <= 0.10
 
 
 def test_mistake_loss_band():
     best = EngineEvaluation(engine="stockfish", score_cp=300)
-    played = EngineEvaluation(engine="stockfish", score_cp=-30)
+    played = EngineEvaluation(engine="stockfish", score_cp=150)
     result = classify_move(
         side_to_move=Color.WHITE,
         played_move_uci="g1f3",
@@ -101,7 +101,7 @@ def test_mistake_loss_band():
         best_eval_after=best,
     )
     assert result.classification is MoveClassification.MISTAKE
-    assert 0.23 < result.win_chance_loss <= 0.36
+    assert 0.10 < result.win_chance_loss <= 0.15
 
 
 def test_large_loss_is_blunder():
@@ -113,7 +113,7 @@ def test_large_loss_is_blunder():
         best_eval_after=EngineEvaluation(engine="stockfish", score_cp=80),
     )
     assert result.classification is MoveClassification.BLUNDER
-    assert result.win_chance_loss > 0.36
+    assert result.win_chance_loss > 0.15
 
 
 def test_loss_uses_mover_perspective_for_black():
@@ -129,4 +129,4 @@ def test_loss_uses_mover_perspective_for_black():
         best_eval_after=best,
     )
     assert result.classification is MoveClassification.BLUNDER
-    assert result.win_chance_loss > 0.36
+    assert result.win_chance_loss > 0.15

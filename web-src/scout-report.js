@@ -1,5 +1,7 @@
 // Scout report rendering + delegated interaction handlers (testable without app.js).
 
+import { Chess } from "chess.js";
+
 import { engineScanPatterns } from "./scout-engine.js";
 import {
   buildRefutations,
@@ -806,7 +808,27 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
 export function buildScoutAnalyzePgn(line, oppColor, username) {
   const [white, black] = oppColor === "white" ? [username, "?"] : ["?", username];
   const headers = `[Event "Scout — ${username}"]\n[White "${white}"]\n[Black "${black}"]\n[Result "*"]`;
-  return `${headers}\n\n${scoutLineText(line.sans)} *`;
+  return `${headers}\n\n${scoutLineText(legalScoutLineSans(line))} *`;
+}
+
+export function legalScoutLineSans(line) {
+  if (!line?.ucis?.length) return line?.sans || [];
+  const chess = new Chess();
+  const sans = [];
+  for (const uci of line.ucis) {
+    try {
+      const move = chess.move({
+        from: uci.slice(0, 2),
+        to: uci.slice(2, 4),
+        promotion: uci[4] || undefined,
+      });
+      if (!move) return line.sans || [];
+      sans.push(move.san);
+    } catch (_) {
+      return line.sans || [];
+    }
+  }
+  return sans;
 }
 
 // First-move distribution row — lives in the narrow left column, so it stays simple:
@@ -945,9 +967,13 @@ export function buildScoutSectionReport(
     maiaEnrichState = "idle",
     prefilterEnrichState = "idle",
     prefilteredLines = null,
+    trie: prebuiltTrie = null,
   },
 ) {
-  const trie = scoutModule.buildOpeningTrie(games, oppColor, { speedFilter });
+  // The streaming view keeps a persistent per-colour trie (inserted once per game) and
+  // passes it in so we don't rebuild it from every game on each batch — the O(N²) that
+  // made Scout heavy mid-stream. Fall back to a one-shot build when none is supplied.
+  const trie = prebuiltTrie || scoutModule.buildOpeningTrie(games, oppColor, { speedFilter });
   if (!trie.gameCount) return { html: "", sectionData: null };
 
   const stats = buildScoutStats(games, { color: oppColor, speedFilter });

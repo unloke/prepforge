@@ -168,7 +168,10 @@ export function mergeEngineIntoTargets(targets, enginePatterns) {
     return { ...target, enginePattern: pattern, hasEngineMistake: true };
   });
 }
-const CACHE_KEY = "prepforge.scout.cache.v3";
+// v4: fetchGames now excludes bullet at the source (excludeBullet:true). The v3
+// cache may hold older results that still contain bullet games, so the key is
+// bumped to force a clean re-fetch rather than re-serving contaminated data.
+const CACHE_KEY = "prepforge.scout.cache.v4";
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // opponents play new games constantly
 const CACHE_CAP = 8;
 
@@ -397,12 +400,15 @@ function thinkTimeMultiplier(z) {
   );
 }
 
+function getGameOpeningMoves(game) {
+  const ucis = game.openingUcis?.length ? game.openingUcis : game.ucis || [];
+  const sans = game.openingSans?.length ? game.openingSans : game.sans || [];
+  return { ucis, sans };
+}
+
 function extractOpponentTerminalOpening(game) {
   const oppColor = game.color;
-  const ucis = game.openingUcis?.length ? game.openingUcis : game.ucis || [];
-  const sans = game.openingSans?.length
-    ? game.openingSans
-    : (game.sans || []).slice(0, ucis.length);
+  const { ucis, sans } = getGameOpeningMoves(game);
   if (!ucis.length || sans.length !== ucis.length) return null;
   return normalizeToOpponentTerminal(ucis, sans, oppColor);
 }
@@ -466,6 +472,7 @@ export function parseGameBlock(block, username) {
   const openingUcis = [];
   const openingSans = [];
   let openingEndPly = 0;
+  let openingClosed = false;
 
   for (const { san, clockSeconds } of mainline) {
     let move;
@@ -481,12 +488,13 @@ export function parseGameBlock(block, username) {
     clockAfterPly.push(clockSeconds ?? null);
 
     const phase = gamePhase(chess.fen());
-    if (phase === "opening") {
+    if (!openingClosed && phase === "opening") {
       openingUcis.push(uci);
       openingSans.push(move.san);
       openingEndPly = openingUcis.length;
-    } else if (!openingEndPly) {
-      openingEndPly = ucis.length - 1;
+    } else if (!openingClosed) {
+      openingClosed = true;
+      openingEndPly = openingUcis.length;
     }
   }
   if (!ucis.length) return null;
@@ -497,9 +505,22 @@ export function parseGameBlock(block, username) {
     color,
   );
 
+  // Coarse end-state, for the collapse down-weight rule. Lichess PGN marks resign and
+  // checkmate alike as [Termination "Normal"]; the trailing "#" separates mate from a
+  // resignation, and time forfeits carry their own termination. The ND-JSON path later
+  // overrides this with Lichess's authoritative `status` (see parseGameFromJson).
+  const termination = (headerValue(block, "Termination") || "").toLowerCase();
+  const lastSan = replayedSans[replayedSans.length - 1] || "";
+  let status = null;
+  if (termination.includes("time")) status = "outoftime";
+  else if (result === "1/2-1/2") status = "draw";
+  else if (lastSan.endsWith("#")) status = "mate";
+  else if (termination === "normal") status = "resign";
+
   return {
     color,
     score,
+    status,
     sans: replayedSans,
     ucis,
     rating,
@@ -527,6 +548,51 @@ export function parseMultiPgn(text, username) {
   return games;
 }
 
+/**
+ * One ND-JSON game object (with `pgnInJson=true&clocks=true`) -> a scout record.
+ * The embedded `pgn` reuses the full PGN reader so every derived field is identical to
+ * the PGN path; we only *attach* the raw centisecond `clocks` array + the precise
+ * initial/increment, which the PGN `[%clk]` annotation rounds to whole seconds.
+ */
+export function parseGameFromJson(obj, username) {
+  if (!obj || typeof obj !== "object") return null;
+  const pgnText = typeof obj.pgn === "string" ? obj.pgn : null;
+  if (!pgnText) return null;
+  const game = parseGameBlock(pgnText, username);
+  if (!game) return null;
+  if (Array.isArray(obj.clocks) && obj.clocks.length) {
+    game.clockCsAfterPly = obj.clocks
+      .slice(0, game.ucis.length)
+      .map((c) => (Number.isFinite(c) ? c : null));
+  }
+  if (obj.clock && typeof obj.clock === "object") {
+    if (Number.isFinite(obj.clock.initial)) game.clockInitialSeconds = obj.clock.initial;
+    if (Number.isFinite(obj.clock.increment)) game.clockIncrementSeconds = obj.clock.increment;
+  }
+  // Authoritative end-state ("resign" / "mate" / "outoftime" / "draw" / …), which the
+  // PGN reader can only approximate — the collapse rule needs a reliable "resign".
+  if (typeof obj.status === "string") game.status = obj.status;
+  return game;
+}
+
+/** Parse a Lichess ND-JSON games export (one JSON object per line). */
+export function parseNdjsonGames(text, username) {
+  const games = [];
+  for (const line of String(text || "").split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    let obj;
+    try {
+      obj = JSON.parse(trimmed);
+    } catch (_) {
+      continue; // tolerate blank/partial lines
+    }
+    const game = parseGameFromJson(obj, username);
+    if (game) games.push(game);
+  }
+  return games;
+}
+
 // ---------------------------------------------------------------------------
 // Opening aggregation (trie of the opponent's moves)
 // ---------------------------------------------------------------------------
@@ -541,13 +607,65 @@ function incrementResult(node, score) {
   else node.l += 1;
 }
 
-function gameWeight(games, game, recency) {
+// The newest game timestamp in a set — the anchor the display trie's recency decay is
+// measured from. Computed ONCE per build (was recomputed per game inside gameWeight,
+// making buildOpeningTrie O(N²); the streaming view called it every batch).
+export function trieAnchorTs(games) {
+  let newest = 0;
+  for (const g of games) {
+    if (g.datestamp && g.datestamp > newest) newest = g.datestamp;
+  }
+  return newest > 0 ? newest : Date.now();
+}
+
+// Recency decay for one game, measured from a FIXED anchor timestamp. Because shifting
+// the anchor multiplies every game's weight by the same constant, all *displayed* trie
+// quantities — score/count ratios, per-node share, gameCount — are invariant to the
+// anchor chosen. That invariance is what lets the streaming view insert each game once
+// into a persistent trie (createOpeningTrie + insertGameIntoTrie) with an anchor fixed at
+// session start, instead of rebuilding from every game on each batch, and still match a
+// one-shot buildOpeningTrie on everything the report shows.
+function trieRecencyWeight(game, anchorTs, recency) {
   if (!recency) return 1;
   if (!game.datestamp || game.datestamp <= 0) return 0.3;
-  const stamps = games.map((g) => g.datestamp).filter((d) => d > 0);
-  const newestTs = stamps.length ? Math.max(...stamps) : Date.now();
-  const ageDays = Math.max(0, (newestTs - game.datestamp) / MS_PER_DAY);
+  const ageDays = Math.max(0, (anchorTs - game.datestamp) / MS_PER_DAY);
   return Math.pow(0.5, ageDays / TRIE_RECENCY_HALF_LIFE_DAYS);
+}
+
+/** A fresh, empty opening trie root — seed for incremental insertion. */
+export function createOpeningTrie() {
+  return trieNode();
+}
+
+// Fold one game into a persistent per-color trie. The caller supplies a fixed `anchorTs`
+// (see trieRecencyWeight). Wrong-colour games and early-resign collapses are skipped, so
+// this is safe to call blindly on every streamed game. Returns the root for chaining.
+export function insertGameIntoTrie(
+  root,
+  game,
+  color,
+  { maxPlies = MAX_PLIES, anchorTs = null, recency = true, excludeCollapse = true } = {},
+) {
+  if (!game || game.color !== color) return root;
+  if (excludeCollapse && isEarlyResignCollapse(game)) return root;
+  const anchor = anchorTs ?? (game.datestamp && game.datestamp > 0 ? game.datestamp : Date.now());
+  const w = trieRecencyWeight(game, anchor, recency);
+  root.count += w;
+  root.score += game.score * w;
+  root.gameCount += 1;
+  incrementResult(root, game.score);
+  const { ucis, sans } = getGameOpeningMoves(game);
+  let node = root;
+  for (let i = 0; i < Math.min(ucis.length, maxPlies); i += 1) {
+    const key = `${ucis[i]}|${sans[i]}`;
+    if (!node.children.has(key)) node.children.set(key, trieNode());
+    node = node.children.get(key);
+    node.count += w;
+    node.score += game.score * w;
+    node.gameCount += 1;
+    incrementResult(node, game.score);
+  }
+  return root;
 }
 
 function nodeScorePct(node) {
@@ -572,33 +690,78 @@ function nodeToLineGroup(root, node, sans, ucis, pathKey) {
   };
 }
 
+/**
+ * Transparent down-weight for non-representative games. A game the scouted opponent LOST
+ * by early resignation while still holding a healthy share of their clock is a one-off
+ * collapse — a mouse-slip, or a snap blunder they instantly gave up on — not a signal of
+ * their real opening prep. Counting it lets a single disaster inflate a line's empirical
+ * "struggle" and make it look artificially exploitable, so scout drops such games from the
+ * opening trie and branch aggregation.
+ *
+ * The gate is deliberately narrow (resign + short game + healthy clock) to bias hard toward
+ * precision: it removes clear collapses and essentially never a genuine prep game. Getting
+ * mated in the opening is intentionally NOT caught — that can be a repeatable trap the
+ * opponent keeps walking into, i.e. a real, exploitable weakness worth keeping.
+ */
+export const SCOUT_COLLAPSE_MAX_PLY = 24; // resigned by ~move 12 → still in / near the opening
+export const SCOUT_COLLAPSE_MIN_CLOCK_FRAC = 0.5; // ≥ half the clock left → not a time scramble
+
+// The scouted player's remaining-clock fraction (0..1) at their last recorded move, or
+// null when it can't be determined (the collapse rule then abstains rather than guesses).
+function opponentEndClockFraction(game) {
+  const initial = Number.isFinite(game?.clockInitialSeconds)
+    ? game.clockInitialSeconds
+    : Number.isFinite(game?.timeControl?.baseSeconds)
+      ? game.timeControl.baseSeconds
+      : null;
+  if (!initial || initial <= 0) return null;
+  const parity = game?.color === "white" ? 0 : 1; // clocks[p] is after ply p: even = White
+  const cs = game?.clockCsAfterPly;
+  const secs = game?.clockAfterPly;
+  const len = Math.max(cs?.length || 0, secs?.length || 0);
+  for (let p = len - 1; p >= 0; p -= 1) {
+    if (p % 2 !== parity) continue;
+    const fromCs = cs && Number.isFinite(cs[p]) ? cs[p] / 100 : null;
+    const fromSecs = secs && Number.isFinite(secs[p]) ? secs[p] : null;
+    const remaining = fromCs != null ? fromCs : fromSecs;
+    if (remaining != null) return remaining / initial;
+  }
+  return null;
+}
+
+/**
+ * True when `game` matches the early-resign collapse fingerprint (see SCOUT_COLLAPSE_*).
+ * Pure and cheap — no engine, only the result / status / length / clock already on the
+ * record — so it can gate the no-engine trie and branch aggregation.
+ */
+export function isEarlyResignCollapse(
+  game,
+  { maxPly = SCOUT_COLLAPSE_MAX_PLY, minClockFrac = SCOUT_COLLAPSE_MIN_CLOCK_FRAC } = {},
+) {
+  if (!game || game.score !== 0) return false; // the opponent must have lost
+  if (String(game.status || "").toLowerCase() !== "resign") return false; // resignation only
+  const totalPly = game.totalPly ?? game.ucis?.length ?? 0;
+  if (!totalPly || totalPly > maxPly) return false; // short game (opening / early middlegame)
+  const frac = opponentEndClockFraction(game);
+  if (frac == null) return false; // can't confirm a healthy clock → keep the game
+  return frac >= minClockFrac;
+}
+
 // Aggregate the games one colour at a time. Each path through the trie is a line
 // the opponent has actually played, with how often and how well they scored.
 export function buildOpeningTrie(
   games,
   color,
-  { maxPlies = MAX_PLIES, speedFilter = "all", recency = true } = {},
+  { maxPlies = MAX_PLIES, speedFilter = "all", recency = true, excludeCollapse = true } = {},
 ) {
-  const root = trieNode();
+  const root = createOpeningTrie();
   const filtered =
     speedFilter !== "all" ? games.filter((g) => g.speed === speedFilter) : games;
+  // Anchor recency to the newest game ONCE (not per game — that was the O(N²)). Feeding
+  // the same anchor to every insert reproduces the old gameWeight output exactly.
+  const anchorTs = trieAnchorTs(filtered);
   for (const game of filtered) {
-    if (game.color !== color) continue;
-    const w = gameWeight(filtered, game, recency);
-    root.count += w;
-    root.score += game.score * w;
-    root.gameCount += 1;
-    incrementResult(root, game.score);
-    let node = root;
-    for (let i = 0; i < Math.min(game.ucis.length, maxPlies); i += 1) {
-      const key = `${game.ucis[i]}|${game.sans[i]}`;
-      if (!node.children.has(key)) node.children.set(key, trieNode());
-      node = node.children.get(key);
-      node.count += w;
-      node.score += game.score * w;
-      node.gameCount += 1;
-      incrementResult(node, game.score);
-    }
+    insertGameIntoTrie(root, game, color, { maxPlies, anchorTs, recency, excludeCollapse });
   }
   return root;
 }
@@ -749,11 +912,11 @@ function nextMoverAt(ucis) {
 export function aggregateOpeningBranches(
   games,
   color,
-  { speedFilter = "all", now = Date.now() } = {},
+  { speedFilter = "all", now = Date.now(), excludeCollapse = true } = {},
 ) {
   const filtered = (
     speedFilter !== "all" ? games.filter((g) => g.speed === speedFilter) : games
-  ).filter((g) => g.color === color);
+  ).filter((g) => g.color === color && !(excludeCollapse && isEarlyResignCollapse(g)));
 
   const stamps = filtered.map((g) => g.datestamp).filter((d) => d > 0);
   const newestTs = stamps.length ? Math.max(...stamps) : now;
@@ -1494,15 +1657,22 @@ export function opponentProfile(games) {
 // Fetching (with a small per-username cache)
 // ---------------------------------------------------------------------------
 
-export function scoutUrl(username, max) {
+export function scoutUrl(username, max, { pgnInJson = false, excludeBullet = false } = {}) {
   const safe = encodeURIComponent(String(username || "").trim());
+  // Bullet think-times are too compressed to tell a real preparation gap from a
+  // mouse-slip, so bullet is dropped at the source. The production scout
+  // (streamGames / scoutStreamUrl) also excludes bullet now.
+  const perfType = excludeBullet ? "blitz,rapid,classical" : "bullet,blitz,rapid,classical";
   const params = new URLSearchParams({
     moves: "true",
     clocks: "true",
     evals: "false",
     opening: "false",
-    perfType: "bullet,blitz,rapid,classical",
+    perfType,
   });
+  // pgnInJson lets the ND-JSON export carry both the PGN (parsed by the existing
+  // PGN reader) AND the raw centisecond `clocks` array the PGN `[%clk]` rounds away.
+  if (pgnInJson) params.set("pgnInJson", "true");
   const maxN = Number(max);
   if (max != null && Number.isFinite(maxN) && maxN > 0) {
     params.set("max", String(Math.max(10, Math.round(maxN))));
@@ -1518,7 +1688,10 @@ export function scoutStreamUrl(username, { color = "both", since, until, max } =
     clocks: "true",
     evals: "false",
     opening: "false",
-    perfType: "bullet,blitz,rapid,classical",
+    // Bullet is dropped at the source: its think-times are too compressed to
+    // separate a real preparation gap from a mouse-slip, and bullet openings are
+    // noisy prep signal. The production scout streams blitz/rapid/classical only.
+    perfType: "blitz,rapid,classical",
   });
   const maxN = Number(max);
   if (max != null && Number.isFinite(maxN) && maxN > 0) {
@@ -1604,14 +1777,16 @@ export function createScoutClient({ fetchImpl, storage, now } = {}) {
     const hit = cache.entries[key];
     if (hit && clock() - hit.at < CACHE_TTL_MS) return hit.games;
 
-    const resp = await doFetch(scoutUrl(username, max), {
-      headers: { Accept: "application/x-chess-pgn" },
+    // ND-JSON (not PGN) so we keep the raw centisecond `clocks` array that `[%clk]`
+    // rounds to whole seconds — the time-discrimination features need sub-second think.
+    const resp = await doFetch(scoutUrl(username, max, { pgnInJson: true, excludeBullet: true }), {
+      headers: { Accept: "application/x-ndjson" },
       signal,
     });
     if (resp.status === 404) throw new Error(`No Lichess user named "${username}"`);
     if (resp.status === 429) throw new Error(SCOUT_ERR_RATE_LIMIT);
     if (!resp.ok) throw new Error(`Lichess responded ${resp.status}`);
-    const games = parseMultiPgn(await resp.text(), username);
+    const games = parseNdjsonGames(await resp.text(), username);
 
     const fresh = readCache();
     fresh.entries[key] = { at: clock(), games };

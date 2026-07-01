@@ -423,8 +423,11 @@ export function classifyMove({ winBefore, winAfter, mover, isBest }) {
     return { label: "Best move", glyph: "✓", tone: "good" };
   }
   if (drop <= 5) return { label: "Good move", glyph: "✓", tone: "good" };
+  // Error tiers match Lichess's judgment cutoffs (5 / 10 / 15 win% lost) and the Coach's
+  // classifyMoveRich so the three surfaces agree. Blunder was >20 here — laxer than
+  // Lichess, so a ~15-pt slip read as a mere mistake.
   if (drop <= 10) return { label: "Inaccuracy", glyph: "?!", tone: "warn" };
-  if (drop <= 20) return { label: "Mistake", glyph: "?", tone: "warn" };
+  if (drop <= 15) return { label: "Mistake", glyph: "?", tone: "warn" };
   return { label: "Blunder", glyph: "??", tone: "danger" };
 }
 

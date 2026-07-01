@@ -270,22 +270,55 @@ export function createAnalyzeView({
     marker.setAttribute("x2", String(x));
   }
 
+  // White-POV win chance (0..100) from an eval-graph point, via the Lichess sigmoid —
+  // identical to cpToWin (web-src/explain.js) and the server's cp_to_win_chance so the
+  // chart, the classifier, and the Coach all read from the same win% scale. score_cp is
+  // preferred; bounded_score_cp is the fallback (it already encodes mate as ±1000 and
+  // clamps extremes). Plotting win% instead of raw centipawns is the whole point: the
+  // sigmoid expands the decisive ±1–2 pawn band (where games are actually won and lost)
+  // and flattens the meaningless +5↔+9 range, so a bad move reads as a real drop.
+  function pointWinPct(point) {
+    const cp = point.score_cp != null ? point.score_cp : point.bounded_score_cp;
+    if (cp === null || cp === undefined) return 50;
+    const c = Math.max(-1500, Math.min(1500, cp));
+    return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * c)) - 1);
+  }
+
   function renderEvalChart(points) {
     const chart = document.getElementById("eval-chart");
+    const svgNS = "http://www.w3.org/2000/svg";
     chart.innerHTML = "";
     appState.evalChartPoints = points || [];
     const width = 640;
     const height = 96;
+    const pad = 10;
+    const usable = height - 2 * pad;
+    // Win% → y. Up = White winning (standard advantage-graph convention, matching
+    // Lichess/chess.com). A generic analyzed PGN has no single "player" whose POV to
+    // adopt, so White-POV keeps it unambiguous; the per-move error colouring below is
+    // what tells you which side blundered.
+    const yOf = (winPct) => pad + (1 - winPct / 100) * usable;
+    const centerY = yOf(50);
     chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
     chart.setAttribute("preserveAspectRatio", "none");
-    chart.setAttribute("aria-label", "Evaluation trend by move");
+    chart.setAttribute("aria-label", "Win chance by move (up = White)");
     chart.style.cursor = points && points.length ? "pointer" : "default";
 
-    const axis = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    // Subtle "roughly equal" band (≈45–55% win chance) so small wobbles near the middle
+    // don't look dramatic while genuine swings still stand out.
+    const band = document.createElementNS(svgNS, "rect");
+    band.setAttribute("x", "0");
+    band.setAttribute("y", String(yOf(55)));
+    band.setAttribute("width", String(width));
+    band.setAttribute("height", String(yOf(45) - yOf(55)));
+    band.setAttribute("fill", "rgba(120, 120, 120, 0.08)");
+    chart.appendChild(band);
+
+    const axis = document.createElementNS(svgNS, "line");
     axis.setAttribute("x1", "0");
     axis.setAttribute("x2", String(width));
-    axis.setAttribute("y1", String(height / 2));
-    axis.setAttribute("y2", String(height / 2));
+    axis.setAttribute("y1", String(centerY));
+    axis.setAttribute("y2", String(centerY));
     axis.setAttribute("stroke", "#d6d2cb");
     axis.setAttribute("stroke-dasharray", "4 4");
     chart.appendChild(axis);
@@ -293,29 +326,55 @@ export function createAnalyzeView({
 
     const coords = points.map((point, index) => {
       const x = points.length === 1 ? width / 2 : (index / (points.length - 1)) * width;
-      const y = height / 2 - (point.bounded_score_cp / 1000) * (height / 2 - 8);
+      const y = yOf(pointWinPct(point));
       return { x, y, ply: point.ply, classification: point.classification };
     });
 
-    const area = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-    const areaPoints = [
-      `0,${height / 2}`,
-      ...coords.map((c) => `${c.x},${c.y}`),
-      `${width},${height / 2}`,
-    ].join(" ");
-    area.setAttribute("points", areaPoints);
-    area.setAttribute("fill", "rgba(209, 139, 63, 0.18)");
+    // Step-after path: hold each eval flat to the next move's x, then drop/rise vertically
+    // to the new win%. Every move's change becomes a vertical segment, so a blunder shows
+    // up as a literal cliff rather than a gentle slope.
+    const stepPts = [];
+    coords.forEach((c, i) => {
+      if (i > 0) stepPts.push([c.x, coords[i - 1].y]);
+      stepPts.push([c.x, c.y]);
+    });
+    const stepStr = stepPts.map((p) => `${p[0]},${p[1]}`).join(" ");
+
+    const area = document.createElementNS(svgNS, "polygon");
+    area.setAttribute(
+      "points",
+      `${coords[0].x},${centerY} ${stepStr} ${coords[coords.length - 1].x},${centerY}`,
+    );
+    area.setAttribute("fill", "rgba(209, 139, 63, 0.16)");
     chart.appendChild(area);
 
-    const svgNS = "http://www.w3.org/2000/svg";
     const polyline = document.createElementNS(svgNS, "polyline");
-    polyline.setAttribute("points", coords.map((c) => `${c.x},${c.y}`).join(" "));
+    polyline.setAttribute("points", stepStr);
     polyline.setAttribute("fill", "none");
     polyline.setAttribute("stroke", "#b9722a");
-    polyline.setAttribute("stroke-width", "2");
+    polyline.setAttribute("stroke-width", "1.75");
     polyline.setAttribute("stroke-linecap", "round");
     polyline.setAttribute("stroke-linejoin", "round");
     chart.appendChild(polyline);
+
+    // Colour the vertical cliff at each error/brilliant move so bad moves are unmissable.
+    coords.forEach((c, i) => {
+      if (i === 0) return;
+      const raw = String(c.classification || "").toLowerCase();
+      const cls = CLASS_GROUP_OF[raw] || raw;
+      const color = EVAL_MARKER_COLORS[cls];
+      if (!color) return;
+      const cliff = document.createElementNS(svgNS, "line");
+      cliff.setAttribute("x1", String(c.x));
+      cliff.setAttribute("x2", String(c.x));
+      cliff.setAttribute("y1", String(coords[i - 1].y));
+      cliff.setAttribute("y2", String(c.y));
+      cliff.setAttribute("stroke", color);
+      cliff.setAttribute("stroke-width", "2.5");
+      cliff.setAttribute("stroke-linecap", "round");
+      cliff.setAttribute("vector-effect", "non-scaling-stroke");
+      chart.appendChild(cliff);
+    });
 
     coords.forEach((c) => {
       const raw = String(c.classification || "").toLowerCase();

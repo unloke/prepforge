@@ -345,7 +345,13 @@ export function classifyMoveRich({ winDelta, winAfterMover, isBest, onlyMove, fo
     return { code: "best", label: "Best move", glyph: "✓", tone: "good" };
   }
   if (winDelta <= 5) return { code: "good", label: "Good move", glyph: "✓", tone: "good" };
+  // Error tiers mirror Lichess's judgment cutoffs so the Coach flags real errors as
+  // firmly as the tool users compare against, and so this and the server classifier
+  // (services/classification.py, on the 0..1 scale) agree on the same move. Lichess
+  // judges on winningChances (range -1..1) at {inaccuracy .1, mistake .2, blunder .3};
+  // win% = 50 + 50·winningChances, so those are win% losses of 5 / 10 / 15. (Mistake was
+  // ≤20 and blunder >20 here — laxer than Lichess, so ~15-pt slips read as mere mistakes.)
   if (winDelta <= 10) return { code: "inaccuracy", label: "Inaccuracy", glyph: "?!", tone: "warn" };
-  if (winDelta <= 20) return { code: "mistake", label: "Mistake", glyph: "?", tone: "warn" };
+  if (winDelta <= 15) return { code: "mistake", label: "Mistake", glyph: "?", tone: "warn" };
   return { code: "blunder", label: "Blunder", glyph: "??", tone: "danger" };
 }

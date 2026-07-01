@@ -10,6 +10,10 @@ import {
   branchPathKey,
   branchStruggle,
   buildOpeningTrie,
+  createOpeningTrie,
+  insertGameIntoTrie,
+  trieAnchorTs,
+  isEarlyResignCollapse,
   triePrefixStats,
   computeNextOwnThinkSeconds,
   gameNextOwnThinkMedian,
@@ -27,8 +31,10 @@ import {
   opponentProfile,
   parseClkToSeconds,
   parseGameBlock,
+  parseGameFromJson,
   parseMainlineMoves,
   parseMultiPgn,
+  parseNdjsonGames,
   parseTimeControlHeader,
   nodeIdAfterFlush,
   rankGamePlan,
@@ -225,6 +231,24 @@ describe("parseGameBlock / parseMultiPgn", () => {
     ).toBe("classical");
     expect(parseGameBlock(pgn({ moves: "1. e4" }), "foe").speed).toBe("unknown");
   });
+  it("keeps opening metadata as a contiguous legal prefix when phase detection flips back", () => {
+    const game = parseGameBlock(
+      pgn({
+        white: "unbrainless87",
+        black: "antek0011",
+        result: "0-1",
+        timeControl: "60+0",
+        moves:
+          "1. d4 Nf6 2. c4 e6 3. Nc3 b6 4. Nf3 Bb7 5. Bg5 h6 6. Bh4 g5 7. Bg3 Bg7 8. e3 d6 9. Be2 O-O 10. O-O Nbd7 11. d5 e5 12. e4 Nc5 13. Bd3 a5 14. a3 a4 15. h4 Nh5 16. hxg5 hxg5 17. Ne1 Nf4 18. Bxf4 exf4 19. Qg4 Bc8 20. Qf3 Qf6 21. Nc2 g4 22. Qd1 Qh4 23. Ne2 g3 24. fxg3 fxg3 25. Nxg3 Qxg3",
+      }),
+      "unbrainless87",
+    );
+    expect(game.openingEndPly).toBe(40);
+    expect(game.openingSans.at(-1)).toBe("Qf6");
+    expect(game.openingSans).not.toContain("Qd1");
+    expect(game.openingUcis).toEqual(game.ucis.slice(0, game.openingEndPly));
+    expect(game.openingSans).toEqual(game.sans.slice(0, game.openingEndPly));
+  });
   it("skips games the player is not in, unfinished games, and junk", () => {
     expect(parseGameBlock(pgn({ moves: "1. e4" }), "someoneelse")).toBeNull();
     expect(parseGameBlock(pgn({ result: "*", moves: "1. e4" }), "foe")).toBeNull();
@@ -272,6 +296,59 @@ const GAMES = [
     datestamp: 5000,
   }),
 ];
+
+// Compare the quantities the report actually shows: gameCount (unweighted) and the
+// recency-weighted score/count ratio. Both must match regardless of the recency anchor,
+// which is what makes streaming-time incremental insertion (fixed anchor) equivalent to a
+// one-shot rebuild (anchor = newest game).
+function expectTrieDisplayEqual(a, b, path = "root") {
+  expect(a.gameCount, `${path} gameCount`).toBe(b.gameCount);
+  const ratioA = a.count ? a.score / a.count : 0;
+  const ratioB = b.count ? b.score / b.count : 0;
+  expect(ratioA, `${path} score/count`).toBeCloseTo(ratioB, 9);
+  expect([...a.children.keys()].sort()).toEqual([...b.children.keys()].sort());
+  for (const [key, childA] of a.children) {
+    expectTrieDisplayEqual(childA, b.children.get(key), `${path}>${key}`);
+  }
+}
+
+describe("incremental opening trie (streaming path)", () => {
+  it("insertGameIntoTrie with the newest-game anchor reproduces buildOpeningTrie exactly", () => {
+    const oneShot = buildOpeningTrie(GAMES, "white", { recency: true });
+    const anchorTs = trieAnchorTs(GAMES); // buildOpeningTrie uses max datestamp over ALL games
+    const incremental = createOpeningTrie();
+    for (const g of GAMES) insertGameIntoTrie(incremental, g, "white", { anchorTs, recency: true });
+    expect(incremental).toEqual(oneShot);
+  });
+
+  it("insert order does not change the trie", () => {
+    const anchorTs = trieAnchorTs(GAMES);
+    const forward = createOpeningTrie();
+    for (const g of GAMES) insertGameIntoTrie(forward, g, "white", { anchorTs, recency: true });
+    const reversed = createOpeningTrie();
+    for (const g of [...GAMES].reverse()) insertGameIntoTrie(reversed, g, "white", { anchorTs, recency: true });
+    expectTrieDisplayEqual(forward, reversed);
+  });
+
+  it("a fixed session anchor (unknowable newest game) still matches the displayed stats", () => {
+    // Streaming inserts each game as it arrives, anchored to a fixed 'now' captured before
+    // the newest game is known. Raw weights differ from the one-shot build by a constant,
+    // but every displayed ratio/count is identical.
+    const oneShot = buildOpeningTrie(GAMES, "white", { recency: true });
+    const sessionNow = 9_999_999; // later than any game; not the per-set max
+    const incremental = createOpeningTrie();
+    for (const g of GAMES)
+      insertGameIntoTrie(incremental, g, "white", { anchorTs: sessionNow, recency: true });
+    expectTrieDisplayEqual(incremental, oneShot);
+  });
+
+  it("skips wrong-colour games and early-resign collapses like the batch build", () => {
+    const anchorTs = trieAnchorTs(GAMES);
+    const incremental = createOpeningTrie();
+    for (const g of GAMES) insertGameIntoTrie(incremental, g, "black", { anchorTs, recency: true });
+    expect(incremental).toEqual(buildOpeningTrie(GAMES, "black", { recency: true }));
+  });
+});
 
 describe("buildOpeningTrie + distribution + topLines", () => {
   it("splits by colour and counts shares", () => {
@@ -1152,8 +1229,145 @@ describe("repertoire coverage", () => {
   });
 });
 
+describe("parseGameFromJson / parseNdjsonGames", () => {
+  it("reuses the PGN reader and attaches centisecond clocks + the precise clock object", () => {
+    const game = parseGameFromJson(
+      {
+        pgn: pgn({ moves: "1. e4 e5 2. Nf3 Nc6", white: "Foe", timeControl: "180+2" }),
+        clocks: [18003, 17950, 17820, 17700],
+        clock: { initial: 180, increment: 2, totalTime: 260 },
+      },
+      "Foe",
+    );
+    expect(game.ucis).toEqual(["e2e4", "e7e5", "g1f3", "b8c6"]);
+    expect(game.clockCsAfterPly).toEqual([18003, 17950, 17820, 17700]);
+    expect(game.clockInitialSeconds).toBe(180);
+    expect(game.clockIncrementSeconds).toBe(2);
+  });
+
+  it("returns null without a usable pgn field", () => {
+    expect(parseGameFromJson({ clocks: [1, 2] }, "Foe")).toBeNull();
+  });
+
+  it("parses one game per line and tolerates blanks and garbage", () => {
+    const text = [
+      JSON.stringify({ pgn: pgn({ moves: "1. e4 e5", white: "Foe" }), clocks: [18000, 17900] }),
+      "",
+      "not json",
+      JSON.stringify({ pgn: pgn({ moves: "1. d4 d5", white: "Foe" }) }),
+    ].join("\n");
+    const games = parseNdjsonGames(text, "Foe");
+    expect(games).toHaveLength(2);
+    expect(games[0].clockCsAfterPly).toEqual([18000, 17900]);
+  });
+
+  it("adds pgnInJson to the export URL only when requested", () => {
+    expect(scoutUrl("Foe", null, { pgnInJson: true })).toContain("pgnInJson=true");
+    expect(scoutUrl("Foe")).not.toContain("pgnInJson");
+  });
+});
+
+describe("isEarlyResignCollapse (opening-collapse down-weight)", () => {
+  // White resigns on move 3 holding ~91% of a 180s clock: the textbook one-off collapse.
+  const base = {
+    color: "white",
+    score: 0,
+    status: "resign",
+    totalPly: 6,
+    clockInitialSeconds: 180,
+    clockAfterPly: [175, 178, 172, 176, 165, 174], // White = even indices; last own = 165s
+  };
+
+  it("flags a lost, early resignation made with a healthy clock", () => {
+    expect(isEarlyResignCollapse(base)).toBe(true);
+  });
+
+  it("keeps games the opponent did not lose", () => {
+    expect(isEarlyResignCollapse({ ...base, score: 1 })).toBe(false);
+    expect(isEarlyResignCollapse({ ...base, score: 0.5 })).toBe(false);
+  });
+
+  it("keeps checkmates and time forfeits — only resignations count", () => {
+    expect(isEarlyResignCollapse({ ...base, status: "mate" })).toBe(false);
+    expect(isEarlyResignCollapse({ ...base, status: "outoftime" })).toBe(false);
+  });
+
+  it("keeps long games (a played-out line, not a snap collapse)", () => {
+    expect(isEarlyResignCollapse({ ...base, totalPly: 40 })).toBe(false);
+  });
+
+  it("keeps resignations made in a time scramble (little clock left)", () => {
+    // White's last own reading (index 4) is 4s of 180 → ~2%, well below the healthy floor.
+    expect(isEarlyResignCollapse({ ...base, clockAfterPly: [40, 178, 20, 176, 4, 174] })).toBe(false);
+  });
+
+  it("abstains when the clock can't be read", () => {
+    expect(
+      isEarlyResignCollapse({ ...base, clockAfterPly: [], clockInitialSeconds: undefined, timeControl: null }),
+    ).toBe(false);
+  });
+
+  it("reads Black's clock at odd plies, in centiseconds, and via timeControl.baseSeconds", () => {
+    const g = {
+      color: "black",
+      score: 0,
+      status: "resign",
+      totalPly: 5,
+      timeControl: { baseSeconds: 300, incrementSeconds: 0 },
+      clockCsAfterPly: [29500, 28000, 29000, 27000, 28500], // Black = odd; last own (idx 3) = 270s
+    };
+    expect(isEarlyResignCollapse(g)).toBe(true);
+  });
+});
+
+describe("buildOpeningTrie / aggregateOpeningBranches collapse exclusion", () => {
+  const line = (over) => ({
+    color: "white",
+    speed: "blitz",
+    sans: ["e4", "e5", "Nf3"],
+    ucis: ["e2e4", "e7e5", "g1f3"],
+    totalPly: 3,
+    ...over,
+  });
+  const collapse = line({
+    score: 0,
+    status: "resign",
+    clockInitialSeconds: 180,
+    clockAfterPly: [176, 178, 170],
+  });
+  const realLoss = line({
+    score: 0,
+    status: "mate", // mated in the opening: a repeatable trap, kept
+    clockInitialSeconds: 180,
+    clockAfterPly: [60, 55, 40],
+  });
+
+  it("drops an early-resign collapse from the trie so it can't inflate struggle", () => {
+    const trie = buildOpeningTrie([collapse, realLoss], "white");
+    expect(trie.gameCount).toBe(1); // collapse excluded, mate kept
+    const e4 = [...trie.children.values()][0];
+    expect(e4.l).toBe(1); // exactly one counted loss (the mate), not two
+  });
+
+  it("keeps the collapse when excludeCollapse:false", () => {
+    const trie = buildOpeningTrie([collapse, realLoss], "white", { excludeCollapse: false });
+    expect(trie.gameCount).toBe(2);
+  });
+
+  it("also drops the collapse from branch aggregation", () => {
+    const { branches } = aggregateOpeningBranches([collapse, realLoss], "white");
+    const totalGames = branches.reduce((s, b) => s + b.games, 0);
+    expect(totalGames).toBe(1);
+  });
+});
+
 describe("createScoutClient", () => {
-  const EXPORT = [pgn({ moves: "1. e4 e5" }), pgn({ moves: "1. d4 d5" })].join("\n");
+  // fetchGames now uses the ND-JSON export (pgnInJson) so it can read centisecond clocks.
+  const ndjson = (objs) => objs.map((o) => JSON.stringify(o)).join("\n");
+  const EXPORT = ndjson([
+    { pgn: pgn({ moves: "1. e4 e5" }) },
+    { pgn: pgn({ moves: "1. d4 d5" }) },
+  ]);
 
   function memoryStorage() {
     const data = new Map();
@@ -1171,6 +1385,21 @@ describe("createScoutClient", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(first).toHaveLength(2);
     expect(second).toEqual(first);
+  });
+
+  it("ignores a stale v3 cache entry (bullet-contaminated) and re-fetches", async () => {
+    // The v3 cache could hold pre-excludeBullet results; the v4 key must not read it.
+    const storage = memoryStorage();
+    storage.setItem(
+      "prepforge.scout.cache.v3",
+      JSON.stringify({ entries: { "foe:60": { at: Date.now(), games: [{ stale: true }] } } }),
+    );
+    const fetchImpl = vi.fn(async () => ({ ok: true, status: 200, text: async () => EXPORT }));
+    const client = createScoutClient({ fetchImpl, storage });
+    const games = await client.fetchGames("Foe", { max: 60 });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(games).toHaveLength(2);
+    expect(games).not.toContainEqual({ stale: true });
   });
 
   it("fetchGames omits max from the export URL by default", async () => {
@@ -1211,6 +1440,12 @@ describe("createScoutClient", () => {
     expect(url).toContain("perfType=bullet%2Cblitz%2Crapid%2Cclassical");
   });
 
+  it("drops bullet from perfType when excludeBullet is set", () => {
+    const url = scoutUrl("Foe", null, { excludeBullet: true });
+    expect(url).toContain("perfType=blitz%2Crapid%2Cclassical");
+    expect(url).not.toContain("bullet");
+  });
+
   it("passes an explicit max through without capping", () => {
     const url = scoutUrl("Foe", 9999);
     expect(url).toContain("max=9999");
@@ -1224,6 +1459,12 @@ describe("createScoutClient", () => {
     const defaultUrl = scoutStreamUrl("Foe", { color: "both" });
     expect(defaultUrl).not.toContain("color=");
     expect(defaultUrl).not.toContain("max=");
+  });
+
+  it("excludes bullet from the streaming export", () => {
+    const url = scoutStreamUrl("Foe", { color: "both" });
+    expect(url).toContain("perfType=blitz%2Crapid%2Cclassical");
+    expect(url).not.toContain("bullet");
   });
 
   it("streams PGN chunks split mid-game and emits complete games", async () => {

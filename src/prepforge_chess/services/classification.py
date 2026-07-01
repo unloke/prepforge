@@ -13,12 +13,25 @@ CP_CLAMP = 1000
 
 @dataclass(frozen=True)
 class ClassificationConfig:
-    """Win-chance loss thresholds (mover's perspective)."""
+    """Win-chance loss thresholds (mover's perspective).
 
-    excellent_loss: float = 0.03
-    good_loss: float = 0.07
-    inaccuracy_loss: float = 0.23
-    mistake_loss: float = 0.36
+    These are WIN-PROBABILITY loss (0..1), the same scale ``classify_move`` compares
+    on. They mirror Lichess's judgment tiers so the Analyze report is as strict as the
+    tool users compare us against, and so the browser Coach (web-src/coach/features.js
+    ``classifyMoveRich``, on the 0..100 scale) and this server classifier agree on the
+    same move. Lichess judges on its ``winningChances`` value (range -1..1) with cutoffs
+    {inaccuracy .1, mistake .2, blunder .3}; since win-probability = 0.5 + 0.5·winningChances,
+    a winningChances delta of 0.1/0.2/0.3 is a probability loss of 0.05/0.10/0.15 — hence
+    the values below. (Previously 0.23/0.36 — ~2× too lenient, so real errors read as
+    inaccuracies.) The excellent/good split is our own chess.com-style positive ladder
+    (Lichess has no such labels); the Analyze view groups best/excellent/good together, so
+    only the error boundaries are user-visible.
+    """
+
+    excellent_loss: float = 0.02
+    good_loss: float = 0.05
+    inaccuracy_loss: float = 0.10
+    mistake_loss: float = 0.15
 
 
 @dataclass(frozen=True)
