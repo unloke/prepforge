@@ -19,6 +19,7 @@ import {
   scoutLineKey,
 } from "../scout-report.js";
 import { createScoutInitGuard } from "../scout-init-guard.js";
+import { renderV12PanelShell, renderV12Report } from "../scout-v12-report.js";
 
 const SCOUT_E2E_BUILD_ENABLED = import.meta.env.VITE_ENABLE_SCOUT_E2E === "1";
 import { colorRecommendation } from "../scout-stats.js";
@@ -110,6 +111,8 @@ export function createScoutView(deps) {
     pushBuildNode,
     connectLichess,
     loadPgnIntoAnalyze,
+    effectiveMaiaRating,
+    getLichessUsername = () => null,
   } = deps;
 
   let scoutModule = null;
@@ -119,7 +122,7 @@ export function createScoutView(deps) {
   let scoutEngineModule = null;
   let scoutState = null;
   let scoutSession = null;
-  let scoutEventsBound = false;
+  const scoutBoundEventTargets = new WeakSet();
   let explorerEnrichTimer = null;
   let explorerEnrichSeq = 0;
   let maiaEnrichTimer = null;
@@ -263,6 +266,33 @@ export function createScoutView(deps) {
     }
   }
 
+  function syncVisibleState() {
+    bindScoutEvents();
+    updateScoutControls();
+    updateLiveCounter();
+
+    // v12 experimental report viewer paints standalone — no scout run needed.
+    if (isV12Mode()) paintV12Panel();
+
+    const results = getResultsEl();
+    const profile = getProfileEl();
+    if (scoutState) {
+      const hasReport = !!results?.innerHTML?.trim();
+      if (scoutState.games?.length && !hasReport) {
+        renderScoutReport({ force: true });
+      } else {
+        patchEngineProgressUI();
+      }
+      if (profile && scoutState.profile && profile.hidden && scoutState.games?.length) {
+        renderScoutReport({ force: true });
+      }
+    }
+
+    if (results) {
+      results.classList.toggle("is-streaming", scoutSession?.state === "running");
+    }
+  }
+
   // Rebuild both persistent tries from all games seen so far — used when none exist yet or
   // the speed filter changed (a one-shot O(N) pass, off the streaming hot path).
   function rebuildLiveTries() {
@@ -350,6 +380,7 @@ export function createScoutView(deps) {
     };
     const speedOpts = {
       speedFilter: scoutState.activeSpeed,
+      v3Mode: isV12Mode(),
       escapeHtml,
       enginePatterns: engineScanPatterns(scoutState.engineByColor?.white),
       explorerReads: scoutState.explorerByColor?.white || null,
@@ -407,8 +438,101 @@ export function createScoutView(deps) {
     }
     if (force) updateLiveCounter();
     patchEngineProgressUI();
-    if (!isStreaming() && !isEnrichmentInFlight()) {
+    // v12 is a standalone report viewer — the classic prefilter/Maia enrichment stays v2-only.
+    if (!isV12Mode() && !isStreaming() && !isEnrichmentInFlight()) {
       schedulePrefilterEnrich();
+    }
+  }
+
+  // ---- Scout UI modes -------------------------------------------------------------------------
+  // "v2"  (default)      — the classic full report: stats, intel, prefilter/Maia weakness list.
+  // "v12" (?scoutV12=1)  — experimental standalone audit-report viewer (policy-bias engine output).
+
+  function isV12Mode() {
+    try {
+      return new URLSearchParams(window.location.search).has("scoutV12");
+    } catch (_) {
+      return false; // no window/location (tests) → default v2
+    }
+  }
+
+  function getV12PanelEl() {
+    return document.getElementById("scout-v3-results");
+  }
+
+  // v12 audits live outside scoutState — the experimental report viewer works
+  // standalone from loaded JSON, with no scout run required.
+  let v12Audits = [];
+
+  function v12MiniBoard(fen, orientation) {
+    return renderScoutMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg });
+  }
+
+  function v12ReportHtml() {
+    return v12Audits.length
+      ? renderV12Report(v12Audits, { escapeHtml, renderMiniBoard: v12MiniBoard })
+      : "";
+  }
+
+  function paintV12Panel() {
+    const el = getV12PanelEl();
+    if (!el) return;
+    el.hidden = false;
+    el.innerHTML = renderV12PanelShell({ escapeHtml, reportHtml: v12ReportHtml() });
+  }
+
+  async function loadV12AuditJsonTexts(texts) {
+    const audits = [];
+    for (const text of texts) {
+      const trimmed = String(text || "").trim();
+      if (!trimmed) continue;
+      const parsed = JSON.parse(trimmed);
+      // A pasted array of reports (e.g. [white, black]) loads as multiple audits.
+      if (Array.isArray(parsed)) audits.push(...parsed);
+      else audits.push(parsed);
+    }
+    v12Audits = audits;
+    // Repaint the whole shell so the load controls collapse behind their summary row.
+    paintV12Panel();
+    if (audits.length) setStatus(`Loaded ${audits.length} v12 audit report(s)`);
+  }
+
+  // Resolve a rendered card's "auditIdx:tendencyIdx:routeIdx" key back to its route + meta.
+  function v12RouteByKey(key) {
+    const [a, t, r] = String(key || "").split(":").map((n) => Number.parseInt(n, 10));
+    const audit = v12Audits[a];
+    const route = audit?.tendencies?.[t]?.routes?.[r];
+    if (!route) return null;
+    return { route, meta: audit.meta || {} };
+  }
+
+  function v12RouteAsLine(route) {
+    return { ucis: [...(route.ucis || [])], sans: String(route.sanLine || "").split(/\s+/).filter(Boolean) };
+  }
+
+  async function handleV12ActionClick(e) {
+    const btn = e.target?.closest?.("[data-v12-action]");
+    if (!btn) return false;
+    const hit = v12RouteByKey(btn.dataset.v12Route);
+    if (!hit) return true;
+    const line = v12RouteAsLine(hit.route);
+    const oppColor = hit.meta.subjectColor === "white" ? "white" : "black";
+    if (btn.dataset.v12Action === "analyze") {
+      scoutAnalyzeLine(line, oppColor, scoutState?.username || "Opponent");
+    } else if (btn.dataset.v12Action === "build") {
+      await scoutAddToPrep(line, oppColor);
+    }
+    return true;
+  }
+
+  async function loadV12FromFiles(fileList) {
+    const files = [...(fileList || [])];
+    if (!files.length) return;
+    try {
+      const texts = await Promise.all(files.map((f) => f.text()));
+      await loadV12AuditJsonTexts(texts);
+    } catch (_) {
+      setStatus("Could not parse audit JSON");
     }
   }
 
@@ -1065,8 +1189,8 @@ export function createScoutView(deps) {
     setStatus(`Loaded ${username}'s line — press "Analyze game" to start`);
   }
 
-  async function scoutPickRepertoire(oppColor) {
-    const myColor = oppColor === "white" ? "black" : "white";
+  async function scoutPickRepertoire(oppColor, { ownColor = false } = {}) {
+    const myColor = ownColor ? oppColor : oppColor === "white" ? "black" : "white";
     let reps = [];
     try {
       const payload = await api("/api/repertoires");
@@ -1161,8 +1285,8 @@ export function createScoutView(deps) {
     return resolvedId;
   }
 
-  async function scoutAddToPrep(line, oppColor) {
-    const repId = await scoutPickRepertoire(oppColor);
+  async function scoutAddToPrep(line, oppColor, { ownColor = false } = {}) {
+    const repId = await scoutPickRepertoire(oppColor, { ownColor });
     if (!repId) return;
     const nodeId = await scoutWriteLineToRep(line, repId);
     if (nodeId) setStatus(`Added line to prep — opened at ${line.sans.at(-1) || "position"}`);
@@ -1408,11 +1532,9 @@ export function createScoutView(deps) {
   }
 
   function bindScoutEvents() {
-    if (scoutEventsBound) return;
-    scoutEventsBound = true;
-
     const profileEl = getProfileEl();
-    if (profileEl) {
+    if (profileEl && !scoutBoundEventTargets.has(profileEl)) {
+      scoutBoundEventTargets.add(profileEl);
       profileEl.addEventListener("click", (e) => {
         handleScoutProfileClick(e, {
           getState: () => scoutState,
@@ -1437,9 +1559,6 @@ export function createScoutView(deps) {
       });
     }
 
-    const results = getResultsEl();
-    if (!results) return;
-
     const scoutClickCtx = () => ({
       getState: () => scoutState,
       scoutModule,
@@ -1460,19 +1579,41 @@ export function createScoutView(deps) {
       },
     });
 
-    results.addEventListener("click", async (e) => {
-      await handleScoutResultsClick(e, scoutClickCtx());
-    });
+    const results = getResultsEl();
+    if (results && !scoutBoundEventTargets.has(results)) {
+      scoutBoundEventTargets.add(results);
+      results.addEventListener("click", async (e) => {
+        await handleScoutResultsClick(e, scoutClickCtx());
+      });
 
-    results.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter" && e.key !== " ") return;
-      const lineEl = e.target.closest(".scout-line");
-      const distRow = e.target.closest(".scout-dist-row[data-first-uci]");
-      if (lineEl || distRow) {
-        e.preventDefault();
-        e.target.click();
-      }
-    });
+      results.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        const lineEl = e.target.closest(".scout-line");
+        const distRow = e.target.closest(".scout-dist-row[data-first-uci]");
+        if (lineEl || distRow) {
+          e.preventDefault();
+          e.target.click();
+        }
+      });
+    }
+
+    const v12Panel = getV12PanelEl();
+    if (v12Panel && !scoutBoundEventTargets.has(v12Panel)) {
+      scoutBoundEventTargets.add(v12Panel);
+      v12Panel.addEventListener("click", async (e) => {
+        if (!isV12Mode()) return;
+        if (e.target?.id === "scout-v12-load-btn") {
+          const paste = document.getElementById("scout-v12-paste");
+          void loadV12AuditJsonTexts(paste?.value ? [paste.value] : []);
+          return;
+        }
+        await handleV12ActionClick(e);
+      });
+      v12Panel.addEventListener("change", (e) => {
+        if (!isV12Mode()) return;
+        if (e.target?.id === "scout-v12-file") void loadV12FromFiles(e.target.files);
+      });
+    }
   }
 
   async function initScoutState(username, color, initToken) {
@@ -1840,6 +1981,7 @@ export function createScoutView(deps) {
     runScout,
     handleScoutAction,
     bindControls,
+    onShow: syncVisibleState,
     ...(SCOUT_E2E_BUILD_ENABLED ? { mountE2eRefutationScenario } : {}),
     preload: () => import("../scout.js"),
   };

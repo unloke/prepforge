@@ -67,6 +67,7 @@ describe("scout view initialization reentrancy", () => {
       makeEl("scout-results", { querySelectorAll: () => [], scrollTop: 0 }),
     );
     elements.set("scout-profile", makeEl("scout-profile", { hidden: true }));
+    elements.set("scout-v3-results", makeEl("scout-v3-results", { hidden: true }));
 
     api = vi.fn(async (url) => {
       if (url === "/api/repertoires") return { repertoires: [] };
@@ -151,6 +152,41 @@ describe("scout view initialization reentrancy", () => {
     expect(elements.get("scout-btn").disabled).toBe(false);
     expect(setStatus).toHaveBeenCalledWith("repertoire service down");
     expect(streamGames).not.toHaveBeenCalled();
+  });
+
+  it("repaints the existing report when Replay is shown after the results DOM was emptied", async () => {
+    await view.runScout();
+    const results = elements.get("scout-results");
+    expect(results.innerHTML).toContain("scout-section");
+
+    results.innerHTML = "";
+    view.onShow();
+
+    expect(results.innerHTML).toContain("scout-section");
+    expect(elements.get("scout-live-count").textContent).toBe("1");
+  });
+
+  it("rebinds Scout delegated events when Replay DOM nodes are replaced", async () => {
+    const oldProfile = elements.get("scout-profile");
+    const oldResults = elements.get("scout-results");
+    const oldV3Results = elements.get("scout-v3-results");
+    expect(oldProfile.addEventListener).toHaveBeenCalledWith("click", expect.any(Function));
+    expect(oldResults.addEventListener).toHaveBeenCalledWith("click", expect.any(Function));
+    expect(oldV3Results.addEventListener).toHaveBeenCalledWith("click", expect.any(Function));
+
+    const nextProfile = makeEl("scout-profile", { hidden: true });
+    const nextResults = makeEl("scout-results", { querySelectorAll: () => [], scrollTop: 0 });
+    const nextV3Results = makeEl("scout-v3-results", { hidden: true });
+    elements.set("scout-profile", nextProfile);
+    elements.set("scout-results", nextResults);
+    elements.set("scout-v3-results", nextV3Results);
+
+    view.onShow();
+
+    expect(nextProfile.addEventListener).toHaveBeenCalledWith("click", expect.any(Function));
+    expect(nextResults.addEventListener).toHaveBeenCalledWith("click", expect.any(Function));
+    expect(nextResults.addEventListener).toHaveBeenCalledWith("keydown", expect.any(Function));
+    expect(nextV3Results.addEventListener).toHaveBeenCalledWith("click", expect.any(Function));
   });
 
   it("ignores a late streamGames completion after Reset then immediate Start", async () => {

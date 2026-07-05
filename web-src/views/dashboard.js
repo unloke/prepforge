@@ -40,6 +40,7 @@ export function createDashboardView({
   hydrateBuild,
   showInputModal,
   promptImportRepertoireFromPgn,
+  requireSignIn,
 }) {
   let eventsBound = false;
 
@@ -259,12 +260,14 @@ export function createDashboardView({
   }
 
   async function dashboardImportPgn() {
+    if (!requireSignIn("Sign in (or create an account) to import a repertoire")) return;
     const input = document.getElementById("dashboard-import-input");
     input.value = "";
     input.click();
   }
 
   async function handleImportPgnFile(file) {
+    if (!requireSignIn("Sign in (or create an account) to import a repertoire")) return;
     if (!file) return;
     let text;
     try {

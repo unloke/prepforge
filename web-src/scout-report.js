@@ -968,6 +968,9 @@ export function buildScoutSectionReport(
     prefilterEnrichState = "idle",
     prefilteredLines = null,
     trie: prebuiltTrie = null,
+    // v12 mode: the standalone audit viewer replaces this section's weakness list and
+    // coverage bar; keep the heading, intel summary, first-move distribution and charts.
+    v3Mode = false,
   },
 ) {
   // The streaming view keeps a persistent per-colour trie (inserted once per game) and
@@ -1107,9 +1110,11 @@ export function buildScoutSectionReport(
     ? renderScoutRefutationGapActions(refutationGaps, escapeHtml)
     : "";
 
-  const prepRows = prepTargets
-    .map((t, i) => scoutWeaknessRowHtml(t, i, oppColor, baseline, escapeHtml))
-    .join("");
+  const prepRows = v3Mode
+    ? ""
+    : prepTargets
+        .map((t, i) => scoutWeaknessRowHtml(t, i, oppColor, baseline, escapeHtml))
+        .join("");
   const rankedNote = scoutMaiaRankedNote(prepTargets, maiaEnrichState, {
     prefilterState: prefilterEnrichState,
   });
@@ -1128,14 +1133,14 @@ export function buildScoutSectionReport(
         </div>`
     : `<div class="scout-game-plan">
           <div class="scout-game-plan-head">
-            <div class="scout-col-label">Your game plan</div>
+            <div class="scout-col-label">${v3Mode ? "First moves" : "Your game plan"}</div>
             <div class="scout-first-moves">
               <span class="scout-first-moves-label muted">First moves</span>
               <div class="scout-dist scout-dist-compact" data-dist-root="true">${firstMoves}</div>
             </div>
           </div>
           ${gapActionsHtml}
-          <div class="muted hint">No actionable lines yet — fetch more games or try a broader speed filter.</div>
+          ${v3Mode ? "" : '<div class="muted hint">No actionable lines yet — fetch more games or try a broader speed filter.</div>'}
         </div>`;
 
   const heading = oppColor === "white" ? "With White" : "With Black";

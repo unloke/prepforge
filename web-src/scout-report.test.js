@@ -538,6 +538,29 @@ describe("scout-report rendering", () => {
     expect(sectionData.baselineScorePct).toBe(55);
   });
 
+  it("renders coverage bar in v3/v6 mode (engine-free self-review)", () => {
+    const { html } = buildScoutSectionReport(
+      scoutModule,
+      {
+        games: PLAN_GAMES,
+        profile: {
+          recentlyChanged: { white: false, black: false },
+          colorStats: {
+            white: { games: 15, w: 7, d: 0, l: 8, scorePct: 47 },
+            black: { games: 0, w: 0, d: 0, l: 0, scorePct: 0 },
+          },
+        },
+      },
+      "white",
+      LOOKUPS.black,
+      { speedFilter: "all", escapeHtml, v3Mode: true },
+    );
+    expect(html).toContain("scout-coverage-bar-row");
+    expect(html).toContain("lines covered");
+    expect(html).toContain("scout-prepare-all");
+    expect(html).not.toContain("scout-ranked-list");
+  });
+
   it("renders ranked game plan with sample sizes", () => {
     const { html } = buildScoutSectionReport(
       scoutModule,

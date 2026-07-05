@@ -67,11 +67,10 @@ const CLK_ANNOTATION_RE = /\[%clk\s+(\d+:\d+:\d+(?:\.\d+)?)\]/;
 const SAN_TOKEN_RE =
   /^([NBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:=[NBRQ])?[+#]?|O-O-O[+#]?|O-O[+#]?)/;
 
-function wilsonInterval(w, d, l, tail) {
+export function wilsonInterval(w, d, l, tail, z = 1.96) {
   const n = (w || 0) + (d || 0) + (l || 0);
   if (!n) return 0.5;
   const p = ((w || 0) + 0.5 * (d || 0)) / n;
-  const z = 1.96;
   const denom = 1 + (z * z) / n;
   const center = p + (z * z) / (2 * n);
   const margin = z * Math.sqrt((p * (1 - p) + (z * z) / (4 * n)) / n);

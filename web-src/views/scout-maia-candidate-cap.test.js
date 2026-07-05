@@ -33,6 +33,10 @@ vi.mock("../scout-prefilter.js", async (importOriginal) => {
   };
 });
 
+// This suite exercises the classic v2 prefilter/Maia pipeline (the default Scout UI mode).
+globalThis.window = globalThis.window || {};
+globalThis.window.location = { search: "" };
+
 import { createScoutView } from "./scout.js";
 
 function makeEl(id, props = {}) {

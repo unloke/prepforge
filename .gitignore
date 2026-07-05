@@ -69,3 +69,6 @@ Thumbs.db
 
 # Local agent scratch logs (not source)
 agent-tools/
+
+# Scout v12 harness working data (game dumps, bias fits, route audits) - local only
+tmp/

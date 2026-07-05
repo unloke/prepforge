@@ -2674,7 +2674,11 @@ function switchView(name) {
   }
   if (name === "replay") {
     preloadReplayView().catch(() => {});
-    bindScoutControlsLazy();
+    if (scoutView?.onShow) {
+      scoutView.onShow();
+    } else {
+      bindScoutControlsLazy();
+    }
   }
   if (name === "settings") {
     preloadSettingsView().catch(() => {});
@@ -2957,6 +2961,7 @@ async function ensureDashboardView() {
       hydrateBuild,
       showInputModal,
       promptImportRepertoireFromPgn,
+      requireSignIn,
     });
     dashboardView.bind();
   }
@@ -3081,6 +3086,16 @@ async function refreshAuthProviders() {
   }
 }
 
+// Owner-scoped actions (create/import a repertoire, teams, analysis) call server endpoints
+// that require an account and return 401 for guests. Guard them up front so a guest gets the
+// sign-in modal instead of filling out a form only to hit a cryptic 401 in the status bar.
+function requireSignIn(message = "Sign in (or create an account) to continue") {
+  if (appState.signedIn) return true;
+  setStatus(message);
+  openAuthModal("login");
+  return false;
+}
+
 // The sign-in / create-account modal. Google (when configured) is the primary path;
 // email/password is the always-available fallback.
 function openAuthModal(mode = "login") {
@@ -3123,6 +3138,9 @@ function openAuthModal(mode = "login") {
   };
   render(mode);
   document.body.appendChild(overlay);
+  // render() focuses email, but on first open the overlay isn't in the DOM yet, so that
+  // call is a no-op. Refocus now that it's attached.
+  overlay.querySelector('[data-auth="email"]')?.focus();
 
   const close = () => {
     document.removeEventListener("keydown", onKey);
@@ -6557,6 +6575,7 @@ async function onBuildBoardMove(moveUci) {
 }
 
 async function createRepertoirePrompt({ title, defaultName, openAfter = true, defaultColor = "white" } = {}) {
+  if (!requireSignIn("Sign in (or create an account) to build a repertoire")) return null;
   const result = await showInputModal({
     title: title || "New repertoire",
     okLabel: "Create",
@@ -8912,6 +8931,8 @@ async function ensureScoutView() {
       },
       connectLichess: startLichessOAuth,
       loadPgnIntoAnalyze,
+      effectiveMaiaRating,
+      getLichessUsername: () => appState.lichessUsername,
     });
   }
   return scoutView;
@@ -8970,25 +8991,32 @@ function bindScoutControlsLazy() {
   const activate = async () => {
     const view = await ensureScoutView();
     view.bindControls();
+    view.onShow?.();
     return view;
   };
 
   const onFirstInteract = async () => {
+    const view = await activate();
     scoutBtn.removeEventListener("click", onFirstInteract);
     if (scoutName) scoutName.removeEventListener("keydown", onFirstKey);
-    const view = await activate();
     await view.runScout();
   };
   const onFirstKey = async (event) => {
     if (event.key !== "Enter") return;
+    const view = await activate();
     scoutBtn.removeEventListener("click", onFirstInteract);
     scoutName.removeEventListener("keydown", onFirstKey);
-    const view = await activate();
     await view.runScout();
   };
 
   scoutBtn.addEventListener("click", onFirstInteract);
   if (scoutName) scoutName.addEventListener("keydown", onFirstKey);
+
+  // ?scoutV12=1 experimental report viewer works from loaded audit JSON with no
+  // scout run — eagerly init the view so its panel paints without a username.
+  if (new URLSearchParams(location.search).has("scoutV12")) {
+    void activate();
+  }
 }
 
 // Maia idle teardown. The browser Maia engine (onnxruntime-web session + WASM heap) is by
