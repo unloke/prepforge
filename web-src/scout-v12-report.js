@@ -1,5 +1,6 @@
 // Scout v12 experimental route-audit viewer — pure HTML string renderer (no DOM).
 
+import { isNestedPath } from "./scout-bias-routes.js";
 import { CLAIM_LEVEL, fenFromUcis } from "./scout-route-audit.js";
 
 /** Chinese labels for tendency feature ids (viewer copy only). */
@@ -43,6 +44,12 @@ const TIER_SUBTITLES = {
 
 function tendencyLabelZh(featureId) {
   return TENDENCY_LABEL_ZH[featureId] || featureId;
+}
+
+// Untrusted JSON strings that land inside a class attribute must be reduced to a
+// safe CSS token (audit JSON is user-loaded via file/paste).
+function classToken(s) {
+  return String(s || "").replace(/[^a-zA-Z0-9_-]/g, "");
 }
 
 function fmtCp(cp) {
@@ -92,6 +99,40 @@ function reachBarHtml(fraction) {
   </span>`;
 }
 
+const TIER_PRIORITY = { advantage: 3, safe: 2, info: 1 };
+
+function routePriority(row) {
+  return TIER_PRIORITY[row.tier] || 0;
+}
+
+/**
+ * Drop routes that sit on the same ancestor chain as a better one (parent and
+ * grandchild of the same line must not both appear). Better = higher tier,
+ * then deeper node (more prep information), then original order.
+ */
+export function dedupNestedRoutes(rows) {
+  const ranked = rows
+    .map((row, idx) => ({ row, idx }))
+    .sort((a, b) => {
+      const byTier = routePriority(b.row) - routePriority(a.row);
+      if (byTier) return byTier;
+      const byDepth = (b.row.ucis?.length || 0) - (a.row.ucis?.length || 0);
+      if (byDepth) return byDepth;
+      return a.idx - b.idx;
+    });
+  const keptPaths = [];
+  const keptIdx = new Set();
+  for (const { row, idx } of ranked) {
+    const path = row.ucis;
+    if (Array.isArray(path) && path.length) {
+      if (keptPaths.some((p) => isNestedPath(p, path))) continue;
+      keptPaths.push(path);
+    }
+    keptIdx.add(idx);
+  }
+  return rows.filter((_, idx) => keptIdx.has(idx));
+}
+
 function flattenRoutes(auditJson) {
   const rows = [];
   const tendencies = auditJson?.tendencies || [];
@@ -105,7 +146,7 @@ function flattenRoutes(auditJson) {
   return rows;
 }
 
-function renderActualColumn(actual) {
+function renderActualColumn(actual, esc) {
   const responses = actual?.responses || [];
   if (!responses.length) {
     return `<div class="scout-v12-replies scout-v12-replies-actual">
@@ -116,9 +157,9 @@ function renderActualColumn(actual) {
   const items = responses
     .map(
       (r) =>
-        `<li><span class="scout-v12-move">${r.san}</span> `
+        `<li><span class="scout-v12-move">${esc(r.san || "")}</span> `
         + `${wdlBarHtml(r)} `
-        + `<span class="scout-v12-wdl">${r.wins}W/${r.draws}D/${r.losses}L</span></li>`,
+        + `<span class="scout-v12-wdl">${Number(r.wins) || 0}W/${Number(r.draws) || 0}D/${Number(r.losses) || 0}L</span></li>`,
     )
     .join("");
   return `<div class="scout-v12-replies scout-v12-replies-actual">
@@ -127,13 +168,13 @@ function renderActualColumn(actual) {
   </div>`;
 }
 
-function renderPolicyColumn(policyResponses) {
+function renderPolicyColumn(policyResponses, esc) {
   const list = policyResponses || [];
   const items = list.length
     ? list
         .map(
           (r) =>
-            `<li><span class="scout-v12-move">${r.san}</span> `
+            `<li><span class="scout-v12-move">${esc(r.san || "")}</span> `
             + `<span class="scout-v12-eval">${fmtCp(r.evalAfterCp)}cp</span></li>`,
         )
         .join("")
@@ -172,12 +213,12 @@ function renderRouteCard(route, routeKey, { esc, renderMiniBoard, orientation, o
     <summary class="scout-v12-card-head">
       <code class="scout-v12-line">${esc(route.sanLine || "")}</code>
       ${tierBadge(route.tier)}
-      <span class="scout-v12-risk scout-v12-risk-${route.riskLevel || "unknown"}">${esc(route.riskLevel || "—")}</span>
+      <span class="scout-v12-risk scout-v12-risk-${classToken(route.riskLevel) || "unknown"}">${esc(route.riskLevel || "—")}</span>
       ${narrow ? `<span class="scout-v12-chip scout-v12-chip-narrow" title="續行路徑窄,容錯低">窄路</span>` : ""}
       <span class="scout-v12-chip muted">${esc(tendencyLabelZh(route.featureId))}</span>
       <span class="scout-v12-summary-stats">
         <span class="scout-v12-evalcell" title="Stockfish d18(我方視角)">d18 ${fmtCp(nodeEval)} ${evalBarHtml(nodeEval)}</span>
-        <span class="scout-v12-reachcell" title="他實戰走進此路線的比例 (${reach.passed ?? 0}/${reach.total ?? 0})">reach ${reachPct} ${reachBarHtml(reach.fraction)}</span>
+        <span class="scout-v12-reachcell" title="他實戰走進此路線的比例 (${Number(reach.passed) || 0}/${Number(reach.total) || 0})">reach ${reachPct} ${reachBarHtml(reach.fraction)}</span>
       </span>
     </summary>
     <div class="scout-v12-card-body">
@@ -185,8 +226,8 @@ function renderRouteCard(route, routeKey, { esc, renderMiniBoard, orientation, o
       <div class="scout-v12-detail-cols">
         ${boardHtml}
         <div class="scout-v12-reply-cols">
-          ${renderActualColumn(route.actualPlayerResponses)}
-          ${renderPolicyColumn(route.policyResponses)}
+          ${renderActualColumn(route.actualPlayerResponses, esc)}
+          ${renderPolicyColumn(route.policyResponses, esc)}
         </div>
       </div>
       <div class="scout-v12-actions">
@@ -234,11 +275,15 @@ function renderColorSection(auditJson, auditIdx, esc, renderMiniBoard) {
   const rows = flattenRoutes(auditJson);
   const byTier = { advantage: [], safe: [], info: [] };
   const eliminated = [];
+  const tiered = [];
 
   for (const r of rows) {
     if (r.verdict === "fail" || r.tier == null) eliminated.push(r);
-    else if (byTier[r.tier]) byTier[r.tier].push(r);
+    else if (byTier[r.tier]) tiered.push(r);
   }
+  // Cross-tendency pass: tendencies are selected independently, so the same line's
+  // parent and grandchild can both survive per-tendency selection.
+  for (const r of dedupNestedRoutes(tiered)) byTier[r.tier].push(r);
 
   // Board from OUR side: the subject is the opponent, so flip his color.
   const orientation = meta.subjectColor === "white" ? "black" : "white";
@@ -253,7 +298,7 @@ function renderColorSection(auditJson, auditIdx, esc, renderMiniBoard) {
     <header class="scout-v12-color-head">
       <h3>${colorLabel} prep routes</h3>
       ${chips}
-      <span class="muted">games ${meta.games ?? "—"} · d18 ${meta.sfDepth ?? 18}</span>
+      <span class="muted">games ${Number.isFinite(Number(meta.games)) ? Number(meta.games) : "—"} · d18 ${Number(meta.sfDepth) || 18}</span>
     </header>
     ${tierHtml}
     ${renderEliminated(eliminated, esc)}

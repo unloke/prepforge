@@ -5,6 +5,8 @@ import {
   clampDeltaCp,
   collapseSameEntry,
   expectedLoss,
+  isNestedPath,
+  isPathPrefix,
   isRouteSound,
   jeffreysLower,
   moveDeltaCp,
@@ -200,6 +202,38 @@ describe("selectDistinctRoutes", () => {
     ];
     const picked = selectDistinctRoutes(ranked);
     expect(picked.map((p) => p.id)).toEqual(["ok"]);
+  });
+
+  it("rejects ancestor/descendant of an already-picked route (parent+grandchild bug)", () => {
+    const parent = {
+      ...mk("parent", ["e2e4", "g1f3"], 100),
+      pathUcis: ["e2e4", "c7c5", "g1f3", "d7d6"],
+    };
+    const grandchild = {
+      ...mk("grandchild", ["e2e4", "g1f3", "d2d4"], 90),
+      pathUcis: ["e2e4", "c7c5", "g1f3", "d7d6", "d2d4", "c5d4"],
+    };
+    const other = {
+      ...mk("other", ["d2d4", "c2c4"], 40),
+      pathUcis: ["d2d4", "d7d5", "c2c4", "e7e6"],
+    };
+    const picked = selectDistinctRoutes([parent, grandchild, other], { maxRoutes: 3 });
+    expect(picked.map((p) => p.id)).toEqual(["parent", "other"]);
+  });
+});
+
+describe("isPathPrefix / isNestedPath", () => {
+  it("detects prefix relations", () => {
+    expect(isPathPrefix(["a", "b"], ["a", "b", "c"])).toBe(true);
+    expect(isPathPrefix(["a", "b", "c"], ["a", "b"])).toBe(false);
+    expect(isPathPrefix(["a", "x"], ["a", "b", "c"])).toBe(false);
+    expect(isPathPrefix(["a", "b"], ["a", "b"])).toBe(true);
+  });
+
+  it("isNestedPath is symmetric", () => {
+    expect(isNestedPath(["a", "b", "c"], ["a", "b"])).toBe(true);
+    expect(isNestedPath(["a", "b"], ["a", "b", "c"])).toBe(true);
+    expect(isNestedPath(["a", "b"], ["a", "c"])).toBe(false);
   });
 });
 

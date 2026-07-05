@@ -295,6 +295,24 @@ export function ourEntryKey(ourMoves, maxPlies = ENTRY_PLY_LIMIT) {
   return ourMoves.slice(0, Math.ceil(maxPlies / 2)).join(" ");
 }
 
+/** True when path `a` is a strict or equal prefix of path `b` (UCI arrays). */
+export function isPathPrefix(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length > b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+/** True when the two routes sit on the same ancestor chain (either is a prefix of the other). */
+export function isNestedPath(a, b) {
+  return isPathPrefix(a, b) || isPathPrefix(b, a);
+}
+
+function candPath(cand) {
+  return cand.pathUcis || cand.ucis || null;
+}
+
 /**
  * Greedily pick up to maxRoutes with distinct entries; same-entry duplicates keep best rank only.
  * Input must be pre-sorted best-first by rankScore.
@@ -304,6 +322,7 @@ export function selectDistinctRoutes(candidates, {
   entryPlyLimit = ENTRY_PLY_LIMIT,
 } = {}) {
   const picked = [];
+  const pickedPaths = [];
   const seenEntry = new Map();
   const seenEpd = new Set();
   for (const cand of candidates) {
@@ -312,8 +331,13 @@ export function selectDistinctRoutes(candidates, {
     if (cand.epd && seenEpd.has(cand.epd)) continue;
     const key = ourEntryKey(cand.ourMoves, entryPlyLimit);
     if (seenEntry.has(key)) continue;
+    // Ancestor/descendant of an already-picked route is the same line, not a new one —
+    // a short entry key that is a string-prefix of a longer one slips past seenEntry.
+    const path = candPath(cand);
+    if (path && pickedPaths.some((p) => isNestedPath(p, path))) continue;
     seenEntry.set(key, true);
     if (cand.epd) seenEpd.add(cand.epd);
+    if (path) pickedPaths.push(path);
     picked.push(cand);
     if (picked.length >= maxRoutes) break;
   }

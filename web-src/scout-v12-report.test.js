@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { annotateRoute } from "./scout-route-audit.js";
-import { renderV12PanelShell, renderV12Report, V12_BANNED_VOCAB } from "./scout-v12-report.js";
+import {
+  dedupNestedRoutes,
+  renderV12PanelShell,
+  renderV12Report,
+  V12_BANNED_VOCAB,
+} from "./scout-v12-report.js";
 
 const esc = (s) =>
   String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -181,12 +186,66 @@ describe("renderV12Report", () => {
     expect(html).toContain("scout-v12-card");
   });
 
+  it("escapes untrusted audit-JSON strings (SAN, riskLevel) — no raw HTML injection", () => {
+    const audit = fixtureAudit();
+    const safeRoute = audit.tendencies[0].routes[1];
+    safeRoute.actualPlayerResponses.responses[0].san = `<img src=x onerror=alert(1)>`;
+    safeRoute.policyResponses[0].san = `"><script>alert(2)</script>`;
+    safeRoute.riskLevel = `x" onmouseover="alert(3)`;
+    const html = renderV12Report(audit, { escapeHtml: esc });
+    expect(html).not.toContain("<img src=x");
+    expect(html).not.toContain("<script>");
+    expect(html).not.toContain('onmouseover="alert');
+    expect(html).toContain("&lt;img src=x");
+  });
+
+  it("default escaper (no opts.escapeHtml) still escapes injected SAN", () => {
+    const audit = fixtureAudit();
+    audit.tendencies[0].routes[1].actualPlayerResponses.responses[0].san = `<svg onload=alert(1)>`;
+    const html = renderV12Report(audit);
+    expect(html).not.toContain("<svg onload");
+    expect(html).toContain("&lt;svg onload");
+  });
+
   it("shows tier copy and collapsed eliminated routes", () => {
     const html = renderV12Report(fixtureAudit(), { escapeHtml: esc });
     expect(html).toContain("不虧、可走的路線;不宣稱優勢");
     expect(html).toContain("他常走進來的路徑情報");
     expect(html).toContain("audit 淘汰");
     expect(html).toContain("robustness failed");
+  });
+});
+
+describe("dedupNestedRoutes", () => {
+  const route = (ucis, tier) => ({ ucis, tier, sanLine: ucis.join(" ") });
+
+  it("drops the ancestor when a descendant has an equal-or-better tier", () => {
+    const parent = route(["e2e4", "c7c5"], "safe");
+    const grandchild = route(["e2e4", "c7c5", "g1f3", "d7d6"], "safe");
+    const other = route(["d2d4", "d7d5"], "info");
+    const kept = dedupNestedRoutes([parent, grandchild, other]);
+    expect(kept).toEqual([grandchild, other]);
+  });
+
+  it("keeps the higher tier regardless of depth", () => {
+    const parentAdv = route(["e2e4", "c7c5"], "advantage");
+    const childInfo = route(["e2e4", "c7c5", "g1f3"], "info");
+    const kept = dedupNestedRoutes([parentAdv, childInfo]);
+    expect(kept).toEqual([parentAdv]);
+  });
+
+  it("leaves unrelated routes untouched and preserves input order", () => {
+    const a = route(["e2e4", "e7e5"], "safe");
+    const b = route(["d2d4", "d7d5"], "safe");
+    expect(dedupNestedRoutes([a, b])).toEqual([a, b]);
+  });
+
+  it("cross-tendency: same line under two tendencies collapses to one card", () => {
+    const t1 = { ...route(["e2e4", "c7c5", "g1f3"], "safe"), featureId: "isCapture" };
+    const t2 = { ...route(["e2e4", "c7c5"], "safe"), featureId: "givesCheck" };
+    const kept = dedupNestedRoutes([t1, t2]);
+    expect(kept.length).toBe(1);
+    expect(kept[0].featureId).toBe("isCapture");
   });
 });
 
