@@ -19,7 +19,9 @@ import {
   scoutLineKey,
 } from "../scout-report.js";
 import { createScoutInitGuard } from "../scout-init-guard.js";
-import { renderV12PanelShell, renderV12Report } from "../scout-v12-report.js";
+import { renderV12Report } from "../scout-v12-report.js";
+import { renderV13PanelShell, renderV13Report } from "../scout-v13-report.js";
+import { CancelledError, runStreamV13 } from "../scout-v13-stream.js";
 
 const SCOUT_E2E_BUILD_ENABLED = import.meta.env.VITE_ENABLE_SCOUT_E2E === "1";
 import { colorRecommendation } from "../scout-stats.js";
@@ -113,6 +115,7 @@ export function createScoutView(deps) {
     loadPgnIntoAnalyze,
     effectiveMaiaRating,
     getLichessUsername = () => null,
+    effectiveStockfishDepth = () => 16,
   } = deps;
 
   let scoutModule = null;
@@ -271,8 +274,9 @@ export function createScoutView(deps) {
     updateScoutControls();
     updateLiveCounter();
 
-    // v12 experimental report viewer paints standalone — no scout run needed.
-    if (isV12Mode()) paintV12Panel();
+    // v13 / v12 experimental panels paint standalone — no classic report required.
+    if (isV13Mode()) paintV13Panel();
+    else if (isV12Mode()) paintV12Panel();
 
     const results = getResultsEl();
     const profile = getProfileEl();
@@ -380,7 +384,7 @@ export function createScoutView(deps) {
     };
     const speedOpts = {
       speedFilter: scoutState.activeSpeed,
-      v3Mode: isV12Mode(),
+      v3Mode: isV12Mode() || isV13Mode(),
       escapeHtml,
       enginePatterns: engineScanPatterns(scoutState.engineByColor?.white),
       explorerReads: scoutState.explorerByColor?.white || null,
@@ -438,15 +442,16 @@ export function createScoutView(deps) {
     }
     if (force) updateLiveCounter();
     patchEngineProgressUI();
-    // v12 is a standalone report viewer — the classic prefilter/Maia enrichment stays v2-only.
-    if (!isV12Mode() && !isStreaming() && !isEnrichmentInFlight()) {
+    // v12/v13 are standalone panels — classic prefilter/Maia enrichment stays v2-only.
+    if (!isV12Mode() && !isV13Mode() && !isStreaming() && !isEnrichmentInFlight()) {
       schedulePrefilterEnrich();
     }
   }
 
   // ---- Scout UI modes -------------------------------------------------------------------------
   // "v2"  (default)      — the classic full report: stats, intel, prefilter/Maia weakness list.
-  // "v12" (?scoutV12=1)  — experimental standalone audit-report viewer (policy-bias engine output).
+  // "v12" (?scoutV12=1)  — retired manual JSON viewer (reports only if already loaded).
+  // "v13" (?scoutV13=1)  — stream-native prep packages from the live game trie.
 
   function isV12Mode() {
     try {
@@ -456,13 +461,23 @@ export function createScoutView(deps) {
     }
   }
 
+  function isV13Mode() {
+    try {
+      return new URLSearchParams(window.location.search).has("scoutV13");
+    } catch (_) {
+      return false;
+    }
+  }
+
   function getV12PanelEl() {
     return document.getElementById("scout-v3-results");
   }
 
-  // v12 audits live outside scoutState — the experimental report viewer works
-  // standalone from loaded JSON, with no scout run required.
   let v12Audits = [];
+  let v13Result = null;
+  let v13Running = false;
+  let v13CancelRequested = false;
+  let v13Progress = { stage: "", done: 0, total: 0 };
 
   function v12MiniBoard(fen, orientation) {
     return renderScoutMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg });
@@ -478,23 +493,189 @@ export function createScoutView(deps) {
     const el = getV12PanelEl();
     if (!el) return;
     el.hidden = false;
-    el.innerHTML = renderV12PanelShell({ escapeHtml, reportHtml: v12ReportHtml() });
+    const reportHtml = v12ReportHtml();
+    el.innerHTML = `<div class="scout-v12-panel">
+      <div class="scout-v12-panel-head">
+        <strong>${escapeHtml("Tendency-aligned routes(實驗報告)")}</strong>
+        <span class="scout-v12-badge">v12 experimental</span>
+      </div>
+      <p class="scout-v12-retired-note">${escapeHtml("手動載入 audit JSON 已停用；請改用 ?scoutV13=1 從棋手對局直接產生備戰套件。")}</p>
+      <div id="scout-v12-report-host">${reportHtml}</div>
+    </div>`;
   }
 
-  async function loadV12AuditJsonTexts(texts) {
-    const audits = [];
-    for (const text of texts) {
-      const trimmed = String(text || "").trim();
-      if (!trimmed) continue;
-      const parsed = JSON.parse(trimmed);
-      // A pasted array of reports (e.g. [white, black]) loads as multiple audits.
-      if (Array.isArray(parsed)) audits.push(...parsed);
-      else audits.push(parsed);
+  function v13MiniBoard(fen, orientation) {
+    return renderScoutMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg });
+  }
+
+  // v13 is per subject colour (design §4: 每色 3–4 包); "both" mode runs each colour
+  // that actually has trie data instead of collapsing to one.
+  function v13SubjectColors() {
+    const sel = scoutState?.color;
+    const wanted = sel === "white" || sel === "black" ? [sel] : ["black", "white"];
+    return wanted.filter((c) => liveTrieForColor(c)?.children?.size);
+  }
+
+  function v13TrieReady() {
+    return v13SubjectColors().length > 0;
+  }
+
+  function v13ProgressLabel() {
+    const p = v13Progress;
+    const colorNote = p.colorLabel ? `(顏色 ${p.colorLabel})` : "";
+    if (p.stage === "funnel") return `備戰套件篩選中${colorNote}…`;
+    if (p.stage === "candidate" && p.total) {
+      return `分析候選路線 ${p.done + 1}/${p.total}${colorNote}…`;
     }
-    v12Audits = audits;
-    // Repaint the whole shell so the load controls collapse behind their summary row.
-    paintV12Panel();
-    if (audits.length) setStatus(`Loaded ${audits.length} v12 audit report(s)`);
+    return "產生備戰套件中…";
+  }
+
+  function paintV13Panel() {
+    const el = getV12PanelEl();
+    if (!el) return;
+    el.hidden = false;
+    const reportHtml = (v13Result || [])
+      .map(({ color, result }) => {
+        const heading = color === "white" ? "他執白時" : "他執黑時";
+        return `<h4 class="scout-v13-color-head">${escapeHtml(heading)}</h4>${renderV13Report(
+          result,
+          { escapeHtml, renderMiniBoard: v13MiniBoard },
+        )}`;
+      })
+      .join("");
+    el.innerHTML = renderV13PanelShell({
+      escapeHtml,
+      playerName: scoutState?.username || "—",
+      reportHtml,
+      canGenerate: v13TrieReady(),
+      running: v13Running,
+      progressDone: v13Progress.done,
+      progressTotal: v13Progress.total,
+      progressLabel: v13ProgressLabel(),
+    });
+  }
+
+  async function runV13PrepPackages() {
+    if (v13Running || !scoutModule) return;
+    const colors = v13SubjectColors();
+    if (!colors.length) {
+      setStatus("Need opponent games in the stream before generating prep packages");
+      return;
+    }
+
+    v13Running = true;
+    v13CancelRequested = false;
+    v13Progress = { stage: "candidate", done: 0, total: 0 };
+    paintV13Panel();
+
+    // Stale-run guard: a new scout session (different player / reset) cancels this
+    // run and its result must never land on the repainted panel.
+    const runUsername = scoutState?.username;
+    const isStale = () => v13CancelRequested || scoutState?.username !== runUsername;
+
+    let provider = null;
+    try {
+      const sfDepth = effectiveStockfishDepth();
+      const extDepth = Math.max(12, sfDepth - 4);
+      const opponentRating =
+        colors.length > 1
+          ? Math.round(
+              (medianOpponentRating(scoutState.games, "white") +
+                medianOpponentRating(scoutState.games, "black")) / 2,
+            )
+          : medianOpponentRating(scoutState.games, colors[0]);
+      const speed =
+        scoutState.activeSpeed && scoutState.activeSpeed !== "all"
+          ? scoutState.activeSpeed
+          : "blitz";
+
+      let explorerClient = scoutExplorerClient;
+      let explorerAvailable = Boolean(getLichessUsername());
+      if (!explorerClient) {
+        try {
+          const explorerMod = await import("../explorer.js");
+          explorerClient = explorerMod.createExplorerClient({});
+          scoutExplorerClient = explorerClient;
+        } catch (_) {
+          explorerAvailable = false;
+        }
+      }
+
+      const engineMod = await import("../engine/stockfish-provider.js");
+      const runnerMod = await import("../engine/build-generate-runner.js");
+      provider = engineMod.createEngineProvider({ maxDepth: sfDepth, maxMultipv: 3 });
+      const engineCandidates = runnerMod.createEngineCandidateAdapter(provider, {
+        maxMultipv: 3,
+        signal: {
+          get aborted() {
+            return isStale();
+          },
+        },
+      });
+
+      const explorerFetch = async (epd) => {
+        if (!explorerAvailable || !explorerClient) return null;
+        try {
+          return await explorerClient.fetchStats("lichess", epd, { rating: opponentRating });
+        } catch (_) {
+          explorerAvailable = false;
+          return null;
+        }
+      };
+
+      const results = [];
+      for (let ci = 0; ci < colors.length; ci += 1) {
+        const subjectColor = colors[ci];
+        const trie = liveTrieForColor(subjectColor);
+        if (!trie?.children?.size) continue;
+        const games = (scoutState?.games || []).filter((g) => g.color === subjectColor);
+        const result = await runStreamV13({
+          trie,
+          subjectColor,
+          opponentRating,
+          games,
+          deps: {
+            engineCandidates: (fen, count) => engineCandidates.candidates(fen, count),
+            explorerFetch,
+            sfDepth,
+            extDepth,
+            speeds: speed,
+            explorerAvailable,
+          },
+          shouldCancel: isStale,
+          onProgress: (stage, done, total) => {
+            v13Progress = {
+              stage: `${stage}`,
+              done,
+              total,
+              colorLabel: colors.length > 1 ? `${ci + 1}/${colors.length}` : "",
+            };
+            paintV13Panel();
+          },
+        });
+        results.push({ color: subjectColor, result });
+      }
+
+      if (!isStale()) {
+        v13Result = results;
+        const totalPkgs = results.reduce((n, r) => n + r.result.report.packages.length, 0);
+        setStatus(`Prep packages ready: ${totalPkgs} package(s)`);
+      }
+    } catch (err) {
+      if (err instanceof CancelledError || isStale()) {
+        setStatus("Prep package generation cancelled");
+      } else {
+        setStatus(`Prep package generation failed: ${err.message || err}`);
+      }
+    } finally {
+      try {
+        await provider?.close?.();
+      } catch (_) {
+        /* best-effort */
+      }
+      v13Running = false;
+      paintV13Panel();
+    }
   }
 
   // Resolve a rendered card's "auditIdx:tendencyIdx:routeIdx" key back to its route + meta.
@@ -523,17 +704,6 @@ export function createScoutView(deps) {
       await scoutAddToPrep(line, oppColor);
     }
     return true;
-  }
-
-  async function loadV12FromFiles(fileList) {
-    const files = [...(fileList || [])];
-    if (!files.length) return;
-    try {
-      const texts = await Promise.all(files.map((f) => f.text()));
-      await loadV12AuditJsonTexts(texts);
-    } catch (_) {
-      setStatus("Could not parse audit JSON");
-    }
   }
 
   function scheduleRender({ force = false } = {}) {
@@ -578,6 +748,7 @@ export function createScoutView(deps) {
     scoutState.explorerByColor = {};
     scoutState.engineAggByColor = {};
     renderScoutReport();
+    if (isV13Mode()) paintV13Panel();
     if (!isStreaming()) {
       scheduleExplorerEnrich();
       scheduleEngineAggregation();
@@ -1601,17 +1772,18 @@ export function createScoutView(deps) {
     if (v12Panel && !scoutBoundEventTargets.has(v12Panel)) {
       scoutBoundEventTargets.add(v12Panel);
       v12Panel.addEventListener("click", async (e) => {
-        if (!isV12Mode()) return;
-        if (e.target?.id === "scout-v12-load-btn") {
-          const paste = document.getElementById("scout-v12-paste");
-          void loadV12AuditJsonTexts(paste?.value ? [paste.value] : []);
-          return;
+        if (isV13Mode()) {
+          if (e.target?.id === "scout-v13-generate-btn") {
+            void runV13PrepPackages();
+            return;
+          }
+          if (e.target?.id === "scout-v13-cancel-btn") {
+            v13CancelRequested = true;
+            return;
+          }
         }
-        await handleV12ActionClick(e);
-      });
-      v12Panel.addEventListener("change", (e) => {
         if (!isV12Mode()) return;
-        if (e.target?.id === "scout-v12-file") void loadV12FromFiles(e.target.files);
+        await handleV12ActionClick(e);
       });
     }
   }
@@ -1850,6 +2022,9 @@ export function createScoutView(deps) {
     clearTimeout(engineAggTimer);
     engineAggTimer = null;
     engineAggSeq += 1;
+    // A session reset invalidates any in-flight v13 package run and its result.
+    v13CancelRequested = true;
+    v13Result = null;
     scoutState = null;
     scoutSession = null;
     const results = getResultsEl();

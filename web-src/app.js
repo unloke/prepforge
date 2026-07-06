@@ -8933,6 +8933,7 @@ async function ensureScoutView() {
       loadPgnIntoAnalyze,
       effectiveMaiaRating,
       getLichessUsername: () => appState.lichessUsername,
+      effectiveStockfishDepth,
     });
   }
   return scoutView;

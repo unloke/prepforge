@@ -5225,3 +5225,97 @@ h2 {
 .scout-v12-load-wrap[open] > .scout-v12-load-summary {
   margin-bottom: 8px;
 }
+
+/* ---- Scout v13 prep packages (?scoutV13=1) -------------------------------------------- */
+.scout-v13-panel {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 2px dashed var(--line);
+  padding-top: 12px;
+}
+.scout-v13-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.scout-v13-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--good, #4a8964);
+  color: #fff;
+}
+.scout-v13-subject { font-size: 12px; color: var(--muted); margin: 0; }
+.scout-v13-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.scout-v13-retired-note,
+.scout-v12-retired-note { font-size: 12px; color: var(--muted); margin: 0; }
+.scout-v13-cards { display: flex; flex-direction: column; gap: 12px; }
+.scout-v13-card {
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--panel);
+}
+.scout-v13-card-head { display: flex; gap: 10px; align-items: flex-start; }
+.scout-v13-entry { font-weight: 600; }
+.scout-v13-style {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent-strong, var(--fg));
+}
+.scout-v13-risk {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--panel-soft);
+  border: 1px solid var(--line-soft);
+}
+.scout-v13-trunk {
+  border-left: 3px solid var(--line-strong);
+  padding-left: 8px;
+  margin: 8px 0;
+}
+.scout-v13-anchor-divider {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  margin: 6px 0;
+}
+.scout-v13-extension {
+  border-left: 3px dashed var(--line-soft);
+  padding-left: 8px;
+  opacity: 0.92;
+}
+.scout-v13-edge { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; font-size: 12px; margin: 3px 0; }
+.scout-v13-edge-faded { opacity: 0.75; }
+.scout-v13-src {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--panel-soft);
+}
+.scout-v13-src-personal { color: var(--accent-strong, var(--fg)); }
+.scout-v13-src-cohort { color: var(--muted); }
+.scout-v13-src-engine { color: var(--good, #4a8964); }
+.scout-v13-edge-note { color: var(--muted); font-size: 11px; }
+.scout-v13-receipts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 8px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 6px;
+}
+.scout-v13-empty-title { font-weight: 600; margin: 0 0 6px; }
+.scout-v13-vacancy { font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+.scout-v13-board { width: 128px; height: 128px; flex: none; }
