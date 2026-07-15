@@ -1,0 +1,183 @@
+{
+  "kind": "scout-robust-y-p1-protocol",
+  "version": 1,
+  "protocolId": "robust-y-p1",
+  "studyId": "robust-y-p1",
+  "phase": "phase0-zero-engine-inventory",
+  "role": "exploratory-zero-network-robust-y-phase0-analysis-lock",
+  "analysisLock": true,
+  "confirmatoryPreregistration": false,
+  "labelsAlreadyVisible": true,
+  "dataAlreadyVisible": true,
+  "productAuthorization": false,
+  "cannotAuthorizeCards": true,
+  "cannotAuthorizeHumanStudy": true,
+  "productVerdict": "preserve-v2",
+  "preserveV2Regardless": true,
+  "nextWorkRequiresNewProtocol": true,
+  "claimBoundary": {
+    "establishes": "whether a fair same-v2-X robust-Y vs v2-Y P1 bakeoff is structurally runnable on the local unbrainless87 panel under frozen zero-engine inventory gates",
+    "forbids": [
+      "product or card authorization",
+      "human study authorization",
+      "v2 replacement claims",
+      "confirmatory opponent future-move proof",
+      "engine-phase authorization from Phase0 alone",
+      "network acquisition",
+      "24k-game rating panels",
+      "reinterpretation of sealed rating Stage1 verdicts"
+    ],
+    "exploratoryNote": "Lower rating-moderation panel is visible and sealed for Stage1; this reuse is exploratory analysis-lock only and cannot confirm or authorize product.",
+    "noFutureMoveProof": true,
+    "phase0Scope": "zero-engine inventory and prefix-recurrence diagnostics only; Y not generated"
+  },
+  "inputs": {
+    "cohortRoot": "tmp/cohort-unbrainless87",
+    "pairRule": "matching <player>.json and <player>-bias.ndjson only",
+    "forbiddenInputs": ["*-fit.json", "network", "engine", "maia-inference", "d8", "d18"],
+    "phase0UsesGameJsonOnly": true,
+    "playerOrdering": "localeCompare ascending on player id",
+    "deterministicPins": true,
+    "expectedPlayerCount": 17
+  },
+  "decisionUnits": {
+    "grain": "player-color-cutoff",
+    "subjectColor": ["white", "black"],
+    "gameFilter": "normalized game.color === subjectColor with production collapse exclusion when available",
+    "ordering": ["datestamp", "gameId"],
+    "noGameCrossing": true,
+    "windows": {
+      "minTrainGames": 30,
+      "futureWindowGames": 10,
+      "strideGames": 10,
+      "cutoffRule": "cutoffs at 30,40,50,... while exactly 10 future games remain",
+      "maxCutoffsPerPlayerColor": 4,
+      "maxCutoffsRule": "if more eligible cutoffs, keep the latest 4 deterministically",
+      "trainRule": "all games strictly before cutoff index",
+      "futureRule": "exactly the next 10 games after cutoff",
+      "nonOverlapRule": "strideGames equals futureWindowGames so future windows do not overlap"
+    }
+  },
+  "xSelection": {
+    "primarySource": "v2-train-only-no-maia-phase0",
+    "v2Pipeline": {
+      "imports": [
+        "buildOpeningTrie",
+        "rankedOpeningBranches",
+        "rankGamePlan"
+      ],
+      "module": "web-src/scout.js",
+      "exclude": [
+        "maia-rerank",
+        "explorer",
+        "engine-patterns",
+        "repertoire",
+        "prefilter-enrichment"
+      ],
+      "topKAfterCollapse": 1,
+      "terminalNormalization": "production normalizeToOpponentTerminal",
+      "mustEndOnOpponentMove": true,
+      "usableLengthPlies": [2, 12],
+      "surface": "scout-report.js-no-enrichment",
+      "candidateCap": 48,
+      "lineLastSeen": "web-src/scout-stats.js#lineLastSeen"
+    },
+    "groundedInventory": {
+      "arm": "grounded-x-robust-y",
+      "role": "secondary-future-arm-diagnostic",
+      "trainOnly": true,
+      "newestTrainGamePath": true,
+      "maxOurDecisionPoints": 5,
+      "maxPlies": 12,
+      "productClaimMinDistinctGames": 2,
+      "productClaimMinDistinctDates": 2,
+      "singletonRole": "diagnostic-only-never-phase0-s1",
+      "selectionRule": "deepest qualifying prefix on newest train game; tie-break longer then lexical UCI path"
+    },
+    "prefixSupport": {
+      "rule": "exact UCI prefix match on train games only",
+      "distinctGames": "count distinct gameId with ucis beginning with prefix",
+      "distinctDates": "count distinct normalized datestamp/day among supporting games"
+    },
+    "futureRecurrence": {
+      "rule": "factual prefix re-entry over the 10-game future window only",
+      "notPrediction": true,
+      "fields": ["futurePrefixEntryCount", "futurePrefixEntryRate", "futurePrefixEntryBinary"]
+    }
+  },
+  "futureArms": {
+    "primary": {
+      "name": "same-v2-x-robust-y",
+      "comparator": "same-v2-x-v2-y",
+      "xRule": "identical frozen v2 train-only prefix X per unit",
+      "yIsolation": "hold X fixed; compare robust-Y vs v2-Y only"
+    },
+    "secondary": {
+      "name": "grounded-x-robust-y",
+      "role": "diagnostic-only-in-phase0"
+    }
+  },
+  "futureP1": {
+    "implementedInPhase0": false,
+    "selectionDepth": 8,
+    "auditDepth": 18,
+    "selectionRule": "d8 only for candidate choice",
+    "auditRule": "d18 only for intrinsic audit; no evaluation reuse in selection",
+    "replyUncertainty": "union of Stockfish best defences and rating-band Maia replies; no target future reply probabilities",
+    "intrinsicV": {
+      "formula": "leave-one-reply-out equal-weight concession vs best defence from our perspective at d18",
+      "safetyGapMaxCp": 30
+    },
+    "unitWeight": {
+      "formula": "W = futurePrefixEntryBinary * V",
+      "abstainRule": "one card or abstain; abstain sets V=0 and W=0"
+    },
+    "primaryDelta": {
+      "formula": "mean W(robustY) - mean W(v2Y) on same X units",
+      "xFixedNote": "futurePrefixEntryBinary identical because X is fixed"
+    },
+    "phase1aRequirement": "robust-Y must differ from v2-Y on enough units; not assessed in Phase0",
+    "productAuthorization": false,
+    "conditionalExploratoryOnly": true,
+    "conditionalExploratoryNote": "Future recurrence band [0.10,0.90] conditions same-panel P1 only; cannot estimate unconditional/generalizable effect or confirm anything; does not tune Y.",
+    "cutoffCorrelationNote": "Up to 4 nested-train cutoffs per player-color are correlated; future P1 must use player-cluster/hierarchical bootstrap and cannot treat cutoffs as independent."
+  },
+  "phase0Gates": {
+    "minTotalUsableUnits": 40,
+    "minPlayersWithUsableUnit": 12,
+    "minRepeatSupportedUnits": 20,
+    "minPlayersWithRepeatSupportedUnit": 10,
+    "v2FutureEntryBinaryRateMin": 0.10,
+    "v2FutureEntryBinaryRateMax": 0.90,
+    "medianFutureGamesExact": 10,
+    "noTrainFutureLeakage": true
+  },
+  "phase0Verdicts": [
+    "PHASE0_RUNNABLE",
+    "PHASE0_INSUFFICIENT_INVENTORY",
+    "INVALID"
+  ],
+  "reportHash": {
+    "algorithm": "sha256",
+    "canonicalJson": "pretty-printed 2-space JSON with reportSha256 field omitted"
+  },
+  "lifecycle": {
+    "commands": ["freeze", "phase0", "verify", "status"],
+    "singlePhase0Lock": true,
+    "finalReportLast": true,
+    "studyRoot": "tmp/scout-robust-y/robust-y-p1",
+    "requiredArtifacts": [
+      "protocol.snapshot.json",
+      "manifest.json",
+      "phase0-started.json",
+      "phase0/summary.md",
+      "phase0/report.json",
+      "phase0/per-unit"
+    ],
+    "phase0StartedMarker": "phase0-started.json",
+    "protocolSourceAfterFreeze": "protocol.snapshot.json",
+    "protocolSha256Convention": "raw protocol file bytes at freeze; canonical JSON helper is synthetic-only",
+    "reportHashField": "reportSha256",
+    "reportHashOmitField": true
+  }
+}
