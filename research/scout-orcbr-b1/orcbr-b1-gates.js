@@ -192,7 +192,89 @@ export function runG1(games, pins = DEFAULT_PINS) {
 }
 
 /**
+ * Privacy-safe aggregate diagnostics for G2 longitudinal stop/pass audit.
+ * No opponentKey / raw identity / outcome fields — counts and extrema only.
+ */
+export function buildG2AggregateDiagnostics(games, byKey, { gMin, dMin, nMin, fixtureMode } = {}) {
+  const list = games || [];
+  let blackGameCount = 0;
+  let whiteSubjectGameCount = 0;
+  let otherColorCount = 0;
+  let gamesWithOpponentKey = 0;
+  let outcomeFieldHits = 0;
+  const outcomeNames = ["score", "result", "winner", "status", "outcome"];
+  for (const g of list) {
+    if (g?.color === "black") blackGameCount += 1;
+    else if (g?.color === "white") whiteSubjectGameCount += 1;
+    else otherColorCount += 1;
+    if (g?.opponentKey) gamesWithOpponentKey += 1;
+    for (const f of outcomeNames) {
+      if (g != null && Object.prototype.hasOwnProperty.call(g, f) && g[f] != null) {
+        outcomeFieldHits += 1;
+      }
+    }
+  }
+
+  let maxGamesPerKey = 0;
+  let maxDaysPerKey = 0;
+  let keysAtOrAboveGMin = 0;
+  let keysAtOrAboveDMin = 0;
+  let keysAtOrAboveBoth = 0;
+  // Coarse game-count histogram (privacy-safe bins; no keys).
+  const gamesPerKeyHistogram = {
+    "1": 0,
+    "2-4": 0,
+    "5-9": 0,
+    "10-19": 0,
+    "20-29": 0,
+    "30+": 0,
+  };
+  for (const bucket of byKey.values()) {
+    const gCount = bucket.games.length;
+    const dCount = bucket.days.size;
+    if (gCount > maxGamesPerKey) maxGamesPerKey = gCount;
+    if (dCount > maxDaysPerKey) maxDaysPerKey = dCount;
+    if (gCount >= gMin) keysAtOrAboveGMin += 1;
+    if (dCount >= dMin) keysAtOrAboveDMin += 1;
+    if (gCount >= gMin && dCount >= dMin) keysAtOrAboveBoth += 1;
+    if (gCount === 1) gamesPerKeyHistogram["1"] += 1;
+    else if (gCount <= 4) gamesPerKeyHistogram["2-4"] += 1;
+    else if (gCount <= 9) gamesPerKeyHistogram["5-9"] += 1;
+    else if (gCount <= 19) gamesPerKeyHistogram["10-19"] += 1;
+    else if (gCount <= 29) gamesPerKeyHistogram["20-29"] += 1;
+    else gamesPerKeyHistogram["30+"] += 1;
+  }
+
+  return {
+    // Gate floors (frozen when fixtureMode=false)
+    nMin,
+    gMin,
+    dMin,
+    fixtureMode: !!fixtureMode,
+    // Input composition (subject color; G2 indexes subject-Black only)
+    totalGames: list.length,
+    blackGameCount,
+    whiteSubjectGameCount,
+    otherColorCount,
+    gamesWithOpponentKey,
+    // Longitudinal recurrence aggregates (no per-key identities)
+    opponentKeyCount: byKey.size,
+    qualifyingCount: keysAtOrAboveBoth,
+    keysAtOrAboveGMin,
+    keysAtOrAboveDMin,
+    maxGamesPerKey,
+    maxDaysPerKey,
+    gamesPerKeyHistogram,
+    // Outcome-blind audit: G2 must not consume outcomes; sealed games should be stripped
+    outcomeFieldHits,
+    outcomeBlind: outcomeFieldHits === 0,
+  };
+}
+
+/**
  * G2 — Longitudinal opponent recurrence.
+ * Measures repeat-opponent history from subject-Black games only (opponent played White),
+ * counting games + distinct UTC dayKeys per opponentKey. No outcomes used.
  * Uses frozen protocol floors unless fixtureMode explicitly relaxes via pins.research_*.
  */
 export function runG2(games, pins = DEFAULT_PINS, { fixtureMode = false } = {}) {
@@ -205,6 +287,15 @@ export function runG2(games, pins = DEFAULT_PINS, { fixtureMode = false } = {}) 
     : (pins.d_min_distinct_days_per_key ?? DEFAULT_PINS.d_min_distinct_days_per_key);
   const nMin = pins.n_o_min_opponent_keys ?? DEFAULT_PINS.n_o_min_opponent_keys;
 
+  const diagnostics = buildG2AggregateDiagnostics(games, byKey, {
+    gMin,
+    dMin,
+    nMin,
+    fixtureMode,
+  });
+
+  // Pass path may list pseudonymous opponentKey counts (already research-safe).
+  // Fail path keeps aggregates only — no per-key identities needed to audit the stop.
   const qualifying = [];
   for (const [key, bucket] of byKey.entries()) {
     if (bucket.games.length >= gMin && bucket.days.size >= dMin) {
@@ -217,11 +308,14 @@ export function runG2(games, pins = DEFAULT_PINS, { fixtureMode = false } = {}) 
   }
   if (qualifying.length < nMin) {
     return gateResult("G2", false, VERDICTS.STOP_NO_LONGITUDINAL_RECURRENCE, {
+      // Compact fields kept for backward-compatible tests + CLI receipts
       qualifying: qualifying.length,
       nMin,
       gMin,
       dMin,
       fixtureMode: !!fixtureMode,
+      // Privacy-safe audit bundle (no identities)
+      diagnostics,
     });
   }
   return gateResult("G2", true, VERDICTS.READY_FOR_GATES, {
@@ -229,6 +323,8 @@ export function runG2(games, pins = DEFAULT_PINS, { fixtureMode = false } = {}) 
     nMin,
     gMin,
     dMin,
+    fixtureMode: !!fixtureMode,
+    diagnostics,
   });
 }
 
@@ -590,6 +686,22 @@ export function buildPhase0Report({
   studyId = "orcbr-b1-phase0",
   knownRawTokens = [],
 } = {}) {
+  // Lift privacy-safe G2 aggregates into the report so a stop can be audited without
+  // re-opening sealed games or reading per-key identities.
+  const g2Result = (gateRun?.results || []).find((r) => r.gate === "G2");
+  const g2Diagnostics = g2Result?.diagnostics
+    || (g2Result
+      ? {
+        qualifyingCount: typeof g2Result.qualifying === "number"
+          ? g2Result.qualifying
+          : (g2Result.qualifying?.length ?? null),
+        nMin: g2Result.nMin ?? null,
+        gMin: g2Result.gMin ?? null,
+        dMin: g2Result.dMin ?? null,
+        fixtureMode: g2Result.fixtureMode ?? false,
+      }
+      : null);
+
   const report = {
     kind: "scout-orcbr-b1-phase0-report",
     version: 1,
@@ -599,6 +711,8 @@ export function buildPhase0Report({
     researchOnly: true,
     trainOnly: true,
     outcomeBlind: true,
+    nonConfirmatory: true,
+    scientificScope: "structural-only",
     productAuthorization: false,
     productVerdict: "preserve-v2",
     moduleAStatus: "CLOSED_NOT_REOPENED",
@@ -612,6 +726,7 @@ export function buildPhase0Report({
       receiptSha256: r.receiptSha256 || null,
       priorGateSha256: r.priorGateSha256 || null,
     })),
+    g2Diagnostics,
     package: gateRun?.package
       ? {
         packageSha256: gateRun.package.packageSha256,

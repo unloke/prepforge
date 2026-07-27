@@ -391,7 +391,8 @@ function cmdGates(args) {
 
   mkdirSync(paths.gatesDir, { recursive: true });
   for (const r of run.results) {
-    // Persist gate receipt without embedding full package units twice when large
+    // Persist gate receipt without embedding full package units twice when large.
+    // G2 diagnostics are privacy-safe aggregates only (no opponentKey / raw ids).
     writeJson(join(paths.gatesDir, `${r.gate.toLowerCase()}.json`), {
       gate: r.gate,
       pass: r.pass,
@@ -406,6 +407,10 @@ function cmdGates(args) {
       totalCost: r.package?.totalCost ?? r.totalCost,
       gMin: r.gMin,
       dMin: r.dMin,
+      nMin: r.nMin,
+      qualifying: typeof r.qualifying === "number" ? r.qualifying : undefined,
+      fixtureMode: r.fixtureMode,
+      diagnostics: r.diagnostics || undefined,
     });
   }
 

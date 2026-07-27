@@ -29,9 +29,12 @@
       "human study authorization",
       "v2 replacement claims",
       "CAL/TEST algorithm inputs under this identity",
-      "network acquisition / fresh panel top-up",
-      "reinterpretation of Module A, SHPFA, robust-y, or burned holdouts as confirmation"
-    ]
+      "network acquisition / fresh panel top-up under this algorithm identity (use scout-orcbr-b1-raw-acq-v1)",
+      "reinterpretation of Module A, SHPFA, robust-y, EBB, or burned holdouts as confirmation",
+      "retuning frozen thresholds after seeing acquisition or gate data"
+    ],
+    "relatedAcquisitionProtocolId": "scout-orcbr-b1-raw-acq-v1",
+    "relatedAcquisitionNote": "Raw materialization is a separate identity; algorithm pins in this file remain frozen and must not be edited after seeing data."
   },
   "identity": {
     "scheme": "hmac-sha256",

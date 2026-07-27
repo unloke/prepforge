@@ -153,14 +153,75 @@ describe("G1–G7 ordered stops", () => {
     expect(r.verdict).toBe(VERDICTS.STOP_NO_LONGITUDINAL_RECURRENCE);
     expect(r.gMin).toBe(FROZEN_PINS.g_min_white_games_per_key);
     expect(r.dMin).toBe(FROZEN_PINS.d_min_distinct_days_per_key);
+    expect(r.nMin).toBe(FROZEN_PINS.n_o_min_opponent_keys);
+    expect(r.fixtureMode).toBe(false);
+    // Privacy-safe aggregates required for stop audit (no opponentKey list on fail)
+    expect(r.diagnostics).toBeTruthy();
+    expect(r.diagnostics.qualifyingCount).toBe(0);
+    expect(r.diagnostics.maxGamesPerKey).toBe(1);
+    expect(r.diagnostics.maxDaysPerKey).toBe(1);
+    expect(r.diagnostics.blackGameCount).toBe(1);
+    expect(r.diagnostics.opponentKeyCount).toBe(1);
+    expect(r.diagnostics.outcomeBlind).toBe(true);
+    expect(JSON.stringify(r.diagnostics)).not.toMatch(/opp_/);
   });
 
   it("G2 live mode refuses small fixtures that would pass only under fixtureMode", () => {
     const games = fixtureGames(24);
     const live = runG2(games, DEFAULT_PINS, { fixtureMode: false });
     expect(live.pass).toBe(false);
+    expect(live.diagnostics.fixtureMode).toBe(false);
+    expect(live.diagnostics.gMin).toBe(FROZEN_PINS.g_min_white_games_per_key);
+    expect(live.diagnostics.dMin).toBe(FROZEN_PINS.d_min_distinct_days_per_key);
+    // 24 black games vs one key → below gMin=30, so not qualifying
+    expect(live.diagnostics.maxGamesPerKey).toBe(24);
+    expect(live.diagnostics.qualifyingCount).toBe(0);
+    expect(live.diagnostics.keysAtOrAboveGMin).toBe(0);
+    expect(live.diagnostics.gamesPerKeyHistogram["20-29"]).toBe(1);
     const fix = runG2(games, { ...DEFAULT_PINS, ...FIXTURE_PIN_OVERRIDES }, { fixtureMode: true });
     expect(fix.pass).toBe(true);
+    expect(fix.diagnostics.fixtureMode).toBe(true);
+    expect(fix.diagnostics.qualifyingCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it("G2 ignores subject-White games and outcome fields when counting longitudinal history", () => {
+    const oppKey = "opp_bbbbbbbbbbbbbbbb";
+    const games = [];
+    // 5 subject-Black days vs one opponent (counts toward G2)
+    for (let i = 0; i < 5; i += 1) {
+      games.push({
+        gameId: `b${i}`,
+        color: "black",
+        opponentKey: oppKey,
+        createdAtMs: 1_000 + i * 86_400_000,
+        dayKey: `2024-01-0${i + 1}`,
+        ucis: ["e2e4", "e7e5"],
+        score: 1,
+        result: "0-1",
+        status: "mate",
+      });
+    }
+    // 40 subject-White games same key must NOT inflate White-history counts
+    for (let i = 0; i < 40; i += 1) {
+      games.push({
+        gameId: `w${i}`,
+        color: "white",
+        opponentKey: oppKey,
+        createdAtMs: 2_000 + i * 86_400_000,
+        dayKey: `2024-02-${String(i + 1).padStart(2, "0")}`,
+        ucis: ["e2e4", "e7e5"],
+        score: 0,
+      });
+    }
+    const r = runG2(games, DEFAULT_PINS, { fixtureMode: false });
+    expect(r.pass).toBe(false);
+    expect(r.diagnostics.blackGameCount).toBe(5);
+    expect(r.diagnostics.whiteSubjectGameCount).toBe(40);
+    expect(r.diagnostics.maxGamesPerKey).toBe(5);
+    expect(r.diagnostics.maxDaysPerKey).toBe(5);
+    expect(r.diagnostics.qualifyingCount).toBe(0);
+    // Outcomes present on input must not affect verdict; diagnostics flag them if not stripped
+    expect(r.diagnostics.outcomeFieldHits).toBeGreaterThan(0);
   });
 
   it("G3 packs budget 12 via expand on multi-family fixture", () => {
@@ -319,6 +380,24 @@ describe("runGates pipeline + report self-hash", () => {
     }, { through: "G7" });
     expect(run.ok).toBe(false);
     expect(run.verdict).toBe(VERDICTS.STOP_NO_LONGITUDINAL_RECURRENCE);
+    const g2 = run.results.find((x) => x.gate === "G2");
+    expect(g2?.diagnostics?.fixtureMode).toBe(false);
+    expect(g2?.diagnostics?.gMin).toBe(FROZEN_PINS.g_min_white_games_per_key);
+    expect(g2?.diagnostics?.qualifyingCount).toBe(0);
+    const report = buildPhase0Report({
+      protocol: PROTOCOL,
+      gateRun: run,
+      rawSha256: "a".repeat(64),
+      knownRawTokens: [OPP, SUBJECT],
+    });
+    expect(report.g2Diagnostics).toBeTruthy();
+    expect(report.g2Diagnostics.qualifyingCount).toBe(0);
+    expect(report.g2Diagnostics.maxGamesPerKey).toBe(24);
+    expect(report.scientificScope).toBe("structural-only");
+    expect(report.nonConfirmatory).toBe(true);
+    expect(JSON.stringify(report.g2Diagnostics)).not.toMatch(new RegExp(OPP, "i"));
+    expect(JSON.stringify(report.g2Diagnostics)).not.toMatch(new RegExp(SUBJECT, "i"));
+    expect(report.reportSha256).toBe(computeReportSha256(report));
   });
 
   it("fixtureMode structural path produces self-hashed report without raw names", () => {

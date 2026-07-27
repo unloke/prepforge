@@ -13,6 +13,16 @@
 > CAL/TEST access, network acquisition, human study, Module A reopen, or shipping.
 > First executable work under this protocol is **G0 dual-parse custody** on **local**
 > raw/capped bytes only. If G0 fails, emit `STOP_SCHEMA_UNAVAILABLE` and stop.
+>
+> **Raw materialization is a separate identity:** when no lawful local raw custody
+> exists (`NO_EXISTING_LAWFUL_RAW_CUSTODY`), use
+> [`docs/scout-orcbr-b1-acquisition.md`](./scout-orcbr-b1-acquisition.md)
+> (`scout-orcbr-b1-raw-acq-v1`) only. That acquisition protocol freezes subject
+> selection and fetch settings **before** any network call, does **not** run ORCBR
+> gates, and must **not** retune the frozen thresholds in this document after seeing
+> data. Authentic parent EBB/SHPFA raw is foreign burned/TEST-opened and forbidden.
+> Acquisition outputs are newly burned for ORCBR schema/structural research once
+> inspected — never confirmatory holdouts.
 
 ---
 
@@ -51,8 +61,9 @@ Any protocol snapshot, report, gate receipt, or CLI status with
 | Whether pseudonymous opponent identity is available from **local raw** dual-parse | Human study authorization |
 | Whether prequential within-TRAIN future-match feasibility is non-degenerate | v2 replacement claims |
 | Custody hashes for a later, separately registered confirmatory protocol | CAL/TEST algorithm inputs under this identity |
-| | Network acquisition / fresh panel top-up |
-| | Reinterpretation of Module A, SHPFA, robust-y, or burned holdouts as confirmation |
+| | Network acquisition / fresh panel top-up **under this algorithm identity** (use `scout-orcbr-b1-raw-acq-v1` instead) |
+| | Reinterpretation of Module A, SHPFA, robust-y, EBB, or burned holdouts as confirmation |
+| | Reusing acquisition sealed raw as confirmatory evidence beyond schema/structural research |
 
 ---
 
@@ -366,6 +377,7 @@ After `GATES_PASSED_EVAL_NOT_RUN`, any confirmatory work requires a **new** prot
 
 ```text
 docs/scout-orcbr-b1-protocol.md              # this frozen protocol (normative)
+docs/scout-orcbr-b1-acquisition.md           # SEPARATE raw acquisition identity (not gates)
 
 research/scout-orcbr-b1/
   orcbr-b1.protocol.json                     # machine pins (snapshot of §0–§6)
@@ -378,9 +390,15 @@ research/scout-orcbr-b1/
   orcbr-b1-generate.test.js
   orcbr-b1-gates.test.js
 
-scripts/scout-orcbr-b1.mjs                   # CLI entry (freeze / g0 / gates / package / status / verify)
+research/scout-orcbr-b1-acq/                 # acquisition-only (no gates / no pin retune)
+  orcbr-b1-acq.protocol.json
+  orcbr-b1-acq.js
+  orcbr-b1-acq.test.js
 
-tmp/scout-orcbr-b1/                          # study root (gitignored)
+scripts/scout-orcbr-b1.mjs                   # CLI entry (freeze / g0 / gates / package / status / verify)
+scripts/scout-orcbr-b1-acq.mjs               # acquisition CLI (freeze / select / execute / verify)
+
+tmp/scout-orcbr-b1/                          # algorithm study root (gitignored)
   protocol.snapshot.json
   custody/raw.sha256
   custody/capped.sha256
@@ -389,6 +407,11 @@ tmp/scout-orcbr-b1/                          # study root (gitignored)
   train/package.json
   train/units/*.json
   report.json                                # reportSha256 last
+
+tmp/scout-orcbr-b1-acq/                      # acquisition custody root (gitignored)
+  protocol.snapshot.json
+  custody/subjects/<subjectKey>/raw.ndjson   # sealed; may contain upstream identity
+  manifest.json / report.json                # no raw identity
 ```
 
 Production `web-src/scout.js` parse shape for UI remains v1 unless a separate product RFC.
@@ -483,7 +506,31 @@ productAuthorization: false
 
 ---
 
-## 12. Document control
+## 12. Live TRAIN-only structural result (not confirmation)
+
+**Custody:** sealed capped NDJSON from separate acquisition identity
+`scout-orcbr-b1-raw-acq-v1` (one preselected lawful public subject, cap 200,
+hashes verified). Algorithm CLI consumed **local** capped bytes only; no network,
+no CAL/TEST.
+
+| Item | Result |
+|---|---|
+| G0 | Pass (dual-parse identity coverage = 1.0 on 200 eligible games) |
+| G1 | Pass |
+| G2 | **Stop** `STOP_NO_LONGITUDINAL_RECURRENCE` with frozen `g_min=30`, `d_min=10` (live mode; not fixture) |
+| G3+ | **Not run** (fail-closed after G2) |
+| Scientific scope | **Structural only** — package construction / longitudinal feasibility preflight |
+| Confirmation | **Not established**; not a scientific kill of opponent-conditional Black rules in general |
+| Burn | Acquisition bytes are **newly burned** for ORCBR schema/structural research once inspected; not a confirmatory holdout |
+
+G2 receipts/report carry privacy-safe aggregates (`qualifyingCount`,
+`maxGamesPerKey`, `maxDaysPerKey`, color counts, coarse histogram) so the stop
+can be audited without raw identities. Do **not** retune frozen floors under
+this protocol identity after seeing this stop.
+
+---
+
+## 13. Document control
 
 | Item | Value |
 |---|---|
@@ -491,12 +538,23 @@ productAuthorization: false
 | Machine companion (planned) | `research/scout-orcbr-b1/orcbr-b1.protocol.json` |
 | Supersession | Any change → new `protocolId` / version; do not edit sealed snapshots in place |
 | Architecture lineage | Module B Black opponent-repertoire design (READY_FOR_IMPLEMENTATION); this file freezes the executable research contract |
+| Live TRAIN structural stop | See §12 — non-confirmatory; acquisition custody newly burned once inspected |
 
-**First command after implementation lands:**
+**If lawful local raw is missing**, materialize under the acquisition identity first
+(does not run gates; does not retune pins):
+
+```bash
+node scripts/scout-orcbr-b1-acq.mjs freeze
+node scripts/scout-orcbr-b1-acq.mjs select
+node scripts/scout-orcbr-b1-acq.mjs execute --confirm-execute
+```
+
+**First algorithm command after local raw exists:**
 
 ```bash
 node scripts/scout-orcbr-b1.mjs g0 --raw <local-raw.ndjson>
 ```
 
 If identity cannot be recovered from local bytes: stop with `STOP_SCHEMA_UNAVAILABLE`.
-Product remains Scout v2. `productAuthorization` remains false.
+Product remains Scout v2. `productAuthorization` remains false. Module A remains closed.
+No old CAL/TEST under either identity.
