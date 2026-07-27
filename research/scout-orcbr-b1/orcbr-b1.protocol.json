@@ -1,0 +1,103 @@
+{
+  "kind": "scout-orcbr-b1-protocol",
+  "version": 1,
+  "protocolId": "scout-orcbr-b1-v1",
+  "candidateId": "orcbr-b1",
+  "researchOnly": true,
+  "trainOnly": true,
+  "outcomeBlind": true,
+  "nonConfirmatory": true,
+  "productAuthorization": false,
+  "productVerdict": "preserve-v2",
+  "moduleAStatus": "CLOSED_NOT_REOPENED",
+  "unitContract": "preparation-unit-v2",
+  "packageSlotBudget": 12,
+  "coverageCostDomain": [1, 2, 3],
+  "ourColor": "black",
+  "calAllowed": false,
+  "testAllowed": false,
+  "networkEnabled": false,
+  "humanAuthorization": false,
+  "claimBoundary": {
+    "establishes": [
+      "whether ORCBR-B1 packages are structurally runnable on local TRAIN under frozen gates",
+      "whether pseudonymous opponent identity is available from local raw dual-parse",
+      "whether prequential within-TRAIN future-match feasibility is non-degenerate"
+    ],
+    "forbids": [
+      "product or card authorization",
+      "human study authorization",
+      "v2 replacement claims",
+      "CAL/TEST algorithm inputs under this identity",
+      "network acquisition / fresh panel top-up",
+      "reinterpretation of Module A, SHPFA, robust-y, or burned holdouts as confirmation"
+    ]
+  },
+  "identity": {
+    "scheme": "hmac-sha256",
+    "keyPrefix": "opp_",
+    "hexChars": 16,
+    "preferUserId": true,
+    "nameLowerFallback": true,
+    "neverEmitRawIdentity": true,
+    "saltSource": "caller-supplied-research-salt"
+  },
+  "chronology": {
+    "order": ["createdAtMs", "datestamp", "gameId"],
+    "trainRule": "strictly before cutoff",
+    "noLookahead": true
+  },
+  "pins": {
+    "c1_identity_coverage_min": 0.85,
+    "n_o_min_opponent_keys": 1,
+    "g_min_white_games_per_key": 30,
+    "d_min_distinct_days_per_key": 10,
+    "J_max_v2_path_jaccard": 0.50,
+    "p_min_prequential_hit": 0.10,
+    "p_max_prequential_hit": 0.90,
+    "PACKAGE_SLOT_BUDGET": 12,
+    "max_family_epds_cost_1": 4,
+    "max_family_epds_cost_2": 8,
+    "max_family_epds_cost_3": 12,
+    "max_ply": 12,
+    "exact_ply_cost_1": 6
+  },
+  "breadthCaps": {
+    "1": { "maxFamilyEpds": 4, "maxExactPly": 6, "maxWildcards": 0 },
+    "2": { "maxFamilyEpds": 8, "maxExactPly": 12, "maxWildcards": 1 },
+    "3": { "maxFamilyEpds": 12, "maxExactPly": 12, "maxWildcards": 2 }
+  },
+  "gates": [
+    "G0",
+    "G1",
+    "G2",
+    "G3",
+    "G4",
+    "G5",
+    "G6",
+    "G7"
+  ],
+  "terminalVerdicts": [
+    "READY_FOR_GATES",
+    "STOP_SCHEMA_UNAVAILABLE",
+    "STOP_IDENTITY_SPARSE",
+    "STOP_NO_LONGITUDINAL_RECURRENCE",
+    "STOP_PACKAGE_EMPTY",
+    "STOP_COST_GAMING",
+    "STOP_NOT_DISTINCT_FROM_V2",
+    "STOP_PREQUENTIAL_INFEASIBLE",
+    "GATES_PASSED_EVAL_NOT_RUN",
+    "INVALID"
+  ],
+  "lifecycle": {
+    "commands": ["freeze", "g0", "gates", "package", "status", "verify"],
+    "studyRoot": "tmp/scout-orcbr-b1",
+    "requiredArtifacts": [
+      "protocol.snapshot.json",
+      "custody/parse-receipt.json",
+      "report.json"
+    ],
+    "reportHashField": "reportSha256",
+    "reportHashOmitField": true
+  }
+}
