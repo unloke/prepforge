@@ -1,6 +1,6 @@
 // Maia3 reads for Scout game-plan rows: leaf-FEN WDL from the opponent's perspective.
 
-import { enrichPrepTarget, terminalMoveIsOpponent, triePathKey } from "./scout.js";
+import { branchPathKey, enrichPrepTarget, terminalMoveIsOpponent } from "./scout.js";
 
 export const MAIA_ENRICH_IDLE = "idle";
 export const MAIA_ENRICH_LOADING = "loading";
@@ -219,9 +219,9 @@ export function scoutMaiaRankedNote(
     return `<div class="scout-ranked-note muted hint">Ranked by Maia exploitability · empirical score/WDL (Maia unavailable on some lines)</div>`;
   }
   if (state === MAIA_ENRICH_FAILED) {
-    return `<div class="scout-ranked-note muted hint">Ranked by recency · empirical score/WDL (Maia unavailable)</div>`;
+    return `<div class="scout-ranked-note muted hint">Ranked by exploitability · empirical score/WDL (Maia unavailable)</div>`;
   }
-  return `<div class="scout-ranked-note muted hint">Ranked by recency · empirical score/WDL</div>`;
+  return `<div class="scout-ranked-note muted hint">Ranked by exploitability · empirical score/WDL</div>`;
 }
 
 export function markUnattemptedMaiaFailures(
@@ -345,7 +345,7 @@ export async function enrichMaiaUntilFull(
     if (shouldCancel()) break;
     if (successes.length >= successTarget) break;
     if (attempts >= maxAttempts) break;
-    const key = triePathKey(line.ucis);
+    const key = branchPathKey(line.ucis);
     if (seenKeys.has(key)) continue;
     seenKeys.add(key);
 
@@ -413,7 +413,7 @@ export async function enrichGlobalMaiaPool(
     const oppColor = entry?.oppColor;
     if (!line?.ucis?.length || !oppColor) continue;
 
-    const key = `${oppColor}|${triePathKey(line.ucis)}`;
+    const key = `${oppColor}|${branchPathKey(line.ucis)}`;
     if (seenKeys.has(key)) continue;
     seenKeys.add(key);
 
@@ -497,7 +497,7 @@ export function buildGamePlanDisplayLines({
   fenAfterLine,
   limit = SCOUT_MAIA_TARGET_COUNT,
 } = {}) {
-  const lineKey = (line) => triePathKey(line.ucis || []);
+  const lineKey = (line) => branchPathKey(line.ucis || []);
   const seen = new Set();
   const out = [];
 

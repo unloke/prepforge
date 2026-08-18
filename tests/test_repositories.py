@@ -1,9 +1,12 @@
 import pytest
+from sqlalchemy import text
 
 from prepforge_chess.core.chess_core import STARTING_FEN, ChessCore
 from prepforge_chess.core.models import (
     Color,
     EngineEvaluation,
+    Game,
+    GameResult,
     MoveClassification,
     MoveSource,
     OpeningNode,
@@ -276,3 +279,142 @@ def test_mutate_profile_setting_deletes_on_none_and_rejects_unknown():
 
     with pytest.raises(ValueError):
         repo.mutate_profile_setting("no-such-profile", "token", lambda _c: "x")
+
+
+def test_game_persist_does_not_store_fen_or_pgn_copies():
+    core = ChessCore()
+    repo = _repository()
+    game = core.import_single_pgn(
+        """
+[Event "Compact"]
+[White "A"]
+[Black "B"]
+[Result "*"]
+
+1. e4 e5 2. Nf3 Nc6 *
+"""
+    )
+    repo.save_game(game)
+    with repo.engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT uci_blob FROM games WHERE id = :id"),
+            {"id": game.id},
+        ).mappings().one()
+        cols = conn.execute(text("PRAGMA table_info(games)")).fetchall()
+    names = {c[1] for c in cols}
+    assert "pgn" not in names
+    assert "uci_blob" in names
+    assert row["uci_blob"] == "e2e4 e7e5 g1f3 b8c6"
+    loaded = repo.load_game(game.id)
+    assert [m.uci for m in loaded.moves] == ["e2e4", "e7e5", "g1f3", "b8c6"]
+    assert loaded.moves[0].san == "e4"
+    assert loaded.moves[0].fen_before == STARTING_FEN
+    assert loaded.pgn is not None
+    assert "e4" in loaded.pgn
+
+
+def test_engine_eval_dedup_and_position_uniqueness():
+    core = ChessCore()
+    repo = _repository()
+    ev = EngineEvaluation(
+        engine="stockfish",
+        depth=16,
+        nodes=1000,
+        time_ms=50,
+        score_cp=12,
+        best_move_uci="e2e4",
+        pv=["e2e4", "e7e5"],
+        wdl={"win": 0.3, "draw": 0.5, "loss": 0.2},
+    )
+    g1 = core.import_single_pgn("1. e4 e5 *")
+    g1.id = "g-eval-1"
+    g1.moves[0].engine_eval_before = ev
+    g2 = core.import_single_pgn("1. e4 c5 *")
+    g2.id = "g-eval-2"
+    g2.moves[0].engine_eval_before = EngineEvaluation(
+        engine="stockfish",
+        depth=16,
+        nodes=1000,
+        time_ms=50,
+        score_cp=99,
+        best_move_uci="e2e4",
+        pv=["e2e4"],
+        wdl={"win": 0.3, "draw": 0.5, "loss": 0.2},
+    )
+    repo.save_game(g1)
+    repo.save_game(g2)
+    with repo.engine.connect() as conn:
+        n_eval = conn.execute(text("SELECT COUNT(*) FROM engine_evaluations")).scalar_one()
+        n_pos = conn.execute(text("SELECT COUNT(*) FROM positions")).scalar_one()
+    # Same starting FEN + same config is one eval row (score updates, does not duplicate).
+    assert n_eval == 1
+    assert n_pos == 1
+    loaded = repo.load_game("g-eval-2")
+    assert loaded.moves[0].engine_eval_before.score_cp == 99
+    assert loaded.moves[0].engine_eval_before.wdl["draw"] == 0.5
+
+
+def test_default_config_eval_null_limits_last_write_wins():
+    """Default EngineAnalysisConfig uses nodes=None, time_ms=None.
+
+    SQL UNIQUE treats those NULLs as distinct, so the writer must persist a
+    NULL-safe identity. Two saves of the same FEN/engine/depth must be one
+    cache row; the second score wins.
+    """
+    core = ChessCore()
+    repo = _repository()
+    first = EngineEvaluation(engine="stockfish", depth=10, nodes=None, time_ms=None, score_cp=5)
+    latest = EngineEvaluation(engine="stockfish", depth=10, nodes=None, time_ms=None, score_cp=42)
+    g1 = core.import_single_pgn("1. e4 e5 *")
+    g1.id = "g-null-1"
+    g1.moves[0].engine_eval_before = first
+    g2 = core.import_single_pgn("1. e4 c5 *")
+    g2.id = "g-null-2"
+    g2.moves[0].engine_eval_before = latest
+    repo.save_game(g1)
+    repo.save_game(g2)
+    with repo.engine.connect() as conn:
+        n_eval = conn.execute(text("SELECT COUNT(*) FROM engine_evaluations")).scalar_one()
+        stored = conn.execute(
+            text("SELECT depth, nodes, time_ms, score_cp FROM engine_evaluations")
+        ).mappings().one()
+    assert n_eval == 1
+    assert stored["score_cp"] == 42
+    loaded = repo.load_game("g-null-2")
+    assert loaded.moves[0].engine_eval_before is not None
+    assert loaded.moves[0].engine_eval_before.score_cp == 42
+    assert loaded.moves[0].engine_eval_before.nodes is None
+    assert loaded.moves[0].engine_eval_before.time_ms is None
+    assert loaded.moves[0].engine_eval_before.depth == 10
+    older = repo.load_game("g-null-1")
+    assert older.moves[0].engine_eval_before.score_cp == 42
+
+
+def test_distinct_castling_and_ep_get_distinct_position_rows():
+    repo = _repository()
+    core = ChessCore()
+    ev = EngineEvaluation(engine="stockfish", depth=8, nodes=10, time_ms=1, score_cp=0)
+    castle_both = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"
+    castle_none = "r3k2r/8/8/8/8/8/8/R3K2R w - - 0 1"
+    ep = "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"
+    no_ep = "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3"
+    stm_w = STARTING_FEN
+    stm_b = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+    for i, fen in enumerate((castle_both, castle_none, ep, no_ep, stm_w, stm_b)):
+        rec = core.apply_uci(fen, list(core.legal_moves(fen))[0])
+        rec.engine_eval_before = ev
+        rec.ply = 1
+
+        repo.save_game(
+            Game(
+                id=f"id-{i}",
+                source=MoveSource.MANUAL,
+                initial_fen=fen,
+                moves=[rec],
+                result=GameResult.UNKNOWN,
+            )
+        )
+    with repo.engine.connect() as conn:
+        fens = [r[0] for r in conn.execute(text("SELECT fen FROM positions"))]
+    assert len(fens) == 6
+    assert len(set(fens)) == 6

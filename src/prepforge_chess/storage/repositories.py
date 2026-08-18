@@ -17,7 +17,6 @@ from prepforge_chess.core.models import (
     EngineEvaluation,
     Game,
     GameResult,
-    MoveClassification,
     MoveRecord,
     MoveSource,
     OpeningNode,
@@ -26,6 +25,7 @@ from prepforge_chess.core.models import (
     TrainingProgress,
     TrainingSession,
 )
+from prepforge_chess.storage import codec
 from prepforge_chess.storage import sa_tables as t
 
 # ``user_profiles`` columns that ``schema.sql`` defaulted server-side. ``sa_tables``
@@ -47,6 +47,12 @@ def _json_load(value: Optional[str], default: Any) -> Any:
     if value is None:
         return default
     return json.loads(value)
+
+
+def _parse_critical_ply(value: Optional[str]) -> List[int]:
+    if not value:
+        return []
+    return [int(part) for part in value.split(",") if part]
 
 
 def _dt_to_text(value: Optional[datetime]) -> Optional[str]:
@@ -326,13 +332,13 @@ class PrepForgeRepository:
                     "id": game.id,
                     "source": game.source.value,
                     "initial_fen": game.initial_fen,
+                    "uci_blob": codec.game_uci_blob(game),
                     "white": game.white,
                     "black": game.black,
                     "result": game.result.value,
                     "event": game.event,
                     "site": game.site,
                     "played_at": _dt_to_text(game.played_at),
-                    "pgn": game.pgn,
                     "lichess_id": game.lichess_id,
                     "tags_json": _json_dump(game.tags),
                     "owner_user_id": owner_user_id,
@@ -341,20 +347,19 @@ class PrepForgeRepository:
                 },
                 conflict=[t.games.c.id],
                 update_cols=(
-                    "source", "initial_fen", "white", "black", "result", "event",
-                    "site", "played_at", "pgn", "lichess_id", "tags_json", "updated_at",
+                    "source", "initial_fen", "uci_blob", "white", "black", "result",
+                    "event", "site", "played_at", "lichess_id", "tags_json", "updated_at",
                 ),
                 # Never let a re-save reassign an existing owner; only fill a gap.
                 coalesce_cols=("owner_user_id",),
             )
 
+            conn.execute(delete(t.moves).where(t.moves.c.game_id == game.id))
+            pos_cache: Dict[str, int] = {}
             for move in game.moves:
-                self._save_move(
-                    conn,
-                    move=move,
-                    move_id=self._game_move_id(game.id, move.ply),
-                    game_id=game.id,
-                )
+                if not codec.move_needs_row(move):
+                    continue
+                self._save_move_annotation(conn, game_id=game.id, move=move, pos_cache=pos_cache)
 
     def load_game(self, game_id: str, owner_user_id: Optional[str] = None) -> Optional[Game]:
         with self.engine.connect() as conn:
@@ -368,12 +373,37 @@ class PrepForgeRepository:
             if owner_user_id is not None and row["owner_user_id"] != owner_user_id:
                 return None
 
+            uci_list = codec.decode_uci_sequence(row["uci_blob"])
             move_rows = conn.execute(
                 select(t.moves).where(t.moves.c.game_id == game_id).order_by(t.moves.c.ply)
             ).mappings().all()
-            moves = [self._move_from_row(conn, move_row) for move_row in move_rows]
+            eval_ids: List[Optional[int]] = []
+            for move_row in move_rows:
+                eval_ids.extend(
+                    [
+                        move_row["engine_eval_before_id"],
+                        move_row["engine_eval_after_id"],
+                        move_row["best_move_eval_id"],
+                    ]
+                )
+            evals = self._load_evaluations(conn, eval_ids)
+            annotations: Dict[int, Dict[str, Any]] = {}
+            for move_row in move_rows:
+                annotations[int(move_row["ply"])] = {
+                    "source": move_row["source"],
+                    "classification": move_row["classification"],
+                    "comment": move_row["comment"],
+                    "tags": _json_load(move_row["tags_json"], []),
+                    "engine_eval_before": evals.get(move_row["engine_eval_before_id"]),
+                    "engine_eval_after": evals.get(move_row["engine_eval_after_id"]),
+                    "best_move_uci": move_row["best_move_uci"],
+                    "best_move_eval": evals.get(move_row["best_move_eval_id"]),
+                }
+            for ply in range(1, len(uci_list) + 1):
+                annotations.setdefault(ply, {"source": row["source"]})
+            moves = codec.rebuild_moves(row["initial_fen"], uci_list, annotations)
 
-        return Game(
+        game = Game(
             id=row["id"],
             source=MoveSource(row["source"]),
             initial_fen=row["initial_fen"],
@@ -384,10 +414,12 @@ class PrepForgeRepository:
             event=row["event"],
             site=row["site"],
             played_at=_dt_from_text(row["played_at"]),
-            pgn=row["pgn"],
+            pgn=None,
             lichess_id=row["lichess_id"],
             tags=_json_load(row["tags_json"], {}),
         )
+        game.pgn = codec.export_pgn(game)
+        return game
 
     def find_game_id_by_lichess_id(
         self, lichess_id: str, owner_user_id: Optional[str] = None
@@ -455,8 +487,9 @@ class PrepForgeRepository:
                 coalesce_cols=("user_profile_id",),
             )
 
+            pos_cache: Dict[str, int] = {}
             for node in self._walk_nodes(repertoire.root_node):
-                self._save_opening_node(conn, node)
+                self._save_opening_node(conn, node, pos_cache)
 
     def load_repertoire(
         self, repertoire_id: str, owner_user_id: Optional[str] = None
@@ -475,22 +508,20 @@ class PrepForgeRepository:
                 select(t.opening_nodes).where(t.opening_nodes.c.repertoire_id == repertoire_id)
             ).mappings().all()
 
+            eval_ids = [row["engine_evaluation_id"] for row in node_rows]
+            evals = self._load_evaluations(conn, eval_ids)
             nodes: Dict[str, OpeningNode] = {}
+            arriving_uci: Dict[str, Optional[str]] = {}
             for row in node_rows:
-                move = self._load_move_by_id(conn, row["move_id"]) if row["move_id"] else None
-                evaluation = (
-                    self._load_engine_evaluation(conn, row["engine_evaluation_id"])
-                    if row["engine_evaluation_id"]
-                    else None
-                )
+                arriving_uci[row["id"]] = row["uci"]
                 nodes[row["id"]] = OpeningNode(
                     id=row["id"],
                     repertoire_id=row["repertoire_id"],
                     parent_id=row["parent_id"],
-                    move=move,
-                    fen=row["fen"],
-                    side_to_move=Color(row["side_to_move"]),
-                    engine_evaluation=evaluation,
+                    move=None,
+                    fen=rep_row["root_fen"],
+                    side_to_move=Color.WHITE,
+                    engine_evaluation=evals.get(row["engine_evaluation_id"]),
                     maia_probability=row["maia_probability"],
                     is_mainline=_int_to_bool(row["is_mainline"]),
                     is_user_prepared_move=_int_to_bool(row["is_user_prepared_move"]),
@@ -506,16 +537,11 @@ class PrepForgeRepository:
                     source=MoveSource(row["source"]),
                 )
 
-        for node in nodes.values():
-            if node.parent_id and node.parent_id in nodes:
-                nodes[node.parent_id].children.append(node)
-
-        root_node_id = rep_row["root_node_id"]
-        root_node = nodes.get(root_node_id)
-        if root_node is None:
-            root_node = next((node for node in nodes.values() if node.parent_id is None), None)
+        root_node = codec.hydrate_opening_tree(rep_row["root_fen"], nodes, arriving_uci)
         if root_node is None:
             return None
+        if rep_row["root_node_id"] and rep_row["root_node_id"] in nodes:
+            root_node = nodes[rep_row["root_node_id"]]
 
         return Repertoire(
             id=rep_row["id"],
@@ -795,14 +821,6 @@ class PrepForgeRepository:
                 .values(current_node_id=None)
             )
             conn.execute(
-                update(t.practical_opening_matches)
-                .where(t.practical_opening_matches.c.last_matched_node_id.in_(node_ids))
-                .values(last_matched_node_id=None)
-            )
-            conn.execute(
-                delete(t.generation_runs).where(t.generation_runs.c.root_node_id.in_(node_ids))
-            )
-            conn.execute(
                 delete(t.opening_nodes).where(
                     t.opening_nodes.c.repertoire_id == repertoire_id,
                     t.opening_nodes.c.id.in_(node_ids),
@@ -919,30 +937,18 @@ class PrepForgeRepository:
         Owner-scoped: when an owner is supplied only that owner's games are
         considered, so one user pasting a PGN another user already stored gets their
         own owned copy rather than being bounced to the other user's game."""
-        if owner_user_id is None:
-            stmt = (
-                select(t.moves.c.game_id, t.moves.c.uci)
-                .where(t.moves.c.game_id.is_not(None))
-                .order_by(t.moves.c.game_id, t.moves.c.ply)
-            )
-        else:
-            stmt = (
-                select(t.moves.c.game_id, t.moves.c.uci)
-                .select_from(t.moves.join(t.games, t.games.c.id == t.moves.c.game_id))
-                .where(t.games.c.owner_user_id == owner_user_id)
-                .order_by(t.moves.c.game_id, t.moves.c.ply)
-            )
+        stmt = select(t.games.c.id, t.games.c.uci_blob)
+        if owner_user_id is not None:
+            stmt = stmt.where(t.games.c.owner_user_id == owner_user_id)
         with self.engine.connect() as conn:
             rows = conn.execute(stmt).mappings().all()
-        by_game: Dict[str, List[str]] = {}
-        for row in rows:
-            by_game.setdefault(row["game_id"], []).append(row["uci"])
         signatures: Dict[str, str] = {}
-        for game_id, moves in by_game.items():
-            if not moves:
+        for row in rows:
+            ucis = codec.decode_uci_sequence(row["uci_blob"])
+            if not ucis:
                 continue
             # Keep the first game id seen for a signature (stable across calls).
-            signatures.setdefault(" ".join(moves), game_id)
+            signatures.setdefault(" ".join(ucis), row["id"])
         return signatures
 
     def list_training_progress(
@@ -976,13 +982,11 @@ class PrepForgeRepository:
                     "engine": result.engine,
                     "depth": result.depth,
                     "summary_json": _json_dump(result.summary),
-                    "critical_ply_json": _json_dump(result.critical_ply),
-                    "config_json": _json_dump({}),
+                    "critical_ply": ",".join(str(p) for p in result.critical_ply),
                 },
                 conflict=[t.analysis_results.c.id],
                 update_cols=(
-                    "analyzed_at", "engine", "depth", "summary_json",
-                    "critical_ply_json", "config_json",
+                    "analyzed_at", "engine", "depth", "summary_json", "critical_ply",
                 ),
             )
 
@@ -1069,64 +1073,56 @@ class PrepForgeRepository:
             depth=row["depth"],
             move_results=game.moves if game is not None else [],
             summary=_json_load(row["summary_json"], {}),
-            critical_ply=_json_load(row["critical_ply_json"], []),
+            critical_ply=_parse_critical_ply(row["critical_ply"]),
         )
 
-    def _save_move(
-        self, conn: Connection, *, move: MoveRecord, move_id: str, game_id: Optional[str]
+    def _save_move_annotation(
+        self,
+        conn: Connection,
+        *,
+        game_id: str,
+        move: MoveRecord,
+        pos_cache: Dict[str, int],
     ) -> None:
-        now = _now_text()
         engine_eval_before_id = self._save_engine_evaluation(
-            conn, move.engine_eval_before, move.fen_before
+            conn, move.engine_eval_before, move.fen_before, pos_cache
         )
         engine_eval_after_id = self._save_engine_evaluation(
-            conn, move.engine_eval_after, move.fen_after
+            conn, move.engine_eval_after, move.fen_after, pos_cache
         )
         best_move_eval_id = self._save_engine_evaluation(
-            conn, move.best_move_eval, move.fen_before
+            conn, move.best_move_eval, move.fen_before, pos_cache
+        )
+        conn.execute(
+            t.moves.insert().values(
+                game_id=game_id,
+                ply=move.ply,
+                uci=move.uci,
+                engine_eval_before_id=engine_eval_before_id,
+                engine_eval_after_id=engine_eval_after_id,
+                best_move_uci=move.best_move_uci,
+                best_move_eval_id=best_move_eval_id,
+                classification=move.classification.value,
+                comment=move.comment,
+                tags_json=_json_dump(move.tags) if move.tags else None,
+                source=move.source.value,
+            )
         )
 
-        _upsert(
-            conn,
-            t.moves,
-            {
-                "id": move_id,
-                "game_id": game_id,
-                "ply": move.ply,
-                "move_number": move.move_number,
-                "side_to_move": move.side_to_move.value,
-                "uci": move.uci,
-                "san": move.san,
-                "fen_before": move.fen_before,
-                "fen_after": move.fen_after,
-                "engine_eval_before_id": engine_eval_before_id,
-                "engine_eval_after_id": engine_eval_after_id,
-                "best_move_uci": move.best_move_uci,
-                "best_move_eval_id": best_move_eval_id,
-                "classification": move.classification.value,
-                "comment": move.comment,
-                "tags_json": _json_dump(move.tags),
-                "source": move.source.value,
-                "created_at": now,
-            },
-            conflict=[t.moves.c.id],
-            update_cols=(
-                "game_id", "ply", "move_number", "side_to_move", "uci", "san",
-                "fen_before", "fen_after", "engine_eval_before_id",
-                "engine_eval_after_id", "best_move_uci", "best_move_eval_id",
-                "classification", "comment", "tags_json", "source",
-            ),
-        )
-
-    def _save_opening_node(self, conn: Connection, node: OpeningNode) -> None:
+    def _save_opening_node(
+        self,
+        conn: Connection,
+        node: OpeningNode,
+        pos_cache: Optional[Dict[str, int]] = None,
+    ) -> None:
         now = _now_text()
-        move_id = None
-        if node.move is not None:
-            move_id = self._opening_move_id(node.id)
-            self._save_move(conn, move=node.move, move_id=move_id, game_id=None)
-
-        engine_evaluation_id = self._save_engine_evaluation(conn, node.engine_evaluation, node.fen)
-
+        if pos_cache is None:
+            pos_cache = {}
+        arriving = node.move.uci if node.move is not None else None
+        eval_fen = node.fen
+        engine_evaluation_id = self._save_engine_evaluation(
+            conn, node.engine_evaluation, eval_fen, pos_cache
+        )
         _upsert(
             conn,
             t.opening_nodes,
@@ -1134,9 +1130,7 @@ class PrepForgeRepository:
                 "id": node.id,
                 "repertoire_id": node.repertoire_id,
                 "parent_id": node.parent_id,
-                "move_id": move_id,
-                "fen": node.fen,
-                "side_to_move": node.side_to_move.value,
+                "uci": arriving,
                 "engine_evaluation_id": engine_evaluation_id,
                 "maia_probability": node.maia_probability,
                 "is_mainline": _bool_to_int(node.is_mainline),
@@ -1144,9 +1138,9 @@ class PrepForgeRepository:
                 "is_enabled": _bool_to_int(node.is_enabled),
                 "priority": node.priority,
                 "comment": node.comment,
-                "tags_json": _json_dump(node.tags),
-                "arrows_json": _json_dump(node.arrows),
-                "circles_json": _json_dump(node.circles),
+                "tags_json": _json_dump(node.tags) if node.tags else None,
+                "arrows_json": _json_dump(node.arrows) if node.arrows else None,
+                "circles_json": _json_dump(node.circles) if node.circles else None,
                 "tactical_warning": node.tactical_warning,
                 "strategic_idea": node.strategic_idea,
                 "typical_plan": node.typical_plan,
@@ -1156,7 +1150,7 @@ class PrepForgeRepository:
             },
             conflict=[t.opening_nodes.c.id],
             update_cols=(
-                "repertoire_id", "parent_id", "move_id", "fen", "side_to_move",
+                "repertoire_id", "parent_id", "uci",
                 "engine_evaluation_id", "maia_probability", "is_mainline",
                 "is_user_prepared_move", "is_enabled", "priority", "comment",
                 "tags_json", "arrows_json", "circles_json", "tactical_warning",
@@ -1164,92 +1158,88 @@ class PrepForgeRepository:
             ),
         )
 
+    def _ensure_position(self, conn: Connection, fen: str, pos_cache: Dict[str, int]) -> int:
+        key = codec.position_key(fen)
+        cached = pos_cache.get(key)
+        if cached is not None:
+            return cached
+        stmt = (
+            _insert(conn, t.positions)
+            .values(fen=key)
+            .on_conflict_do_nothing(index_elements=["fen"])
+        )
+        conn.execute(stmt)
+        pos_id = conn.execute(
+            select(t.positions.c.id).where(t.positions.c.fen == key)
+        ).scalar_one()
+        pos_cache[key] = int(pos_id)
+        return int(pos_id)
+
     def _save_engine_evaluation(
         self,
         conn: Connection,
         evaluation: Optional[EngineEvaluation],
         fen: str,
-    ) -> Optional[str]:
+        pos_cache: Optional[Dict[str, int]] = None,
+    ) -> Optional[int]:
         if evaluation is None:
             return None
-
-        evaluation_id = self._engine_evaluation_id(fen, evaluation)
-        now = _now_text()
-        _upsert(
-            conn,
-            t.engine_evaluations,
-            {
-                "id": evaluation_id,
-                "fen": fen,
-                "engine": evaluation.engine,
-                "depth": evaluation.depth,
-                "nodes": evaluation.nodes,
-                "time_ms": evaluation.time_ms,
-                "score_cp": evaluation.score_cp,
-                "mate_in": evaluation.mate_in,
-                "best_move_uci": evaluation.best_move_uci,
-                "pv_json": _json_dump(evaluation.pv),
-                "wdl_json": _json_dump(evaluation.wdl) if evaluation.wdl is not None else None,
-                "created_at": now,
+        if pos_cache is None:
+            pos_cache = {}
+        position_id = self._ensure_position(conn, fen, pos_cache)
+        wdl = codec.encode_wdl(evaluation.wdl)
+        values = {
+            "position_id": position_id,
+            "engine": evaluation.engine,
+            "depth": codec.encode_search_limit(evaluation.depth),
+            "nodes": codec.encode_search_limit(evaluation.nodes),
+            "time_ms": codec.encode_search_limit(evaluation.time_ms),
+            "score_cp": evaluation.score_cp,
+            "mate_in": evaluation.mate_in,
+            "best_move_uci": evaluation.best_move_uci,
+            "pv": codec.encode_pv(evaluation.pv),
+            "wdl_win": None if wdl is None else wdl[0],
+            "wdl_draw": None if wdl is None else wdl[1],
+            "wdl_loss": None if wdl is None else wdl[2],
+        }
+        stmt = _insert(conn, t.engine_evaluations).values(**values)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["position_id", "engine", "depth", "nodes", "time_ms"],
+            set_={
+                "score_cp": stmt.excluded.score_cp,
+                "mate_in": stmt.excluded.mate_in,
+                "best_move_uci": stmt.excluded.best_move_uci,
+                "pv": stmt.excluded.pv,
+                "wdl_win": stmt.excluded.wdl_win,
+                "wdl_draw": stmt.excluded.wdl_draw,
+                "wdl_loss": stmt.excluded.wdl_loss,
             },
-            conflict=[t.engine_evaluations.c.id],
-            update_cols=(
-                "engine", "depth", "nodes", "time_ms", "score_cp", "mate_in",
-                "best_move_uci", "pv_json", "wdl_json",
-            ),
-        )
-        return evaluation_id
+        ).returning(t.engine_evaluations.c.id)
+        ev_id = conn.execute(stmt).scalar_one()
+        return int(ev_id)
 
-    def _load_move_by_id(self, conn: Connection, move_id: str) -> Optional[MoveRecord]:
-        row = conn.execute(
-            select(t.moves).where(t.moves.c.id == move_id)
-        ).mappings().first()
-        return self._move_from_row(conn, row) if row is not None else None
+    def _load_evaluations(
+        self, conn: Connection, eval_ids: Iterable[Optional[int]]
+    ) -> Dict[int, EngineEvaluation]:
+        wanted = sorted({int(i) for i in eval_ids if i is not None})
+        if not wanted:
+            return {}
+        rows = conn.execute(
+            select(t.engine_evaluations).where(t.engine_evaluations.c.id.in_(wanted))
+        ).mappings().all()
+        return {int(row["id"]): self._eval_from_row(row) for row in rows}
 
-    def _move_from_row(self, conn: Connection, row: Mapping[str, Any]) -> MoveRecord:
-        return MoveRecord(
-            uci=row["uci"],
-            san=row["san"],
-            fen_before=row["fen_before"],
-            fen_after=row["fen_after"],
-            move_number=row["move_number"],
-            ply=row["ply"],
-            side_to_move=Color(row["side_to_move"]),
-            source=MoveSource(row["source"]),
-            engine_eval_before=self._load_engine_evaluation(conn, row["engine_eval_before_id"])
-            if row["engine_eval_before_id"]
-            else None,
-            engine_eval_after=self._load_engine_evaluation(conn, row["engine_eval_after_id"])
-            if row["engine_eval_after_id"]
-            else None,
-            best_move_uci=row["best_move_uci"],
-            best_move_eval=self._load_engine_evaluation(conn, row["best_move_eval_id"])
-            if row["best_move_eval_id"]
-            else None,
-            classification=MoveClassification(row["classification"]),
-            comment=row["comment"],
-            tags=_json_load(row["tags_json"], []),
-        )
-
-    def _load_engine_evaluation(
-        self, conn: Connection, evaluation_id: str
-    ) -> Optional[EngineEvaluation]:
-        row = conn.execute(
-            select(t.engine_evaluations).where(t.engine_evaluations.c.id == evaluation_id)
-        ).mappings().first()
-        if row is None:
-            return None
-
+    def _eval_from_row(self, row: Mapping[str, Any]) -> EngineEvaluation:
         return EngineEvaluation(
             engine=row["engine"],
-            depth=row["depth"],
-            nodes=row["nodes"],
-            time_ms=row["time_ms"],
+            depth=codec.decode_search_limit(row["depth"]),
+            nodes=codec.decode_search_limit(row["nodes"]),
+            time_ms=codec.decode_search_limit(row["time_ms"]),
             score_cp=row["score_cp"],
             mate_in=row["mate_in"],
             best_move_uci=row["best_move_uci"],
-            pv=_json_load(row["pv_json"], []),
-            wdl=_json_load(row["wdl_json"], None),
+            pv=codec.decode_pv(row["pv"]),
+            wdl=codec.decode_wdl(row["wdl_win"], row["wdl_draw"], row["wdl_loss"]),
         )
 
     def _training_session_from_row(self, row: Mapping[str, Any]) -> TrainingSession:
@@ -1285,28 +1275,6 @@ class PrepForgeRepository:
         for child in root.children:
             for node in self._walk_nodes(child):
                 yield node
-
-    def _game_move_id(self, game_id: str, ply: int) -> str:
-        return "game:{0}:{1}".format(game_id, ply)
-
-    def _opening_move_id(self, node_id: str) -> str:
-        return "opening:{0}:move".format(node_id)
-
-    def _engine_evaluation_id(self, fen: str, evaluation: EngineEvaluation) -> str:
-        payload = {
-            "fen": fen,
-            "engine": evaluation.engine,
-            "depth": evaluation.depth,
-            "nodes": evaluation.nodes,
-            "time_ms": evaluation.time_ms,
-            "score_cp": evaluation.score_cp,
-            "mate_in": evaluation.mate_in,
-            "best_move_uci": evaluation.best_move_uci,
-            "pv": evaluation.pv,
-            "wdl": evaluation.wdl,
-        }
-        digest = sha256(_json_dump(payload).encode("utf-8")).hexdigest()[:32]
-        return "eval:{0}".format(digest)
 
     def _analysis_result_id(self, result: AnalysisResult) -> str:
         payload = {

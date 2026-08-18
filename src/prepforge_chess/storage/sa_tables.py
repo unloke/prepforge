@@ -1,23 +1,12 @@
-"""Legacy domain schema, expressed as SQLAlchemy Core tables.
+"""Domain schema as SQLAlchemy Core tables.
 
-This is the Phase 2 migration target: the same 19 tables the raw-SQL
-``schema.sql`` (+ the runtime ``_apply_migrations`` additions) create, but defined
-as SQLAlchemy ``Table`` objects on the *shared* ``api.db.Base.metadata``. That
-gives the whole application one ``MetaData`` and one Alembic history covering both
-the new identity tables (``api/models.py``) and the legacy domain tables, so
-Postgres DDL is generated rather than hand-rolled and the global ``request_lock``
-single-connection design can be retired.
-
-Faithful-port choices (deliberate, see ROADMAP Phase 2a-1):
-* JSON blobs and ISO-8601 datetimes stay ``Text`` (``schema.sql`` stores them as
-  TEXT and the repository round-trips them with ``_json_dump`` / ``_dt_to_text``).
-  Keeping the types identical means the repository's serialization logic does not
-  change when its backend is swapped in 2a-2. JSONB/TIMESTAMPTZ is a later refinement.
-* Boolean flags stay ``Integer`` (0/1), matching ``_bool_to_int``.
-* Defaults are supplied by the repository in Python, so columns are ``nullable``
-  per ``schema.sql`` but carry no server defaults.
-
-``tests/test_sa_tables.py`` guards against this drifting from ``schema.sql``.
+Compact persistent representation (no legacy dual-format):
+* games store ``initial_fen`` + ``uci_blob``; PGN/SAN/FEN sequences are derived;
+* moves hold only per-ply annotations that cannot be rebuilt from the UCI blob;
+* positions is a full-FEN catalog (6 fields, unique); never a short hash;
+* engine_evaluations key by (position_id, engine, depth, nodes, time_ms)
+  with unset limits stored as ``codec.UNSET_SEARCH_LIMIT`` so UNIQUE is NULL-safe;
+* opening nodes store arriving UCI and reconstruct FEN by walking the tree.
 """
 from __future__ import annotations
 
@@ -55,110 +44,80 @@ games = Table(
     Column("id", Text, primary_key=True),
     Column("source", Text, nullable=False),
     Column("initial_fen", Text, nullable=False),
+    Column("uci_blob", Text, nullable=False),
     Column("white", Text),
     Column("black", Text),
     Column("result", Text, nullable=False),
     Column("event", Text),
     Column("site", Text),
     Column("played_at", Text),
-    Column("pgn", Text),
-    # Not globally unique: dedup is per-owner (see idx_games_owner_lichess).
     Column("lichess_id", Text),
     Column("tags_json", Text, nullable=False),
-    # Added by the multi-tenancy migration; isolation root for owned games.
     Column("owner_user_id", Text),
     Column("created_at", Text, nullable=False),
     Column("updated_at", Text, nullable=False),
     Index("idx_games_owner", "owner_user_id"),
-    # NULLs are distinct, so ownerless / non-Lichess rows are never constrained.
     Index("idx_games_owner_lichess", "owner_user_id", "lichess_id", unique=True),
 )
 
 positions = Table(
     "positions",
     metadata,
-    Column("id", Text, primary_key=True),
+    Column("id", Integer, primary_key=True),
     Column("fen", Text, nullable=False, unique=True),
-    Column("side_to_move", Text, nullable=False),
-    Column("move_number", Integer, nullable=False),
-    Column("halfmove_clock", Integer, nullable=False),
-    Column("fullmove_number", Integer, nullable=False),
-    Column("legal_moves_json", Text, nullable=False),
-    Column("tags_json", Text, nullable=False),
-    Column("created_at", Text, nullable=False),
 )
 
 engine_evaluations = Table(
     "engine_evaluations",
     metadata,
-    Column("id", Text, primary_key=True),
-    Column("fen", Text, nullable=False),
+    Column("id", Integer, primary_key=True),
+    Column("position_id", Integer, ForeignKey("positions.id"), nullable=False),
     Column("engine", Text, nullable=False),
-    Column("depth", Integer),
-    Column("nodes", Integer),
-    Column("time_ms", Integer),
+    Column("depth", Integer, nullable=False),
+    Column("nodes", Integer, nullable=False),
+    Column("time_ms", Integer, nullable=False),
     Column("score_cp", Integer),
     Column("mate_in", Integer),
     Column("best_move_uci", Text),
-    Column("pv_json", Text, nullable=False),
-    Column("wdl_json", Text),
-    Column("created_at", Text, nullable=False),
-    UniqueConstraint("fen", "engine", "depth", "nodes", "time_ms"),
+    Column("pv", Text, nullable=False),
+    Column("wdl_win", Integer),
+    Column("wdl_draw", Integer),
+    Column("wdl_loss", Integer),
+    UniqueConstraint("position_id", "engine", "depth", "nodes", "time_ms"),
 )
 
 moves = Table(
     "moves",
     metadata,
-    Column("id", Text, primary_key=True),
-    Column("game_id", Text, ForeignKey("games.id", ondelete="CASCADE")),
-    Column("ply", Integer, nullable=False),
-    Column("move_number", Integer, nullable=False),
-    Column("side_to_move", Text, nullable=False),
+    Column("game_id", Text, ForeignKey("games.id", ondelete="CASCADE"), primary_key=True),
+    Column("ply", Integer, primary_key=True),
     Column("uci", Text, nullable=False),
-    Column("san", Text, nullable=False),
-    Column("fen_before", Text, nullable=False),
-    Column("fen_after", Text, nullable=False),
-    Column("engine_eval_before_id", Text, ForeignKey("engine_evaluations.id")),
-    Column("engine_eval_after_id", Text, ForeignKey("engine_evaluations.id")),
+    Column("engine_eval_before_id", Integer, ForeignKey("engine_evaluations.id")),
+    Column("engine_eval_after_id", Integer, ForeignKey("engine_evaluations.id")),
     Column("best_move_uci", Text),
-    Column("best_move_eval_id", Text, ForeignKey("engine_evaluations.id")),
+    Column("best_move_eval_id", Integer, ForeignKey("engine_evaluations.id")),
     Column("classification", Text, nullable=False),
     Column("comment", Text),
-    Column("tags_json", Text, nullable=False),
+    Column("tags_json", Text),
     Column("source", Text, nullable=False),
-    Column("created_at", Text, nullable=False),
     Index("idx_moves_game_ply", "game_id", "ply"),
-    Index("idx_moves_fen_before", "fen_before"),
-    Index("idx_moves_uci", "uci"),
 )
 
 analysis_results = Table(
     "analysis_results",
     metadata,
     Column("id", Text, primary_key=True),
-    Column("game_id", Text, ForeignKey("games.id", ondelete="CASCADE"), nullable=False),
+    Column(
+        "game_id",
+        Text,
+        ForeignKey("games.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
     Column("analyzed_at", Text, nullable=False),
     Column("engine", Text, nullable=False),
     Column("depth", Integer),
     Column("summary_json", Text, nullable=False),
-    Column("critical_ply_json", Text, nullable=False),
-    Column("config_json", Text, nullable=False),
-)
-
-maia_predictions = Table(
-    "maia_predictions",
-    metadata,
-    Column("id", Text, primary_key=True),
-    Column("fen", Text, nullable=False),
-    Column("move_uci", Text, nullable=False),
-    Column("probability", Float, nullable=False),
-    Column("model", Text, nullable=False),
-    Column("rating_bucket", Text),
-    Column("rank", Integer),
-    Column("sample_size", Integer),
-    Column("created_at", Text, nullable=False),
-    UniqueConstraint("fen", "move_uci", "model", "rating_bucket"),
-    Index("idx_maia_predictions_fen", "fen"),
+    Column("critical_ply", Text, nullable=False),
 )
 
 repertoires = Table(
@@ -182,17 +141,8 @@ repertoires = Table(
     Column("is_active", Integer, nullable=False),
     Column("created_at", Text, nullable=False),
     Column("updated_at", Text, nullable=False),
-    # Phase 5 (teams/sharing): nullable so the existing repository insert is
-    # untouched — NULL visibility is treated as "private". A repertoire shared to a
-    # team carries team_id + visibility='team'. No DB-level FK to the ORM ``teams``
-    # table on purpose: it would couple every legacy ``create_all`` to importing
-    # api.models, and a dangling team_id fails closed (the read gate checks live
-    # membership), so referential integrity is enforced in app logic instead.
     Column("team_id", Text),
     Column("visibility", Text),
-    # Denormalized RepertoireHealth.to_dict() JSON, refreshed wherever the tree is
-    # already loaded (Build payload + train summary). Lets the dashboard list render
-    # the coverage badge without an O(N) per-row tree walk. NULL = never computed yet.
     Column("health_json", Text),
     Index("idx_repertoires_owner", "user_profile_id"),
     Index("idx_repertoires_team", "team_id"),
@@ -209,19 +159,17 @@ opening_nodes = Table(
         nullable=False,
     ),
     Column("parent_id", Text, ForeignKey("opening_nodes.id", ondelete="CASCADE")),
-    Column("move_id", Text, ForeignKey("moves.id")),
-    Column("fen", Text, nullable=False),
-    Column("side_to_move", Text, nullable=False),
-    Column("engine_evaluation_id", Text, ForeignKey("engine_evaluations.id")),
+    Column("uci", Text),
+    Column("engine_evaluation_id", Integer, ForeignKey("engine_evaluations.id")),
     Column("maia_probability", Float),
     Column("is_mainline", Integer, nullable=False),
     Column("is_user_prepared_move", Integer, nullable=False),
     Column("is_enabled", Integer, nullable=False),
     Column("priority", Float, nullable=False),
     Column("comment", Text),
-    Column("tags_json", Text, nullable=False),
-    Column("arrows_json", Text, nullable=False),
-    Column("circles_json", Text, nullable=False),
+    Column("tags_json", Text),
+    Column("arrows_json", Text),
+    Column("circles_json", Text),
     Column("tactical_warning", Text),
     Column("strategic_idea", Text),
     Column("typical_plan", Text),
@@ -229,42 +177,6 @@ opening_nodes = Table(
     Column("created_at", Text, nullable=False),
     Column("updated_at", Text, nullable=False),
     Index("idx_opening_nodes_repertoire_parent", "repertoire_id", "parent_id"),
-    Index("idx_opening_nodes_fen", "fen"),
-)
-
-opening_lines = Table(
-    "opening_lines",
-    metadata,
-    Column("id", Text, primary_key=True),
-    Column(
-        "repertoire_id",
-        Text,
-        ForeignKey("repertoires.id", ondelete="CASCADE"),
-        nullable=False,
-    ),
-    Column("name", Text),
-    Column("node_ids_json", Text, nullable=False),
-    Column("priority", Float, nullable=False),
-    Column("tags_json", Text, nullable=False),
-    Column("created_at", Text, nullable=False),
-    Column("updated_at", Text, nullable=False),
-)
-
-generation_runs = Table(
-    "generation_runs",
-    metadata,
-    Column("id", Text, primary_key=True),
-    Column(
-        "repertoire_id",
-        Text,
-        ForeignKey("repertoires.id", ondelete="CASCADE"),
-        nullable=False,
-    ),
-    Column("root_node_id", Text, ForeignKey("opening_nodes.id"), nullable=False),
-    Column("config_json", Text, nullable=False),
-    Column("summary_json", Text, nullable=False),
-    Column("undo_log_json", Text, nullable=False),
-    Column("created_at", Text, nullable=False),
 )
 
 training_sessions = Table(
@@ -286,9 +198,6 @@ training_sessions = Table(
     Column("seed", Integer),
     Column("created_at", Text, nullable=False),
     Column("updated_at", Text, nullable=False),
-    # load_latest_training_session(): WHERE repertoire_id [AND mode] ORDER BY
-    # updated_at DESC LIMIT 1 — without this the resume lookup full-scans the
-    # session history, which grows with every session a user trains.
     Index(
         "idx_training_sessions_rep_mode_updated",
         "repertoire_id",
@@ -323,64 +232,7 @@ training_progress = Table(
     Column("created_at", Text, nullable=False),
     Column("updated_at", Text, nullable=False),
     UniqueConstraint("user_profile_id", "repertoire_id", "node_id"),
-    # list_training_progress(): WHERE repertoire_id AND user_profile_id. The
-    # unique constraint leads with user_profile_id, so it can't serve this
-    # repertoire-leading scan; this index does (read on every smart session and
-    # health summary).
     Index("idx_training_progress_rep_user", "repertoire_id", "user_profile_id"),
-)
-
-training_mistakes = Table(
-    "training_mistakes",
-    metadata,
-    Column("id", Text, primary_key=True),
-    Column("session_id", Text, ForeignKey("training_sessions.id", ondelete="SET NULL")),
-    Column(
-        "repertoire_id",
-        Text,
-        ForeignKey("repertoires.id", ondelete="CASCADE"),
-        nullable=False,
-    ),
-    Column(
-        "node_id",
-        Text,
-        ForeignKey("opening_nodes.id", ondelete="CASCADE"),
-        nullable=False,
-    ),
-    Column("expected_uci", Text, nullable=False),
-    Column("played_uci", Text, nullable=False),
-    Column("fen_before", Text, nullable=False),
-    Column("mistake_count", Integer, nullable=False),
-    Column("resolved_at", Text),
-    Column("created_at", Text, nullable=False),
-    Column("updated_at", Text, nullable=False),
-)
-
-lichess_imports = Table(
-    "lichess_imports",
-    metadata,
-    Column("id", Text, primary_key=True),
-    Column("username", Text, nullable=False),
-    Column("requested_count", Integer, nullable=False),
-    Column("imported_game_ids_json", Text, nullable=False),
-    Column("skipped_game_ids_json", Text, nullable=False),
-    Column("errors_json", Text, nullable=False),
-    Column("created_at", Text, nullable=False),
-)
-
-practical_opening_matches = Table(
-    "practical_opening_matches",
-    metadata,
-    Column("id", Text, primary_key=True),
-    Column("game_id", Text, ForeignKey("games.id", ondelete="CASCADE"), nullable=False),
-    Column("user_color", Text, nullable=False),
-    Column("repertoire_id", Text, ForeignKey("repertoires.id", ondelete="SET NULL")),
-    Column("matched_plies", Integer, nullable=False),
-    Column("last_matched_node_id", Text, ForeignKey("opening_nodes.id")),
-    Column("departure_ply", Integer),
-    Column("departure_move_uci", Text),
-    Column("departure_reason", Text, nullable=False),
-    Column("created_at", Text, nullable=False),
 )
 
 engine_settings = Table(
@@ -405,8 +257,6 @@ app_settings = Table(
     Column("updated_at", Text, nullable=False),
 )
 
-# Created by the multi-tenancy migration, not schema.sql: maps a browser cookie
-# (token hash) to a user_profiles row. Legacy guest/Lichess sessions live here.
 user_sessions = Table(
     "user_sessions",
     metadata,
@@ -422,29 +272,20 @@ user_sessions = Table(
     Index("idx_user_sessions_profile", "user_profile_id"),
 )
 
-# Every legacy ``Table`` object, for ``metadata.create_all(tables=...)``. The shared
-# ``Base.metadata`` also carries the new SaaS identity tables (``api/models.py``), so
-# the DDL helpers in ``database.py`` pass this list explicitly to create *only* the
-# legacy domain schema rather than the whole metadata. ``create_all`` resolves FK
-# ordering itself, so the order here is irrelevant.
-LEGACY_TABLES = (
+DOMAIN_TABLES = (
     user_profiles,
     games,
     positions,
     engine_evaluations,
     moves,
     analysis_results,
-    maia_predictions,
     repertoires,
     opening_nodes,
-    opening_lines,
-    generation_runs,
     training_sessions,
     training_progress,
-    training_mistakes,
-    lichess_imports,
-    practical_opening_matches,
     engine_settings,
     app_settings,
     user_sessions,
 )
+
+

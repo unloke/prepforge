@@ -6,8 +6,8 @@ Core. ``connect_database`` / ``initialize_database`` therefore return a SQLAlche
 ``sqlite3.Connection``. The DDL is generated from ``storage/sa_tables`` —
 ``metadata.create_all`` — so the hand-rolled ``schema.sql`` + the runtime
 ``_apply_migrations`` rebuild machinery the old design needed are gone; the legacy
-``schema.sql`` survives only as the drift-guard fixture in ``tests/test_sa_tables.py``
-and will be retired with the Alembic baseline (Phase 2a-3).
+``schema.sql`` is the drift-guard fixture in ``tests/test_sa_tables.py``
+(must match ``sa_tables.DOMAIN_TABLES``).
 """
 from __future__ import annotations
 
@@ -60,14 +60,14 @@ def _ensure_indexes(engine: Engine) -> None:
     index is already there) and works on both SQLite and Postgres, so newly
     added performance indexes land on existing deployments without an Alembic
     migration."""
-    for table in sa_tables.LEGACY_TABLES:
+    for table in sa_tables.DOMAIN_TABLES:
         for index in table.indexes:
             index.create(bind=engine, checkfirst=True)
 
 
 def apply_schema(engine: Engine) -> None:
     """Create the legacy domain tables (idempotent) from the SQLAlchemy metadata."""
-    sa_tables.metadata.create_all(engine, tables=list(sa_tables.LEGACY_TABLES))
+    sa_tables.metadata.create_all(engine, tables=list(sa_tables.DOMAIN_TABLES))
     _ensure_indexes(engine)
 
 

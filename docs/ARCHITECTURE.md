@@ -37,11 +37,17 @@ chess engines running client-side:
   `replay_engine.py` / `replay_maia.py` (replay browser-submitted evals server-side for
   persistence), `lichess_oauth.py` / `lichess_fetch.py`, `app_settings.py` (per-owner
   settings), `repertoire_export.py`.
-- **Storage** (`src/prepforge_chess/storage/`): `sa_tables.py` defines the full schema
-  (identity + the 19 legacy domain tables) as SQLAlchemy Core on one `Base.metadata`;
-  Postgres in prod (`DATABASE_URL`, auto-pinned to `postgresql+psycopg://`), SQLite for
-  dev/tests. `migrations/` (Alembic) is the live drift guard (`alembic check`);
-  `schema.sql` is a static reference with no runtime reader.
+- **Storage** (`src/prepforge_chess/storage/`): compact domain representation as
+  SQLAlchemy Core on one `Base.metadata` (`sa_tables.py` + `codec.py`). A game is
+  `initial_fen` + UCI blob + sparse annotations; positions are a full-FEN catalog;
+  engine evaluations are deduplicated; SAN/FEN/PGN and opening-node FENs are
+  reconstructed on read. Unset search limits use `UNSET_SEARCH_LIMIT` so UNIQUE
+  works on Postgres and SQLite. Postgres in prod (`DATABASE_URL`, auto-pinned to
+  `postgresql+psycopg://`), SQLite for dev/tests. `migrations/` (Alembic) is the
+  live drift guard (`alembic check`); `schema.sql` is a static reference with no
+  runtime reader. The old dual-format / per-move FEN+SAN schema is not supported
+  — deploy initializes the current Alembic head (empty rebuild, no legacy data
+  upgrade).
 - **Frontend SPA** (`web-src/`): `app.js` is the shell for the three workspaces
   (Analyze/Build/Train) plus auth/billing/teams UI; `csrf.js` handles CSRF token
   bootstrap; `chess-local.js` does client-side legality (chess.js) so the board never

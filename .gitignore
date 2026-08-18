@@ -70,5 +70,27 @@ Thumbs.db
 # Local agent scratch logs (not source)
 agent-tools/
 
+# Durable repository-local Grok consult jobs (runtime only; never commit)
+.prepforge/
+
 # Scout v12 harness working data (game dumps, bias fits, route audits) - local only
 tmp/
+
+# Registered Module B scientific data for the authoritative worktree.
+# Exact files and hashes are in research/module-b-non-git-data-registry.json.
+/research/lichess-db-2013-01-burned/projection/
+/research/lichess-db-2013-01-burned/plr-population-v1/
+/research/lichess-db-2013-01-burned/identifiability-run/
+/research/lichess-db-2014-01-power/projection/
+/research/lichess-db-2014-02-power/projection/
+/research/lichess-db-2014-03-power/projection/
+/research/lichess-db-2014-04-power/projection/
+/research/lichess-db-2014-05-power/projection/
+/research/lichess-db-2014-06-power/projection/
+/research/lichess-db-2014-07-power/projection/
+/research/lichess-db-2014-08-power/projection/
+/research/lichess-db-2014-09-power/projection/
+/research/module-b-outcome-eval-multimonth/merged-outcome-join-2014-3q.ndjson
+/research/tools/maia3/*.onnx
+/research/tools/stockfish/*.exe
+/research/tools/stockfish-17.1-official-windows-x86-64/

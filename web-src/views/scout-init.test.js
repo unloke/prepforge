@@ -255,4 +255,17 @@ describe("scout view initialization reentrancy", () => {
     expect(staleOnGameCalled).toBe(false);
     expect(elements.get("scout-live-count").textContent).toBe("1");
   });
+
+  it("clears experimental panel HTML so Reset cannot show a previous scout's routes", async () => {
+    const panel = elements.get("scout-v3-results");
+    panel.hidden = false;
+    panel.innerHTML = "<div class=\"scout-v13-report\">stale-package</div>";
+
+    elements.get("scout-reset-btn").addEventListener.mock.calls[0][1]();
+
+    expect(panel.innerHTML).toBe("");
+    expect(panel.hidden).toBe(true);
+    expect(elements.get("scout-results").innerHTML).toBe("");
+    expect(elements.get("scout-profile").hidden).toBe(true);
+  });
 });

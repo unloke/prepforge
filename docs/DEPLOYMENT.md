@@ -44,6 +44,18 @@ The live deploy runs on Render's **free tier**.
 5. Deploy. Confirm `/healthz` returns OK and the SPA loads with
    `crossOriginIsolated === true` (COOP/COEP headers for WASM engines).
 
+### Breaking schema (compact storage)
+
+Alembic head `c7e8f9a0b1c2` rebuilds domain chess tables into the compact
+representation (`games.uci_blob`, `positions`, deduplicated `engine_evaluations`,
+sparse `moves` / `opening_nodes`). There is **no legacy-data migration**.
+
+The old schema is not supported. This deploy currently has no real user data —
+`alembic upgrade head` (Dockerfile `CMD`) should initialize the **current**
+schema. Identity/auth/billing tables are not part of that rebuild. If a previous
+environment still has the old domain tables, the upgrade drops and recreates
+them; do not expect old games/repertoires to survive.
+
 ### Post-deploy checklist
 
 - [ ] `/healthz` ok; logs show uvicorn/FastAPI.

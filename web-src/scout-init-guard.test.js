@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createScoutInitGuard } from "./scout-init-guard.js";
+import { createScoutInitGuard, scoutStateCarryover } from "./scout-init-guard.js";
 
 describe("createScoutInitGuard", () => {
   it("blocks a second tryBegin while initialization is in progress", () => {
@@ -47,5 +47,43 @@ describe("createScoutInitGuard", () => {
     expect(guard.isCurrent(b)).toBe(true);
     guard.finish(b);
     expect(guard.isInitializing).toBe(false);
+  });
+});
+
+describe("scoutStateCarryover", () => {
+  it("drops deep-scan and explorer from a previous same-username session", () => {
+    const prev = {
+      username: "rival",
+      activeSpeed: "blitz",
+      ecoCache: new Map([["k", "Sicilian"]]),
+      maiaResults: new Map([["f", { maiaScorePct: 40 }]]),
+      maiaCache: new Map([["c", 1]]),
+      maiaEnrichState: "ready",
+      prefilterCache: new Map([["fen", { score_cp: 20 }]]),
+      engineByColor: { white: { scanRecords: [{ gameId: "old" }] } },
+      explorerByColor: { white: { mastersByFen: new Map() } },
+    };
+    const carry = scoutStateCarryover(prev, "rival");
+    expect(carry.activeSpeed).toBe("blitz");
+    expect(carry.ecoCache).toBe(prev.ecoCache);
+    expect(carry.maiaResults).toBe(prev.maiaResults);
+    expect(carry.prefilterCache).toBe(prev.prefilterCache);
+    expect(carry.engineByColor).toEqual({});
+    expect(carry.explorerByColor).toEqual({});
+  });
+
+  it("starts clean when the username changes", () => {
+    const prev = {
+      username: "old",
+      activeSpeed: "rapid",
+      ecoCache: new Map([["k", "x"]]),
+      maiaResults: new Map([["f", 1]]),
+      engineByColor: { white: {} },
+    };
+    const carry = scoutStateCarryover(prev, "new");
+    expect(carry.activeSpeed).toBe("all");
+    expect(carry.ecoCache.size).toBe(0);
+    expect(carry.maiaResults.size).toBe(0);
+    expect(carry.engineByColor).toEqual({});
   });
 });

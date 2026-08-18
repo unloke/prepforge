@@ -10,6 +10,9 @@ The product covers:
 - **Analyze** — PGN/Lichess import, move classification, eval graph, critical moments.
 - **Build** — repertoire trees with objective (Stockfish) and human-like (Maia3) branches.
 - **Train** — spaced repetition, mistake queues, Lichess practical-game matching.
+- **Scout** — opponent opening reach (Module A) plus production **Scout v2** route
+  selection (Module B). Experimental `?scoutV12=1` / `?scoutV13=1` paths are not
+  production. Module B research is closed; see `SCOUT_FINAL_STATE.md`.
 
 Shared core models (`src/prepforge_chess/core/`, `services/`, `storage/`) back both the
 web SPA and the optional CLI demos. See `docs/ARCHITECTURE.md` and `docs/ROADMAP.md`
@@ -49,6 +52,35 @@ npm run build    # emits SPA into src/prepforge_chess/web/static/
 ```
 
 Open http://127.0.0.1:8000 after starting uvicorn (API docs at `/docs` in dev).
+
+## Database
+
+Production uses **compact storage** (SQLAlchemy Core; Postgres in production, SQLite
+for local dev/tests). Alembic is the live schema authority (`alembic upgrade head`).
+
+Authoritative on disk:
+
+- **Game** — `initial_fen` + UCI sequence (`uci_blob`) + sparse per-ply annotations.
+- **Positions** — catalog of full 6-field FENs (never a short hash).
+- **Engine evaluations** — deduplicated by `(position, engine, depth, nodes, time_ms)`.
+  Unset search limits persist as `UNSET_SEARCH_LIMIT` (`-1`) so UNIQUE is NULL-safe
+  on both SQLite and Postgres.
+- **SAN / FEN / PGN** — reconstructed on read; not stored as the source of truth.
+- **Opening tree** — compact nodes (parent + arriving UCI) under a repertoire `root_fen`.
+
+### Breaking schema
+
+The old database schema is **not supported**. There is no legacy-data migration.
+
+This project currently has no production users. Deploying this version should
+**create / initialize the current schema** (`alembic upgrade head`). The compact
+rebase drops and rebuilds domain chess tables; identity/auth tables are separate.
+
+## Scout
+
+Production Module B is **Scout v2** (`web-src/scout-selector.js`). The reach
+pipeline in `web-src/scout.js` is Module A. Research and experimental Scout
+paths are not part of the production contract.
 
 ## Web app
 

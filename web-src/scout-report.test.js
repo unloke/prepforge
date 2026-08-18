@@ -18,6 +18,7 @@ import {
   renderScoutProfile,
   restoreScoutExpanded,
   scoutLineDetailHtml,
+  scoutRouteReasonText,
   scoutLineKey,
   scoutSparkline,
   scoutSvgBar,
@@ -516,6 +517,101 @@ describe("scout-report rendering", () => {
     expect(html).toContain("scout-miniboard-wrap");
     expect(html).toContain("scout-action-add-prep");
     expect(html).toContain('data-row-idx="0"');
+  });
+
+  it("uses the speed-filtered colour baseline, not all-speed profile stats", () => {
+    const mixed = [
+      scoutGameRecord({
+        color: "white",
+        score: 1,
+        sans: ["e4", "c5"],
+        ucis: ["e2e4", "c7c5"],
+        speed: "blitz",
+        datestamp: 1_700_000_000_000,
+        gameId: "blitz-win",
+      }),
+      scoutGameRecord({
+        color: "white",
+        score: 1,
+        sans: ["e4", "c5"],
+        ucis: ["e2e4", "c7c5"],
+        speed: "blitz",
+        datestamp: 1_700_000_000_000,
+        gameId: "blitz-win-2",
+      }),
+      scoutGameRecord({
+        color: "white",
+        score: 0,
+        sans: ["d4", "d5"],
+        ucis: ["d2d4", "d7d5"],
+        speed: "rapid",
+        datestamp: 1_700_000_000_000,
+        gameId: "rapid-loss",
+      }),
+      scoutGameRecord({
+        color: "white",
+        score: 0,
+        sans: ["d4", "d5"],
+        ucis: ["d2d4", "d7d5"],
+        speed: "rapid",
+        datestamp: 1_700_000_000_000,
+        gameId: "rapid-loss-2",
+      }),
+    ];
+    const { sectionData } = buildScoutSectionReport(
+      scoutModule,
+      {
+        games: mixed,
+        profile: {
+          recentlyChanged: { white: false, black: false },
+          colorStats: {
+            white: { games: 4, w: 2, d: 0, l: 2, scorePct: 50 },
+            black: { games: 0, w: 0, d: 0, l: 0, scorePct: 0 },
+          },
+        },
+      },
+      "white",
+      [],
+      { speedFilter: "blitz", escapeHtml },
+    );
+    expect(sectionData.baselineScorePct).toBe(100);
+    expect(sectionData.prepTargets.length).toBeGreaterThan(0);
+  });
+
+  it("explains why a game-plan row was recommended from existing selector fields", () => {
+    const reason = scoutRouteReasonText(
+      {
+        maiaScorePct: 38,
+        games: 4,
+        belowBaseline: 12,
+        lastSeen: { lastDatestamp: Date.now(), daysAgo: 0 },
+      },
+      50,
+    );
+    expect(reason).toContain("Maia estimates they score 38%");
+    expect(reason).toContain("seen in 4 games");
+    expect(reason).toContain("last played today");
+
+    const html = scoutLineDetailHtml(
+      {
+        sans: ["e4"],
+        ucis: ["e2e4"],
+        maiaScorePct: 38,
+        games: 4,
+        belowBaseline: 12,
+      },
+      0,
+      "white",
+      "prep",
+      {
+        fenAfterLine: scoutModule.fenAfterLine,
+        renderBoard: () => "<board></board>",
+        escapeHtml,
+        baseline: 50,
+      },
+    );
+    expect(html).toContain("scout-line-reason");
+    expect(html).toContain("Maia estimates they score 38%");
   });
 
   it("uses profile colour baseline instead of weighted trie score", () => {

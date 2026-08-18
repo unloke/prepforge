@@ -12,6 +12,7 @@ import {
   attachPrepReplies,
   fenAfterLine,
   mergeEngineIntoTargets,
+  opponentColorStats,
   scoutLineText,
 } from "./scout.js";
 import { formatLastSeenLabel, lineLastSeen } from "./scout-stats.js";
@@ -23,6 +24,7 @@ import {
   scoutMaiaRankedNote,
 } from "./scout-maia.js";
 import { buildScoutSectionSummary } from "./scout-summary.js";
+import { PRODUCTION_MODULE_B_ID, selectProductionRoutes } from "./scout-selector.js";
 
 export function scoutLineKey(ucis) {
   return (ucis || []).join(">");
@@ -764,11 +766,36 @@ function scoutPrepStatus(line) {
   return { cls: "is-new", tone: "bad", text: "Not in your prep" };
 }
 
-export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine, renderBoard, escapeHtml }) {
+/** Short why-this-route copy from fields the selector already computed. */
+export function scoutRouteReasonText(line, baseline) {
+  const parts = [];
+  if (line?.maiaScorePct != null) {
+    parts.push(`Maia estimates they score ${line.maiaScorePct}% here`);
+  } else if (baseline != null && line?.belowBaseline > 0) {
+    parts.push(`${line.belowBaseline} points below their ${baseline}% baseline`);
+  } else if (line?.prepCategory === "attack") {
+    parts.push("below their own baseline");
+  } else if (line?.prepCategory === "weapon") {
+    parts.push("a frequent line they score well on");
+  }
+  if ((line?.games || 0) === 1) parts.push("thin sample (1 game)");
+  else if ((line?.games || 0) > 1) parts.push(`seen in ${line.games} games`);
+  if (line?.lastSeen) {
+    const seen = formatLastSeenLabel(line.lastSeen);
+    if (seen) parts.push(seen);
+  }
+  return parts.join(" · ");
+}
+
+export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine, renderBoard, escapeHtml, baseline = null }) {
   const fen = fenAfterLine(line.ucis);
   const status = scoutPrepStatus(line);
   const statusLine = status.text
     ? `<div class="scout-line-status ${status.tone}">${escapeHtml(status.text)}</div>`
+    : "";
+  const reason = rowKind === "prep" || rowKind === "weakness" ? scoutRouteReasonText(line, baseline ?? line.baselineScorePct) : "";
+  const reasonLine = reason
+    ? `<div class="scout-line-reason muted">${escapeHtml(reason)}</div>`
     : "";
   const replyNote = line.suggestedReply?.uci
     ? `<div class="scout-line-reply good">Suggested reply: <strong>${escapeHtml(formatReplyLabel(line.suggestedReply))}</strong> (${escapeHtml(line.suggestedReply.source || "engine")})</div>`
@@ -795,6 +822,7 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
       <div class="scout-miniboard-wrap">${renderBoard(fen, oppColor)}</div>
       <div class="scout-line-actions">
         ${statusLine}
+        ${reasonLine}
         <div class="scout-line-action-row">
           <button type="button" class="scout-btn btn ghost scout-action-analyze" data-row-kind="${rowKind}" data-row-idx="${idx}">Analyze ›</button>
           <button type="button" class="scout-btn btn ghost scout-action-add-prep" data-row-kind="${rowKind}" data-row-idx="${idx}" data-color="${oppColor}">Add to prep ▾</button>
@@ -980,10 +1008,14 @@ export function buildScoutSectionReport(
   if (!trie.gameCount) return { html: "", sectionData: null };
 
   const stats = buildScoutStats(games, { color: oppColor, speedFilter });
+  const colorWdl = opponentColorStats(games, oppColor, { speedFilter });
+  // Speed-filtered WDL/score must match the filtered trie. When the filter is
+  // "all", an explicit profile.colorStats override is kept (tests + header).
+  const profileBaseline = profile.colorStats?.[oppColor]?.scorePct;
   const baseline =
-    profile.colorStats?.[oppColor]?.scorePct ??
-    (trie.count ? Math.round((trie.score / trie.count) * 100) : 0);
-  const colorWdl = profile.colorStats?.[oppColor] || { w: trie.w, d: trie.d, l: trie.l, games: trie.gameCount };
+    speedFilter !== "all"
+      ? colorWdl.scorePct
+      : (profileBaseline ?? (trie.count ? Math.round((trie.score / trie.count) * 100) : colorWdl.scorePct));
 
   const dist = scoutModule.moveDistribution(trie).slice(0, 4);
   const lines = scoutModule.topLines(trie);
@@ -1003,7 +1035,7 @@ export function buildScoutSectionReport(
   const { branches: allOpeningLines, ancestorFreq } = scoutModule.rankedOpeningBranches(
     games,
     oppColor,
-    { speedFilter },
+    { speedFilter, trie, baselineScorePct: baseline },
   );
   let gamePlanSource = allOpeningLines;
   if (prefilteredLines?.length) {
@@ -1024,7 +1056,7 @@ export function buildScoutSectionReport(
       enrichPrepTarget: scoutModule.enrichPrepTarget,
     });
   }
-  let weaknessTargets = scoutModule.rankGamePlan(gamePlanSource, baseline, {
+  let weaknessTargets = selectProductionRoutes(gamePlanSource, baseline, {
     oppColor,
     games,
     speedFilter,
@@ -1049,20 +1081,18 @@ export function buildScoutSectionReport(
   });
 
   const lookups = myLookups.map(({ lookup }) => ({ lookup }));
-  let prepTargets = attachPrepReplies(weaknessTargets, {
-    lookups,
-    refutations,
-    oppColor,
-  });
-
   const lastSeenByLine = new Map();
-  for (const target of prepTargets) {
+  for (const target of weaknessTargets) {
     const key = scoutLineKey(target.ucis);
     const seen = lineLastSeen(games, target.ucis, { color: oppColor, speedFilter });
     target.lastSeen = seen;
     lastSeenByLine.set(key, seen);
   }
-  prepTargets = attachPrepReplies(prepTargets, { lookups, refutations, oppColor });
+  const prepTargets = attachPrepReplies(weaknessTargets, {
+    lookups,
+    refutations,
+    oppColor,
+  });
 
   const summary = buildScoutSectionSummary(stats, {
     username: username || "opponent",
@@ -1079,6 +1109,7 @@ export function buildScoutSectionReport(
   });
 
   const sectionData = {
+    moduleB: PRODUCTION_MODULE_B_ID,
     gradedLines: graded,
     weaknessTargets: prepTargets,
     prepTargets,
@@ -1145,7 +1176,7 @@ export function buildScoutSectionReport(
 
   const heading = oppColor === "white" ? "With White" : "With Black";
   const html = `
-    <div class="scout-section" data-scout-color="${oppColor}">
+    <div class="scout-section" data-scout-color="${oppColor}" data-module-b="${PRODUCTION_MODULE_B_ID}">
       <div class="scout-section-head">
         <span class="scout-color-dot ${oppColor}" aria-hidden="true"></span>
         <h3>${heading}</h3>

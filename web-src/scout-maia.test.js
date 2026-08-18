@@ -483,6 +483,8 @@ describe("scoutMaiaRankedNote", () => {
   it("shows unavailable after all Maia reads fail", () => {
     const note = scoutMaiaRankedNote([{ scorePct: 50 }], MAIA_ENRICH_FAILED);
     expect(note).toContain("Maia unavailable");
+    expect(note).toContain("Ranked by exploitability");
+    expect(note).not.toContain("Ranked by recency");
     expect(note).not.toContain("loading");
   });
 

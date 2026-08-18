@@ -36,6 +36,9 @@ import {
   parseMultiPgn,
   parseNdjsonGames,
   parseTimeControlHeader,
+  parseScoutDatestamp,
+  parseSpeedBucket,
+  mergeEngineIntoTargets,
   nodeIdAfterFlush,
   rankGamePlan,
   rankedOpeningBranches,
@@ -98,15 +101,21 @@ function pgn({
   whiteElo = "",
   blackElo = "",
   utcDate = "",
+  utcTime = "",
   timeControl = "",
   site = "",
+  variant = "",
+  fen = "",
 }) {
   const extras = [];
   if (whiteElo) extras.push(`[WhiteElo "${whiteElo}"]`);
   if (blackElo) extras.push(`[BlackElo "${blackElo}"]`);
   if (utcDate) extras.push(`[UTCDate "${utcDate}"]`);
+  if (utcTime) extras.push(`[UTCTime "${utcTime}"]`);
   if (timeControl) extras.push(`[TimeControl "${timeControl}"]`);
   if (site) extras.push(`[Site "${site}"]`);
+  if (variant) extras.push(`[Variant "${variant}"]`);
+  if (fen) extras.push(`[FEN "${fen}"]`);
   return `[Event "Rated Blitz game"]\n[White "${white}"]\n[Black "${black}"]\n${extras.join("\n")}${extras.length ? "\n" : ""}[Result "${result}"]\n\n${moves} ${result}\n`;
 }
 
@@ -152,9 +161,41 @@ describe("movetextSans + clock parsing", () => {
     expect(scoutUrl("Foe")).toContain("clocks=true");
     expect(scoutStreamUrl("Foe")).toContain("clocks=true");
   });
+  it("requests only standard chess from Lichess", () => {
+    expect(scoutUrl("Foe")).toContain("variant=standard");
+    expect(scoutStreamUrl("Foe")).toContain("variant=standard");
+  });
+  it("parseSpeedBucket uses Lichess base+40*increment", () => {
+    expect(parseSpeedBucket("120+12")).toBe("rapid");
+    expect(parseSpeedBucket("60+12")).toBe("rapid");
+    expect(parseSpeedBucket("180+0")).toBe("blitz");
+    expect(parseSpeedBucket("59+0")).toBe("bullet");
+  });
 });
 
 describe("parseGameBlock / parseMultiPgn", () => {
+  it("uses UTCTime so resume until is not midnight UTC", () => {
+    const game = parseGameBlock(
+      pgn({ moves: "1. e4 e5", utcDate: "2026.06.10", utcTime: "16:30:00" }),
+      "foe",
+    );
+    expect(game.datestamp).toBe(Date.parse("2026-06-10T16:30:00Z"));
+    expect(parseScoutDatestamp("2026.06.10")).toBe(Date.parse("2026-06-10T00:00:00Z"));
+  });
+  it("drops non-standard variants and FEN setups", () => {
+    expect(
+      parseGameBlock(pgn({ moves: "1. e4 e5", variant: "Crazyhouse" }), "foe"),
+    ).toBeNull();
+    expect(
+      parseGameBlock(pgn({ moves: "1. e4 e5", fen: "8/8/8/8/8/8/8/8 w - - 0 1" }), "foe"),
+    ).toBeNull();
+    expect(parseGameBlock(pgn({ moves: "1. e4 e5", variant: "Standard" }), "foe")).not.toBeNull();
+  });
+  it("prefers Lichess createdAt over date-only PGN midnight", () => {
+    const block = pgn({ moves: "1. e4 e5", utcDate: "2026.06.10" });
+    const game = parseGameFromJson({ pgn: block, createdAt: 1_718_030_000_000 }, "foe");
+    expect(game.datestamp).toBe(1_718_030_000_000);
+  });
   it("extracts colour, score and replayed ucis for the scouted player", () => {
     const game = parseGameBlock(pgn({ moves: "1. e4 e5 2. Nf3" }), "foe");
     expect(game.color).toBe("white");
@@ -796,6 +837,19 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
     expect(sharedInfo?.frequency).toBeCloseTo(1, 4);
     expect(sharedInfo?.games).toBe(13);
     expect(sharedInfo?.scorePct).toBe(100);
+  });
+
+  it("does not stamp a deeper engine pattern onto a shorter sibling", () => {
+    const targets = [
+      { ucis: ["e2e4", "c7c5"], sans: ["e4", "c5"] },
+      { ucis: ["e2e4", "c7c5", "g1f3"], sans: ["e4", "c5", "Nf3"] },
+    ];
+    const patterns = new Map([
+      ["e2e4>c7c5>g1f3", { playedSan: "Qxd5", occurrences: 2, avgCpLoss: 200 }],
+    ]);
+    const merged = mergeEngineIntoTargets(targets, patterns);
+    expect(merged[0].hasEngineMistake).toBeUndefined();
+    expect(merged[1].hasEngineMistake).toBe(true);
   });
 
   it("keeps distinct branches that share only the first MAX_PLIES", () => {

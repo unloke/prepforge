@@ -157,7 +157,8 @@ export function mergeEngineIntoTargets(targets, enginePatterns) {
     let pattern = enginePatterns.get(pathKey);
     if (!pattern) {
       for (const [key, value] of enginePatterns) {
-        if (pathKey.startsWith(key) || key.startsWith(pathKey)) {
+        // Pattern may annotate a prefix of this target, not a descendant or sibling.
+        if (pathKey === key || pathKey.startsWith(`${key}>`)) {
           pattern = value;
           break;
         }
@@ -202,10 +203,11 @@ export function parseClkToSeconds(clk) {
   return Math.floor(Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]));
 }
 
-function parseSpeedBucket(timeControl) {
+/** Lichess estimated duration: base + 40 * increment. */
+export function parseSpeedBucket(timeControl) {
   const parsed = parseTimeControlHeader(timeControl);
   if (!parsed) return "unknown";
-  const n = parsed.baseSeconds;
+  const n = parsed.baseSeconds + 40 * (parsed.incrementSeconds || 0);
   if (n < 180) return "bullet";
   if (n < 480) return "blitz";
   if (n < 1500) return "rapid";
@@ -216,6 +218,16 @@ function parseGameId(block) {
   const site = headerValue(block, "Site") || "";
   const match = site.match(/lichess\.org\/([a-zA-Z0-9]+)/);
   return match ? match[1] : null;
+}
+
+/** UTCDate (YYYY.MM.DD) plus optional UTCTime (HH:MM:SS) → ms. Date-only is midnight UTC. */
+export function parseScoutDatestamp(dateRaw, timeRaw) {
+  if (!dateRaw) return 0;
+  const datePart = String(dateRaw).replace(/\./g, "-");
+  const timeOk = timeRaw && /^\d{1,2}:\d{2}(:\d{2})?$/.test(String(timeRaw).trim());
+  const timePart = timeOk ? String(timeRaw).trim() : "00:00:00";
+  const iso = timePart.length === 5 ? `${datePart}T${timePart}:00Z` : `${datePart}T${timePart}Z`;
+  return Date.parse(iso) || Date.parse(datePart) || 0;
 }
 
 /**
@@ -452,7 +464,12 @@ export function parseGameBlock(block, username) {
   const opponentRating = opponentRatingRaw ? Number(opponentRatingRaw) || 0 : 0;
 
   const dateRaw = headerValue(block, "UTCDate");
-  const datestamp = dateRaw ? Date.parse(dateRaw.replace(/\./g, "-")) || 0 : 0;
+  const timeRaw = headerValue(block, "UTCTime");
+  const datestamp = parseScoutDatestamp(dateRaw, timeRaw);
+
+  const variant = (headerValue(block, "Variant") || "Standard").trim().toLowerCase();
+  if (variant && variant !== "standard" && variant !== "chess") return null;
+  if (headerValue(block, "SetUp") === "1" || headerValue(block, "FEN")) return null;
 
   const timeControlRaw = headerValue(block, "TimeControl");
   const timeControl = parseTimeControlHeader(timeControlRaw);
@@ -571,6 +588,7 @@ export function parseGameFromJson(obj, username) {
   // Authoritative end-state ("resign" / "mate" / "outoftime" / "draw" / …), which the
   // PGN reader can only approximate — the collapse rule needs a reliable "resign".
   if (typeof obj.status === "string") game.status = obj.status;
+  if (Number.isFinite(obj.createdAt)) game.datestamp = obj.createdAt;
   return game;
 }
 
@@ -801,8 +819,8 @@ export function openingBreakdown(root, { minGames = 1 } = {}) {
 // and "1.e4 c5 2.Nf3" are the same Sicilian seen at different depths). We compare on the
 // ">"-joined uci path so a partial-uci coincidence can't false-match.
 export function isNestedLine(a, b) {
-  const x = a.line || triePathKey(a.ucis || []);
-  const y = b.line || triePathKey(b.ucis || []);
+  const x = a.line || branchPathKey(a.ucis || []);
+  const y = b.line || branchPathKey(b.ucis || []);
   return x === y || x.startsWith(`${y}>`) || y.startsWith(`${x}>`);
 }
 
@@ -1034,14 +1052,17 @@ export function aggregateOpeningBranches(
   return { branches, droppedCount, ancestorFreq };
 }
 
+/** Opponent W/D/L + score% for one colour, optionally restricted to a speed filter. */
+export function opponentColorStats(games, color, { speedFilter = "all" } = {}) {
+  const filtered =
+    speedFilter !== "all" ? (games || []).filter((g) => g.speed === speedFilter) : games || [];
+  return colorResultStats(filtered, color);
+}
+
 /** Opponent's overall score% in games for one colour (used as the prep baseline). */
 export function opponentColorBaseline(games, color, { speedFilter = "all" } = {}) {
-  const filtered =
-    speedFilter !== "all" ? games.filter((g) => g.speed === speedFilter) : games;
-  const colorGames = filtered.filter((g) => g.color === color);
-  if (!colorGames.length) return 50;
-  const sum = colorGames.reduce((acc, g) => acc + (g.score ?? 0), 0);
-  return Math.round((sum / colorGames.length) * 100);
+  const stats = opponentColorStats(games, color, { speedFilter });
+  return stats.games > 0 ? stats.scorePct : 50;
 }
 
 /**
@@ -1291,7 +1312,7 @@ export function rankGamePlan(
           ...g,
           ucis: normalized.ucis,
           sans: normalized.sans,
-          line: triePathKey(normalized.ucis),
+          line: branchPathKey(normalized.ucis),
           maiaWdl: g.maiaWdl,
           prefilterScore: g.prefilterScore,
         },
@@ -1322,11 +1343,14 @@ export function rankGamePlan(
       }
       const aStamp = a.lastSeen?.lastDatestamp ?? 0;
       const bStamp = b.lastSeen?.lastDatestamp ?? 0;
+      const aKey = a.line || triePathKey(a.ucis || []);
+      const bKey = b.line || triePathKey(b.ucis || []);
       return (
         bStamp - aStamp ||
         (b.branchScore || 0) - (a.branchScore || 0) ||
         b.share - a.share ||
-        b.games - a.games
+        b.games - a.games ||
+        aKey.localeCompare(bKey)
       );
     });
 
@@ -1342,6 +1366,14 @@ export function rankGamePlan(
     chosen.push(g);
   }
   return limit > 0 ? chosen.slice(0, limit) : chosen;
+}
+
+/** Production Module B selector alias — keep rankGamePlan as the implementation. */
+export function selectProductionRoutes(lines, baselineScorePct, options = {}) {
+  return rankGamePlan(lines, baselineScorePct, {
+    ...options,
+    limit: options.limit ?? SCOUT_GAME_PLAN_LIMIT,
+  });
 }
 
 /** Prefer an enabled mainline child; otherwise pick deterministically by UCI. */
@@ -1668,6 +1700,7 @@ export function scoutUrl(username, max, { pgnInJson = false, excludeBullet = fal
     evals: "false",
     opening: "false",
     perfType,
+    variant: "standard",
   });
   // pgnInJson lets the ND-JSON export carry both the PGN (parsed by the existing
   // PGN reader) AND the raw centisecond `clocks` array the PGN `[%clk]` rounds away.
@@ -1691,6 +1724,7 @@ export function scoutStreamUrl(username, { color = "both", since, until, max } =
     // separate a real preparation gap from a mouse-slip, and bullet openings are
     // noisy prep signal. The production scout streams blitz/rapid/classical only.
     perfType: "blitz,rapid,classical",
+    variant: "standard",
   });
   const maxN = Number(max);
   if (max != null && Number.isFinite(maxN) && maxN > 0) {

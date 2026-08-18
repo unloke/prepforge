@@ -18,7 +18,7 @@ import {
   scoutLineDetailHtml,
   scoutLineKey,
 } from "../scout-report.js";
-import { createScoutInitGuard } from "../scout-init-guard.js";
+import { createScoutInitGuard, scoutStateCarryover } from "../scout-init-guard.js";
 import { renderV12Report } from "../scout-v12-report.js";
 import { renderV13PanelShell, renderV13Report } from "../scout-v13-report.js";
 import { CancelledError, runStreamV13 } from "../scout-v13-stream.js";
@@ -1305,6 +1305,7 @@ export function createScoutView(deps) {
       renderBoard: (fen, orientation) =>
         renderScoutMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg }),
       escapeHtml,
+      baseline: scoutState?.sections?.[oppColor]?.baselineScorePct ?? null,
     });
   }
 
@@ -1814,29 +1815,22 @@ export function createScoutView(deps) {
       }
     }
     if (!initGuard.isCurrent(initToken)) return false;
-    const keepSpeed =
-      scoutState?.username === username ? scoutState.activeSpeed : "all";
-    const keepEngine =
-      scoutState?.username === username ? scoutState.engineByColor || {} : {};
-    const keepExplorer =
-      scoutState?.username === username ? scoutState.explorerByColor || {} : {};
+    const carry = scoutStateCarryover(scoutState, username);
     scoutState = {
       username,
       color,
       games: [],
       profile: { total: 0, speedCounts: {}, recentlyChanged: { white: false, black: false } },
       lookups,
-      activeSpeed: keepSpeed,
-      engineByColor: keepEngine,
+      activeSpeed: carry.activeSpeed,
+      engineByColor: carry.engineByColor,
       engineAggByColor: {},
-      explorerByColor: keepExplorer,
+      explorerByColor: carry.explorerByColor,
       sections: {},
-      ecoCache: scoutState?.username === username ? scoutState.ecoCache || new Map() : new Map(),
-      maiaResults:
-        scoutState?.username === username ? scoutState.maiaResults || new Map() : new Map(),
-      maiaCache:
-        scoutState?.username === username ? scoutState.maiaCache || new Map() : new Map(),
-      maiaEnrichState: scoutState?.username === username ? scoutState.maiaEnrichState : "idle",
+      ecoCache: carry.ecoCache,
+      maiaResults: carry.maiaResults,
+      maiaCache: carry.maiaCache,
+      maiaEnrichState: carry.maiaEnrichState,
       prefilterEnrichState: PREFILTER_IDLE,
       prefilterScopeKey: null,
       prefilterPools: { white: [], black: [] },
@@ -1844,8 +1838,7 @@ export function createScoutView(deps) {
       prefilteredLines: { white: [], black: [] },
       stockfishDisplayLines: { white: [], black: [] },
       ancestorFreq: { white: new Map(), black: new Map() },
-      prefilterCache:
-        scoutState?.username === username ? scoutState.prefilterCache || new Map() : new Map(),
+      prefilterCache: carry.prefilterCache,
       maiaAttemptsUsed: 0,
       // Persistent per-colour opening tries, grown one game at a time as the stream
       // arrives (see insertIntoLiveTries) instead of rebuilt from every game each batch.
@@ -2024,13 +2017,21 @@ export function createScoutView(deps) {
     engineAggSeq += 1;
     // A session reset invalidates any in-flight v13 package run and its result.
     v13CancelRequested = true;
+    v13Running = false;
     v13Result = null;
+    v12Audits = [];
+    v13Progress = { stage: "", done: 0, total: 0 };
     scoutState = null;
     scoutSession = null;
     const results = getResultsEl();
     const profile = getProfileEl();
+    const experimental = getV12PanelEl();
     if (results) results.innerHTML = "";
     if (profile) profile.hidden = true;
+    if (experimental) {
+      experimental.innerHTML = "";
+      experimental.hidden = true;
+    }
     updateLiveCounter();
     updateScoutControls();
     setStatus("");
@@ -2060,6 +2061,15 @@ export function createScoutView(deps) {
       prev.controller.abort();
     }
     cancelEnrichmentQueues();
+    v13CancelRequested = true;
+    v13Running = false;
+    v13Result = null;
+    v12Audits = [];
+    const experimental = getV12PanelEl();
+    if (experimental && !isV12Mode() && !isV13Mode()) {
+      experimental.innerHTML = "";
+      experimental.hidden = true;
+    }
 
     updateScoutControls();
 
