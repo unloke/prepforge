@@ -49,18 +49,22 @@ export class ExplorerRateLimited extends Error {
   }
 }
 
-// Only fen + ratings travel; the proxy pins every other upstream parameter.
-export function explorerUrl(db, fen, { rating } = {}) {
+// Only fen + ratings (+ masters topGames) travel; the proxy pins every other
+// upstream parameter.
+export function explorerUrl(db, fen, { rating, topGames } = {}) {
   const params = new URLSearchParams();
   params.set("fen", fen);
   if (db === "lichess") {
     params.set("ratings", ratingBucketsFor(rating).join(","));
+  } else if (Number.isFinite(Number(topGames)) && Number(topGames) > 0) {
+    params.set("top_games", String(Math.min(4, Math.max(1, Math.round(Number(topGames))))));
   }
   return `${EXPLORER_BASE}/${db === "lichess" ? "lichess" : "masters"}?${params}`;
 }
 
 // Normalize a raw explorer payload into what the panel renders. Percentages are
-// of decided+drawn games for THAT move row.
+// of decided+drawn games for THAT move row. Masters topGames entries survive as
+// `topGames` (id + moves) for the Lucky game sampler; other consumers ignore it.
 export function normalizeExplorer(raw) {
   const totalAll =
     (Number(raw.white) || 0) + (Number(raw.draws) || 0) + (Number(raw.black) || 0);
@@ -84,6 +88,14 @@ export function normalizeExplorer(raw) {
     totalGames: totalAll,
     opening: raw.opening ? `${raw.opening.eco} ${raw.opening.name}` : null,
     moves,
+    topGames: Array.isArray(raw.topGames)
+      ? raw.topGames
+          .map((g) => ({
+            id: g && g.id != null ? String(g.id) : null,
+            moves: typeof g.moves === "string" ? g.moves : null,
+          }))
+          .filter((g) => g.id && g.moves)
+      : [],
   };
 }
 
@@ -130,9 +142,10 @@ export function createExplorerClient({ fetchImpl, storage, now } = {}) {
     }
   }
 
-  // fetchStats(db, fen, {rating}) → normalized stats (see normalizeExplorer).
-  async function fetchStats(db, fen, { rating } = {}) {
-    const url = explorerUrl(db, fen, { rating });
+  // fetchStats(db, fen, {rating, topGames}) → normalized stats (see
+  // normalizeExplorer). topGames is masters-only and capped at 4 upstream.
+  async function fetchStats(db, fen, { rating, topGames } = {}) {
+    const url = explorerUrl(db, fen, { rating, topGames });
     const cache = readCache();
     const hit = cache.entries[url];
     if (hit && clock() - hit.at < CACHE_TTL_MS) return hit.data;

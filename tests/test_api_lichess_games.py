@@ -250,6 +250,95 @@ def test_explorer_passes_through_rate_limit(client, monkeypatch):
     assert r.status_code == 429
 
 
+def test_explorer_masters_top_games_passthrough(client, monkeypatch):
+    _register(client, "top1@example.com")
+    _link(client)
+    seen = {}
+
+    def _fake_fetch(url, token, **kwargs):
+        seen["url"] = url
+        return dict(_EXPLORER_RAW)
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_explorer_json", _fake_fetch
+    )
+    r = client.get(
+        "/api/lichess/explorer/masters",
+        params={"fen": _START_FEN, "top_games": 4},
+    )
+    assert r.status_code == 200, r.text
+    assert "topGames=4" in seen["url"]
+
+
+def test_explorer_masters_top_games_clamped(client, monkeypatch):
+    _register(client, "top2@example.com")
+    _link(client)
+    seen = {}
+
+    def _fake_fetch(url, token, **kwargs):
+        seen["url"] = url
+        return dict(_EXPLORER_RAW)
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_explorer_json", _fake_fetch
+    )
+    from prepforge_chess.api.routers import lichess as lichess_router
+
+    r = client.get(
+        "/api/lichess/explorer/masters",
+        params={"fen": _START_FEN, "top_games": 99},
+    )
+    assert r.status_code == 200, r.text
+    assert "topGames=4" in seen["url"]
+    lichess_router._explorer_cache.clear()
+
+    r = client.get(
+        "/api/lichess/explorer/masters",
+        params={"fen": _START_FEN, "top_games": -3},
+    )
+    assert r.status_code == 200, r.text
+    assert "topGames=0" in seen["url"]
+
+
+def test_explorer_lichess_ignores_top_games(client, monkeypatch):
+    _register(client, "top3@example.com")
+    _link(client)
+    seen = {}
+
+    def _fake_fetch(url, token, **kwargs):
+        seen["url"] = url
+        return dict(_EXPLORER_RAW)
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_explorer_json", _fake_fetch
+    )
+    r = client.get(
+        "/api/lichess/explorer/lichess",
+        params={"fen": _START_FEN, "top_games": 4},
+    )
+    assert r.status_code == 200, r.text
+    assert "topGames" not in seen["url"]
+    assert "speeds=blitz%2Crapid%2Cclassical" in seen["url"]
+    assert "variant=standard" in seen["url"]
+
+
+def test_explorer_masters_default_top_games_zero(client, monkeypatch):
+    _register(client, "top4@example.com")
+    _link(client)
+    seen = {}
+
+    def _fake_fetch(url, token, **kwargs):
+        seen["url"] = url
+        return dict(_EXPLORER_RAW)
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_explorer_json", _fake_fetch
+    )
+    r = client.get("/api/lichess/explorer/masters", params={"fen": _START_FEN})
+    assert r.status_code == 200, r.text
+    assert "topGames=0" in seen["url"]
+
+
 # ---- departure -> training miss (play→train loop) ---------------------------
 
 _DEPARTURE_PGN = """[Event "Rated Blitz game"]
