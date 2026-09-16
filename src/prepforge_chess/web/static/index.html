@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-BNuziE0O.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-TFS5Rf7F.css">
+    <script type="module" crossorigin src="/static/assets/index-CmlKPUM9.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-CHvIapNX.css">
   </head>
   <body>
     <header class="topbar">
@@ -234,10 +234,24 @@
                   <option value="explorer">Lichess explorer</option>
                   <option value="repertoire">My repertoire</option>
                 </select>
+                <label class="train-picker-label" id="train-play-color-label">You play</label>
+                <div class="train-modes" id="train-play-color" role="group" aria-label="Your color">
+                  <button type="button" class="train-mode is-active" data-color="white" data-testid="play-color-white">White</button>
+                  <button type="button" class="train-mode" data-color="black" data-testid="play-color-black">Black</button>
+                </div>
                 <p class="muted hint" id="train-play-book-hint">Explorer uses your rating pool; thin positions fall back to Maia.</p>
+                <p class="train-play-chip" id="train-play-chip" hidden data-testid="train-play-chip"></p>
+                <div class="train-play-trail" id="train-play-trail" data-testid="train-play-trail">
+                  <span class="trail-empty">No moves yet</span>
+                </div>
                 <div class="train-start-row">
                   <button class="btn primary" id="start-play" data-testid="start-play" type="button">Start</button>
                   <button class="btn ghost" id="feeling-lucky" data-testid="feeling-lucky" type="button" title="Jump to a book-departure, engine miss, or repertoire fork — not the starting position">I'm Feeling Lucky</button>
+                </div>
+                <div class="train-start-row">
+                  <button class="btn ghost" id="play-takeback" data-testid="play-takeback" type="button" disabled title="Undo your last move and the opponent's reply">Takeback</button>
+                  <button class="btn ghost" id="play-resign" data-testid="play-resign" type="button" disabled>Resign</button>
+                  <button class="btn ghost" id="play-analyze" data-testid="play-analyze" type="button" disabled title="Open this game in Analyze">Analyze this</button>
                 </div>
               </div>
             </div>

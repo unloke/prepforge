@@ -22,6 +22,13 @@ import {
 import { mapTrainUiSession, shouldResetTrainStats } from "./train-resume.js";
 import { pickOpponentReply, playPositionAfterReply } from "./train-opponent.js";
 import { luckyStartFromWorkspace, isStartFen } from "./train-lucky.js";
+import {
+  resolvePlayColor,
+  playPoolLabel,
+  formatPlayTrail,
+  takebackToUserMove,
+  playSessionPgn,
+} from "./train-play.js";
 import { engineUnavailableBanner, engineBannerHtml } from "./engine-banner.js";
 import {
   buildPaletteItems,
@@ -1941,14 +1948,15 @@ function renderInstantCoach() {
   const ctx = appState.explainContext || {};
   const fen = ctx.fen || appState.analysisBoardFen || START_FEN;
   const turn = fen.split(" ")[1] === "b" ? "black" : "white";
-  paintPhaseFromFen(ctx.prevFen || fen);
   if (ctx.prevFen && ctx.lastSan) {
+    paintPhaseFromFen(ctx.prevFen || fen);
     const mover = turn === "white" ? "Black" : "White"; // the side that just moved
     const did = describeMove(ctx.prevFen, ctx.lastUci, ctx.lastSan);
     setCoachProse(did ? `${mover} ${did}.` : `${mover} plays ${ctx.lastSan}.`, "info");
   } else {
-    const side = turn === "white" ? "White" : "Black";
-    setCoachProse(`${side} to move. I'll say what it does — then Maia will add the human plan.`, "info");
+    paintPhaseChip(null);
+    paintMaiaCoachLine(null);
+    setCoachProse("Make a move and I'll tell you what I think.", "info");
   }
 }
 
@@ -2890,6 +2898,20 @@ function runPaletteItem(item) {
   if (item.action === "start-training") {
     switchView("train");
     startTraining();
+    return;
+  }
+  if (item.action === "play-human") {
+    switchView("train");
+    const playBtn = document.querySelector('#train-modes .train-mode[data-mode="play"]');
+    if (playBtn) playBtn.click();
+    startPlaySession();
+    return;
+  }
+  if (item.action === "feeling-lucky") {
+    switchView("train");
+    const playBtn = document.querySelector('#train-modes .train-mode[data-mode="play"]');
+    if (playBtn) playBtn.click();
+    onFeelingLucky();
     return;
   }
   if (item.action === "analyze") {
@@ -7566,6 +7588,17 @@ function syncTrainPickerVisibility() {
   if (startBtn) {
     startBtn.disabled = !smart && !play && !selectedTrainRepertoireId();
   }
+  const startPlay = document.getElementById("start-play");
+  const bookEl = document.getElementById("train-play-book");
+  const livePlay = !!(appState.play && appState.play.active);
+  if (bookEl) bookEl.disabled = livePlay;
+  if (startPlay) {
+    const needRep = play && book && book.value === "repertoire" && !selectedTrainRepertoireId();
+    startPlay.disabled = !!needRep;
+    startPlay.textContent = livePlay ? "New game" : "Start";
+  }
+  syncPlayColorLock();
+  paintPlayBookHint();
   syncTrainSessionControls();
 }
 
@@ -7584,16 +7617,20 @@ function syncTrainSessionControls() {
   const fresh = document.getElementById("train-fresh");
   const blitzToggle = document.getElementById("train-blitz-toggle");
   const blitzRow = document.getElementById("train-blitz-row");
+  const banner = document.getElementById("train-banner");
+  const state = banner && banner.dataset.state;
+  const busy = !!appState.trainBusy;
+  const teaching = state === "teach" || state === "reveal" || state === "runin";
   if (hint) {
     hint.hidden = false;
-    hint.disabled = play || !live;
+    hint.disabled = play || !live || busy || teaching;
     hint.title = play
       ? "Hints are for the spaced-repetition queue"
       : "Hint (show the piece to move)";
   }
   if (skip) {
     skip.hidden = false;
-    skip.disabled = play || !live;
+    skip.disabled = play || !live || busy;
     skip.title = play
       ? "Skip is for the spaced-repetition queue"
       : "Skip this card";
@@ -7605,6 +7642,14 @@ function syncTrainSessionControls() {
       ? "Blitz is locked for this session — applies on next Start"
       : "10 seconds per move - running out counts as a miss (the retry is untimed)";
   }
+  const takeback = document.getElementById("play-takeback");
+  const resign = document.getElementById("play-resign");
+  const analyze = document.getElementById("play-analyze");
+  const history = appState.play && appState.play.history;
+  const hasMoves = !!(history && history.length);
+  if (takeback) takeback.disabled = !play || !hasMoves;
+  if (resign) resign.disabled = !play || !appState.play || !appState.play.active;
+  if (analyze) analyze.disabled = !play || !hasMoves;
 }
 
 async function resetTrainBoardIdle(label) {
@@ -7734,6 +7779,109 @@ function playBook() {
   return el && el.value === "repertoire" ? "repertoire" : "explorer";
 }
 
+const PLAY_COLOR_KEY = "prepforge.play_color";
+
+function playPickerColor() {
+  const active = document.querySelector("#train-play-color .train-mode.is-active");
+  if (active && active.dataset.color === "black") return "black";
+  try {
+    return localStorage.getItem(PLAY_COLOR_KEY) === "black" ? "black" : "white";
+  } catch (_) {
+    return "white";
+  }
+}
+
+function setPlayPickerColor(color, { persist = true } = {}) {
+  const want = color === "black" ? "black" : "white";
+  if (persist) {
+    try {
+      localStorage.setItem(PLAY_COLOR_KEY, want);
+    } catch (_) { /* private mode */ }
+  }
+  document.querySelectorAll("#train-play-color .train-mode").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.color === want);
+  });
+}
+
+function syncPlayColorLock() {
+  const book = playBook();
+  const live = !!(appState.play && appState.play.active);
+  const lockRep = book === "repertoire";
+  if (lockRep && appState.build && appState.build.color) {
+    setPlayPickerColor(appState.build.color === "black" ? "black" : "white", { persist: false });
+  } else if (!live) {
+    try {
+      const stored = localStorage.getItem(PLAY_COLOR_KEY);
+      if (stored === "black" || stored === "white") {
+        setPlayPickerColor(stored, { persist: false });
+      }
+    } catch (_) { /* private mode */ }
+  }
+  document.querySelectorAll("#train-play-color .train-mode").forEach((btn) => {
+    btn.disabled = live || lockRep;
+    btn.title = lockRep ? "Locked to this repertoire" : live ? "Color is locked for this game" : "You play this color from the opening";
+  });
+}
+
+function paintPlayBookHint() {
+  const hint = document.getElementById("train-play-book-hint");
+  if (!hint) return;
+  if (playBook() === "repertoire") {
+    hint.textContent = selectedTrainRepertoireId()
+      ? "Opponent plays your repertoire replies; Maia when you're out of book."
+      : "Open a repertoire first, or switch back to Lichess explorer.";
+    return;
+  }
+  hint.textContent = `Explorer ${playPoolLabel(effectiveMaiaRating())} pool; thin positions fall back to Maia.`;
+}
+
+function playBookLabel(play) {
+  const session = play || appState.play;
+  const book = session && session.book === "repertoire" ? "My repertoire" : "Lichess explorer";
+  const color = session && session.userColor === "black" ? "Black" : "White";
+  const they = session && session.lastOppSan ? ` · they ${session.lastOppSan}` : "";
+  return `${book} · you ${color}${they}`;
+}
+
+function renderPlayTrail() {
+  const el = document.getElementById("train-play-trail");
+  if (!el) return;
+  const play = appState.play;
+  const text = play && play.history && play.history.length
+    ? formatPlayTrail(play.history, play.startFen)
+    : "";
+  el.innerHTML = text
+    ? `<span class="play-trail-sans">${escapeHtml(text)}</span>`
+    : `<span class="trail-empty">No moves yet</span>`;
+  const chip = document.getElementById("train-play-chip");
+  if (chip) {
+    const reason = play && play.luckyReason;
+    if (reason) {
+      chip.hidden = false;
+      chip.textContent =
+        reason === "miss"
+          ? "Engine miss"
+          : reason === "departure"
+            ? "Left prep"
+            : reason === "fork"
+              ? "Repertoire fork"
+              : reason;
+    } else {
+      chip.hidden = true;
+      chip.textContent = "";
+    }
+  }
+  syncTrainSessionControls();
+}
+
+function recordPlayPly(ply) {
+  const play = appState.play;
+  if (!play) return;
+  play.history = play.history || [];
+  play.history.push(ply);
+  renderPlayTrail();
+}
+
 function playChildren(nodeId) {
   if (!appState.build || !nodeId) return [];
   return (appState.build.nodes || []).filter(
@@ -7780,7 +7928,7 @@ async function loadPlayRepertoirePayload(repertoireId) {
   return payload;
 }
 
-function paintPlayPosition({ fen, legalMoves, lastMove, banner, sub, label }) {
+function paintPlayPosition({ fen, legalMoves, lastMove, banner, sub, label, state }) {
   boards.train.setEngineArrow(null);
   boards.train.setPosition({
     fen,
@@ -7789,9 +7937,9 @@ function paintPlayPosition({ fen, legalMoves, lastMove, banner, sub, label }) {
   });
   const side = (fen || "").split(" ")[1] === "b" ? "black" : "white";
   updateTrainTurnBadge(side);
-  setTrainBanner("move", banner, sub || "");
+  setTrainBanner(state || "move", banner, sub || "");
   const labelEl = document.getElementById("train-board-label");
-  if (labelEl) labelEl.textContent = label || "Play vs human";
+  if (labelEl) labelEl.textContent = label || playBookLabel();
 }
 
 async function startPlaySession({ fen, reason, nodeId: luckyNodeId } = {}) {
@@ -7799,10 +7947,13 @@ async function startPlaySession({ fen, reason, nodeId: luckyNodeId } = {}) {
   appState.training = null;
   const startFen = fen || START_FEN;
   const book = playBook();
-  let userColor = "white";
   let nodeId = null;
   if (book === "repertoire") {
     const repId = selectedTrainRepertoireId();
+    if (!repId) {
+      setStatus("Open a repertoire first, or switch the opponent book to Lichess explorer.");
+      return;
+    }
     if (repId && (!appState.build || appState.build.repertoire_id !== repId)) {
       try {
         await loadPlayRepertoirePayload(repId);
@@ -7812,16 +7963,16 @@ async function startPlaySession({ fen, reason, nodeId: luckyNodeId } = {}) {
       }
     }
     if (appState.build) {
-      userColor = appState.build.color === "black" ? "black" : "white";
       nodeId = (appState.build.nodes || []).find((node) => !node.parent_id)?.id || null;
     }
   }
-  // Lucky drops you on a decision: you play whoever is to move. A cold Start
-  // from the opening uses the repertoire color (or white for explorer).
-  if (reason) {
-    userColor = startFen.split(" ")[1] === "b" ? "black" : "white";
-    if (luckyNodeId) nodeId = luckyNodeId;
-  }
+  const userColor = resolvePlayColor({
+    book,
+    pickerColor: playPickerColor(),
+    repertoireColor: appState.build && appState.build.color,
+    luckyFen: reason ? startFen : null,
+  });
+  if (luckyNodeId) nodeId = luckyNodeId;
   let info;
   try {
     info = await boardInfo(startFen);
@@ -7832,10 +7983,15 @@ async function startPlaySession({ fen, reason, nodeId: luckyNodeId } = {}) {
   appState.play = {
     active: true,
     fen: info.fen,
+    startFen: info.fen,
     book,
     userColor,
     nodeId,
+    rootNodeId: nodeId,
     ply: 0,
+    history: [],
+    lastOppSan: null,
+    luckyReason: reason || null,
   };
   document.getElementById("train-progress-panel").hidden = true;
   const summary = document.getElementById("train-summary");
@@ -7853,16 +8009,16 @@ async function startPlaySession({ fen, reason, nodeId: luckyNodeId } = {}) {
           : book === "explorer"
             ? "Explorer at your rating, Maia when the sample thins"
             : "Your repertoire, Maia when you're out of book";
-  const title = reason ? "I'm Feeling Lucky" : "Play vs human";
   paintPlayPosition({
     fen: info.fen,
     legalMoves: sideToMoveFromFen(info.fen) === userColor ? info.legal_moves : [],
-    banner: title,
+    banner: "Your move",
     sub: why,
-    label: `${book === "explorer" ? "Lichess explorer" : "My repertoire"} · you are ${userColor}`,
+    label: playBookLabel(appState.play),
   });
   setStatus(isStartFen(info.fen) ? "Your move" : `Started from a key position (${reason || "book"})`);
-  syncTrainSessionControls();
+  renderPlayTrail();
+  syncTrainPickerVisibility();
   if (sideToMoveFromFen(info.fen) !== userColor) {
     await playOpponentReply();
   }
@@ -7875,8 +8031,10 @@ async function playOpponentReply() {
   const alreadyOver = playPositionAfterReply(info);
   if (alreadyOver.terminal) {
     play.active = false;
+    updateTrainTurnBadge(null);
     setTrainBanner("done", alreadyOver.banner, "Start or Feeling Lucky for another round");
     boards.train.setPosition({ fen: info.fen, legalMoves: [], lastMove: null });
+    syncTrainSessionControls();
     return;
   }
   setTrainBanner("runin", "Opponent thinking…", play.book === "explorer" ? "Lichess explorer" : "Book / Maia");
@@ -7891,22 +8049,38 @@ async function playOpponentReply() {
     maiaPredictions,
   });
   if (!reply.uci) {
+    play.active = false;
+    updateTrainTurnBadge(null);
     setTrainBanner("done", "No reply", "The opponent has no legal move from this book.");
+    syncTrainSessionControls();
     return;
   }
+  const nodeIdBefore = play.nodeId;
   const after = await boardAfterMove(play.fen, reply.uci);
   play.fen = after.board.fen;
   play.ply += 1;
   playAdvanceNode(reply.uci);
+  play.lastOppSan = after.move.san;
+  recordPlayPly({
+    uci: reply.uci,
+    san: after.move.san,
+    fenBefore: info.fen,
+    fenAfter: after.board.fen,
+    by: "opp",
+    nodeIdBefore,
+    nodeIdAfter: play.nodeId,
+  });
   const ended = playPositionAfterReply(after.board);
   if (ended.terminal) {
     play.active = false;
+    updateTrainTurnBadge(null);
     boards.train.setPosition({
       fen: after.board.fen,
       legalMoves: [],
       lastMove: reply.uci,
     });
     setTrainBanner("done", ended.banner, after.move.san);
+    syncTrainSessionControls();
     return;
   }
   const sourceLabel =
@@ -7925,9 +8099,9 @@ async function playOpponentReply() {
     fen: after.board.fen,
     legalMoves: ended.legalMoves,
     lastMove: reply.uci,
-    banner: `${sourceLabel} plays ${after.move.san}`,
-    sub: `Your move${reason}`,
-    label: `${play.book === "explorer" ? "Lichess explorer" : "My repertoire"} · you are ${play.userColor}`,
+    banner: "Your move",
+    sub: `${sourceLabel} played ${after.move.san}${reason}`,
+    label: playBookLabel(play),
   });
 }
 
@@ -7936,11 +8110,21 @@ async function submitPlayMove(playedUci) {
   if (!play || !play.active || !playedUci) return;
   const info = await boardInfo(play.fen);
   if (!info.legal_moves.includes(playedUci)) return;
+  const nodeIdBefore = play.nodeId;
   await optimisticBoardMove(boards.train, play.fen, playedUci);
   const after = await boardAfterMove(play.fen, playedUci);
   play.fen = after.board.fen;
   play.ply += 1;
   playAdvanceNode(playedUci);
+  recordPlayPly({
+    uci: playedUci,
+    san: after.move.san,
+    fenBefore: info.fen,
+    fenAfter: after.board.fen,
+    by: "user",
+    nodeIdBefore,
+    nodeIdAfter: play.nodeId,
+  });
   boards.train.setPosition({
     fen: after.board.fen,
     legalMoves: [],
@@ -7948,8 +8132,10 @@ async function submitPlayMove(playedUci) {
   });
   const ended = playPositionAfterReply(after.board);
   if (ended.terminal) {
-    setTrainBanner("done", ended.banner, after.move.san);
     play.active = false;
+    updateTrainTurnBadge(null);
+    setTrainBanner("done", ended.banner, after.move.san);
+    syncTrainSessionControls();
     return;
   }
   await playOpponentReply();
@@ -7965,6 +8151,7 @@ async function onFeelingLucky() {
       loadRepertoire: loadPlayRepertoirePayload,
       analysisMoves: appState.analysis && appState.analysis.moves,
       replayGames: appState.replayResults && appState.replayResults.games,
+      exclude: [appState.lastLuckyFen, appState.play && appState.play.startFen].filter(Boolean),
     });
   } catch (error) {
     setStatus(error.message);
@@ -7979,7 +8166,64 @@ async function onFeelingLucky() {
     );
     return;
   }
+  appState.lastLuckyFen = picked.fen;
   await startPlaySession({ fen: picked.fen, reason: picked.reason, nodeId: picked.nodeId });
+}
+
+async function takebackPlaySession() {
+  const play = appState.play;
+  if (!play || !play.history || !play.history.length) return;
+  const undone = takebackToUserMove(play.history);
+  play.history = undone.history;
+  play.active = true;
+  play.fen = undone.fen || play.startFen;
+  play.nodeId = undone.nodeId || play.rootNodeId;
+  play.ply = play.history.length;
+  const lastUserOrOpp = play.history.filter((ply) => ply.by === "opp").pop();
+  play.lastOppSan = lastUserOrOpp ? lastUserOrOpp.san : null;
+  const info = await boardInfo(play.fen);
+  const yourMove = sideToMoveFromFen(play.fen) === play.userColor;
+  paintPlayPosition({
+    fen: play.fen,
+    legalMoves: yourMove ? info.legal_moves : [],
+    lastMove: undone.lastMove,
+    banner: yourMove ? "Your move" : "Opponent thinking…",
+    sub: yourMove ? "Takeback — play again" : play.book === "explorer" ? "Lichess explorer" : "Book / Maia",
+    label: playBookLabel(play),
+    state: yourMove ? "move" : "runin",
+  });
+  renderPlayTrail();
+  if (!yourMove) await playOpponentReply();
+}
+
+function resignPlaySession() {
+  const play = appState.play;
+  if (!play || !play.active) return;
+  play.active = false;
+  updateTrainTurnBadge(null);
+  const last = play.history && play.history[play.history.length - 1];
+  boards.train.setPosition({
+    fen: play.fen,
+    legalMoves: [],
+    lastMove: last ? last.uci : null,
+  });
+  setTrainBanner("done", "Resigned", "Start or Feeling Lucky for another round");
+  syncTrainPickerVisibility();
+}
+
+async function openPlayInAnalyze() {
+  const play = appState.play;
+  if (!play) return;
+  const pgn = playSessionPgn(play);
+  const input = document.getElementById("pgn-input");
+  if (input) input.value = pgn;
+  const drawer = document.getElementById("pgn-drawer");
+  if (drawer) drawer.open = true;
+  switchView("analyze");
+  if (input) {
+    await loadPgnIntoAnalyze(input.value, { goToEnd: true, quiet: true }).catch(() => {});
+  }
+  setStatus("Loaded this Play vs human game in Analyze");
 }
 
 async function submitTrainingMove(playedUci) {
@@ -8558,11 +8802,18 @@ async function presentSmartPrompt(prompt) {
   let cueUci = board.lastMove || null;
   if (board.fen !== prompt.fen_before) {
     appState.trainBusy = true;
+    syncTrainSessionControls();
     const runIn = prompt.run_in || [];
     if (runIn.length) {
       let fen = prompt.start_fen;
       board.setPosition({ fen, legalMoves: [], lastMove: null });
-      setTrainBanner("runin", "Finding the position…", runIn.map((m) => m.san).join(" "));
+      const cue = runIn[runIn.length - 1];
+      const who = cardMeta && cardMeta.color === "black" ? "Black" : "White";
+      setTrainBanner(
+        "runin",
+        `${cardMeta && cardMeta.repertoire_name ? cardMeta.repertoire_name : "Finding the position"} · you play ${who.toLowerCase()}`,
+        cue && cue.san ? `Watch ${cue.san}` : "Watch the last move",
+      );
       await sleep(480);
       for (const mv of runIn) {
         if (appState.smart !== smart || smart.prompt !== prompt) return; // superseded
@@ -8842,6 +9093,7 @@ function smartHint() {
     setStatus("Start a session first");
     return;
   }
+  if (appState.trainBusy) return;
   appState.trainHintLevel = Math.min(3, (appState.trainHintLevel || 0) + 1);
   const level = appState.trainHintLevel;
   if (level === 1) {
@@ -9952,6 +10204,21 @@ function bindEvents() {
   if (startPlay) startPlay.addEventListener("click", () => startPlaySession());
   const luckyBtn = document.getElementById("feeling-lucky");
   if (luckyBtn) luckyBtn.addEventListener("click", () => onFeelingLucky());
+  const takebackBtn = document.getElementById("play-takeback");
+  if (takebackBtn) takebackBtn.addEventListener("click", () => takebackPlaySession());
+  const resignBtn = document.getElementById("play-resign");
+  if (resignBtn) resignBtn.addEventListener("click", () => resignPlaySession());
+  const playAnalyze = document.getElementById("play-analyze");
+  if (playAnalyze) playAnalyze.addEventListener("click", () => openPlayInAnalyze());
+  document.querySelectorAll("#train-play-color .train-mode").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.disabled) return;
+      setPlayPickerColor(btn.dataset.color);
+    });
+  });
+  try {
+    if (localStorage.getItem(PLAY_COLOR_KEY) === "black") setPlayPickerColor("black");
+  } catch (_) { /* private mode */ }
   const playBookEl = document.getElementById("train-play-book");
   if (playBookEl) {
     playBookEl.addEventListener("change", () => {

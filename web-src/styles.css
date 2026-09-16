@@ -1704,6 +1704,10 @@ h2 {
   border-color: var(--accent);
   color: var(--accent-strong);
 }
+.train-mode:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 
 .train-start { margin-top: 0; }
 
@@ -1714,6 +1718,19 @@ h2 {
 }
 .train-play-setup[hidden] { display: none; }
 .train-play-setup .train-start-row { margin-top: 0; }
+.train-play-trail {
+  min-height: 36px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--text);
+}
+.train-play-chip {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+.train-play-chip[hidden] { display: none; }
 
 /* Progress panel */
 .train-progress-panel {
@@ -3133,6 +3150,8 @@ h2 {
   display: grid;
   gap: 3px;
   padding: 0 10px 10px;
+  max-height: 240px;
+  overflow-y: auto;
 }
 
 .coverage-complete-bar {
@@ -4290,6 +4309,18 @@ h2 {
 
   #view-train .study {
     --board-chrome: 148px;
+  }
+
+  .train-modes {
+    flex-wrap: wrap;
+  }
+  .train-mode {
+    min-width: 0;
+    flex: 1 1 30%;
+  }
+  .train-start-row .btn {
+    flex: 1 1 140px;
+    min-width: 0;
   }
 
   #view-train .board-bar .ib {
@@ -6436,6 +6467,7 @@ h2 {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 .train-start-row[hidden] { display: none; }
 

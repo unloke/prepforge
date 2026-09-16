@@ -119,11 +119,16 @@ export function collectLuckyKeys({ games = [], trees = [] } = {}) {
   return keys;
 }
 
-export function pickLuckyStart({ games = [], trees = [], rng = Math.random } = {}) {
+export function pickLuckyStart({ games = [], trees = [], rng = Math.random, exclude = [] } = {}) {
   const keys = collectLuckyKeys({ games, trees });
   if (!keys.length) return null;
-  const index = Math.min(keys.length - 1, Math.floor(roll(rng) * keys.length));
-  return keys[index];
+  const banned = new Set(
+    (exclude || []).map((fen) => placementSide(fen)).filter(Boolean),
+  );
+  const fresh = banned.size ? keys.filter((key) => !banned.has(placementSide(key.fen))) : keys;
+  const pool = fresh.length ? fresh : keys;
+  const index = Math.min(pool.length - 1, Math.floor(roll(rng) * pool.length));
+  return pool[index];
 }
 
 /**
@@ -140,6 +145,7 @@ export async function luckyStartFromWorkspace({
   analysisMoves = null,
   replayGames = null,
   rng = Math.random,
+  exclude = [],
 } = {}) {
   const games = [];
   if (analysisMoves && analysisMoves.length) games.push({ moves: analysisMoves });
@@ -162,5 +168,5 @@ export async function luckyStartFromWorkspace({
   }
 
   const trees = buildNodes ? [buildNodes] : [];
-  return pickLuckyStart({ games, trees, rng });
+  return pickLuckyStart({ games, trees, rng, exclude });
 }

@@ -104,6 +104,21 @@ describe("pickLuckyStart", () => {
     expect(b.reason).toBe("fork");
   });
 
+  it("skips the last FEN when another key exists", () => {
+    const gameA = {
+      moves: [{ fen_before: AFTER_E4, classification: "blunder", uci: "g8f6" }],
+    };
+    const gameB = {
+      moves: [{ fen_before: AFTER_D4, classification: "blunder", uci: "g8f6" }],
+    };
+    const picked = pickLuckyStart({
+      games: [gameA, gameB],
+      exclude: [AFTER_E4],
+      rng: () => 0,
+    });
+    expect(picked.fen).toBe(AFTER_D4);
+  });
+
   it("returns null when nothing is interesting", () => {
     expect(pickLuckyStart({ games: [], trees: [] })).toBeNull();
     expect(

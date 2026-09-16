@@ -101,6 +101,8 @@ describe("visual system tokens", () => {
     expect(engineHidden).toMatch(/display:\s*grid/);
     const todayHidden = ruleBody(".today-card[hidden]");
     expect(todayHidden).toMatch(/visibility:\s*hidden/);
+    const coverage = ruleBody(".coverage-gaps");
+    expect(coverage).toMatch(/max-height:\s*240px/);
   });
 });
 
@@ -152,6 +154,10 @@ describe("seven views share chrome families", () => {
     expect(html).toContain('id="feeling-lucky"');
     expect(html).toContain("I'm Feeling Lucky");
     expect(html).toContain("Lichess explorer");
+    expect(html).toContain('id="train-play-color"');
+    expect(html).toContain('id="play-takeback"');
+    expect(html).toContain('id="play-resign"');
+    expect(html).toContain('id="play-analyze"');
     expect(html).toContain("My repertoire");
   });
 });
