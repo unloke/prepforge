@@ -7865,7 +7865,9 @@ function renderPlayTrail() {
             ? "Left prep"
             : reason === "fork"
               ? "Repertoire fork"
-              : reason;
+              : reason === "db-critical"
+                ? `Master game · ${play && play.luckyPhase ? play.luckyPhase : "critical"}`
+                : reason;
     } else {
       chip.hidden = true;
       chip.textContent = "";
@@ -7942,7 +7944,7 @@ function paintPlayPosition({ fen, legalMoves, lastMove, banner, sub, label, stat
   if (labelEl) labelEl.textContent = label || playBookLabel();
 }
 
-async function startPlaySession({ fen, reason, nodeId: luckyNodeId } = {}) {
+async function startPlaySession({ fen, reason, phase, nodeId: luckyNodeId } = {}) {
   appState.smart = null;
   appState.training = null;
   const startFen = fen || START_FEN;
@@ -7992,6 +7994,7 @@ async function startPlaySession({ fen, reason, nodeId: luckyNodeId } = {}) {
     history: [],
     lastOppSan: null,
     luckyReason: reason || null,
+    luckyPhase: phase || null,
   };
   document.getElementById("train-progress-panel").hidden = true;
   const summary = document.getElementById("train-summary");
@@ -8006,9 +8009,11 @@ async function startPlaySession({ fen, reason, nodeId: luckyNodeId } = {}) {
         ? "You left prep here — your move"
         : reason === "fork"
           ? "A real fork — more than one human reply"
-          : book === "explorer"
-            ? "Explorer at your rating, Maia when the sample thins"
-            : "Your repertoire, Maia when you're out of book";
+          : reason === "db-critical"
+            ? `Master game, critical ${phase || "moment"} — your move`
+            : book === "explorer"
+              ? "Explorer at your rating, Maia when the sample thins"
+              : "Your repertoire, Maia when you're out of book";
   paintPlayPosition({
     fen: info.fen,
     legalMoves: sideToMoveFromFen(info.fen) === userColor ? info.legal_moves : [],
@@ -8142,32 +8147,41 @@ async function submitPlayMove(playedUci) {
 }
 
 async function onFeelingLucky() {
-  let picked;
+  // Database-only entry: every click goes straight to the Lichess
+  // database/master-game critical-position sampler (Divider phases, critical
+  // gate, replay verification, rotation, dedup). Personal repertoire picks
+  // live in train-lucky.js for other callers, not on this button.
+  let dbPicked = null;
   try {
-    picked = await luckyStartFromWorkspace({
-      book: playBook(),
-      repertoireId: selectedTrainRepertoireId(),
-      currentBuild: appState.build,
-      loadRepertoire: loadPlayRepertoirePayload,
-      analysisMoves: appState.analysis && appState.analysis.moves,
-      replayGames: appState.replayResults && appState.replayResults.games,
+    setTrainBanner("runin", "Asking the Lichess database…", "Finding a critical position");
+    const { runFeelingLucky } = await import("./feeling-lucky.js");
+    dbPicked = await runFeelingLucky({
+      storage: typeof localStorage === "undefined" ? null : localStorage,
       exclude: [appState.lastLuckyFen, appState.play && appState.play.startFen].filter(Boolean),
+      rating: effectiveMaiaRating(),
+      ensureExplorer,
+      onStatus: setStatus,
+      setBanner: (state, title, sub) => setTrainBanner(state, title, sub),
+      startSession: async (session) => {
+        appState.lastLuckyFen = session.fen;
+        await startPlaySession(session);
+      },
     });
   } catch (error) {
-    setStatus(error.message);
-    return;
-  }
-  if (!picked) {
-    setStatus("Lucky needs a game (Analyze/Replay miss or departure) or a repertoire fork.");
+    const msg = error && error.message ? error.message : String(error);
+    setStatus(msg);
     setTrainBanner(
       "idle",
-      "Nothing spicy yet",
-      "Analyze a game, pull Replay, or open a repertoire with two replies.",
+      "Database unavailable",
+      /link your lichess/i.test(msg)
+        ? "Connect Lichess (top-right chip) so Lucky can read the masters database."
+        : "Try again — the masters database may be rate-limited right now.",
     );
     return;
   }
-  appState.lastLuckyFen = picked.fen;
-  await startPlaySession({ fen: picked.fen, reason: picked.reason, nodeId: picked.nodeId });
+  if (!dbPicked) {
+    return;
+  }
 }
 
 async function takebackPlaySession() {
