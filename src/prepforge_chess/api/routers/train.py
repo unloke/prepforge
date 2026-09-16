@@ -84,6 +84,7 @@ class StartBody(BaseModel):
     repertoire_id: str
     mode: str | None = None
     seed: int = 13
+    fresh: bool = False
 
 
 @router.post("/start")
@@ -102,7 +103,9 @@ def start(
     if repertoire is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
     service = TrainingService(repo)
-    session = service.start_or_resume_session(repertoire.id, mode=mode, seed=body.seed)
+    session = service.start_or_resume_session(
+        repertoire.id, mode=mode, seed=body.seed, fresh=body.fresh
+    )
     prompt = service.current_prompt(session.id)
     if prompt is None:
         raise HTTPException(
@@ -121,6 +124,7 @@ def start(
             training_line_to_json(line) for line in service.training_lines(repertoire, mode)
         ],
         "prompt": prompt_to_json(prompt, _CHESS),
+        "resumed": (not body.fresh) and session.current_index > 0,
     }
 
 
@@ -313,6 +317,7 @@ def smart_start(
         "mode": TrainingMode.SMART.value,
         "total_cards": len(session.line_order),
         "card_index": session.current_index,
+        "resumed": (not body.fresh) and session.current_index > 0,
         "counts": service.counts(session),
         "prompt": smart_prompt_to_json(prompt, _CHESS),
         # The full queue, expanded per target (expected move, run-in, hint,

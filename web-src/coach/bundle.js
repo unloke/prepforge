@@ -10,3 +10,9 @@ export {
 } from "./features.js";
 export { attachIntuition } from "./intuition.js";
 export { buildCommentary } from "./commentary.js";
+export {
+  PHASE_LABELS,
+  phaseOfFen,
+  buildPhaseCoach,
+  clusterQueueByPhase,
+} from "./phase-coach.js";
