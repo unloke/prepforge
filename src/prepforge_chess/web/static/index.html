@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-5uXNwEHj.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-CowpNYLg.css">
+    <script type="module" crossorigin src="/static/assets/index-BNuziE0O.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-TFS5Rf7F.css">
   </head>
   <body>
     <header class="topbar">
@@ -218,14 +218,27 @@
               <div class="train-modes" id="train-modes" role="group" aria-label="Training mode">
                 <button type="button" class="train-mode is-active" data-mode="smart">Smart queue</button>
                 <button type="button" class="train-mode" data-mode="all_lines">Line rehearsal</button>
+                <button type="button" class="train-mode" data-mode="play" data-testid="train-mode-play">Play vs human</button>
               </div>
               <label class="train-blitz-row" id="train-blitz-row" title="10 seconds per move - running out counts as a miss (the retry is untimed)">
                 <input type="checkbox" id="train-blitz-toggle" data-testid="train-blitz-toggle" />
                 <span>&#9889; Blitz &middot; 10s per move</span>
               </label>
-              <div class="train-start-row">
+              <div class="train-start-row" id="train-srs-start">
                 <button class="btn primary train-start" id="start-train" data-testid="start-train">Start training</button>
-                <button class="btn ghost" id="train-fresh" data-testid="train-fresh" type="button" title="Discard the unfinished session and build a new queue">Start over</button>
+                <button class="btn ghost" id="train-fresh" data-testid="train-fresh" type="button" disabled title="Discard the unfinished session and build a new queue">Start over</button>
+              </div>
+              <div class="train-play-setup" id="train-play-setup" hidden>
+                <label class="train-picker-label" for="train-play-book">Opponent book</label>
+                <select id="train-play-book" data-testid="train-play-book">
+                  <option value="explorer">Lichess explorer</option>
+                  <option value="repertoire">My repertoire</option>
+                </select>
+                <p class="muted hint" id="train-play-book-hint">Explorer uses your rating pool; thin positions fall back to Maia.</p>
+                <div class="train-start-row">
+                  <button class="btn primary" id="start-play" data-testid="start-play" type="button">Start</button>
+                  <button class="btn ghost" id="feeling-lucky" data-testid="feeling-lucky" type="button" title="Jump to a book-departure, engine miss, or repertoire fork — not the starting position">I'm Feeling Lucky</button>
+                </div>
               </div>
             </div>
 

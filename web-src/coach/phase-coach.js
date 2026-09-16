@@ -91,6 +91,20 @@ function capitalize(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 
+const START_PLACEMENT = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+
+export function isStartFen(fen) {
+  const parts = String(fen || "").trim().split(/\s+/);
+  return parts[0] === START_PLACEMENT && parts[1] === "w";
+}
+
+// Spoiler-safe line for the Train "Your move" banner. Never names a SAN —
+// naming the prepared move (or Maia's e4 at the start) is the answer.
+export function promptTipFor(fen, phase) {
+  if (isStartFen(fen)) return "Play the first move of your repertoire.";
+  return phaseFollowup(phase || phaseOfFen(fen));
+}
+
 function genericTip(phase) {
   if (phase === "opening") {
     return "Develop your pieces, occupy the center, and get the king safe.";
@@ -107,8 +121,16 @@ function phaseFollowup(phase) {
   return "Improve your pieces, create a target, and keep the king safe.";
 }
 
-function missTip({ phase, expectedSan, rating, playedRare }) {
+function missTip({ phase, expectedSan, rating, playedRare, reveal }) {
   const crowd = capitalize(ratingCrowd(rating));
+  // First miss is a retry: never name the prepared SAN. The second miss
+  // already titles the banner "It's Nf3".
+  if (!reveal) {
+    const lead = playedRare
+      ? `${crowd} almost never play that.`
+      : "That's not the prepared move.";
+    return `${lead} ${phaseFollowup(phase)}`;
+  }
   const lead = playedRare
     ? `${crowd} almost never play that; they choose ${expectedSan}.`
     : `That's not the prepared move. ${crowd} choose ${expectedSan}.`;
@@ -126,6 +148,7 @@ function buildTip({
   rating,
   humanSan,
   fen,
+  reveal,
 }) {
   const playedDiffers =
     !!playedUci && !!expectedUci && uciKey(playedUci) !== uciKey(expectedUci);
@@ -134,7 +157,19 @@ function buildTip({
 
   if (playedDiffers && expectedSan && sorted.length) {
     const playedRare = !Number.isFinite(playedProb) || playedProb < SURPRISE_MAX;
-    return missTip({ phase, expectedSan, rating, playedRare });
+    return missTip({ phase, expectedSan, rating, playedRare, reveal });
+  }
+
+  // Waiting at the start FEN (no move played yet): never say "everyone plays
+  // e4". That is both a spoiler and not a real opening lesson.
+  if (isStartFen(fen) && !playedUci) {
+    if (expectedSan && agreement === "surprise") {
+      return `This is the first move of your repertoire. Humans almost never play ${expectedSan} here, so treat it as a sideline and still develop, occupy the center, and castle.`;
+    }
+    if (expectedSan) {
+      return `This is the first move of your repertoire. ${expectedSan} occupies the center; develop and castle next.`;
+    }
+    return genericTip(phase);
   }
 
   if (!sorted.length) return genericTip(phase);
@@ -228,6 +263,7 @@ export function buildPhaseCoach({
   expectedSan,
   playedUci,
   rating,
+  reveal,
 } = {}) {
   const phase = phaseOfFen(fen);
   const phaseLabel = PHASE_LABELS[phase] || PHASE_LABELS.middlegame;
@@ -261,7 +297,9 @@ export function buildPhaseCoach({
       rating,
       humanSan,
       fen,
+      reveal,
     }),
+    promptTip: promptTipFor(fen, phase),
     humanUci,
     humanSan,
     humanPct,
