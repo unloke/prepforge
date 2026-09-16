@@ -97,10 +97,9 @@ describe("visual system tokens", () => {
     const syncHidden = ruleBody(".build-sync[hidden]");
     expect(syncHidden).toMatch(/display:\s*none/);
     const engineHidden = ruleBody(".engine-banner[hidden]");
-    expect(engineHidden).toMatch(/visibility:\s*hidden/);
-    expect(engineHidden).toMatch(/display:\s*grid/);
+    expect(engineHidden).toMatch(/display:\s*none/);
     const todayHidden = ruleBody(".today-card[hidden]");
-    expect(todayHidden).toMatch(/visibility:\s*hidden/);
+    expect(todayHidden).toMatch(/display:\s*none/);
     const coverage = ruleBody(".coverage-gaps");
     expect(coverage).toMatch(/max-height:\s*240px/);
   });
