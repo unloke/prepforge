@@ -1,0 +1,219 @@
+{
+  "kind": "scout-shadow-prep-p0-protocol",
+  "version": 1,
+  "protocolId": "ericrosen-shadow-prep-p0",
+  "studyId": "ericrosen-shadow-prep-p0",
+  "phase": "P0",
+  "role": "non-product-materials-gate",
+  "productAuthorization": false,
+  "cannotAuthorizeCards": true,
+  "cannotAuthorizeHumanStudy": true,
+  "productVerdict": "preserve-v2",
+  "nextWorkRequiresNewPreregistration": true,
+  "subject": {
+    "lichessUsername": "EricRosen",
+    "displayName": "Eric Rosen"
+  },
+  "preregisteredAt": "2026-07-14T00:00:00.000Z",
+  "repository": {
+    "commit": null,
+    "dirty": true
+  },
+  "claimBoundary": {
+    "establishes": "budget-matched sealed study-material and burned pilot-stimulus feasibility only",
+    "forbids": [
+      "stable subject weakness claims",
+      "subject-only tendency claims",
+      "causal trait attribution",
+      "expected reply or future behavior predictions",
+      "human performance or superiority claims",
+      "live-Elo or wild-usage claims",
+      "product or card authorization",
+      "confirmatory evidence from burned pilot blocks"
+    ],
+    "phase0Scope": "materials gate only; no participants, UI, product ranking, or confirmation",
+    "pilotStimulusScope": "H-M1, H-R1, and legacy blocks are already burned and may estimate trial thickness only"
+  },
+  "buildPartition": {
+    "refDfProtocol": {
+      "relativePath": "research/scout-ref-df/ericrosen-ref-df-phase0.protocol.json",
+      "protocolSha256": "a4122c351593fe1f83109d50df2d334bb00843a52bb132dfc468c038e8e9b4fe",
+      "protocolId": "ericrosen-ref-df-phase0"
+    },
+    "refDfCorpusGames": {
+      "relativePath": "tmp/scout-ref-df-study/ericrosen-ref-df-phase0/corpus/games.ndjson",
+      "sha256": "a709270826232fef346098ebfe15f0bd265b5737372de27daedbb60ca70a9a42",
+      "gameCount": 2260
+    },
+    "refDfCorpusManifest": {
+      "relativePath": "tmp/scout-ref-df-study/ericrosen-ref-df-phase0/corpus/manifest.json",
+      "sha256": "bc761735ca701a73ac38407847928bcbe4a25830d9d6e74b4ec085e432d42950",
+      "gameCount": 2260,
+      "gamesSha256": "f3aabe9731c66a69981fc643aaa26a3205c0a8fe505505c415aa66c0f782eb08",
+      "kind": "scout-ref-df-phase0-corpus"
+    },
+    "refDfCensusReport": {
+      "relativePath": "tmp/scout-ref-df-study/ericrosen-ref-df-phase0/census/ref-df-phase0-census-report.json",
+      "sha256": "b7cf6aeea5538c199dc5cd0257e34aa0d0569e6100bcf389d896a1200867c448",
+      "requiredVerdict": "feasible"
+    },
+    "d0Window": {
+      "lowerInclusiveMs": 1688768695836,
+      "upperExclusiveMs": 1745641867432,
+      "lowerInclusiveIso": "2023-07-07T22:24:55.836Z",
+      "upperExclusiveIso": "2025-04-26T02:31:07.432Z"
+    },
+    "noAcquisitionInP0": true,
+    "noTopUp": true
+  },
+  "pilotStimulusPartition": {
+    "chronology": ["h-m1", "h-r1", "legacy"],
+    "chronologyRule": "H-M1 [2025-04-26, 2025-07-06), H-R1 [2025-07-06, 2026-04-07), then legacy games",
+    "confirmatoryUseForbidden": true,
+    "scanOnlyAfterPackageFreeze": true,
+    "oneContributionPerGamePerAtom": true
+  },
+  "frozenArtifacts": {
+    "hM1Games": {
+      "relativePath": "tmp/scout-v15-study/ericrosen-v15-historical-m1/frozen/h-m1/games.json",
+      "sha256": "9e5977bf22f8c9b67010000f3f06b0aae795e339c6f0db572415d2466b398ce2",
+      "gameCount": 449,
+      "sourceBlock": "h-m1",
+      "lowerInclusiveMs": 1745641867432,
+      "upperExclusiveMs": 1751840695836
+    },
+    "hM1Manifest": {
+      "relativePath": "tmp/scout-v15-study/ericrosen-v15-historical-m1/frozen/h-m1/manifest.json",
+      "sha256": "9719893468e7fb2415d84f3b4b36dcdd721c6116c30801810c6665a043884b5a",
+      "gameCount": 449
+    },
+    "hR1Games": {
+      "relativePath": "tmp/scout-v15-study/ericrosen-v15-historical-r1/frozen/h-r1/games.json",
+      "sha256": "f351c59518a585916624be04b965cccc9d706152912a768dfd623c46c69486a4",
+      "gameCount": 446,
+      "sourceBlock": "h-r1",
+      "lowerInclusiveMs": 1751840695836,
+      "upperExclusiveMs": 1775606399999
+    },
+    "hR1Manifest": {
+      "relativePath": "tmp/scout-v15-study/ericrosen-v15-historical-r1/frozen/h-r1/manifest.json",
+      "sha256": "93c4ddf8c7df22350fb739d89a42873049a3711d007be8da12295bf449254979",
+      "gameCount": 446
+    },
+    "legacyGames": {
+      "relativePath": "tmp/foe.json",
+      "sha256": "f8e35f04c138094ad2d661b7c14813fd74a34aec42011ae8e3a71080f9fa943a",
+      "gameCount": 203,
+      "sourceBlock": "legacy"
+    },
+    "burnedUnion": {
+      "gameCount": 1098,
+      "nonOverlapRequired": true,
+      "rule": "exact union of H-M1 manifest IDs, H-R1 manifest IDs, and legacy game IDs"
+    }
+  },
+  "candidateEvidence": {
+    "allowlistedFields": [
+      "gameId", "color", "createdAtMs", "dayKey", "speed", "perfEligible", "ucis",
+      "triggerEpd", "subjectUci", "postTriggerUserToMoveEpd", "subjectOrdinal",
+      "depthHalfMoves", "pathUcis", "receipts", "support"
+    ],
+    "forbiddenFields": [
+      "score", "result", "wdl", "maia", "explorer", "eval", "thinkTime",
+      "futureHit", "weakness", "prepValue", "refDfRank", "hR1Label", "hM1Label"
+    ],
+    "atomIdentity": "triggerEpd + subjectUci",
+    "rootIdentity": "first two half-moves of a factual receipt path",
+    "transpositionMergeRule": "merge identical atom identity only; retain all display paths",
+    "futureStimulusInfluenceForbidden": true
+  },
+  "baselineEvidence": {
+    "evidenceType": "baseline-model",
+    "allowedSources": [
+      "production-v2 ranked rows", "pinned Stockfish shared-Y receipts", "pinned Maia baseline manifest"
+    ],
+    "forbiddenAsCandidateEvidence": true,
+    "maiaManifest": {
+      "relativePath": "web-src/public/maia3/maia3.manifest.json",
+      "sha256": "3d74bc056a3dedb41db9d28e4e38ec9a07703deb14949c15453ce7ff4b8b19fa"
+    }
+  },
+  "subjectMoveOrdinals": [2, 3, 4, 5, 6],
+  "candidateSupport": {
+    "minDistinctGames": 3,
+    "minDistinctDates": 2,
+    "minResidualLooSupport": 2,
+    "maxAtomHalfMoves": 12
+  },
+  "candidateSelection": {
+    "algorithm": "exact rooted trigger-group dynamic search over every eligible atom",
+    "maxSearchStates": 250000,
+    "overflowRule": "fail closed; never return a silently truncated package",
+    "lexicographicObjective": [
+      "atomCount", "ordinal3PlusCount", "minSupport", "totalSupport", "medianDepth", "stableKey"
+    ]
+  },
+  "treatmentBudget": {
+    "atomsPerColorPerArm": 6,
+    "maxLeaves": 6,
+    "maxForks": 3,
+    "maxRepliesPerFork": 2,
+    "minOrdinal3PlusAtoms": 3,
+    "treeBudgetModule": "web-src/scout-v13-style.js"
+  },
+  "materialBudget": {
+    "diagramsPerAtom": 1,
+    "textSanCharTolerance": 24,
+    "canonicalStudyUnitFields": [
+      "triggerEpd", "subjectUci", "postTriggerEpd", "userResponseUci", "sanLine",
+      "diagramCount", "textCharCount", "engineIdentityKey", "ySource"
+    ],
+    "requireExactAtomAndDiagramParity": true
+  },
+  "sharedYEngine": {
+    "relativePath": "tmp/tools/stockfish/stockfish-windows-x86-64-avx2.exe",
+    "stockfishSha256": "5f95eaea0d4eb697381989187ce6eb4d6ad59283c34421765ecc73cdb09ba766",
+    "depth": 8,
+    "multipv": 5,
+    "threads": 4,
+    "hashMb": 256,
+    "maxPlies": 12,
+    "maxEvalSwingCp": 120,
+    "noUserRepertoireInP0": true,
+    "safetyRule": "both arms use the same legal pinned-Stockfish response receipt per post-trigger EPD"
+  },
+  "p0Gates": {
+    "bothColorsRequired": true,
+    "maxTreatmentAtomJaccard": 0.8,
+    "minPilotTrialEvents": 24,
+    "minPilotOrdinal3PlusEvents": 8,
+    "minDistinctTriggerAtoms": 4,
+    "perColor": true,
+    "leaveOneStimulusSourceBlockOutRequired": true,
+    "shallowDominanceForbidden": true
+  },
+  "verdicts": {
+    "materials-feasible": "all locked material, distinctness, influence, and pilot-stimulus gates pass",
+    "insufficient-candidate-support": "candidate cannot meet support, rooted tree, or influence gates",
+    "baseline-build-failed": "production-v2 baseline cannot emit six legal atoms per color",
+    "budget-unmatchable": "canonical material budgets differ",
+    "insufficient-treatment-distinctness": "atom Jaccard is at or above 0.80 for either color",
+    "insufficient-pilot-stimuli": "per-color or leave-one-source stimulus gates fail"
+  },
+  "forbiddenClaims": [
+    "subject weakness", "subject-only tendency", "causal trait", "expected reply",
+    "future behavior", "human performance superiority", "product superiority",
+    "live-Elo prediction", "wild-usage claim", "development authorization",
+    "confirmation authorization", "product authorization", "participant recruitment authorization"
+  ],
+  "lifecycle": {
+    "immutableAfterCensus": true,
+    "noTopUpAfterCensus": true,
+    "noRebuildAfterBuilt": true,
+    "singleCensusOnly": true,
+    "studyRootDefault": "tmp/scout-shadow-prep-study/ericrosen-shadow-prep-p0"
+  },
+  "censusModule": "web-src/scout-shadow-prep-p0.js",
+  "nextWorkPolicy": "P0 always preserves v2; any pilot or confirmatory work requires a new preregistration and fresh holdout",
+  "protocolSha256": "4c77c6c5e60dda061be1ebf9e014fe232d362934318c4343a75c0d1e458e0df1"
+}

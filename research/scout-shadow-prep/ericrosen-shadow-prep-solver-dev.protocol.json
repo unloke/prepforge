@@ -1,0 +1,120 @@
+{
+  "kind": "scout-shadow-prep-solver-dev-protocol",
+  "version": 1,
+  "protocolId": "ericrosen-shadow-prep-solver-dev",
+  "studyId": "ericrosen-shadow-prep-solver-dev",
+  "phase": "solver-dev",
+  "role": "burned-D0-algorithm-development-only",
+  "purpose": "burned-D0-algorithm-development-only",
+  "scientificAuthorization": false,
+  "productAuthorization": false,
+  "freshHoldoutRequired": true,
+  "developmentFrozenAt": "2026-07-14T00:00:00.000Z",
+  "subject": {
+    "lichessUsername": "EricRosen",
+    "displayName": "Eric Rosen"
+  },
+  "objectiveEquivalenceToSealedP0": false,
+  "objectiveDirectionProvenance": {
+    "sealedP0ComparePackageLex": "maximizes medianDepth on median-only ties",
+    "sealedP0ProtocolListedNamesWithoutDirections": true,
+    "sealedRealD0CandidateSearchNeverCompleted": true,
+    "solverDevMedianDepthDirection": "minimize",
+    "divergenceScope": "median-only ties only; higher objective layers match maximize direction",
+    "futureP0MustPreregisterObjectiveDirection": true
+  },
+  "claimBoundary": {
+    "establishes": "exact bounded-DP candidate-package solver correctness on sealed burned D0 only under the solver-dev lexicographic objective and final development caps; not bit-equivalence to sealed P0 selection",
+    "forbids": [
+      "scientific authorization",
+      "product authorization",
+      "confirmatory resource-gate claims from burned-D0 tuning",
+      "post-freeze scientific eligibility-threshold or solver-cap edits from benchmark output",
+      "stimulus census or shared-Y production",
+      "Stockfish or Maia invocation",
+      "UI or acquisition changes",
+      "reuse as a future P0 without fresh preregistration and holdout",
+      "authorizing a future study from this development run"
+    ],
+    "scope": "algorithm development on already-burned D0 corpus; no new evidence collection",
+    "benchmarkConclusionLimit": "may only establish that this implementation can produce an exact proof on burned D0 under the solver-dev objective and final development caps; medianDepth is minimized here while sealed comparePackageLex maximizes it on median-only ties; not that a preregistered resource gate passed or that selection matches sealed P0"
+  },
+  "sealedP0ProtocolReference": {
+    "relativePath": "research/scout-shadow-prep/ericrosen-shadow-prep-p0.protocol.json",
+    "protocolId": "ericrosen-shadow-prep-p0",
+    "fileSha256": "1d9d38623b0e28b925c267772c762d6eae0a8be2197d1dcf7dfec7725dc83756",
+    "protocolSha256": "4c77c6c5e60dda061be1ebf9e014fe232d362934318c4343a75c0d1e458e0df1",
+    "verdict": "insufficient-candidate-support",
+    "immutable": true
+  },
+  "d0Corpus": {
+    "relativePath": "tmp/scout-ref-df-study/ericrosen-ref-df-phase0/corpus/games.ndjson",
+    "sha256": "a709270826232fef346098ebfe15f0bd265b5737372de27daedbb60ca70a9a42",
+    "gameCount": 2260
+  },
+  "candidateSupport": {
+    "minDistinctGames": 3,
+    "minDistinctDates": 2,
+    "minResidualLooSupport": 2,
+    "maxAtomHalfMoves": 12
+  },
+  "subjectMoveOrdinals": [
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "treatmentBudget": {
+    "atomsPerColorPerArm": 6,
+    "maxLeaves": 6,
+    "maxForks": 3,
+    "maxRepliesPerFork": 2,
+    "minOrdinal3PlusAtoms": 3,
+    "treeBudgetModule": "web-src/scout-v13-style.js"
+  },
+  "candidateSelection": {
+    "algorithm": "exact staged bounded dynamic programming over rooted trigger groups",
+    "lexicographicObjective": [
+      "atomCount",
+      "ordinal3PlusCount",
+      "minSupport",
+      "totalSupport",
+      "medianDepth",
+      "stableKey"
+    ],
+    "medianDepthDirection": "minimize",
+    "overflowRule": "fail closed; never return a silently truncated or approximate package",
+    "statuses": [
+      "OPTIMAL",
+      "INFEASIBLE",
+      "RESOURCE_EXHAUSTED",
+      "INVALID_INPUT"
+    ]
+  },
+  "exactSolverCaps": {
+    "maxTransitionsPerRootScope": "cumulative Stage-A + Stage-B (each support-threshold pass) + Stage-C transition count per root",
+    "maxTransitionsPerRoot": 50000000,
+    "maxStatesPerStage": 5000000,
+    "maxSupportPasses": 128,
+    "maxRoots": 512,
+    "wallClockDiagnosticOnly": true,
+    "proofUsesCountCapsOnly": true,
+    "developmentOnly": true,
+    "notAScientificFeasibilityGate": true,
+    "notAConfirmatoryThreshold": true,
+    "selectedDuringBurnedD0Implementation": true,
+    "exploratoryHistory": "Disclosed pre-freeze exploratory cap selection during burned-D0 implementation is permitted; an earlier lower exploratory cap was exhausted before these final development caps were selected; the first complete benchmark under an intermediate cap configuration returned RESOURCE_EXHAUSTED for both colors before cap revision."
+  },
+  "futureP0Policy": {
+    "freshHoldoutRequired": true,
+    "mustFreezeSolverVersionAndCapsBeforeHoldoutAccess": true,
+    "thisDevelopmentRunAuthorizesNothing": true,
+    "permittedNextStep": "draft a new preregistration only; no study authorization from this path"
+  },
+  "solverModule": "web-src/scout-shadow-prep-exact-solver.js",
+  "harnessModule": "scripts/scout-shadow-prep-exact-solver-dev.mjs",
+  "reportRootDefault": "tmp/scout-shadow-prep-solver-dev",
+  "nextWorkPolicy": "any future P0 requires separate preregistration and fresh holdout; this path does not authorize science or product",
+  "protocolSha256": "d2b19df103548c72af074c9bf968aba6ea094a784ed14e66e6e337e00d17b60d"
+}
