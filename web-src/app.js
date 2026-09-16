@@ -20,6 +20,15 @@ import {
   workspaceLocationFromState,
 } from "./workspace-url.js";
 import { mapTrainUiSession, shouldResetTrainStats } from "./train-resume.js";
+import { pickOpponentReply, playPositionAfterReply } from "./train-opponent.js";
+import { luckyStartFromWorkspace, isStartFen } from "./train-lucky.js";
+import {
+  resolvePlayColor,
+  playPoolLabel,
+  formatPlayTrail,
+  takebackToUserMove,
+  playSessionPgn,
+} from "./train-play.js";
 import { engineUnavailableBanner, engineBannerHtml } from "./engine-banner.js";
 import {
   buildPaletteItems,
@@ -347,6 +356,7 @@ const appState = {
   // Which trainer the Start button launches: "smart" (card queue, default) or
   // "all_lines" (legacy whole-line rehearsal, kept for pre-game prep).
   trainMode: "smart",
+  play: null,
   // Live smart-queue session state (see the Smart queue trainer section).
   smart: null,
   // ---- Local-first Train sync (plan §2) -----------------------------------
@@ -1938,14 +1948,15 @@ function renderInstantCoach() {
   const ctx = appState.explainContext || {};
   const fen = ctx.fen || appState.analysisBoardFen || START_FEN;
   const turn = fen.split(" ")[1] === "b" ? "black" : "white";
-  paintPhaseFromFen(ctx.prevFen || fen);
   if (ctx.prevFen && ctx.lastSan) {
+    paintPhaseFromFen(ctx.prevFen || fen);
     const mover = turn === "white" ? "Black" : "White"; // the side that just moved
     const did = describeMove(ctx.prevFen, ctx.lastUci, ctx.lastSan);
     setCoachProse(did ? `${mover} ${did}.` : `${mover} plays ${ctx.lastSan}.`, "info");
   } else {
-    const side = turn === "white" ? "White" : "Black";
-    setCoachProse(`${side} to move. I'll say what it does — then Maia will add the human plan.`, "info");
+    paintPhaseChip(null);
+    paintMaiaCoachLine(null);
+    setCoachProse("Make a move and I'll tell you what I think.", "info");
   }
 }
 
@@ -2887,6 +2898,20 @@ function runPaletteItem(item) {
   if (item.action === "start-training") {
     switchView("train");
     startTraining();
+    return;
+  }
+  if (item.action === "play-human") {
+    switchView("train");
+    const playBtn = document.querySelector('#train-modes .train-mode[data-mode="play"]');
+    if (playBtn) playBtn.click();
+    startPlaySession();
+    return;
+  }
+  if (item.action === "feeling-lucky") {
+    switchView("train");
+    const playBtn = document.querySelector('#train-modes .train-mode[data-mode="play"]');
+    if (playBtn) playBtn.click();
+    onFeelingLucky();
     return;
   }
   if (item.action === "analyze") {
@@ -5941,6 +5966,10 @@ async function renameRepertoire() {
 }
 
 async function skipTrainingLine() {
+  if (appState.play && appState.play.active) {
+    setStatus("Skip is for the spaced-repetition queue. Start or Feeling Lucky to change position.");
+    return;
+  }
   if (appState.smart) {
     await skipSmartCard();
     return;
@@ -6404,7 +6433,9 @@ async function renderTraining(payloadOrPrompt) {
   const prompt = payloadOrPrompt?.prompt || payloadOrPrompt;
   if (!prompt) return;
   applyTrainingPromptState(prompt);
-  return (await ensureTrainView()).renderTraining(prompt);
+  const out = await (await ensureTrainView()).renderTraining(prompt);
+  syncTrainSessionControls();
+  return out;
 }
 
 async function renderSmartQueueStrip() {
@@ -7506,35 +7537,137 @@ async function loadTrainRepertoireOptions() {
   } catch (error) {
     setStatus(error.message);
   }
-  const previous =
-    appState.trainingRepertoireId ||
-    (active.length ? active[0].id : "__demo__");
-  const options = [
-    '<option value="__demo__">Demo repertoire</option>',
-    ...active.map(
-      (r) =>
-        `<option value="${escapeHtml(r.id)}">${escapeHtml(r.name)} (${escapeHtml(r.color)})</option>`
-    ),
-  ];
+  const previous = appState.trainingRepertoireId || (active.length ? active[0].id : "");
+  const options = active.length
+    ? active.map(
+        (r) =>
+          `<option value="${escapeHtml(r.id)}">${escapeHtml(r.name)} (${escapeHtml(r.color)})</option>`
+      )
+    : ['<option value="" disabled selected>Build a repertoire first</option>'];
   select.innerHTML = options.join("");
-  // Restore previous selection when still valid.
-  const valid = new Set(["__demo__", ...active.map((r) => r.id)]);
-  select.value = valid.has(previous) ? previous : (active.length ? active[0].id : "__demo__");
-  if (select.value !== "__demo__") {
-    appState.trainingRepertoireId = select.value;
-  } else {
-    appState.trainingRepertoireId = null;
-  }
+  const valid = new Set(active.map((r) => r.id));
+  select.value = valid.has(previous) ? previous : (active.length ? active[0].id : "");
+  appState.trainingRepertoireId = select.value || null;
+  syncTrainPickerVisibility();
 }
 
 // The smart queue trains ALL active repertoires in one mixed session, so its
 // setup needs no repertoire picker; line rehearsal (legacy) keeps it.
 function syncTrainPickerVisibility() {
-  const smart = (appState.trainMode || "smart") === "smart";
+  const mode = appState.trainMode || "smart";
+  const smart = mode === "smart";
+  const play = mode === "play";
   const select = document.getElementById("train-repertoire-select");
   const label = document.querySelector(".train-picker-label");
-  if (select) select.hidden = smart;
-  if (label) label.hidden = smart;
+  const srs = document.getElementById("train-srs-start");
+  const playSetup = document.getElementById("train-play-setup");
+  const blitzRow = document.getElementById("train-blitz-row");
+  const book = document.getElementById("train-play-book");
+  const progress = document.getElementById("train-progress-panel");
+  const summary = document.getElementById("train-summary");
+  const help = document.getElementById("train-help");
+  const hint = document.getElementById("train-hint");
+  const skip = document.getElementById("train-skip");
+  const wantRep = !smart && (!play || (book && book.value === "repertoire"));
+  if (select) select.hidden = !wantRep;
+  if (label) label.hidden = !wantRep;
+  if (srs) srs.hidden = play;
+  if (playSetup) playSetup.hidden = !play;
+  if (blitzRow) blitzRow.hidden = mode !== "smart";
+  if (play) {
+    if (progress) progress.hidden = true;
+    if (summary) summary.hidden = true;
+    if (help) help.hidden = true;
+  } else if (help) {
+    help.hidden = false;
+  }
+  // Keep hint/skip in the board bar so hiding them cannot shove the label.
+  if (hint) hint.hidden = false;
+  if (skip) skip.hidden = false;
+  const startBtn = document.getElementById("start-train");
+  if (startBtn) {
+    startBtn.disabled = !smart && !play && !selectedTrainRepertoireId();
+  }
+  const startPlay = document.getElementById("start-play");
+  const bookEl = document.getElementById("train-play-book");
+  const livePlay = !!(appState.play && appState.play.active);
+  if (bookEl) bookEl.disabled = livePlay;
+  if (startPlay) {
+    const needRep = play && book && book.value === "repertoire" && !selectedTrainRepertoireId();
+    startPlay.disabled = !!needRep;
+    startPlay.textContent = livePlay ? "New game" : "Start";
+  }
+  syncPlayColorLock();
+  paintPlayBookHint();
+  syncTrainSessionControls();
+}
+
+function trainSessionLive() {
+  if (appState.trainMode === "play") return !!(appState.play && appState.play.active);
+  if (appState.smart && appState.smart.prompt) return true;
+  if (appState.training && appState.training.prompt) return true;
+  return false;
+}
+
+function syncTrainSessionControls() {
+  const live = trainSessionLive();
+  const play = (appState.trainMode || "smart") === "play";
+  const hint = document.getElementById("train-hint");
+  const skip = document.getElementById("train-skip");
+  const fresh = document.getElementById("train-fresh");
+  const blitzToggle = document.getElementById("train-blitz-toggle");
+  const blitzRow = document.getElementById("train-blitz-row");
+  const banner = document.getElementById("train-banner");
+  const state = banner && banner.dataset.state;
+  const busy = !!appState.trainBusy;
+  const teaching = state === "teach" || state === "reveal" || state === "runin";
+  if (hint) {
+    hint.hidden = false;
+    hint.disabled = play || !live || busy || teaching;
+    hint.title = play
+      ? "Hints are for the spaced-repetition queue"
+      : "Hint (show the piece to move)";
+  }
+  if (skip) {
+    skip.hidden = false;
+    skip.disabled = play || !live || busy;
+    skip.title = play
+      ? "Skip is for the spaced-repetition queue"
+      : "Skip this card";
+  }
+  if (fresh) fresh.disabled = !(appState.smart || appState.training);
+  if (blitzToggle) blitzToggle.disabled = !!appState.smart;
+  if (blitzRow) {
+    blitzRow.title = appState.smart
+      ? "Blitz is locked for this session — applies on next Start"
+      : "10 seconds per move - running out counts as a miss (the retry is untimed)";
+  }
+  const takeback = document.getElementById("play-takeback");
+  const resign = document.getElementById("play-resign");
+  const analyze = document.getElementById("play-analyze");
+  const history = appState.play && appState.play.history;
+  const hasMoves = !!(history && history.length);
+  if (takeback) takeback.disabled = !play || !hasMoves;
+  if (resign) resign.disabled = !play || !appState.play || !appState.play.active;
+  if (analyze) analyze.disabled = !play || !hasMoves;
+}
+
+async function resetTrainBoardIdle(label) {
+  updateTrainTurnBadge(null);
+  const labelEl = document.getElementById("train-board-label");
+  if (labelEl) labelEl.textContent = label || "Press Start to train";
+  if (!boards.train) return;
+  boards.train.setEngineArrow(null);
+  try {
+    const info = await boardInfo(START_FEN);
+    boards.train.setPosition({
+      fen: START_FEN,
+      legalMoves: info.legal_moves || [],
+      lastMove: null,
+    });
+  } catch (_) {
+    boards.train.setPosition({ fen: START_FEN, legalMoves: [], lastMove: null });
+  }
 }
 
 function selectedTrainRepertoireId() {
@@ -7567,8 +7700,12 @@ function setTrainBanner(state, title, sub) {
   const banner = document.getElementById("train-banner");
   if (!banner) return;
   banner.dataset.state = state;
-  document.getElementById("train-banner-title").textContent = title;
-  document.getElementById("train-banner-sub").textContent = sub || "";
+  const titleEl = document.getElementById("train-banner-title");
+  const subEl = document.getElementById("train-banner-sub");
+  titleEl.textContent = title;
+  titleEl.title = title || "";
+  subEl.textContent = sub || "";
+  subEl.title = sub || "";
   if (state === "correct" || state === "wrong") {
     banner.classList.remove("flash");
     void banner.offsetWidth;
@@ -7637,7 +7774,463 @@ async function startTraining(mode, options = {}) {
   }
 }
 
+function playBook() {
+  const el = document.getElementById("train-play-book");
+  return el && el.value === "repertoire" ? "repertoire" : "explorer";
+}
+
+const PLAY_COLOR_KEY = "prepforge.play_color";
+
+function playPickerColor() {
+  const active = document.querySelector("#train-play-color .train-mode.is-active");
+  if (active && active.dataset.color === "black") return "black";
+  try {
+    return localStorage.getItem(PLAY_COLOR_KEY) === "black" ? "black" : "white";
+  } catch (_) {
+    return "white";
+  }
+}
+
+function setPlayPickerColor(color, { persist = true } = {}) {
+  const want = color === "black" ? "black" : "white";
+  if (persist) {
+    try {
+      localStorage.setItem(PLAY_COLOR_KEY, want);
+    } catch (_) { /* private mode */ }
+  }
+  document.querySelectorAll("#train-play-color .train-mode").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.color === want);
+  });
+}
+
+function syncPlayColorLock() {
+  const book = playBook();
+  const live = !!(appState.play && appState.play.active);
+  const lockRep = book === "repertoire";
+  if (lockRep && appState.build && appState.build.color) {
+    setPlayPickerColor(appState.build.color === "black" ? "black" : "white", { persist: false });
+  } else if (!live) {
+    try {
+      const stored = localStorage.getItem(PLAY_COLOR_KEY);
+      if (stored === "black" || stored === "white") {
+        setPlayPickerColor(stored, { persist: false });
+      }
+    } catch (_) { /* private mode */ }
+  }
+  document.querySelectorAll("#train-play-color .train-mode").forEach((btn) => {
+    btn.disabled = live || lockRep;
+    btn.title = lockRep ? "Locked to this repertoire" : live ? "Color is locked for this game" : "You play this color from the opening";
+  });
+}
+
+function paintPlayBookHint() {
+  const hint = document.getElementById("train-play-book-hint");
+  if (!hint) return;
+  if (playBook() === "repertoire") {
+    hint.textContent = selectedTrainRepertoireId()
+      ? "Opponent plays your repertoire replies; Maia when you're out of book."
+      : "Open a repertoire first, or switch back to Lichess explorer.";
+    return;
+  }
+  hint.textContent = `Explorer ${playPoolLabel(effectiveMaiaRating())} pool; thin positions fall back to Maia.`;
+}
+
+function playBookLabel(play) {
+  const session = play || appState.play;
+  const book = session && session.book === "repertoire" ? "My repertoire" : "Lichess explorer";
+  const color = session && session.userColor === "black" ? "Black" : "White";
+  const they = session && session.lastOppSan ? ` · they ${session.lastOppSan}` : "";
+  return `${book} · you ${color}${they}`;
+}
+
+function renderPlayTrail() {
+  const el = document.getElementById("train-play-trail");
+  if (!el) return;
+  const play = appState.play;
+  const text = play && play.history && play.history.length
+    ? formatPlayTrail(play.history, play.startFen)
+    : "";
+  el.innerHTML = text
+    ? `<span class="play-trail-sans">${escapeHtml(text)}</span>`
+    : `<span class="trail-empty">No moves yet</span>`;
+  const chip = document.getElementById("train-play-chip");
+  if (chip) {
+    const reason = play && play.luckyReason;
+    if (reason) {
+      chip.hidden = false;
+      chip.textContent =
+        reason === "miss"
+          ? "Engine miss"
+          : reason === "departure"
+            ? "Left prep"
+            : reason === "fork"
+              ? "Repertoire fork"
+              : reason;
+    } else {
+      chip.hidden = true;
+      chip.textContent = "";
+    }
+  }
+  syncTrainSessionControls();
+}
+
+function recordPlayPly(ply) {
+  const play = appState.play;
+  if (!play) return;
+  play.history = play.history || [];
+  play.history.push(ply);
+  renderPlayTrail();
+}
+
+function playChildren(nodeId) {
+  if (!appState.build || !nodeId) return [];
+  return (appState.build.nodes || []).filter(
+    (node) => node.parent_id === nodeId && node.is_enabled !== false && node.uci,
+  );
+}
+
+function playAdvanceNode(uci) {
+  const play = appState.play;
+  if (!play || !play.nodeId) return;
+  const child = playChildren(play.nodeId).find((node) => node.uci === uci);
+  play.nodeId = child ? child.id : null;
+}
+
+async function ensurePlayExplorer() {
+  if (!explorerModule) {
+    explorerModule = await import("./explorer.js");
+    explorerClient = explorerModule.createExplorerClient({});
+  }
+  return explorerClient;
+}
+
+async function fetchPlayExplorer(fen) {
+  try {
+    const client = await ensurePlayExplorer();
+    return await client.fetchStats("lichess", fen, { rating: effectiveMaiaRating() });
+  } catch (_) {
+    return { totalGames: 0, moves: [] };
+  }
+}
+
+async function fetchPlayMaia(fen) {
+  try {
+    const provider = getSharedMaia3Provider();
+    return await provider.predictions({ fen, rating: effectiveMaiaRating() });
+  } catch (_) {
+    return [];
+  }
+}
+
+async function loadPlayRepertoirePayload(repertoireId) {
+  const payload = await api(`/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`);
+  await hydrateBuild(payload, payload.selected_node_id);
+  return payload;
+}
+
+function paintPlayPosition({ fen, legalMoves, lastMove, banner, sub, label, state }) {
+  boards.train.setEngineArrow(null);
+  boards.train.setPosition({
+    fen,
+    legalMoves: legalMoves || [],
+    lastMove: lastMove || null,
+  });
+  const side = (fen || "").split(" ")[1] === "b" ? "black" : "white";
+  updateTrainTurnBadge(side);
+  setTrainBanner(state || "move", banner, sub || "");
+  const labelEl = document.getElementById("train-board-label");
+  if (labelEl) labelEl.textContent = label || playBookLabel();
+}
+
+async function startPlaySession({ fen, reason, nodeId: luckyNodeId } = {}) {
+  appState.smart = null;
+  appState.training = null;
+  const startFen = fen || START_FEN;
+  const book = playBook();
+  let nodeId = null;
+  if (book === "repertoire") {
+    const repId = selectedTrainRepertoireId();
+    if (!repId) {
+      setStatus("Open a repertoire first, or switch the opponent book to Lichess explorer.");
+      return;
+    }
+    if (repId && (!appState.build || appState.build.repertoire_id !== repId)) {
+      try {
+        await loadPlayRepertoirePayload(repId);
+      } catch (error) {
+        setStatus(error.message);
+        return;
+      }
+    }
+    if (appState.build) {
+      nodeId = (appState.build.nodes || []).find((node) => !node.parent_id)?.id || null;
+    }
+  }
+  const userColor = resolvePlayColor({
+    book,
+    pickerColor: playPickerColor(),
+    repertoireColor: appState.build && appState.build.color,
+    luckyFen: reason ? startFen : null,
+  });
+  if (luckyNodeId) nodeId = luckyNodeId;
+  let info;
+  try {
+    info = await boardInfo(startFen);
+  } catch (error) {
+    setStatus(error.message || "Could not open that position");
+    return;
+  }
+  appState.play = {
+    active: true,
+    fen: info.fen,
+    startFen: info.fen,
+    book,
+    userColor,
+    nodeId,
+    rootNodeId: nodeId,
+    ply: 0,
+    history: [],
+    lastOppSan: null,
+    luckyReason: reason || null,
+  };
+  document.getElementById("train-progress-panel").hidden = true;
+  const summary = document.getElementById("train-summary");
+  if (summary) summary.hidden = true;
+  if (boards.train) {
+    boards.train.setOrientation(userColor);
+  }
+  const why =
+    reason === "miss"
+      ? "Engine miss — your move"
+      : reason === "departure"
+        ? "You left prep here — your move"
+        : reason === "fork"
+          ? "A real fork — more than one human reply"
+          : book === "explorer"
+            ? "Explorer at your rating, Maia when the sample thins"
+            : "Your repertoire, Maia when you're out of book";
+  paintPlayPosition({
+    fen: info.fen,
+    legalMoves: sideToMoveFromFen(info.fen) === userColor ? info.legal_moves : [],
+    banner: "Your move",
+    sub: why,
+    label: playBookLabel(appState.play),
+  });
+  setStatus(isStartFen(info.fen) ? "Your move" : `Started from a key position (${reason || "book"})`);
+  renderPlayTrail();
+  syncTrainPickerVisibility();
+  if (sideToMoveFromFen(info.fen) !== userColor) {
+    await playOpponentReply();
+  }
+}
+
+async function playOpponentReply() {
+  const play = appState.play;
+  if (!play || !play.active) return;
+  const info = await boardInfo(play.fen);
+  const alreadyOver = playPositionAfterReply(info);
+  if (alreadyOver.terminal) {
+    play.active = false;
+    updateTrainTurnBadge(null);
+    setTrainBanner("done", alreadyOver.banner, "Start or Feeling Lucky for another round");
+    boards.train.setPosition({ fen: info.fen, legalMoves: [], lastMove: null });
+    syncTrainSessionControls();
+    return;
+  }
+  setTrainBanner("runin", "Opponent thinking…", play.book === "explorer" ? "Lichess explorer" : "Book / Maia");
+  let explorer = { totalGames: 0, moves: [] };
+  if (play.book === "explorer") explorer = await fetchPlayExplorer(play.fen);
+  const maiaPredictions = await fetchPlayMaia(play.fen);
+  const reply = pickOpponentReply({
+    book: play.book,
+    legalUcis: info.legal_moves,
+    explorer,
+    repertoireChildren: playChildren(play.nodeId),
+    maiaPredictions,
+  });
+  if (!reply.uci) {
+    play.active = false;
+    updateTrainTurnBadge(null);
+    setTrainBanner("done", "No reply", "The opponent has no legal move from this book.");
+    syncTrainSessionControls();
+    return;
+  }
+  const nodeIdBefore = play.nodeId;
+  const after = await boardAfterMove(play.fen, reply.uci);
+  play.fen = after.board.fen;
+  play.ply += 1;
+  playAdvanceNode(reply.uci);
+  play.lastOppSan = after.move.san;
+  recordPlayPly({
+    uci: reply.uci,
+    san: after.move.san,
+    fenBefore: info.fen,
+    fenAfter: after.board.fen,
+    by: "opp",
+    nodeIdBefore,
+    nodeIdAfter: play.nodeId,
+  });
+  const ended = playPositionAfterReply(after.board);
+  if (ended.terminal) {
+    play.active = false;
+    updateTrainTurnBadge(null);
+    boards.train.setPosition({
+      fen: after.board.fen,
+      legalMoves: [],
+      lastMove: reply.uci,
+    });
+    setTrainBanner("done", ended.banner, after.move.san);
+    syncTrainSessionControls();
+    return;
+  }
+  const sourceLabel =
+    reply.source === "explorer"
+      ? "Explorer"
+      : reply.source === "repertoire"
+        ? "Your prep"
+        : "Maia";
+  const reason =
+    reply.reason === "thin-sample"
+      ? " · sample too thin, Maia stepped in"
+      : reply.reason === "out-of-book"
+        ? " · out of book"
+        : "";
+  paintPlayPosition({
+    fen: after.board.fen,
+    legalMoves: ended.legalMoves,
+    lastMove: reply.uci,
+    banner: "Your move",
+    sub: `${sourceLabel} played ${after.move.san}${reason}`,
+    label: playBookLabel(play),
+  });
+}
+
+async function submitPlayMove(playedUci) {
+  const play = appState.play;
+  if (!play || !play.active || !playedUci) return;
+  const info = await boardInfo(play.fen);
+  if (!info.legal_moves.includes(playedUci)) return;
+  const nodeIdBefore = play.nodeId;
+  await optimisticBoardMove(boards.train, play.fen, playedUci);
+  const after = await boardAfterMove(play.fen, playedUci);
+  play.fen = after.board.fen;
+  play.ply += 1;
+  playAdvanceNode(playedUci);
+  recordPlayPly({
+    uci: playedUci,
+    san: after.move.san,
+    fenBefore: info.fen,
+    fenAfter: after.board.fen,
+    by: "user",
+    nodeIdBefore,
+    nodeIdAfter: play.nodeId,
+  });
+  boards.train.setPosition({
+    fen: after.board.fen,
+    legalMoves: [],
+    lastMove: playedUci,
+  });
+  const ended = playPositionAfterReply(after.board);
+  if (ended.terminal) {
+    play.active = false;
+    updateTrainTurnBadge(null);
+    setTrainBanner("done", ended.banner, after.move.san);
+    syncTrainSessionControls();
+    return;
+  }
+  await playOpponentReply();
+}
+
+async function onFeelingLucky() {
+  let picked;
+  try {
+    picked = await luckyStartFromWorkspace({
+      book: playBook(),
+      repertoireId: selectedTrainRepertoireId(),
+      currentBuild: appState.build,
+      loadRepertoire: loadPlayRepertoirePayload,
+      analysisMoves: appState.analysis && appState.analysis.moves,
+      replayGames: appState.replayResults && appState.replayResults.games,
+      exclude: [appState.lastLuckyFen, appState.play && appState.play.startFen].filter(Boolean),
+    });
+  } catch (error) {
+    setStatus(error.message);
+    return;
+  }
+  if (!picked) {
+    setStatus("Lucky needs a game (Analyze/Replay miss or departure) or a repertoire fork.");
+    setTrainBanner(
+      "idle",
+      "Nothing spicy yet",
+      "Analyze a game, pull Replay, or open a repertoire with two replies.",
+    );
+    return;
+  }
+  appState.lastLuckyFen = picked.fen;
+  await startPlaySession({ fen: picked.fen, reason: picked.reason, nodeId: picked.nodeId });
+}
+
+async function takebackPlaySession() {
+  const play = appState.play;
+  if (!play || !play.history || !play.history.length) return;
+  const undone = takebackToUserMove(play.history);
+  play.history = undone.history;
+  play.active = true;
+  play.fen = undone.fen || play.startFen;
+  play.nodeId = undone.nodeId || play.rootNodeId;
+  play.ply = play.history.length;
+  const lastUserOrOpp = play.history.filter((ply) => ply.by === "opp").pop();
+  play.lastOppSan = lastUserOrOpp ? lastUserOrOpp.san : null;
+  const info = await boardInfo(play.fen);
+  const yourMove = sideToMoveFromFen(play.fen) === play.userColor;
+  paintPlayPosition({
+    fen: play.fen,
+    legalMoves: yourMove ? info.legal_moves : [],
+    lastMove: undone.lastMove,
+    banner: yourMove ? "Your move" : "Opponent thinking…",
+    sub: yourMove ? "Takeback — play again" : play.book === "explorer" ? "Lichess explorer" : "Book / Maia",
+    label: playBookLabel(play),
+    state: yourMove ? "move" : "runin",
+  });
+  renderPlayTrail();
+  if (!yourMove) await playOpponentReply();
+}
+
+function resignPlaySession() {
+  const play = appState.play;
+  if (!play || !play.active) return;
+  play.active = false;
+  updateTrainTurnBadge(null);
+  const last = play.history && play.history[play.history.length - 1];
+  boards.train.setPosition({
+    fen: play.fen,
+    legalMoves: [],
+    lastMove: last ? last.uci : null,
+  });
+  setTrainBanner("done", "Resigned", "Start or Feeling Lucky for another round");
+  syncTrainPickerVisibility();
+}
+
+async function openPlayInAnalyze() {
+  const play = appState.play;
+  if (!play) return;
+  const pgn = playSessionPgn(play);
+  const input = document.getElementById("pgn-input");
+  if (input) input.value = pgn;
+  const drawer = document.getElementById("pgn-drawer");
+  if (drawer) drawer.open = true;
+  switchView("analyze");
+  if (input) {
+    await loadPgnIntoAnalyze(input.value, { goToEnd: true, quiet: true }).catch(() => {});
+  }
+  setStatus("Loaded this Play vs human game in Analyze");
+}
+
 async function submitTrainingMove(playedUci) {
+  if ((appState.trainMode || "smart") === "play") {
+    if (appState.play && appState.play.active) return submitPlayMove(playedUci);
+    return;
+  }
   if (appState.smart) {
     return submitSmartMove(playedUci);
   }
@@ -7841,10 +8434,12 @@ function finishReviewRound() {
 
 function finishTrainingSession() {
   const stats = appState.trainStats;
+  if (appState.training) appState.training.prompt = null;
   boards.train.setEngineArrow(null);
   document.getElementById("train-progress-fill").style.width = "100%";
   setTrainBanner("done", "Session complete!", `${stats.correct} correct - ${stats.mistakes} mistakes - best run ${stats.best}`);
   document.getElementById("train-board-label").textContent = "Press Start to train again";
+  syncTrainSessionControls();
   celebrate();
 }
 
@@ -7912,6 +8507,12 @@ function currentTrainingPrompt() {
 function updateTrainTurnBadge(side) {
   const badge = document.getElementById("train-turn-badge");
   if (!badge) return;
+  if (!side) {
+    badge.hidden = true;
+    badge.innerHTML = "";
+    delete badge.dataset.side;
+    return;
+  }
   badge.hidden = false;
   badge.dataset.side = side;
   // Show the side-to-move as a real piece (king of that colour), not a bare
@@ -8201,11 +8802,18 @@ async function presentSmartPrompt(prompt) {
   let cueUci = board.lastMove || null;
   if (board.fen !== prompt.fen_before) {
     appState.trainBusy = true;
+    syncTrainSessionControls();
     const runIn = prompt.run_in || [];
     if (runIn.length) {
       let fen = prompt.start_fen;
       board.setPosition({ fen, legalMoves: [], lastMove: null });
-      setTrainBanner("runin", "Finding the position…", runIn.map((m) => m.san).join(" "));
+      const cue = runIn[runIn.length - 1];
+      const who = cardMeta && cardMeta.color === "black" ? "Black" : "White";
+      setTrainBanner(
+        "runin",
+        `${cardMeta && cardMeta.repertoire_name ? cardMeta.repertoire_name : "Finding the position"} · you play ${who.toLowerCase()}`,
+        cue && cue.san ? `Watch ${cue.san}` : "Watch the last move",
+      );
       await sleep(480);
       for (const mv of runIn) {
         if (appState.smart !== smart || smart.prompt !== prompt) return; // superseded
@@ -8251,6 +8859,7 @@ async function presentSmartPrompt(prompt) {
     else clearBlitzTimer();
   }
   prefetchTrainCoach(prompt);
+  syncTrainSessionControls();
 }
 
 function prefetchTrainCoach(prompt) {
@@ -8264,12 +8873,20 @@ function prefetchTrainCoach(prompt) {
       const live = appState.smart && appState.smart.prompt === prompt;
       if (!live || !model) return;
       prompt.phaseCoach = model;
+      const banner = document.getElementById("train-banner");
+      const state = banner && banner.dataset.state;
       const titleEl = document.getElementById("train-banner-title");
-      const stillTeaching = prompt.kind === "new" && titleEl && /New move/.test(titleEl.textContent || "");
+      const stillTeaching =
+        prompt.kind === "new" &&
+        state === "teach" &&
+        titleEl &&
+        /New move/.test(titleEl.textContent || "");
       if (stillTeaching) {
         setTrainBanner("teach", `${model.title}: ${prompt.expected_san}`, model.tip);
-      } else if (prompt.kind !== "new") {
-        setTrainBanner("move", "Your move", model.tip);
+      } else if (prompt.kind !== "new" && state === "move") {
+        // promptTip never names the prepared SAN — model.tip would leak e4
+        // (and every other answer) onto the Your-move banner.
+        setTrainBanner("move", "Your move", model.promptTip || "Play your prepared idea");
       }
     })
     .catch(() => {});
@@ -8335,7 +8952,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       setTrainBanner(
         "wrong",
         timedOut ? "Time's up - try again" : "Not that one - try again",
-        (cached && cached.tip) || prompt.hint.strategy || prompt.hint.piece || "Think about the idea behind the line."
+        (cached && cached.promptTip) || prompt.hint.strategy || prompt.hint.piece || "Think about the idea behind the line."
       );
       maiaPhaseCoach({
         fen: prompt.fen_before,
@@ -8476,6 +9093,7 @@ function smartHint() {
     setStatus("Start a session first");
     return;
   }
+  if (appState.trainBusy) return;
   appState.trainHintLevel = Math.min(3, (appState.trainHintLevel || 0) + 1);
   const level = appState.trainHintLevel;
   if (level === 1) {
@@ -8495,6 +9113,7 @@ async function finishSmartSession() {
   if (!smart) return;
   const stats = appState.trainStats || {};
   smart.prompt = null;
+  syncTrainSessionControls();
   clearBlitzTimer();
   setBlitzBarVisible(false);
   boards.train.setEngineArrow(null);
@@ -9581,6 +10200,31 @@ function bindEvents() {
     .addEventListener("click", () => importRepertoireFromInput("train-import-input"));
 
   document.getElementById("start-train").addEventListener("click", () => startTraining());
+  const startPlay = document.getElementById("start-play");
+  if (startPlay) startPlay.addEventListener("click", () => startPlaySession());
+  const luckyBtn = document.getElementById("feeling-lucky");
+  if (luckyBtn) luckyBtn.addEventListener("click", () => onFeelingLucky());
+  const takebackBtn = document.getElementById("play-takeback");
+  if (takebackBtn) takebackBtn.addEventListener("click", () => takebackPlaySession());
+  const resignBtn = document.getElementById("play-resign");
+  if (resignBtn) resignBtn.addEventListener("click", () => resignPlaySession());
+  const playAnalyze = document.getElementById("play-analyze");
+  if (playAnalyze) playAnalyze.addEventListener("click", () => openPlayInAnalyze());
+  document.querySelectorAll("#train-play-color .train-mode").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.disabled) return;
+      setPlayPickerColor(btn.dataset.color);
+    });
+  });
+  try {
+    if (localStorage.getItem(PLAY_COLOR_KEY) === "black") setPlayPickerColor("black");
+  } catch (_) { /* private mode */ }
+  const playBookEl = document.getElementById("train-play-book");
+  if (playBookEl) {
+    playBookEl.addEventListener("change", () => {
+      syncTrainPickerVisibility();
+    });
+  }
   const trainFresh = document.getElementById("train-fresh");
   if (trainFresh) {
     trainFresh.addEventListener("click", () => startTraining(appState.trainMode, { fresh: true }));
@@ -9599,12 +10243,32 @@ function bindEvents() {
   }
   document.querySelectorAll("#train-modes .train-mode").forEach((btn) => {
     btn.addEventListener("click", () => {
+      const mode = btn.dataset.mode;
+      if (appState.trainMode === mode && btn.classList.contains("is-active")) return;
       document
         .querySelectorAll("#train-modes .train-mode")
         .forEach((b) => b.classList.toggle("is-active", b === btn));
-      appState.trainMode = btn.dataset.mode;
+      appState.trainMode = mode;
+      appState.play = null;
+      if (mode !== "smart") appState.smart = null;
+      if (mode !== "all_lines") appState.training = null;
+      clearBlitzTimer();
+      setBlitzBarVisible(false);
+      if (mode === "play") {
+        appState.smart = null;
+        appState.training = null;
+        setTrainBanner("idle", "Play vs human", "Start from the opening, or I'm Feeling Lucky for a key position.");
+        void resetTrainBoardIdle("Play vs human");
+      } else {
+        setTrainBanner("idle", "Press Start to begin", "");
+        void resetTrainBoardIdle("Press Start to train");
+        const progress = document.getElementById("train-progress-panel");
+        if (progress) progress.hidden = true;
+        const summary = document.getElementById("train-summary");
+        if (summary) summary.hidden = true;
+      }
       // The answer clock only exists in the smart queue; rehearsal is untimed.
-      if (blitzRow) blitzRow.hidden = btn.dataset.mode !== "smart";
+      if (blitzRow) blitzRow.hidden = mode !== "smart";
       syncTrainPickerVisibility();
     });
   });

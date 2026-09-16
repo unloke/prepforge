@@ -29,6 +29,8 @@ describe("command palette filter", () => {
     expect(PALETTE_ACTIONS.map((a) => a.label)).toEqual([
       "New repertoire",
       "Start training",
+      "Play vs human",
+      "I'm Feeling Lucky",
       "Analyze",
     ]);
   });

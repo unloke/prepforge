@@ -3,6 +3,8 @@ import { describe, it, expect } from "vitest";
 import {
   PHASE_LABELS,
   phaseOfFen,
+  isStartFen,
+  promptTipFor,
   rankMove,
   buildPhaseCoach,
   clusterQueueByPhase,
@@ -104,8 +106,55 @@ describe("buildPhaseCoach", () => {
     expect(coach.humanSan).toBe("e4");
     expect(coach.humanPct).toBe(42);
     expect(coach.expectedPct).toBe(42);
+    expect(coach.tip).toMatch(/first move of your repertoire/i);
+    expect(coach.tip).toMatch(/e4/);
+    expect(coach.tip).not.toMatch(/actually play|everyone|humans go/i);
+    expect(coach.promptTip).toBe("Play the first move of your repertoire.");
+    expect(coach.promptTip).not.toMatch(/e4/);
+  });
+
+  it("does not name e4 as the crowd move while waiting at the start FEN with no prep", () => {
+    const coach = buildPhaseCoach({
+      fen: START,
+      predictions: [
+        { move_uci: "e2e4", probability: 0.52 },
+        { move_uci: "d2d4", probability: 0.28 },
+      ],
+    });
+    expect(isStartFen(START)).toBe(true);
+    expect(coach.humanSan).toBe("e4");
+    expect(coach.tip).not.toMatch(/e4/);
+    expect(coach.tip).not.toMatch(/everyone|humans go|actually play/i);
+    expect(coach.promptTip).not.toMatch(/e4/);
+  });
+
+  it("keeps crowd copy after a move is actually played from the start", () => {
+    const coach = buildPhaseCoach({
+      fen: START,
+      predictions: [
+        { move_uci: "e2e4", probability: 0.42 },
+        { move_uci: "d2d4", probability: 0.28 },
+      ],
+      expectedUci: "e2e4",
+      playedUci: "e2e4",
+      rating: 1500,
+    });
     expect(coach.tip).toMatch(/players at your rating actually play/i);
     expect(coach.tip).toMatch(/e4/);
+  });
+
+  it("never puts the prepared SAN on promptTip (Train Your-move must not leak)", () => {
+    const coach = buildPhaseCoach({
+      fen: MIDDLEGAME,
+      predictions: [
+        { move_uci: "c3d5", probability: 0.36 },
+        { move_uci: "e4d5", probability: 0.22 },
+      ],
+      expectedUci: "c3d5",
+    });
+    expect(coach.tip).toMatch(/Nxd5/);
+    expect(coach.promptTip).not.toMatch(/Nxd5|Nxd5|c3d5/i);
+    expect(promptTipFor(MIDDLEGAME, "middlegame")).not.toMatch(/Nxd5/);
   });
 
   it("marks a rare expected move (<8%) as surprise", () => {
@@ -128,7 +177,7 @@ describe("buildPhaseCoach", () => {
     expect(coach.tip).toMatch(/a3/);
   });
 
-  it("teaches a miss when played ≠ expected with low playedPct, naming the prepared SAN", () => {
+  it("on a first miss, does not name the prepared SAN (retry is not a reveal)", () => {
     const predictions = [
       { move_uci: "e2e4", probability: 0.48 },
       { move_uci: "d2d4", probability: 0.3 },
@@ -145,6 +194,23 @@ describe("buildPhaseCoach", () => {
     });
     expect(coach.playedPct).toBe(2);
     expect(coach.expectedPct).toBe(48);
+    expect(coach.tip).toMatch(/almost never play that/i);
+    expect(coach.tip).not.toMatch(/e4/);
+  });
+
+  it("names the prepared SAN only when reveal is set (second miss)", () => {
+    const predictions = [
+      { move_uci: "e2e4", probability: 0.48 },
+      { move_uci: "a2a4", probability: 0.02 },
+    ];
+    const coach = buildPhaseCoach({
+      fen: START,
+      predictions,
+      expectedUci: "e2e4",
+      expectedSan: "e4",
+      playedUci: "a2a4",
+      reveal: true,
+    });
     expect(coach.tip).toMatch(/e4/);
     expect(coach.tip).toMatch(/almost never play that/i);
   });

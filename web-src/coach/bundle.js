@@ -13,6 +13,8 @@ export { buildCommentary } from "./commentary.js";
 export {
   PHASE_LABELS,
   phaseOfFen,
+  isStartFen,
+  promptTipFor,
   buildPhaseCoach,
   clusterQueueByPhase,
 } from "./phase-coach.js";

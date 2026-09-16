@@ -80,6 +80,30 @@ describe("visual system tokens", () => {
       expect(body, `${selector} should not hard-code hex`).not.toMatch(/#[0-9a-fA-F]{3,8}/);
     }
   });
+
+  it("locks the Train banner height so Maia copy cannot shove the board", () => {
+    const banner = ruleBody(".train-banner");
+    expect(banner).toMatch(/max-height:\s*72px/);
+    expect(banner).toMatch(/overflow:\s*hidden/);
+    const sub = ruleBody(".train-banner-sub");
+    expect(sub).toMatch(/-webkit-line-clamp:\s*2/);
+    const blitzHidden = ruleBody(".train-blitz-bar[hidden]");
+    expect(blitzHidden).toMatch(/visibility:\s*hidden/);
+    expect(blitzHidden).toMatch(/display:\s*block/);
+    const badgeHidden = ruleBody(".train-turn-badge[hidden]");
+    expect(badgeHidden).toMatch(/display:\s*none/);
+    const ibHidden = ruleBody(".ib[hidden]");
+    expect(ibHidden).toMatch(/display:\s*none/);
+    const syncHidden = ruleBody(".build-sync[hidden]");
+    expect(syncHidden).toMatch(/display:\s*none/);
+    const engineHidden = ruleBody(".engine-banner[hidden]");
+    expect(engineHidden).toMatch(/visibility:\s*hidden/);
+    expect(engineHidden).toMatch(/display:\s*grid/);
+    const todayHidden = ruleBody(".today-card[hidden]");
+    expect(todayHidden).toMatch(/visibility:\s*hidden/);
+    const coverage = ruleBody(".coverage-gaps");
+    expect(coverage).toMatch(/max-height:\s*240px/);
+  });
 });
 
 describe("seven views share chrome families", () => {
@@ -126,5 +150,14 @@ describe("seven views share chrome families", () => {
     expect(html).toContain('id="build-san"');
     expect(html).toContain('id="train-san"');
     expect(html).toContain('id="train-fresh"');
+    expect(html).toContain('id="start-play"');
+    expect(html).toContain('id="feeling-lucky"');
+    expect(html).toContain("I'm Feeling Lucky");
+    expect(html).toContain("Lichess explorer");
+    expect(html).toContain('id="train-play-color"');
+    expect(html).toContain('id="play-takeback"');
+    expect(html).toContain('id="play-resign"');
+    expect(html).toContain('id="play-analyze"');
+    expect(html).toContain("My repertoire");
   });
 });
