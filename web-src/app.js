@@ -3,7 +3,6 @@ import {
   createEngineProvider,
   isBrowserEngineAvailable,
 } from "./engine/stockfish-provider.js";
-import { analyzeGamePositions } from "./engine/game-analyzer.js";
 import {
   getSharedMaia3Provider,
   disposeSharedMaia3Provider,
@@ -14,6 +13,19 @@ import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
 import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { describeMove } from "./explain.js";
+import { createSanBuffer, resolveSan } from "./san-entry.js";
+import {
+  parseWorkspaceLocation,
+  serializeWorkspaceLocation,
+  workspaceLocationFromState,
+} from "./workspace-url.js";
+import { mapTrainUiSession, shouldResetTrainStats } from "./train-resume.js";
+import { engineUnavailableBanner, engineBannerHtml } from "./engine-banner.js";
+import {
+  buildPaletteItems,
+  filterPaletteItems,
+  renderPaletteItems,
+} from "./command-palette.js";
 let _coachReady = null;
 function preloadCoach() {
   if (!_coachReady) {
@@ -287,6 +299,8 @@ function playSound(type) {
 }
 
 const appState = {
+  currentView: "dashboard",
+  repertoireList: [],
   analysis: null,
   // Raw PGN from the most recent in-session Analyze run (not history recall).
   analysisSourcePgn: null,
@@ -1584,7 +1598,9 @@ class PositionCoach {
     if (!hasMove) return; // nothing played in → leave the instant read
     if (!isBrowserEngineAvailable()) return; // no engine → leave the instant read
     window.clearTimeout(this.timer);
-    setCoachProse("Let me look at that…", "info");
+    // Keep the instant describeMove line visible; a spinner on the phase chip
+    // is enough. Replacing the prose with "Let me look at that…" felt laggy
+    // and wiped the only useful sentence on screen.
     const target = fen;
     this.timer = window.setTimeout(() => this._run(target), 280);
   }
@@ -1770,6 +1786,7 @@ class PositionCoach {
       if (token !== this.token || fen !== this.fen || !read) return;
       c.attachIntuition(features, read);
       renderCoachProse(c.buildCommentary(features));
+      paintMaiaCoachFromRead(prevFen, read, { playedUci: features.uci });
     } catch (err) {
       console.warn("Coach: Maia intuition read unavailable", err);
       /* Maia unavailable → no texture/sharpness note; the engine read stands. */
@@ -1833,6 +1850,79 @@ function renderCoachProse(c) {
   setCoachProse(c.prose, c.tone);
 }
 
+let _phaseCoachMod = null;
+function loadPhaseCoach() {
+  if (!_phaseCoachMod) _phaseCoachMod = import("./coach/phase-coach.js");
+  return _phaseCoachMod;
+}
+
+function paintPhaseChip(phase, label) {
+  const el = document.getElementById("coach-phase");
+  if (!el) return;
+  if (!phase) {
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  el.dataset.phase = phase;
+  el.textContent = label || phase;
+}
+
+function paintMaiaCoachLine(model) {
+  const el = document.getElementById("coach-maia");
+  if (!el) return;
+  if (!model || !model.tip) {
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  el.textContent = model.tip;
+  paintPhaseChip(model.phase, model.title);
+}
+
+function paintPhaseFromFen(fen) {
+  if (!fen) return;
+  loadPhaseCoach()
+    .then((m) => {
+      const model = m.buildPhaseCoach({ fen, predictions: [] });
+      paintPhaseChip(model.phase, model.title);
+    })
+    .catch(() => {});
+}
+
+function paintMaiaCoachFromRead(fen, read, extra = {}) {
+  loadPhaseCoach()
+    .then((m) => {
+      const model = m.buildPhaseCoach({
+        fen,
+        predictions: (read && read.predictions) || [],
+        rating: effectiveMaiaRating(),
+        ...extra,
+      });
+      paintMaiaCoachLine(model);
+    })
+    .catch(() => {});
+}
+
+async function maiaPhaseCoach({ fen, expectedUci, expectedSan, playedUci }) {
+  const m = await loadPhaseCoach();
+  let predictions = [];
+  try {
+    const provider = getSharedMaia3Provider();
+    predictions = await provider.predictions({ fen, rating: effectiveMaiaRating() });
+  } catch (_) {
+    /* engine off → still return a phase-generic tip */
+  }
+  return m.buildPhaseCoach({
+    fen,
+    predictions,
+    expectedUci,
+    expectedSan,
+    playedUci,
+    rating: effectiveMaiaRating(),
+  });
+}
+
 // Drive the coach from one position-change call: show an instant plain-language read
 // immediately, then let the engine replace it with a graded verdict.
 function refreshAnalysisExplain(ctx) {
@@ -1848,13 +1938,14 @@ function renderInstantCoach() {
   const ctx = appState.explainContext || {};
   const fen = ctx.fen || appState.analysisBoardFen || START_FEN;
   const turn = fen.split(" ")[1] === "b" ? "black" : "white";
+  paintPhaseFromFen(ctx.prevFen || fen);
   if (ctx.prevFen && ctx.lastSan) {
     const mover = turn === "white" ? "Black" : "White"; // the side that just moved
     const did = describeMove(ctx.prevFen, ctx.lastUci, ctx.lastSan);
     setCoachProse(did ? `${mover} ${did}.` : `${mover} plays ${ctx.lastSan}.`, "info");
   } else {
     const side = turn === "white" ? "White" : "Black";
-    setCoachProse(`${side} to move. Make a move and I'll tell you what I think.`, "info");
+    setCoachProse(`${side} to move. I'll say what it does — then Maia will add the human plan.`, "info");
   }
 }
 
@@ -2648,7 +2739,231 @@ function activeBoardController() {
   return boards[name] || null;
 }
 
-function switchView(name) {
+const sanBuffer = createSanBuffer();
+let workspaceUrlReady = false;
+let paletteItems = [];
+let paletteActive = 0;
+
+function syncWorkspaceUrl({ push = false } = {}) {
+  if (!workspaceUrlReady || typeof window === "undefined") return;
+  const loc = workspaceLocationFromState(appState);
+  const href = serializeWorkspaceLocation(loc, window.location.href);
+  const current = window.location.pathname + window.location.search + window.location.hash;
+  if (current === href) return;
+  if (push) history.pushState(loc, "", href);
+  else history.replaceState(loc, "", href);
+}
+
+function paintSanBuffer(action, text) {
+  const view = activeViewName();
+  const ids = { analyze: "analysis-san", build: "build-san", train: "train-san" };
+  const el = document.getElementById(ids[view]);
+  if (!el) return;
+  if (!text) {
+    el.hidden = true;
+    el.textContent = "";
+    el.classList.remove("is-reject");
+    return;
+  }
+  el.hidden = false;
+  el.textContent = text;
+  el.classList.toggle("is-reject", action === "reject");
+  if (action === "reject") {
+    window.setTimeout(() => {
+      if (el.textContent === text) {
+        el.hidden = true;
+        el.textContent = "";
+        el.classList.remove("is-reject");
+      }
+    }, 700);
+  }
+}
+
+function playTypedSan(uci) {
+  const view = activeViewName();
+  if (view === "analyze" && boards.analysis) {
+    return onAnalysisBoardMove(uci, boards.analysis.fen);
+  }
+  if (view === "build") return onBuildBoardMove(uci);
+  if (view === "train") return submitTrainingMove(uci);
+  return null;
+}
+
+function handleSanKey(event) {
+  const view = activeViewName();
+  if (!["analyze", "build", "train"].includes(view)) return false;
+  const board = activeBoardController();
+  const fen = board && board.fen;
+  if (!fen) return false;
+  // "f" is both a SAN file and the flip shortcut. Only steal it when it is a
+  // legal SAN prefix from this position; otherwise let the flip handler run.
+  if (!sanBuffer.text && (event.key === "f" || event.key === "F")) {
+    const peek = resolveSan(fen, event.key);
+    if (peek.status === "illegal") return false;
+  }
+  const result = sanBuffer.handleKey(event.key, fen);
+  if (result.action === "ignore") return false;
+  event.preventDefault();
+  paintSanBuffer(result.action, result.action === "play" ? "" : result.san || result.buffer);
+  if (result.action === "play" && result.uci) {
+    Promise.resolve(playTypedSan(result.uci)).catch(() => {});
+  }
+  if (result.action === "reject") {
+    setStatus(`Illegal SAN: ${result.san}`);
+  }
+  return true;
+}
+
+function paintEngineBanners() {
+  const model = engineUnavailableBanner({
+    available: isBrowserEngineAvailable(),
+    isolated: !!self.crossOriginIsolated,
+  });
+  const html = engineBannerHtml(model, { escapeHtml });
+  for (const id of ["analyze-engine-banner", "build-engine-banner"]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.hidden = !model.visible;
+    el.innerHTML = html;
+  }
+}
+
+function paletteIsOpen() {
+  const el = document.getElementById("command-palette");
+  return !!(el && !el.hidden);
+}
+
+function closePalette() {
+  const el = document.getElementById("command-palette");
+  if (el) el.hidden = true;
+}
+
+function paintPalette() {
+  const box = document.getElementById("palette-results");
+  if (!box) return;
+  box.innerHTML = renderPaletteItems(paletteItems, paletteActive);
+}
+
+async function openPalette() {
+  const el = document.getElementById("command-palette");
+  if (!el) return;
+  let repertoires = appState.repertoireList || [];
+  if (appState.signedIn) {
+    try {
+      const payload = await api("/api/repertoires");
+      repertoires = payload.repertoires || [];
+      appState.repertoireList = repertoires;
+    } catch (_) {
+      /* keep the last cached list */
+    }
+  }
+  paletteItems = filterPaletteItems(buildPaletteItems({ repertoires }), "");
+  paletteActive = 0;
+  el.hidden = false;
+  const input = document.getElementById("palette-input");
+  if (input) {
+    input.value = "";
+    input.focus();
+  }
+  paintPalette();
+}
+
+function runPaletteItem(item) {
+  closePalette();
+  if (!item) return;
+  if (item.kind === "view") {
+    switchView(item.view);
+    if (item.view === "settings") loadSettings();
+    return;
+  }
+  if (item.kind === "repertoire" && item.repertoireId) {
+    editRepertoire(item.repertoireId);
+    return;
+  }
+  if (item.action === "new-repertoire") {
+    createRepertoirePrompt();
+    return;
+  }
+  if (item.action === "start-training") {
+    switchView("train");
+    startTraining();
+    return;
+  }
+  if (item.action === "analyze") {
+    switchView("analyze");
+  }
+}
+
+function bindCommandPalette() {
+  const root = document.getElementById("command-palette");
+  const input = document.getElementById("palette-input");
+  const results = document.getElementById("palette-results");
+  const opener = document.getElementById("open-palette");
+  if (opener) opener.addEventListener("click", () => openPalette());
+  if (root) {
+    root.addEventListener("click", (event) => {
+      if (event.target === root) closePalette();
+    });
+  }
+  if (input) {
+    input.addEventListener("input", () => {
+      paletteItems = filterPaletteItems(
+        buildPaletteItems({ repertoires: appState.repertoireList || [] }),
+        input.value,
+      );
+      paletteActive = 0;
+      paintPalette();
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        paletteActive = Math.min(paletteItems.length - 1, paletteActive + 1);
+        paintPalette();
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        paletteActive = Math.max(0, paletteActive - 1);
+        paintPalette();
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        runPaletteItem(paletteItems[paletteActive]);
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        closePalette();
+      }
+    });
+  }
+  if (results) {
+    results.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-index]");
+      if (!btn) return;
+      runPaletteItem(paletteItems[Number(btn.dataset.index)]);
+    });
+  }
+}
+
+async function restoreWorkspaceLocation() {
+  const loc = parseWorkspaceLocation(window.location.href);
+  if (loc.repertoireId && appState.signedIn) {
+    try {
+      const payload = await api(
+        `/api/build/load?repertoire_id=${encodeURIComponent(loc.repertoireId)}`,
+      );
+      await hydrateBuild(payload, payload.selected_node_id);
+      appState.trainingRepertoireId = payload.repertoire_id;
+    } catch (_) {
+      /* stale id — still restore the view */
+    }
+  }
+  switchView(loc.view, { fromUrl: true });
+  if (loc.view === "analyze" && loc.ply && appState.analysis) {
+    await showAnalysisPly(loc.ply);
+  }
+  if (loc.view === "train" && appState.signedIn) {
+    await startTraining(appState.trainMode, { fresh: false });
+  }
+}
+
+function switchView(name, { fromUrl = false } = {}) {
   appState.currentView = name;
   // Navigating is user activity; if the Lichess watch is running, switching to
   // Analyze (where a fresh game matters most) tightens the poll cadence briefly.
@@ -2659,6 +2974,7 @@ function switchView(name) {
   document.querySelectorAll(".view").forEach((view) => {
     view.classList.toggle("is-active", view.id === `view-${name}`);
   });
+  if (!fromUrl) syncWorkspaceUrl({ push: true });
   if (name === "analyze") {
     preloadCoach().catch(() => {});
     preloadAnalyzeView().catch(() => {});
@@ -2927,7 +3243,10 @@ function goToSmartTraining(statusMessage) {
   appState.trainMode = "smart";
   const btn = document.querySelector('#train-modes .train-mode[data-mode="smart"]');
   if (btn) btn.click();
-  setStatus(statusMessage);
+  setStatus(statusMessage || "Starting trainer");
+  // Dashboard "Train now" used to dump the user on an idle Train tab. Start
+  // (or resume) the smart queue immediately so one click is a real session.
+  startTraining("smart", { fresh: false }).catch(() => {});
 }
 
 // ----- Dashboard tab — lazy view chunk ----------------------------------------
@@ -4470,6 +4789,7 @@ async function editRepertoire(repertoireId, nodeId = null) {
     await hydrateBuild(payload, target || payload.selected_node_id);
     appState.trainingRepertoireId = payload.repertoire_id;
     switchView("build");
+    syncWorkspaceUrl();
     updateBuildReadOnlyUi(payload);
   } catch (error) {
     setStatus(error.message);
@@ -4777,6 +5097,7 @@ async function runAnalysis() {
       },
     });
 
+    const { analyzeGamePositions } = await import("./engine/game-analyzer.js");
     const evals = await analyzeGamePositions({
       positions,
       depth: prep.depth,
@@ -5133,6 +5454,7 @@ async function showAnalysisPly(ply) {
   const moves = appState.analysis ? appState.analysis.moves : [];
   const boundedPly = Math.max(0, Math.min(ply, moves.length));
   appState.analysisPly = boundedPly;
+  syncWorkspaceUrl();
   appState.analysisCurrentNodeId = boundedPly === 0 ? "root" : `m${boundedPly}`;
   const move = boundedPly > 0 ? moves[boundedPly - 1] : null;
   const fen = move ? move.fen_after : moves[0]?.fen_before || appState.analysis?.initialFen || START_FEN;
@@ -5502,6 +5824,7 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   const nextNodeId = selectedNodeId || payload.selected_node_id || payload.nodes[0]?.id;
   await selectBuildNode(nextNodeId);
   renderBuildSync();
+  syncWorkspaceUrl();
 }
 
 let buildModule = null;
@@ -7253,11 +7576,11 @@ function setTrainBanner(state, title, sub) {
   }
 }
 
-async function startTraining(mode) {
+async function startTraining(mode, options = {}) {
   mode = mode || appState.trainMode || "smart";
   appState.trainMode = mode;
   if (mode === "smart") {
-    await startSmartTraining();
+    await startSmartTraining(options);
     return;
   }
   // ----- legacy line rehearsal (all_lines) below -----
@@ -7284,11 +7607,13 @@ async function startTraining(mode) {
     setStatus(error.message);
     return;
   }
-  const body = { seed: 13, mode, repertoire_id: repertoireId };
+  const fresh = !!options.fresh;
+  const body = { seed: 13, mode, repertoire_id: repertoireId, fresh };
   try {
     const payload = await postJson("/api/train/start", body);
     appState.training = payload;
-    trainStatsReset();
+    const mapped = mapTrainUiSession(payload, { fresh });
+    if (shouldResetTrainStats(mapped)) trainStatsReset();
     if (boards.train && payload.color) {
       boards.train.setOrientation(payload.color === "black" ? "black" : "white");
     }
@@ -7301,7 +7626,12 @@ async function startTraining(mode) {
       setTrainBanner("done", "No trainable lines here", "Add prepared moves in Build, then train.");
       document.getElementById("train-board-label").textContent = "Nothing to train yet";
     }
-    setStatus(`Trainer ready: ${payload.lines.length} lines`);
+    setStatus(
+      mapped.resumed
+        ? `Resumed trainer: line ${mapped.cardIndex + 1} / ${mapped.totalCards}`
+        : `Trainer ready: ${payload.lines.length} lines`,
+    );
+    syncWorkspaceUrl();
   } catch (error) {
     setStatus(error.message);
   }
@@ -7713,8 +8043,14 @@ function startBlitzTimer(smart, prompt) {
   }, BLITZ_SECONDS * 1000);
 }
 
-async function startSmartTraining() {
-  setStatus("Building your queue");
+async function startSmartTraining(options = {}) {
+  const fresh = !!options.fresh;
+  setStatus(fresh ? "Building a new queue" : "Building your queue");
+  setTrainBanner(
+    "runin",
+    fresh ? "Building a new queue…" : "Building your queue…",
+    "Weak spots and due reviews first",
+  );
   // Train must see the latest tree: drain unsynced Build edits (adds + deletes)
   // before the server builds the queue, else a just-added line wouldn't be in
   // it and a just-deleted one would.
@@ -7739,7 +8075,7 @@ async function startSmartTraining() {
     // tree + SR state — a resumed stale queue is exactly the desync this avoids.
     payload = await postJson("/api/train/smart/start", {
       mixed: true,
-      fresh: true,
+      fresh,
     });
   } catch (error) {
     setStatus(error.message);
@@ -7747,7 +8083,8 @@ async function startSmartTraining() {
     return;
   }
   appState.trainingRepertoireId = payload.repertoire_id;
-  trainStatsReset();
+  const mapped = mapTrainUiSession(payload, { fresh });
+  if (shouldResetTrainStats(mapped)) trainStatsReset();
   appState.training = null; // leave legacy mode if it was active
   // A restart can interrupt an in-flight run-in; its early-return leaves the
   // busy flag set, so clear it before the new session takes the board.
@@ -7755,27 +8092,27 @@ async function startSmartTraining() {
   clearBlitzTimer();
   // The whole session runs locally off this card bundle (grading, advancement,
   // requeue, skip); only graded attempts + the position sync back, batched.
-  const queue = (payload.cards || []).filter((c) => c.targets && c.targets.length);
+  const queue = mapped.queue;
   if (!queue.length) {
     setStatus("Nothing to train yet");
     setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Build, then train.");
     return;
   }
   appState.smart = {
-    sessionId: payload.session_id,
-    repertoireId: payload.repertoire_id,
-    repertoireName: payload.repertoire_name,
-    color: payload.color,
-    mixed: !!payload.mixed,
+    sessionId: mapped.sessionId,
+    repertoireId: mapped.repertoireId,
+    repertoireName: mapped.repertoireName,
+    color: mapped.color,
+    mixed: mapped.mixed,
     queue,
-    cardIndex: 0,
-    targetIndex: 0,
-    totalCards: queue.length,
-    counts: { ...payload.counts },
-    healthBefore: payload.health || null,
+    cardIndex: mapped.cardIndex,
+    targetIndex: mapped.targetIndex,
+    totalCards: mapped.totalCards,
+    counts: { ...(mapped.counts || {}) },
+    healthBefore: mapped.healthBefore,
     prompt: null,
     attempt: 1,
-    cardsDone: 0,
+    cardsDone: mapped.cardsDone,
     retriesFixed: 0,
     // Snapshot the toggle so flipping it mid-session can't change the rules.
     blitz: blitzEnabled(),
@@ -7792,7 +8129,19 @@ async function startSmartTraining() {
   setTrainSyncState("saved");
   document.getElementById("train-board-label").textContent =
     `${payload.repertoire_name} - you play ${payload.color}`;
-  setStatus(`Queue ready: ${queue.length} cards`);
+  loadPhaseCoach()
+    .then((m) => {
+      if (!appState.smart) return;
+      appState.smart.phaseCluster = m.clusterQueueByPhase(queue);
+      return renderSmartQueueStrip();
+    })
+    .catch(() => {});
+  setStatus(
+    mapped.resumed
+      ? `Resumed queue: card ${mapped.cardIndex + 1} / ${queue.length}`
+      : `Queue ready: ${queue.length} cards`,
+  );
+  syncWorkspaceUrl();
   await presentSmartPrompt(smartLocalPrompt(appState.smart));
 }
 
@@ -7895,12 +8244,35 @@ async function presentSmartPrompt(prompt) {
   } else {
     setTrainBanner(
       "move",
-      `${side === "white" ? "White" : "Black"} to move`,
-      `${SMART_KIND_LABELS[prompt.kind] || "Review"} - play your prepared move`
+      "Your move",
+      `${SMART_KIND_LABELS[prompt.kind] || "Review"} · play the prepared idea`,
     );
     if (smart.blitz) startBlitzTimer(smart, prompt);
     else clearBlitzTimer();
   }
+  prefetchTrainCoach(prompt);
+}
+
+function prefetchTrainCoach(prompt) {
+  if (!prompt || !prompt.fen_before) return;
+  maiaPhaseCoach({
+    fen: prompt.fen_before,
+    expectedUci: prompt.expected_uci,
+    expectedSan: prompt.expected_san,
+  })
+    .then((model) => {
+      const live = appState.smart && appState.smart.prompt === prompt;
+      if (!live || !model) return;
+      prompt.phaseCoach = model;
+      const titleEl = document.getElementById("train-banner-title");
+      const stillTeaching = prompt.kind === "new" && titleEl && /New move/.test(titleEl.textContent || "");
+      if (stillTeaching) {
+        setTrainBanner("teach", `${model.title}: ${prompt.expected_san}`, model.tip);
+      } else if (prompt.kind !== "new") {
+        setTrainBanner("move", "Your move", model.tip);
+      }
+    })
+    .catch(() => {});
 }
 
 // Mirror of services/training_smart.REQUEUE_GAP — keep in sync.
@@ -7959,11 +8331,29 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       // First miss: auto-hint and a free retry, streak intact, no reveal.
       // The blitz retry is deliberately untimed — the clock tests recall,
       // the retry rebuilds it.
+      const cached = prompt.phaseCoach;
       setTrainBanner(
         "wrong",
         timedOut ? "Time's up - try again" : "Not that one - try again",
-        prompt.hint.strategy || prompt.hint.piece || "Think about the idea behind the line."
+        (cached && cached.tip) || prompt.hint.strategy || prompt.hint.piece || "Think about the idea behind the line."
       );
+      maiaPhaseCoach({
+        fen: prompt.fen_before,
+        expectedUci: prompt.expected_uci,
+        expectedSan: prompt.expected_san,
+        playedUci,
+      })
+        .then((model) => {
+          if (appState.smart && appState.smart.prompt === prompt && model) {
+            prompt.phaseCoach = model;
+            setTrainBanner(
+              "wrong",
+              timedOut ? "Time's up - try again" : "Not that one - try again",
+              model.tip,
+            );
+          }
+        })
+        .catch(() => {});
     } else {
       // Second miss: reveal, let the answer be played, and the card returns
       // a few positions later (replaces the old end-of-session recovery round).
@@ -7978,7 +8368,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       }
       // The answer is on screen anyway, so say WHY it's the move — a reveal that
       // teaches sticks better than a bare "it's Nf3".
-      const why = teachWhy(prompt, "");
+      const why = (prompt.phaseCoach && prompt.phaseCoach.tip) || teachWhy(prompt, "");
       setTrainBanner(
         "reveal",
         `It's ${prompt.expected_san}`,
@@ -8386,6 +8776,7 @@ function applyServerEngineGating() {
     gated,
     BROWSER_ENGINE_UNAVAILABLE,
   );
+  paintEngineBanners();
 }
 
 
@@ -9190,6 +9581,15 @@ function bindEvents() {
     .addEventListener("click", () => importRepertoireFromInput("train-import-input"));
 
   document.getElementById("start-train").addEventListener("click", () => startTraining());
+  const trainFresh = document.getElementById("train-fresh");
+  if (trainFresh) {
+    trainFresh.addEventListener("click", () => startTraining(appState.trainMode, { fresh: true }));
+  }
+  bindCommandPalette();
+  window.addEventListener("popstate", () => {
+    const loc = parseWorkspaceLocation(window.location.href);
+    switchView(loc.view, { fromUrl: true });
+  });
   document.getElementById("train-hint").addEventListener("click", trainHint);
   const blitzRow = document.getElementById("train-blitz-row");
   const blitzToggle = document.getElementById("train-blitz-toggle");
@@ -9224,8 +9624,20 @@ function bindEvents() {
   document.getElementById("train-skip").addEventListener("click", skipTrainingLine);
 
   document.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === "k") {
+      event.preventDefault();
+      if (paletteIsOpen()) closePalette();
+      else openPalette();
+      return;
+    }
+    if (event.key === "Escape" && paletteIsOpen()) {
+      event.preventDefault();
+      closePalette();
+      return;
+    }
     const active = document.activeElement;
     if (active && ["TEXTAREA", "INPUT", "SELECT"].includes(active.tagName)) return;
+    if (handleSanKey(event)) return;
     // Arrow keys navigate the active tab's board. We blur clicked move buttons
     // on click, so focus returns to the document for these to fire.
     const inBuild = activeViewName() === "build";
@@ -9259,9 +9671,15 @@ function bindEvents() {
       }
     }
     if (event.key === "Escape") {
+      if (sanBuffer.text) {
+        sanBuffer.clear();
+        paintSanBuffer("clear", "");
+        return;
+      }
       closeNodeContextMenu();
       closeRepertoireContextMenu();
       closeAccountMenu();
+      closePalette();
     }
   });
   document.addEventListener("click", (event) => {
@@ -9319,6 +9737,7 @@ async function init() {
   }
   renderAnalysisTree();
   applyServerEngineGating();
+  paintEngineBanners();
 
   // Learn the auth state BEFORE any owner-scoped calls. A signed-out visitor must
   // not fire /api/settings, /api/dashboard, /api/board, /api/lichess — they 401 and
@@ -9331,11 +9750,14 @@ async function init() {
     setStatus("Sign in to build and train your repertoires.");
     renderBuilderTree();
   }
+  workspaceUrlReady = true;
+  await restoreWorkspaceLocation();
   // A share URL opens the read-only viewer last, so it lands on top of whatever
   // workspace state loaded — and works for signed-out visitors too.
   await maybeOpenSharedView();
   // A join URL (/?join=<code>) redeems a team invite (requires sign-in).
   await maybeHandleJoinLink();
+  syncWorkspaceUrl();
 }
 
 // Everything that needs an authenticated session. Called from init only when

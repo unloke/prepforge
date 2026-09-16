@@ -99,6 +99,7 @@ def test_start_returns_first_prompt(client):
     assert body["color"] == "white"
     assert body["session_id"]
     assert body["mode"] == "all_lines"
+    assert body["resumed"] is False
     prompt = body["prompt"]
     # First prompt is the start position; e2e4 is among the offered legal moves.
     assert prompt["current_index"] == 0
@@ -186,6 +187,7 @@ def test_smart_start_returns_queue_and_prompt(client):
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["mode"] == "smart"
+    assert body["resumed"] is False
     assert body["total_cards"] == 1
     assert body["counts"]["new"] == 1  # untrained repertoire -> a new card
     prompt = body["prompt"]
@@ -446,6 +448,10 @@ def test_smart_sync_persists_position_for_resume(client):
     assert resumed["session_id"] == start["session_id"]
     assert resumed["total_cards"] == 2  # malformed entry dropped
     assert resumed["card_index"] == 1
+    assert resumed["resumed"] is True
+    fresh = _smart_start(client, rep, fresh=True, seed=5).json()
+    assert fresh["resumed"] is False
+    assert fresh["card_index"] == 0
 
 
 def test_smart_sync_caps_batch_sizes(client):

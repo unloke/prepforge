@@ -63,7 +63,7 @@ export function createTrainView({
       lastMove: null,
     });
     const side = (prompt.fen_before || "").split(" ")[1] === "b" ? "black" : "white";
-    setTrainBanner("move", `${side === "white" ? "White" : "Black"} to move`, "Play your prepared move on the board");
+    setTrainBanner("move", "Your move", "Play your prepared idea on the board");
     updateTrainTurnBadge(side);
     const total = prompt.total_lines || 1;
     document.getElementById("train-line-label").textContent =
@@ -89,12 +89,18 @@ export function createTrainView({
     document.getElementById("train-queue-bar").innerHTML = kinds
       .map((k) => `<span class="tq-seg tq-${k}" style="flex:${counts[k]}"></span>`)
       .join("");
-    document.getElementById("train-queue-legend").innerHTML = kinds
-      .map(
-        (k) =>
-          `<span class="tq-chip tq-${k}" title="${escapeHtml(smartKindTitles[k] || "")}">${counts[k]} ${k}</span>`
-      )
-      .join("");
+    const cluster = smart.phaseCluster;
+    const phaseChip =
+      cluster && cluster.total
+        ? `<span class="tq-chip tq-phase" title="Most cards in this session sit in the ${escapeHtml(cluster.majorityLabel.toLowerCase())}">${escapeHtml(cluster.majorityLabel)} coach · ${cluster.counts[cluster.majority]}/${cluster.total}</span>`
+        : "";
+    document.getElementById("train-queue-legend").innerHTML =
+      kinds
+        .map(
+          (k) =>
+            `<span class="tq-chip tq-${k}" title="${escapeHtml(smartKindTitles[k] || "")}">${counts[k]} ${k}</span>`
+        )
+        .join("") + phaseChip;
   }
 
   function renderSmartProgress(prompt) {

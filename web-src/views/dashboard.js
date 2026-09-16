@@ -81,10 +81,9 @@ export function createDashboardView({
     const streak = payload.streak || { current: 0, best: 0, trained_today: false };
     const due = payload.due_reviews || 0;
     const soon = payload.due_soon || 0;
-    if (!payload.repertoires) {
-      card.hidden = true;
-      return;
-    }
+    // `repertoires` on this payload is a COUNT. Hiding Today when it is 0
+    // buried Train now for new accounts. Always show the card once we have a
+    // dashboard payload.
     const note = streak.trained_today
       ? `Trained today - day ${streak.current} ✓`
       : streak.current > 0
@@ -158,6 +157,7 @@ export function createDashboardView({
         }
       }
       const payload = await api("/api/repertoires");
+      appState.repertoireList = payload.repertoires || [];
       const visible = (payload.repertoires || []).filter(
         (item) => !appState.pendingRepDeletes.has(String(item.id)),
       );

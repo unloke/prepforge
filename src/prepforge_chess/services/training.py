@@ -115,6 +115,7 @@ class TrainingService:
         *,
         mode: TrainingMode = TrainingMode.ALL_LINES,
         seed: Optional[int] = None,
+        fresh: bool = False,
     ) -> TrainingSession:
         existing = self.repository.load_latest_training_session(repertoire_id, mode)
         if existing is not None:
@@ -124,7 +125,7 @@ class TrainingService:
                 for node_id in existing.line_order
             )
             complete = existing.current_index >= len(existing.line_order)
-            if intact and not complete:
+            if intact and not complete and not fresh:
                 return existing
             # Either the session finished (restart it) or the repertoire changed
             # under it (stale node ids) — rebuild a fresh run from the current

@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-BqigXGje.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-DvROTTkF.css">
+    <script type="module" crossorigin src="/static/assets/index-5uXNwEHj.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-CowpNYLg.css">
   </head>
   <body>
     <header class="topbar">
@@ -21,6 +21,7 @@
         <button class="tab" data-view="teams" data-testid="nav-teams">Teams</button>
         <button class="tab" data-view="settings" data-testid="nav-settings">Settings</button>
       </nav>
+      <button class="ib palette-open" id="open-palette" data-testid="open-palette" type="button" title="Command palette (Ctrl+K)" aria-label="Open command palette">Ctrl K</button>
       <button class="lichess-chip" id="account-chip" data-testid="account-chip" aria-haspopup="menu" aria-expanded="false" title="Connect a Lichess account">
         <span class="lichess-label" id="account-label">Connect Lichess</span>
       </button>
@@ -61,10 +62,12 @@
               <button class="ib" id="analysis-flip" title="Flip board" aria-label="Flip board">⇅</button>
               <span class="sep"></span>
               <span class="board-label" id="analysis-board-label">Initial position</span>
+              <span class="san-buffer" id="analysis-san" data-testid="analysis-san" hidden></span>
             </div>
           </div>
 
           <aside class="sidebar" id="analyze-sidebar">
+            <div class="engine-banner" id="analyze-engine-banner" data-testid="analyze-engine-banner" hidden></div>
             <div class="tools">
               <button class="btn ghost" id="open-engine-widget" data-testid="open-engine-widget" title="Open the Stockfish evaluation window">Engine</button>
               <button class="btn ghost" id="fetch-my-game" data-testid="fetch-my-game" title="Load my latest Lichess game">My last game</button>
@@ -73,12 +76,14 @@
             <section class="explain-card" id="analysis-explain" data-testid="analysis-explain">
               <div class="explain-head">
                 <span class="explain-title">Coach</span>
+                <span class="phase-chip" id="coach-phase" data-testid="coach-phase" hidden></span>
                 <label class="explain-toggle" title="Have the engine review each move you play on the board">
                   <input type="checkbox" id="explain-engine-toggle" checked />
                   <span>Review my moves</span>
                 </label>
               </div>
               <p class="coach-prose" id="coach-prose" data-testid="coach-prose">Make a move and I'll tell you what I think.</p>
+              <p class="coach-maia" id="coach-maia" data-testid="coach-maia" hidden></p>
               <p class="coach-bookline" id="coach-bookline" data-testid="coach-bookline" hidden></p>
             </section>
             <div class="reveal" id="analysis-results" hidden>
@@ -132,11 +137,13 @@
               <button class="ib" id="build-flip" title="Flip board" aria-label="Flip board">⇅</button>
               <span class="sep"></span>
               <span class="board-label" id="build-board-label">No repertoire</span>
+              <span class="san-buffer" id="build-san" data-testid="build-san" hidden></span>
               <span class="build-sync" id="build-sync" aria-live="polite" hidden></span>
             </div>
           </div>
 
           <aside class="sidebar">
+            <div class="engine-banner" id="build-engine-banner" data-testid="build-engine-banner" hidden></div>
             <div class="rep-header" id="build-rep-header">
               <span class="rep-name" id="build-rep-name" data-testid="build-rep-name">No repertoire open</span>
               <button class="ib rep-menu-btn" id="build-menu" data-testid="build-menu" title="Repertoire actions (rename, export, new)" aria-haspopup="menu" aria-expanded="false">⋯</button>
@@ -199,6 +206,7 @@
               <button class="ib" id="train-skip" title="Skip this card" aria-label="Skip this card">⏭</button>
               <span class="sep"></span>
               <span class="board-label" id="train-board-label">Press Start to train</span>
+              <span class="san-buffer" id="train-san" data-testid="train-san" hidden></span>
               <span class="build-sync" id="train-sync" aria-live="polite" hidden></span>
             </div>
           </div>
@@ -215,7 +223,10 @@
                 <input type="checkbox" id="train-blitz-toggle" data-testid="train-blitz-toggle" />
                 <span>&#9889; Blitz &middot; 10s per move</span>
               </label>
-              <button class="btn primary train-start" id="start-train" data-testid="start-train">Start training</button>
+              <div class="train-start-row">
+                <button class="btn primary train-start" id="start-train" data-testid="start-train">Start training</button>
+                <button class="btn ghost" id="train-fresh" data-testid="train-fresh" type="button" title="Discard the unfinished session and build a new queue">Start over</button>
+              </div>
             </div>
 
             <div class="train-progress-panel" id="train-progress-panel" hidden>
@@ -282,7 +293,7 @@
       </section>
 
       <section class="view" id="view-replay" data-testid="view-replay">
-        <div class="replay-stack">
+        <div class="list-view replay-stack">
           <section class="card replay-card-games">
             <div class="card-head">
               <h2>My recent games</h2>
@@ -330,7 +341,7 @@
       </section>
 
       <section class="view" id="view-teams" data-testid="view-teams">
-        <div class="replay-stack teams-stack">
+        <div class="list-view replay-stack teams-stack">
           <section class="card">
             <div class="card-head">
               <h2>My teams</h2>
@@ -376,12 +387,13 @@
       </section>
 
       <section class="view" id="view-settings" data-testid="view-settings">
-        <div class="replay-layout">
+        <div class="list-view replay-layout">
           <section class="card">
             <div class="card-head">
               <h2>Engine</h2>
               <button class="btn ghost" id="settings-refresh">Refresh</button>
             </div>
+            <p class="muted hint">Stockfish runs in this browser. If isolation headers are missing, Analyze and Build show a banner instead of a silent failure.</p>
             <div class="settings-row">
               <div>
                 <div class="settings-label">Mode</div>
@@ -488,6 +500,13 @@
     </div>
 
     <div class="toast-stack" id="toast-stack" data-testid="toast-stack"></div>
+
+    <div class="palette" id="command-palette" data-testid="command-palette" hidden role="dialog" aria-modal="true" aria-label="Command palette">
+      <div class="palette-panel">
+        <input class="palette-input" id="palette-input" data-testid="palette-input" type="text" autocomplete="off" spellcheck="false" placeholder="Go to a view, repertoire, or action…" aria-label="Filter commands" />
+        <div class="palette-results" id="palette-results" data-testid="palette-results" role="listbox"></div>
+      </div>
+    </div>
 
   </body>
 </html>
