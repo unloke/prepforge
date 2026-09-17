@@ -96,12 +96,30 @@ describe("normalizeExplorer", () => {
     const stats = normalizeExplorer({
       ...RAW,
       topGames: [
-        { id: "abc123", moves: "e2e4 e7e5" },
-        { id: null, moves: "d2d4" },
-        { id: "zzz", moves: 42 },
+        {
+          uci: "c6d5",
+          id: "kN6d9l2i",
+          winner: "black",
+          white: { name: "Carlsen, M.", rating: 2881 },
+          black: { name: "Anand, V.", rating: 2785 },
+          year: 2014,
+          month: "2014-06",
+        },
+        { uci: "junk", id: "nope" },
+        { uci: "e2e4", id: null },
       ],
     });
-    expect(stats.topGames).toEqual([{ id: "abc123", moves: "e2e4 e7e5" }]);
+    expect(stats.topGames).toEqual([
+      {
+        id: "kN6d9l2i",
+        uci: "c6d5",
+        winner: "black",
+        white: "Carlsen, M.",
+        black: "Anand, V.",
+        year: 2014,
+        month: "2014-06",
+      },
+    ]);
   });
   it("handles an empty position (no games)", () => {
     const stats = normalizeExplorer({ white: 0, draws: 0, black: 0, moves: [] });

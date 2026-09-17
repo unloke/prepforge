@@ -63,8 +63,11 @@ export function explorerUrl(db, fen, { rating, topGames } = {}) {
 }
 
 // Normalize a raw explorer payload into what the panel renders. Percentages are
-// of decided+drawn games for THAT move row. Masters topGames entries survive as
-// `topGames` (id + moves) for the Lucky game sampler; other consumers ignore it.
+// of decided+drawn games for THAT move row. Masters topGames entries follow the
+// real upstream shape (ExplorerGameWithUciMove in lila-openingexplorer's
+// response.rs): one SINGLE next-move `uci` plus the game reference
+// {id, winner, white/black, year, month} — never a full-game movetext.
+// The Lucky sampler keeps id+uci; display fields ride along for future use.
 export function normalizeExplorer(raw) {
   const totalAll =
     (Number(raw.white) || 0) + (Number(raw.draws) || 0) + (Number(raw.black) || 0);
@@ -92,9 +95,17 @@ export function normalizeExplorer(raw) {
       ? raw.topGames
           .map((g) => ({
             id: g && g.id != null ? String(g.id) : null,
-            moves: typeof g.moves === "string" ? g.moves : null,
+            uci:
+              g && typeof g.uci === "string" && /^[a-h][1-8][a-h][1-8][qrbn]?$/i.test(g.uci)
+                ? g.uci.toLowerCase()
+                : null,
+            winner: g && typeof g.winner === "string" ? g.winner : null,
+            white: g && g.white && typeof g.white.name === "string" ? g.white.name : null,
+            black: g && g.black && typeof g.black.name === "string" ? g.black.name : null,
+            year: Number.isFinite(Number(g && g.year)) ? Number(g.year) : null,
+            month: g && typeof g.month === "string" ? g.month : null,
           }))
-          .filter((g) => g.id && g.moves)
+          .filter((g) => g.id && g.uci)
       : [],
   };
 }

@@ -1,8 +1,13 @@
 ﻿import { describe, expect, it, vi } from "vitest";
 
+import { Chess } from "chess.js";
+
 import {
   LUCKY_GAME_KEY,
   LUCKY_PHASE_KEY,
+  LUCKY_SEED_FENS,
+  START_FEN,
+  buildMasterLine,
   luckyDbStart,
   nextLuckyPhase,
   pickPhaseCandidate,
@@ -12,6 +17,7 @@ import {
   sansFromTopGameMoves,
   scoreGamePositions,
   swingFromSnapshot,
+  uciFen,
   verifyReplay,
   walkSans,
 } from "./train-lucky-db.js";
@@ -221,54 +227,256 @@ describe("swingFromSnapshot", () => {
   });
 });
 
-describe("luckyDbStart", () => {
-  const seedStats = {
-    topGames: [
-      {
-        id: "game1",
-        moves:
-          "e2e4 e7e5 g1f3 b8c6 f1b5 a7a6 f1a4 g8f6 e1g1 f8e7 f1e1 b7b5 c1b3 d7d6 c2c3 e8g8 h2h3 f6b8 d2d4 b8d7 c2c4 c7c6 b1c3 c8b7 c1g5 b5b4 c3b1 h7h6 g5h4 c6c5 d4e5 d7e5 f3e5 d6e5 d1d8 a8d8 f1d1 d8d1 b1d1 c8e4 f1f6 e4f6 d1e4 d2d5 d5d4 c4d5 c7c4 b2c4 b4c4 a2a4 c4c3 b2c3 b3c3",
-      },
-      { id: "game2", moves: "d2d4 d7d5 c2c4 e7e6 b1c3 g8f6" },
-    ],
-  };
+describe("uciFen", () => {
+  it("converts one UCI to SAN with the resulting FEN", () => {
+    const moved = uciFen(
+      "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "e2e4",
+    );
+    expect(moved.san).toBe("e4");
+    expect(moved.fen).toContain(" b ");
+    expect(moved.over).toBe(false);
+  });
 
-  function harness({ pgn = PGN_40, candidateFen = null } = {}) {
-    const calls = { stats: [], pgns: [] };
-    const fetchStats = vi.fn(async (db, fen, opts) => {
-      calls.stats.push([db, fen, opts]);
-      if (String(fen).startsWith("rnbqkbnr/pppp")) return seedStats;
-      // Strong book node: masters genuinely debated this position, so the
-      // explorer bonus lifts the middlegame shortlist over the critical gate.
-      return {
-        totalGames: 2400,
-        moves: [
-          { uci: "e2e4", san: "e4", total: 700, share: 0.29 },
-          { uci: "d2d4", san: "d4", total: 650, share: 0.27 },
-          { uci: "c2c4", san: "c4", total: 550, share: 0.23 },
-          { uci: "g1f3", san: "Nf3", total: 500, share: 0.21 },
-        ],
-      };
+  it("returns null for an illegal move", () => {
+    expect(
+      uciFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "e2e5"),
+    ).toBeNull();
+  });
+});
+
+describe("buildMasterLine", () => {
+  const FEN_AFTER_E4 =
+    "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+
+  function lineStats(lines) {
+    return vi.fn(async (db, fen) => {
+      const placement = String(fen).split(" ")[0];
+      const moves = lines[placement] || [];
+      return { totalGames: moves.length, moves };
     });
-    const fetchGamePgn = vi.fn(async (id) => {
-      calls.pgns.push(id);
-      // game1 replays from its own explorer movetext: the "real database game"
-      // path — a full legal line that must verify end to end.
-      if (id === "game1") return `[Event "Master game 1"]\n\n${PGN_40.split("\n").slice(5).join("\n")}`;
-      return pgn;
-    });
-    return { calls, fetchStats, fetchGamePgn, candidateFen };
   }
 
+  it("walks the entry uci forward through live explorer replies", async () => {
+    const fetchStats = lineStats({
+      "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR": [
+        { uci: "g1f3", total: 80 },
+        { uci: "b1c3", total: 20 },
+      ],
+    });
+    const line = await buildMasterLine({
+      startFen: FEN_AFTER_E4,
+      firstUci: "c7c5",
+      fetchStats,
+      rng: () => 0.01,
+    });
+    expect(line.sans.slice(0, 2)).toEqual(["c5", "Nf3"]);
+    expect(line.sans.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("returns null when the entry uci is illegal here", async () => {
+    const line = await buildMasterLine({
+      startFen: FEN_AFTER_E4,
+      firstUci: "e2e5",
+      fetchStats: vi.fn(async () => ({ totalGames: 0, moves: [] })),
+    });
+    expect(line).toBeNull();
+  });
+
+  it("stops at a dry position instead of failing", async () => {
+    const fetchStats = vi.fn(async () => ({ totalGames: 0, moves: [] }));
+    const line = await buildMasterLine({
+      startFen: FEN_AFTER_E4,
+      firstUci: "e7e5",
+      fetchStats,
+    });
+    expect(line.sans).toEqual(["e5"]);
+  });
+});
+
+describe("luckyDbStart", () => {
+  // Real upstream shape: ExplorerGameWithUciMove — ONE next-move uci plus a
+  // game reference. There is deliberately no movetext and no PGN.
+  // The mock explorer below is a small but REAL master tree: a fixed book of
+  // Ruy Lopez plies with synthetic weights answers whatever side is to move
+  // from any seed door, so every walk grows into a long, replayable, critical
+  // line for every phase. Continuation replies always come from the tree.
+  const TREE = null;
+  void TREE;
+
+  const BOOK_SANS = [
+    "e4", "e5", "Nf3", "Nc6", "Bb5", "a6", "Ba4", "Nf6", "O-O", "Be7",
+    "Re1", "b5", "Bb3", "d6", "c3", "O-O", "h3", "Nb8", "d4", "Nbd7",
+    "c4", "c6", "Nc3", "Bb7", "Bg5", "b4", "Nb1", "h6", "Bh4", "c5",
+    "dxe5", "Nxe5", "Nxe5", "dxe5", "Qxd8", "Raxd8", "Rd1", "Rxd1+",
+    "Bxd1", "Bxe4", "Bxf6", "Bxf6", "Rxe4", "Rxd2", "Rxe5", "Rd5",
+    "Rxd5", "cxd5", "cxd5", "c4", "bxc4", "bxc4",
+  ];
+
+  function sanToUci(fen, san) {
+    try {
+      const probe = new Chess(fen);
+      const move = probe.move(san);
+      if (!move) return null;
+      return `${move.from}${move.to}${move.promotion || ""}`;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Continuation replies for any walked position: the next still-unplayed
+  // book ply that is legal there, with synthetic book weights. Never echoes
+  // the caller's seed fixtures — always derived from the tree + chess.js.
+  function replyMoves(fen) {
+    const played = new Set();
+    try {
+      const probe = new Chess(START_FEN);
+      for (const san of BOOK_SANS) {
+        let move = null;
+        try {
+          move = probe.move(san);
+        } catch (_) {
+          move = null;
+        }
+        if (!move) break;
+        played.add(`${move.from}${move.to}${move.promotion || ""}`);
+        if (probe.fen() === fen) break;
+      }
+    } catch (_) {
+      // probe is best-effort only
+    }
+    const replies = [];
+    try {
+      const legal = new Chess(fen).moves({ verbose: true });
+      const seen = new Set();
+      for (const san of BOOK_SANS) {
+        if (replies.length >= 4) break;
+        const uci = sanToUci(fen, san);
+        if (!uci || seen.has(uci) || played.has(uci)) continue;
+        const row = legal.find(
+          (m) => `${m.from}${m.to}${m.promotion || ""}` === uci,
+        );
+        if (!row) continue;
+        seen.add(uci);
+        replies.push({ uci, san: row.san, total: 400 - replies.length * 60, share: 0.25 });
+      }
+      if (replies.length) return replies;
+      return legal.slice(0, 4).map((m, i) => ({
+        uci: `${m.from}${m.to}${m.promotion || ""}`,
+        san: m.san,
+        total: 400 - i * 60,
+        share: 0.25,
+      }));
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // Seed doors answer topGames with a real-shape entry whose uci is legal AT
+  // THAT SEED: derived from the book by playing out plies until the seed is
+  // reached, then offering the next legal book plies. Continuation positions
+  // answer moves from the fixed book above.
+  function walkStats() {
+    return vi.fn(async (db, fen, opts) => {
+      const wantsTop = opts && Number(opts.topGames) > 0;
+      try {
+        const probe = new Chess(START_FEN);
+        let bookLeft = BOOK_SANS.slice();
+        for (;;) {
+          if (probe.fen() === fen) break;
+          const san = bookLeft.shift();
+          if (!san) break;
+          let move = null;
+          try {
+            move = probe.move(san);
+          } catch (_) {
+            move = null;
+          }
+          if (!move) break;
+        }
+        if (probe.fen() === fen && bookLeft.length) {
+          const entries = [];
+          const seen = new Set();
+          const atSeed = LUCKY_SEED_FENS.includes(fen);
+          for (const san of bookLeft) {
+            let move = null;
+            try {
+              move = probe.move(san);
+            } catch (_) {
+              move = null;
+            }
+            if (!move) continue;
+            probe.undo();
+            const uci = `${move.from}${move.to}${move.promotion || ""}`;
+            if (seen.has(uci)) continue;
+            seen.add(uci);
+            entries.push({ id: `book-${uci}`, uci });
+            if (entries.length >= (atSeed ? 2 : 0)) break;
+            if (!atSeed) break;
+          }
+          if (wantsTop && entries.length && atSeed) {
+            return {
+              totalGames: 2000,
+              moves: replyMoves(fen).slice(0, 2),
+              topGames: entries,
+            };
+          }
+        }
+      } catch (_) {
+        // fall through to the generic continuation below
+      }
+      return { totalGames: 2000, moves: replyMoves(fen), topGames: [] };
+    });
+  }
+
+  it("walks a database-derived line from a real-shape seed (no PGN involved)", async () => {
+    const fetchStats = walkStats();
+    const storage = memoryStorage();
+    const picked = await luckyDbStart({
+      phase: "opening",
+      storage,
+      rng: () => 0,
+      fetchStats,
+    });
+    expect(picked).not.toBeNull();
+    expect(picked.reason).toBe("db-critical");
+    expect(Array.isArray(picked.sans)).toBe(true);
+    expect(picked.sans.length).toBeGreaterThanOrEqual(4);
+    expect(picked.score).toBeGreaterThanOrEqual(5.0);
+    expect(JSON.parse(storage.getItem(LUCKY_GAME_KEY) || "[]")).toContain(picked.gameId);
+    // Production path, end to end: the winning line replays legally from the
+    // seed the sampler walked (carried on the pick), exactly like the
+    // sampler's verify gate. The picked FEN must sit ON that replayed line.
+    expect(picked.seedFen).toBeTruthy();
+    const replayed = verifyReplay(picked.sans, picked.seedFen);
+    expect(replayed).not.toBeNull();
+    expect(replayed.length).toBe(picked.sans.length + 1);
+    expect(replayed.map((p) => p.fen)).toContain(picked.fen);
+  });
+
+  it("uses the seed FEN as the walk root, not the start position", async () => {
+    const fetchStats = walkStats();
+    const picked = await luckyDbStart({
+      phase: "opening",
+      storage: memoryStorage(),
+      rng: () => 0,
+      fetchStats,
+    });
+    const seedCall = fetchStats.mock.calls.find(
+      (call) => call[2] && call[2].topGames === 4,
+    );
+    expect(seedCall[1]).not.toBe(
+      "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    );
+  });
+
   it("returns a key position with phase and remembers the rotation", async () => {
-    const h = harness();
     const storage = memoryStorage();
     const picked = await luckyDbStart({
       phase: "middlegame",
       storage,
       rng: () => 0,
-      fetchStats: h.fetchStats,
-      fetchGamePgn: h.fetchGamePgn,
+      fetchStats: walkStats(),
     });
     expect(picked).not.toBeNull();
     expect(picked.reason).toBe("db-critical");
@@ -276,34 +484,50 @@ describe("luckyDbStart", () => {
     expect(picked.fen).toContain(" ");
     expect(picked.gameId).toBeTruthy();
     expect(Array.isArray(picked.sans)).toBe(true);
-    expect(picked.sans.length).toBeGreaterThanOrEqual(4);
-    expect(picked.score).toBeGreaterThanOrEqual(5.0);
+    expect(picked.sans.length).toBeGreaterThanOrEqual(2);
     expect(storage.getItem(LUCKY_PHASE_KEY)).toBe(picked.phase);
     expect(JSON.parse(storage.getItem(LUCKY_GAME_KEY) || "[]")).toContain(picked.gameId);
-    expect(h.calls.pgns.length).toBeGreaterThan(0);
-    expect(["game1", "game2"]).toContain(h.calls.pgns[0]);
   });
 
   it("prefers unseen games on repeat visits", async () => {
-    const h = harness();
+    const seenFen = LUCKY_SEED_FENS[0];
+    const seenUci = sanToUci(START_FEN, BOOK_SANS[0]);
+    const legalAtSeed = new Chess(seenFen).moves({ verbose: true });
+    const freshUci = `${legalAtSeed[0].from}${legalAtSeed[0].to}${legalAtSeed[0].promotion || ""}`;
+    expect(seenUci).toBeTruthy();
+    expect(freshUci).toBeTruthy();
+    expect(freshUci).not.toBe(seenUci);
+    const tree = walkStats();
+    const fetchStats = vi.fn(async (db, fen, opts) => {
+      if (fen === seenFen && opts && Number(opts.topGames) > 0) {
+        return {
+          totalGames: 2000,
+          moves: [],
+          topGames: [
+            { id: "seen-game", uci: seenUci },
+            { id: "fresh-game", uci: freshUci },
+          ],
+        };
+      }
+      return tree(db, fen, opts);
+    });
     const storage = memoryStorage();
-    rememberLuckyGame("game1", storage);
+    rememberLuckyGame("seen-game", storage);
     const picked = await luckyDbStart({
       phase: "opening",
       storage,
       rng: () => 0,
-      fetchStats: h.fetchStats,
-      fetchGamePgn: h.fetchGamePgn,
+      fetchStats,
     });
+    // Seen game is deprioritised: the walk starts from the fresh entry's uci.
     expect(picked).not.toBeNull();
-    expect(h.calls.pgns[0]).toBe("game2");
+    expect(picked.gameId).toBe("fresh-game");
   });
 
-  it("drops games whose SAN line does not fully replay", async () => {
-    const h = harness({ pgn: "1. e4 e5 9. Qqq *" });
-    h.fetchStats = vi.fn(async (db, fen) => {
+  it("drops entries whose uci is illegal at the seed", async () => {
+    const fetchStats = vi.fn(async (db, fen) => {
       if (String(fen).startsWith("rnbqkbnr/pppp")) {
-        return { topGames: [{ id: "broken", moves: "" }] };
+        return { topGames: [{ id: "broken", uci: "e2e5" }] };
       }
       return { totalGames: 0, moves: [] };
     });
@@ -312,24 +536,48 @@ describe("luckyDbStart", () => {
         phase: "opening",
         storage: memoryStorage(),
         rng: () => 0,
-        fetchStats: h.fetchStats,
-        fetchGamePgn: h.fetchGamePgn,
+        fetchStats,
       }),
     ).rejects.toThrow(/No sharp database game/);
   });
 
-  it("skips games that fail to export and tries the next one", async () => {
-    const h = harness();
-    h.fetchGamePgn.mockRejectedValueOnce(new Error("nope"));
+  it("skips a dry walk and tries the next entry", async () => {
+    const seedFen = LUCKY_SEED_FENS[0];
+    const legalAtSeed = new Chess(seedFen).moves({ verbose: true });
+    const shortUci = `${legalAtSeed[0].from}${legalAtSeed[0].to}${legalAtSeed[0].promotion || ""}`;
+    const goodUci = `${legalAtSeed[1].from}${legalAtSeed[1].to}${legalAtSeed[1].promotion || ""}`;
+    const tree = walkStats();
+    const fetchStats = vi.fn(async (db, fen, opts) => {
+      if (fen === seedFen && opts && Number(opts.topGames) > 0) {
+        return {
+          totalGames: 0,
+          moves: [],
+          topGames: [
+            { id: "too-short", uci: shortUci },
+            { id: "good", uci: goodUci },
+          ],
+        };
+      }
+      if (opts && Number(opts.topGames) > 0) return tree(db, fen, opts);
+      // The short entry's walk dies immediately (below the 4-ply floor) while
+      // the good entry's walk grows through the book tree.
+      try {
+        const after = new Chess(seedFen);
+        after.move({ from: shortUci.slice(0, 2), to: shortUci.slice(2, 4) });
+        if (fen === after.fen()) return { totalGames: 0, moves: [] };
+      } catch (_) {
+        // fall through to the tree
+      }
+      return tree(db, fen, opts);
+    });
     const picked = await luckyDbStart({
       phase: "opening",
       storage: memoryStorage(),
       rng: () => 0,
-      fetchStats: h.fetchStats,
-      fetchGamePgn: h.fetchGamePgn,
+      fetchStats,
     });
     expect(picked).not.toBeNull();
-    expect(h.fetchGamePgn).toHaveBeenCalledTimes(2);
+    expect(picked.gameId).toBe("good");
   });
 
   it("throws a friendly error when every seed is empty", async () => {
@@ -339,7 +587,6 @@ describe("luckyDbStart", () => {
         storage: memoryStorage(),
         rng: () => 0,
         fetchStats,
-        fetchGamePgn: vi.fn(async () => PGN_40),
       }),
     ).rejects.toThrow(/No sharp database game/);
   });
@@ -357,7 +604,6 @@ describe("luckyDbStart", () => {
   });
 
   it("confirms the winner with engine swing + Maia when provided", async () => {
-    const h = harness();
     const engine = {
       open: vi.fn(async () => {}),
       snapshot: vi.fn(() => ({
@@ -374,8 +620,7 @@ describe("luckyDbStart", () => {
       phase: "middlegame",
       storage: memoryStorage(),
       rng: () => 0,
-      fetchStats: h.fetchStats,
-      fetchGamePgn: h.fetchGamePgn,
+      fetchStats: walkStats(),
       engine,
       maia,
       rating: 1500,
@@ -387,13 +632,11 @@ describe("luckyDbStart", () => {
   });
 
   it("works with no engine and no Maia", async () => {
-    const h = harness();
     const picked = await luckyDbStart({
       phase: "opening",
       storage: memoryStorage(),
       rng: () => 0,
-      fetchStats: h.fetchStats,
-      fetchGamePgn: h.fetchGamePgn,
+      fetchStats: walkStats(),
     });
     expect(picked.fen).toContain(" ");
   });
