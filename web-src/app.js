@@ -8151,6 +8151,42 @@ async function onFeelingLucky() {
   // database/master-game critical-position sampler (Divider phases, critical
   // gate, replay verification, rotation, dedup). Personal repertoire picks
   // live in train-lucky.js for other callers, not on this button.
+  //
+  // Login gate (matches the compare/replay guards below): Feeling Lucky needs
+  // the explorer proxy, which needs an app session. Without one every click
+  // would just 401 → "Database unavailable", so route to sign-in first.
+  if (!appState.accountUsername) {
+    try {
+      await refreshAuthStatus();
+    } catch (_) {
+      // fall through to the sign-in prompt below
+    }
+  }
+  if (!appState.accountUsername) {
+    setStatus("Sign in first, then try Feeling Lucky.");
+    openAuthModal();
+    return;
+  }
+  // Lichess-link gate: the proxy 400s without a linked token ("link your
+  // Lichess account…"), which the sampler surfaces as Database unavailable.
+  // Short-circuit with the connect flow instead of burning explorer calls.
+  if (!appState.lichessUsername) {
+    try {
+      await refreshLichessStatus();
+    } catch (_) {
+      // fall through to the connect prompt below
+    }
+  }
+  if (!appState.lichessUsername) {
+    setStatus("Connect a Lichess account first.");
+    setTrainBanner(
+      "idle",
+      "Database unavailable",
+      "Connect Lichess (top-right chip) so Lucky can read the masters database.",
+    );
+    startLichessOAuth();
+    return;
+  }
   let dbPicked = null;
   try {
     setTrainBanner("runin", "Asking the Lichess database…", "Finding a critical position");
@@ -8170,13 +8206,10 @@ async function onFeelingLucky() {
   } catch (error) {
     const msg = error && error.message ? error.message : String(error);
     setStatus(msg);
-    setTrainBanner(
-      "idle",
-      "Database unavailable",
-      /link your lichess/i.test(msg)
-        ? "Connect Lichess (top-right chip) so Lucky can read the masters database."
-        : "Try again — the masters database may be rate-limited right now.",
-    );
+    // Lucky's own runFeelingLucky already painted the right banner for every
+    // outcome (Database unavailable vs Nothing sharp vs Play session). Do not
+    // repaint here — a stale overwrite is exactly how "Database unavailable"
+    // used to mask the real "Nothing sharp" state.
     return;
   }
   if (!dbPicked) {
