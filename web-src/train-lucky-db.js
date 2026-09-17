@@ -23,7 +23,8 @@ const PHASES = ["opening", "middlegame", "endgame"];
 const MAX_RECENT_GAMES = 12;
 // Six broad doors into the masters DB so consecutive clicks do not keep
 // drawing the same e4-e5 family. The FENs are the positions AFTER the move.
-const SEED_FENS = [
+// Exported for tests so mocks can serve seed-legal topGames entries.
+export const LUCKY_SEED_FENS = [
   "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
   "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1",
   "rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq - 0 1",
@@ -187,7 +188,29 @@ export function pickPhaseCandidate(candidates, phase, { rng = Math.random, exclu
   return shortlist[idx] || shortlist[0];
 }
 
-export function uciToSan(fen, uci) {
+/**
+ * Walk the masters explorer into a database-backed continuation LINE.
+ *
+ * The upstream `topGames[]` entry is one single next-move `uci` plus a game
+ * reference (ExplorerGameWithUciMove in lila-openingexplorer's
+ * src/api/response.rs) — never a full-game movetext — and masters ids are
+ * fixed-width base62 OTB keys (src/model/game_id.rs), not lichess.org game
+ * ids, so no single-game PGN export can resolve them. The upstream server
+ * does expose one full-game route (`GET /masters/pgn/{id}` in main.rs, backed
+ * by `MastersGame::write_pgn`), but it is an administrative endpoint hidden
+ * behind the deploy reverse proxy — only /masters, /lichess, /player are
+ * whitelisted — so the public API cannot rebuild one single tracked game.
+ *
+ * The sampler therefore builds what the public contract actually supports: a
+ * position-by-position masters line. The topGames entry supplies the first
+ * ply; every later ply is the explorer's own most-played continuation from
+ * the position masters genuinely reached. Every ply is individually legal and
+ * database-backed, but the assembled line may stitch plies from different
+ * OTB games — call it a "master database-derived line", never "the game".
+ * verifyReplay below still holds as a hard gate: an illegal or truncated
+ * walk is dropped like any bad game.
+ */
+export function uciFen(fen, uci) {
   try {
     const chess = new Chess(fen);
     const move = chess.move({
@@ -195,18 +218,94 @@ export function uciToSan(fen, uci) {
       to: String(uci || "").slice(2, 4),
       promotion: String(uci || "").length > 4 ? String(uci).slice(4) : undefined,
     });
-    return move ? move.san : null;
+    if (!move) return null;
+    return { san: move.san, fen: chess.fen(), over: chess.isGameOver() };
   } catch (_) {
     return null;
   }
+}
+
+export async function buildMasterLine({
+  startFen = START_FEN,
+  firstUci = null,
+  fetchStats = null,
+  rating,
+  rng = Math.random,
+  maxPly = 64,
+  say = null,
+} = {}) {
+  const sans = [];
+  const chess = new Chess(startFen);
+  let over = chess.isGameOver();
+  const step = (uci) => {
+    try {
+      const applied = chess.move({
+        from: String(uci).slice(0, 2),
+        to: String(uci).slice(2, 4),
+        promotion: String(uci).length > 4 ? String(uci).slice(4) : undefined,
+      });
+      if (!applied) return false;
+      sans.push(applied.san);
+      over = chess.isGameOver();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+  if (firstUci) {
+    if (!step(firstUci)) return null;
+  }
+  while (!over && sans.length < maxPly) {
+    const fen = chess.fen();
+    let stats = null;
+    try {
+      if (typeof say === "function") say("Following the master line…");
+      stats = await fetchStats("masters", fen, { rating });
+    } catch (_) {
+      break;
+    }
+    const continuations = (stats && stats.moves) || [];
+    if (!continuations.length) break;
+    // Weighted by real master popularity with a little jitter: the masters'
+    // most-played reply usually continues, but the dice occasionally take a
+    // side road so consecutive clicks do not trace the same game.
+    const total = continuations.reduce((sum, m) => sum + (Number(m.total) || 0), 0);
+    let pick = null;
+    if (total > 0 && typeof rng === "function") {
+      let draw = roll(rng) * total;
+      for (const move of continuations) {
+        draw -= Number(move.total) || 0;
+        if (draw < 0) {
+          pick = move;
+          break;
+        }
+      }
+      if (!pick) pick = continuations[0];
+    } else {
+      pick = continuations[0];
+    }
+    if (!pick || !pick.uci || !step(pick.uci)) break;
+  }
+  if (!sans.length) return null;
+  return { sans, over, startFen };
+}
+
+/** Back-compat alias: single-position UCI → SAN without game-over info. */
+export function uciToSan(fen, uci) {
+  const moved = uciFen(fen, uci);
+  return moved ? moved.san : null;
 }
 
 /**
  * Database round for Feeling Lucky.
  *
  * 1. Pick a seed door (rng) and ask the masters explorer for its topGames.
- * 2. Fetch each top game PGN from Lichess (gameId-based export URL).
- * 3. Verify the SAN line fully replays from the start position; drop any game
+ * 2. Walk each top-game entry's single `uci` forward through the explorer
+ *    into a master database-derived continuation line (see buildMasterLine).
+ *    Masters ids are OTB keys, not lichess.org game ids, so no PGN export is
+ *    involved — and per the design note above the result is a legal,
+ *    position-by-position masters line, not one tracked OTB game.
+ * 3. Verify the SAN line fully replays from the seed position; drop any line
  *    whose tail is illegal or truncated (no partial games reach the picker).
  * 4. Divide the replayed game with lichess Divider, score every ply locally,
  *    keep the target phase's critical shortlist (critical gate enforced).
@@ -221,11 +320,11 @@ export async function luckyDbStart({
   exclude = [],
   rating = 1500,
   fetchStats = null,
-  fetchGamePgn = defaultFetchGamePgn,
   engine = null,
   maia = null,
   onStatus = null,
   verifyGame = verifyReplay,
+  maxWalkPly = 96,
 } = {}) {
   const say = (msg) => {
     if (typeof onStatus === "function") {
@@ -239,7 +338,7 @@ export async function luckyDbStart({
   const targetPhase = phase || nextLuckyPhase({ storage, rng });
   if (typeof fetchStats !== "function") throw new Error("Lichess explorer is unavailable");
   const bannedGames = new Set(recentGameIds(storage));
-  const seeds = SEED_FENS.slice();
+  const seeds = LUCKY_SEED_FENS.slice();
   const seedIndex = Math.min(seeds.length - 1, Math.floor(roll(rng) * seeds.length));
   const seedOrder = [seeds[seedIndex], ...seeds.filter((_, i) => i !== seedIndex)];
   let lastError = null;
@@ -254,6 +353,7 @@ export async function luckyDbStart({
     }
     const picked = await luckyDbStartFromSeed({
       seed,
+      seedFen,
       targetPhase,
       rng,
       exclude,
@@ -261,10 +361,10 @@ export async function luckyDbStart({
       storage,
       rating,
       fetchStats,
-      fetchGamePgn,
       engine,
       maia,
       verifyGame,
+      maxWalkPly,
       say,
     });
     if (picked) {
@@ -279,6 +379,7 @@ export async function luckyDbStart({
 
 async function luckyDbStartFromSeed({
   seed = null,
+  seedFen = START_FEN,
   targetPhase,
   rng,
   exclude,
@@ -286,13 +387,13 @@ async function luckyDbStartFromSeed({
   storage = null,
   rating,
   fetchStats,
-  fetchGamePgn,
   engine,
   maia,
   verifyGame = verifyReplay,
+  maxWalkPly = 96,
   say,
 }) {
-  say("Asking the Lichess database for master games…");
+  say("Asking the Lichess database for master positions…");
   const entries = (seed && seed.topGames) || [];
   if (!entries.length) return null;
   const freshFirst = entries
@@ -304,17 +405,26 @@ async function luckyDbStartFromSeed({
       return roll(rng) - 0.5;
     });
   for (const { entry } of freshFirst) {
-    say("Reading a master game…");
-    let pgn = null;
+    if (!entry || !entry.uci) continue;
+    say("Following a master line…");
+    let walk = null;
     try {
-      pgn = await fetchGamePgn(entry.id);
+      walk = await buildMasterLine({
+        startFen: seedFen,
+        firstUci: entry.uci,
+        fetchStats,
+        rating,
+        rng,
+        maxPly: maxWalkPly,
+        say,
+      });
     } catch (_) {
       continue;
     }
-    const sans = sansFromTopGameMoves(pgn, entry.moves);
+    const sans = (walk && walk.sans) || [];
     if (sans.length < 4) continue;
     const verify = typeof verifyGame === "function" ? verifyGame : verifyReplay;
-    const positions = verify(sans);
+    const positions = verify(sans, (walk && walk.startFen) || seedFen);
     if (!positions) continue;
     const short = sans.length < 24;
     const scored = scoreGamePositions(positions, short ? { minPly: 2, maxPlyFromEnd: 1 } : {});
@@ -325,6 +435,7 @@ async function luckyDbStartFromSeed({
     const confirmed = await confirmCandidate(enriched, { engine, maia, rating });
     confirmed.gameId = entry.id != null ? String(entry.id) : null;
     confirmed.sans = sans;
+    confirmed.seedFen = (walk && walk.startFen) || seedFen;
     void storage;
     return confirmed;
   }
@@ -444,7 +555,7 @@ function toLuckyPick(candidate) {
   };
 }
 
-/** Prefer the explorer's own move list; fall back to PGN movetext parsing. */
+/** Convert one UCI movetext line (from-start) to SAN. Kept for tests. */
 export function sansFromTopGameMoves(pgn, explorerMoves) {
   const raw = String(explorerMoves || "").trim();
   if (raw) {
@@ -536,6 +647,11 @@ export function sansFromPgn(pgn) {
   return sans;
 }
 
+/**
+ * Legacy site-game export (lichess.org game ids only). Masters top-game ids
+ * are OTB keys, not site ids, so the sampler no longer calls this — it walks
+ * the explorer instead (see buildMasterLine). Kept exported for tests.
+ */
 export async function defaultFetchGamePgn(gameId) {
   const id = encodeURIComponent(String(gameId || ""));
   const resp = await fetch(`https://lichess.org/game/export/${id}`, {
