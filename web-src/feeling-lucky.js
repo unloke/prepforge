@@ -37,6 +37,18 @@ export async function runFeelingLucky({
     });
   } catch (error) {
     const msg = (error && error.message) || String(error);
+    // "No sharp database game" is a legitimate empty-result, not an API
+    // failure — it must NOT surface as "Database unavailable". Only
+    // transport/auth failures land here (link hint vs retry hint).
+    if (/no sharp database game/i.test(msg)) {
+      onStatus(msg);
+      setBanner(
+        "idle",
+        "Nothing sharp this time",
+        "Try again — Lucky draws a fresh master game each click.",
+      );
+      return null;
+    }
     onStatus(msg);
     setBanner(
       "idle",

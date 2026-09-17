@@ -64,6 +64,28 @@ describe("I'm Feeling Lucky entry", () => {
     expect(h.calls.banner.at(-1).join(" ")).toMatch(/fresh master game/);
   });
 
+  it("shows Nothing sharp (not Database unavailable) on sampler empty-results", async () => {
+    const error = new Error("No sharp database game found — try again");
+    const h = harness({ failsWith: error });
+    const picked = await runFeelingLucky(h.deps);
+    expect(picked).toBeNull();
+    expect(h.calls.session).toHaveLength(0);
+    const banner = h.calls.banner.at(-1).join(" ");
+    expect(banner).toMatch(/Nothing sharp/);
+    expect(banner).not.toMatch(/Database unavailable/);
+    expect(h.calls.status.join(" ")).toMatch(/No sharp database game/);
+  });
+
+  it("shows Database unavailable on transport failures", async () => {
+    const h = harness({ failsWith: new Error("Explorer responded 502") });
+    const picked = await runFeelingLucky(h.deps);
+    expect(picked).toBeNull();
+    expect(h.calls.session).toHaveLength(0);
+    const banner = h.calls.banner.at(-1).join(" ");
+    expect(banner).toMatch(/Database unavailable/);
+    expect(banner).not.toMatch(/Nothing sharp/);
+  });
+
   it("uses the injected explorer client when provided", async () => {
     const h = harness();
     const fetchStats = vi.fn(async () => ({}));
@@ -80,6 +102,16 @@ describe("I'm Feeling Lucky entry", () => {
     const app = fs.readFileSync(new URL("./app.js", import.meta.url), "utf8");
     expect(app).toMatch(/ensureExplorer:\s*ensurePlayExplorer/);
     expect(app).not.toMatch(/[^a-zA-Z]ensureExplorer,/);
+  });
+
+  it("gates the app entry on sign-in and Lichess link before sampling", async () => {
+    const fs = await import("node:fs");
+    const app = fs.readFileSync(new URL("./app.js", import.meta.url), "utf8");
+    const entry = app.slice(app.indexOf("async function onFeelingLucky"));
+    expect(entry).toMatch(/accountUsername/);
+    expect(entry).toMatch(/openAuthModal/);
+    expect(entry).toMatch(/lichessUsername/);
+    expect(entry).toMatch(/startLichessOAuth/);
   });
 
   it("never references the personal workspace flow", async () => {
