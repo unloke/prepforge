@@ -7558,7 +7558,7 @@ function syncTrainPickerVisibility() {
   const smart = mode === "smart";
   const play = mode === "play";
   const select = document.getElementById("train-repertoire-select");
-  const label = document.querySelector(".train-picker-label");
+  const picker = document.getElementById("train-srs-picker");
   const srs = document.getElementById("train-srs-start");
   const playSetup = document.getElementById("train-play-setup");
   const blitzRow = document.getElementById("train-blitz-row");
@@ -7570,7 +7570,7 @@ function syncTrainPickerVisibility() {
   const skip = document.getElementById("train-skip");
   const wantRep = !smart && (!play || (book && book.value === "repertoire"));
   if (select) select.hidden = !wantRep;
-  if (label) label.hidden = !wantRep;
+  if (picker) picker.hidden = !wantRep;
   if (srs) srs.hidden = play;
   if (playSetup) playSetup.hidden = !play;
   if (blitzRow) blitzRow.hidden = mode !== "smart";
@@ -8159,7 +8159,7 @@ async function onFeelingLucky() {
       storage: typeof localStorage === "undefined" ? null : localStorage,
       exclude: [appState.lastLuckyFen, appState.play && appState.play.startFen].filter(Boolean),
       rating: effectiveMaiaRating(),
-      ensureExplorer,
+      ensureExplorer: ensurePlayExplorer,
       onStatus: setStatus,
       setBanner: (state, title, sub) => setTrainBanner(state, title, sub),
       startSession: async (session) => {

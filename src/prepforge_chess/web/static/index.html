@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-CgkRr2k7.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-BpspZ8Xx.css">
+    <script type="module" crossorigin src="/static/assets/index-CXsnluEB.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-Jn_2Azws.css">
   </head>
   <body>
     <header class="topbar">
@@ -213,12 +213,14 @@
 
           <aside class="sidebar train-sidebar">
             <div class="train-setup">
-              <label class="train-picker-label" for="train-repertoire-select">Repertoire</label>
-              <select id="train-repertoire-select" data-testid="train-repertoire-select"></select>
               <div class="train-modes" id="train-modes" role="group" aria-label="Training mode">
                 <button type="button" class="train-mode is-active" data-mode="smart">Smart queue</button>
                 <button type="button" class="train-mode" data-mode="all_lines">Line rehearsal</button>
                 <button type="button" class="train-mode" data-mode="play" data-testid="train-mode-play">Play vs human</button>
+              </div>
+              <div id="train-srs-picker">
+                <label class="train-picker-label" for="train-repertoire-select">Repertoire</label>
+                <select id="train-repertoire-select" data-testid="train-repertoire-select"></select>
               </div>
               <label class="train-blitz-row" id="train-blitz-row" title="10 seconds per move - running out counts as a miss (the retry is untimed)">
                 <input type="checkbox" id="train-blitz-toggle" data-testid="train-blitz-toggle" />
