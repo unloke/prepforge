@@ -159,4 +159,20 @@ describe("seven views share chrome families", () => {
     expect(html).toContain('id="play-analyze"');
     expect(html).toContain("My repertoire");
   });
+
+  it("keeps the Train setup order: modes, repertoire picker, blitz, SRS start", () => {
+    const setup = html.slice(html.indexOf('id="train-modes"'));
+    const modes = setup.indexOf('id="train-modes"');
+    const picker = setup.indexOf('id="train-srs-picker"');
+    const blitz = setup.indexOf('id="train-blitz-row"');
+    const srs = setup.indexOf('id="train-srs-start"');
+    expect(modes).toBeGreaterThanOrEqual(0);
+    expect(picker).toBeGreaterThan(modes);
+    expect(blitz).toBeGreaterThan(picker);
+    expect(srs).toBeGreaterThan(blitz);
+    const pickerBody = setup.slice(picker, blitz);
+    expect(pickerBody).toContain('id="train-repertoire-select"');
+    expect(ruleBody("#train-srs-picker")).toMatch(/display:\s*grid/);
+    expect(ruleBody("#train-srs-picker[hidden]")).toMatch(/display:\s*none/);
+  });
 });

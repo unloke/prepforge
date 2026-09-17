@@ -75,6 +75,13 @@ describe("I'm Feeling Lucky entry", () => {
     expect(fetchStats).toHaveBeenCalledTimes(1);
   });
 
+  it("wires the app entry to a defined explorer provider", async () => {
+    const fs = await import("node:fs");
+    const app = fs.readFileSync(new URL("./app.js", import.meta.url), "utf8");
+    expect(app).toMatch(/ensureExplorer:\s*ensurePlayExplorer/);
+    expect(app).not.toMatch(/[^a-zA-Z]ensureExplorer,/);
+  });
+
   it("never references the personal workspace flow", async () => {
     const fs = await import("node:fs");
     const src = fs.readFileSync(new URL("./feeling-lucky.js", import.meta.url), "utf8");

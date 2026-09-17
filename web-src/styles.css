@@ -2184,6 +2184,13 @@ h2 {
   color: var(--muted);
   font-weight: 600;
 }
+#train-srs-picker {
+  display: grid;
+  gap: 4px;
+}
+#train-srs-picker[hidden] {
+  display: none;
+}
 .train-picker-label[hidden],
 .train-setup select[hidden] {
   display: none;
