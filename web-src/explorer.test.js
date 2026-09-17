@@ -67,6 +67,14 @@ describe("explorerUrl", () => {
     expect(mastersLow).toBe(mastersHigh); // rating never enters the masters query
     expect(mastersLow).not.toContain("ratings=");
   });
+  it("passes topGames for masters only, clamped to 1..4", () => {
+    expect(explorerUrl("masters", FEN, { topGames: 4 })).toContain("top_games=4");
+    expect(explorerUrl("masters", FEN, { topGames: 99 })).toContain("top_games=4");
+    expect(explorerUrl("masters", FEN)).not.toContain("top_games=");
+    const players = explorerUrl("lichess", FEN, { rating: 1740, topGames: 4 });
+    expect(players).toContain("ratings=");
+    expect(players).not.toContain("top_games=");
+  });
 });
 
 describe("normalizeExplorer", () => {
@@ -82,6 +90,18 @@ describe("normalizeExplorer", () => {
       drawPct: 20,
       blackPct: 20,
     });
+    expect(stats.topGames).toEqual([]);
+  });
+  it("passes masters topGames through for the Lucky sampler", () => {
+    const stats = normalizeExplorer({
+      ...RAW,
+      topGames: [
+        { id: "abc123", moves: "e2e4 e7e5" },
+        { id: null, moves: "d2d4" },
+        { id: "zzz", moves: 42 },
+      ],
+    });
+    expect(stats.topGames).toEqual([{ id: "abc123", moves: "e2e4 e7e5" }]);
   });
   it("handles an empty position (no games)", () => {
     const stats = normalizeExplorer({ white: 0, draws: 0, black: 0, moves: [] });

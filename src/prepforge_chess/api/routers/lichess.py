@@ -232,6 +232,7 @@ def explorer_proxy(
     db_name: str,
     fen: str,
     ratings: str | None = None,
+    top_games: int = 0,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -242,8 +243,11 @@ def explorer_proxy(
     explorer's own buckets."""
     if db_name not in _EXPLORER_DBS:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown explorer database")
-    params: dict[str, str] = {"fen": fen, "moves": "12", "topGames": "0"}
-    if db_name == "lichess":
+    if db_name == "masters":
+        clamped = max(0, min(4, top_games))
+        params: dict[str, str] = {"fen": fen, "moves": "12", "topGames": str(clamped)}
+    else:
+        params = {"fen": fen, "moves": "12"}
         params["variant"] = "standard"
         params["speeds"] = "blitz,rapid,classical"
         buckets = [r for r in (ratings or "").split(",") if r in _EXPLORER_RATINGS]

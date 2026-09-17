@@ -824,10 +824,7 @@ h2 {
   margin-bottom: 14px;
 }
 .today-card[hidden] {
-  display: flex;
-  visibility: hidden;
-  min-height: 72px;
-  pointer-events: none;
+  display: none;
 }
 .today-streak {
   display: flex;
@@ -6360,10 +6357,7 @@ h2 {
 }
 
 .engine-banner[hidden] {
-  display: grid;
-  visibility: hidden;
-  min-height: 72px;
-  pointer-events: none;
+  display: none;
 }
 
 .engine-banner-title {
