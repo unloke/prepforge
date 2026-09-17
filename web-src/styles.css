@@ -4110,6 +4110,19 @@ h2 {
   backdrop-filter: blur(2px);
 }
 
+/* Sign-in gate only: top-bar tabs stay clickable above the dim layer so the
+   first tab click after a Lucky auth gate actually navigates instead of just
+   dismissing the overlay (the "bounce back to Train" report). The dialog box
+   itself keeps pointer events; every other modal (share/join/confirm) keeps
+   the default full-viewport backdrop, including click-outside-to-dismiss. */
+.modal-overlay.auth-overlay {
+  pointer-events: none;
+}
+
+.modal-overlay.auth-overlay .modal {
+  pointer-events: auto;
+}
+
 .modal {
   width: min(380px, calc(100vw - 24px));
   max-width: calc(100vw - 24px);

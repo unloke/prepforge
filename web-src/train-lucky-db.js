@@ -81,6 +81,10 @@ function recentGameIds(storage) {
   }
 }
 
+export function recentGameIdSet(storage) {
+  return new Set(recentGameIds(storage));
+}
+
 export function rememberLuckyGame(gameId, storage = null) {
   if (!gameId || !storage) return;
   const ids = [String(gameId), ...recentGameIds(storage).filter((id) => id !== String(gameId))];

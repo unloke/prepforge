@@ -2879,10 +2879,23 @@ async function openPalette() {
   paintPalette();
 }
 
+function dismissTransientOverlays() {
+  // Tab/command-palette navigation always wins over transient overlays: the
+  // overlay click / Escape paths share this teardown so no orphaned keydown
+  // listener survives a navigation-driven dismissal.
+  const overlay = document.querySelector(".modal-overlay.auth-overlay");
+  if (overlay) {
+    if (typeof overlay._closeAuthModal === "function") overlay._closeAuthModal();
+    else overlay.remove();
+  }
+  if (paletteIsOpen()) closePalette();
+}
+
 function runPaletteItem(item) {
   closePalette();
   if (!item) return;
   if (item.kind === "view") {
+    dismissTransientOverlays();
     switchView(item.view);
     if (item.view === "settings") loadSettings();
     return;
@@ -2908,6 +2921,7 @@ function runPaletteItem(item) {
     return;
   }
   if (item.action === "feeling-lucky") {
+    dismissTransientOverlays();
     switchView("train");
     const playBtn = document.querySelector('#train-modes .train-mode[data-mode="play"]');
     if (playBtn) playBtn.click();
@@ -3444,7 +3458,13 @@ function requireSignIn(message = "Sign in (or create an account) to continue") {
 // email/password is the always-available fallback.
 function openAuthModal(mode = "login") {
   const existing = document.querySelector(".modal-overlay.auth-overlay");
-  if (existing) existing.remove();
+  if (existing) {
+    // Same teardown as the overlay click / Escape paths: the modal registers
+    // a document-level keydown listener on open, so a bare remove() here
+    // would orphan it (a stale Enter-handler firing submit() later).
+    if (typeof existing._closeAuthModal === "function") existing._closeAuthModal();
+    else existing.remove();
+  }
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay auth-overlay";
   const providers = appState.authProviders || { google: false, password: true };
@@ -3490,6 +3510,11 @@ function openAuthModal(mode = "login") {
     document.removeEventListener("keydown", onKey);
     overlay.remove();
   };
+  // Exposed for tab/command-palette navigation: those paths dismiss this
+  // overlay first via dismissTransientOverlays(), and must run the same
+  // teardown (keydown listener + DOM node) as the overlay click / Escape
+  // paths — otherwise a tab-driven dismissal leaks the listener.
+  overlay._closeAuthModal = close;
   const showError = (msg) => {
     const el = overlay.querySelector('[data-auth="error"]');
     if (el) {
@@ -7867,7 +7892,9 @@ function renderPlayTrail() {
               ? "Repertoire fork"
               : reason === "db-critical"
                 ? `Master game · ${play && play.luckyPhase ? play.luckyPhase : "critical"}`
-                : reason;
+                : reason === "titled-game"
+                  ? `Titled game · ${play && play.luckyPhase ? play.luckyPhase : "critical"}`
+                  : reason;
     } else {
       chip.hidden = true;
       chip.textContent = "";
@@ -8011,7 +8038,9 @@ async function startPlaySession({ fen, reason, phase, nodeId: luckyNodeId } = {}
           ? "A real fork — more than one human reply"
           : reason === "db-critical"
             ? `Master game, critical ${phase || "moment"} — your move`
-            : book === "explorer"
+            : reason === "titled-game"
+              ? `Titled game, critical ${phase || "moment"} — your move`
+              : book === "explorer"
               ? "Explorer at your rating, Maia when the sample thins"
               : "Your repertoire, Maia when you're out of book";
   paintPlayPosition({
@@ -8147,14 +8176,14 @@ async function submitPlayMove(playedUci) {
 }
 
 async function onFeelingLucky() {
-  // Database-only entry: every click goes straight to the Lichess
-  // database/master-game critical-position sampler (Divider phases, critical
-  // gate, replay verification, rotation, dedup). Personal repertoire picks
-  // live in train-lucky.js for other callers, not on this button.
+  // Feeling Lucky: masters walk first (needs a linked token), titled games
+  // as the no-auth fallback (see feeling-lucky.js). Personal repertoire
+  // picks live in train-lucky.js for other callers, not on this button.
   //
-  // Login gate (matches the compare/replay guards below): Feeling Lucky needs
-  // the explorer proxy, which needs an app session. Without one every click
-  // would just 401 → "Database unavailable", so route to sign-in first.
+  // Sign-in still gates the button: the masters path needs an app session
+  // for the explorer proxy, and anonymous Lucky would silently skip the
+  // account's own rating/phase context. The modal this opens is transient —
+  // tab navigation dismisses it (dismissTransientOverlays).
   if (!appState.accountUsername) {
     try {
       await refreshAuthStatus();
@@ -8167,25 +8196,16 @@ async function onFeelingLucky() {
     openAuthModal();
     return;
   }
-  // Lichess-link gate: the proxy 400s without a linked token ("link your
-  // Lichess account…"), which the sampler surfaces as Database unavailable.
-  // Short-circuit with the connect flow instead of burning explorer calls.
+  // No Lichess-link hard gate: an unlinked visitor skips the masters walk
+  // (the sampler throws the link error, feeling-lucky routes it to the
+  // titled fallback) and still gets a Play session. refreshLichessStatus
+  // keeps the chip honest without blocking the click.
   if (!appState.lichessUsername) {
     try {
       await refreshLichessStatus();
     } catch (_) {
-      // fall through to the connect prompt below
+      // best-effort only — the fallback path needs no link
     }
-  }
-  if (!appState.lichessUsername) {
-    setStatus("Connect a Lichess account first.");
-    setTrainBanner(
-      "idle",
-      "Database unavailable",
-      "Connect Lichess (top-right chip) so Lucky can read the masters database.",
-    );
-    startLichessOAuth();
-    return;
   }
   let dbPicked = null;
   try {
@@ -10120,6 +10140,7 @@ function scheduleMaiaIdleTeardown() {
 function bindEvents() {
   document.querySelectorAll(".tab").forEach((button) => {
     button.addEventListener("click", () => {
+      dismissTransientOverlays();
       switchView(button.dataset.view);
       if (button.dataset.view === "settings") loadSettings();
       if (button.dataset.view === "teams") loadTeams().catch(() => {});
