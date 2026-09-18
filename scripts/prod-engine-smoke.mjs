@@ -20,6 +20,17 @@ function ok(msg) {
   console.log(`[prod-engine-smoke] ok: ${msg}`);
 }
 
+async function waitForMaiaReady(page, timeoutMs = 135_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const model = (await page.locator("#settings-maia-model").textContent().catch(() => ""))?.trim();
+    if (model === "available") return;
+    await sleep(1_000);
+  }
+  const note = (await page.locator("#settings-maia-status").textContent().catch(() => ""))?.trim();
+  fail(`Maia3 retry did not become available (${note || "no status"})`);
+}
+
 async function checkHeaders() {
   const r = await fetch(`${PROD_URL}/`);
   if (!r.ok) fail(`GET / returned ${r.status}`);
@@ -63,11 +74,16 @@ async function browserChecks() {
   if (!browser) fail("no Chromium browser for headless checks");
 
   const wasmHits = [];
+  const onnxHits = [];
   try {
     const page = await browser.newPage();
     page.on("response", (response) => {
       const url = response.url();
       if (url.endsWith(".wasm")) wasmHits.push(url);
+    });
+    page.on("request", (request) => {
+      const url = request.url();
+      if (/\.onnx(?:$|\?)/i.test(url)) onnxHits.push(url);
     });
 
     await page.goto(`${PROD_URL}/`, { waitUntil: "domcontentloaded", timeout: 90_000 });
@@ -87,25 +103,44 @@ async function browserChecks() {
       ok(`__ENGINE_ASSET_BASE = ${bases.engine}`);
     }
 
-    // Warm the analyze tab so engine workers start (best-effort).
+    // Warm the analyze tab so the same-origin Stockfish worker starts.
     await page.click('[data-testid="nav-analyze"]');
+    await page.click('[data-testid="open-engine-widget"]');
     await sleep(3000);
 
-    const ortFromHf = wasmHits.some((u) => /huggingface\.co/i.test(u) && /ort-wasm/i.test(u));
     const stockfishSameOrigin = wasmHits.some(
       (u) => u.includes("/static/engine/") && /stockfish/i.test(u),
     );
-    if (bases.engine && !ortFromHf) {
-      console.warn(
-        "[prod-engine-smoke] WARN: no ORT .wasm from huggingface.co yet " +
-          `(seen: ${wasmHits.join(", ") || "none"})`,
-      );
-    } else if (ortFromHf) {
-      ok("ORT .wasm fetched from Hugging Face");
-    }
     if (stockfishSameOrigin || wasmHits.some((u) => /stockfish/i.test(u))) {
       ok("Stockfish .wasm loaded same-origin");
     }
+
+    // Settings exposes a guest-safe Maia retry control. Exercise it here instead of
+    // relying on Analyze's signed-in full-game path, which deliberately gates before
+    // creating the Maia provider for guests. This makes the production ORT/HF path a
+    // repeatable smoke gate while leaving product behavior unchanged.
+    const moreNav = page.locator("#more-nav > summary");
+    if (await moreNav.count()) await moreNav.click();
+    await page.click('[data-testid="nav-settings"]');
+    await page.locator('[data-testid="settings-maia-retry"]').waitFor({ state: "visible", timeout: 15_000 });
+    await page.click('[data-testid="settings-maia-retry"]');
+    await waitForMaiaReady(page);
+    const maiaState = await page.evaluate(() => ({
+      model: document.querySelector("#settings-maia-model")?.textContent.trim() || "",
+      note: document.querySelector("#settings-maia-status")?.textContent.trim() || "",
+    }));
+    if (maiaState.model !== "available") {
+      fail(`Maia3 retry did not become available (${maiaState.note || "no status"})`);
+    }
+    const ortWasmHits = wasmHits.filter((u) => /ort-wasm/i.test(u));
+    if (bases.engine && !ortWasmHits.some((u) => /huggingface\.co|hf\.co/i.test(u))) {
+      fail(`ORT .wasm was not observed from the pinned HF base (seen: ${ortWasmHits.join(", ") || "none"})`);
+    }
+    if (!onnxHits.some((u) => /huggingface\.co|hf\.co/i.test(u))) {
+      fail(`Maia ONNX was not observed from the pinned HF base (seen: ${onnxHits.join(", ") || "none"})`);
+    }
+    ok(`Maia3 inference available (${maiaState.note || "session loaded"})`);
+    ok("ORT .wasm and Maia ONNX were fetched through the production worker");
   } finally {
     await browser.close();
   }
