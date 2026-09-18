@@ -22,7 +22,7 @@ import {
 } from "./workspace-url.js";
 import { mapTrainUiSession, shouldResetTrainStats } from "./train-resume.js";
 import { pickOpponentReply, playPositionAfterReply } from "./train-opponent.js";
-import { luckyStartFromWorkspace, isStartFen } from "./train-lucky.js";
+import { isStartFen } from "./train-lucky.js";
 import {
   resolvePlayColor,
   playPoolLabel,
@@ -3468,12 +3468,6 @@ function setLichessUsername(username) {
   return accountService().setLichessUsername(username);
 }
 
-// The account button owns the PrepForge session boundary; an optional Lichess link is
-// managed from the same menu without conflating the two connections.
-function renderAccountChip() {
-  return accountService().renderAccountChip();
-}
-
 // Which sign-in methods the server offers (Google when configured; email/password
 // always). Fetched once; drives which buttons the auth modal shows.
 async function refreshAuthProviders() {
@@ -3499,20 +3493,8 @@ function onAccountChipClick() {
   return accountService().onAccountChipClick();
 }
 
-function openAccountMenu() {
-  return accountService().openAccountMenu();
-}
-
 function closeAccountMenu() {
   return accountService().closeAccountMenu();
-}
-
-function toggleAccountMenu() {
-  return accountService().toggleAccountMenu();
-}
-
-async function handleAccountMenuAction(action) {
-  return accountService().handleAccountMenuAction(action);
 }
 
 // Ask the server whether this browser's session is a real account or a guest, and
@@ -3521,19 +3503,12 @@ async function refreshAuthStatus() {
   return accountService().refreshAuthStatus();
 }
 
-// Sign out of PrepForge on this browser: rotate the session to a fresh guest so the
-// account's repertoires/games are no longer visible here. The new guest session also
-// has no Lichess token, so this is the single "log out" action for the app.
-async function signOut() {
-  return accountService().signOut();
-}
-
 function syncReplayControls() {
   return accountService().syncReplayControls();
 }
 
-// Drop the Lichess OAuth token. This is NOT a sign-out: the browser stays bound to
-// Pull the server's stored connection state (the source of truth with OAuth).
+// Pull the server's stored Lichess connection state. This is not a PrepForge sign-out;
+// the browser remains bound to the account.
 async function refreshLichessStatus() {
   return accountService().refreshLichessStatus();
 }
@@ -4887,13 +4862,6 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
 
 function prefillDemoPgn() {
   document.getElementById("pgn-input").value = DEMO_PGN;
-}
-
-async function loadDemoAndAnalyze() {
-  prefillDemoPgn();
-  const drawer = document.querySelector("#view-analyze .drawer");
-  if (drawer) drawer.open = true;
-  await runAnalysis();
 }
 
 async function runAnalysis() {
