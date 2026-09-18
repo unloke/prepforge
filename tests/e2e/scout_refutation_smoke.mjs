@@ -12,10 +12,10 @@ const SCENARIOS = [
   {
     id: "confirmedHit",
     async assert(page) {
-      const prepCol = page.locator(".scout-col-prep").first();
-      await prepCol.waitFor({ timeout: TIMEOUT_MS });
-      const prepText = await prepCol.textContent();
-      if (!prepText || !/When they play/i.test(prepText) || !/you play/i.test(prepText)) {
+      const prepLine = page.locator(".scout-line").first();
+      await prepLine.waitFor({ timeout: TIMEOUT_MS });
+      const prepText = await prepLine.textContent();
+      if (!prepText || !/When they play/i.test(prepText) || !/(you play|needs prep)/i.test(prepText)) {
         fail(`prep column missing framing (got: ${prepText?.trim().slice(0, 160) || "(empty)"})`);
       }
       const card = page.locator('[data-testid="scout-refutation-card"]').first();
@@ -26,10 +26,6 @@ const SCENARIOS = [
       }
       if (!cardText.includes("+")) {
         fail(`refutation card eval swing should be positive for the player (${cardText})`);
-      }
-      const oauthGap = page.locator('[data-testid="scout-refutation-gap-connect-lichess"]');
-      if ((await oauthGap.count()) > 0) {
-        fail("engine refutation must not require OAuth connect CTA");
       }
     },
   },
@@ -52,9 +48,9 @@ const SCENARIOS = [
     async assert(page) {
       const card = page.locator('[data-testid="scout-refutation-card"]').first();
       await card.waitFor({ timeout: TIMEOUT_MS });
-      const connectGap = page.locator('[data-testid="scout-refutation-gap-connect-lichess"]');
-      if ((await connectGap.count()) > 0) {
-        fail("OAuth gap CTA should not appear when engine refutation is available");
+      const cardText = await card.textContent();
+      if (!cardText || !/You answer/i.test(cardText)) {
+        fail(`engine refutation card missing in OAuth-gap fixture (${cardText || "(empty)"})`);
       }
     },
   },
@@ -97,6 +93,24 @@ async function mountScenario(page, scenarioId) {
   await page.locator(`[data-e2e-refutation="${scenarioId}"]`).waitFor({ timeout: TIMEOUT_MS });
 }
 
+async function waitForE2eHook(page) {
+  await page.waitForFunction(
+    () => typeof window.__prepforgeScoutE2e?.mountRefutationScenario === "function",
+    undefined,
+    { timeout: TIMEOUT_MS },
+  );
+}
+
+async function activateScout(page) {
+  await page
+    .locator("#dashboard-repertoires > *")
+    .first()
+    .waitFor({ state: "attached", timeout: TIMEOUT_MS });
+  await page.click('[data-testid="nav-scout"]');
+  await page.locator("#view-replay.is-active").waitFor({ timeout: 10_000 });
+  await page.locator('.replay-card-scout:not([hidden])').waitFor({ timeout: 10_000 });
+}
+
 async function main() {
   let chromium;
   try {
@@ -119,26 +133,20 @@ async function main() {
   try {
     const page = await browser.newPage();
     await page.goto(APP_URL, { waitUntil: "domcontentloaded" });
-    const hookReady = await page.evaluate(
-      () => typeof window.__prepforgeScoutE2e?.mountRefutationScenario === "function",
-    );
-    if (!hookReady) {
-      fail(
-        "window.__prepforgeScoutE2e missing — build with VITE_ENABLE_SCOUT_E2E=1 and open ?scout_e2e=1",
-      );
-    }
+    await waitForE2eHook(page);
     await registerSession(page);
     await page.reload({ waitUntil: "domcontentloaded" });
-    const hookReadyAfterReload = await page.evaluate(
-      () => typeof window.__prepforgeScoutE2e?.mountRefutationScenario === "function",
-    );
-    if (!hookReadyAfterReload) {
-      fail("window.__prepforgeScoutE2e missing after reload");
-    }
+    await waitForE2eHook(page);
+    await activateScout(page);
 
-    await page.click('[data-testid="nav-replay"]');
-
-    for (const scenario of SCENARIOS) {
+    for (const [index, scenario] of SCENARIOS.entries()) {
+      // Deep-scan is intentionally asynchronous. Reload between scenarios so
+      // its job/toast cannot mutate the next fixture's report in a slower CI runner.
+      if (index > 0) {
+        await page.reload({ waitUntil: "domcontentloaded" });
+        await waitForE2eHook(page);
+        await activateScout(page);
+      }
       await mountScenario(page, scenario.id);
       await scenario.assert(page);
       console.log(`[scout-refutation-smoke] ${scenario.id} passed.`);

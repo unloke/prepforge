@@ -148,14 +148,16 @@ async function browserChecks() {
     await page.goto(`${base}/`, { waitUntil: "networkidle" });
     await page.waitForTimeout(800);
 
-    const afterDashboard = new Set(loaded);
-    assert(!afterDashboard.has("analyze"), "dashboard load fetched analyze chunk");
-    assert(!afterDashboard.has("train"), "dashboard load fetched train chunk");
-    assert(!afterDashboard.has("replay"), "dashboard load fetched replay chunk");
-    assert(!afterDashboard.has("movetree"), "dashboard load fetched movetree chunk");
-    assert(!afterDashboard.has("settings"), "dashboard load fetched settings chunk");
-    assert(!afterDashboard.has("dashboard"), "unsigned initial load fetched dashboard chunk");
-    assert(afterDashboard.has("index"), "dashboard load should fetch index chunk");
+    const afterInitialLoad = new Set(loaded);
+    assert(!afterInitialLoad.has("analyze"), "initial dashboard load fetched analyze chunk");
+    assert(!afterInitialLoad.has("train"), "initial dashboard load fetched train chunk");
+    assert(!afterInitialLoad.has("replay"), "initial dashboard load fetched replay chunk");
+    assert(!afterInitialLoad.has("movetree"), "initial dashboard load fetched movetree chunk");
+    assert(!afterInitialLoad.has("settings"), "initial dashboard load fetched settings chunk");
+    // Dashboard is the initial active view, so its extracted chunk must load here
+    // to bind the visible guest actions. Other view chunks remain deferred.
+    assert(afterInitialLoad.has("dashboard"), "active dashboard should fetch dashboard chunk");
+    assert(afterInitialLoad.has("index"), "dashboard load should fetch index chunk");
 
     await page.click('[data-testid="nav-build"]');
     await page.waitForTimeout(1200);
@@ -189,6 +191,9 @@ async function browserChecks() {
     assert(loaded.has("replay"), "replay tab should fetch replay chunk");
     assert(!loaded.has("scout-view"), "replay tab open must not fetch scout view chunk");
 
+    // Settings lives behind the responsive More menu after the navigation IA
+    // change; open the disclosure before clicking its menu item.
+    await page.locator('#more-nav > summary').click();
     await page.click('[data-testid="nav-settings"]');
     await page.waitForTimeout(1200);
     assert(loaded.has("settings"), "settings tab should fetch settings chunk");

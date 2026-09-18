@@ -10,6 +10,7 @@ import {
 } from "./engine/maia3-provider.js";
 import { createCsrfTokenSource, isSafeMethod, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
+import { applyTheme, nextTheme, themeLabel } from "./theme.js";
 import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { describeMove } from "./explain.js";
@@ -136,6 +137,7 @@ function activePieceSet() {
 
 const PREFS_KEY = "prepforge.prefs";
 const DEFAULT_PREFS = {
+  theme: "system",
   coordinates: true,
   lastMovePulse: true,
   flipAnim: true,
@@ -176,6 +178,10 @@ function setPref(name, value) {
 }
 
 function applyPref(name) {
+  if (name === "theme") {
+    applyTheme(pref("theme"));
+    renderThemeButton();
+  }
   if (name === "coordinates") {
     Object.values(boards).forEach((b) => b && b.applyCoordinates && b.applyCoordinates());
   }
@@ -352,11 +358,19 @@ const appState = {
   // Repertoire ids hidden from lists while their delete-undo window is open.
   pendingRepDeletes: new Set(),
   trainingRepertoireId: null,
+  // Play vs human keeps its own multi-select independent of the legacy
+  // line-rehearsal picker. `null` means the list has not been hydrated yet;
+  // the first active-list load then selects every active repertoire by default.
+  playRepertoireIds: null,
+  playRepertoirePreferenceKey: null,
   training: null,
   // Which trainer the Start button launches: "smart" (card queue, default) or
   // "all_lines" (legacy whole-line rehearsal, kept for pre-game prep).
   trainMode: "smart",
   play: null,
+  // One on-demand Lucky round at a time. This protects Lichess's one-request
+  // at-a-time guidance and prevents two clicks from racing their Play boards.
+  luckyBusy: false,
   // Live smart-queue session state (see the Smart queue trainer section).
   smart: null,
   // ---- Local-first Train sync (plan §2) -----------------------------------
@@ -387,6 +401,7 @@ const appState = {
   replayResults: null,
   replayFilter: null, // summary-chip filter: an outcome kind, or null = all
   replayOpen: new Set(), // indexes of expanded game rows
+  replaySection: "games",
   // Teams view: cache of the caller's teams (for the rep-share picker) and the
   // currently-expanded team's id (so a member add/remove re-renders the right one).
   teams: [],
@@ -1220,7 +1235,7 @@ class EngineWidget {
 
   _showError(message) {
     setEngineBestArrow(null);
-    setStatus(message);
+    setStatusError(message);
     if (this.pvsEl) {
       this.pvsEl.innerHTML = `<div class="empty-state">${escapeHtml(
         message || "Engine error"
@@ -2140,7 +2155,7 @@ async function updateBookline() {
         setStatus(`${prescribed.san} will lead your next smart session`);
       } catch (error) {
         btn.disabled = false;
-        setStatus(error.message);
+        setStatusError(error.message);
       }
     });
   } else {
@@ -2655,8 +2670,23 @@ class BoardController {
   }
 }
 
-function setStatus(message) {
-  document.getElementById("app-status").textContent = message;
+function setStatus(message, { severity = "info" } = {}) {
+  const status = document.getElementById("app-status");
+  if (!status) return;
+  const text = String(message || "");
+  const normalizedSeverity = ["info", "success", "warning", "error"].includes(severity)
+    ? severity
+    : "info";
+  const isError = normalizedSeverity === "error";
+  status.textContent = text;
+  status.setAttribute("role", isError ? "alert" : "status");
+  status.setAttribute("aria-live", isError ? "assertive" : "polite");
+  status.dataset.severity = normalizedSeverity;
+  status.dataset.state = isError ? "error" : "ready";
+}
+
+function setStatusError(message) {
+  setStatus(message, { severity: "error" });
 }
 
 const getCsrfToken = createCsrfTokenSource();
@@ -2820,7 +2850,7 @@ function handleSanKey(event) {
     Promise.resolve(playTypedSan(result.uci)).catch(() => {});
   }
   if (result.action === "reject") {
-    setStatus(`Illegal SAN: ${result.san}`);
+    setStatus(`Illegal SAN: ${result.san}`, { severity: "error" });
   }
   return true;
 }
@@ -3002,18 +3032,46 @@ async function restoreWorkspaceLocation() {
   }
 }
 
+function setReplaySection(section, { focus = false } = {}) {
+  const next = section === "scout" ? "scout" : "games";
+  appState.replaySection = next;
+  document.querySelectorAll("[data-replay-panel]").forEach((panel) => {
+    const active = panel.dataset.replayPanel === next;
+    panel.hidden = !active;
+    panel.setAttribute("aria-hidden", String(!active));
+  });
+  document.querySelectorAll(".tab[data-replay-section]").forEach((button) => {
+    const active = button.dataset.replaySection === next;
+    button.classList.toggle("is-active", active && appState.currentView === "replay");
+    button.setAttribute("aria-current", active && appState.currentView === "replay" ? "page" : "false");
+  });
+  if (focus) {
+    document.querySelector(`[data-replay-panel="${next}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
 function switchView(name, { fromUrl = false } = {}) {
   appState.currentView = name;
   // Navigating is user activity; if the Lichess watch is running, switching to
   // Analyze (where a fresh game matters most) tightens the poll cadence briefly.
   noteLichessActivity();
   document.querySelectorAll(".tab").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.view === name);
+    const replayMatch = name === "replay"
+      ? button.dataset.replaySection === (appState.replaySection || "games")
+      : !button.dataset.replaySection;
+    button.classList.toggle("is-active", button.dataset.view === name && replayMatch);
+    if (button.dataset.replaySection) {
+      button.setAttribute("aria-current", button.dataset.view === name && replayMatch ? "page" : "false");
+    }
   });
   document.querySelectorAll(".view").forEach((view) => {
     view.classList.toggle("is-active", view.id === `view-${name}`);
   });
   if (!fromUrl) syncWorkspaceUrl({ push: true });
+  if (name === "replay") setReplaySection(appState.replaySection);
+  if (name === "teams" || name === "settings") {
+    document.getElementById("more-nav")?.setAttribute("open", "");
+  }
   if (name === "analyze") {
     preloadCoach().catch(() => {});
     preloadAnalyzeView().catch(() => {});
@@ -3331,7 +3389,7 @@ async function loadDashboard() {
     const view = await ensureDashboardView();
     await view.loadDashboard();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -3386,7 +3444,7 @@ async function promptImportRepertoireFromPgn(pgnText, { defaultName = "Imported 
     );
     return payload;
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     throw error;
   }
 }
@@ -3449,7 +3507,7 @@ async function refreshAuthProviders() {
 // sign-in modal instead of filling out a form only to hit a cryptic 401 in the status bar.
 function requireSignIn(message = "Sign in (or create an account) to continue") {
   if (appState.signedIn) return true;
-  setStatus(message);
+  setStatus(message, { severity: "warning" });
   openAuthModal("login");
   return false;
 }
@@ -3669,7 +3727,7 @@ async function signOut() {
   } catch (_) {
     // The session was NOT rotated server-side; reloading would drop the user right
     // back into the same account while flashing "Signed out". Stay put and report.
-    setStatus("Sign out failed — you are still signed in. Try again.");
+    setStatus("Sign out failed — you are still signed in. Try again.", { severity: "error" });
     return;
   }
   try {
@@ -3726,7 +3784,7 @@ function startLichessOAuth() {
       refreshAuthStatus();
       setStatus(`Lichess: ${event.data.detail}`);
     } else {
-      setStatus(`Lichess sign-in failed: ${event.data.detail}`);
+      setStatus(`Lichess sign-in failed: ${event.data.detail}`, { severity: "error" });
     }
   };
   window.addEventListener("message", onMessage);
@@ -3949,7 +4007,7 @@ async function fetchMyLichessGame() {
   try {
     latest = await api("/api/lichess/latest");
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   if (!latest.has_game) {
@@ -4017,7 +4075,7 @@ async function recallAnalysis(gameId) {
     void syncPgnFromTree().catch(() => {});
     setStatus(`Recalled analysis: ${payload.moves.length} plies`);
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4209,7 +4267,7 @@ async function unshareRepertoireFromTeam(teamId, repertoireId, name) {
     await refreshDashboardRepertoires();
     await openTeamDetail(teamId);
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4235,7 +4293,7 @@ async function createTeam() {
     setStatus(`Created team "${name}"`);
     await loadTeams();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4259,7 +4317,7 @@ async function renameTeam(teamId, currentName) {
     setStatus(`Renamed to "${name}"`);
     await loadTeams();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4279,7 +4337,7 @@ async function deleteTeam(teamId, name) {
     await loadTeams();
     await refreshDashboardRepertoires();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4321,7 +4379,7 @@ async function addTeamMember(teamId) {
     await loadTeams();
   } catch (error) {
     // The server returns an actionable message (e.g. "...send them an invite link").
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4333,7 +4391,7 @@ async function updateMemberRole(teamId, userId, role) {
     );
     setStatus(role === "admin" ? "Promoted to admin" : "Set to member");
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
   // Re-render either way: on success to reflect any rights change, on failure to
   // revert the <select> back to the server's truth.
@@ -4360,7 +4418,7 @@ async function removeTeamMember(teamId, userId, label, isSelf) {
     if (isSelf) hideTeamDetail();
     await loadTeams();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4372,7 +4430,7 @@ async function teamInvite(teamId) {
   try {
     payload = await postJson(`/api/teams/${encodeURIComponent(teamId)}/invite`, {});
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   const url = `${window.location.origin}${payload.url}`;
@@ -4388,7 +4446,7 @@ async function teamInvite(teamId) {
       await api(`/api/teams/${encodeURIComponent(teamId)}/invite`, { method: "DELETE" });
       setStatus("Invite link revoked");
     } catch (error) {
-      setStatus(error.message);
+      setStatusError(error.message);
     }
   }
   await openTeamDetail(teamId);
@@ -4464,7 +4522,7 @@ async function shareRepertoireIntoTeam(teamId) {
     const payload = await api("/api/repertoires");
     reps = payload.repertoires || [];
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   const candidates = reps.filter((r) => !(r.visibility === "team" && r.team_id === teamId));
@@ -4505,7 +4563,7 @@ async function shareRepertoireIntoTeam(teamId) {
     await refreshDashboardRepertoires();
     await openTeamDetail(teamId);
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4516,7 +4574,7 @@ async function copySharedRepertoire(repertoireId) {
     setStatus(`Copied "${result.name}" to your repertoires`);
     await refreshDashboardRepertoires();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4646,7 +4704,7 @@ async function shareRepertoireWithTeam(repertoireId) {
       setStatus("Repertoire is now private");
     }
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4826,7 +4884,7 @@ async function editRepertoire(repertoireId, nodeId = null) {
   try {
     await hardFlushBuild();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   appState.sharedToken = null;
@@ -4842,7 +4900,7 @@ async function editRepertoire(repertoireId, nodeId = null) {
     syncWorkspaceUrl();
     updateBuildReadOnlyUi(payload);
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4897,7 +4955,7 @@ async function trainRepertoire(repertoireId) {
   try {
     await hardFlushBuild();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   appState.trainingRepertoireId = repertoireId;
@@ -5075,7 +5133,7 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
             .then((response) => {
               appState.pendingRepDeletes.delete(repKey);
               if (!response.ok) {
-                setStatus("Delete failed — repertoire restored");
+                setStatus("Delete failed — repertoire restored", { severity: "error" });
                 refreshDashboardRepertoires();
               }
             })
@@ -5088,7 +5146,7 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       return;
     }
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -5108,7 +5166,7 @@ async function runAnalysis() {
   // the PGN (/api/analyze/prepare) and classifies + saves the browser-computed
   // evals (/api/analyze/classify-save) — it never runs an engine.
   if (!isBrowserEngineAvailable()) {
-    setStatus(BROWSER_ENGINE_UNAVAILABLE);
+    setStatusError(BROWSER_ENGINE_UNAVAILABLE);
     return;
   }
   const pgn = document.getElementById("pgn-input").value.trim();
@@ -5294,7 +5352,7 @@ async function runAnalysis() {
       openAuthModal("login");
       jobToast.failJob("Sign in required");
     } else {
-      setStatus(error.message);
+      setStatusError(error.message);
       jobToast.failJob(error.message);
     }
   } finally {
@@ -5353,7 +5411,7 @@ async function onCreateRepertoireFromGameClick() {
     appState.analysisSourcePgn = null;
     hideAnalysisHandoff();
   } catch (error) {
-    setStatus(error.message || "Could not create repertoire — try again");
+    setStatusError(error.message || "Could not create repertoire — try again");
     if (btn) btn.disabled = false;
   }
 }
@@ -5668,7 +5726,7 @@ async function syncPgnFromTree() {
 async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false } = {}) {
   const parsed = parsePgn(pgnText);
   if (!parsed.ok) {
-    if (!quiet) setStatus(`PGN: ${parsed.error}`);
+    if (!quiet) setStatus(`PGN: ${parsed.error}`, { severity: "error" });
     return false;
   }
   const { moves, varNodes } = adaptParsedTree(parsed.root);
@@ -5829,7 +5887,7 @@ async function onAnalysisBoardMove(moveUci, fen) {
     // New branch on the board → mirror it into the PGN box.
     void syncPgnFromTree().catch(() => {});
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -5986,7 +6044,7 @@ async function renameRepertoire() {
     await hydrateBuild(payload, appState.buildCurrentNodeId);
     setStatus(`Renamed to ${name}`);
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -6020,7 +6078,7 @@ async function skipTrainingLine() {
       setStatus("Session complete");
     }
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -6277,7 +6335,7 @@ async function saveBuildAnnotations(arrows, circles) {
   try {
     await hardFlushBuild();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   const nodeId = resolveBuildId(appState.buildCurrentNodeId);
@@ -6294,7 +6352,7 @@ async function saveBuildAnnotations(arrows, circles) {
       circles,
     });
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -6595,7 +6653,7 @@ function flushBuildMoves() {
       if (status && status >= 400 && status < 500) {
         // Validation 4xx shouldn't happen for legal moves, but defend: drop the bad
         // batches and re-hydrate from server truth so the local tree can't drift.
-        setStatus(error.message);
+        setStatusError(error.message);
         try {
           const fresh = await api(
             `/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`
@@ -6899,7 +6957,7 @@ async function onBuildBoardMove(moveUci) {
       });
     } catch (error) {
       rollback();
-      setStatus(error.message);
+      setStatusError(error.message);
       return;
     }
     if (!created) {
@@ -6975,7 +7033,7 @@ async function createRepertoirePrompt({ title, defaultName, openAfter = true, de
     await refreshDashboardRepertoires();
     return payload;
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return null;
   }
 }
@@ -7018,7 +7076,7 @@ async function fillPgnInputFromFile(file) {
     void loadPgnIntoAnalyze(text, { goToEnd: false, quiet: true }).catch(() => {});
     setStatus(`Loaded ${file.name} - press Analyze`);
   } catch (_) {
-    setStatus("Could not read file");
+    setStatus("Could not read file", { severity: "error" });
   }
 }
 
@@ -7067,7 +7125,7 @@ async function generateFromCurrentNode() {
     return;
   }
   if (!isBrowserEngineAvailable()) {
-    setStatus(BROWSER_ENGINE_UNAVAILABLE);
+    setStatusError(BROWSER_ENGINE_UNAVAILABLE);
     return;
   }
   let nodeId = appState.buildCurrentNodeId;
@@ -7084,7 +7142,7 @@ async function generateFromCurrentNode() {
   try {
     await hardFlushBuild();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   nodeId = resolveBuildId(nodeId);
@@ -7337,7 +7395,7 @@ async function generateFromCurrentNode() {
       setStatus("Generation stopped");
       jobToast.cancelJob("Generation stopped");
     } else {
-      setStatus(error.message);
+      setStatusError(error.message);
       jobToast.failJob(error.message);
     }
   } finally {
@@ -7431,7 +7489,7 @@ async function handleNodeContextAction(action, nodeId) {
   try {
     await hardFlushBuild();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   nodeId = resolveBuildId(nodeId);
@@ -7501,7 +7559,7 @@ async function handleNodeContextAction(action, nodeId) {
     await hydrateBuild(payload, nodeId);
     setStatus("Node updated");
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -7518,7 +7576,7 @@ async function exportBuild(format, nodeId = null) {
   try {
     await hardFlushBuild();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   if (nodeId) nodeId = resolveBuildId(nodeId);
@@ -7548,32 +7606,153 @@ async function importRepertoireFromInput(inputId) {
     appState.trainingRepertoireId = payload.repertoire_id;
     setStatus(`Imported ${payload.name}`);
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
 async function loadTrainRepertoireOptions() {
   const select = document.getElementById("train-repertoire-select");
-  if (!select) return;
+  if (!select && !document.getElementById("train-play-repertoire-picker")) return;
   let active = [];
   try {
     const payload = await api("/api/repertoires");
-    active = (payload.repertoires || []).filter((r) => r.is_active !== false);
+    appState.repertoireList = payload.repertoires || [];
+    active = appState.repertoireList.filter(
+      (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id)),
+    );
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
+    active = (appState.repertoireList || []).filter(
+      (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id)),
+    );
   }
-  const previous = appState.trainingRepertoireId || (active.length ? active[0].id : "");
-  const options = active.length
-    ? active.map(
-        (r) =>
-          `<option value="${escapeHtml(r.id)}">${escapeHtml(r.name)} (${escapeHtml(r.color)})</option>`
-      )
-    : ['<option value="" disabled selected>Build a repertoire first</option>'];
-  select.innerHTML = options.join("");
-  const valid = new Set(active.map((r) => r.id));
-  select.value = valid.has(previous) ? previous : (active.length ? active[0].id : "");
-  appState.trainingRepertoireId = select.value || null;
+  if (select) {
+    const previous = appState.trainingRepertoireId || (active.length ? active[0].id : "");
+    const options = active.length
+      ? active.map(
+          (r) =>
+            `<option value="${escapeHtml(r.id)}">${escapeHtml(r.name)} (${escapeHtml(r.color)})</option>`,
+        )
+      : ['<option value="" disabled selected>Build a repertoire first</option>'];
+    select.innerHTML = options.join("");
+    const valid = new Set(active.map((r) => r.id));
+    select.value = valid.has(previous) ? previous : active.length ? active[0].id : "";
+    appState.trainingRepertoireId = select.value || null;
+  }
+  const preferenceKey = playRepertoireStorageKey();
+  if (appState.playRepertoirePreferenceKey !== preferenceKey) {
+    appState.playRepertoirePreferenceKey = preferenceKey;
+    appState.playRepertoireIds = null;
+  }
+  const valid = new Set(active.map((r) => String(r.id)));
+  if (!Array.isArray(appState.playRepertoireIds)) {
+    const stored = readStoredPlayRepertoireIds();
+    appState.playRepertoireIds = stored
+      ? stored.filter((id) => valid.has(String(id)))
+      : active.map((r) => String(r.id));
+  } else {
+    appState.playRepertoireIds = appState.playRepertoireIds.filter((id) => valid.has(String(id)));
+  }
+  persistPlayRepertoireIds();
+  renderPlayRepertoirePicker(active);
   syncTrainPickerVisibility();
+}
+
+function renderThemeButton() {
+  const button = document.getElementById("theme-toggle");
+  if (!button) return;
+  const label = themeLabel(pref("theme"));
+  button.textContent = `Theme: ${label}`;
+  button.title = `Color theme: ${label}. Click to change.`;
+  button.setAttribute("aria-label", `Color theme: ${label}. Click to change.`);
+}
+
+function playRepertoireStorageKey() {
+  const identity = appState.accountUsername || appState.accountUserId || "guest";
+  const safe = String(identity).trim().toLowerCase().replace(/[^a-z0-9._-]+/g, "_") || "guest";
+  return `prepforge.play_repertoires.${safe}`;
+}
+
+function readStoredPlayRepertoireIds() {
+  try {
+    const raw = localStorage.getItem(playRepertoireStorageKey());
+    const parsed = JSON.parse(raw || "null");
+    if (Array.isArray(parsed)) return parsed.map(String);
+    if (parsed && Array.isArray(parsed.ids)) return parsed.ids.map(String);
+  } catch (_) {
+    /* private mode or malformed old preference */
+  }
+  return null;
+}
+
+function persistPlayRepertoireIds() {
+  if (!Array.isArray(appState.playRepertoireIds)) return;
+  try {
+    localStorage.setItem(
+      playRepertoireStorageKey(),
+      JSON.stringify(appState.playRepertoireIds.map(String)),
+    );
+  } catch (_) {
+    /* private mode */
+  }
+}
+
+function selectedTrainRepertoireIds() {
+  const active = new Set(
+    (appState.repertoireList || [])
+      .filter((r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id)))
+      .map((r) => String(r.id)),
+  );
+  return (Array.isArray(appState.playRepertoireIds) ? appState.playRepertoireIds : [])
+    .map(String)
+    .filter((id) => active.has(id));
+}
+
+function playRepertoireMeta(ids = selectedTrainRepertoireIds()) {
+  const wanted = new Set((ids || []).map(String));
+  return (appState.repertoireList || []).filter((rep) => wanted.has(String(rep.id)));
+}
+
+function renderPlayRepertoirePicker(active = null) {
+  const list = Array.isArray(active)
+    ? active
+    : (appState.repertoireList || []).filter(
+        (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id)),
+      );
+  const host = document.getElementById("train-repertoire-options");
+  const empty = document.getElementById("train-repertoire-empty");
+  const selectAll = document.getElementById("train-repertoire-select-all");
+  const summary = document.getElementById("train-repertoire-summary-label");
+  const selected = new Set(selectedTrainRepertoireIds());
+  if (host) {
+    host.innerHTML = list
+      .map((rep) => {
+        const id = escapeHtml(rep.id);
+        const checked = selected.has(String(rep.id)) ? " checked" : "";
+        const color = rep.color === "black" ? "Black" : "White";
+        return `<label class="train-repertoire-option" data-repertoire-id="${id}">
+          <input type="checkbox" data-repertoire-id="${id}"${checked} />
+          <span class="rep-option-name">${escapeHtml(rep.name || "Untitled repertoire")}</span>
+          <span class="rep-option-color">${color}</span>
+        </label>`;
+      })
+      .join("");
+  }
+  if (empty) empty.hidden = list.length > 0;
+  if (selectAll) {
+    selectAll.checked = list.length > 0 && selected.size === list.length;
+    selectAll.indeterminate = selected.size > 0 && selected.size < list.length;
+    selectAll.disabled = list.length === 0;
+  }
+  if (summary) {
+    summary.textContent = !list.length
+      ? "No active repertoires"
+      : selected.size === list.length
+        ? `All ${list.length} repertoires`
+        : selected.size
+          ? `${selected.size} of ${list.length} repertoires`
+          : "Select repertoires";
+  }
 }
 
 // The smart queue trains ALL active repertoires in one mixed session, so its
@@ -7593,9 +7772,15 @@ function syncTrainPickerVisibility() {
   const help = document.getElementById("train-help");
   const hint = document.getElementById("train-hint");
   const skip = document.getElementById("train-skip");
-  const wantRep = !smart && (!play || (book && book.value === "repertoire"));
+  const wantRep = !smart && !play;
+  const wantPlayRep = play && book && book.value === "repertoire";
   if (select) select.hidden = !wantRep;
   if (picker) picker.hidden = !wantRep;
+  const playPicker = document.getElementById("train-play-repertoire-picker");
+  if (playPicker) {
+    playPicker.hidden = !wantPlayRep;
+    if (wantPlayRep) renderPlayRepertoirePicker();
+  }
   if (srs) srs.hidden = play;
   if (playSetup) playSetup.hidden = !play;
   if (blitzRow) blitzRow.hidden = mode !== "smart";
@@ -7618,7 +7803,7 @@ function syncTrainPickerVisibility() {
   const livePlay = !!(appState.play && appState.play.active);
   if (bookEl) bookEl.disabled = livePlay;
   if (startPlay) {
-    const needRep = play && book && book.value === "repertoire" && !selectedTrainRepertoireId();
+    const needRep = wantPlayRep && !selectedTrainRepertoireIds().length;
     startPlay.disabled = !!needRep;
     startPlay.textContent = livePlay ? "New game" : "Start";
   }
@@ -7766,7 +7951,7 @@ async function startTraining(mode, options = {}) {
   try {
     await hardFlushBuild();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   const fresh = !!options.fresh;
@@ -7795,7 +7980,7 @@ async function startTraining(mode, options = {}) {
     );
     syncWorkspaceUrl();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -7831,9 +8016,11 @@ function setPlayPickerColor(color, { persist = true } = {}) {
 function syncPlayColorLock() {
   const book = playBook();
   const live = !!(appState.play && appState.play.active);
-  const lockRep = book === "repertoire";
-  if (lockRep && appState.build && appState.build.color) {
-    setPlayPickerColor(appState.build.color === "black" ? "black" : "white", { persist: false });
+  const selectedMeta = playRepertoireMeta();
+  const colors = [...new Set(selectedMeta.map((rep) => (rep.color === "black" ? "black" : "white")))];
+  const lockRep = book === "repertoire" && colors.length === 1;
+  if (lockRep) {
+    setPlayPickerColor(colors[0], { persist: false });
   } else if (!live) {
     try {
       const stored = localStorage.getItem(PLAY_COLOR_KEY);
@@ -7844,7 +8031,11 @@ function syncPlayColorLock() {
   }
   document.querySelectorAll("#train-play-color .train-mode").forEach((btn) => {
     btn.disabled = live || lockRep;
-    btn.title = lockRep ? "Locked to this repertoire" : live ? "Color is locked for this game" : "You play this color from the opening";
+    btn.title = lockRep
+      ? `Locked to your ${colors[0]} repertoire${colors.length > 1 ? "s" : ""}`
+      : live
+        ? "Color is locked for this game"
+        : "You play this color from the opening";
   });
 }
 
@@ -7852,9 +8043,9 @@ function paintPlayBookHint() {
   const hint = document.getElementById("train-play-book-hint");
   if (!hint) return;
   if (playBook() === "repertoire") {
-    hint.textContent = selectedTrainRepertoireId()
-      ? "Opponent plays your repertoire replies; Maia when you're out of book."
-      : "Open a repertoire first, or switch back to Lichess explorer.";
+    hint.textContent = selectedTrainRepertoireIds().length
+      ? "Opponent uses your active repertoires first, Explorer when you're out of book, Maia when Explorer is thin."
+      : "Select at least one active repertoire, or switch back to Lichess explorer.";
     return;
   }
   hint.textContent = `Explorer ${playPoolLabel(effectiveMaiaRating())} pool; thin positions fall back to Maia.`;
@@ -7865,7 +8056,12 @@ function playBookLabel(play) {
   const book = session && session.book === "repertoire" ? "My repertoire" : "Lichess explorer";
   const color = session && session.userColor === "black" ? "Black" : "White";
   const they = session && session.lastOppSan ? ` · they ${session.lastOppSan}` : "";
-  return `${book} · you ${color}${they}`;
+  const reps =
+    session && session.book === "repertoire" && Array.isArray(session.repertoires)
+      ? session.repertoires.map((rep) => rep.name).filter(Boolean)
+      : [];
+  const repLabel = reps.length ? ` · ${reps.length === 1 ? reps[0] : `${reps.length} active repertoires`}` : "";
+  return `${book}${repLabel} · you ${color}${they}`;
 }
 
 function renderPlayTrail() {
@@ -7890,10 +8086,10 @@ function renderPlayTrail() {
             ? "Left prep"
             : reason === "fork"
               ? "Repertoire fork"
-              : reason === "db-critical"
-                ? `Master game · ${play && play.luckyPhase ? play.luckyPhase : "critical"}`
+                : reason === "db-critical"
+                  ? `Master game · ${play && play.luckyPhase ? play.luckyPhase : "critical"}`
                 : reason === "titled-game"
-                  ? `Titled game · ${play && play.luckyPhase ? play.luckyPhase : "critical"}`
+                  ? `${play && String(play.luckySource || "").startsWith("lichess-") ? "Live Lichess game" : "Titled reference"} · ${play && play.luckyPhase ? play.luckyPhase : "critical"}`
                   : reason;
     } else {
       chip.hidden = true;
@@ -7918,11 +8114,103 @@ function playChildren(nodeId) {
   );
 }
 
+function normalizePlayRepertoire(payload, meta = {}) {
+  const nodes = Array.isArray(payload && payload.nodes) ? payload.nodes : [];
+  const byId = new Map(nodes.filter((node) => node && node.id).map((node) => [node.id, node]));
+  const kids = new Map();
+  for (const node of nodes) {
+    if (!node || !node.parent_id || node.is_enabled === false || !node.uci) continue;
+    if (!kids.has(node.parent_id)) kids.set(node.parent_id, []);
+    kids.get(node.parent_id).push(node);
+  }
+  const root = nodes.find((node) => node && !node.parent_id);
+  return {
+    id: String(payload?.repertoire_id || meta.id || ""),
+    name: payload?.name || meta.name || "Untitled repertoire",
+    color: payload?.color === "black" || meta.color === "black" ? "black" : "white",
+    rootId: root ? root.id : null,
+    nodes,
+    byId,
+    kids,
+  };
+}
+
+function playCursorSnapshot(play) {
+  const out = {};
+  for (const rep of play?.repertoires || []) {
+    out[rep.id] = [...(play.repertoireCursors?.[rep.id] || [])];
+  }
+  return out;
+}
+
+function playCursorsAtFen(repertoires, fen) {
+  const key = (value) => String(value || "").trim().split(/\s+/).slice(0, 4).join(" ");
+  const target = key(fen);
+  const startKey = START_FEN.split(" ").slice(0, 4).join(" ");
+  const out = {};
+  for (const rep of repertoires || []) {
+    const matching = (rep.nodes || [])
+      .filter((node) => node && key(node.fen) === target && node.is_enabled !== false)
+      .map((node) => node.id);
+    // A non-start Lucky FEN is deliberately outside the local trees. Falling
+    // back to a repertoire root here would make an unrelated opening reply
+    // appear to be in-book. Roots are only a safe fallback for the actual
+    // starting position when a legacy payload omitted its FEN.
+    const root = (rep.nodes || []).find((node) => node && node.id === rep.rootId);
+    const rootMatches = root && (!root.fen ? target === startKey : key(root.fen) === target);
+    out[rep.id] = matching.length ? matching : rootMatches && rep.rootId ? [rep.rootId] : [];
+  }
+  return out;
+}
+
+function playRepertoireReplies(play, legalUcis) {
+  const out = [];
+  const userColor = play?.userColor === "black" ? "black" : "white";
+  const legal = new Set((legalUcis || []).map((uci) => String(uci).toLowerCase()));
+  for (const rep of play?.repertoires || []) {
+    // A repertoire is authored for the side the user plays. With mixed-color
+    // selections, only the books matching the chosen side answer this game.
+    if (rep.color !== userColor) continue;
+    const cursors = play.repertoireCursors?.[rep.id] || [];
+    for (const nodeId of cursors) {
+      for (const child of rep.kids.get(nodeId) || []) {
+        if (!legal.has(String(child.uci || "").toLowerCase())) continue;
+        out.push({
+          ...child,
+          repertoireId: rep.id,
+          repertoireName: rep.name,
+          color: rep.color,
+        });
+      }
+    }
+  }
+  return out;
+}
+
 function playAdvanceNode(uci) {
   const play = appState.play;
-  if (!play || !play.nodeId) return;
-  const child = playChildren(play.nodeId).find((node) => node.uci === uci);
-  play.nodeId = child ? child.id : null;
+  if (!play) return {};
+  const before = playCursorSnapshot(play);
+  if (play.repertoires?.length) {
+    const next = {};
+    for (const rep of play.repertoires) {
+      const children = [];
+      for (const nodeId of play.repertoireCursors?.[rep.id] || []) {
+        for (const child of rep.kids.get(nodeId) || []) {
+          if (String(child.uci).toLowerCase() === String(uci).toLowerCase()) children.push(child.id);
+        }
+      }
+      next[rep.id] = [...new Set(children)];
+    }
+    play.repertoireCursors = next;
+    play.nodeId = Object.values(next).find((ids) => ids.length)?.[0] || null;
+    return before;
+  }
+  if (play.nodeId) {
+    const child = playChildren(play.nodeId).find((node) => node.uci === uci);
+    play.nodeId = child ? child.id : null;
+  }
+  return before;
 }
 
 async function ensurePlayExplorer() {
@@ -7952,9 +8240,7 @@ async function fetchPlayMaia(fen) {
 }
 
 async function loadPlayRepertoirePayload(repertoireId) {
-  const payload = await api(`/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`);
-  await hydrateBuild(payload, payload.selected_node_id);
-  return payload;
+  return api(`/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`);
 }
 
 function paintPlayPosition({ fen, legalMoves, lastMove, banner, sub, label, state }) {
@@ -7964,6 +8250,10 @@ function paintPlayPosition({ fen, legalMoves, lastMove, banner, sub, label, stat
     legalMoves: legalMoves || [],
     lastMove: lastMove || null,
   });
+  // Keep the current board position inspectable for acceptance tooling and
+  // assistive diagnostics without adding another visible control.
+  const boardEl = document.getElementById("train-board");
+  if (boardEl) boardEl.dataset.fen = fen || "";
   const side = (fen || "").split(" ")[1] === "b" ? "black" : "white";
   updateTrainTurnBadge(side);
   setTrainBanner(state || "move", banner, sub || "");
@@ -7971,43 +8261,78 @@ function paintPlayPosition({ fen, legalMoves, lastMove, banner, sub, label, stat
   if (labelEl) labelEl.textContent = label || playBookLabel();
 }
 
-async function startPlaySession({ fen, reason, phase, nodeId: luckyNodeId } = {}) {
+async function startPlaySession({
+  fen,
+  reason,
+  phase,
+  nodeId: luckyNodeId,
+  gameId: luckyGameId,
+  white: luckyWhite,
+  black: luckyBlack,
+  source: luckySource,
+  sourceUrl: luckySourceUrl,
+} = {}) {
   appState.smart = null;
   appState.training = null;
   const startFen = fen || START_FEN;
   const book = playBook();
   let nodeId = null;
+  let playRepertoires = [];
+  let repertoireCursors = {};
   if (book === "repertoire") {
-    const repId = selectedTrainRepertoireId();
-    if (!repId) {
-      setStatus("Open a repertoire first, or switch the opponent book to Lichess explorer.");
-      return;
+    const selectedIds = selectedTrainRepertoireIds();
+    if (!selectedIds.length) {
+      setStatus("Select at least one active repertoire, or switch the opponent book to Lichess explorer.");
+      return false;
     }
-    if (repId && (!appState.build || appState.build.repertoire_id !== repId)) {
-      try {
-        await loadPlayRepertoirePayload(repId);
-      } catch (error) {
-        setStatus(error.message);
-        return;
+    // Build edits are local-first. Flush the currently open tree before reading
+    // it for a Play session, but never load repertoire trees until Start is
+    // pressed (no Train-load or idle prefetch).
+    try {
+      await hardFlushBuild();
+    } catch (error) {
+      setStatusError(error.message);
+      return false;
+    }
+    try {
+      const metas = playRepertoireMeta(selectedIds);
+      const metasById = new Map(metas.map((rep) => [String(rep.id), rep]));
+      const payloads = await Promise.all(selectedIds.map((id) => loadPlayRepertoirePayload(id)));
+      playRepertoires = payloads
+        .map((payload, index) => normalizePlayRepertoire(payload, metasById.get(String(selectedIds[index])) || { id: selectedIds[index] }))
+        .filter((rep) => rep.id && rep.rootId);
+      if (!playRepertoires.length) {
+        setStatus("Those repertoires have no playable lines yet.");
+        return false;
       }
-    }
-    if (appState.build) {
-      nodeId = (appState.build.nodes || []).find((node) => !node.parent_id)?.id || null;
+      repertoireCursors = playCursorsAtFen(playRepertoires, startFen);
+      nodeId = playRepertoires.find((rep) => repertoireCursors[rep.id]?.length)?.rootId || null;
+    } catch (error) {
+      setStatusError(error.message);
+      return false;
     }
   }
+  const selectedMeta = book === "repertoire" ? playRepertoireMeta(selectedTrainRepertoireIds()) : [];
   const userColor = resolvePlayColor({
     book,
     pickerColor: playPickerColor(),
-    repertoireColor: appState.build && appState.build.color,
+    repertoireColor: selectedMeta[0] && selectedMeta[0].color,
+    repertoireColors: selectedMeta.map((rep) => rep.color),
     luckyFen: reason ? startFen : null,
   });
   if (luckyNodeId) nodeId = luckyNodeId;
+  if (book === "repertoire") {
+    // A Lucky FEN may not be a node in the selected trees. Keep cursors empty
+    // for those books so the normal Explorer → Maia fallback still works.
+    repertoireCursors = playCursorsAtFen(playRepertoires, startFen);
+    nodeId = Object.values(repertoireCursors).find((ids) => ids.length)?.[0] || nodeId;
+  }
   let info;
   try {
     info = await boardInfo(startFen);
   } catch (error) {
-    setStatus(error.message || "Could not open that position");
-    return;
+    setStatusError(error.message || "Could not open that position");
+    return false;
   }
   appState.play = {
     active: true,
@@ -8017,11 +8342,18 @@ async function startPlaySession({ fen, reason, phase, nodeId: luckyNodeId } = {}
     userColor,
     nodeId,
     rootNodeId: nodeId,
+    repertoires: playRepertoires,
+    repertoireCursors,
     ply: 0,
     history: [],
     lastOppSan: null,
     luckyReason: reason || null,
     luckyPhase: phase || null,
+    luckyGameId: luckyGameId || null,
+    luckyWhite: luckyWhite || null,
+    luckyBlack: luckyBlack || null,
+    luckySource: luckySource || null,
+    luckySourceUrl: luckySourceUrl || null,
   };
   document.getElementById("train-progress-panel").hidden = true;
   const summary = document.getElementById("train-summary");
@@ -8036,18 +8368,22 @@ async function startPlaySession({ fen, reason, phase, nodeId: luckyNodeId } = {}
         ? "You left prep here — your move"
         : reason === "fork"
           ? "A real fork — more than one human reply"
-          : reason === "db-critical"
-            ? `Master game, critical ${phase || "moment"} — your move`
-            : reason === "titled-game"
-              ? `Titled game, critical ${phase || "moment"} — your move`
+              : reason === "db-critical"
+                ? `Master game, critical ${phase || "moment"} — your move`
+              : reason === "titled-game"
+                  ? `${String(luckySource || "").startsWith("lichess-") ? "Live Lichess game" : "Titled reference"}, critical ${phase || "moment"} — your move`
               : book === "explorer"
               ? "Explorer at your rating, Maia when the sample thins"
-              : "Your repertoire, Maia when you're out of book";
+              : "Your active repertoires first, Explorer out of book, Maia when Explorer is thin";
+  const luckyMeta =
+    reason === "titled-game" && luckyGameId
+      ? ` · ${[luckyWhite, luckyBlack].filter(Boolean).join(" vs ") || "Lichess game"} (${luckyGameId})`
+      : "";
   paintPlayPosition({
     fen: info.fen,
     legalMoves: sideToMoveFromFen(info.fen) === userColor ? info.legal_moves : [],
     banner: "Your move",
-    sub: why,
+    sub: `${why}${luckyMeta}`,
     label: playBookLabel(appState.play),
   });
   setStatus(isStartFen(info.fen) ? "Your move" : `Started from a key position (${reason || "book"})`);
@@ -8056,6 +8392,7 @@ async function startPlaySession({ fen, reason, phase, nodeId: luckyNodeId } = {}
   if (sideToMoveFromFen(info.fen) !== userColor) {
     await playOpponentReply();
   }
+  return true;
 }
 
 async function playOpponentReply() {
@@ -8071,17 +8408,39 @@ async function playOpponentReply() {
     syncTrainSessionControls();
     return;
   }
-  setTrainBanner("runin", "Opponent thinking…", play.book === "explorer" ? "Lichess explorer" : "Book / Maia");
+  setTrainBanner(
+    "runin",
+    "Opponent thinking…",
+    play.book === "explorer" ? "Lichess Explorer → Maia" : "Active repertoires → Explorer → Maia",
+  );
+  const repertoireReplies = play.book === "repertoire" ? playRepertoireReplies(play, info.legal_moves) : [];
   let explorer = { totalGames: 0, moves: [] };
-  if (play.book === "explorer") explorer = await fetchPlayExplorer(play.fen);
-  const maiaPredictions = await fetchPlayMaia(play.fen);
-  const reply = pickOpponentReply({
+  // A repertoire hit is local and immediate. Only ask Explorer when every
+  // selected book is out of book; Maia is fetched only if that Explorer read
+  // is thin/unavailable (or has no legal move).
+  if (play.book === "explorer" || (play.book === "repertoire" && !repertoireReplies.length)) {
+    explorer = await fetchPlayExplorer(play.fen);
+  }
+  let maiaPredictions = [];
+  let reply = pickOpponentReply({
     book: play.book,
     legalUcis: info.legal_moves,
     explorer,
-    repertoireChildren: playChildren(play.nodeId),
+    repertoireReplies,
+    repertoireChildren: play.book === "repertoire" ? [] : playChildren(play.nodeId),
     maiaPredictions,
   });
+  if (!reply.uci) {
+    maiaPredictions = await fetchPlayMaia(play.fen);
+    reply = pickOpponentReply({
+      book: play.book,
+      legalUcis: info.legal_moves,
+      explorer,
+      repertoireReplies,
+      repertoireChildren: play.book === "repertoire" ? [] : playChildren(play.nodeId),
+      maiaPredictions,
+    });
+  }
   if (!reply.uci) {
     play.active = false;
     updateTrainTurnBadge(null);
@@ -8093,7 +8452,7 @@ async function playOpponentReply() {
   const after = await boardAfterMove(play.fen, reply.uci);
   play.fen = after.board.fen;
   play.ply += 1;
-  playAdvanceNode(reply.uci);
+  const repertoireCursorsBefore = playAdvanceNode(reply.uci);
   play.lastOppSan = after.move.san;
   recordPlayPly({
     uci: reply.uci,
@@ -8103,6 +8462,8 @@ async function playOpponentReply() {
     by: "opp",
     nodeIdBefore,
     nodeIdAfter: play.nodeId,
+    repertoireCursorsBefore,
+    repertoireCursorsAfter: playCursorSnapshot(play),
   });
   const ended = playPositionAfterReply(after.board);
   if (ended.terminal) {
@@ -8121,7 +8482,9 @@ async function playOpponentReply() {
     reply.source === "explorer"
       ? "Explorer"
       : reply.source === "repertoire"
-        ? "Your prep"
+        ? reply.repertoireNames?.length
+          ? `Repertoire · ${reply.repertoireNames.length === 1 ? reply.repertoireNames[0] : `${reply.repertoireNames[0]} +${reply.repertoireNames.length - 1}`}`
+          : "Repertoire"
         : "Maia";
   const reason =
     reply.reason === "thin-sample"
@@ -8149,7 +8512,7 @@ async function submitPlayMove(playedUci) {
   const after = await boardAfterMove(play.fen, playedUci);
   play.fen = after.board.fen;
   play.ply += 1;
-  playAdvanceNode(playedUci);
+  const repertoireCursorsBefore = playAdvanceNode(playedUci);
   recordPlayPly({
     uci: playedUci,
     san: after.move.san,
@@ -8158,6 +8521,8 @@ async function submitPlayMove(playedUci) {
     by: "user",
     nodeIdBefore,
     nodeIdAfter: play.nodeId,
+    repertoireCursorsBefore,
+    repertoireCursorsAfter: playCursorSnapshot(play),
   });
   boards.train.setPosition({
     fen: after.board.fen,
@@ -8176,13 +8541,34 @@ async function submitPlayMove(playedUci) {
 }
 
 async function onFeelingLucky() {
-  // Feeling Lucky: masters walk first (needs a linked token), titled games
-  // as the no-auth fallback (see feeling-lucky.js). Personal repertoire
-  // picks live in train-lucky.js for other callers, not on this button.
+  if (appState.luckyBusy) return;
+  appState.luckyBusy = true;
+  const luckyButton = document.getElementById("feeling-lucky");
+  if (luckyButton) {
+    luckyButton.disabled = true;
+    luckyButton.setAttribute("aria-busy", "true");
+  }
+  try {
+    return await runFeelingLuckyClick();
+  } finally {
+    appState.luckyBusy = false;
+    if (luckyButton) {
+      luckyButton.disabled = false;
+      luckyButton.removeAttribute("aria-busy");
+    }
+  }
+}
+
+async function runFeelingLuckyClick() {
+  // Feeling Lucky is on-demand live-data discovery: after this click, Lichess
+  // supplies a fresh titled-player feed and the client replays/scores it
+  // locally. The slower Masters walk remains a quality fallback when live
+  // feeds are empty. Personal repertoire picks live in train-lucky.js.
   //
-  // Sign-in still gates the button: the masters path needs an app session
-  // for the explorer proxy, and anonymous Lucky would silently skip the
-  // account's own rating/phase context. The modal this opens is transient —
+  // Sign-in still gates the button because the optional Masters fallback uses
+  // the Explorer proxy and the resulting position starts a training session.
+  // The live game feed itself is anonymous, but keeping this gate preserves
+  // the existing training/account contract. The modal this opens is transient —
   // tab navigation dismisses it (dismissTransientOverlays).
   if (!appState.accountUsername) {
     try {
@@ -8196,31 +8582,24 @@ async function onFeelingLucky() {
     openAuthModal();
     return;
   }
-  // No Lichess-link hard gate: an unlinked visitor skips the masters walk
-  // (the sampler throws the link error, feeling-lucky routes it to the
-  // titled fallback) and still gets a Play session. refreshLichessStatus
-  // keeps the chip honest without blocking the click.
-  if (!appState.lichessUsername) {
-    try {
-      await refreshLichessStatus();
-    } catch (_) {
-      // best-effort only — the fallback path needs no link
-    }
-  }
+  // No Lichess-link hard gate: the live Lichess game-feed endpoints are
+  // public/anonymous. Do not refresh link status here; that would add a
+  // needless network round trip before the actual on-demand game request.
   let dbPicked = null;
   try {
-    setTrainBanner("runin", "Asking the Lichess database…", "Finding a critical position");
+    setTrainBanner("runin", "Finding a position…", "Discovering a fresh titled player");
     const { runFeelingLucky } = await import("./feeling-lucky.js");
     dbPicked = await runFeelingLucky({
       storage: typeof localStorage === "undefined" ? null : localStorage,
       exclude: [appState.lastLuckyFen, appState.play && appState.play.startFen].filter(Boolean),
       rating: effectiveMaiaRating(),
+      preferDynamic: true,
       ensureExplorer: ensurePlayExplorer,
       onStatus: setStatus,
       setBanner: (state, title, sub) => setTrainBanner(state, title, sub),
       startSession: async (session) => {
         appState.lastLuckyFen = session.fen;
-        await startPlaySession(session);
+        return startPlaySession(session);
       },
     });
   } catch (error) {
@@ -8245,6 +8624,10 @@ async function takebackPlaySession() {
   play.active = true;
   play.fen = undone.fen || play.startFen;
   play.nodeId = undone.nodeId || play.rootNodeId;
+  if (play.repertoires?.length) {
+    play.repertoireCursors = undone.repertoireCursors || playCursorsAtFen(play.repertoires, play.fen);
+    play.nodeId = Object.values(play.repertoireCursors).find((ids) => ids.length)?.[0] || null;
+  }
   play.ply = play.history.length;
   const lastUserOrOpp = play.history.filter((ply) => ply.by === "opp").pop();
   play.lastOppSan = lastUserOrOpp ? lastUserOrOpp.san : null;
@@ -8255,7 +8638,11 @@ async function takebackPlaySession() {
     legalMoves: yourMove ? info.legal_moves : [],
     lastMove: undone.lastMove,
     banner: yourMove ? "Your move" : "Opponent thinking…",
-    sub: yourMove ? "Takeback — play again" : play.book === "explorer" ? "Lichess explorer" : "Book / Maia",
+    sub: yourMove
+      ? "Takeback — play again"
+      : play.book === "explorer"
+        ? "Lichess Explorer → Maia"
+        : "Active repertoires → Explorer → Maia",
     label: playBookLabel(play),
     state: yourMove ? "move" : "runin",
   });
@@ -8320,7 +8707,7 @@ async function submitTrainingMove(playedUci) {
       }),
     });
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   if (result.day_streak) appState.dayStreak = result.day_streak;
@@ -8563,7 +8950,7 @@ async function trainHint() {
       if (info.expected_uci) boards.train.setEngineArrow(info.expected_uci);
     }
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -8725,7 +9112,7 @@ async function startSmartTraining(options = {}) {
   try {
     await hardFlushBuild();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   // Land any leftover graded attempts (an abandoned previous session) before
@@ -8746,7 +9133,7 @@ async function startSmartTraining(options = {}) {
       fresh,
     });
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Build, then train.");
     return;
   }
@@ -9390,7 +9777,7 @@ async function loadSettings() {
     applyServerEngineGating();
     view.renderSettings(payload);
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -9420,7 +9807,7 @@ async function saveSettings(patch) {
       refreshExplorerPanel();
     }
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -9499,7 +9886,7 @@ async function runLichessCompare() {
         : `Fetched ${payload.count} games for ${payload.username}`
     );
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   } finally {
     button.disabled = false;
   }
@@ -9602,7 +9989,7 @@ async function maybeOpenSharedView() {
     setStatus(`Viewing shared repertoire "${payload.name}" (read-only)`);
     return true;
   } catch (error) {
-    setStatus(`Share link problem: ${error.message}`);
+    setStatus(`Share link problem: ${error.message}`, { severity: "error" });
     return false;
   }
 }
@@ -9627,7 +10014,7 @@ async function maybeHandleJoinLink() {
   try {
     preview = await api(`/api/teams/join/${encodeURIComponent(code)}`);
   } catch (error) {
-    setStatus(`Invite link problem: ${error.message}`);
+    setStatus(`Invite link problem: ${error.message}`, { severity: "error" });
     clearJoinParam();
     return false;
   }
@@ -9646,7 +10033,7 @@ async function maybeHandleJoinLink() {
   try {
     result = await postJson(`/api/teams/join/${encodeURIComponent(code)}`, {});
   } catch (error) {
-    setStatus(`Couldn't join: ${error.message}`);
+    setStatus(`Couldn't join: ${error.message}`, { severity: "error" });
     return false;
   }
   const team = result.team;
@@ -9725,7 +10112,7 @@ async function forkReadableRepertoire() {
     await refreshDashboardRepertoires();
     setStatus(`Copied "${result.name}" to your account — it's yours now`);
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -9876,7 +10263,7 @@ async function completeSelectedGaps(gaps) {
     return;
   }
   if (!isBrowserEngineAvailable()) {
-    setStatus(BROWSER_ENGINE_UNAVAILABLE);
+    setStatusError(BROWSER_ENGINE_UNAVAILABLE);
     return;
   }
   if (!gaps || !gaps.length) return;
@@ -10142,6 +10529,9 @@ function bindEvents() {
     button.addEventListener("click", () => {
       dismissTransientOverlays();
       switchView(button.dataset.view);
+      if (button.dataset.replaySection) {
+        setReplaySection(button.dataset.replaySection, { focus: true });
+      }
       if (button.dataset.view === "settings") loadSettings();
       if (button.dataset.view === "teams") loadTeams().catch(() => {});
     });
@@ -10177,6 +10567,13 @@ function bindEvents() {
 
   // Account chip (folds in the old standalone Sign out button as a menu action)
   document.getElementById("account-chip").addEventListener("click", onAccountChipClick);
+  const themeToggle = document.getElementById("theme-toggle");
+  if (themeToggle) {
+    themeToggle.addEventListener("click", () => {
+      setPref("theme", nextTheme(pref("theme")));
+      settingsView?.renderThemeControl();
+    });
+  }
 
   // Replay tab
   document.getElementById("lichess-compare-btn").addEventListener("click", runLichessCompare);
@@ -10290,6 +10687,36 @@ function bindEvents() {
   const playBookEl = document.getElementById("train-play-book");
   if (playBookEl) {
     playBookEl.addEventListener("change", () => {
+      syncTrainPickerVisibility();
+    });
+  }
+  const playRepertoireOptions = document.getElementById("train-repertoire-options");
+  if (playRepertoireOptions) {
+    playRepertoireOptions.addEventListener("change", (event) => {
+      const input = event.target.closest('input[type="checkbox"][data-repertoire-id]');
+      if (!input) return;
+      const id = String(input.dataset.repertoireId || "");
+      if (!id) return;
+      const selected = new Set(selectedTrainRepertoireIds());
+      if (input.checked) selected.add(id);
+      else selected.delete(id);
+      appState.playRepertoireIds = [...selected];
+      persistPlayRepertoireIds();
+      renderPlayRepertoirePicker();
+      syncTrainPickerVisibility();
+    });
+  }
+  const playRepertoireSelectAll = document.getElementById("train-repertoire-select-all");
+  if (playRepertoireSelectAll) {
+    playRepertoireSelectAll.addEventListener("change", () => {
+      const active = (appState.repertoireList || []).filter(
+        (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id)),
+      );
+      appState.playRepertoireIds = playRepertoireSelectAll.checked
+        ? active.map((r) => String(r.id))
+        : [];
+      persistPlayRepertoireIds();
+      renderPlayRepertoirePicker(active);
       syncTrainPickerVisibility();
     });
   }
@@ -10427,6 +10854,15 @@ function bindEvents() {
 
 async function init() {
   appState.prefs = loadPrefs();
+  applyPref("theme");
+  try {
+    const systemTheme = window.matchMedia?.("(prefers-color-scheme: dark)");
+    systemTheme?.addEventListener?.("change", () => {
+      if (pref("theme") === "system") applyTheme("system");
+    });
+  } catch (_) {
+    /* matchMedia is optional in embedded/test environments */
+  }
   try {
     const storedStyle = localStorage.getItem(PIECE_STYLE_KEY);
     if (storedStyle && PIECE_SETS[storedStyle]) appState.pieceStyle = storedStyle;
@@ -10515,4 +10951,4 @@ async function loadSignedInWorkspace() {
   await loadDashboard();
 }
 
-init().catch((error) => setStatus(error.message));
+init().catch((error) => setStatusError(error.message));

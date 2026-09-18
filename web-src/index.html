@@ -3,27 +3,36 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light" />
-    <meta name="supported-color-schemes" content="light" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
   </head>
   <body>
     <header class="topbar">
       <div class="brand">PrepForge</div>
       <nav class="tabs" aria-label="Workspace">
-        <button class="tab is-active" data-view="dashboard" data-testid="nav-dashboard">Dashboard</button>
-        <button class="tab" data-view="analyze" data-testid="nav-analyze">Analyze</button>
-        <button class="tab" data-view="build" data-testid="nav-build">Build</button>
-        <button class="tab" data-view="train" data-testid="nav-train">Train</button>
-        <button class="tab" data-view="replay" data-testid="nav-replay">Replay</button>
-        <button class="tab" data-view="teams" data-testid="nav-teams">Teams</button>
-        <button class="tab" data-view="settings" data-testid="nav-settings">Settings</button>
+        <div class="tabs-primary">
+          <button class="tab is-active" data-view="dashboard" data-testid="nav-dashboard">Dashboard</button>
+          <button class="tab" data-view="analyze" data-testid="nav-analyze">Analyze</button>
+          <button class="tab" data-view="build" data-testid="nav-build">Build</button>
+          <button class="tab" data-view="train" data-testid="nav-train">Train</button>
+          <button class="tab" data-view="replay" data-replay-section="games" data-testid="nav-replay">Games</button>
+          <button class="tab" data-view="replay" data-replay-section="scout" data-testid="nav-scout">Scout</button>
+        </div>
+        <details class="more-nav" id="more-nav">
+          <summary>More</summary>
+          <div class="more-nav-menu" role="menu" aria-label="More workspace views">
+            <button class="tab" data-view="teams" data-testid="nav-teams" role="menuitem">Teams</button>
+            <button class="tab" data-view="settings" data-testid="nav-settings" role="menuitem">Settings</button>
+          </div>
+        </details>
       </nav>
       <button class="ib palette-open" id="open-palette" data-testid="open-palette" type="button" title="Command palette (Ctrl+K)" aria-label="Open command palette">Ctrl K</button>
+      <button class="ib theme-toggle" id="theme-toggle" type="button" aria-label="Color theme: System">Theme: System</button>
       <button class="lichess-chip" id="account-chip" data-testid="account-chip" aria-haspopup="menu" aria-expanded="false" title="Connect a Lichess account">
         <span class="lichess-label" id="account-label">Connect Lichess</span>
       </button>
-      <div class="status" id="app-status" data-testid="app-status">Ready</div>
+      <div class="status" id="app-status" data-testid="app-status" role="status" aria-live="polite" data-state="ready" data-severity="info">Ready</div>
     </header>
 
     <main class="workspace">
@@ -234,6 +243,28 @@
                   <option value="explorer">Lichess explorer</option>
                   <option value="repertoire">My repertoire</option>
                 </select>
+                <div class="train-play-repertoires" id="train-play-repertoire-picker" hidden>
+                  <span class="train-picker-label">Repertoires</span>
+                  <details class="train-repertoire-menu" id="train-repertoire-menu">
+                    <summary class="train-repertoire-summary" data-testid="train-repertoire-summary">
+                      <span id="train-repertoire-summary-label">Select repertoires</span>
+                      <span class="train-repertoire-chevron" aria-hidden="true">⌄</span>
+                    </summary>
+                    <div class="train-repertoire-popover" role="group" aria-label="Active repertoires">
+                      <label class="train-repertoire-option train-repertoire-select-all">
+                        <input type="checkbox" id="train-repertoire-select-all" data-testid="train-repertoire-select-all" />
+                        <span>Select all</span>
+                      </label>
+                      <div class="train-repertoire-options" id="train-repertoire-options"></div>
+                      <p class="train-repertoire-empty muted" id="train-repertoire-empty" hidden>
+                        No active repertoires yet. Build one to use My repertoire.
+                      </p>
+                    </div>
+                  </details>
+                  <p class="muted hint train-repertoire-hint" id="train-repertoire-hint">
+                    Choose the prep books to use for this game.
+                  </p>
+                </div>
                 <label class="train-picker-label" id="train-play-color-label">You play</label>
                 <div class="train-modes" id="train-play-color" role="group" aria-label="Your color">
                   <button type="button" class="train-mode is-active" data-color="white" data-testid="play-color-white">White</button>
@@ -321,7 +352,7 @@
 
       <section class="view" id="view-replay" data-testid="view-replay">
         <div class="list-view replay-stack">
-          <section class="card replay-card-games">
+          <section class="card replay-card-games" data-replay-panel="games" role="tabpanel" aria-labelledby="nav-replay">
             <div class="card-head">
               <h2>My recent games</h2>
               <div class="replay-toolbar">
@@ -342,7 +373,7 @@
             <div id="replay-summary" class="replay-summary" hidden></div>
             <div id="replay-results" class="replay-results"></div>
           </section>
-          <section class="card replay-card-scout">
+          <section class="card replay-card-scout" data-replay-panel="scout" role="tabpanel" aria-labelledby="nav-scout" hidden>
             <div class="card-head">
               <h2>Scout an opponent</h2>
               <div class="replay-toolbar">
@@ -415,6 +446,16 @@
 
       <section class="view" id="view-settings" data-testid="view-settings">
         <div class="list-view replay-layout">
+          <section class="card">
+            <div class="card-head"><h2>Appearance</h2></div>
+            <label class="settings-label" for="settings-theme">Color theme</label>
+            <select id="settings-theme" class="settings-select">
+              <option value="system">System default</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+            <p class="muted">Use a warm dark palette for low-light study sessions.</p>
+          </section>
           <section class="card">
             <div class="card-head">
               <h2>Engine</h2>

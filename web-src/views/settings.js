@@ -46,6 +46,11 @@ export function createSettingsView({
     }
   }
 
+  function renderThemeControl() {
+    const themeEl = document.getElementById("settings-theme");
+    if (themeEl) themeEl.value = String(pref("theme") || "system");
+  }
+
   function renderBrowserEngineStatus() {
     const browserStatusEl = document.getElementById("settings-browser-engine-status");
     const note = document.getElementById("settings-stockfish-status");
@@ -68,6 +73,7 @@ export function createSettingsView({
     void payload;
     renderBrowserEngineStatus();
     renderStrengthControls();
+    renderThemeControl();
     const brilliantToggle = document.getElementById("settings-brilliant-toggle");
     if (brilliantToggle) brilliantToggle.checked = !!pref("brilliantDetection");
   }
@@ -192,6 +198,12 @@ export function createSettingsView({
       );
     }
 
+    const themeEl = document.getElementById("settings-theme");
+    if (themeEl) {
+      themeEl.value = String(pref("theme") || "system");
+      themeEl.addEventListener("change", () => setPref("theme", themeEl.value));
+    }
+
     const depthSlider = document.getElementById("settings-depth");
     if (depthSlider) {
       depthSlider.addEventListener("input", () => {
@@ -227,6 +239,7 @@ export function createSettingsView({
     renderBrowserEngineStatus,
     renderMaia3Status,
     renderStrengthControls,
+    renderThemeControl,
     retryMaia3,
     resetMaia3Cache,
   };

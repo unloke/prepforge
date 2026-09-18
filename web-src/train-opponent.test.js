@@ -4,6 +4,7 @@ import {
   EXPLORER_THIN_SAMPLE,
   pickExplorerReply,
   pickMaiaReply,
+  mergeRepertoireReplies,
   pickOpponentReply,
   pickRepertoireReply,
   playPositionAfterReply,
@@ -103,6 +104,93 @@ describe("pickOpponentReply", () => {
     expect(reply.source).toBe("maia");
     expect(reply.reason).toBe("out-of-book");
     expect(reply.uci).toBe("g8f6");
+  });
+
+  it("aggregates all active repertoire children before falling back", () => {
+    const reply = pickOpponentReply({
+      book: "repertoire",
+      legalUcis: LEGAL,
+      repertoireReplies: [
+        { uci: "a2a3", repertoireId: "white-a", repertoireName: "White A" },
+        { uci: "c7c6", repertoireId: "white-b", repertoireName: "White B" },
+      ],
+      explorer: {
+        totalGames: 1000,
+        moves: [{ uci: "e7e5", share: 1 }],
+      },
+      maiaPredictions: [{ move_uci: "g8f6", probability: 1 }],
+      rng: () => 0.99,
+    });
+    // The first repertoire has no legal child; the second still wins before
+    // Explorer or Maia gets a turn.
+    expect(reply).toMatchObject({
+      uci: "c7c6",
+      source: "repertoire",
+      repertoireId: "white-b",
+      repertoireName: "White B",
+    });
+  });
+
+  it("merges duplicate repertoire moves without adding probability", () => {
+    const merged = mergeRepertoireReplies(
+      [
+        { uci: "e7e5", repertoireId: "a", repertoireName: "A", frequency: 2 },
+        { uci: "e7e5", repertoireId: "b", repertoireName: "B", frequency: 3 },
+        { uci: "c7c5", repertoireId: "c", repertoireName: "C", frequency: 1 },
+      ],
+      LEGAL,
+    );
+    expect(merged).toHaveLength(2);
+    expect(merged.find((row) => row.uci === "e7e5")).toMatchObject({ weight: 1 });
+    expect(merged.every((row) => row.weight === 1)).toBe(true);
+    expect(merged.find((row) => row.uci === "e7e5").repertoires).toHaveLength(2);
+  });
+
+  it("draws each deduplicated repertoire UCI uniformly", () => {
+    const children = [
+      { uci: "e7e5", repertoireId: "a", repertoireName: "A", frequency: 100 },
+      { uci: "e7e5", repertoireId: "b", repertoireName: "B", is_mainline: true },
+      { uci: "c7c5", repertoireId: "c", repertoireName: "C", maia_probability: 0.01 },
+      { uci: "e7e6", repertoireId: "d", repertoireName: "D" },
+    ];
+    const merged = mergeRepertoireReplies(children, LEGAL);
+    expect(merged.map((row) => row.uci)).toEqual(["e7e5", "c7c5", "e7e6"]);
+    expect(merged.map((row) => row.weight)).toEqual([1, 1, 1]);
+    expect(pickOpponentReply({
+      book: "repertoire",
+      legalUcis: LEGAL,
+      repertoireReplies: children,
+      rng: () => 0.99,
+    }).uci).toBe("e7e6");
+  });
+
+  it("uses a thick Explorer sample after every active repertoire is out of book", () => {
+    const reply = pickOpponentReply({
+      book: "repertoire",
+      legalUcis: LEGAL,
+      repertoireReplies: [{ uci: "a2a3", repertoireId: "a" }],
+      explorer: {
+        totalGames: EXPLORER_THIN_SAMPLE + 20,
+        moves: [{ uci: "e7e5", share: 1 }],
+      },
+      maiaPredictions: [{ move_uci: "c7c5", probability: 1 }],
+      rng: () => 0,
+    });
+    expect(reply).toEqual({ uci: "e7e5", source: "explorer", reason: "out-of-book" });
+  });
+
+  it("keeps Maia as the final fallback for a thin Explorer sample", () => {
+    const reply = pickOpponentReply({
+      book: "repertoire",
+      legalUcis: LEGAL,
+      explorer: {
+        totalGames: EXPLORER_THIN_SAMPLE - 1,
+        moves: [{ uci: "e7e5", share: 1 }],
+      },
+      maiaPredictions: [{ move_uci: "g8f6", probability: 1 }],
+      rng: () => 0,
+    });
+    expect(reply).toMatchObject({ uci: "g8f6", source: "maia", reason: "out-of-book" });
   });
 });
 
