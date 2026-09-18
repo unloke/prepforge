@@ -55,6 +55,56 @@
   font-size: 14px;
 }
 
+/* The dark palette keeps the warm amber identity but lifts text and borders
+   independently instead of inverting the light theme. This preserves contrast
+   for boards, data labels, and status colors in low-light study sessions. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #151311;
+  --panel: #211d19;
+  --panel-soft: #2a241e;
+  --line: #4a4036;
+  --line-soft: #342e28;
+  --line-strong: #6d5b49;
+  --text: #f5efe8;
+  --muted: #c2b7ab;
+  --label: #a99b8d;
+  --surface-hover: #342b22;
+  --hover: #312820;
+  --btn-hover: #3a3027;
+  --btn-active: #44372b;
+  --btn-border-hover: #92765a;
+  --accent: #dda15e;
+  --accent-soft: #3d2d1e;
+  --accent-line: #795535;
+  --accent-strong: #f0b873;
+  --accent-dark: #c6813e;
+  --on-accent: #21150b;
+  --focus-ring: rgba(240, 184, 115, 0.46);
+  --danger: #ef8378;
+  --danger-soft: #482522;
+  --danger-strong: #ff9a8e;
+  --danger-dark: #d7675f;
+  --warn: #e5a45e;
+  --good: #83c89b;
+  --brilliant: #83baff;
+  --inert: #b3a79a;
+  --chip: #e5d9cc;
+  --dot-white: #f8f4ea;
+  --board-frame: #6f583f;
+  --square-light: #d7bd95;
+  --square-dark: #704e38;
+  --last-move: rgba(255, 211, 83, 0.52);
+  --highlight: rgba(232, 119, 68, 0.62);
+  --arrow: rgba(234, 123, 75, 0.85);
+  --arrow-user: rgba(240, 171, 80, 0.95);
+  --arrow-user-stroke: rgba(35, 21, 9, 0.55);
+  --arrow-engine: rgba(117, 202, 147, 0.95);
+  --arrow-engine-stroke: rgba(21, 53, 34, 0.52);
+  --coord-on-light: rgba(90, 65, 39, 0.86);
+  --coord-on-dark: rgba(255, 239, 214, 0.88);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -150,6 +200,75 @@ h2 {
   display: flex;
   gap: 2px;
   flex: 1;
+  min-width: 0;
+  align-items: center;
+}
+
+.tabs-primary {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs-primary::-webkit-scrollbar {
+  display: none;
+}
+
+.more-nav {
+  position: relative;
+  flex: none;
+}
+
+.more-nav > summary {
+  height: var(--control-h);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+  touch-action: manipulation;
+}
+
+.more-nav > summary::-webkit-details-marker {
+  display: none;
+}
+
+.more-nav > summary::after {
+  content: "▾";
+  font-size: 9px;
+  margin-left: 6px;
+}
+
+.more-nav > summary:hover,
+.more-nav[open] > summary {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.more-nav-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 80;
+  min-width: 132px;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  box-shadow: 0 10px 24px rgba(30, 24, 18, 0.18);
+}
+
+.more-nav-menu .tab {
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
+  white-space: nowrap;
 }
 
 .tab {
@@ -1719,6 +1838,19 @@ h2 {
   display: grid;
   gap: 5px;
   margin-top: 1px;
+}
+
+.status[data-state="error"] {
+  color: var(--danger-strong);
+}
+
+.settings-select {
+  width: min(260px, 100%);
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
 }
 .train-play-repertoires[hidden] { display: none; }
 .train-repertoire-menu {
@@ -4383,6 +4515,21 @@ h2 {
     order: 3;
     flex-basis: 100%;
     overflow-x: auto;
+    align-items: stretch;
+  }
+
+  .tabs-primary {
+    flex: 1;
+  }
+
+  .more-nav > summary,
+  .tab {
+    min-height: 44px;
+  }
+
+  .more-nav-menu {
+    right: auto;
+    left: 0;
   }
 
   .status {

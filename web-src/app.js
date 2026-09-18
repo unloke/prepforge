@@ -10,6 +10,7 @@ import {
 } from "./engine/maia3-provider.js";
 import { createCsrfTokenSource, isSafeMethod, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
+import { applyTheme, nextTheme, themeLabel } from "./theme.js";
 import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { describeMove } from "./explain.js";
@@ -136,6 +137,7 @@ function activePieceSet() {
 
 const PREFS_KEY = "prepforge.prefs";
 const DEFAULT_PREFS = {
+  theme: "system",
   coordinates: true,
   lastMovePulse: true,
   flipAnim: true,
@@ -176,6 +178,10 @@ function setPref(name, value) {
 }
 
 function applyPref(name) {
+  if (name === "theme") {
+    applyTheme(pref("theme"));
+    renderThemeButton();
+  }
   if (name === "coordinates") {
     Object.values(boards).forEach((b) => b && b.applyCoordinates && b.applyCoordinates());
   }
@@ -395,6 +401,7 @@ const appState = {
   replayResults: null,
   replayFilter: null, // summary-chip filter: an outcome kind, or null = all
   replayOpen: new Set(), // indexes of expanded game rows
+  replaySection: "games",
   // Teams view: cache of the caller's teams (for the rep-share picker) and the
   // currently-expanded team's id (so a member add/remove re-renders the right one).
   teams: [],
@@ -2664,7 +2671,14 @@ class BoardController {
 }
 
 function setStatus(message) {
-  document.getElementById("app-status").textContent = message;
+  const status = document.getElementById("app-status");
+  if (!status) return;
+  const text = String(message || "");
+  const isError = /(?:error|failed|unavailable|invalid|forbidden|could not|unable)/i.test(text);
+  status.textContent = text;
+  status.setAttribute("role", isError ? "alert" : "status");
+  status.setAttribute("aria-live", isError ? "assertive" : "polite");
+  status.dataset.state = isError ? "error" : "ready";
 }
 
 const getCsrfToken = createCsrfTokenSource();
@@ -3010,18 +3024,46 @@ async function restoreWorkspaceLocation() {
   }
 }
 
+function setReplaySection(section, { focus = false } = {}) {
+  const next = section === "scout" ? "scout" : "games";
+  appState.replaySection = next;
+  document.querySelectorAll("[data-replay-panel]").forEach((panel) => {
+    const active = panel.dataset.replayPanel === next;
+    panel.hidden = !active;
+    panel.setAttribute("aria-hidden", String(!active));
+  });
+  document.querySelectorAll(".tab[data-replay-section]").forEach((button) => {
+    const active = button.dataset.replaySection === next;
+    button.classList.toggle("is-active", active && appState.currentView === "replay");
+    button.setAttribute("aria-current", active && appState.currentView === "replay" ? "page" : "false");
+  });
+  if (focus) {
+    document.querySelector(`[data-replay-panel="${next}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
 function switchView(name, { fromUrl = false } = {}) {
   appState.currentView = name;
   // Navigating is user activity; if the Lichess watch is running, switching to
   // Analyze (where a fresh game matters most) tightens the poll cadence briefly.
   noteLichessActivity();
   document.querySelectorAll(".tab").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.view === name);
+    const replayMatch = name === "replay"
+      ? button.dataset.replaySection === (appState.replaySection || "games")
+      : !button.dataset.replaySection;
+    button.classList.toggle("is-active", button.dataset.view === name && replayMatch);
+    if (button.dataset.replaySection) {
+      button.setAttribute("aria-current", button.dataset.view === name && replayMatch ? "page" : "false");
+    }
   });
   document.querySelectorAll(".view").forEach((view) => {
     view.classList.toggle("is-active", view.id === `view-${name}`);
   });
   if (!fromUrl) syncWorkspaceUrl({ push: true });
+  if (name === "replay") setReplaySection(appState.replaySection);
+  if (name === "teams" || name === "settings") {
+    document.getElementById("more-nav")?.setAttribute("open", "");
+  }
   if (name === "analyze") {
     preloadCoach().catch(() => {});
     preloadAnalyzeView().catch(() => {});
@@ -7608,6 +7650,15 @@ async function loadTrainRepertoireOptions() {
   syncTrainPickerVisibility();
 }
 
+function renderThemeButton() {
+  const button = document.getElementById("theme-toggle");
+  if (!button) return;
+  const label = themeLabel(pref("theme"));
+  button.textContent = `Theme: ${label}`;
+  button.title = `Color theme: ${label}. Click to change.`;
+  button.setAttribute("aria-label", `Color theme: ${label}. Click to change.`);
+}
+
 function playRepertoireStorageKey() {
   const identity = appState.accountUsername || appState.accountUserId || "guest";
   const safe = String(identity).trim().toLowerCase().replace(/[^a-z0-9._-]+/g, "_") || "guest";
@@ -10470,6 +10521,9 @@ function bindEvents() {
     button.addEventListener("click", () => {
       dismissTransientOverlays();
       switchView(button.dataset.view);
+      if (button.dataset.replaySection) {
+        setReplaySection(button.dataset.replaySection, { focus: true });
+      }
       if (button.dataset.view === "settings") loadSettings();
       if (button.dataset.view === "teams") loadTeams().catch(() => {});
     });
@@ -10505,6 +10559,13 @@ function bindEvents() {
 
   // Account chip (folds in the old standalone Sign out button as a menu action)
   document.getElementById("account-chip").addEventListener("click", onAccountChipClick);
+  const themeToggle = document.getElementById("theme-toggle");
+  if (themeToggle) {
+    themeToggle.addEventListener("click", () => {
+      setPref("theme", nextTheme(pref("theme")));
+      settingsView?.renderThemeControl();
+    });
+  }
 
   // Replay tab
   document.getElementById("lichess-compare-btn").addEventListener("click", runLichessCompare);
@@ -10785,6 +10846,15 @@ function bindEvents() {
 
 async function init() {
   appState.prefs = loadPrefs();
+  applyPref("theme");
+  try {
+    const systemTheme = window.matchMedia?.("(prefers-color-scheme: dark)");
+    systemTheme?.addEventListener?.("change", () => {
+      if (pref("theme") === "system") applyTheme("system");
+    });
+  } catch (_) {
+    /* matchMedia is optional in embedded/test environments */
+  }
   try {
     const storedStyle = localStorage.getItem(PIECE_STYLE_KEY);
     if (storedStyle && PIECE_SETS[storedStyle]) appState.pieceStyle = storedStyle;
