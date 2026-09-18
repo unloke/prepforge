@@ -63,7 +63,7 @@ are CDN-hosted via Hugging Face env vars.
 |------|--------|
 | Client error beacon `/api/clientlog` | ✅ shipped — monitor Render logs |
 | Keep-warm cron | ✅ `.github/workflows/keep-warm.yml` |
-| ORT wasm on HF (#3c) | 🔄 local real-worker gate passes; production headers/pin pass, but guest smoke has not warmed ORT |
+| ORT wasm on HF (#3c) | ✅ production smoke now warms Maia through Settings and observes HF ONNX + ORT WASM |
 | HF commit pin (#3d) | ✅ live shell reports pinned SHA `77fcb556…`; keep the smoke check as a deploy regression gate |
 | Scout E2E | ✅ `tests/e2e/test_scout_smoke.py` |
 | `app.js` split | 🔄 Scout is lazy and account boundary is isolated in follow-up PR #21; remaining feature controllers are not yet extracted |
@@ -81,7 +81,7 @@ legacy `from stub_maia import` suite.
 | Priority | Item | Notes |
 |----------|------|-------|
 | P0 | HF pin in Render | ✅ live shell verified at commit SHA `77fcb556…`; recheck after Render changes |
-| P0 | Prod engine smoke | 🔄 headers/isolation/Stockfish pass; production ORT warm runtime remains unobserved in the guest flow |
+| P0 | Prod engine smoke | ✅ `npm run smoke:prod-engine` proves headers, Stockfish, Maia inference, HF ONNX and ORT WASM |
 | P1 | Backend gate on every change | ✅ CI requires `ruff`, `pytest`, `alembic upgrade head` + `alembic check` |
 | P2 | Render DB backups | Free-tier — manual `pg_dump` or upgrade plan |
 | P2 | UptimeRobot on `/healthz` | See `docs/DEPLOYMENT.md` |
