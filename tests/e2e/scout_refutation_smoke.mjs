@@ -94,11 +94,19 @@ async function mountScenario(page, scenarioId) {
 }
 
 async function waitForE2eHook(page) {
-  await page.waitForFunction(
-    () => typeof window.__prepforgeScoutE2e?.mountRefutationScenario === "function",
-    undefined,
-    { timeout: TIMEOUT_MS },
-  );
+  // The production CSP deliberately omits unsafe-eval. Playwright's
+  // waitForFunction implementation evaluates its predicate as a string in the
+  // page, so poll through evaluate instead (the same pattern as other browser
+  // harnesses in this repository).
+  const deadline = Date.now() + TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const ready = await page.evaluate(
+      () => typeof window.__prepforgeScoutE2e?.mountRefutationScenario === "function",
+    );
+    if (ready) return;
+    await sleep(100);
+  }
+  throw new Error("timed out waiting for Scout E2E refutation hook");
 }
 
 async function activateScout(page) {
