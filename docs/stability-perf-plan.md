@@ -66,7 +66,7 @@ window.addEventListener("unhandledrejection", (e) => reportClientError({
 
 ---
 
-## #3 — Stockfish/ORT WASM 搬上 Hugging Face(效率 + 伺服器壓力)  規模 M  🔄 3a/3b/3b2 ✅ → 3c partially verified
+## #3 — Stockfish/ORT WASM 搬上 Hugging Face(效率 + 伺服器壓力)  規模 M  ✅ 3a/3b/3b2/3c verified
 
 **現況**:`PREPFORGE_ENGINE_ASSET_BASE` 的 live shell 已驗證釘在
 `https://huggingface.co/Andy108/prepforge-maia3/resolve/77fcb55654f1fad83ee9e987b973ddee7d7fa459/`；
@@ -110,7 +110,7 @@ HF 已上傳 `engine/ort/ort-wasm-simd-threaded.asyncify.wasm`(23MB)和 `stockfi
   worker init 把它原封 `ort.env.wasm.wasmPaths = ortPaths`(物件可結構化複製,過 postMessage OK)。
 - base 仍在主執行緒解析後經 init message 傳進 worker(worker 看不到 `window.*`)。
 
-### 3c COEP 驗證(成敗關鍵,務必做)  🔄 local worker gate passed; production ORT warm-up remains open
+### 3c COEP 驗證(成敗關鍵,務必做)  ✅ local + production worker gate passed
 頁面為了多執行緒 WASM 開了 `crossOriginIsolated`(`COOP + COEP: require-corp`)。
 跨來源的 HF 檔案**必須帶 CORS / CORP**,否則被瀏覽器擋、引擎直接死。
 - HF CDN 會送 `Access-Control-Allow-Origin: *`,理論可行(只剩 ORT `.wasm` 跨源,純資料 fetch)。
@@ -122,11 +122,12 @@ HF 已上傳 `engine/ort/ort-wasm-simd-threaded.asyncify.wasm`(23MB)和 `stockfi
 - **若 ORT 仍炸**:退而求其次把 ORT 也整包留同源(`ortWasmPaths` 永遠回本機字串),只損失 23MB bandwidth。
 
 **Current evidence (2026-09-18):** `npm run gate:cross-origin` passed with a real
-browser worker fetching the pinned `.onnx` from the weight origin; the production
-smoke passed COOP/COEP, `crossOriginIsolated`, and the pinned HF base. A production
-guest Analyze → Engine smoke loaded same-origin Stockfish JS/WASM with HTTP 200, but
-did not trigger the Maia/ORT path. Do not mark the production ORT runtime gate green
-until a deploy-compatible authenticated or dedicated smoke entry exercises that path.
+browser worker fetching the pinned `.onnx` from the weight origin. The repeatable
+`npm run smoke:prod-engine` gate now opens Analyze → Engine and Settings → Maia →
+Retry: it proves COOP/COEP, `crossOriginIsolated`, same-origin Stockfish JS/WASM,
+same-origin ORT MJS, pinned HF ONNX, pinned HF ORT WASM, and one successful Maia
+inference. The smoke avoids Playwright `page.waitForFunction` because production CSP
+rejects eval-based polling; it uses locator text polling instead.
 
 ### 3d 版本失效(順手修掉潛在 bug)  ✅ live pin verified
 HF `resolve/main/` 是**會變動的分支 ref**;重傳同檔名 → URL 不變 → 舊使用者吃到舊引擎快取。
