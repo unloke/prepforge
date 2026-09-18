@@ -8,7 +8,7 @@
 ## Product decision (locked)
 
 Turn PrepForge into a **monetized website** (hosted storage + team collaboration
-+ classroom), while **open-sourcing the whole codebase under GPL-3.0** (forced by
++ classroom), while **open-sourcing the whole codebase under AGPL-3.0-or-later** (forced by
 python-chess GPL / maia3 AGPL). Money comes from hosted data access, never the
 engine code. Engines run **in the browser** — the server stores data, enforces
 ownership, and bills; it never computes chess.
