@@ -46,6 +46,8 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
+      - name: ESLint
+        run: npm run lint:js -- --quiet
       - name: Vitest
         run: npm test -- --run
       - name: Build SPA
