@@ -12,11 +12,20 @@ export function resolvePlayColor({
   book = "explorer",
   pickerColor = "white",
   repertoireColor = "white",
+  repertoireColors = null,
+  availableColors = null,
   luckyFen = null,
 } = {}) {
   if (luckyFen) return sideToMove(luckyFen);
   if (book === "repertoire") {
-    return repertoireColor === "black" ? "black" : "white";
+    const colors = Array.isArray(repertoireColors)
+      ? repertoireColors
+      : Array.isArray(availableColors)
+        ? availableColors
+        : [repertoireColor];
+    const normalized = [...new Set(colors.map((color) => (color === "black" ? "black" : "white")))];
+    if (normalized.length === 1) return normalized[0];
+    return pickerColor === "black" ? "black" : "white";
   }
   return pickerColor === "black" ? "black" : "white";
 }
@@ -51,7 +60,7 @@ export function formatPlayTrail(history, startFen = START_FEN) {
 export function takebackToUserMove(history) {
   const list = Array.isArray(history) ? history.slice() : [];
   if (!list.length) {
-    return { history: [], fen: null, nodeId: null, lastMove: null };
+    return { history: [], fen: null, nodeId: null, repertoireCursors: null, lastMove: null };
   }
   if (list[list.length - 1].by === "opp") list.pop();
   if (list.length && list[list.length - 1].by === "user") list.pop();
@@ -60,6 +69,7 @@ export function takebackToUserMove(history) {
     history: list,
     fen: last ? last.fenAfter : null,
     nodeId: last ? last.nodeIdAfter : null,
+    repertoireCursors: last && last.repertoireCursorsAfter ? last.repertoireCursorsAfter : null,
     lastMove: last ? last.uci : null,
   };
 }

@@ -49,27 +49,70 @@ export function pickMaiaReply(predictions, legalUcis, rng = Math.random) {
   return picked ? picked.move_uci : null;
 }
 
-export function pickRepertoireReply(children, legalUcis, rng = Math.random) {
+/**
+ * Merge legal children from every active repertoire by UCI.
+ *
+ * The returned rows retain the source repertoire names/ids so the Play UI can
+ * explain which preparation answered. Every deduplicated UCI is one equally
+ * likely coverage candidate: a move appearing in several repertoires does not
+ * gain extra tickets.
+ */
+export function mergeRepertoireReplies(children, legalUcis) {
   const legal = legalSet(legalUcis);
-  const kids = (children || [])
-    .map((child) => (typeof child === "string" ? child : child && child.uci))
-    .filter((uci) => legal.has(String(uci || "").toLowerCase()));
-  if (!kids.length) return null;
-  const index = Math.min(kids.length - 1, Math.floor(roll(rng) * kids.length));
-  return kids[index];
+  const merged = new Map();
+  for (const child of children || []) {
+    const rawUci = typeof child === "string" ? child : child && child.uci;
+    const uci = String(rawUci || "").toLowerCase();
+    if (!uci || !legal.has(uci)) continue;
+    const row = typeof child === "string" ? {} : child || {};
+    const source = {
+      id: row.repertoireId ?? row.repertoire_id ?? row.id ?? null,
+      name: row.repertoireName ?? row.repertoire_name ?? row.name ?? null,
+      color: row.color ?? null,
+    };
+    let item = merged.get(uci);
+    if (!item) {
+      item = { uci, weight: 1, repertoires: [] };
+      merged.set(uci, item);
+    }
+    // A caller may pass more than one node from the same repertoire (for
+    // example a transposition). Keep the source list readable and deterministic.
+    const duplicate = item.repertoires.some(
+      (rep) =>
+        (rep.id && source.id && rep.id === source.id) ||
+        (!rep.id && !source.id && rep.name && source.name && rep.name === source.name),
+    );
+    if (!duplicate) item.repertoires.push(source);
+  }
+  return [...merged.values()];
+}
+
+function pickRepertoireReplyDetail(children, legalUcis, rng = Math.random) {
+  const merged = mergeRepertoireReplies(children, legalUcis);
+  if (!merged.length) return null;
+  const index = Math.min(merged.length - 1, Math.floor(roll(rng) * merged.length));
+  return merged[index] || merged[0];
+}
+
+export function pickRepertoireReply(children, legalUcis, rng = Math.random) {
+  const picked = pickRepertoireReplyDetail(children, legalUcis, rng);
+  return picked ? picked.uci : null;
 }
 
 /**
  * Choose the opponent's next move.
  * book: "repertoire" | "explorer" | "maia"
  * Explorer below EXPLORER_THIN_SAMPLE games falls back to Maia for that ply only.
- * Repertoire only returns a child of the current node (Maia if the node has none).
+ * My repertoire treats all active repertoires as one equally likely coverage
+ * book. When the merged book has no legal reply, Explorer gets the next
+ * chance; Maia is the final fallback when Explorer is thin/unavailable.
  */
 export function pickOpponentReply({
   book = "maia",
   legalUcis = [],
   explorer = null,
   repertoireChildren = [],
+  repertoireReplies = [],
   maiaPredictions = [],
   rng = Math.random,
 } = {}) {
@@ -80,8 +123,28 @@ export function pickOpponentReply({
   };
 
   if (book === "repertoire") {
-    const uci = pickRepertoireReply(repertoireChildren, legalUcis, rng);
-    if (uci) return { uci, source: "repertoire", reason: null };
+    const detail = pickRepertoireReplyDetail(
+      repertoireReplies.length ? repertoireReplies : repertoireChildren,
+      legalUcis,
+      rng,
+    );
+    if (detail) {
+      const names = detail.repertoires.map((rep) => rep.name).filter(Boolean);
+      const ids = detail.repertoires.map((rep) => rep.id).filter(Boolean);
+      return {
+        uci: detail.uci,
+        source: "repertoire",
+        reason: null,
+        repertoireId: ids[0] || null,
+        repertoireName: names[0] || null,
+        repertoireNames: names,
+      };
+    }
+    const total = Number(explorer && explorer.totalGames) || 0;
+    if (total >= EXPLORER_THIN_SAMPLE) {
+      const uci = pickExplorerReply(explorer, legalUcis, rng);
+      if (uci) return { uci, source: "explorer", reason: "out-of-book" };
+    }
     return maiaOrNone("out-of-book");
   }
 

@@ -175,4 +175,16 @@ describe("seven views share chrome families", () => {
     expect(ruleBody("#train-srs-picker")).toMatch(/display:\s*grid/);
     expect(ruleBody("#train-srs-picker[hidden]")).toMatch(/display:\s*none/);
   });
+
+  it("keeps Play setup order: opponent book, repertoires, then your color", () => {
+    const setup = html.slice(html.indexOf('id="train-play-setup"'));
+    const book = setup.indexOf('id="train-play-book"');
+    const reps = setup.indexOf('id="train-play-repertoire-picker"');
+    const color = setup.indexOf('id="train-play-color-label"');
+    expect(book).toBeGreaterThanOrEqual(0);
+    expect(reps).toBeGreaterThan(book);
+    expect(color).toBeGreaterThan(reps);
+    expect(setup).toContain('id="train-repertoire-select-all"');
+    expect(setup).toContain('id="train-repertoire-options"');
+  });
 });

@@ -234,6 +234,28 @@
                   <option value="explorer">Lichess explorer</option>
                   <option value="repertoire">My repertoire</option>
                 </select>
+                <div class="train-play-repertoires" id="train-play-repertoire-picker" hidden>
+                  <span class="train-picker-label">Repertoires</span>
+                  <details class="train-repertoire-menu" id="train-repertoire-menu">
+                    <summary class="train-repertoire-summary" data-testid="train-repertoire-summary">
+                      <span id="train-repertoire-summary-label">Select repertoires</span>
+                      <span class="train-repertoire-chevron" aria-hidden="true">⌄</span>
+                    </summary>
+                    <div class="train-repertoire-popover" role="group" aria-label="Active repertoires">
+                      <label class="train-repertoire-option train-repertoire-select-all">
+                        <input type="checkbox" id="train-repertoire-select-all" data-testid="train-repertoire-select-all" />
+                        <span>Select all</span>
+                      </label>
+                      <div class="train-repertoire-options" id="train-repertoire-options"></div>
+                      <p class="train-repertoire-empty muted" id="train-repertoire-empty" hidden>
+                        No active repertoires yet. Build one to use My repertoire.
+                      </p>
+                    </div>
+                  </details>
+                  <p class="muted hint train-repertoire-hint" id="train-repertoire-hint">
+                    Choose the prep books to use for this game.
+                  </p>
+                </div>
                 <label class="train-picker-label" id="train-play-color-label">You play</label>
                 <div class="train-modes" id="train-play-color" role="group" aria-label="Your color">
                   <button type="button" class="train-mode is-active" data-color="white" data-testid="play-color-white">White</button>
