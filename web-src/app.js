@@ -1235,7 +1235,7 @@ class EngineWidget {
 
   _showError(message) {
     setEngineBestArrow(null);
-    setStatus(message);
+    setStatusError(message);
     if (this.pvsEl) {
       this.pvsEl.innerHTML = `<div class="empty-state">${escapeHtml(
         message || "Engine error"
@@ -2155,7 +2155,7 @@ async function updateBookline() {
         setStatus(`${prescribed.san} will lead your next smart session`);
       } catch (error) {
         btn.disabled = false;
-        setStatus(error.message);
+        setStatusError(error.message);
       }
     });
   } else {
@@ -2670,15 +2670,23 @@ class BoardController {
   }
 }
 
-function setStatus(message) {
+function setStatus(message, { severity = "info" } = {}) {
   const status = document.getElementById("app-status");
   if (!status) return;
   const text = String(message || "");
-  const isError = /(?:error|failed|unavailable|invalid|forbidden|could not|unable)/i.test(text);
+  const normalizedSeverity = ["info", "success", "warning", "error"].includes(severity)
+    ? severity
+    : "info";
+  const isError = normalizedSeverity === "error";
   status.textContent = text;
   status.setAttribute("role", isError ? "alert" : "status");
   status.setAttribute("aria-live", isError ? "assertive" : "polite");
+  status.dataset.severity = normalizedSeverity;
   status.dataset.state = isError ? "error" : "ready";
+}
+
+function setStatusError(message) {
+  setStatus(message, { severity: "error" });
 }
 
 const getCsrfToken = createCsrfTokenSource();
@@ -2842,7 +2850,7 @@ function handleSanKey(event) {
     Promise.resolve(playTypedSan(result.uci)).catch(() => {});
   }
   if (result.action === "reject") {
-    setStatus(`Illegal SAN: ${result.san}`);
+    setStatus(`Illegal SAN: ${result.san}`, { severity: "error" });
   }
   return true;
 }
@@ -3381,7 +3389,7 @@ async function loadDashboard() {
     const view = await ensureDashboardView();
     await view.loadDashboard();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -3436,7 +3444,7 @@ async function promptImportRepertoireFromPgn(pgnText, { defaultName = "Imported 
     );
     return payload;
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     throw error;
   }
 }
@@ -3499,7 +3507,7 @@ async function refreshAuthProviders() {
 // sign-in modal instead of filling out a form only to hit a cryptic 401 in the status bar.
 function requireSignIn(message = "Sign in (or create an account) to continue") {
   if (appState.signedIn) return true;
-  setStatus(message);
+  setStatus(message, { severity: "warning" });
   openAuthModal("login");
   return false;
 }
@@ -3719,7 +3727,7 @@ async function signOut() {
   } catch (_) {
     // The session was NOT rotated server-side; reloading would drop the user right
     // back into the same account while flashing "Signed out". Stay put and report.
-    setStatus("Sign out failed — you are still signed in. Try again.");
+    setStatus("Sign out failed — you are still signed in. Try again.", { severity: "error" });
     return;
   }
   try {
@@ -3776,7 +3784,7 @@ function startLichessOAuth() {
       refreshAuthStatus();
       setStatus(`Lichess: ${event.data.detail}`);
     } else {
-      setStatus(`Lichess sign-in failed: ${event.data.detail}`);
+      setStatus(`Lichess sign-in failed: ${event.data.detail}`, { severity: "error" });
     }
   };
   window.addEventListener("message", onMessage);
@@ -3999,7 +4007,7 @@ async function fetchMyLichessGame() {
   try {
     latest = await api("/api/lichess/latest");
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   if (!latest.has_game) {
@@ -4067,7 +4075,7 @@ async function recallAnalysis(gameId) {
     void syncPgnFromTree().catch(() => {});
     setStatus(`Recalled analysis: ${payload.moves.length} plies`);
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4259,7 +4267,7 @@ async function unshareRepertoireFromTeam(teamId, repertoireId, name) {
     await refreshDashboardRepertoires();
     await openTeamDetail(teamId);
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4285,7 +4293,7 @@ async function createTeam() {
     setStatus(`Created team "${name}"`);
     await loadTeams();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4309,7 +4317,7 @@ async function renameTeam(teamId, currentName) {
     setStatus(`Renamed to "${name}"`);
     await loadTeams();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4329,7 +4337,7 @@ async function deleteTeam(teamId, name) {
     await loadTeams();
     await refreshDashboardRepertoires();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4371,7 +4379,7 @@ async function addTeamMember(teamId) {
     await loadTeams();
   } catch (error) {
     // The server returns an actionable message (e.g. "...send them an invite link").
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4383,7 +4391,7 @@ async function updateMemberRole(teamId, userId, role) {
     );
     setStatus(role === "admin" ? "Promoted to admin" : "Set to member");
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
   // Re-render either way: on success to reflect any rights change, on failure to
   // revert the <select> back to the server's truth.
@@ -4410,7 +4418,7 @@ async function removeTeamMember(teamId, userId, label, isSelf) {
     if (isSelf) hideTeamDetail();
     await loadTeams();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4422,7 +4430,7 @@ async function teamInvite(teamId) {
   try {
     payload = await postJson(`/api/teams/${encodeURIComponent(teamId)}/invite`, {});
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   const url = `${window.location.origin}${payload.url}`;
@@ -4438,7 +4446,7 @@ async function teamInvite(teamId) {
       await api(`/api/teams/${encodeURIComponent(teamId)}/invite`, { method: "DELETE" });
       setStatus("Invite link revoked");
     } catch (error) {
-      setStatus(error.message);
+      setStatusError(error.message);
     }
   }
   await openTeamDetail(teamId);
@@ -4514,7 +4522,7 @@ async function shareRepertoireIntoTeam(teamId) {
     const payload = await api("/api/repertoires");
     reps = payload.repertoires || [];
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   const candidates = reps.filter((r) => !(r.visibility === "team" && r.team_id === teamId));
@@ -4555,7 +4563,7 @@ async function shareRepertoireIntoTeam(teamId) {
     await refreshDashboardRepertoires();
     await openTeamDetail(teamId);
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4566,7 +4574,7 @@ async function copySharedRepertoire(repertoireId) {
     setStatus(`Copied "${result.name}" to your repertoires`);
     await refreshDashboardRepertoires();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4696,7 +4704,7 @@ async function shareRepertoireWithTeam(repertoireId) {
       setStatus("Repertoire is now private");
     }
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4876,7 +4884,7 @@ async function editRepertoire(repertoireId, nodeId = null) {
   try {
     await hardFlushBuild();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   appState.sharedToken = null;
@@ -4892,7 +4900,7 @@ async function editRepertoire(repertoireId, nodeId = null) {
     syncWorkspaceUrl();
     updateBuildReadOnlyUi(payload);
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -4947,7 +4955,7 @@ async function trainRepertoire(repertoireId) {
   try {
     await hardFlushBuild();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   appState.trainingRepertoireId = repertoireId;
@@ -5125,7 +5133,7 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
             .then((response) => {
               appState.pendingRepDeletes.delete(repKey);
               if (!response.ok) {
-                setStatus("Delete failed — repertoire restored");
+                setStatus("Delete failed — repertoire restored", { severity: "error" });
                 refreshDashboardRepertoires();
               }
             })
@@ -5138,7 +5146,7 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       return;
     }
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -5158,7 +5166,7 @@ async function runAnalysis() {
   // the PGN (/api/analyze/prepare) and classifies + saves the browser-computed
   // evals (/api/analyze/classify-save) — it never runs an engine.
   if (!isBrowserEngineAvailable()) {
-    setStatus(BROWSER_ENGINE_UNAVAILABLE);
+    setStatusError(BROWSER_ENGINE_UNAVAILABLE);
     return;
   }
   const pgn = document.getElementById("pgn-input").value.trim();
@@ -5344,7 +5352,7 @@ async function runAnalysis() {
       openAuthModal("login");
       jobToast.failJob("Sign in required");
     } else {
-      setStatus(error.message);
+      setStatusError(error.message);
       jobToast.failJob(error.message);
     }
   } finally {
@@ -5403,7 +5411,7 @@ async function onCreateRepertoireFromGameClick() {
     appState.analysisSourcePgn = null;
     hideAnalysisHandoff();
   } catch (error) {
-    setStatus(error.message || "Could not create repertoire — try again");
+    setStatusError(error.message || "Could not create repertoire — try again");
     if (btn) btn.disabled = false;
   }
 }
@@ -5718,7 +5726,7 @@ async function syncPgnFromTree() {
 async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false } = {}) {
   const parsed = parsePgn(pgnText);
   if (!parsed.ok) {
-    if (!quiet) setStatus(`PGN: ${parsed.error}`);
+    if (!quiet) setStatus(`PGN: ${parsed.error}`, { severity: "error" });
     return false;
   }
   const { moves, varNodes } = adaptParsedTree(parsed.root);
@@ -5879,7 +5887,7 @@ async function onAnalysisBoardMove(moveUci, fen) {
     // New branch on the board → mirror it into the PGN box.
     void syncPgnFromTree().catch(() => {});
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -6036,7 +6044,7 @@ async function renameRepertoire() {
     await hydrateBuild(payload, appState.buildCurrentNodeId);
     setStatus(`Renamed to ${name}`);
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -6070,7 +6078,7 @@ async function skipTrainingLine() {
       setStatus("Session complete");
     }
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -6327,7 +6335,7 @@ async function saveBuildAnnotations(arrows, circles) {
   try {
     await hardFlushBuild();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   const nodeId = resolveBuildId(appState.buildCurrentNodeId);
@@ -6344,7 +6352,7 @@ async function saveBuildAnnotations(arrows, circles) {
       circles,
     });
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -6645,7 +6653,7 @@ function flushBuildMoves() {
       if (status && status >= 400 && status < 500) {
         // Validation 4xx shouldn't happen for legal moves, but defend: drop the bad
         // batches and re-hydrate from server truth so the local tree can't drift.
-        setStatus(error.message);
+        setStatusError(error.message);
         try {
           const fresh = await api(
             `/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`
@@ -6949,7 +6957,7 @@ async function onBuildBoardMove(moveUci) {
       });
     } catch (error) {
       rollback();
-      setStatus(error.message);
+      setStatusError(error.message);
       return;
     }
     if (!created) {
@@ -7025,7 +7033,7 @@ async function createRepertoirePrompt({ title, defaultName, openAfter = true, de
     await refreshDashboardRepertoires();
     return payload;
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return null;
   }
 }
@@ -7068,7 +7076,7 @@ async function fillPgnInputFromFile(file) {
     void loadPgnIntoAnalyze(text, { goToEnd: false, quiet: true }).catch(() => {});
     setStatus(`Loaded ${file.name} - press Analyze`);
   } catch (_) {
-    setStatus("Could not read file");
+    setStatus("Could not read file", { severity: "error" });
   }
 }
 
@@ -7117,7 +7125,7 @@ async function generateFromCurrentNode() {
     return;
   }
   if (!isBrowserEngineAvailable()) {
-    setStatus(BROWSER_ENGINE_UNAVAILABLE);
+    setStatusError(BROWSER_ENGINE_UNAVAILABLE);
     return;
   }
   let nodeId = appState.buildCurrentNodeId;
@@ -7134,7 +7142,7 @@ async function generateFromCurrentNode() {
   try {
     await hardFlushBuild();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   nodeId = resolveBuildId(nodeId);
@@ -7387,7 +7395,7 @@ async function generateFromCurrentNode() {
       setStatus("Generation stopped");
       jobToast.cancelJob("Generation stopped");
     } else {
-      setStatus(error.message);
+      setStatusError(error.message);
       jobToast.failJob(error.message);
     }
   } finally {
@@ -7481,7 +7489,7 @@ async function handleNodeContextAction(action, nodeId) {
   try {
     await hardFlushBuild();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   nodeId = resolveBuildId(nodeId);
@@ -7551,7 +7559,7 @@ async function handleNodeContextAction(action, nodeId) {
     await hydrateBuild(payload, nodeId);
     setStatus("Node updated");
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -7568,7 +7576,7 @@ async function exportBuild(format, nodeId = null) {
   try {
     await hardFlushBuild();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   if (nodeId) nodeId = resolveBuildId(nodeId);
@@ -7598,7 +7606,7 @@ async function importRepertoireFromInput(inputId) {
     appState.trainingRepertoireId = payload.repertoire_id;
     setStatus(`Imported ${payload.name}`);
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -7613,7 +7621,7 @@ async function loadTrainRepertoireOptions() {
       (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id)),
     );
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     active = (appState.repertoireList || []).filter(
       (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id)),
     );
@@ -7943,7 +7951,7 @@ async function startTraining(mode, options = {}) {
   try {
     await hardFlushBuild();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   const fresh = !!options.fresh;
@@ -7972,7 +7980,7 @@ async function startTraining(mode, options = {}) {
     );
     syncWorkspaceUrl();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -8283,7 +8291,7 @@ async function startPlaySession({
     try {
       await hardFlushBuild();
     } catch (error) {
-      setStatus(error.message);
+      setStatusError(error.message);
       return false;
     }
     try {
@@ -8300,7 +8308,7 @@ async function startPlaySession({
       repertoireCursors = playCursorsAtFen(playRepertoires, startFen);
       nodeId = playRepertoires.find((rep) => repertoireCursors[rep.id]?.length)?.rootId || null;
     } catch (error) {
-      setStatus(error.message);
+      setStatusError(error.message);
       return false;
     }
   }
@@ -8323,7 +8331,7 @@ async function startPlaySession({
   try {
     info = await boardInfo(startFen);
   } catch (error) {
-    setStatus(error.message || "Could not open that position");
+    setStatusError(error.message || "Could not open that position");
     return false;
   }
   appState.play = {
@@ -8699,7 +8707,7 @@ async function submitTrainingMove(playedUci) {
       }),
     });
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   if (result.day_streak) appState.dayStreak = result.day_streak;
@@ -8942,7 +8950,7 @@ async function trainHint() {
       if (info.expected_uci) boards.train.setEngineArrow(info.expected_uci);
     }
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -9104,7 +9112,7 @@ async function startSmartTraining(options = {}) {
   try {
     await hardFlushBuild();
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     return;
   }
   // Land any leftover graded attempts (an abandoned previous session) before
@@ -9125,7 +9133,7 @@ async function startSmartTraining(options = {}) {
       fresh,
     });
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
     setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Build, then train.");
     return;
   }
@@ -9769,7 +9777,7 @@ async function loadSettings() {
     applyServerEngineGating();
     view.renderSettings(payload);
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -9799,7 +9807,7 @@ async function saveSettings(patch) {
       refreshExplorerPanel();
     }
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -9878,7 +9886,7 @@ async function runLichessCompare() {
         : `Fetched ${payload.count} games for ${payload.username}`
     );
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   } finally {
     button.disabled = false;
   }
@@ -9981,7 +9989,7 @@ async function maybeOpenSharedView() {
     setStatus(`Viewing shared repertoire "${payload.name}" (read-only)`);
     return true;
   } catch (error) {
-    setStatus(`Share link problem: ${error.message}`);
+    setStatus(`Share link problem: ${error.message}`, { severity: "error" });
     return false;
   }
 }
@@ -10006,7 +10014,7 @@ async function maybeHandleJoinLink() {
   try {
     preview = await api(`/api/teams/join/${encodeURIComponent(code)}`);
   } catch (error) {
-    setStatus(`Invite link problem: ${error.message}`);
+    setStatus(`Invite link problem: ${error.message}`, { severity: "error" });
     clearJoinParam();
     return false;
   }
@@ -10025,7 +10033,7 @@ async function maybeHandleJoinLink() {
   try {
     result = await postJson(`/api/teams/join/${encodeURIComponent(code)}`, {});
   } catch (error) {
-    setStatus(`Couldn't join: ${error.message}`);
+    setStatus(`Couldn't join: ${error.message}`, { severity: "error" });
     return false;
   }
   const team = result.team;
@@ -10104,7 +10112,7 @@ async function forkReadableRepertoire() {
     await refreshDashboardRepertoires();
     setStatus(`Copied "${result.name}" to your account — it's yours now`);
   } catch (error) {
-    setStatus(error.message);
+    setStatusError(error.message);
   }
 }
 
@@ -10255,7 +10263,7 @@ async function completeSelectedGaps(gaps) {
     return;
   }
   if (!isBrowserEngineAvailable()) {
-    setStatus(BROWSER_ENGINE_UNAVAILABLE);
+    setStatusError(BROWSER_ENGINE_UNAVAILABLE);
     return;
   }
   if (!gaps || !gaps.length) return;
@@ -10943,4 +10951,4 @@ async function loadSignedInWorkspace() {
   await loadDashboard();
 }
 
-init().catch((error) => setStatus(error.message));
+init().catch((error) => setStatusError(error.message));

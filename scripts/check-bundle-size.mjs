@@ -6,10 +6,12 @@
 // accidental heavy import before it ships. Raise LIMITS intentionally (with the
 // reason) when a real feature legitimately grows a bundle.
 //
-// Baseline after the current navigation/theme slice (2026-09): main index
-// 263.9 KiB raw / 83.8 KiB gzip and stylesheet 117.6 KiB raw. Budgets retain
-// roughly 8–11% headroom, so normal incremental growth passes while a large
-// accidental import still fails loudly.
+// Measured baseline at origin/main 43383b2 (2026-09-18): main index 252.9 KiB
+// raw / 80.3 KiB gzip and stylesheet 113.3 KiB raw / 21.1 KiB gzip. The
+// currently verified branch is +11.3 KiB raw / +3.6 KiB gzip for JS and
+// +4.3 KiB raw / +0.9 KiB gzip for CSS against that baseline. Keep these limits
+// fixed as a regression ceiling; do not raise them without a new baseline and
+// an explicit, measured reason.
 import { readdirSync, statSync, readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { fileURLToPath, URL } from "node:url";

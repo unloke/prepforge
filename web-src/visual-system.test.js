@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 const root = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(root, "styles.css"), "utf8");
 const html = readFileSync(join(root, "index.html"), "utf8");
+const app = readFileSync(join(root, "app.js"), "utf8");
 
 const REQUIRED_TOKENS = [
   "--bg",
@@ -186,5 +187,15 @@ describe("seven views share chrome families", () => {
     expect(color).toBeGreaterThan(reps);
     expect(setup).toContain('id="train-repertoire-select-all"');
     expect(setup).toContain('id="train-repertoire-options"');
+  });
+});
+
+describe("status semantics", () => {
+  it("uses explicit severity at error boundaries instead of message matching", () => {
+    expect(app).toContain('function setStatus(message, { severity = "info" } = {})');
+    expect(app).toContain('function setStatusError(message)');
+    expect(app).toContain('setStatus(message, { severity: "error" })');
+    expect(app).not.toContain("const isError = /(?:error|failed|unavailable");
+    expect(html).toContain('data-severity="info"');
   });
 });
