@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-D12BSWRE.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-CvFUjToe.css">
+    <script type="module" crossorigin src="/static/assets/index-DyqahuBu.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-BfJ6akgm.css">
   </head>
   <body>
     <header class="topbar">
@@ -22,15 +22,14 @@
           <button class="tab" data-view="replay" data-replay-section="scout" data-testid="nav-scout">Scout</button>
         </div>
         <details class="more-nav" id="more-nav">
-          <summary>More</summary>
-          <div class="more-nav-menu" role="menu" aria-label="More workspace views">
+          <summary aria-controls="more-nav-menu">More</summary>
+          <div class="more-nav-menu" id="more-nav-menu" role="menu" aria-label="More workspace views">
             <button class="tab" data-view="teams" data-testid="nav-teams" role="menuitem">Teams</button>
             <button class="tab" data-view="settings" data-testid="nav-settings" role="menuitem">Settings</button>
           </div>
         </details>
       </nav>
       <button class="ib palette-open" id="open-palette" data-testid="open-palette" type="button" title="Command palette (Ctrl+K)" aria-label="Open command palette">Ctrl K</button>
-      <button class="ib theme-toggle" id="theme-toggle" type="button" aria-label="Color theme: System">Theme: System</button>
       <button class="lichess-chip" id="account-chip" data-testid="account-chip" aria-haspopup="menu" aria-expanded="false" title="Connect a Lichess account">
         <span class="lichess-label" id="account-label">Connect Lichess</span>
       </button>
@@ -83,17 +82,21 @@
               <button class="btn primary" id="run-analysis" data-testid="run-analysis" title="Run a full-game engine analysis on your device">Analyze game</button>
             </div>
             <section class="explain-card" id="analysis-explain" data-testid="analysis-explain">
-              <div class="explain-head">
+              <header class="explain-head">
                 <span class="explain-title">Coach</span>
                 <span class="phase-chip" id="coach-phase" data-testid="coach-phase" hidden></span>
                 <label class="explain-toggle" title="Have the engine review each move you play on the board">
                   <input type="checkbox" id="explain-engine-toggle" checked />
                   <span>Review my moves</span>
                 </label>
+              </header>
+              <div class="coach-body" id="coach-body">
+                <p class="coach-prose" id="coach-prose" data-testid="coach-prose">Make a move and I'll tell you what I think.</p>
+                <div class="coach-secondary">
+                  <p class="coach-maia" id="coach-maia" data-testid="coach-maia" hidden></p>
+                  <p class="coach-bookline" id="coach-bookline" data-testid="coach-bookline" hidden></p>
+                </div>
               </div>
-              <p class="coach-prose" id="coach-prose" data-testid="coach-prose">Make a move and I'll tell you what I think.</p>
-              <p class="coach-maia" id="coach-maia" data-testid="coach-maia" hidden></p>
-              <p class="coach-bookline" id="coach-bookline" data-testid="coach-bookline" hidden></p>
             </section>
             <div class="reveal" id="analysis-results" hidden>
               <svg class="eval-chart" id="eval-chart" viewBox="0 0 640 96" role="img"></svg>
@@ -450,13 +453,17 @@
         <div class="list-view replay-layout">
           <section class="card">
             <div class="card-head"><h2>Appearance</h2></div>
-            <label class="settings-label" for="settings-theme">Color theme</label>
-            <select id="settings-theme" class="settings-select">
-              <option value="system">System default</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-            </select>
-            <p class="muted">Use a warm dark palette for low-light study sessions.</p>
+            <div class="appearance-control">
+              <div class="settings-field">
+                <label class="settings-label" for="settings-theme">Color theme</label>
+                <select id="settings-theme" class="settings-select">
+                  <option value="system">System default</option>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </div>
+              <p class="muted hint">Use a warm dark palette for low-light study sessions.</p>
+            </div>
           </section>
           <section class="card">
             <div class="card-head">
