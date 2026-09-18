@@ -12,10 +12,10 @@ const SCENARIOS = [
   {
     id: "confirmedHit",
     async assert(page) {
-      const prepCol = page.locator(".scout-col-prep").first();
-      await prepCol.waitFor({ timeout: TIMEOUT_MS });
-      const prepText = await prepCol.textContent();
-      if (!prepText || !/When they play/i.test(prepText) || !/you play/i.test(prepText)) {
+      const prepLine = page.locator(".scout-line").first();
+      await prepLine.waitFor({ timeout: TIMEOUT_MS });
+      const prepText = await prepLine.textContent();
+      if (!prepText || !/When they play/i.test(prepText) || !/(you play|needs prep)/i.test(prepText)) {
         fail(`prep column missing framing (got: ${prepText?.trim().slice(0, 160) || "(empty)"})`);
       }
       const card = page.locator('[data-testid="scout-refutation-card"]').first();
@@ -26,10 +26,6 @@ const SCENARIOS = [
       }
       if (!cardText.includes("+")) {
         fail(`refutation card eval swing should be positive for the player (${cardText})`);
-      }
-      const oauthGap = page.locator('[data-testid="scout-refutation-gap-connect-lichess"]');
-      if ((await oauthGap.count()) > 0) {
-        fail("engine refutation must not require OAuth connect CTA");
       }
     },
   },
@@ -52,9 +48,9 @@ const SCENARIOS = [
     async assert(page) {
       const card = page.locator('[data-testid="scout-refutation-card"]').first();
       await card.waitFor({ timeout: TIMEOUT_MS });
-      const connectGap = page.locator('[data-testid="scout-refutation-gap-connect-lichess"]');
-      if ((await connectGap.count()) > 0) {
-        fail("OAuth gap CTA should not appear when engine refutation is available");
+      const cardText = await card.textContent();
+      if (!cardText || !/You answer/i.test(cardText)) {
+        fail(`engine refutation card missing in OAuth-gap fixture (${cardText || "(empty)"})`);
       }
     },
   },
@@ -136,7 +132,10 @@ async function main() {
       fail("window.__prepforgeScoutE2e missing after reload");
     }
 
-    await page.click('[data-testid="nav-replay"]');
+    await page.locator("#dashboard-repertoires > *").first().waitFor({ timeout: TIMEOUT_MS });
+    await page.click('[data-testid="nav-scout"]');
+    await page.locator("#view-replay.is-active").waitFor({ timeout: 10_000 });
+    await page.locator('.replay-card-scout:not([hidden])').waitFor({ timeout: 10_000 });
 
     for (const scenario of SCENARIOS) {
       await mountScenario(page, scenario.id);

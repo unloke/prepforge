@@ -1,7 +1,9 @@
-"""Playwright E2E smoke for Scout (Replay tab card).
+"""Playwright E2E smoke for Scout.
 
 Starts a local uvicorn on a throwaway SQLite DB, registers a user via the
-browser, scouts a public Lichess player, and verifies Analyze hand-off.
+browser, and verifies the Scout report and Analyze hand-off. The Node smoke
+uses a deterministic, browser-local PGN upstream fixture by default; set
+``E2E_SCOUT_UPSTREAM=live`` for an opt-in live Lichess check.
 
 Refutation smoke needs an E2E build first::
 
@@ -44,10 +46,11 @@ def _run_scout_e2e_script(script: Path, tmp_path, env_overrides: dict | None = N
     env.update(
         {
             "DATABASE_URL": f"sqlite:///{db_file.as_posix()}",
-            "PREPFORGE_SECRET_KEY": "e2e-scout-secret-not-for-prod",
-            "PREPFORGE_ENV": "development",
-            "E2E_BASE_URL": f"http://127.0.0.1:{port}",
-        }
+                "PREPFORGE_SECRET_KEY": "e2e-scout-secret-not-for-prod",
+                "PREPFORGE_ENV": "development",
+                "E2E_BASE_URL": f"http://127.0.0.1:{port}",
+                "E2E_SCOUT_UPSTREAM": os.environ.get("E2E_SCOUT_UPSTREAM", "fixture"),
+            }
     )
     if env_overrides:
         env.update(env_overrides)
@@ -58,6 +61,8 @@ def _run_scout_e2e_script(script: Path, tmp_path, env_overrides: dict | None = N
         env=env,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         check=False,
     )
     if migrate.returncode != 0:
@@ -81,6 +86,8 @@ def _run_scout_e2e_script(script: Path, tmp_path, env_overrides: dict | None = N
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     try:
         deadline = time.time() + 45
@@ -106,6 +113,8 @@ def _run_scout_e2e_script(script: Path, tmp_path, env_overrides: dict | None = N
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=240,
             check=False,
         )
