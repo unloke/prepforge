@@ -190,10 +190,14 @@ h2 {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h);
   font-weight: 800;
   font-size: 15px;
   letter-spacing: 0.01em;
   color: var(--text);
+  line-height: 1.2;
 }
 
 .tabs {
@@ -233,6 +237,8 @@ h2 {
   font-weight: 600;
   list-style: none;
   touch-action: manipulation;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .more-nav > summary::-webkit-details-marker {
@@ -246,7 +252,8 @@ h2 {
 }
 
 .more-nav > summary:hover,
-.more-nav[open] > summary {
+.more-nav[open] > summary,
+.more-nav.is-active > summary {
   background: var(--hover);
   color: var(--text);
 }
@@ -262,23 +269,32 @@ h2 {
   border-radius: var(--radius-card);
   background: var(--panel);
   box-shadow: 0 10px 24px rgba(30, 24, 18, 0.18);
+  display: grid;
+  gap: 2px;
 }
 
 .more-nav-menu .tab {
   display: flex;
+  align-items: center;
   width: 100%;
   justify-content: flex-start;
+  line-height: 1.2;
   white-space: nowrap;
 }
 
 .tab {
   height: var(--control-h);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0 14px;
   border: 1px solid transparent;
   border-radius: var(--radius);
   background: transparent;
   color: var(--muted);
   font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .tab:hover {
@@ -300,6 +316,12 @@ h2 {
   text-overflow: ellipsis;
   white-space: nowrap;
   flex-shrink: 1;
+}
+
+.topbar > .palette-open,
+.topbar > .lichess-chip {
+  height: var(--control-h);
+  min-height: var(--control-h);
 }
 
 .lichess-chip {
@@ -644,6 +666,18 @@ h2 {
 .settings-field {
   display: grid;
   gap: 4px;
+}
+
+.appearance-control {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.appearance-control .hint {
+  flex: 1 1 240px;
+  margin-bottom: 0;
 }
 
 /* Visual separator between sub-sections within a settings card. */
@@ -1000,16 +1034,13 @@ h2 {
    that only appears at the ply a move leaves the repertoire, with the one
    useful action inline at the end of the sentence, like a spoken link. */
 .coach-bookline {
-  margin: 6px 0 0;
+  margin: 0;
   font-size: 13.5px;
   line-height: 1.6;
   color: var(--text);
   border-left: 3px solid var(--accent-line);
   padding: 2px 0 2px 11px;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 .coach-bookline[hidden] {
   display: none;
@@ -2345,17 +2376,13 @@ h2 {
   flex-direction: column;
   gap: 10px;
   min-width: 0;
-  /* Bounded to the study height and scrolls inside, so a long move list or
-     coach note never pushes the board or the controls off-screen. */
+  /* Bounded to the study height. Individual panels own scrolling where their
+     content needs it; the sidebar remains available for the larger panel stack. */
   height: 100%;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: none;
-}
-
-.sidebar::-webkit-scrollbar {
-  display: none;
+  scrollbar-width: thin;
 }
 
 .tools {
@@ -3593,20 +3620,56 @@ h2 {
 /* Coach panel — the plain-language read of the Analyze position. Always visible
    in Analyze (unlike .reveal), so it reads as a permanent companion to the board. */
 .explain-card {
+  --coach-card-block-size: clamp(176px, calc(var(--study-h) * 0.32), 232px);
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel-soft);
   padding: 12px 14px;
+  box-sizing: border-box;
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 8px;
-  min-height: 10.5rem;
+  block-size: var(--coach-card-block-size);
+  flex: 0 0 var(--coach-card-block-size);
+  min-height: 0;
+}
+
+#analyze-sidebar > .reveal,
+#analyze-sidebar > .drawer {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.explain-card > * {
+  min-width: 0;
 }
 
 .explain-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.coach-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.coach-secondary {
+  /* The optional Maia/book departure notes form one lower content group. Keep
+     that group at the bottom when the fixed body has spare room; with overflow,
+     the auto margin resolves to zero and the group remains reachable in order. */
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin-top: auto;
 }
 
 .explain-title {
@@ -3619,6 +3682,7 @@ h2 {
 
 .phase-chip {
   margin-right: auto;
+  flex: none;
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
@@ -3659,10 +3723,7 @@ h2 {
   font-size: 13px;
   line-height: 1.45;
   color: var(--muted);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .coach-maia[hidden] {
@@ -3672,9 +3733,13 @@ h2 {
 .explain-toggle {
   display: inline-flex;
   align-items: center;
+  flex: 0 1 auto;
   gap: 6px;
   font-size: 12px;
   color: var(--muted);
+  line-height: 1.35;
+  min-width: 0;
+  white-space: nowrap;
   user-select: none;
   cursor: pointer;
 }
@@ -3694,11 +3759,7 @@ h2 {
   border-left: 3px solid var(--line);
   padding: 2px 0 2px 11px;
   transition: border-color 0.15s ease;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
-  overflow: hidden;
-  min-height: calc(13.5px * 1.5 * 3);
+  overflow-wrap: anywhere;
 }
 .coach-prose.is-good {
   border-left-color: var(--good);
@@ -4514,7 +4575,9 @@ h2 {
   .tabs {
     order: 3;
     flex-basis: 100%;
-    overflow-x: auto;
+    /* .tabs-primary owns horizontal scrolling. Keep this wrapper visible so
+       the More menu can escape the nav row instead of being clipped by it. */
+    overflow: visible;
     align-items: stretch;
   }
 
@@ -4528,8 +4591,10 @@ h2 {
   }
 
   .more-nav-menu {
-    right: auto;
-    left: 0;
+    right: 0;
+    left: auto;
+    min-width: min(132px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
   }
 
   .status {

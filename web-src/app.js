@@ -10,7 +10,7 @@ import {
 } from "./engine/maia3-provider.js";
 import { createCsrfTokenSource, isSafeMethod, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
-import { applyTheme, nextTheme, themeLabel } from "./theme.js";
+import { applyTheme } from "./theme.js";
 import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { describeMove } from "./explain.js";
@@ -182,7 +182,6 @@ function setPref(name, value) {
 function applyPref(name) {
   if (name === "theme") {
     applyTheme(pref("theme"));
-    renderThemeButton();
   }
   if (name === "coordinates") {
     Object.values(boards).forEach((b) => b && b.applyCoordinates && b.applyCoordinates());
@@ -3043,6 +3042,9 @@ function setReplaySection(section, { focus = false } = {}) {
 
 function switchView(name, { fromUrl = false } = {}) {
   appState.currentView = name;
+  const moreNav = document.getElementById("more-nav");
+  moreNav?.removeAttribute("open");
+  moreNav?.classList.toggle("is-active", name === "teams" || name === "settings");
   // Navigating is user activity; if the Lichess watch is running, switching to
   // Analyze (where a fresh game matters most) tightens the poll cadence briefly.
   noteLichessActivity();
@@ -3060,9 +3062,6 @@ function switchView(name, { fromUrl = false } = {}) {
   });
   if (!fromUrl) syncWorkspaceUrl({ push: true });
   if (name === "replay") setReplaySection(appState.replaySection);
-  if (name === "teams" || name === "settings") {
-    document.getElementById("more-nav")?.setAttribute("open", "");
-  }
   if (name === "analyze") {
     preloadCoach().catch(() => {});
     preloadAnalyzeView().catch(() => {});
@@ -7361,15 +7360,6 @@ async function loadTrainRepertoireOptions() {
   syncTrainPickerVisibility();
 }
 
-function renderThemeButton() {
-  const button = document.getElementById("theme-toggle");
-  if (!button) return;
-  const label = themeLabel(pref("theme"));
-  button.textContent = `Theme: ${label}`;
-  button.title = `Color theme: ${label}. Click to change.`;
-  button.setAttribute("aria-label", `Color theme: ${label}. Click to change.`);
-}
-
 function playRepertoireStorageKey() {
   const identity = appState.accountUsername || appState.accountUserId || "guest";
   const safe = String(identity).trim().toLowerCase().replace(/[^a-z0-9._-]+/g, "_") || "guest";
@@ -10270,13 +10260,6 @@ function bindEvents() {
 
   // Account chip (folds in the old standalone Sign out button as a menu action)
   document.getElementById("account-chip").addEventListener("click", onAccountChipClick);
-  const themeToggle = document.getElementById("theme-toggle");
-  if (themeToggle) {
-    themeToggle.addEventListener("click", () => {
-      setPref("theme", nextTheme(pref("theme")));
-      settingsView?.renderThemeControl();
-    });
-  }
 
   // Replay tab
   document.getElementById("lichess-compare-btn").addEventListener("click", runLichessCompare);
@@ -10533,6 +10516,7 @@ function bindEvents() {
       }
     }
     if (event.key === "Escape") {
+      document.getElementById("more-nav")?.removeAttribute("open");
       if (sanBuffer.text) {
         sanBuffer.clear();
         paintSanBuffer("clear", "");
@@ -10545,6 +10529,9 @@ function bindEvents() {
     }
   });
   document.addEventListener("click", (event) => {
+    if (!event.target.closest("#more-nav")) {
+      document.getElementById("more-nav")?.removeAttribute("open");
+    }
     if (!event.target.closest("#node-context-menu")) closeNodeContextMenu();
     if (!event.target.closest("#repertoire-context-menu")) closeRepertoireContextMenu();
     // The chip's own click toggles the menu; ignore it here so we don't immediately
