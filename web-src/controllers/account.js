@@ -46,10 +46,8 @@ export function createAccountController({
     refreshAutoMaiaRating();
   }
 
-  // The single user-name button in the topbar. The app is pure Lichess-OAuth,
-  // so there is no meaningful difference between "sign out of PrepForge" and
-  // "disconnect Lichess" — both live behind this one Sign out action. A guest
-  // instead sees a plain Sign in action.
+  // The account chip represents the PrepForge session. A linked Lichess identity
+  // is optional and remains a separate connection shown in the signed-in menu.
   function renderAccountChip() {
     const chip = document.getElementById("account-chip");
     const label = document.getElementById("account-label");

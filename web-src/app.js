@@ -396,9 +396,9 @@ const appState = {
   // The account's user id (from auth status); lets the Teams view spot the caller in
   // a member list (remove-self / leave). Null for a guest.
   accountUserId: null,
-  // Whether this browser's session is bound to a real account (vs a fresh guest). The
-  // app is pure Lichess-OAuth, so signed-in ⇒ a username exists. Guests see a single
-  // "Connect Lichess" action; signed-in users get the user-name button → Sign out.
+  // Whether this browser's session is bound to a real PrepForge account (vs a guest).
+  // Guests see the sign-in action; signed-in users get the account menu and may link
+  // a Lichess account separately.
   signedIn: false,
   replayResults: null,
   replayFilter: null, // summary-chip filter: an outcome kind, or null = all
@@ -3468,10 +3468,8 @@ function setLichessUsername(username) {
   return accountService().setLichessUsername(username);
 }
 
-// The single user-name button in the topbar. The app is pure Lichess-OAuth, so there's
-// no meaningful difference between "sign out of PrepForge" and "disconnect Lichess" — both
-// live behind this one button as a single Sign out action. A guest instead sees a plain
-// "Connect Lichess" action that goes straight to OAuth.
+// The account button owns the PrepForge session boundary; an optional Lichess link is
+// managed from the same menu without conflating the two connections.
 function renderAccountChip() {
   return accountService().renderAccountChip();
 }
