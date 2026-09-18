@@ -31,6 +31,7 @@ import {
   playSessionPgn,
 } from "./train-play.js";
 import { engineUnavailableBanner, engineBannerHtml } from "./engine-banner.js";
+import { fetchLichessProfile } from "./lichess-profile.js";
 import {
   buildPaletteItems,
   filterPaletteItems,
@@ -471,22 +472,13 @@ async function refreshAutoMaiaRating() {
     }
   } catch (_) { /* corrupt cache — refetch */ }
   try {
-    const resp = await fetch(`https://lichess.org/api/user/${encodeURIComponent(username)}`);
-    if (!resp.ok) return;
-    const perfs = (await resp.json()).perfs || {};
-    let best = null;
-    for (const key of ["bullet", "blitz", "rapid", "classical"]) {
-      const p = perfs[key];
-      if (p && Number.isFinite(p.rating) && !p.prov) {
-        if (!best || (p.games || 0) > best.games) best = { rating: p.rating, games: p.games || 0 };
-      }
-    }
-    if (!best) return;
-    appState.maiaAutoRating = Math.max(600, Math.min(2600, Math.round(best.rating)));
+    const profile = await fetchLichessProfile(username);
+    if (!Number.isFinite(profile.maiaRating)) return;
+    appState.maiaAutoRating = profile.maiaRating;
     try {
       localStorage.setItem(
         MAIA_AUTO_CACHE_KEY,
-        JSON.stringify({ username, rating: appState.maiaAutoRating, at: Date.now() }),
+        JSON.stringify({ username, rating: profile.maiaRating, at: Date.now() }),
       );
     } catch (_) { /* storage full — fine, refetch next time */ }
     settingsView?.renderStrengthControls();
