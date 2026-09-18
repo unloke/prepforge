@@ -2,8 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   CURATED_GAMES,
+  currentGameUrl,
   luckyTitledStart,
-  pgnHeader,
+  playerTopUrl,
   singleGameUrl,
   splitPgnBlocks,
   titledGamesUrl,
@@ -37,23 +38,41 @@ function memoryStorage() {
   };
 }
 
-describe("titledGamesUrl", () => {
-  it("targets standard rated pools", () => {
-    const url = titledGamesUrl("nihalsarin", 2);
+function dynamicHarness({
+  feed = GAME_A,
+  feedByPlayer = null,
+  topUsers = [{ username: "AlphaGM", title: "GM", perfs: { blitz: { rating: 2800 } } }],
+} = {}) {
+  const fetchTopPlayers = vi.fn(async () => ({ users: topUsers }));
+  const fetchPgn = vi.fn(async (username) => (feedByPlayer ? feedByPlayer[username] : feed));
+  const fetchCurrentGamePgn = vi.fn(async () => feed);
+  return { fetchTopPlayers, fetchPgn, fetchCurrentGamePgn };
+}
+
+describe("live Lichess endpoint URLs", () => {
+  it("uses the documented recent-game feed filters", () => {
+    const url = titledGamesUrl("nihalsarin", 4);
     expect(url).toContain("https://lichess.org/api/games/user/nihalsarin");
     expect(url).toContain("rated=true");
-    expect(url).toContain("variant=standard");
-    expect(url).toContain("perfType=");
+    expect(url).toContain("finished=true");
+    expect(url).toContain("perfType=blitz%2Crapid%2Cclassical");
+    expect(url).toContain("evals=true");
+    expect(url).not.toContain("variant=");
+  });
+
+  it("exposes the dynamic leaderboard and current-game fallback paths", () => {
+    expect(playerTopUrl(20, "blitz")).toBe("https://lichess.org/api/player/top/20/blitz");
+    expect(currentGameUrl("AlphaGM")).toContain("https://lichess.org/api/user/AlphaGM/current-game");
+    expect(singleGameUrl("kAdOQKeh")).toBe("https://lichess.org/game/export/kAdOQKeh");
   });
 });
 
-describe("splitPgnBlocks / pgnHeader", () => {
-  it("splits a multi-game response and reads tags", () => {
+describe("splitPgnBlocks", () => {
+  it("splits a multi-game response and reads complete headers", () => {
     const blocks = splitPgnBlocks(`${GAME_A}\n\n\n${GAME_B}\n`);
     expect(blocks).toHaveLength(2);
-    expect(pgnHeader(blocks[0], "GameId")).toBe("rrdtEiYG");
-    expect(pgnHeader(blocks[1], "White")).toBe("respects_55");
-    expect(pgnHeader(blocks[0], "Missing")).toBeNull();
+    expect(blocks[0]).toContain('[GameId "rrdtEiYG"]');
+    expect(blocks[1]).toContain('[GameId "kAdOQKeh"]');
   });
 
   it("returns [] for empty input", () => {
@@ -61,171 +80,217 @@ describe("splitPgnBlocks / pgnHeader", () => {
   });
 });
 
-describe("luckyTitledStart", () => {
-  function singleHarness(byId) {
-    // Curated layer serves whatever ids the map holds; bulk layer is dead.
-    const fetchSinglePgn = vi.fn(async (id) => {
-      if (!(id in byId)) throw Object.assign(new Error("gone"), { status: 404 });
-      return byId[id];
-    });
-    const fetchPgn = vi.fn(async () => {
-      throw Object.assign(new Error("throttled"), { status: 429 });
-    });
-    return { fetchSinglePgn, fetchPgn };
-  }
-
-  it("serves the curated single-game layer first (no bulk fetch)", async () => {
-    const { fetchSinglePgn, fetchPgn } = singleHarness({ rrdtEiYG: GAME_A });
+describe("luckyTitledStart live selection", () => {
+  it("discovers a player then locally selects from multiple fresh PGNs", async () => {
+    const storage = memoryStorage();
+    const h = dynamicHarness({ feed: `${GAME_A}\n\n${GAME_B}` });
     const picked = await luckyTitledStart({
-      storage: memoryStorage(),
+      phase: "middlegame",
+      storage,
       rng: () => 0.1,
-      curatedGames: [{ id: "rrdtEiYG" }],
-      fetchSinglePgn,
-      fetchPgn,
-      retryDelayMs: 0,
+      players: [],
+      fetchTopPlayers: h.fetchTopPlayers,
+      fetchPgn: h.fetchPgn,
+      fetchCurrentGamePgn: h.fetchCurrentGamePgn,
+      maxRequests: 2,
     });
     expect(picked).not.toBeNull();
     expect(picked.reason).toBe("titled-game");
-    expect(picked.gameId).toBe("rrdtEiYG");
-    expect(fetchPgn).not.toHaveBeenCalled();
+    expect(picked.source).toBe("lichess-user-feed");
+    expect(["rrdtEiYG", "kAdOQKeh"]).toContain(picked.gameId);
+    expect(picked.sourceUrl).toContain("/api/games/user/AlphaGM");
+    expect(h.fetchTopPlayers).toHaveBeenCalledTimes(1);
+    expect(h.fetchPgn).toHaveBeenCalledTimes(1);
+    expect(h.fetchPgn.mock.calls[0][0]).toBe("AlphaGM");
+    expect(h.fetchCurrentGamePgn).not.toHaveBeenCalled();
   });
 
-  it("skips a dead curated id and serves the next one", async () => {
-    const { fetchSinglePgn, fetchPgn } = singleHarness({ kAdOQKeh: GAME_B });
+  it("uses another live player feed after a healthy but empty first feed", async () => {
+    const h = dynamicHarness({
+      topUsers: [],
+      feedByPlayer: { First: "", Second: GAME_B },
+    });
     const picked = await luckyTitledStart({
       storage: memoryStorage(),
       rng: () => 0.999,
-      curatedGames: [{ id: "deadbeef" }, { id: "kAdOQKeh" }],
-      fetchSinglePgn,
-      fetchPgn,
-      retryDelayMs: 0,
+      players: ["First", "Second"],
+      discoverPlayers: false,
+      fetchPgn: h.fetchPgn,
+      fetchCurrentGamePgn: h.fetchCurrentGamePgn,
+      maxRequests: 2,
+      maxPlayersPerClick: 2,
+      allowCurrentGame: false,
     });
-    expect(picked).not.toBeNull();
-    expect(picked.gameId).toBe("kAdOQKeh");
-    expect(fetchSinglePgn).toHaveBeenCalledTimes(2);
+    expect(picked?.gameId).toBe("kAdOQKeh");
+    expect(h.fetchPgn).toHaveBeenCalledTimes(2);
   });
 
-  it("ships a non-empty curated pool", () => {
-    expect(CURATED_GAMES.length).toBeGreaterThanOrEqual(3);
-    expect(singleGameUrl("kAdOQKeh")).toBe("https://lichess.org/game/export/kAdOQKeh");
+  it("spends the remaining bounded request on a second discovered player", async () => {
+    const h = dynamicHarness({
+      topUsers: [
+        { username: "First", title: "GM", perfs: { blitz: { rating: 2800 } } },
+        { username: "Second", title: "IM", perfs: { blitz: { rating: 2700 } } },
+      ],
+      feedByPlayer: { First: "", Second: GAME_B },
+    });
+    const picked = await luckyTitledStart({
+      storage: memoryStorage(),
+      rng: () => 0.999,
+      fetchTopPlayers: h.fetchTopPlayers,
+      fetchPgn: h.fetchPgn,
+      maxRequests: 3,
+      maxPlayersPerClick: 2,
+      allowCurrentGame: false,
+    });
+    expect(picked?.gameId).toBe("kAdOQKeh");
+    expect(h.fetchTopPlayers).toHaveBeenCalledTimes(1);
+    expect(h.fetchPgn).toHaveBeenCalledTimes(2);
   });
 
-  it("skips variant games that cannot replay from the start", async () => {
-    const variant = GAME_A.replace('[Variant "Standard"]', '[Variant "Atomic"]');
+  it("switches once to current/last game after a feed transport failure", async () => {
+    const h = dynamicHarness({ feed: GAME_B });
+    h.fetchPgn.mockRejectedValueOnce(Object.assign(new Error("Lichess rate limit"), { status: 429 }));
     const picked = await luckyTitledStart({
       storage: memoryStorage(),
       rng: () => 0.1,
-      curatedGames: [{ id: "atomic1" }],
-      fetchSinglePgn: vi.fn(async () => variant),
-      fetchPgn: vi.fn(async () => {
-        throw new Error("offline");
-      }),
-      retryDelayMs: 0,
-    }).catch((error) => error);
-    expect(picked).toBeInstanceOf(Error);
+      players: ["AlphaGM"],
+      discoverPlayers: false,
+      fetchPgn: h.fetchPgn,
+      fetchCurrentGamePgn: h.fetchCurrentGamePgn,
+      maxRequests: 2,
+    });
+    expect(picked?.source).toBe("lichess-current-game");
+    expect(picked?.gameId).toBe("kAdOQKeh");
+    expect(h.fetchPgn).toHaveBeenCalledTimes(1);
+    expect(h.fetchCurrentGamePgn).toHaveBeenCalledTimes(1);
   });
 
-  it("never re-serves a game the masters path just played", async () => {
-    const store = memoryStorage();
+  it("keeps the normal request budget bounded at discovery plus one feed", async () => {
+    const h = dynamicHarness({ feed: GAME_A });
+    const picked = await luckyTitledStart({
+      storage: memoryStorage(),
+      players: [],
+      fetchTopPlayers: h.fetchTopPlayers,
+      fetchPgn: h.fetchPgn,
+      maxRequests: 2,
+    });
+    expect(picked).not.toBeNull();
+    expect(h.fetchTopPlayers.mock.calls.length + h.fetchPgn.mock.calls.length).toBe(2);
+    expect(h.fetchCurrentGamePgn).not.toHaveBeenCalled();
+  });
+
+  it("deduplicates a recently served live game", async () => {
+    const storage = memoryStorage();
     const { rememberLuckyGame } = await import("./train-lucky-db.js");
-    rememberLuckyGame("rrdtEiYG", store);
-    const picked = await luckyTitledStart({
-      storage: store,
-      rng: () => 0.1,
-      // Only the banned game is available: must throw, not re-serve.
-      curatedGames: [{ id: "rrdtEiYG" }],
-      fetchSinglePgn: vi.fn(async () => GAME_A),
-      fetchPgn: vi.fn(async () => {
-        throw new Error("offline");
-      }),
-      retryDelayMs: 0,
-    }).catch((error) => error);
-    expect(picked).toBeInstanceOf(Error);
-    expect(String(picked.message)).toMatch(/No sharp titled game/);
-  });
-
-  it("picks a critical legal position from real titled PGNs", async () => {
-    const fetchPgn = vi.fn(async () => `${GAME_A}\n\n${GAME_B}\n`);
-    const picked = await luckyTitledStart({
-      storage: memoryStorage(),
-      rng: () => 0.1,
-      curatedGames: [],
-      fetchPgn,
-      retryDelayMs: 0,
-    });
-    expect(picked).not.toBeNull();
-    expect(picked.reason).toBe("titled-game");
-    expect(picked.fen).toContain(" ");
-    expect(picked.gameId).toBeTruthy();
-    expect(Array.isArray(picked.sans)).toBe(true);
-    expect(picked.sans.length).toBeGreaterThanOrEqual(8);
-    expect(picked.score).toBeGreaterThanOrEqual(5.0);
-  });
-
-  it("skips a dead bulk player and serves the next one", async () => {
-    const seen = [];
-    const fetchPgn = vi.fn(async (username) => {
-      seen.push(username);
-      if (seen.length === 1) throw Object.assign(new Error("nope"), { status: 404 });
-      return GAME_B;
-    });
-    const picked = await luckyTitledStart({
-      storage: memoryStorage(),
-      rng: () => 0.999,
-      curatedGames: [],
-      players: ["GhostPlayer", "DrNykterstein"],
-      fetchPgn,
-      // No backoff in tests: the skip is instant.
-      retryDelayMs: 0,
-    });
-    expect(picked).not.toBeNull();
-    expect(picked.reason).toBe("titled-game");
-    // First name in iteration order fails, second serves — regardless of
-    // which name the shuffle puts first, both are attempted exactly once.
-    expect(fetchPgn).toHaveBeenCalledTimes(2);
-    expect(new Set(seen)).toEqual(new Set(["GhostPlayer", "DrNykterstein"]));
-  });
-
-  it("throws a friendly error when every layer fails", async () => {
+    rememberLuckyGame("rrdtEiYG", storage);
+    const h = dynamicHarness({ feed: GAME_A });
     await expect(
       luckyTitledStart({
-        storage: memoryStorage(),
-        curatedGames: [],
-        fetchPgn: vi.fn(async () => {
-          throw new Error("offline");
-        }),
-        // No backoff in tests: the skip is instant.
-        retryDelayMs: 0,
+        storage,
+        players: [],
+        fetchTopPlayers: h.fetchTopPlayers,
+        fetchPgn: h.fetchPgn,
+        allowCurrentGame: false,
+        maxRequests: 2,
       }),
     ).rejects.toThrow(/No sharp titled game/);
   });
 
-  it("throws a rate-limit error (not empty-result) when throttled", async () => {
-    const err = Object.assign(new Error("Please only run 1 request(s) at a time"), { status: 429 });
+  it("rejects unfinished current games so every pick is replayable", async () => {
+    const unfinished = GAME_A.replace('[Result "1-0"]', '[Result "*"]');
+    const h = dynamicHarness({ feed: unfinished });
+    h.fetchPgn.mockRejectedValueOnce(Object.assign(new Error("offline"), { status: 503 }));
     await expect(
       luckyTitledStart({
         storage: memoryStorage(),
-        curatedGames: [],
-        fetchPgn: vi.fn(async () => {
-          throw err;
-        }),
-        retryDelayMs: 0,
+        players: ["AlphaGM"],
+        discoverPlayers: false,
+        fetchPgn: h.fetchPgn,
+        fetchCurrentGamePgn: vi.fn(async () => unfinished),
+        maxRequests: 2,
       }),
-    ).rejects.toThrow(/rate limit/);
+    ).rejects.toThrow(/offline|503/);
   });
 
-  it("honours an explicit phase", async () => {
-    const fetchPgn = vi.fn(async () => GAME_A);
+  it("does not consult fixed references unless explicitly enabled", async () => {
+    const fetchSinglePgn = vi.fn(async () => GAME_A);
+    await expect(
+      luckyTitledStart({
+        storage: memoryStorage(),
+        players: [],
+        discoverPlayers: false,
+        fetchPgn: vi.fn(async () => ""),
+        fetchSinglePgn,
+        curatedGames: [{ id: "rrdtEiYG" }],
+        allowCurrentGame: false,
+        maxRequests: 1,
+      }),
+    ).rejects.toThrow(/No sharp titled game/);
+    expect(fetchSinglePgn).not.toHaveBeenCalled();
+  });
+
+  it("keeps references available only for explicit emergency/test verification", async () => {
+    const fetchSinglePgn = vi.fn(async () => GAME_A);
+    const picked = await luckyTitledStart({
+      storage: memoryStorage(),
+      players: [],
+      discoverPlayers: false,
+      fetchPgn: vi.fn(async () => ""),
+      fetchSinglePgn,
+      curatedGames: [{ id: "rrdtEiYG" }],
+      allowReferences: true,
+      allowCurrentGame: false,
+      maxRequests: 1,
+    });
+    expect(picked?.source).toBe("lichess-reference");
+    expect(fetchSinglePgn).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips variant games that cannot replay from START_FEN", async () => {
+    const variant = GAME_A.replace('[Variant "Standard"]', '[Variant "Atomic"]');
+    await expect(
+      luckyTitledStart({
+        storage: memoryStorage(),
+        players: [],
+        discoverPlayers: false,
+        fetchPgn: vi.fn(async () => variant),
+        allowCurrentGame: false,
+        maxRequests: 1,
+      }),
+    ).rejects.toThrow(/No sharp titled game/);
+  });
+
+  it("returns a friendly no-quality error after all live feeds are empty", async () => {
+    await expect(
+      luckyTitledStart({
+        storage: memoryStorage(),
+        players: ["First", "Second"],
+        discoverPlayers: false,
+        fetchPgn: vi.fn(async () => ""),
+        allowCurrentGame: false,
+        maxRequests: 2,
+        maxPlayersPerClick: 2,
+      }),
+    ).rejects.toThrow(/No sharp titled game/);
+  });
+
+  it("preserves explicit phase and a legal PGN-derived position", async () => {
+    const h = dynamicHarness({ feed: GAME_A });
     const picked = await luckyTitledStart({
       phase: "middlegame",
       storage: memoryStorage(),
-      rng: () => 0.5,
-      curatedGames: [],
-      players: ["nihalsarin"],
-      fetchPgn,
-      retryDelayMs: 0,
+      players: [],
+      fetchTopPlayers: h.fetchTopPlayers,
+      fetchPgn: h.fetchPgn,
+      maxRequests: 2,
     });
-    expect(picked).not.toBeNull();
-    expect(picked.phase).toBe("middlegame");
+    expect(picked?.phase).toBe("middlegame");
+    expect(picked?.fen).toContain(" ");
+    expect(picked?.sans.length).toBeGreaterThanOrEqual(8);
+    expect(picked?.score).toBeGreaterThanOrEqual(5);
+  });
+
+  it("ships only a small reference seam, not a production position pool", () => {
+    expect(CURATED_GAMES.length).toBeGreaterThanOrEqual(3);
   });
 });

@@ -28,6 +28,33 @@ describe("resolvePlayColor", () => {
     ).toBe("black");
   });
 
+  it("keeps both color choices when both selected repertoires are present", () => {
+    expect(
+      resolvePlayColor({
+        book: "repertoire",
+        pickerColor: "black",
+        repertoireColors: ["white", "black"],
+      }),
+    ).toBe("black");
+    expect(
+      resolvePlayColor({
+        book: "repertoire",
+        pickerColor: "white",
+        repertoireColors: ["white", "black"],
+      }),
+    ).toBe("white");
+  });
+
+  it("normalizes duplicate repertoire colors before deciding whether to lock", () => {
+    expect(
+      resolvePlayColor({
+        book: "repertoire",
+        pickerColor: "black",
+        repertoireColors: ["white", "white"],
+      }),
+    ).toBe("white");
+  });
+
   it("Lucky plays whoever is to move", () => {
     expect(
       resolvePlayColor({

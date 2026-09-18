@@ -1,15 +1,10 @@
-﻿// I'm Feeling Lucky — database-first entry with a titled-games fallback.
+﻿// I'm Feeling Lucky — live Lichess game entry.
 //
-// Primary: the Lichess masters critical-position sampler
-// (train-lucky-db.js). It needs a linked Lichess token and one explorer read
-// per walked ply, so it can fail on 429 cooldowns, dry continuations, or
-// empty topGames — all surfacing as "No sharp database game".
-//
-// Fallback: recent titled-player games from the PUBLIC Lichess games API
-// (train-lucky-titled.js). No auth of any kind, one round trip per player,
-// full PGNs — so the same scorer/phase gate still picks a critical, legal
-// Play-ready position. The two paths share scoring, phase rotation, replay
-// verification, and dedup; only the upstream differs.
+// Production asks Lichess for a fresh titled/high-rated player, fetches a
+// small recent-game PGN feed on demand, and performs replay, phase selection,
+// critical scoring and dedup locally. No position pool or maintained game-ID
+// dataset is bundled. The slower Masters walk remains an explicit quality
+// fallback when live game feeds are empty, and is never prefetched.
 // The personal flow (miss / departure / fork from the user's own games and
 // trees) stays available as an independent capability in its own module for
 // other callers — it is intentionally not referenced from this module.
@@ -20,6 +15,11 @@ import { luckyTitledStart } from "./train-lucky-titled.js";
 export async function runFeelingLucky({
   luckyDbStartFn = luckyDbStart,
   luckyTitledStartFn = luckyTitledStart,
+  // Dynamic Lichess game feeds are the production path. Setting this false
+  // keeps the old Masters-first seam available for focused sampler tests;
+  // `allowReferences` is an explicit emergency/test-only opt-in.
+  preferDynamic = true,
+  allowReferences = false,
   ensureExplorer = null,
   storage = null,
   exclude = [],
@@ -28,7 +28,13 @@ export async function runFeelingLucky({
   setBanner = () => {},
   startSession = async () => {},
 } = {}) {
-  setBanner("runin", "Asking the Lichess database…", "Finding a critical position");
+  setBanner(
+    "runin",
+    "Finding a position…",
+    preferDynamic
+      ? "Discovering a fresh titled player on Lichess"
+      : "Following the Lichess masters database",
+  );
   let dbError = null;
   let sessionFailed = null;
   const beginSession = async (picked) => {
@@ -36,12 +42,18 @@ export async function runFeelingLucky({
     // sampler failures: never relabel them as "Database unavailable" /
     // "Nothing sharp". Surface the real message and stop.
     try {
-      await startSession({
+      const started = await startSession({
         fen: picked.fen,
         reason: picked.reason,
         phase: picked.phase,
         nodeId: picked.nodeId,
+        gameId: picked.gameId,
+        white: picked.white,
+        black: picked.black,
+        source: picked.source,
+        sourceUrl: picked.sourceUrl,
       });
+      if (started === false) throw new Error("Could not start that position");
     } catch (error) {
       sessionFailed = error;
       const msg = (error && error.message) || String(error);
@@ -51,88 +63,136 @@ export async function runFeelingLucky({
     }
     return true;
   };
-  try {
-    let fetchStats = null;
-    if (typeof ensureExplorer === "function") {
-      const client = await ensureExplorer();
-      fetchStats = (db, fen, opts) => client.fetchStats(db, fen, opts);
+  const isNoQuality = (message) => /no sharp (?:database|titled) game|try again/i.test(String(message || ""));
+  const isTransport = (message) =>
+    /rate limit|429|too many requests|responded 4\d\d|responded 5\d\d|network|failed to fetch|load failed|timeout|timed out|timeouterror|aborterror|offline|enotfound|econn|dns|unavailable|link your lichess/i.test(
+      String(message || ""),
+    );
+
+  // Explorer is deliberately lazy. A successful live feed never opens the
+  // Explorer client, so the normal click stays at discovery + one feed read.
+  let explorerPromise = null;
+  const lazyFetchStats = async (db, fen, opts) => {
+    if (!explorerPromise) {
+      explorerPromise = (typeof ensureExplorer === "function"
+        ? Promise.resolve().then(() => ensureExplorer())
+        : Promise.reject(new Error("Lichess explorer is unavailable")));
     }
-    const picked = await luckyDbStartFn({
+    const client = await explorerPromise;
+    if (!client || typeof client.fetchStats !== "function") {
+      throw new Error("Lichess explorer is unavailable");
+    }
+    return client.fetchStats(db, fen, opts);
+  };
+
+  const runDb = async (fetchStats) =>
+    luckyDbStartFn({
       storage,
       exclude,
       rating,
       fetchStats,
       engine: null,
       maia: null,
-      onStatus: (msg) => setBanner("runin", "Asking the Lichess database…", msg),
+      onStatus: (msg) => setBanner("runin", "Finding a position…", msg),
     });
-    if (picked) {
-      if (await beginSession(picked)) return picked;
-      return null;
+
+  if (preferDynamic) {
+    // Fast production path: live leaderboard discovery followed by one
+    // recent-games feed. A healthy click therefore uses two small requests;
+    // no fixed game ID is consulted. `allowReferences` is retained only as
+    // an explicit test/emergency opt-in for the reference seam.
+    setBanner("runin", "Finding a position…", "Fetching fresh titled games from Lichess");
+    try {
+      const picked = await luckyTitledStartFn({
+        storage,
+        exclude,
+        allowReferences: Boolean(allowReferences),
+        onStatus: (msg) => setBanner("runin", "Finding a position…", msg),
+      });
+      if (picked) {
+        if (await beginSession(picked)) return picked;
+        return null;
+      }
+    } catch (error) {
+      const msg = (error && error.message) || String(error);
+      if (!isNoQuality(msg) || isTransport(msg)) {
+        onStatus(msg);
+        setBanner("idle", "Database unavailable", "Try again — Lichess game export is unavailable or rate-limited.");
+        return null;
+      }
+      dbError = error;
     }
-  } catch (error) {
-    dbError = error;
-    const msg = (error && error.message) || String(error);
-    // Fall through to the titled path on: empty-result ("No sharp database
-    // game"), the unlinked-token shape the proxy returns, AND explorer
-    // transport throttling (ExplorerRateLimited: "rate limit hit - cooling
-    // down", no .status). The curated /game/export layer is unthrottled, so
-    // a transient masters throttle must not dead-end the click. Only
-    // non-throttle transport failures (502, network, auth 401/403) abort
-    // here — a titled fallback must not mask those behind a quiet success.
-    if (!/no sharp database game|link your lichess|rate limit hit|cooling down|too many requests|429/i.test(msg)) {
-      onStatus(msg);
-      setBanner(
-        "idle",
-        "Database unavailable",
-        /link your lichess/i.test(msg)
-          ? "Connect Lichess (top-right chip) so Lucky can read the masters database."
-          : "Try again — the masters database may be rate-limited right now.",
-      );
-      return null;
+
+    // If live feeds are empty, retain the Masters sampler as an explicit
+    // quality fallback when an Explorer provider is available. It is lazy and
+    // therefore never adds serial Explorer latency to a successful feed click.
+    if (typeof ensureExplorer === "function") {
+      try {
+        const picked = await runDb(lazyFetchStats);
+        if (picked) {
+          if (await beginSession(picked)) return picked;
+          return null;
+        }
+      } catch (error) {
+        dbError = error;
+        const msg = (error && error.message) || String(error);
+        if (isTransport(msg)) {
+          onStatus(msg);
+          setBanner("idle", "Database unavailable", "Try again — Lichess game export or Explorer is unavailable.");
+          return null;
+        }
+      }
     }
-  }
-  // Masters walk came up empty (or the visitor has no linked token, which
-  // surfaces as the same empty shape): try titled games before telling the
-  // user there is nothing sharp. The titled path needs no token, so an
-  // unlinked visitor still gets a Play session here.
-  setBanner("runin", "Asking titled players' recent games…", "Finding a critical position");
-  try {
-    const picked = await luckyTitledStartFn({
-      storage,
-      exclude,
-      onStatus: (msg) => setBanner("runin", "Asking titled players' recent games…", msg),
-    });
-    if (picked) {
-      if (await beginSession(picked)) return picked;
-      return null;
+  } else {
+    // Back-compat/investigation seam: callers that explicitly opt out of the
+    // live path keep the previous Masters-first ordering.
+    let fetchStats = null;
+    try {
+      if (typeof ensureExplorer === "function") {
+        const client = await ensureExplorer();
+        fetchStats = (db, fen, opts) => client.fetchStats(db, fen, opts);
+      }
+      const picked = await runDb(fetchStats);
+      if (picked) {
+        if (await beginSession(picked)) return picked;
+        return null;
+      }
+    } catch (error) {
+      dbError = error;
+      const msg = (error && error.message) || String(error);
+      if (!isNoQuality(msg) && !/link your lichess|cooling down/i.test(msg)) {
+        onStatus(msg);
+        setBanner("idle", "Database unavailable", "Try again — the masters database may be rate-limited right now.");
+        return null;
+      }
     }
-  } catch (titledError) {
-    // Titled-path failures: throttling AND offline/timeout are transport
-    // failures, not empty results — surface Database unavailable (retry
-    // hint), never Nothing sharp.
-    const titledMsg = (titledError && titledError.message) || String(titledError);
-    if (
-      /rate limit|429|too many requests|responded 50|network|failed to fetch|load failed|timeout|timed out|timeouterror|aborterror|offline|enotfound|econn|dns/i.test(
-        titledMsg,
-      )
-    ) {
-      onStatus(titledMsg);
-      setBanner(
-        "idle",
-        "Database unavailable",
-        "Try again — Lichess is rate-limiting game downloads right now.",
-      );
-      return null;
+    try {
+      const picked = await luckyTitledStartFn({
+        storage,
+        exclude,
+        onStatus: (msg) => setBanner("runin", "Finding a position…", msg),
+      });
+      if (picked) {
+        if (await beginSession(picked)) return picked;
+        return null;
+      }
+    } catch (error) {
+      const msg = (error && error.message) || String(error);
+      if (isTransport(msg)) {
+        onStatus(msg);
+        setBanner("idle", "Database unavailable", "Try again — Lichess game export is unavailable or rate-limited.");
+        return null;
+      }
     }
-    // fall through to the unified empty-result below
   }
   if (dbError) onStatus(dbError.message || String(dbError));
   else onStatus("No sharp database game found — try again.");
   setBanner(
     "idle",
     "Nothing sharp this time",
-    "Try again — Lucky draws a fresh master game each click.",
+    preferDynamic
+      ? "Try again — Lucky queries fresh Lichess games on each click."
+      : "Try again — Lucky draws a fresh master game each click.",
   );
   return null;
 }
