@@ -46,11 +46,11 @@ def _run_scout_e2e_script(script: Path, tmp_path, env_overrides: dict | None = N
     env.update(
         {
             "DATABASE_URL": f"sqlite:///{db_file.as_posix()}",
-                "PREPFORGE_SECRET_KEY": "e2e-scout-secret-not-for-prod",
-                "PREPFORGE_ENV": "development",
-                "E2E_BASE_URL": f"http://127.0.0.1:{port}",
-                "E2E_SCOUT_UPSTREAM": os.environ.get("E2E_SCOUT_UPSTREAM", "fixture"),
-            }
+            "PREPFORGE_SECRET_KEY": "e2e-scout-secret-not-for-prod",
+            "PREPFORGE_ENV": "development",
+            "E2E_BASE_URL": f"http://127.0.0.1:{port}",
+            "E2E_SCOUT_UPSTREAM": os.environ.get("E2E_SCOUT_UPSTREAM", "fixture"),
+        }
     )
     if env_overrides:
         env.update(env_overrides)
