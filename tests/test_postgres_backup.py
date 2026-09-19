@@ -22,6 +22,23 @@ def test_postgres_url_normalizes_sqlalchemy_driver():
     )
 
 
+def test_libpq_env_parses_url_without_putting_secret_on_command_line():
+    env = postgres_backup.libpq_env(
+        "postgresql+psycopg://user:p%40ss@db.example:6543/prod"
+        "?sslmode=require&channel_binding=require"
+    )
+
+    assert env == {
+        "PGHOST": "db.example",
+        "PGPORT": "6543",
+        "PGDATABASE": "prod",
+        "PGUSER": "user",
+        "PGPASSWORD": "p@ss",
+        "PGSSLMODE": "require",
+        "PGCHANNELBINDING": "require",
+    }
+
+
 def test_backup_validates_restores_uploads_and_prunes(monkeypatch, tmp_path):
     monkeypatch.setattr(postgres_backup.tempfile, "TemporaryDirectory", lambda **_: _Temp(tmp_path))
     for name, value in {
@@ -33,10 +50,12 @@ def test_backup_validates_restores_uploads_and_prunes(monkeypatch, tmp_path):
         monkeypatch.setenv(name, value)
 
     commands = []
+    pg_dump_env = {}
 
     def fake_run(command, *, capture=False, env=None):
         commands.append(command)
         if command[0] == "pg_dump":
+            pg_dump_env.update(env or {})
             output = next(part.removeprefix("--file=") for part in command if part.startswith("--file="))
             Path(output).write_bytes(b"valid custom-format dump")
         if command[0] == "psql" and "count(*)" in command[-1]:
@@ -79,12 +98,16 @@ def test_backup_validates_restores_uploads_and_prunes(monkeypatch, tmp_path):
     assert len(deletes) == 1
     assert "postgres/daily/old.dump" in deletes[0]
     assert not any("user:secret" in part for command in commands for part in command)
+    assert pg_dump_env["PGHOST"] == "db.example"
+    assert pg_dump_env["PGDATABASE"] == "prod"
+    assert pg_dump_env["PGPASSWORD"] == "secret"
 
 
 def test_backup_stops_before_upload_when_archive_is_empty(monkeypatch, tmp_path):
     monkeypatch.setattr(postgres_backup.tempfile, "TemporaryDirectory", lambda **_: _Temp(tmp_path))
-    for name in ("BACKUP_DATABASE_URL", "B2_ENDPOINT", "B2_REGION", "B2_BUCKET"):
+    for name in ("B2_ENDPOINT", "B2_REGION", "B2_BUCKET"):
         monkeypatch.setenv(name, "configured")
+    monkeypatch.setenv("BACKUP_DATABASE_URL", "postgresql://user:secret@db.example/prod")
     monkeypatch.setattr(
         postgres_backup,
         "run",
