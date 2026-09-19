@@ -71,7 +71,7 @@ window.addEventListener("unhandledrejection", (e) => reportClientError({
 **現況**:`PREPFORGE_ENGINE_ASSET_BASE` 的 live shell 已驗證釘在
 `https://huggingface.co/Andy108/prepforge-maia3/resolve/77fcb55654f1fad83ee9e987b973ddee7d7fa459/`；
 本機未設定時仍保留 same-origin fallback。
-HF 已上傳 `engine/ort/ort-wasm-simd-threaded.asyncify.wasm`(23MB)和 `stockfish-18-lite.wasm`
+HF 已上傳 `engine/ort/ort-wasm-simd-threaded.asyncify.wasm`(23MB)和舊版 Stockfish lite WASM。
 (後者目前未用,見下)。
 
 > ⚠️ **血淚教訓(2026-06-17,踩過 prod 全炸)**:Stockfish-lite 與 ORT 都是**多執行緒 Emscripten**
@@ -83,8 +83,8 @@ HF 已上傳 `engine/ort/ort-wasm-simd-threaded.asyncify.wasm`(23MB)和 `stockfi
 > (用 `fetch` 抓的資料,抓完編譯成 module 再 transfer 給 pthread workers)可以跨源。
 >
 > **修正後的策略**:
-> - **Stockfish(~6.8MB)**:整包留同源(`new Worker("/static/engine/stockfish-18-lite.js")`,wasm 也同源)。
->   bandwidth 省的不值得 pthread 風險。HF 上那份 `stockfish-18-lite.wasm` 目前用不到,可日後刪。
+> - **Stockfish lite**:整包留同源(`new Worker("/static/engine/stockfish-lite.js")`,wasm 也同源)。
+>   bandwidth 省的不值得 pthread 風險。HF 上的舊版 Stockfish WASM 目前用不到,可日後刪。
 > - **ORT(~23MB,真正大頭)**:用 ORT 1.26 的 `wasmPaths` **物件形式** `{ mjs: 本機, wasm: HF }`——
 >   `.mjs` glue 留同源,只有 23MB 的 `.wasm` 從 HF 抓。實作在 `engine-base.js` `ortWasmPaths()`。
 
@@ -105,7 +105,7 @@ HF 已上傳 `engine/ort/ort-wasm-simd-threaded.asyncify.wasm`(23MB)和 `stockfi
 - **(已撤)** ORT 用字串 prefix `${base}engine/ort/`:會連 `.mjs` 也跨源 → 同樣 pthread 風險。
 
 ### 3b2 修正後實作  ✅ DONE (2d43e69)
-- Stockfish:`createWorker = () => new Worker("/static/engine/stockfish-18-lite.js")`(純同源)。
+- Stockfish:`createWorker = () => new Worker("/static/engine/stockfish-lite.js")`(純同源；實際版本見 manifest)。
 - ORT:`ortWasmPaths()` 回 `{ mjs: "/static/engine/ort/…mjs", wasm: "${base}engine/ort/…wasm" }`;
   worker init 把它原封 `ort.env.wasm.wasmPaths = ortPaths`(物件可結構化複製,過 postMessage OK)。
 - base 仍在主執行緒解析後經 init message 傳進 worker(worker 看不到 `window.*`)。
@@ -117,7 +117,7 @@ HF 已上傳 `engine/ort/ort-wasm-simd-threaded.asyncify.wasm`(23MB)和 `stockfi
 - 部署後**在瀏覽器 console 確認**(`PREPFORGE_ENGINE_ASSET_BASE` 保持 SET):
   - `crossOriginIsolated === true`
   - Network → Wasm:`ort-wasm-simd-threaded.asyncify.wasm` 來自 `huggingface.co`;
-    `ort-wasm-simd-threaded.asyncify.mjs` 與 `stockfish-18-lite.{js,wasm}` 來自**同源** `/static/engine/`
+    `ort-wasm-simd-threaded.asyncify.mjs` 與 `stockfish-lite.{js,wasm}` 來自**同源** `/static/engine/`
   - Analyze 能同時起 Stockfish(eval bar)+ Maia(Brilliant)
 - **若 ORT 仍炸**:退而求其次把 ORT 也整包留同源(`ortWasmPaths` 永遠回本機字串),只損失 23MB bandwidth。
 
