@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
 from datetime import datetime, timedelta, timezone
@@ -7,7 +8,11 @@ from pathlib import Path
 
 import pytest
 
-from scripts import postgres_backup
+_SCRIPT_PATH = Path(__file__).parents[1] / "scripts" / "postgres_backup.py"
+_SPEC = importlib.util.spec_from_file_location("postgres_backup", _SCRIPT_PATH)
+assert _SPEC and _SPEC.loader
+postgres_backup = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(postgres_backup)
 
 
 def test_postgres_url_normalizes_sqlalchemy_driver():
