@@ -213,14 +213,21 @@ def backup(*, retention_days: int, restore_url: str) -> dict[str, object]:
             endpoint,
             region,
             "s3api",
-            "head-object",
+            "list-objects-v2",
             "--bucket",
             bucket,
-            "--key",
+            "--prefix",
             object_key,
+            "--output",
+            "json",
             capture=True,
         )
-        remote_size = json.loads(remote.stdout or "{}").get("ContentLength")
+        matches = [
+            item
+            for item in json.loads(remote.stdout or "{}").get("Contents", [])
+            if item.get("Key") == object_key
+        ]
+        remote_size = matches[0].get("Size") if len(matches) == 1 else None
         if remote_size != dump_path.stat().st_size:
             raise RuntimeError(
                 f"uploaded object size mismatch: local={dump_path.stat().st_size}, remote={remote_size}"

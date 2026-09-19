@@ -74,14 +74,24 @@ def test_backup_validates_restores_uploads_and_prunes(monkeypatch, tmp_path):
             return subprocess.CompletedProcess(command, 0, "12\n", "")
         if command[0] == "psql":
             return subprocess.CompletedProcess(command, 0, "c7e8f9a0b1c2\n", "")
-        if "head-object" in command:
-            return subprocess.CompletedProcess(
-                command,
-                0,
-                json.dumps({"ContentLength": len(b"valid custom-format dump")}),
-                "",
-            )
         if "list-objects-v2" in command:
+            prefix = command[command.index("--prefix") + 1]
+            if prefix != f"{postgres_backup.BACKUP_PREFIX}/":
+                return subprocess.CompletedProcess(
+                    command,
+                    0,
+                    json.dumps(
+                        {
+                            "Contents": [
+                                {
+                                    "Key": prefix,
+                                    "Size": len(b"valid custom-format dump"),
+                                }
+                            ]
+                        }
+                    ),
+                    "",
+                )
             old = (datetime.now(timezone.utc) - timedelta(days=20)).isoformat()
             fresh = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
             payload = {
@@ -104,7 +114,7 @@ def test_backup_validates_restores_uploads_and_prunes(monkeypatch, tmp_path):
     assert len(manifest["sha256"]) == 64
     flattened = [part for command in commands for part in command]
     assert "pg_restore" in [command[0] for command in commands]
-    assert "head-object" in flattened
+    assert "list-objects-v2" in flattened
     assert "postgres/latest.json" in " ".join(flattened)
     deletes = [command for command in commands if "delete-object" in command]
     assert len(deletes) == 1
@@ -148,8 +158,10 @@ def test_remote_size_mismatch_fails_verification(monkeypatch, tmp_path):
             return subprocess.CompletedProcess(command, 0, "1\n", "")
         if command[0] == "psql":
             return subprocess.CompletedProcess(command, 0, "head\n", "")
-        if "head-object" in command:
-            return subprocess.CompletedProcess(command, 0, '{"ContentLength": 3}', "")
+        if "list-objects-v2" in command:
+            prefix = command[command.index("--prefix") + 1]
+            payload = {"Contents": [{"Key": prefix, "Size": 3}]}
+            return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
         return subprocess.CompletedProcess(command, 0, "", "")
 
     monkeypatch.setattr(postgres_backup, "run", fake_run)
