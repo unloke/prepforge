@@ -3,6 +3,13 @@ import { fileURLToPath, URL } from "node:url";
 import { readdirSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
+function installedStockfishVersion() {
+  const packageJson = fileURLToPath(
+    new URL("./node_modules/stockfish/package.json", import.meta.url),
+  );
+  return JSON.parse(readFileSync(packageJson, "utf8")).version;
+}
+
 // Dev-only save endpoint for the coach-review harness: it POSTs its ratings here and we
 // write them straight to coach-review-ratings.json at the repo root, so the rate→tweak
 // loop doesn't go through a browser download. The path is deliberately NOT under /api (so
@@ -153,6 +160,9 @@ function harnessInputs() {
 export default defineConfig({
   root: "web-src",
   base: "/static/",
+  define: {
+    "globalThis.__STOCKFISH_PACKAGE_VERSION__": JSON.stringify(installedStockfishVersion()),
+  },
   plugins: [publicMjsPlugin(), coachReviewSavePlugin(), trimDeployAssets()],
   build: {
     outDir: fileURLToPath(

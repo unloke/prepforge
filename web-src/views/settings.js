@@ -66,7 +66,24 @@ export function createSettingsView({
         }
       }
     }
+    void renderStockfishVersion();
     renderMaia3Status();
+  }
+
+  async function renderStockfishVersion() {
+    const versionEl = document.getElementById("settings-stockfish-version");
+    if (!versionEl) return;
+    try {
+      const response = await fetch("/static/engine/stockfish.manifest.json");
+      if (!response.ok) throw new Error(`manifest ${response.status}`);
+      const manifest = await response.json();
+      if (!manifest.packageVersion || manifest.variant !== "lite-threaded") {
+        throw new Error("invalid manifest");
+      }
+      versionEl.textContent = `Stockfish ${manifest.packageVersion} lite (WASM)`;
+    } catch {
+      versionEl.textContent = "Stockfish version unavailable";
+    }
   }
 
   function renderSettings(payload) {
