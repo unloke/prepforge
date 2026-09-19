@@ -56,6 +56,15 @@ jobs:
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
+          sudo apt-get install --yes ca-certificates curl
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error \
+            --output /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update
           sudo apt-get install --yes postgresql-client-18
           pg_dump --version
           pg_restore --version
