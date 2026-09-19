@@ -3042,9 +3042,6 @@ function setReplaySection(section, { focus = false } = {}) {
 
 function switchView(name, { fromUrl = false } = {}) {
   appState.currentView = name;
-  const moreNav = document.getElementById("more-nav");
-  moreNav?.removeAttribute("open");
-  moreNav?.classList.toggle("is-active", name === "teams" || name === "settings");
   // Navigating is user activity; if the Lichess watch is running, switching to
   // Analyze (where a fresh game matters most) tightens the poll cadence briefly.
   noteLichessActivity();
@@ -3451,6 +3448,10 @@ function initAccountController() {
     showConfirmModal,
     refreshAutoMaiaRating,
     onLichessConnected: startLichessGameWatch,
+    onOpenSettings: () => {
+      switchView("settings");
+      loadSettings();
+    },
   });
 }
 
@@ -4635,7 +4636,6 @@ function syncCoverageReadOnlyState() {
   const button = document.getElementById("coverage-run");
   const gapsEl = document.getElementById("coverage-gaps");
   const scoreEl = document.getElementById("coverage-score");
-  const drawer = document.getElementById("coverage-drawer");
   const readOnly = isBuildReadOnly();
   if (button) {
     button.disabled = readOnly;
@@ -4647,7 +4647,7 @@ function syncCoverageReadOnlyState() {
       coverageController = null;
       jobToast.cancelJob("Scan stopped");
     }
-    if (drawer) drawer.open = false;
+    setBuildInspector(null);
     if (gapsEl) gapsEl.innerHTML = "";
     if (scoreEl) scoreEl.hidden = true;
     coverageGaps = [];
@@ -5821,8 +5821,33 @@ let explorerTimer = null;
 let explorerSeq = 0;
 
 function explorerDrawerOpen() {
-  const drawer = document.getElementById("explorer-drawer");
-  return !!(drawer && drawer.open);
+  const panel = document.getElementById("explorer-drawer");
+  return !!(panel && !panel.hidden);
+}
+
+function setBuildInspector(tool) {
+  const inspector = document.getElementById("build-inspector");
+  const title = document.getElementById("build-inspector-title");
+  const panels = {
+    explorer: document.getElementById("explorer-drawer"),
+    coverage: document.getElementById("coverage-drawer"),
+  };
+  const buttons = {
+    explorer: document.getElementById("build-tool-explorer"),
+    coverage: document.getElementById("build-tool-coverage"),
+  };
+  const active = tool && panels[tool] && panels[tool].hidden ? tool : null;
+  Object.entries(panels).forEach(([name, panel]) => {
+    if (panel) panel.hidden = name !== active;
+    buttons[name]?.setAttribute("aria-expanded", String(name === active));
+  });
+  if (inspector) inspector.hidden = !active;
+  if (title) {
+    title.textContent = active === "explorer"
+      ? "Opening explorer"
+      : active === "coverage" ? "Coverage scan" : "";
+  }
+  if (active === "explorer") refreshExplorerPanel();
 }
 
 // Arrow-keying through a line fires selectBuildNode per ply; one trailing fetch
@@ -10284,13 +10309,10 @@ function bindEvents() {
   const coverageRun = document.getElementById("coverage-run");
   if (coverageRun) coverageRun.addEventListener("click", runCoverageScanUI);
 
-  // Opening explorer: fetch on open, switch databases in place. Closing cancels
-  // any pending debounce via the drawer-open guard.
+  // Explorer and Coverage share one inspector. Selecting another tool replaces
+  // the panel in place; selecting the active tool collapses the inspector.
   const explorerDrawer = document.getElementById("explorer-drawer");
   if (explorerDrawer) {
-    explorerDrawer.addEventListener("toggle", () => {
-      if (explorerDrawer.open) refreshExplorerPanel();
-    });
     explorerDrawer.querySelectorAll(".explorer-db").forEach((btn) => {
       btn.addEventListener("click", () => {
         explorerDb = btn.dataset.db === "lichess" ? "lichess" : "masters";
@@ -10301,6 +10323,12 @@ function bindEvents() {
       });
     });
   }
+  document.getElementById("build-tool-explorer")?.addEventListener("click", () => {
+    setBuildInspector("explorer");
+  });
+  document.getElementById("build-tool-coverage")?.addEventListener("click", () => {
+    setBuildInspector("coverage");
+  });
 
   // Drag-and-drop: a PGN onto the Analyze box loads it; a PGN/JSON onto the
   // dashboard repertoires card imports it.
@@ -10516,7 +10544,6 @@ function bindEvents() {
       }
     }
     if (event.key === "Escape") {
-      document.getElementById("more-nav")?.removeAttribute("open");
       if (sanBuffer.text) {
         sanBuffer.clear();
         paintSanBuffer("clear", "");
@@ -10529,9 +10556,6 @@ function bindEvents() {
     }
   });
   document.addEventListener("click", (event) => {
-    if (!event.target.closest("#more-nav")) {
-      document.getElementById("more-nav")?.removeAttribute("open");
-    }
     if (!event.target.closest("#node-context-menu")) closeNodeContextMenu();
     if (!event.target.closest("#repertoire-context-menu")) closeRepertoireContextMenu();
     // The chip's own click toggles the menu; ignore it here so we don't immediately

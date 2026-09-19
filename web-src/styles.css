@@ -220,68 +220,6 @@ h2 {
   display: none;
 }
 
-.more-nav {
-  position: relative;
-  flex: none;
-}
-
-.more-nav > summary {
-  height: var(--control-h);
-  display: inline-flex;
-  align-items: center;
-  padding: 0 12px;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  color: var(--muted);
-  cursor: pointer;
-  font-weight: 600;
-  list-style: none;
-  touch-action: manipulation;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.more-nav > summary::-webkit-details-marker {
-  display: none;
-}
-
-.more-nav > summary::after {
-  content: "▾";
-  font-size: 9px;
-  margin-left: 6px;
-}
-
-.more-nav > summary:hover,
-.more-nav[open] > summary,
-.more-nav.is-active > summary {
-  background: var(--hover);
-  color: var(--text);
-}
-
-.more-nav-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: 80;
-  min-width: 132px;
-  padding: 4px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-card);
-  background: var(--panel);
-  box-shadow: 0 10px 24px rgba(30, 24, 18, 0.18);
-  display: grid;
-  gap: 2px;
-}
-
-.more-nav-menu .tab {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  justify-content: flex-start;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
 .tab {
   height: var(--control-h);
   display: inline-flex;
@@ -2389,6 +2327,55 @@ h2 {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.build-tools {
+  align-items: center;
+}
+
+.inspector-toggle[aria-expanded="true"] {
+  color: var(--accent-strong);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+.build-inspector {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  min-height: 0;
+}
+
+.build-inspector-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.build-inspector-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.build-inspector-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.inspector-panel {
+  padding: 10px;
+  max-height: min(34vh, 300px);
+  overflow-y: auto;
+}
+
+.inspector-panel[hidden],
+.build-inspector[hidden] {
+  display: none;
 }
 
 /* Sidebar identity header (Build): which repertoire is open, plus the ⋯ menu
@@ -4575,8 +4562,6 @@ h2 {
   .tabs {
     order: 3;
     flex-basis: 100%;
-    /* .tabs-primary owns horizontal scrolling. Keep this wrapper visible so
-       the More menu can escape the nav row instead of being clipped by it. */
     overflow: visible;
     align-items: stretch;
   }
@@ -4585,16 +4570,8 @@ h2 {
     flex: 1;
   }
 
-  .more-nav > summary,
   .tab {
     min-height: 44px;
-  }
-
-  .more-nav-menu {
-    right: 0;
-    left: auto;
-    min-width: min(132px, calc(100vw - 24px));
-    max-width: calc(100vw - 24px);
   }
 
   .status {
