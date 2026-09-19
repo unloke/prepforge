@@ -1,0 +1,64 @@
+name: PostgreSQL backup
+
+on:
+  schedule:
+    # 01:23 America/Phoenix (UTC-7 year-round). Off the top of the hour to reduce delay.
+    - cron: "23 8 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-postgres-backup
+  cancel-in-progress: false
+
+jobs:
+  backup-and-restore-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: restore
+          POSTGRES_PASSWORD: restore-smoke-only
+          POSTGRES_DB: prepforge_restore
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U restore -d prepforge_restore"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      BACKUP_DATABASE_URL: ${{ secrets.PROD_DATABASE_EXTERNAL_URL }}
+      B2_ENDPOINT: ${{ secrets.B2_ENDPOINT }}
+      B2_REGION: ${{ secrets.B2_REGION }}
+      B2_BUCKET: ${{ secrets.B2_BUCKET }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      AWS_EC2_METADATA_DISABLED: "true"
+      RESTORE_DATABASE_URL: postgresql://restore:restore-smoke-only@localhost:5432/prepforge_restore
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require backup secrets
+        shell: bash
+        run: |
+          missing=0
+          for name in BACKUP_DATABASE_URL B2_ENDPOINT B2_REGION B2_BUCKET AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Required GitHub Actions secret for $name is not configured"
+              missing=1
+            fi
+          done
+          exit "$missing"
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+          pg_dump --version
+          pg_restore --version
+          aws --version
+      - name: Dump, restore-smoke, upload, and enforce retention
+        run: python scripts/postgres_backup.py --retention-days 14
