@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlparse
 
 BACKUP_PREFIX = "postgres/daily"
 LATEST_KEY = "postgres/latest.json"
@@ -29,6 +30,31 @@ def required_env(name: str) -> str:
 def postgres_url(value: str) -> str:
     """Convert an SQLAlchemy psycopg URL into a libpq-compatible URL."""
     return value.replace("postgresql+psycopg://", "postgresql://", 1)
+
+
+def libpq_env(value: str) -> dict[str, str]:
+    """Translate a PostgreSQL URL into libpq environment variables."""
+    parsed = urlparse(postgres_url(value))
+    if parsed.scheme not in {"postgres", "postgresql"} or not parsed.hostname:
+        raise ValueError("BACKUP_DATABASE_URL must be a PostgreSQL URL with a host")
+
+    query = parse_qs(parsed.query)
+    env = {
+        "PGHOST": parsed.hostname,
+        "PGPORT": str(parsed.port or 5432),
+        "PGDATABASE": unquote(parsed.path.lstrip("/")) or "postgres",
+    }
+    if parsed.username is not None:
+        env["PGUSER"] = unquote(parsed.username)
+    if parsed.password is not None:
+        env["PGPASSWORD"] = unquote(parsed.password)
+    for parameter, variable in {
+        "sslmode": "PGSSLMODE",
+        "channel_binding": "PGCHANNELBINDING",
+    }.items():
+        if query.get(parameter):
+            env[variable] = query[parameter][-1]
+    return env
 
 
 def run(
@@ -158,7 +184,7 @@ def backup(*, retention_days: int, restore_url: str) -> dict[str, object]:
                 "--no-privileges",
                 f"--file={dump_path}",
             ],
-            env={**os.environ, "PGDATABASE": database_url},
+            env={**os.environ, **libpq_env(database_url)},
         )
         if not dump_path.is_file() or dump_path.stat().st_size == 0:
             raise RuntimeError("pg_dump produced an empty backup")
