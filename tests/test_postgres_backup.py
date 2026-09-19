@@ -39,6 +39,18 @@ def test_libpq_env_parses_url_without_putting_secret_on_command_line():
     }
 
 
+def test_run_surfaces_captured_stderr_without_echoing_command(monkeypatch, capsys):
+    failure = subprocess.CalledProcessError(1, ["tool", "secret-argument"], stderr="safe error")
+    monkeypatch.setattr(postgres_backup.subprocess, "run", lambda *_, **__: (_ for _ in ()).throw(failure))
+
+    with pytest.raises(subprocess.CalledProcessError):
+        postgres_backup.run(["tool", "secret-argument"], capture=True)
+
+    captured = capsys.readouterr()
+    assert captured.err == "safe error\n"
+    assert "secret-argument" not in captured.err
+
+
 def test_backup_validates_restores_uploads_and_prunes(monkeypatch, tmp_path):
     monkeypatch.setattr(postgres_backup.tempfile, "TemporaryDirectory", lambda **_: _Temp(tmp_path))
     for name, value in {

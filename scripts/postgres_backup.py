@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -64,13 +65,18 @@ def run(
     env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     # Never echo commands: database URLs and object-store credentials are secrets.
-    return subprocess.run(
-        command,
-        check=True,
-        text=True,
-        capture_output=capture,
-        env=env,
-    )
+    try:
+        return subprocess.run(
+            command,
+            check=True,
+            text=True,
+            capture_output=capture,
+            env=env,
+        )
+    except subprocess.CalledProcessError as error:
+        if capture and error.stderr:
+            print(error.stderr.strip(), file=sys.stderr)
+        raise
 
 
 def aws(endpoint: str, region: str, *arguments: str, capture: bool = False):
