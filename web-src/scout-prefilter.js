@@ -3,7 +3,10 @@
 // Results never surface in the Scout UI — only the Maia-ranked game plan is shown.
 
 import { analyzeGamePositions } from "./engine/game-analyzer.js";
-import { createEngineProvider } from "./engine/stockfish-provider.js";
+import {
+  createEngineProvider,
+  STOCKFISH_PACKAGE_VERSION,
+} from "./engine/stockfish-provider.js";
 import {
   SCOUT_BRANCH_SCORE_CAP,
   SCOUT_MAIA_LIMIT,
@@ -33,7 +36,7 @@ export const SCOUT_PREFILTER_CONCURRENCY = 3;
  *  stops it early; that path still extracts partial results. Tests pass an explicit
  *  timeBudgetMs to exercise the (now cancellation-only) partial-results machinery. */
 export const SCOUT_PREFILTER_TIME_BUDGET_MS = Infinity;
-export const SCOUT_PREFILTER_ENGINE_VERSION = "stockfish-18-lite";
+export const SCOUT_PREFILTER_ENGINE_VERSION = `stockfish-${STOCKFISH_PACKAGE_VERSION}-lite`;
 export const SCOUT_MIN_ANCESTOR_FREQUENCY = 0.01;
 export const SCOUT_MIN_STOCKFISH_ADVANTAGE = 20;
 /** OR-gate thresholds — a line survives on objective edge, empirical struggle, a rare

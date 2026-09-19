@@ -55,6 +55,34 @@ jobs:
       - name: Bundle-size gate
         run: node scripts/check-bundle-size.mjs
 
+  stockfish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install JS + Playwright Chromium
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Package layout + metadata sync
+        run: npx vitest run scripts/sync-stockfish.test.js
+      - name: Stockfish provider + Analyze + Build generation tests
+        run: >-
+          npx vitest run
+          web-src/engine/stockfish-provider.test.js
+          web-src/engine/game-analyzer.test.js
+          web-src/engine/build-generator.test.js
+          web-src/engine/build-generate-runner.test.js
+      - name: Build SPA + bundle gate
+        run: |
+          npm run build
+          node scripts/check-bundle-size.mjs
+      - name: Browser Stockfish UCI smoke
+        run: npm run smoke:stockfish
+
   e2e:
     runs-on: ubuntu-latest
     steps:

@@ -1,12 +1,12 @@
 import { Chess } from "chess.js";
 
-// Browser Stockfish (nmrugg stockfish.js, lite multi-threaded SF18) running in
+// Browser Stockfish (nmrugg stockfish.js, lite multi-threaded build) running in
 // a Web Worker over UCI. Implements the EngineProvider interface
 // (open/update/snapshot/close -> snapshot), so EngineWidget is unchanged.
 // Needs cross-origin isolation (COOP/COEP) for threads.
 //
-// `stockfish-18-lite` is the same Stockfish 18 search code with an embedded
-// SMALL net: weaker than the full ~113 MB net, but appropriate for the browser
+// The bundled lite build uses an embedded SMALL net: weaker than the full net,
+// but appropriate for the browser
 // widget. All chess compute runs locally — there is NO server fallback (hard
 // product rule: the server must never run engine compute in the public flow).
 //
@@ -16,7 +16,8 @@ import { Chess } from "chess.js";
 // resolution (see engine-base.js). The wasm is only ~6.8 MB, so the bandwidth win
 // did not justify the fragility. Only the much larger ORT wasm is offloaded (its
 // .mjs glue stays local — see ortWasmPaths in engine-base.js).
-const ENGINE_SCRIPT_URL = "/static/engine/stockfish-18-lite.js";
+const ENGINE_SCRIPT_URL = "/static/engine/stockfish-lite.js";
+export const STOCKFISH_PACKAGE_VERSION = globalThis.__STOCKFISH_PACKAGE_VERSION__;
 
 const DEFAULT_MAX_DEPTH = 18;
 // MultiPV ceiling. The engine widget only ever shows a few lines, but Build Generate
