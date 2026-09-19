@@ -66,8 +66,9 @@ jobs:
             | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
           sudo apt-get update
           sudo apt-get install --yes postgresql-client-18
-          pg_dump --version
-          pg_restore --version
+          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+          /usr/lib/postgresql/18/bin/pg_dump --version
+          /usr/lib/postgresql/18/bin/pg_restore --version
           aws --version
       - name: Dump, restore-smoke, upload, and enforce retention
         run: python scripts/postgres_backup.py --retention-days 14
