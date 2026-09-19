@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAccountController } from "./account.js";
 
-function makeController({ api = vi.fn(), postJson = vi.fn() } = {}) {
+function makeController({ api = vi.fn(), postJson = vi.fn(), onOpenSettings = vi.fn() } = {}) {
   const appState = {
     signedIn: false,
     accountUsername: null,
@@ -18,8 +18,9 @@ function makeController({ api = vi.fn(), postJson = vi.fn() } = {}) {
     escapeHtml: (value) => String(value),
     showConfirmModal: vi.fn(),
     refreshAutoMaiaRating: vi.fn(),
+    onOpenSettings,
   });
-  return { appState, controller, setStatus };
+  return { appState, controller, setStatus, onOpenSettings };
 }
 
 describe("account controller", () => {

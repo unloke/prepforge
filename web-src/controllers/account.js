@@ -12,6 +12,7 @@ export function createAccountController({
   showConfirmModal,
   refreshAutoMaiaRating,
   onLichessConnected = () => {},
+  onOpenSettings = () => {},
   onReload = () => window.location.reload(),
 }) {
   function getStoredLichessUsername() {
@@ -221,6 +222,7 @@ export function createAccountController({
     const items = [
       `<div class="context-section">Signed in as ${escapeHtml(name)}</div>`,
       lichessItem,
+      `<button type="button" role="menuitem" data-action="settings">Settings</button>`,
       `<button type="button" role="menuitem" data-action="signout">Sign out</button>`,
     ];
     menu.innerHTML = items.join("");
@@ -255,6 +257,8 @@ export function createAccountController({
     closeAccountMenu();
     if (action === "signout") {
       await signOut();
+    } else if (action === "settings") {
+      onOpenSettings();
     } else if (action === "connect-lichess") {
       startLichessOAuth();
     }

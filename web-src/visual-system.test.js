@@ -110,8 +110,10 @@ describe("seven views share chrome families", () => {
   it("every workspace view is present", () => {
     for (const view of VIEWS) {
       expect(html).toContain(`id="view-${view}"`);
-      expect(html).toContain(`data-view="${view}"`);
+      if (view !== "settings") expect(html).toContain(`data-view="${view}"`);
     }
+    expect(readFileSync(join(root, "controllers", "account.js"), "utf8"))
+      .toContain('data-action="settings"');
   });
 
   it("study tabs use the same board-bar + sidebar rhythm", () => {
