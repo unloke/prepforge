@@ -87,13 +87,61 @@ needed — only a service restart. Re-pin when you upload new ONNX/WASM artifact
 ### Database backups
 
 Render **free-tier Postgres** does not include automatic point-in-time recovery. As of
-2026-06, backups are **not enabled** on the live deploy — treat this as a known gap.
+2026-09, PrepForge uses `.github/workflows/postgres-backup.yml` instead: a daily GitHub
+Actions job creates a compressed custom-format dump and stores it in a private Backblaze
+B2 bucket. B2's first 10 GB is free; monitor usage so the account remains within that
+allowance.
 
-**Action (manual):** Render dashboard → your Postgres instance → **Backups** tab. On paid
-plans you can enable scheduled backups; on free tier, schedule a periodic `pg_dump` via a
-cron job or export manually before schema changes.
+The job validates every archive with `pg_restore --list`, restores it into an isolated
+PostgreSQL 16 service, checks the restored schema and Alembic revision, uploads the dated
+object, verifies it with `head-object`, and retains approximately 14 days. The private
+bucket also contains `postgres/latest.json`, whose key and SHA-256 identify the latest
+verified snapshot. Dumps are never uploaded as GitHub artifacts or committed to Git.
 
-Document your retention policy here once configured.
+#### One-time setup
+
+1. Create a **private** B2 bucket. Keep object lock off unless you deliberately want
+   immutable retention; the workflow must be able to delete expired objects.
+2. Create a bucket-scoped B2 application key with list, read, write, and delete access.
+   Do not use the account master key. Optionally add a bucket lifecycle rule as a second
+   guardrail that deletes `postgres/daily/` objects after 14 days.
+3. Copy the production database's externally reachable connection URL. The live service
+   currently uses a Neon PostgreSQL pooler URL; a Render Internal Database URL would be
+   unreachable from GitHub-hosted runners.
+4. Add these repository Actions secrets (Settings → Secrets and variables → Actions):
+
+   | Secret | Value |
+   |--------|-------|
+   | `PROD_DATABASE_EXTERNAL_URL` | Externally reachable production PostgreSQL URL |
+   | `B2_ENDPOINT` | Bucket S3 endpoint, e.g. `https://s3.us-west-004.backblazeb2.com` |
+   | `B2_REGION` | Region from that endpoint, e.g. `us-west-004` |
+   | `B2_BUCKET` | Private bucket name |
+   | `B2_KEY_ID` | Bucket-scoped application key ID |
+   | `B2_APPLICATION_KEY` | Application key shown once at creation |
+
+5. Merge the workflow to the default branch, open Actions → PostgreSQL backup → Run
+   workflow, and confirm the dump, restore smoke, upload, and retention steps succeed.
+6. In B2, confirm the dated object and `postgres/latest.json` exist and the bucket is
+   private. Download the dated object once and compare its SHA-256 to the pointer.
+
+#### Recovery
+
+Download the object named by `postgres/latest.json`, verify its SHA-256, and restore into
+an empty database before redirecting production traffic:
+
+```bash
+aws --endpoint-url "$B2_ENDPOINT" --region "$B2_REGION" \
+  s3 cp "s3://$B2_BUCKET/$BACKUP_KEY" prepforge.dump
+echo "$BACKUP_SHA256  prepforge.dump" | sha256sum --check
+pg_restore --list prepforge.dump >/dev/null
+pg_restore --exit-on-error --no-owner --no-privileges \
+  --dbname "$EMPTY_DATABASE_URL" prepforge.dump
+psql "$EMPTY_DATABASE_URL" -c "SELECT version_num FROM alembic_version;"
+```
+
+Never restore over the live database. Restore into a newly created empty database,
+verify user/table counts and application startup, then update `DATABASE_URL`. Rotate a
+key immediately if it is exposed; secret values must not appear in docs or logs.
 
 ### External uptime monitoring
 
