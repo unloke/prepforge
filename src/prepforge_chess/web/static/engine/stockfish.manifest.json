@@ -1,0 +1,18 @@
+{
+  "package": "stockfish",
+  "packageVersion": "19.0.0",
+  "engineVersion": "19",
+  "variant": "lite-threaded",
+  "files": {
+    "script": {
+      "bundled": "stockfish-lite.js",
+      "source": "stockfish-19-lite.js",
+      "sha256": "2f98d35d20bf435c16925f8955fe4b0c2062e66962799a407667218ff9ea709d"
+    },
+    "wasm": {
+      "bundled": "stockfish-lite.wasm",
+      "source": "stockfish-19-lite.wasm",
+      "sha256": "18727c9ade11a8ca04391ab5a298232bc6fffebe2002e7cfffac82e7ad453447"
+    }
+  }
+}

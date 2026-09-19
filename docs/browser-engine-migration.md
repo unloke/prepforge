@@ -21,7 +21,7 @@ behind `PREPFORGE_SERVER_ENGINE_ENABLED` (**default off** → 403). Any mention 
 
 - Deployment: public multi-user web app.
 - Bundler: Vite.
-- Stockfish: **nmrugg `stockfish`@18.0.7** `stockfish-18-lite` (browser WASM). (The
+- Stockfish: **nmrugg `stockfish`@19.0.0** threaded lite build (browser WASM). (The
   Lichess build was evaluated but is harder to integrate; revisit for net-size
   switching later.)
 - Maia: Maia3 in browser via ONNX, mirroring MaiaChess.
@@ -195,10 +195,10 @@ Risk:
 ## Phase 1: Browser Stockfish Widget
 
 **Status (2026-06-03) — DONE & verified, committed (not pushed).**
-- Package choice: **nmrugg `stockfish`@18.0.7** (real SF18 WASM), not `@lichess-org/stockfish-web`. The Lichess build ships NNUE separately and its own README calls it "not straight-forward… check out nmrugg for a simpler browser Stockfish." Build used: **`stockfish-18-lite` (multi-threaded, ~7 MB, embedded small net)** — your "smallnet" choice; needs the COOP/COEP we added. **Strength note:** lite is the same Stockfish 18 *search code* with an embedded SMALL net — weaker than the full ~113 MB net, but appropriate for the browser widget prototype.
+- Package choice: **nmrugg `stockfish`@19.0.0**, not `@lichess-org/stockfish-web`. The Lichess build ships NNUE separately and its own README calls it "not straight-forward… check out nmrugg for a simpler browser Stockfish." Build used: the package's discovered **threaded lite build** with an embedded small net; it needs the COOP/COEP we added. The sync step exposes stable `stockfish-lite.*` browser URLs and records the exact package/source filenames in `stockfish.manifest.json`.
 - `+ chess.js` for UCI→SAN (the widget renders `pv_san`).
 - `web-src/engine/stockfish-provider.js`: `StockfishWasmProvider` (Worker + UCI + snapshot shape + White-POV scores + 15 s readiness timeout) and `createEngineProvider` — browser engine only; when not `crossOriginIsolated` or the worker fails, returns an "unavailable" provider that surfaces an actionable error. **No server fallback.**
-- Assets: `scripts/sync-stockfish.mjs` copies the lite `.js/.wasm` from node_modules into `web-src/public/engine/` (gitignored); the built copy in `web/static/engine/` is committed + in `pyproject` package-data (Docker has no Node).
+- Assets: `scripts/sync-stockfish.mjs` validates package metadata, discovers the matching lite `.js/.wasm`, copies stable aliases plus a hashed manifest into `web-src/public/engine/` (gitignored); the built copy in `web/static/engine/` is committed + in `pyproject` package-data (Docker has no Node).
 - **Verified:** depth 18/18 with real PVs + SAN, MultiPV=3 shows 3 lines, **zero `/api/engine/*` calls** (compute fully client-side), 0 console errors; wheel ships `static/{assets,engine}`.
 
 Move only the live engine widget first.

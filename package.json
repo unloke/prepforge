@@ -17,6 +17,7 @@
     "test:research": "vitest run --config vitest.research.config.mjs",
     "lint:js": "eslint web-src scripts",
     "smoke:lazy-chunks": "node scripts/lazy-chunk-smoke.mjs",
+    "smoke:stockfish": "node scripts/stockfish-browser-smoke.mjs",
     "smoke:prod-engine": "node scripts/prod-engine-smoke.mjs"
   },
   "devDependencies": {
@@ -29,6 +30,6 @@
   "dependencies": {
     "chess.js": "^1.4.0",
     "onnxruntime-web": "^1.26.0",
-    "stockfish": "^18.0.7"
+    "stockfish": "19.0.0"
   }
 }
