@@ -59,7 +59,9 @@ describe("workspace chrome layout", () => {
     expect(card).toMatch(/grid-template-rows:\s*auto\s+minmax\(0,\s*1fr\)/);
     expect(card).toMatch(/block-size:\s*var\(--coach-card-block-size\)/);
     expect(card).toMatch(/flex:\s*0\s+0\s+var\(--coach-card-block-size\)/);
-    expect(card).toMatch(/--coach-card-block-size:\s*clamp\(/);
+    expect(card).toMatch(
+      /--coach-card-block-size:\s*clamp\(136px,\s*calc\(var\(--study-h\)\s*\*\s*0\.23\),\s*170px\)/,
+    );
     expect(body).toMatch(/display:\s*flex/);
     expect(body).toMatch(/flex-direction:\s*column/);
     expect(body).toMatch(/min-height:\s*0/);

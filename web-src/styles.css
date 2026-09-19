@@ -3620,7 +3620,7 @@ h2 {
 /* Coach panel — the plain-language read of the Analyze position. Always visible
    in Analyze (unlike .reveal), so it reads as a permanent companion to the board. */
 .explain-card {
-  --coach-card-block-size: clamp(176px, calc(var(--study-h) * 0.32), 232px);
+  --coach-card-block-size: clamp(136px, calc(var(--study-h) * 0.23), 170px);
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel-soft);
