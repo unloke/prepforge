@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-DMbXHiJH.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-BZTQidBF.css">
+    <script type="module" crossorigin src="/static/assets/index-5zwLW6bF.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-DHCqamg6.css">
   </head>
   <body>
     <header class="topbar">
@@ -20,14 +20,8 @@
           <button class="tab" data-view="train" data-testid="nav-train">Train</button>
           <button class="tab" data-view="replay" data-replay-section="games" data-testid="nav-replay">Games</button>
           <button class="tab" data-view="replay" data-replay-section="scout" data-testid="nav-scout">Scout</button>
+          <button class="tab" data-view="teams" data-testid="nav-teams">Teams</button>
         </div>
-        <details class="more-nav" id="more-nav">
-          <summary aria-controls="more-nav-menu">More</summary>
-          <div class="more-nav-menu" id="more-nav-menu" role="menu" aria-label="More workspace views">
-            <button class="tab" data-view="teams" data-testid="nav-teams" role="menuitem">Teams</button>
-            <button class="tab" data-view="settings" data-testid="nav-settings" role="menuitem">Settings</button>
-          </div>
-        </details>
       </nav>
       <button class="ib palette-open" id="open-palette" data-testid="open-palette" type="button" title="Command palette (Ctrl+K)" aria-label="Open command palette">Ctrl K</button>
       <button class="lichess-chip" id="account-chip" data-testid="account-chip" aria-haspopup="menu" aria-expanded="false" title="Connect a Lichess account">
@@ -160,13 +154,19 @@
               <span class="rep-name" id="build-rep-name" data-testid="build-rep-name">No repertoire open</span>
               <button class="ib rep-menu-btn" id="build-menu" data-testid="build-menu" title="Repertoire actions (rename, export, new)" aria-haspopup="menu" aria-expanded="false">⋯</button>
             </div>
-            <div class="tools">
-              <button class="btn ghost" id="open-engine-widget-build" data-testid="open-engine-widget-build" title="Open the Stockfish evaluation window">Engine</button>
+            <div class="tools build-tools" aria-label="Build tools">
               <button class="btn primary" id="build-generate-node" data-testid="build-generate-node" title="Generate human-likely continuations from the current position">Generate moves</button>
+              <button class="btn ghost" id="open-engine-widget-build" data-testid="open-engine-widget-build" title="Open the Stockfish evaluation window">Engine</button>
+              <button class="btn ghost inspector-toggle" id="build-tool-explorer" data-testid="build-tool-explorer" type="button" aria-controls="explorer-drawer" aria-expanded="false">Explorer</button>
+              <button class="btn ghost inspector-toggle" id="build-tool-coverage" data-testid="build-tool-coverage" type="button" aria-controls="coverage-drawer" aria-expanded="false">Coverage</button>
             </div>
             <div class="build-branchbar" id="build-branchbar" data-testid="build-branchbar" hidden></div>
-            <details class="drawer" id="explorer-drawer" data-testid="explorer-drawer">
-              <summary>Opening explorer</summary>
+            <section class="build-inspector" id="build-inspector" aria-label="Build inspector" hidden>
+              <div class="build-inspector-head">
+                <span class="build-inspector-label">Inspector</span>
+                <span class="build-inspector-title" id="build-inspector-title"></span>
+              </div>
+              <div class="inspector-panel" id="explorer-drawer" data-testid="explorer-drawer" hidden>
               <div class="explorer-head">
                 <div class="explorer-dbs" role="group" aria-label="Database">
                   <button type="button" class="explorer-db is-active" data-db="masters">Masters</button>
@@ -176,9 +176,8 @@
               </div>
               <div class="explorer-scope muted hint" id="explorer-scope"></div>
               <div class="explorer-rows" id="explorer-rows"></div>
-            </details>
-            <details class="drawer" id="coverage-drawer" data-testid="coverage-drawer">
-              <summary>Coverage scan</summary>
+              </div>
+              <div class="inspector-panel" id="coverage-drawer" data-testid="coverage-drawer" hidden>
               <div class="coverage-head">
                 <button class="btn ghost" id="coverage-run" data-testid="coverage-run">Scan with Maia3</button>
                 <span class="coverage-score" id="coverage-score" hidden></span>
@@ -188,7 +187,8 @@
                 Runs Maia3 on your device.
               </p>
               <div class="coverage-gaps" id="coverage-gaps"></div>
-            </details>
+              </div>
+            </section>
             <div class="movelist tree" id="builder-tree" data-testid="builder-tree"></div>
           </aside>
         </div>

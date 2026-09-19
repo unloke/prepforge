@@ -7,6 +7,7 @@ const root = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(root, "styles.css"), "utf8");
 const html = readFileSync(join(root, "index.html"), "utf8");
 const app = readFileSync(join(root, "app.js"), "utf8");
+const account = readFileSync(join(root, "controllers", "account.js"), "utf8");
 
 function ruleBody(selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -25,25 +26,28 @@ describe("workspace chrome layout", () => {
     expect(app).not.toContain("themeLabel");
   });
 
-  it("keeps nav and More items vertically centered", () => {
+  it("keeps Teams in primary navigation and removes More", () => {
     expect(ruleBody(".tab")).toMatch(/display:\s*inline-flex/);
     expect(ruleBody(".tab")).toMatch(/align-items:\s*center/);
-    expect(ruleBody(".more-nav-menu .tab")).toMatch(/align-items:\s*center/);
-    expect(ruleBody(".more-nav > summary")).toMatch(/align-items:\s*center/);
+    expect(html).toContain('data-testid="nav-teams"');
+    expect(html).not.toContain('id="more-nav"');
+    expect(html).not.toContain('data-testid="nav-settings"');
+    expect(account).toContain('data-action="settings"');
+    expect(account).toContain("onOpenSettings();");
   });
 
-  it("closes More when navigation changes or the user dismisses it", () => {
-    expect(app).toContain('moreNav?.removeAttribute("open")');
-    expect(app).toContain('document.getElementById("more-nav")?.removeAttribute("open")');
-    expect(html).toContain('aria-controls="more-nav-menu"');
-  });
-
-  it("keeps More usable when the topbar wraps on narrow screens", () => {
-    const mobile = css.slice(css.indexOf("@media (max-width: 720px)"));
-    expect(mobile).toMatch(/\.tabs\s*\{[\s\S]*overflow:\s*visible/);
-    expect(mobile).toMatch(/\.more-nav-menu\s*\{[\s\S]*right:\s*0/);
-    expect(mobile).toMatch(/min-width:\s*min\(132px,\s*calc\(100vw\s*-\s*24px\)\)/);
-    expect(mobile).toMatch(/max-width:\s*calc\(100vw\s*-\s*24px\)/);
+  it("uses one mutually exclusive Build inspector", () => {
+    expect(html).toContain('id="build-inspector"');
+    expect(html).toContain('id="build-tool-explorer"');
+    expect(html).toContain('id="build-tool-coverage"');
+    expect(html).toContain('aria-controls="explorer-drawer"');
+    expect(html).toContain('aria-controls="coverage-drawer"');
+    expect(html).not.toContain('<summary>Opening explorer</summary>');
+    expect(html).not.toContain('<summary>Coverage scan</summary>');
+    expect(ruleBody(".inspector-panel")).toMatch(/overflow-y:\s*auto/);
+    expect(app).toContain('setBuildInspector("explorer")');
+    expect(app).toContain('setBuildInspector("coverage")');
+    expect(app).toContain("panel.hidden = name !== active");
   });
 
   it("keeps Coach height stable while the body owns long-copy scrolling", () => {
