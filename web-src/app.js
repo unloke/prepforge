@@ -14,7 +14,6 @@ import { applyTheme } from "./theme.js";
 import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { describeMove } from "./explain.js";
-import { createSanBuffer, resolveSan } from "./san-entry.js";
 import {
   parseWorkspaceLocation,
   serializeWorkspaceLocation,
@@ -2306,7 +2305,20 @@ class BoardController {
       }
       // Clicking a legal target while a piece is selected plays the move.
       if (this.selected && this.selected !== squareName) {
-        const move = legalMoveFor(this.selected, squareName, this.legalMoves);
+        const from = this.selected;
+        if (isPromotionMove(from, squareName, this.legalMoves)) {
+          this._setSelected(null);
+          const board = this;
+          resolveBoardMove({
+            from,
+            to: squareName,
+            moves: this.legalMoves,
+            board,
+            play: (uci) => board.play(uci),
+          });
+          return;
+        }
+        const move = legalMoveFor(from, squareName, this.legalMoves);
         if (move) {
           this._setSelected(null);
           this.play(move);
@@ -2339,7 +2351,20 @@ class BoardController {
       // Enter doesn't fire a redundant synthetic click.
       event.preventDefault();
       if (this.selected && this.selected !== squareName) {
-        const move = legalMoveFor(this.selected, squareName, this.legalMoves);
+        const from = this.selected;
+        if (isPromotionMove(from, squareName, this.legalMoves)) {
+          this._setSelected(null);
+          const board = this;
+          resolveBoardMove({
+            from,
+            to: squareName,
+            moves: this.legalMoves,
+            board,
+            play: (uci) => board.play(uci),
+          });
+          return;
+        }
+        const move = legalMoveFor(from, squareName, this.legalMoves);
         if (move) {
           this._setSelected(null);
           this.play(move);
@@ -2411,6 +2436,19 @@ class BoardController {
     // Same-square release is treated as a click: the piece stays selected so a
     // follow-up click on a target square plays the move.
     if (!target || target === from) return;
+    if (isPromotionMove(from, target, this.legalMoves)) {
+      this._setSelected(null);
+      const board = this;
+      const moves = this.legalMoves;
+      resolveBoardMove({
+        from,
+        to: target,
+        moves,
+        board,
+        play: (uci) => board.play(uci),
+      });
+      return;
+    }
     const move = legalMoveFor(from, target, this.legalMoves);
     if (move) {
       this._setSelected(null);
@@ -2772,7 +2810,6 @@ function activeBoardController() {
   return boards[name] || null;
 }
 
-const sanBuffer = createSanBuffer();
 let workspaceUrlReady = false;
 let paletteItems = [];
 let paletteActive = 0;
@@ -2785,66 +2822,6 @@ function syncWorkspaceUrl({ push = false } = {}) {
   if (current === href) return;
   if (push) history.pushState(loc, "", href);
   else history.replaceState(loc, "", href);
-}
-
-function paintSanBuffer(action, text) {
-  const view = activeViewName();
-  const ids = { analyze: "analysis-san", build: "build-san", train: "train-san" };
-  const el = document.getElementById(ids[view]);
-  if (!el) return;
-  if (!text) {
-    el.hidden = true;
-    el.textContent = "";
-    el.classList.remove("is-reject");
-    return;
-  }
-  el.hidden = false;
-  el.textContent = text;
-  el.classList.toggle("is-reject", action === "reject");
-  if (action === "reject") {
-    window.setTimeout(() => {
-      if (el.textContent === text) {
-        el.hidden = true;
-        el.textContent = "";
-        el.classList.remove("is-reject");
-      }
-    }, 700);
-  }
-}
-
-function playTypedSan(uci) {
-  const view = activeViewName();
-  if (view === "analyze" && boards.analysis) {
-    return onAnalysisBoardMove(uci, boards.analysis.fen);
-  }
-  if (view === "build") return onBuildBoardMove(uci);
-  if (view === "train") return submitTrainingMove(uci);
-  return null;
-}
-
-function handleSanKey(event) {
-  const view = activeViewName();
-  if (!["analyze", "build", "train"].includes(view)) return false;
-  const board = activeBoardController();
-  const fen = board && board.fen;
-  if (!fen) return false;
-  // "f" is both a SAN file and the flip shortcut. Only steal it when it is a
-  // legal SAN prefix from this position; otherwise let the flip handler run.
-  if (!sanBuffer.text && (event.key === "f" || event.key === "F")) {
-    const peek = resolveSan(fen, event.key);
-    if (peek.status === "illegal") return false;
-  }
-  const result = sanBuffer.handleKey(event.key, fen);
-  if (result.action === "ignore") return false;
-  event.preventDefault();
-  paintSanBuffer(result.action, result.action === "play" ? "" : result.san || result.buffer);
-  if (result.action === "play" && result.uci) {
-    Promise.resolve(playTypedSan(result.uci)).catch(() => {});
-  }
-  if (result.action === "reject") {
-    setStatus(`Illegal SAN: ${result.san}`, { severity: "error" });
-  }
-  return true;
 }
 
 function paintEngineBanners() {
@@ -3202,6 +3179,132 @@ function legalTargetsFrom(square, moves) {
 
 function legalMoveFor(from, to, moves) {
   return moves.find((move) => move.startsWith(`${from}${to}`));
+}
+
+const PROMOTION_PIECES = ["q", "r", "b", "n"];
+const PROMOTION_LABELS = { q: "Queen", r: "Rook", b: "Bishop", n: "Knight" };
+
+function promotionOptions(from, to, moves) {
+  return PROMOTION_PIECES.map((piece) => `${from}${to}${piece}`).filter((uci) =>
+    moves.includes(uci)
+  );
+}
+
+// True when `from→to` is a pawn promotion: more than one 5-char UCI shares the
+// from/to prefix, or a single 5-char UCI does. Callers gate the picker on this
+// so normal moves keep the instant click/drag path with zero UI.
+function isPromotionMove(from, to, moves) {
+  return moves.some(
+    (move) => move.startsWith(`${from}${to}`) && move.length > 4
+  );
+}
+
+// Shared promotion picker for Analyze / Build / Train boards (mouse, touch and
+// keyboard). Mounts a small popover on the target square offering
+// Queen / Rook / Bishop / Knight rendered with the active piece set; Queen is
+// the initial focus but nothing is committed until the player chooses —
+// Escape or an outside click cancels and leaves the position untouched.
+// Returns a Promise resolving to the chosen 5-char UCI, or null on cancel.
+export function showPromotionPicker({ from, to, moves, anchorBoard, color }) {
+  return new Promise((resolve) => {
+    const options = promotionOptions(from, to, moves);
+    if (options.length === 0) {
+      resolve(null);
+      return;
+    }
+    if (options.length === 1) {
+      resolve(options[0]);
+      return;
+    }
+    const boardEl =
+      typeof anchorBoard === "string"
+        ? document.getElementById(anchorBoard)
+        : anchorBoard && anchorBoard.board
+          ? anchorBoard.board
+          : anchorBoard || null;
+    const dismiss = (value) => {
+      document.removeEventListener("pointerdown", onOutside, true);
+      document.removeEventListener("keydown", onKey, true);
+      overlay.remove();
+      resolve(value);
+    };
+    const onOutside = (event) => {
+      if (!overlay.contains(event.target)) {
+        event.preventDefault();
+        dismiss(null);
+      }
+    };
+    const onKey = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        dismiss(null);
+      }
+    };
+    const overlay = document.createElement("div");
+    overlay.className = "promotion-picker-overlay";
+    const side = color === "black" ? "black" : "white";
+    overlay.innerHTML = `
+      <div class="promotion-picker" role="dialog" aria-modal="true" aria-label="Choose promotion piece">
+        ${options
+          .map(
+            (uci) => `
+          <button type="button" class="promotion-option" data-uci="${uci}"
+            aria-label="Promote to ${PROMOTION_LABELS[uci[4]] || uci[4]}">
+            ${pieceSvg(side === "white" ? uci[4].toUpperCase() : uci[4])}
+            <span class="promotion-name">${PROMOTION_LABELS[uci[4]] || uci[4]}</span>
+          </button>`
+          )
+          .join("")}
+      </div>
+    `;
+    const buttons = [...overlay.querySelectorAll(".promotion-option")];
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", (event) => {
+        event.preventDefault();
+        dismiss(btn.dataset.uci);
+      });
+    });
+    if (boardEl && boardEl.parentElement) {
+      boardEl.parentElement.appendChild(overlay);
+    } else {
+      document.body.appendChild(overlay);
+    }
+    document.addEventListener("pointerdown", onOutside, true);
+    document.addEventListener("keydown", onKey, true);
+    const queenBtn = buttons[0];
+    if (queenBtn) queenBtn.focus({ preventScroll: true });
+  });
+}
+
+// Promotion-aware resolution shared by click / drag / keyboard-square paths.
+// Plain moves resolve synchronously; promotions open the picker and resolve
+// async. `play` is invoked exactly once with the final UCI (or never, on
+// cancel) so board handlers keep a single onMove entry point.
+function resolveBoardMove({ from, to, moves, board, play }) {
+  if (!isPromotionMove(from, to, moves)) {
+    const move = legalMoveFor(from, to, moves);
+    if (move) play(move);
+    return;
+  }
+  const sideIsBlack = (() => {
+    try {
+      const rank = board && board.fen ? board.fen.split(" ")[1] : "w";
+      return rank === "b";
+    } catch (_) {
+      return false;
+    }
+  })();
+  const boardEl = board && board.board ? board.board : null;
+  void showPromotionPicker({
+    from,
+    to,
+    moves,
+    anchorBoard: boardEl,
+    color: sideIsBlack ? "black" : "white",
+  }).then((uci) => {
+    if (uci) play(uci);
+  });
 }
 
 // Build a single closed polygon for an arrow from `from` to `to`.
@@ -10276,6 +10379,13 @@ function installPolishE2eHook() {
     getLichessAccounts() {
       return lichessAccounts();
     },
+    async setBoardFen(boardName, fen) {
+      const board = boards[boardName] || null;
+      if (!board) throw new Error(`unknown board: ${boardName}`);
+      const info = await boardInfo(fen);
+      board.setPosition({ fen, legalMoves: info.legal_moves, lastMove: null });
+      return info.legal_moves;
+    },
   };
 }
 
@@ -10639,8 +10749,11 @@ function bindEvents() {
       return;
     }
     const active = document.activeElement;
-    if (active && ["TEXTAREA", "INPUT", "SELECT"].includes(active.tagName)) return;
-    if (handleSanKey(event)) return;
+    const inEditable =
+      !!active &&
+      (["TEXTAREA", "INPUT", "SELECT"].includes(active.tagName) ||
+        active.isContentEditable === true);
+    if (inEditable) return;
     // Arrow keys navigate the active tab's board. We blur clicked move buttons
     // on click, so focus returns to the document for these to fire.
     const inBuild = activeViewName() === "build";
@@ -10674,11 +10787,6 @@ function bindEvents() {
       }
     }
     if (event.key === "Escape") {
-      if (sanBuffer.text) {
-        sanBuffer.clear();
-        paintSanBuffer("clear", "");
-        return;
-      }
       closeNodeContextMenu();
       closeRepertoireContextMenu();
       closeAccountMenu();

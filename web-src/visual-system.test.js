@@ -46,7 +46,7 @@ const CHROME_SELECTORS = [
   ".tab",
   ".engine-banner",
   ".palette",
-  ".san-buffer",
+  ".promotion-picker",
 ];
 
 const VIEWS = [
@@ -130,7 +130,7 @@ describe("seven views share chrome families", () => {
       expect(slice).toContain('class="study"');
       expect(slice).toContain('class="board-bar"');
       expect(slice).toContain("sidebar");
-      expect(slice).toContain("san-buffer");
+      expect(slice).toContain("board-label");
     }
   });
 
@@ -147,14 +147,13 @@ describe("seven views share chrome families", () => {
     }
   });
 
-  it("ships the engine banner, command palette, and SAN buffers", () => {
+  it("ships the engine banner, command palette, and promotion picker styles", () => {
     expect(html).toContain('id="analyze-engine-banner"');
     expect(html).toContain('id="build-engine-banner"');
     expect(html).toContain('id="command-palette"');
     expect(html).toContain('id="open-palette"');
-    expect(html).toContain('id="analysis-san"');
-    expect(html).toContain('id="build-san"');
-    expect(html).toContain('id="train-san"');
+    expect(app).toContain("showPromotionPicker");
+    expect(app).toContain("PROMOTION_PIECES");
     expect(html).toContain('id="train-fresh"');
     expect(html).toContain('id="start-play"');
     expect(html).toContain('id="feeling-lucky"');
