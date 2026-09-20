@@ -321,9 +321,12 @@ export function createAccountController({
   // app.js because it owns the finished-game toast and navigation callbacks.
   async function refreshLichessStatus() {
     try {
-      const status = await api("/api/lichess/status");
-      setLichessUsername(status.connected ? status.username : "");
-      if (status.connected) onLichessConnected();
+      const status = await api("/api/lichess");
+      const accounts = Array.isArray(status.accounts) ? status.accounts : [];
+      appState.lichessAccounts = accounts;
+      const primary = accounts.find((account) => account.is_primary) || accounts[0];
+      setLichessUsername(primary ? primary.username : "");
+      if (status.linked) onLichessConnected();
     } catch (_) {
       renderAccountChip();
     }
@@ -359,11 +362,14 @@ export function createAccountController({
     const poll = window.setInterval(async () => {
       tries += 1;
       try {
-        const status = await api("/api/lichess/status");
-        if (status.connected) {
+        const status = await api("/api/lichess");
+        if (status.linked) {
           window.clearInterval(poll);
           window.removeEventListener("message", onMessage);
-          setLichessUsername(status.username);
+          const accounts = Array.isArray(status.accounts) ? status.accounts : [];
+          appState.lichessAccounts = accounts;
+          const primary = accounts.find((account) => account.is_primary) || accounts[0];
+          setLichessUsername(primary ? primary.username : status.username || "");
           void refreshAuthStatus();
           onLichessConnected();
           setStatus(`Lichess: ${status.username}`);

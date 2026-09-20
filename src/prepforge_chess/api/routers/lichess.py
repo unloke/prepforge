@@ -56,9 +56,16 @@ _FLOW_COOKIE = "pf_lichess_oauth"
 _COMPARE_COUNT_MAX = 50
 
 
+class LinkedAccountOut(BaseModel):
+    id: str
+    username: str
+    is_primary: bool
+
+
 class LinkStatus(BaseModel):
     linked: bool
     username: str | None = None
+    accounts: list[LinkedAccountOut] = []
 
 
 def _redirect_uri(request: Request) -> str:
@@ -66,20 +73,48 @@ def _redirect_uri(request: Request) -> str:
     return f"{base}/api/lichess/callback"
 
 
-def _link_for(db: Session, user_id: str) -> LinkedAccount | None:
-    return db.scalar(
-        select(LinkedAccount).where(
-            LinkedAccount.user_id == user_id, LinkedAccount.provider == PROVIDER
+def _links_for(db: Session, user_id: str) -> list[LinkedAccount]:
+    return list(
+        db.scalars(
+            select(LinkedAccount)
+            .where(LinkedAccount.user_id == user_id, LinkedAccount.provider == PROVIDER)
+            .order_by(LinkedAccount.created_at, LinkedAccount.id)
         )
     )
 
 
+def _link_for(db: Session, user_id: str) -> LinkedAccount | None:
+    links = _links_for(db, user_id)
+    for link in links:
+        if link.is_primary:
+            return link
+    return links[0] if links else None
+
+
+def _accounts_out(links: list[LinkedAccount]) -> list[LinkedAccountOut]:
+    return [
+        LinkedAccountOut(
+            id=link.id, username=link.provider_user_id, is_primary=bool(link.is_primary)
+        )
+        for link in links
+    ]
+
+
+def _demote_others(db: Session, user_id: str, keep_id: str) -> None:
+    for link in _links_for(db, user_id):
+        if link.id != keep_id and link.is_primary:
+            link.is_primary = False
+
+
 @router.get("", response_model=LinkStatus)
 def status_(user: User = Depends(current_user), db: Session = Depends(get_db)) -> LinkStatus:
+    links = _links_for(db, user.id)
     link = _link_for(db, user.id)
     if link is None:
         return LinkStatus(linked=False)
-    return LinkStatus(linked=True, username=link.provider_user_id)
+    return LinkStatus(
+        linked=True, username=link.provider_user_id, accounts=_accounts_out(links)
+    )
 
 
 @router.get("/status")
@@ -92,6 +127,34 @@ def status_legacy(
     link = _link_for(db, user.id)
     username = link.provider_user_id if link is not None else None
     return {"connected": bool(username), "username": username}
+
+
+class SetPrimaryBody(BaseModel):
+    account_id: str
+
+
+@router.post("/primary")
+def set_primary(
+    body: SetPrimaryBody,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> LinkStatus:
+    link = db.scalar(
+        select(LinkedAccount).where(
+            LinkedAccount.id == body.account_id,
+            LinkedAccount.user_id == user.id,
+            LinkedAccount.provider == PROVIDER,
+        )
+    )
+    if link is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown linked account")
+    link.is_primary = True
+    _demote_others(db, user.id, link.id)
+    db.commit()
+    links = _links_for(db, user.id)
+    return LinkStatus(
+        linked=True, username=link.provider_user_id, accounts=_accounts_out(links)
+    )
 
 
 def _start_login_flow(request: Request, user: User, settings: Settings) -> Response:
@@ -180,17 +243,59 @@ def callback(
         )
 
     encrypted = encrypt_token(json.dumps(token))
-    link = _link_for(db, user.id)
-    if link is None:
-        link = LinkedAccount(user_id=user.id, provider=PROVIDER)
+    same_identity = db.scalar(
+        select(LinkedAccount).where(
+            LinkedAccount.user_id == user.id,
+            LinkedAccount.provider == PROVIDER,
+            LinkedAccount.provider_user_id == username,
+        )
+    )
+    if same_identity is not None:
+        same_identity.encrypted_token = encrypted
+        same_identity.is_primary = True
+        _demote_others(db, user.id, same_identity.id)
+        db.commit()
+    else:
+        link = LinkedAccount(
+            user_id=user.id,
+            provider=PROVIDER,
+            provider_user_id=username,
+            encrypted_token=encrypted,
+            is_primary=not _links_for(db, user.id),
+        )
         db.add(link)
-    link.provider_user_id = username
-    link.encrypted_token = encrypted
-    db.commit()
+        db.flush()
+        if link.is_primary:
+            _demote_others(db, user.id, link.id)
+        db.commit()
 
     response = RedirectResponse("/?lichess=linked", status_code=status.HTTP_303_SEE_OTHER)
     response.delete_cookie(_FLOW_COOKIE, path="/")
     return response
+
+
+@router.delete("/{account_id}", status_code=status.HTTP_204_NO_CONTENT)
+def unlink_one(
+    account_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)
+) -> Response:
+    link = db.scalar(
+        select(LinkedAccount).where(
+            LinkedAccount.id == account_id,
+            LinkedAccount.user_id == user.id,
+            LinkedAccount.provider == PROVIDER,
+        )
+    )
+    if link is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown linked account")
+    was_primary = bool(link.is_primary)
+    db.delete(link)
+    db.flush()
+    if was_primary:
+        remaining = _links_for(db, user.id)
+        if remaining:
+            remaining[0].is_primary = True
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
@@ -198,6 +303,10 @@ def unlink(user: User = Depends(current_user), db: Session = Depends(get_db)) ->
     link = _link_for(db, user.id)
     if link is not None:
         db.delete(link)
+        db.flush()
+        remaining = _links_for(db, user.id)
+        if remaining and not any(r.is_primary for r in remaining):
+            remaining[0].is_primary = True
         db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -217,8 +326,25 @@ _EXPLORER_CACHE_CAP = 500
 _explorer_cache: OrderedDict[str, tuple[float, dict]] = OrderedDict()
 
 
-def _linked_token(db: Session, user_id: str) -> str | None:
-    link = _link_for(db, user_id)
+def _link_for_account(db: Session, user_id: str, account_id: str | None) -> LinkedAccount | None:
+    if account_id:
+        link = db.scalar(
+            select(LinkedAccount).where(
+                LinkedAccount.id == account_id,
+                LinkedAccount.user_id == user_id,
+                LinkedAccount.provider == PROVIDER,
+            )
+        )
+        if link is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="unknown linked account"
+            )
+        return link
+    return _link_for(db, user_id)
+
+
+def _linked_token(db: Session, user_id: str, account_id: str | None = None) -> str | None:
+    link = _link_for_account(db, user_id, account_id)
     if link is None or not link.encrypted_token:
         return None
     try:
@@ -294,8 +420,10 @@ def explorer_proxy(
 # the profile blob. These replace the legacy ``/api/lichess/{compare,latest,seen}``.
 
 
-def _linked_username_or_400(db: Session, user_id: str) -> str:
-    link = _link_for(db, user_id)
+def _linked_username_or_400(
+    db: Session, user_id: str, account_id: str | None = None
+) -> str:
+    link = _link_for_account(db, user_id, account_id)
     if link is None or not link.provider_user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -310,10 +438,11 @@ def _run_compare(
     owner: str,
     db: Session,
     repo: PrepForgeRepository,
+    account_id: str | None = None,
 ) -> dict:
     """Fetch the linked account's recent public games and match each against THIS
     owner's repertoires (did my prep hold up / where did I leave book)."""
-    username = _linked_username_or_400(db, user.id)
+    username = _linked_username_or_400(db, user.id, account_id)
     count = max(1, min(_COMPARE_COUNT_MAX, count))
     try:
         summaries = lichess_fetch.compare_recent_games(
@@ -360,20 +489,23 @@ def _run_compare(
 @router.get("/compare")
 def compare(
     count: int = 10,
+    account_id: str | None = None,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
     db: Session = Depends(get_db),
     repo: PrepForgeRepository = Depends(get_repository),
 ) -> dict:
-    return _run_compare(count, user, owner, db, repo)
+    return _run_compare(count, user, owner, db, repo, account_id)
 
 
 class CompareBody(BaseModel):
     # The SPA still POSTs ``{username, count}`` (web-src/app.js). ``username`` is
     # ignored -- compare always runs against the caller's *linked* account, never a
     # client-supplied one (multi-tenant isolation); only ``count`` is honoured.
+    # ``account_id`` selects which linked identity to read; omitted means primary.
     username: str | None = None
     count: int = 10
+    account_id: str | None = None
 
 
 @router.post("/compare")
@@ -387,13 +519,14 @@ def compare_post(
     """Legacy POST shim: the old single-tenant server dispatched compare on POST with a
     client-supplied username (server.py). Here the username is dropped on purpose; the
     fetch is owner-scoped to the linked account."""
-    return _run_compare(body.count, user, owner, db, repo)
+    return _run_compare(body.count, user, owner, db, repo, body.account_id)
 
 
 @router.get("/latest")
 def latest(
     include_moves: bool = True,
     light: bool = False,
+    account_id: str | None = None,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
     db: Session = Depends(get_db),
@@ -408,7 +541,7 @@ def latest(
     true finish time). ``light`` wins when set, so the recency gate keeps working."""
     if light:
         include_moves = False
-    username = _linked_username_or_400(db, user.id)
+    username = _linked_username_or_400(db, user.id, account_id)
     try:
         if include_moves:
             games = lichess_fetch.fetch_recent_pgns(username, 1, include_moves=True)

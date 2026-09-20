@@ -22,6 +22,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     Enum as SAEnum,
     ForeignKey,
@@ -84,7 +85,9 @@ class LinkedAccount(Base):
     __tablename__ = "linked_accounts"
     __table_args__ = (
         UniqueConstraint("provider", "provider_user_id", name="uq_provider_identity"),
-        UniqueConstraint("user_id", "provider", name="uq_user_provider"),
+        UniqueConstraint(
+            "user_id", "provider", "provider_user_id", name="uq_user_provider_identity"
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
@@ -95,6 +98,9 @@ class LinkedAccount(Base):
     provider_user_id: Mapped[str] = mapped_column(String(120), nullable=False)
     # OAuth token, encrypted at rest (never plaintext -- see security.encrypt_token).
     encrypted_token: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    # Exactly one linked identity per provider serves as the default source for
+    # My-last-game / compare / explorer reads. Backfilled true for pre-existing rows.
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     user: Mapped[User] = relationship(back_populates="linked_accounts")

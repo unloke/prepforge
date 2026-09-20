@@ -16,6 +16,10 @@ export function createSettingsView({
   disposeSharedMaia3Provider,
   showConfirmModal,
   startFen,
+  api,
+  postJson,
+  startLichessOAuth = () => {},
+  onAccountsChanged = () => {},
 }) {
   let eventsBound = false;
 
@@ -91,8 +95,78 @@ export function createSettingsView({
     renderBrowserEngineStatus();
     renderStrengthControls();
     renderThemeControl();
+    void renderConnections();
     const brilliantToggle = document.getElementById("settings-brilliant-toggle");
     if (brilliantToggle) brilliantToggle.checked = !!pref("brilliantDetection");
+  }
+
+  function connectionAccounts() {
+    const accounts = appState.lichessAccounts;
+    if (Array.isArray(accounts)) return accounts;
+    if (appState.lichessUsername) {
+      return [{ id: "legacy", username: appState.lichessUsername, is_primary: true }];
+    }
+    return [];
+  }
+
+  async function renderConnections() {
+    const list = document.getElementById("settings-lichess-accounts");
+    if (!list) return;
+    const accounts = connectionAccounts();
+    if (!accounts.length) {
+      list.innerHTML = '<p class="muted">No Lichess account linked.</p>';
+      return;
+    }
+    list.innerHTML = accounts
+      .map(
+        (account) =>
+          `<div class="repertoire-row" data-account-id="${account.id}">` +
+          `<span class="rep-name">${account.username}${account.is_primary ? " — Primary" : ""}</span>` +
+          `<span class="rep-actions">` +
+          (account.is_primary
+            ? ""
+            : `<button type="button" class="btn ghost" data-conn-action="primary">Set primary</button>`) +
+          `<button type="button" class="btn ghost" data-conn-action="unlink">Unlink</button>` +
+          `</span></div>`,
+      )
+      .join("");
+  }
+
+  async function refreshConnections() {
+    if (typeof api !== "function") return;
+    try {
+      const status = await api("/api/lichess");
+      appState.lichessAccounts = Array.isArray(status.accounts) ? status.accounts : [];
+      const primary = appState.lichessAccounts.find((account) => account.is_primary)
+        || appState.lichessAccounts[0];
+      appState.lichessUsername = primary ? primary.username : null;
+    } catch {
+      /* keep last-known connection state */
+    }
+    await renderConnections();
+  }
+
+  async function setPrimaryAccount(accountId) {
+    await postJson("/api/lichess/primary", { account_id: accountId });
+    await refreshConnections();
+    onAccountsChanged();
+  }
+
+  async function unlinkAccount(accountId) {
+    const confirmed = await showConfirmModal({
+      title: "Unlink this Lichess account?",
+      body: "This browser keeps working; game imports for that identity stop.",
+      okLabel: "Unlink",
+      cancelLabel: "Cancel",
+    });
+    if (!confirmed) return;
+    const response = await fetch(`/api/lichess/${encodeURIComponent(accountId)}`, {
+      method: "DELETE",
+      credentials: "same-origin",
+    });
+    if (!response.ok) throw new Error(`unlink ${response.status}`);
+    await refreshConnections();
+    onAccountsChanged();
   }
 
   async function renderMaia3Status() {
@@ -248,6 +322,24 @@ export function createSettingsView({
         if (!maiaAuto.checked) saveSettings({ maia_rating: Number(maiaSlider.value) }).catch(() => {});
       });
     }
+
+    const linkBtn = document.getElementById("settings-link-lichess");
+    if (linkBtn) linkBtn.addEventListener("click", () => startLichessOAuth());
+
+    const accountsList = document.getElementById("settings-lichess-accounts");
+    if (accountsList) {
+      accountsList.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-conn-action]");
+        const row = event.target.closest("[data-account-id]");
+        if (!button || !row) return;
+        const accountId = row.dataset.accountId;
+        if (button.dataset.connAction === "primary") {
+          setPrimaryAccount(accountId).catch((error) => setStatus(String(error.message || error)));
+        } else if (button.dataset.connAction === "unlink") {
+          unlinkAccount(accountId).catch((error) => setStatus(String(error.message || error)));
+        }
+      });
+    }
   }
 
   return {
@@ -257,6 +349,8 @@ export function createSettingsView({
     renderMaia3Status,
     renderStrengthControls,
     renderThemeControl,
+    renderConnections,
+    refreshConnections,
     retryMaia3,
     resetMaia3Cache,
   };
