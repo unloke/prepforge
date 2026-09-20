@@ -29,7 +29,15 @@ def upgrade() -> None:
             "uq_user_provider_identity", ["user_id", "provider", "provider_user_id"]
         )
 
-    op.execute("UPDATE linked_accounts SET is_primary = 1 WHERE is_primary IS NULL")
+    linked_accounts = sa.table(
+        "linked_accounts",
+        sa.column("is_primary", sa.Boolean()),
+    )
+    op.execute(
+        linked_accounts.update()
+        .where(linked_accounts.c.is_primary.is_(None))
+        .values(is_primary=True)
+    )
 
     with op.batch_alter_table("linked_accounts", schema=None) as batch_op:
         batch_op.alter_column("is_primary", existing_type=sa.Boolean(), nullable=False)
