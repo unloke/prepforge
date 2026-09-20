@@ -36,6 +36,46 @@ jobs:
           uv run alembic upgrade head
           uv run alembic check
 
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: migtest
+          POSTGRES_PASSWORD: migtest-only
+          POSTGRES_DB: prepforge_migtest
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U migtest -d prepforge_migtest"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+          enable-cache: true
+      - name: Install (server + dev extras)
+        run: uv sync --extra server --extra dev
+      - name: Alembic upgrade head + drift check on PostgreSQL
+        # The d4e5f6a7b8c9 backfill passed SQLite CI while failing on PostgreSQL
+        # (integer literal into a boolean column). This job runs the same
+        # upgrade/check against a real PostgreSQL service so dialect-specific
+        # SQL in migrations cannot pass CI again.
+        env:
+          DATABASE_URL: postgresql://migtest:migtest-only@localhost:5432/prepforge_migtest
+        run: |
+          uv run alembic upgrade head
+          uv run alembic check
+      - name: Migration regression tests on PostgreSQL
+        env:
+          DATABASE_URL: postgresql://migtest:migtest-only@localhost:5432/prepforge_migtest
+          TEST_POSTGRES_URL: postgresql://migtest:migtest-only@localhost:5432/prepforge_migtest
+        run: uv run pytest -q tests/test_migration_lichess_primary.py tests/test_api_lichess.py tests/test_api_lichess_games.py
+
   js:
     runs-on: ubuntu-latest
     steps:
