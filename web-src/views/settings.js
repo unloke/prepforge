@@ -23,6 +23,33 @@ export function createSettingsView({
 }) {
   let eventsBound = false;
 
+  function paintSwitch(el, on) {
+    if (!el) return;
+    el.classList.toggle("is-on", !!on);
+    el.setAttribute("aria-checked", String(!!on));
+  }
+
+  function readSwitch(el) {
+    return !!el?.classList.contains("is-on");
+  }
+
+  function bindSwitch(el, initial, onChange) {
+    if (!el) return;
+    paintSwitch(el, initial);
+    el.addEventListener("click", () => {
+      if (el.disabled) return;
+      const next = !readSwitch(el);
+      paintSwitch(el, next);
+      onChange(next);
+    });
+    el.addEventListener("keydown", (event) => {
+      if (event.key === " " || event.key === "Enter") {
+        event.preventDefault();
+        el.click();
+      }
+    });
+  }
+
   function renderStrengthControls() {
     const depthEl = document.getElementById("settings-depth");
     const depthOut = document.getElementById("settings-depth-readout");
@@ -37,7 +64,7 @@ export function createSettingsView({
     }
     if (depthOut) depthOut.textContent = depthEl.value;
     const auto = !Number.isFinite(appState.maiaRatingPinned);
-    autoEl.checked = auto;
+    paintSwitch(autoEl, auto);
     ratingEl.disabled = auto;
     ratingEl.value = String(effectiveMaiaRating());
     if (ratingOut) ratingOut.textContent = ratingEl.value;
@@ -52,7 +79,15 @@ export function createSettingsView({
 
   function renderThemeControl() {
     const themeEl = document.getElementById("settings-theme");
-    if (themeEl) themeEl.value = String(pref("theme") || "system");
+    const current = String(pref("theme") || "system");
+    if (themeEl) themeEl.value = current;
+    const seg = document.getElementById("settings-theme-seg");
+    if (seg) {
+      seg.querySelectorAll(".seg-btn").forEach((btn) => {
+        btn.classList.toggle("is-active", btn.dataset.themeValue === current);
+        btn.setAttribute("aria-pressed", String(btn.dataset.themeValue === current));
+      });
+    }
   }
 
   function renderBrowserEngineStatus() {
@@ -95,9 +130,13 @@ export function createSettingsView({
     renderBrowserEngineStatus();
     renderStrengthControls();
     renderThemeControl();
-    void renderConnections();
+    try {
+      void renderConnections();
+    } catch (_) {
+      /* signed-out: connections list stays at its static markup */
+    }
     const brilliantToggle = document.getElementById("settings-brilliant-toggle");
-    if (brilliantToggle) brilliantToggle.checked = !!pref("brilliantDetection");
+    if (brilliantToggle) paintSwitch(brilliantToggle, !!pref("brilliantDetection"));
   }
 
   function connectionAccounts() {
@@ -268,9 +307,62 @@ export function createSettingsView({
     window.location.reload();
   }
 
+  function toggleInfoPop(btnId, popId) {
+    const btn = document.getElementById(btnId);
+    const pop = document.getElementById(popId);
+    if (!btn || !pop) return;
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const open = pop.hidden;
+      for (const other of document.querySelectorAll("#view-settings .pf-info-pop")) {
+        other.hidden = true;
+      }
+      for (const other of document.querySelectorAll("#view-settings .pf-info")) {
+        other.setAttribute("aria-expanded", "false");
+      }
+      pop.hidden = !open;
+      btn.setAttribute("aria-expanded", String(open));
+    });
+  }
+
   function bind() {
     if (eventsBound) return;
     eventsBound = true;
+
+    // Segmented theme control: direct buttons (no select needed). The hidden
+    // native #settings-theme select is still synced for assistive tech that
+    // expects a select element.
+    const themeSeg = document.getElementById("settings-theme-seg");
+    if (themeSeg) {
+      themeSeg.querySelectorAll(".seg-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          setPref("theme", btn.dataset.themeValue);
+          renderThemeControl();
+        });
+      });
+    }
+    const themeEl = document.getElementById("settings-theme");
+    if (themeEl) {
+      themeEl.addEventListener("change", () => {
+        setPref("theme", themeEl.value);
+        renderThemeControl();
+      });
+    }
+
+    toggleInfoPop("engine-info", "engine-info-pop");
+    toggleInfoPop("maia-info", "maia-info-pop");
+    toggleInfoPop("strength-info", "strength-info-pop");
+    toggleInfoPop("brilliant-info", "brilliant-info-pop");
+    toggleInfoPop("connections-info", "connections-info-pop");
+    document.getElementById("view-settings")?.addEventListener("click", (event) => {
+      if (event.target.closest(".pf-info, .pf-info-pop")) return;
+      for (const other of document.querySelectorAll("#view-settings .pf-info-pop")) {
+        other.hidden = true;
+      }
+      for (const other of document.querySelectorAll("#view-settings .pf-info")) {
+        other.setAttribute("aria-expanded", "false");
+      }
+    });
 
     const refreshBtn = document.getElementById("settings-refresh");
     if (refreshBtn) refreshBtn.addEventListener("click", () => loadSettings().catch(() => {}));
@@ -282,18 +374,9 @@ export function createSettingsView({
     if (maiaResetBtn) maiaResetBtn.addEventListener("click", () => resetMaia3Cache().catch(() => {}));
 
     const brilliantToggle = document.getElementById("settings-brilliant-toggle");
-    if (brilliantToggle) {
-      brilliantToggle.checked = !!pref("brilliantDetection");
-      brilliantToggle.addEventListener("change", () =>
-        setPref("brilliantDetection", brilliantToggle.checked),
-      );
-    }
-
-    const themeEl = document.getElementById("settings-theme");
-    if (themeEl) {
-      themeEl.value = String(pref("theme") || "system");
-      themeEl.addEventListener("change", () => setPref("theme", themeEl.value));
-    }
+    bindSwitch(brilliantToggle, !!pref("brilliantDetection"), (next) =>
+      setPref("brilliantDetection", next),
+    );
 
     const depthSlider = document.getElementById("settings-depth");
     if (depthSlider) {
@@ -309,17 +392,15 @@ export function createSettingsView({
     const maiaAuto = document.getElementById("settings-maia-auto");
     const maiaSlider = document.getElementById("settings-maia-rating");
     if (maiaAuto && maiaSlider) {
-      maiaAuto.addEventListener("change", () =>
-        saveSettings({ maia_rating: maiaAuto.checked ? "auto" : Number(maiaSlider.value) }).catch(
-          () => {},
-        ),
+      bindSwitch(maiaAuto, !Number.isFinite(appState.maiaRatingPinned), (next) =>
+        saveSettings({ maia_rating: next ? "auto" : Number(maiaSlider.value) }).catch(() => {}),
       );
       maiaSlider.addEventListener("input", () => {
         const out = document.getElementById("settings-maia-rating-readout");
         if (out) out.textContent = maiaSlider.value;
       });
       maiaSlider.addEventListener("change", () => {
-        if (!maiaAuto.checked) saveSettings({ maia_rating: Number(maiaSlider.value) }).catch(() => {});
+        if (!readSwitch(maiaAuto)) saveSettings({ maia_rating: Number(maiaSlider.value) }).catch(() => {});
       });
     }
 
@@ -353,5 +434,8 @@ export function createSettingsView({
     refreshConnections,
     retryMaia3,
     resetMaia3Cache,
+    // Test/acceptance hook: the Settings view binds lazily after the
+    // /api/settings round-trip, so expose the binder for harnesses.
+    ensureBound: bind,
   };
 }
