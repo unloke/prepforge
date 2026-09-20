@@ -9481,6 +9481,12 @@ async function ensureSettingsView() {
       disposeSharedMaia3Provider,
       showConfirmModal,
       startFen: START_FEN,
+      api,
+      postJson,
+      startLichessOAuth,
+      onAccountsChanged: () => {
+        void refreshLichessStatus();
+      },
     });
     settingsView.bind();
   }
