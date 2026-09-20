@@ -66,6 +66,16 @@ def test_boolean_backfill_compiles_per_dialect() -> None:
     assert "is_primary=1" not in pg_sql.replace(" ", "")
 
 
+def _pg_url(raw: str) -> str:
+    # The app pins bare postgres:// URLs to postgresql+psycopg:// (psycopg v3);
+    # the test's own engine needs the same pin or SQLAlchemy defaults to psycopg2.
+    if raw.startswith("postgresql://"):
+        return "postgresql+psycopg://" + raw[len("postgresql://") :]
+    if raw.startswith("postgres://"):
+        return "postgresql+psycopg://" + raw[len("postgres://") :]
+    return raw
+
+
 def _alembic_config(db_url: str, monkeypatch=None) -> Config:
     if monkeypatch is not None:
         monkeypatch.setenv("DATABASE_URL", db_url)
@@ -135,7 +145,7 @@ def _seed_pre_migration_rows(engine: sa.Engine) -> None:
 )
 def test_upgrade_backfills_is_primary_true_postgres(monkeypatch) -> None:
     db_url = os.environ["TEST_POSTGRES_URL"]
-    engine = sa.create_engine(db_url)
+    engine = sa.create_engine(_pg_url(db_url))
     with engine.begin() as conn:
         conn.execute(sa.text("DROP TABLE IF EXISTS linked_accounts CASCADE"))
         conn.execute(sa.text("DROP TABLE IF EXISTS users CASCADE"))
