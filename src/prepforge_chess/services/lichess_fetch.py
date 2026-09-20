@@ -77,8 +77,9 @@ class FetchedGame:
     # ISO-8601 UTC *finish* time, from Lichess's `lastMoveAt` (None if unknown).
     # The "you just finished a game" watcher gates on this so it only surfaces a
     # genuinely-recent game — correct for correspondence/classical too, not just
-    # bullet/blitz where start≈finish. Only the lightweight NDJSON probe populates
-    # it; the PGN import path leaves it None (no consumer there needs it).
+    # bullet/blitz where start≈finish. The lightweight NDJSON probe populates it
+    # from `lastMoveAt`; the PGN import path derives it from the UTCDate/UTCTime
+    # headers so My-last-game ranks by true finish time, not response order.
     finished_at: Optional[str] = None
 
 
@@ -184,6 +185,7 @@ def _build_fetched_game(pgn_block: str) -> FetchedGame:
         result=headers.get("Result", "*"),
         lichess_id=_extract_lichess_id(headers.get("Site")),
         event=headers.get("Event"),
+        finished_at=_iso_from_pgn_datetime(headers.get("UTCDate"), headers.get("UTCTime")),
     )
 
 
@@ -358,6 +360,28 @@ def _result_from_json(obj: dict) -> str:
     if obj.get("status") in (None, "started", "created"):
         return "*"
     return "1/2-1/2"
+
+
+def _iso_from_pgn_datetime(date_value, time_value) -> Optional[str]:
+    """Derive a game's canonical finish timestamp from its PGN UTCDate/UTCTime.
+
+    Lichess exports e.g. ``[UTCDate "2026.06.08"]`` + ``[UTCTime "10:00:00"]``.
+    Missing/"?"/malformed headers yield None (unknown) so ranking falls back
+    to the stable game-id tiebreak, never a guess.
+    """
+    from datetime import datetime, timezone
+
+    if not date_value or not time_value:
+        return None
+    date_text = str(date_value).strip()
+    time_text = str(time_value).strip()
+    if "?" in date_text or "?" in time_text:
+        return None
+    try:
+        naive = datetime.strptime("{0} {1}".format(date_text, time_text), "%Y.%m.%d %H:%M:%S")
+    except ValueError:
+        return None
+    return naive.replace(tzinfo=timezone.utc).isoformat()
 
 
 def _iso_from_epoch_ms(value) -> Optional[str]:

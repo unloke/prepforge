@@ -5,6 +5,7 @@ from prepforge_chess.services.lichess_fetch import (
     _build_fetched_game,
     _build_fetched_game_from_json,
     _iso_from_epoch_ms,
+    _iso_from_pgn_datetime,
     _parse_ndjson_games,
     _split_multi_pgn,
     newest_game_across,
@@ -72,7 +73,7 @@ def test_parse_ndjson_games_skips_blank_and_malformed_lines():
 
 
 def test_build_fetched_game_from_pgn_carries_no_finished_at():
-    # The PGN import path no longer derives a timestamp (no consumer needs one).
+    # A PGN block without UTCDate/UTCTime carries no finish timestamp.
     pgn_block = (
         '[Event "Rated blitz game"]\n'
         '[Site "https://lichess.org/abcd1234"]\n'
@@ -85,6 +86,68 @@ def test_build_fetched_game_from_pgn_carries_no_finished_at():
     assert game.lichess_id == "abcd1234"
     assert game.result == "1-0"
     assert game.finished_at is None
+
+
+def test_iso_from_pgn_datetime_derives_canonical_finish_time():
+    assert _iso_from_pgn_datetime("2026.06.08", "10:00:00") == "2026-06-08T10:00:00+00:00"
+    assert _iso_from_pgn_datetime(None, "10:00:00") is None
+    assert _iso_from_pgn_datetime("2026.06.08", None) is None
+    assert _iso_from_pgn_datetime("2026.??.??", "10:00:00") is None
+    assert _iso_from_pgn_datetime("2026.06.08", "??:??:??") is None
+    assert _iso_from_pgn_datetime("not-a-date", "10:00:00") is None
+
+
+def test_build_fetched_game_derives_finished_at_from_utc_headers():
+    pgn_block = (
+        '[Event "Rated blitz game"]\n'
+        '[Site "https://lichess.org/abcd1234"]\n'
+        '[UTCDate "2026.06.08"]\n'
+        '[UTCTime "10:00:00"]\n'
+        '[White "alice"]\n'
+        '[Black "bob"]\n'
+        '[Result "1-0"]\n\n'
+        "1. e4 e5 2. Nf3 1-0\n"
+    )
+    game = _build_fetched_game(pgn_block)
+    assert game.finished_at == "2026-06-08T10:00:00+00:00"
+
+
+def test_newest_game_across_pgn_path_ranks_by_end_timestamp(monkeypatch):
+    """S1: My-last-game PGN fetch must rank by UTCDate/UTCTime, so the truly
+    newest game wins even when the older account answers first."""
+    import time
+
+    import prepforge_chess.services.lichess_fetch as fetch_mod
+
+    def _block(username, date, game_id, delay=0.0):
+        return (
+            '[Event "Rated blitz game"]\n'
+            '[Site "https://lichess.org/{0}"]\n'
+            '[UTCDate "{1}"]\n'
+            '[UTCTime "10:00:00"]\n'
+            '[White "{2}"]\n'
+            '[Black "Opponent"]\n'
+            '[Result "1-0"]\n\n'
+            "1. e4 e5 1-0\n"
+        ).format(game_id, date, username), delay
+
+    blocks = {
+        "alice": _block("alice", "2026.06.07", "pgn-older"),
+        "bob2": _block("bob2", "2026.06.08", "pgn-newer", delay=0.05),
+    }
+
+    def _fake_pgn(username, count=1, **kwargs):
+        from prepforge_chess.services.lichess_fetch import _build_fetched_game
+
+        text, delay = blocks[username]
+        if delay:
+            time.sleep(delay)
+        return [_build_fetched_game(text)]
+
+    monkeypatch.setattr(fetch_mod, "fetch_recent_pgns", _fake_pgn)
+    game, source = fetch_mod.newest_game_across(["alice", "bob2"], with_moves=True)
+    assert game.lichess_id == "pgn-newer"
+    assert source == "bob2"
 
 
 def test_split_multi_pgn_still_parses_ids_for_importer():

@@ -78,4 +78,29 @@ describe("account controller", () => {
     expect(appState.lichessUsername).toBeNull();
     expect(controller.getStoredLichessUsername()).toBeNull();
   });
+
+  it("only opens Settings from an explicit menu action, never from hydration", async () => {
+    // S1 startup invariant: delayed signed-in hydration (auth/Lichess) must
+    // not self-navigate — Settings opens only via the account-menu action.
+    const api = vi.fn().mockResolvedValue({
+      signed_in: true,
+      username: "alice",
+      user_id: "user-1",
+    });
+    const { appState, controller, onOpenSettings } = makeController({ api });
+
+    await controller.refreshAuthStatus();
+    await controller.refreshAuthStatus();
+
+    const lichessApi = vi.fn().mockResolvedValue({
+      linked: true,
+      username: "alice",
+      accounts: [{ id: "a", username: "alice", is_primary: true }],
+    });
+    const { controller: lichessController } = makeController({ api: lichessApi });
+    await lichessController.refreshLichessStatus();
+
+    expect(appState.signedIn).toBe(true);
+    expect(onOpenSettings).not.toHaveBeenCalled();
+  });
 });
