@@ -124,6 +124,33 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".sidebar")).toMatch(/overflow-y:\s*auto/);
   });
 
+  it("never navigates away during background hydration", () => {
+    // S1 startup invariant: the ONLY startup switchView runs inside
+    // restoreWorkspaceLocation with the parsed URL view. Background hydration
+    // (auth/Lichess/settings/Maia) paints into the current view and must never
+    // call switchView — so a signed-in first open with delayed hydration stays
+    // on the URL route instead of self-navigating to Settings.
+    const startup = app.slice(app.indexOf("async function init()"));
+    expect(app).toContain("async function restoreWorkspaceLocation()");
+    expect(startup).toContain("restoreWorkspaceLocation()");
+    const restore = app.slice(app.indexOf("async function restoreWorkspaceLocation()"));
+    expect(restore.slice(0, 1200)).toMatch(/switchView\(loc\.view,\s*\{\s*fromUrl:\s*true\s*\}\)/);
+    expect(startup).not.toMatch(/switchView\(\s*["']settings["']\s*\)/);
+    for (const name of [
+      "loadSignedInWorkspace",
+      "refreshAutoMaiaRating",
+      "applySettingsPayload",
+    ]) {
+      const idx = app.indexOf(`function ${name}`);
+      expect(idx).toBeGreaterThanOrEqual(0);
+      expect(app.slice(idx, idx + 2500)).not.toMatch(/switchView\s*\(/);
+    }
+    // Controller-owned hydration is injected (not app.js): assert on account.js.
+    expect(account).not.toMatch(/refreshAuthStatus[\s\S]{0,800}?switchView/);
+    expect(account).not.toMatch(/refreshLichessStatus[\s\S]{0,1000}?switchView/);
+    expect(account).not.toMatch(/setLichessUsername[\s\S]{0,1000}?switchView/);
+  });
+
   it("routes identity-changing actions through a one-time account chooser", () => {
     expect(app).toContain("resolveLichessAccountId(");
     expect(app).toContain("chooseLichessAccount(");
@@ -133,6 +160,10 @@ describe("workspace chrome layout", () => {
     // My last game aggregates self server-side: no chooser, source shown quietly.
     expect(app).not.toMatch(/fetchMyLichessGame[\s\S]{0,400}?resolveLichessAccountId/);
     expect(app).toMatch(/fetchMyLichessGame[\s\S]*?source_account/);
+    // The default My-last-game action passes no account_id: the backend fans
+    // out across linked identities and ranks by canonical finish timestamp.
+    expect(app).toMatch(/async function fetchMyLichessGame\(accountId = null\)/);
+    expect(app).toMatch(/api\(`\/api\/lichess\/latest\$\{query\}`\)/);
     // Games compare aggregates self by default, narrowing only on explicit picks.
     expect(app).toMatch(/runLichessCompare[\s\S]*?gamesSourceAccountIds/);
     expect(app).toMatch(/runLichessCompare[\s\S]*?account_ids/);

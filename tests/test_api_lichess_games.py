@@ -563,6 +563,111 @@ def _link_as(client, monkeypatch, username):
     _link(client)
 
 
+# ---- My last game: true newest across linked accounts (S1) ---------------------
+
+
+def test_my_last_game_picks_true_newest_when_older_account_answers_first(
+    client, monkeypatch
+):
+    """S1 regression: A is older, B is newer; even if A's response wins the
+    race, the general My-last-game action (no account_id) loads B's game."""
+    _register(client, "mylastgame@example.com")
+    _link_as(client, monkeypatch, "MyOld")
+    _link_as(client, monkeypatch, "MyNew")
+
+    def _fake_meta(username, count=1, **kwargs):
+        assert count == 1
+        game = _game()
+        game.white = username
+        game.black = "Opponent"
+        if username == "MyOld":
+            game.lichess_id = "olderAAA"
+            # Older account genuinely finished earlier.
+            game.finished_at = "2026-06-07T00:00:00+00:00"
+        else:
+            game.lichess_id = "newerBBB"
+            game.finished_at = "2026-06-08T00:00:00+00:00"
+        return [game]
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_latest_games_meta",
+        lambda username, count=1, **kwargs: _fake_meta(username, count, **kwargs),
+    )
+
+    # General action: no account_id anywhere in the request.
+    body = client.get("/api/lichess/latest", params={"light": 1}).json()
+    assert body["has_game"] is True
+    assert body["lichess_id"] == "newerBBB"
+    assert body["source_account"] == "MyNew"
+    assert body["finished_at"] == "2026-06-08T00:00:00+00:00"
+
+
+def test_my_last_game_true_newest_survives_reversed_completion_order(
+    client, monkeypatch
+):
+    """S1 race regression: the newer account must win even when the older
+    account's fetch completes first (bounded fan-out completion order must
+    not decide the winner)."""
+    import time
+
+    import prepforge_chess.services.lichess_fetch as fetch_mod
+
+    _register(client, "mylastgamerace@example.com")
+    _link_as(client, monkeypatch, "RaceOld")
+    _link_as(client, monkeypatch, "RaceNew")
+
+    def _fake_meta(username, count=1, **kwargs):
+        game = _game()
+        game.white = username
+        game.black = "Opponent"
+        if username == "RaceOld":
+            game.lichess_id = "race-older"
+            game.finished_at = "2026-06-07T00:00:00+00:00"
+            return [game]
+        # Newer account is slower to answer — it must still win.
+        time.sleep(0.05)
+        game.lichess_id = "race-newer"
+        game.finished_at = "2026-06-08T00:00:00+00:00"
+        return [game]
+
+    monkeypatch.setattr(fetch_mod, "fetch_latest_games_meta", _fake_meta)
+
+    game, source = fetch_mod.newest_game_across(["RaceOld", "RaceNew"])
+    assert game.lichess_id == "race-newer"
+    assert source == "RaceNew"
+
+
+def test_my_last_game_pgn_path_picks_true_newest_by_end_timestamp(
+    client, monkeypatch
+):
+    """S1 regression: the full-PGN My-last-game path must also rank by the
+    canonical finished/end timestamp (not response or account order)."""
+    _register(client, "mylastgamepgn@example.com")
+    _link_as(client, monkeypatch, "PgnOld")
+    _link_as(client, monkeypatch, "PgnNew")
+
+    def _fake_pgn(username, count=1, **kwargs):
+        game = _game()
+        game.white = username
+        if username == "PgnOld":
+            game.lichess_id = "pgn-older"
+            game.finished_at = "2026-06-07T00:00:00+00:00"
+        else:
+            game.lichess_id = "pgn-newer"
+            game.finished_at = "2026-06-08T00:00:00+00:00"
+        return [game]
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_recent_pgns",
+        lambda username, count=1, **kwargs: _fake_pgn(username, count, **kwargs),
+    )
+    body = client.get("/api/lichess/latest").json()
+    assert body["has_game"] is True
+    assert body["lichess_id"] == "pgn-newer"
+    assert body["source_account"] == "PgnNew"
+    assert "pgn" in body
+
+
 def test_latest_default_aggregates_self_and_picks_newest(client, monkeypatch):
     """Two linked identities, no account_id: the default reads BOTH and loads
     the truly newest by finish time, quietly naming the source account."""
@@ -606,10 +711,10 @@ def test_latest_aggregates_with_moves_for_my_last_game(client, monkeypatch):
         game.white = username
         if username == "PgnA":
             game.lichess_id = "pgn-old"
-            game.finished_at = None
+            game.finished_at = "2026-06-07T00:00:00+00:00"
         else:
             game.lichess_id = "pgn-new"
-            game.finished_at = None
+            game.finished_at = "2026-06-08T00:00:00+00:00"
         return [game]
 
     monkeypatch.setattr(
@@ -618,7 +723,8 @@ def test_latest_aggregates_with_moves_for_my_last_game(client, monkeypatch):
     )
     body = client.get("/api/lichess/latest").json()
     assert body["has_game"] is True
-    assert body["source_account"] in ("PgnA", "PgnB")
+    assert body["lichess_id"] == "pgn-new"
+    assert body["source_account"] == "PgnB"
     assert "pgn" in body
 
 

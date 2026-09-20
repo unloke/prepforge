@@ -57,6 +57,33 @@ describe("workspace URL codec", () => {
     expect(serialized).toContain("#/settings");
   });
 
+  it("boots hashless first-open URLs on the dashboard", () => {
+    // A fresh first open (including OAuth ?lichess=linked/?signed_in=1
+    // returns and plain bookmarks) carries no hash, so the startup route must
+    // be the default home view.
+    for (const href of [
+      "https://app.example/",
+      "https://app.example/?lichess=linked",
+      "https://app.example/?signed_in=1",
+      "https://app.example/?join=abc",
+      "https://app.example/?shared=tok",
+      "https://app.example/?view=settings",
+    ]) {
+      expect(parseWorkspaceLocation(href).view).toBe("dashboard");
+    }
+  });
+
+  it("keeps explicit hash routes after hydration settles", () => {
+    // An explicit hash always wins: delayed hydration must leave it alone.
+    for (const view of WORKSPACE_VIEWS) {
+      expect(parseWorkspaceLocation(`https://app.example/#/${view}`).view).toBe(view);
+    }
+    expect(parseWorkspaceLocation("https://app.example/?lichess=linked#/analyze").view).toBe(
+      "analyze",
+    );
+    expect(parseWorkspaceLocation("https://app.example/?shared=tok#/build").view).toBe("build");
+  });
+
   it("serialize then parse restores the location", () => {
     const loc = { view: "train", repertoireId: "abc", ply: null };
     const href = serializeWorkspaceLocation(loc, "https://x.test/app");
