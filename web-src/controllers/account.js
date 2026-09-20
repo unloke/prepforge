@@ -308,19 +308,8 @@ export function createAccountController({
   }
 
   function syncReplayControls() {
-    const chip = document.getElementById("replay-account");
-    if (chip) {
-      const accounts = Array.isArray(appState.lichessAccounts) ? appState.lichessAccounts : [];
-      // paintGamesSource() owns the source-aware label (Self · N / picks);
-      // only fall back to the plain username when it hasn't run yet.
-      const labelled = chip.textContent && chip.textContent !== "not connected";
-      if (accounts.length > 1 && !labelled) {
-        chip.textContent = `Self · ${accounts.length} accounts`;
-      } else if (!labelled) {
-        chip.textContent = appState.lichessUsername || "not connected";
-      }
-      chip.classList.toggle("is-connected", !!appState.lichessUsername);
-    }
+    // Source summary lives only in the composer chips (paintGamesSource /
+    // paintScoutSource) — no duplicate toolbar display.
     const btn = document.getElementById("lichess-compare-btn");
     if (btn) btn.disabled = !appState.lichessUsername;
   }

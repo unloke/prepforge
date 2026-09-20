@@ -395,22 +395,10 @@ h2 {
 .replay-toolbar input {
   min-width: 150px;
 }
-.replay-account {
-  font-size: 12px;
-  color: var(--muted);
-  padding: 4px 10px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--panel-soft);
-}
-.replay-account.is-connected {
-  color: var(--text);
-  font-weight: 600;
-}
 
 /* Source composer: the toolbar shows selected-source chips + one Add trigger.
-   Every source edit (Self group, linked picks, Scout external usernames) opens
-   the shared composer popover — no standalone Self/Sources buttons remain. */
+   Every source edit (Self group, linked picks, external usernames) opens
+   the shared composer popover — the chips are the ONLY source summary. */
 .source-add {
   font-size: 12px;
   padding: 4px 10px;
@@ -502,7 +490,10 @@ h2 {
 }
 
 .src-popover {
-  width: min(320px, calc(100vw - 24px));
+  position: fixed;
+  width: min(320px, calc(100vw - 16px));
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
   display: grid;
   gap: 8px;
   padding: 12px;
@@ -569,6 +560,18 @@ h2 {
   color: var(--warn);
 }
 
+.src-kind {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--label);
+}
+
+.src-row.is-external .src-chip-x {
+  margin-left: auto;
+}
+
 .src-divider {
   border-top: 1px solid var(--line-soft);
 }
@@ -595,12 +598,6 @@ h2 {
   background: var(--panel);
   font-size: 12px;
   color: var(--text);
-}
-
-.src-external {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
 }
 
 .src-foot {
@@ -641,9 +638,9 @@ h2 {
   background: var(--panel-soft);
   font-weight: 700;
 }
-.replay-chip.rk-in-prep { color: #4a8964; }
-.replay-chip.rk-user-error { color: #c4524d; }
-.replay-chip.rk-left-prep { color: #c98439; }
+.replay-chip.rk-in-prep { color: var(--good); }
+.replay-chip.rk-user-error { color: var(--danger); }
+.replay-chip.rk-left-prep { color: var(--warn); }
 .replay-chip.rk-no-prep { color: var(--muted); }
 .replay-queued {
   font-size: 12px;
@@ -693,9 +690,9 @@ h2 {
   text-align: center;
   font-weight: 700;
 }
-.rk-in-prep .replay-icon { color: #4a8964; }
-.rk-user-error .replay-icon { color: #c4524d; }
-.rk-left-prep .replay-icon { color: #c98439; }
+.rk-in-prep .replay-icon { color: var(--good); }
+.rk-user-error .replay-icon { color: var(--danger); }
+.rk-left-prep .replay-icon { color: var(--warn); }
 .rk-no-prep .replay-icon { color: var(--muted); }
 .replay-row-head .players {
   font-weight: 700;
@@ -705,14 +702,14 @@ h2 {
 }
 .replay-result {
   flex: none;
-  color: var(--muted);
+  color: var(--text);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 .replay-preview {
   flex: 1;
   min-width: 0;
-  color: var(--muted);
+  color: var(--text);
   font-size: 11px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   white-space: nowrap;
@@ -766,12 +763,12 @@ h2 {
   font-variant-numeric: tabular-nums;
   font-size: 13px;
   line-height: 1.5;
-  color: #3a3a3a;
+  color: var(--text);
 }
 
 .replay-line .ply-mark {
-  background: #fceee0;
-  color: #b9722a;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
   padding: 1px 4px;
   border-radius: 3px;
   font-weight: 700;
@@ -779,11 +776,11 @@ h2 {
 
 .replay-detail {
   font-size: 12px;
-  color: var(--muted);
+  color: var(--text);
 }
 
 .replay-detail strong {
-  color: #1c1c1c;
+  color: var(--text);
 }
 
 /* Settings */
@@ -903,7 +900,11 @@ h2 {
 
 /* PrepForge shared primitives — warm, rounded, compact.
    .pf-switch / .seg / .pf-info / .pf-info-pop / .pf-row are the one shared
-   implementation every settings-style boolean, choice, and helper uses. */
+   implementation every settings-style boolean, choice, and helper uses.
+   Dark theme: semantic foreground tokens stay legible on dark surfaces
+   (--muted/--label are lightened in :root[data-theme="dark"]); the overrides
+   below only remove the remaining hard-coded light-theme colors and
+   disabled/selected states that bypassed the tokens. */
 
 .pf-row {
   display: flex;
@@ -929,17 +930,18 @@ h2 {
   position: relative;
   width: 38px;
   height: 22px;
-  border: 0;
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
-  background: var(--line);
+  background: var(--panel-soft);
   flex-shrink: 0;
   cursor: pointer;
   padding: 0;
-  transition: background 160ms ease;
+  transition: background 160ms ease, border-color 160ms ease;
 }
 
 .pf-switch:hover {
-  background: var(--btn-border-hover);
+  border-color: var(--btn-border-hover);
+  background: var(--surface-hover);
 }
 
 .pf-switch:focus-visible {
@@ -953,23 +955,33 @@ h2 {
 }
 
 .pf-switch.is-on {
-  background: var(--accent);
+  background: var(--accent-strong);
+  border-color: var(--accent-dark);
 }
 
 .pf-switch.is-on:hover {
-  background: var(--accent-strong);
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+}
+
+.pf-switch .pf-knob {
+  background: var(--text);
+}
+
+.pf-switch.is-on .pf-knob {
+  background: var(--on-accent);
 }
 
 .pf-knob {
   position: absolute;
-  top: 2px;
-  left: 2px;
+  top: 1px;
+  left: 1px;
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--text);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  transition: transform 160ms ease;
+  transition: transform 160ms ease, background 160ms ease;
 }
 
 .pf-switch.is-on .pf-knob {
@@ -989,7 +1001,7 @@ h2 {
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--muted);
+  color: var(--text);
   font-size: 12px;
   font-weight: 600;
   padding: 4px 12px;
@@ -1008,14 +1020,23 @@ h2 {
   outline-offset: 1px;
 }
 
+/* Segmented control: one shared token-driven surface. Unselected reads as
+   body text on the panel-soft track; selected is a solid filled pill whose
+   pair is pinned per theme for contrast (light: white on deep bronze;
+   dark: near-black on light amber). Disabled uses the label token. */
 .seg-btn.is-active {
-  color: var(--text);
-  background: var(--panel);
+  color: #ffffff;
+  background: #8a5a24;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+:root[data-theme="dark"] .seg-btn.is-active {
+  color: #21150b;
+  background: #f0b873;
 }
 
 .seg-btn:disabled {
-  opacity: 0.55;
+  color: var(--label);
+  opacity: 0.7;
   cursor: not-allowed;
 }
 
@@ -1102,8 +1123,8 @@ h2 {
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 4px;
-  background: #ffffff;
-  color: #1c1c1c;
+  background: var(--panel);
+  color: var(--text);
   font-family: inherit;
 }
 
@@ -2845,13 +2866,11 @@ h2 {
   flex-direction: column;
   gap: 10px;
   min-width: 0;
-  /* Bounded to the study height. Individual panels own scrolling where their
-     content needs it; the sidebar remains available for the larger panel stack. */
+  /* Not a scroll owner: the page viewport scrolls; panels that need their own
+     scroll (move lists, inspector, coach prose) declare it themselves. */
   height: 100%;
   min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: thin;
+  overflow: visible;
 }
 
 .tools {
@@ -4212,7 +4231,6 @@ h2 {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-gutter: stable;
 }
 
 .coach-footer {
