@@ -8,6 +8,7 @@ const css = readFileSync(join(root, "styles.css"), "utf8");
 const html = readFileSync(join(root, "index.html"), "utf8");
 const app = readFileSync(join(root, "app.js"), "utf8");
 const account = readFileSync(join(root, "controllers", "account.js"), "utf8");
+const replayView = readFileSync(join(root, "views", "replay.js"), "utf8");
 
 function ruleBody(selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -107,9 +108,9 @@ describe("workspace chrome layout", () => {
     // My last game aggregates self server-side: no chooser, source shown quietly.
     expect(app).not.toMatch(/fetchMyLichessGame[\s\S]{0,400}?resolveLichessAccountId/);
     expect(app).toMatch(/fetchMyLichessGame[\s\S]*?source_account/);
-    // Replay compare passes the chosen identity in the compare request.
-    expect(app).toMatch(/runLichessCompare[\s\S]*?resolveLichessAccountId/);
-    expect(app).toMatch(/runLichessCompare[\s\S]*?account_id/);
+    // Games compare aggregates self by default, narrowing only on explicit picks.
+    expect(app).toMatch(/runLichessCompare[\s\S]*?gamesSourceAccountIds/);
+    expect(app).toMatch(/runLichessCompare[\s\S]*?account_ids/);
     // Explorer keeps using a valid linked token internally — never a chooser.
     expect(app).not.toMatch(/refreshExplorerPanel[\s\S]*?chooseLichessAccount/);
     expect(css).toContain(".account-chooser-list");
@@ -124,6 +125,19 @@ describe("workspace chrome layout", () => {
     // The acceptance hook seeds promotion positions through the same
     // setPosition + legalMoves path production uses.
     expect(app).toContain("setBoardFen(boardName, fen)");
+  });
+
+  it("offers Self as the default games/scout source with compact chips", () => {
+    expect(html).toContain('id="games-source-self"');
+    expect(html).toContain('id="games-source-pick"');
+    expect(html).toContain('id="scout-source-self"');
+    expect(css).toContain(".source-chip");
+    expect(css).toContain(".source-pick");
+    expect(css).toContain(".replay-source");
+    expect(app).toContain("gamesSourceAccountIds");
+    expect(app).toContain("scoutSelfOn");
+    // Per-game source metadata survives into the rendered rows.
+    expect(replayView).toContain("source_account");
   });
 
   it("promotes through one shared picker on every interactive board", () => {

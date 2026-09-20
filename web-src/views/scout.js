@@ -89,6 +89,14 @@ function scoutErrorHtml(message, escapeHtml) {
   return `<div class="scout-error" role="alert">${escapeHtml(message)}</div>`;
 }
 
+// Multi-identity label: "self (2 accounts)" keeps time/sample stats honest
+// while reading as one person, not a list of logins.
+function scoutLabel(usernames) {
+  const names = (usernames || []).filter(Boolean);
+  if (names.length <= 1) return names[0] || "";
+  return `self (${names.length} accounts)`;
+}
+
 export function createScoutView(deps) {
   const {
     escapeHtml,
@@ -115,6 +123,7 @@ export function createScoutView(deps) {
     loadPgnIntoAnalyze,
     effectiveMaiaRating,
     getLichessUsername = () => null,
+    getLichessAccounts = () => [],
     effectiveStockfishDepth = () => 16,
   } = deps;
 
@@ -1789,7 +1798,7 @@ export function createScoutView(deps) {
     }
   }
 
-  async function initScoutState(username, color, initToken) {
+  async function initScoutState(usernames, color, initToken) {
     if (!scoutModule) {
       scoutModule = await import("../scout.js");
       scoutClient = scoutModule.createScoutClient({});
@@ -1815,9 +1824,10 @@ export function createScoutView(deps) {
       }
     }
     if (!initGuard.isCurrent(initToken)) return false;
-    const carry = scoutStateCarryover(scoutState, username);
+    const carry = scoutStateCarryover(scoutState, scoutLabel(usernames));
     scoutState = {
-      username,
+      usernames: usernames.slice(),
+      username: scoutLabel(usernames),
       color,
       games: [],
       profile: { total: 0, speedCounts: {}, recentlyChanged: { white: false, black: false } },
@@ -1850,7 +1860,8 @@ export function createScoutView(deps) {
       liveTrieCount: 0,
     };
     scoutSession = {
-      username,
+      usernames: usernames.slice(),
+      username: scoutLabel(usernames),
       color,
       controller: null,
       state: "idle",
@@ -1872,6 +1883,10 @@ export function createScoutView(deps) {
     if (!scoutState || !isActiveSession(session)) return false;
     if (game.gameId && session.seenIds.has(game.gameId)) return false;
     if (game.gameId) session.seenIds.add(game.gameId);
+    // Tag the source identity so merged "self" reports stay attributable.
+    if (game.sourceAccount == null && game.scoutUsername) {
+      game.sourceAccount = game.scoutUsername;
+    }
     scoutState.games.push(game);
     insertIntoLiveTries(game);
     if (game.datestamp > 0) {
@@ -1932,29 +1947,55 @@ export function createScoutView(deps) {
     const session = sessionArg || scoutSession;
     if (!isActiveSession(session)) return;
 
-    const controller = new AbortController();
-    session.controller = controller;
+    const usernames = session.usernames?.length
+      ? session.usernames
+      : [session.username].filter(Boolean);
+    const controllers = usernames.map(() => new AbortController());
+    session.controller = {
+      abort: () => controllers.forEach((c) => c.abort()),
+    };
     session.state = "running";
     session.userStopped = false;
     session.acceptedThisBatch = 0;
     updateScoutControls();
 
     try {
-      const { accepted, lastDatestamp } = await scoutClient.streamGames(session.username, {
-        color: session.color,
-        until,
-        onGame: (game) => onScoutGame(game, session),
-        signal: controller.signal,
-      });
+      const settled = await Promise.allSettled(
+        usernames.map((username, i) =>
+          scoutClient.streamGames(username, {
+            color: session.color,
+            until,
+            onGame: (game) => {
+              game.scoutUsername = username;
+              return onScoutGame(game, session);
+            },
+            signal: controllers[i].signal,
+          })
+        )
+      );
       if (!isActiveSession(session)) return;
 
+      const stamps = settled
+        .filter((r) => r.status === "fulfilled")
+        .map((r) => r.value?.lastDatestamp)
+        .filter((s) => s != null);
+      const lastDatestamp = stamps.length ? Math.min(...stamps) : null;
+      // One identity failing must not sink the merged report: surface its
+      // message only when NO games arrived at all.
+      const failures = settled
+        .filter((r) => r.status === "rejected")
+        .map((r) => r.reason)
+        .filter((e) => e?.name !== "AbortError" && !session.userStopped);
       if (lastDatestamp != null) {
         if (session.oldestDatestamp == null || lastDatestamp < session.oldestDatestamp) {
           session.oldestDatestamp = lastDatestamp;
         }
       }
       const batchAccepted = session.acceptedThisBatch;
-      await onStreamEnd({ accepted: batchAccepted ?? accepted }, session);
+      if (batchAccepted === 0 && failures.length) {
+        throw failures[0];
+      }
+      await onStreamEnd({ accepted: batchAccepted }, session);
     } catch (error) {
       if (!isActiveSession(session)) return;
       session.controller = null;
@@ -2041,14 +2082,24 @@ export function createScoutView(deps) {
     const initToken = initGuard.tryBegin();
     if (initToken == null) return;
 
+    const scoutSelf =
+      document.getElementById("scout-source-self")?.classList.contains("is-on") ?? false;
     const usernameInput = document.getElementById("scout-username");
     const colorSel = document.getElementById("scout-color");
-    const username = (usernameInput?.value || "").trim();
-    if (!username) {
+    const typed = (usernameInput?.value || "").trim();
+    const linked = (deps.getLichessAccounts?.() || [])
+      .map((a) => a.username)
+      .filter(Boolean);
+    const usernames = scoutSelf && linked.length ? linked : typed ? [typed] : [];
+    if (!usernames.length) {
       initGuard.finish(initToken);
       updateScoutControls();
-      setStatus("Enter an opponent's Lichess username");
-      usernameInput?.focus();
+      setStatus(
+        scoutSelf && !linked.length
+          ? "Connect a Lichess account first to scout yourself"
+          : "Enter an opponent's Lichess username"
+      );
+      if (!scoutSelf) usernameInput?.focus();
       return;
     }
     const color = colorSel?.value || "both";
@@ -2074,7 +2125,7 @@ export function createScoutView(deps) {
     updateScoutControls();
 
     try {
-      const ready = await initScoutState(username, color, initToken);
+      const ready = await initScoutState(usernames, color, initToken);
       if (!ready || !initGuard.isCurrent(initToken)) return;
 
       initGuard.finish(initToken);
@@ -2089,7 +2140,7 @@ export function createScoutView(deps) {
       }
       if (profile) profile.hidden = true;
       updateLiveCounter();
-      setStatus(`Scouting ${username}`);
+      setStatus(`Scouting ${scoutLabel(usernames)}`);
       await runStream({ session });
       if (isActiveSession(session)) results?.classList.remove("is-streaming");
     } catch (error) {

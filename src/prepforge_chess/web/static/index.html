@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-D3x8eW--.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-CUdfZr78.css">
+    <script type="module" crossorigin src="/static/assets/index-FJnV1oAG.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-BBQKkzk8.css">
   </head>
   <body>
     <header class="topbar">
@@ -360,7 +360,9 @@
             <div class="card-head">
               <h2>My recent games</h2>
               <div class="replay-toolbar">
-                <span class="replay-account" id="replay-account" title="Games are fetched for your linked Lichess account">not connected</span>
+                <button type="button" class="source-chip is-on" id="games-source-self" data-testid="games-source-self" title="Aggregate games across all linked Lichess accounts">Self · all linked</button>
+                <span class="replay-account" id="replay-account" title="Games source: all linked Lichess accounts by default">not connected</span>
+                <button type="button" class="source-pick" id="games-source-pick" data-testid="games-source-pick" title="Pick one or more linked accounts">Pick…</button>
                 <select id="replay-count" title="How many recent games to check">
                   <option value="10" selected>last 10</option>
                   <option value="20">last 20</option>
@@ -381,6 +383,7 @@
             <div class="card-head">
               <h2>Scout an opponent</h2>
               <div class="replay-toolbar">
+                <button type="button" class="source-chip" id="scout-source-self" data-testid="scout-source-self" title="Scout the combined games of all linked Lichess accounts">Self · all linked</button>
                 <input id="scout-username" type="text" placeholder="lichess username" />
                 <select id="scout-color" title="Which colour games to fetch">
                   <option value="both" selected>Both</option>
