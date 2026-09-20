@@ -266,6 +266,25 @@ describe("workspace chrome layout", () => {
     expect(settingsView).toContain("renderMaiaAnalysis");
   });
 
+  it("shares one switch primitive across coach, train, and settings", () => {
+    // No native-looking boolean controls outside modal/popover checkbox lists.
+    for (const id of ["explain-engine-toggle", "train-blitz-toggle"]) {
+      expect(html).toContain(`id="${id}" role="switch"`);
+      expect(html).not.toContain(`type="checkbox" id="${id}"`);
+    }
+    expect(html).toContain('id="settings-maia-analysis" role="switch"');
+    // Legacy one-off switch classes are gone — everything is .pf-switch.
+    expect(css).not.toContain(".pref-toggle");
+    expect(css).not.toContain(".pref-switch");
+    expect(css).not.toContain(".pref-knob");
+    expect(css).not.toContain(".pref-label");
+    expect(css).not.toContain(".explain-toggle");
+    expect(css).toContain(".pf-switch");
+    // Wiring paints through the shared class contract.
+    expect(app).toContain("pf-switch");
+    expect(app).not.toContain("pref-toggle");
+  });
+
   it("renders menus and modals with theme tokens in both themes", () => {
     const menu = ruleBody(".context-menu");
     const menuBtn = ruleBody(".context-menu button");

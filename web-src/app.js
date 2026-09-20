@@ -1604,9 +1604,17 @@ class PositionCoach {
   bind() {
     const toggle = document.getElementById("explain-engine-toggle");
     if (!toggle) return;
-    this.enabled = toggle.checked;
-    toggle.addEventListener("change", () => {
-      this.enabled = toggle.checked;
+    const read = () => toggle.classList.contains("is-on");
+    const paint = (on) => {
+      toggle.classList.toggle("is-on", on);
+      toggle.setAttribute("aria-checked", String(on));
+    };
+    this.enabled = read();
+    paint(this.enabled);
+    toggle.addEventListener("click", () => {
+      const next = !read();
+      paint(next);
+      this.enabled = next;
       if (this.enabled) this.update(this.fen, this.ctx);
       else renderInstantCoach(); // engine off → fall back to the plain read
     });
@@ -3186,13 +3194,13 @@ function renderPrefsToggles() {
       return (
         `<div class="pf-row">` +
         `<span class="pf-row-text"><span class="pf-row-label">${label}</span></span>` +
-        `<button type="button" class="pf-switch pref-toggle${on}" data-pref="${escapeHtml(key)}" role="switch" aria-checked="${pref(key)}" aria-label="${label}">` +
+        `<button type="button" class="pf-switch${on}" data-pref="${escapeHtml(key)}" role="switch" aria-checked="${pref(key)}" aria-label="${label}">` +
         `<span class="pf-knob"></span>` +
         `</button></div>`
       );
     })
     .join("");
-  host.querySelectorAll(".pref-toggle").forEach((btn) => {
+  host.querySelectorAll(".pf-feedback .pf-switch").forEach((btn) => {
     btn.addEventListener("click", () => {
       const key = btn.dataset.pref;
       setPref(key, !pref(key));
@@ -7836,7 +7844,11 @@ function syncTrainSessionControls() {
       : "Skip this card";
   }
   if (fresh) fresh.disabled = !(appState.smart || appState.training);
-  if (blitzToggle) blitzToggle.disabled = !!appState.smart;
+  if (blitzToggle) {
+    blitzToggle.disabled = !!appState.smart;
+    blitzToggle.classList.toggle("is-on", blitzEnabled());
+    blitzToggle.setAttribute("aria-checked", String(blitzEnabled()));
+  }
   if (blitzRow) {
     blitzRow.title = appState.smart
       ? "Blitz is locked for this session — applies on next Start"
@@ -11079,11 +11091,19 @@ function bindEvents() {
     switchView(loc.view, { fromUrl: true });
   });
   document.getElementById("train-hint").addEventListener("click", trainHint);
-  const blitzRow = document.getElementById("train-blitz-row");
   const blitzToggle = document.getElementById("train-blitz-toggle");
   if (blitzToggle) {
-    blitzToggle.checked = blitzEnabled();
-    blitzToggle.addEventListener("change", () => setBlitzEnabled(blitzToggle.checked));
+    const paintBlitz = (on) => {
+      blitzToggle.classList.toggle("is-on", on);
+      blitzToggle.setAttribute("aria-checked", String(on));
+    };
+    paintBlitz(blitzEnabled());
+    blitzToggle.addEventListener("click", () => {
+      if (blitzToggle.disabled) return;
+      const next = !blitzToggle.classList.contains("is-on");
+      setBlitzEnabled(next);
+      paintBlitz(next);
+    });
   }
   document.querySelectorAll("#train-modes .train-mode").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -11112,7 +11132,7 @@ function bindEvents() {
         if (summary) summary.hidden = true;
       }
       // The answer clock only exists in the smart queue; rehearsal is untimed.
-      if (blitzRow) blitzRow.hidden = mode !== "smart";
+      document.getElementById("train-blitz-row").hidden = mode !== "smart";
       syncTrainPickerVisibility();
     });
   });
