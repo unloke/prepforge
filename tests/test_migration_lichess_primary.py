@@ -144,24 +144,29 @@ def _seed_pre_migration_rows(engine: sa.Engine) -> None:
     reason="PostgreSQL URL not provided (TEST_POSTGRES_URL); SQLite covers the path locally",
 )
 def test_upgrade_backfills_is_primary_true_postgres(monkeypatch) -> None:
-    db_url = os.environ["TEST_POSTGRES_URL"]
-    engine = sa.create_engine(_pg_url(db_url))
-    with engine.begin() as conn:
-        conn.execute(sa.text("DROP TABLE IF EXISTS linked_accounts CASCADE"))
-        conn.execute(sa.text("DROP TABLE IF EXISTS users CASCADE"))
-        conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
-    cfg = _alembic_config(db_url, monkeypatch)
-    command.upgrade(cfg, "c7e8f9a0b1c2")
-    _seed_pre_migration_rows(engine)
-    command.upgrade(cfg, "d4e5f6a7b8c9")
-    with engine.connect() as conn:
-        nulls = conn.execute(
-            sa.text("SELECT count(*) FROM linked_accounts WHERE is_primary IS NULL")
-        ).scalar()
-        falses = conn.execute(
-            sa.text("SELECT count(*) FROM linked_accounts WHERE is_primary IS NOT TRUE")
-        ).scalar()
-        version = conn.execute(sa.text("SELECT version_num FROM alembic_version")).scalar()
+    postgres_url = os.environ["TEST_POSTGRES_URL"]
+    schema = f"mig_{uuid.uuid4().hex[:12]}"
+    admin = sa.create_engine(_pg_url(postgres_url), isolation_level="AUTOCOMMIT")
+    with admin.connect() as conn:
+        conn.execute(sa.text(f'CREATE SCHEMA "{schema}"'))
+    try:
+        db_url = postgres_url.rstrip("/") + f"?options=-csearch_path%3D{schema}"
+        engine = sa.create_engine(_pg_url(db_url))
+        cfg = _alembic_config(db_url, monkeypatch)
+        command.upgrade(cfg, "c7e8f9a0b1c2")
+        _seed_pre_migration_rows(engine)
+        command.upgrade(cfg, "d4e5f6a7b8c9")
+        with engine.connect() as conn:
+            nulls = conn.execute(
+                sa.text("SELECT count(*) FROM linked_accounts WHERE is_primary IS NULL")
+            ).scalar()
+            falses = conn.execute(
+                sa.text("SELECT count(*) FROM linked_accounts WHERE is_primary IS NOT TRUE")
+            ).scalar()
+            version = conn.execute(sa.text("SELECT version_num FROM alembic_version")).scalar()
+    finally:
+        with admin.connect() as conn:
+            conn.execute(sa.text(f'DROP SCHEMA "{schema}" CASCADE'))
     assert nulls == 0
     assert falses == 0
     assert version == "d4e5f6a7b8c9"
