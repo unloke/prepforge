@@ -126,7 +126,6 @@ export function createScoutView(deps) {
     maiaAnalysisEnabled = () => true,
     scoutPickedUsernames = () => [],
     getLichessUsername = () => null,
-    getLichessAccounts = () => [],
     effectiveStockfishDepth = () => 16,
   } = deps;
 
@@ -2095,27 +2094,21 @@ export function createScoutView(deps) {
     const initToken = initGuard.tryBegin();
     if (initToken == null) return;
 
-    const scoutSelf =
-      document.getElementById("scout-source-self")?.classList.contains("is-on") ?? false;
     const usernameInput = document.getElementById("scout-username");
     const colorSel = document.getElementById("scout-color");
     const typed = (usernameInput?.value || "").trim();
-    const linked = (deps.getLichessAccounts?.() || [])
-      .map((a) => a.username)
-      .filter(Boolean);
-    // Source precedence: explicit linked-account picks > Self (all linked) >
-    // typed opponent. Picks narrow Self without touching the free-text box.
+    // Source precedence (shared Source Composer model): the composer's resolved
+    // usernames (explicit linked picks, then Self = all linked, plus composer
+    // external names) win; the free-text box only feeds when the composer has
+    // no linked source active. Linked + external coexist.
     const picked = typeof scoutPickedUsernames === "function" ? scoutPickedUsernames() : [];
-    const usernames = picked.length ? picked : scoutSelf && linked.length ? linked : typed ? [typed] : [];
+    const usernames = picked.length ? picked : typed ? [typed] : [];
+    const scoutSelf = picked.length > 0;
     if (!usernames.length) {
       initGuard.finish(initToken);
       updateScoutControls();
-      setStatus(
-        scoutSelf && !linked.length
-          ? "Connect a Lichess account first to scout yourself"
-          : "Enter an opponent's Lichess username"
-      );
-      if (!scoutSelf) usernameInput?.focus();
+      setStatus("Enter an opponent's Lichess username");
+      usernameInput?.focus();
       return;
     }
     const color = colorSel?.value || "both";

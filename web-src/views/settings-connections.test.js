@@ -8,12 +8,16 @@ function makeSettingsView(overrides = {}) {
   globalThis.document = {
     getElementById: (id) => elements[id] ?? null,
     querySelector: () => null,
+    querySelectorAll: () => [],
+    addEventListener: vi.fn(),
   };
   elements["settings-lichess-accounts"] = {
     innerHTML: "",
     addEventListener: (name, handler) => {
       listeners[name] = handler;
     },
+    querySelectorAll: () => [],
+    querySelector: () => null,
   };
   elements["settings-link-lichess"] = { addEventListener: vi.fn() };
   const appState = { lichessUsername: null, lichessAccounts: [], ...(overrides.appState || {}) };
@@ -60,10 +64,15 @@ describe("settings connections", () => {
     await view.refreshConnections();
 
     const html = elements["settings-lichess-accounts"].innerHTML;
-    expect(html).toContain("account_a — Primary");
+    expect(html).toContain("account_a");
+    expect(html).toContain('class="conn-primary">Primary</span>');
+    expect(html).not.toContain("account_a — Primary");
     expect(html).toContain("account_b");
     expect(html).toContain('data-account-id="b"');
+    expect(html).toContain('data-conn-action="menu"');
+    expect(html).toContain('aria-label="Account actions for account_b"');
     expect(html.match(/data-conn-action="primary"/g) || []).toHaveLength(1);
+    expect(html).toContain('data-conn-action="unlink"');
   });
 
   it("sets a new primary through the API and refreshes", async () => {
@@ -100,7 +109,11 @@ describe("settings connections", () => {
       target: {
         closest(selector) {
           if (selector === "[data-conn-action]") return { dataset: { connAction: "primary" } };
-          if (selector === "[data-account-id]") return { dataset: { accountId: "b" } };
+          if (selector === "[data-account-id]")
+            return {
+              dataset: { accountId: "b" },
+              querySelector: () => null,
+            };
           return null;
         },
       },
@@ -110,6 +123,9 @@ describe("settings connections", () => {
     expect(postJson).toHaveBeenCalledWith("/api/lichess/primary", { account_id: "b" });
     expect(appState.lichessUsername).toBe("account_b");
     expect(onAccountsChanged).toHaveBeenCalled();
-    expect(elements["settings-lichess-accounts"].innerHTML).toContain("account_b — Primary");
+    const html = elements["settings-lichess-accounts"].innerHTML;
+    expect(html).toContain("account_b");
+    expect(html).toContain('class="conn-primary">Primary</span>');
+    expect(html).not.toContain("account_b — Primary");
   });
 });

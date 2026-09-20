@@ -166,14 +166,18 @@ export function createSettingsView({
     list.innerHTML = accounts
       .map(
         (account) =>
-          `<div class="repertoire-row" data-account-id="${account.id}">` +
-          `<span class="rep-name">${account.username}${account.is_primary ? " — Primary" : ""}</span>` +
-          `<span class="rep-actions">` +
+          `<div class="conn-row" data-account-id="${account.id}">` +
+          `<span class="conn-name">${account.username}` +
+          (account.is_primary ? ' <span class="conn-primary">Primary</span>' : "") +
+          `</span>` +
+          `<span class="conn-actions">` +
+          `<button type="button" class="conn-menu-btn" data-conn-action="menu" aria-label="Account actions for ${account.username}" aria-haspopup="menu" aria-expanded="false">⋯</button>` +
+          `<span class="conn-menu" role="menu" hidden>` +
           (account.is_primary
             ? ""
-            : `<button type="button" class="btn ghost" data-conn-action="primary">Set primary</button>`) +
-          `<button type="button" class="btn ghost" data-conn-action="unlink">Unlink</button>` +
-          `</span></div>`,
+            : `<button type="button" class="conn-menu-item" role="menuitem" data-conn-action="primary">Set primary</button>`) +
+          `<button type="button" class="conn-menu-item is-danger" role="menuitem" data-conn-action="unlink">Unlink</button>` +
+          `</span></span></div>`,
       )
       .join("");
   }
@@ -215,6 +219,26 @@ export function createSettingsView({
     onAccountsChanged();
   }
 
+  // Maia3 runtime/cache/provider state. The analysis LAYER switch (Playing
+  // strength → Maia analysis) only gates Analyze inference; health stays
+  // independently viewable. Status values:
+  //   Ready — provider ready this session, or cached weights verified present
+  //   Available on demand — manifest reachable, nothing cached yet
+  //   Loading — provider initializing, or a Retry verification in flight
+  //   Cache missing — manifest reachable but the cached key is absent/empty
+  //   Unavailable — provider init/crash failure, or manifest unreachable
+  //   Error — unexpected failure while determining the state
+  // Peek (provider + IDB presence) is free for every render; Retry performs the
+  // actual load verification (constructs the provider + runs inference).
+  const MAIA_STATUS = {
+    READY: "Ready",
+    AVAILABLE: "Available on demand",
+    LOADING: "Loading",
+    CACHE_MISSING: "Cache missing",
+    UNAVAILABLE: "Unavailable",
+    ERROR: "Error",
+  };
+
   async function renderMaia3Status() {
     const modelEl = document.getElementById("settings-maia-model");
     const noteEl = document.getElementById("settings-maia-status");
@@ -231,27 +255,24 @@ export function createSettingsView({
     try {
       // Peek-only: rendering the Settings status row must never construct the
       // Maia worker — with Maia analysis OFF no provider may be initialized.
+      // Health stays viewable regardless of the analysis toggle; the toggle
+      // only gates Analyze inference, never this status row or Retry/Reset.
       const provider = peekSharedMaia3Provider();
-      if (!provider) {
-        if (!pref("maiaAnalysis")) {
-          set("off", "Maia analysis is off — turn it on in Playing strength to use the human model.");
-          return;
-        }
-      } else {
+      if (provider) {
         if (provider.state === "ready") {
           const info = provider.info || {};
           const base = info.url || provider.assetBase || "";
-          set("available", base ? `Loaded this session · ${base}` : "Loaded this session.");
+          set(MAIA_STATUS.READY, base ? `Loaded this session · ${base}` : "Loaded this session.");
           return;
         }
         if (provider.state === "initializing") {
-          set("initializing…", "Downloading / preparing the model.");
+          set(MAIA_STATUS.LOADING, "Downloading / preparing the model.");
           return;
         }
         if (provider.state === "unavailable") {
           const err = provider.lastError;
           set(
-            "unavailable",
+            MAIA_STATUS.UNAVAILABLE,
             "Last load failed. Use Retry now, or Reset cache if it keeps failing.",
             err ? `${err.message}${err.phase ? ` (${err.phase})` : ""}` : "",
           );
@@ -264,7 +285,7 @@ export function createSettingsView({
         if (!resp.ok) throw new Error(`manifest ${resp.status}`);
         manifest = await resp.json();
       } catch {
-        set("unavailable", "Model manifest is not reachable from this server.");
+        set(MAIA_STATUS.UNAVAILABLE, "Model manifest is not reachable from this server.");
         return;
       }
       const base = resolveModelBase(manifest);
@@ -277,24 +298,24 @@ export function createSettingsView({
       const sizeMb = bytes ? `${Math.round(bytes / (1024 * 1024))} MB` : "~46 MB";
       const cached = key ? await getCachedWeights(key) : null;
       if (cached) {
-        set("ready (cached)", `${sizeMb} cached in this browser · ${base}`);
+        set(MAIA_STATUS.READY, `${sizeMb} cached in this browser · ${base}`);
+      } else if (!pref("maiaAnalysis")) {
+        // Analysis OFF still reports real runtime state: with no provider and
+        // nothing cached, the cache is verifiably empty (not merely on-demand).
+        set(MAIA_STATUS.CACHE_MISSING, `Maia analysis is off — model not cached · ${base}`);
       } else {
-        set("available on demand", `Downloads ${sizeMb} on first use, then cached · ${base}`);
+        set(MAIA_STATUS.AVAILABLE, `Downloads ${sizeMb} on first use, then cached · ${base}`);
       }
     } catch {
-      set("unavailable", "Could not determine the browser Maia3 state.");
+      set(MAIA_STATUS.ERROR, "Could not determine the browser Maia3 state.");
     }
   }
 
-  async function retryMaia3() {
-    const btn = document.getElementById("settings-maia-retry");
-    if (btn) btn.disabled = true;
-    if (!pref("maiaAnalysis")) {
-      setStatus("Maia analysis is off — turn it on in Playing strength first.");
-      if (btn) btn.disabled = false;
-      return;
-    }
-    setStatus("Retrying Maia3…");
+  // Actual health/load verification: constructs the provider (unlike the
+  // peek-only status render) and runs one real inference. Always available —
+  // independent of the Maia analysis toggle, which only gates Analyze.
+  async function verifyMaia3() {
+    setStatus("Verifying Maia3…");
     try {
       const provider = getSharedMaia3Provider();
       renderMaia3Status();
@@ -303,8 +324,17 @@ export function createSettingsView({
     } catch (err) {
       setStatus(`Maia3 retry failed: ${err.message}`);
     } finally {
-      if (btn) btn.disabled = false;
       renderMaia3Status();
+    }
+  }
+
+  async function retryMaia3() {
+    const btn = document.getElementById("settings-maia-retry");
+    if (btn) btn.disabled = true;
+    try {
+      await verifyMaia3();
+    } finally {
+      if (btn) btn.disabled = false;
     }
   }
 
@@ -431,16 +461,43 @@ export function createSettingsView({
 
     const accountsList = document.getElementById("settings-lichess-accounts");
     if (accountsList) {
+      const closeConnMenus = (except = null) => {
+        for (const menu of accountsList.querySelectorAll(".conn-menu")) {
+          if (menu !== except) menu.hidden = true;
+        }
+        for (const btn of accountsList.querySelectorAll(".conn-menu-btn")) {
+          if (!except || btn.closest(".conn-actions")?.querySelector(".conn-menu") !== except) {
+            btn.setAttribute("aria-expanded", "false");
+          }
+        }
+      };
       accountsList.addEventListener("click", (event) => {
         const button = event.target.closest("[data-conn-action]");
         const row = event.target.closest("[data-account-id]");
         if (!button || !row) return;
         const accountId = row.dataset.accountId;
+        if (button.dataset.connAction === "menu") {
+          const menu = row.querySelector(".conn-menu");
+          if (!menu) return;
+          const open = menu.hidden;
+          closeConnMenus(menu);
+          menu.hidden = !open;
+          button.setAttribute("aria-expanded", String(open));
+          if (open) menu.querySelector(".conn-menu-item")?.focus();
+          return;
+        }
+        closeConnMenus();
         if (button.dataset.connAction === "primary") {
           setPrimaryAccount(accountId).catch((error) => setStatus(String(error.message || error)));
         } else if (button.dataset.connAction === "unlink") {
           unlinkAccount(accountId).catch((error) => setStatus(String(error.message || error)));
         }
+      });
+      accountsList.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeConnMenus();
+      });
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest?.("#settings-lichess-accounts")) closeConnMenus();
       });
     }
   }
@@ -456,6 +513,7 @@ export function createSettingsView({
     renderConnections,
     refreshConnections,
     retryMaia3,
+    verifyMaia3,
     resetMaia3Cache,
     // Test/acceptance hook: the Settings view binds lazily after the
     // /api/settings round-trip, so expose the binder for harnesses.

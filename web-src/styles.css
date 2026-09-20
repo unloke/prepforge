@@ -411,7 +411,8 @@ h2 {
 /* Source picker: "Self" (all linked identities) is the default, one tap away;
    explicit account picks layer on top as compact chips. */
 .source-chip,
-.source-pick {
+.source-pick,
+.source-add {
   font-size: 12px;
   padding: 4px 10px;
   border: 1px solid var(--line);
@@ -428,27 +429,120 @@ h2 {
   background: var(--accent-soft);
 }
 .source-chip:hover,
-.source-pick:hover {
+.source-pick:hover,
+.source-add:hover {
   color: var(--text);
   border-color: var(--btn-border-hover);
   background: var(--surface-hover);
 }
 .source-chip:focus-visible,
-.source-pick:focus-visible {
+.source-pick:focus-visible,
+.source-add:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 .source-chip:disabled,
-.source-pick:disabled {
+.source-pick:disabled,
+.source-add:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
-.source-pick-list {
-  display: grid;
-  gap: 4px;
-  min-width: 200px;
+.source-add {
+  font-weight: 700;
+  padding: 4px 9px;
 }
-.source-pick-row {
+
+/* Shared Source Composer: collapsed chip tray + PrepForge-style popover. */
+.src-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.src-chips[hidden] {
+  display: none;
+}
+
+.src-empty {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.src-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 6px 3px 10px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.src-chip-x {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.src-chip-x:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.src-chip-x:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.src-composer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: transparent;
+}
+
+.src-popover {
+  width: min(320px, calc(100vw - 24px));
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
+}
+
+.src-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.src-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.src-count {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.src-row {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -457,13 +551,74 @@ h2 {
   border-radius: var(--radius);
   cursor: pointer;
 }
-.source-pick-row:hover {
+
+.src-row:hover {
   background: var(--surface-hover);
 }
-.source-pick-row input {
+
+.src-row input {
   accent-color: var(--accent);
 }
 
+.src-row.is-self {
+  font-weight: 700;
+}
+
+.src-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.src-self-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+
+.src-self-count.is-mixed {
+  color: var(--warn);
+}
+
+.src-divider {
+  border-top: 1px solid var(--line-soft);
+}
+
+.src-rows {
+  display: grid;
+  gap: 2px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.src-add-row {
+  display: flex;
+  gap: 6px;
+}
+
+.src-add-input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.src-external {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.src-foot {
+  display: flex;
+  justify-content: flex-end;
+}
 /* Per-game source tag: quiet metadata, never the headline. */
 .replay-source {
   font-size: 11px;
@@ -1323,6 +1478,145 @@ h2 {
 .list-stack {
   display: grid;
   gap: 6px;
+}
+
+/* Connections account rows: one clean row per identity — name + Primary chip
+   on the left, a single ⋯ overflow for Set primary / Unlink on the right.
+   Warm / rounded / compact via the shared tokens (accent-soft, radius). */
+.conn-list {
+  gap: 6px;
+}
+
+.conn-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 34px;
+  padding: 5px 6px 5px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-card);
+  background: var(--panel-soft);
+}
+
+.conn-row:hover {
+  border-color: var(--line);
+}
+
+.conn-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conn-primary {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  white-space: nowrap;
+  vertical-align: 1px;
+}
+
+.conn-actions {
+  position: relative;
+  flex: none;
+}
+
+.conn-menu-btn {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.conn-menu-btn:hover,
+.conn-menu-btn[aria-expanded="true"] {
+  color: var(--text);
+  background: var(--surface-hover);
+  border-color: var(--line-soft);
+}
+
+.conn-menu-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.conn-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  display: grid;
+  gap: 2px;
+  min-width: 132px;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+}
+
+.conn-menu[hidden] {
+  display: none;
+}
+
+.conn-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.conn-menu-item:hover {
+  background: var(--surface-hover);
+}
+
+.conn-menu-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.conn-menu-item.is-danger {
+  color: var(--danger-strong);
+}
+
+.conn-tools {
+  margin-top: 8px;
+}
+
+.conn-link {
+  border-radius: 999px;
+}
+
+@media (max-width: 560px) {
+  .conn-row {
+    padding: 6px 4px 6px 10px;
+  }
 }
 
 .list-item .name {
