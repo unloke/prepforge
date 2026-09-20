@@ -534,16 +534,16 @@
               <input type="range" id="settings-maia-rating" min="600" max="2600" step="50" value="1500" aria-label="Maia3 rating" />
               <span class="strength-readout" id="settings-maia-rating-readout">1500</span>
             </div>
-            <div class="settings-label settings-section">Brilliant detection</div>
+            <div class="settings-label settings-section">Maia analysis</div>
             <div class="pf-row">
               <span class="pf-row-text">
-                <span class="pf-row-label">Detect ✦ brilliant moves</span>
-                <button type="button" class="pf-info pf-info-inline" id="brilliant-info" aria-label="About brilliant detection" title="About brilliant detection" aria-expanded="false">ⓘ</button>
+                <span class="pf-row-label" id="settings-maia-analysis-label">Maia analysis</span>
+                <button type="button" class="pf-info pf-info-inline" id="maia-analysis-info" aria-label="About Maia analysis" title="About Maia analysis" aria-expanded="false">ⓘ</button>
               </span>
-              <button type="button" class="pf-switch" id="settings-brilliant-toggle" role="switch" aria-checked="false" aria-label="Detect brilliant moves"><span class="pf-knob"></span></button>
+              <button type="button" class="pf-switch" id="settings-maia-analysis" role="switch" aria-checked="false" aria-labelledby="settings-maia-analysis-label"><span class="pf-knob"></span></button>
             </div>
-            <div class="pf-info-pop" id="brilliant-info-pop" hidden>
-              Adds a second pass with the Maia3 human model. Off by default — requires the Maia3 download, and slows analysis.
+            <div class="pf-info-pop" id="maia-analysis-info-pop" hidden>
+              Runs the Maia3 human model (~46 MB download, cached) through the analysis pipeline: move classification, human probability, coach intuition, and brilliant signals. Off by default — Stockfish analysis always runs; only the Maia layer is skipped. Train Play replies and Build human-like branches are separate product features and keep working.
             </div>
           </section>
           <section class="card">

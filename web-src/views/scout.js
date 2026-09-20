@@ -29,6 +29,7 @@ import { buildColorRecommendationBanner } from "../scout-summary.js";
 import { engineScanPatterns } from "../scout-engine.js";
 import {
   MAIA_ENRICH_LOADING,
+  MAIA_ENRICH_OFF,
   SCOUT_MAIA_SUCCESS_TARGET,
   SCOUT_MAIA_TARGET_COUNT,
   buildGamePlanDisplayLines,
@@ -122,6 +123,7 @@ export function createScoutView(deps) {
     connectLichess,
     loadPgnIntoAnalyze,
     effectiveMaiaRating,
+    maiaAnalysisEnabled = () => true,
     getLichessUsername = () => null,
     getLichessAccounts = () => [],
     effectiveStockfishDepth = () => 16,
@@ -1114,6 +1116,16 @@ export function createScoutView(deps) {
   }
 
   async function enrichMaiaReads(gen) {
+    // Scout's Maia enrichment is an explicitly Maia-powered read of the
+    // opponent's human-likeness. When analysis-layer Maia is OFF the report
+    // states the requirement instead of silently changing shape.
+    if (typeof maiaAnalysisEnabled === "function" && !maiaAnalysisEnabled()) {
+      if (scoutState && scoutState.maiaEnrichState !== MAIA_ENRICH_OFF) {
+        scoutState.maiaEnrichState = MAIA_ENRICH_OFF;
+        renderScoutReport();
+      }
+      return;
+    }
     if (!scoutState?.games?.length || !scoutModule) return;
     if (gen !== maiaEnrichSeq) return;
     if (prefilterEnrichInFlight && prefilterEnrichActiveGen === prefilterEnrichSeq) return;

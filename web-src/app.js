@@ -145,7 +145,15 @@ const DEFAULT_PREFS = {
   moveAnim: true,
   sounds: true,
   bestArrow: true,
-  brilliantDetection: false,
+  // Analysis-layer gate for the Maia3 human model. OFF by default: the Analyze
+  // pipeline skips its Maia pass (classifier / human probability / coach
+  // intuition / brilliant signals) and no analysis-layer Maia inference runs —
+  // Stockfish analysis runs either way. Independent product capabilities that
+  // ARE Maia by design (Train Play opponent fallback, Build human-like
+  // branches) keep their existing behavior and never consult this.
+  // Replaces the old "Detect brilliant moves" toggle: with Maia analysis ON,
+  // brilliant signals ride the analysis pipeline.
+  maiaAnalysis: false,
 };
 const PREF_LABELS = {
   coordinates: "Board coordinates",
@@ -166,6 +174,16 @@ function loadPrefs() {
 
 function pref(name) {
   return appState.prefs ? appState.prefs[name] : DEFAULT_PREFS[name];
+}
+
+// Analysis-layer gate for the Maia3 human model. When OFF, the Analyze
+// pipeline skips its Maia pass and no analysis-layer caller (classifier /
+// human probability / coach intuition / brilliant signals) initializes the
+// provider or runs inference. Independent product capabilities that ARE Maia
+// by design (Train Play opponent fallback, Build human-like branches) keep
+// their existing behavior. Stockfish paths never consult this.
+function maiaAnalysisEnabled() {
+  return !!pref("maiaAnalysis");
 }
 
 function setPref(name, value) {
@@ -1679,7 +1697,7 @@ class PositionCoach {
           this._showSavedBrilliant(c, features, prevFen, ctx.lastUci, fen, token);
         }
         // A saved non-brilliant verdict is authoritative → leave the base read as is.
-      } else if (features.brilliantCandidate && pref("brilliantDetection")) {
+      } else if (features.brilliantCandidate && maiaAnalysisEnabled()) {
         this._checkBrilliant(features, prevFen, ctx.lastUci, fen, token);
       }
     } catch (err) {
@@ -1745,7 +1763,9 @@ class PositionCoach {
     renderCoachProse(c.buildCommentary(features));
     // Then enrich — non-blocking — with how rarely a human finds it. This is a cosmetic detail
     // on top of an already-shown Brilliant; a re-render only if the user is still on this move
-    // when Maia answers. Maia unavailable → the star simply stays without the rarity grounding.
+    // when Maia answers. Analysis-layer Maia off (or unavailable) → the star
+    // simply stays without the rarity grounding.
+    if (!maiaAnalysisEnabled()) return;
     try {
       const provider = getSharedMaia3Provider();
       const a = await provider.moveAssessment({ fen: prevFen, moveUci: uci, rating: effectiveMaiaRating() });
@@ -1787,10 +1807,12 @@ class PositionCoach {
   // over the position before the move says whether one move was obvious (a recapture) or
   // many looked reasonable (a sharp middlegame). Crossed with the move's quality, that's
   // what lets the coach call an error in an obvious spot a slip, and an error in a rich
-  // one a hard choice. Best-effort and async — if Maia is unavailable the engine read
-  // simply stands with no texture note. One Maia forward per move, reusing the shared
+  // one a hard choice. Best-effort and async — analysis-layer Maia OFF (or
+  // unavailable) leaves the engine read standing with no texture note. One Maia
+  // forward per move, reusing the shared
   // worker (the model is loaded once and cached), so it rides the existing budget.
   async _checkIntuition(features, prevFen, fen, token) {
+    if (!maiaAnalysisEnabled()) return;
     try {
       const c = await (_coachReady || preloadCoach());
       const provider = getSharedMaia3Provider();
@@ -1923,11 +1945,15 @@ function paintMaiaCoachFromRead(fen, read, extra = {}) {
 async function maiaPhaseCoach({ fen, expectedUci, expectedSan, playedUci }) {
   const m = await loadPhaseCoach();
   let predictions = [];
-  try {
-    const provider = getSharedMaia3Provider();
-    predictions = await provider.predictions({ fen, rating: effectiveMaiaRating() });
-  } catch (_) {
-    /* engine off → still return a phase-generic tip */
+  // Analysis-layer gate: with Maia analysis OFF the tip stays phase-generic
+  // (no provider init, no inference).
+  if (maiaAnalysisEnabled()) {
+    try {
+      const provider = getSharedMaia3Provider();
+      predictions = await provider.predictions({ fen, rating: effectiveMaiaRating() });
+    } catch (_) {
+      /* engine off → still return a phase-generic tip */
+    }
   }
   return m.buildPhaseCoach({
     fen,
@@ -5124,16 +5150,18 @@ async function runAnalysis() {
       shouldCancel: () => cancelled,
     });
 
-    // Phase 3d: browser Brilliant detection. Compute Maia assessments for the played
-    // moves (best-effort) so the server can flag brilliancies with no server compute.
-    // Maia's ~46 MB model downloads once (then cached); progress shows in the toast.
-    // Any failure (no weights / inference error) is swallowed → analysis without
-    // brilliancies, mirroring the server's no-Maia path.
+    // Phase 3d: browser Maia pass (classifier / human probability / brilliant
+    // signals). Best-effort so the server can persist them with no server
+    // compute. Skipped entirely when Maia analysis is OFF — Stockfish
+    // classification runs either way. Maia's ~46 MB model downloads once
+    // (then cached) when the pass runs; progress shows in the toast.
+    // Any failure (no weights / inference error) is swallowed → analysis
+    // without Maia signals, mirroring the server's no-Maia path.
     let maiaAssessments = [];
     if (
+      maiaAnalysisEnabled() &&
       prep.brilliant &&
       prep.brilliant.enabled &&
-      pref("brilliantDetection") &&
       Array.isArray(prep.moves) &&
       prep.moves.length
     ) {
@@ -7230,7 +7258,9 @@ async function generateFromCurrentNode() {
       signal: controller.signal,
       // Reuse ONE warm Maia worker/session across Generate runs (Stage 4b) — the first run
       // downloads + caches the ~46 MB model, later runs skip both the fetch and the session
-      // create. The orchestrator borrows it and never terminates it.
+      // create. The orchestrator borrows it and never terminates it. Build
+      // Generate is a Maia-by-design capability (human-like opponent branches),
+      // independent of the Analyze-layer Maia analysis switch.
       maiaProvider: getSharedMaia3Provider(),
       onProgress: (added) => {
         // `added` is planned nodes, not engine work — so don't map it 1:1 onto the bar.
@@ -8191,6 +8221,8 @@ async function fetchPlayExplorer(fen) {
 }
 
 async function fetchPlayMaia(fen) {
+  // Train Play opponent fallback is Maia-by-design (thin Explorer positions
+  // fall back to human-like replies), independent of the Analyze-layer switch.
   try {
     const provider = getSharedMaia3Provider();
     return await provider.predictions({ fen, rating: effectiveMaiaRating() });
@@ -9743,14 +9775,6 @@ async function loadSettings() {
     setStatusError(error.message);
     return;
   }
-  // The settings module owns all control wiring (switches, segmented theme,
-  // info popovers) — bind it even when the server payload is unreachable
-  // (signed-out visitor, offline dev server), so the controls always work.
-  try {
-    view.bind();
-  } catch (_) {
-    /* bind is idempotent; a failure must not block the render below */
-  }
   try {
     const payload = await api("/api/settings");
     applySettingsPayload(payload);
@@ -10290,6 +10314,13 @@ async function runCoverageScanUI() {
   // No Stockfish gate here: the scan is Maia-only. Gating it on cross-origin
   // isolation (a Stockfish requirement) wrongly blocked a Maia-only feature; if the
   // Maia worker itself can't start, the provider surfaces that error below instead.
+  // Coverage explicitly requires Maia (human-likeness is the whole question), so
+  // when analysis-layer Maia is OFF the scan states its requirement instead of
+  // silently producing a different (Stockfish-only) answer.
+  if (!maiaAnalysisEnabled()) {
+    setStatus("Coverage needs Maia analysis — turn it on in Settings → Playing strength.");
+    return;
+  }
   const button = document.getElementById("coverage-run");
   if (button) button.disabled = true;
   const scanRepId = appState.build.repertoire_id;
@@ -10481,6 +10512,8 @@ async function completeOneGap(gap, signal) {
     maiaRating: effectiveMaiaRating(),
     // Per-position Stockfish search depth from Settings (NOT the tree's ply depth).
     depth: effectiveStockfishDepth(),
+    // Gap completion reuses the Generate runner, which is Maia-by-design
+    // (human-like replies) and independent of the Analyze-layer switch.
     maiaProvider: getSharedMaia3Provider(),
     signal,
   });
@@ -10548,6 +10581,7 @@ async function ensureScoutView() {
       connectLichess: startLichessOAuth,
       loadPgnIntoAnalyze,
       effectiveMaiaRating,
+      maiaAnalysisEnabled: () => maiaAnalysisEnabled(),
       getLichessUsername: () => appState.lichessUsername,
       getLichessAccounts: () => lichessAccounts(),
       effectiveStockfishDepth,
