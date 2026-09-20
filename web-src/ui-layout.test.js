@@ -186,21 +186,36 @@ describe("workspace chrome layout", () => {
   it("offers Self as the default games/scout source with compact chips", () => {
     expect(html).toContain('id="games-source-self"');
     expect(html).toContain('id="games-source-pick"');
+    expect(html).toContain('id="games-source-add"');
+    expect(html).toContain('id="games-source-chips"');
     expect(html).toContain('id="scout-source-self"');
     expect(html).toContain('id="scout-source-pick"');
+    expect(html).toContain('id="scout-source-add"');
+    expect(html).toContain('id="scout-source-chips"');
     expect(html).toContain('id="scout-source-picked"');
     expect(css).toContain(".source-chip");
     expect(css).toContain(".source-pick");
+    expect(css).toContain(".source-add");
+    expect(css).toContain(".src-chips");
+    expect(css).toContain(".src-chip");
+    expect(css).toContain(".src-popover");
     expect(css).toContain(".replay-source");
-    // Games: Self + linked-account multi-select + explicit sources.
+    // Games + Scout share one selection system: the Source Composer primitive.
+    expect(app).toContain("views/shared/source-composer.js");
+    expect(app).toContain("openSourceComposer");
+    expect(app).toContain("selectionChips");
+    expect(app).toContain("selfGroupState");
+    // Games: Self + shared composer + explicit sources.
     expect(app).toContain("gamesSourceAccountIds");
-    expect(app).toContain("chooseGamesSourceAccounts");
+    expect(app).toContain("openGamesComposer");
     expect(app).toContain("setGamesSourceAccountIds");
-    // Scout: Self + linked-account multi-select + arbitrary opponent username.
+    expect(app).not.toContain("chooseGamesSourceAccounts");
+    // Scout: Self + shared composer + arbitrary opponent usernames.
     expect(app).toContain("scoutSelfOn");
     expect(app).toContain("scoutSourceAccountIds");
     expect(app).toContain("scoutPickedUsernames");
-    expect(app).toContain("chooseScoutSourceAccounts");
+    expect(app).toContain("openScoutComposer");
+    expect(app).not.toContain("chooseScoutSourceAccounts");
     expect(scoutView).toContain("scoutPickedUsernames");
     // Per-game source metadata survives into the rendered rows.
     expect(replayView).toContain("source_account");

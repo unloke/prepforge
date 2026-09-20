@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-BjkOt9e4.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-D0sqqavE.css">
+    <script type="module" crossorigin src="/static/assets/index-BxB1RgCa.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-CSlFi81M.css">
   </head>
   <body>
     <header class="topbar">
@@ -352,8 +352,10 @@
               <h2>My recent games</h2>
               <div class="replay-toolbar">
                 <button type="button" class="source-chip is-on" id="games-source-self" data-testid="games-source-self" title="Aggregate games across all linked Lichess accounts">Self · all linked</button>
+                <span class="src-chips" id="games-source-chips" data-testid="games-source-chips" hidden></span>
+                <button type="button" class="source-pick" id="games-source-pick" data-testid="games-source-pick" title="Open the source composer">Sources…</button>
+                <button type="button" class="source-add" id="games-source-add" data-testid="games-source-add" title="Add a source" aria-label="Add a Games source">＋</button>
                 <span class="replay-account" id="replay-account" title="Games source: all linked Lichess accounts by default">not connected</span>
-                <button type="button" class="source-pick" id="games-source-pick" data-testid="games-source-pick" title="Pick one or more linked accounts">Pick…</button>
                 <select id="replay-count" title="How many recent games to check">
                   <option value="10" selected>last 10</option>
                   <option value="20">last 20</option>
@@ -375,7 +377,9 @@
               <h2>Scout an opponent</h2>
               <div class="replay-toolbar">
                 <button type="button" class="source-chip is-on" id="scout-source-self" data-testid="scout-source-self" title="Scout the combined games of all linked Lichess accounts">Self · all linked</button>
-                <button type="button" class="source-pick" id="scout-source-pick" data-testid="scout-source-pick" title="Pick one or more linked accounts to scout">Pick…</button>
+                <span class="src-chips" id="scout-source-chips" data-testid="scout-source-chips" hidden></span>
+                <button type="button" class="source-pick" id="scout-source-pick" data-testid="scout-source-pick" title="Open the source composer">Sources…</button>
+                <button type="button" class="source-add" id="scout-source-add" data-testid="scout-source-add" title="Add a source" aria-label="Add a Scout source">＋</button>
                 <span class="replay-source" id="scout-source-picked" data-testid="scout-source-picked" title="Explicit Scout source accounts" hidden></span>
                 <input id="scout-username" type="text" placeholder="lichess username" />
                 <select id="scout-color" title="Which colour games to fetch">
@@ -563,12 +567,12 @@
               <button type="button" class="pf-info" id="connections-info" aria-label="About Connections" title="About Connections" aria-expanded="false">ⓘ</button>
             </div>
             <div class="pf-info-pop" id="connections-info-pop" hidden>
-              My last game checks all linked Lichess accounts and loads the newest game. Explorer uses any linked token.
+              My last game checks all linked Lichess accounts and loads the newest game. Explorer uses any linked token. Games and Scout treat every linked identity as Self by default — narrow to specific accounts from their source picker.
             </div>
             <div class="settings-label">Lichess accounts</div>
-            <div class="list-stack" id="settings-lichess-accounts" data-testid="settings-lichess-accounts"></div>
-            <div class="tools">
-              <button class="btn ghost" id="settings-link-lichess" data-testid="settings-link-lichess" type="button">Link another account</button>
+            <div class="list-stack conn-list" id="settings-lichess-accounts" data-testid="settings-lichess-accounts"></div>
+            <div class="tools conn-tools">
+              <button class="btn ghost conn-link" id="settings-link-lichess" data-testid="settings-link-lichess" type="button">Link another account</button>
             </div>
           </section>
           <section class="card">

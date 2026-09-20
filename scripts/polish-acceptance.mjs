@@ -341,7 +341,7 @@ for (const vp of VIEWPORTS) {
   // and the Self chip + source picker chrome is present.
   const compareFlow = await page.evaluate(async () => {
     const hook = window.__prepforgePolishE2e;
-    hook.setLichessAccounts([
+    await hook.setLichessAccounts([
       { id: "acc-a", username: "account_a", is_primary: true },
       { id: "acc-b", username: "account_b", is_primary: false },
     ]);
@@ -391,6 +391,7 @@ for (const vp of VIEWPORTS) {
       bodies,
       status,
       selfChipOn: !!selfChip?.classList.contains("is-on"),
+      chipLabel: selfChip?.textContent || "",
       pickPresent: !!pickBtn,
     };
   });
@@ -401,20 +402,17 @@ for (const vp of VIEWPORTS) {
       (compareFlow.bodies || []).every((b) => !b.includes("account_id")),
     `bodies=${JSON.stringify(compareFlow.bodies)}`,
   );
-  check(
-    `[${vp.label}] games self chip on + picker present`,
-    !!compareFlow.selfChipOn && !!compareFlow.pickPresent,
-  );
+  check(`[${vp.label}] games self chip on + picker present`, !!compareFlow.selfChipOn && !!compareFlow.pickPresent, `chip=${compareFlow.chipLabel || ""}`);
   check(
     `[${vp.label}] games self status names self`,
     /self/.test(compareFlow.status || ""),
     (compareFlow.status || "").slice(0, 100),
   );
 
-  // --- Scout self: chip on by default, opponent box yields to linked selves --
+  // --- Scout self: chip on by default, composer chips shown ---------------
   const scoutFlow = await page.evaluate(async () => {
     const hook = window.__prepforgePolishE2e;
-    hook.setLichessAccounts([
+    await hook.setLichessAccounts([
       { id: "acc-a", username: "account_a", is_primary: true },
       { id: "acc-b", username: "account_b", is_primary: false },
     ]);
@@ -432,10 +430,150 @@ for (const vp of VIEWPORTS) {
   check(`[${vp.label}] scout self chip present and on`, !!scoutFlow.chipPresent && !!scoutFlow.chipOn);
   check(
     `[${vp.label}] scout self claims linked accounts`,
-    /2 linked|all linked/.test(scoutFlow.label || ""),
+    /2 linked|all linked|Self · 2/.test(scoutFlow.label || ""),
     scoutFlow.label || "",
   );
-  check(`[${vp.label}] scout opponent box yields to self`, !!scoutFlow.inputDisabled);
+  check(`[${vp.label}] scout opponent box stays usable`, !scoutFlow.inputDisabled);
+
+  // --- Source Composer: shared chips + popover on Games and Scout ------------
+  // Both pages render selected-source chips with an Add button; opening the
+  // composer shows the Self group (mixed/partial aware), linked rows, an
+  // external input on Scout, Esc close, and focus return.
+  const composerFlow = await page.evaluate(async () => {
+    const hook = window.__prepforgePolishE2e;
+    await hook.setLichessAccounts([
+      { id: "acc-a", username: "account_a", is_primary: true },
+      { id: "acc-b", username: "account_b", is_primary: false },
+    ]);
+    try {
+      localStorage.removeItem("prepforge.games_source");
+      localStorage.removeItem("prepforge.scout_source");
+      localStorage.removeItem("prepforge.scout_external");
+    } catch (_) {}
+    document.querySelector('[data-testid="nav-replay"]').click();
+    await new Promise((r) => setTimeout(r, 200));
+    const out = {};
+    const gamesChip = document.getElementById("games-source-self");
+    out.gamesChipLabel = gamesChip?.textContent || "";
+    out.gamesAdd = !!document.getElementById("games-source-add");
+    out.gamesTray = !!document.getElementById("games-source-chips");
+    document.getElementById("games-source-pick").click();
+    await new Promise((r) => setTimeout(r, 200));
+    const pop = document.querySelector(".src-popover");
+    out.popOpen = !!pop;
+    out.popHasSelf = !!pop?.textContent?.includes("Self");
+    out.popHasAccounts =
+      !!pop?.textContent?.includes("account_a") && !!pop?.textContent?.includes("account_b");
+    const selfBox = pop?.querySelector('[data-testid="src-self-checkbox"]');
+    const selfLabel = pop?.querySelector('[data-src-self]');
+    const before = (document.getElementById("games-source-self")?.textContent) || "";
+    const debug = {
+      hasPop: !!pop,
+      popHtml: (pop?.innerHTML || "").slice(0, 400),
+      hasSelfBox: !!selfBox,
+      selfChecked: !!selfBox?.checked,
+      hasLabel: !!selfLabel,
+    };
+    if (selfBox) {
+      // Flip through the native checkbox path (click toggles + fires change):
+      // unchecking Self with all linked selected deselects the whole group.
+      selfBox.click();
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    out.partialLabel = document.getElementById("games-source-self")?.textContent || "";
+    // Deselecting Self from the implicit default is an explicit empty: the
+    // group box reads off ("Self"), which differs from the "Self · 2" before.
+    out.partialChanged = out.partialLabel !== before;
+    out.trayVisible = !document.getElementById("games-source-chips")?.hidden;
+    out.trayHtml = (document.getElementById("games-source-chips")?.innerHTML || "").slice(0, 300);
+    out.gamesSourceKey = null;
+    try {
+      out.gamesSourceKey = localStorage.getItem("prepforge.games_source");
+    } catch (_) {}
+    out.debug = debug;
+    const escOk = (() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      return !document.querySelector(".src-popover");
+    })();
+    out.escClosed = escOk;
+    document.querySelector('[data-testid="nav-scout"]').click();
+    await new Promise((r) => setTimeout(r, 300));
+    out.scoutAdd = !!document.getElementById("scout-source-add");
+    document.getElementById("scout-source-add").click();
+    await new Promise((r) => setTimeout(r, 200));
+    const scoutPop = document.querySelector(".src-popover");
+    out.scoutPop = !!scoutPop;
+    const addInput = scoutPop?.querySelector("[data-src-add]");
+    out.scoutExternalInput = !!addInput;
+    if (addInput) {
+      addInput.value = "Hikaru";
+      addInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    out.scoutExternalChip = !!document.querySelector('[data-scout-unpick-external]');
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await new Promise((r) => setTimeout(r, 100));
+    out.focusReturned =
+      document.activeElement?.id === "scout-source-add" ||
+      !!document.activeElement?.closest?.(".replay-toolbar");
+    return out;
+  });
+  check(`[${vp.label}] games chip shows collapsed Self`, /Self · 2/.test(composerFlow.gamesChipLabel || ""), composerFlow.gamesChipLabel || "");
+  check(`[${vp.label}] games chips + add button present`, !!composerFlow.gamesAdd && !!composerFlow.gamesTray);
+  check(`[${vp.label}] composer popover opens with Self + accounts`, !!composerFlow.popOpen && !!composerFlow.popHasSelf && !!composerFlow.popHasAccounts);
+  check(`[${vp.label}] composer deselect shows explicit empty`, !!composerFlow.partialChanged && !!composerFlow.trayVisible, `${composerFlow.partialLabel || ""} | tray=${composerFlow.trayHtml || ""} | key=${composerFlow.gamesSourceKey || ""}`);
+  check(`[${vp.label}] composer esc closes`, !!composerFlow.escClosed);
+  check(`[${vp.label}] scout composer accepts external names`, !!composerFlow.scoutPop && !!composerFlow.scoutExternalInput && !!composerFlow.scoutExternalChip);
+
+  // --- Connections: compact rows + overflow menu ------------------------------
+  const connFlow = await page.evaluate(async () => {
+    const hook = window.__prepforgePolishE2e;
+    await hook.setLichessAccounts([
+      { id: "acc-a", username: "account_a", is_primary: true },
+      { id: "acc-b", username: "account_b", is_primary: false },
+    ]);
+    const settingsTab = document.querySelector('.tab[data-view="settings"]');
+    if (settingsTab) settingsTab.click();
+    await new Promise((r) => setTimeout(r, 400));
+    const list = document.getElementById("settings-lichess-accounts");
+    const rows = list ? [...list.querySelectorAll(".conn-row")] : [];
+    const primaryChip = list?.querySelector(".conn-primary");
+    const narrow = (() => {
+      const w = document.documentElement.clientWidth;
+      return { width: w };
+    })();
+    const firstMenu = rows[1]?.querySelector('[data-conn-action="menu"]');
+    firstMenu?.click();
+    await new Promise((r) => setTimeout(r, 100));
+    const menuOpen = !rows[1]?.querySelector(".conn-menu")?.hidden;
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await new Promise((r) => setTimeout(r, 50));
+    return {
+      rowCount: rows.length,
+      primaryChip: !!primaryChip && /Primary/.test(primaryChip.textContent || ""),
+      linkCta: !!document.getElementById("settings-link-lichess"),
+      menuOpen,
+      viewport: narrow.width,
+    };
+  });
+  check(`[${vp.label}] connections rows compact with primary chip`, connFlow.rowCount === 2 && !!connFlow.primaryChip);
+  check(`[${vp.label}] connections link CTA present`, !!connFlow.linkCta);
+  check(`[${vp.label}] connections overflow menu opens`, !!connFlow.menuOpen);
+
+  // --- Maia health: independent status + retry/reset --------------------------
+  const maiaFlow = await page.evaluate(async () => {
+    await new Promise((r) => setTimeout(r, 300));
+    const model = document.getElementById("settings-maia-model")?.textContent || "";
+    const retry = !!document.getElementById("settings-maia-retry");
+    const reset = !!document.getElementById("settings-maia-reset");
+    return { model, retry, reset };
+  });
+  check(
+    `[${vp.label}] maia health shows a real runtime status`,
+    /Ready|Available on demand|Loading|Cache missing|Unavailable|Error/.test(maiaFlow.model || ""),
+    maiaFlow.model || "",
+  );
+  check(`[${vp.label}] maia retry + reset always available`, !!maiaFlow.retry && !!maiaFlow.reset);
 
   // --- Dropdown theme: dark menu chrome -------------------------------------
   const theme = await page.evaluate(() => {

@@ -310,7 +310,15 @@ export function createAccountController({
   function syncReplayControls() {
     const chip = document.getElementById("replay-account");
     if (chip) {
-      chip.textContent = appState.lichessUsername || "not connected";
+      const accounts = Array.isArray(appState.lichessAccounts) ? appState.lichessAccounts : [];
+      // paintGamesSource() owns the source-aware label (Self · N / picks);
+      // only fall back to the plain username when it hasn't run yet.
+      const labelled = chip.textContent && chip.textContent !== "not connected";
+      if (accounts.length > 1 && !labelled) {
+        chip.textContent = `Self · ${accounts.length} accounts`;
+      } else if (!labelled) {
+        chip.textContent = appState.lichessUsername || "not connected";
+      }
       chip.classList.toggle("is-connected", !!appState.lichessUsername);
     }
     const btn = document.getElementById("lichess-compare-btn");
