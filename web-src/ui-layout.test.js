@@ -11,6 +11,7 @@ const account = readFileSync(join(root, "controllers", "account.js"), "utf8");
 const replayView = readFileSync(join(root, "views", "replay.js"), "utf8");
 const settingsView = readFileSync(join(root, "views", "settings.js"), "utf8");
 const scoutView = readFileSync(join(root, "views", "scout.js"), "utf8");
+const composer = readFileSync(join(root, "views", "shared", "source-composer.js"), "utf8");
 
 function ruleBody(selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -121,7 +122,8 @@ describe("workspace chrome layout", () => {
     // concise guidance content itself always fits beside the explanation scroll.
     expect(maia).not.toMatch(/line-clamp|overflow:\s*hidden/);
     expect(bookline).not.toMatch(/line-clamp|overflow:\s*hidden/);
-    expect(ruleBody(".sidebar")).toMatch(/overflow-y:\s*auto/);
+    expect(ruleBody(".sidebar")).toMatch(/overflow:\s*visible/);
+    expect(ruleBody(".sidebar")).not.toMatch(/overflow-y/);
   });
 
   it("never navigates away during background hydration", () => {
@@ -194,24 +196,33 @@ describe("workspace chrome layout", () => {
     expect(html).not.toContain('id="scout-source-pick"');
     expect(html).not.toContain('id="scout-source-picked"');
     expect(html).not.toContain('id="scout-username"');
+    expect(html).not.toContain('id="replay-account"');
     expect(css).toContain(".source-add");
     expect(css).not.toContain(".source-pick");
+    expect(css).not.toContain(".replay-account");
     expect(css).toContain(".src-chips");
     expect(css).toContain(".src-chip");
     expect(css).toContain(".src-popover");
+    expect(css).toContain(".src-kind");
     expect(css).toContain(".replay-source");
     // Games + Scout share one selection system: the Source Composer primitive.
     expect(app).toContain("views/shared/source-composer.js");
     expect(app).toContain("openSourceComposer");
+    expect(composer).toContain("export function positionPopover");
     expect(app).toContain("selectionChips");
-    // Games: selected-source chips + one Add trigger + explicit sources.
-    expect(app).toContain("gamesSourceAccountIds");
+    expect(app).toContain("selectionFromStorage");
+    expect(app).toContain("selectionToStorage");
+    // Games and Scout resolve through the same fetch path (linked + external).
+    expect(app).toContain("gamesPickedUsernames");
     expect(app).toContain("openGamesComposer");
-    expect(app).toContain("setGamesSourceAccountIds");
+    expect(app).toContain("writeGamesSelection");
+    expect(app).toContain("gamesSourceAccountIds");
+    expect(app).toContain("usernames");
     expect(app).not.toContain("chooseGamesSourceAccounts");
-    // Scout: chips + one Add trigger + composer external usernames (no
-    // standalone Self/Sources buttons, no standalone username textbox). The
-    // report's profile links (scout-username-link) are unrelated chrome.
+    expect(app).not.toContain('getElementById("replay-account")');
+    // Scout: identical picker, identical model — difference lives only in the
+    // analysis workflow after picking. The report's profile links
+    // (scout-username-link) are unrelated chrome.
     expect(app).not.toContain('getElementById("scout-username")');
     expect(app).not.toContain("scoutSelfOn");
     expect(app).not.toContain("setScoutSelf");
@@ -220,11 +231,61 @@ describe("workspace chrome layout", () => {
     expect(app).not.toContain("scoutExternalUsernames");
     expect(app).toContain("scoutPickedUsernames");
     expect(app).toContain("openScoutComposer");
+    expect(app).toContain("writeScoutSelection");
     expect(app).not.toContain("chooseScoutSourceAccounts");
     expect(scoutView).toContain("scoutPickedUsernames");
     expect(scoutView).not.toContain('getElementById("scout-username")');
     // Per-game source metadata survives into the rendered rows.
     expect(replayView).toContain("source_account");
+  });
+
+  it("keeps dark-mode text on semantic tokens (no hard-coded light colors)", () => {
+    // Games result / move preview / secondary text use --text, never a fixed
+    // dark hex that would vanish on a dark panel.
+    expect(css).toContain(".replay-result");
+    expect(css).toContain(".replay-preview");
+    expect(css).toContain(".replay-detail");
+    const replayLine = ruleBody(".replay-line");
+    expect(replayLine).toMatch(/color:\s*var\(--text\)/);
+    expect(replayLine).not.toMatch(/color:\s*#[0-9a-fA-F]{3,6}/);
+    const result = ruleBody(".replay-result");
+    expect(result).not.toMatch(/color:\s*#[0-9a-fA-F]{3,6}/);
+    const preview = ruleBody(".replay-preview");
+    expect(preview).not.toMatch(/color:\s*#[0-9a-fA-F]{3,6}/);
+    // Settings segmented control: unselected, selected, hover, and disabled
+    // all stay legible; the selected pill pins a per-theme pair (light white
+    // on deep bronze, dark near-black on light amber).
+    const segBtn = ruleBody(".seg-btn");
+    expect(segBtn).toMatch(/color:\s*var\(--text\)/);
+    const segActive = css.match(/\.seg-btn\.is-active\s*\{([^}]+)\}/)?.[1] || "";
+    expect(segActive).toMatch(/color:\s*#ffffff/);
+    expect(segActive).toMatch(/background:\s*#8a5a24/);
+    expect(css).toContain(':root[data-theme="dark"] .seg-btn.is-active');
+    const segDisabled = css.match(/\.seg-btn:disabled\s*\{([^}]+)\}/)?.[1] || "";
+    expect(segDisabled).toMatch(/color:\s*var\(--label\)/);
+    // Shared switches use tokens for track + knob in both states.
+    const knob = ruleBody(".pf-knob");
+    expect(knob).toMatch(/background:\s*var\(--text\)/);
+    expect(css).toMatch(/\.pf-switch\.is-on \.pf-knob/);
+    // Rank accents use semantic good/danger/warn so both themes adapt.
+    expect(css).toContain(".replay-chip.rk-in-prep { color: var(--good); }");
+    expect(css).toContain(".rk-user-error .replay-icon { color: var(--danger); }");
+  });
+
+  it("gives every view one scroll owner (no duplicate side rails)", () => {
+    // The sidebar is layout only — never a nested scroller.
+    expect(ruleBody(".sidebar")).toMatch(/overflow:\s*visible/);
+    expect(ruleBody(".sidebar")).not.toMatch(/overflow-y/);
+    // Panels that need independent scroll keep it: coach prose, inspector,
+    // move lists, composer rows/popover, context menus.
+    expect(ruleBody(".coach-scroll")).toMatch(/overflow-y:\s*auto/);
+    expect(ruleBody(".inspector-panel")).toMatch(/overflow-y:\s*auto/);
+    expect(ruleBody(".movelist")).toMatch(/overflow-y:\s*auto/);
+    expect(ruleBody(".src-popover")).toMatch(/overflow-y:\s*auto/);
+    expect(ruleBody(".src-rows")).toMatch(/overflow:\s*auto/);
+    expect(ruleBody(".context-menu")).toMatch(/overflow-y:\s*auto/);
+    // No reserved gutter rails that shift content width.
+    expect(css).not.toContain("scrollbar-gutter");
   });
 
   it("promotes through one shared picker on every interactive board", () => {

@@ -361,6 +361,297 @@ class PrepForgeRepository:
                     continue
                 self._save_move_annotation(conn, game_id=game.id, move=move, pos_cache=pos_cache)
 
+    def _save_moves_batched(self, conn: Connection, game: Game, result) -> None:
+        """Bulk portion of ``save_game_batched`` (moves, positions, evals,
+        analysis row). Runs inside the caller's transaction; the game-metadata
+        upsert already happened in ``save_game_batched``."""
+        from prepforge_chess.core.models import MoveRecord as _MoveRecord
+
+        annotated: List[_MoveRecord] = [
+            move for move in game.moves if codec.move_needs_row(move)
+        ]
+
+        # 1. Collect every unique position key once (chunked for the
+        # SQLite 999-variable cap and the Postgres 65535-parameter cap).
+        fen_keys: List[str] = []
+        seen_fens: set = set()
+        for move in annotated:
+            for fen in (move.fen_before, move.fen_after):
+                key = codec.position_key(fen)
+                if key not in seen_fens:
+                    seen_fens.add(key)
+                    fen_keys.append(key)
+        pos_ids: Dict[str, int] = {}
+        FEN_CHUNK = 400
+        if fen_keys:
+            # Chunked multi-row VALUES (1 column per row; 400 is safely
+            # under both backends' parameter caps). One round-trip per
+            # chunk, not per position.
+            for chunk_start in range(0, len(fen_keys), FEN_CHUNK):
+                chunk = fen_keys[chunk_start : chunk_start + FEN_CHUNK]
+                conn.execute(
+                    _insert(conn, t.positions)
+                    .values([{"fen": key} for key in chunk])
+                    .on_conflict_do_nothing(index_elements=["fen"])
+                )
+            pos_ids = {}
+            for pos_start in range(0, len(fen_keys), FEN_CHUNK):
+                pos_chunk = fen_keys[pos_start : pos_start + FEN_CHUNK]
+                for row in conn.execute(
+                    select(t.positions.c.id, t.positions.c.fen).where(
+                        t.positions.c.fen.in_(pos_chunk)
+                    )
+                ).all():
+                    pos_ids[row.fen] = int(row.id)
+
+        # 2. Deduplicate engine evaluations by their unique key and upsert
+        # them in one statement with RETURNING ids.
+        eval_keys: List[tuple] = []
+        seen_evals: set = set()
+        eval_payloads: Dict[tuple, Dict[str, Any]] = {}
+        for move in annotated:
+            for evaluation, fen in (
+                (move.engine_eval_before, move.fen_before),
+                (move.engine_eval_after, move.fen_after),
+                (move.best_move_eval, move.fen_before),
+            ):
+                if evaluation is None:
+                    continue
+                key = (
+                    pos_ids[codec.position_key(fen)],
+                    evaluation.engine,
+                    codec.encode_search_limit(evaluation.depth),
+                    codec.encode_search_limit(evaluation.nodes),
+                    codec.encode_search_limit(evaluation.time_ms),
+                )
+                if key in seen_evals:
+                    continue
+                seen_evals.add(key)
+                eval_keys.append(key)
+                wdl = codec.encode_wdl(evaluation.wdl)
+                eval_payloads[key] = {
+                    "position_id": key[0],
+                    "engine": evaluation.engine,
+                    "depth": key[2],
+                    "nodes": key[3],
+                    "time_ms": key[4],
+                    "score_cp": evaluation.score_cp,
+                    "mate_in": evaluation.mate_in,
+                    "best_move_uci": evaluation.best_move_uci,
+                    "pv": codec.encode_pv(evaluation.pv),
+                    "wdl_win": None if wdl is None else wdl[0],
+                    "wdl_draw": None if wdl is None else wdl[1],
+                    "wdl_loss": None if wdl is None else wdl[2],
+                }
+        eval_ids: Dict[tuple, int] = {}
+        if eval_payloads:
+            # Same SQLite executemany-upsert limitation as move rows: use
+            # chunked multi-row VALUES (12 columns per eval row → a 40-row
+            # chunk is 480 variables). One round-trip per chunk.
+            CHUNK = 40
+            for chunk_start in range(0, len(eval_keys), CHUNK):
+                chunk = eval_keys[chunk_start : chunk_start + CHUNK]
+                stmt = _insert(conn, t.engine_evaluations).values(
+                    [eval_payloads[key] for key in chunk]
+                )
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=["position_id", "engine", "depth", "nodes", "time_ms"],
+                    set_={
+                        "score_cp": stmt.excluded.score_cp,
+                        "mate_in": stmt.excluded.mate_in,
+                        "best_move_uci": stmt.excluded.best_move_uci,
+                        "pv": stmt.excluded.pv,
+                        "wdl_win": stmt.excluded.wdl_win,
+                        "wdl_draw": stmt.excluded.wdl_draw,
+                        "wdl_loss": stmt.excluded.wdl_loss,
+                    },
+                ).returning(
+                    t.engine_evaluations.c.id,
+                    t.engine_evaluations.c.position_id,
+                    t.engine_evaluations.c.engine,
+                    t.engine_evaluations.c.depth,
+                    t.engine_evaluations.c.nodes,
+                    t.engine_evaluations.c.time_ms,
+                )
+                for row in conn.execute(stmt).all():
+                    eval_ids[
+                        (
+                            int(row.position_id),
+                            row.engine,
+                            int(row.depth),
+                            int(row.nodes),
+                            int(row.time_ms),
+                        )
+                    ] = int(row.id)
+            # RETURNING only yields inserted rows on SQLite (upserted
+            # conflicts return nothing). Backfill the rest with chunked
+            # selects (same variable-cap reason as above).
+            missing = [key for key in eval_keys if key not in eval_ids]
+            if missing:
+                pos_chunks = sorted({key[0] for key in missing})
+                engine_name = eval_payloads[missing[0]]["engine"]
+                for pos_start in range(0, len(pos_chunks), FEN_CHUNK):
+                    pos_chunk = pos_chunks[pos_start : pos_start + FEN_CHUNK]
+                    rows = conn.execute(
+                        select(
+                            t.engine_evaluations.c.id,
+                            t.engine_evaluations.c.position_id,
+                            t.engine_evaluations.c.engine,
+                            t.engine_evaluations.c.depth,
+                            t.engine_evaluations.c.nodes,
+                            t.engine_evaluations.c.time_ms,
+                        ).where(
+                            t.engine_evaluations.c.position_id.in_(pos_chunk),
+                            t.engine_evaluations.c.engine == engine_name,
+                        )
+                    ).all()
+                    for row in rows:
+                        key = (
+                            int(row.position_id),
+                            row.engine,
+                            int(row.depth),
+                            int(row.nodes),
+                            int(row.time_ms),
+                        )
+                        if key in eval_payloads:
+                            eval_ids[key] = int(row.id)
+
+        def _eval_id(evaluation, fen) -> Optional[int]:
+            if evaluation is None:
+                return None
+            return eval_ids.get(
+                (
+                    pos_ids[codec.position_key(fen)],
+                    evaluation.engine,
+                    codec.encode_search_limit(evaluation.depth),
+                    codec.encode_search_limit(evaluation.nodes),
+                    codec.encode_search_limit(evaluation.time_ms),
+                )
+            )
+
+        # 3. Deterministic upsert of move rows by (game_id, ply) in one
+        # bulk statement. It replaces annotations on re-analysis; plies
+        # that no longer need a row (unclassified, uncommented) are
+        # deleted so the game never keeps stale annotations.
+        # NOTE: one multi-row VALUES would trip the SQLite 999-variable
+        # cap (12 columns × 80 rows), so rows go in parametrized
+        # executemany chunks — one round-trip per chunk, same row count.
+        move_rows = [
+            {
+                "game_id": game.id,
+                "ply": move.ply,
+                "uci": move.uci,
+                "engine_eval_before_id": _eval_id(move.engine_eval_before, move.fen_before),
+                "engine_eval_after_id": _eval_id(move.engine_eval_after, move.fen_after),
+                "best_move_uci": move.best_move_uci,
+                "best_move_eval_id": _eval_id(move.best_move_eval, move.fen_before),
+                "classification": move.classification.value,
+                "comment": move.comment,
+                "tags_json": _json_dump(move.tags) if move.tags else None,
+                "source": move.source.value,
+            }
+            for move in annotated
+        ]
+        if move_rows:
+            # executemany-with-upsert is rejected on SQLite, so chunk the
+            # multi-row VALUES (12 columns per row; a 40-row chunk is 480
+            # variables, safely under the 999 cap on SQLite and trivially
+            # under the Postgres parameter cap). An 80-ply game is 2
+            # chunks — O(1) round-trips, not O(ply) — on both backends.
+            MOVE_CHUNK = 40
+            for chunk_start in range(0, len(move_rows), MOVE_CHUNK):
+                chunk = move_rows[chunk_start : chunk_start + MOVE_CHUNK]
+                stmt = _insert(conn, t.moves).values(chunk)
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=["game_id", "ply"],
+                    set_={
+                        "uci": stmt.excluded.uci,
+                        "engine_eval_before_id": stmt.excluded.engine_eval_before_id,
+                        "engine_eval_after_id": stmt.excluded.engine_eval_after_id,
+                        "best_move_uci": stmt.excluded.best_move_uci,
+                        "best_move_eval_id": stmt.excluded.best_move_eval_id,
+                        "classification": stmt.excluded.classification,
+                        "comment": stmt.excluded.comment,
+                        "tags_json": stmt.excluded.tags_json,
+                        "source": stmt.excluded.source,
+                    },
+                )
+                conn.execute(stmt)
+        kept = {move.ply for move in annotated}
+        if kept:
+            conn.execute(
+                delete(t.moves).where(
+                    t.moves.c.game_id == game.id, ~t.moves.c.ply.in_(sorted(kept))
+                )
+            )
+        else:
+            conn.execute(delete(t.moves).where(t.moves.c.game_id == game.id))
+
+        if result is not None:
+            analysis_id = self._analysis_result_id(result)
+            _upsert(
+                conn,
+                t.analysis_results,
+                {
+                    "id": analysis_id,
+                    "game_id": result.game_id,
+                    "analyzed_at": _dt_to_text(result.analyzed_at),
+                    "engine": result.engine,
+                    "depth": result.depth,
+                    "summary_json": _json_dump(result.summary),
+                    "critical_ply": ",".join(str(p) for p in result.critical_ply),
+                },
+                conflict=[t.analysis_results.c.id],
+                update_cols=(
+                    "analyzed_at", "engine", "depth", "summary_json", "critical_ply",
+                ),
+            )
+
+    def save_game_batched(
+        self,
+        game: Game,
+        result: Optional[AnalysisResult] = None,
+        owner_user_id: Optional[str] = None,
+    ) -> None:
+        """Persist a classified game with batched writes (one transaction).
+
+        Same rows as ``save_game`` (+ the analysis result when given), but the
+        statement count stays near-constant in game length instead of scaling
+        per ply (see ``_save_moves_batched``). SQLite and PostgreSQL share this
+        path (``_insert`` picks the dialect). Ownership, dedup, and
+        analysis-history semantics are unchanged.
+        """
+        now = _now_text()
+        with self.engine.begin() as conn:
+            _upsert(
+                conn,
+                t.games,
+                {
+                    "id": game.id,
+                    "source": game.source.value,
+                    "initial_fen": game.initial_fen,
+                    "uci_blob": codec.game_uci_blob(game),
+                    "white": game.white,
+                    "black": game.black,
+                    "result": game.result.value,
+                    "event": game.event,
+                    "site": game.site,
+                    "played_at": _dt_to_text(game.played_at),
+                    "lichess_id": game.lichess_id,
+                    "tags_json": _json_dump(game.tags),
+                    "owner_user_id": owner_user_id,
+                    "created_at": now,
+                    "updated_at": now,
+                },
+                conflict=[t.games.c.id],
+                update_cols=(
+                    "source", "initial_fen", "uci_blob", "white", "black", "result",
+                    "event", "site", "played_at", "lichess_id", "tags_json", "updated_at",
+                ),
+                coalesce_cols=("owner_user_id",),
+            )
+            self._save_moves_batched(conn, game, result)
+
     def load_game(self, game_id: str, owner_user_id: Optional[str] = None) -> Optional[Game]:
         with self.engine.connect() as conn:
             row = conn.execute(

@@ -440,12 +440,17 @@ def _run_compare(
     repo: PrepForgeRepository,
     account_id: str | None = None,
     account_ids: list[str] | None = None,
+    usernames: list[str] | None = None,
 ) -> dict:
     """Fetch recent public games and match each against THIS owner's repertoires.
 
     ``account_id`` selects one identity explicitly. A list (or the default)
     aggregates "self": every linked identity gets a fair share of ``count``,
-    results dedupe by game id, and each game carries ``source_account``."""
+    results dedupe by game id, and each game carries ``source_account``.
+    ``usernames`` (client-resolved from the shared Source Composer selection)
+    may additionally name arbitrary public Lichess users — e.g. external
+    opponents added on Games or Scout — fetched the same way, owner-scoped to
+    the caller's repertoires for comparison."""
     count = max(1, min(_COMPARE_COUNT_MAX, count))
     if account_ids:
         links = []
@@ -457,7 +462,14 @@ def _run_compare(
         links = _links_for(db, user.id)
         primaries = [link for link in links if link.is_primary]
         links = primaries + [link for link in links if not link.is_primary]
-    usernames = [link.provider_user_id for link in links if link.provider_user_id]
+    linked_names = [link.provider_user_id for link in links if link.provider_user_id]
+    extra = [u.strip() for u in (usernames or []) if u and str(u).strip()]
+    seen_lower = {u.lower() for u in linked_names}
+    for name in extra:
+        if name.lower() not in seen_lower:
+            seen_lower.add(name.lower())
+            linked_names.append(name)
+    usernames = linked_names
     if not usernames:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -520,25 +532,28 @@ def compare(
     count: int = 10,
     account_id: str | None = None,
     account_ids: str | None = None,
+    usernames: str | None = None,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
     db: Session = Depends(get_db),
     repo: PrepForgeRepository = Depends(get_repository),
 ) -> dict:
     ids = [a for a in (account_ids or "").split(",") if a] or None
-    return _run_compare(count, user, owner, db, repo, account_id, ids)
+    names = [u for u in (usernames or "").split(",") if u.strip()] or None
+    return _run_compare(count, user, owner, db, repo, account_id, ids, names)
 
 
 class CompareBody(BaseModel):
-    # The SPA still POSTs ``{username, count}`` (web-src/app.js). ``username`` is
-    # ignored -- compare always runs against the caller's *linked* account, never a
-    # client-supplied one (multi-tenant isolation); only ``count`` is honoured.
-    # ``account_id`` selects one identity explicitly; ``account_ids`` selects
-    # several; omitted means "self" (all linked identities aggregated).
+    # The SPA POSTs the shared Source Composer resolution: ``account_ids``
+    # narrows linked identities (omitted = Self = all linked) and ``usernames``
+    # carries the fully-resolved fetch list (linked + arbitrary external Lichess
+    # users). ``username`` (legacy) is ignored. Comparison stays owner-scoped to
+    # the caller's own repertoires.
     username: str | None = None
     count: int = 10
     account_id: str | None = None
     account_ids: list[str] | None = None
+    usernames: list[str] | None = None
 
 
 @router.post("/compare")
@@ -549,10 +564,12 @@ def compare_post(
     db: Session = Depends(get_db),
     repo: PrepForgeRepository = Depends(get_repository),
 ) -> dict:
-    """Legacy POST shim: the old single-tenant server dispatched compare on POST with a
-    client-supplied username (server.py). Here the username is dropped on purpose; the
-    fetch is owner-scoped to the linked account."""
-    return _run_compare(body.count, user, owner, db, repo, body.account_id, body.account_ids)
+    """Shared Source Composer fetch: resolved linked ids + arbitrary external
+    Lichess usernames, compared owner-scoped against the caller's repertoires.
+    The legacy single-tenant ``username`` field is ignored."""
+    return _run_compare(
+        body.count, user, owner, db, repo, body.account_id, body.account_ids, body.usernames
+    )
 
 
 @router.get("/latest")

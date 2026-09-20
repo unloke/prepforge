@@ -41,8 +41,8 @@ import {
   openSourceComposer,
   normalizeSelection,
   selectionChips,
-  legacyIdsToSelection,
-  selectionToLegacyIds,
+  selectionFromStorage,
+  selectionToStorage,
   resolveFetchUsernames,
 } from "./views/shared/source-composer.js";
 let _coachReady = null;
@@ -562,8 +562,9 @@ class Toast {
     this.minimized = false;
     this.activeTotal = Math.max(1, Number(total) || 1);
     this.lastDisplayedPercent = 0;
-    // The named phase the bar is currently tracking (e.g. "evaluating" → "brilliancies" →
-    // "traps" → "classifying"). A job that runs several phases with DIFFERENT scales resets the
+    // The named phase the bar is currently tracking (e.g. "stockfish" →
+    // "maia-load" → "maia-inference" → "maia-traps" → "classify-save"). A job
+    // that runs several phases with DIFFERENT scales resets the
     // denominator + bar when the phase label changes (see update()); null until the first
     // labelled tick.
     this._phase = null;
@@ -5144,6 +5145,24 @@ async function runAnalysis() {
     const positions = prep.positions || [];
     if (!positions.length) throw new Error("No positions to analyze");
 
+    // Phase instrumentation: each pipeline stage reports through one `timed`
+    // wrapper so the toast label always names the work actually running (the
+    // old "classifying" label covered Maia inference + classify-save +
+    // render). Stages: load, stockfish, maia-load, maia-inference (+ trap
+    // detail), classifying (CPU), saving analysis (DB, from the server's
+    // server_timings_ms), rendering. Durations accumulate into `timings` and
+    // log once as [analyze-timings] — deterministic phase attribution, no ms
+    // thresholds.
+    const timings = {};
+    const timed = async (phase, fn) => {
+      const start = performance.now();
+      try {
+        return await fn();
+      } finally {
+        timings[`${phase}_ms`] = Math.round((timings[`${phase}_ms`] || 0) + (performance.now() - start));
+      }
+    };
+
     jobToast.startJob({
       id: jobId,
       title: "Analyzing game",
@@ -5154,29 +5173,33 @@ async function runAnalysis() {
       },
     });
 
-    const { analyzeGamePositions } = await import("./engine/game-analyzer.js");
-    const evals = await analyzeGamePositions({
-      positions,
-      depth: prep.depth,
-      multipv: 1,
-      onProgress: (done, total) => {
-        jobToast.updateJob({
-          current: done,
-          total,
-          phase: "evaluating",
-          message: `evaluating ${done}/${total} positions`,
-        });
-      },
-      shouldCancel: () => cancelled,
-    });
+    const { analyzeGamePositions } = await timed("load", () =>
+      import("./engine/game-analyzer.js")
+    );
+    const evals = await timed("stockfish", () =>
+      analyzeGamePositions({
+        positions,
+        depth: prep.depth,
+        multipv: 1,
+        onProgress: (done, total) => {
+          jobToast.updateJob({
+            current: done,
+            total,
+            phase: "stockfish",
+            message: `stockfish ${done}/${total} positions`,
+          });
+        },
+        shouldCancel: () => cancelled,
+      })
+    );
 
-    // Phase 3d: browser Maia pass (classifier / human probability / brilliant
-    // signals). Best-effort so the server can persist them with no server
-    // compute. Skipped entirely when Maia analysis is OFF — Stockfish
-    // classification runs either way. Maia's ~46 MB model downloads once
-    // (then cached) when the pass runs; progress shows in the toast.
-    // Any failure (no weights / inference error) is swallowed → analysis
-    // without Maia signals, mirroring the server's no-Maia path.
+    // Browser Maia pass (human probability / brilliant signals). Best-effort
+    // so the server can persist them with no server compute. Skipped entirely
+    // when Maia analysis is OFF — Stockfish classification runs either way.
+    // Maia's ~46 MB model downloads once (then cached) when the pass runs;
+    // progress shows in the toast. Any failure (no weights / inference error)
+    // is swallowed → analysis without Maia signals, mirroring the server's
+    // no-Maia path.
     let maiaAssessments = [];
     if (
       maiaAnalysisEnabled() &&
@@ -5193,14 +5216,14 @@ async function runAnalysis() {
             jobToast.updateJob({
               current: 0,
               total: 1,
-              phase: "maia-init",
+              phase: "maia-load",
               message: `downloading Maia model · ${pct}%`,
             });
           } else if (phase === "cache") {
             jobToast.updateJob({
               current: 0,
               total: 1,
-              phase: "maia-init",
+              phase: "maia-load",
               message: "loading Maia model from cache",
             });
           } else if (phase === "verify" || phase === "session") {
@@ -5210,35 +5233,38 @@ async function runAnalysis() {
             jobToast.updateJob({
               current: 0,
               total: 1,
-              phase: "maia-init",
+              phase: "maia-load",
               message: "preparing Maia engine…",
             });
           }
         });
         try {
-          const { computeBrilliantAssessments } = await (_coachReady || preloadCoach());
-          maiaAssessments = await computeBrilliantAssessments({
-            moves: prep.moves,
-            evals,
-            depth: prep.depth,
-            rating: effectiveMaiaRating(),
-            provider,
-            analyzeFn: analyzeGamePositions,
-            shouldCancel: () => cancelled,
-            onProgress: (done, total) =>
-              jobToast.updateJob({ current: done, total, phase: "brilliancies", message: `checking brilliancies ${done}/${total}` }),
-            // The trap_gap second pass (Stockfish over the candidates' natural-move lines) gets
-            // its own phase so the bar reflects it instead of sitting frozen at the end of the
-            // brilliancies count while the batch runs.
-            onTrapProgress: (done, total) =>
-              jobToast.updateJob({ current: done, total, phase: "traps", message: `checking traps ${done}/${total}` }),
-          });
+          const { computeBrilliantAssessments } = await timed("maia-load", () =>
+            _coachReady || preloadCoach()
+          ).then((m) => m);
+          maiaAssessments = await timed("maia-inference", () =>
+            computeBrilliantAssessments({
+              moves: prep.moves,
+              evals,
+              depth: prep.depth,
+              rating: effectiveMaiaRating(),
+              provider,
+              analyzeFn: analyzeGamePositions,
+              shouldCancel: () => cancelled,
+              onPhase: ({ phase: sub, detail }) => {
+                timings[`maia_${sub}`] = detail || 1;
+              },
+              onProgress: (done, total) =>
+                jobToast.updateJob({ current: done, total, phase: "maia-inference", message: `maia ${done}/${total} moves` }),
+              onTrapProgress: (done, total) =>
+                jobToast.updateJob({ current: done, total, phase: "maia-traps", message: `maia traps ${done}/${total}` }),
+            })
+          );
         } finally {
           provider.setInitProgressHandler(null);
         }
       } catch (brilliantErr) {
         if (brilliantErr && brilliantErr.cancelled) throw brilliantErr;
-        // Non-fatal: proceed with no brilliancies (e.g. Maia weights unavailable).
         maiaAssessments = [];
       }
     }
@@ -5251,9 +5277,10 @@ async function runAnalysis() {
       throw err;
     }
 
-    // Past this point we're persisting (classify-save). Like Build Generate's apply phase,
-    // the save is not cancellable, so remove the Stop affordance rather than imply a cancel
-    // that wouldn't hold.
+    // Past this point we're persisting: server classify + local render. The
+    // save is not cancellable, so remove the Stop affordance rather than
+    // imply a cancel that wouldn't hold. Classifying (CPU) and saving (DB)
+    // are separate phases — the server reports both in server_timings_ms.
     jobToast.lockJob();
     jobToast.updateJob({
       current: positions.length,
@@ -5262,27 +5289,55 @@ async function runAnalysis() {
       message: "classifying",
     });
 
-    const payload = await postJson("/api/analyze/classify-save", {
-      game_id: prep.game_id,
-      engine: prep.engine || "stockfish (browser)",
-      depth: prep.depth,
-      positions: positions.map((fen) => {
-        const ev = evals.get(fen) || {};
-        return {
-          fen,
-          score_cp: ev.score_cp ?? null,
-          mate_in: ev.mate_in ?? null,
-          best_move_uci: ev.best_move_uci ?? null,
-          pv: ev.pv || [],
-        };
-      }),
-      maia_assessments: maiaAssessments,
-    });
+    const payload = await timed("classify", () =>
+      postJson("/api/analyze/classify-save", {
+        game_id: prep.game_id,
+        engine: prep.engine || "stockfish (browser)",
+        depth: prep.depth,
+        positions: positions.map((fen) => {
+          const ev = evals.get(fen) || {};
+          return {
+            fen,
+            score_cp: ev.score_cp ?? null,
+            mate_in: ev.mate_in ?? null,
+            best_move_uci: ev.best_move_uci ?? null,
+            pv: ev.pv || [],
+          };
+        }),
+        maia_assessments: maiaAssessments,
+      }).then((response) => {
+        const server = response.server_timings_ms || {};
+        for (const [key, value] of Object.entries(server)) {
+          timings[`server_${key}`] = value;
+        }
+        if (server.save_game_ms != null || server.save_analysis_ms != null) {
+          jobToast.updateJob({
+            current: positions.length,
+            total: positions.length,
+            phase: "saving",
+            message: "saving analysis",
+          });
+        }
+        return response;
+      })
+    );
 
     appState.analysis = payload;
     resetAnalysisVariations();
     showAnalysisPly(0);
-    await renderAnalysis(payload);
+    await timed("render", () => renderAnalysis(payload));
+    jobToast.updateJob({
+      current: positions.length,
+      total: positions.length,
+      phase: "rendering",
+      message: "rendering",
+    });
+    try {
+      // eslint-disable-next-line no-console
+      console.debug("[analyze-timings]", timings);
+    } catch (_) {
+      /* logging only */
+    }
     setStatus(`Analysis ready: ${payload.moves.length} plies`);
     jobToast.completeJob({
       title: "Analysis ready",
@@ -9893,20 +9948,18 @@ function applyServerEngineGating() {
 // server.py for a future admin mode (gated by PREPFORGE_SERVER_ENGINE_ENABLED).
 
 async function runLichessCompare() {
-  if (!appState.lichessUsername && !lichessAccounts().length) {
-    setStatus("Connect a Lichess account first");
-    startLichessOAuth();
+  const selection = gamesSourceSelection();
+  const usernames = resolveFetchUsernames({
+    selection,
+    linkedAccounts: lichessAccounts(),
+    includeExternal: true,
+  });
+  if (!usernames.length) {
+    setStatus("No Games sources selected — open Add and pick Self, an account, or a username.");
     return;
   }
-  // Explicit empty (Self deselected in the composer) is a real "no sources"
-  // state: stop with guidance instead of silently fetching Self.
-  if (gamesSourceSelection()._selfOff) {
-    setStatus("No Games sources selected — open Sources and tick Self or an account.");
-    return;
-  }
-  // "Self" is the default: aggregate every linked identity server-side.
-  // Explicit picks (one or more account ids) narrow the fetch instead.
-  const picked = gamesSourceAccountIds();
+  const linkedIds = gamesSourceAccountIds();
+  const hasExternal = normalizeSelection(selection).external.length > 0;
   const countInput = document.getElementById("replay-count");
   const count = Math.max(1, Math.min(50, Number(countInput.value) || 10));
   const button = document.getElementById("lichess-compare-btn");
@@ -9915,7 +9968,8 @@ async function runLichessCompare() {
   try {
     const payload = await postJson("/api/lichess/compare", {
       count,
-      ...(picked ? { account_ids: picked } : {}),
+      ...(linkedIds && linkedIds.length ? { account_ids: linkedIds } : {}),
+      ...(hasExternal ? { usernames } : {}),
     });
     appState.replayResults = payload;
     appState.replayFilter = null;
@@ -9941,17 +9995,63 @@ async function runLichessCompare() {
   }
 }
 
-// Games source selection: null = "self" (all linked identities, the default);
-// otherwise an explicit list of account ids. Persisted per browser. Reads and
-// writes go through the shared Source Composer selection model so Games and
-// Scout share one semantics (Self group, mixed state, chips).
+// Games source selection — shared explicit model with Scout:
+// { linkedMode: "all" | "subset" | "none", accountIds, external }.
+// "all" = Self (every linked identity, the default); "subset" = exactly the
+// listed linked ids; "none" = no linked accounts. External Lichess usernames
+// ride alongside on both pages (Games fetches them too). Persisted per
+// browser; legacy id-list storage migrates on read so reload keeps selection.
 const GAMES_SOURCE_KEY = "prepforge.games_source";
-function gamesSourceSelection() {
-  const raw = readLegacySourceIds(GAMES_SOURCE_KEY);
-  if (Array.isArray(raw) && raw.includes("__none__")) {
-    return { accountIds: [], external: [], _selfOff: true };
+const GAMES_EXTERNAL_KEY = "prepforge.games_external";
+function readSourceStore(sourceKey, externalKey, selfKey) {
+  const rawIds = readLegacySourceIds(sourceKey);
+  let rawExternal = null;
+  try {
+    const raw = localStorage.getItem(externalKey);
+    if (raw) rawExternal = JSON.parse(raw);
+  } catch (_) {
+    rawExternal = null;
   }
-  return legacyIdsToSelection(raw);
+  let selfOff = false;
+  if (selfKey) {
+    try {
+      selfOff = localStorage.getItem(selfKey) === "off";
+    } catch (_) {
+      selfOff = false;
+    }
+  }
+  return selectionFromStorage({ ids: rawIds, external: rawExternal, selfOff });
+}
+
+function writeSourceStore(sourceKey, externalKey, selfKey, selection) {
+  const stored = selectionToStorage(selection);
+  writeLegacySourceIds(sourceKey, stored.ids);
+  try {
+    if (stored.external.length) {
+      localStorage.setItem(externalKey, JSON.stringify(stored.external));
+    } else {
+      localStorage.removeItem(externalKey);
+    }
+  } catch (_) {
+    /* ignore storage errors */
+  }
+  if (selfKey) {
+    try {
+      const sel = normalizeSelection(selection);
+      const off = sel.linkedMode === "none" && !sel.external.length;
+      localStorage.setItem(selfKey, off ? "off" : "on");
+    } catch (_) {
+      /* ignore storage errors */
+    }
+  }
+}
+
+function gamesSourceSelection() {
+  return readSourceStore(GAMES_SOURCE_KEY, GAMES_EXTERNAL_KEY, null);
+}
+
+function writeGamesSelection(selection) {
+  writeSourceStore(GAMES_SOURCE_KEY, GAMES_EXTERNAL_KEY, null, selection);
 }
 
 function readLegacySourceIds(key) {
@@ -9976,16 +10076,20 @@ function writeLegacySourceIds(key, ids) {
 
 function gamesSourceAccountIds() {
   const sel = gamesSourceSelection();
-  if (sel._selfOff) return [];
-  const valid = normalizeSelection(sel).accountIds.filter((id) =>
+  if (sel.linkedMode === "none") return [];
+  if (sel.linkedMode === "all") return null;
+  const valid = sel.accountIds.filter((id) =>
     lichessAccounts().some((a) => a.id === id)
   );
-  return valid.length ? valid : null;
+  return valid.length ? valid : [];
 }
 
-function setGamesSourceAccountIds(ids) {
-  writeLegacySourceIds(GAMES_SOURCE_KEY, ids);
-  paintGamesSource();
+function gamesPickedUsernames() {
+  return resolveFetchUsernames({
+    selection: gamesSourceSelection(),
+    linkedAccounts: lichessAccounts(),
+    includeExternal: true,
+  });
 }
 
 function openGamesComposer(anchor) {
@@ -9993,18 +10097,12 @@ function openGamesComposer(anchor) {
     anchor,
     selection: gamesSourceSelection(),
     linkedAccounts: lichessAccounts(),
-    allowExternal: false,
-    title: "Games source",
+    allowExternal: true,
+    title: "Games sources",
+    externalPlaceholder: "Add Lichess username…",
     escapeHtml,
-    onChange: (sel, meta) => {
-      // Popover-local explicit empty ("none") persists as a real marker so
-      // the painter keeps showing "none" instead of collapsing to Self.
-      // Selections with ids persist explicitly; implicit Self clears the key.
-      if (meta?.selfState === "none") {
-        writeLegacySourceIds(GAMES_SOURCE_KEY, ["__none__"]);
-      } else {
-        writeLegacySourceIds(GAMES_SOURCE_KEY, selectionToLegacyIds(sel, lichessAccounts()));
-      }
+    onChange: (sel) => {
+      writeGamesSelection(sel);
       paintGamesSource();
     },
     onClose: () => paintGamesSource(),
@@ -10025,31 +10123,18 @@ function paintGamesSource() {
     .map((c) =>
       c.kind === "self"
         ? `<span class="src-chip is-self" data-games-chip-self>${escapeHtml(label)}</span>`
-        : `<span class="src-chip" data-games-chip="${escapeHtml(c.id)}">${escapeHtml(c.label)}` +
-          (c.primary ? ' <span class="conn-primary">Primary</span>' : "") +
-          `<button type="button" class="src-chip-x" data-games-unpick="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Games sources">×</button></span>`
+        : c.kind === "external"
+          ? `<span class="src-chip" data-games-chip="${escapeHtml(c.id)}">${escapeHtml(c.label)}` +
+            `<button type="button" class="src-chip-x" data-games-unpick-external="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Games sources">×</button></span>`
+          : `<span class="src-chip" data-games-chip="${escapeHtml(c.id)}">${escapeHtml(c.label)}` +
+            (c.primary ? ' <span class="conn-primary">Primary</span>' : "") +
+            `<button type="button" class="src-chip-x" data-games-unpick="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Games sources">×</button></span>`
     )
     .join("");
-  if (selfState === "none") {
+  if (selfState === "none" && !selection.external.length) {
     tray.innerHTML =
-      '<span class="src-empty">No sources — open Add and tick Self or an account</span>';
-  }
-  const accountLabel = document.getElementById("replay-account");
-  if (accountLabel) {
-    const picked = gamesSourceAccountIds();
-    if (picked && picked.length) {
-      const names = lichessAccounts()
-        .filter((a) => picked.includes(a.id))
-        .map((a) => a.username);
-      accountLabel.textContent = names.length ? names.join(" + ") : `${picked.length} picked`;
-    } else if (selfState === "none") {
-      accountLabel.textContent = "no sources";
-    } else {
-      accountLabel.textContent =
-        lichessAccounts().length > 1
-          ? `Self · ${lichessAccounts().length} accounts`
-          : appState.lichessUsername || "not connected";
-    }
+      '<span class="src-empty">No sources — open Add and tick Self, an account, or a username</span>';
+    return;
   }
 }
 
@@ -10058,84 +10143,49 @@ function bindGamesSource() {
     openGamesComposer(event?.currentTarget || document.getElementById("games-source-add"));
   });
   document.getElementById("games-source-chips")?.addEventListener("click", (event) => {
+    const removeExt = event.target.closest("[data-games-unpick-external]");
+    if (removeExt) {
+      const sel = gamesSourceSelection();
+      writeGamesSelection({
+        linkedMode: sel.linkedMode,
+        accountIds: sel.accountIds,
+        external: sel.external.filter((n) => n !== removeExt.dataset.gamesUnpickExternal),
+      });
+      paintGamesSource();
+      return;
+    }
     const remove = event.target.closest("[data-games-unpick]");
     if (!remove) return;
-    const current = gamesSourceAccountIds() || lichessAccounts().map((a) => a.id);
-    setGamesSourceAccountIds(current.filter((id) => id !== remove.dataset.gamesUnpick));
+    const sel = gamesSourceSelection();
+    const current =
+      sel.linkedMode === "all" ? lichessAccounts().map((a) => a.id) : sel.accountIds;
+    const rest = current.filter((id) => id !== remove.dataset.gamesUnpick);
+    if (!rest.length && sel.linkedMode === "all") {
+      writeGamesSelection({ linkedMode: "none", accountIds: [], external: sel.external });
+    } else {
+      writeGamesSelection({ linkedMode: "subset", accountIds: rest, external: sel.external });
+    }
+    paintGamesSource();
   });
   paintGamesSource();
 }
 
-// Scout source: same shared Source Composer model as Games. Linked picks and
-// arbitrary external usernames coexist in one selection; the legacy keys
-// (scout_source ids + scout_external names) persist it so existing browsers
-// keep their choice. Empty accountIds + empty external = implicit Self (all
-// linked). Explicit Self-off (no sources) persists as ids ["__none__"] so UI
-// chips and fetch stay consistent across reload. The standalone username
-// textbox is gone: every external opponent name enters through the composer.
+// Scout source: the SAME shared Source Composer model as Games —
+// { linkedMode, accountIds, external } with the shared persistence bridge.
+// "all" = Self (every linked identity); "subset" = exactly the listed linked
+// ids; "none" = no linked accounts. External Lichess usernames ride alongside
+// on both pages. Page difference lives only in the analysis workflow after
+// picking, never in the picker.
 const SCOUT_SELF_KEY = "prepforge.scout_self";
 const SCOUT_SOURCE_KEY = "prepforge.scout_source";
 const SCOUT_EXTERNAL_KEY = "prepforge.scout_external";
 
 function scoutSelection() {
-  const raw = readLegacySourceIds(SCOUT_SOURCE_KEY);
-  if (Array.isArray(raw) && raw.includes("__none__")) {
-    return { accountIds: [], external: [], _selfOff: true };
-  }
-  try {
-    if (localStorage.getItem(SCOUT_SELF_KEY) === "off") {
-      const linked = legacyIdsToSelection(raw);
-      let external = [];
-      try {
-        const rawExt = localStorage.getItem(SCOUT_EXTERNAL_KEY);
-        if (rawExt) external = JSON.parse(rawExt);
-      } catch (_) {
-        external = [];
-      }
-      if (!linked.accountIds.length && !(Array.isArray(external) ? external : []).length) {
-        return { accountIds: [], external: [], _selfOff: true };
-      }
-    }
-  } catch (_) {
-    /* ignore storage errors */
-  }
-  const linked = legacyIdsToSelection(raw);
-  let external = [];
-  try {
-    const rawExt = localStorage.getItem(SCOUT_EXTERNAL_KEY);
-    if (rawExt) external = JSON.parse(rawExt);
-  } catch (_) {
-    external = [];
-  }
-  return {
-    accountIds: linked.accountIds,
-    external: Array.isArray(external) ? external : [],
-  };
+  return readSourceStore(SCOUT_SOURCE_KEY, SCOUT_EXTERNAL_KEY, SCOUT_SELF_KEY);
 }
 
-function writeScoutSelection(sel) {
-  const normalized = normalizeSelection(sel);
-  const selfOff = !!sel?._selfOff;
-  const empty = !normalized.accountIds.length && !normalized.external.length;
-  if (selfOff && empty) {
-    writeLegacySourceIds(SCOUT_SOURCE_KEY, ["__none__"]);
-  } else {
-    writeLegacySourceIds(SCOUT_SOURCE_KEY, selectionToLegacyIds(normalized, lichessAccounts()));
-  }
-  try {
-    if (normalized.external.length) {
-      localStorage.setItem(SCOUT_EXTERNAL_KEY, JSON.stringify(normalized.external));
-    } else {
-      localStorage.removeItem(SCOUT_EXTERNAL_KEY);
-    }
-  } catch (_) {
-    /* ignore storage errors */
-  }
-  try {
-    localStorage.setItem(SCOUT_SELF_KEY, selfOff && empty ? "off" : "on");
-  } catch (_) {
-    /* ignore storage errors */
-  }
+function writeScoutSelection(selection) {
+  writeSourceStore(SCOUT_SOURCE_KEY, SCOUT_EXTERNAL_KEY, SCOUT_SELF_KEY, selection);
 }
 
 function openScoutComposer(anchor) {
@@ -10147,8 +10197,8 @@ function openScoutComposer(anchor) {
     title: "Scout sources",
     externalPlaceholder: "Add Lichess username…",
     escapeHtml,
-    onChange: (sel, meta) => {
-      writeScoutSelection(meta?.selfState === "none" ? { ...sel, _selfOff: true } : sel);
+    onChange: (sel) => {
+      writeScoutSelection(sel);
       paintScoutSource();
     },
     onClose: () => paintScoutSource(),
@@ -10156,10 +10206,8 @@ function openScoutComposer(anchor) {
 }
 
 function scoutPickedUsernames() {
-  const sel = scoutSelection();
-  if (sel._selfOff) return [];
   return resolveFetchUsernames({
-    selection: { accountIds: sel.accountIds, external: sel.external },
+    selection: scoutSelection(),
     linkedAccounts: lichessAccounts(),
     includeExternal: true,
   });
@@ -10198,26 +10246,29 @@ function bindScoutSource() {
     openScoutComposer(event?.currentTarget || document.getElementById("scout-source-add"));
   });
   document.getElementById("scout-source-chips")?.addEventListener("click", (event) => {
-    const unpick = event.target.closest("[data-scout-unpick]");
-    if (unpick) {
-      const sel = scoutSelection();
-      const current = sel.accountIds.length ? sel.accountIds : lichessAccounts().map((a) => a.id);
-      writeScoutSelection({
-        accountIds: current.filter((id) => id !== unpick.dataset.scoutUnpick),
-        external: sel.external,
-      });
-      paintScoutSource();
-      return;
-    }
     const unpickExt = event.target.closest("[data-scout-unpick-external]");
     if (unpickExt) {
       const sel = scoutSelection();
       writeScoutSelection({
+        linkedMode: sel.linkedMode,
         accountIds: sel.accountIds,
         external: sel.external.filter((n) => n !== unpickExt.dataset.scoutUnpickExternal),
       });
       paintScoutSource();
+      return;
     }
+    const unpick = event.target.closest("[data-scout-unpick]");
+    if (!unpick) return;
+    const sel = scoutSelection();
+    const current =
+      sel.linkedMode === "all" ? lichessAccounts().map((a) => a.id) : sel.accountIds;
+    const rest = current.filter((id) => id !== unpick.dataset.scoutUnpick);
+    if (!rest.length && sel.linkedMode === "all") {
+      writeScoutSelection({ linkedMode: "none", accountIds: [], external: sel.external });
+    } else {
+      writeScoutSelection({ linkedMode: "subset", accountIds: rest, external: sel.external });
+    }
+    paintScoutSource();
   });
   paintScoutSource();
 }

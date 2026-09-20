@@ -20,6 +20,7 @@ doesn't run.
 from __future__ import annotations
 
 import math
+import time
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -28,13 +29,12 @@ from pydantic import BaseModel
 from prepforge_chess.api.deps import current_owner, current_user, get_repository
 from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import MoveSource
-from prepforge_chess.services.analysis import AnalysisConfig, AnalysisService
 from prepforge_chess.services.analysis_view import analysis_result_to_payload
 from prepforge_chess.services.app_settings import owner_maia_rating, owner_stockfish_depth
 from prepforge_chess.services.brilliant import BrilliantAnalyzer, BrilliantConfig
-from prepforge_chess.services.engine import EngineAnalysisConfig
+from prepforge_chess.services.browser_compute import classify_precomputed_game
 from prepforge_chess.services.pgn_import import PgnImportOptions, PgnImportService
-from prepforge_chess.services.replay_engine import ReplayEngine, ReplayEngineError
+from prepforge_chess.services.replay_engine import ReplayEngineError
 from prepforge_chess.services.replay_maia import ReplayMaia
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
@@ -205,20 +205,30 @@ def analyze_classify_save(
 ) -> dict[str, Any]:
     """Classify + persist a game from browser-computed per-position evals.
 
-    Reuses the full AnalysisService pipeline via a ReplayEngine seeded with the
-    client's evals, so classification/report/persistence stay identical to the
-    server-engine path. Optional ``maia_assessments`` feed a ReplayMaia into the same
-    validated BrilliantAnalyzer for zero-compute Brilliant detection."""
+    Browser-compute fast path: the browser already ran Stockfish (per-position
+    evals) and optionally Maia3 (move assessments), so the server only
+    validates the payload, applies the precomputed evals, classifies each move
+    once (``classify_move`` stays the single source of truth, via the shared
+    ``classify_precomputed_game`` helper), persists with batched writes, and
+    serializes. No engine or model compute runs here.
+
+    Per-phase server timings ride back as ``server_timings_ms`` so the UI can
+    show classifying vs saving honestly instead of one "classifying" label."""
     if not body.game_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="game_id is required")
     # Persisting analysis writes to the game; gate on ownership so a browser can't
     # classify-save into another profile's game by passing its id.
-    if not repo.claim_or_verify_game(body.game_id, owner):
+    timings_ms: dict[str, int] = {}
+    mark = time.perf_counter()
+    owned = repo.claim_or_verify_game(body.game_id, owner)
+    timings_ms["ownership_ms"] = int((time.perf_counter() - mark) * 1000)
+    if not owned:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="game not found")
     if not isinstance(body.positions, list):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="positions must be a list"
         )
+    mark = time.perf_counter()
     position_map: dict[str, dict[str, Any]] = {}
     for item in body.positions:
         if not isinstance(item, dict):
@@ -236,6 +246,7 @@ def analyze_classify_save(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="positions are required"
         )
+    timings_ms["validate_ms"] = int((time.perf_counter() - mark) * 1000)
 
     engine_name = (body.engine or "stockfish (browser)").strip() or "stockfish (browser)"
     resolved_depth = (
@@ -245,31 +256,46 @@ def analyze_classify_save(
     )
     resolved_depth = max(1, min(resolved_depth, 60))
 
+    mark = time.perf_counter()
     try:
         brilliant_analyzer = _brilliant_analyzer_from_client(body.maia_assessments)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    timings_ms["maia_validate_ms"] = int((time.perf_counter() - mark) * 1000)
 
-    replay = ReplayEngine(position_map, name=engine_name)
-    service = AnalysisService(
-        repo,
-        engine=replay,
-        engine_name=engine_name,
-        brilliant_analyzer=brilliant_analyzer,
-    )
+    mark = time.perf_counter()
+    game = repo.load_game(body.game_id, owner_user_id=owner)
+    timings_ms["load_game_ms"] = int((time.perf_counter() - mark) * 1000)
+    if game is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="game not found")
+
+    mark = time.perf_counter()
     try:
-        result = service.analyze_game_id(
-            body.game_id,
-            config=AnalysisConfig(
-                engine=EngineAnalysisConfig(depth=resolved_depth, multipv=1),
-                max_workers=1,
-                persist=True,
-            ),
+        result = classify_precomputed_game(
+            game,
+            position_map,
+            engine_name=engine_name,
+            depth=resolved_depth,
+            brilliant_analyzer=brilliant_analyzer,
         )
     except ReplayEngineError as exc:
         # Incomplete client payload (a position was never evaluated).
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return analysis_result_to_payload(result)
+    timings_ms["classify_ms"] = int((time.perf_counter() - mark) * 1000)
+
+    mark = time.perf_counter()
+    repo.save_game_batched(game, result, owner_user_id=owner)
+    timings_ms["save_game_ms"] = int((time.perf_counter() - mark) * 1000)
+
+    mark = time.perf_counter()
+    repo.save_analysis_result(result)
+    timings_ms["save_analysis_ms"] = int((time.perf_counter() - mark) * 1000)
+
+    mark = time.perf_counter()
+    payload = analysis_result_to_payload(result)
+    timings_ms["serialize_ms"] = int((time.perf_counter() - mark) * 1000)
+    payload["server_timings_ms"] = timings_ms
+    return payload
 
 
 # ---- History reads ---------------------------------------------------------

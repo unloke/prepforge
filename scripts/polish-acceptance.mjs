@@ -441,10 +441,11 @@ for (const vp of VIEWPORTS) {
   );
   check(`[${vp.label}] scout standalone source chrome gone`, !!scoutFlow.selfBtnGone && !!scoutFlow.pickBtnGone && !!scoutFlow.inputGone);
 
-  // --- Source Composer: shared chips + popover on Games and Scout ------------
-  // Both pages render selected-source chips with an Add button; opening the
-  // composer shows the Self group (mixed/partial aware), linked rows, an
-  // external input on Scout, Esc close, and focus return.
+  // --- Source Composer parity: one shared surface on Games AND Scout -----
+  // Both pages render [chips] [+ Add]; the popover shows one source list:
+  // Self, linked rows, external rows, Add username, Done. Interactions drive
+  // every checkbox, external add/remove, chip remove, Done, and Esc on both
+  // pages; the popover must not move while interacting (viewport-anchored).
   const composerFlow = await page.evaluate(async () => {
     const hook = window.__prepforgePolishE2e;
     await hook.setLichessAccounts([
@@ -453,89 +454,115 @@ for (const vp of VIEWPORTS) {
     ]);
     try {
       localStorage.removeItem("prepforge.games_source");
+      localStorage.removeItem("prepforge.games_external");
       localStorage.removeItem("prepforge.scout_source");
       localStorage.removeItem("prepforge.scout_external");
     } catch (_) {}
-    document.querySelector('[data-testid="nav-replay"]').click();
-    await new Promise((r) => setTimeout(r, 200));
-    const out = {};
-    const gamesTray = document.getElementById("games-source-chips");
-    out.gamesChipLabel = gamesTray?.textContent || "";
-    out.gamesAdd = !!document.getElementById("games-source-add");
-    out.gamesTray = !!gamesTray;
-    document.getElementById("games-source-add").click();
-    await new Promise((r) => setTimeout(r, 200));
-    const pop = document.querySelector(".src-popover");
-    out.popOpen = !!pop;
-    out.popHasSelf = !!pop?.textContent?.includes("Self");
-    out.popHasAccounts =
-      !!pop?.textContent?.includes("account_a") && !!pop?.textContent?.includes("account_b");
-    const selfBox = pop?.querySelector('[data-testid="src-self-checkbox"]');
-    const selfLabel = pop?.querySelector('[data-src-self]');
-    const before = (document.getElementById("games-source-chips")?.textContent) || "";
-    const debug = {
-      hasPop: !!pop,
-      popHtml: (pop?.innerHTML || "").slice(0, 400),
-      hasSelfBox: !!selfBox,
-      selfChecked: !!selfBox?.checked,
-      hasLabel: !!selfLabel,
+    const box = (el) => {
+      if (!el) return null;
+      const cs = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      return {
+        top: Math.round(r.top),
+        left: Math.round(r.left),
+        w: Math.round(r.width),
+        h: Math.round(r.height),
+        cssTop: cs.top,
+        cssLeft: cs.left,
+      };
     };
-    if (selfBox) {
-      // Flip through the native checkbox path (click toggles + fires change):
-      // unchecking Self with all linked selected deselects the whole group.
-      selfBox.click();
-      await new Promise((r) => setTimeout(r, 250));
-    }
-    out.partialLabel = document.getElementById("games-source-chips")?.textContent || "";
-    // Deselecting Self from the implicit default is an explicit empty: the
-    // group box reads off ("Self"), which differs from the "Self · 2" before.
-    out.partialChanged = out.partialLabel !== before;
-    out.trayVisible = !document.getElementById("games-source-chips")?.hidden;
-    out.trayHtml = (document.getElementById("games-source-chips")?.innerHTML || "").slice(0, 300);
-    out.gamesSourceKey = null;
-    try {
-      out.gamesSourceKey = localStorage.getItem("prepforge.games_source");
-    } catch (_) {}
-    out.debug = debug;
-    const escOk = (() => {
-      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-      return !document.querySelector(".src-popover");
-    })();
-    out.escClosed = escOk;
-    document.querySelector('[data-testid="nav-scout"]').click();
-    await new Promise((r) => setTimeout(r, 300));
-    out.scoutAdd = !!document.getElementById("scout-source-add");
-    document.getElementById("scout-source-add").click();
-    await new Promise((r) => setTimeout(r, 200));
-    const scoutPop = document.querySelector(".src-popover");
-    out.scoutPop = !!scoutPop;
-    const addInput = scoutPop?.querySelector("[data-src-add]");
-    out.scoutExternalInput = !!addInput;
-    if (addInput) {
-      addInput.value = "Hikaru";
-      addInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    // Anchor stability = the composer's CSS position doesn't move (top/left
+    // set once by positionPopover and re-applied identically after every
+    // render). The cached anchor rect makes this exact; keep the painted-box
+    // comparison as a sanity net with tolerance for sub-pixel layout jitter.
+    const near = (a, b) => {
+      if (!!a && !!b && a.cssTop === b.cssTop && a.cssLeft === b.cssLeft) return true;
+      return !!a && !!b && Math.abs(a.top - b.top) <= 12 && Math.abs(a.left - b.left) <= 12;
+    };
+    const out = { pages: {} };
+    for (const page of [
+      { nav: "nav-replay", add: "games-source-add", tray: "games-source-chips", key: "games" },
+      { nav: "nav-scout", add: "scout-source-add", tray: "scout-source-chips", key: "scout" },
+    ]) {
+      document.querySelector(`[data-testid="${page.nav}"]`).click();
+      await new Promise((r) => setTimeout(r, 200));
+      const R = { trayLabel: document.getElementById(page.tray)?.textContent || "" };
+      R.addPresent = !!document.getElementById(page.add);
+      R.noReplayAccount = !document.getElementById("replay-account");
+      document.getElementById(page.add).click();
+      await new Promise((r) => setTimeout(r, 200));
+      const pop = () => document.querySelector(".src-popover");
+      R.popOpen = !!pop();
+      R.hasSelf = !!pop()?.textContent?.includes("Self");
+      R.hasAccounts =
+        !!pop()?.textContent?.includes("account_a") && !!pop()?.textContent?.includes("account_b");
+      R.hasAddRow = !!pop()?.querySelector("[data-src-add]");
+      R.hasDone = !!pop()?.querySelector("[data-src-done]");
+      R.pos0 = box(pop());
+      R.fixedPos = pop() ? getComputedStyle(pop()).position === "fixed" : false;
+      const selfBox = pop()?.querySelector('[data-testid="src-self-checkbox"]');
+      if (selfBox) {
+        selfBox.click();
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      R.afterSelf = document.getElementById(page.tray)?.textContent || "";
+      R.selfStable = near(R.pos0, box(pop()));
+      const accBox = pop()?.querySelector('[data-src-checkbox="acc-a"]');
+      if (accBox) {
+        // Direct checkbox clicks are synced on the click path (Playwright
+        // .click() fires click before change); the trailing change no-ops.
+        accBox.click();
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      R.afterAccount = document.getElementById(page.tray)?.textContent || "";
+      R.accountStable = near(R.pos0, box(pop()));
+      const addInput = pop()?.querySelector("[data-src-add]");
+      if (addInput) {
+        addInput.value = "Hikaru";
+        addInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      R.afterExternal = document.getElementById(page.tray)?.textContent || "";
+      R.externalRow = !!pop()?.querySelector('[data-src-external="Hikaru"]');
+      R.externalStable = near(R.pos0, box(pop()));
+      const uncheck = pop()?.querySelector('[data-src-external-checkbox]');
+      if (uncheck) {
+        uncheck.click();
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      R.afterRemove = document.getElementById(page.tray)?.textContent || "";
+      R.removeStable = near(R.pos0, box(pop()));
+      pop()?.querySelector("[data-src-done]")?.click();
       await new Promise((r) => setTimeout(r, 150));
+      R.doneCloses = !document.querySelector(".src-popover");
+      document.getElementById(page.add).click();
+      await new Promise((r) => setTimeout(r, 200));
+      R.reopenTray = document.getElementById(page.tray)?.textContent || "";
+      R.reopenStable = near(R.pos0, box(pop()));
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      await new Promise((r) => setTimeout(r, 100));
+      R.escCloses = !document.querySelector(".src-popover");
+      R.focusReturned =
+        document.activeElement?.id === page.add ||
+        !!document.activeElement?.closest?.(".replay-toolbar");
+      out.pages[page.key] = R;
     }
-    out.scoutExternalChip = !!document.querySelector('[data-scout-unpick-external]');
-    out.scoutTrayLabel = document.getElementById("scout-source-chips")?.textContent || "";
-    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-    await new Promise((r) => setTimeout(r, 100));
-    out.focusReturned =
-      document.activeElement?.id === "scout-source-add" ||
-      !!document.activeElement?.closest?.(".replay-toolbar");
     return out;
   });
-  check(`[${vp.label}] games chip shows collapsed Self`, /Self · 2/.test(composerFlow.gamesChipLabel || ""), composerFlow.gamesChipLabel || "");
-  check(`[${vp.label}] games chips + add button present`, !!composerFlow.gamesAdd && !!composerFlow.gamesTray);
-  check(`[${vp.label}] composer popover opens with Self + accounts`, !!composerFlow.popOpen && !!composerFlow.popHasSelf && !!composerFlow.popHasAccounts);
-  check(`[${vp.label}] composer deselect shows explicit empty`, !!composerFlow.partialChanged && !!composerFlow.trayVisible, `${composerFlow.partialLabel || ""} | tray=${composerFlow.trayHtml || ""} | key=${composerFlow.gamesSourceKey || ""}`);
-  check(`[${vp.label}] composer esc closes`, !!composerFlow.escClosed);
-  check(`[${vp.label}] scout composer accepts external names`, !!composerFlow.scoutPop && !!composerFlow.scoutExternalInput && !!composerFlow.scoutExternalChip);
-  check(
-    `[${vp.label}] scout tray keeps Self + external together`,
-    /Self/.test(composerFlow.scoutTrayLabel || "") && /Hikaru/.test(composerFlow.scoutTrayLabel || ""),
-    composerFlow.scoutTrayLabel || "",
-  );
+  for (const key of ["games", "scout"]) {
+    const R = composerFlow.pages[key];
+    const tag = key === "games" ? "games" : "scout";
+    check(`[${vp.label}] ${tag} tray defaults to collapsed Self`, /Self · 2/.test(R.trayLabel || ""), R.trayLabel || "");
+    check(`[${vp.label}] ${tag} chips + add, no duplicate summary`, !!R.addPresent && !!R.noReplayAccount);
+    check(`[${vp.label}] ${tag} popover one list (Self+accounts+Add+Done)`, !!R.popOpen && !!R.hasSelf && !!R.hasAccounts && !!R.hasAddRow && !!R.hasDone);
+    check(`[${vp.label}] ${tag} popover viewport-fixed`, !!R.fixedPos, JSON.stringify(R.pos0 || {}));
+    check(`[${vp.label}] ${tag} self toggle keeps anchor`, !!R.selfStable, R.afterSelf || "");
+    check(`[${vp.label}] ${tag} account toggle keeps anchor`, !!R.accountStable, R.afterAccount || "");
+    check(`[${vp.label}] ${tag} external add renders row+chip, keeps anchor`, !!R.externalRow && /Hikaru/.test(R.afterExternal || "") && !!R.externalStable, R.afterExternal || "");
+    check(`[${vp.label}] ${tag} external remove keeps anchor`, !!R.removeStable, R.afterRemove || "");
+    check(`[${vp.label}] ${tag} done closes, reopen keeps state+anchor`, !!R.doneCloses && !!R.reopenStable, R.reopenTray || "");
+    check(`[${vp.label}] ${tag} esc closes + focus returns`, !!R.escCloses && !!R.focusReturned);
+  }
 
   // --- Connections: compact rows + overflow menu ------------------------------
   const connFlow = await page.evaluate(async () => {
@@ -586,6 +613,193 @@ for (const vp of VIEWPORTS) {
     maiaFlow.model || "",
   );
   check(`[${vp.label}] maia retry + reset always available`, !!maiaFlow.retry && !!maiaFlow.reset);
+
+  // --- Theme contrast: light + dark, interactive states --------------------
+  // Semantic tokens carry every text state: replay result/preview/detail,
+  // segmented selected/unselected/hover/disabled, shared switches. Measure
+  // real contrast in both themes, including hover/selected/disabled.
+  const contrastFlow = await page.evaluate(async () => {
+    const lum = (s) => {
+      const m = s.match(/[\d.]+/g).map(Number);
+      const [r, g, b] = m.slice(0, 3).map((v) => {
+        v /= 255;
+        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const contrast = (a, b) => {
+      const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+      return (x + 0.05) / (y + 0.05);
+    };
+    const probe = (root, sel, bgEl) => {
+      const el = root.querySelector(sel);
+      if (!el) return null;
+      const cs = getComputedStyle(el);
+      let bg = cs.backgroundColor;
+      if (!bg || bg === "rgba(0, 0, 0, 0)" || bg === "transparent") {
+        bg = getComputedStyle(bgEl || root).backgroundColor;
+      }
+      return { color: cs.color, bg, c: contrast(bg, cs.color) };
+    };
+    const out = {};
+    for (const theme of ["light", "dark"]) {
+      document.documentElement.dataset.theme = theme;
+      await new Promise((r) => setTimeout(r, 60));
+      const row = document.createElement("div");
+      row.className = "replay-row";
+      row.innerHTML =
+        '<button class="replay-row-head"><span class="players">a vs b</span>' +
+        '<span class="replay-result">1-0</span><span class="replay-preview">1. e4 e5</span>' +
+        '<span class="replay-badge">prep</span></button>' +
+        '<div class="replay-detail">detail <strong>strong</strong></div>';
+      row.style.position = "absolute";
+      row.style.left = "-9999px";
+      row.style.top = "0";
+      row.style.background = "var(--panel)";
+      document.body.appendChild(row);
+      const seg = document.createElement("div");
+      seg.className = "seg";
+      seg.innerHTML =
+        '<button class="seg-btn">A</button><button class="seg-btn is-active">B</button>' +
+        '<button class="seg-btn" disabled>C</button>';
+      seg.style.position = "absolute";
+      seg.style.left = "-9999px";
+      seg.style.top = "0";
+      seg.style.background = "var(--panel)";
+      document.body.appendChild(seg);
+      const sw = document.createElement("button");
+      sw.className = "pf-switch is-on";
+      sw.innerHTML = '<span class="pf-knob"></span>';
+      sw.style.position = "absolute";
+      sw.style.left = "-9999px";
+      sw.style.top = "0";
+      document.body.appendChild(sw);
+      const cs = (el, p) => getComputedStyle(el)[p];
+      const head = row.querySelector(".replay-row-head");
+      head.style.background = "var(--panel)";
+      out[theme] = {
+        result: probe(row, ".replay-result", head),
+        preview: probe(row, ".replay-preview", head),
+        detail: probe(row, ".replay-detail", row),
+        strong: probe(row, ".replay-detail strong", row),
+        seg: probe(seg, ".seg-btn:not(.is-active):not([disabled])", seg),
+        segActive: probe(seg, ".seg-btn.is-active", seg),
+        segDisabled: probe(seg, ".seg-btn[disabled]", seg),
+        knobOnBg: cs(sw, "backgroundColor"),
+        knobOnFg: cs(sw.querySelector(".pf-knob"), "backgroundColor"),
+        knobContrast: contrast(cs(sw, "backgroundColor"), cs(sw.querySelector(".pf-knob"), "backgroundColor")),
+      };
+      row.remove();
+      seg.remove();
+      sw.remove();
+    }
+    document.documentElement.dataset.theme = "light";
+    return out;
+  });
+  for (const theme of ["light", "dark"]) {
+    const c = contrastFlow[theme];
+    check(`[${vp.label}] ${theme} games result contrast >= 4.5`, (c.result?.c || 0) >= 4.5, `${(c.result?.c || 0).toFixed(2)}`);
+    check(`[${vp.label}] ${theme} games preview contrast >= 4.5`, (c.preview?.c || 0) >= 4.5, `${(c.preview?.c || 0).toFixed(2)}`);
+    check(`[${vp.label}] ${theme} games detail contrast >= 4.5`, (c.detail?.c || 0) >= 4.5, `${(c.detail?.c || 0).toFixed(2)}`);
+    check(`[${vp.label}] ${theme} seg unselected contrast >= 4.5`, (c.seg?.c || 0) >= 4.5, `${(c.seg?.c || 0).toFixed(2)}`);
+    check(`[${vp.label}] ${theme} seg selected contrast >= 4.5`, (c.segActive?.c || 0) >= 4.5, `${(c.segActive?.c || 0).toFixed(2)}`);
+    check(`[${vp.label}] ${theme} seg disabled contrast >= 3`, (c.segDisabled?.c || 0) >= 3, `${(c.segDisabled?.c || 0).toFixed(2)}`);
+    check(`[${vp.label}] ${theme} switch on knob contrast >= 3`, (c.knobContrast || 0) >= 3, `${(c.knobContrast || 0).toFixed(2)}`);
+  }
+
+  // --- Scroll ownership: content width stable, one scroll owner --------------
+  const scrollFlow = await page.evaluate(async () => {
+    const out = { views: {} };
+    const widthOf = (el) => (el ? Math.round(el.getBoundingClientRect().width * 10) / 10 : null);
+    for (const [nav, view] of [
+      ["nav-dashboard", "view-dashboard"],
+      ["nav-analyze", "view-analyze"],
+      ["nav-build", "view-build"],
+      ["nav-replay", "view-replay"],
+      ["nav-teams", "view-teams"],
+    ]) {
+      document.querySelector(`[data-testid="${nav}"]`)?.click();
+      await new Promise((r) => setTimeout(r, 150));
+      const root = document.getElementById(view);
+      out.views[view] = { w: widthOf(root), nested: 0 };
+      if (root) {
+        const walk = root.querySelectorAll("*");
+        let nested = 0;
+        walk.forEach((el) => {
+          const cs = getComputedStyle(el);
+          if ((cs.overflowY === "auto" || cs.overflowY === "scroll") && el.scrollHeight > el.clientHeight + 2) {
+            nested += 1;
+          }
+        });
+        out.views[view].nested = nested;
+      }
+    }
+    document.querySelector('[data-testid="nav-replay"]')?.click();
+    await new Promise((r) => setTimeout(r, 150));
+    out.replayW = widthOf(document.getElementById("view-replay"));
+    return out;
+  });
+  check(`[${vp.label}] views render without width collapse`, Object.values(scrollFlow.views).every((v) => (v.w || 0) > 200), JSON.stringify(scrollFlow.views));
+  check(`[${vp.label}] replay width stable across nav`, Math.abs((scrollFlow.replayW || 0) - (scrollFlow.views["view-replay"]?.w || 0)) < 2, `${scrollFlow.views["view-replay"]?.w} vs ${scrollFlow.replayW}`);
+
+  // --- Games external fetch: usernames flow to compare ---------------------
+  // Games resolves like Scout (linked + arbitrary Lichess users) and POSTs
+  // the resolved usernames so externals actually fetch.
+  const gamesExtFlow = await page.evaluate(async () => {
+    const hook = window.__prepforgePolishE2e;
+    await hook.setLichessAccounts([
+      { id: "acc-a", username: "account_a", is_primary: true },
+      { id: "acc-b", username: "account_b", is_primary: false },
+    ]);
+    try {
+      localStorage.removeItem("prepforge.games_source");
+      localStorage.removeItem("prepforge.games_external");
+    } catch (_) {}
+    document.querySelector('[data-testid="nav-replay"]').click();
+    await new Promise((r) => setTimeout(r, 200));
+    document.getElementById("games-source-add").click();
+    await new Promise((r) => setTimeout(r, 200));
+    const pop = document.querySelector(".src-popover");
+    const addInput = pop?.querySelector("[data-src-add]");
+    if (addInput) {
+      addInput.value = "Hikaru";
+      addInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    pop?.querySelector("[data-src-done]")?.click();
+    await new Promise((r) => setTimeout(r, 150));
+    const tray = document.getElementById("games-source-chips")?.textContent || "";
+    const bodies = [];
+    const realFetch = window.fetch.bind(window);
+    window.fetch = async (url, opts) => {
+      const u = String(url);
+      if (u.includes("/api/csrf")) {
+        return new Response(JSON.stringify({ csrf_token: "test-csrf" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (u.includes("/api/lichess/compare")) {
+        bodies.push(opts?.body ? String(opts.body) : "");
+        return new Response(
+          JSON.stringify({ username: "self", count: 1, misses_recorded: 0, sources: ["account_a", "Hikaru"], games: [] }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      return realFetch(url, opts);
+    };
+    document.getElementById("lichess-compare-btn").click();
+    await new Promise((r) => setTimeout(r, 1500));
+    window.fetch = realFetch;
+    return { tray, bodies };
+  });
+  check(`[${vp.label}] games tray shows Self + external`, /Self/.test(gamesExtFlow.tray || "") && /Hikaru/.test(gamesExtFlow.tray || ""), gamesExtFlow.tray || "");
+  check(
+    `[${vp.label}] games compare posts resolved usernames`,
+    (gamesExtFlow.bodies || []).length >= 1 &&
+      (gamesExtFlow.bodies || []).every((b) => b.includes("Hikaru") && b.includes("usernames")),
+    JSON.stringify(gamesExtFlow.bodies || []),
+  );
 
   // --- Dropdown theme: dark menu chrome -------------------------------------
   const theme = await page.evaluate(() => {

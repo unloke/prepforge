@@ -87,23 +87,43 @@ function brilliantEligible(evalMap, move) {
 //
 // We only ship assessments for eligible moves; the server consults assessments solely for
 // the Best/Excellent ones it classifies, so dropping the rest is both safe and faster.
-export async function computeBrilliantAssessments({ moves, evals, depth, rating, onProgress, onTrapProgress, shouldCancel, provider, analyzeFn }) {
+//
+// Optional phase instrumentation (onPhase): the Analyze pipeline passes a hook
+// recording per-phase detail — pgn/load, stockfish, maia-load, maia-inference,
+// maia-traps, classify-save, render — so a "classifying is slow" report can be
+// attributed to the real phase instead of the toast label. Each call is
+// `{ phase, detail }`; never throws (guarded internally).
+export async function computeBrilliantAssessments({ moves, evals, depth, rating, onProgress, onTrapProgress, shouldCancel, provider, analyzeFn, onPhase }) {
   const assessments = [];
   const candidates = []; // moves through layers 0–2 needing a trap_gap: { item, side, playedAfterFen }
   const evalMap = evals && typeof evals.get === "function" ? evals : new Map();
   const total = moves.length;
+  const phase = (name, detail) => {
+    try {
+      if (typeof onPhase === "function") onPhase({ phase: name, detail });
+    } catch (_) {
+      /* instrumentation only */
+    }
+  };
   const cancelledError = () => {
     const err = new Error("Analysis stopped");
     err.cancelled = true;
     return err;
   };
+  let assessed = 0;
+  let skippedIneligible = 0;
+  phase("maia-inference-start", { total });
   for (let i = 0; i < total; i++) {
     // Before kicking off each assessment. The FIRST iteration's moveAssessment also drives
     // the model download + session init, so this is the pre-init checkpoint too.
     if (shouldCancel && shouldCancel()) throw cancelledError();
     const m = moves[i];
     if (m && m.fen_before && m.uci && brilliantEligible(evalMap, m)) {
+      // One serial value forward per eligible move: the worker executes one
+      // session.run at a time, so batching here would only re-shape the same
+      // queue — keep the per-move call (call-count tests pin this).
       const a = await provider.moveAssessment({ fen: m.fen_before, moveUci: m.uci, rating });
+      assessed += 1;
       // The await above can span a long download/init/inference; honour a Stop that arrived
       // during it so we neither record this result nor proceed to the next move. (Aborting the
       // in-flight fetch itself is the future AbortSignal work; this stops at the next seam.)
@@ -125,9 +145,12 @@ export async function computeBrilliantAssessments({ moves, evals, depth, rating,
           candidates.push({ item, side: m.side, playedAfterFen: m.fen_after });
         }
       }
+    } else {
+      skippedIneligible += 1;
     }
     if (onProgress) onProgress(i + 1, total);
   }
+  phase("maia-inference-done", { assessed, skippedIneligible, total });
 
   // Second pass: attach trap_gap to the unintuitive candidates (in place, on their items).
   // A failure HERE must not discard the first-pass assessments we already computed for the
@@ -147,6 +170,7 @@ export async function computeBrilliantAssessments({ moves, evals, depth, rating,
         onProgress: onTrapProgress,
         shouldCancel,
         cancelledError,
+        onPhase: (evt) => phase(evt?.phase || "maia-traps", evt?.detail),
       });
     } catch (err) {
       if (err && err.cancelled) throw err;
@@ -166,14 +190,24 @@ export async function computeBrilliantAssessments({ moves, evals, depth, rating,
 // natural move / missing eval) is left with no trap_gap — the server then can't judge its
 // trap layer and won't flag it (fail closed). A natural move equal to the played one is a
 // real 0 (no trap), shipped as such.
-export async function attachClientTrapGaps({ candidates, evals, depth, rating, provider, analyzeFn, onProgress, shouldCancel, cancelledError }) {
+export async function attachClientTrapGaps({ candidates, evals, depth, rating, provider, analyzeFn, onProgress, shouldCancel, cancelledError, onPhase }) {
+  const emit = (name, detail) => {
+    try {
+      if (typeof onPhase === "function") onPhase({ phase: name, detail });
+    } catch (_) {
+      /* instrumentation only */
+    }
+  };
   const plan = []; // { cand, humanFen?, sameAsPlayed? }
   const humanFens = [];
   const seen = new Set();
+  let policyCalls = 0;
+  emit("maia-traps-policy-start", { candidates: candidates.length });
   for (const cand of candidates) {
     if (shouldCancel && shouldCancel()) throw cancelledError();
     let naturalUci = null;
     try {
+      policyCalls += 1;
       const preds = await provider.predictions({ fen: cand.item.fen, rating });
       naturalUci = preds && preds.length ? preds[0].move_uci : null;
     } catch (_) {
@@ -202,7 +236,12 @@ export async function attachClientTrapGaps({ candidates, evals, depth, rating, p
   }
 
   let humanEvals = new Map();
+  emit("maia-traps-policy-done", { policyCalls, distinctFens: humanFens.length });
   if (humanFens.length) {
+    // ONE Stockfish batch over the de-duplicated natural-move positions (not
+    // one search per candidate): the batch shares the pool with the resident
+    // Maia session, so fan-out stays capped (TRAP_STOCKFISH_CONCURRENCY).
+    emit("maia-traps-stockfish-start", { positions: humanFens.length });
     humanEvals = await analyzeFn({
       positions: humanFens,
       depth,
@@ -215,6 +254,7 @@ export async function attachClientTrapGaps({ candidates, evals, depth, rating, p
       onProgress,
       shouldCancel,
     });
+    emit("maia-traps-stockfish-done", { positions: humanFens.length });
   }
 
   for (const p of plan) {
