@@ -925,7 +925,8 @@ h2 {
   display: none;
 }
 
-/* Feedback rows reuse the shared switch + row; the host only stacks them. */
+/* Settings → Board feedback toggles render through the shared .pf-switch /
+   .pf-row primitives (see renderPrefsToggles). */
 .pf-feedback {
   display: flex;
   flex-direction: column;
@@ -1764,72 +1765,13 @@ h2 {
   animation: boardFlip 400ms ease;
 }
 
-/* Settings → Board feedback toggles.
-   Rows render through the shared .pf-switch / .pf-row primitives; these
-   aliases keep the legacy .pref-toggle class contract (tests + old markup)
-   working on the same geometry. */
+/* Settings → Board feedback toggles render through the shared .pf-switch /
+   .pf-row primitives (see renderPrefsToggles). The host only stacks rows. */
 .board-prefs {
   display: flex;
   flex-direction: column;
   gap: 4px;
   margin-top: 8px;
-}
-
-.pref-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 7px 4px;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid var(--line-soft);
-  cursor: pointer;
-  text-align: left;
-}
-
-.pref-toggle:last-child {
-  border-bottom: 0;
-}
-
-.pref-label {
-  font-size: 13px;
-  color: var(--text);
-}
-
-/* Legacy .pref-switch / .pref-knob / .pref-label aliases: the shared
-   .pf-switch + .pf-knob + .pf-row-label primitives carry the real geometry.
-   These one-line aliases keep old markup and JS selectors working. */
-.pref-switch {
-  position: relative;
-  width: 38px;
-  height: 22px;
-  border-radius: 999px;
-  background: var(--line);
-  flex-shrink: 0;
-  transition: background 160ms ease;
-}
-
-.pref-toggle.is-on .pref-switch,
-.pref-toggle.pf-switch.is-on {
-  background: var(--accent);
-}
-
-.pref-knob {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  transition: transform 160ms ease;
-}
-
-.pref-toggle.is-on .pref-knob,
-.pref-toggle.pf-switch.is-on .pf-knob {
-  transform: translateX(16px);
 }
 
 /* Engine install/update buttons (App-Store-style) */
@@ -2013,15 +1955,55 @@ h2 {
 .train-blitz-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
   font-size: 12px;
   font-weight: 600;
   color: var(--muted);
-  cursor: pointer;
   user-select: none;
 }
+
+.train-blitz-row .pf-switch {
+  width: 34px;
+  height: 20px;
+}
+
+.train-blitz-row .pf-knob {
+  width: 16px;
+  height: 16px;
+}
+
+.train-blitz-row .pf-switch.is-on .pf-knob {
+  transform: translateX(14px);
+}
+
 .train-blitz-row[hidden] { display: none; }
-.train-blitz-row input { accent-color: var(--accent-strong); }
+
+/* Coach header review switch: compact shared primitive, not a native checkbox. */
+.explain-review {
+  gap: 8px;
+  margin-left: auto;
+}
+
+.explain-review .pf-row-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.explain-review .pf-switch {
+  width: 34px;
+  height: 20px;
+}
+
+.explain-review .pf-knob {
+  width: 16px;
+  height: 16px;
+}
+
+.explain-review .pf-switch.is-on .pf-knob {
+  transform: translateX(14px);
+}
 .train-blitz-bar {
   height: 5px;
   border-radius: 999px;
@@ -2086,14 +2068,8 @@ h2 {
   color: var(--danger-strong);
 }
 
-.settings-select {
-  width: min(260px, 100%);
-  min-height: 44px;
-  padding: 0 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--panel);
-}
+/* Retired Settings theme select: the theme is a segmented control now (the
+   hidden native select keeps .pf-select-native). */
 .train-play-repertoires[hidden] { display: none; }
 .train-repertoire-menu {
   position: relative;
@@ -4042,24 +4018,7 @@ h2 {
   display: none;
 }
 
-.explain-toggle {
-  display: inline-flex;
-  align-items: center;
-  flex: 0 1 auto;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.35;
-  min-width: 0;
-  white-space: nowrap;
-  user-select: none;
-  cursor: pointer;
-}
-
-.explain-toggle input {
-  accent-color: var(--accent);
-  cursor: pointer;
-}
+/* Coach header review switch lives in .explain-review (shared pf-switch). */
 
 /* The coach talks in one short paragraph. A quiet left rule carries the tone so the
    read feels like a person, not a dashboard of pills and numbers. */
