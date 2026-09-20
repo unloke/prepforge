@@ -121,6 +121,20 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("installPolishE2eHook");
     expect(app).toContain("if (window.__prepforgePolishE2e) return;");
     expect(app.match(/window\.__prepforgePolishE2e\s*=\s*\{/g) || []).toHaveLength(1);
+    // The acceptance hook seeds promotion positions through the same
+    // setPosition + legalMoves path production uses.
+    expect(app).toContain("setBoardFen(boardName, fen)");
+  });
+
+  it("promotes through one shared picker on every interactive board", () => {
+    expect(app).toContain("PROMOTION_PIECES");
+    expect(app).toContain("function showPromotionPicker(");
+    expect(app).toContain("function resolveBoardMove(");
+    const hits = app.match(/resolveBoardMove\(\{/g) || [];
+    // click + keyboard-square + drag paths all resolve through the picker.
+    expect(hits.length).toBeGreaterThanOrEqual(3);
+    expect(css).toContain(".promotion-picker");
+    expect(css).toContain(".promotion-option");
   });
 
   it("renders menus and modals with theme tokens in both themes", () => {

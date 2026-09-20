@@ -6700,33 +6700,72 @@ h2 {
   .scout-next-plan-loading > span { animation: none; }
 }
 
-/* Workspace chrome: SAN buffer, engine banner, command palette. Tokens only. */
+/* Workspace chrome: engine banner, command palette. Tokens only. */
 
-.san-buffer {
-  margin-left: auto;
-  min-width: 3ch;
-  height: var(--ib-h);
-  padding: 0 8px;
+/* Promotion picker: site-styled Queen / Rook / Bishop / Knight chooser shared
+   by the Analyze / Build / Train boards. Pops over the board stack so the
+   choice reads as part of the board, not a detached modal. */
+.promotion-picker-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  background: rgba(20, 18, 14, 0.24);
+  border-radius: 4px;
+}
+
+.promotion-picker {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 8px;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--panel-soft);
+  border-radius: var(--radius-card);
+  background: var(--panel);
   color: var(--text);
-  font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", monospace;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  display: inline-flex;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
+}
+
+.promotion-option {
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: 2px;
+  min-width: 64px;
+  padding: 8px 6px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
 }
 
-.san-buffer[hidden] {
-  display: none;
+.promotion-option:hover {
+  background: var(--surface-hover);
+  border-color: var(--line-soft);
 }
 
-.san-buffer.is-reject {
-  border-color: var(--danger);
-  color: var(--danger);
-  background: var(--danger-soft);
+.promotion-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  background: var(--surface-hover);
+}
+
+.promotion-option .piece {
+  width: 44px;
+  height: 44px;
+}
+
+.promotion-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.promotion-option:hover .promotion-name,
+.promotion-option:focus-visible .promotion-name {
+  color: var(--text);
 }
 
 .engine-banner {
