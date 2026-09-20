@@ -104,9 +104,9 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("account_id");
     expect(app).toContain("— Primary");
     expect(app).toContain("is-primary");
-    // My last game passes the chosen identity to the latest-game request.
-    expect(app).toMatch(/fetchMyLichessGame[\s\S]*?resolveLichessAccountId/);
-    expect(app).toMatch(/fetchMyLichessGame[\s\S]*?account_id/);
+    // My last game aggregates self server-side: no chooser, source shown quietly.
+    expect(app).not.toMatch(/fetchMyLichessGame[\s\S]{0,400}?resolveLichessAccountId/);
+    expect(app).toMatch(/fetchMyLichessGame[\s\S]*?source_account/);
     // Replay compare passes the chosen identity in the compare request.
     expect(app).toMatch(/runLichessCompare[\s\S]*?resolveLichessAccountId/);
     expect(app).toMatch(/runLichessCompare[\s\S]*?account_id/);

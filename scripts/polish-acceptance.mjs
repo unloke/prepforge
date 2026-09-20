@@ -234,22 +234,32 @@ for (const vp of VIEWPORTS) {
   // themselves scroll (checked structurally in ui-layout tests; the panel is
   // the single scroll owner).
 
-  // --- Account chooser: two accounts → chooser, primary default -------------
-  // Drive the REAL flow: seed two linked identities via the polish hook, stub
-  // /api/lichess/latest, click My last game, assert the chooser appears with
-  // Primary highlighted, choose B, assert the request carries account_id=B,
-  // the chooser closes, and primary is still A afterwards.
-  const chooserFlow = await page.evaluate(async () => {
+  // --- My last game: two accounts → no chooser, newest wins ---------------
+  // Seed two linked identities, stub /api/lichess/latest with per-account
+  // games (B's game is newer), click My last game, assert NO chooser appears,
+  // the request carries NO account_id (self aggregation is server-side), the
+  // newer game loads into the PGN box, and the source account is shown.
+  const selfFlow = await page.evaluate(async () => {
     const seen = [];
     const realFetch = window.fetch.bind(window);
     window.fetch = async (url, opts) => {
       const u = String(url);
       if (u.includes("/api/lichess/latest")) {
         seen.push(u);
-        return new Response(JSON.stringify({ has_game: false }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({
+            has_game: true,
+            lichess_id: "newer002",
+            white: "account_b",
+            black: "Opponent",
+            result: "1-0",
+            is_new: true,
+            finished_at: "2026-06-08T00:00:00Z",
+            source_account: "account_b",
+            pgn: '[White "account_b"]\n\n1. e4 e5 *\n',
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
       }
       return realFetch(url, opts);
     };
@@ -261,50 +271,34 @@ for (const vp of VIEWPORTS) {
     ]);
     document.querySelector('[data-testid="nav-analyze"]').click();
     document.getElementById("fetch-my-game").click();
-    await new Promise((r) => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 600));
     const overlay = document.querySelector(".modal-overlay .account-chooser");
-    const opened = !!overlay;
-    const choices = overlay
-      ? Array.from(overlay.querySelectorAll("[data-account-id]")).map((b) => ({
-          id: b.dataset.accountId,
-          text: b.textContent.trim(),
-          primary: b.classList.contains("is-primary"),
-          focused: document.activeElement === b,
-        }))
-      : [];
-    const primaryChoice = choices.find((c) => c.id === "acc-a");
-    // Choose B.
-    overlay?.querySelector('[data-account-id="acc-b"]')?.click();
-    await new Promise((r) => setTimeout(r, 300));
-    const closed = !document.querySelector(".modal-overlay .account-chooser");
+    const status = document.getElementById("app-status")?.textContent || "";
+    const pgn = document.getElementById("pgn-input")?.value || "";
     const accounts = hook.getLichessAccounts();
     const primaryStillA = (accounts.find((a) => a.is_primary) || {}).id === "acc-a";
     window.fetch = realFetch;
     return {
-      opened,
-      choices,
-      primaryHighlighted: !!primaryChoice?.primary,
-      primaryFocused: !!primaryChoice?.focused,
-      primaryLabel: primaryChoice?.text || "",
+      chooserOpened: !!overlay,
       latestCalls: seen,
-      closed,
+      status,
+      pgnLoaded: pgn.includes("account_b"),
       primaryStillA,
     };
   });
-  check(`[${vp.label}] chooser opens for two accounts`, !!chooserFlow.opened);
+  check(`[${vp.label}] my-last-game shows no chooser for two accounts`, !selfFlow.chooserOpened);
   check(
-    `[${vp.label}] chooser lists both with primary marked`,
-    chooserFlow.choices?.length === 2 && chooserFlow.primaryHighlighted && /Primary/.test(chooserFlow.primaryLabel || ""),
-    JSON.stringify(chooserFlow.choices),
+    `[${vp.label}] my-last-game aggregates without account_id`,
+    (selfFlow.latestCalls || []).length >= 1 &&
+      (selfFlow.latestCalls || []).every((u) => !u.includes("account_id")),
+    (selfFlow.latestCalls || []).join(","),
   );
-  check(`[${vp.label}] chooser defaults focus to primary`, !!chooserFlow.primaryFocused);
   check(
-    `[${vp.label}] choosing B sends account_id=B`,
-    (chooserFlow.latestCalls || []).some((u) => u.includes("account_id=acc-b")),
-    (chooserFlow.latestCalls || []).join(","),
+    `[${vp.label}] my-last-game loads newest game + source`,
+    !!selfFlow.pgnLoaded && /account_b/.test(selfFlow.status || ""),
+    (selfFlow.status || "").slice(0, 120),
   );
-  check(`[${vp.label}] chooser closes after selection`, !!chooserFlow.closed);
-  check(`[${vp.label}] primary still A afterwards`, !!chooserFlow.primaryStillA);
+  check(`[${vp.label}] primary still A afterwards`, !!selfFlow.primaryStillA);
 
   // --- Compare flow: choosing B sends account_id in compare body -------------
   const compareFlow = await page.evaluate(async () => {

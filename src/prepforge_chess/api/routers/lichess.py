@@ -532,26 +532,47 @@ def latest(
     db: Session = Depends(get_db),
     repo: PrepForgeRepository = Depends(get_repository),
 ) -> dict:
-    """The linked account's most recent game, flagged ``is_new`` against the per-owner
-    last-seen marker. ``include_moves`` returns the full PGN (for feeding into Analyze);
-    the lightweight form returns NDJSON metadata only (the finish-time watcher probe).
+    """The newest game across the caller's linked Lichess identities.
 
-    Legacy compat: the SPA's watcher hits ``?light=1`` (web-src/app.js), which the old
-    server mapped to ``include_moves=False`` (the metadata-only path that carries the
-    true finish time). ``light`` wins when set, so the recency gate keeps working."""
+    ``account_id`` selects one identity explicitly; the default aggregates ALL
+    linked accounts ("self"): each identity's most recent game is fetched with
+    bounded concurrency, duplicates are dropped by game id, and the truly
+    newest by finish time wins. A quiet ``source_account`` names the identity
+    the game came from so the UI can show it. Partial failures degrade: one
+    account failing never blocks the others.
+    """
     if light:
         include_moves = False
-    username = _linked_username_or_400(db, user.id, account_id)
+    if account_id:
+        links = [_link_for_account(db, user.id, account_id)]
+    else:
+        # "Self": every linked identity, primary first.
+        links = _links_for(db, user.id)
+        primaries = [link for link in links if link.is_primary]
+        others = [link for link in links if not link.is_primary]
+        links = primaries + others
+    if not links or not any(link.provider_user_id for link in links):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="link your Lichess account first",
+        )
     try:
         if include_moves:
-            games = lichess_fetch.fetch_recent_pgns(username, 1, include_moves=True)
+            game, source = lichess_fetch.newest_game_across(
+                [link.provider_user_id for link in links],
+                per_account=1,
+                with_moves=True,
+            )
         else:
-            games = lichess_fetch.fetch_latest_games_meta(username, 1)
+            game, source = lichess_fetch.newest_game_across(
+                [link.provider_user_id for link in links],
+                per_account=1,
+                with_moves=False,
+            )
     except lichess_fetch.LichessFetchError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
-    if not games:
+    if game is None:
         return {"has_game": False}
-    game = games[0]
     last_seen = repo.get_profile_setting(owner, _LAST_SEEN_KEY)
     payload = {
         "has_game": True,
@@ -561,6 +582,7 @@ def latest(
         "result": game.result,
         "is_new": bool(game.lichess_id) and game.lichess_id != last_seen,
         "finished_at": game.finished_at,
+        "source_account": source,
     }
     if include_moves:
         payload["pgn"] = game.pgn

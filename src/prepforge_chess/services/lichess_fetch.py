@@ -246,6 +246,82 @@ def _parse_ndjson_games(text: str) -> List[FetchedGame]:
     return games
 
 
+# Bounded fan-out for "self" aggregation: how many identities to query at once.
+# Lichess rate-limits aggressively; small parallelism keeps multi-account users
+# fast without hammering the API.
+_SELF_FANOUT_MAX_WORKERS = 4
+
+
+def _newest_key(game: FetchedGame) -> str:
+    """Sort key for "truly newest": real finish time first, game id as a stable
+    tiebreak so equal timestamps resolve deterministically."""
+    return "{0}|{1}".format(game.finished_at or "", game.lichess_id or "")
+
+
+def newest_game_across(
+    usernames: list,
+    *,
+    per_account: int = 1,
+    with_moves: bool = False,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+) -> tuple:
+    """Newest game across several Lichess identities ("self").
+
+    Fetches each identity's most recent game(s) with bounded concurrency, drops
+    duplicates by game id (the same game can appear under two linked names only
+    in theory — ids are globally unique, so this is cheap insurance), and
+    returns ``(game, source_username)`` for the truly newest by finish time, or
+    ``(None, None)`` when nobody has games.
+
+    Partial failures degrade: one account's 429/network error never blocks the
+    others. Raises LichessFetchError only when EVERY account failed.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    names = [u for u in (usernames or []) if u and str(u).strip()]
+    if not names:
+        return None, None
+
+    def _one(username: str) -> tuple:
+        if with_moves:
+            games = fetch_recent_pgns(username, per_account, timeout=timeout)
+        else:
+            games = fetch_latest_games_meta(username, per_account, timeout=timeout)
+        return username, games
+
+    per_account = max(1, min(int(per_account or 1), MAX_FETCH))
+    errors: list = []
+    workers = max(1, min(_SELF_FANOUT_MAX_WORKERS, len(names)))
+    results: list = []
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_one, name): name for name in names}
+        for future in futures:
+            try:
+                username, games = future.result()
+            except LichessFetchError as exc:
+                errors.append(exc)
+                continue
+            for game in games or []:
+                results.append((game, username))
+    seen_ids: set = set()
+    best = None
+    best_source = None
+    for game, username in results:
+        gid = game.lichess_id
+        if gid and gid in seen_ids:
+            continue
+        if gid:
+            seen_ids.add(gid)
+        if best is None or _newest_key(game) > _newest_key(best):
+            best = game
+            best_source = username
+    if best is not None:
+        return best, best_source
+    if errors:
+        raise errors[0]
+    return None, None
+
+
 def _build_fetched_game_from_json(obj: dict) -> FetchedGame:
     players = obj.get("players") or {}
     return FetchedGame(
