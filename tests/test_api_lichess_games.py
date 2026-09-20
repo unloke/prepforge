@@ -544,6 +544,95 @@ def test_oauth_login_legacy_path_requires_auth(client):
     assert client.get("/oauth/login", follow_redirects=False).status_code == 401
 
 
+# ---- per-action account selection --------------------------------------------
+
+
+def _link_as(client, monkeypatch, username):
+    monkeypatch.setattr(
+        "prepforge_chess.api.routers.lichess.fetch_username",
+        lambda token, **kw: username,
+    )
+    _link(client)
+
+
+def test_two_identities_coexist_and_latest_selects_each(client, monkeypatch):
+    """Link A then B: both appear in Settings, latest reads either by account_id."""
+    _register(client, "chooser@example.com")
+    _link_as(client, monkeypatch, "ChooserA")
+    _link_as(client, monkeypatch, "ChooserB")
+
+    status = client.get("/api/lichess").json()
+    assert {a["username"] for a in status["accounts"]} == {"ChooserA", "ChooserB"}
+    assert [a["username"] for a in status["accounts"] if a["is_primary"]] == ["ChooserA"]
+    second = next(a for a in status["accounts"] if a["username"] == "ChooserB")
+
+    seen = []
+
+    def _fake(username, count=1, **kwargs):
+        seen.append(username)
+        game = _game()
+        game.white = username
+        game.black = "Opponent"
+        return [game]
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_recent_pgns",
+        lambda username, count=1, **kwargs: _fake(username, count, **kwargs),
+    )
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_latest_games_meta",
+        lambda username, count=1, **kwargs: _fake(username, count, **kwargs),
+    )
+
+    # Default (no account_id) reads the primary.
+    assert client.get("/api/lichess/latest").json()["white"] == "ChooserA"
+    # Explicit selection reads B without changing the primary.
+    assert (
+        client.get("/api/lichess/latest", params={"account_id": second["id"]}).json()["white"]
+        == "ChooserB"
+    )
+    assert client.get("/api/lichess").json()["username"] == "ChooserA"
+    assert seen == ["ChooserA", "ChooserB"]
+
+
+def test_compare_selects_second_identity_without_changing_primary(client, monkeypatch):
+    _register(client, "comparechooser@example.com")
+    _link_as(client, monkeypatch, "CompareA")
+    _link_as(client, monkeypatch, "CompareB")
+    second = next(
+        a for a in client.get("/api/lichess").json()["accounts"] if a["username"] == "CompareB"
+    )
+
+    seen = []
+
+    def _fake_compare(repo, username, count, owner_user_id=None):
+        seen.append(username)
+        return []
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.compare_recent_games", _fake_compare
+    )
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.record_departure_misses", lambda *a, **k: 0
+    )
+
+    body = client.post(
+        "/api/lichess/compare",
+        json={"count": 10, "account_id": second["id"]},
+        headers=csrf_headers(client),
+    ).json()
+    assert body["username"] == "CompareB"
+    assert seen == ["CompareB"]
+    assert client.get("/api/lichess").json()["username"] == "CompareA"
+
+
+def test_latest_rejects_unknown_account_id(client, monkeypatch):
+    _register(client, "unknownacct@example.com")
+    _link(client)
+    _mock_fetch(monkeypatch, games=[_game()])
+    assert client.get("/api/lichess/latest", params={"account_id": "nope"}).status_code == 404
+
+
 # ---- multi-tenant isolation ------------------------------------------------
 
 
