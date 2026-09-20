@@ -7,6 +7,9 @@ export const MAIA_ENRICH_LOADING = "loading";
 export const MAIA_ENRICH_READY = "ready";
 export const MAIA_ENRICH_PARTIAL = "partial";
 export const MAIA_ENRICH_FAILED = "failed";
+// Analysis-layer Maia is OFF: enrichment never ran, and the report must say
+// the feature needs Maia instead of looking like a failure or a partial read.
+export const MAIA_ENRICH_OFF = "maia-off";
 
 import { SCOUT_PREFILTER_LIMIT, SCOUT_PREFILTER_POOL_SIZE } from "./scout-prefilter.js";
 
@@ -220,6 +223,9 @@ export function scoutMaiaRankedNote(
   }
   if (state === MAIA_ENRICH_FAILED) {
     return `<div class="scout-ranked-note muted hint">Ranked by exploitability · empirical score/WDL (Maia unavailable)</div>`;
+  }
+  if (state === MAIA_ENRICH_OFF) {
+    return `<div class="scout-ranked-note muted hint">Maia enrichment needs Maia analysis — turn it on in Settings → Playing strength for human-likeness reads.</div>`;
   }
   return `<div class="scout-ranked-note muted hint">Ranked by exploitability · empirical score/WDL</div>`;
 }

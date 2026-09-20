@@ -1,6 +1,6 @@
 // Settings tab rendering (lazy-loaded from app.js).
 
-import { resolveModelBase } from "../engine/maia3-provider.js";
+import { resolveModelBase, peekSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { getCachedWeights, clearWeightCache } from "../engine/maia3-weight-cache.js";
 
 export function createSettingsView({
@@ -36,6 +36,8 @@ export function createSettingsView({
   function bindSwitch(el, initial, onChange) {
     if (!el) return;
     paintSwitch(el, initial);
+    if (el.dataset.bound === "1") return;
+    el.dataset.bound = "1";
     el.addEventListener("click", () => {
       if (el.disabled) return;
       const next = !readSwitch(el);
@@ -135,8 +137,13 @@ export function createSettingsView({
     } catch (_) {
       /* signed-out: connections list stays at its static markup */
     }
-    const brilliantToggle = document.getElementById("settings-brilliant-toggle");
-    if (brilliantToggle) paintSwitch(brilliantToggle, !!pref("brilliantDetection"));
+    renderMaiaAnalysis();
+  }
+
+  function renderMaiaAnalysis() {
+    const maiaToggle = document.getElementById("settings-maia-analysis");
+    if (maiaToggle) paintSwitch(maiaToggle, !!pref("maiaAnalysis"));
+    renderMaia3Status();
   }
 
   function connectionAccounts() {
@@ -222,25 +229,34 @@ export function createSettingsView({
       }
     };
     try {
-      const provider = getSharedMaia3Provider();
-      if (provider.state === "ready") {
-        const info = provider.info || {};
-        const base = info.url || provider.assetBase || "";
-        set("available", base ? `Loaded this session · ${base}` : "Loaded this session.");
-        return;
-      }
-      if (provider.state === "initializing") {
-        set("initializing…", "Downloading / preparing the model.");
-        return;
-      }
-      if (provider.state === "unavailable") {
-        const err = provider.lastError;
-        set(
-          "unavailable",
-          "Last load failed. Use Retry now, or Reset cache if it keeps failing.",
-          err ? `${err.message}${err.phase ? ` (${err.phase})` : ""}` : "",
-        );
-        return;
+      // Peek-only: rendering the Settings status row must never construct the
+      // Maia worker — with Maia analysis OFF no provider may be initialized.
+      const provider = peekSharedMaia3Provider();
+      if (!provider) {
+        if (!pref("maiaAnalysis")) {
+          set("off", "Maia analysis is off — turn it on in Playing strength to use the human model.");
+          return;
+        }
+      } else {
+        if (provider.state === "ready") {
+          const info = provider.info || {};
+          const base = info.url || provider.assetBase || "";
+          set("available", base ? `Loaded this session · ${base}` : "Loaded this session.");
+          return;
+        }
+        if (provider.state === "initializing") {
+          set("initializing…", "Downloading / preparing the model.");
+          return;
+        }
+        if (provider.state === "unavailable") {
+          const err = provider.lastError;
+          set(
+            "unavailable",
+            "Last load failed. Use Retry now, or Reset cache if it keeps failing.",
+            err ? `${err.message}${err.phase ? ` (${err.phase})` : ""}` : "",
+          );
+          return;
+        }
       }
       let manifest;
       try {
@@ -273,6 +289,11 @@ export function createSettingsView({
   async function retryMaia3() {
     const btn = document.getElementById("settings-maia-retry");
     if (btn) btn.disabled = true;
+    if (!pref("maiaAnalysis")) {
+      setStatus("Maia analysis is off — turn it on in Playing strength first.");
+      if (btn) btn.disabled = false;
+      return;
+    }
     setStatus("Retrying Maia3…");
     try {
       const provider = getSharedMaia3Provider();
@@ -352,7 +373,7 @@ export function createSettingsView({
     toggleInfoPop("engine-info", "engine-info-pop");
     toggleInfoPop("maia-info", "maia-info-pop");
     toggleInfoPop("strength-info", "strength-info-pop");
-    toggleInfoPop("brilliant-info", "brilliant-info-pop");
+    toggleInfoPop("maia-analysis-info", "maia-analysis-info-pop");
     toggleInfoPop("connections-info", "connections-info-pop");
     document.getElementById("view-settings")?.addEventListener("click", (event) => {
       if (event.target.closest(".pf-info, .pf-info-pop")) return;
@@ -373,10 +394,11 @@ export function createSettingsView({
     const maiaResetBtn = document.getElementById("settings-maia-reset");
     if (maiaResetBtn) maiaResetBtn.addEventListener("click", () => resetMaia3Cache().catch(() => {}));
 
-    const brilliantToggle = document.getElementById("settings-brilliant-toggle");
-    bindSwitch(brilliantToggle, !!pref("brilliantDetection"), (next) =>
-      setPref("brilliantDetection", next),
-    );
+    const maiaToggle = document.getElementById("settings-maia-analysis");
+    bindSwitch(maiaToggle, !!pref("maiaAnalysis"), (next) => {
+      setPref("maiaAnalysis", next);
+      renderMaiaAnalysis();
+    });
 
     const depthSlider = document.getElementById("settings-depth");
     if (depthSlider) {
@@ -430,6 +452,7 @@ export function createSettingsView({
     renderMaia3Status,
     renderStrengthControls,
     renderThemeControl,
+    renderMaiaAnalysis,
     renderConnections,
     refreshConnections,
     retryMaia3,

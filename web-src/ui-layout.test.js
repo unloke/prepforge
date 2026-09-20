@@ -10,6 +10,7 @@ const app = readFileSync(join(root, "app.js"), "utf8");
 const account = readFileSync(join(root, "controllers", "account.js"), "utf8");
 const replayView = readFileSync(join(root, "views", "replay.js"), "utf8");
 const settingsView = readFileSync(join(root, "views", "settings.js"), "utf8");
+const scoutView = readFileSync(join(root, "views", "scout.js"), "utf8");
 
 function ruleBody(selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -194,9 +195,12 @@ describe("workspace chrome layout", () => {
     expect(settings).toContain('data-theme-value="dark"');
     // Booleans are switches, not native checkboxes.
     expect(settings).not.toContain('type="checkbox" id="settings-maia-auto"');
-    expect(settings).not.toContain('type="checkbox" id="settings-brilliant-toggle"');
+    expect(settings).not.toContain('type="checkbox" id="settings-maia-analysis"');
     expect(settings).toContain('id="settings-maia-auto" role="switch"');
-    expect(settings).toContain('id="settings-brilliant-toggle" role="switch"');
+    expect(settings).toContain('id="settings-maia-analysis" role="switch"');
+    // The old brilliant sub-toggle is gone: Maia analysis carries brilliant signals.
+    expect(settings).not.toContain("settings-brilliant-toggle");
+    expect(settings).not.toContain("brilliant-info");
     // Long helpers live in popovers, not standing paragraphs.
     expect(settings).not.toMatch(/<p class="muted[^"]*">Use a warm dark palette/);
     expect(settings).not.toMatch(/<p class="muted[^"]*">Higher is stronger but slower/);
@@ -207,13 +211,49 @@ describe("workspace chrome layout", () => {
     expect(settings).toContain('id="engine-info-pop"');
     expect(settings).toContain('id="maia-info-pop"');
     expect(settings).toContain('id="strength-info-pop"');
-    expect(settings).toContain('id="brilliant-info-pop"');
+    expect(settings).toContain('id="maia-analysis-info-pop"');
     expect(settings).toContain('id="connections-info-pop"');
     // Wiring: switches paint + segmented theme sync + info toggles.
     expect(settingsView).toContain("paintSwitch");
     expect(settingsView).toContain("bindSwitch");
     expect(settingsView).toContain("toggleInfoPop");
     expect(settingsView).toContain("settings-theme-seg");
+  });
+
+  it("scopes Maia analysis to the analysis layer", () => {
+    const settingsStart = html.indexOf('id="view-settings"');
+    const settings = html.slice(settingsStart);
+    // One Maia analysis switch, no brilliant sub-toggle.
+    expect(settings).toContain('id="settings-maia-analysis" role="switch"');
+    expect(settings).toContain('id="maia-analysis-info-pop"');
+    expect(settings).not.toContain("settings-brilliant-toggle");
+    expect(settings).not.toContain("brilliant-info");
+    expect(settings).not.toContain("maia-analysis-sub");
+    expect(css).not.toContain(".pf-analysis-sub");
+    // Analysis-layer default OFF with a single named gate.
+    expect(app).toContain("maiaAnalysis: false");
+    expect(app).toContain("function maiaAnalysisEnabled()");
+    expect(app).not.toContain("function brilliantEnabled()");
+    expect(app).not.toMatch(/pref\("brilliantDetection"\)/);
+    // Analysis-layer callers consult the gate: coach live check, saved-brilliant
+    // rarity, intuition texture, phase tips, and the Analyze Maia pass.
+    expect(app).toMatch(/brilliantCandidate && maiaAnalysisEnabled\(\)/);
+    expect(app).toMatch(/async _checkIntuition\(features, prevFen, fen, token\) \{\r?\n    if \(!maiaAnalysisEnabled\(\)\) return;/);
+    expect(app).toMatch(/without the rarity grounding\.\r?\n    if \(!maiaAnalysisEnabled\(\)\) return;/);
+    expect(app).toMatch(/maiaAnalysisEnabled\(\) &&\r?\n {6}prep\.brilliant/);
+    const phaseIdx = app.indexOf("async function maiaPhaseCoach");
+    expect(app.slice(phaseIdx, phaseIdx + 600)).toMatch(/maiaAnalysisEnabled\(\)/);
+    // Independent Maia-by-design capabilities never consult the gate.
+    expect(app.slice(app.indexOf("async function fetchPlayMaia"), app.indexOf("async function fetchPlayMaia") + 300)).not.toMatch(/maiaAnalysisEnabled\(\)/);
+    const genIdx = app.indexOf("runBrowserBuildGenerate({");
+    expect(app.slice(genIdx, genIdx + 1200)).not.toMatch(/maiaAnalysisEnabled\(\)/);
+    // Coverage and Scout state their Maia requirement instead of silently changing shape.
+    expect(app).toMatch(/Coverage needs Maia analysis/);
+    expect(scoutView).toContain("MAIA_ENRICH_OFF");
+    expect(scoutView).toContain("maiaAnalysisEnabled");
+    // Settings status peeks instead of constructing the worker.
+    expect(settingsView).toContain("peekSharedMaia3Provider");
+    expect(settingsView).toContain("renderMaiaAnalysis");
   });
 
   it("renders menus and modals with theme tokens in both themes", () => {
