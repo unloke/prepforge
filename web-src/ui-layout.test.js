@@ -156,11 +156,21 @@ describe("workspace chrome layout", () => {
     expect(html).toContain('id="games-source-self"');
     expect(html).toContain('id="games-source-pick"');
     expect(html).toContain('id="scout-source-self"');
+    expect(html).toContain('id="scout-source-pick"');
+    expect(html).toContain('id="scout-source-picked"');
     expect(css).toContain(".source-chip");
     expect(css).toContain(".source-pick");
     expect(css).toContain(".replay-source");
+    // Games: Self + linked-account multi-select + explicit sources.
     expect(app).toContain("gamesSourceAccountIds");
+    expect(app).toContain("chooseGamesSourceAccounts");
+    expect(app).toContain("setGamesSourceAccountIds");
+    // Scout: Self + linked-account multi-select + arbitrary opponent username.
     expect(app).toContain("scoutSelfOn");
+    expect(app).toContain("scoutSourceAccountIds");
+    expect(app).toContain("scoutPickedUsernames");
+    expect(app).toContain("chooseScoutSourceAccounts");
+    expect(scoutView).toContain("scoutPickedUsernames");
     // Per-game source metadata survives into the rendered rows.
     expect(replayView).toContain("source_account");
   });

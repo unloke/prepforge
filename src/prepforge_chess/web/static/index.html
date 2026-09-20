@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-fX67jW5w.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-B-jTbsOo.js"></script>
     <link rel="stylesheet" crossorigin href="/static/assets/index-2oJ2_Jp3.css">
   </head>
   <body>
@@ -374,7 +374,9 @@
             <div class="card-head">
               <h2>Scout an opponent</h2>
               <div class="replay-toolbar">
-                <button type="button" class="source-chip" id="scout-source-self" data-testid="scout-source-self" title="Scout the combined games of all linked Lichess accounts">Self · all linked</button>
+                <button type="button" class="source-chip is-on" id="scout-source-self" data-testid="scout-source-self" title="Scout the combined games of all linked Lichess accounts">Self · all linked</button>
+                <button type="button" class="source-pick" id="scout-source-pick" data-testid="scout-source-pick" title="Pick one or more linked accounts to scout">Pick…</button>
+                <span class="replay-source" id="scout-source-picked" data-testid="scout-source-picked" title="Explicit Scout source accounts" hidden></span>
                 <input id="scout-username" type="text" placeholder="lichess username" />
                 <select id="scout-color" title="Which colour games to fetch">
                   <option value="both" selected>Both</option>

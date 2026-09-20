@@ -124,6 +124,7 @@ export function createScoutView(deps) {
     loadPgnIntoAnalyze,
     effectiveMaiaRating,
     maiaAnalysisEnabled = () => true,
+    scoutPickedUsernames = () => [],
     getLichessUsername = () => null,
     getLichessAccounts = () => [],
     effectiveStockfishDepth = () => 16,
@@ -2102,7 +2103,10 @@ export function createScoutView(deps) {
     const linked = (deps.getLichessAccounts?.() || [])
       .map((a) => a.username)
       .filter(Boolean);
-    const usernames = scoutSelf && linked.length ? linked : typed ? [typed] : [];
+    // Source precedence: explicit linked-account picks > Self (all linked) >
+    // typed opponent. Picks narrow Self without touching the free-text box.
+    const picked = typeof scoutPickedUsernames === "function" ? scoutPickedUsernames() : [];
+    const usernames = picked.length ? picked : scoutSelf && linked.length ? linked : typed ? [typed] : [];
     if (!usernames.length) {
       initGuard.finish(initToken);
       updateScoutControls();

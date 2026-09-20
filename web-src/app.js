@@ -10025,9 +10025,13 @@ function bindGamesSource() {
   document.getElementById("games-source-pick")?.addEventListener("click", onGamesSourcePick);
 }
 
-// Scout source: a "Self" chip (all linked identities, the default) plus the
-// free-text opponent box. Compact chips, same design language as Games.
+// Scout source: "Self" (all linked identities, the default) with an explicit
+// linked-account multi-select, plus the free-text opponent box. Compact chips,
+// same design language as Games. Self + explicit picks are mutually exclusive
+// with the typed opponent: Self (or picks) scouts linked identities, otherwise
+// the typed username is scouted.
 const SCOUT_SELF_KEY = "prepforge.scout_self";
+const SCOUT_SOURCE_KEY = "prepforge.scout_source";
 
 function scoutSelfOn() {
   try {
@@ -10043,28 +10047,144 @@ function setScoutSelf(on) {
   } catch (_) {
     /* ignore storage errors */
   }
+  if (on) setScoutSourceAccountIds(null);
   paintScoutSource();
+}
+
+// Scout explicit picks: null = Self default (all linked); otherwise a list of
+// account ids, same contract as the Games picker. Persisted per browser.
+function scoutSourceAccountIds() {
+  let picked = null;
+  try {
+    const raw = localStorage.getItem(SCOUT_SOURCE_KEY);
+    if (raw) picked = JSON.parse(raw);
+  } catch (_) {
+    picked = null;
+  }
+  if (!Array.isArray(picked) || !picked.length) return null;
+  const known = new Set(lichessAccounts().map((a) => a.id));
+  const valid = picked.filter((id) => known.has(id));
+  return valid.length ? valid : null;
+}
+
+function setScoutSourceAccountIds(ids) {
+  try {
+    if (!ids || !ids.length) localStorage.removeItem(SCOUT_SOURCE_KEY);
+    else localStorage.setItem(SCOUT_SOURCE_KEY, JSON.stringify(ids));
+  } catch (_) {
+    /* ignore storage errors */
+  }
+  paintScoutSource();
+}
+
+function scoutPickedUsernames() {
+  const picked = scoutSourceAccountIds();
+  if (!picked) return [];
+  const byId = new Map(lichessAccounts().map((a) => [a.id, a.username]));
+  return picked.map((id) => byId.get(id)).filter(Boolean);
 }
 
 function paintScoutSource() {
   const btn = document.getElementById("scout-source-self");
-  if (!btn) return;
-  const on = scoutSelfOn();
-  const n = lichessAccounts().length;
-  btn.classList.toggle("is-on", on);
-  btn.setAttribute("aria-pressed", String(on));
-  btn.textContent = on && n > 1 ? `Self · ${n} linked` : "Self · all linked";
+  const picked = scoutSourceAccountIds();
+  const on = scoutSelfOn() && !picked;
+  if (btn) {
+    const n = lichessAccounts().length;
+    btn.classList.toggle("is-on", on);
+    btn.setAttribute("aria-pressed", String(on));
+    btn.textContent = picked
+      ? `Self · ${picked.length} picked`
+      : on && n > 1 ? `Self · ${n} linked` : "Self · all linked";
+  }
+  const chip = document.getElementById("scout-source-picked");
+  if (chip) {
+    if (picked) {
+      const names = scoutPickedUsernames();
+      chip.hidden = false;
+      chip.textContent = names.length ? names.join(" + ") : `${picked.length} picked`;
+    } else {
+      chip.hidden = true;
+      chip.textContent = "";
+    }
+  }
   const input = document.getElementById("scout-username");
   if (input) {
-    input.disabled = on && n > 0;
-    input.placeholder = on && n > 0 ? "scouting all linked accounts…" : "lichess username";
+    const selfActive = on || !!picked;
+    const n = lichessAccounts().length;
+    input.disabled = selfActive && n > 0;
+    input.placeholder = selfActive && n > 0 ? "scouting linked accounts…" : "lichess username";
+  }
+}
+
+// Explicit linked-account multi-select for Scout, mirroring the Games picker:
+// compact modal with checkboxes; Save persists the pick (Self chip goes off),
+// Cancel keeps the prior pick. Uncheck all = back to Self.
+function chooseScoutSourceAccounts() {
+  const accounts = lichessAccounts();
+  const picked = new Set(scoutSourceAccountIds() || []);
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    const rows = accounts
+      .map(
+        (account) => `
+      <label class="source-pick-row">
+        <input type="checkbox" data-account-id="${escapeHtml(account.id)}"${picked.has(account.id) ? " checked" : ""} />
+        <span>${escapeHtml(account.username)}${account.is_primary ? " — Primary" : ""}</span>
+      </label>`
+      )
+      .join("");
+    overlay.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true" aria-label="Scout source">
+        <div class="modal-title">Scout source</div>
+        <div class="modal-body">
+          <p class="modal-copy">Self scouts every linked account. Uncheck all for Self, or tick specific accounts. A typed opponent below overrides both.</p>
+          <div class="source-pick-list">${rows}</div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn ghost" data-action="cancel" type="button">Cancel</button>
+          <button class="btn primary" data-action="save" type="button">Save</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const close = (value) => {
+      overlay.remove();
+      resolve(value);
+    };
+    overlay.querySelector('[data-action="cancel"]').addEventListener("click", () => close(null));
+    overlay.querySelector('[data-action="save"]').addEventListener("click", () => {
+      const ids = [...overlay.querySelectorAll("input[data-account-id]:checked")].map(
+        (el) => el.dataset.accountId
+      );
+      close(ids);
+    });
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) close(null);
+    });
+  });
+}
+
+async function onScoutSourcePick() {
+  const ids = await chooseScoutSourceAccounts();
+  if (ids === null) return;
+  if (ids.length) {
+    try {
+      localStorage.setItem(SCOUT_SELF_KEY, "off");
+    } catch (_) {
+      /* ignore storage errors */
+    }
+    setScoutSourceAccountIds(ids);
+  } else {
+    setScoutSelf(true);
   }
 }
 
 function bindScoutSource() {
   document.getElementById("scout-source-self")?.addEventListener("click", () => {
-    setScoutSelf(!scoutSelfOn());
+    setScoutSelf(!scoutSelfOn() || !!scoutSourceAccountIds());
   });
+  document.getElementById("scout-source-pick")?.addEventListener("click", onScoutSourcePick);
   paintScoutSource();
 }
 
@@ -10582,6 +10702,7 @@ async function ensureScoutView() {
       loadPgnIntoAnalyze,
       effectiveMaiaRating,
       maiaAnalysisEnabled: () => maiaAnalysisEnabled(),
+      scoutPickedUsernames: () => scoutPickedUsernames(),
       getLichessUsername: () => appState.lichessUsername,
       getLichessAccounts: () => lichessAccounts(),
       effectiveStockfishDepth,
