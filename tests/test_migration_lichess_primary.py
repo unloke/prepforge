@@ -76,9 +76,11 @@ def _pg_url(raw: str) -> str:
     return raw
 
 
-def _alembic_config(db_url: str, monkeypatch=None) -> Config:
+def _alembic_config(db_url: str, monkeypatch=None, connect_options: str | None = None) -> Config:
     if monkeypatch is not None:
         monkeypatch.setenv("DATABASE_URL", db_url)
+        if connect_options:
+            monkeypatch.setenv("PGOPTIONS", connect_options)
         from prepforge_chess.api import config as app_config
 
         app_config.get_settings.cache_clear()
@@ -150,9 +152,11 @@ def test_upgrade_backfills_is_primary_true_postgres(monkeypatch) -> None:
     with admin.connect() as conn:
         conn.execute(sa.text(f'CREATE SCHEMA "{schema}"'))
     try:
-        db_url = postgres_url.rstrip("/") + f"?options=-csearch_path%3D{schema}"
-        engine = sa.create_engine(_pg_url(db_url))
-        cfg = _alembic_config(db_url, monkeypatch)
+        # PGOPTIONS carries search_path to every libpq connection (including the
+        # one alembic opens from DATABASE_URL), avoiding % interpolation issues.
+        base = _pg_url(postgres_url)
+        engine = sa.create_engine(base, connect_args={"options": f"-csearch_path={schema}"})
+        cfg = _alembic_config(base, monkeypatch, connect_options=f"-csearch_path={schema}")
         command.upgrade(cfg, "c7e8f9a0b1c2")
         _seed_pre_migration_rows(engine)
         command.upgrade(cfg, "d4e5f6a7b8c9")
