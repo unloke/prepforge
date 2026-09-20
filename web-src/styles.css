@@ -2425,31 +2425,79 @@ h2 {
 }
 
 .build-inspector-head {
+  position: relative;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 6px 8px;
   border-bottom: 1px solid var(--line);
-}
-
-.build-inspector-label {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  min-height: 34px;
 }
 
 .build-inspector-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.build-inspector-head .explorer-dbs {
+  margin-left: 2px;
+}
+
+.build-inspector-head .explorer-db {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.build-inspector-head .explorer-opening {
+  flex: 1 1 auto;
+}
+
+.inspector-info {
+  margin-left: auto;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  font-size: 13px;
+}
+
+.inspector-scan {
+  flex: none;
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.build-inspector-head .coverage-score {
+  flex: none;
+}
+
+.inspector-info-pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 8px;
+  z-index: 5;
+  max-width: 240px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
+}
+
+.inspector-info[hidden],
+.inspector-scan[hidden],
+.build-inspector-head .explorer-dbs[hidden] {
+  display: none;
 }
 
 .inspector-panel {
-  padding: 10px;
+  padding: 6px 8px 8px;
   min-width: 0;
   min-height: 0;
-  max-height: min(34vh, 300px);
+  max-height: min(44vh, 380px);
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -3460,32 +3508,20 @@ h2 {
   gap: 8px;
 }
 
-/* Coverage scan (Build sidebar drawer) */
-
-.coverage-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0 10px 4px;
-}
-
+/* Coverage scan (Build sidebar drawer): rows only — the Scan button and score
+   live in the shared compact header row, the explainer in the ⓘ popover. */
 .coverage-score {
   font-size: 12px;
   font-weight: 700;
   color: var(--good);
 }
 
-.coverage-hint {
-  padding: 0 10px 8px;
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
+/* Coverage scan rows live directly under the compact header (Scan button +
+   score share the header row; the explainer moved to the ⓘ popover). */
 .coverage-gaps {
   display: grid;
-  gap: 3px;
-  padding: 0 10px 10px;
+  gap: 2px;
+  padding: 2px 0;
   min-width: 0;
 }
 
@@ -3550,15 +3586,7 @@ h2 {
   overflow-wrap: anywhere;
 }
 
-/* Opening explorer (Build sidebar drawer) */
-
-.explorer-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0 10px 6px;
-}
+/* Opening explorer: segmented control lives in the shared compact header row. */
 
 .explorer-dbs {
   display: inline-flex;
@@ -3594,20 +3622,12 @@ h2 {
   overflow-wrap: anywhere;
 }
 
-.explorer-scope {
-  font-size: 11px;
-  padding: 0 10px 6px;
-  overflow-wrap: anywhere;
-}
-
-.explorer-scope:empty {
-  display: none;
-}
-
+/* Explorer rows live directly under the compact header row (segmented control
+   + info popover share the header; scope text moved to the popover). */
 .explorer-rows {
   display: grid;
   gap: 2px;
-  padding: 0 10px 10px;
+  padding: 2px 0;
   min-width: 0;
 }
 

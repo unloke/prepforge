@@ -161,29 +161,20 @@
             <div class="build-branchbar" id="build-branchbar" data-testid="build-branchbar" hidden></div>
             <section class="build-inspector" id="build-inspector" aria-label="Build inspector" hidden>
               <div class="build-inspector-head">
-                <span class="build-inspector-label">Inspector</span>
                 <span class="build-inspector-title" id="build-inspector-title"></span>
-              </div>
-              <div class="inspector-panel" id="explorer-drawer" data-testid="explorer-drawer" hidden>
-              <div class="explorer-head">
-                <div class="explorer-dbs" role="group" aria-label="Database">
+                <div class="explorer-dbs" id="inspector-dbs" role="group" aria-label="Database" hidden>
                   <button type="button" class="explorer-db is-active" data-db="masters">Masters</button>
                   <button type="button" class="explorer-db" data-db="lichess">Players</button>
                 </div>
                 <span class="explorer-opening" id="explorer-opening"></span>
+                <button type="button" class="ib inspector-info" id="inspector-info" aria-label="About this panel" title="About this panel" hidden>ⓘ</button>
+                <button type="button" class="btn ghost inspector-scan" id="coverage-run" data-testid="coverage-run" hidden>Scan</button>
+                <span class="coverage-score" id="coverage-score" hidden></span>
               </div>
-              <div class="explorer-scope muted hint" id="explorer-scope"></div>
+              <div class="inspector-panel" id="explorer-drawer" data-testid="explorer-drawer" hidden>
               <div class="explorer-rows" id="explorer-rows"></div>
               </div>
               <div class="inspector-panel" id="coverage-drawer" data-testid="coverage-drawer" hidden>
-              <div class="coverage-head">
-                <button class="btn ghost" id="coverage-run" data-testid="coverage-run">Scan with Maia3</button>
-                <span class="coverage-score" id="coverage-score" hidden></span>
-              </div>
-              <p class="muted hint coverage-hint">
-                How much of real human play (at your strength) does this repertoire answer?
-                Runs Maia3 on your device.
-              </p>
               <div class="coverage-gaps" id="coverage-gaps"></div>
               </div>
             </section>

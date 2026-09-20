@@ -6026,6 +6026,9 @@ function explorerDrawerOpen() {
 function setBuildInspector(tool) {
   const inspector = document.getElementById("build-inspector");
   const title = document.getElementById("build-inspector-title");
+  const dbs = document.getElementById("inspector-dbs");
+  const info = document.getElementById("inspector-info");
+  const scan = document.getElementById("coverage-run");
   const panels = {
     explorer: document.getElementById("explorer-drawer"),
     coverage: document.getElementById("coverage-drawer"),
@@ -6042,10 +6045,62 @@ function setBuildInspector(tool) {
   if (inspector) inspector.hidden = !active;
   if (title) {
     title.textContent = active === "explorer"
-      ? "Opening explorer"
-      : active === "coverage" ? "Coverage scan" : "";
+      ? "Explorer"
+      : active === "coverage" ? "Coverage" : "";
   }
+  if (dbs) dbs.hidden = active !== "explorer";
+  if (info) info.hidden = !active;
+  if (scan) {
+    const readOnly = typeof isBuildReadOnly === "function" && isBuildReadOnly();
+    scan.hidden = active !== "coverage";
+    scan.disabled = readOnly;
+    scan.title = readOnly ? "Read-only — copy to your account first" : "Scan coverage with Maia3";
+  }
+  if (active) paintInspectorScope();
   if (active === "explorer") refreshExplorerPanel();
+}
+
+// Compact scope line for the ⓘ popover: what the panel shows, nothing more.
+function inspectorScopeText() {
+  const active = document.getElementById("explorer-drawer")?.hidden === false
+    ? "explorer"
+    : "coverage";
+  if (active === "coverage") {
+    return "Share of real human play (at your strength) this repertoire answers. Runs Maia3 on your device.";
+  }
+  if (explorerDb !== "lichess") return "Master games.";
+  const rating = effectiveMaiaRating();
+  const buckets =
+    explorerModule && typeof explorerModule.ratingBucketsFor === "function"
+      ? explorerModule.ratingBucketsFor(rating)
+      : null;
+  return buckets && buckets.length
+    ? `Players near ~${rating} (pool ${buckets.join(", ")}).`
+    : `Players near ~${rating}.`;
+}
+
+function paintInspectorScope() {
+  const info = document.getElementById("inspector-info");
+  if (info) info.title = inspectorScopeText();
+}
+
+function onInspectorInfo() {
+  const text = inspectorScopeText();
+  const info = document.getElementById("inspector-info");
+  if (!info) return;
+  let pop = document.getElementById("inspector-info-pop");
+  if (pop) {
+    pop.remove();
+    return;
+  }
+  pop = document.createElement("div");
+  pop.className = "inspector-info-pop";
+  pop.id = "inspector-info-pop";
+  pop.setAttribute("role", "status");
+  pop.textContent = text;
+  const head = document.querySelector(".build-inspector-head");
+  (head || info.parentElement).appendChild(pop);
+  window.setTimeout(() => pop?.remove(), 4000);
 }
 
 // Arrow-keying through a line fires selectBuildNode per ply; one trailing fetch
@@ -6091,24 +6146,10 @@ async function refreshExplorerPanel() {
   }
 }
 
-// Small readout under the DB tabs: make it obvious that Masters ignores rating while
-// Players is pooled near the player's strength (shared with the Maia model strength).
+// Compact scope: folded into the ⓘ popover (inspectorScopeText). The panel
+// itself stays rows-only so moves own the height.
 function renderExplorerScope() {
-  const el = document.getElementById("explorer-scope");
-  if (!el) return;
-  if (explorerDb !== "lichess") {
-    el.textContent = "Master games — strong-player games, not filtered by rating.";
-    return;
-  }
-  const rating = effectiveMaiaRating();
-  const buckets =
-    explorerModule && typeof explorerModule.ratingBucketsFor === "function"
-      ? explorerModule.ratingBucketsFor(rating)
-      : null;
-  el.textContent =
-    buckets && buckets.length
-      ? `Players near ~${rating} (rating pool ${buckets.join(", ")}).`
-      : `Players near ~${rating}.`;
+  paintInspectorScope();
 }
 
 function renderExplorerRows(stats) {
@@ -10724,20 +10765,22 @@ function bindEvents() {
   const coverageRun = document.getElementById("coverage-run");
   if (coverageRun) coverageRun.addEventListener("click", runCoverageScanUI);
 
-  // Explorer and Coverage share one inspector. Selecting another tool replaces
-  // the panel in place; selecting the active tool collapses the inspector.
-  const explorerDrawer = document.getElementById("explorer-drawer");
-  if (explorerDrawer) {
-    explorerDrawer.querySelectorAll(".explorer-db").forEach((btn) => {
+  // Explorer and Coverage share one compact header row: title + segmented
+  // control + info popover + scan action. Selecting another tool replaces the
+  // panel in place; selecting the active tool collapses the inspector.
+  const inspectorDbs = document.getElementById("inspector-dbs");
+  if (inspectorDbs) {
+    inspectorDbs.querySelectorAll(".explorer-db").forEach((btn) => {
       btn.addEventListener("click", () => {
         explorerDb = btn.dataset.db === "lichess" ? "lichess" : "masters";
-        explorerDrawer.querySelectorAll(".explorer-db").forEach((b) => {
+        inspectorDbs.querySelectorAll(".explorer-db").forEach((b) => {
           b.classList.toggle("is-active", b === btn);
         });
         refreshExplorerPanel();
       });
     });
   }
+  document.getElementById("inspector-info")?.addEventListener("click", onInspectorInfo);
   document.getElementById("build-tool-explorer")?.addEventListener("click", () => {
     setBuildInspector("explorer");
   });
