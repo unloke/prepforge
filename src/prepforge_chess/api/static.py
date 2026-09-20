@@ -91,10 +91,11 @@ _STATIC_MIME = {
 
 # Content-stable engine/model artifacts can be cached forever.
 _IMMUTABLE_EXT = {".wasm", ".onnx", ".nnue"}
-# Vite content-hashed bundle names, e.g. "index-D4f8aB12.js". Only these (not
-# every file under assets/) are safe to mark immutable — the hash changes whenever
-# the content does.
-_HASHED_NAME = re.compile(r"-[A-Za-z0-9_]{8,}\.[A-Za-z0-9]+$")
+# Vite content-hashed bundle names, e.g. "index-D4f8aB12.js" or
+# "index-0OJNC-yU.js" (Vite hashes use base64url, which includes "-" and "_").
+# Only these (not every file under assets/) are safe to mark immutable — the
+# hash changes whenever the content does.
+_HASHED_NAME = re.compile(r"-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9]+$")
 
 
 def _static_mime(path: Path) -> str:
