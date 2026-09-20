@@ -3061,6 +3061,7 @@ function switchView(name, { fromUrl = false } = {}) {
   }
   if (name === "settings") {
     preloadSettingsView().catch(() => {});
+    loadSettings();
   }
   // Warm the Analyze book (active repertoire trees) so the first explored move
   // can be matched without waiting on the lazy load.
@@ -3155,11 +3156,13 @@ function renderPrefsToggles() {
   host.innerHTML = Object.keys(PREF_LABELS)
     .map((key) => {
       const on = pref(key) ? " is-on" : "";
+      const label = escapeHtml(PREF_LABELS[key] || key);
       return (
-        `<button type="button" class="pref-toggle${on}" data-pref="${escapeHtml(key)}" role="switch" aria-checked="${pref(key)}">` +
-        `<span class="pref-label">${escapeHtml(PREF_LABELS[key] || key)}</span>` +
-        `<span class="pref-switch"><span class="pref-knob"></span></span>` +
-        `</button>`
+        `<div class="pf-row">` +
+        `<span class="pf-row-text"><span class="pf-row-label">${label}</span></span>` +
+        `<button type="button" class="pf-switch pref-toggle${on}" data-pref="${escapeHtml(key)}" role="switch" aria-checked="${pref(key)}" aria-label="${label}">` +
+        `<span class="pf-knob"></span>` +
+        `</button></div>`
       );
     })
     .join("");
@@ -9733,14 +9736,33 @@ async function ensureSettingsView() {
 }
 
 async function loadSettings() {
+  let view = null;
   try {
-    const view = await ensureSettingsView();
+    view = await ensureSettingsView();
+  } catch (error) {
+    setStatusError(error.message);
+    return;
+  }
+  // The settings module owns all control wiring (switches, segmented theme,
+  // info popovers) — bind it even when the server payload is unreachable
+  // (signed-out visitor, offline dev server), so the controls always work.
+  try {
+    view.bind();
+  } catch (_) {
+    /* bind is idempotent; a failure must not block the render below */
+  }
+  try {
     const payload = await api("/api/settings");
     applySettingsPayload(payload);
     applyServerEngineGating();
     view.renderSettings(payload);
   } catch (error) {
     setStatusError(error.message);
+    try {
+      view.renderSettings(null);
+    } catch (_) {
+      /* best-effort local render */
+    }
   }
 }
 

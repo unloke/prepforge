@@ -758,6 +758,197 @@ h2 {
   font-variant-numeric: tabular-nums;
 }
 
+/* PrepForge shared primitives — warm, rounded, compact.
+   .pf-switch / .seg / .pf-info / .pf-info-pop / .pf-row are the one shared
+   implementation every settings-style boolean, choice, and helper uses. */
+
+.pf-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+}
+
+.pf-row-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pf-row-label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.pf-switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--line);
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 0;
+  transition: background 160ms ease;
+}
+
+.pf-switch:hover {
+  background: var(--btn-border-hover);
+}
+
+.pf-switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.pf-switch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pf-switch.is-on {
+  background: var(--accent);
+}
+
+.pf-switch.is-on:hover {
+  background: var(--accent-strong);
+}
+
+.pf-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 160ms ease;
+}
+
+.pf-switch.is-on .pf-knob {
+  transform: translateX(16px);
+}
+
+.seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-soft);
+}
+
+.seg-btn {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  min-height: 26px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.seg-btn:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.seg-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.seg-btn.is-active {
+  color: var(--text);
+  background: var(--panel);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.seg-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pf-info {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.pf-info:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.pf-info:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.pf-info-inline {
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+}
+
+.pf-info-pop {
+  padding: 8px 10px;
+  margin: 2px 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pf-info-pop[hidden] {
+  display: none;
+}
+
+.pf-select-native[hidden] {
+  display: none;
+}
+
+/* Feedback rows reuse the shared switch + row; the host only stacks them. */
+.pf-feedback {
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+}
+
+.pf-feedback .pf-row {
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.pf-feedback .pf-row:last-child {
+  border-bottom: 0;
+}
+
+/* Legacy board-prefs host keeps working (acceptance hooks + old markup). */
+.board-prefs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
 /* Modal select field */
 .modal-field select {
   height: 32px;
@@ -1573,7 +1764,10 @@ h2 {
   animation: boardFlip 400ms ease;
 }
 
-/* Settings → Board feedback toggles */
+/* Settings → Board feedback toggles.
+   Rows render through the shared .pf-switch / .pf-row primitives; these
+   aliases keep the legacy .pref-toggle class contract (tests + old markup)
+   working on the same geometry. */
 .board-prefs {
   display: flex;
   flex-direction: column;
@@ -1603,6 +1797,9 @@ h2 {
   color: var(--text);
 }
 
+/* Legacy .pref-switch / .pref-knob / .pref-label aliases: the shared
+   .pf-switch + .pf-knob + .pf-row-label primitives carry the real geometry.
+   These one-line aliases keep old markup and JS selectors working. */
 .pref-switch {
   position: relative;
   width: 38px;
@@ -1613,7 +1810,8 @@ h2 {
   transition: background 160ms ease;
 }
 
-.pref-toggle.is-on .pref-switch {
+.pref-toggle.is-on .pref-switch,
+.pref-toggle.pf-switch.is-on {
   background: var(--accent);
 }
 
@@ -1629,7 +1827,8 @@ h2 {
   transition: transform 160ms ease;
 }
 
-.pref-toggle.is-on .pref-knob {
+.pref-toggle.is-on .pref-knob,
+.pref-toggle.pf-switch.is-on .pf-knob {
   transform: translateX(16px);
 }
 

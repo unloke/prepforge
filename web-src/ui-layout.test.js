@@ -9,6 +9,7 @@ const html = readFileSync(join(root, "index.html"), "utf8");
 const app = readFileSync(join(root, "app.js"), "utf8");
 const account = readFileSync(join(root, "controllers", "account.js"), "utf8");
 const replayView = readFileSync(join(root, "views", "replay.js"), "utf8");
+const settingsView = readFileSync(join(root, "views", "settings.js"), "utf8");
 
 function ruleBody(selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -172,6 +173,47 @@ describe("workspace chrome layout", () => {
     expect(hits.length).toBeGreaterThanOrEqual(3);
     expect(css).toContain(".promotion-picker");
     expect(css).toContain(".promotion-option");
+  });
+
+  it("redesigns Settings on shared primitives with info popovers", () => {
+    const settingsStart = html.indexOf('id="view-settings"');
+    const settings = html.slice(settingsStart);
+    // Shared primitives exist in markup and CSS.
+    expect(settings).toContain('id="settings-theme-seg"');
+    expect(settings).toContain('class="pf-switch"');
+    expect(settings).toContain('class="pf-info"');
+    expect(settings).toContain('class="pf-info-pop"');
+    expect(settings).toContain('class="pf-row"');
+    expect(css).toContain(".pf-switch");
+    expect(css).toContain(".seg-btn");
+    expect(css).toContain(".pf-info-pop");
+    expect(css).toContain(".pf-row");
+    // Segmented theme control carries the three modes; native select stays hidden.
+    expect(settings).toContain('data-theme-value="system"');
+    expect(settings).toContain('data-theme-value="light"');
+    expect(settings).toContain('data-theme-value="dark"');
+    // Booleans are switches, not native checkboxes.
+    expect(settings).not.toContain('type="checkbox" id="settings-maia-auto"');
+    expect(settings).not.toContain('type="checkbox" id="settings-brilliant-toggle"');
+    expect(settings).toContain('id="settings-maia-auto" role="switch"');
+    expect(settings).toContain('id="settings-brilliant-toggle" role="switch"');
+    // Long helpers live in popovers, not standing paragraphs.
+    expect(settings).not.toMatch(/<p class="muted[^"]*">Use a warm dark palette/);
+    expect(settings).not.toMatch(/<p class="muted[^"]*">Higher is stronger but slower/);
+    expect(settings).not.toMatch(/<p class="muted[^"]*">Sets how human the coach/);
+    expect(settings).not.toMatch(/<p class="muted[^"]*">Adds a second pass/);
+    expect(settings).not.toMatch(/<p class="muted[^"]*">My last game checks/);
+    expect(settings).not.toMatch(/<p class="muted[^"]*">Stockfish runs in this browser/);
+    expect(settings).toContain('id="engine-info-pop"');
+    expect(settings).toContain('id="maia-info-pop"');
+    expect(settings).toContain('id="strength-info-pop"');
+    expect(settings).toContain('id="brilliant-info-pop"');
+    expect(settings).toContain('id="connections-info-pop"');
+    // Wiring: switches paint + segmented theme sync + info toggles.
+    expect(settingsView).toContain("paintSwitch");
+    expect(settingsView).toContain("bindSwitch");
+    expect(settingsView).toContain("toggleInfoPop");
+    expect(settingsView).toContain("settings-theme-seg");
   });
 
   it("renders menus and modals with theme tokens in both themes", () => {
