@@ -301,14 +301,21 @@ h2 {
 }
 
 /* The account menu reuses .context-menu chrome. Sign out is the only destructive
-   action here; Disconnect Lichess is deliberately styled as an ordinary item so it
-   doesn't read like ending the session. */
+   action here. */
 .account-menu button[data-action="signout"] {
   color: var(--danger);
 }
 
 .account-menu button[data-action="signout"]:hover {
   background: var(--danger-soft);
+  color: var(--danger-strong);
+}
+
+.account-menu button[data-action="signout"]:focus-visible {
+  outline: 2px solid var(--danger);
+  outline-offset: -2px;
+  background: var(--danger-soft);
+  color: var(--danger-strong);
 }
 
 /* Dashboard list item right-click */
@@ -680,7 +687,8 @@ h2 {
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 4px;
-  background: #ffffff;
+  background: var(--panel);
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2344,6 +2352,10 @@ h2 {
   border-radius: var(--radius);
   background: var(--panel);
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .build-inspector-head {
@@ -2369,8 +2381,16 @@ h2 {
 
 .inspector-panel {
   padding: 10px;
+  min-width: 0;
+  min-height: 0;
   max-height: min(34vh, 300px);
   overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.inspector-panel > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .inspector-panel[hidden],
@@ -3393,14 +3413,14 @@ h2 {
 .coverage-hint {
   padding: 0 10px 8px;
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .coverage-gaps {
   display: grid;
   gap: 3px;
   padding: 0 10px 10px;
-  max-height: 240px;
-  overflow-y: auto;
+  min-width: 0;
 }
 
 .coverage-complete-bar {
@@ -3460,6 +3480,8 @@ h2 {
 .coverage-gap-meta {
   color: var(--muted);
   font-size: 11px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* Opening explorer (Build sidebar drawer) */
@@ -3499,14 +3521,17 @@ h2 {
   font-size: 11px;
   color: var(--muted);
   text-align: right;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .explorer-scope {
   font-size: 11px;
   padding: 0 10px 6px;
+  overflow-wrap: anywhere;
 }
 
 .explorer-scope:empty {
@@ -3517,8 +3542,7 @@ h2 {
   display: grid;
   gap: 2px;
   padding: 0 10px 10px;
-  max-height: 240px;
-  overflow-y: auto;
+  min-width: 0;
 }
 
 .explorer-rows .hint {
@@ -3527,7 +3551,7 @@ h2 {
 
 .explorer-row {
   display: grid;
-  grid-template-columns: 64px 48px 1fr;
+  grid-template-columns: minmax(48px, 64px) minmax(36px, 48px) minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   border: 0;
@@ -3537,6 +3561,8 @@ h2 {
   border-radius: 4px;
   cursor: pointer;
   text-align: left;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .explorer-row:hover {
@@ -3643,10 +3669,18 @@ h2 {
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-gutter: stable;
 }
 
 .coach-footer {
+  min-width: 0;
+  min-height: 0;
+  flex: none;
+  overflow: hidden;
+}
+
+.coach-footer > * {
   min-width: 0;
 }
 
@@ -3654,6 +3688,11 @@ h2 {
   display: grid;
   gap: 8px;
   min-width: 0;
+}
+
+.coach-secondary > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .coach-footer:has(.coach-maia[hidden]):has(.coach-bookline[hidden]) .coach-secondary {
@@ -4325,7 +4364,7 @@ h2 {
   letter-spacing: 0.04em;
 }
 
-/* Context menu */
+/* Context menu — all chrome uses theme tokens so light/dark stay consistent. */
 
 .context-menu {
   position: fixed;
@@ -4337,7 +4376,8 @@ h2 {
   padding: 6px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--panel);
+  color: var(--text);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
 }
 
@@ -4361,13 +4401,31 @@ h2 {
   border-radius: 3px;
   padding: 0 10px;
   background: transparent;
-  color: #1c1c1c;
+  color: var(--text);
   text-align: left;
   font-size: 13px;
 }
 
 .context-menu button:hover {
   background: var(--surface-hover);
+  color: var(--text);
+}
+
+.context-menu button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.context-menu button:active {
+  background: var(--btn-active);
+  color: var(--text);
+}
+
+.context-menu button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .context-menu button[data-action="delete"] {
@@ -4375,7 +4433,8 @@ h2 {
 }
 
 .context-menu button[data-action="delete"]:hover {
-  background: #f8e4e3;
+  background: var(--danger-soft);
+  color: var(--danger-strong);
 }
 
 /* Modal */
@@ -4407,7 +4466,8 @@ h2 {
   width: min(380px, calc(100vw - 24px));
   max-width: calc(100vw - 24px);
   overflow: hidden;
-  background: #ffffff;
+  background: var(--panel);
+  color: var(--text);
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
@@ -4493,8 +4553,8 @@ h2 {
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 4px;
-  background: #ffffff;
-  color: #1c1c1c;
+  background: var(--panel);
+  color: var(--text);
 }
 
 .modal-field textarea {
@@ -4519,6 +4579,23 @@ h2 {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+}
+
+/* One-time Lichess account chooser (per-action, not a global switcher). */
+.account-chooser-list {
+  display: grid;
+  gap: 6px;
+}
+
+.account-choice {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.account-choice.is-primary {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
 /* Responsive */

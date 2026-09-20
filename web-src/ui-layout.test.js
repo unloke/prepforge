@@ -45,6 +45,17 @@ describe("workspace chrome layout", () => {
     expect(html).not.toContain('<summary>Opening explorer</summary>');
     expect(html).not.toContain('<summary>Coverage scan</summary>');
     expect(ruleBody(".inspector-panel")).toMatch(/overflow-y:\s*auto/);
+    expect(ruleBody(".inspector-panel")).toMatch(/overflow-x:\s*hidden/);
+    expect(ruleBody(".build-inspector")).toMatch(/overflow:\s*hidden/);
+    expect(ruleBody(".explorer-rows")).not.toMatch(/overflow-y/);
+    expect(ruleBody(".explorer-rows")).not.toMatch(/max-height/);
+    expect(ruleBody(".coverage-gaps")).not.toMatch(/overflow-y/);
+    expect(ruleBody(".coverage-gaps")).not.toMatch(/max-height/);
+    expect(ruleBody(".explorer-rows")).toMatch(/min-width:\s*0/);
+    expect(ruleBody(".explorer-row")).toMatch(/min-width:\s*0/);
+    expect(ruleBody(".explorer-row")).toMatch(/max-width:\s*100%/);
+    expect(ruleBody(".coverage-hint")).toMatch(/overflow-wrap:\s*anywhere/);
+    expect(ruleBody(".coverage-gap-meta")).toMatch(/overflow-wrap:\s*anywhere/);
     expect(app).toContain('setBuildInspector("explorer")');
     expect(app).toContain('setBuildInspector("coverage")');
     expect(app).toContain("panel.hidden = name !== active");
@@ -70,14 +81,65 @@ describe("workspace chrome layout", () => {
     );
     expect(scroll).toMatch(/min-height:\s*0/);
     expect(scroll).toMatch(/overflow-y:\s*auto/);
+    expect(scroll).toMatch(/overflow-x:\s*hidden/);
     expect(footer).toMatch(/min-width:\s*0/);
+    expect(footer).toMatch(/flex:\s*none/);
+    expect(footer).toMatch(/overflow:\s*hidden/);
+    expect(footer).not.toMatch(/overflow-y/);
     expect(secondary).not.toMatch(/margin-top:\s*auto/);
     expect(coach).toMatch(/overflow-wrap:\s*anywhere/);
     expect(maia).toMatch(/overflow-wrap:\s*anywhere/);
     expect(bookline).toMatch(/overflow-wrap:\s*anywhere/);
     expect(coach).not.toMatch(/line-clamp|overflow:\s*hidden/);
+    // The footer is a fixed, non-scrolling row: no clamping anywhere — the
+    // concise guidance content itself always fits beside the explanation scroll.
     expect(maia).not.toMatch(/line-clamp|overflow:\s*hidden/);
     expect(bookline).not.toMatch(/line-clamp|overflow:\s*hidden/);
     expect(ruleBody(".sidebar")).toMatch(/overflow-y:\s*auto/);
+  });
+
+  it("routes identity-changing actions through a one-time account chooser", () => {
+    expect(app).toContain("resolveLichessAccountId(");
+    expect(app).toContain("chooseLichessAccount(");
+    expect(app).toContain("account_id");
+    expect(app).toContain("— Primary");
+    expect(app).toContain("is-primary");
+    // My last game passes the chosen identity to the latest-game request.
+    expect(app).toMatch(/fetchMyLichessGame[\s\S]*?resolveLichessAccountId/);
+    expect(app).toMatch(/fetchMyLichessGame[\s\S]*?account_id/);
+    // Replay compare passes the chosen identity in the compare request.
+    expect(app).toMatch(/runLichessCompare[\s\S]*?resolveLichessAccountId/);
+    expect(app).toMatch(/runLichessCompare[\s\S]*?account_id/);
+    // Explorer keeps using a valid linked token internally — never a chooser.
+    expect(app).not.toMatch(/refreshExplorerPanel[\s\S]*?chooseLichessAccount/);
+    expect(css).toContain(".account-chooser-list");
+    expect(css).toContain(".account-choice.is-primary");
+    // The polish E2E hook is gated like the Scout hook (build flag + query
+    // param); production pages never expose it outside installPolishE2eHook.
+    expect(app).toContain("VITE_ENABLE_POLISH_E2E");
+    expect(app).toContain("polish_e2e");
+    expect(app).toContain("installPolishE2eHook");
+    expect(app).toContain("if (window.__prepforgePolishE2e) return;");
+    expect(app.match(/window\.__prepforgePolishE2e\s*=\s*\{/g) || []).toHaveLength(1);
+  });
+
+  it("renders menus and modals with theme tokens in both themes", () => {
+    const menu = ruleBody(".context-menu");
+    const menuBtn = ruleBody(".context-menu button");
+    const menuBtnHover = css.match(/\.context-menu button:hover\s*\{([^}]+)\}/)?.[1] || "";
+    const modal = ruleBody(".modal");
+    expect(menu).toMatch(/background:\s*var\(--panel\)/);
+    expect(menu).toMatch(/color:\s*var\(--text\)/);
+    expect(menu).not.toMatch(/#ffffff|#1c1c1c/);
+    expect(menuBtn).toMatch(/color:\s*var\(--text\)/);
+    expect(menuBtn).not.toMatch(/#1c1c1c/);
+    expect(menuBtnHover).toMatch(/background:\s*var\(--surface-hover\)/);
+    expect(menuBtnHover).toMatch(/color:\s*var\(--text\)/);
+    expect(modal).toMatch(/background:\s*var\(--panel\)/);
+    expect(modal).toMatch(/color:\s*var\(--text\)/);
+    expect(modal).not.toMatch(/#ffffff/);
+    expect(css).toContain(".account-menu button[data-action=\"signout\"]:focus-visible");
+    expect(css).toContain(".context-menu button:focus-visible");
+    expect(css).toContain(".context-menu button:disabled");
   });
 });

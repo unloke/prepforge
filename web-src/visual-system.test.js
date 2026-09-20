@@ -102,7 +102,11 @@ describe("visual system tokens", () => {
     const todayHidden = ruleBody(".today-card[hidden]");
     expect(todayHidden).toMatch(/display:\s*none/);
     const coverage = ruleBody(".coverage-gaps");
-    expect(coverage).toMatch(/max-height:\s*240px/);
+    expect(coverage).not.toMatch(/overflow-y/);
+    expect(coverage).not.toMatch(/max-height/);
+    const panel = ruleBody(".inspector-panel");
+    expect(panel).toMatch(/overflow-y:\s*auto/);
+    expect(panel).toMatch(/max-height:\s*min\(34vh,\s*300px\)/);
   });
 });
 

@@ -1890,6 +1890,8 @@ function paintMaiaCoachLine(model) {
     el.hidden = true;
     return;
   }
+  // The footer is a fixed, non-scrolling row: keep guidance to a concise
+  // two-line note so it always fits beside the explanation scroll region.
   el.hidden = false;
   el.textContent = model.tip;
   paintPhaseChip(model.phase, model.title);
@@ -3705,17 +3707,107 @@ async function markLichessSeen(lichessId) {
   }
 }
 
+// Linked Lichess identities for one-time per-action selection. `null` = not yet
+// loaded; `[]` = none linked. Identity-changing actions (My last game,
+// Replay compare, new-game watcher) resolve through resolveLichessAccountId():
+// zero → connect flow, one → use it directly, many → compact chooser.
+function lichessAccounts() {
+  const accounts = appState.lichessAccounts;
+  return Array.isArray(accounts) ? accounts : [];
+}
+
+function lichessPrimaryAccount() {
+  const accounts = lichessAccounts();
+  return accounts.find((a) => a.is_primary) || accounts[0] || null;
+}
+
+// One-time account chooser for a single action: compact modal listing linked
+// identities, Primary defaulted/highlighted, closes on select or cancel.
+// Resolves to the chosen account id, or null when cancelled.
+function chooseLichessAccount(actionLabel) {
+  const accounts = lichessAccounts();
+  const primary = lichessPrimaryAccount();
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    const rows = accounts
+      .map(
+        (account) => `
+      <button type="button" class="btn ghost account-choice${account.is_primary ? " is-primary" : ""}" data-account-id="${escapeHtml(account.id)}">
+        ${escapeHtml(account.username)}${account.is_primary ? " — Primary" : ""}
+      </button>`,
+      )
+      .join("");
+    overlay.innerHTML = `
+      <div class="modal account-chooser" role="dialog" aria-modal="true" aria-label="${escapeHtml(actionLabel)}">
+        <div class="modal-title">${escapeHtml(actionLabel)}</div>
+        <div class="modal-body">
+          <p class="modal-copy">Which Lichess account should this use? Primary is preselected.</p>
+          <div class="account-chooser-list">${rows}</div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn ghost" data-action="cancel" type="button">Cancel</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const cleanup = () => overlay.remove();
+    const close = (value) => {
+      cleanup();
+      resolve(value);
+    };
+    const primaryBtn = primary && overlay.querySelector(`[data-account-id="${primary.id}"]`);
+    if (primaryBtn) primaryBtn.focus();
+    overlay.addEventListener("click", (event) => {
+      const choice = event.target.closest("[data-account-id]");
+      if (choice) {
+        close(choice.dataset.accountId);
+        return;
+      }
+      if (event.target === overlay || event.target.closest('[data-action="cancel"]')) {
+        close(null);
+      }
+    });
+    document.addEventListener(
+      "keydown",
+      function onKey(event) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          document.removeEventListener("keydown", onKey);
+          close(null);
+        }
+      },
+      { once: false },
+    );
+  });
+}
+
+// Resolve which linked identity an identity-changing action should read:
+// null = caller must run the connect flow first; otherwise an account id
+// (single account → immediate, multiple → one-time chooser, primary default).
+async function resolveLichessAccountId(actionLabel) {
+  const accounts = lichessAccounts();
+  if (!accounts.length) return null;
+  if (accounts.length === 1) return accounts[0].id;
+  const primary = lichessPrimaryAccount();
+  const chosen = await chooseLichessAccount(actionLabel);
+  return chosen || null;
+}
+
 // "My game" button: pull the latest Lichess game straight into the PGN box.
 async function fetchMyLichessGame() {
-  if (!appState.lichessUsername) {
+  if (!appState.lichessUsername && !lichessAccounts().length) {
     setStatus("Connect a Lichess account first");
     startLichessOAuth();
     return;
   }
+  const accountId = await resolveLichessAccountId("My last game");
+  if (accountId === null && lichessAccounts().length > 1) return;
+  const query = accountId ? `?account_id=${encodeURIComponent(accountId)}` : "";
   setStatus("Fetching your latest game...");
   let latest;
   try {
-    latest = await api("/api/lichess/latest");
+    latest = await api(`/api/lichess/latest${query}`);
   } catch (error) {
     setStatusError(error.message);
     return;
@@ -9584,11 +9676,13 @@ function applyServerEngineGating() {
 // server.py for a future admin mode (gated by PREPFORGE_SERVER_ENGINE_ENABLED).
 
 async function runLichessCompare() {
-  if (!appState.lichessUsername) {
+  if (!appState.lichessUsername && !lichessAccounts().length) {
     setStatus("Connect a Lichess account first");
     startLichessOAuth();
     return;
   }
+  const accountId = await resolveLichessAccountId("Check my games");
+  if (accountId === null && lichessAccounts().length > 1) return;
   const countInput = document.getElementById("replay-count");
   const count = Math.max(1, Math.min(50, Number(countInput.value) || 10));
   const button = document.getElementById("lichess-compare-btn");
@@ -9596,8 +9690,8 @@ async function runLichessCompare() {
   setStatus("Fetching games from Lichess");
   try {
     const payload = await postJson("/api/lichess/compare", {
-      username: appState.lichessUsername,
       count,
+      ...(accountId ? { account_id: accountId } : {}),
     });
     appState.replayResults = payload;
     appState.replayFilter = null;
@@ -10128,6 +10222,7 @@ async function ensureScoutView() {
 }
 
 const SCOUT_E2E_BUILD_ENABLED = import.meta.env.VITE_ENABLE_SCOUT_E2E === "1";
+const POLISH_E2E_BUILD_ENABLED = import.meta.env.VITE_ENABLE_POLISH_E2E === "1";
 
 function installScoutE2eHook() {
   if (window.__prepforgeScoutE2e) return;
@@ -10162,11 +10257,40 @@ function installScoutE2eHook() {
   };
 }
 
+// Polish acceptance hook: deterministic tests seed linked identities and drive
+// the real per-action chooser without OAuth popups. Same gating shape as the
+// Scout hook — build flag + query param — so production pages never expose it.
+function installPolishE2eHook() {
+  if (window.__prepforgePolishE2e) return;
+  window.__prepforgePolishE2e = {
+    setLichessAccounts(accounts) {
+      appState.lichessAccounts = accounts;
+      const primary = accounts.find((a) => a.is_primary) || accounts[0] || null;
+      appState.lichessUsername = primary ? primary.username : null;
+      try {
+        accountService().syncReplayControls();
+      } catch (_) {
+        /* controller may not be initialised in a bare acceptance page */
+      }
+    },
+    getLichessAccounts() {
+      return lichessAccounts();
+    },
+  };
+}
+
 if (
   SCOUT_E2E_BUILD_ENABLED &&
   new URLSearchParams(location.search).get("scout_e2e") === "1"
 ) {
   installScoutE2eHook();
+}
+
+if (
+  POLISH_E2E_BUILD_ENABLED &&
+  new URLSearchParams(location.search).get("polish_e2e") === "1"
+) {
+  installPolishE2eHook();
 }
 
 // Scout chunk loads on first Scout click/Enter — not at app boot. A tiny static

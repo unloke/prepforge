@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-tTJftAPA.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-DHCqamg6.css">
+    <script type="module" crossorigin src="/static/assets/index-RfPGfrzx.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-BvltIPa3.css">
   </head>
   <body>
     <header class="topbar">
@@ -84,8 +84,10 @@
                   <span>Review my moves</span>
                 </label>
               </header>
-              <div class="coach-body" id="coach-body">
+              <div class="coach-scroll" id="coach-scroll">
                 <p class="coach-prose" id="coach-prose" data-testid="coach-prose">Make a move and I'll tell you what I think.</p>
+              </div>
+              <div class="coach-footer" id="coach-footer">
                 <div class="coach-secondary">
                   <p class="coach-maia" id="coach-maia" data-testid="coach-maia" hidden></p>
                   <p class="coach-bookline" id="coach-bookline" data-testid="coach-bookline" hidden></p>
@@ -537,6 +539,17 @@
             <div class="piece-style-picker" id="piece-style-picker"></div>
             <div class="settings-label settings-section">Feedback</div>
             <div class="board-prefs" id="board-prefs"></div>
+          </section>
+          <section class="card" data-testid="settings-connections">
+            <div class="card-head">
+              <h2>Connections</h2>
+            </div>
+            <div class="settings-label">Lichess accounts</div>
+            <div class="list-stack" id="settings-lichess-accounts" data-testid="settings-lichess-accounts"></div>
+            <div class="tools">
+              <button class="btn ghost" id="settings-link-lichess" data-testid="settings-link-lichess" type="button">Link another account</button>
+            </div>
+            <p class="muted hint">My last game uses the primary account. Explorer uses any linked token.</p>
           </section>
           <section class="card">
             <div class="card-head"><h2>About</h2></div>
