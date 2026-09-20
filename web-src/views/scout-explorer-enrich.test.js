@@ -138,7 +138,6 @@ describe("scout explorer enrichment generation", () => {
       querySelector: (sel) => (sel === ".replay-card-scout" ? card : null),
     };
 
-    elements.set("scout-username", makeEl("scout-username", { value: "rival" }));
     elements.set("scout-color", makeEl("scout-color", { value: "both" }));
     elements.set("scout-btn", makeEl("scout-btn"));
     elements.set("scout-reset-btn", makeEl("scout-reset-btn"));
@@ -173,6 +172,7 @@ describe("scout explorer enrichment generation", () => {
       getBuildNodeById: vi.fn(),
       setBuildPending: vi.fn(),
       pushBuildNode: vi.fn(),
+      scoutPickedUsernames: () => ["rival"],
     });
     view.bindControls();
   });

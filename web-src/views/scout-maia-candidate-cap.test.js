@@ -120,7 +120,6 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
       getElementById: (id) => elements.get(id) || null,
       querySelector: (sel) => (sel === ".replay-card-scout" ? card : null),
     };
-    elements.set("scout-username", makeEl("scout-username", { value: "rival" }));
     elements.set("scout-color", makeEl("scout-color", { value: "white" }));
     elements.set("scout-btn", makeEl("scout-btn"));
     elements.set("scout-reset-btn", makeEl("scout-reset-btn"));
@@ -137,6 +136,7 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
       jobToast: { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() },
       parseFenBoard: vi.fn(() => ({})), pieceSvg: vi.fn(() => ""),
       getBuildState: vi.fn(), getBuildNodeById: vi.fn(), setBuildPending: vi.fn(), pushBuildNode: vi.fn(),
+      scoutPickedUsernames: () => ["rival"],
     });
     view.bindControls();
   });

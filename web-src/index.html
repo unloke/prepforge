@@ -349,10 +349,8 @@
             <div class="card-head">
               <h2>My recent games</h2>
               <div class="replay-toolbar">
-                <button type="button" class="source-chip is-on" id="games-source-self" data-testid="games-source-self" title="Aggregate games across all linked Lichess accounts">Self · all linked</button>
-                <span class="src-chips" id="games-source-chips" data-testid="games-source-chips" hidden></span>
-                <button type="button" class="source-pick" id="games-source-pick" data-testid="games-source-pick" title="Open the source composer">Sources…</button>
-                <button type="button" class="source-add" id="games-source-add" data-testid="games-source-add" title="Add a source" aria-label="Add a Games source">＋</button>
+                <span class="src-chips" id="games-source-chips" data-testid="games-source-chips"></span>
+                <button type="button" class="source-add" id="games-source-add" data-testid="games-source-add" title="Edit Games sources" aria-label="Edit Games sources">＋ Add</button>
                 <span class="replay-account" id="replay-account" title="Games source: all linked Lichess accounts by default">not connected</span>
                 <select id="replay-count" title="How many recent games to check">
                   <option value="10" selected>last 10</option>
@@ -374,12 +372,8 @@
             <div class="card-head">
               <h2>Scout an opponent</h2>
               <div class="replay-toolbar">
-                <button type="button" class="source-chip is-on" id="scout-source-self" data-testid="scout-source-self" title="Scout the combined games of all linked Lichess accounts">Self · all linked</button>
-                <span class="src-chips" id="scout-source-chips" data-testid="scout-source-chips" hidden></span>
-                <button type="button" class="source-pick" id="scout-source-pick" data-testid="scout-source-pick" title="Open the source composer">Sources…</button>
-                <button type="button" class="source-add" id="scout-source-add" data-testid="scout-source-add" title="Add a source" aria-label="Add a Scout source">＋</button>
-                <span class="replay-source" id="scout-source-picked" data-testid="scout-source-picked" title="Explicit Scout source accounts" hidden></span>
-                <input id="scout-username" type="text" placeholder="lichess username" />
+                <span class="src-chips" id="scout-source-chips" data-testid="scout-source-chips"></span>
+                <button type="button" class="source-add" id="scout-source-add" data-testid="scout-source-add" title="Edit Scout sources" aria-label="Edit Scout sources">＋ Add</button>
                 <select id="scout-color" title="Which colour games to fetch">
                   <option value="both" selected>Both</option>
                   <option value="white">White</option>

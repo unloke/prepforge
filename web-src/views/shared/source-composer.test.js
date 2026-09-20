@@ -76,25 +76,31 @@ describe("source composer selection model", () => {
     expect(selectionToLegacyIds({ accountIds: ["b"] }, linked)).toEqual(["b"]);
   });
 
-  it("resolves fetch usernames: picks > self > typed", () => {
+  it("resolves fetch usernames: implicit Self unions external", () => {
+    // Self only (implicit default): every linked username.
     expect(resolveFetchUsernames({ selection: null, linkedAccounts: linked })).toEqual([
       "accountA",
       "accountB",
     ]);
-    expect(
-      resolveFetchUsernames({ selection: { accountIds: ["b"] }, linkedAccounts: linked })
-    ).toEqual(["accountB"]);
-    expect(
-      resolveFetchUsernames({ selection: null, linkedAccounts: [], external: ["Hikaru"] })
-    ).toEqual([]);
+    // Self + external: implicit Self contributes ALL linked + every external.
     expect(
       resolveFetchUsernames({
-        selection: null,
+        selection: { accountIds: [], external: ["Hikaru"] },
+        linkedAccounts: linked,
+        includeExternal: true,
+      })
+    ).toEqual(["accountA", "accountB", "Hikaru"]);
+    // External only: Self deselected (empty linked, no marker) with no linked
+    // accounts to default to — externals alone. (With linked accounts present,
+    // empty linked IS implicit Self, so Self + external unions by design.)
+    expect(
+      resolveFetchUsernames({
+        selection: { accountIds: [], external: ["Hikaru"] },
         linkedAccounts: [],
-        external: ["Hikaru"],
         includeExternal: true,
       })
     ).toEqual(["Hikaru"]);
+    // Partial linked + external: picked linked union external.
     expect(
       resolveFetchUsernames({
         selection: { accountIds: ["b"], external: ["Hikaru"] },
@@ -102,5 +108,28 @@ describe("source composer selection model", () => {
         includeExternal: true,
       })
     ).toEqual(["accountB", "Hikaru"]);
+    // Explicit Self-off fetches nothing, even with external present.
+    expect(
+      resolveFetchUsernames({
+        selection: { accountIds: [], external: ["Hikaru"], _selfOff: true },
+        linkedAccounts: linked,
+        includeExternal: true,
+      })
+    ).toEqual([]);
+    // Games ignores external.
+    expect(
+      resolveFetchUsernames({
+        selection: { accountIds: ["b"], external: ["Hikaru"] },
+        linkedAccounts: linked,
+      })
+    ).toEqual(["accountB"]);
+  });
+
+  it("persists explicit Self-off as a marker so reload stays empty", () => {
+    expect(selectionToLegacyIds({ accountIds: [], external: [], _selfOff: true }, linked)).toEqual([
+      "__none__",
+    ]);
+    // Implicit empty still persists as the Self default.
+    expect(selectionToLegacyIds(null, linked)).toBe(null);
   });
 });

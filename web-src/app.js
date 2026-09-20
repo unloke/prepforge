@@ -40,8 +40,6 @@ import { createAccountController } from "./controllers/account.js";
 import {
   openSourceComposer,
   normalizeSelection,
-  selectSelf,
-  selfGroupState,
   selectionChips,
   legacyIdsToSelection,
   selectionToLegacyIds,
@@ -10015,42 +10013,26 @@ function openGamesComposer(anchor) {
 }
 
 function paintGamesSource() {
-  const selfBtn = document.getElementById("games-source-self");
-  if (!selfBtn) return;
+  const tray = document.getElementById("games-source-chips");
+  if (!tray) return;
   const selection = gamesSourceSelection();
   const { chips, selfState } = selectionChips(selection, lichessAccounts());
-  const on = selfState === "all" || selfState === "mixed";
-  selfBtn.classList.toggle("is-on", on);
-  const chip = chips.find((c) => c.kind === "self");
   const n = lichessAccounts().length;
-  selfBtn.textContent =
-    selfState === "none"
-      ? "Self"
-      : chip
-        ? `Self · ${chip.count}`
-        : selfState === "mixed"
-          ? "Self · partial"
-          : n > 0
-            ? `Self · ${n}`
-            : "Self · all linked";
-  selfBtn.setAttribute("aria-pressed", String(on));
-  const tray = document.getElementById("games-source-chips");
-  if (tray) {
-    const accountChips = chips.filter((c) => c.kind !== "self");
-    const showTray = accountChips.length > 0 || selfState === "none";
-    tray.hidden = !showTray;
-    tray.innerHTML = showTray
-      ? (accountChips.length
-          ? accountChips
-              .map(
-                (c) =>
-                  `<span class="src-chip" data-games-chip="${escapeHtml(c.id)}">${escapeHtml(c.label)}` +
-                  (c.primary ? ' <span class="conn-primary">Primary</span>' : "") +
-                  `<button type="button" class="src-chip-x" data-games-unpick="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Games sources">×</button></span>`
-              )
-              .join("")
-          : '<span class="src-empty">No sources — tick Self or an account</span>')
-      : "";
+  const label = n > 0 ? `Self · ${n}` : "Self · all linked";
+  const visible = chips.length ? chips : [{ kind: "self", label }];
+  tray.hidden = false;
+  tray.innerHTML = visible
+    .map((c) =>
+      c.kind === "self"
+        ? `<span class="src-chip is-self" data-games-chip-self>${escapeHtml(label)}</span>`
+        : `<span class="src-chip" data-games-chip="${escapeHtml(c.id)}">${escapeHtml(c.label)}` +
+          (c.primary ? ' <span class="conn-primary">Primary</span>' : "") +
+          `<button type="button" class="src-chip-x" data-games-unpick="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Games sources">×</button></span>`
+    )
+    .join("");
+  if (selfState === "none") {
+    tray.innerHTML =
+      '<span class="src-empty">No sources — open Add and tick Self or an account</span>';
   }
   const accountLabel = document.getElementById("replay-account");
   if (accountLabel) {
@@ -10072,12 +10054,6 @@ function paintGamesSource() {
 }
 
 function bindGamesSource() {
-  document.getElementById("games-source-self")?.addEventListener("click", () => {
-    setGamesSourceAccountIds(null);
-  });
-  document.getElementById("games-source-pick")?.addEventListener("click", (event) => {
-    openGamesComposer(event?.currentTarget || document.getElementById("games-source-pick"));
-  });
   document.getElementById("games-source-add")?.addEventListener("click", (event) => {
     openGamesComposer(event?.currentTarget || document.getElementById("games-source-add"));
   });
@@ -10092,19 +10068,42 @@ function bindGamesSource() {
 
 // Scout source: same shared Source Composer model as Games. Linked picks and
 // arbitrary external usernames coexist in one selection; the legacy keys
-// (scout_self on/off + scout_source ids) persist the linked part so existing
-// browsers keep their choice. The free-text opponent box feeds the resolution
-// only when no linked source is active.
+// (scout_source ids + scout_external names) persist it so existing browsers
+// keep their choice. Empty accountIds + empty external = implicit Self (all
+// linked). Explicit Self-off (no sources) persists as ids ["__none__"] so UI
+// chips and fetch stay consistent across reload. The standalone username
+// textbox is gone: every external opponent name enters through the composer.
 const SCOUT_SELF_KEY = "prepforge.scout_self";
 const SCOUT_SOURCE_KEY = "prepforge.scout_source";
 const SCOUT_EXTERNAL_KEY = "prepforge.scout_external";
 
 function scoutSelection() {
-  const linked = legacyIdsToSelection(readLegacySourceIds(SCOUT_SOURCE_KEY));
+  const raw = readLegacySourceIds(SCOUT_SOURCE_KEY);
+  if (Array.isArray(raw) && raw.includes("__none__")) {
+    return { accountIds: [], external: [], _selfOff: true };
+  }
+  try {
+    if (localStorage.getItem(SCOUT_SELF_KEY) === "off") {
+      const linked = legacyIdsToSelection(raw);
+      let external = [];
+      try {
+        const rawExt = localStorage.getItem(SCOUT_EXTERNAL_KEY);
+        if (rawExt) external = JSON.parse(rawExt);
+      } catch (_) {
+        external = [];
+      }
+      if (!linked.accountIds.length && !(Array.isArray(external) ? external : []).length) {
+        return { accountIds: [], external: [], _selfOff: true };
+      }
+    }
+  } catch (_) {
+    /* ignore storage errors */
+  }
+  const linked = legacyIdsToSelection(raw);
   let external = [];
   try {
-    const raw = localStorage.getItem(SCOUT_EXTERNAL_KEY);
-    if (raw) external = JSON.parse(raw);
+    const rawExt = localStorage.getItem(SCOUT_EXTERNAL_KEY);
+    if (rawExt) external = JSON.parse(rawExt);
   } catch (_) {
     external = [];
   }
@@ -10116,7 +10115,13 @@ function scoutSelection() {
 
 function writeScoutSelection(sel) {
   const normalized = normalizeSelection(sel);
-  writeLegacySourceIds(SCOUT_SOURCE_KEY, selectionToLegacyIds(normalized, lichessAccounts()));
+  const selfOff = !!sel?._selfOff;
+  const empty = !normalized.accountIds.length && !normalized.external.length;
+  if (selfOff && empty) {
+    writeLegacySourceIds(SCOUT_SOURCE_KEY, ["__none__"]);
+  } else {
+    writeLegacySourceIds(SCOUT_SOURCE_KEY, selectionToLegacyIds(normalized, lichessAccounts()));
+  }
   try {
     if (normalized.external.length) {
       localStorage.setItem(SCOUT_EXTERNAL_KEY, JSON.stringify(normalized.external));
@@ -10127,9 +10132,7 @@ function writeScoutSelection(sel) {
     /* ignore storage errors */
   }
   try {
-    const state = selfGroupState(normalized, lichessAccounts());
-    const empty = !normalized.accountIds.length && !normalized.external.length;
-    localStorage.setItem(SCOUT_SELF_KEY, state === "none" && !empty ? "off" : "on");
+    localStorage.setItem(SCOUT_SELF_KEY, selfOff && empty ? "off" : "on");
   } catch (_) {
     /* ignore storage errors */
   }
@@ -10144,134 +10147,66 @@ function openScoutComposer(anchor) {
     title: "Scout sources",
     externalPlaceholder: "Add Lichess username…",
     escapeHtml,
-    onChange: (sel) => {
-      writeScoutSelection(sel);
+    onChange: (sel, meta) => {
+      writeScoutSelection(meta?.selfState === "none" ? { ...sel, _selfOff: true } : sel);
       paintScoutSource();
     },
     onClose: () => paintScoutSource(),
   });
 }
 
-function scoutSelfOn() {
-  const sel = normalizeSelection(scoutSelection());
-  if (sel.accountIds.length || sel.external.length) return false;
-  try {
-    return localStorage.getItem(SCOUT_SELF_KEY) !== "off";
-  } catch (_) {
-    return true;
-  }
-}
-
-function setScoutSelf(on) {
-  try {
-    localStorage.setItem(SCOUT_SELF_KEY, on ? "on" : "off");
-  } catch (_) {
-    /* ignore storage errors */
-  }
-  if (on) setScoutSourceAccountIds(null);
-  paintScoutSource();
-}
-
-// Scout explicit picks: null = Self default (all linked); otherwise a list of
-// account ids, same contract as the Games picker. Persisted per browser.
-function scoutSourceAccountIds() {
-  const sel = normalizeSelection(scoutSelection());
-  const known = new Set(lichessAccounts().map((a) => a.id));
-  const valid = sel.accountIds.filter((id) => known.has(id));
-  return valid.length ? valid : null;
-}
-
-function setScoutSourceAccountIds(ids) {
-  const sel = scoutSelection();
-  writeScoutSelection({ accountIds: ids || [], external: sel.external });
-  paintScoutSource();
-}
-
-function scoutExternalUsernames() {
-  return normalizeSelection(scoutSelection()).external;
-}
-
 function scoutPickedUsernames() {
-  const picked = scoutSourceAccountIds();
-  if (picked) {
-    const byId = new Map(lichessAccounts().map((a) => [a.id, a.username]));
-    return picked.map((id) => byId.get(id)).filter(Boolean);
-  }
-  // No explicit linked picks: Self contributes every linked identity, and any
-  // composer-added external usernames ride along.
-  if (scoutSelfOn()) {
-    const linked = lichessAccounts().map((a) => a.username).filter(Boolean);
-    return [...linked, ...scoutExternalUsernames()];
-  }
-  return [...scoutExternalUsernames()];
+  const sel = scoutSelection();
+  if (sel._selfOff) return [];
+  return resolveFetchUsernames({
+    selection: { accountIds: sel.accountIds, external: sel.external },
+    linkedAccounts: lichessAccounts(),
+    includeExternal: true,
+  });
 }
 
 function paintScoutSource() {
-  const selection = scoutSelection();
-  const { chips, selfState } = selectionChips(
-    { accountIds: scoutSourceAccountIds() || [], external: selection.external },
-    lichessAccounts()
-  );
-  const btn = document.getElementById("scout-source-self");
-  const picked = scoutSourceAccountIds();
-  const on = scoutSelfOn() && !picked && !selection.external.length;
-  if (btn) {
-    btn.classList.toggle("is-on", on || selfState === "all");
-    btn.setAttribute("aria-pressed", String(on || selfState === "all"));
-    const selfChip = chips.find((c) => c.kind === "self");
-    const linkedN = lichessAccounts().length;
-    btn.textContent = selfChip
-      ? `Self · ${selfChip.count}`
-      : selfState === "mixed"
-        ? "Self · partial"
-        : on && linkedN > 0
-          ? `Self · ${linkedN}`
-          : on
-            ? "Self · all linked"
-            : "Self";
-  }
   const tray = document.getElementById("scout-source-chips");
-  if (tray) {
-    const extra = chips.filter((c) => c.kind !== "self");
-    tray.hidden = extra.length === 0;
-    tray.innerHTML = extra
-      .map((c) =>
-        c.kind === "external"
-          ? `<span class="src-chip" data-scout-chip="${escapeHtml(c.id)}">${escapeHtml(c.label)}` +
-            `<button type="button" class="src-chip-x" data-scout-unpick-external="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Scout sources">×</button></span>`
-          : `<span class="src-chip" data-scout-chip="${escapeHtml(c.id)}">${escapeHtml(c.label)}` +
-            (c.primary ? ' <span class="conn-primary">Primary</span>' : "") +
-            `<button type="button" class="src-chip-x" data-scout-unpick="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Scout sources">×</button></span>`
-      )
-      .join("");
-  }
-  const legacy = document.getElementById("scout-source-picked");
-  if (legacy) {
-    legacy.hidden = true;
-    legacy.textContent = "";
-  }
-  const input = document.getElementById("scout-username");
-  if (input) {
-    input.disabled = false;
-    input.placeholder = "lichess username";
-  }
+  if (!tray) return;
+  const selection = scoutSelection();
+  const { chips, selfState } = selectionChips(selection, lichessAccounts());
+  const linked = lichessAccounts();
+  const visible = chips.length
+    ? chips
+    : linked.length && selfState === "all"
+      ? [{ kind: "self", label: `Self · ${linked.length}`, count: linked.length }]
+      : [];
+  tray.hidden = false;
+  tray.innerHTML = visible.length
+    ? visible
+        .map((c) =>
+          c.kind === "external"
+            ? `<span class="src-chip" data-scout-chip="${escapeHtml(c.id)}">${escapeHtml(c.label)}` +
+              `<button type="button" class="src-chip-x" data-scout-unpick-external="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Scout sources">×</button></span>`
+            : c.kind === "self"
+              ? `<span class="src-chip is-self" data-scout-chip-self>Self · ${c.count}</span>`
+              : `<span class="src-chip" data-scout-chip="${escapeHtml(c.id)}">${escapeHtml(c.label)}` +
+                (c.primary ? ' <span class="conn-primary">Primary</span>' : "") +
+                `<button type="button" class="src-chip-x" data-scout-unpick="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Scout sources">×</button></span>`
+        )
+        .join("")
+    : '<span class="src-empty">No sources — open Add and tick Self, an account, or a username</span>';
 }
 
 function bindScoutSource() {
-  document.getElementById("scout-source-self")?.addEventListener("click", () => {
-    setScoutSelf(!scoutSelfOn() || !!scoutSourceAccountIds());
-  });
-  document.getElementById("scout-source-pick")?.addEventListener("click", (event) => {
-    openScoutComposer(event?.currentTarget || document.getElementById("scout-source-pick"));
-  });
   document.getElementById("scout-source-add")?.addEventListener("click", (event) => {
     openScoutComposer(event?.currentTarget || document.getElementById("scout-source-add"));
   });
   document.getElementById("scout-source-chips")?.addEventListener("click", (event) => {
     const unpick = event.target.closest("[data-scout-unpick]");
     if (unpick) {
-      const current = scoutSourceAccountIds() || lichessAccounts().map((a) => a.id);
-      setScoutSourceAccountIds(current.filter((id) => id !== unpick.dataset.scoutUnpick));
+      const sel = scoutSelection();
+      const current = sel.accountIds.length ? sel.accountIds : lichessAccounts().map((a) => a.id);
+      writeScoutSelection({
+        accountIds: current.filter((id) => id !== unpick.dataset.scoutUnpick),
+        external: sel.external,
+      });
+      paintScoutSource();
       return;
     }
     const unpickExt = event.target.closest("[data-scout-unpick-external]");
@@ -10904,11 +10839,10 @@ if (
   installPolishE2eHook();
 }
 
-// Scout chunk loads on first Scout click/Enter — not at app boot. A tiny static
+// Scout chunk loads on first Scout click — not at app boot. A tiny static
 // handler here avoids importing views/scout.js until the user actually scouts.
 function bindScoutControlsLazy() {
   const scoutBtn = document.getElementById("scout-btn");
-  const scoutName = document.getElementById("scout-username");
   if (!scoutBtn || scoutBtn.dataset.scoutLazyBound) return;
   scoutBtn.dataset.scoutLazyBound = "1";
 
@@ -10922,19 +10856,10 @@ function bindScoutControlsLazy() {
   const onFirstInteract = async () => {
     const view = await activate();
     scoutBtn.removeEventListener("click", onFirstInteract);
-    if (scoutName) scoutName.removeEventListener("keydown", onFirstKey);
-    await view.runScout();
-  };
-  const onFirstKey = async (event) => {
-    if (event.key !== "Enter") return;
-    const view = await activate();
-    scoutBtn.removeEventListener("click", onFirstInteract);
-    scoutName.removeEventListener("keydown", onFirstKey);
     await view.runScout();
   };
 
   scoutBtn.addEventListener("click", onFirstInteract);
-  if (scoutName) scoutName.addEventListener("keydown", onFirstKey);
 
   // ?scoutV12=1 experimental report viewer works from loaded audit JSON with no
   // scout run — eagerly init the view so its panel paints without a username.

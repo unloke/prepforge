@@ -33,6 +33,8 @@ describe("scout view initialization reentrancy", () => {
   let api;
   let setStatus;
   let view;
+  let pickedUsernames;
+  let setPickedUsernames;
 
   beforeEach(() => {
     streamGames.mockReset();
@@ -57,7 +59,6 @@ describe("scout view initialization reentrancy", () => {
       querySelector: (sel) => (sel === ".replay-card-scout" ? card : null),
     };
 
-    elements.set("scout-username", makeEl("scout-username", { value: "rival" }));
     elements.set("scout-color", makeEl("scout-color", { value: "both" }));
     elements.set("scout-btn", makeEl("scout-btn"));
     elements.set("scout-reset-btn", makeEl("scout-reset-btn"));
@@ -75,6 +76,10 @@ describe("scout view initialization reentrancy", () => {
     });
 
     setStatus = vi.fn();
+    pickedUsernames = ["rival"];
+    setPickedUsernames = (names) => {
+      pickedUsernames = names;
+    };
     view = createScoutView({
       escapeHtml: (s) => s,
       setStatus,
@@ -96,8 +101,10 @@ describe("scout view initialization reentrancy", () => {
       getBuildNodeById: vi.fn(),
       setBuildPending: vi.fn(),
       pushBuildNode: vi.fn(),
+      scoutPickedUsernames: () => pickedUsernames,
     });
     view.bindControls();
+    view.__setPickedUsernames = setPickedUsernames;
   });
 
   afterEach(async () => {
@@ -132,7 +139,7 @@ describe("scout view initialization reentrancy", () => {
     streamGames.mockClear();
 
     elements.get("scout-reset-btn").addEventListener.mock.calls[0][1]();
-    elements.get("scout-username").value = "fresh";
+    view.__setPickedUsernames(["fresh"]);
     await view.runScout();
 
     expect(streamGames).toHaveBeenCalledTimes(1);
@@ -237,7 +244,7 @@ describe("scout view initialization reentrancy", () => {
     expect(streamCalls).toBe(1);
 
     elements.get("scout-reset-btn").addEventListener.mock.calls[0][1]();
-    elements.get("scout-username").value = "fresh";
+    view.__setPickedUsernames(["fresh"]);
     const freshRun = view.runScout();
     for (let i = 0; i < 30 && streamCalls < 2; i += 1) {
       await Promise.resolve();

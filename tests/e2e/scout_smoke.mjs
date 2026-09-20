@@ -270,7 +270,10 @@ async function main() {
     await page.locator("#view-replay.is-active").waitFor({ timeout: 10_000 });
     await page.locator('.replay-card-scout:not([hidden])').waitFor({ timeout: 10_000 });
     await page.selectOption("#scout-color", "both");
-    await page.fill("#scout-username", SCOUT_USER);
+    await page.click('[data-testid="scout-source-add"]');
+    await page.locator(".src-popover [data-src-add]").fill(SCOUT_USER);
+    await page.locator(".src-popover [data-src-add-btn]").click();
+    await page.locator(".src-popover [data-src-done]").click();
     await page.click('[data-testid="scout-btn"]');
 
     const profile = page.locator(".scout-profile-card");

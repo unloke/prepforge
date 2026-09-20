@@ -2094,21 +2094,17 @@ export function createScoutView(deps) {
     const initToken = initGuard.tryBegin();
     if (initToken == null) return;
 
-    const usernameInput = document.getElementById("scout-username");
     const colorSel = document.getElementById("scout-color");
-    const typed = (usernameInput?.value || "").trim();
-    // Source precedence (shared Source Composer model): the composer's resolved
-    // usernames (explicit linked picks, then Self = all linked, plus composer
-    // external names) win; the free-text box only feeds when the composer has
-    // no linked source active. Linked + external coexist.
+    // Single source of truth: the shared Source Composer selection (Self group
+    // + linked picks + composer external usernames unioned). The standalone
+    // username textbox is gone — no typed fallback.
     const picked = typeof scoutPickedUsernames === "function" ? scoutPickedUsernames() : [];
-    const usernames = picked.length ? picked : typed ? [typed] : [];
+    const usernames = picked;
     const scoutSelf = picked.length > 0;
     if (!usernames.length) {
       initGuard.finish(initToken);
       updateScoutControls();
-      setStatus("Enter an opponent's Lichess username");
-      usernameInput?.focus();
+      setStatus("No Scout sources selected — open Add and pick Self, an account, or a username");
       return;
     }
     const color = colorSel?.value || "both";
@@ -2204,13 +2200,6 @@ export function createScoutView(deps) {
     if (resetBtn && !resetBtn.dataset.scoutBound) {
       resetBtn.dataset.scoutBound = "1";
       resetBtn.addEventListener("click", resetScout);
-    }
-
-    const scoutName = document.getElementById("scout-username");
-    if (scoutName) {
-      scoutName.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") handleScoutAction();
-      });
     }
 
     bindScoutEvents();
