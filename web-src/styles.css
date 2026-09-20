@@ -3614,7 +3614,7 @@ h2 {
   padding: 12px 14px;
   box-sizing: border-box;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 8px;
   block-size: var(--coach-card-block-size);
   flex: 0 0 var(--coach-card-block-size);
@@ -3639,24 +3639,25 @@ h2 {
   gap: 10px;
 }
 
-.coach-body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.coach-scroll {
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
   scrollbar-gutter: stable;
 }
 
+.coach-footer {
+  min-width: 0;
+}
+
 .coach-secondary {
-  /* The optional Maia/book departure notes form one lower content group. Keep
-     that group at the bottom when the fixed body has spare room; with overflow,
-     the auto margin resolves to zero and the group remains reachable in order. */
   display: grid;
   gap: 8px;
   min-width: 0;
-  margin-top: auto;
+}
+
+.coach-footer:has(.coach-maia[hidden]):has(.coach-bookline[hidden]) .coach-secondary {
+  display: none;
 }
 
 .explain-title {
