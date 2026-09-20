@@ -50,6 +50,14 @@ def _mock_oauth(monkeypatch):
     )
 
 
+def _self_game_for(username):
+    """A compare-ready game where `username` is a player (white)."""
+    game = _game()
+    game.white = username
+    game.black = "Opponent"
+    return game
+
+
 def _mock_fetch(monkeypatch, games=None, error: str | None = None):
     """Patch the source module so both the router's direct calls and
     ``compare_recent_games``'s internal call resolve to the stub."""
@@ -712,6 +720,103 @@ def test_compare_selects_second_identity_without_changing_primary(client, monkey
     assert body["username"] == "CompareB"
     assert seen == ["CompareB"]
     assert client.get("/api/lichess").json()["username"] == "CompareA"
+
+
+def test_compare_default_aggregates_self_with_source_metadata(client, monkeypatch):
+    """No account_id: both identities are read, games dedupe, each game names
+    its source account, and the payload says self."""
+    _register(client, "selfcompare@example.com")
+    _link_as(client, monkeypatch, "SelfCmpA")
+    _link_as(client, monkeypatch, "SelfCmpB")
+
+    def _fake_pgn(username, count=1, **kwargs):
+        game = _self_game_for(username)
+        game.lichess_id = "game-{0}".format(username)
+        return [game]
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_recent_pgns",
+        lambda username, count=1, **kwargs: _fake_pgn(username, count, **kwargs),
+    )
+    body = client.post(
+        "/api/lichess/compare",
+        json={"count": 10},
+        headers=csrf_headers(client),
+    ).json()
+    assert body["username"] == "self"
+    assert body["count"] == 2
+    assert sorted(body["sources"]) == ["SelfCmpA", "SelfCmpB"]
+    assert {g["source_account"] for g in body["games"]} == {"SelfCmpA", "SelfCmpB"}
+    assert client.get("/api/lichess").json()["username"] == "SelfCmpA"
+
+
+def test_compare_explicit_subset_narrows_to_those_accounts(client, monkeypatch):
+    _register(client, "subsetcompare@example.com")
+    _link_as(client, monkeypatch, "SubA")
+    _link_as(client, monkeypatch, "SubB")
+    second = next(
+        a for a in client.get("/api/lichess").json()["accounts"] if a["username"] == "SubB"
+    )
+    seen = []
+
+    def _fake_pgn(username, count=1, **kwargs):
+        seen.append(username)
+        return [_self_game_for(username)]
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_recent_pgns",
+        lambda username, count=1, **kwargs: _fake_pgn(username, count, **kwargs),
+    )
+    body = client.post(
+        "/api/lichess/compare",
+        json={"count": 10, "account_ids": [second["id"]]},
+        headers=csrf_headers(client),
+    ).json()
+    assert body["username"] == "SubB"
+    assert seen == ["SubB"]
+    assert client.get("/api/lichess").json()["username"] == "SubA"
+
+
+def test_compare_self_dedups_shared_game_ids(client, monkeypatch):
+    _register(client, "dedupcompare@example.com")
+    _link_as(client, monkeypatch, "DedupA")
+    _link_as(client, monkeypatch, "DedupB")
+    same = _game()
+    same.white = "DedupA"
+    same.black = "DedupB"
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_recent_pgns",
+        lambda username, count=1, **kwargs: [same],
+    )
+    body = client.post(
+        "/api/lichess/compare",
+        json={"count": 10},
+        headers=csrf_headers(client),
+    ).json()
+    assert body["count"] == 1
+
+
+def test_compare_self_partial_failure_still_returns_games(client, monkeypatch):
+    _register(client, "partcompare@example.com")
+    _link_as(client, monkeypatch, "PartCmpA")
+    _link_as(client, monkeypatch, "PartCmpB")
+
+    def _fake_pgn(username, count=1, **kwargs):
+        if username == "PartCmpA":
+            raise LichessFetchError("Lichess responded with HTTP 429 for user PartCmpA")
+        return [_self_game_for("PartCmpB")]
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_recent_pgns",
+        lambda username, count=1, **kwargs: _fake_pgn(username, count, **kwargs),
+    )
+    body = client.post(
+        "/api/lichess/compare",
+        json={"count": 10},
+        headers=csrf_headers(client),
+    ).json()
+    assert body["count"] == 1
+    assert body["games"][0]["source_account"] == "PartCmpB"
 
 
 def test_latest_rejects_unknown_account_id(client, monkeypatch):

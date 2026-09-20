@@ -426,26 +426,95 @@ def compare_recent_games(
 
     summaries: List[GameMatchSummary] = []
     for entry in fetched:
-        try:
-            games = core.import_pgn_games(entry.pgn, source=MoveSource.IMPORTED_PGN)
-        except ValueError:
-            continue
-        if not games:
-            continue
-        game = games[0]
-        user_color = determine_user_color(entry.white, entry.black, username)
-        if user_color is None:
-            continue
-
-        match = match_game_against_repertoires(
-            game.moves,
-            active_repertoires,
-            user_color,
-        )
-        san_history = [move.san for move in game.moves]
-        summary = _build_summary(entry, user_color, match, san_history, game)
-        summaries.append(summary)
+        summary = _summarize_fetched(entry, username, core, active_repertoires)
+        if summary is not None:
+            summaries.append(summary)
     return summaries
+
+
+def _summarize_fetched(entry, username, core, active_repertoires):
+    try:
+        games = core.import_pgn_games(entry.pgn, source=MoveSource.IMPORTED_PGN)
+    except ValueError:
+        return None
+    if not games:
+        return None
+    game = games[0]
+    user_color = determine_user_color(entry.white, entry.black, username)
+    if user_color is None:
+        return None
+    match = match_game_against_repertoires(
+        game.moves,
+        active_repertoires,
+        user_color,
+    )
+    san_history = [move.san for move in game.moves]
+    return _build_summary(entry, user_color, match, san_history, game)
+
+
+def compare_many_identities(
+    repository: PrepForgeRepository,
+    usernames: list,
+    count: int,
+    *,
+    chess_core=None,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    owner_user_id: Optional[str] = None,
+) -> List[tuple]:
+    """Compare recent games for SEVERAL linked identities ("self").
+
+    Each identity gets a fair share of ``count`` (round-robin budget, at least
+    one game each), fetched with bounded concurrency. Results carry their
+    source username as ``(summary, source)`` pairs, deduped by game id and
+    newest-first by PGN order per identity. Partial failures degrade: one
+    account failing never blocks the others.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    names = [u for u in (usernames or []) if u and str(u).strip()]
+    if not names:
+        return []
+    count = max(1, min(int(count or 10), MAX_FETCH))
+    per_account = max(1, count // len(names))
+    core = chess_core or ChessCore()
+    all_repertoires = repository.list_repertoires(owner_user_id=owner_user_id)
+    active_repertoires = [rep for rep in all_repertoires if getattr(rep, "is_active", True)]
+
+    def _one(username: str) -> tuple:
+        try:
+            fetched = fetch_recent_pgns(username, per_account, timeout=timeout)
+        except LichessFetchError as exc:
+            return username, [], exc
+        out = []
+        for entry in fetched or []:
+            summary = _summarize_fetched(entry, username, core, active_repertoires)
+            if summary is not None:
+                out.append((summary, username))
+        return username, out, None
+
+    workers = max(1, min(_SELF_FANOUT_MAX_WORKERS, len(names)))
+    collected: list = []
+    errors: list = []
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_one, name): name for name in names}
+        for future in futures:
+            username, pairs, error = future.result()
+            if error is not None:
+                errors.append(error)
+                continue
+            collected.extend(pairs)
+    seen_ids: set = set()
+    merged: list = []
+    for summary, source in collected:
+        gid = summary.lichess_id
+        if gid and gid in seen_ids:
+            continue
+        if gid:
+            seen_ids.add(gid)
+        merged.append((summary, source))
+    if not merged and errors:
+        raise errors[0]
+    return merged[:count]
 
 
 # Per-owner list of lichess game ids whose departure already became a training miss,

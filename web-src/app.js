@@ -3609,7 +3609,9 @@ async function refreshAuthStatus() {
 }
 
 function syncReplayControls() {
-  return accountService().syncReplayControls();
+  accountService().syncReplayControls();
+  paintGamesSource();
+  paintScoutSource();
 }
 
 // Pull the server's stored Lichess connection state. This is not a PrepForge sign-out;
@@ -9785,8 +9787,9 @@ async function runLichessCompare() {
     startLichessOAuth();
     return;
   }
-  const accountId = await resolveLichessAccountId("Check my games");
-  if (accountId === null && lichessAccounts().length > 1) return;
+  // "Self" is the default: aggregate every linked identity server-side.
+  // Explicit picks (one or more account ids) narrow the fetch instead.
+  const picked = gamesSourceAccountIds();
   const countInput = document.getElementById("replay-count");
   const count = Math.max(1, Math.min(50, Number(countInput.value) || 10));
   const button = document.getElementById("lichess-compare-btn");
@@ -9795,23 +9798,187 @@ async function runLichessCompare() {
   try {
     const payload = await postJson("/api/lichess/compare", {
       count,
-      ...(accountId ? { account_id: accountId } : {}),
+      ...(picked ? { account_ids: picked } : {}),
     });
     appState.replayResults = payload;
     appState.replayFilter = null;
     appState.replayOpen = new Set();
     await renderReplayResults(payload);
     const queued = Number(payload.misses_recorded) || 0;
+    const sources = Array.isArray(payload.sources) ? payload.sources : [];
+    const sourceLabel =
+      sources.length > 1
+        ? `self (${sources.length} accounts)`
+        : payload.username === "self"
+          ? "self"
+          : payload.username;
     setStatus(
       queued > 0
         ? `Fetched ${payload.count} games · ${queued} forgotten move${queued === 1 ? "" : "s"} added to training`
-        : `Fetched ${payload.count} games for ${payload.username}`
+        : `Fetched ${payload.count} games for ${sourceLabel}`
     );
   } catch (error) {
     setStatusError(error.message);
   } finally {
     button.disabled = false;
   }
+}
+
+// Games source selection: null = "self" (all linked identities, the default);
+// otherwise an explicit list of account ids. Persisted per browser.
+const GAMES_SOURCE_KEY = "prepforge.games_source";
+function gamesSourceAccountIds() {
+  let picked = null;
+  try {
+    const raw = localStorage.getItem(GAMES_SOURCE_KEY);
+    if (raw) picked = JSON.parse(raw);
+  } catch (_) {
+    picked = null;
+  }
+  if (!Array.isArray(picked) || !picked.length) return null;
+  const known = new Set(lichessAccounts().map((a) => a.id));
+  const valid = picked.filter((id) => known.has(id));
+  return valid.length ? valid : null;
+}
+
+function setGamesSourceAccountIds(ids) {
+  try {
+    if (!ids || !ids.length) localStorage.removeItem(GAMES_SOURCE_KEY);
+    else localStorage.setItem(GAMES_SOURCE_KEY, JSON.stringify(ids));
+  } catch (_) {
+    /* ignore storage errors */
+  }
+  paintGamesSource();
+}
+
+function paintGamesSource() {
+  const picked = gamesSourceAccountIds();
+  const selfBtn = document.getElementById("games-source-self");
+  if (selfBtn) {
+    selfBtn.classList.toggle("is-on", !picked);
+    selfBtn.textContent = picked
+      ? "Self · all linked"
+      : `Self · all linked (${lichessAccounts().length || "—"})`;
+    selfBtn.setAttribute("aria-pressed", String(!picked));
+  }
+  const chip = document.getElementById("replay-account");
+  if (chip) {
+    if (picked) {
+      const names = lichessAccounts()
+        .filter((a) => picked.includes(a.id))
+        .map((a) => a.username);
+      chip.textContent = names.length ? names.join(" + ") : `${picked.length} picked`;
+    } else {
+      chip.textContent =
+        lichessAccounts().length > 1
+          ? `Self · ${lichessAccounts().length} accounts`
+          : appState.lichessUsername || "not connected";
+    }
+  }
+}
+
+// Explicit multi-account picker: compact modal with checkboxes, Self default.
+// Resolves after Save (persisting the pick) or Cancel (keeping the prior pick).
+function chooseGamesSourceAccounts() {
+  const accounts = lichessAccounts();
+  const picked = new Set(gamesSourceAccountIds() || []);
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    const rows = accounts
+      .map(
+        (account) => `
+      <label class="source-pick-row">
+        <input type="checkbox" data-account-id="${escapeHtml(account.id)}"${picked.has(account.id) ? " checked" : ""} />
+        <span>${escapeHtml(account.username)}${account.is_primary ? " — Primary" : ""}</span>
+      </label>`
+      )
+      .join("");
+    overlay.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true" aria-label="Games source">
+        <div class="modal-title">Games source</div>
+        <div class="modal-body">
+          <p class="modal-copy">Self checks every linked account. Uncheck all for Self, or tick specific accounts.</p>
+          <div class="source-pick-list">${rows}</div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn ghost" data-action="cancel" type="button">Cancel</button>
+          <button class="btn primary" data-action="save" type="button">Save</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const close = (value) => {
+      overlay.remove();
+      resolve(value);
+    };
+    overlay.querySelector('[data-action="cancel"]').addEventListener("click", () => close(null));
+    overlay.querySelector('[data-action="save"]').addEventListener("click", () => {
+      const ids = [...overlay.querySelectorAll("input[data-account-id]:checked")].map(
+        (el) => el.dataset.accountId
+      );
+      close(ids);
+    });
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) close(null);
+    });
+  });
+}
+
+async function onGamesSourcePick() {
+  const ids = await chooseGamesSourceAccounts();
+  if (ids === null) return;
+  setGamesSourceAccountIds(ids);
+}
+
+function bindGamesSource() {
+  document.getElementById("games-source-self")?.addEventListener("click", () => {
+    setGamesSourceAccountIds(null);
+  });
+  document.getElementById("games-source-pick")?.addEventListener("click", onGamesSourcePick);
+}
+
+// Scout source: a "Self" chip (all linked identities, the default) plus the
+// free-text opponent box. Compact chips, same design language as Games.
+const SCOUT_SELF_KEY = "prepforge.scout_self";
+
+function scoutSelfOn() {
+  try {
+    return localStorage.getItem(SCOUT_SELF_KEY) !== "off";
+  } catch (_) {
+    return true;
+  }
+}
+
+function setScoutSelf(on) {
+  try {
+    localStorage.setItem(SCOUT_SELF_KEY, on ? "on" : "off");
+  } catch (_) {
+    /* ignore storage errors */
+  }
+  paintScoutSource();
+}
+
+function paintScoutSource() {
+  const btn = document.getElementById("scout-source-self");
+  if (!btn) return;
+  const on = scoutSelfOn();
+  const n = lichessAccounts().length;
+  btn.classList.toggle("is-on", on);
+  btn.setAttribute("aria-pressed", String(on));
+  btn.textContent = on && n > 1 ? `Self · ${n} linked` : "Self · all linked";
+  const input = document.getElementById("scout-username");
+  if (input) {
+    input.disabled = on && n > 0;
+    input.placeholder = on && n > 0 ? "scouting all linked accounts…" : "lichess username";
+  }
+}
+
+function bindScoutSource() {
+  document.getElementById("scout-source-self")?.addEventListener("click", () => {
+    setScoutSelf(!scoutSelfOn());
+  });
+  paintScoutSource();
 }
 
 let replayModule = null;
@@ -10319,6 +10486,7 @@ async function ensureScoutView() {
       loadPgnIntoAnalyze,
       effectiveMaiaRating,
       getLichessUsername: () => appState.lichessUsername,
+      getLichessAccounts: () => lichessAccounts(),
       effectiveStockfishDepth,
     });
   }
@@ -10372,7 +10540,7 @@ function installPolishE2eHook() {
       const primary = accounts.find((a) => a.is_primary) || accounts[0] || null;
       appState.lichessUsername = primary ? primary.username : null;
       try {
-        accountService().syncReplayControls();
+        syncReplayControls();
       } catch (_) {
         /* controller may not be initialised in a bare acceptance page */
       }
@@ -10533,6 +10701,8 @@ function bindEvents() {
 
   // Replay tab
   document.getElementById("lichess-compare-btn").addEventListener("click", runLichessCompare);
+  bindGamesSource();
+  bindScoutSource();
   bindScoutControlsLazy();
 
   document.getElementById("run-analysis").addEventListener("click", runAnalysis);

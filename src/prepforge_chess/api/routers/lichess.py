@@ -439,27 +439,55 @@ def _run_compare(
     db: Session,
     repo: PrepForgeRepository,
     account_id: str | None = None,
+    account_ids: list[str] | None = None,
 ) -> dict:
-    """Fetch the linked account's recent public games and match each against THIS
-    owner's repertoires (did my prep hold up / where did I leave book)."""
-    username = _linked_username_or_400(db, user.id, account_id)
+    """Fetch recent public games and match each against THIS owner's repertoires.
+
+    ``account_id`` selects one identity explicitly. A list (or the default)
+    aggregates "self": every linked identity gets a fair share of ``count``,
+    results dedupe by game id, and each game carries ``source_account``."""
     count = max(1, min(_COMPARE_COUNT_MAX, count))
-    try:
-        summaries = lichess_fetch.compare_recent_games(
-            repo, username, count, owner_user_id=owner
+    if account_ids:
+        links = []
+        for aid in account_ids:
+            links.append(_link_for_account(db, user.id, aid))
+    elif account_id:
+        links = [_link_for_account(db, user.id, account_id)]
+    else:
+        links = _links_for(db, user.id)
+        primaries = [link for link in links if link.is_primary]
+        links = primaries + [link for link in links if not link.is_primary]
+    usernames = [link.provider_user_id for link in links if link.provider_user_id]
+    if not usernames:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="link your Lichess account first",
         )
+    try:
+        if len(usernames) == 1:
+            summaries = lichess_fetch.compare_recent_games(
+                repo, usernames[0], count, owner_user_id=owner
+            )
+            pairs = [(s, usernames[0]) for s in summaries]
+        else:
+            pairs = lichess_fetch.compare_many_identities(
+                repo, usernames, count, owner_user_id=owner
+            )
     except lichess_fetch.LichessFetchError as exc:
         # Upstream Lichess failed -- this server proxied the fetch, so 502.
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    summaries = [s for s, _ in pairs]
     # Close the play→train loop: a game where the user left their own prep becomes a
     # recall miss on the forgotten node, so it surfaces in the next smart session.
     misses_recorded = lichess_fetch.record_departure_misses(
         repo, summaries, owner_user_id=owner
     )
+    sources = sorted({source for _, source in pairs})
     return {
-        "username": username,
+        "username": usernames[0] if len(usernames) == 1 else "self",
         "count": len(summaries),
         "misses_recorded": misses_recorded,
+        "sources": sources,
         "games": [
             {
                 "lichess_id": s.lichess_id,
@@ -480,8 +508,9 @@ def _run_compare(
                 "expected_node_id": s.expected_node_id,
                 "last_matched_node_id": s.last_matched_node_id,
                 "training_recorded": s.training_recorded,
+                "source_account": source,
             }
-            for s in summaries
+            for (s, source) in pairs
         ],
     }
 
@@ -490,22 +519,26 @@ def _run_compare(
 def compare(
     count: int = 10,
     account_id: str | None = None,
+    account_ids: str | None = None,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
     db: Session = Depends(get_db),
     repo: PrepForgeRepository = Depends(get_repository),
 ) -> dict:
-    return _run_compare(count, user, owner, db, repo, account_id)
+    ids = [a for a in (account_ids or "").split(",") if a] or None
+    return _run_compare(count, user, owner, db, repo, account_id, ids)
 
 
 class CompareBody(BaseModel):
     # The SPA still POSTs ``{username, count}`` (web-src/app.js). ``username`` is
     # ignored -- compare always runs against the caller's *linked* account, never a
     # client-supplied one (multi-tenant isolation); only ``count`` is honoured.
-    # ``account_id`` selects which linked identity to read; omitted means primary.
+    # ``account_id`` selects one identity explicitly; ``account_ids`` selects
+    # several; omitted means "self" (all linked identities aggregated).
     username: str | None = None
     count: int = 10
     account_id: str | None = None
+    account_ids: list[str] | None = None
 
 
 @router.post("/compare")
@@ -519,7 +552,7 @@ def compare_post(
     """Legacy POST shim: the old single-tenant server dispatched compare on POST with a
     client-supplied username (server.py). Here the username is dropped on purpose; the
     fetch is owner-scoped to the linked account."""
-    return _run_compare(body.count, user, owner, db, repo, body.account_id)
+    return _run_compare(body.count, user, owner, db, repo, body.account_id, body.account_ids)
 
 
 @router.get("/latest")

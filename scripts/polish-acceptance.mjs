@@ -300,28 +300,31 @@ for (const vp of VIEWPORTS) {
   );
   check(`[${vp.label}] primary still A afterwards`, !!selfFlow.primaryStillA);
 
-  // --- Compare flow: choosing B sends account_id in compare body -------------
+  // --- Games self aggregation: no chooser, both accounts fetched ------------
+  // Seed two linked identities, click Check my games, assert NO chooser opens,
+  // the compare POST carries NO account narrowing (self = server-side fan-out),
+  // and the Self chip + source picker chrome is present.
   const compareFlow = await page.evaluate(async () => {
     const hook = window.__prepforgePolishE2e;
     hook.setLichessAccounts([
       { id: "acc-a", username: "account_a", is_primary: true },
       { id: "acc-b", username: "account_b", is_primary: false },
     ]);
+    try {
+      localStorage.removeItem("prepforge.games_source");
+    } catch (_) {}
     document.querySelector('[data-testid="nav-replay"]').click();
     await new Promise((r) => setTimeout(r, 200));
     const btn = document.getElementById("lichess-compare-btn");
-    const enabled = !btn.disabled;
-    // Install the fetch observer AFTER seeding/enabling but BEFORE the click,
-    // so the compare POST is captured (the chooser resolves async after click).
+    const selfChip = document.getElementById("games-source-self");
+    const pickBtn = document.getElementById("games-source-pick");
     // NOTE: postJson() awaits getCsrfToken() → GET /api/csrf first; the stub
     // below answers /api/csrf + /api/lichess/compare and passes the rest
     // through, so the full handler chain runs deterministically.
     const bodies = [];
-    const seen = [];
     const realFetch = window.fetch.bind(window);
     window.fetch = async (url, opts) => {
       const u = String(url);
-      seen.push(`${opts?.method || "GET"} ${u}`);
       if (u.includes("/api/csrf")) {
         return new Response(JSON.stringify({ csrf_token: "test-csrf" }), {
           status: 200,
@@ -331,29 +334,73 @@ for (const vp of VIEWPORTS) {
       if (u.includes("/api/lichess/compare")) {
         bodies.push(opts?.body ? String(opts.body) : "");
         return new Response(
-          JSON.stringify({ username: "account_b", count: 0, misses_recorded: 0, games: [] }),
+          JSON.stringify({
+            username: "self",
+            count: 2,
+            misses_recorded: 0,
+            sources: ["account_a", "account_b"],
+            games: [],
+          }),
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
       }
       return realFetch(url, opts);
     };
     btn.click();
-    await new Promise((r) => setTimeout(r, 300));
-    const overlay = document.querySelector(".modal-overlay .account-chooser");
-    const opened = !!overlay;
-    overlay?.querySelector('[data-account-id="acc-b"]')?.click();
     await new Promise((r) => setTimeout(r, 1500));
-    const closed = !document.querySelector(".modal-overlay .account-chooser");
+    const overlay = document.querySelector(".modal-overlay .account-chooser");
+    const status = document.getElementById("app-status")?.textContent || "";
     window.fetch = realFetch;
-    return { opened, bodies, seen, closed, enabled };
+    return {
+      chooserOpened: !!overlay,
+      bodies,
+      status,
+      selfChipOn: !!selfChip?.classList.contains("is-on"),
+      pickPresent: !!pickBtn,
+    };
   });
-  check(`[${vp.label}] compare opens chooser for two accounts`, !!compareFlow.opened);
+  check(`[${vp.label}] games self shows no chooser for two accounts`, !compareFlow.chooserOpened);
   check(
-    `[${vp.label}] compare sends account_id=B`,
-    (compareFlow.bodies || []).some((b) => b.includes("acc-b")),
-    `bodies=${JSON.stringify(compareFlow.bodies)} seen=${JSON.stringify((compareFlow.seen || []).filter((u) => u.includes("lichess")).slice(0, 6))}`,
+    `[${vp.label}] games self aggregates without account narrowing`,
+    (compareFlow.bodies || []).length >= 1 &&
+      (compareFlow.bodies || []).every((b) => !b.includes("account_id")),
+    `bodies=${JSON.stringify(compareFlow.bodies)}`,
   );
-  check(`[${vp.label}] compare chooser closes after selection`, !!compareFlow.closed);
+  check(
+    `[${vp.label}] games self chip on + picker present`,
+    !!compareFlow.selfChipOn && !!compareFlow.pickPresent,
+  );
+  check(
+    `[${vp.label}] games self status names self`,
+    /self/.test(compareFlow.status || ""),
+    (compareFlow.status || "").slice(0, 100),
+  );
+
+  // --- Scout self: chip on by default, opponent box yields to linked selves --
+  const scoutFlow = await page.evaluate(async () => {
+    const hook = window.__prepforgePolishE2e;
+    hook.setLichessAccounts([
+      { id: "acc-a", username: "account_a", is_primary: true },
+      { id: "acc-b", username: "account_b", is_primary: false },
+    ]);
+    document.querySelector('[data-testid="nav-scout"]').click();
+    await new Promise((r) => setTimeout(r, 300));
+    const chip = document.getElementById("scout-source-self");
+    const input = document.getElementById("scout-username");
+    return {
+      chipPresent: !!chip,
+      chipOn: !!chip?.classList.contains("is-on"),
+      inputDisabled: !!input?.disabled,
+      label: chip?.textContent || "",
+    };
+  });
+  check(`[${vp.label}] scout self chip present and on`, !!scoutFlow.chipPresent && !!scoutFlow.chipOn);
+  check(
+    `[${vp.label}] scout self claims linked accounts`,
+    /2 linked|all linked/.test(scoutFlow.label || ""),
+    scoutFlow.label || "",
+  );
+  check(`[${vp.label}] scout opponent box yields to self`, !!scoutFlow.inputDisabled);
 
   // --- Dropdown theme: dark menu chrome -------------------------------------
   const theme = await page.evaluate(() => {

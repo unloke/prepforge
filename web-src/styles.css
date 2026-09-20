@@ -408,6 +408,72 @@ h2 {
   font-weight: 600;
 }
 
+/* Source picker: "Self" (all linked identities) is the default, one tap away;
+   explicit account picks layer on top as compact chips. */
+.source-chip,
+.source-pick {
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-soft);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.source-chip.is-on {
+  color: var(--text);
+  font-weight: 700;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.source-chip:hover,
+.source-pick:hover {
+  color: var(--text);
+  border-color: var(--btn-border-hover);
+  background: var(--surface-hover);
+}
+.source-chip:focus-visible,
+.source-pick:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.source-chip:disabled,
+.source-pick:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.source-pick-list {
+  display: grid;
+  gap: 4px;
+  min-width: 200px;
+}
+.source-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.source-pick-row:hover {
+  background: var(--surface-hover);
+}
+.source-pick-row input {
+  accent-color: var(--accent);
+}
+
+/* Per-game source tag: quiet metadata, never the headline. */
+.replay-source {
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
 /* Outcome digest: count chips double as filters, plus the queued-misses note. */
 .replay-summary {
   display: flex;
