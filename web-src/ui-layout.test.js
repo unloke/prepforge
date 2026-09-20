@@ -55,11 +55,34 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".explorer-rows")).toMatch(/min-width:\s*0/);
     expect(ruleBody(".explorer-row")).toMatch(/min-width:\s*0/);
     expect(ruleBody(".explorer-row")).toMatch(/max-width:\s*100%/);
-    expect(ruleBody(".coverage-hint")).toMatch(/overflow-wrap:\s*anywhere/);
     expect(ruleBody(".coverage-gap-meta")).toMatch(/overflow-wrap:\s*anywhere/);
     expect(app).toContain('setBuildInspector("explorer")');
     expect(app).toContain('setBuildInspector("coverage")');
     expect(app).toContain("panel.hidden = name !== active");
+  });
+
+  it("keeps the inspector chrome to one compact header row", () => {
+    // Title + segmented control + info popover + scan action share one row;
+    // the old multi-line chrome (separate label, explorer-head, scope line,
+    // coverage head + standing hint) is gone.
+    expect(html).toContain('id="inspector-dbs"');
+    expect(html).toContain('id="inspector-info"');
+    expect(app).toContain("inspector-info-pop");
+    expect(html).not.toContain("build-inspector-label");
+    expect(html).not.toContain("explorer-head");
+    expect(html).not.toContain("explorer-scope");
+    expect(html).not.toContain("coverage-head");
+    expect(html).not.toContain("coverage-hint");
+    expect(html).not.toContain("Master games — strong-player games");
+    expect(html).not.toContain("How much of real human play");
+    expect(app).toContain("inspectorScopeText");
+    expect(app).toContain("onInspectorInfo");
+    expect(app).toContain("inspector-info-pop");
+    expect(css).toContain(".inspector-info-pop");
+    const head = ruleBody(".build-inspector-head");
+    expect(head).toMatch(/min-height:\s*34px/);
+    const panel = ruleBody(".inspector-panel");
+    expect(panel).toMatch(/max-height:\s*min\(44vh,\s*380px\)/);
   });
 
   it("keeps Coach height stable with a scrollable explanation and fixed footer", () => {

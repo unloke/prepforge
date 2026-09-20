@@ -165,12 +165,24 @@ for (const vp of VIEWPORTS) {
   });
   check(`[${vp.label}] coach empty footer collapses`, empty < 4, `${empty}px`);
 
-  // --- Build Inspector: long coverage + explorer content --------------------
+  // --- Build Inspector: compact header + content height -----------------------
+  // The inspector is one compact header row (title + segmented + ⓘ + scan) with
+  // rows-only panels. Assert: (a) long content stays inside, (b) the header is
+  // a single row, (c) the ⓘ popover explains scope on demand, (d) the panel
+  // owns scroll and offers materially more content height than before.
   const insp = await page.evaluate(
     ({ hint }) => {
       document.querySelector('[data-testid="nav-build"]').click();
       document.getElementById("build-tool-coverage").click();
-      document.querySelector(".coverage-hint").textContent = hint;
+      const head = document.querySelector(".build-inspector-head");
+      const headH = head.getBoundingClientRect().height;
+      const infoBtn = document.getElementById("inspector-info");
+      infoBtn.click();
+      const pop = document.getElementById("inspector-info-pop");
+      const popText = pop ? pop.textContent : "";
+      if (pop) pop.remove();
+      const scanBtn = document.getElementById("coverage-run");
+      const scanVisible = scanBtn && getComputedStyle(scanBtn).display !== "none";
       const gaps = document.getElementById("coverage-gaps");
       gaps.innerHTML = Array.from(
         { length: 12 },
@@ -210,6 +222,7 @@ for (const vp of VIEWPORTS) {
           `<button type="button" class="explorer-row"><span class="explorer-san">Nf3+${i}</span><span class="explorer-games">12.5k</span><span class="explorer-bar"><span class="explorer-bar-w" style="width:40%"></span></span></button>`,
       ).join("");
       const panel2 = document.getElementById("explorer-drawer");
+      const ps2 = getComputedStyle(panel2);
       const box2 = pad(inspector);
       const bad2 = [];
       panel2.querySelectorAll("*").forEach((el) => {
@@ -223,6 +236,13 @@ for (const vp of VIEWPORTS) {
         coverageBad: bad.slice(0, 5),
         explorerBad: bad2.slice(0, 5),
         panelScroll: ps.overflowY,
+        headH,
+        popText,
+        scanVisible,
+        // Measure the VISIBLE explorer panel (coverage is hidden after the
+        // switch, so its clientHeight reads 0 by design).
+        panelMaxH: ps2.maxHeight,
+        panelClientH: panel2.clientHeight,
       };
     },
     { hint: LONG_HINT },
@@ -230,6 +250,21 @@ for (const vp of VIEWPORTS) {
   check(`[${vp.label}] coverage content inside inspector`, insp.coverageBad.length === 0, insp.coverageBad.join(" | "));
   check(`[${vp.label}] explorer content inside inspector`, insp.explorerBad.length === 0, insp.explorerBad.join(" | "));
   check(`[${vp.label}] inspector panel owns scroll`, insp.panelScroll === "auto" || insp.panelScroll === "scroll");
+  check(`[${vp.label}] inspector header is one compact row`, insp.headH <= 44, `${insp.headH}px`);
+  check(
+    `[${vp.label}] inspector info popover explains scope`,
+    /human play|Master games|Players near/.test(insp.popText || ""),
+    (insp.popText || "").slice(0, 100),
+  );
+  check(`[${vp.label}] coverage scan lives in the header`, !!insp.scanVisible);
+  // max-height resolves to px in computed style: laptop 352px (was 272px at
+  // 34vh), narrow 380px (was 300px). Either way the budget grows ~30%.
+  const maxPx = parseFloat(insp.panelMaxH || "0");
+  check(
+    `[${vp.label}] inspector panel offers more content height`,
+    maxPx > 300,
+    `max ${insp.panelMaxH || ""}, ${insp.panelClientH}px showing 10 rows`,
+  );
   // No nested competing scroll regions: the inner content containers must not
   // themselves scroll (checked structurally in ui-layout tests; the panel is
   // the single scroll owner).

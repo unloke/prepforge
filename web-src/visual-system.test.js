@@ -106,7 +106,7 @@ describe("visual system tokens", () => {
     expect(coverage).not.toMatch(/max-height/);
     const panel = ruleBody(".inspector-panel");
     expect(panel).toMatch(/overflow-y:\s*auto/);
-    expect(panel).toMatch(/max-height:\s*min\(34vh,\s*300px\)/);
+    expect(panel).toMatch(/max-height:\s*min\(44vh,\s*380px\)/);
   });
 });
 
