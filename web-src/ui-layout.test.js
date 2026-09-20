@@ -50,27 +50,28 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("panel.hidden = name !== active");
   });
 
-  it("keeps Coach height stable while the body owns long-copy scrolling", () => {
+  it("keeps Coach height stable with a scrollable explanation and fixed footer", () => {
     const coach = ruleBody(".coach-prose");
     const maia = ruleBody(".coach-maia");
     const bookline = ruleBody(".coach-bookline");
     const card = ruleBody(".explain-card");
-    const body = ruleBody(".coach-body");
+    const scroll = ruleBody(".coach-scroll");
+    const footer = ruleBody(".coach-footer");
     const secondary = ruleBody(".coach-secondary");
     expect(html).toContain('<header class="explain-head">');
-    expect(html).toContain('<div class="coach-body" id="coach-body">');
+    expect(html).toContain('<div class="coach-scroll" id="coach-scroll">');
+    expect(html).toContain('<div class="coach-footer" id="coach-footer">');
     expect(html).toContain('<div class="coach-secondary">');
-    expect(card).toMatch(/grid-template-rows:\s*auto\s+minmax\(0,\s*1fr\)/);
+    expect(card).toMatch(/grid-template-rows:\s*auto\s+minmax\(0,\s*1fr\)\s+auto/);
     expect(card).toMatch(/block-size:\s*var\(--coach-card-block-size\)/);
     expect(card).toMatch(/flex:\s*0\s+0\s+var\(--coach-card-block-size\)/);
     expect(card).toMatch(
       /--coach-card-block-size:\s*clamp\(136px,\s*calc\(var\(--study-h\)\s*\*\s*0\.23\),\s*170px\)/,
     );
-    expect(body).toMatch(/display:\s*flex/);
-    expect(body).toMatch(/flex-direction:\s*column/);
-    expect(body).toMatch(/min-height:\s*0/);
-    expect(body).toMatch(/overflow-y:\s*auto/);
-    expect(secondary).toMatch(/margin-top:\s*auto/);
+    expect(scroll).toMatch(/min-height:\s*0/);
+    expect(scroll).toMatch(/overflow-y:\s*auto/);
+    expect(footer).toMatch(/min-width:\s*0/);
+    expect(secondary).not.toMatch(/margin-top:\s*auto/);
     expect(coach).toMatch(/overflow-wrap:\s*anywhere/);
     expect(maia).toMatch(/overflow-wrap:\s*anywhere/);
     expect(bookline).toMatch(/overflow-wrap:\s*anywhere/);
