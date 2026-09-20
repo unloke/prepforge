@@ -111,9 +111,10 @@ export function removeExternal(selection, username) {
 }
 
 // Chips for the collapsed composer row. Full-Self collapses to one chip;
-// partial self shows the actual account chips (mixed group state); explicit
-// "none" (popover _selfOff) shows no chips; external usernames always show
-// as their own chips.
+// Self + external keeps the collapsed Self chip alongside the external chips
+// (one union, matching the fetch); partial self shows the actual account
+// chips (mixed group state); explicit "none" (popover _selfOff) shows no
+// chips; external usernames always show as their own chips.
 export function selectionChips(selection, linkedAccounts) {
   const sel = normalizeSelection(selection);
   const linked = Array.isArray(linkedAccounts) ? linkedAccounts : [];
@@ -121,6 +122,9 @@ export function selectionChips(selection, linkedAccounts) {
     sel.accountIds.length === 0 && selection?._selfOff ? "none" : selfGroupState(sel, linked);
   const chips = [];
   if (state === "all" && linked.length) {
+    // Full Self collapses to one chip; Self + external keeps the collapsed
+    // Self chip alongside the external chips so the tray reads as one union,
+    // matching the fetch.
     chips.push({ kind: "self", label: `Self · ${linked.length}`, count: linked.length });
   } else {
     const byId = new Map(linked.map((a) => [a.id, a]));
@@ -412,41 +416,46 @@ export function legacyIdsToSelection(ids) {
 
 export function selectionToLegacyIds(selection, linkedAccounts) {
   const sel = normalizeSelection(selection);
+  // Explicit Self-off (empty + _selfOff) persists as a real marker so UI
+  // chips and fetch stay "no sources" across reload instead of collapsing
+  // back to the implicit Self default.
+  if (selection?._selfOff && !sel.accountIds.length && !sel.external.length) {
+    return ["__none__"];
+  }
   const state = selfGroupState(sel, linkedAccounts);
   // Full Self (and empty) persist as null = Self default; partial + external
-  // linked ids persist explicitly. External usernames live only in Scout's
-  // typed box, never in the legacy key.
+  // linked ids persist explicitly. External usernames live in their own key.
   if (state === "all") return null;
   return sel.accountIds.length ? [...sel.accountIds] : null;
 }
 
-// Resolve the usernames a page should actually fetch, preserving the existing
-// contracts: explicit linked picks > Self (all linked) > typed/external.
-// Games ignores external; Scout appends them after linked picks.
+// Resolve the usernames a page should actually fetch. Linked picks and
+// external names always union: implicit Self (empty accountIds) means ALL
+// linked, so Self + external fetches every linked username plus every external
+// name. Explicit _selfOff (empty + marker) means no sources. Games passes
+// includeExternal: false to ignore external; Scout passes true.
 export function resolveFetchUsernames({ selection, linkedAccounts, external = [], includeExternal = false }) {
+  // Explicit Self-off (empty + marker) fetches nothing — not even external.
+  if (selection?._selfOff) return [];
   const sel = normalizeSelection(selection);
   const linked = Array.isArray(linkedAccounts) ? linkedAccounts : [];
+  const idSet = new Set(sel.accountIds);
   const idToName = new Map(linked.map((a) => [a.id, a.username]));
-  const picked = sel.accountIds.map((id) => idToName.get(id)).filter(Boolean);
-  if (picked.length) {
-    const extra = includeExternal
-      ? [...sel.external, ...(Array.isArray(external) ? external : []).map(normalizeUsername).filter(Boolean)]
-      : [];
-    return uniqueStrings([...picked, ...extra]);
+  const knownPicked = [...idSet].map((id) => idToName.get(id)).filter(Boolean);
+  const unknownPicked = [...idSet].filter((id) => !idToName.has(id));
+  const legacyExtra = (Array.isArray(external) ? external : []).map(normalizeUsername).filter(Boolean);
+  const externals = includeExternal ? uniqueStrings([...sel.external, ...legacyExtra]) : [];
+  if (knownPicked.length || unknownPicked.length) {
+    // Any explicit linked pick narrows the linked side to exactly those ids
+    // (unknown ids resolve to nothing); external names still union in.
+    return uniqueStrings([...knownPicked, ...externals]);
   }
-  if (sel.external.length && includeExternal) return [...sel.external];
   const all = linked.map((a) => a.username).filter(Boolean);
   if (all.length) {
-    const extra = includeExternal
-      ? (Array.isArray(external) ? external : []).map(normalizeUsername).filter(Boolean)
-      : [];
-    return uniqueStrings([...all, ...extra]);
+    // Implicit Self (empty accountIds): ALL linked union external.
+    if (includeExternal) return uniqueStrings([...all, ...externals]);
+    return uniqueStrings(all);
   }
-  if (includeExternal) {
-    return uniqueStrings([
-      ...sel.external,
-      ...(Array.isArray(external) ? external : []).map(normalizeUsername).filter(Boolean),
-    ]);
-  }
+  if (includeExternal) return uniqueStrings(externals);
   return [];
 }

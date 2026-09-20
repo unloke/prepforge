@@ -408,10 +408,9 @@ h2 {
   font-weight: 600;
 }
 
-/* Source picker: "Self" (all linked identities) is the default, one tap away;
-   explicit account picks layer on top as compact chips. */
-.source-chip,
-.source-pick,
+/* Source composer: the toolbar shows selected-source chips + one Add trigger.
+   Every source edit (Self group, linked picks, Scout external usernames) opens
+   the shared composer popover — no standalone Self/Sources buttons remain. */
 .source-add {
   font-size: 12px;
   padding: 4px 10px;
@@ -422,34 +421,23 @@ h2 {
   cursor: pointer;
   white-space: nowrap;
 }
-.source-chip.is-on {
-  color: var(--text);
-  font-weight: 700;
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-.source-chip:hover,
-.source-pick:hover,
 .source-add:hover {
   color: var(--text);
   border-color: var(--btn-border-hover);
   background: var(--surface-hover);
 }
-.source-chip:focus-visible,
-.source-pick:focus-visible,
 .source-add:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
-.source-chip:disabled,
-.source-pick:disabled,
 .source-add:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
-.source-add {
+.src-chip.is-self {
+  border-color: var(--accent);
+  background: var(--accent-soft);
   font-weight: 700;
-  padding: 4px 9px;
 }
 
 /* Shared Source Composer: collapsed chip tray + PrepForge-style popover. */
@@ -3927,7 +3915,6 @@ h2 {
 }
 @media (max-width: 600px) {
   #replay-count,
-  #scout-username,
   #scout-color { min-height: 44px; }
   .scout-line-detail { flex-direction: column; }
   .scout-miniboard-wrap { width: 96px; height: 96px; }

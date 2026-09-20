@@ -82,10 +82,12 @@ describe("scout refutation render sync", () => {
   let elements;
   let view;
   let streamOnGame;
+  let pickedUsernames;
 
   beforeEach(() => {
     vi.useFakeTimers();
     pendingExplorerFetches.length = 0;
+    pickedUsernames = ["rival"];
     streamOnGame = null;
     streamGames.mockImplementation(async (_username, opts = {}) => {
       streamOnGame = opts.onGame;
@@ -109,7 +111,6 @@ describe("scout refutation render sync", () => {
       querySelector: (sel) => (sel === ".replay-card-scout" ? card : null),
     };
 
-    elements.set("scout-username", makeEl("scout-username", { value: "rival" }));
     elements.set("scout-color", makeEl("scout-color", { value: "both" }));
     elements.set("scout-btn", makeEl("scout-btn"));
     elements.set("scout-reset-btn", makeEl("scout-reset-btn"));
@@ -151,8 +152,12 @@ describe("scout refutation render sync", () => {
       getBuildNodeById: vi.fn(),
       setBuildPending: vi.fn(),
       pushBuildNode: vi.fn(),
+      scoutPickedUsernames: () => pickedUsernames,
     });
     view.bindControls();
+    view.__setPickedUsernames = (names) => {
+      pickedUsernames = names;
+    };
   });
 
   afterEach(() => {
@@ -176,7 +181,7 @@ describe("scout refutation render sync", () => {
     await startScoutAndBeginExplorerFetch();
 
     elements.get("scout-reset-btn").addEventListener.mock.calls[0][1]();
-    elements.get("scout-username").value = "fresh";
+    view.__setPickedUsernames?.(["fresh"]);
     const freshRun = view.runScout();
     await vi.runOnlyPendingTimersAsync();
 

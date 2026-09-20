@@ -351,8 +351,8 @@ for (const vp of VIEWPORTS) {
     document.querySelector('[data-testid="nav-replay"]').click();
     await new Promise((r) => setTimeout(r, 200));
     const btn = document.getElementById("lichess-compare-btn");
-    const selfChip = document.getElementById("games-source-self");
-    const pickBtn = document.getElementById("games-source-pick");
+    const tray = document.getElementById("games-source-chips");
+    const addBtn = document.getElementById("games-source-add");
     // NOTE: postJson() awaits getCsrfToken() → GET /api/csrf first; the stub
     // below answers /api/csrf + /api/lichess/compare and passes the rest
     // through, so the full handler chain runs deterministically.
@@ -390,9 +390,9 @@ for (const vp of VIEWPORTS) {
       chooserOpened: !!overlay,
       bodies,
       status,
-      selfChipOn: !!selfChip?.classList.contains("is-on"),
-      chipLabel: selfChip?.textContent || "",
-      pickPresent: !!pickBtn,
+      selfChipOn: !!tray?.textContent?.includes("Self"),
+      chipLabel: tray?.textContent || "",
+      pickPresent: !!addBtn,
     };
   });
   check(`[${vp.label}] games self shows no chooser for two accounts`, !compareFlow.chooserOpened);
@@ -409,7 +409,11 @@ for (const vp of VIEWPORTS) {
     (compareFlow.status || "").slice(0, 100),
   );
 
-  // --- Scout self: chip on by default, composer chips shown ---------------
+  // --- Scout composer: one chips tray + single Add trigger ------------------
+  // Scout defaults to implicit Self (all linked): the tray shows the collapsed
+  // Self chip claiming the linked accounts, and the composer (only) carries
+  // the external-username input. No standalone Self/Sources buttons, no
+  // standalone username textbox.
   const scoutFlow = await page.evaluate(async () => {
     const hook = window.__prepforgePolishE2e;
     await hook.setLichessAccounts([
@@ -418,22 +422,24 @@ for (const vp of VIEWPORTS) {
     ]);
     document.querySelector('[data-testid="nav-scout"]').click();
     await new Promise((r) => setTimeout(r, 300));
-    const chip = document.getElementById("scout-source-self");
-    const input = document.getElementById("scout-username");
+    const tray = document.getElementById("scout-source-chips");
+    const addBtn = document.getElementById("scout-source-add");
     return {
-      chipPresent: !!chip,
-      chipOn: !!chip?.classList.contains("is-on"),
-      inputDisabled: !!input?.disabled,
-      label: chip?.textContent || "",
+      trayPresent: !!tray,
+      trayLabel: tray?.textContent || "",
+      addPresent: !!addBtn,
+      selfBtnGone: !document.getElementById("scout-source-self"),
+      pickBtnGone: !document.getElementById("scout-source-pick"),
+      inputGone: !document.getElementById("scout-username"),
     };
   });
-  check(`[${vp.label}] scout self chip present and on`, !!scoutFlow.chipPresent && !!scoutFlow.chipOn);
+  check(`[${vp.label}] scout composer tray + add present`, !!scoutFlow.trayPresent && !!scoutFlow.addPresent);
   check(
-    `[${vp.label}] scout self claims linked accounts`,
-    /2 linked|all linked|Self · 2/.test(scoutFlow.label || ""),
-    scoutFlow.label || "",
+    `[${vp.label}] scout tray claims linked Self`,
+    /2 linked|all linked|Self · 2/.test(scoutFlow.trayLabel || ""),
+    scoutFlow.trayLabel || "",
   );
-  check(`[${vp.label}] scout opponent box stays usable`, !scoutFlow.inputDisabled);
+  check(`[${vp.label}] scout standalone source chrome gone`, !!scoutFlow.selfBtnGone && !!scoutFlow.pickBtnGone && !!scoutFlow.inputGone);
 
   // --- Source Composer: shared chips + popover on Games and Scout ------------
   // Both pages render selected-source chips with an Add button; opening the
@@ -453,11 +459,11 @@ for (const vp of VIEWPORTS) {
     document.querySelector('[data-testid="nav-replay"]').click();
     await new Promise((r) => setTimeout(r, 200));
     const out = {};
-    const gamesChip = document.getElementById("games-source-self");
-    out.gamesChipLabel = gamesChip?.textContent || "";
+    const gamesTray = document.getElementById("games-source-chips");
+    out.gamesChipLabel = gamesTray?.textContent || "";
     out.gamesAdd = !!document.getElementById("games-source-add");
-    out.gamesTray = !!document.getElementById("games-source-chips");
-    document.getElementById("games-source-pick").click();
+    out.gamesTray = !!gamesTray;
+    document.getElementById("games-source-add").click();
     await new Promise((r) => setTimeout(r, 200));
     const pop = document.querySelector(".src-popover");
     out.popOpen = !!pop;
@@ -466,7 +472,7 @@ for (const vp of VIEWPORTS) {
       !!pop?.textContent?.includes("account_a") && !!pop?.textContent?.includes("account_b");
     const selfBox = pop?.querySelector('[data-testid="src-self-checkbox"]');
     const selfLabel = pop?.querySelector('[data-src-self]');
-    const before = (document.getElementById("games-source-self")?.textContent) || "";
+    const before = (document.getElementById("games-source-chips")?.textContent) || "";
     const debug = {
       hasPop: !!pop,
       popHtml: (pop?.innerHTML || "").slice(0, 400),
@@ -480,7 +486,7 @@ for (const vp of VIEWPORTS) {
       selfBox.click();
       await new Promise((r) => setTimeout(r, 250));
     }
-    out.partialLabel = document.getElementById("games-source-self")?.textContent || "";
+    out.partialLabel = document.getElementById("games-source-chips")?.textContent || "";
     // Deselecting Self from the implicit default is an explicit empty: the
     // group box reads off ("Self"), which differs from the "Self · 2" before.
     out.partialChanged = out.partialLabel !== before;
@@ -511,6 +517,7 @@ for (const vp of VIEWPORTS) {
       await new Promise((r) => setTimeout(r, 150));
     }
     out.scoutExternalChip = !!document.querySelector('[data-scout-unpick-external]');
+    out.scoutTrayLabel = document.getElementById("scout-source-chips")?.textContent || "";
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     await new Promise((r) => setTimeout(r, 100));
     out.focusReturned =
@@ -524,6 +531,11 @@ for (const vp of VIEWPORTS) {
   check(`[${vp.label}] composer deselect shows explicit empty`, !!composerFlow.partialChanged && !!composerFlow.trayVisible, `${composerFlow.partialLabel || ""} | tray=${composerFlow.trayHtml || ""} | key=${composerFlow.gamesSourceKey || ""}`);
   check(`[${vp.label}] composer esc closes`, !!composerFlow.escClosed);
   check(`[${vp.label}] scout composer accepts external names`, !!composerFlow.scoutPop && !!composerFlow.scoutExternalInput && !!composerFlow.scoutExternalChip);
+  check(
+    `[${vp.label}] scout tray keeps Self + external together`,
+    /Self/.test(composerFlow.scoutTrayLabel || "") && /Hikaru/.test(composerFlow.scoutTrayLabel || ""),
+    composerFlow.scoutTrayLabel || "",
+  );
 
   // --- Connections: compact rows + overflow menu ------------------------------
   const connFlow = await page.evaluate(async () => {

@@ -183,19 +183,19 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("setBoardFen(boardName, fen)");
   });
 
-  it("offers Self as the default games/scout source with compact chips", () => {
-    expect(html).toContain('id="games-source-self"');
-    expect(html).toContain('id="games-source-pick"');
+  it("offers one shared Source Composer on Games and Scout with compact chips", () => {
     expect(html).toContain('id="games-source-add"');
     expect(html).toContain('id="games-source-chips"');
-    expect(html).toContain('id="scout-source-self"');
-    expect(html).toContain('id="scout-source-pick"');
     expect(html).toContain('id="scout-source-add"');
     expect(html).toContain('id="scout-source-chips"');
-    expect(html).toContain('id="scout-source-picked"');
-    expect(css).toContain(".source-chip");
-    expect(css).toContain(".source-pick");
+    expect(html).not.toContain('id="games-source-self"');
+    expect(html).not.toContain('id="games-source-pick"');
+    expect(html).not.toContain('id="scout-source-self"');
+    expect(html).not.toContain('id="scout-source-pick"');
+    expect(html).not.toContain('id="scout-source-picked"');
+    expect(html).not.toContain('id="scout-username"');
     expect(css).toContain(".source-add");
+    expect(css).not.toContain(".source-pick");
     expect(css).toContain(".src-chips");
     expect(css).toContain(".src-chip");
     expect(css).toContain(".src-popover");
@@ -204,19 +204,25 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("views/shared/source-composer.js");
     expect(app).toContain("openSourceComposer");
     expect(app).toContain("selectionChips");
-    expect(app).toContain("selfGroupState");
-    // Games: Self + shared composer + explicit sources.
+    // Games: selected-source chips + one Add trigger + explicit sources.
     expect(app).toContain("gamesSourceAccountIds");
     expect(app).toContain("openGamesComposer");
     expect(app).toContain("setGamesSourceAccountIds");
     expect(app).not.toContain("chooseGamesSourceAccounts");
-    // Scout: Self + shared composer + arbitrary opponent usernames.
-    expect(app).toContain("scoutSelfOn");
-    expect(app).toContain("scoutSourceAccountIds");
+    // Scout: chips + one Add trigger + composer external usernames (no
+    // standalone Self/Sources buttons, no standalone username textbox). The
+    // report's profile links (scout-username-link) are unrelated chrome.
+    expect(app).not.toContain('getElementById("scout-username")');
+    expect(app).not.toContain("scoutSelfOn");
+    expect(app).not.toContain("setScoutSelf");
+    expect(app).not.toContain("scoutSourceAccountIds");
+    expect(app).not.toContain("setScoutSourceAccountIds");
+    expect(app).not.toContain("scoutExternalUsernames");
     expect(app).toContain("scoutPickedUsernames");
     expect(app).toContain("openScoutComposer");
     expect(app).not.toContain("chooseScoutSourceAccounts");
     expect(scoutView).toContain("scoutPickedUsernames");
+    expect(scoutView).not.toContain('getElementById("scout-username")');
     // Per-game source metadata survives into the rendered rows.
     expect(replayView).toContain("source_account");
   });

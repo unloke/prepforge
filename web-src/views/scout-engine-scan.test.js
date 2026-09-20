@@ -90,11 +90,13 @@ describe("scout deep scan session binding", () => {
   let elements;
   let view;
   let streamOnGame;
+  let pickedUsernames;
 
   beforeEach(() => {
     vi.useFakeTimers();
     resolveDeepScan = null;
     runScoutDeepScan.mockClear();
+    pickedUsernames = ["rival"];
 
     streamOnGame = null;
     streamGames.mockImplementation(async (_username, opts = {}) => {
@@ -119,7 +121,6 @@ describe("scout deep scan session binding", () => {
       querySelector: (sel) => (sel === ".replay-card-scout" ? card : null),
     };
 
-    elements.set("scout-username", makeEl("scout-username", { value: "rival" }));
     elements.set("scout-color", makeEl("scout-color", { value: "both" }));
     elements.set("scout-btn", makeEl("scout-btn"));
     elements.set("scout-reset-btn", makeEl("scout-reset-btn"));
@@ -161,6 +162,7 @@ describe("scout deep scan session binding", () => {
       getBuildNodeById: vi.fn(),
       setBuildPending: vi.fn(),
       pushBuildNode: vi.fn(),
+      scoutPickedUsernames: () => pickedUsernames,
     });
     view.bindControls();
   });
@@ -195,7 +197,7 @@ describe("scout deep scan session binding", () => {
     expect(runScoutDeepScan).toHaveBeenCalled();
 
     elements.get("scout-reset-btn").addEventListener.mock.calls[0][1]();
-    elements.get("scout-username").value = "fresh";
+    pickedUsernames = ["fresh"];
     const freshRun = view.runScout();
     await vi.runOnlyPendingTimersAsync();
 
