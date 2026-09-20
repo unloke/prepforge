@@ -5148,8 +5148,11 @@ async function runAnalysis() {
     // Phase instrumentation: each pipeline stage reports through one `timed`
     // wrapper so the toast label always names the work actually running (the
     // old "classifying" label covered Maia inference + classify-save +
-    // render). Durations accumulate into `timings` and log once as
-    // [analyze-timings] — deterministic phase attribution, no ms thresholds.
+    // render). Stages: load, stockfish, maia-load, maia-inference (+ trap
+    // detail), classifying (CPU), saving analysis (DB, from the server's
+    // server_timings_ms), rendering. Durations accumulate into `timings` and
+    // log once as [analyze-timings] — deterministic phase attribution, no ms
+    // thresholds.
     const timings = {};
     const timed = async (phase, fn) => {
       const start = performance.now();
@@ -5276,16 +5279,17 @@ async function runAnalysis() {
 
     // Past this point we're persisting: server classify + local render. The
     // save is not cancellable, so remove the Stop affordance rather than
-    // imply a cancel that wouldn't hold.
+    // imply a cancel that wouldn't hold. Classifying (CPU) and saving (DB)
+    // are separate phases — the server reports both in server_timings_ms.
     jobToast.lockJob();
     jobToast.updateJob({
       current: positions.length,
       total: positions.length,
-      phase: "classify-save",
-      message: "classifying + saving",
+      phase: "classifying",
+      message: "classifying",
     });
 
-    const payload = await timed("classify-save", () =>
+    const payload = await timed("classify", () =>
       postJson("/api/analyze/classify-save", {
         game_id: prep.game_id,
         engine: prep.engine || "stockfish (browser)",
@@ -5301,6 +5305,20 @@ async function runAnalysis() {
           };
         }),
         maia_assessments: maiaAssessments,
+      }).then((response) => {
+        const server = response.server_timings_ms || {};
+        for (const [key, value] of Object.entries(server)) {
+          timings[`server_${key}`] = value;
+        }
+        if (server.save_game_ms != null || server.save_analysis_ms != null) {
+          jobToast.updateJob({
+            current: positions.length,
+            total: positions.length,
+            phase: "saving",
+            message: "saving analysis",
+          });
+        }
+        return response;
       })
     );
 
@@ -5308,6 +5326,12 @@ async function runAnalysis() {
     resetAnalysisVariations();
     showAnalysisPly(0);
     await timed("render", () => renderAnalysis(payload));
+    jobToast.updateJob({
+      current: positions.length,
+      total: positions.length,
+      phase: "rendering",
+      message: "rendering",
+    });
     try {
       // eslint-disable-next-line no-console
       console.debug("[analyze-timings]", timings);
