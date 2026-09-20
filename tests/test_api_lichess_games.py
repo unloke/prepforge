@@ -555,6 +555,92 @@ def _link_as(client, monkeypatch, username):
     _link(client)
 
 
+def test_latest_default_aggregates_self_and_picks_newest(client, monkeypatch):
+    """Two linked identities, no account_id: the default reads BOTH and loads
+    the truly newest by finish time, quietly naming the source account."""
+    _register(client, "selfagg@example.com")
+    _link_as(client, monkeypatch, "SelfA")
+    _link_as(client, monkeypatch, "SelfB")
+
+    def _fake_meta(username, count=1, **kwargs):
+        game = _game()
+        game.white = username
+        game.black = "Opponent"
+        if username == "SelfA":
+            game.lichess_id = "older001"
+            game.finished_at = "2026-06-07T00:00:00Z"
+        else:
+            game.lichess_id = "newer002"
+            game.finished_at = "2026-06-08T00:00:00Z"
+        return [game]
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_latest_games_meta",
+        lambda username, count=1, **kwargs: _fake_meta(username, count, **kwargs),
+    )
+
+    body = client.get("/api/lichess/latest", params={"light": 1}).json()
+    assert body["has_game"] is True
+    assert body["lichess_id"] == "newer002"
+    assert body["source_account"] == "SelfB"
+    # Primary is untouched: aggregation never reassigns it.
+    assert client.get("/api/lichess").json()["username"] == "SelfA"
+
+
+def test_latest_aggregates_with_moves_for_my_last_game(client, monkeypatch):
+    """The full-PGN path (My last game) also aggregates: newest PGN wins."""
+    _register(client, "selfpgn@example.com")
+    _link_as(client, monkeypatch, "PgnA")
+    _link_as(client, monkeypatch, "PgnB")
+
+    def _fake_pgn(username, count=1, **kwargs):
+        game = _game()
+        game.white = username
+        if username == "PgnA":
+            game.lichess_id = "pgn-old"
+            game.finished_at = None
+        else:
+            game.lichess_id = "pgn-new"
+            game.finished_at = None
+        return [game]
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_recent_pgns",
+        lambda username, count=1, **kwargs: _fake_pgn(username, count, **kwargs),
+    )
+    body = client.get("/api/lichess/latest").json()
+    assert body["has_game"] is True
+    assert body["source_account"] in ("PgnA", "PgnB")
+    assert "pgn" in body
+
+
+def test_latest_self_degrades_when_one_account_fails(client, monkeypatch):
+    _register(client, "selfpart@example.com")
+    _link_as(client, monkeypatch, "PartA")
+    _link_as(client, monkeypatch, "PartB")
+
+    def _fake_meta(username, count=1, **kwargs):
+        if username == "PartA":
+            raise LichessFetchError("Lichess responded with HTTP 429 for user PartA")
+        return [_game()]
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_latest_games_meta",
+        lambda username, count=1, **kwargs: _fake_meta(username, count, **kwargs),
+    )
+    body = client.get("/api/lichess/latest", params={"light": 1}).json()
+    assert body["has_game"] is True
+    assert body["source_account"] == "PartB"
+
+
+def test_latest_self_all_fail_maps_to_502(client, monkeypatch):
+    _register(client, "selfallfail@example.com")
+    _link_as(client, monkeypatch, "FailA")
+    _link_as(client, monkeypatch, "FailB")
+    _mock_fetch(monkeypatch, error="Lichess is down")
+    assert client.get("/api/lichess/latest", params={"light": 1}).status_code == 502
+
+
 def test_two_identities_coexist_and_latest_selects_each(client, monkeypatch):
     """Link A then B: both appear in Settings, latest reads either by account_id."""
     _register(client, "chooser@example.com")
@@ -584,15 +670,17 @@ def test_two_identities_coexist_and_latest_selects_each(client, monkeypatch):
         lambda username, count=1, **kwargs: _fake(username, count, **kwargs),
     )
 
-    # Default (no account_id) reads the primary.
-    assert client.get("/api/lichess/latest").json()["white"] == "ChooserA"
+    # Default (no account_id) aggregates self: both identities are read.
+    body = client.get("/api/lichess/latest").json()
+    assert body["white"] in ("ChooserA", "ChooserB")
+    assert body["source_account"] in ("ChooserA", "ChooserB")
     # Explicit selection reads B without changing the primary.
     assert (
         client.get("/api/lichess/latest", params={"account_id": second["id"]}).json()["white"]
         == "ChooserB"
     )
     assert client.get("/api/lichess").json()["username"] == "ChooserA"
-    assert seen == ["ChooserA", "ChooserB"]
+    assert sorted(seen) == ["ChooserA", "ChooserB", "ChooserB"]
 
 
 def test_compare_selects_second_identity_without_changing_primary(client, monkeypatch):

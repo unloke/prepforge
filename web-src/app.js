@@ -3897,15 +3897,15 @@ async function resolveLichessAccountId(actionLabel) {
   return chosen || null;
 }
 
-// "My game" button: pull the latest Lichess game straight into the PGN box.
-async function fetchMyLichessGame() {
+// "My game" button: pull the newest game across ALL linked Lichess identities
+// ("self") straight into the PGN box — no chooser. account_id is only for
+// explicit single-account callers; the default path aggregates.
+async function fetchMyLichessGame(accountId = null) {
   if (!appState.lichessUsername && !lichessAccounts().length) {
     setStatus("Connect a Lichess account first");
     startLichessOAuth();
     return;
   }
-  const accountId = await resolveLichessAccountId("My last game");
-  if (accountId === null && lichessAccounts().length > 1) return;
   const query = accountId ? `?account_id=${encodeURIComponent(accountId)}` : "";
   setStatus("Fetching your latest game...");
   let latest;
@@ -3925,7 +3925,8 @@ async function fetchMyLichessGame() {
   // Show the game in the move list right away (steppable before Analyze).
   void loadPgnIntoAnalyze(latest.pgn || "", { goToEnd: false, quiet: true }).catch(() => {});
   if (latest.lichess_id) markLichessSeen(latest.lichess_id);
-  setStatus(`Loaded ${latest.white || "?"} vs ${latest.black || "?"} - press Analyze`);
+  const source = latest.source_account ? ` · from ${latest.source_account}` : "";
+  setStatus(`Loaded ${latest.white || "?"} vs ${latest.black || "?"}${source} - press Analyze`);
 }
 
 // Analyze "History": list previously analyzed games; click to recall a saved
@@ -10379,6 +10380,10 @@ function installPolishE2eHook() {
     getLichessAccounts() {
       return lichessAccounts();
     },
+    async fetchMyLastGame() {
+      await fetchMyLichessGame();
+      return document.getElementById("app-status")?.textContent || "";
+    },
     async setBoardFen(boardName, fen) {
       const board = boards[boardName] || null;
       if (!board) throw new Error(`unknown board: ${boardName}`);
@@ -10537,7 +10542,7 @@ function bindEvents() {
       onCreateRepertoireFromGameClick().catch(() => {});
     });
   }
-  document.getElementById("fetch-my-game").addEventListener("click", fetchMyLichessGame);
+  document.getElementById("fetch-my-game").addEventListener("click", () => fetchMyLichessGame());
   // Lazy-load the analysis history list the first time its drawer is opened.
   const historyDrawer = document.getElementById("history-drawer");
   if (historyDrawer) {
