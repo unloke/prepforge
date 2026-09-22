@@ -15,6 +15,7 @@ import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { describeMove } from "./explain.js";
 import {
+  activateWorkspaceTab,
   parseWorkspaceLocation,
   serializeWorkspaceLocation,
   workspaceLocationFromState,
@@ -3163,7 +3164,7 @@ function switchView(name, { fromUrl = false } = {}) {
     view.classList.toggle("is-active", view.id === `view-${name}`);
   });
   if (!fromUrl) syncWorkspaceUrl({ push: true });
-  if (name === "replay") setReplaySection(appState.replaySection);
+  if (name === "replay") setReplaySection(appState.replaySection, { syncUrl: false });
   if (name === "analyze") {
     preloadCoach().catch(() => {});
     preloadAnalyzeView().catch(() => {});
@@ -11051,10 +11052,7 @@ function bindEvents() {
   document.querySelectorAll(".tab").forEach((button) => {
     button.addEventListener("click", () => {
       dismissTransientOverlays();
-      switchView(button.dataset.view);
-      if (button.dataset.replaySection) {
-        setReplaySection(button.dataset.replaySection, { focus: true });
-      }
+      activateWorkspaceTab(button.dataset, { setReplaySection, switchView });
       if (button.dataset.view === "settings") loadSettings();
       if (button.dataset.view === "teams") loadTeams().catch(() => {});
     });

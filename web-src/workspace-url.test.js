@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 
 import {
+  activateWorkspaceTab,
   REPLAY_SECTIONS,
   WORKSPACE_VIEWS,
   formatWorkspaceHash,
@@ -174,6 +175,46 @@ describe("games/scout deep links", () => {
     ).toEqual({ view: "build", replaySection: null, repertoireId: null, ply: null });
   });
 
+  it.each([
+    ["games", "#/games"],
+    ["scout", "#/scout"],
+  ])("creates one history entry when opening %s from another view", (replaySection, expectedHash) => {
+    const state = { currentView: "dashboard", replaySection: "games" };
+    const entries = [];
+    const history = {
+      pushState(location, _unused, href) {
+        entries.push({ location, href });
+      },
+    };
+
+    activateWorkspaceTab(
+      { view: "replay", replaySection },
+      {
+        setReplaySection(next, { syncUrl }) {
+          expect(syncUrl).toBe(false);
+          state.replaySection = next;
+        },
+        switchView(next) {
+          state.currentView = next;
+          const location = workspaceLocationFromState(state);
+          history.pushState(location, "", formatWorkspaceHash(location));
+        },
+      },
+    );
+
+    expect(entries).toEqual([
+      {
+        location: {
+          view: "replay",
+          replaySection,
+          repertoireId: null,
+          ply: null,
+        },
+        href: expectedHash,
+      },
+    ]);
+  });
+
   it("app wires section restoration for direct open and popstate", async () => {
     const { readFileSync } = await import("node:fs");
     const { fileURLToPath } = await import("node:url");
@@ -181,7 +222,7 @@ describe("games/scout deep links", () => {
     const root = dirname(fileURLToPath(import.meta.url));
     const app = readFileSync(join(root, "app.js"), "utf8");
     expect(app).toContain("appState.replaySection = loc.replaySection");
-    expect(app).toContain("setReplaySection(appState.replaySection)");
+    expect(app).toContain("setReplaySection(appState.replaySection, { syncUrl: false })");
     expect(app).toContain('button.dataset.replaySection === (appState.replaySection || "games")');
   });
 });
