@@ -84,6 +84,10 @@ def _link(client):
     state = parse_qs(urlparse(r.headers["location"]).query)["state"][0]
     cb = client.get(f"/api/lichess/callback?code=abc&state={state}", follow_redirects=False)
     assert cb.status_code == 303, cb.text
+    status = client.get("/api/lichess").json()
+    accounts = status.get("accounts") or []
+    assert accounts, status
+    return accounts[0]["id"]
 
 
 # ---- gating + link requirement ---------------------------------------------
@@ -485,39 +489,42 @@ def test_seen_requires_csrf(client):
     assert client.post("/api/lichess/seen", json={"lichess_id": "x"}).status_code == 403
 
 
-# ---- legacy SPA compatibility surface --------------------------------------
-# web-src/app.js still calls the old endpoints; these shims keep the SPA working
-# across the FastAPI cutover (see the P1/P2 peer-review findings).
+# ---- canonical Lichess surface (GET /api/lichess) ----------------------------
 
 
-def test_status_shim_unlinked_shape(client):
+def test_status_unlinked_shape(client):
     _register(client, "a@example.com")
-    assert client.get("/api/lichess/status").json() == {"connected": False, "username": None}
-
-
-def test_status_shim_linked_shape(client):
-    _register(client, "a@example.com")
-    _link(client)
-    assert client.get("/api/lichess/status").json() == {
-        "connected": True,
-        "username": "TestUser",
+    assert client.get("/api/lichess").json() == {
+        "linked": False,
+        "username": None,
+        "accounts": [],
     }
 
 
-def test_status_shim_requires_auth(client):
-    assert client.get("/api/lichess/status").status_code == 401
+def test_status_linked_shape(client):
+    _register(client, "a@example.com")
+    link_id = _link(client)
+    assert client.get("/api/lichess").json() == {
+        "linked": True,
+        "username": "TestUser",
+        "accounts": [{"id": link_id, "username": "TestUser", "is_primary": True}],
+    }
 
 
-def test_compare_post_ignores_client_username(client, monkeypatch):
+def test_status_requires_auth(client):
+    assert client.get("/api/lichess").status_code == 401
+
+
+def test_compare_post_uses_linked_identity(client, monkeypatch):
     _register(client, "a@example.com")
     _link(client)
     _mock_fetch(monkeypatch, games=[_game()])
     body = client.post(
         "/api/lichess/compare",
-        json={"username": "someone-else", "count": 5},
+        json={"count": 5},
         headers=csrf_headers(client),
     ).json()
-    # username comes from the linked account, NOT the client-supplied one.
+    # username comes from the linked account, NOT any client-supplied one.
     assert body["username"] == "TestUser"
     assert body["count"] == 1
 
@@ -540,16 +547,16 @@ def test_latest_light_query_maps_to_metadata(client, monkeypatch):
     assert body["finished_at"] == "2026-06-08T00:00:00Z"
 
 
-def test_oauth_login_legacy_path_redirects(client):
-    """The SPA opens /oauth/login in a popup; it must not 404 post-cutover."""
+def test_oauth_login_redirects(client):
+    """The SPA opens /api/lichess/login in a popup; it must redirect to Lichess."""
     _register(client, "a@example.com")
-    r = client.get("/oauth/login", follow_redirects=False)
+    r = client.get("/api/lichess/login", follow_redirects=False)
     assert r.status_code == 307
     assert "lichess.org" in r.headers["location"]
 
 
-def test_oauth_login_legacy_path_requires_auth(client):
-    assert client.get("/oauth/login", follow_redirects=False).status_code == 401
+def test_oauth_login_requires_auth(client):
+    assert client.get("/api/lichess/login", follow_redirects=False).status_code == 401
 
 
 # ---- per-action account selection --------------------------------------------

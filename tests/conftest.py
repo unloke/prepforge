@@ -15,6 +15,7 @@ def client(tmp_path, monkeypatch):
     db_file = tmp_path / "api_test.sqlite3"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_file.as_posix()}")
     monkeypatch.setenv("PREPFORGE_SECRET_KEY", "test-secret-not-for-prod")
+    monkeypatch.setenv("PREPFORGE_TOKEN_KEY", "test-token-key-not-for-prod")
     monkeypatch.setenv("PREPFORGE_ENV", "development")
 
     from prepforge_chess.api import config, db, main

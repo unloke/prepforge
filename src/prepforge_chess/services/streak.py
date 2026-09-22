@@ -1,8 +1,8 @@
-"""Daily training streak (Train v2, Phase 3).
+"""Daily training streak (Train v2).
 
 One tiny per-user fact: how many consecutive *days* the user has trained.
-State lives in ``user_profiles.settings_json`` under ``STREAK_KEY`` (no schema
-change), shaped ``{"current": int, "best": int, "last_day": "YYYY-MM-DD"}``.
+State lives in ``user_settings`` under ``STREAK_KEY`` (no schema change per
+fact), shaped ``{"current": int, "best": int, "last_day": "YYYY-MM-DD"}``.
 
 Day boundaries are the *player's* calendar, not the server's: the client sends
 its local date with each graded move and the server only sanity-clamps it

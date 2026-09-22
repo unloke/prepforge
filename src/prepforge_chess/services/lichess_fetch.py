@@ -564,7 +564,7 @@ def record_departure_misses(
     """
     if owner_user_id is None:
         return 0
-    stored = repository.get_profile_setting(owner_user_id, DEPARTURE_INGESTED_KEY, [])
+    stored = repository.get_user_setting(owner_user_id, DEPARTURE_INGESTED_KEY, [])
     ingested = [str(item) for item in stored] if isinstance(stored, list) else []
     seen = set(ingested)
     recorded = 0
@@ -575,23 +575,22 @@ def record_departure_misses(
             continue
         if summary.lichess_id in seen:
             continue
-        # NB: progress rows are keyed on the repertoire alone (the trainer reads and
-        # writes them with no user_profile_id — isolation rides on repertoire
-        # ownership), so the miss is stored the same way or Train would never see it.
         progress = repository.load_training_progress(
-            summary.repertoire_id, summary.expected_node_id
+            summary.repertoire_id, summary.expected_node_id, owner_user_id=owner_user_id
         ) or TrainingProgress(node_id=summary.expected_node_id)
         updated = update_spaced_repetition(progress, correct=False)
         # An in-session miss retries after 10 minutes; a miss from a REAL game should
         # land in the very next session, so it is due immediately.
         updated = replace(updated, due_at=updated.last_reviewed_at)
-        repository.save_training_progress(summary.repertoire_id, updated)
+        repository.save_training_progress(
+            summary.repertoire_id, updated, owner_user_id=owner_user_id
+        )
         seen.add(summary.lichess_id)
         ingested.append(summary.lichess_id)
         summary.training_recorded = True
         recorded += 1
     if recorded:
-        repository.set_profile_setting(
+        repository.set_user_setting(
             owner_user_id, DEPARTURE_INGESTED_KEY, ingested[-_DEPARTURE_INGESTED_CAP:]
         )
     return recorded

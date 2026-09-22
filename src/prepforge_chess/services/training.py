@@ -106,8 +106,9 @@ def resume_or_create_session(
 
 
 class TrainingService:
-    def __init__(self, repository: PrepForgeRepository):
+    def __init__(self, repository: PrepForgeRepository, owner_user_id: str | None = None):
         self.repository = repository
+        self.owner_user_id = owner_user_id
 
     def start_or_resume_session(
         self,
@@ -177,7 +178,11 @@ class TrainingService:
             # "Due review" = spaced-repetition due nodes ∪ the latest session's
             # open mistakes. Select whole leaf lines that pass through any such
             # node so the user replays them in context, not as isolated moves.
-            target_ids = due_node_ids(self.repository.list_training_progress(repertoire.id))
+            target_ids = due_node_ids(
+                self.repository.list_training_progress(
+                    repertoire.id, owner_user_id=self._owner_or_raise()
+                )
+            )
             existing = self.repository.load_latest_training_session(repertoire.id)
             if existing is not None and existing.mistakes:
                 target_ids |= set(existing.mistakes)
@@ -221,6 +226,7 @@ class TrainingService:
         progress = self.repository.load_training_progress(
             repertoire.id,
             prompt.expected_node_id,
+            owner_user_id=self._owner_or_raise(),
         ) or TrainingProgress(node_id=prompt.expected_node_id)
         correct = played_uci == prompt.expected_move_uci
         updated_session, updated_progress = record_attempt(
@@ -262,7 +268,9 @@ class TrainingService:
             )
 
         self.repository.save_training_session(updated_session)
-        self.repository.save_training_progress(repertoire.id, updated_progress)
+        self.repository.save_training_progress(
+            repertoire.id, updated_progress, owner_user_id=self._owner_or_raise()
+        )
 
         # Surface the player's move result and the opponent's single reply so
         # the UI can animate them as two separate steps instead of jumping the
@@ -456,6 +464,11 @@ class TrainingService:
         if session is None:
             raise ValueError("training session not found: {0}".format(session_id))
         return session
+
+    def _owner_or_raise(self) -> str:
+        if not self.owner_user_id:
+            raise ValueError("training service requires an owner")
+        return self.owner_user_id
 
 
 def record_attempt(

@@ -23,20 +23,15 @@ from sqlalchemy import (
 
 from prepforge_chess.api.db import Base
 
+# Canonical per-user settings + train receipts are ORM-defined in api.models
+# (single definition of truth on this same metadata); alias them here so
+# repository code keeps one import surface.
+from prepforge_chess.api import models as _orm_models  # noqa: F401
+
 metadata = Base.metadata
 
-user_profiles = Table(
-    "user_profiles",
-    metadata,
-    Column("id", Text, primary_key=True),
-    Column("display_name", Text, nullable=False),
-    Column("lichess_username", Text),
-    Column("preferred_engine", Text, nullable=False),
-    Column("default_analysis_depth", Integer, nullable=False),
-    Column("settings_json", Text, nullable=False),
-    Column("created_at", Text, nullable=False),
-    Column("updated_at", Text, nullable=False),
-)
+user_settings = metadata.tables["user_settings"]
+train_attempt_receipts = metadata.tables["train_attempt_receipts"]
 
 games = Table(
     "games",
@@ -124,7 +119,7 @@ repertoires = Table(
     "repertoires",
     metadata,
     Column("id", Text, primary_key=True),
-    Column("user_profile_id", Text, ForeignKey("user_profiles.id")),
+    Column("owner_user_id", Text),
     Column("name", Text, nullable=False),
     Column("color", Text, nullable=False),
     Column("root_fen", Text, nullable=False),
@@ -144,7 +139,7 @@ repertoires = Table(
     Column("team_id", Text),
     Column("visibility", Text),
     Column("health_json", Text),
-    Index("idx_repertoires_owner", "user_profile_id"),
+    Index("idx_repertoires_owner", "owner_user_id"),
     Index("idx_repertoires_team", "team_id"),
 )
 
@@ -210,7 +205,7 @@ training_progress = Table(
     "training_progress",
     metadata,
     Column("id", Text, primary_key=True),
-    Column("user_profile_id", Text, ForeignKey("user_profiles.id")),
+    Column("owner_user_id", Text),
     Column(
         "repertoire_id",
         Text,
@@ -231,8 +226,8 @@ training_progress = Table(
     Column("is_mastered", Integer, nullable=False),
     Column("created_at", Text, nullable=False),
     Column("updated_at", Text, nullable=False),
-    UniqueConstraint("user_profile_id", "repertoire_id", "node_id"),
-    Index("idx_training_progress_rep_user", "repertoire_id", "user_profile_id"),
+    UniqueConstraint("owner_user_id", "repertoire_id", "node_id", name="uq_training_progress_owner"),
+    Index("idx_training_progress_rep_user", "repertoire_id", "owner_user_id"),
 )
 
 engine_settings = Table(
@@ -257,23 +252,9 @@ app_settings = Table(
     Column("updated_at", Text, nullable=False),
 )
 
-user_sessions = Table(
-    "user_sessions",
-    metadata,
-    Column("token_hash", Text, primary_key=True),
-    Column(
-        "user_profile_id",
-        Text,
-        ForeignKey("user_profiles.id", ondelete="CASCADE"),
-        nullable=False,
-    ),
-    Column("created_at", Text, nullable=False),
-    Column("last_seen_at", Text, nullable=False),
-    Index("idx_user_sessions_profile", "user_profile_id"),
-)
-
 DOMAIN_TABLES = (
-    user_profiles,
+    user_settings,
+    train_attempt_receipts,
     games,
     positions,
     engine_evaluations,
@@ -285,7 +266,6 @@ DOMAIN_TABLES = (
     training_progress,
     engine_settings,
     app_settings,
-    user_sessions,
 )
 
 

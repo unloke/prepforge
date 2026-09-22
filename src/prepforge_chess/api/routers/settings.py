@@ -1,17 +1,10 @@
-"""Ported settings endpoints (Phase 2b-2d-iii) — per-owner preferences.
+"""Per-owner analysis preferences.
 
-The only persistent user preference in the browser-compute model is the Stockfish
-**depth** the browser runs its analysis at; ``/api/analyze/prepare`` echoes it back as
-the hint the SPA's WASM engine should use. Unlike the legacy single-tenant server —
-which kept depth in the **global** ``app_settings`` key/value store — the SaaS API
-stores it **per owner** on ``user_profiles.settings_json`` (via the same
-``get/set_profile_setting`` mechanism that holds the Lichess token), so one tenant's
+The only persistent user preferences in the browser-compute model are the
+Stockfish **depth** the browser runs its analysis at and the Maia3 rating pin;
+``/api/analyze/prepare`` echoes them back as hints the SPA's WASM engines use.
+They live per owner in ``user_settings`` (one row per key), so one tenant's
 preference never changes another's analysis.
-
-The legacy ``settings_payload`` also surfaced *server-engine introspection* (Stockfish
-binary path/version, CUDA availability, the Maia3 package, an install action). Those are
-deliberately **dropped**: the SaaS deploy runs no engine — the browser does — so there
-is nothing server-side to introspect or install.
 """
 from __future__ import annotations
 
@@ -88,11 +81,11 @@ def update_settings(
 ) -> dict[str, Any]:
     """Persist this owner's analysis preferences and return the refreshed payload."""
     if body.stockfish_depth is not None:
-        repo.set_profile_setting(
+        repo.set_user_setting(
             owner, STOCKFISH_DEPTH_KEY, clamp_stockfish_depth(body.stockfish_depth)
         )
     if body.maia_rating == "auto":
-        repo.set_profile_setting(owner, MAIA_RATING_KEY, None)
+        repo.set_user_setting(owner, MAIA_RATING_KEY, None)
     elif body.maia_rating is not None:
-        repo.set_profile_setting(owner, MAIA_RATING_KEY, clamp_maia_rating(body.maia_rating))
+        repo.set_user_setting(owner, MAIA_RATING_KEY, clamp_maia_rating(body.maia_rating))
     return _settings_payload(repo, owner)

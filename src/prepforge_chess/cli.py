@@ -404,7 +404,7 @@ def run_demo_train(args: argparse.Namespace) -> int:
         apply_schema(connection)
         repository = PrepForgeRepository(connection)
         repertoire = _create_demo_training_repertoire(repository)
-        service = TrainingService(repository)
+        service = TrainingService(repository, "cli-demo")
         mode = TrainingMode(args.mode)
         session = service.start_or_resume_session(
             repertoire.id,

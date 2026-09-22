@@ -64,6 +64,16 @@ class Settings(BaseSettings):
     # (see require_production_secret).
     secret_key: str = Field(default="dev-insecure-change-me")
 
+    # Token-at-rest encryption key for linked-account OAuth tokens and the
+    # short-lived OAuth flow cookies. Independent from ``secret_key`` (which
+    # signs share links and seeds CSRF) so rotating one never re-keys the
+    # other. Fernet ciphertexts carry an explicit version prefix (see
+    # api/security.py); there is no legacy format and no fallback.
+    token_key: str = Field(
+        default="dev-insecure-change-me",
+        validation_alias="PREPFORGE_TOKEN_KEY",
+    )
+
     # Session cookie.
     session_cookie_name: str = Field(default="pf_session")
     session_ttl_days: int = Field(default=30)
@@ -124,6 +134,10 @@ class Settings(BaseSettings):
         if self.is_production and self.secret_key == "dev-insecure-change-me":
             raise RuntimeError(
                 "PREPFORGE_SECRET_KEY must be set to a strong random value in production"
+            )
+        if self.is_production and self.token_key == "dev-insecure-change-me":
+            raise RuntimeError(
+                "PREPFORGE_TOKEN_KEY must be set to a strong random value in production"
             )
 
 

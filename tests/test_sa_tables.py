@@ -1,81 +1,122 @@
-"""Drift guard: SQLAlchemy domain schema must match schema.sql."""
-from __future__ import annotations
+"""Alembic is the sole production schema authority.
 
-import sqlite3
+This module asserts that every table Alembic manages matches the SQLAlchemy
+metadata that defines it: no second production schema lifecycle (no runtime
+``create_all`` patching, no ``schema.sql`` fixture). The ephemeral helper
+(``storage.database``) exists only for throwaway SQLite engines in CLI smoke
+paths and non-API unit tests.
+"""
+from __future__ import annotations
 
 from sqlalchemy import create_engine, inspect
 
+from prepforge_chess.api import models  # noqa: F401  (registers ORM tables)
 from prepforge_chess.storage import sa_tables
-from prepforge_chess.storage.database import SCHEMA_PATH
-
-DOMAIN_TABLES = {
-    "user_profiles",
-    "games",
-    "positions",
-    "engine_evaluations",
-    "moves",
-    "analysis_results",
-    "repertoires",
-    "opening_nodes",
-    "training_sessions",
-    "training_progress",
-    "engine_settings",
-    "app_settings",
-    "user_sessions",
-}
 
 
-def _schema_sql_columns() -> dict[str, set[str]]:
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    try:
-        conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
-        out: dict[str, set[str]] = {}
-        for table in DOMAIN_TABLES:
-            rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
-            out[table] = {row["name"] for row in rows}
-        return out
-    finally:
-        conn.close()
+def _expected_tables() -> set[str]:
+    return {
+        # ORM identity/session/settings/receipts.
+        "users",
+        "auth_sessions",
+        "linked_accounts",
+        "teams",
+        "team_members",
+        "team_invites",
+        "stripe_events",
+        "user_settings",
+        "train_attempt_receipts",
+        # Core domain tables.
+        "games",
+        "positions",
+        "engine_evaluations",
+        "moves",
+        "analysis_results",
+        "repertoires",
+        "opening_nodes",
+        "training_sessions",
+        "training_progress",
+        "engine_settings",
+        "app_settings",
+        "alembic_version",
+    }
+
+
+def _migrated_columns() -> dict[str, set[str]]:
+    import os
+    import subprocess
+    import sys
+    import tempfile
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    with tempfile.TemporaryDirectory() as tmp:
+        db_file = Path(tmp) / "drift_check.sqlite3"
+        env = os.environ.copy()
+        env["DATABASE_URL"] = "sqlite:///{0}".format(db_file.as_posix())
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=root,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, "alembic upgrade head failed:\n{0}".format(
+            result.stderr or result.stdout
+        )
+        import sqlite3
+
+        conn = sqlite3.connect(db_file)
+        try:
+            out: dict[str, set[str]] = {}
+            for (name,) in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+            ).fetchall():
+                cols = conn.execute("PRAGMA table_info({0})".format(name)).fetchall()
+                out[name] = {row[1] for row in cols}
+            return out
+        finally:
+            conn.close()
 
 
 def _sqlalchemy_columns() -> dict[str, set[str]]:
     engine = create_engine("sqlite://")
-    sa_tables.metadata.create_all(engine, tables=list(sa_tables.DOMAIN_TABLES))
+    sa_tables.metadata.create_all(engine)
     insp = inspect(engine)
-    return {t: {c["name"] for c in insp.get_columns(t)} for t in DOMAIN_TABLES}
+    return {t: {c["name"] for c in insp.get_columns(t)} for t in insp.get_table_names()}
 
 
-def test_sa_schema_defines_every_domain_table():
-    engine = create_engine("sqlite://")
-    sa_tables.metadata.create_all(engine, tables=list(sa_tables.DOMAIN_TABLES))
-    created = set(inspect(engine).get_table_names())
-    missing = DOMAIN_TABLES - created
-    assert not missing, f"sa_tables is missing domain tables: {sorted(missing)}"
-    obsolete = {
-        "maia_predictions",
-        "opening_lines",
-        "generation_runs",
-        "lichess_imports",
-        "practical_opening_matches",
-        "training_mistakes",
-    } & created
-    assert not obsolete, f"obsolete tables still created: {sorted(obsolete)}"
+def test_no_legacy_identity_tables():
+    cols = _migrated_columns()
+    assert "user_profiles" not in cols
+    assert "user_sessions" not in cols
 
 
-def test_sa_columns_match_schema_sql():
-    sql_cols = _schema_sql_columns()
+def test_migrated_schema_matches_metadata():
+    """Every Alembic-managed table matches the metadata column set.
+
+    ``alembic_version`` is migration bookkeeping (no metadata equivalent) and
+    is asserted separately in ``test_expected_tables``.
+    """
+    migrated = _migrated_columns()
     sa = _sqlalchemy_columns()
-    for table in sorted(DOMAIN_TABLES):
-        assert sa[table] == sql_cols[table], (
-            f"{table}: sa-only={sorted(sa[table] - sql_cols[table])}, "
-            f"schema.sql-only={sorted(sql_cols[table] - sa[table])}"
+    for table in sorted(set(migrated) & set(sa)):
+        assert sa[table] == migrated[table], (
+            "{0}: sa-only={1}, migrated-only={2}".format(
+                table,
+                sorted(sa[table] - migrated[table]),
+                sorted(migrated[table] - sa[table]),
+            )
         )
+
+
+def test_expected_tables():
+    assert set(_migrated_columns()) == _expected_tables()
 
 
 def test_sa_games_round_trip():
     engine = create_engine("sqlite://")
-    sa_tables.metadata.create_all(engine, tables=list(sa_tables.DOMAIN_TABLES))
+    sa_tables.metadata.create_all(engine)
     with engine.begin() as conn:
         conn.execute(
             sa_tables.games.insert(),

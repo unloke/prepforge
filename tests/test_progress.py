@@ -83,16 +83,16 @@ def test_compute_health_counts_each_state():
     repository.save_training_progress(repertoire.id, TrainingProgress(
         node_id=ids["e4"], attempts=5, correct_attempts=5,
         spaced_repetition_score=8.0, is_mastered=True,
-    ))
+    ), owner_user_id="t-owner")
     repository.save_training_progress(repertoire.id, TrainingProgress(
         node_id=ids["d4"], attempts=4, correct_attempts=1,
-    ))
+    ), owner_user_id="t-owner")
     repository.save_training_progress(repertoire.id, TrainingProgress(
         node_id=ids["nf3"], attempts=2, correct_attempts=2,
         due_at=past, spaced_repetition_score=2.0,
-    ))
+    ), owner_user_id="t-owner")
 
-    progress = {p.node_id: p for p in repository.list_training_progress(repertoire.id)}
+    progress = {p.node_id: p for p in repository.list_training_progress(repertoire.id, owner_user_id="t-owner")}
     health = compute_health(repertoire.root_node, repertoire.color, progress)
 
     assert health.trainable == 4  # e4, Nf3, d4, c4 (white own-moves)
@@ -119,9 +119,9 @@ def test_due_review_mode_selects_lines_with_due_nodes():
     past = datetime.now(timezone.utc) - timedelta(days=1)
     repository.save_training_progress(repertoire.id, TrainingProgress(
         node_id=ids["nf3"], attempts=2, correct_attempts=1, due_at=past,
-    ))
+    ), owner_user_id="t-owner")
 
-    service = TrainingService(repository)
+    service = TrainingService(repository, "t-owner")
     lines = service.training_lines(repertoire, TrainingMode.MISTAKES_ONLY)
 
     # Only the e4-e5-Nf3 line passes through the due node.

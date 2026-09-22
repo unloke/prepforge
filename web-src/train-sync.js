@@ -1,8 +1,8 @@
 // Pure core of the local-first Train sync flush (app.js wires state/timers).
 //
-// The server's record_attempt is NOT idempotent, so the retry unit is the
-// session group: a group that POSTed successfully must never be requeued when
-// a later group fails. 4xx (e.g. the session's repertoire was deleted) drops
+// Each graded attempt carries a stable UUID. The server stores a receipt in the
+// same transaction as progress, so an uncertain response can be retried safely.
+// 4xx (e.g. the session's repertoire was deleted) drops
 // only that group — there is nothing to retry into — while other sessions'
 // attempts still land. Network/5xx stops the flush and reports the failing
 // group plus everything not yet sent, so the caller can requeue exactly those.
@@ -12,15 +12,15 @@
  * group. The current session always gets a group — even an empty one — so a
  * flush with only a dirty position still carries it.
  *
- * @param {Array<{session_id: string, node_id: string, correct: boolean}>} pending
+ * @param {Array<{session_id: string, node_id: string, correct: boolean, attempt_uuid: string}>} pending
  * @param {string|null} currentSessionId
- * @returns {Array<[string, Array<{node_id: string, correct: boolean}>]>}
+ * @returns {Array<[string, Array<{node_id: string, correct: boolean, attempt_uuid: string}>]>}
  */
 export function groupAttempts(pending, currentSessionId) {
   const bySession = new Map();
   for (const item of pending) {
     if (!bySession.has(item.session_id)) bySession.set(item.session_id, []);
-    bySession.get(item.session_id).push({ node_id: item.node_id, correct: item.correct });
+    bySession.get(item.session_id).push({ node_id: item.node_id, correct: item.correct, attempt_uuid: item.attempt_uuid });
   }
   if (currentSessionId && !bySession.has(currentSessionId)) {
     bySession.set(currentSessionId, []);
@@ -36,7 +36,7 @@ export function groupAttempts(pending, currentSessionId) {
  * - any other error: stop; the failing group and all unsent groups are
  *   returned as `failedGroups` with `retriable: true`.
  *
- * @param {Array<[string, Array<{node_id: string, correct: boolean}>]>} groups
+ * @param {Array<[string, Array<{node_id: string, correct: boolean, attempt_uuid: string}>]>} groups
  * @param {(sessionId: string, attempts: Array<object>) => Promise<void>} postGroup
  * @returns {Promise<{retriable: boolean, failedGroups: Array<[string, Array<object>]>}>}
  */
@@ -58,14 +58,14 @@ export async function flushGroups(groups, postGroup) {
  * Flatten groups back into the pending-queue item shape, preserving order —
  * the inverse of groupAttempts for requeueing failed groups.
  *
- * @param {Array<[string, Array<{node_id: string, correct: boolean}>]>} groups
- * @returns {Array<{session_id: string, node_id: string, correct: boolean}>}
+ * @param {Array<[string, Array<{node_id: string, correct: boolean, attempt_uuid: string}>]>} groups
+ * @returns {Array<{session_id: string, node_id: string, correct: boolean, attempt_uuid: string}>}
  */
 export function ungroupAttempts(groups) {
   const flat = [];
   for (const [sessionId, attempts] of groups) {
     for (const a of attempts) {
-      flat.push({ session_id: sessionId, node_id: a.node_id, correct: a.correct });
+      flat.push({ session_id: sessionId, node_id: a.node_id, correct: a.correct, attempt_uuid: a.attempt_uuid });
     }
   }
   return flat;

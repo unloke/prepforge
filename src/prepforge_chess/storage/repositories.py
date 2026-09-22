@@ -28,11 +28,14 @@ from prepforge_chess.core.models import (
 from prepforge_chess.storage import codec
 from prepforge_chess.storage import sa_tables as t
 
-# ``user_profiles`` columns that ``schema.sql`` defaulted server-side. ``sa_tables``
-# carries no server defaults (the design choice: the repository supplies defaults in
-# Python), so ``create_user_profile`` provides them explicitly here.
-_DEFAULT_ENGINE = "stockfish"
-_DEFAULT_ANALYSIS_DEPTH = 16
+
+def _setting_row(user_id: str, key: str, value: Any) -> Dict[str, Any]:
+    return {
+        "user_id": user_id,
+        "key": key,
+        "value_json": _json_dump(value),
+        "updated_at": _now_text(),
+    }
 
 
 def _now_text() -> str:
@@ -111,216 +114,126 @@ class PrepForgeRepository:
     def __init__(self, engine: Engine):
         self.engine = engine
 
-    # ---- Identity / sessions (multi-tenancy foundation) -----------------------
-    # Browsers carry an opaque session token in a cookie; the server stores only its
-    # hash here and maps it to a ``user_profiles`` row. A not-logged-in browser gets a
-    # "guest" profile; a Lichess login finds-or-creates a profile keyed by username and
-    # migrates the guest's data into it (see PrepForgeWebApp).
+    # ---- Per-user settings (canonical 1:1 key/value store) ---------------------
+    # Every user fact that used to hide in a settings blob lives in its own
+    # ``user_settings`` row: streak, recap snapshot, Lichess markers, analysis
+    # preferences. One row per key means concurrent writers to different keys
+    # never clobber each other.
 
-    def create_user_profile(
-        self, *, display_name: str, lichess_username: Optional[str] = None
-    ) -> str:
-        profile_id = str(uuid.uuid4())
-        now = _now_text()
-        with self.engine.begin() as conn:
-            conn.execute(
-                t.user_profiles.insert().values(
-                    id=profile_id,
-                    display_name=display_name,
-                    lichess_username=lichess_username,
-                    preferred_engine=_DEFAULT_ENGINE,
-                    default_analysis_depth=_DEFAULT_ANALYSIS_DEPTH,
-                    settings_json="{}",
-                    created_at=now,
-                    updated_at=now,
-                )
-            )
-        return profile_id
-
-    def ensure_profile(self, profile_id: str, *, display_name: str) -> str:
-        """Idempotently create the ``user_profiles`` row a FastAPI ``User`` owns.
-
-        Phase 2b bridge: the SaaS identity (``users.id``) IS the legacy data-owner id
-        (``user_profiles.id``). The first time an authenticated user touches an
-        owned-data endpoint we materialize their profile here; ``ON CONFLICT DO
-        NOTHING`` keeps the call a no-op (and never clobbers ``display_name`` /
-        ``settings_json``) on every subsequent request. Returns ``profile_id``.
-        """
-        now = _now_text()
-        with self.engine.begin() as conn:
-            stmt = (
-                _insert(conn, t.user_profiles)
-                .values(
-                    id=profile_id,
-                    display_name=display_name,
-                    lichess_username=None,
-                    preferred_engine=_DEFAULT_ENGINE,
-                    default_analysis_depth=_DEFAULT_ANALYSIS_DEPTH,
-                    settings_json="{}",
-                    created_at=now,
-                    updated_at=now,
-                )
-                .on_conflict_do_nothing(index_elements=["id"])
-            )
-            conn.execute(stmt)
-        return profile_id
-
-    def session_user(self, token_hash: str) -> Optional[str]:
-        """Return the user_profile_id for a session token hash (and touch last_seen)."""
-        with self.engine.begin() as conn:
-            row = conn.execute(
-                select(t.user_sessions.c.user_profile_id).where(
-                    t.user_sessions.c.token_hash == token_hash
-                )
-            ).mappings().first()
-            if row is None:
-                return None
-            conn.execute(
-                update(t.user_sessions)
-                .where(t.user_sessions.c.token_hash == token_hash)
-                .values(last_seen_at=_now_text())
-            )
-            return row["user_profile_id"]
-
-    def create_guest_session(self, token_hash: str) -> str:
-        """Mint a fresh guest profile + session for a new browser. Returns the profile id."""
-        profile_id = self.create_user_profile(display_name="Guest")
-        now = _now_text()
-        with self.engine.begin() as conn:
-            conn.execute(
-                t.user_sessions.insert().values(
-                    token_hash=token_hash,
-                    user_profile_id=profile_id,
-                    created_at=now,
-                    last_seen_at=now,
-                )
-            )
-        return profile_id
-
-    def rebind_session(self, token_hash: str, user_profile_id: str) -> None:
-        """Point an existing session at a different profile (e.g. guest → Lichess account)."""
-        with self.engine.begin() as conn:
-            conn.execute(
-                update(t.user_sessions)
-                .where(t.user_sessions.c.token_hash == token_hash)
-                .values(user_profile_id=user_profile_id, last_seen_at=_now_text())
-            )
-
-    def delete_session(self, token_hash: str) -> None:
-        """Drop a session row so its cookie can no longer authenticate (sign out). The
-        underlying user_profile and its owned data are left intact."""
-        with self.engine.begin() as conn:
-            conn.execute(
-                delete(t.user_sessions).where(t.user_sessions.c.token_hash == token_hash)
-            )
-
-    def find_profile_by_lichess(self, username: str) -> Optional[str]:
+    def get_user_setting(self, user_id: str, key: str, default: Any = None) -> Any:
         with self.engine.connect() as conn:
             row = conn.execute(
-                select(t.user_profiles.c.id).where(
-                    func.lower(t.user_profiles.c.lichess_username) == func.lower(username)
-                )
-            ).mappings().first()
-        return row["id"] if row is not None else None
-
-    def ensure_lichess_profile(self, username: str) -> str:
-        existing = self.find_profile_by_lichess(username)
-        if existing is not None:
-            return existing
-        return self.create_user_profile(display_name=username, lichess_username=username)
-
-    def profile_lichess_username(self, profile_id: str) -> Optional[str]:
-        with self.engine.connect() as conn:
-            row = conn.execute(
-                select(t.user_profiles.c.lichess_username).where(
-                    t.user_profiles.c.id == profile_id
-                )
-            ).mappings().first()
-        return row["lichess_username"] if row is not None else None
-
-    def get_profile_setting(
-        self, profile_id: str, key: str, default: Any = None
-    ) -> Any:
-        """Read one key from a profile's ``settings_json`` blob (per-user state such
-        as the Lichess OAuth token). Unknown profile/key returns ``default``."""
-        with self.engine.connect() as conn:
-            row = conn.execute(
-                select(t.user_profiles.c.settings_json).where(
-                    t.user_profiles.c.id == profile_id
+                select(t.user_settings.c.value_json).where(
+                    t.user_settings.c.user_id == user_id,
+                    t.user_settings.c.key == key,
                 )
             ).mappings().first()
         if row is None:
             return default
-        data = _json_load(row["settings_json"], {})
-        return data.get(key, default) if isinstance(data, dict) else default
+        try:
+            return json.loads(row["value_json"])
+        except (json.JSONDecodeError, TypeError):
+            return default
 
-    def mutate_profile_setting(
-        self, profile_id: str, key: str, mutator: "Callable[[Any], Any]"
+    def set_user_setting(self, user_id: str, key: str, value: Any) -> None:
+        """Upsert one setting row. A ``None`` value deletes the key."""
+        with self.engine.begin() as conn:
+            if value is None:
+                conn.execute(
+                    delete(t.user_settings).where(
+                        t.user_settings.c.user_id == user_id,
+                        t.user_settings.c.key == key,
+                    )
+                )
+                return
+            stmt = _insert(conn, t.user_settings).values(_setting_row(user_id, key, value))
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["user_id", "key"],
+                set_={"value_json": stmt.excluded.value_json, "updated_at": stmt.excluded.updated_at},
+            )
+            conn.execute(stmt)
+
+    def mutate_user_setting(
+        self, user_id: str, key: str, mutator: "Callable[[Any], Any]"
     ) -> Any:
-        """Atomically read-modify-write one key of a profile's ``settings_json``.
-
-        ``settings_json`` is a single shared blob (streak, recap snapshot, Lichess
-        token, …). A get-then-set across two transactions clobbers concurrent
-        writes to *other* keys, because each ``set`` rewrites the whole blob from
-        a value it read earlier — a classic lost update (e.g. a streak advance
-        racing the once-a-week recap-snapshot write, silently dropping the
-        streak). Here the read→apply→write happens in ONE transaction with the
-        profile row locked (``FOR UPDATE``), so concurrent mutators serialise.
+        """Atomically read-modify-write one setting row.
 
         ``mutator`` receives the current value (or ``None`` if unset) and returns
-        the new one; returning ``None`` deletes the key. Returns the new value.
-        Skips the write (but still held the lock) when the value is unchanged, so
-        idempotent touches — a streak no-op on an already-trained day — stay cheap.
-        Raises if the profile does not exist so state can never be written to a
-        phantom owner."""
+        the new one; returning ``None`` deletes the key. Row-locked on Postgres
+        so concurrent mutators serialise. Unchanged values skip the write.
+        """
         with self.engine.begin() as conn:
             row = conn.execute(
-                select(t.user_profiles.c.settings_json)
-                .where(t.user_profiles.c.id == profile_id)
+                select(t.user_settings.c.value_json)
+                .where(
+                    t.user_settings.c.user_id == user_id,
+                    t.user_settings.c.key == key,
+                )
                 .with_for_update()
             ).mappings().first()
-            if row is None:
-                raise ValueError("unknown profile: {0}".format(profile_id))
-            data = _json_load(row["settings_json"], {})
-            if not isinstance(data, dict):
-                data = {}
-            current = data.get(key)
+            try:
+                current = json.loads(row["value_json"]) if row is not None else None
+            except (json.JSONDecodeError, TypeError):
+                current = None
             new_value = mutator(current)
-            if new_value == current and (new_value is not None or key in data):
+            if new_value == current and (new_value is not None or row is None):
                 return new_value
+            if row is None and new_value is None:
+                return None
             if new_value is None:
-                data.pop(key, None)
+                conn.execute(
+                    delete(t.user_settings).where(
+                        t.user_settings.c.user_id == user_id,
+                        t.user_settings.c.key == key,
+                    )
+                )
+            elif row is None:
+                conn.execute(t.user_settings.insert().values(_setting_row(user_id, key, new_value)))
             else:
-                data[key] = new_value
-            conn.execute(
-                update(t.user_profiles)
-                .where(t.user_profiles.c.id == profile_id)
-                .values(settings_json=_json_dump(data), updated_at=_now_text())
-            )
+                conn.execute(
+                    update(t.user_settings)
+                    .where(
+                        t.user_settings.c.user_id == user_id,
+                        t.user_settings.c.key == key,
+                    )
+                    .values(value_json=_json_dump(new_value), updated_at=_now_text())
+                )
         return new_value
 
-    def set_profile_setting(self, profile_id: str, key: str, value: Any) -> None:
-        """Upsert one key into a profile's ``settings_json`` (per-user state). A
-        ``None`` value deletes the key. Raises if the profile does not exist so a
-        token can never be written to a phantom owner. Atomic against concurrent
-        writers to the same blob (see :meth:`mutate_profile_setting`)."""
-        self.mutate_profile_setting(profile_id, key, lambda _current: value)
+    # ---- Train attempt receipts (exactly-once sync) --------------------------
 
-    def reassign_owner(self, from_user_id: str, to_user_id: str) -> None:
-        """Move every owned top-level row from one profile to another (guest → account)."""
-        if from_user_id == to_user_id:
-            return
-        with self.engine.begin() as conn:
-            conn.execute(
-                update(t.games)
-                .where(t.games.c.owner_user_id == from_user_id)
-                .values(owner_user_id=to_user_id)
+    def get_attempt_receipt(
+        self, session_id: str, attempt_uuid: str
+    ) -> Optional[Dict[str, Any]]:
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                select(t.train_attempt_receipts).where(
+                    t.train_attempt_receipts.c.session_id == session_id,
+                    t.train_attempt_receipts.c.attempt_uuid == attempt_uuid,
+                )
+            ).mappings().first()
+        if row is None:
+            return None
+        return {
+            "session_id": row["session_id"],
+            "attempt_uuid": row["attempt_uuid"],
+            "node_id": row["node_id"],
+            "correct": bool(row["correct"]),
+        }
+
+    def record_attempt_receipt(
+        self, conn: Connection, *, session_id: str, attempt_uuid: str, node_id: str, correct: bool
+    ) -> None:
+        """Insert a receipt row inside the caller's transaction (see sync_progress)."""
+        conn.execute(
+            t.train_attempt_receipts.insert().values(
+                session_id=session_id,
+                attempt_uuid=attempt_uuid,
+                node_id=node_id,
+                correct=_bool_to_int(correct),
+                created_at=_now_text(),
             )
-            conn.execute(
-                update(t.repertoires)
-                .where(t.repertoires.c.user_profile_id == from_user_id)
-                .values(user_profile_id=to_user_id)
-            )
+        )
 
     def save_game(self, game: Game, owner_user_id: Optional[str] = None) -> None:
         now = _now_text()
@@ -749,7 +662,7 @@ class PrepForgeRepository:
                 t.repertoires,
                 {
                     "id": repertoire.id,
-                    "user_profile_id": owner_user_id,
+                    "owner_user_id": owner_user_id,
                     "name": repertoire.name,
                     "color": repertoire.color.value,
                     "root_fen": repertoire.root_fen,
@@ -775,7 +688,7 @@ class PrepForgeRepository:
                     "notes", "tags_json", "is_active", "updated_at",
                 ),
                 # Never let a re-save reassign an existing owner; only fill a gap.
-                coalesce_cols=("user_profile_id",),
+                coalesce_cols=("owner_user_id",),
             )
 
             pos_cache: Dict[str, int] = {}
@@ -792,7 +705,7 @@ class PrepForgeRepository:
             if rep_row is None:
                 return None
             # Ownership gate: a repertoire owned by someone else is not-found to this owner.
-            if owner_user_id is not None and rep_row["user_profile_id"] != owner_user_id:
+            if owner_user_id is not None and rep_row["owner_user_id"] != owner_user_id:
                 return None
 
             node_rows = conn.execute(
@@ -855,7 +768,7 @@ class PrepForgeRepository:
     def list_repertoires(self, owner_user_id: Optional[str] = None) -> List[Repertoire]:
         stmt = select(t.repertoires.c.id).order_by(t.repertoires.c.updated_at.desc())
         if owner_user_id is not None:
-            stmt = stmt.where(t.repertoires.c.user_profile_id == owner_user_id)
+            stmt = stmt.where(t.repertoires.c.owner_user_id == owner_user_id)
         with self.engine.connect() as conn:
             ids = [row["id"] for row in conn.execute(stmt).mappings().all()]
         return [
@@ -883,7 +796,7 @@ class PrepForgeRepository:
                 t.repertoires.c.visibility,
                 t.repertoires.c.health_json,
             )
-            .where(t.repertoires.c.user_profile_id == owner_user_id)
+            .where(t.repertoires.c.owner_user_id == owner_user_id)
             .order_by(t.repertoires.c.updated_at.desc())
         )
         with self.engine.connect() as conn:
@@ -932,7 +845,7 @@ class PrepForgeRepository:
             t.repertoires.c.is_active,
         ).order_by(t.repertoires.c.updated_at.desc())
         if owner_user_id is not None:
-            stmt = stmt.where(t.repertoires.c.user_profile_id == owner_user_id)
+            stmt = stmt.where(t.repertoires.c.owner_user_id == owner_user_id)
         with self.engine.connect() as conn:
             rows = conn.execute(stmt).mappings().all()
         return [
@@ -949,7 +862,7 @@ class PrepForgeRepository:
         without loading any opening trees — used by the Free-plan quota gate."""
         stmt = select(func.count()).select_from(t.repertoires)
         if owner_user_id is not None:
-            stmt = stmt.where(t.repertoires.c.user_profile_id == owner_user_id)
+            stmt = stmt.where(t.repertoires.c.owner_user_id == owner_user_id)
         with self.engine.connect() as conn:
             return int(conn.execute(stmt).scalar_one())
 
@@ -964,7 +877,7 @@ class PrepForgeRepository:
                     t.repertoires.c.id,
                     t.repertoires.c.name,
                     t.repertoires.c.is_active,
-                    t.repertoires.c.user_profile_id,
+                    t.repertoires.c.owner_user_id,
                     t.repertoires.c.team_id,
                     t.repertoires.c.visibility,
                 ).where(t.repertoires.c.id == repertoire_id)
@@ -975,7 +888,7 @@ class PrepForgeRepository:
             "id": row["id"],
             "name": row["name"],
             "is_active": _int_to_bool(row["is_active"]),
-            "owner_user_id": row["user_profile_id"],
+            "owner_user_id": row["owner_user_id"],
             "team_id": row["team_id"],
             "visibility": row["visibility"] or "private",
         }
@@ -1005,7 +918,7 @@ class PrepForgeRepository:
                     t.repertoires.c.name,
                     t.repertoires.c.color,
                     t.repertoires.c.root_fen,
-                    t.repertoires.c.user_profile_id,
+                    t.repertoires.c.owner_user_id,
                     t.repertoires.c.team_id,
                 )
                 .where(t.repertoires.c.team_id.in_(team_ids))
@@ -1018,7 +931,7 @@ class PrepForgeRepository:
                 "name": r["name"],
                 "color": r["color"],
                 "root_fen": r["root_fen"],
-                "owner_user_id": r["user_profile_id"],
+                "owner_user_id": r["owner_user_id"],
                 "team_id": r["team_id"],
             }
             for r in rows
@@ -1032,7 +945,7 @@ class PrepForgeRepository:
                     t.repertoires.c.id,
                     t.repertoires.c.name,
                     t.repertoires.c.color,
-                    t.repertoires.c.user_profile_id,
+                    t.repertoires.c.owner_user_id,
                 )
                 .where(t.repertoires.c.team_id == team_id)
                 .where(t.repertoires.c.visibility == "team")
@@ -1043,7 +956,7 @@ class PrepForgeRepository:
                 "id": r["id"],
                 "name": r["name"],
                 "color": r["color"],
-                "owner_user_id": r["user_profile_id"],
+                "owner_user_id": r["owner_user_id"],
             }
             for r in rows
         ]
@@ -1074,16 +987,15 @@ class PrepForgeRepository:
                 update(t.repertoires)
                 .where(
                     t.repertoires.c.id == repertoire_id,
-                    t.repertoires.c.user_profile_id.is_(None),
+                    t.repertoires.c.owner_user_id.is_(None),
                 )
-                .values(user_profile_id=owner_user_id)
+                .values(owner_user_id=owner_user_id)
             )
 
     def claim_or_verify_game(self, game_id: str, owner_user_id: str) -> bool:
         """Stamp ownership on an unowned game (first writer wins) and report whether
         the caller may access it. Returns ``False`` when the game is missing or owned
-        by a *different* user — the caller treats that as not-found (don't reveal
-        another owner's game). Mirrors the legacy server's ``_claim_or_verify_game``."""
+        by a *different* user — the caller treats that as not-found."""
         with self.engine.begin() as conn:
             conn.execute(
                 update(t.games)
@@ -1173,9 +1085,9 @@ class PrepForgeRepository:
         repertoire_id: str,
         progress: TrainingProgress,
         *,
-        user_profile_id: Optional[str] = None,
+        owner_user_id: str,
     ) -> None:
-        progress_id = self._training_progress_id(user_profile_id, repertoire_id, progress.node_id)
+        progress_id = self._training_progress_id(owner_user_id, repertoire_id, progress.node_id)
         now = _now_text()
         with self.engine.begin() as conn:
             _upsert(
@@ -1183,7 +1095,7 @@ class PrepForgeRepository:
                 t.training_progress,
                 {
                     "id": progress_id,
-                    "user_profile_id": user_profile_id,
+                    "owner_user_id": owner_user_id,
                     "repertoire_id": repertoire_id,
                     "node_id": progress.node_id,
                     "attempts": progress.attempts,
@@ -1207,9 +1119,9 @@ class PrepForgeRepository:
         repertoire_id: str,
         node_id: str,
         *,
-        user_profile_id: Optional[str] = None,
+        owner_user_id: str,
     ) -> Optional[TrainingProgress]:
-        progress_id = self._training_progress_id(user_profile_id, repertoire_id, node_id)
+        progress_id = self._training_progress_id(owner_user_id, repertoire_id, node_id)
         with self.engine.connect() as conn:
             row = conn.execute(
                 select(t.training_progress).where(t.training_progress.c.id == progress_id)
@@ -1246,14 +1158,11 @@ class PrepForgeRepository:
         self,
         repertoire_id: str,
         *,
-        user_profile_id: Optional[str] = None,
+        owner_user_id: str,
     ) -> List[TrainingProgress]:
         """All stored progress rows for a repertoire (for heatmap / due queue)."""
         tp = t.training_progress
-        if user_profile_id is None:
-            owner_cond = tp.c.user_profile_id.is_(None)
-        else:
-            owner_cond = tp.c.user_profile_id == user_profile_id
+        owner_cond = tp.c.owner_user_id == owner_user_id
         with self.engine.connect() as conn:
             rows = conn.execute(
                 select(tp).where(tp.c.repertoire_id == repertoire_id, owner_cond)
@@ -1579,12 +1488,12 @@ class PrepForgeRepository:
 
     def _training_progress_id(
         self,
-        user_profile_id: Optional[str],
+        owner_user_id: Optional[str],
         repertoire_id: str,
         node_id: str,
     ) -> str:
         payload = {
-            "user_profile_id": user_profile_id or "default",
+            "owner_user_id": owner_user_id or "default",
             "repertoire_id": repertoire_id,
             "node_id": node_id,
         }

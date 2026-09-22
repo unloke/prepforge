@@ -6,6 +6,7 @@ const attempt = (session, node, correct = true) => ({
   session_id: session,
   node_id: node,
   correct,
+  attempt_uuid: `${session}-${node}`,
 });
 
 function httpError(status) {
@@ -21,15 +22,15 @@ describe("groupAttempts", () => {
       "a",
     );
     expect(groups).toEqual([
-      ["a", [{ node_id: "n1", correct: true }, { node_id: "n3", correct: true }]],
-      ["b", [{ node_id: "n2", correct: false }]],
+      ["a", [{ node_id: "n1", correct: true, attempt_uuid: "a-n1" }, { node_id: "n3", correct: true, attempt_uuid: "a-n3" }]],
+      ["b", [{ node_id: "n2", correct: false, attempt_uuid: "b-n2" }]],
     ]);
   });
 
   it("adds an empty group for the current session so a dirty position still flushes", () => {
     const groups = groupAttempts([attempt("old", "n1")], "current");
     expect(groups).toEqual([
-      ["old", [{ node_id: "n1", correct: true }]],
+      ["old", [{ node_id: "n1", correct: true, attempt_uuid: "old-n1" }]],
       ["current", []],
     ]);
   });

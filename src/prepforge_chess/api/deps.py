@@ -66,13 +66,10 @@ def get_repository() -> PrepForgeRepository:
     return PrepForgeRepository(get_engine())
 
 
-def current_owner(
-    user: User = Depends(current_user),
-    repo: PrepForgeRepository = Depends(get_repository),
-) -> str:
-    """Resolve the authenticated user to the ``owner_user_id`` the repository scopes
-    owned data by (games, repertoires, training). Per the Phase 2b bridge decision the
-    data-owner id IS ``users.id``; we materialize the backing ``user_profiles`` row on
-    first touch so legacy owner-scoped queries find an owner to match.
+def current_owner(user: User = Depends(current_user)) -> str:
+    """Canonical owner id for all SaaS/domain data: ``users.id``.
+
+    No bridge row is materialized — the repository scopes games, repertoires,
+    training progress, and settings directly off this id.
     """
-    return repo.ensure_profile(user.id, display_name=user.display_name or user.email)
+    return user.id

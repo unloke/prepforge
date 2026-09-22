@@ -13,6 +13,7 @@ def google_client(tmp_path, monkeypatch):
     db_file = tmp_path / "g_test.sqlite3"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_file.as_posix()}")
     monkeypatch.setenv("PREPFORGE_SECRET_KEY", "test-secret-not-for-prod")
+    monkeypatch.setenv("PREPFORGE_TOKEN_KEY", "test-token-key-not-for-prod")
     monkeypatch.setenv("PREPFORGE_ENV", "development")
     monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-google-client")
     monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "test-google-secret")
@@ -82,10 +83,10 @@ def test_callback_creates_user_and_signs_in(google_client):
     assert r.status_code == 303
     assert r.headers["location"] == "/?signed_in=1"
 
-    status = google_client.get("/api/auth/status").json()
-    assert status["signed_in"] is True
+    status = google_client.get("/api/auth/me").json()
+    assert status["email"] == "player@gmail.com"
     # display_name from Google's name claim is shown.
-    assert status["username"] == "Player One"
+    assert status["display_name"] == "Player One"
 
     # The user was created with the lowercased email and no password.
     from prepforge_chess.api import db

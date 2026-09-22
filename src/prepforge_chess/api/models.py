@@ -6,14 +6,12 @@ Design notes
   customer. Email/password live here. Lichess is NOT an identity -- it is a
   ``LinkedAccount`` row, because Stripe needs an email Lichess does not provide
   and a paid account must survive the user un-linking Lichess.
-* ``teams`` / ``team_members`` exist now so sharing/classroom features can land
-  later without a schema break. Per product decision there is NO per-seat
-  billing: a team is a feature, not a pricing tier. Plan gating ("Pro can create
-  teams") is enforced in app logic, not by the schema.
-* The legacy ``repertoires`` table (raw-SQL, ``prepforge_chess.storage``) will
-  gain ``team_id`` / ``visibility`` columns when that table is ported to
-  SQLAlchemy in the endpoint-migration phase; they are intentionally not here
-  yet to avoid two layers writing the same table.
+* ``teams`` / ``team_members`` share repertoires read-only with a group.
+   Per product decision there is NO per-seat billing: a team is a feature,
+   not a pricing tier.
+* Canonical ownership: ``users.id`` owns ALL SaaS/domain data (games,
+   repertoires, training progress, settings). Domain tables key their owner
+   columns directly off ``users.id``; there is no profile bridge.
 """
 from __future__ import annotations
 
@@ -40,6 +38,10 @@ def _uuid() -> str:
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _now_text() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 class Plan(str, enum.Enum):
@@ -178,6 +180,45 @@ class TeamInvite(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
+class UserSetting(Base):
+    """Canonical per-user key/value store (1:1 logical settings, one row per key).
+
+    Replaces the old ``user_profiles.settings_json`` blob: streak, recap
+    snapshot, Lichess last-seen marker, departure-ingest list, and analysis
+    preferences each live in their own row, so concurrent writers to different
+    keys can no longer clobber each other. ``updated_at`` doubles as the weekly
+    review timestamp for ``recap.weekly_snapshot``.
+    """
+
+    __tablename__ = "user_settings"
+
+    # Plain owner id, no DB-level FK: ephemeral SQLite helpers create domain
+    # tables without the identity tables, and ownership is enforced in
+    # application code (current_owner gates every endpoint).
+    user_id: Mapped[str] = mapped_column(String(32), primary_key=True, index=True)
+    key: Mapped[str] = mapped_column(String(120), primary_key=True)
+    value_json: Mapped[str] = mapped_column(String(4000), nullable=False, default="null")
+    updated_at: Mapped[str] = mapped_column(String(64), nullable=False, default=_now_text)
+
+
+class TrainAttemptReceipt(Base):
+    """Durable exactly-once receipt for a Smart Train graded attempt.
+
+    ``(session_id, attempt_uuid)`` is unique: a client retry reusing the UUID
+    is a no-op when the stored payload matches, and a 409 when a different
+    payload reuses the UUID. Receipt insert, SR progress, and session update
+    commit in one transaction, so the streak only advances on new attempts.
+    """
+
+    __tablename__ = "train_attempt_receipts"
+
+    session_id: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
+    attempt_uuid: Mapped[str] = mapped_column(String(64), primary_key=True)
+    node_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    correct: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, default=_now_text)
+
+
 class StripeEvent(Base):
     """A processed Stripe webhook event, recorded for idempotency.
 
@@ -194,8 +235,7 @@ class StripeEvent(Base):
 
 class AuthSession(Base):
     """Server-side session. Only the SHA-256 of the cookie token is stored, so a
-    DB leak does not hand out live sessions (same discipline as the legacy
-    user_sessions table)."""
+    DB leak does not hand out live sessions."""
 
     __tablename__ = "auth_sessions"
 

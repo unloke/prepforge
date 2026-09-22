@@ -1,13 +1,9 @@
-"""Database factory: builds the SQLAlchemy engine the repository runs on.
+"""Ephemeral SQLite helper for developer tools and unit tests.
 
-Phase 2a-2 swapped the persistence backend from raw ``sqlite3`` to SQLAlchemy
-Core. ``connect_database`` / ``initialize_database`` therefore return a SQLAlchemy
-``Engine`` (still SQLite for dev/tests, Postgres-ready for prod) rather than a
-``sqlite3.Connection``. The DDL is generated from ``storage/sa_tables`` —
-``metadata.create_all`` — so the hand-rolled ``schema.sql`` + the runtime
-``_apply_migrations`` rebuild machinery the old design needed are gone; the legacy
-``schema.sql`` is the drift-guard fixture in ``tests/test_sa_tables.py``
-(must match ``sa_tables.DOMAIN_TABLES``).
+Production schema authority is Alembic (``migrations/``): every production
+schema/index change ships as a migration. This module only builds throwaway
+SQLite engines for the CLI smoke/dev paths and the non-API unit tests — it
+never runs against production and never patches a live schema.
 """
 from __future__ import annotations
 
@@ -19,8 +15,6 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.pool import StaticPool
 
 from prepforge_chess.storage import sa_tables
-
-SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 PathLike = Union[str, Path]
 
@@ -50,25 +44,17 @@ def connect_database(path: PathLike = ":memory:") -> Engine:
     return engine
 
 
-def _ensure_indexes(engine: Engine) -> None:
-    """Create any legacy-table index that doesn't exist yet.
-
-    ``create_all`` with its default ``checkfirst`` skips a table that already
-    exists *and every index defined on it*, so an index added to ``sa_tables``
-    after a table was first created never reaches a live database. Creating each
-    index individually with ``checkfirst=True`` is idempotent (a no-op when the
-    index is already there) and works on both SQLite and Postgres, so newly
-    added performance indexes land on existing deployments without an Alembic
-    migration."""
-    for table in sa_tables.DOMAIN_TABLES:
-        for index in table.indexes:
-            index.create(bind=engine, checkfirst=True)
-
-
 def apply_schema(engine: Engine) -> None:
-    """Create the legacy domain tables (idempotent) from the SQLAlchemy metadata."""
+    """Create the domain tables (idempotent) for an ephemeral SQLite engine.
+
+    FK enforcement is disabled on these throwaway engines (``PRAGMA
+    foreign_keys=OFF``): unit tests use synthetic owner ids with no ``users``
+    row, and ownership is enforced in application code. Production schema
+    (with FKs) comes from Alembic.
+    """
+    with engine.begin() as conn:
+        conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
     sa_tables.metadata.create_all(engine, tables=list(sa_tables.DOMAIN_TABLES))
-    _ensure_indexes(engine)
 
 
 def initialize_database(path: PathLike) -> Engine:

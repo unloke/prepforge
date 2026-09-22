@@ -85,7 +85,7 @@ def test_start_rejects_bad_mode(client):
         json={"repertoire_id": rep, "mode": "not-a-mode"},
         headers=csrf_headers(client),
     )
-    assert r.status_code == 400
+    assert r.status_code == 422
 
 
 # ---- start -> move -> hint -> skip round-trip ------------------------------
@@ -398,7 +398,7 @@ def test_smart_sync_replays_graded_attempts(client):
     r = _smart_sync(
         client,
         start["session_id"],
-        attempts=[{"node_id": node_id, "correct": True}],
+        attempts=[{"node_id": node_id, "correct": True, "attempt_uuid": "u-" + node_id}],
         card_index=1,
     )
     assert r.status_code == 200, r.text
@@ -420,7 +420,7 @@ def test_smart_sync_skips_unknown_nodes_and_spares_the_streak(client):
     body = _smart_sync(
         client,
         session_id,
-        attempts=[{"node_id": "edited-away", "correct": True}],
+        attempts=[{"node_id": "edited-away", "correct": True, "attempt_uuid": "u-edited"}],
     ).json()
     assert body["synced"] == 0
     assert body["day_streak"] is None
@@ -458,7 +458,10 @@ def test_smart_sync_caps_batch_sizes(client):
     _register(client, "a@example.com")
     rep = _white_repertoire_with_e4(client)
     session_id = _smart_start(client, rep, seed=5).json()["session_id"]
-    too_many = [{"node_id": "n", "correct": True}] * 501
+    too_many = [
+        {"node_id": "n", "correct": True, "attempt_uuid": "u-{0}".format(i)}
+        for i in range(501)
+    ]
     assert _smart_sync(client, session_id, attempts=too_many).status_code == 400
     huge_queue = ["new:a:b"] * 501
     assert _smart_sync(client, session_id, queue=huge_queue).status_code == 400
@@ -486,6 +489,86 @@ def test_smart_sync_is_owner_gated(client):
         headers=csrf_headers(other),
     )
     assert r.status_code == 404
+
+
+# ---- exactly-once (attempt_uuid receipts) ------------------------------------
+
+
+def test_smart_sync_requires_attempt_uuid(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    start = _smart_start(client, rep, seed=5).json()
+    node_id = start["cards"][0]["targets"][0]["node_id"]
+    r = client.post(
+        "/api/train/smart/sync",
+        json={
+            "session_id": start["session_id"],
+            "attempts": [{"node_id": node_id, "correct": True}],
+        },
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 422
+
+
+def test_smart_sync_retry_is_noop_and_spares_streak(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    start = _smart_start(client, rep, seed=5).json()
+    node_id = start["cards"][0]["targets"][0]["node_id"]
+    attempt = {"node_id": node_id, "correct": True, "attempt_uuid": "retry-1"}
+    first = _smart_sync(client, start["session_id"], attempts=[attempt]).json()
+    assert first["synced"] == 1
+    assert first["day_streak"] == {"current": 1, "best": 1, "trained_today": True}
+    second = _smart_sync(client, start["session_id"], attempts=[attempt]).json()
+    assert second["synced"] == 0
+    assert second["day_streak"] is None
+    progress = client.get(f"/api/train/smart/summary?repertoire_id={rep}").json()
+    assert progress["health"]["learning"] == 1
+
+
+def test_smart_sync_uuid_collision_is_rejected(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    start = _smart_start(client, rep, seed=5).json()
+    node_id = start["cards"][0]["targets"][0]["node_id"]
+    r = _smart_sync(
+        client,
+        start["session_id"],
+        attempts=[{"node_id": node_id, "correct": True, "attempt_uuid": "dup-1"}],
+    )
+    assert r.status_code == 200
+    r = _smart_sync(
+        client,
+        start["session_id"],
+        attempts=[{"node_id": node_id, "correct": False, "attempt_uuid": "dup-1"}],
+    )
+    assert r.status_code == 409
+
+
+def test_smart_sync_reconnect_mixed_session(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    first = _smart_start(client, rep, seed=5).json()
+    node_id = first["cards"][0]["targets"][0]["node_id"]
+    second = _smart_start(client, rep, fresh=True, seed=6).json()
+    r = _smart_sync(
+        client,
+        first["session_id"],
+        attempts=[{"node_id": node_id, "correct": True, "attempt_uuid": "mix-a"}],
+    )
+    assert r.json()["synced"] == 1
+    r = _smart_sync(
+        client,
+        second["session_id"],
+        attempts=[{"node_id": node_id, "correct": False, "attempt_uuid": "mix-b"}],
+    )
+    assert r.json()["synced"] == 1
+    r = _smart_sync(
+        client,
+        second["session_id"],
+        attempts=[{"node_id": node_id, "correct": False, "attempt_uuid": "mix-b"}],
+    )
+    assert r.json()["synced"] == 0
 
 
 # ---- daily streak (Train v2 Phase 3) ----------------------------------------
@@ -606,19 +689,17 @@ def test_session_is_not_reachable_by_another_owner(client):
         assert r.status_code == 404, f"{path}: {r.status_code}"
 
 
-# ---- auth signout shim -----------------------------------------------------
+# ---- auth logout -----------------------------------------------------------
 
 
-def test_signout_returns_ok_and_clears_session(client):
+def test_logout_clears_session(client):
     _register(client, "a@example.com")
     assert client.get("/api/auth/me").status_code == 200
-    r = client.post("/api/auth/signout", json={}, headers=csrf_headers(client))
-    assert r.status_code == 200
-    assert r.json() == {"ok": True}
-    # Cookie cleared -> no longer authenticated.
+    r = client.post("/api/auth/logout", headers=csrf_headers(client))
+    assert r.status_code == 204
     assert client.get("/api/auth/me").status_code == 401
 
 
-def test_signout_requires_csrf(client):
+def test_logout_requires_csrf(client):
     _register(client, "a@example.com")
-    assert client.post("/api/auth/signout", json={}).status_code == 403
+    assert client.post("/api/auth/logout").status_code == 403

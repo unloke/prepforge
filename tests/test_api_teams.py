@@ -252,7 +252,7 @@ def test_cannot_set_role_owner(client):
         json={"role": "owner"},
         headers=csrf_headers(client),
     )
-    assert r.status_code == 400
+    assert r.status_code == 422
 
 
 def test_plain_member_cannot_change_roles(client):
@@ -624,4 +624,4 @@ def test_share_bad_visibility_400(client):
         json={"repertoire_id": rep_id, "visibility": "public"},
         headers=csrf_headers(client),
     )
-    assert r.status_code == 400
+    assert r.status_code == 422

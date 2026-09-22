@@ -89,7 +89,6 @@ legacy `from stub_maia import` suite.
 | P2 | Legal pages | Placeholder ToS/Privacy need formal review before paid launch. |
 | P3 | `app.js` split continue | `views/settings.js`, `views/dashboard.js` |
 | P3 | Engine graceful fail | After 1–2 days clientlog |
-| P3 | `schema.sql` retirement | Drift guard is `alembic check` |
 
 For the detailed per-slice porting history (Phases 2a/2b sub-slices, locked design
 decisions, and test counts at the time), see **Phases** below.
@@ -650,9 +649,6 @@ If Render provides a plain `postgres://` URL, normalize it to SQLAlchemy's
   is ever missed, check this scale difference first. Fix would be to make
   `moverWinChanceAfter()`'s mate mapping match the server's sigmoid clamp and add a
   cross-stack consistency test. (Acknowledged in the `moverWinChanceAfter` comment.)
-- `schema.sql` has no runtime reader (only `tests/test_sa_tables.py` via
-  `database.SCHEMA_PATH`); safe to retire alongside that test + the README/ARCHITECTURE
-  references now that `alembic check` is the live drift guard.
 - The Lichess OAuth round-trip with real credentials was verified at the redirect-entry
   level in 2b-2f (`/oauth/login` redirects, callback links the account); a full
   click-through with real Lichess credentials in a browser has not been separately

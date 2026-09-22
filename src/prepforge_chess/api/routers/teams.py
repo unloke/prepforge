@@ -1,4 +1,4 @@
-"""Teams (Phase 5, redesigned).
+"""Teams: share repertoires read-only with a group.
 
 A *team* is a feature, not a pricing tier: creating one is **open to every signed-in
 user** (no Pro requirement, no per-seat billing). Membership has roles
@@ -21,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
@@ -44,9 +45,6 @@ router = APIRouter(prefix="/api/teams", tags=["teams"])
 
 # Roles allowed to manage membership, roles, and the invite link.
 _MANAGER_ROLES = {TeamRole.owner, TeamRole.admin}
-# Roles assignable to a member: owner is single + immutable here (no second owner,
-# no ownership transfer via these endpoints).
-_ASSIGNABLE_ROLES = {TeamRole.admin, TeamRole.member}
 
 # Lichess identities live in ``LinkedAccount`` under this provider string (see
 # ``routers.lichess.PROVIDER``). Inlined to keep the teams<-workspace import graph
@@ -310,7 +308,7 @@ def team_detail(
 
 class AddMemberBody(BaseModel):
     lichess_username: str = Field(min_length=1, max_length=120)
-    role: str = Field(default="member")
+    role: Literal["admin", "member"] = "member"
 
     @field_validator("lichess_username")
     @classmethod
@@ -335,17 +333,7 @@ def add_member(
     has linked that handle we 404 with an actionable message pointing at the invite
     link -- we never silently create anything."""
     _require_manager(db, team_id, user)
-    try:
-        role = TeamRole(body.role)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="invalid role"
-        ) from None
-    if role not in _ASSIGNABLE_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="role must be admin or member",
-        )
+    role = TeamRole(body.role)
     handle = body.lichess_username.strip()
     target_link = db.execute(
         select(LinkedAccount).where(
@@ -405,7 +393,7 @@ def remove_member(
 
 
 class UpdateMemberRoleBody(BaseModel):
-    role: str
+    role: Literal["admin", "member"]
 
 
 @router.patch("/{team_id}/members/{user_id}")
@@ -422,17 +410,7 @@ def update_member_role(
     is immutable here (no demoting the sole owner, no minting a second owner); an
     admin may demote themselves. A no-op (role unchanged) succeeds idempotently."""
     _require_manager(db, team_id, user)
-    try:
-        role = TeamRole(body.role)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="invalid role"
-        ) from None
-    if role not in _ASSIGNABLE_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="role must be admin or member",
-        )
+    role = TeamRole(body.role)
     target = _membership(db, team_id, user_id)
     if target is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not a member")

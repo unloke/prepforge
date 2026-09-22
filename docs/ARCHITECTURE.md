@@ -44,8 +44,7 @@ chess engines running client-side:
   reconstructed on read. Unset search limits use `UNSET_SEARCH_LIMIT` so UNIQUE
   works on Postgres and SQLite. Postgres in prod (`DATABASE_URL`, auto-pinned to
   `postgresql+psycopg://`), SQLite for dev/tests. `migrations/` (Alembic) is the
-  live drift guard (`alembic check`); `schema.sql` is a static reference with no
-  runtime reader. The old dual-format / per-move FEN+SAN schema is not supported
+  schema authority and live drift guard (`alembic check`). The old dual-format / per-move FEN+SAN schema is not supported
   — deploy initializes the current Alembic head (empty rebuild, no legacy data
   upgrade).
 - **Frontend SPA** (`web-src/`): `app.js` is the shell for the three workspaces
@@ -192,10 +191,9 @@ SAN is display text, not identity.
 
 ## 4. Database Schema
 
-The live schema is `src/prepforge_chess/storage/sa_tables.py` (SQLAlchemy Core,
-identity + the legacy domain tables on one `Base.metadata`), applied via Alembic
-migrations (`migrations/`); Postgres in production, SQLite for dev/tests.
-`storage/schema.sql` is a static reference with no runtime reader.
+The live schema is `src/prepforge_chess/api/models.py` and
+`src/prepforge_chess/storage/sa_tables.py` on one `Base.metadata`, applied via
+Alembic migrations (`migrations/`); Postgres in production, SQLite for dev/tests.
 
 Main tables:
 
@@ -755,7 +753,6 @@ PrepForge Chess/
       training.py
       lichess.py
     storage/
-      schema.sql
       database.py
       repositories.py
     ui/

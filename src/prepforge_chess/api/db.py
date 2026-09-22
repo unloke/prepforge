@@ -1,10 +1,8 @@
 """SQLAlchemy engine/session wiring.
 
-One declarative ``Base`` for the new SaaS tables (identity, teams, billing,
-sessions). The engine is built from ``Settings.database_url`` so dev/test use
-SQLite and production uses Postgres with a real connection pool -- the single
-shared-connection + global-lock design of the legacy server is exactly what this
-replaces.
+One declarative ``Base`` for identity and domain tables. The engine is built
+from ``Settings.database_url`` so dev/test use SQLite and production uses
+Postgres with a connection pool.
 """
 from __future__ import annotations
 
@@ -72,9 +70,8 @@ def _ensure_session_factory() -> sessionmaker[Session]:
 
 def get_engine():
     """The single SQLAlchemy ``Engine`` the app runs on (built lazily from
-    ``Settings.database_url``). The legacy ``storage`` repository binds to this same
-    engine during the endpoint port (Phase 2b), so identity (ORM) and domain data
-    (Core) share one DB/connection pool instead of the old single-connection server.
+    ``Settings.database_url``). Identity (ORM) and domain data (Core) share this
+    engine and connection pool.
     """
     _ensure_session_factory()
     return _engine

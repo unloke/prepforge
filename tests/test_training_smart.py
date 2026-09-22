@@ -76,9 +76,9 @@ def _mastered(node_id):
     )
 
 
-def _seed_progress(repository, repertoire_id, rows):
+def _seed_progress(repository, repertoire_id, rows, owner="t-owner"):
     for row in rows:
-        repository.save_training_progress(repertoire_id, row)
+        repository.save_training_progress(repertoire_id, row, owner_user_id=owner)
 
 
 # ---- start / resume ---------------------------------------------------------
@@ -87,7 +87,7 @@ def _seed_progress(repository, repertoire_id, rows):
 def test_start_builds_card_session():
     repository = _repository()
     repertoire, _ = _build(repository)
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, "t-owner")
     session = service.start_or_resume(repertoire.id, seed=5)
     assert session.mode is TrainingMode.SMART
     assert session.line_order
@@ -99,7 +99,7 @@ def test_start_builds_card_session():
 def test_start_resumes_unfinished_session():
     repository = _repository()
     repertoire, _ = _build(repository)
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, "t-owner")
     first = service.start_or_resume(repertoire.id, seed=5)
     again = service.start_or_resume(repertoire.id, seed=99)
     assert again.id == first.id
@@ -109,7 +109,7 @@ def test_start_resumes_unfinished_session():
 def test_fresh_rebuilds_queue():
     repository = _repository()
     repertoire, _ = _build(repository)
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, "t-owner")
     first = service.start_or_resume(repertoire.id, seed=5)
     prompt = service.current_prompt(first.id)
     service.submit_move(first.id, prompt.expected_move_uci)  # make some progress
@@ -125,7 +125,7 @@ def test_start_raises_when_nothing_trainable():
     repertoire = builder.create_repertoire(
         CreateRepertoireRequest(name="Empty", color=Color.WHITE)
     )
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, "t-owner")
     try:
         service.start_or_resume(repertoire.id, seed=1)
         assert False, "expected ValueError"
@@ -148,7 +148,7 @@ def test_deep_card_prompt_carries_run_in_context():
         [_due(ids["bb5"])]
         + [_mastered(ids[k]) for k in ("e4", "nf3", "d4", "c4")],
     )
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, "t-owner")
     # session_size=1 keeps polish fill out so the queue is exactly the due card.
     session = service.start_or_resume(repertoire.id, seed=5, session_size=1)
     assert len(session.line_order) == 1
@@ -179,7 +179,7 @@ def test_prompt_flags_author_annotation():
 
     _mark(repertoire.root_node)
     repository.save_repertoire(repertoire)
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, "t-owner")
     session = service.start_or_resume(repertoire.id, seed=5, session_size=1)
     prompt = service.current_prompt(session.id)
     assert prompt.expected_move_uci == "e2e4"
@@ -195,7 +195,7 @@ def test_first_move_card_has_no_run_in():
         repertoire.id,
         [_due(ids["e4"])] + [_mastered(ids[k]) for k in ("nf3", "bb5", "d4", "c4")],
     )
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, "t-owner")
     session = service.start_or_resume(repertoire.id, seed=5)
     prompt = service.current_prompt(session.id)
     assert prompt.expected_move_uci == "e2e4"
@@ -209,7 +209,7 @@ def test_first_move_card_has_no_run_in():
 def test_correct_first_attempt_writes_progress_and_advances():
     repository = _repository()
     repertoire, _ = _build(repository)
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, "t-owner")
     session = service.start_or_resume(repertoire.id, seed=5)
     prompt = service.current_prompt(session.id)
     result = service.submit_move(session.id, prompt.expected_move_uci, attempt=1)
@@ -227,7 +227,7 @@ def test_correct_first_attempt_writes_progress_and_advances():
 def test_wrong_first_attempt_records_mistake_and_stays():
     repository = _repository()
     repertoire, _ = _build(repository)
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, "t-owner")
     session = service.start_or_resume(repertoire.id, seed=5)
     prompt = service.current_prompt(session.id)
     wrong = "a2a3" if prompt.expected_move_uci != "a2a3" else "h2h3"
@@ -244,7 +244,7 @@ def test_wrong_first_attempt_records_mistake_and_stays():
 def test_second_wrong_attempt_requeues_without_grading():
     repository = _repository()
     repertoire, _ = _build(repository)
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, "t-owner")
     session = service.start_or_resume(repertoire.id, seed=5)
     before = len(session.line_order)
     prompt = service.current_prompt(session.id)
@@ -266,7 +266,7 @@ def test_second_wrong_attempt_requeues_without_grading():
 def test_play_after_reveal_advances_without_sr_write():
     repository = _repository()
     repertoire, _ = _build(repository)
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, "t-owner")
     session = service.start_or_resume(repertoire.id, seed=5)
     prompt = service.current_prompt(session.id)
     wrong = "a2a3" if prompt.expected_move_uci != "a2a3" else "h2h3"
@@ -278,7 +278,7 @@ def test_play_after_reveal_advances_without_sr_write():
     assert result.progress is None
     assert result.session.current_index == session.current_index + 1
     # Only the graded first attempt reached the progress table.
-    stored = repository.load_training_progress(repertoire.id, prompt.expected_node_id)
+    stored = repository.load_training_progress(repertoire.id, prompt.expected_node_id, owner_user_id="t-owner")
     assert stored.attempts == 1
     assert stored.correct_attempts == 0
 
@@ -295,7 +295,7 @@ def test_merged_card_walks_both_targets():
         [_due(ids["e4"]), _due(ids["nf3"])]
         + [_mastered(ids[k]) for k in ("bb5", "d4", "c4")],
     )
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, "t-owner")
     # session_size=2 selects exactly the two due targets (no polish fill); they
     # are consecutive own moves on one path, so they merge into one card.
     session = service.start_or_resume(repertoire.id, seed=5, session_size=2)
@@ -325,7 +325,7 @@ def test_stale_card_is_skipped():
         [_due(ids["bb5"]), _due(ids["c4"])]
         + [_mastered(ids[k]) for k in ("e4", "nf3", "d4")],
     )
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, "t-owner")
     # session_size=2 -> exactly the two due targets, one card each (they sit
     # on different paths, so no merge and no polish fill).
     session = service.start_or_resume(repertoire.id, seed=5, session_size=2)
@@ -337,7 +337,7 @@ def test_stale_card_is_skipped():
     # production, each with its own service (a service caches the repertoire tree
     # for one request's lifetime). A fresh service reads the post-edit tree and
     # skips the now-missing card.
-    prompt = SmartTrainingService(repository).current_prompt(session.id)
+    prompt = SmartTrainingService(repository, "t-owner").current_prompt(session.id)
     second_card = decode_card(session.line_order[1])
     assert prompt is not None
     assert prompt.expected_node_id == second_card.last_target_id
@@ -351,7 +351,7 @@ def test_session_completes_after_last_card():
         repertoire.id,
         [_due(ids["e4"])] + [_mastered(ids[k]) for k in ("nf3", "bb5", "d4", "c4")],
     )
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, "t-owner")
     session = service.start_or_resume(repertoire.id, seed=5, session_size=1)
     assert len(session.line_order) == 1
     result = service.submit_move(session.id, "e2e4", attempt=1)
@@ -379,7 +379,6 @@ def _build_black(repository, owner=None):
 
 
 def _claim(repository, owner, *repertoires):
-    repository.ensure_profile(owner, display_name=owner)
     for rep in repertoires:
         repository.claim_repertoire(rep.id, owner)
 
@@ -390,7 +389,7 @@ def test_mixed_session_spans_repertoires_in_chunks():
     black = _build_black(repository)
     owner = "owner-1"
     _claim(repository, owner, white, black)
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, owner)
     session = service.start_or_resume_mixed(owner, seed=5)
     cards = [decode_card(raw) for raw in session.line_order]
     assert all(card is not None and card.repertoire_id for card in cards)
@@ -418,7 +417,7 @@ def test_mixed_bundle_names_each_repertoire():
     black = _build_black(repository)
     owner = "owner-2"
     _claim(repository, owner, white, black)
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, owner)
     session = service.start_or_resume_mixed(owner, seed=5)
     anchor = repository.load_repertoire(session.repertoire_id)
     bundle = service.session_card_bundle(session, anchor)
@@ -436,7 +435,7 @@ def test_mixed_single_active_repertoire_delegates_to_plain_start():
     white, _ = _build(repository)
     owner = "owner-3"
     _claim(repository, owner, white)
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, owner)
     session = service.start_or_resume_mixed(owner, seed=5)
     assert session.repertoire_id == white.id
     cards = [decode_card(raw) for raw in session.line_order]
@@ -449,7 +448,7 @@ def test_mixed_sync_routes_progress_to_each_repertoire():
     black = _build_black(repository)
     owner = "owner-4"
     _claim(repository, owner, white, black)
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, owner)
     session = service.start_or_resume_mixed(owner, seed=5)
     anchor = repository.load_repertoire(session.repertoire_id)
     bundle = service.session_card_bundle(session, anchor)
@@ -460,14 +459,74 @@ def test_mixed_sync_routes_progress_to_each_repertoire():
     assert set(picks) == {white.id, black.id}
     written = service.sync_progress(
         session.id,
-        [{"node_id": node_id, "correct": True} for node_id in picks.values()],
+        [
+            {"node_id": node_id, "correct": True, "attempt_uuid": "mix-{0}".format(rep_id)}
+            for rep_id, node_id in picks.items()
+        ],
+        owner_user_id=owner,
     )
     assert written == 2
     for rep_id, node_id in picks.items():
-        progress = repository.load_training_progress(rep_id, node_id)
+        progress = repository.load_training_progress(rep_id, node_id, owner_user_id=owner)
         assert progress is not None and progress.attempts == 1
         other = black.id if rep_id == white.id else white.id
-        assert repository.load_training_progress(other, node_id) is None
+        assert repository.load_training_progress(other, node_id, owner_user_id=owner) is None
+    # Retrying the same UUIDs is a no-op.
+    written = service.sync_progress(
+        session.id,
+        [
+            {"node_id": node_id, "correct": True, "attempt_uuid": "mix-{0}".format(rep_id)}
+            for rep_id, node_id in picks.items()
+        ],
+        owner_user_id=owner,
+    )
+    assert written == 0
+
+
+def test_mixed_sync_rejects_uuid_collision():
+    repository = _repository()
+    white, _ = _build(repository)
+    owner = "owner-4b"
+    _claim(repository, owner, white)
+    service = SmartTrainingService(repository, owner)
+    session = service.start_or_resume(white.id, seed=5)
+    anchor = repository.load_repertoire(session.repertoire_id)
+    bundle = service.session_card_bundle(session, anchor)
+    node_id = bundle[0]["targets"][0]["node_id"]
+    written = service.sync_progress(
+        session.id,
+        [{"node_id": node_id, "correct": True, "attempt_uuid": "collide-1"}],
+        owner_user_id=owner,
+    )
+    assert written == 1
+    import pytest as _pytest
+
+    with _pytest.raises(ValueError, match="different payload"):
+        service.sync_progress(
+            session.id,
+            [{"node_id": node_id, "correct": False, "attempt_uuid": "collide-1"}],
+            owner_user_id=owner,
+        )
+
+
+def test_sync_requires_uuid():
+    import pytest as _pytest
+
+    repository = _repository()
+    white, _ = _build(repository)
+    owner = "owner-4c"
+    _claim(repository, owner, white)
+    service = SmartTrainingService(repository, owner)
+    session = service.start_or_resume(white.id, seed=5)
+    anchor = repository.load_repertoire(session.repertoire_id)
+    bundle = service.session_card_bundle(session, anchor)
+    node_id = bundle[0]["targets"][0]["node_id"]
+    with _pytest.raises(ValueError, match="attempt_uuid"):
+        service.sync_progress(
+            session.id,
+            [{"node_id": node_id, "correct": True}],
+            owner_user_id=owner,
+        )
 
 
 def test_mixed_ignores_foreign_repertoire_cards():
@@ -476,7 +535,7 @@ def test_mixed_ignores_foreign_repertoire_cards():
     black = _build_black(repository)
     _claim(repository, "owner-5", white)
     _claim(repository, "owner-6", black)  # belongs to someone else
-    service = SmartTrainingService(repository)
+    service = SmartTrainingService(repository, "owner-5")
     session = service.start_or_resume_mixed("owner-5", seed=5)
     # Tamper: splice a card pointing into the other owner's repertoire.
     foreign_node = black.root_node.children[0].children[0]  # ...e5 (own move)
@@ -493,7 +552,12 @@ def test_mixed_ignores_foreign_repertoire_cards():
     assert all(card["repertoire_id"] != black.id for card in bundle)
     # And a synced attempt on the foreign node never lands.
     written = service.sync_progress(
-        session.id, [{"node_id": foreign_node.id, "correct": True}]
+        session.id,
+        [{"node_id": foreign_node.id, "correct": True, "attempt_uuid": "foreign-1"}],
+        owner_user_id="owner-5",
     )
     assert written == 0
-    assert repository.load_training_progress(black.id, foreign_node.id) is None
+    assert (
+        repository.load_training_progress(black.id, foreign_node.id, owner_user_id="owner-6")
+        is None
+    )

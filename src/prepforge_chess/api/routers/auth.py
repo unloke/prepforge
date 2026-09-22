@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db
-from prepforge_chess.api.deps import current_user, current_user_optional
+from prepforge_chess.api.deps import current_user
 from prepforge_chess.api.middleware import CSRF_COOKIE
 from prepforge_chess.api.models import AuthSession, Plan, User
 from prepforge_chess.api.ratelimit import limiter
@@ -133,14 +133,10 @@ def login(
     settings: Settings = Depends(get_settings),
 ) -> User:
     user = db.scalar(select(User).where(User.email == body.email.lower()))
-    # Verify even on miss against a dummy hash would be ideal; keep simple but
-    # avoid leaking which half failed via the message. A NULL hash means an
-    # OAuth-only (Google) account that has no password — reject password login.
-    if (
-        user is None
-        or user.password_hash is None
-        or not verify_password(body.password, user.password_hash)
-    ):
+    # One bcrypt verify on every path (unknown user and OAuth-only NULL hash go
+    # through the dummy hash inside verify_password); the message never leaks
+    # which half failed.
+    if user is None or not verify_password(body.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid email or password"
         )
@@ -175,23 +171,6 @@ def logout(
     return response
 
 
-@router.post("/signout")
-def signout(
-    request: Request,
-    response: Response,
-    db: Session = Depends(get_db),
-    settings: Settings = Depends(get_settings),
-) -> dict[str, bool]:
-    """Legacy SPA shim: web-src/app.js POSTs ``/api/auth/signout`` and expects
-    ``{ok: true}``. Same effect as ``/logout`` (drop the session + clear the cookie);
-    the old server's "rotate to a fresh guest" has no analogue here (the SaaS model has
-    no guest sessions — you are either authenticated or anonymous)."""
-    _close_session(request, db, settings)
-    response.delete_cookie(settings.session_cookie_name, path="/")
-    response.delete_cookie(CSRF_COOKIE, path="/")
-    return {"ok": True}
-
-
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(current_user)) -> User:
     return user
@@ -207,26 +186,3 @@ def providers(settings: Settings = Depends(get_settings)) -> AuthProviders:
     """Public: which sign-in methods the deployment offers, so the SPA can show the
     right buttons (Google when configured; email/password always available)."""
     return AuthProviders(google=settings.google_oauth_enabled, password=True)
-
-
-class AuthStatus(BaseModel):
-    signed_in: bool
-    username: str | None = None
-    # The account id, so the SPA can recognise the caller in member lists (e.g. the
-    # Teams view's "leave team" / remove-self affordance). None for a guest.
-    user_id: str | None = None
-
-
-@router.get("/status", response_model=AuthStatus)
-def status_(user: User | None = Depends(current_user_optional)) -> AuthStatus:
-    """Compatibility shim for the legacy SPA's Sign-out affordance. Unlike the old
-    server (where "signed in" meant "has a Lichess username"), an authenticated
-    email/password ``User`` IS the account here, so ``signed_in`` keys off the
-    session and ``username`` shows the account's display name."""
-    if user is None:
-        return AuthStatus(signed_in=False)
-    return AuthStatus(
-        signed_in=True, username=user.display_name or user.email, user_id=user.id
-    )
-
-

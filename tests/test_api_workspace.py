@@ -53,7 +53,6 @@ def _seed_repertoire(owner_user_id: str, name: str) -> str:
         ),
     )
     repo = PrepForgeRepository(get_engine())
-    repo.ensure_profile(owner_user_id, display_name="seed")
     repo.save_repertoire(rep, owner_user_id=owner_user_id)
     return rep.id
 
@@ -66,10 +65,8 @@ def test_workspace_reads_require_auth(client):
     assert client.get("/api/repertoires").status_code == 401
 
 
-def test_auth_status_signed_out(client):
-    r = client.get("/api/auth/status")
-    assert r.status_code == 200
-    assert r.json() == {"signed_in": False, "username": None, "user_id": None}
+def test_auth_me_anonymous(client):
+    assert client.get("/api/auth/me").status_code == 401
 
 
 # ---- Happy path ------------------------------------------------------------
@@ -137,16 +134,17 @@ def test_dashboard_recap_counts_this_weeks_reviews(client):
     assert recap["weak_now"] == 0 and recap["weak_delta"] == 0
 
 
-def test_auth_status_signed_in_reports_display_name(client):
+def test_auth_me_reports_display_name(client):
     user_id = _register(client, "coach@example.com", display_name="Coach")
-    r = client.get("/api/auth/status")
+    r = client.get("/api/auth/me")
     assert r.status_code == 200
-    assert r.json() == {"signed_in": True, "username": "Coach", "user_id": user_id}
+    assert r.json()["display_name"] == "Coach"
+    assert r.json()["id"] == user_id
 
 
-def test_auth_status_falls_back_to_email(client):
+def test_auth_me_falls_back_to_email(client):
     _register(client, "noname@example.com", display_name=None)
-    assert client.get("/api/auth/status").json()["username"] == "noname@example.com"
+    assert client.get("/api/auth/me").json()["email"] == "noname@example.com"
 
 
 # ---- Owner isolation (the bridge passes the right owner) --------------------
@@ -349,7 +347,7 @@ def test_create_rejects_bad_color(client):
         json={"name": "X", "color": "purple"},
         headers=csrf_headers(client),
     )
-    assert r.status_code == 400
+    assert r.status_code == 422
 
 
 def test_created_repertoire_is_owner_isolated(client):

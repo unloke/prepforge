@@ -114,7 +114,7 @@ def test_wrong_attempt_adds_mistake_and_due_soon():
 def test_training_service_starts_and_resumes_saved_line_order():
     repository = _training_repository()
     repertoire = _training_repertoire(repository)
-    service = TrainingService(repository)
+    service = TrainingService(repository, "t-owner")
 
     first = service.start_or_resume_session(
         repertoire.id,
@@ -136,7 +136,7 @@ def test_training_service_starts_and_resumes_saved_line_order():
 def test_training_service_wrong_then_correct_attempt_updates_queue_and_prompt():
     repository = _training_repository()
     repertoire = _training_repertoire(repository)
-    service = TrainingService(repository)
+    service = TrainingService(repository, "t-owner")
     session = service.start_or_resume_session(repertoire.id, seed=1)
     prompt = service.current_prompt(session.id)
     assert prompt is not None

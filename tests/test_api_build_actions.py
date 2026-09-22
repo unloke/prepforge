@@ -267,7 +267,7 @@ def test_action_unknown_is_400(client):
         json={"repertoire_id": rep_id, "node_id": node_id, "action": "frobnicate"},
         headers=csrf_headers(client),
     )
-    assert r.status_code == 400
+    assert r.status_code == 422
 
 
 def test_action_is_owner_gated(client):
@@ -374,7 +374,7 @@ def test_export_bad_format_is_400(client):
         json={"repertoire_id": rep_id, "format": "docx"},
         headers=csrf_headers(client),
     )
-    assert r.status_code == 400
+    assert r.status_code == 422
 
 
 def test_export_owner_gated(client):
@@ -529,7 +529,7 @@ def test_import_pgn_rejects_bad_color(client):
         json={"pgn": "1. e4 *", "name": "X", "color": "green"},
         headers=csrf_headers(client),
     )
-    assert r.status_code == 400
+    assert r.status_code == 422
 
 
 def test_import_pgn_rejects_oversized_payload(client):

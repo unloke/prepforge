@@ -1,4 +1,4 @@
-"""Ported analyze endpoints (Phase 2b-2d-i) — the browser-compute analysis flow.
+"""Analyze endpoints — the browser-compute analysis flow.
 
 The Analyze view runs Stockfish (and optionally Maia) **in the browser**; the server
 only orchestrates and persists, never computing chess. Two POSTs carry the flow:
@@ -12,10 +12,7 @@ only orchestrates and persists, never computing chess. Two POSTs carry the flow:
 
 Two GETs read it back: ``/api/analyses`` (history list) and ``/api/analyses/{id}``
 (recall the latest saved analysis). ``/api/board`` is a pure utility (legal moves +
-status for a FEN). The legacy server's *server-engine* variants (``/api/analyze/pgn``,
-``/pgn/start``, ``/status``, ``/cancel``, ``/demo``, ``/api/jobs/active``) are
-deliberately **not** ported — they require a server-side engine the SaaS deploy
-doesn't run.
+status for a FEN).
 """
 from __future__ import annotations
 

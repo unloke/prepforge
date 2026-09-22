@@ -52,9 +52,8 @@ describe("account controller", () => {
 
   it("maps server auth status into the shared app session state", async () => {
     const api = vi.fn().mockResolvedValue({
-      signed_in: true,
-      username: "alice",
-      user_id: "user-1",
+      id: "user-1",
+      display_name: "alice",
     });
     const { appState, controller } = makeController({ api });
 
@@ -83,9 +82,8 @@ describe("account controller", () => {
     // S1 startup invariant: delayed signed-in hydration (auth/Lichess) must
     // not self-navigate — Settings opens only via the account-menu action.
     const api = vi.fn().mockResolvedValue({
-      signed_in: true,
-      username: "alice",
-      user_id: "user-1",
+      id: "user-1",
+      display_name: "alice",
     });
     const { appState, controller, onOpenSettings } = makeController({ api });
 

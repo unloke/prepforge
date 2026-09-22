@@ -40,15 +40,10 @@ from prepforge_chess.services.lichess_oauth import (
 )
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
-# Per-owner key for the "you just finished a game" watcher's de-dup marker. Stored on
-# the owner's profile blob (multi-tenant), reused from the legacy server's setting name.
+# Per-owner key for the "you just finished a game" watcher's de-dup marker.
 _LAST_SEEN_KEY = "lichess.last_seen_game_id"
 
 router = APIRouter(prefix="/api/lichess", tags=["lichess"])
-# Legacy (unprefixed) routes the existing SPA still hits. Kept as thin compatibility
-# shims so the FastAPI cutover doesn't 404/405 the SPA before web-src/app.js is updated
-# to the new surface (see docs/ROADMAP.md "SPA cutover note").
-legacy_router = APIRouter(tags=["lichess"])
 
 PROVIDER = "lichess"
 _FLOW_COOKIE = "pf_lichess_oauth"
@@ -107,27 +102,15 @@ def _demote_others(db: Session, user_id: str, keep_id: str) -> None:
             link.is_primary = False
 
 
-@router.get("", response_model=LinkStatus)
+@router.get("")
 def status_(user: User = Depends(current_user), db: Session = Depends(get_db)) -> LinkStatus:
     links = _links_for(db, user.id)
     link = _link_for(db, user.id)
     if link is None:
-        return LinkStatus(linked=False)
+        return LinkStatus(linked=False, username=None, accounts=[])
     return LinkStatus(
         linked=True, username=link.provider_user_id, accounts=_accounts_out(links)
     )
-
-
-@router.get("/status")
-def status_legacy(
-    user: User = Depends(current_user), db: Session = Depends(get_db)
-) -> dict:
-    """Legacy-shape status shim. The SPA's account chip / OAuth fallback poll / game
-    watcher read ``{connected, username}`` (web-src/app.js); the new surface is
-    ``GET /api/lichess`` -> ``{linked, username}``. Keep both until the SPA migrates."""
-    link = _link_for(db, user.id)
-    username = link.provider_user_id if link is not None else None
-    return {"connected": bool(username), "username": username}
 
 
 class SetPrimaryBody(BaseModel):
@@ -186,18 +169,6 @@ def login(
     user: User = Depends(current_user),
     settings: Settings = Depends(get_settings),
 ) -> Response:
-    return _start_login_flow(request, user, settings)
-
-
-@legacy_router.get("/oauth/login")
-def oauth_login(
-    request: Request,
-    user: User = Depends(current_user),
-    settings: Settings = Depends(get_settings),
-) -> Response:
-    """Legacy popup entrypoint. The SPA opens ``/oauth/login`` (web-src/app.js); the
-    new route is ``/api/lichess/login``. Both mint the same PKCE flow whose
-    ``redirect_uri`` is ``/api/lichess/callback``, so the callback handler is shared."""
     return _start_login_flow(request, user, settings)
 
 
@@ -415,12 +386,11 @@ def explorer_proxy(
     return data
 
 
-# ---- Game import / compare (Phase 2b-2d-iv) --------------------------------
+# ---- Game import / compare ---------------------------------------------------
 # Lichess's public games API needs no token, only the username -- so compare/latest
 # operate on the caller's *linked* username (``LinkedAccount.provider_user_id``), never
 # an arbitrary client-supplied one. Comparison is owner-scoped (matches only against the
-# caller's own repertoires) and the "you just finished a game" marker lives per-owner on
-# the profile blob. These replace the legacy ``/api/lichess/{compare,latest,seen}``.
+# caller's own repertoires) and the "you just finished a game" marker lives per-owner.
 
 
 def _linked_username_or_400(
@@ -547,12 +517,6 @@ def compare(
 
 
 class CompareBody(BaseModel):
-    # The SPA POSTs the shared Source Composer resolution: ``account_ids``
-    # narrows linked identities (omitted = Self = all linked) and ``usernames``
-    # carries the fully-resolved fetch list (linked + arbitrary external Lichess
-    # users). ``username`` (legacy) is ignored. Comparison stays owner-scoped to
-    # the caller's own repertoires.
-    username: str | None = None
     count: int = 10
     account_id: str | None = None
     account_ids: list[str] | None = None
@@ -568,8 +532,7 @@ def compare_post(
     repo: PrepForgeRepository = Depends(get_repository),
 ) -> dict:
     """Shared Source Composer fetch: resolved linked ids + arbitrary external
-    Lichess usernames, compared owner-scoped against the caller's repertoires.
-    The legacy single-tenant ``username`` field is ignored."""
+    Lichess usernames, compared owner-scoped against the caller's repertoires."""
     return _run_compare(
         body.count, user, owner, db, repo, body.account_id, body.account_ids, body.usernames
     )
@@ -626,7 +589,7 @@ def latest(
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     if game is None:
         return {"has_game": False}
-    last_seen = repo.get_profile_setting(owner, _LAST_SEEN_KEY)
+    last_seen = repo.get_user_setting(owner, _LAST_SEEN_KEY)
     payload = {
         "has_game": True,
         "lichess_id": game.lichess_id,
@@ -655,5 +618,5 @@ def mark_seen(
     """Record the latest game this owner has acknowledged, so the watcher stops
     re-surfacing it as new."""
     if body.lichess_id:
-        repo.set_profile_setting(owner, _LAST_SEEN_KEY, body.lichess_id)
+        repo.set_user_setting(owner, _LAST_SEEN_KEY, body.lichess_id)
     return {"ok": True}

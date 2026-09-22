@@ -3,10 +3,7 @@
 Turns a completed analysis (classified moves + summary) into the JSON payload the
 SPA's Analyze view consumes. It computes **no chess**: classification/eval already
 happened (server-side ReplayEngine over browser-supplied evals), so this only walks
-the result and the derived report. Shared by the new FastAPI analyze endpoints and
-the legacy ``web/server.py`` so the two serializations cannot diverge during the
-strangler migration (the legacy ``_analysis_payload`` is frozen and deleted with the
-old server).
+the result and the derived report for the FastAPI analyze endpoints.
 """
 from __future__ import annotations
 

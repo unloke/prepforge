@@ -129,8 +129,9 @@ def _utc_now() -> datetime:
 
 
 class SmartTrainingService:
-    def __init__(self, repository: PrepForgeRepository):
+    def __init__(self, repository: PrepForgeRepository, owner_user_id: str | None = None):
         self.repository = repository
+        self.owner_user_id = owner_user_id
         # Per-request caches. A service instance is created fresh per request
         # (see api/routers/train.py), so a repertoire and its node index are
         # loaded/built at most once even though /smart/start touches the same
@@ -185,7 +186,10 @@ class SmartTrainingService:
             return existing
 
         progress_by_id = {
-            p.node_id: p for p in self.repository.list_training_progress(repertoire_id)
+            p.node_id: p
+            for p in self.repository.list_training_progress(
+                repertoire_id, owner_user_id=self._owner_or_raise()
+            )
         }
         actual_seed = seed if seed is not None else random.SystemRandom().randint(1, 2**31 - 1)
         kwargs = {"seed": actual_seed}
@@ -282,7 +286,10 @@ class SmartTrainingService:
         plans: List[tuple[str, SessionPlan]] = []
         for index, rep in enumerate(reps):
             progress_by_id = {
-                p.node_id: p for p in self.repository.list_training_progress(rep.id)
+                p.node_id: p
+                for p in self.repository.list_training_progress(
+                    rep.id, owner_user_id=self._owner_or_raise()
+                )
             }
             plans.append(
                 (
@@ -356,10 +363,8 @@ class SmartTrainingService:
     ) -> Optional[Repertoire]:
         """Resolve the repertoire a card's targets live in. Foreign-repertoire
         cards (mixed sessions) are honoured only when that repertoire belongs
-        to the SAME, NON-NULL owner as the session's anchor — a tampered synced
-        queue must never read or write another user's data. Requiring a non-null
-        owner is essential: ``None == None`` is truthy, so without it a legacy/
-        unclaimed anchor could pull in any other unclaimed repertoire's tree."""
+        to the SAME owner as the session's anchor — a tampered synced queue
+        must never read or write another user's data."""
         rep_id = card.repertoire_id or session.repertoire_id
         if rep_id in cache:
             return cache[rep_id]
@@ -372,7 +377,6 @@ class SmartTrainingService:
             if (
                 anchor_meta is not None
                 and meta is not None
-                and anchor_meta["owner_user_id"] is not None
                 and meta["owner_user_id"] == anchor_meta["owner_user_id"]
             ):
                 # Only cache the tree globally once ownership is cleared; a
@@ -624,17 +628,22 @@ class SmartTrainingService:
         *,
         card_index: Optional[int] = None,
         queue: Optional[List[str]] = None,
+        owner_user_id: Optional[str] = None,
     ) -> int:
         """Persist a batch of locally graded first attempts plus the session's
-        position — the local-first Train flush. Replays each attempt through
-        ``record_attempt`` in order, so the stored spaced-repetition state is
-        identical to what the same moves would have written one-by-one via
-        ``submit_move``. Attempts on nodes edited out of the tree are skipped
-        with a light clamp, not an error. Returns how many attempts landed.
+        position — the local-first Train flush. Exactly-once per
+        ``(session_id, attempt_uuid)``: every attempt MUST carry an
+        ``attempt_uuid`` minted by the client and reused across retries. A retry
+        with an identical payload is a no-op (returns the original outcome);
+        a UUID reused with a different ``(node_id, correct)`` is a 409-class
+        ``ValueError``. Receipt insert + SR progress + session update commit in
+        ONE transaction, so the streak only advances on genuinely new attempts.
+        Attempts on nodes edited out of the tree are skipped, not errors.
+        Returns how many attempts were newly applied.
 
-        Trust note (docs/local-first-sync-plan.md §2.2): the client grades its
-        own answers, so a tampered client can fake its own SR progress — that
-        only distorts that user's own training queue, an accepted trade-off.
+        Trust note: the client grades its own answers, so a tampered client can
+        fake its own SR progress — that only distorts that user's own training
+        queue, an accepted trade-off.
         """
         if len(attempts) > MAX_SYNC_ATTEMPTS:
             raise ValueError(
@@ -642,11 +651,12 @@ class SmartTrainingService:
                     len(attempts), MAX_SYNC_ATTEMPTS
                 )
             )
+        for item in attempts:
+            if not item.get("attempt_uuid"):
+                raise ValueError("each attempt requires an attempt_uuid")
         session = self._load_session_or_raise(session_id)
         repertoire = self._load_repertoire_or_raise(session.repertoire_id)
-        # Map node id -> owning repertoire across every repertoire the queue
-        # references (mixed sessions span several; ownership is enforced by
-        # _card_repertoire, so a tampered queue can't pull in foreign trees).
+        session_owner = owner_user_id
         cache: Dict[str, Optional[Repertoire]] = {repertoire.id: repertoire}
         rep_of_node: Dict[str, str] = {}
 
@@ -669,19 +679,121 @@ class SmartTrainingService:
         written = 0
         for item in attempts:
             node_id = item.get("node_id")
+            correct = bool(item.get("correct"))
+            attempt_uuid = item.get("attempt_uuid")
             rep_id = rep_of_node.get(node_id)
             if rep_id is None:
                 continue
+            receipt = self.repository.get_attempt_receipt(session_id, attempt_uuid)
+            if receipt is not None:
+                if receipt["node_id"] != node_id or receipt["correct"] != correct:
+                    raise ValueError(
+                        "attempt_uuid {0} already recorded with different payload".format(
+                            attempt_uuid
+                        )
+                    )
+                continue
             stored = self.repository.load_training_progress(
-                rep_id, node_id
+                rep_id, node_id, owner_user_id=session_owner
             ) or TrainingProgress(node_id=node_id)
             session, progress = record_attempt(
                 session=session,
                 progress=stored,
                 node_id=node_id,
-                correct=bool(item.get("correct")),
+                correct=correct,
             )
-            self.repository.save_training_progress(rep_id, progress)
+            from prepforge_chess.storage import sa_tables as _t
+            from prepforge_chess.storage.repositories import (
+                _bool_to_int as _b2i,
+            )
+            from prepforge_chess.storage.repositories import (
+                _dt_to_text as _dt2t,
+            )
+            from prepforge_chess.storage.repositories import (
+                _json_dump as _jdump,
+            )
+            from prepforge_chess.storage.repositories import (
+                _now_text as _nowt,
+            )
+            from prepforge_chess.storage.repositories import (
+                _upsert as _upsert_rows,
+            )
+            from sqlalchemy import select as _select
+
+            progress_id = self.repository._training_progress_id(session_owner, rep_id, node_id)
+            with self.repository.engine.begin() as conn:
+                stored_row = conn.execute(
+                    _select(
+                        _t.train_attempt_receipts.c.node_id,
+                        _t.train_attempt_receipts.c.correct,
+                    ).where(
+                        _t.train_attempt_receipts.c.session_id == session_id,
+                        _t.train_attempt_receipts.c.attempt_uuid == attempt_uuid,
+                    )
+                ).first()
+                if stored_row is not None:
+                    if stored_row[0] != node_id or bool(stored_row[1]) != correct:
+                        raise ValueError(
+                            "attempt_uuid {0} already recorded with different payload".format(
+                                attempt_uuid
+                            )
+                        )
+                    continue
+                conn.execute(
+                    _t.train_attempt_receipts.insert().values(
+                        session_id=session_id,
+                        attempt_uuid=attempt_uuid,
+                        node_id=node_id,
+                        correct=_b2i(correct),
+                        created_at=_nowt(),
+                    )
+                )
+                _upsert_rows(
+                    conn,
+                    _t.training_progress,
+                    {
+                        "id": progress_id,
+                        "owner_user_id": session_owner,
+                        "repertoire_id": rep_id,
+                        "node_id": progress.node_id,
+                        "attempts": progress.attempts,
+                        "correct_attempts": progress.correct_attempts,
+                        "last_reviewed_at": _dt2t(progress.last_reviewed_at),
+                        "spaced_repetition_score": progress.spaced_repetition_score,
+                        "due_at": _dt2t(progress.due_at),
+                        "is_mastered": _b2i(progress.is_mastered),
+                        "created_at": _nowt(),
+                        "updated_at": _nowt(),
+                    },
+                    conflict=[_t.training_progress.c.id],
+                    update_cols=(
+                        "attempts", "correct_attempts", "last_reviewed_at",
+                        "spaced_repetition_score", "due_at", "is_mastered", "updated_at",
+                    ),
+                )
+                _upsert_rows(
+                    conn,
+                    _t.training_sessions,
+                    {
+                        "id": session.id,
+                        "repertoire_id": session.repertoire_id,
+                        "mode": session.mode.value,
+                        "line_order_json": _jdump(session.line_order),
+                        "current_index": session.current_index,
+                        "current_node_id": session.current_node_id,
+                        "mistakes_json": _jdump(session.mistakes),
+                        "mastered_nodes_json": _jdump(session.mastered_nodes),
+                        "seed": session.seed,
+                        "created_at": _dt2t(session.created_at),
+                        "updated_at": _dt2t(session.updated_at),
+                    },
+                    conflict=[_t.training_sessions.c.id],
+                    update_cols=(
+                        "repertoire_id", "mode", "line_order_json", "current_index",
+                        "current_node_id", "mistakes_json", "mastered_nodes_json", "seed",
+                        "updated_at",
+                    ),
+                )
             written += 1
 
         if queue is not None:
@@ -720,7 +832,7 @@ class SmartTrainingService:
         sr_written = attempt <= 1
         if sr_written:
             stored = self.repository.load_training_progress(
-                card_rep.id, expected.id
+                card_rep.id, expected.id, owner_user_id=self._owner_or_raise()
             ) or TrainingProgress(node_id=expected.id)
             session, progress = record_attempt(
                 session=session,
@@ -728,7 +840,9 @@ class SmartTrainingService:
                 node_id=expected.id,
                 correct=correct,
             )
-            self.repository.save_training_progress(card_rep.id, progress)
+            self.repository.save_training_progress(
+                card_rep.id, progress, owner_user_id=self._owner_or_raise()
+            )
 
         card_completed = False
         requeued = False
@@ -831,3 +945,8 @@ class SmartTrainingService:
         if session is None:
             raise ValueError("training session not found: {0}".format(session_id))
         return session
+
+    def _owner_or_raise(self) -> str:
+        if not self.owner_user_id:
+            raise ValueError("training service requires an owner")
+        return self.owner_user_id

@@ -264,14 +264,12 @@ export function createAccountController({
     }
   }
 
-  // Ask the server whether this browser's session is a real account or a guest,
-  // and capture the stable username for the account chip.
   async function refreshAuthStatus() {
     try {
-      const status = await api("/api/auth/status");
-      appState.signedIn = !!status.signed_in;
-      appState.accountUsername = status.username || null;
-      appState.accountUserId = status.user_id || null;
+      const me = await api("/api/auth/me");
+      appState.signedIn = !!me.id;
+      appState.accountUsername = me.display_name || me.email || null;
+      appState.accountUserId = me.id || null;
     } catch (_) {
       appState.signedIn = false;
       appState.accountUsername = null;
@@ -285,14 +283,14 @@ export function createAccountController({
       title: "Sign out?",
       body:
         "Signs you out on this browser. Your saved repertoires and games stay on your " +
-        "account and return when you sign back in with Lichess.",
+        "account and return when you sign back in.",
       okLabel: "Sign out",
       cancelLabel: "Stay signed in",
       tone: "danger",
     });
     if (!confirmed) return;
     try {
-      await postJson("/api/auth/signout", {});
+      await postJson("/api/auth/logout", {});
     } catch (_) {
       // The session was not rotated server-side; stay put and report the error.
       setStatus("Sign out failed — you are still signed in. Try again.", { severity: "error" });
@@ -337,7 +335,7 @@ export function createAccountController({
     const left = window.screenX + Math.max(0, (window.outerWidth - w) / 2);
     const top = window.screenY + Math.max(0, (window.outerHeight - h) / 2);
     const popup = window.open(
-      "/oauth/login",
+      "/api/lichess/login",
       "lichess-oauth",
       `width=${w},height=${h},left=${left},top=${top}`,
     );
@@ -347,7 +345,7 @@ export function createAccountController({
       window.removeEventListener("message", onMessage);
       if (event.data.ok) {
         void refreshLichessStatus();
-        // Login rebinds the session to the account profile → refresh auth state.
+        // Refresh the linked-account state after the OAuth callback.
         void refreshAuthStatus();
         setStatus(`Lichess: ${event.data.detail}`);
       } else {

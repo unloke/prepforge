@@ -1,26 +1,18 @@
-"""Ported Train endpoints (Phase 2b-2d-v) — the spaced-repetition trainer.
+"""Smart + rehearsal Train endpoints — the spaced-repetition trainer.
 
 ``TrainingService`` walks the stored repertoire tree with python-chess (move legality
-only); no Stockfish/Maia runs server-side, so the whole Train surface already fits the
-browser-compute model — these are a straight port, not a rewrite. They replace the
-legacy server's ``/api/train/{start,move,skip,hint}``.
-
-The unauthenticated demo (``/api/train/demo/start``) is deliberately **dropped**
-(mirrors the dropped ``/api/analyze/demo``): the SaaS model is account-centric and a
-shared, ownerless demo repertoire has no clean home in the multi-tenant DB.
-
-Ownership: ``/start`` gates the repertoire through ``_owned_repertoire``; the
-session-keyed endpoints resolve the session to its repertoire and reject another
-owner's session (``_owned_session``, mirroring the legacy ``_assert_session_owner``).
+only); no Stockfish/Maia runs server-side. Ownership: ``/start`` gates the
+repertoire through ``_owned_repertoire``; the session-keyed endpoints resolve
+the session to its repertoire and reject another owner's session.
 """
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Any
+from typing import Any, Literal
 
 import chess
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from prepforge_chess.api.deps import current_owner, get_repository
 from prepforge_chess.api.routers.workspace import _owned_repertoire
@@ -64,16 +56,14 @@ def _owned_session(
     repo: PrepForgeRepository, session_id: str, owner: str
 ) -> TrainingSession:
     """Owner gate for session-keyed endpoints. Resolves the session to its repertoire
-    and 404s when that repertoire belongs to a different user (don't reveal another
-    owner's session). Unclaimed/legacy rows (NULL owner) are allowed, mirroring the
-    legacy ``_assert_session_owner``."""
+    and 404s when that repertoire belongs to a different user."""
     session = repo.load_training_session(session_id)
     if session is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="training session not found"
         )
     meta = repo.repertoire_meta(session.repertoire_id)
-    if meta is not None and meta["owner_user_id"] not in (None, owner):
+    if meta is None or meta["owner_user_id"] != owner:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="training session not found"
         )
@@ -82,7 +72,7 @@ def _owned_session(
 
 class StartBody(BaseModel):
     repertoire_id: str
-    mode: str | None = None
+    mode: Literal["all_lines", "high_priority", "mistakes_only", "smart"] | None = None
     seed: int = 13
     fresh: bool = False
 
@@ -97,12 +87,11 @@ def start(
     first prompt plus the shuffled line plan."""
     _owned_repertoire(repo, body.repertoire_id, owner)
     mode = _mode_or_400(body.mode)
-    # Gate already verified ownership (incl. unclaimed rows), so load without the
-    # owner filter — matches the legacy start path.
+    # The ownership gate above permits loading the repertoire by id here.
     repertoire = repo.load_repertoire(body.repertoire_id)
     if repertoire is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-    service = TrainingService(repo)
+    service = TrainingService(repo, owner)
     session = service.start_or_resume_session(
         repertoire.id, mode=mode, seed=body.seed, fresh=body.fresh
     )
@@ -144,9 +133,8 @@ def record_miss(
     repo: PrepForgeRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Record a single recall miss on a repertoire node — the Analyze board's
-    "you left your prep here" action. Mirrors ``record_departure_misses`` (the
-    recap path): one spaced-repetition miss, due immediately, so the forgotten
-    move leads the very next smart session."""
+    "you left your prep here" action: one spaced-repetition miss, due
+    immediately, so the forgotten move leads the very next smart session."""
     _owned_repertoire(repo, body.repertoire_id, owner)
     repertoire = repo.load_repertoire(body.repertoire_id)
     if repertoire is None:
@@ -157,14 +145,14 @@ def record_miss(
     )
     if node is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="opening node not found")
-    progress = repo.load_training_progress(body.repertoire_id, body.node_id) or TrainingProgress(
-        node_id=body.node_id
-    )
+    progress = repo.load_training_progress(
+        body.repertoire_id, body.node_id, owner_user_id=owner
+    ) or TrainingProgress(node_id=body.node_id)
     updated = update_spaced_repetition(progress, correct=False)
     # An in-session miss retries after 10 minutes; a miss spotted on the Analyze
     # board should land in the very next session, so it is due immediately.
     updated = replace(updated, due_at=updated.last_reviewed_at)
-    repo.save_training_progress(body.repertoire_id, updated)
+    repo.save_training_progress(body.repertoire_id, updated, owner_user_id=owner)
     return {"recorded": True, "node_id": body.node_id}
 
 
@@ -208,20 +196,20 @@ def _touch_streak(
     settings write -- e.g. the dashboard's weekly recap snapshot -- can't read
     the pre-advance blob and clobber the streak back to yesterday (lost update)."""
     day = streak.resolve_day(local_date)
-    advanced = repo.mutate_profile_setting(
+    advanced = repo.mutate_user_setting(
         owner, streak.STREAK_KEY, lambda stored: streak.advance(stored, day)
     )
     return streak.as_view(advanced, day)
 
 
 def _smart_summary_payload(
-    repo: PrepForgeRepository, repertoire: Repertoire
+    repo: PrepForgeRepository, repertoire: Repertoire, owner: str
 ) -> dict[str, Any]:
     """Repertoire health + tomorrow's due forecast — the smart session's
     bookends. Shipped with ``/smart/start`` (the before snapshot) and from
     ``/smart/summary`` (the after, for the end-of-session mastery delta)."""
     progress_by_id = {
-        p.node_id: p for p in repo.list_training_progress(repertoire.id)
+        p.node_id: p for p in repo.list_training_progress(repertoire.id, owner_user_id=owner)
     }
     health = compute_health(
         repertoire.root_node, repertoire.color, progress_by_id
@@ -237,14 +225,14 @@ def _smart_summary_payload(
 
 
 def _mixed_summary_payload(
-    repo: PrepForgeRepository, reps: list[Repertoire]
+    repo: PrepForgeRepository, reps: list[Repertoire], owner: str
 ) -> dict[str, Any]:
     """The mixed-session bookend: per-repertoire health summed into one view
     (mastery_pct recomputed over the combined trainable count)."""
     health: dict[str, int] = {}
     due_tomorrow = 0
     for rep in reps:
-        part = _smart_summary_payload(repo, rep)
+        part = _smart_summary_payload(repo, rep, owner)
         for key, value in part["health"].items():
             health[key] = health.get(key, 0) + value
         due_tomorrow += part["due_tomorrow"]
@@ -264,7 +252,7 @@ def smart_start(
     """Begin (or resume) a card-queue session and return the queue composition
     plus the first card prompt. ``mixed=True`` builds one interleaved queue
     over ALL of the caller's active repertoires."""
-    service = SmartTrainingService(repo)
+    service = SmartTrainingService(repo, owner)
     try:
         if body.mixed:
             session = service.start_or_resume_mixed(
@@ -303,9 +291,9 @@ def smart_start(
             detail="repertoire has no trainable moves yet",
         )
     summary = (
-        _mixed_summary_payload(repo, service.active_repertoires(owner))
+        _mixed_summary_payload(repo, service.active_repertoires(owner), owner)
         if body.mixed
-        else _smart_summary_payload(repo, repertoire)
+        else _smart_summary_payload(repo, repertoire, owner)
     )
     return {
         "repertoire_id": repertoire.id,
@@ -347,7 +335,7 @@ def smart_summary(
     ``day_streak: null`` and never refreshes the client value."""
     if mixed:
         payload = _mixed_summary_payload(
-            repo, SmartTrainingService(repo).active_repertoires(owner)
+            repo, SmartTrainingService(repo, owner).active_repertoires(owner), owner
         )
     elif not repertoire_id:
         raise HTTPException(
@@ -359,10 +347,10 @@ def smart_summary(
         repertoire = repo.load_repertoire(repertoire_id)
         if repertoire is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-        payload = _smart_summary_payload(repo, repertoire)
+        payload = _smart_summary_payload(repo, repertoire, owner)
     day = streak.resolve_day(local_date)
     payload["day_streak"] = streak.as_view(
-        repo.get_profile_setting(owner, streak.STREAK_KEY), day
+        repo.get_user_setting(owner, streak.STREAK_KEY), day
     )
     return payload
 
@@ -378,7 +366,7 @@ def smart_move(
     card later in the same session."""
     _owned_session(repo, body.session_id, owner)
     try:
-        result = SmartTrainingService(repo).submit_move(
+        result = SmartTrainingService(repo, owner).submit_move(
             body.session_id, body.played_uci, attempt=max(1, body.attempt)
         )
     except ValueError as exc:
@@ -418,6 +406,8 @@ def smart_move(
 class SmartSyncAttempt(BaseModel):
     node_id: str
     correct: bool
+    # Client-minted idempotency key, reused across retries of the same attempt.
+    attempt_uuid: str = Field(min_length=1, max_length=64)
 
 
 class SmartSyncBody(BaseModel):
@@ -439,17 +429,23 @@ def smart_sync(
 ) -> dict[str, Any]:
     """Persist a batch of locally graded attempts plus the session position —
     the local-first Train flush (replaces per-move ``/smart/move`` calls).
-    Touches the daily streak once per batch that actually graded something."""
+    Exactly-once per ``(session_id, attempt_uuid)``: retries reuse the UUID,
+    identical redeliveries no-op, and UUID collisions with different payloads
+    are rejected. Touches the daily streak once per batch that graded
+    something NEW (duplicate retries never re-touch it)."""
     _owned_session(repo, body.session_id, owner)
     try:
-        written = SmartTrainingService(repo).sync_progress(
+        written = SmartTrainingService(repo, owner).sync_progress(
             body.session_id,
             [a.model_dump() for a in body.attempts],
             card_index=body.card_index,
             queue=body.queue,
+            owner_user_id=owner,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        detail = str(exc)
+        code = status.HTTP_409_CONFLICT if "different payload" in detail else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=code, detail=detail) from exc
     return {
         "synced": written,
         "day_streak": _touch_streak(repo, owner, body.local_date) if written else None,
@@ -464,7 +460,7 @@ def smart_skip(
 ) -> dict[str, Any]:
     """Skip the current card; return the next prompt (or ``None`` at the end)."""
     _owned_session(repo, body.session_id, owner)
-    prompt = SmartTrainingService(repo).skip_card(body.session_id)
+    prompt = SmartTrainingService(repo, owner).skip_card(body.session_id)
     return {"prompt": smart_prompt_to_json(prompt, _CHESS)}
 
 
@@ -476,7 +472,7 @@ def skip(
 ) -> dict[str, Any]:
     """Skip the current line; return the next prompt (or ``None`` at the end)."""
     _owned_session(repo, body.session_id, owner)
-    prompt = TrainingService(repo).skip_current_line(body.session_id)
+    prompt = TrainingService(repo, owner).skip_current_line(body.session_id)
     return {"prompt": prompt_to_json(prompt, _CHESS)}
 
 
@@ -489,7 +485,7 @@ def hint(
     """Reveal the expected move for the current prompt, plus a short strategic nudge
     (the node's stored idea/plan/comment, else a piece-type heuristic)."""
     _owned_session(repo, body.session_id, owner)
-    prompt = TrainingService(repo).current_prompt(body.session_id)
+    prompt = TrainingService(repo, owner).current_prompt(body.session_id)
     if prompt is None:
         return {"expected_uci": None, "expected_san": None}
 
@@ -547,7 +543,7 @@ def move(
     return the result with the opponent's reply so the UI can animate both plies."""
     _owned_session(repo, body.session_id, owner)
     try:
-        result = TrainingService(repo).submit_move(body.session_id, body.played_uci)
+        result = TrainingService(repo, owner).submit_move(body.session_id, body.played_uci)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return {

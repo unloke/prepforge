@@ -9774,6 +9774,7 @@ function queueTrainAttempt(smart, nodeId, correct) {
     session_id: smart.sessionId,
     node_id: nodeId,
     correct,
+    attempt_uuid: crypto.randomUUID(),
   });
   setTrainSyncState("dirty");
   scheduleTrainSync();
@@ -9813,9 +9814,8 @@ function flushTrainSync() {
   // Group by session: leftovers from an abandoned session flush to THEIR
   // session, not the current one. Play order is preserved within each group.
   // Grouping/partial-failure semantics live in train-sync.js (tested): retry
-  // unit is the session group — record_attempt is NOT idempotent server-side,
-  // so a group that POSTed successfully must never be requeued when a later
-  // group fails; 4xx drops only its own group.
+  // Each attempt keeps its UUID through requeue, so an uncertain response is
+  // safe to retry. A 4xx drops only its own session group.
   const smart = appState.smart;
   const groups = groupAttempts(batch, smart ? smart.sessionId : null);
   setTrainSyncState("syncing");

@@ -25,6 +25,7 @@ def test_hsts_in_production(tmp_path, monkeypatch):
     db_file = tmp_path / "prod.sqlite3"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_file.as_posix()}")
     monkeypatch.setenv("PREPFORGE_SECRET_KEY", "a-strong-production-secret")
+    monkeypatch.setenv("PREPFORGE_TOKEN_KEY", "a-strong-production-token-key")
     monkeypatch.setenv("PREPFORGE_ENV", "production")
 
     from prepforge_chess.api import config, db, main
@@ -141,3 +142,33 @@ def test_sensitive_team_explorer_and_annotation_routes_register_limits():
         }
     )
     assert expected <= set(limiter._route_limits)
+
+
+def test_login_rejects_unknown_and_oauth_only_users(client):
+    from api_helpers import csrf_headers
+
+    from prepforge_chess.api.security import verify_password
+
+    # Unknown user: one bcrypt verify against the dummy hash, always False.
+    assert verify_password("whatever-password", None) is False
+    # OAuth-only user (NULL hash): same path, always False.
+    assert verify_password("whatever-password", None) is False
+    r = client.post(
+        "/api/auth/login",
+        json={"email": "nobody@example.com", "password": "longpassword1"},
+        headers=csrf_headers(client),
+    )
+    assert r.status_code == 401
+    assert r.json() == {"detail": "invalid email or password"}
+
+
+def test_token_ciphertext_carries_version_prefix(client):
+    from prepforge_chess.api.security import decrypt_token, encrypt_token
+
+    token = encrypt_token('{"access_token": "x"}')
+    assert token.startswith("v1:")
+    assert decrypt_token(token) == '{"access_token": "x"}'
+    import pytest as _pytest
+
+    with _pytest.raises(ValueError, match="unsupported token format"):
+        decrypt_token("legacy-ciphertext-without-prefix")

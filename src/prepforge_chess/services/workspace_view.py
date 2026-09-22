@@ -3,8 +3,7 @@
 Turns a stored repertoire (tree + training progress) into the JSON payload the SPA's
 Build view consumes. It computes **no chess**: it reads the persisted tree, asks the
 (now Maia-free) ``OpeningBuilderService`` for a ``tree_report`` (pure traversal), and
-layers mastery/health on top. Shared by the new FastAPI ``/api/build/load`` and the
-legacy ``web/server.py`` so the two cannot diverge during the strangler migration.
+layers mastery/health on top for FastAPI ``/api/build/load``.
 """
 from __future__ import annotations
 
@@ -78,6 +77,7 @@ def build_workspace_payload(
     *,
     selected_node_id: Optional[str] = None,
     summary: Optional[Dict[str, int]] = None,
+    owner_user_id: str | None = None,
 ) -> Dict[str, Any]:
     """The Build-view payload for one repertoire. Raises ``ValueError`` if the
     repertoire (or a given ``selected_node_id``) does not exist."""
@@ -93,7 +93,16 @@ def build_workspace_payload(
             raise ValueError("opening node not found: {0}".format(selected_node_id))
     else:
         selected = repertoire.root_node
-    progress_by_id = {p.node_id: p for p in repository.list_training_progress(repertoire.id)}
+    progress_by_id = (
+        {
+            p.node_id: p
+            for p in repository.list_training_progress(
+                repertoire.id, owner_user_id=owner_user_id
+            )
+        }
+        if owner_user_id
+        else {}
+    )
     mastery = mastery_map(repertoire.root_node, repertoire.color, progress_by_id)
     health = compute_health(repertoire.root_node, repertoire.color, progress_by_id)
     # Refresh the dashboard's cached badge off this already-computed walk. Every Build

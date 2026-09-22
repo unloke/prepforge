@@ -100,8 +100,6 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(google_auth.router)
     app.include_router(lichess.router)
-    # Unprefixed legacy SPA seam (/oauth/login) until web-src/app.js migrates.
-    app.include_router(lichess.legacy_router)
     app.include_router(workspace.router)
     app.include_router(analyze.router)
     app.include_router(train.router)

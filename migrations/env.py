@@ -13,7 +13,7 @@ from alembic import context
 from prepforge_chess.api import models  # noqa: F401  (registers tables on Base.metadata)
 from prepforge_chess.api.config import get_settings
 from prepforge_chess.api.db import Base
-from prepforge_chess.storage import sa_tables  # noqa: F401  (registers legacy tables on Base.metadata)
+from prepforge_chess.storage import sa_tables  # noqa: F401  (registers domain tables on Base.metadata)
 
 config = context.config
 
@@ -24,19 +24,12 @@ config.set_main_option("sqlalchemy.url", get_settings().database_url)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+# Alembic is the SOLE production schema authority: every table and index in
+# Base.metadata (ORM models + Core domain tables) is created/migrated here.
 target_metadata = Base.metadata
-
-# These two performance indexes are created at runtime by
-# storage.database._ensure_indexes (idempotent, no Alembic migration).
-_RUNTIME_LEGACY_INDEX_NAMES = {
-    "idx_training_progress_rep_user",
-    "idx_training_sessions_rep_mode_updated",
-}
 
 
 def include_object(object, name, type_, reflected, compare_to):
-    if type_ == "index" and name in _RUNTIME_LEGACY_INDEX_NAMES:
-        return False
     return True
 
 

@@ -30,9 +30,8 @@ MAIA_RATING_MAX = 2600
 
 def clamp_stockfish_depth(value: Any, default: int = STOCKFISH_DEPTH_DEFAULT) -> int:
     """Coerce + clamp a depth into the supported range. Shared by the global
-    ``AppSettingsService`` (legacy single-tenant) and the per-owner settings stored
-    on ``user_profiles.settings_json`` in the multi-tenant SaaS API, so both honour
-    the same bounds. A non-integer falls back to ``default``."""
+    ``AppSettingsService`` and the per-owner settings in the SaaS API, so both
+    honour the same bounds. A non-integer falls back to ``default``."""
     try:
         depth = int(value)
     except (TypeError, ValueError):
@@ -50,26 +49,16 @@ def clamp_maia_rating(value: Any) -> Optional[int]:
 
 
 def owner_maia_rating(repo: Any, owner_user_id: str) -> Optional[int]:
-    """One owner's pinned Maia3 rating, or ``None`` for AUTO (match the player).
-
-    Lives on the same per-owner profile blob as the Stockfish depth — never the
-    global ``app_settings`` store — so one tenant's strength preference can't
-    leak into another's coach/generation reads."""
-    stored = repo.get_profile_setting(owner_user_id, MAIA_RATING_KEY, None)
+    """One owner's pinned Maia3 rating, or ``None`` for AUTO (match the player)."""
+    stored = repo.get_user_setting(owner_user_id, MAIA_RATING_KEY, None)
     if stored is None:
         return None
     return clamp_maia_rating(stored)
 
 
 def owner_stockfish_depth(repo: Any, owner_user_id: str) -> int:
-    """One owner's configured analysis depth (clamped; default when unset).
-
-    The multi-tenant home for this preference is the owner's profile blob — NOT the
-    global ``app_settings`` store, which would leak one tenant's depth to all. Reads
-    via the repository's per-profile ``settings_json`` accessor (the same mechanism
-    that holds the Lichess token). Shared by the settings + analyze routers so
-    ``/api/analyze/prepare`` echoes exactly what ``/api/settings`` persisted."""
-    stored = repo.get_profile_setting(owner_user_id, STOCKFISH_DEPTH_KEY, STOCKFISH_DEPTH_DEFAULT)
+    """One owner's configured analysis depth (clamped; default when unset)."""
+    stored = repo.get_user_setting(owner_user_id, STOCKFISH_DEPTH_KEY, STOCKFISH_DEPTH_DEFAULT)
     return clamp_stockfish_depth(stored)
 
 

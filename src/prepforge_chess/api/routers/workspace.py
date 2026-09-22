@@ -1,12 +1,4 @@
-"""Ported workspace endpoints (Phase 2b).
-
-The first slices of the ``web/server.py`` ``/api/*`` migration: owner-scoped data
-reads (2b-1) and repertoire mutations (2b-2a) that prove the strangler pattern
-end-to-end (FastAPI identity -> bridge -> SQLAlchemy repository) without the legacy
-server's global ``request_lock``. Every handler is scoped by ``current_owner`` so one
-user never sees or mutates another's data; mutations additionally pass through
-``_owned_repertoire``, the IDOR gate (a foreign or missing repertoire is 404).
-"""
+"""Workspace endpoints: owner-scoped data reads and repertoire mutations."""
 from __future__ import annotations
 
 import base64
@@ -14,7 +6,7 @@ import hashlib
 import hmac
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -69,11 +61,9 @@ def _enforce_repertoire_quota(
 
 def _owned_repertoire(repo: PrepForgeRepository, repertoire_id: str, owner: str) -> dict[str, Any]:
     """Owner gate for repertoire mutations. Returns the repertoire's lightweight meta,
-    or raises 404 if it is missing or owned by a different user (don't reveal another
-    owner's repertoire). Unclaimed/legacy rows (``owner_user_id`` NULL) are allowed,
-    mirroring the legacy ``_assert_repertoire_owner``."""
+    or raises 404 if it is missing or owned by a different user."""
     meta = repo.repertoire_meta(repertoire_id)
-    if meta is None or meta["owner_user_id"] not in (None, owner):
+    if meta is None or meta["owner_user_id"] != owner:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
     return meta
 
@@ -81,13 +71,13 @@ def _owned_repertoire(repo: PrepForgeRepository, repertoire_id: str, owner: str)
 def _readable_repertoire(
     repo: PrepForgeRepository, repertoire_id: str, owner: str, team_ids: set[str]
 ) -> dict[str, Any]:
-    """Read gate (Phase 5): the owner, OR a member of the team a ``visibility='team'``
+    """Read gate: the owner, OR a member of the team a ``visibility='team'``
     repertoire is shared with. 404 otherwise. Widens reads only — mutations keep using
     ``_owned_repertoire`` so sharing never grants write access."""
     meta = repo.repertoire_meta(repertoire_id)
     if meta is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-    if meta["owner_user_id"] in (None, owner):
+    if meta["owner_user_id"] == owner:
         return meta
     if meta["visibility"] == "team" and meta["team_id"] in team_ids:
         return meta
@@ -105,8 +95,7 @@ def _strip_readonly_build_payload(payload: dict[str, Any]) -> None:
         node.pop("mastery", None)
 
 
-# Static next-action hints the dashboard surfaces (carried over verbatim from the
-# legacy server so the existing SPA renders unchanged).
+# Static next-action hints surfaced by the dashboard.
 _RECOMMENDATIONS = [
     "Next action: analyze a PGN and review classifications.",
     "Next action: generate or extend one repertoire branch in Build.",
@@ -121,8 +110,7 @@ def dashboard(
     repo: PrepForgeRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Owner-scoped counters for the home screen. Training counters reach the owner
-    through repertoire ownership (the reliable link: ``training_sessions`` has no
-    owner column and ``training_progress.user_profile_id`` is nullable).
+    through repertoire ownership (``training_sessions`` has no owner column).
     ``local_date`` is the client's calendar day, used only to phrase the daily
     streak (is it alive? trained today?) in the player's timezone."""
     now = datetime.now(timezone.utc)
@@ -136,19 +124,19 @@ def dashboard(
             .where(t.games.c.owner_user_id == owner)
         ).scalar_one()
         repertoires = conn.execute(
-            select(func.count()).select_from(reps).where(reps.c.user_profile_id == owner)
+            select(func.count()).select_from(reps).where(reps.c.owner_user_id == owner)
         ).scalar_one()
         sessions = conn.execute(
             select(func.count())
             .select_from(t.training_sessions.join(reps, reps.c.id == t.training_sessions.c.repertoire_id))
-            .where(reps.c.user_profile_id == owner)
+            .where(reps.c.owner_user_id == owner)
         ).scalar_one()
         tp = t.training_progress
         joined = tp.join(reps, reps.c.id == tp.c.repertoire_id)
         open_mistakes = conn.execute(
             select(func.count())
             .select_from(joined)
-            .where(tp.c.attempts > tp.c.correct_attempts, reps.c.user_profile_id == owner)
+            .where(tp.c.attempts > tp.c.correct_attempts, reps.c.owner_user_id == owner)
         ).scalar_one()
         due_reviews = conn.execute(
             select(func.count())
@@ -156,7 +144,7 @@ def dashboard(
             .where(
                 tp.c.due_at.is_not(None),
                 tp.c.due_at <= now_iso,
-                reps.c.user_profile_id == owner,
+                reps.c.owner_user_id == owner,
             )
         ).scalar_one()
         # Reviews landing within the next 24h — the "coming up today" half of
@@ -169,7 +157,7 @@ def dashboard(
                 tp.c.due_at.is_not(None),
                 tp.c.due_at > now_iso,
                 tp.c.due_at <= soon_iso,
-                reps.c.user_profile_id == owner,
+                reps.c.owner_user_id == owner,
             )
         ).scalar_one()
         # Weekly recap inputs. Text comparison is safe for last_reviewed_at: it is
@@ -181,13 +169,13 @@ def dashboard(
             .where(
                 tp.c.last_reviewed_at.is_not(None),
                 tp.c.last_reviewed_at >= week_ago_iso,
-                reps.c.user_profile_id == owner,
+                reps.c.owner_user_id == owner,
             )
         ).scalar_one()
         mastered_now = conn.execute(
             select(func.count())
             .select_from(joined)
-            .where(tp.c.is_mastered == 1, reps.c.user_profile_id == owner)
+            .where(tp.c.is_mastered == 1, reps.c.owner_user_id == owner)
         ).scalar_one()
         # Mirrors progress.node_mastery's "weak": tried twice+, under 50% accuracy.
         weak_now = conn.execute(
@@ -196,7 +184,7 @@ def dashboard(
             .where(
                 tp.c.attempts >= 2,
                 tp.c.correct_attempts * 2 < tp.c.attempts,
-                reps.c.user_profile_id == owner,
+                reps.c.owner_user_id == owner,
             )
         ).scalar_one()
     local_day = streak.resolve_day(local_date)
@@ -208,7 +196,7 @@ def dashboard(
         "due_reviews": due_reviews,
         "due_soon": due_soon,
         "streak": streak.as_view(
-            repo.get_profile_setting(owner, streak.STREAK_KEY),
+            repo.get_user_setting(owner, streak.STREAK_KEY),
             local_day,
         ),
         "recap": _weekly_recap(
@@ -221,7 +209,7 @@ def dashboard(
 
 # Per-owner mastery snapshot taken at the start of each (player-local) week, so the
 # recap can phrase progress as a delta ("5 mastered, +2 this week") without a history
-# table. Lives on the profile blob; refreshing it is an idempotent once-a-week write.
+# table. Lives in user_settings; refreshing it is an idempotent once-a-week write.
 _RECAP_SNAPSHOT_KEY = "recap.weekly_snapshot"
 
 
@@ -244,7 +232,7 @@ def _weekly_recap(
             return current
         return {"week_start": week_start, "mastered": mastered_now, "weak": weak_now}
 
-    snap = repo.mutate_profile_setting(owner, _RECAP_SNAPSHOT_KEY, _roll)
+    snap = repo.mutate_user_setting(owner, _RECAP_SNAPSHOT_KEY, _roll)
 
     def _baseline(key: str, current: int) -> int:
         try:
@@ -322,8 +310,8 @@ def build_load(
     can write; a team member can read one shared to their team (``writable=false``).
     Computes no chess — pure serialization of the stored tree + training progress."""
     meta = _readable_repertoire(repo, repertoire_id, owner, user_team_ids(db, user.id))
-    payload = build_workspace_payload(repo, repertoire_id)
-    payload["writable"] = meta["owner_user_id"] in (None, owner)
+    payload = build_workspace_payload(repo, repertoire_id, owner_user_id=meta["owner_user_id"])
+    payload["writable"] = meta["owner_user_id"] == owner
     if not payload["writable"]:
         _strip_readonly_build_payload(payload)
         payload["shared"] = True
@@ -335,7 +323,7 @@ def build_load(
 class ShareRepertoireBody(BaseModel):
     repertoire_id: str
     team_id: str | None = None
-    visibility: str = "private"
+    visibility: Literal["private", "team"] = "private"
 
 
 @router.post("/repertoires/share")
@@ -351,11 +339,6 @@ def share_repertoire(
     that team (404 otherwise, to avoid revealing teams). ``visibility='private'``
     unshares."""
     _owned_repertoire(repo, body.repertoire_id, owner)
-    if body.visibility not in ("private", "team"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="visibility must be 'private' or 'team'",
-        )
     if body.visibility == "team":
         if not body.team_id:
             raise HTTPException(
@@ -468,7 +451,7 @@ def _safe_filename(name: str) -> str:
 
 class CreateRepertoireBody(BaseModel):
     name: str = ""
-    color: str = "white"
+    color: Literal["white", "black"] = "white"
 
 
 @router.post("/repertoires/create")
@@ -485,17 +468,13 @@ def create_repertoire(
     exceeding it returns 402 so the SPA can prompt an upgrade. Pro is unlimited."""
     _enforce_repertoire_quota(user, owner, repo, settings)
     name = body.name.strip() or "Untitled repertoire"
-    try:
-        color = Color(body.color)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="color must be 'white' or 'black'"
-        ) from None
     builder = OpeningBuilderService(repo)
-    repertoire = builder.create_repertoire(CreateRepertoireRequest(name=name, color=color))
+    repertoire = builder.create_repertoire(
+        CreateRepertoireRequest(name=name, color=Color(body.color))
+    )
     repo.claim_repertoire(repertoire.id, owner)
     return build_workspace_payload(
-        repo, repertoire.id, selected_node_id=repertoire.root_node.id
+        repo, repertoire.id, selected_node_id=repertoire.root_node.id, owner_user_id=owner
     )
 
 
@@ -568,7 +547,12 @@ def shared_repertoire(
     if repertoire_id is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown share link")
     try:
-        payload = build_workspace_payload(repo, repertoire_id)
+        meta = repo.repertoire_meta(repertoire_id)
+        if meta is None:
+            raise ValueError("unknown share link")
+        payload = build_workspace_payload(
+            repo, repertoire_id, owner_user_id=meta["owner_user_id"]
+        )
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="unknown share link"
@@ -621,7 +605,7 @@ def fork_repertoire(
     meta = _readable_repertoire(
         repo, body.repertoire_id, owner, user_team_ids(db, user.id)
     )
-    if meta["owner_user_id"] in (None, owner):
+    if meta["owner_user_id"] == owner:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="repertoire is already yours",
@@ -652,7 +636,7 @@ def build_rename(
         OpeningBuilderService(repo).rename_repertoire(body.repertoire_id, body.name)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return build_workspace_payload(repo, body.repertoire_id)
+    return build_workspace_payload(repo, body.repertoire_id, owner_user_id=owner)
 
 
 class AddMoveBody(BaseModel):
@@ -698,6 +682,7 @@ def build_add_move(
         repo,
         body.repertoire_id,
         selected_node_id=node.id,
+        owner_user_id=owner,
         summary={"added_nodes": 1, "updated_nodes": 0, "high_probability_unprepared": 0},
     )
 
@@ -747,6 +732,7 @@ def build_add_moves(
     payload = build_workspace_payload(
         repo,
         body.repertoire_id,
+        owner_user_id=owner,
         summary={
             "added_nodes": summary.added_nodes,
             "updated_nodes": summary.updated_nodes,
@@ -785,7 +771,7 @@ def build_delete_nodes(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    payload = build_workspace_payload(repo, body.repertoire_id)
+    payload = build_workspace_payload(repo, body.repertoire_id, owner_user_id=owner)
     payload["removed_node_ids"] = removed
     return payload
 
@@ -832,6 +818,7 @@ def build_apply_plan(
         repo,
         body.repertoire_id,
         selected_node_id=body.root_node_id,
+        owner_user_id=owner,
         summary={
             "added_nodes": summary.added_nodes,
             "updated_nodes": summary.updated_nodes,
@@ -841,8 +828,7 @@ def build_apply_plan(
 
 
 # ---- Build node actions / annotations / export (2b-2e) ----------------------
-# The last SPA Build mutations living only in the legacy server. All are pure
-# data ops on the stored tree (no engine), so they run on the Maia-free builder.
+# Pure data operations on the stored tree (no engine) use the Maia-free builder.
 # Owner-gated via `_owned_repertoire`; the node-action/annotation handlers return
 # the shared Build payload, export returns a downloadable blob.
 
@@ -850,7 +836,16 @@ def build_apply_plan(
 class NodeActionBody(BaseModel):
     repertoire_id: str
     node_id: str
-    action: str
+    action: Literal[
+        "set_mainline",
+        "mark_prepared",
+        "disable_branch",
+        "delete",
+        "add_comment",
+        "add_tag",
+        "add_training_queue",
+        "mark_critical",
+    ]
     value: str | None = None
 
 
@@ -861,8 +856,7 @@ def build_action(
     repo: PrepForgeRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Apply a node action (set-mainline / toggle-prepared / toggle-branch / delete /
-    comment / tag / queue / critical) and return the refreshed Build payload. Mirrors
-    the legacy ``build_node_action_payload``; toggles read the node's current state."""
+    comment / tag / queue / critical) and return the refreshed Build payload."""
     _owned_repertoire(repo, body.repertoire_id, owner)
     builder = OpeningBuilderService(repo)
     action = body.action
@@ -889,13 +883,11 @@ def build_action(
             builder.add_tag(body.repertoire_id, body.node_id, body.value)
         elif action == "add_training_queue":
             builder.add_tag(body.repertoire_id, body.node_id, "training-queue")
-        elif action == "mark_critical":
+        else:  # mark_critical
             builder.add_tag(body.repertoire_id, body.node_id, "critical")
-        else:
-            raise ValueError("unsupported node action: {0}".format(action))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return build_workspace_payload(repo, body.repertoire_id, selected_node_id=selected_node_id)
+    return build_workspace_payload(repo, body.repertoire_id, selected_node_id=selected_node_id, owner_user_id=owner)
 
 
 class AnnotationsBody(BaseModel):
@@ -927,7 +919,7 @@ def build_annotations(
 
 class ExportBody(BaseModel):
     repertoire_id: str
-    format: str
+    format: Literal["json", "pgn"]
     node_id: str | None = None
 
 
@@ -949,7 +941,7 @@ def build_export(
         content = exporter.export_package_json(repertoire)
         filename = "{0}.prepforge.json".format(safe_name)
         mime = "application/json"
-    elif body.format == "pgn":
+    else:  # pgn
         content = (
             exporter.export_node_path_pgn(repertoire, body.node_id)
             if body.node_id
@@ -957,11 +949,6 @@ def build_export(
         )
         filename = "{0}.pgn".format(safe_name)
         mime = "application/x-chess-pgn"
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="unsupported export format: {0}".format(body.format),
-        )
     return {"filename": filename, "mime": mime, "content": content}
 
 
@@ -1018,6 +1005,7 @@ def import_repertoire(
         repo,
         repertoire.id,
         selected_node_id=repertoire.root_node.id,
+        owner_user_id=owner,
         summary={
             "added_nodes": sum(1 for _ in _walk_nodes(repertoire.root_node)),
             "updated_nodes": 0,
@@ -1029,7 +1017,7 @@ def import_repertoire(
 class ImportPgnBody(BaseModel):
     pgn: str = Field(default="", max_length=MAX_REPERTOIRE_PGN_CHARS)
     name: str = Field(default="Imported", max_length=200)
-    color: str = "white"
+    color: Literal["white", "black"] = "white"
 
 
 @router.post("/repertoires/import-pgn")
@@ -1045,16 +1033,12 @@ def import_repertoire_pgn(
     """Import a repertoire from a tree PGN (variations become branches), owned by the caller."""
     _enforce_repertoire_quota(user, owner, repo, settings)
     try:
-        color = Color(body.color)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="color must be 'white' or 'black'"
-        ) from None
-    try:
-        repertoire = RepertoireExportService().import_tree_pgn(body.pgn, name=body.name, color=color)
+        repertoire = RepertoireExportService().import_tree_pgn(
+            body.pgn, name=body.name, color=Color(body.color)
+        )
     except (ValueError, KeyError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     repo.save_repertoire(repertoire, owner_user_id=owner)
     return build_workspace_payload(
-        repo, repertoire.id, selected_node_id=repertoire.root_node.id
+        repo, repertoire.id, selected_node_id=repertoire.root_node.id, owner_user_id=owner
     )

@@ -18,6 +18,7 @@ import pytest
 @pytest.fixture(autouse=True)
 def _clean_settings(monkeypatch):
     monkeypatch.setenv("PREPFORGE_SECRET_KEY", "test-secret-not-for-prod")
+    monkeypatch.setenv("PREPFORGE_TOKEN_KEY", "test-token-key-not-for-prod")
     monkeypatch.setenv("PREPFORGE_ENV", "development")
     from prepforge_chess.api import config
 

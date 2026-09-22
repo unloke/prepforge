@@ -1,4 +1,3 @@
-import pytest
 from sqlalchemy import text
 
 from prepforge_chess.core.chess_core import STARTING_FEN, ChessCore
@@ -202,11 +201,13 @@ def test_training_session_and_progress_round_trip():
     )
 
     repo.save_training_session(session)
-    repo.save_training_progress("train-rep", progress)
+    repo.save_training_progress("train-rep", progress, owner_user_id="u1")
 
     loaded_session = repo.load_training_session("session-1")
     latest_session = repo.load_latest_training_session("train-rep", TrainingMode.ALL_LINES)
-    loaded_progress = repo.load_training_progress("train-rep", "train-e4")
+    loaded_progress = repo.load_training_progress(
+        "train-rep", "train-e4", owner_user_id="u1"
+    )
 
     assert loaded_session is not None
     assert loaded_session.line_order == ["train-e4", "train-root"]
@@ -226,35 +227,29 @@ def test_training_session_and_progress_round_trip():
     assert not loaded_progress.is_mastered
 
 
-# ---- settings_json mutation (atomic read-modify-write) ----------------------
-# settings_json is one shared blob (streak, recap snapshot, Lichess token, ...).
-# These pin the contract that prevents the daily-streak lost update: a mutation
-# must fold over the *current* committed value and must never clobber a sibling
-# key. True cross-transaction serialization is enforced by ``FOR UPDATE`` on
-# Postgres (a no-op on SQLite, where these run), so we test the logic, not locks.
+# ---- user_settings (canonical 1:1 key/value store) ---------------------------
+# Each per-user fact lives in its own row, so concurrent writers to different
+# keys never clobber each other. ``FOR UPDATE`` serialises same-key writers on
+# Postgres (a no-op on SQLite, where these run), so we test logic, not locks.
 
 
-def test_mutate_profile_setting_folds_over_current_value():
+def test_mutate_user_setting_folds_over_current_value():
     repo = _repository()
-    pid = repo.create_user_profile(display_name="t")
+    uid = "u-settings-1"
 
     def bump(current):
         return {"n": (current or {}).get("n", 0) + 1}
 
-    assert repo.mutate_profile_setting(pid, "streak", bump) == {"n": 1}
-    assert repo.mutate_profile_setting(pid, "streak", bump) == {"n": 2}
-    assert repo.get_profile_setting(pid, "streak") == {"n": 2}
+    assert repo.mutate_user_setting(uid, "streak", bump) == {"n": 1}
+    assert repo.mutate_user_setting(uid, "streak", bump) == {"n": 2}
+    assert repo.get_user_setting(uid, "streak") == {"n": 2}
 
 
 def test_mutate_does_not_clobber_a_sibling_key():
-    # The exact daily-streak bug: the dashboard's recap-snapshot write and a
-    # streak advance share one blob. A streak mutation must keep the recap key
-    # another writer just set, and fold over the latest streak value — not a
-    # stale pre-recap snapshot.
     repo = _repository()
-    pid = repo.create_user_profile(display_name="t")
-    repo.set_profile_setting(pid, "streak", {"current": 4})
-    repo.set_profile_setting(pid, "recap", {"week": "w24"})  # other key, other writer
+    uid = "u-settings-2"
+    repo.set_user_setting(uid, "streak", {"current": 4})
+    repo.set_user_setting(uid, "recap", {"week": "w24"})  # other key, other writer
 
     seen = {}
 
@@ -262,23 +257,39 @@ def test_mutate_does_not_clobber_a_sibling_key():
         seen["value"] = current
         return {"current": (current or {}).get("current", 0) + 1}
 
-    repo.mutate_profile_setting(pid, "streak", advance)
+    repo.mutate_user_setting(uid, "streak", advance)
 
     assert seen["value"] == {"current": 4}  # read the latest, not a stale blob
-    assert repo.get_profile_setting(pid, "streak") == {"current": 5}
-    assert repo.get_profile_setting(pid, "recap") == {"week": "w24"}  # untouched
+    assert repo.get_user_setting(uid, "streak") == {"current": 5}
+    assert repo.get_user_setting(uid, "recap") == {"week": "w24"}  # untouched
 
 
-def test_mutate_profile_setting_deletes_on_none_and_rejects_unknown():
+def test_mutate_user_setting_deletes_on_none():
     repo = _repository()
-    pid = repo.create_user_profile(display_name="t")
-    repo.set_profile_setting(pid, "token", "abc")
+    uid = "u-settings-3"
+    repo.set_user_setting(uid, "token", "abc")
 
-    assert repo.mutate_profile_setting(pid, "token", lambda _c: None) is None
-    assert repo.get_profile_setting(pid, "token", "MISSING") == "MISSING"
+    assert repo.mutate_user_setting(uid, "token", lambda _c: None) is None
+    assert repo.get_user_setting(uid, "token", "MISSING") == "MISSING"
 
-    with pytest.raises(ValueError):
-        repo.mutate_profile_setting("no-such-profile", "token", lambda _c: "x")
+
+def test_attempt_receipt_round_trip():
+    import uuid as _uuid
+
+    repo = _repository()
+    session_id = _uuid.uuid4().hex
+    assert repo.get_attempt_receipt(session_id, "a1") is None
+    with repo.engine.begin() as conn:
+        repo.record_attempt_receipt(
+            conn, session_id=session_id, attempt_uuid="a1", node_id="n1", correct=True
+        )
+    receipt = repo.get_attempt_receipt(session_id, "a1")
+    assert receipt == {
+        "session_id": session_id,
+        "attempt_uuid": "a1",
+        "node_id": "n1",
+        "correct": True,
+    }
 
 
 def test_game_persist_does_not_store_fen_or_pgn_copies():
