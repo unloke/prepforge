@@ -8,11 +8,11 @@
 //
 // Measured baseline at origin/main 43383b2 (2026-09-18): main index 252.9 KiB
 // raw / 80.3 KiB gzip and stylesheet 113.3 KiB raw / 21.1 KiB gzip. The
-// source-composer parity hotfix (explicit linkedMode model shared by Games +
-// Scout, single-list popover, viewport-anchored positioning, per-phase Analyze
-// timings) grows the main chunk by ~0.9 KiB raw over the #62 build (280.8 → ~283.8
-// KiB raw; gzip stays ~92 KiB, inside its budget). The raw ceiling moves to
-// 284 KiB to cover exactly this; any further growth still fails the gate.
+// Source Composer brought the latest main baseline to 290,886 B JS / 129,655 B
+// CSS. Workspace routing, CSRF keepalive, skip-link, status semantics, and
+// coarse/mobile accessibility guards intentionally add ~3.0 KiB JS and 0.5 KiB
+// CSS. These ceilings cover that reviewed delta while retaining a narrow gate;
+// gzip remains independently capped at 95,000 B.
 import { readdirSync, statSync, readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { fileURLToPath, URL } from "node:url";
@@ -27,12 +27,12 @@ const LIMITS = [
   {
     prefix: "index-",
     suffix: ".js",
-    maxBytes: 291_000,
+    maxBytes: 295_000,
     maxGzipBytes: 95_000,
     label: "main app chunk",
   },
   { prefix: "maia3-worker-", suffix: ".js", maxBytes: 220_000, label: "maia3 worker chunk" },
-  { prefix: "index-", suffix: ".css", maxBytes: 130_000, label: "main stylesheet" },
+  { prefix: "index-", suffix: ".css", maxBytes: 131_000, label: "main stylesheet" },
 ];
 
 let files;
