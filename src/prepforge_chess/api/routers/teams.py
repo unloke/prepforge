@@ -22,7 +22,7 @@ import hashlib
 import secrets
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -37,6 +37,7 @@ from prepforge_chess.api.models import (
     TeamRole,
     User,
 )
+from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
 router = APIRouter(prefix="/api/teams", tags=["teams"])
@@ -140,7 +141,9 @@ class CreateTeamBody(BaseModel):
 
 
 @router.post("")
+@limiter.limit("10/hour")
 def create_team(
+    request: Request,
     body: CreateTeamBody,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
@@ -155,7 +158,9 @@ def create_team(
 
 
 @router.get("")
+@limiter.limit("120/minute")
 def list_teams(
+    request: Request,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, object]:
@@ -174,7 +179,9 @@ def list_teams(
 
 
 @router.get("/join/{code}")
+@limiter.limit("60/minute")
 def join_preview(
+    request: Request,
     code: str,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
@@ -197,7 +204,9 @@ def join_preview(
 
 
 @router.post("/join/{code}")
+@limiter.limit("20/minute")
 def join_team(
+    request: Request,
     code: str,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
@@ -231,7 +240,9 @@ def join_team(
 
 
 @router.get("/{team_id}")
+@limiter.limit("120/minute")
 def team_detail(
+    request: Request,
     team_id: str,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
@@ -311,7 +322,9 @@ class AddMemberBody(BaseModel):
 
 
 @router.post("/{team_id}/members")
+@limiter.limit("30/minute")
 def add_member(
+    request: Request,
     team_id: str,
     body: AddMemberBody,
     user: User = Depends(current_user),
@@ -365,7 +378,9 @@ def add_member(
 
 
 @router.delete("/{team_id}/members/{user_id}")
+@limiter.limit("30/minute")
 def remove_member(
+    request: Request,
     team_id: str,
     user_id: str,
     user: User = Depends(current_user),
@@ -394,7 +409,9 @@ class UpdateMemberRoleBody(BaseModel):
 
 
 @router.patch("/{team_id}/members/{user_id}")
+@limiter.limit("30/minute")
 def update_member_role(
+    request: Request,
     team_id: str,
     user_id: str,
     body: UpdateMemberRoleBody,
@@ -434,7 +451,9 @@ def update_member_role(
 
 
 @router.post("/{team_id}/invite")
+@limiter.limit("10/minute")
 def create_invite(
+    request: Request,
     team_id: str,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
@@ -464,7 +483,9 @@ def create_invite(
 
 
 @router.delete("/{team_id}/invite", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
 def revoke_invite(
+    request: Request,
     team_id: str,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
@@ -496,7 +517,9 @@ class UpdateTeamBody(BaseModel):
 
 
 @router.patch("/{team_id}")
+@limiter.limit("30/minute")
 def update_team(
+    request: Request,
     team_id: str,
     body: UpdateTeamBody,
     user: User = Depends(current_user),
@@ -513,7 +536,9 @@ def update_team(
 
 
 @router.delete("/{team_id}")
+@limiter.limit("10/minute")
 def delete_team(
+    request: Request,
     team_id: str,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),

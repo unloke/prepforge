@@ -26,6 +26,7 @@ from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_owner, current_user, get_repository
 from prepforge_chess.api.models import LinkedAccount, User
+from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.api.security import decrypt_token, encrypt_token
 from prepforge_chess.services import lichess_fetch
 from prepforge_chess.services.lichess_oauth import (
@@ -354,7 +355,9 @@ def _linked_token(db: Session, user_id: str, account_id: str | None = None) -> s
 
 
 @router.get("/explorer/{db_name}")
+@limiter.limit("120/minute")
 def explorer_proxy(
+    request: Request,
     db_name: str,
     fen: str,
     ratings: str | None = None,

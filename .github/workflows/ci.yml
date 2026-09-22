@@ -145,5 +145,9 @@ jobs:
         env:
           VITE_ENABLE_SCOUT_E2E: "1"
         run: npm run build
-      - name: Scout E2E smoke
-        run: uv run pytest -m e2e tests/e2e/test_scout_smoke.py -q
+      - name: Scout + axe E2E
+        run: >-
+          uv run pytest -m e2e
+          tests/e2e/test_scout_smoke.py
+          tests/e2e/test_axe_baseline.py
+          -q

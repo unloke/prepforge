@@ -18,6 +18,15 @@ export function isSafeMethod(method) {
   return SAFE_METHODS.has(String(method || "GET").toUpperCase());
 }
 
+export async function headersWithCsrf(method, headers, getCsrfToken) {
+  const merged = { ...(headers || {}) };
+  if (!isSafeMethod(method)) {
+    const token = await getCsrfToken();
+    if (token) merged[CSRF_HEADER] = token;
+  }
+  return merged;
+}
+
 export function readCsrfCookie(cookieString) {
   const source =
     cookieString === undefined

@@ -16,8 +16,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -25,6 +25,7 @@ from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_owner, current_user, get_repository
 from prepforge_chess.api.models import Plan, User
+from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.api.routers.teams import user_team_ids
 from prepforge_chess.core.models import Color, MoveSource, OpeningNode
 from prepforge_chess.services.opening_builder import (
@@ -38,6 +39,32 @@ from prepforge_chess.storage import sa_tables as t
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
 router = APIRouter(prefix="/api", tags=["workspace"])
+
+MAX_REPERTOIRE_PACKAGE_CHARS = 5_000_000
+MAX_REPERTOIRE_PGN_CHARS = 1_000_000
+MAX_BULK_MOVES = 500
+MAX_BULK_DELETE_NODES = 200
+MAX_ANNOTATIONS_PER_KIND = 64
+
+
+def _enforce_repertoire_quota(
+    user: User,
+    owner: str,
+    repo: PrepForgeRepository,
+    settings: Settings,
+) -> None:
+    """Apply the same Free-plan creation cap to every repertoire-producing route."""
+    if (
+        user.plan != Plan.pro
+        and repo.count_repertoires(owner_user_id=owner) >= settings.free_repertoire_limit
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=(
+                "Free plan is limited to {0} repertoires. Upgrade to Pro for "
+                "unlimited.".format(settings.free_repertoire_limit)
+            ),
+        )
 
 
 def _owned_repertoire(repo: PrepForgeRepository, repertoire_id: str, owner: str) -> dict[str, Any]:
@@ -456,15 +483,7 @@ def create_repertoire(
 
     Free-plan users are capped at ``settings.free_repertoire_limit`` repertoires;
     exceeding it returns 402 so the SPA can prompt an upgrade. Pro is unlimited."""
-    if user.plan != Plan.pro:
-        if repo.count_repertoires(owner_user_id=owner) >= settings.free_repertoire_limit:
-            raise HTTPException(
-                status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                detail=(
-                    "Free plan is limited to {0} repertoires. Upgrade to Pro for "
-                    "unlimited.".format(settings.free_repertoire_limit)
-                ),
-            )
+    _enforce_repertoire_quota(user, owner, repo, settings)
     name = body.name.strip() or "Untitled repertoire"
     try:
         color = Color(body.color)
@@ -575,15 +594,7 @@ def fork_shared_repertoire(
     repertoire = repo.load_repertoire(repertoire_id)
     if repertoire is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown share link")
-    if user.plan != Plan.pro:
-        if repo.count_repertoires(owner_user_id=owner) >= settings.free_repertoire_limit:
-            raise HTTPException(
-                status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                detail=(
-                    "Free plan is limited to {0} repertoires. Upgrade to Pro for "
-                    "unlimited.".format(settings.free_repertoire_limit)
-                ),
-            )
+    _enforce_repertoire_quota(user, owner, repo, settings)
     _reassign_ids(repertoire)  # fresh ids -> caller's own copy, no cross-tenant clobber
     repo.save_repertoire(repertoire, owner_user_id=owner)
     return {"repertoire_id": repertoire.id, "name": repertoire.name}
@@ -618,15 +629,7 @@ def fork_repertoire(
     repertoire = repo.load_repertoire(body.repertoire_id)
     if repertoire is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-    if user.plan != Plan.pro:
-        if repo.count_repertoires(owner_user_id=owner) >= settings.free_repertoire_limit:
-            raise HTTPException(
-                status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                detail=(
-                    "Free plan is limited to {0} repertoires. Upgrade to Pro for "
-                    "unlimited.".format(settings.free_repertoire_limit)
-                ),
-            )
+    _enforce_repertoire_quota(user, owner, repo, settings)
     _reassign_ids(repertoire)
     repo.save_repertoire(repertoire, owner_user_id=owner)
     return {"repertoire_id": repertoire.id, "name": repertoire.name}
@@ -716,11 +719,13 @@ class AddMovesItem(BaseModel):
 
 class AddMovesBody(BaseModel):
     repertoire_id: str
-    moves: list[AddMovesItem] = []
+    moves: list[AddMovesItem] = Field(default_factory=list, max_length=MAX_BULK_MOVES)
 
 
 @router.post("/build/add-moves")
+@limiter.limit("30/minute")
 def build_add_moves(
+    request: Request,
     body: AddMovesBody,
     owner: str = Depends(current_owner),
     repo: PrepForgeRepository = Depends(get_repository),
@@ -754,11 +759,13 @@ def build_add_moves(
 
 class DeleteNodesBody(BaseModel):
     repertoire_id: str
-    node_ids: list[str] = []
+    node_ids: list[str] = Field(default_factory=list, max_length=MAX_BULK_DELETE_NODES)
 
 
 @router.post("/build/delete-nodes")
+@limiter.limit("30/minute")
 def build_delete_nodes(
+    request: Request,
     body: DeleteNodesBody,
     owner: str = Depends(current_owner),
     repo: PrepForgeRepository = Depends(get_repository),
@@ -800,7 +807,9 @@ class ApplyPlanBody(BaseModel):
 
 
 @router.post("/build/generate/apply-plan")
+@limiter.limit("10/minute")
 def build_apply_plan(
+    request: Request,
     body: ApplyPlanBody,
     owner: str = Depends(current_owner),
     repo: PrepForgeRepository = Depends(get_repository),
@@ -892,12 +901,14 @@ def build_action(
 class AnnotationsBody(BaseModel):
     repertoire_id: str
     node_id: str
-    arrows: list[str] = []
-    circles: list[str] = []
+    arrows: list[str] = Field(default_factory=list, max_length=MAX_ANNOTATIONS_PER_KIND)
+    circles: list[str] = Field(default_factory=list, max_length=MAX_ANNOTATIONS_PER_KIND)
 
 
 @router.post("/build/annotations")
+@limiter.limit("60/minute")
 def build_annotations(
+    request: Request,
     body: AnnotationsBody,
     owner: str = Depends(current_owner),
     repo: PrepForgeRepository = Depends(get_repository),
@@ -980,16 +991,21 @@ def export_tree_pgn(
 
 
 class ImportPackageBody(BaseModel):
-    package_json: str = ""
+    package_json: str = Field(default="", max_length=MAX_REPERTOIRE_PACKAGE_CHARS)
 
 
 @router.post("/repertoires/import")
+@limiter.limit("10/minute")
 def import_repertoire(
+    request: Request,
     body: ImportPackageBody,
+    user: User = Depends(current_user),
     owner: str = Depends(current_owner),
     repo: PrepForgeRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Import a repertoire from a saved ``.prepforge.json`` package, owned by the caller."""
+    _enforce_repertoire_quota(user, owner, repo, settings)
     if not body.package_json.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="repertoire package is empty")
     try:
@@ -1011,18 +1027,23 @@ def import_repertoire(
 
 
 class ImportPgnBody(BaseModel):
-    pgn: str = ""
-    name: str = "Imported"
+    pgn: str = Field(default="", max_length=MAX_REPERTOIRE_PGN_CHARS)
+    name: str = Field(default="Imported", max_length=200)
     color: str = "white"
 
 
 @router.post("/repertoires/import-pgn")
+@limiter.limit("10/minute")
 def import_repertoire_pgn(
+    request: Request,
     body: ImportPgnBody,
+    user: User = Depends(current_user),
     owner: str = Depends(current_owner),
     repo: PrepForgeRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Import a repertoire from a tree PGN (variations become branches), owned by the caller."""
+    _enforce_repertoire_quota(user, owner, repo, settings)
     try:
         color = Color(body.color)
     except ValueError:

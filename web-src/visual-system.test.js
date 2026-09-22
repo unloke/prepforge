@@ -164,6 +164,12 @@ describe("seven views share chrome families", () => {
     expect(html).toContain('id="play-resign"');
     expect(html).toContain('id="play-analyze"');
     expect(html).toContain("My repertoire");
+    expect(html).toContain('role="combobox"');
+    expect(html).toContain('aria-controls="palette-results"');
+    expect(html).toContain('aria-label="Notifications"');
+    expect(app).toContain("function activateModal");
+    expect(app).toContain("child.inert = true");
+    expect(app).toContain('event.key !== "Tab"');
   });
 
   it("keeps the Train setup order: modes, repertoire picker, blitz, SRS start", () => {
@@ -195,6 +201,49 @@ describe("seven views share chrome families", () => {
   });
 });
 
+describe("axe baseline contrast guard", () => {
+  // The E2E axe run (tests/e2e/axe_baseline.mjs) is the full-page check; this
+  // pins the first-party token pairs it caught so a theme tweak cannot regress
+  // them without turning this red. Ratios are WCAG AA for normal text (4.5:1).
+  function luminance(hex) {
+    const c = hex.replace("#", "");
+    const f = (i) => {
+      const v = parseInt(c.slice(i, i + 2), 16) / 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * f(0) + 0.7152 * f(2) + 0.0722 * f(4);
+  }
+  function contrast(a, b) {
+    const x = luminance(a);
+    const y = luminance(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  }
+  function tokenValue(name) {
+    const match = css.match(new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})`));
+    expect(match, `${name} must be a hex token`).not.toBeNull();
+    return match[1];
+  }
+
+  it("keeps small caps labels readable on panel surfaces", () => {
+    expect(contrast(tokenValue("--muted"), "#ffffff")).toBeGreaterThanOrEqual(4.5);
+    expect(ruleBody(".settings-label")).toMatch(/color:\s*var\(--muted\)/);
+    expect(ruleBody(".explain-title")).toMatch(/color:\s*var\(--muted\)/);
+  });
+
+  it("keeps the active tab label readable on its tint", () => {
+    expect(contrast(tokenValue("--accent-strong"), tokenValue("--accent-soft"))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("keeps primary buttons readable (white on the dark amber)", () => {
+    expect(contrast("#ffffff", tokenValue("--accent-dark"))).toBeGreaterThanOrEqual(4.5);
+    expect(ruleBody(".btn.primary")).toMatch(/background:\s*var\(--accent-dark\)/);
+  });
+
+  it("keeps palette hints readable", () => {
+    expect(ruleBody(".palette-item-hint")).toMatch(/color:\s*var\(--muted\)/);
+  });
+});
+
 describe("status semantics", () => {
   it("uses explicit severity at error boundaries instead of message matching", () => {
     expect(app).toContain('function setStatus(message, { severity = "info" } = {})');
@@ -202,5 +251,7 @@ describe("status semantics", () => {
     expect(app).toContain('setStatus(message, { severity: "error" })');
     expect(app).not.toContain("const isError = /(?:error|failed|unavailable");
     expect(html).toContain('data-severity="info"');
+    expect(css).toContain('.status[data-severity="success"]');
+    expect(css).toContain('.status[data-severity="warning"]');
   });
 });

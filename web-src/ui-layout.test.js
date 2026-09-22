@@ -20,6 +20,26 @@ function ruleBody(selector) {
 }
 
 describe("workspace chrome layout", () => {
+  it("offers skip-to-content as the first keyboard entry into the workspace", () => {
+    const bodyStart = html.indexOf("<body>");
+    const skip = html.indexOf('data-testid="skip-link"');
+    const header = html.indexOf('<header class="topbar">');
+    expect(skip).toBeGreaterThan(bodyStart);
+    expect(skip).toBeLessThan(header);
+    expect(html).toContain('class="skip-link"');
+    expect(html).toContain('href="#workspace-main"');
+    expect(html).toContain('id="workspace-main"');
+    expect(html).toContain('tabindex="-1"');
+    expect(html).toContain("Skip to main content");
+    expect(css).toContain(".skip-link");
+    expect(css).toContain(".skip-link:focus-visible");
+    const link = ruleBody(".skip-link");
+    expect(link).toMatch(/position:\s*absolute/);
+    expect(link).toMatch(/top:\s*-48px/);
+    const focused = css.match(/\.skip-link:focus-visible\s*\{([^}]+)\}/)?.[1] || "";
+    expect(focused).toMatch(/top:\s*8px/);
+  });
+
   it("uses Settings as the only theme entry point", () => {
     expect(html).not.toContain('id="theme-toggle"');
     const settingsStart = html.indexOf('id="view-settings"');
@@ -416,5 +436,16 @@ describe("workspace chrome layout", () => {
     expect(css).toContain(".account-menu button[data-action=\"signout\"]:focus-visible");
     expect(css).toContain(".context-menu button:focus-visible");
     expect(css).toContain(".context-menu button:disabled");
+  });
+
+  it("gives primary mobile controls 44px touch targets without enlarging the board", () => {
+    const mobile = css.slice(css.lastIndexOf("@media (max-width: 720px)"));
+    expect(mobile).toMatch(/\.tab\s*\{[^}]*height:\s*44px/s);
+    expect(mobile).toMatch(/\.lichess-chip\s*\{[^}]*min-height:\s*44px/s);
+    expect(mobile).toMatch(/\.btn\s*\{[^}]*min-height:\s*44px/s);
+    expect(mobile).toMatch(/\.ib\s*\{[^}]*min-height:\s*44px/s);
+    expect(mobile).toMatch(/#view-build #build-menu\s*\{[^}]*min-width:\s*44px/s);
+    expect(mobile).toMatch(/#view-train \.board-bar \.ib\s*\{[^}]*min-width:\s*44px/s);
+    expect(mobile).not.toMatch(/\.square\s*\{[^}]*min-(?:width|height):\s*44px/s);
   });
 });

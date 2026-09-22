@@ -11,6 +11,26 @@ from fastapi.testclient import TestClient
 
 from api_helpers import csrf_headers
 
+
+def test_analyze_prepare_rejects_oversized_pgn(client):
+    _register(client, "large-pgn@example.com")
+    response = client.post(
+        "/api/analyze/prepare",
+        json={"pgn": "x" * 1_000_001},
+        headers=csrf_headers(client),
+    )
+    assert response.status_code == 422
+
+
+def test_analyze_classify_rejects_too_many_positions(client):
+    _register(client, "many-positions@example.com")
+    response = client.post(
+        "/api/analyze/classify-save",
+        json={"game_id": "unused", "positions": [{}] * 1_001},
+        headers=csrf_headers(client),
+    )
+    assert response.status_code == 422
+
 _PGN = """[Event "Test"]
 [White "Alice"]
 [Black "Bob"]
