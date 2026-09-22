@@ -210,11 +210,7 @@ export function createSettingsView({
       cancelLabel: "Cancel",
     });
     if (!confirmed) return;
-    const response = await fetch(`/api/lichess/${encodeURIComponent(accountId)}`, {
-      method: "DELETE",
-      credentials: "same-origin",
-    });
-    if (!response.ok) throw new Error(`unlink ${response.status}`);
+    await api(`/api/lichess/${encodeURIComponent(accountId)}`, { method: "DELETE" });
     await refreshConnections();
     onAccountsChanged();
   }

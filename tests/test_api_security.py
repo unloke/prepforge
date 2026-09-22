@@ -84,3 +84,60 @@ def test_login_rate_limited(client):
         assert 429 in statuses, statuses
     finally:
         limiter.enabled = False
+
+
+def test_import_route_has_targeted_rate_limit(client):
+    from prepforge_chess.api.ratelimit import limiter
+
+    headers = csrf_headers(client)
+    registered = client.post(
+        "/api/auth/register",
+        json={"email": "import-limit@example.com", "password": "longpassword1"},
+        headers=headers,
+    )
+    assert registered.status_code == 201
+    limiter.enabled = True
+    if hasattr(limiter, "reset"):
+        limiter.reset()
+    try:
+        statuses = [
+            client.post(
+                "/api/repertoires/import",
+                json={"package_json": " "},
+                headers=headers,
+            ).status_code
+            for _ in range(12)
+        ]
+        assert 429 in statuses, statuses
+    finally:
+        limiter.enabled = False
+
+
+def test_sensitive_team_explorer_and_annotation_routes_register_limits():
+    from prepforge_chess.api.ratelimit import limiter
+    from prepforge_chess.api.routers import lichess, teams, workspace
+
+    expected = {
+        f"{teams.__name__}.{name}"
+        for name in (
+            "create_team",
+            "list_teams",
+            "join_preview",
+            "join_team",
+            "team_detail",
+            "add_member",
+            "remove_member",
+            "update_member_role",
+            "create_invite",
+            "revoke_invite",
+            "update_team",
+            "delete_team",
+        )
+    }
+    expected.update(
+        {
+            f"{lichess.__name__}.explorer_proxy",
+            f"{workspace.__name__}.build_annotations",
+        }
+    )
+    assert expected <= set(limiter._route_limits)

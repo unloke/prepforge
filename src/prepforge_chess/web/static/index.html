@@ -6,10 +6,11 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-CkjdWEFd.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-5Ikv1jKa.css">
+    <script type="module" crossorigin src="/static/assets/index-BMuz6obr.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-CywUpR3g.css">
   </head>
   <body>
+    <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
     <header class="topbar">
       <div class="brand">PrepForge</div>
       <nav class="tabs" aria-label="Workspace">
@@ -30,7 +31,7 @@
       <div class="status" id="app-status" data-testid="app-status" role="status" aria-live="polite" data-state="ready" data-severity="info">Ready</div>
     </header>
 
-    <main class="workspace">
+    <main class="workspace" id="workspace-main" tabindex="-1">
       <section class="view is-active" id="view-dashboard" data-testid="view-dashboard">
         <div class="today-card" id="dashboard-today" data-testid="dashboard-today" hidden></div>
         <div class="metrics" id="dashboard-metrics"></div>
@@ -606,12 +607,12 @@
       <div class="engine-window-resize" id="engine-window-resize" aria-hidden="true"></div>
     </div>
 
-    <div class="toast-stack" id="toast-stack" data-testid="toast-stack"></div>
+    <div class="toast-stack" id="toast-stack" data-testid="toast-stack" role="region" aria-label="Notifications" aria-live="polite"></div>
 
     <div class="palette" id="command-palette" data-testid="command-palette" hidden role="dialog" aria-modal="true" aria-label="Command palette">
       <div class="palette-panel">
-        <input class="palette-input" id="palette-input" data-testid="palette-input" type="text" autocomplete="off" spellcheck="false" placeholder="Go to a view, repertoire, or action…" aria-label="Filter commands" />
-        <div class="palette-results" id="palette-results" data-testid="palette-results" role="listbox"></div>
+        <input class="palette-input" id="palette-input" data-testid="palette-input" type="text" role="combobox" aria-autocomplete="list" aria-controls="palette-results" aria-expanded="false" autocomplete="off" spellcheck="false" placeholder="Go to a view, repertoire, or action…" aria-label="Filter commands" />
+        <div class="palette-results" id="palette-results" data-testid="palette-results" role="listbox" aria-label="Commands"></div>
       </div>
     </div>
 

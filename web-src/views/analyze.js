@@ -36,7 +36,7 @@ export function createAnalyzeView({
         good: "+",
         inaccuracy: "?!",
         mistake: "?",
-        blunder: "!",
+        blunder: "??",
         missed: "x",
       }[group] || "."
     );

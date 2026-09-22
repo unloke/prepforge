@@ -5,6 +5,7 @@ import {
   PALETTE_VIEWS,
   buildPaletteItems,
   filterPaletteItems,
+  renderPaletteItems,
   scorePaletteItem,
 } from "./command-palette.js";
 
@@ -70,5 +71,13 @@ describe("command palette filter", () => {
     expect(filtered).toHaveLength(1);
     expect(filtered[0].kind).toBe("repertoire");
     expect(filtered[0].repertoireId).toBe("r1");
+  });
+
+  it("renders listbox options with one selected active descendant target", () => {
+    const rendered = renderPaletteItems(items.slice(0, 2), 1);
+    expect(rendered).toContain('role="option"');
+    expect(rendered).toContain('id="palette-option-1"');
+    expect(rendered).toContain('aria-selected="true"');
+    expect(rendered.match(/aria-selected="true"/g)).toHaveLength(1);
   });
 });

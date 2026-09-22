@@ -85,7 +85,7 @@ export function renderPaletteItems(items, activeIndex = 0) {
       const active = index === activeIndex ? " is-active" : "";
       const hint = item.kind === "repertoire" ? "Open in Build" : item.group;
       return (
-        `<button type="button" class="palette-item${active}" data-palette-id="${item.id}" data-index="${index}">` +
+        `<button type="button" role="option" id="palette-option-${index}" aria-selected="${index === activeIndex}" class="palette-item${active}" data-palette-id="${item.id}" data-index="${index}">` +
         `<span class="palette-item-label">${escapePalette(item.label)}</span>` +
         `<span class="palette-item-hint">${escapePalette(hint)}</span>` +
         `</button>`

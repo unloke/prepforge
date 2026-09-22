@@ -23,10 +23,11 @@ import math
 import time
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field
 
 from prepforge_chess.api.deps import current_owner, current_user, get_repository
+from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import MoveSource
 from prepforge_chess.services.analysis_view import analysis_result_to_payload
@@ -43,6 +44,8 @@ router = APIRouter(prefix="/api", tags=["analyze"])
 # ChessCore wraps python-chess and holds no per-request state, so one shared
 # instance serves the stateless /api/board utility.
 _CHESS = ChessCore()
+MAX_ANALYSIS_PGN_CHARS = 1_000_000
+MAX_ANALYSIS_POSITIONS = 1_000
 
 
 def _import_pgn_for_analysis(repo: PrepForgeRepository, pgn_text: str, owner: str) -> str:
@@ -120,11 +123,13 @@ def _brilliant_analyzer_from_client(
 
 
 class PreparePayload(BaseModel):
-    pgn: str = ""
+    pgn: str = Field(default="", max_length=MAX_ANALYSIS_PGN_CHARS)
 
 
 @router.post("/analyze/prepare")
+@limiter.limit("10/minute")
 def analyze_prepare(
+    request: Request,
     body: PreparePayload,
     owner: str = Depends(current_owner),
     repo: PrepForgeRepository = Depends(get_repository),
@@ -193,12 +198,16 @@ class ClassifySavePayload(BaseModel):
     game_id: str = ""
     engine: str = "stockfish (browser)"
     depth: int | None = None
-    positions: list[dict[str, Any]] | None = None
-    maia_assessments: list[dict[str, Any]] | None = None
+    positions: list[dict[str, Any]] | None = Field(default=None, max_length=MAX_ANALYSIS_POSITIONS)
+    maia_assessments: list[dict[str, Any]] | None = Field(
+        default=None, max_length=MAX_ANALYSIS_POSITIONS
+    )
 
 
 @router.post("/analyze/classify-save")
+@limiter.limit("10/minute")
 def analyze_classify_save(
+    request: Request,
     body: ClassifySavePayload,
     owner: str = Depends(current_owner),
     repo: PrepForgeRepository = Depends(get_repository),
