@@ -1,0 +1,4608 @@
+{
+  "protocol": "scout-offline-benchmark-v1",
+  "maxPly": 16,
+  "topK": 5,
+  "pressure": "see companion Stockfish WDL report",
+  "maia": "Maia3 rating-conditioned fp16 cache",
+  "players": [
+    {
+      "player": "research/scout-benchmark/data/ericrosen.json",
+      "games": 99,
+      "sizes": [
+        {
+          "trainGames": 10,
+          "testGames": 20,
+          "methods": {
+            "population": {
+              "move": {
+                "top1": 0.15,
+                "top3": 0.375,
+                "top5": 0.50625,
+                "logLoss": 3.105007736425095,
+                "brier": 0.9354368469096329
+              },
+              "product": {
+                "decisionPositionCoverage": 0.19375,
+                "coveredDecisionsPerGame": 1.55,
+                "conditionalRouteMoveHit": 0.7741935483870968,
+                "conditionalTop1": 0.03225806451612903,
+                "conditionalTop3": 0.45161290322580644,
+                "conditionalTop5": 0.7096774193548387,
+                "falsePrepRate": 0.22580645161290322,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.19375,
+                "coveredDecisionsPerGame": 1.55,
+                "conditionalRouteMoveHit": 0.7741935483870968,
+                "conditionalTop1": 0.03225806451612903,
+                "conditionalTop3": 0.45161290322580644,
+                "conditionalTop5": 0.7096774193548387,
+                "falsePrepRate": 0.22580645161290322,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "g8f6",
+                    "c2c3",
+                    "d7d5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c6",
+                    "g1f3",
+                    "e7e6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c1f4",
+                    "d7d5",
+                    "g1f3",
+                    "c7c5"
+                  ]
+                }
+              ]
+            },
+            "exact": {
+              "move": {
+                "top1": 0.225,
+                "top3": 0.44375,
+                "top5": 0.55625,
+                "logLoss": 2.9749144453872973,
+                "brier": 0.9108553577057945
+              },
+              "product": {
+                "decisionPositionCoverage": 0.16875,
+                "coveredDecisionsPerGame": 1.35,
+                "conditionalRouteMoveHit": 0.7407407407407407,
+                "conditionalTop1": 0.48148148148148145,
+                "conditionalTop3": 0.7777777777777778,
+                "conditionalTop5": 0.9259259259259259,
+                "falsePrepRate": 0.25925925925925924,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.16875,
+                "coveredDecisionsPerGame": 1.35,
+                "conditionalRouteMoveHit": 0.7407407407407407,
+                "conditionalTop1": 0.48148148148148145,
+                "conditionalTop3": 0.7777777777777778,
+                "conditionalTop5": 0.9259259259259259,
+                "falsePrepRate": 0.25925925925925924,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6.4
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "g8f6",
+                    "c2c3",
+                    "d7d5"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "g8f6",
+                    "d2d4",
+                    "f6e4",
+                    "f3e5",
+                    "b8c6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c6",
+                    "g1f3",
+                    "e7e6"
+                  ]
+                }
+              ]
+            },
+            "suffix": {
+              "move": {
+                "top1": 0.1875,
+                "top3": 0.39375,
+                "top5": 0.5625,
+                "logLoss": 3.0045094876979546,
+                "brier": 0.9190078807633697
+              },
+              "product": {
+                "decisionPositionCoverage": 0.16875,
+                "coveredDecisionsPerGame": 1.35,
+                "conditionalRouteMoveHit": 0.7407407407407407,
+                "conditionalTop1": 0.25925925925925924,
+                "conditionalTop3": 0.5555555555555556,
+                "conditionalTop5": 0.9259259259259259,
+                "falsePrepRate": 0.25925925925925924,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.16875,
+                "coveredDecisionsPerGame": 1.35,
+                "conditionalRouteMoveHit": 0.7407407407407407,
+                "conditionalTop1": 0.25925925925925924,
+                "conditionalTop3": 0.5555555555555556,
+                "conditionalTop5": 0.9259259259259259,
+                "falsePrepRate": 0.25925925925925924,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6.4
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "g8f6",
+                    "c2c3",
+                    "d7d5"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "g8f6",
+                    "d2d4",
+                    "f6e4",
+                    "f3e5",
+                    "b8c6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c6",
+                    "g1f3",
+                    "e7e6"
+                  ]
+                }
+              ]
+            },
+            "maia": {
+              "move": {
+                "top1": 0.51875,
+                "top3": 0.9,
+                "top5": 0.95,
+                "logLoss": 1.2341813430832798,
+                "brier": 0.6156686813752618
+              },
+              "product": {
+                "decisionPositionCoverage": 0.16875,
+                "coveredDecisionsPerGame": 1.35,
+                "conditionalRouteMoveHit": 0.7407407407407407,
+                "conditionalTop1": 0.18518518518518517,
+                "conditionalTop3": 0.7777777777777778,
+                "conditionalTop5": 0.9629629629629629,
+                "falsePrepRate": 0.25925925925925924,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.175,
+                "coveredDecisionsPerGame": 1.4,
+                "conditionalRouteMoveHit": 0.75,
+                "conditionalTop1": 0.17857142857142858,
+                "conditionalTop3": 0.7857142857142857,
+                "conditionalTop5": 0.9642857142857143,
+                "falsePrepRate": 0.25,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 8.4
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "d2d4",
+                    "e5d4",
+                    "f1c4",
+                    "g8f6",
+                    "e1g1",
+                    "f6e4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "g8f6",
+                    "d2d4",
+                    "f6e4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c6",
+                    "g1f3",
+                    "e7e6",
+                    "b1d2",
+                    "f7f5",
+                    "e2e3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "g8f6",
+                    "c2c3",
+                    "d7d5",
+                    "e4d5",
+                    "e5e4",
+                    "d1e2",
+                    "f8e7"
+                  ]
+                }
+              ]
+            },
+            "maiaResidual": {
+              "move": {
+                "top1": 0.51875,
+                "top3": 0.9125,
+                "top5": 0.95,
+                "logLoss": 1.2047265689821731,
+                "brier": 0.6046065646067996
+              },
+              "product": {
+                "decisionPositionCoverage": 0.13125,
+                "coveredDecisionsPerGame": 1.05,
+                "conditionalRouteMoveHit": 0.2857142857142857,
+                "conditionalTop1": 0.23809523809523808,
+                "conditionalTop3": 0.7619047619047619,
+                "conditionalTop5": 0.9523809523809523,
+                "falsePrepRate": 0.7142857142857143,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.125,
+                "coveredDecisionsPerGame": 1,
+                "conditionalRouteMoveHit": 0.3,
+                "conditionalTop1": 0.25,
+                "conditionalTop3": 0.75,
+                "conditionalTop5": 0.95,
+                "falsePrepRate": 0.7,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 7.2
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "g8f6",
+                    "d2d4",
+                    "f6e4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "g8f6",
+                    "c2c3",
+                    "d7d5",
+                    "e4d5",
+                    "e5e4",
+                    "d1e2",
+                    "f8e7"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "g1f3",
+                    "e7e5",
+                    "d2d3",
+                    "b8c6",
+                    "g2g3",
+                    "f7f5",
+                    "f1g2",
+                    "g8f6"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "trainGames": 20,
+          "testGames": 20,
+          "methods": {
+            "population": {
+              "move": {
+                "top1": 0.15,
+                "top3": 0.3875,
+                "top5": 0.50625,
+                "logLoss": 3.0990239225714236,
+                "brier": 0.9334093251974777
+              },
+              "product": {
+                "decisionPositionCoverage": 0.15625,
+                "coveredDecisionsPerGame": 1.25,
+                "conditionalRouteMoveHit": 0.68,
+                "conditionalTop1": 0.12,
+                "conditionalTop3": 0.48,
+                "conditionalTop5": 0.84,
+                "falsePrepRate": 0.32,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.15,
+                "coveredDecisionsPerGame": 1.2,
+                "conditionalRouteMoveHit": 0.6666666666666666,
+                "conditionalTop1": 0.125,
+                "conditionalTop3": 0.5,
+                "conditionalTop5": 0.875,
+                "falsePrepRate": 0.3333333333333333,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6.4
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "g1f3",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "g8f6",
+                    "c2c3",
+                    "d7d5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c1f4",
+                    "d7d6",
+                    "b1c3",
+                    "b8c6",
+                    "g1f3",
+                    "c8f5"
+                  ]
+                }
+              ]
+            },
+            "exact": {
+              "move": {
+                "top1": 0.24375,
+                "top3": 0.475,
+                "top5": 0.54375,
+                "logLoss": 2.919442566958977,
+                "brier": 0.893862121077811
+              },
+              "product": {
+                "decisionPositionCoverage": 0.08125,
+                "coveredDecisionsPerGame": 0.65,
+                "conditionalRouteMoveHit": 0.6153846153846154,
+                "conditionalTop1": 0.6153846153846154,
+                "conditionalTop3": 0.9230769230769231,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.38461538461538464,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.08125,
+                "coveredDecisionsPerGame": 0.65,
+                "conditionalRouteMoveHit": 0.6153846153846154,
+                "conditionalTop1": 0.6153846153846154,
+                "conditionalTop3": 0.9230769230769231,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.38461538461538464,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c5",
+                    "b1c3",
+                    "a7a6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c6",
+                    "g1f3",
+                    "e7e6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c6",
+                    "g1f3",
+                    "c8f5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "g8f6",
+                    "g1f3",
+                    "e7e6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c1f4",
+                    "d7d6",
+                    "b1c3",
+                    "b8c6"
+                  ]
+                }
+              ]
+            },
+            "suffix": {
+              "move": {
+                "top1": 0.2125,
+                "top3": 0.45625,
+                "top5": 0.55,
+                "logLoss": 2.9556023637980267,
+                "brier": 0.9058439726701024
+              },
+              "product": {
+                "decisionPositionCoverage": 0.08125,
+                "coveredDecisionsPerGame": 0.65,
+                "conditionalRouteMoveHit": 0.9230769230769231,
+                "conditionalTop1": 0.6153846153846154,
+                "conditionalTop3": 0.9230769230769231,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.07692307692307693,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.08125,
+                "coveredDecisionsPerGame": 0.65,
+                "conditionalRouteMoveHit": 0.6153846153846154,
+                "conditionalTop1": 0.6153846153846154,
+                "conditionalTop3": 0.9230769230769231,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.38461538461538464,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6.4
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c5",
+                    "b1c3",
+                    "a7a6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c6",
+                    "g1f3",
+                    "e7e6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c6",
+                    "g1f3",
+                    "c8f5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "g8f6",
+                    "g1f3",
+                    "e7e6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c1f4",
+                    "d7d6",
+                    "b1c3",
+                    "b8c6",
+                    "g1f3",
+                    "c8f5"
+                  ]
+                }
+              ]
+            },
+            "maia": {
+              "move": {
+                "top1": 0.48125,
+                "top3": 0.85625,
+                "top5": 0.925,
+                "logLoss": 1.4066969342737123,
+                "brier": 0.6595995667094978
+              },
+              "product": {
+                "decisionPositionCoverage": 0.15,
+                "coveredDecisionsPerGame": 1.2,
+                "conditionalRouteMoveHit": 0.6666666666666666,
+                "conditionalTop1": 0.375,
+                "conditionalTop3": 0.7083333333333334,
+                "conditionalTop5": 0.9583333333333334,
+                "falsePrepRate": 0.3333333333333333,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.15625,
+                "coveredDecisionsPerGame": 1.25,
+                "conditionalRouteMoveHit": 0.68,
+                "conditionalTop1": 0.36,
+                "conditionalTop3": 0.72,
+                "conditionalTop5": 0.96,
+                "falsePrepRate": 0.32,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 7.6
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "d2d4",
+                    "e5d4",
+                    "f1c4",
+                    "b8c6",
+                    "g1f3",
+                    "g8f6",
+                    "e1g1",
+                    "f6e4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "g1f3",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "e4d5",
+                    "e6d5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "d2d4",
+                    "e5d4",
+                    "f1c4",
+                    "g8f6",
+                    "e1g1",
+                    "f6e4"
+                  ]
+                }
+              ]
+            },
+            "maiaResidual": {
+              "move": {
+                "top1": 0.5,
+                "top3": 0.88125,
+                "top5": 0.925,
+                "logLoss": 1.3585532841272927,
+                "brier": 0.6378669881847645
+              },
+              "product": {
+                "decisionPositionCoverage": 0.14375,
+                "coveredDecisionsPerGame": 1.15,
+                "conditionalRouteMoveHit": 0.6521739130434783,
+                "conditionalTop1": 0.43478260869565216,
+                "conditionalTop3": 0.8695652173913043,
+                "conditionalTop5": 0.9565217391304348,
+                "falsePrepRate": 0.34782608695652173,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.14375,
+                "coveredDecisionsPerGame": 1.15,
+                "conditionalRouteMoveHit": 0.6521739130434783,
+                "conditionalTop1": 0.43478260869565216,
+                "conditionalTop3": 0.8695652173913043,
+                "conditionalTop5": 0.9565217391304348,
+                "falsePrepRate": 0.34782608695652173,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6.8
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "d2d4",
+                    "e5d4",
+                    "f1c4",
+                    "b8c6",
+                    "g1f3",
+                    "g8f6",
+                    "e1g1",
+                    "f6e4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "e4d5",
+                    "e6d5"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "g8f6",
+                    "d2d4",
+                    "f6e4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "g1f3",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "trainGames": 40,
+          "testGames": 20,
+          "methods": {
+            "population": {
+              "move": {
+                "top1": 0.125,
+                "top3": 0.325,
+                "top5": 0.45,
+                "logLoss": 3.2592025249300782,
+                "brier": 0.9503842778058516
+              },
+              "product": {
+                "decisionPositionCoverage": 0.0875,
+                "coveredDecisionsPerGame": 0.7,
+                "conditionalRouteMoveHit": 0.2857142857142857,
+                "conditionalTop1": 0.07142857142857142,
+                "conditionalTop3": 0.8571428571428571,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.7142857142857143,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.0875,
+                "coveredDecisionsPerGame": 0.7,
+                "conditionalRouteMoveHit": 0.2857142857142857,
+                "conditionalTop1": 0.07142857142857142,
+                "conditionalTop3": 0.8571428571428571,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.7142857142857143,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6.4
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "c2c4",
+                    "g8f6",
+                    "b1c3",
+                    "g7g6",
+                    "e2e4",
+                    "d7d6",
+                    "d2d4",
+                    "f8g7"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "b8c6",
+                    "g1f3",
+                    "e7e5",
+                    "d2d4",
+                    "d7d6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "g1f3",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6"
+                  ]
+                }
+              ]
+            },
+            "exact": {
+              "move": {
+                "top1": 0.3625,
+                "top3": 0.5,
+                "top5": 0.56875,
+                "logLoss": 2.7932220739359472,
+                "brier": 0.8389189024193936
+              },
+              "product": {
+                "decisionPositionCoverage": 0.1,
+                "coveredDecisionsPerGame": 0.8,
+                "conditionalRouteMoveHit": 0.9375,
+                "conditionalTop1": 0.9375,
+                "conditionalTop3": 1,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.0625,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.1,
+                "coveredDecisionsPerGame": 0.8,
+                "conditionalRouteMoveHit": 0.9375,
+                "conditionalTop1": 0.9375,
+                "conditionalTop3": 1,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.0625,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "g8f6",
+                    "g1f3",
+                    "e7e6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "g8f6",
+                    "g1f3",
+                    "c7c5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c5",
+                    "b1c3",
+                    "a7a6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c6",
+                    "g1f3",
+                    "e7e6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c6",
+                    "g1f3",
+                    "c8f5"
+                  ]
+                }
+              ]
+            },
+            "suffix": {
+              "move": {
+                "top1": 0.3375,
+                "top3": 0.49375,
+                "top5": 0.56875,
+                "logLoss": 2.89464674620422,
+                "brier": 0.8738768425728554
+              },
+              "product": {
+                "decisionPositionCoverage": 0.1,
+                "coveredDecisionsPerGame": 0.8,
+                "conditionalRouteMoveHit": 0.9375,
+                "conditionalTop1": 0.9375,
+                "conditionalTop3": 1,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.0625,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.1,
+                "coveredDecisionsPerGame": 0.8,
+                "conditionalRouteMoveHit": 0.9375,
+                "conditionalTop1": 0.9375,
+                "conditionalTop3": 1,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.0625,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "g8f6",
+                    "g1f3",
+                    "e7e6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "g8f6",
+                    "g1f3",
+                    "c7c5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c5",
+                    "b1c3",
+                    "a7a6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c6",
+                    "g1f3",
+                    "e7e6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c6",
+                    "g1f3",
+                    "c8f5"
+                  ]
+                }
+              ]
+            },
+            "maia": {
+              "move": {
+                "top1": 0.51875,
+                "top3": 0.8375,
+                "top5": 0.98125,
+                "logLoss": 1.1773641569465811,
+                "brier": 0.5543482354526129
+              },
+              "product": {
+                "decisionPositionCoverage": 0.175,
+                "coveredDecisionsPerGame": 1.4,
+                "conditionalRouteMoveHit": 0.6428571428571429,
+                "conditionalTop1": 0.32142857142857145,
+                "conditionalTop3": 0.8214285714285714,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.35714285714285715,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.1,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.125,
+                "coveredDecisionsPerGame": 1,
+                "conditionalRouteMoveHit": 0.3,
+                "conditionalTop1": 0.05,
+                "conditionalTop3": 0.75,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.7,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 8.8
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "d2d4",
+                    "e5d4",
+                    "f1c4",
+                    "b8c6",
+                    "g1f3",
+                    "g8f6",
+                    "e1g1",
+                    "f6e4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "c2c3",
+                    "d7d5",
+                    "d1e2",
+                    "d5e4",
+                    "e2e4",
+                    "g8f6",
+                    "e4e2",
+                    "b8c6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "d7d5",
+                    "e4d5",
+                    "d8d5",
+                    "g1f3",
+                    "d5d8",
+                    "d2d4",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "g8f6",
+                    "b1c3",
+                    "b8c6",
+                    "f1c4",
+                    "f6e4",
+                    "c3e4",
+                    "d7d5"
+                  ]
+                }
+              ]
+            },
+            "maiaResidual": {
+              "move": {
+                "top1": 0.6625,
+                "top3": 0.91875,
+                "top5": 0.9875,
+                "logLoss": 0.9737359923207277,
+                "brier": 0.47152449010681774
+              },
+              "product": {
+                "decisionPositionCoverage": 0.175,
+                "coveredDecisionsPerGame": 1.4,
+                "conditionalRouteMoveHit": 0.6428571428571429,
+                "conditionalTop1": 0.8214285714285714,
+                "conditionalTop3": 0.9642857142857143,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.35714285714285715,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.1,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.1625,
+                "coveredDecisionsPerGame": 1.3,
+                "conditionalRouteMoveHit": 0.6538461538461539,
+                "conditionalTop1": 0.7692307692307693,
+                "conditionalTop3": 1,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.34615384615384615,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 7.6
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "d2d4",
+                    "e5d4",
+                    "f1c4",
+                    "b8c6",
+                    "g1f3",
+                    "g8f6",
+                    "e1g1",
+                    "f6e4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "e4d5",
+                    "e6d5"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "g1f3",
+                    "d7d5",
+                    "e4d5",
+                    "e6d5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "g8f6",
+                    "b1c3",
+                    "b8c6",
+                    "f1c4",
+                    "f6e4",
+                    "c3e4",
+                    "d7d5"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "trainGames": 80,
+          "testGames": 19,
+          "methods": {
+            "population": {
+              "move": {
+                "top1": 0.17763157894736842,
+                "top3": 0.3157894736842105,
+                "top5": 0.4473684210526316,
+                "logLoss": 3.1650794143156746,
+                "brier": 0.9375960171417883
+              },
+              "product": {
+                "decisionPositionCoverage": 0.08552631578947369,
+                "coveredDecisionsPerGame": 0.6842105263157895,
+                "conditionalRouteMoveHit": 0.9230769230769231,
+                "conditionalTop1": 0,
+                "conditionalTop3": 0.3076923076923077,
+                "conditionalTop5": 0.9230769230769231,
+                "falsePrepRate": 0.07692307692307693,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05263157894736842,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.08552631578947369,
+                "coveredDecisionsPerGame": 0.6842105263157895,
+                "conditionalRouteMoveHit": 0.9230769230769231,
+                "conditionalTop1": 0,
+                "conditionalTop3": 0.3076923076923077,
+                "conditionalTop5": 0.9230769230769231,
+                "falsePrepRate": 0.07692307692307693,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05263157894736842,
+                "meanRoutePly": 6.8
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "c2c4",
+                    "g8f6",
+                    "b1c3",
+                    "g7g6",
+                    "e2e4",
+                    "d7d6",
+                    "d2d4",
+                    "f8g7"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "g1f3",
+                    "d7d5",
+                    "c1f4",
+                    "c7c5",
+                    "e2e3",
+                    "b8c6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "b8c6",
+                    "g1f3",
+                    "e7e5",
+                    "d2d4",
+                    "d7d6"
+                  ]
+                }
+              ]
+            },
+            "exact": {
+              "move": {
+                "top1": 0.2236842105263158,
+                "top3": 0.4407894736842105,
+                "top5": 0.5263157894736842,
+                "logLoss": 2.951824472841294,
+                "brier": 0.9048463245883434
+              },
+              "product": {
+                "decisionPositionCoverage": 0.05263157894736842,
+                "coveredDecisionsPerGame": 0.42105263157894735,
+                "conditionalRouteMoveHit": 0,
+                "conditionalTop1": 0,
+                "conditionalTop3": 1,
+                "conditionalTop5": 1,
+                "falsePrepRate": 1,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.05263157894736842,
+                "coveredDecisionsPerGame": 0.42105263157894735,
+                "conditionalRouteMoveHit": 0,
+                "conditionalTop1": 0,
+                "conditionalTop3": 1,
+                "conditionalTop5": 1,
+                "falsePrepRate": 1,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "g8f6",
+                    "g1f3",
+                    "e7e6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "g8f6",
+                    "g1f3",
+                    "c7c5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c5",
+                    "b1c3",
+                    "a7a6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c5",
+                    "b1c3",
+                    "e7e6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c5",
+                    "b1c3",
+                    "c5d4"
+                  ]
+                }
+              ]
+            },
+            "suffix": {
+              "move": {
+                "top1": 0.20394736842105263,
+                "top3": 0.4276315789473684,
+                "top5": 0.5263157894736842,
+                "logLoss": 2.9829267057928917,
+                "brier": 0.9119680679671056
+              },
+              "product": {
+                "decisionPositionCoverage": 0.05263157894736842,
+                "coveredDecisionsPerGame": 0.42105263157894735,
+                "conditionalRouteMoveHit": 0,
+                "conditionalTop1": 0,
+                "conditionalTop3": 1,
+                "conditionalTop5": 1,
+                "falsePrepRate": 1,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.05263157894736842,
+                "coveredDecisionsPerGame": 0.42105263157894735,
+                "conditionalRouteMoveHit": 0,
+                "conditionalTop1": 0,
+                "conditionalTop3": 1,
+                "conditionalTop5": 1,
+                "falsePrepRate": 1,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "g8f6",
+                    "g1f3",
+                    "e7e6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "g8f6",
+                    "g1f3",
+                    "c7c5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c5",
+                    "b1c3",
+                    "a7a6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c5",
+                    "b1c3",
+                    "e7e6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "c7c5",
+                    "b1c3",
+                    "c5d4"
+                  ]
+                }
+              ]
+            },
+            "maia": {
+              "move": {
+                "top1": 0.45394736842105265,
+                "top3": 0.7631578947368421,
+                "top5": 0.875,
+                "logLoss": 1.8391238303474369,
+                "brier": 0.7329376196247726
+              },
+              "product": {
+                "decisionPositionCoverage": 0.13157894736842105,
+                "coveredDecisionsPerGame": 1.0526315789473684,
+                "conditionalRouteMoveHit": 0.8,
+                "conditionalTop1": 0.5,
+                "conditionalTop3": 0.85,
+                "conditionalTop5": 0.95,
+                "falsePrepRate": 0.2,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.125,
+                "coveredDecisionsPerGame": 1,
+                "conditionalRouteMoveHit": 0.8947368421052632,
+                "conditionalTop1": 0.5263157894736842,
+                "conditionalTop3": 0.8947368421052632,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.10526315789473684,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 8.8
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "d2d4",
+                    "e5d4",
+                    "f1c4",
+                    "b8c6",
+                    "g1f3",
+                    "g8f6",
+                    "e1g1",
+                    "f6e4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "e4d5",
+                    "e6d5",
+                    "c2c4",
+                    "g8f6",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "c2c3",
+                    "d7d5",
+                    "d1e2",
+                    "d5e4",
+                    "e2e4",
+                    "g8f6",
+                    "e4e2",
+                    "b8c6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "d7d5",
+                    "e4d5",
+                    "d8d5",
+                    "g1f3",
+                    "d5d8",
+                    "d2d4",
+                    "g8f6"
+                  ]
+                }
+              ]
+            },
+            "maiaResidual": {
+              "move": {
+                "top1": 0.4342105263157895,
+                "top3": 0.7960526315789473,
+                "top5": 0.881578947368421,
+                "logLoss": 1.7864792565011829,
+                "brier": 0.7273098016582419
+              },
+              "product": {
+                "decisionPositionCoverage": 0.1118421052631579,
+                "coveredDecisionsPerGame": 0.8947368421052632,
+                "conditionalRouteMoveHit": 0,
+                "conditionalTop1": 0,
+                "conditionalTop3": 0.9411764705882353,
+                "conditionalTop5": 0.9411764705882353,
+                "falsePrepRate": 1,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.1118421052631579,
+                "coveredDecisionsPerGame": 0.8947368421052632,
+                "conditionalRouteMoveHit": 0.4117647058823529,
+                "conditionalTop1": 0,
+                "conditionalTop3": 0.9411764705882353,
+                "conditionalTop5": 0.9411764705882353,
+                "falsePrepRate": 0.5882352941176471,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 8
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "e4d5",
+                    "e6d5",
+                    "c2c4",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "e7e6",
+                    "e2e3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c1f4",
+                    "e7e6",
+                    "e2e3",
+                    "f7f5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c1f4",
+                    "g7g6",
+                    "b1c3",
+                    "f8g7",
+                    "e2e4",
+                    "d7d6",
+                    "d1d2",
+                    "c7c6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "d2d4",
+                    "e5d4",
+                    "f1c4",
+                    "b8c6",
+                    "g1f3",
+                    "g8f6",
+                    "e1g1",
+                    "f6e4"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "stability": {
+        "population": [
+          {
+            "from": 10,
+            "to": 20,
+            "entryJaccard": 0.42857142857142855
+          },
+          {
+            "from": 20,
+            "to": 40,
+            "entryJaccard": 0.42857142857142855
+          },
+          {
+            "from": 40,
+            "to": 80,
+            "entryJaccard": 0.6666666666666666
+          }
+        ],
+        "exact": [
+          {
+            "from": 10,
+            "to": 20,
+            "entryJaccard": 0.14285714285714285
+          },
+          {
+            "from": 20,
+            "to": 40,
+            "entryJaccard": 0.75
+          },
+          {
+            "from": 40,
+            "to": 80,
+            "entryJaccard": 0.6666666666666666
+          }
+        ],
+        "suffix": [
+          {
+            "from": 10,
+            "to": 20,
+            "entryJaccard": 0.14285714285714285
+          },
+          {
+            "from": 20,
+            "to": 40,
+            "entryJaccard": 0.75
+          },
+          {
+            "from": 40,
+            "to": 80,
+            "entryJaccard": 0.6666666666666666
+          }
+        ],
+        "maia": [
+          {
+            "from": 10,
+            "to": 20,
+            "entryJaccard": 0.2857142857142857
+          },
+          {
+            "from": 20,
+            "to": 40,
+            "entryJaccard": 0.25
+          },
+          {
+            "from": 40,
+            "to": 80,
+            "entryJaccard": 0.6666666666666666
+          }
+        ],
+        "maiaResidual": [
+          {
+            "from": 10,
+            "to": 20,
+            "entryJaccard": 0.2857142857142857
+          },
+          {
+            "from": 20,
+            "to": 40,
+            "entryJaccard": 0.6666666666666666
+          },
+          {
+            "from": 40,
+            "to": 80,
+            "entryJaccard": 0.2857142857142857
+          }
+        ]
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/drnykterstein.json",
+      "games": 100,
+      "sizes": [
+        {
+          "trainGames": 10,
+          "testGames": 20,
+          "methods": {
+            "population": {
+              "move": {
+                "top1": 0.15,
+                "top3": 0.375,
+                "top5": 0.5125,
+                "logLoss": 3.1049243920765095,
+                "brier": 0.9384858410646284
+              },
+              "product": {
+                "decisionPositionCoverage": 0.1375,
+                "coveredDecisionsPerGame": 1.1,
+                "conditionalRouteMoveHit": 0.7272727272727273,
+                "conditionalTop1": 0.22727272727272727,
+                "conditionalTop3": 0.4090909090909091,
+                "conditionalTop5": 0.7727272727272727,
+                "falsePrepRate": 0.2727272727272727,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.15,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.14375,
+                "coveredDecisionsPerGame": 1.15,
+                "conditionalRouteMoveHit": 0.7391304347826086,
+                "conditionalTop1": 0.2608695652173913,
+                "conditionalTop3": 0.43478260869565216,
+                "conditionalTop5": 0.782608695652174,
+                "falsePrepRate": 0.2608695652173913,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.1,
+                "meanRoutePly": 7.6
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "g1f3",
+                    "e8g8"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "b8c6",
+                    "d2d4",
+                    "c5d4",
+                    "f3d4",
+                    "g8f6",
+                    "b1c3",
+                    "e7e5"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1d2",
+                    "h7h6",
+                    "g1f3",
+                    "g8f6"
+                  ]
+                }
+              ]
+            },
+            "exact": {
+              "move": {
+                "top1": 0.21875,
+                "top3": 0.45625,
+                "top5": 0.54375,
+                "logLoss": 2.948944128325397,
+                "brier": 0.9052934743255074
+              },
+              "product": {
+                "decisionPositionCoverage": 0.14375,
+                "coveredDecisionsPerGame": 1.15,
+                "conditionalRouteMoveHit": 0.7391304347826086,
+                "conditionalTop1": 0.5652173913043478,
+                "conditionalTop3": 0.8260869565217391,
+                "conditionalTop5": 0.8260869565217391,
+                "falsePrepRate": 0.2608695652173913,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.15,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.14375,
+                "coveredDecisionsPerGame": 1.15,
+                "conditionalRouteMoveHit": 0.782608695652174,
+                "conditionalTop1": 0.6086956521739131,
+                "conditionalTop3": 0.8260869565217391,
+                "conditionalTop5": 0.8260869565217391,
+                "falsePrepRate": 0.21739130434782608,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.1,
+                "meanRoutePly": 8
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "c5d4",
+                    "d1d4",
+                    "g8f6",
+                    "b1c3",
+                    "b8c6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "b8c6",
+                    "d2d4",
+                    "c5d4",
+                    "f3d4",
+                    "g8f6",
+                    "b1c3",
+                    "e7e5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "g1f3",
+                    "e8g8"
+                  ]
+                }
+              ]
+            },
+            "suffix": {
+              "move": {
+                "top1": 0.19375,
+                "top3": 0.45,
+                "top5": 0.54375,
+                "logLoss": 2.984047359325392,
+                "brier": 0.9177393206808009
+              },
+              "product": {
+                "decisionPositionCoverage": 0.14375,
+                "coveredDecisionsPerGame": 1.15,
+                "conditionalRouteMoveHit": 0.7391304347826086,
+                "conditionalTop1": 0.5217391304347826,
+                "conditionalTop3": 0.782608695652174,
+                "conditionalTop5": 0.8260869565217391,
+                "falsePrepRate": 0.2608695652173913,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.15,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.14375,
+                "coveredDecisionsPerGame": 1.15,
+                "conditionalRouteMoveHit": 0.782608695652174,
+                "conditionalTop1": 0.5652173913043478,
+                "conditionalTop3": 0.782608695652174,
+                "conditionalTop5": 0.8260869565217391,
+                "falsePrepRate": 0.21739130434782608,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.1,
+                "meanRoutePly": 8
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "g1f3",
+                    "e8g8"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "b8c6",
+                    "d2d4",
+                    "c5d4",
+                    "f3d4",
+                    "g8f6",
+                    "b1c3",
+                    "e7e5"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "c5d4",
+                    "d1d4",
+                    "g8f6",
+                    "b1c3",
+                    "b8c6"
+                  ]
+                }
+              ]
+            },
+            "maia": {
+              "move": {
+                "top1": 0.6125,
+                "top3": 0.9,
+                "top5": 0.94375,
+                "logLoss": 1.1650922873884682,
+                "brier": 0.5330921241768325
+              },
+              "product": {
+                "decisionPositionCoverage": 0.1375,
+                "coveredDecisionsPerGame": 1.1,
+                "conditionalRouteMoveHit": 0.7272727272727273,
+                "conditionalTop1": 0.5909090909090909,
+                "conditionalTop3": 0.9090909090909091,
+                "conditionalTop5": 0.9090909090909091,
+                "falsePrepRate": 0.2727272727272727,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0.15,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.14375,
+                "coveredDecisionsPerGame": 1.15,
+                "conditionalRouteMoveHit": 0.782608695652174,
+                "conditionalTop1": 0.5652173913043478,
+                "conditionalTop3": 0.9130434782608695,
+                "conditionalTop5": 0.9130434782608695,
+                "falsePrepRate": 0.21739130434782608,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.1,
+                "meanRoutePly": 8.4
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "b8c6",
+                    "d2d4",
+                    "c5d4",
+                    "f3d4",
+                    "g8f6",
+                    "b1c3",
+                    "e7e5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "g1f3",
+                    "e8g8",
+                    "c1g5",
+                    "h7h6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "c5d4",
+                    "d1d4",
+                    "g8f6",
+                    "b1c3",
+                    "b8c6"
+                  ]
+                }
+              ]
+            },
+            "maiaResidual": {
+              "move": {
+                "top1": 0.61875,
+                "top3": 0.90625,
+                "top5": 0.94375,
+                "logLoss": 1.1536417592305557,
+                "brier": 0.5245128500758127
+              },
+              "product": {
+                "decisionPositionCoverage": 0.11875,
+                "coveredDecisionsPerGame": 0.95,
+                "conditionalRouteMoveHit": 0.631578947368421,
+                "conditionalTop1": 0.631578947368421,
+                "conditionalTop3": 0.8947368421052632,
+                "conditionalTop5": 0.8947368421052632,
+                "falsePrepRate": 0.3684210526315789,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0.1,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.125,
+                "coveredDecisionsPerGame": 1,
+                "conditionalRouteMoveHit": 0.6,
+                "conditionalTop1": 0.65,
+                "conditionalTop3": 0.9,
+                "conditionalTop5": 0.9,
+                "falsePrepRate": 0.4,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.1,
+                "meanRoutePly": 8.4
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "b8c6",
+                    "d2d4",
+                    "c5d4",
+                    "f3d4",
+                    "g8f6",
+                    "b1c3",
+                    "e7e5"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "c5d4",
+                    "d1d4",
+                    "g8f6",
+                    "b1c3",
+                    "b8c6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "d7d6",
+                    "f1b5",
+                    "b8d7",
+                    "d2d4",
+                    "c5d4",
+                    "d1d4",
+                    "a7a6"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "trainGames": 20,
+          "testGames": 20,
+          "methods": {
+            "population": {
+              "move": {
+                "top1": 0.1125,
+                "top3": 0.29375,
+                "top5": 0.44375,
+                "logLoss": 3.2312613392360396,
+                "brier": 0.9634785316477057
+              },
+              "product": {
+                "decisionPositionCoverage": 0.08125,
+                "coveredDecisionsPerGame": 0.65,
+                "conditionalRouteMoveHit": 0.38461538461538464,
+                "conditionalTop1": 0.07692307692307693,
+                "conditionalTop3": 0.23076923076923078,
+                "conditionalTop5": 0.5384615384615384,
+                "falsePrepRate": 0.6153846153846154,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.15,
+                "coveredDecisionsPerGame": 1.2,
+                "conditionalRouteMoveHit": 0.4166666666666667,
+                "conditionalTop1": 0.2916666666666667,
+                "conditionalTop3": 0.4583333333333333,
+                "conditionalTop5": 0.6666666666666666,
+                "falsePrepRate": 0.5833333333333334,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 7.2
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "d1a4",
+                    "b8c6",
+                    "e2e3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "f1b5",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "g1f3",
+                    "e8g8"
+                  ]
+                }
+              ]
+            },
+            "exact": {
+              "move": {
+                "top1": 0.13125,
+                "top3": 0.35625,
+                "top5": 0.49375,
+                "logLoss": 3.091849733550238,
+                "brier": 0.9445331593061178
+              },
+              "product": {
+                "decisionPositionCoverage": 0.08125,
+                "coveredDecisionsPerGame": 0.65,
+                "conditionalRouteMoveHit": 0.38461538461538464,
+                "conditionalTop1": 0.3076923076923077,
+                "conditionalTop3": 0.5384615384615384,
+                "conditionalTop5": 0.6153846153846154,
+                "falsePrepRate": 0.6153846153846154,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.08125,
+                "coveredDecisionsPerGame": 0.65,
+                "conditionalRouteMoveHit": 0.38461538461538464,
+                "conditionalTop1": 0.3076923076923077,
+                "conditionalTop3": 0.5384615384615384,
+                "conditionalTop5": 0.6153846153846154,
+                "falsePrepRate": 0.6153846153846154,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 7.6
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "d7d6",
+                    "f1b5",
+                    "c8d7",
+                    "b5d7",
+                    "b8d7",
+                    "e1g1",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "g1f3",
+                    "e8g8"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "g1f3",
+                    "h7h6"
+                  ]
+                }
+              ]
+            },
+            "suffix": {
+              "move": {
+                "top1": 0.125,
+                "top3": 0.3375,
+                "top5": 0.49375,
+                "logLoss": 3.1184684665739306,
+                "brier": 0.9506532071618853
+              },
+              "product": {
+                "decisionPositionCoverage": 0.08125,
+                "coveredDecisionsPerGame": 0.65,
+                "conditionalRouteMoveHit": 0.38461538461538464,
+                "conditionalTop1": 0.3076923076923077,
+                "conditionalTop3": 0.5384615384615384,
+                "conditionalTop5": 0.6153846153846154,
+                "falsePrepRate": 0.6153846153846154,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.15,
+                "coveredDecisionsPerGame": 1.2,
+                "conditionalRouteMoveHit": 0.4166666666666667,
+                "conditionalTop1": 0.2916666666666667,
+                "conditionalTop3": 0.6666666666666666,
+                "conditionalTop5": 0.7083333333333334,
+                "falsePrepRate": 0.5833333333333334,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 8
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "d7d6",
+                    "f1b5",
+                    "c8d7",
+                    "b5d7",
+                    "b8d7",
+                    "e1g1",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "d1a4",
+                    "b8c6",
+                    "e2e3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "g1f3",
+                    "e8g8"
+                  ]
+                }
+              ]
+            },
+            "maia": {
+              "move": {
+                "top1": 0.55,
+                "top3": 0.81875,
+                "top5": 0.9125,
+                "logLoss": 1.5108913950812686,
+                "brier": 0.6550142898797139
+              },
+              "product": {
+                "decisionPositionCoverage": 0.075,
+                "coveredDecisionsPerGame": 0.6,
+                "conditionalRouteMoveHit": 0.4166666666666667,
+                "conditionalTop1": 0.3333333333333333,
+                "conditionalTop3": 0.5,
+                "conditionalTop5": 0.6666666666666666,
+                "falsePrepRate": 0.5833333333333334,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.075,
+                "coveredDecisionsPerGame": 0.6,
+                "conditionalRouteMoveHit": 0.4166666666666667,
+                "conditionalTop1": 0.3333333333333333,
+                "conditionalTop3": 0.5,
+                "conditionalTop5": 0.6666666666666666,
+                "falsePrepRate": 0.5833333333333334,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 8.4
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "f1b5",
+                    "g8f6",
+                    "e1g1",
+                    "f6e4",
+                    "f1e1",
+                    "e4d6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "f1b5",
+                    "a7a6",
+                    "b5a4",
+                    "g8f6",
+                    "e1g1",
+                    "f8e7"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8e7",
+                    "c4d5",
+                    "e6d5",
+                    "c1f4",
+                    "c7c5"
+                  ]
+                }
+              ]
+            },
+            "maiaResidual": {
+              "move": {
+                "top1": 0.55,
+                "top3": 0.8375,
+                "top5": 0.93125,
+                "logLoss": 1.4756795410095132,
+                "brier": 0.6472085895842391
+              },
+              "product": {
+                "decisionPositionCoverage": 0.075,
+                "coveredDecisionsPerGame": 0.6,
+                "conditionalRouteMoveHit": 0.4166666666666667,
+                "conditionalTop1": 0.3333333333333333,
+                "conditionalTop3": 0.5,
+                "conditionalTop5": 0.6666666666666666,
+                "falsePrepRate": 0.5833333333333334,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.075,
+                "coveredDecisionsPerGame": 0.6,
+                "conditionalRouteMoveHit": 0.3333333333333333,
+                "conditionalTop1": 0.3333333333333333,
+                "conditionalTop3": 0.5,
+                "conditionalTop5": 0.6666666666666666,
+                "falsePrepRate": 0.6666666666666666,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 8.4
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "f1b5",
+                    "g8f6",
+                    "e1g1",
+                    "f6e4",
+                    "f1e1",
+                    "e4d6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "f1b5",
+                    "a7a6",
+                    "b5a4",
+                    "g8f6",
+                    "e1g1",
+                    "f8e7"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "b8c6",
+                    "d2d4",
+                    "c5d4",
+                    "f3d4",
+                    "g8f6",
+                    "b1c3",
+                    "e7e5"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "trainGames": 40,
+          "testGames": 20,
+          "methods": {
+            "population": {
+              "move": {
+                "top1": 0.08125,
+                "top3": 0.3125,
+                "top5": 0.4,
+                "logLoss": 3.232435001044957,
+                "brier": 0.9621169741093828
+              },
+              "product": {
+                "decisionPositionCoverage": 0.14375,
+                "coveredDecisionsPerGame": 1.15,
+                "conditionalRouteMoveHit": 0.30434782608695654,
+                "conditionalTop1": 0.13043478260869565,
+                "conditionalTop3": 0.4782608695652174,
+                "conditionalTop5": 0.6086956521739131,
+                "falsePrepRate": 0.6956521739130435,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.15,
+                "coveredDecisionsPerGame": 1.2,
+                "conditionalRouteMoveHit": 0.2916666666666667,
+                "conditionalTop1": 0.125,
+                "conditionalTop3": 0.4583333333333333,
+                "conditionalTop5": 0.5833333333333334,
+                "falsePrepRate": 0.7083333333333334,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6.8
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "d1a4",
+                    "b8c6",
+                    "e2e3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "f1b5",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c1f4",
+                    "d7d5",
+                    "e2e3",
+                    "c7c5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                }
+              ]
+            },
+            "exact": {
+              "move": {
+                "top1": 0.11875,
+                "top3": 0.31875,
+                "top5": 0.41875,
+                "logLoss": 3.1696529937667446,
+                "brier": 0.953190185689647
+              },
+              "product": {
+                "decisionPositionCoverage": 0.075,
+                "coveredDecisionsPerGame": 0.6,
+                "conditionalRouteMoveHit": 0.16666666666666666,
+                "conditionalTop1": 0.16666666666666666,
+                "conditionalTop3": 0.3333333333333333,
+                "conditionalTop5": 0.75,
+                "falsePrepRate": 0.8333333333333334,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.075,
+                "coveredDecisionsPerGame": 0.6,
+                "conditionalRouteMoveHit": 0.16666666666666666,
+                "conditionalTop1": 0.16666666666666666,
+                "conditionalTop3": 0.3333333333333333,
+                "conditionalTop5": 0.6666666666666666,
+                "falsePrepRate": 0.8333333333333334,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6.8
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "b2b3",
+                    "b8c6",
+                    "c1b2",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "b2b3",
+                    "b8c6",
+                    "c1b2",
+                    "d7d6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "b2b3",
+                    "b8c6",
+                    "c1b2",
+                    "e7e5"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "d1a4",
+                    "b8c6",
+                    "e2e3",
+                    "g8f6"
+                  ]
+                }
+              ]
+            },
+            "suffix": {
+              "move": {
+                "top1": 0.1125,
+                "top3": 0.35,
+                "top5": 0.4125,
+                "logLoss": 3.16315863997366,
+                "brier": 0.9518872468720805
+              },
+              "product": {
+                "decisionPositionCoverage": 0.075,
+                "coveredDecisionsPerGame": 0.6,
+                "conditionalRouteMoveHit": 0.16666666666666666,
+                "conditionalTop1": 0.16666666666666666,
+                "conditionalTop3": 0.6666666666666666,
+                "conditionalTop5": 0.75,
+                "falsePrepRate": 0.8333333333333334,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.15,
+                "coveredDecisionsPerGame": 1.2,
+                "conditionalRouteMoveHit": 0.25,
+                "conditionalTop1": 0.16666666666666666,
+                "conditionalTop3": 0.5416666666666666,
+                "conditionalTop5": 0.625,
+                "falsePrepRate": 0.75,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 7.6
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "d1a4",
+                    "b8c6",
+                    "e2e3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "d7d6",
+                    "f1b5",
+                    "c8d7",
+                    "b5d7",
+                    "b8d7",
+                    "e1g1",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "b2b3",
+                    "b8c6",
+                    "c1b2",
+                    "g8f6"
+                  ]
+                }
+              ]
+            },
+            "maia": {
+              "move": {
+                "top1": 0.5125,
+                "top3": 0.76875,
+                "top5": 0.925,
+                "logLoss": 1.5505870578242216,
+                "brier": 0.6484890420660624
+              },
+              "product": {
+                "decisionPositionCoverage": 0.1375,
+                "coveredDecisionsPerGame": 1.1,
+                "conditionalRouteMoveHit": 0.22727272727272727,
+                "conditionalTop1": 0.22727272727272727,
+                "conditionalTop3": 0.4090909090909091,
+                "conditionalTop5": 0.8636363636363636,
+                "falsePrepRate": 0.7727272727272727,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.1375,
+                "coveredDecisionsPerGame": 1.1,
+                "conditionalRouteMoveHit": 0.22727272727272727,
+                "conditionalTop1": 0.22727272727272727,
+                "conditionalTop3": 0.4090909090909091,
+                "conditionalTop5": 0.8636363636363636,
+                "falsePrepRate": 0.7727272727272727,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 8.4
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "f1b5",
+                    "g8f6",
+                    "e1g1",
+                    "f6e4",
+                    "f1e1",
+                    "e4d6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "b2b3",
+                    "e7e5",
+                    "c1b2",
+                    "b8c6",
+                    "c2c4",
+                    "g8e7",
+                    "e2e3",
+                    "d7d5",
+                    "c4d5",
+                    "e7d5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "e2e3",
+                    "e8g8",
+                    "f1d3",
+                    "d7d5"
+                  ]
+                }
+              ]
+            },
+            "maiaResidual": {
+              "move": {
+                "top1": 0.51875,
+                "top3": 0.76875,
+                "top5": 0.9125,
+                "logLoss": 1.5377820298478795,
+                "brier": 0.6248490486759273
+              },
+              "product": {
+                "decisionPositionCoverage": 0.1375,
+                "coveredDecisionsPerGame": 1.1,
+                "conditionalRouteMoveHit": 0.22727272727272727,
+                "conditionalTop1": 0.22727272727272727,
+                "conditionalTop3": 0.4090909090909091,
+                "conditionalTop5": 0.7727272727272727,
+                "falsePrepRate": 0.7727272727272727,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.1375,
+                "coveredDecisionsPerGame": 1.1,
+                "conditionalRouteMoveHit": 0.22727272727272727,
+                "conditionalTop1": 0.22727272727272727,
+                "conditionalTop3": 0.4090909090909091,
+                "conditionalTop5": 0.7727272727272727,
+                "falsePrepRate": 0.7727272727272727,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 8.4
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "b2b3",
+                    "e7e5",
+                    "c1b2",
+                    "b8c6",
+                    "c2c4",
+                    "g8e7",
+                    "e2e3",
+                    "d7d5",
+                    "c4d5",
+                    "e7d5"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "f1b5",
+                    "g8f6",
+                    "e1g1",
+                    "f6e4",
+                    "f1e1",
+                    "e4d6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "e2e3",
+                    "e8g8",
+                    "f1d3",
+                    "d7d5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "trainGames": 80,
+          "testGames": 20,
+          "methods": {
+            "population": {
+              "move": {
+                "top1": 0.10625,
+                "top3": 0.3125,
+                "top5": 0.41875,
+                "logLoss": 3.239948837138551,
+                "brier": 0.9577402100873085
+              },
+              "product": {
+                "decisionPositionCoverage": 0.11875,
+                "coveredDecisionsPerGame": 0.95,
+                "conditionalRouteMoveHit": 0.2631578947368421,
+                "conditionalTop1": 0.15789473684210525,
+                "conditionalTop3": 0.42105263157894735,
+                "conditionalTop5": 0.5263157894736842,
+                "falsePrepRate": 0.7368421052631579,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.0875,
+                "coveredDecisionsPerGame": 0.7,
+                "conditionalRouteMoveHit": 0.35714285714285715,
+                "conditionalTop1": 0.2857142857142857,
+                "conditionalTop3": 0.42857142857142855,
+                "conditionalTop5": 0.5714285714285714,
+                "falsePrepRate": 0.6428571428571429,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 7.2
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "d1a4",
+                    "b8c6",
+                    "e2e3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "g1f3",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "a7a6",
+                    "d2d4",
+                    "d7d5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "c5d4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "g1f3",
+                    "d7d5",
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6"
+                  ]
+                }
+              ]
+            },
+            "exact": {
+              "move": {
+                "top1": 0.2125,
+                "top3": 0.475,
+                "top5": 0.6,
+                "logLoss": 2.6982753652050886,
+                "brier": 0.8708445087888803
+              },
+              "product": {
+                "decisionPositionCoverage": 0.10625,
+                "coveredDecisionsPerGame": 0.85,
+                "conditionalRouteMoveHit": 0.8235294117647058,
+                "conditionalTop1": 0.5294117647058824,
+                "conditionalTop3": 0.9411764705882353,
+                "conditionalTop5": 0.9411764705882353,
+                "falsePrepRate": 0.17647058823529413,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.1,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.1375,
+                "coveredDecisionsPerGame": 1.1,
+                "conditionalRouteMoveHit": 0.36363636363636365,
+                "conditionalTop1": 0.36363636363636365,
+                "conditionalTop3": 0.8636363636363636,
+                "conditionalTop5": 0.9090909090909091,
+                "falsePrepRate": 0.6363636363636364,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6.4
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "g7g6",
+                    "b1c3",
+                    "f8g7"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "d7d6",
+                    "f1b5",
+                    "c8d7",
+                    "b5d7",
+                    "b8d7"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "g1f3",
+                    "g7g6",
+                    "c1g5",
+                    "f8g7"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                }
+              ]
+            },
+            "suffix": {
+              "move": {
+                "top1": 0.2,
+                "top3": 0.44375,
+                "top5": 0.58125,
+                "logLoss": 2.780345888835427,
+                "brier": 0.8967253120936898
+              },
+              "product": {
+                "decisionPositionCoverage": 0.1,
+                "coveredDecisionsPerGame": 0.8,
+                "conditionalRouteMoveHit": 0.5,
+                "conditionalTop1": 0.375,
+                "conditionalTop3": 0.9375,
+                "conditionalTop5": 0.9375,
+                "falsePrepRate": 0.5,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0.1,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.125,
+                "coveredDecisionsPerGame": 1,
+                "conditionalRouteMoveHit": 0.3,
+                "conditionalTop1": 0.25,
+                "conditionalTop3": 0.85,
+                "conditionalTop5": 0.9,
+                "falsePrepRate": 0.7,
+                "unenteredRouteRate": 0,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 7.6
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "d7d6",
+                    "f1b5",
+                    "c8d7",
+                    "b5d7",
+                    "b8d7",
+                    "e1g1",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "d1a4",
+                    "b8c6",
+                    "e2e3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "e5d4"
+                  ]
+                }
+              ]
+            },
+            "maia": {
+              "move": {
+                "top1": 0.5125,
+                "top3": 0.81875,
+                "top5": 0.95,
+                "logLoss": 1.4757313956167928,
+                "brier": 0.6576356854568898
+              },
+              "product": {
+                "decisionPositionCoverage": 0.1125,
+                "coveredDecisionsPerGame": 0.9,
+                "conditionalRouteMoveHit": 0.2222222222222222,
+                "conditionalTop1": 0.2222222222222222,
+                "conditionalTop3": 0.3333333333333333,
+                "conditionalTop5": 0.8888888888888888,
+                "falsePrepRate": 0.7777777777777778,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0.05,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.11875,
+                "coveredDecisionsPerGame": 0.95,
+                "conditionalRouteMoveHit": 0.2631578947368421,
+                "conditionalTop1": 0.2631578947368421,
+                "conditionalTop3": 0.3684210526315789,
+                "conditionalTop5": 0.8947368421052632,
+                "falsePrepRate": 0.7368421052631579,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 9.2
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "f1b5",
+                    "g8f6",
+                    "e1g1",
+                    "f6e4",
+                    "f1e1",
+                    "e4d6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "f1b5",
+                    "g8f6",
+                    "d2d3",
+                    "f8c5",
+                    "b5c6",
+                    "d7c6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "b2b3",
+                    "e7e5",
+                    "c1b2",
+                    "b8c6",
+                    "c2c4",
+                    "g8e7",
+                    "e2e3",
+                    "d7d5",
+                    "c4d5",
+                    "e7d5"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "c7c5",
+                    "g1f3",
+                    "d7d6",
+                    "d2d4",
+                    "c5d4",
+                    "f3d4",
+                    "a7a6",
+                    "c2c4",
+                    "e7e6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "e2e4",
+                    "e7e6",
+                    "d2d4",
+                    "d7d5",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                }
+              ]
+            },
+            "maiaResidual": {
+              "move": {
+                "top1": 0.55625,
+                "top3": 0.90625,
+                "top5": 0.94375,
+                "logLoss": 1.2488767428456664,
+                "brier": 0.5748193861656516
+              },
+              "product": {
+                "decisionPositionCoverage": 0.125,
+                "coveredDecisionsPerGame": 1,
+                "conditionalRouteMoveHit": 0.2,
+                "conditionalTop1": 0.2,
+                "conditionalTop3": 0.85,
+                "conditionalTop5": 0.9,
+                "falsePrepRate": 0.8,
+                "unenteredRouteRate": 0.4,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.06875,
+                "coveredDecisionsPerGame": 0.55,
+                "conditionalRouteMoveHit": 0.18181818181818182,
+                "conditionalTop1": 0.18181818181818182,
+                "conditionalTop3": 0.8181818181818182,
+                "conditionalTop5": 0.9090909090909091,
+                "falsePrepRate": 0.8181818181818182,
+                "unenteredRouteRate": 0.4,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 10
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "b2b3",
+                    "e7e5",
+                    "c1b2",
+                    "b8c6",
+                    "c2c4",
+                    "g8e7",
+                    "e2e3",
+                    "d7d5",
+                    "c4d5",
+                    "e7d5"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "f1b5",
+                    "g8f6",
+                    "e1g1",
+                    "f6e4",
+                    "f1e1",
+                    "e4d6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "g1f3",
+                    "d7d5",
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "e2e3",
+                    "e8g8"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "g1f3",
+                    "b8c6",
+                    "f1b5",
+                    "g8f6",
+                    "d2d3",
+                    "f8c5",
+                    "b5c6",
+                    "d7c6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "e2e3",
+                    "e8g8",
+                    "f1d3",
+                    "d7d5"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "stability": {
+        "population": [
+          {
+            "from": 10,
+            "to": 20,
+            "entryJaccard": 0.42857142857142855
+          },
+          {
+            "from": 20,
+            "to": 40,
+            "entryJaccard": 0.6666666666666666
+          },
+          {
+            "from": 40,
+            "to": 80,
+            "entryJaccard": 0.25
+          }
+        ],
+        "exact": [
+          {
+            "from": 10,
+            "to": 20,
+            "entryJaccard": 0.8
+          },
+          {
+            "from": 20,
+            "to": 40,
+            "entryJaccard": 0.16666666666666666
+          },
+          {
+            "from": 40,
+            "to": 80,
+            "entryJaccard": 0.14285714285714285
+          }
+        ],
+        "suffix": [
+          {
+            "from": 10,
+            "to": 20,
+            "entryJaccard": 0.6666666666666666
+          },
+          {
+            "from": 20,
+            "to": 40,
+            "entryJaccard": 0.6666666666666666
+          },
+          {
+            "from": 40,
+            "to": 80,
+            "entryJaccard": 0.6666666666666666
+          }
+        ],
+        "maia": [
+          {
+            "from": 10,
+            "to": 20,
+            "entryJaccard": 0.2857142857142857
+          },
+          {
+            "from": 20,
+            "to": 40,
+            "entryJaccard": 0.5
+          },
+          {
+            "from": 40,
+            "to": 80,
+            "entryJaccard": 0.5
+          }
+        ],
+        "maiaResidual": [
+          {
+            "from": 10,
+            "to": 20,
+            "entryJaccard": 0.6
+          },
+          {
+            "from": 20,
+            "to": 40,
+            "entryJaccard": 0.5
+          },
+          {
+            "from": 40,
+            "to": 80,
+            "entryJaccard": 0.5
+          }
+        ]
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/penguingm1.json",
+      "games": 27,
+      "sizes": [
+        {
+          "trainGames": 10,
+          "testGames": 17,
+          "methods": {
+            "population": {
+              "move": {
+                "top1": 0.2421875,
+                "top3": 0.4140625,
+                "top5": 0.53125,
+                "logLoss": 2.8803317330305003,
+                "brier": 0.9191593134268485
+              },
+              "product": {
+                "decisionPositionCoverage": 0.1171875,
+                "coveredDecisionsPerGame": 0.8823529411764706,
+                "conditionalRouteMoveHit": 0.6,
+                "conditionalTop1": 0.8666666666666667,
+                "conditionalTop3": 0.8666666666666667,
+                "conditionalTop5": 0.9333333333333333,
+                "falsePrepRate": 0.4,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.1171875,
+                "coveredDecisionsPerGame": 0.8823529411764706,
+                "conditionalRouteMoveHit": 0.6,
+                "conditionalTop1": 0.8666666666666667,
+                "conditionalTop3": 0.8666666666666667,
+                "conditionalTop5": 0.9333333333333333,
+                "falsePrepRate": 0.4,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6.8
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "g1f3",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "g2g3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "g8f6",
+                    "g1f3",
+                    "f8e7"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8e7",
+                    "g1f3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "e7e6",
+                    "c2c4",
+                    "f7f5",
+                    "g1f3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                }
+              ]
+            },
+            "exact": {
+              "move": {
+                "top1": 0.265625,
+                "top3": 0.4609375,
+                "top5": 0.578125,
+                "logLoss": 2.767399883100011,
+                "brier": 0.8805939401223427
+              },
+              "product": {
+                "decisionPositionCoverage": 0.1171875,
+                "coveredDecisionsPerGame": 0.8823529411764706,
+                "conditionalRouteMoveHit": 0.6,
+                "conditionalTop1": 0.6,
+                "conditionalTop3": 0.9333333333333333,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.4,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.1171875,
+                "coveredDecisionsPerGame": 0.8823529411764706,
+                "conditionalRouteMoveHit": 0.6,
+                "conditionalTop1": 0.6,
+                "conditionalTop3": 0.9333333333333333,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.4,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8e7"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "e7e6",
+                    "c2c4",
+                    "f7f5",
+                    "g1f3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "g1f3",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "g2g3",
+                    "g8f6"
+                  ]
+                }
+              ]
+            },
+            "suffix": {
+              "move": {
+                "top1": 0.2265625,
+                "top3": 0.4609375,
+                "top5": 0.578125,
+                "logLoss": 2.7990940440074037,
+                "brier": 0.8925277012116731
+              },
+              "product": {
+                "decisionPositionCoverage": 0.1171875,
+                "coveredDecisionsPerGame": 0.8823529411764706,
+                "conditionalRouteMoveHit": 0.6,
+                "conditionalTop1": 0.6,
+                "conditionalTop3": 0.9333333333333333,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.4,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.1171875,
+                "coveredDecisionsPerGame": 0.8823529411764706,
+                "conditionalRouteMoveHit": 0.6,
+                "conditionalTop1": 0.6,
+                "conditionalTop3": 0.9333333333333333,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.4,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "recommendations": [
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8e7"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "e7e6",
+                    "c2c4",
+                    "f7f5",
+                    "g1f3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "g1f3",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "g2g3",
+                    "g8f6"
+                  ]
+                }
+              ]
+            },
+            "maia": {
+              "move": {
+                "top1": 0.359375,
+                "top3": 0.609375,
+                "top5": 0.7109375,
+                "logLoss": 2.5497407514910893,
+                "brier": 0.8056856918882878
+              },
+              "product": {
+                "decisionPositionCoverage": 0.15625,
+                "coveredDecisionsPerGame": 1.1764705882352942,
+                "conditionalRouteMoveHit": 0.85,
+                "conditionalTop1": 0.3,
+                "conditionalTop3": 0.85,
+                "conditionalTop5": 0.95,
+                "falsePrepRate": 0.15,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0.058823529411764705,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.1796875,
+                "coveredDecisionsPerGame": 1.3529411764705883,
+                "conditionalRouteMoveHit": 0.7391304347826086,
+                "conditionalTop1": 0.43478260869565216,
+                "conditionalTop3": 0.8695652173913043,
+                "conditionalTop5": 0.9565217391304348,
+                "falsePrepRate": 0.2608695652173913,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 7.6
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "d1h5",
+                    "b8c6",
+                    "f1c4",
+                    "g7g6",
+                    "h5f3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4",
+                    "e2e3",
+                    "g8f6",
+                    "c1d2",
+                    "e8g8"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "g1f3",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "g2g3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8e7",
+                    "g1f3",
+                    "g8f6"
+                  ]
+                }
+              ]
+            },
+            "maiaResidual": {
+              "move": {
+                "top1": 0.3984375,
+                "top3": 0.6171875,
+                "top5": 0.7109375,
+                "logLoss": 2.497895348314764,
+                "brier": 0.764660550734278
+              },
+              "product": {
+                "decisionPositionCoverage": 0.140625,
+                "coveredDecisionsPerGame": 1.0588235294117647,
+                "conditionalRouteMoveHit": 0.7222222222222222,
+                "conditionalTop1": 0.7222222222222222,
+                "conditionalTop3": 0.9444444444444444,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.2777777777777778,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6
+              },
+              "geometric": {
+                "decisionPositionCoverage": 0.140625,
+                "coveredDecisionsPerGame": 1.0588235294117647,
+                "conditionalRouteMoveHit": 0.7222222222222222,
+                "conditionalTop1": 0.7222222222222222,
+                "conditionalTop3": 0.9444444444444444,
+                "conditionalTop5": 1,
+                "falsePrepRate": 0.2777777777777778,
+                "unenteredRouteRate": 0.19999999999999996,
+                "strictFullLineGameHit": 0,
+                "meanRoutePly": 6.4
+              },
+              "recommendations": [
+                {
+                  "color": "black",
+                  "moves": [
+                    "e2e4",
+                    "e7e5",
+                    "d1h5",
+                    "b8c6",
+                    "f1c4",
+                    "g7g6",
+                    "h5f3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "g8f6"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8e7"
+                  ]
+                },
+                {
+                  "color": "white",
+                  "moves": [
+                    "d2d4",
+                    "g8f6",
+                    "c2c4",
+                    "e7e6",
+                    "b1c3",
+                    "f8b4"
+                  ]
+                },
+                {
+                  "color": "black",
+                  "moves": [
+                    "g1f3",
+                    "d7d5",
+                    "c2c4",
+                    "e7e6",
+                    "g2g3",
+                    "g8f6"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "stability": {
+        "population": [],
+        "exact": [],
+        "suffix": [],
+        "maia": [],
+        "maiaResidual": []
+      }
+    }
+  ]
+}

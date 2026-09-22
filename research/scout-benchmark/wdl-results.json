@@ -1,0 +1,3181 @@
+{
+  "protocol": "scout-wdl-benchmark-v1",
+  "stockfish": "19 lite single, depth 10",
+  "note": "Robustness uses up to three Maia replies with p >= 0.05 after each prepared move.",
+  "routes": [
+    {
+      "player": "research/scout-benchmark/data/ericrosen.json",
+      "method": "maia",
+      "trainGames": 80,
+      "moves": [
+        "e2e4",
+        "e7e5",
+        "d2d4",
+        "e5d4",
+        "f1c4",
+        "b8c6",
+        "g1f3",
+        "g8f6",
+        "e1g1",
+        "f6e4"
+      ],
+      "wdl": [
+        0.5375,
+        0.5415,
+        0.5215,
+        0.516,
+        0.4835,
+        0.494,
+        0.472,
+        0.472,
+        0.4635,
+        0.477
+      ],
+      "alternatives": [
+        {
+          "probability": 0.30615051546977295,
+          "userWdl": 0.5475
+        },
+        {
+          "probability": 0.22051194409230732,
+          "userWdl": 0.5415
+        },
+        {
+          "probability": 0.10916132802667512,
+          "userWdl": 0.548
+        },
+        {
+          "probability": 0.8496934435968717,
+          "userWdl": 0.516
+        },
+        {
+          "probability": 0.06760119293366622,
+          "userWdl": 0.682
+        },
+        {
+          "probability": 0.6800833427594507,
+          "userWdl": 0.494
+        },
+        {
+          "probability": 0.22779938551679815,
+          "userWdl": 0.492
+        },
+        {
+          "probability": 0.7350806820152644,
+          "userWdl": 0.472
+        },
+        {
+          "probability": 0.2172894345605248,
+          "userWdl": 0.5355
+        },
+        {
+          "probability": 0.8185075911356021,
+          "userWdl": 0.477
+        },
+        {
+          "probability": 0.07152039624698822,
+          "userWdl": 0.5575
+        },
+        {
+          "probability": 0.06022621190271279,
+          "userWdl": 0.531
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.4635,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.013499999999999956,
+        "blunderDependency": 0,
+        "robustness": 0.031882110458997893
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/ericrosen.json",
+      "method": "maia",
+      "trainGames": 80,
+      "moves": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "d7d6",
+        "d2d4",
+        "e5d4"
+      ],
+      "wdl": [
+        0.5375,
+        0.5415,
+        0.517,
+        0.5805,
+        0.5715,
+        0.536
+      ],
+      "alternatives": [
+        {
+          "probability": 0.6740423688965007,
+          "userWdl": 0.483
+        },
+        {
+          "probability": 0.12664880878042767,
+          "userWdl": 0.48550000000000004
+        },
+        {
+          "probability": 0.09122171490808531,
+          "userWdl": 0.49650000000000005
+        },
+        {
+          "probability": 0.6528514288647017,
+          "userWdl": 0.4285
+        },
+        {
+          "probability": 0.1599881232047959,
+          "userWdl": 0.46099999999999997
+        },
+        {
+          "probability": 0.14796482587464346,
+          "userWdl": 0.4665
+        },
+        {
+          "probability": 0.7638252376708502,
+          "userWdl": 0.4655
+        },
+        {
+          "probability": 0.17584255424236486,
+          "userWdl": 0.4445
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.4195,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.024499999999999966,
+        "blunderDependency": 1,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/ericrosen.json",
+      "method": "maia",
+      "trainGames": 80,
+      "moves": [
+        "e2e4",
+        "e7e6",
+        "d2d4",
+        "d7d5",
+        "e4d5",
+        "e6d5",
+        "c2c4",
+        "g8f6",
+        "b1c3",
+        "f8b4"
+      ],
+      "wdl": [
+        0.5375,
+        0.5415,
+        0.542,
+        0.563,
+        0.516,
+        0.512,
+        0.495,
+        0.502,
+        0.502,
+        0.502
+      ],
+      "alternatives": [
+        {
+          "probability": 0.30615051546977295,
+          "userWdl": 0.5475
+        },
+        {
+          "probability": 0.22051194409230732,
+          "userWdl": 0.5415
+        },
+        {
+          "probability": 0.10916132802667512,
+          "userWdl": 0.548
+        },
+        {
+          "probability": 0.8954568089614788,
+          "userWdl": 0.563
+        },
+        {
+          "probability": 0.9069722715160643,
+          "userWdl": 0.512
+        },
+        {
+          "probability": 0.0626921899701426,
+          "userWdl": 0.605
+        },
+        {
+          "probability": 0.8420798109049985,
+          "userWdl": 0.502
+        },
+        {
+          "probability": 0.05641583023508616,
+          "userWdl": 0.512
+        },
+        {
+          "probability": 0.5497322178557902,
+          "userWdl": 0.502
+        },
+        {
+          "probability": 0.2152782296778433,
+          "userWdl": 0.5095
+        },
+        {
+          "probability": 0.07675981668953023,
+          "userWdl": 0.5155
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.495,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.020999999999999908,
+        "blunderDependency": 0,
+        "robustness": 0.22591401540742598
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/ericrosen.json",
+      "method": "maia",
+      "trainGames": 80,
+      "moves": [
+        "e2e4",
+        "c7c5",
+        "c2c3",
+        "d7d5",
+        "d1e2",
+        "d5e4",
+        "e2e4",
+        "g8f6",
+        "e4e2",
+        "b8c6"
+      ],
+      "wdl": [
+        0.5375,
+        0.5475,
+        0.5135,
+        0.5175,
+        0.4195,
+        0.4185,
+        0.3365,
+        0.3635,
+        0.2625,
+        0.323
+      ],
+      "alternatives": [
+        {
+          "probability": 0.30615051546977295,
+          "userWdl": 0.5475
+        },
+        {
+          "probability": 0.22051194409230732,
+          "userWdl": 0.5415
+        },
+        {
+          "probability": 0.10916132802667512,
+          "userWdl": 0.548
+        },
+        {
+          "probability": 0.4097436426885959,
+          "userWdl": 0.524
+        },
+        {
+          "probability": 0.2687164413918903,
+          "userWdl": 0.5175
+        },
+        {
+          "probability": 0.09432834261229497,
+          "userWdl": 0.561
+        },
+        {
+          "probability": 0.5225576921172236,
+          "userWdl": 0.4185
+        },
+        {
+          "probability": 0.1696496440829415,
+          "userWdl": 0.4145
+        },
+        {
+          "probability": 0.14510903034571132,
+          "userWdl": 0.4265
+        },
+        {
+          "probability": 0.9063972354452745,
+          "userWdl": 0.3635
+        },
+        {
+          "probability": 0.06168110595795918,
+          "userWdl": 0.415
+        },
+        {
+          "probability": 0.7498218704993893,
+          "userWdl": 0.323
+        },
+        {
+          "probability": 0.15473448875439383,
+          "userWdl": 0.282
+        },
+        {
+          "probability": 0.06551870486426525,
+          "userWdl": 0.4755
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.2625,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.0605,
+        "blunderDependency": 0,
+        "robustness": 0.022544573199105036
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/ericrosen.json",
+      "method": "maia",
+      "trainGames": 80,
+      "moves": [
+        "e2e4",
+        "d7d5",
+        "e4d5",
+        "d8d5",
+        "g1f3",
+        "d5d8",
+        "d2d4",
+        "g8f6"
+      ],
+      "wdl": [
+        0.5375,
+        0.5825,
+        0.5795,
+        0.5915,
+        0.552,
+        0.6225,
+        0.6365,
+        0.628
+      ],
+      "alternatives": [
+        {
+          "probability": 0.8613921984071745,
+          "userWdl": 0.4205
+        },
+        {
+          "probability": 0.6235361527170009,
+          "userWdl": 0.385
+        },
+        {
+          "probability": 0.20885844940725448,
+          "userWdl": 0.44799999999999995
+        },
+        {
+          "probability": 0.12087799691197082,
+          "userWdl": 0.472
+        },
+        {
+          "probability": 0.6846598524490993,
+          "userWdl": 0.36350000000000005
+        },
+        {
+          "probability": 0.22933232424587152,
+          "userWdl": 0.40549999999999997
+        },
+        {
+          "probability": 0.4444684284462032,
+          "userWdl": 0.43700000000000006
+        },
+        {
+          "probability": 0.20669701498955603,
+          "userWdl": 0.39849999999999997
+        },
+        {
+          "probability": 0.11594651710124755,
+          "userWdl": 0.42200000000000004
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.372,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.03949999999999998,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/ericrosen.json",
+      "method": "maiaResidual",
+      "trainGames": 80,
+      "moves": [
+        "e2e4",
+        "e7e6",
+        "d2d4",
+        "d7d5",
+        "e4d5",
+        "e6d5",
+        "c2c4",
+        "g8f6"
+      ],
+      "wdl": [
+        0.5375,
+        0.5415,
+        0.542,
+        0.563,
+        0.516,
+        0.512,
+        0.495,
+        0.502
+      ],
+      "alternatives": [
+        {
+          "probability": 0.30615051546977295,
+          "userWdl": 0.5475
+        },
+        {
+          "probability": 0.22051194409230732,
+          "userWdl": 0.5415
+        },
+        {
+          "probability": 0.10916132802667512,
+          "userWdl": 0.548
+        },
+        {
+          "probability": 0.8954568089614788,
+          "userWdl": 0.563
+        },
+        {
+          "probability": 0.9069722715160643,
+          "userWdl": 0.512
+        },
+        {
+          "probability": 0.0626921899701426,
+          "userWdl": 0.605
+        },
+        {
+          "probability": 0.8420798109049985,
+          "userWdl": 0.502
+        },
+        {
+          "probability": 0.05641583023508616,
+          "userWdl": 0.512
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.495,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.020999999999999908,
+        "blunderDependency": 0,
+        "robustness": 0.28185489429591215
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/ericrosen.json",
+      "method": "maiaResidual",
+      "trainGames": 80,
+      "moves": [
+        "d2d4",
+        "d7d5",
+        "c1f4",
+        "e7e6",
+        "e2e3",
+        "g8f6"
+      ],
+      "wdl": [
+        0.5165,
+        0.5195,
+        0.511,
+        0.505,
+        0.505,
+        0.51
+      ],
+      "alternatives": [
+        {
+          "probability": 0.44595277666320277,
+          "userWdl": 0.479
+        },
+        {
+          "probability": 0.2924629712067124,
+          "userWdl": 0.48250000000000004
+        },
+        {
+          "probability": 0.12578675650167584,
+          "userWdl": 0.489
+        },
+        {
+          "probability": 0.7572164713160965,
+          "userWdl": 0.495
+        },
+        {
+          "probability": 0.13576143242479838,
+          "userWdl": 0.49
+        },
+        {
+          "probability": 0.4022801292818249,
+          "userWdl": 0.48950000000000005
+        },
+        {
+          "probability": 0.37790720835764013,
+          "userWdl": 0.49250000000000005
+        },
+        {
+          "probability": 0.08301519679469703,
+          "userWdl": 0.49350000000000005
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.48050000000000004,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.008499999999999952,
+        "blunderDependency": 1,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/ericrosen.json",
+      "method": "maiaResidual",
+      "trainGames": 80,
+      "moves": [
+        "d2d4",
+        "d7d5",
+        "c1f4",
+        "e7e6",
+        "e2e3",
+        "f7f5"
+      ],
+      "wdl": [
+        0.5165,
+        0.5195,
+        0.511,
+        0.505,
+        0.505,
+        0.692
+      ],
+      "alternatives": [
+        {
+          "probability": 0.44595277666320277,
+          "userWdl": 0.479
+        },
+        {
+          "probability": 0.2924629712067124,
+          "userWdl": 0.48250000000000004
+        },
+        {
+          "probability": 0.12578675650167584,
+          "userWdl": 0.489
+        },
+        {
+          "probability": 0.7572164713160965,
+          "userWdl": 0.495
+        },
+        {
+          "probability": 0.13576143242479838,
+          "userWdl": 0.49
+        },
+        {
+          "probability": 0.37952933753467977,
+          "userWdl": 0.28900000000000003
+        },
+        {
+          "probability": 0.3402078994141635,
+          "userWdl": 0.29800000000000004
+        },
+        {
+          "probability": 0.08080645893159734,
+          "userWdl": 0.4475
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.30800000000000005,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.008499999999999952,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/ericrosen.json",
+      "method": "maiaResidual",
+      "trainGames": 80,
+      "moves": [
+        "d2d4",
+        "g8f6",
+        "c1f4",
+        "g7g6",
+        "b1c3",
+        "f8g7",
+        "e2e4",
+        "d7d6",
+        "d1d2",
+        "c7c6"
+      ],
+      "wdl": [
+        0.5165,
+        0.512,
+        0.5115,
+        0.5215,
+        0.5035,
+        0.5295,
+        0.5295,
+        0.553,
+        0.5525,
+        0.602
+      ],
+      "alternatives": [
+        {
+          "probability": 0.36372956878465107,
+          "userWdl": 0.48050000000000004
+        },
+        {
+          "probability": 0.3209902178308851,
+          "userWdl": 0.4685
+        },
+        {
+          "probability": 0.104210266216691,
+          "userWdl": 0.49050000000000005
+        },
+        {
+          "probability": 0.33673905534917853,
+          "userWdl": 0.483
+        },
+        {
+          "probability": 0.30660439897675185,
+          "userWdl": 0.49650000000000005
+        },
+        {
+          "probability": 0.14482966299987896,
+          "userWdl": 0.48550000000000004
+        },
+        {
+          "probability": 0.7708530546123884,
+          "userWdl": 0.47050000000000003
+        },
+        {
+          "probability": 0.18025504501361606,
+          "userWdl": 0.49150000000000005
+        },
+        {
+          "probability": 0.9102211958013471,
+          "userWdl": 0.4475
+        },
+        {
+          "probability": 0.5582437394955467,
+          "userWdl": 0.481
+        },
+        {
+          "probability": 0.24009764052790167,
+          "userWdl": 0.36050000000000004
+        },
+        {
+          "probability": 0.08695760283514174,
+          "userWdl": 0.45399999999999996
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.398,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.018000000000000016,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/ericrosen.json",
+      "method": "maiaResidual",
+      "trainGames": 80,
+      "moves": [
+        "e2e4",
+        "e7e5",
+        "d2d4",
+        "e5d4",
+        "f1c4",
+        "b8c6",
+        "g1f3",
+        "g8f6",
+        "e1g1",
+        "f6e4"
+      ],
+      "wdl": [
+        0.5375,
+        0.5415,
+        0.5215,
+        0.516,
+        0.4835,
+        0.494,
+        0.472,
+        0.472,
+        0.4635,
+        0.477
+      ],
+      "alternatives": [
+        {
+          "probability": 0.30615051546977295,
+          "userWdl": 0.5475
+        },
+        {
+          "probability": 0.22051194409230732,
+          "userWdl": 0.5415
+        },
+        {
+          "probability": 0.10916132802667512,
+          "userWdl": 0.548
+        },
+        {
+          "probability": 0.8496934435968717,
+          "userWdl": 0.516
+        },
+        {
+          "probability": 0.06760119293366622,
+          "userWdl": 0.682
+        },
+        {
+          "probability": 0.6800833427594507,
+          "userWdl": 0.494
+        },
+        {
+          "probability": 0.22779938551679815,
+          "userWdl": 0.492
+        },
+        {
+          "probability": 0.7350806820152644,
+          "userWdl": 0.472
+        },
+        {
+          "probability": 0.2172894345605248,
+          "userWdl": 0.5355
+        },
+        {
+          "probability": 0.8185075911356021,
+          "userWdl": 0.477
+        },
+        {
+          "probability": 0.07152039624698822,
+          "userWdl": 0.5575
+        },
+        {
+          "probability": 0.06022621190271279,
+          "userWdl": 0.531
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.4635,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.013499999999999956,
+        "blunderDependency": 0,
+        "robustness": 0.031882110458997893
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/ericrosen.json",
+      "method": "exact",
+      "trainGames": 80,
+      "moves": [
+        "d2d4",
+        "d7d5",
+        "c1f4",
+        "g8f6",
+        "g1f3",
+        "e7e6"
+      ],
+      "wdl": [
+        0.5165,
+        0.5195,
+        0.511,
+        0.5115,
+        0.5095,
+        0.513
+      ],
+      "alternatives": [
+        {
+          "probability": 0.44595277666320277,
+          "userWdl": 0.479
+        },
+        {
+          "probability": 0.2924629712067124,
+          "userWdl": 0.48250000000000004
+        },
+        {
+          "probability": 0.12578675650167584,
+          "userWdl": 0.489
+        },
+        {
+          "probability": 0.7737633607351173,
+          "userWdl": 0.49
+        },
+        {
+          "probability": 0.12052908479007779,
+          "userWdl": 0.49050000000000005
+        },
+        {
+          "probability": 0.7716141379017623,
+          "userWdl": 0.487
+        },
+        {
+          "probability": 0.11833086053500282,
+          "userWdl": 0.48650000000000004
+        },
+        {
+          "probability": 0.06433537295523911,
+          "userWdl": 0.49050000000000005
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.48050000000000004,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.008499999999999952,
+        "blunderDependency": 1,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/ericrosen.json",
+      "method": "exact",
+      "trainGames": 80,
+      "moves": [
+        "d2d4",
+        "d7d5",
+        "c1f4",
+        "g8f6",
+        "g1f3",
+        "c7c5"
+      ],
+      "wdl": [
+        0.5165,
+        0.5195,
+        0.511,
+        0.5115,
+        0.5095,
+        0.514
+      ],
+      "alternatives": [
+        {
+          "probability": 0.44595277666320277,
+          "userWdl": 0.479
+        },
+        {
+          "probability": 0.2924629712067124,
+          "userWdl": 0.48250000000000004
+        },
+        {
+          "probability": 0.12578675650167584,
+          "userWdl": 0.489
+        },
+        {
+          "probability": 0.7737633607351173,
+          "userWdl": 0.49
+        },
+        {
+          "probability": 0.12052908479007779,
+          "userWdl": 0.49050000000000005
+        },
+        {
+          "probability": 0.6833762124175687,
+          "userWdl": 0.48650000000000004
+        },
+        {
+          "probability": 0.20518674821760657,
+          "userWdl": 0.491
+        },
+        {
+          "probability": 0.09844967770376693,
+          "userWdl": 0.49150000000000005
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.48050000000000004,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.008499999999999952,
+        "blunderDependency": 1,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/ericrosen.json",
+      "method": "exact",
+      "trainGames": 80,
+      "moves": [
+        "d2d4",
+        "d7d5",
+        "c1f4",
+        "c7c5",
+        "b1c3",
+        "a7a6"
+      ],
+      "wdl": [
+        0.5165,
+        0.5195,
+        0.511,
+        0.508,
+        0.5025,
+        0.5595
+      ],
+      "alternatives": [
+        {
+          "probability": 0.44595277666320277,
+          "userWdl": 0.479
+        },
+        {
+          "probability": 0.2924629712067124,
+          "userWdl": 0.48250000000000004
+        },
+        {
+          "probability": 0.12578675650167584,
+          "userWdl": 0.489
+        },
+        {
+          "probability": 0.6005616772927641,
+          "userWdl": 0.49
+        },
+        {
+          "probability": 0.14949162125485047,
+          "userWdl": 0.49150000000000005
+        },
+        {
+          "probability": 0.08926552419928746,
+          "userWdl": 0.49350000000000005
+        },
+        {
+          "probability": 0.4407083375681038,
+          "userWdl": 0.43600000000000005
+        },
+        {
+          "probability": 0.2935750432547482,
+          "userWdl": 0.508
+        },
+        {
+          "probability": 0.20177097974958436,
+          "userWdl": 0.4395
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.4405,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.008499999999999952,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/ericrosen.json",
+      "method": "exact",
+      "trainGames": 80,
+      "moves": [
+        "d2d4",
+        "d7d5",
+        "c1f4",
+        "c7c5",
+        "b1c3",
+        "e7e6"
+      ],
+      "wdl": [
+        0.5165,
+        0.5195,
+        0.511,
+        0.508,
+        0.5025,
+        0.5215
+      ],
+      "alternatives": [
+        {
+          "probability": 0.44595277666320277,
+          "userWdl": 0.479
+        },
+        {
+          "probability": 0.2924629712067124,
+          "userWdl": 0.48250000000000004
+        },
+        {
+          "probability": 0.12578675650167584,
+          "userWdl": 0.489
+        },
+        {
+          "probability": 0.6005616772927641,
+          "userWdl": 0.49
+        },
+        {
+          "probability": 0.14949162125485047,
+          "userWdl": 0.49150000000000005
+        },
+        {
+          "probability": 0.08926552419928746,
+          "userWdl": 0.49350000000000005
+        },
+        {
+          "probability": 0.5966407914409803,
+          "userWdl": 0.48350000000000004
+        },
+        {
+          "probability": 0.35627048900527436,
+          "userWdl": 0.508
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.47850000000000004,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.008499999999999952,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/ericrosen.json",
+      "method": "exact",
+      "trainGames": 80,
+      "moves": [
+        "d2d4",
+        "d7d5",
+        "c1f4",
+        "c7c5",
+        "b1c3",
+        "c5d4"
+      ],
+      "wdl": [
+        0.5165,
+        0.5195,
+        0.511,
+        0.508,
+        0.5025,
+        0.541
+      ],
+      "alternatives": [
+        {
+          "probability": 0.44595277666320277,
+          "userWdl": 0.479
+        },
+        {
+          "probability": 0.2924629712067124,
+          "userWdl": 0.48250000000000004
+        },
+        {
+          "probability": 0.12578675650167584,
+          "userWdl": 0.489
+        },
+        {
+          "probability": 0.6005616772927641,
+          "userWdl": 0.49
+        },
+        {
+          "probability": 0.14949162125485047,
+          "userWdl": 0.49150000000000005
+        },
+        {
+          "probability": 0.08926552419928746,
+          "userWdl": 0.49350000000000005
+        },
+        {
+          "probability": 0.9637062205170186,
+          "userWdl": 0.47550000000000003
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.45899999999999996,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.008499999999999952,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/drnykterstein.json",
+      "method": "maia",
+      "trainGames": 80,
+      "moves": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1b5",
+        "g8f6",
+        "e1g1",
+        "f6e4",
+        "f1e1",
+        "e4d6"
+      ],
+      "wdl": [
+        0.5375,
+        0.5415,
+        0.517,
+        0.52,
+        0.5125,
+        0.546,
+        0.5395,
+        0.5375,
+        0.544,
+        0.5315
+      ],
+      "alternatives": [
+        {
+          "probability": 0.80794783495049,
+          "userWdl": 0.5415
+        },
+        {
+          "probability": 0.08125744889636682,
+          "userWdl": 0.5475
+        },
+        {
+          "probability": 0.7812535244244464,
+          "userWdl": 0.52
+        },
+        {
+          "probability": 0.15872128067989105,
+          "userWdl": 0.5325
+        },
+        {
+          "probability": 0.05316496954713274,
+          "userWdl": 0.5805
+        },
+        {
+          "probability": 0.8524013736416156,
+          "userWdl": 0.546
+        },
+        {
+          "probability": 0.14582868053562395,
+          "userWdl": 0.514
+        },
+        {
+          "probability": 0.9736207797535907,
+          "userWdl": 0.5375
+        },
+        {
+          "probability": 0.9955649455893343,
+          "userWdl": 0.5315
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.5125,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.033500000000000085,
+        "blunderDependency": 0,
+        "robustness": 0.010962389965781243
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/drnykterstein.json",
+      "method": "maia",
+      "trainGames": 80,
+      "moves": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1b5",
+        "g8f6",
+        "d2d3",
+        "f8c5",
+        "b5c6",
+        "d7c6"
+      ],
+      "wdl": [
+        0.5375,
+        0.5415,
+        0.517,
+        0.52,
+        0.5125,
+        0.546,
+        0.524,
+        0.5165,
+        0.5135,
+        0.508
+      ],
+      "alternatives": [
+        {
+          "probability": 0.80794783495049,
+          "userWdl": 0.5415
+        },
+        {
+          "probability": 0.08125744889636682,
+          "userWdl": 0.5475
+        },
+        {
+          "probability": 0.7812535244244464,
+          "userWdl": 0.52
+        },
+        {
+          "probability": 0.15872128067989105,
+          "userWdl": 0.5325
+        },
+        {
+          "probability": 0.05316496954713274,
+          "userWdl": 0.5805
+        },
+        {
+          "probability": 0.8524013736416156,
+          "userWdl": 0.546
+        },
+        {
+          "probability": 0.14582868053562395,
+          "userWdl": 0.514
+        },
+        {
+          "probability": 0.9661083435996706,
+          "userWdl": 0.5165
+        },
+        {
+          "probability": 0.9519669038904336,
+          "userWdl": 0.508
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.5125,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.033500000000000085,
+        "blunderDependency": 0,
+        "robustness": 0.01107915050207935
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/drnykterstein.json",
+      "method": "maia",
+      "trainGames": 80,
+      "moves": [
+        "b2b3",
+        "e7e5",
+        "c1b2",
+        "b8c6",
+        "c2c4",
+        "g8e7",
+        "e2e3",
+        "d7d5",
+        "c4d5",
+        "e7d5"
+      ],
+      "wdl": [
+        0.506,
+        0.476,
+        0.483,
+        0.4855,
+        0.4825,
+        0.488,
+        0.477,
+        0.477,
+        0.4785,
+        0.481
+      ],
+      "alternatives": [
+        {
+          "probability": 0.6381360520133635,
+          "userWdl": 0.476
+        },
+        {
+          "probability": 0.11441148969285271,
+          "userWdl": 0.5075
+        },
+        {
+          "probability": 0.07272436757882791,
+          "userWdl": 0.4985
+        },
+        {
+          "probability": 0.9001681300074265,
+          "userWdl": 0.4855
+        },
+        {
+          "probability": 0.7806483164131456,
+          "userWdl": 0.488
+        },
+        {
+          "probability": 0.19737880478755554,
+          "userWdl": 0.4795
+        },
+        {
+          "probability": 0.9308899826670776,
+          "userWdl": 0.477
+        },
+        {
+          "probability": 0.06236574081172573,
+          "userWdl": 0.55
+        },
+        {
+          "probability": 0.9959985555839526,
+          "userWdl": 0.481
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.477,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.005500000000000005,
+        "blunderDependency": 0,
+        "robustness": 0.013289887672861189
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/drnykterstein.json",
+      "method": "maia",
+      "trainGames": 80,
+      "moves": [
+        "e2e4",
+        "c7c5",
+        "g1f3",
+        "d7d6",
+        "d2d4",
+        "c5d4",
+        "f3d4",
+        "a7a6",
+        "c2c4",
+        "e7e6"
+      ],
+      "wdl": [
+        0.5375,
+        0.5475,
+        0.565,
+        0.552,
+        0.5425,
+        0.559,
+        0.5595,
+        0.5525,
+        0.5615,
+        0.5935
+      ],
+      "alternatives": [
+        {
+          "probability": 0.7102769593358621,
+          "userWdl": 0.43500000000000005
+        },
+        {
+          "probability": 0.11415189542721654,
+          "userWdl": 0.496
+        },
+        {
+          "probability": 0.8571168901135104,
+          "userWdl": 0.4575
+        },
+        {
+          "probability": 0.09033945557684069,
+          "userWdl": 0.47250000000000003
+        },
+        {
+          "probability": 0.9505496181417908,
+          "userWdl": 0.4405
+        },
+        {
+          "probability": 0.9169870500225469,
+          "userWdl": 0.4385
+        },
+        {
+          "probability": 0.8621156978968034,
+          "userWdl": 0.4065
+        },
+        {
+          "probability": 0.09229726246376899,
+          "userWdl": 0.3115
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.4065,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.009500000000000064,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/drnykterstein.json",
+      "method": "maia",
+      "trainGames": 80,
+      "moves": [
+        "e2e4",
+        "e7e6",
+        "d2d4",
+        "d7d5",
+        "b1c3",
+        "f8b4"
+      ],
+      "wdl": [
+        0.5375,
+        0.5415,
+        0.542,
+        0.563,
+        0.532,
+        0.5425
+      ],
+      "alternatives": [
+        {
+          "probability": 0.7821325589038184,
+          "userWdl": 0.45799999999999996
+        },
+        {
+          "probability": 0.07624098956338349,
+          "userWdl": 0.4635
+        },
+        {
+          "probability": 0.05754971821727246,
+          "userWdl": 0.47450000000000003
+        },
+        {
+          "probability": 0.949983339116347,
+          "userWdl": 0.46799999999999997
+        },
+        {
+          "probability": 0.5772255204230183,
+          "userWdl": 0.4185
+        },
+        {
+          "probability": 0.16929970388783802,
+          "userWdl": 0.489
+        },
+        {
+          "probability": 0.08380943076345572,
+          "userWdl": 0.48350000000000004
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.43700000000000006,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.030999999999999917,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/drnykterstein.json",
+      "method": "maiaResidual",
+      "trainGames": 80,
+      "moves": [
+        "b2b3",
+        "e7e5",
+        "c1b2",
+        "b8c6",
+        "c2c4",
+        "g8e7",
+        "e2e3",
+        "d7d5",
+        "c4d5",
+        "e7d5"
+      ],
+      "wdl": [
+        0.506,
+        0.476,
+        0.483,
+        0.4855,
+        0.4825,
+        0.488,
+        0.477,
+        0.477,
+        0.4785,
+        0.481
+      ],
+      "alternatives": [
+        {
+          "probability": 0.6381360520133635,
+          "userWdl": 0.476
+        },
+        {
+          "probability": 0.11441148969285271,
+          "userWdl": 0.5075
+        },
+        {
+          "probability": 0.07272436757882791,
+          "userWdl": 0.4985
+        },
+        {
+          "probability": 0.9001681300074265,
+          "userWdl": 0.4855
+        },
+        {
+          "probability": 0.7806483164131456,
+          "userWdl": 0.488
+        },
+        {
+          "probability": 0.19737880478755554,
+          "userWdl": 0.4795
+        },
+        {
+          "probability": 0.9308899826670776,
+          "userWdl": 0.477
+        },
+        {
+          "probability": 0.06236574081172573,
+          "userWdl": 0.55
+        },
+        {
+          "probability": 0.9959985555839526,
+          "userWdl": 0.481
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.477,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.005500000000000005,
+        "blunderDependency": 0,
+        "robustness": 0.013289887672861189
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/drnykterstein.json",
+      "method": "maiaResidual",
+      "trainGames": 80,
+      "moves": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1b5",
+        "g8f6",
+        "e1g1",
+        "f6e4",
+        "f1e1",
+        "e4d6"
+      ],
+      "wdl": [
+        0.5375,
+        0.5415,
+        0.517,
+        0.52,
+        0.5125,
+        0.546,
+        0.5395,
+        0.5375,
+        0.544,
+        0.5315
+      ],
+      "alternatives": [
+        {
+          "probability": 0.80794783495049,
+          "userWdl": 0.5415
+        },
+        {
+          "probability": 0.08125744889636682,
+          "userWdl": 0.5475
+        },
+        {
+          "probability": 0.7812535244244464,
+          "userWdl": 0.52
+        },
+        {
+          "probability": 0.15872128067989105,
+          "userWdl": 0.5325
+        },
+        {
+          "probability": 0.05316496954713274,
+          "userWdl": 0.5805
+        },
+        {
+          "probability": 0.8524013736416156,
+          "userWdl": 0.546
+        },
+        {
+          "probability": 0.14582868053562395,
+          "userWdl": 0.514
+        },
+        {
+          "probability": 0.9736207797535907,
+          "userWdl": 0.5375
+        },
+        {
+          "probability": 0.9955649455893343,
+          "userWdl": 0.5315
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.5125,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.033500000000000085,
+        "blunderDependency": 0,
+        "robustness": 0.010962389965781243
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/drnykterstein.json",
+      "method": "maiaResidual",
+      "trainGames": 80,
+      "moves": [
+        "g1f3",
+        "d7d5",
+        "d2d4",
+        "g8f6",
+        "c2c4",
+        "e7e6",
+        "b1c3",
+        "f8b4",
+        "e2e3",
+        "e8g8"
+      ],
+      "wdl": [
+        0.523,
+        0.5165,
+        0.5025,
+        0.513,
+        0.513,
+        0.514,
+        0.515,
+        0.53,
+        0.518,
+        0.526
+      ],
+      "alternatives": [
+        {
+          "probability": 0.5818434987355064,
+          "userWdl": 0.5165
+        },
+        {
+          "probability": 0.22785318795013929,
+          "userWdl": 0.517
+        },
+        {
+          "probability": 0.05411987583542846,
+          "userWdl": 0.5205
+        },
+        {
+          "probability": 0.6652019240201732,
+          "userWdl": 0.513
+        },
+        {
+          "probability": 0.17083798302956815,
+          "userWdl": 0.512
+        },
+        {
+          "probability": 0.863017547818932,
+          "userWdl": 0.514
+        },
+        {
+          "probability": 0.07308952242376554,
+          "userWdl": 0.5225
+        },
+        {
+          "probability": 0.6277576394543535,
+          "userWdl": 0.53
+        },
+        {
+          "probability": 0.1491055087166293,
+          "userWdl": 0.5235
+        },
+        {
+          "probability": 0.0651393725547633,
+          "userWdl": 0.5195
+        },
+        {
+          "probability": 0.8932099759410991,
+          "userWdl": 0.526
+        },
+        {
+          "probability": 0.06572285201412807,
+          "userWdl": 0.5225
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.5025,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.015000000000000013,
+        "blunderDependency": 1,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/drnykterstein.json",
+      "method": "maiaResidual",
+      "trainGames": 80,
+      "moves": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1b5",
+        "g8f6",
+        "d2d3",
+        "f8c5",
+        "b5c6",
+        "d7c6"
+      ],
+      "wdl": [
+        0.5375,
+        0.5415,
+        0.517,
+        0.52,
+        0.5125,
+        0.546,
+        0.524,
+        0.5165,
+        0.5135,
+        0.508
+      ],
+      "alternatives": [
+        {
+          "probability": 0.80794783495049,
+          "userWdl": 0.5415
+        },
+        {
+          "probability": 0.08125744889636682,
+          "userWdl": 0.5475
+        },
+        {
+          "probability": 0.7812535244244464,
+          "userWdl": 0.52
+        },
+        {
+          "probability": 0.15872128067989105,
+          "userWdl": 0.5325
+        },
+        {
+          "probability": 0.05316496954713274,
+          "userWdl": 0.5805
+        },
+        {
+          "probability": 0.8524013736416156,
+          "userWdl": 0.546
+        },
+        {
+          "probability": 0.14582868053562395,
+          "userWdl": 0.514
+        },
+        {
+          "probability": 0.9661083435996706,
+          "userWdl": 0.5165
+        },
+        {
+          "probability": 0.9519669038904336,
+          "userWdl": 0.508
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.5125,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.033500000000000085,
+        "blunderDependency": 0,
+        "robustness": 0.01107915050207935
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/drnykterstein.json",
+      "method": "maiaResidual",
+      "trainGames": 80,
+      "moves": [
+        "d2d4",
+        "g8f6",
+        "c2c4",
+        "e7e6",
+        "b1c3",
+        "f8b4",
+        "e2e3",
+        "e8g8",
+        "f1d3",
+        "d7d5"
+      ],
+      "wdl": [
+        0.5165,
+        0.512,
+        0.5315,
+        0.515,
+        0.523,
+        0.5205,
+        0.5215,
+        0.518,
+        0.515,
+        0.515
+      ],
+      "alternatives": [
+        {
+          "probability": 0.5034108527602297,
+          "userWdl": 0.512
+        },
+        {
+          "probability": 0.374103179876432,
+          "userWdl": 0.5195
+        },
+        {
+          "probability": 0.6708343132647433,
+          "userWdl": 0.515
+        },
+        {
+          "probability": 0.11298693373816114,
+          "userWdl": 0.535
+        },
+        {
+          "probability": 0.1044958315766763,
+          "userWdl": 0.5255
+        },
+        {
+          "probability": 0.6638158771798708,
+          "userWdl": 0.5205
+        },
+        {
+          "probability": 0.3185023386290689,
+          "userWdl": 0.5255
+        },
+        {
+          "probability": 0.8747381183299024,
+          "userWdl": 0.518
+        },
+        {
+          "probability": 0.057695232717667806,
+          "userWdl": 0.531
+        },
+        {
+          "probability": 0.8624184703429674,
+          "userWdl": 0.515
+        },
+        {
+          "probability": 0.08948899146270685,
+          "userWdl": 0.5215
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.515,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/drnykterstein.json",
+      "method": "exact",
+      "trainGames": 80,
+      "moves": [
+        "e2e4",
+        "e7e6",
+        "d2d4",
+        "d7d5",
+        "b1c3",
+        "f8b4"
+      ],
+      "wdl": [
+        0.5375,
+        0.5415,
+        0.542,
+        0.563,
+        0.532,
+        0.5425
+      ],
+      "alternatives": [
+        {
+          "probability": 0.7821325589038184,
+          "userWdl": 0.45799999999999996
+        },
+        {
+          "probability": 0.07624098956338349,
+          "userWdl": 0.4635
+        },
+        {
+          "probability": 0.05754971821727246,
+          "userWdl": 0.47450000000000003
+        },
+        {
+          "probability": 0.949983339116347,
+          "userWdl": 0.46799999999999997
+        },
+        {
+          "probability": 0.5772255204230183,
+          "userWdl": 0.4185
+        },
+        {
+          "probability": 0.16929970388783802,
+          "userWdl": 0.489
+        },
+        {
+          "probability": 0.08380943076345572,
+          "userWdl": 0.48350000000000004
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.43700000000000006,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.030999999999999917,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/drnykterstein.json",
+      "method": "exact",
+      "trainGames": 80,
+      "moves": [
+        "d2d4",
+        "g8f6",
+        "c2c4",
+        "g7g6",
+        "b1c3",
+        "f8g7"
+      ],
+      "wdl": [
+        0.5165,
+        0.512,
+        0.5315,
+        0.535,
+        0.535,
+        0.5815
+      ],
+      "alternatives": [
+        {
+          "probability": 0.5034108527602297,
+          "userWdl": 0.512
+        },
+        {
+          "probability": 0.374103179876432,
+          "userWdl": 0.5195
+        },
+        {
+          "probability": 0.6708343132647433,
+          "userWdl": 0.515
+        },
+        {
+          "probability": 0.11298693373816114,
+          "userWdl": 0.535
+        },
+        {
+          "probability": 0.1044958315766763,
+          "userWdl": 0.5255
+        },
+        {
+          "probability": 0.6223876976979408,
+          "userWdl": 0.536
+        },
+        {
+          "probability": 0.3081042521657319,
+          "userWdl": 0.5815
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.5165,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.046499999999999986,
+        "blunderDependency": 0.7153846153846145,
+        "robustness": 0.11426829989813307
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/drnykterstein.json",
+      "method": "exact",
+      "trainGames": 80,
+      "moves": [
+        "e2e4",
+        "c7c5",
+        "g1f3",
+        "d7d6",
+        "f1b5",
+        "c8d7",
+        "b5d7",
+        "b8d7"
+      ],
+      "wdl": [
+        0.5375,
+        0.5475,
+        0.565,
+        0.552,
+        0.531,
+        0.5195,
+        0.512,
+        0.51
+      ],
+      "alternatives": [
+        {
+          "probability": 0.80794783495049,
+          "userWdl": 0.5415
+        },
+        {
+          "probability": 0.08125744889636682,
+          "userWdl": 0.5475
+        },
+        {
+          "probability": 0.35346306283631734,
+          "userWdl": 0.5855
+        },
+        {
+          "probability": 0.25064284312049123,
+          "userWdl": 0.6055
+        },
+        {
+          "probability": 0.1643755896290293,
+          "userWdl": 0.552
+        },
+        {
+          "probability": 0.6303865772833129,
+          "userWdl": 0.5195
+        },
+        {
+          "probability": 0.27539549990214524,
+          "userWdl": 0.5415
+        },
+        {
+          "probability": 0.09369859982250914,
+          "userWdl": 0.608
+        },
+        {
+          "probability": 0.8975021340718696,
+          "userWdl": 0.506
+        },
+        {
+          "probability": 0.10228269488158974,
+          "userWdl": 0.51
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.512,
+        "pressureConsistency": 0.25,
+        "largestOpponentBlunderGain": 0.010000000000000009,
+        "blunderDependency": 0,
+        "robustness": 0.23576465540770028
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/drnykterstein.json",
+      "method": "exact",
+      "trainGames": 80,
+      "moves": [
+        "d2d4",
+        "g8f6",
+        "g1f3",
+        "g7g6",
+        "c1g5",
+        "f8g7"
+      ],
+      "wdl": [
+        0.5165,
+        0.512,
+        0.5195,
+        0.532,
+        0.505,
+        0.506
+      ],
+      "alternatives": [
+        {
+          "probability": 0.5034108527602297,
+          "userWdl": 0.512
+        },
+        {
+          "probability": 0.374103179876432,
+          "userWdl": 0.5195
+        },
+        {
+          "probability": 0.6680559053038645,
+          "userWdl": 0.515
+        },
+        {
+          "probability": 0.16629226297446079,
+          "userWdl": 0.515
+        },
+        {
+          "probability": 0.061175504774179164,
+          "userWdl": 0.6
+        },
+        {
+          "probability": 0.8321468148503154,
+          "userWdl": 0.506
+        },
+        {
+          "probability": 0.05752006741335205,
+          "userWdl": 0.504
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.505,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.012500000000000067,
+        "blunderDependency": 0,
+        "robustness": 0.022974950000447747
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/drnykterstein.json",
+      "method": "exact",
+      "trainGames": 80,
+      "moves": [
+        "d2d4",
+        "g8f6",
+        "c2c4",
+        "e7e6",
+        "b1c3",
+        "f8b4"
+      ],
+      "wdl": [
+        0.5165,
+        0.512,
+        0.5315,
+        0.515,
+        0.523,
+        0.5205
+      ],
+      "alternatives": [
+        {
+          "probability": 0.5034108527602297,
+          "userWdl": 0.512
+        },
+        {
+          "probability": 0.374103179876432,
+          "userWdl": 0.5195
+        },
+        {
+          "probability": 0.6708343132647433,
+          "userWdl": 0.515
+        },
+        {
+          "probability": 0.11298693373816114,
+          "userWdl": 0.535
+        },
+        {
+          "probability": 0.1044958315766763,
+          "userWdl": 0.5255
+        },
+        {
+          "probability": 0.6638158771798708,
+          "userWdl": 0.5205
+        },
+        {
+          "probability": 0.3185023386290689,
+          "userWdl": 0.5255
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.5165,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/penguingm1.json",
+      "method": "maia",
+      "trainGames": 10,
+      "moves": [
+        "e2e4",
+        "e7e5",
+        "d1h5",
+        "b8c6",
+        "f1c4",
+        "g7g6",
+        "h5f3",
+        "g8f6"
+      ],
+      "wdl": [
+        0.5375,
+        0.5415,
+        0.475,
+        0.475,
+        0.4725,
+        0.4705,
+        0.472,
+        0.4795
+      ],
+      "alternatives": [
+        {
+          "probability": 0.4695536420647755,
+          "userWdl": 0.5415
+        },
+        {
+          "probability": 0.1648288306964524,
+          "userWdl": 0.5825
+        },
+        {
+          "probability": 0.08961588083351614,
+          "userWdl": 0.5475
+        },
+        {
+          "probability": 0.42194416768109905,
+          "userWdl": 0.475
+        },
+        {
+          "probability": 0.1993123119366974,
+          "userWdl": 0.462
+        },
+        {
+          "probability": 0.15766901613603232,
+          "userWdl": 0.508
+        },
+        {
+          "probability": 0.5080821023108654,
+          "userWdl": 0.4705
+        },
+        {
+          "probability": 0.27623944756475693,
+          "userWdl": 0.502
+        },
+        {
+          "probability": 0.1225805117951444,
+          "userWdl": 0.4785
+        },
+        {
+          "probability": 0.7346121068748704,
+          "userWdl": 0.4795
+        },
+        {
+          "probability": 0.1402031741018311,
+          "userWdl": 0.508
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.472,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.007500000000000007,
+        "blunderDependency": 0,
+        "robustness": 0.05018168532322633
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/penguingm1.json",
+      "method": "maia",
+      "trainGames": 10,
+      "moves": [
+        "d2d4",
+        "d7d5",
+        "c2c4",
+        "e7e6",
+        "b1c3",
+        "f8b4",
+        "e2e3",
+        "g8f6",
+        "c1d2",
+        "e8g8"
+      ],
+      "wdl": [
+        0.5165,
+        0.5195,
+        0.521,
+        0.5205,
+        0.5205,
+        0.5295,
+        0.5175,
+        0.5175,
+        0.519,
+        0.515
+      ],
+      "alternatives": [
+        {
+          "probability": 0.4456586699356406,
+          "userWdl": 0.5195
+        },
+        {
+          "probability": 0.13805861549940085,
+          "userWdl": 0.512
+        },
+        {
+          "probability": 0.11808779166194462,
+          "userWdl": 0.779
+        },
+        {
+          "probability": 0.30388607860806915,
+          "userWdl": 0.558
+        },
+        {
+          "probability": 0.2945364868816314,
+          "userWdl": 0.5255
+        },
+        {
+          "probability": 0.17046464077839668,
+          "userWdl": 0.5205
+        },
+        {
+          "probability": 0.4703445183539539,
+          "userWdl": 0.5245
+        },
+        {
+          "probability": 0.17034749584703301,
+          "userWdl": 0.5295
+        },
+        {
+          "probability": 0.09261632703218686,
+          "userWdl": 0.55
+        },
+        {
+          "probability": 0.390793262228054,
+          "userWdl": 0.5175
+        },
+        {
+          "probability": 0.29498623052021006,
+          "userWdl": 0.5795
+        },
+        {
+          "probability": 0.06379524635597282,
+          "userWdl": 0.5555
+        },
+        {
+          "probability": 0.33736940451899394,
+          "userWdl": 0.515
+        },
+        {
+          "probability": 0.1952544316659277,
+          "userWdl": 0.5285
+        },
+        {
+          "probability": 0.15206430427958662,
+          "userWdl": 0.5465
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.5165,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.009000000000000008,
+        "blunderDependency": 0,
+        "robustness": 0.24005179206456242
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/penguingm1.json",
+      "method": "maia",
+      "trainGames": 10,
+      "moves": [
+        "g1f3",
+        "d7d5",
+        "c2c4",
+        "e7e6",
+        "g2g3",
+        "g8f6"
+      ],
+      "wdl": [
+        0.523,
+        0.5165,
+        0.498,
+        0.515,
+        0.5145,
+        0.5165
+      ],
+      "alternatives": [
+        {
+          "probability": 0.4344374119626625,
+          "userWdl": 0.5165
+        },
+        {
+          "probability": 0.09395367937524968,
+          "userWdl": 0.5395
+        },
+        {
+          "probability": 0.08689294886749549,
+          "userWdl": 0.8755
+        },
+        {
+          "probability": 0.3412440220671553,
+          "userWdl": 0.52
+        },
+        {
+          "probability": 0.2203236999999859,
+          "userWdl": 0.554
+        },
+        {
+          "probability": 0.1179307783985819,
+          "userWdl": 0.515
+        },
+        {
+          "probability": 0.39566285598499645,
+          "userWdl": 0.5165
+        },
+        {
+          "probability": 0.21511816350562302,
+          "userWdl": 0.5135
+        },
+        {
+          "probability": 0.11695771682896293,
+          "userWdl": 0.53
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.498,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.017000000000000015,
+        "blunderDependency": 0,
+        "robustness": 0.15189785757140992
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/penguingm1.json",
+      "method": "maia",
+      "trainGames": 10,
+      "moves": [
+        "d2d4",
+        "g8f6",
+        "c2c4",
+        "e7e6",
+        "b1c3",
+        "f8b4"
+      ],
+      "wdl": [
+        0.5165,
+        0.512,
+        0.5315,
+        0.515,
+        0.523,
+        0.5205
+      ],
+      "alternatives": [
+        {
+          "probability": 0.20575918966880832,
+          "userWdl": 0.505
+        },
+        {
+          "probability": 0.1932928705687941,
+          "userWdl": 0.48050000000000004
+        },
+        {
+          "probability": 0.14590511348746124,
+          "userWdl": 0.492
+        },
+        {
+          "probability": 0.5602038315336313,
+          "userWdl": 0.477
+        },
+        {
+          "probability": 0.16559593629758113,
+          "userWdl": 0.48350000000000004
+        },
+        {
+          "probability": 0.10691677225298034,
+          "userWdl": 0.5065
+        },
+        {
+          "probability": 0.22470659018122685,
+          "userWdl": 0.48450000000000004
+        },
+        {
+          "probability": 0.18628830630726712,
+          "userWdl": 0.5005
+        },
+        {
+          "probability": 0.18628830630726712,
+          "userWdl": 0.48350000000000004
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.47950000000000004,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/penguingm1.json",
+      "method": "maia",
+      "trainGames": 10,
+      "moves": [
+        "d2d4",
+        "d7d5",
+        "c2c4",
+        "e7e6",
+        "b1c3",
+        "f8e7",
+        "g1f3",
+        "g8f6"
+      ],
+      "wdl": [
+        0.5165,
+        0.5195,
+        0.521,
+        0.5205,
+        0.5205,
+        0.5255,
+        0.525,
+        0.5335
+      ],
+      "alternatives": [
+        {
+          "probability": 0.27521101907874573,
+          "userWdl": 0.48250000000000004
+        },
+        {
+          "probability": 0.19822706082842154,
+          "userWdl": 0.488
+        },
+        {
+          "probability": 0.16955259022547461,
+          "userWdl": 0.502
+        },
+        {
+          "probability": 0.43045313554563014,
+          "userWdl": 0.47950000000000004
+        },
+        {
+          "probability": 0.23771879878542895,
+          "userWdl": 0.48350000000000004
+        },
+        {
+          "probability": 0.10224158133700634,
+          "userWdl": 0.49750000000000005
+        },
+        {
+          "probability": 0.4350265190818188,
+          "userWdl": 0.475
+        },
+        {
+          "probability": 0.20230611935666987,
+          "userWdl": 0.48050000000000004
+        },
+        {
+          "probability": 0.11708579921123814,
+          "userWdl": 0.49
+        },
+        {
+          "probability": 0.3034147245487961,
+          "userWdl": 0.47950000000000004
+        },
+        {
+          "probability": 0.24380058036460606,
+          "userWdl": 0.496
+        },
+        {
+          "probability": 0.211817614946389,
+          "userWdl": 0.471
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.4665,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.0004999999999999449,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/penguingm1.json",
+      "method": "maiaResidual",
+      "trainGames": 10,
+      "moves": [
+        "e2e4",
+        "e7e5",
+        "d1h5",
+        "b8c6",
+        "f1c4",
+        "g7g6",
+        "h5f3",
+        "g8f6"
+      ],
+      "wdl": [
+        0.5375,
+        0.5415,
+        0.475,
+        0.475,
+        0.4725,
+        0.4705,
+        0.472,
+        0.4795
+      ],
+      "alternatives": [
+        {
+          "probability": 0.4695536420647755,
+          "userWdl": 0.5415
+        },
+        {
+          "probability": 0.1648288306964524,
+          "userWdl": 0.5825
+        },
+        {
+          "probability": 0.08961588083351614,
+          "userWdl": 0.5475
+        },
+        {
+          "probability": 0.42194416768109905,
+          "userWdl": 0.475
+        },
+        {
+          "probability": 0.1993123119366974,
+          "userWdl": 0.462
+        },
+        {
+          "probability": 0.15766901613603232,
+          "userWdl": 0.508
+        },
+        {
+          "probability": 0.5080821023108654,
+          "userWdl": 0.4705
+        },
+        {
+          "probability": 0.27623944756475693,
+          "userWdl": 0.502
+        },
+        {
+          "probability": 0.1225805117951444,
+          "userWdl": 0.4785
+        },
+        {
+          "probability": 0.7346121068748704,
+          "userWdl": 0.4795
+        },
+        {
+          "probability": 0.1402031741018311,
+          "userWdl": 0.508
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.472,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.007500000000000007,
+        "blunderDependency": 0,
+        "robustness": 0.05018168532322633
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/penguingm1.json",
+      "method": "maiaResidual",
+      "trainGames": 10,
+      "moves": [
+        "d2d4",
+        "d7d5",
+        "c2c4",
+        "e7e6",
+        "b1c3",
+        "g8f6"
+      ],
+      "wdl": [
+        0.5165,
+        0.5195,
+        0.521,
+        0.5205,
+        0.5205,
+        0.5245
+      ],
+      "alternatives": [
+        {
+          "probability": 0.27521101907874573,
+          "userWdl": 0.48250000000000004
+        },
+        {
+          "probability": 0.19822706082842154,
+          "userWdl": 0.488
+        },
+        {
+          "probability": 0.16955259022547461,
+          "userWdl": 0.502
+        },
+        {
+          "probability": 0.43045313554563014,
+          "userWdl": 0.47950000000000004
+        },
+        {
+          "probability": 0.23771879878542895,
+          "userWdl": 0.48350000000000004
+        },
+        {
+          "probability": 0.10224158133700634,
+          "userWdl": 0.49750000000000005
+        },
+        {
+          "probability": 0.36097854649756694,
+          "userWdl": 0.477
+        },
+        {
+          "probability": 0.27677185221067174,
+          "userWdl": 0.48350000000000004
+        },
+        {
+          "probability": 0.09868604304441413,
+          "userWdl": 0.484
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.47550000000000003,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/penguingm1.json",
+      "method": "maiaResidual",
+      "trainGames": 10,
+      "moves": [
+        "d2d4",
+        "d7d5",
+        "c2c4",
+        "e7e6",
+        "b1c3",
+        "f8e7"
+      ],
+      "wdl": [
+        0.5165,
+        0.5195,
+        0.521,
+        0.5205,
+        0.5205,
+        0.5255
+      ],
+      "alternatives": [
+        {
+          "probability": 0.27521101907874573,
+          "userWdl": 0.48250000000000004
+        },
+        {
+          "probability": 0.19822706082842154,
+          "userWdl": 0.488
+        },
+        {
+          "probability": 0.16955259022547461,
+          "userWdl": 0.502
+        },
+        {
+          "probability": 0.43045313554563014,
+          "userWdl": 0.47950000000000004
+        },
+        {
+          "probability": 0.23771879878542895,
+          "userWdl": 0.48350000000000004
+        },
+        {
+          "probability": 0.10224158133700634,
+          "userWdl": 0.49750000000000005
+        },
+        {
+          "probability": 0.4350265190818188,
+          "userWdl": 0.475
+        },
+        {
+          "probability": 0.20230611935666987,
+          "userWdl": 0.48050000000000004
+        },
+        {
+          "probability": 0.11708579921123814,
+          "userWdl": 0.49
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.47450000000000003,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/penguingm1.json",
+      "method": "maiaResidual",
+      "trainGames": 10,
+      "moves": [
+        "d2d4",
+        "g8f6",
+        "c2c4",
+        "e7e6",
+        "b1c3",
+        "f8b4"
+      ],
+      "wdl": [
+        0.5165,
+        0.512,
+        0.5315,
+        0.515,
+        0.523,
+        0.5205
+      ],
+      "alternatives": [
+        {
+          "probability": 0.20575918966880832,
+          "userWdl": 0.505
+        },
+        {
+          "probability": 0.1932928705687941,
+          "userWdl": 0.48050000000000004
+        },
+        {
+          "probability": 0.14590511348746124,
+          "userWdl": 0.492
+        },
+        {
+          "probability": 0.5602038315336313,
+          "userWdl": 0.477
+        },
+        {
+          "probability": 0.16559593629758113,
+          "userWdl": 0.48350000000000004
+        },
+        {
+          "probability": 0.10691677225298034,
+          "userWdl": 0.5065
+        },
+        {
+          "probability": 0.22470659018122685,
+          "userWdl": 0.48450000000000004
+        },
+        {
+          "probability": 0.18628830630726712,
+          "userWdl": 0.5005
+        },
+        {
+          "probability": 0.18628830630726712,
+          "userWdl": 0.48350000000000004
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.47950000000000004,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/penguingm1.json",
+      "method": "maiaResidual",
+      "trainGames": 10,
+      "moves": [
+        "g1f3",
+        "d7d5",
+        "c2c4",
+        "e7e6",
+        "g2g3",
+        "g8f6"
+      ],
+      "wdl": [
+        0.523,
+        0.5165,
+        0.498,
+        0.515,
+        0.5145,
+        0.5165
+      ],
+      "alternatives": [
+        {
+          "probability": 0.4344374119626625,
+          "userWdl": 0.5165
+        },
+        {
+          "probability": 0.09395367937524968,
+          "userWdl": 0.5395
+        },
+        {
+          "probability": 0.08689294886749549,
+          "userWdl": 0.8755
+        },
+        {
+          "probability": 0.3412440220671553,
+          "userWdl": 0.52
+        },
+        {
+          "probability": 0.2203236999999859,
+          "userWdl": 0.554
+        },
+        {
+          "probability": 0.1179307783985819,
+          "userWdl": 0.515
+        },
+        {
+          "probability": 0.39566285598499645,
+          "userWdl": 0.5165
+        },
+        {
+          "probability": 0.21511816350562302,
+          "userWdl": 0.5135
+        },
+        {
+          "probability": 0.11695771682896293,
+          "userWdl": 0.53
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.498,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.017000000000000015,
+        "blunderDependency": 0,
+        "robustness": 0.15189785757140992
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/penguingm1.json",
+      "method": "exact",
+      "trainGames": 10,
+      "moves": [
+        "d2d4",
+        "d7d5",
+        "c2c4",
+        "e7e6",
+        "b1c3",
+        "g8f6"
+      ],
+      "wdl": [
+        0.5165,
+        0.5195,
+        0.521,
+        0.5205,
+        0.5205,
+        0.5245
+      ],
+      "alternatives": [
+        {
+          "probability": 0.27521101907874573,
+          "userWdl": 0.48250000000000004
+        },
+        {
+          "probability": 0.19822706082842154,
+          "userWdl": 0.488
+        },
+        {
+          "probability": 0.16955259022547461,
+          "userWdl": 0.502
+        },
+        {
+          "probability": 0.43045313554563014,
+          "userWdl": 0.47950000000000004
+        },
+        {
+          "probability": 0.23771879878542895,
+          "userWdl": 0.48350000000000004
+        },
+        {
+          "probability": 0.10224158133700634,
+          "userWdl": 0.49750000000000005
+        },
+        {
+          "probability": 0.36097854649756694,
+          "userWdl": 0.477
+        },
+        {
+          "probability": 0.27677185221067174,
+          "userWdl": 0.48350000000000004
+        },
+        {
+          "probability": 0.09868604304441413,
+          "userWdl": 0.484
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.47550000000000003,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/penguingm1.json",
+      "method": "exact",
+      "trainGames": 10,
+      "moves": [
+        "d2d4",
+        "d7d5",
+        "c2c4",
+        "e7e6",
+        "b1c3",
+        "f8e7"
+      ],
+      "wdl": [
+        0.5165,
+        0.5195,
+        0.521,
+        0.5205,
+        0.5205,
+        0.5255
+      ],
+      "alternatives": [
+        {
+          "probability": 0.27521101907874573,
+          "userWdl": 0.48250000000000004
+        },
+        {
+          "probability": 0.19822706082842154,
+          "userWdl": 0.488
+        },
+        {
+          "probability": 0.16955259022547461,
+          "userWdl": 0.502
+        },
+        {
+          "probability": 0.43045313554563014,
+          "userWdl": 0.47950000000000004
+        },
+        {
+          "probability": 0.23771879878542895,
+          "userWdl": 0.48350000000000004
+        },
+        {
+          "probability": 0.10224158133700634,
+          "userWdl": 0.49750000000000005
+        },
+        {
+          "probability": 0.4350265190818188,
+          "userWdl": 0.475
+        },
+        {
+          "probability": 0.20230611935666987,
+          "userWdl": 0.48050000000000004
+        },
+        {
+          "probability": 0.11708579921123814,
+          "userWdl": 0.49
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.47450000000000003,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/penguingm1.json",
+      "method": "exact",
+      "trainGames": 10,
+      "moves": [
+        "d2d4",
+        "e7e6",
+        "c2c4",
+        "f7f5",
+        "g1f3",
+        "g8f6"
+      ],
+      "wdl": [
+        0.5165,
+        0.5325,
+        0.516,
+        0.5835,
+        0.5855,
+        0.5575
+      ],
+      "alternatives": [
+        {
+          "probability": 0.23636482223672023,
+          "userWdl": 0.45799999999999996
+        },
+        {
+          "probability": 0.19595332014777528,
+          "userWdl": 0.483
+        },
+        {
+          "probability": 0.15501183492418338,
+          "userWdl": 0.496
+        },
+        {
+          "probability": 0.47606228306595844,
+          "userWdl": 0.44099999999999995
+        },
+        {
+          "probability": 0.23566791929029057,
+          "userWdl": 0.4145
+        },
+        {
+          "probability": 0.10622385346113443,
+          "userWdl": 0.46099999999999997
+        },
+        {
+          "probability": 0.4535368525736002,
+          "userWdl": 0.4525
+        },
+        {
+          "probability": 0.1861311492649358,
+          "userWdl": 0.476
+        },
+        {
+          "probability": 0.16171354492088286,
+          "userWdl": 0.4475
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.4165,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.01649999999999996,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/penguingm1.json",
+      "method": "exact",
+      "trainGames": 10,
+      "moves": [
+        "d2d4",
+        "g8f6",
+        "c2c4",
+        "e7e6",
+        "b1c3",
+        "f8b4"
+      ],
+      "wdl": [
+        0.5165,
+        0.512,
+        0.5315,
+        0.515,
+        0.523,
+        0.5205
+      ],
+      "alternatives": [
+        {
+          "probability": 0.20575918966880832,
+          "userWdl": 0.505
+        },
+        {
+          "probability": 0.1932928705687941,
+          "userWdl": 0.48050000000000004
+        },
+        {
+          "probability": 0.14590511348746124,
+          "userWdl": 0.492
+        },
+        {
+          "probability": 0.5602038315336313,
+          "userWdl": 0.477
+        },
+        {
+          "probability": 0.16559593629758113,
+          "userWdl": 0.48350000000000004
+        },
+        {
+          "probability": 0.10691677225298034,
+          "userWdl": 0.5065
+        },
+        {
+          "probability": 0.22470659018122685,
+          "userWdl": 0.48450000000000004
+        },
+        {
+          "probability": 0.18628830630726712,
+          "userWdl": 0.5005
+        },
+        {
+          "probability": 0.18628830630726712,
+          "userWdl": 0.48350000000000004
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.47950000000000004,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0,
+        "blunderDependency": 0,
+        "robustness": 0
+      }
+    },
+    {
+      "player": "research/scout-benchmark/data/penguingm1.json",
+      "method": "exact",
+      "trainGames": 10,
+      "moves": [
+        "g1f3",
+        "d7d5",
+        "c2c4",
+        "e7e6",
+        "g2g3",
+        "g8f6"
+      ],
+      "wdl": [
+        0.523,
+        0.5165,
+        0.498,
+        0.515,
+        0.5145,
+        0.5165
+      ],
+      "alternatives": [
+        {
+          "probability": 0.4344374119626625,
+          "userWdl": 0.5165
+        },
+        {
+          "probability": 0.09395367937524968,
+          "userWdl": 0.5395
+        },
+        {
+          "probability": 0.08689294886749549,
+          "userWdl": 0.8755
+        },
+        {
+          "probability": 0.3412440220671553,
+          "userWdl": 0.52
+        },
+        {
+          "probability": 0.2203236999999859,
+          "userWdl": 0.554
+        },
+        {
+          "probability": 0.1179307783985819,
+          "userWdl": 0.515
+        },
+        {
+          "probability": 0.39566285598499645,
+          "userWdl": 0.5165
+        },
+        {
+          "probability": 0.21511816350562302,
+          "userWdl": 0.5135
+        },
+        {
+          "probability": 0.11695771682896293,
+          "userWdl": 0.53
+        }
+      ],
+      "metrics": {
+        "pressureFloor": 0.498,
+        "pressureConsistency": 0,
+        "largestOpponentBlunderGain": 0.017000000000000015,
+        "blunderDependency": 0,
+        "robustness": 0.15189785757140992
+      }
+    }
+  ]
+}

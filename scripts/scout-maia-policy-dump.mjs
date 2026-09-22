@@ -51,10 +51,11 @@ function feeds(tokens, elo) {
 }
 
 function parseArgs(argv) {
-  const out = { rating: 1800, fp16: false, positional: [] };
+  const out = { rating: 1800, fp16: false, maxPlies: ANALYZE_PLIES, positional: [] };
   for (let i = 2; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === "--rating") out.rating = Number(argv[++i]) || 1800;
+    else if (a === "--max-plies") out.maxPlies = Number(argv[++i]) || ANALYZE_PLIES;
     else if (a === "--fp16") out.fp16 = true;
     else out.positional.push(a);
   }
@@ -112,7 +113,7 @@ async function main() {
     graphOptimizationLevel: "all",
   });
 
-  const positions = collectPositions(games, ANALYZE_PLIES);
+  const positions = collectPositions(games, args.maxPlies);
   console.log(`→ ${positions.size} unique opponent-to-move positions at rating ${args.rating}`);
 
   const cache = {};
