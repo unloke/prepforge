@@ -32,7 +32,8 @@ const LIMITS = [
     label: "main app chunk",
   },
   { prefix: "maia3-worker-", suffix: ".js", maxBytes: 220_000, label: "maia3 worker chunk" },
-  { prefix: "index-", suffix: ".css", maxBytes: 131_000, label: "main stylesheet" },
+  // Desktop study/data/management layouts add 3.4 KiB of CSS; keep < 133 KiB raw.
+  { prefix: "index-", suffix: ".css", maxBytes: 136_000, label: "main stylesheet" },
 ];
 
 let files;

@@ -26,8 +26,8 @@
       <button class="lichess-chip" id="account-chip" data-testid="account-chip" aria-haspopup="menu" aria-expanded="false" title="Connect a Lichess account">
         <span class="lichess-label" id="account-label">Connect Lichess</span>
       </button>
-      <div class="status" id="app-status" data-testid="app-status" role="status" aria-live="polite" data-state="ready" data-severity="info">Ready</div>
     </header>
+    <div class="status" id="app-status" data-testid="app-status" role="status" aria-live="polite" data-state="ready" data-severity="info" hidden></div>
 
     <main class="workspace" id="workspace-main" tabindex="-1">
       <section class="view is-active" id="view-dashboard" data-testid="view-dashboard">
@@ -110,8 +110,8 @@
                 </button>
               </div>
             </div>
-            <details class="drawer" id="pgn-drawer">
-              <summary>PGN</summary>
+            <details class="drawer" id="pgn-drawer" open>
+              <summary>Analyze source · PGN</summary>
               <textarea
                 id="pgn-input"
                 data-testid="pgn-input"
@@ -119,8 +119,8 @@
                 placeholder="[Event &quot;Training Game&quot;]&#10;&#10;1. e4 e5 2. Nf3 Nc6 *"
               ></textarea>
             </details>
-            <details class="drawer" id="history-drawer" data-testid="history-drawer">
-              <summary>History</summary>
+            <details class="drawer" id="history-drawer" data-testid="history-drawer" open>
+              <summary>Recent analyses</summary>
               <div class="analysis-history" id="analysis-history" data-testid="analysis-history"></div>
             </details>
           </aside>
@@ -152,6 +152,15 @@
             <div class="rep-header" id="build-rep-header">
               <span class="rep-name" id="build-rep-name" data-testid="build-rep-name">No repertoire open</span>
               <button class="ib rep-menu-btn" id="build-menu" data-testid="build-menu" title="Repertoire actions (rename, export, new)" aria-haspopup="menu" aria-expanded="false">⋯</button>
+            </div>
+            <div class="build-empty" id="build-empty">
+              <h2>Start a repertoire</h2>
+              <p class="muted">Create a new opening plan, import a PGN, or open one you already have.</p>
+              <div class="tools">
+                <button class="btn primary" id="build-empty-create" type="button">Create</button>
+                <button class="btn ghost" id="build-empty-import" type="button">Import</button>
+                <button class="btn ghost" id="build-empty-open" type="button">Open</button>
+              </div>
             </div>
             <div class="tools build-tools" aria-label="Build tools">
               <button class="btn primary" id="build-generate-node" data-testid="build-generate-node" title="Generate human-likely continuations from the current position">Generate moves</button>
@@ -212,7 +221,7 @@
             </div>
           </div>
 
-          <aside class="sidebar train-sidebar">
+          <aside class="sidebar train-sidebar" data-session-state="setup">
             <div class="train-setup">
               <div class="train-modes" id="train-modes" role="group" aria-label="Training mode">
                 <button type="button" class="train-mode is-active" data-mode="smart">Smart queue</button>
@@ -229,7 +238,6 @@
               </span>
               <div class="train-start-row" id="train-srs-start">
                 <button class="btn primary train-start" id="start-train" data-testid="start-train">Start training</button>
-                <button class="btn ghost" id="train-fresh" data-testid="train-fresh" type="button" disabled title="Discard the unfinished session and build a new queue">Start over</button>
               </div>
               <div class="train-play-setup" id="train-play-setup" hidden>
                 <label class="train-picker-label" for="train-play-book">Opponent book</label>
@@ -282,6 +290,7 @@
             </div>
 
             <div class="train-progress-panel" id="train-progress-panel" hidden>
+              <button class="btn ghost" id="train-fresh" data-testid="train-fresh" type="button" disabled title="Discard the unfinished session and build a new queue">Start over</button>
               <div class="train-queue" id="train-queue" hidden>
                 <div class="train-queue-bar" id="train-queue-bar" role="img" aria-label="Queue composition"></div>
                 <div class="train-queue-legend" id="train-queue-legend"></div>
@@ -289,7 +298,7 @@
               <div class="train-progress-head">
                 <span id="train-line-label">Card 1 / 1</span>
                 <span class="train-card-dots" id="train-card-dots" title="Moves in this card"></span>
-                <span class="train-accuracy" id="train-accuracy">100%</span>
+                <span class="train-accuracy" id="train-accuracy">—</span>
               </div>
               <div class="train-progress-track">
                 <div class="train-progress-fill" id="train-progress-fill"></div>
@@ -319,6 +328,7 @@
               <div class="train-summary-stats" id="train-summary-stats"></div>
               <div class="train-summary-delta" id="train-summary-delta"></div>
               <div class="train-summary-foot" id="train-summary-foot"></div>
+              <button class="btn primary" id="train-summary-new" type="button">New session</button>
             </div>
 
             <details class="drawer train-help" id="train-help" data-testid="train-help">
@@ -385,7 +395,7 @@
               </div>
             </div>
             <p class="muted hint">
-              What do they actually open with — where do they go wrong — and do your repertoires cover their pet lines?
+              Find a few routes to prepare against this opponent. Open Evidence for the supporting model and game data.
             </p>
             <div id="scout-profile" class="scout-profile" hidden></div>
             <div id="scout-v3-results" class="scout-v3-results" hidden></div>
@@ -431,6 +441,8 @@
             <div id="team-shared-repertoires" class="list-stack" data-testid="team-shared-repertoires"></div>
             <div class="team-detail-foot" id="team-detail-foot"></div>
           </section>
+
+          <aside class="team-empty muted">Select a team to see its members and shared repertoires.</aside>
 
           <section class="card">
             <div class="card-head"><h2 id="teams-shared-title">Shared with me</h2></div>

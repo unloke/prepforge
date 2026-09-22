@@ -69,7 +69,7 @@ export function createDashboardView({
     const tier = pct >= 80 ? "high" : pct >= 40 ? "mid" : "low";
     return (
       `<span class="rep-health">` +
-      `<span class="rh-pct tier-${tier}" title="Mastered moves: recalled correctly 3+ times with no recent misses (${health.mastered}/${health.trainable})">${pct}% mastered</span>` +
+      `<span class="rh-pct tier-${tier}" title="Well-established moves in this repertoire (${health.mastered}/${health.trainable})">${pct}% mastered</span>` +
       (parts.length ? `<span class="rh-detail">${parts.join(" · ")}</span>` : "") +
       `</span>`
     );
@@ -116,7 +116,7 @@ export function createDashboardView({
       };
       const bits = [
         `<b>${recap.reviews_7d}</b> review${recap.reviews_7d === 1 ? "" : "s"} this week`,
-        `<b>${recap.mastered_now}</b> <span title="Recalled correctly 3+ times with no recent misses - reviews days apart">mastered</span>${delta(recap.mastered_delta, true)}`,
+        `<b>${recap.mastered_now}</b> <span title="Well-established moves">mastered</span>${delta(recap.mastered_delta, true)}`,
       ];
       if (recap.weak_now > 0 || recap.weak_delta !== 0) {
         bits.push(
@@ -141,7 +141,7 @@ export function createDashboardView({
   `;
     card.hidden = false;
     document.getElementById("dashboard-train-now").addEventListener("click", () =>
-      goToSmartTraining(due > 0 ? "Due review - press Start to train" : "Press Start to train"),
+      goToSmartTraining(due > 0 ? "Starting due review…" : "Starting training…"),
     );
   }
 
@@ -202,6 +202,7 @@ export function createDashboardView({
           open();
         });
         row.addEventListener("keydown", (event) => {
+          if (event.target !== row) return;
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             open();
@@ -242,17 +243,17 @@ export function createDashboardView({
     document.getElementById("dashboard-metrics").innerHTML = metrics
       .map(
         ([label, value, cls]) => `
-        <div class="metric ${cls}" ${cls.includes("is-due") ? 'data-action="due-review"' : ""}>
+        <${cls.includes("is-due") ? "button type=\"button\"" : "div"} class="metric ${cls}" ${cls.includes("is-due") ? 'data-action="due-review"' : ""}>
           <div class="metric-value">${value}</div>
           <div class="metric-label">${label}</div>
-        </div>
+        </${cls.includes("is-due") ? "button" : "div"}>
       `,
       )
       .join("");
     const dueMetric = document.querySelector('#dashboard-metrics [data-action="due-review"]');
     if (dueMetric) {
       dueMetric.addEventListener("click", () =>
-        goToSmartTraining("Due review - press Start to train"),
+        goToSmartTraining("Starting due review…"),
       );
     }
     await loadDashboardRepertoires();

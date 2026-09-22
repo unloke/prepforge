@@ -223,17 +223,23 @@ class PrepForgeRepository:
 
     def record_attempt_receipt(
         self, conn: Connection, *, session_id: str, attempt_uuid: str, node_id: str, correct: bool
-    ) -> None:
-        """Insert a receipt row inside the caller's transaction (see sync_progress)."""
-        conn.execute(
-            t.train_attempt_receipts.insert().values(
+    ) -> bool:
+        """Claim an attempt atomically; return False when its UUID already exists."""
+        result = conn.execute(
+            _insert(conn, t.train_attempt_receipts).values(
                 session_id=session_id,
                 attempt_uuid=attempt_uuid,
                 node_id=node_id,
                 correct=_bool_to_int(correct),
                 created_at=_now_text(),
+            ).on_conflict_do_nothing(
+                index_elements=[
+                    t.train_attempt_receipts.c.session_id,
+                    t.train_attempt_receipts.c.attempt_uuid,
+                ]
             )
         )
+        return result.rowcount == 1
 
     def save_game(self, game: Game, owner_user_id: Optional[str] = None) -> None:
         now = _now_text()

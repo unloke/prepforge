@@ -114,7 +114,7 @@ def test_create_team_whitespace_name_rejected(client):
 
 
 def test_add_member_by_lichess_and_list(client):
-    _register(client, "owner@example.com")
+    owner_id = _register(client, "owner@example.com")
     team_id = _create_team(client)
 
     member_client = _new_client()
@@ -125,7 +125,9 @@ def test_add_member_by_lichess_and_list(client):
     assert r.status_code == 200, r.text
     assert r.json()["lichess_username"] == "MemberHandle"
     detail = client.get(f"/api/teams/{team_id}").json()
-    assert {m["email"] for m in detail["members"]} == {"owner@example.com", "member@example.com"}
+    assert {m["user_id"] for m in detail["members"]} == {member_id, owner_id}
+    assert all("email" not in m for m in detail["members"])
+    assert next(m for m in detail["members"] if m["user_id"] == member_id)["lichess_username"] == "MemberHandle"
 
 
 def test_add_member_case_insensitive_handle(client):
@@ -305,7 +307,8 @@ def test_owner_can_mint_invite_and_member_joins(client):
     assert joined.status_code == 200, joined.text
     assert joined.json()["joined"] is True
     detail = client.get(f"/api/teams/{team_id}").json()
-    assert {m["email"] for m in detail["members"]} == {"owner@example.com", "joiner@example.com"}
+    assert len(detail["members"]) == 2
+    assert all("email" not in m for m in detail["members"])
 
 
 def test_join_is_idempotent(client):
@@ -319,7 +322,8 @@ def test_join_is_idempotent(client):
     assert again.status_code == 200
     assert again.json() == {**again.json(), "joined": False, "already_member": True}
     detail = client.get(f"/api/teams/{team_id}").json()
-    assert sum(1 for m in detail["members"] if m["email"] == "joiner@example.com") == 1
+    assert len(detail["members"]) == 2
+    assert all("email" not in m for m in detail["members"])
 
 
 def test_invite_rotate_invalidates_old_code(client):

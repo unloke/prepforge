@@ -1317,6 +1317,10 @@ h2 {
 .metric.is-clickable {
   cursor: pointer;
   transition: filter 0.12s ease;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  width: 100%;
 }
 .metric.is-clickable:hover {
   filter: brightness(0.98);
@@ -7472,3 +7476,98 @@ h2 {
 .status.is-live {
   color: var(--accent-strong);
 }
+
+/* Desktop workspaces: the board and the task pane share the available width. */
+@media (min-width: 960px) {
+  .workspace { max-width: 1400px; }
+  #view-analyze .study,
+  #view-build .study,
+  #view-train .study {
+    grid-template-columns: minmax(0, 44fr) minmax(0, 56fr);
+    gap: clamp(20px, 2.5vw, 36px);
+  }
+  .study .board-area { align-items: center; }
+  .study .board-stack { width: min(100%, calc(100dvh - 160px)); }
+  .study .board-bar,
+  .study .train-banner,
+  .study .train-blitz-bar { width: min(100%, calc(100dvh - 160px)); }
+  #view-analyze .sidebar,
+  #view-build .sidebar,
+  #view-train .sidebar { padding: 4px 6px 18px 4px; }
+  #view-analyze .explain-card,
+  #view-build .build-inspector { box-shadow: none; border-color: transparent; }
+  #view-analyze .drawer { border-color: transparent; border-bottom: 1px solid var(--line-soft); border-radius: 0; }
+  #view-analyze .explain-card { background: var(--panel-soft); }
+  #view-teams .teams-stack > .card { border-color: transparent; background: var(--panel-soft); }
+  #view-analyze #analysis-results { display: grid; gap: 14px; }
+  #view-analyze #analysis-results[hidden] { display: none; }
+  #view-analyze #eval-chart { width: 100%; }
+  #view-analyze #analysis-moves { min-height: 140px; }
+  #view-build .build-branchbar { background: var(--panel-soft); border-color: transparent; }
+  #view-replay .replay-stack,
+  #view-teams .teams-stack { max-width: 1400px; }
+  #view-teams .teams-stack {
+    display: grid;
+    grid-template-columns: minmax(280px, 35%) minmax(0, 1fr);
+    gap: 18px 28px;
+    align-items: start;
+  }
+  #view-teams .teams-stack > :first-child { grid-column: 1; grid-row: 1; }
+  #view-teams .teams-stack > :last-child { grid-column: 1; grid-row: 2; }
+  #view-teams .team-detail-card { grid-column: 2; grid-row: 1 / span 2; min-height: 320px; }
+  #view-teams .team-detail-card[hidden] { display: none; }
+  #view-teams .team-empty { grid-column: 2; grid-row: 1 / span 2; padding: 28px; background: var(--panel-soft); border-radius: var(--radius-card); }
+  #view-teams .teams-stack:has(.team-detail-card:not([hidden])) .team-empty { display: none; }
+  #view-train .train-sidebar[data-session-state="active"] .train-setup,
+  #view-train .train-sidebar[data-session-state="summary"] .train-setup,
+  #view-train .train-sidebar[data-session-state="summary"] #train-progress-panel { display: none; }
+}
+
+.status:not([hidden]) {
+  position: fixed;
+  z-index: 1000;
+  right: 22px;
+  bottom: 22px;
+  max-width: min(440px, calc(100vw - 44px));
+  padding: 12px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  box-shadow: 0 8px 28px rgba(35, 29, 20, .16);
+}
+.status[hidden] { display: none; }
+.build-empty { padding: 24px 4px; background: var(--panel-soft); border-radius: var(--radius-card); }
+.build-empty h2, .build-empty p, .build-empty .tools { margin-left: 20px; margin-right: 20px; }
+.build-empty[hidden] { display: none; }
+@media (min-width: 960px) {
+  #analyze-sidebar:has(#analysis-results[hidden]) #pgn-drawer { order: 1; }
+  #analyze-sidebar:has(#analysis-results[hidden]) #history-drawer { order: 2; }
+  #analyze-sidebar:has(#analysis-results[hidden]) #analysis-explain { order: 3; }
+  #analyze-sidebar:has(#analysis-results[hidden]) #analysis-explain { --coach-card-block-size: 112px; }
+  #analyze-sidebar:has(#analysis-results:not([hidden])) #analysis-results { order: 1; }
+  #analyze-sidebar:has(#analysis-results:not([hidden])) #analysis-explain { order: 2; }
+  #analyze-sidebar:has(#analysis-results:not([hidden])) #pgn-drawer { order: 3; }
+  #analyze-sidebar:has(#analysis-results:not([hidden])) #history-drawer { order: 4; }
+  #view-build .sidebar:has(#build-empty:not([hidden])) .build-tools,
+  #view-build .sidebar:has(#build-empty:not([hidden])) #builder-tree { display: none; }
+}
+.replay-results .replay-game-list { display: grid; align-content: start; gap: 6px; }
+.replay-inspector { min-width: 0; padding: 18px 22px; border-radius: var(--radius-card); background: var(--panel-soft); }
+.replay-inspector h3 { margin: 0 0 10px; font-size: 20px; }
+.replay-inspector .replay-row-body { padding: 16px 0 0; }
+@media (min-width: 960px) {
+  #view-replay .replay-card-games .replay-results {
+    grid-template-columns: minmax(280px, 35%) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+  #view-replay .replay-card-games .replay-row { border-color: transparent; border-bottom-color: var(--line-soft); border-radius: 0; box-shadow: none; }
+  #view-replay .replay-card-games .replay-row.is-open { background: var(--panel-soft); }
+  #view-replay .replay-card-games .replay-preview { display: none; }
+  #view-replay .replay-card-games .replay-row-head { flex-wrap: wrap; }
+}
+@media (max-width: 959px) { .replay-inspector { margin-top: 10px; } }
+@media (max-width: 959px) { .team-empty { display: none; } }
+#view-replay .replay-card-scout { max-width: 1400px; }
+#view-replay .replay-card-scout .scout-v13-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 18px; }
+#view-replay .replay-card-scout .scout-v13-card { min-width: 0; }

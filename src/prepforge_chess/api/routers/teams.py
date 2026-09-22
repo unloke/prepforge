@@ -256,6 +256,15 @@ def team_detail(
         .where(TeamMember.team_id == team_id)
         .order_by(TeamMember.created_at)
     ).all()
+    lichess_by_user = {
+        link.user_id: link.provider_user_id
+        for link in db.execute(
+            select(LinkedAccount).where(
+                LinkedAccount.provider == _LICHESS_PROVIDER,
+                LinkedAccount.user_id.in_([u.id for _, u in members]),
+            )
+        ).scalars()
+    }
     shared = repo.list_repertoires_shared_to_team(team_id)
     owner_ids = {item["owner_user_id"] for item in shared}
     owners_by_id = {}
@@ -266,8 +275,8 @@ def team_detail(
     out["members"] = [
         {
             "user_id": u.id,
-            "email": u.email,
             "display_name": u.display_name,
+            "lichess_username": lichess_by_user.get(u.id),
             "role": m.role.value,
         }
         for m, u in members
@@ -278,9 +287,6 @@ def team_detail(
             "name": item["name"],
             "color": item["color"],
             "owner_user_id": item["owner_user_id"],
-            "owner_email": owners_by_id[item["owner_user_id"]].email
-            if item["owner_user_id"] in owners_by_id
-            else None,
             "owner_display_name": owners_by_id[item["owner_user_id"]].display_name
             if item["owner_user_id"] in owners_by_id
             else None,
@@ -358,7 +364,6 @@ def add_member(
     target = db.get(User, target_link.user_id)
     return {
         "user_id": target_link.user_id,
-        "email": target.email if target else None,
         "display_name": target.display_name if target else None,
         "lichess_username": target_link.provider_user_id,
         "role": role.value,
