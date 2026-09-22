@@ -8,7 +8,7 @@ import {
   disposeSharedMaia3Provider,
   peekSharedMaia3Provider,
 } from "./engine/maia3-provider.js";
-import { createCsrfTokenSource, isSafeMethod, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
+import { createCsrfTokenSource, headersWithCsrf, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
 import { applyTheme } from "./theme.js";
 import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
@@ -574,6 +574,9 @@ class Toast {
     const el = document.createElement("div");
     el.className = `job-toast state-${this.state} variant-${this.variant}`;
     el.dataset.state = this.state;
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-live", "polite");
+    el.setAttribute("aria-atomic", "true");
     const stopBtn = this.onCancel
       ? '<button class="job-toast-stop" type="button" title="Stop job">Stop</button>'
       : "";
@@ -830,6 +833,9 @@ class Toast {
     );
     this.el.classList.add(`state-${this.state}`);
     this.el.classList.toggle("is-minimized", this.minimized);
+    const failed = this.state === "failed";
+    this.el.setAttribute("role", failed ? "alert" : "status");
+    this.el.setAttribute("aria-live", failed ? "assertive" : "polite");
   }
 
   _renderFill(ratio) {
@@ -2726,11 +2732,11 @@ async function api(path, options = {}) {
   // Merge caller headers over the JSON default, then attach the CSRF token on
   // unsafe methods (bootstrapping /api/csrf if the cookie isn't set yet). The
   // FastAPI backend 403s any unsafe request that doesn't echo the cookie.
-  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
-  if (!isSafeMethod(method)) {
-    const token = await getCsrfToken();
-    if (token) headers[CSRF_HEADER] = token;
-  }
+  const headers = await headersWithCsrf(
+    method,
+    { "Content-Type": "application/json", ...(options.headers || {}) },
+    getCsrfToken,
+  );
   const response = await fetch(path, {
     credentials: "same-origin",
     ...options,
@@ -2813,6 +2819,64 @@ function activeBoardController() {
 let workspaceUrlReady = false;
 let paletteItems = [];
 let paletteActive = 0;
+let paletteA11yCleanup = null;
+
+function activateModal(overlay, { initialFocus = null } = {}) {
+  const previouslyFocused = document.activeElement;
+  const background = [...document.body.children].filter(
+    (child) => child !== overlay && !child.inert,
+  );
+  for (const child of background) child.inert = true;
+
+  const dialog = overlay.matches('[role="dialog"]')
+    ? overlay
+    : overlay.querySelector('[role="dialog"]');
+  if (dialog && !dialog.hasAttribute("aria-label") && !dialog.hasAttribute("aria-labelledby")) {
+    const title = dialog.querySelector(".modal-title");
+    if (title) {
+      title.id ||= `modal-title-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      dialog.setAttribute("aria-labelledby", title.id);
+    }
+  }
+
+  const focusable = () => [...overlay.querySelectorAll(
+    'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+  )].filter((el) => !el.hidden && el.getClientRects().length > 0);
+  const onKeyDown = (event) => {
+    if (event.key !== "Tab") return;
+    const items = focusable();
+    if (!items.length) {
+      event.preventDefault();
+      return;
+    }
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+  overlay.addEventListener("keydown", onKeyDown);
+  queueMicrotask(() => (initialFocus || focusable()[0] || dialog || overlay).focus?.());
+
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    overlay.removeEventListener("keydown", onKeyDown);
+    for (const child of background) child.inert = false;
+    if (previouslyFocused?.isConnected) previouslyFocused.focus();
+  };
+  const nativeRemove = overlay.remove.bind(overlay);
+  overlay.remove = () => {
+    cleanup();
+    nativeRemove();
+  };
+  return cleanup;
+}
 
 function syncWorkspaceUrl({ push = false } = {}) {
   if (!workspaceUrlReady || typeof window === "undefined") return;
@@ -2845,13 +2909,24 @@ function paletteIsOpen() {
 
 function closePalette() {
   const el = document.getElementById("command-palette");
-  if (el) el.hidden = true;
+  if (el) {
+    el.hidden = true;
+    document.getElementById("palette-input")?.setAttribute("aria-expanded", "false");
+  }
+  if (paletteA11yCleanup) paletteA11yCleanup();
+  paletteA11yCleanup = null;
 }
 
 function paintPalette() {
   const box = document.getElementById("palette-results");
   if (!box) return;
   box.innerHTML = renderPaletteItems(paletteItems, paletteActive);
+  const input = document.getElementById("palette-input");
+  const active = box.querySelector('[aria-selected="true"]');
+  if (input) {
+    if (active) input.setAttribute("aria-activedescendant", active.id);
+    else input.removeAttribute("aria-activedescendant");
+  }
 }
 
 async function openPalette() {
@@ -2873,9 +2948,10 @@ async function openPalette() {
   const input = document.getElementById("palette-input");
   if (input) {
     input.value = "";
-    input.focus();
+    input.setAttribute("aria-expanded", "true");
   }
   paintPalette();
+  paletteA11yCleanup = activateModal(el, { initialFocus: input });
 }
 
 function dismissTransientOverlays() {
@@ -2992,6 +3068,9 @@ async function restoreWorkspaceLocation() {
       /* stale id — still restore the view */
     }
   }
+  if (loc.view === "replay" && loc.replaySection) {
+    appState.replaySection = loc.replaySection;
+  }
   switchView(loc.view, { fromUrl: true });
   if (loc.view === "analyze" && loc.ply && appState.analysis) {
     await showAnalysisPly(loc.ply);
@@ -3001,7 +3080,7 @@ async function restoreWorkspaceLocation() {
   }
 }
 
-function setReplaySection(section, { focus = false } = {}) {
+function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
   const next = section === "scout" ? "scout" : "games";
   appState.replaySection = next;
   document.querySelectorAll("[data-replay-panel]").forEach((panel) => {
@@ -3017,6 +3096,10 @@ function setReplaySection(section, { focus = false } = {}) {
   if (focus) {
     document.querySelector(`[data-replay-panel="${next}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+  // The replay section is part of the deep link (#/games vs #/scout). Sync it
+  // on every section change — plain pushState, not a navigation — so refresh
+  // and back/forward restore the right panel without a reload loop.
+  if (syncUrl && appState.currentView === "replay") syncWorkspaceUrl({ push: true });
 }
 
 function switchView(name, { fromUrl = false } = {}) {
@@ -3061,6 +3144,7 @@ function switchView(name, { fromUrl = false } = {}) {
   }
   if (name === "settings") {
     preloadSettingsView().catch(() => {});
+    loadSettings();
   }
   // Warm the Analyze book (active repertoire trees) so the first explored move
   // can be matched without waiting on the lazy load.
@@ -3155,11 +3239,13 @@ function renderPrefsToggles() {
   host.innerHTML = Object.keys(PREF_LABELS)
     .map((key) => {
       const on = pref(key) ? " is-on" : "";
+      const label = escapeHtml(PREF_LABELS[key] || key);
       return (
-        `<button type="button" class="pref-toggle${on}" data-pref="${escapeHtml(key)}" role="switch" aria-checked="${pref(key)}">` +
-        `<span class="pref-label">${escapeHtml(PREF_LABELS[key] || key)}</span>` +
-        `<span class="pref-switch"><span class="pref-knob"></span></span>` +
-        `</button>`
+        `<div class="pf-row">` +
+        `<span class="pf-row-text"><span class="pf-row-label">${label}</span></span>` +
+        `<button type="button" class="pf-switch pref-toggle${on}" data-pref="${escapeHtml(key)}" role="switch" aria-checked="${pref(key)}" aria-label="${label}">` +
+        `<span class="pf-knob"></span>` +
+        `</button></div>`
       );
     })
     .join("");
@@ -3269,6 +3355,7 @@ export function showPromotionPicker({ from, to, moves, anchorBoard, color }) {
       boardEl.parentElement.appendChild(overlay);
     } else {
       document.body.appendChild(overlay);
+      activateModal(overlay);
     }
     document.addEventListener("pointerdown", onOutside, true);
     document.addEventListener("keydown", onKey, true);
@@ -3856,6 +3943,7 @@ function chooseLichessAccount(actionLabel) {
       </div>
     `;
     document.body.appendChild(overlay);
+    activateModal(overlay);
     const cleanup = () => overlay.remove();
     const close = (value) => {
       cleanup();
@@ -3918,7 +4006,7 @@ async function fetchMyLichessGame(accountId = null) {
     return;
   }
   if (!latest.has_game) {
-    setStatus("No recent games found");
+  setStatus("No recent games found", { severity: "warning" });
     return;
   }
   document.getElementById("pgn-input").value = latest.pgn || "";
@@ -4198,7 +4286,7 @@ async function createTeam() {
   try {
     const team = await postJson("/api/teams", { name });
     appState.selectedTeamId = team.id;
-    setStatus(`Created team "${name}"`);
+    setStatus(`Created team "${name}"`, { severity: "success" });
     await loadTeams();
   } catch (error) {
     setStatusError(error.message);
@@ -4382,6 +4470,7 @@ function showInviteModal({ url }) {
       </div>
     `;
     document.body.appendChild(overlay);
+    activateModal(overlay);
     const input = overlay.querySelector("[data-invite-url]");
     if (input) {
       input.focus();
@@ -4687,6 +4776,7 @@ function showInputModal({ title, fields, okLabel = "OK" }) {
       </div>
     `;
     document.body.appendChild(overlay);
+    activateModal(overlay);
     const firstInput = overlay.querySelector("[data-field]");
     if (firstInput) {
       firstInput.focus();
@@ -4750,6 +4840,7 @@ function showConfirmModal({
       </div>
     `;
     document.body.appendChild(overlay);
+    activateModal(overlay);
     const cancelBtn = overlay.querySelector('[data-action="cancel"]');
     const okBtn = overlay.querySelector('[data-action="ok"]');
     cancelBtn.focus();
@@ -5232,7 +5323,7 @@ async function runAnalysis() {
     resetAnalysisVariations();
     showAnalysisPly(0);
     await renderAnalysis(payload);
-    setStatus(`Analysis ready: ${payload.moves.length} plies`);
+    setStatus(`Analysis ready: ${payload.moves.length} plies`, { severity: "success" });
     jobToast.completeJob({
       title: "Analysis ready",
       message: `${payload.moves.length} plies classified`,
@@ -5307,7 +5398,7 @@ async function onCreateRepertoireFromGameClick() {
   try {
     const payload = await importRepertoireFromPgnText(pgn, { name, color });
     switchView("build");
-    setStatus(`Repertoire “${payload.name}” created — edit it in Build`);
+    setStatus(`Repertoire “${payload.name}” created — edit it in Build`, { severity: "success" });
     appState.analysisSourcePgn = null;
     hideAnalysisHandoff();
   } catch (error) {
@@ -5416,7 +5507,7 @@ function classBadgeSymbol(classification) {
       good: "+",
       inaccuracy: "?!",
       mistake: "?",
-      blunder: "!",
+        blunder: "??",
       missed: "x",
     }[group] || "."
   );
@@ -7100,7 +7191,7 @@ async function generateFromCurrentNode() {
     return;
   }
   if (jobToast.isBusy()) {
-    setStatus("Another job is already running");
+    setStatus("Another job is already running", { severity: "warning" });
     return;
   }
   // apply-plan anchors on a REAL node id — a tmp anchor would 400. Drain any
@@ -7570,7 +7661,7 @@ async function importRepertoireFromInput(inputId) {
     const payload = await postJson("/api/repertoires/import", { package_json: packageJson });
     await hydrateBuild(payload, payload.selected_node_id);
     appState.trainingRepertoireId = payload.repertoire_id;
-    setStatus(`Imported ${payload.name}`);
+    setStatus(`Imported ${payload.name}`, { severity: "success" });
   } catch (error) {
     setStatusError(error.message);
   }
@@ -9733,14 +9824,33 @@ async function ensureSettingsView() {
 }
 
 async function loadSettings() {
+  let view = null;
   try {
-    const view = await ensureSettingsView();
+    view = await ensureSettingsView();
+  } catch (error) {
+    setStatusError(error.message);
+    return;
+  }
+  // The settings module owns all control wiring (switches, segmented theme,
+  // info popovers) — bind it even when the server payload is unreachable
+  // (signed-out visitor, offline dev server), so the controls always work.
+  try {
+    view.bind();
+  } catch (_) {
+    /* bind is idempotent; a failure must not block the render below */
+  }
+  try {
     const payload = await api("/api/settings");
     applySettingsPayload(payload);
     applyServerEngineGating();
     view.renderSettings(payload);
   } catch (error) {
     setStatusError(error.message);
+    try {
+      view.renderSettings(null);
+    } catch (_) {
+      /* best-effort local render */
+    }
   }
 }
 
@@ -9949,6 +10059,7 @@ function chooseGamesSourceAccounts() {
       </div>
     `;
     document.body.appendChild(overlay);
+    activateModal(overlay);
     const close = (value) => {
       overlay.remove();
       resolve(value);
@@ -10899,6 +11010,9 @@ function bindEvents() {
   bindCommandPalette();
   window.addEventListener("popstate", () => {
     const loc = parseWorkspaceLocation(window.location.href);
+    if (loc.view === "replay" && loc.replaySection) {
+      appState.replaySection = loc.replaySection;
+    }
     switchView(loc.view, { fromUrl: true });
   });
   document.getElementById("train-hint").addEventListener("click", trainHint);

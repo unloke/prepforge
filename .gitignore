@@ -51,6 +51,7 @@ src/prepforge_chess/web/static/assets/*.map
 .env
 .env.*
 !.env.example
+/env.txt
 
 # Local screen recordings / scratch logs (dev artifacts, not source)
 Captures/

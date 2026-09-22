@@ -227,7 +227,7 @@ def test_delete_nodes_caps_batch_size(client):
     _register(client, "a@example.com")
     rep_id, _root, _node = _create_with_move(client)
     too_many = [f"id-{i}" for i in range(201)]
-    assert _delete_nodes(client, rep_id, too_many).status_code == 400
+    assert _delete_nodes(client, rep_id, too_many).status_code == 422
 
 
 def test_delete_nodes_is_owner_gated(client):
@@ -317,6 +317,25 @@ def test_annotations_owner_gated(client):
         headers=csrf_headers(other),
     )
     assert r.status_code == 404
+
+
+def test_annotations_cap_arrows_and_circles(client):
+    _register(client, "annotation-cap@example.com")
+    rep_id, _root, node_id = _create_with_move(client)
+    for field in ("arrows", "circles"):
+        payload = {
+            "repertoire_id": rep_id,
+            "node_id": node_id,
+            "arrows": [],
+            "circles": [],
+        }
+        payload[field] = ["e2e4"] * 65
+        response = client.post(
+            "/api/build/annotations",
+            json=payload,
+            headers=csrf_headers(client),
+        )
+        assert response.status_code == 422
 
 
 # ---- build/export -----------------------------------------------------------
@@ -427,6 +446,41 @@ def test_import_empty_package_is_400(client):
     assert r.status_code == 400
 
 
+def test_import_package_rejects_oversized_payload(client):
+    _register(client, "large-package@example.com")
+    response = client.post(
+        "/api/repertoires/import",
+        json={"package_json": "x" * 5_000_001},
+        headers=csrf_headers(client),
+    )
+    assert response.status_code == 422
+
+
+def test_import_package_obeys_free_repertoire_quota(client):
+    _register(client, "quota-package@example.com")
+    rep_id, _root, _node = _create_with_move(client, name="Export Me")
+    package = client.post(
+        "/api/build/export",
+        json={"repertoire_id": rep_id, "format": "json"},
+        headers=csrf_headers(client),
+    ).json()["content"]
+    for index in range(4):
+        response = client.post(
+            "/api/repertoires/create",
+            json={"name": f"Quota {index}", "color": "white"},
+            headers=csrf_headers(client),
+        )
+        assert response.status_code == 200, response.text
+
+    response = client.post(
+        "/api/repertoires/import",
+        json={"package_json": package},
+        headers=csrf_headers(client),
+    )
+    assert response.status_code == 402
+    assert "Free plan" in response.json()["detail"]
+
+
 def test_imported_repertoire_is_owner_isolated(client):
     _register(client, "a@example.com")
     rep_id, _root, _node = _create_with_move(client, name="Mine")
@@ -476,3 +530,32 @@ def test_import_pgn_rejects_bad_color(client):
         headers=csrf_headers(client),
     )
     assert r.status_code == 400
+
+
+def test_import_pgn_rejects_oversized_payload(client):
+    _register(client, "large-pgn@example.com")
+    response = client.post(
+        "/api/repertoires/import-pgn",
+        json={"pgn": "x" * 1_000_001, "name": "Too large", "color": "white"},
+        headers=csrf_headers(client),
+    )
+    assert response.status_code == 422
+
+
+def test_import_pgn_obeys_free_repertoire_quota(client):
+    _register(client, "quota-pgn@example.com")
+    for index in range(5):
+        response = client.post(
+            "/api/repertoires/create",
+            json={"name": f"Quota {index}", "color": "white"},
+            headers=csrf_headers(client),
+        )
+        assert response.status_code == 200, response.text
+
+    response = client.post(
+        "/api/repertoires/import-pgn",
+        json={"pgn": "1. e4 *", "name": "Over quota", "color": "white"},
+        headers=csrf_headers(client),
+    )
+    assert response.status_code == 402
+    assert "Free plan" in response.json()["detail"]

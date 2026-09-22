@@ -112,4 +112,31 @@ describe("settings connections", () => {
     expect(onAccountsChanged).toHaveBeenCalled();
     expect(elements["settings-lichess-accounts"].innerHTML).toContain("account_b — Primary");
   });
+
+  it("unlinks through the CSRF-aware api DELETE path", async () => {
+    const api = vi
+      .fn()
+      .mockResolvedValueOnce({
+        linked: true,
+        username: "account_a",
+        accounts: [{ id: "a", username: "account_a", is_primary: true }],
+      })
+      .mockResolvedValueOnce({})
+      .mockResolvedValue({ linked: false, username: null, accounts: [] });
+    const { listeners, view } = makeSettingsView({ view: { api } });
+    await view.refreshConnections();
+
+    listeners.click({
+      target: {
+        closest(selector) {
+          if (selector === "[data-conn-action]") return { dataset: { connAction: "unlink" } };
+          if (selector === "[data-account-id]") return { dataset: { accountId: "a" } };
+          return null;
+        },
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(api).toHaveBeenCalledWith("/api/lichess/a", { method: "DELETE" });
+  });
 });

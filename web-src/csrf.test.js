@@ -4,6 +4,7 @@ import {
   readCsrfCookie,
   isSafeMethod,
   createCsrfTokenSource,
+  headersWithCsrf,
   CSRF_COOKIE,
   CSRF_HEADER,
 } from "./csrf.js";
@@ -47,6 +48,44 @@ describe("isSafeMethod", () => {
 
   it("defaults a missing method to safe (GET)", () => {
     expect(isSafeMethod(undefined)).toBe(true);
+  });
+});
+
+describe("headersWithCsrf", () => {
+  it("adds X-CSRF-Token to DELETE requests", async () => {
+    const getCsrfToken = vi.fn().mockResolvedValue("unlink-token");
+    const headers = await headersWithCsrf("DELETE", { Accept: "application/json" }, getCsrfToken);
+    expect(headers).toEqual({
+      Accept: "application/json",
+      "X-CSRF-Token": "unlink-token",
+    });
+    expect(getCsrfToken).toHaveBeenCalledOnce();
+  });
+
+  it("builds the keepalive unload header set synchronously from the cookie", async () => {
+    // beforeunload/pagehide cannot await the async CSRF bootstrap — the fire-
+    // and-forget keepalive path reads the cookie synchronously instead. This
+    // pins that contract: cookie present → header set; cookie absent → omit
+    // the header (same as headersWithCsrf's "no token" branch) rather than
+    // throwing a ReferenceError on an unimported constant.
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const { dirname, join } = await import("node:path");
+    const root = dirname(fileURLToPath(import.meta.url));
+    const app = readFileSync(join(root, "app.js"), "utf8");
+    expect(app).toContain('import { createCsrfTokenSource, headersWithCsrf, readCsrfCookie, CSRF_HEADER } from "./csrf.js"');
+    for (const site of ["beaconFlushBuild", "beaconFlushTrain"]) {
+      expect(app).toContain(`function ${site}(`);
+    }
+    const headerFor = (cookieString) => {
+      const token = readCsrfCookie(cookieString);
+      return { "Content-Type": "application/json", ...(token ? { [CSRF_HEADER]: token } : {}) };
+    };
+    expect(headerFor("pf_csrf=abc")).toEqual({
+      "Content-Type": "application/json",
+      "X-CSRF-Token": "abc",
+    });
+    expect(headerFor("")).toEqual({ "Content-Type": "application/json" });
   });
 });
 
