@@ -44,23 +44,50 @@ def upgrade() -> None:
     with op.batch_alter_table('user_settings', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_user_settings_user_id'), ['user_id'], unique=False)
 
-    # Re-key owner columns off users.id BEFORE dropping user_profiles, so the
-    # batch-mode table copy can still resolve the old FK target. Destructive:
-    # no data migration (pre-user cleanup, no real users). Ownership is enforced
-    # in application code (current_owner gates); the columns carry no DB-level
-    # FK so SQLite batch recreate and Postgres ALTER stay identical.
-    with op.batch_alter_table('repertoires', schema=None, recreate='always') as batch_op:
-        batch_op.add_column(sa.Column('owner_user_id', sa.Text(), nullable=True))
-        batch_op.drop_index('idx_repertoires_owner')
-        batch_op.create_index('idx_repertoires_owner', ['owner_user_id'], unique=False)
-        batch_op.drop_column('user_profile_id')
+    # Re-key owner columns off users.id before dropping user_profiles. SQLite
+    # needs batch table recreation to drop the old FK column. PostgreSQL must
+    # alter these tables in place: recreating repertoires would drop its PK,
+    # which is referenced by opening_nodes and the training tables.
+    bind = op.get_bind()
+    if bind.dialect.name == 'postgresql':
+        for table in ('repertoires', 'training_progress'):
+            foreign_keys = sa.inspect(bind).get_foreign_keys(table)
+            for foreign_key in foreign_keys:
+                if foreign_key['constrained_columns'] == ['user_profile_id']:
+                    op.drop_constraint(foreign_key['name'], table, type_='foreignkey')
 
-    with op.batch_alter_table('training_progress', schema=None, recreate='always') as batch_op:
-        batch_op.add_column(sa.Column('owner_user_id', sa.Text(), nullable=True))
-        batch_op.drop_index('idx_training_progress_rep_user')
-        batch_op.create_index('idx_training_progress_rep_user', ['repertoire_id', 'owner_user_id'], unique=False)
-        batch_op.create_unique_constraint('uq_training_progress_owner', ['owner_user_id', 'repertoire_id', 'node_id'])
-        batch_op.drop_column('user_profile_id')
+        op.add_column('repertoires', sa.Column('owner_user_id', sa.Text(), nullable=True))
+        op.drop_index('idx_repertoires_owner', table_name='repertoires')
+        op.create_index('idx_repertoires_owner', 'repertoires', ['owner_user_id'], unique=False)
+        op.drop_column('repertoires', 'user_profile_id')
+
+        op.add_column('training_progress', sa.Column('owner_user_id', sa.Text(), nullable=True))
+        op.drop_index('idx_training_progress_rep_user', table_name='training_progress')
+        op.create_index(
+            'idx_training_progress_rep_user',
+            'training_progress',
+            ['repertoire_id', 'owner_user_id'],
+            unique=False,
+        )
+        op.create_unique_constraint(
+            'uq_training_progress_owner',
+            'training_progress',
+            ['owner_user_id', 'repertoire_id', 'node_id'],
+        )
+        op.drop_column('training_progress', 'user_profile_id')
+    else:
+        with op.batch_alter_table('repertoires', schema=None, recreate='always') as batch_op:
+            batch_op.add_column(sa.Column('owner_user_id', sa.Text(), nullable=True))
+            batch_op.drop_index('idx_repertoires_owner')
+            batch_op.create_index('idx_repertoires_owner', ['owner_user_id'], unique=False)
+            batch_op.drop_column('user_profile_id')
+
+        with op.batch_alter_table('training_progress', schema=None, recreate='always') as batch_op:
+            batch_op.add_column(sa.Column('owner_user_id', sa.Text(), nullable=True))
+            batch_op.drop_index('idx_training_progress_rep_user')
+            batch_op.create_index('idx_training_progress_rep_user', ['repertoire_id', 'owner_user_id'], unique=False)
+            batch_op.create_unique_constraint('uq_training_progress_owner', ['owner_user_id', 'repertoire_id', 'node_id'])
+            batch_op.drop_column('user_profile_id')
 
     with op.batch_alter_table('user_sessions', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('idx_user_sessions_profile'))
