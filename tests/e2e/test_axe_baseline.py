@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.e2e.test_scout_smoke import _run_scout_e2e_script
+from e2e_harness import run_e2e_script
 
 ROOT_AXE = Path(__file__).resolve().parents[2]
 AXE_SCRIPT = ROOT_AXE / "tests" / "e2e" / "axe_baseline.mjs"
@@ -25,4 +25,4 @@ AXE_SCRIPT = ROOT_AXE / "tests" / "e2e" / "axe_baseline.mjs"
 
 @pytest.mark.e2e
 def test_axe_baseline(tmp_path, monkeypatch):
-    _run_scout_e2e_script(AXE_SCRIPT, tmp_path)
+    run_e2e_script(AXE_SCRIPT, tmp_path)
