@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-U6cC6oyp.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-DjmEi5Is.css">
+    <script type="module" crossorigin src="/static/assets/index-BEjMzAZz.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-pZe1HAvE.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -24,12 +24,15 @@
           <button class="tab" data-view="teams" data-testid="nav-teams">Teams</button>
         </div>
       </nav>
+      <span class="topbar-status-slot" id="topbar-status-slot">
+        <div class="status" id="app-status" data-testid="app-status" role="status" aria-live="polite" data-state="ready" data-severity="info">Ready</div>
+        <button class="status-close" id="app-status-close" type="button" hidden aria-label="Dismiss status" title="Dismiss">×</button>
+      </span>
       <button class="ib palette-open" id="open-palette" data-testid="open-palette" type="button" title="Command palette (Ctrl+K)" aria-label="Open command palette">Ctrl K</button>
       <button class="lichess-chip" id="account-chip" data-testid="account-chip" aria-haspopup="menu" aria-expanded="false" title="Connect a Lichess account">
         <span class="lichess-label" id="account-label">Connect Lichess</span>
       </button>
     </header>
-    <div class="status" id="app-status" data-testid="app-status" role="status" aria-live="polite" data-state="ready" data-severity="info" hidden><span class="status-message"></span><button class="status-close" type="button" aria-label="Dismiss notification">×</button></div>
 
     <main class="workspace" id="workspace-main" tabindex="-1">
       <section class="view is-active" id="view-dashboard" data-testid="view-dashboard">
@@ -198,17 +201,6 @@
       <section class="view" id="view-train" data-testid="view-train">
         <div class="study">
           <div class="board-area">
-            <div class="train-banner" id="train-banner" data-state="idle" data-testid="train-feedback">
-              <span class="train-banner-icon" id="train-banner-icon" aria-hidden="true"></span>
-              <div class="train-banner-text">
-                <span class="train-banner-title" id="train-banner-title" data-testid="train-prompt">Press Start to begin</span>
-                <span class="train-banner-sub" id="train-banner-sub"></span>
-              </div>
-              <span class="train-turn-badge" id="train-turn-badge" hidden></span>
-            </div>
-            <div class="train-blitz-bar" id="train-blitz" hidden aria-hidden="true">
-              <div class="train-blitz-fill" id="train-blitz-fill"></div>
-            </div>
             <div class="board-stack">
               <div class="chessboard" id="train-board" data-testid="train-board"></div>
               <svg class="annotations" id="train-annotations"></svg>
@@ -224,6 +216,19 @@
           </div>
 
           <aside class="sidebar train-sidebar" data-session-state="setup">
+            <section class="train-coach" id="train-banner" data-testid="train-feedback" data-state="idle" aria-live="polite">
+              <span class="train-coach-icon" id="train-banner-icon" aria-hidden="true"></span>
+              <div class="train-coach-text">
+                <span class="train-coach-title" id="train-banner-title" data-testid="train-prompt">Press Start to begin</span>
+                <span class="train-coach-sub" id="train-banner-sub"></span>
+              </div>
+              <span class="train-turn-badge" id="train-turn-badge" hidden></span>
+            </section>
+            <div class="train-blitz-float" aria-hidden="true">
+              <div class="train-blitz-bar" id="train-blitz" hidden>
+                <div class="train-blitz-fill" id="train-blitz-fill"></div>
+              </div>
+            </div>
             <div class="train-setup">
               <div class="train-modes" id="train-modes" role="group" aria-label="Training mode">
                 <button type="button" class="train-mode is-active" data-mode="smart">Smart queue</button>
@@ -627,6 +632,6 @@
         <div class="palette-results" id="palette-results" data-testid="palette-results" role="listbox" aria-label="Commands"></div>
       </div>
     </div>
-
+
   </body>
 </html>
