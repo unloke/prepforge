@@ -237,9 +237,9 @@ class PrepForgeRepository:
                     t.train_attempt_receipts.c.session_id,
                     t.train_attempt_receipts.c.attempt_uuid,
                 ]
-            )
+            ).returning(t.train_attempt_receipts.c.attempt_uuid)
         )
-        return result.rowcount == 1
+        return result.first() is not None
 
     def save_game(self, game: Game, owner_user_id: Optional[str] = None) -> None:
         now = _now_text()
