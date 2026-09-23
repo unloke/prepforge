@@ -5,7 +5,13 @@ import { resolve, basename } from "node:path";
 const base = process.env.CAPTURE_BASE_URL || "http://127.0.0.1:4173/static/";
 const out = resolve(process.env.CAPTURE_OUT || "artifacts/desktop-workspace");
 mkdirSync(out, { recursive: true });
-const browser = await chromium.launch({ channel: "msedge", headless: true });
+// Default to the Playwright-bundled Chromium (no host browser dependency). Opt in
+// to a host channel only when needed: CAPTURE_BROWSER=msedge|chrome|chromium.
+// No extra screenshot binaries — screenshots go through this script's Playwright.
+const channel = (process.env.CAPTURE_BROWSER || "").trim().toLowerCase();
+const browser = channel
+  ? await chromium.launch({ channel, headless: true })
+  : await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 const report = {};
 try {

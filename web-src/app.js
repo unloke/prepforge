@@ -3177,8 +3177,19 @@ function switchView(name, { fromUrl = false } = {}) {
   }
   if (name === "build") {
     preloadCoach().catch(() => {});
-    preloadBuildGen().catch(() => {});
     preloadBuildView().catch(() => {});
+    preloadBuildGen().catch(() => {});
+    // Warm the shared Maia worker/session while the user reads the sidebar, so
+    // the first Generate skips worker spawn + session create (weights still
+    // download once, with progress in the job toast). Idle-callback keeps this
+    // off the tab-switch path.
+    const warmMaia = () => {
+      try {
+        getSharedMaia3Provider().warmup();
+      } catch (_) { /* best-effort */ }
+    };
+    if (typeof requestIdleCallback === "function") requestIdleCallback(warmMaia, { timeout: 4000 });
+    else setTimeout(warmMaia, 1200);
   }
   if (name === "train") {
     preloadTrainView().catch(() => {});
@@ -7417,6 +7428,9 @@ async function generateFromCurrentNode() {
       });
     }, 1800);
 
+    // Yield so the toast/status above paints before the module import below
+    // blocks the main thread on fetch + evaluate.
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
     const { runBrowserBuildGenerate } = await (_buildGenReady || preloadBuildGen());
     const plan = await runBrowserBuildGenerate({
       build: appState.build,

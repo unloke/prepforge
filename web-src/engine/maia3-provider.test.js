@@ -516,6 +516,31 @@ describe("terminal / illegal pass-through", () => {
   });
 });
 
+describe("warmup (Build tab idle pre-warm)", () => {
+  it("starts init in the background and shares it with the next real call", async () => {
+    const { provider, workers } = makeProvider(ackInitElsePend);
+    provider.warmup();
+    await tick();
+    expect(workers.length).toBe(1);
+    const pending = provider.predictions({ fen: "f" });
+    await tick();
+    const w = workers[0];
+    expect(w.idsOf("init").length).toBe(1); // same init, not a second one
+    w.reply(w.idsOf("predictions")[0], []);
+    expect(await pending).toEqual([]);
+  });
+
+  it("swallows init failure (real caller retries on the shared chain)", async () => {
+    const { provider } = makeProvider((msg, worker) => {
+      if (msg.type === "init") worker.replyError(msg.id, "no weights here");
+    });
+    provider.warmup();
+    await tick();
+    await tick();
+    expect(provider.lastError).toMatchObject({ phase: "init" });
+  });
+});
+
 describe("read cache", () => {
   // Behavior: ack init, and answer each read with a payload that records the worker id, so a
   // re-served (cached) result is distinguishable from a fresh worker round trip.
