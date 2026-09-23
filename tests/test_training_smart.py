@@ -607,7 +607,13 @@ def test_postgres_concurrent_attempt_receipt():
         with ThreadPoolExecutor(max_workers=2) as pool:
             first = pool.submit(submit, attempt)
             second = pool.submit(submit, attempt)
-            assert sorted([first.result(timeout=30), second.result(timeout=30)]) == [0, 1]
+            results = sorted([first.result(timeout=30), second.result(timeout=30)])
+            assert results == [0, 1], (
+                results,
+                repo.get_attempt_receipt(session.id, attempt["attempt_uuid"]),
+                repo.load_training_progress(repertoire.id, node_id, owner_user_id=owner),
+                [node.id for node in repo.load_repertoire(repertoire.id).root_node.children],
+            )
         progress = repo.load_training_progress(repertoire.id, node_id, owner_user_id=owner)
         assert progress is not None and progress.attempts == 1
         with pytest.raises(ValueError, match="different payload"):
