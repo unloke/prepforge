@@ -838,14 +838,17 @@ def build_action(
         elif action == "mark_prepared":
             rep = builder._load_repertoire_or_raise(body.repertoire_id)
             node = builder._find_node_or_raise(rep.root_node, body.node_id)
-            builder.mark_prepared(body.repertoire_id, body.node_id, not node.is_user_prepared_move)
+            builder.mark_prepared(
+                body.repertoire_id, body.node_id, not node.is_user_prepared_move,
+                repertoire=rep,
+            )
         elif action == "disable_branch":
             rep = builder._load_repertoire_or_raise(body.repertoire_id)
             node = builder._find_node_or_raise(rep.root_node, body.node_id)
             if node.is_enabled:
-                builder.disable_branch(body.repertoire_id, body.node_id)
+                builder.disable_branch(body.repertoire_id, body.node_id, repertoire=rep)
             else:
-                builder.enable_branch(body.repertoire_id, body.node_id)
+                builder.enable_branch(body.repertoire_id, body.node_id, repertoire=rep)
         elif action == "delete":
             selected_node_id = builder.delete_node(body.repertoire_id, body.node_id)
         elif action == "add_comment":

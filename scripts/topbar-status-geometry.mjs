@@ -5,9 +5,10 @@ const browser = await chromium.launch({
   executablePath: process.env.CHROME_PATH || undefined,
 });
 try {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  await page.goto(process.env.PREPFORGE_URL || 'http://127.0.0.1:5173/static/');
-  await page.waitForTimeout(1000);
+  for (const viewportWidth of [1024, 1200, 1440]) {
+    const page = await browser.newPage({ viewport: { width: viewportWidth, height: 900 } });
+    await page.goto(process.env.PREPFORGE_URL || 'http://127.0.0.1:5173/static/');
+    await page.waitForTimeout(1000);
   const snapshot = () => page.evaluate(() => {
     const rect = (selector) => {
       const { x, y, width, height } = document.querySelector(selector).getBoundingClientRect();
@@ -15,7 +16,8 @@ try {
     };
     const status = document.querySelector('#app-status');
     return {
-      header: rect('.topbar'), nav: rect('.tabs'), palette: rect('#open-palette'),
+      header: rect('.topbar'), nav: rect('.tabs'),
+      lastNav: rect('.tabs-primary .tab:last-child'), palette: rect('#open-palette'),
       account: rect('#account-chip'), status: rect('#app-status'),
       statusScrollWidth: status.scrollWidth,
       statusWhiteSpace: getComputedStyle(status).whiteSpace,
@@ -42,7 +44,12 @@ try {
       || long.statusWhiteSpace !== 'nowrap' || long.statusOverflow !== 'ellipsis') {
     throw new Error('Long status failed single-line ellipsis geometry');
   }
-  console.log(JSON.stringify({ before, long, cleared }, null, 2));
+  if (long.status.x < long.lastNav.x + long.lastNav.width + 8) {
+    throw new Error(`${viewportWidth}px status overlaps navigation`);
+  }
+  console.log(JSON.stringify({ viewportWidth, before, long, cleared }));
+  await page.close();
+  }
 } finally {
   await browser.close();
 }

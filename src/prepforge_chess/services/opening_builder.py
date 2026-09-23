@@ -1075,8 +1075,12 @@ class OpeningBuilderService:
         ])
         return node
 
-    def mark_prepared(self, repertoire_id: str, node_id: str, prepared: bool = True) -> OpeningNode:
-        repertoire = self._load_repertoire_or_raise(repertoire_id)
+    def mark_prepared(
+        self, repertoire_id: str, node_id: str, prepared: bool = True,
+        *, repertoire: Optional[Repertoire] = None,
+    ) -> OpeningNode:
+        repertoire = repertoire or self._load_repertoire_or_raise(repertoire_id)
+        self.loaded_repertoire = repertoire
         node = self._find_node_or_raise(repertoire.root_node, node_id)
         node.is_user_prepared_move = prepared
         self.repository.update_opening_nodes(repertoire_id, [
@@ -1084,8 +1088,11 @@ class OpeningBuilderService:
         ])
         return node
 
-    def disable_branch(self, repertoire_id: str, node_id: str) -> OpeningNode:
-        repertoire = self._load_repertoire_or_raise(repertoire_id)
+    def disable_branch(
+        self, repertoire_id: str, node_id: str, *, repertoire: Optional[Repertoire] = None,
+    ) -> OpeningNode:
+        repertoire = repertoire or self._load_repertoire_or_raise(repertoire_id)
+        self.loaded_repertoire = repertoire
         node = self._find_node_or_raise(repertoire.root_node, node_id)
         self._set_branch_enabled(node, False)
         self.repository.update_opening_nodes(repertoire_id, [
@@ -1094,8 +1101,11 @@ class OpeningBuilderService:
         ])
         return node
 
-    def enable_branch(self, repertoire_id: str, node_id: str) -> OpeningNode:
-        repertoire = self._load_repertoire_or_raise(repertoire_id)
+    def enable_branch(
+        self, repertoire_id: str, node_id: str, *, repertoire: Optional[Repertoire] = None,
+    ) -> OpeningNode:
+        repertoire = repertoire or self._load_repertoire_or_raise(repertoire_id)
+        self.loaded_repertoire = repertoire
         node = self._find_node_or_raise(repertoire.root_node, node_id)
         self._set_branch_enabled(node, True)
         self.repository.update_opening_nodes(repertoire_id, [

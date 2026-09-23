@@ -248,7 +248,7 @@ h2 {
   align-items: center;
   gap: 6px;
   width: max-content;
-  max-width: min(420px, 30vw);
+  max-width: min(420px, 30vw, calc(100vw - 850px));
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;

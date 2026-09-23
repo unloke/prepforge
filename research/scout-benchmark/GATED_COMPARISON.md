@@ -43,8 +43,8 @@ white it also lowers route stability, coverage, and hit rate. More profile data
 does not yet yield consistently more reliable recommendations. The available
 route sets are top-five *before* gating; held-out coverage after gating is zero.
 
-No candidate clearly beats production ranking on held-out prep usefulness, so
-there is no production formula proposal. Next experiment should generate
+目前沒有證據支持替換 production ranking，因此沒有 production 公式提案。
+Next experiment should generate
 counterfactual candidate routes with prepared replies and Stockfish pressure
 screening before ranking, then measure calibrated per-decision reach and
 coverage by color on new chronological held-out windows. Full-line repetition
