@@ -427,7 +427,7 @@ const appState = {
   signedIn: false,
   replayResults: null,
   replayFilter: null, // summary-chip filter: an outcome kind, or null = all
-  replayOpen: new Set(), // indexes of expanded game rows
+  replayOpen: new Set(), // at most one selected game in the inspector
   replaySection: "games",
   // Teams view: cache of the caller's teams (for the rep-share picker) and the
   // currently-expanded team's id (so a member add/remove re-renders the right one).
@@ -2751,6 +2751,21 @@ class BoardController {
 }
 
 let statusDismissTimer;
+
+// Engine-loading lifecycle marks (dev/E2E timing only): records monotonic
+// timestamps per (job) so the parallel init windows — Build runner import vs
+// Maia ready, Analyze Stockfish vs Maia init — are observable without touching
+// any engine result. No-op payload, never awaited by the pipeline.
+const engineLifecycleMarks = new Map();
+function engineLifecycleMark(name, origin = performance.now()) {
+  const at = Math.round(performance.now() - origin);
+  if (!engineLifecycleMarks.has(name)) engineLifecycleMarks.set(name, []);
+  engineLifecycleMarks.get(name).push(at);
+  try {
+    console.debug("[engine-lifecycle]", name, `${at}ms`);
+  } catch (_) { /* logging only */ }
+  return origin;
+}
 function setStatus(message, { severity = "info" } = {}) {
   const status = document.getElementById("app-status");
   if (!status) return;
@@ -2762,11 +2777,12 @@ function setStatus(message, { severity = "info" } = {}) {
     ? severity
     : "info";
   const isError = normalizedSeverity === "error";
-  status.textContent = text;
+  status.querySelector(".status-message").textContent = text;
   status.setAttribute("role", isError ? "alert" : "status");
   status.setAttribute("aria-live", isError ? "assertive" : "polite");
   status.dataset.severity = normalizedSeverity;
   status.dataset.state = isError ? "error" : "ready";
+  status.querySelector(".status-close").onclick = () => { status.hidden = true; clearTimeout(statusDismissTimer); };
   if (!isError) statusDismissTimer = setTimeout(() => { status.hidden = true; }, 4500);
 }
 
@@ -3176,8 +3192,11 @@ function switchView(name, { fromUrl = false } = {}) {
   }
   if (name === "build") {
     preloadCoach().catch(() => {});
-    preloadBuildGen().catch(() => {});
     preloadBuildView().catch(() => {});
+    // No Maia warmup here by design: the ~46 MB weights only start downloading
+    // after an explicit Generate click (see generateFromCurrentNode), so merely
+    // browsing Build never triggers engine/model loading.
+    preloadBuildGen().catch(() => {});
   }
   if (name === "train") {
     preloadTrainView().catch(() => {});
@@ -5232,6 +5251,8 @@ async function runAnalysis() {
   hideAnalysisResults();
   const runButton = document.getElementById("run-analysis");
   runButton.disabled = true;
+  // Lifecycle origin for the timing marks below (click → stockfish/maia starts).
+  const tAnalyze = engineLifecycleMark("analyze-click");
 
   let cancelled = false;
   const jobId = `browser-analysis-${Date.now()}`;
@@ -5271,6 +5292,22 @@ async function runAnalysis() {
     const { analyzeGamePositions } = await timed("load", () =>
       import("./engine/game-analyzer.js")
     );
+    // Start the shared Maia init (worker spawn + weight fetch + ORT session) NOW,
+    // in parallel with the Stockfish pass below — but only when this run can
+    // actually use Maia signals. The Stockfish, classification and inference
+    // algorithms are untouched; the Maia phase still awaits the same shared
+    // ready promise, so inference simply finds a warm provider more often.
+    const wantsMaia =
+      maiaAnalysisEnabled() &&
+      prep.brilliant &&
+      prep.brilliant.enabled &&
+      Array.isArray(prep.moves) &&
+      prep.moves.length > 0;
+    // Null-safe: warmup() only rejects on init failure, which the Maia phase
+    // below retries through predictions(), exactly as before.
+    const maiaReady = wantsMaia ? getSharedMaia3Provider().warmup() : null;
+    if (wantsMaia) engineLifecycleMark("analyze-maia-init-start", tAnalyze);
+    engineLifecycleMark("analyze-stockfish-start", tAnalyze);
     const evals = await timed("stockfish", () =>
       analyzeGamePositions({
         positions,
@@ -5287,6 +5324,13 @@ async function runAnalysis() {
         shouldCancel: () => cancelled,
       })
     );
+    engineLifecycleMark("analyze-stockfish-done", tAnalyze);
+    if (wantsMaia && maiaReady && typeof maiaReady.then === "function") {
+      try {
+        await maiaReady;
+        engineLifecycleMark("analyze-maia-ready", tAnalyze);
+      } catch (_) { /* init failure surfaces in the Maia phase, as before */ }
+    }
 
     // Browser Maia pass (human probability / brilliant signals). Best-effort
     // so the server can persist them with no server compute. Skipped entirely
@@ -5294,15 +5338,12 @@ async function runAnalysis() {
     // Maia's ~46 MB model downloads once (then cached) when the pass runs;
     // progress shows in the toast. Any failure (no weights / inference error)
     // is swallowed → analysis without Maia signals, mirroring the server's
-    // no-Maia path.
+    // no-Maia path. Init already started in parallel with Stockfish above, so
+    // this phase usually finds a warm provider; it still awaits the same
+    // shared ready promise via predictions(), never a second worker/session.
     let maiaAssessments = [];
-    if (
-      maiaAnalysisEnabled() &&
-      prep.brilliant &&
-      prep.brilliant.enabled &&
-      Array.isArray(prep.moves) &&
-      prep.moves.length
-    ) {
+    if (wantsMaia) {
+      engineLifecycleMark("analyze-maia-phase-start", tAnalyze);
       try {
         const provider = getSharedMaia3Provider();
         provider.setInitProgressHandler(({ phase, loaded, total }) => {
@@ -7285,6 +7326,9 @@ function estimateBuildGenerateTotal({ plyDepth, ownSideCandidateCount, detailMod
 }
 
 async function generateFromCurrentNode() {
+  // True click origin for [engine-lifecycle] timing: recorded before any
+  // toast/status/rAF so click → feedback-paint measures the real delay.
+  const tGenerate = engineLifecycleMark("build-generate-click");
   // Phase 3c: generation runs in the BROWSER. Stockfish (our turn) + Maia3
   // (opponent) drive the recursion locally into a tree-mutation plan; the server
   // only re-validates + persists via /api/build/generate/apply-plan. No server
@@ -7416,7 +7460,28 @@ async function generateFromCurrentNode() {
       });
     }, 1800);
 
+    // Yield so the toast/status above paints before the module import below
+    // blocks the main thread on fetch + evaluate. The runner import and the
+    // shared Maia warmup (worker spawn + ~46 MB weight fetch + ORT session)
+    // start in the same tick and proceed in parallel; the pipeline awaits the
+    // same shared ready promise only when it reaches the first Maia inference,
+    // so one Generate never spawns a second worker/session or re-downloads.
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    engineLifecycleMark("build-feedback-paint", tGenerate);
+    const maiaReady = getSharedMaia3Provider().warmup();
+    engineLifecycleMark("build-maia-init-start", tGenerate);
     const { runBrowserBuildGenerate } = await (_buildGenReady || preloadBuildGen());
+    engineLifecycleMark("build-runner-import-done", tGenerate);
+    if (maiaReady && typeof maiaReady.then === "function") {
+      // Do NOT block the Stockfish-led opening moves on this: just note when
+      // the shared init lands, so timing shows the parallel window. The first
+      // Maia inference inside the runner awaits the same promise.
+      maiaReady.then(
+        () => engineLifecycleMark("build-maia-ready", tGenerate),
+        () => engineLifecycleMark("build-maia-ready-error", tGenerate),
+      );
+    }
+    engineLifecycleMark("build-inference-start", tGenerate);
     const plan = await runBrowserBuildGenerate({
       build: appState.build,
       rootNodeId: nodeId,
@@ -10396,11 +10461,11 @@ async function ensureReplayView() {
       isGameOpen: (index) => appState.replayOpen.has(index),
       onToggleFilter: (kind) => {
         appState.replayFilter = appState.replayFilter === kind ? null : kind;
+        appState.replayOpen.clear();
         void renderReplayResults(appState.replayResults).catch(() => {});
       },
       onToggleGame: (index) => {
-        if (appState.replayOpen.has(index)) appState.replayOpen.delete(index);
-        else appState.replayOpen.add(index);
+        appState.replayOpen = appState.replayOpen.has(index) ? new Set() : new Set([index]);
         void renderReplayResults(appState.replayResults).catch(() => {});
       },
       onTrainMiss: () =>

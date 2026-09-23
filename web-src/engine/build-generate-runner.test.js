@@ -317,6 +317,34 @@ describe("orchestrator runBrowserBuildGenerate", () => {
     ).rejects.toThrow(/cross-origin isolated|no server fallback/i);
   });
 
+  it("awaits an already-warming borrowed Maia provider instead of creating a second one", async () => {
+    // Click-time lifecycle: warmup() starts the shared init BEFORE the runner
+    // import finishes; the orchestrator must reuse that same warming provider
+    // (one worker/session/download), never createMaia() a second one.
+    const engine = fakeEngineProvider({ [START_FEN]: [pv(1, ["e2e4"], 30)] });
+    let initResolver;
+    const warmingInit = new Promise((resolve) => { initResolver = resolve; });
+    const warmingMaia = {
+      ...fakeMaiaProvider({}),
+      warm() { return warmingInit; },
+    };
+    const runPromise = runBrowserBuildGenerate({
+      build,
+      rootNodeId: "anchor",
+      plyDepth: 1,
+      maiaRating: 1500,
+      createEngine: () => engine,
+      maiaProvider: warmingMaia,
+      createMaia: () => { throw new Error("must not create a second Maia provider"); },
+      isEngineAvailable: () => true,
+    });
+    // Init lands while the pipeline is already running: no second provider.
+    initResolver({ backend: "wasm" });
+    const plan = await runPromise;
+    expect(plan.addedCount).toBe(1);
+    expect(warmingMaia.terminated).toBe(false);
+  });
+
   it("tears providers down even when generation throws", async () => {
     // engine returns an illegal move → planner throws; providers must still close.
     const engine = fakeEngineProvider({ [START_FEN]: [pv(1, ["e2e5"], 30)] });

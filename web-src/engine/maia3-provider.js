@@ -188,6 +188,22 @@ class Maia3Provider {
     return this._state === "ready";
   }
 
+  // Best-effort background warmup: start worker spawn + weight fetch + session
+  // create without waiting. A later call reuses the same _ready promise, so the
+  // first real inference skips this phase on a warm provider. Returns the shared
+  // init promise so callers that want to overlap other work can await it at the
+  // exact point they need inference. Never throws synchronously: a sync init
+  // failure comes back as a rejected promise, and the shared chain still clears
+  // itself for retry, so the real caller sees the same failure it would have
+  // seen without warmup.
+  warmup() {
+    try {
+      return this._ensureReady();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+
   // True while at least one request is awaiting the worker. The idle-teardown path checks
   // this so a backgrounded-but-still-working provider (e.g. a Build Generate run left in a
   // hidden tab) is never disposed mid-inference, which would reject the in-flight work.

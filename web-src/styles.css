@@ -7477,50 +7477,89 @@ h2 {
   color: var(--accent-strong);
 }
 
-/* Desktop workspaces: the board and the task pane share the available width. */
+/* Desktop workspaces: the board and the task pane share the available width.
+   One authoritative desktop block per workspace — Analyze / Build / Train share
+   the study shell; Games, Scout and Teams each own one layout. Base (mobile)
+   rules above stay untouched; values here are the effective desktop sizes. */
 @media (min-width: 960px) {
   .workspace { max-width: 1400px; }
   #view-analyze .study,
   #view-build .study,
   #view-train .study {
-    grid-template-columns: minmax(0, 44fr) minmax(0, 56fr);
+    grid-template-columns: minmax(0, 52fr) minmax(0, 48fr);
     gap: clamp(20px, 2.5vw, 36px);
   }
   .study .board-area { align-items: center; }
-  .study .board-stack { width: min(100%, calc(100dvh - 160px)); }
+  .study .board-stack,
   .study .board-bar,
   .study .train-banner,
-  .study .train-blitz-bar { width: min(100%, calc(100dvh - 160px)); }
+  .study .train-blitz-bar { width: min(100%, calc(100dvh - 112px)); }
+  #view-train .study .board-stack,
+  #view-train .study .board-bar,
+  #view-train .study .train-banner,
+  #view-train .study .train-blitz-bar { width: min(100%, calc(100dvh - 150px)); }
   #view-analyze .sidebar,
   #view-build .sidebar,
-  #view-train .sidebar { padding: 4px 6px 18px 4px; }
+  #view-train .sidebar { padding: 4px 6px 18px 4px; overflow-y: auto; overscroll-behavior: contain; }
+  #analyze-sidebar > .tools,
+  #view-build .build-tools { position: sticky; top: 0; z-index: 4; background: var(--bg); padding: 6px 0; }
+  #view-build .rep-header { position: sticky; top: 0; z-index: 5; background: var(--bg); }
+  #view-build .build-tools { top: 44px; }
+  #view-build .build-inspector { flex: 0 0 auto; min-height: 180px; max-height: 38vh; }
+  #view-build #builder-tree { flex: 1 1 180px; min-height: 180px; }
   #view-analyze .explain-card,
   #view-build .build-inspector { box-shadow: none; border-color: transparent; }
   #view-analyze .drawer { border-color: transparent; border-bottom: 1px solid var(--line-soft); border-radius: 0; }
   #view-analyze .explain-card { background: var(--panel-soft); }
-  #view-teams .teams-stack > .card { border-color: transparent; background: var(--panel-soft); }
   #view-analyze #analysis-results { display: grid; gap: 14px; }
   #view-analyze #analysis-results[hidden] { display: none; }
   #view-analyze #eval-chart { width: 100%; }
   #view-analyze #analysis-moves { min-height: 140px; }
+  #analyze-sidebar #analysis-explain { order: 1; }
+  #analyze-sidebar #analysis-results { order: 2; }
+  #analyze-sidebar #pgn-drawer { order: 3; }
+  #analyze-sidebar #history-drawer { order: 4; }
   #view-build .build-branchbar { background: var(--panel-soft); border-color: transparent; }
+  #view-build .sidebar:has(#build-empty:not([hidden])) .build-tools,
+  #view-build .sidebar:has(#build-empty:not([hidden])) #builder-tree { display: none; }
+  #view-train .train-setup { padding: 12px; }
+  #view-train #train-play-color { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #view-train .train-play-setup .train-start-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #view-train .train-play-setup .train-start-row:last-child { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #view-train .train-play-setup .train-start-row .btn { width: 100%; min-width: 0; white-space: normal; height: auto; min-height: var(--control-h); }
+  #view-train .train-sidebar[data-session-state="active"] .train-setup,
+  #view-train .train-sidebar[data-session-state="summary"] .train-setup,
+  #view-train .train-sidebar[data-session-state="summary"] #train-progress-panel { display: none; }
   #view-replay .replay-stack,
   #view-teams .teams-stack { max-width: 1400px; }
-  #view-teams .teams-stack {
+  #view-replay .replay-card-games .replay-results {
     display: grid;
     grid-template-columns: minmax(280px, 35%) minmax(0, 1fr);
-    gap: 18px 28px;
+    gap: 24px;
     align-items: start;
   }
+  #view-replay .replay-card-games .replay-row { border-color: transparent; border-bottom-color: var(--line-soft); border-radius: 0; box-shadow: none; }
+  #view-replay .replay-card-games .replay-row.is-open { background: var(--panel-soft); }
+  #view-replay .replay-card-games .replay-preview { display: none; }
+  #view-replay .replay-card-games .replay-row-head { flex-wrap: wrap; }
+  #view-replay .replay-card-games .replay-inspector { min-height: 300px; }
+  #view-replay .replay-card-games .replay-inspector > .empty-state { display: grid; place-items: center; min-height: 260px; text-align: center; }
+  /* Scout cards stay on the single responsive base rule below (auto-fit 420px):
+     a desktop override here would lose to it in source order, so Scout keeps no
+     separate desktop block — one authoritative layout. */
+  #view-teams .teams-stack {
+    display: grid;
+    grid-template-columns: minmax(300px, 39%) minmax(0, 1fr);
+    gap: 12px 20px;
+    align-items: start;
+  }
+  #view-teams .teams-stack > .card { border-color: transparent; background: var(--panel-soft); padding: 16px; }
   #view-teams .teams-stack > :first-child { grid-column: 1; grid-row: 1; }
   #view-teams .teams-stack > :last-child { grid-column: 1; grid-row: 2; }
   #view-teams .team-detail-card { grid-column: 2; grid-row: 1 / span 2; min-height: 320px; }
   #view-teams .team-detail-card[hidden] { display: none; }
   #view-teams .team-empty { grid-column: 2; grid-row: 1 / span 2; padding: 28px; background: var(--panel-soft); border-radius: var(--radius-card); }
   #view-teams .teams-stack:has(.team-detail-card:not([hidden])) .team-empty { display: none; }
-  #view-train .train-sidebar[data-session-state="active"] .train-setup,
-  #view-train .train-sidebar[data-session-state="summary"] .train-setup,
-  #view-train .train-sidebar[data-session-state="summary"] #train-progress-panel { display: none; }
 }
 
 .status:not([hidden]) {
@@ -7533,36 +7572,37 @@ h2 {
   background: var(--panel);
 }
 .status[hidden] { display: none; }
+/* Status floats beside the header actions (Ctrl K / account chip) as an overlay
+   below the topbar: position:fixed keeps it out of layout so it never shifts the
+   workspace. info/success auto-dismiss (~4.5s in setStatus); error stays until
+   the close button is pressed. */
+.status:not([hidden]) {
+  position: fixed;
+  z-index: 80;
+  top: 50px;
+  right: 14px;
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  width: max-content;
+  max-width: min(400px, calc(100vw - 28px));
+  margin: 0;
+  padding: 10px 12px;
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--text) 14%, transparent);
+  white-space: normal;
+}
+.status[data-severity="error"] { border-color: var(--danger); color: var(--danger-strong); }
+.status[data-severity="warning"] { border-color: var(--warn); }
+.status-message { min-width: 0; overflow-wrap: anywhere; }
+.status-close { flex: none; border: 0; background: transparent; color: inherit; font-size: 18px; line-height: 1; padding: 0 2px; }
+.status-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .build-empty { padding: 24px 4px; background: var(--panel-soft); border-radius: var(--radius-card); }
 .build-empty h2, .build-empty p, .build-empty .tools { margin-left: 20px; margin-right: 20px; }
 .build-empty[hidden] { display: none; }
-@media (min-width: 960px) {
-  #analyze-sidebar:has(#analysis-results[hidden]) #pgn-drawer { order: 1; }
-  #analyze-sidebar:has(#analysis-results[hidden]) #history-drawer { order: 2; }
-  #analyze-sidebar:has(#analysis-results[hidden]) #analysis-explain { order: 3; }
-  #analyze-sidebar:has(#analysis-results[hidden]) #analysis-explain { --coach-card-block-size: 112px; }
-  #analyze-sidebar:has(#analysis-results:not([hidden])) #analysis-results { order: 1; }
-  #analyze-sidebar:has(#analysis-results:not([hidden])) #analysis-explain { order: 2; }
-  #analyze-sidebar:has(#analysis-results:not([hidden])) #pgn-drawer { order: 3; }
-  #analyze-sidebar:has(#analysis-results:not([hidden])) #history-drawer { order: 4; }
-  #view-build .sidebar:has(#build-empty:not([hidden])) .build-tools,
-  #view-build .sidebar:has(#build-empty:not([hidden])) #builder-tree { display: none; }
-}
 .replay-results .replay-game-list { display: grid; align-content: start; gap: 6px; }
 .replay-inspector { min-width: 0; padding: 18px 22px; border-radius: var(--radius-card); background: var(--panel-soft); }
 .replay-inspector h3 { margin: 0 0 10px; font-size: 20px; }
 .replay-inspector .replay-row-body { padding: 16px 0 0; }
-@media (min-width: 960px) {
-  #view-replay .replay-card-games .replay-results {
-    grid-template-columns: minmax(280px, 35%) minmax(0, 1fr);
-    gap: 24px;
-    align-items: start;
-  }
-  #view-replay .replay-card-games .replay-row { border-color: transparent; border-bottom-color: var(--line-soft); border-radius: 0; box-shadow: none; }
-  #view-replay .replay-card-games .replay-row.is-open { background: var(--panel-soft); }
-  #view-replay .replay-card-games .replay-preview { display: none; }
-  #view-replay .replay-card-games .replay-row-head { flex-wrap: wrap; }
-}
 @media (max-width: 959px) { .replay-inspector { margin-top: 10px; } }
 @media (max-width: 959px) { .team-empty { display: none; } }
 #view-replay .replay-card-scout { max-width: 1400px; }

@@ -12,7 +12,9 @@
 // CSS. Workspace routing, CSRF keepalive, skip-link, status semantics, and
 // coarse/mobile accessibility guards intentionally add ~3.0 KiB JS and 0.5 KiB
 // CSS. These ceilings cover that reviewed delta while retaining a narrow gate;
-// gzip remains independently capped at 95,000 B.
+// gzip remains independently capped at 95,000 B. The desktop-workspace follow-up
+// (Build-tab Maia idle pre-warm + one-rAF Generate feedback yield) adds ~0.2 KiB
+// raw to the main chunk; gzip is unchanged.
 import { readdirSync, statSync, readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { fileURLToPath, URL } from "node:url";
@@ -27,7 +29,7 @@ const LIMITS = [
   {
     prefix: "index-",
     suffix: ".js",
-    maxBytes: 295_000,
+    maxBytes: 296_000,
     maxGzipBytes: 95_000,
     label: "main app chunk",
   },

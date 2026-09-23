@@ -516,6 +516,61 @@ describe("terminal / illegal pass-through", () => {
   });
 });
 
+describe("warmup (explicit-intent pre-warm)", () => {
+  it("starts init in the background and shares it with the next real call", async () => {
+    const { provider, workers } = makeProvider(ackInitElsePend);
+    const ready = provider.warmup();
+    expect(ready && typeof ready.then === "function").toBe(true);
+    await tick();
+    expect(workers.length).toBe(1);
+    const pending = provider.predictions({ fen: "f" });
+    await tick();
+    const w = workers[0];
+    expect(w.idsOf("init").length).toBe(1); // same init, not a second one
+    w.reply(w.idsOf("predictions")[0], []);
+    expect(await pending).toEqual([]);
+    await ready;
+  });
+
+  it("returns the shared init promise so concurrent callers coalesce", async () => {
+    const { provider, workers } = makeProvider(ackInitElsePend);
+    const a = provider.warmup();
+    const b = provider.warmup();
+    expect(b).toBe(a); // one worker, one session, one download — never two
+    await tick();
+    expect(workers.length).toBe(1);
+    expect(workers[0].idsOf("init").length).toBe(1);
+    const pending = provider.predictions({ fen: "f" });
+    await tick();
+    workers[0].reply(workers[0].idsOf("predictions")[0], []);
+    expect(await pending).toEqual([]);
+    await a;
+  });
+
+  it("never throws synchronously (sync init failure → rejected promise)", async () => {
+    // Sync-throwing worker factory: warmup must return a rejected promise, not throw.
+    const syncBoom = trackedFactory(ackInitElsePend);
+    syncBoom.createWorker = () => { throw new Error("no workers here"); };
+    const syncProvider = createMaia3Provider({
+      createWorker: syncBoom.createWorker,
+      manifest: validManifest(),
+      assetBase: "http://weights.test/",
+    });
+    let result;
+    expect(() => { result = syncProvider.warmup(); }).not.toThrow();
+    await expect(result).rejects.toThrow(/no workers here/);
+  });
+
+  it("delivers init failure on the shared promise (real caller retries)", async () => {
+    const { provider } = makeProvider((msg, worker) => {
+      if (msg.type === "init") worker.replyError(msg.id, "no weights here");
+    });
+    await expect(provider.warmup()).rejects.toThrow(/no weights here/);
+    await tick();
+    expect(provider.lastError).toMatchObject({ phase: "init" });
+  });
+});
+
 describe("read cache", () => {
   // Behavior: ack init, and answer each read with a payload that records the worker id, so a
   // re-served (cached) result is distinguishable from a fresh worker round trip.
