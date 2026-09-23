@@ -590,7 +590,9 @@ def test_postgres_concurrent_attempt_receipt():
         sa_tables.metadata.create_all(engine)
         repo = PrepForgeRepository(engine)
         repertoire, _ = _build(repo)
-        service = SmartTrainingService(repo)
+        owner = "postgres-concurrent-owner"
+        _claim(repo, owner, repertoire)
+        service = SmartTrainingService(repo, owner)
         session = service.start_or_resume(repertoire.id, seed=5)
         bundle = service.session_card_bundle(session, repertoire)
         node_id = bundle[0]["targets"][0]["node_id"]
@@ -599,19 +601,19 @@ def test_postgres_concurrent_attempt_receipt():
 
         def submit(payload):
             barrier.wait(timeout=10)
-            return SmartTrainingService(PrepForgeRepository(engine)).sync_progress(
-                session.id, [payload]
+            return SmartTrainingService(PrepForgeRepository(engine), owner).sync_progress(
+                session.id, [payload], owner_user_id=owner
             )
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             first = pool.submit(submit, attempt)
             second = pool.submit(submit, attempt)
             assert sorted([first.result(timeout=30), second.result(timeout=30)]) == [0, 1]
-        progress = repo.load_training_progress(repertoire.id, node_id)
+        progress = repo.load_training_progress(repertoire.id, node_id, owner_user_id=owner)
         assert progress is not None and progress.attempts == 1
         with pytest.raises(ValueError, match="different payload"):
-            service.sync_progress(session.id, [{**attempt, "correct": False}])
-        assert repo.load_training_progress(repertoire.id, node_id).attempts == 1
+            service.sync_progress(session.id, [{**attempt, "correct": False}], owner_user_id=owner)
+        assert repo.load_training_progress(repertoire.id, node_id, owner_user_id=owner).attempts == 1
     finally:
         engine.dispose()
         with admin.connect() as conn:
