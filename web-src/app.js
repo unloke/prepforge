@@ -2751,6 +2751,21 @@ class BoardController {
 }
 
 let statusDismissTimer;
+
+// Engine-loading lifecycle marks (dev/E2E timing only): records monotonic
+// timestamps per (job) so the parallel init windows — Build runner import vs
+// Maia ready, Analyze Stockfish vs Maia init — are observable without touching
+// any engine result. No-op payload, never awaited by the pipeline.
+const engineLifecycleMarks = new Map();
+function engineLifecycleMark(name, origin = performance.now()) {
+  const at = Math.round(performance.now() - origin);
+  if (!engineLifecycleMarks.has(name)) engineLifecycleMarks.set(name, []);
+  engineLifecycleMarks.get(name).push(at);
+  try {
+    console.debug("[engine-lifecycle]", name, `${at}ms`);
+  } catch (_) { /* logging only */ }
+  return origin;
+}
 function setStatus(message, { severity = "info" } = {}) {
   const status = document.getElementById("app-status");
   if (!status) return;
@@ -3178,18 +3193,10 @@ function switchView(name, { fromUrl = false } = {}) {
   if (name === "build") {
     preloadCoach().catch(() => {});
     preloadBuildView().catch(() => {});
+    // No Maia warmup here by design: the ~46 MB weights only start downloading
+    // after an explicit Generate click (see generateFromCurrentNode), so merely
+    // browsing Build never triggers engine/model loading.
     preloadBuildGen().catch(() => {});
-    // Warm the shared Maia worker/session while the user reads the sidebar, so
-    // the first Generate skips worker spawn + session create (weights still
-    // download once, with progress in the job toast). Idle-callback keeps this
-    // off the tab-switch path.
-    const warmMaia = () => {
-      try {
-        getSharedMaia3Provider().warmup();
-      } catch (_) { /* best-effort */ }
-    };
-    if (typeof requestIdleCallback === "function") requestIdleCallback(warmMaia, { timeout: 4000 });
-    else setTimeout(warmMaia, 1200);
   }
   if (name === "train") {
     preloadTrainView().catch(() => {});
@@ -5244,6 +5251,8 @@ async function runAnalysis() {
   hideAnalysisResults();
   const runButton = document.getElementById("run-analysis");
   runButton.disabled = true;
+  // Lifecycle origin for the timing marks below (click → stockfish/maia starts).
+  const tAnalyze = engineLifecycleMark("analyze-click");
 
   let cancelled = false;
   const jobId = `browser-analysis-${Date.now()}`;
@@ -5283,6 +5292,22 @@ async function runAnalysis() {
     const { analyzeGamePositions } = await timed("load", () =>
       import("./engine/game-analyzer.js")
     );
+    // Start the shared Maia init (worker spawn + weight fetch + ORT session) NOW,
+    // in parallel with the Stockfish pass below — but only when this run can
+    // actually use Maia signals. The Stockfish, classification and inference
+    // algorithms are untouched; the Maia phase still awaits the same shared
+    // ready promise, so inference simply finds a warm provider more often.
+    const wantsMaia =
+      maiaAnalysisEnabled() &&
+      prep.brilliant &&
+      prep.brilliant.enabled &&
+      Array.isArray(prep.moves) &&
+      prep.moves.length > 0;
+    // Null-safe: warmup() only rejects on init failure, which the Maia phase
+    // below retries through predictions(), exactly as before.
+    const maiaReady = wantsMaia ? getSharedMaia3Provider().warmup() : null;
+    if (wantsMaia) engineLifecycleMark("analyze-maia-init-start", tAnalyze);
+    engineLifecycleMark("analyze-stockfish-start", tAnalyze);
     const evals = await timed("stockfish", () =>
       analyzeGamePositions({
         positions,
@@ -5299,6 +5324,13 @@ async function runAnalysis() {
         shouldCancel: () => cancelled,
       })
     );
+    engineLifecycleMark("analyze-stockfish-done", tAnalyze);
+    if (wantsMaia && maiaReady && typeof maiaReady.then === "function") {
+      try {
+        await maiaReady;
+        engineLifecycleMark("analyze-maia-ready", tAnalyze);
+      } catch (_) { /* init failure surfaces in the Maia phase, as before */ }
+    }
 
     // Browser Maia pass (human probability / brilliant signals). Best-effort
     // so the server can persist them with no server compute. Skipped entirely
@@ -5306,15 +5338,12 @@ async function runAnalysis() {
     // Maia's ~46 MB model downloads once (then cached) when the pass runs;
     // progress shows in the toast. Any failure (no weights / inference error)
     // is swallowed → analysis without Maia signals, mirroring the server's
-    // no-Maia path.
+    // no-Maia path. Init already started in parallel with Stockfish above, so
+    // this phase usually finds a warm provider; it still awaits the same
+    // shared ready promise via predictions(), never a second worker/session.
     let maiaAssessments = [];
-    if (
-      maiaAnalysisEnabled() &&
-      prep.brilliant &&
-      prep.brilliant.enabled &&
-      Array.isArray(prep.moves) &&
-      prep.moves.length
-    ) {
+    if (wantsMaia) {
+      engineLifecycleMark("analyze-maia-phase-start", tAnalyze);
       try {
         const provider = getSharedMaia3Provider();
         provider.setInitProgressHandler(({ phase, loaded, total }) => {
@@ -7429,9 +7458,28 @@ async function generateFromCurrentNode() {
     }, 1800);
 
     // Yield so the toast/status above paints before the module import below
-    // blocks the main thread on fetch + evaluate.
+    // blocks the main thread on fetch + evaluate. The runner import and the
+    // shared Maia warmup (worker spawn + ~46 MB weight fetch + ORT session)
+    // start in the same tick and proceed in parallel; the pipeline awaits the
+    // same shared ready promise only when it reaches the first Maia inference,
+    // so one Generate never spawns a second worker/session or re-downloads.
     await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    const tGenerate = engineLifecycleMark("build-generate-click");
+    engineLifecycleMark("build-feedback-paint", tGenerate);
+    const maiaReady = getSharedMaia3Provider().warmup();
+    engineLifecycleMark("build-maia-init-start", tGenerate);
     const { runBrowserBuildGenerate } = await (_buildGenReady || preloadBuildGen());
+    engineLifecycleMark("build-runner-import-done", tGenerate);
+    if (maiaReady && typeof maiaReady.then === "function") {
+      // Do NOT block the Stockfish-led opening moves on this: just note when
+      // the shared init lands, so timing shows the parallel window. The first
+      // Maia inference inside the runner awaits the same promise.
+      maiaReady.then(
+        () => engineLifecycleMark("build-maia-ready", tGenerate),
+        () => engineLifecycleMark("build-maia-ready-error", tGenerate),
+      );
+    }
+    engineLifecycleMark("build-inference-start", tGenerate);
     const plan = await runBrowserBuildGenerate({
       build: appState.build,
       rootNodeId: nodeId,
