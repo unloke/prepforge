@@ -45,7 +45,7 @@ try {
     throw new Error('Long status failed single-line ellipsis geometry');
   }
   if (long.status.x < long.lastNav.x + long.lastNav.width + 8) {
-    throw new Error(`${viewportWidth}px status overlaps navigation`);
+    throw new Error(`${viewportWidth}px status overlaps navigation: ${JSON.stringify(long)}`);
   }
   console.log(JSON.stringify({ viewportWidth, before, long, cleared }));
   await page.close();
