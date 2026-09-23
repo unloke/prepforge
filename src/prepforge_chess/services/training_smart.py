@@ -696,7 +696,7 @@ class SmartTrainingService:
             stored = self.repository.load_training_progress(
                 rep_id, node_id, owner_user_id=session_owner
             ) or TrainingProgress(node_id=node_id)
-            session, progress = record_attempt(
+            next_session, progress = record_attempt(
                 session=session,
                 progress=stored,
                 node_id=node_id,
@@ -739,15 +739,26 @@ class SmartTrainingService:
                             )
                         )
                     continue
-                conn.execute(
-                    _t.train_attempt_receipts.insert().values(
-                        session_id=session_id,
-                        attempt_uuid=attempt_uuid,
-                        node_id=node_id,
-                        correct=_b2i(correct),
-                        created_at=_nowt(),
-                    )
-                )
+                if not self.repository.record_attempt_receipt(
+                    conn, session_id=session_id, attempt_uuid=attempt_uuid,
+                    node_id=node_id, correct=correct,
+                ):
+                    stored_row = conn.execute(
+                        _select(
+                            _t.train_attempt_receipts.c.node_id,
+                            _t.train_attempt_receipts.c.correct,
+                        ).where(
+                            _t.train_attempt_receipts.c.session_id == session_id,
+                            _t.train_attempt_receipts.c.attempt_uuid == attempt_uuid,
+                        )
+                    ).one()
+                    if stored_row[0] != node_id or bool(stored_row[1]) != correct:
+                        raise ValueError(
+                            "attempt_uuid {0} already recorded with different payload".format(
+                                attempt_uuid
+                            )
+                        )
+                    continue
                 _upsert_rows(
                     conn,
                     _t.training_progress,
@@ -775,17 +786,17 @@ class SmartTrainingService:
                     conn,
                     _t.training_sessions,
                     {
-                        "id": session.id,
-                        "repertoire_id": session.repertoire_id,
-                        "mode": session.mode.value,
-                        "line_order_json": _jdump(session.line_order),
-                        "current_index": session.current_index,
-                        "current_node_id": session.current_node_id,
-                        "mistakes_json": _jdump(session.mistakes),
-                        "mastered_nodes_json": _jdump(session.mastered_nodes),
-                        "seed": session.seed,
-                        "created_at": _dt2t(session.created_at),
-                        "updated_at": _dt2t(session.updated_at),
+                        "id": next_session.id,
+                        "repertoire_id": next_session.repertoire_id,
+                        "mode": next_session.mode.value,
+                        "line_order_json": _jdump(next_session.line_order),
+                        "current_index": next_session.current_index,
+                        "current_node_id": next_session.current_node_id,
+                        "mistakes_json": _jdump(next_session.mistakes),
+                        "mastered_nodes_json": _jdump(next_session.mastered_nodes),
+                        "seed": next_session.seed,
+                        "created_at": _dt2t(next_session.created_at),
+                        "updated_at": _dt2t(next_session.updated_at),
                     },
                     conflict=[_t.training_sessions.c.id],
                     update_cols=(
@@ -794,8 +805,11 @@ class SmartTrainingService:
                         "updated_at",
                     ),
                 )
+            session = next_session
             written += 1
 
+        if not written and (queue is not None or card_index is not None):
+            session = self._load_session_or_raise(session_id)
         if queue is not None:
             if len(queue) > MAX_SYNC_QUEUE:
                 raise ValueError(
@@ -808,8 +822,9 @@ class SmartTrainingService:
         if card_index is not None:
             clamped = max(0, min(int(card_index), len(session.line_order)))
             session = replace(session, current_index=clamped, current_node_id=None)
-        session = replace(session, updated_at=_utc_now())
-        self.repository.save_training_session(session)
+        if written or queue is not None or card_index is not None:
+            session = replace(session, updated_at=_utc_now())
+            self.repository.save_training_session(session)
         return written
 
     # ------------------------------------------------------------------- move

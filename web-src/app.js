@@ -2750,10 +2750,14 @@ class BoardController {
   }
 }
 
+let statusDismissTimer;
 function setStatus(message, { severity = "info" } = {}) {
   const status = document.getElementById("app-status");
   if (!status) return;
   const text = String(message || "");
+  clearTimeout(statusDismissTimer);
+  status.hidden = !text || text === "Ready";
+  if (status.hidden) return;
   const normalizedSeverity = ["info", "success", "warning", "error"].includes(severity)
     ? severity
     : "info";
@@ -2763,6 +2767,7 @@ function setStatus(message, { severity = "info" } = {}) {
   status.setAttribute("aria-live", isError ? "assertive" : "polite");
   status.dataset.severity = normalizedSeverity;
   status.dataset.state = isError ? "error" : "ready";
+  if (!isError) statusDismissTimer = setTimeout(() => { status.hidden = true; }, 4500);
 }
 
 function setStatusError(message) {
@@ -4238,12 +4243,12 @@ async function openTeamDetail(teamId) {
   const members = detail.members || [];
   membersEl.innerHTML = members
     .map((m) => {
-      const name = escapeHtml(m.display_name || m.email);
-      const sub = m.display_name ? ` <span class="sub">· ${escapeHtml(m.email)}</span>` : "";
+      const name = escapeHtml(m.display_name || m.lichess_username || "Member");
+      const sub = m.lichess_username ? ` <span class="sub">· ${escapeHtml(m.lichess_username)}</span>` : "";
       const isMe = m.user_id === appState.accountUserId;
       const isOwner = m.role === "owner";
       const uid = escapeHtml(m.user_id);
-      const uname = escapeHtml(m.display_name || m.email);
+      const uname = escapeHtml(m.display_name || m.lichess_username || "Member");
       // Owner row is fixed. Managers get an inline role control on every other row
       // (incl. their own, so an admin can step down) plus remove; a plain member only
       // sees a read-only badge and a Leave button on their own row. The server
@@ -4661,6 +4666,7 @@ async function loadSharedRepertoires() {
         open();
       });
       row.addEventListener("keydown", (event) => {
+        if (event.target !== row) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           open();
@@ -6065,6 +6071,8 @@ async function ensureBuildView() {
 function renderBuildRepHeader() {
   const nameEl = document.getElementById("build-rep-name");
   if (!nameEl) return;
+  const empty = document.getElementById("build-empty");
+  if (empty) empty.hidden = !!appState.build;
   if (!appState.build) {
     nameEl.textContent = "No repertoire open";
     return;
@@ -7976,6 +7984,9 @@ function trainSessionLive() {
 function syncTrainSessionControls() {
   const live = trainSessionLive();
   const play = (appState.trainMode || "smart") === "play";
+  const sidebar = document.querySelector("#view-train .train-sidebar");
+  const summaryVisible = !document.getElementById("train-summary")?.hidden;
+  if (sidebar) sidebar.dataset.sessionState = !play && summaryVisible ? "summary" : !play && live ? "active" : "setup";
   const hint = document.getElementById("train-hint");
   const skip = document.getElementById("train-skip");
   const fresh = document.getElementById("train-fresh");
@@ -9759,6 +9770,7 @@ async function finishSmartSession() {
     // The summary is a bonus — never block the finish on it.
   }
   await renderSmartSummary(smart, stats, after);
+  syncTrainSessionControls();
 }
 
 // ----- Local-first Train sync (plan §2) ---------------------------------------
@@ -11181,11 +11193,15 @@ function bindEvents() {
   document.getElementById("build-end").addEventListener("click", buildGoToEnd);
   document.getElementById("build-generate-node").addEventListener("click", generateFromCurrentNode);
   document.getElementById("build-menu").addEventListener("click", openBuildMenu);
+  document.getElementById("build-empty-create").addEventListener("click", () => createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" }));
+  document.getElementById("build-empty-import").addEventListener("click", () => document.getElementById("dashboard-import-input").click());
+  document.getElementById("build-empty-open").addEventListener("click", () => switchView("dashboard"));
   document
     .getElementById("import-train-json")
     .addEventListener("click", () => importRepertoireFromInput("train-import-input"));
 
   document.getElementById("start-train").addEventListener("click", () => startTraining());
+  document.getElementById("train-summary-new").addEventListener("click", () => startTraining(undefined, { fresh: true }));
   const startPlay = document.getElementById("start-play");
   if (startPlay) startPlay.addEventListener("click", () => startPlaySession());
   const luckyBtn = document.getElementById("feeling-lucky");

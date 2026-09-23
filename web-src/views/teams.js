@@ -94,7 +94,7 @@ export function createTeamsView({
         const id = escapeHtml(item.id);
         const name = escapeHtml(item.name);
         const color = escapeHtml(item.color);
-        const owner = escapeHtml(item.owner_display_name || item.owner_email || "member");
+        const owner = escapeHtml(item.owner_display_name || "member");
         const isMine = item.owner_user_id === appState.accountUserId;
         // Your own shared rep: Unshare. Someone else's: Copy to your account (fork).
         const action = isMine
@@ -118,6 +118,7 @@ export function createTeamsView({
         open();
       });
       row.addEventListener("keydown", (event) => {
+        if (event.target !== row) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           open();

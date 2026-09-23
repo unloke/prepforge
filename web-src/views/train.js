@@ -42,7 +42,7 @@ export function createTrainView({
     const total = s.correct + s.mistakes;
     document.getElementById("train-accuracy").textContent = total
       ? `${Math.round((s.correct / total) * 100)}%`
-      : "100%";
+      : "—";
     const trail = document.getElementById("train-line-trail");
     if (!s.history.length) {
       trail.innerHTML = '<span class="trail-empty">No moves yet</span>';
@@ -127,10 +127,10 @@ export function createTrainView({
     const queue = document.getElementById("train-queue");
     if (queue) queue.hidden = true;
     const firstTries = (stats.correct || 0) + (stats.mistakes || 0);
-    const acc = firstTries ? Math.round(((stats.correct || 0) / firstTries) * 100) : 100;
+    const acc = firstTries ? `${Math.round(((stats.correct || 0) / firstTries) * 100)}%` : "—";
     const statCells = [
       [smart.cardsDone, "cards"],
-      [`${acc}%`, "first try"],
+      [acc, "first try"],
       [stats.best || 0, "best in a row"],
     ];
     const day = dayStreak;
