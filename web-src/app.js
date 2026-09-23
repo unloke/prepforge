@@ -1935,8 +1935,6 @@ function paintMaiaCoachLine(model) {
     el.hidden = true;
     return;
   }
-  // The footer is a fixed, non-scrolling row: keep guidance to a concise
-  // two-line note so it always fits beside the explanation scroll region.
   el.hidden = false;
   el.textContent = model.tip;
   paintPhaseChip(model.phase, model.title);
@@ -2759,10 +2757,26 @@ function setStatus(message, { severity = "info" } = {}) {
     : "info";
   const isError = normalizedSeverity === "error";
   status.textContent = text;
+  status.title = text;
   status.setAttribute("role", isError ? "alert" : "status");
   status.setAttribute("aria-live", isError ? "assertive" : "polite");
   status.dataset.severity = normalizedSeverity;
   status.dataset.state = isError ? "error" : "ready";
+  if (typeof window !== "undefined") {
+    window.clearTimeout(setStatus._timer);
+    const closeBtn = document.getElementById("app-status-close");
+    const showClose = isError && text.length > 0;
+    if (closeBtn) closeBtn.hidden = !showClose;
+    if (!isError && text) {
+      setStatus._timer = window.setTimeout(() => {
+        if (status.textContent !== text) return;
+        status.textContent = "";
+        status.title = "";
+        status.dataset.severity = "info";
+        status.dataset.state = "ready";
+      }, normalizedSeverity === "warning" ? 8000 : 6000);
+    }
+  }
 }
 
 function setStatusError(message) {
@@ -4238,12 +4252,12 @@ async function openTeamDetail(teamId) {
   const members = detail.members || [];
   membersEl.innerHTML = members
     .map((m) => {
-      const name = escapeHtml(m.display_name || m.email);
-      const sub = m.display_name ? ` <span class="sub">· ${escapeHtml(m.email)}</span>` : "";
+      const name = escapeHtml(m.display_name || m.lichess_username || "Member");
+      const sub = m.lichess_username ? ` <span class="sub">· ${escapeHtml(m.lichess_username)}</span>` : "";
       const isMe = m.user_id === appState.accountUserId;
       const isOwner = m.role === "owner";
       const uid = escapeHtml(m.user_id);
-      const uname = escapeHtml(m.display_name || m.email);
+      const uname = escapeHtml(m.display_name || m.lichess_username || "Member");
       // Owner row is fixed. Managers get an inline role control on every other row
       // (incl. their own, so an admin can step down) plus remove; a plain member only
       // sees a read-only badge and a Leave button on their own row. The server
@@ -4661,6 +4675,7 @@ async function loadSharedRepertoires() {
         open();
       });
       row.addEventListener("keydown", (event) => {
+        if (event.target !== row) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           open();
@@ -11266,6 +11281,20 @@ function bindEvents() {
       const next = !blitzToggle.classList.contains("is-on");
       setBlitzEnabled(next);
       paintBlitz(next);
+    });
+  }
+  const statusClose = document.getElementById("app-status-close");
+  if (statusClose) {
+    statusClose.addEventListener("click", () => {
+      const status = document.getElementById("app-status");
+      if (status) {
+        window.clearTimeout(setStatus._timer);
+        status.textContent = "";
+        status.title = "";
+        status.dataset.severity = "info";
+        status.dataset.state = "ready";
+      }
+      statusClose.hidden = true;
     });
   }
   document.querySelectorAll("#train-modes .train-mode").forEach((btn) => {

@@ -82,11 +82,11 @@ describe("visual system tokens", () => {
     }
   });
 
-  it("locks the Train banner height so Maia copy cannot shove the board", () => {
-    const banner = ruleBody(".train-banner");
-    expect(banner).toMatch(/max-height:\s*72px/);
-    expect(banner).toMatch(/overflow:\s*hidden/);
-    const sub = ruleBody(".train-banner-sub");
+  it("locks the Train coach height so Maia copy cannot shove the board", () => {
+    expect(css).toContain(".train-coach");
+    expect(css).toMatch(/\.train-coach[\s\S]{0,400}?min-height:\s*64px/);
+    expect(css).toMatch(/\.train-coach[\s\S]{0,400}?overflow:\s*hidden/);
+    const sub = ruleBody(".train-coach-sub");
     expect(sub).toMatch(/-webkit-line-clamp:\s*2/);
     const blitzHidden = ruleBody(".train-blitz-bar[hidden]");
     expect(blitzHidden).toMatch(/visibility:\s*hidden/);
