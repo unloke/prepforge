@@ -7326,6 +7326,9 @@ function estimateBuildGenerateTotal({ plyDepth, ownSideCandidateCount, detailMod
 }
 
 async function generateFromCurrentNode() {
+  // True click origin for [engine-lifecycle] timing: recorded before any
+  // toast/status/rAF so click → feedback-paint measures the real delay.
+  const tGenerate = engineLifecycleMark("build-generate-click");
   // Phase 3c: generation runs in the BROWSER. Stockfish (our turn) + Maia3
   // (opponent) drive the recursion locally into a tree-mutation plan; the server
   // only re-validates + persists via /api/build/generate/apply-plan. No server
@@ -7464,7 +7467,6 @@ async function generateFromCurrentNode() {
     // same shared ready promise only when it reaches the first Maia inference,
     // so one Generate never spawns a second worker/session or re-downloads.
     await new Promise((resolve) => requestAnimationFrame(() => resolve()));
-    const tGenerate = engineLifecycleMark("build-generate-click");
     engineLifecycleMark("build-feedback-paint", tGenerate);
     const maiaReady = getSharedMaia3Provider().warmup();
     engineLifecycleMark("build-maia-init-start", tGenerate);
