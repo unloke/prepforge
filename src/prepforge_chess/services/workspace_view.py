@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterator, Optional
 
-from prepforge_chess.core.models import EngineEvaluation, OpeningNode
+from prepforge_chess.core.models import EngineEvaluation, OpeningNode, Repertoire
 from prepforge_chess.services.opening_builder import OpeningBuilderService, OpeningTreeItem
 from prepforge_chess.services.progress import compute_health, mastery_map
 from prepforge_chess.storage.repositories import PrepForgeRepository
@@ -78,14 +78,17 @@ def build_workspace_payload(
     selected_node_id: Optional[str] = None,
     summary: Optional[Dict[str, int]] = None,
     owner_user_id: str | None = None,
+    repertoire: Optional[Repertoire] = None,
 ) -> Dict[str, Any]:
     """The Build-view payload for one repertoire. Raises ``ValueError`` if the
     repertoire (or a given ``selected_node_id``) does not exist."""
-    repertoire = repository.load_repertoire(repertoire_id)
+    repertoire = repertoire or repository.load_repertoire(repertoire_id)
     if repertoire is None:
         raise ValueError("repertoire not found: {0}".format(repertoire_id))
     # Maia-free: tree_report is a pure traversal of the stored tree (no engine/model).
-    report = OpeningBuilderService(repository).tree_report(repertoire.id, include_disabled=True)
+    report = OpeningBuilderService(repository).tree_report(
+        repertoire.id, include_disabled=True, repertoire=repertoire
+    )
     nodes_by_id = {node.id: node for node in _walk(repertoire.root_node)}
     if selected_node_id:
         selected = nodes_by_id.get(selected_node_id)
@@ -107,7 +110,10 @@ def build_workspace_payload(
     health = compute_health(repertoire.root_node, repertoire.color, progress_by_id)
     # Refresh the dashboard's cached badge off this already-computed walk. Every Build
     # mutation funnels back through here, so the cache stays current with no extra cost.
-    repository.set_repertoire_health(repertoire.id, health.to_dict())
+    health_data = health.to_dict()
+    if getattr(repertoire, "_cached_health", None) != health_data:
+        repository.set_repertoire_health(repertoire.id, health_data)
+        repertoire._cached_health = health_data
     return {
         "repertoire_id": repertoire.id,
         "name": repertoire.name,
@@ -116,7 +122,7 @@ def build_workspace_payload(
         "selected_fen": selected.fen,
         "summary": summary or dict(_EMPTY_SUMMARY),
         "nodes_total": report.total_nodes,
-        "health": health.to_dict(),
+        "health": health_data,
         "nodes": [
             opening_item_to_json(item, nodes_by_id[item.node_id], mastery.get(item.node_id))
             for item in report.visible_nodes

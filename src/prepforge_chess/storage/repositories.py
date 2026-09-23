@@ -701,6 +701,56 @@ class PrepForgeRepository:
             for node in self._walk_nodes(repertoire.root_node):
                 self._save_opening_node(conn, node, pos_cache)
 
+    def update_opening_nodes(self, repertoire_id: str, changes: List[Dict[str, Any]]) -> None:
+        """Update only the supplied fields on existing nodes in one transaction."""
+        if not changes:
+            return
+        with self.engine.begin() as conn:
+            groups: Dict[str, Dict[str, Any]] = {}
+            for change in changes:
+                values = {key: value for key, value in change.items() if key != "id"}
+                key = _json_dump(values)
+                group = groups.setdefault(key, {"values": values, "ids": []})
+                group["ids"].append(change["id"])
+            for group in groups.values():
+                values = group["values"]
+                values["updated_at"] = _now_text()
+                conn.execute(
+                    update(t.opening_nodes)
+                    .where(t.opening_nodes.c.id.in_(group["ids"]))
+                    .where(t.opening_nodes.c.repertoire_id == repertoire_id)
+                    .values(**values)
+                )
+
+    def save_changed_nodes(self, repertoire_id: str, nodes: List[OpeningNode]) -> None:
+        """Persist changed or new nodes without walking the rest of the tree."""
+        if not nodes:
+            return
+        with self.engine.begin() as conn:
+            pos_cache: Dict[str, int] = {}
+            rows = []
+            for node in nodes:
+                if node.repertoire_id != repertoire_id:
+                    raise ValueError("node belongs to another repertoire")
+                rows.append(self._opening_node_values(conn, node, pos_cache))
+            stmt = _insert(conn, t.opening_nodes)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=[t.opening_nodes.c.id],
+                set_={name: stmt.excluded[name] for name in rows[0]
+                      if name not in {"id", "created_at"}},
+            )
+            conn.execute(stmt, rows)
+
+    def update_repertoire_fields(self, repertoire_id: str, **fields: Any) -> None:
+        if not fields:
+            return
+        with self.engine.begin() as conn:
+            conn.execute(
+                update(t.repertoires)
+                .where(t.repertoires.c.id == repertoire_id)
+                .values(**fields, updated_at=_now_text())
+            )
+
     def load_repertoire(
         self, repertoire_id: str, owner_user_id: Optional[str] = None
     ) -> Optional[Repertoire]:
@@ -753,7 +803,7 @@ class PrepForgeRepository:
         if rep_row["root_node_id"] and rep_row["root_node_id"] in nodes:
             root_node = nodes[rep_row["root_node_id"]]
 
-        return Repertoire(
+        repertoire = Repertoire(
             id=rep_row["id"],
             name=rep_row["name"],
             color=Color(rep_row["color"]),
@@ -770,6 +820,8 @@ class PrepForgeRepository:
             tags=_json_load(rep_row["tags_json"], []),
             is_active=_int_to_bool(rep_row["is_active"]),
         )
+        repertoire._cached_health = _json_load(rep_row["health_json"], None)
+        return repertoire
 
     def list_repertoires(self, owner_user_id: Optional[str] = None) -> List[Repertoire]:
         stmt = select(t.repertoires.c.id).order_by(t.repertoires.c.updated_at.desc())
@@ -834,6 +886,9 @@ class PrepForgeRepository:
             conn.execute(
                 update(t.repertoires)
                 .where(t.repertoires.c.id == repertoire_id)
+                .where(t.repertoires.c.health_json.is_distinct_from(
+                    _json_dump(health) if health is not None else None
+                ))
                 .values(health_json=_json_dump(health) if health is not None else None)
             )
 
@@ -1321,6 +1376,17 @@ class PrepForgeRepository:
         node: OpeningNode,
         pos_cache: Optional[Dict[str, int]] = None,
     ) -> None:
+        values = self._opening_node_values(conn, node, pos_cache)
+        _upsert(
+            conn, t.opening_nodes, values,
+            conflict=[t.opening_nodes.c.id],
+            update_cols=tuple(name for name in values if name not in {"id", "created_at"}),
+        )
+
+    def _opening_node_values(
+        self, conn: Connection, node: OpeningNode,
+        pos_cache: Optional[Dict[str, int]] = None,
+    ) -> Dict[str, Any]:
         now = _now_text()
         if pos_cache is None:
             pos_cache = {}
@@ -1329,10 +1395,7 @@ class PrepForgeRepository:
         engine_evaluation_id = self._save_engine_evaluation(
             conn, node.engine_evaluation, eval_fen, pos_cache
         )
-        _upsert(
-            conn,
-            t.opening_nodes,
-            {
+        return {
                 "id": node.id,
                 "repertoire_id": node.repertoire_id,
                 "parent_id": node.parent_id,
@@ -1353,16 +1416,7 @@ class PrepForgeRepository:
                 "source": node.source.value,
                 "created_at": now,
                 "updated_at": now,
-            },
-            conflict=[t.opening_nodes.c.id],
-            update_cols=(
-                "repertoire_id", "parent_id", "uci",
-                "engine_evaluation_id", "maia_probability", "is_mainline",
-                "is_user_prepared_move", "is_enabled", "priority", "comment",
-                "tags_json", "arrows_json", "circles_json", "tactical_warning",
-                "strategic_idea", "typical_plan", "source", "updated_at",
-            ),
-        )
+            }
 
     def _ensure_position(self, conn: Connection, fen: str, pos_cache: Dict[str, int]) -> int:
         key = codec.position_key(fen)

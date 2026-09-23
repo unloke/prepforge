@@ -230,17 +230,28 @@ h2 {
   align-items: center;
 }
 
-/* Inline topbar status: a fixed-width slot left of Ctrl K so appearing,
-   changing, or clearing a message never shifts nav, palette, or account. */
+.topbar-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+
+/* Status overlays the free space before Ctrl K and has no layout width. */
 .topbar-status-slot {
-  display: inline-flex;
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
   align-items: center;
   gap: 6px;
-  flex: none;
-  width: 248px;
-  max-width: 30vw;
+  width: max-content;
+  max-width: min(420px, 30vw);
   min-width: 0;
   overflow: hidden;
+  white-space: nowrap;
 }
 
 .status-close {
@@ -325,8 +336,8 @@ h2 {
   font-weight: 650;
 }
 
-.topbar > .palette-open,
-.topbar > .lichess-chip {
+.topbar-actions > .palette-open,
+.topbar-actions > .lichess-chip {
   height: var(--control-h);
   min-height: var(--control-h);
 }
@@ -5364,13 +5375,20 @@ h2 {
     text-align: left;
   }
 
-  /* Mobile keeps the toast-like behavior: the status slot joins the wrapped
-     row and flexes instead of holding desktop's fixed 248px. */
   .topbar-status-slot {
-    order: 2;
-    flex: 1 1 100%;
+    position: fixed;
+    top: auto;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    transform: none;
     width: auto;
     max-width: none;
+    padding: 8px 10px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    z-index: 50;
   }
 
   .status-close {
@@ -7696,9 +7714,18 @@ h2 {
   background: var(--panel);
 }
 .status[hidden] { display: none; }
-/* Inline topbar status text stays inside the fixed slot: ellipsis, never wrap,
-   zero layout shift. info/success/warning auto-clear; error stays until the
-   close button (or the next status) clears it. */
+.topbar-status-slot .status:not([hidden]) {
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
 .status-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .build-empty { padding: 24px 4px; background: var(--panel-soft); border-radius: var(--radius-card); }
 .build-empty h2, .build-empty p, .build-empty .tools { margin-left: 20px; margin-right: 20px; }

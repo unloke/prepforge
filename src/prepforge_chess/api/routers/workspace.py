@@ -10,7 +10,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from prepforge_chess.api.config import Settings, get_settings
@@ -133,60 +133,27 @@ def dashboard(
         ).scalar_one()
         tp = t.training_progress
         joined = tp.join(reps, reps.c.id == tp.c.repertoire_id)
-        open_mistakes = conn.execute(
-            select(func.count())
-            .select_from(joined)
-            .where(tp.c.attempts > tp.c.correct_attempts, reps.c.owner_user_id == owner)
-        ).scalar_one()
-        due_reviews = conn.execute(
-            select(func.count())
-            .select_from(joined)
-            .where(
-                tp.c.due_at.is_not(None),
-                tp.c.due_at <= now_iso,
-                reps.c.owner_user_id == owner,
-            )
-        ).scalar_one()
-        # Reviews landing within the next 24h — the "coming up today" half of
-        # the dashboard's today card. Text comparison is safe: due_at is always
-        # written as an ISO-8601 UTC string (same convention as due_reviews).
-        due_soon = conn.execute(
-            select(func.count())
-            .select_from(joined)
-            .where(
-                tp.c.due_at.is_not(None),
-                tp.c.due_at > now_iso,
-                tp.c.due_at <= soon_iso,
-                reps.c.owner_user_id == owner,
-            )
-        ).scalar_one()
-        # Weekly recap inputs. Text comparison is safe for last_reviewed_at: it is
-        # always written as an ISO-8601 UTC string (same convention as due_at).
+        # One scan of owner progress replaces six separate COUNT round trips.
+        # Due timestamps are stored as ISO-8601 UTC text, so lexical comparison works.
         week_ago_iso = (now - timedelta(days=7)).isoformat()
-        reviews_7d = conn.execute(
-            select(func.count())
-            .select_from(joined)
-            .where(
-                tp.c.last_reviewed_at.is_not(None),
-                tp.c.last_reviewed_at >= week_ago_iso,
-                reps.c.owner_user_id == owner,
-            )
-        ).scalar_one()
-        mastered_now = conn.execute(
-            select(func.count())
-            .select_from(joined)
-            .where(tp.c.is_mastered == 1, reps.c.owner_user_id == owner)
-        ).scalar_one()
-        # Mirrors progress.node_mastery's "weak": tried twice+, under 50% accuracy.
-        weak_now = conn.execute(
-            select(func.count())
-            .select_from(joined)
-            .where(
-                tp.c.attempts >= 2,
-                tp.c.correct_attempts * 2 < tp.c.attempts,
-                reps.c.owner_user_id == owner,
-            )
-        ).scalar_one()
+        def tally(predicate):
+            return func.coalesce(func.sum(case((predicate, 1), else_=0)), 0)
+
+        (
+            open_mistakes, due_reviews, due_soon, reviews_7d, mastered_now, weak_now,
+        ) = conn.execute(
+            select(
+                tally(tp.c.attempts > tp.c.correct_attempts),
+                tally(tp.c.due_at.is_not(None) & (tp.c.due_at <= now_iso)),
+                tally(tp.c.due_at.is_not(None) & (tp.c.due_at > now_iso)
+                      & (tp.c.due_at <= soon_iso)),
+                tally(tp.c.last_reviewed_at.is_not(None)
+                      & (tp.c.last_reviewed_at >= week_ago_iso)),
+                tally(tp.c.is_mastered == 1),
+                tally((tp.c.attempts >= 2)
+                      & (tp.c.correct_attempts * 2 < tp.c.attempts)),
+            ).select_from(joined).where(reps.c.owner_user_id == owner)
+        ).one()
     local_day = streak.resolve_day(local_date)
     return {
         "games": games,
@@ -675,6 +642,7 @@ def build_add_move(
             is_mainline=is_mainline,
             is_user_prepared_move=is_prepared,
             tags=["prepared"] if is_prepared else [],
+            repertoire=repertoire,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -683,6 +651,7 @@ def build_add_move(
         body.repertoire_id,
         selected_node_id=node.id,
         owner_user_id=owner,
+        repertoire=repertoire,
         summary={"added_nodes": 1, "updated_nodes": 0, "high_probability_unprepared": 0},
     )
 
@@ -723,7 +692,7 @@ def build_add_moves(
     before anything lands. Owner-gated so a user can't flush onto another's tree."""
     _owned_repertoire(repo, body.repertoire_id, owner)
     try:
-        _repertoire, summary, id_map = OpeningBuilderService(repo).add_moves_batch(
+        repertoire, summary, id_map = OpeningBuilderService(repo).add_moves_batch(
             body.repertoire_id,
             [item.model_dump() for item in body.moves],
         )
@@ -733,6 +702,7 @@ def build_add_moves(
         repo,
         body.repertoire_id,
         owner_user_id=owner,
+        repertoire=repertoire,
         summary={
             "added_nodes": summary.added_nodes,
             "updated_nodes": summary.updated_nodes,
@@ -809,7 +779,7 @@ def build_apply_plan(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="plan must be an object")
     _owned_repertoire(repo, body.repertoire_id, owner)
     try:
-        _repertoire, summary = OpeningBuilderService(repo).apply_generation_plan(
+        repertoire, summary = OpeningBuilderService(repo).apply_generation_plan(
             body.repertoire_id, body.root_node_id, body.plan
         )
     except ValueError as exc:
@@ -819,6 +789,7 @@ def build_apply_plan(
         body.repertoire_id,
         selected_node_id=body.root_node_id,
         owner_user_id=owner,
+        repertoire=repertoire,
         summary={
             "added_nodes": summary.added_nodes,
             "updated_nodes": summary.updated_nodes,
@@ -865,10 +836,12 @@ def build_action(
         if action == "set_mainline":
             builder.set_as_mainline(body.repertoire_id, body.node_id)
         elif action == "mark_prepared":
-            node = _load_node_or_400(repo, body.repertoire_id, body.node_id)
+            rep = builder._load_repertoire_or_raise(body.repertoire_id)
+            node = builder._find_node_or_raise(rep.root_node, body.node_id)
             builder.mark_prepared(body.repertoire_id, body.node_id, not node.is_user_prepared_move)
         elif action == "disable_branch":
-            node = _load_node_or_400(repo, body.repertoire_id, body.node_id)
+            rep = builder._load_repertoire_or_raise(body.repertoire_id)
+            node = builder._find_node_or_raise(rep.root_node, body.node_id)
             if node.is_enabled:
                 builder.disable_branch(body.repertoire_id, body.node_id)
             else:
@@ -887,7 +860,10 @@ def build_action(
             builder.add_tag(body.repertoire_id, body.node_id, "critical")
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return build_workspace_payload(repo, body.repertoire_id, selected_node_id=selected_node_id, owner_user_id=owner)
+    return build_workspace_payload(
+        repo, body.repertoire_id, selected_node_id=selected_node_id,
+        owner_user_id=owner, repertoire=builder.loaded_repertoire,
+    )
 
 
 class AnnotationsBody(BaseModel):

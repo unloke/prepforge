@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import json
 import re
 import uuid
 from dataclasses import dataclass, field
@@ -263,8 +264,9 @@ class OpeningBuilderService:
         is_user_prepared_move: bool = False,
         comment: Optional[str] = None,
         tags: Optional[List[str]] = None,
+        repertoire: Optional[Repertoire] = None,
     ) -> OpeningNode:
-        repertoire = self._load_repertoire_or_raise(repertoire_id)
+        repertoire = repertoire or self._load_repertoire_or_raise(repertoire_id)
         parent = self._find_node_or_raise(repertoire.root_node, parent_node_id)
         existing = child_by_uci(parent, move_uci)
         if existing is not None:
@@ -277,7 +279,7 @@ class OpeningBuilderService:
             for tag in tags or []:
                 if tag not in existing.tags:
                     existing.tags.append(tag)
-            self.repository.save_repertoire(repertoire)
+            self.repository.save_changed_nodes(repertoire_id, [existing])
             return existing
 
         move = self.chess_core.apply_uci(parent.fen, move_uci, source=source)
@@ -295,7 +297,7 @@ class OpeningBuilderService:
             source=source,
         )
         parent.children.append(child)
-        self.repository.save_repertoire(repertoire)
+        self.repository.save_changed_nodes(repertoire_id, [child])
         return child
 
     def generate_from_node(
@@ -400,6 +402,7 @@ class OpeningBuilderService:
 
         repertoire = self._load_repertoire_or_raise(repertoire_id)
         anchor = self._find_node_or_raise(repertoire.root_node, root_node_id)
+        before = self._node_snapshot(repertoire.root_node)
 
         # parentRef / nodeId resolve ONLY within the anchor subtree: the browser
         # generated under this anchor, so scoping every write here stops a stray
@@ -440,7 +443,7 @@ class OpeningBuilderService:
             else:
                 raise ValueError("unknown plan change action: {0!r}".format(action))
 
-        self.repository.save_repertoire(repertoire)
+        self.repository.save_changed_nodes(repertoire_id, self._changed_nodes(repertoire, before))
         return repertoire, summary
 
     def add_moves_batch(
@@ -477,6 +480,7 @@ class OpeningBuilderService:
             )
 
         repertoire = self._load_repertoire_or_raise(repertoire_id)
+        before = self._node_snapshot(repertoire.root_node)
         # parentRef / tempId resolve against the whole tree (manual moves can
         # attach anywhere). depth_by_id from the index is unused for the cap below.
         nodes_by_id: dict = {}
@@ -560,8 +564,38 @@ class OpeningBuilderService:
                 GeneratedNodeChange(child.id, move_uci, "added", MoveSource.MANUAL)
             )
 
-        self.repository.save_repertoire(repertoire)
+        self.repository.save_changed_nodes(repertoire_id, self._changed_nodes(repertoire, before))
         return repertoire, summary, id_map
+
+    @staticmethod
+    def _node_snapshot(root: OpeningNode) -> dict:
+        def state(node: OpeningNode) -> tuple:
+            return (
+                node.is_mainline, node.is_user_prepared_move, node.is_enabled,
+                node.maia_probability, node.engine_evaluation, node.source,
+                node.comment, tuple(node.tags), tuple(node.arrows), tuple(node.circles),
+            )
+
+        result = {}
+        stack = [root]
+        while stack:
+            node = stack.pop()
+            result[node.id] = state(node)
+            stack.extend(node.children)
+        return result
+
+    def _changed_nodes(self, repertoire: Repertoire, before: dict) -> List[OpeningNode]:
+        after = self._node_snapshot(repertoire.root_node)
+        changed = set(after) - set(before)
+        changed.update(node_id for node_id in before if after.get(node_id) != before[node_id])
+        nodes = []
+        stack = [repertoire.root_node]
+        while stack:
+            node = stack.pop()
+            if node.id in changed:
+                nodes.append(node)
+            stack.extend(node.children)
+        return nodes
 
     def _index_subtree(
         self, node: OpeningNode, depth: int, nodes_into: dict, depth_into: dict
@@ -1035,35 +1069,46 @@ class OpeningBuilderService:
             for child in parent.children:
                 child.is_mainline = child.id == node.id
             node.is_mainline = True
-        self.repository.save_repertoire(repertoire)
+        self.repository.update_opening_nodes(repertoire_id, [
+            {"id": child.id, "is_mainline": child.is_mainline}
+            for child in (parent.children if node.parent_id is not None else [node])
+        ])
         return node
 
     def mark_prepared(self, repertoire_id: str, node_id: str, prepared: bool = True) -> OpeningNode:
         repertoire = self._load_repertoire_or_raise(repertoire_id)
         node = self._find_node_or_raise(repertoire.root_node, node_id)
         node.is_user_prepared_move = prepared
-        self.repository.save_repertoire(repertoire)
+        self.repository.update_opening_nodes(repertoire_id, [
+            {"id": node.id, "is_user_prepared_move": prepared}
+        ])
         return node
 
     def disable_branch(self, repertoire_id: str, node_id: str) -> OpeningNode:
         repertoire = self._load_repertoire_or_raise(repertoire_id)
         node = self._find_node_or_raise(repertoire.root_node, node_id)
         self._set_branch_enabled(node, False)
-        self.repository.save_repertoire(repertoire)
+        self.repository.update_opening_nodes(repertoire_id, [
+            {"id": child.id, "is_enabled": False}
+            for child in self.repository._walk_nodes(node)
+        ])
         return node
 
     def enable_branch(self, repertoire_id: str, node_id: str) -> OpeningNode:
         repertoire = self._load_repertoire_or_raise(repertoire_id)
         node = self._find_node_or_raise(repertoire.root_node, node_id)
         self._set_branch_enabled(node, True)
-        self.repository.save_repertoire(repertoire)
+        self.repository.update_opening_nodes(repertoire_id, [
+            {"id": child.id, "is_enabled": True}
+            for child in self.repository._walk_nodes(node)
+        ])
         return node
 
     def add_comment(self, repertoire_id: str, node_id: str, comment: str) -> OpeningNode:
         repertoire = self._load_repertoire_or_raise(repertoire_id)
         node = self._find_node_or_raise(repertoire.root_node, node_id)
         node.comment = comment
-        self.repository.save_repertoire(repertoire)
+        self.repository.update_opening_nodes(repertoire_id, [{"id": node.id, "comment": comment}])
         return node
 
     def add_tag(self, repertoire_id: str, node_id: str, tag: str) -> OpeningNode:
@@ -1071,7 +1116,9 @@ class OpeningBuilderService:
         node = self._find_node_or_raise(repertoire.root_node, node_id)
         if tag not in node.tags:
             node.tags.append(tag)
-        self.repository.save_repertoire(repertoire)
+        self.repository.update_opening_nodes(repertoire_id, [
+            {"id": node.id, "tags_json": json.dumps(node.tags)}
+        ])
         return node
 
     def set_annotations(
@@ -1085,7 +1132,11 @@ class OpeningBuilderService:
         node = self._find_node_or_raise(repertoire.root_node, node_id)
         node.arrows = list(arrows or [])
         node.circles = list(circles or [])
-        self.repository.save_repertoire(repertoire)
+        self.repository.update_opening_nodes(repertoire_id, [{
+            "id": node.id,
+            "arrows_json": json.dumps(node.arrows) if node.arrows else None,
+            "circles_json": json.dumps(node.circles) if node.circles else None,
+        }])
         return node
 
     def delete_node(self, repertoire_id: str, node_id: str) -> Optional[str]:
@@ -1103,7 +1154,6 @@ class OpeningBuilderService:
 
         collect(node)
         parent.children = [child for child in parent.children if child.id != node_id]
-        self.repository.save_repertoire(repertoire)
         self.repository.delete_opening_nodes(repertoire_id, removed_ids)
         return parent.id
 
@@ -1148,7 +1198,6 @@ class OpeningBuilderService:
             parent.children = [c for c in parent.children if c.id != node_id]
 
         if removed_ids:
-            self.repository.save_repertoire(repertoire)
             self.repository.delete_opening_nodes(repertoire_id, removed_ids)
         return removed_ids
 
@@ -1160,13 +1209,13 @@ class OpeningBuilderService:
             raise ValueError("name too long")
         repertoire = self._load_repertoire_or_raise(repertoire_id)
         repertoire.name = cleaned
-        self.repository.save_repertoire(repertoire)
+        self.repository.update_repertoire_fields(repertoire_id, name=cleaned)
         return repertoire
 
     def set_repertoire_active(self, repertoire_id: str, active: bool) -> Repertoire:
         repertoire = self._load_repertoire_or_raise(repertoire_id)
         repertoire.is_active = bool(active)
-        self.repository.save_repertoire(repertoire)
+        self.repository.update_repertoire_fields(repertoire_id, is_active=int(bool(active)))
         return repertoire
 
     def remove_repertoire(self, repertoire_id: str) -> None:
@@ -1179,8 +1228,9 @@ class OpeningBuilderService:
         *,
         filter_mode: str = "all",
         include_disabled: bool = False,
+        repertoire: Optional[Repertoire] = None,
     ) -> OpeningTreeReport:
-        repertoire = self._load_repertoire_or_raise(repertoire_id)
+        repertoire = repertoire or self._load_repertoire_or_raise(repertoire_id)
         all_items: List[OpeningTreeItem] = []
         self._collect_tree_items(repertoire.root_node, 0, all_items)
         included_ids = self._included_node_ids(all_items, filter_mode)
@@ -1302,6 +1352,7 @@ class OpeningBuilderService:
         repertoire = self.repository.load_repertoire(repertoire_id)
         if repertoire is None:
             raise ValueError("repertoire not found: {0}".format(repertoire_id))
+        self.loaded_repertoire = repertoire
         return repertoire
 
     def _find_node_or_raise(self, root: OpeningNode, node_id: str) -> OpeningNode:
