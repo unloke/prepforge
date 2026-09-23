@@ -77,6 +77,7 @@ try {
         if (policy && nextMover === route.color) {
           const epd = board.fen().split(" ").slice(0, 4).join(" ");
           const replies = (policy[`${epd}|${rating}`] || []).filter((r) => r.p >= 0.05).slice(0, 3);
+          const decisionAlternatives = [];
           for (const reply of replies) {
             const branch = new Chess(board.fen());
             try { branch.move({ from: reply.uci.slice(0, 2), to: reply.uci.slice(2, 4), promotion: reply.uci[4] }); }
@@ -85,9 +86,10 @@ try {
             if (!branchWdl) continue;
             const whiteWdl = (branch.turn() === "w" ? branchWdl[0] + branchWdl[1] / 2
               : branchWdl[2] + branchWdl[1] / 2) / 1000;
-            alternatives.push({ probability: reply.p,
+            decisionAlternatives.push({ probability: reply.p,
               userWdl: route.color === "white" ? 1 - whiteWdl : whiteWdl });
           }
+          if (decisionAlternatives.length) alternatives.push(decisionAlternatives);
         }
       }
       audited.push({ player: player.player, method, trainGames: largest.trainGames, moves,
@@ -98,7 +100,7 @@ try {
 } finally {
   engine.stdin.write("quit\n");
 }
-const result = JSON.stringify({ protocol: "scout-wdl-benchmark-v1", stockfish: "19 lite single, depth 10",
+const result = JSON.stringify({ protocol: "scout-wdl-benchmark-v2", stockfish: "19 lite single, depth 10",
   note: "Robustness uses up to three Maia replies with p >= 0.05 after each prepared move.", routes: audited }, null, 2);
 if (outPath) writeFileSync(outPath, result + "\n");
 else console.log(result);

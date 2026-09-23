@@ -2767,7 +2767,7 @@ function setStatus(message, { severity = "info" } = {}) {
   status.setAttribute("aria-live", isError ? "assertive" : "polite");
   status.dataset.severity = normalizedSeverity;
   status.dataset.state = isError ? "error" : "ready";
-  statusDismissTimer = setTimeout(() => { status.hidden = true; }, isError ? 8000 : 4500);
+  if (!isError) statusDismissTimer = setTimeout(() => { status.hidden = true; }, 4500);
 }
 
 function setStatusError(message) {

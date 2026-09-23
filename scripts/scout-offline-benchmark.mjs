@@ -95,7 +95,7 @@ function routeCandidates(train, maps, method) {
       try { board.move({ from: actual.slice(0, 2), to: actual.slice(2, 4), promotion: actual[4] }); }
       catch { break; }
       moves.push(actual);
-      if (probs.length >= 2 && ply >= 5 && ply % 2 === 1) {
+      if (probs.length >= 2 && ply >= 5 && (ply % 2 === 0 ? "white" : "black") !== game.color) {
         const route = { color: game.color, moves: [...moves], decisions: probs.length,
           product: probs.reduce((a, b) => a * b, 1), geometric: Math.exp(mean(probs.map(Math.log))) };
         candidates.set(game.color + ":" + key(moves), route);
@@ -211,10 +211,22 @@ const output = datasets.map(({ path, games }, playerIndex) => {
       "population", "exact", "suffix", ...(maps.maia ? ["maia", "maiaResidual"] : []),
     ].map((method) => {
       const candidates = routeCandidates(train, maps, method);
+      const byColor = Object.fromEntries(["white", "black"].map((color) => {
+        const colorCandidates = candidates.filter((route) => route.color === color);
+        const colorTest = test.filter((game) => game.color === color);
+        return [color, {
+          testGames: colorTest.length,
+          product: evaluateRoutes(selectRoutes(colorCandidates, "product"), colorTest, maps, method),
+          geometric: evaluateRoutes(selectRoutes(colorCandidates, "geometric"), colorTest, maps, method),
+          recommendations: selectRoutes(colorCandidates, "geometric").map((r) => ({ color: r.color, moves: r.moves })),
+        }];
+      }));
       return [method, { move: evaluateMoves(test, maps, method),
-        product: evaluateRoutes(selectRoutes(candidates, "product"), test, maps, method),
-        geometric: evaluateRoutes(selectRoutes(candidates, "geometric"), test, maps, method),
-        recommendations: selectRoutes(candidates, "geometric").map((r) => ({ color: r.color, moves: r.moves })),
+        byColor,
+        product: evaluateRoutes(["white", "black"].flatMap((color) =>
+          selectRoutes(candidates.filter((route) => route.color === color), "product")), test, maps, method),
+        geometric: evaluateRoutes(Object.values(byColor).flatMap((group) => group.recommendations), test, maps, method),
+        recommendations: Object.values(byColor).flatMap((group) => group.recommendations),
       }];
     }));
     return { trainGames: n, testGames: test.length, methods };
@@ -226,12 +238,19 @@ const output = datasets.map(({ path, games }, playerIndex) => {
     const before = entries(sizes[index]);
     const after = entries(size);
     const union = new Set([...before, ...after]);
+    const byColor = Object.fromEntries(["white", "black"].map((color) => {
+      const previous = new Set([...before].filter((entry) => entry.startsWith(`${color}:`)));
+      const current = new Set([...after].filter((entry) => entry.startsWith(`${color}:`)));
+      const colorUnion = new Set([...previous, ...current]);
+      return [color, colorUnion.size ? [...previous].filter((entry) => current.has(entry)).length / colorUnion.size : null];
+    }));
     return { from: sizes[index].trainGames, to: size.trainGames,
-      entryJaccard: union.size ? [...before].filter((entry) => after.has(entry)).length / union.size : null };
+      entryJaccard: union.size ? [...before].filter((entry) => after.has(entry)).length / union.size : null,
+      byColor };
   })]));
   return { player: path, games: games.length, sizes, stability };
 });
-const report = JSON.stringify({ protocol: "scout-offline-benchmark-v1", maxPly: MAX_PLY, topK: K,
+const report = JSON.stringify({ protocol: "scout-offline-benchmark-v2", maxPly: MAX_PLY, topK: K,
   pressure: "see companion Stockfish WDL report",
   maia: maiaPaths.length === paths.length ? "Maia3 rating-conditioned fp16 cache" : "partial or unavailable", players: output }, null, 2);
 if (outPath) writeFileSync(outPath, report + "\n");

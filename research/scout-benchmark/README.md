@@ -45,8 +45,9 @@ Maia rating 分別設 2550／3000／1500（第二名樣本中位數超過 3000�
   不是有效 population policy。
 
 每個玩家／切分輸出 top-1、top-3、top-5、log loss、Brier。prep route
-候選不要求完整線重複；只由訓練局的合法前綴產生，保留 5 條去祖先重複
-路線。主要 prep usefulness 是：held-out 棋局到達推薦路線的
+候選不要求完整線重複；只由訓練局的合法前綴產生，每個 opponent color
+各保留最多 5 條去祖先重複路線。路線在對手決策後我方完成 prepared reply
+時結束。主要 prep usefulness 是：held-out 棋局到達推薦路線的
 **opponent-to-move 局面**時，該 decision point 的 route move 命中、
 model top-1/3/5 覆蓋、covered decisions/game、false-prep rate。
 這仍是觀測到的局面條件評估；我方若改走準備手，未走進的反事實分支
@@ -56,7 +57,8 @@ model top-1/3/5 覆蓋、covered decisions/game、false-prep rate。
 逐線 Stockfish 19 lite、depth 10、UCI WDL（我方視角）輸出：我方走後
 WDL 的 10% floor、WDL ≥ 0.55 的比例、最大單步對手 WDL 惡化、
 其占全線淨收益比例，以及在我方準備手後 Maia 前三個且 p ≥ 0.05
-回應維持 WDL ≥ 0.55 的機率加權比例。引擎與深度是研究煙測，
+回應維持 WDL ≥ 0.55 的機率加權比例。替代回應先逐決策局面計算，
+再輸出路線的 meanRobustness 和 Q10 robustnessFloor。引擎與深度是研究煙測，
 需以 production 引擎／深度重跑。
 
 重現：
@@ -66,7 +68,21 @@ node scripts/scout-offline-benchmark.mjs research/scout-benchmark/data/ericrosen
 node scripts/scout-wdl-benchmark.mjs research/scout-benchmark/move-results.json --maia-cache research/scout-benchmark/maia-cache/maia-ericrosen.json --maia-cache research/scout-benchmark/maia-cache/maia-drnykterstein.json --maia-cache research/scout-benchmark/maia-cache/maia-penguingm1.json --out research/scout-benchmark/wdl-results.json
 ```
 
-## 4. 初步結果
+## 4. 更新結果（分色 Top-K、prepared reply 端點）
+
+每個 opponent color 各取最多 5 條候選，路線終點均在對手決策後我方完成 prepared reply。以下為最大 profile 切分的 Maia route 條件局面結果：
+
+| 玩家 | White opponent：局數／coverage／route move hit | Black opponent：局數／coverage／route move hit |
+| --- | ---: | ---: |
+| EricRosen | 8／20.3%／84.6% | 11／11.4%／80.0% |
+| DrNykterstein | 9／19.4%／57.1% | 11／12.5%／18.2% |
+| penguingm1 | 8／25.0%／60.0% | 9／13.2%／88.9% |
+
+40→80 profile 的 Maia entry Jaccard：EricRosen 白 .286、黑 .667；DrNykterstein 白 .500、黑 .600。各色 Top-K、coverage、stability 見 `move-results.json` 的 `byColor`。舊版合色 Top-5 的 coverage 與 stability 不可直接比較。
+
+更新的 29 條 Maia 路線中，三位玩家的平均 WDL pressure floor 分別約 .431、.459、.425，全部低於 .55 一致優勢門檻。Maia alternatives 先按每個 opponent decision position 算機率加權 robustness，再輸出 route 的 `meanRobustness` 與 `robustnessFloor`（Q10）。本次 29 條線的 floor 均為 0，顯示每條線至少有一個脆弱局面。**只預測會走進去，仍不足以產生好下的備戰線**。路線端點和分色 Top-K 已變，舊版 45 條線數值不得直接作增減比較。
+
+### 舊版初步結果（定義已變更）
 
 最大 profile 切分（第三人為 10 局），每格為 top-1 / top-3 / log loss：
 
@@ -128,9 +144,11 @@ route_reach = exp(log_route_reach)   # 顯示真實連乘，不拿它獨自跨�
 pressure_floor = Q10({user_WDL_after_our_move along route})
 consistency = share(user_WDL_after_our_move >= 0.55)
 blunder_dependency = largest_positive_opponent_WDL_jump / max(net_gain, epsilon)
-robustness = sum_{Maia high-p replies a} P_Maia(a) * 1[user_WDL(a) >= 0.55]
+robustness_i = sum_{Maia high-p replies a at decision i} P_Maia(a) * 1[user_WDL(a) >= 0.55] / sum_a P_Maia(a)
+meanRobustness = mean_i(robustness_i)
+robustnessFloor = Q10_i(robustness_i)
 CorePrep = nondominated Top-K of (reach, typicality, pressure_floor,
-  consistency, robustness, memory_cost), subject to soundness and blunder caps
+  consistency, meanRobustness, robustnessFloor, memory_cost), subject to soundness and blunder caps
 ```
 
 新增／升格 signals：每個對手決策的 calibrated Maia probability、

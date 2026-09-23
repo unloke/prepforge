@@ -14,14 +14,17 @@ export function pressureMetrics(wdl, opponentColor, alternatives = []) {
       ? [Math.max(0, v - ours[index - 1])] : []);
   const totalGain = Math.max(0, ours.at(-1) - (ours[0] || 0.5));
   const largest = Math.max(0, ...opponentDeltas);
-  const weights = alternatives.filter((a) => Number.isFinite(a.probability) && Number.isFinite(a.userWdl));
-  const weightTotal = weights.reduce((sum, a) => sum + a.probability, 0);
+  const decisions = alternatives.map((group) => {
+    const weights = group.filter((a) => Number.isFinite(a.probability) && Number.isFinite(a.userWdl));
+    const total = weights.reduce((sum, a) => sum + a.probability, 0);
+    return total ? weights.reduce((sum, a) => sum + a.probability * (a.userWdl >= 0.55 ? 1 : 0), 0) / total : null;
+  }).filter((value) => value !== null);
   return {
     pressureFloor: quantile(afterOurMove, 0.1),
     pressureConsistency: mean(afterOurMove.map((v) => v >= 0.55 ? 1 : 0)),
     largestOpponentBlunderGain: largest,
     blunderDependency: totalGain > 0 ? Math.min(1, largest / totalGain) : 0,
-    robustness: weightTotal ? weights.reduce((sum, a) =>
-      sum + a.probability * (a.userWdl >= 0.55 ? 1 : 0), 0) / weightTotal : null,
+    meanRobustness: mean(decisions),
+    robustnessFloor: quantile(decisions, 0.1),
   };
 }

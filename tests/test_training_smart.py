@@ -561,3 +561,59 @@ def test_mixed_ignores_foreign_repertoire_cards():
         repository.load_training_progress(black.id, foreign_node.id, owner_user_id="owner-6")
         is None
     )
+
+
+def test_postgres_concurrent_attempt_receipt():
+    """A real PostgreSQL insert conflict must serialize identical retries."""
+    import os
+    import uuid
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    import pytest
+    import sqlalchemy as sa
+    from prepforge_chess.storage import sa_tables
+
+    url = os.getenv("TEST_POSTGRES_URL")
+    if not url:
+        pytest.skip("TEST_POSTGRES_URL requires a real PostgreSQL server")
+    if url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://"):]
+    if url.startswith("postgres://"):
+        url = "postgresql+psycopg://" + url[len("postgres://"):]
+    schema = "train_retry_" + uuid.uuid4().hex[:16]
+    admin = sa.create_engine(url, isolation_level="AUTOCOMMIT")
+    with admin.connect() as conn:
+        conn.exec_driver_sql('CREATE SCHEMA "' + schema + '"')
+    engine = sa.create_engine(url, connect_args={"options": "-c search_path=" + schema})
+    try:
+        sa_tables.metadata.create_all(engine)
+        repo = PrepForgeRepository(engine)
+        repertoire, _ = _build(repo)
+        service = SmartTrainingService(repo)
+        session = service.start_or_resume(repertoire.id, seed=5)
+        bundle = service.session_card_bundle(session, repertoire)
+        node_id = bundle[0]["targets"][0]["node_id"]
+        attempt = {"node_id": node_id, "correct": True, "attempt_uuid": uuid.uuid4().hex}
+        barrier = Barrier(2)
+
+        def submit(payload):
+            barrier.wait(timeout=10)
+            return SmartTrainingService(PrepForgeRepository(engine)).sync_progress(
+                session.id, [payload]
+            )
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first = pool.submit(submit, attempt)
+            second = pool.submit(submit, attempt)
+            assert sorted([first.result(timeout=30), second.result(timeout=30)]) == [0, 1]
+        progress = repo.load_training_progress(repertoire.id, node_id)
+        assert progress is not None and progress.attempts == 1
+        with pytest.raises(ValueError, match="different payload"):
+            service.sync_progress(session.id, [{**attempt, "correct": False}])
+        assert repo.load_training_progress(repertoire.id, node_id).attempts == 1
+    finally:
+        engine.dispose()
+        with admin.connect() as conn:
+            conn.exec_driver_sql('DROP SCHEMA "' + schema + '" CASCADE')
+        admin.dispose()
