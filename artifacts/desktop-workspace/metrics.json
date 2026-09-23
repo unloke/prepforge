@@ -1,0 +1,46 @@
+{
+  "analyze": {
+    "board": {
+      "width": 689,
+      "height": 689
+    },
+    "documentHeight": 900,
+    "viewportHeight": 900
+  },
+  "build": {
+    "board": {
+      "width": 689,
+      "height": 689
+    },
+    "documentHeight": 900,
+    "viewportHeight": 900
+  },
+  "train": {
+    "board": {
+      "width": 689,
+      "height": 687
+    },
+    "documentHeight": 900,
+    "viewportHeight": 900
+  },
+  "games": {
+    "board": null,
+    "documentHeight": 900,
+    "viewportHeight": 900
+  },
+  "scout": {
+    "board": null,
+    "documentHeight": 900,
+    "viewportHeight": 900
+  },
+  "teams": {
+    "board": null,
+    "documentHeight": 900,
+    "viewportHeight": 900
+  },
+  "statusShift": 0,
+  "gamesSelection": {
+    "selectedCount": 1,
+    "selectedPlayer": "Casey vs Avery"
+  }
+}

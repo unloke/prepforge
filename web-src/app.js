@@ -427,7 +427,7 @@ const appState = {
   signedIn: false,
   replayResults: null,
   replayFilter: null, // summary-chip filter: an outcome kind, or null = all
-  replayOpen: new Set(), // indexes of expanded game rows
+  replayOpen: new Set(), // at most one selected game in the inspector
   replaySection: "games",
   // Teams view: cache of the caller's teams (for the rep-share picker) and the
   // currently-expanded team's id (so a member add/remove re-renders the right one).
@@ -2762,11 +2762,12 @@ function setStatus(message, { severity = "info" } = {}) {
     ? severity
     : "info";
   const isError = normalizedSeverity === "error";
-  status.textContent = text;
+  status.querySelector(".status-message").textContent = text;
   status.setAttribute("role", isError ? "alert" : "status");
   status.setAttribute("aria-live", isError ? "assertive" : "polite");
   status.dataset.severity = normalizedSeverity;
   status.dataset.state = isError ? "error" : "ready";
+  status.querySelector(".status-close").onclick = () => { status.hidden = true; clearTimeout(statusDismissTimer); };
   if (!isError) statusDismissTimer = setTimeout(() => { status.hidden = true; }, 4500);
 }
 
@@ -10396,11 +10397,11 @@ async function ensureReplayView() {
       isGameOpen: (index) => appState.replayOpen.has(index),
       onToggleFilter: (kind) => {
         appState.replayFilter = appState.replayFilter === kind ? null : kind;
+        appState.replayOpen.clear();
         void renderReplayResults(appState.replayResults).catch(() => {});
       },
       onToggleGame: (index) => {
-        if (appState.replayOpen.has(index)) appState.replayOpen.delete(index);
-        else appState.replayOpen.add(index);
+        appState.replayOpen = appState.replayOpen.has(index) ? new Set() : new Set([index]);
         void renderReplayResults(appState.replayResults).catch(() => {});
       },
       onTrainMiss: () =>

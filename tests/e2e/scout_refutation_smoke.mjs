@@ -143,7 +143,7 @@ async function main() {
     await page.goto(APP_URL, { waitUntil: "domcontentloaded" });
     await waitForE2eHook(page);
     await registerSession(page);
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.goto(APP_URL, { waitUntil: "domcontentloaded" });
     await waitForE2eHook(page);
     await activateScout(page);
 
@@ -151,7 +151,7 @@ async function main() {
       // Deep-scan is intentionally asynchronous. Reload between scenarios so
       // its job/toast cannot mutate the next fixture's report in a slower CI runner.
       if (index > 0) {
-        await page.reload({ waitUntil: "domcontentloaded" });
+        await page.goto(APP_URL, { waitUntil: "domcontentloaded" });
         await waitForE2eHook(page);
         await activateScout(page);
       }

@@ -7533,18 +7533,66 @@ h2 {
   background: var(--panel);
 }
 .status[hidden] { display: none; }
+/* Status stays beside the header actions without changing the flex shell height. */
+.status:not([hidden]) {
+  position: fixed;
+  z-index: 80;
+  top: 50px;
+  right: 14px;
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  width: max-content;
+  max-width: min(400px, calc(100vw - 28px));
+  margin: 0;
+  padding: 10px 12px;
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--text) 14%, transparent);
+  white-space: normal;
+}
+.status[data-severity="error"] { border-color: var(--danger); color: var(--danger-strong); }
+.status[data-severity="warning"] { border-color: var(--warn); }
+.status-message { min-width: 0; overflow-wrap: anywhere; }
+.status-close { flex: none; border: 0; background: transparent; color: inherit; font-size: 18px; line-height: 1; padding: 0 2px; }
+.status-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .build-empty { padding: 24px 4px; background: var(--panel-soft); border-radius: var(--radius-card); }
 .build-empty h2, .build-empty p, .build-empty .tools { margin-left: 20px; margin-right: 20px; }
 .build-empty[hidden] { display: none; }
 @media (min-width: 960px) {
-  #analyze-sidebar:has(#analysis-results[hidden]) #pgn-drawer { order: 1; }
-  #analyze-sidebar:has(#analysis-results[hidden]) #history-drawer { order: 2; }
-  #analyze-sidebar:has(#analysis-results[hidden]) #analysis-explain { order: 3; }
-  #analyze-sidebar:has(#analysis-results[hidden]) #analysis-explain { --coach-card-block-size: 112px; }
-  #analyze-sidebar:has(#analysis-results:not([hidden])) #analysis-results { order: 1; }
-  #analyze-sidebar:has(#analysis-results:not([hidden])) #analysis-explain { order: 2; }
-  #analyze-sidebar:has(#analysis-results:not([hidden])) #pgn-drawer { order: 3; }
-  #analyze-sidebar:has(#analysis-results:not([hidden])) #history-drawer { order: 4; }
+  #view-analyze .study,
+  #view-build .study,
+  #view-train .study { grid-template-columns: minmax(0, 52fr) minmax(0, 48fr); }
+  .study .board-stack,
+  .study .board-bar,
+  .study .train-banner,
+  .study .train-blitz-bar { width: min(100%, calc(100dvh - 112px)); }
+  #view-train .study .board-stack,
+  #view-train .study .board-bar,
+  #view-train .study .train-banner,
+  #view-train .study .train-blitz-bar { width: min(100%, calc(100dvh - 150px)); }
+  #view-analyze .sidebar,
+  #view-build .sidebar,
+  #view-train .sidebar { overflow-y: auto; overscroll-behavior: contain; }
+  #analyze-sidebar > .tools,
+  #view-build .build-tools { position: sticky; top: 0; z-index: 4; background: var(--bg); padding: 6px 0; }
+  #view-build .rep-header { position: sticky; top: 0; z-index: 5; background: var(--bg); }
+  #view-build .build-tools { top: 44px; }
+  #view-build .build-inspector { flex: 0 0 auto; min-height: 180px; max-height: 38vh; }
+  #view-build #builder-tree { flex: 1 1 180px; min-height: 180px; }
+  #view-train .train-setup { padding: 12px; }
+  #view-train #train-play-color { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #view-train .train-play-setup .train-start-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #view-train .train-play-setup .train-start-row:last-child { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #view-train .train-play-setup .train-start-row .btn { width: 100%; min-width: 0; white-space: normal; height: auto; min-height: var(--control-h); }
+  #view-replay .replay-card-games .replay-results { grid-template-columns: minmax(320px, 42%) minmax(0, 1fr); gap: 16px; }
+  #view-replay .replay-card-games .replay-inspector { min-height: 300px; }
+  #view-replay .replay-card-games .replay-inspector > .empty-state { display: grid; place-items: center; min-height: 260px; text-align: center; }
+  #view-replay .replay-card-scout .scout-v13-cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 14px 22px; }
+  #view-teams .teams-stack { grid-template-columns: minmax(300px, 39%) minmax(0, 1fr); gap: 12px 20px; }
+  #view-teams .teams-stack > .card { padding: 16px; }
+  #analyze-sidebar #analysis-explain { order: 1; }
+  #analyze-sidebar #analysis-results { order: 2; }
+  #analyze-sidebar #pgn-drawer { order: 3; }
+  #analyze-sidebar #history-drawer { order: 4; }
   #view-build .sidebar:has(#build-empty:not([hidden])) .build-tools,
   #view-build .sidebar:has(#build-empty:not([hidden])) #builder-tree { display: none; }
 }

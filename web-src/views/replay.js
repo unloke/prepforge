@@ -151,13 +151,13 @@ export function createReplayView({
       </div>`;
     const card = `
     <div class="replay-row rk-${kind}${open ? " is-open" : ""}">
-      <button type="button" class="replay-row-head" data-index="${index}" aria-expanded="${open}">
+      <button type="button" class="replay-row-head" data-index="${index}" aria-pressed="${open}">
         <span class="replay-icon" aria-hidden="true">${meta.icon}</span>
         <span class="players">${players}</span>
         <span class="replay-result">${escapeHtml(game.result || "*")}</span>
         ${open ? "" : `<span class="replay-preview">${escapeHtml(preview)}…</span>`}
         <span class="replay-badge">${escapeHtml(meta.badge)}</span>
-        <span class="replay-caret" aria-hidden="true">${open ? "▾" : "▸"}</span>
+        <span class="replay-caret" aria-hidden="true">${open ? "●" : "›"}</span>
       </button>
     </div>
   `;
