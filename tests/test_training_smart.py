@@ -589,13 +589,12 @@ def test_postgres_concurrent_attempt_receipt():
     try:
         sa_tables.metadata.create_all(engine)
         repo = PrepForgeRepository(engine)
-        repertoire, _ = _build(repo)
+        repertoire, node_ids = _build(repo)
         owner = "postgres-concurrent-owner"
         _claim(repo, owner, repertoire)
         service = SmartTrainingService(repo, owner)
         session = service.start_or_resume(repertoire.id, seed=5)
-        bundle = service.session_card_bundle(session, repertoire)
-        node_id = bundle[0]["targets"][0]["node_id"]
+        node_id = node_ids["e4"]
         attempt = {"node_id": node_id, "correct": True, "attempt_uuid": uuid.uuid4().hex}
         barrier = Barrier(2)
 
