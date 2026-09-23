@@ -122,9 +122,11 @@ describe("Analyze click starts Stockfish + Maia in parallel", () => {
   it("Maia warmup overlaps the Stockfish pass (intervals intersect)", async () => {
     const { provider, workers } = makeProvider(ackInitElsePend);
     // Mirror runAnalysis: maia warmup fires, THEN the stockfish promise starts,
-    // and both are in flight before either settles.
+    // and both are in flight before either settles. performance.now() (float,
+    // sub-ms) — Date.now() ms integers collide on fast CI and flake the
+    // strict inequality.
     const maiaReady = provider.warmup();
-    const maiaStart = Date.now();
+    const maiaStart = performance.now();
     await tick();
     expect(workers.length).toBe(1); // maia init started without waiting for SF
 
@@ -132,10 +134,10 @@ describe("Analyze click starts Stockfish + Maia in parallel", () => {
     let stockfishFinished = false;
     const stockfishPass = (async () => {
       stockfishStarted = true;
-      const stockfishStart = Date.now();
+      const stockfishStart = performance.now();
       await new Promise((r) => setTimeout(r, 30)); // fake multi-position SF pass
       stockfishFinished = true;
-      return { stockfishStart, stockfishEnd: Date.now() };
+      return { stockfishStart, stockfishEnd: performance.now() };
     })();
     expect(stockfishStarted).toBe(true);
     expect(stockfishFinished).toBe(false); // SF still running…
@@ -150,7 +152,7 @@ describe("Analyze click starts Stockfish + Maia in parallel", () => {
     workers[0].reply(workers[0].idsOf("predictions")[0], []);
     await pending;
     await maiaReady;
-    const maiaEnd = Date.now();
+    const maiaEnd = performance.now();
     const { stockfishStart, stockfishEnd } = await stockfishPass;
     // Overlap: maia started before SF finished, and SF started before maia ended.
     expect(maiaStart).toBeLessThan(stockfishEnd);
