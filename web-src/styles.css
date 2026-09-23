@@ -230,6 +230,42 @@ h2 {
   align-items: center;
 }
 
+/* Inline topbar status: a fixed-width slot left of Ctrl K so appearing,
+   changing, or clearing a message never shifts nav, palette, or account. */
+.topbar-status-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  width: 248px;
+  max-width: 30vw;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.status-close {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.status-close:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.status-close[hidden] {
+  display: none;
+}
+
 .tabs-primary {
   display: flex;
   gap: 2px;
@@ -271,11 +307,12 @@ h2 {
 .status {
   font-size: 12px;
   color: var(--muted);
-  max-width: 320px;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex-shrink: 1;
 }
 
 .status[data-severity="success"] {
@@ -1709,29 +1746,68 @@ h2 {
 
 /* Study layout */
 
+/* Study layout — desktop workspace geometry.
+   The board column is the page padding plus the board square itself: it hugs
+   the left edge and is only as wide as the board, so there is no dead gutter
+   on either side. The right workspace takes the rest and scrolls internally. */
 .study {
-  /* Available height under the topbar (44px) and the workspace's 18px padding.
-     The board is sized off this so it grows to fill the screen instead of being
-     capped tiny. --board-chrome is the vertical room the board's own controls
-     take (bar, and on Train the feedback banner), subtracted so the square fits. */
   --study-h: calc(100dvh - 44px - 36px);
-  --board-chrome: 42px;
+  /* Board square budget: the smaller of the height budget, a hard cap, and a
+     width guard that always leaves the sidebar ≥320px. The column then wraps
+     exactly around it (max-content), so width never dictates a too-small board
+     and no fixed 52/48 split is involved. */
+  --board-size: min(calc(var(--study-h) - var(--board-chrome)), 860px, calc(100vw - 380px));
   display: grid;
-  /* Board square is the smallest of: height budget, a hard cap, and the WIDTH
-     budget (viewport minus workspace padding 36, grid gap 16, and the sidebar's
-     340 min). The width term is essential — without it a narrow-but-tall window
-     sizes the board off height alone and shoves the sidebar off-screen. */
-  grid-template-columns:
-    min(
-      calc(var(--study-h) - var(--board-chrome)),
-      680px,
-      calc(min(100vw, 1280px) - 392px)
-    )
-    minmax(340px, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr);
   gap: 16px;
   align-items: stretch;
+  justify-content: start;
   height: 100%;
   min-height: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+/* Study views claim the full workspace width so the board + sidebar fill the
+   viewport instead of sitting inside the narrow list-view column. Study views
+   also pin their height to the viewport (not the page scroll) so the right
+   workspace scrolls internally and the controls never move. */
+#view-analyze,
+#view-build,
+#view-train {
+  height: 100%;
+  min-height: 0;
+}
+
+#view-analyze .study,
+#view-build .study,
+#view-train .study {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+/* Right workspace: a fixed column that scrolls internally, so analysis output
+   appearing below never moves the primary controls above it. The whole study
+   fits the viewport height, so the dead space under the sidebar disappears. */
+#analyze-sidebar,
+#view-build .sidebar,
+#view-train .train-sidebar {
+  min-width: 0;
+  min-height: 0;
+  max-height: var(--study-h);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+
+.workspace:has(> .view.is-active#view-analyze),
+.workspace:has(> .view.is-active#view-build),
+.workspace:has(> .view.is-active#view-train) {
+  max-width: none;
+  padding-left: 14px;
+  padding-right: 14px;
 }
 
 .board-area {
@@ -1740,14 +1816,17 @@ h2 {
   gap: 6px;
   min-width: 0;
   min-height: 0;
+  width: var(--board-size);
+  max-width: 100%;
+  justify-self: start;
 }
 
-/* Train carries a feedback banner above the board, so the square has less
-   vertical room — reserve it here (banner + blitz slot + bar + gaps) so the
-   board still fits the screen without overflowing. The banner/blitz slot is
-   height-locked so Maia tips cannot shove the square up and down. */
+/* Train tab: coach feedback lives in the right workspace (see .train-coach),
+   so the left column starts at the board — nothing above it. */
+#view-analyze .study,
+#view-build .study,
 #view-train .study {
-  --board-chrome: 132px;
+  --board-chrome: 42px;
 }
 
 .board-stack {
@@ -2173,8 +2252,14 @@ h2 {
   to { transform: rotate(360deg); }
 }
 
-/* ----- Train tab ------------------------------------------------------- */
-.train-banner {
+/* ----- Train tab -------------------------------------------------------
+   Coach feedback lives at the top of the right workspace (#train-banner now
+   sits in the sidebar with .train-coach classes). The left column holds only
+   the board + board bar. One shared body: the id and class hosts are aliases. */
+.train-coach,
+#view-train .train-coach,
+.train-banner,
+#train-banner {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -2184,34 +2269,44 @@ h2 {
   background: var(--panel);
   border: 1px solid var(--line);
   border-left: 4px solid var(--line);
-  height: 72px;
-  min-height: 72px;
-  max-height: 72px;
+  min-height: 64px;
   box-sizing: border-box;
   overflow: hidden;
   flex: none;
 }
 
-.train-banner[data-state="move"] { border-left-color: var(--accent); }
-.train-banner[data-state="correct"] { border-left-color: var(--good); background: color-mix(in srgb, var(--good) 12%, var(--panel)); }
-.train-banner[data-state="wrong"] { border-left-color: var(--danger); background: var(--danger-soft); }
-.train-banner[data-state="done"] { border-left-color: var(--accent-strong); background: var(--accent-soft); }
-.train-banner[data-state="review"] { border-left-color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, var(--panel)); }
-.train-banner[data-state="review"] .train-banner-icon { background: var(--warn); animation: jobToastPulse 1.6s ease-in-out infinite; }
-.train-banner[data-state="review"] .train-banner-title { color: var(--warn); }
+/* Coach + banner state selectors share one body list each so E2E hooks
+   (#train-banner data-state, .flash) behave identically for the id host. The
+   legacy .train-banner class host is kept as an alias, not a duplicate body. */
+#train-banner[data-state="move"] { border-left-color: var(--accent); }
+#train-banner[data-state="correct"] { border-left-color: var(--good); background: color-mix(in srgb, var(--good) 12%, var(--panel)); }
+#train-banner[data-state="wrong"] { border-left-color: var(--danger); background: var(--danger-soft); }
+#train-banner[data-state="done"] { border-left-color: var(--accent-strong); background: var(--accent-soft); }
+#train-banner[data-state="review"] { border-left-color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, var(--panel)); }
+#train-banner[data-state="review"] .train-banner-icon,
+#train-banner[data-state="review"] .train-coach-icon { background: var(--warn); animation: jobToastPulse 1.6s ease-in-out infinite; }
+#train-banner[data-state="review"] .train-banner-title,
+#train-banner[data-state="review"] .train-coach-title { color: var(--warn); }
 /* Smart-queue states: run-in (the line plays itself), teach (new move shown
    before it's asked), reveal (second miss — answer shown, play it to go on). */
-.train-banner[data-state="runin"] { border-left-color: var(--line-strong); }
-.train-banner[data-state="runin"] .train-banner-icon { background: var(--line-strong); animation: jobToastPulse 1.1s ease-in-out infinite; }
-.train-banner[data-state="teach"] { border-left-color: var(--brilliant); background: color-mix(in srgb, var(--brilliant) 12%, var(--panel)); }
-.train-banner[data-state="teach"] .train-banner-icon { background: var(--brilliant); }
-.train-banner[data-state="teach"] .train-banner-title { color: var(--brilliant); }
-.train-banner[data-state="reveal"] { border-left-color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, var(--panel)); }
-.train-banner[data-state="reveal"] .train-banner-icon { background: var(--warn); }
-.train-banner[data-state="reveal"] .train-banner-title { color: var(--warn); }
+#train-banner[data-state="runin"] { border-left-color: var(--line-strong); }
+#train-banner[data-state="runin"] .train-banner-icon,
+#train-banner[data-state="runin"] .train-coach-icon { background: var(--line-strong); animation: jobToastPulse 1.1s ease-in-out infinite; }
+#train-banner[data-state="teach"] { border-left-color: var(--brilliant); background: color-mix(in srgb, var(--brilliant) 12%, var(--panel)); }
+#train-banner[data-state="teach"] .train-banner-icon,
+#train-banner[data-state="teach"] .train-coach-icon { background: var(--brilliant); }
+#train-banner[data-state="teach"] .train-banner-title,
+#train-banner[data-state="teach"] .train-coach-title { color: var(--brilliant); }
+#train-banner[data-state="reveal"] { border-left-color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, var(--panel)); }
+#train-banner[data-state="reveal"] .train-banner-icon,
+#train-banner[data-state="reveal"] .train-coach-icon { background: var(--warn); }
+#train-banner[data-state="reveal"] .train-banner-title,
+#train-banner[data-state="reveal"] .train-coach-title { color: var(--warn); }
 
-.train-banner.flash { animation: trainFlash 420ms ease; }
-.train-banner[data-state="wrong"].flash { animation: trainWrongFlash 760ms ease; }
+#train-banner.flash { animation: trainFlash 420ms ease; }
+#train-banner[data-state="wrong"].flash { animation: trainWrongFlash 760ms ease; }
+
+/* Legacy .train-banner class selectors alias the id host above. */
 @keyframes trainFlash {
   0% { transform: scale(0.99); }
   40% { transform: scale(1.012); }
@@ -2223,20 +2318,27 @@ h2 {
   100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 0%, transparent); }
 }
 
-.train-banner-icon {
+.train-banner-icon,
+.train-coach-icon {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--muted);
   flex-shrink: 0;
 }
-.train-banner[data-state="move"] .train-banner-icon { background: var(--accent); animation: jobToastPulse 1.6s ease-in-out infinite; }
-.train-banner[data-state="correct"] .train-banner-icon { background: var(--good); }
-.train-banner[data-state="wrong"] .train-banner-icon { background: var(--danger); }
-.train-banner[data-state="done"] .train-banner-icon { background: var(--accent-strong); }
+#train-banner[data-state="move"] .train-banner-icon,
+#train-banner[data-state="move"] .train-coach-icon { background: var(--accent); animation: jobToastPulse 1.6s ease-in-out infinite; }
+#train-banner[data-state="correct"] .train-banner-icon,
+#train-banner[data-state="correct"] .train-coach-icon { background: var(--good); }
+#train-banner[data-state="wrong"] .train-banner-icon,
+#train-banner[data-state="wrong"] .train-coach-icon { background: var(--danger); }
+#train-banner[data-state="done"] .train-banner-icon,
+#train-banner[data-state="done"] .train-coach-icon { background: var(--accent-strong); }
 
-.train-banner-text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
-.train-banner-title {
+.train-banner-text,
+.train-coach-text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.train-banner-title,
+.train-coach-title {
   font-weight: 700;
   font-size: 15px;
   overflow: hidden;
@@ -2244,7 +2346,8 @@ h2 {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
 }
-.train-banner-sub {
+.train-banner-sub,
+.train-coach-sub {
   font-size: 12px;
   color: var(--muted);
   overflow: hidden;
@@ -2252,8 +2355,12 @@ h2 {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
-.train-banner[data-state="correct"] .train-banner-title { color: var(--good); }
-.train-banner[data-state="wrong"] .train-banner-title { color: var(--danger); }
+.train-banner-sub:empty,
+.train-coach-sub:empty { display: none; }
+#train-banner[data-state="correct"] .train-banner-title,
+#train-banner[data-state="correct"] .train-coach-title { color: var(--good); }
+#train-banner[data-state="wrong"] .train-banner-title,
+#train-banner[data-state="wrong"] .train-coach-title { color: var(--danger); }
 
 .train-turn-badge {
   width: 34px;
@@ -2351,11 +2458,19 @@ h2 {
   margin: 0;
   flex: none;
 }
-/* Keep the slot in layout even when blitz is off so toggling it cannot shove
-   the board. The fill is empty; the track is just an invisible 5px spacer. */
+/* Blitz clock keeps a fixed 5px slot in the Train sidebar (below the coach
+   card), so toggling it mid-session cannot shove the board. */
 .train-blitz-bar[hidden] {
   display: block;
   visibility: hidden;
+}
+#view-train .train-sidebar .train-blitz-float {
+  flex: none;
+  height: 5px;
+  min-height: 5px;
+}
+#view-train .train-sidebar .train-blitz-bar {
+  background: var(--line);
 }
 .train-blitz-fill {
   height: 100%;
@@ -5188,6 +5303,18 @@ h2 {
     min-height: 0;
   }
 
+  .board-area {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  #analyze-sidebar,
+  #view-build .sidebar,
+  #view-train .train-sidebar {
+    max-height: none;
+    overflow: visible;
+  }
+
   .board-stack {
     max-width: min(72vh, 560px);
     margin: 0 auto;
@@ -5232,8 +5359,24 @@ h2 {
   }
 
   .status {
-    flex: 1;
-    text-align: right;
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+  }
+
+  /* Mobile keeps the toast-like behavior: the status slot joins the wrapped
+     row and flexes instead of holding desktop's fixed 248px. */
+  .topbar-status-slot {
+    order: 2;
+    flex: 1 1 100%;
+    width: auto;
+    max-width: none;
+  }
+
+  .status-close {
+    width: 44px;
+    height: 44px;
+    font-size: 16px;
   }
 
   .metrics {
@@ -5267,10 +5410,6 @@ h2 {
 
   .board-bar {
     height: 52px;
-  }
-
-  #view-train .study {
-    --board-chrome: 148px;
   }
 
   .train-modes {
@@ -7473,31 +7612,16 @@ h2 {
   flex: 1;
 }
 
-.status.is-live {
-  color: var(--accent-strong);
-}
-
 /* Desktop workspaces: the board and the task pane share the available width.
    One authoritative desktop block per workspace — Analyze / Build / Train share
    the study shell; Games, Scout and Teams each own one layout. Base (mobile)
    rules above stay untouched; values here are the effective desktop sizes. */
 @media (min-width: 960px) {
   .workspace { max-width: 1400px; }
-  #view-analyze .study,
-  #view-build .study,
-  #view-train .study {
-    grid-template-columns: minmax(0, 52fr) minmax(0, 48fr);
-    gap: clamp(20px, 2.5vw, 36px);
-  }
-  .study .board-area { align-items: center; }
-  .study .board-stack,
-  .study .board-bar,
-  .study .train-banner,
-  .study .train-blitz-bar { width: min(100%, calc(100dvh - 112px)); }
-  #view-train .study .board-stack,
-  #view-train .study .board-bar,
-  #view-train .study .train-banner,
-  #view-train .study .train-blitz-bar { width: min(100%, calc(100dvh - 150px)); }
+  /* Study geometry is authoritative in the base .study block (max-content
+     board column + viewport-height board size); desktop only keeps the shared
+     16px gap — no second column definition. */
+  .study .board-area { justify-self: start; }
   #view-analyze .sidebar,
   #view-build .sidebar,
   #view-train .sidebar { padding: 4px 6px 18px 4px; overflow-y: auto; overscroll-behavior: contain; }
@@ -7572,29 +7696,9 @@ h2 {
   background: var(--panel);
 }
 .status[hidden] { display: none; }
-/* Status floats beside the header actions (Ctrl K / account chip) as an overlay
-   below the topbar: position:fixed keeps it out of layout so it never shifts the
-   workspace. info/success auto-dismiss (~4.5s in setStatus); error stays until
-   the close button is pressed. */
-.status:not([hidden]) {
-  position: fixed;
-  z-index: 80;
-  top: 50px;
-  right: 14px;
-  display: flex;
-  align-items: start;
-  gap: 12px;
-  width: max-content;
-  max-width: min(400px, calc(100vw - 28px));
-  margin: 0;
-  padding: 10px 12px;
-  box-shadow: 0 8px 28px color-mix(in srgb, var(--text) 14%, transparent);
-  white-space: normal;
-}
-.status[data-severity="error"] { border-color: var(--danger); color: var(--danger-strong); }
-.status[data-severity="warning"] { border-color: var(--warn); }
-.status-message { min-width: 0; overflow-wrap: anywhere; }
-.status-close { flex: none; border: 0; background: transparent; color: inherit; font-size: 18px; line-height: 1; padding: 0 2px; }
+/* Inline topbar status text stays inside the fixed slot: ellipsis, never wrap,
+   zero layout shift. info/success/warning auto-clear; error stays until the
+   close button (or the next status) clears it. */
 .status-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .build-empty { padding: 24px 4px; background: var(--panel-soft); border-radius: var(--radius-card); }
 .build-empty h2, .build-empty p, .build-empty .tools { margin-left: 20px; margin-right: 20px; }

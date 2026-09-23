@@ -14,7 +14,10 @@
 // CSS. These ceilings cover that reviewed delta while retaining a narrow gate;
 // gzip remains independently capped at 95,000 B. The desktop-workspace follow-up
 // (Build-tab Maia idle pre-warm + one-rAF Generate feedback yield) adds ~0.2 KiB
-// raw to the main chunk; gzip is unchanged.
+// raw to the main chunk; gzip is unchanged. The study-workspace integration
+// (viewport-height board sizing + max-content board column + sidebar Train
+// coach + inline topbar status slot) adds ~0.4 KiB JS and ~1.3 KiB CSS raw;
+// gzip stays within the existing caps.
 import { readdirSync, statSync, readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { fileURLToPath, URL } from "node:url";
@@ -29,13 +32,13 @@ const LIMITS = [
   {
     prefix: "index-",
     suffix: ".js",
-    maxBytes: 296_000,
+    maxBytes: 297_000,
     maxGzipBytes: 95_000,
     label: "main app chunk",
   },
   { prefix: "maia3-worker-", suffix: ".js", maxBytes: 220_000, label: "maia3 worker chunk" },
-  // Desktop study/data/management layouts add 3.4 KiB of CSS; keep < 133 KiB raw.
-  { prefix: "index-", suffix: ".css", maxBytes: 136_000, label: "main stylesheet" },
+  // Desktop study/data/management layouts add ~4.7 KiB of CSS; keep < 135 KiB raw.
+  { prefix: "index-", suffix: ".css", maxBytes: 138_000, label: "main stylesheet" },
 ];
 
 let files;

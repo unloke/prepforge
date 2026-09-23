@@ -40,6 +40,56 @@ describe("workspace chrome layout", () => {
     expect(focused).toMatch(/top:\s*8px/);
   });
 
+  it("sizes study boards off the viewport with a full-width workspace", () => {
+    expect(css).toContain(".study");
+    expect(css).toMatch(/\.study\s*\{[^}]*--board-size:\s*min\(/s);
+    expect(css).toMatch(/grid-template-columns:\s*max-content\s+minmax\(0,\s*1fr\)/);
+    expect(css).not.toMatch(/grid-template-columns:\s*min\(\s*calc\(var\(--study-h\)/);
+    expect(css).toContain(".board-area");
+    expect(css).toMatch(/\.board-area\s*\{[^}]*width:\s*var\(--board-size\)/s);
+    expect(css).toContain(".board-stack");
+    expect(html).toContain('id="analysis-board"');
+    expect(html).toContain('id="train-board"');
+    expect(css).toMatch(/#analyze-sidebar[\s\S]{0,300}?overflow-y:\s*auto/);
+  });
+
+  it("keeps the Train coach in the sidebar with the board starting at the top", () => {
+    const trainStart = html.indexOf('id="view-train"');
+    const train = html.slice(trainStart);
+    expect(train).toContain('id="train-banner"');
+    expect(train).toContain('class="train-coach"');
+    expect(train).toContain('id="train-banner-title"');
+    expect(train).toContain('id="train-banner-sub"');
+    expect(train).toContain('id="train-turn-badge"');
+    const boardArea = train.slice(train.indexOf('class="board-area"'), train.indexOf('id="train-board-label"'));
+    expect(boardArea).not.toContain('id="train-banner"');
+    expect(boardArea).toContain('id="train-board"');
+    const sidebar = train.slice(train.indexOf('train-sidebar'));
+    expect(sidebar.indexOf('id="train-banner"')).toBeGreaterThanOrEqual(0);
+    expect(sidebar.indexOf('id="train-blitz"')).toBeGreaterThan(sidebar.indexOf('id="train-banner"'));
+    expect(css).toContain("#view-train .train-sidebar .train-blitz-float");
+    expect(css).toContain(".train-coach-title");
+    expect(css).toContain(".train-coach-sub");
+  });
+
+  it("keeps topbar status inline left of Ctrl K with a fixed slot", () => {
+    const header = html.slice(html.indexOf('<header class="topbar">'), html.indexOf("</header>"));
+    const slot = header.indexOf('id="topbar-status-slot"');
+    const status = header.indexOf('id="app-status"');
+    const palette = header.indexOf('id="open-palette"');
+    const account = header.indexOf('id="account-chip"');
+    expect(slot).toBeGreaterThanOrEqual(0);
+    expect(status).toBeGreaterThan(slot);
+    expect(palette).toBeGreaterThan(status);
+    expect(account).toBeGreaterThan(palette);
+    expect(header).toContain('id="app-status-close"');
+    expect(css).toContain(".topbar-status-slot");
+    expect(css).toMatch(/\.topbar-status-slot\s*\{[^}]*width:\s*248px/s);
+    expect(css).toContain(".status-close");
+    expect(app).toContain('function setStatus(message, { severity = "info" } = {})');
+    expect(app).toContain('getElementById("app-status-close")');
+  });
+
   it("uses Settings as the only theme entry point", () => {
     expect(html).not.toContain('id="theme-toggle"');
     const settingsStart = html.indexOf('id="view-settings"');
@@ -293,9 +343,13 @@ describe("workspace chrome layout", () => {
   });
 
   it("gives every view one scroll owner (no duplicate side rails)", () => {
-    // The sidebar is layout only — never a nested scroller.
+    // Study sidebars scroll internally within the viewport-height study, so
+    // controls never move when results appear; the generic sidebar stays
+    // layout-only. Inner panels that need their own scroll keep it.
     expect(ruleBody(".sidebar")).toMatch(/overflow:\s*visible/);
     expect(ruleBody(".sidebar")).not.toMatch(/overflow-y/);
+    expect(css).toMatch(/#analyze-sidebar[\s\S]{0,300}?overflow-y:\s*auto/);
+    expect(css).toMatch(/#view-train \.train-sidebar[\s\S]{0,300}?overflow-y:\s*auto/);
     // Panels that need independent scroll keep it: coach prose, inspector,
     // move lists, composer rows/popover, context menus.
     expect(ruleBody(".coach-scroll")).toMatch(/overflow-y:\s*auto/);

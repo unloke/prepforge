@@ -2750,8 +2750,6 @@ class BoardController {
   }
 }
 
-let statusDismissTimer;
-
 // Engine-loading lifecycle marks (dev/E2E timing only): records monotonic
 // timestamps per (job) so the parallel init windows — Build runner import vs
 // Maia ready, Analyze Stockfish vs Maia init — are observable without touching
@@ -2769,21 +2767,31 @@ function engineLifecycleMark(name, origin = performance.now()) {
 function setStatus(message, { severity = "info" } = {}) {
   const status = document.getElementById("app-status");
   if (!status) return;
+  const closeBtn = document.getElementById("app-status-close");
   const text = String(message || "");
-  clearTimeout(statusDismissTimer);
-  status.hidden = !text || text === "Ready";
-  if (status.hidden) return;
+  status.textContent = text;
+  status.title = text;
   const normalizedSeverity = ["info", "success", "warning", "error"].includes(severity)
     ? severity
     : "info";
   const isError = normalizedSeverity === "error";
-  status.querySelector(".status-message").textContent = text;
   status.setAttribute("role", isError ? "alert" : "status");
   status.setAttribute("aria-live", isError ? "assertive" : "polite");
   status.dataset.severity = normalizedSeverity;
   status.dataset.state = isError ? "error" : "ready";
-  status.querySelector(".status-close").onclick = () => { status.hidden = true; clearTimeout(statusDismissTimer); };
-  if (!isError) statusDismissTimer = setTimeout(() => { status.hidden = true; }, 4500);
+  if (typeof window === "undefined") return;
+  window.clearTimeout(setStatus._timer);
+  if (closeBtn) closeBtn.hidden = !isError || !text;
+  if (text && !isError) {
+    setStatus._timer = window.setTimeout(() => {
+      if (status.textContent !== text) return;
+      status.textContent = "";
+      status.title = "";
+      status.dataset.severity = "info";
+      status.dataset.state = "ready";
+      if (closeBtn) closeBtn.hidden = true;
+    }, normalizedSeverity === "warning" ? 8000 : 6000);
+  }
 }
 
 function setStatusError(message) {
@@ -11335,6 +11343,20 @@ function bindEvents() {
     switchView(loc.view, { fromUrl: true });
   });
   document.getElementById("train-hint").addEventListener("click", trainHint);
+  const statusClose = document.getElementById("app-status-close");
+  if (statusClose) {
+    statusClose.addEventListener("click", () => {
+      const status = document.getElementById("app-status");
+      if (status) {
+        window.clearTimeout(setStatus._timer);
+        status.textContent = "";
+        status.title = "";
+        status.dataset.severity = "info";
+        status.dataset.state = "ready";
+      }
+      statusClose.hidden = true;
+    });
+  }
   const blitzToggle = document.getElementById("train-blitz-toggle");
   if (blitzToggle) {
     const paintBlitz = (on) => {
