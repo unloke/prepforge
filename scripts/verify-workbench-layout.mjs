@@ -49,6 +49,10 @@ try {
           await page.locator("#team-detail-name").evaluate((el) => { el.textContent = "Opening lab"; });
         }
         if (view === "scout" && state !== "empty") await page.locator("#scout-v3-results").evaluate((el) => { el.hidden = false; });
+        if (view === "scout" && state !== "empty") {
+          const placeholder = await page.locator("#scout-results").evaluate((el) => getComputedStyle(el, "::before").display);
+          if (placeholder !== "none") throw new Error(`Scout shows empty prompt beside populated report: ${placeholder}`);
+        }
         if (view === "teams" && state === "dense") {
           const positions = await page.evaluate(() => ({ detail: document.querySelector("#team-detail-card").getBoundingClientRect().top, list: document.querySelector("#teams-list").getBoundingClientRect().top }));
           if (positions.detail >= positions.list) throw new Error(`Selected team detail is below dense list: ${JSON.stringify(positions)}`);

@@ -7822,6 +7822,7 @@ h2 {
 }
 #view-replay .replay-results:empty::before { content: "Choose your games and run a check to see your preparation review here."; }
 #view-replay .scout-results:empty::before { content: "Choose an opponent source and start scouting to see their opening routes here."; }
+#view-replay .replay-card-scout:has(.scout-v3-results:not([hidden]):not(:empty)) .scout-results:empty::before { display: none; }
 @media (max-width: 760px) {
   #view-replay .research-heading { padding: 14px 18px; }
   #view-replay .research-controls { padding: 12px 18px; align-items: stretch; flex-direction: column; gap: 12px; }

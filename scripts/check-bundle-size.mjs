@@ -37,9 +37,9 @@ const LIMITS = [
     label: "main app chunk",
   },
   { prefix: "maia3-worker-", suffix: ".js", maxBytes: 220_000, label: "maia3 worker chunk" },
-  // The shared Games/Scout source-controls-results layout brings the reviewed
-  // stylesheet to 140,506 B after deduplication; allow only 494 B headroom.
-  { prefix: "index-", suffix: ".css", maxBytes: 141_000, label: "main stylesheet" },
+  // The Games row-detail layout, wider Scout report, and Teams matrix bring
+  // the reviewed stylesheet to about 143,590 B; retain a narrow ceiling.
+  { prefix: "index-", suffix: ".css", maxBytes: 144_000, label: "main stylesheet" },
 ];
 
 let files;
