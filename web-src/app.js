@@ -11349,12 +11349,9 @@ function bindEvents() {
   const palette = document.getElementById("open-palette");
   if (statusSlot && lastNav && palette) {
     const syncStatusRoom = () => {
-      // The desktop slot sits 16px before Ctrl K; retain another 8px after
-      // the last nav item so the overlay never enters either control group.
       const room = Math.max(0,
-        Math.floor(palette.getBoundingClientRect().left - lastNav.getBoundingClientRect().right - 24));
+        Math.floor(palette.getBoundingClientRect().left - lastNav.getBoundingClientRect().right - 20));
       statusSlot.style.setProperty("--topbar-status-room", `${room}px`);
-      statusSlot.dataset.space = room < 80 ? "tight" : "available";
     };
     syncStatusRoom();
     window.addEventListener("resize", syncStatusRoom);
