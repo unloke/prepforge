@@ -159,10 +159,10 @@ export function createReplayView({
         <span class="replay-badge">${escapeHtml(meta.badge)}</span>
         <span class="replay-caret" aria-hidden="true">${open ? "●" : "›"}</span>
       </button>
+      ${open ? body : ""}
     </div>
   `;
-    // Selected-game details live in the inspector, leaving the game list compact.
-    return { row: card, body, players, badge: meta.badge };
+    return card;
   }
 
   function renderReplayResults(payload) {
@@ -177,14 +177,8 @@ export function createReplayView({
     const rows = payload.games
       .map((game, index) => ({ game, index }))
       .filter(({ game }) => !filter || replayGameKind(game) === filter);
-    const cards = rows.map(({ game, index }) => renderReplayCard(game, index));
-    const selected = rows.findIndex(({ index }) => isGameOpen(index));
     container.innerHTML = rows.length
-      ? `<div class="replay-game-list">${cards.map((card) => card.row).join("")}</div>
-         <section class="replay-inspector" aria-label="Selected game">
-           ${selected < 0 ? '<div class="empty-state">Select a game to inspect its preparation.</div>' :
-             `<h3>${cards[selected].players}</h3><span class="replay-badge">${escapeHtml(cards[selected].badge)}</span>${cards[selected].body}`}
-         </section>`
+      ? `<div class="replay-game-list">${rows.map(({ game, index }) => renderReplayCard(game, index)).join("")}</div>`
       : '<div class="empty-state">No games in this bucket.</div>';
     container.querySelectorAll(".replay-row-head").forEach((head) => {
       head.addEventListener("click", () => onToggleGame(Number(head.dataset.index)));

@@ -7740,7 +7740,7 @@ h2 {
 #view-replay .replay-card-scout .scout-v13-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 18px; }
 #view-replay .replay-card-scout .scout-v13-card { min-width: 0; }
 /* Games and Scout share the existing workbench tokens and result components. */
-#view-replay .replay-stack { max-width: 1180px; }
+#view-replay .replay-stack { max-width: 1400px; }
 #view-replay [data-replay-panel] {
   padding: 0;
   overflow: hidden;
@@ -7833,4 +7833,70 @@ h2 {
   #view-replay .scout-profile,
   #view-replay .scout-v3-results,
   #view-replay .scout-results { margin-left: 18px; margin-right: 18px; }
+}
+/* Games, Scout, Teams: let the primary work fill the workspace. */
+#view-replay .replay-stack,
+#view-teams .teams-stack { width: 100%; max-width: 1400px; }
+#view-replay .replay-card-games,
+#view-replay .replay-card-scout,
+#view-teams .teams-stack > .card { min-width: 0; }
+#view-replay .replay-toolbar { justify-content: flex-end; }
+#view-replay .replay-summary { padding: 10px 0; margin: 0 0 10px; border-bottom: 1px solid var(--line-soft); }
+#view-replay .replay-card-games .replay-results { display: block; }
+#view-replay .replay-game-list { display: grid; gap: 0; }
+#view-replay .replay-row {
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  border-left: 3px solid transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+#view-replay .replay-row.rk-in-prep { border-left-color: var(--good); }
+#view-replay .replay-row.rk-left-prep { border-left-color: var(--warn); }
+#view-replay .replay-row.rk-user-error { border-left-color: var(--danger); }
+#view-replay .replay-row-head { min-height: 44px; padding: 8px 12px; }
+#view-replay .replay-row-head .players { min-width: min(42%, 370px); }
+#view-replay .replay-preview { font-size: 12px; }
+#view-replay .replay-row.is-open { background: var(--panel-soft); }
+#view-replay .replay-row-body { padding: 16px 20px 20px 42px; }
+#view-replay .replay-row-head:focus-visible,
+#view-teams .team-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+#view-replay .replay-card-scout .scout-profile { margin-top: 0; margin-bottom: 16px; }
+#view-replay .replay-card-scout .scout-v3-results { margin-top: 0; }
+#view-replay .replay-card-scout .scout-v13-cards {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 500px), 1fr));
+  gap: 12px;
+}
+
+#view-teams .teams-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+#view-teams .teams-stack > .card,
+#view-teams .team-empty { grid-column: 1; grid-row: auto; }
+#view-teams .teams-stack > .card { background: var(--panel); border: 1px solid var(--line); }
+#view-teams #teams-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 245px), 1fr)); gap: 10px; }
+#view-teams .team-row {
+  min-height: 82px;
+  padding: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--panel-soft);
+}
+#view-teams .team-row > span:first-child { display: grid; gap: 7px; min-width: 0; }
+#view-teams .team-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#view-teams .team-row .sub { margin: 0; }
+#view-teams .team-row.is-selected { border-color: var(--accent); background: var(--accent-soft); }
+#view-teams .team-detail-card { min-height: 0; }
+#view-teams .teams-stack:has(.team-detail-card:not([hidden])) .team-detail-card { order: -1; }
+#view-teams .team-empty { padding: 18px; border: 1px dashed var(--line); border-radius: var(--radius-card); }
+#view-teams .teams-stack:has(.team-detail-card:not([hidden])) .team-empty { display: none; }
+
+@media (max-width: 680px) {
+  #view-replay .replay-toolbar { width: 100%; justify-content: flex-start; }
+  #view-replay .replay-row-head { flex-wrap: wrap; }
+  #view-replay .replay-row-head .players { min-width: 0; flex: 1 1 60%; }
+  #view-replay .replay-preview { flex-basis: 100%; order: 3; padding-left: 26px; }
+  #view-replay .replay-row-body { padding: 12px; }
+  #view-teams .team-empty { display: none; }
 }
