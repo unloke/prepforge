@@ -37,8 +37,10 @@ const LIMITS = [
     label: "main app chunk",
   },
   { prefix: "maia3-worker-", suffix: ".js", maxBytes: 220_000, label: "maia3 worker chunk" },
-  // Desktop study/data/management layouts add ~4.7 KiB of CSS; keep < 135 KiB raw.
-  { prefix: "index-", suffix: ".css", maxBytes: 138_000, label: "main stylesheet" },
+  // Desktop workspace redesign / stable result canvases / responsive layout
+  // additions: 138.3 KiB after duplicate declarations were removed. Keep the
+  // raw ceiling at 140 KiB; the existing gzip behavior and JS gates stay fixed.
+  { prefix: "index-", suffix: ".css", maxBytes: 140 * 1024, label: "main stylesheet" },
 ];
 
 let files;

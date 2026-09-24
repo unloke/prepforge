@@ -7636,11 +7636,6 @@ h2 {
    the study shell; Games, Scout and Teams each own one layout. Base (mobile)
    rules above stay untouched; values here are the effective desktop sizes. */
 @media (min-width: 960px) {
-  .workspace { max-width: 1400px; }
-  /* Study geometry is authoritative in the base .study block (max-content
-     board column + viewport-height board size); desktop only keeps the shared
-     16px gap — no second column definition. */
-  .study .board-area { justify-self: start; }
   #view-analyze .sidebar,
   #view-build .sidebar,
   #view-train .sidebar { padding: 4px 6px 18px 4px; overflow-y: auto; overscroll-behavior: contain; }
@@ -7653,7 +7648,6 @@ h2 {
   #view-analyze .explain-card,
   #view-build .build-inspector { box-shadow: none; border-color: transparent; }
   #view-analyze .drawer { border-color: transparent; border-bottom: 1px solid var(--line-soft); border-radius: 0; }
-  #view-analyze .explain-card { background: var(--panel-soft); }
   #view-analyze #analysis-results { display: grid; gap: 14px; }
   #view-analyze #analysis-results[hidden] { display: none; }
   #view-analyze #eval-chart { width: 100%; }
@@ -7665,7 +7659,6 @@ h2 {
   #view-build .build-branchbar { background: var(--panel-soft); border-color: transparent; }
   #view-build .sidebar:has(#build-empty:not([hidden])) .build-tools,
   #view-build .sidebar:has(#build-empty:not([hidden])) #builder-tree { display: none; }
-  #view-train .train-setup { padding: 12px; }
   #view-train #train-play-color { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #view-train .train-play-setup .train-start-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #view-train .train-play-setup .train-start-row:last-child { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -7673,12 +7666,8 @@ h2 {
   #view-train .train-sidebar[data-session-state="active"] .train-setup,
   #view-train .train-sidebar[data-session-state="summary"] .train-setup,
   #view-train .train-sidebar[data-session-state="summary"] #train-progress-panel { display: none; }
-  #view-replay .replay-stack,
-  #view-teams .teams-stack { max-width: 1400px; }
   #view-replay .replay-card-games .replay-results {
     display: grid;
-    grid-template-columns: minmax(280px, 35%) minmax(0, 1fr);
-    gap: 24px;
     align-items: start;
   }
   #view-replay .replay-card-games .replay-row { border-color: transparent; border-bottom-color: var(--line-soft); border-radius: 0; box-shadow: none; }
@@ -7692,17 +7681,13 @@ h2 {
      separate desktop block — one authoritative layout. */
   #view-teams .teams-stack {
     display: grid;
-    grid-template-columns: minmax(300px, 39%) minmax(0, 1fr);
-    gap: 12px 20px;
     align-items: start;
   }
-  #view-teams .teams-stack > .card { border-color: transparent; background: var(--panel-soft); padding: 16px; }
   #view-teams .teams-stack > :first-child { grid-column: 1; grid-row: 1; }
   #view-teams .teams-stack > :last-child { grid-column: 1; grid-row: 2; }
-  #view-teams .team-detail-card { grid-column: 2; grid-row: 1 / span 2; min-height: 320px; }
+  #view-teams .team-detail-card { grid-column: 2; grid-row: 1 / span 2; }
   #view-teams .team-detail-card[hidden] { display: none; }
   #view-teams .team-empty { grid-column: 2; grid-row: 1 / span 2; padding: 28px; background: var(--panel-soft); border-radius: var(--radius-card); }
-  #view-teams .teams-stack:has(.team-detail-card:not([hidden])) .team-empty { display: none; }
 }
 
 .status:not([hidden]) {
@@ -7726,6 +7711,9 @@ h2 {
   border: 0;
   border-radius: 0;
   background: transparent;
+}
+@media (min-width: 721px) {
+  .topbar-status-slot[data-space="tight"]:not(:has(.status[data-severity="error"])) { display: none; }
 }
 .status-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .build-empty { padding: 24px 4px; background: var(--panel-soft); border-radius: var(--radius-card); }
