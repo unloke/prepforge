@@ -37,8 +37,9 @@ const LIMITS = [
     label: "main app chunk",
   },
   { prefix: "maia3-worker-", suffix: ".js", maxBytes: 220_000, label: "maia3 worker chunk" },
-  // Desktop study/data/management layouts add ~4.7 KiB of CSS; keep < 135 KiB raw.
-  { prefix: "index-", suffix: ".css", maxBytes: 138_000, label: "main stylesheet" },
+  // The shared Games/Scout source-controls-results layout brings the reviewed
+  // stylesheet to 140,506 B after deduplication; allow only 494 B headroom.
+  { prefix: "index-", suffix: ".css", maxBytes: 141_000, label: "main stylesheet" },
 ];
 
 let files;
