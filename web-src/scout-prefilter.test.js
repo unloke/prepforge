@@ -54,7 +54,10 @@ function evalMapForLine(ucis, oppColor, { cpLoss = 30, bestUci = null, complete 
 describe("scout-prefilter scoring", () => {
   it("scores lines with objective cp loss and a user reply", () => {
     const ucis = ["e2e4", "e7e5", "g1f3"];
-    const line = { ucis, sans: ["e4", "e5", "Nf3"], games: 3, share: 0.2 };
+    const routePlausibility = { complete: true, minSupportedProbability: 0.5,
+      supportedDecisions: 1, unknownDecisions: 1, deepestSupportedPly: 1 };
+    const line = { ucis, sans: ["e4", "e5", "Nf3"], games: 3, share: 0.2,
+      routePlausibility };
     const metrics = scorePrefilterLine(
       line,
       evalMapForLine(ucis, OPP, { cpLoss: 40, bestUci: "g8f6" }),
@@ -68,6 +71,7 @@ describe("scout-prefilter scoring", () => {
     expect(metrics?.prefilterScore).toBe(20);   // userLeafAdvantage = -(-20) = 20
     expect(metrics?.cpLoss).toBeUndefined();     // cp-loss is gone (leaf-only scoring)
     expect(metrics?.ancestorFrequency).toBe(0.12);
+    expect(metrics?.routePlausibility).toEqual(routePlausibility);
   });
 
   it("scores a user-favourable mate at the leaf and ignores an opponent mate", () => {
@@ -406,7 +410,7 @@ describe("computePrefilterScopeKey", () => {
       activeSpeed: "blitz",
       games,
     });
-    expect(key).toMatch(/^rival\|blitz\|\d+\|4$/);
+    expect(key).toMatch(/^rival\|blitz\|\d+\|7$/);
     expect(
       computePrefilterScopeKey({ username: "rival", activeSpeed: "blitz", games }),
     ).toBe(key);

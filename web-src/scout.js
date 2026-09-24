@@ -4,7 +4,8 @@
 //
 // Everything runs in the browser — the PrepForge server is never involved in the
 // fetch or the number-crunching. Parsing keeps deeper moves for weakness/engine
-// analysis while the display trie still caps at MAX_PLIES.
+// analysis. Display helpers cap their presentation; production reachability uses
+// every observed opening move in the live trie.
 //
 // Pure functions + an injected-deps fetcher, unit-testable without network/DOM.
 
@@ -25,7 +26,7 @@ export function scoutFetchErrorMessage(error) {
   if (/rate limit/i.test(msg)) return SCOUT_ERR_RATE_LIMIT;
   return null;
 }
-export const MAX_PLIES = 16; // opening book depth for the display trie
+export const MAX_PLIES = 16; // default depth for compact display/legacy trie callers
 export const ANALYZE_PLIES = 24; // deeper capture for weakness / engine scan
 /** Minimum games for game-plan lines (ranking filters slips; no hard ply gate). */
 export const GAME_PLAN_MIN_GAMES = 1;
@@ -48,11 +49,13 @@ export const SCOUT_BRANCH_HARD_CEILING = 300;
  *  never starves on a thin opponent. Mirrors SCOUT_PREFILTER_POOL_SIZE (kept local to
  *  avoid a circular import from scout-prefilter.js). */
 export const SCOUT_BRANCH_MIN_KEEP = 64;
-/** Routes below this opponent-only empirical reach are too unlikely for prep. */
-export const SCOUT_MIN_ROUTE_REACH = 0.02;
+/** Any observed opponent choice below this conditional share makes a route poor prep. */
+export const SCOUT_MIN_ROUTE_REACH = 0.1;
+/** Fewer parent games leave an opponent decision unmeasured, rather than certain. */
+import { opponentMoveProbability } from "./scout-probability.js";
 export const SCOUT_STOCKFISH_DEPTH = 8;
 export const SCOUT_MAIA_LIMIT = 12;
-export const SCOUT_SCORING_VERSION = 4;
+export const SCOUT_SCORING_VERSION = 7;
 /** Minimum games before empirical opponent performance gates prefilter candidates. */
 export const SCOUT_PREFILTER_EMPIRICAL_MIN_GAMES = 3;
 export const SCOUT_THINK_TIME_CLAMP_MIN = 0.7;
@@ -1099,7 +1102,7 @@ export function openingWeaknessScore(entry, baselineScorePct = 50) {
   return stockfishAdvantage * struggle;
 }
 
-/** Minimum off-modal struggle floor so rare blunders Stockfish can punish stay in the pool. */
+/** Small struggle prior floor so objectively punishable routes can reach Stockfish. */
 export const SCOUT_STRUGGLE_PRIOR_FLOOR = 0.08;
 /** Prior of a non-reproducible one-off (struggle 0, prefixGames 0):
  *  SCOUT_STRUGGLE_PRIOR_FLOOR * (log1p(0) + 0.1). Branches at/below this carry NO
@@ -1132,6 +1135,7 @@ export function triePrefixStats(trie, ucis) {
     out.push({
       ply: i,
       uci: ucis[i],
+      parentGames,
       gameCount: gc,
       w: child.w || 0,
       d: child.d || 0,
@@ -1144,15 +1148,34 @@ export function triePrefixStats(trie, ucis) {
   return out;
 }
 
-/** Chance the opponent repeats their decisions if we choose this observed route. */
-export function opponentRouteReach(trie, ucis, opponentColor) {
-  if (!trie || !ucis?.length || !["white", "black"].includes(opponentColor)) return 0;
+/** The weakest sample-aware opponent choice determines route plausibility. */
+export function opponentRoutePlausibility(trie, ucis, opponentColor) {
+  const empty = { complete: false, weakestEstimatedProbability: 0, decisionCount: 0,
+    deepestDecisionPly: null, weakestDecision: null };
+  if (!trie || !ucis?.length || !["white", "black"].includes(opponentColor)) return empty;
   const stats = triePrefixStats(trie, ucis);
-  if (stats.length !== Math.min(ucis.length, MAX_PLIES)) return 0;
-  return stats.reduce((reach, node) => {
+  if (stats.length !== ucis.length) return empty;
+  const evidence = { complete: true, weakestEstimatedProbability: null, decisionCount: 0,
+    deepestDecisionPly: null, weakestDecision: null };
+  for (const node of stats) {
     const mover = node.ply % 2 === 0 ? "white" : "black";
-    return mover === opponentColor ? reach * node.moveShare : reach;
-  }, 1);
+    if (mover !== opponentColor) continue;
+    const estimate = opponentMoveProbability(node.gameCount, node.parentGames, "jeffreys");
+    evidence.decisionCount += 1;
+    evidence.deepestDecisionPly = node.ply + 1;
+    if (evidence.weakestEstimatedProbability == null ||
+      estimate < evidence.weakestEstimatedProbability) {
+      evidence.weakestEstimatedProbability = estimate;
+      evidence.weakestDecision = { ply: node.ply + 1, parentGames: node.parentGames,
+        moveGames: node.gameCount, rawProbability: node.moveShare, estimate };
+    }
+  }
+  return evidence;
+}
+
+/** Compatibility score: null means the route contains no opponent decision. */
+export function opponentRouteReach(trie, ucis, opponentColor) {
+  return opponentRoutePlausibility(trie, ucis, opponentColor).weakestEstimatedProbability;
 }
 
 /**
@@ -1250,7 +1273,8 @@ export function rankedOpeningBranches(
       b.exploitabilityStruggle = struggle;
       b.offModal = offModal;
       b.prefixGames = prefixGames;
-      b.routeReach = opponentRouteReach(trie, b.ucis, color);
+      b.routePlausibility = opponentRoutePlausibility(trie, b.ucis, color);
+      b.routeReach = b.routePlausibility.weakestEstimatedProbability;
       const parentStats = triePrefixStats(trie, b.ucis.slice(0, -1)).at(-1);
       const parentGames = parentStats?.gameCount ?? trie.gameCount;
       b.ancestorGames = parentGames;
@@ -1276,7 +1300,8 @@ export function rankedOpeningBranches(
     );
   }
   const plausible = trie
-    ? branches.filter((branch) => branch.routeReach >= SCOUT_MIN_ROUTE_REACH)
+    ? branches.filter((branch) => branch.routePlausibility.complete &&
+      (branch.routeReach == null || branch.routeReach >= SCOUT_MIN_ROUTE_REACH))
     : branches;
   const ranked = limit > 0 ? plausible.slice(0, limit) : plausible;
   return { branches: ranked, ancestorFreq };
@@ -1327,6 +1352,7 @@ export function rankGamePlan(
         { maiaScorePct: g.maiaScorePct ?? null },
       );
       enriched.routeReach = g.routeReach;
+      enriched.routePlausibility = g.routePlausibility;
       if (!enriched.lastSeen && games && lineLastSeen) {
         enriched.lastSeen = lineLastSeen(games, enriched.ucis, { color: oppColor, speedFilter });
       }

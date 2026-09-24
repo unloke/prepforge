@@ -318,8 +318,8 @@ export function createScoutView(deps) {
     const black = scoutModule.createOpeningTrie();
     for (const g of games) {
       if (speed !== "all" && g.speed !== speed) continue;
-      scoutModule.insertGameIntoTrie(white, g, "white", { anchorTs });
-      scoutModule.insertGameIntoTrie(black, g, "black", { anchorTs });
+      scoutModule.insertGameIntoTrie(white, g, "white", { anchorTs, maxPlies: Infinity });
+      scoutModule.insertGameIntoTrie(black, g, "black", { anchorTs, maxPlies: Infinity });
     }
     scoutState.liveTries = { white, black };
     scoutState.liveTrieSpeed = speed;
@@ -351,8 +351,8 @@ export function createScoutView(deps) {
       return;
     }
     const anchorTs = scoutState.liveTrieAnchor || Date.now();
-    scoutModule.insertGameIntoTrie(scoutState.liveTries.white, game, "white", { anchorTs });
-    scoutModule.insertGameIntoTrie(scoutState.liveTries.black, game, "black", { anchorTs });
+    scoutModule.insertGameIntoTrie(scoutState.liveTries.white, game, "white", { anchorTs, maxPlies: Infinity });
+    scoutModule.insertGameIntoTrie(scoutState.liveTries.black, game, "black", { anchorTs, maxPlies: Infinity });
     scoutState.liveTrieCount = scoutState.games.length;
   }
 

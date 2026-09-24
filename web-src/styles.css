@@ -7948,3 +7948,60 @@ h2 {
   #view-teams .team-detail-columns { grid-template-columns: 1fr; }
   #view-teams .teams-stack > .card:last-child { margin-top: 0; }
 }
+
+/* Preparation triage: scan the ledger while the selected game's next action stays in view. */
+#view-replay .games-workspace-grid { display: block; min-height: 0; }
+#view-replay .games-setup { border-right: 0; border-bottom: 1px solid var(--line); padding: 14px 22px; }
+#view-replay .games-setup .research-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 20px; }
+#view-replay .games-setup .research-source { flex: 1 1 380px; }
+#view-replay .games-setup .replay-toolbar { display: flex; align-items: end; flex: 0 1 auto; gap: 10px; }
+#view-replay .games-setup .replay-toolbar select,
+#view-replay .games-setup .replay-toolbar button { width: auto; }
+#view-replay .games-setup .research-note { margin: 10px 0 0; padding: 0; border: 0; }
+#view-replay .games-review { padding: 0 22px 22px; }
+#view-replay .replay-triage { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(310px, .65fr); align-items: start; gap: 22px; }
+#view-replay .replay-ledger { min-width: 0; }
+#view-replay .replay-ledger-head { margin-top: 0; }
+#view-replay .replay-ledger-columns,
+#view-replay .replay-row-head { display: grid; grid-template-columns: minmax(100px, 1.15fr) minmax(150px, 1.5fr) 54px minmax(95px, 1fr) 72px; align-items: center; gap: 8px; }
+#view-replay .replay-ledger-columns { padding: 9px 10px; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--line); }
+#view-replay .replay-row-head { width: 100%; text-align: left; min-height: 55px; }
+#view-replay .replay-row-head .players { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#view-replay .replay-row-head .replay-badge { justify-self: start; white-space: nowrap; }
+#view-replay .replay-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#view-replay .replay-departure { color: var(--muted); font-size: 12px; }
+#view-replay .replay-focus { position: sticky; top: 18px; min-height: 290px; }
+#view-replay .replay-focus .replay-line { line-height: 1.9; }
+#view-replay .replay-focus .replay-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+
+/* Team operations: directory, selected workspace, and an independent share inbox. */
+#view-teams .teams-directory { grid-row: 2 / 4; }
+#view-teams .team-detail-card { min-height: 400px; }
+#view-teams .team-workspace-tabs { display: flex; gap: 4px; margin-top: 24px; border-bottom: 1px solid var(--line); }
+#view-teams .team-workspace-tabs button { border: 0; background: transparent; color: var(--muted); padding: 10px 16px; font: inherit; cursor: pointer; border-bottom: 3px solid transparent; }
+#view-teams .team-workspace-tabs button.is-active { color: var(--text); border-bottom-color: var(--accent); font-weight: 700; }
+#view-teams .team-workspace-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+#view-teams .team-detail-columns { display: block; margin-top: 18px; }
+#view-teams .team-detail-columns > section[hidden] { display: none; }
+#view-teams .team-row { min-height: 54px; align-items: center; }
+#view-teams .team-row > span:first-child { gap: 3px; }
+#view-teams .teams-stack > .card:last-child { margin-top: 12px; }
+
+@media (max-width: 1100px) {
+  #view-replay .replay-triage { grid-template-columns: 1fr; }
+  #view-replay .replay-focus { position: static; grid-row: 1; }
+  #view-replay .replay-ledger { grid-row: 2; }
+}
+@media (max-width: 680px) {
+  #view-replay .games-setup .research-controls { display: grid; }
+  #view-replay .games-setup .replay-toolbar { display: flex; flex-wrap: wrap; }
+  #view-replay .replay-ledger-columns { display: none; }
+  #view-replay .replay-row-head { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; }
+  #view-replay .replay-row-head .replay-badge { grid-column: 1; }
+  #view-replay .replay-row-head .players { grid-column: 1 / -1; grid-row: 2; }
+  #view-replay .replay-row-head .replay-result { grid-column: 2; grid-row: 1; }
+  #view-replay .replay-row-head .replay-preview { grid-column: 1; grid-row: 3; padding: 0; }
+  #view-replay .replay-row-head .replay-departure { grid-column: 2; grid-row: 3; }
+  #view-teams .team-detail-card { min-height: 0; }
+  #view-replay .replay-focus { min-height: 0; }
+}

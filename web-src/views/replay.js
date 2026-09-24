@@ -149,15 +149,15 @@ export function createReplayView({
         <div class="replay-detail">${renderReplayDetail(game)}</div>
         <div class="replay-actions">${actions.join("")}${lichessLink}</div>
       </div>`;
+    const departure = game.departure_ply ? `Ply ${Number(game.departure_ply)}` : "—";
     const card = `
     <div class="replay-row rk-${kind}${open ? " is-open" : ""}">
       <button type="button" class="replay-row-head" data-index="${index}" aria-pressed="${open}">
-        <span class="replay-icon" aria-hidden="true">${meta.icon}</span>
+        <span class="replay-badge rk-${kind}">${escapeHtml(meta.badge)}</span>
         <span class="players">${players}</span>
         <span class="replay-result">${escapeHtml(game.result || "*")}</span>
-        <span class="replay-preview">${escapeHtml(preview)}…</span>
-        <span class="replay-badge">${escapeHtml(meta.badge)}</span>
-        <span class="replay-caret" aria-hidden="true">${open ? "●" : "›"}</span>
+        <span class="replay-preview">${escapeHtml(preview)}${preview ? "…" : ""}</span>
+        <span class="replay-departure">${escapeHtml(departure)}</span>
       </button>
     </div>
   `;
@@ -180,7 +180,7 @@ export function createReplayView({
     const focused = rows.find(({ index }) => index === selectedIndex);
     const selected = focused ? renderReplayCard(focused.game, focused.index, selectedIndex) : null;
     container.innerHTML = rows.length
-      ? `<section class="replay-focus" aria-label="Selected game"><div class="replay-focus-eyebrow">Selected game <span>${escapeHtml(focused.game.result || "*")}</span></div><h4>${selected.players}</h4><span class="replay-badge rk-${selected.kind}">${escapeHtml(selected.meta.badge)}</span>${selected.body}</section><div class="replay-ledger-head"><h4>Recent games</h4><span>${rows.length} shown</span></div><div class="replay-game-list">${rows.map(({ game, index }) => renderReplayCard(game, index, selectedIndex).card).join("")}</div>`
+      ? `<div class="replay-triage"><div class="replay-ledger"><div class="replay-ledger-head"><h4>Games to review</h4><span>${rows.length} shown</span></div><div class="replay-ledger-columns" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>Opening</span><span>Departure</span></div><div class="replay-game-list">${rows.map(({ game, index }) => renderReplayCard(game, index, selectedIndex).card).join("")}</div></div><section class="replay-focus" aria-label="Selected game"><div class="replay-focus-eyebrow">Preparation detail <span>${escapeHtml(focused.game.result || "*")}</span></div><h4>${selected.players}</h4><span class="replay-badge rk-${selected.kind}">${escapeHtml(selected.meta.badge)}</span>${selected.body}</section></div>`
       : '<div class="empty-state">No games in this bucket.</div>';
     container.querySelectorAll(".replay-row-head").forEach((head) => {
       head.addEventListener("click", () => onToggleGame(Number(head.dataset.index)));

@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-CFGh6RX7.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-DCZTfp8b.css">
+    <script type="module" crossorigin src="/static/assets/index-Delw4-De.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-COTgYKwW.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -363,14 +363,21 @@
         </div>
       </section>
 
-      <section class="view" id="view-replay" data-testid="view-replay">
+      <section class="view research-view" id="view-replay" data-testid="view-replay">
         <div class="list-view replay-stack">
-          <section class="card replay-card-games" data-replay-panel="games" role="tabpanel" aria-labelledby="nav-replay">
-            <div class="card-head">
-              <h2>My recent games</h2>
+          <section class="card replay-card-games games-workspace" data-replay-panel="games" role="tabpanel" aria-labelledby="nav-replay">
+            <div class="research-heading">
+              <div><span class="research-kicker">Game review</span><h2>My recent games</h2><p>See where your preparation held up and where the next lesson starts.</p></div>
+            </div>
+            <div class="games-workspace-grid"><aside class="games-setup"><div class="research-controls" aria-label="Game review controls">
+              <div class="research-source"><span class="research-control-label">Games from</span>
+                <div class="research-source-picker">
+                  <span class="src-chips" id="games-source-chips" data-testid="games-source-chips"></span>
+                  <button type="button" class="source-add" id="games-source-add" data-testid="games-source-add" title="Edit Games sources" aria-label="Edit Games sources">＋ Add</button>
+                </div>
+              </div>
               <div class="replay-toolbar">
-                <span class="src-chips" id="games-source-chips" data-testid="games-source-chips"></span>
-                <button type="button" class="source-add" id="games-source-add" data-testid="games-source-add" title="Edit Games sources" aria-label="Edit Games sources">＋ Add</button>
+                <label class="research-control-label" for="replay-count">Sample</label>
                 <select id="replay-count" title="How many recent games to check">
                   <option value="10" selected>last 10</option>
                   <option value="20">last 20</option>
@@ -380,19 +387,24 @@
                 <button class="btn primary" id="lichess-compare-btn" data-testid="lichess-compare">Check my games</button>
               </div>
             </div>
-            <p class="muted hint">
-              How did your prep hold up? Forgotten moves are queued for training automatically;
-              opponent novelties can go straight into Build.
-            </p>
+            <p class="research-note">Forgotten moves enter your training queue. Add opponent novelties to Build from each game.</p></aside>
+            <div class="games-review"><div class="research-results-head"><h3>Preparation review</h3><span>Scan the status, then select a game for its next action.</span></div>
             <div id="replay-summary" class="replay-summary" hidden></div>
-            <div id="replay-results" class="replay-results"></div>
+            <div id="replay-results" class="replay-results"></div></div></div>
           </section>
           <section class="card replay-card-scout" data-replay-panel="scout" role="tabpanel" aria-labelledby="nav-scout" hidden>
-            <div class="card-head">
-              <h2>Scout an opponent</h2>
+            <div class="research-heading">
+              <div><span class="research-kicker">Opponent preparation</span><h2>Scout an opponent</h2><p>Turn their actual games into a practical opening brief.</p></div>
+            </div>
+            <div class="research-controls" aria-label="Opponent scouting controls">
+              <div class="research-source"><span class="research-control-label">Opponent games from</span>
+                <div class="research-source-picker">
+                  <span class="src-chips" id="scout-source-chips" data-testid="scout-source-chips"></span>
+                  <button type="button" class="source-add" id="scout-source-add" data-testid="scout-source-add" title="Edit Scout sources" aria-label="Edit Scout sources">＋ Add</button>
+                </div>
+              </div>
               <div class="replay-toolbar">
-                <span class="src-chips" id="scout-source-chips" data-testid="scout-source-chips"></span>
-                <button type="button" class="source-add" id="scout-source-add" data-testid="scout-source-add" title="Edit Scout sources" aria-label="Edit Scout sources">＋ Add</button>
+                <label class="research-control-label" for="scout-color">Playing as</label>
                 <select id="scout-color" title="Which colour games to fetch">
                   <option value="both" selected>Both</option>
                   <option value="white">White</option>
@@ -403,9 +415,7 @@
                 <span id="scout-live-count" class="scout-live-count" data-testid="scout-live-count" aria-live="polite">0</span>
               </div>
             </div>
-            <p class="muted hint">
-              Find a few routes to prepare against this opponent. Open Evidence for the supporting model and game data.
-            </p>
+            <p class="research-note">Find routes to prepare. Open Evidence for the model and games behind each recommendation.</p>
             <div id="scout-profile" class="scout-profile" hidden></div>
             <div id="scout-v3-results" class="scout-v3-results" hidden></div>
             <div id="scout-results" class="scout-results"></div>
@@ -415,15 +425,13 @@
 
       <section class="view" id="view-teams" data-testid="view-teams">
         <div class="list-view replay-stack teams-stack">
-          <section class="card">
+          <div class="teams-intro"><span class="research-kicker">Shared preparation</span><h2>Teams</h2><p>Keep the people and repertoires you prepare with in one place.</p></div>
+          <section class="card teams-directory">
             <div class="card-head">
-              <h2>My teams</h2>
+              <h3>Directory</h3>
               <button class="btn primary" id="teams-new" data-testid="teams-new">New team</button>
             </div>
-            <p class="muted hint">
-              Share repertoires read-only with students or training partners. Add members by
-              their Lichess username, or send an invite link &mdash; sharing never grants edit access.
-            </p>
+            <label class="teams-search-label" for="teams-search">Find a team</label><input id="teams-search" type="search" placeholder="Search your teams" autocomplete="off" />
             <div id="teams-list" class="list-stack" data-testid="teams-list"></div>
           </section>
 
@@ -432,29 +440,29 @@
               <h2 id="team-detail-name">Team</h2>
               <div class="tools">
                 <span class="team-role-badge" id="team-detail-role"></span>
-                <button class="ib" id="team-detail-invite" data-testid="team-detail-invite" title="Invite link" hidden>🔗</button>
-                <button class="ib" id="team-detail-rename" data-testid="team-detail-rename" title="Rename" hidden>✎</button>
+                <button class="btn ghost" id="team-detail-invite" data-testid="team-detail-invite" title="Invite link" hidden>Invite</button>
+                <button class="ib" id="team-detail-rename" data-testid="team-detail-rename" title="Rename" aria-label="Rename team" hidden>✎</button>
                 <button class="ib danger" id="team-detail-delete" data-testid="team-detail-delete" title="Delete team" hidden>🗑</button>
                 <button class="ib" id="team-detail-close" title="Close" aria-label="Close team details">×</button>
               </div>
             </div>
-            <div class="team-members-head">
+            <div class="team-workspace-tabs" role="tablist" aria-label="Team workspace"><button type="button" id="team-tab-members" class="is-active" data-team-pane="members" role="tab" aria-controls="team-panel-members" aria-selected="true">Members</button><button type="button" id="team-tab-repertoires" data-team-pane="repertoires" role="tab" aria-controls="team-panel-repertoires" aria-selected="false" tabindex="-1">Shared repertoires</button></div>
+            <div class="team-detail-columns"><section class="team-members-panel" id="team-panel-members" data-team-panel="members" role="tabpanel" aria-labelledby="team-tab-members"><div class="team-members-head">
               <span class="settings-label">Members</span>
               <button class="btn ghost" id="team-add-member" data-testid="team-add-member" hidden>Add member</button>
             </div>
-            <div id="team-members" class="list-stack" data-testid="team-members"></div>
-            <div class="team-shared-head">
+            <div id="team-members" class="list-stack" data-testid="team-members"></div></section><section class="team-repertoires-panel" id="team-panel-repertoires" data-team-panel="repertoires" role="tabpanel" aria-labelledby="team-tab-repertoires" hidden><div class="team-shared-head">
               <span class="settings-label">Shared repertoires</span>
               <button class="btn ghost" id="team-share-rep" data-testid="team-share-rep" hidden>Share a repertoire</button>
             </div>
-            <div id="team-shared-repertoires" class="list-stack" data-testid="team-shared-repertoires"></div>
+            <div id="team-shared-repertoires" class="list-stack" data-testid="team-shared-repertoires"></div></section></div>
             <div class="team-detail-foot" id="team-detail-foot"></div>
           </section>
 
-          <aside class="team-empty muted">Select a team to see its members and shared repertoires.</aside>
+          <aside class="team-empty"><span class="team-empty-mark">♙</span><h3>Choose a team</h3><p>Select a team from the directory to see its members and shared repertoires.</p></aside>
 
           <section class="card">
-            <div class="card-head"><h2 id="teams-shared-title">Shared with me</h2></div>
+            <div class="card-head"><h2 id="teams-shared-title">Incoming shares</h2></div>
             <p class="muted hint" id="teams-shared-hint">Repertoires teammates shared with your teams. Open to review (read-only).</p>
             <div id="teams-shared" class="list-stack" data-testid="teams-shared"></div>
           </section>
