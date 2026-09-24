@@ -13,6 +13,29 @@ export function createTeamsView({
   copySharedRepertoire,
   teamRoleLabel,
 }) {
+  function selectTeamPane(pane) {
+    document.querySelectorAll("[data-team-pane]").forEach((tab) => {
+      const active = tab.dataset.teamPane === pane;
+      tab.classList.toggle("is-active", active);
+      tab.setAttribute("aria-selected", String(active));
+      tab.tabIndex = active ? 0 : -1;
+    });
+    document.querySelectorAll("[data-team-panel]").forEach((panel) => {
+      panel.hidden = panel.dataset.teamPanel !== pane;
+    });
+  }
+
+  document.querySelectorAll("[data-team-pane]").forEach((tab) => {
+    tab.addEventListener("click", () => selectTeamPane(tab.dataset.teamPane));
+    tab.addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      event.preventDefault();
+      const next = tab.dataset.teamPane === "members" ? "repertoires" : "members";
+      selectTeamPane(next);
+      document.querySelector(`[data-team-pane="${next}"]`)?.focus();
+    });
+  });
+
   function teamMemberCountLabel(count) {
     const n = Number(count) || 0;
     return `${n} member${n === 1 ? "" : "s"}`;
@@ -67,7 +90,7 @@ export function createTeamsView({
         const countLabel = escapeHtml(teamMemberCountLabel(team.member_count));
         const selectedCls = appState.selectedTeamId === team.id ? " is-selected" : "";
         return `
-        <div class="list-item team-row${selectedCls}" role="button" tabindex="0" data-team-id="${id}" aria-label="Open ${name}">
+        <div class="list-item team-row${selectedCls}" role="button" tabindex="0" data-team-id="${id}" aria-label="Open ${name}" aria-pressed="${appState.selectedTeamId === team.id}">
           <span>
             <span class="name">${name}</span>
             <span class="sub">${countLabel}</span>

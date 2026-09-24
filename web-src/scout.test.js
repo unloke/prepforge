@@ -664,7 +664,7 @@ describe("triePrefixStats + branchStruggle + exploitability prior", () => {
     expect(branchStruggle(trie, ["e2e4", "e7e5"], 50).struggle).toBe(0);
   });
 
-  it("route reach multiplies only the opponent's decisions, not our chosen replies", () => {
+  it("route plausibility uses the weakest opponent decision and ignores our chosen replies", () => {
     const records = [
       ...Array.from({ length: 2 }, (_, i) => scoutGame({ color: "white", score: 0.5,
         sans: ["e4", "c5", i ? "Nc3" : "Nf3"],
@@ -675,8 +675,34 @@ describe("triePrefixStats + branchStruggle + exploitability prior", () => {
         ucis: ["d2d4", "d7d5", "c2c4"], gameId: "queen" }),
     ];
     const trie = buildOpeningTrie(records, "white", { recency: false });
-    expect(opponentRouteReach(trie, ["e2e4", "c7c5", "g1f3"], "white")).toBeCloseTo(0.375);
+    expect(opponentRouteReach(trie, ["e2e4", "c7c5", "g1f3"], "white")).toBeCloseTo(0.5);
     expect(opponentRouteReach(trie, ["e2e4", "c7c6", "g1f3"], "white")).toBeCloseTo(0.75);
+  });
+
+  it("checks late opponent decisions beyond the display trie depth", () => {
+    const prefix = Array.from({ length: 17 }, (_, i) => `m${i}`);
+    const records = Array.from({ length: 20 }, (_, i) => scoutGame({
+      color: "black", score: 0.5, sans: [...prefix, i ? "common" : "rare"],
+      ucis: [...prefix, i ? "common" : "rare"], gameId: `deep-${i}`,
+    }));
+    const trie = buildOpeningTrie(records, "black", { maxPlies: 24, recency: false });
+    expect(opponentRouteReach(trie, [...prefix, "rare"], "black")).toBeCloseTo(0.05);
+    expect(opponentRouteReach(trie, [...prefix, "common"], "black")).toBeCloseTo(0.95);
+    const shallow = buildOpeningTrie(records, "black", { recency: false });
+    expect(opponentRouteReach(shallow, [...prefix, "rare"], "black")).toBe(0);
+  });
+
+  it("changes route plausibility only when a later opponent decision is weaker", () => {
+    const path = Array.from({ length: 24 }, (_, i) => `m${i}`);
+    const games = [scoutGame({ color: "black", score: 0.5, sans: path, ucis: path, gameId: "full" })];
+    for (let ply = 1; ply < path.length; ply += 2) {
+      games.push(scoutGame({ color: "black", score: 0.5,
+        sans: [...path.slice(0, ply), `alternative${ply}`],
+        ucis: [...path.slice(0, ply), `alternative${ply}`], gameId: `alt-${ply}` }));
+    }
+    const trie = buildOpeningTrie(games, "black", { maxPlies: Infinity, recency: false });
+    expect(opponentRouteReach(trie, path.slice(0, 8), "black")).toBeCloseTo(0.9);
+    expect(opponentRouteReach(trie, path, "black")).toBeCloseTo(0.5);
   });
 
   it("rarity alone does not increase the engine-free prior", () => {

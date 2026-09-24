@@ -12,11 +12,11 @@ function fixture(view, state) {
   if (view === "games") {
     const count = state === "dense" ? 40 : state === "normal" ? 8 : 0;
     const rows = Array.from({ length: count }, (_, i) => `
-      <div class="replay-row rk-${i % 3 === 0 ? "user-error" : i % 3 === 1 ? "left-prep" : "in-prep"}${i === 0 ? " is-open" : ""}">
-        <button class="replay-row-head" type="button"><span class="replay-icon">${i % 3 === 0 ? "✗" : "✓"}</span><span class="players">Player ${i + 1} vs Opponent ${i + 1}</span><span class="replay-result">1–0</span><span class="replay-preview">1. e4 e5 2. Nf3 Nc6 3. Bb5 a6</span><span class="replay-badge">${i % 3 === 0 ? "You left prep" : "Stayed in prep"}</span><span class="replay-caret">›</span></button>
+      <div class="replay-row rk-${i % 3 === 0 ? "user-error" : i % 3 === 1 ? "left-prep" : "no-prep"}${i === 0 ? " is-open" : ""}">
+        <button class="replay-row-head" type="button"><span class="replay-badge">${i % 3 === 0 ? "You left prep" : i % 3 === 1 ? "Opponent novelty" : "Not covered"}</span><span class="players">Player ${i + 1} vs Opponent ${i + 1}</span><span class="replay-result">1–0</span><span class="replay-preview">e4 e5 Nf3 Nc6 Bb5 a6</span><span class="replay-departure">Ply ${7 + i}</span></button>
       </div>`).join("");
     const focus = '<section class="replay-focus"><div class="replay-focus-eyebrow">Selected game</div><h4>Player 1 vs Opponent 1</h4><div class="replay-row-body"><div class="replay-line">1. e4 e5 2. Nf3</div><div class="replay-detail">You diverged on ply 7.</div><div class="replay-actions"><button class="btn primary">Train it now</button></div></div></section>';
-    return { target: "#replay-results", html: count ? `${focus}<div class="replay-ledger-head"><h4>Recent games</h4><span>${count} shown</span></div><div class="replay-game-list">${rows}</div>` : '<div class="empty-state">No games found. Check your games to review preparation.</div>' };
+    return { target: "#replay-results", html: count ? `<div class="replay-triage"><div class="replay-ledger"><div class="replay-ledger-head"><h4>Games to review</h4><span>${count} shown</span></div><div class="replay-ledger-columns"><span>Preparation</span><span>Game</span><span>Result</span><span>Opening</span><span>Departure</span></div><div class="replay-game-list">${rows}</div></div>${focus}</div>` : '<div class="empty-state">No games found. Check your games to review preparation.</div>' };
   }
   if (view === "teams") {
     const count = state === "dense" ? 18 : state === "normal" ? 4 : 0;
@@ -27,10 +27,10 @@ function fixture(view, state) {
 }
 
 try {
-  for (const width of [1440, 390]) {
+  for (const width of [1440, 1920, 390]) {
     for (const view of ["games", "scout", "teams"]) {
       for (const state of ["empty", "normal", "dense"]) {
-        const page = await browser.newPage({ viewport: { width, height: 900 }, deviceScaleFactor: 1 });
+        const page = await browser.newPage({ viewport: { width, height: width === 1920 ? 1080 : 900 }, deviceScaleFactor: 1 });
         await page.goto("http://127.0.0.1:5173/static/", { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(400);
         await page.locator(view === "teams" ? '[data-testid="nav-teams"]' : view === "scout" ? '[data-testid="nav-scout"]' : '[data-testid="nav-replay"]').click();
@@ -49,6 +49,12 @@ try {
           await page.locator("#team-detail-name").evaluate((el) => { el.textContent = "Opening lab"; });
           await page.locator("#team-members").evaluate((el, state) => { el.innerHTML = Array.from({ length: state === "dense" ? 14 : 3 }, (_, i) => `<div class="list-item"><span class="name">Member ${i + 1}</span><span class="sub">${i ? "Editor" : "Owner"}</span></div>`).join(""); }, state);
           await page.locator("#team-shared-repertoires").evaluate((el, state) => { el.innerHTML = Array.from({ length: state === "dense" ? 12 : 2 }, (_, i) => `<div class="list-item"><span class="name">${i % 2 ? "Sicilian" : "Queen's Gambit"} repertoire ${i + 1}</span><button class="ib">Copy</button></div>`).join(""); }, state);
+          if (state === "normal") {
+            await page.locator('[data-team-pane="repertoires"]').click();
+            if (!(await page.locator('[data-team-panel="repertoires"]').isVisible())) throw new Error("Teams repertoire tab did not open");
+            await page.locator('[data-team-pane="members"]').click();
+            if (!(await page.locator('[data-team-panel="members"]').isVisible())) throw new Error("Teams members tab did not reopen");
+          }
         }
         if (view === "scout" && state !== "empty") await page.locator("#scout-v3-results").evaluate((el) => { el.hidden = false; });
         if (view === "scout" && state !== "empty") {

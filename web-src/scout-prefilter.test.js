@@ -406,7 +406,7 @@ describe("computePrefilterScopeKey", () => {
       activeSpeed: "blitz",
       games,
     });
-    expect(key).toMatch(/^rival\|blitz\|\d+\|4$/);
+    expect(key).toMatch(/^rival\|blitz\|\d+\|5$/);
     expect(
       computePrefilterScopeKey({ username: "rival", activeSpeed: "blitz", games }),
     ).toBe(key);

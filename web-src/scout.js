@@ -4,7 +4,8 @@
 //
 // Everything runs in the browser — the PrepForge server is never involved in the
 // fetch or the number-crunching. Parsing keeps deeper moves for weakness/engine
-// analysis while the display trie still caps at MAX_PLIES.
+// analysis. Display helpers cap their presentation; production reachability uses
+// every observed opening move in the live trie.
 //
 // Pure functions + an injected-deps fetcher, unit-testable without network/DOM.
 
@@ -25,7 +26,7 @@ export function scoutFetchErrorMessage(error) {
   if (/rate limit/i.test(msg)) return SCOUT_ERR_RATE_LIMIT;
   return null;
 }
-export const MAX_PLIES = 16; // opening book depth for the display trie
+export const MAX_PLIES = 16; // default depth for compact display/legacy trie callers
 export const ANALYZE_PLIES = 24; // deeper capture for weakness / engine scan
 /** Minimum games for game-plan lines (ranking filters slips; no hard ply gate). */
 export const GAME_PLAN_MIN_GAMES = 1;
@@ -48,11 +49,11 @@ export const SCOUT_BRANCH_HARD_CEILING = 300;
  *  never starves on a thin opponent. Mirrors SCOUT_PREFILTER_POOL_SIZE (kept local to
  *  avoid a circular import from scout-prefilter.js). */
 export const SCOUT_BRANCH_MIN_KEEP = 64;
-/** Routes below this opponent-only empirical reach are too unlikely for prep. */
-export const SCOUT_MIN_ROUTE_REACH = 0.02;
+/** Any observed opponent choice below this conditional share makes a route poor prep. */
+export const SCOUT_MIN_ROUTE_REACH = 0.1;
 export const SCOUT_STOCKFISH_DEPTH = 8;
 export const SCOUT_MAIA_LIMIT = 12;
-export const SCOUT_SCORING_VERSION = 4;
+export const SCOUT_SCORING_VERSION = 5;
 /** Minimum games before empirical opponent performance gates prefilter candidates. */
 export const SCOUT_PREFILTER_EMPIRICAL_MIN_GAMES = 3;
 export const SCOUT_THINK_TIME_CLAMP_MIN = 0.7;
@@ -1099,7 +1100,7 @@ export function openingWeaknessScore(entry, baselineScorePct = 50) {
   return stockfishAdvantage * struggle;
 }
 
-/** Minimum off-modal struggle floor so rare blunders Stockfish can punish stay in the pool. */
+/** Small struggle prior floor so objectively punishable routes can reach Stockfish. */
 export const SCOUT_STRUGGLE_PRIOR_FLOOR = 0.08;
 /** Prior of a non-reproducible one-off (struggle 0, prefixGames 0):
  *  SCOUT_STRUGGLE_PRIOR_FLOOR * (log1p(0) + 0.1). Branches at/below this carry NO
@@ -1144,14 +1145,14 @@ export function triePrefixStats(trie, ucis) {
   return out;
 }
 
-/** Chance the opponent repeats their decisions if we choose this observed route. */
+/** Weakest opponent decision on an observed route; our chosen moves have no penalty. */
 export function opponentRouteReach(trie, ucis, opponentColor) {
   if (!trie || !ucis?.length || !["white", "black"].includes(opponentColor)) return 0;
   const stats = triePrefixStats(trie, ucis);
-  if (stats.length !== Math.min(ucis.length, MAX_PLIES)) return 0;
+  if (stats.length !== ucis.length) return 0;
   return stats.reduce((reach, node) => {
     const mover = node.ply % 2 === 0 ? "white" : "black";
-    return mover === opponentColor ? reach * node.moveShare : reach;
+    return mover === opponentColor ? Math.min(reach, node.moveShare) : reach;
   }, 1);
 }
 
