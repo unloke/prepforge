@@ -48,11 +48,18 @@ export function createTeamsView({
   function renderTeamsList() {
     const list = document.getElementById("teams-list");
     if (!list) return;
+    const search = document.getElementById("teams-search");
+    if (search && !search.dataset.bound) {
+      search.dataset.bound = "true";
+      search.addEventListener("input", renderTeamsList);
+    }
     if (!appState.teams.length) {
       list.innerHTML = '<div class="empty-state">No teams yet. Create one to start sharing.</div>';
       return;
     }
-    list.innerHTML = appState.teams
+    const query = (search?.value || "").trim().toLocaleLowerCase();
+    const visibleTeams = appState.teams.filter((team) => team.name.toLocaleLowerCase().includes(query));
+    list.innerHTML = visibleTeams.length ? visibleTeams
       .map((team) => {
         const id = escapeHtml(team.id);
         const name = escapeHtml(team.name);
@@ -60,15 +67,15 @@ export function createTeamsView({
         const countLabel = escapeHtml(teamMemberCountLabel(team.member_count));
         const selectedCls = appState.selectedTeamId === team.id ? " is-selected" : "";
         return `
-        <div class="list-item team-row${selectedCls}" role="button" tabindex="0" data-team-id="${id}">
+        <div class="list-item team-row${selectedCls}" role="button" tabindex="0" data-team-id="${id}" aria-label="Open ${name}">
           <span>
             <span class="name">${name}</span>
-            <span class="sub"> · ${countLabel}</span>
+            <span class="sub">${countLabel}</span>
           </span>
           <span class="team-role-badge">${role}</span>
         </div>`;
       })
-      .join("");
+      .join("") : '<div class="empty-state">No teams match your search.</div>';
     list.querySelectorAll(".team-row").forEach((row) => {
       const open = () => openTeamDetail(row.dataset.teamId);
       row.addEventListener("click", open);

@@ -14,9 +14,9 @@ function fixture(view, state) {
     const rows = Array.from({ length: count }, (_, i) => `
       <div class="replay-row rk-${i % 3 === 0 ? "user-error" : i % 3 === 1 ? "left-prep" : "in-prep"}${i === 0 ? " is-open" : ""}">
         <button class="replay-row-head" type="button"><span class="replay-icon">${i % 3 === 0 ? "✗" : "✓"}</span><span class="players">Player ${i + 1} vs Opponent ${i + 1}</span><span class="replay-result">1–0</span><span class="replay-preview">1. e4 e5 2. Nf3 Nc6 3. Bb5 a6</span><span class="replay-badge">${i % 3 === 0 ? "You left prep" : "Stayed in prep"}</span><span class="replay-caret">›</span></button>
-        ${i === 0 ? '<div class="replay-row-body"><div class="replay-line">1. e4 e5 2. Nf3 Nc6 3. Bb5 a6</div><div class="replay-detail">You diverged on ply 7. Expected <strong>Ba4</strong>.</div><div class="replay-actions"><button class="btn primary">Train it now</button><button class="btn ghost">Review in Analyze</button></div></div>' : ""}
       </div>`).join("");
-    return { target: "#replay-results", html: count ? `<div class="replay-game-list">${rows}</div>` : '<div class="empty-state">No games found. Check your games to review preparation.</div>' };
+    const focus = '<section class="replay-focus"><div class="replay-focus-eyebrow">Selected game</div><h4>Player 1 vs Opponent 1</h4><div class="replay-row-body"><div class="replay-line">1. e4 e5 2. Nf3</div><div class="replay-detail">You diverged on ply 7.</div><div class="replay-actions"><button class="btn primary">Train it now</button></div></div></section>';
+    return { target: "#replay-results", html: count ? `${focus}<div class="replay-ledger-head"><h4>Recent games</h4><span>${count} shown</span></div><div class="replay-game-list">${rows}</div>` : '<div class="empty-state">No games found. Check your games to review preparation.</div>' };
   }
   if (view === "teams") {
     const count = state === "dense" ? 18 : state === "normal" ? 4 : 0;
@@ -47,6 +47,8 @@ try {
         if (view === "teams" && state !== "empty") {
           await page.locator("#team-detail-card").evaluate((el) => { el.hidden = false; });
           await page.locator("#team-detail-name").evaluate((el) => { el.textContent = "Opening lab"; });
+          await page.locator("#team-members").evaluate((el, state) => { el.innerHTML = Array.from({ length: state === "dense" ? 14 : 3 }, (_, i) => `<div class="list-item"><span class="name">Member ${i + 1}</span><span class="sub">${i ? "Editor" : "Owner"}</span></div>`).join(""); }, state);
+          await page.locator("#team-shared-repertoires").evaluate((el, state) => { el.innerHTML = Array.from({ length: state === "dense" ? 12 : 2 }, (_, i) => `<div class="list-item"><span class="name">${i % 2 ? "Sicilian" : "Queen's Gambit"} repertoire ${i + 1}</span><button class="ib">Copy</button></div>`).join(""); }, state);
         }
         if (view === "scout" && state !== "empty") await page.locator("#scout-v3-results").evaluate((el) => { el.hidden = false; });
         if (view === "scout" && state !== "empty") {
@@ -54,8 +56,8 @@ try {
           if (placeholder !== "none") throw new Error(`Scout shows empty prompt beside populated report: ${placeholder}`);
         }
         if (view === "teams" && state === "dense") {
-          const positions = await page.evaluate(() => ({ detail: document.querySelector("#team-detail-card").getBoundingClientRect().top, list: document.querySelector("#teams-list").getBoundingClientRect().top }));
-          if (positions.detail >= positions.list) throw new Error(`Selected team detail is below dense list: ${JSON.stringify(positions)}`);
+          const positions = await page.evaluate(() => ({ detail: document.querySelector("#team-detail-card").getBoundingClientRect().top, directory: document.querySelector(".teams-directory").getBoundingClientRect().top }));
+          if (width > 680 && Math.abs(positions.detail - positions.directory) > 12) throw new Error(`Selected team detail is misaligned with directory: ${JSON.stringify(positions)}`);
         }
         await page.screenshot({ path: `${out}/${view}-${state}-${width}.png`, fullPage: true });
         if (!(await page.locator(target).isVisible())) throw new Error(`${view}/${state}/${width} target is hidden`);
@@ -77,10 +79,10 @@ try {
     const view = createReplayView({ escapeHtml: (s) => String(s), getReplayFilter: () => null, isGameOpen: (i) => i === openIndex, onToggleFilter: () => {}, onToggleGame: (i) => { openIndex = i; view.renderReplayResults(payload); }, onTrainMiss: () => {}, onBuildReply: () => {}, onAnalyze: () => {} });
     view.renderReplayResults(payload);
     document.querySelector(".replay-row-head").click();
-    return { body: !!document.querySelector(".replay-row .replay-row-body"), label: document.querySelector(".replay-row .replay-detail")?.textContent };
+    return { body: !!document.querySelector(".replay-focus .replay-row-body"), label: document.querySelector(".replay-focus .replay-detail")?.textContent };
   });
   if (!result.body || !result.label.includes("You diverged")) throw new Error(`Games interaction failed: ${JSON.stringify(result)}`);
-  console.log("games click: selected row expands with preparation detail");
+  console.log("games click: selected game opens in the focus panel");
   await page.close();
 } finally {
   await browser.close();

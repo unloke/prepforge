@@ -114,10 +114,10 @@ export function createReplayView({
     return lines.join("<br />");
   }
 
-  function renderReplayCard(game, index) {
+  function renderReplayCard(game, index, selectedIndex) {
     const kind = replayGameKind(game);
     const meta = REPLAY_KINDS[kind];
-    const open = isGameOpen(index);
+    const open = index === selectedIndex;
     const source = game.source_account
       ? ` <span class="replay-source" title="Fetched from this linked account">${escapeHtml(game.source_account)}</span>`
       : "";
@@ -155,14 +155,13 @@ export function createReplayView({
         <span class="replay-icon" aria-hidden="true">${meta.icon}</span>
         <span class="players">${players}</span>
         <span class="replay-result">${escapeHtml(game.result || "*")}</span>
-        ${open ? "" : `<span class="replay-preview">${escapeHtml(preview)}…</span>`}
+        <span class="replay-preview">${escapeHtml(preview)}…</span>
         <span class="replay-badge">${escapeHtml(meta.badge)}</span>
         <span class="replay-caret" aria-hidden="true">${open ? "●" : "›"}</span>
       </button>
-      ${open ? body : ""}
     </div>
   `;
-    return card;
+    return { card, body, players, meta, kind, game };
   }
 
   function renderReplayResults(payload) {
@@ -177,8 +176,11 @@ export function createReplayView({
     const rows = payload.games
       .map((game, index) => ({ game, index }))
       .filter(({ game }) => !filter || replayGameKind(game) === filter);
+    const selectedIndex = rows.find(({ index }) => isGameOpen(index))?.index ?? rows[0]?.index;
+    const focused = rows.find(({ index }) => index === selectedIndex);
+    const selected = focused ? renderReplayCard(focused.game, focused.index, selectedIndex) : null;
     container.innerHTML = rows.length
-      ? `<div class="replay-game-list">${rows.map(({ game, index }) => renderReplayCard(game, index)).join("")}</div>`
+      ? `<section class="replay-focus" aria-label="Selected game"><div class="replay-focus-eyebrow">Selected game <span>${escapeHtml(focused.game.result || "*")}</span></div><h4>${selected.players}</h4><span class="replay-badge rk-${selected.kind}">${escapeHtml(selected.meta.badge)}</span>${selected.body}</section><div class="replay-ledger-head"><h4>Recent games</h4><span>${rows.length} shown</span></div><div class="replay-game-list">${rows.map(({ game, index }) => renderReplayCard(game, index, selectedIndex).card).join("")}</div>`
       : '<div class="empty-state">No games in this bucket.</div>';
     container.querySelectorAll(".replay-row-head").forEach((head) => {
       head.addEventListener("click", () => onToggleGame(Number(head.dataset.index)));

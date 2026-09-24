@@ -1,4 +1,4 @@
-// Scout Phase 3 — explorer-backed opening reads (theory deviation, pool comparison, rare weapons).
+// Scout explorer reads from the public masters database.
 // Pure aggregation + a batched fetch helper; all HTTP goes through explorer.js cache.
 
 import { confidence } from "./scout-stats.js";
@@ -9,8 +9,6 @@ export const OFF_BOOK_MAX_MASTERS_SHARE = 0.05;
 export const LOW_POPULARITY_MAX_MASTERS_SHARE = 0.1;
 export const THEORY_DEVIATION_MIN_GAP = 0.12;
 export const THEORY_DEVIATION_MIN_GAMES = 3;
-export const POOL_GAP_MIN = 0.15;
-export const POOL_COMPARE_MIN_GAMES = 3;
 export const RARE_WEAPON_MIN_GAMES = 3;
 export const RARE_WEAPON_MIN_OPP_SHARE = 0.12;
 export const RARE_WEAPON_MAX_MASTERS_SHARE = 0.06;
@@ -26,10 +24,6 @@ function nodeScorePct(node) {
 export function mastersShareForMove(stats, uci) {
   const move = stats?.moves?.find((m) => m.uci === uci);
   return move ? move.share : 0;
-}
-
-export function poolShareForMove(stats, uci) {
-  return mastersShareForMove(stats, uci);
 }
 
 export function classifyBookStatus(mastersShare) {
@@ -125,13 +119,12 @@ function lineLabel(parentUcis, moveSan) {
   return `…${moveSan}`;
 }
 
-function analyzeProbe(position, mastersStats, poolStats) {
+function analyzeProbe(position, mastersStats) {
   if (!mastersStats || mastersStats.totalGames < MASTERS_MIN_TOTAL_GAMES) {
     return { skipped: true, reason: "low-masters-sample" };
   }
 
   const mastersShare = mastersShareForMove(mastersStats, position.moveUci);
-  const poolShare = poolStats ? poolShareForMove(poolStats, position.moveUci) : null;
   const bookStatus = classifyBookStatus(mastersShare);
   const label = lineLabel(position.parentUcis, position.moveSan);
 
@@ -148,22 +141,6 @@ function analyzeProbe(position, mastersStats, poolStats) {
           gapPct: Math.round((position.opponentShare - mastersShare) * 100),
           games: position.opponentGames,
           bookStatus,
-        }
-      : null;
-
-  const poolGap =
-    poolStats &&
-    poolShare != null &&
-    position.opponentGames >= POOL_COMPARE_MIN_GAMES &&
-    position.opponentShare - poolShare >= POOL_GAP_MIN
-      ? {
-          label,
-          moveSan: position.moveSan,
-          ply: position.ply,
-          opponentSharePct: Math.round(position.opponentShare * 100),
-          poolSharePct: Math.round(poolShare * 100),
-          gapPct: Math.round((position.opponentShare - poolShare) * 100),
-          games: position.opponentGames,
         }
       : null;
 
@@ -208,7 +185,6 @@ function analyzeProbe(position, mastersStats, poolStats) {
   return {
     skipped: false,
     deviation,
-    poolGap,
     rareWeapon,
     offBook,
     lowPopularity,
@@ -222,9 +198,8 @@ function topBy(items, key, limit = 3) {
   return [...items].sort((a, b) => (b[key] ?? 0) - (a[key] ?? 0)).slice(0, limit);
 }
 
-export function buildExplorerReads(positions, { mastersByFen = new Map(), poolByFen = new Map() } = {}) {
+export function buildExplorerReads(positions, { mastersByFen = new Map() } = {}) {
   const deviations = [];
-  const poolGaps = [];
   const rareWeapons = [];
   const offBookMoves = [];
   const lowPopMoves = [];
@@ -235,8 +210,7 @@ export function buildExplorerReads(positions, { mastersByFen = new Map(), poolBy
 
   for (const position of positions) {
     const mastersStats = mastersByFen.get(position.fen);
-    const poolStats = poolByFen.get(position.fen);
-    const result = analyzeProbe(position, mastersStats, poolStats);
+    const result = analyzeProbe(position, mastersStats);
     if (result.skipped) {
       excludedLowSample += 1;
       continue;
@@ -244,7 +218,6 @@ export function buildExplorerReads(positions, { mastersByFen = new Map(), poolBy
     mastersProbes += 1;
     probedGames += position.opponentGames;
     if (result.deviation) deviations.push(result.deviation);
-    if (result.poolGap) poolGaps.push(result.poolGap);
     if (result.rareWeapon) rareWeapons.push(result.rareWeapon);
     if (result.offBook) {
       offBookMoves.push(result.offBook);
@@ -259,13 +232,6 @@ export function buildExplorerReads(positions, { mastersByFen = new Map(), poolBy
     confidence: confidence(deviations.reduce((n, d) => n + d.games, 0)),
     excludedLowSample,
     mastersProbes,
-  };
-
-  const poolComparison = {
-    available: poolGaps.length > 0,
-    items: topBy(poolGaps, "gapPct"),
-    confidence: confidence(poolGaps.reduce((n, d) => n + d.games, 0)),
-    poolFens: poolByFen.size,
   };
 
   const rareWeaponRead = {
@@ -290,7 +256,6 @@ export function buildExplorerReads(positions, { mastersByFen = new Map(), poolBy
 
   return {
     theoryDeviation,
-    poolComparison,
     rareWeapons: rareWeaponRead,
     offBook,
     lowPopularity,
@@ -302,7 +267,6 @@ export function buildExplorerReads(positions, { mastersByFen = new Map(), poolBy
 export async function fetchExplorerReads({
   fetchStats,
   positions,
-  opponentRating,
   shouldCancel = () => false,
 }) {
   if (!positions?.length || typeof fetchStats !== "function") {
@@ -310,12 +274,10 @@ export async function fetchExplorerReads({
       available: false,
       reason: "no-positions",
       mastersByFen: new Map(),
-      poolByFen: new Map(),
     };
   }
 
   const mastersByFen = new Map();
-  const poolByFen = new Map();
   const uniqueFens = [...new Set(positions.map((p) => p.fen))];
 
   for (const fen of uniqueFens) {
@@ -324,7 +286,6 @@ export async function fetchExplorerReads({
         available: false,
         reason: "cancelled",
         mastersByFen: new Map(),
-        poolByFen: new Map(),
       };
     }
     try {
@@ -335,7 +296,6 @@ export async function fetchExplorerReads({
           available: false,
           reason: "auth",
           mastersByFen: new Map(),
-          poolByFen: new Map(),
         };
       }
     }
@@ -346,36 +306,13 @@ export async function fetchExplorerReads({
       available: false,
       reason: "masters-unavailable",
       mastersByFen: new Map(),
-      poolByFen: new Map(),
     };
   }
 
-  let poolAuthFailed = false;
-  for (const fen of uniqueFens) {
-    if (shouldCancel()) {
-      return {
-        available: false,
-        reason: "cancelled",
-        mastersByFen,
-        poolByFen: new Map(),
-      };
-    }
-    try {
-      poolByFen.set(fen, await fetchStats("lichess", fen, { rating: opponentRating }));
-    } catch (error) {
-      if (isAuthExplorerError(error)) {
-        poolAuthFailed = true;
-        break;
-      }
-    }
-  }
-
-  const reads = buildExplorerReads(positions, { mastersByFen, poolByFen });
+  const reads = buildExplorerReads(positions, { mastersByFen });
   return {
     available: true,
-    poolAuthFailed,
     mastersByFen,
-    poolByFen,
     ...reads,
   };
 }

@@ -147,7 +147,7 @@ describe("seven views share chrome families", () => {
     }
     const replay = html.slice(html.indexOf('id="view-replay"'), html.indexOf('id="view-teams"'));
     for (const panel of ["games", "scout"]) {
-      const start = replay.indexOf(`<section class="card replay-card-${panel}"`);
+      const start = replay.indexOf(`<section class="card replay-card-${panel}`);
       const end = panel === "games" ? replay.indexOf('<section class="card replay-card-scout"') : replay.length;
       const slice = replay.slice(start, end);
       expect(slice).toMatch(/class="[^"]*\bcard\b/);

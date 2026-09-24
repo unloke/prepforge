@@ -39,7 +39,8 @@ const LIMITS = [
   { prefix: "maia3-worker-", suffix: ".js", maxBytes: 220_000, label: "maia3 worker chunk" },
   // The Games row-detail layout, wider Scout report, and Teams matrix bring
   // the reviewed stylesheet to about 143,590 B; retain a narrow ceiling.
-  { prefix: "index-", suffix: ".css", maxBytes: 144_000, label: "main stylesheet" },
+  // Games and Teams now have separate workspaces with responsive focus and directory panels.
+  { prefix: "index-", suffix: ".css", maxBytes: 150_000, label: "main stylesheet" },
 ];
 
 let files;

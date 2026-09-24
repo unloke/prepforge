@@ -160,7 +160,7 @@ describe("buildScoutSectionSummary", () => {
       explorerReads: { available: true, ...explorerReads },
     });
     expect(out.bullets.some((b) => /theory|masters/i.test(b))).toBe(true);
-    expect(out.bullets.some((b) => /pool|player/i.test(b))).toBe(true);
+    expect(out.bullets.some((b) => /pool comparison/i.test(b))).toBe(false);
   });
 
   it("does not treat sparse historical buckets as consecutive recent weeks", () => {

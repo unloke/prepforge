@@ -69,11 +69,6 @@ const THEORY_DEVIATION = [
   "Plays {move} more than the book ({opp}% vs {book}%{qualifier}).",
 ];
 
-const POOL_GAP = [
-  "Uses {move} more than the {rating} pool ({opp}% vs {pool}%{qualifier}).",
-  "{move} is a pool favourite ({opp}% vs {pool}% at their level{qualifier}).",
-];
-
 const RARE_WEAPON = [
   "Rare weapon: {move} scores {score}% ({opp}% of games, {book}% in masters{qualifier}).",
   "Off-book success: {move} at {score}% ({opp}% share, masters {book}%{qualifier}).",
@@ -178,19 +173,6 @@ function explorerBullets(explorerReads) {
         opp: topDev.opponentSharePct,
         book: topDev.mastersSharePct,
         qualifier: qualifier(explorerReads.theoryDeviation.confidence),
-      }),
-    );
-  }
-
-  const topPool = explorerReads.poolComparison?.items?.[0];
-  if (explorerReads.poolComparison?.available && topPool) {
-    bullets.push(
-      choose({ san: topPool.moveSan }, "scout-pool-gap", POOL_GAP, {
-        move: topPool.label,
-        rating: "player",
-        opp: topPool.opponentSharePct,
-        pool: topPool.poolSharePct,
-        qualifier: qualifier(explorerReads.poolComparison.confidence),
       }),
     );
   }

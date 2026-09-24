@@ -94,7 +94,6 @@ describe("buildExplorerReads", () => {
     ]);
     const reads = buildExplorerReads(positions, {
       mastersByFen: new Map([[startFen, masters]]),
-      poolByFen: new Map(),
     });
     expect(reads.theoryDeviation.available).toBe(true);
     expect(reads.theoryDeviation.items[0].moveSan).toBe("Nf3");
@@ -172,7 +171,7 @@ describe("buildExplorerReads", () => {
     expect(classifyBookStatus(mastersShareForMove(masters, "g2g4"))).toBe("off-book");
   });
 
-  it("compares opponent share against the player pool", () => {
+  it("keeps masters reads without a player pool comparison", () => {
     const startFen = fenAfterLine([]);
     const positions = [
       {
@@ -198,8 +197,8 @@ describe("buildExplorerReads", () => {
       mastersByFen: new Map([[startFen, masters]]),
       poolByFen: new Map([[startFen, pool]]),
     });
-    expect(reads.poolComparison.available).toBe(true);
-    expect(reads.poolComparison.items[0].gapPct).toBeGreaterThanOrEqual(15);
+    expect(reads.theoryDeviation.available).toBe(true);
+    expect(reads).not.toHaveProperty("poolComparison");
   });
 });
 
@@ -257,14 +256,13 @@ describe("fetchExplorerReads", () => {
     });
     expect(out.available).toBe(true);
     expect(calls.filter((c) => c.startsWith("masters:")).length).toBe(1);
-    expect(calls.filter((c) => c.startsWith("lichess:")).length).toBe(1);
+    expect(calls.filter((c) => c.startsWith("lichess:")).length).toBe(0);
     expect(out.mastersByFen).toBeInstanceOf(Map);
     expect(out.mastersByFen.get(startFen)?.totalGames).toBeGreaterThan(0);
-    expect(out.poolByFen).toBeInstanceOf(Map);
-    expect(out.poolByFen.get(startFen)?.totalGames).toBeGreaterThan(0);
+    expect(out).not.toHaveProperty("poolByFen");
   });
 
-  it("still returns masters reads when pool fetch fails per-FEN", async () => {
+  it("uses only masters reads", async () => {
     const startFen = fenAfterLine([]);
     const fetchStats = async (db) => {
       if (db === "masters") {
@@ -289,7 +287,7 @@ describe("fetchExplorerReads", () => {
       opponentRating: 1800,
     });
     expect(out.available).toBe(true);
-    expect(out.poolComparison.available).toBe(false);
+    expect(out).not.toHaveProperty("poolComparison");
     expect(out.theoryDeviation.available).toBe(true);
   });
 });

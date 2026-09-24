@@ -15,6 +15,7 @@ import {
   trieAnchorTs,
   isEarlyResignCollapse,
   triePrefixStats,
+  opponentRouteReach,
   computeNextOwnThinkSeconds,
   gameNextOwnThinkMedian,
   createScoutClient,
@@ -661,6 +662,41 @@ describe("triePrefixStats + branchStruggle + exploitability prior", () => {
     );
     const trie = buildOpeningTrie(winning, "black", { recency: false });
     expect(branchStruggle(trie, ["e2e4", "e7e5"], 50).struggle).toBe(0);
+  });
+
+  it("route reach multiplies only the opponent's decisions, not our chosen replies", () => {
+    const records = [
+      ...Array.from({ length: 2 }, (_, i) => scoutGame({ color: "white", score: 0.5,
+        sans: ["e4", "c5", i ? "Nc3" : "Nf3"],
+        ucis: ["e2e4", "c7c5", i ? "b1c3" : "g1f3"], gameId: `sicilian-${i}` })),
+      scoutGame({ color: "white", score: 0.5, sans: ["e4", "c6", "Nf3"],
+        ucis: ["e2e4", "c7c6", "g1f3"], gameId: "caro" }),
+      scoutGame({ color: "white", score: 0.5, sans: ["d4", "d5", "c4"],
+        ucis: ["d2d4", "d7d5", "c2c4"], gameId: "queen" }),
+    ];
+    const trie = buildOpeningTrie(records, "white", { recency: false });
+    expect(opponentRouteReach(trie, ["e2e4", "c7c5", "g1f3"], "white")).toBeCloseTo(0.375);
+    expect(opponentRouteReach(trie, ["e2e4", "c7c6", "g1f3"], "white")).toBeCloseTo(0.75);
+  });
+
+  it("rarity alone does not increase the engine-free prior", () => {
+    const common = { exploitabilityStruggle: 0.1, prefixGames: 8, offModal: 1 };
+    const rare = { ...common, offModal: 20 };
+    const trie = buildOpeningTrie(strugglingFamily(), "black", { recency: false });
+    expect(branchExploitabilityPrior(rare, { trie })).toBe(branchExploitabilityPrior(common, { trie }));
+  });
+
+  it("removes a nearly unreachable route before the engine candidate pool", () => {
+    const games = [
+      ...Array.from({ length: 99 }, (_, i) => scoutGame({ color: "white", score: 0.5,
+        sans: ["e4"], ucis: ["e2e4"], gameId: `e4-${i}` })),
+      scoutGame({ color: "white", score: 0, sans: ["d4"],
+        ucis: ["d2d4"], gameId: "d4" }),
+    ];
+    const trie = buildOpeningTrie(games, "white", { recency: false });
+    const { branches } = rankedOpeningBranches(games, "white", { trie, limit: 0 });
+    expect(branches.some((branch) => branch.ucis[0] === "d2d4")).toBe(false);
+    expect(branches.some((branch) => branch.ucis[0] === "e2e4")).toBe(true);
   });
 
   it("exploitability prior ranks a struggling line above a comfortable one", () => {

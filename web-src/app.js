@@ -10473,7 +10473,7 @@ async function ensureReplayView() {
         void renderReplayResults(appState.replayResults).catch(() => {});
       },
       onToggleGame: (index) => {
-        appState.replayOpen = appState.replayOpen.has(index) ? new Set() : new Set([index]);
+        appState.replayOpen = new Set([index]);
         void renderReplayResults(appState.replayResults).catch(() => {});
       },
       onTrainMiss: () =>

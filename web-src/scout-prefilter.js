@@ -10,6 +10,7 @@ import {
 import {
   SCOUT_BRANCH_SCORE_CAP,
   SCOUT_MAIA_LIMIT,
+  SCOUT_MIN_ROUTE_REACH,
   SCOUT_SCORING_VERSION,
   SCOUT_STOCKFISH_DEPTH,
   fenBeforeLastMove,
@@ -37,18 +38,14 @@ export const SCOUT_PREFILTER_CONCURRENCY = 3;
  *  timeBudgetMs to exercise the (now cancellation-only) partial-results machinery. */
 export const SCOUT_PREFILTER_TIME_BUDGET_MS = Infinity;
 export const SCOUT_PREFILTER_ENGINE_VERSION = `stockfish-${STOCKFISH_PACKAGE_VERSION}-lite`;
-export const SCOUT_MIN_ANCESTOR_FREQUENCY = 0.01;
 export const SCOUT_MIN_STOCKFISH_ADVANTAGE = 20;
-/** OR-gate thresholds — a line survives on objective edge, empirical struggle, a rare
- * off-book reply, or a strong engine-free exploitability prior. (The old cp-loss gate is
+/** OR-gate thresholds — a line survives on objective edge, empirical struggle,
+ * or a strong engine-free exploitability prior. (The old cp-loss gate is
  * gone: it required a second Stockfish eval of the pre-move position only to confirm "was
  * the last move bad", which the leaf advantage already captures.) */
 export const SCOUT_PREFILTER_STRUGGLE_GATE = 0.15;
-export const SCOUT_PREFILTER_OFFMODAL_GATE = 2;
-export const SCOUT_PREFILTER_OFFMODAL_MIN_ADV = 8;
-/** Prior-rescue floor: a line with a real exploitability prior (≈ struggle 0.1, off-modal,
- * a small recurring family) survives even when the depth-8 leaf edge is modest. Derived from
- * (0.1+0.08)·2^0.7·(log1p(3)+0.1) ≈ 0.43; set slightly conservative. */
+/** Prior-rescue floor: recurring empirical struggle can rescue a modest edge.
+ * Rarity has no contribution; the floor stays conservative after removing that bonus. */
 export const SCOUT_PREFILTER_PRIOR_FLOOR = 0.4;
 
 export const PREFILTER_IDLE = "idle";
@@ -162,9 +159,10 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
     mateIn,
     hasUserReply,
     prefilterScore: userLeafAdvantage,
-    ancestorFrequency: ancestorInfo.frequency,
-    ancestorScorePct: ancestorInfo.scorePct,
-    ancestorGames: ancestorInfo.games,
+    routeReach: line.routeReach ?? null,
+    ancestorFrequency: line.routeReach ?? ancestorInfo.frequency,
+    ancestorScorePct: line.ancestorScorePct ?? ancestorInfo.scorePct,
+    ancestorGames: line.ancestorGames ?? ancestorInfo.games,
     scorePct: line.scorePct,
     games: line.games,
     // Prefix-resolved exploitability signals, annotated upstream by rankedOpeningBranches.
@@ -177,7 +175,7 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
 
 /**
  * Final exploitability rank = engine-free PRIOR × engine CONFIRMATION × empirical amplifier.
- *   prior   — the upstream exploitability prior (struggle × off-modal rarity × family
+ *   prior   — the upstream exploitability prior (struggle × family
  *             reproducibility); already carries "is this a recurring weakness worth prepping".
  *             1 is substituted when no prior exists (no-trie fallback) so the edge still orders.
  *   edge    — the depth-8 leaf advantage above an 8cp noise floor, log-compressed so a +40cp
@@ -242,7 +240,7 @@ export function rankPrefilterCandidates(
       noUserReply: 0,
     },
     scored: 0,
-    gateDrops: { comfortZone: 0, failedOrGate: 0 },
+    gateDrops: { unreachable: 0, comfortZone: 0, failedOrGate: 0 },
     survived: 0,
     afterCollapse: 0,
   };
@@ -261,13 +259,18 @@ export function rankPrefilterCandidates(
       ...metrics,
     });
   }
-  // OR-gate: a line is worth prepping if the opponent is NOT in a comfort zone there, and
+  // Gate routes the opponent is unlikely to enter, then keep lines with a credible
+  // engine edge, measured struggle, or a recurring prior. Rarity is never a pass.
   // ANY of — the user has a forced mate, Stockfish finds a clear edge, the line family
-  // empirically underperforms, it's a rare off-book reply with a non-trivial edge, or it
+  // empirically underperforms, or it
   // carries a strong engine-free prior with some edge. This replaces the old AND-style
   // "+20cp AND frequent" wall that zeroed every main line (and the cp-loss branch, which
   // needed a second eval to confirm a now-redundant signal).
   const gated = scored.filter((entry) => {
+    if (entry.routeReach != null && entry.routeReach < SCOUT_MIN_ROUTE_REACH) {
+      funnel.gateDrops.unreachable++;
+      return false;
+    }
     if (isOpponentComfortZone(entry, baselineScorePct)) {
       funnel.gateDrops.comfortZone++;
       return false;
@@ -275,14 +278,10 @@ export function rankPrefilterCandidates(
     if (entry.mateIn > 0) return true;
     const adv = entry.prefilterScore ?? 0;
     const struggle = entry.struggle ?? 0;
-    const offModal = entry.offModal ?? 0;
     const prior = entry.exploitabilityPrior ?? 0;
     if (adv >= SCOUT_MIN_STOCKFISH_ADVANTAGE) return true;
     if (struggle >= SCOUT_PREFILTER_STRUGGLE_GATE && adv > 0) return true;
-    if (offModal >= SCOUT_PREFILTER_OFFMODAL_GATE && adv >= SCOUT_PREFILTER_OFFMODAL_MIN_ADV) {
-      return true;
-    }
-    // Prior-rescue (replaces the old cp-loss branch): a rare sideline with a real recurring
+    // Prior-rescue (replaces the old cp-loss branch): a line with a real recurring
     // exploitability prior survives even when depth-8 undercounts its modest leaf edge.
     if (prior > SCOUT_PREFILTER_PRIOR_FLOOR && adv > 0) return true;
     funnel.gateDrops.failedOrGate++;
@@ -293,7 +292,7 @@ export function rankPrefilterCandidates(
     (a, b) =>
       exploitabilityRank(b) - exploitabilityRank(a) ||
       Number(b.hasUserReply) - Number(a.hasUserReply) ||
-      (b.ancestorFrequency ?? 0) - (a.ancestorFrequency ?? 0) ||
+      (b.routeReach ?? 0) - (a.routeReach ?? 0) ||
       tiebreakRecencyShare(a.line, b.line),
   );
   const collapsed = collapseNestedPrefilterLines(gated);
@@ -356,7 +355,7 @@ export function mergeGlobalPrefilterRanked(
     (a, b) =>
       exploitabilityRank(b) - exploitabilityRank(a) ||
       Number(b.hasUserReply) - Number(a.hasUserReply) ||
-      (b.ancestorFrequency ?? 0) - (a.ancestorFrequency ?? 0) ||
+      (b.routeReach ?? 0) - (a.routeReach ?? 0) ||
       tiebreakRecencyShare(a.line, b.line) ||
       a.oppColor.localeCompare(b.oppColor),
   );

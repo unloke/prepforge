@@ -3,9 +3,7 @@
 
 import {
   MASTERS_MIN_TOTAL_GAMES,
-  POOL_COMPARE_MIN_GAMES,
   mastersShareForMove,
-  poolShareForMove,
 } from "./scout-explorer.js";
 import {
   ENGINE_AGG_MIN_ANALYZED_GAMES,
@@ -31,7 +29,7 @@ const ENGINE_REFUTATION_BLOCK_CODES = new Set([
 export { terminalMoveIsOpponent };
 
 export const REFUTATION_MIN_REPERTOIRE_GAMES = WEAKNESS_MIN_GAMES;
-export const REFUTATION_MIN_EXPLORER_GAMES = POOL_COMPARE_MIN_GAMES;
+export const REFUTATION_MIN_EXPLORER_GAMES = 3;
 export const REFUTATION_MIN_ENGINE_PATH_GAMES = SCOUT_ENGINE_MIN_RECURRENCE;
 
 export function refutationIdentity({ color, speed, pathUcis, fen }) {
@@ -143,7 +141,7 @@ function evaluateRepertoireLayer(candidate, { baselineScorePct } = {}) {
 
 function evaluateExplorerLayer(
   candidate,
-  { explorerReads = null, mastersByFen = null, poolByFen = null } = {},
+  { explorerReads = null, mastersByFen = null } = {},
 ) {
   const blockedBy = [];
   const evidence = [];
@@ -160,14 +158,6 @@ function evaluateExplorerLayer(
           : `Explorer reads unavailable (${reason})`,
     });
     return { blockedBy, evidence, reasons };
-  }
-
-  if (explorerReads.poolAuthFailed) {
-    blockedBy.push({
-      layer: "explorer",
-      code: "pool-auth",
-      message: "Pool comparison unavailable (auth required)",
-    });
   }
 
   const pathUcis = candidate.pathUcis || [];
@@ -194,8 +184,6 @@ function evaluateExplorerLayer(
   }
 
   const mastersShare = mastersShareForMove(mastersStats, lastUci);
-  const poolStats = poolByFen?.get?.(probeFen);
-  const poolShare = poolStats ? poolShareForMove(poolStats, lastUci) : null;
   const opponentSharePct = Math.round((candidate.share ?? 0) * 100);
 
   evidence.push({
@@ -205,9 +193,7 @@ function evaluateExplorerLayer(
     moveSan: candidate.pathSans?.[candidate.pathSans.length - 1] || null,
     opponentSharePct,
     mastersSharePct: Math.round(mastersShare * 100),
-    poolSharePct: poolShare != null ? Math.round(poolShare * 100) : null,
     games: candidate.games,
-    poolAvailable: poolShare != null && !explorerReads.poolAuthFailed,
   });
 
   if (!blockedBy.length) {
@@ -420,20 +406,6 @@ export function refutationGapAction(blocked) {
         ariaLabel: "Run deep engine scan to generate refutations",
         testId: "scout-refutation-gap-deep-scan",
       };
-    case "auth":
-      return {
-        id: "connect-lichess",
-        label: "Connect Lichess account",
-        ariaLabel: "Connect your Lichess account for opening explorer data",
-        testId: "scout-refutation-gap-connect-lichess",
-      };
-    case "pool-auth":
-      return {
-        id: "connect-lichess",
-        label: "Connect Lichess for pool comparison",
-        ariaLabel: "Connect your Lichess account for pool comparison",
-        testId: "scout-refutation-gap-connect-lichess",
-      };
     default:
       return null;
   }
@@ -472,7 +444,6 @@ export function buildRefutations({
   baselineScorePct = 50,
   explorerReads = null,
   mastersByFen = null,
-  poolByFen = null,
   engineAgg = null,
   engineScan = null,
 } = {}) {
@@ -485,7 +456,6 @@ export function buildRefutations({
       baselineScorePct,
       explorerReads,
       mastersByFen,
-      poolByFen,
       engineAgg,
       engineScan,
       speedFilter,
