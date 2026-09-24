@@ -361,14 +361,21 @@
         </div>
       </section>
 
-      <section class="view" id="view-replay" data-testid="view-replay">
+      <section class="view research-view" id="view-replay" data-testid="view-replay">
         <div class="list-view replay-stack">
           <section class="card replay-card-games" data-replay-panel="games" role="tabpanel" aria-labelledby="nav-replay">
-            <div class="card-head">
-              <h2>My recent games</h2>
+            <div class="research-heading">
+              <div><span class="research-kicker">Game review</span><h2>My recent games</h2><p>See where your preparation held up and where the next lesson starts.</p></div>
+            </div>
+            <div class="research-controls" aria-label="Game review controls">
+              <div class="research-source"><span class="research-control-label">Games from</span>
+                <div class="research-source-picker">
+                  <span class="src-chips" id="games-source-chips" data-testid="games-source-chips"></span>
+                  <button type="button" class="source-add" id="games-source-add" data-testid="games-source-add" title="Edit Games sources" aria-label="Edit Games sources">＋ Add</button>
+                </div>
+              </div>
               <div class="replay-toolbar">
-                <span class="src-chips" id="games-source-chips" data-testid="games-source-chips"></span>
-                <button type="button" class="source-add" id="games-source-add" data-testid="games-source-add" title="Edit Games sources" aria-label="Edit Games sources">＋ Add</button>
+                <label class="research-control-label" for="replay-count">Sample</label>
                 <select id="replay-count" title="How many recent games to check">
                   <option value="10" selected>last 10</option>
                   <option value="20">last 20</option>
@@ -378,19 +385,24 @@
                 <button class="btn primary" id="lichess-compare-btn" data-testid="lichess-compare">Check my games</button>
               </div>
             </div>
-            <p class="muted hint">
-              How did your prep hold up? Forgotten moves are queued for training automatically;
-              opponent novelties can go straight into Build.
-            </p>
+            <p class="research-note">Forgotten moves enter your training queue. Add opponent novelties to Build from each game.</p>
+            <div class="research-results-head"><h3>Review</h3><span>Filter by result, then open a game for its move line and actions.</span></div>
             <div id="replay-summary" class="replay-summary" hidden></div>
             <div id="replay-results" class="replay-results"></div>
           </section>
           <section class="card replay-card-scout" data-replay-panel="scout" role="tabpanel" aria-labelledby="nav-scout" hidden>
-            <div class="card-head">
-              <h2>Scout an opponent</h2>
+            <div class="research-heading">
+              <div><span class="research-kicker">Opponent preparation</span><h2>Scout an opponent</h2><p>Turn their actual games into a practical opening brief.</p></div>
+            </div>
+            <div class="research-controls" aria-label="Opponent scouting controls">
+              <div class="research-source"><span class="research-control-label">Opponent games from</span>
+                <div class="research-source-picker">
+                  <span class="src-chips" id="scout-source-chips" data-testid="scout-source-chips"></span>
+                  <button type="button" class="source-add" id="scout-source-add" data-testid="scout-source-add" title="Edit Scout sources" aria-label="Edit Scout sources">＋ Add</button>
+                </div>
+              </div>
               <div class="replay-toolbar">
-                <span class="src-chips" id="scout-source-chips" data-testid="scout-source-chips"></span>
-                <button type="button" class="source-add" id="scout-source-add" data-testid="scout-source-add" title="Edit Scout sources" aria-label="Edit Scout sources">＋ Add</button>
+                <label class="research-control-label" for="scout-color">Playing as</label>
                 <select id="scout-color" title="Which colour games to fetch">
                   <option value="both" selected>Both</option>
                   <option value="white">White</option>
@@ -401,9 +413,7 @@
                 <span id="scout-live-count" class="scout-live-count" data-testid="scout-live-count" aria-live="polite">0</span>
               </div>
             </div>
-            <p class="muted hint">
-              Find a few routes to prepare against this opponent. Open Evidence for the supporting model and game data.
-            </p>
+            <p class="research-note">Find routes to prepare. Open Evidence for the model and games behind each recommendation.</p>
             <div id="scout-profile" class="scout-profile" hidden></div>
             <div id="scout-v3-results" class="scout-v3-results" hidden></div>
             <div id="scout-results" class="scout-results"></div>

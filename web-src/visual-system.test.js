@@ -134,8 +134,8 @@ describe("seven views share chrome families", () => {
     }
   });
 
-  it("list tabs use the same card / card-head / hint pattern", () => {
-    for (const view of ["dashboard", "replay", "teams", "settings"]) {
+  it("list tabs keep a card with a heading and supporting guidance", () => {
+    for (const view of ["dashboard", "teams", "settings"]) {
       const start = html.indexOf(`id="view-${view}"`);
       const next = VIEWS.indexOf(view) + 1;
       const end =
@@ -144,6 +144,18 @@ describe("seven views share chrome families", () => {
       expect(slice).toMatch(/class="[^"]*\bcard\b/);
       expect(slice).toContain("card-head");
       expect(slice).toMatch(/class="[^"]*hint/);
+    }
+    const replay = html.slice(html.indexOf('id="view-replay"'), html.indexOf('id="view-teams"'));
+    for (const panel of ["games", "scout"]) {
+      const start = replay.indexOf(`<section class="card replay-card-${panel}"`);
+      const end = panel === "games" ? replay.indexOf('<section class="card replay-card-scout"') : replay.length;
+      const slice = replay.slice(start, end);
+      expect(slice).toMatch(/class="[^"]*\bcard\b/);
+      expect(slice).toContain('class="research-heading"');
+      expect(slice).toContain('class="research-controls"');
+      expect(slice).toContain('class="research-note"');
+      expect(slice.indexOf('class="research-heading"')).toBeLessThan(slice.indexOf('class="research-controls"'));
+      expect(slice.indexOf('class="research-controls"')).toBeLessThan(slice.indexOf('class="research-note"'));
     }
   });
 
