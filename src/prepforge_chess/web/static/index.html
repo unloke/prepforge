@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-CFGh6RX7.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-DCZTfp8b.css">
+    <script type="module" crossorigin src="/static/assets/index-DiOID4vP.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-BH00lNmG.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -385,22 +385,29 @@
               opponent novelties can go straight into Build.
             </p>
             <div id="replay-summary" class="replay-summary" hidden></div>
-            <div id="replay-results" class="replay-results"></div>
+            <div class="replay-results-frame">
+              <p class="replay-empty-prompt">Choose sources and check your games to see the review here.</p>
+              <div id="replay-results" class="replay-results"></div>
+            </div>
           </section>
           <section class="card replay-card-scout" data-replay-panel="scout" role="tabpanel" aria-labelledby="nav-scout" hidden>
             <div class="card-head">
               <h2>Scout an opponent</h2>
               <div class="replay-toolbar">
-                <span class="src-chips" id="scout-source-chips" data-testid="scout-source-chips"></span>
-                <button type="button" class="source-add" id="scout-source-add" data-testid="scout-source-add" title="Edit Scout sources" aria-label="Edit Scout sources">＋ Add</button>
-                <select id="scout-color" title="Which colour games to fetch">
-                  <option value="both" selected>Both</option>
-                  <option value="white">White</option>
-                  <option value="black">Black</option>
-                </select>
-                <button class="btn primary" id="scout-btn" data-testid="scout-btn" data-scout-action="start">Start</button>
-                <button class="btn ghost" id="scout-reset-btn" type="button" hidden>Reset</button>
-                <span id="scout-live-count" class="scout-live-count" data-testid="scout-live-count" aria-live="polite">0</span>
+                <div class="scout-source-controls">
+                  <span class="src-chips" id="scout-source-chips" data-testid="scout-source-chips"></span>
+                  <button type="button" class="source-add" id="scout-source-add" data-testid="scout-source-add" title="Edit Scout sources" aria-label="Edit Scout sources">＋ Add</button>
+                </div>
+                <div class="scout-run-controls">
+                  <select id="scout-color" title="Which colour games to fetch">
+                    <option value="both" selected>Both</option>
+                    <option value="white">White</option>
+                    <option value="black">Black</option>
+                  </select>
+                  <button class="btn primary" id="scout-btn" data-testid="scout-btn" data-scout-action="start">Start</button>
+                  <button class="btn ghost" id="scout-reset-btn" type="button" hidden>Reset</button>
+                  <span id="scout-live-count" class="scout-live-count" data-testid="scout-live-count" aria-live="polite">0</span>
+                </div>
               </div>
             </div>
             <p class="muted hint">
@@ -408,7 +415,10 @@
             </p>
             <div id="scout-profile" class="scout-profile" hidden></div>
             <div id="scout-v3-results" class="scout-v3-results" hidden></div>
-            <div id="scout-results" class="scout-results"></div>
+            <div class="replay-results-frame">
+              <p class="replay-empty-prompt">Choose an opponent source, then start Scout to see preparation routes.</p>
+              <div id="scout-results" class="scout-results"></div>
+            </div>
           </section>
         </div>
       </section>
@@ -634,6 +644,6 @@
         <div class="palette-results" id="palette-results" data-testid="palette-results" role="listbox" aria-label="Commands"></div>
       </div>
     </div>
-
+
   </body>
 </html>
