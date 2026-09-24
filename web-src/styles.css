@@ -698,14 +698,17 @@ h2 {
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--panel);
-  padding: 3px 10px;
-  font-size: 12px;
+  padding: 2px 9px;
+  font-size: 11px;
   cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
 }
 .replay-chip.is-on {
-  border-color: var(--accent);
-  background: var(--panel-soft);
+  border-color: currentColor;
+  background: transparent;
   font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .replay-chip.rk-in-prep { color: var(--good); }
 .replay-chip.rk-user-error { color: var(--danger); }
@@ -743,7 +746,7 @@ h2 {
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border: 0;
   background: none;
   font: inherit;
@@ -776,6 +779,7 @@ h2 {
   font-variant-numeric: tabular-nums;
 }
 .replay-preview {
+  display: none;
   flex: 1;
   min-width: 0;
   color: var(--text);
@@ -3426,8 +3430,8 @@ h2 {
 
 /* In-row W/D/L as one compact proportional bar — fixed width, never wraps. */
 .scout-wdlbar {
-  display: inline-flex; width: 100%; max-width: 60px; height: 8px;
-  border-radius: 3px; overflow: hidden; border: 1px solid var(--line-soft);
+  display: inline-flex; width: 100%; max-width: 60px; height: 10px;
+  border-radius: 4px; overflow: hidden; border: 1px solid var(--line-soft);
   background: var(--bg);
 }
 .scout-wdlbar > span { display: block; height: 100%; }
@@ -3813,9 +3817,9 @@ h2 {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
   transform: translateX(-100%);
-  animation: scout-progress-shimmer 1.2s ease-in-out infinite;
+  animation: scout-progress-shimmer 2s ease-in-out infinite;
 }
 /* Indeterminate (total unknown): the fill is a fixed 40% bar that sweeps the track. */
 .scout-engine-progress.is-indeterminate .scout-progress-fill {
@@ -4012,26 +4016,27 @@ h2 {
 .scout-line-status.bad { color: var(--danger); }
 .scout-line-action-row { display: flex; gap: 6px; flex-wrap: wrap; }
 
-.scout-profile { margin-top: 8px; }
+.scout-profile { margin-top: 6px; }
 .scout-profile-card {
   display: flex; flex-wrap: wrap; align-items: center;
-  gap: 8px 16px; padding: 10px 12px;
+  gap: 6px 12px; padding: 8px 10px;
   background: var(--panel-soft); border: 1px solid var(--line);
-  border-radius: 8px; margin-bottom: 8px;
+  border-radius: 8px; margin-bottom: 6px;
 }
-.scout-profile-main { display: flex; align-items: baseline; gap: 10px; }
+.scout-profile-main { display: flex; align-items: baseline; gap: 8px; }
 .scout-username-link { font-weight: 700; font-size: 14px; color: var(--text); text-decoration: none; }
 .scout-username-link:hover { color: var(--accent); text-decoration: underline; }
-.scout-profile-games, .scout-profile-rating { font-size: 12px; color: var(--muted); }
-.scout-speed-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; width: 100%; justify-content: flex-end; }
+.scout-profile-games, .scout-profile-rating { font-size: 11px; color: var(--muted); }
+.scout-speed-chips { display: flex; gap: 3px; flex-wrap: wrap; margin-left: auto; width: 100%; justify-content: flex-end; }
 @media (min-width: 721px) {
   .scout-profile-card .scout-speed-chips { width: auto; margin-left: auto; }
 }
 .scout-speed-chip {
   border: 1px solid var(--line); border-radius: 999px;
   background: var(--panel); color: var(--muted); cursor: pointer;
-  min-height: 44px;
-  padding: 8px 12px;
+  min-height: 28px;
+  padding: 4px 10px;
+  font-size: 11px;
   transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 .scout-speed-chip:hover { border-color: var(--accent); color: var(--accent); }
@@ -4043,7 +4048,7 @@ h2 {
   padding: 6px 12px; border-bottom: 1px solid var(--line-soft);
 }
 .scout-coverage-bar {
-  flex: 1; height: 6px; border-radius: 999px;
+  flex: 1; height: 8px; border-radius: 999px;
   background: var(--bg); border: 1px solid var(--line-soft); overflow: hidden;
   min-width: 60px;
 }
@@ -4166,9 +4171,9 @@ h2 {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 10px 0 4px;
-  margin-top: 4px;
-  border-top: 1px solid var(--line-soft);
+  padding: 10px 0 6px;
+  margin-top: 6px;
+  border-top: 1px solid var(--line);
 }
 
 .ib.danger {
@@ -6161,11 +6166,18 @@ h2 {
 /* Reuses the Replay stack + .card + .list-item primitives; these rules add the
    team-specific row affordances (role badges, member tails, selected row). */
 .teams-stack {
-  max-width: 920px;
+  max-width: 760px;
 }
 .team-row.is-selected {
   border-color: var(--accent-line);
   background: var(--accent-soft);
+}
+/* Left accent border distinguishes owner (amber) from member (muted) at a glance. */
+.team-row.team-row-owner {
+  border-left: 3px solid var(--accent);
+}
+.team-row.team-row-member {
+  border-left: 3px solid var(--line-strong);
 }
 .team-role-badge {
   display: inline-flex;
@@ -6175,13 +6187,14 @@ h2 {
   background: var(--surface-hover);
   border: 1px solid var(--line-soft);
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
+  text-transform: capitalize;
 }
 .team-role-badge.sm {
   padding: 1px 7px;
-  font-size: 11px;
+  font-size: 10px;
 }
 .team-members-head {
   display: flex;

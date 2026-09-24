@@ -122,7 +122,6 @@ export function createReplayView({
       ? ` <span class="replay-source" title="Fetched from this linked account">${escapeHtml(game.source_account)}</span>`
       : "";
     const players = `${escapeHtml(game.white || "?")} <span class="muted">vs</span> ${escapeHtml(game.black || "?")}${source}`;
-    const preview = (game.move_san_history || []).slice(0, 6).join(" ");
     const lichessLink = game.lichess_id
       ? `<a class="link" target="_blank" rel="noopener noreferrer" href="https://lichess.org/${escapeHtml(game.lichess_id)}" title="Open on Lichess">lichess ↗</a>`
       : "";
@@ -157,7 +156,6 @@ export function createReplayView({
         <span class="replay-icon" aria-hidden="true">${meta.icon}</span>
         <span class="players">${players}</span>
         <span class="replay-result">${escapeHtml(game.result || "*")}</span>
-        ${open ? "" : `<span class="replay-preview">${escapeHtml(preview)}…</span>`}
         <span class="replay-badge">${escapeHtml(meta.badge)}</span>
         <span class="replay-caret" aria-hidden="true">${open ? "▾" : "▸"}</span>
       </button>

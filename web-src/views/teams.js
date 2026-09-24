@@ -59,8 +59,9 @@ export function createTeamsView({
         const role = escapeHtml(teamRoleLabel(team.role));
         const countLabel = escapeHtml(teamMemberCountLabel(team.member_count));
         const selectedCls = appState.selectedTeamId === team.id ? " is-selected" : "";
+        const roleCls = team.role === "owner" ? " team-row-owner" : " team-row-member";
         return `
-        <div class="list-item team-row${selectedCls}" role="button" tabindex="0" data-team-id="${id}">
+        <div class="list-item team-row${selectedCls}${roleCls}" role="button" tabindex="0" data-team-id="${id}">
           <span>
             <span class="name">${name}</span>
             <span class="sub"> · ${countLabel}</span>
@@ -94,7 +95,7 @@ export function createTeamsView({
         const id = escapeHtml(item.id);
         const name = escapeHtml(item.name);
         const color = escapeHtml(item.color);
-        const owner = escapeHtml(item.owner_display_name || item.owner_email || "member");
+        const owner = escapeHtml(item.owner_display_name || "member");
         const isMine = item.owner_user_id === appState.accountUserId;
         // Your own shared rep: Unshare. Someone else's: Copy to your account (fork).
         const action = isMine
@@ -118,6 +119,7 @@ export function createTeamsView({
         open();
       });
       row.addEventListener("keydown", (event) => {
+        if (event.target !== row) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           open();
