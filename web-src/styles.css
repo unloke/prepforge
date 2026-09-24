@@ -7739,3 +7739,122 @@ h2 {
 #view-replay .replay-card-scout { max-width: 1400px; }
 #view-replay .replay-card-scout .scout-v13-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 18px; }
 #view-replay .replay-card-scout .scout-v13-card { min-width: 0; }
+/* Games and Scout: compact research workbench. Keep all result controls and
+   reports in their existing DOM positions so live updates retain focus. */
+#view-replay .replay-stack { max-width: 1180px; gap: 0; }
+#view-replay [data-replay-panel] {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: 0 12px 34px rgba(24, 58, 50, .06);
+}
+#view-replay .research-heading {
+  padding: 26px 32px 24px;
+  background: #183a32;
+  color: #f5f3ee;
+  border-bottom: 3px solid #c58a45;
+}
+#view-replay .research-kicker {
+  display: block;
+  color: #d9b98d;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: .015em;
+  margin-bottom: 7px;
+}
+#view-replay .research-heading h2 {
+  margin: 0;
+  color: inherit;
+  font-size: clamp(25px, 2.4vw, 34px);
+  line-height: 1.1;
+  letter-spacing: -.035em;
+}
+#view-replay .research-heading p {
+  margin: 9px 0 0;
+  color: #d7e3dd;
+  font-size: 13px;
+  line-height: 1.45;
+}
+#view-replay .research-controls {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 17px 32px;
+  background: var(--panel-soft);
+  border-bottom: 1px solid var(--line);
+}
+#view-replay .research-source { flex: 1 1 400px; min-width: 0; }
+#view-replay .research-source-picker { display: flex; align-items: center; gap: 8px; min-height: 32px; flex-wrap: wrap; }
+#view-replay .research-control-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+#view-replay .replay-toolbar { flex: 0 0 auto; gap: 7px; }
+#view-replay .replay-toolbar .research-control-label { width: 100%; margin-bottom: -1px; }
+#view-replay .replay-toolbar select { min-width: 88px; height: 34px; font-size: 13px; color: var(--text); }
+#view-replay .replay-toolbar .btn.primary { min-height: 34px; padding: 6px 15px; }
+#view-replay .research-note {
+  margin: 0;
+  padding: 10px 32px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+#view-replay .research-results-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 20px 32px 10px;
+}
+#view-replay .research-results-head h3 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
+#view-replay .research-results-head span { color: var(--muted); font-size: 12px; }
+#view-replay .replay-summary,
+#view-replay .replay-results,
+#view-replay .scout-profile,
+#view-replay .scout-v3-results,
+#view-replay .scout-results { margin-left: 32px; margin-right: 32px; }
+#view-replay .replay-results,
+#view-replay .scout-results { margin-bottom: 30px; }
+#view-replay .replay-results:empty::before,
+#view-replay .scout-results:empty::before {
+  display: block;
+  padding: 24px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 4px;
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+#view-replay .replay-results:empty::before { content: "Choose your games and run a check to see your preparation review here."; }
+#view-replay .scout-results:empty::before { content: "Choose an opponent source and start scouting to see their opening routes here."; }
+#view-replay .replay-row { border-radius: 4px; }
+#view-replay .replay-row-head { min-height: 49px; padding: 10px 13px; gap: 12px; }
+#view-replay .replay-row.is-open { box-shadow: none; }
+#view-replay .replay-badge,
+#view-replay .replay-chip { border-radius: 4px; }
+#view-replay .scout-profile-card { border-radius: 4px; }
+#view-replay .scout-section { border-radius: 4px; }
+#view-replay :is(button, select, a, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 760px) {
+  #view-replay .research-heading { padding: 21px 18px; }
+  #view-replay .research-controls { padding: 15px 18px; align-items: stretch; flex-direction: column; gap: 13px; }
+  #view-replay .research-source { flex-basis: auto; }
+  #view-replay .replay-toolbar { justify-content: flex-start; }
+  #view-replay .research-note { padding: 10px 18px; }
+  #view-replay .research-results-head { padding: 18px 18px 10px; flex-wrap: wrap; gap: 4px 12px; }
+  #view-replay .replay-summary,
+  #view-replay .replay-results,
+  #view-replay .scout-profile,
+  #view-replay .scout-v3-results,
+  #view-replay .scout-results { margin-left: 18px; margin-right: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #view-replay .replay-card-scout.is-streaming .scout-live-count { animation: none; }
+}
