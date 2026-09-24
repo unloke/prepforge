@@ -72,7 +72,7 @@ describe("workspace chrome layout", () => {
     expect(css).toContain(".train-coach-sub");
   });
 
-  it("keeps topbar status inline left of Ctrl K with a fixed slot", () => {
+  it("overlays topbar status left of Ctrl K without reserving layout width", () => {
     const header = html.slice(html.indexOf('<header class="topbar">'), html.indexOf("</header>"));
     const slot = header.indexOf('id="topbar-status-slot"');
     const status = header.indexOf('id="app-status"');
@@ -84,7 +84,9 @@ describe("workspace chrome layout", () => {
     expect(account).toBeGreaterThan(palette);
     expect(header).toContain('id="app-status-close"');
     expect(css).toContain(".topbar-status-slot");
-    expect(css).toMatch(/\.topbar-status-slot\s*\{[^}]*width:\s*248px/s);
+    expect(css).toMatch(/\.topbar-status-slot\s*\{[^}]*position:\s*absolute/s);
+    expect(css).toMatch(/\.topbar-status-slot\s*\{[^}]*right:\s*calc\(100% \+ 12px\)/s);
+    expect(css).toMatch(/\.topbar-status-slot \.status:not\(\[hidden\]\)\s*\{[^}]*text-overflow:\s*ellipsis/s);
     expect(css).toContain(".status-close");
     expect(app).toContain('function setStatus(message, { severity = "info" } = {})');
     expect(app).toContain('getElementById("app-status-close")');

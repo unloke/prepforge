@@ -74,7 +74,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://migtest:migtest-only@localhost:5432/prepforge_migtest
           TEST_POSTGRES_URL: postgresql://migtest:migtest-only@localhost:5432/prepforge_migtest
-        run: uv run pytest -q tests/test_migration_lichess_primary.py tests/test_api_lichess.py tests/test_api_lichess_games.py tests/test_training_smart.py
+        run: uv run pytest -q tests/test_migration_lichess_primary.py tests/test_api_lichess.py tests/test_api_lichess_games.py tests/test_training_smart.py tests/test_build_route_sql.py::test_build_route_sql_counts_postgres
 
   js:
     runs-on: ubuntu-latest
@@ -145,6 +145,14 @@ jobs:
         env:
           VITE_ENABLE_SCOUT_E2E: "1"
         run: npm run build
+      - name: Topbar status geometry (1024 / 1200 / 1440)
+        run: |
+          npx vite --host 127.0.0.1 > /tmp/prepforge-vite.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5173/static/ > /dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/topbar-status-geometry.mjs
       - name: Scout + axe E2E
         run: >-
           uv run pytest -m e2e

@@ -11344,6 +11344,23 @@ function bindEvents() {
   });
   document.getElementById("train-hint").addEventListener("click", trainHint);
   const statusClose = document.getElementById("app-status-close");
+  const statusSlot = document.getElementById("topbar-status-slot");
+  const lastNav = document.querySelector(".tabs-primary .tab:last-child");
+  const palette = document.getElementById("open-palette");
+  if (statusSlot && lastNav && palette) {
+    const syncStatusRoom = () => {
+      const room = Math.max(0,
+        Math.floor(palette.getBoundingClientRect().left - lastNav.getBoundingClientRect().right - 20));
+      statusSlot.style.setProperty("--topbar-status-room", `${room}px`);
+    };
+    syncStatusRoom();
+    window.addEventListener("resize", syncStatusRoom);
+    const observer = new ResizeObserver(syncStatusRoom);
+    for (const element of [lastNav, palette, document.getElementById("account-chip")]) {
+      if (element) observer.observe(element);
+    }
+    document.fonts?.ready.then(syncStatusRoom);
+  }
   if (statusClose) {
     statusClose.addEventListener("click", () => {
       const status = document.getElementById("app-status");
