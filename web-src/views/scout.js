@@ -804,9 +804,9 @@ export function createScoutView(deps) {
     if (!scoutState?.games?.length || !scoutModule?.rankedOpeningBranches) {
       return { branches: [], ancestorFreq: new Map() };
     }
-    // The trie + baseline make rankedOpeningBranches select Stockfish candidates by the
-    // exploitability prior (struggle × rarity × family reproducibility) instead of raw
-    // frequency, and annotate each branch with prefix-resolved struggle/offModal signals.
+    // The trie + baseline rank observed routes by measured struggle and family evidence.
+    // Opponent-only conditional reach removes routes they are unlikely to enter before
+    // Stockfish runs; our own chosen moves do not lower that reach.
     // Full ranked list (limit: 0), then trimRankedBranches: primary cut is the prior-signal
     // floor (drops transposition noise); min-keep fills the Maia backup pool; 300 is only a
     // pathological-corpus ceiling on the cheap trie-walk/FEN step.

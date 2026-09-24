@@ -137,13 +137,13 @@ describe("scout-prefilter scoring", () => {
     expect(collapsed[0].prefilterScore).toBe(40);
   });
 
-  it("merges both colours by reproducibility score, not section order", () => {
+  it("merges both colours using route reach as a tie-break, not section order", () => {
     const merged = mergeGlobalPrefilterRanked({
       white: [
         {
           line: { ucis: ["w"], share: 0.9 },
           prefilterScore: 40,
-          ancestorFrequency: 0.02,
+          routeReach: 0.02,
           hasUserReply: true,
         },
       ],
@@ -151,13 +151,13 @@ describe("scout-prefilter scoring", () => {
         {
           line: { ucis: ["b"], share: 0.1 },
           prefilterScore: 40,
-          ancestorFrequency: 0.05,
+          routeReach: 0.05,
           hasUserReply: true,
         },
       ],
     });
     expect(merged[0].oppColor).toBe("black");
-    expect(merged[0].ancestorFrequency).toBe(0.05);
+    expect(merged[0].routeReach).toBe(0.05);
   });
 
   it("keeps up to SCOUT_PREFILTER_POOL_SIZE entries for Maia backup headroom", () => {
@@ -190,16 +190,16 @@ describe("scout-prefilter scoring", () => {
     expect(merged.map((entry) => entry.oppColor).sort()).toEqual(["black", "white"]);
   });
 
-  it("ranks the more reproducible line first at equal advantage and no measured struggle", () => {
+  it("uses route reach only to break an equal-strength tie", () => {
     // Two unrelated (non-nested) lines at equal Stockfish edge and no empirical struggle
-    // signal: the line backed by more games is the more reproducible prep, so it wins on the
-    // log-compressed reproducibility weight — frequency stays a tiebreaker, not a gate.
+    // signal: prefer the path the opponent is more likely to enter.
     const mainSystem = {
       ucis: ["e2e4", "e7e5"],
       sans: ["e4", "e5"],
       games: 20,
       share: 0.8,
       lastDatestamp: 1000,
+      routeReach: 0.2,
     };
     const rareSideline = {
       ucis: ["c2c4", "e7e5"],
@@ -207,6 +207,7 @@ describe("scout-prefilter scoring", () => {
       games: 1,
       share: 0.01,
       lastDatestamp: 2000,
+      routeReach: 0.05,
     };
     const evalMap = new Map([
       ...evalMapForLine(mainSystem.ucis, "black", { cpLoss: 30, bestUci: "c7c6" }),
@@ -222,7 +223,7 @@ describe("scout-prefilter scoring", () => {
       ancestorFreq,
     });
     expect(ranked[0].line.ucis).toEqual(mainSystem.ucis);
-    expect(ranked[0].ancestorFrequency).toBe(0.1);
+    expect(ranked[0].routeReach).toBe(0.2);
   });
 
   it("surfaces a rare line where the opponent blundered (no frequency floor)", () => {
@@ -370,6 +371,28 @@ describe("scout-prefilter scoring", () => {
     });
     expect(ranked).toHaveLength(0);
   });
+
+  it("does not pass a modest edge only because the final move is rare", () => {
+    const line = {
+      ucis: ["e2e4", "e7e5", "g1f3"], sans: ["e4", "e5", "Nf3"],
+      games: 1, routeReach: 0.2, offModal: 20, exploitabilityPrior: 0,
+    };
+    const ranked = rankPrefilterCandidates([line], evalMapForLine(line.ucis, "white", { cpLoss: 28 }), {
+      fenAfterLine, oppColor: "white", ancestorFreq: ancestorFreqForLine(line.ucis),
+    });
+    expect(ranked).toHaveLength(0);
+  });
+
+  it("gates a nearly unreachable route even when its leaf has a large edge", () => {
+    const line = {
+      ucis: ["e2e4", "e7e5", "g1f3"], sans: ["e4", "e5", "Nf3"],
+      games: 1, routeReach: 0.005, exploitabilityPrior: 2,
+    };
+    const ranked = rankPrefilterCandidates([line], evalMapForLine(line.ucis, "white", { cpLoss: 80 }), {
+      fenAfterLine, oppColor: "white", ancestorFreq: ancestorFreqForLine(line.ucis),
+    });
+    expect(ranked).toHaveLength(0);
+  });
 });
 
 describe("computePrefilterScopeKey", () => {
@@ -383,7 +406,7 @@ describe("computePrefilterScopeKey", () => {
       activeSpeed: "blitz",
       games,
     });
-    expect(key).toMatch(/^rival\|blitz\|\d+\|3$/);
+    expect(key).toMatch(/^rival\|blitz\|\d+\|4$/);
     expect(
       computePrefilterScopeKey({ username: "rival", activeSpeed: "blitz", games }),
     ).toBe(key);

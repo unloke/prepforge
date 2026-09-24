@@ -48,9 +48,11 @@ export const SCOUT_BRANCH_HARD_CEILING = 300;
  *  never starves on a thin opponent. Mirrors SCOUT_PREFILTER_POOL_SIZE (kept local to
  *  avoid a circular import from scout-prefilter.js). */
 export const SCOUT_BRANCH_MIN_KEEP = 64;
+/** Routes below this opponent-only empirical reach are too unlikely for prep. */
+export const SCOUT_MIN_ROUTE_REACH = 0.02;
 export const SCOUT_STOCKFISH_DEPTH = 8;
 export const SCOUT_MAIA_LIMIT = 12;
-export const SCOUT_SCORING_VERSION = 3;
+export const SCOUT_SCORING_VERSION = 4;
 /** Minimum games before empirical opponent performance gates prefilter candidates. */
 export const SCOUT_PREFILTER_EMPIRICAL_MIN_GAMES = 3;
 export const SCOUT_THINK_TIME_CLAMP_MIN = 0.7;
@@ -1089,23 +1091,20 @@ export function isOpponentComfortZone(
   return oppScore >= baselineScorePct;
 }
 
-/** Prep value: frequent × Stockfish edge × opponent struggle (empirical performance). */
-export function openingReproducibilityScore(entry, baselineScorePct = 50) {
-  const ancestorFrequency = entry?.ancestorFrequency ?? 0.001;
+/** Prep value after reachability has been checked separately. */
+export function openingWeaknessScore(entry, baselineScorePct = 50) {
   const stockfishAdvantage = Math.max(0, entry?.prefilterScore ?? 0);
   const empiricalScore = entry?.ancestorScorePct ?? entry?.scorePct ?? null;
   const struggle = opponentStruggleFactor(empiricalScore, baselineScorePct);
-  return ancestorFrequency * stockfishAdvantage * struggle;
+  return stockfishAdvantage * struggle;
 }
 
 /** Minimum off-modal struggle floor so rare blunders Stockfish can punish stay in the pool. */
 export const SCOUT_STRUGGLE_PRIOR_FLOOR = 0.08;
-/** Prior of a modal, non-reproducible one-off (struggle 0, offModal 1, prefixGames 0):
+/** Prior of a non-reproducible one-off (struggle 0, prefixGames 0):
  *  SCOUT_STRUGGLE_PRIOR_FLOOR * (log1p(0) + 0.1). Branches at/below this carry NO
  *  exploitability signal at all — they are transposition noise, safe to drop pre-engine. */
 export const SCOUT_PRIOR_NOISE_FLOOR = SCOUT_STRUGGLE_PRIOR_FLOOR * 0.1;
-/** Off-modal exponent in the exploitability prior (sub-linear so rarity helps but doesn't dominate). */
-export const SCOUT_OFFMODAL_PRIOR_EXP = 0.7;
 
 /**
  * Walk the opening trie along a UCI path. The trie keys children by `${uci}|${san}`,
@@ -1145,15 +1144,25 @@ export function triePrefixStats(trie, ucis) {
   return out;
 }
 
+/** Chance the opponent repeats their decisions if we choose this observed route. */
+export function opponentRouteReach(trie, ucis, opponentColor) {
+  if (!trie || !ucis?.length || !["white", "black"].includes(opponentColor)) return 0;
+  const stats = triePrefixStats(trie, ucis);
+  if (stats.length !== Math.min(ucis.length, MAX_PLIES)) return 0;
+  return stats.reduce((reach, node) => {
+    const mover = node.ply % 2 === 0 ? "white" : "black";
+    return mover === opponentColor ? reach * node.moveShare : reach;
+  }, 1);
+}
+
 /**
- * Empirical "struggle" + rarity for one opening branch, resolved at the deepest prefix
+ * Empirical "struggle" for one opening branch, resolved at the deepest prefix
  * with enough games to trust (n ≥ minGames). Solves the granularity-vs-sample-size
  * tension: a rare deep leaf borrows its struggle signal from the line family it belongs
  * to, instead of asserting anything from an n=1 leaf.
  *   struggle  — 0..1, how far the family's Wilson-upper score sits below the opponent's
  *               own baseline (0 = at/above baseline, no measured weakness).
- *   offModal  — 1/moveShare of the terminal move (how rarely they pick it here); rare,
- *               off-book replies are likelier to be unprepared.
+ *   offModal  — retained as diagnostic evidence; it does not improve ranking.
  *   prefixGames — family sample size backing the struggle signal.
  */
 export function branchStruggle(trie, ucis, baselineScorePct = 50, { minGames = SLIP_MIN_GAMES } = {}) {
@@ -1186,24 +1195,21 @@ export function branchStruggle(trie, ucis, baselineScorePct = 50, { minGames = S
 
 /**
  * Cheap (no-engine) prior for which branches deserve a Stockfish read. Centred on
- * exploitability — empirical struggle and off-modal rarity — NOT raw frequency, so
- * rare lines the opponent can't handle reach the engine pool. Family-level
+ * exploitability — empirical struggle, without a rarity reward. Family-level
  * reproducibility (log of prefix games) keeps truly one-off noise from crowding out
  * recurring weaknesses. Falls back to branchScore when no trie is available.
  */
 export function branchExploitabilityPrior(branch, { trie, baselineScorePct = 50 } = {}) {
   if (!trie) return branch?.branchScore ?? 0;
   const struggle = branch?.exploitabilityStruggle;
-  const offModal = branch?.offModal;
   const prefixGames = branch?.prefixGames;
-  const stats = (struggle == null || offModal == null || prefixGames == null)
+  const stats = (struggle == null || prefixGames == null)
     ? branchStruggle(trie, branch?.ucis, baselineScorePct)
     : null;
   const s = struggle ?? stats?.struggle ?? 0;
-  const o = offModal ?? stats?.offModal ?? 1;
   const n = prefixGames ?? stats?.prefixGames ?? 0;
   const reproducibility = Math.log1p(n) + 0.1;
-  return (s + SCOUT_STRUGGLE_PRIOR_FLOOR) * Math.pow(Math.max(o, 1), SCOUT_OFFMODAL_PRIOR_EXP) * reproducibility;
+  return (s + SCOUT_STRUGGLE_PRIOR_FLOOR) * reproducibility;
 }
 
 /**
@@ -1228,8 +1234,8 @@ export function trimRankedBranches(
 
 /**
  * Rank exact per-game opening branches; top N feed Stockfish/Maia. With a `trie` +
- * `baselineScorePct`, branches are ranked by the exploitability prior (struggle × rarity
- * × family reproducibility) and annotated with struggle/offModal/prefixGames for the
+ * `baselineScorePct`, branches are ranked by the exploitability prior (struggle
+ * × family reproducibility) and annotated with opponent-only route reach for the
  * downstream prefilter gate. Without a trie, falls back to branchScore ordering.
  */
 export function rankedOpeningBranches(
@@ -1244,6 +1250,12 @@ export function rankedOpeningBranches(
       b.exploitabilityStruggle = struggle;
       b.offModal = offModal;
       b.prefixGames = prefixGames;
+      b.routeReach = opponentRouteReach(trie, b.ucis, color);
+      const parentStats = triePrefixStats(trie, b.ucis.slice(0, -1)).at(-1);
+      const parentGames = parentStats?.gameCount ?? trie.gameCount;
+      b.ancestorGames = parentGames;
+      b.ancestorScorePct = parentStats?.scorePct ?? (trie.gameCount
+        ? Math.round(((trie.w + 0.5 * trie.d) / trie.gameCount) * 100) : null);
       b.exploitabilityPrior = branchExploitabilityPrior(b, { trie, baselineScorePct });
     }
     branches.sort(
@@ -1263,7 +1275,10 @@ export function rankedOpeningBranches(
         a.line.localeCompare(b.line),
     );
   }
-  const ranked = limit > 0 ? branches.slice(0, limit) : branches;
+  const plausible = trie
+    ? branches.filter((branch) => branch.routeReach >= SCOUT_MIN_ROUTE_REACH)
+    : branches;
+  const ranked = limit > 0 ? plausible.slice(0, limit) : plausible;
   return { branches: ranked, ancestorFreq };
 }
 
@@ -1281,13 +1296,6 @@ export function rankedOpeningLines(
 }
 
 // Unified ranked game plan: exploitability first, collapse nested prefixes, no row cap.
-function ancestorFrequencyForLine(line, ancestorFreq) {
-  if (!ancestorFreq?.size || !line?.ucis?.length) return line?.ancestorFrequency ?? 0.001;
-  const fenBefore = fenBeforeLastMove(line.ucis);
-  const info = fenBefore ? ancestorFreq.get(fenBefore) : null;
-  return info?.frequency ?? line?.ancestorFrequency ?? 0.001;
-}
-
 export function rankGamePlan(
   lines,
   baselineScorePct,
@@ -1298,7 +1306,6 @@ export function rankGamePlan(
     games = null,
     speedFilter = "all",
     lineLastSeen = null,
-    ancestorFreq = null,
   } = {},
 ) {
   const eligible = lines
@@ -1319,16 +1326,13 @@ export function rankGamePlan(
         baselineScorePct,
         { maiaScorePct: g.maiaScorePct ?? null },
       );
-      enriched.ancestorFrequency = ancestorFrequencyForLine(
-        { ...enriched, ucis: normalized.ucis },
-        ancestorFreq,
-      );
+      enriched.routeReach = g.routeReach;
       if (!enriched.lastSeen && games && lineLastSeen) {
         enriched.lastSeen = lineLastSeen(games, enriched.ucis, { color: oppColor, speedFilter });
       }
       return enriched;
     })
-    .filter(Boolean)
+    .filter((line) => line && (line.routeReach == null || line.routeReach >= SCOUT_MIN_ROUTE_REACH))
     .sort((a, b) => {
       const aHasMaia = a.maiaScorePct != null;
       const bHasMaia = b.maiaScorePct != null;
@@ -1336,10 +1340,10 @@ export function rankGamePlan(
         return a.maiaScorePct - b.maiaScorePct;
       }
       if (aHasMaia !== bHasMaia) return aHasMaia ? -1 : 1;
-      const reproducibilityA = openingReproducibilityScore(a, baselineScorePct);
-      const reproducibilityB = openingReproducibilityScore(b, baselineScorePct);
-      if (reproducibilityA !== reproducibilityB) {
-        return reproducibilityB - reproducibilityA;
+      const weaknessA = openingWeaknessScore(a, baselineScorePct);
+      const weaknessB = openingWeaknessScore(b, baselineScorePct);
+      if (weaknessA !== weaknessB) {
+        return weaknessB - weaknessA;
       }
       const aStamp = a.lastSeen?.lastDatestamp ?? 0;
       const bStamp = b.lastSeen?.lastDatestamp ?? 0;
