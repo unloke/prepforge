@@ -3189,6 +3189,9 @@ function switchView(name, { fromUrl = false } = {}) {
       button.setAttribute("aria-current", button.dataset.view === name && replayMatch ? "page" : "false");
     }
   });
+  if (window.matchMedia("(max-width: 720px)").matches) {
+    document.querySelector(".tabs-primary .tab.is-active")?.scrollIntoView({ block: "nearest", inline: "center" });
+  }
   document.querySelectorAll(".view").forEach((view) => {
     view.classList.toggle("is-active", view.id === `view-${name}`);
   });
@@ -10291,9 +10294,9 @@ function paintGamesSource() {
   const { chips, selfState } = selectionChips(selection, lichessAccounts());
   const n = lichessAccounts().length;
   const label = n > 0 ? `Self · ${n}` : "Self · all linked";
-  const visible = chips.length ? chips : [{ kind: "self", label }];
+  const visible = chips.length ? chips : n > 0 ? [{ kind: "self", label }] : [];
   tray.hidden = false;
-  tray.innerHTML = visible
+  tray.innerHTML = visible.length ? visible
     .map((c) =>
       c.kind === "self"
         ? `<span class="src-chip is-self" data-games-chip-self>${escapeHtml(label)}</span>`
@@ -10304,8 +10307,8 @@ function paintGamesSource() {
             (c.primary ? ' <span class="conn-primary">Primary</span>' : "") +
             `<button type="button" class="src-chip-x" data-games-unpick="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Games sources">×</button></span>`
     )
-    .join("");
-  if (selfState === "none" && !selection.external.length) {
+    .join("") : '<span class="src-empty">No linked Lichess account. Use Add to enter a username or connect an account.</span>';
+  if (selfState === "none" && !selection.external.length && n > 0) {
     tray.innerHTML =
       '<span class="src-empty">No sources — open Add and tick Self, an account, or a username</span>';
     return;
@@ -10412,7 +10415,7 @@ function paintScoutSource() {
                 `<button type="button" class="src-chip-x" data-scout-unpick="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Scout sources">×</button></span>`
         )
         .join("")
-    : '<span class="src-empty">No sources — open Add and tick Self, an account, or a username</span>';
+    : '<span class="src-empty">No opponent selected</span>';
 }
 
 function bindScoutSource() {

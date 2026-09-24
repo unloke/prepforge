@@ -107,7 +107,7 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".tab")).toMatch(/align-items:\s*center/);
     expect(html).toContain('data-testid="nav-teams"');
     expect(html).not.toContain('id="more-nav"');
-    expect(html).not.toContain('data-testid="nav-settings"');
+    expect(html).toContain('data-testid="nav-settings"');
     expect(account).toContain('data-action="settings"');
     expect(account).toContain("onOpenSettings();");
   });

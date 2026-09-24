@@ -10,13 +10,15 @@ colors:
   muted: "#5e5e5e"
   amber: "#d18b3f"
   amber-strong: "#9d5e1f"
-  dark-background: "#151311"
-  dark-panel: "#211d19"
-  dark-text: "#f5efe8"
-  dark-amber: "#dda15e"
+  dark-background: "#171512"
+  dark-panel: "#211e1a"
+  dark-panel-soft: "#29241e"
+  dark-text: "#f4efe7"
+  dark-muted: "#c8bbab"
+  dark-amber: "#e1a65e"
 rounded:
-  control: "4px"
-  card: "10px"
+  control: "6px"
+  card: "12px"
 spacing:
   tight: "6px"
   regular: "10px"
@@ -25,7 +27,7 @@ spacing:
 
 ## Overview
 
-This records the current desktop workbench. The incumbent system is archived in `docs/desktop-design-before.md`; implementation tokens and responsive rules live in `web-src/styles.css`.
+This records the redesigned workbench across desktop, tablet, and mobile. The incumbent system is archived in `docs/desktop-design-before.md`; implementation tokens and responsive rules live in `web-src/styles.css`.
 
 ## Colors
 
@@ -37,7 +39,7 @@ The UI uses Inter with Segoe UI and system sans fallbacks at a 14 px root size. 
 
 ## Layout
 
-At desktop widths the study views use a square board sized against viewport height and a flexible right sidebar. The board takes priority and stays stable while side content scrolls. Games and Scout reserve broad result canvases, Teams uses a master/detail split, and Settings uses two columns up to 1200 px. At mobile widths the layouts collapse to a vertical flow.
+At desktop widths the study views use a square board sized against viewport height and a flexible right sidebar. The board takes priority and stays stable while side content scrolls. Games and Scout reserve broad result canvases, Teams uses a master/detail split, and Settings uses two columns across the available workspace. Tablet and mobile layouts put the board before task content. Mobile navigation is horizontally scrollable and keeps the active destination visible.
 
 ## Elevation & Depth
 
@@ -45,11 +47,11 @@ The interface is mostly flat. Fine borders and tonal surface changes separate re
 
 ## Shapes
 
-Controls use 4 px corners, desktop cards 10 px, and small chips may be pill shaped. The board frame remains square with a subtle corner.
+Controls use 6 px corners, cards 12 px, and small chips may be pill shaped. The board frame remains square with a subtle corner. Mobile controls use 44 px touch targets.
 
 ## Components
 
-Primary buttons carry amber fill. Ghost buttons, segmented controls, cards, collapsible drawers, list rows, and status chips share border and text tokens. Navigation uses an amber active tab. Keyboard focus is explicitly outlined.
+Primary buttons carry amber fill. Ghost buttons, segmented controls, cards, collapsible drawers, list rows, and status chips share border and text tokens. Navigation uses an amber underline. Keyboard focus is explicitly outlined. Empty Build foregrounds Create, Import, and Open; empty Games and Scout foreground source selection.
 
 ## Do's and Don'ts
 
