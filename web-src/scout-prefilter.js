@@ -160,6 +160,7 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
     hasUserReply,
     prefilterScore: userLeafAdvantage,
     routeReach: line.routeReach ?? null,
+    routePlausibility: line.routePlausibility ?? null,
     ancestorFrequency: line.routeReach ?? ancestorInfo.frequency,
     ancestorScorePct: line.ancestorScorePct ?? ancestorInfo.scorePct,
     ancestorGames: line.ancestorGames ?? ancestorInfo.games,

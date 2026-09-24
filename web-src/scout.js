@@ -51,9 +51,11 @@ export const SCOUT_BRANCH_HARD_CEILING = 300;
 export const SCOUT_BRANCH_MIN_KEEP = 64;
 /** Any observed opponent choice below this conditional share makes a route poor prep. */
 export const SCOUT_MIN_ROUTE_REACH = 0.1;
+/** Fewer parent games leave an opponent decision unmeasured, rather than certain. */
+export const SCOUT_MIN_DECISION_PARENT_GAMES = 3;
 export const SCOUT_STOCKFISH_DEPTH = 8;
 export const SCOUT_MAIA_LIMIT = 12;
-export const SCOUT_SCORING_VERSION = 5;
+export const SCOUT_SCORING_VERSION = 6;
 /** Minimum games before empirical opponent performance gates prefilter candidates. */
 export const SCOUT_PREFILTER_EMPIRICAL_MIN_GAMES = 3;
 export const SCOUT_THINK_TIME_CLAMP_MIN = 0.7;
@@ -1133,6 +1135,7 @@ export function triePrefixStats(trie, ucis) {
     out.push({
       ply: i,
       uci: ucis[i],
+      parentGames,
       gameCount: gc,
       w: child.w || 0,
       d: child.d || 0,
@@ -1145,15 +1148,35 @@ export function triePrefixStats(trie, ucis) {
   return out;
 }
 
-/** Weakest opponent decision on an observed route; our chosen moves have no penalty. */
-export function opponentRouteReach(trie, ucis, opponentColor) {
-  if (!trie || !ucis?.length || !["white", "black"].includes(opponentColor)) return 0;
+/** Supported opponent choices determine the gate; sparse choices stay unknown. */
+export function opponentRoutePlausibility(
+  trie, ucis, opponentColor, { minParentGames = SCOUT_MIN_DECISION_PARENT_GAMES } = {},
+) {
+  const empty = { complete: false, minSupportedProbability: 0, supportedDecisions: 0,
+    unknownDecisions: 0, deepestSupportedPly: null };
+  if (!trie || !ucis?.length || !["white", "black"].includes(opponentColor)) return empty;
   const stats = triePrefixStats(trie, ucis);
-  if (stats.length !== ucis.length) return 0;
-  return stats.reduce((reach, node) => {
+  if (stats.length !== ucis.length) return empty;
+  const evidence = { complete: true, minSupportedProbability: null, supportedDecisions: 0,
+    unknownDecisions: 0, deepestSupportedPly: null };
+  for (const node of stats) {
     const mover = node.ply % 2 === 0 ? "white" : "black";
-    return mover === opponentColor ? Math.min(reach, node.moveShare) : reach;
-  }, 1);
+    if (mover !== opponentColor) continue;
+    if (node.parentGames < minParentGames) {
+      evidence.unknownDecisions += 1;
+      continue;
+    }
+    evidence.supportedDecisions += 1;
+    evidence.deepestSupportedPly = node.ply + 1;
+    evidence.minSupportedProbability = evidence.minSupportedProbability == null
+      ? node.moveShare : Math.min(evidence.minSupportedProbability, node.moveShare);
+  }
+  return evidence;
+}
+
+/** Compatibility score: null means every opponent decision is unknown. */
+export function opponentRouteReach(trie, ucis, opponentColor) {
+  return opponentRoutePlausibility(trie, ucis, opponentColor).minSupportedProbability;
 }
 
 /**
@@ -1251,7 +1274,8 @@ export function rankedOpeningBranches(
       b.exploitabilityStruggle = struggle;
       b.offModal = offModal;
       b.prefixGames = prefixGames;
-      b.routeReach = opponentRouteReach(trie, b.ucis, color);
+      b.routePlausibility = opponentRoutePlausibility(trie, b.ucis, color);
+      b.routeReach = b.routePlausibility.minSupportedProbability;
       const parentStats = triePrefixStats(trie, b.ucis.slice(0, -1)).at(-1);
       const parentGames = parentStats?.gameCount ?? trie.gameCount;
       b.ancestorGames = parentGames;
@@ -1277,7 +1301,8 @@ export function rankedOpeningBranches(
     );
   }
   const plausible = trie
-    ? branches.filter((branch) => branch.routeReach >= SCOUT_MIN_ROUTE_REACH)
+    ? branches.filter((branch) => branch.routePlausibility.complete &&
+      (branch.routeReach == null || branch.routeReach >= SCOUT_MIN_ROUTE_REACH))
     : branches;
   const ranked = limit > 0 ? plausible.slice(0, limit) : plausible;
   return { branches: ranked, ancestorFreq };
@@ -1328,6 +1353,7 @@ export function rankGamePlan(
         { maiaScorePct: g.maiaScorePct ?? null },
       );
       enriched.routeReach = g.routeReach;
+      enriched.routePlausibility = g.routePlausibility;
       if (!enriched.lastSeen && games && lineLastSeen) {
         enriched.lastSeen = lineLastSeen(games, enriched.ucis, { color: oppColor, speedFilter });
       }

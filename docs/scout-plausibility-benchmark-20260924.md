@@ -1,5 +1,7 @@
 # Scout route plausibility: real-game candidate study
 
+Sparse-data follow-up: [PR #74 support classification](scout-sparse-plausibility-followup.md) supersedes the original interpretation of 1/1 as 100% evidence. The original candidate study below is retained for comparison.
+
 This study uses public Lichess games parsed by the production Scout fetcher. It compares **candidate-stage** rules before Stockfish or Maia. It does not claim an improvement in final win rate. Each profile is the latest `n` games before a fixed 50-game chronological holdout. `EricRosen` has 1,187 parsed games (1,000-game profile available); `DrNykterstein` has 606 (largest profile: 300). Reproduce with `scripts/scout-fetch-games.mjs` and `scripts/scout-plausibility-study.mjs`.
 
 The production path is observed game opening routes → trie statistics and empirical struggle prior → route gate → at most 300 ranked branches per colour → distinct leaf FENs to Stockfish depth 8 → Maia pool of at most 12 global routes. The old gate multiplied opponent conditional probabilities to a 2% floor and examined only the first 16 plies. It ignored our own moves correctly, but a sequence of individually plausible decisions could fail solely because it was long. Moves after ply 16 were not checked. `offModal` is diagnostic only and already has no positive ranking weight.
