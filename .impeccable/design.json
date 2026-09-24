@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "name": "PrepForge workbench",
+  "mode": "operate",
+  "tokens": {
+    "dark": {
+      "background": "#171512",
+      "surface": "#211e1a",
+      "surfaceRaised": "#29241e",
+      "text": "#f4efe7",
+      "muted": "#c8bbab",
+      "accent": "#e1a65e"
+    },
+    "radius": { "control": "6px", "card": "12px" },
+    "mobileTarget": "44px"
+  }
+}

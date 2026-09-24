@@ -20,6 +20,7 @@
           <button class="tab" data-view="replay" data-replay-section="games" data-testid="nav-replay">Games</button>
           <button class="tab" data-view="replay" data-replay-section="scout" data-testid="nav-scout">Scout</button>
           <button class="tab" data-view="teams" data-testid="nav-teams">Teams</button>
+          <button class="tab" data-view="settings" data-testid="nav-settings">Settings</button>
         </div>
       </nav>
       <div class="topbar-actions">
@@ -36,6 +37,7 @@
 
     <main class="workspace" id="workspace-main" tabindex="-1">
       <section class="view is-active" id="view-dashboard" data-testid="view-dashboard">
+        <div class="workspace-heading"><div><h1>Preparation overview</h1><p>Your repertoire and next training step, in one place.</p></div></div>
         <div class="today-card" id="dashboard-today" data-testid="dashboard-today" hidden></div>
         <div class="metrics" id="dashboard-metrics"></div>
         <section class="card">
@@ -47,12 +49,13 @@
             </div>
           </div>
           <p class="muted hint">Click a repertoire to edit it in Build &middot; use &#8943; for more actions (train &middot; rename &middot; share &middot; delete).</p>
-          <div id="dashboard-repertoires" class="list-stack"></div>
+          <div id="dashboard-repertoires" class="list-stack"><div class="empty-state">No repertoire yet. Create one to begin preparing, or import a PGN.</div></div>
           <input type="file" id="dashboard-import-input" accept=".pgn,.json,application/x-chess-pgn,application/json" hidden />
         </section>
       </section>
 
       <section class="view" id="view-analyze" data-testid="view-analyze">
+        <h1 class="sr-only">Analyze</h1>
         <div class="study">
           <div class="board-area">
             <div class="board-stack">
@@ -133,6 +136,7 @@
       </section>
 
       <section class="view" id="view-build" data-testid="view-build">
+        <h1 class="sr-only">Build</h1>
         <div class="study">
           <div class="board-area">
             <div class="board-stack">
@@ -199,6 +203,7 @@
       </section>
 
       <section class="view" id="view-train" data-testid="view-train">
+        <h1 class="sr-only">Train</h1>
         <div class="study">
           <div class="board-area">
             <div class="board-stack">
@@ -422,6 +427,7 @@
       </section>
 
       <section class="view" id="view-teams" data-testid="view-teams">
+        <div class="workspace-heading"><div><h1>Teams</h1><p>People and shared preparation.</p></div></div>
         <div class="list-view replay-stack teams-stack">
           <section class="card">
             <div class="card-head">
@@ -470,6 +476,7 @@
       </section>
 
       <section class="view" id="view-settings" data-testid="view-settings">
+        <div class="workspace-heading"><div><h1>Settings</h1><p>Shape your board, engine, and account experience.</p></div></div>
         <div class="list-view replay-layout">
           <section class="card">
             <div class="card-head"><h2>Appearance</h2></div>
