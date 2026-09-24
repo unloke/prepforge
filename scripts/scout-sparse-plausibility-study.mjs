@@ -2,6 +2,7 @@
 // Usage: node scripts/scout-sparse-plausibility-study.mjs tmp/scout-player.json
 import { readFileSync } from "node:fs";
 import { Chess } from "chess.js";
+import { opponentMoveProbability } from "../web-src/scout-probability.js";
 import {
   aggregateOpeningBranches, buildOpeningTrie, branchExploitabilityPrior,
   branchStruggle, opponentColorBaseline, rankedOpeningBranches, triePrefixStats, trimRankedBranches,
@@ -31,13 +32,13 @@ function routeDecisions(trie, route, color) {
   }).filter(Boolean);
 }
 
-function evidence(route, minParentGames, probabilityGate) {
-  const supported = route.decisions.filter((decision) => decision.parentGames >= minParentGames);
-  const unknown = route.decisions.length - supported.length;
-  const low = supported.filter((decision) => decision.probability < probabilityGate);
-  return { supported: supported.length, unknown, low: low.length,
-    minSupportedProbability: supported.length ? Math.min(...supported.map((decision) => decision.probability)) : null,
-    deepestSupportedPly: supported.length ? supported.at(-1).ply + 1 : null };
+function evidence(route, method, probabilityGate) {
+  const estimates = route.decisions.map((decision) => opponentMoveProbability(
+    decision.moveGames, decision.parentGames, method,
+  ));
+  return { low: estimates.filter((value) => value < probabilityGate).length,
+    weakestEstimate: estimates.length ? Math.min(...estimates) : null,
+    deepestDecisionPly: route.decisions.at(-1)?.ply + 1 ?? null };
 }
 
 function leafFen(route) {
@@ -79,11 +80,10 @@ for (const size of sizes) {
     }
   }
   routes.sort((a, b) => b.prior - a.prior || b.branchScore - a.branchScore);
-  for (const minParentGames of [1, 2, 3, 5]) for (const probabilityGate of [0.05, 0.1, 0.15]) {
-    // min=1, gate=.10 is the PR #74 baseline.
-    const annotated = routes.map((route) => ({ route, evidence: evidence(route, minParentGames, probabilityGate) }));
+  for (const method of ["raw", "laplace", "jeffreys", "wilson"]) for (const probabilityGate of [0.1]) {
+    const annotated = routes.map((route) => ({ route, evidence: evidence(route, method, probabilityGate) }));
     const eligible = annotated.filter(({ evidence: item }) => !item.low);
-    if (minParentGames === 3 && probabilityGate === 0.1) {
+    if (method === "jeffreys" && probabilityGate === 0.1) {
       for (const color of ["white", "black"]) {
         const expected = new Set(eligible.filter(({ route }) => route.color === color)
           .map(({ route }) => route.ucis.join(">")));
@@ -102,19 +102,21 @@ for (const size of sizes) {
         .map(({ route }) => ({ ...route, exploitabilityPrior: route.prior })),
     ));
     const leafFens = new Set(enginePool.map(leafFen));
-    const supported = selected.reduce((sum, item) => sum + item.evidence.supported, 0);
-    const unknown = selected.reduce((sum, item) => sum + item.evidence.unknown, 0);
-    const deepest = selected.map((item) => item.evidence.deepestSupportedPly).filter(Number.isFinite)
+    const decisionCount = selected.reduce((sum, item) => sum + item.route.decisions.length, 0);
+    const deepest = selected.map((item) => item.evidence.deepestDecisionPly).filter(Number.isFinite)
       .sort((a, b) => a - b);
-    rows.push({ games: size, minParentGames, probabilityGate, candidateCount: eligible.length,
+    rows.push({ games: size, method, probabilityGate, candidateCount: eligible.length,
       selectedRoutes: selected.map(({ route }) => `${route.color}:${route.ucis.join(">")}`),
+      selectedRouteCount: selected.length,
+      veryLowRawRoutes: eligible.filter(({ route }) => route.decisions.some((decision) =>
+        decision.probability < 0.05)).length,
       heldout: heldoutHit(selected.map(({ route }) => route)),
-      selectedSupportedDecisions: supported, selectedUnknownDecisions: unknown,
-      deepestSupportedPly: deepest.at(-1) ?? null,
-      medianDeepestSupportedPly: deepest[Math.floor(deepest.length / 2)] ?? null,
+      selectedDecisionCount: decisionCount,
+      selectedRouteMedianPly: [...selected.map(({ route }) => route.ucis.length)].sort((a,b)=>a-b)[Math.floor(selected.length/2)] ?? null,
+      deepestDecisionPly: deepest.at(-1) ?? null,
       lowProbabilityRejectedRoutes: annotated.length - eligible.length,
       stockfishLeafFens: leafFens.size, maiaMax: Math.min(enginePool.length, 12) });
-    if (size === sizes.at(-1) && minParentGames === 3 && probabilityGate === 0.1) {
+    if (size === sizes.at(-1) && method === "jeffreys" && probabilityGate === 0.1) {
       const examples = [
         ...selected.slice(0, 2),
         ...annotated.filter(({ evidence: item }) => item.low > 0).slice(0, 1),
@@ -123,12 +125,12 @@ for (const size of sizes) {
         color: route.color, route: route.sans.join(" "), plies: route.ucis.length,
         evidence: routeEvidence,
         decisions: route.decisions.map((decision) => ({ ...decision,
-          evidence: decision.parentGames >= minParentGames ? "supported" : "unknown",
-          gate: decision.parentGames < minParentGames ? "unknown" :
-            decision.probability < probabilityGate ? "reject" : "pass" })),
+          estimate: opponentMoveProbability(decision.moveGames, decision.parentGames, method),
+          gate: opponentMoveProbability(decision.moveGames, decision.parentGames, method) < probabilityGate
+            ? "reject" : "pass" })),
       })));
     }
   }
 }
 console.log(JSON.stringify({ source, validGames: games.length, holdoutGames: holdout.length,
-  baseline: { minParentGames: 1, probabilityGate: 0.1 }, rows, traces }, null, 2));
+  probabilityGate: 0.1, rows, traces }, null, 2));

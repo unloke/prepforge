@@ -52,10 +52,10 @@ export const SCOUT_BRANCH_MIN_KEEP = 64;
 /** Any observed opponent choice below this conditional share makes a route poor prep. */
 export const SCOUT_MIN_ROUTE_REACH = 0.1;
 /** Fewer parent games leave an opponent decision unmeasured, rather than certain. */
-export const SCOUT_MIN_DECISION_PARENT_GAMES = 3;
+import { opponentMoveProbability } from "./scout-probability.js";
 export const SCOUT_STOCKFISH_DEPTH = 8;
 export const SCOUT_MAIA_LIMIT = 12;
-export const SCOUT_SCORING_VERSION = 6;
+export const SCOUT_SCORING_VERSION = 7;
 /** Minimum games before empirical opponent performance gates prefilter candidates. */
 export const SCOUT_PREFILTER_EMPIRICAL_MIN_GAMES = 3;
 export const SCOUT_THINK_TIME_CLAMP_MIN = 0.7;
@@ -1148,35 +1148,34 @@ export function triePrefixStats(trie, ucis) {
   return out;
 }
 
-/** Supported opponent choices determine the gate; sparse choices stay unknown. */
-export function opponentRoutePlausibility(
-  trie, ucis, opponentColor, { minParentGames = SCOUT_MIN_DECISION_PARENT_GAMES } = {},
-) {
-  const empty = { complete: false, minSupportedProbability: 0, supportedDecisions: 0,
-    unknownDecisions: 0, deepestSupportedPly: null };
+/** The weakest sample-aware opponent choice determines route plausibility. */
+export function opponentRoutePlausibility(trie, ucis, opponentColor) {
+  const empty = { complete: false, weakestEstimatedProbability: 0, decisionCount: 0,
+    deepestDecisionPly: null, weakestDecision: null };
   if (!trie || !ucis?.length || !["white", "black"].includes(opponentColor)) return empty;
   const stats = triePrefixStats(trie, ucis);
   if (stats.length !== ucis.length) return empty;
-  const evidence = { complete: true, minSupportedProbability: null, supportedDecisions: 0,
-    unknownDecisions: 0, deepestSupportedPly: null };
+  const evidence = { complete: true, weakestEstimatedProbability: null, decisionCount: 0,
+    deepestDecisionPly: null, weakestDecision: null };
   for (const node of stats) {
     const mover = node.ply % 2 === 0 ? "white" : "black";
     if (mover !== opponentColor) continue;
-    if (node.parentGames < minParentGames) {
-      evidence.unknownDecisions += 1;
-      continue;
+    const estimate = opponentMoveProbability(node.gameCount, node.parentGames, "jeffreys");
+    evidence.decisionCount += 1;
+    evidence.deepestDecisionPly = node.ply + 1;
+    if (evidence.weakestEstimatedProbability == null ||
+      estimate < evidence.weakestEstimatedProbability) {
+      evidence.weakestEstimatedProbability = estimate;
+      evidence.weakestDecision = { ply: node.ply + 1, parentGames: node.parentGames,
+        moveGames: node.gameCount, rawProbability: node.moveShare, estimate };
     }
-    evidence.supportedDecisions += 1;
-    evidence.deepestSupportedPly = node.ply + 1;
-    evidence.minSupportedProbability = evidence.minSupportedProbability == null
-      ? node.moveShare : Math.min(evidence.minSupportedProbability, node.moveShare);
   }
   return evidence;
 }
 
-/** Compatibility score: null means every opponent decision is unknown. */
+/** Compatibility score: null means the route contains no opponent decision. */
 export function opponentRouteReach(trie, ucis, opponentColor) {
-  return opponentRoutePlausibility(trie, ucis, opponentColor).minSupportedProbability;
+  return opponentRoutePlausibility(trie, ucis, opponentColor).weakestEstimatedProbability;
 }
 
 /**
@@ -1275,7 +1274,7 @@ export function rankedOpeningBranches(
       b.offModal = offModal;
       b.prefixGames = prefixGames;
       b.routePlausibility = opponentRoutePlausibility(trie, b.ucis, color);
-      b.routeReach = b.routePlausibility.minSupportedProbability;
+      b.routeReach = b.routePlausibility.weakestEstimatedProbability;
       const parentStats = triePrefixStats(trie, b.ucis.slice(0, -1)).at(-1);
       const parentGames = parentStats?.gameCount ?? trie.gameCount;
       b.ancestorGames = parentGames;

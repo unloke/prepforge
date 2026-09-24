@@ -676,13 +676,13 @@ describe("triePrefixStats + branchStruggle + exploitability prior", () => {
         ucis: ["d2d4", "d7d5", "c2c4"], gameId: "queen" }),
     ];
     const trie = buildOpeningTrie(records, "white", { recency: false });
-    expect(opponentRouteReach(trie, ["e2e4", "c7c5", "g1f3"], "white")).toBeCloseTo(0.75);
-    expect(opponentRouteReach(trie, ["e2e4", "c7c6", "g1f3"], "white")).toBeCloseTo(0.75);
+    expect(opponentRouteReach(trie, ["e2e4", "c7c5", "g1f3"], "white")).toBeCloseTo(0.5);
+    expect(opponentRouteReach(trie, ["e2e4", "c7c6", "g1f3"], "white")).toBeCloseTo(3.5 / 5);
     expect(opponentRoutePlausibility(trie, ["e2e4", "c7c5", "g1f3"], "white")
-      .unknownDecisions).toBe(1);
+      .decisionCount).toBe(2);
   });
 
-  it("marks 1/1 deep decisions unknown while keeping supported and unknown evidence", () => {
+  it("uses the 1/1 deep decision as finite evidence", () => {
     const records = [
       scoutGame({ color: "black", score: 0.5, sans: ["e4", "e5", "Nf3", "Nc6"],
         ucis: ["e2e4", "e7e5", "g1f3", "b8c6"], gameId: "deep" }),
@@ -694,33 +694,46 @@ describe("triePrefixStats + branchStruggle + exploitability prior", () => {
     const trie = buildOpeningTrie(records, "black", { recency: false, maxPlies: Infinity });
     const route = records[0].ucis;
     const result = opponentRoutePlausibility(trie, route, "black");
-    expect(result).toEqual({ complete: true, minSupportedProbability: 1,
-      supportedDecisions: 1, unknownDecisions: 1, deepestSupportedPly: 2 });
+    expect(result).toEqual({ complete: true, weakestEstimatedProbability: 0.75,
+      decisionCount: 2, deepestDecisionPly: 4,
+      weakestDecision: { ply: 4, parentGames: 1, moveGames: 1,
+        rawProbability: 1, estimate: 0.75 } });
     expect(triePrefixStats(trie, route)[3]).toMatchObject({ parentGames: 1, gameCount: 1 });
     const branch = rankedOpeningBranches(records, "black", { trie, limit: 0 }).branches
       .find((candidate) => candidate.ucis.join(">") === route.join(">"));
     expect(branch?.routePlausibility).toEqual(result);
   });
 
-  it("keeps an observed route with only unknown decisions without calling it 100% plausible", () => {
+  it("estimates a single observed decision below 100%", () => {
     const game = scoutGame({ color: "white", score: 0.5, sans: ["e4"],
       ucis: ["e2e4"], gameId: "only-game" });
     const trie = buildOpeningTrie([game], "white", { recency: false });
     expect(opponentRoutePlausibility(trie, game.ucis, "white")).toEqual({
-      complete: true, minSupportedProbability: null, supportedDecisions: 0,
-      unknownDecisions: 1, deepestSupportedPly: null,
+      complete: true, weakestEstimatedProbability: 0.75, decisionCount: 1,
+      deepestDecisionPly: 1, weakestDecision: { ply: 1, parentGames: 1,
+        moveGames: 1, rawProbability: 1, estimate: 0.75 },
     });
-    expect(rankedOpeningBranches([game], "white", { trie, limit: 0 }).branches[0].routeReach).toBeNull();
+    expect(rankedOpeningBranches([game], "white", { trie, limit: 0 }).branches[0].routeReach).toBe(0.75);
   });
 
-  it("uses the parent sample threshold to classify a 2/2 decision", () => {
+  it("estimates a 2/2 decision with its sample size", () => {
     const games = [1, 2].map((id) => scoutGame({ color: "white", score: 0.5,
       sans: ["e4"], ucis: ["e2e4"], gameId: `same-${id}` }));
     const trie = buildOpeningTrie(games, "white", { recency: false });
-    expect(opponentRoutePlausibility(trie, ["e2e4"], "white", { minParentGames: 2 })
-      .supportedDecisions).toBe(1);
-    expect(opponentRoutePlausibility(trie, ["e2e4"], "white", { minParentGames: 3 })
-      .unknownDecisions).toBe(1);
+    expect(opponentRouteReach(trie, ["e2e4"], "white")).toBeCloseTo(2.5 / 3);
+  });
+
+  it("rejects a 1/37 opponent choice while retaining a 1/1 deep choice", () => {
+    const games = Array.from({ length: 37 }, (_, id) => scoutGame({
+      color: "white", score: 0.5,
+      sans: id ? ["d4"] : ["e4", "e5", "Nf3"],
+      ucis: id ? ["d2d4"] : ["e2e4", "e7e5", "g1f3"],
+      gameId: `frequency-${id}`,
+    }));
+    const trie = buildOpeningTrie(games, "white", { recency: false, maxPlies: Infinity });
+    expect(opponentRouteReach(trie, games[0].ucis, "white")).toBeCloseTo(1.5 / 38);
+    expect(rankedOpeningBranches(games, "white", { trie, limit: 0 }).branches
+      .some((branch) => branch.ucis.join(">") === games[0].ucis.join(">"))).toBe(false);
   });
 
   it("checks late opponent decisions beyond the display trie depth", () => {
@@ -730,8 +743,8 @@ describe("triePrefixStats + branchStruggle + exploitability prior", () => {
       ucis: [...prefix, i ? "common" : "rare"], gameId: `deep-${i}`,
     }));
     const trie = buildOpeningTrie(records, "black", { maxPlies: 24, recency: false });
-    expect(opponentRouteReach(trie, [...prefix, "rare"], "black")).toBeCloseTo(0.05);
-    expect(opponentRouteReach(trie, [...prefix, "common"], "black")).toBeCloseTo(0.95);
+    expect(opponentRouteReach(trie, [...prefix, "rare"], "black")).toBeCloseTo(1.5 / 21);
+    expect(opponentRouteReach(trie, [...prefix, "common"], "black")).toBeCloseTo(19.5 / 21);
     const shallow = buildOpeningTrie(records, "black", { recency: false });
     expect(opponentRouteReach(shallow, [...prefix, "rare"], "black")).toBe(0);
   });
@@ -745,8 +758,8 @@ describe("triePrefixStats + branchStruggle + exploitability prior", () => {
         ucis: [...path.slice(0, ply), `alternative${ply}`], gameId: `alt-${ply}` }));
     }
     const trie = buildOpeningTrie(games, "black", { maxPlies: Infinity, recency: false });
-    expect(opponentRouteReach(trie, path.slice(0, 8), "black")).toBeCloseTo(0.9);
-    expect(opponentRouteReach(trie, path, "black")).toBeCloseTo(2 / 3);
+    expect(opponentRouteReach(trie, path.slice(0, 8), "black")).toBeCloseTo(9.5 / 11);
+    expect(opponentRouteReach(trie, path, "black")).toBeCloseTo(1.5 / 3);
   });
 
   it("rarity alone does not increase the engine-free prior", () => {
