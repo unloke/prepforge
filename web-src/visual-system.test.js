@@ -153,9 +153,10 @@ describe("seven views share chrome families", () => {
       expect(slice).toMatch(/class="[^"]*\bcard\b/);
       expect(slice).toContain('class="research-heading"');
       expect(slice).toContain('class="research-controls"');
-      expect(slice).toContain('class="research-note"');
+      expect(slice).toMatch(/class="research-heading"[\s\S]*?<p>[^<]+<\/p>/);
+      expect(slice).not.toContain('class="research-note"');
       expect(slice.indexOf('class="research-heading"')).toBeLessThan(slice.indexOf('class="research-controls"'));
-      expect(slice.indexOf('class="research-controls"')).toBeLessThan(slice.indexOf('class="research-note"'));
+      expect(slice.indexOf('class="research-controls"')).toBeLessThan(slice.indexOf(panel === "games" ? 'id="replay-results"' : 'id="scout-results"'));
     }
   });
 
