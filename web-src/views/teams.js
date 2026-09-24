@@ -89,8 +89,9 @@ export function createTeamsView({
         const role = escapeHtml(teamRoleLabel(team.role));
         const countLabel = escapeHtml(teamMemberCountLabel(team.member_count));
         const selectedCls = appState.selectedTeamId === team.id ? " is-selected" : "";
+        const roleCls = team.role === "owner" ? " team-row-owner" : " team-row-member";
         return `
-        <div class="list-item team-row${selectedCls}" role="button" tabindex="0" data-team-id="${id}" aria-label="Open ${name}" aria-pressed="${appState.selectedTeamId === team.id}">
+        <div class="list-item team-row${selectedCls}${roleCls}" role="button" tabindex="0" data-team-id="${id}" aria-label="Open ${name}" aria-pressed="${appState.selectedTeamId === team.id}">
           <span>
             <span class="name">${name}</span>
             <span class="sub">${countLabel}</span>
