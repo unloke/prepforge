@@ -8005,3 +8005,34 @@ h2 {
   #view-teams .team-detail-card { min-height: 0; }
   #view-replay .replay-focus { min-height: 0; }
 }
+
+/* Desktop Scout and Games: one aligned control row above the result workspace. */
+@media (min-width: 960px) {
+  #view-replay .research-heading { padding: 20px 24px 12px; }
+  #view-replay .research-controls,
+  #view-replay .games-setup .research-controls {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 16px;
+    padding: 10px 24px;
+    min-height: 58px;
+  }
+  #view-replay .games-setup { padding: 0; border: 0; background: var(--panel); }
+  #view-replay .research-source,
+  #view-replay .games-setup .research-source { display: flex; flex: 1 1 auto; align-items: center; gap: 10px; min-width: 0; }
+  #view-replay .research-source-picker { flex-wrap: nowrap; min-width: 0; }
+  #view-replay .research-control-label,
+  #view-replay .replay-toolbar .research-control-label { width: auto; margin: 0; white-space: nowrap; }
+  #view-replay .replay-toolbar,
+  #view-replay .games-setup .replay-toolbar { display: flex; align-items: center; flex: 0 0 auto; gap: 10px; }
+  #view-replay .replay-toolbar select,
+  #view-replay .replay-toolbar .btn,
+  #view-replay .source-add { box-sizing: border-box; height: 34px; }
+  #view-replay .replay-toolbar .btn.primary { min-width: 132px; white-space: nowrap; }
+  #view-replay .replay-card-scout .scout-live-count { min-width: 106px; text-align: left; }
+  #view-replay .games-review { border-top: 1px solid var(--line-soft); }
+  #view-replay .games-review .research-results-head { padding-top: 14px; }
+}
+#view-replay .replay-results:empty::before,
+#view-replay .scout-results:empty::before { padding: 16px 18px; }
