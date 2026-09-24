@@ -1169,7 +1169,7 @@ describe("scout intelligence panel", () => {
     expect(html).not.toContain("scout-refutation-hit");
   });
 
-  it("renderScoutRefutationPanel renders connect-lichess gap CTA", () => {
+  it("renderScoutRefutationPanel omits obsolete pool connection CTA", () => {
     const html = renderScoutRefutationPanel(
       [
         {
@@ -1179,12 +1179,11 @@ describe("scout intelligence panel", () => {
       ],
       escapeHtml,
     );
-    expect(html).toContain('data-testid="scout-refutation-gap-connect-lichess"');
-    expect(html).toContain('data-refutation-gap="connect-lichess"');
-    expect(html).toContain("Connect Lichess account");
+    expect(html).not.toContain("connect-lichess");
+    expect(html).toContain("No refutation lines yet");
   });
 
-  it("handleScoutRefutationGapClick delegates deep scan and lichess connect", () => {
+  it("handleScoutRefutationGapClick delegates deep scan only", () => {
     const runDeepScan = vi.fn();
     const connectLichess = vi.fn();
     const deepHandled = handleScoutRefutationGapClick(
@@ -1215,8 +1214,8 @@ describe("scout intelligence panel", () => {
       },
       { callbacks: { runDeepScan, connectLichess } },
     );
-    expect(lichessHandled).toBe(true);
-    expect(connectLichess).toHaveBeenCalledTimes(1);
+    expect(lichessHandled).toBe(false);
+    expect(connectLichess).not.toHaveBeenCalled();
   });
 
   it("refutationA11ySummary describes hits and actionable gaps", () => {
@@ -1239,7 +1238,7 @@ describe("scout intelligence panel", () => {
           blockedBy: [{ layer: "explorer", code: "auth" }],
         },
       ]),
-    ).toContain("Connect Lichess account");
+    ).not.toContain("Connect Lichess account");
   });
 
   it("buildScoutIntelligenceA11ySummary describes families and trends", () => {

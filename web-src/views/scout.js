@@ -120,7 +120,6 @@ export function createScoutView(deps) {
     getBuildNodeById,
     setBuildPending,
     pushBuildNode,
-    connectLichess,
     loadPgnIntoAnalyze,
     effectiveMaiaRating,
     maiaAnalysisEnabled = () => true,
@@ -1768,7 +1767,6 @@ export function createScoutView(deps) {
         scoutLineDetailHtml: localScoutLineDetailHtml,
         enrichEcoForLine: enrichEcoForLineCached,
         runDeepScan: scoutRunDeepScan,
-        connectLichess,
       },
     });
 

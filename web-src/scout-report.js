@@ -284,10 +284,6 @@ export function handleScoutRefutationGapClick(event, { callbacks } = {}) {
     callbacks?.runDeepScan?.();
     return true;
   }
-  if (action === "connect-lichess") {
-    callbacks?.connectLichess?.();
-    return true;
-  }
   return false;
 }
 
@@ -460,12 +456,6 @@ function explorerA11ySummary(explorerReads) {
       `Theory deviation: ${dev.label} ${dev.opponentSharePct}% vs ${dev.mastersSharePct}% in masters.`,
     );
   }
-  const pool = explorerReads.poolComparison?.items?.[0];
-  if (explorerReads.poolComparison?.available && pool) {
-    parts.push(
-      `Pool gap: ${pool.label} ${pool.opponentSharePct}% vs ${pool.poolSharePct}% in player pool.`,
-    );
-  }
   const rare = explorerReads.rareWeapons?.items?.[0];
   if (explorerReads.rareWeapons?.available && rare) {
     parts.push(
@@ -486,13 +476,6 @@ function renderScoutExplorerReads(explorerReads, escapeHtml) {
   if (explorerReads.theoryDeviation?.available && dev) {
     chips.push(
       `<span class="scout-read-chip" title="Opponent share vs masters DB">Theory: ${escapeHtml(dev.label)} ${dev.opponentSharePct}% vs ${dev.mastersSharePct}% book</span>`,
-    );
-  }
-
-  const pool = explorerReads.poolComparison?.items?.[0];
-  if (explorerReads.poolComparison?.available && pool) {
-    chips.push(
-      `<span class="scout-read-chip" title="Opponent share vs player pool">Pool: ${escapeHtml(pool.label)} ${pool.opponentSharePct}% vs ${pool.poolSharePct}%</span>`,
     );
   }
 
@@ -1075,7 +1058,6 @@ export function buildScoutSectionReport(
     baselineScorePct: baseline,
     explorerReads,
     mastersByFen: explorerReads?.mastersByFen,
-    poolByFen: explorerReads?.poolByFen,
     engineAgg,
     engineScan,
   });
