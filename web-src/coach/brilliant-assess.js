@@ -30,7 +30,8 @@ function moverWinChanceFromEval(ev, side) {
 //     prime brilliancy candidate — could be dropped before Maia ever sees it.
 //   • EXCELLENT — otherwise the win-chance loss is within the cap: winDelta = win%(before,
 //     best play) − win%(after the played move) <= BRILLIANT_MAX_CANDIDATE_WIN_DELTA. winDelta
-//     equals the server's loss (same evals, same 0.00368208 sigmoid).
+//     equals the server's loss (same evals, same 0.00368208 sigmoid), and the cap mirrors the
+//     server's excellent_loss = 0.02 (winDelta is in percentage points, so 2 ⇔ 0.02).
 // Pure arithmetic over evals already in hand — no model call — so it is the first thing
 // checked. A position the analysis somehow didn't evaluate is treated as ineligible (it
 // can't be flagged without its eval anyway).

@@ -26,6 +26,13 @@ class ClassificationConfig:
     inaccuracies.) The excellent/good split is our own chess.com-style positive ladder
     (Lichess has no such labels); the Analyze view groups best/excellent/good together, so
     only the error boundaries are user-visible.
+
+    ``excellent_loss`` is ALSO the browser's Brilliant candidate cap: web-src/coach/
+    features.js ``BRILLIANT_MAX_CANDIDATE_WIN_DELTA = 2`` (percentage points) and
+    ``brilliant-assess.js`` gate Maia assessments on ``winDelta <= 2`` ⇔ this 0.02. Keep
+    the two in lockstep — a drift means the server consults assessments for Excellent
+    moves the browser never shipped (missing brilliant stars) or the browser wastes Maia
+    forwards the server would ignore.
     """
 
     excellent_loss: float = 0.02

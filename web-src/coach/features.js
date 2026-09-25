@@ -197,19 +197,19 @@ export function buildMoveFeatures(input) {
   // Best or Excellent-tier move qualifies (services/brilliant.py, gated on the
   // classifier's BEST/EXCELLENT). The server lands there two ways (services/classification.py):
   // it returns BEST the instant the played move is its first choice (isBest) REGARDLESS of
-  // any eval delta, else Excellent when the win-chance loss is at most 0.03 — i.e.
-  // `isBest || winDelta <= 3` here, since winDelta IS that loss in percentage points. The
-  // isBest leg matters because winBefore (best line of fenBefore) and winAfter (the fenAfter
-  // read) are separate searches that can disagree by > 3 pts on a sharp line, which would
-  // otherwise drop a literal best move — a prime brilliancy candidate. A "Good"-tier move
-  // (not best, winDelta in (3, 5]) is NOT brilliant-eligible: the old <= 5 gate over-flagged
-  // moves the full-game analysis would never star. (There is no extra win-floor: the server's
-  // old "stays at least level" sound layer was replaced by the trap_gap check — see
-  // isBrilliantByMaia. Dropping the floor is deliberate, not implied by the other
-  // layers: a reveal of 0.30 only forces the engine's truth to >= 0.30 for the mover
-  // (the human read can't dip below 0), NOT that the mover is winning — so a brilliant
-  // resource in a worse-but-defensible position still qualifies. The trap_gap, not a
-  // win floor, is what keeps the false positives out.)
+  // any eval delta, else Excellent when the win-chance loss is at most 0.02 (the server's
+  // excellent_loss) — i.e. `isBest || winDelta <= 2` here, since winDelta IS that loss in
+  // percentage points. The isBest leg matters because winBefore (best line of fenBefore)
+  // and winAfter (the fenAfter read) are separate searches that can disagree by > 2 pts on
+  // a sharp line, which would otherwise drop a literal best move — a prime brilliancy
+  // candidate. A "Good"-tier move (not best, winDelta in (2, 5]) is NOT brilliant-eligible:
+  // the old <= 5 gate over-flagged moves the full-game analysis would never star. (There is
+  // no extra win-floor: the server's old "stays at least level" sound layer was replaced by
+  // the trap_gap check — see isBrilliantByMaia. Dropping the floor is deliberate, not
+  // implied by the other layers: a reveal of 0.30 only forces the engine's truth to >= 0.30
+  // for the mover (the human read can't dip below 0), NOT that the mover is winning — so a
+  // brilliant resource in a worse-but-defensible position still qualifies. The trap_gap,
+  // not a win floor, is what keeps the false positives out.)
   const brilliantCandidate = isBest || winDelta <= BRILLIANT_MAX_CANDIDATE_WIN_DELTA;
 
   return {
@@ -297,11 +297,20 @@ export function buildMoveFeatures(input) {
 export const BRILLIANT_MAX_HUMAN_PROB = 0.1; // (1) humans rarely find it
 export const BRILLIANT_MIN_WIN_GAP = 30; // (2) engine win% over Maia win%, in points
 export const BRILLIANT_MIN_TRAP_GAP = 0.05; // (3) win chance the natural move throws away
-// Brilliant is only considered for a Best/Excellent-tier move: a win-chance loss of at
-// most this many points (winDelta <= 3 ⇔ the server's <= 0.03 EXCELLENT cutoff). This is
-// the cheapest layer of all — it's pure arithmetic over evals already in hand — so the
+// Brilliant is only considered for a move the SERVER classifies BEST or EXCELLENT: either
+// the played move is Stockfish's first choice (classify_move returns BEST before looking at
+// any loss), or the win-chance loss is at most this many points (winDelta <= 2 ⇔ the
+// server's excellent_loss = 0.02 on the 0..1 scale — see services/classification.py
+// ClassificationConfig.excellent_loss), which classify_move labels EXCELLENT. (The
+// frontend's own display label for the same band is "Best move" — classifyMoveRich maps
+// winDelta <= 2 to code "best" — that's a UI label, not the server classification.) Keep
+// this in lockstep with excellent_loss: the browser gates which moves earn a Maia
+// assessment, and the server's classifier gates which assessments it consults — a drift
+// here means the server sees Excellent moves the browser never assessed (no brilliant
+// stars) or the browser wastes Maia forwards on moves the server would never consult. This
+// is the cheapest layer of all — it's pure arithmetic over evals already in hand — so the
 // full-game path checks it BEFORE spending a Maia forward on the move (see brilliant-assess).
-export const BRILLIANT_MAX_CANDIDATE_WIN_DELTA = 3;
+export const BRILLIANT_MAX_CANDIDATE_WIN_DELTA = 2;
 export function isBrilliantByMaia(features, { maiaHumanProb, maiaWinAfter, trapGap }) {
   if (!features || !features.brilliantCandidate) return false;
   if (!Number.isFinite(maiaHumanProb) || !Number.isFinite(maiaWinAfter)) return false;

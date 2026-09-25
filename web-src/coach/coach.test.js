@@ -738,8 +738,13 @@ describe("Brilliant detection (Maia vs engine, no SEE)", () => {
   });
 
   it("a near-best (Excellent-tier) move is a brilliant candidate too, not just the literal #1", () => {
-    // winDelta <= 3 (the server's EXCELLENT band, win-chance loss <= 0.03) but not the
-    // engine's literal #1 — still eligible to be queried, matching services/brilliant.py.
+    // winDelta <= 2 (the server's EXCELLENT band, win-chance loss <= excellent_loss 0.02)
+    // but not the engine's literal #1 — still eligible to be queried, matching
+    // services/brilliant.py. Label vs classification: the SERVER classifies such a
+    // move EXCELLENT (classify_move only returns BEST on played === best_move_uci);
+    // the FRONTEND's classifyMoveRich maps winDelta <= 2 to its display label "Best
+    // move" (code "best") — the bands coincide, but they are different systems. The
+    // eligibility gate mirrors the server's `BEST || EXCELLENT` either way.
     const fenBefore = "6k1/8/2p5/8/8/8/8/5BK1 w - - 0 1";
     const f = buildMoveFeatures({
       mover: "white",
@@ -747,18 +752,17 @@ describe("Brilliant detection (Maia vs engine, no SEE)", () => {
       san: "Kf2",
       fenBefore,
       fenAfter: "6k1/8/2p5/8/8/8/5K2/5B2 b - - 1 1",
-      beforeEval: { lines: [{ uci: "g1g2", san: "Kg2", cp: 90, mate: null, pvUci: ["g1g2"] }] },
-      afterEval: { cp: 64, mate: null, pvUci: [] },
+      beforeEval: { lines: [{ uci: "g1g2", san: "Kg2", cp: 95, mate: null, pvUci: ["g1g2"] }] },
+      afterEval: { cp: 74, mate: null, pvUci: [] },
     });
     expect(f.isBest).toBe(false);
-    expect(f.classification.code).toBe("good");
-    expect(f.winDelta).toBeGreaterThan(2);
-    expect(f.winDelta).toBeLessThanOrEqual(3);
+    expect(f.winDelta).toBeGreaterThan(0);
+    expect(f.winDelta).toBeLessThanOrEqual(2);
     expect(f.brilliantCandidate).toBe(true);
   });
 
   it("a Good-tier move beyond the Excellent band is NOT a candidate (aligned with analyze)", () => {
-    // winDelta in (3, 5]: the browser classifier still calls this "good", but the server
+    // winDelta in (2, 5]: the browser classifier still calls this "good", but the server
     // classifies it GOOD (not EXCELLENT), so its full-game analysis would never consider
     // it brilliant. The coach must agree — the old winDelta <= 5 gate was the source of
     // moves flagged "Brilliant" live that the report never starred.
@@ -773,14 +777,14 @@ describe("Brilliant detection (Maia vs engine, no SEE)", () => {
       afterEval: { cp: 56, mate: null, pvUci: [] },
     });
     expect(f.classification.code).toBe("good");
-    expect(f.winDelta).toBeGreaterThan(3);
+    expect(f.winDelta).toBeGreaterThan(2);
     expect(f.winDelta).toBeLessThanOrEqual(5);
     expect(f.brilliantCandidate).toBe(false);
   });
 
   it("the engine's best move stays a candidate even when before/after searches disagree by > the cap (BEST bypass)", () => {
     // isBest (played === best line), but the fenBefore best-line eval (cp 300) and the fenAfter
-    // read (cp 0) disagree by > 3 win% pts — as two independent fixed-depth searches can on a
+    // read (cp 0) disagree by > 2 win% pts — as two independent fixed-depth searches can on a
     // sharp line. The server returns BEST on played===best_move_uci regardless of loss, so the
     // coach must keep it a candidate too rather than drop a prime brilliancy before Maia.
     const fenBefore = "6k1/8/2p5/8/8/8/8/5BK1 w - - 0 1";
