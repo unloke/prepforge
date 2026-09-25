@@ -1,12 +1,16 @@
-// Playwright smoke: play one Smart Train move entirely from the keyboard.
+// Playwright smoke: play one Smart Train move entirely from the keyboard, then
+// exercise the board's roving-focus navigation.
 // Invoked by tests/e2e/test_train_keyboard_smoke.py after uvicorn boots locally.
 //
-// The Train board already supports Enter/Space pick-and-move (squares are
-// <button>s); this walks the real flow — API-created repertoire, Smart queue
-// start, keyboard selection + move — and asserts:
-//   1. the from-square button exposes aria-pressed="true" while selected,
-//   2. the move lands (graded banner flips to the correct state),
-//   3. aria-pressed resets on every square after the move.
+// The Train board keeps a roving tabindex (one tabbable square, arrows move
+// focus — the ARIA grid pattern) and supports Enter/Space pick-and-move
+// (squares are <button>s). This walks the real flow — API-created repertoire,
+// Smart queue start, keyboard selection + move — and asserts:
+//   1. the board exposes exactly ONE tab stop (never 64),
+//   2. arrow keys move focus (including across the flipped board),
+//   3. the from-square button exposes aria-pressed="true" while selected,
+//   4. the move lands (graded banner flips to the correct state),
+//   5. aria-pressed resets on every square after the move.
 //
 // Env:
 //   E2E_BASE_URL — default http://127.0.0.1:9876
@@ -152,6 +156,72 @@ async function main() {
     const statsCorrect = ((await page.locator('#train-stat-correct').textContent()) || "").trim();
     if (statsCorrect !== "1") {
       fail(`correct counter should be 1 after the keyboard move (got: ${statsCorrect || "(empty)"})`);
+    }
+
+    // --- Roving focus: the board is ONE tab stop, never 64. ---
+    const roving = await page.evaluate(() => {
+      const board = document.getElementById("train-board");
+      const tabbables = board.querySelectorAll('button.square[tabindex="0"]');
+      return { count: tabbables.length, square: tabbables[0]?.dataset?.square || null };
+    });
+    if (roving.count !== 1 || roving.square !== "e2") {
+      fail(
+        `board must keep exactly 1 tabbable square (the roving e2), got ${roving.count}` +
+          ` (square: ${String(roving.square)})`,
+      );
+    }
+    // Real-Tab regression guard: with the old 64-stop grid, Tab from e2 landed
+    // on e3; with a roving tabindex it must leave the board entirely.
+    await board.locator('button.square[data-square="e2"]').focus();
+    await page.keyboard.press("Tab");
+    const afterTab = await page.evaluate(() => document.activeElement?.dataset?.square || null);
+    if (afterTab !== null) {
+      fail(`Tab from the roving square must leave the board, but it landed on square ${afterTab}`);
+    }
+
+    // --- Arrows move focus inside the board (white orientation). ---
+    const focusOf = () =>
+      page.evaluate(() => document.activeElement?.dataset?.square || null);
+    await board.locator('button.square[data-square="e2"]').focus();
+    await page.keyboard.press("ArrowRight"); // e2 -> f2
+    if ((await focusOf()) !== "f2") fail(`ArrowRight from e2 should focus f2, got ${await focusOf()}`);
+    await page.keyboard.press("ArrowUp"); // f2 -> f3
+    if ((await focusOf()) !== "f3") fail(`ArrowUp from f2 should focus f3, got ${await focusOf()}`);
+    await page.keyboard.press("ArrowLeft"); // f3 -> e3
+    if ((await focusOf()) !== "e3") fail(`ArrowLeft from f3 should focus e3, got ${await focusOf()}`);
+    await page.keyboard.press("ArrowDown"); // e3 -> e2
+    if ((await focusOf()) !== "e2") fail(`ArrowDown from e3 should focus e2, got ${await focusOf()}`);
+    // Edge: no wrap-around, focus holds.
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    if ((await focusOf()) !== "e1") fail(`ArrowDown should hold at the edge e1, got ${await focusOf()}`);
+
+    // --- Roving cursor survives a board flip; arrows follow the screen. ---
+    // Keyboard flip (F flips the active tab's board): focus stays in the board
+    // on the same square.
+    await page.keyboard.press("f");
+    if ((await focusOf()) !== "e1") fail(`F-flip should keep focus on e1, got ${await focusOf()}`);
+    await page.keyboard.press("ArrowLeft"); // visually left from e1 is f1 on a flipped board
+    if ((await focusOf()) !== "f1") fail(`ArrowLeft from e1 on a flipped board should focus f1, got ${await focusOf()}`);
+    // Flipped board draws rank 1 at the TOP, so visually DOWN from f1 is f2.
+    await page.keyboard.press("ArrowDown");
+    if ((await focusOf()) !== "f2") fail(`ArrowDown from f1 on a flipped board should focus f2, got ${await focusOf()}`);
+    // Visually UP from f2 is back to f1 (the top row on a flipped board).
+    await page.keyboard.press("ArrowUp");
+    if ((await focusOf()) !== "f1") fail(`ArrowUp from f2 on a flipped board should focus f1, got ${await focusOf()}`);
+    // Edge: f1 is the top row when flipped, so UP holds.
+    await page.keyboard.press("ArrowUp");
+    if ((await focusOf()) !== "f1") fail(`ArrowUp from f1 on a flipped board should hold (top row), got ${await focusOf()}`);
+    // Button flip: focus moves to the toolbar button (browser default), but the
+    // roving cursor must survive the rebuild on the last-visited square.
+    await page.click("#train-flip"); // back to white
+    const whiteRoving = await page.evaluate(() => {
+      const sq = document.querySelector('#train-board button.square[tabindex="0"]');
+      return sq?.dataset?.square || null;
+    });
+    if (whiteRoving !== "f1") {
+      fail(`after button flip the roving cursor should stay f1, got ${String(whiteRoving)}`);
     }
 
     console.log("[train-keyboard-smoke] passed.");

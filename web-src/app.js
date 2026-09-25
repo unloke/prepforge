@@ -12,6 +12,7 @@ import { createCsrfTokenSource, headersWithCsrf, readCsrfCookie, CSRF_HEADER } f
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
 import { applyTheme } from "./theme.js";
 import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
+import { squareInDirection } from "./board-navigation.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { describeMove } from "./explain.js";
 import {
@@ -2242,6 +2243,7 @@ class BoardController {
     this._badgeEl = null;       // tracks the one square holding a .square-badge
     this._lastMoveSqs = null;   // tracks the [from, to] squares of the current last-move
     this.orientation = "white";
+    this._rovingSquare = null; // tabbable-square cursor for the roving tabindex
     this._buildGrid();
     this._bindBoardEvents();
   }
@@ -2250,7 +2252,15 @@ class BoardController {
     const next = orientation === "black" ? "black" : "white";
     if (this.orientation === next) return;
     this.orientation = next;
+    // Rebuilding the grid drops DOM focus (innerHTML wipe); restore it to the
+    // same square so a keyboard user isn't dumped out of the board on a flip.
+    // Arrow directions then track the new orientation via squareInDirection's
+    // screen-direction geometry.
+    const focusedSquare = document.activeElement?.dataset?.square;
     this._buildGrid();
+    if (focusedSquare && this.squares.has(focusedSquare)) {
+      this.squares.get(focusedSquare).focus();
+    }
     if (this.fen) this._renderPieces();
     this._updateClasses();
     this._renderArrows();
@@ -2321,6 +2331,7 @@ class BoardController {
         square.dataset.square = squareName;
         square.setAttribute("aria-label", squareName);
         square.setAttribute("aria-pressed", "false");
+        square.tabIndex = -1; // roving: exactly one square is tabbable; see _applyRovingTabindex
         if (rank === bottomRank) {
           square.insertAdjacentHTML("beforeend", `<span class="coord coord-file">${files[fileIndex]}</span>`);
         }
@@ -2332,6 +2343,7 @@ class BoardController {
       }
     }
     this.applyCoordinates();
+    this._applyRovingTabindex();
   }
 
   applyCoordinates() {
@@ -2388,46 +2400,89 @@ class BoardController {
       if (event.button === 2) this._finishAnnotation(event);
     });
 
-    // Keyboard parity for the click-to-move model: squares are <button>s, so they
-    // already take focus and Tab order. Enter/Space on a square selects a movable
-    // piece, then selects a legal target to play — the pointer path minus the drag
-    // (which keyboards can't do). Without this, keyboard users could focus squares
-    // but never move (flagged P2 in the Build and Train friction audits).
+    // Keyboard parity for the click-to-move model. The board uses a roving
+    // tabindex — exactly one tabbable square (see _applyRovingTabindex) — so:
+    //   • Arrow keys move focus square-to-square (no wrap at the edges);
+    //   • Enter/Space on a square selects a movable piece, then selects a legal
+    //     target to play — the pointer path minus the drag (which keyboards
+    //     can't do). Without this, keyboard users could focus squares but never
+    //     move (flagged P2 in the Build and Train friction audits).
     this.board.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " " && event.key !== "Spacebar") return;
       const square = event.target.closest(".square");
       if (!square) return;
-      const squareName = square.dataset.square;
+      if (
+        event.key === "ArrowUp" ||
+        event.key === "ArrowDown" ||
+        event.key === "ArrowLeft" ||
+        event.key === "ArrowRight"
+      ) {
+        event.preventDefault();
+        const target = squareInDirection(square.dataset.square, event.key, this.orientation);
+        // Screen-direction move; hold focus at the board edge (no wrap).
+        if (target) {
+          this.squares.get(target)?.focus();
+          this._applyRovingTabindex(target);
+        }
+        return;
+      }
+      if (event.key !== "Enter" && event.key !== " " && event.key !== "Spacebar") return;
       // Swallow the default button activation so Space doesn't also scroll and
       // Enter doesn't fire a redundant synthetic click.
       event.preventDefault();
-      if (this.selected && this.selected !== squareName) {
-        const from = this.selected;
-        if (isPromotionMove(from, squareName, this.legalMoves)) {
-          this._setSelected(null);
-          const board = this;
-          resolveBoardMove({
-            from,
-            to: squareName,
-            moves: this.legalMoves,
-            board,
-            play: (uci) => board.play(uci),
-          });
-          return;
-        }
-        const move = legalMoveFor(from, squareName, this.legalMoves);
-        if (move) {
-          this._setSelected(null);
-          this.play(move);
-          return;
-        }
-      }
-      if (this.hasLegalFrom(squareName)) {
-        this._setSelected(squareName);
-      } else {
-        this._setSelected(null);
-      }
+      this._handleSquareActivation(square.dataset.square);
     });
+  }
+
+  // Shared by the keyboard handler above: activate a square — play into a legal
+  // target when a piece is selected, else select/deselect the square. Split out
+  // so the Enter/Space flow has one home (the pointer path intentionally keeps
+  // its own drag-aware flow).
+  _handleSquareActivation(squareName) {
+    if (this.selected && this.selected !== squareName) {
+      const from = this.selected;
+      if (isPromotionMove(from, squareName, this.legalMoves)) {
+        this._setSelected(null);
+        const board = this;
+        resolveBoardMove({
+          from,
+          to: squareName,
+          moves: this.legalMoves,
+          board,
+          play: (uci) => board.play(uci),
+        });
+        return;
+      }
+      const move = legalMoveFor(from, squareName, this.legalMoves);
+      if (move) {
+        this._setSelected(null);
+        this.play(move);
+        return;
+      }
+    }
+    if (this.hasLegalFrom(squareName)) {
+      this._setSelected(squareName);
+    } else {
+      this._setSelected(null);
+    }
+  }
+
+  // Roving tabindex over the 64 square buttons: exactly ONE square stays in the
+  // Tab order (the ARIA grid pattern), so keyboard users don't Tab through 64
+  // stops — arrows move focus inside the board instead. The tabbable square is
+  // the remembered cursor (last arrow-navigated square) when it still exists,
+  // else the anchor on the player's home rank (e2 for White, e7 for Black —
+  // the closest thing to a natural starting point on either orientation).
+  // Called from _buildGrid (constructor + every orientation flip) and after
+  // arrow-key focus moves, keeping DOM focus and the tabbable square in sync.
+  _applyRovingTabindex(anchor = null) {
+    let tabbable = anchor || this._rovingSquare;
+    if (!tabbable || !this.squares.has(tabbable)) {
+      tabbable = this.orientation === "black" ? "e7" : "e2";
+    }
+    for (const [name, square] of this.squares) {
+      square.tabIndex = name === tabbable ? 0 : -1;
+    }
+    this._rovingSquare = tabbable;
   }
 
   _beginDrag(squareName, event) {

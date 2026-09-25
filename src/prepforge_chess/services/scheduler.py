@@ -311,12 +311,11 @@ def build_session_plan(
             selected_kind[cand.node.id] = kind
             room -= 1
 
-    # Urgency with variety: weak leads but may only claim its share of a normally-
-    # sized session, so due/new always get room when they exist. If the other pools
-    # run dry the remaining weak targets fill the session (the second take) — weak
-    # material is still the best available thing to drill, it just doesn't get to
-    # monopolise the queue. With a full pool spread the plan is:
-    #   weak (<= 60%) → due → new (<= new_cap) → polish → weak top-up.
+    # Urgency with variety: weak leads but may claim at most 60% of the session up
+    # front (WEAK_SHARE). The remaining capacity is allocated in order due → new
+    # (<= new_cap) → polish, and only when those pools run dry do the leftover weak
+    # targets top the session off — weak material is still the best available thing
+    # to drill, it just doesn't get to monopolise the queue.
     weak_share = max(1, int(session_size * WEAK_SHARE))
     take(weak, CARD_WEAK, limit=weak_share)
     take(due, CARD_DUE)
