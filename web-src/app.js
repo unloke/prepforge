@@ -2410,15 +2410,11 @@ class BoardController {
     this.board.addEventListener("keydown", (event) => {
       const square = event.target.closest(".square");
       if (!square) return;
-      if (
-        event.key === "ArrowUp" ||
-        event.key === "ArrowDown" ||
-        event.key === "ArrowLeft" ||
-        event.key === "ArrowRight"
-      ) {
+      // Arrow keys move focus (screen-direction; squareInDirection answers null
+      // at the edges or for a key it doesn't know, holding focus where it is).
+      if (event.key.startsWith("Arrow")) {
         event.preventDefault();
         const target = squareInDirection(square.dataset.square, event.key, this.orientation);
-        // Screen-direction move; hold focus at the board edge (no wrap).
         if (target) {
           this.squares.get(target)?.focus();
           this._applyRovingTabindex(target);

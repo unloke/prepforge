@@ -18,7 +18,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from prepforge_chess.core.models import Color, TrainingProgress, utc_now
-from prepforge_chess.storage.database import connect_database, initialize_database
+from prepforge_chess.storage.database import initialize_database
 from prepforge_chess.storage.repositories import (
     PrepForgeRepository,
     _dt_from_text,
