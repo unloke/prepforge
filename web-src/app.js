@@ -2320,6 +2320,7 @@ class BoardController {
         square.className = `square ${(rank + fileIndex) % 2 === 1 ? "dark" : "light"}`;
         square.dataset.square = squareName;
         square.setAttribute("aria-label", squareName);
+        square.setAttribute("aria-pressed", "false");
         if (rank === bottomRank) {
           square.insertAdjacentHTML("beforeend", `<span class="coord coord-file">${files[fileIndex]}</span>`);
         }
@@ -2667,6 +2668,9 @@ class BoardController {
       const desired = piece ? piece : "";
       if (square.dataset.piece === desired) return;
       square.dataset.piece = desired;
+      // Keep the accessible name in lockstep with the rendered piece so
+      // keyboard users hear what is on the square, not just its coordinates.
+      square.setAttribute("aria-label", piece ? `${pieceLabel(piece)} ${squareName}` : squareName);
       // Swap only the piece element so coordinate labels survive.
       const existing = square.querySelector(".piece");
       if (existing) existing.remove();
@@ -2693,6 +2697,10 @@ class BoardController {
       square.classList.toggle("selected", this.selected === squareName);
       square.classList.toggle("legal", legalTargets.has(squareName));
       square.classList.toggle("highlighted", this.highlights.has(squareName));
+      // Keyboard selection state must be visible to assistive tech too: the
+      // Enter/Space pick-and-move flow toggles .selected, so mirror it as
+      // aria-pressed on the square button.
+      square.setAttribute("aria-pressed", String(this.selected === squareName));
     });
     // Update last-move only on the squares that actually changed (prev vs next).
     const next = this.lastMove
@@ -3263,6 +3271,13 @@ function parseFenBoard(fen) {
     }
   });
   return squares;
+}
+
+const PIECE_LABEL_NAMES = { p: "pawn", n: "knight", b: "bishop", r: "rook", q: "queen", k: "king" };
+
+function pieceLabel(piece) {
+  const name = PIECE_LABEL_NAMES[piece.toLowerCase()] || "piece";
+  return `${piece === piece.toUpperCase() ? "white" : "black"} ${name}`;
 }
 
 function pieceSvg(piece) {

@@ -746,9 +746,9 @@ h2 {
   border-color: var(--line-strong);
   box-shadow: 0 1px 4px rgba(28, 28, 28, 0.06);
 }
-.replay-row.rk-in-prep { border-left: 3px solid #4a8964; }
-.replay-row.rk-left-prep { border-left: 3px solid #c98439; }
-.replay-row.rk-user-error { border-left: 3px solid #c4524d; }
+.replay-row.rk-in-prep { border-left: 3px solid var(--good); }
+.replay-row.rk-left-prep { border-left: 3px solid var(--warn); }
+.replay-row.rk-user-error { border-left: 3px solid var(--danger); }
 .replay-row.rk-no-prep { border-left: 3px solid #d8d4ce; opacity: 0.85; }
 
 /* The whole header is the expand/collapse button. */
@@ -1749,6 +1749,19 @@ h2 {
   border-radius: var(--radius);
   background: var(--panel-soft);
   text-align: center;
+}
+
+/* First-run "next steps" under the repertoires empty state — rendered from the
+   /api/dashboard recommendations payload so the copy lives server-side. */
+.dashboard-next-steps {
+  margin: 10px 0 0;
+  padding: 4px 0 0 22px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.dashboard-next-steps li + li {
+  margin-top: 2px;
 }
 
 /* File drag-and-drop target feedback (Analyze box, dashboard import card). */
@@ -5239,7 +5252,7 @@ h2 {
 
 .auth-error {
   margin: 8px 0 0;
-  color: #b42318;
+  color: var(--danger);
   font-size: 13px;
   line-height: 1.4;
 }

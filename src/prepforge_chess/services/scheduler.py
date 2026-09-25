@@ -6,7 +6,10 @@ own moves merged into a multi-target card — and carries a ``kind`` saying why
 it was scheduled, so the UI can show the queue's composition and switch new
 cards into teach-then-test mode:
 
-- ``weak``   — answered wrong more often than right; always first.
+- ``weak``   — answered wrong more often than right; leads the session but is
+               capped at ``WEAK_SHARE`` of it so urgent material never starves
+               due/new review (leftover weak tops the session off when the other
+               pools run dry).
 - ``due``    — spaced repetition says review now.
 - ``new``    — never attempted; introduced shallow-first, capped per session
                so a fresh repertoire doesn't bury the player.
@@ -54,6 +57,13 @@ _KIND_PRIORITY = {CARD_WEAK: 0, CARD_DUE: 1, CARD_NEW: 2, CARD_POLISH: 3}
 DEFAULT_SESSION_SIZE = 12
 DEFAULT_NEW_CAP = 4
 DEFAULT_MAX_TARGETS_PER_CARD = 3
+# Weak cards are the most urgent but not the whole story: without a cap, a pile of
+# weak targets (e.g. after a rushed first pass over an imported repertoire) can fill
+# every session forever, and due/new material never reaches the queue. Weak may claim
+# at most this fraction of a normally-sized session up front; whatever it leaves is
+# filled due → new → polish, and any leftover weak targets top the session off only
+# when the other pools run dry.
+WEAK_SHARE = 0.6
 # Plies auto-played before the first prompt so the player lands in context
 # (the opponent's last move is the recall cue) without re-answering the prefix.
 RUN_IN_PLIES = 3
@@ -290,13 +300,29 @@ def build_session_plan(
         room = session_size - len(selected_kind)
         if limit is not None:
             room = min(room, limit)
-        for cand in pool[: max(0, room)]:
+        # Skip candidates this or an earlier pass already selected: the weak
+        # top-off re-uses the same (sorted) pool, so it must pick up the
+        # REMAINDER, not re-take the head.
+        for cand in pool:
+            if room <= 0:
+                break
+            if cand.node.id in selected_kind:
+                continue
             selected_kind[cand.node.id] = kind
+            room -= 1
 
-    take(weak, CARD_WEAK)
+    # Urgency with variety: weak leads but may only claim its share of a normally-
+    # sized session, so due/new always get room when they exist. If the other pools
+    # run dry the remaining weak targets fill the session (the second take) — weak
+    # material is still the best available thing to drill, it just doesn't get to
+    # monopolise the queue. With a full pool spread the plan is:
+    #   weak (<= 60%) → due → new (<= new_cap) → polish → weak top-up.
+    weak_share = max(1, int(session_size * WEAK_SHARE))
+    take(weak, CARD_WEAK, limit=weak_share)
     take(due, CARD_DUE)
     take(new, CARD_NEW, limit=new_cap)
     take(polish, CARD_POLISH)
+    take(weak, CARD_WEAK)  # top off with leftover weak when nothing else remains
 
     cards = _merge_into_cards(candidates, selected_kind, max_targets_per_card)
     ordered = _order_cards(cards, {c.node.id: c for c in candidates}, rng)

@@ -1,5 +1,10 @@
 // Dashboard tab rendering (lazy-loaded from app.js).
 
+import {
+  isPackageJsonFilename,
+  MALFORMED_JSON_IMPORT_ERROR,
+} from "./import-format.js";
+
 function bindDropZone(element, onFile) {
   if (!element) return;
   const stop = (event) => {
@@ -43,6 +48,20 @@ export function createDashboardView({
   requireSignIn,
 }) {
   let eventsBound = false;
+
+  // The backend already ships a short "next action" list on /api/dashboard
+  // (payload.recommendations). Render it in the repertoires card only when the
+  // account has nothing to show — the empty state doubles as the first-run guide,
+  // using the backend payload instead of a second hardcoded copy in the frontend.
+  function recommendationsHtml(recommendations) {
+    const items = (Array.isArray(recommendations) ? recommendations : [])
+      .filter((line) => typeof line === "string" && line.trim())
+      .slice(0, 3)
+      .map((line) => `<li>${escapeHtml(line)}</li>`)
+      .join("");
+    if (!items) return "";
+    return '<ul class="dashboard-next-steps">' + items + "</ul>";
+  }
 
   function healthBadgeHtml(health) {
     // The list carries a cached health badge (refreshed off Build/train, no per-row tree
@@ -145,6 +164,8 @@ export function createDashboardView({
     );
   }
 
+  let lastDashboardRecommendations = [];
+
   async function loadDashboardRepertoires() {
     const container = document.getElementById("dashboard-repertoires");
     try {
@@ -162,8 +183,10 @@ export function createDashboardView({
         (item) => !appState.pendingRepDeletes.has(String(item.id)),
       );
       if (!visible.length) {
+        const nextSteps = recommendationsHtml(lastDashboardRecommendations);
         container.innerHTML =
-          '<div class="empty-state">No repertoires yet. Use Build to create one.</div>';
+          '<div class="empty-state">No repertoires yet. Use Build to create one.</div>' +
+          nextSteps;
         return;
       }
       container.innerHTML = visible
@@ -232,6 +255,9 @@ export function createDashboardView({
   async function loadDashboard() {
     const payload = await api(`/api/dashboard?local_date=${localDateString()}`);
     if (payload.streak) appState.dayStreak = payload.streak;
+    lastDashboardRecommendations = Array.isArray(payload.recommendations)
+      ? payload.recommendations
+      : [];
     renderDashboardToday(payload);
     const due = payload.due_reviews || 0;
     const metrics = [
@@ -277,9 +303,20 @@ export function createDashboardView({
       setStatus("Could not read file");
       return;
     }
-    const isJson = file.name.toLowerCase().endsWith(".json") || text.trim().startsWith("{");
-    if (isJson) {
+    // Route by EXTENSION only: a .pgn whose text begins with a brace comment ({…})
+    // must stay a PGN import, and a .json that isn't a valid PrepForge package must
+    // fail with a clear package-import error instead of a JSON parse detail.
+    if (isPackageJsonFilename(file.name)) {
       try {
+        let pkg;
+        try {
+          pkg = JSON.parse(text);
+        } catch (_) {
+          throw new Error(MALFORMED_JSON_IMPORT_ERROR);
+        }
+        if (!pkg || typeof pkg !== "object" || Array.isArray(pkg)) {
+          throw new Error(MALFORMED_JSON_IMPORT_ERROR);
+        }
         const payload = await postJson("/api/repertoires/import", { package_json: text });
         await hydrateBuild(payload, payload.selected_node_id);
         appState.trainingRepertoireId = payload.repertoire_id;

@@ -506,10 +506,10 @@ export function createScoutView(deps) {
     const reportHtml = v12ReportHtml();
     el.innerHTML = `<div class="scout-v12-panel">
       <div class="scout-v12-panel-head">
-        <strong>${escapeHtml("Tendency-aligned routes(實驗報告)")}</strong>
+        <strong>${escapeHtml("Tendency-aligned routes (experimental report)")}</strong>
         <span class="scout-v12-badge">v12 experimental</span>
       </div>
-      <p class="scout-v12-retired-note">${escapeHtml("手動載入 audit JSON 已停用；請改用 ?scoutV13=1 從棋手對局直接產生備戰套件。")}</p>
+      <p class="scout-v12-retired-note">${escapeHtml("Manual audit JSON loading is retired; use ?scoutV13=1 to generate a prep kit straight from a player's games.")}</p>
       <div id="scout-v12-report-host">${reportHtml}</div>
     </div>`;
   }

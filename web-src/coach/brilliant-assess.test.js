@@ -218,7 +218,7 @@ describe("computeBrilliantAssessments (first + second pass together)", () => {
     };
     const out = await computeBrilliantAssessments({
       moves,
-      // winBefore ≈ 0.90 (cp 600) but winAfter 0.50 (cp 0) → winDelta ≈ 40 pts > 3, AND the
+      // winBefore ≈ 0.90 (cp 600) but winAfter 0.50 (cp 0) → winDelta ≈ 40 pts > 2, AND the
       // played e2e4 is NOT the engine's best (d2d4 is) → neither eligibility leg passes.
       evals: new Map([
         [START_FEN, { score_cp: 600, mate_in: null, best_move_uci: "d2d4" }],
@@ -232,6 +232,56 @@ describe("computeBrilliantAssessments (first + second pass together)", () => {
     });
     expect(out).toHaveLength(0);
     expect(assessCalls).toBe(0); // layer 0 (free) ran first, so no model call at all
+  });
+
+  it("assesses a move just inside the 2% boundary the server classifies EXCELLENT, and drops one just outside (excellent_loss = 0.02 parity)", async () => {
+    // Pick cp values so the mover-POV loss lands inside (< 2 pts) and outside (> 2 pts) the
+    // cap. Inside ⇔ the server classifier labels the move EXCELLENT (loss <= excellent_loss,
+    // when not the literal first choice) — one of the two Brilliant-eligible tiers —
+    // pinning the same boundary classification.py uses.
+    const insideBefore = { score_cp: 0, mate_in: null };
+    const insideAfter = { score_cp: -20, mate_in: null }; // loss ≈ 1.84 pts → server EXCELLENT
+    const outsideBefore = { score_cp: 0, mate_in: null };
+    const outsideAfter = { score_cp: -25, mate_in: null }; // loss ≈ 2.30 pts → server GOOD (not eligible)
+    const provider = {
+      moveAssessment: async () => ({ humanProbability: 0.02, winChanceAfter: 0.3 }),
+      predictions: async () => [{ move_uci: "d2d4" }],
+    };
+    const inside = await computeBrilliantAssessments({
+      moves,
+      evals: new Map([
+        [START_FEN, { ...insideBefore, best_move_uci: "d2d4" }], // not best → the loss decides
+        [AFTER_E4, insideAfter],
+      ]),
+      depth: 12,
+      rating: 1500,
+      provider,
+      analyzeFn: fakeAnalyzeFn({ [AFTER_D4]: -100 }),
+      shouldCancel: () => false,
+    });
+    const outside = await computeBrilliantAssessments({
+      moves,
+      evals: new Map([
+        [START_FEN, { ...outsideBefore, best_move_uci: "d2d4" }],
+        [AFTER_E4, outsideAfter],
+      ]),
+      depth: 12,
+      rating: 1500,
+      provider,
+      analyzeFn: fakeAnalyzeFn({ [AFTER_D4]: -100 }),
+      shouldCancel: () => false,
+    });
+    expect(inside).toHaveLength(1); // Excellent-tier → assessed
+    expect(outside).toHaveLength(0); // server GOOD tier → not assessed
+    // Sanity: the two losses really straddle the 2-pt cap on the mover-POV scale.
+    // (moverWinChanceAfter takes White-POV {cp, mate}; the eval-map entries above use
+    // the analysis-map key names score_cp/mate_in, so re-key them here.)
+    const lossOf = (b, a) =>
+      (moverWinChanceAfter({ cp: b.score_cp, mate: b.mate_in }, "white") -
+        moverWinChanceAfter({ cp: a.score_cp, mate: a.mate_in }, "white")) *
+      100;
+    expect(lossOf(insideBefore, insideAfter)).toBeLessThan(2);
+    expect(lossOf(outsideBefore, outsideAfter)).toBeGreaterThan(2);
   });
 
   it("treats the engine's literal best move as eligible even when the two searches disagree by > the cap (server BEST bypass)", async () => {
