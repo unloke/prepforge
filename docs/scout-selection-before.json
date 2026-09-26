@@ -1,0 +1,197 @@
+[
+  {
+    "scenario": "sparse-child-1",
+    "expected": [
+      "trunk"
+    ],
+    "production": [
+      "trunk"
+    ],
+    "independent": [
+      "trunk"
+    ],
+    "mmr": [
+      "trunk"
+    ],
+    "coverage": [
+      "trunk"
+    ]
+  },
+  {
+    "scenario": "sparse-child-2",
+    "expected": [
+      "trunk"
+    ],
+    "production": [
+      "trunk"
+    ],
+    "independent": [
+      "trunk"
+    ],
+    "mmr": [
+      "trunk"
+    ],
+    "coverage": [
+      "trunk"
+    ]
+  },
+  {
+    "scenario": "stable-deeper",
+    "expected": [
+      "child"
+    ],
+    "production": [
+      "child"
+    ],
+    "independent": [
+      "child"
+    ],
+    "mmr": [
+      "child"
+    ],
+    "coverage": [
+      "child"
+    ]
+  },
+  {
+    "scenario": "equal-percent-different-n",
+    "expected": [
+      "large"
+    ],
+    "production": [
+      "small"
+    ],
+    "independent": [
+      "large"
+    ],
+    "mmr": [
+      "large"
+    ],
+    "coverage": [
+      "large"
+    ]
+  },
+  {
+    "scenario": "frequency-opportunity",
+    "expected": [
+      "opportunity"
+    ],
+    "production": [
+      "opportunity"
+    ],
+    "independent": [
+      "opportunity"
+    ],
+    "mmr": [
+      "opportunity"
+    ],
+    "coverage": [
+      "opportunity"
+    ]
+  },
+  {
+    "scenario": "rare-huge-engine",
+    "expected": [
+      "relevant"
+    ],
+    "production": [
+      "rare"
+    ],
+    "independent": [
+      "relevant"
+    ],
+    "mmr": [
+      "relevant"
+    ],
+    "coverage": [
+      "relevant"
+    ]
+  },
+  {
+    "scenario": "maia-personal-conflict",
+    "expected": [
+      "personal"
+    ],
+    "production": [
+      "maia"
+    ],
+    "independent": [
+      "personal"
+    ],
+    "mmr": [
+      "personal"
+    ],
+    "coverage": [
+      "personal"
+    ]
+  },
+  {
+    "scenario": "nested-chain",
+    "expected": [
+      "trunk"
+    ],
+    "production": [
+      "trunk"
+    ],
+    "independent": [
+      "trunk"
+    ],
+    "mmr": [
+      "trunk"
+    ],
+    "coverage": [
+      "trunk"
+    ]
+  },
+  {
+    "scenario": "families-compete",
+    "expected": [
+      "a1",
+      "b"
+    ],
+    "production": [
+      "a1",
+      "a2"
+    ],
+    "independent": [
+      "a1",
+      "a2"
+    ],
+    "mmr": [
+      "a1",
+      "b"
+    ],
+    "coverage": [
+      "a1",
+      "b"
+    ]
+  },
+  {
+    "scenario": "family-flood",
+    "expected": [
+      "a0",
+      "b",
+      "c"
+    ],
+    "production": [
+      "a0",
+      "a1",
+      "a2"
+    ],
+    "independent": [
+      "a0",
+      "a1",
+      "a2"
+    ],
+    "mmr": [
+      "a0",
+      "b",
+      "c"
+    ],
+    "coverage": [
+      "a0",
+      "b",
+      "c"
+    ]
+  }
+]
