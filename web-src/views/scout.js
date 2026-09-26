@@ -19,7 +19,6 @@ import {
   scoutLineKey,
 } from "../scout-report.js";
 import { createScoutInitGuard, scoutStateCarryover } from "../scout-init-guard.js";
-import { renderV12Report } from "../scout-v12-report.js";
 import { renderV13PanelShell, renderV13Report } from "../scout-v13-report.js";
 import { CancelledError, runStreamV13 } from "../scout-v13-stream.js";
 
@@ -284,9 +283,8 @@ export function createScoutView(deps) {
     updateScoutControls();
     updateLiveCounter();
 
-    // v13 / v12 experimental panels paint standalone — no classic report required.
+    // v13 experimental panel paints standalone — no classic report required.
     if (isV13Mode()) paintV13Panel();
-    else if (isV12Mode()) paintV12Panel();
 
     const results = getResultsEl();
     const profile = getProfileEl();
@@ -394,7 +392,7 @@ export function createScoutView(deps) {
     };
     const speedOpts = {
       speedFilter: scoutState.activeSpeed,
-      v3Mode: isV12Mode() || isV13Mode(),
+      v3Mode: isV13Mode(),
       escapeHtml,
       enginePatterns: engineScanPatterns(scoutState.engineByColor?.white),
       explorerReads: scoutState.explorerByColor?.white || null,
@@ -452,24 +450,15 @@ export function createScoutView(deps) {
     }
     if (force) updateLiveCounter();
     patchEngineProgressUI();
-    // v12/v13 are standalone panels — classic prefilter/Maia enrichment stays v2-only.
-    if (!isV12Mode() && !isV13Mode() && !isStreaming() && !isEnrichmentInFlight()) {
+    // v13 is a standalone panel — classic prefilter/Maia enrichment stays v2-only.
+    if (!isV13Mode() && !isStreaming() && !isEnrichmentInFlight()) {
       schedulePrefilterEnrich();
     }
   }
 
   // ---- Scout UI modes -------------------------------------------------------------------------
   // "v2"  (default)      — the classic full report: stats, intel, prefilter/Maia weakness list.
-  // "v12" (?scoutV12=1)  — retired manual JSON viewer (reports only if already loaded).
   // "v13" (?scoutV13=1)  — stream-native prep packages from the live game trie.
-
-  function isV12Mode() {
-    try {
-      return new URLSearchParams(window.location.search).has("scoutV12");
-    } catch (_) {
-      return false; // no window/location (tests) → default v2
-    }
-  }
 
   function isV13Mode() {
     try {
@@ -483,36 +472,10 @@ export function createScoutView(deps) {
     return document.getElementById("scout-v3-results");
   }
 
-  let v12Audits = [];
   let v13Result = null;
   let v13Running = false;
   let v13CancelRequested = false;
   let v13Progress = { stage: "", done: 0, total: 0 };
-
-  function v12MiniBoard(fen, orientation) {
-    return renderScoutMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg });
-  }
-
-  function v12ReportHtml() {
-    return v12Audits.length
-      ? renderV12Report(v12Audits, { escapeHtml, renderMiniBoard: v12MiniBoard })
-      : "";
-  }
-
-  function paintV12Panel() {
-    const el = getV12PanelEl();
-    if (!el) return;
-    el.hidden = false;
-    const reportHtml = v12ReportHtml();
-    el.innerHTML = `<div class="scout-v12-panel">
-      <div class="scout-v12-panel-head">
-        <strong>${escapeHtml("Tendency-aligned routes (experimental report)")}</strong>
-        <span class="scout-v12-badge">v12 experimental</span>
-      </div>
-      <p class="scout-v12-retired-note">${escapeHtml("Manual audit JSON loading is retired; use ?scoutV13=1 to generate a prep kit straight from a player's games.")}</p>
-      <div id="scout-v12-report-host">${reportHtml}</div>
-    </div>`;
-  }
 
   function v13MiniBoard(fen, orientation) {
     return renderScoutMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg });
@@ -688,34 +651,6 @@ export function createScoutView(deps) {
     }
   }
 
-  // Resolve a rendered card's "auditIdx:tendencyIdx:routeIdx" key back to its route + meta.
-  function v12RouteByKey(key) {
-    const [a, t, r] = String(key || "").split(":").map((n) => Number.parseInt(n, 10));
-    const audit = v12Audits[a];
-    const route = audit?.tendencies?.[t]?.routes?.[r];
-    if (!route) return null;
-    return { route, meta: audit.meta || {} };
-  }
-
-  function v12RouteAsLine(route) {
-    return { ucis: [...(route.ucis || [])], sans: String(route.sanLine || "").split(/\s+/).filter(Boolean) };
-  }
-
-  async function handleV12ActionClick(e) {
-    const btn = e.target?.closest?.("[data-v12-action]");
-    if (!btn) return false;
-    const hit = v12RouteByKey(btn.dataset.v12Route);
-    if (!hit) return true;
-    const line = v12RouteAsLine(hit.route);
-    const oppColor = hit.meta.subjectColor === "white" ? "white" : "black";
-    if (btn.dataset.v12Action === "analyze") {
-      scoutAnalyzeLine(line, oppColor, scoutState?.username || "Opponent");
-    } else if (btn.dataset.v12Action === "build") {
-      await scoutAddToPrep(line, oppColor);
-    }
-    return true;
-  }
-
   function scheduleRender({ force = false } = {}) {
     if (!scoutSession) return;
     scoutSession.gamesSinceRender += 1;
@@ -806,9 +741,7 @@ export function createScoutView(deps) {
     // The trie + baseline rank observed routes by measured struggle and family evidence.
     // Opponent-only conditional reach removes routes they are unlikely to enter before
     // Stockfish runs; our own chosen moves do not lower that reach.
-    // Full ranked list (limit: 0), then trimRankedBranches: primary cut is the prior-signal
-    // floor (drops transposition noise); min-keep fills the Maia backup pool; 300 is only a
-    // pathological-corpus ceiling on the cheap trie-walk/FEN step.
+    // Bound the engine queue using personal preparation value.
     const { branches, ancestorFreq } =
       scoutModule.rankedOpeningBranches(scoutState.games, oppColor, {
         speedFilter: scoutState.activeSpeed,
@@ -933,8 +866,8 @@ export function createScoutView(deps) {
     const fallback = buildFallbackPrefilterData(lines);
     scoutState.prefilterPools[oppColor] = fallback.pool;
     scoutState.prefilterRanked[oppColor] = fallback.ranked;
-    scoutState.prefilteredLines[oppColor] = fallback.maiaLines;
-    snapshotStockfishDisplayLine(oppColor, fallback.maiaLines);
+    scoutState.prefilteredLines[oppColor] = fallback.ranked.map(entry => entry.line);
+    snapshotStockfishDisplayLine(oppColor, scoutState.prefilteredLines[oppColor]);
     if (section?.trie) prefilterCandidateCache.delete(section.trie);
   }
 
@@ -1023,15 +956,14 @@ export function createScoutView(deps) {
         if (gen !== prefilterEnrichSeq) return;
         scoutState.funnel = scoutState.funnel || {};
         scoutState.funnel[oppColor] = result.funnel;
-        if (!result.ranked?.length) {
+        if (!result.ranked?.length && (!result.funnel ||
+          result.funnel.scoreDrops?.noEval === result.funnel.totalLines)) {
           applyPrefilterFallbackForColor(section, oppColor);
         } else {
           scoutState.prefilterPools[oppColor] = result.pool;
           scoutState.prefilterRanked[oppColor] = result.ranked;
           scoutState.prefilteredLines[oppColor] =
-            result.maiaLines.length > 0
-              ? result.maiaLines
-              : lines.slice(0, SCOUT_PREFILTER_LIMIT);
+            result.ranked.map(entry => entry.line);
           snapshotStockfishDisplayLine(oppColor, scoutState.prefilteredLines[oppColor]);
           if (section?.trie) prefilterCandidateCache.delete(section.trie);
         }
@@ -1045,10 +977,8 @@ export function createScoutView(deps) {
           rows[c] = {
             totalLines: f.totalLines,
             scored: f.scored,
-            comfortZone: f.gateDrops?.comfortZone,
-            failedOrGate: f.gateDrops?.failedOrGate,
+            noOpportunity: f.gateDrops?.noOpportunity,
             survived: f.survived,
-            afterCollapse: f.afterCollapse,
             pool: f.poolSize,
             maiaCandidates: f.maiaCandidates,
           };
@@ -1791,19 +1721,13 @@ export function createScoutView(deps) {
     const v12Panel = getV12PanelEl();
     if (v12Panel && !scoutBoundEventTargets.has(v12Panel)) {
       scoutBoundEventTargets.add(v12Panel);
-      v12Panel.addEventListener("click", async (e) => {
-        if (isV13Mode()) {
-          if (e.target?.id === "scout-v13-generate-btn") {
-            void runV13PrepPackages();
-            return;
-          }
-          if (e.target?.id === "scout-v13-cancel-btn") {
-            v13CancelRequested = true;
-            return;
-          }
+      v12Panel.addEventListener("click", (e) => {
+        if (!isV13Mode()) return;
+        if (e.target?.id === "scout-v13-generate-btn") {
+          void runV13PrepPackages();
+        } else if (e.target?.id === "scout-v13-cancel-btn") {
+          v13CancelRequested = true;
         }
-        if (!isV12Mode()) return;
-        await handleV12ActionClick(e);
       });
     }
   }
@@ -2070,7 +1994,6 @@ export function createScoutView(deps) {
     v13CancelRequested = true;
     v13Running = false;
     v13Result = null;
-    v12Audits = [];
     v13Progress = { stage: "", done: 0, total: 0 };
     scoutState = null;
     scoutSession = null;
@@ -2118,9 +2041,8 @@ export function createScoutView(deps) {
     v13CancelRequested = true;
     v13Running = false;
     v13Result = null;
-    v12Audits = [];
     const experimental = getV12PanelEl();
-    if (experimental && !isV12Mode() && !isV13Mode()) {
+    if (experimental && !isV13Mode()) {
       experimental.innerHTML = "";
       experimental.hidden = true;
     }

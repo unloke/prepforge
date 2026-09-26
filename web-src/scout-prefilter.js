@@ -1,7 +1,8 @@
 // Hidden Stockfish pre-filter for Scout: shallow eval on all opening-line candidates,
 // rank by objective prep value, and pick the top pool for Maia3 WDL enrichment.
-// Results never surface in the Scout UI — only the Maia-ranked game plan is shown.
+// Engine metrics travel with candidates to the final budgeted selector.
 
+import { preparationValue, selectPreparationRoutes, routeKey } from "./scout-preparation-value.js";
 import { analyzeGamePositions } from "./engine/game-analyzer.js";
 import {
   createEngineProvider,
@@ -15,39 +16,19 @@ import {
   SCOUT_STOCKFISH_DEPTH,
   fenBeforeLastMove,
   hashGameIdsForScope,
-  isNestedLine,
-  isOpponentComfortZone,
   normalizeToOpponentTerminal,
   terminalMoveIsOpponent,
-  triePathKey,
 } from "./scout.js";
 
 export const SCOUT_PREFILTER_DEPTH = SCOUT_STOCKFISH_DEPTH;
 export const SCOUT_PREFILTER_LIMIT = SCOUT_BRANCH_SCORE_CAP;
-/** Maia backup pool depth — decoupled from the branch cap. Stockfish access is bounded by
- * the upstream prior-floor trim, not this; this only caps how many ranked entries the Maia
- * chase may dip into for backups. Maia still resolves SCOUT_MAIA_LIMIT (12) unique lines. */
+/** Bounded Maia backup pool; engine reads are capped upstream at 300 per colour. */
 export const SCOUT_PREFILTER_POOL_SIZE = 64;
 export const SCOUT_MAIA_PREFILTER_LIMIT = SCOUT_MAIA_LIMIT;
 export const SCOUT_PREFILTER_CONCURRENCY = 3;
-/** No wall-clock cut. The candidate set is already bounded logically upstream
- *  (trimRankedBranches: prior-signal floor, clamped to [SCOUT_BRANCH_MIN_KEEP, 300] leaves)
- *  and the leaf-only depth-8 reads are cheap, so the prefilter runs to completion rather than
- *  dropping the lowest-prior tail at an arbitrary 45s. Only user cancellation (shouldCancel)
- *  stops it early; that path still extracts partial results. Tests pass an explicit
- *  timeBudgetMs to exercise the (now cancellation-only) partial-results machinery. */
+/** Run the bounded leaf queue to completion unless cancelled. */
 export const SCOUT_PREFILTER_TIME_BUDGET_MS = Infinity;
 export const SCOUT_PREFILTER_ENGINE_VERSION = `stockfish-${STOCKFISH_PACKAGE_VERSION}-lite`;
-export const SCOUT_MIN_STOCKFISH_ADVANTAGE = 20;
-/** OR-gate thresholds — a line survives on objective edge, empirical struggle,
- * or a strong engine-free exploitability prior. (The old cp-loss gate is
- * gone: it required a second Stockfish eval of the pre-move position only to confirm "was
- * the last move bad", which the leaf advantage already captures.) */
-export const SCOUT_PREFILTER_STRUGGLE_GATE = 0.15;
-/** Prior-rescue floor: recurring empirical struggle can rescue a modest edge.
- * Rarity has no contribution; the floor stays conservative after removing that bonus. */
-export const SCOUT_PREFILTER_PRIOR_FLOOR = 0.4;
-
 export const PREFILTER_IDLE = "idle";
 export const PREFILTER_LOADING = "loading";
 export const PREFILTER_READY = "ready";
@@ -73,15 +54,7 @@ export function prefilterCacheKey(fen, depth = SCOUT_PREFILTER_DEPTH) {
   return `${SCOUT_PREFILTER_ENGINE_VERSION}|d${depth}|${fen}`;
 }
 
-/**
- * Collect the distinct LEAF FENs needed to score opening-line candidates. Leaf-only: the
- * line's value is the position the opponent's move reaches (`userLeafAdvantage`), so we no
- * longer evaluate the pre-move position. Dropping that second eval ~halves the Stockfish
- * workload, which keeps the now-uncapped prefilter fast. The candidates arrive
- * exploitability-prior-sorted and `analyzeGamePositions` drains its queue front-to-back, so
- * the highest-prior leaves are confirmed first — and if the user cancels mid-run, the partial
- * results favour the highest-prior lines.
- */
+/** Only distinct leaf FENs need depth-8 Stockfish reads. */
 export function collectPrefilterFens(lines, { fenAfterLine, oppColor }) {
   const fens = [];
   const seen = new Set();
@@ -99,8 +72,7 @@ export function collectPrefilterFens(lines, { fenAfterLine, oppColor }) {
 }
 
 /**
- * Score one line from shallow Stockfish reads. Higher prefilterScore = more objectively
- * worth preparing. Returns null when the line should be excluded.
+ * Read objective position opportunity; personal relevance is scored separately.
  */
 export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ancestorFreq, funnel }) {
   const drop = (key) => {
@@ -125,7 +97,7 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
   const fenBefore = fenBeforeLastMove(ucis);
   const fenLeaf = fenAfterLine(ucis);
   const leafEval = fenLeaf ? evalMap.get(fenLeaf) : null;
-  if (!leafEval) {
+  if (!leafEval || (!Number.isFinite(leafEval.score_cp) && !Number.isFinite(leafEval.mate_in))) {
     drop("noEval");
     return null;
   }
@@ -166,66 +138,13 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
     ancestorGames: line.ancestorGames ?? ancestorInfo.games,
     scorePct: line.scorePct,
     games: line.games,
-    // Prefix-resolved exploitability signals, annotated upstream by rankedOpeningBranches.
-    struggle: line.exploitabilityStruggle ?? 0,
-    offModal: line.offModal ?? 0,
-    prefixGames: line.prefixGames ?? 0,
-    exploitabilityPrior: line.exploitabilityPrior ?? 0,
+    routeSupportGames: line.routeSupportGames ?? null,
+    evidenceGames: line.evidenceGames,
+    routeScorePct: line.routeScorePct,
   };
 }
 
-/**
- * Final exploitability rank = engine-free PRIOR × engine CONFIRMATION × empirical amplifier.
- *   prior   — the upstream exploitability prior (struggle × family
- *             reproducibility); already carries "is this a recurring weakness worth prepping".
- *             1 is substituted when no prior exists (no-trie fallback) so the edge still orders.
- *   edge    — the depth-8 leaf advantage above an 8cp noise floor, log-compressed so a +40cp
- *             confirm beats a +12cp one without scaling linearly; a user-favourable mate
- *             saturates it. This is CONFIRMATION, not the ranking driver — it gates noise, the
- *             prior decides priority. (cp-loss is intentionally absent: it only told us whether
- *             the last move was bad, which the leaf advantage already reflects.)
- *   struggle — empirical amplifier on top, once the engine agrees there is an edge.
- */
-export function exploitabilityRank(entry) {
-  const edge = entry?.mateIn ? 1e6 : Math.max(0, (entry?.prefilterScore ?? 0) - 8);
-  const prior = entry?.exploitabilityPrior ?? 0;
-  const struggle = Math.max(0, entry?.struggle ?? 0);
-  return (prior > 0 ? prior : 1) * Math.log1p(1 + edge / 12) * (1 + 2 * struggle);
-}
-
-function tiebreakRecencyShare(a, b) {
-  const aStamp = a.lastSeen?.lastDatestamp ?? a.lastDatestamp ?? 0;
-  const bStamp = b.lastSeen?.lastDatestamp ?? b.lastDatestamp ?? 0;
-  return bStamp - aStamp || (b.share || 0) - (a.share || 0) || (b.count || 0) - (a.count || 0);
-}
-
-/** Collapse nested prefix lines — keep the deeper representative only when score is not worse. */
-export function collapseNestedPrefilterLines(sorted) {
-  const chosen = [];
-  for (const entry of sorted) {
-    const nestedIdx = chosen.findIndex((c) => isNestedLine(c.line, entry.line));
-    if (nestedIdx >= 0) {
-      const existing = chosen[nestedIdx];
-      const cPath = existing.line.line || triePathKey(existing.line.ucis || []);
-      const gPath = entry.line.line || triePathKey(entry.line.ucis || []);
-      if (gPath.startsWith(`${cPath}>`)) {
-        if (entry.prefilterScore >= existing.prefilterScore) {
-          chosen[nestedIdx] = entry;
-        }
-      } else if (entry.prefilterScore > existing.prefilterScore) {
-        chosen[nestedIdx] = entry;
-      }
-      continue;
-    }
-    chosen.push(entry);
-  }
-  return chosen;
-}
-
-/**
- * Rank all opening-line candidates by objective Stockfish signals. Returns scored
- * entries sorted best-first; count/recency are tiebreakers only.
- */
+/** Keep every assessed candidate until final selection; no early nested collapse. */
 export function rankPrefilterCandidates(
   lines,
   evalMap,
@@ -241,9 +160,8 @@ export function rankPrefilterCandidates(
       noUserReply: 0,
     },
     scored: 0,
-    gateDrops: { unreachable: 0, comfortZone: 0, failedOrGate: 0 },
+    gateDrops: { unreachable: 0, noOpportunity: 0 },
     survived: 0,
-    afterCollapse: 0,
   };
 
   const scored = [];
@@ -260,46 +178,22 @@ export function rankPrefilterCandidates(
       ...metrics,
     });
   }
-  // Gate routes the opponent is unlikely to enter, then keep lines with a credible
-  // engine edge, measured struggle, or a recurring prior. Rarity is never a pass.
-  // ANY of — the user has a forced mate, Stockfish finds a clear edge, the line family
-  // empirically underperforms, or it
-  // carries a strong engine-free prior with some edge. This replaces the old AND-style
-  // "+20cp AND frequent" wall that zeroed every main line (and the cp-loss branch, which
-  // needed a second eval to confirm a now-redundant signal).
   const gated = scored.filter((entry) => {
     if (entry.routeReach != null && entry.routeReach < SCOUT_MIN_ROUTE_REACH) {
       funnel.gateDrops.unreachable++;
       return false;
     }
-    if (isOpponentComfortZone(entry, baselineScorePct)) {
-      funnel.gateDrops.comfortZone++;
+    if (!(entry.mateIn > 0 || entry.prefilterScore > 0)) {
+      funnel.gateDrops.noOpportunity++;
       return false;
     }
-    if (entry.mateIn > 0) return true;
-    const adv = entry.prefilterScore ?? 0;
-    const struggle = entry.struggle ?? 0;
-    const prior = entry.exploitabilityPrior ?? 0;
-    if (adv >= SCOUT_MIN_STOCKFISH_ADVANTAGE) return true;
-    if (struggle >= SCOUT_PREFILTER_STRUGGLE_GATE && adv > 0) return true;
-    // Prior-rescue (replaces the old cp-loss branch): a line with a real recurring
-    // exploitability prior survives even when depth-8 undercounts its modest leaf edge.
-    if (prior > SCOUT_PREFILTER_PRIOR_FLOOR && adv > 0) return true;
-    funnel.gateDrops.failedOrGate++;
-    return false;
-  });
+    return true;
+  }).map((entry) => ({ ...entry, line: { ...entry.line, ...Object.fromEntries(
+    Object.entries(entry).filter(([key]) => key !== "line")), baselineScorePct } }));
+  gated.sort((a,b) => preparationValue(b.line,baselineScorePct).value - preparationValue(a.line,baselineScorePct).value || routeKey(a.line).localeCompare(routeKey(b.line)));
   funnel.survived = gated.length;
-  gated.sort(
-    (a, b) =>
-      exploitabilityRank(b) - exploitabilityRank(a) ||
-      Number(b.hasUserReply) - Number(a.hasUserReply) ||
-      (b.routeReach ?? 0) - (a.routeReach ?? 0) ||
-      tiebreakRecencyShare(a.line, b.line),
-  );
-  const collapsed = collapseNestedPrefilterLines(gated);
-  funnel.afterCollapse = collapsed.length;
   if (funnelOut) Object.assign(funnelOut, funnel);
-  return collapsed;
+  return gated;
 }
 
 export function prefilterPoolLines(ranked, poolSize = SCOUT_PREFILTER_POOL_SIZE) {
@@ -307,41 +201,29 @@ export function prefilterPoolLines(ranked, poolSize = SCOUT_PREFILTER_POOL_SIZE)
 }
 
 export function prefilterMaiaLines(ranked, limit = SCOUT_MAIA_PREFILTER_LIMIT) {
-  const seen = new Set();
-  const out = [];
-  for (const entry of ranked || []) {
-    const key = entry.line?.line || triePathKey(entry.line?.ucis || []);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(entry.line);
-    if (out.length >= limit) break;
-  }
-  return out;
+  const lines = (ranked || []).map(entry => ({ ...entry.line,
+    prefilterScore: entry.prefilterScore ?? entry.line.prefilterScore,
+    mateIn: entry.mateIn ?? entry.line.mateIn }));
+  return selectPreparationRoutes(lines, { limit, baseline: lines[0]?.baselineScorePct ?? 50 });
 }
 
 /** Ranked-opening fallback when Stockfish prefilter cannot run. */
 export function buildFallbackPrefilterData(
   lines,
-  { poolSize = SCOUT_PREFILTER_POOL_SIZE, limit = SCOUT_PREFILTER_LIMIT } = {},
+  { poolSize = SCOUT_PREFILTER_POOL_SIZE, limit = SCOUT_MAIA_PREFILTER_LIMIT } = {},
 ) {
   const pool = (lines || []).slice(0, poolSize);
-  const ranked = pool.map((line) => ({
+  const ranked = (lines || []).map((line) => ({
     line,
-    prefilterScore: 0,
+    prefilterScore: undefined,
     hasUserReply: true,
     mateIn: 0,
-    exploitabilityPrior: 0,
   }));
   const maiaLines = prefilterMaiaLines(ranked, limit);
   return { ranked, pool, maiaLines };
 }
 
-/**
- * Merge per-colour Stockfish-ranked entries into one global pool for Maia3.
- * Each colour list is already nested-collapsed in rankPrefilterCandidates — do
- * not collapse again here, because isNestedLine compares UCI paths only and
- * would incorrectly drop unrelated lines from the other opponent-colour section.
- */
+/** Merge prospective per-colour recommendations, then optional Maia backups. */
 export function mergeGlobalPrefilterRanked(
   rankedByColor,
   { poolSize = SCOUT_PREFILTER_POOL_SIZE, baselineByColor = {} } = {},
@@ -352,14 +234,16 @@ export function mergeGlobalPrefilterRanked(
       entries.push({ ...entry, oppColor });
     }
   }
-  entries.sort(
-    (a, b) =>
-      exploitabilityRank(b) - exploitabilityRank(a) ||
-      Number(b.hasUserReply) - Number(a.hasUserReply) ||
-      (b.routeReach ?? 0) - (a.routeReach ?? 0) ||
-      tiebreakRecencyShare(a.line, b.line) ||
-      a.oppColor.localeCompare(b.oppColor),
-  );
+  // Assess prospective recommendations first, then bounded backups. An ONNX
+  // failure changes availability of supplemental WDL, not candidate membership.
+  const front = new Set();
+  for (const color of ["white", "black"]) {
+    const lines = entries.filter(e => e.oppColor === color).map(e => e.line);
+    for (const line of selectPreparationRoutes(lines, { baseline: baselineByColor[color] ?? 50 })) front.add(`${color}|${routeKey(line)}`);
+  }
+  entries.sort((a,b) => Number(front.has(`${b.oppColor}|${routeKey(b.line)}`)) - Number(front.has(`${a.oppColor}|${routeKey(a.line)}`)) ||
+    preparationValue(b.line,baselineByColor[b.oppColor] ?? 50).value - preparationValue(a.line,baselineByColor[a.oppColor] ?? 50).value ||
+    a.oppColor.localeCompare(b.oppColor) || routeKey(a.line).localeCompare(routeKey(b.line)));
   return entries.slice(0, poolSize);
 }
 

@@ -11190,12 +11190,6 @@ function bindScoutControlsLazy() {
   };
 
   scoutBtn.addEventListener("click", onFirstInteract);
-
-  // ?scoutV12=1 experimental report viewer works from loaded audit JSON with no
-  // scout run — eagerly init the view so its panel paints without a username.
-  if (new URLSearchParams(location.search).has("scoutV12")) {
-    void activate();
-  }
 }
 
 // Maia idle teardown. The browser Maia engine (onnxruntime-web session + WASM heap) is by

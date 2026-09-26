@@ -1,0 +1,254 @@
+[
+  {
+    "scenario": "parent-vs-two-children",
+    "expected": [
+      "right",
+      "left"
+    ],
+    "baseline": [
+      "right",
+      "left"
+    ],
+    "greedy": [
+      "parent"
+    ],
+    "production": [
+      "right",
+      "left"
+    ],
+    "independent": [
+      "parent"
+    ],
+    "mmr": [
+      "parent"
+    ]
+  },
+  {
+    "scenario": "sparse-child-1",
+    "expected": [
+      "trunk"
+    ],
+    "baseline": [
+      "trunk"
+    ],
+    "greedy": [
+      "trunk"
+    ],
+    "production": [
+      "trunk"
+    ],
+    "independent": [
+      "trunk"
+    ],
+    "mmr": [
+      "trunk"
+    ]
+  },
+  {
+    "scenario": "sparse-child-2",
+    "expected": [
+      "trunk"
+    ],
+    "baseline": [
+      "trunk"
+    ],
+    "greedy": [
+      "trunk"
+    ],
+    "production": [
+      "trunk"
+    ],
+    "independent": [
+      "trunk"
+    ],
+    "mmr": [
+      "trunk"
+    ]
+  },
+  {
+    "scenario": "stable-deeper",
+    "expected": [
+      "child"
+    ],
+    "baseline": [
+      "child"
+    ],
+    "greedy": [
+      "child"
+    ],
+    "production": [
+      "child"
+    ],
+    "independent": [
+      "child"
+    ],
+    "mmr": [
+      "child"
+    ]
+  },
+  {
+    "scenario": "equal-percent-different-n",
+    "expected": [
+      "large"
+    ],
+    "baseline": [
+      "small"
+    ],
+    "greedy": [
+      "large"
+    ],
+    "production": [
+      "large"
+    ],
+    "independent": [
+      "large"
+    ],
+    "mmr": [
+      "large"
+    ]
+  },
+  {
+    "scenario": "frequency-opportunity",
+    "expected": [
+      "opportunity"
+    ],
+    "baseline": [
+      "opportunity"
+    ],
+    "greedy": [
+      "opportunity"
+    ],
+    "production": [
+      "opportunity"
+    ],
+    "independent": [
+      "opportunity"
+    ],
+    "mmr": [
+      "opportunity"
+    ]
+  },
+  {
+    "scenario": "rare-huge-engine",
+    "expected": [
+      "relevant"
+    ],
+    "baseline": [
+      "rare"
+    ],
+    "greedy": [
+      "relevant"
+    ],
+    "production": [
+      "relevant"
+    ],
+    "independent": [
+      "relevant"
+    ],
+    "mmr": [
+      "relevant"
+    ]
+  },
+  {
+    "scenario": "maia-personal-conflict",
+    "expected": [
+      "personal"
+    ],
+    "baseline": [
+      "maia"
+    ],
+    "greedy": [
+      "personal"
+    ],
+    "production": [
+      "personal"
+    ],
+    "independent": [
+      "personal"
+    ],
+    "mmr": [
+      "personal"
+    ]
+  },
+  {
+    "scenario": "nested-chain",
+    "expected": [
+      "trunk"
+    ],
+    "baseline": [
+      "trunk"
+    ],
+    "greedy": [
+      "trunk"
+    ],
+    "production": [
+      "trunk"
+    ],
+    "independent": [
+      "trunk"
+    ],
+    "mmr": [
+      "trunk"
+    ]
+  },
+  {
+    "scenario": "families-compete",
+    "expected": [
+      "a1",
+      "a2"
+    ],
+    "baseline": [
+      "a1",
+      "a2"
+    ],
+    "greedy": [
+      "a1",
+      "b"
+    ],
+    "production": [
+      "a1",
+      "a2"
+    ],
+    "independent": [
+      "a1",
+      "a2"
+    ],
+    "mmr": [
+      "a1",
+      "b"
+    ]
+  },
+  {
+    "scenario": "family-flood",
+    "expected": [
+      "a0",
+      "a1",
+      "a2"
+    ],
+    "baseline": [
+      "a0",
+      "a1",
+      "a2"
+    ],
+    "greedy": [
+      "a0",
+      "b",
+      "c"
+    ],
+    "production": [
+      "a0",
+      "a1",
+      "a2"
+    ],
+    "independent": [
+      "a0",
+      "a1",
+      "a2"
+    ],
+    "mmr": [
+      "a0",
+      "b",
+      "c"
+    ]
+  }
+]

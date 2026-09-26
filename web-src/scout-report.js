@@ -9,6 +9,7 @@ import {
   collectActionableRefutationGaps,
 } from "./scout-refutation.js";
 import {
+  SCOUT_BRANCH_HARD_CEILING,
   attachPrepReplies,
   fenAfterLine,
   mergeEngineIntoTargets,
@@ -987,7 +988,7 @@ export function buildScoutSectionReport(
   // The streaming view keeps a persistent per-colour trie (inserted once per game) and
   // passes it in so we don't rebuild it from every game on each batch — the O(N²) that
   // made Scout heavy mid-stream. Fall back to a one-shot build when none is supplied.
-  const trie = prebuiltTrie || scoutModule.buildOpeningTrie(games, oppColor, { speedFilter });
+  const trie = prebuiltTrie || scoutModule.buildOpeningTrie(games, oppColor, { speedFilter, maxPlies: Infinity });
   if (!trie.gameCount) return { html: "", sectionData: null };
 
   const stats = buildScoutStats(games, { color: oppColor, speedFilter });
@@ -1018,15 +1019,15 @@ export function buildScoutSectionReport(
   const { branches: allOpeningLines, ancestorFreq } = scoutModule.rankedOpeningBranches(
     games,
     oppColor,
-    { speedFilter, trie, baselineScorePct: baseline },
+    { speedFilter, trie, baselineScorePct: baseline, limit: SCOUT_BRANCH_HARD_CEILING },
   );
   let gamePlanSource = allOpeningLines;
-  if (prefilteredLines?.length) {
+  if (Array.isArray(prefilteredLines) && (prefilteredLines.length || prefilterEnrichState === "ready")) {
     const byKey = new Map(
       allOpeningLines.map((line) => [scoutLineKey(line.ucis), line]),
     );
     gamePlanSource = prefilteredLines
-      .map((line) => byKey.get(scoutLineKey(line.ucis)) || line)
+      .map((line) => ({ ...byKey.get(scoutLineKey(line.ucis)), ...line }))
       .filter(Boolean);
   }
   if (maiaResults?.size) {

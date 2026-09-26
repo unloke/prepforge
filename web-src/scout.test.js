@@ -1,3 +1,4 @@
+import { branchExploitabilityPrior, branchStruggle } from "../research/scout-legacy-prior.js";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -6,9 +7,7 @@ import {
   SCOUT_BRANCH_SCORE_CAP,
   SCOUT_RECENCY_HALF_LIFE_DAYS,
   aggregateOpeningBranches,
-  branchExploitabilityPrior,
   branchPathKey,
-  branchStruggle,
   buildOpeningTrie,
   createOpeningTrie,
   insertGameIntoTrie,
@@ -808,7 +807,7 @@ describe("triePrefixStats + branchStruggle + exploitability prior", () => {
     expect(struggling).toBeGreaterThan(comfortable);
   });
 
-  it("rankedOpeningBranches annotates struggle signals when a trie is supplied", () => {
+  it("rankedOpeningBranches annotates full-route evidence when a trie is supplied", () => {
     const games = strugglingFamily();
     const trie = buildOpeningTrie(games, "black", { recency: false });
     const { branches } = rankedOpeningBranches(games, "black", {
@@ -817,9 +816,9 @@ describe("triePrefixStats + branchStruggle + exploitability prior", () => {
     });
     const e5 = branches.find((b) => b.ucis.join(">") === "e2e4>e7e5");
     expect(e5).toBeDefined();
-    expect(e5.exploitabilityStruggle).toBeGreaterThan(0);
-    expect(e5.prefixGames).toBeGreaterThanOrEqual(3);
-    expect(typeof e5.exploitabilityPrior).toBe("number");
+    expect(e5.routeScorePct).toBeLessThan(50);
+    expect(e5.routeSupportGames).toBeGreaterThanOrEqual(3);
+    expect(e5.evidenceGames).toBeGreaterThanOrEqual(e5.routeSupportGames);
   });
 });
 
@@ -1100,12 +1099,12 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
     };
     const ranked = rankGamePlan([strong, nested, weak], 50, { minGames: 7, oppColor: "white" });
     expect(ranked).toHaveLength(2);
-    expect(ranked[0].ucis).toEqual(["e2e4", "c7c5", "g1f3"]);
+    expect(ranked[0].ucis).toEqual(["e2e4"]);
     expect(ranked[0].opportunity).toBeGreaterThan(ranked[1].opportunity);
     expect(terminalMoveIsOpponent(ranked[0].ucis, "white")).toBe(true);
   });
 
-  it("Maia exploitability beats Stockfish reproducibility when both lines have Maia", () => {
+  it("personal relevance and bounded engine opportunity survive Maia disagreement", () => {
     const stockfishFavorite = {
       line: "e2e4>e7e5",
       sans: ["e4", "e5"],
@@ -1139,15 +1138,12 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
       maiaWdl: { win: 32, draw: 10, loss: 58 },
     };
     const ranked = rankGamePlan([stockfishFavorite, maiaAttack], 50, { oppColor: "black" });
-    expect(ranked[0].maiaScorePct).toBe(32);
-    expect(ranked[1].maiaScorePct).toBe(58);
+    expect(ranked[0].maiaScorePct).toBe(58);
+    expect(ranked[1].maiaScorePct).toBe(32);
   });
 
-  it("Maia-assessed lines rank before unenriched lines regardless of empirical opportunity", () => {
-    // New design: rank by Maia3 opponent score (real data), not empirical opportunity
-    // (100%/0% on n=1 is just noise — you can't lose more than 100% of one game).
-    // A Maia weapon at 74% opponent score sorts BEFORE a no-Maia "attack" line.
-    // Three unrelated first-move lines (White is opponent) — no prefix overlap, no dedup.
+  it("Maia availability does not give an ordering bonus", () => {
+    // Enrichment availability is not evidence of greater preparation value.
     const attackNoMaia = {
       line: "e2e4",
       sans: ["e4"],
@@ -1174,9 +1170,9 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
     // Maia attack (28%) beats Maia weapon (74%) — lower opp score = more exploitable.
     expect(ranked[0].maiaScorePct).toBe(28);
     // Maia weapon (74%) beats no-Maia line — real data beats noise.
-    expect(ranked[1].maiaScorePct).toBe(74);
-    // No-Maia line comes last.
-    expect(ranked[2].maiaScorePct).toBeUndefined();
+    expect(ranked[1].maiaScorePct).toBeUndefined();
+    // Maia availability cannot rescue the comfortable line.
+    expect(ranked[2].maiaScorePct).toBe(74);
   });
 
   it("returns all qualifying lines without an artificial cap", () => {

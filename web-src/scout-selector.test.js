@@ -210,7 +210,7 @@ describe("production Module B contract (Scout v2)", () => {
     expect(dirty.map((r) => r.ucis.join(">"))).toEqual(clean.map((r) => r.ucis.join(">")));
   });
 
-  it("section report ranks with the opening trie exploitability prior, not raw frequency", () => {
+  it("section report carries full-route preparation evidence", () => {
     const games = makeCorpus().filter((g) => g.color === "white");
     const { sectionData } = buildScoutSectionReport(
       scoutModule,
@@ -219,7 +219,7 @@ describe("production Module B contract (Scout v2)", () => {
       [],
       { username: "acceptance", escapeHtml: (s) => String(s) },
     );
-    expect(sectionData.prepTargets.some((t) => t.exploitabilityPrior != null)).toBe(true);
+    expect(sectionData.prepTargets.some((t) => t.preparationEvidence?.coverage > 0)).toBe(true);
   });
 
   it("section report uses the production selector and stays within budget", () => {

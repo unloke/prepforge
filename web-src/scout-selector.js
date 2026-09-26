@@ -1,8 +1,4 @@
-// Production Module B selector contract.
-//
-// Research candidates live under research/ and are not imported here.
-// A future method may be added beside scout-v2; production remains this module
-// until an authorized replacement is wired through PRODUCTION_MODULE_B.id.
+// Default production selector boundary. Set optimization lives in scout-preparation-value.js.
 
 import {
   SCOUT_GAME_PLAN_LIMIT,

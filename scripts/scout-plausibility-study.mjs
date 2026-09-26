@@ -1,10 +1,11 @@
+import { branchExploitabilityPrior, branchStruggle } from "../research/scout-legacy-prior.js";
 // Candidate-stage comparison on parsed public games, with chronological holdout.
 // Usage: node scripts/scout-plausibility-study.mjs tmp/scout-player.json
 import { readFileSync } from "node:fs";
 import { Chess } from "chess.js";
 import {
-  aggregateOpeningBranches, buildOpeningTrie, branchExploitabilityPrior,
-  branchStruggle, opponentColorBaseline, triePrefixStats, trimRankedBranches,
+  aggregateOpeningBranches, buildOpeningTrie,
+  opponentColorBaseline, triePrefixStats, trimRankedBranches,
 } from "../web-src/scout.js";
 
 const source = process.argv[2];
