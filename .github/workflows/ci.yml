@@ -74,7 +74,15 @@ jobs:
         env:
           DATABASE_URL: postgresql://migtest:migtest-only@localhost:5432/prepforge_migtest
           TEST_POSTGRES_URL: postgresql://migtest:migtest-only@localhost:5432/prepforge_migtest
-        run: uv run pytest -q tests/test_migration_lichess_primary.py tests/test_api_lichess.py tests/test_api_lichess_games.py tests/test_training_smart.py tests/test_build_route_sql.py::test_build_route_sql_counts_postgres
+        run: >-
+          uv run pytest -q
+          tests/test_migration_lichess_primary.py
+          tests/test_api_lichess.py
+          tests/test_api_lichess_games.py
+          tests/test_training_smart.py
+          tests/test_build_route_sql.py::test_build_route_sql_counts_postgres
+          tests/test_repositories.py::test_list_repertoires_postgres
+          tests/test_build_sql_counts.py::test_list_repertoires_statement_count_postgres
 
   js:
     runs-on: ubuntu-latest
@@ -153,9 +161,10 @@ jobs:
             sleep 1
           done
           node scripts/topbar-status-geometry.mjs
-      - name: Scout + axe E2E
+      - name: Scout + axe + eval-chart E2E
         run: >-
           uv run pytest -m e2e
           tests/e2e/test_scout_smoke.py
           tests/e2e/test_axe_baseline.py
+          tests/e2e/test_eval_chart_smoke.py
           -q

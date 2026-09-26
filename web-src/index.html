@@ -98,7 +98,10 @@
               </div>
             </section>
             <div class="reveal" id="analysis-results" hidden>
-              <svg class="eval-chart" id="eval-chart" viewBox="0 0 640 96" role="img"></svg>
+              <div class="eval-chart-wrap">
+                <svg class="eval-chart" id="eval-chart" viewBox="0 0 640 96" role="img"></svg>
+                <div class="eval-chart-tooltip" id="eval-chart-tooltip" aria-hidden="true" hidden></div>
+              </div>
               <div class="movelist tree" id="analysis-moves" data-testid="analysis-moves"></div>
               <div class="tags muted-row" id="analysis-summary"></div>
               <div class="analysis-handoff" id="analysis-handoff" data-testid="analysis-handoff" hidden>

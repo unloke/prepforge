@@ -83,7 +83,16 @@ def test_new_user_sees_empty_owner_scoped_workspace(client):
     assert body["training_sessions"] == 0
     assert body["open_mistakes"] == 0
     assert body["due_reviews"] == 0
-    assert len(body["recommendations"]) == 3
+    # Personalized recommendations: a brand-new account gets the simple
+    # three-step onboarding, each step with a CTA into its target view.
+    recs = body["recommendations"]
+    assert [r["id"] for r in recs] == [
+        "onboarding-analyze",
+        "onboarding-repertoire",
+        "onboarding-train",
+    ]
+    assert [r["cta"]["view"] for r in recs] == ["analyze", "build", "train"]
+    assert all(r["title"] and r["detail"] and r["cta"]["label"] for r in recs)
     # Weekly recap: empty but well-formed for a brand-new user.
     recap = body["recap"]
     assert recap["reviews_7d"] == 0
@@ -132,6 +141,32 @@ def test_dashboard_recap_counts_this_weeks_reviews(client):
     # One correct attempt is not mastery yet; nothing weak either.
     assert recap["mastered_now"] == 0 and recap["mastered_delta"] == 0
     assert recap["weak_now"] == 0 and recap["weak_delta"] == 0
+
+
+def test_dashboard_recommendations_follow_account_state(client):
+    """With a repertoire on board, the onboarding trio is replaced by state-based
+    next actions (personalization lives in services/dashboard_recommendations.py)."""
+    _register(client, "coach@example.com", display_name="Coach")
+    created = client.post(
+        "/api/repertoires/create",
+        json={"name": "KP", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+    client.post(
+        "/api/build/add-move",
+        json={
+            "repertoire_id": created["repertoire_id"],
+            "parent_node_id": created["selected_node_id"],
+            "move_uci": "e2e4",
+        },
+        headers=csrf_headers(client),
+    )
+
+    recs = client.get("/api/dashboard").json()["recommendations"]
+    ids = [r["id"] for r in recs]
+    assert "onboarding-analyze" not in ids
+    assert ids[0] in {"train-due", "review-weak", "analyze-game"}
+    assert all(r["cta"]["view"] in {"train", "build", "analyze"} for r in recs)
 
 
 def test_auth_me_reports_display_name(client):

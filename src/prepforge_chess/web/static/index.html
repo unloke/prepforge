@@ -6,8 +6,8 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-Cza0Dc7j.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/assets/index-_rdFR_DG.css">
+    <script type="module" crossorigin src="/static/assets/index-CAa8Yojj.js"></script>
+    <link rel="stylesheet" crossorigin href="/static/assets/index-D3j_fBIC.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -100,7 +100,10 @@
               </div>
             </section>
             <div class="reveal" id="analysis-results" hidden>
-              <svg class="eval-chart" id="eval-chart" viewBox="0 0 640 96" role="img"></svg>
+              <div class="eval-chart-wrap">
+                <svg class="eval-chart" id="eval-chart" viewBox="0 0 640 96" role="img"></svg>
+                <div class="eval-chart-tooltip" id="eval-chart-tooltip" aria-hidden="true" hidden></div>
+              </div>
               <div class="movelist tree" id="analysis-moves" data-testid="analysis-moves"></div>
               <div class="tags muted-row" id="analysis-summary"></div>
               <div class="analysis-handoff" id="analysis-handoff" data-testid="analysis-handoff" hidden>

@@ -10,6 +10,13 @@ from prepforge_chess.core.models import Color, EngineEvaluation, MoveClassificat
 WC_SIGMOID_SCALE = 0.00368208
 CP_CLAMP = 1000
 
+# Cross-end contract: tests/fixtures/classification_golden.json pins this
+# classifier and the browser Coach (web-src/coach/features.js) to the same
+# golden semantics (boundary tiers, mate/extreme evals, Brilliant 2% edge).
+# Run by tests/test_classification_golden.py and
+# web-src/coach/classification-golden.test.js — extend the fixture whenever a
+# threshold or conversion here changes.
+
 
 @dataclass(frozen=True)
 class ClassificationConfig:

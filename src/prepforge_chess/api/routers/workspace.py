@@ -25,6 +25,10 @@ from prepforge_chess.services.opening_builder import (
     OpeningBuilderService,
 )
 from prepforge_chess.services import streak
+from prepforge_chess.services.dashboard_recommendations import (
+    DashboardSignals,
+    build_recommendations,
+)
 from prepforge_chess.services.repertoire_export import RepertoireExportService
 from prepforge_chess.services.workspace_view import build_workspace_payload
 from prepforge_chess.storage import sa_tables as t
@@ -95,12 +99,9 @@ def _strip_readonly_build_payload(payload: dict[str, Any]) -> None:
         node.pop("mastery", None)
 
 
-# Static next-action hints surfaced by the dashboard.
-_RECOMMENDATIONS = [
-    "Next action: analyze a PGN and review classifications.",
-    "Next action: generate or extend one repertoire branch in Build.",
-    "Next action: start a trainer session from an imported repertoire package.",
-]
+# Next actions are personalized from the owner's real state (due reviews, weak
+# cards, repertoire presence) by services/dashboard_recommendations.py — one
+# pure decision function, regression-tested across account states.
 
 
 @router.get("/dashboard")
@@ -170,7 +171,17 @@ def dashboard(
             repo, owner, local_day,
             reviews_7d=reviews_7d, mastered_now=mastered_now, weak_now=weak_now,
         ),
-        "recommendations": _RECOMMENDATIONS,
+        "recommendations": build_recommendations(
+            DashboardSignals(
+                games=games,
+                repertoires=repertoires,
+                training_sessions=sessions,
+                due_reviews=due_reviews,
+                due_soon=due_soon,
+                open_mistakes=open_mistakes,
+                weak=weak_now,
+            )
+        ),
     }
 
 

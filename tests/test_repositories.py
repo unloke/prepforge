@@ -1,4 +1,8 @@
-from sqlalchemy import text
+import os
+import uuid
+
+import pytest
+from sqlalchemy import create_engine, text, update
 
 from prepforge_chess.core.chess_core import STARTING_FEN, ChessCore
 from prepforge_chess.core.models import (
@@ -14,6 +18,7 @@ from prepforge_chess.core.models import (
     TrainingProgress,
     TrainingSession,
 )
+from prepforge_chess.storage import sa_tables
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
@@ -429,3 +434,195 @@ def test_distinct_castling_and_ep_get_distinct_position_rows():
         fens = [r[0] for r in conn.execute(text("SELECT fen FROM positions"))]
     assert len(fens) == 6
     assert len(set(fens)) == 6
+
+
+# ---- list_repertoires: batched listing (no N+1 load_repertoire) -------------
+
+
+def _tree_repertoire(rep_id: str, name: str, ucs: list, tag: str, owner: str) -> Repertoire:
+    """A root plus a prepared mainline chain (``ucs``) with an eval on the leaf."""
+    core = ChessCore()
+    root = OpeningNode(
+        id=f"{rep_id}-root",
+        repertoire_id=rep_id,
+        fen=STARTING_FEN,
+        side_to_move=Color.WHITE,
+        is_mainline=True,
+    )
+    parent = root
+    fen = STARTING_FEN
+    for index, uci in enumerate(ucs):
+        record = core.apply_uci(fen, uci, source=MoveSource.MANUAL)
+        child = OpeningNode(
+            id=f"{rep_id}-n{index}",
+            repertoire_id=rep_id,
+            parent_id=parent.id,
+            move=record,
+            fen=record.fen_after,
+            side_to_move=core.side_to_move(record.fen_after),
+            is_mainline=True,
+            is_user_prepared_move=True,
+            tags=[tag],
+            engine_evaluation=(
+                EngineEvaluation(
+                    engine="stockfish", depth=12, score_cp=20, best_move_uci=uci
+                )
+                if index == len(ucs) - 1
+                else None
+            ),
+        )
+        parent.children.append(child)
+        parent = child
+        fen = record.fen_after
+    return Repertoire(
+        id=rep_id,
+        name=name,
+        color=Color.WHITE,
+        root_fen=STARTING_FEN,
+        root_node=root,
+        notes=f"{name} notes",
+        tags=[tag],
+    )
+
+
+def _tree_signature(node):
+    return (
+        node.id,
+        node.parent_id,
+        node.move.uci if node.move else None,
+        node.fen,
+        node.is_mainline,
+        node.is_user_prepared_move,
+        node.is_enabled,
+        node.comment,
+        tuple(node.tags),
+        node.engine_evaluation.score_cp if node.engine_evaluation else None,
+        tuple(_tree_signature(child) for child in node.children),
+    )
+
+
+def _same_repertoire(a, b) -> bool:
+    """Deep equivalence between a listed and a single-loaded repertoire."""
+    return (
+        a.id == b.id
+        and a.name == b.name
+        and a.color == b.color
+        and a.root_fen == b.root_fen
+        and a.notes == b.notes
+        and a.tags == b.tags
+        and a.is_active == b.is_active
+        and a.main_engine == b.main_engine
+        and a.branch_depth == b.branch_depth
+        and a._cached_health == b._cached_health
+        and _tree_signature(a.root_node) == _tree_signature(b.root_node)
+    )
+
+
+def _exercise_list_repertoires(repo, owner: str) -> None:
+    """Empty → single → multi(+nodes) → ordering, against any backend.
+
+    Behavioural twin of the statement-count guard in test_build_sql_counts.py:
+    the batched ``list_repertoires`` read is O(1) in the repertoire count —
+    2 SQL statements without referenced engine evaluations, 3 with them —
+    while the old id-list + ``load_repertoire`` × N shape grew linearly
+    (~1 + 2N / ~1 + 3N). This exercise asserts the public behaviour that the
+    batching must preserve: identical trees to ``load_repertoire``.
+
+    Every assertion is owner-scoped so the exercise stays hermetic when it runs
+    on a shared PostgreSQL database (TEST_POSTGRES_URL CI job).
+    """
+    # Empty: no repertoires for this owner.
+    assert repo.list_repertoires(owner_user_id=owner) == []
+
+    # Single: a small tree round-trips exactly like load_repertoire.
+    repo.save_repertoire(
+        _tree_repertoire("rep-a", "Alpha", ["e2e4"], "kp", owner),
+        owner_user_id=owner,
+    )
+    listed = repo.list_repertoires(owner_user_id=owner)
+    assert [rep.id for rep in listed] == ["rep-a"]
+    assert _same_repertoire(listed[0], repo.load_repertoire("rep-a"))
+    leaf = listed[0].root_node.children[0]
+    assert leaf.move.uci == "e2e4"
+    assert leaf.tags == ["kp"]
+    assert leaf.engine_evaluation is not None
+    assert leaf.engine_evaluation.depth == 12
+
+    # Multi: several repertoires, several nodes each; owner-scoped listing.
+    repo.save_repertoire(
+        _tree_repertoire("rep-b", "Beta", ["d2d4", "d7d5"], "qg", owner),
+        owner_user_id=owner,
+    )
+    repo.save_repertoire(
+        _tree_repertoire("rep-c", "Gamma", ["c2c4", "c7c5", "b1c3"], "eng", owner),
+        owner_user_id=owner,
+    )
+    repo.save_repertoire(
+        _tree_repertoire("rep-foreign", "Foreign", ["g1f3"], "other", "someone-else"),
+        owner_user_id="someone-else",
+    )
+    scoped = repo.list_repertoires(owner_user_id=owner)
+    assert sorted(rep.id for rep in scoped) == ["rep-a", "rep-b", "rep-c"]
+    assert [len(rep.root_node.children) for rep in scoped] == [1, 1, 1]
+    deep = next(rep for rep in scoped if rep.id == "rep-c")
+    chain = [deep.root_node]
+    while chain[-1].children:
+        chain.append(chain[-1].children[0])
+    assert [node.move.uci for node in chain[1:]] == ["c2c4", "c7c5", "b1c3"]
+    assert chain[-1].engine_evaluation is not None
+    for rep in scoped:
+        assert _same_repertoire(rep, repo.load_repertoire(rep.id))
+
+    # Ordering: newest first, pinned timestamps so the assertion is deterministic.
+    stamps = {
+        "rep-a": "2026-01-01T00:00:00+00:00",
+        "rep-b": "2026-02-01T00:00:00+00:00",
+        "rep-c": "2026-03-01T00:00:00+00:00",
+    }
+    with repo.engine.begin() as conn:
+        for rep_id, iso in stamps.items():
+            conn.execute(
+                update(sa_tables.repertoires)
+                .where(sa_tables.repertoires.c.id == rep_id)
+                .values(updated_at=iso)
+            )
+    ordered = repo.list_repertoires(owner_user_id=owner)
+    assert [rep.id for rep in ordered] == ["rep-c", "rep-b", "rep-a"]
+    # …and the documented invariant holds: same set and order as
+    # list_repertoire_metas.
+    assert [row["id"] for row in repo.list_repertoire_metas(owner_user_id=owner)] == [
+        "rep-c",
+        "rep-b",
+        "rep-a",
+    ]
+
+
+def test_list_repertoires_sqlite():
+    """SQLite twin of the postgres variant below — same behavioural exercise,
+    same assertions, against the in-memory backend."""
+    repo = _repository()
+    _exercise_list_repertoires(repo, owner="u-list-" + uuid.uuid4().hex[:8])
+
+
+def _psycopg3_url(raw: str) -> str:
+    # TEST_POSTGRES_URL is a bare postgresql:// URL, which SQLAlchemy maps to the
+    # psycopg2 dialect — but the project ships psycopg 3 (same pin as config.py).
+    if raw.startswith("postgresql://"):
+        return "postgresql+psycopg://" + raw[len("postgresql://") :]
+    if raw.startswith("postgres://"):
+        return "postgresql+psycopg://" + raw[len("postgres://") :]
+    return raw
+
+
+def test_list_repertoires_postgres(monkeypatch):
+    """PostgreSQL variant of ``test_list_repertoires_sqlite`` — the same
+    behavioural exercise (deep-equal to ``load_repertoire``, owner scoping,
+    ordering) run against a real PostgreSQL so dialect differences cannot
+    regress the batched listing."""
+    url = os.getenv("TEST_POSTGRES_URL")
+    if not url:
+        pytest.skip("TEST_POSTGRES_URL is not configured")
+    engine = create_engine(_psycopg3_url(url), future=True)
+    sa_tables.metadata.create_all(engine, tables=list(sa_tables.DOMAIN_TABLES))
+    repo = PrepForgeRepository(engine)
+    _exercise_list_repertoires(repo, owner="u-list-" + uuid.uuid4().hex[:8])

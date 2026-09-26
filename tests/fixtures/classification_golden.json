@@ -1,0 +1,315 @@
+{
+  "description": "Cross-end classification contract. Both production classifiers — the server (src/prepforge_chess/services/classification.py) and the browser Coach (web-src/coach/features.js) — must produce the same classification semantics for every case here. The implementations stay independent; this fixture is the only shared source of truth. Consumed by tests/test_classification_golden.py (server) and web-src/coach/classification-golden.test.js (browser).",
+  "version": 1,
+  "win_chance_scale": {
+    "sigmoid_scale": 0.00368208,
+    "loss_unit": "percentage points of mover-POV win chance (0..100)"
+  },
+  "thresholds_pct": {
+    "excellent_max_loss": 2,
+    "good_max_loss": 5,
+    "inaccuracy_max_loss": 10,
+    "mistake_max_loss": 15
+  },
+  "brilliant_candidate_max_win_delta_pct": 2,
+  "notes": [
+    "loss_pct is the shared mover-POV win-chance loss both ends compute from the two evals; it is null only where the ends intentionally diverge (see each case note): mate mapping (server: mate -> ±1000cp clip; browser: mate -> 100/0) and the cp clamp (server: ±1000; browser cpToWin: ±1500).",
+    "brilliant_candidate is the 2% Brilliant-eligibility edge: server-side it is 'classified BEST or EXCELLENT' (services/brilliant.py), browser-side 'isBest || winDelta <= 2' (features.js BRILLIANT_MAX_CANDIDATE_WIN_DELTA).",
+    "Boundary cases use the adjacent integer centipawn pair that straddles each threshold, so a threshold drift of even one tier flips a golden expectation."
+  ],
+  "cases": [
+    {
+      "id": "best-move-exact",
+      "description": "Played move is Stockfish's first choice: always BEST regardless of any eval delta.",
+      "side_to_move": "white",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "played": { "uci": "e2e4", "san": "e4" },
+      "best": { "uci": "e2e4", "san": "e4" },
+      "best_eval_after": { "cp": 0 },
+      "played_eval_after": { "cp": 0 },
+      "expected": {
+        "loss_pct": 0.0,
+        "server": "best",
+        "browser": "best",
+        "brilliant_candidate": true
+      }
+    },
+    {
+      "id": "zero-loss-boundary",
+      "description": "0% edge: not the best move but zero win-chance loss -> still top tier.",
+      "side_to_move": "white",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "played": { "uci": "e2e4", "san": "e4" },
+      "best": { "uci": "g1f3", "san": "Nf3" },
+      "best_eval_after": { "cp": 0 },
+      "played_eval_after": { "cp": 0 },
+      "expected": {
+        "loss_pct": 0.0,
+        "server": "excellent",
+        "browser": "best",
+        "brilliant_candidate": true
+      }
+    },
+    {
+      "id": "zero-loss-just-above",
+      "description": "0% edge, just above: a hair under half a point of loss stays in the top band.",
+      "side_to_move": "white",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "played": { "uci": "e2e4", "san": "e4" },
+      "best": { "uci": "g1f3", "san": "Nf3" },
+      "best_eval_after": { "cp": 0 },
+      "played_eval_after": { "cp": -5 },
+      "expected": {
+        "loss_pct": 0.46,
+        "server": "excellent",
+        "browser": "best",
+        "brilliant_candidate": true
+      }
+    },
+    {
+      "id": "brilliant-elig-2pct-inside",
+      "description": "2% edge from below (also the Brilliant-candidate eligibility edge): 1.93% loss is EXCELLENT and Brilliant-eligible.",
+      "side_to_move": "white",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "played": { "uci": "e2e4", "san": "e4" },
+      "best": { "uci": "g1f3", "san": "Nf3" },
+      "best_eval_after": { "cp": 0 },
+      "played_eval_after": { "cp": -21 },
+      "expected": {
+        "loss_pct": 1.93,
+        "server": "excellent",
+        "browser": "best",
+        "brilliant_candidate": true
+      }
+    },
+    {
+      "id": "brilliant-elig-2pct-outside",
+      "description": "2% edge from above (also the Brilliant-candidate eligibility edge): 2.02% loss drops to GOOD and loses Brilliant eligibility.",
+      "side_to_move": "white",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "played": { "uci": "e2e4", "san": "e4" },
+      "best": { "uci": "g1f3", "san": "Nf3" },
+      "best_eval_after": { "cp": 0 },
+      "played_eval_after": { "cp": -22 },
+      "expected": {
+        "loss_pct": 2.02,
+        "server": "good",
+        "browser": "good",
+        "brilliant_candidate": false
+      }
+    },
+    {
+      "id": "good-5pct-inside",
+      "description": "5% edge from below: 4.95% loss is still GOOD.",
+      "side_to_move": "white",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "played": { "uci": "e2e4", "san": "e4" },
+      "best": { "uci": "g1f3", "san": "Nf3" },
+      "best_eval_after": { "cp": 0 },
+      "played_eval_after": { "cp": -54 },
+      "expected": {
+        "loss_pct": 4.95,
+        "server": "good",
+        "browser": "good",
+        "brilliant_candidate": false
+      }
+    },
+    {
+      "id": "good-5pct-outside",
+      "description": "5% edge from above: 5.05% loss becomes INACCURACY.",
+      "side_to_move": "white",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "played": { "uci": "e2e4", "san": "e4" },
+      "best": { "uci": "g1f3", "san": "Nf3" },
+      "best_eval_after": { "cp": 0 },
+      "played_eval_after": { "cp": -55 },
+      "expected": {
+        "loss_pct": 5.05,
+        "server": "inaccuracy",
+        "browser": "inaccuracy",
+        "brilliant_candidate": false
+      }
+    },
+    {
+      "id": "inaccuracy-10pct-inside",
+      "description": "10% edge from below: 9.99% loss is still INACCURACY.",
+      "side_to_move": "white",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "played": { "uci": "e2e4", "san": "e4" },
+      "best": { "uci": "g1f3", "san": "Nf3" },
+      "best_eval_after": { "cp": 0 },
+      "played_eval_after": { "cp": -110 },
+      "expected": {
+        "loss_pct": 9.99,
+        "server": "inaccuracy",
+        "browser": "inaccuracy",
+        "brilliant_candidate": false
+      }
+    },
+    {
+      "id": "inaccuracy-10pct-outside",
+      "description": "10% edge from above: 10.08% loss becomes MISTAKE.",
+      "side_to_move": "white",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "played": { "uci": "e2e4", "san": "e4" },
+      "best": { "uci": "g1f3", "san": "Nf3" },
+      "best_eval_after": { "cp": 0 },
+      "played_eval_after": { "cp": -111 },
+      "expected": {
+        "loss_pct": 10.08,
+        "server": "mistake",
+        "browser": "mistake",
+        "brilliant_candidate": false
+      }
+    },
+    {
+      "id": "mistake-15pct-inside",
+      "description": "15% edge from below: 14.99% loss is still MISTAKE.",
+      "side_to_move": "white",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "played": { "uci": "e2e4", "san": "e4" },
+      "best": { "uci": "g1f3", "san": "Nf3" },
+      "best_eval_after": { "cp": 0 },
+      "played_eval_after": { "cp": -168 },
+      "expected": {
+        "loss_pct": 14.99,
+        "server": "mistake",
+        "browser": "mistake",
+        "brilliant_candidate": false
+      }
+    },
+    {
+      "id": "mistake-15pct-outside",
+      "description": "15% edge from above: 15.07% loss becomes BLUNDER.",
+      "side_to_move": "white",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "played": { "uci": "e2e4", "san": "e4" },
+      "best": { "uci": "g1f3", "san": "Nf3" },
+      "best_eval_after": { "cp": 0 },
+      "played_eval_after": { "cp": -169 },
+      "expected": {
+        "loss_pct": 15.07,
+        "server": "blunder",
+        "browser": "blunder",
+        "brilliant_candidate": false
+      }
+    },
+    {
+      "id": "best-move-search-disagreement",
+      "description": "The isBest Brilliant-eligibility leg: two disagreeing searches (before-search loves g1f3 by 3.68pts) must not drop a literal best move from Brilliant eligibility.",
+      "side_to_move": "white",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "played": { "uci": "e2e4", "san": "e4" },
+      "best": { "uci": "e2e4", "san": "e4" },
+      "best_eval_after": { "cp": 0 },
+      "played_eval_after": { "cp": -40 },
+      "expected": {
+        "loss_pct": null,
+        "server": "best",
+        "browser": "best",
+        "brilliant_candidate": true
+      },
+      "note": "Ends diverge on the NUMERIC loss only: the server returns BEST before computing a loss (win_chance_loss 0.0), while the browser's winDelta is the real eval delta (3.68). Classification and Brilliant eligibility still agree."
+    },
+    {
+      "id": "black-mover-perspective",
+      "description": "Loss is computed from the MOVER's perspective: a Black move that turns a winning position into a losing one is a blunder even though White's eval went up.",
+      "side_to_move": "black",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "fen_after": "rnbqkbnr/pppp1ppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2",
+      "played": { "uci": "c7c5", "san": "c5" },
+      "best": { "uci": "e7e5", "san": "e5" },
+      "best_eval_after": { "cp": -300 },
+      "played_eval_after": { "cp": 300 },
+      "expected": {
+        "loss_pct": 50.23,
+        "server": "blunder",
+        "browser": "blunder",
+        "brilliant_candidate": false
+      }
+    },
+    {
+      "id": "mate-kept",
+      "description": "Mate / extreme evals: keeping the forced mate (on a different move) is zero loss — top tier.",
+      "side_to_move": "white",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "played": { "uci": "e2e4", "san": "e4" },
+      "best": { "uci": "g1f3", "san": "Nf3" },
+      "best_eval_after": { "mate": 3 },
+      "played_eval_after": { "mate": 3 },
+      "expected": {
+        "loss_pct": 0.0,
+        "server": "excellent",
+        "browser": "best",
+        "brilliant_candidate": true
+      }
+    },
+    {
+      "id": "mate-missed-for-material",
+      "description": "Mate / extreme evals: trading a forced mate for a -300cp position is a blunder on both ends.",
+      "side_to_move": "white",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "played": { "uci": "e2e4", "san": "e4" },
+      "best": { "uci": "g1f3", "san": "Nf3" },
+      "best_eval_after": { "mate": 3 },
+      "played_eval_after": { "cp": -300 },
+      "expected": {
+        "loss_pct": null,
+        "server": "blunder",
+        "browser": "blunder",
+        "brilliant_candidate": false
+      },
+      "note": "Ends diverge on the NUMERIC loss only: mate maps to a ±1000cp clip on the server (loss 72.66) but to 100/0 win% in the browser (winDelta 75.11). Both land in the blunder tier."
+    },
+    {
+      "id": "mate-against-mover",
+      "description": "Mate / extreme evals: walking out of my own mate into the opponent's forced mate is the worst possible loss.",
+      "side_to_move": "white",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "played": { "uci": "e2e4", "san": "e4" },
+      "best": { "uci": "g1f3", "san": "Nf3" },
+      "best_eval_after": { "mate": 3 },
+      "played_eval_after": { "mate": -3 },
+      "expected": {
+        "loss_pct": null,
+        "server": "blunder",
+        "browser": "blunder",
+        "brilliant_candidate": false
+      },
+      "note": "Ends diverge on the NUMERIC loss only (server 95.09 / browser 100.0) because mate maps to clipped cp on the server and to 100/0 in the browser."
+    },
+    {
+      "id": "extreme-clamped-evals",
+      "description": "Mate / extreme evals: beyond both ends' cp clamps the numeric loss differs but the tier must not.",
+      "side_to_move": "white",
+      "fen_before": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "fen_after": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "played": { "uci": "e2e4", "san": "e4" },
+      "best": { "uci": "g1f3", "san": "Nf3" },
+      "best_eval_after": { "cp": 2000 },
+      "played_eval_after": { "cp": -2000 },
+      "expected": {
+        "loss_pct": null,
+        "server": "blunder",
+        "browser": "blunder",
+        "brilliant_candidate": false
+      },
+      "note": "Known numeric divergence (flagged for separate cleanup): the server clamps cp at ±1000 (CP_CLAMP) while the browser's cpToWin clamps at ±1500, so the server reports 95.09 and the browser 99.20. The classification tier agrees."
+    }
+  ]
+}

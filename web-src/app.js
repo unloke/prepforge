@@ -3699,6 +3699,7 @@ async function ensureDashboardView() {
       showInputModal,
       promptImportRepertoireFromPgn,
       requireSignIn,
+      goToView: switchView,
     });
     dashboardView.bind();
   }
@@ -5662,6 +5663,9 @@ let analyzeModule = null;
 let analyzeView = null;
 let moveTreeModule = null;
 let moveTreeRenderer = null;
+// Resolved once init() fully finishes (including restoreWorkspaceLocation).
+// The E2E hooks await this so a seeded view isn't switched away mid-boot.
+let appReadyPromise = null;
 
 function preloadAnalyzeView() {
   if (!analyzeModule) {
@@ -6108,15 +6112,9 @@ async function onAnalysisBoardMove(moveUci, fen) {
 }
 
 function bindEvalChart() {
-  const chart = document.getElementById("eval-chart");
-  chart.addEventListener("click", (event) => {
-    const points = appState.evalChartPoints || [];
-    if (!points.length) return;
-    const rect = chart.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-    const idx = Math.round(ratio * (points.length - 1));
-    showAnalysisPly(points[idx].ply);
-  });
+  // Chart interaction (click / hover tooltip / keyboard) lives with the chart
+  // renderer in views/analyze.js (bound on first render); app.js only keeps the
+  // viewport resize hook that rescales the key-moment markers.
   window.addEventListener("resize", rescaleEvalMarkers);
 }
 
@@ -11116,6 +11114,40 @@ function installPolishE2eHook() {
   };
 }
 
+// Analyze E2E hook: deterministic tests seed a finished analysis payload
+// (moves + eval graph) without running a browser engine. Same gating shape as
+// the Scout/Polish hooks — E2E build flag + query-param opt-in — so production
+// pages never expose it. Shares the existing E2E build flags so the CI e2e job's
+// build (VITE_ENABLE_SCOUT_E2E=1) carries it.
+const ANALYZE_E2E_BUILD_ENABLED = SCOUT_E2E_BUILD_ENABLED || POLISH_E2E_BUILD_ENABLED;
+
+function installAnalyzeE2eHook() {
+  if (window.__prepforgeAnalyzeE2e) return;
+  window.__prepforgeAnalyzeE2e = {
+    async seedAnalysis(payload) {
+      // Boot races the seed: init()'s restoreWorkspaceLocation() switches to the
+      // default view after this hook is installed. Await boot so the seeded
+      // Analyze view (and its reveal) isn't switched away underneath us.
+      if (appReadyPromise) await appReadyPromise;
+      switchView("analyze");
+      appState.analysis = payload;
+      appState.analysisVarNodes = new Map();
+      appState.analysisVarCounter = 0;
+      appState.analysisCurrentNodeId = "root";
+      appState.analysisTree = null;
+      appState.analysisPly = 0;
+      const view = await ensureAnalyzeView();
+      view.renderAnalysis(payload);
+      revealAnalysisResults();
+      await showAnalysisPly(0);
+      return true;
+    },
+    getPly: () => appState.analysisPly,
+    getBoardLabel: () =>
+      (document.getElementById("analysis-board-label") || {}).textContent || "",
+  };
+}
+
 if (
   SCOUT_E2E_BUILD_ENABLED &&
   new URLSearchParams(location.search).get("scout_e2e") === "1"
@@ -11128,6 +11160,13 @@ if (
   new URLSearchParams(location.search).get("polish_e2e") === "1"
 ) {
   installPolishE2eHook();
+}
+
+if (
+  ANALYZE_E2E_BUILD_ENABLED &&
+  new URLSearchParams(location.search).get("analyze_e2e") === "1"
+) {
+  installAnalyzeE2eHook();
 }
 
 // Scout chunk loads on first Scout click — not at app boot. A tiny static
@@ -11668,4 +11707,4 @@ async function loadSignedInWorkspace() {
   await loadDashboard();
 }
 
-init().catch((error) => setStatusError(error.message));
+appReadyPromise = init().catch((error) => setStatusError(error.message));
