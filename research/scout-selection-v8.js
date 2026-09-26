@@ -1,31 +1,11 @@
 // Bounded, engine-independent selection math. No browser or chess dependencies.
-import { opponentMoveProbability } from "./scout-probability.js";
+import { opponentMoveProbability } from "../web-src/scout-probability.js";
 
 export const routeKey = (r) => (r.ucis || []).join(">");
 const prefix = (a, b) => a === b || b.startsWith(`${a}>`);
 export const nestedRoutes = (a, b) => prefix(routeKey(a), routeKey(b)) || prefix(routeKey(b), routeKey(a));
 
-/** Observed decisions under the user's chosen moves; not a calibrated forecast.
- * Raw conditional reach avoids repeatedly penalizing the same sparse trajectory
- * with posterior pseudo-counts. Reliability is charged once at each covered
- * decision instead. Neither user-move frequency nor unobserved plies earn value.
- */
-export function preparationDecisionWeights(route) {
-  let reach = 1;
-  let previousSupport = null;
-  let repeatedEvidence = 0;
-  return (route.preparationDecisions || []).map(({ ply, moveGames, parentGames }) => {
-    reach *= parentGames > 0 ? Math.min(1, Math.max(0, moveGames / parentGames)) : 0;
-    // Along a prefix path equal counts mean the same nested game set. More
-    // moves from that set add content, not independent samples. Its total
-    // decision credit is bounded by twice its reliability, even for a long game.
-    repeatedEvidence = moveGames === previousSupport ? repeatedEvidence + 1 : 0;
-    previousSupport = moveGames;
-    return { ply, reach, weight: reach * moveGames / (moveGames + 2) * 0.5 ** repeatedEvidence };
-  });
-}
-
-/** Decision coverage plus a bounded terminal opportunity. */
+/** Conservative observed coverage, NOT the probability under a chosen user policy. */
 export function preparationValue(route, baseline = 50) {
   const support = Math.max(0, route.routeSupportGames ?? route.games ?? 0);
   const total = Math.max(support, route.evidenceGames ?? support);
@@ -39,21 +19,14 @@ export function preparationValue(route, baseline = 50) {
   const engine = route.mateIn > 0 ? 1 : Number.isFinite(cp)
     ? Math.max(0, cp) / (100 + Math.max(0, cp)) : 0.1;
   const opportunity = engine * (1 + weakness);
-  const decisions = preparationDecisionWeights(route);
-  const conditionalReach = decisions.at(-1)?.reach ?? null;
-  const decisionCoverage = decisions.reduce((sum,d) => sum+d.weight,0);
-  // Evidence-poor callers cannot invent conditional tendencies: retain a
-  // conservative observed-frequency fallback, with no decision coverage credit.
-  const terminalValue = (conditionalReach == null ? coverage : conditionalReach * support/(support+2)) * opportunity;
-  const value = support > 0 && engine > 0 ? decisionCoverage + terminalValue : 0;
-  return { support, total, coverage, conditionalReach, decisionCoverage, opportunity, terminalValue, value };
+  return { support, total, coverage, opportunity, value: coverage * opportunity };
 }
 
 /**
- * Exact maximum UNIQUE observed-decision coverage plus terminal opportunities
- * under a slot budget and prefix antichain. Shared edges are rewarded once per
- * nonempty subtree, not once per route. User choices are controllable alternatives
- * in this preparation portfolio; they are not random events or a forced repertoire.
+ * Exact maximum preparation value under a slot budget and prefix antichain.
+ * Non-nested observed prefixes have disjoint historical game coverage, so their
+ * conservative expected values add. Opening family is deliberately irrelevant.
+ * At every node, compare preparing that route with all feasible child sets.
  */
 export function selectPreparationRoutes(routes, { limit = 12, baseline = 50 } = {}) {
   const budget = Math.min(12, Math.max(0, Math.floor(limit)));
@@ -64,15 +37,13 @@ export function selectPreparationRoutes(routes, { limit = 12, baseline = 50 } = 
     const evidence = preparationValue(route, baseline);
     if (!(evidence.value > 0)) continue;
     let node = root;
-    const weights = new Map(preparationDecisionWeights(route).map(d=>[d.ply,d.weight]));
-    route.ucis.forEach((move,i) => {
+    route.ucis.forEach((move) => {
       if (!node.children.has(move)) node.children.set(move, { children: new Map() });
       node = node.children.get(move);
-      node.weight = Math.max(node.weight || 0, weights.get(i+1) || 0);
     });
-    if (!node.route || evidence.value > node.route.preparationEvidence.value) {
+    if (!node.route || evidence.value > node.value) {
       node.route = { ...route, preparationEvidence: evidence };
-      node.value = evidence.terminalValue;
+      node.value = evidence.value;
     }
   }
   const combine = (left, right) => {
@@ -91,7 +62,6 @@ export function selectPreparationRoutes(routes, { limit = 12, baseline = 50 } = 
       const value = node.value;
       if (!table[1] || value >= table[1].value - 1e-12) table[1] = { value, routes: [node.route] };
     }
-    for (let k=1;k<table.length;k++) if (table[k]) table[k].value += node.weight || 0;
     return table;
   };
   const table = solve(root);
@@ -100,3 +70,4 @@ export function selectPreparationRoutes(routes, { limit = 12, baseline = 50 } = 
   return best.routes
     .sort((a, b) => b.preparationEvidence.value - a.preparationEvidence.value || routeKey(a).localeCompare(routeKey(b)));
 }
+
