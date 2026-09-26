@@ -213,21 +213,21 @@ export function scoutMaiaRankedNote(
     return `<div class="scout-ranked-note muted hint">Evaluating ${total} candidates…</div>`;
   }
   if (withMaia === total) {
-    return `<div class="scout-ranked-note muted hint">Ranked by Maia exploitability · score/WDL are Maia estimates</div>`;
+    return `<div class="scout-ranked-note muted hint">Ranked by preparation value and coverage · score/WDL are Maia estimates</div>`;
   }
   if (withMaia > 0 && withMaia < total) {
-    return `<div class="scout-ranked-note muted hint">Ranked by Maia exploitability · partial Maia estimates · empirical score/WDL on remaining lines</div>`;
+    return `<div class="scout-ranked-note muted hint">Ranked by preparation value and coverage · partial Maia estimates · empirical score/WDL on remaining lines</div>`;
   }
   if (state === MAIA_ENRICH_PARTIAL) {
-    return `<div class="scout-ranked-note muted hint">Ranked by Maia exploitability · empirical score/WDL (Maia unavailable on some lines)</div>`;
+    return `<div class="scout-ranked-note muted hint">Ranked by preparation value and coverage · empirical score/WDL (Maia unavailable on some lines)</div>`;
   }
   if (state === MAIA_ENRICH_FAILED) {
-    return `<div class="scout-ranked-note muted hint">Ranked by exploitability · empirical score/WDL (Maia unavailable)</div>`;
+    return `<div class="scout-ranked-note muted hint">Ranked by preparation value and coverage · empirical score/WDL (Maia unavailable)</div>`;
   }
   if (state === MAIA_ENRICH_OFF) {
     return `<div class="scout-ranked-note muted hint">Maia enrichment needs Maia analysis — turn it on in Settings → Playing strength for human-likeness reads.</div>`;
   }
-  return `<div class="scout-ranked-note muted hint">Ranked by exploitability · empirical score/WDL</div>`;
+  return `<div class="scout-ranked-note muted hint">Ranked by preparation value and coverage · empirical score/WDL</div>`;
 }
 
 export function markUnattemptedMaiaFailures(
@@ -492,42 +492,22 @@ export function countGlobalMaiaOutcomes(
 }
 
 /**
- * Game-plan rows for one colour: Maia successes from the full ranked pool
- * (including backups beyond the Stockfish top 12), then initial display lines.
+ * Preserve every assessed candidate and its metrics for final set selection.
+ * Maia availability never decides which rows may compete for a recommendation.
  */
-export function buildGamePlanDisplayLines({
-  rankedEntries = [],
-  stockfishDisplayLines = [],
-  maiaResults,
-  rating,
-  fenAfterLine,
-  limit = SCOUT_MAIA_TARGET_COUNT,
-} = {}) {
-  const lineKey = (line) => branchPathKey(line.ucis || []);
-  const seen = new Set();
-  const out = [];
-
+export function buildGamePlanDisplayLines({ rankedEntries = [], stockfishDisplayLines = [] } = {}) {
+  const byKey = new Map();
   for (const entry of rankedEntries) {
-    if (out.length >= limit) break;
-    const line = entry?.line ?? entry;
-    if (!line?.ucis?.length) continue;
-    const key = lineKey(line);
-    if (seen.has(key)) continue;
-    const fen = fenAfterLine(line.ucis);
-    if (!getCachedMaiaResult(maiaResults, fen, rating)) continue;
-    seen.add(key);
-    out.push(line);
+    const line = entry.line ?? entry;
+    if (line.ucis?.length) byKey.set(branchPathKey(line.ucis), { ...line,
+      prefilterScore: entry.prefilterScore ?? line.prefilterScore,
+      mateIn: entry.mateIn ?? line.mateIn });
   }
-
-  for (const line of stockfishDisplayLines || []) {
-    if (out.length >= limit) break;
-    const key = lineKey(line);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(line);
+  for (const line of stockfishDisplayLines) {
+    const key = branchPathKey(line.ucis || []);
+    if (!byKey.has(key)) byKey.set(key, line);
   }
-
-  return out;
+  return [...byKey.values()];
 }
 
 export function globalMaiaPoolNeedsWork(

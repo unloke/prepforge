@@ -2,7 +2,6 @@
 import { opponentMoveProbability } from "./scout-probability.js";
 
 export const routeKey = (r) => (r.ucis || []).join(">");
-export const routeFamily = (r) => (r.ucis || []).slice(0, 2).join(">");
 const prefix = (a, b) => a === b || b.startsWith(`${a}>`);
 export const nestedRoutes = (a, b) => prefix(routeKey(a), routeKey(b)) || prefix(routeKey(b), routeKey(a));
 
@@ -24,40 +23,50 @@ export function preparationValue(route, baseline = 50) {
 }
 
 /**
- * An antichain has disjoint observed prefix coverage: no game counts twice.
- * Each route contributes conservative coverage times preparation opportunity.
- * Family sqrt utility gives diminishing returns without arbitrary family quotas.
- * Greedy marginal gain with an antichain constraint avoids all nested duplicates.
- * The constraint means this is a heuristic, not the unconstrained 1-1/e guarantee.
+ * Exact maximum preparation value under a slot budget and prefix antichain.
+ * Non-nested observed prefixes have disjoint historical game coverage, so their
+ * conservative expected values add. Opening family is deliberately irrelevant.
+ * At every node, compare preparing that route with all feasible child sets.
  */
 export function selectPreparationRoutes(routes, { limit = 12, baseline = 50 } = {}) {
-  const unique = new Map();
+  const budget = Math.min(12, Math.max(0, Math.floor(limit)));
+  if (!budget) return [];
+  const root = { children: new Map() };
   for (const route of routes || []) {
-    if (route.ucis?.length && (route.routeReach == null || route.routeReach >= 0.1)) {
-      const key = routeKey(route);
-      const previous = unique.get(key);
-      if (!previous || preparationValue(route, baseline).value > preparationValue(previous, baseline).value) unique.set(key, route);
+    if (!route.ucis?.length || (route.routeReach != null && route.routeReach < 0.1)) continue;
+    const evidence = preparationValue(route, baseline);
+    if (!(evidence.value > 0)) continue;
+    let node = root;
+    route.ucis.forEach((move) => {
+      if (!node.children.has(move)) node.children.set(move, { children: new Map() });
+      node = node.children.get(move);
+    });
+    if (!node.route || evidence.value > node.value) {
+      node.route = { ...route, preparationEvidence: evidence };
+      node.value = evidence.value;
     }
   }
-  const rows = [...unique.values()].map((route) => ({ route, key: routeKey(route),
-    family: routeFamily(route), ...preparationValue(route, baseline) })).sort((a, b) => a.key.localeCompare(b.key));
-  const families = new Map();
-  const selected = [];
-  const budget = Math.min(12, Math.max(0, limit));
-  while (selected.length < budget) {
-    let best = null;
-    for (const row of rows) {
-      if (selected.some((r) => nestedRoutes(r, row.route))) continue;
-      const increment = row.value;
-      const current = families.get(row.family) || 0;
-      const gain = Math.sqrt(current + increment) - Math.sqrt(current);
-      if (gain > 0 && (!best || gain > best.gain + 1e-12 ||
-        (Math.abs(gain - best.gain) <= 1e-12 && row.key < best.row.key))) best = { row, gain, increment };
+  const combine = (left, right) => {
+    const out = [];
+    for (let i = left.length - 1; i >= 0; i--) for (let j = 0; j < right.length && i+j <= budget; j++) {
+      if (!left[i] || !right[j]) continue;
+      const value = left[i].value + right[j].value;
+      if (!out[i+j] || value > out[i+j].value + 1e-12) out[i+j] = { value, routes: [...left[i].routes, ...right[j].routes] };
     }
-    if (!best) break;
-    const { row, gain, increment } = best;
-    selected.push({ ...row.route, preparationEvidence: preparationValue(row.route, baseline), preparationGain: gain });
-    families.set(row.family, (families.get(row.family) || 0) + increment);
-  }
-  return selected;
+    return out;
+  };
+  const solve = (node) => {
+    let table = [{ value: 0, routes: [] }];
+    for (const [,child] of [...node.children].sort(([a],[b]) => a.localeCompare(b))) table = combine(table, solve(child));
+    if (node.route) {
+      const value = node.value;
+      if (!table[1] || value >= table[1].value - 1e-12) table[1] = { value, routes: [node.route] };
+    }
+    return table;
+  };
+  const table = solve(root);
+  let best = table[0];
+  for (const entry of table) if (entry && entry.value > best.value + 1e-12) best = entry;
+  return best.routes
+    .sort((a, b) => b.preparationEvidence.value - a.preparationEvidence.value || routeKey(a).localeCompare(routeKey(b)));
 }

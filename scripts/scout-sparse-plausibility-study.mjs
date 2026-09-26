@@ -1,11 +1,12 @@
+import { branchExploitabilityPrior, branchStruggle } from "../research/scout-legacy-prior.js";
 // Sparse-decision candidate study on parsed public Scout games.
 // Usage: node scripts/scout-sparse-plausibility-study.mjs tmp/scout-player.json
 import { readFileSync } from "node:fs";
 import { Chess } from "chess.js";
 import { opponentMoveProbability } from "../web-src/scout-probability.js";
 import {
-  aggregateOpeningBranches, buildOpeningTrie, branchExploitabilityPrior,
-  branchStruggle, opponentColorBaseline, rankedOpeningBranches, triePrefixStats, trimRankedBranches,
+  aggregateOpeningBranches, buildOpeningTrie,
+  opponentColorBaseline, rankedOpeningBranches, triePrefixStats, trimRankedBranches,
 } from "../web-src/scout.js";
 
 const source = process.argv[2];

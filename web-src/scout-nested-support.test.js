@@ -41,7 +41,7 @@ describe("production nested route support", () => {
     expect(deep.routeReach).toBeGreaterThan(0.7);
     for (const ordered of [lines, [...lines].reverse()]) {
       const selected = prefilter(ordered);
-      expect.soft(selected.map((entry) => entry.line.ucis)).toEqual([trunk]);
+      expect.soft(selected.map((entry) => entry.line.ucis)).toEqual([trunk, child]);
       expect.soft(rankGamePlan(selected.map((entry) => ({
         ...entry.line, prefilterScore: entry.prefilterScore,
       })), 50, { oppColor: "black" }).map((line) => line.ucis)).toEqual([trunk]);
@@ -49,12 +49,12 @@ describe("production nested route support", () => {
     }
   });
 
-  it("allows an equally supported child with a better engine score", () => {
+  it("does not confuse equal terminal counts with equal full-route support", () => {
     const lines = candidates(40).map((line) => ({
       ...line, prefilterScore: line.ucis.length === 4 ? 30 : 35,
     }));
-    expect(prefilter(lines).map((entry) => entry.line.ucis)).toEqual([child]);
-    expect(rankGamePlan(lines, 50, { oppColor: "black" }).map((line) => line.ucis)).toEqual([child]);
+    expect(prefilter(lines).map((entry) => entry.line.ucis)).toEqual([trunk, child]);
+    expect(rankGamePlan(lines, 50, { oppColor: "black" }).map((line) => line.ucis)).toEqual([trunk]);
   });
 
   it("uses engine score only after equal personal support in the game plan", () => {
@@ -74,6 +74,27 @@ describe("production nested route support", () => {
 });
 
 describe("routeSupportGames semantics", () => {
+  it("generates a supported trunk from diverging games even when none ends there", () => {
+    const records = Array.from({length:20},(_,i) => ({
+      color:'black',speed:'blitz',gameId:String(i),score:0,
+      ucis: [...trunk, ...(i < 10 ? ['f1c4','f8c5'] : ['f1b5','a7a6'])],
+      sans: [...trunkSans, ...(i < 10 ? ['Bc4','Bc5'] : ['Bb5','a6'])],
+    }));
+    const trie = buildOpeningTrie(records,'black',{maxPlies:Infinity});
+    const rows = rankedOpeningBranches(records,'black',{trie,limit:0}).branches;
+    const common = rows.find(r => r.ucis.length === trunk.length);
+    expect(common.games).toBe(0);
+    expect(common.gameCount).toBe(20);
+    expect(common.routeSupportGames).toBe(20);
+    expect(common.evidenceGames).toBe(20);
+    expect(rankGamePlan([common],50,{oppColor:'black'})).toHaveLength(1);
+  });
+  it("keeps evaluated opportunity on prefilter line objects used by reports", () => {
+    const entries = prefilter(candidates(1));
+    expect(entries.every(e => e.line.prefilterScore === e.prefilterScore)).toBe(true);
+    expect(entries[0].line.evidenceGames).toBe(41);
+    expect(rankGamePlan(entries.map(e => e.line),50,{oppColor:'black'})[0].preparationEvidence.opportunity).toBeGreaterThan(0.1);
+  });
   it("trunk and child report exact terminal games vs full-route support (40 + 40)", () => {
     const lines = candidates(40);
     const trunkLine = lines.find((line) => line.ucis.length === 4);
@@ -122,10 +143,9 @@ describe("routeSupportGames semantics", () => {
     const lines = candidates(1);
     for (const ordered of [lines, [...lines].reverse()]) {
       const selected = prefilter(ordered);
-      // 1b7b28f nested rule unchanged: the 40-game trunk survives, and its
-      // full-route support travels with it into the prefilter result.
-      expect.soft(selected.map((entry) => entry.line.ucis)).toEqual([trunk]);
-      expect.soft(selected.map((entry) => entry.routeSupportGames)).toEqual([41]);
+      // Prefilter retains both choices; only final selection resolves overlap.
+      expect.soft(selected.map((entry) => entry.line.ucis)).toEqual([trunk, child]);
+      expect.soft(selected.map((entry) => entry.routeSupportGames)).toEqual([41, 1]);
       const plan = rankGamePlan(selected.map((entry) => ({
         ...entry.line, prefilterScore: entry.prefilterScore,
       })), 50, { oppColor: "black" });

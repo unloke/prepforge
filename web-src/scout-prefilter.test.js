@@ -6,7 +6,6 @@ import {
   buildFallbackPrefilterData,
   computePrefilterScopeKey,
   collectPrefilterFens,
-  collapseNestedPrefilterLines,
   mergeGlobalPrefilterRanked,
   prefilterCacheKey,
   prefilterMaiaLines,
@@ -52,6 +51,16 @@ function evalMapForLine(ucis, oppColor, { cpLoss = 30, bestUci = null, complete 
 }
 
 describe("scout-prefilter scoring", () => {
+  it("treats a missing-evaluation cache marker as unavailable, not as a position without a reply", () => {
+    const line = { ucis: ['e2e4'], sans: ['e4'], games: 1 };
+    const funnelOut = {};
+    const ranked = rankPrefilterCandidates([line], new Map([[fenAfterLine(line.ucis), {complete:false}]]), {
+      fenAfterLine, oppColor: 'white', funnelOut,
+    });
+    expect(ranked).toEqual([]);
+    expect(funnelOut.scoreDrops.noEval).toBe(1);
+    expect(funnelOut.scoreDrops.noUserReply).toBe(0);
+  });
   it("scores lines with objective cp loss and a user reply", () => {
     const ucis = ["e2e4", "e7e5", "g1f3"];
     const routePlausibility = { complete: true, minSupportedProbability: 0.5,
@@ -127,19 +136,6 @@ describe("scout-prefilter scoring", () => {
     expect(metrics?.prefilterScore).toBe(-15);
   });
 
-  it("keeps the higher-scoring parent when a nested descendant scores lower", () => {
-    const parent = {
-      line: { ucis: ["e2e4", "e7e5"], line: "e2e4>e7e5" },
-      prefilterScore: 40,
-    };
-    const child = {
-      line: { ucis: ["e2e4", "e7e5", "g1f3"], line: "e2e4>e7e5>g1f3" },
-      prefilterScore: 10,
-    };
-    const collapsed = collapseNestedPrefilterLines([parent, child]);
-    expect(collapsed).toHaveLength(1);
-    expect(collapsed[0].prefilterScore).toBe(40);
-  });
 
   it("merges both colours using route reach as a tie-break, not section order", () => {
     const merged = mergeGlobalPrefilterRanked({
@@ -250,7 +246,7 @@ describe("scout-prefilter scoring", () => {
     expect(ranked[0].line.ucis).toEqual(rareBlunder.ucis);
   });
 
-  it("excludes frequent lines where opponent empirically performs at/above baseline", () => {
+  it("retains engine opportunities even when the opponent historically wins", () => {
     const comfortable = {
       ucis: ["e2e4", "e7e5"],
       sans: ["e4", "e5"],
@@ -274,7 +270,7 @@ describe("scout-prefilter scoring", () => {
       ancestorFreq,
       baselineScorePct: 50,
     });
-    expect(ranked).toHaveLength(0);
+    expect(ranked).toHaveLength(1);
   });
 
   it("ranks struggling frequent lines above comfortable ones at equal Stockfish edge", () => {
@@ -318,7 +314,7 @@ describe("scout-prefilter scoring", () => {
       ancestorFreq,
       baselineScorePct: 50,
     });
-    expect(ranked).toHaveLength(1);
+    expect(ranked).toHaveLength(2);
     expect(ranked[0].line.ucis).toEqual(struggling.ucis);
   });
 
@@ -355,7 +351,7 @@ describe("scout-prefilter scoring", () => {
     expect(funnelOut.scored).toBe(1);
     expect(funnelOut.scoreDrops.noUserReply).toBe(1);
     expect(funnelOut.survived).toBe(1);
-    expect(funnelOut.afterCollapse).toBe(1);
+    expect(funnelOut.gateDrops.noOpportunity).toBe(0);
   });
 
   it("filters a line that clears no OR-gate: weak edge, no slip, no struggle, not off-modal", () => {
@@ -376,7 +372,7 @@ describe("scout-prefilter scoring", () => {
     expect(ranked).toHaveLength(0);
   });
 
-  it("does not pass a modest edge only because the final move is rare", () => {
+  it("retains modest positive edges for continuous utility comparison", () => {
     const line = {
       ucis: ["e2e4", "e7e5", "g1f3"], sans: ["e4", "e5", "Nf3"],
       games: 1, routeReach: 0.2, offModal: 20, exploitabilityPrior: 0,
@@ -384,7 +380,7 @@ describe("scout-prefilter scoring", () => {
     const ranked = rankPrefilterCandidates([line], evalMapForLine(line.ucis, "white", { cpLoss: 28 }), {
       fenAfterLine, oppColor: "white", ancestorFreq: ancestorFreqForLine(line.ucis),
     });
-    expect(ranked).toHaveLength(0);
+    expect(ranked).toHaveLength(1);
   });
 
   it("gates a nearly unreachable route even when its leaf has a large edge", () => {
@@ -410,7 +406,7 @@ describe("computePrefilterScopeKey", () => {
       activeSpeed: "blitz",
       games,
     });
-    expect(key).toMatch(/^rival\|blitz\|\d+\|7$/);
+    expect(key).toMatch(/^rival\|blitz\|\d+\|8$/);
     expect(
       computePrefilterScopeKey({ username: "rival", activeSpeed: "blitz", games }),
     ).toBe(key);
@@ -420,7 +416,7 @@ describe("computePrefilterScopeKey", () => {
 describe("runStockfishPrefilter limits", () => {
   it("limits Maia to 12 unique branches from a 48-candidate ranked pool", () => {
     const ranked = Array.from({ length: SCOUT_PREFILTER_LIMIT }, (_, i) => ({
-      line: { ucis: [`u${i}`], sans: [`m${i}`], line: `u${i}` },
+      line: { ucis: [`u${i}`], sans: [`m${i}`], line: `u${i}`, games: 1, evidenceGames: 48 },
       prefilterScore: SCOUT_PREFILTER_LIMIT - i,
     }));
     const maia = prefilterMaiaLines(ranked);
@@ -487,10 +483,10 @@ describe("buildFallbackPrefilterData", () => {
     }));
     const { ranked, pool, maiaLines } = buildFallbackPrefilterData(lines);
     expect(pool).toHaveLength(SCOUT_PREFILTER_POOL_SIZE);
-    expect(ranked).toHaveLength(SCOUT_PREFILTER_POOL_SIZE);
-    expect(maiaLines).toHaveLength(SCOUT_PREFILTER_LIMIT);
+    expect(ranked).toHaveLength(70);
+    expect(maiaLines).toHaveLength(SCOUT_MAIA_PREFILTER_LIMIT);
     expect(maiaLines[0].ucis).toEqual(["m0"]);
-    expect(ranked[0].prefilterScore).toBe(0);
+    expect(ranked[0].prefilterScore).toBeUndefined();
   });
 });
 
@@ -689,7 +685,7 @@ describe("runStockfishPrefilter budget expiry + partial results", () => {
     // Assertion 3: Partial results produce real ranking and Maia pool output.
     expect(ranked.length).toBeGreaterThan(0);
     expect(pool.length).toBeGreaterThan(0);
-    expect(funnel.gateDrops.failedOrGate).toBe(2); // 2 lines failed, 1 passed the OR gate.
+    expect(funnel.gateDrops.noOpportunity).toBe(0); // All three positive edges remain eligible.
 
     // Assertion 4: The funnel shows no missing eval drops.
     expect(funnel.scoreDrops.noEval).toBe(0); // No lines dropped due to missing evals

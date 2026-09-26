@@ -741,9 +741,7 @@ export function createScoutView(deps) {
     // The trie + baseline rank observed routes by measured struggle and family evidence.
     // Opponent-only conditional reach removes routes they are unlikely to enter before
     // Stockfish runs; our own chosen moves do not lower that reach.
-    // Full ranked list (limit: 0), then trimRankedBranches: primary cut is the prior-signal
-    // floor (drops transposition noise); min-keep fills the Maia backup pool; 300 is only a
-    // pathological-corpus ceiling on the cheap trie-walk/FEN step.
+    // Bound the engine queue using personal preparation value.
     const { branches, ancestorFreq } =
       scoutModule.rankedOpeningBranches(scoutState.games, oppColor, {
         speedFilter: scoutState.activeSpeed,
@@ -868,8 +866,8 @@ export function createScoutView(deps) {
     const fallback = buildFallbackPrefilterData(lines);
     scoutState.prefilterPools[oppColor] = fallback.pool;
     scoutState.prefilterRanked[oppColor] = fallback.ranked;
-    scoutState.prefilteredLines[oppColor] = fallback.maiaLines;
-    snapshotStockfishDisplayLine(oppColor, fallback.maiaLines);
+    scoutState.prefilteredLines[oppColor] = fallback.ranked.map(entry => entry.line);
+    snapshotStockfishDisplayLine(oppColor, scoutState.prefilteredLines[oppColor]);
     if (section?.trie) prefilterCandidateCache.delete(section.trie);
   }
 
@@ -958,15 +956,14 @@ export function createScoutView(deps) {
         if (gen !== prefilterEnrichSeq) return;
         scoutState.funnel = scoutState.funnel || {};
         scoutState.funnel[oppColor] = result.funnel;
-        if (!result.ranked?.length) {
+        if (!result.ranked?.length && (!result.funnel ||
+          result.funnel.scoreDrops?.noEval === result.funnel.totalLines)) {
           applyPrefilterFallbackForColor(section, oppColor);
         } else {
           scoutState.prefilterPools[oppColor] = result.pool;
           scoutState.prefilterRanked[oppColor] = result.ranked;
           scoutState.prefilteredLines[oppColor] =
-            result.maiaLines.length > 0
-              ? result.maiaLines
-              : lines.slice(0, SCOUT_PREFILTER_LIMIT);
+            result.ranked.map(entry => entry.line);
           snapshotStockfishDisplayLine(oppColor, scoutState.prefilteredLines[oppColor]);
           if (section?.trie) prefilterCandidateCache.delete(section.trie);
         }
@@ -980,10 +977,8 @@ export function createScoutView(deps) {
           rows[c] = {
             totalLines: f.totalLines,
             scored: f.scored,
-            comfortZone: f.gateDrops?.comfortZone,
-            failedOrGate: f.gateDrops?.failedOrGate,
+            noOpportunity: f.gateDrops?.noOpportunity,
             survived: f.survived,
-            afterCollapse: f.afterCollapse,
             pool: f.poolSize,
             maiaCandidates: f.maiaCandidates,
           };

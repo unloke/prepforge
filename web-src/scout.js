@@ -10,6 +10,7 @@
 // Pure functions + an injected-deps fetcher, unit-testable without network/DOM.
 
 import { Chess } from "chess.js";
+import { preparationValue, routeKey, selectPreparationRoutes } from "./scout-preparation-value.js";
 
 import { gamePhase } from "./coach/material.js";
 
@@ -40,24 +41,15 @@ export const SLIP_MIN_GAMES = 3;
 export const SCOUT_RECENCY_HALF_LIFE_DAYS = 90;
 export const SCOUT_LENGTH_SATURATION_PLIES = 40;
 export const SCOUT_BRANCH_SCORE_CAP = 48;
-/** Scout prefilter feeds ALL exploitability-ranked branches to Stockfish (leaf-only),
- * bounded by the engine time budget rather than a count. This ceiling only guards the
- * cheap trie-walk + FEN-enumeration step against pathological corpora (every game a
- * unique deep line) — it is not the old 48 candidate cut. */
+/** Hard browser resource limit: at most 300 leaf positions per colour. */
 export const SCOUT_BRANCH_HARD_CEILING = 300;
-/** Always feed at least this many branches to the engine so the Maia backup pool (64)
- *  never starves on a thin opponent. Mirrors SCOUT_PREFILTER_POOL_SIZE (kept local to
- *  avoid a circular import from scout-prefilter.js). */
-export const SCOUT_BRANCH_MIN_KEEP = 64;
 /** Any observed opponent choice below this conditional share makes a route poor prep. */
 export const SCOUT_MIN_ROUTE_REACH = 0.1;
 /** Fewer parent games leave an opponent decision unmeasured, rather than certain. */
 import { opponentMoveProbability } from "./scout-probability.js";
 export const SCOUT_STOCKFISH_DEPTH = 8;
 export const SCOUT_MAIA_LIMIT = 12;
-export const SCOUT_SCORING_VERSION = 7;
-/** Minimum games before empirical opponent performance gates prefilter candidates. */
-export const SCOUT_PREFILTER_EMPIRICAL_MIN_GAMES = 3;
+export const SCOUT_SCORING_VERSION = 8;
 export const SCOUT_THINK_TIME_CLAMP_MIN = 0.7;
 export const SCOUT_THINK_TIME_CLAMP_MAX = 1.3;
 export const SCOUT_THINK_TIME_Z_SCALE = 0.1;
@@ -873,7 +865,7 @@ export function recommendTargets(
   } = {},
 ) {
   const eligible = breakdown
-    .filter((g) => g.games >= minGames)
+    .filter((g) => (g.routeSupportGames ?? g.games) >= minGames)
     .map((g) => {
       if (!oppColor) return enrichPrepTarget(g, baselineScorePct);
       const normalized = normalizeToOpponentTerminal(g.ucis, g.sans, oppColor);
@@ -1074,41 +1066,6 @@ export function opponentColorBaseline(games, color, { speedFilter = "all" } = {}
  * Downweight prep value when the opponent performs at/above baseline.
  * Returns 1 when empirical data is missing (do not penalize rare samples).
  */
-export function opponentStruggleFactor(opponentScorePct, baselineScorePct = 50) {
-  if (opponentScorePct == null) return 1;
-  const baseline = Math.max(baselineScorePct, 1);
-  const ratio = Math.min(1, opponentScorePct / baseline);
-  return 1 - ratio;
-}
-
-/** Frequent branch where opponent empirically performs at/above baseline — not a prep target. */
-export function isOpponentComfortZone(
-  entry,
-  baselineScorePct = 50,
-  { minGames = SCOUT_PREFILTER_EMPIRICAL_MIN_GAMES } = {},
-) {
-  const oppGames = entry?.ancestorGames ?? entry?.games ?? 0;
-  if (oppGames < minGames) return false;
-  const oppScore = entry?.ancestorScorePct ?? entry?.scorePct;
-  if (oppScore == null) return false;
-  return oppScore >= baselineScorePct;
-}
-
-/** Prep value after reachability has been checked separately. */
-export function openingWeaknessScore(entry, baselineScorePct = 50) {
-  const stockfishAdvantage = Math.max(0, entry?.prefilterScore ?? 0);
-  const empiricalScore = entry?.ancestorScorePct ?? entry?.scorePct ?? null;
-  const struggle = opponentStruggleFactor(empiricalScore, baselineScorePct);
-  return stockfishAdvantage * struggle;
-}
-
-/** Small struggle prior floor so objectively punishable routes can reach Stockfish. */
-export const SCOUT_STRUGGLE_PRIOR_FLOOR = 0.08;
-/** Prior of a non-reproducible one-off (struggle 0, prefixGames 0):
- *  SCOUT_STRUGGLE_PRIOR_FLOOR * (log1p(0) + 0.1). Branches at/below this carry NO
- *  exploitability signal at all — they are transposition noise, safe to drop pre-engine. */
-export const SCOUT_PRIOR_NOISE_FLOOR = SCOUT_STRUGGLE_PRIOR_FLOOR * 0.1;
-
 /**
  * Walk the opening trie along a UCI path. The trie keys children by `${uci}|${san}`,
  * so we match on the uci prefix. Returns per-ply nodes with their w/d/l, scorePct, and
@@ -1178,143 +1135,68 @@ export function opponentRouteReach(trie, ucis, opponentColor) {
   return opponentRoutePlausibility(trie, ucis, opponentColor).weakestEstimatedProbability;
 }
 
-/**
- * Empirical "struggle" for one opening branch, resolved at the deepest prefix
- * with enough games to trust (n ≥ minGames). Solves the granularity-vs-sample-size
- * tension: a rare deep leaf borrows its struggle signal from the line family it belongs
- * to, instead of asserting anything from an n=1 leaf.
- *   struggle  — 0..1, how far the family's Wilson-upper score sits below the opponent's
- *               own baseline (0 = at/above baseline, no measured weakness).
- *   offModal  — retained as diagnostic evidence; it does not improve ranking.
- *   prefixGames — family sample size backing the struggle signal.
- */
-export function branchStruggle(trie, ucis, baselineScorePct = 50, { minGames = SLIP_MIN_GAMES } = {}) {
-  const empty = { struggle: 0, offModal: 1, prefixGames: 0, prefixPly: -1, scorePct: null };
-  if (!trie || !ucis?.length) return empty;
-  const stats = triePrefixStats(trie, ucis);
-  if (!stats.length) return empty;
-  let chosen = null;
-  for (let i = stats.length - 1; i >= 0; i -= 1) {
-    if (stats[i].gameCount >= minGames) {
-      chosen = stats[i];
-      break;
-    }
-  }
-  const terminal = stats[stats.length - 1];
-  const offModal = terminal.moveShare > 0 ? Math.min(50, 1 / Math.max(terminal.moveShare, 0.02)) : 1;
-  if (!chosen) {
-    return { struggle: 0, offModal, prefixGames: 0, prefixPly: -1, scorePct: null };
-  }
-  const wilsonUpper = wilsonScoreUpperPct(chosen.w, chosen.d, chosen.l);
-  const struggle = Math.max(0, baselineScorePct - wilsonUpper) / 100;
-  return {
-    struggle,
-    offModal,
-    prefixGames: chosen.gameCount,
-    prefixPly: chosen.ply,
-    scorePct: chosen.scorePct,
-  };
-}
-
-/**
- * Cheap (no-engine) prior for which branches deserve a Stockfish read. Centred on
- * exploitability — empirical struggle, without a rarity reward. Family-level
- * reproducibility (log of prefix games) keeps truly one-off noise from crowding out
- * recurring weaknesses. Falls back to branchScore when no trie is available.
- */
-export function branchExploitabilityPrior(branch, { trie, baselineScorePct = 50 } = {}) {
-  if (!trie) return branch?.branchScore ?? 0;
-  const struggle = branch?.exploitabilityStruggle;
-  const prefixGames = branch?.prefixGames;
-  const stats = (struggle == null || prefixGames == null)
-    ? branchStruggle(trie, branch?.ucis, baselineScorePct)
-    : null;
-  const s = struggle ?? stats?.struggle ?? 0;
-  const n = prefixGames ?? stats?.prefixGames ?? 0;
-  const reproducibility = Math.log1p(n) + 0.1;
-  return (s + SCOUT_STRUGGLE_PRIOR_FLOOR) * reproducibility;
-}
-
-/**
- * Logical replacement for the old slice(0, 300) cut. Given branches already sorted by
- * exploitabilityPrior (descending), keep every branch whose prior shows a real signal
- * (> noiseFloor), but always keep at least `minKeep` (so the Maia pool stays full) and
- * never more than `ceiling` (a pathological-corpus safety net, NOT the primary cut).
- * Pure: returns a prefix slice of the input, order preserved.
- */
+/** Allocate bounded engine reads by personal preparation value, without family quotas. */
 export function trimRankedBranches(
-  sortedBranches,
-  { minKeep = SCOUT_BRANCH_MIN_KEEP, ceiling = SCOUT_BRANCH_HARD_CEILING, noiseFloor = SCOUT_PRIOR_NOISE_FLOOR } = {},
+  branches,
+  { ceiling = SCOUT_BRANCH_HARD_CEILING } = {},
 ) {
-  if (!sortedBranches?.length) return [];
-  let keep = 0;
-  while (keep < sortedBranches.length && (sortedBranches[keep].exploitabilityPrior ?? 0) > noiseFloor) {
-    keep += 1;
-  }
-  keep = Math.min(ceiling, Math.max(minKeep, keep));
-  return sortedBranches.slice(0, keep);
+  return (branches || [])
+    .map(route => ({ route, value: preparationValue(route, route.baselineScorePct ?? 50).value }))
+    .sort((a, b) => b.value - a.value || routeKey(a.route).localeCompare(routeKey(b.route)))
+    .slice(0, ceiling)
+    .map(entry => entry.route);
 }
 
-/**
- * Rank exact per-game opening branches; top N feed Stockfish/Maia. With a `trie` +
- * `baselineScorePct`, branches are ranked by the exploitability prior (struggle
- * × family reproducibility) and annotated with opponent-only route reach for the
- * downstream prefilter gate. Without a trie, falls back to branchScore ordering.
- */
+/** Observed terminal routes plus supported branching prefixes; no invented moves. */
 export function rankedOpeningBranches(
   games,
   color,
   { speedFilter = "all", limit = SCOUT_BRANCH_SCORE_CAP, now = Date.now(), trie = null, baselineScorePct = 50 } = {},
 ) {
   const { branches, ancestorFreq } = aggregateOpeningBranches(games, color, { speedFilter, now });
-  // routeSupportGames default: the exact terminal count is a lower bound of the
-  // full-route personal reach. The trie pass below replaces it with the trie's
-  // gameCount at the complete UCI prefix whenever the prefix fully resolves.
-  for (const b of branches) b.routeSupportGames = b.games;
+  // Add observed branching prefixes even when no game ended exactly there.
+  // Never synthesize an unplayed move or walk beyond the extracted opening.
   if (trie) {
-    for (const b of branches) {
-      const { struggle, offModal, prefixGames } = branchStruggle(trie, b.ucis, baselineScorePct);
-      b.exploitabilityStruggle = struggle;
-      b.offModal = offModal;
-      b.prefixGames = prefixGames;
-      b.routePlausibility = opponentRoutePlausibility(trie, b.ucis, color);
-      b.routeReach = b.routePlausibility.weakestEstimatedProbability;
-      // Personal games that reach the FULL candidate route: the trie's gameCount at
-      // the complete UCI prefix. Semantically distinct from `games` (exact terminal
-      // branch count) and from `routeReach` (opponent-decision probability).
-      const fullPrefixStats = triePrefixStats(trie, b.ucis);
-      b.routeSupportGames = fullPrefixStats.length === b.ucis.length
-        ? fullPrefixStats[fullPrefixStats.length - 1].gameCount
-        : b.games;
-      const parentStats = triePrefixStats(trie, b.ucis.slice(0, -1)).at(-1);
-      const parentGames = parentStats?.gameCount ?? trie.gameCount;
-      b.ancestorGames = parentGames;
-      b.ancestorScorePct = parentStats?.scorePct ?? (trie.gameCount
-        ? Math.round(((trie.w + 0.5 * trie.d) / trie.gameCount) * 100) : null);
-      b.exploitabilityPrior = branchExploitabilityPrior(b, { trie, baselineScorePct });
+    const existing = new Set(branches.map(routeKey));
+    const prefixes = new Map();
+    for (const branch of branches) {
+      for (let n = color === "white" ? 1 : 2; n < branch.ucis.length; n += 2) {
+        const key = branch.ucis.slice(0, n).join(">");
+        if (existing.has(key)) continue;
+        if (!prefixes.has(key)) prefixes.set(key, { branch, n, continuations: new Set() });
+        prefixes.get(key).continuations.add(branch.ucis.slice(n, n + 2).join(">"));
+      }
     }
-    branches.sort(
-      (a, b) =>
-        (b.exploitabilityPrior || 0) - (a.exploitabilityPrior || 0) ||
-        b.branchScore - a.branchScore ||
-        (b.lastDatestamp || 0) - (a.lastDatestamp || 0) ||
-        b.games - a.games ||
-        a.line.localeCompare(b.line),
-    );
-  } else {
-    branches.sort(
-      (a, b) =>
-        b.branchScore - a.branchScore ||
-        (b.lastDatestamp || 0) - (a.lastDatestamp || 0) ||
-        b.games - a.games ||
-        a.line.localeCompare(b.line),
-    );
+    for (const [key, { branch, n, continuations }] of prefixes) {
+      if (continuations.size < 2) continue;
+      const stats = triePrefixStats(trie, branch.ucis.slice(0, n)).at(-1);
+      if (!stats || stats.gameCount < 3) continue;
+      branches.push({ line: key, ucis: branch.ucis.slice(0,n), sans: branch.sans.slice(0,n),
+        games: 0, gameCount: stats.gameCount, w: stats.w, d: stats.d, l: stats.l, scorePct: stats.scorePct, share: stats.gameCount / trie.gameCount });
+    }
   }
+  const total = trie?.gameCount ?? branches.reduce((n,b) => n + b.games, 0);
+  for (const b of branches) {
+    b.routeSupportGames = b.games;
+    b.evidenceGames = total;
+    b.baselineScorePct = baselineScorePct;
+    if (!trie) continue;
+    b.routePlausibility = opponentRoutePlausibility(trie, b.ucis, color);
+    b.routeReach = b.routePlausibility.weakestEstimatedProbability;
+    const stats = triePrefixStats(trie, b.ucis);
+    const leaf = stats.length === b.ucis.length ? stats.at(-1) : null;
+    b.routeSupportGames = leaf?.gameCount ?? b.games;
+    b.routeScorePct = leaf?.scorePct ?? b.scorePct;
+    const parent = stats.at(-2);
+    b.ancestorGames = parent?.gameCount ?? total;
+    b.ancestorScorePct = parent?.scorePct ?? baselineScorePct;
+  }
+  branches.sort((a,b) => preparationValue(b,baselineScorePct).value - preparationValue(a,baselineScorePct).value || routeKey(a).localeCompare(routeKey(b)));
   const plausible = trie
     ? branches.filter((branch) => branch.routePlausibility.complete &&
       (branch.routeReach == null || branch.routeReach >= SCOUT_MIN_ROUTE_REACH))
     : branches;
-  const ranked = limit > 0 ? plausible.slice(0, limit) : plausible;
+  const ranked = limit > 0 ? trimRankedBranches(plausible, { ceiling: limit }) : plausible;
   return { branches: ranked, ancestorFreq };
 }
 
@@ -1331,7 +1213,7 @@ export function rankedOpeningLines(
   return [];
 }
 
-// Unified ranked game plan: exploitability first, collapse nested prefixes, no row cap.
+// One final budgeted set selection, shared by live and fallback reports.
 export function rankGamePlan(
   lines,
   baselineScorePct,
@@ -1345,7 +1227,7 @@ export function rankGamePlan(
   } = {},
 ) {
   const eligible = lines
-    .filter((g) => g.games >= minGames)
+    .filter((g) => (g.routeSupportGames ?? g.games) >= minGames)
     .map((g) => {
       if (!oppColor) return enrichPrepTarget(g, baselineScorePct);
       const normalized = normalizeToOpponentTerminal(g.ucis, g.sans, oppColor);
@@ -1362,62 +1244,16 @@ export function rankGamePlan(
         baselineScorePct,
         { maiaScorePct: g.maiaScorePct ?? null },
       );
-      enriched.routeReach = g.routeReach;
-      enriched.routePlausibility = g.routePlausibility;
-      // Carried for the next-stage parent/child selection research — NOT used in
-      // this stage's ordering or collapse decisions.
-      enriched.routeSupportGames = g.routeSupportGames ?? null;
-      if (!enriched.lastSeen && games && lineLastSeen) {
-        enriched.lastSeen = lineLastSeen(games, enriched.ucis, { color: oppColor, speedFilter });
-      }
       return enriched;
     })
-    .filter((line) => line && (line.routeReach == null || line.routeReach >= SCOUT_MIN_ROUTE_REACH))
-    .sort((a, b) => {
-      const aHasMaia = a.maiaScorePct != null;
-      const bHasMaia = b.maiaScorePct != null;
-      if (aHasMaia && bHasMaia && a.maiaScorePct !== b.maiaScorePct) {
-        return a.maiaScorePct - b.maiaScorePct;
-      }
-      if (aHasMaia !== bHasMaia) return aHasMaia ? -1 : 1;
-      const weaknessA = openingWeaknessScore(a, baselineScorePct);
-      const weaknessB = openingWeaknessScore(b, baselineScorePct);
-      if (weaknessA !== weaknessB) {
-        return weaknessB - weaknessA;
-      }
-      const aStamp = a.lastSeen?.lastDatestamp ?? 0;
-      const bStamp = b.lastSeen?.lastDatestamp ?? 0;
-      const aKey = a.line || triePathKey(a.ucis || []);
-      const bKey = b.line || triePathKey(b.ucis || []);
-      return (
-        bStamp - aStamp ||
-        (b.branchScore || 0) - (a.branchScore || 0) ||
-        b.share - a.share ||
-        b.games - a.games ||
-        aKey.localeCompare(bKey)
-      );
-    });
-
-  const chosen = [];
-  for (const g of eligible) {
-    const gPath = g.line || triePathKey(g.ucis || []);
-    const nestedIdx = chosen.findIndex((c) => isNestedLine(c, g));
-    if (nestedIdx >= 0) {
-      const existing = chosen[nestedIdx];
-      // A deeper route must be at least as personally supported as its parent.
-      // routeReach measures opponent decisions, not full-route game support.
-      const supportDelta = (g.games ?? 0) - (existing.games ?? 0);
-      const scoreDelta = (g.prefilterScore ?? 0) - (existing.prefilterScore ?? 0);
-      const cPath = existing.line || triePathKey(existing.ucis || []);
-      if (supportDelta > 0 || (supportDelta === 0 &&
-        (scoreDelta > 0 || (scoreDelta === 0 && gPath.startsWith(`${cPath}>`))))) {
-        chosen[nestedIdx] = g;
-      }
-      continue;
+    .filter((line) => line && (line.routeReach == null || line.routeReach >= SCOUT_MIN_ROUTE_REACH));
+  const selected = selectPreparationRoutes(eligible, { baseline: baselineScorePct, limit });
+  if (oppColor && games && lineLastSeen) {
+    for (const route of selected) if (!route.lastSeen) {
+      route.lastSeen = lineLastSeen(games, route.ucis, { color: oppColor, speedFilter });
     }
-    chosen.push(g);
   }
-  return limit > 0 ? chosen.slice(0, limit) : chosen;
+  return selected;
 }
 
 /** Production Module B selector alias — keep rankGamePlan as the implementation. */

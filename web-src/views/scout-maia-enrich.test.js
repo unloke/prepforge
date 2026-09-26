@@ -240,7 +240,20 @@ describe("scout maia enrichment orchestration", () => {
     expect(runStockfishPrefilter.mock.calls.length).toBeGreaterThan(0);
   });
 
-  it("still enriches with Maia when Stockfish returns no CP-loss candidates", async () => {
+  it.each([
+    { totalLines: 6, scored: 6, scoreDrops: { noEval: 0 } },
+    { totalLines: 6, scored: 0, scoreDrops: { noEval: 0, noUserReply: 6 } },
+  ])("does not resurrect assessed ineligible positions via fallback: %j", async (funnel) => {
+    const { runStockfishPrefilter } = await import("../scout-prefilter.js");
+    runStockfishPrefilter.mockImplementation(async () => ({ ranked: [], pool: [], maiaLines: [], funnel }));
+    wdlReadMock.mockClear();
+    await view.runScout();
+    await flushDeferredTimers();
+    expect(wdlReadMock).not.toHaveBeenCalled();
+    expect(elements.get("scout-results").innerHTML).toContain("No actionable lines yet");
+  });
+
+  it("still enriches with Maia when Stockfish provides no evaluation evidence", async () => {
     const { runStockfishPrefilter } = await import("../scout-prefilter.js");
     runStockfishPrefilter.mockImplementation(async () => ({
       ranked: [],
