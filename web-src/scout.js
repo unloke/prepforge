@@ -1389,8 +1389,16 @@ export function rankGamePlan(
     const gPath = g.line || triePathKey(g.ucis || []);
     const nestedIdx = chosen.findIndex((c) => isNestedLine(c, g));
     if (nestedIdx >= 0) {
-      const cPath = chosen[nestedIdx].line || triePathKey(chosen[nestedIdx].ucis || []);
-      if (gPath.startsWith(`${cPath}>`)) chosen[nestedIdx] = g;
+      const existing = chosen[nestedIdx];
+      // A deeper route must be at least as personally supported as its parent.
+      // routeReach measures opponent decisions, not full-route game support.
+      const supportDelta = (g.games ?? 0) - (existing.games ?? 0);
+      const scoreDelta = (g.prefilterScore ?? 0) - (existing.prefilterScore ?? 0);
+      const cPath = existing.line || triePathKey(existing.ucis || []);
+      if (supportDelta > 0 || (supportDelta === 0 &&
+        (scoreDelta > 0 || (scoreDelta === 0 && gPath.startsWith(`${cPath}>`))))) {
+        chosen[nestedIdx] = g;
+      }
       continue;
     }
     chosen.push(g);

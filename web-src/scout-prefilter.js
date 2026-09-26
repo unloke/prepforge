@@ -199,13 +199,20 @@ function tiebreakRecencyShare(a, b) {
   return bStamp - aStamp || (b.share || 0) - (a.share || 0) || (b.count || 0) - (a.count || 0);
 }
 
-/** Collapse nested prefix lines — keep the deeper representative only when score is not worse. */
+/** Collapse nested prefixes by personal route support, then engine score and depth. */
 export function collapseNestedPrefilterLines(sorted) {
   const chosen = [];
   for (const entry of sorted) {
     const nestedIdx = chosen.findIndex((c) => isNestedLine(c.line, entry.line));
     if (nestedIdx >= 0) {
       const existing = chosen[nestedIdx];
+      // Decision plausibility (routeReach) and family counts are not evidence
+      // that this player repeatedly reaches the child's full route.
+      const supportDelta = (entry.line.games ?? 0) - (existing.line.games ?? 0);
+      if (supportDelta !== 0) {
+        if (supportDelta > 0) chosen[nestedIdx] = entry;
+        continue;
+      }
       const cPath = existing.line.line || triePathKey(existing.line.ucis || []);
       const gPath = entry.line.line || triePathKey(entry.line.ucis || []);
       if (gPath.startsWith(`${cPath}>`)) {
