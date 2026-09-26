@@ -166,6 +166,9 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
     ancestorGames: line.ancestorGames ?? ancestorInfo.games,
     scorePct: line.scorePct,
     games: line.games,
+    // Full-route personal support (trie prefix gameCount) — carried to the ranked
+    // entries and final game plan; it does not gate or sort anything yet.
+    routeSupportGames: line.routeSupportGames ?? null,
     // Prefix-resolved exploitability signals, annotated upstream by rankedOpeningBranches.
     struggle: line.exploitabilityStruggle ?? 0,
     offModal: line.offModal ?? 0,

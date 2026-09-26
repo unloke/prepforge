@@ -1267,6 +1267,10 @@ export function rankedOpeningBranches(
   { speedFilter = "all", limit = SCOUT_BRANCH_SCORE_CAP, now = Date.now(), trie = null, baselineScorePct = 50 } = {},
 ) {
   const { branches, ancestorFreq } = aggregateOpeningBranches(games, color, { speedFilter, now });
+  // routeSupportGames default: the exact terminal count is a lower bound of the
+  // full-route personal reach. The trie pass below replaces it with the trie's
+  // gameCount at the complete UCI prefix whenever the prefix fully resolves.
+  for (const b of branches) b.routeSupportGames = b.games;
   if (trie) {
     for (const b of branches) {
       const { struggle, offModal, prefixGames } = branchStruggle(trie, b.ucis, baselineScorePct);
@@ -1275,6 +1279,13 @@ export function rankedOpeningBranches(
       b.prefixGames = prefixGames;
       b.routePlausibility = opponentRoutePlausibility(trie, b.ucis, color);
       b.routeReach = b.routePlausibility.weakestEstimatedProbability;
+      // Personal games that reach the FULL candidate route: the trie's gameCount at
+      // the complete UCI prefix. Semantically distinct from `games` (exact terminal
+      // branch count) and from `routeReach` (opponent-decision probability).
+      const fullPrefixStats = triePrefixStats(trie, b.ucis);
+      b.routeSupportGames = fullPrefixStats.length === b.ucis.length
+        ? fullPrefixStats[fullPrefixStats.length - 1].gameCount
+        : b.games;
       const parentStats = triePrefixStats(trie, b.ucis.slice(0, -1)).at(-1);
       const parentGames = parentStats?.gameCount ?? trie.gameCount;
       b.ancestorGames = parentGames;
@@ -1353,6 +1364,9 @@ export function rankGamePlan(
       );
       enriched.routeReach = g.routeReach;
       enriched.routePlausibility = g.routePlausibility;
+      // Carried for the next-stage parent/child selection research — NOT used in
+      // this stage's ordering or collapse decisions.
+      enriched.routeSupportGames = g.routeSupportGames ?? null;
       if (!enriched.lastSeen && games && lineLastSeen) {
         enriched.lastSeen = lineLastSeen(games, enriched.ucis, { color: oppColor, speedFilter });
       }
