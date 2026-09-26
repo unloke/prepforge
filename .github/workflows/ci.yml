@@ -74,7 +74,15 @@ jobs:
         env:
           DATABASE_URL: postgresql://migtest:migtest-only@localhost:5432/prepforge_migtest
           TEST_POSTGRES_URL: postgresql://migtest:migtest-only@localhost:5432/prepforge_migtest
-        run: uv run pytest -q tests/test_migration_lichess_primary.py tests/test_api_lichess.py tests/test_api_lichess_games.py tests/test_training_smart.py tests/test_build_route_sql.py::test_build_route_sql_counts_postgres
+        run: >-
+          uv run pytest -q
+          tests/test_migration_lichess_primary.py
+          tests/test_api_lichess.py
+          tests/test_api_lichess_games.py
+          tests/test_training_smart.py
+          tests/test_build_route_sql.py::test_build_route_sql_counts_postgres
+          tests/test_repositories.py::test_list_repertoires_postgres
+          tests/test_build_sql_counts.py::test_list_repertoires_statement_count_postgres
 
   js:
     runs-on: ubuntu-latest

@@ -841,11 +841,14 @@ class PrepForgeRepository:
         """Full repertoires (optionally owner-scoped), newest first.
 
         Batched read: one statement for the repertoire rows, one for every opening
-        node across them, one for the referenced evaluations — a constant count no
-        matter how many repertoires are listed. The old shape (id list, then one
-        ``load_repertoire`` round trip per id) issued three statements per
-        repertoire and re-walked a connection per row (N+1); public behaviour —
-        set, order, and hydrated trees — is unchanged.
+        node across them, and one more for the referenced evaluations when any node
+        has one — so the statement count is O(1) in the repertoire count (2 without
+        referenced evaluations, 3 with), no matter how many repertoires are listed.
+        The old shape (id list, then one ``load_repertoire`` round trip per id) grew
+        linearly with N: roughly 1 + 2N statements without evaluations and
+        1 + 3N with them (per repertoire: the repertoire row, its opening nodes,
+        and its evaluation batch), re-walking a connection per row (N+1); public
+        behaviour — set, order, and hydrated trees — is unchanged.
         """
         stmt = select(t.repertoires).order_by(t.repertoires.c.updated_at.desc())
         if owner_user_id is not None:

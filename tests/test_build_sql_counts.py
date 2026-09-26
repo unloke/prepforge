@@ -72,9 +72,11 @@ def _list_statement_profile(engine, repo, builder):
     """Statement count of ``list_repertoires`` with 5 repertoires vs 1.
 
     Returns ``(count_one, count_many, listed_one, listed_many)`` so callers can
-    assert the count is CONSTANT while the result set grows — the regression
-    guard for the old id-list + ``load_repertoire(id)`` × N shape, which issued
-    three statements per repertoire (repertoire row, opening nodes, evals).
+    assert the count is O(1) in the repertoire count while the result set
+    grows — the regression guard for the old id-list + ``load_repertoire(id)``
+    × N shape, which scaled linearly with N (per repertoire: one SELECT for the
+    repertoire row, one for its opening nodes, plus one more per referenced
+    evaluation batch).
     """
     _seed_chain(builder, "SQL list solo", ["e2e4", "e7e5"])
     count_one, listed_one = count_statements(engine, lambda: repo.list_repertoires())
@@ -85,6 +87,8 @@ def _list_statement_profile(engine, repo, builder):
 
 
 def test_list_repertoires_statement_count_is_constant():
+    """SQLite twin of the postgres variant below — same O(1) profile (2 or 3
+    statements regardless of repertoire count), same assertions."""
     engine = connect_database()
     apply_schema(engine)
     repo = PrepForgeRepository(engine)
@@ -95,12 +99,17 @@ def test_list_repertoires_statement_count_is_constant():
     )
     assert len(listed_one) == 1
     assert len(listed_many) == 5
-    # 1 repertoire and 5 repertoires cost the same number of statements.
+    # 1 repertoire and 5 repertoires cost the same number of statements: O(1).
+    # Either 2 statements (no referenced engine evaluations) or 3 (one extra
+    # SELECT for the referenced evaluations).
     assert count_many == count_one
-    assert count_many <= 3
+    assert count_many in (2, 3)
 
 
 def test_list_repertoires_statement_count_postgres():
+    """PostgreSQL variant of the SQLite count guard above — identical O(1)
+    profile (2 or 3 statements regardless of repertoire count) so the dialect
+    cannot regress the batching."""
     url = os.getenv("TEST_POSTGRES_URL")
     if not url:
         pytest.skip("TEST_POSTGRES_URL is not configured")
@@ -114,6 +123,8 @@ def test_list_repertoires_statement_count_postgres():
     )
     # Relative assertions: the CI database is shared, so other runs may have
     # left repertoires behind — only the growth and the statement count matter.
+    # The count is O(1) in the repertoire count: 2 statements without referenced
+    # engine evaluations, 3 with them.
     assert len(listed_many) - len(listed_one) == 4
     assert count_many == count_one
-    assert count_many <= 3
+    assert count_many in (2, 3)

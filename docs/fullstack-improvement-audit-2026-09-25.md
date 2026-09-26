@@ -70,11 +70,11 @@
 
 | # | 問題 | 證據 | 建議 |
 |---|------|------|------|
-| D1 | `list_repertoires` 是 N+1:先取 id 清單,再逐一 `load_repertoire`(每次全樹 hydrate) | `repositories.py:826` | 目前只有 Lichess sync 用;改為批量載入(單次 SELECT 全部 nodes)或改用 `list_repertoire_metas`,避免同步大量 repertoire 時連線數與記憶體線性爆炸 |
+| D1 | ✅ 已修(2026-09-25):`list_repertoires` 批次化,改為單次 SELECT 全部 repertoire rows + 全部 nodes + (有引用時)一次 evaluations,query count 對 N 為 O(1)(無 evaluations 2 條、有 evaluations 3 條;舊版約 1 + 2N / 1 + 3N 線性成長),行為(集合、順序、樹內容)不變 | `repositories.py` `list_repertoires`/`_repertoire_from_rows`;SQLite 與 PostgreSQL statement-count 回歸測試已入 CI postgres job |
 | D2 | 舊版 `save_game` 仍走「DELETE moves + 逐筆 `_save_move_annotation`」非批次路徑,`pgn_import.py:107` 與 CLI `analysis.py:248` 還在用 | `repositories.py:244-281` | 大量 PGN / Lichess 匯入時每局多筆 statement;統一改呼叫 `save_game_batched`,或讓 `pgn_import` 匯入後一次性 flush |
 | D3 | `GET /api/dashboard` 有寫入副作用(`mutate_user_setting` 回寫週 recap snapshot) | `workspace.py:183-220` | 讀端點寫 DB 會干擾快取、放大讀寫比;建議移到「完成訓練時」或背景排程寫入,GET 只讀 |
 | D4 | 時間以 ISO-8601 **文字**存,靠字串序比較(如 `due_at <= now_iso`) | `repositories.py:41-67`;`workspace.py` dashboard tally | 跨後端一致是合理權衡,但失去 `timestamptz` 的索引效率/時區語意,且排序、範圍查詢隨資料量退化;中期規劃遷移 Postgres `timestamptz`(SQLite 端保留 ISO) |
-| D5 | Postgres 驗證缺口:SQL 計數回歸只在 SQLite 跑;PG 僅「應然」 | `docs/build-db-performance-2026-09-23.md` 尾段自述 | CI 加 `postgres` service container,把 `test_build_sql_counts` 同套斷言在 PG 跑一次(dialect 差異如 `ON CONFLICT`、`IS DISTINCT FROM` 才會被真正驗證) |
+| D5 | ✅ 已補(2026-09-25):CI `postgres` job(PostgreSQL 18 service container)已在 PG 上跑 Alembic upgrade/drift check 加同一套 SQL 計數回歸(含 `test_list_repertoires_statement_count_postgres`、`test_list_repertoires_postgres`,經 `TEST_POSTGRES_URL`),SQLite/PG 斷言一致(dialect 差異如 `ON CONFLICT`、`IS DISTINCT FROM` 從此會被 CI 真正驗證) | `.github/workflows/ci.yml` postgres job |
 | D6 | 評估去重 key 含 `time_ms`:`(position, engine, depth, nodes, time_ms)` | `codec.py` `analysis_identity` | 同一引擎同深度但耗時略異 → 重複列,快取命中率下降;評估「結果身分」是否應只取 `(position, engine, depth)` 或 `(…, nodes)`,`time_ms` 降級為統計欄位 |
 | D7 | 備份/還原未驗證(ROADMAP Phase 6 未勾) | `docs/ROADMAP.md:509` | 啟用 Render managed Postgres 自動備份後,做一次 restore 演練並記錄;這是唯一真正不可逆的資料風險 |
 | D8 | `hydrate_opening_tree` 每節點新建 `chess.Board`(O(n) 棋盤建構) | `codec.py:282+`;benchmark 顯示 2000 nodes hydrate ~315ms | 改單一 board DFS(push/pop 重放)可砍掉每節點一次 FEN parse;Build load 在大樹上仍有線性 payload 問題(見 A4) |

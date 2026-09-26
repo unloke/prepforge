@@ -521,6 +521,13 @@ def _same_repertoire(a, b) -> bool:
 def _exercise_list_repertoires(repo, owner: str) -> None:
     """Empty → single → multi(+nodes) → ordering, against any backend.
 
+    Behavioural twin of the statement-count guard in test_build_sql_counts.py:
+    the batched ``list_repertoires`` read is O(1) in the repertoire count —
+    2 SQL statements without referenced engine evaluations, 3 with them —
+    while the old id-list + ``load_repertoire`` × N shape grew linearly
+    (~1 + 2N / ~1 + 3N). This exercise asserts the public behaviour that the
+    batching must preserve: identical trees to ``load_repertoire``.
+
     Every assertion is owner-scoped so the exercise stays hermetic when it runs
     on a shared PostgreSQL database (TEST_POSTGRES_URL CI job).
     """
@@ -591,11 +598,17 @@ def _exercise_list_repertoires(repo, owner: str) -> None:
 
 
 def test_list_repertoires_sqlite():
+    """SQLite twin of the postgres variant below — same behavioural exercise,
+    same assertions, against the in-memory backend."""
     repo = _repository()
     _exercise_list_repertoires(repo, owner="u-list-" + uuid.uuid4().hex[:8])
 
 
 def test_list_repertoires_postgres(monkeypatch):
+    """PostgreSQL variant of ``test_list_repertoires_sqlite`` — the same
+    behavioural exercise (deep-equal to ``load_repertoire``, owner scoping,
+    ordering) run against a real PostgreSQL so dialect differences cannot
+    regress the batched listing."""
     url = os.getenv("TEST_POSTGRES_URL")
     if not url:
         pytest.skip("TEST_POSTGRES_URL is not configured")

@@ -28,9 +28,17 @@ The cached health badge is written only when its value changes.
 
 `list_games` has no production API call site. `list_repertoires` is used by
 Lichess sync, not the dashboard; the dashboard uses lightweight listing rows.
+Its batched rewrite (2026-09-25) made the statement count O(1) in the number
+of repertoires — 2 statements when no node references an engine evaluation,
+3 when one batched evaluation SELECT is needed — where the old id-list +
+`load_repertoire(id)` × N shape grew linearly (~1 + 2N statements without
+evaluations, ~1 + 3N with them).
 The dashboard's six training-progress COUNT queries were consolidated into one
 conditional aggregate to reduce round trips on the actual dashboard endpoint.
 
-PostgreSQL validation remains pending because this machine has no configured
-PostgreSQL URL, local service, `psql`, or Docker. SQLite SQL count regression
-tests cover the narrow write and repeated Build load paths.
+PostgreSQL validation runs in CI: the `postgres` job (PostgreSQL 18 service
+container) executes the Alembic upgrade/drift check plus the SQL-statement
+count regression tests — including
+`tests/test_build_sql_counts.py::test_list_repertoires_statement_count_postgres`
+and `tests/test_repositories.py::test_list_repertoires_postgres` — via
+`TEST_POSTGRES_URL`, so the SQLite and PostgreSQL assertions stay identical.
