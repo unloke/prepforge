@@ -1,128 +1,87 @@
-# Scout Production Ranking ? evidence and budgeted route sets
+# Scout production ranking — observed decision preparation
 
-Updated 2026-09-26. Production scoring version **8**, Module B identity `scout-v2`.
-This replaces the temporary `7f79e9d` handoff rules. The complete study, alternatives,
-formal objective, synthetic results and limitations are in
-[scout-selection-research.md](scout-selection-research.md).
+Updated 2026-09-26. Scoring version **9**, Module B identity `scout-v2`.
+This supersedes scoring version 8's conservative full-route coverage objective.
+See [selection research](scout-selection-research.md) for rationale, formulas,
+real before/after results, reproduction commands and limitations.
 
-## 1. Product objective and final selector
+## 1. Product objective
 
-Select at most 12 observed opening routes per opponent colour under a limited
-preparation budget. Routes must have personal evidence, an opportunity worth
-preparing, and contribute coverage without parent/child duplication.
+Choose at most 12 observed, non-nested routes per opponent colour. Maximize unique
+opponent-decision preparation coverage plus bounded leaf opportunities. A route
+is a plan through controllable user moves and historically observed opponent
+responses; historical user move frequency is not an opponent-response probability.
 
-`web-src/scout-preparation-value.js` is the pure selection implementation:
+`web-src/scout-preparation-value.js` implements the objective and exact budgeted
+prefix-tree DP. Each opponent decision receives conditional reach times a
+sample-reliability weight. Repeated decisions supported by the same nested game
+set receive diminishing credit. Shared decision prefixes are counted once across
+the selected set. The DP compares a parent with every feasible child combination,
+then adds an edge's decision credit once if that subtree is used.
 
-- `preparationValue`: Wilson lower observed coverage ? bounded preparation opportunity.
-- `selectPreparationRoutes`: exact budgeted prefix-tree dynamic programming.
-- Objective: sum of conservative expected preparation values, independent of opening family.
-- Feasible sets are antichains: no two paths are equal or prefixes of one another.
-- At every prefix, DP compares a parent against complete feasible child combinations
-  at every slot count. It combines subtrees under the shared 12-slot budget.
-- Twelve valuable, distinct targets from the same opening family may all be selected.
-- Equal utility prefers fewer slots, then deterministic UCI traversal; an equally
-  useful ancestor replaces a descendant. There is no depth bonus.
-- Selected rows are displayed by preparation value, with a UCI tie-break.
-
-The engine opportunity is cp/(100+cp) for positive user-perspective cp, 1 for a
-user-favourable mate, and 0 for an assessed nonpositive edge. Missing engine data
-uses a provisional 0.1. A weakness multiplier uses full-route empirical opponent
-score shrunk by two pseudo-games toward Maia WDL (or their baseline when missing).
-Maia never adds support or modifies the route plausibility gate.
+No minimum route length, opening-family quota, singleton exclusion, or length-only
+bonus is used. A deeper route adds value only through observed decisions and/or
+leaf opportunity. Short tactical routes can still win. Full-route `n=1` remains
+one game, even if its shared opening decisions have much more historical evidence.
 
 ## 2. Production pipeline
 
-```
-observed games ? opening trie + exact terminal branches
- ? supported branching prefixes + full-route evidence
- ? opponent-decision plausibility gate
- ? bounded preparation-value engine queue (?300 per colour)
- ? depth-8 leaf Stockfish reads, usable-reply / positive-opportunity gate
- ? retained assessed candidates + bounded optional Maia enrichment
- ? one final budgeted antichain DP ? attach replies / refutations ? report
-```
+1. Actual games generate exact opponent-terminal opening routes and supported
+   branching prefixes. No population or engine-generated route becomes a candidate.
+2. The full same-colour/speed trie supplies exact support, empirical results and
+   `preparationDecisions`: opponent-only `{ ply, moveGames, parentGames }` counts.
+3. The existing weakest-opponent-decision Jeffreys plausibility gate stays at 10%.
+   This is separate from the raw conditional product used in decision utility.
+4. The bounded engine queue ranks single-route preparation utility and retains up
+   to 300 candidates per colour. This remains a heuristic compute allocation;
+   parent/child candidates can both reach the engine.
+5. Stockfish depth 8, three workers, cached leaf FEN reads. The existing actionable
+   reply / positive user opportunity gate remains. Assessed metrics and decision
+   evidence travel with each line; no intermediate nested collapse is performed.
+6. Prospective DP recommendations receive optional Maia enrichment first, then
+   backups (global 64 attempts/pool, 12-success target). Maia is at most two
+   pseudo-games for leaf outcome opportunity, never opponent reach or support.
+7. The report overlays assessed metrics and Maia onto observed branch evidence,
+   then invokes the same DP. Available Maia is not a separate selection class.
+8. An assessed empty opportunity set remains empty. Engine-unavailable fallback
+   uses the same decision objective on observed candidates with provisional leaf
+   opportunity 0.1. Only callers without conditional evidence use conservative
+   observed-frequency leaf utility; they get no invented decision-coverage credit.
+   Cache scopes include scoring version 9.
 
-1. `scout.js`: `aggregateOpeningBranches` keeps exact opponent-terminal paths and
-   deduplicates their game IDs. `rankedOpeningBranches` adds observed opponent-terminal
-   branching prefixes with ?3 supporting games and at least two observed two-ply
-   continuations. No new moves, engine lines or population routes become candidates.
-2. Full route support and results come from the same-colour/speed trie. Both the
-   live view and report fallback build full opening tries (`maxPlies: Infinity`).
-   If a complete prefix cannot be resolved, terminal support remains a lower-bound
-   fallback, and incomplete plausibility is not eligible for the engine queue.
-3. `opponentRoutePlausibility` retains the weakest opponent-only Jeffreys conditional
-   decision estimate; <10% is rejected. It is not route frequency or full-route support.
-4. `trimRankedBranches` allocates up to 300 reads by personal preparation value.
-   It keeps parent and child candidates for engine comparison. No prior noise floor,
-   minimum-64 fill rule, or pre-engine nested collapse remains. Probability/utility
-   is cached once per candidate during queue construction.
-5. `scout-prefilter.js`: one cached leaf FEN read, Stockfish depth 8, three workers.
-   No usable user reply or no positive position opportunity means ineligible.
-   Empirical wins do not veto an engine opportunity. Entries retain all assessed
-   metrics on both the entry and its `line` object. Assessed candidates sort by
-   personal preparation value; they are not nested-collapsed.
-6. Maia scheduling first considers prospective DP recommendations in each colour,
-   then backups, within a global 64-entry pool / 64 attempts and 12-success target.
-   `buildGamePlanDisplayLines` preserves all assessed candidates, including those
-   without Maia; Maia success no longer decides candidate eligibility or creates
-   a separate ordering class. The final selector may choose unassessed-by-Maia rows.
-7. `scout-report.js` overlays passed assessed metrics onto branch evidence, applies
-   available Maia estimates and calls `scout-selector.js` ? `rankGamePlan` ? DP.
-   `rankGamePlan` normalizes opponent-terminal paths and enriches display fields;
-   recency lookups run on selected rows only. Report fallback is also capped at 300.
-8. An assessed empty opportunity set stays empty. Only unavailable evaluations or
-   an engine exception use the engine-free candidate fallback. Fallback preserves
-   candidates independently of the smaller Maia backup pool. Maia errors leave
-   personal selection available. Cache scopes include scoring version 8.
+## 3. Evidence and score fields
 
-## 3. Data semantics
-
-| Field | Meaning / ranking role |
+| Field | Meaning |
 | --- | --- |
-| `games` | Exact terminal count; retained for existing branch diagnostics. Newly generated nonterminal candidates have 0. Not the ranking evidence. |
-| `routeSupportGames` | Personal games reaching the complete route prefix; primary evidence n. |
-| `evidenceGames` | Same-colour/speed corpus count N. |
-| `routeScorePct` | Unweighted full-prefix empirical opponent expected score percentage. |
-| `routeReach` | Weakest sample-aware opponent decision probability; plausibility gate only. |
-| `routePlausibility` | Complete gate evidence, including weakest decision counts. |
-| `prefilterScore` | Stockfish user-perspective leaf cp; bounded opportunity input. |
-| `mateIn`, `hasUserReply` | User-favourable mate and actionable leaf assessment. |
-| `maiaScorePct`, `maiaWdl` | Supplemental opponent-perspective WDL, never personal reach evidence. |
-| `preparationEvidence` | `{ support, total, coverage, opportunity, value }`; coverage is Wilson lower observed frequency. |
-| `ancestorGames`, `ancestorScorePct` | Remaining diagnostic prefix metadata; not selection drivers. |
+| `games` | Exact terminal branch count; zero for generated nonterminal candidates |
+| `routeSupportGames` | Personal games reaching the entire prefix, never ancestor support |
+| `evidenceGames` | Same-colour/speed corpus count |
+| `preparationDecisions` | Opponent-only exact conditional counts, one-based ply |
+| `routeScorePct` | Full-prefix empirical opponent score |
+| `routeReach`, `routePlausibility` | Weakest Jeffreys estimate / evidence for the plausibility gate |
+| `prefilterScore`, `mateIn`, `hasUserReply` | User-perspective engine opportunity / usability |
+| `maiaScorePct`, `maiaWdl` | Supplemental opponent WDL estimate |
+| `preparationEvidence.coverage` | Wilson lower observed frequency, retained as a diagnostic and incomplete-evidence fallback |
+| `preparationEvidence.conditionalReach` | Product of raw opponent-only conditional frequencies; a descriptive plug-in estimate |
+| `preparationEvidence.decisionCoverage` | Single-route sum of diminishing decision credits |
+| `preparationEvidence.terminalValue` | Conditional reach × full-route reliability × bounded opportunity |
+| `preparationEvidence.value` | Single-route utility, used for queue/display; set utility deduplicates shared decisions |
 
-Generated prefix rows also carry full-prefix `gameCount`/WDL for existing rendering
-instead of showing a zero-size empirical sample. `branchScore`, recency-weighted
-`share`, clocks, game lengths and `lastSeen` are not ranking drivers; legacy branch
-aggregation/display/research still consume some of these fields. `prefixGames`,
-`offModal`, `exploitabilityStruggle`, and `exploitabilityPrior` are no longer produced
-or propagated by the production ranking path.
+`ancestorGames`, `ancestorScorePct`, recency, clocks and game lengths remain
+aggregation/display diagnostics, not direct route-selection drivers. No old
+family-prior, Maia-presence sort, or terminal-count nested replacement is restored.
 
-Coverage is a conservative historical proxy, not a calibrated next-game probability.
-A route with 1/1 observations gets about .207 Wilson coverage; 2/2 about .342, and
-40/40 about .912. The 95% endpoint is not a simultaneous post-selection confidence
-statement. See the study for user-choice, overlap modeling and engine limitations.
+## 4. Verification and research boundary
 
-## 4. Removed logic and verification contracts
+`scout-selection-v2.test.js` covers the pinned public-game failure both before
+engine availability and after actual depth-8 reads, controllable user moves,
+rare opponent responses, single-game continuations, repeated-evidence saturation,
+bounded Maia and 90 exhaustive comparisons of the shared-decision DP.
+Existing evidence transport, report, queue, prefilter and live fallback tests remain.
 
-Removed from production: prior-floor pruning, family-borrowed struggle prior,
-comfort-zone exclusion, engine OR-rescue gates and exploitability multiplier,
-pre-engine nested collapse, terminal-count/engine/depth final replacement,
-Maia-presence-first sort, Maia-success-only display truncation, and final
-weakness/recency/branch-score tie hierarchy. Historical prior helpers and frozen
-comparators live only in `research/` for reproducible archived studies; there are
-no runtime compatibility exports for the replaced algorithms.
-
-Regression coverage: `scout-preparation-value.test.js` (synthetics, exhaustive
-optimality, uncertainty, no depth bonus, cap), `scout-nested-support.test.js`
-(real corpus counts, generated trunks, transport), `scout-logical-cut.test.js`
-(engine budget without family quotas), plus prefilter, report, selector and live Maia
-orchestration tests. Former temporary selection expectations were explicitly
-replaced; the independent evidence-semantics assertions remain.
-
-Research scripts can import frozen comparators, but the production module graph
-must not import `research/scout-selection-*` or `research/scout-legacy-prior.js`.
-The v13/runtime/archive boundary below remains unchanged.
+The frozen v8 objective is in `research/scout-selection-v8.js`; only the offline
+study imports it. Production imports no historical selector. The implementation
+and test details are in [selection research](scout-selection-research.md).
 
 ## 5. Experimental runtime（?scoutV13=1）與 research/archive
 

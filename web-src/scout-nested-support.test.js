@@ -31,7 +31,7 @@ function prefilter(lines) {
 }
 
 describe("production nested route support", () => {
-  it.each([1, 2])("retains the 40-game trunk over a +5cp child with %i games", (n) => {
+  it.each([1, 2])("retains concrete preparation after a user choice with %i observed games", (n) => {
     const lines = candidates(n);
     expect(lines).toHaveLength(2);
     expect(lines.find((line) => line.ucis.length === 4).games).toBe(40);
@@ -41,11 +41,11 @@ describe("production nested route support", () => {
     expect(deep.routeReach).toBeGreaterThan(0.7);
     for (const ordered of [lines, [...lines].reverse()]) {
       const selected = prefilter(ordered);
-      expect.soft(selected.map((entry) => entry.line.ucis)).toEqual([trunk, child]);
+      expect.soft(selected.map((entry) => entry.line.ucis)).toEqual([child, trunk]);
       expect.soft(rankGamePlan(selected.map((entry) => ({
         ...entry.line, prefilterScore: entry.prefilterScore,
-      })), 50, { oppColor: "black" }).map((line) => line.ucis)).toEqual([trunk]);
-      expect.soft(rankGamePlan(ordered, 50, { oppColor: "black" }).map((line) => line.ucis)).toEqual([trunk]);
+      })), 50, { oppColor: "black" }).map((line) => line.ucis)).toEqual([child]);
+      expect.soft(rankGamePlan(ordered, 50, { oppColor: "black" }).map((line) => line.ucis)).toEqual([child]);
     }
   });
 
@@ -53,16 +53,16 @@ describe("production nested route support", () => {
     const lines = candidates(40).map((line) => ({
       ...line, prefilterScore: line.ucis.length === 4 ? 30 : 35,
     }));
-    expect(prefilter(lines).map((entry) => entry.line.ucis)).toEqual([trunk, child]);
-    expect(rankGamePlan(lines, 50, { oppColor: "black" }).map((line) => line.ucis)).toEqual([trunk]);
+    expect(prefilter(lines).map((entry) => entry.line.ucis)).toEqual([child, trunk]);
+    expect(rankGamePlan(lines, 50, { oppColor: "black" }).map((line) => line.ucis)).toEqual([child]);
   });
 
-  it("uses engine score only after equal personal support in the game plan", () => {
+  it("does not let a small engine difference erase a supported continuation", () => {
     const lines = candidates(40).map((line) => ({
       ...line, prefilterScore: line.ucis.length === 4 ? 35 : 30,
     }));
     for (const ordered of [lines, [...lines].reverse()]) {
-      expect(rankGamePlan(ordered, 50, { oppColor: "black" }).map((line) => line.ucis)).toEqual([trunk]);
+      expect(rankGamePlan(ordered, 50, { oppColor: "black" }).map((line) => line.ucis)).toEqual([child]);
     }
   });
 
@@ -144,16 +144,16 @@ describe("routeSupportGames semantics", () => {
     for (const ordered of [lines, [...lines].reverse()]) {
       const selected = prefilter(ordered);
       // Prefilter retains both choices; only final selection resolves overlap.
-      expect.soft(selected.map((entry) => entry.line.ucis)).toEqual([trunk, child]);
-      expect.soft(selected.map((entry) => entry.routeSupportGames)).toEqual([41, 1]);
+      expect.soft(selected.map((entry) => entry.line.ucis)).toEqual([child, trunk]);
+      expect.soft(selected.map((entry) => entry.routeSupportGames)).toEqual([1, 41]);
       const plan = rankGamePlan(selected.map((entry) => ({
         ...entry.line, prefilterScore: entry.prefilterScore,
       })), 50, { oppColor: "black" });
-      expect.soft(plan.map((line) => line.ucis)).toEqual([trunk]);
-      expect.soft(plan.map((line) => line.routeSupportGames)).toEqual([41]);
+      expect.soft(plan.map((line) => line.ucis)).toEqual([child]);
+      expect.soft(plan.map((line) => line.routeSupportGames)).toEqual([1]);
       const directPlan = rankGamePlan(ordered, 50, { oppColor: "black" });
-      expect.soft(directPlan.map((line) => line.ucis)).toEqual([trunk]);
-      expect.soft(directPlan.map((line) => line.routeSupportGames)).toEqual([41]);
+      expect.soft(directPlan.map((line) => line.ucis)).toEqual([child]);
+      expect.soft(directPlan.map((line) => line.routeSupportGames)).toEqual([1]);
     }
   });
 });

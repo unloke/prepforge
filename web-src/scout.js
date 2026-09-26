@@ -49,7 +49,7 @@ export const SCOUT_MIN_ROUTE_REACH = 0.1;
 import { opponentMoveProbability } from "./scout-probability.js";
 export const SCOUT_STOCKFISH_DEPTH = 8;
 export const SCOUT_MAIA_LIMIT = 12;
-export const SCOUT_SCORING_VERSION = 8;
+export const SCOUT_SCORING_VERSION = 9;
 export const SCOUT_THINK_TIME_CLAMP_MIN = 0.7;
 export const SCOUT_THINK_TIME_CLAMP_MAX = 1.3;
 export const SCOUT_THINK_TIME_Z_SCALE = 0.1;
@@ -1184,6 +1184,8 @@ export function rankedOpeningBranches(
     b.routePlausibility = opponentRoutePlausibility(trie, b.ucis, color);
     b.routeReach = b.routePlausibility.weakestEstimatedProbability;
     const stats = triePrefixStats(trie, b.ucis);
+    b.preparationDecisions = stats.filter(node => (node.ply % 2 === 0 ? "white" : "black") === color)
+      .map(node => ({ ply: node.ply + 1, moveGames: node.gameCount, parentGames: node.parentGames }));
     const leaf = stats.length === b.ucis.length ? stats.at(-1) : null;
     b.routeSupportGames = leaf?.gameCount ?? b.games;
     b.routeScorePct = leaf?.scorePct ?? b.scorePct;
