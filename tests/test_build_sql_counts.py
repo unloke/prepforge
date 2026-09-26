@@ -1,10 +1,14 @@
 """Build mutations must not issue one statement per existing tree node."""
 
-from sqlalchemy import event
+import os
+
+import pytest
+from sqlalchemy import create_engine, event
 
 from prepforge_chess.core.models import Color
 from prepforge_chess.services.opening_builder import CreateRepertoireRequest, OpeningBuilderService
 from prepforge_chess.services.workspace_view import build_workspace_payload
+from prepforge_chess.storage import sa_tables
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
@@ -54,3 +58,62 @@ def test_build_mutations_have_constant_statement_counts():
         ]
     ))
     assert count <= 3
+
+
+def _seed_chain(builder, name, ucs):
+    rep = builder.create_repertoire(CreateRepertoireRequest(name, Color.WHITE))
+    parent = rep.root_node.id
+    for uci in ucs:
+        parent = builder.add_move(rep.id, parent, uci).id
+    return rep.id
+
+
+def _list_statement_profile(engine, repo, builder):
+    """Statement count of ``list_repertoires`` with 5 repertoires vs 1.
+
+    Returns ``(count_one, count_many, listed_one, listed_many)`` so callers can
+    assert the count is CONSTANT while the result set grows — the regression
+    guard for the old id-list + ``load_repertoire(id)`` × N shape, which issued
+    three statements per repertoire (repertoire row, opening nodes, evals).
+    """
+    _seed_chain(builder, "SQL list solo", ["e2e4", "e7e5"])
+    count_one, listed_one = count_statements(engine, lambda: repo.list_repertoires())
+    for index in range(4):
+        _seed_chain(builder, "SQL list rep {0}".format(index), ["d2d4", "d7d5", "c2c4"])
+    count_many, listed_many = count_statements(engine, lambda: repo.list_repertoires())
+    return count_one, count_many, listed_one, listed_many
+
+
+def test_list_repertoires_statement_count_is_constant():
+    engine = connect_database()
+    apply_schema(engine)
+    repo = PrepForgeRepository(engine)
+    builder = OpeningBuilderService(repo)
+
+    count_one, count_many, listed_one, listed_many = _list_statement_profile(
+        engine, repo, builder
+    )
+    assert len(listed_one) == 1
+    assert len(listed_many) == 5
+    # 1 repertoire and 5 repertoires cost the same number of statements.
+    assert count_many == count_one
+    assert count_many <= 3
+
+
+def test_list_repertoires_statement_count_postgres():
+    url = os.getenv("TEST_POSTGRES_URL")
+    if not url:
+        pytest.skip("TEST_POSTGRES_URL is not configured")
+    engine = create_engine(url, future=True)
+    sa_tables.metadata.create_all(engine, tables=list(sa_tables.DOMAIN_TABLES))
+    repo = PrepForgeRepository(engine)
+    builder = OpeningBuilderService(repo)
+
+    count_one, count_many, listed_one, listed_many = _list_statement_profile(
+        engine, repo, builder
+    )
+    # Relative assertions: the CI database is shared, so other runs may have
+    # left repertoires behind — only the growth and the statement count matter.
+    assert len(listed_many) - len(listed_one) == 4
+    assert count_many == count_one
+    assert count_many <= 3

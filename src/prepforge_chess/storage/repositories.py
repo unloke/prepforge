@@ -751,51 +751,44 @@ class PrepForgeRepository:
                 .values(**fields, updated_at=_now_text())
             )
 
-    def load_repertoire(
-        self, repertoire_id: str, owner_user_id: Optional[str] = None
+    def _repertoire_from_rows(
+        self,
+        rep_row: Mapping[str, Any],
+        node_rows: List[Mapping[str, Any]],
+        evals: Mapping[int, EngineEvaluation],
     ) -> Optional[Repertoire]:
-        with self.engine.connect() as conn:
-            rep_row = conn.execute(
-                select(t.repertoires).where(t.repertoires.c.id == repertoire_id)
-            ).mappings().first()
-            if rep_row is None:
-                return None
-            # Ownership gate: a repertoire owned by someone else is not-found to this owner.
-            if owner_user_id is not None and rep_row["owner_user_id"] != owner_user_id:
-                return None
+        """Assemble + hydrate a Repertoire from already-fetched rows.
 
-            node_rows = conn.execute(
-                select(t.opening_nodes).where(t.opening_nodes.c.repertoire_id == repertoire_id)
-            ).mappings().all()
-
-            eval_ids = [row["engine_evaluation_id"] for row in node_rows]
-            evals = self._load_evaluations(conn, eval_ids)
-            nodes: Dict[str, OpeningNode] = {}
-            arriving_uci: Dict[str, Optional[str]] = {}
-            for row in node_rows:
-                arriving_uci[row["id"]] = row["uci"]
-                nodes[row["id"]] = OpeningNode(
-                    id=row["id"],
-                    repertoire_id=row["repertoire_id"],
-                    parent_id=row["parent_id"],
-                    move=None,
-                    fen=rep_row["root_fen"],
-                    side_to_move=Color.WHITE,
-                    engine_evaluation=evals.get(row["engine_evaluation_id"]),
-                    maia_probability=row["maia_probability"],
-                    is_mainline=_int_to_bool(row["is_mainline"]),
-                    is_user_prepared_move=_int_to_bool(row["is_user_prepared_move"]),
-                    is_enabled=_int_to_bool(row["is_enabled"]),
-                    priority=row["priority"],
-                    comment=row["comment"],
-                    tags=_json_load(row["tags_json"], []),
-                    arrows=_json_load(row["arrows_json"], []),
-                    circles=_json_load(row["circles_json"], []),
-                    tactical_warning=row["tactical_warning"],
-                    strategic_idea=row["strategic_idea"],
-                    typical_plan=row["typical_plan"],
-                    source=MoveSource(row["source"]),
-                )
+        Shared by ``load_repertoire`` (single) and ``list_repertoires`` (batched)
+        so both paths build identical trees from identical row shapes — the batch
+        path just supplies rows fetched in bulk instead of one round trip each.
+        """
+        nodes: Dict[str, OpeningNode] = {}
+        arriving_uci: Dict[str, Optional[str]] = {}
+        for row in node_rows:
+            arriving_uci[row["id"]] = row["uci"]
+            nodes[row["id"]] = OpeningNode(
+                id=row["id"],
+                repertoire_id=row["repertoire_id"],
+                parent_id=row["parent_id"],
+                move=None,
+                fen=rep_row["root_fen"],
+                side_to_move=Color.WHITE,
+                engine_evaluation=evals.get(row["engine_evaluation_id"]),
+                maia_probability=row["maia_probability"],
+                is_mainline=_int_to_bool(row["is_mainline"]),
+                is_user_prepared_move=_int_to_bool(row["is_user_prepared_move"]),
+                is_enabled=_int_to_bool(row["is_enabled"]),
+                priority=row["priority"],
+                comment=row["comment"],
+                tags=_json_load(row["tags_json"], []),
+                arrows=_json_load(row["arrows_json"], []),
+                circles=_json_load(row["circles_json"], []),
+                tactical_warning=row["tactical_warning"],
+                strategic_idea=row["strategic_idea"],
+                typical_plan=row["typical_plan"],
+                source=MoveSource(row["source"]),
+            )
 
         root_node = codec.hydrate_opening_tree(rep_row["root_fen"], nodes, arriving_uci)
         if root_node is None:
@@ -823,17 +816,65 @@ class PrepForgeRepository:
         repertoire._cached_health = _json_load(rep_row["health_json"], None)
         return repertoire
 
+    def load_repertoire(
+        self, repertoire_id: str, owner_user_id: Optional[str] = None
+    ) -> Optional[Repertoire]:
+        with self.engine.connect() as conn:
+            rep_row = conn.execute(
+                select(t.repertoires).where(t.repertoires.c.id == repertoire_id)
+            ).mappings().first()
+            if rep_row is None:
+                return None
+            # Ownership gate: a repertoire owned by someone else is not-found to this owner.
+            if owner_user_id is not None and rep_row["owner_user_id"] != owner_user_id:
+                return None
+
+            node_rows = conn.execute(
+                select(t.opening_nodes).where(t.opening_nodes.c.repertoire_id == repertoire_id)
+            ).mappings().all()
+            evals = self._load_evaluations(
+                conn, [row["engine_evaluation_id"] for row in node_rows]
+            )
+        return self._repertoire_from_rows(rep_row, node_rows, evals)
+
     def list_repertoires(self, owner_user_id: Optional[str] = None) -> List[Repertoire]:
-        stmt = select(t.repertoires.c.id).order_by(t.repertoires.c.updated_at.desc())
+        """Full repertoires (optionally owner-scoped), newest first.
+
+        Batched read: one statement for the repertoire rows, one for every opening
+        node across them, one for the referenced evaluations — a constant count no
+        matter how many repertoires are listed. The old shape (id list, then one
+        ``load_repertoire`` round trip per id) issued three statements per
+        repertoire and re-walked a connection per row (N+1); public behaviour —
+        set, order, and hydrated trees — is unchanged.
+        """
+        stmt = select(t.repertoires).order_by(t.repertoires.c.updated_at.desc())
         if owner_user_id is not None:
             stmt = stmt.where(t.repertoires.c.owner_user_id == owner_user_id)
         with self.engine.connect() as conn:
-            ids = [row["id"] for row in conn.execute(stmt).mappings().all()]
-        return [
-            repertoire
-            for repertoire in (self.load_repertoire(rep_id) for rep_id in ids)
-            if repertoire is not None
-        ]
+            rep_rows = conn.execute(stmt).mappings().all()
+            if not rep_rows:
+                return []
+            node_rows = conn.execute(
+                select(t.opening_nodes).where(
+                    t.opening_nodes.c.repertoire_id.in_(
+                        [row["id"] for row in rep_rows]
+                    )
+                )
+            ).mappings().all()
+            evals = self._load_evaluations(
+                conn, (row["engine_evaluation_id"] for row in node_rows)
+            )
+        nodes_by_rep: Dict[str, List[Mapping[str, Any]]] = {}
+        for row in node_rows:
+            nodes_by_rep.setdefault(row["repertoire_id"], []).append(row)
+        out: List[Repertoire] = []
+        for rep_row in rep_rows:
+            repertoire = self._repertoire_from_rows(
+                rep_row, nodes_by_rep.get(rep_row["id"], []), evals
+            )
+            if repertoire is not None:
+                out.append(repertoire)
+        return out
 
     def list_owner_repertoire_listings(
         self, owner_user_id: str

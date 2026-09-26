@@ -28,6 +28,10 @@
   --warn: #c98439;
   --good: #4a8964;
   --brilliant: #2f7fe0;
+  /* Classification palette completion: inaccuracy/missed had no semantic token
+     (hardcoded in the bars, tree dots, and eval chart). */
+  --inaccuracy: #e0b15f;
+  --missed: #8a6db5;
   --inert: #6b6256;
   --chip: #4a4a4a;
   --dot-white: #f8f4ea;
@@ -88,6 +92,8 @@
   --warn: #e5a45e;
   --good: #83c89b;
   --brilliant: #83baff;
+  --inaccuracy: #e6bc72;
+  --missed: #a48ac9;
   --inert: #b3a79a;
   --chip: #e5d9cc;
   --dot-white: #f8f4ea;
@@ -1477,6 +1483,26 @@ h2 {
 }
 .today-recap .up { color: var(--good); }
 .today-recap .down { color: var(--danger); }
+/* Personalized recommendation row: text + one CTA into the target view. */
+.rec-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rec-text {
+  display: flex;
+  flex-direction: column;
+}
+.rec-detail {
+  /* --muted, not --label: this is real content (counts, days), and --label's
+     11px grey fails the 4.5:1 contrast floor on the panel (axe baseline). */
+  color: var(--muted);
+  font-size: 11px;
+}
+.rec-cta {
+  margin-left: auto;
+  white-space: nowrap;
+}
 /* Streak-at-risk: replaces the note line when local midnight is <5h away and
    nothing has been trained yet — same slot, louder voice. */
 .today-warning {
@@ -1752,7 +1778,8 @@ h2 {
 }
 
 /* First-run "next steps" under the repertoires empty state — rendered from the
-   /api/dashboard recommendations payload so the copy lives server-side. */
+   /api/dashboard recommendations payload so the copy lives server-side. The
+   same list carries the Today card's priority actions (due review, weak spots). */
 .dashboard-next-steps {
   margin: 10px 0 0;
   padding: 4px 0 0 22px;
@@ -4341,15 +4368,8 @@ h2 {
 .explorer-bar-d { background: var(--line-strong); }
 .explorer-bar-b { background: #3a3a3a; }
 
-/* Eval chart */
-
-.eval-chart {
-  width: 100%;
-  height: 96px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--panel-soft);
-}
+/* Eval chart styles live in views/analyze-chart.css (lazy-loaded with the
+   Analyze view) so this eager sheet stays under its deploy budget. */
 
 /* Reveal panel: hides eval chart + move list until analysis completes,
    then fades them in together. */
@@ -4619,7 +4639,7 @@ h2 {
   background: var(--good);
 }
 .seg-inaccuracy {
-  background: #e0b15f;
+  background: var(--inaccuracy);
 }
 .seg-mistake {
   background: var(--warn);
@@ -4628,7 +4648,7 @@ h2 {
   background: var(--danger);
 }
 .seg-missed {
-  background: #8a6db5;
+  background: var(--missed);
 }
 @media (prefers-reduced-motion: reduce) {
   .cbar-seg {
@@ -5016,7 +5036,7 @@ h2 {
   background: #93b370;
 }
 .mtree-move.cls-inaccuracy .mtree-dot {
-  background: #d6a23c;
+  background: var(--inaccuracy);
 }
 .mtree-move.cls-mistake .mtree-dot {
   background: var(--warn);
@@ -5026,7 +5046,7 @@ h2 {
 }
 .mtree-move.cls-missed_win .mtree-dot,
 .mtree-move.cls-missed_tactic .mtree-dot {
-  background: #8a6db5;
+  background: var(--missed);
 }
 /* When selected, keep the dot legible on the accent fill. */
 .mtree-move.is-current .mtree-dot {

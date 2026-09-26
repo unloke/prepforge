@@ -310,6 +310,12 @@ export const BRILLIANT_MIN_TRAP_GAP = 0.05; // (3) win chance the natural move t
 // stars) or the browser wastes Maia forwards on moves the server would never consult. This
 // is the cheapest layer of all — it's pure arithmetic over evals already in hand — so the
 // full-game path checks it BEFORE spending a Maia forward on the move (see brilliant-assess).
+// Cross-end contract: tests/fixtures/classification_golden.json pins this file
+// and the server classifier (services/classification.py) to the same golden
+// semantics (boundary tiers, mate/extreme evals, this 2% Brilliant edge).
+// Run by tests/test_classification_golden.py and
+// web-src/coach/classification-golden.test.js — extend the fixture whenever a
+// threshold or conversion here changes.
 export const BRILLIANT_MAX_CANDIDATE_WIN_DELTA = 2;
 export function isBrilliantByMaia(features, { maiaHumanProb, maiaWinAfter, trapGap }) {
   if (!features || !features.brilliantCandidate) return false;

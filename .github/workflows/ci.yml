@@ -153,9 +153,10 @@ jobs:
             sleep 1
           done
           node scripts/topbar-status-geometry.mjs
-      - name: Scout + axe E2E
+      - name: Scout + axe + eval-chart E2E
         run: >-
           uv run pytest -m e2e
           tests/e2e/test_scout_smoke.py
           tests/e2e/test_axe_baseline.py
+          tests/e2e/test_eval_chart_smoke.py
           -q

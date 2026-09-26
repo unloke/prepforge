@@ -46,21 +46,55 @@ export function createDashboardView({
   showInputModal,
   promptImportRepertoireFromPgn,
   requireSignIn,
+  goToView,
 }) {
   let eventsBound = false;
 
-  // The backend already ships a short "next action" list on /api/dashboard
-  // (payload.recommendations). Render it in the repertoires card only when the
-  // account has nothing to show — the empty state doubles as the first-run guide,
-  // using the backend payload instead of a second hardcoded copy in the frontend.
+  // The backend ships personalized next actions on /api/dashboard
+  // (payload.recommendations — ordered by account state, see
+  // services/dashboard_recommendations.py). Each item is
+  // {id, title, detail, cta: {label, view}} and renders with a CTA button that
+  // jumps straight to the matching view. Plain strings (legacy payloads) still
+  // render as plain bullets. Two placements share this one renderer: the
+  // repertoires empty state (first-run guide) and the Today card (priority
+  // actions like due review for accounts that already have repertoires).
   function recommendationsHtml(recommendations) {
     const items = (Array.isArray(recommendations) ? recommendations : [])
-      .filter((line) => typeof line === "string" && line.trim())
       .slice(0, 3)
-      .map((line) => `<li>${escapeHtml(line)}</li>`)
+      .map((item) => {
+        if (typeof item === "string") {
+          return item.trim() ? `<li>${escapeHtml(item.trim())}</li>` : "";
+        }
+        if (!item || typeof item !== "object" || !item.title) return "";
+        const detail = item.detail
+          ? `<span class="rec-detail">${escapeHtml(String(item.detail))}</span>`
+          : "";
+        const cta =
+          item.cta && item.cta.view
+            ? `<button type="button" class="btn sm rec-cta" ` +
+              `data-rec-view="${escapeHtml(String(item.cta.view))}" ` +
+              `data-testid="rec-cta-${escapeHtml(String(item.id || "item"))}">` +
+              `${escapeHtml(String(item.cta.label || item.cta.view))}</button>`
+            : "";
+        return (
+          `<li class="rec-item"><span class="rec-text">` +
+          `<b>${escapeHtml(String(item.title))}</b>${detail}</span>${cta}</li>`
+        );
+      })
       .join("");
     if (!items) return "";
     return '<ul class="dashboard-next-steps">' + items + "</ul>";
+  }
+
+  // CTA buttons route one click to the view the recommendation targets.
+  function bindRecommendationCtas(container) {
+    if (!container || !container.querySelectorAll) return;
+    container.querySelectorAll(".rec-cta").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const view = btn.dataset && btn.dataset.recView;
+        if (view && goToView) goToView(view);
+      });
+    });
   }
 
   function healthBadgeHtml(health) {
@@ -125,6 +159,11 @@ export function createDashboardView({
     if (due > 0) queueBits.push(`<b>${due}</b> due now`);
     if (soon > 0) queueBits.push(`<b>${soon}</b> coming up in 24h`);
     const queueText = queueBits.length ? queueBits.join(" &middot; ") : "Queue is clear";
+    // Priority next actions (due review, weak-spot drill, …) for accounts that
+    // already have repertoires; the no-repertoire onboarding list lives in the
+    // repertoires card's empty state instead, so nothing renders twice.
+    const nextStepsHtml =
+      (payload.repertoires || 0) > 0 ? recommendationsHtml(payload.recommendations) : "";
     const recap = payload.recap || null;
     let recapHtml = "";
     if (recap && (recap.reviews_7d > 0 || recap.mastered_now > 0 || recap.weak_now > 0)) {
@@ -156,9 +195,11 @@ export function createDashboardView({
       <div class="today-queue">${queueText}</div>
       ${recapHtml}
     </div>
+    ${nextStepsHtml}
     <button class="btn primary" id="dashboard-train-now" data-testid="dashboard-train-now">Train now</button>
   `;
     card.hidden = false;
+    bindRecommendationCtas(card);
     document.getElementById("dashboard-train-now").addEventListener("click", () =>
       goToSmartTraining(due > 0 ? "Starting due review…" : "Starting training…"),
     );
@@ -187,6 +228,7 @@ export function createDashboardView({
         container.innerHTML =
           '<div class="empty-state">No repertoires yet. Use Build to create one.</div>' +
           nextSteps;
+        bindRecommendationCtas(container);
         return;
       }
       container.innerHTML = visible
