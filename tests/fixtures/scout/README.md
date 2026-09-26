@@ -8,7 +8,7 @@ rating/clock/UI fields. No moves or outcomes were synthesized. This reproduces t
 same shallow-prefix failure class reported for #80; it is not a claimed capture
 of the user's unspecified opponent/session.
 
-SHA256: `9c1782cf3fd11034b44232bb08c5878d8aefd7d88e4345be70f50941bff45987`.
+SHA256 (repository LF bytes): `9c1782cf3fd11034b44232bb08c5878d8aefd7d88e4345be70f50941bff45987`.
 
 `selection-stockfish.json` contains real Stockfish **19 lite single**, depth **8**,
 16 MiB hash, `ucinewgame` reset per FEN, single-PV reads for the union of old/new
@@ -17,7 +17,7 @@ side-to-move to White POV before the production prefilter converts to user POV.
 Terminal positions without a legal move have no usable reply. No Maia outputs
 are fabricated; Maia effects are covered separately by deterministic unit tests.
 
-Engine fixture SHA256: `ea199bb20f8eaa98a5b7362d2da0555095ab1996958cafb4ee206beee0a05c27`.
+Engine fixture SHA256 (repository LF bytes): `ea199bb20f8eaa98a5b7362d2da0555095ab1996958cafb4ee206beee0a05c27`.
 
 Reproduce offline:
 

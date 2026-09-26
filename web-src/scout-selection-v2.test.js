@@ -65,6 +65,20 @@ describe('observed decision preparation (#80)', () => {
     expect(preparationValue(row).decisionCoverage).toBeGreaterThan(0.6);
   });
 
+  it('keeps a short actionable mate instead of imposing a minimum length', () => {
+    const parent={ucis:['a','b'],games:40,mateIn:2,
+      preparationDecisions:[{ply:2,moveGames:40,parentGames:40}]};
+    const child={...parent,ucis:['a','b','c','d'],games:1,mateIn:0,prefilterScore:1,
+      preparationDecisions:[...parent.preparationDecisions,{ply:4,moveGames:1,parentGames:1}]};
+    expect(selectPreparationRoutes([child,parent],{limit:1}).map(r=>r.ucis)).toEqual([parent.ucis]);
+  });
+
+  it('does not reward duplicate routes or allow engine/decision credit without actual support', () => {
+    const row={ucis:['a','b'],games:1,prefilterScore:100,preparationDecisions:[{ply:2,moveGames:1,parentGames:1}]};
+    expect(selectPreparationRoutes([row,row,row])).toHaveLength(1);
+    expect(selectPreparationRoutes([{...row,games:0}])).toEqual([]);
+  });
+
   it('uses bounded Maia evidence without changing opponent reach or decision coverage', () => {
     const row={games:50,scorePct:20,prefilterScore:100,ucis:['a','b'],preparationDecisions:[{ply:2,moveGames:50,parentGames:60}]};
     const low=preparationValue({...row,maiaScorePct:0});
