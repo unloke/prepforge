@@ -106,6 +106,16 @@ def test_list_repertoires_statement_count_is_constant():
     assert count_many in (2, 3)
 
 
+def _psycopg3_url(raw: str) -> str:
+    # TEST_POSTGRES_URL is a bare postgresql:// URL, which SQLAlchemy maps to the
+    # psycopg2 dialect — but the project ships psycopg 3 (same pin as config.py).
+    if raw.startswith("postgresql://"):
+        return "postgresql+psycopg://" + raw[len("postgresql://") :]
+    if raw.startswith("postgres://"):
+        return "postgresql+psycopg://" + raw[len("postgres://") :]
+    return raw
+
+
 def test_list_repertoires_statement_count_postgres():
     """PostgreSQL variant of the SQLite count guard above — identical O(1)
     profile (2 or 3 statements regardless of repertoire count) so the dialect
@@ -113,7 +123,7 @@ def test_list_repertoires_statement_count_postgres():
     url = os.getenv("TEST_POSTGRES_URL")
     if not url:
         pytest.skip("TEST_POSTGRES_URL is not configured")
-    engine = create_engine(url, future=True)
+    engine = create_engine(_psycopg3_url(url), future=True)
     sa_tables.metadata.create_all(engine, tables=list(sa_tables.DOMAIN_TABLES))
     repo = PrepForgeRepository(engine)
     builder = OpeningBuilderService(repo)
