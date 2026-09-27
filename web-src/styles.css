@@ -8,7 +8,8 @@
   --line-strong: #c8c2b8;
   --text: #1c1c1c;
   --muted: #5e5e5e;
-  --label: #8a8478;
+  /* Small-caps labels are text-only, so the token itself carries the AA value. */
+  --label: #6a665c;
   --surface-hover: #f0ece4;
   --hover: #efece6;
   --btn-hover: #f4f1ec;
@@ -19,6 +20,7 @@
   --accent-line: #e9d2b3;
   --accent-strong: #9d5e1f;
   --accent-dark: #8a4d17;
+  --accent-text: #92612c;
   --on-accent: #ffffff;
   --focus-ring: rgba(209, 139, 63, 0.45);
   --danger: #c4524d;
@@ -28,6 +30,14 @@
   --warn: #c98439;
   --good: #4a8964;
   --brilliant: #2f7fe0;
+  /* Text-only companions for the semantic colours. The base tokens also fill
+     charts, dots, badges, and borders, so darkening them for WCAG AA would
+     change the visual language; text usages pick up the *-text variants instead
+     (>= 4.5:1 on panel/panel-soft/bg and each colour's own tinted background —
+     pinned by the contrast guard in visual-system.test.js). */
+  --warn-text: #95622a;
+  --good-text: #407757;
+  --brilliant-text: #286cbe;
   /* Classification palette completion: inaccuracy/missed had no semantic token
      (hardcoded in the bars, tree dots, and eval chart). */
   --inaccuracy: #e0b15f;
@@ -83,6 +93,7 @@
   --accent-line: #795535;
   --accent-strong: #f0b873;
   --accent-dark: #c6813e;
+  --accent-text: #dda15e;
   --on-accent: #21150b;
   --focus-ring: rgba(240, 184, 115, 0.46);
   --danger: #ef8378;
@@ -92,6 +103,12 @@
   --warn: #e5a45e;
   --good: #83c89b;
   --brilliant: #83baff;
+  /* Dark surfaces already clear AA for these hues by a wide margin, so the
+     text variants alias the base colours (kept as separate tokens so text and
+     fill can diverge per theme if a future tuning needs it). */
+  --warn-text: #e5a45e;
+  --good-text: #83c89b;
+  --brilliant-text: #83baff;
   --inaccuracy: #e6bc72;
   --missed: #a48ac9;
   --inert: #b3a79a;
@@ -333,7 +350,7 @@ h2 {
 }
 
 .status[data-severity="success"] {
-  color: var(--good);
+  color: var(--good-text);
   font-weight: 650;
 }
 
@@ -383,7 +400,7 @@ h2 {
 
 .lichess-chip.is-connected::before {
   content: "●";
-  color: var(--good);
+  color: var(--good-text);
 }
 
 /* The account menu reuses .context-menu chrome. Sign out is the only destructive
@@ -643,7 +660,7 @@ h2 {
 }
 
 .src-self-count.is-mixed {
-  color: var(--warn);
+  color: var(--warn-text);
 }
 
 .src-kind {
@@ -727,14 +744,14 @@ h2 {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.replay-chip.rk-in-prep { color: var(--good); }
+.replay-chip.rk-in-prep { color: var(--good-text); }
 .replay-chip.rk-user-error { color: var(--danger); }
-.replay-chip.rk-left-prep { color: var(--warn); }
+.replay-chip.rk-left-prep { color: var(--warn-text); }
 .replay-chip.rk-no-prep { color: var(--muted); }
 .replay-queued {
   font-size: 12px;
   font-weight: 600;
-  color: var(--warn);
+  color: var(--warn-text);
 }
 
 .replay-results {
@@ -779,9 +796,9 @@ h2 {
   text-align: center;
   font-weight: 700;
 }
-.rk-in-prep .replay-icon { color: var(--good); }
+.rk-in-prep .replay-icon { color: var(--good-text); }
 .rk-user-error .replay-icon { color: var(--danger); }
-.rk-left-prep .replay-icon { color: var(--warn); }
+.rk-left-prep .replay-icon { color: var(--warn-text); }
 .rk-no-prep .replay-icon { color: var(--muted); }
 .replay-row-head .players {
   font-weight: 700;
@@ -817,9 +834,9 @@ h2 {
   background: var(--panel-soft);
   white-space: nowrap;
 }
-.rk-in-prep .replay-badge { color: var(--good); border-color: rgba(74, 137, 100, 0.4); background: rgba(74, 137, 100, 0.08); }
+.rk-in-prep .replay-badge { color: var(--good-text); border-color: rgba(74, 137, 100, 0.4); background: rgba(74, 137, 100, 0.08); }
 .rk-user-error .replay-badge { color: var(--danger); border-color: rgba(196, 82, 77, 0.4); background: rgba(196, 82, 77, 0.08); }
-.rk-left-prep .replay-badge { color: var(--warn); border-color: rgba(201, 132, 57, 0.4); background: rgba(201, 132, 57, 0.08); }
+.rk-left-prep .replay-badge { color: var(--warn-text); border-color: rgba(201, 132, 57, 0.4); background: rgba(201, 132, 57, 0.08); }
 .replay-caret {
   flex: none;
   color: var(--muted);
@@ -1400,11 +1417,11 @@ h2 {
   border: 1px solid var(--line);
 }
 .rh-pct.tier-high {
-  color: var(--good);
+  color: var(--good-text);
   border-color: color-mix(in srgb, var(--good) 40%, var(--line));
 }
 .rh-pct.tier-mid {
-  color: var(--warn);
+  color: var(--warn-text);
   border-color: color-mix(in srgb, var(--warn) 40%, var(--line));
 }
 .rh-pct.tier-low {
@@ -1417,7 +1434,7 @@ h2 {
   color: var(--danger);
 }
 .rh-due {
-  color: var(--warn);
+  color: var(--warn-text);
 }
 @media (prefers-reduced-motion: reduce) {
   .metric.is-clickable {
@@ -1481,7 +1498,7 @@ h2 {
   font-size: 12px;
   margin-top: 2px;
 }
-.today-recap .up { color: var(--good); }
+.today-recap .up { color: var(--good-text); }
 .today-recap .down { color: var(--danger); }
 /* Personalized recommendation row: text + one CTA into the target view. */
 .rec-item {
@@ -1508,7 +1525,7 @@ h2 {
 .today-warning {
   font-weight: 700;
   font-size: 14px;
-  color: var(--warn);
+  color: var(--warn-text);
 }
 
 /* Book-departure line: a second coach sentence (same voice as .coach-prose)
@@ -2340,7 +2357,7 @@ h2 {
 #train-banner[data-state="review"] .train-banner-icon,
 #train-banner[data-state="review"] .train-coach-icon { background: var(--warn); animation: jobToastPulse 1.6s ease-in-out infinite; }
 #train-banner[data-state="review"] .train-banner-title,
-#train-banner[data-state="review"] .train-coach-title { color: var(--warn); }
+#train-banner[data-state="review"] .train-coach-title { color: var(--warn-text); }
 /* Smart-queue states: run-in (the line plays itself), teach (new move shown
    before it's asked), reveal (second miss — answer shown, play it to go on). */
 #train-banner[data-state="runin"] { border-left-color: var(--line-strong); }
@@ -2350,12 +2367,12 @@ h2 {
 #train-banner[data-state="teach"] .train-banner-icon,
 #train-banner[data-state="teach"] .train-coach-icon { background: var(--brilliant); }
 #train-banner[data-state="teach"] .train-banner-title,
-#train-banner[data-state="teach"] .train-coach-title { color: var(--brilliant); }
+#train-banner[data-state="teach"] .train-coach-title { color: var(--brilliant-text); }
 #train-banner[data-state="reveal"] { border-left-color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, var(--panel)); }
 #train-banner[data-state="reveal"] .train-banner-icon,
 #train-banner[data-state="reveal"] .train-coach-icon { background: var(--warn); }
 #train-banner[data-state="reveal"] .train-banner-title,
-#train-banner[data-state="reveal"] .train-coach-title { color: var(--warn); }
+#train-banner[data-state="reveal"] .train-coach-title { color: var(--warn-text); }
 
 #train-banner.flash { animation: trainFlash 420ms ease; }
 #train-banner[data-state="wrong"].flash { animation: trainWrongFlash 760ms ease; }
@@ -2412,7 +2429,7 @@ h2 {
 .train-banner-sub:empty,
 .train-coach-sub:empty { display: none; }
 #train-banner[data-state="correct"] .train-banner-title,
-#train-banner[data-state="correct"] .train-coach-title { color: var(--good); }
+#train-banner[data-state="correct"] .train-coach-title { color: var(--good-text); }
 #train-banner[data-state="wrong"] .train-banner-title,
 #train-banner[data-state="wrong"] .train-coach-title { color: var(--danger); }
 
@@ -2705,7 +2722,7 @@ h2 {
   font-size: 13px;
   font-weight: 700;
 }
-.train-accuracy { color: var(--good); font-variant-numeric: tabular-nums; }
+.train-accuracy { color: var(--good-text); font-variant-numeric: tabular-nums; }
 
 /* Queue composition strip: what today's session is made of, one proportional
    segment + legend chip per card kind (weak / due / new / polish). */
@@ -2787,7 +2804,7 @@ h2 {
   border-radius: 8px;
 }
 .ts-value { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.ts-value.good { color: var(--good); }
+.ts-value.good { color: var(--good-text); }
 .ts-value.bad { color: var(--danger); }
 .ts-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
 
@@ -2941,12 +2958,12 @@ h2 {
   font-size: 12px;
   color: var(--muted);
 }
-.tsum-row.good > span:first-child { color: var(--good); font-weight: 600; }
-.tsum-row.warn > span:first-child { color: var(--warn); font-weight: 600; }
+.tsum-row.good > span:first-child { color: var(--good-text); font-weight: 600; }
+.tsum-row.warn > span:first-child { color: var(--warn-text); font-weight: 600; }
 .tsum-row.bad > span:first-child { color: var(--danger); font-weight: 600; }
 .tsum-num { font-variant-numeric: tabular-nums; color: var(--text); display: inline-flex; gap: 5px; }
 .tsum-delta { font-weight: 700; }
-.tsum-delta.up { color: var(--good); }
+.tsum-delta.up { color: var(--good-text); }
 .tsum-delta.down { color: var(--danger); }
 .train-summary-foot { font-size: 12px; color: var(--accent-strong); font-weight: 600; }
 
@@ -3042,7 +3059,7 @@ h2 {
   display: none;
 }
 .build-sync.is-saved {
-  color: var(--good);
+  color: var(--good-text);
   border-color: color-mix(in srgb, var(--good) 35%, var(--line));
 }
 .build-sync.is-dirty {
@@ -3054,7 +3071,7 @@ h2 {
   background: var(--accent-soft);
 }
 .build-sync.is-error {
-  color: var(--warn);
+  color: var(--warn-text);
   border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
   background: color-mix(in srgb, var(--warn) 8%, var(--panel-soft));
 }
@@ -3379,8 +3396,8 @@ h2 {
   font-size: 12px;
   font-weight: 600;
 }
-.scout-verdict.good { color: var(--good); }
-.scout-verdict.warn { color: var(--warn); }
+.scout-verdict.good { color: var(--good-text); }
+.scout-verdict.warn { color: var(--warn-text); }
 .scout-verdict.muted { color: var(--muted); font-weight: 400; }
 
 .scout-n { font-size: 10px; color: var(--label); font-weight: 500; white-space: nowrap; }
@@ -3426,7 +3443,7 @@ h2 {
   font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px;
   border: 1px solid var(--line-soft); line-height: 1.2;
 }
-.scout-wdl-w { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, transparent); }
+.scout-wdl-w { color: var(--good-text); border-color: color-mix(in srgb, var(--good) 40%, transparent); }
 .scout-wdl-d { color: var(--muted); }
 .scout-wdl-l { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
 .scout-wdl-compact .scout-wdl-pill { padding: 0 3px; }
@@ -3460,9 +3477,9 @@ h2 {
   margin-right: 1px;
 }
 
-.scout-err-marker { color: var(--warn); font-size: 11px; }
+.scout-err-marker { color: var(--warn-text); font-size: 11px; }
 .scout-engine-note {
-  font-size: 11px; color: var(--warn);
+  font-size: 11px; color: var(--warn-text);
   padding: 4px 6px; border-radius: 4px;
   background: color-mix(in srgb, var(--warn) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--warn) 20%, transparent);
@@ -3620,7 +3637,7 @@ h2 {
   fill: currentColor;
   opacity: 0.78;
 }
-.scout-rating-candle.is-up { color: var(--good); }
+.scout-rating-candle.is-up { color: var(--good-text); }
 .scout-rating-candle.is-down { color: var(--danger); }
 .scout-rating-candle.is-flat { color: var(--muted); }
 .scout-rating-game-line { color: var(--accent-strong); }
@@ -3864,14 +3881,14 @@ h2 {
 .scout-prep-you {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
-  color: var(--good);
+  color: var(--good-text);
   background: color-mix(in srgb, var(--good) 12%, transparent);
   padding: 0 4px;
   border-radius: 3px;
 }
 .scout-prep-needs {
   font-size: 11px;
-  color: var(--warn);
+  color: var(--warn-text);
   font-weight: 600;
 }
 .scout-prep-chip {
@@ -3886,7 +3903,7 @@ h2 {
   vertical-align: baseline;
 }
 .scout-prep-chip-attack {
-  color: var(--good);
+  color: var(--good-text);
   background: color-mix(in srgb, var(--good) 10%, transparent);
 }
 .scout-prep-chip-weapon {
@@ -3995,11 +4012,11 @@ h2 {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.scout-line-hint { color: var(--warn); font-family: inherit; }
+.scout-line-hint { color: var(--warn-text); font-family: inherit; }
 .scout-lr-score { min-width: 0; }
 .scout-score-cell { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
 .scout-score-pct { color: var(--text); font-weight: 600; }
-.scout-gap { font-size: 9px; color: var(--warn); white-space: nowrap; }
+.scout-gap { font-size: 9px; color: var(--warn-text); white-space: nowrap; }
 .scout-lr-wdl { display: flex; justify-content: flex-end; }
 .scout-lr-action { display: flex; align-items: center; justify-content: flex-end; gap: 3px; }
 .scout-add-icon {
@@ -4009,13 +4026,13 @@ h2 {
   font-size: 15px; line-height: 1; cursor: pointer; font-family: inherit;
   transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
-.scout-add-icon:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.scout-add-icon:hover { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
 .scout-add-icon:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* Status + actions inside the expanded detail panel. */
 .scout-line-status { font-size: 11px; font-weight: 600; }
-.scout-line-status.good { color: var(--good); }
-.scout-line-status.warn { color: var(--warn); }
+.scout-line-status.good { color: var(--good-text); }
+.scout-line-status.warn { color: var(--warn-text); }
 .scout-line-status.bad { color: var(--danger); }
 .scout-line-action-row { display: flex; gap: 6px; flex-wrap: wrap; }
 
@@ -4028,7 +4045,7 @@ h2 {
 }
 .scout-profile-main { display: flex; align-items: baseline; gap: 8px; }
 .scout-username-link { font-weight: 700; font-size: 14px; color: var(--text); text-decoration: none; }
-.scout-username-link:hover { color: var(--accent); text-decoration: underline; }
+.scout-username-link:hover {   color: var(--accent-text); text-decoration: underline; }
 .scout-profile-games, .scout-profile-rating { font-size: 11px; color: var(--muted); }
 .scout-speed-chips { display: flex; gap: 3px; flex-wrap: wrap; margin-left: auto; width: 100%; justify-content: flex-end; }
 @media (min-width: 721px) {
@@ -4042,7 +4059,7 @@ h2 {
   font-size: 11px;
   transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
-.scout-speed-chip:hover { border-color: var(--accent); color: var(--accent); }
+.scout-speed-chip:hover { border-color: var(--accent); color: var(--accent-text); }
 .scout-speed-chip.is-on { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-strong); }
 .scout-speed-n { font-weight: 400; opacity: 0.7; }
 
@@ -4064,7 +4081,7 @@ h2 {
 .scout-coverage-label { font-size: 11px; color: var(--muted); white-space: nowrap; }
 .scout-prepare-all { margin-left: auto; }
 .scout-trending {
-  font-size: 10px; font-weight: 700; color: var(--warn);
+  font-size: 10px; font-weight: 700; color: var(--warn-text);
   padding: 1px 6px; border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
   border-radius: 999px; background: color-mix(in srgb, var(--warn) 10%, transparent);
 }
@@ -4194,7 +4211,7 @@ h2 {
 .coverage-score {
   font-size: 12px;
   font-weight: 700;
-  color: var(--good);
+  color: var(--good-text);
 }
 
 /* Coverage scan rows live directly under the compact header (Scan button +
@@ -4342,7 +4359,7 @@ h2 {
 }
 
 .explorer-inrep {
-  color: var(--good);
+  color: var(--good-text);
   margin-left: 4px;
   font-size: 10px;
   vertical-align: 2px;
@@ -4495,13 +4512,13 @@ h2 {
 .phase-chip[data-phase="middlegame"] {
   border-color: color-mix(in srgb, var(--brilliant) 35%, var(--line));
   background: color-mix(in srgb, var(--brilliant) 12%, var(--panel));
-  color: var(--brilliant);
+  color: var(--brilliant-text);
 }
 
 .phase-chip[data-phase="endgame"] {
   border-color: color-mix(in srgb, var(--good) 35%, var(--line));
   background: color-mix(in srgb, var(--good) 12%, var(--panel));
-  color: var(--good);
+  color: var(--good-text);
 }
 
 .coach-maia {
@@ -5709,7 +5726,7 @@ h2 {
 }
 
 .job-toast.state-done .job-toast-title {
-  color: var(--good);
+  color: var(--good-text);
 }
 
 .job-toast-collapse {
@@ -6801,11 +6818,11 @@ h2 {
   border-radius: 50%;
   background: var(--muted);
 }
-.scout-v13-style-solid { color: var(--good); border-color: color-mix(in srgb, var(--good) 35%, transparent); }
+.scout-v13-style-solid { color: var(--good-text); border-color: color-mix(in srgb, var(--good) 35%, transparent); }
 .scout-v13-style-solid::before { background: var(--good); }
 .scout-v13-style-sharp { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
 .scout-v13-style-sharp::before { background: var(--danger); }
-.scout-v13-style-rare { color: var(--brilliant); border-color: color-mix(in srgb, var(--brilliant) 35%, transparent); }
+.scout-v13-style-rare { color: var(--brilliant-text); border-color: color-mix(in srgb, var(--brilliant) 35%, transparent); }
 .scout-v13-style-rare::before { background: var(--brilliant); }
 .scout-v13-style-forcing { color: var(--accent-strong, var(--fg)); border-color: var(--accent-line); }
 .scout-v13-style-forcing::before { background: var(--accent); }
@@ -6820,11 +6837,11 @@ h2 {
 .scout-v14-freshness {
   grid-column: 5;
   font-size: 10px;
-  color: var(--good);
+  color: var(--good-text);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.scout-v14-freshness.is-stale { color: var(--warn); }
+.scout-v14-freshness.is-stale { color: var(--warn-text); }
 .scout-v13-summary-risks {
   grid-column: 6;
   margin-left: 0;
@@ -7000,7 +7017,7 @@ h2 {
   font-variant-numeric: tabular-nums;
 }
 .scout-v13-move.src-cohort .scout-v13-san { color: var(--muted); }
-.scout-v13-move.src-engine .scout-v13-san { color: var(--good); }
+.scout-v13-move.src-engine .scout-v13-san { color: var(--good-text); }
 .scout-v13-signal {
   min-width: 0;
   display: inline-flex;
@@ -7970,7 +7987,7 @@ h2 {
 #view-teams .team-detail-columns .team-members-head,
 #view-teams .team-detail-columns .team-shared-head { border-bottom: 1px solid var(--line); padding-bottom: 10px; }
 #view-teams .team-empty { display: grid; place-content: center; justify-items: center; text-align: center; padding: 28px; border: 1px dashed var(--line); border-radius: var(--radius-card); background: var(--panel-soft); }
-#view-teams .team-empty-mark { font-size: 56px; color: var(--accent); line-height: 1; }
+#view-teams .team-empty-mark { font-size: 56px; color: var(--accent-text); line-height: 1; }
 #view-teams .team-empty h3 { margin: 12px 0 4px; }
 #view-teams .team-empty p { max-width: 300px; color: var(--muted); }
 #view-teams .teams-stack:has(.team-detail-card:not([hidden])) .team-empty { display: none; }

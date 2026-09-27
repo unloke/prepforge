@@ -137,6 +137,70 @@ def test_dashboard_recap_counts_this_weeks_reviews(client):
     assert recap["weak_now"] == 0 and recap["weak_delta"] == 0
 
 
+def test_dashboard_get_is_pure_read_once_week_snapshot_exists(client):
+    """The steady-state dashboard read must not write: only the first GET of a
+    new week seeds ``recap.weekly_snapshot``. A write here would take a row lock
+    on ``user_settings`` on every dashboard load (mutate_user_setting locks even
+    when the value is unchanged), queueing reads behind the streak writes."""
+    from sqlalchemy import event
+
+    from prepforge_chess.api.db import get_engine
+
+    _register(client, "pure-read@example.com")
+    assert client.get("/api/dashboard").status_code == 200  # seeds the snapshot
+
+    engine = get_engine()
+    statements: list[str] = []
+
+    def collect(_conn, _cursor, statement, _parameters, _context, _executemany):
+        statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", collect)
+    try:
+        second = client.get("/api/dashboard")
+    finally:
+        event.remove(engine, "before_cursor_execute", collect)
+
+    assert second.status_code == 200
+    writes = [
+        s
+        for s in statements
+        if s.lstrip().upper().startswith(("INSERT", "UPDATE", "DELETE"))
+    ]
+    assert writes == [], (
+        "GET /api/dashboard must not write once the week snapshot exists: "
+        f"{writes}"
+    )
+
+
+def test_weekly_recap_reseeds_baseline_on_week_roll(client):
+    """Crossing into a new week re-rolls the baseline (the one legitimate write)
+    and reports deltas against the fresh zero point, not the stale snapshot."""
+    from prepforge_chess.api.db import get_engine
+    from prepforge_chess.api.routers.workspace import _RECAP_SNAPSHOT_KEY
+    from prepforge_chess.storage.repositories import PrepForgeRepository
+
+    owner = _register(client, "recap-roll@example.com")
+    first = client.get("/api/dashboard").json()["recap"]
+    assert first["week_start"]
+
+    repo = PrepForgeRepository(get_engine())
+    # Simulate a snapshot left over from a past week with a wild baseline.
+    repo.mutate_user_setting(
+        owner,
+        _RECAP_SNAPSHOT_KEY,
+        lambda _current: {"week_start": "2000-01-03", "mastered": 99, "weak": 99},
+    )
+
+    rolled = client.get("/api/dashboard").json()["recap"]
+    assert rolled["week_start"] == first["week_start"]
+    assert rolled["mastered_delta"] == 0 and rolled["weak_delta"] == 0
+
+    snap = repo.get_user_setting(owner, _RECAP_SNAPSHOT_KEY)
+    assert snap["week_start"] == first["week_start"]
+    assert snap["mastered"] == 0 and snap["weak"] == 0
+
+
 def test_dashboard_recommendations_follow_account_state(client):
     """Recommendations carry only state-driven actions (due reviews / weak
     review) — never generic navigation steps duplicating the top nav

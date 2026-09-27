@@ -20,6 +20,12 @@ services:
       # Set in the Render dashboard — never commit this value.
       - key: PREPFORGE_SECRET_KEY
         sync: false
+      # Required in production: encrypts linked-account OAuth tokens (Fernet).
+      # The app refuses to boot without it (config.require_production_secret),
+      # so it must be listed here or a blueprint deploy crashes on startup.
+      # Generate like PREPFORGE_SECRET_KEY; set in the dashboard — never commit.
+      - key: PREPFORGE_TOKEN_KEY
+        sync: false
       # Set manually in the dashboard with your Postgres Internal Database URL.
       # config.py auto-pins postgres:// -> postgresql+psycopg:// (psycopg v3).
       - key: DATABASE_URL

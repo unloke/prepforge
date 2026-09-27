@@ -30,6 +30,7 @@ The live deploy runs on Render's **free tier**.
    | Variable | Required | Notes |
    |----------|----------|-------|
    | `PREPFORGE_SECRET_KEY` | **Yes** | Strong random value (sessions, CSRF, OAuth state). App refuses the dev default in production. Generate: `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
+   | `PREPFORGE_TOKEN_KEY` | **Yes** | Strong random value used to encrypt linked-account OAuth tokens (Fernet). Also refuses the dev default in production — without it the app **fails to boot**. Generate the same way as `PREPFORGE_SECRET_KEY`. |
    | `DATABASE_URL` | **Yes** | Postgres **Internal Database URL**. `config.py` rewrites `postgres://` → `postgresql+psycopg://`. |
    | `PREPFORGE_ALLOWED_ORIGINS` | **Yes** | Service's own URL for CORS/CSRF, e.g. `https://prepforge-w0c5.onrender.com`. |
    | `PREPFORGE_MAIA3_ASSET_BASE` | Recommended | Base URL for ~45 MB Maia3 ONNX weights (Hugging Face). Without it, Brilliant detection and human-like Build branches are unavailable; Analyze/Train core still work. |
@@ -43,6 +44,17 @@ The live deploy runs on Render's **free tier**.
 
 5. Deploy. Confirm `/healthz` returns OK and the SPA loads with
    `crossOriginIsolated === true` (COOP/COEP headers for WASM engines).
+
+### Reverse proxy / rate limiting
+
+uvicorn runs with `--proxy-headers --forwarded-allow-ips "*"` (Dockerfile CMD).
+Both flags matter behind Render's proxy: `--proxy-headers` alone only trusts
+`X-Forwarded-For` from `127.0.0.1,::1`, so the rate limiter would key every
+visitor off the proxy's IP and the whole site would share one bucket. With
+`--forwarded-allow-ips "*"` the client IP from Render's single trusted hop is
+used, giving per-visitor rate-limit buckets. If you deploy behind a proxy that
+is **not** the only ingress (clients can reach uvicorn directly), replace `*`
+with the proxy's IP list so `X-Forwarded-For` cannot be spoofed.
 
 ### Breaking schema (compact storage)
 

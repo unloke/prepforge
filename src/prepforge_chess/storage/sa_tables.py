@@ -228,6 +228,9 @@ training_progress = Table(
     Column("updated_at", Text, nullable=False),
     UniqueConstraint("owner_user_id", "repertoire_id", "node_id", name="uq_training_progress_owner"),
     Index("idx_training_progress_rep_user", "repertoire_id", "owner_user_id"),
+    # Dashboard due-review filter + scheduler sort: ``due_at`` is ISO-8601 UTC
+    # text, so lexical range scans are correct and this index gives them a home.
+    Index("idx_training_progress_due", "due_at"),
 )
 
 engine_settings = Table(

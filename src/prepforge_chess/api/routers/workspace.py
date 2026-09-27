@@ -202,15 +202,21 @@ def _weekly_recap(
 ) -> dict[str, Any]:
     week_start = (local_day - timedelta(days=local_day.weekday())).isoformat()
 
-    def _roll(current: Any) -> dict[str, Any]:
-        # Keep this week's existing baseline; only (re)seed on a new week. Done
-        # as an atomic mutation so this dashboard write can't clobber a streak
-        # advance racing on the same settings blob (lost update).
-        if isinstance(current, dict) and current.get("week_start") == week_start:
-            return current
-        return {"week_start": week_start, "mastered": mastered_now, "weak": weak_now}
+    # Read first: while this week's baseline already exists, the dashboard GET
+    # stays a pure read (mutate_user_setting takes a row lock even when the
+    # mutator returns the value unchanged). The atomic mutation is reserved for
+    # the actual roll — first visit of a new week — where it still can't clobber
+    # a streak advance racing on the same settings blob (lost update).
+    snap = repo.get_user_setting(owner, _RECAP_SNAPSHOT_KEY)
+    if not (isinstance(snap, dict) and snap.get("week_start") == week_start):
 
-    snap = repo.mutate_user_setting(owner, _RECAP_SNAPSHOT_KEY, _roll)
+        def _roll(current: Any) -> dict[str, Any]:
+            # Keep this week's existing baseline; only (re)seed on a new week.
+            if isinstance(current, dict) and current.get("week_start") == week_start:
+                return current
+            return {"week_start": week_start, "mastered": mastered_now, "weak": weak_now}
+
+        snap = repo.mutate_user_setting(owner, _RECAP_SNAPSHOT_KEY, _roll)
 
     def _baseline(key: str, current: int) -> int:
         try:
