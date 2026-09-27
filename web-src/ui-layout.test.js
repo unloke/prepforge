@@ -339,8 +339,9 @@ describe("workspace chrome layout", () => {
     const knob = ruleBody(".pf-knob");
     expect(knob).toMatch(/background:\s*var\(--text\)/);
     expect(css).toMatch(/\.pf-switch\.is-on \.pf-knob/);
-    // Rank accents use semantic good/danger/warn so both themes adapt.
-    expect(css).toContain(".replay-chip.rk-in-prep { color: var(--good); }");
+    // Rank accents use semantic good/danger/warn so both themes adapt. Text
+    // uses the *-text variants (WCAG AA); fills/borders keep the base tokens.
+    expect(css).toContain(".replay-chip.rk-in-prep { color: var(--good-text); }");
     expect(css).toContain(".rk-user-error .replay-icon { color: var(--danger); }");
   });
 

@@ -33,7 +33,7 @@ onboarding paying users.</p>
 _TERMS = """
 <p>By using PrepForge Chess you agree to use the service lawfully and not to abuse,
 disrupt, or attempt to gain unauthorized access to other users' data.</p>
-<p>The software is open source under GPL-3.0-or-later; the hosted service is provided
+<p>The software is open source under AGPL-3.0-or-later; the hosted service is provided
 "as is", without warranty. Paid plans are billed via Stripe; you may cancel at any time
 through the customer portal.</p>
 """

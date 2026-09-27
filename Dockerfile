@@ -39,4 +39,9 @@ EXPOSE 8000
 # Run migrations then start the server. Baked into CMD because Render's
 # preDeployCommand is a paid feature; this gives the same fail-fast behaviour
 # (migration error aborts startup before serving traffic).
-CMD ["sh", "-c", "alembic upgrade head && uvicorn prepforge_chess.api.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers"]
+# --forwarded-allow-ips "*": behind Render's proxy the client IP arrives in
+# X-Forwarded-For, but --proxy-headers alone only trusts localhost sources, so
+# request.client.host would stay the proxy IP and every visitor would share one
+# rate-limit bucket (api/ratelimit.py). Render's proxy is the only ingress, so
+# trusting its X-Forwarded-For is safe here; see docs/DEPLOYMENT.md.
+CMD ["sh", "-c", "alembic upgrade head && uvicorn prepforge_chess.api.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips '*'"]

@@ -148,22 +148,29 @@ def _color_from_board(board: chess.Board) -> Color:
     return Color.WHITE if board.turn == chess.WHITE else Color.BLACK
 
 
-def replay_uci(
-    fen: str,
+def _replay_on_board(
+    board: chess.Board,
     uci: str,
     *,
     source: MoveSource = MoveSource.MANUAL,
     ply: Optional[int] = None,
+    fen_before: Optional[str] = None,
 ) -> MoveRecord:
-    """Apply one UCI from ``fen`` and return a fully hydrated MoveRecord."""
-    board = chess.Board(fen)
+    """Apply one UCI on ``board`` (leaving it pushed) and return a MoveRecord.
+
+    Shared engine behind :func:`replay_uci` and the opening-tree walk. Callers
+    that already know the current position's FEN string (e.g. its parent's
+    ``fen_after``) pass it as ``fen_before`` to skip re-serializing the same
+    position.
+    """
     try:
         move = chess.Move.from_uci(uci)
     except ValueError as exc:
         raise ValueError("invalid UCI move: {0}".format(uci)) from exc
     if move not in board.legal_moves:
         raise ValueError("illegal move {0} for FEN {1}".format(uci, board.fen()))
-    fen_before = board.fen()
+    if fen_before is None:
+        fen_before = board.fen()
     san = board.san(move)
     side = _color_from_board(board)
     move_number = board.fullmove_number
@@ -181,6 +188,17 @@ def replay_uci(
         side_to_move=side,
         source=source,
     )
+
+
+def replay_uci(
+    fen: str,
+    uci: str,
+    *,
+    source: MoveSource = MoveSource.MANUAL,
+    ply: Optional[int] = None,
+) -> MoveRecord:
+    """Apply one UCI from ``fen`` and return a fully hydrated MoveRecord."""
+    return _replay_on_board(chess.Board(fen), uci, source=source, ply=ply)
 
 
 def rebuild_moves(
@@ -295,7 +313,11 @@ def hydrate_opening_tree(
     if root is None:
         return None
     root.fen = canonicalize_fen(root_fen)
-    root.side_to_move = _color_from_board(chess.Board(root.fen))
+    # One board is created for the whole walk: replay_uci-style records are
+    # produced with push/pop on the way down, instead of re-parsing a full FEN
+    # per child (FEN parse/serialize dominated the old per-node replay).
+    board = chess.Board(root.fen)
+    root.side_to_move = _color_from_board(board)
 
     root_uci = arriving_uci.get(root.id)
     if root_uci:
@@ -323,7 +345,6 @@ def hydrate_opening_tree(
         # (uci/ply), opening_item_to_json (filler, depth-0-guarded in UI),
         # _move_to_dict/export helpers (filler), and mastery/health counting
         # (side_to_move via _is_trainable).
-        board = chess.Board(root.fen)
         root.move = MoveRecord(
             uci=root_uci,
             san=root_uci,
@@ -335,23 +356,28 @@ def hydrate_opening_tree(
             source=root.source,
         )
 
-    def walk(node: OpeningNode) -> None:
+    def walk(node: OpeningNode, fen: str) -> None:
         # Child nodes replay from the parent's real FEN, so their MoveRecord is
-        # fully hydrated — unlike the root's synthetic record above.
+        # fully hydrated — unlike the root's synthetic record above. ``board``
+        # is parked at ``fen`` on entry: each child is reached by one push and
+        # left by one pop, so no position is ever re-parsed from a FEN string.
+        # ``fen`` is the already-serialized current position (the parent's
+        # ``fen_after``), so ``fen_before`` needs no second serialization.
         for child in children.get(node.id, []):
             uci = arriving_uci.get(child.id)
             if not uci:
                 raise ValueError("opening node {0} is missing arriving UCI".format(child.id))
             source = child.source
-            record = replay_uci(node.fen, uci, source=source)
+            record = _replay_on_board(board, uci, source=source, fen_before=fen)
             if child.engine_evaluation is not None:
                 record.engine_eval_after = child.engine_evaluation
             child.move = record
             child.fen = record.fen_after
-            child.side_to_move = _color_from_board(chess.Board(child.fen))
+            child.side_to_move = _color_from_board(board)
             node.children.append(child)
-            walk(child)
+            walk(child, record.fen_after)
+            board.pop()
 
     root.children = []
-    walk(root)
+    walk(root, root.fen)
     return root

@@ -55,7 +55,9 @@ async function staticChecks() {
   assert(scriptRefs.length === 1, `index.html should load one JS entry, got: ${scriptRefs.join(", ")}`);
   assert(/^\/static\/assets\/index-/.test(scriptRefs[0]), `unexpected entry script: ${scriptRefs[0]}`);
 
-  const build = await readAsset(/^build-P/);
+  // The build-view chunk is "build-<hash>.js" with an alphanumeric-only hash
+  // (build-generate-runner-* is a different, hyphenated chunk).
+  const build = await readAsset(/^build-[A-Za-z0-9]+\.js$/);
   assert(!/analyze-/.test(build.text), `${build.name} must not reference analyze chunk`);
   assert(!/movetree-/.test(build.text), `${build.name} must not reference movetree chunk`);
 

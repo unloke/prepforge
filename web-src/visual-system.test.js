@@ -273,6 +273,93 @@ describe("axe baseline contrast guard", () => {
   });
 });
 
+describe("semantic text colors meet WCAG AA", () => {
+  // The semantic colours are mixed-use: --warn/--good/--brilliant/--accent fill
+  // charts, dots, badges, and borders AND paint text. Text uses the *-text
+  // variants (AA 4.5:1); fills keep the original hues. This guard pins the text
+  // variants against every surface they actually sit on — panel family plus each
+  // colour's own tinted badge/banner background — in BOTH themes.
+  function luminance(hex) {
+    const c = hex.replace("#", "");
+    const f = (i) => {
+      const v = parseInt(c.slice(i, i + 2), 16) / 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * f(0) + 0.7152 * f(2) + 0.0722 * f(4);
+  }
+  function contrast(a, b) {
+    const x = luminance(a);
+    const y = luminance(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  }
+  // Equivalent of `color-mix(in srgb, FGA, BGA)` used by the badge/banner rules.
+  function mix(fg, bg, alpha) {
+    const h = fg.replace("#", "");
+    const b = bg.replace("#", "");
+    let out = "#";
+    for (let i = 0; i < 3; i += 1) {
+      const a = parseInt(h.slice(i * 2, i * 2 + 2), 16);
+      const c = parseInt(b.slice(i * 2, i * 2 + 2), 16);
+      out += Math.round(a * alpha + c * (1 - alpha)).toString(16).padStart(2, "0");
+    }
+    return out;
+  }
+  const darkStart = css.indexOf(':root[data-theme="dark"]');
+  expect(darkStart).toBeGreaterThan(0);
+  function tokensOf(block) {
+    const out = {};
+    for (const m of block.matchAll(/(--[a-z0-9-]+):\s*(#[0-9a-fA-F]{6})/g)) {
+      out[m[1]] = m[2];
+    }
+    return out;
+  }
+  const light = tokensOf(css.slice(0, darkStart));
+  const dark = tokensOf(css.slice(darkStart));
+
+  const TEXT_TOKENS = ["--label", "--warn-text", "--good-text", "--brilliant-text", "--accent-text"];
+
+  for (const [themeName, tokens] of [["light", light], ["dark", dark]]) {
+    it(`${themeName} theme: text tokens clear 4.5:1 on panel-family surfaces`, () => {
+      for (const name of TEXT_TOKENS) {
+        const fg = tokens[name];
+        expect(fg, `${themeName} ${name} must exist as a hex token`).toBeTruthy();
+        for (const bgName of ["--panel", "--panel-soft", "--bg"]) {
+          expect(
+            contrast(fg, tokens[bgName]),
+            `${themeName} ${name} on ${bgName}`,
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    });
+
+    it(`${themeName} theme: text tokens clear 4.5:1 on their tinted backgrounds`, () => {
+      const panel = tokens["--panel"];
+      // Tinted surfaces mirror the badge/banner rules (color-mix 8-12%).
+      const tinted = {
+        "--warn-text": mix(tokens["--warn"], panel, 0.12),
+        "--good-text": mix(tokens["--good"], panel, 0.12),
+        "--brilliant-text": mix(tokens["--brilliant"], panel, 0.12),
+        "--accent-text": tokens["--accent-soft"],
+      };
+      for (const [name, bg] of Object.entries(tinted)) {
+        expect(
+          contrast(tokens[name], bg),
+          `${themeName} ${name} on its tinted background`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
+
+  it("text rules use the text variants, never the fill tokens", () => {
+    // Fills/borders/backgrounds legitimately use the base tokens; only the
+    // text property is constrained. `[^-]` keeps border-color,
+    // background-color, text-decoration-color, and accent-color out of it.
+    expect(css).not.toMatch(
+      /[^-]color:\s*var\(--(warn|good|brilliant|accent)\)/,
+    );
+  });
+});
+
 describe("status semantics", () => {
   it("uses explicit severity at error boundaries instead of message matching", () => {
     expect(app).toContain('function setStatus(message, { severity = "info" } = {})');
