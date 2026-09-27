@@ -188,3 +188,56 @@ def test_hydrated_tree_keeps_the_root_arriving_move():
     result = match_game_to_repertoire(game, rep, Color.WHITE)
     assert result.matched_plies == 2
     assert result.departure_reason == "game_stayed_in_preparation"
+
+
+def test_hydrated_root_move_synthetic_fields_contract():
+    """Contract pin (hydrate_opening_tree's synthetic root MoveRecord): only
+    uci/ply/move_number/side_to_move/source are trustworthy; san mirrors the
+    UCI and fens echo the root position (the pre-root board is not stored).
+    These assertions document what every consumer may rely on — san/fens are
+    display-only filler and must not feed board or PGN reconstruction."""
+    from prepforge_chess.storage import codec
+
+    after_e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+    # A BLACK-side root (root move 1...c5 arrives at ply 2): the same metadata
+    # rules must hold for black root moves.
+    after_c5 = "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"
+    white_root = OpeningNode(
+        id="rw", repertoire_id="r", fen=after_e4, side_to_move=Color.BLACK
+    )
+    black_root = OpeningNode(
+        id="rb", repertoire_id="r", fen=after_c5, side_to_move=Color.WHITE
+    )
+    white_tree = codec.hydrate_opening_tree(
+        after_e4, {"rw": white_root}, {"rw": "e2e4"}
+    )
+    black_tree = codec.hydrate_opening_tree(
+        after_c5, {"rb": black_root}, {"rb": "c7c5"}
+    )
+    assert white_tree is not None and black_tree is not None
+
+    w = white_tree.move
+    assert w is not None
+    assert w.uci == "e2e4"
+    assert w.ply == 1
+    assert w.move_number == 1  # white root: the root FEN's fullmove field
+    assert w.side_to_move is Color.WHITE
+    assert w.source is white_tree.source
+    # Synthetic filler: san mirrors the UCI and both fens echo the root FEN.
+    assert w.san == "e2e4"
+    assert w.fen_before == after_e4
+    assert w.fen_after == after_e4
+
+    b = black_tree.move
+    assert b is not None
+    assert b.uci == "c7c5"
+    assert b.ply == 2
+    # Black-root quirk, pinned as-is: move_number echoes the root FEN's
+    # fullmove field (2 after 1...c5), not the mover's 1. No consumer depends
+    # on it (display filler + a FEN-first client fallback only).
+    assert b.move_number == 2
+    assert b.side_to_move is Color.BLACK
+    assert b.source is black_tree.source
+    assert b.san == "c7c5"
+    assert b.fen_before == after_c5
+    assert b.fen_after == after_c5

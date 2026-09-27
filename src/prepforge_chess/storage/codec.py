@@ -306,6 +306,23 @@ def hydrate_opening_tree(
         # opposite of the root's own side to move), and the move's ply is the
         # number of half-moves already elapsed at the root. Dropping this move
         # would make the repertoire appear to start one ply later than it does.
+        #
+        # SYNTHETIC-METADATA CONTRACT (matches its consumers; do not widen):
+        # only `uci`, `ply` (half-moves elapsed at the root) and `side_to_move`
+        # are fully trustworthy — every path-based consumer (training,
+        # scheduler, matching, progress) reads exactly these. `move_number` is
+        # the root FEN's fullmove field: right for white roots, one high for
+        # black roots — nothing consumes it (workspace filler + a FEN-first
+        # fallback in the client only). `san` mirrors the UCI and
+        # `fen_before`/`fen_after` both echo the root's own FEN because the
+        # pre-root position is not persisted; these are display-only filler
+        # (e.g. OpeningTreeItem/"root" rows) and must never feed board or PGN
+        # reconstruction. Correct san/fens would need the parent position,
+        # which the schema does not store. Known paths that receive the root
+        # node and only touch these fields: match_game_to_repertoire
+        # (uci/ply), opening_item_to_json (filler, depth-0-guarded in UI),
+        # _move_to_dict/export helpers (filler), and mastery/health counting
+        # (side_to_move via _is_trainable).
         board = chess.Board(root.fen)
         root.move = MoveRecord(
             uci=root_uci,
@@ -319,6 +336,8 @@ def hydrate_opening_tree(
         )
 
     def walk(node: OpeningNode) -> None:
+        # Child nodes replay from the parent's real FEN, so their MoveRecord is
+        # fully hydrated — unlike the root's synthetic record above.
         for child in children.get(node.id, []):
             uci = arriving_uci.get(child.id)
             if not uci:
