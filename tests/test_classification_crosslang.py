@@ -124,8 +124,13 @@ def test_fixture_expectations_are_mutually_consistent() -> None:
 def test_browser_and_server_classifiers_agree() -> None:
     """Run both production classifiers over every fixture case and compare."""
     node = shutil.which("node")
-    if node is None:  # pragma: no cover - CI and dev machines have node
-        pytest.skip("node is required to run the browser classifier")
+    if node is None:  # pragma: no cover - node is a repo-wide dev dependency
+        # Never skip: without one half of the contract there is no contract.
+        # (Missing node_modules fails loudly too, via ERR_MODULE_NOT_FOUND.)
+        pytest.fail(
+            "node is required to run the browser classifier — install Node.js "
+            "and run `npm ci`"
+        )
 
     features_js = ROOT / "web-src" / "coach" / "features.js"
     assert features_js.exists()

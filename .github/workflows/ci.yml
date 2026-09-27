@@ -21,8 +21,18 @@ jobs:
         with:
           python-version: "3.11"
           enable-cache: true
+      # tests/test_classification_crosslang.py is a two-runtime contract: it runs
+      # the browser classifier (web-src/coach/features.js) under node against the
+      # server classifier, so this job needs the JS runtime deps (chess.js) that
+      # the coach module graph imports.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
       - name: Install (server + dev extras)
         run: uv sync --extra server --extra dev
+      - name: Install JS deps (cross-language classification contract)
+        run: npm ci
       - name: Ruff
         run: uv run ruff check src tests
       - name: Pytest
