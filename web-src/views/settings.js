@@ -269,7 +269,7 @@ export function createSettingsView({
           const err = provider.lastError;
           set(
             MAIA_STATUS.UNAVAILABLE,
-            "Last load failed. Use Retry now, or Reset cache if it keeps failing.",
+            "Last load failed. Use Retry, or Reset cache if it keeps failing.",
             err ? `${err.message}${err.phase ? ` (${err.phase})` : ""}` : "",
           );
           return;

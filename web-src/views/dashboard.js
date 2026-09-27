@@ -107,22 +107,22 @@ export function createDashboardView({
     const parts = [];
     if (health.weak) {
       parts.push(
-        `<span class="rh-weak" title="Missed more often than answered">${health.weak} weak</span>`,
+        `<span class="rh-weak" title="Missed more than answered">${health.weak} weak</span>`,
       );
     }
     if (health.due) {
-      parts.push(`<span class="rh-due" title="Spaced repetition: review now">${health.due} due</span>`);
+      parts.push(`<span class="rh-due" title="Spaced repetition says now">${health.due} due</span>`);
     }
     if (health.untrained) {
       parts.push(
-        `<span class="rh-untrained" title="Never trained yet">${health.untrained} new</span>`,
+        `<span class="rh-untrained" title="Never trained">${health.untrained} new</span>`,
       );
     }
     const pct = health.mastery_pct || 0;
     const tier = pct >= 80 ? "high" : pct >= 40 ? "mid" : "low";
     return (
       `<span class="rep-health">` +
-      `<span class="rh-pct tier-${tier}" title="Well-established moves in this repertoire (${health.mastered}/${health.trainable})">${pct}% mastered</span>` +
+      `<span class="rh-pct tier-${tier}" title="${health.mastered}/${health.trainable} moves">${pct}% mastered</span>` +
       (parts.length ? `<span class="rh-detail">${parts.join(" · ")}</span>` : "") +
       `</span>`
     );
@@ -174,18 +174,18 @@ export function createDashboardView({
       };
       const bits = [
         `<b>${recap.reviews_7d}</b> review${recap.reviews_7d === 1 ? "" : "s"} this week`,
-        `<b>${recap.mastered_now}</b> <span title="Well-established moves">mastered</span>${delta(recap.mastered_delta, true)}`,
+        `<b>${recap.mastered_now}</b> mastered${delta(recap.mastered_delta, true)}`,
       ];
       if (recap.weak_now > 0 || recap.weak_delta !== 0) {
         bits.push(
-          `<b>${recap.weak_now}</b> <span title="Missed more often than answered">weak spot${recap.weak_now === 1 ? "" : "s"}</span>${delta(recap.weak_delta, false)}`,
+          `<b>${recap.weak_now}</b> weak spot${recap.weak_now === 1 ? "" : "s"}${delta(recap.weak_delta, false)}`,
         );
       }
       recapHtml = `<div class="today-recap">${bits.join(" &middot; ")}</div>`;
     }
     card.innerHTML = `
     <div class="today-streak" data-lit="${streak.current > 0 ? "1" : "0"}"
-         title="Day streak: calendar days in a row (your local time) with at least one graded training move. One card a day keeps it alive.">
+         title="Calendar days with at least one graded move">
       <span class="today-flame" aria-hidden="true">\u{1F525}</span>
       <span class="today-count">${streak.current}</span>
       <span class="today-unit">day streak${best}</span>
@@ -196,7 +196,7 @@ export function createDashboardView({
       ${recapHtml}
     </div>
     ${nextStepsHtml}
-    <button class="btn primary" id="dashboard-train-now" data-testid="dashboard-train-now">Train now</button>
+    <button class="btn primary" id="dashboard-train-now" data-testid="dashboard-train-now">Train</button>
   `;
     card.hidden = false;
     bindRecommendationCtas(card);
@@ -226,7 +226,7 @@ export function createDashboardView({
       if (!visible.length) {
         const nextSteps = recommendationsHtml(lastDashboardRecommendations);
         container.innerHTML =
-          '<div class="empty-state">No repertoires yet. Use Build to create one.</div>' +
+          '<div class="empty-state">No repertoires yet.</div>' +
           nextSteps;
         bindRecommendationCtas(container);
         return;

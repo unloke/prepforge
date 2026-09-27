@@ -295,7 +295,7 @@ export function openSourceComposer({
     const listBody =
       linkedRows + externalRows ||
       (!linked.length && !sel.external.length
-        ? '<p class="muted">No sources yet — add a Lichess username below.</p>'
+        ? '<p class="muted">No sources yet — add a username below.</p>'
         : "");
     overlay.innerHTML =
       `<div class="src-popover" role="dialog" aria-modal="false" aria-label="${escapeHtml(title)}">` +

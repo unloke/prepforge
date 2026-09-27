@@ -240,8 +240,7 @@ export function createAnalyzeView({
     const hasContent = (tree.root.children || []).length > 0;
     if (!hasContent) {
       container.innerHTML =
-        '<div class="empty-state">Play moves on the board to branch into study lines, ' +
-        "or load a PGN and click Analyze for a full review.</div>";
+        '<div class="empty-state">Play on the board, or analyze a PGN.</div>';
       return;
     }
     const panel = document.getElementById("analysis-results");
