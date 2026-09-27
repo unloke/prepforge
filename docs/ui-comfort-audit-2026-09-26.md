@@ -3,11 +3,11 @@
 針對「過多解釋、過多按鈕、不協調配置、雜亂畫面、疊加物件層級、卡片留白」的
 專項審查。方法:Playwright(Chrome)實機量測 3 種視窗(1440/1180/390)× 明暗主題
 × 8 個視圖,加上像素取樣驗證疊加順序、axe 無障礙掃描、靜態 CSS/文案盤點。
-量測腳本與原始資料在 `tmp/ui-audit/`(audit.mjs、audit2.mjs、probe-*.mjs、
-out/findings.json、out/report2.json)。
+量測腳本與原始輸出屬一次性暫存產物、未納入版本庫;
+本文各表已收錄可複查的關鍵量測值。
 
 先講好消息:axe(wcag2a/2aa/21a/21aa)8 個視圖明暗主題 **0 violations**;
-全站無水平溢位、無文字裁切、無互動元素互相重疊、同一工具列控制項高度一致。
+全站無水平溢位、無文字裁切、同一工具列控制項高度一致;一般 layout 的互動元素彼此無重疊,唯一的例外是 floating engine overlay——它會遮蔽並攔截下方控制項(見 A3)。
 以下是會讓使用者不舒服的問題,依嚴重度排序。
 
 ## A. 疊加物件層級(最嚴重)
@@ -49,7 +49,7 @@ out/findings.json、out/report2.json)。
 
 | # | 問題 | 證據 | 建議 |
 |---|------|------|------|
-| E1 | **彩色 emoji 與單色字形混用於同一工具列**:train board-bar 的 ⇅ 是彩色 emoji(取樣 `[64,151,226]` 藍)、💡 是彩色 emoji(`[255,218,150]` 黃)、⏭ 是單色字形(saturation 0)。跨平台渲染不穩 | 像素飽和度取樣(見 tmp/ui-audit/out) | 全站換 SVG/圖示字型;至少加 `font-family` 統一 text presentation |
+| E1 | **彩色 emoji 與單色字形混用於同一工具列**:train board-bar 的 ⇅ 是彩色 emoji(取樣 `[64,151,226]` 藍)、💡 是彩色 emoji(`[255,218,150]` 黃)、⏭ 是單色字形(saturation 0)。跨平台渲染不穩 | 像素飽和度取樣 | 全站換 SVG/圖示字型;至少加 `font-family` 統一 text presentation |
 | E2 | 圓角 7 種並存:`.ib` 3px(styles.css:2992)、`--radius` 4px、`--radius-card` 6px、`.today-card` 硬編 8px(:1436)、`.modal` 8px(:5207)、`.engine-window` 12px(:5864)、`.scout-v13-card` 8px | 靜態盤點 | 收斂為 3 階 token(s/m/l);禁止硬編 |
 | E3 | 卡片內距不一致:dashboard/settings 14px、teams 16px、`.team-empty` 28px、games 卡 0px、`.today-card` 14/18px、`.scout-v13-card` 9/11/10/11(不對稱) | 實機量測各卡 computed padding | 統一 `--card-pad`;scout-v13-card 尤其需修正不對稱 |
 | E4 | 響應式斷點 10 種混用:520/560/600/640/680/720/760/959/1020/1100 | `grep -n "@media" styles.css`(28 處) | 收斂為 2–3 個 token 化斷點(既有 U6 已點名,實際比記錄更多) |
@@ -66,7 +66,7 @@ out/findings.json、out/report2.json)。
 ## G. 已確認無問題(免再查)
 
 - axe 8 視圖明暗 0 violations(對比、表單標籤、ARIA 全過)。
-- 無水平溢位、無文字裁切(`clipped-x/y = 0`)、無互動元素重疊、無控制項高度不一致。
+- 無水平溢位、無文字裁切(`clipped-x/y = 0`)、無控制項高度不一致;一般 layout 互動元素無重疊,唯 floating engine overlay 例外(見 A3)。
 - `.topbar-status-slot` 絕對定位不佔位,長訊息在 1180px 實測不壓 tab;mobile 狀態列固定底部不擋主 CTA。
 - 審計中出現的 API 500 為 dev DB 未套用 alembic 遷移(`no such table: user_settings`),
   與 UI 無關;已 `alembic upgrade head` 修復。
