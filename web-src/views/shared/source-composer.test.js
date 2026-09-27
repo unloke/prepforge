@@ -127,6 +127,8 @@ describe("source composer selection model", () => {
       { linkedMode: "all", external: [] },
       { linkedMode: "all", external: ["Hikaru"] },
       { linkedMode: "subset", accountIds: ["b"], external: ["Hikaru"] },
+      { linkedMode: "subset", accountIds: [], external: ["Hikaru"] },
+      { linkedMode: "subset", accountIds: [], external: [] },
       { linkedMode: "none", external: ["Hikaru"] },
       { linkedMode: "none", external: [] },
     ]) {
@@ -137,6 +139,27 @@ describe("source composer selection model", () => {
     expect(selectionToLegacyIds(null, linked)).toBe(null);
     expect(selectionToLegacyIds(selectSelf(null, linked), linked)).toBe(null);
     expect(selectionToLegacyIds({ linkedMode: "subset", accountIds: ["b"] }, linked)).toEqual(["b"]);
+  });
+
+  it("keeps an external-only pick (subset + []) through storage, never Self", () => {
+    // Every linked account unpicked, external usernames kept: the persisted
+    // empty id list must not resurrect the Self default on reload.
+    const externalOnly = { linkedMode: "subset", accountIds: [], external: ["Hikaru"] };
+    const stored = selectionToStorage(externalOnly);
+    expect(stored.ids).toEqual([]);
+    expect(selectionFromStorage({ ids: stored.ids, external: stored.external })).toEqual(externalOnly);
+    // Absent ids (legacy Self default) stays distinct from the explicit empty pick.
+    expect(selectionFromStorage({ ids: null, external: ["Hikaru"] })).toEqual({
+      linkedMode: "all",
+      accountIds: [],
+      external: ["Hikaru"],
+    });
+    // The legacy id bridge encodes "no linked accounts" as __none__ so even a
+    // legacy-shaped store cannot widen an external-only selection back to Self.
+    expect(selectionToLegacyIds(externalOnly, linked)).toEqual(["__none__"]);
+    expect(selectionToLegacyIds({ linkedMode: "none", external: ["Hikaru"] }, linked)).toEqual([
+      "__none__",
+    ]);
   });
 
   it("resolves fetch usernames identically for Games and Scout", () => {

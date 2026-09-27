@@ -246,6 +246,48 @@ describe("dashboard empty-state recommendations", () => {
     expect(container.innerHTML).not.toContain("dashboard-next-steps");
   });
 
+  it("renders state-driven actions compactly — no generic navigation, no prose", async () => {
+    // Converged contract (services/dashboard_recommendations.py): the Today
+    // card carries only state actions (due / weak) — the old generic rows
+    // ("Analyze a game → Open Analyze", "Extend a repertoire branch → Open
+    // Build") crowded the card and duplicated the top nav.
+    api.mockImplementation(async (url) => {
+      if (String(url).startsWith("/api/dashboard")) {
+        return {
+          streak: { current: 1, best: 3, trained_today: false },
+          due_reviews: 5,
+          repertoires: 2,
+          recommendations: [
+            {
+              id: "train-due",
+              title: "5 review cards due now",
+              detail: "",
+              cta: { label: "Start due review", view: "train" },
+            },
+            {
+              id: "review-weak",
+              title: "Sharpen your weak spots",
+              detail: "2 weak moves.",
+              cta: { label: "Review weak moves", view: "train" },
+            },
+          ],
+        };
+      }
+      return {
+        repertoires: [
+          { id: "rep-1", name: "e4", color: "white", is_active: true, health: null },
+        ],
+      };
+    });
+    await view.loadDashboard();
+    expect(todayCard.innerHTML).toContain("rec-cta-train-due");
+    expect(todayCard.innerHTML).toContain("rec-cta-review-weak");
+    expect(todayCard.innerHTML).not.toContain("Analyze a game");
+    expect(todayCard.innerHTML).not.toContain("Extend a repertoire branch");
+    // A state item without prose renders title-only — no empty detail span.
+    expect(todayCard.innerHTML).not.toContain('class="rec-detail"></span>');
+  });
+
   it("keeps the Today card free of next steps for a repertoire-less account", async () => {
     await view.loadDashboard(); // default mock: brand-new account, no repertoires
     expect(todayCard.innerHTML).not.toContain("dashboard-next-steps");

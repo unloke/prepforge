@@ -10204,7 +10204,10 @@ async function runLichessCompare() {
   try {
     const payload = await postJson("/api/lichess/compare", {
       count,
-      ...(linkedIds && linkedIds.length ? { account_ids: linkedIds } : {}),
+      // linkedIds is null only for the full-Self default (omit → all linked
+      // accounts). Any explicit pick — including [] for external-only — is
+      // sent as-is so the server never widens the selection back to Self.
+      ...(linkedIds !== null ? { account_ids: linkedIds } : {}),
       ...(hasExternal ? { usernames } : {}),
     });
     appState.replayResults = payload;
@@ -10303,7 +10306,9 @@ function readLegacySourceIds(key) {
 
 function writeLegacySourceIds(key, ids) {
   try {
-    if (!ids || !ids.length) localStorage.removeItem(key);
+    // "[]" is meaningful: it persists subset + [] (every linked account
+    // unpicked) and must survive a reload — only a null (Self default) clears.
+    if (!ids) localStorage.removeItem(key);
     else localStorage.setItem(key, JSON.stringify(ids));
   } catch (_) {
     /* ignore storage errors */

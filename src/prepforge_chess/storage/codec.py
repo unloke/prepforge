@@ -297,6 +297,27 @@ def hydrate_opening_tree(
     root.fen = canonicalize_fen(root_fen)
     root.side_to_move = _color_from_board(chess.Board(root.fen))
 
+    root_uci = arriving_uci.get(root.id)
+    if root_uci:
+        # The root row can carry its own arriving move (a repertoire rooted at
+        # its first move). The stored rows keep only the UCI — the position that
+        # precedes the root is not persisted — so rehydrate a minimal record:
+        # the mover is the side to move AT the root's parent position (the
+        # opposite of the root's own side to move), and the move's ply is the
+        # number of half-moves already elapsed at the root. Dropping this move
+        # would make the repertoire appear to start one ply later than it does.
+        board = chess.Board(root.fen)
+        root.move = MoveRecord(
+            uci=root_uci,
+            san=root_uci,
+            fen_before=root.fen,
+            fen_after=root.fen,
+            move_number=board.fullmove_number,
+            ply=board.ply(),
+            side_to_move=_color_from_board(board).opponent,
+            source=root.source,
+        )
+
     def walk(node: OpeningNode) -> None:
         for child in children.get(node.id, []):
             uci = arriving_uci.get(child.id)
