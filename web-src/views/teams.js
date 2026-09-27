@@ -77,7 +77,7 @@ export function createTeamsView({
       search.addEventListener("input", renderTeamsList);
     }
     if (!appState.teams.length) {
-      list.innerHTML = '<div class="empty-state">No teams yet. Create one to start sharing.</div>';
+      list.innerHTML = '<div class="empty-state">No teams yet.</div>';
       return;
     }
     const query = (search?.value || "").trim().toLocaleLowerCase();
@@ -117,7 +117,7 @@ export function createTeamsView({
     if (!container) return;
     if (!sharedReps.length) {
       container.innerHTML =
-        '<div class="empty-state">No repertoires shared yet. Use “Share a repertoire” above to add one.</div>';
+        '<div class="empty-state">No repertoires shared yet.</div>';
       return;
     }
     container.innerHTML = sharedReps
@@ -129,8 +129,8 @@ export function createTeamsView({
         const isMine = item.owner_user_id === appState.accountUserId;
         // Your own shared rep: Unshare. Someone else's: Copy to your account (fork).
         const action = isMine
-          ? `<button type="button" class="ib team-unshare" data-rep-id="${id}" data-rep-name="${name}" title="Stop sharing">Unshare</button>`
-          : `<button type="button" class="ib team-copy" data-rep-id="${id}" title="Copy to my account">Copy</button>`;
+          ? `<button type="button" class="ib team-unshare" data-rep-id="${id}" data-rep-name="${name}">Unshare</button>`
+          : `<button type="button" class="ib team-copy" data-rep-id="${id}">Copy</button>`;
         return `
         <div class="list-item team-shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}">
           <span>

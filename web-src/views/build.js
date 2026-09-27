@@ -145,8 +145,7 @@ export function createBuildView({
     const branchBar = document.getElementById("build-branchbar");
     if (!appState.build) {
       container.innerHTML =
-        '<div class="empty-state">No repertoire open. Play a move on the board to start one, ' +
-        'use the <b>⋯</b> menu above, or open one from the Dashboard.</div>';
+        '<div class="empty-state">No repertoire open. Pick one from the Dashboard, or play a move to start.</div>';
       if (branchBar) branchBar.hidden = true;
       if (boards.build) boards.build.setBranchArrows([]);
       return;
@@ -155,7 +154,7 @@ export function createBuildView({
     if (!root || !root.children.length) {
       container.innerHTML =
         renderBuildBreadcrumb() +
-        '<div class="empty-state">Play a move on the board to add it to the repertoire.</div>';
+        '<div class="empty-state">Play a move to add it to this line.</div>';
       if (branchBar) branchBar.hidden = true;
       if (boards.build) boards.build.setBranchArrows([]);
       return;

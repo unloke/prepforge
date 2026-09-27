@@ -92,7 +92,7 @@ export function createTrainView({
     const cluster = smart.phaseCluster;
     const phaseChip =
       cluster && cluster.total
-        ? `<span class="tq-chip tq-phase" title="Most cards in this session sit in the ${escapeHtml(cluster.majorityLabel.toLowerCase())}">${escapeHtml(cluster.majorityLabel)} coach · ${cluster.counts[cluster.majority]}/${cluster.total}</span>`
+        ? `<span class="tq-chip tq-phase" title="Most cards sit in ${escapeHtml(cluster.majorityLabel.toLowerCase())}">${escapeHtml(cluster.majorityLabel)} coach · ${cluster.counts[cluster.majority]}/${cluster.total}</span>`
         : "";
     document.getElementById("train-queue-legend").innerHTML =
       kinds

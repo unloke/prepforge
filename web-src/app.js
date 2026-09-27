@@ -607,7 +607,7 @@ class Toast {
     el.setAttribute("aria-live", "polite");
     el.setAttribute("aria-atomic", "true");
     const stopBtn = this.onCancel
-      ? '<button class="job-toast-stop" type="button" title="Stop job">Stop</button>'
+      ? '<button class="job-toast-stop" type="button">Stop</button>'
       : "";
     let bodyInner;
     if (this.variant === "info") {
@@ -4357,11 +4357,11 @@ async function openTeamDetail(teamId) {
               `<option value="${r}"${m.role === r ? " selected" : ""}>${escapeHtml(teamRoleLabel(r))}</option>`
           )
           .join("");
-        const removeBtn = `<button type="button" class="ib team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="${isMe ? "1" : "0"}" title="${isMe ? "Leave team" : "Remove member"}">${isMe ? "Leave" : "×"}</button>`;
+        const removeBtn = `<button type="button" class="ib team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="${isMe ? "1" : "0"}"${isMe ? "" : " title=\"Remove member\""}>${isMe ? "Leave" : "×"}</button>`;
         tail = `<select class="team-role-select" data-user-id="${uid}" aria-label="Role for ${uname}">${opts}</select>${removeBtn}`;
       } else {
         const leaveBtn = isMe
-          ? `<button type="button" class="ib team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="1" title="Leave team">Leave</button>`
+          ? `<button type="button" class="ib team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="1">Leave</button>`
           : "";
         tail = `<span class="team-role-badge sm">${escapeHtml(teamRoleLabel(m.role))}</span>${leaveBtn}`;
       }
@@ -4748,7 +4748,7 @@ async function loadSharedRepertoires() {
             </span>
             <span class="team-member-tail">
               <span class="team-role-badge sm">read-only</span>
-              <button type="button" class="ib team-copy" data-rep-id="${id}" title="Copy to my account">Copy</button>
+              <button type="button" class="ib team-copy" data-rep-id="${id}">Copy</button>
             </span>
           </div>`;
       })
@@ -5753,8 +5753,7 @@ function renderAnalysisTreeEmptyState() {
   if (!container) return;
   appState.analysisTree = null;
   container.innerHTML =
-    '<div class="empty-state">Play moves on the board to branch into study lines, ' +
-    "or load a PGN and click Analyze for a full review.</div>";
+    '<div class="empty-state">Play on the board, or analyze a PGN.</div>';
 }
 
 function renderAnalysisTree(movesArg) {
@@ -6382,7 +6381,7 @@ function inspectorScopeText() {
     ? "explorer"
     : "coverage";
   if (active === "coverage") {
-    return "Share of real human play (at your strength) this repertoire answers. Runs Maia3 on your device.";
+    return "Share of real human play at your strength that this repertoire answers.";
   }
   if (explorerDb !== "lichess") return "Master games.";
   const rating = effectiveMaiaRating();
@@ -6507,8 +6506,7 @@ function renderBuilderTreeEmptyState() {
   const branchBar = document.getElementById("build-branchbar");
   if (!container) return;
   container.innerHTML =
-    '<div class="empty-state">No repertoire open. Play a move on the board to start one, ' +
-    'use the <b>⋯</b> menu above, or open one from the Dashboard.</div>';
+    '<div class="empty-state">No repertoire open. Pick one from the Dashboard, or play a move to start.</div>';
   if (branchBar) branchBar.hidden = true;
   if (boards.build) boards.build.setBranchArrows([]);
 }
@@ -8156,7 +8154,7 @@ function syncTrainSessionControls() {
   if (blitzRow) {
     blitzRow.title = appState.smart
       ? "Blitz is locked for this session — applies on next Start"
-      : "10 seconds per move - running out counts as a miss (the retry is untimed)";
+      : "10s per move - a timeout counts as a miss";
   }
   const takeback = document.getElementById("play-takeback");
   const resign = document.getElementById("play-resign");
@@ -8350,7 +8348,7 @@ function paintPlayBookHint() {
   if (!hint) return;
   if (playBook() === "repertoire") {
     hint.textContent = selectedTrainRepertoireIds().length
-      ? "Opponent uses your active repertoires first, Explorer when you're out of book, Maia when Explorer is thin."
+      ? "Repertoires first, Explorer out of book, Maia when thin."
       : "Select at least one active repertoire, or switch back to Lichess explorer.";
     return;
   }
@@ -8682,7 +8680,7 @@ async function startPlaySession({
                   ? `${String(luckySource || "").startsWith("lichess-") ? "Live Lichess game" : "Titled reference"}, critical ${phase || "moment"} — your move`
               : book === "explorer"
               ? "Explorer at your rating, Maia when the sample thins"
-              : "Your active repertoires first, Explorer out of book, Maia when Explorer is thin";
+              : "Repertoires first, Explorer out of book, Maia when thin";
   const luckyMeta =
     reason === "titled-game" && luckyGameId
       ? ` · ${[luckyWhite, luckyBlack].filter(Boolean).join(" vs ") || "Lichess game"} (${luckyGameId})`
@@ -9303,10 +9301,10 @@ const SMART_KIND_LABELS = {
 // Hover definitions for the queue-composition chips ("3 weak · 4 due · ...").
 // Same meanings as the Train help drawer and services/progress.py.
 const SMART_KIND_TITLES = {
-  weak: "Missed more often than answered — always scheduled first",
-  due: "Spaced repetition says review these now",
-  new: "Never trained — taught with an arrow first, then tested",
-  polish: "Known material kept warm with an occasional rep",
+  weak: "Missed more than answered",
+  due: "Spaced repetition says now",
+  new: "Shown once, then tested",
+  polish: "Kept warm with an occasional rep",
 };
 
 // "Why this move", engine-free, for the moments the answer is on screen (teach
@@ -10193,7 +10191,7 @@ async function runLichessCompare() {
     includeExternal: true,
   });
   if (!usernames.length) {
-    setStatus("No Games sources selected — open Add and pick Self, an account, or a username.");
+    setStatus("No Games sources selected — open Add and pick one.");
     return;
   }
   const linkedIds = gamesSourceAccountIds();
@@ -10371,7 +10369,7 @@ function paintGamesSource() {
     .join("");
   if (selfState === "none" && !selection.external.length) {
     tray.innerHTML =
-      '<span class="src-empty">No sources — open Add and tick Self, an account, or a username</span>';
+      '<span class="src-empty">No sources — open Add and pick one</span>';
     return;
   }
 }
@@ -10476,7 +10474,7 @@ function paintScoutSource() {
                 `<button type="button" class="src-chip-x" data-scout-unpick="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Scout sources">×</button></span>`
         )
         .join("")
-    : '<span class="src-empty">No sources — open Add and tick Self, an account, or a username</span>';
+    : '<span class="src-empty">No sources — open Add and pick one</span>';
 }
 
 function bindScoutSource() {
@@ -11503,7 +11501,7 @@ function bindEvents() {
       if (mode === "play") {
         appState.smart = null;
         appState.training = null;
-        setTrainBanner("idle", "Play vs human", "Start from the opening, or I'm Feeling Lucky for a key position.");
+        setTrainBanner("idle", "Play vs human", "Start, or I'm Feeling Lucky for a key position.");
         void resetTrainBoardIdle("Play vs human");
       } else {
         setTrainBanner("idle", "Press Start to begin", "");

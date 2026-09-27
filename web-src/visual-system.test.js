@@ -134,7 +134,10 @@ describe("seven views share chrome families", () => {
     }
   });
 
-  it("list tabs keep a card with a heading and supporting guidance", () => {
+  // UI copy contract (ui-comfort-audit-2026-09-26): each view keeps at most one
+  // short hint line under its heading; long explainers live behind info/help
+  // interactions, and empty states carry their own CTA instead of prose.
+  it("list tabs keep a card, a heading, and at most one short hint", () => {
     for (const view of ["dashboard", "teams", "settings"]) {
       const start = html.indexOf(`id="view-${view}"`);
       const next = VIEWS.indexOf(view) + 1;
@@ -143,7 +146,16 @@ describe("seven views share chrome families", () => {
       const slice = html.slice(start, end);
       expect(slice).toMatch(/class="[^"]*\bcard\b/);
       expect(slice).toContain("card-head");
-      expect(slice).toMatch(/class="[^"]*hint/);
+      const hints = slice.match(/<p class="[^"]*\bhint\b[^"]*"[^>]*>[\s\S]*?<\/p>/g) || [];
+      expect(hints.length).toBeLessThanOrEqual(1);
+      for (const hint of hints) {
+        const text = hint
+          .replace(/<[^>]+>/g, " ")
+          .replace(/&[a-zA-Z]+;|&#\d+;/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        expect(text.length).toBeLessThan(90);
+      }
     }
     const replay = html.slice(html.indexOf('id="view-replay"'), html.indexOf('id="view-teams"'));
     for (const panel of ["games", "scout"]) {
@@ -153,7 +165,11 @@ describe("seven views share chrome families", () => {
       expect(slice).toMatch(/class="[^"]*\bcard\b/);
       expect(slice).toContain('class="research-heading"');
       expect(slice).toContain('class="research-controls"');
-      expect(slice).toMatch(/class="research-heading"[\s\S]*?<p>[^<]+<\/p>/);
+      // Heading block carries the title only — explainer paragraphs were removed
+      // in the copy audit; controls and empty states now do that work.
+      const headingBlock = slice.match(/class="research-heading"[\s\S]*?<\/div>\s*<\/div>/)?.[0] || "";
+      expect(headingBlock).toContain("<h2>");
+      expect(headingBlock).not.toContain("<p");
       expect(slice).not.toContain('class="research-note"');
       expect(slice.indexOf('class="research-heading"')).toBeLessThan(slice.indexOf('class="research-controls"'));
       expect(slice.indexOf('class="research-controls"')).toBeLessThan(slice.indexOf(panel === "games" ? 'id="replay-results"' : 'id="scout-results"'));

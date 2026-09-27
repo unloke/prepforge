@@ -44,11 +44,11 @@ export function createReplayView({
         ([kind, meta]) =>
           `<button type="button" class="replay-chip rk-${kind}${
             activeFilter === kind ? " is-on" : ""
-          }" data-filter="${kind}" title="Show only these games">${meta.icon} ${counts[kind]} ${meta.label}</button>`
+          }" data-filter="${kind}">${meta.icon} ${counts[kind]} ${meta.label}</button>`
       );
     const queued = Number(payload.misses_recorded) || 0;
     const queuedHtml = queued
-      ? `<span class="replay-queued" title="Each forgotten move was recorded as a recall miss — it leads your next smart session">+${queued} queued for training</span>`
+      ? `<span class="replay-queued" title="Recorded as recall misses">+${queued} queued for training</span>`
       : "";
     el.innerHTML = chips.join("") + queuedHtml;
     el.hidden = false;
@@ -99,13 +99,13 @@ export function createReplayView({
       const playedSan = replayDepartureSan(game);
       const played = playedSan ? ` <strong>${escapeHtml(playedSan)}</strong>` : "";
       const queued = game.training_recorded
-        ? " Added to your training queue - the move you forgot is due now."
+        ? " Added to your training queue."
         : " Already in your training queue.";
       lines.push(`You diverged on ply ${game.departure_ply}${played}${expected}.${queued}`);
     } else if (game.departure_reason === "opponent_unprepared_branch") {
       const playedSan = replayDepartureSan(game);
       const played = playedSan ? ` <strong>${escapeHtml(playedSan)}</strong>` : "";
-      lines.push(`Opponent took an unprepared branch on ply ${game.departure_ply}${played}. Add your reply in Build so it never surprises you again.`);
+      lines.push(`Opponent took an unprepared branch on ply ${game.departure_ply}${played}.`);
     } else if (game.departure_reason === "game_stayed_in_preparation") {
       lines.push("Game stayed entirely within preparation. Nice.");
     } else if (game.departure_reason === "no_repertoire_for_color") {
@@ -130,17 +130,17 @@ export function createReplayView({
     const actions = [];
     if (kind === "user-error") {
       actions.push(
-        `<button class="btn primary" data-act="train" data-index="${index}" title="The forgotten move is already queued — train it now">Train it now</button>`
+        `<button class="btn primary" data-act="train" data-index="${index}">Train</button>`
       );
     }
     if (kind === "left-prep" && game.repertoire_id) {
       actions.push(
-        `<button class="btn primary" data-act="build" data-index="${index}" title="Open Build at the position where the novelty appeared">Add reply in Build</button>`
+        `<button class="btn primary" data-act="build" data-index="${index}">Add reply</button>`
       );
     }
     if ((game.move_san_history || []).length) {
       actions.push(
-        `<button class="btn ghost" data-act="analyze" data-index="${index}" title="Load this game into the Analyze tab">Review in Analyze</button>`
+        `<button class="btn ghost" data-act="analyze" data-index="${index}">Analyze</button>`
       );
     }
 
@@ -169,7 +169,7 @@ export function createReplayView({
     renderReplaySummary(payload);
     if (!payload || !payload.games || !payload.games.length) {
       container.innerHTML =
-        '<div class="empty-state">No games found, or none played as a color you have a repertoire for.</div>';
+        '<div class="empty-state">No recent games found.</div>';
       return;
     }
     const filter = getReplayFilter();
