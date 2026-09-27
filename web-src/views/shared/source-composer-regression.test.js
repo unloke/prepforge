@@ -4,6 +4,7 @@ import {
   selectionChips,
   selectionFromStorage,
   selectionToStorage,
+  selfGroupState,
   resolveFetchUsernames,
 } from "./source-composer.js";
 
@@ -44,7 +45,9 @@ function readStore(storage, sourceKey, externalKey, selfKey) {
 
 function writeStore(storage, sourceKey, externalKey, selfKey, selection) {
   const stored = selectionToStorage(selection);
-  if (!stored.ids || !stored.ids.length) storage.removeItem(sourceKey);
+  // Mirror of app.js writeSourceStore: an explicit [] (every linked account
+  // unpicked) persists as "[]" — only a null (Self default) clears the key.
+  if (!stored.ids) storage.removeItem(sourceKey);
   else storage.setItem(sourceKey, JSON.stringify(stored.ids));
   if (stored.external.length) storage.setItem(externalKey, JSON.stringify(stored.external));
   else storage.removeItem(externalKey);
@@ -171,6 +174,51 @@ describe.each(pages.map((p) => [p.name, p]))("source composer parity: %s selecti
     });
     const legacyNone = makeStorage({ [page.source]: JSON.stringify(["__none__"]) });
     expect(readStore(legacyNone, page.source, page.external, page.self).linkedMode).toBe("none");
+  });
+
+  it("external-only pick survives reload without resurrecting Self", () => {
+    // Uncheck every linked account one by one (all -> subset -> subset + []),
+    // keep one external username, then reload from storage.
+    writeStore(storage, page.source, page.external, page.self, {
+      linkedMode: "all",
+      external: ["Hikaru"],
+    }, linked);
+    writeStore(storage, page.source, page.external, page.self, {
+      linkedMode: "subset",
+      accountIds: ["acc-b"],
+      external: ["Hikaru"],
+    }, linked);
+    writeStore(storage, page.source, page.external, page.self, {
+      linkedMode: "subset",
+      accountIds: [],
+      external: ["Hikaru"],
+    }, linked);
+    const reloaded = makeStorage(storage._dump());
+    const sel = readStore(reloaded, page.source, page.external, page.self);
+    expect(sel).toEqual({
+      linkedMode: "subset",
+      accountIds: [],
+      external: ["Hikaru"],
+    });
+    expect(selfGroupState(sel, linked)).toBe("none");
+    expect(selectionChips(sel, linked).chips.map((c) => c.kind)).toEqual(["external"]);
+    expect(pickedUsernames(reloaded, page, linked)).toEqual(["Hikaru"]);
+  });
+
+  it("deselect-Self external-only (none + names) also survives reload", () => {
+    writeStore(storage, page.source, page.external, page.self, {
+      linkedMode: "none",
+      external: ["Hikaru", "Chessbae"],
+    }, linked);
+    const reloaded = makeStorage(storage._dump());
+    const sel = readStore(reloaded, page.source, page.external, page.self);
+    expect(sel).toEqual({
+      linkedMode: "none",
+      accountIds: [],
+      external: ["Hikaru", "Chessbae"],
+    });
+    expect(selfGroupState(sel, linked)).toBe("none");
+    expect(pickedUsernames(reloaded, page, linked)).toEqual(["Hikaru", "Chessbae"]);
   });
 
   it("remove / re-add: dropping the last external keeps linkedMode, re-add restores", () => {

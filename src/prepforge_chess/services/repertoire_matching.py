@@ -29,6 +29,39 @@ def _find_child(node: OpeningNode, move_uci: str) -> Optional[OpeningNode]:
     return None
 
 
+def _departure_result(
+    repertoire: Repertoire,
+    node: OpeningNode,
+    expected: Optional[OpeningNode],
+    move: MoveRecord,
+    matched_plies: int,
+    user_color: Color,
+) -> RepertoireMatchResult:
+    """Result for the first game move the repertoire does not cover.
+
+    The departure is attributed to whoever MOVED that move (perspective), and
+    ``departure_ply`` is the move's own game ply, so the review points at the
+    exact point the game stepped out of preparation.
+    """
+    reason = (
+        "user_left_preparation"
+        if move.side_to_move is user_color
+        else "opponent_unprepared_branch"
+    )
+    return RepertoireMatchResult(
+        repertoire.id,
+        repertoire.name,
+        matched_plies,
+        node.id,
+        move.ply,
+        move.uci,
+        reason,
+        expected_move_uci=expected.move.uci if expected and expected.move else None,
+        expected_move_san=expected.move.san if expected and expected.move else None,
+        expected_node_id=expected.id if expected else None,
+    )
+
+
 def match_game_to_repertoire(
     moves: List[MoveRecord],
     repertoire: Repertoire,
@@ -36,27 +69,36 @@ def match_game_to_repertoire(
 ) -> RepertoireMatchResult:
     node = repertoire.root_node
     matched_plies = 0
+    pending = list(moves)
 
-    for move in moves:
+    # Repertoire root determination: a root node may ARRIVE with a move (a tree
+    # rooted at its first move). That move is part of the prepared line and sits
+    # at its own game ply — align the game to that ply and consume it before any
+    # child can match. Comparing the children first would start one ply too deep
+    # and report the user's very first move as "left preparation".
+    root_move = node.move
+    if root_move is not None:
+        index = next((i for i, m in enumerate(pending) if m.ply == root_move.ply), None)
+        if index is None and pending:
+            # Ply numbering disagrees (e.g. a game imported from a custom
+            # starting position): fall back to the game's first remaining move.
+            index = 0
+        if index is not None:
+            head = pending[index]
+            if head.uci != root_move.uci:
+                return _departure_result(
+                    repertoire, node, node, head, matched_plies, user_color
+                )
+            matched_plies += 1
+            pending = pending[index + 1 :]
+        # else: the game ends before the root position — it never left prep.
+
+    for move in pending:
         child = _find_child(node, move.uci)
         if child is None:
-            reason = (
-                "user_left_preparation"
-                if move.side_to_move is user_color
-                else "opponent_unprepared_branch"
-            )
             expected = _pick_expected_child(node)
-            return RepertoireMatchResult(
-                repertoire.id,
-                repertoire.name,
-                matched_plies,
-                node.id,
-                move.ply,
-                move.uci,
-                reason,
-                expected_move_uci=expected.move.uci if expected and expected.move else None,
-                expected_move_san=expected.move.san if expected and expected.move else None,
-                expected_node_id=expected.id if expected else None,
+            return _departure_result(
+                repertoire, node, expected, move, matched_plies, user_color
             )
         node = child
         matched_plies += 1

@@ -425,10 +425,12 @@ def _run_compare(
     opponents added on Games or Scout — fetched the same way, owner-scoped to
     the caller's repertoires for comparison."""
     count = max(1, min(_COMPARE_COUNT_MAX, count))
-    if account_ids:
-        links = []
-        for aid in account_ids:
-            links.append(_link_for_account(db, user.id, aid))
+    if account_ids is not None:
+        # An explicit list — including EMPTY — is authoritative: the Source
+        # Composer resolved the selection client-side, so an external-only
+        # selection (every linked account unpicked) must not fall back to all
+        # linked identities. Only an absent list means "self default".
+        links = [_link_for_account(db, user.id, aid) for aid in account_ids]
     elif account_id:
         links = [_link_for_account(db, user.id, account_id)]
     else:

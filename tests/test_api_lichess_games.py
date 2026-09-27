@@ -164,6 +164,39 @@ def test_compare_maps_upstream_failure_to_502(client, monkeypatch):
     assert client.get("/api/lichess/compare").status_code == 502
 
 
+def test_compare_external_only_selection_never_rides_self_along(client, monkeypatch):
+    """External-only source pick (every linked account unpicked): the compare
+    fetch resolves ONLY the external usernames — Self accounts must not be
+    re-added server-side (regression for the external-only round-trip)."""
+    _register(client, "a@example.com")
+    _link(client)
+    fetched_for = []
+
+    def _fake(*args, **kwargs):
+        fetched_for.append(args[0])
+        return []
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_recent_pgns", _fake
+    )
+    body = client.post(
+        "/api/lichess/compare",
+        json={"count": 5, "account_ids": [], "usernames": ["Hikaru"]},
+        headers=csrf_headers(client),
+    ).json()
+    assert fetched_for == ["Hikaru"]  # linked "TestUser" is NOT fetched
+    assert body["username"] == "Hikaru"
+
+    # Absent account_ids keeps the self default (all linked accounts).
+    fetched_for.clear()
+    client.post(
+        "/api/lichess/compare",
+        json={"count": 5, "usernames": ["Hikaru"]},
+        headers=csrf_headers(client),
+    )
+    assert sorted(fetched_for) == ["Hikaru", "TestUser"]
+
+
 # ---- opening explorer proxy --------------------------------------------------
 
 _START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"

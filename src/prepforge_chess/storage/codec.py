@@ -297,7 +297,47 @@ def hydrate_opening_tree(
     root.fen = canonicalize_fen(root_fen)
     root.side_to_move = _color_from_board(chess.Board(root.fen))
 
+    root_uci = arriving_uci.get(root.id)
+    if root_uci:
+        # The root row can carry its own arriving move (a repertoire rooted at
+        # its first move). The stored rows keep only the UCI — the position that
+        # precedes the root is not persisted — so rehydrate a minimal record:
+        # the mover is the side to move AT the root's parent position (the
+        # opposite of the root's own side to move), and the move's ply is the
+        # number of half-moves already elapsed at the root. Dropping this move
+        # would make the repertoire appear to start one ply later than it does.
+        #
+        # SYNTHETIC-METADATA CONTRACT (matches its consumers; do not widen):
+        # only `uci`, `ply` (half-moves elapsed at the root) and `side_to_move`
+        # are fully trustworthy — every path-based consumer (training,
+        # scheduler, matching, progress) reads exactly these. `move_number` is
+        # the root FEN's fullmove field: right for white roots, one high for
+        # black roots — nothing consumes it (workspace filler + a FEN-first
+        # fallback in the client only). `san` mirrors the UCI and
+        # `fen_before`/`fen_after` both echo the root's own FEN because the
+        # pre-root position is not persisted; these are display-only filler
+        # (e.g. OpeningTreeItem/"root" rows) and must never feed board or PGN
+        # reconstruction. Correct san/fens would need the parent position,
+        # which the schema does not store. Known paths that receive the root
+        # node and only touch these fields: match_game_to_repertoire
+        # (uci/ply), opening_item_to_json (filler, depth-0-guarded in UI),
+        # _move_to_dict/export helpers (filler), and mastery/health counting
+        # (side_to_move via _is_trainable).
+        board = chess.Board(root.fen)
+        root.move = MoveRecord(
+            uci=root_uci,
+            san=root_uci,
+            fen_before=root.fen,
+            fen_after=root.fen,
+            move_number=board.fullmove_number,
+            ply=board.ply(),
+            side_to_move=_color_from_board(board).opponent,
+            source=root.source,
+        )
+
     def walk(node: OpeningNode) -> None:
+        # Child nodes replay from the parent's real FEN, so their MoveRecord is
+        # fully hydrated — unlike the root's synthetic record above.
         for child in children.get(node.id, []):
             uci = arriving_uci.get(child.id)
             if not uci:

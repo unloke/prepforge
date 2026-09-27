@@ -540,14 +540,19 @@ export function openSourceComposer({
 
 // ---- Persistence bridge (shared by Games + Scout) --------------------------
 // New storage shape per key: { linkedMode, accountIds, external } — ids holds
-// null (Self default), ["__none__"] (no linked sources), or the explicit
-// subset list; external names always persist alongside in the companion key.
+// null (Self default), ["__none__"] (no linked sources), [] (every linked
+// account explicitly unpicked — external-only), or the explicit subset list;
+// external names always persist alongside in the companion key.
 // Legacy shapes migrate on read (reload keeps the same selection):
 //   null/absent            -> { linkedMode: "all", ... } (Self default)
 //   ["__none__"]            -> { linkedMode: "none", ... } (no sources)
+//   []                      -> { linkedMode: "subset", accountIds: [], ... }
 //   ["id", ...]             -> { linkedMode: "subset", accountIds: [...] }
 //   scout_self=off + empty  -> { linkedMode: "none", ... }
-// External names always merge from the companion external key.
+// External names always merge from the companion external key. An EMPTY id
+// list is distinct from an ABSENT one: "[]" is the persisted form of
+// subset + [] (Self fully unpicked), which must never resurrect Self on
+// reload the way the legacy absent-key Self default does.
 
 export function selectionFromStorage({ ids = null, external = null, selfOff = false } = {}) {
   const externals = uniqueStrings(
@@ -556,9 +561,16 @@ export function selectionFromStorage({ ids = null, external = null, selfOff = fa
   if (Array.isArray(ids) && ids.includes("__none__")) {
     return { linkedMode: "none", accountIds: [], external: externals };
   }
-  if (!Array.isArray(ids) || !ids.length) {
+  if (!Array.isArray(ids)) {
+    // Absent key = legacy Self default; legacy scout_self=off overrides it.
     if (selfOff) return { linkedMode: "none", accountIds: [], external: externals };
     return { linkedMode: "all", accountIds: [], external: externals };
+  }
+  if (!ids.length) {
+    // Explicit empty list = every linked account was unpicked (external-only
+    // or no sources). Never widen back to Self on reload.
+    if (selfOff) return { linkedMode: "none", accountIds: [], external: externals };
+    return { linkedMode: "subset", accountIds: [], external: externals };
   }
   return {
     linkedMode: "subset",
@@ -591,9 +603,10 @@ export function selectionToLegacyIds(selection, linkedAccounts) {
   const sel = normalizeSelection(selection);
   void linkedAccounts;
   if (sel.linkedMode === "all") return null;
-  if (sel.linkedMode === "none" && !sel.external.length) return ["__none__"];
-  if (sel.linkedMode === "none") return null;
-  return sel.accountIds.length ? [...sel.accountIds] : null;
+  // "none" and subset + [] both persist as the __none__ marker so an
+  // external-only selection never round-trips back to the Self default.
+  if (sel.linkedMode === "none") return ["__none__"];
+  return sel.accountIds.length ? [...sel.accountIds] : ["__none__"];
 }
 
 // Resolve the usernames a page should actually fetch. Linked state is explicit:
