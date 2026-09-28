@@ -510,7 +510,7 @@
                 <button class="ib" id="team-detail-close" title="Close" aria-label="Close team details">×</button>
               </div>
             </div>
-            <div class="team-workspace-tabs" role="tablist" aria-label="Team workspace"><button type="button" id="team-tab-members" class="is-active" data-team-pane="members" role="tab" aria-controls="team-panel-members" aria-selected="true">Members</button><button type="button" id="team-tab-repertoires" data-team-pane="repertoires" role="tab" aria-controls="team-panel-repertoires" aria-selected="false" tabindex="-1">Shared repertoires</button></div>
+            <div class="team-workspace-tabs" role="tablist" aria-label="Team workspace"><button type="button" id="team-tab-members" class="is-active" data-team-pane="members" role="tab" aria-controls="team-panel-members" aria-selected="true">Members <span class="team-tab-count" data-team-count="members" hidden></span></button><button type="button" id="team-tab-repertoires" data-team-pane="repertoires" role="tab" aria-controls="team-panel-repertoires" aria-selected="false" tabindex="-1">Shared repertoires <span class="team-tab-count" data-team-count="repertoires" hidden></span></button></div>
             <div class="team-detail-columns"><section class="team-members-panel" id="team-panel-members" data-team-panel="members" role="tabpanel" aria-labelledby="team-tab-members"><div class="team-members-head">
               <span class="settings-label">Members</span>
               <button class="btn ghost" id="team-add-member" data-testid="team-add-member" hidden>Add member</button>
@@ -521,6 +521,7 @@
             </div>
             <div id="team-shared-repertoires" class="list-stack" data-testid="team-shared-repertoires"></div></section></div>
             <div class="team-detail-foot" id="team-detail-foot"></div>
+            <footer class="team-invite-foot" id="team-invite-foot" hidden></footer>
           </section>
 
           <aside class="team-empty"><span class="team-empty-mark">♙</span><h3>Choose a team</h3><p>Members and shared repertoires appear here.</p></aside>

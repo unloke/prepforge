@@ -4374,6 +4374,12 @@ async function openTeamDetail(teamId) {
     deleteBtn.onclick = () => deleteTeam(teamId, detail.name);
   }
   const members = detail.members || [];
+  // Tab counts from the real payload (prototype puts them on the tabs) + the
+  // manager-only invite footer, both before the member rows render.
+  if (teamsView) {
+    teamsView.renderTeamTabCounts({ members: members.length });
+    teamsView.renderTeamInviteFooter(detail);
+  }
   membersEl.innerHTML = members
     .map((m) => {
       const name = escapeHtml(m.display_name || m.lichess_username || "Member");
@@ -4472,6 +4478,9 @@ async function createTeam() {
   try {
     const team = await postJson("/api/teams", { name });
     appState.selectedTeamId = team.id;
+    // A fresh team starts empty: land on the Members tab (the empty Shared
+    // tab would read as a glitch).
+    teamsView?.selectTeamPane?.("members");
     setStatus(`Created team "${name}"`, { severity: "success" });
     await loadTeams();
   } catch (error) {
@@ -4597,7 +4606,10 @@ async function removeTeamMember(teamId, userId, label, isSelf) {
       { method: "DELETE" }
     );
     setStatus(isSelf ? "Left team" : `Removed ${label}`);
-    if (isSelf) hideTeamDetail();
+    if (isSelf) {
+      hideTeamDetail();
+      teamsView?.selectTeamPane?.("members");
+    }
     await loadTeams();
   } catch (error) {
     setStatusError(error.message);
