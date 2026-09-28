@@ -10571,6 +10571,9 @@ async function ensureReplayView() {
   if (!replayView) {
     replayView = mod.createReplayView({
       escapeHtml,
+      // Focus-board renderers: the production FEN decoder + active piece-SVG
+      // set, shared with the Library preview (piece style follows Settings).
+      boardRenderers: { parseFenBoard, pieceSvg },
       getReplayFilter: () => appState.replayFilter,
       isGameOpen: (index) => appState.replayOpen.has(index),
       onToggleFilter: (kind) => {
