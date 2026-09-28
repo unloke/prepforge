@@ -1177,29 +1177,35 @@ class PrepForgeRepository:
 
     def save_training_session(self, session: TrainingSession) -> None:
         with self.engine.begin() as conn:
-            _upsert(
-                conn,
-                t.training_sessions,
-                {
-                    "id": session.id,
-                    "repertoire_id": session.repertoire_id,
-                    "mode": session.mode.value,
-                    "line_order_json": _json_dump(session.line_order),
-                    "current_index": session.current_index,
-                    "current_node_id": session.current_node_id,
-                    "mistakes_json": _json_dump(session.mistakes),
-                    "mastered_nodes_json": _json_dump(session.mastered_nodes),
-                    "seed": session.seed,
-                    "created_at": _dt_to_text(session.created_at),
-                    "updated_at": _dt_to_text(session.updated_at),
-                },
-                conflict=[t.training_sessions.c.id],
-                update_cols=(
-                    "repertoire_id", "mode", "line_order_json", "current_index",
-                    "current_node_id", "mistakes_json", "mastered_nodes_json", "seed",
-                    "updated_at",
-                ),
-            )
+            self.write_training_session(conn, session)
+
+    def write_training_session(self, conn: Connection, session: TrainingSession) -> None:
+        """Conn-scoped ``save_training_session``: run inside the caller's
+        transaction so the session write commits together with related writes
+        (attempt receipts, progress rows)."""
+        _upsert(
+            conn,
+            t.training_sessions,
+            {
+                "id": session.id,
+                "repertoire_id": session.repertoire_id,
+                "mode": session.mode.value,
+                "line_order_json": _json_dump(session.line_order),
+                "current_index": session.current_index,
+                "current_node_id": session.current_node_id,
+                "mistakes_json": _json_dump(session.mistakes),
+                "mastered_nodes_json": _json_dump(session.mastered_nodes),
+                "seed": session.seed,
+                "created_at": _dt_to_text(session.created_at),
+                "updated_at": _dt_to_text(session.updated_at),
+            },
+            conflict=[t.training_sessions.c.id],
+            update_cols=(
+                "repertoire_id", "mode", "line_order_json", "current_index",
+                "current_node_id", "mistakes_json", "mastered_nodes_json", "seed",
+                "updated_at",
+            ),
+        )
 
     def load_training_session(self, session_id: str) -> Optional[TrainingSession]:
         with self.engine.connect() as conn:
@@ -1223,6 +1229,31 @@ class PrepForgeRepository:
             stmt = stmt.where(t.training_sessions.c.mode == mode.value)
         with self.engine.connect() as conn:
             row = conn.execute(stmt).mappings().first()
+        return self._training_session_from_row(row) if row is not None else None
+
+    def lock_training_session(
+        self,
+        conn: Connection,
+        *,
+        session_id: str,
+    ) -> Optional[TrainingSession]:
+        """Read-modify-write handle on one session row inside an open transaction.
+
+        Reads the row FOR UPDATE so concurrent updaters of the same session
+        serialise here (PostgreSQL) and each computes from the other's committed
+        state instead of a pre-transaction snapshot — a full-row upsert built
+        from a stale snapshot silently clobbers the other sync's mistakes,
+        mastered nodes, and position. Follow up with ``write_training_session``
+        before the transaction ends. Returns None when the row is absent."""
+        row = (
+            conn.execute(
+                select(t.training_sessions)
+                .where(t.training_sessions.c.id == session_id)
+                .with_for_update()
+            )
+            .mappings()
+            .first()
+        )
         return self._training_session_from_row(row) if row is not None else None
 
     def save_training_progress(

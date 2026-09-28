@@ -841,3 +841,213 @@ def test_postgres_concurrent_sync_different_uuids_do_not_lose_updates():
         with admin.connect() as conn:
             conn.exec_driver_sql('DROP SCHEMA "' + schema + '" CASCADE')
         admin.dispose()
+
+
+def test_sync_persists_the_session_without_a_blind_row_save(monkeypatch):
+    """Structural guard for the smart-sync session clobber fix.
+
+    ``sync_progress`` must persist session state transactionally — a locked
+    read-modify-write committed together with the attempt — never via a blind
+    ``save_training_session`` of an in-memory snapshot. That whole-row save is
+    exactly the bug: a concurrent sync's session update (mistakes, mastered
+    nodes, position) committed in between was overwritten wholesale. The real
+    interleaving runs on PostgreSQL in
+    ``test_postgres_interleaved_session_updates_never_lose_one``; this pins the
+    shape deterministically on SQLite."""
+    repository = _repository()
+    white, ids = _build(repository)
+    owner = "owner-session-clobber"
+    _claim(repository, owner, white)
+    service = SmartTrainingService(repository, owner)
+    session = service.start_or_resume(white.id, seed=5)
+    node_id = ids["e4"]
+    first_card = session.line_order[0]
+
+    def fail_blind_save(self, target):
+        raise AssertionError(
+            "sync must not save the session outside its own transactions"
+        )
+
+    monkeypatch.setattr(PrepForgeRepository, "save_training_session", fail_blind_save)
+    written = service.sync_progress(
+        session.id,
+        [{"node_id": node_id, "correct": False, "attempt_uuid": "sess-1"}],
+        card_index=0,
+        queue=[first_card, "garbage-not-a-card"],
+        owner_user_id=owner,
+    )
+    assert written == 1
+    monkeypatch.undo()
+
+    stored = repository.load_training_session(session.id)
+    assert stored is not None
+    assert node_id in stored.mistakes
+    assert stored.line_order == [first_card]  # malformed queue entries dropped
+    assert stored.current_index == 0
+    assert stored.current_node_id is None
+
+
+def test_postgres_interleaved_session_updates_never_lose_one():
+    """Deterministic interleaving on real PostgreSQL: a second sync committing
+    between the first sync's session snapshot and its session write must not
+    clobber session state.
+
+    The seam replays exactly that window — the racing sync commits two attempts
+    fully (one wrong on another node, one correct on the slow attempt's node),
+    then the slow attempt proceeds. The fixed flow rereads the session row
+    locked INSIDE its transaction (after the racing commit) and merges, so both
+    attempts land in progress AND both session updates survive; the legacy
+    snapshot-then-upsert flow overwrote the racing sync's session state with
+    values computed from its stale snapshot."""
+    import os
+    import uuid
+
+    import pytest
+    import sqlalchemy as sa
+    from prepforge_chess.storage import sa_tables
+
+    url = os.getenv("TEST_POSTGRES_URL")
+    if not url:
+        pytest.skip("TEST_POSTGRES_URL requires a real PostgreSQL server")
+    if url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://"):]
+    if url.startswith("postgres://"):
+        url = "postgresql+psycopg://" + url[len("postgres://"):]
+    schema = "train_sess_il_" + uuid.uuid4().hex[:16]
+    admin = sa.create_engine(url, isolation_level="AUTOCOMMIT")
+    with admin.connect() as conn:
+        conn.exec_driver_sql('CREATE SCHEMA "' + schema + '"')
+    engine = sa.create_engine(url, connect_args={"options": "-c search_path=" + schema})
+    try:
+        sa_tables.metadata.create_all(engine)
+        repo = PrepForgeRepository(engine)
+        repertoire, node_ids = _build(repo)
+        owner = "postgres-session-interleave-owner"
+        _claim(repo, owner, repertoire)
+        service = SmartTrainingService(repo, owner)
+        session = service.start_or_resume(repertoire.id, seed=5)
+        node_x = node_ids["e4"]
+        node_y = node_ids["d4"]
+
+        raced = {"done": False}
+        original_lock = PrepForgeRepository.lock_training_progress
+
+        def racing_sync():
+            raced["done"] = True
+            return SmartTrainingService(PrepForgeRepository(engine), owner).sync_progress(
+                session.id,
+                [
+                    {"node_id": node_x, "correct": True, "attempt_uuid": "racer-sess-1"},
+                    {"node_id": node_y, "correct": False, "attempt_uuid": "racer-sess-2"},
+                ],
+                owner_user_id=owner,
+            )
+
+        def race_then_lock(self, conn, **kwargs):
+            # The racing sync commits in the window between this call's session
+            # snapshot and its session write — the exact legacy clobber window.
+            if not raced["done"]:
+                racing_sync()
+            return original_lock(self, conn, **kwargs)
+
+        monkeypatch = pytest.MonkeyPatch()
+        try:
+            monkeypatch.setattr(PrepForgeRepository, "lock_training_progress", race_then_lock)
+            written = service.sync_progress(
+                session.id,
+                [{"node_id": node_x, "correct": False, "attempt_uuid": "slow-sess"}],
+                owner_user_id=owner,
+            )
+        finally:
+            monkeypatch.undo()
+        assert written == 1
+
+        # Progress keeps BOTH updates (racing + slow) on the shared node.
+        progress_x = repo.load_training_progress(repertoire.id, node_x, owner_user_id=owner)
+        assert progress_x is not None
+        assert progress_x.attempts == 2
+        assert progress_x.correct_attempts == 1
+        progress_y = repo.load_training_progress(repertoire.id, node_y, owner_user_id=owner)
+        assert progress_y is not None and progress_y.attempts == 1
+
+        # And the session keeps BOTH mistakes — the racing one not clobbered.
+        stored = repo.load_training_session(session.id)
+        assert stored is not None
+        assert sorted(stored.mistakes) == sorted([node_x, node_y])
+    finally:
+        engine.dispose()
+        with admin.connect() as conn:
+            conn.exec_driver_sql('DROP SCHEMA "' + schema + '" CASCADE')
+        admin.dispose()
+
+
+def test_postgres_concurrent_sync_session_state_keeps_every_update():
+    """Real PostgreSQL: racing syncs with different attempt UUIDs must ALL leave
+    their session trace — a row-locked read-modify-write on the session row, no
+    clobbered mistakes.
+
+    Six racers on distinct nodes on purpose: the fixed code is
+    deterministic-green (the session row lock serialises the merges), while a
+    snapshot-then-upsert regression keeps only one writer's mistakes with near
+    certainty under this much parallelism."""
+    import os
+    import uuid
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    import pytest
+    import sqlalchemy as sa
+    from prepforge_chess.storage import sa_tables
+
+    url = os.getenv("TEST_POSTGRES_URL")
+    if not url:
+        pytest.skip("TEST_POSTGRES_URL requires a real PostgreSQL server")
+    if url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://"):]
+    if url.startswith("postgres://"):
+        url = "postgresql+psycopg://" + url[len("postgres://"):]
+    schema = "train_sess_race_" + uuid.uuid4().hex[:16]
+    admin = sa.create_engine(url, isolation_level="AUTOCOMMIT")
+    with admin.connect() as conn:
+        conn.exec_driver_sql('CREATE SCHEMA "' + schema + '"')
+    engine = sa.create_engine(url, connect_args={"options": "-c search_path=" + schema})
+    try:
+        sa_tables.metadata.create_all(engine)
+        repo = PrepForgeRepository(engine)
+        repertoire, node_ids = _build(repo)
+        owner = "postgres-session-race-owner"
+        _claim(repo, owner, repertoire)
+        service = SmartTrainingService(repo, owner)
+        session = service.start_or_resume(repertoire.id, seed=5)
+        race_nodes = [node_ids[key] for key in ("e4", "e5", "nf3", "nc6", "d4", "d5")]
+        racers = len(race_nodes)
+        attempts = [
+            {"node_id": node_id, "correct": False, "attempt_uuid": uuid.uuid4().hex}
+            for node_id in race_nodes
+        ]
+        barrier = Barrier(racers)
+
+        def submit(payload):
+            barrier.wait(timeout=10)
+            return SmartTrainingService(PrepForgeRepository(engine), owner).sync_progress(
+                session.id, [payload], owner_user_id=owner
+            )
+
+        with ThreadPoolExecutor(max_workers=racers) as pool:
+            futures = [pool.submit(submit, payload) for payload in attempts]
+            results = [future.result(timeout=60) for future in futures]
+        assert results == [1] * racers
+
+        # Every attempt's progress landed …
+        for node_id in race_nodes:
+            progress = repo.load_training_progress(repertoire.id, node_id, owner_user_id=owner)
+            assert progress is not None and progress.attempts == 1, node_id
+        # … and every attempt's session update survived — nothing clobbered.
+        stored = repo.load_training_session(session.id)
+        assert stored is not None
+        assert sorted(stored.mistakes) == sorted(race_nodes)
+    finally:
+        engine.dispose()
+        with admin.connect() as conn:
+            conn.exec_driver_sql('DROP SCHEMA "' + schema + '" CASCADE')
+        admin.dispose()
