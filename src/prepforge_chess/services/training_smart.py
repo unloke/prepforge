@@ -638,6 +638,10 @@ class SmartTrainingService:
         a UUID reused with a different ``(node_id, correct)`` is a 409-class
         ``ValueError``. Receipt insert + SR progress + session update commit in
         ONE transaction, so the streak only advances on genuinely new attempts.
+        The SR progress row is read-modify-written INSIDE that transaction under
+        a row lock (``lock_training_progress``), so attempts with different UUIDs
+        on the same node — parallel tabs/devices — serialise instead of losing
+        one update to the other.
         Attempts on nodes edited out of the tree are skipped, not errors.
         Returns how many attempts were newly applied.
 
@@ -693,15 +697,6 @@ class SmartTrainingService:
                         )
                     )
                 continue
-            stored = self.repository.load_training_progress(
-                rep_id, node_id, owner_user_id=session_owner
-            ) or TrainingProgress(node_id=node_id)
-            next_session, progress = record_attempt(
-                session=session,
-                progress=stored,
-                node_id=node_id,
-                correct=correct,
-            )
             from prepforge_chess.storage import sa_tables as _t
             from prepforge_chess.storage.repositories import (
                 _bool_to_int as _b2i,
@@ -759,6 +754,23 @@ class SmartTrainingService:
                             )
                         )
                     continue
+                # Read-modify-write the progress row INSIDE the claimed
+                # transaction: lock it and compute from committed state, so a
+                # concurrent attempt on the same node cannot be lost. (Reading it
+                # before the transaction let a racing writer's committed update
+                # be overwritten by values computed from a stale snapshot.)
+                stored = self.repository.lock_training_progress(
+                    conn,
+                    repertoire_id=rep_id,
+                    node_id=node_id,
+                    owner_user_id=session_owner,
+                )
+                next_session, progress = record_attempt(
+                    session=session,
+                    progress=stored,
+                    node_id=node_id,
+                    correct=correct,
+                )
                 _upsert_rows(
                     conn,
                     _t.training_progress,
