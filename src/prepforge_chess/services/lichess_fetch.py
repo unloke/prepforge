@@ -9,7 +9,7 @@ from dataclasses import dataclass, replace
 from typing import List, Optional
 
 from prepforge_chess.core.chess_core import ChessCore
-from prepforge_chess.core.models import Color, MoveSource, Game, TrainingProgress
+from prepforge_chess.core.models import Color, MoveSource, Game
 from prepforge_chess.services.repertoire_matching import (
     RepertoireMatchResult,
     match_game_against_repertoires,
@@ -561,38 +561,56 @@ def record_departure_misses(
     Opponent novelties are NOT misses — there was nothing to recall. Idempotent per
     game via a per-owner ingested-ids list; marks each summary it recorded through
     ``training_recorded`` so the UI can say "added to training". Returns the count.
+
+    Atomic: the progress write and the ingested-id ledger commit in ONE
+    transaction with the ledger row locked (``lock_user_setting``). A failure
+    mid-batch rolls back everything and a retry applies each game exactly once —
+    the old write-then-ledger order could leave a progress miss committed while
+    its ledger id was lost, so the retried compare deducted the same game again.
     """
     if owner_user_id is None:
         return 0
-    stored = repository.get_user_setting(owner_user_id, DEPARTURE_INGESTED_KEY, [])
-    ingested = [str(item) for item in stored] if isinstance(stored, list) else []
-    seen = set(ingested)
     recorded = 0
-    for summary in summaries:
-        if summary.departure_reason != "user_left_preparation":
-            continue
-        if not (summary.lichess_id and summary.repertoire_id and summary.expected_node_id):
-            continue
-        if summary.lichess_id in seen:
-            continue
-        progress = repository.load_training_progress(
-            summary.repertoire_id, summary.expected_node_id, owner_user_id=owner_user_id
-        ) or TrainingProgress(node_id=summary.expected_node_id)
-        updated = update_spaced_repetition(progress, correct=False)
-        # An in-session miss retries after 10 minutes; a miss from a REAL game should
-        # land in the very next session, so it is due immediately.
-        updated = replace(updated, due_at=updated.last_reviewed_at)
-        repository.save_training_progress(
-            summary.repertoire_id, updated, owner_user_id=owner_user_id
+    with repository.engine.begin() as conn:
+        stored = repository.lock_user_setting(
+            conn, owner_user_id, DEPARTURE_INGESTED_KEY, []
         )
-        seen.add(summary.lichess_id)
-        ingested.append(summary.lichess_id)
-        summary.training_recorded = True
-        recorded += 1
-    if recorded:
-        repository.set_user_setting(
-            owner_user_id, DEPARTURE_INGESTED_KEY, ingested[-_DEPARTURE_INGESTED_CAP:]
-        )
+        ingested = [str(item) for item in stored] if isinstance(stored, list) else []
+        seen = set(ingested)
+        for summary in summaries:
+            if summary.departure_reason != "user_left_preparation":
+                continue
+            if not (summary.lichess_id and summary.repertoire_id and summary.expected_node_id):
+                continue
+            if summary.lichess_id in seen:
+                continue
+            progress = repository.lock_training_progress(
+                conn,
+                repertoire_id=summary.repertoire_id,
+                node_id=summary.expected_node_id,
+                owner_user_id=owner_user_id,
+            )
+            updated = update_spaced_repetition(progress, correct=False)
+            # An in-session miss retries after 10 minutes; a miss from a REAL game should
+            # land in the very next session, so it is due immediately.
+            updated = replace(updated, due_at=updated.last_reviewed_at)
+            repository.write_training_progress(
+                conn,
+                repertoire_id=summary.repertoire_id,
+                progress=updated,
+                owner_user_id=owner_user_id,
+            )
+            seen.add(summary.lichess_id)
+            ingested.append(summary.lichess_id)
+            summary.training_recorded = True
+            recorded += 1
+        if recorded:
+            repository.write_user_setting(
+                conn,
+                owner_user_id,
+                DEPARTURE_INGESTED_KEY,
+                ingested[-_DEPARTURE_INGESTED_CAP:],
+            )
     return recorded
 
 

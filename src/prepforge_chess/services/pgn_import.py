@@ -5,6 +5,7 @@ from typing import List, Optional
 
 from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import MoveSource
+from prepforge_chess.storage import codec
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
 
@@ -72,7 +73,9 @@ class PgnImportService:
 
         # Signatures of games already stored, plus ones seen earlier in this same
         # batch, so the same game pasted/dropped twice is skipped rather than
-        # duplicated. Lichess games are also deduped by id below.
+        # duplicated. Lichess games are also deduped by id below. A signature is
+        # initial position + UCI sequence (``codec.move_signature``), so the same
+        # moves from a different starting position are different games.
         signature_to_id = self.repository.existing_move_signature_ids(owner_user_id)
 
         for index, game in enumerate(games):
@@ -95,7 +98,9 @@ class PgnImportService:
                     result.skipped_game_ids.append(existing_id)
                     continue
 
-            signature = " ".join(move.uci for move in game.moves)
+            signature = codec.move_signature(
+                game.initial_fen, (move.uci for move in game.moves)
+            )
             existing_signature_id = signature_to_id.get(signature)
             if existing_signature_id is not None:
                 # Duplicate of an already-stored game: report the EXISTING id so

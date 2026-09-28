@@ -144,3 +144,44 @@ def test_import_service_imports_valid_and_flags_broken_game():
     assert result.imported_count == 1
     assert len(result.errors) == 1
     assert "game 2" in result.errors[0]
+
+
+def test_import_service_signature_dedupe_includes_initial_position():
+    """Same UCI moves from a different starting position are different games.
+
+    Regression: the move-sequence-only dedupe signature ignored ``initial_fen``,
+    so a FEN-tagged game sharing its moves with a stored game was silently
+    skipped as a duplicate."""
+    service = _service()
+    standard = """
+[Event "Standard start"]
+[White "Alice"]
+[Black "Bob"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 1-0
+"""
+    custom = """
+[Event "Custom start"]
+[White "Carol"]
+[Black "Dan"]
+[Result "1-0"]
+[FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w Kkq - 0 1"]
+[SetUp "1"]
+
+1. e4 e5 2. Nf3 Nc6 1-0
+"""
+
+    first = service.import_text(standard)
+    second = service.import_text(custom)
+
+    assert first.imported_count == 1
+    assert second.imported_count == 1  # NOT skipped as a duplicate
+    assert second.skipped_count == 0
+    assert len(service.repository.list_games()) == 2
+
+    # ...while the same game from the same custom position still dedupes.
+    third = service.import_text(custom)
+    assert third.imported_count == 0
+    assert third.skipped_game_ids == second.imported_game_ids
+    assert len(service.repository.list_games()) == 2

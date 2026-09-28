@@ -235,6 +235,18 @@ def game_uci_blob(game: Game) -> str:
     return encode_uci_sequence(move.uci for move in game.moves)
 
 
+def move_signature(initial_fen: Optional[str], moves: Iterable[str]) -> str:
+    """Identity signature for import dedupe: starting position + UCI sequence.
+
+    The initial FEN is part of the signature on purpose: two games sharing a move
+    sequence but starting from different positions (FEN-tagged set-ups, Chess960)
+    are different games and must never dedupe against each other. The FEN is
+    canonicalised so equivalent spellings of one starting position still match.
+    """
+    fen = canonicalize_fen(initial_fen) if initial_fen else STARTING_FEN
+    return "{0}|{1}".format(fen, encode_uci_sequence(moves))
+
+
 def move_needs_row(move: MoveRecord) -> bool:
     """True when a ply carries anything that cannot be rebuilt from UCI + FEN."""
     if move.classification is not MoveClassification.UNKNOWN:

@@ -138,20 +138,60 @@ class PrepForgeRepository:
     def set_user_setting(self, user_id: str, key: str, value: Any) -> None:
         """Upsert one setting row. A ``None`` value deletes the key."""
         with self.engine.begin() as conn:
-            if value is None:
-                conn.execute(
-                    delete(t.user_settings).where(
-                        t.user_settings.c.user_id == user_id,
-                        t.user_settings.c.key == key,
-                    )
+            self.write_user_setting(conn, user_id, key, value)
+
+    def write_user_setting(self, conn: Connection, user_id: str, key: str, value: Any) -> None:
+        """Conn-scoped ``set_user_setting``: run inside the caller's transaction so
+        the setting write commits together with related domain writes. A ``None``
+        value deletes the key."""
+        if value is None:
+            conn.execute(
+                delete(t.user_settings).where(
+                    t.user_settings.c.user_id == user_id,
+                    t.user_settings.c.key == key,
                 )
-                return
-            stmt = _insert(conn, t.user_settings).values(_setting_row(user_id, key, value))
-            stmt = stmt.on_conflict_do_update(
-                index_elements=["user_id", "key"],
-                set_={"value_json": stmt.excluded.value_json, "updated_at": stmt.excluded.updated_at},
             )
-            conn.execute(stmt)
+            return
+        stmt = _insert(conn, t.user_settings).values(_setting_row(user_id, key, value))
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["user_id", "key"],
+            set_={"value_json": stmt.excluded.value_json, "updated_at": stmt.excluded.updated_at},
+        )
+        conn.execute(stmt)
+
+    def lock_user_setting(
+        self, conn: Connection, user_id: str, key: str, default: Any = None
+    ) -> Any:
+        """Read one setting row FOR UPDATE inside an open transaction.
+
+        Insert-claims the row first when absent (``ON CONFLICT DO NOTHING``) so two
+        concurrent transactions can never both act on "unset": on PostgreSQL the
+        second inserter blocks on the first and then locks the committed row, which
+        serialises the whole read-modify-write. ``default`` is returned when the key
+        is unset or unparsable. Callers follow up with ``write_user_setting`` (or
+        nothing) before the transaction ends.
+        """
+        conn.execute(
+            _insert(conn, t.user_settings)
+            .values(_setting_row(user_id, key, default))
+            .on_conflict_do_nothing(
+                index_elements=[t.user_settings.c.user_id, t.user_settings.c.key]
+            )
+        )
+        row = conn.execute(
+            select(t.user_settings.c.value_json)
+            .where(
+                t.user_settings.c.user_id == user_id,
+                t.user_settings.c.key == key,
+            )
+            .with_for_update()
+        ).mappings().first()
+        if row is None:
+            return default
+        try:
+            return json.loads(row["value_json"])
+        except (json.JSONDecodeError, TypeError):
+            return default
 
     def mutate_user_setting(
         self, user_id: str, key: str, mutator: "Callable[[Any], Any]"
@@ -1137,29 +1177,35 @@ class PrepForgeRepository:
 
     def save_training_session(self, session: TrainingSession) -> None:
         with self.engine.begin() as conn:
-            _upsert(
-                conn,
-                t.training_sessions,
-                {
-                    "id": session.id,
-                    "repertoire_id": session.repertoire_id,
-                    "mode": session.mode.value,
-                    "line_order_json": _json_dump(session.line_order),
-                    "current_index": session.current_index,
-                    "current_node_id": session.current_node_id,
-                    "mistakes_json": _json_dump(session.mistakes),
-                    "mastered_nodes_json": _json_dump(session.mastered_nodes),
-                    "seed": session.seed,
-                    "created_at": _dt_to_text(session.created_at),
-                    "updated_at": _dt_to_text(session.updated_at),
-                },
-                conflict=[t.training_sessions.c.id],
-                update_cols=(
-                    "repertoire_id", "mode", "line_order_json", "current_index",
-                    "current_node_id", "mistakes_json", "mastered_nodes_json", "seed",
-                    "updated_at",
-                ),
-            )
+            self.write_training_session(conn, session)
+
+    def write_training_session(self, conn: Connection, session: TrainingSession) -> None:
+        """Conn-scoped ``save_training_session``: run inside the caller's
+        transaction so the session write commits together with related writes
+        (attempt receipts, progress rows)."""
+        _upsert(
+            conn,
+            t.training_sessions,
+            {
+                "id": session.id,
+                "repertoire_id": session.repertoire_id,
+                "mode": session.mode.value,
+                "line_order_json": _json_dump(session.line_order),
+                "current_index": session.current_index,
+                "current_node_id": session.current_node_id,
+                "mistakes_json": _json_dump(session.mistakes),
+                "mastered_nodes_json": _json_dump(session.mastered_nodes),
+                "seed": session.seed,
+                "created_at": _dt_to_text(session.created_at),
+                "updated_at": _dt_to_text(session.updated_at),
+            },
+            conflict=[t.training_sessions.c.id],
+            update_cols=(
+                "repertoire_id", "mode", "line_order_json", "current_index",
+                "current_node_id", "mistakes_json", "mastered_nodes_json", "seed",
+                "updated_at",
+            ),
+        )
 
     def load_training_session(self, session_id: str) -> Optional[TrainingSession]:
         with self.engine.connect() as conn:
@@ -1185,6 +1231,31 @@ class PrepForgeRepository:
             row = conn.execute(stmt).mappings().first()
         return self._training_session_from_row(row) if row is not None else None
 
+    def lock_training_session(
+        self,
+        conn: Connection,
+        *,
+        session_id: str,
+    ) -> Optional[TrainingSession]:
+        """Read-modify-write handle on one session row inside an open transaction.
+
+        Reads the row FOR UPDATE so concurrent updaters of the same session
+        serialise here (PostgreSQL) and each computes from the other's committed
+        state instead of a pre-transaction snapshot — a full-row upsert built
+        from a stale snapshot silently clobbers the other sync's mistakes,
+        mastered nodes, and position. Follow up with ``write_training_session``
+        before the transaction ends. Returns None when the row is absent."""
+        row = (
+            conn.execute(
+                select(t.training_sessions)
+                .where(t.training_sessions.c.id == session_id)
+                .with_for_update()
+            )
+            .mappings()
+            .first()
+        )
+        return self._training_session_from_row(row) if row is not None else None
+
     def save_training_progress(
         self,
         repertoire_id: str,
@@ -1192,32 +1263,95 @@ class PrepForgeRepository:
         *,
         owner_user_id: str,
     ) -> None:
+        with self.engine.begin() as conn:
+            self.write_training_progress(
+                conn,
+                repertoire_id=repertoire_id,
+                progress=progress,
+                owner_user_id=owner_user_id,
+            )
+
+    def write_training_progress(
+        self,
+        conn: Connection,
+        *,
+        repertoire_id: str,
+        progress: TrainingProgress,
+        owner_user_id: str,
+    ) -> None:
+        """Conn-scoped ``save_training_progress``: run inside the caller's
+        transaction so the progress write commits together with related writes
+        (attempt receipts, ingest ledgers)."""
         progress_id = self._training_progress_id(owner_user_id, repertoire_id, progress.node_id)
         now = _now_text()
-        with self.engine.begin() as conn:
-            _upsert(
-                conn,
-                t.training_progress,
-                {
-                    "id": progress_id,
-                    "owner_user_id": owner_user_id,
-                    "repertoire_id": repertoire_id,
-                    "node_id": progress.node_id,
-                    "attempts": progress.attempts,
-                    "correct_attempts": progress.correct_attempts,
-                    "last_reviewed_at": _dt_to_text(progress.last_reviewed_at),
-                    "spaced_repetition_score": progress.spaced_repetition_score,
-                    "due_at": _dt_to_text(progress.due_at),
-                    "is_mastered": _bool_to_int(progress.is_mastered),
-                    "created_at": now,
-                    "updated_at": now,
-                },
-                conflict=[t.training_progress.c.id],
-                update_cols=(
-                    "attempts", "correct_attempts", "last_reviewed_at",
-                    "spaced_repetition_score", "due_at", "is_mastered", "updated_at",
-                ),
+        _upsert(
+            conn,
+            t.training_progress,
+            {
+                "id": progress_id,
+                "owner_user_id": owner_user_id,
+                "repertoire_id": repertoire_id,
+                "node_id": progress.node_id,
+                "attempts": progress.attempts,
+                "correct_attempts": progress.correct_attempts,
+                "last_reviewed_at": _dt_to_text(progress.last_reviewed_at),
+                "spaced_repetition_score": progress.spaced_repetition_score,
+                "due_at": _dt_to_text(progress.due_at),
+                "is_mastered": _bool_to_int(progress.is_mastered),
+                "created_at": now,
+                "updated_at": now,
+            },
+            conflict=[t.training_progress.c.id],
+            update_cols=(
+                "attempts", "correct_attempts", "last_reviewed_at",
+                "spaced_repetition_score", "due_at", "is_mastered", "updated_at",
+            ),
+        )
+
+    def lock_training_progress(
+        self,
+        conn: Connection,
+        *,
+        repertoire_id: str,
+        node_id: str,
+        owner_user_id: str,
+    ) -> TrainingProgress:
+        """Read-modify-write handle on one progress row inside an open transaction.
+
+        Insert-claims the row when absent (``ON CONFLICT DO NOTHING``) and then
+        reads it FOR UPDATE. On PostgreSQL concurrent updaters of the same node
+        serialise here and each computes from the other's committed values, so
+        parallel attempts can never lose an update; when the row was missing the
+        racing inserter blocks on the claim instead of blind-overwriting. Returns
+        a zeroed progress for a freshly claimed row. Follow up with
+        ``write_training_progress`` before the transaction ends.
+        """
+        progress_id = self._training_progress_id(owner_user_id, repertoire_id, node_id)
+        now = _now_text()
+        conn.execute(
+            _insert(conn, t.training_progress)
+            .values(
+                id=progress_id,
+                owner_user_id=owner_user_id,
+                repertoire_id=repertoire_id,
+                node_id=node_id,
+                attempts=0,
+                correct_attempts=0,
+                last_reviewed_at=None,
+                spaced_repetition_score=0.0,
+                due_at=None,
+                is_mastered=0,
+                created_at=now,
+                updated_at=now,
             )
+            .on_conflict_do_nothing(index_elements=[t.training_progress.c.id])
+        )
+        row = conn.execute(
+            select(t.training_progress)
+            .where(t.training_progress.c.id == progress_id)
+            .with_for_update()
+        ).mappings().first()
+        return self._training_progress_from_row(row)
 
     def load_training_progress(
         self,
@@ -1238,14 +1372,18 @@ class PrepForgeRepository:
     def existing_move_signature_ids(
         self, owner_user_id: Optional[str] = None
     ) -> Dict[str, str]:
-        """Map each stored game's UCI move-sequence signature to its game id, so a
-        re-imported game (no lichess id) is detected as a duplicate AND resolved
-        back to the already-stored game rather than a fresh, unsaved candidate.
+        """Map each stored game's move-signature to its game id, so a re-imported
+        game (no lichess id) is detected as a duplicate AND resolved back to the
+        already-stored game rather than a fresh, unsaved candidate.
+
+        The signature is ``codec.move_signature``: the starting position PLUS the
+        UCI sequence, so two games with identical moves from different starting
+        positions stay distinct (a move-sequence-only signature conflated them).
 
         Owner-scoped: when an owner is supplied only that owner's games are
         considered, so one user pasting a PGN another user already stored gets their
         own owned copy rather than being bounced to the other user's game."""
-        stmt = select(t.games.c.id, t.games.c.uci_blob)
+        stmt = select(t.games.c.id, t.games.c.uci_blob, t.games.c.initial_fen)
         if owner_user_id is not None:
             stmt = stmt.where(t.games.c.owner_user_id == owner_user_id)
         with self.engine.connect() as conn:
@@ -1256,7 +1394,7 @@ class PrepForgeRepository:
             if not ucis:
                 continue
             # Keep the first game id seen for a signature (stable across calls).
-            signatures.setdefault(" ".join(ucis), row["id"])
+            signatures.setdefault(codec.move_signature(row["initial_fen"], ucis), row["id"])
         return signatures
 
     def list_training_progress(

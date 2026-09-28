@@ -3225,6 +3225,7 @@ function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
     button.classList.toggle("is-active", active && appState.currentView === "replay");
     button.setAttribute("aria-current", active && appState.currentView === "replay" ? "page" : "false");
   });
+  syncTopbarTitle();
   if (focus) {
     document.querySelector(`[data-replay-panel="${next}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -3232,6 +3233,28 @@ function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
   // on every section change — plain pushState, not a navigation — so refresh
   // and back/forward restore the right panel without a reload loop.
   if (syncUrl && appState.currentView === "replay") syncWorkspaceUrl({ push: true });
+}
+
+// Top-bar title follows the primary navigation (prototype IA labels). The
+// replay view is titled by its active section (Games vs Scout).
+const VIEW_TITLES = {
+  dashboard: "Library",
+  build: "Repertoire",
+  analyze: "Analyze",
+  train: "Train",
+  replay: "Games",
+  teams: "Teams",
+  settings: "Settings",
+};
+
+function syncTopbarTitle() {
+  const title = document.getElementById("topbar-title");
+  if (!title) return;
+  if (appState.currentView === "replay") {
+    title.textContent = appState.replaySection === "scout" ? "Scout" : "Games";
+    return;
+  }
+  title.textContent = VIEW_TITLES[appState.currentView] || "PrepForge";
 }
 
 function switchView(name, { fromUrl = false } = {}) {
@@ -3243,11 +3266,24 @@ function switchView(name, { fromUrl = false } = {}) {
     const replayMatch = name === "replay"
       ? button.dataset.replaySection === (appState.replaySection || "games")
       : !button.dataset.replaySection;
-    button.classList.toggle("is-active", button.dataset.view === name && replayMatch);
-    if (button.dataset.replaySection) {
-      button.setAttribute("aria-current", button.dataset.view === name && replayMatch ? "page" : "false");
-    }
+    const active = button.dataset.view === name && replayMatch;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-current", active ? "page" : "false");
   });
+  // Mobile bottom bar: Review lights up on either replay section (Games or
+  // Scout); More lights up for the destinations its sheet carries.
+  document.querySelectorAll("[data-review-tab]").forEach((button) => {
+    const active = name === "replay";
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-current", active ? "page" : "false");
+  });
+  const moreBtn = document.getElementById("more-nav-btn");
+  if (moreBtn) {
+    const active = ["analyze", "teams", "settings"].includes(name);
+    moreBtn.classList.toggle("is-active", active);
+    moreBtn.setAttribute("aria-current", active ? "page" : "false");
+  }
+  syncTopbarTitle();
   document.querySelectorAll(".view").forEach((view) => {
     view.classList.toggle("is-active", view.id === `view-${name}`);
   });
@@ -11235,8 +11271,56 @@ function scheduleMaiaIdleTeardown() {
   }, MAIA_IDLE_TEARDOWN_MS);
 }
 
+// Mobile bottom bar: the More button opens a bottom sheet carrying the
+// secondary destinations (Analyze, Scout, Teams, Settings, command palette).
+// Sheet entries mirror the canonical nav buttons so every view keeps its real
+// activation path (URL sync, loaders, transient-overlay cleanup).
+function wireMobileNav() {
+  const sheet = document.getElementById("more-sheet");
+  const moreBtn = document.getElementById("more-nav-btn");
+  if (!sheet || !moreBtn) return;
+  const closeSheet = ({ restoreFocus = true } = {}) => {
+    if (sheet.hidden) return;
+    sheet.hidden = true;
+    moreBtn.setAttribute("aria-expanded", "false");
+    if (restoreFocus) moreBtn.focus();
+  };
+  const openSheet = () => {
+    sheet.hidden = false;
+    moreBtn.setAttribute("aria-expanded", "true");
+    sheet.querySelector(".sheet-item")?.focus();
+  };
+  moreBtn.addEventListener("click", () => {
+    if (sheet.hidden) openSheet();
+    else closeSheet();
+  });
+  sheet.addEventListener("click", (event) => {
+    if (event.target === sheet) closeSheet();
+  });
+  sheet.querySelectorAll("[data-nav-mirror]").forEach((item) => {
+    item.addEventListener("click", () => {
+      const [view, section] = item.dataset.navMirror.split(":");
+      closeSheet({ restoreFocus: false });
+      const target = document.querySelector(section
+        ? `.tab[data-view="${view}"][data-replay-section="${section}"]`
+        : `.tab[data-view="${view}"]`);
+      target?.click();
+    });
+  });
+  const paletteItem = document.getElementById("sheet-palette");
+  if (paletteItem) {
+    paletteItem.addEventListener("click", () => {
+      closeSheet({ restoreFocus: false });
+      document.getElementById("open-palette")?.click();
+    });
+  }
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !sheet.hidden) closeSheet();
+  });
+}
+
 function bindEvents() {
-  document.querySelectorAll(".tab").forEach((button) => {
+  document.querySelectorAll(".tab[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
       dismissTransientOverlays();
       activateWorkspaceTab(button.dataset, { setReplaySection, switchView });
@@ -11244,6 +11328,7 @@ function bindEvents() {
       if (button.dataset.view === "teams") loadTeams().catch(() => {});
     });
   });
+  wireMobileNav();
 
   // Teams view actions.
   const teamsNewBtn = document.getElementById("teams-new");
@@ -11447,7 +11532,7 @@ function bindEvents() {
   document.getElementById("train-hint").addEventListener("click", trainHint);
   const statusClose = document.getElementById("app-status-close");
   const statusSlot = document.getElementById("topbar-status-slot");
-  const lastNav = document.querySelector(".tabs-primary .tab:last-child");
+  const lastNav = document.querySelector(".tb-left");
   const palette = document.getElementById("open-palette");
   if (statusSlot && lastNav && palette) {
     const syncStatusRoom = () => {

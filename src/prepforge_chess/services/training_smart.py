@@ -638,6 +638,13 @@ class SmartTrainingService:
         a UUID reused with a different ``(node_id, correct)`` is a 409-class
         ``ValueError``. Receipt insert + SR progress + session update commit in
         ONE transaction, so the streak only advances on genuinely new attempts.
+        The SR progress row is read-modify-written INSIDE that transaction under
+        a row lock (``lock_training_progress``), so attempts with different UUIDs
+        on the same node — parallel tabs/devices — serialise instead of losing
+        one update to the other. The session row is read-modify-written the same
+        way under ``lock_training_session``, so parallel syncs keep every session
+        update (mistakes, mastered nodes, position) instead of the last
+        full-row write clobbering the others.
         Attempts on nodes edited out of the tree are skipped, not errors.
         Returns how many attempts were newly applied.
 
@@ -693,24 +700,12 @@ class SmartTrainingService:
                         )
                     )
                 continue
-            stored = self.repository.load_training_progress(
-                rep_id, node_id, owner_user_id=session_owner
-            ) or TrainingProgress(node_id=node_id)
-            next_session, progress = record_attempt(
-                session=session,
-                progress=stored,
-                node_id=node_id,
-                correct=correct,
-            )
             from prepforge_chess.storage import sa_tables as _t
             from prepforge_chess.storage.repositories import (
                 _bool_to_int as _b2i,
             )
             from prepforge_chess.storage.repositories import (
                 _dt_to_text as _dt2t,
-            )
-            from prepforge_chess.storage.repositories import (
-                _json_dump as _jdump,
             )
             from prepforge_chess.storage.repositories import (
                 _now_text as _nowt,
@@ -759,6 +754,30 @@ class SmartTrainingService:
                             )
                         )
                     continue
+                # Read-modify-write the progress row INSIDE the claimed
+                # transaction: lock it and compute from committed state, so a
+                # concurrent attempt on the same node cannot be lost. (Reading it
+                # before the transaction let a racing writer's committed update
+                # be overwritten by values computed from a stale snapshot.)
+                stored = self.repository.lock_training_progress(
+                    conn,
+                    repertoire_id=rep_id,
+                    node_id=node_id,
+                    owner_user_id=session_owner,
+                )
+                # The session row gets the same treatment: reread it locked
+                # inside this transaction and merge onto it, so a concurrent
+                # sync's session updates (mistakes, mastered nodes, position)
+                # survive instead of meeting a pre-transaction snapshot.
+                locked_session = self.repository.lock_training_session(
+                    conn, session_id=session_id
+                )
+                next_session, progress = record_attempt(
+                    session=locked_session if locked_session is not None else session,
+                    progress=stored,
+                    node_id=node_id,
+                    correct=correct,
+                )
                 _upsert_rows(
                     conn,
                     _t.training_progress,
@@ -782,49 +801,36 @@ class SmartTrainingService:
                         "spaced_repetition_score", "due_at", "is_mastered", "updated_at",
                     ),
                 )
-                _upsert_rows(
-                    conn,
-                    _t.training_sessions,
-                    {
-                        "id": next_session.id,
-                        "repertoire_id": next_session.repertoire_id,
-                        "mode": next_session.mode.value,
-                        "line_order_json": _jdump(next_session.line_order),
-                        "current_index": next_session.current_index,
-                        "current_node_id": next_session.current_node_id,
-                        "mistakes_json": _jdump(next_session.mistakes),
-                        "mastered_nodes_json": _jdump(next_session.mastered_nodes),
-                        "seed": next_session.seed,
-                        "created_at": _dt2t(next_session.created_at),
-                        "updated_at": _dt2t(next_session.updated_at),
-                    },
-                    conflict=[_t.training_sessions.c.id],
-                    update_cols=(
-                        "repertoire_id", "mode", "line_order_json", "current_index",
-                        "current_node_id", "mistakes_json", "mastered_nodes_json", "seed",
-                        "updated_at",
-                    ),
-                )
+                self.repository.write_training_session(conn, next_session)
             session = next_session
             written += 1
 
-        if not written and (queue is not None or card_index is not None):
-            session = self._load_session_or_raise(session_id)
-        if queue is not None:
-            if len(queue) > MAX_SYNC_QUEUE:
-                raise ValueError(
-                    "queue too long ({0} > {1})".format(len(queue), MAX_SYNC_QUEUE)
+        if queue is not None or card_index is not None:
+            if queue is not None:
+                if len(queue) > MAX_SYNC_QUEUE:
+                    raise ValueError(
+                        "queue too long ({0} > {1})".format(len(queue), MAX_SYNC_QUEUE)
+                    )
+                # Only well-formed encoded cards land; a malformed entry is dropped
+                # rather than poisoning the stored session.
+                cleaned = [raw for raw in queue if decode_card(raw) is not None]
+            # Queue/position are client-directed fields, but they are applied on
+            # a locked reread of the row so a concurrent sync's attempt updates
+            # are not clobbered. (With no view fields to send, the attempt
+            # transactions above already persisted the session row — rewriting
+            # it here from the in-memory chain would only widen the race.)
+            with self.repository.engine.begin() as conn:
+                fresh = self.repository.lock_training_session(conn, session_id=session_id)
+                if fresh is None:
+                    fresh = session
+                if queue is not None:
+                    fresh = replace(fresh, line_order=cleaned)
+                if card_index is not None:
+                    clamped = max(0, min(int(card_index), len(fresh.line_order)))
+                    fresh = replace(fresh, current_index=clamped, current_node_id=None)
+                self.repository.write_training_session(
+                    conn, replace(fresh, updated_at=_utc_now())
                 )
-            # Only well-formed encoded cards land; a malformed entry is dropped
-            # rather than poisoning the stored session.
-            cleaned = [raw for raw in queue if decode_card(raw) is not None]
-            session = replace(session, line_order=cleaned)
-        if card_index is not None:
-            clamped = max(0, min(int(card_index), len(session.line_order)))
-            session = replace(session, current_index=clamped, current_node_id=None)
-        if written or queue is not None or card_index is not None:
-            session = replace(session, updated_at=_utc_now())
-            self.repository.save_training_session(session)
         return written
 
     # ------------------------------------------------------------------- move
