@@ -27,7 +27,10 @@
 // overlay, mobile bottom tab bar + More sheet, top-bar view titles) adds
 // ~0.04 KiB JS raw (view-title map + sheet wiring) and ~3.8 KiB CSS raw (rail /
 // tabbar / sheet primitives + the token layer). Ceilings move by exactly that
-// reviewed delta; gzip stays within its existing cap.
+// reviewed delta; gzip stays within its existing cap. The Library page internals
+// (2026-09-27: repertoire table rows, mastery bars, queue chips, preview pane
+// with mastery mix) add ~3.3 KiB CSS raw; JS is unchanged (the renderer lives in
+// the lazy dashboard chunk), gzip stays within its cap.
 import { readdirSync, statSync, readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { fileURLToPath, URL } from "node:url";
@@ -49,8 +52,9 @@ const LIMITS = [
   { prefix: "maia3-worker-", suffix: ".js", maxBytes: 220_000, label: "maia3 worker chunk" },
   // The reviewed Games triage and Teams workspace styles bring the built sheet
   // to about 151 KiB; the prototype design-system integration (rail/tabbar/
-  // sheet + token palette) adds ~3.8 KiB, so the narrow ceiling moves to 159 KB.
-  { prefix: "index-", suffix: ".css", maxBytes: 159_000, label: "main stylesheet" },
+  // sheet + token palette) adds ~3.8 KiB and the Library page internals add
+  // ~3.3 KiB, so the narrow ceiling moves to 163 KB.
+  { prefix: "index-", suffix: ".css", maxBytes: 163_000, label: "main stylesheet" },
 ];
 
 let files;

@@ -31,6 +31,26 @@ function bindDropZone(element, onFile) {
   });
 }
 
+// Library preview mini-board. Same grid/piece contract as the shared Scout
+// mini-board renderer (reuse its .scout-miniboard styles), but local to this
+// lazy chunk so the eager main bundle never pulls Scout's report machinery in.
+function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg }) {
+  const pieces = parseFenBoard(fen);
+  const ranks = orientation === "black" ? [1, 2, 3, 4, 5, 6, 7, 8] : [8, 7, 6, 5, 4, 3, 2, 1];
+  const files = orientation === "black" ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7];
+  const labels = ["a", "b", "c", "d", "e", "f", "g", "h"];
+  let html = '<div class="scout-miniboard" aria-hidden="true">';
+  for (const rank of ranks) {
+    for (const fi of files) {
+      const sq = `${labels[fi]}${rank}`;
+      const dark = (rank + fi) % 2 === 1;
+      const p = pieces[sq];
+      html += `<div class="scout-minisquare ${dark ? "dark" : "light"}">${p ? pieceSvg(p) : ""}</div>`;
+    }
+  }
+  return `${html}</div>`;
+}
+
 export function createDashboardView({
   appState,
   api,
@@ -47,8 +67,109 @@ export function createDashboardView({
   promptImportRepertoireFromPgn,
   requireSignIn,
   goToView,
+  previewRenderers = null,
 }) {
   let eventsBound = false;
+
+  // Library preview selection. The prototype's preview pane is driven by real
+  // listing data only: root_fen draws the mini board and the cached health
+  // badge fills the mastery mix. One click previews; double-click (or Enter on
+  // a selected row) opens the workspace — the full production action.
+  let selectedRepId = null;
+
+  function masteryMixSegments(health) {
+    const mix = [
+      ["mastered", health.mastered, "Mastered"],
+      ["learning", health.learning, "Learning"],
+      ["due", health.due, "Due"],
+      ["weak", health.weak, "Weak"],
+      ["new", health.untrained, "New"],
+    ];
+    return mix.filter(([, n]) => n > 0);
+  }
+
+  function renderLibraryPreview(repertoire) {
+    const pane = document.getElementById("lib-preview");
+    if (!pane) return;
+    if (!repertoire) {
+      pane.hidden = true;
+      pane.innerHTML = "";
+      return;
+    }
+    pane.hidden = false;
+    const color = String(repertoire.color || "white");
+    const active = repertoire.is_active !== false;
+    const dot = document.getElementById("lib-preview-dot");
+    if (dot) {
+      dot.className = `color-dot ${color}`;
+    }
+    const nameEl = document.getElementById("lib-preview-name");
+    if (nameEl) nameEl.textContent = repertoire.name || "Repertoire";
+    const subEl = document.getElementById("lib-preview-sub");
+    if (subEl) {
+      const bits = [color === "black" ? "Black" : "White"];
+      if (!active) bits.push("disabled");
+      subEl.textContent = bits.join(" · ");
+    }
+    const board = document.getElementById("lib-preview-board");
+    if (board) {
+      const fen = repertoire.root_fen;
+      if (fen && previewRenderers) {
+        board.innerHTML = renderMiniBoardHtml(fen, color, previewRenderers);
+      } else {
+        board.innerHTML = '<div class="pv-board-empty muted">Open to load the board</div>';
+      }
+    }
+    const mixEl = document.getElementById("lib-preview-mix");
+    const legendEl = document.getElementById("lib-preview-legend");
+    const health = repertoire.health;
+    const segments = health ? masteryMixSegments(health) : [];
+    if (mixEl) {
+      mixEl.setAttribute("aria-label", "Mastery mix");
+      mixEl.innerHTML = segments.length
+        ? segments
+            .map(
+              ([kind, n]) =>
+                `<i class="k-${kind}" style="flex:${n}" title="${kind} ${n}"></i>`,
+            )
+            .join("")
+        : '<span class="muted pv-mix-empty">no moves trained yet</span>';
+    }
+    if (legendEl) {
+      const total = segments.reduce((sum, [, n]) => sum + n, 0);
+      legendEl.innerHTML = segments
+        .map(
+          ([kind, n]) =>
+            `<span><i class="k-${kind}"></i>${kind} ${total ? Math.round((n / total) * 100) : 0}%</span>`,
+        )
+        .join("");
+    }
+    const openBtn = document.getElementById("lib-preview-open");
+    if (openBtn) {
+      openBtn.onclick = () => editRepertoire(repertoire.id);
+    }
+    const trainBtn = document.getElementById("lib-preview-train");
+    if (trainBtn) {
+      trainBtn.onclick = () => goToSmartTraining(`Starting ${repertoire.name || "training"}…`);
+    }
+  }
+
+  function applySelectionHighlight() {
+    const container = document.getElementById("dashboard-repertoires");
+    if (!container) return;
+    container.querySelectorAll("[data-repertoire-id]").forEach((row) => {
+      const selected = row.dataset.repertoireId === selectedRepId;
+      row.classList.toggle("is-selected", selected);
+      row.setAttribute("aria-selected", String(selected));
+    });
+  }
+
+  function countBadge(n) {
+    const el = document.getElementById("dashboard-rep-count");
+    if (!el) return;
+    el.hidden = !(n > 0);
+    el.textContent = String(n);
+  }
 
   // The backend ships personalized next actions on /api/dashboard
   // (payload.recommendations — ordered by account state, see
@@ -223,13 +344,57 @@ export function createDashboardView({
       const visible = (payload.repertoires || []).filter(
         (item) => !appState.pendingRepDeletes.has(String(item.id)),
       );
+      countBadge(visible.length);
+      if (!visible.length && Array.isArray(payload.shared) && payload.shared.length) {
+        // No own repertoires but team shares exist: surface them read-only so
+        // the Library still offers something to open.
+        countBadge(payload.shared.length);
+        container.innerHTML = payload.shared
+          .map(
+            (item) => `
+          <div class="lib-row list-item is-shared" role="option" tabindex="0" data-repertoire-id="${escapeHtml(item.id)}" data-shared="1" aria-selected="false">
+            <span class="lib-cell-rep">
+              <span class="color-dot ${escapeHtml(item.color)}"></span>
+              <span class="name">${escapeHtml(item.name)}</span>
+              <span class="team-role-badge sm">shared</span>
+            </span>
+            <span class="lib-cell-mastery"><span class="muted">read-only</span></span>
+            <span class="lib-cell-queue"><span class="muted">—</span></span>
+            <span class="lib-cell-menu"></span>
+          </div>`,
+          )
+          .join("");
+        container.querySelectorAll(".lib-row").forEach((row) => {
+          const open = () => editRepertoire(row.dataset.repertoireId);
+          row.addEventListener("click", open);
+          row.addEventListener("keydown", (event) => {
+            if (event.target !== row) return;
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              open();
+            }
+          });
+        });
+        renderLibraryPreview(null);
+        return;
+      }
       if (!visible.length) {
         const nextSteps = recommendationsHtml(lastDashboardRecommendations);
         container.innerHTML =
           '<div class="empty-state">No repertoires yet.</div>' +
           nextSteps;
         bindRecommendationCtas(container);
+        renderLibraryPreview(null);
+        selectedRepId = null;
         return;
+      }
+      // Library table (prototype layout): one row per repertoire with name,
+      // an inline mastery bar from the cached health badge, and the queue
+      // chips. The listing API carries no line count or last-trained date, so
+      // the prototype's "Lines" / "Last trained" columns stay out rather than
+      // inventing data.
+      if (!selectedRepId || !visible.some((item) => String(item.id) === selectedRepId)) {
+        selectedRepId = String(visible[0].id);
       }
       container.innerHTML = visible
         .map((item) => {
@@ -237,7 +402,14 @@ export function createDashboardView({
           const name = escapeHtml(item.name);
           const color = escapeHtml(item.color);
           const active = item.is_active !== false;
-          const cls = active ? "list-item" : "list-item is-disabled";
+          const cls = [
+            "lib-row",
+            "list-item",
+            active ? "" : "is-disabled",
+            String(item.id) === selectedRepId ? "is-selected" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
           const status = active ? "" : ' <span class="sub">· disabled</span>';
           const team =
             item.visibility === "team" && item.team_id
@@ -247,22 +419,55 @@ export function createDashboardView({
             item.visibility === "team" && item.team_id
               ? ` <span class="team-role-badge sm" title="Shared with ${escapeHtml(team ? team.name : "team")}">shared</span>`
               : "";
+          const health = item.health;
+          const pct = health ? health.mastery_pct || 0 : null;
+          const tier = pct == null ? "" : pct >= 80 ? "high" : pct >= 40 ? "mid" : "low";
+          const mastery = pct == null
+            ? '<span class="lib-mastery lib-mastery-none">no moves trained yet</span>'
+            : `<span class="lib-mastery"><span class="lib-mbar" role="img" aria-label="${pct}% mastered"><i class="tier-${tier}" style="width:${pct}%"></i></span><b>${pct}%</b></span>`;
+          const chips = [];
+          if (health && health.weak) {
+            chips.push(`<span class="kchip k-weak" title="Missed more than answered">${health.weak} weak</span>`);
+          }
+          if (health && health.due) {
+            chips.push(`<span class="kchip k-due" title="Spaced repetition says now">${health.due} due</span>`);
+          }
+          if (health && health.untrained) {
+            chips.push(`<span class="kchip k-new" title="Never trained">${health.untrained} new</span>`);
+          }
+          const chipsHtml = chips.length
+            ? chips.join("")
+            : '<span class="muted">—</span>';
           return `
-          <div class="${cls}" role="button" tabindex="0" data-repertoire-id="${id}" data-active="${active ? "1" : "0"}">
-            <span>
+          <div class="${cls}" role="option" tabindex="0" data-repertoire-id="${id}" data-active="${active ? "1" : "0"}" aria-selected="${String(item.id) === selectedRepId}">
+            <span class="lib-cell-rep">
               <span class="color-dot ${color}"></span>
               <span class="name">${name}</span>
               <span class="sub"> · ${color}</span>${status}${shareBadge}
             </span>
-            ${healthBadgeHtml(item.health)}
+            <span class="lib-cell-mastery">${mastery}</span>
+            <span class="lib-cell-queue">${chipsHtml}</span>
             <button type="button" class="ib row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-haspopup="menu">⋯</button>
           </div>
         `;
         })
         .join("");
-      container.querySelectorAll(".list-item").forEach((row) => {
-        const open = () => editRepertoire(row.dataset.repertoireId);
+      applySelectionHighlight();
+      const selected = visible.find((item) => String(item.id) === selectedRepId) || null;
+      renderLibraryPreview(selected);
+      container.querySelectorAll(".lib-row").forEach((row) => {
+        const repId = row.dataset.repertoireId;
+        const preview = () => {
+          selectedRepId = repId;
+          applySelectionHighlight();
+          renderLibraryPreview(visible.find((item) => String(item.id) === repId) || null);
+        };
+        const open = () => editRepertoire(repId);
         row.addEventListener("click", (event) => {
+          if (event.target.closest(".row-menu-btn")) return;
+          preview();
+        });
+        row.addEventListener("dblclick", (event) => {
           if (event.target.closest(".row-menu-btn")) return;
           open();
         });
@@ -270,17 +475,20 @@ export function createDashboardView({
           if (event.target !== row) return;
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            open();
+            // Enter on the selected row opens the workspace (prototype's
+            // double-click); space previews.
+            if (event.key === "Enter" && selectedRepId === repId) open();
+            else preview();
           }
         });
         row.addEventListener("contextmenu", (event) =>
-          openRepertoireContextMenu(event, row.dataset.repertoireId, row.dataset.active === "1"),
+          openRepertoireContextMenu(event, repId, row.dataset.active === "1"),
         );
       });
       container.querySelectorAll(".row-menu-btn").forEach((btn) => {
         btn.addEventListener("click", (event) => {
           event.stopPropagation();
-          const row = btn.closest(".list-item");
+          const row = btn.closest(".lib-row");
           const rect = btn.getBoundingClientRect();
           openRepertoireContextMenu(
             { preventDefault: () => {}, clientX: rect.left, clientY: rect.bottom + 4 },

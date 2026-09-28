@@ -79,20 +79,41 @@
 
     <main class="workspace" id="workspace-main" tabindex="-1">
       <section class="view is-active" id="view-dashboard" data-testid="view-dashboard">
-        <div class="today-card" id="dashboard-today" data-testid="dashboard-today" hidden></div>
-        <div class="metrics" id="dashboard-metrics"></div>
-        <section class="card">
-          <div class="card-head">
-            <h2>Repertoires</h2>
-            <div class="tools">
-              <button class="btn ghost" id="dashboard-new-rep" data-testid="dashboard-new-rep">New repertoire</button>
-              <button class="btn ghost" id="dashboard-import-pgn" data-testid="dashboard-import-pgn">Import PGN</button>
-            </div>
+        <div class="lib-grid">
+          <div class="lib-list-col">
+            <div class="today-card" id="dashboard-today" data-testid="dashboard-today" hidden></div>
+            <div class="metrics" id="dashboard-metrics"></div>
+            <section class="card lib-list-card">
+              <div class="card-head">
+                <h2>Repertoires <span class="lib-count" id="dashboard-rep-count" hidden></span></h2>
+                <div class="tools">
+                  <button class="btn ghost" id="dashboard-new-rep" data-testid="dashboard-new-rep">New repertoire</button>
+                  <button class="btn ghost" id="dashboard-import-pgn" data-testid="dashboard-import-pgn">Import PGN</button>
+                </div>
+              </div>
+              <p class="muted hint">Click to preview · double-click to open · &#8943; for rename, share, delete.</p>
+              <div id="dashboard-repertoires" class="list-stack lib-rep-list"></div>
+              <input type="file" id="dashboard-import-input" accept=".pgn,.json,application/x-chess-pgn,application/json" hidden />
+            </section>
           </div>
-          <p class="muted hint">Click a repertoire to open it in Build &middot; &#8943; for rename, share, delete.</p>
-          <div id="dashboard-repertoires" class="list-stack"></div>
-          <input type="file" id="dashboard-import-input" accept=".pgn,.json,application/x-chess-pgn,application/json" hidden />
-        </section>
+          <aside class="lib-preview card" id="lib-preview" aria-label="Repertoire preview" hidden>
+            <div class="pv-head">
+              <span class="color-dot" id="lib-preview-dot"></span>
+              <div class="pv-title">
+                <h2 id="lib-preview-name">—</h2>
+                <span class="pv-sub muted" id="lib-preview-sub"></span>
+              </div>
+            </div>
+            <div class="pv-board" id="lib-preview-board"></div>
+            <div class="pv-mix-label muted">Mastery</div>
+            <div class="pv-mix" id="lib-preview-mix" role="img" aria-label="Mastery mix"></div>
+            <div class="pv-mix-legend" id="lib-preview-legend"></div>
+            <div class="pv-actions">
+              <button class="btn primary" id="lib-preview-open" type="button">Open workspace</button>
+              <button class="btn" id="lib-preview-train" type="button">Train this</button>
+            </div>
+          </aside>
+        </div>
       </section>
 
       <section class="view" id="view-analyze" data-testid="view-analyze">

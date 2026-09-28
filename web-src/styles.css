@@ -1842,6 +1842,206 @@ h2 {
   color: var(--warn-text);
 }
 
+/* Library (prototype page internals): list column + preview pane. The table
+   replaces the old stacked list rows — fixed cells (repertoire | mastery |
+   queue | menu) keep status, metric and action aligned at any width. The
+   preview pane drives from real listing data only (root_fen + health). */
+.lib-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.lib-count {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-align: center;
+  line-height: 18px;
+  vertical-align: 2px;
+}
+.lib-count[hidden] { display: none; }
+.lib-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(150px, 1fr) minmax(140px, .9fr) 28px;
+  gap: 10px;
+  align-items: center;
+  min-height: 52px;
+}
+.lib-row .lib-cell-rep {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.lib-row .lib-cell-rep .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lib-cell-mastery,
+.lib-cell-queue {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.lib-cell-queue { flex-wrap: wrap; }
+.lib-mastery {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.lib-mastery b {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+.lib-mbar {
+  flex: 1;
+  min-width: 60px;
+  max-width: 140px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+.lib-mbar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--good);
+}
+.lib-mbar i.tier-mid { background: var(--warn); }
+.lib-mbar i.tier-low { background: var(--danger); }
+.lib-mastery-none {
+  color: var(--label);
+  font-size: 11px;
+}
+/* Queue chips reuse the mastery-kind colours (colour means chess). */
+.kchip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.kchip.k-weak { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.kchip.k-due { color: var(--warn-text); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+.kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 12%, transparent); }
+.lib-row.is-selected {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+.lib-row.is-selected:hover { background: var(--accent-soft); }
+/* Preview pane: real data only (root_fen board + health mix). */
+.lib-preview {
+  display: grid;
+  gap: 10px;
+  position: sticky;
+  top: 12px;
+}
+.lib-preview[hidden] { display: none; }
+.pv-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.pv-title { min-width: 0; }
+.pv-title h2 {
+  margin: 0;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pv-sub { font-size: 12px; }
+.pv-board {
+  aspect-ratio: 1;
+  width: 100%;
+}
+.pv-board .scout-miniboard { height: 100%; }
+.pv-board-empty {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  font-size: 12px;
+}
+.pv-mix-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.pv-mix {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--line-soft);
+}
+.pv-mix i { display: block; min-width: 2px; }
+.pv-mix i.k-mastered { background: var(--k-mastered); }
+.pv-mix i.k-learning { background: var(--k-learning); }
+.pv-mix i.k-due { background: var(--k-due); }
+.pv-mix i.k-weak { background: var(--k-weak); }
+.pv-mix i.k-new { background: var(--k-new); }
+.pv-mix-empty {
+  font-size: 11px;
+  align-self: center;
+}
+.pv-mix-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.pv-mix-legend i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 4px;
+}
+.pv-mix-legend i.k-mastered { background: var(--k-mastered); }
+.pv-mix-legend i.k-learning { background: var(--k-learning); }
+.pv-mix-legend i.k-due { background: var(--k-due); }
+.pv-mix-legend i.k-weak { background: var(--k-weak); }
+.pv-mix-legend i.k-new { background: var(--k-new); }
+.pv-actions {
+  display: flex;
+  gap: 8px;
+}
+.pv-actions .btn { flex: 1; }
+/* ≤ 1279px (prototype): the preview pane narrows rather than disappears. */
+@media (min-width: 900px) {
+  .lib-grid { grid-template-columns: minmax(0, 1fr) 290px; }
+  .lib-preview { grid-column: 2; }
+  .lib-list-col { grid-column: 1; min-width: 0; }
+}
+@media (max-width: 899px) {
+  .lib-row { grid-template-columns: minmax(0, 1.5fr) minmax(120px, 1fr) 28px; }
+  .lib-cell-queue { display: none; }
+  .lib-preview { position: static; }
+}
+/* Today card on narrow screens: the Train button wraps under the text at full
+   width (prototype mobile rule) instead of squeezing the row off-screen. */
+@media (max-width: 560px) {
+  .today-card { flex-wrap: wrap; }
+  .today-card .btn { flex: 1 1 100%; }
+}
+
 /* Book-departure line: a second coach sentence (same voice as .coach-prose)
    that only appears at the ply a move leaves the repertoire, with the one
    useful action inline at the end of the sentence, like a spoken link. */

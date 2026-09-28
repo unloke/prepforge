@@ -3736,6 +3736,9 @@ async function ensureDashboardView() {
       promptImportRepertoireFromPgn,
       requireSignIn,
       goToView: switchView,
+      // Library preview mini-board: FEN decode + the product's piece SVGs over
+      // the real listing root_fen. Pure DOM helpers — no engine, no board.
+      previewRenderers: { parseFenBoard, pieceSvg },
     });
     dashboardView.bind();
   }
