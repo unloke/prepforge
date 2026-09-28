@@ -103,10 +103,54 @@ export function createTrainView({
         .join("") + phaseChip;
   }
 
+  // "Up next" preview: the next few cards in the real queue, so a mixed session
+  // hopping between repertoires never surprises. Reads only appState.smart.queue —
+  // no second source of truth, nothing rendered when the queue is missing.
+  function renderUpNext() {
+    const host = document.getElementById("train-upnext");
+    if (!host) return;
+    const smart = appState.smart;
+    const queue = smart && smart.queue;
+    if (!queue || !queue.length) {
+      host.hidden = true;
+      host.innerHTML = "";
+      return;
+    }
+    const upcoming = [];
+    for (let d = 1; upcoming.length < 3 && smart.cardIndex + d < queue.length; d++) {
+      const card = queue[smart.cardIndex + d];
+      if (card) upcoming.push(card);
+    }
+    if (!upcoming.length) {
+      host.hidden = true;
+      host.innerHTML = "";
+      return;
+    }
+    host.hidden = false;
+    host.innerHTML =
+      '<div class="train-upnext-label">Up next</div>' +
+      upcoming
+        .map((card) => {
+          const kind = smartKindLabels[card.kind] || card.kind || "";
+          const rep = card.repertoire_name || smart.repertoireName || "";
+          const dot = card.color === "black" ? "black" : "white";
+          const target = card.targets && card.targets[0];
+          const lineTail = target && target.san ? ` · ${escapeHtml(target.san)}` : "";
+          return (
+            `<div class="train-upnext-row">` +
+            `<span class="tq-chip tq-${escapeHtml(card.kind || "polish")}">${escapeHtml(kind)}</span>` +
+            `<span class="train-upnext-rep"><span class="color-dot ${dot}"></span>${escapeHtml(rep)}${lineTail}</span>` +
+            "</div>"
+          );
+        })
+        .join("");
+  }
+
   function renderSmartProgress(prompt) {
     const total = Math.max(1, prompt.total_cards);
     document.getElementById("train-line-label").textContent =
       `Card ${Math.min(prompt.card_index + 1, total)} / ${total} · ${smartKindLabels[prompt.kind] || prompt.kind}`;
+    renderUpNext();
     document.getElementById("train-progress-fill").style.width =
       `${Math.round((prompt.card_index / total) * 100)}%`;
     const dots = document.getElementById("train-card-dots");

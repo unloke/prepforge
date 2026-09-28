@@ -3247,8 +3247,48 @@ h2 {
 .train-queue { display: flex; flex-direction: column; gap: 6px; }
 /* These panels set their own display, which beats the hidden attribute. */
 .train-queue[hidden],
+.train-upnext[hidden],
 .train-summary[hidden],
 .train-progress-panel[hidden] { display: none; }
+/* Up next: the real next cards from the live queue (one row each). */
+.train-upnext {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line-soft);
+}
+.train-upnext-label {
+  font-size: 11px;
+  color: var(--muted);
+}
+.train-upnext-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12px;
+}
+.train-upnext-row .tq-chip { flex: 0 0 auto; }
+.train-upnext-rep {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.train-upnext .color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  flex: 0 0 auto;
+}
+.train-upnext .color-dot.white { background: var(--dot-white); }
+.train-upnext .color-dot.black { background: var(--text); }
 .train-queue-bar {
   display: flex;
   height: 8px;
