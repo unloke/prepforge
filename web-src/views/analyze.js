@@ -287,6 +287,30 @@ export function createAnalyzeView({
     });
   }
 
+  // Board-side eval bar (prototype "with-eval" board frame). White-POV share
+  // from the same real eval-graph points the chart uses; hidden until an
+  // analysis has scored positions — never a fabricated eval.
+  function updateBoardEvalBar() {
+    const bar = document.getElementById("analysis-evalbar");
+    if (!bar) return;
+    const points = appState.evalChartPoints || [];
+    const ply = Number(appState.analysisPly) || 0;
+    // Exact-ply match, same point the chart cursor highlights — the bar never
+    // shows an evaluation the payload did not produce for this position.
+    const point = points.find((p) => p.ply === ply) || null;
+    if (!point) {
+      bar.hidden = true;
+      return;
+    }
+    const white = pointWinPct(point);
+    const text = document.getElementById("analysis-evalbar-text");
+    // A custom property keeps the fill orientation-agnostic: vertical beside
+    // the board on desktop, horizontal beneath it on stacked layouts.
+    bar.style.setProperty("--white-share", `${Math.round(white)}%`);
+    if (text) text.textContent = `${Math.round(white)}%`;
+    bar.hidden = false;
+  }
+
   function updateEvalChartCursor() {
     const marker = document.getElementById("eval-chart-cursor");
     if (!marker) return;
@@ -299,6 +323,7 @@ export function createAnalyzeView({
     const x = hidden ? -10 : points.length === 1 ? width / 2 : (idx / (points.length - 1)) * width;
     marker.setAttribute("x1", String(x));
     marker.setAttribute("x2", String(x));
+    updateBoardEvalBar();
     if (!dot) return;
     // Ring on the curve at the current ply: a SHAPE cue on top of the dashed
     // line (and the tooltip's "current" text), so the position indicator never

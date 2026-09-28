@@ -119,9 +119,15 @@
       <section class="view" id="view-analyze" data-testid="view-analyze">
         <div class="study">
           <div class="board-area">
-            <div class="board-stack">
-              <div class="chessboard" id="analysis-board" data-testid="analysis-board"></div>
-              <svg class="annotations" id="analysis-annotations"></svg>
+            <div class="board-with-eval">
+              <div class="board-stack">
+                <div class="chessboard" id="analysis-board" data-testid="analysis-board"></div>
+                <svg class="annotations" id="analysis-annotations"></svg>
+              </div>
+              <div class="analysis-evalbar" id="analysis-evalbar" data-testid="analysis-evalbar" aria-hidden="true">
+                <div class="analysis-evalbar-white" id="analysis-evalbar-white"></div>
+                <span class="analysis-evalbar-text" id="analysis-evalbar-text">·</span>
+              </div>
             </div>
             <div class="board-bar">
               <button class="ib" id="analysis-start" title="Start" aria-label="Go to start">⏮</button>
