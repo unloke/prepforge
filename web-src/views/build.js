@@ -113,10 +113,17 @@ export function createBuildView({
         const mainMark = n.is_mainline
           ? '<span class="branch-main-mark" title="Mainline">★</span>'
           : "";
+        // Practical share: the server's real Maia probability for this move
+        // (human-likeness at the repertoire's rating). Manual/imported moves have
+        // none — show nothing rather than a made-up number.
+        const share =
+          typeof n.maia_probability === "number" && n.maia_probability > 0
+            ? `<span class="branch-share">${Math.round(n.maia_probability * 100)}%</span>`
+            : "";
         return (
           `<button class="${cls}" type="button" data-node-id="${escapeHtml(String(n.id))}" ` +
           `title="Play ${escapeHtml(n.san)}"><span class="branch-num">${num}</span>` +
-          `<span class="branch-san">${escapeHtml(n.san)}</span>${mainMark}</button>`
+          `<span class="branch-san">${escapeHtml(n.san)}</span>${mainMark}${share}</button>`
         );
       })
       .join("");
@@ -138,6 +145,35 @@ export function createBuildView({
         picked ? picked.uci : null
       );
     }
+  }
+
+  // Mastery legend under the breadcrumbs: mirrors the heatmap classes the tree
+  // actually paints (see .mtree-move.m-* below). Only shown when the repertoire
+  // has at least one trained own-side node — never a decorative always-on row.
+  function renderMasteryLegend() {
+    const kinds = [
+      ["mastered", "mastered"],
+      ["learning", "learning"],
+      ["due", "due"],
+      ["weak", "weak"],
+    ];
+    const present = new Set(
+      (appState.build ? appState.build.nodes : [])
+        .filter((n) => n.depth > 0 && n.is_enabled && n.mastery)
+        .map((n) => n.mastery),
+    );
+    const items = kinds.filter(([k]) => present.has(k));
+    if (!items.length) return "";
+    return (
+      '<div class="build-mlegend" aria-label="Mastery legend">' +
+      items
+        .map(
+          ([k, label]) =>
+            `<span><i class="mk-${k}"></i>${label}</span>`,
+        )
+        .join("") +
+      "</div>"
+    );
   }
 
   function renderBuilderTree() {
@@ -183,7 +219,10 @@ export function createBuildView({
         return { classes };
       },
     });
-    container.innerHTML = renderBuildBreadcrumb() + treeHtml;
+    container.innerHTML =
+      renderBuildBreadcrumb() +
+      renderMasteryLegend() +
+      treeHtml;
     container.querySelectorAll(".mtree-collapse[data-collapse-id]").forEach((toggle) => {
       toggle.addEventListener("click", (event) => {
         event.stopPropagation();
