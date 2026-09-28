@@ -18,6 +18,14 @@ try {
     const page = await browser.newPage({ viewport: { width: viewportWidth, height: 900 } });
     await page.goto(process.env.PREPFORGE_URL || 'http://127.0.0.1:5173/static/');
     await page.waitForTimeout(1000);
+    // Park the virtual pointer over the workspace before measuring the
+    // baseline: headless Chromium applies :hover at the mouse's default
+    // (0,0) position, which sits on the fixed rail and would measure the
+    // overlay-expanded 204px instead of the collapsed 60px track.
+    await page.mouse.move(Math.round(viewportWidth / 2), 450);
+    await page.evaluate(() => document.activeElement instanceof HTMLElement
+      && document.activeElement.blur());
+    await page.waitForTimeout(300);
     const snapshot = () => page.evaluate(() => {
       const rect = (selector) => {
         const { x, y, width, height } = document.querySelector(selector).getBoundingClientRect();
@@ -108,6 +116,8 @@ try {
   const mobile = await browser.newPage({ viewport: { width: MOBILE_WIDTH, height: 844 } });
   await mobile.goto(process.env.PREPFORGE_URL || 'http://127.0.0.1:5173/static/');
   await mobile.waitForTimeout(1000);
+  await mobile.mouse.move(Math.round(MOBILE_WIDTH / 2), 400);
+  await mobile.waitForTimeout(300);
   const mobileCheck = await mobile.evaluate(() => {
     const tabbar = document.querySelector('#app-tabbar');
     const items = [...tabbar.querySelectorAll('.tabbar-item')].map((el) => {
