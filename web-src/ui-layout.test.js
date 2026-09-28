@@ -496,7 +496,8 @@ describe("workspace chrome layout", () => {
   });
 
   it("gives primary mobile controls 44px touch targets without enlarging the board", () => {
-    const mobile = css.slice(css.lastIndexOf("@media (max-width: 720px)"));
+    // Slice from the mobile chrome block (bottom tab bar / touch targets).
+    const mobile = css.slice(css.indexOf("/* Mobile: no rail"));
     expect(mobile).toMatch(/\.tab\s*\{[^}]*height:\s*44px/s);
     expect(mobile).toMatch(/\.lichess-chip\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.btn\s*\{[^}]*min-height:\s*44px/s);

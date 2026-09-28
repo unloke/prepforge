@@ -1,72 +1,103 @@
 :root {
   color-scheme: light only;
-  --bg: #f4f3f1;
+  /* Design system: neutral graphite surfaces, one accent (ink blue) reserved
+     for selection, primary actions and focus; every other hue is semantic and
+     keeps the same meaning in every view (status, mastery/queue kinds, prep
+     outcome, move classification). Token NAMES are the production contract;
+     VALUES follow the approved prototype design system. */
+  --bg: #f3f3f1;
   --panel: #ffffff;
-  --panel-soft: #faf9f7;
-  --line: #d8d4ce;
-  --line-soft: #ecebe7;
-  --line-strong: #c8c2b8;
-  --text: #1c1c1c;
-  --muted: #5e5e5e;
+  --panel-soft: #f8f8f6;
+  --surface-2: #f8f8f6;
+  --surface-3: #efefec;
+  --line: #e2e1dc;
+  --line-soft: #eeeeec;
+  --line-strong: #cfcdc6;
+  --text: #1b1c1e;
+  --muted: #55585e;
   /* Small-caps labels are text-only, so the token itself carries the AA value. */
-  --label: #6a665c;
-  --surface-hover: #f0ece4;
-  --hover: #efece6;
-  --btn-hover: #f4f1ec;
-  --btn-active: #ece6dc;
-  --btn-border-hover: #a89e8d;
-  --accent: #d18b3f;
-  --accent-soft: #fceee0;
-  --accent-line: #e9d2b3;
-  --accent-strong: #9d5e1f;
-  --accent-dark: #8a4d17;
-  --accent-text: #92612c;
+  --label: #67696e;
+  --surface-hover: #efefec;
+  --hover: #efefec;
+  --btn-hover: #f8f8f6;
+  --btn-active: #efefec;
+  --btn-border-hover: #8a8d93;
+  --accent: #2f5bd3;
+  --accent-soft: #e8eefc;
+  --accent-line: #c9d6f7;
+  --accent-strong: #2447a8;
+  --accent-dark: #2447a8;
+  --accent-text: #2447a8;
   --on-accent: #ffffff;
-  --focus-ring: rgba(209, 139, 63, 0.45);
-  --danger: #c4524d;
-  --danger-soft: #f8e4e3;
-  --danger-strong: #a33f3b;
-  --danger-dark: #87322f;
-  --warn: #c98439;
-  --good: #4a8964;
+  --focus-ring: rgba(47, 91, 211, 0.35);
+  --danger: #c73a2c;
+  --danger-soft: #fbe7e4;
+  --danger-strong: #a32b1f;
+  --danger-dark: #87241a;
+  --warn: #b26a00;
+  --good: #1d8a4f;
   --brilliant: #2f7fe0;
   /* Text-only companions for the semantic colours. The base tokens also fill
      charts, dots, badges, and borders, so darkening them for WCAG AA would
      change the visual language; text usages pick up the *-text variants instead
      (>= 4.5:1 on panel/panel-soft/bg and each colour's own tinted background —
      pinned by the contrast guard in visual-system.test.js). */
-  --warn-text: #95622a;
-  --good-text: #407757;
-  --brilliant-text: #286cbe;
+  --warn-text: #8a5200;
+  --good-text: #166b3e;
+  --brilliant-text: #2563b8;
+  /* Semantic status family (fills, badges, banners) and its text-safe shades. */
+  --good-soft: #e3f4ea;
+  --warn-soft: #fbf0dc;
+  --bad-soft: #fbe7e4;
+  --info: #2f5bd3;
+  --info-soft: #e8eefc;
+  --none: #7b7f86;
+  --none-soft: #eeeeec;
+  /* Mastery / queue kinds — colour means chess: the same hue in every view. */
+  --k-mastered: #1d8a4f;
+  --k-learning: #3a7bd5;
+  --k-due: #d08a0b;
+  --k-weak: #d2452f;
+  --k-new: #8b6fd6;
+  --k-polish: #8a9099;
   /* Classification palette completion: inaccuracy/missed had no semantic token
      (hardcoded in the bars, tree dots, and eval chart). */
-  --inaccuracy: #e0b15f;
-  --missed: #8a6db5;
-  --inert: #6b6256;
-  --chip: #4a4a4a;
-  --dot-white: #f8f4ea;
-  --board-frame: #8d7656;
-  --radius: 4px;
-  --radius-card: 6px;
-  --control-h: 32px;
-  --ib-h: 28px;
-  --square-light: #f0d9b5;
-  --square-dark: #b58863;
-  --last-move: rgba(255, 220, 90, 0.55);
-  --highlight: rgba(214, 92, 50, 0.55);
-  --arrow: rgba(214, 92, 50, 0.78);
-  /* Board annotation arrows, tuned to the warm theme so they read as part of
-     the same product rather than a generic overlay. User arrows pick up the
-     accent amber; the engine's best-move arrow uses the calm "good" green. */
-  --arrow-user: rgba(196, 124, 48, 0.92);
-  --arrow-user-stroke: rgba(105, 64, 20, 0.30);
-  --arrow-engine: rgba(74, 137, 100, 0.92);
-  --arrow-engine-stroke: rgba(30, 66, 46, 0.32);
+  --inaccuracy: #c98a2b;
+  --missed: #7a5fb8;
+  --inert: #67696e;
+  --chip: #55585e;
+  --dot-white: #ffffff;
+  --board-frame: #6f8394;
+  --radius: 6px;
+  --radius-card: 10px;
+  --control-h: 30px;
+  --ib-h: 30px;
+  --square-light: #e4e8eb;
+  --square-dark: #97a8b6;
+  --last-move: rgba(236, 182, 48, 0.46);
+  --highlight: rgba(47, 91, 211, 0.38);
+  --arrow: rgba(47, 91, 211, 0.72);
+  /* Board annotation arrows: user arrows take the ink-blue accent, the engine's
+     best-move arrow keeps the calm "good" green (colour means chess). */
+  --arrow-user: rgba(47, 91, 211, 0.85);
+  --arrow-user-stroke: rgba(18, 38, 90, 0.30);
+  --arrow-engine: rgba(29, 138, 79, 0.90);
+  --arrow-engine-stroke: rgba(12, 62, 34, 0.32);
   /* Board coordinate labels. */
-  --coord-on-light: rgba(120, 96, 64, 0.78);
-  --coord-on-dark: rgba(247, 236, 216, 0.82);
-  font-family: "Inter", "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  font-size: 14px;
+  --coord-on-light: #6f8394;
+  --coord-on-dark: #eef1f3;
+  /* Type: 13px base, 12px small, 11px extra-small; tabular numbers everywhere,
+     mono for SAN/lines. */
+  --font: "Inter", "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, monospace;
+  --fs: 13px;
+  --fs-s: 12px;
+  --fs-xs: 11px;
+  --shadow-1: 0 1px 2px rgba(20, 20, 30, 0.06);
+  --shadow-2: 0 8px 28px rgba(20, 20, 30, 0.16), 0 2px 6px rgba(20, 20, 30, 0.08);
+  font-family: var(--font);
+  font-size: var(--fs);
+  font-feature-settings: "tnum" 1, "cv11" 1;
 }
 
 /* The dark palette keeps the warm amber identity but lifts text and borders
@@ -74,58 +105,74 @@
    for boards, data labels, and status colors in low-light study sessions. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #151311;
-  --panel: #211d19;
-  --panel-soft: #2a241e;
-  --line: #4a4036;
-  --line-soft: #342e28;
-  --line-strong: #6d5b49;
-  --text: #f5efe8;
-  --muted: #c2b7ab;
-  --label: #a99b8d;
-  --surface-hover: #342b22;
-  --hover: #312820;
-  --btn-hover: #3a3027;
-  --btn-active: #44372b;
-  --btn-border-hover: #92765a;
-  --accent: #dda15e;
-  --accent-soft: #3d2d1e;
-  --accent-line: #795535;
-  --accent-strong: #f0b873;
-  --accent-dark: #c6813e;
-  --accent-text: #dda15e;
-  --on-accent: #21150b;
-  --focus-ring: rgba(240, 184, 115, 0.46);
-  --danger: #ef8378;
-  --danger-soft: #482522;
-  --danger-strong: #ff9a8e;
-  --danger-dark: #d7675f;
-  --warn: #e5a45e;
-  --good: #83c89b;
-  --brilliant: #83baff;
+  --bg: #111315;
+  --panel: #191c1f;
+  --panel-soft: #1e2226;
+  --surface-2: #1e2226;
+  --surface-3: #262a2f;
+  --line: #2b3035;
+  --line-soft: #25292d;
+  --line-strong: #3a4046;
+  --text: #e8eaec;
+  --muted: #a9aeb4;
+  --label: #a9aeb4;
+  --surface-hover: #262a2f;
+  --hover: #262a2f;
+  --btn-hover: #262a2f;
+  --btn-active: #2b3035;
+  --btn-border-hover: #5c646c;
+  --accent: #6d8ff0;
+  --accent-soft: #1f2a48;
+  --accent-line: #2d3c66;
+  --accent-strong: #9db4f7;
+  --accent-dark: #2b53c4;
+  --accent-text: #93abf2;
+  --on-accent: #ffffff;
+  --focus-ring: rgba(109, 143, 240, 0.42);
+  --danger: #ef6b5b;
+  --danger-soft: #3a1c18;
+  --danger-strong: #ff8a7a;
+  --danger-dark: #d75c4c;
+  --warn: #e0a23a;
+  --good: #45b97a;
+  --brilliant: #6d9ff0;
   /* Dark surfaces already clear AA for these hues by a wide margin, so the
      text variants alias the base colours (kept as separate tokens so text and
      fill can diverge per theme if a future tuning needs it). */
-  --warn-text: #e5a45e;
-  --good-text: #83c89b;
-  --brilliant-text: #83baff;
+  --warn-text: #e0a23a;
+  --good-text: #45b97a;
+  --brilliant-text: #6d9ff0;
+  --good-soft: #17301f;
+  --warn-soft: #33270f;
+  --bad-soft: #3a1c18;
+  --info: #6d8ff0;
+  --info-soft: #1f2a48;
+  --none: #8d939a;
+  --none-soft: #25292d;
+  --k-mastered: #45b97a;
+  --k-learning: #6d9ff0;
+  --k-due: #e0a23a;
+  --k-weak: #ef6b5b;
+  --k-new: #a992ef;
+  --k-polish: #8d939a;
   --inaccuracy: #e6bc72;
-  --missed: #a48ac9;
-  --inert: #b3a79a;
-  --chip: #e5d9cc;
-  --dot-white: #f8f4ea;
-  --board-frame: #6f583f;
-  --square-light: #d7bd95;
-  --square-dark: #704e38;
-  --last-move: rgba(255, 211, 83, 0.52);
-  --highlight: rgba(232, 119, 68, 0.62);
-  --arrow: rgba(234, 123, 75, 0.85);
-  --arrow-user: rgba(240, 171, 80, 0.95);
-  --arrow-user-stroke: rgba(35, 21, 9, 0.55);
-  --arrow-engine: rgba(117, 202, 147, 0.95);
-  --arrow-engine-stroke: rgba(21, 53, 34, 0.52);
-  --coord-on-light: rgba(90, 65, 39, 0.86);
-  --coord-on-dark: rgba(255, 239, 214, 0.88);
+  --missed: #a992ef;
+  --inert: #a9aeb4;
+  --chip: #e8eaec;
+  --dot-white: #f8f8f6;
+  --board-frame: #5a6c7b;
+  --square-light: #b9c3cb;
+  --square-dark: #6f8292;
+  --last-move: rgba(236, 182, 48, 0.46);
+  --highlight: rgba(109, 143, 240, 0.42);
+  --arrow: rgba(109, 143, 240, 0.78);
+  --arrow-user: rgba(109, 143, 240, 0.90);
+  --arrow-user-stroke: rgba(10, 18, 42, 0.55);
+  --arrow-engine: rgba(69, 185, 122, 0.95);
+  --arrow-engine-stroke: rgba(14, 44, 27, 0.52);
+  --coord-on-light: #5a6c7b;
+  --coord-on-dark: #d8dee3;
+  --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -172,6 +219,9 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100%;
+  /* Reserved rail track (desktop): the fixed 60px rail overlays its track when
+     expanded, so main content and the board never move. Zeroed on mobile. */
+  padding-left: 60px;
 }
 
 button,
@@ -219,38 +269,203 @@ h2 {
 /* Topbar */
 
 .topbar {
-  min-height: 44px;
+  min-height: 52px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 14px;
+  gap: 14px;
+  padding: 0 16px;
   background: var(--panel);
   border-bottom: 1px solid var(--line);
-  flex-wrap: wrap;
+  min-width: 0;
   /* The body is a flex column; without this the topbar (default flex-shrink:1)
      gets compressed on tall, scrolling views (e.g. Settings) below the height
-     its wrapped rows need, so the tab row spills past the bar's bottom border
-     and bleeds into the content. Never let the bar shrink under its content. */
+     its content needs. Never let the bar shrink under its content. */
   flex-shrink: 0;
 }
 
-.brand {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--control-h);
-  font-weight: 800;
-  font-size: 15px;
-  letter-spacing: 0.01em;
-  color: var(--text);
-  line-height: 1.2;
+.tb-left {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  flex: 0 1 auto;
 }
 
-.tabs {
-  display: flex;
-  gap: 2px;
-  flex: 1;
+.tb-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tb-sub {
+  color: var(--label);
+  font-size: var(--fs-s);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Left icon rail (desktop > 760px). A fixed 60px track reserved by body
+   padding; the rail itself is a fixed panel that grows past the track as an
+   OVERLAY (hover, or keyboard focus inside it), so main content and the board
+   never move or resize. It opens after a 60ms delay and collapses as soon as
+   the pointer or focus leaves; mouse clicks don't hold it open (it relies on
+   :focus-visible, not :focus-within). */
+.rail {
+  --rail-open: 204px;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 45;
+  width: 60px;
   min-width: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: 10px 8px 12px;
+  gap: 8px;
+  overflow: hidden auto;
+  transition: width 0.14s ease, box-shadow 0.14s ease;
+}
+
+.rail:hover,
+.rail:has(:focus-visible) {
+  width: var(--rail-open);
+  box-shadow: var(--shadow-2);
+  transition-delay: 60ms;
+}
+
+.brand {
+  display: flex;
   align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 9px;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--text);
+  color: var(--panel);
+  font-size: 16px;
+  flex: none;
+}
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-group-label {
+  position: relative;
+  height: 18px;
+  line-height: 18px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--label);
+  padding: 0 13px;
+  white-space: nowrap;
+}
+
+.nav-group-label span {
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+/* Collapsed: labels fade out and group headings become divider lines. */
+.nav-group-label::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 50%;
+  border-top: 1px solid var(--line);
+  transition: opacity 0.1s ease;
+}
+
+.nav-group:first-of-type .nav-group-label::after {
+  display: none;
+}
+
+.brand-name,
+.nav-label {
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.rail:hover :is(.brand-name, .nav-label, .nav-group-label span),
+.rail:has(:focus-visible) :is(.brand-name, .nav-label, .nav-group-label span) {
+  opacity: 1;
+  transition-delay: 90ms;
+}
+
+.rail:hover .nav-group-label::after,
+.rail:has(:focus-visible) .nav-group-label::after {
+  opacity: 0;
+}
+
+.rail-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.ic {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nav-badge {
+  position: absolute;
+  top: 3px;
+  left: 25px;
+  padding: 0 4px;
+  line-height: 14px;
+  font-size: 9.5px;
+  font-weight: 700;
+  border-radius: 9px;
+}
+
+.rail:hover .nav-badge,
+.rail:has(:focus-visible) .nav-badge {
+  position: static;
+  margin-left: auto;
+  padding: 0 6px;
+  line-height: 17px;
+  font-size: 10.5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail,
+  .rail * {
+    transition: none !important;
+  }
 }
 
 .topbar-actions {
@@ -259,6 +474,9 @@ h2 {
   align-items: center;
   gap: 12px;
   flex: none;
+  /* Anchor the action cluster to the right edge (the rail owns the left rail;
+     the title block must not push the actions along the bar). */
+  margin-left: auto;
 }
 
 /* Status overlays the free space before Ctrl K and has no layout width. */
@@ -300,31 +518,24 @@ h2 {
   display: none;
 }
 
-.tabs-primary {
-  display: flex;
-  gap: 2px;
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.tabs-primary::-webkit-scrollbar {
-  display: none;
-}
-
+/* Primary navigation items: rail rows on desktop, bottom tabs on mobile.
+   Icons never move between states; labels fade in when the rail overlays. */
 .tab {
-  height: var(--control-h);
+  position: relative;
+  height: 38px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 0 14px;
-  border: 1px solid transparent;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 0 13px;
+  border: 0;
   border-radius: var(--radius);
   background: transparent;
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .tab:hover {
@@ -334,8 +545,111 @@ h2 {
 
 .tab.is-active {
   background: var(--accent-soft);
-  border-color: var(--accent-line);
   color: var(--accent-strong);
+  font-weight: 600;
+}
+
+/* Collapsed rail: the active page is an accent tile plus a 3px edge bar. */
+.rail .tab.is-active::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+
+/* Mobile bottom navigation (≤ 760px only; hidden on desktop). */
+.tabbar {
+  display: none;
+}
+
+.tabbar-item {
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--label);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tabbar-item .ic {
+  width: 22px;
+  height: 22px;
+}
+
+.tabbar-item.is-active {
+  background: none;
+  color: var(--accent-strong);
+}
+
+/* Mobile More sheet: real navigation to the secondary destinations. */
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(15, 17, 22, 0.32);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet-scrim[hidden] {
+  display: none;
+}
+
+.sheet {
+  width: 100%;
+  background: var(--panel);
+  border-radius: 14px 14px 0 0;
+  padding: 8px 12px calc(16px + env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  box-shadow: var(--shadow-2);
+}
+
+.sheet-grab {
+  grid-column: 1 / -1;
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  margin: 2px auto 6px;
+}
+
+.sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 14px 12px;
+  border-radius: 10px;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* ≤ 1279px: the top-bar subtitle hides and the status narrows (prototype
+   responsive rule — lower-value chrome yields space to the board). */
+@media (max-width: 1279px) {
+  .tb-sub {
+    display: none;
+  }
+
+  .topbar-status-slot {
+    max-width: min(240px, 30vw, var(--topbar-status-room, 0px));
+  }
 }
 
 .status {
@@ -1822,12 +2136,16 @@ h2 {
    the left edge and is only as wide as the board, so there is no dead gutter
    on either side. The right workspace takes the rest and scrolls internally. */
 .study {
-  --study-h: calc(100dvh - 44px - 36px);
-  /* Board square budget: the smaller of the height budget, a hard cap, and a
-     width guard that always leaves the sidebar ≥320px. The column then wraps
-     exactly around it (max-content), so width never dictates a too-small board
-     and no fixed 52/48 split is involved. */
-  --board-size: min(calc(var(--study-h) - var(--board-chrome)), 860px, calc(100vw - 380px));
+  --study-h: calc(100dvh - 52px - 36px);
+  /* Board square budget (prototype design rule): min(100dvh − chrome,
+     (100vw − rail − 48) × 0.58, 820px). The column then wraps exactly around
+     it (max-content), so width never dictates a too-small board and no fixed
+     52/48 split is involved. */
+  --board-size: min(
+    calc(var(--study-h) - var(--board-chrome)),
+    calc((100vw - 60px - 48px) * 0.58),
+    820px
+  );
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 16px;
@@ -5400,23 +5718,49 @@ h2 {
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 760px) {
+  /* Mobile: no rail — a fixed 5-item bottom tab bar (Library, Prep, Train,
+     Review → Games, More sheet). Page scroll replaces panel scroll; the board
+     is full-width and first. Touch targets are 44px; no horizontal scroll. */
+  body {
+    padding-left: 0;
+  }
+
+  .rail {
+    display: none;
+  }
+
   .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    min-height: 50px;
     height: auto;
-    flex-wrap: wrap;
-    padding: 8px 12px;
+    padding: 0 12px;
     gap: 8px;
   }
 
-  .tabs {
-    order: 3;
-    flex-basis: 100%;
-    overflow: visible;
-    align-items: stretch;
+  .tb-title {
+    font-size: 17px;
   }
 
-  .tabs-primary {
-    flex: 1;
+  .tabbar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    height: calc(58px + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+  }
+
+  /* Jobs as toasts clear the bottom tab bar. */
+  .toast-stack {
+    bottom: calc(66px + env(safe-area-inset-bottom));
   }
 
   .tab {
@@ -5457,6 +5801,7 @@ h2 {
 
   .workspace {
     padding: 12px;
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
   }
 
   /* Analyze sidebar tools: 44px touch targets on narrow viewports (desktop stays 32px). */
