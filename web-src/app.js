@@ -3226,6 +3226,11 @@ function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
     button.setAttribute("aria-current", active && appState.currentView === "replay" ? "page" : "false");
   });
   syncTopbarTitle();
+  // Scout is a section of Replay, and its view chunk carries its own stylesheet
+  // (views/scout.css). Load it as soon as the section is shown so the pre-Start
+  // panel is styled by the same rules as every other state, rather than rendering
+  // on the eager sheet alone until the first click pulls the chunk in.
+  if (next === "scout") preloadScoutUi().catch(() => {});
   if (focus) {
     document.querySelector(`[data-replay-panel="${next}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -3407,11 +3412,6 @@ function switchView(name, { fromUrl = false } = {}) {
   }
   if (name === "replay") {
     preloadReplayView().catch(() => {});
-    if (scoutView?.onShow) {
-      scoutView.onShow();
-    } else {
-      bindScoutControlsLazy();
-    }
   }
   if (name === "settings") {
     preloadSettingsView().catch(() => {});
@@ -5217,7 +5217,7 @@ function updateBuildReadOnlyUi(payload) {
 
 function removeReadOnlyBanner() {
   const banner = document.getElementById("shared-banner");
-  if (banner) banner.remove();
+  if (banner) banner.hidden = true;
   syncCoverageReadOnlyState();
   syncTopbarExtras();
 }
@@ -10909,28 +10909,16 @@ function clearJoinParam() {
   }
 }
 
-function readOnlyBannerText(payload) {
-  return `<b>Read-only &middot; ${escapeHtml(payload.name)} &middot; shared with you</b>`;
-}
-
+// The shared/read-only banner is a static host in the Opus panel (index.html).
+// Both states only change its text and visibility — no element is created,
+// prepended, or re-rendered here, so the shared state renders in exactly the
+// same panel composition as the writable one.
 function renderReadOnlyBanner(payload) {
-  const sidebar = document.querySelector("#view-build .sidebar");
-  if (!sidebar) return;
-  let banner = document.getElementById("shared-banner");
-  if (!banner) {
-    banner = document.createElement("div");
-    banner.id = "shared-banner";
-    banner.className = "shared-banner";
-    sidebar.prepend(banner);
-  }
-  banner.innerHTML = `
-    <div class="shared-banner-text">
-      ${readOnlyBannerText(payload)}
-      <span>You can browse and train from it. Copy it to edit, generate or scan coverage.</span>
-    </div>
-    <button class="btn primary sm" id="shared-fork-btn" data-testid="shared-fork-btn">Copy to my account</button>
-  `;
-  document.getElementById("shared-fork-btn").addEventListener("click", forkReadableRepertoire);
+  const banner = document.getElementById("shared-banner");
+  if (!banner) return;
+  const title = document.getElementById("shared-banner-title");
+  if (title) title.textContent = `Read-only · ${payload.name} · shared with you`;
+  banner.hidden = false;
   syncTopbarExtras();
 }
 
@@ -11411,27 +11399,24 @@ if (
   installAnalyzeE2eHook();
 }
 
-// Scout chunk loads on first Scout click — not at app boot. A tiny static
-// handler here avoids importing views/scout.js until the user actually scouts.
-function bindScoutControlsLazy() {
-  const scoutBtn = document.getElementById("scout-btn");
-  if (!scoutBtn || scoutBtn.dataset.scoutLazyBound) return;
-  scoutBtn.dataset.scoutLazyBound = "1";
+// Bind the view and let it paint the section's current state. The chunk is
+// already in flight by the time Scout is shown, so this only resolves it.
+async function ensureScoutUi() {
+  const view = await ensureScoutView();
+  view.bindControls();
+  view.onShow?.();
+  return view;
+}
 
-  const activate = async () => {
-    const view = await ensureScoutView();
-    view.bindControls();
-    view.onShow?.();
-    return view;
-  };
-
-  const onFirstInteract = async () => {
-    const view = await activate();
-    scoutBtn.removeEventListener("click", onFirstInteract);
-    await view.runScout();
-  };
-
-  scoutBtn.addEventListener("click", onFirstInteract);
+let scoutUiPromise = null;
+function preloadScoutUi() {
+  if (!scoutUiPromise) {
+    scoutUiPromise = ensureScoutUi().catch((err) => {
+      scoutUiPromise = null;
+      throw err;
+    });
+  }
+  return scoutUiPromise;
 }
 
 // Maia idle teardown. The browser Maia engine (onnxruntime-web session + WASM heap) is by
@@ -11568,7 +11553,18 @@ function bindEvents() {
   document.getElementById("lichess-compare-btn").addEventListener("click", runLichessCompare);
   bindGamesSource();
   bindScoutSource();
-  bindScoutControlsLazy();
+  // Static host in the Build panel, so one binding at init covers both states.
+  document.getElementById("shared-fork-btn")?.addEventListener("click", forkReadableRepertoire);
+  // Start is data-only. The view and its stylesheet are already loading because
+  // the Scout section is on screen; this guard covers the click that lands in the
+  // few ms before bindControls() attaches the real handler, so Start is never
+  // dead and never runs twice.
+  document.getElementById("scout-btn")?.addEventListener("click", () => {
+    if (document.getElementById("scout-btn").dataset.scoutBound) return;
+    preloadScoutUi()
+      .then((view) => view.runScout())
+      .catch((err) => setStatusError(err.message));
+  });
 
   document.getElementById("run-analysis").addEventListener("click", runAnalysis);
   const createRepFromGame = document.getElementById("create-repertoire-from-game");
