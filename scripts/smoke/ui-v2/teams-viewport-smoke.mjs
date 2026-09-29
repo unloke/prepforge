@@ -102,6 +102,14 @@ async function runViewport(vp) {
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text()); });
   page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
   const check = (ok, label) => { if (!ok) failures.push(`${vp.name}: ${label}`); };
+  // Optional review screenshots (UI_V2_SHOTS=<dir> UI_V2_TAG=before|after); the
+  // pointer is parked bottom-right so the hover rail stays collapsed.
+  const shot = async (state) => {
+    if (!process.env.UI_V2_SHOTS) return;
+    await page.mouse.move(vp.width - 4, vp.height - 4);
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `teams-${state}-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
+  };
 
   await page.goto(base, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1000); // boot + signed-in hydration
@@ -128,6 +136,8 @@ async function runViewport(vp) {
     null,
     { timeout: 8000 },
   );
+
+  await shot("directory");
 
   // Directory: the real team from /api/teams.
   const dirName = await page.locator('#teams-list .team-row .name').first().textContent().catch(() => "");
@@ -169,6 +179,8 @@ async function runViewport(vp) {
   const membersCount = await page.locator('[data-team-count="members"]').textContent().catch(() => "");
   check(membersCount.trim() === "2", `Members tab count should be 2, got "${membersCount}"`);
 
+  await shot("members");
+
   // Invite footer from the real payload (owner sees it).
   const foot = await page.locator("#team-invite-foot:not([hidden])").textContent().catch(() => "");
   check(/Invite link active/.test(foot || "") && /revoke from Invite/.test(foot || ""), `invite footer should render, got "${foot}"`);
@@ -181,6 +193,7 @@ async function runViewport(vp) {
     null,
     { timeout: 5000 },
   );
+  await shot("shared");
   const repsCount = await page.locator('[data-team-count="repertoires"]').textContent().catch(() => "");
   check(repsCount.trim() === "1", `Shared tab count should be 1, got "${repsCount}"`);
   const sharedRow = await page.locator("#team-shared-repertoires .team-shared-rep-row").first().textContent().catch(() => "");

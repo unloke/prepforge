@@ -3324,6 +3324,11 @@ function syncTopbarExtras() {
     sub.hidden = !text;
     return;
   }
+  if (appState.currentView === "teams") {
+    sub.textContent = "Shared preparation";
+    sub.hidden = false;
+    return;
+  }
   if (appState.currentView === "replay") {
     if (appState.replaySection !== "scout") {
       sub.textContent = "Did your recent games stay in prep?";
@@ -4433,11 +4438,9 @@ async function openTeamDetail(teamId) {
   renderTeamsList(); // reflect the selected row
   const card = document.getElementById("team-detail-card");
   const membersEl = document.getElementById("team-members");
-  const foot = document.getElementById("team-detail-foot");
   if (!card || !membersEl) return;
   card.hidden = false;
   membersEl.innerHTML = '<div class="empty-state">Loading…</div>';
-  if (foot) foot.innerHTML = "";
   let detail;
   try {
     detail = await api(`/api/teams/${encodeURIComponent(teamId)}`);
@@ -4449,7 +4452,10 @@ async function openTeamDetail(teamId) {
   const canManage = myRole === "owner" || myRole === "admin";
   document.getElementById("team-detail-name").textContent = detail.name;
   const roleBadge = document.getElementById("team-detail-role");
-  if (roleBadge) roleBadge.textContent = teamRoleLabel(myRole);
+  if (roleBadge) {
+    roleBadge.textContent = teamRoleLabel(myRole);
+    roleBadge.className = `team-role-badge r-${myRole}`;
+  }
   const addBtn = document.getElementById("team-add-member");
   if (addBtn) {
     addBtn.hidden = !canManage;
@@ -4486,7 +4492,8 @@ async function openTeamDetail(teamId) {
   membersEl.innerHTML = members
     .map((m) => {
       const name = escapeHtml(m.display_name || m.lichess_username || "Member");
-      const sub = m.lichess_username ? ` <span class="sub">· ${escapeHtml(m.lichess_username)}</span>` : "";
+      const sub = m.lichess_username ? `<span class="sub">· ${escapeHtml(m.lichess_username)}</span>` : "";
+      const initial = escapeHtml(Array.from(m.display_name || m.lichess_username || "M")[0].toUpperCase());
       const isMe = m.user_id === appState.accountUserId;
       const isOwner = m.role === "owner";
       const uid = escapeHtml(m.user_id);
@@ -4497,7 +4504,7 @@ async function openTeamDetail(teamId) {
       // enforces all of this too.
       let tail;
       if (isOwner) {
-        tail = `<span class="team-role-badge sm">${escapeHtml(teamRoleLabel("owner"))}</span>`;
+        tail = `<span class="team-role-badge r-owner">${escapeHtml(teamRoleLabel("owner"))}</span>`;
       } else if (canManage) {
         const opts = ["member", "admin"]
           .map(
@@ -4511,11 +4518,12 @@ async function openTeamDetail(teamId) {
         const leaveBtn = isMe
           ? `<button type="button" class="ib team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="1">Leave</button>`
           : "";
-        tail = `<span class="team-role-badge sm">${escapeHtml(teamRoleLabel(m.role))}</span>${leaveBtn}`;
+        tail = `<span class="team-role-badge r-${escapeHtml(m.role)}">${escapeHtml(teamRoleLabel(m.role))}</span>${leaveBtn}`;
       }
       return `
-        <div class="list-item team-member-row">
-          <span><span class="name">${name}${isMe ? ' <span class="sub">(you)</span>' : ""}</span>${sub}</span>
+        <div class="mem-row team-member-row">
+          <span class="avatar" aria-hidden="true">${initial}</span>
+          <span class="mem-id"><span class="name">${name}${isMe ? ' <span class="sub">(you)</span>' : ""}</span>${sub}</span>
           <span class="team-member-tail">${tail}</span>
         </div>`;
     })
@@ -4894,15 +4902,15 @@ async function loadSharedRepertoires() {
         const team = teamById(item.team_id);
         const via = `via ${escapeHtml(team ? team.name : "a team")}`;
         return `
-          <div class="list-item shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}">
-            <span>
-              <span class="color-dot ${color}"></span>
+          <div class="mem-row shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}">
+            <span class="color-dot ${color}"></span>
+            <span class="mem-id">
               <span class="name">${name}</span>
-              <span class="sub"> · ${via}</span>
+              <span class="sub">· ${via}</span>
             </span>
             <span class="team-member-tail">
-              <span class="team-role-badge sm">read-only</span>
-              <button type="button" class="ib team-copy" data-rep-id="${id}">Copy</button>
+              <span class="team-role-badge">read-only</span>
+              <button type="button" class="btn sm team-copy" data-rep-id="${id}">Copy</button>
             </span>
           </div>`;
       })

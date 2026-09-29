@@ -111,14 +111,14 @@ export function createTeamsView({
         const role = escapeHtml(teamRoleLabel(team.role));
         const countLabel = escapeHtml(teamMemberCountLabel(team.member_count));
         const selectedCls = appState.selectedTeamId === team.id ? " is-selected" : "";
-        const roleCls = team.role === "owner" ? " team-row-owner" : " team-row-member";
+        const roleKey = escapeHtml(team.role || "member");
         return `
-        <div class="list-item team-row${selectedCls}${roleCls}" role="button" tabindex="0" data-team-id="${id}" aria-label="Open ${name}" aria-pressed="${appState.selectedTeamId === team.id}">
-          <span>
+        <div class="team-row${selectedCls}" role="button" tabindex="0" data-team-id="${id}" aria-label="Open ${name}" aria-pressed="${appState.selectedTeamId === team.id}">
+          <span class="tr-text">
             <span class="name">${name}</span>
             <span class="sub">${countLabel}</span>
           </span>
-          <span class="team-role-badge">${role}</span>
+          <span class="team-role-badge r-${roleKey}">${role}</span>
         </div>`;
       })
       .join("") : '<div class="empty-state">No teams match your search.</div>';
@@ -152,14 +152,14 @@ export function createTeamsView({
         const isMine = item.owner_user_id === appState.accountUserId;
         // Your own shared rep: Unshare. Someone else's: Copy to your account (fork).
         const action = isMine
-          ? `<button type="button" class="ib team-unshare" data-rep-id="${id}" data-rep-name="${name}">Unshare</button>`
-          : `<button type="button" class="ib team-copy" data-rep-id="${id}">Copy</button>`;
+          ? `<button type="button" class="btn sm team-unshare" data-rep-id="${id}" data-rep-name="${name}">Unshare</button>`
+          : `<button type="button" class="btn sm team-copy" data-rep-id="${id}">Copy</button>`;
         return `
-        <div class="list-item team-shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}">
-          <span>
-            <span class="color-dot ${color}"></span>
+        <div class="mem-row team-shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}">
+          <span class="color-dot ${color}"></span>
+          <span class="mem-id">
             <span class="name">${name}</span>
-            <span class="sub"> · ${owner}</span>
+            <span class="sub">· ${owner}</span>
           </span>
           <span class="team-member-tail">${action}</span>
         </div>`;

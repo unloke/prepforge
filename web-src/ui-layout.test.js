@@ -199,6 +199,29 @@ describe("workspace chrome layout", () => {
     expect(html).not.toContain("explain-card");
   });
 
+  it("composes Teams as directory | detail | incoming shares", () => {
+    const view = html.slice(html.indexOf('id="view-teams"'), html.indexOf('id="view-settings"'));
+    const teamsCss = readFileSync(join(root, "views", "teams.css"), "utf8");
+    expect(view).toContain('<div class="teams">');
+    expect(view).toContain('class="card dir"');
+    expect(view).toContain('id="team-detail-card"');
+    expect(view).toContain('class="card incoming"');
+    // Two tabs over one panel, counts on the tabs, invite status as a footer line.
+    expect(view).toContain('class="tabs" role="tablist"');
+    expect(view).toContain('id="team-invite-foot"');
+    // Page grid in the eager sheet; collapses to 2 columns then 1.
+    expect(css).toMatch(/\.teams\s*\{[^}]*grid-template-columns:\s*260px\s+minmax\(0,\s*1fr\)\s+330px/);
+    expect(css).toMatch(/max-width:\s*1279px\)\s*\{\s*\.teams\s*\{[^}]*250px/);
+    expect(css).toMatch(/max-width:\s*1020px\)\s*\{\s*\.teams\s*\{[^}]*minmax\(0,\s*1fr\)\s*;/);
+    expect(teamsCss).toContain(".team-row.is-selected");
+    // The old page intro, stacked-card chrome and generic list rows are gone.
+    expect(html).not.toContain("teams-stack");
+    expect(html).not.toContain("teams-intro");
+    expect(css).not.toContain("teams-stack");
+    expect(css).not.toContain(".list-item");
+    expect(app).not.toContain("list-item");
+  });
+
   it("never navigates away during background hydration", () => {
     // S1 startup invariant: the ONLY startup switchView runs inside
     // restoreWorkspaceLocation with the parsed URL view. Background hydration
