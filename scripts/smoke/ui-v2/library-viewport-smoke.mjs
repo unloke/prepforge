@@ -124,6 +124,10 @@ async function runViewport(vp) {
   const consoleErrors = [];
   page.on("console", (msg) => { if (msg.type() === "error") consoleErrors.push(msg.text()); });
   page.on("pageerror", (err) => consoleErrors.push(`pageerror: ${err.message}`));
+  const loadRequests = [];
+  page.on("request", (req) => {
+    if (req.url().includes("/api/build/load")) loadRequests.push(req.url());
+  });
 
   await page.goto(base, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(900); // lazy dashboard chunk + render
@@ -141,26 +145,48 @@ async function runViewport(vp) {
   check(todayText.includes("5"), "today card should show streak 5");
   check(todayText.includes("9"), "today card should show 9 due");
 
-  // Preview pane defaults to the first repertoire (real data).
-  const previewVisible = await page.locator("#lib-preview:not([hidden])").count();
-  check(previewVisible === 1, "preview pane should be visible with reps present");
-  const previewName = await page.locator("#lib-preview-name").textContent().catch(() => "");
-  check(previewName.includes("Caro-Kann"), `preview should default to first rep, got "${previewName}"`);
-  const minis = await page.locator("#lib-preview-board .scout-minisquare").count();
-  check(minis === 64, `preview mini board should have 64 squares, got ${minis}`);
-  const pieces = await page.locator("#lib-preview-board .scout-minisquare svg").count();
-  check(pieces === 32, `preview board should show 32 pieces, got ${pieces}`);
+  // Prototype composition: one Today strip, the table with its column header,
+  // a Next steps card — and none of the legacy list-item rows / metric cards.
+  check((await page.locator("#dashboard-today .today-streak").count()) === 1, "today strip should carry the streak");
+  check((await page.locator("#dashboard-today #dashboard-train-now").count()) === 1, "Train button should live in the today strip");
+  check((await page.locator("#dashboard-steps:not([hidden]) .step").count()) === 1, "next steps card should render the fixture recommendation");
+  check((await page.locator("#dashboard-repertoires .list-item").count()) === 0, "rows must not use the legacy list-item card");
+  const metricsShown = await page.locator("#dashboard-today .today-metrics").isVisible();
+  check(metricsShown === (vp.width > 1279), `today metrics visible=${metricsShown} at ${vp.width}px`);
+  const colsShown = await page.locator("#lib-cols").isVisible();
+  check(colsShown === (vp.width > 760), `column header visible=${colsShown} at ${vp.width}px`);
+
+  const previewShown = await page.locator("#lib-preview").isVisible();
+  check(previewShown === (vp.width > 760), `preview pane visible=${previewShown} at ${vp.width}px`);
+  const mobile = vp.width <= 760;
+  if (!mobile) {
+    // Preview pane defaults to the first repertoire (real data).
+    const previewName = await page.locator("#lib-preview-name").textContent().catch(() => "");
+    check(previewName.includes("Caro-Kann"), `preview should default to first rep, got "${previewName}"`);
+    const minis = await page.locator("#lib-preview-board .scout-minisquare").count();
+    check(minis === 64, `preview mini board should have 64 squares, got ${minis}`);
+    const pieces = await page.locator("#lib-preview-board .scout-minisquare svg").count();
+    check(pieces === 32, `preview board should show 32 pieces, got ${pieces}`);
+  }
 
   // Mastery bar carries the health pct.
   const barWidth = await page.locator("#dashboard-repertoires .lib-row:first-child .lib-mbar i").getAttribute("style");
   check(/width:\s*50%/.test(barWidth || ""), `first row mastery bar should be 50%, got "${barWidth}"`);
 
-  // Click the second row -> preview switches (real selection state).
-  await page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]').click();
-  const previewName2 = await page.locator("#lib-preview-name").textContent().catch(() => "");
-  check(previewName2.includes("London"), `preview should follow click, got "${previewName2}"`);
-  const selectedCls = await page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]').getAttribute("class");
-  check(/is-selected/.test(selectedCls || ""), "clicked row should carry is-selected");
+  const row2 = page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]');
+  if (!mobile) {
+    // Click the second row -> preview switches (real selection state).
+    await row2.click();
+    const previewName2 = await page.locator("#lib-preview-name").textContent().catch(() => "");
+    check(previewName2.includes("London"), `preview should follow click, got "${previewName2}"`);
+    const selectedCls = await row2.getAttribute("class");
+    check(/is-selected/.test(selectedCls || ""), "clicked row should carry is-selected");
+  } else {
+    // ≤760px hides the preview and touch has no double-click: a tap opens.
+    await row2.click();
+    await page.waitForTimeout(150);
+    check(loadRequests.some((u) => u.includes("rep-2")), "tapping a row on mobile should open the workspace (/api/build/load)");
+  }
 
   // Keyboard: focus the selected row, press Enter — the row opens the workspace
   // via /api/build/load (asserted by the request hitting the fixture server).

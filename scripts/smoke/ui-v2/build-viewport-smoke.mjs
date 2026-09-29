@@ -7,7 +7,8 @@
 //   - breadcrumb strip renders; fork bar appears at the fork with chips + count
 //   - a rendered practical share (maia_probability) shows on a chip
 //   - mastery legend renders when own-side nodes are trained
-//   - inspector toggles (Explorer/Coverage) stay mutually exclusive
+//   - the dock tabs (Explorer/Coverage/Engine) are a single-select tablist and
+//     the Explorer tab is open by default with real W/D/L rows
 // Tracked UI-v2 smoke: run the whole eight-view suite with
 // `npm run smoke:ui-v2` (scripts/smoke/ui-v2/run-all.mjs).
 import { createServer } from "node:http";
@@ -63,8 +64,15 @@ const api = (path) => {
   if (path.startsWith("/api/dashboard")) {
     return { games: 0, repertoires: 1, training_sessions: 0, open_mistakes: 0, due_reviews: 0, due_soon: 0, streak: { current: 0, best: 0, trained_today: false }, recap: { reviews_7d: 0, mastered_now: 0, mastered_delta: 0, weak_now: 0, weak_delta: 0 }, recommendations: [] };
   }
-  if (path.startsWith("/api/explorer")) {
-    return { opening: "Caro-Kann: Advance Variation", moves: [{ san: "Nf3", uci: "g1f3", total: 128432, white: 34, draw: 31, black: 35, whitePct: 34, drawPct: 31, blackPct: 35 }] };
+  if (path.startsWith("/api/lichess/explorer")) {
+    return {
+      opening: { eco: "B12", name: "Caro-Kann: Advance Variation" },
+      moves: [
+        { uci: "c8f5", san: "Bf5", white: 6100, draws: 5600, black: 6540 },
+        { uci: "c8g4", san: "Bg4", white: 1120, draws: 900, black: 1080 },
+        { uci: "e7e6", san: "e6", white: 610, draws: 800, black: 700 },
+      ],
+    };
   }
   if (path.startsWith("/api/teams")) return { teams: [] };
   if (path.startsWith("/api/lichess")) return { accounts: [] };
@@ -130,51 +138,66 @@ async function runViewport(vp) {
   check(/Saved/.test(sync), `sync chip should read Saved, got "${sync}"`);
 
   // Breadcrumb strip renders (we load at n5 = e5, path 1.e4 c6 2.d4 d5 3.e5).
-  const crumbs = await page.locator("#builder-tree .mtree-crumb").count();
-  check(crumbs === 5, `expected 5 breadcrumbs (e4 c6 d4 d5 e5), got ${crumbs}`);
+  const crumbs = await page.locator("#build-tree-meta .mtree-crumb").count();
+  check(crumbs === 6, `expected 6 breadcrumbs (Start e4 c6 d4 d5 e5), got ${crumbs}`);
+
+  // Topbar: size summary + Generate live next to the title.
+  const topSub = await page.locator("#topbar-sub").textContent().catch(() => "");
+  check(/2 lines · 7 moves/.test(topSub), `topbar sub should read "2 lines · 7 moves", got "${topSub}"`);
+  check((await page.locator("#build-generate-node:visible").count()) === 1, "Generate moves should be visible in the topbar");
 
   // Fork bar at e5: two chips, count, hint, and the real practical share on Bf5.
   const barVisible = await page.locator("#build-branchbar:not([hidden])").count();
   check(barVisible === 1, "fork bar should be visible at the e5 fork");
-  const chips = await page.locator("#build-branchbar .branch-chip").count();
+  const chips = await page.locator("#build-branchbar .fork-chip").count();
   check(chips === 2, `fork bar should have 2 chips, got ${chips}`);
-  const count = await page.locator("#build-branchbar .branchbar-count").textContent().catch(() => "");
+  const count = await page.locator("#build-branchbar .count").textContent().catch(() => "");
   check(count === "2", `fork count should be 2, got "${count}"`);
-  const bf5Chip = page.locator('#build-branchbar .branch-chip', { hasText: "Bf5" });
-  const share = await bf5Chip.locator(".branch-share").textContent().catch(() => "");
+  const bf5Chip = page.locator('#build-branchbar .fork-chip', { hasText: "Bf5" });
+  const share = await bf5Chip.locator("small").textContent().catch(() => "");
   check(share === "48%", `Bf5 chip should show the real 48% practical share, got "${share}"`);
-  const nc6Chip = page.locator('#build-branchbar .branch-chip', { hasText: "Na6" });
-  check((await nc6Chip.locator(".branch-share").count()) === 0, "Na6 (manual) chip must not fake a share");
+  const nc6Chip = page.locator('#build-branchbar .fork-chip', { hasText: "Na6" });
+  check((await nc6Chip.locator("small").count()) === 0, "Na6 (manual) chip must not fake a share");
 
   // Mastery legend mirrors the trained own-side nodes (mastered + learning + due + weak).
-  const legend = await page.locator("#builder-tree .build-mlegend").count();
+  const legend = await page.locator("#build-tree-meta .legend").count();
   check(legend === 1, "mastery legend should render under the breadcrumbs");
-  const legendText = await page.locator("#builder-tree .build-mlegend").textContent().catch(() => "");
+  const legendText = await page.locator("#build-tree-meta .legend").textContent().catch(() => "");
   check(/mastered/.test(legendText) && /learning/.test(legendText) && /due/.test(legendText) && /weak/.test(legendText), `legend should list all four trained kinds, got "${legendText}"`);
 
   // Tree rows carry mastery classes on own-side moves.
   const trained = await page.locator("#builder-tree .mtree-move.m-mastered, #builder-tree .mtree-move.m-learning, #builder-tree .mtree-move.m-due, #builder-tree .mtree-move.m-weak").count();
   check(trained >= 4, `own-side moves should carry mastery classes, got ${trained}`);
 
-  // Inspector toggles mutually exclusive.
-  console.log(`[${vp.name}] at inspector step; tree trained=${trained}`);
+  await page.locator("#explorer-rows .explorer-row").first().waitFor({ timeout: 4000 }).catch(() => {});
+
+  // Optional review screenshot (UI_V2_SHOTS=<dir> UI_V2_TAG=before|after).
+  if (process.env.UI_V2_SHOTS) {
+    await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `repertoire-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
+  }
+
+  // Dock: Explorer is open by default and shows real W/D/L rows; tabs are a
+  // single-select tablist (Coverage replaces Explorer, Engine docks the widget).
+  console.log(`[${vp.name}] at dock step; tree trained=${trained}`);
+  await page.locator("#explorer-rows .explorer-row").first().waitFor({ timeout: 4000 }).catch(() => {});
+  check((await page.locator("#explorer-drawer:not([hidden])").count()) === 1, "explorer panel should be open by default");
+  const exRows = await page.locator("#explorer-rows .explorer-row").count();
+  check(exRows === 3, `explorer should list 3 fixture moves, got ${exRows}`);
+  check((await page.locator("#build-tool-explorer[aria-selected='true']").count()) === 1, "Explorer tab should be selected");
+  await page.locator('[data-testid="build-tool-coverage"]').click();
+  await page.waitForTimeout(300);
+  check((await page.locator("#coverage-drawer:not([hidden])").count()) === 1 && (await page.locator("#explorer-drawer[hidden]").count()) === 1, "coverage should replace explorer");
+  check((await page.locator("#coverage-run:visible").count()) === 1, "Scan should show on the Coverage tab");
   await page.locator('[data-testid="build-tool-explorer"]').click();
-  await page.waitForTimeout(400);
-  const explorerOpen = await page.locator("#explorer-drawer:not([hidden])").count();
-  check(explorerOpen === 1, "explorer drawer should open");
-  await page.locator('[data-testid="build-tool-coverage"]').click();
-  await page.waitForTimeout(400);
-  const coverageOpen = await page.locator("#coverage-drawer:not([hidden])").count();
-  const explorerClosed = await page.locator("#explorer-drawer[hidden]").count();
-  check(coverageOpen === 1 && explorerClosed === 1, "coverage should replace explorer (mutually exclusive)");
-  await page.locator('[data-testid="build-tool-coverage"]').click();
+  await page.waitForTimeout(300);
+  check((await page.locator("#explorer-drawer:not([hidden])").count()) === 1, "explorer should return");
 
   // Keyboard: ↓ moves the fork pick onto the next chip.
-  await page.locator("#build-branchbar .branch-chip.is-active").focus();
+  await page.locator("#build-branchbar .fork-chip.is-active").focus();
   await page.keyboard.press("ArrowDown");
   await page.waitForTimeout(300);
-  const activeSan = await page.locator("#build-branchbar .branch-chip.is-active .branch-san").textContent().catch(() => "");
-  check(activeSan === "Na6", `ArrowDown should move the pick to Na6, got "${activeSan}"`);
+  const activeSan = await page.locator("#build-branchbar .fork-chip.is-active").textContent().catch(() => "");
+  check(activeSan.includes("Na6"), `ArrowDown should move the pick to Na6, got "${activeSan}"`);
 
   // Overflow + console errors.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

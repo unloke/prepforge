@@ -142,7 +142,8 @@ export function createAnalyzeView({
     };
 
     const legend = CLASS_GROUPS.map(
-      (g) => `<span class="cbar-key"><i class="seg-${g.key}"></i>${g.label}</span>`
+      (g) =>
+        `<span class="cbar-key"><i class="seg-${g.key}"></i>${classBadgeSymbol(g.members[0])} ${g.label}</span>`
     ).join("");
 
     host.innerHTML =
@@ -254,9 +255,11 @@ export function createAnalyzeView({
           return { classes: ["is-variation"], title: "variation" };
         }
         const cls = String(node.classification || "unknown");
+        const group = CLASS_GROUP_OF[cls.toLowerCase()];
+        const glyph = group ? classBadgeSymbol(cls) : "";
         return {
-          classes: [`cls-${cls}`],
-          suffix: '<span class="mtree-dot"></span>',
+          classes: [`cls-${cls}`, node.side === "black" ? "is-black" : "is-white"],
+          suffix: glyph ? `<i class="mtree-glyph">${glyph}</i>` : "",
           title: cls,
         };
       },
@@ -311,6 +314,14 @@ export function createAnalyzeView({
     bar.hidden = false;
   }
 
+  // "Nf3 · 52% win chance · ?! Inaccuracy · current" — the tooltip's readout,
+  // kept beside the chart title for the ply the cursor sits on.
+  function updateChartCaption(point) {
+    const el = document.getElementById("analysis-chart-caption");
+    if (!el) return;
+    el.innerHTML = point ? evalChartTooltipHtml(point, { isCurrent: true }) : "";
+  }
+
   function updateEvalChartCursor() {
     const marker = document.getElementById("eval-chart-cursor");
     if (!marker) return;
@@ -324,6 +335,7 @@ export function createAnalyzeView({
     marker.setAttribute("x1", String(x));
     marker.setAttribute("x2", String(x));
     updateBoardEvalBar();
+    updateChartCaption(hidden ? null : points[idx]);
     if (!dot) return;
     // Ring on the curve at the current ply: a SHAPE cue on top of the dashed
     // line (and the tooltip's "current" text), so the position indicator never
@@ -550,7 +562,7 @@ export function createAnalyzeView({
     area.setAttribute("class", "eval-area");
     area.setAttribute(
       "points",
-      `${coords[0].x},${centerY} ${stepStr} ${coords[coords.length - 1].x},${centerY}`,
+      `${coords[0].x},${height} ${stepStr} ${coords[coords.length - 1].x},${height}`,
     );
     chart.appendChild(area);
 

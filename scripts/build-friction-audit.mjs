@@ -247,8 +247,8 @@ async function main() {
       treeChildCount: document.getElementById("builder-tree")?.querySelectorAll(".tree-node, .move-row, .tree-row").length || 0,
       treeText: (document.getElementById("builder-tree")?.textContent || "").trim().slice(0, 240),
       branchBarVisible: !document.getElementById("build-branchbar")?.hidden,
-      branchChipCount: document.querySelectorAll("#build-branchbar .branch-chip").length,
-      branchChipSans: [...document.querySelectorAll("#build-branchbar .branch-san")].map((el) =>
+      branchChipCount: document.querySelectorAll("#build-branchbar .fork-chip").length,
+      branchChipSans: [...document.querySelectorAll("#build-branchbar .fork-chip")].map((el) =>
         el.textContent.trim(),
       ),
       syncText: document.getElementById("build-sync")?.textContent?.trim() || "",
@@ -332,7 +332,7 @@ async function main() {
     await page.waitForTimeout(300);
     await page.locator("#build-branchbar:not([hidden])").waitFor({ state: "attached", timeout: 10000 });
     const beforeSwitch = await snapshotBuild(page);
-    const altChip = page.locator("#build-branchbar .branch-chip").nth(1);
+    const altChip = page.locator("#build-branchbar .fork-chip").nth(1);
     await altChip.click();
     await page.waitForTimeout(400);
     const afterSwitch = await snapshotBuild(page);
@@ -772,7 +772,7 @@ async function main() {
           names,
           colors,
           hasRep: names.some((n) => n.includes(expectedName)),
-          metricsRepertoires: document.querySelector("#dashboard-metrics .metric-value")?.textContent?.trim(),
+          metricsRepertoires: document.querySelector("#dashboard-today .today-metrics .metric b")?.textContent?.trim(),
         };
       }, repName);
       record("5-recovery", "dashboard-refresh", {

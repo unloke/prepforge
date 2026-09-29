@@ -9,6 +9,8 @@ const html = readFileSync(join(root, "index.html"), "utf8");
 const app = readFileSync(join(root, "app.js"), "utf8");
 const account = readFileSync(join(root, "controllers", "account.js"), "utf8");
 const replayView = readFileSync(join(root, "views", "replay.js"), "utf8");
+const replayCss = readFileSync(join(root, "views", "replay.css"), "utf8");
+const analyzeCss = readFileSync(join(root, "views", "analyze-chart.css"), "utf8");
 const settingsView = readFileSync(join(root, "views", "settings.js"), "utf8");
 const scoutView = readFileSync(join(root, "views", "scout.js"), "utf8");
 const composer = readFileSync(join(root, "views", "shared", "source-composer.js"), "utf8");
@@ -50,14 +52,14 @@ describe("workspace chrome layout", () => {
     expect(css).toContain(".board-stack");
     expect(html).toContain('id="analysis-board"');
     expect(html).toContain('id="train-board"');
-    expect(css).toMatch(/#analyze-sidebar[\s\S]{0,300}?overflow-y:\s*auto/);
+    expect(css).toMatch(/#analyze-sidebar\s*\{[^}]*max-height:\s*var\(--study-h\)[^}]*overflow:\s*hidden/);
   });
 
   it("keeps the Train coach in the sidebar with the board starting at the top", () => {
     const trainStart = html.indexOf('id="view-train"');
     const train = html.slice(trainStart);
     expect(train).toContain('id="train-banner"');
-    expect(train).toContain('class="train-coach"');
+    expect(train).toContain('class="coach-banner train-coach"');
     expect(train).toContain('id="train-banner-title"');
     expect(train).toContain('id="train-banner-sub"');
     expect(train).toContain('id="train-turn-badge"');
@@ -66,8 +68,9 @@ describe("workspace chrome layout", () => {
     expect(boardArea).toContain('id="train-board"');
     const sidebar = train.slice(train.indexOf('train-sidebar'));
     expect(sidebar.indexOf('id="train-banner"')).toBeGreaterThanOrEqual(0);
-    expect(sidebar.indexOf('id="train-blitz"')).toBeGreaterThan(sidebar.indexOf('id="train-banner"'));
-    expect(css).toContain("#view-train .train-sidebar .train-blitz-float");
+    // The blitz clock overlays the board's top edge (never in flow), so the board cannot move.
+    expect(boardArea).toContain('id="train-blitz"');
+    expect(ruleBody(".blitz-bar")).toMatch(/position:\s*absolute/);
     expect(css).toContain(".train-coach-title");
     expect(css).toContain(".train-coach-sub");
   });
@@ -112,17 +115,21 @@ describe("workspace chrome layout", () => {
     expect(account).toContain("onOpenSettings();");
   });
 
-  it("uses one mutually exclusive Build inspector", () => {
+  it("docks one single-select Build inspector (Explorer / Coverage / Engine)", () => {
     expect(html).toContain('id="build-inspector"');
+    expect(html).toContain('class="dock"');
+    expect(html).toContain('role="tablist"');
     expect(html).toContain('id="build-tool-explorer"');
     expect(html).toContain('id="build-tool-coverage"');
+    expect(html).toContain('id="build-tool-engine"');
     expect(html).toContain('aria-controls="explorer-drawer"');
     expect(html).toContain('aria-controls="coverage-drawer"');
+    expect(html).toContain('aria-controls="engine-drawer"');
     expect(html).not.toContain('<summary>Opening explorer</summary>');
     expect(html).not.toContain('<summary>Coverage scan</summary>');
-    expect(ruleBody(".inspector-panel")).toMatch(/overflow-y:\s*auto/);
-    expect(ruleBody(".inspector-panel")).toMatch(/overflow-x:\s*hidden/);
-    expect(ruleBody(".build-inspector")).toMatch(/overflow:\s*hidden/);
+    expect(html).not.toContain(' id="open-engine-widget-build"');
+    expect(html).not.toContain('build-inspector-head');
+    expect(ruleBody(".dock-body")).toMatch(/overflow:\s*auto/);
     expect(ruleBody(".explorer-rows")).not.toMatch(/overflow-y/);
     expect(ruleBody(".explorer-rows")).not.toMatch(/max-height/);
     expect(ruleBody(".coverage-gaps")).not.toMatch(/overflow-y/);
@@ -132,19 +139,20 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".explorer-row")).toMatch(/max-width:\s*100%/);
     expect(ruleBody(".coverage-gap-meta")).toMatch(/overflow-wrap:\s*anywhere/);
     expect(app).toContain('setBuildInspector("explorer")');
-    expect(app).toContain('setBuildInspector("coverage")');
-    expect(app).toContain("panel.hidden = name !== active");
+    expect(app).toContain("panels[name].hidden = !on");
+    expect(app).toContain("function dockEngine()");
+    expect(app).toContain("function undockEngine()");
+    expect(ruleBody(".engine-window.is-docked")).toMatch(/position:\s*static/);
   });
 
-  it("keeps the inspector chrome to one compact header row", () => {
-    // Title + segmented control + info popover + scan action share one row;
+  it("keeps the dock chrome to one tools row above the panel", () => {
+    // Database seg + opening + score chip + info popover + scan share one row;
     // the old multi-line chrome (separate label, explorer-head, scope line,
     // coverage head + standing hint) is gone.
+    expect(html).toContain('id="build-dock-tools"');
     expect(html).toContain('id="inspector-dbs"');
     expect(html).toContain('id="inspector-info"');
-    expect(app).toContain("inspector-info-pop");
     expect(html).not.toContain("build-inspector-label");
-    expect(html).not.toContain("explorer-head");
     expect(html).not.toContain("explorer-scope");
     expect(html).not.toContain("coverage-head");
     expect(html).not.toContain("coverage-hint");
@@ -154,48 +162,85 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("onInspectorInfo");
     expect(app).toContain("inspector-info-pop");
     expect(css).toContain(".inspector-info-pop");
-    const head = ruleBody(".build-inspector-head");
-    expect(head).toMatch(/min-height:\s*34px/);
-    const panel = ruleBody(".inspector-panel");
-    expect(panel).toMatch(/max-height:\s*min\(44vh,\s*380px\)/);
+    expect(ruleBody(".dock")).toMatch(/flex:\s*0 0 clamp\(210px,\s*40%,\s*330px\)/);
   });
 
-  it("keeps Coach height stable with a scrollable explanation and fixed footer", () => {
-    const coach = ruleBody(".coach-prose");
-    const maia = ruleBody(".coach-maia");
-    const bookline = ruleBody(".coach-bookline");
-    const card = ruleBody(".explain-card");
-    const scroll = ruleBody(".coach-scroll");
-    const footer = ruleBody(".coach-footer");
-    const secondary = ruleBody(".coach-secondary");
-    expect(html).toContain('<header class="explain-head">');
-    expect(html).toContain('<div class="coach-scroll" id="coach-scroll">');
-    expect(html).toContain('<div class="coach-footer" id="coach-footer">');
-    expect(html).toContain('<div class="coach-secondary">');
-    expect(card).toMatch(/grid-template-rows:\s*auto\s+minmax\(0,\s*1fr\)\s+auto/);
-    expect(card).toMatch(/block-size:\s*var\(--coach-card-block-size\)/);
-    expect(card).toMatch(/flex:\s*0\s+0\s+var\(--coach-card-block-size\)/);
-    expect(card).toMatch(
-      /--coach-card-block-size:\s*clamp\(136px,\s*calc\(var\(--study-h\)\s*\*\s*0\.23\),\s*170px\)/,
-    );
-    expect(scroll).toMatch(/min-height:\s*0/);
-    expect(scroll).toMatch(/overflow-y:\s*auto/);
-    expect(scroll).toMatch(/overflow-x:\s*hidden/);
-    expect(footer).toMatch(/min-width:\s*0/);
-    expect(footer).toMatch(/flex:\s*none/);
-    expect(footer).toMatch(/overflow:\s*hidden/);
-    expect(footer).not.toMatch(/overflow-y/);
-    expect(secondary).not.toMatch(/margin-top:\s*auto/);
-    expect(coach).toMatch(/overflow-wrap:\s*anywhere/);
-    expect(maia).toMatch(/overflow-wrap:\s*anywhere/);
-    expect(bookline).toMatch(/overflow-wrap:\s*anywhere/);
-    expect(coach).not.toMatch(/line-clamp|overflow:\s*hidden/);
-    // The footer is a fixed, non-scrolling row: no clamping anywhere — the
-    // concise guidance content itself always fits beside the explanation scroll.
-    expect(maia).not.toMatch(/line-clamp|overflow:\s*hidden/);
-    expect(bookline).not.toMatch(/line-clamp|overflow:\s*hidden/);
-    expect(ruleBody(".sidebar")).toMatch(/overflow:\s*visible/);
-    expect(ruleBody(".sidebar")).not.toMatch(/overflow-y/);
+  it("composes Analyze as one panel: game head, coach card, results, drawers", () => {
+    const view = html.slice(html.indexOf('id="view-analyze"'), html.indexOf('id="view-build"'));
+    const rule = (selector) => {
+      const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return analyzeCss.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]+)\\}`))?.[1] || "";
+    };
+    expect(view).toContain('<aside class="sidebar panel" id="analyze-sidebar">');
+    expect(view).toContain('id="analysis-game-title"');
+    expect(view).toContain('<section class="coach-card" id="analysis-explain"');
+    expect(view).toContain('<header class="cc-head">');
+    expect(view).toContain('class="moves-grid" id="analysis-moves"');
+    // The eval bar sits on the board's left, before the board itself.
+    expect(view.indexOf('id="analysis-evalbar"')).toBeLessThan(view.indexOf('id="analysis-board"'));
+    // The sidebar is a raised panel: the body scrolls, the head stays put.
+    expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
+    // Analyze actions live in the topbar, not in the panel.
+    expect(html.indexOf('id="analyze-actions"')).toBeLessThan(html.indexOf('id="view-dashboard"'));
+    for (const id of ["open-engine-widget", "fetch-my-game", "run-analysis"]) {
+      expect(html.indexOf(`id="${id}"`)).toBeLessThan(html.indexOf('id="view-dashboard"'));
+    }
+    expect(app).toContain("analyzeActions.hidden = !isAnalyze");
+    // Coach copy wraps instead of clipping; the mainline is a 3-column grid.
+    expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);
+    expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
+    expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/grid-template-columns:\s*32px\s+minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/);
+    expect(rule(".moves-grid")).toMatch(/overflow:\s*auto/);
+    // Superseded legacy Analyze chrome is gone from the eager sheet.
+    expect(css).not.toContain(".explain-card");
+    expect(css).not.toContain(".coach-scroll");
+    expect(css).not.toContain(".reveal");
+    expect(css).not.toContain(".movelist");
+    expect(html).not.toContain("explain-card");
+  });
+
+  it("composes Teams as directory | detail | incoming shares", () => {
+    const view = html.slice(html.indexOf('id="view-teams"'), html.indexOf('id="view-settings"'));
+    const teamsCss = readFileSync(join(root, "views", "teams.css"), "utf8");
+    expect(view).toContain('<div class="teams">');
+    expect(view).toContain('class="card dir"');
+    expect(view).toContain('id="team-detail-card"');
+    expect(view).toContain('class="card incoming"');
+    // Two tabs over one panel, counts on the tabs, invite status as a footer line.
+    expect(view).toContain('class="tabs" role="tablist"');
+    expect(view).toContain('id="team-invite-foot"');
+    // Page grid in the eager sheet; collapses to 2 columns then 1.
+    expect(css).toMatch(/\.teams\s*\{[^}]*grid-template-columns:\s*260px\s+minmax\(0,\s*1fr\)\s+330px/);
+    expect(css).toMatch(/max-width:\s*1279px\)\s*\{\s*\.teams\s*\{[^}]*250px/);
+    expect(css).toMatch(/max-width:\s*1020px\)\s*\{\s*\.teams\s*\{[^}]*minmax\(0,\s*1fr\)\s*;/);
+    expect(teamsCss).toContain(".team-row.is-selected");
+    // The old page intro, stacked-card chrome and generic list rows are gone.
+    expect(html).not.toContain("teams-stack");
+    expect(html).not.toContain("teams-intro");
+    expect(css).not.toContain("teams-stack");
+    expect(css).not.toContain(".list-item");
+    expect(app).not.toContain("list-item");
+  });
+
+  it("composes Settings as a section nav beside a card column", () => {
+    const view = html.slice(html.indexOf('id="view-settings"'), html.indexOf("</main>"));
+    const settingsCss = readFileSync(join(root, "views", "settings.css"), "utf8");
+    expect(view).toContain('<div class="settings">');
+    expect(view).toContain('class="settings-nav"');
+    expect(view).toContain('class="settings-content"');
+    for (const id of ["appearance", "engine", "maia", "strength", "board", "connections", "about"]) {
+      expect(view).toContain(`id="set-${id}"`);
+    }
+    expect(view).toContain('id="piece-style-picker"');
+    expect(css).toMatch(/\.settings\s*\{[^}]*grid-template-columns:\s*180px\s+minmax\(0,\s*760px\)/);
+    expect(css).toMatch(/max-width:\s*1020px\)\s*\{\s*\.settings\s*\{[^}]*minmax\(0,\s*1fr\)/);
+    expect(settingsCss).toContain(".set-row");
+    expect(settingsCss).toContain(".status-pill.ok");
+    // The old label/value rows, thumbnail picker and feedback host are gone.
+    for (const legacy of ["settings-row", "settings-label", "settings-value", "pf-feedback", "piece-style-preview", "settings-layout"]) {
+      expect(html).not.toContain(legacy);
+      expect(css).not.toContain(legacy);
+    }
   });
 
   it("never navigates away during background hydration", () => {
@@ -269,14 +314,15 @@ describe("workspace chrome layout", () => {
     expect(html).not.toContain('id="scout-source-picked"');
     expect(html).not.toContain('id="scout-username"');
     expect(html).not.toContain('id="replay-account"');
-    expect(css).toContain(".source-add");
+    expect(html).toMatch(/id="scout-source-add"[^>]*/);
+    expect(css).not.toContain(".source-add");
     expect(css).not.toContain(".source-pick");
     expect(css).not.toContain(".replay-account");
     expect(css).toContain(".src-chips");
     expect(css).toContain(".src-chip");
     expect(css).toContain(".src-popover");
     expect(css).toContain(".src-kind");
-    expect(css).toContain(".replay-source");
+    expect(css).toContain(".src-empty");
     // Games + Scout share one selection system: the Source Composer primitive.
     expect(app).toContain("views/shared/source-composer.js");
     expect(app).toContain("openSourceComposer");
@@ -314,25 +360,21 @@ describe("workspace chrome layout", () => {
   it("keeps dark-mode text on semantic tokens (no hard-coded light colors)", () => {
     // Games result / move preview / secondary text use --text, never a fixed
     // dark hex that would vanish on a dark panel.
-    expect(css).toContain(".replay-result");
-    expect(css).toContain(".replay-preview");
-    expect(css).toContain(".replay-detail");
-    const replayLine = ruleBody(".replay-line");
-    expect(replayLine).toMatch(/color:\s*var\(--text\)/);
-    expect(replayLine).not.toMatch(/color:\s*#[0-9a-fA-F]{3,6}/);
-    const result = ruleBody(".replay-result");
-    expect(result).not.toMatch(/color:\s*#[0-9a-fA-F]{3,6}/);
-    const preview = ruleBody(".replay-preview");
-    expect(preview).not.toMatch(/color:\s*#[0-9a-fA-F]{3,6}/);
-    // Settings segmented control: unselected, selected, hover, and disabled
-    // all stay legible; the selected pill pins a per-theme pair (light white
-    // on deep bronze, dark near-black on light amber).
+    const replayRule = (selector) => {
+      const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return replayCss.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]+)\\}`))?.[1] || "";
+    };
+    expect(replayRule(".lr")).toMatch(/color:\s*var\(--text\)/);
+    for (const selector of [".lr", ".res.r-win", ".res.r-loss", ".open-prev", ".moveline .inprep", ".kind-badge.t-bad"]) {
+      expect(replayRule(selector), selector).not.toMatch(/color:\s*#[0-9a-fA-F]{3,6}/);
+    }
+    // Segmented control (prototype): body text on the surface-3 track in both
+    // states; the selected tile is a raised panel-coloured chip.
     const segBtn = ruleBody(".seg-btn");
     expect(segBtn).toMatch(/color:\s*var\(--text\)/);
     const segActive = css.match(/\.seg-btn\.is-active\s*\{([^}]+)\}/)?.[1] || "";
-    expect(segActive).toMatch(/color:\s*#ffffff/);
-    expect(segActive).toMatch(/background:\s*#8a5a24/);
-    expect(css).toContain(':root[data-theme="dark"] .seg-btn.is-active');
+    expect(segActive).toMatch(/background:\s*var\(--panel\)/);
+    expect(segActive).not.toMatch(/color:/);
     const segDisabled = css.match(/\.seg-btn:disabled\s*\{([^}]+)\}/)?.[1] || "";
     expect(segDisabled).toMatch(/color:\s*var\(--label\)/);
     // Shared switches use tokens for track + knob in both states.
@@ -341,8 +383,8 @@ describe("workspace chrome layout", () => {
     expect(css).toMatch(/\.pf-switch\.is-on \.pf-knob/);
     // Rank accents use semantic good/danger/warn so both themes adapt. Text
     // uses the *-text variants (WCAG AA); fills/borders keep the base tokens.
-    expect(css).toContain(".replay-chip.rk-in-prep { color: var(--good-text); }");
-    expect(css).toContain(".rk-user-error .replay-icon { color: var(--danger); }");
+    expect(css).toContain(".sum-chip.t-good { color: var(--good-text); }");
+    expect(css).toContain(".sum-chip.t-bad { color: var(--danger); }");
   });
 
   it("gives every view one scroll owner (no duplicate side rails)", () => {
@@ -351,13 +393,13 @@ describe("workspace chrome layout", () => {
     // layout-only. Inner panels that need their own scroll keep it.
     expect(ruleBody(".sidebar")).toMatch(/overflow:\s*visible/);
     expect(ruleBody(".sidebar")).not.toMatch(/overflow-y/);
-    expect(css).toMatch(/#analyze-sidebar[\s\S]{0,300}?overflow-y:\s*auto/);
-    expect(css).toMatch(/#view-train \.train-sidebar[\s\S]{0,300}?overflow-y:\s*auto/);
+    expect(css).toMatch(/#analyze-sidebar\s*\{[^}]*overflow:\s*hidden/);
+    expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
+    expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,120}?overflow:\s*hidden/);
     // Panels that need independent scroll keep it: coach prose, inspector,
     // move lists, composer rows/popover, context menus.
-    expect(ruleBody(".coach-scroll")).toMatch(/overflow-y:\s*auto/);
-    expect(ruleBody(".inspector-panel")).toMatch(/overflow-y:\s*auto/);
-    expect(ruleBody(".movelist")).toMatch(/overflow-y:\s*auto/);
+    expect(ruleBody(".dock-body")).toMatch(/overflow:\s*auto/);
+    expect(analyzeCss).toMatch(/\.moves-grid\s*\{[^}]*overflow:\s*auto/);
     expect(ruleBody(".src-popover")).toMatch(/overflow-y:\s*auto/);
     expect(ruleBody(".src-rows")).toMatch(/overflow:\s*auto/);
     expect(ruleBody(".context-menu")).toMatch(/overflow-y:\s*auto/);
@@ -502,7 +544,7 @@ describe("workspace chrome layout", () => {
     expect(mobile).toMatch(/\.lichess-chip\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.btn\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.ib\s*\{[^}]*min-height:\s*44px/s);
-    expect(mobile).toMatch(/#view-build #build-menu\s*\{[^}]*min-width:\s*44px/s);
+    expect(mobile).toMatch(/\.rep-menu-btn\s*\{[^}]*min-width:\s*44px/s);
     expect(mobile).toMatch(/#view-train \.board-bar \.ib\s*\{[^}]*min-width:\s*44px/s);
     expect(mobile).not.toMatch(/\.square\s*\{[^}]*min-(?:width|height):\s*44px/s);
   });

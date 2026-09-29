@@ -3,13 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDashboardView } from "./dashboard.js";
 
 // Characterization for the /api/dashboard recommendations rendering:
-//  - the repertoires empty state renders the backend's personalized list
-//    (already stored by loadDashboard) instead of a second hardcoded copy;
+//  - the backend's personalized list (stored by loadDashboard) renders once, as
+//    the numbered "Next steps" card under the repertoire table ("Get started"
+//    for an account with no repertoires) — never inside the table itself;
 //  - every object recommendation carries a CTA button that routes one click to
 //    the view it targets (services/dashboard_recommendations.py owns the copy
-//    and the ordering — this side just renders and routes);
-//  - priority actions (due review, weak spots) surface in the Today card when
-//    the account already has repertoires, and never render twice.
+//    and the ordering — this side just renders and routes).
 
 function makeContainer() {
   return {
@@ -36,7 +35,7 @@ describe("dashboard empty-state recommendations", () => {
   let elements;
   let container;
   let todayCard;
-  let metrics;
+  let steps;
   let api;
   let goToView;
   let view;
@@ -47,13 +46,19 @@ describe("dashboard empty-state recommendations", () => {
       hidden: true,
       innerHTML: "",
       querySelectorAll: vi.fn(() => []),
+      querySelector: vi.fn(() => null),
       addEventListener: vi.fn(),
     };
-    metrics = { innerHTML: "", querySelector: vi.fn(() => null) };
+    steps = {
+      hidden: true,
+      innerHTML: "",
+      querySelectorAll: vi.fn(() => []),
+      addEventListener: vi.fn(),
+    };
     elements = new Map([
       ["dashboard-repertoires", container],
       ["dashboard-today", todayCard],
-      ["dashboard-metrics", metrics],
+      ["dashboard-steps", steps],
     ]);
     globalThis.document = {
       // "dashboard-train-now" only exists after renderDashboardToday writes the
@@ -104,10 +109,12 @@ describe("dashboard empty-state recommendations", () => {
 
   it("renders the stored /api/dashboard recommendations in the empty state", async () => {
     await view.loadDashboard();
-    expect(container.innerHTML).toContain('class="empty-state"');
-    expect(container.innerHTML).toContain('<ul class="dashboard-next-steps">');
-    expect(container.innerHTML).toContain("<li>Build a repertoire in Build</li>");
-    expect(container.innerHTML).toContain("<li>Import your games in Replay</li>");
+    expect(container.innerHTML).toContain('class="empty-state big"');
+    expect(container.innerHTML).not.toContain("step-n");
+    expect(steps.hidden).toBe(false);
+    expect(steps.innerHTML).toContain("<h2>Get started</h2>");
+    expect(steps.innerHTML).toContain("<b>Build a repertoire in Build</b>");
+    expect(steps.innerHTML).toContain("<b>Import your games in Replay</b>");
   });
 
   it("omits the next-steps list when the payload carries no recommendations", async () => {
@@ -121,11 +128,12 @@ describe("dashboard empty-state recommendations", () => {
       return { repertoires: [] };
     });
     await view.loadDashboard();
-    expect(container.innerHTML).toContain('class="empty-state"');
-    expect(container.innerHTML).not.toContain("dashboard-next-steps");
+    expect(container.innerHTML).toContain('class="empty-state big"');
+    expect(steps.hidden).toBe(true);
+    expect(steps.innerHTML).toBe("");
   });
 
-  it("does not render next steps in the repertoires card when repertoires exist", async () => {
+  it("titles the steps card Next steps and keeps the table free of them when repertoires exist", async () => {
     api.mockImplementation(async (url) => {
       if (String(url).startsWith("/api/dashboard")) {
         return {
@@ -142,8 +150,10 @@ describe("dashboard empty-state recommendations", () => {
     });
     await view.loadDashboard();
     expect(container.innerHTML).not.toContain("empty-state");
-    expect(container.innerHTML).not.toContain("dashboard-next-steps");
+    expect(container.innerHTML).not.toContain("step-n");
     expect(container.innerHTML).toContain("data-repertoire-id=\"rep-1\"");
+    expect(steps.innerHTML).toContain("<h2>Next steps</h2>");
+    expect(steps.innerHTML).toContain("<b>Build a repertoire in Build</b>");
   });
 
   it("renders object recommendations with a CTA into the target view", async () => {
@@ -170,21 +180,21 @@ describe("dashboard empty-state recommendations", () => {
       return { repertoires: [] };
     });
     await view.loadDashboard();
-    expect(container.innerHTML).toContain("<b>5 review cards due now</b>");
-    expect(container.innerHTML).toContain("data-testid=\"rec-cta-train-due\"");
-    expect(container.innerHTML).toContain("data-rec-view=\"train\"");
-    expect(container.innerHTML).toContain("data-testid=\"rec-cta-create-repertoire\"");
-    expect(container.innerHTML).toContain("data-rec-view=\"build\"");
+    expect(steps.innerHTML).toContain("<b>5 review cards due now</b>");
+    expect(steps.innerHTML).toContain("data-testid=\"rec-cta-train-due\"");
+    expect(steps.innerHTML).toContain("data-rec-view=\"train\"");
+    expect(steps.innerHTML).toContain("data-testid=\"rec-cta-create-repertoire\"");
+    expect(steps.innerHTML).toContain("data-rec-view=\"build\"");
     // Order is the backend's (priority) order — preserved in the render.
-    expect(container.innerHTML.indexOf("rec-cta-train-due")).toBeLessThan(
-      container.innerHTML.indexOf("rec-cta-create-repertoire"),
+    expect(steps.innerHTML.indexOf("rec-cta-train-due")).toBeLessThan(
+      steps.innerHTML.indexOf("rec-cta-create-repertoire"),
     );
   });
 
   it("routes a CTA click to the recommendation's target view", async () => {
     const trainBtn = makeCtaButton("train");
     const buildBtn = makeCtaButton("build");
-    container.querySelectorAll.mockImplementation((selector) =>
+    steps.querySelectorAll.mockImplementation((selector) =>
       selector === ".rec-cta" ? [trainBtn, buildBtn] : [],
     );
     api.mockImplementation(async (url) => {
@@ -217,7 +227,7 @@ describe("dashboard empty-state recommendations", () => {
     expect(goToView).toHaveBeenCalledWith("build");
   });
 
-  it("surfaces priority actions in the Today card when repertoires exist", async () => {
+  it("surfaces priority actions as numbered steps when repertoires exist", async () => {
     api.mockImplementation(async (url) => {
       if (String(url).startsWith("/api/dashboard")) {
         return {
@@ -242,15 +252,17 @@ describe("dashboard empty-state recommendations", () => {
     });
     await view.loadDashboard();
     expect(todayCard.hidden).toBe(false);
-    expect(todayCard.innerHTML).toContain("dashboard-next-steps");
-    expect(todayCard.innerHTML).toContain("data-testid=\"rec-cta-train-due\"");
-    // …and not twice: the repertoires card shows the list, not the empty state.
-    expect(container.innerHTML).not.toContain("dashboard-next-steps");
+    expect(steps.hidden).toBe(false);
+    expect(steps.innerHTML).toContain("<h2>Next steps</h2>");
+    expect(steps.innerHTML).toContain("data-testid=\"rec-cta-train-due\"");
+    // …and not twice: the Today strip and the table carry no steps.
+    expect(todayCard.innerHTML).not.toContain("rec-cta");
+    expect(container.innerHTML).not.toContain("rec-cta");
   });
 
   it("renders state-driven actions compactly — no generic navigation, no prose", async () => {
-    // Converged contract (services/dashboard_recommendations.py): the Today
-    // card carries only state actions (due / weak) — the old generic rows
+    // Converged contract (services/dashboard_recommendations.py): the Next
+    // steps card carries only state actions (due / weak) — the old generic rows
     // ("Analyze a game → Open Analyze", "Extend a repertoire branch → Open
     // Build") crowded the card and duplicated the top nav.
     api.mockImplementation(async (url) => {
@@ -282,18 +294,19 @@ describe("dashboard empty-state recommendations", () => {
       };
     });
     await view.loadDashboard();
-    expect(todayCard.innerHTML).toContain("rec-cta-train-due");
-    expect(todayCard.innerHTML).toContain("rec-cta-review-weak");
-    expect(todayCard.innerHTML).not.toContain("Analyze a game");
-    expect(todayCard.innerHTML).not.toContain("Extend a repertoire branch");
-    // A state item without prose renders title-only — no empty detail span.
-    expect(todayCard.innerHTML).not.toContain('class="rec-detail"></span>');
+    expect(steps.innerHTML).toContain("rec-cta-train-due");
+    expect(steps.innerHTML).toContain("rec-cta-review-weak");
+    expect(steps.innerHTML).not.toContain("Analyze a game");
+    expect(steps.innerHTML).not.toContain("Extend a repertoire branch");
+    // A state item without prose renders title-only — no empty detail paragraph.
+    expect(steps.innerHTML).not.toContain('<p></p>');
   });
 
-  it("keeps the Today card free of next steps for a repertoire-less account", async () => {
+  it("keeps the Today strip free of steps and titles the card Get started for a repertoire-less account", async () => {
     await view.loadDashboard(); // default mock: brand-new account, no repertoires
-    expect(todayCard.innerHTML).not.toContain("dashboard-next-steps");
-    // The onboarding list still lives in the repertoires empty state.
-    expect(container.innerHTML).toContain("dashboard-next-steps");
+    expect(todayCard.innerHTML).not.toContain("rec-cta");
+    expect(todayCard.innerHTML).toContain("dashboard-train-now");
+    expect(steps.innerHTML).toContain("Get started");
+    expect(container.innerHTML).not.toContain("step-n");
   });
 });

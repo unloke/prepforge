@@ -110,6 +110,23 @@ export function createDashboardView({
     return mix.filter(([, n]) => n > 0);
   }
 
+  // "Black · 142 trainable moves" (+ disabled / shared-with in the preview) —
+  // only real listing fields (colour, health.trainable, visibility/team). The
+  // listing has no line count or last-trained date, so neither is shown.
+  function repSubline(item, { detail = false } = {}) {
+    const bits = [String(item.color || "") === "black" ? "Black" : "White"];
+    if (item.health && item.health.trainable) {
+      bits.push(`${item.health.trainable} trainable move${item.health.trainable === 1 ? "" : "s"}`);
+    }
+    if (!detail) return bits.join(" · ");
+    if (item.is_active === false) bits.push("disabled");
+    if (item.visibility === "team" && item.team_id) {
+      const team = (appState.teams || []).find((tm) => tm.id === item.team_id);
+      bits.push(`shared with ${team ? team.name : "team"}`);
+    }
+    return bits.join(" · ");
+  }
+
   function renderLibraryPreview(repertoire) {
     const pane = document.getElementById("lib-preview");
     if (!pane) return;
@@ -129,9 +146,7 @@ export function createDashboardView({
     if (nameEl) nameEl.textContent = repertoire.name || "Repertoire";
     const subEl = document.getElementById("lib-preview-sub");
     if (subEl) {
-      const bits = [color === "black" ? "Black" : "White"];
-      if (!active) bits.push("disabled");
-      subEl.textContent = bits.join(" · ");
+      subEl.textContent = repSubline(repertoire, { detail: true });
     }
     const board = document.getElementById("lib-preview-board");
     if (board) {
@@ -147,7 +162,6 @@ export function createDashboardView({
     const health = repertoire.health;
     const segments = health ? masteryMixSegments(health) : [];
     if (mixEl) {
-      mixEl.setAttribute("aria-label", "Mastery mix");
       mixEl.innerHTML = segments.length
         ? segments
             .map(
@@ -177,6 +191,22 @@ export function createDashboardView({
       // single-repertoire session.
       trainBtn.onclick = () => goToSmartTraining("Starting smart queue…");
     }
+    const menuBtn = document.getElementById("lib-preview-menu");
+    if (menuBtn) {
+      menuBtn.onclick = () => {
+        const rect = menuBtn.getBoundingClientRect();
+        openRepertoireContextMenu(
+          { preventDefault: () => {}, clientX: rect.left, clientY: rect.bottom + 4 },
+          String(repertoire.id),
+          active,
+        );
+      };
+    }
+  }
+
+  function previewPaneShown() {
+    const pane = document.getElementById("lib-preview");
+    return !!pane && !pane.hidden && pane.offsetParent !== null;
   }
 
   function applySelectionHighlight() {
@@ -204,22 +234,23 @@ export function createDashboardView({
   // The backend ships personalized next actions on /api/dashboard
   // (payload.recommendations — ordered by account state, see
   // services/dashboard_recommendations.py). Each item is
-  // {id, title, detail, cta: {label, view}} and renders with a CTA button that
-  // jumps straight to the matching view. Plain strings (legacy payloads) still
-  // render as plain bullets. Two placements share this one renderer: the
-  // repertoires empty state (first-run guide) and the Today card (priority
-  // actions like due review for accounts that already have repertoires).
-  function recommendationsHtml(recommendations) {
-    const items = (Array.isArray(recommendations) ? recommendations : [])
+  // {id, title, detail, cta: {label, view}} and renders as a numbered step
+  // with a CTA button that jumps straight to the matching view. Plain strings
+  // (legacy payloads) still render as plain steps. One "Next steps" card
+  // (first-run: "Get started") under the repertoire table shows them all.
+  function stepsHtml(recommendations) {
+    return (Array.isArray(recommendations) ? recommendations : [])
       .slice(0, 3)
       .map((item) => {
         if (typeof item === "string") {
-          return item.trim() ? `<li>${escapeHtml(item.trim())}</li>` : "";
+          return item.trim() ? { title: item.trim(), detail: "", cta: null, id: "item" } : null;
         }
-        if (!item || typeof item !== "object" || !item.title) return "";
-        const detail = item.detail
-          ? `<span class="rec-detail">${escapeHtml(String(item.detail))}</span>`
-          : "";
+        if (!item || typeof item !== "object" || !item.title) return null;
+        return item;
+      })
+      .filter(Boolean)
+      .map((item, i) => {
+        const detail = item.detail ? `<p>${escapeHtml(String(item.detail))}</p>` : "";
         const cta =
           item.cta && item.cta.view
             ? `<button type="button" class="btn sm rec-cta" ` +
@@ -228,13 +259,27 @@ export function createDashboardView({
               `${escapeHtml(String(item.cta.label || item.cta.view))}</button>`
             : "";
         return (
-          `<li class="rec-item"><span class="rec-text">` +
-          `<b>${escapeHtml(String(item.title))}</b>${detail}</span>${cta}</li>`
+          `<div class="step"><span class="step-n" aria-hidden="true">${i + 1}</span>` +
+          `<div class="step-text"><b>${escapeHtml(String(item.title))}</b>${detail}</div>${cta}</div>`
         );
       })
       .join("");
-    if (!items) return "";
-    return '<ul class="dashboard-next-steps">' + items + "</ul>";
+  }
+
+  function renderSteps(hasRepertoires) {
+    const card = document.getElementById("dashboard-steps");
+    if (!card) return;
+    const html = stepsHtml(lastDashboardRecommendations);
+    if (!html) {
+      card.hidden = true;
+      card.innerHTML = "";
+      return;
+    }
+    card.innerHTML =
+      `<header class="card-head"><h2>${hasRepertoires ? "Next steps" : "Get started"}</h2></header>` +
+      html;
+    card.hidden = false;
+    bindRecommendationCtas(card);
   }
 
   // CTA buttons route one click to the view the recommendation targets.
@@ -248,37 +293,6 @@ export function createDashboardView({
     });
   }
 
-  function healthBadgeHtml(health) {
-    // The list carries a cached health badge (refreshed off Build/train, no per-row tree
-    // walk). It is null until the rep is first opened/trained — then just omit the badge.
-    if (!health) return "";
-    if (!health.trainable) {
-      return '<span class="rep-health rep-health-empty">no moves yet</span>';
-    }
-    const parts = [];
-    if (health.weak) {
-      parts.push(
-        `<span class="rh-weak" title="Missed more than answered">${health.weak} weak</span>`,
-      );
-    }
-    if (health.due) {
-      parts.push(`<span class="rh-due" title="Spaced repetition says now">${health.due} due</span>`);
-    }
-    if (health.untrained) {
-      parts.push(
-        `<span class="rh-untrained" title="Never trained">${health.untrained} new</span>`,
-      );
-    }
-    const pct = health.mastery_pct || 0;
-    const tier = pct >= 80 ? "high" : pct >= 40 ? "mid" : "low";
-    return (
-      `<span class="rep-health">` +
-      `<span class="rh-pct tier-${tier}" title="${health.mastered}/${health.trainable} moves">${pct}% mastered</span>` +
-      (parts.length ? `<span class="rh-detail">${parts.join(" · ")}</span>` : "") +
-      `</span>`
-    );
-  }
-
   function renderDashboardToday(payload) {
     const card = document.getElementById("dashboard-today");
     if (!card) return;
@@ -286,7 +300,7 @@ export function createDashboardView({
     const due = payload.due_reviews || 0;
     const soon = payload.due_soon || 0;
     // `repertoires` on this payload is a COUNT. Hiding Today when it is 0
-    // buried Train now for new accounts. Always show the card once we have a
+    // buried Train now for new accounts. Always show the strip once we have a
     // dashboard payload.
     const note = streak.trained_today
       ? `Trained today - day ${streak.current} ✓`
@@ -305,16 +319,11 @@ export function createDashboardView({
         warningHtml = `<div class="today-warning" role="alert">⏰ ${left} left to keep your ${streak.current}-day streak — one card is enough</div>`;
       }
     }
-    const best = streak.best > 1 ? ` &middot; best ${streak.best}` : "";
+    const best = streak.best > 1 ? `<small>best ${streak.best}</small>` : "";
     const queueBits = [];
-    if (due > 0) queueBits.push(`<b>${due}</b> due now`);
-    if (soon > 0) queueBits.push(`<b>${soon}</b> coming up in 24h`);
+    if (due > 0) queueBits.push(`<b>${due} due now</b>`);
+    if (soon > 0) queueBits.push(`${soon} coming up in 24h`);
     const queueText = queueBits.length ? queueBits.join(" &middot; ") : "Queue is clear";
-    // Priority next actions (due review, weak-spot drill, …) for accounts that
-    // already have repertoires; the no-repertoire onboarding list lives in the
-    // repertoires card's empty state instead, so nothing renders twice.
-    const nextStepsHtml =
-      (payload.repertoires || 0) > 0 ? recommendationsHtml(payload.recommendations) : "";
     const recap = payload.recap || null;
     let recapHtml = "";
     if (recap && (recap.reviews_7d > 0 || recap.mastered_now > 0 || recap.weak_now > 0)) {
@@ -324,16 +333,28 @@ export function createDashboardView({
         return ` <span class="${cls}">(${n > 0 ? "+" : ""}${n})</span>`;
       };
       const bits = [
-        `<b>${recap.reviews_7d}</b> review${recap.reviews_7d === 1 ? "" : "s"} this week`,
-        `<b>${recap.mastered_now}</b> mastered${delta(recap.mastered_delta, true)}`,
+        `${recap.reviews_7d} review${recap.reviews_7d === 1 ? "" : "s"} this week`,
+        `${recap.mastered_now} mastered${delta(recap.mastered_delta, true)}`,
       ];
       if (recap.weak_now > 0 || recap.weak_delta !== 0) {
         bits.push(
-          `<b>${recap.weak_now}</b> weak spot${recap.weak_now === 1 ? "" : "s"}${delta(recap.weak_delta, false)}`,
+          `${recap.weak_now} weak spot${recap.weak_now === 1 ? "" : "s"}${delta(recap.weak_delta, false)}`,
         );
       }
       recapHtml = `<div class="today-recap">${bits.join(" &middot; ")}</div>`;
     }
+    // Counters from the real dashboard payload; "Due review" is a shortcut into
+    // the smart queue when something is waiting (same action as Train).
+    const metric = (label, value, dueShortcut) =>
+      dueShortcut
+        ? `<button type="button" class="metric is-due" data-action="due-review"><b>${value}</b><span>${label}</span></button>`
+        : `<div class="metric"><b>${value}</b><span>${label}</span></div>`;
+    const metricsHtml = [
+      metric("Games", payload.games || 0, false),
+      metric("Repertoires", payload.repertoires || 0, false),
+      metric("Sessions", payload.training_sessions || 0, false),
+      metric("Due review", due, due > 0),
+    ].join("");
     card.innerHTML = `
     <div class="today-streak" data-lit="${streak.current > 0 ? "1" : "0"}"
          title="Calendar days with at least one graded move">
@@ -341,19 +362,20 @@ export function createDashboardView({
       <span class="today-count">${streak.current}</span>
       <span class="today-unit">day streak${best}</span>
     </div>
-    <div class="today-text">
+    <div class="today-body">
       ${warningHtml || `<div class="today-note">${note}</div>`}
       <div class="today-queue">${queueText}</div>
       ${recapHtml}
     </div>
-    ${nextStepsHtml}
-    <button class="btn primary" id="dashboard-train-now" data-testid="dashboard-train-now">Train</button>
+    <div class="today-metrics">${metricsHtml}</div>
+    <button class="btn primary lg" id="dashboard-train-now" data-testid="dashboard-train-now">Train</button>
   `;
     card.hidden = false;
-    bindRecommendationCtas(card);
-    document.getElementById("dashboard-train-now").addEventListener("click", () =>
-      goToSmartTraining(due > 0 ? "Starting due review…" : "Starting training…"),
-    );
+    const trainNow = () =>
+      goToSmartTraining(due > 0 ? "Starting due review…" : "Starting training…");
+    document.getElementById("dashboard-train-now").addEventListener("click", trainNow);
+    const dueMetric = card.querySelector('[data-action="due-review"]');
+    if (dueMetric) dueMetric.addEventListener("click", trainNow);
   }
 
   let lastDashboardRecommendations = [];
@@ -370,15 +392,18 @@ export function createDashboardView({
     container.innerHTML = rows
       .map(
         (item) => `
-          <div class="lib-row list-item is-shared" tabindex="0" data-repertoire-id="${escapeHtml(item.id)}" data-shared="1" aria-selected="false">
-            <span class="lib-cell-rep">
-              <span class="color-dot ${escapeHtml(item.color)}"></span>
-              <span class="name">${escapeHtml(item.name)}</span>
-              <span class="team-role-badge sm">shared</span>
+          <div class="lib-row is-shared" tabindex="0" data-repertoire-id="${escapeHtml(item.id)}" data-shared="1">
+            <span class="lib-opt" role="option" aria-selected="false">
+              <span class="lib-cell-rep">
+                <span class="color-dot ${escapeHtml(item.color)}"></span>
+                <span class="lib-name">
+                  <span class="lib-name-line"><b class="name">${escapeHtml(item.name)}</b><span class="lib-chip is-shared">shared</span></span>
+                  <small class="rep-sub">${String(item.color) === "black" ? "Black" : "White"} · read-only</small>
+                </span>
+              </span>
+              <span class="lib-cell-mastery"><span class="muted">read-only</span></span>
+              <span class="lib-cell-queue"><span class="muted">—</span></span>
             </span>
-            <span class="lib-cell-mastery"><span class="muted">read-only</span></span>
-            <span class="lib-cell-queue"><span class="muted">—</span></span>
-            <span class="lib-cell-menu"></span>
           </div>`,
       )
       .join("");
@@ -422,52 +447,49 @@ export function createDashboardView({
         const active = item.is_active !== false;
         const cls = [
           "lib-row",
-          "list-item",
           active ? "" : "is-disabled",
           String(item.id) === selectedRepId ? "is-selected" : "",
         ]
           .filter(Boolean)
           .join(" ");
-        const status = active ? "" : ' <span class="sub">· disabled</span>';
-        const team =
-          item.visibility === "team" && item.team_id
-            ? appState.teams.find((tm) => tm.id === item.team_id)
-            : null;
-        const shareBadge =
-          item.visibility === "team" && item.team_id
-            ? ` <span class="team-role-badge sm" title="Shared with ${escapeHtml(team ? team.name : "team")}">shared</span>`
-            : "";
+        const chipsHtml =
+          (active ? "" : '<span class="lib-chip">disabled</span>') +
+          (item.visibility === "team" && item.team_id
+            ? `<span class="lib-chip is-shared" title="Shared with ${escapeHtml(
+                (appState.teams.find((tm) => tm.id === item.team_id) || {}).name || "team",
+              )}">shared</span>`
+            : "");
         const health = item.health;
         const pct = health ? health.mastery_pct || 0 : null;
         const tier = pct == null ? "" : pct >= 80 ? "high" : pct >= 40 ? "mid" : "low";
         const mastery = pct == null
           ? '<span class="lib-mastery lib-mastery-none">no moves trained yet</span>'
           : `<span class="lib-mastery"><span class="lib-mbar" role="img" aria-label="${pct}% mastered"><i class="tier-${tier}" style="width:${pct}%"></i></span><b>${pct}%</b></span>`;
-        const chips = [];
+        const queue = [];
         if (health && health.weak) {
-          chips.push(`<span class="kchip k-weak" title="Missed more than answered">${health.weak} weak</span>`);
+          queue.push(`<span class="kchip k-weak" title="Missed more than answered">${health.weak} weak</span>`);
         }
         if (health && health.due) {
-          chips.push(`<span class="kchip k-due" title="Spaced repetition says now">${health.due} due</span>`);
+          queue.push(`<span class="kchip k-due" title="Spaced repetition says now">${health.due} due</span>`);
         }
         if (health && health.untrained) {
-          chips.push(`<span class="kchip k-new" title="Never trained">${health.untrained} new</span>`);
+          queue.push(`<span class="kchip k-new" title="Never trained">${health.untrained} new</span>`);
         }
-        const chipsHtml = chips.length
-          ? chips.join("")
-          : '<span class="muted">—</span>';
+        const queueHtml = queue.length ? queue.join("") : '<span class="muted">—</span>';
         return `
           <div class="${cls}" tabindex="0" data-repertoire-id="${id}" data-active="${active ? "1" : "0"}" aria-selected="${String(item.id) === selectedRepId}">
             <span class="lib-opt" role="option" aria-selected="${String(item.id) === selectedRepId}">
               <span class="lib-cell-rep">
                 <span class="color-dot ${color}"></span>
-                <span class="name">${name}</span>
-                <span class="sub"> · ${color}</span>${status}${shareBadge}
+                <span class="lib-name">
+                  <span class="lib-name-line"><b class="name">${name}</b>${chipsHtml}</span>
+                  <small class="rep-sub">${escapeHtml(repSubline(item))}</small>
+                </span>
               </span>
               <span class="lib-cell-mastery">${mastery}</span>
-              <span class="lib-cell-queue">${chipsHtml}</span>
+              <span class="lib-cell-queue">${queueHtml}</span>
             </span>
-            <button type="button" class="ib row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-haspopup="menu">⋯</button>
+            <button type="button" class="row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-label="Actions for ${name}" aria-haspopup="menu">⋯</button>
           </div>
         `;
       })
@@ -485,6 +507,12 @@ export function createDashboardView({
       const open = () => editRepertoire(repId);
       row.addEventListener("click", (event) => {
         if (event.target.closest(".row-menu-btn")) return;
+        // ≤760px hides the preview pane (prototype), and touch has no
+        // double-click: a tap then opens the workspace directly.
+        if (!previewPaneShown()) {
+          open();
+          return;
+        }
         preview();
       });
       row.addEventListener("dblclick", (event) => {
@@ -534,11 +562,16 @@ export function createDashboardView({
     });
     if (!universe.length) {
       setListboxRole(container, false);
-      const nextSteps = recommendationsHtml(lastDashboardRecommendations);
-      container.innerHTML =
-        '<div class="empty-state">No repertoires yet.</div>' +
-        nextSteps;
-      bindRecommendationCtas(container);
+      container.innerHTML = `
+        <div class="empty-state big">
+          <div class="es-mark" aria-hidden="true">♜</div>
+          <h3>No repertoires yet.</h3>
+          <p>A repertoire is your prepared tree of moves. Start from scratch, import a PGN, or build one from a game you just played.</p>
+          <div class="row gap">
+            <button type="button" class="btn primary" data-lib-action="new">New repertoire</button>
+            <button type="button" class="btn" data-lib-action="import">Import PGN</button>
+          </div>
+        </div>`;
       renderLibraryPreview(null);
       selectedRepId = null;
       return;
@@ -562,6 +595,8 @@ export function createDashboardView({
 
   // role=option rows need a real listbox owner; empty states drop the role.
   function setListboxRole(container, on) {
+    const cols = document.getElementById("lib-cols");
+    if (cols) cols.hidden = !on;
     if (on) {
       container.setAttribute("role", "listbox");
       container.setAttribute("aria-label", "Repertoires");
@@ -631,29 +666,7 @@ export function createDashboardView({
       ? payload.recommendations
       : [];
     renderDashboardToday(payload);
-    const due = payload.due_reviews || 0;
-    const metrics = [
-      ["Games", payload.games, ""],
-      ["Repertoires", payload.repertoires, ""],
-      ["Sessions", payload.training_sessions, ""],
-      ["Due review", due, due > 0 ? "is-due is-clickable" : ""],
-    ];
-    document.getElementById("dashboard-metrics").innerHTML = metrics
-      .map(
-        ([label, value, cls]) => `
-        <${cls.includes("is-due") ? "button type=\"button\"" : "div"} class="metric ${cls}" ${cls.includes("is-due") ? 'data-action="due-review"' : ""}>
-          <div class="metric-value">${value}</div>
-          <div class="metric-label">${label}</div>
-        </${cls.includes("is-due") ? "button" : "div"}>
-      `,
-      )
-      .join("");
-    const dueMetric = document.querySelector('#dashboard-metrics [data-action="due-review"]');
-    if (dueMetric) {
-      dueMetric.addEventListener("click", () =>
-        goToSmartTraining("Starting due review…"),
-      );
-    }
+    renderSteps((payload.repertoires || 0) > 0);
     await loadDashboardRepertoires();
     setStatus("Ready");
   }
@@ -712,16 +725,22 @@ export function createDashboardView({
     if (eventsBound) return;
     eventsBound = true;
 
+    const newRep = () => createRepertoirePrompt({ title: "New repertoire" });
+    const importPgn = () => dashboardImportPgn().catch(() => {});
     const newRepBtn = document.getElementById("dashboard-new-rep");
-    if (newRepBtn) {
-      newRepBtn.addEventListener("click", () =>
-        createRepertoirePrompt({ title: "New repertoire" }),
-      );
-    }
-
+    if (newRepBtn) newRepBtn.addEventListener("click", newRep);
     const importBtn = document.getElementById("dashboard-import-pgn");
-    if (importBtn) {
-      importBtn.addEventListener("click", () => dashboardImportPgn().catch(() => {}));
+    if (importBtn) importBtn.addEventListener("click", importPgn);
+    // The empty state repeats the two header actions (re-rendered with the
+    // list, so delegated from the stable container).
+    const listEl = document.getElementById("dashboard-repertoires");
+    if (listEl) {
+      listEl.addEventListener("click", (event) => {
+        const btn = event.target.closest && event.target.closest("[data-lib-action]");
+        if (!btn) return;
+        if (btn.dataset.libAction === "new") newRep();
+        else if (btn.dataset.libAction === "import") importPgn();
+      });
     }
 
     const importInput = document.getElementById("dashboard-import-input");
@@ -751,7 +770,6 @@ export function createDashboardView({
     loadDashboard,
     loadDashboardRepertoires,
     renderDashboardToday,
-    healthBadgeHtml,
     setLibraryFilter,
     setLibraryQuery,
   };

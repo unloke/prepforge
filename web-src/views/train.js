@@ -22,7 +22,7 @@ export function createTrainView({
     const streakEl = document.getElementById("train-stat-streak");
     const flame = "";
     streakEl.innerHTML = `${s.streak}${flame}`;
-    const chip = streakEl.closest(".train-stat");
+    const chip = streakEl.closest(".stat");
     if (chip) {
       chip.classList.toggle(
         "at-risk",
@@ -49,7 +49,7 @@ export function createTrainView({
     } else {
       trail.innerHTML = s.history
         .slice(-26)
-        .map((ok) => `<span class="trail-pip ${ok ? "ok" : "no"}"></span>`)
+        .map((ok) => `<i class="${ok ? "ok" : "no"}"></i>`)
         .join("");
     }
   }
@@ -68,6 +68,7 @@ export function createTrainView({
     const total = prompt.total_lines || 1;
     document.getElementById("train-line-label").textContent =
       `Line ${(prompt.current_index || 0) + 1} / ${total}`;
+    paintCardKind(null);
     document.getElementById("train-progress-fill").style.width =
       `${Math.round(((prompt.current_index || 0) / Math.max(1, total)) * 100)}%`;
     const name = (appState.training && appState.training.repertoire_name) || "Repertoire";
@@ -87,18 +88,18 @@ export function createTrainView({
     }
     wrap.hidden = false;
     document.getElementById("train-queue-bar").innerHTML = kinds
-      .map((k) => `<span class="tq-seg tq-${k}" style="flex:${counts[k]}"></span>`)
+      .map((k) => `<i class="k-${k}" style="flex:${counts[k]}"></i>`)
       .join("");
     const cluster = smart.phaseCluster;
     const phaseChip =
       cluster && cluster.total
-        ? `<span class="tq-chip tq-phase" title="Most cards sit in ${escapeHtml(cluster.majorityLabel.toLowerCase())}">${escapeHtml(cluster.majorityLabel)} coach · ${cluster.counts[cluster.majority]}/${cluster.total}</span>`
+        ? `<span class="kchip phase" title="Most cards sit in ${escapeHtml(cluster.majorityLabel.toLowerCase())}">${escapeHtml(cluster.majorityLabel)} coach · ${cluster.counts[cluster.majority]}/${cluster.total}</span>`
         : "";
     document.getElementById("train-queue-legend").innerHTML =
       kinds
         .map(
           (k) =>
-            `<span class="tq-chip tq-${k}" title="${escapeHtml(smartKindTitles[k] || "")}">${counts[k]} ${k}</span>`
+            `<span class="kchip k-${k}" title="${escapeHtml(smartKindTitles[k] || "")}">${counts[k]} ${k}</span>`
         )
         .join("") + phaseChip;
   }
@@ -128,28 +129,39 @@ export function createTrainView({
     }
     host.hidden = false;
     host.innerHTML =
-      '<div class="train-upnext-label">Up next</div>' +
+      '<small class="faint">Up next</small>' +
       upcoming
         .map((card) => {
           const kind = smartKindLabels[card.kind] || card.kind || "";
           const rep = card.repertoire_name || smart.repertoireName || "";
           const dot = card.color === "black" ? "black" : "white";
           const target = card.targets && card.targets[0];
-          const lineTail = target && target.san ? ` · ${escapeHtml(target.san)}` : "";
+          const lineTail = target && target.san ? escapeHtml(target.san) : "";
           return (
-            `<div class="train-upnext-row">` +
-            `<span class="tq-chip tq-${escapeHtml(card.kind || "polish")}">${escapeHtml(kind)}</span>` +
-            `<span class="train-upnext-rep"><span class="color-dot ${dot}"></span>${escapeHtml(rep)}${lineTail}</span>` +
+            `<div class="un-row">` +
+            `<span class="kchip k-${escapeHtml(card.kind || "polish")}">${escapeHtml(kind)}</span>` +
+            `<span class="un-rep"><span class="color-dot ${dot}"></span>${escapeHtml(rep)}</span>` +
+            `<span class="un-line">${lineTail}</span>` +
             "</div>"
           );
         })
         .join("");
   }
 
+  // Card kind chip beside the counter (smart queue only; rehearsal has none).
+  function paintCardKind(kind) {
+    const chip = document.getElementById("train-card-kind");
+    if (!chip) return;
+    chip.hidden = !kind;
+    chip.className = kind ? `kchip k-${kind}` : "kchip";
+    chip.textContent = kind ? smartKindLabels[kind] || kind : "";
+  }
+
   function renderSmartProgress(prompt) {
     const total = Math.max(1, prompt.total_cards);
     document.getElementById("train-line-label").textContent =
-      `Card ${Math.min(prompt.card_index + 1, total)} / ${total} · ${smartKindLabels[prompt.kind] || prompt.kind}`;
+      `Card ${Math.min(prompt.card_index + 1, total)} / ${total}`;
+    paintCardKind(prompt.kind);
     renderUpNext();
     document.getElementById("train-progress-fill").style.width =
       `${Math.round((prompt.card_index / total) * 100)}%`;
@@ -158,9 +170,10 @@ export function createTrainView({
       dots.innerHTML =
         prompt.targets_total > 1
           ? Array.from({ length: prompt.targets_total }, (_, i) => {
-              const cls = i < prompt.target_index ? "done" : i === prompt.target_index ? "now" : "";
-              return `<span class="card-dot ${cls}"></span>`;
-            }).join("")
+              const cls = i < prompt.target_index ? "done" : i === prompt.target_index ? "cur" : "";
+              return `<i class="${cls}"></i>`;
+            }).join("") +
+            `<span class="faint">move ${prompt.target_index + 1} of ${prompt.targets_total} in this card</span>`
           : "";
     }
   }
@@ -182,7 +195,7 @@ export function createTrainView({
     document.getElementById("train-summary-stats").innerHTML = statCells
       .map(
         ([value, label]) =>
-          `<div class="tsum-stat"><span class="tsum-value">${value}</span><span class="tsum-label">${label}</span></div>`
+          `<div><b>${value}</b><span>${label}</span></div>`
       )
       .join("");
     const deltaEl = document.getElementById("train-summary-delta");
@@ -190,21 +203,21 @@ export function createTrainView({
     const before = smart.healthBefore;
     if (before && after && after.health) {
       deltaEl.innerHTML = [
-        ["mastered", "Mastered", "good", 1],
-        ["learning", "Learning", "", 0],
-        ["due", "Due", "warn", -1],
-        ["weak", "Weak", "bad", -1],
-        ["untrained", "New", "", -1],
+        ["mastered", "Mastered", "mastered", 1],
+        ["learning", "Learning", "learning", 0],
+        ["due", "Due", "due", -1],
+        ["weak", "Weak", "weak", -1],
+        ["untrained", "New", "new", -1],
       ]
-        .map(([key, label, cls, goodDir]) => {
+        .map(([key, label, kind, goodDir]) => {
           const now = after.health[key] || 0;
           const diff = now - (before[key] || 0);
           const tone = diff * goodDir > 0 ? "up" : diff * goodDir < 0 ? "down" : "";
-          const delta =
-            diff === 0
-              ? ""
-              : `<span class="tsum-delta ${tone}">${diff > 0 ? "+" : ""}${diff}</span>`;
-          return `<div class="tsum-row ${cls}"><span>${label}</span><span class="tsum-num">${now}${delta}</span></div>`;
+          const delta = diff === 0 ? "" : `${diff > 0 ? "+" : "−"}${Math.abs(diff)}`;
+          return (
+            `<div class="tsum-row"><span><i class="k-${kind}"></i>${label}</span>` +
+            `<span class="num">${now}</span><span class="num ${tone}">${delta}</span></div>`
+          );
         })
         .join("");
       footEl.textContent =

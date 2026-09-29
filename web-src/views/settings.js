@@ -99,9 +99,11 @@ export function createSettingsView({
     if (browserStatusEl) {
       if (self.crossOriginIsolated) {
         browserStatusEl.textContent = "available";
+        browserStatusEl.className = "status-pill ok";
         if (note) note.textContent = "";
       } else {
         browserStatusEl.textContent = "unavailable";
+        browserStatusEl.className = "status-pill err";
         if (note) {
           note.textContent =
             "This browser is not cross-origin isolated (COOP/COEP). Use a supported browser to run analysis locally.";
@@ -161,7 +163,7 @@ export function createSettingsView({
     if (!list) return;
     const accounts = connectionAccounts();
     if (!accounts.length) {
-      list.innerHTML = '<p class="muted">No Lichess account linked.</p>';
+      list.innerHTML = '<p class="muted hint">No Lichess account linked.</p>';
       return;
     }
     list.innerHTML = accounts
@@ -236,6 +238,14 @@ export function createSettingsView({
     ERROR: "Error",
   };
 
+  const MAIA_STATUS_TONE = {
+    [MAIA_STATUS.READY]: "ok",
+    [MAIA_STATUS.LOADING]: "warn",
+    [MAIA_STATUS.CACHE_MISSING]: "warn",
+    [MAIA_STATUS.UNAVAILABLE]: "err",
+    [MAIA_STATUS.ERROR]: "err",
+  };
+
   async function renderMaia3Status() {
     const modelEl = document.getElementById("settings-maia-model");
     const noteEl = document.getElementById("settings-maia-status");
@@ -243,6 +253,7 @@ export function createSettingsView({
     if (!modelEl) return;
     const set = (model, note = "", error = "") => {
       modelEl.textContent = model;
+      modelEl.className = `status-pill ${MAIA_STATUS_TONE[model] || ""}`.trim();
       if (noteEl) noteEl.textContent = note;
       if (errEl) {
         errEl.textContent = error ? `Last error: ${error}` : "";
@@ -387,6 +398,11 @@ export function createSettingsView({
     const nav = document.querySelector(".settings-nav");
     if (!nav || nav.dataset.navBound === "1") return;
     nav.dataset.navBound = "1";
+    // A clicked link stays the active marker while its smooth scroll settles: a
+    // short page cannot always bring the target to the spy line, so the spy
+    // would otherwise hand the marker to a taller neighbour mid-scroll.
+    let lockedId = null;
+    let lockTimer = 0;
     nav.querySelectorAll(".settings-nav-link").forEach((link) => {
       link.addEventListener("click", (event) => {
         const id = (link.getAttribute("href") || "").slice(1);
@@ -400,6 +416,11 @@ export function createSettingsView({
           Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
         target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
         markActiveSection(id);
+        lockedId = id;
+        clearTimeout(lockTimer);
+        lockTimer = setTimeout(() => {
+          lockedId = null;
+        }, 800);
       });
     });
     const sections = () =>
@@ -410,6 +431,10 @@ export function createSettingsView({
       spyTick = true;
       requestAnimationFrame(() => {
         spyTick = false;
+        if (lockedId) {
+          markActiveSection(lockedId);
+          return;
+        }
         const probe = window.innerHeight * 0.35;
         let current = null;
         for (const section of sections()) {

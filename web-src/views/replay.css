@@ -1,89 +1,140 @@
-/* Games focus detail — ui-prototype-v2 internals. Loaded only with the lazy
-   replay chunk, so these styles never grow the main stylesheet budget. */
+/* Games triage — Opus prototype composition. Loaded only with the lazy replay
+   chunk (the toolbar itself lives in the main stylesheet), so these rules never
+   grow the main stylesheet budget. Ledger card + focus card side by side;
+   the ledger scrolls, the focus card stays in view. */
 
-/* Focus card: own board (Library/Scout grid contract) beside the detail text. */
-#view-replay .replay-focus-top {
-  display: flex;
-  gap: 18px;
-  align-items: flex-start;
+.triage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 0.8fr);
+  gap: 12px;
 }
-#view-replay .replay-focus-board {
-  flex: none;
-  width: 190px;
-  position: relative;
+.ledger,
+.focus { min-height: 0; padding: 0; }
+.ledger { display: flex; flex-direction: column; overflow: hidden; }
+.ledger .card-head {
+  margin: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
 }
-#view-replay .replay-focus-board .scout-miniboard {
-  aspect-ratio: 1;
-  height: auto;
-  position: relative;
+.ledger .card-head h2 { font-size: 13.5px; }
+.ledger-table { flex: 1; overflow: auto; }
+
+.lr {
+  display: grid;
+  grid-template-columns: 124px minmax(150px, 1.3fr) 44px minmax(120px, 1fr) 60px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-s);
+  text-align: left;
+  cursor: pointer;
 }
-#view-replay .replay-focus-info { min-width: 0; flex: 1; }
-#view-replay .replay-focus-info .replay-row-body { padding: 14px 0 0; }
-#view-replay .replay-focus-board ~ .replay-focus-info .replay-row-body { padding: 14px 0 0; }
-#view-replay .replay-focus-info h4 {
-  margin: 10px 0 8px;
-  font-size: clamp(17px, 1.6vw, 22px);
-  overflow: hidden;
-  text-overflow: ellipsis;
+.lr.head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel);
+  color: var(--label);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: default;
+}
+.lr:not(.head):hover { background: var(--surface-2); }
+.lr.is-open { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.lr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.players { display: flex; flex-direction: column; min-width: 0; }
+.pl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.players small { color: var(--label); font-size: var(--fs-xs); }
+.acct { padding: 0 4px; border-radius: 3px; background: var(--surface-3); font-style: normal; }
+.open-prev { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.res { font-weight: 700; }
+.res.r-win { color: var(--good-text); }
+.res.r-loss { color: var(--danger); }
+.res.r-draw { color: var(--muted); }
+.kind-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: var(--fs-xs);
+  font-style: normal;
+  font-weight: 650;
   white-space: nowrap;
 }
+.kind-badge.t-good { background: var(--good-soft); color: var(--good-text); }
+.kind-badge.t-bad { background: var(--bad-soft); color: var(--danger); }
+.kind-badge.t-warn { background: var(--warn-soft); color: var(--warn-text); }
+.kind-badge.t-none { background: var(--none-soft); color: var(--none); }
+
+.focus { display: flex; flex-direction: column; gap: 12px; padding: 12px; overflow: auto; }
+.focus-top { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); gap: 14px; }
+.focus-top.no-board { grid-template-columns: minmax(0, 1fr); }
+.focus-board { position: relative; width: 100%; aspect-ratio: 1; }
+.focus-board .scout-miniboard { position: relative; width: 100%; height: auto; aspect-ratio: 1; }
+.focus-info { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+.focus-info h2 { font-size: 15px; word-break: break-word; }
+.reasons { display: flex; flex-direction: column; gap: 4px; margin: 0; padding-left: 16px; color: var(--muted); font-size: var(--fs-s); }
+.reasons strong { color: var(--text); }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+.moveline { font: 12px/1.9 var(--mono); }
+.mvw { white-space: nowrap; }
+.mn { color: var(--label); }
+.moveline .inprep { padding: 0 2px; border-radius: 3px; background: var(--good-soft); color: var(--good-text); }
+.moveline .dep { padding: 0 3px; border-radius: 3px; color: #fff; font-weight: 700; }
+.moveline .dep.t-bad { background: var(--danger); }
+.moveline .dep.t-warn { background: var(--warn); }
+.focus .legend { padding-top: 10px; border-top: 1px solid var(--line); }
+.focus .legend .k-inprep { background: var(--accent-soft); border: 1px solid var(--accent-strong); }
+.focus .legend .k-dep { background: var(--danger); opacity: 0.7; }
+.focus .legend .k-arrow-good,
+.focus .legend .k-arrow-bad { border-radius: 999px; }
+.focus .legend .k-arrow-good { background: var(--good); }
+.focus .legend .k-arrow-bad { background: var(--danger); }
 
 /* Expected (good) vs played (bad) arrows over the derived position. */
-#view-replay .replay-arrows {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-#view-replay .replay-arrows line {
-  stroke-width: 4;
-  stroke-linecap: round;
-  opacity: 0.85;
-}
-#view-replay .replay-arrows .t-good line { stroke: var(--good, #4a8964); }
-#view-replay .replay-arrows .t-good polygon { fill: var(--good, #4a8964); opacity: 0.85; }
-#view-replay .replay-arrows .t-bad line { stroke: var(--danger, #c4524d); }
-#view-replay .replay-arrows .t-bad polygon { fill: var(--danger, #c4524d); opacity: 0.85; }
+.replay-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.replay-arrows line { stroke-width: 4; stroke-linecap: round; opacity: 0.85; }
+.replay-arrows polygon { opacity: 0.85; }
+.replay-arrows .t-good line { stroke: var(--good); }
+.replay-arrows .t-good polygon { fill: var(--good); }
+.replay-arrows .t-bad line { stroke: var(--danger); }
+.replay-arrows .t-bad polygon { fill: var(--danger); }
 
-/* Moveline legend: same colours as the marks themselves. */
-#view-replay .replay-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 16px;
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--line-soft);
-  font-size: 11px;
-  color: var(--muted);
+/* ≤1279: the Opening column drops, the focus board sits above its text. */
+@media (max-width: 1279px) {
+  .triage { grid-template-columns: minmax(0, 1fr) 380px; }
+  .lr { grid-template-columns: 118px minmax(140px, 1fr) 40px 56px; }
+  .lr > :nth-child(4) { display: none; }
+  .focus-top { grid-template-columns: 1fr; }
+  .focus-board { max-width: 300px; }
 }
-#view-replay .replay-legend i {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  margin-right: 5px;
-  vertical-align: -1px;
+/* ≤1020: one column, page scroll. */
+@media (max-width: 1020px) {
+  .triage { grid-template-columns: minmax(0, 1fr); }
+  .ledger-table,
+  .focus { overflow: visible; }
 }
-#view-replay .replay-legend .k-inprep { background: var(--accent-soft); border: 1px solid var(--accent-strong); }
-#view-replay .replay-legend .k-dep { background: var(--danger); opacity: 0.7; }
-#view-replay .replay-legend .k-arrow-good { border-radius: 999px; background: var(--good, #4a8964); }
-#view-replay .replay-legend .k-arrow-bad { border-radius: 999px; background: var(--danger, #c4524d); }
-
-/* Outcome colouring: win/loss/draw resolved against the user's own colour. */
-#view-replay .replay-result.r-win { color: var(--good-text, #2e6647); font-weight: 700; }
-#view-replay .replay-result.r-loss { color: var(--danger, #c4524d); font-weight: 700; }
-#view-replay .replay-result.r-draw { color: var(--muted); }
-
-/* Departure mark in the moveline mirrors its outcome tone. */
-#view-replay .replay-line .ply-mark.t-good { background: rgba(74, 137, 100, 0.18); color: var(--good-text, #2e6647); }
-#view-replay .replay-line .ply-mark.t-bad { background: rgba(196, 82, 77, 0.16); color: var(--danger, #c4524d); }
-#view-replay .replay-line .ply-mark.t-warn { background: rgba(201, 132, 57, 0.16); color: var(--warn-text, #a06320); }
-
-@media (max-width: 1100px) {
-  #view-replay .replay-focus-board { width: 164px; }
-}
-@media (max-width: 680px) {
-  #view-replay .replay-focus-top { flex-direction: column; }
-  #view-replay .replay-focus-board { width: min(240px, 62vw); }
+/* ≤760: focus card first, two-line rows, no column header. */
+@media (max-width: 760px) {
+  .triage { display: flex; flex-direction: column-reverse; }
+  .lr.head { display: none; }
+  .lr {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "badge res" "players dep";
+    row-gap: 4px;
+    min-height: 44px;
+  }
+  .lr > :nth-child(1) { grid-area: badge; }
+  .lr > :nth-child(2) { grid-area: players; }
+  .lr > :nth-child(3) { grid-area: res; text-align: right; }
+  .lr > :nth-child(5) { grid-area: dep; }
+  .focus-board { max-width: none; }
+  .actions .btn { min-height: 44px; }
 }

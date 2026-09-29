@@ -4,10 +4,10 @@ import { Chess } from "chess.js";
 import "./replay.css";
 
 const REPLAY_KINDS = {
-  "in-prep": { icon: "✓", badge: "Stayed in prep", label: "stayed in prep" },
-  "user-error": { icon: "✗", badge: "You left prep", label: "you left prep" },
-  "left-prep": { icon: "⚡", badge: "Opponent novelty", label: "novelties" },
-  "no-prep": { icon: "—", badge: "No repertoire", label: "not covered", departure: "—" },
+  "in-prep": { icon: "✓", badge: "Stayed in prep", label: "stayed in prep", tone: "good" },
+  "user-error": { icon: "✗", badge: "You left prep", label: "you left prep", tone: "bad" },
+  "left-prep": { icon: "⚡", badge: "Opponent novelty", label: "novelties", tone: "warn" },
+  "no-prep": { icon: "—", badge: "No repertoire", label: "not covered", tone: "none", departure: "—" },
 };
 
 const MINI_FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
@@ -121,7 +121,7 @@ function replayFocusBoardHtml(game, renderers) {
   const svg = arrows
     ? `<svg class="replay-arrows" viewBox="0 0 100 100" aria-hidden="true">${arrows}</svg>`
     : "";
-  return `<div class="replay-focus-board" data-testid="replay-focus-board"><div class="scout-miniboard" aria-hidden="true">${squares}</div>${svg}</div>`;
+  return `<div class="focus-board" data-testid="replay-focus-board"><div class="scout-miniboard" aria-hidden="true">${squares}</div>${svg}</div>`;
 }
 
 export function createReplayView({
@@ -156,13 +156,13 @@ export function createReplayView({
       .filter(([kind]) => counts[kind] > 0)
       .map(
         ([kind, meta]) =>
-          `<button type="button" class="replay-chip rk-${kind}${
+          `<button type="button" class="sum-chip t-${meta.tone}${
             activeFilter === kind ? " is-on" : ""
-          }" data-filter="${kind}">${meta.icon} ${counts[kind]} ${meta.label}</button>`
+          }" data-filter="${kind}" aria-pressed="${activeFilter === kind}">${meta.icon} ${counts[kind]} ${meta.label}</button>`
       );
     const queued = Number(payload.misses_recorded) || 0;
     const queuedHtml = queued
-      ? `<span class="replay-queued" title="Recorded as recall misses">+${queued} queued for training</span>`
+      ? `<span class="queued" title="Recorded as recall misses">+${queued} queued for training</span>`
       : "";
     el.innerHTML = chips.join("") + queuedHtml;
     el.hidden = false;
@@ -182,28 +182,22 @@ export function createReplayView({
     if (!history.length) return '<span class="muted">No moves recorded.</span>';
     const departPly = game.departure_ply;
     const matched = Number(game.matched_plies) || 0;
-    const parts = [];
-    history.forEach((san, index) => {
-      const ply = index + 1;
-      const moveNumber = Math.ceil(ply / 2);
-      const isWhite = ply % 2 === 1;
-      if (isWhite) parts.push(`<span class="move-num">${moveNumber}.</span>`);
-      else if (ply === 1 || ply === matched + 1) parts.push(`<span class="move-num">${moveNumber}...</span>`);
-      const inPrep = ply <= matched;
-      const isDepart = ply === departPly;
-      const classes = [];
-      if (inPrep) classes.push("prep");
-      if (isDepart) {
-        classes.push("ply-mark");
-        // Departure tone mirrors its outcome (✗ left prep, ⚡ novelty, ✓ stayed).
-        const kind = replayGameKind(game);
-        if (kind === "user-error") classes.push("t-bad");
-        else if (kind === "left-prep") classes.push("t-warn");
-        else if (kind === "in-prep") classes.push("t-good");
-      }
-      parts.push(`<span class="${classes.join(" ")}">${escapeHtml(san)}</span>`);
-    });
-    return parts.join(" ");
+    const tone = REPLAY_KINDS[replayGameKind(game)].tone;
+    return history
+      .map((san, index) => {
+        const ply = index + 1;
+        const moveNumber = Math.ceil(ply / 2);
+        const isWhite = ply % 2 === 1;
+        let num = "";
+        if (isWhite) num = `<span class="mn">${moveNumber}.</span>`;
+        else if (ply === 1 || ply === matched + 1) num = `<span class="mn">${moveNumber}…</span>`;
+        const classes = [];
+        if (ply <= matched) classes.push("inprep");
+        // Departure tone mirrors its outcome (✗ left prep, ⚡ novelty).
+        if (ply === departPly) classes.push("dep", `t-${tone}`);
+        return `<span class="mvw">${num}<span class="${classes.join(" ")}">${escapeHtml(san)}</span></span>`;
+      })
+      .join(" ");
   }
 
   function renderReplayDetail(game) {
@@ -232,57 +226,68 @@ export function createReplayView({
     } else if (game.departure_reason === "no_repertoire_for_color") {
       lines.push("No active repertoire defined for the colour you played.");
     }
-    return lines.join("<br />");
+    return lines.map((line) => `<li>${line}</li>`).join("");
   }
 
-  function renderReplayCard(game, index, selectedIndex) {
+  // "You" is resolved against the payload's own user_color, never guessed.
+  function playerName(game, side) {
+    return game.user_color === side ? "You" : escapeHtml(game[side] || "?");
+  }
+
+  function renderReplayRow(game, index, selectedIndex) {
     const kind = replayGameKind(game);
     const meta = REPLAY_KINDS[kind];
     const open = index === selectedIndex;
     const source = game.source_account
-      ? ` <span class="replay-source" title="Fetched from this linked account">${escapeHtml(game.source_account)}</span>`
+      ? `<small><i class="acct" title="Fetched from this linked account">${escapeHtml(game.source_account)}</i></small>`
       : "";
-    const players = `${escapeHtml(game.white || "?")} <span class="muted">vs</span> ${escapeHtml(game.black || "?")}${source}`;
     const preview = (game.move_san_history || []).slice(0, 6).join(" ");
-    const lichessLink = game.lichess_id
-      ? `<a class="link" target="_blank" rel="noopener noreferrer" href="https://lichess.org/${escapeHtml(game.lichess_id)}" title="Open on Lichess">lichess ↗</a>`
-      : "";
+    const departure = game.departure_ply ? `Ply ${Number(game.departure_ply)}` : meta.departure || "—";
+    return (
+      `<button type="button" class="lr${open ? " is-open" : ""}" data-index="${index}" aria-pressed="${open}">` +
+      `<span><i class="kind-badge t-${meta.tone}">${escapeHtml(meta.badge)}</i></span>` +
+      `<span class="players"><span class="pl"><b>${playerName(game, "white")}</b> vs <b>${playerName(game, "black")}</b></span>${source}</span>` +
+      `<span class="res ${replayResultClass(game)}">${escapeHtml(game.result || "*")}</span>` +
+      `<span class="open-prev">${escapeHtml(preview)}${preview ? "…" : ""}</span>` +
+      `<span class="num">${escapeHtml(departure)}</span>` +
+      "</button>"
+    );
+  }
 
+  function renderReplayFocus(game, index) {
+    const kind = replayGameKind(game);
+    const meta = REPLAY_KINDS[kind];
+    const boardHtml = replayFocusBoardHtml(game, renderers);
+    const lichessLink = game.lichess_id
+      ? `<a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://lichess.org/${escapeHtml(game.lichess_id)}" title="Open on Lichess">lichess ↗</a>`
+      : "";
     const actions = [];
     if (kind === "user-error") {
-      actions.push(
-        `<button class="btn primary" data-act="train" data-index="${index}">Train</button>`
-      );
+      actions.push(`<button class="btn primary" data-act="train" data-index="${index}">Train</button>`);
     }
     if (kind === "left-prep" && game.repertoire_id) {
-      actions.push(
-        `<button class="btn primary" data-act="build" data-index="${index}">Add reply</button>`
-      );
+      actions.push(`<button class="btn primary" data-act="build" data-index="${index}">Add reply</button>`);
     }
     if ((game.move_san_history || []).length) {
-      actions.push(
-        `<button class="btn ghost" data-act="analyze" data-index="${index}">Analyze</button>`
-      );
+      actions.push(`<button class="btn" data-act="analyze" data-index="${index}">Analyze</button>`);
     }
-
-    const body = `<div class="replay-row-body">
-        <div class="replay-line">${renderReplayMoveLine(game)}</div>
-        <div class="replay-detail">${renderReplayDetail(game)}</div>
-        <div class="replay-actions">${actions.join("")}${lichessLink}</div>
-      </div>`;
-    const departure = game.departure_ply ? `Ply ${Number(game.departure_ply)}` : meta.departure || "—";
-    const card = `
-    <div class="replay-row rk-${kind}${open ? " is-open" : ""}">
-      <button type="button" class="replay-row-head" data-index="${index}" aria-pressed="${open}">
-        <span class="replay-badge rk-${kind}">${escapeHtml(meta.badge)}</span>
-        <span class="players">${players}</span>
-        <span class="replay-result ${replayResultClass(game)}">${escapeHtml(game.result || "*")}</span>
-        <span class="replay-preview">${escapeHtml(preview)}${preview ? "…" : ""}</span>
-        <span class="replay-departure">${escapeHtml(departure)}</span>
-      </button>
-    </div>
-  `;
-    return { card, body, players, meta, kind, game };
+    return (
+      `<section class="focus card" aria-label="Preparation detail">` +
+      `<div class="focus-top${boardHtml ? "" : " no-board"}">${boardHtml}` +
+      `<div class="focus-info"><div class="eyebrow">Preparation detail · ${escapeHtml(game.result || "*")}</div>` +
+      `<h2>${escapeHtml(game.white || "?")} vs ${escapeHtml(game.black || "?")}</h2>` +
+      `<i class="kind-badge t-${meta.tone}">${escapeHtml(meta.badge)}</i>` +
+      `<ul class="reasons">${renderReplayDetail(game)}</ul>` +
+      `<div class="actions">${actions.join("")}${lichessLink}</div></div></div>` +
+      `<div class="moveline">${renderReplayMoveLine(game)}</div>` +
+      `<div class="legend"><span><i class="k-inprep"></i>in prep</span>${
+        game.departure_ply ? `<span><i class="k-dep"></i>departure</span>` : ""
+      }${
+        kind === "user-error"
+          ? `<span><i class="k-arrow-good"></i>expected</span><span><i class="k-arrow-bad"></i>played</span>`
+          : ""
+      }</div></section>`
+    );
   }
 
   function renderReplayResults(payload) {
@@ -290,21 +295,28 @@ export function createReplayView({
     renderReplaySummary(payload);
     if (!payload || !payload.games || !payload.games.length) {
       container.innerHTML =
-        '<div class="empty-state">No recent games found.</div>';
+        '<div class="empty-state big"><div class="es-mark">♙</div><h3>No recent games found</h3></div>';
       return;
     }
     const filter = getReplayFilter();
     const rows = payload.games
       .map((game, index) => ({ game, index }))
       .filter(({ game }) => !filter || replayGameKind(game) === filter);
-    const selectedIndex = rows.find(({ index }) => isGameOpen(index))?.index ?? rows[0]?.index;
+    if (!rows.length) {
+      container.innerHTML =
+        '<div class="empty-state big"><div class="es-mark">♙</div><h3>No games in this bucket</h3></div>';
+      return;
+    }
+    const selectedIndex = rows.find(({ index }) => isGameOpen(index))?.index ?? rows[0].index;
     const focused = rows.find(({ index }) => index === selectedIndex);
-    const selected = focused ? renderReplayCard(focused.game, focused.index, selectedIndex) : null;
-    container.innerHTML = rows.length
-      ? `<div class="replay-triage"><div class="replay-ledger"><div class="replay-ledger-head"><h4>Games to review</h4><span>${rows.length} shown</span></div><div class="replay-ledger-columns" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>Opening</span><span>Departure</span></div><div class="replay-game-list">${rows.map(({ game, index }) => renderReplayCard(game, index, selectedIndex).card).join("")}</div></div><section class="replay-focus" aria-label="Selected game"><div class="replay-focus-top">${replayFocusBoardHtml(focused.game, renderers)}<div class="replay-focus-info"><div class="replay-focus-eyebrow">Preparation detail <span>${escapeHtml(focused.game.result || "*")}</span></div><h4>${selected.players}</h4><span class="replay-badge rk-${selected.kind}">${escapeHtml(selected.meta.badge)}</span>${selected.body}</div></div><div class="replay-legend"><span><i class="k-inprep"></i>in prep</span>${focused.game.departure_ply ? `<span><i class="k-dep"></i>departure</span>` : ""}${selected.kind === "user-error" ? `<span><i class="k-arrow-good"></i>expected</span><span><i class="k-arrow-bad"></i>played</span>` : ""}</div></section></div>`
-      : '<div class="empty-state">No games in this bucket.</div>';
-    container.querySelectorAll(".replay-row-head").forEach((head) => {
-      head.addEventListener("click", () => onToggleGame(Number(head.dataset.index)));
+    container.innerHTML =
+      `<div class="triage"><section class="ledger card" aria-label="Games to review">` +
+      `<header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} shown</span></header>` +
+      `<div class="ledger-table"><div class="lr head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>` +
+      rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex)).join("") +
+      `</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
+    container.querySelectorAll(".lr[data-index]").forEach((row) => {
+      row.addEventListener("click", () => onToggleGame(Number(row.dataset.index)));
     });
     container.querySelectorAll("[data-act]").forEach((btn) => {
       btn.addEventListener("click", (event) => {

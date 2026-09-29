@@ -39,6 +39,12 @@ function makeHarness({ nodes, currentNodeId, ownNodes = 0 }) {
   const bar = {
     hidden: true,
     innerHTML: "",
+    setAttribute: vi.fn(),
+    querySelectorAll: vi.fn(() => []),
+  };
+  const meta = {
+    hidden: true,
+    innerHTML: "",
     querySelectorAll: vi.fn(() => []),
   };
   const container = {
@@ -53,6 +59,7 @@ function makeHarness({ nodes, currentNodeId, ownNodes = 0 }) {
   const elements = {
     "build-rep-name": { innerHTML: "" },
     "build-branchbar": bar,
+    "build-tree-meta": meta,
     "builder-tree": container,
   };
   globalThis.document = {
@@ -82,7 +89,7 @@ function makeHarness({ nodes, currentNodeId, ownNodes = 0 }) {
       return { options, choiceId: picked.id };
     },
   });
-  return { view, bar, container, appState };
+  return { view, bar, container, meta, appState };
 }
 
 describe("build branch bar — practical share", () => {
@@ -126,7 +133,7 @@ describe("build branch bar — practical share", () => {
       currentNodeId: "root",
     });
     view.renderBuildBranchBar();
-    expect(bar.innerHTML).not.toContain("branch-share");
+    expect(bar.innerHTML).not.toContain("<small>");
   });
 });
 
@@ -147,14 +154,14 @@ describe("build tree — mastery legend", () => {
       id: "c6", depth: 2, parent_id: "e5", san: "c6", uci: "c7c6",
       move_side: "black", mastery: "weak",
     });
-    const { view, container } = makeHarness({
+    const { view, meta } = makeHarness({
       nodes: [makeNode({ id: "root" }), e5, c6],
       currentNodeId: "e5",
     });
     view.renderBuilderTree();
-    expect(container.innerHTML).toContain("build-mlegend");
-    expect(container.innerHTML).toContain("mastered");
-    expect(container.innerHTML).toContain("weak");
+    expect(meta.innerHTML).toContain("legend");
+    expect(meta.innerHTML).toContain("mastered");
+    expect(meta.innerHTML).toContain("weak");
   });
 
   it("omits the legend when nothing is trained yet", () => {
@@ -162,11 +169,11 @@ describe("build tree — mastery legend", () => {
       id: "e5", depth: 1, parent_id: "root", san: "e5", uci: "e7e5",
       move_side: "black", is_mainline: true, mastery: null,
     });
-    const { view, container } = makeHarness({
+    const { view, meta } = makeHarness({
       nodes: [makeNode({ id: "root" }), e5],
       currentNodeId: "root",
     });
     view.renderBuilderTree();
-    expect(container.innerHTML).not.toContain("build-mlegend");
+    expect(meta.innerHTML).not.toContain("legend");
   });
 });

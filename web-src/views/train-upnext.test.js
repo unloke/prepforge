@@ -74,7 +74,7 @@ describe("train up-next preview", () => {
     view.renderSmartProgress({ total_cards: 4, card_index: 0, kind: "due", targets_total: 1, target_index: 0 });
     const host = elements["train-upnext"];
     expect(host.hidden).toBe(false);
-    expect((host.innerHTML.match(/train-upnext-row/g) || []).length).toBe(3);
+    expect((host.innerHTML.match(/un-row/g) || []).length).toBe(3);
     expect(host.innerHTML).toContain("Weak spot");
     expect(host.innerHTML).toContain("London System");
     expect(host.innerHTML).toContain("Najdorf");

@@ -1446,7 +1446,7 @@ class EngineWidget {
       window.removeEventListener("pointerup", onUp);
     };
     this.head.addEventListener("pointerdown", (event) => {
-      if (event.target.closest("button")) return;
+      if (event.target.closest("button") || this.el.classList.contains("is-docked")) return;
       event.preventDefault();
       this.head.setPointerCapture(event.pointerId);
       dragging = true;
@@ -3252,9 +3252,109 @@ function syncTopbarTitle() {
   if (!title) return;
   if (appState.currentView === "replay") {
     title.textContent = appState.replaySection === "scout" ? "Scout" : "Games";
+  } else {
+    title.textContent = VIEW_TITLES[appState.currentView] || "PrepForge";
+  }
+  syncTopbarExtras();
+}
+
+// Analyze head: the loaded game's identity (PGN headers, else the recalled
+// analysis) in the panel head, and the plies + engine summary in the topbar.
+function analyzeHeaderTags(pgnText) {
+  const tags = {};
+  const re = /^\s*\[(\w+)\s+"([^"]*)"\]\s*$/gm;
+  let match;
+  while ((match = re.exec(pgnText)) !== null) tags[match[1]] = match[2];
+  return tags;
+}
+
+function syncAnalyzeHead() {
+  const title = document.getElementById("analysis-game-title");
+  const meta = document.getElementById("analysis-game-meta");
+  if (!title || !meta) return "";
+  const tags = analyzeHeaderTags(document.getElementById("pgn-input")?.value || "");
+  const analysis = appState.analysis;
+  const known = (v) => (v && !/^[?*.\s]+$/.test(v) ? v : "");
+  const white = known(tags.White) || known(analysis?.white);
+  const black = known(tags.Black) || known(analysis?.black);
+  const plies = analysis?.moves?.length || 0;
+  title.textContent = white || black ? `${white || "?"} vs ${black || "?"}` : "Analysis board";
+  const bits = [known(tags.Result) || known(analysis?.result), known(tags.Event) || known(analysis?.event), known(tags.Date)]
+    .filter(Boolean);
+  meta.textContent = bits.length
+    ? bits.join(" · ")
+    : plies
+      ? `${plies} plies`
+      : "Paste a PGN or play on the board";
+  if (!plies) return "Coach + engine review";
+  const engine = String(analysis.engine || "");
+  return `${plies} plies${engine ? ` · reviewed with ${engine.charAt(0).toUpperCase()}${engine.slice(1)}` : ""}`;
+}
+
+// Per-view topbar extras: a one-line context summary next to the title, plus
+// Repertoire's Generate action and Analyze's Engine / My last game / Analyze.
+function syncTopbarExtras() {
+  const isBuild = appState.currentView === "build";
+  const isAnalyze = appState.currentView === "analyze";
+  const analyzeActions = document.getElementById("analyze-actions");
+  if (analyzeActions) analyzeActions.hidden = !isAnalyze;
+  const generate = document.getElementById("build-generate-node");
+  if (generate) {
+    generate.hidden = !isBuild;
+    const slot = generate.closest(".tb-actions");
+    if (slot) slot.hidden = !isBuild;
+  }
+  const sub = document.getElementById("topbar-sub");
+  if (isAnalyze) {
+    const text = syncAnalyzeHead();
+    if (sub) {
+      sub.textContent = text;
+      sub.hidden = !text;
+    }
     return;
   }
-  title.textContent = VIEW_TITLES[appState.currentView] || "PrepForge";
+  if (!sub) return;
+  if (appState.currentView === "train") {
+    const smart = appState.smart;
+    const card = smart && smart.queue && smart.queue[smart.cardIndex];
+    const live = (card && card.repertoire_name) || (smart && smart.repertoireName) ||
+      (appState.training && appState.training.repertoire_name) || "";
+    const text = appState.trainMode === "play" ? "Play against your book" : live;
+    sub.textContent = text;
+    sub.hidden = !text;
+    return;
+  }
+  if (appState.currentView === "teams" || appState.currentView === "settings") {
+    sub.textContent = appState.currentView === "teams" ? "Shared preparation" : "Account, engine and board";
+    sub.hidden = false;
+    return;
+  }
+  if (appState.currentView === "replay") {
+    if (appState.replaySection !== "scout") {
+      sub.textContent = "Did your recent games stay in prep?";
+    } else {
+      // "<opponent> · N games" once a scout has games (read from the rendered profile).
+      const name = document.querySelector("#scout-profile:not([hidden]) .scout-username-link")?.dataset.username;
+      const n = Number(document.getElementById("scout-live-count")?.textContent) || 0;
+      sub.textContent = name && n ? `${name} · ${n} game${n === 1 ? "" : "s"}` : "Opponent preparation";
+    }
+    sub.hidden = false;
+    return;
+  }
+  sub.hidden = !isBuild;
+  if (!isBuild) return;
+  const build = appState.build;
+  if (!build) {
+    sub.textContent = "Workspace";
+  } else if (isBuildReadOnly()) {
+    sub.textContent = "Shared repertoire · read-only";
+  } else {
+    const played = build.nodes.filter((n) => n.depth > 0);
+    const parents = new Set(build.nodes.map((n) => n.parent_id));
+    const lines = played.filter((n) => !parents.has(n.id)).length;
+    sub.textContent =
+      `${lines} line${lines === 1 ? "" : "s"} · ${played.length} move${played.length === 1 ? "" : "s"}`;
+  }
 }
 
 function switchView(name, { fromUrl = false } = {}) {
@@ -3337,7 +3437,15 @@ function switchView(name, { fromUrl = false } = {}) {
     if (appState.signedIn) loadTeams().catch(() => { /* best-effort */ });
   }
   // The engine widget is shared across tabs: it stays open while navigating and
-  // re-syncs to whichever board the new tab shows (Analyze or Build).
+  // re-syncs to whichever board the new tab shows (Analyze or Build). In Build
+  // it docks into the inspector's Engine tab; elsewhere it floats.
+  if (name === "build") {
+    if (engineWidget.isOpen()) setBuildInspector("engine");
+    else if (buildDockTab === "engine") setBuildInspector("explorer");
+    scheduleExplorerRefresh();
+  } else {
+    undockEngine();
+  }
   if (engineWidget && engineWidget.isOpen && engineWidget.isOpen()) {
     if (name === "analyze" || name === "build") engineWidget.onBoardChanged();
   }
@@ -3387,22 +3495,12 @@ function setPieceStyle(style) {
 function renderPieceStylePicker() {
   const host = document.getElementById("piece-style-picker");
   if (!host) return;
-  const sample = ["K", "Q", "N", "p"];
   host.innerHTML = Object.keys(PIECE_SETS)
     .map((style) => {
-      const active = style === appState.pieceStyle ? " is-active" : "";
-      const set = PIECE_SETS[style];
-      const previews = sample
-        .map((pc) => {
-          const colorClass = pc === pc.toUpperCase() ? "piece-white" : "piece-black";
-          return `<svg class="piece ${colorClass}" viewBox="0 0 45 45" aria-hidden="true"><g>${set[pc.toLowerCase()]}</g></svg>`;
-        })
-        .join("");
+      const active = style === appState.pieceStyle;
       return (
-        `<button type="button" class="piece-style-option${active}" data-style="${escapeHtml(style)}">` +
-        `<span class="piece-style-preview">${previews}</span>` +
-        `<span class="piece-style-name">${escapeHtml(PIECE_STYLE_LABELS[style] || style)}</span>` +
-        `</button>`
+        `<button type="button" class="seg-btn piece-style-option${active ? " is-active" : ""}" data-style="${escapeHtml(style)}" aria-pressed="${active}">` +
+        `${escapeHtml(PIECE_STYLE_LABELS[style] || style)}</button>`
       );
     })
     .join("");
@@ -3427,7 +3525,7 @@ function renderPrefsToggles() {
       );
     })
     .join("");
-  host.querySelectorAll(".pf-feedback .pf-switch").forEach((btn) => {
+  host.querySelectorAll(".pf-switch").forEach((btn) => {
     btn.addEventListener("click", () => {
       const key = btn.dataset.pref;
       setPref(key, !pref(key));
@@ -4330,11 +4428,9 @@ async function openTeamDetail(teamId) {
   renderTeamsList(); // reflect the selected row
   const card = document.getElementById("team-detail-card");
   const membersEl = document.getElementById("team-members");
-  const foot = document.getElementById("team-detail-foot");
   if (!card || !membersEl) return;
   card.hidden = false;
   membersEl.innerHTML = '<div class="empty-state">Loading…</div>';
-  if (foot) foot.innerHTML = "";
   let detail;
   try {
     detail = await api(`/api/teams/${encodeURIComponent(teamId)}`);
@@ -4346,7 +4442,10 @@ async function openTeamDetail(teamId) {
   const canManage = myRole === "owner" || myRole === "admin";
   document.getElementById("team-detail-name").textContent = detail.name;
   const roleBadge = document.getElementById("team-detail-role");
-  if (roleBadge) roleBadge.textContent = teamRoleLabel(myRole);
+  if (roleBadge) {
+    roleBadge.textContent = teamRoleLabel(myRole);
+    roleBadge.className = `team-role-badge r-${myRole}`;
+  }
   const addBtn = document.getElementById("team-add-member");
   if (addBtn) {
     addBtn.hidden = !canManage;
@@ -4383,7 +4482,8 @@ async function openTeamDetail(teamId) {
   membersEl.innerHTML = members
     .map((m) => {
       const name = escapeHtml(m.display_name || m.lichess_username || "Member");
-      const sub = m.lichess_username ? ` <span class="sub">· ${escapeHtml(m.lichess_username)}</span>` : "";
+      const sub = m.lichess_username ? `<span class="sub">· ${escapeHtml(m.lichess_username)}</span>` : "";
+      const initial = escapeHtml(Array.from(m.display_name || m.lichess_username || "M")[0].toUpperCase());
       const isMe = m.user_id === appState.accountUserId;
       const isOwner = m.role === "owner";
       const uid = escapeHtml(m.user_id);
@@ -4394,7 +4494,7 @@ async function openTeamDetail(teamId) {
       // enforces all of this too.
       let tail;
       if (isOwner) {
-        tail = `<span class="team-role-badge sm">${escapeHtml(teamRoleLabel("owner"))}</span>`;
+        tail = `<span class="team-role-badge r-owner">${escapeHtml(teamRoleLabel("owner"))}</span>`;
       } else if (canManage) {
         const opts = ["member", "admin"]
           .map(
@@ -4408,11 +4508,12 @@ async function openTeamDetail(teamId) {
         const leaveBtn = isMe
           ? `<button type="button" class="ib team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="1">Leave</button>`
           : "";
-        tail = `<span class="team-role-badge sm">${escapeHtml(teamRoleLabel(m.role))}</span>${leaveBtn}`;
+        tail = `<span class="team-role-badge r-${escapeHtml(m.role)}">${escapeHtml(teamRoleLabel(m.role))}</span>${leaveBtn}`;
       }
       return `
-        <div class="list-item team-member-row">
-          <span><span class="name">${name}${isMe ? ' <span class="sub">(you)</span>' : ""}</span>${sub}</span>
+        <div class="mem-row team-member-row">
+          <span class="avatar" aria-hidden="true">${initial}</span>
+          <span class="mem-id"><span class="name">${name}${isMe ? ' <span class="sub">(you)</span>' : ""}</span>${sub}</span>
           <span class="team-member-tail">${tail}</span>
         </div>`;
     })
@@ -4791,15 +4892,15 @@ async function loadSharedRepertoires() {
         const team = teamById(item.team_id);
         const via = `via ${escapeHtml(team ? team.name : "a team")}`;
         return `
-          <div class="list-item shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}">
-            <span>
-              <span class="color-dot ${color}"></span>
+          <div class="mem-row shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}">
+            <span class="color-dot ${color}"></span>
+            <span class="mem-id">
               <span class="name">${name}</span>
-              <span class="sub"> · ${via}</span>
+              <span class="sub">· ${via}</span>
             </span>
             <span class="team-member-tail">
-              <span class="team-role-badge sm">read-only</span>
-              <button type="button" class="ib team-copy" data-rep-id="${id}">Copy</button>
+              <span class="team-role-badge">read-only</span>
+              <button type="button" class="btn sm team-copy" data-rep-id="${id}">Copy</button>
             </span>
           </div>`;
       })
@@ -5118,6 +5219,7 @@ function removeReadOnlyBanner() {
   const banner = document.getElementById("shared-banner");
   if (banner) banner.remove();
   syncCoverageReadOnlyState();
+  syncTopbarExtras();
 }
 
 function syncCoverageReadOnlyState() {
@@ -5135,11 +5237,24 @@ function syncCoverageReadOnlyState() {
       coverageController = null;
       jobToast.cancelJob("Scan stopped");
     }
-    setBuildInspector(null);
-    if (gapsEl) gapsEl.innerHTML = "";
-    if (scoreEl) scoreEl.hidden = true;
+    if (gapsEl) gapsEl.innerHTML = COVERAGE_IDLE_HINT;
+    if (scoreEl) {
+      delete scoreEl.dataset.ready;
+      scoreEl.hidden = true;
+    }
     coverageGaps = [];
+    paintCoverageCount();
   }
+}
+
+const COVERAGE_IDLE_HINT =
+  '<div class="muted hint">Scan to find the human moves this repertoire doesn\'t answer yet.</div>';
+
+function paintCoverageCount() {
+  const badge = document.getElementById("build-coverage-count");
+  if (!badge) return;
+  badge.hidden = !coverageGaps.length;
+  badge.textContent = String(coverageGaps.length);
 }
 
 function coverageScanStillValid(scanRepId) {
@@ -5762,7 +5877,10 @@ async function ensureMoveTreeRenderer() {
 }
 
 async function renderAnalysis(payload) {
-  return (await ensureAnalyzeView()).renderAnalysis(payload);
+  const view = await ensureAnalyzeView();
+  const rendered = view.renderAnalysis(payload);
+  syncTopbarExtras();
+  return rendered;
 }
 
 // Inline badge symbols so move badges render correctly before analyze.js loads.
@@ -5852,6 +5970,7 @@ async function showAnalysisPly(ply) {
     ? `${move.move_number}${move.side === "black" ? "..." : "."} ${move.san}`
     : "Initial position";
   highlightCurrentMove();
+  syncTopbarExtras();
   refreshAnalysisExplain({
     fen,
     lastUci: move ? move.uci : null,
@@ -6224,6 +6343,7 @@ async function ensureBuildView() {
       selectBuildNode,
       openNodeContextMenu,
       buildBranchContext,
+      onTreeRendered: syncTopbarExtras,
     });
   }
   return buildView;
@@ -6386,52 +6506,89 @@ let explorerSeq = 0;
 
 function explorerDrawerOpen() {
   const panel = document.getElementById("explorer-drawer");
-  return !!(panel && !panel.hidden);
+  return !!(panel && !panel.hidden && activeViewName() === "build");
+}
+
+const BUILD_DOCK_TABS = ["explorer", "coverage", "engine"];
+let buildDockTab = "explorer";
+let engineHome = null;
+
+// Engine tab: the shared engine widget docks into the inspector instead of
+// floating over the board. It floats again everywhere else (Analyze).
+function dockEngine() {
+  const el = document.getElementById("engine-window");
+  const slot = document.getElementById("engine-drawer");
+  if (!el || !slot || el.classList.contains("is-docked")) return;
+  engineHome = { parent: el.parentNode, next: el.nextSibling };
+  for (const prop of ["left", "top", "right", "width", "height"]) el.style.removeProperty(prop);
+  el.classList.add("is-docked");
+  slot.appendChild(el);
+}
+
+function undockEngine() {
+  const el = document.getElementById("engine-window");
+  if (!el || !el.classList.contains("is-docked") || !engineHome) return;
+  el.classList.remove("is-docked");
+  engineHome.parent.insertBefore(el, engineHome.next);
+  engineHome = null;
 }
 
 function setBuildInspector(tool) {
-  const inspector = document.getElementById("build-inspector");
-  const title = document.getElementById("build-inspector-title");
-  const dbs = document.getElementById("inspector-dbs");
-  const info = document.getElementById("inspector-info");
-  const scan = document.getElementById("coverage-run");
+  const tab = BUILD_DOCK_TABS.includes(tool) ? tool : buildDockTab;
   const panels = {
     explorer: document.getElementById("explorer-drawer"),
     coverage: document.getElementById("coverage-drawer"),
+    engine: document.getElementById("engine-drawer"),
   };
   const buttons = {
     explorer: document.getElementById("build-tool-explorer"),
     coverage: document.getElementById("build-tool-coverage"),
+    engine: document.getElementById("build-tool-engine"),
   };
-  const active = tool && panels[tool] && panels[tool].hidden ? tool : null;
-  Object.entries(panels).forEach(([name, panel]) => {
-    if (panel) panel.hidden = name !== active;
-    buttons[name]?.setAttribute("aria-expanded", String(name === active));
+  const wasEngine = buildDockTab === "engine";
+  buildDockTab = tab;
+  BUILD_DOCK_TABS.forEach((name) => {
+    const on = name === tab;
+    if (panels[name]) panels[name].hidden = !on;
+    const button = buttons[name];
+    if (!button) return;
+    button.classList.toggle("is-active", on);
+    button.setAttribute("aria-selected", String(on));
+    button.tabIndex = on ? 0 : -1;
   });
-  if (inspector) inspector.hidden = !active;
-  if (title) {
-    title.textContent = active === "explorer"
-      ? "Explorer"
-      : active === "coverage" ? "Coverage" : "";
-  }
-  if (dbs) dbs.hidden = active !== "explorer";
-  if (info) info.hidden = !active;
+  const tools = document.getElementById("build-dock-tools");
+  const dbs = document.getElementById("inspector-dbs");
+  const opening = document.getElementById("explorer-opening");
+  const info = document.getElementById("inspector-info");
+  const scan = document.getElementById("coverage-run");
+  const score = document.getElementById("coverage-score");
+  if (tools) tools.hidden = tab === "engine";
+  if (dbs) dbs.hidden = tab !== "explorer";
+  if (opening) opening.hidden = tab !== "explorer";
+  if (info) info.hidden = tab === "engine";
+  if (score) score.hidden = tab !== "coverage" || !score.dataset.ready;
   if (scan) {
     const readOnly = typeof isBuildReadOnly === "function" && isBuildReadOnly();
-    scan.hidden = active !== "coverage";
+    scan.hidden = tab !== "coverage";
     scan.disabled = readOnly;
     scan.title = readOnly ? "Read-only — copy to your account first" : "Scan coverage with Maia3";
   }
-  if (active) paintInspectorScope();
-  if (active === "explorer") refreshExplorerPanel();
+  if (tab === "engine") {
+    dockEngine();
+    if (!engineWidget.isOpen()) void engineWidget.openForCurrent();
+  } else if (wasEngine) {
+    if (engineWidget.isOpen()) void engineWidget.close();
+    const el = document.getElementById("engine-window");
+    if (el) el.hidden = true;
+    undockEngine();
+  }
+  if (tab !== "engine") paintInspectorScope();
+  if (tab === "explorer") refreshExplorerPanel();
 }
 
 // Compact scope line for the ⓘ popover: what the panel shows, nothing more.
 function inspectorScopeText() {
-  const active = document.getElementById("explorer-drawer")?.hidden === false
-    ? "explorer"
-    : "coverage";
-  if (active === "coverage") {
+  if (buildDockTab === "coverage") {
     return "Share of real human play at your strength that this repertoire answers.";
   }
   if (explorerDb !== "lichess") return "Master games.";
@@ -6464,7 +6621,7 @@ function onInspectorInfo() {
   pop.id = "inspector-info-pop";
   pop.setAttribute("role", "status");
   pop.textContent = text;
-  const head = document.querySelector(".build-inspector-head");
+  const head = document.getElementById("build-dock-tools");
   (head || info.parentElement).appendChild(pop);
   window.setTimeout(() => pop?.remove(), 4000);
 }
@@ -6535,14 +6692,17 @@ function renderExplorerRows(stats) {
       .filter((n) => n.parent_id === current && n.depth > 0)
       .map((n) => n.uci),
   );
-  rows.innerHTML = stats.moves
+  const pct = (n) => (n >= 14 ? `${n}%` : "");
+  rows.innerHTML =
+    '<div class="explorer-head" aria-hidden="true"><span>Move</span><span>Games</span><span>White / Draw / Black</span></div>' +
+    stats.moves
     .map(
       (m) => `
     <button type="button" class="explorer-row" data-uci="${escapeHtml(m.uci)}" title="Add ${escapeHtml(m.san)} to the repertoire">
       <span class="explorer-san">${escapeHtml(m.san)}${inRep.has(m.uci) ? '<span class="explorer-inrep" title="In your repertoire">&#9679;</span>' : ""}</span>
       <span class="explorer-games">${explorerModule.formatGames(m.total)}</span>
       <span class="explorer-bar" aria-label="White ${m.whitePct}% / draw ${m.drawPct}% / Black ${m.blackPct}%">
-        <span class="explorer-bar-w" style="width:${m.whitePct}%"></span><span class="explorer-bar-d" style="width:${m.drawPct}%"></span><span class="explorer-bar-b" style="width:${m.blackPct}%"></span>
+        <span class="explorer-bar-w" style="width:${m.whitePct}%">${pct(m.whitePct)}</span><span class="explorer-bar-d" style="width:${m.drawPct}%">${pct(m.drawPct)}</span><span class="explorer-bar-b" style="width:${m.blackPct}%">${pct(m.blackPct)}</span>
       </span>
     </button>`,
     )
@@ -6555,11 +6715,17 @@ function renderExplorerRows(stats) {
 function renderBuilderTreeEmptyState() {
   const container = document.getElementById("builder-tree");
   const branchBar = document.getElementById("build-branchbar");
+  const meta = document.getElementById("build-tree-meta");
   if (!container) return;
+  if (meta) {
+    meta.hidden = true;
+    meta.innerHTML = "";
+  }
   container.innerHTML =
-    '<div class="empty-state">No repertoire open. Pick one from the Dashboard, or play a move to start.</div>';
+    '<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>';
   if (branchBar) branchBar.hidden = true;
   if (boards.build) boards.build.setBranchArrows([]);
+  syncTopbarExtras();
 }
 
 function renderBuilderTree() {
@@ -8132,6 +8298,18 @@ function syncTrainPickerVisibility() {
   if (srs) srs.hidden = play;
   if (playSetup) playSetup.hidden = !play;
   if (blitzRow) blitzRow.hidden = mode !== "smart";
+  const setupTitle = document.getElementById("train-setup-title");
+  const setupBlurb = document.getElementById("train-setup-blurb");
+  if (setupTitle) {
+    setupTitle.hidden = play;
+    setupTitle.textContent = smart ? "Smart queue" : "Line rehearsal";
+  }
+  if (setupBlurb) {
+    setupBlurb.hidden = play;
+    setupBlurb.textContent = smart
+      ? "Mixed over all your active repertoires. Weak spots and due reviews first, then new moves, then polish."
+      : "Play every line of one repertoire start to finish, in order.";
+  }
   if (play) {
     if (progress) progress.hidden = true;
     if (summary) summary.hidden = true;
@@ -8197,6 +8375,7 @@ function syncTrainSessionControls() {
       : "Skip this card";
   }
   if (fresh) fresh.disabled = !(appState.smart || appState.training);
+  syncTopbarExtras();
   if (blitzToggle) {
     blitzToggle.disabled = !!appState.smart;
     blitzToggle.classList.toggle("is-on", blitzEnabled());
@@ -10731,7 +10910,7 @@ function clearJoinParam() {
 }
 
 function readOnlyBannerText(payload) {
-  return `<b>${escapeHtml(payload.name)}</b> &middot; shared with you (read-only)`;
+  return `<b>Read-only &middot; ${escapeHtml(payload.name)} &middot; shared with you</b>`;
 }
 
 function renderReadOnlyBanner(payload) {
@@ -10747,10 +10926,12 @@ function renderReadOnlyBanner(payload) {
   banner.innerHTML = `
     <div class="shared-banner-text">
       ${readOnlyBannerText(payload)}
+      <span>You can browse and train from it. Copy it to edit, generate or scan coverage.</span>
     </div>
-    <button class="btn primary" id="shared-fork-btn" data-testid="shared-fork-btn">Copy to my account</button>
+    <button class="btn primary sm" id="shared-fork-btn" data-testid="shared-fork-btn">Copy to my account</button>
   `;
   document.getElementById("shared-fork-btn").addEventListener("click", forkReadableRepertoire);
+  syncTopbarExtras();
 }
 
 function renderSharedBanner(payload) {
@@ -10865,18 +11046,21 @@ async function runCoverageScanUI() {
 function renderCoverageResult(result, rating) {
   const score = document.getElementById("coverage-score");
   if (score) {
-    score.hidden = false;
+    score.dataset.ready = "1";
+    score.hidden = buildDockTab !== "coverage";
     score.textContent = `${Math.round(result.coverage * 100)}% covered at ~${rating}${result.truncated ? " (partial scan)" : ""}`;
   }
   const gapsEl = document.getElementById("coverage-gaps");
   if (!gapsEl) return;
   if (!result.gaps.length) {
     coverageGaps = [];
+    paintCoverageCount();
     gapsEl.innerHTML = '<div class="muted hint">No notable holes found - the likely human moves all have an answer.</div>';
     return;
   }
   // Keep the gaps so the batch-complete handler can map checkboxes back to {nodeId, moveUci}.
   coverageGaps = result.gaps.slice();
+  paintCoverageCount();
   // Gmail-style multi-select: every gap starts checked, the user unchecks any line they
   // don't want, then "Complete" auto-builds a real reply (≥2 of my own moves deep) for the rest.
   const rows = coverageGaps
@@ -11056,6 +11240,7 @@ async function ensureScoutView() {
       escapeHtml,
       setStatus,
       switchView,
+      syncTopbar: syncTopbarExtras,
       api,
       showInputModal,
       createRepertoirePrompt,
@@ -11420,11 +11605,23 @@ function bindEvents() {
     });
   }
   document.getElementById("inspector-info")?.addEventListener("click", onInspectorInfo);
-  document.getElementById("build-tool-explorer")?.addEventListener("click", () => {
-    setBuildInspector("explorer");
-  });
-  document.getElementById("build-tool-coverage")?.addEventListener("click", () => {
-    setBuildInspector("coverage");
+  const dockTabs = { explorer: "build-tool-explorer", coverage: "build-tool-coverage", engine: "build-tool-engine" };
+  Object.entries(dockTabs).forEach(([name, id]) => {
+    const tab = document.getElementById(id);
+    if (!tab) return;
+    tab.addEventListener("click", () => {
+      if (buildDockTab !== name) setBuildInspector(name);
+    });
+    tab.addEventListener("keydown", (event) => {
+      const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+      const at = BUILD_DOCK_TABS.indexOf(name);
+      const next = event.key === "Home" ? 0 : event.key === "End" ? BUILD_DOCK_TABS.length - 1
+        : step ? (at + step + BUILD_DOCK_TABS.length) % BUILD_DOCK_TABS.length : -1;
+      if (next < 0) return;
+      event.preventDefault();
+      setBuildInspector(BUILD_DOCK_TABS[next]);
+      document.getElementById(dockTabs[BUILD_DOCK_TABS[next]])?.focus();
+    });
   });
 
   // Drag-and-drop: a PGN onto the Analyze box loads it; a PGN/JSON onto the
@@ -11437,6 +11634,7 @@ function bindEvents() {
   if (pgnInput) {
     pgnInput.addEventListener("input", () => {
       if (analyzePgnWriting) return;
+      syncTopbarExtras();
       clearTimeout(analyzePgnInputTimer);
       analyzePgnInputTimer = setTimeout(() => {
         void loadPgnIntoAnalyze(pgnInput.value, { goToEnd: true, quiet: true }).catch(
@@ -11447,9 +11645,6 @@ function bindEvents() {
   }
   document
     .getElementById("open-engine-widget")
-    .addEventListener("click", () => engineWidget.openForCurrent());
-  document
-    .getElementById("open-engine-widget-build")
     .addEventListener("click", () => engineWidget.openForCurrent());
   bindEvalChart();
   document.getElementById("analysis-start").addEventListener("click", () => {

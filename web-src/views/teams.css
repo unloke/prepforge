@@ -1,38 +1,224 @@
-/* Teams detail workspace — ui-prototype-v2 sheet: Members / Shared
-   repertoires are two tabs over ONE panel (the prototype's `.tabs` row with
-   count chips); the invite-link status is a footer line under the tabs. */
+/* Teams — Opus prototype composition. Lazy-loaded with the Teams view
+   (teams.js). The eager styles.css owns the page grid (directory | detail |
+   incoming shares); this sheet owns the cards, rows, tabs and the responsive
+   collapse. Members / Shared repertoires are two tabs over ONE panel with real
+   counts on the tabs and the invite status as a footer line. */
 
-/* Tab counts — prototype "Members 3" chips, hidden when zero (no fake data). */
-.team-tab-count {
-  display: inline-block;
-  min-width: 18px;
-  margin-left: 6px;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--panel-soft);
-  border: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
+.teams .card {
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
 }
-.team-tab-count[hidden] { display: none; }
-#view-teams .team-workspace-tabs button.is-active .team-tab-count {
+.teams .card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.teams .card-head h2 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+}
+.teams .spacer { flex: 1; }
+.teams .hint { margin: 0; padding: 6px 12px; }
+.teams .empty-state { margin: 10px 12px; }
+.teams .sub {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+/* ---- Directory ---------------------------------------------------------- */
+
+.dir .search-field {
+  width: auto;
+  margin: 10px 12px;
+}
+.team-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+}
+.team-row:hover { background: var(--surface-2); }
+.team-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.team-row.is-selected {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.tr-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.team-row .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.team-role-badge {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+.team-role-badge.r-owner { background: var(--warn-soft); color: var(--warn-text); }
+.team-role-badge.r-admin { background: var(--info-soft); color: var(--info); }
+/* "read-only" on an incoming share is a plain note chip, not a role. */
+.incoming .team-role-badge {
+  border-radius: 4px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: none;
+}
+
+/* ---- Team detail -------------------------------------------------------- */
+
+.team-detail[hidden] { display: none; }
+.teams:has(.team-detail:not([hidden])) .team-empty { display: none; }
+.teams .tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.teams .tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: -1px;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: 600;
+  cursor: pointer;
+}
+.teams .tabs button.is-active {
+  border-bottom-color: var(--accent);
   color: var(--text);
-  border-color: var(--accent-line);
 }
+.teams .tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.teams .tabs .count[hidden] { display: none; }
+[data-team-panel][hidden] { display: none; }
 
-/* One panel at a time under the tabs (the two <section>s stay in the DOM for
-   state; only the active one shows). */
-#view-teams .team-detail-columns > section[hidden] { display: none; }
-#view-teams .team-detail-columns > section:not([hidden]) { min-width: 0; }
-
-/* Invite footer — prototype `footer.faint.small` under the detail card. */
-.team-invite-foot {
-  margin-top: 14px;
-  padding-top: 10px;
-  border-top: 1px solid var(--line-soft);
+.sub-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px 4px;
+}
+.mem-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--line);
+}
+.mem-id {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+  min-width: 0;
+}
+.mem-id .name { font-weight: 700; overflow-wrap: anywhere; }
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.team-member-tail {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+.team-role-select {
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-s);
+  cursor: pointer;
+}
+.team-remove {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 13px;
   color: var(--muted);
-  font-size: 11px;
+}
+.team-remove:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.team-shared-rep-row,
+.shared-rep-row { cursor: pointer; }
+.team-shared-rep-row:hover,
+.shared-rep-row:hover { background: var(--surface-2); }
+.team-shared-rep-row:focus-visible,
+.shared-rep-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Invite footer — one muted line under the panel. */
+.team-invite-foot {
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-s);
 }
 .team-invite-foot[hidden] { display: none; }
+
+/* ---- Empty + incoming --------------------------------------------------- */
+
+.teams .team-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 48px 24px;
+  text-align: center;
+}
+.team-empty h3 { margin: 0; }
+.team-empty p { margin: 0; }
+
+/* ---- Responsive --------------------------------------------------------- */
+
+@media (max-width: 760px) {
+  .teams .btn.sm,
+  .teams .ib,
+  .team-role-select,
+  .teams .tabs button { min-height: 44px; }
+  .teams .card-head { flex-wrap: wrap; }
+  .mem-row { flex-wrap: wrap; }
+  .team-member-tail { margin-left: auto; }
+}
