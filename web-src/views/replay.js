@@ -312,7 +312,7 @@ export function createReplayView({
     container.innerHTML =
       `<div class="triage"><section class="ledger card" aria-label="Games to review">` +
       `<header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} shown</span></header>` +
-      `<div class="ledger-table"><div class="lr head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>Opening</span><span>Departure</span></div>` +
+      `<div class="ledger-table"><div class="lr head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>` +
       rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex)).join("") +
       `</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
     container.querySelectorAll(".lr[data-index]").forEach((row) => {
