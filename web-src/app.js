@@ -3255,11 +3255,12 @@ function syncTopbarTitle() {
   } else {
     title.textContent = VIEW_TITLES[appState.currentView] || "PrepForge";
   }
-  syncBuildTopbar();
+  syncTopbarExtras();
 }
 
-// Repertoire's topbar extras: a one-line size summary and the Generate action.
-function syncBuildTopbar() {
+// Per-view topbar extras: a one-line context summary next to the title, plus
+// Repertoire's Generate action.
+function syncTopbarExtras() {
   const isBuild = appState.currentView === "build";
   const generate = document.getElementById("build-generate-node");
   if (generate) {
@@ -3269,6 +3270,16 @@ function syncBuildTopbar() {
   }
   const sub = document.getElementById("topbar-sub");
   if (!sub) return;
+  if (appState.currentView === "train") {
+    const smart = appState.smart;
+    const card = smart && smart.queue && smart.queue[smart.cardIndex];
+    const live = (card && card.repertoire_name) || (smart && smart.repertoireName) ||
+      (appState.training && appState.training.repertoire_name) || "";
+    const text = appState.trainMode === "play" ? "Play against your book" : live;
+    sub.textContent = text;
+    sub.hidden = !text;
+    return;
+  }
   sub.hidden = !isBuild;
   if (!isBuild) return;
   const build = appState.build;
@@ -5154,7 +5165,7 @@ function removeReadOnlyBanner() {
   const banner = document.getElementById("shared-banner");
   if (banner) banner.remove();
   syncCoverageReadOnlyState();
-  syncBuildTopbar();
+  syncTopbarExtras();
 }
 
 function syncCoverageReadOnlyState() {
@@ -6274,7 +6285,7 @@ async function ensureBuildView() {
       selectBuildNode,
       openNodeContextMenu,
       buildBranchContext,
-      onTreeRendered: syncBuildTopbar,
+      onTreeRendered: syncTopbarExtras,
     });
   }
   return buildView;
@@ -6656,7 +6667,7 @@ function renderBuilderTreeEmptyState() {
     '<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>';
   if (branchBar) branchBar.hidden = true;
   if (boards.build) boards.build.setBranchArrows([]);
-  syncBuildTopbar();
+  syncTopbarExtras();
 }
 
 function renderBuilderTree() {
@@ -8229,6 +8240,18 @@ function syncTrainPickerVisibility() {
   if (srs) srs.hidden = play;
   if (playSetup) playSetup.hidden = !play;
   if (blitzRow) blitzRow.hidden = mode !== "smart";
+  const setupTitle = document.getElementById("train-setup-title");
+  const setupBlurb = document.getElementById("train-setup-blurb");
+  if (setupTitle) {
+    setupTitle.hidden = play;
+    setupTitle.textContent = smart ? "Smart queue" : "Line rehearsal";
+  }
+  if (setupBlurb) {
+    setupBlurb.hidden = play;
+    setupBlurb.textContent = smart
+      ? "Mixed over all your active repertoires. Weak spots and due reviews first, then new moves, then polish."
+      : "Play every line of one repertoire start to finish, in order.";
+  }
   if (play) {
     if (progress) progress.hidden = true;
     if (summary) summary.hidden = true;
@@ -8294,6 +8317,7 @@ function syncTrainSessionControls() {
       : "Skip this card";
   }
   if (fresh) fresh.disabled = !(appState.smart || appState.training);
+  syncTopbarExtras();
   if (blitzToggle) {
     blitzToggle.disabled = !!appState.smart;
     blitzToggle.classList.toggle("is-on", blitzEnabled());
@@ -10849,7 +10873,7 @@ function renderReadOnlyBanner(payload) {
     <button class="btn primary sm" id="shared-fork-btn" data-testid="shared-fork-btn">Copy to my account</button>
   `;
   document.getElementById("shared-fork-btn").addEventListener("click", forkReadableRepertoire);
-  syncBuildTopbar();
+  syncTopbarExtras();
 }
 
 function renderSharedBanner(payload) {

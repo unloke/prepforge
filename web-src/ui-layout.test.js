@@ -57,7 +57,7 @@ describe("workspace chrome layout", () => {
     const trainStart = html.indexOf('id="view-train"');
     const train = html.slice(trainStart);
     expect(train).toContain('id="train-banner"');
-    expect(train).toContain('class="train-coach"');
+    expect(train).toContain('class="coach-banner train-coach"');
     expect(train).toContain('id="train-banner-title"');
     expect(train).toContain('id="train-banner-sub"');
     expect(train).toContain('id="train-turn-badge"');
@@ -66,8 +66,9 @@ describe("workspace chrome layout", () => {
     expect(boardArea).toContain('id="train-board"');
     const sidebar = train.slice(train.indexOf('train-sidebar'));
     expect(sidebar.indexOf('id="train-banner"')).toBeGreaterThanOrEqual(0);
-    expect(sidebar.indexOf('id="train-blitz"')).toBeGreaterThan(sidebar.indexOf('id="train-banner"'));
-    expect(css).toContain("#view-train .train-sidebar .train-blitz-float");
+    // The blitz clock overlays the board's top edge (never in flow), so the board cannot move.
+    expect(boardArea).toContain('id="train-blitz"');
+    expect(ruleBody(".blitz-bar")).toMatch(/position:\s*absolute/);
     expect(css).toContain(".train-coach-title");
     expect(css).toContain(".train-coach-sub");
   });
@@ -352,7 +353,8 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".sidebar")).toMatch(/overflow:\s*visible/);
     expect(ruleBody(".sidebar")).not.toMatch(/overflow-y/);
     expect(css).toMatch(/#analyze-sidebar[\s\S]{0,300}?overflow-y:\s*auto/);
-    expect(css).toMatch(/#view-train \.train-sidebar[\s\S]{0,300}?overflow-y:\s*auto/);
+    expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
+    expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,120}?overflow:\s*hidden/);
     // Panels that need independent scroll keep it: coach prose, inspector,
     // move lists, composer rows/popover, context menus.
     expect(ruleBody(".coach-scroll")).toMatch(/overflow-y:\s*auto/);

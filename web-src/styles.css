@@ -2381,8 +2381,7 @@ h2 {
 /* Right workspace: a fixed column that scrolls internally, so analysis output
    appearing below never moves the primary controls above it. The whole study
    fits the viewport height, so the dead space under the sidebar disappears. */
-#analyze-sidebar,
-#view-train .train-sidebar {
+#analyze-sidebar {
   min-width: 0;
   min-height: 0;
   max-height: var(--study-h);
@@ -2781,180 +2780,6 @@ h2 {
   margin-top: 8px;
 }
 
-/* ----- Train tab -------------------------------------------------------
-   Coach feedback lives at the top of the right workspace (#train-banner now
-   sits in the sidebar with .train-coach classes). The left column holds only
-   the board + board bar. One shared body: the id and class hosts are aliases. */
-.train-coach,
-#view-train .train-coach,
-.train-banner,
-#train-banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  margin-bottom: 0;
-  border-radius: 12px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--line);
-  min-height: 64px;
-  box-sizing: border-box;
-  overflow: hidden;
-  flex: none;
-}
-
-/* Coach + banner state selectors share one body list each so E2E hooks
-   (#train-banner data-state, .flash) behave identically for the id host. The
-   legacy .train-banner class host is kept as an alias, not a duplicate body. */
-#train-banner[data-state="move"] { border-left-color: var(--accent); }
-#train-banner[data-state="correct"] { border-left-color: var(--good); background: color-mix(in srgb, var(--good) 12%, var(--panel)); }
-#train-banner[data-state="wrong"] { border-left-color: var(--danger); background: var(--danger-soft); }
-#train-banner[data-state="done"] { border-left-color: var(--accent-strong); background: var(--accent-soft); }
-#train-banner[data-state="review"] { border-left-color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, var(--panel)); }
-#train-banner[data-state="review"] .train-banner-icon,
-#train-banner[data-state="review"] .train-coach-icon { background: var(--warn); animation: jobToastPulse 1.6s ease-in-out infinite; }
-#train-banner[data-state="review"] .train-banner-title,
-#train-banner[data-state="review"] .train-coach-title { color: var(--warn-text); }
-/* Smart-queue states: run-in (the line plays itself), teach (new move shown
-   before it's asked), reveal (second miss — answer shown, play it to go on). */
-#train-banner[data-state="runin"] { border-left-color: var(--line-strong); }
-#train-banner[data-state="runin"] .train-banner-icon,
-#train-banner[data-state="runin"] .train-coach-icon { background: var(--line-strong); animation: jobToastPulse 1.1s ease-in-out infinite; }
-#train-banner[data-state="teach"] { border-left-color: var(--brilliant); background: color-mix(in srgb, var(--brilliant) 12%, var(--panel)); }
-#train-banner[data-state="teach"] .train-banner-icon,
-#train-banner[data-state="teach"] .train-coach-icon { background: var(--brilliant); }
-#train-banner[data-state="teach"] .train-banner-title,
-#train-banner[data-state="teach"] .train-coach-title { color: var(--brilliant-text); }
-#train-banner[data-state="reveal"] { border-left-color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, var(--panel)); }
-#train-banner[data-state="reveal"] .train-banner-icon,
-#train-banner[data-state="reveal"] .train-coach-icon { background: var(--warn); }
-#train-banner[data-state="reveal"] .train-banner-title,
-#train-banner[data-state="reveal"] .train-coach-title { color: var(--warn-text); }
-
-#train-banner.flash { animation: trainFlash 420ms ease; }
-#train-banner[data-state="wrong"].flash { animation: trainWrongFlash 760ms ease; }
-
-/* Legacy .train-banner class selectors alias the id host above. */
-@keyframes trainFlash {
-  0% { transform: scale(0.99); }
-  40% { transform: scale(1.012); }
-  100% { transform: scale(1); }
-}
-@keyframes trainWrongFlash {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 0%, transparent); }
-  20% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent); }
-  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 0%, transparent); }
-}
-
-.train-banner-icon,
-.train-coach-icon {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--muted);
-  flex-shrink: 0;
-}
-#train-banner[data-state="move"] .train-banner-icon,
-#train-banner[data-state="move"] .train-coach-icon { background: var(--accent); animation: jobToastPulse 1.6s ease-in-out infinite; }
-#train-banner[data-state="correct"] .train-banner-icon,
-#train-banner[data-state="correct"] .train-coach-icon { background: var(--good); }
-#train-banner[data-state="wrong"] .train-banner-icon,
-#train-banner[data-state="wrong"] .train-coach-icon { background: var(--danger); }
-#train-banner[data-state="done"] .train-banner-icon,
-#train-banner[data-state="done"] .train-coach-icon { background: var(--accent-strong); }
-
-.train-banner-text,
-.train-coach-text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
-.train-banner-title,
-.train-coach-title {
-  font-weight: 700;
-  font-size: 15px;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-}
-.train-banner-sub,
-.train-coach-sub {
-  font-size: 12px;
-  color: var(--muted);
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-.train-banner-sub:empty,
-.train-coach-sub:empty { display: none; }
-#train-banner[data-state="correct"] .train-banner-title,
-#train-banner[data-state="correct"] .train-coach-title { color: var(--good-text); }
-#train-banner[data-state="wrong"] .train-banner-title,
-#train-banner[data-state="wrong"] .train-coach-title { color: var(--danger); }
-
-.train-turn-badge {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  flex-shrink: 0;
-  border: 1px solid var(--line);
-}
-.train-turn-badge[hidden] { display: none; }
-/* Contrasting circle so the king of the side-to-move always pops: a white king
-   sits on the dark disc, a black king on the cream disc. */
-.train-turn-badge[data-side="white"] { background: var(--text); }
-.train-turn-badge[data-side="black"] { background: var(--dot-white); }
-.train-turn-badge .piece { width: 78%; height: 78%; }
-
-/* Train sidebar */
-.train-sidebar { display: flex; flex-direction: column; gap: 14px; }
-
-.train-setup {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--panel);
-}
-
-.train-modes { display: flex; gap: 4px; }
-
-/* Blitz toggle (smart queue only) + the per-card answer clock. The clock is a
-   width transition, not an animation: it carries real information (time left),
-   so it stays on under prefers-reduced-motion. */
-.train-blitz-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 7px 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-  user-select: none;
-}
-
-.train-blitz-row .pf-switch {
-  width: 34px;
-  height: 20px;
-}
-
-.train-blitz-row .pf-knob {
-  width: 16px;
-  height: 16px;
-}
-
-.train-blitz-row .pf-switch.is-on .pf-knob {
-  transform: translateX(14px);
-}
-
-.train-blitz-row[hidden] { display: none; }
-
 /* Coach header review switch: compact shared primitive, not a native checkbox. */
 .explain-review {
   gap: 8px;
@@ -2966,94 +2791,26 @@ h2 {
   color: var(--muted);
 }
 
-.explain-review .pf-switch {
+.explain-review .pf-switch,
+.train-blitz-row .pf-switch {
   width: 34px;
   height: 20px;
 }
 
-.explain-review .pf-knob {
+.explain-review .pf-knob,
+.train-blitz-row .pf-knob {
   width: 16px;
   height: 16px;
 }
 
-.explain-review .pf-switch.is-on .pf-knob {
+.explain-review .pf-switch.is-on .pf-knob,
+.train-blitz-row .pf-switch.is-on .pf-knob {
   transform: translateX(14px);
 }
-.train-blitz-bar {
-  height: 5px;
-  border-radius: 999px;
-  background: var(--line);
-  overflow: hidden;
-  margin: 0;
-  flex: none;
-}
-/* Blitz clock keeps a fixed 5px slot in the Train sidebar (below the coach
-   card), so toggling it mid-session cannot shove the board. */
-.train-blitz-bar[hidden] {
-  display: block;
-  visibility: hidden;
-}
-#view-train .train-sidebar .train-blitz-float {
-  flex: none;
-  height: 5px;
-  min-height: 5px;
-}
-#view-train .train-sidebar .train-blitz-bar {
-  background: var(--line);
-}
-.train-blitz-fill {
-  height: 100%;
-  width: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--warn), var(--danger));
-}
-.train-mode {
-  flex: 1;
-  padding: 6px 4px;
-  border: 1px solid var(--line);
-  background: var(--panel);
-  border-radius: 7px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-  cursor: pointer;
-  white-space: nowrap;
-  min-height: 32px;
-  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
-}
-.train-mode:hover { border-color: var(--accent); }
-.train-mode.is-active {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent-strong);
-}
-.train-mode:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.train-start { margin-top: 0; }
-
-.train-play-setup {
-  display: grid;
-  gap: 8px;
-  margin-top: 4px;
-}
-.train-play-setup[hidden] { display: none; }
-.train-play-setup .train-start-row { margin-top: 0; }
-.train-play-repertoires {
-  display: grid;
-  gap: 5px;
-  margin-top: 1px;
-}
-
 .status[data-state="error"] {
   color: var(--danger-strong);
 }
 
-/* Retired Settings theme select: the theme is a segmented control now (the
-   hidden native select keeps .pf-select-native). */
-.train-play-repertoires[hidden] { display: none; }
 .train-repertoire-menu {
   position: relative;
   min-width: 0;
@@ -3147,227 +2904,6 @@ h2 {
 }
 .train-repertoire-empty[hidden] { display: none; }
 .train-repertoire-hint { margin: 0; }
-.train-play-trail {
-  min-height: 36px;
-  font-size: 13px;
-  line-height: 1.35;
-  color: var(--text);
-}
-.train-play-chip {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--accent-strong);
-}
-.train-play-chip[hidden] { display: none; }
-
-/* Progress panel */
-.train-progress-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--panel-soft);
-}
-
-.train-progress-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 700;
-}
-.train-accuracy { color: var(--good-text); font-variant-numeric: tabular-nums; }
-
-/* Queue composition strip: what today's session is made of, one proportional
-   segment + legend chip per card kind (weak / due / new / polish). */
-.train-queue { display: flex; flex-direction: column; gap: 6px; }
-/* These panels set their own display, which beats the hidden attribute. */
-.train-queue[hidden],
-.train-upnext[hidden],
-.train-summary[hidden],
-.train-progress-panel[hidden] { display: none; }
-/* Up next: the real next cards from the live queue (one row each). */
-.train-upnext {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-top: 6px;
-  border-top: 1px solid var(--line-soft);
-}
-.train-upnext-label {
-  font-size: 11px;
-  color: var(--muted);
-}
-.train-upnext-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  font-size: 12px;
-}
-.train-upnext-row .tq-chip { flex: 0 0 auto; }
-.train-upnext-rep {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--muted);
-}
-.train-queue-bar {
-  display: flex;
-  height: 8px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: var(--line-soft);
-  gap: 2px;
-}
-.tq-seg { min-width: 6px; }
-.tq-weak { background: var(--danger); }
-.tq-due { background: var(--warn); }
-.tq-new { background: var(--brilliant); }
-.tq-polish { background: var(--good); }
-.train-queue-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; }
-.tq-chip {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted);
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.tq-chip::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--line-strong);
-}
-.tq-chip.tq-weak::before { background: var(--danger); }
-.tq-chip.tq-due::before { background: var(--warn); }
-.tq-chip.tq-new::before { background: var(--brilliant); }
-.tq-chip.tq-polish::before { background: var(--good); }
-.tq-chip.tq-phase::before { background: var(--accent); }
-
-/* Per-move dots inside a multi-target card. */
-.train-card-dots { display: inline-flex; gap: 4px; align-items: center; }
-.card-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--line-strong);
-}
-.card-dot.done { background: var(--good); }
-.card-dot.now { background: var(--accent); transform: scale(1.25); }
-
-.train-progress-track {
-  height: 8px;
-  border-radius: 999px;
-  background: var(--line-soft);
-  overflow: hidden;
-}
-.train-progress-fill {
-  height: 100%;
-  width: 0%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--accent), var(--accent-strong));
-  transition: width 320ms ease;
-}
-
-.train-stats { display: flex; gap: 8px; }
-.train-stat {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 8px 4px;
-  background: var(--panel);
-  border: 1px solid var(--line-soft);
-  border-radius: 8px;
-}
-.ts-value { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.ts-value.good { color: var(--good-text); }
-.ts-value.bad { color: var(--danger); }
-.ts-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
-
-/* Streak chip: pop on increase, glow at milestones, "at risk" when broken */
-.train-stat { transition: background 200ms ease, box-shadow 200ms ease; }
-.train-stat.pop { animation: streakPop 360ms cubic-bezier(0.2, 0.9, 0.3, 1.5); }
-.train-stat.milestone {
-  background: var(--accent-soft);
-  box-shadow: 0 0 0 2px var(--accent) inset, 0 0 14px rgba(209, 139, 63, 0.5);
-}
-.train-stat.at-risk {
-  background: #fbf1f0;
-  box-shadow: 0 0 0 1px rgba(196, 82, 77, 0.5) inset;
-}
-.train-stat.at-risk .ts-label::after { content: " · at risk"; color: var(--danger); }
-
-/* "How training works" drawer: plain-language definitions for the mastery
-   states and the two streak-like numbers. Colour chips match the queue strip
-   and the Build tree's mastery underlines, so the legend doubles for both. */
-.train-help-body {
-  padding: 0 10px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  font-size: 12.5px;
-  line-height: 1.45;
-}
-
-.help-intro {
-  margin: 0;
-  color: var(--muted);
-}
-
-.help-row {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.help-row > span:last-child {
-  color: var(--text);
-}
-
-.help-key {
-  flex: none;
-  min-width: 64px;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: #fff;
-  border-radius: 999px;
-  padding: 1px 8px;
-}
-
-.hk-weak { background: var(--danger); }
-.hk-due { background: var(--warn); }
-.hk-new { background: var(--brilliant); }
-.hk-learning { background: #9bb7d4; }
-.hk-mastered { background: var(--good); }
-
-.help-streaks {
-  margin: 2px 0 0;
-  padding-top: 7px;
-  border-top: 1px solid var(--line-soft);
-  color: var(--muted);
-}
-@keyframes streakPop {
-  0% { transform: scale(1); }
-  45% { transform: scale(1.18); }
-  100% { transform: scale(1); }
-}
-
 /* Confetti */
 .confetti-layer {
   position: fixed;
@@ -3391,70 +2927,6 @@ h2 {
   0% { transform: translateY(0) rotate(0deg); opacity: 1; }
   100% { transform: translateY(120vh) rotate(540deg); opacity: 0.4; }
 }
-
-.train-line-trail-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  font-weight: 600;
-}
-.train-line-trail {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  min-height: 14px;
-}
-.trail-empty { font-size: 12px; color: var(--muted); }
-.trail-pip {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-.trail-pip.ok { background: var(--good); }
-.trail-pip.no { background: var(--danger); }
-
-/* End-of-session summary: session stats, the mastery delta, and tomorrow's
-   due forecast. Replaces the queue strip once the last card is done. */
-.train-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid var(--accent-line);
-  border-radius: 12px;
-  background: var(--accent-soft);
-}
-.train-summary-title { font-weight: 700; font-size: 14px; color: var(--accent-strong); }
-.train-summary-stats { display: flex; gap: 8px; }
-.tsum-stat {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 8px 4px;
-  border-radius: 9px;
-  background: var(--panel);
-  border: 1px solid var(--line-soft);
-}
-.tsum-value { font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; }
-.tsum-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
-.train-summary-delta { display: flex; flex-direction: column; gap: 3px; }
-.tsum-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: var(--muted);
-}
-.tsum-row.good > span:first-child { color: var(--good-text); font-weight: 600; }
-.tsum-row.warn > span:first-child { color: var(--warn-text); font-weight: 600; }
-.tsum-row.bad > span:first-child { color: var(--danger); font-weight: 600; }
-.tsum-num { font-variant-numeric: tabular-nums; color: var(--text); display: inline-flex; gap: 5px; }
-.tsum-delta { font-weight: 700; }
-.tsum-delta.up { color: var(--good-text); }
-.tsum-delta.down { color: var(--danger); }
-.train-summary-foot { font-size: 12px; color: var(--accent-strong); font-weight: 600; }
 
 /* Drag-and-drop */
 .square.dragging .piece {
@@ -3833,6 +3305,303 @@ h2 {
   .board-bar { height: 44px; }
 }
 
+/* ===========================================================================
+   Train — Opus prototype composition
+   One raised panel beside the board: mode segmented control, coach banner
+   strip, then a scrolling stack of .tcard sections (setup / progress /
+   summary / help). The blitz clock overlays the board's top edge, so toggling
+   it never moves the board. Mirrors prototype .train .panel / .coach-banner /
+   .tcard / .stats / .upnext / .summary / .help.
+   =========================================================================== */
+#view-train .train-sidebar {
+  gap: 0;
+  max-height: var(--study-h);
+  overflow: hidden;
+}
+#view-train .board-area { position: relative; }
+.panel-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+#view-train .panel-head { padding: 8px 12px; }
+#view-train .seg { display: flex; width: 100%; }
+#view-train .seg-btn { flex: 1; min-width: 0; }
+
+.blitz-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 4px 4px 0 0;
+  background: color-mix(in srgb, var(--text) 20%, transparent);
+  pointer-events: none;
+}
+.blitz-bar[hidden] { display: none; }
+.blitz-bar i { display: block; height: 100%; width: 100%; background: var(--k-due); }
+
+/* Coach banner: a strip under the mode control; data-state tints it. */
+.train-coach {
+  --cb: var(--label);
+  flex: none;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+#train-banner[data-state="move"] { --cb: var(--accent); --g: "♟"; }
+#train-banner[data-state="teach"] { --cb: var(--k-new); --g: "✦"; background: color-mix(in srgb, var(--k-new) 8%, var(--panel)); }
+#train-banner[data-state="wrong"] { --cb: var(--danger); --g: "✗"; background: var(--danger-soft); }
+#train-banner[data-state="reveal"] { --cb: var(--warn); --g: "!"; background: var(--warn-soft); }
+#train-banner[data-state="review"] { --cb: var(--warn); --g: "↻"; background: var(--warn-soft); }
+#train-banner[data-state="correct"] { --cb: var(--good); --g: "✓"; background: var(--good-soft); }
+#train-banner[data-state="done"] { --cb: var(--good); --g: "★"; }
+#train-banner[data-state="runin"] { --g: "…"; }
+#train-banner.flash { animation: trainFlash 420ms ease; }
+#train-banner[data-state="wrong"].flash { animation: trainWrongFlash 760ms ease; }
+@keyframes trainFlash {
+  0% { transform: scale(0.99); }
+  40% { transform: scale(1.012); }
+  100% { transform: scale(1); }
+}
+@keyframes trainWrongFlash {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 0%, transparent); }
+  20% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 0%, transparent); }
+}
+.train-coach-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--cb) 16%, transparent);
+  color: var(--cb);
+  font-size: 15px;
+  font-weight: 800;
+}
+.train-coach-icon::before { content: var(--g, "▶"); }
+.train-coach-text { display: flex; flex-direction: column; min-width: 0; }
+.train-coach-title {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.train-coach-sub {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--muted);
+  font-size: var(--fs-s);
+}
+.train-coach-sub:empty { display: none; }
+#train-banner[data-state="correct"] .train-coach-title { color: var(--good-text); }
+#train-banner[data-state="wrong"] .train-coach-title { color: var(--danger); }
+#train-banner[data-state="reveal"] .train-coach-title,
+#train-banner[data-state="review"] .train-coach-title { color: var(--warn-text); }
+.train-turn-badge {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+}
+.train-turn-badge[hidden] { display: none; }
+/* Contrasting disc so the side-to-move's king always pops. */
+.train-turn-badge[data-side="white"] { background: var(--text); }
+.train-turn-badge[data-side="black"] { background: var(--dot-white); }
+.train-turn-badge .piece { width: 78%; height: 78%; }
+
+/* Cards */
+.tcard { display: flex; flex-direction: column; gap: 10px; }
+.tcard[hidden] { display: none; }
+.tcard h3 { margin: 0; font-size: 14px; }
+.tcard p { margin: 0; font-size: var(--fs-s); }
+.tcard .field,
+.train-play-setup { display: flex; flex-direction: column; gap: 10px; }
+.tcard .field { gap: 4px; }
+.tcard .field[hidden],
+.train-play-setup[hidden],
+.train-picker-label[hidden],
+.train-setup select[hidden],
+.train-blitz-row[hidden],
+.train-start-row[hidden] { display: none; }
+.train-picker-label { color: var(--muted); font-size: var(--fs-s); font-weight: 550; }
+.train-setup select {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: inherit;
+  font: inherit;
+}
+.train-blitz-row { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: var(--fs-s); font-weight: 600; user-select: none; }
+.train-start-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.train-start-row .btn { flex: 1; min-width: 0; }
+.note {
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: var(--fs-s);
+}
+.train-play-trail { min-height: 30px; padding: 6px 8px; border-radius: 6px; background: var(--surface-2); font-size: var(--fs-s); }
+.train-play-chip {
+  align-self: flex-start;
+  margin: 0;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--warn-soft);
+  color: var(--warn-text);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+}
+.train-play-chip[hidden] { display: none; }
+.train-repertoire-hint { margin: 0; }
+
+/* Progress */
+.prog-head { display: flex; align-items: center; gap: 8px; }
+.prog-head .spacer { flex: 1; }
+.train-accuracy { color: var(--good-text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.card-dots { display: flex; align-items: center; gap: 4px; min-height: 5px; font-size: var(--fs-xs); }
+.card-dots i { width: 18px; height: 5px; border-radius: 3px; background: var(--surface-3); }
+.card-dots i.done { background: var(--good); }
+.card-dots i.cur { background: var(--accent); }
+.card-dots span { margin-left: 6px; }
+.prog { height: 4px; border-radius: 2px; overflow: hidden; background: var(--surface-3); }
+.prog i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent); transition: width 320ms ease; }
+.qstrip { display: flex; flex-direction: column; gap: 6px; }
+.qstrip[hidden] { display: none; }
+.qbar { display: flex; height: 8px; gap: 1px; overflow: hidden; border-radius: 4px; background: var(--surface-3); }
+.qbar i { display: block; min-width: 4px; }
+.qbar i.k-weak, .tsum-row i.k-weak { background: var(--k-weak); }
+.qbar i.k-due, .tsum-row i.k-due { background: var(--k-due); }
+.qbar i.k-new, .tsum-row i.k-new { background: var(--k-new); }
+.qbar i.k-polish { background: var(--k-polish); }
+.tsum-row i.k-mastered { background: var(--k-mastered); }
+.tsum-row i.k-learning { background: var(--k-learning); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.kchip.k-learning { color: var(--accent-text); background: color-mix(in srgb, var(--k-learning) 13%, transparent); }
+.kchip.k-mastered { color: var(--good-text); background: color-mix(in srgb, var(--k-mastered) 13%, transparent); }
+.kchip.k-polish, .kchip.phase { color: var(--muted); background: var(--surface-3); }
+.kchip[hidden] { display: none; }
+
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  transition: background 200ms ease, border-color 200ms ease;
+}
+.stat b { font-size: 20px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat b.good { color: var(--good-text); }
+.stat b.bad { color: var(--danger); }
+.stat span { color: var(--label); font-size: var(--fs-xs); }
+.stat.pop { animation: streakPop 360ms cubic-bezier(0.2, 0.9, 0.3, 1.5); }
+.stat.milestone { border-color: var(--good); background: var(--good-soft); }
+.stat.milestone b { color: var(--good-text); }
+.stat.at-risk { border-color: var(--danger); background: var(--danger-soft); }
+.stat.at-risk span::after { content: " · at risk"; color: var(--danger); }
+.trail { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-xs); }
+.pips { display: flex; flex-wrap: wrap; gap: 3px; min-height: 9px; }
+.pips i { width: 9px; height: 9px; border-radius: 2px; }
+.pips i.ok { background: var(--good); }
+.pips i.no { background: var(--danger); }
+.trail-empty { color: var(--label); font-size: var(--fs-xs); }
+
+.upnext { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; border-top: 1px solid var(--line); }
+.upnext[hidden] { display: none; }
+.un-row {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-s);
+}
+.un-row .kchip { justify-self: start; }
+.un-rep { display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.un-line { color: var(--label); font: var(--fs-xs) var(--mono); white-space: nowrap; }
+
+/* Session summary */
+.summary { padding: 0; }
+.sum-cells { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.sum-cells div { display: flex; flex-direction: column; padding: 8px; border-radius: 8px; background: var(--surface-2); }
+.sum-cells b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.sum-cells span { color: var(--label); font-size: var(--fs-xs); }
+.delta { display: flex; flex-direction: column; }
+.tsum-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 40px;
+  gap: 8px;
+  padding: 5px 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-s);
+}
+.tsum-row i { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 2px; }
+.tsum-row .num { font-variant-numeric: tabular-nums; text-align: right; }
+.tsum-row .up { color: var(--good-text); font-weight: 650; }
+.tsum-row .down { color: var(--danger); font-weight: 650; }
+.btn.block { width: 100%; }
+
+/* How it works */
+.help { padding-top: 8px; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--fs-s); }
+.help summary { color: var(--text); font-weight: 600; cursor: pointer; }
+.help p { margin: 6px 0 0; }
+.help dl { display: grid; grid-template-columns: 76px 1fr; gap: 3px 8px; margin: 6px 0; }
+.help dt { font-weight: 650; }
+.help dd { margin: 0; }
+.help dt.k-weak { color: var(--danger); }
+.help dt.k-due { color: var(--warn-text); }
+.help dt.k-new { color: var(--k-new); }
+.help dt.k-learning { color: var(--accent-text); }
+.help dt.k-mastered { color: var(--good-text); }
+.faint { color: var(--label); }
+
+@keyframes streakPop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+#view-train .train-sidebar[data-session-state="active"] .train-setup,
+#view-train .train-sidebar[data-session-state="summary"] .train-setup,
+#view-train .train-sidebar[data-session-state="summary"] #train-progress-panel { display: none; }
+
+@media (max-width: 1020px) {
+  #view-train .train-sidebar { max-height: none; overflow: visible; }
+  #view-train .panel-scroll { overflow: visible; }
+}
+@media (max-width: 760px) {
+  #view-train .seg-btn { min-height: 44px; }
+  #view-train .panel-head { padding: 8px 12px; }
+  .train-start-row .btn { flex: 1 1 140px; }
+  .sum-cells { grid-template-columns: repeat(2, 1fr); }
+}
+
 /* Sidebar */
 
 .sidebar {
@@ -3851,33 +3620,6 @@ h2 {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-}
-
-.train-picker-label {
-  font-size: 12px;
-  color: var(--muted);
-  font-weight: 600;
-}
-#train-srs-picker {
-  display: grid;
-  gap: 4px;
-}
-#train-srs-picker[hidden] {
-  display: none;
-}
-.train-picker-label[hidden],
-.train-setup select[hidden] {
-  display: none;
-}
-
-.train-setup select {
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--panel);
-  font: inherit;
-  color: inherit;
 }
 
 .drawer {
@@ -5734,8 +5476,7 @@ h2 {
     max-width: 100%;
   }
 
-  #analyze-sidebar,
-  #view-train .train-sidebar {
+  #analyze-sidebar {
     max-height: none;
     overflow: visible;
   }
@@ -5855,18 +5596,6 @@ h2 {
 
   .board-bar {
     height: 52px;
-  }
-
-  .train-modes {
-    flex-wrap: wrap;
-  }
-  .train-mode {
-    min-width: 0;
-    flex: 1 1 30%;
-  }
-  .train-start-row .btn {
-    flex: 1 1 140px;
-    min-width: 0;
   }
 
   #view-train .board-bar .ib {
@@ -8093,18 +7822,6 @@ h2 {
   font-size: 11px;
 }
 
-.train-start-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.train-start-row[hidden] { display: none; }
-
-.train-start-row .train-start {
-  flex: 1;
-}
-
 /* Desktop workspaces: the board and the task pane share the available width.
    One authoritative desktop block per workspace — Analyze / Build / Train share
    the study shell; Games, Scout and Teams each own one layout. Base (mobile)
@@ -8116,7 +7833,6 @@ h2 {
      16px gap — no second column definition. */
   .study .board-area { justify-self: start; }
   #view-analyze .sidebar,
-  #view-train .sidebar { padding: 4px 6px 18px 4px; overflow-y: auto; overscroll-behavior: contain; }
   #analyze-sidebar > .tools { position: sticky; top: 0; z-index: 4; background: var(--bg); padding: 6px 0; }
   #view-analyze .explain-card { box-shadow: none; border-color: transparent; }
   #view-analyze .drawer { border-color: transparent; border-bottom: 1px solid var(--line-soft); border-radius: 0; }
@@ -8129,14 +7845,6 @@ h2 {
   #analyze-sidebar #analysis-results { order: 2; }
   #analyze-sidebar #pgn-drawer { order: 3; }
   #analyze-sidebar #history-drawer { order: 4; }
-  #view-train .train-setup { padding: 12px; }
-  #view-train #train-play-color { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  #view-train .train-play-setup .train-start-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  #view-train .train-play-setup .train-start-row:last-child { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  #view-train .train-play-setup .train-start-row .btn { width: 100%; min-width: 0; white-space: normal; height: auto; min-height: var(--control-h); }
-  #view-train .train-sidebar[data-session-state="active"] .train-setup,
-  #view-train .train-sidebar[data-session-state="summary"] .train-setup,
-  #view-train .train-sidebar[data-session-state="summary"] #train-progress-panel { display: none; }
   #view-replay .replay-stack,
   #view-teams .teams-stack { max-width: 1400px; }
   #view-replay .replay-card-games .replay-results {

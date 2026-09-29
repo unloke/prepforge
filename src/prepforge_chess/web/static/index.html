@@ -6,9 +6,9 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-h6ilML_G.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-llCLcgt7.js"></script>
     <link rel="modulepreload" crossorigin href="/static/assets/chess-DwBov9dY.js">
-    <link rel="stylesheet" crossorigin href="/static/assets/index-CB-EscvT.css">
+    <link rel="stylesheet" crossorigin href="/static/assets/index-CyHk9nqQ.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -296,22 +296,35 @@
       <section class="view" id="view-train" data-testid="view-train">
         <div class="study">
           <div class="board-area">
+            <div class="blitz-bar" id="train-blitz" hidden aria-hidden="true">
+              <i id="train-blitz-fill"></i>
+            </div>
             <div class="board-stack">
               <div class="chessboard" id="train-board" data-testid="train-board"></div>
               <svg class="annotations" id="train-annotations"></svg>
             </div>
             <div class="board-bar">
-              <button class="ib" id="train-flip" title="Flip board" aria-label="Flip board">⇅</button>
-              <button class="ib" id="train-hint" title="Hint (show the piece to move)" aria-label="Show hint">💡</button>
-              <button class="ib" id="train-skip" title="Skip this card" aria-label="Skip this card">⏭</button>
-              <span class="sep"></span>
+              <div class="bb-nav">
+                <button class="ib" id="train-flip" title="Flip board" aria-label="Flip board">⇅</button>
+                <button class="ib" id="train-hint" title="Hint (show the piece to move)" aria-label="Show hint">💡</button>
+                <button class="ib" id="train-skip" title="Skip this card" aria-label="Skip this card">⏭</button>
+              </div>
               <span class="board-label" id="train-board-label">Press Start to train</span>
-              <span class="build-sync" id="train-sync" aria-live="polite" hidden></span>
+              <div class="bb-right">
+                <span class="build-sync" id="train-sync" aria-live="polite" hidden></span>
+              </div>
             </div>
           </div>
 
-          <aside class="sidebar train-sidebar" data-session-state="setup">
-            <section class="train-coach" id="train-banner" data-testid="train-feedback" data-state="idle" aria-live="polite">
+          <aside class="sidebar train-sidebar panel" data-session-state="setup">
+            <div class="panel-head">
+              <div class="seg" id="train-modes" role="group" aria-label="Training mode">
+                <button type="button" class="seg-btn train-mode is-active" data-mode="smart">Smart queue</button>
+                <button type="button" class="seg-btn train-mode" data-mode="all_lines">Line rehearsal</button>
+                <button type="button" class="seg-btn train-mode" data-mode="play" data-testid="train-mode-play">Play vs human</button>
+              </div>
+            </div>
+            <section class="coach-banner train-coach" id="train-banner" data-testid="train-feedback" data-state="idle" aria-live="polite">
               <span class="train-coach-icon" id="train-banner-icon" aria-hidden="true"></span>
               <div class="train-coach-text">
                 <span class="train-coach-title" id="train-banner-title" data-testid="train-prompt">Press Start to begin</span>
@@ -319,133 +332,135 @@
               </div>
               <span class="train-turn-badge" id="train-turn-badge" hidden></span>
             </section>
-            <div class="train-blitz-float" aria-hidden="true">
-              <div class="train-blitz-bar" id="train-blitz" hidden>
-                <div class="train-blitz-fill" id="train-blitz-fill"></div>
-              </div>
-            </div>
-            <div class="train-setup">
-              <div class="train-modes" id="train-modes" role="group" aria-label="Training mode">
-                <button type="button" class="train-mode is-active" data-mode="smart">Smart queue</button>
-                <button type="button" class="train-mode" data-mode="all_lines">Line rehearsal</button>
-                <button type="button" class="train-mode" data-mode="play" data-testid="train-mode-play">Play vs human</button>
-              </div>
-              <div id="train-srs-picker">
-                <label class="train-picker-label" for="train-repertoire-select">Repertoire</label>
-                <select id="train-repertoire-select" data-testid="train-repertoire-select"></select>
-              </div>
-              <span class="pf-row-text train-blitz-row" id="train-blitz-row" title="Timeout counts as a miss">
-                <span class="pf-row-label" id="train-blitz-label">⚡ Blitz · 10s per move</span>
-                <button type="button" class="pf-switch" id="train-blitz-toggle" role="switch" aria-checked="false" aria-labelledby="train-blitz-label" data-testid="train-blitz-toggle"><span class="pf-knob"></span></button>
-              </span>
-              <div class="train-start-row" id="train-srs-start">
-                <button class="btn primary train-start" id="start-train" data-testid="start-train">Start</button>
-              </div>
-              <div class="train-play-setup" id="train-play-setup" hidden>
-                <label class="train-picker-label" for="train-play-book">Opponent book</label>
-                <select id="train-play-book" data-testid="train-play-book">
-                  <option value="explorer">Lichess explorer</option>
-                  <option value="repertoire">My repertoire</option>
-                </select>
-                <div class="train-play-repertoires" id="train-play-repertoire-picker" hidden>
-                  <span class="train-picker-label">Repertoires</span>
-                  <details class="train-repertoire-menu" id="train-repertoire-menu">
-                    <summary class="train-repertoire-summary" data-testid="train-repertoire-summary">
-                      <span id="train-repertoire-summary-label">Select repertoires</span>
-                      <span class="train-repertoire-chevron" aria-hidden="true">⌄</span>
-                    </summary>
-                    <div class="train-repertoire-popover" role="group" aria-label="Active repertoires">
-                      <label class="train-repertoire-option train-repertoire-select-all">
-                        <input type="checkbox" id="train-repertoire-select-all" data-testid="train-repertoire-select-all" />
-                        <span>Select all</span>
-                      </label>
-                      <div class="train-repertoire-options" id="train-repertoire-options"></div>
-                      <p class="train-repertoire-empty muted" id="train-repertoire-empty" hidden>
-                        No active repertoires. Build one first.
-                      </p>
+            <div class="panel-scroll">
+              <section class="tcard train-setup">
+                <h3 id="train-setup-title">Smart queue</h3>
+                <p class="muted" id="train-setup-blurb">Mixed over all your active repertoires. Weak spots and due reviews first, then new moves, then polish.</p>
+                <div class="field" id="train-srs-picker">
+                  <label class="train-picker-label" for="train-repertoire-select">Repertoire</label>
+                  <select id="train-repertoire-select" data-testid="train-repertoire-select"></select>
+                </div>
+                <span class="pf-row-text train-blitz-row" id="train-blitz-row" title="Timeout counts as a miss">
+                  <span class="pf-row-label" id="train-blitz-label">⚡ Blitz · 10s per move</span>
+                  <button type="button" class="pf-switch" id="train-blitz-toggle" role="switch" aria-checked="false" aria-labelledby="train-blitz-label" data-testid="train-blitz-toggle"><span class="pf-knob"></span></button>
+                </span>
+                <div class="train-start-row" id="train-srs-start">
+                  <button class="btn primary lg train-start" id="start-train" data-testid="start-train">Start</button>
+                </div>
+                <div class="train-play-setup" id="train-play-setup" hidden>
+                  <div class="field">
+                    <label class="train-picker-label" for="train-play-book">Opponent book</label>
+                    <select id="train-play-book" data-testid="train-play-book">
+                      <option value="explorer">Lichess explorer</option>
+                      <option value="repertoire">My repertoire</option>
+                    </select>
+                  </div>
+                  <div class="field train-play-repertoires" id="train-play-repertoire-picker" hidden>
+                    <span class="train-picker-label">Repertoires the opponent draws from</span>
+                    <details class="train-repertoire-menu" id="train-repertoire-menu">
+                      <summary class="train-repertoire-summary" data-testid="train-repertoire-summary">
+                        <span id="train-repertoire-summary-label">Select repertoires</span>
+                        <span class="train-repertoire-chevron" aria-hidden="true">⌄</span>
+                      </summary>
+                      <div class="train-repertoire-popover" role="group" aria-label="Active repertoires">
+                        <label class="train-repertoire-option train-repertoire-select-all">
+                          <input type="checkbox" id="train-repertoire-select-all" data-testid="train-repertoire-select-all" />
+                          <span>Select all</span>
+                        </label>
+                        <div class="train-repertoire-options" id="train-repertoire-options"></div>
+                        <p class="train-repertoire-empty muted" id="train-repertoire-empty" hidden>
+                          No active repertoires. Build one first.
+                        </p>
+                      </div>
+                    </details>
+                    <small class="muted train-repertoire-hint" id="train-repertoire-hint">
+                      Repertoires the opponent draws from.
+                    </small>
+                  </div>
+                  <div class="field">
+                    <span class="train-picker-label" id="train-play-color-label">You play</span>
+                    <div class="seg" id="train-play-color" role="group" aria-label="Your color">
+                      <button type="button" class="seg-btn train-mode is-active" data-color="white" data-testid="play-color-white">White</button>
+                      <button type="button" class="seg-btn train-mode" data-color="black" data-testid="play-color-black">Black</button>
                     </div>
-                  </details>
-                  <p class="muted hint train-repertoire-hint" id="train-repertoire-hint">
-                    Repertoires the opponent draws from.
-                  </p>
+                  </div>
+                  <p class="note muted" id="train-play-book-hint">Explorer by rating; Maia fills thin spots.</p>
+                  <p class="train-play-chip" id="train-play-chip" hidden data-testid="train-play-chip"></p>
+                  <div class="train-play-trail" id="train-play-trail" data-testid="train-play-trail">
+                    <span class="trail-empty">No moves yet</span>
+                  </div>
+                  <div class="train-start-row">
+                    <button class="btn primary" id="start-play" data-testid="start-play" type="button">Start</button>
+                    <button class="btn" id="feeling-lucky" data-testid="feeling-lucky" type="button" title="Jump to a key position instead of move 1">I'm Feeling Lucky</button>
+                  </div>
+                  <div class="train-start-row">
+                    <button class="btn sm" id="play-takeback" data-testid="play-takeback" type="button" disabled>Takeback</button>
+                    <button class="btn sm" id="play-resign" data-testid="play-resign" type="button" disabled>Resign</button>
+                    <button class="btn sm" id="play-analyze" data-testid="play-analyze" type="button" disabled>Analyze</button>
+                  </div>
                 </div>
-                <label class="train-picker-label" id="train-play-color-label">You play</label>
-                <div class="train-modes" id="train-play-color" role="group" aria-label="Your color">
-                  <button type="button" class="train-mode is-active" data-color="white" data-testid="play-color-white">White</button>
-                  <button type="button" class="train-mode" data-color="black" data-testid="play-color-black">Black</button>
-                </div>
-                <p class="muted hint" id="train-play-book-hint">Explorer by rating; Maia fills thin spots.</p>
-                <p class="train-play-chip" id="train-play-chip" hidden data-testid="train-play-chip"></p>
-                <div class="train-play-trail" id="train-play-trail" data-testid="train-play-trail">
-                  <span class="trail-empty">No moves yet</span>
-                </div>
-                <div class="train-start-row">
-                  <button class="btn primary" id="start-play" data-testid="start-play" type="button">Start</button>
-                  <button class="btn ghost" id="feeling-lucky" data-testid="feeling-lucky" type="button" title="Jump to a key position instead of move 1">I'm Feeling Lucky</button>
-                </div>
-                <div class="train-start-row">
-                  <button class="btn ghost" id="play-takeback" data-testid="play-takeback" type="button" disabled>Takeback</button>
-                  <button class="btn ghost" id="play-resign" data-testid="play-resign" type="button" disabled>Resign</button>
-                  <button class="btn ghost" id="play-analyze" data-testid="play-analyze" type="button" disabled>Analyze</button>
-                </div>
-              </div>
-            </div>
+              </section>
 
-            <div class="train-progress-panel" id="train-progress-panel" hidden>
-              <button class="btn ghost" id="train-fresh" data-testid="train-fresh" type="button" disabled>New session</button>
-              <div class="train-queue" id="train-queue" hidden>
-                <div class="train-queue-bar" id="train-queue-bar" role="img" aria-label="Queue composition"></div>
-                <div class="train-queue-legend" id="train-queue-legend"></div>
-              </div>
-              <div class="train-upnext" id="train-upnext" hidden></div>
-              <div class="train-progress-head">
-                <span id="train-line-label">Card 1 / 1</span>
-                <span class="train-card-dots" id="train-card-dots" title="Moves in this card"></span>
-                <span class="train-accuracy" id="train-accuracy">—</span>
-              </div>
-              <div class="train-progress-track">
-                <div class="train-progress-fill" id="train-progress-fill"></div>
-              </div>
-              <div class="train-stats">
-                <div class="train-stat" title="First-try correct answers in a row">
-                  <span class="ts-value" id="train-stat-streak">0</span>
-                  <span class="ts-label">In a row</span>
+              <section class="tcard train-progress-panel" id="train-progress-panel" hidden>
+                <div class="prog-head">
+                  <b id="train-line-label">Card 1 / 1</b>
+                  <span class="kchip" id="train-card-kind" hidden></span>
+                  <span class="spacer"></span>
+                  <span class="train-accuracy" id="train-accuracy">—</span>
                 </div>
-                <div class="train-stat" title="Correct on the first try">
-                  <span class="ts-value good" id="train-stat-correct">0</span>
-                  <span class="ts-label">Correct</span>
+                <div class="card-dots" id="train-card-dots" title="Moves in this card"></div>
+                <div class="prog"><i id="train-progress-fill"></i></div>
+                <div class="qstrip" id="train-queue" hidden>
+                  <div class="qbar" id="train-queue-bar" role="img" aria-label="Queue composition"></div>
+                  <div class="chips" id="train-queue-legend"></div>
                 </div>
-                <div class="train-stat" title="Wrong on the first try; retries don't count">
-                  <span class="ts-value bad" id="train-stat-mistakes">0</span>
-                  <span class="ts-label">Mistakes</span>
+                <div class="stats">
+                  <div class="stat train-stat" title="First-try correct answers in a row">
+                    <b id="train-stat-streak">0</b>
+                    <span>In a row</span>
+                  </div>
+                  <div class="stat" title="Correct on the first try">
+                    <b class="good" id="train-stat-correct">0</b>
+                    <span>Correct</span>
+                  </div>
+                  <div class="stat" title="Wrong on the first try; retries don't count">
+                    <b class="bad" id="train-stat-mistakes">0</b>
+                    <span>Mistakes</span>
+                  </div>
                 </div>
-              </div>
-              <div class="train-line-trail-label">This session</div>
-              <div class="train-line-trail" id="train-line-trail">
-                <span class="trail-empty">No moves yet</span>
-              </div>
-            </div>
+                <div class="trail">
+                  <span class="faint">This session</span>
+                  <div class="pips" id="train-line-trail">
+                    <span class="trail-empty">No moves yet</span>
+                  </div>
+                </div>
+                <div class="upnext" id="train-upnext" hidden></div>
+                <div class="row">
+                  <button class="btn sm" id="train-fresh" data-testid="train-fresh" type="button" disabled>New session</button>
+                </div>
+              </section>
 
-            <div class="train-summary" id="train-summary" hidden data-testid="train-summary">
-              <div class="train-summary-title" id="train-summary-title">Session complete</div>
-              <div class="train-summary-stats" id="train-summary-stats"></div>
-              <div class="train-summary-delta" id="train-summary-delta"></div>
-              <div class="train-summary-foot" id="train-summary-foot"></div>
-              <button class="btn primary" id="train-summary-new" type="button">New session</button>
-            </div>
+              <section class="tcard summary train-summary" id="train-summary" hidden data-testid="train-summary">
+                <h3 id="train-summary-title">Session complete</h3>
+                <div class="sum-cells" id="train-summary-stats"></div>
+                <div class="delta" id="train-summary-delta"></div>
+                <p class="muted" id="train-summary-foot"></p>
+                <button class="btn primary block" id="train-summary-new" type="button">New session</button>
+              </section>
 
-            <details class="drawer train-help" id="train-help" data-testid="train-help">
-              <summary>How this works</summary>
-              <div class="train-help-body">
-                <p class="help-intro">Queued by urgency:</p>
-                <div class="help-row"><span class="help-key hk-weak">Weak</span><span>Missed more than answered.</span></div>
-                <div class="help-row"><span class="help-key hk-due">Due</span><span>Spaced repetition says now.</span></div>
-                <div class="help-row"><span class="help-key hk-new">New</span><span>Shown once, then tested.</span></div>
-                <div class="help-row"><span class="help-key hk-learning">Learning</span><span>Being spaced out.</span></div>
-                <div class="help-row"><span class="help-key hk-mastered">Mastered</span><span>3+ recalls; reviews days apart.</span></div>
-                <p class="help-streaks"><b>In a row</b> counts this session only. <b>Day streak &#128293;</b> counts calendar days with one graded move.</p>
-              </div>
-            </details>
+              <details class="help train-help" id="train-help" data-testid="train-help">
+                <summary>How this works</summary>
+                <p>Queued by urgency:</p>
+                <dl>
+                  <dt class="k-weak">Weak</dt><dd>Missed more than answered.</dd>
+                  <dt class="k-due">Due</dt><dd>Spaced repetition says now.</dd>
+                  <dt class="k-new">New</dt><dd>Shown once, then tested.</dd>
+                  <dt class="k-learning">Learning</dt><dd>Being spaced out.</dd>
+                  <dt class="k-mastered">Mastered</dt><dd>3+ recalls; reviews days apart.</dd>
+                </dl>
+                <p class="faint"><b>In a row</b> counts this session only. <b>Day streak &#128293;</b> counts calendar days with one graded move.</p>
+              </details>
+            </div>
 
             <!-- legacy hooks kept for app.js compatibility; hidden -->
             <input id="train-import-input" type="file" hidden />

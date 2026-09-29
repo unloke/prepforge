@@ -101,6 +101,13 @@ async function runViewport(vp) {
   check(!!bannerState, "coach banner should carry a data-state");
   const label = await page.locator("#train-board-label").textContent().catch(() => "");
   check(label.length > 0, "board label should be non-empty");
+  // Optional review screenshots (UI_V2_SHOTS=<dir> UI_V2_TAG=before|after).
+  const shot = async (state) => {
+    if (process.env.UI_V2_SHOTS) {
+      await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `train-${state}-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
+    }
+  };
+  await shot("setup");
   const blitzRow = await page.locator("#train-blitz-row").count();
   check(blitzRow === 1, "blitz toggle row should be present");
 
@@ -120,6 +127,7 @@ async function runViewport(vp) {
   await page.waitForTimeout(400);
   const playSetup = await page.locator("#train-play-setup:not([hidden])").count();
   check(playSetup === 1, "play mode should reveal the play setup");
+  await shot("play");
   await page.evaluate(() => document.querySelector('#train-modes .train-mode[data-mode="smart"]').click());
   await page.waitForTimeout(300);
 
@@ -140,6 +148,8 @@ async function runViewport(vp) {
   await page.evaluate(() => document.getElementById("start-train").click());
   await page.waitForTimeout(1500);
 
+  await shot("active");
+
   // Progress panel visible with real card counter.
   const panelHidden = await page.locator("#train-progress-panel").evaluate((el) => el.hidden);
   check(!panelHidden, "progress panel should be visible in an active session");
@@ -153,7 +163,7 @@ async function runViewport(vp) {
   check(/weak/.test(legendText) && /due/.test(legendText) && /new/.test(legendText), `queue legend should list kinds, got "${legendText}"`);
 
   // Up next: 3 rows from the real queue (kinds weak/new/polish ahead of card 1).
-  const upnextRows = await page.locator("#train-upnext:not([hidden]) .train-upnext-row").count();
+  const upnextRows = await page.locator("#train-upnext:not([hidden]) .un-row").count();
   check(upnextRows === 3, `up next should show 3 upcoming cards, got ${upnextRows}`);
   const upnextText = await page.locator("#train-upnext").textContent().catch(() => "");
   check(/London System/.test(upnextText || ""), "up next should name the real next repertoire");

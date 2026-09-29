@@ -84,13 +84,13 @@ describe("visual system tokens", () => {
 
   it("locks the Train coach height so Maia copy cannot shove the board", () => {
     expect(css).toContain(".train-coach");
-    expect(css).toMatch(/\.train-coach[\s\S]{0,400}?min-height:\s*64px/);
-    expect(css).toMatch(/\.train-coach[\s\S]{0,400}?overflow:\s*hidden/);
+    expect(ruleBody(".train-coach")).toMatch(/display:\s*grid/);
+    expect(ruleBody(".train-coach-title")).toMatch(/-webkit-line-clamp:\s*1/);
     const sub = ruleBody(".train-coach-sub");
     expect(sub).toMatch(/-webkit-line-clamp:\s*2/);
-    const blitzHidden = ruleBody(".train-blitz-bar[hidden]");
-    expect(blitzHidden).toMatch(/visibility:\s*hidden/);
-    expect(blitzHidden).toMatch(/display:\s*block/);
+    // The blitz clock is absolutely positioned over the board's edge: hiding it never reflows.
+    expect(ruleBody(".blitz-bar")).toMatch(/position:\s*absolute/);
+    expect(ruleBody(".blitz-bar[hidden]")).toMatch(/display:\s*none/);
     const badgeHidden = ruleBody(".train-turn-badge[hidden]");
     expect(badgeHidden).toMatch(/display:\s*none/);
     const ibHidden = ruleBody(".ib[hidden]");
@@ -211,8 +211,8 @@ describe("seven views share chrome families", () => {
     expect(srs).toBeGreaterThan(blitz);
     const pickerBody = setup.slice(picker, blitz);
     expect(pickerBody).toContain('id="train-repertoire-select"');
-    expect(ruleBody("#train-srs-picker")).toMatch(/display:\s*grid/);
-    expect(ruleBody("#train-srs-picker[hidden]")).toMatch(/display:\s*none/);
+    expect(css).toContain(".tcard .field[hidden]");
+    expect(ruleBody(".tcard .field")).toMatch(/gap:\s*4px/);
   });
 
   it("keeps Play setup order: opponent book, repertoires, then your color", () => {
