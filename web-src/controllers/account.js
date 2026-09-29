@@ -49,19 +49,36 @@ export function createAccountController({
 
   // The account chip represents the PrepForge session. A linked Lichess identity
   // is optional and remains a separate connection shown in the signed-in menu.
+  // The account lives at the foot of the rail (avatar + name, the label fades
+  // in with the rail) and, on mobile where the rail is hidden, in the More
+  // sheet. Both render from the same signed-in state.
   function renderAccountChip() {
     const chip = document.getElementById("account-chip");
     const label = document.getElementById("account-label");
     if (!chip || !label) return;
     const name = appState.accountUsername || appState.lichessUsername;
+    const sub = document.getElementById("account-sub");
+    const initial = name ? String(name).trim().charAt(0).toUpperCase() : "";
+    const paintAvatar = (el) => {
+      if (!el) return;
+      el.classList.toggle("is-guest", !appState.signedIn);
+      if (appState.signedIn && initial) el.textContent = initial;
+    };
+    paintAvatar(document.getElementById("account-avatar"));
+    paintAvatar(document.getElementById("sheet-account-avatar"));
+    const sheetLabel = document.getElementById("sheet-account-label");
     if (appState.signedIn) {
       chip.classList.add("is-connected");
       label.textContent = name || "Account";
+      if (sub) sub.textContent = appState.lichessUsername ? `Lichess · ${appState.lichessUsername}` : "Account";
+      if (sheetLabel) sheetLabel.textContent = name || "Account";
       chip.setAttribute("aria-haspopup", "menu");
       chip.title = `Signed in as ${name || "your account"}`;
     } else {
       chip.classList.remove("is-connected");
       label.textContent = "Sign in";
+      if (sub) sub.textContent = "Save your library";
+      if (sheetLabel) sheetLabel.textContent = "Sign in";
       // A guest chip is a single action, not a menu — drop the popup affordance.
       chip.removeAttribute("aria-haspopup");
       chip.setAttribute("aria-expanded", "false");
@@ -203,15 +220,15 @@ export function createAccountController({
 
   // Guest → the chip is a single sign-in action. Signed in → it toggles the
   // account menu.
-  function onAccountChipClick() {
+  function onAccountChipClick(anchor = null) {
     if (!appState.signedIn) {
       openAuthModal("login");
       return;
     }
-    toggleAccountMenu();
+    toggleAccountMenu(anchor);
   }
 
-  function openAccountMenu() {
+  function openAccountMenu(anchor = null) {
     const chip = document.getElementById("account-chip");
     const menu = document.getElementById("account-menu");
     if (!chip || !menu) return;
@@ -228,11 +245,21 @@ export function createAccountController({
     menu.innerHTML = items.join("");
     menu.hidden = false;
     chip.setAttribute("aria-expanded", "true");
-    // Drop the menu under the chip, right-aligned and clamped to the viewport.
-    const cr = chip.getBoundingClientRect();
+    // Rail account: open beside the rail, bottom-aligned with the avatar.
+    // Mobile (rail hidden, opened from the More sheet): sit above the tab bar.
     const rect = menu.getBoundingClientRect();
-    const left = Math.max(8, Math.min(cr.right - rect.width, window.innerWidth - rect.width - 8));
-    const top = Math.max(8, Math.min(cr.bottom + 6, window.innerHeight - rect.height - 8));
+    const cr = (anchor || chip).getBoundingClientRect();
+    let left;
+    let top;
+    if (cr.width > 0) {
+      left = cr.right + 8;
+      top = cr.bottom - rect.height;
+    } else {
+      left = (window.innerWidth - rect.width) / 2;
+      top = window.innerHeight - rect.height - 74;
+    }
+    left = Math.max(8, Math.min(left, window.innerWidth - rect.width - 8));
+    top = Math.max(8, Math.min(top, window.innerHeight - rect.height - 8));
     menu.style.left = `${left}px`;
     menu.style.top = `${top}px`;
     menu.querySelectorAll("button").forEach((button) => {
@@ -247,10 +274,10 @@ export function createAccountController({
     if (chip) chip.setAttribute("aria-expanded", "false");
   }
 
-  function toggleAccountMenu() {
+  function toggleAccountMenu(anchor = null) {
     const menu = document.getElementById("account-menu");
     if (menu && !menu.hidden) closeAccountMenu();
-    else openAccountMenu();
+    else openAccountMenu(anchor);
   }
 
   async function handleAccountMenuAction(action) {

@@ -80,11 +80,18 @@ describe("workspace chrome layout", () => {
     const slot = header.indexOf('id="topbar-status-slot"');
     const status = header.indexOf('id="app-status"');
     const palette = header.indexOf('id="open-palette"');
-    const account = header.indexOf('id="account-chip"');
+    const theme = header.indexOf('id="theme-toggle"');
     expect(slot).toBeGreaterThanOrEqual(0);
     expect(status).toBeGreaterThan(slot);
     expect(palette).toBeGreaterThan(status);
-    expect(account).toBeGreaterThan(palette);
+    expect(theme).toBeGreaterThan(palette);
+    // The account is an avatar row at the foot of the rail (prototype), not a
+    // top-bar pill; mobile reaches it from the More sheet.
+    expect(header).not.toContain('id="account-chip"');
+    const railFoot = html.slice(html.indexOf('class="rail-foot"'), html.indexOf("</nav>"));
+    expect(railFoot).toContain('id="account-chip"');
+    expect(railFoot).toContain('id="account-avatar"');
+    expect(html).toContain('id="sheet-account"');
     expect(header).toContain('id="app-status-close"');
     expect(css).toContain(".topbar-status-slot");
     expect(css).toMatch(/\.topbar-status-slot\s*\{[^}]*position:\s*absolute/s);
@@ -95,14 +102,16 @@ describe("workspace chrome layout", () => {
     expect(app).toContain('getElementById("app-status-close")');
   });
 
-  it("uses Settings as the only theme entry point", () => {
-    expect(html).not.toContain('id="theme-toggle"');
+  it("offers a top-bar light/dark toggle and keeps System in Settings", () => {
+    // Prototype top bar: palette + theme toggle. The toggle flips the effective
+    // theme; Settings stays the full System / Light / Dark control.
+    const header = html.slice(html.indexOf('<header class="topbar">'), html.indexOf("</header>"));
+    expect(header).toContain('id="theme-toggle"');
     const settingsStart = html.indexOf('id="view-settings"');
     const settings = html.slice(settingsStart);
     expect(settings).toContain('id="settings-theme"');
-    expect(app).not.toContain("theme-toggle");
+    expect(app).toContain('getElementById("theme-toggle")');
     expect(app).not.toContain("nextTheme");
-    expect(app).not.toContain("themeLabel");
   });
 
   it("keeps Teams in primary navigation and removes More", () => {
@@ -541,7 +550,7 @@ describe("workspace chrome layout", () => {
     // Slice from the mobile chrome block (bottom tab bar / touch targets).
     const mobile = css.slice(css.indexOf("/* Mobile: no rail"));
     expect(mobile).toMatch(/\.tab\s*\{[^}]*height:\s*44px/s);
-    expect(mobile).toMatch(/\.lichess-chip\s*\{[^}]*min-height:\s*44px/s);
+    expect(mobile).toMatch(/\.account-btn,\s*\.icon-btn\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.btn\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.ib\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.rep-menu-btn\s*\{[^}]*min-width:\s*44px/s);

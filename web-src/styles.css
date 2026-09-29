@@ -29,6 +29,8 @@
   --accent-dark: #2447a8;
   --accent-text: #2447a8;
   --on-accent: #ffffff;
+  /* Ink on accent fills (prototype --accent-ink): white in light, near-black in dark. */
+  --accent-ink: #ffffff;
   --focus-ring: rgba(47, 91, 211, 0.35);
   --danger: #c73a2c;
   --danger-soft: #fbe7e4;
@@ -128,6 +130,7 @@
   --accent-dark: #2b53c4;
   --accent-text: #93abf2;
   --on-accent: #ffffff;
+  --accent-ink: #0d1020;
   --focus-ring: rgba(109, 143, 240, 0.42);
   --danger: #ef6b5b;
   --danger-soft: #3a1c18;
@@ -663,6 +666,20 @@ h2 {
   white-space: nowrap;
 }
 
+.topbar-status-slot .status:not(:empty)::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--good);
+  vertical-align: 1px;
+}
+.topbar-status-slot .status[data-severity="warning"]::before { background: var(--warn); }
+.topbar-status-slot .status[data-severity="error"]::before,
+.topbar-status-slot .status[data-state="error"]::before { background: var(--danger); }
+
 .status[data-severity="success"] {
   color: var(--good-text);
   font-weight: 650;
@@ -673,49 +690,75 @@ h2 {
   font-weight: 650;
 }
 
-.topbar-actions > .palette-open,
-.topbar-actions > .lichess-chip {
-  height: var(--control-h);
-  min-height: var(--control-h);
+.topbar-actions > .icon-btn {
+  height: 30px;
 }
 
-.lichess-chip {
-  height: var(--ib-h);
-  padding: 0 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: var(--panel-soft);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--chip);
-  display: inline-flex;
-  align-items: center;
+/* Prototype top-bar icon buttons: borderless, 30px, tinted on hover. */
+.icon-btn {
+  display: inline-grid;
+  grid-auto-flow: column;
+  place-items: center;
   gap: 6px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
   cursor: pointer;
 }
-
-/* Caret hint that the signed-in chip opens a menu (a guest chip has no popup). */
-.lichess-chip[aria-haspopup="menu"]::after {
-  content: "▾";
-  font-size: 9px;
-  color: var(--label);
+.icon-btn:hover { background: var(--surface-3); color: var(--text); }
+.icon-btn .ic { width: 17px; height: 17px; }
+.icon-btn kbd {
+  padding: 0 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--panel-soft);
+  color: var(--muted);
+  font: 600 10.5px/16px var(--mono, ui-monospace, monospace);
 }
+.topbar-actions { gap: 6px; }
+.theme-ic-sun { display: none; }
+:root[data-theme="dark"] .theme-ic-sun { display: block; }
+:root[data-theme="dark"] .theme-ic-moon { display: none; }
 
-.lichess-chip:hover {
-  background: var(--surface-hover);
-  border-color: var(--btn-border-hover);
+/* Account: an avatar row at the foot of the rail (label fades in with it). */
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #3d4652;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
 }
-
-.lichess-chip.is-connected {
-  color: var(--accent-strong);
-  border-color: var(--accent-line);
-  background: var(--accent-soft);
+.avatar.sm { width: 24px; height: 24px; font-size: 11px; }
+.avatar .ic { width: 16px; height: 16px; }
+.avatar.is-guest { background: var(--surface-3); color: var(--muted); }
+.account-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 40px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
 }
-
-.lichess-chip.is-connected::before {
-  content: "●";
-  color: var(--good-text);
-}
+.account-btn:hover { background: var(--hover); }
+.account-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.account-text b { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; }
+.account-text small { color: var(--label); font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
 
 /* The account menu reuses .context-menu chrome. Sign out is the only destructive
    action here. */
@@ -1028,21 +1071,19 @@ h2 {
 }
 
 .pf-switch.is-on {
-  background: var(--accent-strong);
-  border-color: var(--accent-dark);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .pf-switch.is-on:hover {
-  background: var(--accent-dark);
-  border-color: var(--accent-dark);
+  background: var(--accent);
+  border-color: var(--accent);
+  filter: brightness(1.07);
 }
 
-.pf-switch .pf-knob {
-  background: var(--text);
-}
-
+.pf-switch .pf-knob,
 .pf-switch.is-on .pf-knob {
-  background: var(--on-accent);
+  background: #ffffff;
 }
 
 .pf-knob {
@@ -1217,14 +1258,15 @@ h2 {
 }
 
 .btn.primary {
-  background: var(--accent-dark);
-  border-color: var(--accent-dark);
-  color: var(--on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .btn.primary:hover {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
+  background: var(--accent);
+  border-color: var(--accent);
+  filter: brightness(1.07);
 }
 
 .btn.danger {
@@ -3957,8 +3999,13 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
     display: inline-flex;
     align-items: center;
   }
-  .lichess-chip {
+  .account-btn,
+  .icon-btn {
     min-height: 44px;
+    min-width: 44px;
+  }
+  .icon-btn kbd {
+    display: none;
   }
   .btn {
     min-height: 44px;
@@ -4445,8 +4492,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 .engine-step {
   border: 0;
-  background: var(--accent-dark);
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-ink);
   width: 18px;
   height: 18px;
   border-radius: 50%;

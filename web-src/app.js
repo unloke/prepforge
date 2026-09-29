@@ -209,6 +209,7 @@ function setPref(name, value) {
 function applyPref(name) {
   if (name === "theme") {
     applyTheme(pref("theme"));
+    syncThemeToggle();
   }
   if (name === "coordinates") {
     Object.values(boards).forEach((b) => b && b.applyCoordinates && b.applyCoordinates());
@@ -216,6 +217,23 @@ function applyPref(name) {
   if (name === "bestArrow" && !pref("bestArrow")) {
     Object.values(boards).forEach((b) => b && b.setEngineArrow && b.setEngineArrow(null));
   }
+}
+
+// Top-bar theme toggle: flips the effective theme (an explicit light/dark
+// choice). Settings keeps the full System / Light / Dark control.
+function syncThemeToggle() {
+  const btn = document.getElementById("theme-toggle");
+  if (!btn) return;
+  const dark = document.documentElement.dataset.theme === "dark";
+  const label = dark ? "Switch to light theme" : "Switch to dark theme";
+  btn.title = label;
+  btn.setAttribute("aria-label", label);
+}
+
+function toggleThemeFromTopbar() {
+  const dark = document.documentElement.dataset.theme === "dark";
+  setPref("theme", dark ? "light" : "dark");
+  settingsView?.renderThemeControl?.();
 }
 
 // Draw the engine's top move as a green arrow on whichever board is showing
@@ -4522,7 +4540,7 @@ async function openTeamDetail(teamId) {
       }
       return `
         <div class="mem-row team-member-row">
-          <span class="avatar" aria-hidden="true">${initial}</span>
+          <span class="avatar sm" aria-hidden="true">${initial}</span>
           <span class="mem-id"><span class="name">${name}${isMe ? ' <span class="sub">(you)</span>' : ""}</span>${sub}</span>
           <span class="team-member-tail">${tail}</span>
         </div>`;
@@ -11518,6 +11536,14 @@ function wireMobileNav() {
       target?.click();
     });
   });
+  // Mobile account entry (the rail — and its account row — is hidden ≤ 760px).
+  const accountItem = document.getElementById("sheet-account");
+  if (accountItem) {
+    accountItem.addEventListener("click", () => {
+      closeSheet({ restoreFocus: false });
+      onAccountChipClick();
+    });
+  }
   const paletteItem = document.getElementById("sheet-palette");
   if (paletteItem) {
     paletteItem.addEventListener("click", () => {
@@ -11570,7 +11596,8 @@ function bindEvents() {
 
 
   // Account chip (folds in the old standalone Sign out button as a menu action)
-  document.getElementById("account-chip").addEventListener("click", onAccountChipClick);
+  document.getElementById("account-chip").addEventListener("click", () => onAccountChipClick());
+  document.getElementById("theme-toggle")?.addEventListener("click", toggleThemeFromTopbar);
 
   // Replay tab
   document.getElementById("lichess-compare-btn").addEventListener("click", runLichessCompare);
@@ -11775,7 +11802,7 @@ function bindEvents() {
     syncStatusRoom();
     window.addEventListener("resize", syncStatusRoom);
     const observer = new ResizeObserver(syncStatusRoom);
-    for (const element of [lastNav, palette, document.getElementById("account-chip")]) {
+    for (const element of [lastNav, palette]) {
       if (element) observer.observe(element);
     }
     document.fonts?.ready.then(syncStatusRoom);
@@ -11915,7 +11942,11 @@ function bindEvents() {
     if (!event.target.closest("#repertoire-context-menu")) closeRepertoireContextMenu();
     // The chip's own click toggles the menu; ignore it here so we don't immediately
     // re-close what the toggle just opened.
-    if (!event.target.closest("#account-menu") && !event.target.closest("#account-chip")) {
+    if (
+      !event.target.closest("#account-menu") &&
+      !event.target.closest("#account-chip") &&
+      !event.target.closest("#sheet-account")
+    ) {
       closeAccountMenu();
     }
   });
@@ -11928,7 +11959,10 @@ async function init() {
   try {
     const systemTheme = window.matchMedia?.("(prefers-color-scheme: dark)");
     systemTheme?.addEventListener?.("change", () => {
-      if (pref("theme") === "system") applyTheme("system");
+      if (pref("theme") === "system") {
+        applyTheme("system");
+        syncThemeToggle();
+      }
     });
   } catch (_) {
     /* matchMedia is optional in embedded/test environments */

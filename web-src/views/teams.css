@@ -143,18 +143,6 @@
   min-width: 0;
 }
 .mem-id .name { font-weight: 700; overflow-wrap: anywhere; }
-.avatar {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--surface-3);
-  color: var(--text);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-}
 .team-member-tail {
   display: inline-flex;
   flex: none;
