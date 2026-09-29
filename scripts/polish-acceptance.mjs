@@ -174,7 +174,7 @@ for (const vp of VIEWPORTS) {
     ({ hint }) => {
       document.querySelector('[data-testid="nav-build"]').click();
       document.getElementById("build-tool-coverage").click();
-      const head = document.querySelector(".build-inspector-head");
+      const head = document.getElementById("build-dock-tools");
       const headH = head.getBoundingClientRect().height;
       const infoBtn = document.getElementById("inspector-info");
       infoBtn.click();
@@ -212,7 +212,8 @@ for (const vp of VIEWPORTS) {
           bad.push(`${el.className}@${Math.round(b.left)},${Math.round(b.right)}`);
         }
       });
-      const ps = getComputedStyle(panel);
+      const dockBody = document.querySelector("#build-inspector .dock-body");
+      const ps = getComputedStyle(dockBody);
       // explorer rows
       document.getElementById("build-tool-explorer").click();
       const rows = document.getElementById("explorer-rows");
@@ -222,7 +223,7 @@ for (const vp of VIEWPORTS) {
           `<button type="button" class="explorer-row"><span class="explorer-san">Nf3+${i}</span><span class="explorer-games">12.5k</span><span class="explorer-bar"><span class="explorer-bar-w" style="width:40%"></span></span></button>`,
       ).join("");
       const panel2 = document.getElementById("explorer-drawer");
-      const ps2 = getComputedStyle(panel2);
+      const ps2 = getComputedStyle(dockBody);
       const box2 = pad(inspector);
       const bad2 = [];
       panel2.querySelectorAll("*").forEach((el) => {
@@ -239,9 +240,7 @@ for (const vp of VIEWPORTS) {
         headH,
         popText,
         scanVisible,
-        // Measure the VISIBLE explorer panel (coverage is hidden after the
-        // switch, so its clientHeight reads 0 by design).
-        panelMaxH: ps2.maxHeight,
+        // The dock body owns scroll; measure the VISIBLE explorer panel.
         panelClientH: panel2.clientHeight,
       };
     },
@@ -249,22 +248,14 @@ for (const vp of VIEWPORTS) {
   );
   check(`[${vp.label}] coverage content inside inspector`, insp.coverageBad.length === 0, insp.coverageBad.join(" | "));
   check(`[${vp.label}] explorer content inside inspector`, insp.explorerBad.length === 0, insp.explorerBad.join(" | "));
-  check(`[${vp.label}] inspector panel owns scroll`, insp.panelScroll === "auto" || insp.panelScroll === "scroll");
-  check(`[${vp.label}] inspector header is one compact row`, insp.headH <= 44, `${insp.headH}px`);
+  check(`[${vp.label}] dock body owns scroll`, insp.panelScroll === "auto" || insp.panelScroll === "scroll");
+  check(`[${vp.label}] dock tools are one compact row`, insp.headH <= 48, `${insp.headH}px`);
   check(
     `[${vp.label}] inspector info popover explains scope`,
     /human play|Master games|Players near/.test(insp.popText || ""),
     (insp.popText || "").slice(0, 100),
   );
   check(`[${vp.label}] coverage scan lives in the header`, !!insp.scanVisible);
-  // max-height resolves to px in computed style: laptop 352px (was 272px at
-  // 34vh), narrow 380px (was 300px). Either way the budget grows ~30%.
-  const maxPx = parseFloat(insp.panelMaxH || "0");
-  check(
-    `[${vp.label}] inspector panel offers more content height`,
-    maxPx > 300,
-    `max ${insp.panelMaxH || ""}, ${insp.panelClientH}px showing 10 rows`,
-  );
   // No nested competing scroll regions: the inner content containers must not
   // themselves scroll (checked structurally in ui-layout tests; the panel is
   // the single scroll owner).

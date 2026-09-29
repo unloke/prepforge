@@ -104,9 +104,7 @@ describe("visual system tokens", () => {
     const coverage = ruleBody(".coverage-gaps");
     expect(coverage).not.toMatch(/overflow-y/);
     expect(coverage).not.toMatch(/max-height/);
-    const panel = ruleBody(".inspector-panel");
-    expect(panel).toMatch(/overflow-y:\s*auto/);
-    expect(panel).toMatch(/max-height:\s*min\(44vh,\s*380px\)/);
+    expect(ruleBody(".dock-body")).toMatch(/overflow:\s*auto/);
   });
 });
 

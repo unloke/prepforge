@@ -1655,7 +1655,7 @@ h2 {
   font-size: 13.5px;
 }
 .lib .card-head .tools { margin-left: auto; }
-.lib-count {
+.count {
   min-width: 18px;
   padding: 0 5px;
   border-radius: 9px;
@@ -1994,25 +1994,25 @@ h2 {
 }
 .pv-mix i { display: block; min-width: 2px; }
 .pv-mix-empty { align-self: center; font-size: var(--fs-xs); }
-.pv-mix-legend {
+.legend {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 10px;
   color: var(--muted);
   font-size: var(--fs-xs);
 }
-.pv-mix-legend i {
+.legend i {
   display: inline-block;
   width: 7px;
   height: 7px;
   margin-right: 4px;
   border-radius: 2px;
 }
-.pv-mix i.k-mastered, .pv-mix-legend i.k-mastered { background: var(--k-mastered); }
-.pv-mix i.k-learning, .pv-mix-legend i.k-learning { background: var(--k-learning); }
-.pv-mix i.k-due, .pv-mix-legend i.k-due { background: var(--k-due); }
-.pv-mix i.k-weak, .pv-mix-legend i.k-weak { background: var(--k-weak); }
-.pv-mix i.k-new, .pv-mix-legend i.k-new { background: var(--k-new); }
+.pv-mix i.k-mastered, .legend i.k-mastered { background: var(--k-mastered); }
+.pv-mix i.k-learning, .legend i.k-learning { background: var(--k-learning); }
+.pv-mix i.k-due, .legend i.k-due { background: var(--k-due); }
+.pv-mix i.k-weak, .legend i.k-weak { background: var(--k-weak); }
+.pv-mix i.k-new, .legend i.k-new { background: var(--k-new); }
 .pv-actions { display: flex; gap: 6px; }
 .pv-actions .btn { padding: 0 10px; white-space: nowrap; }
 .pv-actions .btn.primary { flex: 1; }
@@ -2382,7 +2382,6 @@ h2 {
    appearing below never moves the primary controls above it. The whole study
    fits the viewport height, so the dead space under the sidebar disappears. */
 #analyze-sidebar,
-#view-build .sidebar,
 #view-train .train-sidebar {
   min-width: 0;
   min-height: 0;
@@ -3486,14 +3485,28 @@ h2 {
 /* Board bar (under the board) */
 
 .board-bar {
-  height: 36px;
+  height: 40px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 6px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--panel);
+  gap: 8px;
+  color: var(--text);
+}
+
+.bb-nav,
+.bb-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Board-bar icons are plain glyphs (no boxed buttons). */
+.board-bar .ib {
+  border-color: transparent;
+  background: transparent;
+}
+
+.board-bar .ib:hover {
+  background: var(--surface-hover);
 }
 
 .ib {
@@ -3521,6 +3534,9 @@ h2 {
 }
 
 .board-label {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
   color: var(--muted);
   font-size: 13px;
   overflow: hidden;
@@ -3540,8 +3556,8 @@ h2 {
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--panel-soft);
+  border: 1px solid transparent;
+  background: var(--surface-3);
   white-space: nowrap;
   transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
 }
@@ -3550,7 +3566,7 @@ h2 {
 }
 .build-sync.is-saved {
   color: var(--good-text);
-  border-color: color-mix(in srgb, var(--good) 35%, var(--line));
+  background: var(--good-soft);
 }
 .build-sync.is-dirty {
   color: var(--muted);
@@ -3571,6 +3587,252 @@ h2 {
   }
 }
 
+/* ===========================================================================
+   Repertoire — Opus prototype composition
+   One raised panel beside the board: identity head, position trail + mastery
+   legend, fork picker, the move tree, and a bottom dock (Explorer / Coverage /
+   Engine). Mirrors prototype .panel / .tree-meta / .forkbar / .tree-wrap / .dock.
+   =========================================================================== */
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+.panel > [hidden] { display: none; }
+#view-build .sidebar { gap: 0; }
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 8px 10px 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.rep-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.rep-name b { overflow: hidden; text-overflow: ellipsis; }
+.rep-color-sub { color: var(--label); font-size: var(--fs-s); }
+.rep-menu-btn { margin-left: auto; flex: none; opacity: 1; }
+.build-empty { flex: 1; justify-content: center; }
+.panel:has(> .build-empty:not([hidden])) > :is(.tree-meta, .forkbar, .tree-wrap, .dock) { display: none; }
+
+.tree-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding-right: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.tree-meta .legend { flex: none; }
+.crumbs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 12px;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-size: var(--fs-s);
+  scrollbar-width: none;
+}
+.crumbs::-webkit-scrollbar { display: none; }
+.mtree-crumb {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.mtree-crumb:hover { background: var(--surface-hover); }
+.mtree-crumb.is-current { color: var(--text); font-weight: 650; }
+.crumbs .mtree-num { padding: 0; margin: 0; font-size: inherit; }
+.crumb-sep { color: var(--label); font-size: 10px; padding: 0 1px; }
+.crumb-empty { color: var(--label); padding: 2px 4px; }
+
+.forkbar {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.fork-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: var(--fs-s);
+}
+.fork-head .keys {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  color: var(--label);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.fork-head kbd {
+  min-width: 16px;
+  padding: 0 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--panel);
+  font: inherit;
+  text-align: center;
+}
+.fork-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fork-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 4px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.fork-chip .mtree-num { padding: 0; margin: 0; font-size: 11px; font-weight: 500; }
+.fork-chip i { color: var(--k-due); font-size: 11px; font-style: normal; }
+.fork-chip small { margin-left: 4px; color: var(--label); font-size: inherit; font-weight: 500; }
+.fork-chip:hover { border-color: var(--accent); }
+.fork-chip.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+
+.tree-wrap {
+  flex: 1 1 auto;
+  min-height: 90px;
+  padding: 10px 12px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  font-size: 13px;
+  line-height: 1.95;
+  font-variant-numeric: tabular-nums;
+}
+.tree-empty { padding: 16px; color: var(--label); text-align: center; }
+
+.dock {
+  flex: 0 0 clamp(210px, 40%, 330px);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 1px solid var(--line);
+}
+.dock-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.dock-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: -1px;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--label);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: 600;
+  cursor: pointer;
+}
+.dock-tabs button.is-active { color: var(--text); border-bottom-color: var(--accent); }
+.dock-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.dock-body { flex: 1; min-height: 0; padding: 8px 12px; overflow: auto; }
+.dock-tools {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.dock-tools[hidden] { display: none; }
+.dock-tools .spacer { flex: 1; }
+.dock-tools .seg[hidden],
+.dock-tools .btn[hidden],
+.dock-tools .ib[hidden],
+.dock-tools .score-chip[hidden] { display: none; }
+.score-chip {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--good-soft);
+  color: var(--good-text);
+  font-size: var(--fs-s);
+  font-weight: 650;
+}
+.inspector-info {
+  width: 24px;
+  min-width: 0;
+  height: 24px;
+  padding: 0;
+  border-color: transparent;
+  background: none;
+  color: var(--label);
+  font-size: 13px;
+}
+.inspector-info-pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 5;
+  max-width: 240px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
+}
+.inspector-panel { min-width: 0; }
+.inspector-panel[hidden] { display: none; }
+
+.tb-left { align-items: center; }
+.tb-actions { display: flex; align-items: center; gap: 8px; margin-left: 6px; }
+.tb-actions[hidden] { display: none; }
+
+@media (max-width: 1020px) {
+  #view-build .sidebar { max-height: none; overflow: hidden; }
+  .tree-wrap { max-height: 60vh; }
+  .dock { flex: none; }
+}
+@media (max-width: 760px) {
+  .tree-meta .legend { display: none; }
+  .tree-wrap { max-height: none; }
+  .fork-head .keys { display: none; }
+  .dock-tabs button { min-height: 44px; }
+  /* Generate stays reachable on phones: it takes the palette chip's room. */
+  .topbar:has(.tb-actions:not([hidden])) .palette-open { display: none; }
+  .tb-actions { margin-left: 0; }
+  .tb-actions .btn { white-space: nowrap; }
+  .board-bar { height: 44px; }
+}
+
 /* Sidebar */
 
 .sidebar {
@@ -3589,151 +3851,6 @@ h2 {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-}
-
-.build-tools {
-  align-items: center;
-}
-
-.inspector-toggle[aria-expanded="true"] {
-  color: var(--accent-strong);
-  border-color: var(--accent-line);
-  background: var(--accent-soft);
-}
-
-.build-inspector {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--panel);
-  min-height: 0;
-  min-width: 0;
-  overflow: hidden;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-}
-
-.build-inspector-head {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--line);
-  min-height: 34px;
-}
-
-.build-inspector-title {
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.build-inspector-head .explorer-dbs {
-  margin-left: 2px;
-}
-
-.build-inspector-head .explorer-db {
-  padding: 2px 8px;
-  font-size: 11px;
-}
-
-.build-inspector-head .explorer-opening {
-  flex: 1 1 auto;
-}
-
-.inspector-info {
-  margin-left: auto;
-  flex: none;
-  width: 24px;
-  height: 24px;
-  font-size: 13px;
-}
-
-.inspector-scan {
-  flex: none;
-  height: 26px;
-  padding: 0 10px;
-  font-size: 12px;
-}
-
-.build-inspector-head .coverage-score {
-  flex: none;
-}
-
-.inspector-info-pop {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 8px;
-  z-index: 5;
-  max-width: 240px;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  background: var(--panel);
-  color: var(--text);
-  font-size: 12px;
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
-}
-
-.inspector-info[hidden],
-.inspector-scan[hidden],
-.build-inspector-head .explorer-dbs[hidden] {
-  display: none;
-}
-
-.inspector-panel {
-  padding: 6px 8px 8px;
-  min-width: 0;
-  min-height: 0;
-  max-height: min(44vh, 380px);
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.inspector-panel > * {
-  min-width: 0;
-  max-width: 100%;
-}
-
-.inspector-panel[hidden],
-.build-inspector[hidden] {
-  display: none;
-}
-
-/* Sidebar identity header (Build): which repertoire is open, plus the ⋯ menu
-   that owns every repertoire-scoped action (rename / export / new). Keeps the
-   board bar pure navigation and the tools row pure position work. */
-.rep-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 30px;
-}
-
-.rep-name {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 700;
-  font-size: 14px;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-
-.rep-color-sub {
-  color: var(--muted);
-  font-weight: 500;
-  font-size: 12px;
-}
-
-.rep-menu-btn {
-  margin-left: auto;
-  flex: none;
-  font-size: 16px;
-  line-height: 1;
 }
 
 .train-picker-label {
@@ -4653,17 +4770,24 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px;
-  border: 1px solid var(--accent-line);
-  border-radius: 6px;
-  background: var(--accent-soft);
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--info-soft);
   flex-wrap: wrap;
 }
 
 .shared-banner-text {
-  font-size: 13px;
-  color: var(--text);
+  display: grid;
+  gap: 2px;
+  flex: 1 1 220px;
+  min-width: 0;
+  font-size: var(--fs-s);
+  color: var(--muted);
+}
+
+.shared-banner-text b {
+  color: var(--accent-text);
 }
 
 .team-shared-head {
@@ -4686,20 +4810,9 @@ h2 {
   gap: 8px;
 }
 
-/* Coverage scan (Build sidebar drawer): rows only — the Scan button and score
-   live in the shared compact header row, the explainer in the ⓘ popover. */
-.coverage-score {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--good-text);
-}
-
-/* Coverage scan rows live directly under the compact header (Scan button +
-   score share the header row; the explainer moved to the ⓘ popover). */
+/* Coverage scan rows (Scan, score and the ⓘ popover live in the dock tools). */
 .coverage-gaps {
   display: grid;
-  gap: 2px;
-  padding: 2px 0;
   min-width: 0;
 }
 
@@ -4730,8 +4843,8 @@ h2 {
   grid-template-columns: auto 1fr;
   align-items: center;
   gap: 8px;
-  padding: 4px 6px;
-  border-radius: 4px;
+  padding: 6px;
+  border-bottom: 1px solid var(--line);
   font-size: 12px;
 }
 
@@ -4764,48 +4877,20 @@ h2 {
   overflow-wrap: anywhere;
 }
 
-/* Opening explorer: segmented control lives in the shared compact header row. */
-
-.explorer-dbs {
-  display: inline-flex;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.explorer-db {
-  border: 0;
-  background: var(--panel);
-  color: var(--muted);
-  font: inherit;
-  font-size: 12px;
-  padding: 3px 10px;
-  cursor: pointer;
-}
-
-.explorer-db.is-active {
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  font-weight: 600;
-}
-
+/* Opening explorer: a Move / Games / W-D-L table. */
 .explorer-opening {
-  font-size: 11px;
-  color: var(--muted);
-  text-align: right;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  overflow-wrap: anywhere;
+  font-size: var(--fs-s);
+  font-style: italic;
+  color: var(--muted);
 }
 
-/* Explorer rows live directly under the compact header row (segmented control
-   + info popover share the header; scope text moved to the popover). */
 .explorer-rows {
   display: grid;
-  gap: 2px;
-  padding: 2px 0;
   min-width: 0;
 }
 
@@ -4813,19 +4898,39 @@ h2 {
   padding: 4px 0 8px;
 }
 
-.explorer-row {
+.explorer-head, .explorer-row {
   display: grid;
-  grid-template-columns: minmax(48px, 64px) minmax(36px, 48px) minmax(0, 1fr);
+  grid-template-columns: minmax(48px, 64px) minmax(44px, 68px) minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
-  border: 0;
+  gap: 10px;
+  min-width: 0;
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-s);
+}
+
+.explorer-head {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  color: var(--label);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.explorer-head span:nth-child(2) {
+  text-align: right;
+}
+
+.explorer-row {
+  min-width: 0;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
   background: transparent;
   font: inherit;
-  padding: 3px 4px;
-  border-radius: 4px;
+  font-size: var(--fs-s);
   cursor: pointer;
   text-align: left;
-  min-width: 0;
   max-width: 100%;
 }
 
@@ -4834,36 +4939,43 @@ h2 {
 }
 
 .explorer-san {
-  font-weight: 600;
+  font-weight: 650;
   color: var(--text);
 }
 
 .explorer-inrep {
-  color: var(--good-text);
+  color: var(--accent-text);
   margin-left: 4px;
-  font-size: 10px;
+  font-size: 9px;
   vertical-align: 2px;
 }
 
 .explorer-games {
-  font-size: 11px;
-  color: var(--muted);
   text-align: right;
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
 .explorer-bar {
   display: flex;
-  height: 12px;
+  height: 18px;
   border-radius: 3px;
   overflow: hidden;
-  border: 1px solid var(--line);
-  background: var(--panel-soft);
+  background: var(--surface-3);
 }
 
-.explorer-bar-w { background: #fdfdfb; }
-.explorer-bar-d { background: var(--line-strong); }
-.explorer-bar-b { background: #3a3a3a; }
+.explorer-bar span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.explorer-bar-w { background: #f2f2ef; color: #333; }
+.explorer-bar-d { background: #9a9fa6; color: #fff; }
+.explorer-bar-b { background: #2e3136; color: #fff; }
 
 /* Eval chart styles live in views/analyze-chart.css (lazy-loaded with the
    Analyze view) so this eager sheet stays under its deploy budget. */
@@ -5175,15 +5287,6 @@ h2 {
   flex: 0 0 auto;
 }
 
-/* Build repertoire tree: the sidebar's primary surface, so it grows to fill the
-   height under the toolbar/branch bar and scrolls within. */
-#builder-tree {
-  flex: 1 1 auto;
-  min-height: 160px;
-  max-height: none;
-  overflow: auto;
-}
-
 /* ===========================================================================
    Move tree (shared by Analyze study lines + Build repertoire)
 
@@ -5201,190 +5304,6 @@ h2 {
   font-variant-numeric: tabular-nums;
   max-height: 64vh;
 }
-
-/* Sticky trail of the currently selected line. */
-.build-breadcrumb {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 1px 1px;
-  margin: -6px -10px 8px;
-  padding: 7px 10px;
-  background: var(--panel-soft);
-  border-bottom: 1px solid var(--line-soft);
-  line-height: 1.5;
-}
-
-.build-breadcrumb .crumb-empty {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.mtree-crumb {
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  padding: 1px 5px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.mtree-crumb:hover {
-  background: var(--surface-hover);
-}
-.mtree-crumb.is-current {
-  background: var(--accent);
-  color: #fff;
-}
-
-/* ---- Branch switcher strip --------------------------------------------- */
-/* The keyboard branch selector's on-screen face: the alternatives available at the
-   current point, the active one lit, so switching a branch never needs the mouse.
-   It FLOATS over the bottom of the move list (absolute, pinned to the sidebar) rather
-   than sitting in the flow — appearing/disappearing as you step through branch points
-   used to reflow the move list and make it jump. As an overlay it never moves the list;
-   the list reserves scroll space (scroll-padding-bottom) so the active row stays clear. */
-#view-build .sidebar {
-  position: relative;
-}
-/* The Build move list fills the sidebar and scrolls inside itself, so the floating bar
-   has a stable bottom edge to pin to (the sidebar itself never scrolls). */
-#builder-tree {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: none;
-  scroll-padding-bottom: 104px;
-}
-.build-branchbar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 5;
-  margin: 0;
-  padding: 7px 9px;
-  border: 1px solid var(--accent-line);
-  border-radius: 8px;
-  background: var(--accent-soft);
-  box-shadow: 0 -1px 0 var(--accent-line), 0 14px 30px -10px rgba(0, 0, 0, 0.45);
-}
-.build-branchbar[hidden] {
-  display: none;
-}
-.branchbar-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-.branchbar-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--accent-strong);
-}
-.branchbar-count {
-  font-size: 11px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: #fff;
-  background: var(--accent);
-  border-radius: 999px;
-  padding: 0 7px;
-  line-height: 17px;
-}
-.branchbar-hint {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-.branchbar-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-.branch-chip {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  border: 1px solid var(--accent-line);
-  background: var(--panel);
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  padding: 3px 9px;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease, transform 80ms ease;
-}
-.branch-chip:hover {
-  background: var(--surface-hover);
-  border-color: var(--accent);
-}
-.branch-chip.is-active {
-  background: var(--accent);
-  border-color: var(--accent-strong);
-  color: #fff;
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
-.branch-chip .branch-num {
-  font-size: 11px;
-  opacity: 0.7;
-}
-.branch-chip.is-main:not(.is-active) .branch-san {
-  text-decoration: underline;
-  text-decoration-color: var(--accent-line);
-  text-underline-offset: 2px;
-}
-
-.branch-chip .branch-main-mark {
-  font-size: 10px;
-  opacity: 0.75;
-  align-self: center;
-}
-
-/* Practical share (from the server's real Maia probability) on fork chips. */
-.branch-chip .branch-share {
-  font-size: 11px;
-  font-weight: 500;
-  opacity: 0.72;
-  margin-left: 2px;
-}
-.branch-chip.is-active .branch-share {
-  opacity: 0.9;
-}
-
-/* Mastery legend under the Build breadcrumbs — same hues the tree heatmap paints
-   (inset underline on .mtree-move.m-*), so the key can never drift from the map. */
-.build-mlegend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  margin: 0 0 6px;
-  font-size: 11px;
-  color: var(--muted);
-}
-.build-mlegend i {
-  display: inline-block;
-  width: 12px;
-  height: 2px;
-  border-radius: 1px;
-  margin-right: 5px;
-  vertical-align: middle;
-}
-.build-mlegend i.mk-mastered { background: var(--good); }
-.build-mlegend i.mk-learning { background: #9bb7d4; }
-.build-mlegend i.mk-due { background: var(--warn); }
-.build-mlegend i.mk-weak { background: var(--danger); }
 
 /* ---- Tree body --------------------------------------------------------- */
 .mtree {
@@ -5462,6 +5381,12 @@ h2 {
   font-style: italic;
 }
 
+/* Opponent replies read lighter than the moves you own. */
+.mtree-move.is-opp {
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .mtree-move.is-disabled {
   opacity: 0.45;
   text-decoration: line-through;
@@ -5517,16 +5442,16 @@ h2 {
 }
 /* Mastery heatmap: a colored underline on trained own-side moves. */
 .mtree-move.m-mastered {
-  box-shadow: inset 0 -2px 0 var(--good);
+  box-shadow: inset 0 -2px 0 var(--k-mastered);
 }
 .mtree-move.m-learning {
-  box-shadow: inset 0 -2px 0 #9bb7d4;
+  box-shadow: inset 0 -2px 0 var(--k-learning);
 }
 .mtree-move.m-due {
-  box-shadow: inset 0 -2px 0 var(--warn);
+  box-shadow: inset 0 -2px 0 var(--k-due);
 }
 .mtree-move.m-weak {
-  box-shadow: inset 0 -2px 0 var(--danger);
+  box-shadow: inset 0 -2px 0 var(--k-weak);
 }
 
 /* Per-variation collapse toggle. */
@@ -5810,7 +5735,6 @@ h2 {
   }
 
   #analyze-sidebar,
-  #view-build .sidebar,
   #view-train .train-sidebar {
     max-height: none;
     overflow: visible;
@@ -5825,10 +5749,6 @@ h2 {
     height: auto;
     overflow: visible;
     padding-right: 0;
-  }
-
-  #builder-tree {
-    max-height: 64vh;
   }
 }
 
@@ -5920,13 +5840,11 @@ h2 {
     height: 44px;
   }
 
-  /* Build repertoire ⋯ menu: 44×44px touch target (desktop .ib stays 28px). */
-  #view-build #build-menu {
+  /* Repertoire ⋯ menu: 44×44px touch target. */
+  .rep-menu-btn {
     width: 44px;
     min-width: 44px;
     height: 44px;
-    min-height: 44px;
-    padding: 0;
   }
 
   /* Train Start + board-bar icons: 44px touch targets (desktop stays 32px / 28px). */
@@ -6357,6 +6275,40 @@ h2 {
 }
 
 .engine-window[hidden] {
+  display: none;
+}
+
+/* Docked in the Repertoire inspector's Engine tab: in flow, no chrome. */
+.engine-window.is-docked {
+  position: static;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+  opacity: 1;
+  transform: none;
+  overflow: visible;
+}
+
+.engine-window.is-docked .engine-window-head {
+  background: none;
+  border-bottom: 0;
+  padding-left: 0;
+  cursor: default;
+}
+
+.engine-window.is-docked .engine-window-body {
+  min-height: 140px;
+}
+
+.engine-window.is-docked .engine-window-close,
+.engine-window.is-docked .engine-window-resize {
   display: none;
 }
 
@@ -8033,6 +7985,13 @@ h2 {
   overflow: auto;
 }
 
+.panel > .engine-banner {
+  margin: 0;
+  max-height: none;
+  border-width: 0 0 1px;
+  border-radius: 0;
+}
+
 .engine-banner[hidden] {
   display: none;
 }
@@ -8157,16 +8116,9 @@ h2 {
      16px gap — no second column definition. */
   .study .board-area { justify-self: start; }
   #view-analyze .sidebar,
-  #view-build .sidebar,
   #view-train .sidebar { padding: 4px 6px 18px 4px; overflow-y: auto; overscroll-behavior: contain; }
-  #analyze-sidebar > .tools,
-  #view-build .build-tools { position: sticky; top: 0; z-index: 4; background: var(--bg); padding: 6px 0; }
-  #view-build .rep-header { position: sticky; top: 0; z-index: 5; background: var(--bg); }
-  #view-build .build-tools { top: 44px; }
-  #view-build .build-inspector { flex: 0 0 auto; min-height: 180px; max-height: 38vh; }
-  #view-build #builder-tree { flex: 1 1 180px; min-height: 180px; }
-  #view-analyze .explain-card,
-  #view-build .build-inspector { box-shadow: none; border-color: transparent; }
+  #analyze-sidebar > .tools { position: sticky; top: 0; z-index: 4; background: var(--bg); padding: 6px 0; }
+  #view-analyze .explain-card { box-shadow: none; border-color: transparent; }
   #view-analyze .drawer { border-color: transparent; border-bottom: 1px solid var(--line-soft); border-radius: 0; }
   #view-analyze .explain-card { background: var(--panel-soft); }
   #view-analyze #analysis-results { display: grid; gap: 14px; }
@@ -8177,9 +8129,6 @@ h2 {
   #analyze-sidebar #analysis-results { order: 2; }
   #analyze-sidebar #pgn-drawer { order: 3; }
   #analyze-sidebar #history-drawer { order: 4; }
-  #view-build .build-branchbar { background: var(--panel-soft); border-color: transparent; }
-  #view-build .sidebar:has(#build-empty:not([hidden])) .build-tools,
-  #view-build .sidebar:has(#build-empty:not([hidden])) #builder-tree { display: none; }
   #view-train .train-setup { padding: 12px; }
   #view-train #train-play-color { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #view-train .train-play-setup .train-start-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -8243,9 +8192,6 @@ h2 {
   background: transparent;
 }
 .status-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.build-empty { padding: 24px 4px; background: var(--panel-soft); border-radius: var(--radius-card); }
-.build-empty h2, .build-empty p, .build-empty .tools { margin-left: 20px; margin-right: 20px; }
-.build-empty[hidden] { display: none; }
 .replay-results .replay-game-list { display: grid; align-content: start; gap: 6px; }
 .replay-inspector { min-width: 0; padding: 18px 22px; border-radius: var(--radius-card); background: var(--panel-soft); }
 .replay-inspector h3 { margin: 0 0 10px; font-size: 20px; }

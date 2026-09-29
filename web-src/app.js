@@ -1446,7 +1446,7 @@ class EngineWidget {
       window.removeEventListener("pointerup", onUp);
     };
     this.head.addEventListener("pointerdown", (event) => {
-      if (event.target.closest("button")) return;
+      if (event.target.closest("button") || this.el.classList.contains("is-docked")) return;
       event.preventDefault();
       this.head.setPointerCapture(event.pointerId);
       dragging = true;
@@ -3252,9 +3252,37 @@ function syncTopbarTitle() {
   if (!title) return;
   if (appState.currentView === "replay") {
     title.textContent = appState.replaySection === "scout" ? "Scout" : "Games";
-    return;
+  } else {
+    title.textContent = VIEW_TITLES[appState.currentView] || "PrepForge";
   }
-  title.textContent = VIEW_TITLES[appState.currentView] || "PrepForge";
+  syncBuildTopbar();
+}
+
+// Repertoire's topbar extras: a one-line size summary and the Generate action.
+function syncBuildTopbar() {
+  const isBuild = appState.currentView === "build";
+  const generate = document.getElementById("build-generate-node");
+  if (generate) {
+    generate.hidden = !isBuild;
+    const slot = generate.closest(".tb-actions");
+    if (slot) slot.hidden = !isBuild;
+  }
+  const sub = document.getElementById("topbar-sub");
+  if (!sub) return;
+  sub.hidden = !isBuild;
+  if (!isBuild) return;
+  const build = appState.build;
+  if (!build) {
+    sub.textContent = "Workspace";
+  } else if (isBuildReadOnly()) {
+    sub.textContent = "Shared repertoire · read-only";
+  } else {
+    const played = build.nodes.filter((n) => n.depth > 0);
+    const parents = new Set(build.nodes.map((n) => n.parent_id));
+    const lines = played.filter((n) => !parents.has(n.id)).length;
+    sub.textContent =
+      `${lines} line${lines === 1 ? "" : "s"} · ${played.length} move${played.length === 1 ? "" : "s"}`;
+  }
 }
 
 function switchView(name, { fromUrl = false } = {}) {
@@ -3337,7 +3365,15 @@ function switchView(name, { fromUrl = false } = {}) {
     if (appState.signedIn) loadTeams().catch(() => { /* best-effort */ });
   }
   // The engine widget is shared across tabs: it stays open while navigating and
-  // re-syncs to whichever board the new tab shows (Analyze or Build).
+  // re-syncs to whichever board the new tab shows (Analyze or Build). In Build
+  // it docks into the inspector's Engine tab; elsewhere it floats.
+  if (name === "build") {
+    if (engineWidget.isOpen()) setBuildInspector("engine");
+    else if (buildDockTab === "engine") setBuildInspector("explorer");
+    scheduleExplorerRefresh();
+  } else {
+    undockEngine();
+  }
   if (engineWidget && engineWidget.isOpen && engineWidget.isOpen()) {
     if (name === "analyze" || name === "build") engineWidget.onBoardChanged();
   }
@@ -5118,6 +5154,7 @@ function removeReadOnlyBanner() {
   const banner = document.getElementById("shared-banner");
   if (banner) banner.remove();
   syncCoverageReadOnlyState();
+  syncBuildTopbar();
 }
 
 function syncCoverageReadOnlyState() {
@@ -5135,11 +5172,24 @@ function syncCoverageReadOnlyState() {
       coverageController = null;
       jobToast.cancelJob("Scan stopped");
     }
-    setBuildInspector(null);
-    if (gapsEl) gapsEl.innerHTML = "";
-    if (scoreEl) scoreEl.hidden = true;
+    if (gapsEl) gapsEl.innerHTML = COVERAGE_IDLE_HINT;
+    if (scoreEl) {
+      delete scoreEl.dataset.ready;
+      scoreEl.hidden = true;
+    }
     coverageGaps = [];
+    paintCoverageCount();
   }
+}
+
+const COVERAGE_IDLE_HINT =
+  '<div class="muted hint">Scan to find the human moves this repertoire doesn\'t answer yet.</div>';
+
+function paintCoverageCount() {
+  const badge = document.getElementById("build-coverage-count");
+  if (!badge) return;
+  badge.hidden = !coverageGaps.length;
+  badge.textContent = String(coverageGaps.length);
 }
 
 function coverageScanStillValid(scanRepId) {
@@ -6224,6 +6274,7 @@ async function ensureBuildView() {
       selectBuildNode,
       openNodeContextMenu,
       buildBranchContext,
+      onTreeRendered: syncBuildTopbar,
     });
   }
   return buildView;
@@ -6386,52 +6437,89 @@ let explorerSeq = 0;
 
 function explorerDrawerOpen() {
   const panel = document.getElementById("explorer-drawer");
-  return !!(panel && !panel.hidden);
+  return !!(panel && !panel.hidden && activeViewName() === "build");
+}
+
+const BUILD_DOCK_TABS = ["explorer", "coverage", "engine"];
+let buildDockTab = "explorer";
+let engineHome = null;
+
+// Engine tab: the shared engine widget docks into the inspector instead of
+// floating over the board. It floats again everywhere else (Analyze).
+function dockEngine() {
+  const el = document.getElementById("engine-window");
+  const slot = document.getElementById("engine-drawer");
+  if (!el || !slot || el.classList.contains("is-docked")) return;
+  engineHome = { parent: el.parentNode, next: el.nextSibling };
+  for (const prop of ["left", "top", "right", "width", "height"]) el.style.removeProperty(prop);
+  el.classList.add("is-docked");
+  slot.appendChild(el);
+}
+
+function undockEngine() {
+  const el = document.getElementById("engine-window");
+  if (!el || !el.classList.contains("is-docked") || !engineHome) return;
+  el.classList.remove("is-docked");
+  engineHome.parent.insertBefore(el, engineHome.next);
+  engineHome = null;
 }
 
 function setBuildInspector(tool) {
-  const inspector = document.getElementById("build-inspector");
-  const title = document.getElementById("build-inspector-title");
-  const dbs = document.getElementById("inspector-dbs");
-  const info = document.getElementById("inspector-info");
-  const scan = document.getElementById("coverage-run");
+  const tab = BUILD_DOCK_TABS.includes(tool) ? tool : buildDockTab;
   const panels = {
     explorer: document.getElementById("explorer-drawer"),
     coverage: document.getElementById("coverage-drawer"),
+    engine: document.getElementById("engine-drawer"),
   };
   const buttons = {
     explorer: document.getElementById("build-tool-explorer"),
     coverage: document.getElementById("build-tool-coverage"),
+    engine: document.getElementById("build-tool-engine"),
   };
-  const active = tool && panels[tool] && panels[tool].hidden ? tool : null;
-  Object.entries(panels).forEach(([name, panel]) => {
-    if (panel) panel.hidden = name !== active;
-    buttons[name]?.setAttribute("aria-expanded", String(name === active));
+  const wasEngine = buildDockTab === "engine";
+  buildDockTab = tab;
+  BUILD_DOCK_TABS.forEach((name) => {
+    const on = name === tab;
+    if (panels[name]) panels[name].hidden = !on;
+    const button = buttons[name];
+    if (!button) return;
+    button.classList.toggle("is-active", on);
+    button.setAttribute("aria-selected", String(on));
+    button.tabIndex = on ? 0 : -1;
   });
-  if (inspector) inspector.hidden = !active;
-  if (title) {
-    title.textContent = active === "explorer"
-      ? "Explorer"
-      : active === "coverage" ? "Coverage" : "";
-  }
-  if (dbs) dbs.hidden = active !== "explorer";
-  if (info) info.hidden = !active;
+  const tools = document.getElementById("build-dock-tools");
+  const dbs = document.getElementById("inspector-dbs");
+  const opening = document.getElementById("explorer-opening");
+  const info = document.getElementById("inspector-info");
+  const scan = document.getElementById("coverage-run");
+  const score = document.getElementById("coverage-score");
+  if (tools) tools.hidden = tab === "engine";
+  if (dbs) dbs.hidden = tab !== "explorer";
+  if (opening) opening.hidden = tab !== "explorer";
+  if (info) info.hidden = tab === "engine";
+  if (score) score.hidden = tab !== "coverage" || !score.dataset.ready;
   if (scan) {
     const readOnly = typeof isBuildReadOnly === "function" && isBuildReadOnly();
-    scan.hidden = active !== "coverage";
+    scan.hidden = tab !== "coverage";
     scan.disabled = readOnly;
     scan.title = readOnly ? "Read-only — copy to your account first" : "Scan coverage with Maia3";
   }
-  if (active) paintInspectorScope();
-  if (active === "explorer") refreshExplorerPanel();
+  if (tab === "engine") {
+    dockEngine();
+    if (!engineWidget.isOpen()) void engineWidget.openForCurrent();
+  } else if (wasEngine) {
+    if (engineWidget.isOpen()) void engineWidget.close();
+    const el = document.getElementById("engine-window");
+    if (el) el.hidden = true;
+    undockEngine();
+  }
+  if (tab !== "engine") paintInspectorScope();
+  if (tab === "explorer") refreshExplorerPanel();
 }
 
 // Compact scope line for the ⓘ popover: what the panel shows, nothing more.
 function inspectorScopeText() {
-  const active = document.getElementById("explorer-drawer")?.hidden === false
-    ? "explorer"
-    : "coverage";
-  if (active === "coverage") {
+  if (buildDockTab === "coverage") {
     return "Share of real human play at your strength that this repertoire answers.";
   }
   if (explorerDb !== "lichess") return "Master games.";
@@ -6464,7 +6552,7 @@ function onInspectorInfo() {
   pop.id = "inspector-info-pop";
   pop.setAttribute("role", "status");
   pop.textContent = text;
-  const head = document.querySelector(".build-inspector-head");
+  const head = document.getElementById("build-dock-tools");
   (head || info.parentElement).appendChild(pop);
   window.setTimeout(() => pop?.remove(), 4000);
 }
@@ -6535,14 +6623,17 @@ function renderExplorerRows(stats) {
       .filter((n) => n.parent_id === current && n.depth > 0)
       .map((n) => n.uci),
   );
-  rows.innerHTML = stats.moves
+  const pct = (n) => (n >= 14 ? `${n}%` : "");
+  rows.innerHTML =
+    '<div class="explorer-head" aria-hidden="true"><span>Move</span><span>Games</span><span>White / Draw / Black</span></div>' +
+    stats.moves
     .map(
       (m) => `
     <button type="button" class="explorer-row" data-uci="${escapeHtml(m.uci)}" title="Add ${escapeHtml(m.san)} to the repertoire">
       <span class="explorer-san">${escapeHtml(m.san)}${inRep.has(m.uci) ? '<span class="explorer-inrep" title="In your repertoire">&#9679;</span>' : ""}</span>
       <span class="explorer-games">${explorerModule.formatGames(m.total)}</span>
       <span class="explorer-bar" aria-label="White ${m.whitePct}% / draw ${m.drawPct}% / Black ${m.blackPct}%">
-        <span class="explorer-bar-w" style="width:${m.whitePct}%"></span><span class="explorer-bar-d" style="width:${m.drawPct}%"></span><span class="explorer-bar-b" style="width:${m.blackPct}%"></span>
+        <span class="explorer-bar-w" style="width:${m.whitePct}%">${pct(m.whitePct)}</span><span class="explorer-bar-d" style="width:${m.drawPct}%">${pct(m.drawPct)}</span><span class="explorer-bar-b" style="width:${m.blackPct}%">${pct(m.blackPct)}</span>
       </span>
     </button>`,
     )
@@ -6555,11 +6646,17 @@ function renderExplorerRows(stats) {
 function renderBuilderTreeEmptyState() {
   const container = document.getElementById("builder-tree");
   const branchBar = document.getElementById("build-branchbar");
+  const meta = document.getElementById("build-tree-meta");
   if (!container) return;
+  if (meta) {
+    meta.hidden = true;
+    meta.innerHTML = "";
+  }
   container.innerHTML =
-    '<div class="empty-state">No repertoire open. Pick one from the Dashboard, or play a move to start.</div>';
+    '<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>';
   if (branchBar) branchBar.hidden = true;
   if (boards.build) boards.build.setBranchArrows([]);
+  syncBuildTopbar();
 }
 
 function renderBuilderTree() {
@@ -10731,7 +10828,7 @@ function clearJoinParam() {
 }
 
 function readOnlyBannerText(payload) {
-  return `<b>${escapeHtml(payload.name)}</b> &middot; shared with you (read-only)`;
+  return `<b>Read-only &middot; ${escapeHtml(payload.name)} &middot; shared with you</b>`;
 }
 
 function renderReadOnlyBanner(payload) {
@@ -10747,10 +10844,12 @@ function renderReadOnlyBanner(payload) {
   banner.innerHTML = `
     <div class="shared-banner-text">
       ${readOnlyBannerText(payload)}
+      <span>You can browse and train from it. Copy it to edit, generate or scan coverage.</span>
     </div>
-    <button class="btn primary" id="shared-fork-btn" data-testid="shared-fork-btn">Copy to my account</button>
+    <button class="btn primary sm" id="shared-fork-btn" data-testid="shared-fork-btn">Copy to my account</button>
   `;
   document.getElementById("shared-fork-btn").addEventListener("click", forkReadableRepertoire);
+  syncBuildTopbar();
 }
 
 function renderSharedBanner(payload) {
@@ -10865,18 +10964,21 @@ async function runCoverageScanUI() {
 function renderCoverageResult(result, rating) {
   const score = document.getElementById("coverage-score");
   if (score) {
-    score.hidden = false;
+    score.dataset.ready = "1";
+    score.hidden = buildDockTab !== "coverage";
     score.textContent = `${Math.round(result.coverage * 100)}% covered at ~${rating}${result.truncated ? " (partial scan)" : ""}`;
   }
   const gapsEl = document.getElementById("coverage-gaps");
   if (!gapsEl) return;
   if (!result.gaps.length) {
     coverageGaps = [];
+    paintCoverageCount();
     gapsEl.innerHTML = '<div class="muted hint">No notable holes found - the likely human moves all have an answer.</div>';
     return;
   }
   // Keep the gaps so the batch-complete handler can map checkboxes back to {nodeId, moveUci}.
   coverageGaps = result.gaps.slice();
+  paintCoverageCount();
   // Gmail-style multi-select: every gap starts checked, the user unchecks any line they
   // don't want, then "Complete" auto-builds a real reply (≥2 of my own moves deep) for the rest.
   const rows = coverageGaps
@@ -11420,11 +11522,23 @@ function bindEvents() {
     });
   }
   document.getElementById("inspector-info")?.addEventListener("click", onInspectorInfo);
-  document.getElementById("build-tool-explorer")?.addEventListener("click", () => {
-    setBuildInspector("explorer");
-  });
-  document.getElementById("build-tool-coverage")?.addEventListener("click", () => {
-    setBuildInspector("coverage");
+  const dockTabs = { explorer: "build-tool-explorer", coverage: "build-tool-coverage", engine: "build-tool-engine" };
+  Object.entries(dockTabs).forEach(([name, id]) => {
+    const tab = document.getElementById(id);
+    if (!tab) return;
+    tab.addEventListener("click", () => {
+      if (buildDockTab !== name) setBuildInspector(name);
+    });
+    tab.addEventListener("keydown", (event) => {
+      const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+      const at = BUILD_DOCK_TABS.indexOf(name);
+      const next = event.key === "Home" ? 0 : event.key === "End" ? BUILD_DOCK_TABS.length - 1
+        : step ? (at + step + BUILD_DOCK_TABS.length) % BUILD_DOCK_TABS.length : -1;
+      if (next < 0) return;
+      event.preventDefault();
+      setBuildInspector(BUILD_DOCK_TABS[next]);
+      document.getElementById(dockTabs[BUILD_DOCK_TABS[next]])?.focus();
+    });
   });
 
   // Drag-and-drop: a PGN onto the Analyze box loads it; a PGN/JSON onto the
@@ -11447,9 +11561,6 @@ function bindEvents() {
   }
   document
     .getElementById("open-engine-widget")
-    .addEventListener("click", () => engineWidget.openForCurrent());
-  document
-    .getElementById("open-engine-widget-build")
     .addEventListener("click", () => engineWidget.openForCurrent());
   bindEvalChart();
   document.getElementById("analysis-start").addEventListener("click", () => {

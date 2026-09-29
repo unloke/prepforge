@@ -6,9 +6,9 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-B914W3xW.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-h6ilML_G.js"></script>
     <link rel="modulepreload" crossorigin href="/static/assets/chess-DwBov9dY.js">
-    <link rel="stylesheet" crossorigin href="/static/assets/index-CAbiVTLa.css">
+    <link rel="stylesheet" crossorigin href="/static/assets/index-CB-EscvT.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -67,6 +67,8 @@
     <header class="topbar">
       <div class="tb-left">
         <h1 class="tb-title" id="topbar-title">Library</h1>
+        <span class="tb-sub" id="topbar-sub" hidden></span>
+        <span class="tb-actions"><button class="btn primary" id="build-generate-node" data-testid="build-generate-node" hidden>Generate moves</button></span>
       </div>
       <div class="topbar-actions">
         <span class="topbar-status-slot" id="topbar-status-slot">
@@ -87,7 +89,7 @@
           <div class="lib-grid">
             <section class="lib-list card">
               <header class="card-head">
-                <h2>Repertoires <span class="lib-count" id="dashboard-rep-count" hidden></span></h2>
+                <h2>Repertoires <span class="count" id="dashboard-rep-count" hidden></span></h2>
                 <div class="tools">
                   <button class="btn" id="dashboard-import-pgn" data-testid="dashboard-import-pgn">Import PGN</button>
                   <button class="btn primary" id="dashboard-new-rep" data-testid="dashboard-new-rep">New repertoire</button>
@@ -121,7 +123,7 @@
               </div>
               <div class="pv-board" id="lib-preview-board"></div>
               <div class="pv-mix" id="lib-preview-mix" role="img" aria-label="Mastery mix"></div>
-              <div class="pv-mix-legend" id="lib-preview-legend"></div>
+              <div class="legend" id="lib-preview-legend"></div>
               <div class="pv-actions">
                 <button class="btn primary" id="lib-preview-open" type="button">Open workspace</button>
                 <button class="btn" id="lib-preview-train" type="button" title="Smart queue mixes due reviews and weak spots across all repertoires">Smart queue</button>
@@ -227,59 +229,66 @@
               <svg class="annotations" id="build-annotations"></svg>
             </div>
             <div class="board-bar">
-              <button class="ib" id="build-root" title="Go to start" aria-label="Go to start">⏮</button>
-              <button class="ib" id="build-parent" title="Back one move" aria-label="Back one move">◀</button>
-              <button class="ib" id="build-next" title="Forward one move" aria-label="Forward one move">▶</button>
-              <button class="ib" id="build-end" title="To end of line" aria-label="Go to end of line">⏭</button>
-              <span class="sep"></span>
-              <button class="ib" id="build-flip" title="Flip board" aria-label="Flip board">⇅</button>
-              <span class="sep"></span>
+              <div class="bb-nav">
+                <button class="ib" id="build-root" title="Go to start" aria-label="Go to start">⏮</button>
+                <button class="ib" id="build-parent" title="Back one move" aria-label="Back one move">◀</button>
+                <button class="ib" id="build-next" title="Forward one move" aria-label="Forward one move">▶</button>
+                <button class="ib" id="build-end" title="To end of line" aria-label="Go to end of line">⏭</button>
+              </div>
               <span class="board-label" id="build-board-label">No repertoire</span>
-              <span class="build-sync" id="build-sync" aria-live="polite" hidden></span>
+              <div class="bb-right">
+                <span class="build-sync" id="build-sync" aria-live="polite" hidden></span>
+                <button class="ib" id="build-flip" title="Flip board" aria-label="Flip board">⇅</button>
+              </div>
             </div>
           </div>
 
-          <aside class="sidebar">
+          <aside class="sidebar panel">
             <div class="engine-banner" id="build-engine-banner" data-testid="build-engine-banner" hidden></div>
-            <div class="rep-header" id="build-rep-header">
+            <div class="panel-head" id="build-rep-header">
               <span class="rep-name" id="build-rep-name" data-testid="build-rep-name">No repertoire open</span>
-              <button class="ib rep-menu-btn" id="build-menu" data-testid="build-menu" title="More actions" aria-haspopup="menu" aria-expanded="false">⋯</button>
+              <button class="row-menu-btn rep-menu-btn" id="build-menu" data-testid="build-menu" title="More actions" aria-haspopup="menu" aria-expanded="false">⋯</button>
             </div>
-            <div class="build-empty" id="build-empty">
-              <h2>Start a repertoire</h2>
-              <div class="tools">
+            <div class="build-empty empty-state big" id="build-empty">
+              <div class="es-mark" aria-hidden="true">♜</div>
+              <h3>Start a repertoire</h3>
+              <p>Open one from the Library, or play a move on the board to start a new line.</p>
+              <div class="row">
                 <button class="btn primary" id="build-empty-create" type="button">New repertoire</button>
-                <button class="btn ghost" id="build-empty-import" type="button">Import PGN</button>
+                <button class="btn" id="build-empty-import" type="button">Import PGN</button>
                 <button class="btn ghost" id="build-empty-open" type="button">Browse…</button>
               </div>
             </div>
-            <div class="tools build-tools" aria-label="Build tools">
-              <button class="btn primary" id="build-generate-node" data-testid="build-generate-node">Generate moves</button>
-              <button class="btn ghost" id="open-engine-widget-build" data-testid="open-engine-widget-build">Engine</button>
-              <button class="btn ghost inspector-toggle" id="build-tool-explorer" data-testid="build-tool-explorer" type="button" aria-controls="explorer-drawer" aria-expanded="false">Explorer</button>
-              <button class="btn ghost inspector-toggle" id="build-tool-coverage" data-testid="build-tool-coverage" type="button" aria-controls="coverage-drawer" aria-expanded="false">Coverage</button>
-            </div>
-            <div class="build-branchbar" id="build-branchbar" data-testid="build-branchbar" hidden></div>
-            <section class="build-inspector" id="build-inspector" aria-label="Build inspector" hidden>
-              <div class="build-inspector-head">
-                <span class="build-inspector-title" id="build-inspector-title"></span>
-                <div class="explorer-dbs" id="inspector-dbs" role="group" aria-label="Database" hidden>
-                  <button type="button" class="explorer-db is-active" data-db="masters">Masters</button>
-                  <button type="button" class="explorer-db" data-db="lichess">Players</button>
+            <div class="tree-meta" id="build-tree-meta"></div>
+            <div class="forkbar" id="build-branchbar" data-testid="build-branchbar" hidden></div>
+            <div class="tree-wrap" id="builder-tree" data-testid="builder-tree"></div>
+            <section class="dock" id="build-inspector" aria-label="Inspector">
+              <div class="dock-tabs" role="tablist" aria-label="Inspector">
+                <button class="is-active" id="build-tool-explorer" data-testid="build-tool-explorer" type="button" role="tab" aria-controls="explorer-drawer" aria-selected="true">Explorer</button>
+                <button id="build-tool-coverage" data-testid="build-tool-coverage" type="button" role="tab" aria-controls="coverage-drawer" aria-selected="false" tabindex="-1">Coverage <span class="count" id="build-coverage-count" hidden></span></button>
+                <button id="build-tool-engine" data-testid="open-engine-widget-build" type="button" role="tab" aria-controls="engine-drawer" aria-selected="false" tabindex="-1">Engine</button>
+              </div>
+              <div class="dock-body">
+                <div class="dock-tools" id="build-dock-tools">
+                  <div class="seg" id="inspector-dbs" role="group" aria-label="Database">
+                    <button type="button" class="seg-btn explorer-db is-active" data-db="masters">Masters</button>
+                    <button type="button" class="seg-btn explorer-db" data-db="lichess">Players</button>
+                  </div>
+                  <span class="explorer-opening" id="explorer-opening"></span>
+                  <span class="score-chip" id="coverage-score" hidden></span>
+                  <button type="button" class="ib inspector-info" id="inspector-info" aria-label="About this panel">ⓘ</button>
+                  <span class="spacer"></span>
+                  <button type="button" class="btn sm inspector-scan" id="coverage-run" data-testid="coverage-run" hidden>Scan</button>
                 </div>
-                <span class="explorer-opening" id="explorer-opening"></span>
-                <button type="button" class="ib inspector-info" id="inspector-info" aria-label="About this panel" hidden>ⓘ</button>
-                <button type="button" class="btn ghost inspector-scan" id="coverage-run" data-testid="coverage-run" hidden>Scan</button>
-                <span class="coverage-score" id="coverage-score" hidden></span>
-              </div>
-              <div class="inspector-panel" id="explorer-drawer" data-testid="explorer-drawer" hidden>
-              <div class="explorer-rows" id="explorer-rows"></div>
-              </div>
-              <div class="inspector-panel" id="coverage-drawer" data-testid="coverage-drawer" hidden>
-              <div class="coverage-gaps" id="coverage-gaps"></div>
+                <div class="inspector-panel" id="explorer-drawer" data-testid="explorer-drawer" role="tabpanel" aria-labelledby="build-tool-explorer">
+                  <div class="explorer-rows" id="explorer-rows"></div>
+                </div>
+                <div class="inspector-panel" id="coverage-drawer" data-testid="coverage-drawer" role="tabpanel" aria-labelledby="build-tool-coverage" hidden>
+                  <div class="coverage-gaps" id="coverage-gaps"><div class="muted hint">Scan to find the human moves this repertoire doesn't answer yet.</div></div>
+                </div>
+                <div class="inspector-panel" id="engine-drawer" data-testid="engine-drawer" role="tabpanel" aria-labelledby="build-tool-engine" hidden></div>
               </div>
             </section>
-            <div class="movelist tree" id="builder-tree" data-testid="builder-tree"></div>
           </aside>
         </div>
       </section>
@@ -784,6 +793,6 @@
         <div class="palette-results" id="palette-results" data-testid="palette-results" role="listbox" aria-label="Commands"></div>
       </div>
     </div>
-
+
   </body>
 </html>

@@ -9,6 +9,7 @@ export function createBuildView({
   selectBuildNode,
   openNodeContextMenu,
   buildBranchContext,
+  onTreeRendered = () => {},
 }) {
   function buildPath(nodeId) {
     const path = [];
@@ -56,19 +57,17 @@ export function createBuildView({
     }
     nameEl.innerHTML =
       `<span class="color-dot ${escapeHtml(appState.build.color)}"></span>` +
-      `${escapeHtml(appState.build.name)}` +
+      `<b>${escapeHtml(appState.build.name)}</b>` +
       `<span class="rep-color-sub"> · ${escapeHtml(appState.build.color)}</span>`;
   }
 
+  // Position trail: Start › 1.e4 › c6 › … — every crumb jumps to that node.
   function renderBuildBreadcrumb() {
+    const root = appState.build && appState.build.nodes.find((n) => n.depth === 0);
     const path = buildPath(appState.buildCurrentNodeId).filter((n) => n.depth > 0);
-    if (!path.length) {
-      return (
-        '<div class="build-breadcrumb">' +
-        '<span class="crumb-empty">Start position - play a move or pick a line below</span>' +
-        "</div>"
-      );
-    }
+    const start = root
+      ? `<button class="mtree-crumb${path.length ? "" : " is-current"}" data-node-id="${escapeHtml(String(root.id))}">Start</button>`
+      : '<span class="crumb-empty">Start</span>';
     const inner = path
       .map((node, i) => {
         const prev = i > 0 ? path[i - 1] : null;
@@ -79,13 +78,14 @@ export function createBuildView({
           : "";
         const cur = node.id === appState.buildCurrentNodeId ? " is-current" : "";
         return (
+          '<span class="crumb-sep" aria-hidden="true">›</span>' +
           numberHtml +
           `<button class="mtree-crumb${cur}" data-node-id="${escapeHtml(node.id)}">` +
           `${escapeHtml(node.san)}</button>`
         );
       })
       .join("");
-    return `<div class="build-breadcrumb">${inner}</div>`;
+    return `<nav class="crumbs" aria-label="Position">${start}${inner}</nav>`;
   }
 
   function renderBuildBranchBar() {
@@ -104,36 +104,36 @@ export function createBuildView({
         const isWhite = n.move_side === "white";
         const num = `${n.move_number}${isWhite ? "." : "…"}`;
         const cls = [
-          "branch-chip",
+          "fork-chip",
           n.id === ctx.choiceId ? "is-active" : "",
           n.is_mainline ? "is-main" : "",
         ]
           .filter(Boolean)
           .join(" ");
-        const mainMark = n.is_mainline
-          ? '<span class="branch-main-mark" title="Mainline">★</span>'
-          : "";
+        const mainMark = n.is_mainline ? '<i title="Mainline">★</i>' : "";
         // Practical share: the server's real Maia probability for this move
         // (human-likeness at the repertoire's rating). Manual/imported moves have
         // none — show nothing rather than a made-up number.
         const share =
           typeof n.maia_probability === "number" && n.maia_probability > 0
-            ? `<span class="branch-share">${Math.round(n.maia_probability * 100)}%</span>`
+            ? `<small>${Math.round(n.maia_probability * 100)}%</small>`
             : "";
         return (
           `<button class="${cls}" type="button" data-node-id="${escapeHtml(String(n.id))}" ` +
-          `title="Play ${escapeHtml(n.san)}"><span class="branch-num">${num}</span>` +
-          `<span class="branch-san">${escapeHtml(n.san)}</span>${mainMark}${share}</button>`
+          `title="Play ${escapeHtml(n.san)}"><span class="mtree-num">${num}</span>` +
+          `${escapeHtml(n.san)}${mainMark}${share}</button>`
         );
       })
       .join("");
     bar.hidden = false;
+    bar.setAttribute("role", "group");
+    bar.setAttribute("aria-label", "Fork — pick the next move");
     bar.innerHTML =
-      `<div class="branchbar-head"><span class="branchbar-label">Fork — pick the next move</span>` +
-      `<span class="branchbar-count">${ctx.options.length}</span>` +
-      `<span class="branchbar-hint">↑ ↓ pick · → play · ← back</span></div>` +
-      `<div class="branchbar-chips">${chips}</div>`;
-    bar.querySelectorAll(".branch-chip[data-node-id]").forEach((btn) => {
+      `<div class="fork-head"><b>Fork — pick the next move</b>` +
+      `<span class="count">${ctx.options.length}</span>` +
+      `<span class="keys"><kbd>↑</kbd><kbd>↓</kbd> pick · <kbd>→</kbd> play · <kbd>←</kbd> back</span></div>` +
+      `<div class="fork-chips">${chips}</div>`;
+    bar.querySelectorAll(".fork-chip[data-node-id]").forEach((btn) => {
       btn.addEventListener("click", () => {
         void selectBuildNode(btn.dataset.nodeId).catch(() => {});
         btn.blur();
@@ -147,52 +147,59 @@ export function createBuildView({
     }
   }
 
-  // Mastery legend under the breadcrumbs: mirrors the heatmap classes the tree
+  // Mastery legend beside the breadcrumbs: mirrors the heatmap classes the tree
   // actually paints (see .mtree-move.m-* below). Only shown when the repertoire
   // has at least one trained own-side node — never a decorative always-on row.
   function renderMasteryLegend() {
-    const kinds = [
-      ["mastered", "mastered"],
-      ["learning", "learning"],
-      ["due", "due"],
-      ["weak", "weak"],
-    ];
+    const kinds = ["mastered", "learning", "due", "weak"];
     const present = new Set(
       (appState.build ? appState.build.nodes : [])
         .filter((n) => n.depth > 0 && n.is_enabled && n.mastery)
         .map((n) => n.mastery),
     );
-    const items = kinds.filter(([k]) => present.has(k));
+    const items = kinds.filter((k) => present.has(k));
     if (!items.length) return "";
     return (
-      '<div class="build-mlegend" aria-label="Mastery legend">' +
-      items
-        .map(
-          ([k, label]) =>
-            `<span><i class="mk-${k}"></i>${label}</span>`,
-        )
-        .join("") +
+      '<div class="legend" aria-label="Mastery legend">' +
+      items.map((k) => `<span><i class="k-${k}"></i>${k}</span>`).join("") +
       "</div>"
     );
+  }
+
+  function renderTreeMeta(withLegend) {
+    const meta = document.getElementById("build-tree-meta");
+    if (!meta) return;
+    meta.hidden = !appState.build;
+    meta.innerHTML = appState.build
+      ? renderBuildBreadcrumb() + (withLegend ? renderMasteryLegend() : "")
+      : "";
+    meta.querySelectorAll(".mtree-crumb[data-node-id]").forEach((btn) => {
+      btn.addEventListener("click", (event) => {
+        void selectBuildNode(btn.dataset.nodeId).catch(() => {});
+        event.currentTarget.blur();
+      });
+    });
   }
 
   function renderBuilderTree() {
     const container = document.getElementById("builder-tree");
     const branchBar = document.getElementById("build-branchbar");
     if (!appState.build) {
+      renderTreeMeta(false);
       container.innerHTML =
-        '<div class="empty-state">No repertoire open. Pick one from the Dashboard, or play a move to start.</div>';
+        '<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>';
       if (branchBar) branchBar.hidden = true;
       if (boards.build) boards.build.setBranchArrows([]);
+      onTreeRendered();
       return;
     }
     const root = buildNormalizedTree();
     if (!root || !root.children.length) {
-      container.innerHTML =
-        renderBuildBreadcrumb() +
-        '<div class="empty-state">Play a move to add it to this line.</div>';
+      renderTreeMeta(false);
+      container.innerHTML = '<div class="tree-empty">Play a move to add it to this line.</div>';
       if (branchBar) branchBar.hidden = true;
       if (boards.build) boards.build.setBranchArrows([]);
+      onTreeRendered();
       return;
     }
     const moveTreeRenderer = getMoveTreeRenderer();
@@ -215,14 +222,13 @@ export function createBuildView({
         if (b.mastery) classes.push(`m-${b.mastery}`);
         if (!b.is_enabled) classes.push("is-disabled");
         if (b.is_mainline) classes.push("is-main");
+        if (b.move_side !== appState.build.color) classes.push("is-opp");
         if (b.is_prepared) classes.push("is-prep");
         return { classes };
       },
     });
-    container.innerHTML =
-      renderBuildBreadcrumb() +
-      renderMasteryLegend() +
-      treeHtml;
+    renderTreeMeta(true);
+    container.innerHTML = treeHtml;
     container.querySelectorAll(".mtree-collapse[data-collapse-id]").forEach((toggle) => {
       toggle.addEventListener("click", (event) => {
         event.stopPropagation();
@@ -237,15 +243,10 @@ export function createBuildView({
       (id) => void selectBuildNode(id).catch(() => {}),
       (event, id) => openNodeContextMenu(event, id)
     );
-    container.querySelectorAll(".mtree-crumb[data-node-id]").forEach((btn) => {
-      btn.addEventListener("click", (event) => {
-        void selectBuildNode(btn.dataset.nodeId).catch(() => {});
-        event.currentTarget.blur();
-      });
-    });
     const focusBtn = container.querySelector(".mtree .mtree-move.is-current");
     if (focusBtn) moveTreeRenderer.scrollIntoViewWithin(container, focusBtn);
     renderBuildBranchBar();
+    onTreeRendered();
   }
 
   return {

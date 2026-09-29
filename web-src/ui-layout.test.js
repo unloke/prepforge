@@ -112,17 +112,21 @@ describe("workspace chrome layout", () => {
     expect(account).toContain("onOpenSettings();");
   });
 
-  it("uses one mutually exclusive Build inspector", () => {
+  it("docks one single-select Build inspector (Explorer / Coverage / Engine)", () => {
     expect(html).toContain('id="build-inspector"');
+    expect(html).toContain('class="dock"');
+    expect(html).toContain('role="tablist"');
     expect(html).toContain('id="build-tool-explorer"');
     expect(html).toContain('id="build-tool-coverage"');
+    expect(html).toContain('id="build-tool-engine"');
     expect(html).toContain('aria-controls="explorer-drawer"');
     expect(html).toContain('aria-controls="coverage-drawer"');
+    expect(html).toContain('aria-controls="engine-drawer"');
     expect(html).not.toContain('<summary>Opening explorer</summary>');
     expect(html).not.toContain('<summary>Coverage scan</summary>');
-    expect(ruleBody(".inspector-panel")).toMatch(/overflow-y:\s*auto/);
-    expect(ruleBody(".inspector-panel")).toMatch(/overflow-x:\s*hidden/);
-    expect(ruleBody(".build-inspector")).toMatch(/overflow:\s*hidden/);
+    expect(html).not.toContain(' id="open-engine-widget-build"');
+    expect(html).not.toContain('build-inspector-head');
+    expect(ruleBody(".dock-body")).toMatch(/overflow:\s*auto/);
     expect(ruleBody(".explorer-rows")).not.toMatch(/overflow-y/);
     expect(ruleBody(".explorer-rows")).not.toMatch(/max-height/);
     expect(ruleBody(".coverage-gaps")).not.toMatch(/overflow-y/);
@@ -132,19 +136,20 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".explorer-row")).toMatch(/max-width:\s*100%/);
     expect(ruleBody(".coverage-gap-meta")).toMatch(/overflow-wrap:\s*anywhere/);
     expect(app).toContain('setBuildInspector("explorer")');
-    expect(app).toContain('setBuildInspector("coverage")');
-    expect(app).toContain("panel.hidden = name !== active");
+    expect(app).toContain("panels[name].hidden = !on");
+    expect(app).toContain("function dockEngine()");
+    expect(app).toContain("function undockEngine()");
+    expect(ruleBody(".engine-window.is-docked")).toMatch(/position:\s*static/);
   });
 
-  it("keeps the inspector chrome to one compact header row", () => {
-    // Title + segmented control + info popover + scan action share one row;
+  it("keeps the dock chrome to one tools row above the panel", () => {
+    // Database seg + opening + score chip + info popover + scan share one row;
     // the old multi-line chrome (separate label, explorer-head, scope line,
     // coverage head + standing hint) is gone.
+    expect(html).toContain('id="build-dock-tools"');
     expect(html).toContain('id="inspector-dbs"');
     expect(html).toContain('id="inspector-info"');
-    expect(app).toContain("inspector-info-pop");
     expect(html).not.toContain("build-inspector-label");
-    expect(html).not.toContain("explorer-head");
     expect(html).not.toContain("explorer-scope");
     expect(html).not.toContain("coverage-head");
     expect(html).not.toContain("coverage-hint");
@@ -154,10 +159,7 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("onInspectorInfo");
     expect(app).toContain("inspector-info-pop");
     expect(css).toContain(".inspector-info-pop");
-    const head = ruleBody(".build-inspector-head");
-    expect(head).toMatch(/min-height:\s*34px/);
-    const panel = ruleBody(".inspector-panel");
-    expect(panel).toMatch(/max-height:\s*min\(44vh,\s*380px\)/);
+    expect(ruleBody(".dock")).toMatch(/flex:\s*0 0 clamp\(210px,\s*40%,\s*330px\)/);
   });
 
   it("keeps Coach height stable with a scrollable explanation and fixed footer", () => {
@@ -354,7 +356,7 @@ describe("workspace chrome layout", () => {
     // Panels that need independent scroll keep it: coach prose, inspector,
     // move lists, composer rows/popover, context menus.
     expect(ruleBody(".coach-scroll")).toMatch(/overflow-y:\s*auto/);
-    expect(ruleBody(".inspector-panel")).toMatch(/overflow-y:\s*auto/);
+    expect(ruleBody(".dock-body")).toMatch(/overflow:\s*auto/);
     expect(ruleBody(".movelist")).toMatch(/overflow-y:\s*auto/);
     expect(ruleBody(".src-popover")).toMatch(/overflow-y:\s*auto/);
     expect(ruleBody(".src-rows")).toMatch(/overflow:\s*auto/);
@@ -500,7 +502,7 @@ describe("workspace chrome layout", () => {
     expect(mobile).toMatch(/\.lichess-chip\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.btn\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.ib\s*\{[^}]*min-height:\s*44px/s);
-    expect(mobile).toMatch(/#view-build #build-menu\s*\{[^}]*min-width:\s*44px/s);
+    expect(mobile).toMatch(/\.rep-menu-btn\s*\{[^}]*min-width:\s*44px/s);
     expect(mobile).toMatch(/#view-train \.board-bar \.ib\s*\{[^}]*min-width:\s*44px/s);
     expect(mobile).not.toMatch(/\.square\s*\{[^}]*min-(?:width|height):\s*44px/s);
   });
