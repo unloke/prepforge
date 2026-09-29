@@ -1748,7 +1748,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .pv-mix i.k-due, .legend i.k-due { background: var(--k-due); }
 .pv-mix i.k-weak, .legend i.k-weak { background: var(--k-weak); }
 .pv-mix i.k-new, .legend i.k-new { background: var(--k-new); }
-.pv-actions { display: flex; gap: 6px; }
+/* The preview column is a fixed track (340px, 290px at ≤1279px) and the
+   action labels never wrap, so the row itself wraps when the labels are wider
+   than the track (e.g. wider fallback fonts): the primary action keeps the
+   first line and the secondary actions move under it. */
+.pv-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .pv-actions .btn { padding: 0 10px; white-space: nowrap; }
 .pv-actions .btn.primary { flex: 1; }
 .btn.icon-only { min-width: var(--control-h); padding: 0 8px; font-size: 16px; line-height: 1; }
