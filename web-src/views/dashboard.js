@@ -229,8 +229,10 @@ export function createDashboardView({
   function countBadge(n) {
     const el = document.getElementById("dashboard-rep-count");
     if (!el) return;
-    el.hidden = !(n > 0);
-    el.textContent = String(n);
+    // Signed-in libraries always show their real count (0 included, as in the
+    // prototype); null hides it while signed out.
+    el.hidden = n == null;
+    el.textContent = n == null ? "" : String(n);
   }
 
   // The backend ships personalized next actions on /api/dashboard
@@ -272,6 +274,16 @@ export function createDashboardView({
     const card = document.getElementById("dashboard-steps");
     if (!card) return;
     const html = stepsHtml(lastDashboardRecommendations);
+    if (!html && !hasRepertoires) {
+      // Empty account with no server recommendation: the prototype's
+      // onboarding checklist (every action is a real flow).
+      renderOnboardingSteps([
+        ["Create your first repertoire", "Pick a side and an opening — or turn one of your games into one.", "new", "New repertoire"],
+        ["Link your Lichess account", "Games and Scout use every linked identity as Self.", "lichess", "Link Lichess"],
+        ["Import a PGN study", ".pgn or .json from Lichess studies or ChessBase exports.", "import", "Import PGN"],
+      ]);
+      return;
+    }
     if (!html) {
       card.hidden = true;
       card.innerHTML = "";
@@ -676,7 +688,7 @@ export function createDashboardView({
     const container = document.getElementById("dashboard-repertoires");
     if (!container) return;
     repListCache = { own: [], shared: [] };
-    countBadge(0);
+    countBadge(null);
     setListboxRole(container, false);
     setLibraryEmpty(true);
     container.innerHTML = `
@@ -693,13 +705,17 @@ export function createDashboardView({
     selectedRepId = null;
     const today = document.getElementById("dashboard-today");
     if (today) today.hidden = true;
-    const card = document.getElementById("dashboard-steps");
-    if (!card) return;
-    const steps = [
+    renderOnboardingSteps([
       ["Sign in or create an account", "Your library, streak and queue follow you across devices.", "signin", "Sign in"],
       ["Create your first repertoire", "Pick a side and an opening — or turn one of your games into one.", "new", "New repertoire"],
       ["Analyze a game", "Engine review and coach notes work before you sign in.", "analyze", "Open Analyze"],
-    ];
+    ]);
+  }
+
+  // "Get started" checklist; buttons are delegated through data-lib-action.
+  function renderOnboardingSteps(steps) {
+    const card = document.getElementById("dashboard-steps");
+    if (!card) return;
     card.innerHTML =
       `<header class="card-head"><h2>Get started</h2></header>` +
       steps
@@ -788,6 +804,14 @@ export function createDashboardView({
         if (openSignIn) openSignIn();
         else requireSignIn("Sign in (or create an account) to start your library");
       } else if (action === "analyze" && goToView) goToView("analyze");
+      else if (action === "lichess") {
+        // Linking lives in Settings → Connections; go through the tab so the
+        // settings view loads exactly as a rail click would.
+        const tab = document.querySelector('.tab[data-view="settings"]');
+        if (tab) tab.click();
+        else if (goToView) goToView("settings");
+        setTimeout(() => document.querySelector('.settings-nav-link[href="#set-connections"]')?.click(), 300);
+      }
     };
     const newRepBtn = document.getElementById("dashboard-new-rep");
     if (newRepBtn) newRepBtn.addEventListener("click", newRep);
