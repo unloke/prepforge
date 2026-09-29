@@ -134,6 +134,13 @@ async function runViewport(vp) {
 
   const check = (ok, label) => { if (!ok) failures.push(`${vp.name}: ${label}`); };
 
+  // Optional review screenshot (UI_V2_SHOTS=<dir> UI_V2_TAG=before|after).
+  if (process.env.UI_V2_SHOTS) {
+    await page.mouse.move(vp.width - 4, vp.height - 4); // park the pointer so the hover-expand rail is collapsed
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `library-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
+  }
+
   // Table renders the real fixture rows.
   const rowCount = await page.locator("#dashboard-repertoires .lib-row").count();
   check(rowCount === 3, `expected 3 lib rows, got ${rowCount}`);

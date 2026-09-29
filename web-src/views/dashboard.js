@@ -73,6 +73,7 @@ export function createDashboardView({
   postJson,
   escapeHtml,
   setStatus,
+  setStatusError = (message) => setStatus(message),
   localDateString,
   goToSmartTraining,
   editRepertoire,
@@ -82,7 +83,10 @@ export function createDashboardView({
   showInputModal,
   promptImportRepertoireFromPgn,
   requireSignIn,
+  openSignIn = null,
+  onLibraryStateChange = null,
   goToView,
+  openSettingsSection = null,
   previewRenderers = null,
 }) {
   let eventsBound = false;
@@ -131,8 +135,9 @@ export function createDashboardView({
     const pane = document.getElementById("lib-preview");
     if (!pane) return;
     if (!repertoire) {
+      // Hide only: the pane's static markup (name, board, mix) is reused by
+      // the next preview, e.g. after Retry recovers from a load error.
       pane.hidden = true;
-      pane.innerHTML = "";
       return;
     }
     pane.hidden = false;
@@ -227,8 +232,10 @@ export function createDashboardView({
   function countBadge(n) {
     const el = document.getElementById("dashboard-rep-count");
     if (!el) return;
-    el.hidden = !(n > 0);
-    el.textContent = String(n);
+    // Signed-in libraries always show their real count (0 included, as in the
+    // prototype); null hides it while signed out.
+    el.hidden = n == null;
+    el.textContent = n == null ? "" : String(n);
   }
 
   // The backend ships personalized next actions on /api/dashboard
@@ -270,6 +277,16 @@ export function createDashboardView({
     const card = document.getElementById("dashboard-steps");
     if (!card) return;
     const html = stepsHtml(lastDashboardRecommendations);
+    if (!html && !hasRepertoires) {
+      // Empty account with no server recommendation: the prototype's
+      // onboarding checklist (every action is a real flow).
+      renderOnboardingSteps([
+        ["Create your first repertoire", "Pick a side and an opening — or turn one of your games into one.", "new", "New repertoire"],
+        ["Link your Lichess account", "Games and Scout use every linked identity as Self.", "lichess", "Link Lichess"],
+        ["Import a PGN study", ".pgn or .json from Lichess studies or ChessBase exports.", "import", "Import PGN"],
+      ]);
+      return;
+    }
     if (!html) {
       card.hidden = true;
       card.innerHTML = "";
@@ -547,12 +564,78 @@ export function createDashboardView({
     });
   }
 
+  // An empty library (signed out, or no repertoires yet) is the prototype's
+  // onboarding card: no filter chips, column header or row hint over nothing.
+  // A failed load (/api/dashboard or /api/repertoires) uses the same empty
+  // layout plus is-error, which also hides the search over an unknown list.
+  function setLibraryEmpty(empty, { error = false } = {}) {
+    const card = document.querySelector("#view-dashboard .lib-list");
+    if (card) {
+      card.classList.toggle("is-empty", empty || error);
+      card.classList.toggle("is-error", error);
+    }
+    if (onLibraryStateChange) onLibraryStateChange();
+  }
+
+  // One error card for either failing endpoint: no stale rows, no filter
+  // chips / columns / hint, no preview, and a Retry that reruns the full load.
+  function renderLibraryError(message) {
+    const container = document.getElementById("dashboard-repertoires");
+    if (!container) return;
+    repListCache = { own: [], shared: [] };
+    countBadge(null);
+    setListboxRole(container, false);
+    setLibraryEmpty(true, { error: true });
+    container.innerHTML = `
+      <div class="empty-state big is-error" role="alert" data-testid="library-error">
+        <div class="es-mark" aria-hidden="true">!</div>
+        <h3>Could not load your library.</h3>
+        <p>${escapeHtml(String(message || "The server did not respond."))}</p>
+        <div class="row gap">
+          <button type="button" class="btn primary" data-lib-action="retry">Try again</button>
+        </div>
+      </div>`;
+    renderLibraryPreview(null);
+    selectedRepId = null;
+    const today = document.getElementById("dashboard-today");
+    if (today) today.hidden = true;
+    const steps = document.getElementById("dashboard-steps");
+    if (steps) {
+      steps.hidden = true;
+      steps.innerHTML = "";
+    }
+  }
+
+  // Background-refresh failure: the error is scoped to the list card. The
+  // page composition (Today strip, Get started steps) is left untouched and
+  // Retry reloads only the listing.
+  function renderLibraryListError(message) {
+    const container = document.getElementById("dashboard-repertoires");
+    if (!container) return;
+    repListCache = { own: [], shared: [] };
+    countBadge(null);
+    setListboxRole(container, false);
+    setLibraryEmpty(true, { error: true });
+    container.innerHTML = `
+      <div class="empty-state is-error" role="alert" data-testid="library-list-error">
+        <div class="es-mark" aria-hidden="true">!</div>
+        <h3>Could not refresh your repertoires.</h3>
+        <p>${escapeHtml(String(message || "The server did not respond."))}</p>
+        <div class="row gap">
+          <button type="button" class="btn primary" data-lib-action="retry-list">Try again</button>
+        </div>
+      </div>`;
+    renderLibraryPreview(null);
+    selectedRepId = null;
+  }
+
   function renderRepertoireList() {
     const container = document.getElementById("dashboard-repertoires");
     if (!container) return;
     const useSharedFallback =
       !repListCache.own.length && repListCache.shared.length > 0;
     const universe = useSharedFallback ? repListCache.shared : repListCache.own;
+    setLibraryEmpty(!universe.length);
     // Selection follows the visible list: narrowing the table moves the
     // selection to the first shown row when the old one is filtered out — the
     // same rule the unfiltered table always had for a disappearing row.
@@ -625,49 +708,118 @@ export function createDashboardView({
     renderRepertoireList();
   }
 
+  // Fetches and renders the listing; throws on failure so each caller picks
+  // its own error composition.
+  async function fetchDashboardRepertoires() {
+    if (appState.signedIn && !appState.teams.length) {
+      try {
+        const teamsPayload = await api("/api/teams");
+        appState.teams = teamsPayload.teams || [];
+      } catch (_) {
+        /* team names for share badges are optional */
+      }
+    }
+    const payload = await api("/api/repertoires");
+    appState.repertoireList = payload.repertoires || [];
+    const visible = (payload.repertoires || []).filter(
+      (item) => !appState.pendingRepDeletes.has(String(item.id)),
+    );
+    const sharedRows = (Array.isArray(payload.shared) ? payload.shared : []).map(
+      (item) => ({ ...item, sharedRow: true }),
+    );
+    // The count badge counts the full listing — never the filtered view.
+    if (!visible.length && sharedRows.length) {
+      countBadge(sharedRows.length);
+    } else {
+      countBadge(visible.length);
+    }
+    repListCache = { own: visible, shared: sharedRows };
+    renderRepertoireList();
+  }
+
+  // Background refresh (after CRUD elsewhere): a failure only replaces the
+  // list with a scoped error card — Today / Get started stay as they were —
+  // and is reported through setStatusError. Resolves to false on failure.
   async function loadDashboardRepertoires() {
     try {
-      if (appState.signedIn && !appState.teams.length) {
-        try {
-          const teamsPayload = await api("/api/teams");
-          appState.teams = teamsPayload.teams || [];
-        } catch (_) {
-          /* team names for share badges are optional */
-        }
-      }
-      const payload = await api("/api/repertoires");
-      appState.repertoireList = payload.repertoires || [];
-      const visible = (payload.repertoires || []).filter(
-        (item) => !appState.pendingRepDeletes.has(String(item.id)),
-      );
-      const sharedRows = (Array.isArray(payload.shared) ? payload.shared : []).map(
-        (item) => ({ ...item, sharedRow: true }),
-      );
-      // The count badge counts the full listing — never the filtered view.
-      if (!visible.length && sharedRows.length) {
-        countBadge(sharedRows.length);
-      } else {
-        countBadge(visible.length);
-      }
-      repListCache = { own: visible, shared: sharedRows };
-      renderRepertoireList();
+      await fetchDashboardRepertoires();
+      return true;
     } catch (error) {
-      const container = document.getElementById("dashboard-repertoires");
-      if (!container) return;
-      setListboxRole(container, false);
-      container.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+      renderLibraryListError(error.message);
+      setStatusError(error.message);
+      return false;
     }
   }
 
+  // Signed-out Library: the same empty-library composition as a first-run
+  // account, with sign-in as the primary action. No owner-scoped API calls.
+  function renderSignedOut() {
+    const container = document.getElementById("dashboard-repertoires");
+    if (!container) return;
+    repListCache = { own: [], shared: [] };
+    countBadge(null);
+    setListboxRole(container, false);
+    setLibraryEmpty(true);
+    container.innerHTML = `
+      <div class="empty-state big" data-testid="library-signed-out">
+        <div class="es-mark" aria-hidden="true">♜</div>
+        <h3>Sign in to start your library.</h3>
+        <p>Repertoires, the training queue and game reviews are saved to your account. You can explore the board in Analyze without one.</p>
+        <div class="row gap">
+          <button type="button" class="btn primary" data-lib-action="signin">Sign in</button>
+          <button type="button" class="btn" data-lib-action="import">Import PGN</button>
+        </div>
+      </div>`;
+    renderLibraryPreview(null);
+    selectedRepId = null;
+    const today = document.getElementById("dashboard-today");
+    if (today) today.hidden = true;
+    renderOnboardingSteps([
+      ["Sign in or create an account", "Your library, streak and queue follow you across devices.", "signin", "Sign in"],
+      ["Create your first repertoire", "Pick a side and an opening — or turn one of your games into one.", "new", "New repertoire"],
+      ["Analyze a game", "Engine review and coach notes work before you sign in.", "analyze", "Open Analyze"],
+    ]);
+  }
+
+  // "Get started" checklist; buttons are delegated through data-lib-action.
+  function renderOnboardingSteps(steps) {
+    const card = document.getElementById("dashboard-steps");
+    if (!card) return;
+    card.innerHTML =
+      `<header class="card-head"><h2>Get started</h2></header>` +
+      steps
+        .map(
+          ([title, detail, action, label], i) =>
+            `<div class="step"><span class="step-n" aria-hidden="true">${i + 1}</span>` +
+            `<div class="step-text"><b>${escapeHtml(title)}</b><p>${escapeHtml(detail)}</p></div>` +
+            `<button type="button" class="btn sm" data-lib-action="${action}">${escapeHtml(label)}</button></div>`,
+        )
+        .join("");
+    card.hidden = false;
+  }
+
+  // Either endpoint failing leaves the error card and rethrows, so the caller
+  // reports it via setStatusError — "Ready" is only set on a full success.
   async function loadDashboard() {
-    const payload = await api(`/api/dashboard?local_date=${localDateString()}`);
+    let payload;
+    try {
+      payload = await api(`/api/dashboard?local_date=${localDateString()}`);
+    } catch (error) {
+      renderLibraryError(error.message);
+      throw error;
+    }
     if (payload.streak) appState.dayStreak = payload.streak;
     lastDashboardRecommendations = Array.isArray(payload.recommendations)
       ? payload.recommendations
       : [];
     renderDashboardToday(payload);
     renderSteps((payload.repertoires || 0) > 0);
-    await loadDashboardRepertoires();
+    try {
+      await fetchDashboardRepertoires();
+    } catch (error) {
+      renderLibraryError(error.message);
+      throw error;
+    }
     setStatus("Ready");
   }
 
@@ -727,6 +879,26 @@ export function createDashboardView({
 
     const newRep = () => createRepertoirePrompt({ title: "New repertoire" });
     const importPgn = () => dashboardImportPgn().catch(() => {});
+    const libAction = (action) => {
+      if (action === "new") newRep();
+      else if (action === "import") importPgn();
+      else if (action === "signin") {
+        if (openSignIn) openSignIn();
+        else requireSignIn("Sign in (or create an account) to start your library");
+      } else if (action === "retry") {
+        loadDashboard().catch((error) => setStatusError(error.message));
+      } else if (action === "retry-list") {
+        loadDashboardRepertoires().then((ok) => {
+          if (ok) setStatus("Ready");
+        });
+      } else if (action === "analyze" && goToView) goToView("analyze");
+      else if (action === "lichess") {
+        // Linking lives in Settings → Connections; the app opens Settings via
+        // its tab and jumps to the section once the view has rendered.
+        if (openSettingsSection) openSettingsSection("set-connections").catch(() => {});
+        else if (goToView) goToView("settings");
+      }
+    };
     const newRepBtn = document.getElementById("dashboard-new-rep");
     if (newRepBtn) newRepBtn.addEventListener("click", newRep);
     const importBtn = document.getElementById("dashboard-import-pgn");
@@ -737,9 +909,15 @@ export function createDashboardView({
     if (listEl) {
       listEl.addEventListener("click", (event) => {
         const btn = event.target.closest && event.target.closest("[data-lib-action]");
-        if (!btn) return;
-        if (btn.dataset.libAction === "new") newRep();
-        else if (btn.dataset.libAction === "import") importPgn();
+        if (btn) libAction(btn.dataset.libAction);
+      });
+    }
+    // The signed-out Get started card carries the same delegated actions.
+    const stepsEl = document.getElementById("dashboard-steps");
+    if (stepsEl) {
+      stepsEl.addEventListener("click", (event) => {
+        const btn = event.target.closest && event.target.closest("[data-lib-action]");
+        if (btn) libAction(btn.dataset.libAction);
       });
     }
 
@@ -770,6 +948,7 @@ export function createDashboardView({
     loadDashboard,
     loadDashboardRepertoires,
     renderDashboardToday,
+    renderSignedOut,
     setLibraryFilter,
     setLibraryQuery,
   };

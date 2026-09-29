@@ -143,18 +143,6 @@
   min-width: 0;
 }
 .mem-id .name { font-weight: 700; overflow-wrap: anywhere; }
-.avatar {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--surface-3);
-  color: var(--text);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-}
 .team-member-tail {
   display: inline-flex;
   flex: none;
@@ -172,6 +160,17 @@
   font-size: var(--fs-s);
   cursor: pointer;
 }
+/* Detail-head and member-row icon actions are ghost (prototype .icon-btn):
+   no border or fill until hover; delete turns red only on hover. */
+.teams .card-head .ib,
+.team-remove {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+}
+.teams .card-head .ib:hover { background: var(--surface-3); color: var(--text); }
+.teams .card-head .ib.danger:hover { background: var(--danger-soft, var(--surface-3)); color: var(--danger); }
 .team-remove {
   min-width: 26px;
   height: 26px;
@@ -180,7 +179,7 @@
   color: var(--muted);
 }
 .team-remove:hover {
-  border-color: var(--danger);
+  background: var(--surface-3);
   color: var(--danger);
 }
 .team-shared-rep-row,

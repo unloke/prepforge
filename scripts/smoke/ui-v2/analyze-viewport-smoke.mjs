@@ -51,6 +51,14 @@ const api = (path) => {
   if (path.startsWith("/api/auth/providers")) return { google: false };
   if (path.startsWith("/api/csrf")) return { csrf_token: "x" };
   if (path.startsWith("/api/repertoires")) return { repertoires: [], shared: [] };
+  if (path.startsWith("/api/analyses")) {
+    return {
+      analyses: [
+        { game_id: "g1", white: "me_user", black: "opp_one", result: "0-1", analyzed_at: "2026-09-28T12:00:00Z" },
+        { game_id: "g2", white: "opp_two", black: "me_user", result: "1-0", analyzed_at: "2026-09-27T12:00:00Z" },
+      ],
+    };
+  }
   if (path.startsWith("/api/dashboard")) return { games: 0, repertoires: 0, training_sessions: 0, open_mistakes: 0, due_reviews: 0, due_soon: 0, streak: { current: 0, best: 0, trained_today: false }, recap: {}, recommendations: [] };
   if (path.startsWith("/api/lichess")) return { linked: true, accounts: [{ id: "a1", username: "me_user", is_primary: true }] };
   return {};
@@ -197,6 +205,12 @@ async function runViewport(vp) {
   check(board === 64, `analysis board should render 64 squares, got ${board}`);
   const coachText = await page.locator('[data-testid="coach-prose"]').textContent().catch(() => "");
   check(/Make a move/.test(coachText || ""), `coach should show its idle line, got "${coachText.slice(0, 40)}"`);
+  // Recent analyses ship open and load on entry (signed in) — never an empty open drawer.
+  await page.waitForTimeout(200);
+  const historyRows = await page.locator("#history-drawer:not([hidden]) .history-item").count();
+  check(historyRows === 2, `recent analyses should list the 2 fixture games on entry, got ${historyRows}`);
+  const pgnOpen = await page.locator("#pgn-drawer").evaluate((d) => d.open);
+  check(!pgnOpen, "the PGN source drawer should start collapsed (prototype)");
   const toolButtons = await page.evaluate(() =>
     ["open-engine-widget", "fetch-my-game", "run-analysis", "pgn-input"].map((id) => !!document.getElementById(id)));
   check(toolButtons.every(Boolean), `Analyze tools should exist: ${toolButtons}`);

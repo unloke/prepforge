@@ -257,9 +257,10 @@ describe("axe baseline contrast guard", () => {
     expect(contrast(tokenValue("--accent-strong"), tokenValue("--accent-soft"))).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("keeps primary buttons readable (white on the dark amber)", () => {
-    expect(contrast("#ffffff", tokenValue("--accent-dark"))).toBeGreaterThanOrEqual(4.5);
-    expect(ruleBody(".btn.primary")).toMatch(/background:\s*var\(--accent-dark\)/);
+  it("keeps primary buttons readable (accent-ink on the one accent)", () => {
+    expect(contrast(tokenValue("--accent-ink"), tokenValue("--accent"))).toBeGreaterThanOrEqual(4.5);
+    expect(ruleBody(".btn.primary")).toMatch(/background:\s*var\(--accent\)/);
+    expect(ruleBody(".btn.primary")).toMatch(/color:\s*var\(--accent-ink\)/);
   });
 
   it("keeps palette hints readable", () => {

@@ -36,7 +36,7 @@ try {
         header: rect('.topbar'), left: rect('.tb-left'), main: rect('.workspace'),
         rail: rect('#app-rail'),
         palette: rect('#open-palette'),
-        account: rect('#account-chip'), status: rect('#app-status'),
+        account: rect('#theme-toggle'), status: rect('#app-status'),
         statusScrollWidth: status.scrollWidth,
         statusWhiteSpace: getComputedStyle(status).whiteSpace,
         statusOverflow: getComputedStyle(status).textOverflow,

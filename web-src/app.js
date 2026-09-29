@@ -209,6 +209,7 @@ function setPref(name, value) {
 function applyPref(name) {
   if (name === "theme") {
     applyTheme(pref("theme"));
+    syncThemeToggle();
   }
   if (name === "coordinates") {
     Object.values(boards).forEach((b) => b && b.applyCoordinates && b.applyCoordinates());
@@ -216,6 +217,23 @@ function applyPref(name) {
   if (name === "bestArrow" && !pref("bestArrow")) {
     Object.values(boards).forEach((b) => b && b.setEngineArrow && b.setEngineArrow(null));
   }
+}
+
+// Top-bar theme toggle: flips the effective theme (an explicit light/dark
+// choice). Settings keeps the full System / Light / Dark control.
+function syncThemeToggle() {
+  const btn = document.getElementById("theme-toggle");
+  if (!btn) return;
+  const dark = document.documentElement.dataset.theme === "dark";
+  const label = dark ? "Switch to light theme" : "Switch to dark theme";
+  btn.title = label;
+  btn.setAttribute("aria-label", label);
+}
+
+function toggleThemeFromTopbar() {
+  const dark = document.documentElement.dataset.theme === "dark";
+  setPref("theme", dark ? "light" : "dark");
+  settingsView?.renderThemeControl?.();
 }
 
 // Draw the engine's top move as a green arrow on whichever board is showing
@@ -3303,6 +3321,12 @@ function syncTopbarExtras() {
   const isAnalyze = appState.currentView === "analyze";
   const analyzeActions = document.getElementById("analyze-actions");
   if (analyzeActions) analyzeActions.hidden = !isAnalyze;
+  const libraryActions = document.getElementById("library-actions");
+  if (libraryActions) libraryActions.hidden = appState.currentView !== "dashboard";
+  // ≤760px the top-bar actions are hidden (prototype); the More sheet mirrors them.
+  document.querySelectorAll("[data-lib-mirror]").forEach((item) => {
+    item.hidden = appState.currentView !== "dashboard";
+  });
   const generate = document.getElementById("build-generate-node");
   if (generate) {
     generate.hidden = !isBuild;
@@ -3327,6 +3351,17 @@ function syncTopbarExtras() {
     const text = appState.trainMode === "play" ? "Play against your book" : live;
     sub.textContent = text;
     sub.hidden = !text;
+    return;
+  }
+  if (appState.currentView === "dashboard") {
+    // Prototype: today's date over a populated library, a welcome line while
+    // it is empty (signed out or no repertoires yet). A failed load is not
+    // an empty library, so it keeps the date.
+    const empty = !!document.querySelector("#view-dashboard .lib-list.is-empty:not(.is-error)");
+    sub.textContent = empty
+      ? "Welcome — let's build your first repertoire"
+      : new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }).replace(", ", " · ");
+    sub.hidden = false;
     return;
   }
   if (appState.currentView === "teams" || appState.currentView === "settings") {
@@ -3419,6 +3454,15 @@ function switchView(name, { fromUrl = false } = {}) {
   }
   // Warm the Analyze book (active repertoire trees) so the first explored move
   // can be matched without waiting on the lazy load.
+  // Recent analyses are owner-scoped: signed out the drawer is absent; signed
+  // in it ships open, so it loads on entry (not only on a manual toggle).
+  if (name === "analyze") {
+    const historyDrawer = document.getElementById("history-drawer");
+    if (historyDrawer) {
+      historyDrawer.hidden = !appState.signedIn;
+      if (appState.signedIn && historyDrawer.open) loadAnalysisHistory();
+    }
+  }
   if (name === "analyze" && appState.signedIn) {
     ensureBookLoaded()
       .then(() => updateBookline())
@@ -3824,6 +3868,7 @@ async function ensureDashboardView() {
       postJson,
       escapeHtml,
       setStatus,
+      setStatusError,
       localDateString,
       goToSmartTraining,
       editRepertoire,
@@ -3833,7 +3878,10 @@ async function ensureDashboardView() {
       showInputModal,
       promptImportRepertoireFromPgn,
       requireSignIn,
+      openSignIn: () => openAuthModal("login"),
+      onLibraryStateChange: syncTopbarExtras,
       goToView: switchView,
+      openSettingsSection,
       // Library preview mini-board: FEN decode + the product's piece SVGs over
       // the real listing root_fen. Pure DOM helpers — no engine, no board.
       previewRenderers: { parseFenBoard, pieceSvg },
@@ -3961,12 +4009,16 @@ function openAuthModal(mode = "login") {
 
 // Guest → the chip is a single Connect action (straight to OAuth). Signed in → the
 // chip toggles the account menu.
-function onAccountChipClick() {
-  return accountService().onAccountChipClick();
+function onAccountChipClick(anchor = null, options = {}) {
+  return accountService().onAccountChipClick(anchor, options);
 }
 
-function closeAccountMenu() {
-  return accountService().closeAccountMenu();
+function closeAccountMenu(options = {}) {
+  return accountService().closeAccountMenu(options);
+}
+
+function isAccountMenuOpen() {
+  return accountService().isAccountMenuOpen();
 }
 
 // Ask the server whether this browser's session is a real account or a guest, and
@@ -4512,7 +4564,7 @@ async function openTeamDetail(teamId) {
       }
       return `
         <div class="mem-row team-member-row">
-          <span class="avatar" aria-hidden="true">${initial}</span>
+          <span class="avatar sm" aria-hidden="true">${initial}</span>
           <span class="mem-id"><span class="name">${name}${isMe ? ' <span class="sub">(you)</span>' : ""}</span>${sub}</span>
           <span class="team-member-tail">${tail}</span>
         </div>`;
@@ -6284,7 +6336,11 @@ function bindEvalChart() {
   // Chart interaction (click / hover tooltip / keyboard) lives with the chart
   // renderer in views/analyze.js (bound on first render); app.js only keeps the
   // viewport resize hook that rescales the key-moment markers.
-  window.addEventListener("resize", rescaleEvalMarkers);
+  // Only a mounted Analyze chart has markers to rescale — a resize on any other
+  // page must not pull the Analyze chunk (and its CSS) in.
+  window.addEventListener("resize", () => {
+    if (analyzeView) analyzeView.rescaleEvalMarkers();
+  });
 }
 
 async function hydrateBuild(payload, selectedNodeId = null) {
@@ -8138,13 +8194,16 @@ async function loadTrainRepertoireOptions() {
   if (!select && !document.getElementById("train-play-repertoire-picker")) return;
   let active = [];
   try {
+    // Signed out there is no owner-scoped listing: the picker shows its empty
+    // option instead of surfacing the API's 401 as a sticky top-bar error.
+    if (!appState.signedIn) throw Object.assign(new Error("signed out"), { signedOut: true });
     const payload = await api("/api/repertoires");
     appState.repertoireList = payload.repertoires || [];
     active = appState.repertoireList.filter(
       (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id)),
     );
   } catch (error) {
-    setStatusError(error.message);
+    if (!error.signedOut) setStatusError(error.message);
     active = (appState.repertoireList || []).filter(
       (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id)),
     );
@@ -10312,7 +10371,31 @@ async function ensureSettingsView() {
   return settingsView;
 }
 
-async function loadSettings() {
+// Every in-flight loadSettings() (a tab click can start two). settingsSettled()
+// waits until none remain, i.e. the Settings view is bound and fully rendered.
+const settingsLoads = new Set();
+
+function loadSettings() {
+  const load = loadSettingsOnce().finally(() => settingsLoads.delete(load));
+  settingsLoads.add(load);
+  return load;
+}
+
+async function settingsSettled() {
+  while (settingsLoads.size) await Promise.allSettled([...settingsLoads]);
+}
+
+// Open Settings through its tab (same path as a rail click) and jump to a
+// section once the view is ready — no fixed delay.
+async function openSettingsSection(sectionId) {
+  const tab = document.querySelector('.tab[data-view="settings"]');
+  if (tab) tab.click();
+  else switchView("settings");
+  await settingsSettled();
+  document.querySelector(`.settings-nav-link[href="#${sectionId}"]`)?.click();
+}
+
+async function loadSettingsOnce() {
   let view = null;
   try {
     view = await ensureSettingsView();
@@ -10320,15 +10403,21 @@ async function loadSettings() {
     setStatusError(error.message);
     return;
   }
+  if (!appState.signedIn) {
+    // Signed out: browser-local settings only (theme, board, engine status) —
+    // no /api/settings call and no 401 in the top bar.
+    await view.renderSettings(null);
+    return;
+  }
   try {
     const payload = await api("/api/settings");
     applySettingsPayload(payload);
     applyServerEngineGating();
-    view.renderSettings(payload);
+    await view.renderSettings(payload);
   } catch (error) {
     setStatusError(error.message);
     try {
-      view.renderSettings(null);
+      await view.renderSettings(null);
     } catch (_) {
       /* best-effort local render */
     }
@@ -11495,6 +11584,26 @@ function wireMobileNav() {
       target?.click();
     });
   });
+  sheet.querySelectorAll("[data-lib-mirror]").forEach((item) => {
+    item.addEventListener("click", () => {
+      closeSheet({ restoreFocus: false });
+      document.getElementById(item.dataset.libMirror)?.click();
+    });
+  });
+  // Mobile account entry (the rail — and its account row — is hidden ≤ 760px).
+  // Signed in, the account menu opens over the still-open sheet with this item
+  // as its trigger, so Escape returns focus here; a guest gets the auth modal.
+  const accountItem = document.getElementById("sheet-account");
+  if (accountItem) {
+    accountItem.addEventListener("click", () => {
+      if (!appState.signedIn) closeSheet({ restoreFocus: false });
+      onAccountChipClick(null, { trigger: accountItem });
+    });
+  }
+  // Picking an account-menu action finishes the sheet's job too.
+  document.getElementById("account-menu")?.addEventListener("click", (event) => {
+    if (event.target.closest?.('[role="menuitem"]')) closeSheet({ restoreFocus: false });
+  });
   const paletteItem = document.getElementById("sheet-palette");
   if (paletteItem) {
     paletteItem.addEventListener("click", () => {
@@ -11503,7 +11612,9 @@ function wireMobileNav() {
     });
   }
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !sheet.hidden) closeSheet();
+    // Escape closes the topmost layer only: an account menu opened from the
+    // sheet closes first (the global handler), the sheet on the next Escape.
+    if (event.key === "Escape" && !sheet.hidden && !isAccountMenuOpen()) closeSheet();
   });
 }
 
@@ -11547,7 +11658,8 @@ function bindEvents() {
 
 
   // Account chip (folds in the old standalone Sign out button as a menu action)
-  document.getElementById("account-chip").addEventListener("click", onAccountChipClick);
+  document.getElementById("account-chip").addEventListener("click", () => onAccountChipClick());
+  document.getElementById("theme-toggle")?.addEventListener("click", toggleThemeFromTopbar);
 
   // Replay tab
   document.getElementById("lichess-compare-btn").addEventListener("click", runLichessCompare);
@@ -11752,7 +11864,7 @@ function bindEvents() {
     syncStatusRoom();
     window.addEventListener("resize", syncStatusRoom);
     const observer = new ResizeObserver(syncStatusRoom);
-    for (const element of [lastNav, palette, document.getElementById("account-chip")]) {
+    for (const element of [lastNav, palette]) {
       if (element) observer.observe(element);
     }
     document.fonts?.ready.then(syncStatusRoom);
@@ -11883,7 +11995,7 @@ function bindEvents() {
     if (event.key === "Escape") {
       closeNodeContextMenu();
       closeRepertoireContextMenu();
-      closeAccountMenu();
+      closeAccountMenu({ restoreFocus: true });
       closePalette();
     }
   });
@@ -11892,7 +12004,11 @@ function bindEvents() {
     if (!event.target.closest("#repertoire-context-menu")) closeRepertoireContextMenu();
     // The chip's own click toggles the menu; ignore it here so we don't immediately
     // re-close what the toggle just opened.
-    if (!event.target.closest("#account-menu") && !event.target.closest("#account-chip")) {
+    if (
+      !event.target.closest("#account-menu") &&
+      !event.target.closest("#account-chip") &&
+      !event.target.closest("#sheet-account")
+    ) {
       closeAccountMenu();
     }
   });
@@ -11905,7 +12021,10 @@ async function init() {
   try {
     const systemTheme = window.matchMedia?.("(prefers-color-scheme: dark)");
     systemTheme?.addEventListener?.("change", () => {
-      if (pref("theme") === "system") applyTheme("system");
+      if (pref("theme") === "system") {
+        applyTheme("system");
+        syncThemeToggle();
+      }
     });
   } catch (_) {
     /* matchMedia is optional in embedded/test environments */
@@ -11964,6 +12083,9 @@ async function init() {
   } else {
     setStatus("Sign in to build and train your repertoires.");
     renderBuilderTree();
+    ensureDashboardView()
+      .then((view) => view.renderSignedOut())
+      .catch(() => { /* the Library chunk failing leaves the static shell */ });
   }
   workspaceUrlReady = true;
   await restoreWorkspaceLocation();

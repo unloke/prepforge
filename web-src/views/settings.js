@@ -130,17 +130,21 @@ export function createSettingsView({
     }
   }
 
+  // Resolves once the async Connections list has rendered too, so callers
+  // (e.g. Library's "Link Lichess") can jump to a section on a settled layout.
   function renderSettings(payload) {
     void payload;
     renderBrowserEngineStatus();
     renderStrengthControls();
     renderThemeControl();
+    let connections = Promise.resolve();
     try {
-      void renderConnections();
+      connections = Promise.resolve(renderConnections()).catch(() => {});
     } catch {
       /* signed-out: connections list stays at its static markup */
     }
     renderMaiaAnalysis();
+    return connections;
   }
 
   function renderMaiaAnalysis() {
@@ -251,10 +255,15 @@ export function createSettingsView({
     const noteEl = document.getElementById("settings-maia-status");
     const errEl = document.getElementById("settings-maia-error");
     if (!modelEl) return;
-    const set = (model, note = "", error = "") => {
+    // The model source (a full asset URL on hosted deploys) lives in the
+    // tooltip; the line itself names the fp16 build, as in the prototype.
+    const set = (model, note = "", error = "", source = "") => {
       modelEl.textContent = model;
       modelEl.className = `status-pill ${MAIA_STATUS_TONE[model] || ""}`.trim();
-      if (noteEl) noteEl.textContent = note;
+      if (noteEl) {
+        noteEl.textContent = note;
+        noteEl.title = source ? `Model source: ${source}` : "";
+      }
       if (errEl) {
         errEl.textContent = error ? `Last error: ${error}` : "";
         errEl.hidden = !error;
@@ -270,7 +279,7 @@ export function createSettingsView({
         if (provider.state === "ready") {
           const info = provider.info || {};
           const base = info.url || provider.assetBase || "";
-          set(MAIA_STATUS.READY, base ? `Loaded this session · ${base}` : "Loaded this session.");
+          set(MAIA_STATUS.READY, "Loaded this session · fp16", "", base);
           return;
         }
         if (provider.state === "initializing") {
@@ -306,13 +315,13 @@ export function createSettingsView({
       const sizeMb = bytes ? `${Math.round(bytes / (1024 * 1024))} MB` : "~46 MB";
       const cached = key ? await getCachedWeights(key) : null;
       if (cached) {
-        set(MAIA_STATUS.READY, `${sizeMb} cached in this browser · ${base}`);
+        set(MAIA_STATUS.READY, `${sizeMb} cached in this browser · fp16`, "", base);
       } else if (!pref("maiaAnalysis")) {
         // Analysis OFF still reports real runtime state: with no provider and
         // nothing cached, the cache is verifiably empty (not merely on-demand).
-        set(MAIA_STATUS.CACHE_MISSING, `Maia analysis is off — model not cached · ${base}`);
+        set(MAIA_STATUS.CACHE_MISSING, "Maia analysis is off — model not cached · fp16", "", base);
       } else {
-        set(MAIA_STATUS.AVAILABLE, `Downloads ${sizeMb} on first use, then cached · ${base}`);
+        set(MAIA_STATUS.AVAILABLE, `Downloads ${sizeMb} on first use, then cached · fp16`, "", base);
       }
     } catch {
       set(MAIA_STATUS.ERROR, "Could not determine the browser Maia3 state.");

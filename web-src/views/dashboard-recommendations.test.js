@@ -117,7 +117,7 @@ describe("dashboard empty-state recommendations", () => {
     expect(steps.innerHTML).toContain("<b>Import your games in Replay</b>");
   });
 
-  it("omits the next-steps list when the payload carries no recommendations", async () => {
+  it("shows the onboarding checklist for an empty account without recommendations", async () => {
     api.mockImplementation(async (url) => {
       if (String(url).startsWith("/api/dashboard")) {
         return {
@@ -129,6 +129,27 @@ describe("dashboard empty-state recommendations", () => {
     });
     await view.loadDashboard();
     expect(container.innerHTML).toContain('class="empty-state big"');
+    // Prototype A2: Get started with create / link Lichess / import.
+    expect(steps.hidden).toBe(false);
+    expect(steps.innerHTML).toContain("<h2>Get started</h2>");
+    expect(steps.innerHTML.match(/class="step"/g)).toHaveLength(3);
+    for (const action of ["new", "lichess", "import"]) {
+      expect(steps.innerHTML).toContain(`data-lib-action="${action}"`);
+    }
+  });
+
+  it("omits the next-steps list when repertoires exist but nothing is recommended", async () => {
+    api.mockImplementation(async (url) => {
+      if (String(url).startsWith("/api/dashboard")) {
+        return {
+          streak: { current: 2, best: 4, trained_today: true },
+          repertoires: 2,
+          recommendations: [],
+        };
+      }
+      return { repertoires: [] };
+    });
+    await view.loadDashboard();
     expect(steps.hidden).toBe(true);
     expect(steps.innerHTML).toBe("");
   });
@@ -308,5 +329,16 @@ describe("dashboard empty-state recommendations", () => {
     expect(todayCard.innerHTML).toContain("dashboard-train-now");
     expect(steps.innerHTML).toContain("Get started");
     expect(container.innerHTML).not.toContain("step-n");
+  });
+
+  it("renders the signed-out Library as the onboarding card without any API call", () => {
+    view.renderSignedOut();
+    expect(api).not.toHaveBeenCalled();
+    expect(container.innerHTML).toContain('data-testid="library-signed-out"');
+    expect(container.innerHTML).toContain('data-lib-action="signin"');
+    expect(todayCard.hidden).toBe(true);
+    expect(steps.hidden).toBe(false);
+    expect(steps.innerHTML).toContain("<h2>Get started</h2>");
+    expect(steps.innerHTML.match(/class="step"/g)).toHaveLength(3);
   });
 });

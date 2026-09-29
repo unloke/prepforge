@@ -49,23 +49,49 @@ export function createAccountController({
 
   // The account chip represents the PrepForge session. A linked Lichess identity
   // is optional and remains a separate connection shown in the signed-in menu.
+  // The account lives at the foot of the rail (avatar + name, the label fades
+  // in with the rail) and, on mobile where the rail is hidden, in the More
+  // sheet. Both render from the same signed-in state.
   function renderAccountChip() {
     const chip = document.getElementById("account-chip");
     const label = document.getElementById("account-label");
     if (!chip || !label) return;
     const name = appState.accountUsername || appState.lichessUsername;
+    const sub = document.getElementById("account-sub");
+    const initial = name ? String(name).trim().charAt(0).toUpperCase() : "";
+    const paintAvatar = (el) => {
+      if (!el) return;
+      el.classList.toggle("is-guest", !appState.signedIn);
+      if (appState.signedIn && initial) el.textContent = initial;
+    };
+    paintAvatar(document.getElementById("account-avatar"));
+    paintAvatar(document.getElementById("sheet-account-avatar"));
+    const sheetLabel = document.getElementById("sheet-account-label");
+    const sheetItem = document.getElementById("sheet-account");
     if (appState.signedIn) {
       chip.classList.add("is-connected");
       label.textContent = name || "Account";
+      if (sub) sub.textContent = appState.lichessUsername ? `Lichess · ${appState.lichessUsername}` : "Account";
+      if (sheetLabel) sheetLabel.textContent = name || "Account";
       chip.setAttribute("aria-haspopup", "menu");
       chip.title = `Signed in as ${name || "your account"}`;
+      if (sheetItem) {
+        sheetItem.setAttribute("aria-haspopup", "menu");
+        if (!sheetItem.hasAttribute("aria-expanded")) sheetItem.setAttribute("aria-expanded", "false");
+      }
     } else {
       chip.classList.remove("is-connected");
       label.textContent = "Sign in";
+      if (sub) sub.textContent = "Save your library";
+      if (sheetLabel) sheetLabel.textContent = "Sign in";
       // A guest chip is a single action, not a menu — drop the popup affordance.
       chip.removeAttribute("aria-haspopup");
       chip.setAttribute("aria-expanded", "false");
       chip.title = "Sign in to PrepForge";
+      if (sheetItem) {
+        sheetItem.removeAttribute("aria-haspopup");
+        sheetItem.removeAttribute("aria-expanded");
+      }
     }
   }
 
@@ -201,17 +227,64 @@ export function createAccountController({
     });
   }
 
+  // The control that opened the menu (rail chip or the More sheet's account
+  // item): it carries aria-expanded and gets focus back on Escape.
+  let menuTrigger = null;
+  // What the open menu is positioned against, and the observer that keeps it
+  // there while the hover/focus rail grows or collapses underneath it.
+  let menuAnchor = null;
+  let railObserver = null;
+
+  // Rail account: open beside the rail, bottom-aligned with the avatar.
+  // Mobile (rail hidden, opened from the More sheet): sit above the tab bar.
+  function positionAccountMenu() {
+    const menu = document.getElementById("account-menu");
+    if (!menu || menu.hidden || !menuAnchor) return;
+    const rect = menu.getBoundingClientRect();
+    const cr = menuAnchor.getBoundingClientRect();
+    let left;
+    let top;
+    if (cr.width > 0) {
+      left = cr.right + 8;
+      top = cr.bottom - rect.height;
+    } else {
+      left = (window.innerWidth - rect.width) / 2;
+      top = window.innerHeight - rect.height - 74;
+    }
+    left = Math.max(8, Math.min(left, window.innerWidth - rect.width - 8));
+    top = Math.max(8, Math.min(top, window.innerHeight - rect.height - 8));
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+  }
+
+  // The desktop rail expands as an overlay on hover / keyboard focus and
+  // collapses once the pointer or focus moves into the menu. Re-anchor on
+  // every rail size change so the menu tracks the trigger instead of hanging
+  // at the expanded rail's edge.
+  function followRailWidth(anchor) {
+    stopFollowingRail();
+    const rail = anchor?.closest?.(".rail");
+    if (!rail || typeof ResizeObserver !== "function") return;
+    railObserver = new ResizeObserver(() => positionAccountMenu());
+    railObserver.observe(rail);
+  }
+
+  function stopFollowingRail() {
+    if (railObserver) railObserver.disconnect();
+    railObserver = null;
+  }
+
   // Guest → the chip is a single sign-in action. Signed in → it toggles the
-  // account menu.
-  function onAccountChipClick() {
+  // account menu. `trigger` defaults to the rail chip; `anchor` only positions.
+  function onAccountChipClick(anchor = null, { trigger = null } = {}) {
     if (!appState.signedIn) {
       openAuthModal("login");
       return;
     }
-    toggleAccountMenu();
+    toggleAccountMenu(anchor, { trigger });
   }
 
-  function openAccountMenu() {
+  function openAccountMenu(anchor = null, { trigger = null } = {}) {
     const chip = document.getElementById("account-chip");
     const menu = document.getElementById("account-menu");
     if (!chip || !menu) return;
@@ -227,30 +300,45 @@ export function createAccountController({
     ];
     menu.innerHTML = items.join("");
     menu.hidden = false;
-    chip.setAttribute("aria-expanded", "true");
-    // Drop the menu under the chip, right-aligned and clamped to the viewport.
-    const cr = chip.getBoundingClientRect();
-    const rect = menu.getBoundingClientRect();
-    const left = Math.max(8, Math.min(cr.right - rect.width, window.innerWidth - rect.width - 8));
-    const top = Math.max(8, Math.min(cr.bottom + 6, window.innerHeight - rect.height - 8));
-    menu.style.left = `${left}px`;
-    menu.style.top = `${top}px`;
+    if (menuTrigger && menuTrigger !== (trigger || chip)) {
+      menuTrigger.setAttribute("aria-expanded", "false");
+    }
+    menuTrigger = trigger || chip;
+    menuTrigger.setAttribute("aria-expanded", "true");
+    menuAnchor = anchor || chip;
+    positionAccountMenu();
+    followRailWidth(menuAnchor);
     menu.querySelectorAll("button").forEach((button) => {
       button.addEventListener("click", () => handleAccountMenuAction(button.dataset.action));
     });
+    menu.querySelector('[role="menuitem"]')?.focus();
   }
 
-  function closeAccountMenu() {
+  // restoreFocus (Escape / explicit toggle) returns focus to the trigger when
+  // it is still on screen; outside clicks and menu actions leave focus alone.
+  function closeAccountMenu({ restoreFocus = false } = {}) {
     const menu = document.getElementById("account-menu");
+    const wasOpen = !!menu && !menu.hidden;
     if (menu) menu.hidden = true;
+    stopFollowingRail();
+    menuAnchor = null;
     const chip = document.getElementById("account-chip");
     if (chip) chip.setAttribute("aria-expanded", "false");
+    const trigger = menuTrigger;
+    menuTrigger = null;
+    if (!trigger) return;
+    trigger.setAttribute("aria-expanded", "false");
+    if (wasOpen && restoreFocus && trigger.getClientRects?.().length) trigger.focus();
   }
 
-  function toggleAccountMenu() {
+  function isAccountMenuOpen() {
     const menu = document.getElementById("account-menu");
-    if (menu && !menu.hidden) closeAccountMenu();
-    else openAccountMenu();
+    return !!menu && !menu.hidden;
+  }
+
+  function toggleAccountMenu(anchor = null, { trigger = null } = {}) {
+    if (isAccountMenuOpen()) closeAccountMenu({ restoreFocus: true });
+    else openAccountMenu(anchor, { trigger });
   }
 
   async function handleAccountMenuAction(action) {
@@ -387,6 +475,7 @@ export function createAccountController({
     onAccountChipClick,
     openAccountMenu,
     closeAccountMenu,
+    isAccountMenuOpen,
     toggleAccountMenu,
     handleAccountMenuAction,
     refreshAuthStatus,
