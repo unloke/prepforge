@@ -183,6 +183,15 @@ async function runViewport(vp) {
   }
   await page.waitForTimeout(700);
 
+  // Optional review screenshots (UI_V2_SHOTS=<dir> UI_V2_TAG=before|after).
+  const shot = async (state) => {
+    if (!process.env.UI_V2_SHOTS) return;
+    await page.mouse.move(vp.width - 4, vp.height - 4); // park the pointer so the hover-expand rail is collapsed
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `analyze-${state}-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
+  };
+  await shot("setup");
+
   // Board + coach + tool row render in setup.
   const board = await page.locator('[data-testid="analysis-board"] .square, [data-testid="analysis-board"] [data-square]').count();
   check(board === 64, `analysis board should render 64 squares, got ${board}`);
@@ -222,6 +231,56 @@ async function runViewport(vp) {
   check(movesRows >= 5, `move grid should list the game's plies, got ${movesRows}`);
   const classBars = await page.locator("#analysis-summary .cbar-row").count();
   check(classBars === 2, `class bars should show White + Black rows, got ${classBars}`);
+
+  // Opus composition: actions live in the topbar, the mainline is a
+  // number | White | Black grid inside the panel, the eval bar is left of the board.
+  const layout = await page.evaluate(() => {
+    const box = (sel) => document.querySelector(sel)?.getBoundingClientRect();
+    const white = box("#analysis-moves .mtree-move.is-white");
+    const black = box("#analysis-moves .mtree-move.is-black");
+    const num = box("#analysis-moves .mtree-num");
+    const actions = box("#analyze-actions");
+    const topbar = box(".topbar");
+    const panel = box("#analyze-sidebar");
+    const bar = box("#analysis-evalbar");
+    const boardBox = box("#analysis-board");
+    return {
+      sameRow: Math.abs(white.top - black.top) < 2,
+      order: num.right <= white.left + 1 && white.right <= black.left + 1,
+      actionsInTopbar: !!actions && actions.width > 0 && actions.bottom <= topbar.bottom + 1,
+      panelHead: !!document.querySelector("#analyze-sidebar > .panel-head #analysis-game-title"),
+      glyphs: document.querySelectorAll("#analysis-moves .mtree-glyph").length,
+      barLeftOfBoard: bar.right <= boardBox.left + 1,
+      panelNextToBoard: window.innerWidth > 1020 ? panel.left >= boardBox.right : panel.top >= boardBox.bottom,
+    };
+  });
+  check(layout.sameRow && layout.order, `move grid should lay number | White | Black in one row: ${JSON.stringify(layout)}`);
+  check(layout.actionsInTopbar, "Engine / My last game / Analyze should sit in the topbar");
+  check(layout.panelHead, "the panel head should carry the game title");
+  check(layout.glyphs >= 1, "classified moves should carry a glyph");
+  check(layout.barLeftOfBoard, "the eval bar should sit on the board's left");
+  check(layout.panelNextToBoard, "the panel should sit beside (or, stacked, below) the board");
+
+  await page.evaluate(() => document.getElementById("analysis-next").click());
+  await page.waitForTimeout(300);
+  await shot("results");
+  const caption = await page.locator("#analysis-chart-caption").textContent();
+  check(/win chance/.test(caption || ""), `the chart caption should read the current ply, got "${caption}"`);
+  // A side line played on the board interrupts the mainline grid as a
+  // full-width row and the mainline resumes in its own columns afterwards.
+  await page.locator('[data-testid="analysis-board"] [data-square="d7"]').click();
+  await page.locator('[data-testid="analysis-board"] [data-square="d5"]').click();
+  await page.waitForSelector("#analysis-moves .mtree-var", { timeout: 5000 });
+  const variation = await page.evaluate(() => {
+    const grid = document.querySelector("#analysis-moves .mtree-line.is-main").getBoundingClientRect();
+    const v = document.querySelector("#analysis-moves .mtree-var").getBoundingClientRect();
+    const blacks = [...document.querySelectorAll("#analysis-moves .mtree-line.is-main > .mtree-move.is-black")].map((el) => el.getBoundingClientRect().left);
+    return { fullWidth: v.width > grid.width * 0.8, blackAligned: blacks.every((l) => Math.abs(l - blacks[0]) < 2) };
+  });
+  check(variation.fullWidth, "a variation should span the full grid width");
+  check(variation.blackAligned, "Black moves should stay in one column around a variation");
+  await page.evaluate(() => document.getElementById("analysis-start").click());
+  await page.waitForTimeout(200);
 
   // Board-side eval bar: the run ends at ply 0 (the start position has no
   // engine evaluation) so the bar is hidden there — never a fabricated eval.

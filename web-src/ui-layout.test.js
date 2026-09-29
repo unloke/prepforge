@@ -10,6 +10,7 @@ const app = readFileSync(join(root, "app.js"), "utf8");
 const account = readFileSync(join(root, "controllers", "account.js"), "utf8");
 const replayView = readFileSync(join(root, "views", "replay.js"), "utf8");
 const replayCss = readFileSync(join(root, "views", "replay.css"), "utf8");
+const analyzeCss = readFileSync(join(root, "views", "analyze-chart.css"), "utf8");
 const settingsView = readFileSync(join(root, "views", "settings.js"), "utf8");
 const scoutView = readFileSync(join(root, "views", "scout.js"), "utf8");
 const composer = readFileSync(join(root, "views", "shared", "source-composer.js"), "utf8");
@@ -51,7 +52,7 @@ describe("workspace chrome layout", () => {
     expect(css).toContain(".board-stack");
     expect(html).toContain('id="analysis-board"');
     expect(html).toContain('id="train-board"');
-    expect(css).toMatch(/#analyze-sidebar[\s\S]{0,300}?overflow-y:\s*auto/);
+    expect(css).toMatch(/#analyze-sidebar\s*\{[^}]*max-height:\s*var\(--study-h\)[^}]*overflow:\s*hidden/);
   });
 
   it("keeps the Train coach in the sidebar with the board starting at the top", () => {
@@ -164,42 +165,38 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".dock")).toMatch(/flex:\s*0 0 clamp\(210px,\s*40%,\s*330px\)/);
   });
 
-  it("keeps Coach height stable with a scrollable explanation and fixed footer", () => {
-    const coach = ruleBody(".coach-prose");
-    const maia = ruleBody(".coach-maia");
-    const bookline = ruleBody(".coach-bookline");
-    const card = ruleBody(".explain-card");
-    const scroll = ruleBody(".coach-scroll");
-    const footer = ruleBody(".coach-footer");
-    const secondary = ruleBody(".coach-secondary");
-    expect(html).toContain('<header class="explain-head">');
-    expect(html).toContain('<div class="coach-scroll" id="coach-scroll">');
-    expect(html).toContain('<div class="coach-footer" id="coach-footer">');
-    expect(html).toContain('<div class="coach-secondary">');
-    expect(card).toMatch(/grid-template-rows:\s*auto\s+minmax\(0,\s*1fr\)\s+auto/);
-    expect(card).toMatch(/block-size:\s*var\(--coach-card-block-size\)/);
-    expect(card).toMatch(/flex:\s*0\s+0\s+var\(--coach-card-block-size\)/);
-    expect(card).toMatch(
-      /--coach-card-block-size:\s*clamp\(136px,\s*calc\(var\(--study-h\)\s*\*\s*0\.23\),\s*170px\)/,
-    );
-    expect(scroll).toMatch(/min-height:\s*0/);
-    expect(scroll).toMatch(/overflow-y:\s*auto/);
-    expect(scroll).toMatch(/overflow-x:\s*hidden/);
-    expect(footer).toMatch(/min-width:\s*0/);
-    expect(footer).toMatch(/flex:\s*none/);
-    expect(footer).toMatch(/overflow:\s*hidden/);
-    expect(footer).not.toMatch(/overflow-y/);
-    expect(secondary).not.toMatch(/margin-top:\s*auto/);
-    expect(coach).toMatch(/overflow-wrap:\s*anywhere/);
-    expect(maia).toMatch(/overflow-wrap:\s*anywhere/);
-    expect(bookline).toMatch(/overflow-wrap:\s*anywhere/);
-    expect(coach).not.toMatch(/line-clamp|overflow:\s*hidden/);
-    // The footer is a fixed, non-scrolling row: no clamping anywhere — the
-    // concise guidance content itself always fits beside the explanation scroll.
-    expect(maia).not.toMatch(/line-clamp|overflow:\s*hidden/);
-    expect(bookline).not.toMatch(/line-clamp|overflow:\s*hidden/);
-    expect(ruleBody(".sidebar")).toMatch(/overflow:\s*visible/);
-    expect(ruleBody(".sidebar")).not.toMatch(/overflow-y/);
+  it("composes Analyze as one panel: game head, coach card, results, drawers", () => {
+    const view = html.slice(html.indexOf('id="view-analyze"'), html.indexOf('id="view-build"'));
+    const rule = (selector) => {
+      const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return analyzeCss.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]+)\\}`))?.[1] || "";
+    };
+    expect(view).toContain('<aside class="sidebar panel" id="analyze-sidebar">');
+    expect(view).toContain('id="analysis-game-title"');
+    expect(view).toContain('<section class="coach-card" id="analysis-explain"');
+    expect(view).toContain('<header class="cc-head">');
+    expect(view).toContain('class="moves-grid" id="analysis-moves"');
+    // The eval bar sits on the board's left, before the board itself.
+    expect(view.indexOf('id="analysis-evalbar"')).toBeLessThan(view.indexOf('id="analysis-board"'));
+    // The sidebar is a raised panel: the body scrolls, the head stays put.
+    expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
+    // Analyze actions live in the topbar, not in the panel.
+    expect(html.indexOf('id="analyze-actions"')).toBeLessThan(html.indexOf('id="view-dashboard"'));
+    for (const id of ["open-engine-widget", "fetch-my-game", "run-analysis"]) {
+      expect(html.indexOf(`id="${id}"`)).toBeLessThan(html.indexOf('id="view-dashboard"'));
+    }
+    expect(app).toContain("analyzeActions.hidden = !isAnalyze");
+    // Coach copy wraps instead of clipping; the mainline is a 3-column grid.
+    expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);
+    expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
+    expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/grid-template-columns:\s*32px\s+minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/);
+    expect(rule(".moves-grid")).toMatch(/overflow:\s*auto/);
+    // Superseded legacy Analyze chrome is gone from the eager sheet.
+    expect(css).not.toContain(".explain-card");
+    expect(css).not.toContain(".coach-scroll");
+    expect(css).not.toContain(".reveal");
+    expect(css).not.toContain(".movelist");
+    expect(html).not.toContain("explain-card");
   });
 
   it("never navigates away during background hydration", () => {
@@ -352,14 +349,13 @@ describe("workspace chrome layout", () => {
     // layout-only. Inner panels that need their own scroll keep it.
     expect(ruleBody(".sidebar")).toMatch(/overflow:\s*visible/);
     expect(ruleBody(".sidebar")).not.toMatch(/overflow-y/);
-    expect(css).toMatch(/#analyze-sidebar[\s\S]{0,300}?overflow-y:\s*auto/);
+    expect(css).toMatch(/#analyze-sidebar\s*\{[^}]*overflow:\s*hidden/);
     expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
     expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,120}?overflow:\s*hidden/);
     // Panels that need independent scroll keep it: coach prose, inspector,
     // move lists, composer rows/popover, context menus.
-    expect(ruleBody(".coach-scroll")).toMatch(/overflow-y:\s*auto/);
     expect(ruleBody(".dock-body")).toMatch(/overflow:\s*auto/);
-    expect(ruleBody(".movelist")).toMatch(/overflow-y:\s*auto/);
+    expect(analyzeCss).toMatch(/\.moves-grid\s*\{[^}]*overflow:\s*auto/);
     expect(ruleBody(".src-popover")).toMatch(/overflow-y:\s*auto/);
     expect(ruleBody(".src-rows")).toMatch(/overflow:\s*auto/);
     expect(ruleBody(".context-menu")).toMatch(/overflow-y:\s*auto/);

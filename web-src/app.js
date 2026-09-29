@@ -3258,10 +3258,46 @@ function syncTopbarTitle() {
   syncTopbarExtras();
 }
 
+// Analyze head: the loaded game's identity (PGN headers, else the recalled
+// analysis) in the panel head, and the plies + engine summary in the topbar.
+function analyzeHeaderTags(pgnText) {
+  const tags = {};
+  const re = /^\s*\[(\w+)\s+"([^"]*)"\]\s*$/gm;
+  let match;
+  while ((match = re.exec(pgnText)) !== null) tags[match[1]] = match[2];
+  return tags;
+}
+
+function syncAnalyzeHead() {
+  const title = document.getElementById("analysis-game-title");
+  const meta = document.getElementById("analysis-game-meta");
+  if (!title || !meta) return "";
+  const tags = analyzeHeaderTags(document.getElementById("pgn-input")?.value || "");
+  const analysis = appState.analysis;
+  const known = (v) => (v && !/^[?*.\s]+$/.test(v) ? v : "");
+  const white = known(tags.White) || known(analysis?.white);
+  const black = known(tags.Black) || known(analysis?.black);
+  const plies = analysis?.moves?.length || 0;
+  title.textContent = white || black ? `${white || "?"} vs ${black || "?"}` : "Analysis board";
+  const bits = [known(tags.Result) || known(analysis?.result), known(tags.Event) || known(analysis?.event), known(tags.Date)]
+    .filter(Boolean);
+  meta.textContent = bits.length
+    ? bits.join(" · ")
+    : plies
+      ? `${plies} plies`
+      : "Paste a PGN or play on the board";
+  if (!plies) return "Coach + engine review";
+  const engine = String(analysis.engine || "");
+  return `${plies} plies${engine ? ` · reviewed with ${engine.charAt(0).toUpperCase()}${engine.slice(1)}` : ""}`;
+}
+
 // Per-view topbar extras: a one-line context summary next to the title, plus
-// Repertoire's Generate action.
+// Repertoire's Generate action and Analyze's Engine / My last game / Analyze.
 function syncTopbarExtras() {
   const isBuild = appState.currentView === "build";
+  const isAnalyze = appState.currentView === "analyze";
+  const analyzeActions = document.getElementById("analyze-actions");
+  if (analyzeActions) analyzeActions.hidden = !isAnalyze;
   const generate = document.getElementById("build-generate-node");
   if (generate) {
     generate.hidden = !isBuild;
@@ -3269,6 +3305,14 @@ function syncTopbarExtras() {
     if (slot) slot.hidden = !isBuild;
   }
   const sub = document.getElementById("topbar-sub");
+  if (isAnalyze) {
+    const text = syncAnalyzeHead();
+    if (sub) {
+      sub.textContent = text;
+      sub.hidden = !text;
+    }
+    return;
+  }
   if (!sub) return;
   if (appState.currentView === "train") {
     const smart = appState.smart;
@@ -5835,7 +5879,10 @@ async function ensureMoveTreeRenderer() {
 }
 
 async function renderAnalysis(payload) {
-  return (await ensureAnalyzeView()).renderAnalysis(payload);
+  const view = await ensureAnalyzeView();
+  const rendered = view.renderAnalysis(payload);
+  syncTopbarExtras();
+  return rendered;
 }
 
 // Inline badge symbols so move badges render correctly before analyze.js loads.
@@ -5925,6 +5972,7 @@ async function showAnalysisPly(ply) {
     ? `${move.move_number}${move.side === "black" ? "..." : "."} ${move.san}`
     : "Initial position";
   highlightCurrentMove();
+  syncTopbarExtras();
   refreshAnalysisExplain({
     fen,
     lastUci: move ? move.uci : null,
@@ -11588,6 +11636,7 @@ function bindEvents() {
   if (pgnInput) {
     pgnInput.addEventListener("input", () => {
       if (analyzePgnWriting) return;
+      syncTopbarExtras();
       clearTimeout(analyzePgnInputTimer);
       analyzePgnInputTimer = setTimeout(() => {
         void loadPgnIntoAnalyze(pgnInput.value, { goToEnd: true, quiet: true }).catch(

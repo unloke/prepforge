@@ -1850,70 +1850,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .step .btn.sm { height: 34px; }
 }
 
-/* Book-departure line: a second coach sentence (same voice as .coach-prose)
-   that only appears at the ply a move leaves the repertoire, with the one
-   useful action inline at the end of the sentence, like a spoken link. */
-.coach-bookline {
-  margin: 0;
-  font-size: 13.5px;
-  line-height: 1.6;
-  color: var(--text);
-  border-left: 3px solid var(--accent-line);
-  padding: 2px 0 2px 11px;
-  overflow-wrap: anywhere;
-}
-.coach-bookline[hidden] {
-  display: none;
-}
-
-.analysis-handoff {
-  margin-top: 14px;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel-soft);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: flex-start;
-}
-.analysis-handoff[hidden] {
-  display: none;
-}
-.analysis-handoff-hint {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-}
-.coach-bookaction {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  margin-left: 2px;
-  padding: 1px 9px 2px;
-  border: 1px solid var(--accent-line);
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  vertical-align: baseline;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-.coach-bookaction:hover {
-  background: var(--accent-line);
-  border-color: var(--accent-strong);
-}
-.coach-bookaction:disabled {
-  cursor: default;
-  opacity: 0.7;
-}
-.coach-bookaction .cba-arrow {
-  font-weight: 700;
-}
-
 .card {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -2148,16 +2084,13 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   margin: 0;
 }
 
-/* Right workspace: a fixed column that scrolls internally, so analysis output
-   appearing below never moves the primary controls above it. The whole study
-   fits the viewport height, so the dead space under the sidebar disappears. */
+/* Analyze: one raised panel beside the board (head + scrolling body), so analysis
+   output appearing below never moves the game header above it. Its composition
+   (coach card, chart, move grid, class bars, drawers) is views/analyze-chart.css. */
 #analyze-sidebar {
-  min-width: 0;
-  min-height: 0;
+  gap: 0;
   max-height: var(--study-h);
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
+  overflow: hidden;
 }
 
 .workspace:has(> .view.is-active#view-analyze),
@@ -3070,8 +3003,10 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .dock-tabs button { min-height: 44px; }
   /* Generate stays reachable on phones: it takes the palette chip's room. */
   .topbar:has(.tb-actions:not([hidden])) .palette-open { display: none; }
-  .tb-actions { margin-left: 0; }
-  .tb-actions .btn { white-space: nowrap; }
+  .tb-actions { margin-left: 0; gap: 6px; }
+  .tb-actions .btn { white-space: nowrap; padding-inline: 8px; font-size: 13px; }
+  /* The title keeps its width; the action buttons are the compact part. */
+  .tb-left .tb-title { flex: none; }
   .board-bar { height: 44px; }
 }
 
@@ -3548,48 +3483,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   flex-wrap: wrap;
 }
 
-.drawer {
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--panel);
-}
-
-.drawer summary {
-  list-style: none;
-  cursor: pointer;
-  padding: 8px 10px;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.drawer summary::-webkit-details-marker {
-  display: none;
-}
-
-.drawer summary::after {
-  content: "▾";
-  float: right;
-  color: var(--muted);
-}
-
-.drawer[open] summary::after {
-  content: "▴";
-}
-
-.drawer textarea {
-  width: calc(100% - 20px);
-  min-height: 120px;
-  margin: 0 10px 10px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 8px;
-  resize: vertical;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 13px;
-  line-height: 1.45;
-  background: var(--panel-soft);
-}
-
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -3831,315 +3724,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .explorer-bar-d { background: #9a9fa6; color: #fff; }
 .explorer-bar-b { background: #2e3136; color: #fff; }
 
-/* Eval chart styles live in views/analyze-chart.css (lazy-loaded with the
-   Analyze view) so this eager sheet stays under its deploy budget. */
-
-/* Reveal panel: hides eval chart + move list until analysis completes,
-   then fades them in together. */
-.reveal {
-  display: grid;
-  gap: 10px;
-  opacity: 0;
-  transform: translateY(4px);
-  transition: opacity 380ms ease, transform 380ms ease;
-}
-
-.reveal[hidden] {
-  display: none;
-}
-
-.reveal.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Coach panel — the plain-language read of the Analyze position. Always visible
-   in Analyze (unlike .reveal), so it reads as a permanent companion to the board. */
-.explain-card {
-  --coach-card-block-size: clamp(136px, calc(var(--study-h) * 0.23), 170px);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--panel-soft);
-  padding: 12px 14px;
-  box-sizing: border-box;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 8px;
-  block-size: var(--coach-card-block-size);
-  flex: 0 0 var(--coach-card-block-size);
-  min-height: 0;
-}
-
-#analyze-sidebar > .reveal,
-#analyze-sidebar > .drawer {
-  flex: 0 0 auto;
-  min-width: 0;
-}
-
-.explain-card > * {
-  min-width: 0;
-}
-
-.explain-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.coach-scroll {
-  min-width: 0;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.coach-footer {
-  min-width: 0;
-  min-height: 0;
-  flex: none;
-  overflow: hidden;
-}
-
-.coach-footer > * {
-  min-width: 0;
-}
-
-.coach-secondary {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-
-.coach-secondary > * {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.coach-footer:has(.coach-maia[hidden]):has(.coach-bookline[hidden]) .coach-secondary {
-  display: none;
-}
-
-.explain-title {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.phase-chip {
-  margin-right: auto;
-  flex: none;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: 999px;
-  border: 1px solid var(--accent-line);
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  display: inline-flex;
-  align-items: center;
-}
-
-.phase-chip[hidden] {
-  display: none;
-}
-
-.phase-chip[data-phase="opening"] {
-  border-color: var(--accent-line);
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-}
-
-.phase-chip[data-phase="middlegame"] {
-  border-color: color-mix(in srgb, var(--brilliant) 35%, var(--line));
-  background: color-mix(in srgb, var(--brilliant) 12%, var(--panel));
-  color: var(--brilliant-text);
-}
-
-.phase-chip[data-phase="endgame"] {
-  border-color: color-mix(in srgb, var(--good) 35%, var(--line));
-  background: color-mix(in srgb, var(--good) 12%, var(--panel));
-  color: var(--good-text);
-}
-
-.coach-maia {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--muted);
-  overflow-wrap: anywhere;
-}
-
-.coach-maia[hidden] {
-  display: none;
-}
-
-/* Coach header review switch lives in .explain-review (shared pf-switch). */
-
-/* The coach talks in one short paragraph. A quiet left rule carries the tone so the
-   read feels like a person, not a dashboard of pills and numbers. */
-.coach-prose {
-  margin: 0;
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: var(--text);
-  border-left: 3px solid var(--line);
-  padding: 2px 0 2px 11px;
-  transition: border-color 0.15s ease;
-  overflow-wrap: anywhere;
-}
-.coach-prose.is-good {
-  border-left-color: var(--good);
-}
-.coach-prose.is-warn {
-  border-left-color: var(--warn);
-}
-.coach-prose.is-danger {
-  border-left-color: var(--danger);
-}
-.coach-prose.is-brilliant {
-  border-left-color: var(--brilliant);
-}
-
-.tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.pill {
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 11px;
-  color: var(--muted);
-  background: var(--panel);
-}
-
-/* Per-side classification bars — the at-a-glance "how did each side play"
-   summary that replaced the alphabetical pill list. Segment colors reuse the
-   move-classification palette. */
-.class-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-}
-.cbar-row {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-}
-.cbar-side {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.cbar-track {
-  display: flex;
-  height: 18px;
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--line-soft);
-  border: 1px solid var(--line);
-}
-.cbar-seg {
-  border: 0;
-  min-width: 14px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  transition: filter 0.12s ease;
-}
-.cbar-seg:hover {
-  filter: brightness(1.08);
-}
-.cbar-seg-n {
-  pointer-events: none;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.28);
-}
-.cbar-empty {
-  font-size: 11px;
-  color: var(--label);
-  padding: 0 8px;
-  align-self: center;
-}
-.cbar-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  margin-top: 2px;
-}
-.cbar-key {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 10.5px;
-  color: var(--muted);
-}
-.cbar-key i {
-  width: 9px;
-  height: 9px;
-  border-radius: 2px;
-  display: inline-block;
-}
-.seg-brilliant {
-  background: var(--brilliant);
-}
-.seg-good {
-  background: var(--good);
-}
-.seg-inaccuracy {
-  background: var(--inaccuracy);
-}
-.seg-mistake {
-  background: var(--warn);
-}
-.seg-blunder {
-  background: var(--danger);
-}
-.seg-missed {
-  background: var(--missed);
-}
-@media (prefers-reduced-motion: reduce) {
-  .cbar-seg {
-    transition: none;
-  }
-}
-
-/* Movelist (Lichess-style) */
-
-.movelist {
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--panel);
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
-/* Analyze move list: a drag-to-resize panel. The native resize handle lets the
-   reader trade move-list height against the move-class summary + PGN/History
-   that sit below it in the scrolling sidebar. */
-#analysis-moves {
-  resize: vertical;
-  height: clamp(160px, 32vh, 460px);
-  min-height: 120px;
-  max-height: none;
-  overflow: auto;
-  flex: 0 0 auto;
-}
+/* Analyze panel styles (coach, chart, move grid, class bars, drawers) live in
+   views/analyze-chart.css, lazy-loaded with the Analyze view. */
 
 /* ===========================================================================
    Move tree (shared by Analyze study lines + Build repertoire)
@@ -4149,15 +3735,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    from, so each level indents one notch further by pure nesting — a
    variation-within-a-variation can never slide back to the margin.
    =========================================================================== */
-
-.movelist.tree {
-  padding: 6px 10px 10px;
-  display: block;
-  line-height: 1.9;
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
-  max-height: 64vh;
-}
 
 /* ---- Tree body --------------------------------------------------------- */
 .mtree {
@@ -4244,45 +3821,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .mtree-move.is-disabled {
   opacity: 0.45;
   text-decoration: line-through;
-}
-
-/* Classification dot (Analyze). */
-.mtree-dot {
-  display: inline-block;
-  vertical-align: middle;
-  width: 6px;
-  height: 6px;
-  margin-left: 5px;
-  border-radius: 50%;
-  background: transparent;
-}
-.mtree-move.cls-brilliant .mtree-dot {
-  background: var(--brilliant);
-}
-.mtree-move.cls-excellent .mtree-dot,
-.mtree-move.cls-best .mtree-dot {
-  background: #6aa84f;
-}
-.mtree-move.cls-good .mtree-dot,
-.mtree-move.cls-book .mtree-dot {
-  background: #93b370;
-}
-.mtree-move.cls-inaccuracy .mtree-dot {
-  background: var(--inaccuracy);
-}
-.mtree-move.cls-mistake .mtree-dot {
-  background: var(--warn);
-}
-.mtree-move.cls-blunder .mtree-dot {
-  background: var(--danger);
-}
-.mtree-move.cls-missed_win .mtree-dot,
-.mtree-move.cls-missed_tactic .mtree-dot {
-  background: var(--missed);
-}
-/* When selected, keep the dot legible on the accent fill. */
-.mtree-move.is-current .mtree-dot {
-  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85);
 }
 
 /* Build-only decorations. */
@@ -4593,6 +4131,10 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
     overflow: visible;
   }
 
+  #analyze-sidebar .panel-scroll {
+    overflow: visible;
+  }
+
   .board-stack {
     max-width: min(72vh, 560px);
     margin: 0 auto;
@@ -4687,12 +4229,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
     padding-bottom: calc(64px + env(safe-area-inset-bottom));
   }
 
-  /* Analyze sidebar tools: 44px touch targets on narrow viewports (desktop stays 32px). */
-  #view-analyze .tools .btn {
-    min-height: 44px;
-    height: 44px;
-  }
-
   /* Repertoire ⋯ menu: 44×44px touch target. */
   .rep-menu-btn {
     width: 44px;
@@ -4747,35 +4283,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   flex-direction: column;
   align-items: flex-end;
   pointer-events: none;
-}
-
-/* Analyze "History" list. */
-.analysis-history {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.history-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  text-align: left;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--panel);
-  padding: 6px 10px;
-}
-.history-item:hover {
-  background: var(--surface-hover);
-}
-.hi-players {
-  font-weight: 600;
-}
-.hi-meta {
-  color: var(--muted);
-  font-size: 11px;
-  white-space: nowrap;
 }
 
 .job-toast {
@@ -6944,19 +6451,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
      board column + viewport-height board size); desktop only keeps the shared
      16px gap — no second column definition. */
   .study .board-area { justify-self: start; }
-  #view-analyze .sidebar,
-  #analyze-sidebar > .tools { position: sticky; top: 0; z-index: 4; background: var(--bg); padding: 6px 0; }
-  #view-analyze .explain-card { box-shadow: none; border-color: transparent; }
-  #view-analyze .drawer { border-color: transparent; border-bottom: 1px solid var(--line-soft); border-radius: 0; }
-  #view-analyze .explain-card { background: var(--panel-soft); }
-  #view-analyze #analysis-results { display: grid; gap: 14px; }
-  #view-analyze #analysis-results[hidden] { display: none; }
-  #view-analyze #eval-chart { width: 100%; }
-  #view-analyze #analysis-moves { min-height: 140px; }
-  #analyze-sidebar #analysis-explain { order: 1; }
-  #analyze-sidebar #analysis-results { order: 2; }
-  #analyze-sidebar #pgn-drawer { order: 3; }
-  #analyze-sidebar #history-drawer { order: 4; }
   #view-teams .teams-stack { max-width: 1400px; }
   /* Scout cards stay on the single responsive base rule below (auto-fit 420px):
      a desktop override here would lose to it in source order, so Scout keeps no

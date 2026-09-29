@@ -1,41 +1,182 @@
-/* Eval chart — lazy-loaded with the Analyze view (analyze.js), so the eager
-   styles.css stays under its deploy budget without a ceiling bump.
+/* Analyze — Opus prototype composition. Lazy-loaded with the Analyze view
+   (analyze.js), so the eager styles.css stays under its deploy budget without a
+   ceiling bump. The eager sheet owns the study grid, the raised .panel and its
+   scrolling .panel-scroll; this sheet owns everything inside the panel, the
+   eval chart and the board-side eval bar.
 
-   Every colour comes from theme tokens (light/dark both work; the old hardcoded
-   hex read wrong in dark), and strokes use non-scaling geometry so the stretched
-   SVG never fattens the main line. Marker classes carry a colour role only:
-   .eval-dot fills with currentColor, .eval-cliff strokes with it. */
+   Every colour comes from theme tokens (light/dark both work), and strokes use
+   non-scaling geometry so the stretched SVG never fattens the main line. Marker
+   classes carry a colour role only: .eval-dot fills with currentColor,
+   .eval-cliff strokes with it. */
 
+/* ---- Panel head + coach card ------------------------------------------ */
+
+.game-id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.game-id > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coach-card {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.coach-card > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cc-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.phase-chip {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+}
+.phase-chip[hidden] {
+  display: none;
+}
+/* One short paragraph; a quiet left rule carries the verdict's tone so the read
+   never depends on colour alone (the words say it too). */
+.coach-prose {
+  margin: 0;
+  padding: 2px 0 2px 11px;
+  border-left: 3px solid var(--line);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text);
+  transition: border-color 0.15s ease;
+}
+.coach-prose.is-good { border-left-color: var(--good); }
+.coach-prose.is-warn { border-left-color: var(--warn); }
+.coach-prose.is-danger { border-left-color: var(--danger); }
+.coach-prose.is-brilliant { border-left-color: var(--brilliant); }
+.coach-maia,
+.coach-bookline {
+  margin: 0;
+  font-size: var(--fs-s);
+  line-height: 1.5;
+  color: var(--muted);
+}
+.coach-bookline {
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+.coach-maia[hidden],
+.coach-bookline[hidden] {
+  display: none;
+}
+.coach-bookaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 2px;
+  padding: 1px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: none;
+  color: var(--accent-text, var(--accent-strong));
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  cursor: pointer;
+}
+.coach-bookaction:hover {
+  background: var(--accent-soft);
+}
+.coach-bookaction:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+/* ---- Results: win chance, move grid, class bars ----------------------- */
+
+/* Fades in with the first analysed position (revealAnalysisResults). */
+.res-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 380ms ease, transform 380ms ease;
+}
+.res-stack[hidden] {
+  display: none;
+}
+.res-stack.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .res-stack { transition: none; }
+}
+.res-stack:not([hidden]) + .empty-state {
+  display: none;
+}
+#analysis-empty p {
+  margin: 0;
+}
+.res-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rb-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  font-size: var(--fs-s);
+}
+.rb-head .faint b {
+  color: var(--text);
+}
+
+/* Eval chart: dark field, White's share filled from the floor up to the curve. */
 .eval-chart-wrap {
   position: relative;
 }
-
 .eval-chart {
+  display: block;
   width: 100%;
-  height: 96px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--panel-soft);
+  height: 88px;
+  border-radius: 6px;
+  background: #2e3136;
 }
-
-.eval-chart .eval-band { fill: var(--muted); fill-opacity: 0.08; }
-.eval-chart .eval-axis { stroke: var(--line-strong); stroke-dasharray: 4 4; }
-.eval-chart .eval-area { fill: var(--accent); fill-opacity: 0.16; }
+.eval-chart .eval-band { fill: rgba(120, 140, 200, 0.18); }
+.eval-chart .eval-axis { stroke: #888; stroke-dasharray: 3 3; }
+.eval-chart .eval-area { fill: #f2f2ef; }
 .eval-chart .eval-line {
   stroke: var(--accent-strong);
-  stroke-width: 1.75;
+  stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 .eval-chart .eval-cliff { stroke-width: 2.5; stroke-linecap: round; stroke: currentColor; }
-.eval-chart .eval-dot { fill: currentColor; stroke: var(--panel); stroke-width: 1.5; }
-.eval-chart .eval-cursor { stroke: var(--accent-dark); stroke-width: 1.5; }
+.eval-chart .eval-dot { fill: currentColor; stroke: #2e3136; stroke-width: 1.5; }
+.eval-chart .eval-cursor { stroke: var(--accent); stroke-width: 2; }
 .eval-chart .eval-cursor-dot {
   fill: none;
-  stroke: var(--accent-dark);
+  stroke: var(--accent);
   stroke-width: 2;
 }
-.eval-chart .eval-hover { stroke: var(--text); stroke-opacity: 0.55; }
+.eval-chart .eval-hover { stroke: #fff; stroke-opacity: 0.6; }
 .eval-chart .eval-m-brilliant { color: var(--brilliant); }
 .eval-chart .eval-m-inaccuracy { color: var(--inaccuracy); }
 .eval-chart .eval-m-mistake { color: var(--warn); }
@@ -59,13 +200,239 @@
   pointer-events: none;
 }
 
-/* Board-side eval bar — prototype "with-eval" board frame. A narrow vertical
-   strip beside the board: white share from the bottom, eval text on top. Same
-   geometry contract as the floating engine widget's bar (.engine-bar), fed by
-   the analyzed eval graph instead of a live engine. */
+/* Moves: the mainline is a three-column grid (number | White | Black); a
+   variation the reader explores interrupts it as a full-width row. Only the
+   direct children of the mainline are grid cells — variation moves keep the
+   shared inline tree flow. */
+.moves-grid {
+  max-height: 190px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.moves-grid .mtree-line.is-main {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr);
+}
+.moves-grid .mtree-line.is-main > .mtree-num {
+  grid-column: 1;
+  margin: 0;
+  padding: 3px 6px;
+  background: var(--surface-2);
+  color: var(--label);
+  font-size: var(--fs-s);
+  text-align: right;
+}
+.moves-grid .mtree-line.is-main > .mtree-move {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 0;
+  padding: 3px 8px;
+  border-radius: 0;
+  font-weight: 550;
+  text-align: left;
+}
+.moves-grid .mtree-line.is-main > .mtree-move.is-white { grid-column: 2; }
+.moves-grid .mtree-line.is-main > .mtree-move.is-black { grid-column: 3; }
+.moves-grid .mtree-line.is-main > .mtree-move.is-current { box-shadow: none; }
+.moves-grid .mtree-line.is-main > .mtree-var {
+  grid-column: 1 / -1;
+  margin: 2px 8px;
+  line-height: 1.8;
+}
+.mtree-glyph {
+  font-style: normal;
+  font-size: var(--fs-s);
+  font-weight: 800;
+}
+.mtree-move.cls-brilliant .mtree-glyph { color: var(--brilliant); }
+.mtree-move.cls-excellent .mtree-glyph,
+.mtree-move.cls-best .mtree-glyph,
+.mtree-move.cls-good .mtree-glyph,
+.mtree-move.cls-book .mtree-glyph { color: var(--good-text); }
+.mtree-move.cls-inaccuracy .mtree-glyph { color: var(--inaccuracy); }
+.mtree-move.cls-mistake .mtree-glyph { color: var(--warn-text); }
+.mtree-move.cls-blunder .mtree-glyph { color: var(--danger); }
+.mtree-move.cls-missed_win .mtree-glyph,
+.mtree-move.cls-missed_tactic .mtree-glyph { color: var(--missed); }
+/* On the selected cell the accent fill carries the glyph in the cell's ink. */
+.mtree-move.is-current .mtree-glyph { color: inherit; }
+
+/* Per-side classification bars — the at-a-glance "how did each side play"
+   summary. Segment colours reuse the move-classification palette. */
+.class-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cbar-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-s);
+}
+.cbar-track {
+  display: flex;
+  gap: 1px;
+  height: 16px;
+  overflow: hidden;
+  border-radius: 3px;
+}
+.cbar-seg {
+  min-width: 14px;
+  padding: 0;
+  border: 0;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: filter 0.12s ease;
+}
+.cbar-seg:hover {
+  filter: brightness(1.08);
+}
+.cbar-seg-n {
+  pointer-events: none;
+}
+.cbar-empty {
+  color: var(--label);
+  font-size: var(--fs-xs);
+}
+.cbar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.cbar-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.cbar-key i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+.seg-brilliant { background: var(--brilliant); }
+.seg-good { background: var(--good); }
+.seg-inaccuracy { background: var(--inaccuracy); }
+.seg-mistake { background: var(--warn); }
+.seg-blunder { background: var(--danger); }
+.seg-missed { background: var(--missed); }
+@media (prefers-reduced-motion: reduce) {
+  .cbar-seg { transition: none; }
+}
+
+.analysis-handoff {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.analysis-handoff[hidden] {
+  display: none;
+}
+
+/* ---- Drawers: PGN source + recent analyses ---------------------------- */
+
+.drawer {
+  flex: none;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.drawer summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: var(--fs-s);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.drawer summary::-webkit-details-marker { display: none; }
+.drawer summary::before {
+  content: "▸";
+  color: var(--muted);
+}
+.drawer[open] summary::before {
+  content: "▾";
+}
+.drawer textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 96px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: 13px/1.45 var(--mono);
+  resize: vertical;
+}
+.analysis-history {
+  display: flex;
+  flex-direction: column;
+}
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: inherit;
+  font-size: var(--fs-s);
+  text-align: left;
+  cursor: pointer;
+}
+.history-item:last-child {
+  border-bottom: 0;
+}
+.history-item:hover {
+  background: var(--surface-2);
+}
+.hi-players {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.hi-meta {
+  flex: none;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ---- Board-side eval bar ---------------------------------------------- */
+
+/* Prototype "with-eval" board frame: a narrow vertical strip on the board's
+   left, White's share filled from the bottom, the value read along the fill.
+   Same geometry contract as the floating engine widget's bar (.engine-bar), fed
+   by the analysed eval graph instead of a live engine. */
 .board-with-eval {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: stretch;
 }
 .board-with-eval .board-stack {
@@ -75,53 +442,42 @@
 .analysis-evalbar {
   position: relative;
   flex: none;
-  width: 14px;
-  border-radius: 4px;
+  width: 16px;
+  border-radius: 3px;
   overflow: hidden;
-  background: #1a1a1a;
-  border: 1px solid var(--board-frame, var(--line));
+  background: #2e3136;
+  box-shadow: 0 0 0 1px var(--line-strong);
 }
 .analysis-evalbar[hidden] { display: none; }
 .analysis-evalbar-white {
   position: absolute;
   inset: auto 0 0 0;
   height: var(--white-share, 50%);
-  background: #f4f1e8;
-  transition: height 220ms ease;
+  background: #f2f2ef;
+  transition: height 300ms ease;
 }
 .analysis-evalbar-text {
   position: absolute;
-  inset: 4px 0 auto 0;
-  text-align: center;
-  font-size: 8px;
-  letter-spacing: -0.04em;
-  color: rgba(255, 255, 255, 0.92);
+  inset: auto 0 3px 0;
+  color: #333;
+  font-size: 9px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-}
-@media (max-width: 1020px) {
-  .board-with-eval { flex-direction: column-reverse; }
-  .analysis-evalbar {
-    width: auto;
-    height: 10px;
-    border-radius: 3px;
-  }
-  .analysis-evalbar-white {
-    inset: 0 auto 0 0;
-    width: var(--white-share, 50%);
-    height: auto;
-    transition: width 220ms ease;
-  }
-  .analysis-evalbar-text {
-    inset: auto 4px 0 auto;
-    color: rgba(0, 0, 0, 0.72);
-    text-shadow: none;
-  }
+  text-align: center;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
 }
 
-/* Reduced motion: the bar updates instantly — no height/width tween. */
+/* Reduced motion: the bar updates instantly — no height tween. */
 @media (prefers-reduced-motion: reduce) {
   .analysis-evalbar-white {
     transition: none;
   }
+}
+
+/* ---- Responsive ------------------------------------------------------- */
+
+@media (max-width: 760px) {
+  .moves-grid { max-height: 240px; }
+  .drawer summary { min-height: 44px; }
 }

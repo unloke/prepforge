@@ -6,9 +6,9 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-DXDzeQ6G.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-CVlBNG2d.js"></script>
     <link rel="modulepreload" crossorigin href="/static/assets/chess-DwBov9dY.js">
-    <link rel="stylesheet" crossorigin href="/static/assets/index-CxXB_0IR.css">
+    <link rel="stylesheet" crossorigin href="/static/assets/index-D0yyz7rc.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -69,6 +69,11 @@
         <h1 class="tb-title" id="topbar-title">Library</h1>
         <span class="tb-sub" id="topbar-sub" hidden></span>
         <span class="tb-actions"><button class="btn primary" id="build-generate-node" data-testid="build-generate-node" hidden>Generate moves</button></span>
+        <span class="tb-actions" id="analyze-actions" hidden>
+          <button class="btn" id="open-engine-widget" data-testid="open-engine-widget">Engine</button>
+          <button class="btn" id="fetch-my-game" data-testid="fetch-my-game">My last game</button>
+          <button class="btn primary" id="run-analysis" data-testid="run-analysis">Analyze</button>
+        </span>
       </div>
       <div class="topbar-actions">
         <span class="topbar-status-slot" id="topbar-status-slot">
@@ -139,13 +144,13 @@
         <div class="study">
           <div class="board-area">
             <div class="board-with-eval">
-              <div class="board-stack">
-                <div class="chessboard" id="analysis-board" data-testid="analysis-board"></div>
-                <svg class="annotations" id="analysis-annotations"></svg>
-              </div>
               <div class="analysis-evalbar" id="analysis-evalbar" data-testid="analysis-evalbar" aria-hidden="true">
                 <div class="analysis-evalbar-white" id="analysis-evalbar-white"></div>
                 <span class="analysis-evalbar-text" id="analysis-evalbar-text">·</span>
+              </div>
+              <div class="board-stack">
+                <div class="chessboard" id="analysis-board" data-testid="analysis-board"></div>
+                <svg class="annotations" id="analysis-annotations"></svg>
               </div>
             </div>
             <div class="board-bar">
@@ -160,63 +165,65 @@
             </div>
           </div>
 
-          <aside class="sidebar" id="analyze-sidebar">
+          <aside class="sidebar panel" id="analyze-sidebar">
             <div class="engine-banner" id="analyze-engine-banner" data-testid="analyze-engine-banner" hidden></div>
-            <div class="tools">
-              <button class="btn ghost" id="open-engine-widget" data-testid="open-engine-widget">Engine</button>
-              <button class="btn ghost" id="fetch-my-game" data-testid="fetch-my-game">My last game</button>
-              <button class="btn primary" id="run-analysis" data-testid="run-analysis">Analyze</button>
-            </div>
-            <section class="explain-card" id="analysis-explain" data-testid="analysis-explain">
-              <header class="explain-head">
-                <span class="explain-title">Coach</span>
-                <span class="phase-chip" id="coach-phase" data-testid="coach-phase" hidden></span>
-                <span class="pf-row-text explain-review">
-                  <span class="pf-row-label" id="explain-engine-label">Review my moves</span>
-                  <button type="button" class="pf-switch is-on" id="explain-engine-toggle" role="switch" aria-checked="true" aria-labelledby="explain-engine-label"><span class="pf-knob"></span></button>
-                </span>
-              </header>
-              <div class="coach-scroll" id="coach-scroll">
-                <p class="coach-prose" id="coach-prose" data-testid="coach-prose">Make a move and I'll tell you what I think.</p>
+            <div class="panel-head">
+              <div class="game-id">
+                <b id="analysis-game-title">Analysis board</b>
+                <span class="faint" id="analysis-game-meta">Paste a PGN or play on the board</span>
               </div>
-              <div class="coach-footer" id="coach-footer">
-                <div class="coach-secondary">
-                  <p class="coach-maia" id="coach-maia" data-testid="coach-maia" hidden></p>
-                  <p class="coach-bookline" id="coach-bookline" data-testid="coach-bookline" hidden></p>
+            </div>
+            <div class="panel-scroll">
+              <section class="coach-card" id="analysis-explain" data-testid="analysis-explain">
+                <header class="cc-head">
+                  <b>Coach</b>
+                  <span class="phase-chip" id="coach-phase" data-testid="coach-phase" hidden></span>
+                  <span class="pf-row-text explain-review">
+                    <span class="pf-row-label" id="explain-engine-label">Review my moves</span>
+                    <button type="button" class="pf-switch is-on" id="explain-engine-toggle" role="switch" aria-checked="true" aria-labelledby="explain-engine-label"><span class="pf-knob"></span></button>
+                  </span>
+                </header>
+                <p class="coach-prose" id="coach-prose" data-testid="coach-prose">Make a move and I'll tell you what I think.</p>
+                <p class="coach-maia" id="coach-maia" data-testid="coach-maia" hidden></p>
+                <p class="coach-bookline" id="coach-bookline" data-testid="coach-bookline" hidden></p>
+              </section>
+              <div class="res-stack" id="analysis-results" hidden>
+                <section class="res-block" aria-label="Win chance">
+                  <div class="rb-head"><b>Win chance</b><span class="faint" id="analysis-chart-caption"></span></div>
+                  <div class="eval-chart-wrap">
+                    <svg class="eval-chart" id="eval-chart" viewBox="0 0 640 96" role="img" aria-label="Win chance by move"></svg>
+                    <div class="eval-chart-tooltip" id="eval-chart-tooltip" aria-hidden="true" hidden></div>
+                  </div>
+                </section>
+                <div class="moves-grid" id="analysis-moves" data-testid="analysis-moves"></div>
+                <section class="res-block" id="analysis-summary"></section>
+                <div class="analysis-handoff" id="analysis-handoff" data-testid="analysis-handoff" hidden>
+                  <button
+                    class="btn primary"
+                    id="create-repertoire-from-game"
+                    data-testid="create-repertoire-from-game"
+                    type="button"
+                  >
+                    New repertoire from this game
+                  </button>
                 </div>
               </div>
-            </section>
-            <div class="reveal" id="analysis-results" hidden>
-              <div class="eval-chart-wrap">
-                <svg class="eval-chart" id="eval-chart" viewBox="0 0 640 96" role="img"></svg>
-                <div class="eval-chart-tooltip" id="eval-chart-tooltip" aria-hidden="true" hidden></div>
-              </div>
-              <div class="movelist tree" id="analysis-moves" data-testid="analysis-moves"></div>
-              <div class="tags muted-row" id="analysis-summary"></div>
-              <div class="analysis-handoff" id="analysis-handoff" data-testid="analysis-handoff" hidden>
-                <button
-                  class="btn primary"
-                  id="create-repertoire-from-game"
-                  data-testid="create-repertoire-from-game"
-                  type="button"
-                >
-                  New repertoire from this game
-                </button>
-              </div>
+              <div class="empty-state" id="analysis-empty"><p>Play on the board, or analyze a PGN.</p></div>
+              <details class="drawer" id="pgn-drawer" open>
+                <summary>Analyze source · PGN</summary>
+                <textarea
+                  id="pgn-input"
+                  data-testid="pgn-input"
+                  rows="5"
+                  spellcheck="false"
+                  placeholder="[Event &quot;Training Game&quot;]&#10;&#10;1. e4 e5 2. Nf3 Nc6 *"
+                ></textarea>
+              </details>
+              <details class="drawer" id="history-drawer" data-testid="history-drawer" open>
+                <summary>Recent analyses</summary>
+                <div class="analysis-history" id="analysis-history" data-testid="analysis-history"></div>
+              </details>
             </div>
-            <details class="drawer" id="pgn-drawer" open>
-              <summary>Analyze source · PGN</summary>
-              <textarea
-                id="pgn-input"
-                data-testid="pgn-input"
-                spellcheck="false"
-                placeholder="[Event &quot;Training Game&quot;]&#10;&#10;1. e4 e5 2. Nf3 Nc6 *"
-              ></textarea>
-            </details>
-            <details class="drawer" id="history-drawer" data-testid="history-drawer" open>
-              <summary>Recent analyses</summary>
-              <div class="analysis-history" id="analysis-history" data-testid="analysis-history"></div>
-            </details>
           </aside>
         </div>
       </section>
@@ -806,6 +813,6 @@
         <div class="palette-results" id="palette-results" data-testid="palette-results" role="listbox" aria-label="Commands"></div>
       </div>
     </div>
-
+
   </body>
 </html>

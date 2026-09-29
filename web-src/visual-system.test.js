@@ -251,7 +251,6 @@ describe("axe baseline contrast guard", () => {
   it("keeps small caps labels readable on panel surfaces", () => {
     expect(contrast(tokenValue("--muted"), "#ffffff")).toBeGreaterThanOrEqual(4.5);
     expect(ruleBody(".settings-label")).toMatch(/color:\s*var\(--muted\)/);
-    expect(ruleBody(".explain-title")).toMatch(/color:\s*var\(--muted\)/);
   });
 
   it("keeps the active tab label readable on its tint", () => {
