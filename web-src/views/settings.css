@@ -188,7 +188,7 @@
 /* ---- Responsive -------------------------------------------------------- */
 
 @media (max-width: 1020px) {
-  .settings-nav-link { padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; }
+  .settings-nav-link { flex: none; white-space: nowrap; }
 }
 @media (max-width: 760px) {
   .sw-grid { grid-template-columns: 1fr; }

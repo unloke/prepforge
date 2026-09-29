@@ -1009,7 +1009,8 @@ h2 {
 }
 @media (max-width: 1020px) {
   .settings { grid-template-columns: minmax(0, 1fr); }
-  .settings-nav { position: static; flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  /* Prototype: one horizontally scrolling strip of section links. */
+  .settings-nav { position: static; flex-direction: row; gap: 1px; overflow-x: auto; scrollbar-width: none; }
 }
 @media (max-width: 760px) {
   .workspace:has(> .view.is-active#view-settings) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
@@ -1281,12 +1282,17 @@ h2 {
   border-color: var(--danger-dark);
 }
 
+/* Prototype ghost: no fill, no border — a quiet text action. */
 .btn.ghost {
-  background: var(--panel-soft);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--muted);
 }
 
 .btn.ghost:hover {
-  background: var(--surface-hover);
+  background: var(--surface-3);
+  color: var(--text);
 }
 
 .btn:disabled,
@@ -3043,7 +3049,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 @media (max-width: 760px) {
   #view-train .seg-btn { min-height: 44px; }
-  #view-train .panel-head { padding: 8px 12px; }
+  #view-train .panel-head { padding: 8px 12px; border-top: 1px solid var(--line); }
+  /* Prototype: on phones the coach prompt leads the panel, above the modes. */
+  #view-train .train-coach { order: -1; }
   .train-start-row .btn { flex: 1 1 140px; }
   .sum-cells { grid-template-columns: repeat(2, 1fr); }
 }
