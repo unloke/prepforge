@@ -1540,6 +1540,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-list.is-empty .card-head .seg,
 .lib-list.is-empty .lib-cols,
 .lib-list.is-empty .lib-hint { display: none; }
+/* Failed load: same empty layout, and the search goes too (nothing to filter). */
+.lib-list.is-error .card-head .search-field { display: none; }
 .lib-row {
   min-height: 54px;
   padding-top: 8px;
@@ -1670,6 +1672,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .empty-state.big p { max-width: 460px; margin: 0; }
 .empty-state.big .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .es-mark { color: var(--label); font-size: 34px; line-height: 1; }
+.empty-state.is-error .es-mark { color: var(--danger); font-weight: 700; }
 
 /* Side dot (repertoire colour) */
 .color-dot {

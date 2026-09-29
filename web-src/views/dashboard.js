@@ -73,6 +73,7 @@ export function createDashboardView({
   postJson,
   escapeHtml,
   setStatus,
+  setStatusError = (message) => setStatus(message),
   localDateString,
   goToSmartTraining,
   editRepertoire,
@@ -100,6 +101,7 @@ export function createDashboardView({
   let libraryFilter = "all";
   let libraryQuery = "";
   let repListCache = { own: [], shared: [] };
+  let lastLoadError = null;
 
   function masteryMixSegments(health) {
     const mix = [
@@ -133,8 +135,9 @@ export function createDashboardView({
     const pane = document.getElementById("lib-preview");
     if (!pane) return;
     if (!repertoire) {
+      // Hide only: the pane's static markup (name, board, mix) is reused by
+      // the next preview, e.g. after Retry recovers from a load error.
       pane.hidden = true;
-      pane.innerHTML = "";
       return;
     }
     pane.hidden = false;
@@ -563,10 +566,44 @@ export function createDashboardView({
 
   // An empty library (signed out, or no repertoires yet) is the prototype's
   // onboarding card: no filter chips, column header or row hint over nothing.
-  function setLibraryEmpty(empty) {
+  // A failed load (/api/dashboard or /api/repertoires) uses the same empty
+  // layout plus is-error, which also hides the search over an unknown list.
+  function setLibraryEmpty(empty, { error = false } = {}) {
     const card = document.querySelector("#view-dashboard .lib-list");
-    if (card) card.classList.toggle("is-empty", empty);
+    if (card) {
+      card.classList.toggle("is-empty", empty || error);
+      card.classList.toggle("is-error", error);
+    }
     if (onLibraryStateChange) onLibraryStateChange();
+  }
+
+  // One error card for either failing endpoint: no stale rows, no filter
+  // chips / columns / hint, no preview, and a Retry that reruns the full load.
+  function renderLibraryError(message) {
+    const container = document.getElementById("dashboard-repertoires");
+    if (!container) return;
+    repListCache = { own: [], shared: [] };
+    countBadge(null);
+    setListboxRole(container, false);
+    setLibraryEmpty(true, { error: true });
+    container.innerHTML = `
+      <div class="empty-state big is-error" role="alert" data-testid="library-error">
+        <div class="es-mark" aria-hidden="true">!</div>
+        <h3>Could not load your library.</h3>
+        <p>${escapeHtml(String(message || "The server did not respond."))}</p>
+        <div class="row gap">
+          <button type="button" class="btn primary" data-lib-action="retry">Try again</button>
+        </div>
+      </div>`;
+    renderLibraryPreview(null);
+    selectedRepId = null;
+    const today = document.getElementById("dashboard-today");
+    if (today) today.hidden = true;
+    const steps = document.getElementById("dashboard-steps");
+    if (steps) {
+      steps.hidden = true;
+      steps.innerHTML = "";
+    }
   }
 
   function renderRepertoireList() {
@@ -674,11 +711,11 @@ export function createDashboardView({
       }
       repListCache = { own: visible, shared: sharedRows };
       renderRepertoireList();
+      return true;
     } catch (error) {
-      const container = document.getElementById("dashboard-repertoires");
-      if (!container) return;
-      setListboxRole(container, false);
-      container.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+      renderLibraryError(error.message);
+      lastLoadError = error;
+      return false;
     }
   }
 
@@ -729,15 +766,23 @@ export function createDashboardView({
     card.hidden = false;
   }
 
+  // Either endpoint failing leaves the error card and rethrows, so the caller
+  // reports it via setStatusError — "Ready" is only set on a full success.
   async function loadDashboard() {
-    const payload = await api(`/api/dashboard?local_date=${localDateString()}`);
+    let payload;
+    try {
+      payload = await api(`/api/dashboard?local_date=${localDateString()}`);
+    } catch (error) {
+      renderLibraryError(error.message);
+      throw error;
+    }
     if (payload.streak) appState.dayStreak = payload.streak;
     lastDashboardRecommendations = Array.isArray(payload.recommendations)
       ? payload.recommendations
       : [];
     renderDashboardToday(payload);
     renderSteps((payload.repertoires || 0) > 0);
-    await loadDashboardRepertoires();
+    if (!(await loadDashboardRepertoires())) throw lastLoadError;
     setStatus("Ready");
   }
 
@@ -803,6 +848,8 @@ export function createDashboardView({
       else if (action === "signin") {
         if (openSignIn) openSignIn();
         else requireSignIn("Sign in (or create an account) to start your library");
+      } else if (action === "retry") {
+        loadDashboard().catch((error) => setStatusError(error.message));
       } else if (action === "analyze" && goToView) goToView("analyze");
       else if (action === "lichess") {
         // Linking lives in Settings → Connections; go through the tab so the

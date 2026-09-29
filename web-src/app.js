@@ -3355,8 +3355,9 @@ function syncTopbarExtras() {
   }
   if (appState.currentView === "dashboard") {
     // Prototype: today's date over a populated library, a welcome line while
-    // it is empty (signed out or no repertoires yet).
-    const empty = !!document.querySelector("#view-dashboard .lib-list.is-empty");
+    // it is empty (signed out or no repertoires yet). A failed load is not
+    // an empty library, so it keeps the date.
+    const empty = !!document.querySelector("#view-dashboard .lib-list.is-empty:not(.is-error)");
     sub.textContent = empty
       ? "Welcome — let's build your first repertoire"
       : new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }).replace(", ", " · ");
@@ -3867,6 +3868,7 @@ async function ensureDashboardView() {
       postJson,
       escapeHtml,
       setStatus,
+      setStatusError,
       localDateString,
       goToSmartTraining,
       editRepertoire,
