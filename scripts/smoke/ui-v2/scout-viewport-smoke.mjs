@@ -15,16 +15,40 @@ const STATIC_DIR = join(ROOT, "src", "prepforge_chess", "web", "static");
 const PORT = Number(process.env.SCOUT_SMOKE_PORT || 8802);
 const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".wasm": "application/wasm", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml" };
 
-// Four real-shaped PGN blocks: scouttarget as White twice, as Black twice.
+// Real-shaped PGN blocks: scouttarget as White (40 games) and as Black (32), across
+// a spread of openings and results so the report has a plan, first moves and coverage.
 // Unique Site ids — the client dedupes games by id (seenIds).
-const PGN = [
-  ["x1", "Rated blitz game", "scouttarget", "opponent_a", "1-0", "2026.09.20", "10:00:00", "1850", "1840", "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6"],
-  ["x2", "Rated blitz game", "scouttarget", "opponent_b", "1/2-1/2", "2026.09.19", "11:30:00", "1851", "1860", "1. d4 d5 2. c4 e6 3. Nc3 Nf6"],
-  ["x3", "Rated rapid game", "opponent_c", "scouttarget", "0-1", "2026.09.18", "20:15:00", "1830", "1849", "1. e4 c5 2. Nf3 d6 3. d4 cxd4"],
-  ["x4", "Rated rapid game", "opponent_d", "scouttarget", "1/2-1/2", "2026.09.17", "21:00:00", "1845", "1848", "1. e4 e6 2. d4 d5 3. Nc3 Bb4"],
-].map(([id, ev, w, b, res, d, t, we, be, moves]) =>
-  `[Event "${ev}"]\n[Site "https://lichess.org/${id}"]\n[Date "${d.replace(/-/g, ".")}"]\n[White "${w}"]\n[Black "${b}"]\n[Result "${res}"]\n[UTCDate "${d.replace(/-/g, ".")}"]\n[UTCTime "${t}"]\n[WhiteElo "${we}"]\n[BlackElo "${be}"]\n[TimeControl "300+3"]\n[Variant "Standard"]\n\n${moves} ${res}`
-).join("\n\n");
+const AS_WHITE = [
+  "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6",
+  "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6",
+  "1. e4 e6 2. d4 d5 3. Nc3 Bb4 4. e5 c5",
+  "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bg5 Be7",
+  "1. d4 Nf6 2. c4 g6 3. Nc3 Bg7 4. e4 d6",
+  "1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Bf5",
+  "1. Nf3 d5 2. g3 Nf6 3. Bg2 e6 4. O-O Be7",
+];
+const AS_BLACK = [
+  "1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6",
+  "1. e4 c5 2. Nf3 Nc6 3. Bb5 g6 4. Bxc6 dxc6",
+  "1. d4 d5 2. c4 c6 3. Nf3 Nf6 4. Nc3 dxc4",
+  "1. d4 Nf6 2. Bg5 Ne4 3. Bf4 c5 4. e3 Qb6",
+  "1. c4 e5 2. Nc3 Nf6 3. g3 d5 4. cxd5 Nxd5",
+  "1. e4 e6 2. d4 d5 3. Nd2 Nf6 4. e5 Nfd7",
+];
+const RESULTS = ["1-0", "1/2-1/2", "0-1", "1-0", "0-1", "1/2-1/2", "0-1"];
+const GAME_TOTAL = 72;
+const PGN = Array.from({ length: GAME_TOTAL }, (_, i) => {
+  const asWhite = i % 9 < 5; // 40 white / 32 black
+  const pool = asWhite ? AS_WHITE : AS_BLACK;
+  const moves = pool[(i * 3 + (i >> 2)) % pool.length];
+  const res = RESULTS[(i * 5 + (i >> 1)) % RESULTS.length];
+  const day = String(1 + (i % 28)).padStart(2, "0");
+  const d = `2026.09.${day}`;
+  const t = `${String(8 + (i % 14)).padStart(2, "0")}:${String((i * 7) % 60).padStart(2, "0")}:00`;
+  const [w, b] = asWhite ? ["scouttarget", `opp_${i}`] : [`opp_${i}`, "scouttarget"];
+  const speed = i % 3 === 0 ? "rapid" : "blitz";
+  return `[Event "Rated ${speed} game"]\n[Site "https://lichess.org/g${String(i).padStart(7, "0")}"]\n[Date "${d}"]\n[White "${w}"]\n[Black "${b}"]\n[Result "${res}"]\n[UTCDate "${d}"]\n[UTCTime "${t}"]\n[WhiteElo "${1800 + (i % 90)}"]\n[BlackElo "${1790 + ((i * 3) % 90)}"]\n[TimeControl "${speed === "rapid" ? "600+0" : "300+3"}"]\n[Variant "Standard"]\n\n${moves} ${res}`;
+}).join("\n\n");
 
 const api = (path) => {
   if (path.startsWith("/api/auth/me")) return { id: "u1", display_name: "T", email: "t@x" };
@@ -126,6 +150,15 @@ async function runViewport(vp) {
   }
   await page.waitForTimeout(700);
 
+  // Optional review screenshots (UI_V2_SHOTS=<dir> UI_V2_TAG=before|after).
+  const shot = async (state) => {
+    if (!process.env.UI_V2_SHOTS) return;
+    await page.mouse.move(vp.width - 4, vp.height - 4); // park the pointer so the hover-expand rail is collapsed
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `scout-${state}-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
+  };
+  await shot("setup");
+
   // Source tray shows the external pick; Start is enabled.
   const chip = await page.locator('[data-testid="scout-source-chips"]').textContent().catch(() => "");
   check(/scouttarget/.test(chip || ""), `scout tray should show the external source, got "${chip}"`);
@@ -140,19 +173,43 @@ async function runViewport(vp) {
   const profileText = await page.locator("#scout-profile").textContent().catch(() => "");
   check(/scouttarget/.test(profileText || ""), `profile should name the scouted player, got "${profileText.slice(0, 80)}"`);
   const liveCount = await page.locator('[data-testid="scout-live-count"]').textContent().catch(() => "0");
-  check(/4/.test(liveCount || "0"), `live counter should show 4 games, got "${liveCount}"`);
+  check(new RegExp(String(GAME_TOTAL)).test(liveCount || "0"), `live counter should show ${GAME_TOTAL} games, got "${liveCount}"`);
 
-  // Colour tabs with real per-colour counts (2 games each side).
+  // Colour tabs with real per-colour counts (40 as White, 32 as Black).
   const tabs = await page.locator("#scout-results .scout-color-tab").count();
   check(tabs === 2, `expected 2 colour tabs, got ${tabs}`);
   const tabsText = await page.locator("#scout-results .scout-color-tabs").textContent().catch(() => "");
   check(/With White/.test(tabsText || "") && /With Black/.test(tabsText || ""), `tabs should read With White / With Black, got "${tabsText}"`);
-  check(/2 games/.test(tabsText || ""), `tabs should show real counts, got "${tabsText}"`);
+  check(/40 games/.test(tabsText || "") && /32 games/.test(tabsText || ""), `tabs should show real counts (40 / 32), got "${tabsText}"`);
 
   // Default tab: White visible, Black hidden.
   const whiteVisible = await page.locator('#scout-results .scout-section[data-scout-color="white"]').evaluate((el) => !el.hidden);
   const blackVisible = await page.locator('#scout-results .scout-section[data-scout-color="black"]').evaluate((el) => !el.hidden);
   check(whiteVisible && !blackVisible, `default tab should show White only (white=${whiteVisible}, black=${blackVisible})`);
+
+  // Prototype composition: profile card → colour card (plan rows) with the
+  // line-detail card holding the first row's board; one open row at a time.
+  const rows = await page.locator('#scout-results .scout-section[data-scout-color="white"] .line-row').count();
+  check(rows >= 1, `game plan should list line rows, got ${rows}`);
+  const sideOpen = await page.locator("#scout-side").evaluate((el) => !el.hidden && !!el.querySelector(".line-title") && !!el.querySelector(".scout-miniboard"));
+  check(sideOpen, "line-detail card should show the first plan row with a board");
+  const sideActions = await page.locator("#scout-side .scout-action-analyze").boundingBox().catch(() => null);
+  check(!!sideActions && sideActions.height > 10, `line-detail card should show its Analyze action, got ${JSON.stringify(sideActions)} :: ${(await page.locator("#scout-side").innerHTML()).replace(/s+/g, " ").slice(0, 600)}`);
+  if (rows >= 2) {
+    const titleBefore = await page.locator("#scout-side .line-title").textContent();
+    await page.locator('#scout-results .scout-section[data-scout-color="white"] .line-row').nth(1).evaluate((el) => el.click());
+    await page.waitForTimeout(200);
+    const titleAfter = await page.locator("#scout-side .line-title").textContent();
+    const openRows = await page.locator("#scout-results .scout-line.is-expanded").count();
+    check(titleAfter !== titleBefore, "selecting another row should swap the line-detail card");
+    check(openRows === 1, `exactly one row should be open, got ${openRows}`);
+  }
+
+  await shot("report-white");
+  await page.evaluate(() => { const m = document.querySelector(".scout-main"); if (m && m.scrollHeight > m.clientHeight) m.scrollTop = m.scrollHeight; else window.scrollTo(0, document.body.scrollHeight); });
+  await page.waitForTimeout(200);
+  await shot("report-white-bottom");
+  await page.evaluate(() => { const m = document.querySelector(".scout-main"); if (m) m.scrollTop = 0; window.scrollTo(0, 0); });
 
   // Switch to Black — visibility-only (no re-render, sections keep counts).
   await page.locator('#scout-results .scout-color-tab[data-scout-tab="black"]').click();
@@ -160,8 +217,12 @@ async function runViewport(vp) {
   const whiteAfter = await page.locator('#scout-results .scout-section[data-scout-color="white"]').evaluate((el) => !el.hidden);
   const blackAfter = await page.locator('#scout-results .scout-section[data-scout-color="black"]').evaluate((el) => !el.hidden);
   check(!whiteAfter && blackAfter, `black tab should swap visibility (white=${whiteAfter}, black=${blackAfter})`);
-  const blackHead = await page.locator('#scout-results .scout-section[data-scout-color="black"] .scout-section-head').textContent().catch(() => "");
+  const blackHead = await page.locator('#scout-results .scout-section[data-scout-color="black"] > h3').textContent().catch(() => "");
   check(/With Black/.test(blackHead || ""), `black section head should render, got "${blackHead.slice(0, 60)}"`);
+  const sideColor = await page.locator("#scout-side").evaluate((el) => el.dataset.color);
+  check(sideColor === "black", `switching tab should move the detail card to Black, got "${sideColor}"`);
+
+  await shot("report-black");
 
   // Overflow + console errors.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

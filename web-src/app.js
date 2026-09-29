@@ -3281,9 +3281,15 @@ function syncTopbarExtras() {
     return;
   }
   if (appState.currentView === "replay") {
-    const games = appState.replaySection !== "scout";
-    sub.textContent = games ? "Did your recent games stay in prep?" : "";
-    sub.hidden = !games;
+    if (appState.replaySection !== "scout") {
+      sub.textContent = "Did your recent games stay in prep?";
+    } else {
+      // "<opponent> · N games" once a scout has games (read from the rendered profile).
+      const name = document.querySelector("#scout-profile:not([hidden]) .scout-username-link")?.dataset.username;
+      const n = Number(document.getElementById("scout-live-count")?.textContent) || 0;
+      sub.textContent = name && n ? `${name} · ${n} game${n === 1 ? "" : "s"}` : "Opponent preparation";
+    }
+    sub.hidden = false;
     return;
   }
   sub.hidden = !isBuild;
@@ -11188,6 +11194,7 @@ async function ensureScoutView() {
       escapeHtml,
       setStatus,
       switchView,
+      syncTopbar: syncTopbarExtras,
       api,
       showInputModal,
       createRepertoirePrompt,

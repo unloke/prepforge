@@ -346,6 +346,8 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
     results.querySelectorAll = (sel) =>
       sel === ".scout-line[data-line-key]" ? [lineEl] : [];
     results.scrollTop = 0;
+    const sideEl = createStubElement("aside");
+    sideEl.hidden = true;
     restoreScoutExpanded(
       results,
       { white: sectionData },
@@ -353,6 +355,7 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
       {
         scoutModule,
         escapeHtml,
+        sideEl,
         ecoCache: new Map(),
         createElement: createStubElement,
         callbacks: {
@@ -363,7 +366,10 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
     );
     expect(lineEl.classList.contains("is-expanded")).toBe(true);
     expect(lineEl.getAttribute("aria-expanded")).toBe("true");
-    expect(lineEl.nextElementSibling?.classList.contains("scout-line-detail")).toBe(true);
+    // The open line's detail is painted into the side panel, not after the row.
+    expect(sideEl.innerHTML).toContain("scout-miniboard");
+    expect(sideEl.hidden).toBe(false);
+    expect(sideEl.dataset.lineKey).toBe(key);
     expect(results.scrollTop).toBe(88);
   });
 
@@ -412,6 +418,8 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
     resultsAfter._lines = [lineElAfter];
     resultsAfter.querySelectorAll = (sel) =>
       sel === ".scout-line[data-line-key]" ? resultsAfter._lines : [];
+    const sideAfter = createStubElement("aside");
+    sideAfter.hidden = true;
     restoreScoutExpanded(
       resultsAfter,
       { white: sectionData2 },
@@ -419,6 +427,7 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
       {
         scoutModule,
         escapeHtml,
+        sideEl: sideAfter,
         ecoCache: new Map(),
         createElement: createStubElement,
         callbacks: {
@@ -429,7 +438,7 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
     );
 
     expect(lineElAfter.classList.contains("is-expanded")).toBe(true);
-    expect(lineElAfter.nextElementSibling?.classList.contains("scout-line-detail")).toBe(true);
+    expect(sideAfter.innerHTML).toContain("scout-miniboard");
     expect(resultsAfter.scrollTop).toBe(64);
   });
 });
@@ -443,8 +452,8 @@ describe("scout-report rendering", () => {
       escapeHtml,
     );
     expect(html).toContain('data-speed="blitz"');
-    expect(html).toContain('scout-speed-chip is-on" data-speed="blitz"');
-    expect(html).not.toContain('data-speed="all" class="scout-speed-chip is-on"');
+    expect(html).toContain('scout-speed-chip speed is-on" data-speed="blitz"');
+    expect(html).not.toContain('scout-speed-chip speed is-on" data-speed="all"');
   });
 
   it("shows integer game counts in section HTML while weighting internally", () => {
@@ -764,7 +773,7 @@ describe("scout-report interactions", () => {
     expect(fetchGames).not.toHaveBeenCalled();
   });
 
-  it("expands a line row and inserts a detail panel with a miniboard", async () => {
+  it("opens a line row into the side detail panel with a miniboard", async () => {
     const { sectionData } = buildScoutSectionReport(
       scoutModule,
       {
@@ -784,6 +793,9 @@ describe("scout-report interactions", () => {
     lineEl.dataset.rowIdx = "0";
     lineEl.dataset.rowKind = "prep";
     lineEl.dataset.color = "white";
+    lineEl.dataset.lineKey = "k1";
+    const sideEl = createStubElement("aside");
+    sideEl.hidden = true;
 
     await handleScoutResultsClick(
       {
@@ -799,6 +811,7 @@ describe("scout-report interactions", () => {
         getState: () => state,
         scoutModule,
         escapeHtml,
+        getSideEl: () => sideEl,
         createElement: createStubElement,
         callbacks: {
           scoutLineDetailHtml: () => '<div class="scout-miniboard"></div>',
@@ -814,9 +827,8 @@ describe("scout-report interactions", () => {
     );
 
     expect(lineEl.classList.contains("is-expanded")).toBe(true);
-    const detail = lineEl.nextElementSibling;
-    expect(detail?.classList.contains("scout-line-detail")).toBe(true);
-    expect(detail?.innerHTML).toContain("scout-miniboard");
+    expect(sideEl.hidden).toBe(false);
+    expect(sideEl.innerHTML).toContain("scout-miniboard");
   });
 
   it("routes Analyze, Add to prep, and Prepare all actions to callbacks", async () => {
@@ -836,7 +848,7 @@ describe("scout-report interactions", () => {
     };
     const callbacks = {
       scoutLineDetailHtml: () =>
-        '<button class="scout-action-analyze" data-row-kind="prep" data-row-idx="0"></button><button class="scout-action-add-prep" data-row-kind="prep" data-row-idx="0" data-color="white"></button>',
+        '<button class="scout-action-analyze" data-row-kind="prep" data-row-idx="0" data-color="white"></button><button class="scout-action-add-prep" data-row-kind="prep" data-row-idx="0" data-color="white"></button>',
       enrichEcoForLine: vi.fn(),
       restoreDistRoot: vi.fn(),
       renderDistDrilldown: vi.fn(),
@@ -868,17 +880,12 @@ describe("scout-report interactions", () => {
       ctx,
     );
 
-    const detail = lineEl.nextElementSibling;
-    detail.previousElementSibling = lineEl;
     const analyzeBtn = createStubElement("button");
     analyzeBtn.classList.add("scout-action-analyze");
     analyzeBtn.dataset.rowIdx = "0";
     analyzeBtn.dataset.rowKind = "prep";
-    analyzeBtn.closest = (sel) => {
-      if (sel === ".scout-action-analyze") return analyzeBtn;
-      if (sel === ".scout-line-detail") return detail;
-      return null;
-    };
+    analyzeBtn.dataset.color = "white";
+    analyzeBtn.closest = (sel) => (sel === ".scout-action-analyze" ? analyzeBtn : null);
     await handleScoutResultsClick({ target: analyzeBtn }, ctx);
     const prepLine = sectionData.prepTargets?.[0] || sectionData.gradedLines[0];
     expect(callbacks.scoutAnalyzeLine).toHaveBeenCalledWith(prepLine, "white", "rival");

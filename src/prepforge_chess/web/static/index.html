@@ -6,9 +6,9 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-CR6l3qO1.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-DXDzeQ6G.js"></script>
     <link rel="modulepreload" crossorigin href="/static/assets/chess-DwBov9dY.js">
-    <link rel="stylesheet" crossorigin href="/static/assets/index-BHezLtHF.css">
+    <link rel="stylesheet" crossorigin href="/static/assets/index-CxXB_0IR.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -493,32 +493,35 @@
             </div>
             <div id="replay-results" class="replay-results"></div>
           </section>
-          <section class="card replay-card-scout" data-replay-panel="scout" role="tabpanel" aria-labelledby="nav-scout" hidden>
-            <div class="research-heading">
-              <div><h2>Scout an opponent</h2></div>
-            </div>
-            <div class="research-controls" aria-label="Opponent scouting controls">
-              <div class="research-source"><span class="research-control-label">Opponent games from</span>
-                <div class="research-source-picker">
-                  <span class="src-chips" id="scout-source-chips" data-testid="scout-source-chips"></span>
-                  <button type="button" class="source-add" id="scout-source-add" data-testid="scout-source-add" title="Edit Scout sources" aria-label="Edit Scout sources">＋ Add</button>
-                </div>
+          <section class="replay-card-scout scout-panel" data-replay-panel="scout" role="tabpanel" aria-labelledby="nav-scout" hidden>
+            <div class="toolbar" role="group" aria-label="Opponent scouting controls">
+              <div class="src">
+                <span class="src-label">Opponent games from</span>
+                <span class="src-chips" id="scout-source-chips" data-testid="scout-source-chips"></span>
+                <button type="button" class="btn sm ghost" id="scout-source-add" data-testid="scout-source-add" title="Edit Scout sources" aria-label="Edit Scout sources">＋ Add</button>
               </div>
-              <div class="replay-toolbar">
-                <label class="research-control-label" for="scout-color">Playing as</label>
+              <label class="inline-field" for="scout-color">
+                <span>Playing as</span>
                 <select id="scout-color">
                   <option value="both" selected>Both</option>
                   <option value="white">White</option>
                   <option value="black">Black</option>
                 </select>
-                <button class="btn primary" id="scout-btn" data-testid="scout-btn" data-scout-action="start">Start</button>
-                <button class="btn ghost" id="scout-reset-btn" type="button" hidden>Reset</button>
-                <span id="scout-live-count" class="scout-live-count" data-testid="scout-live-count" aria-live="polite">0</span>
-              </div>
+              </label>
+              <button class="btn primary" id="scout-btn" data-testid="scout-btn" data-scout-action="start">Start</button>
+              <button class="btn ghost" id="scout-reset-btn" type="button" hidden>Reset</button>
+              <span class="counter"><span id="scout-live-count" class="scout-live-count" data-testid="scout-live-count" aria-live="polite">0</span> games</span>
             </div>
-            <div id="scout-profile" class="scout-profile" hidden></div>
-            <div id="scout-v3-results" class="scout-v3-results" hidden></div>
-            <div id="scout-results" class="scout-results"></div>
+            <div class="scout-grid">
+              <div class="scout-main">
+                <div class="scout-stream stream card" role="status"><div class="spinner" aria-hidden="true"></div><div><b>Streaming games from Lichess…</b><p class="muted">The report builds as games arrive — you can Stop at any time and Resume later.</p></div></div>
+                <div class="scout-empty empty-state big"><div class="es-mark">♘</div><h3>Scout an opponent</h3><p>Add a Lichess username (or pick Self) as a source, then Start. PrepForge streams their history and ranks the lines worth preparing — when they play X, you play Y.</p></div>
+                <div id="scout-profile" class="scout-profile profile card" hidden></div>
+                <div id="scout-v3-results" class="scout-v3-results" hidden></div>
+                <div id="scout-results" class="scout-results"></div>
+              </div>
+              <aside id="scout-side" class="scout-side card" aria-label="Line detail" hidden></aside>
+            </div>
           </section>
         </div>
       </section>

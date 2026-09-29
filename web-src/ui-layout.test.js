@@ -273,7 +273,8 @@ describe("workspace chrome layout", () => {
     expect(html).not.toContain('id="scout-source-picked"');
     expect(html).not.toContain('id="scout-username"');
     expect(html).not.toContain('id="replay-account"');
-    expect(css).toContain(".source-add");
+    expect(html).toMatch(/id="scout-source-add"[^>]*/);
+    expect(css).not.toContain(".source-add");
     expect(css).not.toContain(".source-pick");
     expect(css).not.toContain(".replay-account");
     expect(css).toContain(".src-chips");

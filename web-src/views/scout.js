@@ -20,6 +20,7 @@ import {
   renderScoutColorTabsHtml,
   renderScoutProfile,
   restoreScoutExpanded,
+  ensureScoutLineSelection,
   scoutDistRowHtml,
   scoutLineDetailHtml,
   scoutLineKey,
@@ -131,6 +132,7 @@ export function createScoutView(deps) {
     scoutPickedUsernames = () => [],
     getLichessUsername = () => null,
     effectiveStockfishDepth = () => 16,
+    syncTopbar = () => {},
   } = deps;
 
   let scoutModule = null;
@@ -176,9 +178,46 @@ export function createScoutView(deps) {
     return document.getElementById("scout-profile");
   }
 
+  function getSideEl() {
+    return document.getElementById("scout-side");
+  }
+
+  // The open line's detail lives in the side panel; drop it with the report so a
+  // new scout never paints against a stale selection.
+  function clearScoutSide() {
+    const side = getSideEl();
+    if (!side) return;
+    side.hidden = true;
+    side.innerHTML = "";
+    delete side.dataset.lineKey;
+    delete side.dataset.color;
+  }
+
+  // Phone layout stacks the detail after the plan: bring it into view on select.
+  function revealScoutDetail() {
+    const side = getSideEl();
+    if (!side || side.hidden || !window.matchMedia?.("(max-width: 760px)").matches) return;
+    side.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+  }
+
+  function scoutSelectionCtx() {
+    return {
+      scoutModule,
+      escapeHtml,
+      sideEl: getSideEl(),
+      ecoCache: scoutState?.ecoCache,
+      createElement: (tag) => document.createElement(tag),
+      callbacks: {
+        scoutLineDetailHtml: localScoutLineDetailHtml,
+        enrichEcoForLine: enrichEcoForLineCached,
+      },
+    };
+  }
+
   function updateLiveCounter() {
     const el = document.getElementById("scout-live-count");
     if (el) el.textContent = String(scoutState?.games?.length || 0);
+    syncTopbar();
   }
 
   function engineProgressLabel(p) {
@@ -448,16 +487,12 @@ export function createScoutView(deps) {
         : progressHtml + '<div class="empty-state">Not enough opening data in these games.</div>';
       if (sections.length) applyScoutColorTabs(results);
       if (captured) {
-        restoreScoutExpanded(results, scoutState.sections, captured, {
-          scoutModule,
-          escapeHtml,
-          ecoCache: scoutState.ecoCache,
-          createElement: (tag) => document.createElement(tag),
-          callbacks: {
-            scoutLineDetailHtml: localScoutLineDetailHtml,
-            enrichEcoForLine: enrichEcoForLineCached,
-          },
-        });
+        restoreScoutExpanded(results, scoutState.sections, captured, scoutSelectionCtx());
+      }
+      if (sections.length) {
+        ensureScoutLineSelection(results, scoutState.sections, scoutSelectionCtx());
+      } else {
+        clearScoutSide();
       }
     }
     if (force) updateLiveCounter();
@@ -1709,21 +1744,30 @@ export function createScoutView(deps) {
         scoutLineDetailHtml: localScoutLineDetailHtml,
         enrichEcoForLine: enrichEcoForLineCached,
         runDeepScan: scoutRunDeepScan,
+        revealScoutDetail,
       },
+      getSideEl,
     });
 
     const results = getResultsEl();
     if (results && !scoutBoundEventTargets.has(results)) {
       scoutBoundEventTargets.add(results);
       results.addEventListener("click", async (e) => {
-        // Prototype colour tabs: visibility-only switch, no re-render.
-        if (handleScoutColorTabClick(e, results)) return;
+        // Prototype colour tabs: visibility-only switch, no re-render — the
+        // side panel follows to the new colour's open line.
+        if (handleScoutColorTabClick(e, results)) {
+          ensureScoutLineSelection(results, scoutState?.sections, scoutSelectionCtx());
+          return;
+        }
         await handleScoutResultsClick(e, scoutClickCtx());
       });
 
       results.addEventListener("keydown", (e) => {
         // Colour tabs: ArrowLeft/ArrowRight switch (visibility-only).
-        if (handleScoutColorTabKeydown(e, results)) return;
+        if (handleScoutColorTabKeydown(e, results)) {
+          ensureScoutLineSelection(results, scoutState?.sections, scoutSelectionCtx());
+          return;
+        }
         if (e.key !== "Enter" && e.key !== " ") return;
         const lineEl = e.target.closest(".scout-line");
         const distRow = e.target.closest(".scout-dist-row[data-first-uci]");
@@ -1732,6 +1776,12 @@ export function createScoutView(deps) {
           e.target.click();
         }
       });
+    }
+
+    const side = getSideEl();
+    if (side && !scoutBoundEventTargets.has(side)) {
+      scoutBoundEventTargets.add(side);
+      side.addEventListener("click", (e) => handleScoutResultsClick(e, scoutClickCtx()));
     }
 
     const v12Panel = getV12PanelEl();
@@ -2018,6 +2068,7 @@ export function createScoutView(deps) {
     const experimental = getV12PanelEl();
     if (results) results.innerHTML = "";
     if (profile) profile.hidden = true;
+    clearScoutSide();
     if (experimental) {
       experimental.innerHTML = "";
       experimental.hidden = true;
@@ -2076,9 +2127,10 @@ export function createScoutView(deps) {
       if (!session || !isActiveSession(session)) return;
 
       if (results) {
-        results.innerHTML = '<div class="muted hint">Streaming games from Lichess…</div>';
+        results.innerHTML = "";
         results.classList.add("is-streaming");
       }
+      clearScoutSide();
       if (profile) profile.hidden = true;
       updateLiveCounter();
       setStatus(`Scouting ${scoutLabel(usernames)}`);

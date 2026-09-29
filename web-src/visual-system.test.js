@@ -156,27 +156,19 @@ describe("seven views share chrome families", () => {
       }
     }
     const replay = html.slice(html.indexOf('id="view-replay"'), html.indexOf('id="view-teams"'));
-    // Games is the flat prototype toolbar (no page card / heading); Scout keeps its card until its own pass.
-    const games = replay.slice(replay.indexOf('<section class="games-panel"'), replay.indexOf('<section class="card replay-card-scout"'));
+    // Games and Scout are the flat prototype toolbar (no page card / heading) over their workspace.
+    const games = replay.slice(replay.indexOf('<section class="games-panel"'), replay.indexOf('<section class="replay-card-scout'));
     expect(games).toContain('class="toolbar"');
     expect(games).not.toContain("research-heading");
     expect(games.indexOf('class="toolbar"')).toBeLessThan(games.indexOf('id="replay-results"'));
-    for (const panel of ["scout"]) {
-      const start = replay.indexOf(`<section class="card replay-card-${panel}`);
-      const end = replay.length;
-      const slice = replay.slice(start, end);
-      expect(slice).toMatch(/class="[^"]*\bcard\b/);
-      expect(slice).toContain('class="research-heading"');
-      expect(slice).toContain('class="research-controls"');
-      // Heading block carries the title only — explainer paragraphs were removed
-      // in the copy audit; controls and empty states now do that work.
-      const headingBlock = slice.match(/class="research-heading"[\s\S]*?<\/div>\s*<\/div>/)?.[0] || "";
-      expect(headingBlock).toContain("<h2>");
-      expect(headingBlock).not.toContain("<p");
-      expect(slice).not.toContain('class="research-note"');
-      expect(slice.indexOf('class="research-heading"')).toBeLessThan(slice.indexOf('class="research-controls"'));
-      expect(slice.indexOf('class="research-controls"')).toBeLessThan(slice.indexOf('id="scout-results"'));
-    }
+    const scout = replay.slice(replay.indexOf('<section class="replay-card-scout'));
+    expect(scout).toContain('class="toolbar"');
+    expect(scout).not.toContain("research-heading");
+    expect(scout).not.toContain("research-controls");
+    // Toolbar → grid (main column: profile, results; side: line detail).
+    expect(scout.indexOf('class="toolbar"')).toBeLessThan(scout.indexOf('class="scout-grid"'));
+    expect(scout.indexOf('id="scout-profile"')).toBeLessThan(scout.indexOf('id="scout-results"'));
+    expect(scout.indexOf('id="scout-results"')).toBeLessThan(scout.indexOf('id="scout-side"'));
   });
 
   it("ships the engine banner, command palette, and promotion picker styles", () => {
