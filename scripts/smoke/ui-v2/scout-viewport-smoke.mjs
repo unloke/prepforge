@@ -165,6 +165,36 @@ async function runViewport(vp) {
   const startDisabled = await page.locator("#scout-btn").isDisabled().catch(() => true);
   check(!startDisabled, "Start should be enabled with a source selected");
 
+  // Pre-Start: the Scout view chunk must already be loaded, because it carries
+  // views/scout.css. Assert both halves directly — the stylesheet is applied AND
+  // the view has bound its controls — since "Start" must only drive the data flow.
+  // Without the entry preload, both are still pending at this point.
+  const preStart = await page.evaluate(() => {
+    const btn = document.getElementById("scout-btn");
+    const sheets = Array.from(document.styleSheets).map((s) => s.href || "").filter(Boolean);
+    return {
+      lazySheet: sheets.some((href) => /scout-[^/]*\.css$/.test(href)),
+      bound: btn?.dataset?.scoutBound === "1",
+      panelPresent: !!document.querySelector(".scout-panel"),
+      panelVisible: (() => {
+        const p = document.querySelector(".scout-panel");
+        return !!p && !p.hidden && getComputedStyle(p).display !== "none";
+      })(),
+      reportEmpty: (document.getElementById("scout-results")?.textContent || "").trim() === "",
+    };
+  });
+  check(preStart.panelPresent, "scout panel should be present before Start");
+  check(preStart.panelVisible, "scout panel should be visible before Start");
+  check(
+    preStart.lazySheet,
+    "pre-Start: views/scout.css should already be applied when the Scout section is shown",
+  );
+  check(
+    preStart.bound,
+    "pre-Start: the Scout view should already have bound its controls (Start is data-only)",
+  );
+  check(preStart.reportEmpty, "pre-Start: report should still be empty");
+
   // Run the scout — streams the stubbed PGN and builds the report.
   await page.evaluate(() => document.getElementById("scout-btn").click());
   await page.waitForTimeout(2500);

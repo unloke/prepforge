@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-CopHZweY.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-CV4AzQYm.js"></script>
     <link rel="modulepreload" crossorigin href="/static/assets/chess-DwBov9dY.js">
     <link rel="stylesheet" crossorigin href="/static/assets/index-C34ixyXx.css">
   </head>
@@ -255,6 +255,17 @@
             <div class="panel-head" id="build-rep-header">
               <span class="rep-name" id="build-rep-name" data-testid="build-rep-name">No repertoire open</span>
               <button class="row-menu-btn rep-menu-btn" id="build-menu" data-testid="build-menu" title="More actions" aria-haspopup="menu" aria-expanded="false">⋯</button>
+            </div>
+            <!-- Shared/read-only host. Static so the shared state renders inside the
+                 Opus panel composition; the view only swaps text and visibility. -->
+            <div class="shared-banner" id="shared-banner" data-testid="shared-banner" hidden>
+              <div class="shared-banner-text">
+                <b id="shared-banner-title"></b>
+                <span id="shared-banner-note">You can browse and train from it. Copy it to edit, generate or scan coverage.</span>
+              </div>
+              <div class="shared-banner-actions">
+                <button class="btn primary sm" id="shared-fork-btn" data-testid="shared-fork-btn" type="button">Copy to my account</button>
+              </div>
             </div>
             <div class="build-empty empty-state big" id="build-empty">
               <div class="es-mark" aria-hidden="true">♜</div>
@@ -808,6 +819,7 @@
         <div class="palette-results" id="palette-results" data-testid="palette-results" role="listbox" aria-label="Commands"></div>
       </div>
     </div>
+
 
   </body>
 </html>

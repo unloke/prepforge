@@ -48,6 +48,15 @@ const api = (path) => {
   if (path.startsWith("/api/auth/me")) return { id: "u1", display_name: "Smoke Tester", email: "s@x.test" };
   if (path.startsWith("/api/auth/providers")) return { google: false };
   if (path.startsWith("/api/csrf")) return { csrf_token: "x" };
+  // Shared-link payload (writable:false) — the read-only state the static
+  // Opus host must render without any runtime banner injection.
+  if (path.startsWith("/api/shared/")) {
+    return {
+      repertoire_id: "rep-shared", name: "Sicilian Najdorf (shared)", color: "black",
+      writable: false, selected_node_id: "n5", root_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      nodes: BUILD_NODES,
+    };
+  }
   if (path.startsWith("/api/build/load")) {
     return {
       repertoire_id: "rep-1", name: "Caro-Kann: Advance", color: "black",
@@ -131,6 +140,19 @@ async function runViewport(vp) {
   const repName = await page.locator("#build-rep-name").textContent().catch(() => "");
   check(repName.includes("Caro-Kann"), `rep header should show Caro-Kann, got "${repName}"`);
 
+  // Writable state: the shared host stays in the DOM but hidden — the writable
+  // panel must not carry a leftover read-only banner from a previous state.
+  const bannerWritable = await page.locator('[data-testid="shared-banner"]').evaluate((el) => ({
+    hidden: el.hidden,
+    connected: el.isConnected,
+    inPanel: !!el.closest("#view-build .sidebar"),
+    parentIsSidebar: el.parentElement === document.querySelector("#view-build .sidebar"),
+  })).catch(() => null);
+  check(!!bannerWritable, "shared banner host should exist in the writable state");
+  check(bannerWritable?.hidden === true, `writable state should hide the shared banner, got hidden=${bannerWritable?.hidden}`);
+  check(bannerWritable?.inPanel === true, "shared banner host should live inside the Build Opus panel");
+  check(bannerWritable?.parentIsSidebar === true, "shared banner host should be a direct child of the Build sidebar (no injected wrapper)");
+
   // Board bar: label + sync chip (writable rep, nothing pending -> Saved).
   const label = await page.locator("#build-board-label").textContent().catch(() => "");
   check(label.length > 0, "board label should be non-empty");
@@ -206,6 +228,65 @@ async function runViewport(vp) {
   check(realErrors.length === 0, `console errors: ${realErrors.join(" | ")}`);
 
   await page.close();
+
+  // ----- Shared / read-only state -------------------------------------------
+  // Opened via the share link (?shared=...), the path that returns
+  // writable:false. The banner must be the static Opus host: still a direct
+  // child of the Build sidebar, revealed by flipping `hidden`, with its text
+  // swapped in place. No element creation, no prepend, no re-render.
+  const sharedPage = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+  const sharedErrors = [];
+  sharedPage.on("console", (m) => { if (m.type() === "error") sharedErrors.push(m.text()); });
+  sharedPage.on("pageerror", (e) => sharedErrors.push(`pageerror: ${e.message}`));
+  const sharedCheck = (ok, label) => { if (!ok) failures.push(`${vp.name} shared: ${label}`); };
+
+  await sharedPage.goto(`${base}/?shared=smoke-token`, { waitUntil: "domcontentloaded" });
+  await sharedPage.waitForTimeout(1200); // boot + /api/shared/<token> hydrate
+
+  const host = await sharedPage.locator('[data-testid="shared-banner"]').evaluate((el) => ({
+    exists: true,
+    hidden: el.hidden,
+    parentIsSidebar: el.parentElement === document.querySelector("#view-build .sidebar"),
+    isFirstChildOfSidebar: el.parentElement?.firstElementChild === el
+      || !!el.parentElement?.previousElementSibling?.classList.contains("panel-head"),
+    title: document.getElementById("shared-banner-title")?.textContent || "",
+    forkInStaticHost: !!el.querySelector('[data-testid="shared-fork-btn"]'),
+  })).catch(() => null);
+
+  sharedCheck(!!host, "shared banner host should render for a shared repertoire");
+  sharedCheck(host?.hidden === false, `shared banner should be visible, got hidden=${host?.hidden}`);
+  sharedCheck(
+    host?.parentIsSidebar === true,
+    "shared banner must stay a direct child of the Build sidebar (runtime prepend path removed)",
+  );
+  sharedCheck(
+    !!host?.title.includes("Sicilian Najdorf"),
+    `shared banner title should name the shared repertoire, got "${host?.title}"`,
+  );
+  sharedCheck(
+    host?.forkInStaticHost === true,
+    "Copy button should live inside the static host",
+  );
+
+  // Exactly one banner in the document — a leftover from the legacy
+  // create/prepend path would show up as a second node.
+  const bannerCount = await sharedPage.locator("#shared-banner").count();
+  sharedCheck(bannerCount === 1, `expected exactly 1 shared banner, got ${bannerCount}`);
+
+  // Read-only semantics still enforced (Scan disabled) — unchanged by the host swap.
+  const scanDisabled = await sharedPage.locator("#coverage-run").isDisabled().catch(() => false);
+  sharedCheck(scanDisabled, "Coverage Scan should stay disabled for a read-only repertoire");
+
+  // Toggling back to writable hides the host rather than removing it.
+  const hostStillThere = await sharedPage.locator('[data-testid="shared-banner"]').count();
+  sharedCheck(hostStillThere === 1, "shared banner host should persist in the DOM, not be removed");
+
+  const sharedOverflow = await sharedPage.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  sharedCheck(sharedOverflow <= 0, `shared state horizontal overflow of ${sharedOverflow}px`);
+  const realSharedErrors = sharedErrors.filter((t) => !/Failed to load resource|favicon/.test(t));
+  sharedCheck(realSharedErrors.length === 0, `shared state console errors: ${realSharedErrors.join(" | ")}`);
+
+  await sharedPage.close();
 }
 
 try {
@@ -226,4 +307,4 @@ if (failures.length) {
   for (const f of failures) console.error(`  - ${f}`);
   process.exit(1);
 }
-console.log("[build-smoke] ok — all three viewports render the Repertoire workspace from fixture state with no overflow and no console errors.");
+console.log("[build-smoke] ok — all three viewports render the Repertoire workspace (writable + shared/read-only) from fixture state with no overflow and no console errors.");
