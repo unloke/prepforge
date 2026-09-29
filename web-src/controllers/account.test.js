@@ -102,3 +102,88 @@ describe("account controller", () => {
     expect(onOpenSettings).not.toHaveBeenCalled();
   });
 });
+
+// M2: the account menu opened from the mobile More sheet takes focus, marks
+// its trigger expanded, and hands focus back to that trigger on Escape-close.
+describe("account menu focus", () => {
+  function el(id, { visible = true } = {}) {
+    const attrs = new Map();
+    return {
+      id,
+      hidden: false,
+      innerHTML: "",
+      textContent: "",
+      title: "",
+      style: {},
+      classList: { add() {}, remove() {}, toggle() {} },
+      setAttribute: (k, v) => attrs.set(k, String(v)),
+      getAttribute: (k) => (attrs.has(k) ? attrs.get(k) : null),
+      removeAttribute: (k) => attrs.delete(k),
+      hasAttribute: (k) => attrs.has(k),
+      getBoundingClientRect: () => ({ left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 100 }),
+      getClientRects: () => (visible ? [{}] : []),
+      focus: vi.fn(),
+    };
+  }
+
+  let els;
+  let menu;
+  let firstItem;
+  beforeEach(() => {
+    firstItem = { focus: vi.fn(), addEventListener: vi.fn(), dataset: {} };
+    menu = el("account-menu");
+    menu.hidden = true;
+    menu.querySelector = () => firstItem;
+    menu.querySelectorAll = () => [firstItem];
+    els = new Map(
+      ["account-chip", "account-label", "sheet-account", "sheet-account-label"].map((id) => [id, el(id)]),
+    );
+    els.set("account-menu", menu);
+    globalThis.document = { getElementById: (id) => els.get(id) || null };
+    globalThis.window = { innerWidth: 390, innerHeight: 844 };
+  });
+
+  it("gives the sheet account item menu popup semantics only when signed in", () => {
+    const { appState, controller } = makeController();
+    const item = els.get("sheet-account");
+    controller.renderAccountChip();
+    expect(item.getAttribute("aria-haspopup")).toBe(null);
+    appState.signedIn = true;
+    appState.accountUsername = "alice";
+    controller.renderAccountChip();
+    expect(item.getAttribute("aria-haspopup")).toBe("menu");
+    expect(item.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("moves focus into the menu and restores it to the sheet trigger on Escape-close", () => {
+    const { appState, controller } = makeController();
+    appState.signedIn = true;
+    const item = els.get("sheet-account");
+    controller.onAccountChipClick(null, { trigger: item });
+    expect(menu.hidden).toBe(false);
+    expect(firstItem.focus).toHaveBeenCalled();
+    expect(item.getAttribute("aria-expanded")).toBe("true");
+    expect(controller.isAccountMenuOpen()).toBe(true);
+
+    controller.closeAccountMenu({ restoreFocus: true });
+    expect(menu.hidden).toBe(true);
+    expect(item.getAttribute("aria-expanded")).toBe("false");
+    expect(item.focus).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not steal focus on an outside-click close or when the trigger is gone", () => {
+    const { appState, controller } = makeController();
+    appState.signedIn = true;
+    const item = els.get("sheet-account");
+    controller.onAccountChipClick(null, { trigger: item });
+    controller.closeAccountMenu();
+    expect(item.focus).not.toHaveBeenCalled();
+
+    const hiddenItem = el("sheet-account", { visible: false });
+    els.set("sheet-account", hiddenItem);
+    controller.onAccountChipClick(null, { trigger: hiddenItem });
+    controller.closeAccountMenu({ restoreFocus: true });
+    expect(hiddenItem.focus).not.toHaveBeenCalled();
+    expect(hiddenItem.getAttribute("aria-expanded")).toBe("false");
+  });
+});

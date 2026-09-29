@@ -67,6 +67,7 @@ export function createAccountController({
     paintAvatar(document.getElementById("account-avatar"));
     paintAvatar(document.getElementById("sheet-account-avatar"));
     const sheetLabel = document.getElementById("sheet-account-label");
+    const sheetItem = document.getElementById("sheet-account");
     if (appState.signedIn) {
       chip.classList.add("is-connected");
       label.textContent = name || "Account";
@@ -74,6 +75,10 @@ export function createAccountController({
       if (sheetLabel) sheetLabel.textContent = name || "Account";
       chip.setAttribute("aria-haspopup", "menu");
       chip.title = `Signed in as ${name || "your account"}`;
+      if (sheetItem) {
+        sheetItem.setAttribute("aria-haspopup", "menu");
+        if (!sheetItem.hasAttribute("aria-expanded")) sheetItem.setAttribute("aria-expanded", "false");
+      }
     } else {
       chip.classList.remove("is-connected");
       label.textContent = "Sign in";
@@ -83,6 +88,10 @@ export function createAccountController({
       chip.removeAttribute("aria-haspopup");
       chip.setAttribute("aria-expanded", "false");
       chip.title = "Sign in to PrepForge";
+      if (sheetItem) {
+        sheetItem.removeAttribute("aria-haspopup");
+        sheetItem.removeAttribute("aria-expanded");
+      }
     }
   }
 
@@ -218,17 +227,21 @@ export function createAccountController({
     });
   }
 
+  // The control that opened the menu (rail chip or the More sheet's account
+  // item): it carries aria-expanded and gets focus back on Escape.
+  let menuTrigger = null;
+
   // Guest → the chip is a single sign-in action. Signed in → it toggles the
-  // account menu.
-  function onAccountChipClick(anchor = null) {
+  // account menu. `trigger` defaults to the rail chip; `anchor` only positions.
+  function onAccountChipClick(anchor = null, { trigger = null } = {}) {
     if (!appState.signedIn) {
       openAuthModal("login");
       return;
     }
-    toggleAccountMenu(anchor);
+    toggleAccountMenu(anchor, { trigger });
   }
 
-  function openAccountMenu(anchor = null) {
+  function openAccountMenu(anchor = null, { trigger = null } = {}) {
     const chip = document.getElementById("account-chip");
     const menu = document.getElementById("account-menu");
     if (!chip || !menu) return;
@@ -244,7 +257,11 @@ export function createAccountController({
     ];
     menu.innerHTML = items.join("");
     menu.hidden = false;
-    chip.setAttribute("aria-expanded", "true");
+    if (menuTrigger && menuTrigger !== (trigger || chip)) {
+      menuTrigger.setAttribute("aria-expanded", "false");
+    }
+    menuTrigger = trigger || chip;
+    menuTrigger.setAttribute("aria-expanded", "true");
     // Rail account: open beside the rail, bottom-aligned with the avatar.
     // Mobile (rail hidden, opened from the More sheet): sit above the tab bar.
     const rect = menu.getBoundingClientRect();
@@ -265,19 +282,32 @@ export function createAccountController({
     menu.querySelectorAll("button").forEach((button) => {
       button.addEventListener("click", () => handleAccountMenuAction(button.dataset.action));
     });
+    menu.querySelector('[role="menuitem"]')?.focus();
   }
 
-  function closeAccountMenu() {
+  // restoreFocus (Escape / explicit toggle) returns focus to the trigger when
+  // it is still on screen; outside clicks and menu actions leave focus alone.
+  function closeAccountMenu({ restoreFocus = false } = {}) {
     const menu = document.getElementById("account-menu");
+    const wasOpen = !!menu && !menu.hidden;
     if (menu) menu.hidden = true;
     const chip = document.getElementById("account-chip");
     if (chip) chip.setAttribute("aria-expanded", "false");
+    const trigger = menuTrigger;
+    menuTrigger = null;
+    if (!trigger) return;
+    trigger.setAttribute("aria-expanded", "false");
+    if (wasOpen && restoreFocus && trigger.getClientRects?.().length) trigger.focus();
   }
 
-  function toggleAccountMenu(anchor = null) {
+  function isAccountMenuOpen() {
     const menu = document.getElementById("account-menu");
-    if (menu && !menu.hidden) closeAccountMenu();
-    else openAccountMenu(anchor);
+    return !!menu && !menu.hidden;
+  }
+
+  function toggleAccountMenu(anchor = null, { trigger = null } = {}) {
+    if (isAccountMenuOpen()) closeAccountMenu({ restoreFocus: true });
+    else openAccountMenu(anchor, { trigger });
   }
 
   async function handleAccountMenuAction(action) {
@@ -414,6 +444,7 @@ export function createAccountController({
     onAccountChipClick,
     openAccountMenu,
     closeAccountMenu,
+    isAccountMenuOpen,
     toggleAccountMenu,
     handleAccountMenuAction,
     refreshAuthStatus,

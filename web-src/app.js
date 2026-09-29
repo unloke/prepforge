@@ -4008,12 +4008,16 @@ function openAuthModal(mode = "login") {
 
 // Guest → the chip is a single Connect action (straight to OAuth). Signed in → the
 // chip toggles the account menu.
-function onAccountChipClick() {
-  return accountService().onAccountChipClick();
+function onAccountChipClick(anchor = null, options = {}) {
+  return accountService().onAccountChipClick(anchor, options);
 }
 
-function closeAccountMenu() {
-  return accountService().closeAccountMenu();
+function closeAccountMenu(options = {}) {
+  return accountService().closeAccountMenu(options);
+}
+
+function isAccountMenuOpen() {
+  return accountService().isAccountMenuOpen();
 }
 
 // Ask the server whether this browser's session is a real account or a guest, and
@@ -11562,13 +11566,19 @@ function wireMobileNav() {
     });
   });
   // Mobile account entry (the rail — and its account row — is hidden ≤ 760px).
+  // Signed in, the account menu opens over the still-open sheet with this item
+  // as its trigger, so Escape returns focus here; a guest gets the auth modal.
   const accountItem = document.getElementById("sheet-account");
   if (accountItem) {
     accountItem.addEventListener("click", () => {
-      closeSheet({ restoreFocus: false });
-      onAccountChipClick();
+      if (!appState.signedIn) closeSheet({ restoreFocus: false });
+      onAccountChipClick(null, { trigger: accountItem });
     });
   }
+  // Picking an account-menu action finishes the sheet's job too.
+  document.getElementById("account-menu")?.addEventListener("click", (event) => {
+    if (event.target.closest?.('[role="menuitem"]')) closeSheet({ restoreFocus: false });
+  });
   const paletteItem = document.getElementById("sheet-palette");
   if (paletteItem) {
     paletteItem.addEventListener("click", () => {
@@ -11577,7 +11587,9 @@ function wireMobileNav() {
     });
   }
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !sheet.hidden) closeSheet();
+    // Escape closes the topmost layer only: an account menu opened from the
+    // sheet closes first (the global handler), the sheet on the next Escape.
+    if (event.key === "Escape" && !sheet.hidden && !isAccountMenuOpen()) closeSheet();
   });
 }
 
@@ -11958,7 +11970,7 @@ function bindEvents() {
     if (event.key === "Escape") {
       closeNodeContextMenu();
       closeRepertoireContextMenu();
-      closeAccountMenu();
+      closeAccountMenu({ restoreFocus: true });
       closePalette();
     }
   });

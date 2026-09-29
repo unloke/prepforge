@@ -763,6 +763,8 @@ h2 {
 
 /* The account menu reuses .context-menu chrome. Sign out is the only destructive
    action here. */
+/* On phones it opens from the More sheet (z-index 60) and must sit above it. */
+.context-menu.account-menu { z-index: 70; }
 .account-menu button[data-action="signout"] {
   color: var(--danger);
 }
