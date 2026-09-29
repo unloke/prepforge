@@ -46,7 +46,7 @@ function replayFocusPosition(game) {
       // dropped from the API (the plain SAN call is the same behaviour).
       chess.move(history[i]);
     }
-  } catch (_) {
+  } catch {
     return null;
   }
   const fen = chess.fen();
@@ -60,7 +60,7 @@ function replayFocusPosition(game) {
         to: expectedUci.slice(2, 4),
         promotion: expectedUci.length > 4 ? expectedUci.slice(4) : undefined,
       });
-    } catch (_) {
+    } catch {
       expectedUci = null;
     }
   }

@@ -70,11 +70,15 @@ export function renderScoutColorTabsHtml(profile, escapeHtml, { hidden = false }
   // With a real opponent history both colours almost always have games; single-
   // colour histories render a lone (still-correct) tab. No data → no bar.
   if (!colors.length) return "";
+  // WAI-ARIA tabs: exactly one aria-selected="true" and roving tabindex — only
+  // the active tab is tabbable, the rest stay focusable via arrow keys.
   const buttons = colors
-    .map((c) => {
+    .map((c, i) => {
       const stats = profile.colorStats[c];
       const label = c === "white" ? "With White" : "With Black";
-      return `<button type="button" class="scout-color-tab" role="tab" data-scout-tab="${c}" aria-selected="true" aria-controls="scout-section-${c}"><span class="scout-color-dot ${c}" aria-hidden="true"></span>${escapeHtml(label)} <small>${stats.games} games</small></button>`;
+      const selected = i === 0 ? "true" : "false";
+      const tabindex = i === 0 ? "" : ' tabindex="-1"';
+      return `<button type="button" class="scout-color-tab${i === 0 ? " is-active" : ""}" role="tab" data-scout-tab="${c}" aria-selected="${selected}"${tabindex} aria-controls="scout-section-${c}"><span class="scout-color-dot ${c}" aria-hidden="true"></span>${escapeHtml(label)} <small>${stats.games} games</small></button>`;
     })
     .join("");
   return `<div class="scout-color-tabs" role="tablist" aria-label="Opponent colour"${hidden ? ' hidden' : ''}>${buttons}</div>`;
@@ -83,6 +87,7 @@ export function renderScoutColorTabsHtml(profile, escapeHtml, { hidden = false }
 // Tab switch = visibility only: the sections keep their computed line state
 // (expansion, drilldown, enrichment). State lives on the results element so a
 // re-render keeps the active colour and restored sections re-apply it.
+// Also keeps roving tabindex in sync: only the selected tab is tabbable.
 export function applyScoutColorTabs(resultsEl) {
   if (!resultsEl) return;
   const tabs = resultsEl.querySelectorAll(".scout-color-tab");
@@ -93,6 +98,7 @@ export function applyScoutColorTabs(resultsEl) {
     const on = tab.dataset.scoutTab === active;
     tab.classList.toggle("is-active", on);
     tab.setAttribute("aria-selected", on ? "true" : "false");
+    tab.tabIndex = on ? 0 : -1;
   });
   sections.forEach((section) => {
     section.hidden = section.dataset.scoutColor !== active;
@@ -107,18 +113,32 @@ export function handleScoutColorTabClick(event, resultsEl) {
   return true;
 }
 
-// ArrowLeft / ArrowRight move between the colour tabs (WAI-ARIA tabs pattern,
-// automatic activation): focus follows the active tab and the same
-// visibility-only switch runs as a click — section state is never rebuilt.
+// ArrowLeft / ArrowRight cycle between the colour tabs; Home / End jump to the
+// first / last (WAI-ARIA tabs pattern, automatic activation): focus follows the
+// active tab and the same visibility-only switch runs as a click — section
+// state is never rebuilt.
 export function handleScoutColorTabKeydown(event, resultsEl) {
-  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return false;
+  if (
+    event.key !== "ArrowLeft" &&
+    event.key !== "ArrowRight" &&
+    event.key !== "Home" &&
+    event.key !== "End"
+  ) {
+    return false;
+  }
   const tab = event.target.closest?.(".scout-color-tab");
   if (!tab || !resultsEl?.contains(tab)) return false;
   const tabs = Array.from(resultsEl.querySelectorAll?.(".scout-color-tab") || []);
   const index = tabs.indexOf(tab);
   if (index < 0) return false;
-  const step = event.key === "ArrowRight" ? 1 : -1;
-  const next = tabs[(index + step + tabs.length) % tabs.length];
+  let next;
+  if (event.key === "Home") next = tabs[0];
+  else if (event.key === "End") next = tabs[tabs.length - 1];
+  else {
+    const step = event.key === "ArrowRight" ? 1 : -1;
+    next = tabs[(index + step + tabs.length) % tabs.length];
+  }
+  if (!next) return false;
   event.preventDefault?.();
   resultsEl.dataset.scoutTab = next.dataset.scoutTab;
   applyScoutColorTabs(resultsEl);

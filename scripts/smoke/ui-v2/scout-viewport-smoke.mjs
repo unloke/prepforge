@@ -82,7 +82,7 @@ async function runViewport(vp) {
     try {
       localStorage.setItem("prepforge.scout_source", JSON.stringify(["__none__"]));
       localStorage.setItem("prepforge.scout_external", JSON.stringify(["scouttarget"]));
-    } catch (_) { /* private mode */ }
+    } catch { /* private mode */ }
   });
   // Lichess PGN stream (production scout endpoint shape) + explorer pool.
   // Playwright checks routes latest-first: register the catch-all FIRST so the

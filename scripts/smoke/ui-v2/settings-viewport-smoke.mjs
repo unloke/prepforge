@@ -182,7 +182,6 @@ async function runViewport(vp) {
   // Measured in document coordinates so page scroll doesn't skew them.
   const columnBug = await page.evaluate(() => {
     const nav = document.querySelector(".settings-nav").getBoundingClientRect();
-    const navDocTop = nav.top + window.scrollY;
     const navDocBottom = nav.bottom + window.scrollY;
     const singleColumn = getComputedStyle(document.querySelector(".settings-layout")).gridTemplateColumns.split(" ").length === 1;
     return [...document.querySelectorAll("#view-settings .settings-content .card[id]")]

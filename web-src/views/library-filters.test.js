@@ -160,15 +160,20 @@ describe("library filter wiring", () => {
 
   it("moves selection to the first shown row when the selected one is filtered out", async () => {
     await view.loadDashboardRepertoires();
-    // Default selection is the first row (rep-1, black).
+    // Default selection is the first row (rep-1, black). The option role sits
+    // on the inner .lib-opt so the ⋯ menu button stays outside the option.
     expect(container.innerHTML).toMatch(
-      /class="lib-row list-item[^"]*is-selected[^"]*" role="option"[^>]*data-repertoire-id="rep-1"/,
+      /class="lib-row list-item[^"]*is-selected[^"]*"[^>]*data-repertoire-id="rep-1"/,
+    );
+    expect(container.innerHTML).toContain('class="lib-opt" role="option"');
+    expect(container.innerHTML).not.toMatch(
+      /role="option"[^>]*aria-haspopup/, // button must not live inside an option
     );
     view.setLibraryFilter("white");
     expect(container.innerHTML).toMatch(
-      /class="lib-row list-item[^"]*is-selected[^"]*" role="option"[^>]*data-repertoire-id="rep-2"/,
+      /class="lib-row list-item[^"]*is-selected[^"]*"[^>]*data-repertoire-id="rep-2"/,
     );
-    expect(container.innerHTML.match(/aria-selected="true"/g) || []).toHaveLength(1);
+    expect(container.innerHTML.match(/aria-selected="true"/g) || []).toHaveLength(2);
   });
 
   it("shows a filter empty state and clears it when a filter matches again", async () => {
@@ -176,7 +181,7 @@ describe("library filter wiring", () => {
     view.setLibraryQuery("no such repertoire");
     expect(container.innerHTML).toContain("No repertoires match this filter.");
     expect(container.innerHTML).not.toContain('role="option"');
-    view.setLibraryQuery("london");
+    view.setLibraryQuery("");
     expect(container.innerHTML).toContain('data-repertoire-id="rep-2"');
   });
 

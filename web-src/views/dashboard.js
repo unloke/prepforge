@@ -186,6 +186,11 @@ export function createDashboardView({
       const selected = row.dataset.repertoireId === selectedRepId;
       row.classList.toggle("is-selected", selected);
       row.setAttribute("aria-selected", String(selected));
+      // The role=option lives on the inner .lib-opt (it must not own the menu
+      // button), so its aria-selected mirrors the row's selection state.
+      row.querySelectorAll(".lib-opt").forEach((opt) => {
+        opt.setAttribute("aria-selected", String(selected));
+      });
     });
   }
 
@@ -365,7 +370,7 @@ export function createDashboardView({
     container.innerHTML = rows
       .map(
         (item) => `
-          <div class="lib-row list-item is-shared" role="option" tabindex="0" data-repertoire-id="${escapeHtml(item.id)}" data-shared="1" aria-selected="false">
+          <div class="lib-row list-item is-shared" tabindex="0" data-repertoire-id="${escapeHtml(item.id)}" data-shared="1" aria-selected="false">
             <span class="lib-cell-rep">
               <span class="color-dot ${escapeHtml(item.color)}"></span>
               <span class="name">${escapeHtml(item.name)}</span>
@@ -391,6 +396,15 @@ export function createDashboardView({
     renderLibraryPreview(null);
   }
 
+  // ARIA listbox/option structure: the option role must not contain interactive
+  // widgets (the per-row ⋯ menu button). So the listbox owner is the row itself
+  // and the menu button sits as a SIBLING of the option, inside the grid row:
+  // <div class=lib-row (row wrapper, not an option)>
+  //   <span role=option aria-selected …>cells</span>
+  //   <button ⋯>
+  // The role=option lands on the .lib-opt span covering the info cells; the
+  // row's click/keyboard handlers stay on the wrapper so interaction is
+  // unchanged, and the button is no longer inside an option.
   function renderOwnRepertoireRows(container, visible) {
     // Library table (prototype layout): one row per repertoire with name,
     // an inline mastery bar from the cached health badge, and the queue
@@ -443,14 +457,16 @@ export function createDashboardView({
           ? chips.join("")
           : '<span class="muted">—</span>';
         return `
-          <div class="${cls}" role="option" tabindex="0" data-repertoire-id="${id}" data-active="${active ? "1" : "0"}" aria-selected="${String(item.id) === selectedRepId}">
-            <span class="lib-cell-rep">
-              <span class="color-dot ${color}"></span>
-              <span class="name">${name}</span>
-              <span class="sub"> · ${color}</span>${status}${shareBadge}
+          <div class="${cls}" tabindex="0" data-repertoire-id="${id}" data-active="${active ? "1" : "0"}" aria-selected="${String(item.id) === selectedRepId}">
+            <span class="lib-opt" role="option" aria-selected="${String(item.id) === selectedRepId}">
+              <span class="lib-cell-rep">
+                <span class="color-dot ${color}"></span>
+                <span class="name">${name}</span>
+                <span class="sub"> · ${color}</span>${status}${shareBadge}
+              </span>
+              <span class="lib-cell-mastery">${mastery}</span>
+              <span class="lib-cell-queue">${chipsHtml}</span>
             </span>
-            <span class="lib-cell-mastery">${mastery}</span>
-            <span class="lib-cell-queue">${chipsHtml}</span>
             <button type="button" class="ib row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-haspopup="menu">⋯</button>
           </div>
         `;

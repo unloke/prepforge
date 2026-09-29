@@ -55,7 +55,6 @@ const FIXTURE_REPS = {
   shared: [],
 };
 
-let openedRepId = null;
 const api = (path) => {
   if (path.startsWith("/api/auth/me")) return { id: "u1", display_name: "Smoke Tester", email: "s@x.test" };
   if (path.startsWith("/api/auth/providers")) return { google: false };
@@ -163,8 +162,8 @@ async function runViewport(vp) {
   const selectedCls = await page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]').getAttribute("class");
   check(/is-selected/.test(selectedCls || ""), "clicked row should carry is-selected");
 
-  // Keyboard: focus a row, arrow onto the selected one, Enter opens the workspace.
-  openedRepId = null;
+  // Keyboard: focus the selected row, press Enter — the row opens the workspace
+  // via /api/build/load (asserted by the request hitting the fixture server).
   await page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]').focus();
   await page.keyboard.press("Enter");
   // Enter on the selected row triggers editRepertoire -> /api/build/load; the

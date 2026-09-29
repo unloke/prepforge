@@ -14,7 +14,6 @@ import { Chess } from "chess.js";
 
 // The demo PGN the app prefills (app.js DEMO_PGN) — the browser engine
 // evaluates these REAL positions, so the prepare stub derives real FENs.
-const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const DEMO_PGN_MOVETEXT = "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6";
 const DEMO_SANS = DEMO_PGN_MOVETEXT.split(" ").filter((t) => !/^\d+\.$/.test(t));
 // Per-move metadata (uci / fens) derived in Node with chess.js — the same real

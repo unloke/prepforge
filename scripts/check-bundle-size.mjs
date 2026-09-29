@@ -31,7 +31,7 @@
 // (2026-09-27: Library table + filter bar + preview, Repertoire workspace,
 // Train up-next, Games focus board, Scout colour tabs, Analyze eval bar, Teams
 // detail sheet, Settings section nav) add ~4.6 KiB CSS raw — measured
-// 157,912 → 162,635 B of the built index-*.css against origin/main b521bff —
+// 157,912 → 162,742 B of the built index-*.css against origin/main b521bff —
 // and ~0.6 KiB JS raw of eager view glue (the page renderers themselves stay
 // in lazy chunks); gzip stays within its caps.
 import { readdirSync, statSync, readFileSync } from "node:fs";
@@ -56,7 +56,7 @@ const LIMITS = [
   // The reviewed Games triage and Teams workspace styles bring the built sheet
   // to about 151 KiB; the prototype design-system integration (rail/tabbar/
   // sheet + token palette) adds ~3.8 KiB and the ui-v2 page internals add
-  // ~4.6 KiB measured (157,912 → 162,635 B vs origin/main b521bff), so the
+  // ~4.8 KiB measured (157,912 → 162,742 B vs origin/main b521bff), so the
   // narrow ceiling moves to 163 KB.
   { prefix: "index-", suffix: ".css", maxBytes: 163_000, label: "main stylesheet" },
 ];
