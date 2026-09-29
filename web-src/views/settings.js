@@ -1,5 +1,6 @@
 // Settings tab rendering (lazy-loaded from app.js).
 
+import "./settings.css";
 import { resolveModelBase, peekSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { getCachedWeights, clearWeightCache } from "../engine/maia3-weight-cache.js";
 
@@ -134,7 +135,7 @@ export function createSettingsView({
     renderThemeControl();
     try {
       void renderConnections();
-    } catch (_) {
+    } catch {
       /* signed-out: connections list stays at its static markup */
     }
     renderMaiaAnalysis();
@@ -347,7 +348,7 @@ export function createSettingsView({
     setStatus("Clearing Maia cache…");
     try {
       disposeSharedMaia3Provider();
-    } catch (_) {
+    } catch {
       /* ignore */
     }
     await clearWeightCache();
@@ -372,9 +373,64 @@ export function createSettingsView({
     });
   }
 
+  // Section nav (prototype 180px column): click scrolls the card into view and
+  // marks the link active; a scroll spy keeps the active marker honest while
+  // the user scrolls the long card list by hand. Mobile keeps the nav as a
+  // horizontal chip row (CSS), same behaviour.
+  function markActiveSection(id) {
+    document.querySelectorAll(".settings-nav .settings-nav-link").forEach((link) => {
+      link.classList.toggle("is-active", link.getAttribute("href") === `#${id}`);
+    });
+  }
+
+  function bindSectionNav() {
+    const nav = document.querySelector(".settings-nav");
+    if (!nav || nav.dataset.navBound === "1") return;
+    nav.dataset.navBound = "1";
+    nav.querySelectorAll(".settings-nav-link").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        const id = (link.getAttribute("href") || "").slice(1);
+        const target = id && document.getElementById(id);
+        if (!target) return;
+        event.preventDefault();
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        markActiveSection(id);
+      });
+    });
+    const sections = () =>
+      Array.from(document.querySelectorAll("#view-settings .card[id]"));
+    let spyTick = false;
+    const onScroll = () => {
+      if (spyTick) return;
+      spyTick = true;
+      requestAnimationFrame(() => {
+        spyTick = false;
+        const probe = window.innerHeight * 0.35;
+        let current = null;
+        for (const section of sections()) {
+          const rect = section.getBoundingClientRect();
+          if (rect.top <= probe && rect.bottom > probe) {
+            current = section.id;
+            break;
+          }
+        }
+        // Past the last section's top (short final card scrolled up), keep the
+        // last id active rather than dropping the marker entirely.
+        if (!current) {
+          const list = sections();
+          const last = list[list.length - 1];
+          if (last && last.getBoundingClientRect().top <= probe) current = last.id;
+        }
+        if (current) markActiveSection(current);
+      });
+    };
+    document.addEventListener("scroll", onScroll, { passive: true });
+  }
+
   function bind() {
     if (eventsBound) return;
     eventsBound = true;
+    bindSectionNav();
 
     // Segmented theme control: direct buttons (no select needed). The hidden
     // native #settings-theme select is still synced for assistive tech that
@@ -511,6 +567,8 @@ export function createSettingsView({
     retryMaia3,
     verifyMaia3,
     resetMaia3Cache,
+    bindSectionNav,
+    markActiveSection,
     // Test/acceptance hook: the Settings view binds lazily after the
     // /api/settings round-trip, so expose the binder for harnesses.
     ensureBound: bind,

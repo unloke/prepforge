@@ -535,8 +535,18 @@
       </section>
 
       <section class="view" id="view-settings" data-testid="view-settings">
-        <div class="list-view replay-layout">
-          <section class="card">
+        <div class="list-view replay-layout settings-layout">
+          <nav class="settings-nav" aria-label="Settings sections">
+            <a class="settings-nav-link is-active" href="#set-appearance">Appearance</a>
+            <a class="settings-nav-link" href="#set-engine">Engine</a>
+            <a class="settings-nav-link" href="#set-maia">Maia3</a>
+            <a class="settings-nav-link" href="#set-strength">Playing strength</a>
+            <a class="settings-nav-link" href="#set-board">Board</a>
+            <a class="settings-nav-link" href="#set-connections">Connections</a>
+            <a class="settings-nav-link" href="#set-about">About</a>
+          </nav>
+          <div class="settings-content">
+          <section class="card" id="set-appearance">
             <div class="card-head"><h2>Appearance</h2></div>
             <div class="pf-row">
               <span class="pf-row-text">
@@ -554,7 +564,7 @@
               <option value="dark">Dark</option>
             </select>
           </section>
-          <section class="card">
+          <section class="card" id="set-engine">
             <div class="card-head">
               <h2>Engine</h2>
               <div class="tools">
@@ -583,7 +593,7 @@
             </div>
             <p class="muted" id="settings-stockfish-status"></p>
           </section>
-          <section class="card">
+          <section class="card" id="set-maia">
             <div class="card-head">
               <h2>Maia3</h2>
               <div class="tools">
@@ -604,7 +614,7 @@
             <p class="muted" id="settings-maia-status"></p>
             <p class="muted settings-error" id="settings-maia-error" hidden></p>
           </section>
-          <section class="card">
+          <section class="card" id="set-strength">
             <div class="card-head">
               <h2>Playing strength</h2>
               <button type="button" class="pf-info" id="strength-info" aria-label="About Playing strength" title="About Playing strength" aria-expanded="false">ⓘ</button>
@@ -640,14 +650,14 @@
               Adds the Maia3 human layer to analysis: classification, coach intuition, and brilliant signals. Stockfish always runs; this layer is skipped when off.
             </div>
           </section>
-          <section class="card">
+          <section class="card" id="set-board">
             <div class="card-head"><h2>Board</h2></div>
             <div class="settings-label">Piece set</div>
             <div class="piece-style-picker" id="piece-style-picker"></div>
             <div class="settings-label settings-section">Feedback</div>
             <div class="pf-feedback" id="board-prefs"></div>
           </section>
-          <section class="card" data-testid="settings-connections">
+          <section class="card" id="set-connections" data-testid="settings-connections">
             <div class="card-head">
               <h2>Connections</h2>
               <button type="button" class="pf-info" id="connections-info" aria-label="About Connections" title="About Connections" aria-expanded="false">ⓘ</button>
@@ -661,10 +671,11 @@
               <button class="btn ghost conn-link" id="settings-link-lichess" data-testid="settings-link-lichess" type="button">Link another account</button>
             </div>
           </section>
-          <section class="card">
+          <section class="card" id="set-about">
             <div class="card-head"><h2>About</h2></div>
             <p class="muted hint">PrepForge Chess — local opening preparation and replay tool.</p>
           </section>
+          </div>
         </div>
       </section>
     </main>

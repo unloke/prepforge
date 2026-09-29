@@ -1205,6 +1205,9 @@ h2 {
 
 /* Settings */
 
+/* Section-nav layout styles live in views/settings.css (lazy chunk, imported
+   by the lazy settings view module — same code-splitting as Games/Scout/Teams). */
+
 .settings-row {
   display: flex;
   align-items: end;
@@ -1232,11 +1235,6 @@ h2 {
   font-size: 13px;
   color: var(--text);
   word-break: break-all;
-}
-
-.settings-field {
-  display: grid;
-  gap: 4px;
 }
 
 .appearance-control {
@@ -1285,16 +1283,6 @@ h2 {
   text-align: right;
 }
 
-.strength-auto {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--text);
-  cursor: pointer;
-  padding: 2px 0 6px;
-}
-
 /* The real Maia load failure, shown under the status line when state is unavailable. */
 .settings-error {
   color: var(--danger);
@@ -1307,16 +1295,6 @@ h2 {
   display: none;
 }
 
-.settings-field input {
-  height: 32px;
-  width: 120px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--panel);
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
-}
 
 /* PrepForge shared primitives — warm, rounded, compact.
    .pf-switch / .seg / .pf-info / .pf-info-pop / .pf-row are the one shared
