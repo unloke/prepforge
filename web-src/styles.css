@@ -762,16 +762,7 @@ h2 {
   text-decoration: line-through;
 }
 
-.list-item .color-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-right: 6px;
-  border: 1px solid var(--line-strong);
-}
-
-.list-item .color-dot.white { background: var(--dot-white); }
-.list-item .color-dot.black { background: var(--text); }
+.list-item .color-dot { margin-right: 6px; }
 
 .hint {
   margin: 4px 0 8px;
@@ -1390,26 +1381,24 @@ h2 {
   display: inline-flex;
   gap: 2px;
   padding: 2px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--panel-soft);
+  border-radius: 7px;
+  background: var(--surface-3);
 }
 
 .seg-btn {
   border: 0;
-  border-radius: 999px;
+  border-radius: 5px;
   background: transparent;
   color: var(--text);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 12px;
+  font-size: var(--fs-s);
+  font-weight: 550;
+  padding: 0 10px;
   min-height: 26px;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .seg-btn:hover {
-  color: var(--text);
   background: var(--surface-hover);
 }
 
@@ -1418,18 +1407,12 @@ h2 {
   outline-offset: 1px;
 }
 
-/* Segmented control: one shared token-driven surface. Unselected reads as
-   body text on the panel-soft track; selected is a solid filled pill whose
-   pair is pinned per theme for contrast (light: white on deep bronze;
-   dark: near-black on light amber). Disabled uses the label token. */
+/* Segmented control (prototype): a raised panel-coloured tile on the
+   surface-3 track. Text stays on --text in both states so contrast holds in
+   light and dark; the tile + hairline carry the selection. */
 .seg-btn.is-active {
-  color: #ffffff;
-  background: #8a5a24;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-}
-:root[data-theme="dark"] .seg-btn.is-active {
-  color: #21150b;
-  background: #f0b873;
+  background: var(--panel);
+  box-shadow: var(--shadow-1), 0 0 0 1px var(--line);
 }
 
 .seg-btn:disabled {
@@ -1643,195 +1626,36 @@ h2 {
   text-decoration: underline;
 }
 
-/* Dashboard */
-
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 14px;
+/* Library — Opus prototype composition: Today strip, then the repertoire
+   table + 340px preview pane, then Next steps. Real listing data only
+   (root_fen + cached health); the prototype Lines / Last trained columns
+   and preview move line have no API source and stay out. */
+.workspace:has(> .view.is-active#view-dashboard) {
+  max-width: none;
+  padding: 16px;
 }
-
-.metric {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 12px 14px;
-}
-
-.metric-value {
-  font-size: 26px;
-  font-weight: 800;
-  line-height: 1.1;
-}
-
-.metric-label {
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 2px;
-}
-
-/* "Due review" metric lights up and becomes a shortcut when the spaced-
-   repetition queue has something waiting. */
-.metric.is-due {
-  border-color: var(--accent-line);
-  background: var(--accent-soft);
-}
-.metric.is-due .metric-value {
-  color: var(--accent-strong);
-}
-.metric.is-clickable {
-  cursor: pointer;
-  transition: filter 0.12s ease;
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  width: 100%;
-}
-.metric.is-clickable:hover {
-  filter: brightness(0.98);
-}
-
-/* Per-repertoire library-health badge on the dashboard list. */
-.rep-health {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-}
-.rep-health-empty {
-  color: var(--label);
-}
-.rh-pct {
-  font-weight: 700;
-  padding: 1px 7px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-}
-.rh-pct.tier-high {
-  color: var(--good-text);
-  border-color: color-mix(in srgb, var(--good) 40%, var(--line));
-}
-.rh-pct.tier-mid {
-  color: var(--warn-text);
-  border-color: color-mix(in srgb, var(--warn) 40%, var(--line));
-}
-.rh-pct.tier-low {
-  color: var(--muted);
-}
-.rh-detail {
-  color: var(--muted);
-}
-.rh-weak {
-  color: var(--danger);
-}
-.rh-due {
-  color: var(--warn-text);
-}
-@media (prefers-reduced-motion: reduce) {
-  .metric.is-clickable {
-    transition: none;
-  }
-}
-
-/* "Today" hero card: daily streak + what the review queue holds, with one
-   button into the smart trainer. */
-.today-card {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 14px 18px;
-  margin-bottom: 14px;
-}
-.today-card[hidden] {
-  display: none;
-}
-.today-streak {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  white-space: nowrap;
-}
-.today-flame {
-  font-size: 22px;
-}
-/* A streak at 0 shows a dimmed flame — the slot is there to be lit. */
-.today-streak[data-lit="0"] .today-flame {
-  filter: grayscale(1);
-  opacity: 0.45;
-}
-.today-count {
-  font-size: 26px;
-  font-weight: 800;
-  line-height: 1.1;
-}
-.today-unit {
-  color: var(--muted);
-  font-size: 12px;
-}
-.today-text {
-  flex: 1;
-  min-width: 0;
-}
-.today-note {
-  font-weight: 600;
-  font-size: 14px;
-}
-.today-queue {
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 2px;
-}
-.today-recap {
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 2px;
-}
-.today-recap .up { color: var(--good-text); }
-.today-recap .down { color: var(--danger); }
-/* Personalized recommendation row: text + one CTA into the target view. */
-.rec-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.rec-text {
+.lib {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  max-width: 1640px;
 }
-.rec-detail {
-  /* --muted, not --label: this is real content (counts, days), and --label's
-     11px grey fails the 4.5:1 contrast floor on the panel (axe baseline). */
-  color: var(--muted);
-  font-size: 11px;
+.lib .card { padding: 0; }
+.lib .card-head {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
 }
-.rec-cta {
-  margin-left: auto;
-  white-space: nowrap;
+.lib .card-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
 }
-/* Streak-at-risk: replaces the note line when local midnight is <5h away and
-   nothing has been trained yet — same slot, louder voice. */
-.today-warning {
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--warn-text);
-}
-
-/* Library (prototype page internals): list column + preview pane. The table
-   replaces the old stacked list rows — fixed cells (repertoire | mastery |
-   queue | menu) keep status, metric and action aligned at any width. The
-   preview pane drives from real listing data only (root_fen + health). */
-.lib-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
+.lib .card-head .tools { margin-left: auto; }
 .lib-count {
-  display: inline-block;
   min-width: 18px;
   padding: 0 5px;
   border-radius: 9px;
@@ -1841,132 +1665,316 @@ h2 {
   font-weight: 600;
   text-align: center;
   line-height: 18px;
-  vertical-align: 2px;
 }
-.lib-count[hidden] { display: none; }
 
-/* Library filter bar: shared .seg segmented filters + a name search field. */
-.lib-filters {
+/* Today strip */
+.today {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 18px;
+}
+.lib .today { padding: 12px 14px; }
+.today[hidden] { display: none; }
+.today-streak {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 18px;
+  border-right: 1px solid var(--line);
+  white-space: nowrap;
+}
+.today-flame { font-size: 22px; }
+/* A streak at 0 shows a dimmed flame — the slot is there to be lit. */
+.today-streak[data-lit="0"] .today-flame { filter: grayscale(1); opacity: 0.5; }
+.today-count {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.today-unit {
+  color: var(--muted);
+  font-size: var(--fs-s);
+  line-height: 1.2;
+}
+.today-unit small { display: block; color: var(--label); font-size: var(--fs-s); }
+.today-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.today-note,
+.today-recap { color: var(--muted); font-size: var(--fs-s); }
+.today-queue { font-size: 13px; }
+.today-queue b { font-size: 14px; }
+.today-recap .up { color: var(--good-text); }
+.today-recap .down { color: var(--danger); }
+/* Streak-at-risk: replaces the note line when local midnight is <5h away and
+   nothing has been trained yet — same slot, louder voice. */
+.today-warning {
+  align-self: flex-start;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: var(--warn-soft);
+  color: var(--warn-text);
+  font-size: var(--fs-s);
+  font-weight: 600;
+}
+.today-metrics { display: flex; gap: 4px; }
+.metric {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 76px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.metric b { font-size: 18px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.metric span { font-size: var(--fs-xs); color: var(--label); }
+.metric.is-due { background: var(--warn-soft); cursor: pointer; }
+.metric.is-due b { color: var(--warn-text); }
+.metric.is-due:hover { outline: 1px solid var(--warn); }
+.today > .btn { height: 38px; padding: 0 18px; font-size: 14px; }
+.btn.sm { height: 26px; padding: 0 9px; font-size: var(--fs-s); }
+
+/* Grid: list + preview (spans both rows) + steps under the list */
+.lib-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--pv-w, 340px);
+  grid-template-rows: auto 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.lib-grid:has(> .lib-preview[hidden]) { grid-template-columns: minmax(0, 1fr); }
+.lib-list { grid-column: 1; min-width: 0; overflow: hidden; }
+.lib-preview { grid-column: 2; grid-row: 1 / 3; }
+.steps { grid-column: 1; overflow: hidden; }
+
+/* Filter toolbar */
+.lib-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
 }
-.lib-filter-search {
-  flex: 1 1 160px;
-  min-width: 140px;
-  max-width: 260px;
-}
-.lib-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(150px, 1fr) minmax(140px, .9fr) 28px;
-  gap: 10px;
-  align-items: center;
-  min-height: 52px;
-}
-/* ARIA: the option role covers only the info cells; the ⋯ button is a sibling.
-   The option spans the three info columns so the grid layout is unchanged. */
-.lib-opt {
-  display: grid;
-  grid-template-columns: subgrid;
-  grid-column: 1 / 4;
-}
-.list-item .lib-opt { display: contents; }
-.lib-row .lib-cell-rep {
+.search-field {
   display: flex;
   align-items: center;
+  gap: 6px;
+  width: 220px;
+  height: var(--control-h);
+  margin-left: auto;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--label);
+}
+.search-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
+.search-field input {
+  width: 100%;
+  min-width: 0;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+}
+.search-field input:focus-visible { box-shadow: none; }
+
+/* Table: column header + one grid row per repertoire */
+.lib-cols,
+.lib-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(150px, 1fr) minmax(150px, 1fr) 32px;
+  column-gap: 12px;
+  align-items: center;
+  padding: 0 12px;
+}
+.lib-cols {
+  min-height: 30px;
+  border-bottom: 1px solid var(--line);
+  color: var(--label);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.lib-cols[hidden],
+.lib-cols[hidden] ~ .lib-hint { display: none; }
+.lib-row {
+  min-height: 54px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+.lib-row:hover { background: var(--panel-soft); }
+.lib-row:focus-visible { outline-offset: -2px; border-radius: 0; }
+.lib-row.is-selected,
+.lib-row.is-selected:hover {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.lib-row.is-disabled .name { color: var(--label); }
+/* ARIA: the option role covers the info cells; the ⋯ button is its sibling. */
+.lib-opt { display: contents; }
+.lib-cell-rep {
+  display: flex;
+  align-items: flex-start;
   gap: 8px;
   min-width: 0;
 }
-.lib-row .lib-cell-rep .name {
+.lib-cell-rep .color-dot { margin-top: 4px; }
+.lib-name { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.lib-name-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.lib-name .name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.rep-sub { color: var(--label); font-size: var(--fs-xs); }
+.lib-chip {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  color: var(--label);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.lib-chip.is-shared {
+  background: var(--info-soft);
+  color: var(--accent-text);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 .lib-cell-mastery,
 .lib-cell-queue {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 .lib-cell-queue { flex-wrap: wrap; }
-.lib-mastery {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.lib-mastery b {
-  font-variant-numeric: tabular-nums;
-  font-size: 12px;
-}
+.lib-mastery { display: flex; align-items: center; gap: 8px; width: 100%; }
+.lib-mastery b { font-size: var(--fs-s); font-variant-numeric: tabular-nums; }
 .lib-mbar {
   flex: 1;
   min-width: 60px;
-  max-width: 140px;
   height: 6px;
   border-radius: 999px;
   background: var(--line-soft);
   overflow: hidden;
 }
-.lib-mbar i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--good);
-}
-.lib-mbar i.tier-mid { background: var(--warn); }
-.lib-mbar i.tier-low { background: var(--danger); }
+.lib-mbar i { display: block; height: 100%; border-radius: inherit; background: var(--k-mastered); }
+.lib-mbar i.tier-mid { background: var(--k-due); }
+.lib-mbar i.tier-low { background: var(--k-weak); }
 .lib-mastery-none {
+  width: auto;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface-3);
   color: var(--label);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 /* Queue chips reuse the mastery-kind colours (colour means chess). */
 .kchip {
   display: inline-flex;
   align-items: center;
-  font-size: 11px;
-  font-weight: 600;
+  gap: 4px;
   padding: 1px 7px;
-  border-radius: 999px;
+  border-radius: 10px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
   white-space: nowrap;
 }
-.kchip.k-weak { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
-.kchip.k-due { color: var(--warn-text); background: color-mix(in srgb, var(--warn) 12%, transparent); }
-.kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 12%, transparent); }
-.lib-row.is-selected {
-  border-color: var(--accent-line);
-  background: var(--accent-soft);
+.kchip::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
 }
-.lib-row.is-selected:hover { background: var(--accent-soft); }
-/* Preview pane: real data only (root_fen board + health mix). */
-.lib-preview {
-  display: grid;
-  gap: 10px;
-  position: sticky;
-  top: 12px;
+.kchip.k-weak { color: var(--danger); background: color-mix(in srgb, var(--k-weak) 13%, transparent); }
+.kchip.k-due { color: var(--warn-text); background: color-mix(in srgb, var(--k-due) 15%, transparent); }
+.kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
+.row-menu-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--label);
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.7;
 }
-.lib-preview[hidden] { display: none; }
-.pv-head {
+.lib-row:hover .row-menu-btn,
+.lib-row.is-selected .row-menu-btn,
+.row-menu-btn:focus-visible { opacity: 1; color: var(--text); }
+.row-menu-btn:hover { background: var(--surface-3); }
+.lib-hint { margin: 0; padding: 8px 12px; color: var(--label); font-size: var(--fs-s); }
+.lib-rep-list .empty-state:not(.big) { border: 0; background: none; border-radius: 0; }
+.empty-state.big {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 8px;
-  min-width: 0;
+  padding: 48px 24px;
+  border: 0;
+  background: none;
 }
+.empty-state.big h3 { color: var(--text); font-size: 16px; }
+.empty-state.big p { max-width: 460px; margin: 0; }
+.empty-state.big .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.es-mark { color: var(--label); font-size: 34px; line-height: 1; }
+
+/* Side dot (repertoire colour) */
+.color-dot {
+  display: inline-block;
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+}
+.color-dot.white { background: var(--dot-white); }
+.color-dot.black { background: #222; border-color: #222; }
+:root[data-theme="dark"] .color-dot.black { border-color: #777; }
+
+/* Preview pane */
+.lib .lib-preview {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+.lib .lib-preview[hidden] { display: none; }
+.pv-head { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.pv-head .color-dot { margin-top: 4px; }
 .pv-title { min-width: 0; }
 .pv-title h2 {
-  margin: 0;
-  font-size: 15px;
   overflow: hidden;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.pv-sub { font-size: 12px; }
-.pv-board {
-  aspect-ratio: 1;
-  width: 100%;
-}
+.pv-sub { color: var(--label); font-size: var(--fs-s); }
+.pv-board { aspect-ratio: 1; width: 100%; }
 .pv-board .scout-miniboard { height: 100%; }
 .pv-board-empty {
   display: grid;
@@ -1974,71 +1982,102 @@ h2 {
   aspect-ratio: 1;
   border: 1px dashed var(--line-strong);
   border-radius: var(--radius);
-  font-size: 12px;
-}
-.pv-mix-label {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: var(--fs-s);
 }
 .pv-mix {
   display: flex;
-  height: 10px;
-  border-radius: 999px;
+  gap: 1px;
+  height: 8px;
+  border-radius: 4px;
   overflow: hidden;
   background: var(--line-soft);
 }
 .pv-mix i { display: block; min-width: 2px; }
-.pv-mix i.k-mastered { background: var(--k-mastered); }
-.pv-mix i.k-learning { background: var(--k-learning); }
-.pv-mix i.k-due { background: var(--k-due); }
-.pv-mix i.k-weak { background: var(--k-weak); }
-.pv-mix i.k-new { background: var(--k-new); }
-.pv-mix-empty {
-  font-size: 11px;
-  align-self: center;
-}
+.pv-mix-empty { align-self: center; font-size: var(--fs-xs); }
 .pv-mix-legend {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 10px;
-  font-size: 11px;
   color: var(--muted);
+  font-size: var(--fs-xs);
 }
 .pv-mix-legend i {
   display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
+  width: 7px;
+  height: 7px;
   margin-right: 4px;
+  border-radius: 2px;
 }
-.pv-mix-legend i.k-mastered { background: var(--k-mastered); }
-.pv-mix-legend i.k-learning { background: var(--k-learning); }
-.pv-mix-legend i.k-due { background: var(--k-due); }
-.pv-mix-legend i.k-weak { background: var(--k-weak); }
-.pv-mix-legend i.k-new { background: var(--k-new); }
-.pv-actions {
-  display: flex;
-  gap: 8px;
+.pv-mix i.k-mastered, .pv-mix-legend i.k-mastered { background: var(--k-mastered); }
+.pv-mix i.k-learning, .pv-mix-legend i.k-learning { background: var(--k-learning); }
+.pv-mix i.k-due, .pv-mix-legend i.k-due { background: var(--k-due); }
+.pv-mix i.k-weak, .pv-mix-legend i.k-weak { background: var(--k-weak); }
+.pv-mix i.k-new, .pv-mix-legend i.k-new { background: var(--k-new); }
+.pv-actions { display: flex; gap: 6px; }
+.pv-actions .btn { padding: 0 10px; white-space: nowrap; }
+.pv-actions .btn.primary { flex: 1; }
+.btn.icon-only { min-width: var(--control-h); padding: 0 8px; font-size: 16px; line-height: 1; }
+
+/* Next steps */
+.step {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
 }
-.pv-actions .btn { flex: 1; }
-/* ≤ 1279px (prototype): the preview pane narrows rather than disappears. */
-@media (min-width: 900px) {
-  .lib-grid { grid-template-columns: minmax(0, 1fr) 290px; }
-  .lib-preview { grid-column: 2; }
-  .lib-list-col { grid-column: 1; min-width: 0; }
+.step:last-child { border-bottom: 0; }
+.step-n {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 700;
 }
-@media (max-width: 899px) {
-  .lib-row { grid-template-columns: minmax(0, 1.5fr) minmax(120px, 1fr) 28px; }
-  .lib-cell-queue { display: none; }
-  .lib-preview { position: static; }
+.step-text b { display: block; }
+.step-text p { margin: 0; color: var(--muted); font-size: var(--fs-s); }
+
+/* ≤ 1279px: lower-value columns drop, the preview narrows */
+@media (max-width: 1279px) {
+  .lib-grid { --pv-w: 290px; }
+  .today { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .today-metrics { display: none; }
 }
-/* Today card on narrow screens: the Train button wraps under the text at full
-   width (prototype mobile rule) instead of squeezing the row off-screen. */
-@media (max-width: 560px) {
-  .today-card { flex-wrap: wrap; }
-  .today-card .btn { flex: 1 1 100%; }
+/* ≤ 1020px: single column */
+@media (max-width: 1020px) {
+  .lib-grid { grid-template-columns: minmax(0, 1fr); }
+  .lib .lib-preview { grid-column: auto; grid-row: auto; position: static; }
+  .steps { grid-column: auto; }
+}
+/* ≤ 760px: no preview pane (a tap opens the workspace), two-line rows,
+   44px touch targets. */
+@media (max-width: 760px) {
+  .workspace:has(> .view.is-active#view-dashboard) {
+    padding: 8px 8px calc(64px + env(safe-area-inset-bottom));
+  }
+  .lib { gap: 10px; }
+  .today { grid-template-columns: auto 1fr; gap: 10px 12px; }
+  .today > .btn { grid-column: 1 / -1; height: 44px; }
+  .today-streak { padding-right: 0; border-right: 0; }
+  .today-body { grid-column: 1 / -1; }
+  .lib .lib-preview { display: none; }
+  .lib-hint { display: none; }
+  .lib .card-head .tools { width: 100%; }
+  .lib .card-head .tools .btn { flex: 1; height: 40px; }
+  .search-field { width: 100%; margin-left: 0; }
+  .lib-toolbar .seg { max-width: 100%; overflow-x: auto; }
+  .lib-cols { display: none; }
+  .lib-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; padding: 10px 12px; }
+  .lib-cell-rep { grid-column: 1; grid-row: 1; }
+  .lib-cell-mastery,
+  .lib-cell-queue { grid-column: 1 / -1; }
+  .row-menu-btn { grid-column: 2; grid-row: 1; width: 44px; height: 44px; }
+  .step .btn.sm { height: 34px; }
 }
 
 /* Book-departure line: a second coach sentence (same voice as .coach-prose)
@@ -2103,12 +2142,6 @@ h2 {
 }
 .coach-bookaction .cba-arrow {
   font-weight: 700;
-}
-
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-  gap: 14px;
 }
 
 .card {
@@ -2275,23 +2308,6 @@ h2 {
   font-weight: 600;
 }
 
-/* The visible per-row actions button — the same menu right-click opens, but
-   discoverable. Subtle until the row is hovered or focused. */
-.list-item .row-menu-btn {
-  flex: none;
-  min-width: 28px;
-  padding: 0 6px;
-  font-size: 15px;
-  line-height: 1;
-  opacity: 0.45;
-}
-
-.list-item:hover .row-menu-btn,
-.list-item:focus-within .row-menu-btn,
-.list-item .row-menu-btn:focus-visible {
-  opacity: 1;
-}
-
 .list-item .sub {
   color: var(--muted);
   font-size: 12px;
@@ -2305,20 +2321,6 @@ h2 {
   border-radius: var(--radius);
   background: var(--panel-soft);
   text-align: center;
-}
-
-/* First-run "next steps" under the repertoires empty state — rendered from the
-   /api/dashboard recommendations payload so the copy lives server-side. The
-   same list carries the Today card's priority actions (due review, weak spots). */
-.dashboard-next-steps {
-  margin: 10px 0 0;
-  padding: 4px 0 0 22px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.7;
-}
-.dashboard-next-steps li + li {
-  margin-top: 2px;
 }
 
 /* File drag-and-drop target feedback (Analyze box, dashboard import card). */
@@ -2780,66 +2782,6 @@ h2 {
   margin-top: 8px;
 }
 
-/* Engine install/update buttons (App-Store-style) */
-.engine-action-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.engine-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-width: 150px;
-  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
-}
-
-.engine-action .ea-spinner {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  opacity: 0;
-  width: 0;
-  margin: 0;
-  transition: opacity 120ms ease, width 120ms ease;
-}
-
-.engine-action.is-working .ea-spinner {
-  opacity: 0.9;
-  width: 14px;
-  animation: eaSpin 0.7s linear infinite;
-}
-
-.engine-action.is-working {
-  opacity: 0.85;
-  cursor: progress;
-}
-
-.engine-action.is-done {
-  background: var(--good) !important;
-  border-color: var(--good) !important;
-  color: #fff !important;
-}
-
-.engine-action.is-done .ea-label::before {
-  content: "✓ ";
-}
-
-.engine-action.is-error {
-  background: var(--danger) !important;
-  border-color: var(--danger) !important;
-  color: #fff !important;
-}
-
-@keyframes eaSpin {
-  to { transform: rotate(360deg); }
-}
-
 /* ----- Train tab -------------------------------------------------------
    Coach feedback lives at the top of the right workspace (#train-banner now
    sits in the sidebar with .train-coach classes). The left column holds only
@@ -3279,15 +3221,6 @@ h2 {
   white-space: nowrap;
   color: var(--muted);
 }
-.train-upnext .color-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 1px solid var(--line-strong);
-  flex: 0 0 auto;
-}
-.train-upnext .color-dot.white { background: var(--dot-white); }
-.train-upnext .color-dot.black { background: var(--text); }
 .train-queue-bar {
   display: flex;
   height: 8px;
@@ -3789,16 +3722,6 @@ h2 {
   white-space: nowrap;
 }
 
-.rep-name .color-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 1px solid var(--line-strong);
-  flex: none;
-}
-
-.rep-name .color-dot.white { background: #f8f4ea; }
-.rep-name .color-dot.black { background: #1c1c1c; }
 
 .rep-color-sub {
   color: var(--muted);
@@ -5261,84 +5184,6 @@ h2 {
   overflow: auto;
 }
 
-.move-pair-row {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr);
-  align-items: stretch;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.move-pair-row:last-child {
-  border-bottom: 0;
-}
-
-.move-number {
-  color: var(--muted);
-  font-size: 12px;
-  background: var(--panel-soft);
-  border-right: 1px solid var(--line-soft);
-  display: grid;
-  place-items: center;
-  font-variant-numeric: tabular-nums;
-}
-
-.move-button {
-  border: 0;
-  background: transparent;
-  text-align: left;
-  padding: 6px 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  min-height: 28px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-}
-
-.move-button:hover {
-  background: var(--line-soft);
-}
-
-.move-button.is-current {
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  font-weight: 700;
-}
-
-.move-button.empty {
-  cursor: default;
-}
-
-.move-button.empty:hover {
-  background: transparent;
-}
-
-.move-class-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: transparent;
-  flex: 0 0 auto;
-}
-
-.class-inaccuracy .move-class-dot,
-.class-mistake .move-class-dot {
-  background: var(--warn);
-}
-
-.class-blunder .move-class-dot {
-  background: var(--danger);
-}
-
-.move-flags {
-  color: var(--muted);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
 /* ===========================================================================
    Move tree (shared by Analyze study lines + Build repertoire)
 
@@ -5985,10 +5830,6 @@ h2 {
   #builder-tree {
     max-height: 64vh;
   }
-
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 760px) {
@@ -6066,10 +5907,6 @@ h2 {
     width: 44px;
     height: 44px;
     font-size: 16px;
-  }
-
-  .metrics {
-    grid-template-columns: repeat(2, 1fr);
   }
 
   .workspace {
@@ -6864,9 +6701,6 @@ h2 {
 }
 .team-detail-foot {
   margin-top: 8px;
-}
-.shared-rep-row .color-dot {
-  margin-right: 6px;
 }
 /* Inline role promote/demote control on a member row (managers only). */
 .team-role-select {

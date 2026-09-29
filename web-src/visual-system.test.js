@@ -99,7 +99,7 @@ describe("visual system tokens", () => {
     expect(syncHidden).toMatch(/display:\s*none/);
     const engineHidden = ruleBody(".engine-banner[hidden]");
     expect(engineHidden).toMatch(/display:\s*none/);
-    const todayHidden = ruleBody(".today-card[hidden]");
+    const todayHidden = ruleBody(".today[hidden]");
     expect(todayHidden).toMatch(/display:\s*none/);
     const coverage = ruleBody(".coverage-gaps");
     expect(coverage).not.toMatch(/overflow-y/);

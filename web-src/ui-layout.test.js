@@ -324,15 +324,13 @@ describe("workspace chrome layout", () => {
     expect(result).not.toMatch(/color:\s*#[0-9a-fA-F]{3,6}/);
     const preview = ruleBody(".replay-preview");
     expect(preview).not.toMatch(/color:\s*#[0-9a-fA-F]{3,6}/);
-    // Settings segmented control: unselected, selected, hover, and disabled
-    // all stay legible; the selected pill pins a per-theme pair (light white
-    // on deep bronze, dark near-black on light amber).
+    // Segmented control (prototype): body text on the surface-3 track in both
+    // states; the selected tile is a raised panel-coloured chip.
     const segBtn = ruleBody(".seg-btn");
     expect(segBtn).toMatch(/color:\s*var\(--text\)/);
     const segActive = css.match(/\.seg-btn\.is-active\s*\{([^}]+)\}/)?.[1] || "";
-    expect(segActive).toMatch(/color:\s*#ffffff/);
-    expect(segActive).toMatch(/background:\s*#8a5a24/);
-    expect(css).toContain(':root[data-theme="dark"] .seg-btn.is-active');
+    expect(segActive).toMatch(/background:\s*var\(--panel\)/);
+    expect(segActive).not.toMatch(/color:/);
     const segDisabled = css.match(/\.seg-btn:disabled\s*\{([^}]+)\}/)?.[1] || "";
     expect(segDisabled).toMatch(/color:\s*var\(--label\)/);
     // Shared switches use tokens for track + knob in both states.

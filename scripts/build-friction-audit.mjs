@@ -772,7 +772,7 @@ async function main() {
           names,
           colors,
           hasRep: names.some((n) => n.includes(expectedName)),
-          metricsRepertoires: document.querySelector("#dashboard-metrics .metric-value")?.textContent?.trim(),
+          metricsRepertoires: document.querySelector("#dashboard-today .today-metrics .metric b")?.textContent?.trim(),
         };
       }, repName);
       record("5-recovery", "dashboard-refresh", {

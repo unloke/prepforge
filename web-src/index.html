@@ -79,19 +79,18 @@
 
     <main class="workspace" id="workspace-main" tabindex="-1">
       <section class="view is-active" id="view-dashboard" data-testid="view-dashboard">
-        <div class="lib-grid">
-          <div class="lib-list-col">
-            <div class="today-card" id="dashboard-today" data-testid="dashboard-today" hidden></div>
-            <div class="metrics" id="dashboard-metrics"></div>
-            <section class="card lib-list-card">
-              <div class="card-head">
+        <div class="lib">
+          <section class="today card" id="dashboard-today" data-testid="dashboard-today" aria-label="Today" hidden></section>
+          <div class="lib-grid">
+            <section class="lib-list card">
+              <header class="card-head">
                 <h2>Repertoires <span class="lib-count" id="dashboard-rep-count" hidden></span></h2>
                 <div class="tools">
-                  <button class="btn ghost" id="dashboard-new-rep" data-testid="dashboard-new-rep">New repertoire</button>
-                  <button class="btn ghost" id="dashboard-import-pgn" data-testid="dashboard-import-pgn">Import PGN</button>
+                  <button class="btn" id="dashboard-import-pgn" data-testid="dashboard-import-pgn">Import PGN</button>
+                  <button class="btn primary" id="dashboard-new-rep" data-testid="dashboard-new-rep">New repertoire</button>
                 </div>
-              </div>
-              <div class="lib-filters" role="group" aria-label="Filter repertoires">
+              </header>
+              <div class="lib-toolbar" role="group" aria-label="Filter repertoires">
                 <div class="seg">
                   <button type="button" class="seg-btn is-active" data-lib-filter="all" aria-pressed="true">All</button>
                   <button type="button" class="seg-btn" data-lib-filter="white" aria-pressed="false">White</button>
@@ -99,30 +98,35 @@
                   <button type="button" class="seg-btn" data-lib-filter="shared" aria-pressed="false">Shared</button>
                   <button type="button" class="seg-btn" data-lib-filter="disabled" aria-pressed="false">Disabled</button>
                 </div>
-                <input type="search" id="lib-filter-search" class="lib-filter-search" aria-label="Filter repertoires" placeholder="Filter repertoires" autocomplete="off" />
+                <label class="search-field">
+                  <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg>
+                  <input type="search" id="lib-filter-search" class="lib-filter-search" aria-label="Filter repertoires" placeholder="Filter repertoires" autocomplete="off" />
+                </label>
               </div>
-              <p class="muted hint">Click to preview · double-click to open · &#8943; for rename, share, delete.</p>
-              <div id="dashboard-repertoires" class="list-stack lib-rep-list"></div>
+              <div class="lib-cols" id="lib-cols" aria-hidden="true"><span>Repertoire</span><span>Mastery</span><span>Queue</span><span></span></div>
+              <div id="dashboard-repertoires" class="lib-rep-list"></div>
+              <p class="lib-hint">Click to preview &middot; double-click to open &middot; &#8943; for rename, share, delete.</p>
               <input type="file" id="dashboard-import-input" accept=".pgn,.json,application/x-chess-pgn,application/json" hidden />
             </section>
-          </div>
-          <aside class="lib-preview card" id="lib-preview" aria-label="Repertoire preview" hidden>
-            <div class="pv-head">
-              <span class="color-dot" id="lib-preview-dot"></span>
-              <div class="pv-title">
-                <h2 id="lib-preview-name">—</h2>
-                <span class="pv-sub muted" id="lib-preview-sub"></span>
+            <aside class="lib-preview card" id="lib-preview" aria-label="Repertoire preview" hidden>
+              <div class="pv-head">
+                <span class="color-dot" id="lib-preview-dot"></span>
+                <div class="pv-title">
+                  <h2 id="lib-preview-name">—</h2>
+                  <small class="pv-sub" id="lib-preview-sub"></small>
+                </div>
               </div>
-            </div>
-            <div class="pv-board" id="lib-preview-board"></div>
-            <div class="pv-mix-label muted">Mastery</div>
-            <div class="pv-mix" id="lib-preview-mix" role="img" aria-label="Mastery mix"></div>
-            <div class="pv-mix-legend" id="lib-preview-legend"></div>
-            <div class="pv-actions">
-              <button class="btn primary" id="lib-preview-open" type="button">Open workspace</button>
-              <button class="btn" id="lib-preview-train" type="button" title="Smart queue mixes due reviews and weak spots across all repertoires">Train smart queue</button>
-            </div>
-          </aside>
+              <div class="pv-board" id="lib-preview-board"></div>
+              <div class="pv-mix" id="lib-preview-mix" role="img" aria-label="Mastery mix"></div>
+              <div class="pv-mix-legend" id="lib-preview-legend"></div>
+              <div class="pv-actions">
+                <button class="btn primary" id="lib-preview-open" type="button">Open workspace</button>
+                <button class="btn" id="lib-preview-train" type="button" title="Smart queue mixes due reviews and weak spots across all repertoires">Smart queue</button>
+                <button class="btn icon-only" id="lib-preview-menu" type="button" aria-haspopup="menu" aria-label="More actions" title="More actions (rename · share · delete)">&#8943;</button>
+              </div>
+            </aside>
+            <section class="steps card" id="dashboard-steps" aria-label="Next steps" hidden></section>
+          </div>
         </div>
       </section>
 

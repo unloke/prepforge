@@ -131,7 +131,7 @@ describe("library filter wiring", () => {
     expect(container.innerHTML).toContain('data-repertoire-id="rep-1"');
     expect(container.innerHTML).toContain('data-repertoire-id="rep-2"');
     expect(container.innerHTML).toContain('data-repertoire-id="rep-3"');
-    expect(container.innerHTML.match(/class="lib-row /g) || []).toHaveLength(3);
+    expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(3);
     const callsAfterLoad = api.mock.calls.length;
 
     view.setLibraryFilter("black");
@@ -141,21 +141,21 @@ describe("library filter wiring", () => {
     expect(api.mock.calls.length).toBe(callsAfterLoad);
 
     view.setLibraryFilter("disabled");
-    expect(container.innerHTML.match(/class="lib-row /g) || []).toHaveLength(1);
+    expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(1);
     expect(container.innerHTML).toContain('data-repertoire-id="rep-3"');
 
     view.setLibraryFilter("shared");
-    expect(container.innerHTML.match(/class="lib-row /g) || []).toHaveLength(1);
+    expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(1);
     expect(container.innerHTML).toContain('data-repertoire-id="rep-2"');
   });
 
   it("searches repertoire names from the same cached listing", async () => {
     await view.loadDashboardRepertoires();
     view.setLibraryQuery("qgd");
-    expect(container.innerHTML.match(/class="lib-row /g) || []).toHaveLength(1);
+    expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(1);
     expect(container.innerHTML).toContain('data-repertoire-id="rep-3"');
     view.setLibraryQuery("");
-    expect(container.innerHTML.match(/class="lib-row /g) || []).toHaveLength(3);
+    expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(3);
   });
 
   it("moves selection to the first shown row when the selected one is filtered out", async () => {
@@ -163,7 +163,7 @@ describe("library filter wiring", () => {
     // Default selection is the first row (rep-1, black). The option role sits
     // on the inner .lib-opt so the ⋯ menu button stays outside the option.
     expect(container.innerHTML).toMatch(
-      /class="lib-row list-item[^"]*is-selected[^"]*"[^>]*data-repertoire-id="rep-1"/,
+      /class="lib-row[^"]*is-selected[^"]*"[^>]*data-repertoire-id="rep-1"/,
     );
     expect(container.innerHTML).toContain('class="lib-opt" role="option"');
     expect(container.innerHTML).not.toMatch(
@@ -171,7 +171,7 @@ describe("library filter wiring", () => {
     );
     view.setLibraryFilter("white");
     expect(container.innerHTML).toMatch(
-      /class="lib-row list-item[^"]*is-selected[^"]*"[^>]*data-repertoire-id="rep-2"/,
+      /class="lib-row[^"]*is-selected[^"]*"[^>]*data-repertoire-id="rep-2"/,
     );
     expect(container.innerHTML.match(/aria-selected="true"/g) || []).toHaveLength(2);
   });
@@ -199,12 +199,12 @@ describe("library filter wiring", () => {
     await view.loadDashboardRepertoires();
     expect(container.innerHTML).toContain('data-shared="1"');
     expect(container.innerHTML).toContain("read-only");
-    expect(container.innerHTML.match(/class="lib-row /g) || []).toHaveLength(2);
+    expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(2);
 
     view.setLibraryFilter("shared");
-    expect(container.innerHTML.match(/class="lib-row /g) || []).toHaveLength(2);
+    expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(2);
     view.setLibraryFilter("black");
-    expect(container.innerHTML.match(/class="lib-row /g) || []).toHaveLength(1);
+    expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(1);
     expect(container.innerHTML).toContain('data-repertoire-id="s2"');
   });
 
