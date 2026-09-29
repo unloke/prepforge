@@ -86,6 +86,7 @@ export function createDashboardView({
   openSignIn = null,
   onLibraryStateChange = null,
   goToView,
+  openSettingsSection = null,
   previewRenderers = null,
 }) {
   let eventsBound = false;
@@ -852,12 +853,10 @@ export function createDashboardView({
         loadDashboard().catch((error) => setStatusError(error.message));
       } else if (action === "analyze" && goToView) goToView("analyze");
       else if (action === "lichess") {
-        // Linking lives in Settings → Connections; go through the tab so the
-        // settings view loads exactly as a rail click would.
-        const tab = document.querySelector('.tab[data-view="settings"]');
-        if (tab) tab.click();
+        // Linking lives in Settings → Connections; the app opens Settings via
+        // its tab and jumps to the section once the view has rendered.
+        if (openSettingsSection) openSettingsSection("set-connections").catch(() => {});
         else if (goToView) goToView("settings");
-        setTimeout(() => document.querySelector('.settings-nav-link[href="#set-connections"]')?.click(), 300);
       }
     };
     const newRepBtn = document.getElementById("dashboard-new-rep");

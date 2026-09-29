@@ -130,17 +130,21 @@ export function createSettingsView({
     }
   }
 
+  // Resolves once the async Connections list has rendered too, so callers
+  // (e.g. Library's "Link Lichess") can jump to a section on a settled layout.
   function renderSettings(payload) {
     void payload;
     renderBrowserEngineStatus();
     renderStrengthControls();
     renderThemeControl();
+    let connections = Promise.resolve();
     try {
-      void renderConnections();
+      connections = Promise.resolve(renderConnections()).catch(() => {});
     } catch {
       /* signed-out: connections list stays at its static markup */
     }
     renderMaiaAnalysis();
+    return connections;
   }
 
   function renderMaiaAnalysis() {

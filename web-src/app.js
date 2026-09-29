@@ -3881,6 +3881,7 @@ async function ensureDashboardView() {
       openSignIn: () => openAuthModal("login"),
       onLibraryStateChange: syncTopbarExtras,
       goToView: switchView,
+      openSettingsSection,
       // Library preview mini-board: FEN decode + the product's piece SVGs over
       // the real listing root_fen. Pure DOM helpers — no engine, no board.
       previewRenderers: { parseFenBoard, pieceSvg },
@@ -10370,7 +10371,31 @@ async function ensureSettingsView() {
   return settingsView;
 }
 
-async function loadSettings() {
+// Every in-flight loadSettings() (a tab click can start two). settingsSettled()
+// waits until none remain, i.e. the Settings view is bound and fully rendered.
+const settingsLoads = new Set();
+
+function loadSettings() {
+  const load = loadSettingsOnce().finally(() => settingsLoads.delete(load));
+  settingsLoads.add(load);
+  return load;
+}
+
+async function settingsSettled() {
+  while (settingsLoads.size) await Promise.allSettled([...settingsLoads]);
+}
+
+// Open Settings through its tab (same path as a rail click) and jump to a
+// section once the view is ready — no fixed delay.
+async function openSettingsSection(sectionId) {
+  const tab = document.querySelector('.tab[data-view="settings"]');
+  if (tab) tab.click();
+  else switchView("settings");
+  await settingsSettled();
+  document.querySelector(`.settings-nav-link[href="#${sectionId}"]`)?.click();
+}
+
+async function loadSettingsOnce() {
   let view = null;
   try {
     view = await ensureSettingsView();
@@ -10381,18 +10406,18 @@ async function loadSettings() {
   if (!appState.signedIn) {
     // Signed out: browser-local settings only (theme, board, engine status) —
     // no /api/settings call and no 401 in the top bar.
-    view.renderSettings(null);
+    await view.renderSettings(null);
     return;
   }
   try {
     const payload = await api("/api/settings");
     applySettingsPayload(payload);
     applyServerEngineGating();
-    view.renderSettings(payload);
+    await view.renderSettings(payload);
   } catch (error) {
     setStatusError(error.message);
     try {
-      view.renderSettings(null);
+      await view.renderSettings(null);
     } catch (_) {
       /* best-effort local render */
     }
