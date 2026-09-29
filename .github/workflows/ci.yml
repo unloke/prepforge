@@ -113,6 +113,13 @@ jobs:
         run: npm run build
       - name: Bundle-size gate
         run: node scripts/check-bundle-size.mjs
+      # UI v2 viewport + states smoke (scripts/smoke/ui-v2/run-all.mjs) serves
+      # the static tree built above through the same Playwright Chromium the
+      # stockfish / e2e jobs use.
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: UI v2 smoke
+        run: npm run smoke:ui-v2
 
   stockfish:
     runs-on: ubuntu-latest

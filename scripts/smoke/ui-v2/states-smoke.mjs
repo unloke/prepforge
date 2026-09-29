@@ -13,6 +13,7 @@
 //      #sheet-account (aria-haspopup / aria-expanded), next Escape closes the
 //      sheet back to the More button
 //   6. empty account → "Link Lichess" lands on Settings → Connections
+//   7. desktop rail account menu re-anchors to the collapsed rail trigger
 //
 // Tracked UI-v2 smoke: part of `npm run smoke:ui-v2`
 // (scripts/smoke/ui-v2/run-all.mjs). Requires `npm run build` first.
@@ -372,6 +373,55 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
   await page.close();
 }
 
+// 7: desktop rail account menu follows the collapsing rail --------------------
+{
+  const S = "rail-account";
+  const { page } = await openPage({
+    width: 1440, height: 900,
+    handler: (path) => {
+      if (path.startsWith("/api/auth/me")) return SIGNED_IN;
+      if (path.startsWith("/api/dashboard")) return DASHBOARD;
+      if (path.startsWith("/api/repertoires")) return REPS;
+      if (path.startsWith("/api/teams")) return { teams: [] };
+      if (path.startsWith("/api/lichess")) return { accounts: [] };
+      return {};
+    },
+  });
+  await page.goto(base, { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1000);
+  const chip = page.locator("#account-chip");
+  await chip.hover();
+  await page.waitForTimeout(400);
+  await chip.click();
+  await page.waitForTimeout(200);
+  const menu = page.locator("#account-menu");
+  check(S, await menu.isVisible(), "rail account menu should open");
+  const openLeft = (await menu.boundingBox())?.x ?? 0;
+  check(S, openLeft > 150, `menu should open beside the expanded rail, got left=${openLeft}`);
+  // Moving into the menu collapses the rail (pointer and focus leave it).
+  const box = await menu.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(500);
+  const geom = await page.evaluate(() => ({
+    rail: document.querySelector(".rail").getBoundingClientRect().width,
+    chipRight: document.getElementById("account-chip").getBoundingClientRect().right,
+    menuLeft: document.getElementById("account-menu").getBoundingClientRect().left,
+    focusInMenu: !!document.activeElement?.closest("#account-menu"),
+    expanded: document.getElementById("account-chip").getAttribute("aria-expanded"),
+  }));
+  check(S, geom.rail < 80, `rail should collapse once the pointer is in the menu, width=${geom.rail}`);
+  check(S, Math.abs(geom.menuLeft - (geom.chipRight + 8)) <= 2,
+    `menu should re-anchor to the collapsed trigger (chip right ${geom.chipRight} + 8), got ${geom.menuLeft}`);
+  check(S, geom.menuLeft < 120, `menu must not hang at the expanded rail edge, left=${geom.menuLeft}`);
+  check(S, geom.focusInMenu, "focus should stay inside the account menu");
+  check(S, geom.expanded === "true", "#account-chip should stay aria-expanded=true while open");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(150);
+  check(S, !(await menu.isVisible()), "Escape should close the rail account menu");
+  check(S, await page.evaluate(() => document.activeElement?.id === "account-chip"), "focus should return to #account-chip");
+  await page.close();
+}
+
 await browser.close();
 server.close();
 
@@ -380,4 +430,4 @@ if (failures.length) {
   for (const f of failures) console.error(`  - ${f}`);
   process.exit(1);
 }
-console.log("[states-smoke] ok — signed-out, Library error, resize, mobile account focus and Link Lichess states hold.");
+console.log("[states-smoke] ok — signed-out, Library error, resize, mobile account focus, Link Lichess and rail account menu states hold.");

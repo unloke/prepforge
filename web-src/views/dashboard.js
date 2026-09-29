@@ -102,7 +102,6 @@ export function createDashboardView({
   let libraryFilter = "all";
   let libraryQuery = "";
   let repListCache = { own: [], shared: [] };
-  let lastLoadError = null;
 
   function masteryMixSegments(health) {
     const mix = [
@@ -607,6 +606,29 @@ export function createDashboardView({
     }
   }
 
+  // Background-refresh failure: the error is scoped to the list card. The
+  // page composition (Today strip, Get started steps) is left untouched and
+  // Retry reloads only the listing.
+  function renderLibraryListError(message) {
+    const container = document.getElementById("dashboard-repertoires");
+    if (!container) return;
+    repListCache = { own: [], shared: [] };
+    countBadge(null);
+    setListboxRole(container, false);
+    setLibraryEmpty(true, { error: true });
+    container.innerHTML = `
+      <div class="empty-state is-error" role="alert" data-testid="library-list-error">
+        <div class="es-mark" aria-hidden="true">!</div>
+        <h3>Could not refresh your repertoires.</h3>
+        <p>${escapeHtml(String(message || "The server did not respond."))}</p>
+        <div class="row gap">
+          <button type="button" class="btn primary" data-lib-action="retry-list">Try again</button>
+        </div>
+      </div>`;
+    renderLibraryPreview(null);
+    selectedRepId = null;
+  }
+
   function renderRepertoireList() {
     const container = document.getElementById("dashboard-repertoires");
     if (!container) return;
@@ -686,36 +708,45 @@ export function createDashboardView({
     renderRepertoireList();
   }
 
+  // Fetches and renders the listing; throws on failure so each caller picks
+  // its own error composition.
+  async function fetchDashboardRepertoires() {
+    if (appState.signedIn && !appState.teams.length) {
+      try {
+        const teamsPayload = await api("/api/teams");
+        appState.teams = teamsPayload.teams || [];
+      } catch (_) {
+        /* team names for share badges are optional */
+      }
+    }
+    const payload = await api("/api/repertoires");
+    appState.repertoireList = payload.repertoires || [];
+    const visible = (payload.repertoires || []).filter(
+      (item) => !appState.pendingRepDeletes.has(String(item.id)),
+    );
+    const sharedRows = (Array.isArray(payload.shared) ? payload.shared : []).map(
+      (item) => ({ ...item, sharedRow: true }),
+    );
+    // The count badge counts the full listing — never the filtered view.
+    if (!visible.length && sharedRows.length) {
+      countBadge(sharedRows.length);
+    } else {
+      countBadge(visible.length);
+    }
+    repListCache = { own: visible, shared: sharedRows };
+    renderRepertoireList();
+  }
+
+  // Background refresh (after CRUD elsewhere): a failure only replaces the
+  // list with a scoped error card — Today / Get started stay as they were —
+  // and is reported through setStatusError. Resolves to false on failure.
   async function loadDashboardRepertoires() {
     try {
-      if (appState.signedIn && !appState.teams.length) {
-        try {
-          const teamsPayload = await api("/api/teams");
-          appState.teams = teamsPayload.teams || [];
-        } catch (_) {
-          /* team names for share badges are optional */
-        }
-      }
-      const payload = await api("/api/repertoires");
-      appState.repertoireList = payload.repertoires || [];
-      const visible = (payload.repertoires || []).filter(
-        (item) => !appState.pendingRepDeletes.has(String(item.id)),
-      );
-      const sharedRows = (Array.isArray(payload.shared) ? payload.shared : []).map(
-        (item) => ({ ...item, sharedRow: true }),
-      );
-      // The count badge counts the full listing — never the filtered view.
-      if (!visible.length && sharedRows.length) {
-        countBadge(sharedRows.length);
-      } else {
-        countBadge(visible.length);
-      }
-      repListCache = { own: visible, shared: sharedRows };
-      renderRepertoireList();
+      await fetchDashboardRepertoires();
       return true;
     } catch (error) {
-      renderLibraryError(error.message);
-      lastLoadError = error;
+      renderLibraryListError(error.message);
+      setStatusError(error.message);
       return false;
     }
   }
@@ -783,7 +814,12 @@ export function createDashboardView({
       : [];
     renderDashboardToday(payload);
     renderSteps((payload.repertoires || 0) > 0);
-    if (!(await loadDashboardRepertoires())) throw lastLoadError;
+    try {
+      await fetchDashboardRepertoires();
+    } catch (error) {
+      renderLibraryError(error.message);
+      throw error;
+    }
     setStatus("Ready");
   }
 
@@ -851,6 +887,10 @@ export function createDashboardView({
         else requireSignIn("Sign in (or create an account) to start your library");
       } else if (action === "retry") {
         loadDashboard().catch((error) => setStatusError(error.message));
+      } else if (action === "retry-list") {
+        loadDashboardRepertoires().then((ok) => {
+          if (ok) setStatus("Ready");
+        });
       } else if (action === "analyze" && goToView) goToView("analyze");
       else if (action === "lichess") {
         // Linking lives in Settings → Connections; the app opens Settings via

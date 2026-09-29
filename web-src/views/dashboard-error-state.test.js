@@ -166,4 +166,89 @@ describe("Library error state", () => {
     await vi.waitFor(() => expect(statuses).toContainEqual(["error", "still down"]));
     expect(api.mock.calls.filter(([u]) => String(u).startsWith("/api/dashboard"))).toHaveLength(2);
   });
+  // Background refresh (loadDashboardRepertoires after CRUD elsewhere) keeps
+  // the page composition: only the list shows a scoped error + Retry.
+  describe("background refresh failure", () => {
+    it("keeps Today / Get started and shows a scoped list error + status error", async () => {
+      let failList = false;
+      build(async (url) => {
+        if (String(url).startsWith("/api/dashboard")) return { ...DASHBOARD, repertoires: 0 };
+        if (failList) throw new Error("refresh 503");
+        return REPS;
+      });
+      await view.loadDashboard();
+      const todayHtml = today.innerHTML;
+      const stepsHtml = steps.innerHTML;
+      expect(steps.hidden).toBe(false);
+      expect(stepsHtml).not.toBe("");
+
+      failList = true;
+      await expect(view.loadDashboardRepertoires()).resolves.toBe(false);
+      expect(container.innerHTML).toContain('data-testid="library-list-error"');
+      expect(container.innerHTML).toContain('role="alert"');
+      expect(container.innerHTML).toContain("refresh 503");
+      expect(container.innerHTML).toContain('data-lib-action="retry-list"');
+      expect(container.innerHTML).not.toContain('data-testid="library-error"');
+      expect(container.innerHTML).not.toContain("lib-row");
+      expect(card.classList.contains("is-error")).toBe(true);
+      expect(cols.hidden).toBe(true);
+      expect(today.hidden).toBe(false);
+      expect(today.innerHTML).toBe(todayHtml);
+      expect(steps.hidden).toBe(false);
+      expect(steps.innerHTML).toBe(stepsHtml);
+      expect(statuses.at(-1)).toEqual(["error", "refresh 503"]);
+    });
+
+    it("the next successful refresh restores the list without touching Today / steps", async () => {
+      let failList = false;
+      build(async (url) => {
+        if (String(url).startsWith("/api/dashboard")) return { ...DASHBOARD, repertoires: 0 };
+        if (failList) throw new Error("refresh 503");
+        return REPS;
+      });
+      await view.loadDashboard();
+      const stepsHtml = steps.innerHTML;
+      failList = true;
+      await view.loadDashboardRepertoires();
+      failList = false;
+      await expect(view.loadDashboardRepertoires()).resolves.toBe(true);
+      expect(container.innerHTML).toContain('data-repertoire-id="rep-1"');
+      expect(container.innerHTML).not.toContain("library-list-error");
+      expect(card.classList.contains("is-error")).toBe(false);
+      expect(card.classList.contains("is-empty")).toBe(false);
+      expect(cols.hidden).toBe(false);
+      expect(today.hidden).toBe(false);
+      expect(steps.hidden).toBe(false);
+      expect(steps.innerHTML).toBe(stepsHtml);
+    });
+
+    it("the scoped Retry reloads only the listing and reports Ready on success", async () => {
+      let failList = true;
+      build(async (url) => {
+        if (String(url).startsWith("/api/dashboard")) return DASHBOARD;
+        if (failList) throw new Error("refresh 503");
+        return REPS;
+      });
+      view.bind();
+      await view.loadDashboardRepertoires();
+      failList = false;
+      const onClick = container.addEventListener.mock.calls.find(([t]) => t === "click")[1];
+      const retryBtn = { dataset: { libAction: "retry-list" } };
+      onClick({ target: { closest: () => retryBtn } });
+      await vi.waitFor(() => expect(statuses.at(-1)).toEqual(["status", "Ready"]));
+      expect(container.innerHTML).toContain('data-repertoire-id="rep-1"');
+      expect(api.mock.calls.some(([u]) => String(u).startsWith("/api/dashboard"))).toBe(false);
+      expect(today.hidden).toBe(false);
+    });
+
+    it("a full-load /api/repertoires failure still uses the full error composition", async () => {
+      build(async (url) => {
+        if (String(url).startsWith("/api/dashboard")) return DASHBOARD;
+        throw new Error("repertoires 502");
+      });
+      await expect(view.loadDashboard()).rejects.toThrow("repertoires 502");
+      expectErrorComposition("repertoires 502");
+      expect(container.innerHTML).not.toContain("library-list-error");
+    });
+  });
 });

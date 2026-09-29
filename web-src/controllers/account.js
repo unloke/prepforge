@@ -230,6 +230,49 @@ export function createAccountController({
   // The control that opened the menu (rail chip or the More sheet's account
   // item): it carries aria-expanded and gets focus back on Escape.
   let menuTrigger = null;
+  // What the open menu is positioned against, and the observer that keeps it
+  // there while the hover/focus rail grows or collapses underneath it.
+  let menuAnchor = null;
+  let railObserver = null;
+
+  // Rail account: open beside the rail, bottom-aligned with the avatar.
+  // Mobile (rail hidden, opened from the More sheet): sit above the tab bar.
+  function positionAccountMenu() {
+    const menu = document.getElementById("account-menu");
+    if (!menu || menu.hidden || !menuAnchor) return;
+    const rect = menu.getBoundingClientRect();
+    const cr = menuAnchor.getBoundingClientRect();
+    let left;
+    let top;
+    if (cr.width > 0) {
+      left = cr.right + 8;
+      top = cr.bottom - rect.height;
+    } else {
+      left = (window.innerWidth - rect.width) / 2;
+      top = window.innerHeight - rect.height - 74;
+    }
+    left = Math.max(8, Math.min(left, window.innerWidth - rect.width - 8));
+    top = Math.max(8, Math.min(top, window.innerHeight - rect.height - 8));
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+  }
+
+  // The desktop rail expands as an overlay on hover / keyboard focus and
+  // collapses once the pointer or focus moves into the menu. Re-anchor on
+  // every rail size change so the menu tracks the trigger instead of hanging
+  // at the expanded rail's edge.
+  function followRailWidth(anchor) {
+    stopFollowingRail();
+    const rail = anchor?.closest?.(".rail");
+    if (!rail || typeof ResizeObserver !== "function") return;
+    railObserver = new ResizeObserver(() => positionAccountMenu());
+    railObserver.observe(rail);
+  }
+
+  function stopFollowingRail() {
+    if (railObserver) railObserver.disconnect();
+    railObserver = null;
+  }
 
   // Guest → the chip is a single sign-in action. Signed in → it toggles the
   // account menu. `trigger` defaults to the rail chip; `anchor` only positions.
@@ -262,23 +305,9 @@ export function createAccountController({
     }
     menuTrigger = trigger || chip;
     menuTrigger.setAttribute("aria-expanded", "true");
-    // Rail account: open beside the rail, bottom-aligned with the avatar.
-    // Mobile (rail hidden, opened from the More sheet): sit above the tab bar.
-    const rect = menu.getBoundingClientRect();
-    const cr = (anchor || chip).getBoundingClientRect();
-    let left;
-    let top;
-    if (cr.width > 0) {
-      left = cr.right + 8;
-      top = cr.bottom - rect.height;
-    } else {
-      left = (window.innerWidth - rect.width) / 2;
-      top = window.innerHeight - rect.height - 74;
-    }
-    left = Math.max(8, Math.min(left, window.innerWidth - rect.width - 8));
-    top = Math.max(8, Math.min(top, window.innerHeight - rect.height - 8));
-    menu.style.left = `${left}px`;
-    menu.style.top = `${top}px`;
+    menuAnchor = anchor || chip;
+    positionAccountMenu();
+    followRailWidth(menuAnchor);
     menu.querySelectorAll("button").forEach((button) => {
       button.addEventListener("click", () => handleAccountMenuAction(button.dataset.action));
     });
@@ -291,6 +320,8 @@ export function createAccountController({
     const menu = document.getElementById("account-menu");
     const wasOpen = !!menu && !menu.hidden;
     if (menu) menu.hidden = true;
+    stopFollowingRail();
+    menuAnchor = null;
     const chip = document.getElementById("account-chip");
     if (chip) chip.setAttribute("aria-expanded", "false");
     const trigger = menuTrigger;
