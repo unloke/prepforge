@@ -42,7 +42,9 @@ function replayFocusPosition(game) {
   const chess = new Chess();
   try {
     for (let i = 0; i < upto; i += 1) {
-      chess.move(history[i], { sloppy: true });
+      // chess.js 1.x move() only takes { strict }; the 0.x `sloppy` option was
+      // dropped from the API (the plain SAN call is the same behaviour).
+      chess.move(history[i]);
     }
   } catch (_) {
     return null;

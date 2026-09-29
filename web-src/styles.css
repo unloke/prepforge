@@ -1844,6 +1844,19 @@ h2 {
   vertical-align: 2px;
 }
 .lib-count[hidden] { display: none; }
+
+/* Library filter bar: shared .seg segmented filters + a name search field. */
+.lib-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.lib-filter-search {
+  flex: 1 1 160px;
+  min-width: 140px;
+  max-width: 260px;
+}
 .lib-row {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(150px, 1fr) minmax(140px, .9fr) 28px;

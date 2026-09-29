@@ -393,7 +393,12 @@ export function createSettingsView({
         const target = id && document.getElementById(id);
         if (!target) return;
         event.preventDefault();
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Reduced motion: jump instead of smooth-scrolling. matchMedia is
+        // optional in embedded/test environments.
+        const reduceMotion =
+          typeof window !== "undefined" &&
+          Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
+        target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
         markActiveSection(id);
       });
     });

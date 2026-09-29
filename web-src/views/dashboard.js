@@ -51,6 +51,22 @@ function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg }) {
   return `${html}</div>`;
 }
 
+// Library filter bar (prototype All / White / Black / Shared / Disabled plus a
+// repertoire name search): a pure client-side predicate over the cached
+// /api/repertoires listing. Own rows match on their production fields (name,
+// color, visibility, is_active); shared read-only fallback rows carry
+// `sharedRow`. Filtering never refetches or reshapes a row.
+export function filterLibraryRows(rows, { filter = "all", query = "" } = {}) {
+  const q = query.trim().toLowerCase();
+  return (rows || []).filter((item) => {
+    if (q && !String(item.name || "").toLowerCase().includes(q)) return false;
+    if (filter === "all") return true;
+    if (filter === "shared") return item.sharedRow === true || item.visibility === "team";
+    if (filter === "disabled") return item.is_active === false;
+    return String(item.color || "") === filter;
+  });
+}
+
 export function createDashboardView({
   appState,
   api,
@@ -76,6 +92,12 @@ export function createDashboardView({
   // badge fills the mastery mix. One click previews; double-click (or Enter on
   // a selected row) opens the workspace — the full production action.
   let selectedRepId = null;
+
+  // Library filter state (client-side — see filterLibraryRows). Kept across
+  // listings so an import or delete doesn't reset the user's filter.
+  let libraryFilter = "all";
+  let libraryQuery = "";
+  let repListCache = { own: [], shared: [] };
 
   function masteryMixSegments(health) {
     const mix = [
@@ -150,7 +172,10 @@ export function createDashboardView({
     }
     const trainBtn = document.getElementById("lib-preview-train");
     if (trainBtn) {
-      trainBtn.onclick = () => goToSmartTraining(`Starting ${repertoire.name || "training"}…`);
+      // The smart queue is mixed (due reviews and weak spots across every
+      // repertoire), so neither the button copy nor the status may imply a
+      // single-repertoire session.
+      trainBtn.onclick = () => goToSmartTraining("Starting smart queue…");
     }
   }
 
@@ -328,8 +353,228 @@ export function createDashboardView({
 
   let lastDashboardRecommendations = [];
 
-  async function loadDashboardRepertoires() {
+  // ---- Library list rendering ----------------------------------------------
+  // The list renders from `repListCache` (the /api/repertoires listing: own
+  // repertoires + team shares) so the filter bar can re-render client-side
+  // without another round trip. Own rows normally; the shared read-only list
+  // when the account has no own repertoires (fallback preserved).
+
+  function renderSharedFallbackRows(container, rows) {
+    // No own repertoires but team shares exist: surface them read-only so
+    // the Library still offers something to open.
+    container.innerHTML = rows
+      .map(
+        (item) => `
+          <div class="lib-row list-item is-shared" role="option" tabindex="0" data-repertoire-id="${escapeHtml(item.id)}" data-shared="1" aria-selected="false">
+            <span class="lib-cell-rep">
+              <span class="color-dot ${escapeHtml(item.color)}"></span>
+              <span class="name">${escapeHtml(item.name)}</span>
+              <span class="team-role-badge sm">shared</span>
+            </span>
+            <span class="lib-cell-mastery"><span class="muted">read-only</span></span>
+            <span class="lib-cell-queue"><span class="muted">—</span></span>
+            <span class="lib-cell-menu"></span>
+          </div>`,
+      )
+      .join("");
+    container.querySelectorAll(".lib-row").forEach((row) => {
+      const open = () => editRepertoire(row.dataset.repertoireId);
+      row.addEventListener("click", open);
+      row.addEventListener("keydown", (event) => {
+        if (event.target !== row) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          open();
+        }
+      });
+    });
+    renderLibraryPreview(null);
+  }
+
+  function renderOwnRepertoireRows(container, visible) {
+    // Library table (prototype layout): one row per repertoire with name,
+    // an inline mastery bar from the cached health badge, and the queue
+    // chips. The listing API carries no line count or last-trained date, so
+    // the prototype's "Lines" / "Last trained" columns stay out rather than
+    // inventing data.
+    if (!selectedRepId || !visible.some((item) => String(item.id) === selectedRepId)) {
+      selectedRepId = String(visible[0].id);
+    }
+    container.innerHTML = visible
+      .map((item) => {
+        const id = escapeHtml(item.id);
+        const name = escapeHtml(item.name);
+        const color = escapeHtml(item.color);
+        const active = item.is_active !== false;
+        const cls = [
+          "lib-row",
+          "list-item",
+          active ? "" : "is-disabled",
+          String(item.id) === selectedRepId ? "is-selected" : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+        const status = active ? "" : ' <span class="sub">· disabled</span>';
+        const team =
+          item.visibility === "team" && item.team_id
+            ? appState.teams.find((tm) => tm.id === item.team_id)
+            : null;
+        const shareBadge =
+          item.visibility === "team" && item.team_id
+            ? ` <span class="team-role-badge sm" title="Shared with ${escapeHtml(team ? team.name : "team")}">shared</span>`
+            : "";
+        const health = item.health;
+        const pct = health ? health.mastery_pct || 0 : null;
+        const tier = pct == null ? "" : pct >= 80 ? "high" : pct >= 40 ? "mid" : "low";
+        const mastery = pct == null
+          ? '<span class="lib-mastery lib-mastery-none">no moves trained yet</span>'
+          : `<span class="lib-mastery"><span class="lib-mbar" role="img" aria-label="${pct}% mastered"><i class="tier-${tier}" style="width:${pct}%"></i></span><b>${pct}%</b></span>`;
+        const chips = [];
+        if (health && health.weak) {
+          chips.push(`<span class="kchip k-weak" title="Missed more than answered">${health.weak} weak</span>`);
+        }
+        if (health && health.due) {
+          chips.push(`<span class="kchip k-due" title="Spaced repetition says now">${health.due} due</span>`);
+        }
+        if (health && health.untrained) {
+          chips.push(`<span class="kchip k-new" title="Never trained">${health.untrained} new</span>`);
+        }
+        const chipsHtml = chips.length
+          ? chips.join("")
+          : '<span class="muted">—</span>';
+        return `
+          <div class="${cls}" role="option" tabindex="0" data-repertoire-id="${id}" data-active="${active ? "1" : "0"}" aria-selected="${String(item.id) === selectedRepId}">
+            <span class="lib-cell-rep">
+              <span class="color-dot ${color}"></span>
+              <span class="name">${name}</span>
+              <span class="sub"> · ${color}</span>${status}${shareBadge}
+            </span>
+            <span class="lib-cell-mastery">${mastery}</span>
+            <span class="lib-cell-queue">${chipsHtml}</span>
+            <button type="button" class="ib row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-haspopup="menu">⋯</button>
+          </div>
+        `;
+      })
+      .join("");
+    applySelectionHighlight();
+    const selected = visible.find((item) => String(item.id) === selectedRepId) || null;
+    renderLibraryPreview(selected);
+    container.querySelectorAll(".lib-row").forEach((row) => {
+      const repId = row.dataset.repertoireId;
+      const preview = () => {
+        selectedRepId = repId;
+        applySelectionHighlight();
+        renderLibraryPreview(visible.find((item) => String(item.id) === repId) || null);
+      };
+      const open = () => editRepertoire(repId);
+      row.addEventListener("click", (event) => {
+        if (event.target.closest(".row-menu-btn")) return;
+        preview();
+      });
+      row.addEventListener("dblclick", (event) => {
+        if (event.target.closest(".row-menu-btn")) return;
+        open();
+      });
+      row.addEventListener("keydown", (event) => {
+        if (event.target !== row) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          // Enter on the selected row opens the workspace (prototype's
+          // double-click); space previews.
+          if (event.key === "Enter" && selectedRepId === repId) open();
+          else preview();
+        }
+      });
+      row.addEventListener("contextmenu", (event) =>
+        openRepertoireContextMenu(event, repId, row.dataset.active === "1"),
+      );
+    });
+    container.querySelectorAll(".row-menu-btn").forEach((btn) => {
+      btn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const row = btn.closest(".lib-row");
+        const rect = btn.getBoundingClientRect();
+        openRepertoireContextMenu(
+          { preventDefault: () => {}, clientX: rect.left, clientY: rect.bottom + 4 },
+          row.dataset.repertoireId,
+          row.dataset.active === "1",
+        );
+      });
+    });
+  }
+
+  function renderRepertoireList() {
     const container = document.getElementById("dashboard-repertoires");
+    if (!container) return;
+    const useSharedFallback =
+      !repListCache.own.length && repListCache.shared.length > 0;
+    const universe = useSharedFallback ? repListCache.shared : repListCache.own;
+    // Selection follows the visible list: narrowing the table moves the
+    // selection to the first shown row when the old one is filtered out — the
+    // same rule the unfiltered table always had for a disappearing row.
+    const shown = filterLibraryRows(universe, {
+      filter: libraryFilter,
+      query: libraryQuery,
+    });
+    if (!universe.length) {
+      setListboxRole(container, false);
+      const nextSteps = recommendationsHtml(lastDashboardRecommendations);
+      container.innerHTML =
+        '<div class="empty-state">No repertoires yet.</div>' +
+        nextSteps;
+      bindRecommendationCtas(container);
+      renderLibraryPreview(null);
+      selectedRepId = null;
+      return;
+    }
+    if (!shown.length) {
+      // Non-empty list narrowed to nothing by the filter/search.
+      setListboxRole(container, false);
+      container.innerHTML =
+        '<div class="empty-state">No repertoires match this filter.</div>';
+      renderLibraryPreview(null);
+      selectedRepId = null;
+      return;
+    }
+    setListboxRole(container, true);
+    if (useSharedFallback) {
+      renderSharedFallbackRows(container, shown);
+      return;
+    }
+    renderOwnRepertoireRows(container, shown);
+  }
+
+  // role=option rows need a real listbox owner; empty states drop the role.
+  function setListboxRole(container, on) {
+    if (on) {
+      container.setAttribute("role", "listbox");
+      container.setAttribute("aria-label", "Repertoires");
+    } else {
+      container.removeAttribute("role");
+      container.removeAttribute("aria-label");
+    }
+  }
+
+  function updateLibraryFilterChips() {
+    document.querySelectorAll("[data-lib-filter]").forEach((btn) => {
+      const on = (btn.dataset.libFilter || "all") === libraryFilter;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-pressed", String(on));
+    });
+  }
+
+  function setLibraryFilter(filter) {
+    libraryFilter = filter || "all";
+    updateLibraryFilterChips();
+    renderRepertoireList();
+  }
+
+  function setLibraryQuery(query) {
+    libraryQuery = String(query ?? "");
+    renderRepertoireList();
+  }
+
+  async function loadDashboardRepertoires() {
     try {
       if (appState.signedIn && !appState.teams.length) {
         try {
@@ -344,160 +589,21 @@ export function createDashboardView({
       const visible = (payload.repertoires || []).filter(
         (item) => !appState.pendingRepDeletes.has(String(item.id)),
       );
-      countBadge(visible.length);
-      if (!visible.length && Array.isArray(payload.shared) && payload.shared.length) {
-        // No own repertoires but team shares exist: surface them read-only so
-        // the Library still offers something to open.
-        countBadge(payload.shared.length);
-        container.innerHTML = payload.shared
-          .map(
-            (item) => `
-          <div class="lib-row list-item is-shared" role="option" tabindex="0" data-repertoire-id="${escapeHtml(item.id)}" data-shared="1" aria-selected="false">
-            <span class="lib-cell-rep">
-              <span class="color-dot ${escapeHtml(item.color)}"></span>
-              <span class="name">${escapeHtml(item.name)}</span>
-              <span class="team-role-badge sm">shared</span>
-            </span>
-            <span class="lib-cell-mastery"><span class="muted">read-only</span></span>
-            <span class="lib-cell-queue"><span class="muted">—</span></span>
-            <span class="lib-cell-menu"></span>
-          </div>`,
-          )
-          .join("");
-        container.querySelectorAll(".lib-row").forEach((row) => {
-          const open = () => editRepertoire(row.dataset.repertoireId);
-          row.addEventListener("click", open);
-          row.addEventListener("keydown", (event) => {
-            if (event.target !== row) return;
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              open();
-            }
-          });
-        });
-        renderLibraryPreview(null);
-        return;
+      const sharedRows = (Array.isArray(payload.shared) ? payload.shared : []).map(
+        (item) => ({ ...item, sharedRow: true }),
+      );
+      // The count badge counts the full listing — never the filtered view.
+      if (!visible.length && sharedRows.length) {
+        countBadge(sharedRows.length);
+      } else {
+        countBadge(visible.length);
       }
-      if (!visible.length) {
-        const nextSteps = recommendationsHtml(lastDashboardRecommendations);
-        container.innerHTML =
-          '<div class="empty-state">No repertoires yet.</div>' +
-          nextSteps;
-        bindRecommendationCtas(container);
-        renderLibraryPreview(null);
-        selectedRepId = null;
-        return;
-      }
-      // Library table (prototype layout): one row per repertoire with name,
-      // an inline mastery bar from the cached health badge, and the queue
-      // chips. The listing API carries no line count or last-trained date, so
-      // the prototype's "Lines" / "Last trained" columns stay out rather than
-      // inventing data.
-      if (!selectedRepId || !visible.some((item) => String(item.id) === selectedRepId)) {
-        selectedRepId = String(visible[0].id);
-      }
-      container.innerHTML = visible
-        .map((item) => {
-          const id = escapeHtml(item.id);
-          const name = escapeHtml(item.name);
-          const color = escapeHtml(item.color);
-          const active = item.is_active !== false;
-          const cls = [
-            "lib-row",
-            "list-item",
-            active ? "" : "is-disabled",
-            String(item.id) === selectedRepId ? "is-selected" : "",
-          ]
-            .filter(Boolean)
-            .join(" ");
-          const status = active ? "" : ' <span class="sub">· disabled</span>';
-          const team =
-            item.visibility === "team" && item.team_id
-              ? appState.teams.find((tm) => tm.id === item.team_id)
-              : null;
-          const shareBadge =
-            item.visibility === "team" && item.team_id
-              ? ` <span class="team-role-badge sm" title="Shared with ${escapeHtml(team ? team.name : "team")}">shared</span>`
-              : "";
-          const health = item.health;
-          const pct = health ? health.mastery_pct || 0 : null;
-          const tier = pct == null ? "" : pct >= 80 ? "high" : pct >= 40 ? "mid" : "low";
-          const mastery = pct == null
-            ? '<span class="lib-mastery lib-mastery-none">no moves trained yet</span>'
-            : `<span class="lib-mastery"><span class="lib-mbar" role="img" aria-label="${pct}% mastered"><i class="tier-${tier}" style="width:${pct}%"></i></span><b>${pct}%</b></span>`;
-          const chips = [];
-          if (health && health.weak) {
-            chips.push(`<span class="kchip k-weak" title="Missed more than answered">${health.weak} weak</span>`);
-          }
-          if (health && health.due) {
-            chips.push(`<span class="kchip k-due" title="Spaced repetition says now">${health.due} due</span>`);
-          }
-          if (health && health.untrained) {
-            chips.push(`<span class="kchip k-new" title="Never trained">${health.untrained} new</span>`);
-          }
-          const chipsHtml = chips.length
-            ? chips.join("")
-            : '<span class="muted">—</span>';
-          return `
-          <div class="${cls}" role="option" tabindex="0" data-repertoire-id="${id}" data-active="${active ? "1" : "0"}" aria-selected="${String(item.id) === selectedRepId}">
-            <span class="lib-cell-rep">
-              <span class="color-dot ${color}"></span>
-              <span class="name">${name}</span>
-              <span class="sub"> · ${color}</span>${status}${shareBadge}
-            </span>
-            <span class="lib-cell-mastery">${mastery}</span>
-            <span class="lib-cell-queue">${chipsHtml}</span>
-            <button type="button" class="ib row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-haspopup="menu">⋯</button>
-          </div>
-        `;
-        })
-        .join("");
-      applySelectionHighlight();
-      const selected = visible.find((item) => String(item.id) === selectedRepId) || null;
-      renderLibraryPreview(selected);
-      container.querySelectorAll(".lib-row").forEach((row) => {
-        const repId = row.dataset.repertoireId;
-        const preview = () => {
-          selectedRepId = repId;
-          applySelectionHighlight();
-          renderLibraryPreview(visible.find((item) => String(item.id) === repId) || null);
-        };
-        const open = () => editRepertoire(repId);
-        row.addEventListener("click", (event) => {
-          if (event.target.closest(".row-menu-btn")) return;
-          preview();
-        });
-        row.addEventListener("dblclick", (event) => {
-          if (event.target.closest(".row-menu-btn")) return;
-          open();
-        });
-        row.addEventListener("keydown", (event) => {
-          if (event.target !== row) return;
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            // Enter on the selected row opens the workspace (prototype's
-            // double-click); space previews.
-            if (event.key === "Enter" && selectedRepId === repId) open();
-            else preview();
-          }
-        });
-        row.addEventListener("contextmenu", (event) =>
-          openRepertoireContextMenu(event, repId, row.dataset.active === "1"),
-        );
-      });
-      container.querySelectorAll(".row-menu-btn").forEach((btn) => {
-        btn.addEventListener("click", (event) => {
-          event.stopPropagation();
-          const row = btn.closest(".lib-row");
-          const rect = btn.getBoundingClientRect();
-          openRepertoireContextMenu(
-            { preventDefault: () => {}, clientX: rect.left, clientY: rect.bottom + 4 },
-            row.dataset.repertoireId,
-            row.dataset.active === "1",
-          );
-        });
-      });
+      repListCache = { own: visible, shared: sharedRows };
+      renderRepertoireList();
     } catch (error) {
+      const container = document.getElementById("dashboard-repertoires");
+      if (!container) return;
+      setListboxRole(container, false);
       container.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
     }
   }
@@ -609,6 +715,15 @@ export function createDashboardView({
       });
     }
 
+    // Library filter bar (segmented filters + repertoire search) — client-side.
+    document.querySelectorAll("[data-lib-filter]").forEach((btn) => {
+      btn.addEventListener("click", () => setLibraryFilter(btn.dataset.libFilter));
+    });
+    const libSearch = document.getElementById("lib-filter-search");
+    if (libSearch) {
+      libSearch.addEventListener("input", () => setLibraryQuery(libSearch.value));
+    }
+
     const dashCard = document.getElementById("dashboard-repertoires");
     bindDropZone(dashCard && dashCard.closest(".card"), (file) => {
       handleImportPgnFile(file).catch(() => {});
@@ -621,5 +736,7 @@ export function createDashboardView({
     loadDashboardRepertoires,
     renderDashboardToday,
     healthBadgeHtml,
+    setLibraryFilter,
+    setLibraryQuery,
   };
 }

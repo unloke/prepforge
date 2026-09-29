@@ -118,3 +118,10 @@
     text-shadow: none;
   }
 }
+
+/* Reduced motion: the bar updates instantly — no height/width tween. */
+@media (prefers-reduced-motion: reduce) {
+  .analysis-evalbar-white {
+    transition: none;
+  }
+}

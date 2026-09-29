@@ -107,6 +107,25 @@ export function handleScoutColorTabClick(event, resultsEl) {
   return true;
 }
 
+// ArrowLeft / ArrowRight move between the colour tabs (WAI-ARIA tabs pattern,
+// automatic activation): focus follows the active tab and the same
+// visibility-only switch runs as a click — section state is never rebuilt.
+export function handleScoutColorTabKeydown(event, resultsEl) {
+  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return false;
+  const tab = event.target.closest?.(".scout-color-tab");
+  if (!tab || !resultsEl?.contains(tab)) return false;
+  const tabs = Array.from(resultsEl.querySelectorAll?.(".scout-color-tab") || []);
+  const index = tabs.indexOf(tab);
+  if (index < 0) return false;
+  const step = event.key === "ArrowRight" ? 1 : -1;
+  const next = tabs[(index + step + tabs.length) % tabs.length];
+  event.preventDefault?.();
+  resultsEl.dataset.scoutTab = next.dataset.scoutTab;
+  applyScoutColorTabs(resultsEl);
+  next.focus?.();
+  return true;
+}
+
 export function restoreScoutExpanded(resultsEl, sections, captured, ctx) {
   if (!resultsEl || !captured?.expandedKeys?.size) {
     if (resultsEl && captured) resultsEl.scrollTop = captured.scrollTop || 0;
@@ -1203,7 +1222,7 @@ export function buildScoutSectionReport(
 
   const heading = oppColor === "white" ? "With White" : "With Black";
   const html = `
-    <div class="scout-section" data-scout-color="${oppColor}" data-module-b="${PRODUCTION_MODULE_B_ID}">
+    <div class="scout-section" id="scout-section-${oppColor}" data-scout-color="${oppColor}" data-module-b="${PRODUCTION_MODULE_B_ID}">
       <div class="scout-section-head">
         <span class="scout-color-dot ${oppColor}" aria-hidden="true"></span>
         <h3>${heading}</h3>

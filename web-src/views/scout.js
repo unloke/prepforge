@@ -11,6 +11,7 @@ import {
   captureScoutExpanded,
   consumeEcoCacheEntry,
   handleScoutColorTabClick,
+  handleScoutColorTabKeydown,
   handleScoutProfileClick,
   handleScoutResultsClick,
   renderScoutRefutationPanel,
@@ -1721,6 +1722,8 @@ export function createScoutView(deps) {
       });
 
       results.addEventListener("keydown", (e) => {
+        // Colour tabs: ArrowLeft/ArrowRight switch (visibility-only).
+        if (handleScoutColorTabKeydown(e, results)) return;
         if (e.key !== "Enter" && e.key !== " ") return;
         const lineEl = e.target.closest(".scout-line");
         const distRow = e.target.closest(".scout-dist-row[data-first-uci]");

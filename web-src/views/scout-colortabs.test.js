@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyScoutColorTabs,
   handleScoutColorTabClick,
+  handleScoutColorTabKeydown,
   renderScoutColorTabsHtml,
 } from "../scout-report.js";
 
@@ -29,10 +30,14 @@ function makeTab(color) {
     dataset: { scoutTab: color },
     classes: new Set(),
     attrs: {},
+    focused: false,
   };
   t.classList = { toggle: (cls, on) => (on ? t.classes.add(cls) : t.classes.delete(cls)) };
   t.setAttribute = (k, v) => {
     t.attrs[k] = v;
+  };
+  t.focus = () => {
+    t.focused = true;
   };
   // Real DOM elements carry closest(); the tab is its own match.
   t.closest = (sel) => (sel === ".scout-color-tab" ? t : null);
@@ -114,5 +119,78 @@ describe("scout colour tabs", () => {
 
     // A click on a line row (no .scout-color-tab ancestor) falls through.
     expect(handleScoutColorTabClick({ target: { closest: () => null } }, el)).toBe(false);
+  });
+
+  it("ArrowRight/ArrowLeft move focus and activate — still visibility-only", () => {
+    const whiteTab = makeTab("white");
+    const blackTab = makeTab("black");
+    const whiteSection = makeSection("white");
+    const blackSection = makeSection("black");
+    const el = makeResultsEl({
+      tabs: [whiteTab, blackTab],
+      sections: [whiteSection, blackSection],
+    });
+    applyScoutColorTabs(el);
+
+    const key = (k, target) => ({
+      key: k,
+      target,
+      preventDefault: () => {},
+    });
+    expect(handleScoutColorTabKeydown(key("ArrowRight", whiteTab), el)).toBe(true);
+    expect(el.dataset.scoutTab).toBe("black");
+    expect(blackTab.classes.has("is-active")).toBe(true);
+    expect(blackTab.attrs["aria-selected"]).toBe("true");
+    expect(blackSection.hidden).toBe(false);
+    expect(whiteSection.hidden).toBe(true);
+    expect(blackTab.focused).toBe(true);
+
+    // Sections keep their computed state — the switch only toggles `hidden`.
+    whiteSection.marker = "kept";
+    expect(handleScoutColorTabKeydown(key("ArrowLeft", blackTab), el)).toBe(true);
+    expect(el.dataset.scoutTab).toBe("white");
+    expect(whiteSection.hidden).toBe(false);
+    expect(whiteSection.marker).toBe("kept");
+    expect(whiteTab.focused).toBe(true);
+  });
+
+  it("arrow navigation wraps and ignores unrelated keys and targets", () => {
+    const whiteTab = makeTab("white");
+    const blackTab = makeTab("black");
+    const el = makeResultsEl({
+      tabs: [whiteTab, blackTab],
+      sections: [makeSection("white"), makeSection("black")],
+    });
+
+    // Right on the last tab wraps to the first.
+    expect(
+      handleScoutColorTabKeydown(
+        { key: "ArrowRight", target: blackTab, preventDefault: () => {} },
+        el,
+      ),
+    ).toBe(true);
+    expect(el.dataset.scoutTab).toBe("white");
+    // Left on the first tab wraps to the last.
+    expect(
+      handleScoutColorTabKeydown(
+        { key: "ArrowLeft", target: whiteTab, preventDefault: () => {} },
+        el,
+      ),
+    ).toBe(true);
+    expect(el.dataset.scoutTab).toBe("black");
+
+    // Non-arrow keys and non-tab targets fall through to the normal handlers.
+    expect(
+      handleScoutColorTabKeydown(
+        { key: "Enter", target: whiteTab, preventDefault: () => {} },
+        el,
+      ),
+    ).toBe(false);
+    expect(
+      handleScoutColorTabKeydown(
+        { key: "ArrowRight", target: { closest: () => null }, preventDefault: () => {} },
+        el,
+      ),
+    ).toBe(false);
   });
 });
