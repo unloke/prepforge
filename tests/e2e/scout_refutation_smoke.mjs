@@ -116,7 +116,9 @@ async function activateScout(page) {
     .waitFor({ state: "attached", timeout: TIMEOUT_MS });
   await page.click('[data-testid="nav-scout"]');
   await page.locator("#view-replay.is-active").waitFor({ timeout: 10_000 });
-  await page.locator('.replay-card-scout:not([hidden])').waitFor({ timeout: 10_000 });
+  // Readiness anchor is the Scout panel itself, keyed on the stable
+  // data-replay-panel contract rather than a layout CSS class.
+  await page.locator('[data-replay-panel="scout"]:not([hidden])').waitFor({ timeout: 10_000 });
 }
 
 async function main() {

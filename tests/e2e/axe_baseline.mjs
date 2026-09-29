@@ -97,12 +97,14 @@ async function main() {
     await scan("games", async () => {
       await page.click('[data-testid="nav-replay"]');
       await page.locator("#view-replay.is-active").waitFor({ timeout: 10_000 });
-      await page.locator('.replay-card-games:not([hidden])').waitFor({ timeout: 10_000 });
+      // Readiness anchor is the panel selected by the data-replay-panel
+      // contract, not a layout CSS class that refactors rename.
+      await page.locator('[data-replay-panel="games"]:not([hidden])').waitFor({ timeout: 10_000 });
     });
     await scan("scout", async () => {
       await page.click('[data-testid="nav-scout"]');
       await page.locator("#view-replay.is-active").waitFor({ timeout: 10_000 });
-      await page.locator('.replay-card-scout:not([hidden])').waitFor({ timeout: 10_000 });
+      await page.locator('[data-replay-panel="scout"]:not([hidden])').waitFor({ timeout: 10_000 });
     });
     await scan("settings", async () => {
       await page.click('[data-testid="account-chip"]');

@@ -50,7 +50,11 @@
 .set .pf-row-text {
   min-width: 0;
 }
-.set-row:has(input:disabled) { opacity: 0.55; }
+/* Dim the disabled control, not the whole row: dimming the row also dims the
+   value readout, which drops it under the WCAG AA 4.5:1 contrast floor and
+   fails the axe baseline (serious). Matches the pre-ui-v2 behaviour, where
+   only the slider itself was dimmed. */
+.set-row:has(input:disabled) > .slider input:disabled { opacity: 0.45; }
 .set .hint,
 .set .note,
 .set .faint { margin: 8px 0 0; }

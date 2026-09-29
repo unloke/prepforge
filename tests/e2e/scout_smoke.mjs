@@ -276,7 +276,8 @@ async function main() {
     await page.locator(".src-popover [data-src-done]").click();
     await page.click('[data-testid="scout-btn"]');
 
-    const profile = page.locator(".scout-profile-card");
+    // ui-v2 renamed the profile card: the container is #scout-profile (class scout-profile).
+    const profile = page.locator("#scout-profile:not([hidden])");
     try {
       await profile.waitFor({ timeout: TIMEOUT_MS });
     } catch {
@@ -327,7 +328,10 @@ async function main() {
       fail(`prep row missing when-they-play framing (got: ${prepText.trim().slice(0, 120) || "(empty)"})`);
     }
     await firstLine.click();
-    const detail = page.locator(".scout-line-detail").first();
+    // ui-v2 dropped the .scout-line-detail wrapper: the opened line's detail is
+    // rendered into the #scout-side aside (aria-label="Line detail"), which is
+    // hidden until a row is selected.
+    const detail = page.locator('#scout-side:not([hidden])').first();
     await detail.waitFor({ timeout: 10_000 });
     await detail.locator(".scout-action-analyze").click();
 
