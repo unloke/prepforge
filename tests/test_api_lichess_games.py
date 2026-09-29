@@ -997,3 +997,41 @@ def test_seen_marker_is_per_owner(client, monkeypatch):
     _link(other)
     # B has its own (empty) last-seen marker -> the same game is still new for B.
     assert other.get("/api/lichess/latest").json()["is_new"] is True
+
+
+@pytest.mark.parametrize("method", ["GET", "POST"])
+@pytest.mark.parametrize("linked", [False, True])
+def test_external_departure_never_writes_training(client, monkeypatch, method, linked):
+    from unittest.mock import patch
+    from prepforge_chess.storage.repositories import PrepForgeRepository
+
+    _register(client, "external-evidence@example.com")
+    if linked:
+        _link_as(client, monkeypatch, "OtherSelf")
+    rep = _make_e4_repertoire(client)
+    _mock_fetch(monkeypatch, games=[_departure_game()])
+    before = client.get("/api/train/smart/summary", params={
+        "repertoire_id": rep["repertoire_id"],
+    }).json()
+    with patch.object(PrepForgeRepository, "lock_user_setting") as ledger, patch.object(
+        PrepForgeRepository, "write_training_progress"
+    ) as progress:
+        if method == "GET":
+            response = client.get("/api/lichess/compare", params={
+                "account_ids": "", "usernames": "TestUser",
+            })
+        else:
+            response = client.post("/api/lichess/compare", json={
+                "account_ids": [], "usernames": ["TestUser"],
+            }, headers=csrf_headers(client))
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["games"][0]["departure_reason"] == "user_left_preparation"
+        assert body["misses_recorded"] == 0
+        assert body["games"][0]["training_recorded"] is False
+        progress.assert_not_called()
+        ledger.assert_not_called()
+    after = client.get("/api/train/smart/summary", params={
+        "repertoire_id": rep["repertoire_id"],
+    }).json()
+    assert after == before
