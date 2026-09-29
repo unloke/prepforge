@@ -206,7 +206,7 @@
                 </div>
               </div>
               <div class="empty-state" id="analysis-empty"><p>Play on the board, or analyze a PGN.</p></div>
-              <details class="drawer" id="pgn-drawer" open>
+              <details class="drawer" id="pgn-drawer">
                 <summary>Analyze source · PGN</summary>
                 <textarea
                   id="pgn-input"
@@ -216,7 +216,7 @@
                   placeholder="[Event &quot;Training Game&quot;]&#10;&#10;1. e4 e5 2. Nf3 Nc6 *"
                 ></textarea>
               </details>
-              <details class="drawer" id="history-drawer" data-testid="history-drawer" open>
+              <details class="drawer" id="history-drawer" data-testid="history-drawer" open hidden>
                 <summary>Recent analyses</summary>
                 <div class="analysis-history" id="analysis-history" data-testid="analysis-history"></div>
               </details>

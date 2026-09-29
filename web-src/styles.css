@@ -1494,6 +1494,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .lib-cols[hidden],
 .lib-cols[hidden] ~ .lib-hint { display: none; }
+/* Empty library (signed out / no repertoires): the onboarding card has no
+   filter chips, column header or row hint — only the search stays. */
+.lib-list.is-empty .lib-toolbar .seg,
+.lib-list.is-empty .lib-cols,
+.lib-list.is-empty .lib-hint { display: none; }
 .lib-row {
   min-height: 54px;
   padding-top: 8px;

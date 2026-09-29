@@ -3419,6 +3419,15 @@ function switchView(name, { fromUrl = false } = {}) {
   }
   // Warm the Analyze book (active repertoire trees) so the first explored move
   // can be matched without waiting on the lazy load.
+  // Recent analyses are owner-scoped: signed out the drawer is absent; signed
+  // in it ships open, so it loads on entry (not only on a manual toggle).
+  if (name === "analyze") {
+    const historyDrawer = document.getElementById("history-drawer");
+    if (historyDrawer) {
+      historyDrawer.hidden = !appState.signedIn;
+      if (appState.signedIn && historyDrawer.open) loadAnalysisHistory();
+    }
+  }
   if (name === "analyze" && appState.signedIn) {
     ensureBookLoaded()
       .then(() => updateBookline())
@@ -3833,6 +3842,7 @@ async function ensureDashboardView() {
       showInputModal,
       promptImportRepertoireFromPgn,
       requireSignIn,
+      openSignIn: () => openAuthModal("login"),
       goToView: switchView,
       // Library preview mini-board: FEN decode + the product's piece SVGs over
       // the real listing root_fen. Pure DOM helpers — no engine, no board.
@@ -6284,7 +6294,11 @@ function bindEvalChart() {
   // Chart interaction (click / hover tooltip / keyboard) lives with the chart
   // renderer in views/analyze.js (bound on first render); app.js only keeps the
   // viewport resize hook that rescales the key-moment markers.
-  window.addEventListener("resize", rescaleEvalMarkers);
+  // Only a mounted Analyze chart has markers to rescale — a resize on any other
+  // page must not pull the Analyze chunk (and its CSS) in.
+  window.addEventListener("resize", () => {
+    if (analyzeView) analyzeView.rescaleEvalMarkers();
+  });
 }
 
 async function hydrateBuild(payload, selectedNodeId = null) {
@@ -8138,13 +8152,16 @@ async function loadTrainRepertoireOptions() {
   if (!select && !document.getElementById("train-play-repertoire-picker")) return;
   let active = [];
   try {
+    // Signed out there is no owner-scoped listing: the picker shows its empty
+    // option instead of surfacing the API's 401 as a sticky top-bar error.
+    if (!appState.signedIn) throw Object.assign(new Error("signed out"), { signedOut: true });
     const payload = await api("/api/repertoires");
     appState.repertoireList = payload.repertoires || [];
     active = appState.repertoireList.filter(
       (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id)),
     );
   } catch (error) {
-    setStatusError(error.message);
+    if (!error.signedOut) setStatusError(error.message);
     active = (appState.repertoireList || []).filter(
       (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id)),
     );
@@ -10320,6 +10337,12 @@ async function loadSettings() {
     setStatusError(error.message);
     return;
   }
+  if (!appState.signedIn) {
+    // Signed out: browser-local settings only (theme, board, engine status) —
+    // no /api/settings call and no 401 in the top bar.
+    view.renderSettings(null);
+    return;
+  }
   try {
     const payload = await api("/api/settings");
     applySettingsPayload(payload);
@@ -11964,6 +11987,9 @@ async function init() {
   } else {
     setStatus("Sign in to build and train your repertoires.");
     renderBuilderTree();
+    ensureDashboardView()
+      .then((view) => view.renderSignedOut())
+      .catch(() => { /* the Library chunk failing leaves the static shell */ });
   }
   workspaceUrlReady = true;
   await restoreWorkspaceLocation();

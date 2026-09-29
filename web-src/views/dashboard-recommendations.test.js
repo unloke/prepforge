@@ -309,4 +309,15 @@ describe("dashboard empty-state recommendations", () => {
     expect(steps.innerHTML).toContain("Get started");
     expect(container.innerHTML).not.toContain("step-n");
   });
+
+  it("renders the signed-out Library as the onboarding card without any API call", () => {
+    view.renderSignedOut();
+    expect(api).not.toHaveBeenCalled();
+    expect(container.innerHTML).toContain('data-testid="library-signed-out"');
+    expect(container.innerHTML).toContain('data-lib-action="signin"');
+    expect(todayCard.hidden).toBe(true);
+    expect(steps.hidden).toBe(false);
+    expect(steps.innerHTML).toContain("<h2>Get started</h2>");
+    expect(steps.innerHTML.match(/class="step"/g)).toHaveLength(3);
+  });
 });

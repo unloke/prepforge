@@ -82,6 +82,7 @@ export function createDashboardView({
   showInputModal,
   promptImportRepertoireFromPgn,
   requireSignIn,
+  openSignIn = null,
   goToView,
   previewRenderers = null,
 }) {
@@ -547,12 +548,20 @@ export function createDashboardView({
     });
   }
 
+  // An empty library (signed out, or no repertoires yet) is the prototype's
+  // onboarding card: no filter chips, column header or row hint over nothing.
+  function setLibraryEmpty(empty) {
+    const card = document.querySelector("#view-dashboard .lib-list");
+    if (card) card.classList.toggle("is-empty", empty);
+  }
+
   function renderRepertoireList() {
     const container = document.getElementById("dashboard-repertoires");
     if (!container) return;
     const useSharedFallback =
       !repListCache.own.length && repListCache.shared.length > 0;
     const universe = useSharedFallback ? repListCache.shared : repListCache.own;
+    setLibraryEmpty(!universe.length);
     // Selection follows the visible list: narrowing the table moves the
     // selection to the first shown row when the old one is filtered out — the
     // same rule the unfiltered table always had for a disappearing row.
@@ -659,6 +668,49 @@ export function createDashboardView({
     }
   }
 
+  // Signed-out Library: the same empty-library composition as a first-run
+  // account, with sign-in as the primary action. No owner-scoped API calls.
+  function renderSignedOut() {
+    const container = document.getElementById("dashboard-repertoires");
+    if (!container) return;
+    repListCache = { own: [], shared: [] };
+    countBadge(0);
+    setListboxRole(container, false);
+    setLibraryEmpty(true);
+    container.innerHTML = `
+      <div class="empty-state big" data-testid="library-signed-out">
+        <div class="es-mark" aria-hidden="true">♜</div>
+        <h3>Sign in to start your library.</h3>
+        <p>Repertoires, the training queue and game reviews are saved to your account. You can explore the board in Analyze without one.</p>
+        <div class="row gap">
+          <button type="button" class="btn primary" data-lib-action="signin">Sign in</button>
+          <button type="button" class="btn" data-lib-action="import">Import PGN</button>
+        </div>
+      </div>`;
+    renderLibraryPreview(null);
+    selectedRepId = null;
+    const today = document.getElementById("dashboard-today");
+    if (today) today.hidden = true;
+    const card = document.getElementById("dashboard-steps");
+    if (!card) return;
+    const steps = [
+      ["Sign in or create an account", "Your library, streak and queue follow you across devices.", "signin", "Sign in"],
+      ["Create your first repertoire", "Pick a side and an opening — or turn one of your games into one.", "new", "New repertoire"],
+      ["Analyze a game", "Engine review and coach notes work before you sign in.", "analyze", "Open Analyze"],
+    ];
+    card.innerHTML =
+      `<header class="card-head"><h2>Get started</h2></header>` +
+      steps
+        .map(
+          ([title, detail, action, label], i) =>
+            `<div class="step"><span class="step-n" aria-hidden="true">${i + 1}</span>` +
+            `<div class="step-text"><b>${escapeHtml(title)}</b><p>${escapeHtml(detail)}</p></div>` +
+            `<button type="button" class="btn sm" data-lib-action="${action}">${escapeHtml(label)}</button></div>`,
+        )
+        .join("");
+    card.hidden = false;
+  }
+
   async function loadDashboard() {
     const payload = await api(`/api/dashboard?local_date=${localDateString()}`);
     if (payload.streak) appState.dayStreak = payload.streak;
@@ -727,6 +779,14 @@ export function createDashboardView({
 
     const newRep = () => createRepertoirePrompt({ title: "New repertoire" });
     const importPgn = () => dashboardImportPgn().catch(() => {});
+    const libAction = (action) => {
+      if (action === "new") newRep();
+      else if (action === "import") importPgn();
+      else if (action === "signin") {
+        if (openSignIn) openSignIn();
+        else requireSignIn("Sign in (or create an account) to start your library");
+      } else if (action === "analyze" && goToView) goToView("analyze");
+    };
     const newRepBtn = document.getElementById("dashboard-new-rep");
     if (newRepBtn) newRepBtn.addEventListener("click", newRep);
     const importBtn = document.getElementById("dashboard-import-pgn");
@@ -737,9 +797,15 @@ export function createDashboardView({
     if (listEl) {
       listEl.addEventListener("click", (event) => {
         const btn = event.target.closest && event.target.closest("[data-lib-action]");
-        if (!btn) return;
-        if (btn.dataset.libAction === "new") newRep();
-        else if (btn.dataset.libAction === "import") importPgn();
+        if (btn) libAction(btn.dataset.libAction);
+      });
+    }
+    // The signed-out Get started card carries the same delegated actions.
+    const stepsEl = document.getElementById("dashboard-steps");
+    if (stepsEl) {
+      stepsEl.addEventListener("click", (event) => {
+        const btn = event.target.closest && event.target.closest("[data-lib-action]");
+        if (btn) libAction(btn.dataset.libAction);
       });
     }
 
@@ -770,6 +836,7 @@ export function createDashboardView({
     loadDashboard,
     loadDashboardRepertoires,
     renderDashboardToday,
+    renderSignedOut,
     setLibraryFilter,
     setLibraryQuery,
   };
