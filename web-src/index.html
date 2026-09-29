@@ -79,28 +79,65 @@
 
     <main class="workspace" id="workspace-main" tabindex="-1">
       <section class="view is-active" id="view-dashboard" data-testid="view-dashboard">
-        <div class="today-card" id="dashboard-today" data-testid="dashboard-today" hidden></div>
-        <div class="metrics" id="dashboard-metrics"></div>
-        <section class="card">
-          <div class="card-head">
-            <h2>Repertoires</h2>
-            <div class="tools">
-              <button class="btn ghost" id="dashboard-new-rep" data-testid="dashboard-new-rep">New repertoire</button>
-              <button class="btn ghost" id="dashboard-import-pgn" data-testid="dashboard-import-pgn">Import PGN</button>
-            </div>
+        <div class="lib-grid">
+          <div class="lib-list-col">
+            <div class="today-card" id="dashboard-today" data-testid="dashboard-today" hidden></div>
+            <div class="metrics" id="dashboard-metrics"></div>
+            <section class="card lib-list-card">
+              <div class="card-head">
+                <h2>Repertoires <span class="lib-count" id="dashboard-rep-count" hidden></span></h2>
+                <div class="tools">
+                  <button class="btn ghost" id="dashboard-new-rep" data-testid="dashboard-new-rep">New repertoire</button>
+                  <button class="btn ghost" id="dashboard-import-pgn" data-testid="dashboard-import-pgn">Import PGN</button>
+                </div>
+              </div>
+              <div class="lib-filters" role="group" aria-label="Filter repertoires">
+                <div class="seg">
+                  <button type="button" class="seg-btn is-active" data-lib-filter="all" aria-pressed="true">All</button>
+                  <button type="button" class="seg-btn" data-lib-filter="white" aria-pressed="false">White</button>
+                  <button type="button" class="seg-btn" data-lib-filter="black" aria-pressed="false">Black</button>
+                  <button type="button" class="seg-btn" data-lib-filter="shared" aria-pressed="false">Shared</button>
+                  <button type="button" class="seg-btn" data-lib-filter="disabled" aria-pressed="false">Disabled</button>
+                </div>
+                <input type="search" id="lib-filter-search" class="lib-filter-search" aria-label="Filter repertoires" placeholder="Filter repertoires" autocomplete="off" />
+              </div>
+              <p class="muted hint">Click to preview · double-click to open · &#8943; for rename, share, delete.</p>
+              <div id="dashboard-repertoires" class="list-stack lib-rep-list"></div>
+              <input type="file" id="dashboard-import-input" accept=".pgn,.json,application/x-chess-pgn,application/json" hidden />
+            </section>
           </div>
-          <p class="muted hint">Click a repertoire to open it in Build &middot; &#8943; for rename, share, delete.</p>
-          <div id="dashboard-repertoires" class="list-stack"></div>
-          <input type="file" id="dashboard-import-input" accept=".pgn,.json,application/x-chess-pgn,application/json" hidden />
-        </section>
+          <aside class="lib-preview card" id="lib-preview" aria-label="Repertoire preview" hidden>
+            <div class="pv-head">
+              <span class="color-dot" id="lib-preview-dot"></span>
+              <div class="pv-title">
+                <h2 id="lib-preview-name">—</h2>
+                <span class="pv-sub muted" id="lib-preview-sub"></span>
+              </div>
+            </div>
+            <div class="pv-board" id="lib-preview-board"></div>
+            <div class="pv-mix-label muted">Mastery</div>
+            <div class="pv-mix" id="lib-preview-mix" role="img" aria-label="Mastery mix"></div>
+            <div class="pv-mix-legend" id="lib-preview-legend"></div>
+            <div class="pv-actions">
+              <button class="btn primary" id="lib-preview-open" type="button">Open workspace</button>
+              <button class="btn" id="lib-preview-train" type="button" title="Smart queue mixes due reviews and weak spots across all repertoires">Train smart queue</button>
+            </div>
+          </aside>
+        </div>
       </section>
 
       <section class="view" id="view-analyze" data-testid="view-analyze">
         <div class="study">
           <div class="board-area">
-            <div class="board-stack">
-              <div class="chessboard" id="analysis-board" data-testid="analysis-board"></div>
-              <svg class="annotations" id="analysis-annotations"></svg>
+            <div class="board-with-eval">
+              <div class="board-stack">
+                <div class="chessboard" id="analysis-board" data-testid="analysis-board"></div>
+                <svg class="annotations" id="analysis-annotations"></svg>
+              </div>
+              <div class="analysis-evalbar" id="analysis-evalbar" data-testid="analysis-evalbar" aria-hidden="true">
+                <div class="analysis-evalbar-white" id="analysis-evalbar-white"></div>
+                <span class="analysis-evalbar-text" id="analysis-evalbar-text">·</span>
+              </div>
             </div>
             <div class="board-bar">
               <button class="ib" id="analysis-start" title="Start" aria-label="Go to start">⏮</button>
@@ -344,6 +381,7 @@
                 <div class="train-queue-bar" id="train-queue-bar" role="img" aria-label="Queue composition"></div>
                 <div class="train-queue-legend" id="train-queue-legend"></div>
               </div>
+              <div class="train-upnext" id="train-upnext" hidden></div>
               <div class="train-progress-head">
                 <span id="train-line-label">Card 1 / 1</span>
                 <span class="train-card-dots" id="train-card-dots" title="Moves in this card"></span>
@@ -482,7 +520,7 @@
                 <button class="ib" id="team-detail-close" title="Close" aria-label="Close team details">×</button>
               </div>
             </div>
-            <div class="team-workspace-tabs" role="tablist" aria-label="Team workspace"><button type="button" id="team-tab-members" class="is-active" data-team-pane="members" role="tab" aria-controls="team-panel-members" aria-selected="true">Members</button><button type="button" id="team-tab-repertoires" data-team-pane="repertoires" role="tab" aria-controls="team-panel-repertoires" aria-selected="false" tabindex="-1">Shared repertoires</button></div>
+            <div class="team-workspace-tabs" role="tablist" aria-label="Team workspace"><button type="button" id="team-tab-members" class="is-active" data-team-pane="members" role="tab" aria-controls="team-panel-members" aria-selected="true">Members <span class="team-tab-count" data-team-count="members" hidden></span></button><button type="button" id="team-tab-repertoires" data-team-pane="repertoires" role="tab" aria-controls="team-panel-repertoires" aria-selected="false" tabindex="-1">Shared repertoires <span class="team-tab-count" data-team-count="repertoires" hidden></span></button></div>
             <div class="team-detail-columns"><section class="team-members-panel" id="team-panel-members" data-team-panel="members" role="tabpanel" aria-labelledby="team-tab-members"><div class="team-members-head">
               <span class="settings-label">Members</span>
               <button class="btn ghost" id="team-add-member" data-testid="team-add-member" hidden>Add member</button>
@@ -493,6 +531,7 @@
             </div>
             <div id="team-shared-repertoires" class="list-stack" data-testid="team-shared-repertoires"></div></section></div>
             <div class="team-detail-foot" id="team-detail-foot"></div>
+            <footer class="team-invite-foot" id="team-invite-foot" hidden></footer>
           </section>
 
           <aside class="team-empty"><span class="team-empty-mark">♙</span><h3>Choose a team</h3><p>Members and shared repertoires appear here.</p></aside>
@@ -506,8 +545,18 @@
       </section>
 
       <section class="view" id="view-settings" data-testid="view-settings">
-        <div class="list-view replay-layout">
-          <section class="card">
+        <div class="list-view replay-layout settings-layout">
+          <nav class="settings-nav" aria-label="Settings sections">
+            <a class="settings-nav-link is-active" href="#set-appearance">Appearance</a>
+            <a class="settings-nav-link" href="#set-engine">Engine</a>
+            <a class="settings-nav-link" href="#set-maia">Maia3</a>
+            <a class="settings-nav-link" href="#set-strength">Playing strength</a>
+            <a class="settings-nav-link" href="#set-board">Board</a>
+            <a class="settings-nav-link" href="#set-connections">Connections</a>
+            <a class="settings-nav-link" href="#set-about">About</a>
+          </nav>
+          <div class="settings-content">
+          <section class="card" id="set-appearance">
             <div class="card-head"><h2>Appearance</h2></div>
             <div class="pf-row">
               <span class="pf-row-text">
@@ -525,7 +574,7 @@
               <option value="dark">Dark</option>
             </select>
           </section>
-          <section class="card">
+          <section class="card" id="set-engine">
             <div class="card-head">
               <h2>Engine</h2>
               <div class="tools">
@@ -554,7 +603,7 @@
             </div>
             <p class="muted" id="settings-stockfish-status"></p>
           </section>
-          <section class="card">
+          <section class="card" id="set-maia">
             <div class="card-head">
               <h2>Maia3</h2>
               <div class="tools">
@@ -575,7 +624,7 @@
             <p class="muted" id="settings-maia-status"></p>
             <p class="muted settings-error" id="settings-maia-error" hidden></p>
           </section>
-          <section class="card">
+          <section class="card" id="set-strength">
             <div class="card-head">
               <h2>Playing strength</h2>
               <button type="button" class="pf-info" id="strength-info" aria-label="About Playing strength" title="About Playing strength" aria-expanded="false">ⓘ</button>
@@ -611,14 +660,14 @@
               Adds the Maia3 human layer to analysis: classification, coach intuition, and brilliant signals. Stockfish always runs; this layer is skipped when off.
             </div>
           </section>
-          <section class="card">
+          <section class="card" id="set-board">
             <div class="card-head"><h2>Board</h2></div>
             <div class="settings-label">Piece set</div>
             <div class="piece-style-picker" id="piece-style-picker"></div>
             <div class="settings-label settings-section">Feedback</div>
             <div class="pf-feedback" id="board-prefs"></div>
           </section>
-          <section class="card" data-testid="settings-connections">
+          <section class="card" id="set-connections" data-testid="settings-connections">
             <div class="card-head">
               <h2>Connections</h2>
               <button type="button" class="pf-info" id="connections-info" aria-label="About Connections" title="About Connections" aria-expanded="false">ⓘ</button>
@@ -632,10 +681,11 @@
               <button class="btn ghost conn-link" id="settings-link-lichess" data-testid="settings-link-lichess" type="button">Link another account</button>
             </div>
           </section>
-          <section class="card">
+          <section class="card" id="set-about">
             <div class="card-head"><h2>About</h2></div>
             <p class="muted hint">PrepForge Chess — local opening preparation and replay tool.</p>
           </section>
+          </div>
         </div>
       </section>
     </main>

@@ -1,17 +1,23 @@
 // Scout UI (Replay tab card) — lazy-loaded from app.js.
 // Pure fetch/parse logic stays in ../scout.js; rendering helpers in ../scout-report.js.
 
+import "./scout.css";
+
 import {
+  applyScoutColorTabs,
   buildScoutAnalyzePgn,
   buildScoutSectionReport,
   buildScoutShareText,
   captureScoutExpanded,
   consumeEcoCacheEntry,
+  handleScoutColorTabClick,
+  handleScoutColorTabKeydown,
   handleScoutProfileClick,
   handleScoutResultsClick,
   renderScoutRefutationPanel,
   mergeEnginePatternsIntoSections,
   renderMiniBoardHtml as renderScoutMiniBoardHtml,
+  renderScoutColorTabsHtml,
   renderScoutProfile,
   restoreScoutExpanded,
   scoutDistRowHtml,
@@ -359,6 +365,11 @@ export function createScoutView(deps) {
     const profileEl = getProfileEl();
     const results = getResultsEl();
     const captured = results ? captureScoutExpanded(results) : null;
+    // Prototype "With White / With Black" tabs: real per-colour game counts
+    // from the opponent profile; hidden while streaming (both sections build live).
+    const tabsHtml = renderScoutColorTabsHtml(scoutState.profile, escapeHtml, {
+      hidden: isStreaming(),
+    });
 
     if (profileEl) {
       profileEl.innerHTML = renderScoutProfile(
@@ -433,8 +444,9 @@ export function createScoutView(deps) {
     const progressHtml = '<div id="scout-engine-progress" class="scout-engine-progress" hidden></div>';
     if (results) {
       results.innerHTML = sections.length
-        ? progressHtml + sections.join("")
+        ? progressHtml + tabsHtml + sections.join("")
         : progressHtml + '<div class="empty-state">Not enough opening data in these games.</div>';
+      if (sections.length) applyScoutColorTabs(results);
       if (captured) {
         restoreScoutExpanded(results, scoutState.sections, captured, {
           scoutModule,
@@ -1704,10 +1716,14 @@ export function createScoutView(deps) {
     if (results && !scoutBoundEventTargets.has(results)) {
       scoutBoundEventTargets.add(results);
       results.addEventListener("click", async (e) => {
+        // Prototype colour tabs: visibility-only switch, no re-render.
+        if (handleScoutColorTabClick(e, results)) return;
         await handleScoutResultsClick(e, scoutClickCtx());
       });
 
       results.addEventListener("keydown", (e) => {
+        // Colour tabs: ArrowLeft/ArrowRight switch (visibility-only).
+        if (handleScoutColorTabKeydown(e, results)) return;
         if (e.key !== "Enter" && e.key !== " ") return;
         const lineEl = e.target.closest(".scout-line");
         const distRow = e.target.closest(".scout-dist-row[data-first-uci]");

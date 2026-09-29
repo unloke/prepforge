@@ -1,0 +1,56 @@
+/* Settings v2 (ui-prototype-v2) — section nav + card column layout.
+   Imported by the lazy views/settings.js module, so these rules split into
+   the settings chunk and the main stylesheet keeps its budget. */
+
+/* Section nav — prototype 180px sticky column beside the card list. All
+   cards live in one .settings-content wrapper (grid column 2) so auto-
+   placement can never scatter them across both tracks. On narrow layouts
+   the nav becomes a horizontal chip row above the cards. */
+#view-settings .settings-layout {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+#view-settings .settings-layout > .settings-nav {
+  grid-column: 1;
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+#view-settings .settings-content {
+  grid-column: 2;
+  display: grid;
+  gap: 16px;
+  align-items: start;
+  min-width: 0;
+}
+#view-settings .settings-nav-link {
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+#view-settings .settings-nav-link:hover { background: var(--surface-hover); }
+#view-settings .settings-nav-link.is-active {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--line);
+}
+#view-settings .settings-nav-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+@media (max-width: 1020px) {
+  #view-settings .settings-layout { grid-template-columns: 1fr; }
+  #view-settings .settings-layout > .settings-nav {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  #view-settings .settings-nav-link { padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; }
+}

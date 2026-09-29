@@ -1,0 +1,38 @@
+/* Teams detail workspace — ui-prototype-v2 sheet: Members / Shared
+   repertoires are two tabs over ONE panel (the prototype's `.tabs` row with
+   count chips); the invite-link status is a footer line under the tabs. */
+
+/* Tab counts — prototype "Members 3" chips, hidden when zero (no fake data). */
+.team-tab-count {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.team-tab-count[hidden] { display: none; }
+#view-teams .team-workspace-tabs button.is-active .team-tab-count {
+  color: var(--text);
+  border-color: var(--accent-line);
+}
+
+/* One panel at a time under the tabs (the two <section>s stay in the DOM for
+   state; only the active one shows). */
+#view-teams .team-detail-columns > section[hidden] { display: none; }
+#view-teams .team-detail-columns > section:not([hidden]) { min-width: 0; }
+
+/* Invite footer — prototype `footer.faint.small` under the detail card. */
+.team-invite-foot {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--muted);
+  font-size: 11px;
+}
+.team-invite-foot[hidden] { display: none; }

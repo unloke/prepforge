@@ -16,6 +16,8 @@ function makeContainer() {
     innerHTML: "",
     querySelectorAll: vi.fn(() => []),
     addEventListener: vi.fn(),
+    setAttribute: vi.fn(),
+    removeAttribute: vi.fn(),
   };
 }
 

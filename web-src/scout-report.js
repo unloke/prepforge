@@ -63,6 +63,89 @@ function findLineByKey(sections, color, lineKey) {
   return null;
 }
 
+export function renderScoutColorTabsHtml(profile, escapeHtml, { hidden = false } = {}) {
+  const colors = ["white", "black"].filter(
+    (c) => profile?.colorStats?.[c] && profile.colorStats[c].games > 0,
+  );
+  // With a real opponent history both colours almost always have games; single-
+  // colour histories render a lone (still-correct) tab. No data → no bar.
+  if (!colors.length) return "";
+  // WAI-ARIA tabs: exactly one aria-selected="true" and roving tabindex — only
+  // the active tab is tabbable, the rest stay focusable via arrow keys.
+  const buttons = colors
+    .map((c, i) => {
+      const stats = profile.colorStats[c];
+      const label = c === "white" ? "With White" : "With Black";
+      const selected = i === 0 ? "true" : "false";
+      const tabindex = i === 0 ? "" : ' tabindex="-1"';
+      return `<button type="button" class="scout-color-tab${i === 0 ? " is-active" : ""}" role="tab" data-scout-tab="${c}" aria-selected="${selected}"${tabindex} aria-controls="scout-section-${c}"><span class="scout-color-dot ${c}" aria-hidden="true"></span>${escapeHtml(label)} <small>${stats.games} games</small></button>`;
+    })
+    .join("");
+  return `<div class="scout-color-tabs" role="tablist" aria-label="Opponent colour"${hidden ? ' hidden' : ''}>${buttons}</div>`;
+}
+
+// Tab switch = visibility only: the sections keep their computed line state
+// (expansion, drilldown, enrichment). State lives on the results element so a
+// re-render keeps the active colour and restored sections re-apply it.
+// Also keeps roving tabindex in sync: only the selected tab is tabbable.
+export function applyScoutColorTabs(resultsEl) {
+  if (!resultsEl) return;
+  const tabs = resultsEl.querySelectorAll(".scout-color-tab");
+  if (!tabs.length) return;
+  const sections = resultsEl.querySelectorAll(".scout-section[data-scout-color]");
+  const active = resultsEl.dataset.scoutTab || tabs[0]?.dataset.scoutTab || "white";
+  tabs.forEach((tab) => {
+    const on = tab.dataset.scoutTab === active;
+    tab.classList.toggle("is-active", on);
+    tab.setAttribute("aria-selected", on ? "true" : "false");
+    tab.tabIndex = on ? 0 : -1;
+  });
+  sections.forEach((section) => {
+    section.hidden = section.dataset.scoutColor !== active;
+  });
+}
+
+export function handleScoutColorTabClick(event, resultsEl) {
+  const tab = event.target.closest?.(".scout-color-tab");
+  if (!tab || !resultsEl?.contains(tab)) return false;
+  resultsEl.dataset.scoutTab = tab.dataset.scoutTab;
+  applyScoutColorTabs(resultsEl);
+  return true;
+}
+
+// ArrowLeft / ArrowRight cycle between the colour tabs; Home / End jump to the
+// first / last (WAI-ARIA tabs pattern, automatic activation): focus follows the
+// active tab and the same visibility-only switch runs as a click — section
+// state is never rebuilt.
+export function handleScoutColorTabKeydown(event, resultsEl) {
+  if (
+    event.key !== "ArrowLeft" &&
+    event.key !== "ArrowRight" &&
+    event.key !== "Home" &&
+    event.key !== "End"
+  ) {
+    return false;
+  }
+  const tab = event.target.closest?.(".scout-color-tab");
+  if (!tab || !resultsEl?.contains(tab)) return false;
+  const tabs = Array.from(resultsEl.querySelectorAll?.(".scout-color-tab") || []);
+  const index = tabs.indexOf(tab);
+  if (index < 0) return false;
+  let next;
+  if (event.key === "Home") next = tabs[0];
+  else if (event.key === "End") next = tabs[tabs.length - 1];
+  else {
+    const step = event.key === "ArrowRight" ? 1 : -1;
+    next = tabs[(index + step + tabs.length) % tabs.length];
+  }
+  if (!next) return false;
+  event.preventDefault?.();
+  resultsEl.dataset.scoutTab = next.dataset.scoutTab;
+  applyScoutColorTabs(resultsEl);
+  next.focus?.();
+  return true;
+}
+
 export function restoreScoutExpanded(resultsEl, sections, captured, ctx) {
   if (!resultsEl || !captured?.expandedKeys?.size) {
     if (resultsEl && captured) resultsEl.scrollTop = captured.scrollTop || 0;
@@ -1159,7 +1242,7 @@ export function buildScoutSectionReport(
 
   const heading = oppColor === "white" ? "With White" : "With Black";
   const html = `
-    <div class="scout-section" data-scout-color="${oppColor}" data-module-b="${PRODUCTION_MODULE_B_ID}">
+    <div class="scout-section" id="scout-section-${oppColor}" data-scout-color="${oppColor}" data-module-b="${PRODUCTION_MODULE_B_ID}">
       <div class="scout-section-head">
         <span class="scout-color-dot ${oppColor}" aria-hidden="true"></span>
         <h3>${heading}</h3>

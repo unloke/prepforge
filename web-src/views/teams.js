@@ -1,5 +1,9 @@
 // Teams tab view (lazy-loaded from app.js). Lists the caller's teams, drills into
 // one to manage membership, and surfaces repertoires shared to a team.
+// Detail workspace follows the ui-prototype-v2 sheet: Members / Shared
+// repertoires as two tabs over ONE panel (counts live on the tabs), with the
+// invite-link status as a footer line under the tabs.
+import "./teams.css";
 
 export function createTeamsView({
   appState,
@@ -25,16 +29,33 @@ export function createTeamsView({
     });
   }
 
-  document.querySelectorAll("[data-team-pane]").forEach((tab) => {
-    tab.addEventListener("click", () => selectTeamPane(tab.dataset.teamPane));
-    tab.addEventListener("keydown", (event) => {
-      if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
-      event.preventDefault();
-      const next = tab.dataset.teamPane === "members" ? "repertoires" : "members";
-      selectTeamPane(next);
-      document.querySelector(`[data-team-pane="${next}"]`)?.focus();
+  function bindTeamTabs() {
+    document.querySelectorAll("[data-team-pane]").forEach((tab) => {
+      if (tab.dataset.teamTabsBound === "1") return;
+      tab.dataset.teamTabsBound = "1";
+      tab.addEventListener("click", () => selectTeamPane(tab.dataset.teamPane));
+      tab.addEventListener("keydown", (event) => {
+        if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+        event.preventDefault();
+        const next = tab.dataset.teamPane === "members" ? "repertoires" : "members";
+        selectTeamPane(next);
+        document.querySelector(`[data-team-pane="${next}"]`)?.focus();
+      });
     });
-  });
+  }
+
+  // Real counts on the tabs (prototype "Members 3 / Shared repertoires 2"),
+  // hidden while there is nothing to count. Renderers patch one dimension each
+  // (detail members / shared repertoires); the other keeps its last real value.
+  const tabCounts = { members: 0, repertoires: 0 };
+  function renderTeamTabCounts(patch = {}) {
+    Object.assign(tabCounts, patch);
+    document.querySelectorAll("[data-team-count]").forEach((el) => {
+      const n = tabCounts[el.dataset.teamCount] || 0;
+      el.textContent = String(n);
+      el.hidden = !(n > 0);
+    });
+  }
 
   function teamMemberCountLabel(count) {
     const n = Number(count) || 0;
@@ -76,6 +97,7 @@ export function createTeamsView({
       search.dataset.bound = "true";
       search.addEventListener("input", renderTeamsList);
     }
+    bindTeamTabs();
     if (!appState.teams.length) {
       list.innerHTML = '<div class="empty-state">No teams yet.</div>';
       return;
@@ -113,6 +135,7 @@ export function createTeamsView({
   }
 
   function renderTeamSharedRepertoires(teamId, sharedReps) {
+    renderTeamTabCounts({ repertoires: sharedReps.length });
     const container = document.getElementById("team-shared-repertoires");
     if (!container) return;
     if (!sharedReps.length) {
@@ -170,5 +193,27 @@ export function createTeamsView({
     });
   }
 
-  return { loadTeams, renderTeamsList, renderTeamSharedRepertoires };
+  // Prototype invite footer: one muted line naming the team's live invite link.
+  // Data comes from the real detail payload (managers only); anything else hides
+  // the line rather than implying a link exists.
+  function renderTeamInviteFooter(detail) {
+    const foot = document.getElementById("team-invite-foot");
+    if (!foot) return;
+    const invite = detail && detail.invite;
+    if (!invite || !invite.exists) {
+      foot.hidden = true;
+      foot.innerHTML = "";
+      return;
+    }
+    const expires = invite.expires_at ? new Date(invite.expires_at) : null;
+    const when =
+      expires && !Number.isNaN(expires.getTime())
+        ? ` · expires ${expires.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+        : "";
+    foot.innerHTML =
+      `Invite link active${when} · revoke from Invite`;
+    foot.hidden = false;
+  }
+
+  return { loadTeams, renderTeamsList, renderTeamSharedRepertoires, selectTeamPane, renderTeamTabCounts, renderTeamInviteFooter, bindTeamTabs };
 }

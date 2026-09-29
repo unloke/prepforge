@@ -3736,6 +3736,9 @@ async function ensureDashboardView() {
       promptImportRepertoireFromPgn,
       requireSignIn,
       goToView: switchView,
+      // Library preview mini-board: FEN decode + the product's piece SVGs over
+      // the real listing root_fen. Pure DOM helpers — no engine, no board.
+      previewRenderers: { parseFenBoard, pieceSvg },
     });
     dashboardView.bind();
   }
@@ -4371,6 +4374,12 @@ async function openTeamDetail(teamId) {
     deleteBtn.onclick = () => deleteTeam(teamId, detail.name);
   }
   const members = detail.members || [];
+  // Tab counts from the real payload (prototype puts them on the tabs) + the
+  // manager-only invite footer, both before the member rows render.
+  if (teamsView) {
+    teamsView.renderTeamTabCounts({ members: members.length });
+    teamsView.renderTeamInviteFooter(detail);
+  }
   membersEl.innerHTML = members
     .map((m) => {
       const name = escapeHtml(m.display_name || m.lichess_username || "Member");
@@ -4469,6 +4478,9 @@ async function createTeam() {
   try {
     const team = await postJson("/api/teams", { name });
     appState.selectedTeamId = team.id;
+    // A fresh team starts empty: land on the Members tab (the empty Shared
+    // tab would read as a glitch).
+    teamsView?.selectTeamPane?.("members");
     setStatus(`Created team "${name}"`, { severity: "success" });
     await loadTeams();
   } catch (error) {
@@ -4594,7 +4606,10 @@ async function removeTeamMember(teamId, userId, label, isSelf) {
       { method: "DELETE" }
     );
     setStatus(isSelf ? "Left team" : `Removed ${label}`);
-    if (isSelf) hideTeamDetail();
+    if (isSelf) {
+      hideTeamDetail();
+      teamsView?.selectTeamPane?.("members");
+    }
     await loadTeams();
   } catch (error) {
     setStatusError(error.message);
@@ -10568,6 +10583,9 @@ async function ensureReplayView() {
   if (!replayView) {
     replayView = mod.createReplayView({
       escapeHtml,
+      // Focus-board renderers: the production FEN decoder + active piece-SVG
+      // set, shared with the Library preview (piece style follows Settings).
+      boardRenderers: { parseFenBoard, pieceSvg },
       getReplayFilter: () => appState.replayFilter,
       isGameOpen: (index) => appState.replayOpen.has(index),
       onToggleFilter: (kind) => {

@@ -1,11 +1,16 @@
 // Replay tab rendering (lazy-loaded from app.js).
 
+import { Chess } from "chess.js";
+import "./replay.css";
+
 const REPLAY_KINDS = {
   "in-prep": { icon: "✓", badge: "Stayed in prep", label: "stayed in prep" },
   "user-error": { icon: "✗", badge: "You left prep", label: "you left prep" },
   "left-prep": { icon: "⚡", badge: "Opponent novelty", label: "novelties" },
-  "no-prep": { icon: "—", badge: "No repertoire", label: "not covered" },
+  "no-prep": { icon: "—", badge: "No repertoire", label: "not covered", departure: "—" },
 };
+
+const MINI_FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
 function replayGameKind(game) {
   if (game.in_repertoire && game.departure_reason === "game_stayed_in_preparation")
@@ -15,8 +20,113 @@ function replayGameKind(game) {
   return "no-prep";
 }
 
+// Result colour is real: win/loss is resolved against the user's own colour.
+function replayResultClass(game) {
+  const result = String(game.result || "");
+  if (result === "1-0") return game.user_color === "white" ? "r-win" : "r-loss";
+  if (result === "0-1") return game.user_color === "black" ? "r-win" : "r-loss";
+  return "r-draw";
+}
+
+// The focus board is derived client-side from the real move list: replay the
+// SAN history with the already-bundled chess.js up to the decision point (the
+// ply before a departure, or the game end when it stayed in prep), then lift
+// the production payload's expected/departure UCIs onto that exact position —
+// both arrows share the position the user actually faced. No new API data —
+// the same fields the detail text already uses.
+function replayFocusPosition(game) {
+  const history = game.move_san_history || [];
+  if (!history.length) return null;
+  const departPly = Number(game.departure_ply) || 0;
+  const upto = departPly > 0 ? departPly - 1 : history.length;
+  const chess = new Chess();
+  try {
+    for (let i = 0; i < upto; i += 1) {
+      // chess.js 1.x move() only takes { strict }; the 0.x `sloppy` option was
+      // dropped from the API (the plain SAN call is the same behaviour).
+      chess.move(history[i]);
+    }
+  } catch {
+    return null;
+  }
+  const fen = chess.fen();
+  let expectedUci = game.expected_move_uci || null;
+  if (expectedUci) {
+    // Validate the payload move on the derived position; a stale/illegal
+    // expected move simply drops the arrow, it never fakes one.
+    try {
+      chess.move({
+        from: expectedUci.slice(0, 2),
+        to: expectedUci.slice(2, 4),
+        promotion: expectedUci.length > 4 ? expectedUci.slice(4) : undefined,
+      });
+    } catch {
+      expectedUci = null;
+    }
+  }
+  return {
+    fen,
+    expectedUci,
+    playedUci: game.departure_move_uci || null,
+    orientation: game.user_color === "black" ? "black" : "white",
+  };
+}
+
+function replayArrowsFor(pos) {
+  const arrows = [];
+  if (pos.expectedUci) arrows.push({ from: pos.expectedUci.slice(0, 2), to: pos.expectedUci.slice(2, 4), tone: "good" });
+  if (pos.playedUci) arrows.push({ from: pos.playedUci.slice(0, 2), to: pos.playedUci.slice(2, 4), tone: "bad" });
+  return arrows;
+}
+
+// Mini board + arrow overlay. Same grid/piece contract as the Library preview
+// (parseFenBoard/pieceSvg injected from app.js so the user's piece style is
+// honoured); arrows are square-to-square overlays keyed by square name.
+function replayFocusBoardHtml(game, renderers) {
+  const pos = replayFocusPosition(game);
+  if (!pos || !renderers || !renderers.parseFenBoard || !renderers.pieceSvg) return "";
+  const pieces = renderers.parseFenBoard(pos.fen);
+  const ranks = pos.orientation === "black" ? [1, 2, 3, 4, 5, 6, 7, 8] : [8, 7, 6, 5, 4, 3, 2, 1];
+  const files = pos.orientation === "black" ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7];
+  let squares = "";
+  for (const rank of ranks) {
+    for (const fi of files) {
+      const sq = `${MINI_FILES[fi]}${rank}`;
+      const dark = (rank + fi) % 2 === 1;
+      const p = pieces[sq];
+      squares += `<div class="scout-minisquare ${dark ? "dark" : "light"}" data-square="${sq}">${p ? renderers.pieceSvg(p) : ""}</div>`;
+    }
+  }
+  const coord = (square) => {
+    const fileIndex = MINI_FILES.indexOf(square[0]);
+    const rank = Number(square[1]);
+    const x = (pos.orientation === "black" ? 7 - fileIndex : fileIndex) * 12.5 + 6.25;
+    const y = (pos.orientation === "black" ? rank - 1 : 8 - rank) * 12.5 + 6.25;
+    return [x, y];
+  };
+  const arrows = replayArrowsFor(pos)
+    .map((a) => {
+      const [x1, y1] = coord(a.from);
+      const [x2, y2] = coord(a.to);
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const ux = Math.cos(angle);
+      const uy = Math.sin(angle);
+      const head = 4.5;
+      const ex = x2 - ux * 4;
+      const ey = y2 - uy * 4;
+      const wing = head * 0.62;
+      return `<g class="t-${a.tone}"><line x1="${x1}" y1="${y1}" x2="${ex}" y2="${ey}" /><polygon points="${x2},${y2} ${ex - ux * head - uy * wing},${ey - uy * head + ux * wing} ${ex - ux * head + uy * wing},${ey - uy * head - ux * wing}" /></g>`;
+    })
+    .join("");
+  const svg = arrows
+    ? `<svg class="replay-arrows" viewBox="0 0 100 100" aria-hidden="true">${arrows}</svg>`
+    : "";
+  return `<div class="replay-focus-board" data-testid="replay-focus-board"><div class="scout-miniboard" aria-hidden="true">${squares}</div>${svg}</div>`;
+}
+
 export function createReplayView({
   escapeHtml,
+  boardRenderers = null,
   getReplayFilter,
   isGameOpen,
   onToggleFilter,
@@ -25,6 +135,10 @@ export function createReplayView({
   onBuildReply,
   onAnalyze,
 }) {
+  // The focus board renders through app.js's FEN/piece-SVG helpers so it keeps
+  // the product's active piece style; without them the card falls back to
+  // text-only detail (the pre-prototype rendering).
+  const renderers = boardRenderers && boardRenderers.parseFenBoard && boardRenderers.pieceSvg ? boardRenderers : null;
   function renderReplaySummary(payload) {
     const el = document.getElementById("replay-summary");
     if (!el) return;
@@ -79,7 +193,14 @@ export function createReplayView({
       const isDepart = ply === departPly;
       const classes = [];
       if (inPrep) classes.push("prep");
-      if (isDepart) classes.push("ply-mark");
+      if (isDepart) {
+        classes.push("ply-mark");
+        // Departure tone mirrors its outcome (✗ left prep, ⚡ novelty, ✓ stayed).
+        const kind = replayGameKind(game);
+        if (kind === "user-error") classes.push("t-bad");
+        else if (kind === "left-prep") classes.push("t-warn");
+        else if (kind === "in-prep") classes.push("t-good");
+      }
       parts.push(`<span class="${classes.join(" ")}">${escapeHtml(san)}</span>`);
     });
     return parts.join(" ");
@@ -149,13 +270,13 @@ export function createReplayView({
         <div class="replay-detail">${renderReplayDetail(game)}</div>
         <div class="replay-actions">${actions.join("")}${lichessLink}</div>
       </div>`;
-    const departure = game.departure_ply ? `Ply ${Number(game.departure_ply)}` : "—";
+    const departure = game.departure_ply ? `Ply ${Number(game.departure_ply)}` : meta.departure || "—";
     const card = `
     <div class="replay-row rk-${kind}${open ? " is-open" : ""}">
       <button type="button" class="replay-row-head" data-index="${index}" aria-pressed="${open}">
         <span class="replay-badge rk-${kind}">${escapeHtml(meta.badge)}</span>
         <span class="players">${players}</span>
-        <span class="replay-result">${escapeHtml(game.result || "*")}</span>
+        <span class="replay-result ${replayResultClass(game)}">${escapeHtml(game.result || "*")}</span>
         <span class="replay-preview">${escapeHtml(preview)}${preview ? "…" : ""}</span>
         <span class="replay-departure">${escapeHtml(departure)}</span>
       </button>
@@ -180,7 +301,7 @@ export function createReplayView({
     const focused = rows.find(({ index }) => index === selectedIndex);
     const selected = focused ? renderReplayCard(focused.game, focused.index, selectedIndex) : null;
     container.innerHTML = rows.length
-      ? `<div class="replay-triage"><div class="replay-ledger"><div class="replay-ledger-head"><h4>Games to review</h4><span>${rows.length} shown</span></div><div class="replay-ledger-columns" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>Opening</span><span>Departure</span></div><div class="replay-game-list">${rows.map(({ game, index }) => renderReplayCard(game, index, selectedIndex).card).join("")}</div></div><section class="replay-focus" aria-label="Selected game"><div class="replay-focus-eyebrow">Preparation detail <span>${escapeHtml(focused.game.result || "*")}</span></div><h4>${selected.players}</h4><span class="replay-badge rk-${selected.kind}">${escapeHtml(selected.meta.badge)}</span>${selected.body}</section></div>`
+      ? `<div class="replay-triage"><div class="replay-ledger"><div class="replay-ledger-head"><h4>Games to review</h4><span>${rows.length} shown</span></div><div class="replay-ledger-columns" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>Opening</span><span>Departure</span></div><div class="replay-game-list">${rows.map(({ game, index }) => renderReplayCard(game, index, selectedIndex).card).join("")}</div></div><section class="replay-focus" aria-label="Selected game"><div class="replay-focus-top">${replayFocusBoardHtml(focused.game, renderers)}<div class="replay-focus-info"><div class="replay-focus-eyebrow">Preparation detail <span>${escapeHtml(focused.game.result || "*")}</span></div><h4>${selected.players}</h4><span class="replay-badge rk-${selected.kind}">${escapeHtml(selected.meta.badge)}</span>${selected.body}</div></div><div class="replay-legend"><span><i class="k-inprep"></i>in prep</span>${focused.game.departure_ply ? `<span><i class="k-dep"></i>departure</span>` : ""}${selected.kind === "user-error" ? `<span><i class="k-arrow-good"></i>expected</span><span><i class="k-arrow-bad"></i>played</span>` : ""}</div></section></div>`
       : '<div class="empty-state">No games in this bucket.</div>';
     container.querySelectorAll(".replay-row-head").forEach((head) => {
       head.addEventListener("click", () => onToggleGame(Number(head.dataset.index)));

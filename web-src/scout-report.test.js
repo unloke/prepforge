@@ -466,6 +466,23 @@ describe("scout-report rendering", () => {
     expect(html).not.toMatch(/games-count">\d+\.\d/);
   });
 
+  it("gives each colour section the id its tab's aria-controls targets", () => {
+    const { html } = buildScoutSectionReport(
+      scoutModule,
+      {
+        games: PLAN_GAMES,
+        profile: {
+          recentlyChanged: { white: false, black: false },
+        },
+      },
+      "white",
+      LOOKUPS.black,
+      { speedFilter: "all", escapeHtml },
+    );
+    expect(html).toContain('id="scout-section-white"');
+    expect(html).toContain('data-scout-color="white"');
+  });
+
   it("builds Analyze PGN with the scouted player on the correct side", () => {
     const line = { sans: ["e4", "c5", "Nf3"] };
     const pgn = buildScoutAnalyzePgn(line, "white", "rival");
