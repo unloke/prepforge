@@ -770,9 +770,8 @@ h2 {
   color: var(--muted);
 }
 
-/* Replay tab — "My recent games" digest + opponent scout, side by side on
-   wide screens. Game rows are collapsed one-liners; clicking expands the move
-   line, the explanation and the contextual actions. */
+/* Replay tab: the Games review (see "Games — Opus prototype composition")
+   and the Scout workspace share this view. */
 
 .list-view,
 .replay-layout,
@@ -830,11 +829,7 @@ h2 {
   opacity: 0.55;
   cursor: not-allowed;
 }
-.src-chip.is-self {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  font-weight: 700;
-}
+.src-chip.is-self { padding-right: 9px; }
 
 /* Shared Source Composer: collapsed chip tray + PrepForge-style popover. */
 .src-chips {
@@ -849,21 +844,24 @@ h2 {
 }
 
 .src-empty {
-  font-size: 12px;
-  color: var(--muted);
+  padding: 3px 9px;
+  border-radius: 12px;
+  background: var(--surface-3);
+  color: var(--label);
+  font-size: var(--fs-s);
 }
 
 .src-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 3px 6px 3px 10px;
-  border: 1px solid var(--accent-line);
-  border-radius: 999px;
+  gap: 4px;
+  height: 24px;
+  padding: 0 4px 0 9px;
+  border-radius: 12px;
   background: var(--accent-soft);
-  color: var(--text);
+  color: var(--accent-text);
+  font-size: var(--fs-s);
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -1012,188 +1010,6 @@ h2 {
   display: flex;
   justify-content: flex-end;
 }
-/* Per-game source tag: quiet metadata, never the headline. */
-.replay-source {
-  font-size: 11px;
-  color: var(--muted);
-  border: 1px solid var(--line-soft);
-  border-radius: 999px;
-  padding: 1px 8px;
-  white-space: nowrap;
-}
-
-/* Outcome digest: count chips double as filters, plus the queued-misses note. */
-.replay-summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-}
-.replay-summary[hidden] {
-  display: none;
-}
-.replay-chip {
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--panel);
-  padding: 2px 9px;
-  font-size: 11px;
-  cursor: pointer;
-  transition: border-color 0.12s, color 0.12s;
-}
-.replay-chip.is-on {
-  border-color: currentColor;
-  background: transparent;
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-.replay-chip.rk-in-prep { color: var(--good-text); }
-.replay-chip.rk-user-error { color: var(--danger); }
-.replay-chip.rk-left-prep { color: var(--warn-text); }
-.replay-chip.rk-no-prep { color: var(--muted); }
-.replay-queued {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--warn-text);
-}
-
-.replay-results {
-  display: grid;
-  gap: 6px;
-}
-
-.replay-row {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-  overflow: hidden;
-}
-.replay-row.is-open {
-  border-color: var(--line-strong);
-  box-shadow: 0 1px 4px rgba(28, 28, 28, 0.06);
-}
-.replay-row.rk-in-prep { border-left: 3px solid var(--good); }
-.replay-row.rk-left-prep { border-left: 3px solid var(--warn); }
-.replay-row.rk-user-error { border-left: 3px solid var(--danger); }
-.replay-row.rk-no-prep { border-left: 3px solid #d8d4ce; opacity: 0.85; }
-
-/* The whole header is the expand/collapse button. */
-.replay-row-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 10px;
-  border: 0;
-  background: none;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.replay-row-head:hover {
-  background: var(--panel-soft);
-}
-.replay-icon {
-  flex: none;
-  width: 18px;
-  text-align: center;
-  font-weight: 700;
-}
-.rk-in-prep .replay-icon { color: var(--good-text); }
-.rk-user-error .replay-icon { color: var(--danger); }
-.rk-left-prep .replay-icon { color: var(--warn-text); }
-.rk-no-prep .replay-icon { color: var(--muted); }
-.replay-row-head .players {
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.replay-result {
-  flex: none;
-  color: var(--text);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-.replay-preview {
-  flex: 1;
-  min-width: 0;
-  color: var(--text);
-  font-size: 11px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.replay-badge {
-  flex: none;
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 1px 8px;
-  background: var(--panel-soft);
-  white-space: nowrap;
-}
-.rk-in-prep .replay-badge { color: var(--good-text); border-color: rgba(74, 137, 100, 0.4); background: rgba(74, 137, 100, 0.08); }
-.rk-user-error .replay-badge { color: var(--danger); border-color: rgba(196, 82, 77, 0.4); background: rgba(196, 82, 77, 0.08); }
-.rk-left-prep .replay-badge { color: var(--warn-text); border-color: rgba(201, 132, 57, 0.4); background: rgba(201, 132, 57, 0.08); }
-.replay-caret {
-  flex: none;
-  color: var(--muted);
-}
-
-.replay-row-body {
-  display: grid;
-  gap: 8px;
-  padding: 10px 12px 12px;
-  border-top: 1px solid var(--line-soft);
-  background: var(--panel-soft);
-}
-.replay-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 2px;
-}
-.replay-actions .btn {
-  padding: 3px 12px;
-  font-size: 12px;
-}
-.replay-actions .link {
-  font-size: 12px;
-  margin-left: auto;
-}
-
-.replay-line {
-  font-variant-numeric: tabular-nums;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--text);
-}
-
-.replay-line .ply-mark {
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  padding: 1px 4px;
-  border-radius: 3px;
-  font-weight: 700;
-}
-
-.replay-detail {
-  font-size: 12px;
-  color: var(--text);
-}
-
-.replay-detail strong {
-  color: var(--text);
-}
-
 /* Settings */
 
 /* Section-nav layout styles live in views/settings.css (lazy chunk, imported
@@ -1285,7 +1101,6 @@ h2 {
 .settings-error[hidden] {
   display: none;
 }
-
 
 /* PrepForge shared primitives — warm, rounded, compact.
    .pf-switch / .seg / .pf-info / .pf-info-pop / .pf-row are the one shared
@@ -1743,6 +1558,7 @@ h2 {
 .metric.is-due:hover { outline: 1px solid var(--warn); }
 .today > .btn { height: 38px; padding: 0 18px; font-size: 14px; }
 .btn.sm { height: 26px; padding: 0 9px; font-size: var(--fs-s); }
+a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 /* Grid: list + preview (spans both rows) + steps under the list */
 .lib-grid {
@@ -3600,6 +3416,97 @@ h2 {
   #view-train .panel-head { padding: 8px 12px; }
   .train-start-row .btn { flex: 1 1 140px; }
   .sum-cells { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ===========================================================================
+   Games — Opus prototype composition
+   A flat toolbar card (source tray, Sample, Check, outcome filter chips), then
+   the triage grid (ledger + focus card; see views/replay.css). Scout reuses the
+   toolbar / source tray primitives.
+   =========================================================================== */
+.workspace:has(> .view.is-active#view-replay) {
+  max-width: none;
+  padding: 16px;
+}
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+}
+.games-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.games-panel[hidden] { display: none; }
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+}
+.toolbar .spacer { flex: 1; }
+.src { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.src-label { color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
+.inline-field { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: var(--fs-s); }
+.inline-field select {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
+}
+.sum-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.sum-chips[hidden] { display: none; }
+.sum-chip {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--panel);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: 600;
+  cursor: pointer;
+}
+.sum-chip.t-good { color: var(--good-text); }
+.sum-chip.t-bad { color: var(--danger); }
+.sum-chip.t-warn { color: var(--warn-text); }
+.sum-chip.t-none { color: var(--none); }
+.sum-chip.is-on { border-color: currentColor; background: color-mix(in srgb, currentColor 12%, var(--panel)); }
+.sum-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.queued { color: var(--label); font-size: var(--fs-xs); }
+.replay-results { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.replay-results:empty::before {
+  content: "Choose your games and run a check to see your preparation review here.";
+  padding: 48px 24px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+@media (max-width: 1020px) {
+  .review,
+  .games-panel,
+  .replay-results { height: auto; }
+}
+@media (max-width: 760px) {
+  .workspace:has(> .view.is-active#view-replay) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
+  .toolbar { gap: 8px; }
+  .toolbar .spacer { display: none; }
+  .sum-chips { width: 100%; }
+  .toolbar .btn,
+  .inline-field select { min-height: 44px; }
 }
 
 /* Sidebar */
@@ -7845,20 +7752,7 @@ h2 {
   #analyze-sidebar #analysis-results { order: 2; }
   #analyze-sidebar #pgn-drawer { order: 3; }
   #analyze-sidebar #history-drawer { order: 4; }
-  #view-replay .replay-stack,
   #view-teams .teams-stack { max-width: 1400px; }
-  #view-replay .replay-card-games .replay-results {
-    display: grid;
-    grid-template-columns: minmax(280px, 35%) minmax(0, 1fr);
-    gap: 24px;
-    align-items: start;
-  }
-  #view-replay .replay-card-games .replay-row { border-color: transparent; border-bottom-color: var(--line-soft); border-radius: 0; box-shadow: none; }
-  #view-replay .replay-card-games .replay-row.is-open { background: var(--panel-soft); }
-  #view-replay .replay-card-games .replay-preview { display: none; }
-  #view-replay .replay-card-games .replay-row-head { flex-wrap: wrap; }
-  #view-replay .replay-card-games .replay-inspector { min-height: 300px; }
-  #view-replay .replay-card-games .replay-inspector > .empty-state { display: grid; place-items: center; min-height: 260px; text-align: center; }
   /* Scout cards stay on the single responsive base rule below (auto-fit 420px):
      a desktop override here would lose to it in source order, so Scout keeps no
      separate desktop block — one authoritative layout. */
@@ -7900,17 +7794,11 @@ h2 {
   background: transparent;
 }
 .status-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.replay-results .replay-game-list { display: grid; align-content: start; gap: 6px; }
-.replay-inspector { min-width: 0; padding: 18px 22px; border-radius: var(--radius-card); background: var(--panel-soft); }
-.replay-inspector h3 { margin: 0 0 10px; font-size: 20px; }
-.replay-inspector .replay-row-body { padding: 16px 0 0; }
-@media (max-width: 959px) { .replay-inspector { margin-top: 10px; } }
 @media (max-width: 959px) { .team-empty { display: none; } }
 #view-replay .replay-card-scout { max-width: 1400px; }
 #view-replay .replay-card-scout .scout-v13-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 18px; }
 #view-replay .replay-card-scout .scout-v13-card { min-width: 0; }
 /* Games and Scout share the existing workbench tokens and result components. */
-#view-replay .replay-stack { max-width: 1400px; }
 #view-replay [data-replay-panel] {
   padding: 0;
   overflow: hidden;
@@ -7965,22 +7853,10 @@ h2 {
   color: var(--muted);
   font-size: 12px;
 }
-#view-replay .research-results-head {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  padding: 14px 24px 8px;
-}
-#view-replay .research-results-head h3 { margin: 0; font-size: 17px; }
-#view-replay .research-results-head span { color: var(--muted); font-size: 12px; }
-#view-replay .replay-summary,
-#view-replay .replay-results,
 #view-replay .scout-profile,
 #view-replay .scout-v3-results,
 #view-replay .scout-results { margin-left: 24px; margin-right: 24px; }
-#view-replay .replay-results,
 #view-replay .scout-results { margin-bottom: 24px; }
-#view-replay .replay-results:empty::before,
 #view-replay .scout-results:empty::before {
   display: block;
   padding: 18px;
@@ -7990,7 +7866,6 @@ h2 {
   color: var(--muted);
   font-size: 13px;
 }
-#view-replay .replay-results:empty::before { content: "Choose your games and run a check to see your preparation review here."; }
 #view-replay .scout-results:empty::before { content: "Choose an opponent source and start scouting to see their opening routes here."; }
 #view-replay .replay-card-scout:has(.scout-v3-results:not([hidden]):not(:empty)) .scout-results:empty::before { display: none; }
 @media (max-width: 760px) {
@@ -7998,61 +7873,15 @@ h2 {
   #view-replay .research-controls { padding: 12px 18px; align-items: stretch; flex-direction: column; gap: 12px; }
   #view-replay .research-source { flex-basis: auto; }
   #view-replay .research-note { padding: 8px 18px; }
-  #view-replay .research-results-head { padding: 14px 18px 8px; flex-wrap: wrap; gap: 4px 12px; }
-  #view-replay .replay-summary,
-  #view-replay .replay-results,
   #view-replay .scout-profile,
   #view-replay .scout-v3-results,
   #view-replay .scout-results { margin-left: 18px; margin-right: 18px; }
 }
-/* Games and Teams workspaces */
-#view-replay .replay-stack,
+/* Scout and Teams workspaces */
 #view-teams .teams-stack { width: 100%; max-width: 1400px; }
-#view-replay .replay-card-games,
 #view-replay .replay-card-scout,
 #view-teams .teams-stack > .card { min-width: 0; }
 #view-replay .replay-toolbar { justify-content: flex-end; }
-#view-replay .replay-summary { padding: 10px 0; margin: 0 0 10px; border-bottom: 1px solid var(--line-soft); }
-#view-replay .games-workspace { padding: 0; overflow: hidden; }
-#view-replay .games-workspace .research-heading { border-bottom: 1px solid var(--line); }
-#view-replay .games-workspace-grid { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); min-height: 550px; }
-#view-replay .games-setup { background: var(--panel-soft); border-right: 1px solid var(--line); padding: 12px 20px; }
-#view-replay .games-setup .research-controls { display: grid; padding: 0; gap: 24px; }
-#view-replay .games-setup .research-source { min-width: 0; }
-#view-replay .games-setup .replay-toolbar { display: grid; gap: 10px; justify-content: stretch; }
-#view-replay .games-setup .replay-toolbar select,
-#view-replay .games-setup .replay-toolbar button { width: 100%; }
-#view-replay .games-setup .research-note { margin: 28px 0 0; padding: 18px 0 0; border-top: 1px solid var(--line); }
-#view-replay .games-review { min-width: 0; padding: 0 22px 24px; }
-#view-replay .games-review .research-results-head { padding: 18px 0 10px; }
-#view-replay .games-review .replay-summary,
-#view-replay .games-review .replay-results { margin: 0; }
-#view-replay .games-review .replay-results { display: block; }
-#view-replay .replay-focus { position: relative; min-height: 220px; padding: 22px 26px; background: var(--panel-soft); border: 1px solid var(--line); border-top: 3px solid var(--accent); }
-#view-replay .replay-focus-eyebrow { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
-#view-replay .replay-focus h4 { margin: 12px 0 8px; font-size: clamp(18px, 2vw, 26px); }
-#view-replay .replay-focus .replay-row-body { padding: 16px 0 0; }
-#view-replay .replay-ledger-head { display: flex; justify-content: space-between; align-items: baseline; margin-top: 24px; padding: 0 0 8px; border-bottom: 1px solid var(--line); }
-#view-replay .replay-ledger-head h4 { margin: 0; font-size: 14px; }
-#view-replay .replay-ledger-head span { color: var(--muted); font-size: 12px; }
-#view-replay .replay-card-games .replay-preview { display: inline; }
-#view-replay .replay-game-list { display: grid; gap: 0; }
-#view-replay .replay-row {
-  border: 0;
-  border-bottom: 1px solid var(--line-soft);
-  border-left: 3px solid transparent;
-  border-radius: 0;
-  box-shadow: none;
-}
-#view-replay .replay-row.rk-in-prep { border-left-color: var(--good); }
-#view-replay .replay-row.rk-left-prep { border-left-color: var(--warn); }
-#view-replay .replay-row.rk-user-error { border-left-color: var(--danger); }
-#view-replay .replay-row-head { min-height: 44px; padding: 8px 12px; }
-#view-replay .replay-row-head .players { min-width: min(42%, 370px); }
-#view-replay .replay-preview { font-size: 12px; }
-#view-replay .replay-row.is-open { background: var(--panel-soft); }
-#view-replay .replay-row-body { padding: 16px 20px 20px 42px; }
-#view-replay .replay-row-head:focus-visible,
 #view-teams .team-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 #view-replay .replay-card-scout .scout-profile { margin-top: 0; margin-bottom: 16px; }
@@ -8100,17 +7929,7 @@ h2 {
 #view-teams .teams-stack > .card:last-child { grid-column: 2; grid-row: 3; margin-top: 16px; }
 
 @media (max-width: 680px) {
-  #view-replay .games-workspace-grid { display: block; }
-  #view-replay .games-setup { border-right: 0; border-bottom: 1px solid var(--line); }
-  #view-replay .games-setup .research-controls { display: flex; }
-  #view-replay .games-setup .replay-toolbar { display: flex; }
-  #view-replay .games-review { padding: 0 14px 18px; }
-  #view-replay .replay-focus { padding: 16px; }
   #view-replay .replay-toolbar { width: 100%; justify-content: flex-start; }
-  #view-replay .replay-row-head { flex-wrap: wrap; }
-  #view-replay .replay-row-head .players { min-width: 0; flex: 1 1 60%; }
-  #view-replay .replay-preview { flex-basis: 100%; order: 3; padding-left: 26px; }
-  #view-replay .replay-row-body { padding: 12px; }
   #view-teams .teams-stack { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
   #view-teams .teams-stack > .card,
   #view-teams .teams-stack > .team-empty { width: 100%; box-sizing: border-box; }
@@ -8118,31 +7937,6 @@ h2 {
   #view-teams .team-detail-columns { grid-template-columns: 1fr; }
   #view-teams .teams-stack > .card:last-child { margin-top: 0; }
 }
-
-/* Preparation triage: scan the ledger while the selected game's next action stays in view. */
-#view-replay .games-workspace-grid { display: block; min-height: 0; }
-#view-replay .games-setup { border-right: 0; border-bottom: 1px solid var(--line); padding: 14px 22px; }
-#view-replay .games-setup .research-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 20px; }
-#view-replay .games-setup .research-source { flex: 1 1 380px; }
-#view-replay .games-setup .replay-toolbar { display: flex; align-items: end; flex: 0 1 auto; gap: 10px; }
-#view-replay .games-setup .replay-toolbar select,
-#view-replay .games-setup .replay-toolbar button { width: auto; }
-#view-replay .games-setup .research-note { margin: 10px 0 0; padding: 0; border: 0; }
-#view-replay .games-review { padding: 0 22px 22px; }
-#view-replay .replay-triage { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(310px, .65fr); align-items: start; gap: 22px; }
-#view-replay .replay-ledger { min-width: 0; }
-#view-replay .replay-ledger-head { margin-top: 0; }
-#view-replay .replay-ledger-columns,
-#view-replay .replay-row-head { display: grid; grid-template-columns: minmax(100px, 1.15fr) minmax(150px, 1.5fr) 54px minmax(95px, 1fr) 72px; align-items: center; gap: 8px; }
-#view-replay .replay-ledger-columns { padding: 9px 10px; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--line); }
-#view-replay .replay-row-head { width: 100%; text-align: left; min-height: 55px; }
-#view-replay .replay-row-head .players { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#view-replay .replay-row-head .replay-badge { justify-self: start; white-space: nowrap; }
-#view-replay .replay-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#view-replay .replay-departure { color: var(--muted); font-size: 12px; }
-#view-replay .replay-focus { position: sticky; top: 18px; min-height: 290px; }
-#view-replay .replay-focus .replay-line { line-height: 1.9; }
-#view-replay .replay-focus .replay-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
 
 /* Team operations: directory, selected workspace, and an independent share inbox. */
 #view-teams .teams-directory { grid-row: 2 / 4; }
@@ -8157,30 +7951,14 @@ h2 {
 #view-teams .team-row > span:first-child { gap: 3px; }
 #view-teams .teams-stack > .card:last-child { margin-top: 12px; }
 
-@media (max-width: 1100px) {
-  #view-replay .replay-triage { grid-template-columns: 1fr; }
-  #view-replay .replay-focus { position: static; grid-row: 1; }
-  #view-replay .replay-ledger { grid-row: 2; }
-}
 @media (max-width: 680px) {
-  #view-replay .games-setup .research-controls { display: grid; }
-  #view-replay .games-setup .replay-toolbar { display: flex; flex-wrap: wrap; }
-  #view-replay .replay-ledger-columns { display: none; }
-  #view-replay .replay-row-head { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; }
-  #view-replay .replay-row-head .replay-badge { grid-column: 1; }
-  #view-replay .replay-row-head .players { grid-column: 1 / -1; grid-row: 2; }
-  #view-replay .replay-row-head .replay-result { grid-column: 2; grid-row: 1; }
-  #view-replay .replay-row-head .replay-preview { grid-column: 1; grid-row: 3; padding: 0; }
-  #view-replay .replay-row-head .replay-departure { grid-column: 2; grid-row: 3; }
   #view-teams .team-detail-card { min-height: 0; }
-  #view-replay .replay-focus { min-height: 0; }
 }
 
-/* Desktop Scout and Games: one aligned control row above the result workspace. */
+/* Desktop Scout: one aligned control row above the result workspace. */
 @media (min-width: 960px) {
   #view-replay .research-heading { padding: 20px 24px 12px; }
-  #view-replay .research-controls,
-  #view-replay .games-setup .research-controls {
+  #view-replay .research-controls {
     display: flex;
     align-items: center;
     flex-wrap: nowrap;
@@ -8188,21 +7966,15 @@ h2 {
     padding: 10px 24px;
     min-height: 58px;
   }
-  #view-replay .games-setup { padding: 0; border: 0; background: var(--panel); }
-  #view-replay .research-source,
-  #view-replay .games-setup .research-source { display: flex; flex: 1 1 auto; align-items: center; gap: 10px; min-width: 0; }
+  #view-replay .research-source { display: flex; flex: 1 1 auto; align-items: center; gap: 10px; min-width: 0; }
   #view-replay .research-source-picker { flex-wrap: nowrap; min-width: 0; }
   #view-replay .research-control-label,
   #view-replay .replay-toolbar .research-control-label { width: auto; margin: 0; white-space: nowrap; }
-  #view-replay .replay-toolbar,
-  #view-replay .games-setup .replay-toolbar { display: flex; align-items: center; flex: 0 0 auto; gap: 10px; }
+  #view-replay .replay-toolbar { display: flex; align-items: center; flex: 0 0 auto; gap: 10px; }
   #view-replay .replay-toolbar select,
   #view-replay .replay-toolbar .btn,
   #view-replay .source-add { box-sizing: border-box; height: 34px; }
   #view-replay .replay-toolbar .btn.primary { min-width: 132px; white-space: nowrap; }
   #view-replay .replay-card-scout .scout-live-count { min-width: 106px; text-align: left; }
-  #view-replay .games-review { border-top: 1px solid var(--line-soft); }
-  #view-replay .games-review .research-results-head { padding-top: 14px; }
 }
-#view-replay .replay-results:empty::before,
 #view-replay .scout-results:empty::before { padding: 16px 18px; }

@@ -104,6 +104,8 @@ async function runViewport(vp) {
   // Optional review screenshots (UI_V2_SHOTS=<dir> UI_V2_TAG=before|after).
   const shot = async (state) => {
     if (process.env.UI_V2_SHOTS) {
+      await page.mouse.move(vp.width - 4, vp.height - 4); // park the pointer so the hover-expand rail is collapsed
+      await page.waitForTimeout(250);
       await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `train-${state}-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
     }
   };

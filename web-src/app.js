@@ -3280,6 +3280,12 @@ function syncTopbarExtras() {
     sub.hidden = !text;
     return;
   }
+  if (appState.currentView === "replay") {
+    const games = appState.replaySection !== "scout";
+    sub.textContent = games ? "Did your recent games stay in prep?" : "";
+    sub.hidden = !games;
+    return;
+  }
   sub.hidden = !isBuild;
   if (!isBuild) return;
   const build = appState.build;

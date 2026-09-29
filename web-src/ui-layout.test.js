@@ -9,6 +9,7 @@ const html = readFileSync(join(root, "index.html"), "utf8");
 const app = readFileSync(join(root, "app.js"), "utf8");
 const account = readFileSync(join(root, "controllers", "account.js"), "utf8");
 const replayView = readFileSync(join(root, "views", "replay.js"), "utf8");
+const replayCss = readFileSync(join(root, "views", "replay.css"), "utf8");
 const settingsView = readFileSync(join(root, "views", "settings.js"), "utf8");
 const scoutView = readFileSync(join(root, "views", "scout.js"), "utf8");
 const composer = readFileSync(join(root, "views", "shared", "source-composer.js"), "utf8");
@@ -279,7 +280,7 @@ describe("workspace chrome layout", () => {
     expect(css).toContain(".src-chip");
     expect(css).toContain(".src-popover");
     expect(css).toContain(".src-kind");
-    expect(css).toContain(".replay-source");
+    expect(css).toContain(".src-empty");
     // Games + Scout share one selection system: the Source Composer primitive.
     expect(app).toContain("views/shared/source-composer.js");
     expect(app).toContain("openSourceComposer");
@@ -317,16 +318,14 @@ describe("workspace chrome layout", () => {
   it("keeps dark-mode text on semantic tokens (no hard-coded light colors)", () => {
     // Games result / move preview / secondary text use --text, never a fixed
     // dark hex that would vanish on a dark panel.
-    expect(css).toContain(".replay-result");
-    expect(css).toContain(".replay-preview");
-    expect(css).toContain(".replay-detail");
-    const replayLine = ruleBody(".replay-line");
-    expect(replayLine).toMatch(/color:\s*var\(--text\)/);
-    expect(replayLine).not.toMatch(/color:\s*#[0-9a-fA-F]{3,6}/);
-    const result = ruleBody(".replay-result");
-    expect(result).not.toMatch(/color:\s*#[0-9a-fA-F]{3,6}/);
-    const preview = ruleBody(".replay-preview");
-    expect(preview).not.toMatch(/color:\s*#[0-9a-fA-F]{3,6}/);
+    const replayRule = (selector) => {
+      const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return replayCss.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]+)\\}`))?.[1] || "";
+    };
+    expect(replayRule(".lr")).toMatch(/color:\s*var\(--text\)/);
+    for (const selector of [".lr", ".res.r-win", ".res.r-loss", ".open-prev", ".moveline .inprep", ".kind-badge.t-bad"]) {
+      expect(replayRule(selector), selector).not.toMatch(/color:\s*#[0-9a-fA-F]{3,6}/);
+    }
     // Segmented control (prototype): body text on the surface-3 track in both
     // states; the selected tile is a raised panel-coloured chip.
     const segBtn = ruleBody(".seg-btn");
@@ -342,8 +341,8 @@ describe("workspace chrome layout", () => {
     expect(css).toMatch(/\.pf-switch\.is-on \.pf-knob/);
     // Rank accents use semantic good/danger/warn so both themes adapt. Text
     // uses the *-text variants (WCAG AA); fills/borders keep the base tokens.
-    expect(css).toContain(".replay-chip.rk-in-prep { color: var(--good-text); }");
-    expect(css).toContain(".rk-user-error .replay-icon { color: var(--danger); }");
+    expect(css).toContain(".sum-chip.t-good { color: var(--good-text); }");
+    expect(css).toContain(".sum-chip.t-bad { color: var(--danger); }");
   });
 
   it("gives every view one scroll owner (no duplicate side rails)", () => {

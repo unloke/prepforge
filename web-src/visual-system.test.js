@@ -156,9 +156,14 @@ describe("seven views share chrome families", () => {
       }
     }
     const replay = html.slice(html.indexOf('id="view-replay"'), html.indexOf('id="view-teams"'));
-    for (const panel of ["games", "scout"]) {
+    // Games is the flat prototype toolbar (no page card / heading); Scout keeps its card until its own pass.
+    const games = replay.slice(replay.indexOf('<section class="games-panel"'), replay.indexOf('<section class="card replay-card-scout"'));
+    expect(games).toContain('class="toolbar"');
+    expect(games).not.toContain("research-heading");
+    expect(games.indexOf('class="toolbar"')).toBeLessThan(games.indexOf('id="replay-results"'));
+    for (const panel of ["scout"]) {
       const start = replay.indexOf(`<section class="card replay-card-${panel}`);
-      const end = panel === "games" ? replay.indexOf('<section class="card replay-card-scout"') : replay.length;
+      const end = replay.length;
       const slice = replay.slice(start, end);
       expect(slice).toMatch(/class="[^"]*\bcard\b/);
       expect(slice).toContain('class="research-heading"');
@@ -170,7 +175,7 @@ describe("seven views share chrome families", () => {
       expect(headingBlock).not.toContain("<p");
       expect(slice).not.toContain('class="research-note"');
       expect(slice.indexOf('class="research-heading"')).toBeLessThan(slice.indexOf('class="research-controls"'));
-      expect(slice.indexOf('class="research-controls"')).toBeLessThan(slice.indexOf(panel === "games" ? 'id="replay-results"' : 'id="scout-results"'));
+      expect(slice.indexOf('class="research-controls"')).toBeLessThan(slice.indexOf('id="scout-results"'));
     }
   });
 

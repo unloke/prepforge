@@ -121,6 +121,15 @@ async function runViewport(vp) {
   }
   await page.waitForTimeout(700);
 
+  // Optional review screenshots (UI_V2_SHOTS=<dir> UI_V2_TAG=before|after).
+  const shot = async (state) => {
+    if (!process.env.UI_V2_SHOTS) return;
+    await page.mouse.move(vp.width - 4, vp.height - 4); // park the pointer so the hover-expand rail is collapsed
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `games-${state}-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
+  };
+  await shot("setup");
+
   // Setup: source tray, sample select, Check button.
   const chip = await page.locator('[data-testid="games-source-chips"] .src-chip').count();
   check(chip >= 1, `source tray should show at least one chip, got ${chip}`);
@@ -143,9 +152,9 @@ async function runViewport(vp) {
   check(/\+1 queued for training/.test(summaryText || ""), `summary should show the real queued count`);
 
   // Ledger: 3 rows; focused row (first, user-error) is open.
-  const rows = await page.locator("#replay-results .replay-row").count();
+  const rows = await page.locator("#replay-results .lr[data-index]").count();
   check(rows === 3, `ledger should list 3 games, got ${rows}`);
-  const openRows = await page.locator("#replay-results .replay-row.is-open").count();
+  const openRows = await page.locator("#replay-results .lr.is-open").count();
   check(openRows === 1, `exactly one focused row, got ${openRows}`);
 
   // Focus detail: derived board + expected/played arrows for the user-error game.
@@ -154,21 +163,23 @@ async function runViewport(vp) {
   const arrowGood = await page.locator("#replay-results .replay-arrows .t-good line").count();
   const arrowBad = await page.locator("#replay-results .replay-arrows .t-bad line").count();
   check(arrowGood === 1 && arrowBad === 1, `user-error focus should draw expected(good)+played(bad), got ${arrowGood}/${arrowBad}`);
-  const focusText = await page.locator("#replay-results .replay-focus").textContent().catch(() => "");
+  const focusText = await page.locator("#replay-results .focus").textContent().catch(() => "");
   check(/expected/.test(focusText || "") && /played/.test(focusText || ""), "focus legend should explain expected vs played");
 
+  await shot("triage");
+
   // Selecting the stayed-in-prep game drops the arrows and arrow legend.
-  await page.locator("#replay-results .replay-row-head").nth(2).click();
+  await page.locator("#replay-results .lr[data-index]").nth(2).evaluate((el) => el.click());
   await page.waitForTimeout(400);
   const arrowsAfter = await page.locator("#replay-results .replay-arrows").count();
   check(arrowsAfter === 0, `stayed-in-prep focus should have no arrow overlay, got ${arrowsAfter}`);
-  const legendAfter = await page.locator("#replay-results .replay-focus").textContent().catch(() => "");
+  const legendAfter = await page.locator("#replay-results .focus").textContent().catch(() => "");
   check(!/played/.test(legendAfter || ""), "stayed-in-prep focus should not show the played legend entry");
 
   // Outcome filter chip narrows the ledger to its kind.
   await page.locator("#replay-summary [data-filter=\"user-error\"]").click();
   await page.waitForTimeout(400);
-  const filtered = await page.locator("#replay-results .replay-row").count();
+  const filtered = await page.locator("#replay-results .lr[data-index]").count();
   check(filtered === 1, `user-error filter should leave 1 row, got ${filtered}`);
 
   // Overflow + console errors.
