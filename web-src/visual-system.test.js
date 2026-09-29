@@ -143,7 +143,8 @@ describe("seven views share chrome families", () => {
         next < VIEWS.length ? html.indexOf(`id="view-${VIEWS[next]}"`) : html.length;
       const slice = html.slice(start, end);
       expect(slice).toMatch(/class="[^"]*\bcard\b/);
-      expect(slice).toContain("card-head");
+      // Settings cards carry their heading directly (h2), the others a .card-head.
+      expect(slice).toContain(view === "settings" ? "<h2>" : "card-head");
       const hints = slice.match(/<p class="[^"]*\bhint\b[^"]*"[^>]*>[\s\S]*?<\/p>/g) || [];
       expect(hints.length).toBeLessThanOrEqual(1);
       for (const hint of hints) {
@@ -250,7 +251,6 @@ describe("axe baseline contrast guard", () => {
 
   it("keeps small caps labels readable on panel surfaces", () => {
     expect(contrast(tokenValue("--muted"), "#ffffff")).toBeGreaterThanOrEqual(4.5);
-    expect(ruleBody(".settings-label")).toMatch(/color:\s*var\(--muted\)/);
   });
 
   it("keeps the active tab label readable on its tint", () => {

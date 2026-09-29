@@ -137,6 +137,9 @@ async function runViewport(vp) {
     { timeout: 8000 },
   );
 
+  // Park the pointer so the hover rail collapses and cannot overlay the directory rows.
+  await page.mouse.move(vp.width - 4, vp.height - 4);
+  await page.waitForTimeout(250);
   await shot("directory");
 
   // Directory: the real team from /api/teams.

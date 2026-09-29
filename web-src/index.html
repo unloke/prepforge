@@ -591,7 +591,7 @@
       </section>
 
       <section class="view" id="view-settings" data-testid="view-settings">
-        <div class="list-view replay-layout settings-layout">
+        <div class="settings">
           <nav class="settings-nav" aria-label="Settings sections">
             <a class="settings-nav-link is-active" href="#set-appearance">Appearance</a>
             <a class="settings-nav-link" href="#set-engine">Engine</a>
@@ -602,135 +602,117 @@
             <a class="settings-nav-link" href="#set-about">About</a>
           </nav>
           <div class="settings-content">
-          <section class="card" id="set-appearance">
-            <div class="card-head"><h2>Appearance</h2></div>
-            <div class="pf-row">
-              <span class="pf-row-text">
-                <span class="pf-row-label" id="settings-theme-label">Color theme</span>
-              </span>
-              <div class="seg" role="group" aria-labelledby="settings-theme-label" id="settings-theme-seg">
-                <button type="button" class="seg-btn" data-theme-value="system">System</button>
-                <button type="button" class="seg-btn" data-theme-value="light">Light</button>
-                <button type="button" class="seg-btn" data-theme-value="dark">Dark</button>
+            <section class="card set" id="set-appearance">
+              <h2>Appearance</h2>
+              <div class="pf-row">
+                <span class="pf-row-text">
+                  <span class="pf-row-label" id="settings-theme-label">Color theme</span>
+                </span>
+                <div class="seg" role="group" aria-labelledby="settings-theme-label" id="settings-theme-seg">
+                  <button type="button" class="seg-btn" data-theme-value="system">System</button>
+                  <button type="button" class="seg-btn" data-theme-value="light">Light</button>
+                  <button type="button" class="seg-btn" data-theme-value="dark">Dark</button>
+                </div>
               </div>
-            </div>
-            <select id="settings-theme" class="pf-select-native" aria-label="Color theme" hidden>
-              <option value="system">System default</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-            </select>
-          </section>
-          <section class="card" id="set-engine">
-            <div class="card-head">
-              <h2>Engine</h2>
-              <div class="tools">
-                <button class="btn ghost" id="settings-refresh">Refresh</button>
+              <select id="settings-theme" class="pf-select-native" aria-label="Color theme" hidden>
+                <option value="system">System default</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </section>
+            <section class="card set" id="set-engine">
+              <h2>
+                Engine
                 <button type="button" class="pf-info" id="engine-info" aria-label="About Engine settings" title="About Engine settings" aria-expanded="false">ⓘ</button>
+                <span class="spacer"></span>
+                <button class="btn sm" id="settings-refresh">Refresh</button>
+              </h2>
+              <div class="pf-info-pop" id="engine-info-pop" hidden>
+                Stockfish runs in this browser. If isolation headers are missing, Analyze and Build show a banner.
               </div>
-            </div>
-            <div class="pf-info-pop" id="engine-info-pop" hidden>
-              Stockfish runs in this browser. If isolation headers are missing, Analyze and Build show a banner.
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Mode</div>
-                <div class="settings-value">Browser only</div>
-              </div>
-              <div>
-                <div class="settings-label">Engine</div>
-                <div class="settings-value" id="settings-stockfish-version">checking…</div>
-              </div>
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Browser Stockfish</div>
-                <div class="settings-value" id="settings-browser-engine-status">checking…</div>
-              </div>
-            </div>
-            <p class="muted" id="settings-stockfish-status"></p>
-          </section>
-          <section class="card" id="set-maia">
-            <div class="card-head">
-              <h2>Maia3</h2>
-              <div class="tools">
-                <button class="btn ghost" id="settings-maia-retry" data-testid="settings-maia-retry">Retry</button>
-                <button class="btn ghost" id="settings-maia-reset" data-testid="settings-maia-reset">Reset cache</button>
+              <div class="set-row"><span>Mode</span><b>Browser only</b></div>
+              <div class="set-row"><span>Engine</span><b id="settings-stockfish-version">checking…</b></div>
+              <div class="set-row"><span>Browser Stockfish</span><span class="status-pill" id="settings-browser-engine-status">checking…</span></div>
+              <p class="note warn" id="settings-stockfish-status"></p>
+            </section>
+            <section class="card set" id="set-maia">
+              <h2>
+                Maia3
                 <button type="button" class="pf-info" id="maia-info" aria-label="About Maia3 settings" title="About Maia3 settings" aria-expanded="false">ⓘ</button>
+                <span class="spacer"></span>
+                <button class="btn sm" id="settings-maia-retry" data-testid="settings-maia-retry">Retry</button>
+                <button class="btn sm" id="settings-maia-reset" data-testid="settings-maia-reset">Reset cache</button>
+              </h2>
+              <div class="pf-info-pop" id="maia-info-pop" hidden>
+                Downloads once (~46 MB), then stays cached in this browser. Powers coach intuition, human-like branches, and coverage.
               </div>
-            </div>
-            <div class="pf-info-pop" id="maia-info-pop" hidden>
-              Downloads once (~46 MB), then stays cached in this browser. Powers coach intuition, human-like branches, and coverage.
-            </div>
-            <div class="settings-row">
-              <div>
-                <div class="settings-label">Browser Maia3</div>
-                <div class="settings-value" id="settings-maia-model">checking…</div>
+              <div class="set-row"><span>Browser Maia3</span><span class="status-pill" id="settings-maia-model">checking…</span></div>
+              <p class="faint small" id="settings-maia-status"></p>
+              <p class="note warn settings-error" id="settings-maia-error" hidden></p>
+            </section>
+            <section class="card set" id="set-strength">
+              <h2>
+                Playing strength
+                <button type="button" class="pf-info" id="strength-info" aria-label="About Playing strength" title="About Playing strength" aria-expanded="false">ⓘ</button>
+              </h2>
+              <div class="pf-info-pop" id="strength-info-pop" hidden>
+                Higher depth is stronger but slower. Maia3 rating shapes how human the model plays.
               </div>
-            </div>
-            <p class="muted" id="settings-maia-status"></p>
-            <p class="muted settings-error" id="settings-maia-error" hidden></p>
-          </section>
-          <section class="card" id="set-strength">
-            <div class="card-head">
-              <h2>Playing strength</h2>
-              <button type="button" class="pf-info" id="strength-info" aria-label="About Playing strength" title="About Playing strength" aria-expanded="false">ⓘ</button>
-            </div>
-            <div class="pf-info-pop" id="strength-info-pop" hidden>
-              Higher depth is stronger but slower. Maia3 rating shapes how human the model plays.
-            </div>
-            <div class="settings-label">Stockfish analysis depth</div>
-            <div class="strength-row">
-              <input type="range" id="settings-depth" min="1" max="30" value="16" aria-label="Stockfish analysis depth" />
-              <span class="strength-readout" id="settings-depth-readout">16</span>
-            </div>
-            <div class="settings-label settings-section">Maia3 strength (human model)</div>
-            <div class="pf-row">
-              <span class="pf-row-text">
-                <span class="pf-row-label" id="settings-maia-auto-label">Auto — match my Lichess rating</span>
-              </span>
-              <button type="button" class="pf-switch" id="settings-maia-auto" role="switch" aria-checked="true" aria-labelledby="settings-maia-auto-label"><span class="pf-knob"></span></button>
-            </div>
-            <div class="strength-row">
-              <input type="range" id="settings-maia-rating" min="600" max="2600" step="50" value="1500" aria-label="Maia3 rating" />
-              <span class="strength-readout" id="settings-maia-rating-readout">1500</span>
-            </div>
-            <div class="settings-label settings-section">Maia analysis</div>
-            <div class="pf-row">
-              <span class="pf-row-text">
-                <span class="pf-row-label" id="settings-maia-analysis-label">Maia analysis</span>
-                <button type="button" class="pf-info pf-info-inline" id="maia-analysis-info" aria-label="About Maia analysis" title="About Maia analysis" aria-expanded="false">ⓘ</button>
-              </span>
-              <button type="button" class="pf-switch" id="settings-maia-analysis" role="switch" aria-checked="false" aria-labelledby="settings-maia-analysis-label"><span class="pf-knob"></span></button>
-            </div>
-            <div class="pf-info-pop" id="maia-analysis-info-pop" hidden>
-              Adds the Maia3 human layer to analysis: classification, coach intuition, and brilliant signals. Stockfish always runs; this layer is skipped when off.
-            </div>
-          </section>
-          <section class="card" id="set-board">
-            <div class="card-head"><h2>Board</h2></div>
-            <div class="settings-label">Piece set</div>
-            <div class="piece-style-picker" id="piece-style-picker"></div>
-            <div class="settings-label settings-section">Feedback</div>
-            <div class="pf-feedback" id="board-prefs"></div>
-          </section>
-          <section class="card" id="set-connections" data-testid="settings-connections">
-            <div class="card-head">
-              <h2>Connections</h2>
-              <button type="button" class="pf-info" id="connections-info" aria-label="About Connections" title="About Connections" aria-expanded="false">ⓘ</button>
-            </div>
-            <div class="pf-info-pop" id="connections-info-pop" hidden>
-              Every linked identity counts as Self in Games and Scout. Narrow to one account from its source picker.
-            </div>
-            <div class="settings-label">Lichess accounts</div>
-            <div class="list-stack conn-list" id="settings-lichess-accounts" data-testid="settings-lichess-accounts"></div>
-            <div class="tools conn-tools">
-              <button class="btn ghost conn-link" id="settings-link-lichess" data-testid="settings-link-lichess" type="button">Link another account</button>
-            </div>
-          </section>
-          <section class="card" id="set-about">
-            <div class="card-head"><h2>About</h2></div>
-            <p class="muted hint">PrepForge Chess — local opening preparation and replay tool.</p>
-          </section>
+              <div class="set-row">
+                <span id="settings-depth-label">Stockfish analysis depth</span>
+                <div class="slider">
+                  <input type="range" id="settings-depth" min="1" max="30" value="16" aria-labelledby="settings-depth-label" />
+                  <b class="strength-readout" id="settings-depth-readout">16</b>
+                </div>
+              </div>
+              <div class="pf-row">
+                <span class="pf-row-text">
+                  <span class="pf-row-label" id="settings-maia-auto-label">Auto — match my Lichess rating</span>
+                </span>
+                <button type="button" class="pf-switch" id="settings-maia-auto" role="switch" aria-checked="true" aria-labelledby="settings-maia-auto-label"><span class="pf-knob"></span></button>
+              </div>
+              <div class="set-row">
+                <span id="settings-maia-rating-label">Maia3 strength (human model)</span>
+                <div class="slider">
+                  <input type="range" id="settings-maia-rating" min="600" max="2600" step="50" value="1500" aria-labelledby="settings-maia-rating-label" />
+                  <b class="strength-readout" id="settings-maia-rating-readout">1500</b>
+                </div>
+              </div>
+              <div class="pf-row">
+                <span class="pf-row-text">
+                  <span class="pf-row-label" id="settings-maia-analysis-label">Maia analysis</span>
+                  <button type="button" class="pf-info pf-info-inline" id="maia-analysis-info" aria-label="About Maia analysis" title="About Maia analysis" aria-expanded="false">ⓘ</button>
+                </span>
+                <button type="button" class="pf-switch" id="settings-maia-analysis" role="switch" aria-checked="false" aria-labelledby="settings-maia-analysis-label"><span class="pf-knob"></span></button>
+              </div>
+              <div class="pf-info-pop" id="maia-analysis-info-pop" hidden>
+                Adds the Maia3 human layer to analysis: classification, coach intuition, and brilliant signals. Stockfish always runs; this layer is skipped when off.
+              </div>
+            </section>
+            <section class="card set" id="set-board">
+              <h2>Board</h2>
+              <div class="set-row">
+                <span id="piece-style-label">Piece set</span>
+                <div class="seg" role="group" aria-labelledby="piece-style-label" id="piece-style-picker"></div>
+              </div>
+              <div class="sw-grid" id="board-prefs"></div>
+            </section>
+            <section class="card set" id="set-connections" data-testid="settings-connections">
+              <h2>
+                Connections
+                <button type="button" class="pf-info" id="connections-info" aria-label="About Connections" title="About Connections" aria-expanded="false">ⓘ</button>
+              </h2>
+              <div class="pf-info-pop" id="connections-info-pop" hidden>
+                Every linked identity counts as Self in Games and Scout. Narrow to one account from its source picker.
+              </div>
+              <div class="sub-head"><b>Lichess accounts</b></div>
+              <div id="settings-lichess-accounts" data-testid="settings-lichess-accounts"></div>
+              <button class="btn sm conn-link" id="settings-link-lichess" data-testid="settings-link-lichess" type="button">Link another account</button>
+            </section>
+            <section class="card set" id="set-about">
+              <h2>About</h2>
+              <p class="muted hint">PrepForge Chess — local opening preparation and replay tool.</p>
+            </section>
           </div>
         </div>
       </section>

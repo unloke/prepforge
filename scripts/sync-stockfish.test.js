@@ -51,7 +51,7 @@ describe("Stockfish package synchronization", () => {
     expect(provider).toContain('/static/engine/stockfish-lite.js');
     expect(provider).not.toMatch(/stockfish-\d+-lite\.js/);
     expect(settings).toContain('/static/engine/stockfish.manifest.json');
-    expect(html).toContain('id="settings-stockfish-version">checking…</div>');
+    expect(html).toContain('id="settings-stockfish-version">checking…</b>');
     expect(html).not.toMatch(/Stockfish \d+ lite/);
   });
 });

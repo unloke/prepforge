@@ -3324,8 +3324,8 @@ function syncTopbarExtras() {
     sub.hidden = !text;
     return;
   }
-  if (appState.currentView === "teams") {
-    sub.textContent = "Shared preparation";
+  if (appState.currentView === "teams" || appState.currentView === "settings") {
+    sub.textContent = appState.currentView === "teams" ? "Shared preparation" : "Account, engine and board";
     sub.hidden = false;
     return;
   }
@@ -3495,22 +3495,12 @@ function setPieceStyle(style) {
 function renderPieceStylePicker() {
   const host = document.getElementById("piece-style-picker");
   if (!host) return;
-  const sample = ["K", "Q", "N", "p"];
   host.innerHTML = Object.keys(PIECE_SETS)
     .map((style) => {
-      const active = style === appState.pieceStyle ? " is-active" : "";
-      const set = PIECE_SETS[style];
-      const previews = sample
-        .map((pc) => {
-          const colorClass = pc === pc.toUpperCase() ? "piece-white" : "piece-black";
-          return `<svg class="piece ${colorClass}" viewBox="0 0 45 45" aria-hidden="true"><g>${set[pc.toLowerCase()]}</g></svg>`;
-        })
-        .join("");
+      const active = style === appState.pieceStyle;
       return (
-        `<button type="button" class="piece-style-option${active}" data-style="${escapeHtml(style)}">` +
-        `<span class="piece-style-preview">${previews}</span>` +
-        `<span class="piece-style-name">${escapeHtml(PIECE_STYLE_LABELS[style] || style)}</span>` +
-        `</button>`
+        `<button type="button" class="seg-btn piece-style-option${active ? " is-active" : ""}" data-style="${escapeHtml(style)}" aria-pressed="${active}">` +
+        `${escapeHtml(PIECE_STYLE_LABELS[style] || style)}</button>`
       );
     })
     .join("");
@@ -3535,7 +3525,7 @@ function renderPrefsToggles() {
       );
     })
     .join("");
-  host.querySelectorAll(".pf-feedback .pf-switch").forEach((btn) => {
+  host.querySelectorAll(".pf-switch").forEach((btn) => {
     btn.addEventListener("click", () => {
       const key = btn.dataset.pref;
       setPref(key, !pref(key));

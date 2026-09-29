@@ -937,94 +937,38 @@ h2 {
 }
 /* Settings */
 
-/* Section-nav layout styles live in views/settings.css (lazy chunk, imported
-   by the lazy settings view module — same code-splitting as Games/Scout/Teams). */
-
-.settings-row {
+/* Settings — Opus prototype composition: section nav + card column. The grid is
+   here; cards, rows, sliders, status pills and connection rows live in
+   views/settings.css (lazy chunk, imported by the lazy settings view module). */
+.workspace:has(> .view.is-active#view-settings) {
+  max-width: none;
+  padding: 16px;
+}
+.settings {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 760px);
+  gap: 20px;
+  align-items: start;
+}
+.settings-nav {
+  position: sticky;
+  top: 0;
   display: flex;
-  align-items: end;
-  gap: 14px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--line-soft);
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 1px;
 }
-
-.settings-row:last-child {
-  border-bottom: 0;
-}
-
-.settings-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  margin-bottom: 4px;
-}
-
-.settings-value {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 13px;
-  color: var(--text);
-  word-break: break-all;
-}
-
-.appearance-control {
+.settings-content {
   display: flex;
-  align-items: end;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-}
-
-.appearance-control .hint {
-  flex: 1 1 240px;
-  margin-bottom: 0;
-}
-
-/* Visual separator between sub-sections within a settings card. */
-.settings-section {
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line-soft);
-}
-
-/* Playing strength sliders (Stockfish depth / Maia3 rating). */
-
-.strength-row {
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 12px;
-  padding: 6px 0;
+  min-width: 0;
 }
-
-.strength-row input[type="range"] {
-  flex: 1;
-  accent-color: var(--accent);
+@media (max-width: 1020px) {
+  .settings { grid-template-columns: minmax(0, 1fr); }
+  .settings-nav { position: static; flex-direction: row; flex-wrap: wrap; gap: 6px; }
 }
-
-.strength-row input[type="range"]:disabled {
-  opacity: 0.45;
-}
-
-.strength-readout {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
-  min-width: 44px;
-  text-align: right;
-}
-
-/* The real Maia load failure, shown under the status line when state is unavailable. */
-.settings-error {
-  color: var(--danger);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
-  word-break: break-word;
-}
-
-.settings-error[hidden] {
-  display: none;
+@media (max-width: 760px) {
+  .workspace:has(> .view.is-active#view-settings) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
 }
 
 /* PrepForge shared primitives — warm, rounded, compact.
@@ -1208,31 +1152,6 @@ h2 {
 
 .pf-select-native[hidden] {
   display: none;
-}
-
-/* Settings → Board feedback toggles render through the shared .pf-switch /
-   .pf-row primitives (see renderPrefsToggles). */
-.pf-feedback {
-  display: flex;
-  flex-direction: column;
-  margin-top: 4px;
-}
-
-.pf-feedback .pf-row {
-  padding: 7px 0;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.pf-feedback .pf-row:last-child {
-  border-bottom: 0;
-}
-
-/* Legacy board-prefs host keeps working (acceptance hooks + old markup). */
-.board-prefs {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
 }
 
 /* Modal select field */
@@ -1866,145 +1785,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   gap: 6px;
 }
 
-/* Connections account rows: one clean row per identity — name + Primary chip
-   on the left, a single ⋯ overflow for Set primary / Unlink on the right.
-   Warm / rounded / compact via the shared tokens (accent-soft, radius). */
-.conn-list {
-  gap: 6px;
-}
-
-.conn-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 34px;
-  padding: 5px 6px 5px 10px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-card);
-  background: var(--panel-soft);
-}
-
-.conn-row:hover {
-  border-color: var(--line);
-}
-
-.conn-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.conn-primary {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 1px 8px;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.5;
-  color: var(--accent-strong);
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-line);
-  border-radius: 999px;
-  white-space: nowrap;
-  vertical-align: 1px;
-}
-
-.conn-actions {
-  position: relative;
-  flex: none;
-}
-
-.conn-menu-btn {
-  min-width: 28px;
-  height: 28px;
-  padding: 0 6px;
-  font-size: 15px;
-  line-height: 1;
-  color: var(--muted);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  cursor: pointer;
-}
-
-.conn-menu-btn:hover,
-.conn-menu-btn[aria-expanded="true"] {
-  color: var(--text);
-  background: var(--surface-hover);
-  border-color: var(--line-soft);
-}
-
-.conn-menu-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.conn-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 4px);
-  z-index: 20;
-  display: grid;
-  gap: 2px;
-  min-width: 132px;
-  padding: 4px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
-}
-
-.conn-menu[hidden] {
-  display: none;
-}
-
-.conn-menu-item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 7px 10px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.conn-menu-item:hover {
-  background: var(--surface-hover);
-}
-
-.conn-menu-item:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-.conn-menu-item.is-danger {
-  color: var(--danger-strong);
-}
-
-.conn-tools {
-  margin-top: 8px;
-}
-
-.conn-link {
-  border-radius: 999px;
-}
-
-@media (max-width: 560px) {
-  .conn-row {
-    padding: 6px 4px 6px 10px;
-  }
-}
-
 .empty-state {
   color: var(--muted);
   font-size: 13px;
@@ -2270,63 +2050,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.25));
 }
 
-/* Piece-set picker (Settings → Board) */
-.piece-style-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.piece-style-option {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  padding: 6px;
-  background: var(--panel);
-  border: 2px solid var(--line);
-  border-radius: 10px;
-  cursor: pointer;
-  transition: border-color 140ms ease, box-shadow 140ms ease;
-}
-
-.piece-style-option:hover {
-  border-color: var(--accent);
-}
-
-.piece-style-option.is-active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
-.piece-style-preview {
-  display: flex;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.piece-style-preview .piece {
-  width: 34px;
-  height: 34px;
-  padding: 2px;
-}
-
-.piece-style-preview .piece:nth-child(odd) {
-  background: var(--square-dark);
-}
-
-.piece-style-preview .piece:nth-child(even) {
-  background: var(--square-light);
-}
-
-.piece-style-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
-  text-align: center;
-}
-
 /* Board coordinates (toggle: .show-coords on the board) */
 .coord {
   position: absolute;
@@ -2460,14 +2183,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   animation: boardFlip 400ms ease;
 }
 
-/* Settings → Board feedback toggles render through the shared .pf-switch /
-   .pf-row primitives (see renderPrefsToggles). The host only stacks rows. */
-.board-prefs {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
-}
 
 /* Coach header review switch: compact shared primitive, not a native checkbox. */
 .explain-review {

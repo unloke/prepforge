@@ -1,56 +1,198 @@
-/* Settings v2 (ui-prototype-v2) — section nav + card column layout.
-   Imported by the lazy views/settings.js module, so these rules split into
-   the settings chunk and the main stylesheet keeps its budget. */
+/* Settings — Opus prototype composition. Imported by the lazy views/settings.js
+   module, so these rules split into the settings chunk and the main stylesheet
+   keeps its budget. The eager sheet owns the page grid (180px section nav + a
+   760px card column, single column below 1020px); this sheet owns the nav
+   links, cards, label/value rows, sliders, status pills and the connection
+   account rows. */
 
-/* Section nav — prototype 180px sticky column beside the card list. All
-   cards live in one .settings-content wrapper (grid column 2) so auto-
-   placement can never scatter them across both tracks. On narrow layouts
-   the nav becomes a horizontal chip row above the cards. */
-#view-settings .settings-layout {
-  display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
-}
-#view-settings .settings-layout > .settings-nav {
-  grid-column: 1;
-  position: sticky;
-  top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-#view-settings .settings-content {
-  grid-column: 2;
-  display: grid;
-  gap: 16px;
-  align-items: start;
-  min-width: 0;
-}
-#view-settings .settings-nav-link {
+/* ---- Section nav ------------------------------------------------------- */
+
+.settings-nav { top: 12px; }
+.settings-nav-link {
   padding: 6px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 550;
   text-decoration: none;
 }
-#view-settings .settings-nav-link:hover { background: var(--surface-hover); }
-#view-settings .settings-nav-link.is-active {
+.settings-nav-link:hover { background: var(--surface-3); }
+.settings-nav-link.is-active {
   background: var(--panel);
   color: var(--text);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--line);
+  box-shadow: var(--shadow-1), 0 0 0 1px var(--line);
 }
-#view-settings .settings-nav-link:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
+.settings-nav-link:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* ---- Cards + rows ------------------------------------------------------ */
+
+.set {
+  padding: 12px 14px;
 }
+.set h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+.set .spacer { flex: 1; }
+.set .pf-info-pop { margin: 0 0 6px; }
+.set-row,
+.set .pf-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+.set-row > span:first-child,
+.set .pf-row-text {
+  min-width: 0;
+}
+.set-row:has(input:disabled) { opacity: 0.55; }
+.set .hint,
+.set .note,
+.set .faint { margin: 8px 0 0; }
+.set .faint { font-size: var(--fs-s); }
+.set .note:empty,
+.set .note[hidden],
+.set .faint:empty { display: none; }
+.settings-error { font-family: var(--mono); word-break: break-word; }
+
+.status-pill {
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.status-pill.ok { background: var(--good-soft); color: var(--good-text); }
+.status-pill.warn { background: var(--warn-soft); color: var(--warn-text); }
+.status-pill.err { background: var(--bad-soft); color: var(--danger); }
+
+.slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.slider input {
+  width: 200px;
+  accent-color: var(--accent);
+}
+.strength-readout {
+  min-width: 44px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.sw-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 24px;
+}
+
+/* Connections: one row per identity — name + Primary tag, ⋯ overflow on the right. */
+.set .sub-head { padding: 8px 0 4px; }
+.set > .btn { margin-top: 8px; }
+.conn-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.conn-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.conn-primary {
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.conn-actions {
+  position: relative;
+  flex: none;
+}
+.conn-menu-btn {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.conn-menu-btn:hover,
+.conn-menu-btn[aria-expanded="true"] {
+  border-color: var(--line);
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.conn-menu-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.conn-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 2px;
+  min-width: 132px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+}
+.conn-menu[hidden] { display: none; }
+.conn-menu-item {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.conn-menu-item:hover { background: var(--surface-hover); }
+.conn-menu-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.conn-menu-item.is-danger { color: var(--danger-strong); }
+
+/* ---- Responsive -------------------------------------------------------- */
+
 @media (max-width: 1020px) {
-  #view-settings .settings-layout { grid-template-columns: 1fr; }
-  #view-settings .settings-layout > .settings-nav {
-    position: static;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  #view-settings .settings-nav-link { padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; }
+  .settings-nav-link { padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; }
+}
+@media (max-width: 760px) {
+  .sw-grid { grid-template-columns: 1fr; }
+  .slider input { width: 130px; }
+  .set .btn.sm,
+  .set .seg-btn,
+  .conn-menu-btn,
+  .settings-nav-link { min-height: 44px; }
+  .set .pf-switch { min-height: 26px; }
+  .set-row { flex-wrap: wrap; }
 }

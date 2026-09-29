@@ -77,6 +77,14 @@ async function runViewport(vp) {
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text()); });
   page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
   const check = (ok, label) => { if (!ok) failures.push(`${vp.name}: ${label}`); };
+  // Optional review screenshots (UI_V2_SHOTS=<dir> UI_V2_TAG=before|after); the
+  // pointer is parked bottom-right so the hover rail stays collapsed.
+  const shot = async (state) => {
+    if (!process.env.UI_V2_SHOTS) return;
+    await page.mouse.move(vp.width - 4, vp.height - 4);
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `settings-${state}-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
+  };
 
   await page.goto(base, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1000); // boot + signed-in hydration
@@ -109,6 +117,8 @@ async function runViewport(vp) {
     null,
     { timeout: 10000 },
   );
+
+  await shot("top");
 
   // Section nav (prototype 180px column): all prototype sections present, first active.
   const navLabels = await page.locator(".settings-nav .settings-nav-link").allTextContents();
@@ -161,6 +171,7 @@ async function runViewport(vp) {
   await page.waitForTimeout(900); // smooth-scroll settles
   const connectionsActive = await page.locator('.settings-nav .settings-nav-link.is-active').textContent().catch(() => "");
   check(/Connections/.test(connectionsActive || "") || /Board|About/.test(connectionsActive || ""), `nav should remain operable with a sane active section, got "${connectionsActive}"`);
+  await shot("connections");
   // True viewport intersection: after the nav click the target card must be on
   // screen (top above the fold line, bottom below the top edge). The card fully
   // fits on desktop when the page can scroll far enough — assert full visibility
@@ -183,7 +194,7 @@ async function runViewport(vp) {
   const columnBug = await page.evaluate(() => {
     const nav = document.querySelector(".settings-nav").getBoundingClientRect();
     const navDocBottom = nav.bottom + window.scrollY;
-    const singleColumn = getComputedStyle(document.querySelector(".settings-layout")).gridTemplateColumns.split(" ").length === 1;
+    const singleColumn = getComputedStyle(document.querySelector("#view-settings .settings")).gridTemplateColumns.split(" ").length === 1;
     return [...document.querySelectorAll("#view-settings .settings-content .card[id]")]
       .map((c) => {
         const r = c.getBoundingClientRect();

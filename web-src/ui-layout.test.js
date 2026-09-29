@@ -222,6 +222,27 @@ describe("workspace chrome layout", () => {
     expect(app).not.toContain("list-item");
   });
 
+  it("composes Settings as a section nav beside a card column", () => {
+    const view = html.slice(html.indexOf('id="view-settings"'), html.indexOf("</main>"));
+    const settingsCss = readFileSync(join(root, "views", "settings.css"), "utf8");
+    expect(view).toContain('<div class="settings">');
+    expect(view).toContain('class="settings-nav"');
+    expect(view).toContain('class="settings-content"');
+    for (const id of ["appearance", "engine", "maia", "strength", "board", "connections", "about"]) {
+      expect(view).toContain(`id="set-${id}"`);
+    }
+    expect(view).toContain('id="piece-style-picker"');
+    expect(css).toMatch(/\.settings\s*\{[^}]*grid-template-columns:\s*180px\s+minmax\(0,\s*760px\)/);
+    expect(css).toMatch(/max-width:\s*1020px\)\s*\{\s*\.settings\s*\{[^}]*minmax\(0,\s*1fr\)/);
+    expect(settingsCss).toContain(".set-row");
+    expect(settingsCss).toContain(".status-pill.ok");
+    // The old label/value rows, thumbnail picker and feedback host are gone.
+    for (const legacy of ["settings-row", "settings-label", "settings-value", "pf-feedback", "piece-style-preview", "settings-layout"]) {
+      expect(html).not.toContain(legacy);
+      expect(css).not.toContain(legacy);
+    }
+  });
+
   it("never navigates away during background hydration", () => {
     // S1 startup invariant: the ONLY startup switchView runs inside
     // restoreWorkspaceLocation with the parsed URL view. Background hydration
