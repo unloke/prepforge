@@ -83,6 +83,7 @@ export function createDashboardView({
   promptImportRepertoireFromPgn,
   requireSignIn,
   openSignIn = null,
+  onLibraryStateChange = null,
   goToView,
   previewRenderers = null,
 }) {
@@ -553,6 +554,7 @@ export function createDashboardView({
   function setLibraryEmpty(empty) {
     const card = document.querySelector("#view-dashboard .lib-list");
     if (card) card.classList.toggle("is-empty", empty);
+    if (onLibraryStateChange) onLibraryStateChange();
   }
 
   function renderRepertoireList() {

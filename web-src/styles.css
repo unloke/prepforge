@@ -628,6 +628,7 @@ h2 {
   margin: 2px auto 6px;
 }
 
+.sheet-item[hidden] { display: none; }
 .sheet-item {
   display: flex;
   align-items: center;
@@ -1379,7 +1380,7 @@ h2 {
   gap: 6px;
   font-size: 13.5px;
 }
-.lib .card-head .tools { margin-left: auto; }
+.lib .card-head { gap: 8px 10px; }
 .count {
   min-width: 18px;
   padding: 0 5px;
@@ -1483,15 +1484,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-preview { grid-column: 2; grid-row: 1 / 3; }
 .steps { grid-column: 1; overflow: hidden; }
 
-/* Filter toolbar */
-.lib-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--line);
-}
+/* Filter chips + search share the card head row (prototype). */
 .search-field {
   display: flex;
   align-items: center;
@@ -1538,7 +1531,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-cols[hidden] ~ .lib-hint { display: none; }
 /* Empty library (signed out / no repertoires): the onboarding card has no
    filter chips, column header or row hint — only the search stays. */
-.lib-list.is-empty .lib-toolbar .seg,
+.lib-list.is-empty .card-head .seg,
 .lib-list.is-empty .lib-cols,
 .lib-list.is-empty .lib-hint { display: none; }
 .lib-row {
@@ -1798,10 +1791,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .today-body { grid-column: 1 / -1; }
   .lib .lib-preview { display: none; }
   .lib-hint { display: none; }
-  .lib .card-head .tools { width: 100%; }
-  .lib .card-head .tools .btn { flex: 1; height: 40px; }
   .search-field { width: 100%; margin-left: 0; }
-  .lib-toolbar .seg { max-width: 100%; overflow-x: auto; }
+  .lib .card-head .seg { max-width: 100%; overflow-x: auto; }
   .lib-cols { display: none; }
   .lib-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; padding: 10px 12px; }
   .lib-cell-rep { grid-column: 1; grid-row: 1; }
@@ -2749,8 +2740,10 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .tree-wrap { max-height: none; }
   .fork-head .keys { display: none; }
   .dock-tabs button { min-height: 44px; }
+  /* Library's Import / New live in the More sheet on phones (prototype). */
+  #library-actions { display: none; }
   /* Generate stays reachable on phones: it takes the palette chip's room. */
-  .topbar:has(.tb-actions:not([hidden])) .palette-open { display: none; }
+  .topbar:has(.tb-actions:not([hidden]):not(#library-actions)) .palette-open { display: none; }
   .tb-actions { margin-left: 0; gap: 6px; }
   .tb-actions .btn { white-space: nowrap; padding-inline: 8px; font-size: 13px; }
   /* The title keeps its width; the action buttons are the compact part. */

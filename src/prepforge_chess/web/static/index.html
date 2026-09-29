@@ -6,9 +6,9 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-BGgUJU_W.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-t2MOXfjb.js"></script>
     <link rel="modulepreload" crossorigin href="/static/assets/chess-DwBov9dY.js">
-    <link rel="stylesheet" crossorigin href="/static/assets/index-BWqRsEPT.css">
+    <link rel="stylesheet" crossorigin href="/static/assets/index-Ctu4Ewlo.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -73,6 +73,10 @@
         <h1 class="tb-title" id="topbar-title">Library</h1>
         <span class="tb-sub" id="topbar-sub" hidden></span>
         <span class="tb-actions"><button class="btn primary" id="build-generate-node" data-testid="build-generate-node" hidden>Generate moves</button></span>
+        <span class="tb-actions" id="library-actions" hidden>
+          <button class="btn" id="dashboard-import-pgn" data-testid="dashboard-import-pgn">Import PGN</button>
+          <button class="btn primary" id="dashboard-new-rep" data-testid="dashboard-new-rep">New repertoire</button>
+        </span>
         <span class="tb-actions" id="analyze-actions" hidden>
           <button class="btn" id="open-engine-widget" data-testid="open-engine-widget">Engine</button>
           <button class="btn" id="fetch-my-game" data-testid="fetch-my-game">My last game</button>
@@ -102,13 +106,7 @@
             <section class="lib-list card">
               <header class="card-head">
                 <h2>Repertoires <span class="count" id="dashboard-rep-count" hidden></span></h2>
-                <div class="tools">
-                  <button class="btn" id="dashboard-import-pgn" data-testid="dashboard-import-pgn">Import PGN</button>
-                  <button class="btn primary" id="dashboard-new-rep" data-testid="dashboard-new-rep">New repertoire</button>
-                </div>
-              </header>
-              <div class="lib-toolbar" role="group" aria-label="Filter repertoires">
-                <div class="seg">
+                <div class="seg" role="group" aria-label="Filter repertoires">
                   <button type="button" class="seg-btn is-active" data-lib-filter="all" aria-pressed="true">All</button>
                   <button type="button" class="seg-btn" data-lib-filter="white" aria-pressed="false">White</button>
                   <button type="button" class="seg-btn" data-lib-filter="black" aria-pressed="false">Black</button>
@@ -119,7 +117,7 @@
                   <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg>
                   <input type="search" id="lib-filter-search" class="lib-filter-search" aria-label="Filter repertoires" placeholder="Filter repertoires" autocomplete="off" />
                 </label>
-              </div>
+              </header>
               <div class="lib-cols" id="lib-cols" aria-hidden="true"><span>Repertoire</span><span>Mastery</span><span>Queue</span><span></span></div>
               <div id="dashboard-repertoires" class="lib-rep-list"></div>
               <p class="lib-hint">Click to preview &middot; double-click to open &middot; &#8943; for rename, share, delete.</p>
@@ -765,6 +763,14 @@
     <div class="sheet-scrim" id="more-sheet" hidden>
       <div class="sheet" role="dialog" aria-modal="true" aria-label="More">
         <div class="sheet-grab" aria-hidden="true"></div>
+        <button class="sheet-item" type="button" id="sheet-lib-new" data-lib-mirror="dashboard-new-rep" hidden>
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          <span>New repertoire</span>
+        </button>
+        <button class="sheet-item" type="button" id="sheet-lib-import" data-lib-mirror="dashboard-import-pgn" hidden>
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg>
+          <span>Import PGN</span>
+        </button>
         <button class="sheet-item" type="button" data-nav-mirror="analyze">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18"/><path d="M5 16l4-5 3 3 6-8"/><circle cx="18" cy="6" r="1.2"/></svg>
           <span>Analyze</span>

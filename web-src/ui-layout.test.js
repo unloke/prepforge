@@ -92,6 +92,14 @@ describe("workspace chrome layout", () => {
     expect(railFoot).toContain('id="account-chip"');
     expect(railFoot).toContain('id="account-avatar"');
     expect(html).toContain('id="sheet-account"');
+    // Library's Import / New sit in the top-bar actions slot (prototype),
+    // mirrored in the More sheet for phones.
+    const libActions = header.slice(header.indexOf('id="library-actions"'));
+    expect(header).toContain('id="library-actions"');
+    expect(libActions).toContain('id="dashboard-import-pgn"');
+    expect(libActions).toContain('id="dashboard-new-rep"');
+    expect(html).toContain('data-lib-mirror="dashboard-new-rep"');
+    expect(html).toContain('data-lib-mirror="dashboard-import-pgn"');
     expect(header).toContain('id="app-status-close"');
     expect(css).toContain(".topbar-status-slot");
     expect(css).toMatch(/\.topbar-status-slot\s*\{[^}]*position:\s*absolute/s);

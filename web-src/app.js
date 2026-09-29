@@ -3321,6 +3321,12 @@ function syncTopbarExtras() {
   const isAnalyze = appState.currentView === "analyze";
   const analyzeActions = document.getElementById("analyze-actions");
   if (analyzeActions) analyzeActions.hidden = !isAnalyze;
+  const libraryActions = document.getElementById("library-actions");
+  if (libraryActions) libraryActions.hidden = appState.currentView !== "dashboard";
+  // ≤760px the top-bar actions are hidden (prototype); the More sheet mirrors them.
+  document.querySelectorAll("[data-lib-mirror]").forEach((item) => {
+    item.hidden = appState.currentView !== "dashboard";
+  });
   const generate = document.getElementById("build-generate-node");
   if (generate) {
     generate.hidden = !isBuild;
@@ -3345,6 +3351,16 @@ function syncTopbarExtras() {
     const text = appState.trainMode === "play" ? "Play against your book" : live;
     sub.textContent = text;
     sub.hidden = !text;
+    return;
+  }
+  if (appState.currentView === "dashboard") {
+    // Prototype: today's date over a populated library, a welcome line while
+    // it is empty (signed out or no repertoires yet).
+    const empty = !!document.querySelector("#view-dashboard .lib-list.is-empty");
+    sub.textContent = empty
+      ? "Welcome — let's build your first repertoire"
+      : new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }).replace(", ", " · ");
+    sub.hidden = false;
     return;
   }
   if (appState.currentView === "teams" || appState.currentView === "settings") {
@@ -3861,6 +3877,7 @@ async function ensureDashboardView() {
       promptImportRepertoireFromPgn,
       requireSignIn,
       openSignIn: () => openAuthModal("login"),
+      onLibraryStateChange: syncTopbarExtras,
       goToView: switchView,
       // Library preview mini-board: FEN decode + the product's piece SVGs over
       // the real listing root_fen. Pure DOM helpers — no engine, no board.
@@ -11534,6 +11551,12 @@ function wireMobileNav() {
         ? `.tab[data-view="${view}"][data-replay-section="${section}"]`
         : `.tab[data-view="${view}"]`);
       target?.click();
+    });
+  });
+  sheet.querySelectorAll("[data-lib-mirror]").forEach((item) => {
+    item.addEventListener("click", () => {
+      closeSheet({ restoreFocus: false });
+      document.getElementById(item.dataset.libMirror)?.click();
     });
   });
   // Mobile account entry (the rail — and its account row — is hidden ≤ 760px).
