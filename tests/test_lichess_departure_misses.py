@@ -50,6 +50,7 @@ def _repertoire_with_target(repository):
 def _summary(lichess_id, repertoire_id, node_id, reason="user_left_preparation"):
     return GameMatchSummary(
         lichess_id=lichess_id,
+        source_account="Alice",
         white="Alice",
         black="Bob",
         result="0-1",
@@ -77,7 +78,9 @@ def test_record_departure_misses_counts_each_game_exactly_once():
         _summary("gameB", repertoire.id, node_id),
     ]
 
-    recorded = record_departure_misses(repository, summaries, owner_user_id=owner)
+    recorded = record_departure_misses(
+        repository, summaries, owner_user_id=owner, verified_usernames=frozenset({"Alice"})
+    )
 
     assert recorded == 2
     assert [s.training_recorded for s in summaries] == [True, True]
@@ -97,7 +100,9 @@ def test_record_departure_misses_counts_each_game_exactly_once():
         _summary("gameA", repertoire.id, node_id),
         _summary("gameB", repertoire.id, node_id),
     ]
-    assert record_departure_misses(repository, again, owner_user_id=owner) == 0
+    assert record_departure_misses(
+        repository, again, owner_user_id=owner, verified_usernames=frozenset({"Alice"})
+    ) == 0
     assert all(not s.training_recorded for s in again)
     assert (
         repository.load_training_progress(repertoire.id, node_id, owner_user_id=owner).attempts
@@ -122,6 +127,7 @@ def test_record_departure_misses_failure_rolls_back_and_retry_counts_once():
                 repository,
                 [_summary("gameC", repertoire.id, node_id)],
                 owner_user_id=owner,
+                verified_usernames=frozenset({"Alice"}),
             )
 
     # Atomic: the miss did NOT survive without its ledger entry.
@@ -131,13 +137,17 @@ def test_record_departure_misses_failure_rolls_back_and_retry_counts_once():
     assert repository.get_user_setting(owner, DEPARTURE_INGESTED_KEY) is None
 
     retried = [_summary("gameC", repertoire.id, node_id)]
-    assert record_departure_misses(repository, retried, owner_user_id=owner) == 1
+    assert record_departure_misses(
+        repository, retried, owner_user_id=owner, verified_usernames=frozenset({"Alice"})
+    ) == 1
     assert retried[0].training_recorded is True
     progress = repository.load_training_progress(repertoire.id, node_id, owner_user_id=owner)
     assert progress is not None
     assert progress.attempts == 1  # deducted exactly once across the retry
 
-    assert record_departure_misses(repository, retried, owner_user_id=owner) == 0
+    assert record_departure_misses(
+        repository, retried, owner_user_id=owner, verified_usernames=frozenset({"Alice"})
+    ) == 0
     assert (
         repository.load_training_progress(repertoire.id, node_id, owner_user_id=owner).attempts
         == 1
@@ -173,7 +183,9 @@ def test_record_departure_misses_ignores_opponent_novelties_and_unmatched():
         ),
     ]
 
-    assert record_departure_misses(repository, summaries, owner_user_id=owner) == 0
+    assert record_departure_misses(
+        repository, summaries, owner_user_id=owner, verified_usernames=frozenset({"Alice"})
+    ) == 0
     assert all(not s.training_recorded for s in summaries)
     assert (
         repository.load_training_progress(repertoire.id, node_id, owner_user_id=owner) is None
@@ -209,6 +221,7 @@ def test_interleaved_compare_batches_never_double_count(tmp_path):
                 _summary("int2", repertoire.id, node_id),
             ],
             owner_user_id=owner,
+            verified_usernames=frozenset({"Alice"}),
         )
 
     def snapshot_then_race(self, user_id, key, default=None):
@@ -240,6 +253,7 @@ def test_interleaved_compare_batches_never_double_count(tmp_path):
                 _summary("int2", repertoire.id, node_id),
             ],
             owner_user_id=owner,
+            verified_usernames=frozenset({"Alice"}),
         )
 
     assert raced["done"]
@@ -298,6 +312,7 @@ def test_postgres_concurrent_record_departure_misses_count_once():
                     _summary("pgC", repertoire.id, node_id),
                 ],
                 owner_user_id=owner,
+                verified_usernames=frozenset({"Alice"}),
             )
 
         with ThreadPoolExecutor(max_workers=racers) as pool:
@@ -317,3 +332,43 @@ def test_postgres_concurrent_record_departure_misses_count_once():
         with admin.connect() as conn:
             conn.exec_driver_sql('DROP SCHEMA "' + schema + '" CASCADE')
         admin.dispose()
+
+
+@pytest.mark.parametrize("source,verified,color", [
+    (None, frozenset({"Alice"}), "white"),
+    ("Alice", frozenset(), "white"),
+    ("Bob", frozenset({"Alice"}), "black"),
+    ("Alice", frozenset({"Alice"}), "black"),
+])
+def test_unverified_or_wrong_perspective_fails_before_any_db_write(source, verified, color):
+    summary = _summary("external", "rep", "node")
+    summary.source_account = source
+    summary.user_color = color
+    repository = unittest.mock.Mock(spec=PrepForgeRepository)
+    assert record_departure_misses(
+        repository, [summary], owner_user_id="owner", verified_usernames=verified,
+    ) == 0
+    assert repository.mock_calls == []
+    assert summary.training_recorded is False
+
+
+def test_mixed_failure_retry_only_ingests_verified_game():
+    repository = _repository()
+    repertoire, node_id = _repertoire_with_target(repository)
+    owner = "mixed-retry-owner"
+    own = _summary("self", repertoire.id, node_id)
+    external = _summary("external", repertoire.id, node_id)
+    external.source_account = "Bob"
+    external.user_color = "black"
+    kwargs = {"owner_user_id": owner, "verified_usernames": frozenset({"Alice"})}
+    with unittest.mock.patch.object(
+        PrepForgeRepository, "write_user_setting", side_effect=RuntimeError("ledger failed")
+    ), pytest.raises(RuntimeError, match="ledger failed"):
+        record_departure_misses(repository, [external, own], **kwargs)
+    assert repository.load_training_progress(repertoire.id, node_id, owner_user_id=owner) is None
+    assert repository.get_user_setting(owner, DEPARTURE_INGESTED_KEY) is None
+    assert record_departure_misses(repository, [own, external], **kwargs) == 1
+    assert record_departure_misses(repository, [external, own], **kwargs) == 0
+    assert repository.get_user_setting(owner, DEPARTURE_INGESTED_KEY) == ["self"]
+    assert repository.load_training_progress(repertoire.id, node_id, owner_user_id=owner).attempts == 1
+    assert external.training_recorded is False

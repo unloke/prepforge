@@ -107,6 +107,8 @@ class GameMatchSummary:
     last_matched_node_id: Optional[str] = None
     # True once this game's departure has been recorded as a training miss.
     training_recorded: bool = False
+    # Identity whose perspective was compared; never inferred from batch membership.
+    source_account: Optional[str] = None
 
 
 def fetch_recent_pgns(
@@ -473,7 +475,9 @@ def _summarize_fetched(entry, username, core, active_repertoires):
         user_color,
     )
     san_history = [move.san for move in game.moves]
-    return _build_summary(entry, user_color, match, san_history, game)
+    summary = _build_summary(entry, user_color, match, san_history, game)
+    summary.source_account = username
+    return summary
 
 
 def compare_many_identities(
@@ -484,8 +488,9 @@ def compare_many_identities(
     chess_core=None,
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
     owner_user_id: Optional[str] = None,
+    verified_usernames: frozenset[str] = frozenset(),
 ) -> List[tuple]:
-    """Compare recent games for SEVERAL linked identities ("self").
+    """Compare recent games for linked and external identities.
 
     Each identity gets a fair share of ``count`` (round-robin budget, at least
     one game each), fetched with bounded concurrency. Results carry their
@@ -527,6 +532,16 @@ def compare_many_identities(
                 errors.append(error)
                 continue
             collected.extend(pairs)
+    # Resolve duplicate perspectives before truncation. A linked self perspective
+    # wins over an external opponent, regardless of source collection order.
+    # Canonical name breaks ties (including games between two linked identities).
+    verified = {name.strip().lower() for name in verified_usernames}
+    preferred = {}
+    for summary, source in collected:
+        gid = summary.lichess_id
+        rank = (source.strip().lower() not in verified, source.strip().lower(), source)
+        if gid and (gid not in preferred or rank < preferred[gid][0]):
+            preferred[gid] = (rank, summary, source)
     seen_ids: set = set()
     merged: list = []
     for summary, source in collected:
@@ -535,6 +550,7 @@ def compare_many_identities(
             continue
         if gid:
             seen_ids.add(gid)
+            _, summary, source = preferred[gid]
         merged.append((summary, source))
     if not merged and errors:
         raise errors[0]
@@ -553,6 +569,7 @@ def record_departure_misses(
     summaries: List[GameMatchSummary],
     *,
     owner_user_id: Optional[str] = None,
+    verified_usernames: frozenset[str] = frozenset(),
 ) -> int:
     """Close the play→train loop: each game where the USER left their own prep is
     recorded as a recall miss on the expected repertoire node, so the smart queue
@@ -562,6 +579,11 @@ def record_departure_misses(
     game via a per-owner ingested-ids list; marks each summary it recorded through
     ``training_recorded`` so the UI can say "added to training". Returns the count.
 
+    Only identities verified for this authenticated owner may supply automatic
+    evidence. Callers must obtain verified_usernames server-side, never from the
+    request selection. Missing provenance fails closed. Filter before locking
+    the ledger, since the lock helper can insert its initial row.
+
     Atomic: the progress write and the ingested-id ledger commit in ONE
     transaction with the ledger row locked (``lock_user_setting``). A failure
     mid-batch rolls back everything and a retry applies each game exactly once —
@@ -569,6 +591,16 @@ def record_departure_misses(
     its ledger id was lost, so the retried compare deducted the same game again.
     """
     if owner_user_id is None:
+        return 0
+    verified = {name.strip().lower() for name in verified_usernames}
+    summaries = [
+        summary for summary in summaries
+        if summary.source_account
+        and summary.source_account.strip().lower() in verified
+        and determine_user_color(summary.white, summary.black, summary.source_account)
+        == Color(summary.user_color)
+    ]
+    if not summaries:
         return 0
     recorded = 0
     with repository.engine.begin() as conn:

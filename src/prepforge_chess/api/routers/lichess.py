@@ -387,10 +387,10 @@ def explorer_proxy(
 
 
 # ---- Game import / compare ---------------------------------------------------
-# Lichess's public games API needs no token, only the username -- so compare/latest
-# operate on the caller's *linked* username (``LinkedAccount.provider_user_id``), never
-# an arbitrary client-supplied one. Comparison is owner-scoped (matches only against the
-# caller's own repertoires) and the "you just finished a game" marker lives per-owner.
+# Lichess public game comparison accepts linked and external usernames; latest
+# watches linked accounts only. Only server-verified linked identities may become
+# automatic training evidence. Comparison matches the caller's own repertoires,
+# and the "you just finished a game" marker lives per-owner.
 
 
 def _linked_username_or_400(
@@ -437,6 +437,9 @@ def _run_compare(
         links = _links_for(db, user.id)
         primaries = [link for link in links if link.is_primary]
         links = primaries + [link for link in links if not link.is_primary]
+    verified_usernames = frozenset(
+        link.provider_user_id for link in _links_for(db, owner) if link.provider_user_id
+    )
     linked_names = [link.provider_user_id for link in links if link.provider_user_id]
     extra = [u.strip() for u in (usernames or []) if u and str(u).strip()]
     seen_lower = {u.lower() for u in linked_names}
@@ -458,7 +461,8 @@ def _run_compare(
             pairs = [(s, usernames[0]) for s in summaries]
         else:
             pairs = lichess_fetch.compare_many_identities(
-                repo, usernames, count, owner_user_id=owner
+                repo, usernames, count, owner_user_id=owner,
+                verified_usernames=verified_usernames
             )
     except lichess_fetch.LichessFetchError as exc:
         # Upstream Lichess failed -- this server proxied the fetch, so 502.
@@ -467,7 +471,7 @@ def _run_compare(
     # Close the play→train loop: a game where the user left their own prep becomes a
     # recall miss on the forgotten node, so it surfaces in the next smart session.
     misses_recorded = lichess_fetch.record_departure_misses(
-        repo, summaries, owner_user_id=owner
+        repo, summaries, owner_user_id=owner, verified_usernames=verified_usernames
     )
     sources = sorted({source for _, source in pairs})
     return {

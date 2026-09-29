@@ -997,3 +997,196 @@ def test_seen_marker_is_per_owner(client, monkeypatch):
     _link(other)
     # B has its own (empty) last-seen marker -> the same game is still new for B.
     assert other.get("/api/lichess/latest").json()["is_new"] is True
+
+
+@pytest.mark.parametrize("method", ["GET", "POST"])
+@pytest.mark.parametrize("linked", [False, True])
+def test_external_departure_never_writes_training(client, monkeypatch, method, linked):
+    from unittest.mock import patch
+    from prepforge_chess.storage.repositories import PrepForgeRepository
+
+    _register(client, "external-evidence@example.com")
+    if linked:
+        _link_as(client, monkeypatch, "OtherSelf")
+    rep = _make_e4_repertoire(client)
+    _mock_fetch(monkeypatch, games=[_departure_game()])
+    before = client.get("/api/train/smart/summary", params={
+        "repertoire_id": rep["repertoire_id"],
+    }).json()
+    with patch.object(PrepForgeRepository, "lock_user_setting") as ledger, patch.object(
+        PrepForgeRepository, "write_training_progress"
+    ) as progress:
+        if method == "GET":
+            response = client.get("/api/lichess/compare", params={
+                "account_ids": "", "usernames": "TestUser",
+            })
+        else:
+            response = client.post("/api/lichess/compare", json={
+                "account_ids": [], "usernames": ["TestUser"],
+            }, headers=csrf_headers(client))
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["games"][0]["departure_reason"] == "user_left_preparation"
+        assert body["misses_recorded"] == 0
+        assert body["games"][0]["training_recorded"] is False
+        progress.assert_not_called()
+        ledger.assert_not_called()
+    after = client.get("/api/train/smart/summary", params={
+        "repertoire_id": rep["repertoire_id"],
+    }).json()
+    assert after == before
+
+
+def _compare_selection(client, method, names):
+    if method == "GET":
+        response = client.get("/api/lichess/compare", params={
+            "account_ids": "", "usernames": ",".join(names),
+        })
+    else:
+        response = client.post("/api/lichess/compare", json={
+            "account_ids": [], "usernames": names,
+        }, headers=csrf_headers(client))
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def _evidence_repo():
+    from sqlalchemy import select
+    from prepforge_chess.api.db import get_engine
+    from prepforge_chess.api.models import User
+    from prepforge_chess.storage.repositories import PrepForgeRepository
+
+    engine = get_engine()
+    with engine.connect() as conn:
+        owner = conn.execute(select(User.id)).scalar_one()
+    return PrepForgeRepository(engine), owner
+
+
+@pytest.mark.parametrize("method", ["GET", "POST"])
+@pytest.mark.parametrize("reverse", [False, True])
+@pytest.mark.parametrize("shared", [False, True])
+def test_compare_identity_mixed_and_shared(client, monkeypatch, method, reverse, shared):
+    from dataclasses import replace
+    from prepforge_chess.services.lichess_fetch import DEPARTURE_INGESTED_KEY
+
+    _register(client, "mixed-evidence@example.com")
+    _link(client)
+    rep = _make_e4_repertoire(client)
+    own = _departure_game()
+    external = replace(own, white="External", lichess_id="external001",
+                       pgn=own.pgn.replace("TestUser", "External"))
+    # Same actual game: external perspective is Black, self perspective is White.
+    if shared:
+        own.black = "External"
+        own.pgn = own.pgn.replace("Opponent", "External")
+    monkeypatch.setattr("prepforge_chess.services.lichess_fetch.fetch_recent_pgns",
+                        lambda name, *a, **k: [own if shared or name == "TestUser" else external])
+    names = ["TestUser", "External"]
+    if reverse:
+        names.reverse()
+    body = _compare_selection(client, method, names)
+    assert body["misses_recorded"] == 1
+    assert len(body["games"]) == (1 if shared else 2)
+    own_result = next(g for g in body["games"] if g["lichess_id"] == "dep001")
+    assert own_result["source_account"] == "TestUser"
+    assert own_result["user_color"] == "white"
+    assert own_result["training_recorded"] is True
+    if not shared:
+        ext = next(g for g in body["games"] if g["lichess_id"] == "external001")
+        assert ext["departure_reason"] == "user_left_preparation"
+        assert ext["training_recorded"] is False
+    repo, owner = _evidence_repo()
+    node = own_result["expected_node_id"]
+    assert repo.load_training_progress(rep["repertoire_id"], node, owner_user_id=owner).attempts == 1
+    assert repo.get_user_setting(owner, DEPARTURE_INGESTED_KEY) == ["dep001"]
+    # Retry with the other order: same attribution, no second progress update.
+    again = _compare_selection(client, method, list(reversed(names)))
+    assert again["misses_recorded"] == 0
+    assert next(g for g in again["games"] if g["lichess_id"] == "dep001")[
+        "source_account"
+    ] == "TestUser"
+    assert repo.load_training_progress(rep["repertoire_id"], node, owner_user_id=owner).attempts == 1
+
+
+@pytest.mark.parametrize("method", ["GET", "POST"])
+def test_external_compare_preserves_mastery_health_and_queue(client, monkeypatch, method):
+    from datetime import datetime, timedelta, timezone
+    from prepforge_chess.core.models import TrainingProgress
+    from prepforge_chess.services.lichess_fetch import DEPARTURE_INGESTED_KEY
+
+    _register(client, "mastery-evidence@example.com")
+    rep = _make_e4_repertoire(client)
+    repo, owner = _evidence_repo()
+    node = rep["add"]["selected_node_id"]
+    now = datetime.now(timezone.utc)
+    repo.save_training_progress(rep["repertoire_id"], TrainingProgress(
+        node_id=node, attempts=8, correct_attempts=8, is_mastered=True,
+        spaced_repetition_score=8, last_reviewed_at=now, due_at=now + timedelta(days=5),
+    ), owner_user_id=owner)
+    saved = repo.load_training_progress(rep["repertoire_id"], node, owner_user_id=owner)
+    params = {"repertoire_id": rep["repertoire_id"]}
+    before = client.get("/api/train/smart/summary", params=params).json()
+    def start():
+        result = client.post("/api/train/smart/start", json={
+            **params, "fresh": True, "seed": 42,
+        }, headers=csrf_headers(client))
+        return result.status_code, result.json()
+    queue_before = start()
+    assert queue_before[0] == 200, queue_before
+    assert queue_before[1]["cards"]
+    _mock_fetch(monkeypatch, games=[_departure_game()])
+    body = _compare_selection(client, method, ["TestUser"])
+    assert body["misses_recorded"] == 0
+    assert repo.load_training_progress(rep["repertoire_id"], node, owner_user_id=owner) == saved
+    assert repo.get_user_setting(owner, DEPARTURE_INGESTED_KEY) is None
+    assert client.get("/api/train/smart/summary", params=params).json() == before
+    assert start() == queue_before
+
+
+def test_record_miss_is_explicit_adoption_without_link(client, monkeypatch):
+    from prepforge_chess.services.lichess_fetch import DEPARTURE_INGESTED_KEY
+
+    _register(client, "adopt-evidence@example.com")
+    rep = _make_e4_repertoire(client)
+    _mock_fetch(monkeypatch, games=[_departure_game()])
+    body = _compare_selection(client, "POST", ["TestUser"])
+    assert body["misses_recorded"] == 0
+    node = body["games"][0]["expected_node_id"]
+    for _ in range(2):
+        response = client.post("/api/train/record-miss", json={
+            "repertoire_id": rep["repertoire_id"], "node_id": node,
+        }, headers=csrf_headers(client))
+        assert response.status_code == 200, response.text
+        assert response.json() == {"recorded": True, "node_id": node}
+    repo, owner = _evidence_repo()
+    progress = repo.load_training_progress(rep["repertoire_id"], node, owner_user_id=owner)
+    assert progress.attempts == 2  # Each explicit click is a new miss.
+    assert progress.due_at == progress.last_reviewed_at
+    assert repo.get_user_setting(owner, DEPARTURE_INGESTED_KEY) is None
+    assert client.post("/api/train/record-miss", json={
+        "repertoire_id": rep["repertoire_id"], "node_id": "missing",
+    }, headers=csrf_headers(client)).status_code == 404
+
+
+@pytest.mark.parametrize("method", ["GET", "POST"])
+def test_external_then_linked_retry_is_not_poisoned(client, monkeypatch, method):
+    _register(client, "later-linked@example.com")
+    _make_e4_repertoire(client)
+    _mock_fetch(monkeypatch, games=[_departure_game()])
+    assert _compare_selection(client, method, ["testuser"])["misses_recorded"] == 0
+    _link(client)
+    assert _compare_selection(client, method, ["testuser"])["misses_recorded"] == 1
+    assert _compare_selection(client, method, ["TESTUSER"])["misses_recorded"] == 0
+
+
+def test_record_miss_rejects_other_owners_repertoire(client):
+    from fastapi.testclient import TestClient
+    from prepforge_chess.api import main
+
+    _register(client, "record-owner@example.com")
+    rep = _make_e4_repertoire(client)
+    other = TestClient(main.app)
+    _register(other, "record-other@example.com")
+    assert other.post("/api/train/record-miss", json={
+        "repertoire_id": rep["repertoire_id"], "node_id": rep["add"]["selected_node_id"],
+    }, headers=csrf_headers(other)).status_code == 404
