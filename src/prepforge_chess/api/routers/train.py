@@ -134,7 +134,13 @@ def record_miss(
 ) -> dict[str, Any]:
     """Record a single recall miss on a repertoire node — the Analyze board's
     "you left your prep here" action: one spaced-repetition miss, due
-    immediately, so the forgotten move leads the very next smart session."""
+    immediately, so the forgotten move leads the very next smart session.
+
+    Explicit user adoption (the "Train it" click), independent of the viewed
+    game's source identity. Requires an owned repertoire and valid node, not a
+    linked Lichess account. Each call is a new miss; it neither reads nor writes
+    the automatic compare ingestion ledger and has no game-id dedupe contract.
+    """
     _owned_repertoire(repo, body.repertoire_id, owner)
     repertoire = repo.load_repertoire(body.repertoire_id)
     if repertoire is None:

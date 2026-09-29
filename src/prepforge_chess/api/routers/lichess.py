@@ -387,10 +387,10 @@ def explorer_proxy(
 
 
 # ---- Game import / compare ---------------------------------------------------
-# Lichess's public games API needs no token, only the username -- so compare/latest
-# accept linked and external usernames. Only server-verified linked identities
-# may become automatic training evidence. Comparison matches only against the
-# caller's own repertoires) and the "you just finished a game" marker lives per-owner.
+# Lichess public game comparison accepts linked and external usernames; latest
+# watches linked accounts only. Only server-verified linked identities may become
+# automatic training evidence. Comparison matches the caller's own repertoires,
+# and the "you just finished a game" marker lives per-owner.
 
 
 def _linked_username_or_400(
