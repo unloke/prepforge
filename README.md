@@ -12,11 +12,12 @@ The product covers:
 - **Train** — spaced repetition, mistake queues, Lichess practical-game matching.
 - **Scout** — opponent opening reach (Module A) plus production **Scout v2** route
   selection (Module B). Experimental `?scoutV12=1` / `?scoutV13=1` paths are not
-  production. Module B research is closed; see `SCOUT_FINAL_STATE.md`.
+  production. Current selector and runtime boundaries: `docs/scout-production-ranking.md`.
 
 Shared core models (`src/prepforge_chess/core/`, `services/`, `storage/`) back both the
-web SPA and the optional CLI demos. See `docs/ARCHITECTURE.md` and `docs/ROADMAP.md`
-for the full migration history and current status.
+web SPA and the optional CLI demos. Start with `docs/README.md` and
+`docs/ARCHITECTURE.md` for the current implementation. Superseded plans and
+checkpoints are in `docs/archive/`; they are historical context, not current instructions.
 
 ## Local development
 

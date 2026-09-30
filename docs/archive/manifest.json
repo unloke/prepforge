@@ -1,0 +1,241 @@
+[
+  {
+    "source": "docs/analyze-friction-audit.md",
+    "destination": "docs/archive/audits/analyze-friction-audit.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/analyze-friction-audit-evidence.json",
+    "destination": "docs/archive/audits/analyze-friction-audit-evidence.json",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/build-friction-audit.md",
+    "destination": "docs/archive/audits/build-friction-audit.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/build-friction-audit-evidence.json",
+    "destination": "docs/archive/audits/build-friction-audit-evidence.json",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/train-friction-audit.md",
+    "destination": "docs/archive/audits/train-friction-audit.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/train-friction-audit-evidence.json",
+    "destination": "docs/archive/audits/train-friction-audit-evidence.json",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/release-cross-flow-audit.md",
+    "destination": "docs/archive/audits/release-cross-flow-audit.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/release-cross-flow-audit-evidence.json",
+    "destination": "docs/archive/audits/release-cross-flow-audit-evidence.json",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/ui-comfort-audit-2026-09-26.md",
+    "destination": "docs/archive/audits/ui-comfort-audit-2026-09-26.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/fullstack-improvement-audit-2026-09-25.md",
+    "destination": "docs/archive/audits/fullstack-improvement-audit-2026-09-25.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/fullstack-improvement-audit-2026-09-27.md",
+    "destination": "docs/archive/audits/fullstack-improvement-audit-2026-09-27.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/project-improvement-review-2026-09-29.md",
+    "destination": "docs/archive/audits/project-improvement-review-2026-09-29.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/build-db-performance-2026-09-23.md",
+    "destination": "docs/archive/audits/build-db-performance-2026-09-23.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/analyze-build-concurrency.md",
+    "destination": "docs/archive/design/analyze-build-concurrency.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/frontend-architecture-maintenance-2026-09-18.md",
+    "destination": "docs/archive/design/frontend-architecture-maintenance-2026-09-18.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/games-teams-redesign-20260923.md",
+    "destination": "docs/archive/design/games-teams-redesign-20260923.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-games-teams-plan-20260924.md",
+    "destination": "docs/archive/design/scout-games-teams-plan-20260924.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-next-round-brief.md",
+    "destination": "docs/archive/design/scout-next-round-brief.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/stability-perf-plan.md",
+    "destination": "docs/archive/design/stability-perf-plan.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/engineering-health-state-map.md",
+    "destination": "docs/archive/design/engineering-health-state-map.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-orcbr-b1-acquisition.md",
+    "destination": "docs/archive/research/scout-orcbr-b1-acquisition.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-orcbr-b1-protocol.md",
+    "destination": "docs/archive/research/scout-orcbr-b1-protocol.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-plausibility-benchmark-20260924.md",
+    "destination": "docs/archive/research/scout-plausibility-benchmark-20260924.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-plausibility-case-trace.json",
+    "destination": "docs/archive/research/scout-plausibility-case-trace.json",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-route-reach-benchmark.md",
+    "destination": "docs/archive/research/scout-route-reach-benchmark.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-sample-aware-followup.md",
+    "destination": "docs/archive/research/scout-sample-aware-followup.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-sample-dr.json",
+    "destination": "docs/archive/research/scout-sample-dr.json",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-sample-eric.json",
+    "destination": "docs/archive/research/scout-sample-eric.json",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-selection-after.json",
+    "destination": "docs/archive/research/scout-selection-after.json",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-selection-before.json",
+    "destination": "docs/archive/research/scout-selection-before.json",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-selection-v2-results.json",
+    "destination": "docs/archive/research/scout-selection-v2-results.json",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-selection-v8-research.md",
+    "destination": "docs/archive/research/scout-selection-v8-research.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-sparse-benchmark-results.json",
+    "destination": "docs/archive/research/scout-sparse-benchmark-results.json",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-sparse-plausibility-followup.md",
+    "destination": "docs/archive/research/scout-sparse-plausibility-followup.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-v12-design.md",
+    "destination": "docs/archive/research/scout-v12-design.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-v13-design.md",
+    "destination": "docs/archive/research/scout-v13-design.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "docs/scout-selection-research.md",
+    "destination": "docs/archive/research/scout-selection-research.md",
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+  },
+  {
+    "source": "SCOUT_FINAL_STATE.md",
+    "destination": "docs/archive/research/SCOUT_FINAL_STATE.md",
+    "reason": "Superseded Scout version or historical research protocol."
+  },
+  {
+    "source": "SCOUT_BUG_INVESTIGATION.md",
+    "destination": "docs/archive/research/SCOUT_BUG_INVESTIGATION.md",
+    "reason": "Superseded Scout version or historical research protocol."
+  },
+  {
+    "source": "COMFORT_ZONE_FIX_VERIFICATION.md",
+    "destination": "docs/archive/research/COMFORT_ZONE_FIX_VERIFICATION.md",
+    "reason": "Superseded Scout version or historical research protocol."
+  },
+  {
+    "source": "MODULE_B_BENCHMARK_V2.md",
+    "destination": "docs/archive/research/MODULE_B_BENCHMARK_V2.md",
+    "reason": "Superseded Scout version or historical research protocol."
+  },
+  {
+    "source": "MODULE_B_BENCHMARK_V3.md",
+    "destination": "docs/archive/research/MODULE_B_BENCHMARK_V3.md",
+    "reason": "Superseded Scout version or historical research protocol."
+  },
+  {
+    "source": "memory/repertoire-health-cache.md",
+    "destination": "docs/archive/memory/repertoire-health-cache.md",
+    "reason": "Historical migration head, schema.sql, test counts, and missing memory links."
+  },
+  {
+    "source": "docs/ARCHITECTURE.md",
+    "destination": "docs/archive/history/ARCHITECTURE.md",
+    "reason": "Original retained before replacing mixed current/history material with concise current documentation.",
+    "replacement": true
+  },
+  {
+    "source": "docs/ROADMAP.md",
+    "destination": "docs/archive/history/ROADMAP.md",
+    "reason": "Original retained before replacing mixed current/history material with concise current documentation.",
+    "replacement": true
+  },
+  {
+    "source": "docs/browser-engine-migration.md",
+    "destination": "docs/archive/history/browser-engine-migration.md",
+    "reason": "Original retained before replacing mixed current/history material with concise current documentation.",
+    "replacement": true
+  },
+  {
+    "source": "docs/local-first-sync-plan.md",
+    "destination": "docs/archive/history/local-first-sync-plan.md",
+    "reason": "Original retained before replacing mixed current/history material with concise current documentation.",
+    "replacement": true
+  }
+]
