@@ -357,25 +357,50 @@ def test_engine_eval_dedup_and_position_uniqueness():
         pv=["e2e4"],
         wdl={"win": 0.3, "draw": 0.5, "loss": 0.2},
     )
+    # A third game re-submits g1's evaluation byte-for-byte: identical content
+    # must dedupe onto the existing row, not add one.
+    g3 = core.import_single_pgn("1. d4 d5 *")
+    g3.id = "g-eval-3"
+    g3.moves[0].engine_eval_before = EngineEvaluation(
+        engine="stockfish",
+        depth=16,
+        nodes=1000,
+        time_ms=50,
+        score_cp=12,
+        best_move_uci="e2e4",
+        pv=["e2e4", "e7e5"],
+        wdl={"win": 0.3, "draw": 0.5, "loss": 0.2},
+    )
     repo.save_game(g1)
     repo.save_game(g2)
+    repo.save_game(g3)
     with repo.engine.connect() as conn:
         n_eval = conn.execute(text("SELECT COUNT(*) FROM engine_evaluations")).scalar_one()
         n_pos = conn.execute(text("SELECT COUNT(*) FROM positions")).scalar_one()
-    # Same starting FEN + same config is one eval row (score updates, does not duplicate).
-    assert n_eval == 1
+    # Same starting FEN: one position row. Different RESULTS at the same
+    # search identity are distinct immutable snapshots (g1 score 12 vs g2
+    # score 99) — a later submission never rewrites the row an earlier
+    # analysis references (improvement review D-01) — while identical content
+    # (g3 == g1) still dedupes onto one cache row.
     assert n_pos == 1
+    assert n_eval == 2
+    assert repo.load_game("g-eval-1").moves[0].engine_eval_before.score_cp == 12
+    assert repo.load_game("g-eval-3").moves[0].engine_eval_before.score_cp == 12
     loaded = repo.load_game("g-eval-2")
     assert loaded.moves[0].engine_eval_before.score_cp == 99
     assert loaded.moves[0].engine_eval_before.wdl["draw"] == 0.5
+    # g1's snapshot keeps its own PV — g2's shorter line never replaced it.
+    assert repo.load_game("g-eval-1").moves[0].engine_eval_before.pv == ["e2e4", "e7e5"]
 
 
-def test_default_config_eval_null_limits_last_write_wins():
+def test_default_config_eval_null_limits_are_distinct_snapshots():
     """Default EngineAnalysisConfig uses nodes=None, time_ms=None.
 
-    SQL UNIQUE treats those NULLs as distinct, so the writer must persist a
-    NULL-safe identity. Two saves of the same FEN/engine/depth must be one
-    cache row; the second score wins.
+    SQL UNIQUE treats those NULLs as distinct, so the writer persists a
+    NULL-safe identity. Two saves of the same FEN/engine/depth with the SAME
+    result collapse to one cache row; with DIFFERENT results each keeps its own
+    immutable snapshot and the older game keeps reading its own score (never a
+    silent last-write-wins overwrite — improvement review D-01).
     """
     core = ChessCore()
     repo = _repository()
@@ -387,15 +412,26 @@ def test_default_config_eval_null_limits_last_write_wins():
     g2 = core.import_single_pgn("1. e4 c5 *")
     g2.id = "g-null-2"
     g2.moves[0].engine_eval_before = latest
+    g3 = core.import_single_pgn("1. d4 d5 *")
+    g3.id = "g-null-3"
+    g3.moves[0].engine_eval_before = EngineEvaluation(
+        engine="stockfish", depth=10, nodes=None, time_ms=None, score_cp=5
+    )
     repo.save_game(g1)
     repo.save_game(g2)
+    repo.save_game(g3)
     with repo.engine.connect() as conn:
         n_eval = conn.execute(text("SELECT COUNT(*) FROM engine_evaluations")).scalar_one()
         stored = conn.execute(
-            text("SELECT depth, nodes, time_ms, score_cp FROM engine_evaluations")
-        ).mappings().one()
-    assert n_eval == 1
-    assert stored["score_cp"] == 42
+            text(
+                "SELECT depth, nodes, time_ms, score_cp FROM engine_evaluations"
+                " ORDER BY score_cp"
+            )
+        ).mappings().all()
+    # g3 is byte-identical to g1 and deduped onto its row: 2 snapshots, not 3.
+    assert n_eval == 2
+    assert [(r["depth"], r["nodes"], r["time_ms"]) for r in stored] == [(10, -1, -1)] * 2
+    assert [r["score_cp"] for r in stored] == [5, 42]
     loaded = repo.load_game("g-null-2")
     assert loaded.moves[0].engine_eval_before is not None
     assert loaded.moves[0].engine_eval_before.score_cp == 42
@@ -403,7 +439,8 @@ def test_default_config_eval_null_limits_last_write_wins():
     assert loaded.moves[0].engine_eval_before.time_ms is None
     assert loaded.moves[0].engine_eval_before.depth == 10
     older = repo.load_game("g-null-1")
-    assert older.moves[0].engine_eval_before.score_cp == 42
+    assert older.moves[0].engine_eval_before.score_cp == 5
+    assert repo.load_game("g-null-3").moves[0].engine_eval_before.score_cp == 5
 
 
 def test_distinct_castling_and_ep_get_distinct_position_rows():

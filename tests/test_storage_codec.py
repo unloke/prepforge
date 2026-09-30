@@ -139,6 +139,44 @@ def test_analysis_identity_includes_engine_config_not_score():
     assert len(digest_a) == 64  # full sha256, not a truncated hash
 
 
+def test_evaluation_fingerprint_commits_to_identity_and_result():
+    base = dict(
+        engine="stockfish (browser)",
+        position_fen=codec.position_key(STARTING_FEN),
+        depth=16,
+        nodes=-1,
+        time_ms=-1,
+        score_cp=25,
+        mate_in=None,
+        best_move_uci="e2e4",
+        pv="e2e4 e7e5",
+        wdl_win=None,
+        wdl_draw=None,
+        wdl_loss=None,
+    )
+    fp = codec.evaluation_fingerprint(**base)
+    assert fp == codec.evaluation_fingerprint(**base)  # deterministic
+    assert len(fp) == 64  # full sha256, not a truncated hash
+    # Different RESULT content is a different immutable snapshot…
+    for change in (
+        {"score_cp": -900},
+        {"mate_in": 2},
+        {"best_move_uci": "d2d4"},
+        {"pv": "d2d4 d7d5"},
+        {"wdl_win": 1, "wdl_draw": 2, "wdl_loss": 3},
+    ):
+        assert codec.evaluation_fingerprint(**{**base, **change}) != fp
+    # …and so is a different search identity / artifact / position.
+    for change in (
+        {"engine": "stockfish"},
+        {"position_fen": codec.position_key("8/8/8/8/8/8/8/8 w - - 0 1")},
+        {"depth": 8},
+        {"nodes": 123},
+        {"time_ms": 5},
+    ):
+        assert codec.evaluation_fingerprint(**{**base, **change}) != fp
+
+
 def test_wdl_and_pv_round_trip():
     encoded = codec.encode_wdl({"win": 0.35, "draw": 0.40, "loss": 0.25})
     decoded = codec.decode_wdl(*encoded)

@@ -13,6 +13,7 @@ readable dicts; raw DB rows are not required to be pretty.
 from __future__ import annotations
 
 import hashlib
+import json
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import chess
@@ -142,6 +143,59 @@ def analysis_identity_digest(
         "" if time_ms is None else time_ms,
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def evaluation_fingerprint(
+    *,
+    engine: str,
+    position_fen: str,
+    depth: int,
+    nodes: int,
+    time_ms: int,
+    score_cp: Optional[int],
+    mate_in: Optional[int],
+    best_move_uci: Optional[str],
+    pv: str,
+    wdl_win: Optional[int],
+    wdl_draw: Optional[int],
+    wdl_loss: Optional[int],
+) -> str:
+    """Digest of everything that defines one evaluation snapshot.
+
+    Commits to the full snapshot identity, not just the result:
+
+    - engine / artifact version — the engine string is the artifact + source
+      identity (e.g. ``"stockfish (browser)"`` vs a server engine name), so
+      browser submissions and server engines never collide
+    - position (``position_key`` form, i.e. the stored FEN)
+    - actual search effort: depth / nodes / time_ms (encoded, ``None`` →
+      :data:`UNSET_SEARCH_LIMIT`)
+    - result: score_cp / mate_in / best_move_uci / PV / WDL
+
+    All inputs use their STORED forms (search limits already
+    :func:`encode_search_limit`-ed, PV in :func:`encode_pv` form), so a stored
+    row can be re-fingerprinted bit-for-bit — this is what the migration
+    backfill relies on. Therefore identical content hashes identically on
+    write and on read-back, and any different result (different search or
+    different numbers) hashes differently: evaluation rows become immutable
+    snapshots that still dedupe (see the D-01 improvement review).
+    """
+    payload = {
+        "engine": engine,
+        "position": position_fen,
+        "depth": depth,
+        "nodes": nodes,
+        "time_ms": time_ms,
+        "score_cp": score_cp,
+        "mate_in": mate_in,
+        "best_move_uci": best_move_uci,
+        "pv": pv,
+        "wdl_win": wdl_win,
+        "wdl_draw": wdl_draw,
+        "wdl_loss": wdl_loss,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
 def _color_from_board(board: chess.Board) -> Color:

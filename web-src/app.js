@@ -3135,6 +3135,7 @@ function runPaletteItem(item) {
   if (item.kind === "view") {
     dismissTransientOverlays();
     switchView(item.view);
+    if (item.section) setReplaySection(item.section);
     if (item.view === "settings") loadSettings();
     return;
   }
@@ -5682,6 +5683,12 @@ async function runAnalysis() {
             mate_in: ev.mate_in ?? null,
             best_move_uci: ev.best_move_uci ?? null,
             pv: ev.pv || [],
+            // Actual depth reached (a timeout may have accepted a shallower
+            // result) — the server stores this per position instead of the
+            // requested `depth` above. `nodes` is the real search effort and
+            // is part of the stored evaluation's identity.
+            depth: ev.depth ?? null,
+            nodes: ev.nodes ?? null,
           };
         }),
         maia_assessments: maiaAssessments,
@@ -6944,6 +6951,7 @@ const SYNC_CHIP_VARIANTS = {
   dirty: { cls: "is-dirty", text: "• Unsaved changes" },
   syncing: { cls: "is-syncing", text: "↻ Saving…" },
   error: { cls: "is-error", text: "⚠ Offline — will retry" },
+  rejected: { cls: "is-error", text: "⚠ Some attempts couldn't be saved" },
 };
 
 function renderSyncChip(el, state) {
@@ -10213,7 +10221,8 @@ function flushTrainSync() {
   // session, not the current one. Play order is preserved within each group.
   // Grouping/partial-failure semantics live in train-sync.js (tested): retry
   // Each attempt keeps its UUID through requeue, so an uncertain response is
-  // safe to retry. A 4xx drops only its own session group.
+  // safe to retry. Only a permanently rejected group drops (and is reported);
+  // auth/CSRF/conflict/rate-limit errors keep their attempts queued.
   const smart = appState.smart;
   const groups = groupAttempts(batch, smart ? smart.sessionId : null);
   setTrainSyncState("syncing");
@@ -10235,13 +10244,27 @@ function flushTrainSync() {
     }
     if (!outcome.retriable) {
       sync.retry = 0;
+      // Permanently rejected attempts (e.g. the session's repertoire is gone)
+      // leave the queue, but "Saved" must never be claimed for them.
+      const rejectedCount = (outcome.rejectedGroups || []).reduce(
+        (n, group) => n + (group.attempts ? group.attempts.length : 0),
+        0,
+      );
+      if (rejectedCount) {
+        setStatus(
+          `${rejectedCount} training attempt${rejectedCount === 1 ? "" : "s"} could not be saved`,
+          { severity: "error" },
+        );
+      }
       if (sync.pending.length || sync.dirty) {
         setTrainSyncState("dirty");
         scheduleTrainSync();
+      } else if (rejectedCount) {
+        setTrainSyncState("rejected");
       } else {
         setTrainSyncState("saved");
       }
-      return true;
+      return rejectedCount === 0;
     }
     setTrainSyncState("error");
     // Requeue failed groups ahead of newer attempts and back off. SR deltas

@@ -38,7 +38,11 @@ from prepforge_chess.services.brilliant import (
     BrilliantConfig,
 )
 from prepforge_chess.services.classification import classify_move
-from prepforge_chess.services.replay_engine import ReplayEngine
+from prepforge_chess.services.replay_engine import (
+    ReplayEngine,
+    client_search_depth,
+    client_search_nodes,
+)
 
 
 def _evaluation_from_client(
@@ -48,7 +52,11 @@ def _evaluation_from_client(
     mate_in = data.get("mate_in")
     return EngineEvaluation(
         engine=engine_name,
-        depth=depth,
+        # The actual depth the browser search reached (0 = terminal position,
+        # no search); `depth` is only the requested fallback for legacy
+        # payloads, so a shallow timed-out result is never mislabelled.
+        depth=client_search_depth(data, depth),
+        nodes=client_search_nodes(data),
         score_cp=int(score_cp) if score_cp is not None else None,
         mate_in=int(mate_in) if mate_in is not None else None,
         best_move_uci=data.get("best_move_uci") or None,
@@ -107,8 +115,9 @@ def classify_precomputed_game(
 ) -> AnalysisResult:
     """Apply client evals, classify each move exactly once, build the result.
 
-    ``position_map`` maps FEN → ``{score_cp, mate_in, best_move_uci, pv}`` as
-    produced by the browser Stockfish provider. A missing FEN raises the same
+    ``position_map`` maps FEN → ``{score_cp, mate_in, best_move_uci, pv, depth}``
+    as produced by the browser Stockfish provider (``depth`` = actual search
+    depth reached). A missing FEN raises the same
     ``ReplayEngineError`` the legacy path raises (incomplete browser payload →
     400), so error semantics are unchanged. ``game.moves`` is classified
     in place (same as ``AnalysisService``) and also returned via the result.

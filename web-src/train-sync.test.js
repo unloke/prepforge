@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
+import {
+  flushGroups,
+  groupAttempts,
+  isRetriableSyncError,
+  ungroupAttempts,
+} from "./train-sync.js";
 
 const attempt = (session, node, correct = true) => ({
   session_id: session,
@@ -47,7 +52,7 @@ describe("flushGroups", () => {
     const posted = [];
     const result = await flushGroups(groups("a", "b", "c"), async (id) => posted.push(id));
     expect(posted).toEqual(["a", "b", "c"]);
-    expect(result).toEqual({ retriable: false, failedGroups: [] });
+    expect(result).toEqual({ retriable: false, failedGroups: [], rejectedGroups: [] });
   });
 
   it("a mid-batch 5xx never requeues already-posted groups", async () => {
@@ -71,17 +76,38 @@ describe("flushGroups", () => {
     expect(result.failedGroups).toEqual(input);
   });
 
-  it("a 4xx drops only that group; later groups still land", async () => {
+  it("a permanent 4xx drops only that group (reported), later groups still land", async () => {
     const posted = [];
-    const result = await flushGroups(groups("a", "b", "c"), async (id) => {
+    const input = groups("a", "b", "c");
+    const result = await flushGroups(input, async (id) => {
       if (id === "b") throw httpError(404);
       posted.push(id);
     });
     expect(posted).toEqual(["a", "c"]);
-    expect(result).toEqual({ retriable: false, failedGroups: [] });
+    expect(result.retriable).toBe(false);
+    expect(result.failedGroups).toEqual([]);
+    // The dropped attempts are reported, never silently discarded.
+    expect(result.rejectedGroups).toEqual([
+      { sessionId: "b", attempts: input[1][1], status: 404 },
+    ]);
   });
 
-  it("a 4xx followed by a 5xx still reports the 5xx group as retriable", async () => {
+  it("auth, CSRF, conflict and rate-limit 4xx keep the attempts queued and retriable", async () => {
+    for (const status of [401, 403, 409, 429]) {
+      const input = groups("a", "b");
+      const posted = [];
+      const result = await flushGroups(input, async (id) => {
+        if (id === "a") throw httpError(status);
+        posted.push(id);
+      });
+      expect(posted).toEqual([]); // flush stops at the unacknowledged group
+      expect(result.retriable).toBe(true);
+      expect(result.failedGroups).toEqual(input); // nothing lost
+      expect(result.rejectedGroups).toEqual([]);
+    }
+  });
+
+  it("a permanent 4xx followed by a 5xx reports both outcomes", async () => {
     const input = groups("a", "b", "c");
     const result = await flushGroups(input, async (id) => {
       if (id === "a") throw httpError(422);
@@ -89,6 +115,24 @@ describe("flushGroups", () => {
     });
     expect(result.retriable).toBe(true);
     expect(result.failedGroups).toEqual([input[1], input[2]]);
+    expect(result.rejectedGroups).toEqual([
+      { sessionId: "a", attempts: input[0][1], status: 422 },
+    ]);
+  });
+});
+
+describe("isRetriableSyncError", () => {
+  it("treats network errors, 5xx and transient 4xx as retriable", () => {
+    expect(isRetriableSyncError(new TypeError("Failed to fetch"))).toBe(true);
+    for (const status of [401, 403, 408, 409, 423, 425, 429, 500, 503]) {
+      expect(isRetriableSyncError({ status })).toBe(true);
+    }
+  });
+
+  it("treats permanent 4xx as non-retriable", () => {
+    for (const status of [400, 404, 410, 422]) {
+      expect(isRetriableSyncError({ status })).toBe(false);
+    }
   });
 });
 
