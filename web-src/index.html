@@ -172,6 +172,16 @@
                 </div>
                 <div class="engine-slot" id="analysis-engine-slot"></div>
               </section>
+              <!-- F-03: finished-but-unsaved analysis: the compute lives on this
+                   device; Retry save re-posts it without re-analyzing. -->
+              <div class="analysis-retry-save" id="analysis-retry-save" data-testid="analysis-retry-save" hidden>
+                <span class="pf-row-text" id="analysis-retry-save-text"></span>
+                <button type="button" class="btn sm primary" id="analysis-retry-save-btn" data-testid="analysis-retry-save-btn">Retry save</button>
+                <button type="button" class="btn sm ghost" id="analysis-retry-save-discard">Discard</button>
+              </div>
+              <!-- F-04: after a batch import — what was stored, and which game
+                   this report covers (switchable). -->
+              <div class="analysis-import-picker" id="analysis-import-picker" data-testid="analysis-import-picker" hidden></div>
               <div class="res-stack" id="analysis-results" hidden>
                 <div class="moves-grid" id="analysis-moves" data-testid="analysis-moves"></div>
                 <section class="res-block" id="analysis-summary"></section>

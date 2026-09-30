@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import math
 import time
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -30,7 +30,11 @@ from prepforge_chess.core.models import MoveSource
 from prepforge_chess.services.analysis_view import analysis_result_to_payload
 from prepforge_chess.services.app_settings import owner_maia_rating, owner_stockfish_depth
 from prepforge_chess.services.brilliant import BrilliantAnalyzer, BrilliantConfig
-from prepforge_chess.services.browser_compute import classify_precomputed_game
+from prepforge_chess.services.browser_compute import (
+    PositionPayloadError,
+    classify_precomputed_game,
+    validate_position_payload,
+)
 from prepforge_chess.services.pgn_import import PgnImportOptions, PgnImportService
 from prepforge_chess.services.replay_engine import ReplayEngineError
 from prepforge_chess.services.replay_maia import ReplayMaia
@@ -45,22 +49,88 @@ MAX_ANALYSIS_PGN_CHARS = 1_000_000
 MAX_ANALYSIS_POSITIONS = 1_000
 
 
-def _import_pgn_for_analysis(repo: PrepForgeRepository, pgn_text: str, owner: str) -> str:
-    """Import a single game (owner-scoped, dedup against this owner only) and return
-    its id. Raises ValueError (→ 400) on empty/invalid PGN."""
+MAX_ANALYSIS_IMPORT_GAMES = 20
+
+
+def _import_pgn_for_analysis(
+    repo: PrepForgeRepository,
+    pgn_text: str,
+    owner: str,
+    *,
+    mode: str = "single",
+    select_index: int = 0,
+) -> tuple[str, dict[str, Any]]:
+    """Import the pasted PGN with explicit multi-game semantics (F-04).
+
+    Parse FIRST, store after — so single mode can reject a multi-game paste
+    before anything lands. Each game reports its own outcome (imported /
+    already present / failed), a partial success is never dressed up as total
+    failure, and the game actually selected for analysis is always named.
+    Raises ValueError (→ 400) with a readable message otherwise.
+    """
     if not pgn_text.strip():
         raise ValueError("PGN text is empty")
-    result = PgnImportService(repo).import_text(
-        pgn_text,
-        PgnImportOptions(skip_duplicate_lichess_games=True),
-        owner_user_id=owner,
+    service = PgnImportService(repo)
+    parsed = service.parse_text(pgn_text)
+    total = len(parsed)
+    if total == 0:
+        raise ValueError("No PGN games found.")
+    if total > MAX_ANALYSIS_IMPORT_GAMES:
+        raise ValueError(
+            "Too many games in one paste ({0}; max {1}).".format(
+                total, MAX_ANALYSIS_IMPORT_GAMES
+            )
+        )
+    if mode == "single" and total != 1:
+        # Validated BEFORE storing anything: no silent import of the extras.
+        raise ValueError(
+            "Found {0} games in the PGN — this flow analyzes one game at a time. "
+            "Remove the extra games, or use multi-game mode.".format(total)
+        )
+    statuses = service.import_parsed(
+        parsed, PgnImportOptions(skip_duplicate_lichess_games=True), owner_user_id=owner
     )
-    if result.errors:
-        raise ValueError("; ".join(result.errors))
-    game_ids = result.imported_game_ids or result.skipped_game_ids
-    if not game_ids:
-        raise ValueError("No game imported.")
-    return game_ids[0]
+    games_summary = [
+        {
+            "index": s.index,
+            "game_id": s.game_id,
+            "status": s.status,
+            "white": s.white,
+            "black": s.black,
+            "error": s.error,
+        }
+        for s in statuses
+    ]
+    if mode == "single":
+        selected = statuses[0]
+    else:
+        if select_index < 0 or select_index >= len(statuses):
+            raise ValueError(
+                "select_index {0} is out of range ({1} games).".format(
+                    select_index, len(statuses)
+                )
+            )
+        selected = statuses[select_index]
+    if selected.status == "failed" or not selected.game_id:
+        raise ValueError(
+            "Game {0} could not be imported: {1}".format(
+                selected.index + 1, selected.error or "no game id"
+            )
+        )
+    imported = [s.game_id for s in statuses if s.status == "imported" and s.game_id]
+    existing = [s.game_id for s in statuses if s.status == "existing" and s.game_id]
+    failed = [s for s in statuses if s.status == "failed"]
+    import_summary = {
+        "mode": mode,
+        "total_games": total,
+        "imported_count": len(imported),
+        "existing_count": len(existing),
+        "failed_count": len(failed),
+        "selected_index": selected.index,
+        "selected_game_id": selected.game_id,
+        "games": games_summary,
+    }
+    return selected.game_id, import_summary
 
 
 def _brilliant_analyzer_from_client(
@@ -121,6 +191,11 @@ def _brilliant_analyzer_from_client(
 
 class PreparePayload(BaseModel):
     pgn: str = Field(default="", max_length=MAX_ANALYSIS_PGN_CHARS)
+    # F-04: "single" (default) rejects multi-game pastes BEFORE storing any of
+    # them; "multi" imports every game with per-game status and analyzes the
+    # one named by ``select_index``.
+    mode: Literal["single", "multi"] = "single"
+    select_index: int = Field(default=0, ge=0, le=MAX_ANALYSIS_IMPORT_GAMES)
 
 
 @router.post("/analyze/prepare")
@@ -134,9 +209,12 @@ def analyze_prepare(
     """Import a PGN and return the positions the browser must evaluate.
 
     ``positions`` is every distinct ``fen_before`` plus the final ``fen_after`` — the
-    complete set the classifier needs, since ``fen_after(N) == fen_before(N+1)``."""
+    complete set the classifier needs, since ``fen_after(N) == fen_before(N+1)``.
+    ``import_summary`` names every stored/failed game and which one is analyzed."""
     try:
-        game_id = _import_pgn_for_analysis(repo, body.pgn, owner)
+        game_id, import_summary = _import_pgn_for_analysis(
+            repo, body.pgn, owner, mode=body.mode, select_index=body.select_index
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     # The freshly-imported game is unowned; claim it for the caller.
@@ -175,6 +253,7 @@ def analyze_prepare(
 
     return {
         "game_id": game_id,
+        "import_summary": import_summary,
         "engine": "stockfish (browser)",
         "depth": owner_stockfish_depth(repo, owner),
         "positions": positions,
@@ -235,19 +314,17 @@ def analyze_classify_save(
             status_code=status.HTTP_400_BAD_REQUEST, detail="positions must be a list"
         )
     mark = time.perf_counter()
+    # D-03: bounded typed contract over the untrusted per-position payload.
+    # A non-numeric score, malformed PV/UCI, out-of-range depth/nodes/mate, or
+    # a non-object item is a readable 400 with the offending field — never a
+    # 500, and always before any write (no partial saves).
+    try:
+        validated = validate_position_payload(body.positions)
+    except PositionPayloadError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     position_map: dict[str, dict[str, Any]] = {}
-    for item in body.positions:
-        if not isinstance(item, dict):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="each position must be an object"
-            )
-        fen = item.get("fen")
-        if not fen or not isinstance(fen, str):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="each position requires a fen string",
-            )
-        position_map[fen] = item
+    for item in validated:
+        position_map[item["fen"]] = item
     if not position_map:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="positions are required"
@@ -283,9 +360,14 @@ def analyze_classify_save(
             engine_name=engine_name,
             depth=resolved_depth,
             brilliant_analyzer=brilliant_analyzer,
+            maia_rating=owner_maia_rating(repo, owner),
         )
     except ReplayEngineError as exc:
         # Incomplete client payload (a position was never evaluated).
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except PositionPayloadError as exc:
+        # Conflicting duplicate evaluations and other payload faults: same
+        # readable-4xx contract (D-03).
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     timings_ms["classify_ms"] = int((time.perf_counter() - mark) * 1000)
 
@@ -307,13 +389,38 @@ def analyze_classify_save(
 # ---- History reads ---------------------------------------------------------
 
 
+def _parse_cursor(cursor: str | None) -> tuple[str, str] | None:
+    if not cursor:
+        return None
+    analyzed_at, sep, game_id = cursor.partition("|")
+    if not sep or not analyzed_at or not game_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="invalid cursor"
+        )
+    return analyzed_at, game_id
+
+
 @router.get("/analyses")
 def list_analyses(
     owner: str = Depends(current_owner),
     repo: PrepForgeRepository = Depends(get_repository),
+    limit: int = 50,
+    cursor: str | None = None,
 ) -> dict[str, Any]:
-    """This owner's analyzed games (latest analysis per game, newest first)."""
-    return {"analyses": repo.list_analyzed_games(owner_user_id=owner)}
+    """This owner's analyzed games (latest analysis per game, newest first).
+
+    D-05: fixed page size with a stable keyset cursor — pass the returned
+    ``next_cursor`` to fetch the next page (no gaps or repeats at equal
+    timestamps). ``limit`` is clamped server-side (1–200)."""
+    analyses, next_cursor = repo.list_analyzed_games(
+        owner_user_id=owner, limit=limit, cursor=_parse_cursor(cursor)
+    )
+    return {
+        "analyses": analyses,
+        "next_cursor": (
+            "{0}|{1}".format(*next_cursor) if next_cursor is not None else None
+        ),
+    }
 
 
 @router.get("/analyses/{game_id}")

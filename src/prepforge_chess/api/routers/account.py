@@ -1,0 +1,183 @@
+"""Account data management (F-05): self-service export and deletion.
+
+Export bundles everything the account owns (profile, linked identities,
+settings, games with PGN, repertoires as packages, training progress and
+sessions) into one JSON document whose scope matches what deletion removes.
+
+Deletion is a complete flow, not a policy paragraph: it takes an explicit
+confirmation, removes owned data with per-table counts, kills every session and
+reset token, unlinks accounts, revokes share links (their repertoire rows die),
+and reports what was removed. Shared engine data (positions, evaluation
+snapshots) is intentionally NOT deleted here — two owners' identical analyses
+can share one snapshot row — it is reclaimed by the data-lifecycle pass when
+nothing references it (see services/data_lifecycle.py).
+"""
+from __future__ import annotations
+
+import json
+from datetime import datetime, timezone
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from prepforge_chess.api.config import Settings, get_settings
+from prepforge_chess.api.db import get_db
+from prepforge_chess.api.deps import current_owner, current_user, get_repository
+from prepforge_chess.api.models import (
+    AuthSession,
+    LinkedAccount,
+    PasswordResetToken,
+    Team,
+    TeamInvite,
+    TeamMember,
+    User,
+)
+from prepforge_chess.api.ratelimit import limiter
+from prepforge_chess.services.repertoire_export import RepertoireExportService
+from prepforge_chess.storage.repositories import PrepForgeRepository
+
+router = APIRouter(prefix="/api/account", tags=["account"])
+
+
+@router.get("/export")
+@limiter.limit("5/hour")
+def export_account(
+    request: Request,
+    user: User = Depends(current_user),
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Download everything this account owns as one JSON bundle.
+
+    The scope is exactly the deletion scope below — what you can take with you
+    is what leaving removes (minus shared engine snapshots)."""
+    del owner  # == user.id; the ORM row is the richer read
+    exporter = RepertoireExportService()
+    games = repo.list_games(owner_user_id=user.id)
+    repertoires = repo.list_repertoires(owner_user_id=user.id)
+    linked = db.scalars(
+        select(LinkedAccount).where(LinkedAccount.user_id == user.id)
+    ).all()
+    settings_rows = repo.list_owner_settings(user.id)
+    return {
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "account": {
+            "id": user.id,
+            "email": user.email,
+            "plan": user.plan.value,
+            "display_name": user.display_name,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+        },
+        "linked_accounts": [
+            {
+                "provider": row.provider,
+                "provider_user_id": row.provider_user_id,
+                "is_primary": row.is_primary,
+            }
+            for row in linked
+        ],
+        "settings": settings_rows,
+        "games": [
+            {
+                "id": game.id,
+                "source": game.source.value,
+                "white": game.white,
+                "black": game.black,
+                "result": game.result.value,
+                "played_at": game.played_at.isoformat() if game.played_at else None,
+                "lichess_id": game.lichess_id,
+                "pgn": game.pgn,
+            }
+            for game in games
+        ],
+        "repertoires": [
+            json.loads(exporter.export_package_json(rep)) for rep in repertoires
+        ],
+        "training_progress": repo.list_owner_training_progress(user.id),
+        "training_sessions": repo.list_owner_training_sessions(user.id),
+    }
+
+
+class DeleteAccountBody(BaseModel):
+    confirm: str
+
+
+@router.delete("")
+@limiter.limit("5/hour")
+def delete_account(
+    request: Request,
+    body: DeleteAccountBody,
+    response: Response,
+    user: User = Depends(current_user),
+    repo: PrepForgeRepository = Depends(get_repository),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Delete the account and everything it owns — a completable flow (F-05).
+
+    Requires the explicit ``confirm: "DELETE"`` payload. Returns per-table
+    counts so the user (and support) can see what happened. Every session and
+    reset token dies with the account, and public share links stop resolving
+    because their repertoire rows are gone. Already-made copies by other users
+    (forks) are independent and cannot be recalled."""
+    if body.confirm != "DELETE":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='confirm must be exactly "DELETE"',
+        )
+    counts = repo.delete_owner_data(user.id)
+
+    # Identity rows: explicit deletes (FK cascades are not relied on — SQLite
+    # in tests does not enforce them, and a dangling session would be a
+    # credential outliving the account).
+    counts["sessions"] = len(
+        db.scalars(select(AuthSession).where(AuthSession.user_id == user.id)).all()
+    )
+    for row in db.scalars(select(AuthSession).where(AuthSession.user_id == user.id)).all():
+        db.delete(row)
+    counts["password_reset_tokens"] = len(
+        db.scalars(
+            select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
+        ).all()
+    )
+    for row in db.scalars(
+        select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
+    ).all():
+        db.delete(row)
+    counts["linked_accounts"] = len(
+        db.scalars(select(LinkedAccount).where(LinkedAccount.user_id == user.id)).all()
+    )
+    for row in db.scalars(
+        select(LinkedAccount).where(LinkedAccount.user_id == user.id)
+    ).all():
+        db.delete(row)
+    # Teams this user owns die with the account; memberships elsewhere end too
+    # (a removed member can no longer read anything shared to that team).
+    owned_teams = db.scalars(select(Team).where(Team.owner_user_id == user.id)).all()
+    counts["teams"] = len(owned_teams)
+    for team in owned_teams:
+        for member in db.scalars(
+            select(TeamMember).where(TeamMember.team_id == team.id)
+        ).all():
+            db.delete(member)
+        invite = db.scalar(select(TeamInvite).where(TeamInvite.team_id == team.id))
+        if invite is not None:
+            db.delete(invite)
+        db.delete(team)
+    counts["team_memberships"] = len(
+        db.scalars(select(TeamMember).where(TeamMember.user_id == user.id)).all()
+    )
+    for row in db.scalars(
+        select(TeamMember).where(TeamMember.user_id == user.id)
+    ).all():
+        db.delete(row)
+
+    db.delete(user)
+    db.commit()
+
+    response.delete_cookie(settings.session_cookie_name, path="/")
+    return {"deleted": counts}

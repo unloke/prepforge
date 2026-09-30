@@ -376,6 +376,42 @@
   display: none;
 }
 
+/* F-03: saved-on-device notice + Retry save. F-04: batch import summary. */
+.analysis-retry-save,
+.analysis-import-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--warn-border, var(--line));
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.analysis-retry-save[hidden],
+.analysis-import-picker[hidden] {
+  display: none;
+}
+.analysis-import-picker select {
+  max-width: 100%;
+}
+
+/* A-05: one-line coverage note with the metadata tucked away. */
+.quality-note {
+  margin-top: 8px;
+  font-size: var(--fs-s, 12px);
+  color: var(--muted);
+}
+.quality-note summary {
+  cursor: pointer;
+}
+.quality-rows {
+  display: grid;
+  gap: 2px;
+  margin-top: 6px;
+  padding-left: 12px;
+}
+
 /* ---- Drawers: PGN source + recent analyses ---------------------------- */
 
 .drawer {

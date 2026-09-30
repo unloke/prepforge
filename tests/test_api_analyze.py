@@ -233,7 +233,7 @@ def test_analyses_isolated_between_users(client):
 
     other = _client()
     _register(other, "b@example.com", display_name="B")
-    assert other.get("/api/analyses").json() == {"analyses": []}
+    assert other.get("/api/analyses").json() == {"analyses": [], "next_cursor": None}
     # B cannot recall A's analysis.
     assert other.get(f"/api/analyses/{prepared['game_id']}").status_code == 404
 

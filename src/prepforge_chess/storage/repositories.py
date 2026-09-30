@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, select, union, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import Connection, Engine
@@ -527,6 +527,10 @@ class PrepForgeRepository:
                 "best_move_eval_id": _eval_id(move.best_move_eval, move.fen_before),
                 "classification": move.classification.value,
                 "comment": move.comment,
+                "generated_comment": move.generated_comment,
+                "generated_meta_json": (
+                    _json_dump(move.generated_meta) if move.generated_meta else None
+                ),
                 "tags_json": _json_dump(move.tags) if move.tags else None,
                 "source": move.source.value,
             }
@@ -552,6 +556,8 @@ class PrepForgeRepository:
                         "best_move_eval_id": stmt.excluded.best_move_eval_id,
                         "classification": stmt.excluded.classification,
                         "comment": stmt.excluded.comment,
+                        "generated_comment": stmt.excluded.generated_comment,
+                        "generated_meta_json": stmt.excluded.generated_meta_json,
                         "tags_json": stmt.excluded.tags_json,
                         "source": stmt.excluded.source,
                     },
@@ -580,10 +586,12 @@ class PrepForgeRepository:
                     "depth": result.depth,
                     "summary_json": _json_dump(result.summary),
                     "critical_ply": ",".join(str(p) for p in result.critical_ply),
+                    "quality_json": _json_dump(result.quality) if result.quality else None,
                 },
                 conflict=[t.analysis_results.c.id],
                 update_cols=(
                     "analyzed_at", "engine", "depth", "summary_json", "critical_ply",
+                    "quality_json",
                 ),
             )
 
@@ -664,6 +672,8 @@ class PrepForgeRepository:
                     "source": move_row["source"],
                     "classification": move_row["classification"],
                     "comment": move_row["comment"],
+                    "generated_comment": move_row["generated_comment"],
+                    "generated_meta": _json_load(move_row["generated_meta_json"], None),
                     "tags": _json_load(move_row["tags_json"], []),
                     "engine_eval_before": evals.get(move_row["engine_eval_before_id"]),
                     "engine_eval_after": evals.get(move_row["engine_eval_after_id"]),
@@ -721,6 +731,25 @@ class PrepForgeRepository:
             ids = [row["id"] for row in conn.execute(stmt).mappings().all()]
         return [game for game in (self.load_game(game_id) for game_id in ids) if game is not None]
 
+    def _bump_revision(self, conn: Connection, repertoire_id: str) -> None:
+        """D-02: every tree/metadata mutation bumps the repertoire revision, so a
+        client holding ``base_revision`` can detect stale writes (409)."""
+        conn.execute(
+            update(t.repertoires)
+            .where(t.repertoires.c.id == repertoire_id)
+            .values(revision=t.repertoires.c.revision + 1)
+        )
+
+    def repertoire_revision(self, repertoire_id: str) -> Optional[int]:
+        """Current mutation revision, or None when the repertoire is absent."""
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                select(t.repertoires.c.revision).where(
+                    t.repertoires.c.id == repertoire_id
+                )
+            ).first()
+        return int(row[0]) if row is not None else None
+
     def save_repertoire(self, repertoire: Repertoire, owner_user_id: Optional[str] = None) -> None:
         now = _now_text()
         with self.engine.begin() as conn:
@@ -761,6 +790,7 @@ class PrepForgeRepository:
             pos_cache: Dict[str, int] = {}
             for node in self._walk_nodes(repertoire.root_node):
                 self._save_opening_node(conn, node, pos_cache)
+            self._bump_revision(conn, repertoire.id)
 
     def update_opening_nodes(self, repertoire_id: str, changes: List[Dict[str, Any]]) -> None:
         """Update only the supplied fields on existing nodes in one transaction."""
@@ -782,6 +812,7 @@ class PrepForgeRepository:
                     .where(t.opening_nodes.c.repertoire_id == repertoire_id)
                     .values(**values)
                 )
+            self._bump_revision(conn, repertoire_id)
 
     def save_changed_nodes(self, repertoire_id: str, nodes: List[OpeningNode]) -> None:
         """Persist changed or new nodes without walking the rest of the tree."""
@@ -801,6 +832,7 @@ class PrepForgeRepository:
                       if name not in {"id", "created_at"}},
             )
             conn.execute(stmt, rows)
+            self._bump_revision(conn, repertoire_id)
 
     def update_repertoire_fields(self, repertoire_id: str, **fields: Any) -> None:
         if not fields:
@@ -811,6 +843,7 @@ class PrepForgeRepository:
                 .where(t.repertoires.c.id == repertoire_id)
                 .values(**fields, updated_at=_now_text())
             )
+            self._bump_revision(conn, repertoire_id)
 
     def _repertoire_from_rows(
         self,
@@ -958,28 +991,40 @@ class PrepForgeRepository:
                 t.repertoires.c.team_id,
                 t.repertoires.c.visibility,
                 t.repertoires.c.health_json,
+                t.repertoires.c.revision,
             )
             .where(t.repertoires.c.owner_user_id == owner_user_id)
             .order_by(t.repertoires.c.updated_at.desc())
         )
         with self.engine.connect() as conn:
             rows = conn.execute(stmt).mappings().all()
-        return [
-            {
-                "id": row["id"],
-                "name": row["name"],
-                "color": row["color"],
-                "root_fen": row["root_fen"],
-                "notes": row["notes"],
-                "tags": _json_load(row["tags_json"], []),
-                "is_active": _int_to_bool(row["is_active"]),
-                "team_id": row["team_id"],
-                "visibility": row["visibility"] or "private",
-                # Cached coverage summary (NULL until the rep is first opened/trained).
-                "health": _json_load(row["health_json"], None),
-            }
-            for row in rows
-        ]
+        # D-01: due counts are time-dependent — recompute live in one grouped
+        # query. Static coverage (trainable/mastered/…) stays cached.
+        due_counts = self.due_counts_by_repertoire(owner_user_id)
+        out = []
+        for row in rows:
+            health = _json_load(row["health_json"], None)
+            if health is not None:
+                health = dict(health)
+                health["due"] = due_counts.get(row["id"], 0)
+            out.append(
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "color": row["color"],
+                    "root_fen": row["root_fen"],
+                    "notes": row["notes"],
+                    "tags": _json_load(row["tags_json"], []),
+                    "is_active": _int_to_bool(row["is_active"]),
+                    "team_id": row["team_id"],
+                    "visibility": row["visibility"] or "private",
+                    # Cached coverage summary (NULL until the rep is first
+                    # opened/trained) with the live due overlay.
+                    "health": health,
+                    "revision": int(row["revision"] or 0),
+                }
+            )
+        return out
 
     def set_repertoire_health(
         self, repertoire_id: str, health: Optional[Dict[str, Any]]
@@ -1046,6 +1091,10 @@ class PrepForgeRepository:
                     t.repertoires.c.owner_user_id,
                     t.repertoires.c.team_id,
                     t.repertoires.c.visibility,
+                    t.repertoires.c.revision,
+                    t.repertoires.c.share_rev,
+                    t.repertoires.c.share_enabled,
+                    t.repertoires.c.share_expires_at,
                 ).where(t.repertoires.c.id == repertoire_id)
             ).mappings().first()
         if row is None:
@@ -1057,7 +1106,70 @@ class PrepForgeRepository:
             "owner_user_id": row["owner_user_id"],
             "team_id": row["team_id"],
             "visibility": row["visibility"] or "private",
+            "revision": int(row["revision"] or 0),
+            "share_rev": int(row["share_rev"] or 0),
+            "share_enabled": _int_to_bool(row["share_enabled"]),
+            "share_expires_at": row["share_expires_at"],
         }
+
+    def set_share_state(
+        self,
+        repertoire_id: str,
+        *,
+        enabled: Optional[bool] = None,
+        rotate: bool = False,
+        expires_at: Optional[str] = None,
+        clear_expiry: bool = False,
+    ) -> Dict[str, Any]:
+        """F-01: public share-link governance. ``enabled`` toggles the link
+        independently of team sharing, ``rotate`` bumps ``share_rev`` (killing
+        every previously minted link), ``expires_at`` (ISO text) or
+        ``clear_expiry`` set the optional deadline. Returns the fresh state."""
+        values: Dict[str, Any] = {"updated_at": _now_text()}
+        if enabled is not None:
+            values["share_enabled"] = 1 if enabled else 0
+        if rotate:
+            values["share_rev"] = t.repertoires.c.share_rev + 1
+        if clear_expiry:
+            values["share_expires_at"] = None
+        elif expires_at is not None:
+            values["share_expires_at"] = expires_at
+        with self.engine.begin() as conn:
+            conn.execute(
+                update(t.repertoires)
+                .where(t.repertoires.c.id == repertoire_id)
+                .values(**values)
+            )
+            row = conn.execute(
+                select(
+                    t.repertoires.c.share_rev,
+                    t.repertoires.c.share_enabled,
+                    t.repertoires.c.share_expires_at,
+                ).where(t.repertoires.c.id == repertoire_id)
+            ).first()
+        return {
+            "share_rev": int(row[0] or 0),
+            "share_enabled": bool(row[1]),
+            "share_expires_at": row[2],
+        }
+
+    def due_counts_by_repertoire(
+        self, owner_user_id: str, *, now: Optional[datetime] = None
+    ) -> Dict[str, int]:
+        """D-01: live due-review counts per repertoire, straight from
+        ``training_progress``. Time-dependent numbers are never served from the
+        cached health JSON — one grouped statement per listing (no N+1)."""
+        tp = t.training_progress
+        now_text = _dt_to_text(now or datetime.now(timezone.utc))
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(tp.c.repertoire_id, func.count())
+                .where(tp.c.owner_user_id == owner_user_id)
+                .where(tp.c.due_at.is_not(None))
+                .where(tp.c.due_at <= now_text)
+                .group_by(tp.c.repertoire_id)
+            ).all()
+        return {row[0]: int(row[1]) for row in rows}
 
     def set_repertoire_sharing(
         self, repertoire_id: str, team_id: Optional[str], visibility: str
@@ -1177,6 +1289,298 @@ class PrepForgeRepository:
         with self.engine.begin() as conn:
             conn.execute(delete(t.repertoires).where(t.repertoires.c.id == repertoire_id))
 
+    # ---- Data lifecycle (D-06) ------------------------------------------
+    # Counts first, deletes second: shared engine data (positions / immutable
+    # evaluation snapshots) is never cascade-deleted with user content — two
+    # owners' identical analyses can share one snapshot row — it is reclaimed
+    # here only when nothing references it any more.
+
+    def _orphan_eval_select(self) -> Any:
+        referenced = union(
+            select(t.moves.c.engine_eval_before_id.label("id")).where(
+                t.moves.c.engine_eval_before_id.is_not(None)
+            ),
+            select(t.moves.c.engine_eval_after_id.label("id")).where(
+                t.moves.c.engine_eval_after_id.is_not(None)
+            ),
+            select(t.moves.c.best_move_eval_id.label("id")).where(
+                t.moves.c.best_move_eval_id.is_not(None)
+            ),
+            select(t.opening_nodes.c.engine_evaluation_id.label("id")).where(
+                t.opening_nodes.c.engine_evaluation_id.is_not(None)
+            ),
+        )
+        return select(t.engine_evaluations.c.id).where(
+            ~t.engine_evaluations.c.id.in_(referenced)
+        )
+
+    def count_orphan_evaluations(self) -> int:
+        with self.engine.connect() as conn:
+            return int(
+                conn.execute(
+                    select(func.count()).select_from(self._orphan_eval_select().subquery())
+                ).scalar_one()
+            )
+
+    def delete_orphan_evaluations(self) -> int:
+        with self.engine.begin() as conn:
+            ids = [row[0] for row in conn.execute(self._orphan_eval_select()).all()]
+            if not ids:
+                return 0
+            conn.execute(
+                delete(t.engine_evaluations).where(t.engine_evaluations.c.id.in_(ids))
+            )
+            return len(ids)
+
+    def _orphan_position_select(self) -> Any:
+        referenced = select(t.engine_evaluations.c.position_id.label("id"))
+        return select(t.positions.c.id).where(~t.positions.c.id.in_(referenced))
+
+    def count_orphan_positions(self) -> int:
+        with self.engine.connect() as conn:
+            return int(
+                conn.execute(
+                    select(func.count()).select_from(self._orphan_position_select().subquery())
+                ).scalar_one()
+            )
+
+    def delete_orphan_positions(self) -> int:
+        with self.engine.begin() as conn:
+            ids = [row[0] for row in conn.execute(self._orphan_position_select()).all()]
+            if not ids:
+                return 0
+            conn.execute(delete(t.positions).where(t.positions.c.id.in_(ids)))
+            return len(ids)
+
+    def count_receipts_before(self, cutoff_text: str) -> int:
+        with self.engine.connect() as conn:
+            return int(
+                conn.execute(
+                    select(func.count()).select_from(t.train_attempt_receipts).where(
+                        t.train_attempt_receipts.c.created_at < cutoff_text
+                    )
+                ).scalar_one()
+            )
+
+    def delete_receipts_before(self, cutoff_text: str) -> int:
+        with self.engine.begin() as conn:
+            result = conn.execute(
+                delete(t.train_attempt_receipts).where(
+                    t.train_attempt_receipts.c.created_at < cutoff_text
+                )
+            )
+            return int(result.rowcount or 0)
+
+    def count_analysis_snapshots(self) -> int:
+        with self.engine.connect() as conn:
+            return int(
+                conn.execute(
+                    select(func.count()).select_from(t.analysis_results)
+                ).scalar_one()
+            )
+
+    def _trimable_analysis_ids(self, keep_per_game: int) -> List[str]:
+        """Ids of analysis rows beyond the newest ``keep_per_game`` per game."""
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(
+                    t.analysis_results.c.id,
+                    t.analysis_results.c.game_id,
+                    t.analysis_results.c.analyzed_at,
+                ).order_by(
+                    t.analysis_results.c.game_id,
+                    t.analysis_results.c.analyzed_at.desc(),
+                    t.analysis_results.c.id.desc(),
+                )
+            ).all()
+        seen: Dict[str, int] = {}
+        drop: List[str] = []
+        for row in rows:
+            count = seen.get(row.game_id, 0)
+            if count < keep_per_game:
+                seen[row.game_id] = count + 1
+            else:
+                drop.append(row.id)
+        return drop
+
+    def count_trimable_analyses(self, keep_per_game: int) -> int:
+        return len(self._trimable_analysis_ids(keep_per_game))
+
+    def delete_trimable_analyses(self, keep_per_game: int) -> int:
+        ids = self._trimable_analysis_ids(keep_per_game)
+        if not ids:
+            return 0
+        with self.engine.begin() as conn:
+            conn.execute(delete(t.analysis_results).where(t.analysis_results.c.id.in_(ids)))
+        return len(ids)
+
+    def list_owner_settings(self, owner_user_id: str) -> Dict[str, Any]:
+        """All stored settings keys for one owner (account export, F-05)."""
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(t.user_settings.c.key, t.user_settings.c.value_json).where(
+                    t.user_settings.c.user_id == owner_user_id
+                )
+            ).all()
+        return {row[0]: _json_load(row[1], None) for row in rows}
+
+    def list_owner_training_progress(self, owner_user_id: str) -> List[Dict[str, Any]]:
+        """Raw progress rows across all repertoires (account export, F-05)."""
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(t.training_progress).where(
+                    t.training_progress.c.owner_user_id == owner_user_id
+                )
+            ).mappings().all()
+        return [
+            {
+                "repertoire_id": row["repertoire_id"],
+                "node_id": row["node_id"],
+                "attempts": row["attempts"],
+                "correct_attempts": row["correct_attempts"],
+                "last_reviewed_at": row["last_reviewed_at"],
+                "spaced_repetition_score": row["spaced_repetition_score"],
+                "due_at": row["due_at"],
+                "is_mastered": _int_to_bool(row["is_mastered"]),
+            }
+            for row in rows
+        ]
+
+    def list_owner_training_sessions(self, owner_user_id: str) -> List[Dict[str, Any]]:
+        """Session summaries across the owner's repertoires (account export, F-05)."""
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(t.training_sessions)
+                .join(
+                    t.repertoires,
+                    t.repertoires.c.id == t.training_sessions.c.repertoire_id,
+                )
+                .where(t.repertoires.c.owner_user_id == owner_user_id)
+            ).mappings().all()
+        return [
+            {
+                "id": row["id"],
+                "repertoire_id": row["repertoire_id"],
+                "mode": row["mode"],
+                "current_index": row["current_index"],
+                "mistakes": _json_load(row["mistakes_json"], []),
+                "mastered_nodes": _json_load(row["mastered_nodes_json"], []),
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+            }
+            for row in rows
+        ]
+
+    def delete_owner_data(self, owner_user_id: str) -> Dict[str, int]:
+        """Delete everything one owner owns, with per-table counts (F-05).
+
+        User content cascades (games → moves/analysis, repertoires →
+        nodes/progress/sessions/receipts); shared engine data (positions,
+        evaluation snapshots) is intentionally left to the lifecycle reclaim.
+        Sessions and reset tokens go with the account so no live credential
+        outlives the deletion; share links die with their repertoire row.
+        """
+        counts: Dict[str, int] = {}
+        with self.engine.begin() as conn:
+            game_ids = [
+                row[0]
+                for row in conn.execute(
+                    select(t.games.c.id).where(t.games.c.owner_user_id == owner_user_id)
+                ).all()
+            ]
+            rep_ids = [
+                row[0]
+                for row in conn.execute(
+                    select(t.repertoires.c.id).where(
+                        t.repertoires.c.owner_user_id == owner_user_id
+                    )
+                ).all()
+            ]
+            # Receipts hang off training sessions of the owner's repertoires.
+            session_ids = [
+                row[0]
+                for row in conn.execute(
+                    select(t.training_sessions.c.id).where(
+                        t.training_sessions.c.repertoire_id.in_(rep_ids)
+                    )
+                ).all()
+            ] if rep_ids else []
+
+            def _count(table, where) -> int:
+                return int(
+                    conn.execute(select(func.count()).select_from(table).where(where)).scalar_one()
+                )
+
+            if session_ids:
+                counts["train_attempt_receipts"] = _count(
+                    t.train_attempt_receipts,
+                    t.train_attempt_receipts.c.session_id.in_(session_ids),
+                )
+                conn.execute(
+                    delete(t.train_attempt_receipts).where(
+                        t.train_attempt_receipts.c.session_id.in_(session_ids)
+                    )
+                )
+            else:
+                counts["train_attempt_receipts"] = 0
+            counts["training_progress"] = _count(
+                t.training_progress, t.training_progress.c.owner_user_id == owner_user_id
+            )
+            conn.execute(
+                delete(t.training_progress).where(
+                    t.training_progress.c.owner_user_id == owner_user_id
+                )
+            )
+            counts["training_sessions"] = len(session_ids)
+            if session_ids:
+                conn.execute(
+                    delete(t.training_sessions).where(
+                        t.training_sessions.c.id.in_(session_ids)
+                    )
+                )
+            counts["analysis_results"] = (
+                _count(t.analysis_results, t.analysis_results.c.game_id.in_(game_ids))
+                if game_ids
+                else 0
+            )
+            if game_ids:
+                conn.execute(
+                    delete(t.analysis_results).where(
+                        t.analysis_results.c.game_id.in_(game_ids)
+                    )
+                )
+            counts["moves"] = (
+                _count(t.moves, t.moves.c.game_id.in_(game_ids)) if game_ids else 0
+            )
+            if game_ids:
+                conn.execute(delete(t.moves).where(t.moves.c.game_id.in_(game_ids)))
+            counts["games"] = len(game_ids)
+            if game_ids:
+                conn.execute(delete(t.games).where(t.games.c.id.in_(game_ids)))
+            counts["opening_nodes"] = (
+                _count(t.opening_nodes, t.opening_nodes.c.repertoire_id.in_(rep_ids))
+                if rep_ids
+                else 0
+            )
+            if rep_ids:
+                conn.execute(
+                    delete(t.opening_nodes).where(
+                        t.opening_nodes.c.repertoire_id.in_(rep_ids)
+                    )
+                )
+            counts["repertoires"] = len(rep_ids)
+            if rep_ids:
+                conn.execute(
+                    delete(t.repertoires).where(t.repertoires.c.id.in_(rep_ids))
+                )
+            counts["user_settings"] = _count(
+                t.user_settings, t.user_settings.c.user_id == owner_user_id
+            )
+            conn.execute(
+                delete(t.user_settings).where(t.user_settings.c.user_id == owner_user_id)
+            )
+        return counts
+
     def delete_opening_nodes(self, repertoire_id: str, node_ids: List[str]) -> None:
         if not node_ids:
             return
@@ -1195,6 +1599,7 @@ class PrepForgeRepository:
                     t.opening_nodes.c.id.in_(node_ids),
                 )
             )
+            self._bump_revision(conn, repertoire_id)
 
     def save_training_session(self, session: TrainingSession) -> None:
         with self.engine.begin() as conn:
@@ -1447,27 +1852,44 @@ class PrepForgeRepository:
                     "depth": result.depth,
                     "summary_json": _json_dump(result.summary),
                     "critical_ply": ",".join(str(p) for p in result.critical_ply),
+                    "quality_json": _json_dump(result.quality) if result.quality else None,
                 },
                 conflict=[t.analysis_results.c.id],
                 update_cols=(
                     "analyzed_at", "engine", "depth", "summary_json", "critical_ply",
+                    "quality_json",
                 ),
             )
 
-    def list_analyzed_games(self, owner_user_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Metadata for every game that has a saved analysis (latest per game),
-        newest first — powers the Analyze "History" list. Analyses are owned
-        transitively through their game, so scoping joins on ``games.owner_user_id``."""
+    def list_analyzed_games(
+        self,
+        owner_user_id: Optional[str] = None,
+        *,
+        limit: int = 50,
+        cursor: Optional[tuple] = None,
+    ) -> tuple[List[Dict[str, Any]], Optional[tuple]]:
+        """One page of metadata for games with a saved analysis (latest per
+        game), newest first — powers the Analyze "History" list. Analyses are
+        owned transitively through their game, so scoping joins on
+        ``games.owner_user_id``.
+
+        D-05: fixed page size + stable keyset cursor on ``(analyzed_at,
+        game_id)`` — equal timestamps page without gaps or repeats — and the
+        latest-analysis aggregation is owner-scoped from the inside, so a big
+        account never aggregates other owners' games first."""
         ar = t.analysis_results
         g = t.games
-        latest = (
-            select(
-                ar.c.game_id.label("game_id"),
-                func.max(ar.c.analyzed_at).label("max_at"),
-            )
-            .group_by(ar.c.game_id)
-            .subquery()
+        # Owner-scoped aggregation: only this owner's games enter the "latest
+        # per game" grouping (D-05).
+        latest_base = select(
+            ar.c.game_id.label("game_id"),
+            func.max(ar.c.analyzed_at).label("max_at"),
         )
+        if owner_user_id is not None:
+            latest_base = latest_base.join(g, g.c.id == ar.c.game_id).where(
+                g.c.owner_user_id == owner_user_id
+            )
+        latest = latest_base.group_by(ar.c.game_id).subquery()
         stmt = (
             select(
                 ar.c.game_id.label("game_id"),
@@ -1487,13 +1909,23 @@ class PrepForgeRepository:
                     (latest.c.game_id == ar.c.game_id) & (latest.c.max_at == ar.c.analyzed_at),
                 )
             )
-            .order_by(ar.c.analyzed_at.desc())
+            .order_by(ar.c.analyzed_at.desc(), ar.c.game_id.desc())
+            .limit(max(1, min(int(limit), 200)) + 1)  # +1: detect a next page
         )
         if owner_user_id is not None:
             stmt = stmt.where(g.c.owner_user_id == owner_user_id)
+        if cursor is not None:
+            cursor_at, cursor_id = cursor
+            stmt = stmt.where(
+                (ar.c.analyzed_at < cursor_at)
+                | ((ar.c.analyzed_at == cursor_at) & (ar.c.game_id < cursor_id))
+            )
         with self.engine.connect() as conn:
             rows = conn.execute(stmt).mappings().all()
-        return [
+        page_size = max(1, min(int(limit), 200))
+        has_more = len(rows) > page_size
+        rows = rows[:page_size]
+        items = [
             {
                 "game_id": row["game_id"],
                 "analyzed_at": row["analyzed_at"],
@@ -1508,6 +1940,10 @@ class PrepForgeRepository:
             }
             for row in rows
         ]
+        next_cursor = None
+        if has_more and items:
+            next_cursor = (items[-1]["analyzed_at"], items[-1]["game_id"])
+        return items, next_cursor
 
     def load_latest_analysis_result(
         self, game_id: str, owner_user_id: Optional[str] = None
@@ -1538,6 +1974,7 @@ class PrepForgeRepository:
             move_results=game.moves if game is not None else [],
             summary=_json_load(row["summary_json"], {}),
             critical_ply=_parse_critical_ply(row["critical_ply"]),
+            quality=_json_load(row["quality_json"], None),
         )
 
     def _save_move_annotation(
@@ -1568,6 +2005,10 @@ class PrepForgeRepository:
                 best_move_eval_id=best_move_eval_id,
                 classification=move.classification.value,
                 comment=move.comment,
+                generated_comment=move.generated_comment,
+                generated_meta_json=(
+                    _json_dump(move.generated_meta) if move.generated_meta else None
+                ),
                 tags_json=_json_dump(move.tags) if move.tags else None,
                 source=move.source.value,
             )

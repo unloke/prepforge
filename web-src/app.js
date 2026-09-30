@@ -15,6 +15,28 @@ import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
 import { squareInDirection } from "./board-navigation.js";
 import { pgnPlayers, selfSide } from "./analyze-orient.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
+import { classifySyncError, describeSyncError } from "./sync-errors.js";
+import {
+  acquireFlushLock,
+  clearOutbox,
+  loadOutbox,
+  outboxHasWork,
+  releaseFlushLock,
+  saveOutbox,
+} from "./sync-outbox.js";
+import {
+  clearCheckpoint,
+  evalMapFrom,
+  loadCheckpoint,
+  saveCheckpoint,
+} from "./analyze-checkpoint.js";
+import {
+  loadReturnState,
+  pendingHandoffs,
+  rememberHandoff,
+  saveReturnState,
+  takeHandoff,
+} from "./handoff-context.js";
 import { describeMove } from "./explain.js";
 import {
   activateWorkspaceTab,
@@ -2254,6 +2276,22 @@ async function updateBookline() {
     el.querySelector('[data-act="train"]').addEventListener("click", async (event) => {
       const btn = event.currentTarget;
       btn.disabled = true;
+      // F-06: keep the task context across the jump — source line, the ply and
+      // anchor FEN of the mistake, the side and target repertoire — so the
+      // later practice lands on this exact position and the mistake→practice
+      // time is measurable. Same target = same key = one record, however often
+      // the button is clicked.
+      rememberHandoff({
+        source: "analyze",
+        reason: "practice-missed-move",
+        gameId: appState.analysis?.game_id || null,
+        lineUcis: [...prefix, prescribed.uci],
+        ply: path.length,
+        anchorFen: node.fenBefore,
+        rootFen: appState.analysis?.moves?.[0]?.fen_before || null,
+        side: rep.color,
+        repertoireId: rep.id,
+      });
       try {
         await postJson("/api/train/record-miss", {
           repertoire_id: rep.id,
@@ -2279,9 +2317,22 @@ async function updateBookline() {
       `${escapeHtml(text)} ` +
       `<button class="coach-bookaction" type="button" data-act="build">Add it in Build<span class="cba-arrow" aria-hidden="true">›</span></button>`;
     el.hidden = false;
-    el.querySelector('[data-act="build"]').addEventListener("click", () =>
-      editRepertoire(rep.id, prev.nodeId)
-    );
+    el.querySelector('[data-act="build"]').addEventListener("click", () => {
+      // F-06: Analyze→Repertoire handoff — the novelty line + anchor position
+      // travel with the jump into Build.
+      rememberHandoff({
+        source: "analyze",
+        reason: "extend-book",
+        gameId: appState.analysis?.game_id || null,
+        lineUcis: [...prefix, node.uci],
+        ply: path.length,
+        anchorFen: node.fenBefore,
+        rootFen: appState.analysis?.moves?.[0]?.fen_before || null,
+        side: rep.color,
+        repertoireId: rep.id,
+      });
+      editRepertoire(rep.id, prev.nodeId);
+    });
   }
 }
 
@@ -3039,13 +3090,93 @@ async function api(path, options = {}) {
     }
   }
   // Legacy server returned {error}; FastAPI returns {detail}. Accept both so the
-  // SPA surfaces real messages during and after the cutover.
+  // SPA surfaces real messages during and after the cutover. `detail` may be a
+  // structured object (e.g. D-02 revision conflicts): keep it on the error so
+  // recovery flows can read current_revision, and flatten its message for display.
   if (!response.ok) {
-    const err = new Error(payload.error || payload.detail || `Request failed (${response.status})`);
+    const detail = payload.error || payload.detail;
+    const message =
+      typeof detail === "string"
+        ? detail
+        : (detail && detail.message) || `Request failed (${response.status})`;
+    const err = new Error(message);
     err.status = response.status; // lets callers (e.g. Build sync) tell 4xx from 5xx/network
+    err.detail = detail;
+    if (response.headers && typeof response.headers.get === "function") {
+      err.retryAfter = response.headers.get("retry-after");
+    }
     throw err;
   }
   return payload;
+}
+
+// ----- Durable outbox (R-03) -----------------------------------------------
+// Queued Build/Train edits persist to localStorage per OWNER, so a refresh,
+// crash, or sign-out can't silently drop work the user already did. Operation
+// identity survives (Build temp ids, Train attempt UUIDs) — replays after a
+// lost response are recognized server-side instead of double-counted.
+const OUTBOX_TAB_ID = Math.random().toString(36).slice(2);
+
+function currentOwnerId() {
+  return appState.accountUserId || null;
+}
+
+function persistOutbox() {
+  saveOutbox(currentOwnerId(), {
+    build: {
+      pending: appState.buildPending,
+      pendingDeletes: appState.buildPendingDeletes,
+      idMap: appState.buildIdMap,
+      rejected: appState.buildRejected || [],
+    },
+    train: {
+      pending: appState.trainSync.pending,
+      rejected: appState.trainRejected || [],
+    },
+  });
+}
+
+// Re-hydrate THIS owner's queued edits after a reload. Owner-scoped on
+// purpose: signing in as someone else never replays another account's ops.
+function restoreOutbox() {
+  const outbox = loadOutbox(currentOwnerId());
+  if (!outboxHasWork(outbox)) return false;
+  appState.buildPending = outbox.build.pending.concat(appState.buildPending);
+  appState.buildPendingDeletes = outbox.build.pendingDeletes.concat(
+    appState.buildPendingDeletes,
+  );
+  Object.assign(appState.buildIdMap, outbox.build.idMap);
+  appState.trainSync.pending = outbox.train.pending.concat(appState.trainSync.pending);
+  if (appState.trainSync.pending.length) {
+    appState.trainSync.dirty = true;
+    setTrainSyncState("dirty");
+    scheduleTrainSync();
+  }
+  return true;
+}
+
+// R-03: sign-out coordination. Persist the durable outbox FIRST (it survives
+// even if the flush can't run), then flush both queues while the session can
+// still authenticate. Reports how much work could not be saved — those drafts
+// stay in this owner's outbox and replay after the next sign-in, never to
+// another account.
+async function flushAllPendingForSignOut() {
+  persistOutbox();
+  clearTimeout(appState.buildFlushTimer);
+  appState.buildFlushTimer = null;
+  clearTimeout(appState.trainSync.timer);
+  appState.trainSync.timer = null;
+  await Promise.all([
+    flushBuildMoves().catch(() => false),
+    flushTrainSync().catch(() => false),
+  ]);
+  persistOutbox();
+  return {
+    pending:
+      appState.buildPending.length +
+      appState.buildPendingDeletes.length +
+      appState.trainSync.pending.length,
+  };
 }
 
 function postJson(path, body, options = {}) {
@@ -3337,6 +3468,17 @@ function bindCommandPalette() {
 
 async function restoreWorkspaceLocation() {
   const loc = parseWorkspaceLocation(window.location.href);
+  // F-06 return state: coming back to Games (even after a reload) restores the
+  // selected game and the active filter, so the source page is where you left it.
+  const replayReturn = loadReturnState("replay");
+  if (replayReturn) {
+    if (typeof replayReturn.filter === "string" && replayReturn.filter) {
+      appState.replayFilter = replayReturn.filter;
+    }
+    if (Number.isFinite(replayReturn.openIndex)) {
+      appState.replayOpen = new Set([replayReturn.openIndex]);
+    }
+  }
   if (loc.repertoireId && appState.signedIn) {
     try {
       const payload = await api(
@@ -4042,6 +4184,7 @@ function initAccountController() {
       switchView("settings");
       loadSettings();
     },
+    beforeSignOut: flushAllPendingForSignOut,
   });
 }
 
@@ -5616,10 +5759,16 @@ function prefillDemoPgn() {
   document.getElementById("pgn-input").value = DEMO_PGN;
 }
 
-async function runAnalysis() {
+async function runAnalysis(options = {}) {
   // Phase 2: whole-game analysis runs in the browser. The server only parses
   // the PGN (/api/analyze/prepare) and classifies + saves the browser-computed
   // evals (/api/analyze/classify-save) — it never runs an engine.
+  //
+  // F-04: `options.mode` is "single" (default — a multi-game paste is
+  // rejected BEFORE anything is stored) or "multi" (every game is imported
+  // with per-game status and `options.selectIndex` names the analyzed one).
+  const importMode = options.mode === "multi" ? "multi" : "single";
+  const selectIndex = Number(options.selectIndex) || 0;
   if (!isBrowserEngineAvailable()) {
     setStatusError(BROWSER_ENGINE_UNAVAILABLE);
     return;
@@ -5648,9 +5797,33 @@ async function runAnalysis() {
   let cancelled = false;
   const jobId = `browser-analysis-${Date.now()}`;
   try {
-    const prep = await postJson("/api/analyze/prepare", { pgn });
+    let prep;
+    try {
+      prep = await postJson("/api/analyze/prepare", {
+        pgn,
+        mode: importMode,
+        select_index: selectIndex,
+      });
+    } catch (prepError) {
+      // F-04: single mode refuses multi-game pastes BEFORE storing anything.
+      // Offer the batch path explicitly instead of silently importing extras.
+      if (prepError.status === 400 && /games in the PGN/i.test(prepError.message || "")) {
+        const go = await showConfirmModal({
+          title: "Multiple games in this PGN",
+          body: `${prepError.message} Analyze them as a batch instead? You can pick which game to analyze.`,
+          okLabel: "Analyze batch",
+          cancelLabel: "Cancel",
+        });
+        runButton.disabled = false;
+        if (go) void runAnalysis({ mode: "multi" });
+        else setStatus("Nothing was imported");
+        return;
+      }
+      throw prepError;
+    }
     const positions = prep.positions || [];
     if (!positions.length) throw new Error("No positions to analyze");
+    renderImportPicker(prep.import_summary, importMode);
 
     // Phase instrumentation: each pipeline stage reports through one `timed`
     // wrapper so the toast label always names the work actually running (the
@@ -5815,6 +5988,17 @@ async function runAnalysis() {
       phase: "classifying",
       message: "classifying",
     });
+    // F-03: the engine/model compute is DONE — checkpoint it to the device so
+    // a failed SAVE below never costs a re-analysis (retry = re-post only).
+    saveCheckpoint({
+      gameId: prep.game_id,
+      engine: prep.engine || "stockfish (browser)",
+      depth: prep.depth,
+      positions,
+      evals: [...evals.entries()],
+      maiaAssessments,
+      pgn,
+    });
 
     const payload = await timed("classify", () =>
       postJson("/api/analyze/classify-save", {
@@ -5855,6 +6039,8 @@ async function runAnalysis() {
       })
     );
 
+    clearCheckpoint(prep.game_id); // saved: the compute is confirmed durable
+    hideAnalysisRetrySave();
     appState.analysis = payload;
     resetAnalysisVariations();
     showAnalysisPly(0);
@@ -5894,8 +6080,119 @@ async function runAnalysis() {
       setStatusError(error.message);
       jobToast.failJob(error.message);
     }
+    // F-03: if the compute finished but the SAVE didn't, offer "Retry save" —
+    // the checkpoint holds the evals, so a retry never re-runs the engine.
+    const checkpoint = loadCheckpoint();
+    if (checkpoint && checkpoint.gameId) {
+      showAnalysisRetrySave(checkpoint, error.message);
+    }
   } finally {
     runButton.disabled = false;
+  }
+}
+
+// F-04: after a batch import, name what was stored and which game is being
+// analyzed, and let the user switch to another imported game.
+function renderImportPicker(summary, mode) {
+  const host = document.getElementById("analysis-import-picker");
+  if (!host) return;
+  if (!summary || mode !== "multi" || summary.total_games <= 1) {
+    host.hidden = true;
+    host.innerHTML = "";
+    return;
+  }
+  const games = summary.games || [];
+  const label = (g) =>
+    `Game ${g.index + 1}: ${g.white || "?"} vs ${g.black || "?"} — ${g.status}${g.error ? ` (${g.error})` : ""}`;
+  host.hidden = false;
+  host.innerHTML =
+    `<span class="import-summary">${summary.imported_count} new · ${summary.existing_count} already present · ${summary.failed_count} failed of ${summary.total_games}</span>` +
+    `<select id="analysis-import-select" aria-label="Choose analyzed game">` +
+    games
+      .map(
+        (g) =>
+          `<option value="${g.index}"${g.index === summary.selected_index ? " selected" : ""}${
+            g.status === "failed" ? " disabled" : ""
+          }>${escapeHtml(label(g))}</option>`,
+      )
+      .join("") +
+    `</select>`;
+  const select = host.querySelector("#analysis-import-select");
+  if (select) {
+    select.addEventListener("change", () => {
+      void runAnalysis({ mode: "multi", selectIndex: Number(select.value) });
+    });
+  }
+  setStatus(
+    `Imported ${summary.imported_count} new, ${summary.existing_count} already present, ${summary.failed_count} failed — analyzing game ${summary.selected_index + 1}.`,
+  );
+}
+
+// F-03: "Retry save" affordance for a finished-but-unsaved analysis.
+function showAnalysisRetrySave(checkpoint, message) {
+  const bar = document.getElementById("analysis-retry-save");
+  if (!bar) return;
+  const text = document.getElementById("analysis-retry-save-text");
+  if (text) {
+    text.textContent =
+      `${message || "Save failed"} — the analysis is stored on this device. ` +
+      `Retry saves it without re-analyzing.`;
+  }
+  bar.hidden = false;
+}
+
+function hideAnalysisRetrySave() {
+  const bar = document.getElementById("analysis-retry-save");
+  if (bar) bar.hidden = true;
+}
+
+// Re-post classify-save from the checkpoint — engine/model work is NOT redone.
+async function retryAnalyzeSave() {
+  const checkpoint = loadCheckpoint();
+  if (!checkpoint || !checkpoint.gameId) {
+    hideAnalysisRetrySave();
+    return;
+  }
+  const runButton = document.getElementById("run-analysis");
+  if (runButton) runButton.disabled = true;
+  try {
+    const evals = evalMapFrom(checkpoint);
+    const payload = await postJson("/api/analyze/classify-save", {
+      game_id: checkpoint.gameId,
+      engine: checkpoint.engine || "stockfish (browser)",
+      depth: checkpoint.depth,
+      positions: (checkpoint.positions || []).map((fen) => {
+        const ev = evals.get(fen) || {};
+        return {
+          fen,
+          score_cp: ev.score_cp ?? null,
+          mate_in: ev.mate_in ?? null,
+          best_move_uci: ev.best_move_uci ?? null,
+          pv: ev.pv || [],
+          depth: ev.depth ?? null,
+          nodes: ev.nodes ?? null,
+        };
+      }),
+      maia_assessments: checkpoint.maiaAssessments || [],
+    });
+    clearCheckpoint(checkpoint.gameId);
+    hideAnalysisRetrySave();
+    appState.analysis = payload;
+    resetAnalysisVariations();
+    showAnalysisPly(0);
+    await renderAnalysis(payload);
+    setStatus("Analysis saved", { severity: "success" });
+    appState.analysisSourcePgn = checkpoint.pgn || appState.analysisSourcePgn;
+    revealAnalysisResults();
+    await updateAnalysisHandoff();
+  } catch (error) {
+    if (error && error.status === 401) {
+      setStatus("Sign in to save — the analysis stays on this device", { severity: "warning" });
+      openAuthModal("login");
+    }
+    showAnalysisRetrySave(checkpoint, error.message);
+  } finally {
+    if (runButton) runButton.disabled = false;
   }
 }
 
@@ -7221,6 +7518,10 @@ const SYNC_CHIP_VARIANTS = {
   syncing: { cls: "is-syncing", text: "↻ Saving…" },
   error: { cls: "is-error", text: "⚠ Offline — will retry" },
   rejected: { cls: "is-error", text: "⚠ Some attempts couldn't be saved" },
+  // R-01/R-04: unconfirmed work is never claimed as Saved. These two states
+  // say WHY nothing is moving: waiting for sign-in vs a stale-edit conflict.
+  blocked: { cls: "is-error", text: "⚠ Waiting for sign-in — edits kept" },
+  conflict: { cls: "is-error", text: "⚠ Changed elsewhere — draft kept" },
 };
 
 function renderSyncChip(el, state) {
@@ -7329,6 +7630,7 @@ async function renderSmartSummary(smart, stats, after) {
 
 // ----- Debounce + flush -------------------------------------------------------
 function scheduleBuildFlush() {
+  persistOutbox(); // R-03: queued edits hit localStorage before any timer/network
   clearTimeout(appState.buildFlushTimer);
   appState.buildFlushTimer = setTimeout(() => {
     appState.buildFlushTimer = null;
@@ -7344,6 +7646,10 @@ function flushBuildMoves() {
   if (appState.buildFlushing) return appState.buildFlushing;
   if (!appState.build || (!appState.buildPending.length && !appState.buildPendingDeletes.length))
     return Promise.resolve(true);
+  // R-03: one flusher per owner at a time — a second tab holding the lock
+  // means its flush is already carrying these ops (server receipts are the
+  // hard guarantee; this avoids duplicate traffic and double toasts).
+  if (!acquireFlushLock(currentOwnerId(), OUTBOX_TAB_ID)) return Promise.resolve(false);
   clearTimeout(appState.buildFlushTimer);
   appState.buildFlushTimer = null;
 
@@ -7392,6 +7698,7 @@ function flushBuildMoves() {
       }
       const idMap = payload.id_map || {};
       Object.assign(appState.buildIdMap, idMap);
+      persistOutbox();
 
       // Translate the current selection + branch pick through tmp -> real.
       const prevSelection = appState.buildCurrentNodeId;
@@ -7430,53 +7737,77 @@ function flushBuildMoves() {
         prevSelection !== appState.buildCurrentNodeId
       ) {
         await selectBuildNode(prevSelection);
-      }
-
-      appState.buildSyncRetry = 0;
+      }      appState.buildSyncRetry = 0;
+      persistOutbox();
       if (appState.buildPending.length || appState.buildPendingDeletes.length) {
         setBuildSync("dirty");
         scheduleBuildFlush();
       } else {
+        clearOutbox(currentOwnerId());
         setBuildSync("saved");
       }
       return true;
     } catch (error) {
-      const status = error && error.status;
-      if (status && status >= 400 && status < 500) {
-        // Validation 4xx shouldn't happen for legal moves, but defend: drop the bad
-        // batches and re-hydrate from server truth so the local tree can't drift.
-        setStatusError(error.message);
-        try {
-          const fresh = await api(
-            `/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`
-          );
-          await hydrateBuild(fresh, fresh.selected_node_id);
-          reapplyPendingBuildDeletes();
-        } catch (_) {
-          /* best-effort resync */
-        }
+      // R-01/R-04: every failure class gets its own outcome. NOTHING
+      // unconfirmed is ever dropped or claimed as Saved — 401/403/409/429
+      // used to lose the whole batch here.
+      const info = classifySyncError(error);
+      const inFlightCount = batch.length + deleteBatch.length;
+      if (info.kind === "validation") {
+        // A genuinely invalid payload must not take legitimate edits down
+        // with it: isolate by replaying the ops one at a time — whatever
+        // lands is saved, whatever fails is kept, marked, and reportable.
+        const rejected = await isolateRejectedBuildOps(batch, deleteBatch, repertoireId);
+        appState.buildRejected = (appState.buildRejected || []).concat(rejected);
+        persistOutbox();
+        setStatusError(
+          rejected.length
+            ? `${rejected.length} edit${rejected.length === 1 ? "" : "s"} could not be saved and are kept for review. The rest saved.`
+            : error.message,
+        );
         if (appState.buildPending.length || appState.buildPendingDeletes.length) {
           setBuildSync("dirty");
           scheduleBuildFlush();
+        } else if (appState.buildRejected.length) {
+          setBuildSync("rejected");
         } else {
+          clearOutbox(currentOwnerId());
           setBuildSync("saved");
         }
         return false;
       }
-      // Network / 5xx: requeue the in-flight batches ahead of any newer ops and
-      // back off exponentially. The next played move also re-arms a flush.
-      // Adds whose node was deleted locally while the batch was in flight stay
-      // dropped — recreating them server-side would resurrect a deleted branch.
+      // auth / csrf / conflict / rate-limit / network / server: the batch was
+      // never acknowledged — requeue it ahead of newer ops (op identity is
+      // stable, so a later replay is safe even if this one actually landed).
       appState.buildPending = batch
         .filter((m) => appState.buildNodeById.has(m.tempId))
         .concat(appState.buildPending);
       appState.buildPendingDeletes = deleteBatch.concat(appState.buildPendingDeletes);
+      persistOutbox();
+      setStatus(describeSyncError(info, { count: inFlightCount }), info.kind === "conflict" ? "warning" : "info");
+      if (info.pauseForAuth) {
+        // R-04: 401 needs a sign-in, not a backoff timer. Stop sending until
+        // loadSignedInWorkspace re-arms the flush after sign-in.
+        appState.syncPausedForAuth = true;
+        setBuildSync("blocked");
+        return false;
+      }
+      if (info.kind === "conflict") {
+        // D-02: base revision was stale — the draft stays queued; the user
+        // reconciles (reload the tree) and the queue replays after it.
+        setBuildSync("conflict");
+        return false;
+      }
       appState.buildSyncRetry = Math.min(appState.buildSyncRetry + 1, 6);
       setBuildSync("error");
-      const delay = Math.min(
-        BUILD_FLUSH_MAX_BACKOFF_MS,
-        1000 * 2 ** (appState.buildSyncRetry - 1)
-      );
+      const delay =
+        info.retryAfterMs != null
+          ? info.retryAfterMs
+          : Math.min(
+              BUILD_FLUSH_MAX_BACKOFF_MS,
+              1000 * 2 ** (appState.buildSyncRetry - 1)
+            );
+
       appState.buildFlushTimer = setTimeout(() => {
         appState.buildFlushTimer = null;
         flushBuildMoves();
@@ -7484,9 +7815,46 @@ function flushBuildMoves() {
       return false;
     } finally {
       appState.buildFlushing = null;
+      releaseFlushLock(OUTBOX_TAB_ID);
     }
   })();
   return appState.buildFlushing;
+}
+
+// R-01: isolate a permanently-rejected batch. Deletes first (per id), then
+// adds one by one: each success is a save, each failure becomes a kept,
+// reportable rejection instead of a silent drop of the whole batch.
+async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId) {
+  const rejected = [];
+  for (const entry of deleteBatch) {
+    const id = resolveBuildId(entry);
+    if (String(id).startsWith("tmp-")) continue; // never reached the server
+    try {
+      await postJson("/api/build/delete-nodes", {
+        repertoire_id: repertoireId,
+        node_ids: [id],
+      });
+    } catch (err) {
+      rejected.push({ kind: "delete", id, message: err.message, status: err.status });
+    }
+  }
+  for (const m of batch) {
+    try {
+      await postJson("/api/build/add-moves", {
+        repertoire_id: repertoireId,
+        moves: [{ tempId: m.tempId, parentRef: m.parentRef, uci: m.uci }],
+      });
+    } catch (err) {
+      if (classifySyncError(err).retriable) {
+        // Not actually a permanent rejection (network blip mid-isolation):
+        // keep it queued like any retriable failure.
+        appState.buildPending.push(m);
+        continue;
+      }
+      rejected.push({ kind: "add", tempId: m.tempId, uci: m.uci, message: err.message, status: err.status });
+    }
+  }
+  return rejected;
 }
 
 // Re-insert still-pending provisional nodes onto the freshly hydrated tree (which
@@ -7676,6 +8044,7 @@ function beaconFlushBuild() {
   // Close undo windows so their deletes ride this last-ditch flush (the rep
   // delete commit is itself keepalive-safe).
   commitPendingUndos();
+  persistOutbox(); // R-03: the durable copy lands even if the keepalive drops
   if (!appState.build) return;
   if (!appState.buildPending.length && !appState.buildPendingDeletes.length) return;
   const token = readCsrfCookie();
@@ -10016,6 +10385,11 @@ async function startSmartTraining(options = {}) {
     blitz: blitzEnabled(),
     timeouts: 0,
   };
+  // F-06: this session is the first practice for every queued "train this
+  // mistake" handoff — stamp takenAt so the mistake→practice time is measurable.
+  for (const handoff of pendingHandoffs({ reason: "practice-missed-move" })) {
+    takeHandoff({ key: handoff.key });
+  }
   setBlitzBarVisible(appState.smart.blitz);
   if (boards.train && payload.color) {
     boards.train.setOrientation(payload.color === "black" ? "black" : "white");
@@ -10482,6 +10856,7 @@ function markTrainPositionDirty() {
 
 function scheduleTrainSync() {
   const sync = appState.trainSync;
+  persistOutbox(); // R-03: the queue is durable from the moment it exists
   clearTimeout(sync.timer);
   sync.timer = setTimeout(() => {
     sync.timer = null;
@@ -10515,6 +10890,7 @@ function flushTrainSync() {
 
   sync.flushing = (async () => {
     let outcome;
+    let lastError = null;
     try {
       outcome = await flushGroups(groups, async (sessionId, attempts) => {
         const body = { session_id: sessionId, attempts, local_date: localDateString() };
@@ -10522,23 +10898,40 @@ function flushTrainSync() {
           body.card_index = smart.cardIndex;
           body.queue = smart.queue.map((c) => c.encoded);
         }
-        const result = await postJson("/api/train/smart/sync", body);
-        if (result.day_streak) appState.dayStreak = result.day_streak;
+        try {
+          const result = await postJson("/api/train/smart/sync", body);
+          if (result.day_streak) appState.dayStreak = result.day_streak;
+        } catch (error) {
+          lastError = error;
+          throw error;
+        }
       });
     } finally {
       sync.flushing = null;
     }
+    // R-02: permanently rejected attempts are reported on EVERY round — a
+    // mixed failure (one rejected group + one retriable) used to hide the
+    // rejection behind the retry, so attempts vanished without a word. The
+    // rejected groups are kept (outbox) for review/export, never dropped.
+    const rejectedCount = (outcome.rejectedGroups || []).reduce(
+      (n, group) => n + (group.attempts ? group.attempts.length : 0),
+      0,
+    );
+    if (rejectedCount) {
+      appState.trainRejected = (appState.trainRejected || []).concat(outcome.rejectedGroups);
+      persistOutbox();
+    }
+    const info = lastError ? classifySyncError(lastError) : null;
+    const failedCount = outcome.failedGroups
+      ? outcome.failedGroups.reduce((n, [, attempts]) => n + attempts.length, 0)
+      : 0;
     if (!outcome.retriable) {
       sync.retry = 0;
-      // Permanently rejected attempts (e.g. the session's repertoire is gone)
-      // leave the queue, but "Saved" must never be claimed for them.
-      const rejectedCount = (outcome.rejectedGroups || []).reduce(
-        (n, group) => n + (group.attempts ? group.attempts.length : 0),
-        0,
-      );
       if (rejectedCount) {
         setStatus(
-          `${rejectedCount} training attempt${rejectedCount === 1 ? "" : "s"} could not be saved`,
+          `${rejectedCount} training attempt${rejectedCount === 1 ? "" : "s"} could not be saved${
+            failedCount ? `; ${failedCount} kept for retry` : ""
+          }`,
           { severity: "error" },
         );
       }
@@ -10548,21 +10941,40 @@ function flushTrainSync() {
       } else if (rejectedCount) {
         setTrainSyncState("rejected");
       } else {
+        clearOutbox(currentOwnerId());
         setTrainSyncState("saved");
       }
       return rejectedCount === 0;
     }
-    setTrainSyncState("error");
+    // R-02 (mixed failure): even while some groups retry, the permanently
+    // rejected ones get their own message — "1 kept for review, 2 will retry".
+    if (rejectedCount) {
+      setStatus(
+        `${rejectedCount} training attempt${rejectedCount === 1 ? "" : "s"} kept for review; ` +
+          `${failedCount} will retry`,
+        { severity: "error" },
+      );
+    }
+    setTrainSyncState(info && info.pauseForAuth ? "blocked" : "error");
     // Requeue failed groups ahead of newer attempts and back off. SR deltas
     // are precious but small; they also flush on hide/unload and session end.
     sync.pending = ungroupAttempts(outcome.failedGroups).concat(sync.pending);
+    persistOutbox();
     // Only re-mark the position dirty if the current session's group is the
     // one that failed — other sessions carry no position payload.
     if (smart && outcome.failedGroups.some(([sessionId]) => sessionId === smart.sessionId)) {
       sync.dirty = true;
     }
+    if (info && info.pauseForAuth) {
+      // R-04: 401 waits for a sign-in — a backoff timer can't fix it. The
+      // flush re-arms from loadSignedInWorkspace after sign-in.
+      return false;
+    }
     sync.retry = Math.min(sync.retry + 1, 6);
-    const delay = Math.min(TRAIN_SYNC_MAX_BACKOFF_MS, 1000 * 2 ** (sync.retry - 1));
+    const delay =
+      info && info.retryAfterMs != null
+        ? info.retryAfterMs
+        : Math.min(TRAIN_SYNC_MAX_BACKOFF_MS, 1000 * 2 ** (sync.retry - 1));
     sync.timer = setTimeout(() => {
       sync.timer = null;
       flushTrainSync();
@@ -10576,6 +10988,7 @@ function flushTrainSync() {
 // mechanics as beaconFlushBuild; sendBeacon can't carry the CSRF header).
 function beaconFlushTrain() {
   const sync = appState.trainSync;
+  persistOutbox(); // R-03: attempts survive the tab even if the beacon drops
   if (!sync.pending.length && !sync.dirty) return;
   const token = readCsrfCookie();
   const smart = appState.smart;
@@ -11130,17 +11543,26 @@ async function ensureReplayView() {
       onToggleFilter: (kind) => {
         appState.replayFilter = appState.replayFilter === kind ? null : kind;
         appState.replayOpen.clear();
+        saveReturnState("replay", { filter: appState.replayFilter, openIndex: null });
         void renderReplayResults(appState.replayResults).catch(() => {});
       },
       onToggleGame: (index) => {
         appState.replayOpen = new Set([index]);
+        saveReturnState("replay", { filter: appState.replayFilter, openIndex: index });
         void renderReplayResults(appState.replayResults).catch(() => {});
       },
-      onTrainMiss: () =>
-        goToSmartTraining("Your missed move is due now — press Start"),
-      onBuildReply: (game) =>
-        editRepertoire(game.repertoire_id, game.last_matched_node_id || null),
-      onAnalyze: (game) => replayToAnalyze(game),
+      onTrainMiss: (game, focus) => {
+        rememberHandoff(gameHandoff(game, focus, "practice-missed-move"));
+        goToSmartTraining("Your missed move is due now — press Start");
+      },
+      onBuildReply: (game, focus) => {
+        rememberHandoff(gameHandoff(game, focus, "build-reply"));
+        editRepertoire(game.repertoire_id, game.last_matched_node_id || null);
+      },
+      onAnalyze: (game, focus) => {
+        rememberHandoff(gameHandoff(game, focus, "review-in-analyze"));
+        replayToAnalyze(game);
+      },
     });
   }
   return replayView;
@@ -11148,6 +11570,24 @@ async function ensureReplayView() {
 
 async function renderReplayResults(payload) {
   return (await ensureReplayView()).renderReplayResults(payload);
+}
+
+// F-06: the Games→Train/Analyze handoff record — source game, the decision
+// ply + anchor FEN (the position where the user left prep), the user's side and
+// the matched repertoire. Identity covers the whole tuple, so white/black,
+// transpositions and different root FENs never interleave.
+function gameHandoff(game, focus, reason) {
+  return {
+    source: "games",
+    sourceView: "replay",
+    reason,
+    gameId: game.lichess_id || null,
+    lineUcis: [game.expected_move_uci].filter(Boolean),
+    ply: Number(game.departure_ply) || null,
+    anchorFen: (focus && focus.fen) || null,
+    side: game.user_color === "black" ? "black" : "white",
+    repertoireId: game.repertoire_id ?? null,
+  };
 }
 
 // "Review in Analyze": rebuild the game's PGN from the fetched move list and
@@ -11174,7 +11614,22 @@ function replayToAnalyze(game) {
   switchView("analyze");
   orientAnalysisForSelf(game.white, game.black);
   // Populate the move list immediately so the game is steppable before Analyze.
-  if (input) void loadPgnIntoAnalyze(input.value, { goToEnd: false, quiet: true }).catch(() => {});
+  if (input) {
+    void loadPgnIntoAnalyze(input.value, { goToEnd: false, quiet: true })
+      .then(() => {
+        // F-06: land on the decision position (the ply before the divergence)
+        // instead of move 1 — the handoff carries the anchor so the user never
+        // has to re-find the moment in the game.
+        const handoff = takeHandoff({
+          reason: "review-in-analyze",
+          gameId: game.lichess_id || undefined,
+        });
+        const departPly =
+          (handoff && handoff.ply != null ? handoff.ply : Number(game.departure_ply)) || 1;
+        return showAnalysisPly(Math.max(0, departPly - 1));
+      })
+      .catch(() => {});
+  }
   setStatus(
     `Loaded ${game.white || "?"} vs ${game.black || "?"} — press Analyze game`
   );
@@ -11962,6 +12417,16 @@ function bindEvents() {
   });
 
   document.getElementById("run-analysis").addEventListener("click", runAnalysis);
+  // F-03: retry just the save from the on-device checkpoint (no re-analysis).
+  document.getElementById("analysis-retry-save-btn")?.addEventListener("click", () => {
+    void retryAnalyzeSave();
+  });
+  document.getElementById("analysis-retry-save-discard")?.addEventListener("click", () => {
+    const checkpoint = loadCheckpoint();
+    if (checkpoint && checkpoint.gameId) clearCheckpoint(checkpoint.gameId);
+    hideAnalysisRetrySave();
+    setStatus("Discarded the unsaved analysis on this device");
+  });
   const createRepFromGame = document.getElementById("create-repertoire-from-game");
   if (createRepFromGame) {
     createRepFromGame.addEventListener("click", () => {
@@ -12397,6 +12862,22 @@ async function loadSignedInWorkspace() {
   // so signing in doesn't need to re-fetch them.
   renderBuilderTree();
   await loadDashboard();
+  // R-03/R-04: this OWNER's durable outbox comes back after a reload or an
+  // earlier sign-out, and any flush paused waiting for sign-in re-arms.
+  appState.syncPausedForAuth = false;
+  restoreOutbox();
+  if (appState.buildPending.length || appState.buildPendingDeletes.length) {
+    setBuildSync("dirty");
+    scheduleBuildFlush();
+  }
+  // F-03: a finished-but-unsaved analysis waits for its retry — surface it.
+  const checkpoint = loadCheckpoint();
+  if (checkpoint && checkpoint.gameId) {
+    setStatus(
+      `Unsaved analysis on this device (${checkpoint.positions?.length || 0} positions) — open Analyze and press Retry save.`,
+      { severity: "warning" },
+    );
+  }
 }
 
 appReadyPromise = init().catch((error) => setStatusError(error.message));

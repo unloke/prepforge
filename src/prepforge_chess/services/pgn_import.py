@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import io
 from dataclasses import dataclass, field
 from typing import List, Optional
+
+import chess.pgn
 
 from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import MoveSource
@@ -13,6 +16,35 @@ from prepforge_chess.storage.repositories import PrepForgeRepository
 class PgnImportOptions:
     source: MoveSource = MoveSource.IMPORTED_PGN
     skip_duplicate_lichess_games: bool = True
+
+
+@dataclass
+class ParsedGame:
+    """One game parsed out of a multi-game PGN, with its own parse status.
+
+    Parse failures are isolated per game (F-04): one broken game must not make
+    the whole paste look like a total failure.
+    """
+
+    index: int  # 0-based position in the text
+    text: str = ""
+    white: Optional[str] = None
+    black: Optional[str] = None
+    error: Optional[str] = None
+
+
+@dataclass
+class GameImportStatus:
+    """What actually happened to one game (F-04): imported fresh, already
+    present (existing id), or failed with a reason."""
+
+    index: int
+    status: str  # "imported" | "existing" | "failed"
+    game_id: Optional[str] = None
+    white: Optional[str] = None
+    black: Optional[str] = None
+    error: Optional[str] = None
+
 
 
 @dataclass
@@ -119,3 +151,96 @@ class PgnImportService:
             result.imported_game_ids.append(game.id)
 
         return result
+
+    # ---- F-04: multi-game semantics -------------------------------------
+
+    def parse_text(self, pgn_text: str) -> List[ParsedGame]:
+        """Split a (possibly multi-game) PGN into per-game texts WITHOUT storing
+        anything, isolating parse errors per game. This is the "validate before
+        you store" phase: single-game callers can reject a multi-game paste
+        before any game lands."""
+        stream = io.StringIO(pgn_text or "")
+        out: List[ParsedGame] = []
+        index = 0
+        # Read one game at a time so a parse error in game 2 can't void
+        # game 1 (import_pgn_games raises for the whole text).
+        while True:
+            try:
+                game = chess.pgn.read_game(stream)
+            except Exception as exc:  # python-chess parse errors vary by version
+                out.append(ParsedGame(index=index, error=str(exc)))
+                index += 1
+                continue
+            if game is None:
+                break
+            if game.errors:
+                first = game.errors[0]
+                message = getattr(first, "args", [None])[0] or str(first)
+                out.append(
+                    ParsedGame(index=index, error="parse error: {0}".format(message))
+                )
+            else:
+                out.append(
+                    ParsedGame(
+                        index=index,
+                        text=str(game),
+                        white=game.headers.get("White"),
+                        black=game.headers.get("Black"),
+                    )
+                )
+            index += 1
+        return out
+
+    def import_parsed(
+        self,
+        parsed_games: List[ParsedGame],
+        options: PgnImportOptions = PgnImportOptions(),
+        owner_user_id: Optional[str] = None,
+    ) -> List[GameImportStatus]:
+        """Import each parsed game independently (F-04): per-game
+        imported/existing/failed status, never a fake all-or-nothing result."""
+        out: List[GameImportStatus] = []
+        for parsed in parsed_games:
+            if parsed.error is not None or not parsed.text:
+                out.append(
+                    GameImportStatus(
+                        index=parsed.index,
+                        status="failed",
+                        white=parsed.white,
+                        black=parsed.black,
+                        error=parsed.error or "parse error",
+                    )
+                )
+                continue
+            result = self.import_text(parsed.text, options, owner_user_id=owner_user_id)
+            if result.imported_game_ids:
+                out.append(
+                    GameImportStatus(
+                        index=parsed.index,
+                        status="imported",
+                        game_id=result.imported_game_ids[0],
+                        white=parsed.white,
+                        black=parsed.black,
+                    )
+                )
+            elif result.skipped_game_ids:
+                out.append(
+                    GameImportStatus(
+                        index=parsed.index,
+                        status="existing",
+                        game_id=result.skipped_game_ids[0],
+                        white=parsed.white,
+                        black=parsed.black,
+                    )
+                )
+            else:
+                out.append(
+                    GameImportStatus(
+                        index=parsed.index,
+                        status="failed",
+                        white=parsed.white,
+                        black=parsed.black,
+                        error="; ".join(result.errors) or "import failed",
+                    )
+                )
+        return out

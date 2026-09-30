@@ -15,6 +15,11 @@ export function createAccountController({
   onLichessAccountsChanged = () => {},
   onOpenSettings = () => {},
   onReload = () => window.location.reload(),
+  // R-03: sign-out must coordinate the local outbox first. The app owns the
+  // outbox, so it hands in a hook that persists + flushes and reports how much
+  // work could NOT be saved ({ pending }). Drafts are always kept locally under
+  // this owner's key — never sent as another account.
+  beforeSignOut = null,
 }) {
   function getStoredLichessUsername() {
     try {
@@ -387,6 +392,37 @@ export function createAccountController({
       tone: "danger",
     });
     if (!confirmed) return;
+    // R-03: coordinate pending local work BEFORE the session ends, while the
+    // flush can still authenticate. Whatever cannot be saved stays in the
+    // durable outbox (owner-scoped) and replays on the next sign-in.
+    let pending = 0;
+    if (beforeSignOut) {
+      try {
+        const result = await beforeSignOut();
+        pending = (result && result.pending) || 0;
+      } catch (_) {
+        // Coordination is best-effort; the drafts survive locally either way.
+        pending = 0;
+      }
+    }
+    if (pending > 0) {
+      const proceed = await showConfirmModal({
+        title: `Sign out with ${pending} unsaved change${pending === 1 ? "" : "s"}?`,
+        body:
+          `${pending} change${pending === 1 ? "" : "s"} could not be saved just now. ` +
+          `They are kept on this device and will sync after you sign back in.`,
+        okLabel: "Sign out anyway",
+        cancelLabel: "Stay signed in",
+        tone: "danger",
+      });
+      if (!proceed) {
+        setStatus(
+          `Still signed in — ${pending} unsaved change${pending === 1 ? "" : "s"} kept for the next sync.`,
+          { severity: "warning" },
+        );
+        return;
+      }
+    }
     try {
       await postJson("/api/auth/logout", {});
     } catch (_) {

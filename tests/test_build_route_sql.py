@@ -110,7 +110,9 @@ def test_build_route_sql_counts_sqlite(client):
         print(f"SQLite route SQL counts: {counts}")
     assert counts["load"] <= 12, counts
     assert counts["mark_prepared"] <= 10, counts
-    assert counts["annotations"] <= 7, counts
+    # +1 over the pre-D-02 budget: the annotation echo reads the fresh
+    # revision (the write itself bumps it inside the same mutation).
+    assert counts["annotations"] <= 8, counts
     assert counts["disable_branch"] <= 10, counts
 
 
@@ -133,5 +135,7 @@ def test_build_route_sql_counts_postgres(monkeypatch):
         print(f"PostgreSQL route SQL counts: {counts}")
     assert counts["load"] <= 12, counts
     assert counts["mark_prepared"] <= 10, counts
-    assert counts["annotations"] <= 7, counts
+    # +1 over the pre-D-02 budget: the annotation echo reads the fresh
+    # revision (the write itself bumps it inside the same mutation).
+    assert counts["annotations"] <= 8, counts
     assert counts["disable_branch"] <= 10, counts

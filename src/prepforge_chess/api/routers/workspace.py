@@ -72,6 +72,28 @@ def _owned_repertoire(repo: PrepForgeRepository, repertoire_id: str, owner: str)
     return meta
 
 
+def _check_base_revision(meta: dict[str, Any], base_revision: int | None) -> None:
+    """D-02 conflict contract: a mutation may name the revision it was built on.
+    If the repertoire moved on since then, 409 (with the fresh revision) so the
+    client can reconcile instead of silently overwriting another edit. Passing
+    no base_revision keeps the legacy merge-anywhere behaviour."""
+    if base_revision is None:
+        return
+    current = meta.get("revision")
+    if current is not None and int(base_revision) != int(current):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": "revision_conflict",
+                "current_revision": int(current),
+                "message": (
+                    "This repertoire changed somewhere else since your copy was "
+                    "loaded. Reload it and re-apply the edit, or keep your draft."
+                ),
+            },
+        )
+
+
 def _readable_repertoire(
     repo: PrepForgeRepository, repertoire_id: str, owner: str, team_ids: set[str]
 ) -> dict[str, Any]:
@@ -463,15 +485,31 @@ def create_repertoire(
 
 
 # ---- Public share links -------------------------------------------------------
-# A share link is a stateless signed token: base64url(rep_id) + "." + HMAC slice.
-# No new table, no expiry — the link lives exactly as long as the repertoire does.
-# Knowing the link grants READ of the tree (name + moves + comments) and nothing
-# else: the public payload is stripped of the owner's training state, and every
-# mutating endpoint still checks ownership. Forking copies the tree under the
-# CALLER with fresh ids (same mechanics as package import).
+# A share link is a signed token: base64url(rep_id) + "." + share_rev + "." +
+# HMAC slice. Knowing the link grants READ of the tree (name + moves +
+# comments) and nothing else: the public payload is stripped of the owner's
+# training state, and every mutating endpoint still checks ownership. Forking
+# copies the tree under the CALLER with fresh ids (same mechanics as package
+# import).
+#
+# F-01: the link is independently governable per repertoire:
+# - ``share_enabled`` off kills the link (without touching team sharing);
+# - ``share_rev`` rotation re-signs, so every previously minted link dies;
+# - ``share_expires_at`` is an optional deadline.
+# Legacy tokens (no rev, signed over the id only) stay valid only while
+# share_rev == 0 — the first revoke/rotate retires them for good.
 
 
-def _share_signature(repertoire_id: str, secret: str) -> str:
+def _share_signature(repertoire_id: str, secret: str, rev: int) -> str:
+    digest = hmac.new(
+        secret.encode("utf-8"),
+        "share:{0}:{1}".format(repertoire_id, rev).encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return digest[:32]
+
+
+def _legacy_share_signature(repertoire_id: str, secret: str) -> str:
     digest = hmac.new(
         secret.encode("utf-8"),
         "share:{0}".format(repertoire_id).encode("utf-8"),
@@ -480,28 +518,108 @@ def _share_signature(repertoire_id: str, secret: str) -> str:
     return digest[:32]
 
 
-def mint_share_token(repertoire_id: str, secret: str) -> str:
+def mint_share_token(repertoire_id: str, secret: str, rev: int) -> str:
     rid = base64.urlsafe_b64encode(repertoire_id.encode("utf-8")).decode("ascii").rstrip("=")
-    return "{0}.{1}".format(rid, _share_signature(repertoire_id, secret))
+    return "{0}.{1}.{2}".format(rid, rev, _share_signature(repertoire_id, secret, rev))
 
 
-def parse_share_token(token: str, secret: str) -> str | None:
-    """The repertoire id a valid token names, else None. Constant-time compare."""
+def parse_share_token(token: str, secret: str) -> tuple[str, int | None] | None:
+    """``(repertoire_id, rev)`` for a valid token, else None. ``rev is None``
+    marks a legacy token (pre-revision). Constant-time compares."""
     try:
-        rid, signature = token.split(".", 1)
+        rid, rest = token.split(".", 1)
         padded = rid + "=" * (-len(rid) % 4)
         repertoire_id = base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
     except (ValueError, UnicodeDecodeError):
         return None
     if not repertoire_id:
         return None
-    if hmac.compare_digest(signature, _share_signature(repertoire_id, secret)):
-        return repertoire_id
+    if "." in rest:
+        rev_text, signature = rest.split(".", 1)
+        try:
+            rev = int(rev_text)
+        except ValueError:
+            return None
+        if hmac.compare_digest(
+            signature, _share_signature(repertoire_id, secret, rev)
+        ):
+            return repertoire_id, rev
+        return None
+    if hmac.compare_digest(rest, _legacy_share_signature(repertoire_id, secret)):
+        return repertoire_id, None
     return None
+
+
+def _share_state(meta: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "share_enabled": bool(meta.get("share_enabled")),
+        "share_rev": int(meta.get("share_rev") or 0),
+        "share_expires_at": meta.get("share_expires_at"),
+    }
+
+
+def _share_link_live(meta: dict[str, Any], token_rev: int | None, now: datetime) -> bool:
+    """Does this token still grant read under the repertoire's share state?"""
+    if not meta.get("share_enabled"):
+        return False
+    expires_at = meta.get("share_expires_at")
+    if expires_at:
+        try:
+            expires = datetime.fromisoformat(str(expires_at))
+        except ValueError:
+            return False
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        if expires <= now:
+            return False
+    current_rev = int(meta.get("share_rev") or 0)
+    if token_rev is None:  # legacy token: only pre-rotation links
+        return current_rev == 0
+    return token_rev == current_rev
+
+
+def _resolve_share_link(
+    repo: PrepForgeRepository, token: str, secret: str
+) -> str | None:
+    """The repertoire id a token currently grants read for, else None. Revoked,
+    rotated, and expired links all resolve to None (→ 404, F-01)."""
+    parsed = parse_share_token(token, secret)
+    if parsed is None:
+        return None
+    repertoire_id, token_rev = parsed
+    meta = repo.repertoire_meta(repertoire_id)
+    if meta is None:
+        return None
+    if not _share_link_live(meta, token_rev, datetime.now(timezone.utc)):
+        return None
+    return repertoire_id
 
 
 class ShareLinkBody(BaseModel):
     repertoire_id: str
+    # Optional deadline for the link (1–365 days). None = no expiry.
+    expires_in_days: int | None = Field(default=None, ge=1, le=365)
+
+
+def _share_expiry(expires_in_days: int | None) -> str | None:
+    if expires_in_days is None:
+        return None
+    return (
+        datetime.now(timezone.utc) + timedelta(days=expires_in_days)
+    ).isoformat()
+
+
+@router.get("/repertoires/share-link")
+def share_link_status(
+    repertoire_id: str,
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+) -> dict[str, Any]:
+    """Public-link state for one of the caller's OWN repertoires (F-01), so the
+    share panel can show team sharing and "anyone with the link" separately —
+    without minting (or re-enabling) anything."""
+    meta = _owned_repertoire(repo, repertoire_id, owner)
+    return _share_state(meta)
 
 
 @router.post("/repertoires/share-link")
@@ -511,10 +629,56 @@ def create_share_link(
     repo: PrepForgeRepository = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    """Mint the public read-only link for one of the caller's OWN repertoires."""
+    """Enable the public read-only link for one of the caller's OWN repertoires.
+
+    Idempotent mint: while a link is live, this returns the current token. If
+    the link was revoked, enabling mints a FRESH link (rotation) — a revoked
+    link never comes back to life (F-01)."""
+    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    expires_at = _share_expiry(body.expires_in_days)
+    if not meta["share_enabled"]:
+        state = repo.set_share_state(
+            body.repertoire_id, enabled=True, rotate=True, expires_at=expires_at
+        )
+    else:
+        state = repo.set_share_state(body.repertoire_id, expires_at=expires_at)
+    token = mint_share_token(body.repertoire_id, settings.secret_key, state["share_rev"])
+    return {
+        "token": token,
+        "url": "/?shared={0}".format(token),
+        **state,
+    }
+
+
+@router.post("/repertoires/share-link/rotate")
+def rotate_share_link(
+    body: ShareLinkBody,
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Regenerate the public link: bumps the share revision so every previously
+    minted link (including legacy ones) stops working immediately."""
     _owned_repertoire(repo, body.repertoire_id, owner)
-    token = mint_share_token(body.repertoire_id, settings.secret_key)
-    return {"token": token, "url": "/?shared={0}".format(token)}
+    expires_at = _share_expiry(body.expires_in_days)
+    state = repo.set_share_state(
+        body.repertoire_id, enabled=True, rotate=True, expires_at=expires_at
+    )
+    token = mint_share_token(body.repertoire_id, settings.secret_key, state["share_rev"])
+    return {"token": token, "url": "/?shared={0}".format(token), **state}
+
+
+@router.post("/repertoires/share-link/revoke")
+def revoke_share_link(
+    body: ShareLinkBody,
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+) -> dict[str, Any]:
+    """Turn the public link OFF. Team sharing is untouched — the two are
+    independent controls (F-01)."""
+    _owned_repertoire(repo, body.repertoire_id, owner)
+    state = repo.set_share_state(body.repertoire_id, enabled=False)
+    return state
 
 
 @router.get("/shared/{token}")
@@ -526,8 +690,9 @@ def shared_repertoire(
     """Public (unauthenticated) read of a shared repertoire's tree.
 
     Reuses the Build payload shape so the SPA's viewer is the Build view in
-    read-only mode — minus the owner's training colour (health/mastery)."""
-    repertoire_id = parse_share_token(token, settings.secret_key)
+    read-only mode — minus the owner's training colour (health/mastery).
+    Revoked / rotated / expired links are 404 (F-01)."""
+    repertoire_id = _resolve_share_link(repo, token, settings.secret_key)
     if repertoire_id is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown share link")
     try:
@@ -555,8 +720,10 @@ def fork_shared_repertoire(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Copy a shared repertoire into the caller's account (fresh ids, caller-owned).
-    Same free-plan cap as creating one from scratch."""
-    repertoire_id = parse_share_token(token, settings.secret_key)
+    Same free-plan cap as creating one from scratch. Revoked / rotated / expired
+    links are 404 (F-01) — an already-made copy is independent and cannot be
+    recalled by revoking the link."""
+    repertoire_id = _resolve_share_link(repo, token, settings.secret_key)
     if repertoire_id is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown share link")
     repertoire = repo.load_repertoire(repertoire_id)
@@ -606,6 +773,7 @@ def fork_repertoire(
 class RenameRepertoireBody(BaseModel):
     repertoire_id: str
     name: str = ""
+    base_revision: int | None = None
 
 
 @router.post("/build/rename")
@@ -615,7 +783,8 @@ def build_rename(
     repo: PrepForgeRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Rename one of the caller's repertoires and return its refreshed Build payload."""
-    _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    _check_base_revision(meta, body.base_revision)
     try:
         OpeningBuilderService(repo).rename_repertoire(body.repertoire_id, body.name)
     except ValueError as exc:
@@ -627,6 +796,7 @@ class AddMoveBody(BaseModel):
     repertoire_id: str
     parent_node_id: str
     move_uci: str
+    base_revision: int | None = None
 
 
 @router.post("/build/add-move")
@@ -638,7 +808,8 @@ def build_add_move(
     """Append a manual move under a parent node and return the refreshed Build payload.
     Mirrors the legacy classification: a move played on the owner's turn is flagged
     ``prepared``; the first enabled child of a parent becomes the mainline."""
-    _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    _check_base_revision(meta, body.base_revision)
     repertoire = repo.load_repertoire(body.repertoire_id)
     if repertoire is None:  # gate passed but row vanished — treat as not found
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
@@ -691,6 +862,7 @@ class AddMovesItem(BaseModel):
 class AddMovesBody(BaseModel):
     repertoire_id: str
     moves: list[AddMovesItem] = Field(default_factory=list, max_length=MAX_BULK_MOVES)
+    base_revision: int | None = None
 
 
 @router.post("/build/add-moves")
@@ -707,7 +879,8 @@ def build_add_moves(
     No compute: the service re-validates legality + parentage and recomputes the
     persisted flags itself, so a malformed batch raises ``ValueError`` → 400
     before anything lands. Owner-gated so a user can't flush onto another's tree."""
-    _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    _check_base_revision(meta, body.base_revision)
     try:
         repertoire, summary, id_map = OpeningBuilderService(repo).add_moves_batch(
             body.repertoire_id,
@@ -733,6 +906,7 @@ def build_add_moves(
 class DeleteNodesBody(BaseModel):
     repertoire_id: str
     node_ids: list[str] = Field(default_factory=list, max_length=MAX_BULK_DELETE_NODES)
+    base_revision: int | None = None
 
 
 @router.post("/build/delete-nodes")
@@ -751,7 +925,8 @@ def build_delete_nodes(
     subtree-root ids on the same debounce. Idempotent per id (an id deleted by
     an earlier subtree in the batch, or by a previous flush, is skipped) so an
     optimistic over-delete can't fail the whole flush. Owner-gated."""
-    _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    _check_base_revision(meta, body.base_revision)
     try:
         removed = OpeningBuilderService(repo).delete_nodes_batch(
             body.repertoire_id, list(body.node_ids)
@@ -777,6 +952,7 @@ class ApplyPlanBody(BaseModel):
     repertoire_id: str
     root_node_id: str
     plan: dict[str, Any] | None = None
+    base_revision: int | None = None
 
 
 @router.post("/build/generate/apply-plan")
@@ -794,7 +970,8 @@ def build_apply_plan(
     anything lands. Owner-gated so a user can't apply a plan onto another's tree."""
     if not isinstance(body.plan, dict):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="plan must be an object")
-    _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    _check_base_revision(meta, body.base_revision)
     try:
         repertoire, summary = OpeningBuilderService(repo).apply_generation_plan(
             body.repertoire_id, body.root_node_id, body.plan
@@ -835,6 +1012,7 @@ class NodeActionBody(BaseModel):
         "mark_critical",
     ]
     value: str | None = None
+    base_revision: int | None = None
 
 
 @router.post("/build/action")
@@ -845,7 +1023,8 @@ def build_action(
 ) -> dict[str, Any]:
     """Apply a node action (set-mainline / toggle-prepared / toggle-branch / delete /
     comment / tag / queue / critical) and return the refreshed Build payload."""
-    _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    _check_base_revision(meta, body.base_revision)
     builder = OpeningBuilderService(repo)
     action = body.action
     selected_node_id: str | None = body.node_id
@@ -891,6 +1070,7 @@ class AnnotationsBody(BaseModel):
     node_id: str
     arrows: list[str] = Field(default_factory=list, max_length=MAX_ANNOTATIONS_PER_KIND)
     circles: list[str] = Field(default_factory=list, max_length=MAX_ANNOTATIONS_PER_KIND)
+    base_revision: int | None = None
 
 
 @router.post("/build/annotations")
@@ -903,14 +1083,20 @@ def build_annotations(
 ) -> dict[str, Any]:
     """Persist a node's arrows/circles and echo them back (the SPA ignores the rest of
     a Build payload here, so no full reserialization)."""
-    _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    _check_base_revision(meta, body.base_revision)
     try:
         OpeningBuilderService(repo).set_annotations(
             body.repertoire_id, body.node_id, body.arrows, body.circles
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return {"node_id": body.node_id, "arrows": list(body.arrows), "circles": list(body.circles)}
+    return {
+        "node_id": body.node_id,
+        "arrows": list(body.arrows),
+        "circles": list(body.circles),
+        "revision": repo.repertoire_revision(body.repertoire_id),
+    }
 
 
 class ExportBody(BaseModel):

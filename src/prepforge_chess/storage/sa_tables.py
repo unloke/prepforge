@@ -105,7 +105,12 @@ moves = Table(
     Column("best_move_uci", Text),
     Column("best_move_eval_id", Integer, ForeignKey("engine_evaluations.id")),
     Column("classification", Text, nullable=False),
+    # Original / user-authored note only; the classifier writes its explanation
+    # to generated_comment and rewrites it on every run (A-04).
     Column("comment", Text),
+    Column("generated_comment", Text),
+    # {algorithm_version, engine, depth, analysis} for the generated block.
+    Column("generated_meta_json", Text),
     Column("tags_json", Text),
     Column("source", Text, nullable=False),
     Index("idx_moves_game_ply", "game_id", "ply"),
@@ -126,6 +131,9 @@ analysis_results = Table(
     Column("depth", Integer),
     Column("summary_json", Text, nullable=False),
     Column("critical_ply", Text, nullable=False),
+    # Search/model quality metadata for this run (A-05): target vs actual
+    # depth, shallow spots, Maia status, algorithm versions.
+    Column("quality_json", Text),
 )
 
 repertoires = Table(
@@ -152,6 +160,16 @@ repertoires = Table(
     Column("team_id", Text),
     Column("visibility", Text),
     Column("health_json", Text),
+    # Mutation revision (D-02): bumped on every tree/metadata write; Build
+    # mutations may send ``base_revision`` and get 409 when it is stale.
+    Column("revision", Integer, nullable=False, server_default="0"),
+    # Public share-link governance (F-01). ``share_rev`` is mixed into the
+    # token signature: rotating bumps it and kills every previously minted
+    # link; ``share_enabled`` is the independent on/off switch (legacy links
+    # ship rev=0 / enabled=1 so pre-existing links keep working until revoked).
+    Column("share_rev", Integer, nullable=False, server_default="0"),
+    Column("share_enabled", Integer, nullable=False, server_default="1"),
+    Column("share_expires_at", Text),
     Index("idx_repertoires_owner", "owner_user_id"),
     Index("idx_repertoires_team", "team_id"),
 )

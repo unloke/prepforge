@@ -296,7 +296,12 @@ def test_annotations_persist_and_echo(client):
         headers=csrf_headers(client),
     )
     assert r.status_code == 200, r.text
-    assert r.json() == {"node_id": node_id, "arrows": ["e2e4"], "circles": ["d4"]}
+    body = r.json()
+    assert body["node_id"] == node_id
+    assert body["arrows"] == ["e2e4"]
+    assert body["circles"] == ["d4"]
+    # D-02: mutations report the fresh revision so clients can track it.
+    assert body["revision"] >= 1
 
     # Persisted: the Build payload now carries the annotations.
     load = client.get("/api/build/load", params={"repertoire_id": rep_id}).json()

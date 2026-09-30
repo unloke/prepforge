@@ -1108,10 +1108,26 @@ class OpeningBuilderService:
         self.loaded_repertoire = repertoire
         node = self._find_node_or_raise(repertoire.root_node, node_id)
         self._set_branch_enabled(node, True)
-        self.repository.update_opening_nodes(repertoire_id, [
-            {"id": child.id, "is_enabled": True}
-            for child in self.repository._walk_nodes(node)
-        ])
+        # A-02: a node is only reachable through ENABLED ancestors, so
+        # re-enabling a branch also re-enables its ancestor chain. "Enabled"
+        # then means exactly one thing everywhere: the node is trainable again
+        # (health stats and the scheduler agree by construction).
+        ancestors = []
+        current = node
+        while current.parent_id is not None:
+            parent = self._find_node_or_raise(repertoire.root_node, current.parent_id)
+            if not parent.is_enabled:
+                parent.is_enabled = True
+                ancestors.append(parent)
+            current = parent
+        self.repository.update_opening_nodes(
+            repertoire_id,
+            [
+                {"id": child.id, "is_enabled": True}
+                for child in self.repository._walk_nodes(node)
+            ]
+            + [{"id": parent.id, "is_enabled": True} for parent in ancestors],
+        )
         return node
 
     def add_comment(self, repertoire_id: str, node_id: str, comment: str) -> OpeningNode:

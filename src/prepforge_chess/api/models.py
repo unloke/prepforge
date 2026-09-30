@@ -219,6 +219,28 @@ class TrainAttemptReceipt(Base):
     created_at: Mapped[str] = mapped_column(String(64), nullable=False, default=_now_text)
 
 
+class PasswordResetToken(Base):
+    """Single-use password-reset token (F-02).
+
+    Only the SHA-256 of the token is stored (same discipline as
+    ``AuthSession``): a DB leak never yields a working reset link. The raw
+    token is delivered once (by mail, or the dev-link response) and each token
+    is consumed exactly once; a successful reset also invalidates every
+    session of the account.
+    """
+
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class StripeEvent(Base):
     """A processed Stripe webhook event, recorded for idempotency.
 

@@ -23,6 +23,7 @@ from prepforge_chess.api.middleware import CSRFMiddleware, SecurityHeadersMiddle
 from prepforge_chess.api.observability import configure_logging, init_sentry
 from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.api.routers import (
+    account,
     analyze,
     auth,
     billing,
@@ -98,6 +99,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(auth.router)
+    app.include_router(account.router)
     app.include_router(google_auth.router)
     app.include_router(lichess.router)
     app.include_router(workspace.router)

@@ -275,6 +275,9 @@ def rebuild_moves(
             classification = MoveClassification(classification)
         record.classification = classification
         record.comment = note.get("comment")
+        record.generated_comment = note.get("generated_comment")
+        generated_meta = note.get("generated_meta")
+        record.generated_meta = dict(generated_meta) if generated_meta else None
         record.tags = list(note.get("tags") or [])
         record.engine_eval_before = note.get("engine_eval_before")
         record.engine_eval_after = note.get("engine_eval_after")
@@ -306,6 +309,8 @@ def move_needs_row(move: MoveRecord) -> bool:
     if move.classification is not MoveClassification.UNKNOWN:
         return True
     if move.comment:
+        return True
+    if move.generated_comment:
         return True
     if move.tags:
         return True
@@ -345,8 +350,13 @@ def export_pgn(game: Game) -> str:
     for record in game.moves:
         move = chess.Move.from_uci(record.uci)
         node = node.add_variation(move)
-        if record.comment:
-            node.comment = record.comment
+        # Export original + current generated explanation (display merge), so a
+        # PGN always carries what the UI shows.
+        display = "\n".join(
+            part for part in (record.comment, record.generated_comment) if part
+        )
+        if display:
+            node.comment = display
         replay.push(move)
     return pgn_game.accept(chess.pgn.StringExporter(headers=True, variations=False, comments=True))
 

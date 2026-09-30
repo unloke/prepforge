@@ -7,6 +7,7 @@ layers mastery/health on top for FastAPI ``/api/build/load``.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any, Dict, Iterator, Optional
 
 from prepforge_chess.core.models import EngineEvaluation, OpeningNode, Repertoire
@@ -110,10 +111,19 @@ def build_workspace_payload(
     health = compute_health(repertoire.root_node, repertoire.color, progress_by_id)
     # Refresh the dashboard's cached badge off this already-computed walk. Every Build
     # mutation funnels back through here, so the cache stays current with no extra cost.
-    health_data = health.to_dict()
-    if getattr(repertoire, "_cached_health", None) != health_data:
+    # D-01: the cache records computed_at + tree revision so readers can tell how
+    # fresh the static numbers are; time-dependent numbers (due) are recomputed
+    # live wherever they are displayed (see repository.due_counts_by_repertoire).
+    revision = repository.repertoire_revision(repertoire.id)
+    cached = getattr(repertoire, "_cached_health", None) or {}
+    cached_static = {k: v for k, v in cached.items() if k not in ("computed_at", "revision")}
+    if cached_static != health.to_dict() or cached.get("revision") != revision:
+        health_data = dict(health.to_dict())
+        health_data["computed_at"] = datetime.now(timezone.utc).isoformat()
+        health_data["revision"] = revision
         repository.set_repertoire_health(repertoire.id, health_data)
         repertoire._cached_health = health_data
+    health_data = getattr(repertoire, "_cached_health", None) or dict(health.to_dict())
     return {
         "repertoire_id": repertoire.id,
         "name": repertoire.name,
@@ -122,6 +132,7 @@ def build_workspace_payload(
         "selected_fen": selected.fen,
         "summary": summary or dict(_EMPTY_SUMMARY),
         "nodes_total": report.total_nodes,
+        "revision": revision,
         "health": health_data,
         "nodes": [
             opening_item_to_json(item, nodes_by_id[item.node_id], mastery.get(item.node_id))

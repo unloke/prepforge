@@ -26,6 +26,7 @@ def _expected_tables() -> set[str]:
         "stripe_events",
         "user_settings",
         "train_attempt_receipts",
+        "password_reset_tokens",
         # Core domain tables.
         "games",
         "positions",

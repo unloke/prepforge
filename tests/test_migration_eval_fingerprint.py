@@ -49,6 +49,14 @@ def _alembic_config(db_url: str, monkeypatch, connect_options: str | None = None
     return Config("alembic.ini")
 
 
+def _chain_head(cfg: Config) -> str:
+    """Current head of the migration chain — later migrations extend the chain
+    and must not break this contract test just by existing."""
+    from alembic.script import ScriptDirectory
+
+    return ScriptDirectory.from_config(cfg).get_current_head()
+
+
 def _seed_pre_migration_rows(engine: sa.Engine) -> dict:
     """Old-shape rows at b7d21c93e4a8 (5-tuple unique, no fingerprint)."""
     fen1 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
@@ -207,7 +215,9 @@ def test_fingerprint_identity_migration_postgres(monkeypatch) -> None:
         command.upgrade(cfg, "head")
         with engine.connect() as conn:
             version = conn.execute(sa.text("SELECT version_num FROM alembic_version")).scalar()
-        assert version == "f3a9c1e7b2d4"
+        # Compare against the actual chain head — later migrations must not
+        # break this migration contract test just by existing.
+        assert version == _chain_head(cfg)
         _check_upgraded(engine, seed)
     finally:
         with admin.connect() as conn:
@@ -223,5 +233,5 @@ def test_fingerprint_identity_migration_sqlite(tmp_path, monkeypatch) -> None:
     command.upgrade(cfg, "head")
     with engine.connect() as conn:
         version = conn.execute(sa.text("SELECT version_num FROM alembic_version")).scalar()
-    assert version == "f3a9c1e7b2d4"
+    assert version == _chain_head(cfg)
     _check_upgraded(engine, seed)

@@ -249,6 +249,9 @@ def _snapshot(moves):
             m.uci,
             m.classification.value,
             m.comment,
+            # A-04: the classification explanation lives in generated_comment
+            # (replaced on re-analysis, never appended to the user's note).
+            m.generated_comment,
             m.best_move_uci,
             m.engine_eval_before.score_cp if m.engine_eval_before else None,
             m.engine_eval_after.score_cp if m.engine_eval_after else None,

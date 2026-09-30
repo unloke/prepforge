@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from typing import Dict, Iterable, Optional, Set
+from typing import Dict, Iterable, List, Optional, Set
 
 from prepforge_chess.core.models import Color, OpeningNode, TrainingProgress
 
@@ -33,6 +33,22 @@ MASTERY_STATES = (
     MASTERY_UNTRAINED,
 )
 
+# A-01: ONE effective-mastery signal shared by display (heatmap / health) and
+# scheduling (session plan) — they can no longer disagree about a node being
+# "mastered" and "weak" at the same time.
+#
+# The spaced-repetition score is the recent-form signal ( +1 on a hit, halved
+# on a miss, capped at 10), so recent recovery can override a bad start:
+# ``WEAK_SCORE_BELOW`` consecutive-hit-worth of recent form lifts a node out of
+# weak, and ``MASTERED_SCORE_AT`` mirrors ``TrainingProgress.is_mastered``.
+# Lifetime accuracy stays as history only — early failures must not mask
+# recent progress forever. This is derived state (no new columns), so old
+# progress rows convert by simply being read; the version stamp documents
+# which rules produced a shown state.
+MASTERY_ALGORITHM_VERSION = "mastery-v2"
+WEAK_SCORE_BELOW = 5.0
+MASTERED_SCORE_AT = 7.0
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -46,31 +62,57 @@ def _as_utc(value: datetime) -> datetime:
 
 
 def node_mastery(progress: Optional[TrainingProgress], *, now: Optional[datetime] = None) -> str:
-    """Classify a single trainable node's mastery from its progress row."""
+    """Classify a single trainable node's mastery from its progress row.
+
+    The shared effective-mastery signal (A-01): the scheduler buckets and the
+    UI labels both come from THIS function, so "mastered" and "weak" can never
+    be shown for the same node at once."""
     if progress is None or progress.attempts <= 0:
         return MASTERY_UNTRAINED
     now = now or _now()
+    score = progress.spaced_repetition_score
     ratio = progress.correct_attempts / progress.attempts if progress.attempts else 0.0
-    # A move you keep getting wrong is the loudest signal, regardless of timing.
-    if progress.attempts >= 2 and ratio < 0.5:
+    # Weak = CURRENTLY failing: lifetime evidence of trouble AND no recent
+    # recovery. A node that used to be wrong but has since built up recent form
+    # (score >= WEAK_SCORE_BELOW, roughly that many consecutive correct
+    # reviews) leaves weak even if its lifetime ratio is still under 50%.
+    if progress.attempts >= 2 and ratio < 0.5 and score < WEAK_SCORE_BELOW:
         return MASTERY_WEAK
     if progress.due_at is not None and _as_utc(progress.due_at) <= now:
         return MASTERY_DUE
-    if progress.is_mastered or progress.spaced_repetition_score >= 7.0:
+    if progress.is_mastered or score >= MASTERED_SCORE_AT:
         return MASTERY_MASTERED
     return MASTERY_LEARNING
 
 
-def _walk(root: OpeningNode) -> Iterable[OpeningNode]:
+def effective_children(node: OpeningNode) -> List[OpeningNode]:
+    """The children reachable through ``node`` (A-02 effective-enabled rule).
+
+    A disabled node makes its ENTIRE subtree unreachable: not trainable, not
+    counted by health, not scheduled. Health and the scheduler share this rule
+    (and this helper), so their trainable sets cannot drift apart in the
+    "disabled ancestor / enabled descendant" boundary state.
+    """
+    return [child for child in node.children if child.is_enabled]
+
+
+def walk_effective(root: OpeningNode) -> Iterable[OpeningNode]:
+    """Preorder walk of the effective (reachable) tree: root plus everything
+    under enabled children. Descends past a disabled node NOT at all."""
     stack = [root]
     while stack:
         node = stack.pop()
         yield node
-        stack.extend(node.children)
+        stack.extend(reversed(effective_children(node)))
+
+
+def _walk(root: OpeningNode) -> Iterable[OpeningNode]:
+    return walk_effective(root)
 
 
 def _is_trainable(node: OpeningNode, color: Color) -> bool:
-    """A node the user actually drills: an enabled own-side move."""
+    """A node the user actually drills: an own-side move on the effective
+    (reachable) tree."""
     return (
         node.move is not None
         and node.move.side_to_move is color

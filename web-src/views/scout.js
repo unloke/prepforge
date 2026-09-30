@@ -127,6 +127,7 @@ export function createScoutView(deps) {
     setBuildPending,
     pushBuildNode,
     loadPgnIntoAnalyze,
+    rememberHandoff = () => {},
     effectiveMaiaRating,
     maiaAnalysisEnabled = () => true,
     scoutPickedUsernames = () => [],
@@ -1398,7 +1399,7 @@ export function createScoutView(deps) {
     return result.repertoire;
   }
 
-  async function scoutWriteLineToRep(line, repId, { reload = true } = {}) {
+  async function scoutWriteLineToRep(line, repId, { reload = true, side = null } = {}) {
     if (!scoutModule) scoutModule = await import("../scout.js");
     const build = getBuildState();
     if (reload || !build || build.repertoire_id !== repId) {
@@ -1448,6 +1449,17 @@ export function createScoutView(deps) {
     }
     const resolvedId = resolveBuildId(lastNodeId);
     await selectBuildNode(resolvedId);
+    // F-06: Scout→prep handoff — the scouted line (plus the suggested reply),
+    // the side it is for and the target repertoire travel with the jump; the
+    // same line re-added later is one record (key dedupe), not a duplicate.
+    rememberHandoff({
+      source: "scout",
+      reason: "scout-add-to-prep",
+      lineUcis: ucisToWrite,
+      lineSans: line.sans || [],
+      side,
+      repertoireId: repId,
+    });
     switchView("build");
     return resolvedId;
   }
@@ -1455,7 +1467,8 @@ export function createScoutView(deps) {
   async function scoutAddToPrep(line, oppColor, { ownColor = false } = {}) {
     const repId = await scoutPickRepertoire(oppColor, { ownColor });
     if (!repId) return;
-    const nodeId = await scoutWriteLineToRep(line, repId);
+    const side = ownColor ? oppColor : oppColor === "white" ? "black" : "white";
+    const nodeId = await scoutWriteLineToRep(line, repId, { side });
     if (nodeId) setStatus(`Added line to prep — opened at ${line.sans.at(-1) || "position"}`);
   }
 
@@ -1495,7 +1508,10 @@ export function createScoutView(deps) {
         total: unique.length,
         message: `${line.sans.at(-1) || "line"} · ${done + 1}/${unique.length}`,
       });
-      await scoutWriteLineToRep(line, repId, { reload: done === 0 });
+      await scoutWriteLineToRep(line, repId, {
+        reload: done === 0,
+        side: oppColor === "white" ? "black" : "white",
+      });
       done++;
     }
     jobToast.completeJob({
@@ -1865,6 +1881,11 @@ export function createScoutView(deps) {
       state: "idle",
       seenIds: new Set(),
       oldestDatestamp: null,
+      // R-05: per-source watermark + outcome so a partial fetch is visible
+      // and a failed source can resume (and retry) on its own cursor.
+      oldestDatestampByUser: {},
+      acceptedByUser: {},
+      sourceStatus: {},
       renderTimer: null,
       gamesSinceRender: 0,
       userStopped: false,
@@ -1893,6 +1914,12 @@ export function createScoutView(deps) {
       }
     }
     session.acceptedThisBatch += 1;
+    // R-05: per-source counts feed the coverage chips.
+    if (!session.acceptedByUser) session.acceptedByUser = {};
+    if (game.scoutUsername) {
+      session.acceptedByUser[game.scoutUsername] =
+        (session.acceptedByUser[game.scoutUsername] || 0) + 1;
+    }
     updateLiveCounter();
     scheduleRender();
     return true;
@@ -1941,13 +1968,68 @@ export function createScoutView(deps) {
     }
   }
 
-  async function runStream({ until, session: sessionArg } = {}) {
+  // R-05: per-source outcome tracking. A merged report must SAY which sources
+  // it covers — a partial fetch used to look like a complete one. Cursors are
+  // per source too, so a failed source is never skipped over on Resume.
+  function recordSourceOutcome(session, username, outcome) {
+    if (!session.sourceStatus) session.sourceStatus = {};
+    session.sourceStatus[username] = outcome;
+    renderSourceWarnings(session);
+  }
+
+  function renderSourceWarnings(session) {
+    const results = getResultsEl();
+    if (!results) return;
+    const statuses = Object.entries(session.sourceStatus || {}).filter(
+      ([, s]) => s.status !== "ok",
+    );
+    let bar = document.getElementById("scout-source-warnings");
+    if (!statuses.length) {
+      if (bar) bar.remove();
+      return;
+    }
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.id = "scout-source-warnings";
+      bar.className = "scout-source-warnings";
+      results.parentNode.insertBefore(bar, results);
+    }
+    const chips = Object.entries(session.sourceStatus || {})
+      .map(([user, s]) => {
+        const label =
+          s.status === "ok"
+            ? `${s.accepted} games`
+            : s.status === "failed"
+              ? `failed${s.error ? ` · ${s.error}` : ""}`
+              : "no games";
+        return `<span class="source-chip is-${escapeHtml(s.status)}"><b>${escapeHtml(user)}</b> ${escapeHtml(label)}</span>`;
+      })
+      .join("");
+    const failedCount = statuses.length;
+    bar.innerHTML =
+      `<div class="source-warn-text">⚠ ${failedCount} source${failedCount === 1 ? "" : "s"} incomplete — ` +
+      `this report covers only the sources listed as games above.</div>` +
+      `<div class="source-chips">${chips}</div>` +
+      `<button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>`;
+    bar.querySelector("#scout-retry-failed")?.addEventListener("click", () => {
+      bar.remove();
+      const failedUsers = Object.entries(session.sourceStatus || {})
+        .filter(([, s]) => s.status === "failed")
+        .map(([user]) => user);
+      if (!failedUsers.length) return;
+      void runStream({ session, only: failedUsers });
+    });
+  }
+
+  async function runStream({ until, session: sessionArg, only } = {}) {
     const session = sessionArg || scoutSession;
     if (!isActiveSession(session)) return;
 
-    const usernames = session.usernames?.length
-      ? session.usernames
-      : [session.username].filter(Boolean);
+    const usernames = only?.length
+      ? only
+      : session.usernames?.length
+        ? session.usernames
+        : [session.username].filter(Boolean);
     const controllers = usernames.map(() => new AbortController());
     session.controller = {
       abort: () => controllers.forEach((c) => c.abort()),
@@ -1955,6 +2037,7 @@ export function createScoutView(deps) {
     session.state = "running";
     session.userStopped = false;
     session.acceptedThisBatch = 0;
+    if (!session.oldestDatestampByUser) session.oldestDatestampByUser = {};
     updateScoutControls();
 
     try {
@@ -1962,7 +2045,9 @@ export function createScoutView(deps) {
         usernames.map((username, i) =>
           scoutClient.streamGames(username, {
             color: session.color,
-            until,
+            // R-05: per-source cursor — a failed source resumes from ITS OWN
+            // watermark, so its time range is never silently skipped.
+            until: only?.length ? session.oldestDatestampByUser[username] ?? until : until,
             onGame: (game) => {
               game.scoutUsername = username;
               return onScoutGame(game, session);
@@ -1973,17 +2058,31 @@ export function createScoutView(deps) {
       );
       if (!isActiveSession(session)) return;
 
-      const stamps = settled
-        .filter((r) => r.status === "fulfilled")
-        .map((r) => r.value?.lastDatestamp)
-        .filter((s) => s != null);
+      const stamps = [];
+      const failures = [];
+      settled.forEach((result, i) => {
+        const username = usernames[i];
+        const accepted = session.acceptedByUser?.[username] || 0;
+        if (result.status === "fulfilled") {
+          const stamp = result.value?.lastDatestamp ?? null;
+          if (stamp != null) {
+            session.oldestDatestampByUser[username] = stamp;
+            stamps.push(stamp);
+          }
+          recordSourceOutcome(session, username, {
+            status: accepted ? "ok" : "empty",
+            accepted,
+          });
+        } else if (result.reason?.name !== "AbortError" && !session.userStopped) {
+          failures.push(result.reason);
+          recordSourceOutcome(session, username, {
+            status: "failed",
+            accepted,
+            error: scoutFetchErrorMessage(result.reason) || result.reason?.message || "failed",
+          });
+        }
+      });
       const lastDatestamp = stamps.length ? Math.min(...stamps) : null;
-      // One identity failing must not sink the merged report: surface its
-      // message only when NO games arrived at all.
-      const failures = settled
-        .filter((r) => r.status === "rejected")
-        .map((r) => r.reason)
-        .filter((e) => e?.name !== "AbortError" && !session.userStopped);
       if (lastDatestamp != null) {
         if (session.oldestDatestamp == null || lastDatestamp < session.oldestDatestamp) {
           session.oldestDatestamp = lastDatestamp;
@@ -1993,6 +2092,8 @@ export function createScoutView(deps) {
       if (batchAccepted === 0 && failures.length) {
         throw failures[0];
       }
+      // R-05: partial failure with results — the report stands, but the gap is
+      // visible (persistent warning above the report, not just a toast).
       await onStreamEnd({ accepted: batchAccepted }, session);
     } catch (error) {
       if (!isActiveSession(session)) return;

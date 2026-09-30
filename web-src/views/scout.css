@@ -414,6 +414,36 @@
 .sv b { text-align: right; font-variant-numeric: tabular-nums; }
 .sv.muted { opacity: 0.5; }
 
+/* R-05: per-source outcome bar — a merged report must say which sources it covers. */
+.scout-source-warnings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--warn);
+  border-radius: 8px;
+  background: var(--warn-soft);
+  color: var(--warn-text);
+  font-size: var(--fs-s);
+}
+.scout-source-warnings .source-warn-text { flex: 1 1 220px; margin: 0; }
+.scout-source-warnings .source-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.scout-source-warnings .source-chip {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel, #fff);
+  color: var(--text);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.scout-source-warnings .source-chip.is-ok { border-color: var(--good); color: var(--good-text); background: var(--good-soft); }
+.scout-source-warnings .source-chip.is-failed { border-color: var(--danger); color: var(--danger); background: var(--danger-soft, var(--warn-soft)); }
+.scout-source-warnings .source-chip.is-empty { opacity: 0.75; }
+.scout-source-warnings .btn { margin-left: auto; }
+
 /* ≤1279: lower-value columns drop. */
 @media (max-width: 1279px) {
   .line-row { grid-template-columns: minmax(0, 1fr) 70px 110px 40px; }
@@ -433,4 +463,5 @@
   .cs-head .cov { min-width: 0; flex: 1; }
   .scout-side .actions .btn { min-height: 44px; }
   .prof-row .btn { min-height: 44px; }
+  .scout-source-warnings .btn { margin-left: 0; min-height: 44px; width: 100%; }
 }

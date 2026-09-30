@@ -34,7 +34,7 @@ services:
       # its actual service URL (e.g. https://prepforge-w0c5.onrender.com). Update
       # this value too if you ever recreate the service from this blueprint.
       - key: PREPFORGE_ALLOWED_ORIGINS
-        value: https://prepforge-chess.onrender.com
+        value: https://prepforge-w0c5.onrender.com
       # Pin HF asset bases to a commit hash (NOT /resolve/main/). Current HEAD as of
       # 2026-06-17: 77fcb55654f1fad83ee9e987b973ddee7d7fa459 — set both in dashboard:
       # - key: PREPFORGE_MAIA3_ASSET_BASE
