@@ -3,20 +3,20 @@ import { choose } from "./coach/phrasebank.js";
 import { scoutLineText } from "./scout.js";
 import { formatLastSeenLabel } from "./scout-stats.js";
 
+// {qualifier} is either "" or " (low confidence)" — never wrap it in more
+// parentheses, or a confident read prints an empty "()".
 const COLOR_PICK = [
-  "Pick {pick}: they score worse as {weak} ({weakScore}% vs {otherScore}%).",
-  "Play {pick}. Their {weak} games average {weakScore}% ({qualifier}).",
-  "You want {pick}: weaker when they have {weak} ({weakScore}%).",
+  "If you can choose, take {pick}: {name} scores {weakScore}% with {weak} and {otherScore}% with {other}{qualifier}.",
+  "Better for you: {pick}. {name} scores {weakScore}% with {weak}, {otherScore}% with {other}{qualifier}.",
 ];
 
 const COLOR_EVEN = [
-  "No clear color edge yet ({qualifier}).",
-  "Both colors look similar so far ({qualifier}).",
+  "No colour preference: {name} scores about the same with White and Black{qualifier}.",
+  "{name} scores similarly with either colour, so neither side is a clear edge for you{qualifier}.",
 ];
 
 const COLOR_INSUFFICIENT = [
-  "Insufficient color comparison (White n={wN}, Black n={bN}).",
-  "Not enough games on both colors to recommend a side (White {wN}, Black {bN}).",
+  "Too few games to compare colours ({name}: {wN} with White, {bN} with Black).",
 ];
 
 const PREDICTABLE = [
@@ -143,7 +143,10 @@ function buildActionableHeadline(prepTargets, stats, username) {
   const predictable = predictableLabel(predict, persona);
   const top = prepTargets?.[0];
   if (!top || top.games < 3) {
-    return `Not enough sampled prep targets on ${username} as ${stats?.oppColor || "this colour"} yet.`;
+    const side = stats?.oppColor === "black" ? "Black" : stats?.oppColor === "white" ? "White" : "this colour";
+    return top
+      ? `No line repeats enough yet: ${username}'s most frequent ${side} line has ${top.games} game${top.games === 1 ? "" : "s"}. Load more games for a reliable target.`
+      : `No repeated ${side} lines from ${username} yet. Load more games for a reliable target.`;
   }
   const line = scoutLineText(top.sans);
   if (top.prepCategory === "attack" || top.belowBaseline > 0) {
@@ -231,6 +234,10 @@ export function buildScoutSectionSummary(
   if (!stats) return { headline: "", bullets: [] };
 
   const bullets = [];
+  // `notes` is what the page lists under the headline: the chips beside it
+  // already show predictability, top-3 lines, breadth, opening mix and style,
+  // so repeating them as sentences only adds more "they …" lines to read.
+  const notes = [];
   const headline = buildActionableHeadline(prepTargets, stats, username);
   bullets.push(headline);
 
@@ -239,9 +246,9 @@ export function buildScoutSectionSummary(
   const recentWeeks = activity?.recentBuckets ?? 0;
   if (recentGames > 0 && recentWeeks > 0) {
     const noun = recentGames === 1 ? "game" : "games";
-    bullets.push(
-      `${recentGames} ${noun} in the last ${recentWeeks} weeks${qualifier(activity.confidence)}.`,
-    );
+    const text = `${recentGames} ${noun} in the last ${recentWeeks} weeks of their history${qualifier(activity.confidence)}.`;
+    bullets.push(text);
+    notes.push(text);
   }
 
   const shift = stats.repertoireChangeTrend;
@@ -308,7 +315,7 @@ export function buildScoutSectionSummary(
   const fresh = stats.repertoireFreshness;
   const topFresh = fresh?.freshFamilies?.[0];
   if (topFresh) {
-    bullets.push(
+    pushBoth(
       choose({ san: topFresh.san, uci: topFresh.uci }, "scout-fresh", REPERTOIRE_FRESH, {
         san: topFresh.san,
         n: topFresh.recentGames,
@@ -319,7 +326,7 @@ export function buildScoutSectionSummary(
 
   const topFreshLine = fresh?.freshLines?.[0];
   if (topFreshLine?.sans?.length) {
-    bullets.push(
+    pushBoth(
       choose({ san: topFreshLine.sans[0] }, "scout-fresh-line", FRESH_LINE, {
         line: scoutLineText(topFreshLine.sans),
         n: topFreshLine.games,
@@ -333,7 +340,10 @@ export function buildScoutSectionSummary(
     const key = top.line || top.ucis?.join(">");
     const seen = key ? lastSeenByLine.get(key) : null;
     if (seen) {
-      bullets.push(`Top prep target ${formatLastSeenLabel(seen)}.`);
+      const label = formatLastSeenLabel(seen);
+      const since = /^not since (.+)$/.exec(label);
+      if (since) pushBoth(`They haven't played your top target line since ${since[1]}.`);
+      else if (/^last played /.test(label)) pushBoth(`They last played your top target line ${label.slice(12)}.`);
     }
   }
 
@@ -354,16 +364,22 @@ export function buildScoutSectionSummary(
     );
   }
 
-  bullets.push(...explorerBullets(explorerReads));
-  bullets.push(...engineBullets(engineAgg));
+  for (const text of [...explorerBullets(explorerReads), ...engineBullets(engineAgg)]) pushBoth(text);
 
-  return { headline, bullets };
+  return { headline, bullets, notes };
+
+  function pushBoth(text) {
+    bullets.push(text);
+    notes.push(text);
+  }
 }
 
-export function buildColorRecommendationBanner(rec, escapeHtml) {
+export function buildColorRecommendationBanner(rec, escapeHtml, { username = "" } = {}) {
   if (!rec) return "";
+  const name = username || "The opponent";
   if (rec.insufficient) {
     const text = choose({ san: "insufficient" }, "scout-color-insufficient", COLOR_INSUFFICIENT, {
+      name,
       wN: rec.whiteGames ?? 0,
       bN: rec.blackGames ?? 0,
     });
@@ -371,16 +387,19 @@ export function buildColorRecommendationBanner(rec, escapeHtml) {
   }
   if (!rec.pick) {
     const qual = qualifier(rec.confidence);
-    const text = choose({ san: "even" }, "scout-color-even", COLOR_EVEN, { qualifier: qual });
+    const text = choose({ san: "even" }, "scout-color-even", COLOR_EVEN, { name, qualifier: qual });
     return `<div class="scout-color-rec scout-color-rec-muted">${escapeHtml(text)}</div>`;
   }
   const qual = qualifier(rec.confidence);
   const weak =
     rec.theirWeakColor === "white" ? "White" : rec.theirWeakColor === "black" ? "Black" : "?";
   const pick = rec.pick === "white" ? "White" : "Black";
+  const other = weak === "White" ? "Black" : "White";
   const text = choose({ san: pick, uci: weak }, "scout-color-pick", COLOR_PICK, {
+    name,
     pick,
     weak,
+    other,
     weakScore: rec.weakScore,
     otherScore: rec.otherScore,
     qualifier: qual,

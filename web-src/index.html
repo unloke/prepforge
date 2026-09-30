@@ -600,7 +600,8 @@
       <section class="view" id="view-settings" data-testid="view-settings">
         <div class="settings">
           <nav class="settings-nav" aria-label="Settings sections">
-            <a class="settings-nav-link is-active" href="#set-appearance">Appearance</a>
+            <a class="settings-nav-link is-active" href="#set-account">Account</a>
+            <a class="settings-nav-link" href="#set-appearance">Appearance</a>
             <a class="settings-nav-link" href="#set-engine">Engine</a>
             <a class="settings-nav-link" href="#set-maia">Maia3</a>
             <a class="settings-nav-link" href="#set-strength">Playing strength</a>
@@ -609,6 +610,12 @@
             <a class="settings-nav-link" href="#set-about">About</a>
           </nav>
           <div class="settings-content">
+            <section class="card set" id="set-account" data-testid="settings-account">
+              <h2>Account</h2>
+              <div id="settings-account-body" data-testid="settings-account-body">
+                <p class="muted small">Loading account…</p>
+              </div>
+            </section>
             <section class="card set" id="set-appearance">
               <h2>Appearance</h2>
               <div class="pf-row">

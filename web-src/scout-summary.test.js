@@ -197,8 +197,9 @@ describe("buildColorRecommendationBanner", () => {
       },
       escapeHtml,
     );
-    expect(html).toContain("Insufficient color comparison");
-    expect(html).not.toContain("Pick ");
+    expect(html).toContain("Too few games to compare colours");
+    expect(html).not.toContain("take White");
+    expect(html).not.toContain("()");
   });
 
   it("renders pick banner with escaped html", () => {
@@ -215,5 +216,18 @@ describe("buildColorRecommendationBanner", () => {
     expect(html).toContain("scout-color-rec");
     expect(html).toContain("White");
     expect(html).not.toContain("<script");
+  });
+});
+
+describe("colour banner wording", () => {
+  const escapeHtml = (s) => String(s).replace(/</g, "&lt;");
+  it("never prints an empty () for a confident even read, and names the player", () => {
+    const html = buildColorRecommendationBanner(
+      { pick: null, theirWeakColor: null, weakScore: 80, otherScore: 81, confidence: { level: "high", n: 300 } },
+      escapeHtml,
+      { username: "rival" },
+    );
+    expect(html).not.toContain("()");
+    expect(html).toContain("rival");
   });
 });

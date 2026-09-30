@@ -3386,6 +3386,17 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   background: var(--surface-hover);
 }
 
+/* A row was just played: these rows describe the previous position until the
+   next position's stats arrive, so they stop reading as clickable. */
+.explorer-rows.is-stale .explorer-row {
+  cursor: progress;
+  opacity: 0.55;
+}
+
+.explorer-rows.is-stale .explorer-row:hover {
+  background: transparent;
+}
+
 .explorer-san {
   font-weight: 650;
   color: var(--text);
@@ -3766,6 +3777,26 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   flex: 1;
   height: 1px;
   background: var(--line);
+}
+
+.auth-link {
+  justify-self: start;
+  margin: 6px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.auth-link:hover { text-decoration: underline; }
+
+.auth-notice {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .auth-error {

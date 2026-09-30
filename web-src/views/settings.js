@@ -3,6 +3,7 @@
 import "./settings.css";
 import { resolveModelBase, peekSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { getCachedWeights, clearWeightCache } from "../engine/maia3-weight-cache.js";
+import { createAccountSection } from "./settings-account.js";
 
 export function createSettingsView({
   appState,
@@ -21,8 +22,21 @@ export function createSettingsView({
   postJson,
   startLichessOAuth = () => {},
   onAccountsChanged = () => {},
+  signOut,
+  openAuthModal,
+  refreshAuthStatus,
 }) {
   let eventsBound = false;
+  const accountSection = createAccountSection({
+    appState,
+    api,
+    postJson,
+    setStatus,
+    showConfirmModal,
+    signOut,
+    openAuthModal,
+    refreshAuthStatus,
+  });
 
   function paintSwitch(el, on) {
     if (!el) return;
@@ -144,7 +158,8 @@ export function createSettingsView({
       /* signed-out: connections list stays at its static markup */
     }
     renderMaiaAnalysis();
-    return connections;
+    const account = Promise.resolve(accountSection.refresh()).catch(() => {});
+    return Promise.all([connections, account]);
   }
 
   function renderMaiaAnalysis() {
@@ -470,6 +485,7 @@ export function createSettingsView({
     if (eventsBound) return;
     eventsBound = true;
     bindSectionNav();
+    accountSection.bind();
 
     // Segmented theme control: direct buttons (no select needed). The hidden
     // native #settings-theme select is still synced for assistive tech that
@@ -603,6 +619,7 @@ export function createSettingsView({
     renderMaiaAnalysis,
     renderConnections,
     refreshConnections,
+    renderAccount: () => accountSection.refresh(),
     retryMaia3,
     verifyMaia3,
     resetMaia3Cache,

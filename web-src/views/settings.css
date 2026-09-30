@@ -218,3 +218,39 @@
   .set .pf-switch { min-height: 26px; }
   .set-row { flex-wrap: wrap; }
 }
+
+/* ---- Account ----------------------------------------------------------- */
+
+.acct-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.acct-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0 2px;
+}
+.acct-danger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--line));
+  border-radius: var(--radius);
+}
+.acct-danger p { margin: 2px 0 0; }
+.acct-danger .btn,
+.acct-value .btn { white-space: nowrap; flex: none; }
+@media (max-width: 560px) {
+  .acct-row { flex-wrap: wrap; }
+  .acct-value { justify-content: flex-start; text-align: left; }
+  .acct-danger { flex-direction: column; align-items: flex-start; }
+}
