@@ -248,8 +248,16 @@ export function createAccountController({
       left = cr.right + 8;
       top = cr.bottom - rect.height;
     } else {
-      left = (window.innerWidth - rect.width) / 2;
-      top = window.innerHeight - rect.height - 74;
+      // Sit just above the sheet's account item, so the menu never covers the
+      // item that toggles it (the sheet grows as items are added).
+      const item = document.getElementById("sheet-account")?.getBoundingClientRect();
+      if (item && item.width > 0) {
+        left = item.left;
+        top = item.top - rect.height - 6;
+      } else {
+        left = (window.innerWidth - rect.width) / 2;
+        top = window.innerHeight - rect.height - 74;
+      }
     }
     left = Math.max(8, Math.min(left, window.innerWidth - rect.width - 8));
     top = Math.max(8, Math.min(top, window.innerHeight - rect.height - 8));
