@@ -57,7 +57,12 @@
 .set-row:has(input:disabled) > .slider input:disabled { opacity: 0.45; }
 /* Piece set: each option carries a four-piece sample on board squares so the
    active set is recognisable at a glance, not just by name. */
+/* The two sets sit side by side on desktop; on narrow screens (and with wider
+   font metrics) the pair wraps inside the card instead of sticking out past
+   the viewport and dragging a horizontal scrollbar across the whole page. */
+#piece-style-picker { flex-wrap: wrap; max-width: 100%; }
 #piece-style-picker .piece-style-option {
+  max-width: 100%;
   display: inline-flex;
   align-items: center;
   gap: 8px;
