@@ -136,16 +136,20 @@ describe("workspace chrome layout", () => {
     expect(account).toContain("onOpenSettings();");
   });
 
-  it("docks one single-select Build inspector (Explorer / Coverage / Engine)", () => {
+  it("docks one single-select Build inspector (Explorer / Coverage)", () => {
     expect(html).toContain('id="build-inspector"');
     expect(html).toContain('class="dock"');
     expect(html).toContain('role="tablist"');
     expect(html).toContain('id="build-tool-explorer"');
     expect(html).toContain('id="build-tool-coverage"');
-    expect(html).toContain('id="build-tool-engine"');
+    // The engine lives inside the Explorer (eval column + pinned line), not
+    // in a tab of its own.
+    expect(html).not.toContain('id="build-tool-engine"');
+    expect(html).not.toContain('id="engine-drawer"');
+    expect(html).toContain('id="explorer-engine-toggle"');
+    expect(html).toContain('id="explorer-engine-slot"');
     expect(html).toContain('aria-controls="explorer-drawer"');
     expect(html).toContain('aria-controls="coverage-drawer"');
-    expect(html).toContain('aria-controls="engine-drawer"');
     expect(html).not.toContain('<summary>Opening explorer</summary>');
     expect(html).not.toContain('<summary>Coverage scan</summary>');
     expect(html).not.toContain(' id="open-engine-widget-build"');
@@ -159,10 +163,10 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".explorer-row")).toMatch(/min-width:\s*0/);
     expect(ruleBody(".explorer-row")).toMatch(/max-width:\s*100%/);
     expect(ruleBody(".coverage-gap-meta")).toMatch(/overflow-wrap:\s*anywhere/);
-    expect(app).toContain('setBuildInspector("explorer")');
+    expect(app).toContain("setBuildInspector(name)");
     expect(app).toContain("panels[name].hidden = !on");
-    expect(app).toContain("function dockEngine()");
-    expect(app).toContain("function undockEngine()");
+    expect(app).toContain("function dockEngine(slotId)");
+    expect(app).toContain("function paintExplorerEvals(snapshot)");
     expect(ruleBody(".engine-window.is-docked")).toMatch(/position:\s*static/);
   });
 
@@ -206,6 +210,11 @@ describe("workspace chrome layout", () => {
     for (const id of ["analyze-actions", "open-engine-widget", "fetch-my-game", "run-analysis"]) {
       expect(head).toContain(`id="${id}"`);
     }
+    // The live engine shares the Evaluation card with the game graph, after Coach.
+    const body = view.slice(view.indexOf('class="panel-scroll"'));
+    expect(body.indexOf('id="analysis-eval-card"')).toBeGreaterThan(body.indexOf('id="analysis-explain"'));
+    expect(body.indexOf('id="analysis-engine-slot"')).toBeGreaterThan(body.indexOf('id="eval-chart"'));
+    expect(body.indexOf('id="analysis-eval-card"')).toBeLessThan(body.indexOf('id="analysis-results"'));
     // Coach copy wraps instead of clipping; the card has a fixed height so a
     // longer comment never shifts the chart below it.
     expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);

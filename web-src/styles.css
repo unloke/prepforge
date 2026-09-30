@@ -3419,6 +3419,33 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 .explorer-bar-w { background: #f2f2ef; color: #333; }
+/* Engine on: an Eval column between Move and Games. Off: the cell is gone and
+   the three-column layout above is untouched. */
+.explorer-eval { display: none; }
+.explorer-rows.has-eval .explorer-head,
+.explorer-rows.has-eval .explorer-row {
+  grid-template-columns: minmax(44px, 60px) minmax(46px, 56px) minmax(40px, 60px) minmax(0, 1fr);
+}
+.explorer-rows.has-eval .explorer-eval {
+  display: block;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--muted);
+}
+.explorer-rows.has-eval .explorer-head .explorer-eval { font-weight: 600; color: var(--label); }
+.explorer-eval.is-best { color: var(--good-text); }
+.explorer-eval.is-ok { color: var(--text); }
+.explorer-eval.is-weak { color: var(--warn-text); }
+
+.dock-engine-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dock-engine-switch[hidden] { display: none; }
+.dock-engine-switch .pf-row-label { font-size: var(--fs-s); color: var(--label); font-weight: 600; }
+
 .explorer-bar-d { background: #9a9fa6; color: #fff; }
 .explorer-bar-b { background: #2e3136; color: #fff; }
 
@@ -4360,6 +4387,28 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .engine-window.is-visible {
   opacity: 1;
   transform: none;
+}
+
+/* In-panel slots (Build Explorer / Analyze Evaluation card): a compact block,
+   no fixed body height - one pinned line takes one line of space. */
+.engine-slot:empty,
+.engine-slot:has(> .engine-window[hidden]) { display: none; }
+.engine-slot .engine-window.is-docked .engine-window-body { min-height: 0; }
+.engine-slot .engine-window.is-docked .engine-window-head { min-height: 0; padding: 2px 0; }
+.engine-slot .engine-window.is-docked .engine-window-pvs { padding: 2px 0 0; gap: 0; }
+#explorer-engine-slot {
+  margin-bottom: 6px;
+  padding: 4px 8px 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-soft);
+}
+/* Analyze: the card's own off switch sits with the engine controls. */
+#analysis-engine-slot .engine-window.is-docked .engine-window-close { display: inline-flex; }
+#open-engine-widget[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
 }
 
 /* ---- Slim header: meta on the left, controls on the right -------------- */

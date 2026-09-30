@@ -155,6 +155,10 @@ const DEFAULT_PREFS = {
   moveAnim: true,
   sounds: true,
   bestArrow: true,
+  // Live engine on/off, remembered per view: Build shows it inside the
+  // Explorer (an eval per candidate), Analyze inside the Evaluation card.
+  engineBuild: false,
+  engineAnalyze: false,
   // Analysis-layer gate for the Maia3 human model. OFF by default: the Analyze
   // pipeline skips its Maia pass (classifier / human probability / coach
   // intuition / brilliant signals) and no analysis-layer Maia inference runs —
@@ -1092,6 +1096,9 @@ class EngineWidget {
     this.lastFen = null;
     this.lastSnapshot = null;
     this.multipv = 1;
+    // Lines actually searched: the shown lines, widened in Build so every
+    // Explorer candidate can carry its own eval (see engineExtraLines).
+    this.searchedMultipv = 1;
     this.maxMultipv = 5;
     this.minMultipv = 1;
     // Engine compute seam: browser Stockfish (WASM Worker) only. No server
@@ -1115,7 +1122,7 @@ class EngineWidget {
         /* best-effort */
       }
     }
-    this.engine = createEngineProvider({ maxDepth: depth });
+    this.engine = createEngineProvider({ maxDepth: depth, maxMultipv: ENGINE_SEARCH_MAX_LINES });
     this.engineDepth = depth;
   }
 
@@ -1168,6 +1175,9 @@ class EngineWidget {
     if (activeViewName() === "build") {
       const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
       if (node && node.fen) return node.fen;
+      // No repertoire open: analyse what the Build board shows, never the
+      // Analyze board's position.
+      return (boards.build && boards.build.fen) || START_FEN;
     }
     return appState.analysisBoardFen || START_FEN;
   }
@@ -1178,9 +1188,7 @@ class EngineWidget {
     // probing positions while a long job runs in the background.
     this.open = true;
     this.el.hidden = false;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => this.el.classList.add("is-visible"));
-    });
+    this.el.classList.add("is-visible");
     await this._restartForCurrentBoard();
     this._startPolling();
   }
@@ -1201,17 +1209,22 @@ class EngineWidget {
     }
   }
 
+  _searchMultipv() {
+    return Math.max(this.multipv, engineExtraLines());
+  }
+
   /** Re-analyze whenever the active board changes. No-op if widget closed. */
   async onBoardChanged() {
     if (!this.open) return;
     const fen = this.currentFen();
-    if (fen === this.lastFen) return;
+    if (fen === this.lastFen) return this.onSearchWidthChanged();
     this._ensureEngine();
     const engine = this.engine;
     this.lastFen = fen;
     this._clearAnalysisView();
     try {
-      const snapshot = await engine.update({ fen, multipv: this.multipv });
+      this.searchedMultipv = this._searchMultipv();
+      const snapshot = await engine.update({ fen, multipv: this.searchedMultipv });
       // Bail if the world moved while update() was in flight: the panel closed, a NEWER board
       // change set a different lastFen, or a depth change swapped the provider out. Otherwise we'd
       // paint this (now stale) FEN's eval onto the current board, or poll the wrong provider.
@@ -1232,7 +1245,8 @@ class EngineWidget {
     this.lastFen = fen;
     this._clearAnalysisView();
     try {
-      const snapshot = await engine.open({ fen, multipv: this.multipv });
+      this.searchedMultipv = this._searchMultipv();
+      const snapshot = await engine.open({ fen, multipv: this.searchedMultipv });
       // Bail if the panel closed, the board moved on, or a depth change swapped the provider
       // while open() was in flight (see onBoardChanged).
       if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
@@ -1255,7 +1269,8 @@ class EngineWidget {
     const engine = this.engine;
     const fen = this.lastFen || this.currentFen();
     try {
-      const snapshot = await engine.update({ fen, multipv: clamped });
+      this.searchedMultipv = this._searchMultipv();
+      const snapshot = await engine.update({ fen, multipv: this.searchedMultipv });
       // Bail if the world moved while update() was in flight: panel closed, provider swapped, the
       // board changed, or the line count was clicked again (this.multipv !== clamped). See
       // onBoardChanged.
@@ -1275,8 +1290,29 @@ class EngineWidget {
     }
   }
 
+  // The Explorer's candidate count changed (new rows, or Build entered/left):
+  // re-search the same position at the new width. The shown lines stay put.
+  async onSearchWidthChanged() {
+    if (!this.open || !this.engine || !this.lastFen) return;
+    const width = this._searchMultipv();
+    if (width === this.searchedMultipv) return;
+    const engine = this.engine;
+    const fen = this.lastFen;
+    this.searchedMultipv = width;
+    try {
+      const snapshot = await engine.update({ fen, multipv: width });
+      if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
+      this._renderSnapshot(snapshot);
+      this._startPolling();
+    } catch (error) {
+      if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
+      this._showError(error.message);
+    }
+  }
+
   _showError(message) {
     setEngineBestArrow(null);
+    paintExplorerEvals(null);
     setStatusError(message);
     if (this.pvsEl) {
       this.pvsEl.innerHTML = `<div class="empty-state">${escapeHtml(
@@ -1287,6 +1323,7 @@ class EngineWidget {
 
   _clearAnalysisView() {
     setEngineBestArrow(null);
+    paintExplorerEvals(null);
     if (this.pvsEl) {
       this.pvsEl.innerHTML = '<div class="empty-state">Calculating...</div>';
     }
@@ -1303,7 +1340,7 @@ class EngineWidget {
   }
 
   _bindControls() {
-    this.closeBtn.addEventListener("click", () => this.close());
+    this.closeBtn.addEventListener("click", () => setEngineOn(activeViewName(), false));
     this.linesUpBtn.addEventListener("click", () => this._setMultipv(this.multipv + 1));
     this.linesDownBtn.addEventListener("click", () => this._setMultipv(this.multipv - 1));
   }
@@ -1364,6 +1401,7 @@ class EngineWidget {
       setEngineBestArrow(null);
       this.pvsEl.innerHTML = '<div class="empty-state">Calculating...</div>';
     }
+    paintExplorerEvals(snapshot);
     // Keep the coach's one-line rationale in sync with this (deeper) search.
     if (typeof positionCoach !== "undefined") positionCoach.onWidgetSnapshot(snapshot);
     // Once the engine reaches max depth it stops; no point polling further
@@ -3494,22 +3532,11 @@ function switchView(name, { fromUrl = false } = {}) {
     preloadTeamsView().catch(() => {});
     if (appState.signedIn) loadTeams().catch(() => { /* best-effort */ });
   }
-  // The engine widget is shared across tabs: it stays open while navigating and
-  // re-syncs to whichever board the new tab shows (Analyze or Build). In Build
-  // it docks into the inspector's Engine tab; elsewhere it floats.
-  if (name === "build") {
-    if (engineWidget.isOpen()) setBuildInspector("engine");
-    else if (buildDockTab === "engine") setBuildInspector("explorer");
-    scheduleExplorerRefresh();
-  } else {
-    undockEngine();
-  }
-  if (engineWidget && engineWidget.isOpen && engineWidget.isOpen()) {
-    if (name === "analyze" || name === "build") engineWidget.onBoardChanged();
-    // Library / Train / Games / Scout / Teams / Settings have no analysis
-    // board: the floating engine window must not follow the user there.
-    else void engineWidget.close();
-  }
+  if (name === "build") scheduleExplorerRefresh();
+  // One engine session, shown inside whichever view owns a board: Build's
+  // Explorer or Analyze's Evaluation card. Each view remembers its own on/off;
+  // views without an analysis board close it.
+  syncEngineForView(name);
 }
 
 function parseFenBoard(fen) {
@@ -5911,12 +5938,14 @@ function hideAnalysisResults() {
   panel.hidden = true;
   appState.analysisSourcePgn = null;
   hideAnalysisHandoff();
+  syncAnalysisEvalCard();
 }
 
 function revealAnalysisResults() {
   const panel = document.getElementById("analysis-results");
   if (!panel) return;
   panel.hidden = false;
+  syncAnalysisEvalCard();
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       panel.classList.add("is-visible");
@@ -6622,28 +6651,141 @@ function explorerDrawerOpen() {
   return !!(panel && !panel.hidden && activeViewName() === "build");
 }
 
-const BUILD_DOCK_TABS = ["explorer", "coverage", "engine"];
+const BUILD_DOCK_TABS = ["explorer", "coverage"];
 let buildDockTab = "explorer";
-let engineHome = null;
 
-// Engine tab: the shared engine widget docks into the inspector instead of
-// floating over the board. It floats again everywhere else (Analyze).
-function dockEngine() {
+// ---- Live engine placement -------------------------------------------------
+// The engine never floats over the board: it lives inside the panel that
+// already answers "which move?" - Build's Explorer (pinned best line + an Eval
+// column per candidate) and Analyze's Evaluation card (game graph + live lines).
+const ENGINE_VIEW_SLOTS = { build: "explorer-engine-slot", analyze: "analysis-engine-slot" };
+const ENGINE_VIEW_PREFS = { build: "engineBuild", analyze: "engineAnalyze" };
+// Widest MultiPV the Explorer asks for. More lines means a shallower search per
+// second, so only as many as there are candidate rows, capped here.
+const ENGINE_SEARCH_MAX_LINES = 8;
+let explorerRowCount = 0;
+
+function dockEngine(slotId) {
   const el = document.getElementById("engine-window");
-  const slot = document.getElementById("engine-drawer");
-  if (!el || !slot || el.classList.contains("is-docked")) return;
-  engineHome = { parent: el.parentNode, next: el.nextSibling };
+  const slot = document.getElementById(slotId);
+  if (!el || !slot || el.parentNode === slot) return;
   for (const prop of ["left", "top", "right", "width", "height"]) el.style.removeProperty(prop);
   el.classList.add("is-docked");
   slot.appendChild(el);
 }
 
-function undockEngine() {
-  const el = document.getElementById("engine-window");
-  if (!el || !el.classList.contains("is-docked") || !engineHome) return;
-  el.classList.remove("is-docked");
-  engineHome.parent.insertBefore(el, engineHome.next);
-  engineHome = null;
+function engineWantedIn(view) {
+  const key = ENGINE_VIEW_PREFS[view];
+  return !!key && !!pref(key);
+}
+
+function syncEngineForView(view = activeViewName()) {
+  const slot = ENGINE_VIEW_SLOTS[view];
+  if (slot && engineWantedIn(view)) {
+    dockEngine(slot);
+    if (engineWidget.isOpen()) void engineWidget.onBoardChanged();
+    else void engineWidget.openForCurrent();
+  } else if (engineWidget.isOpen()) {
+    void engineWidget.close();
+  }
+  syncEngineChrome();
+}
+
+function setEngineOn(view, on) {
+  const key = ENGINE_VIEW_PREFS[view];
+  if (!key) return;
+  setPref(key, !!on);
+  syncEngineForView(view);
+}
+
+function syncEngineChrome() {
+  const buildOn = engineWantedIn("build");
+  const analyzeOn = engineWantedIn("analyze");
+  const toggle = document.getElementById("explorer-engine-toggle");
+  if (toggle) {
+    toggle.classList.toggle("is-on", buildOn);
+    toggle.setAttribute("aria-checked", String(buildOn));
+  }
+  const analyzeBtn = document.getElementById("open-engine-widget");
+  if (analyzeBtn) {
+    analyzeBtn.classList.toggle("is-active", analyzeOn);
+    analyzeBtn.setAttribute("aria-pressed", String(analyzeOn));
+  }
+  const rows = document.getElementById("explorer-rows");
+  if (rows) rows.classList.toggle("has-eval", buildOn);
+  paintExplorerEvals(buildOn ? engineWidget.lastSnapshot : null);
+  syncAnalysisEvalCard();
+}
+
+// The Evaluation card shows when there is a game graph or the engine is on;
+// the graph itself only once a game has results.
+function syncAnalysisEvalCard() {
+  const card = document.getElementById("analysis-eval-card");
+  const graph = document.getElementById("analysis-eval-graph");
+  const results = document.getElementById("analysis-results");
+  const hasGraph = !!results && !results.hidden;
+  if (graph) graph.hidden = !hasGraph;
+  if (card) card.hidden = !hasGraph && !engineWantedIn("analyze");
+}
+
+// Extra lines Build wants searched so each Explorer candidate gets an eval.
+function engineExtraLines() {
+  if (activeViewName() !== "build" || !engineWantedIn("build")) return 0;
+  return Math.min(ENGINE_SEARCH_MAX_LINES, explorerRowCount);
+}
+
+// Explorer reports castling king-to-rook (e1h1); Stockfish king-two-squares.
+const CASTLE_UCI = { e1h1: "e1g1", e1a1: "e1c1", e8h8: "e8g8", e8a8: "e8c8" };
+function normalizeUci(uci) {
+  const key = String(uci || "").toLowerCase();
+  return CASTLE_UCI[key] || key;
+}
+
+function engineScoreCp(pv) {
+  if (pv.mate_in !== null && pv.mate_in !== undefined) {
+    return pv.mate_in > 0 ? 100000 - pv.mate_in : -100000 - pv.mate_in;
+  }
+  return Number(pv.score_cp) || 0;
+}
+
+function sameFenPosition(a, b) {
+  if (!a || !b) return false;
+  return a.split(" ").slice(0, 4).join(" ") === b.split(" ").slice(0, 4).join(" ");
+}
+
+// Paint each Explorer row's Eval cell from the engine's lines. Evals are White's
+// view (like the bar); the colour says how much the mover gives up vs the best.
+function paintExplorerEvals(snapshot) {
+  const rows = document.getElementById("explorer-rows");
+  if (!rows || !rows.classList.contains("has-eval")) return;
+  const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  const fen = (node && node.fen) || START_FEN;
+  const live = !!snapshot && !snapshot.error && sameFenPosition(snapshot.fen, fen);
+  const pvs = live && Array.isArray(snapshot.pvs)
+    ? snapshot.pvs.filter((pv) => Array.isArray(pv.pv_uci) && pv.pv_uci.length)
+    : [];
+  const byUci = new Map();
+  pvs.forEach((pv) => {
+    const key = normalizeUci(pv.pv_uci[0]);
+    if (!byUci.has(key)) byUci.set(key, pv);
+  });
+  const best = pvs.length ? engineScoreCp(pvs[0]) : 0;
+  const sign = live && snapshot.side_to_move === "black" ? -1 : 1;
+  rows.querySelectorAll(".explorer-row").forEach((row) => {
+    const cell = row.querySelector(".explorer-eval");
+    if (!cell) return;
+    cell.classList.remove("is-best", "is-ok", "is-weak");
+    const pv = byUci.get(normalizeUci(row.dataset.uci));
+    if (!pv) {
+      cell.textContent = pvs.length ? "\u2014" : "\u2026";
+      cell.title = pvs.length ? "Outside the engine's top lines" : "Calculating\u2026";
+      return;
+    }
+    cell.textContent = engineWidget._formatEval(pv.score_cp, pv.mate_in);
+    const drop = (best - engineScoreCp(pv)) * sign;
+    cell.classList.add(drop <= 20 ? "is-best" : drop <= 80 ? "is-ok" : "is-weak");
+    cell.title = `Stockfish, depth ${pv.depth || snapshot.current_depth || 0}`;
+  });
 }
 
 function setBuildInspector(tool) {
@@ -6651,14 +6793,11 @@ function setBuildInspector(tool) {
   const panels = {
     explorer: document.getElementById("explorer-drawer"),
     coverage: document.getElementById("coverage-drawer"),
-    engine: document.getElementById("engine-drawer"),
   };
   const buttons = {
     explorer: document.getElementById("build-tool-explorer"),
     coverage: document.getElementById("build-tool-coverage"),
-    engine: document.getElementById("build-tool-engine"),
   };
-  const wasEngine = buildDockTab === "engine";
   buildDockTab = tab;
   BUILD_DOCK_TABS.forEach((name) => {
     const on = name === tab;
@@ -6669,16 +6808,14 @@ function setBuildInspector(tool) {
     button.setAttribute("aria-selected", String(on));
     button.tabIndex = on ? 0 : -1;
   });
-  const tools = document.getElementById("build-dock-tools");
   const dbs = document.getElementById("inspector-dbs");
   const opening = document.getElementById("explorer-opening");
-  const info = document.getElementById("inspector-info");
+  const engineSwitch = document.getElementById("explorer-engine-switch");
   const scan = document.getElementById("coverage-run");
   const score = document.getElementById("coverage-score");
-  if (tools) tools.hidden = tab === "engine";
   if (dbs) dbs.hidden = tab !== "explorer";
   if (opening) opening.hidden = tab !== "explorer";
-  if (info) info.hidden = tab === "engine";
+  if (engineSwitch) engineSwitch.hidden = tab !== "explorer";
   if (score) score.hidden = tab !== "coverage" || !score.dataset.ready;
   if (scan) {
     const readOnly = typeof isBuildReadOnly === "function" && isBuildReadOnly();
@@ -6686,16 +6823,7 @@ function setBuildInspector(tool) {
     scan.disabled = readOnly;
     scan.title = readOnly ? "Read-only — copy to your account first" : "Scan coverage with Maia3";
   }
-  if (tab === "engine") {
-    dockEngine();
-    if (!engineWidget.isOpen()) void engineWidget.openForCurrent();
-  } else if (wasEngine) {
-    if (engineWidget.isOpen()) void engineWidget.close();
-    const el = document.getElementById("engine-window");
-    if (el) el.hidden = true;
-    undockEngine();
-  }
-  if (tab !== "engine") paintInspectorScope();
+  paintInspectorScope();
   if (tab === "explorer") refreshExplorerPanel();
 }
 
@@ -6814,8 +6942,10 @@ function renderExplorerRows(stats) {
   if (!rows) return;
   const openingEl = document.getElementById("explorer-opening");
   if (openingEl) openingEl.textContent = stats.opening || "";
+  explorerRowCount = stats.moves.length;
   if (!stats.moves.length) {
     rows.innerHTML = '<div class="muted hint">No games reached this position - true novelty territory.</div>';
+    void engineWidget.onSearchWidthChanged();
     return;
   }
   // Dot the continuations already in the repertoire at this node, so gaps between
@@ -6828,12 +6958,13 @@ function renderExplorerRows(stats) {
   );
   const pct = (n) => (n >= 14 ? `${n}%` : "");
   rows.innerHTML =
-    '<div class="explorer-head" aria-hidden="true"><span>Move</span><span>Games</span><span>White / Draw / Black</span></div>' +
+    '<div class="explorer-head" aria-hidden="true"><span>Move</span><span class="explorer-eval">Eval</span><span>Games</span><span>White / Draw / Black</span></div>' +
     stats.moves
     .map(
       (m) => `
     <button type="button" class="explorer-row" data-uci="${escapeHtml(m.uci)}" title="Add ${escapeHtml(m.san)} to the repertoire">
       <span class="explorer-san">${escapeHtml(m.san)}${inRep.has(m.uci) ? '<span class="explorer-inrep" title="In your repertoire">&#9679;</span>' : ""}</span>
+      <span class="explorer-eval">&hellip;</span>
       <span class="explorer-games">${explorerModule.formatGames(m.total)}</span>
       <span class="explorer-bar" aria-label="White ${m.whitePct}% / draw ${m.drawPct}% / Black ${m.blackPct}%">
         <span class="explorer-bar-w" style="width:${m.whitePct}%">${pct(m.whitePct)}</span><span class="explorer-bar-d" style="width:${m.drawPct}%">${pct(m.drawPct)}</span><span class="explorer-bar-b" style="width:${m.blackPct}%">${pct(m.blackPct)}</span>
@@ -6844,6 +6975,8 @@ function renderExplorerRows(stats) {
   rows.querySelectorAll(".explorer-row").forEach((btn) => {
     btn.addEventListener("click", () => onBuildBoardMove(btn.dataset.uci));
   });
+  paintExplorerEvals(engineWidget.lastSnapshot);
+  void engineWidget.onSearchWidthChanged();
 }
 
 function renderBuilderTreeEmptyState() {
@@ -11830,7 +11963,7 @@ function bindEvents() {
     });
   }
   document.getElementById("inspector-info")?.addEventListener("click", onInspectorInfo);
-  const dockTabs = { explorer: "build-tool-explorer", coverage: "build-tool-coverage", engine: "build-tool-engine" };
+  const dockTabs = { explorer: "build-tool-explorer", coverage: "build-tool-coverage" };
   Object.entries(dockTabs).forEach(([name, id]) => {
     const tab = document.getElementById(id);
     if (!tab) return;
@@ -11843,7 +11976,7 @@ function bindEvents() {
     tab.addEventListener("keydown", (event) => {
       // ← / → are reserved for stepping the board everywhere in Build (a
       // clicked tab keeps focus, so a tablist arrow handler here would switch
-      // Explorer → Coverage → Engine while the user is stepping moves).
+      // Explorer → Coverage while the user is stepping moves).
       const next = event.key === "Home" ? 0 : event.key === "End" ? BUILD_DOCK_TABS.length - 1 : -1;
       if (next < 0) return;
       event.preventDefault();
@@ -11873,7 +12006,10 @@ function bindEvents() {
   }
   document
     .getElementById("open-engine-widget")
-    .addEventListener("click", () => engineWidget.openForCurrent());
+    .addEventListener("click", () => setEngineOn("analyze", !engineWantedIn("analyze")));
+  document
+    .getElementById("explorer-engine-toggle")
+    ?.addEventListener("click", () => setEngineOn("build", !engineWantedIn("build")));
   bindEvalChart();
   document.getElementById("analysis-start").addEventListener("click", () => {
     void analysisTreeNav("start").catch(() => {});
