@@ -325,6 +325,28 @@ def _linked_token(db: Session, user_id: str, account_id: str | None = None) -> s
         return None
 
 
+def _any_linked_token(db: Session, user_id: str) -> str | None:
+    """The first usable OAuth token across ALL linked identities, primary first.
+
+    The explorer only needs *a* token, so one account whose token can no longer
+    be decrypted (key rotation, legacy row) must not disable the explorer while
+    another linked account still has a working one."""
+    links = _links_for(db, user_id)
+    links = [link for link in links if link.is_primary] + [
+        link for link in links if not link.is_primary
+    ]
+    for link in links:
+        if not link.encrypted_token:
+            continue
+        try:
+            token = json.loads(decrypt_token(link.encrypted_token)).get("access_token")
+        except Exception:  # noqa: BLE001 - try the next identity
+            continue
+        if token:
+            return token
+    return None
+
+
 @router.get("/explorer/{db_name}")
 @limiter.limit("120/minute")
 def explorer_proxy(
@@ -363,11 +385,16 @@ def explorer_proxy(
         _explorer_cache.move_to_end(url)
         return hit[1]
 
-    token = _linked_token(db, user.id)
+    token = _any_linked_token(db, user.id)
     if not token:
+        linked = bool(_links_for(db, user.id))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="link your Lichess account to use the opening explorer",
+            detail=(
+                "your Lichess connection expired - reconnect it in Settings to use the opening explorer"
+                if linked
+                else "link your Lichess account to use the opening explorer"
+            ),
         )
     try:
         data = lichess_fetch.fetch_explorer_json(url, token)
@@ -418,8 +445,8 @@ def _run_compare(
     """Fetch recent public games and match each against THIS owner's repertoires.
 
     ``account_id`` selects one identity explicitly. A list (or the default)
-    aggregates "self": every linked identity gets a fair share of ``count``,
-    results dedupe by game id, and each game carries ``source_account``.
+    aggregates "self": the newest ``count`` games across every selected
+    identity, deduped by game id; each game carries ``source_account``.
     ``usernames`` (client-resolved from the shared Source Composer selection)
     may additionally name arbitrary public Lichess users — e.g. external
     opponents added on Games or Scout — fetched the same way, owner-scoped to
@@ -500,6 +527,7 @@ def _run_compare(
                 "last_matched_node_id": s.last_matched_node_id,
                 "training_recorded": s.training_recorded,
                 "source_account": source,
+                "finished_at": s.finished_at,
             }
             for (s, source) in pairs
         ],

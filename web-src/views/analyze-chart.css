@@ -22,15 +22,22 @@
   white-space: nowrap;
 }
 
+/* Fixed height: the coach's comment changes length on every move, and a
+   growing card used to shove the chart and move list up and down ("jitter").
+   Longer notes scroll inside the card instead. */
 .coach-card {
   flex: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  height: 148px;
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
+.coach-card > .cc-head { flex: none; }
 .coach-card > * {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -147,8 +154,18 @@
 .rb-head .faint b {
   color: var(--text);
 }
+/* Current position's eval beside the "Evaluation" title: one number, fixed
+   width so stepping moves never shifts the header. */
+.eval-now {
+  min-width: 4ch;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
 
-/* Eval chart: dark field, White's share filled from the floor up to the curve. */
+/* Eval chart: a neutral field split by the centre line. The area between the
+   curve and the line is light above it (White better) and dark below it
+   (Black better), so the fill reads as "who is ahead" at a glance. */
 .eval-chart-wrap {
   position: relative;
 }
@@ -156,27 +173,31 @@
   display: block;
   width: 100%;
   height: 88px;
+  border: 1px solid var(--line);
   border-radius: 6px;
-  background: #2e3136;
+  /* Mid-grey field in both themes, so the light (White) and dark (Black)
+     areas each stand out from it instead of melting into the page. */
+  background: color-mix(in srgb, #7c8088 45%, var(--surface-2));
 }
-.eval-chart .eval-band { fill: rgba(120, 140, 200, 0.18); }
-.eval-chart .eval-axis { stroke: #888; stroke-dasharray: 3 3; }
-.eval-chart .eval-area { fill: #f2f2ef; }
+.eval-chart .eval-axis { stroke: rgba(0, 0, 0, 0.28); }
+.eval-chart .eval-area-white { fill: #f4f3ef; stroke: none; }
+.eval-chart .eval-area-black { fill: #25282d; stroke: none; }
 .eval-chart .eval-line {
+  fill: none;
   stroke: var(--accent-strong);
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 .eval-chart .eval-cliff { stroke-width: 2.5; stroke-linecap: round; stroke: currentColor; }
-.eval-chart .eval-dot { fill: currentColor; stroke: #2e3136; stroke-width: 1.5; }
+.eval-chart .eval-dot { fill: currentColor; stroke: var(--panel); stroke-width: 1.5; }
 .eval-chart .eval-cursor { stroke: var(--accent); stroke-width: 2; }
 .eval-chart .eval-cursor-dot {
   fill: none;
   stroke: var(--accent);
   stroke-width: 2;
 }
-.eval-chart .eval-hover { stroke: #fff; stroke-opacity: 0.6; }
+.eval-chart .eval-hover { stroke: var(--text); stroke-opacity: 0.35; }
 .eval-chart .eval-m-brilliant { color: var(--brilliant); }
 .eval-chart .eval-m-inaccuracy { color: var(--inaccuracy); }
 .eval-chart .eval-m-mistake { color: var(--warn); }
@@ -422,57 +443,6 @@
   flex: none;
   color: var(--muted);
   white-space: nowrap;
-}
-
-/* ---- Board-side eval bar ---------------------------------------------- */
-
-/* Prototype "with-eval" board frame: a narrow vertical strip on the board's
-   left, White's share filled from the bottom, the value read along the fill.
-   Same geometry contract as the floating engine widget's bar (.engine-bar), fed
-   by the analysed eval graph instead of a live engine. */
-.board-with-eval {
-  display: flex;
-  gap: 6px;
-  align-items: stretch;
-}
-.board-with-eval .board-stack {
-  flex: 1;
-  min-width: 0;
-}
-.analysis-evalbar {
-  position: relative;
-  flex: none;
-  width: 16px;
-  border-radius: 3px;
-  overflow: hidden;
-  background: #2e3136;
-  box-shadow: 0 0 0 1px var(--line-strong);
-}
-.analysis-evalbar[hidden] { display: none; }
-.analysis-evalbar-white {
-  position: absolute;
-  inset: auto 0 0 0;
-  height: var(--white-share, 50%);
-  background: #f2f2ef;
-  transition: height 300ms ease;
-}
-.analysis-evalbar-text {
-  position: absolute;
-  inset: auto 0 3px 0;
-  color: #333;
-  font-size: 9px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-}
-
-/* Reduced motion: the bar updates instantly — no height tween. */
-@media (prefers-reduced-motion: reduce) {
-  .analysis-evalbar-white {
-    transition: none;
-  }
 }
 
 /* ---- Responsive ------------------------------------------------------- */

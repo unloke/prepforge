@@ -201,7 +201,6 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
     [".lib-list .card-head .seg", "filter chips"],
     [".lib-list .card-head .search-field", "search"],
     [".lib-hint", "row hint"],
-    ["#lib-preview", "preview pane"],
     ["#dashboard-today", "Today strip"],
     ["#dashboard-steps", "steps card"],
     ["#dashboard-rep-count", "count badge"],
@@ -209,8 +208,6 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
     check(S, !(await page.locator(sel).isVisible()), `${label} should be hidden`);
   }
   check(S, (await page.locator("#dashboard-repertoires .lib-row").count()) === 0, "no rows under the error card");
-  const sub = await text(page.locator("#topbar-sub"));
-  check(S, !/Welcome/.test(sub), `a failed load is not an empty library — subtitle should not welcome, got "${sub}"`);
   // Let any trailing status write land, then confirm the error was not replaced.
   await page.waitForTimeout(500);
   const st = await statusOf(page);
@@ -225,7 +222,7 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
   const cls2 = await attr(page.locator("#view-dashboard .lib-list"), "class");
   check(S, !/\bis-error\b/.test(cls2 || "") && !/\bis-empty\b/.test(cls2 || ""), `recovered lib-list should drop is-empty/is-error, got "${cls2}"`);
   check(S, await page.locator("#lib-cols").isVisible(), "recovered table should show the column header");
-  check(S, (await text(page.locator("#lib-preview-name"))).includes("Caro-Kann"), "recovered preview should show the first repertoire");
+  check(S, (await text(page.locator("#dashboard-repertoires .lib-row"))).includes("Caro-Kann"), "recovered table should list the repertoire");
   const st2 = await statusOf(page);
   check(S, st2.severity !== "error", `status should leave the error after recovery, got "${st2.text}"`);
   await page.close();

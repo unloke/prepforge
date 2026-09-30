@@ -246,40 +246,40 @@ async function runViewport(vp) {
   const classBars = await page.locator("#analysis-summary .cbar-row").count();
   check(classBars === 2, `class bars should show White + Black rows, got ${classBars}`);
 
-  // Opus composition: actions live in the topbar, the mainline is a
-  // number | White | Black grid inside the panel, the eval bar is left of the board.
+  // Composition: actions live in the panel head (there is no desktop top
+  // bar), the mainline is a number | White | Black grid inside the panel, and
+  // the board has no side eval bar, so it lines up with Build and Train.
   const layout = await page.evaluate(() => {
     const box = (sel) => document.querySelector(sel)?.getBoundingClientRect();
     const white = box("#analysis-moves .mtree-move.is-white");
     const black = box("#analysis-moves .mtree-move.is-black");
     const num = box("#analysis-moves .mtree-num");
     const actions = box("#analyze-actions");
-    const topbar = box(".topbar");
+    const head = box("#analyze-sidebar > .panel-head");
     const panel = box("#analyze-sidebar");
-    const bar = box("#analysis-evalbar");
     const boardBox = box("#analysis-board");
     return {
       sameRow: Math.abs(white.top - black.top) < 2,
       order: num.right <= white.left + 1 && white.right <= black.left + 1,
-      actionsInTopbar: !!actions && actions.width > 0 && actions.bottom <= topbar.bottom + 1,
+      actionsInHead: !!actions && actions.width > 0 && actions.top >= head.top - 1 && actions.bottom <= head.bottom + 1,
       panelHead: !!document.querySelector("#analyze-sidebar > .panel-head #analysis-game-title"),
       glyphs: document.querySelectorAll("#analysis-moves .mtree-glyph").length,
-      barLeftOfBoard: bar.right <= boardBox.left + 1,
+      noEvalBar: !document.getElementById("analysis-evalbar"),
       panelNextToBoard: window.innerWidth > 1020 ? panel.left >= boardBox.right : panel.top >= boardBox.bottom,
     };
   });
   check(layout.sameRow && layout.order, `move grid should lay number | White | Black in one row: ${JSON.stringify(layout)}`);
-  check(layout.actionsInTopbar, "Engine / My last game / Analyze should sit in the topbar");
+  check(layout.actionsInHead, "Engine / My last game / Analyze should sit in the panel head");
   check(layout.panelHead, "the panel head should carry the game title");
   check(layout.glyphs >= 1, "classified moves should carry a glyph");
-  check(layout.barLeftOfBoard, "the eval bar should sit on the board's left");
+  check(layout.noEvalBar, "the Analyze board should not carry a side eval bar");
   check(layout.panelNextToBoard, "the panel should sit beside (or, stacked, below) the board");
 
   await page.evaluate(() => document.getElementById("analysis-next").click());
   await page.waitForTimeout(300);
   await shot("results");
   const caption = await page.locator("#analysis-chart-caption").textContent();
-  check(/win chance/.test(caption || ""), `the chart caption should read the current ply, got "${caption}"`);
+  check(/^([+−]?\d+\.\d|[+−]M|#-?\d+)$/.test(caption || ""), `the chart caption should show the current eval, got "${caption}"`);
   // A side line played on the board interrupts the mainline grid as a
   // full-width row and the mainline resumes in its own columns afterwards.
   await page.locator('[data-testid="analysis-board"] [data-square="d7"]').click();
@@ -296,30 +296,28 @@ async function runViewport(vp) {
   await page.evaluate(() => document.getElementById("analysis-start").click());
   await page.waitForTimeout(200);
 
-  // Board-side eval bar: the run ends at ply 0 (the start position has no
-  // engine evaluation) so the bar is hidden there — never a fabricated eval.
-  // Stepping to a scored ply reveals it with the real white share.
-  const barAtStart0 = await page.locator('[data-testid="analysis-evalbar"]').evaluate((el) => el.hidden);
-  check(barAtStart0, "eval bar should hide at ply 0 after the run (no fabricated eval)");
+  // The eval readout beside the chart title is empty at ply 0 (the start
+  // position has no engine evaluation) and shows a real number on scored plies.
+  const captionAtStart = await page.locator("#analysis-chart-caption").textContent();
+  check(!captionAtStart, `eval readout should be empty at ply 0 (no fabricated eval), got "${captionAtStart}"`);
   await page.evaluate(() => document.getElementById("analysis-next").click());
   await page.waitForFunction(
-    () => /^\d+%$/.test(document.getElementById("analysis-evalbar-text")?.textContent || ""),
+    () => /\d|M/.test(document.getElementById("analysis-chart-caption")?.textContent || ""),
     null,
     { timeout: 5000 },
   );
-  const barVisible = await page.locator('[data-testid="analysis-evalbar"]').evaluate((el) => !el.hidden);
-  check(barVisible, "eval bar should be visible on a scored ply");
-  const barText = await page.locator("#analysis-evalbar-text").textContent().catch(() => "");
-  check(/^\d+%$/.test(barText || ""), `eval bar should show a real %, got "${barText}"`);
-  // Back to start → the bar hides again (that position was never evaluated).
-  await page.evaluate(() => document.getElementById("analysis-start").click());
-  await page.waitForFunction(
-    () => document.querySelector('[data-testid="analysis-evalbar"]')?.hidden === true,
-    null,
-    { timeout: 5000 },
-  );
-  const barAtStart = await page.locator('[data-testid="analysis-evalbar"]').evaluate((el) => el.hidden);
-  check(barAtStart, "eval bar should hide again at ply 0 (no evaluation exists there)");
+  // Leaving the chart hides the hover tooltip (it never lingers).
+  const chartBox = await page.locator("#eval-chart").boundingBox();
+  if (chartBox) {
+    await page.mouse.move(chartBox.x + chartBox.width / 2, chartBox.y + chartBox.height / 2);
+    await page.mouse.move(chartBox.x + chartBox.width / 2, chartBox.y - 150);
+    await page.waitForTimeout(150);
+    const tipVisible = await page.evaluate(() => {
+      const tip = document.getElementById("eval-chart-tooltip");
+      return !!tip && !tip.hidden && getComputedStyle(tip).display !== "none" && getComputedStyle(tip).visibility !== "hidden" && getComputedStyle(tip).opacity !== "0";
+    });
+    check(!tipVisible, "the chart tooltip should hide once the pointer leaves the chart");
+  }
 
   // Overflow + console errors (ignore engine/resource noise from wasm fetches).
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -345,4 +343,4 @@ if (failures.length) {
   for (const f of failures) console.error(`  - ${f}`);
   process.exit(1);
 }
-console.log("[analyze-smoke] ok — all three viewports render Analyze (coach, chart, move grid, class bars, board eval bar) through the real browser-engine pipeline with no overflow and no console errors.");
+console.log("[analyze-smoke] ok — all three viewports render Analyze (coach, chart, move grid, class bars, eval readout) through the real browser-engine pipeline with no overflow and no console errors.");

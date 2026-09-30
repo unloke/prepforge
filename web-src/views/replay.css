@@ -78,7 +78,7 @@
 .focus-top { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); gap: 14px; }
 .focus-top.no-board { grid-template-columns: minmax(0, 1fr); }
 .focus-board { position: relative; width: 100%; aspect-ratio: 1; }
-.focus-board .scout-miniboard { position: relative; width: 100%; height: auto; aspect-ratio: 1; }
+.focus-board .scout-miniboard { position: relative; box-sizing: border-box; width: 100%; height: auto; aspect-ratio: 1; }
 .focus-info { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
 .focus-info h2 { font-size: 15px; word-break: break-word; }
 .reasons { display: flex; flex-direction: column; gap: 4px; margin: 0; padding-left: 16px; color: var(--muted); font-size: var(--fs-s); }
@@ -101,12 +101,9 @@
 
 /* Expected (good) vs played (bad) arrows over the derived position. */
 .replay-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.replay-arrows line { stroke-width: 4; stroke-linecap: round; opacity: 0.85; }
-.replay-arrows polygon { opacity: 0.85; }
-.replay-arrows .t-good line { stroke: var(--good); }
-.replay-arrows .t-good polygon { fill: var(--good); }
-.replay-arrows .t-bad line { stroke: var(--danger); }
-.replay-arrows .t-bad polygon { fill: var(--danger); }
+.replay-arrows polygon { opacity: 0.82; stroke: rgba(0, 0, 0, 0.35); stroke-width: 0.35; stroke-linejoin: round; }
+.replay-arrows .t-good { fill: var(--good); }
+.replay-arrows .t-bad { fill: var(--danger); }
 
 /* ≤1279: the Opening column drops, the focus board sits above its text. */
 @media (max-width: 1279px) {

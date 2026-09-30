@@ -163,10 +163,10 @@ async function runViewport(vp) {
   const crumbs = await page.locator("#build-tree-meta .mtree-crumb").count();
   check(crumbs === 6, `expected 6 breadcrumbs (Start e4 c6 d4 d5 e5), got ${crumbs}`);
 
-  // Topbar: size summary + Generate live next to the title.
-  const topSub = await page.locator("#topbar-sub").textContent().catch(() => "");
-  check(/2 lines · 7 moves/.test(topSub), `topbar sub should read "2 lines · 7 moves", got "${topSub}"`);
-  check((await page.locator("#build-generate-node:visible").count()) === 1, "Generate moves should be visible in the topbar");
+  // Build header: size summary + Generate live next to the repertoire name.
+  const repStats = await page.locator("#build-rep-stats").textContent().catch(() => "");
+  check(/2 lines · 7 moves/.test(repStats), `build header should read "2 lines · 7 moves", got "${repStats}"`);
+  check((await page.locator("#build-generate-node:visible").count()) === 1, "Generate moves should be visible in the build header");
 
   // Fork bar at e5: two chips, count, hint, and the real practical share on Bf5.
   const barVisible = await page.locator("#build-branchbar:not([hidden])").count();

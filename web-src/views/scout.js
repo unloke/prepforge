@@ -132,7 +132,6 @@ export function createScoutView(deps) {
     scoutPickedUsernames = () => [],
     getLichessUsername = () => null,
     effectiveStockfishDepth = () => 16,
-    syncTopbar = () => {},
   } = deps;
 
   let scoutModule = null;
@@ -217,7 +216,6 @@ export function createScoutView(deps) {
   function updateLiveCounter() {
     const el = document.getElementById("scout-live-count");
     if (el) el.textContent = String(scoutState?.games?.length || 0);
-    syncTopbar();
   }
 
   function engineProgressLabel(p) {

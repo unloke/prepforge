@@ -25,9 +25,9 @@ describe("workspace chrome layout", () => {
   it("offers skip-to-content as the first keyboard entry into the workspace", () => {
     const bodyStart = html.indexOf("<body>");
     const skip = html.indexOf('data-testid="skip-link"');
-    const header = html.indexOf('<header class="topbar">');
+    const rail = html.indexOf('id="app-rail"');
     expect(skip).toBeGreaterThan(bodyStart);
-    expect(skip).toBeLessThan(header);
+    expect(skip).toBeLessThan(rail);
     expect(html).toContain('class="skip-link"');
     expect(html).toContain('href="#workspace-main"');
     expect(html).toContain('id="workspace-main"');
@@ -75,46 +75,50 @@ describe("workspace chrome layout", () => {
     expect(css).toContain(".train-coach-sub");
   });
 
-  it("overlays topbar status left of Ctrl K without reserving layout width", () => {
-    const header = html.slice(html.indexOf('<header class="topbar">'), html.indexOf("</header>"));
-    const slot = header.indexOf('id="topbar-status-slot"');
-    const status = header.indexOf('id="app-status"');
-    const palette = header.indexOf('id="open-palette"');
-    const theme = header.indexOf('id="theme-toggle"');
-    expect(slot).toBeGreaterThanOrEqual(0);
-    expect(status).toBeGreaterThan(slot);
-    expect(palette).toBeGreaterThan(status);
-    expect(theme).toBeGreaterThan(palette);
-    // The account is an avatar row at the foot of the rail (prototype), not a
-    // top-bar pill; mobile reaches it from the More sheet.
-    expect(header).not.toContain('id="account-chip"');
+  it("has no top bar at any width: rail owns search/theme/account, status floats", () => {
+    expect(html).not.toContain('class="topbar"');
+    expect(html).not.toContain('id="topbar-title"');
+    expect(html).not.toContain('id="topbar-sub"');
+    expect(css).not.toMatch(/(^|\n)\s*\.topbar\s*\{/);
+    expect(css).not.toMatch(/\.tb-(left|title|sub|actions)\b/);
+    // The page name moves to the document title (the active nav item shows it).
+    expect(app).toContain("function syncPageTitle()");
+    expect(app).toContain("document.title = page ? `${page} · PrepForge Chess` : \"PrepForge Chess\"");
     const railFoot = html.slice(html.indexOf('class="rail-foot"'), html.indexOf("</nav>"));
+    expect(railFoot).toContain('id="open-palette"');
+    expect(railFoot).toContain('id="theme-toggle"');
     expect(railFoot).toContain('id="account-chip"');
     expect(railFoot).toContain('id="account-avatar"');
     expect(html).toContain('id="sheet-account"');
-    // Library's Import / New sit in the top-bar actions slot (prototype),
-    // mirrored in the More sheet for phones.
-    const libActions = header.slice(header.indexOf('id="library-actions"'));
-    expect(header).toContain('id="library-actions"');
-    expect(libActions).toContain('id="dashboard-import-pgn"');
-    expect(libActions).toContain('id="dashboard-new-rep"');
-    expect(html).toContain('data-lib-mirror="dashboard-new-rep"');
-    expect(html).toContain('data-lib-mirror="dashboard-import-pgn"');
-    expect(header).toContain('id="app-status-close"');
-    expect(css).toContain(".topbar-status-slot");
-    expect(css).toMatch(/\.topbar-status-slot\s*\{[^}]*position:\s*absolute/s);
-    expect(css).toMatch(/\.topbar-status-slot\s*\{[^}]*right:\s*calc\(100% \+ 12px\)/s);
-    expect(css).toMatch(/\.topbar-status-slot \.status:not\(\[hidden\]\)\s*\{[^}]*text-overflow:\s*ellipsis/s);
-    expect(css).toContain(".status-close");
+    // Phones: the More sheet carries search, theme and account (no rail there).
+    expect(html).toContain('id="sheet-theme"');
+    expect(html).toContain('id="sheet-palette"');
+    expect(app).toContain('getElementById("sheet-theme")?.addEventListener("click", toggleTheme)');
+    // Status: a fixed floating pill that hides until a message is set.
+    const slot = html.indexOf('id="topbar-status-slot"');
+    expect(slot).toBeGreaterThan(html.indexOf("</nav>"));
+    expect(html.indexOf('id="app-status-close"')).toBeGreaterThan(slot);
+    expect(css).toMatch(/\.topbar-status-slot\s*\{[^}]*position:\s*fixed/s);
+    expect(css).toMatch(/\.topbar-status-slot:has\(\.status:not\(\.is-fresh\)\)/);
+    expect(app).toContain('status.classList.toggle("is-fresh", !!text && text !== "Ready")');
     expect(app).toContain('function setStatus(message, { severity = "info" } = {})');
     expect(app).toContain('getElementById("app-status-close")');
+    // Library's Import / New live in the repertoire list header, mirrored in the
+    // More sheet for phones.
+    const lib = html.slice(html.indexOf('id="view-dashboard"'), html.indexOf('id="view-analyze"'));
+    expect(lib).toContain('id="library-actions"');
+    expect(lib).toContain('id="dashboard-import-pgn"');
+    expect(lib).toContain('id="dashboard-new-rep"');
+    expect(lib).not.toContain('id="lib-preview"');
+    expect(html).toContain('data-lib-mirror="dashboard-new-rep"');
+    expect(html).toContain('data-lib-mirror="dashboard-import-pgn"');
+    // Rail buttons drop pointer focus so a later arrow key cannot expand the rail.
+    expect(app).toContain('getElementById("app-rail")?.addEventListener("click"');
   });
 
-  it("offers a top-bar light/dark toggle and keeps System in Settings", () => {
-    // Prototype top bar: palette + theme toggle. The toggle flips the effective
-    // theme; Settings stays the full System / Light / Dark control.
-    const header = html.slice(html.indexOf('<header class="topbar">'), html.indexOf("</header>"));
-    expect(header).toContain('id="theme-toggle"');
+  it("keeps a light/dark toggle in the rail and System in Settings", () => {
+    const rail = html.slice(html.indexOf('<nav class="rail"'), html.indexOf("</nav>"));
+    expect(rail).toContain('id="theme-toggle"');
     const settingsStart = html.indexOf('id="view-settings"');
     const settings = html.slice(settingsStart);
     expect(settings).toContain('id="settings-theme"');
@@ -193,18 +197,19 @@ describe("workspace chrome layout", () => {
     expect(view).toContain('<section class="coach-card" id="analysis-explain"');
     expect(view).toContain('<header class="cc-head">');
     expect(view).toContain('class="moves-grid" id="analysis-moves"');
-    // The eval bar sits on the board's left, before the board itself.
-    expect(view.indexOf('id="analysis-evalbar"')).toBeLessThan(view.indexOf('id="analysis-board"'));
+    // No board-side eval bar: the Analyze board lines up with Build / Train.
+    expect(view).not.toContain('id="analysis-evalbar"');
     // The sidebar is a raised panel: the body scrolls, the head stays put.
     expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
-    // Analyze actions live in the topbar, not in the panel.
-    expect(html.indexOf('id="analyze-actions"')).toBeLessThan(html.indexOf('id="view-dashboard"'));
-    for (const id of ["open-engine-widget", "fetch-my-game", "run-analysis"]) {
-      expect(html.indexOf(`id="${id}"`)).toBeLessThan(html.indexOf('id="view-dashboard"'));
+    // Analyze actions live in the panel head.
+    const head = view.slice(view.indexOf('class="panel-head"'), view.indexOf('class="panel-scroll"'));
+    for (const id of ["analyze-actions", "open-engine-widget", "fetch-my-game", "run-analysis"]) {
+      expect(head).toContain(`id="${id}"`);
     }
-    expect(app).toContain("analyzeActions.hidden = !isAnalyze");
-    // Coach copy wraps instead of clipping; the mainline is a 3-column grid.
+    // Coach copy wraps instead of clipping; the card has a fixed height so a
+    // longer comment never shifts the chart below it.
     expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);
+    expect(rule(".coach-card")).toMatch(/height:\s*148px/);
     expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
     expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/grid-template-columns:\s*32px\s+minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/);
     expect(rule(".moves-grid")).toMatch(/overflow:\s*auto/);

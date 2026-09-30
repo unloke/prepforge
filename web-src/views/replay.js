@@ -104,18 +104,35 @@ function replayFocusBoardHtml(game, renderers) {
     const y = (pos.orientation === "black" ? rank - 1 : 8 - rank) * 12.5 + 6.25;
     return [x, y];
   };
+  // Each arrow is ONE closed outline (shaft + head), so a translucent fill
+  // never double-darkens where a separate line and head overlap, and the
+  // head is clearly wider than the shaft. The played move is drawn first so
+  // the expected move stays readable when both leave the same square.
   const arrows = replayArrowsFor(pos)
+    .reverse()
     .map((a) => {
       const [x1, y1] = coord(a.from);
       const [x2, y2] = coord(a.to);
-      const angle = Math.atan2(y2 - y1, x2 - x1);
-      const ux = Math.cos(angle);
-      const uy = Math.sin(angle);
-      const head = 4.5;
-      const ex = x2 - ux * 4;
-      const ey = y2 - uy * 4;
-      const wing = head * 0.62;
-      return `<g class="t-${a.tone}"><line x1="${x1}" y1="${y1}" x2="${ex}" y2="${ey}" /><polygon points="${x2},${y2} ${ex - ux * head - uy * wing},${ey - uy * head + ux * wing} ${ex - ux * head + uy * wing},${ey - uy * head - ux * wing}" /></g>`;
+      const len = Math.hypot(x2 - x1, y2 - y1);
+      if (!len) return "";
+      const ux = (x2 - x1) / len;
+      const uy = (y2 - y1) / len;
+      const shaft = 1.4; // half-width, board = 100 units
+      const headHalf = 3.6;
+      const headLen = Math.min(5.5, len * 0.6);
+      const bx = x2 - ux * headLen;
+      const by = y2 - uy * headLen;
+      const pt = (x, y) => `${x.toFixed(2)},${y.toFixed(2)}`;
+      const points = [
+        pt(x1 - uy * shaft, y1 + ux * shaft),
+        pt(bx - uy * shaft, by + ux * shaft),
+        pt(bx - uy * headHalf, by + ux * headHalf),
+        pt(x2, y2),
+        pt(bx + uy * headHalf, by - ux * headHalf),
+        pt(bx + uy * shaft, by - ux * shaft),
+        pt(x1 + uy * shaft, y1 - ux * shaft),
+      ].join(" ");
+      return `<polygon class="t-${a.tone}" points="${points}" />`;
     })
     .join("");
   const svg = arrows

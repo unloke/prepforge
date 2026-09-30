@@ -74,18 +74,34 @@ export function createAnalyzeView({
     return Math.round(clamped * (points.length - 1));
   }
 
-  // Tooltip body for one ply — SAN, win chance, and classification as TEXT (plus
-  // the class glyph), so the readout never depends on colour alone. "current"
-  // marks the position indicator's ply the same way.
+  // Engine evaluation as players read it: "+1.4" / "−0.3" in pawns (White's
+  // point of view), "#3" / "#-2" for forced mates.
+  function formatPointEval(point) {
+    if (point.mate_in != null && point.mate_in !== 0) {
+      return point.mate_in > 0 ? `#${point.mate_in}` : `#-${Math.abs(point.mate_in)}`;
+    }
+    // Mate scores arrive as score_cp = null with bounded_score_cp = ±1000.
+    if (point.score_cp == null && Math.abs(point.bounded_score_cp || 0) >= 1000) {
+      return point.bounded_score_cp > 0 ? "+M" : "−M";
+    }
+    const cp = point.score_cp != null ? point.score_cp : point.bounded_score_cp;
+    if (cp === null || cp === undefined) return "0.0";
+    const pawns = cp / 100;
+    return `${pawns > 0 ? "+" : pawns < 0 ? "−" : ""}${Math.abs(pawns).toFixed(1)}`;
+  }
+
+  // Tooltip body for one ply — move, evaluation, and classification as TEXT
+  // (plus the class glyph), so the readout never depends on colour alone.
   function evalChartTooltipHtml(point, { isCurrent = false } = {}) {
     if (!point) return "";
     const raw = String(point.classification || "").toLowerCase();
-    const label = raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : "Unclassified";
-    const glyph = classBadgeSymbol(point.classification);
-    const pct = Math.round(pointWinPct(point));
+    const label = raw ? raw.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()) : "";
+    const glyph = raw ? classBadgeSymbol(point.classification) : "";
     const san = escapeHtml(String(point.san || "?"));
+    const moveNo = point.ply > 0 ? `${Math.ceil(point.ply / 2)}${point.ply % 2 ? "." : "…"} ` : "";
     return (
-      `<b>${san}</b> · ${pct}% win chance · ${glyph} ${label}` +
+      `${moveNo}<b>${san}</b> · ${formatPointEval(point)}` +
+      (label ? ` · ${glyph} ${escapeHtml(label)}` : "") +
       (isCurrent ? " · current" : "")
     );
   }
@@ -290,36 +306,12 @@ export function createAnalyzeView({
     });
   }
 
-  // Board-side eval bar (prototype "with-eval" board frame). White-POV share
-  // from the same real eval-graph points the chart uses; hidden until an
-  // analysis has scored positions — never a fabricated eval.
-  function updateBoardEvalBar() {
-    const bar = document.getElementById("analysis-evalbar");
-    if (!bar) return;
-    const points = appState.evalChartPoints || [];
-    const ply = Number(appState.analysisPly) || 0;
-    // Exact-ply match, same point the chart cursor highlights — the bar never
-    // shows an evaluation the payload did not produce for this position.
-    const point = points.find((p) => p.ply === ply) || null;
-    if (!point) {
-      bar.hidden = true;
-      return;
-    }
-    const white = pointWinPct(point);
-    const text = document.getElementById("analysis-evalbar-text");
-    // A custom property keeps the fill orientation-agnostic: vertical beside
-    // the board on desktop, horizontal beneath it on stacked layouts.
-    bar.style.setProperty("--white-share", `${Math.round(white)}%`);
-    if (text) text.textContent = `${Math.round(white)}%`;
-    bar.hidden = false;
-  }
-
-  // "Nf3 · 52% win chance · ?! Inaccuracy · current" — the tooltip's readout,
-  // kept beside the chart title for the ply the cursor sits on.
+  // Current position's evaluation beside the chart title: one short number
+  // ("+1.4"), not a sentence — the hover tooltip carries the detail.
   function updateChartCaption(point) {
     const el = document.getElementById("analysis-chart-caption");
     if (!el) return;
-    el.innerHTML = point ? evalChartTooltipHtml(point, { isCurrent: true }) : "";
+    el.textContent = point ? formatPointEval(point) : "";
   }
 
   function updateEvalChartCursor() {
@@ -334,7 +326,6 @@ export function createAnalyzeView({
     const x = hidden ? -10 : points.length === 1 ? width / 2 : (idx / (points.length - 1)) * width;
     marker.setAttribute("x1", String(x));
     marker.setAttribute("x2", String(x));
-    updateBoardEvalBar();
     updateChartCaption(hidden ? null : points[idx]);
     if (!dot) return;
     // Ring on the curve at the current ply: a SHAPE cue on top of the dashed
@@ -431,49 +422,13 @@ export function createAnalyzeView({
       showEvalChartTooltip(evalChartFocusIdx);
     });
 
+    // Pointer focus would pin the tooltip after the mouse leaves; keyboard
+    // users step moves with the arrow keys (global) and read the move list.
+    chart.addEventListener("mousedown", (event) => event.preventDefault());
+
     chart.addEventListener("mouseleave", () => {
-      if (document.activeElement !== chart) {
-        evalChartFocusIdx = -1;
-        hideEvalChartTooltip();
-      }
-    });
-
-    chart.addEventListener("focus", () => {
-      const points = appState.evalChartPoints || [];
-      if (!points.length) return;
-      const current = points.findIndex((p) => p.ply === appState.analysisPly);
-      evalChartFocusIdx = current >= 0 ? current : 0;
-      showEvalChartTooltip(evalChartFocusIdx);
-    });
-
-    chart.addEventListener("blur", () => {
       evalChartFocusIdx = -1;
       hideEvalChartTooltip();
-    });
-
-    chart.addEventListener("keydown", (event) => {
-      const points = appState.evalChartPoints || [];
-      if (!points.length) return;
-      const current = points.findIndex((p) => p.ply === appState.analysisPly);
-      const startIdx = evalChartFocusIdx >= 0 ? evalChartFocusIdx : Math.max(0, current);
-      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-        event.preventDefault();
-        const step = event.key === "ArrowRight" ? 1 : -1;
-        evalChartFocusIdx = Math.max(0, Math.min(points.length - 1, startIdx + step));
-        showEvalChartTooltip(evalChartFocusIdx);
-        return;
-      }
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        // Enter behaves exactly like a mouse click on the indicated ply.
-        selectEvalChartIdx(startIdx);
-        return;
-      }
-      if (event.key === "Home" || event.key === "End") {
-        event.preventDefault();
-        evalChartFocusIdx = event.key === "Home" ? 0 : points.length - 1;
-        showEvalChartTooltip(evalChartFocusIdx);
-      }
     });
   }
 
@@ -494,25 +449,10 @@ export function createAnalyzeView({
     chart.setAttribute("preserveAspectRatio", "none");
     chart.setAttribute(
       "aria-label",
-      "Win chance by move (up = White). Left and right arrows step through moves, Enter opens a move.",
+      "Evaluation by move: above the centre line White is better, below it Black. Click a point to open that move.",
     );
+    chart.removeAttribute("tabindex");
     chart.style.cursor = points && points.length ? "pointer" : "default";
-    // Keyboard focus only earns its keep once there is a ply to step through.
-    if (points && points.length) {
-      chart.setAttribute("tabindex", "0");
-    } else {
-      chart.removeAttribute("tabindex");
-    }
-
-    // Subtle "roughly equal" band (≈45–55% win chance) so small wobbles near the middle
-    // don't look dramatic while genuine swings still stand out.
-    const band = document.createElementNS(svgNS, "rect");
-    band.setAttribute("class", "eval-band");
-    band.setAttribute("x", "0");
-    band.setAttribute("y", String(yOf(55)));
-    band.setAttribute("width", String(width));
-    band.setAttribute("height", String(yOf(45) - yOf(55)));
-    chart.appendChild(band);
 
     const axis = document.createElementNS(svgNS, "line");
     axis.setAttribute("class", "eval-axis");
@@ -548,23 +488,33 @@ export function createAnalyzeView({
       return { x, y, ply: point.ply, classification: point.classification };
     });
 
-    // Step-after path: hold each eval flat to the next move's x, then drop/rise vertically
-    // to the new win%. Every move's change becomes a vertical segment, so a blunder shows
-    // up as a literal cliff rather than a gentle slope.
-    const stepPts = [];
-    coords.forEach((c, i) => {
-      if (i > 0) stepPts.push([c.x, coords[i - 1].y]);
-      stepPts.push([c.x, c.y]);
+    // One straight segment per move. The area between the curve and the centre
+    // line is drawn twice and clipped to each half: light where White is better
+    // (above), dark where Black is (below) - the standard advantage graph, so
+    // the fill always means "who is ahead, and by how much".
+    const stepStr = coords.map((c) => `${c.x},${c.y}`).join(" ");
+    const areaPoints =
+      `${coords[0].x},${centerY} ${stepStr} ${coords[coords.length - 1].x},${centerY}`;
+    const defs = document.createElementNS(svgNS, "defs");
+    [["white", 0, centerY], ["black", centerY, height - centerY]].forEach(([side, y, h]) => {
+      const clip = document.createElementNS(svgNS, "clipPath");
+      clip.setAttribute("id", `eval-clip-${side}`);
+      const rect = document.createElementNS(svgNS, "rect");
+      rect.setAttribute("x", "0");
+      rect.setAttribute("y", String(y));
+      rect.setAttribute("width", String(width));
+      rect.setAttribute("height", String(h));
+      clip.appendChild(rect);
+      defs.appendChild(clip);
     });
-    const stepStr = stepPts.map((p) => `${p[0]},${p[1]}`).join(" ");
-
-    const area = document.createElementNS(svgNS, "polygon");
-    area.setAttribute("class", "eval-area");
-    area.setAttribute(
-      "points",
-      `${coords[0].x},${height} ${stepStr} ${coords[coords.length - 1].x},${height}`,
-    );
-    chart.appendChild(area);
+    chart.appendChild(defs);
+    ["white", "black"].forEach((side) => {
+      const area = document.createElementNS(svgNS, "polygon");
+      area.setAttribute("class", `eval-area eval-area-${side}`);
+      area.setAttribute("points", areaPoints);
+      area.setAttribute("clip-path", `url(#eval-clip-${side})`);
+      chart.appendChild(area);
+    });
 
     // Main line: non-scaling stroke so the stretched SVG never thickens it.
     const polyline = document.createElementNS(svgNS, "polyline");

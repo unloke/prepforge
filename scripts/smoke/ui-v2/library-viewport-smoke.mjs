@@ -163,17 +163,16 @@ async function runViewport(vp) {
   const colsShown = await page.locator("#lib-cols").isVisible();
   check(colsShown === (vp.width > 760), `column header visible=${colsShown} at ${vp.width}px`);
 
-  const previewShown = await page.locator("#lib-preview").isVisible();
-  check(previewShown === (vp.width > 760), `preview pane visible=${previewShown} at ${vp.width}px`);
-  const mobile = vp.width <= 760;
-  if (!mobile) {
-    // Preview pane defaults to the first repertoire (real data).
-    const previewName = await page.locator("#lib-preview-name").textContent().catch(() => "");
-    check(previewName.includes("Caro-Kann"), `preview should default to first rep, got "${previewName}"`);
-    const minis = await page.locator("#lib-preview-board .scout-minisquare").count();
-    check(minis === 64, `preview mini board should have 64 squares, got ${minis}`);
-    const pieces = await page.locator("#lib-preview-board .scout-minisquare svg").count();
-    check(pieces === 32, `preview board should show 32 pieces, got ${pieces}`);
+  // No preview pane: the table takes the full width and a row click opens.
+  check((await page.locator("#lib-preview").count()) === 0, "the library should not render a preview pane");
+  // The list must actually fill its column. A two-column track leaking into the
+  // phone breakpoint squeezed this to ~70px, and `overflow: hidden` on the list
+  // hid the clipped text from the document-level overflow check below - only a
+  // measured width catches it. Above 1020px the Next-steps column is meant to
+  // sit beside the list, so only the single-column widths must fill.
+  if (vp.width <= 1020) {
+    const listWidth = await page.locator("#dashboard-repertoires").evaluate((el) => el.getBoundingClientRect().width);
+    check(listWidth >= vp.width - 60, `library list should fill the single column, got ${Math.round(listWidth)}px at ${vp.width}px`);
   }
 
   // Mastery bar carries the health pct.
@@ -181,19 +180,10 @@ async function runViewport(vp) {
   check(/width:\s*50%/.test(barWidth || ""), `first row mastery bar should be 50%, got "${barWidth}"`);
 
   const row2 = page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]');
-  if (!mobile) {
-    // Click the second row -> preview switches (real selection state).
-    await row2.click();
-    const previewName2 = await page.locator("#lib-preview-name").textContent().catch(() => "");
-    check(previewName2.includes("London"), `preview should follow click, got "${previewName2}"`);
-    const selectedCls = await row2.getAttribute("class");
-    check(/is-selected/.test(selectedCls || ""), "clicked row should carry is-selected");
-  } else {
-    // ≤760px hides the preview and touch has no double-click: a tap opens.
-    await row2.click();
-    await page.waitForTimeout(150);
-    check(loadRequests.some((u) => u.includes("rep-2")), "tapping a row on mobile should open the workspace (/api/build/load)");
-  }
+  // A click (or tap) on a row opens the workspace directly.
+  await row2.click();
+  await page.waitForTimeout(150);
+  check(loadRequests.some((u) => u.includes("rep-2")), "clicking a row should open the workspace (/api/build/load)");
 
   // Keyboard: focus the selected row, press Enter — the row opens the workspace
   // via /api/build/load (asserted by the request hitting the fixture server).
