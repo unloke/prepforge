@@ -341,9 +341,12 @@ export function createReplayView({
         const game = payload.games[Number(btn.dataset.index)];
         if (!game) return;
         const act = btn.dataset.act;
-        if (act === "train") onTrainMiss();
-        else if (act === "build") onBuildReply(game);
-        else if (act === "analyze") onAnalyze(game);
+        // Hand the destination the decision position too (F-06): the app-side
+        // handoff stores it as the anchor FEN.
+        const focus = replayFocusPosition(game);
+        if (act === "train") onTrainMiss(game, focus);
+        else if (act === "build") onBuildReply(game, focus);
+        else if (act === "analyze") onAnalyze(game, focus);
       });
     });
   }

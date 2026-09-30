@@ -57,10 +57,13 @@ export function createTrainView({
   function renderTraining(prompt) {
     if (!prompt) return;
     boards.train.setEngineArrow(null);
+    // The opponent's reply stays highlighted as the cue while the board is
+    // already on this position; a jump to another line starts clean.
+    const board = boards.train;
     boards.train.setPosition({
       fen: prompt.fen_before,
       legalMoves: prompt.legal_moves || [],
-      lastMove: null,
+      lastMove: board.fen === prompt.fen_before ? board.lastMove || null : null,
     });
     const side = (prompt.fen_before || "").split(" ")[1] === "b" ? "black" : "white";
     setTrainBanner("move", "Your move", "Play your prepared idea on the board");

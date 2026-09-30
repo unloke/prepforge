@@ -196,13 +196,17 @@ class ChessCore:
         initial_fen = board.fen()
         moves: List[MoveRecord] = []
 
-        for ply, move in enumerate(parsed.mainline_moves(), start=1):
+        # Walk the mainline nodes (not just the moves) so PGN comments survive
+        # import into ``MoveRecord.comment`` — the original/user note that the
+        # analysis's generated explanation must never overwrite (A-04).
+        for ply, node in enumerate(parsed.mainline(), start=1):
             moves.append(
                 self._record_and_push(
                     board=board,
-                    move=move,
+                    move=node.move,
                     source=source,
                     ply=ply,
+                    comment=node.comment or None,
                 )
             )
 

@@ -21,9 +21,11 @@ length on both SQLite and PostgreSQL.
 """
 from __future__ import annotations
 
+import math
+import re
 from collections import Counter
 from copy import deepcopy
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from prepforge_chess.core.models import (
     AnalysisResult,
@@ -45,11 +47,111 @@ from prepforge_chess.services.replay_engine import (
 )
 
 
+# Version stamps for the generated artefacts of this module (A-04/A-05): a
+# stored block carries the version that wrote it, so an algorithm change is
+# traceable without text-matching old output.
+EXPLANATION_ALGORITHM_VERSION = "explain-v1"
+CLASSIFICATION_ALGORITHM_VERSION = "classify-v1"
+
+# Bounded shapes for the untrusted per-position payload (D-03).
+_UCI_RE = re.compile(r"^[a-h][1-8][a-h][1-8][qrbn]?$")
+_MAX_PV_LEN = 64
+_MAX_MATE_IN = 200
+_MAX_DEPTH = 64
+_MAX_NODES = 10**12
+_MAX_SCORE_CP = 10**7
+
+
+class PositionPayloadError(ValueError):
+    """A malformed position payload item. Carries a field-level message; routes
+    translate it to a 400 so a bad client payload is a readable 4xx, never a
+    500 and never a partial write."""
+
+
+def _validate_int(
+    value: Any, field: str, *, lo: int, hi: int, required: bool = False
+) -> Optional[int]:
+    if value is None:
+        if required:
+            raise PositionPayloadError("{0} is required".format(field))
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise PositionPayloadError("{0} must be a number".format(field))
+    if not math.isfinite(value) or int(value) != value:
+        raise PositionPayloadError("{0} must be a whole number".format(field))
+    value = int(value)
+    if value < lo or value > hi:
+        raise PositionPayloadError(
+            "{0} must be between {1} and {2}".format(field, lo, hi)
+        )
+    return value
+
+
+def _validate_uci(value: Any, field: str) -> Optional[str]:
+    if value is None or value == "":
+        return None
+    if not isinstance(value, str) or not _UCI_RE.match(value):
+        raise PositionPayloadError("{0} must be a UCI move".format(field))
+    return value
+
+
+def validate_position_item(item: Any, index: int) -> Dict[str, Any]:
+    """Validate one untrusted position payload item (D-03).
+
+    Raises :class:`PositionPayloadError` with a field-level message on anything
+    the classifier cannot safely coerce — non-numeric scores, out-of-range
+    depths/nodes/mate distances, malformed PVs. Returns the item unchanged so
+    the caller can keep the existing lookup keys.
+    """
+    field = "positions[{0}]".format(index)
+    if not isinstance(item, dict):
+        raise PositionPayloadError("{0} must be an object".format(field))
+    fen = item.get("fen")
+    if not fen or not isinstance(fen, str):
+        raise PositionPayloadError("{0}.fen must be a non-empty string".format(field))
+    score_cp = item.get("score_cp")
+    if score_cp is not None:
+        _validate_int(score_cp, "{0}.score_cp".format(field), lo=-_MAX_SCORE_CP, hi=_MAX_SCORE_CP)
+    mate_in = item.get("mate_in")
+    if mate_in is not None:
+        _validate_int(mate_in, "{0}.mate_in".format(field), lo=-_MAX_MATE_IN, hi=_MAX_MATE_IN)
+    # depth 0 is legitimate: a terminal position needs no search.
+    _validate_int(item.get("depth"), "{0}.depth".format(field), lo=0, hi=_MAX_DEPTH)
+    _validate_int(item.get("nodes"), "{0}.nodes".format(field), lo=0, hi=_MAX_NODES)
+    _validate_int(item.get("time_ms"), "{0}.time_ms".format(field), lo=0, hi=10**10)
+    _validate_uci(item.get("best_move_uci"), "{0}.best_move_uci".format(field))
+    pv = item.get("pv")
+    if pv is not None:
+        if not isinstance(pv, list):
+            raise PositionPayloadError("{0}.pv must be a list of UCI moves".format(field))
+        if len(pv) > _MAX_PV_LEN:
+            raise PositionPayloadError(
+                "{0}.pv must have at most {1} moves".format(field, _MAX_PV_LEN)
+            )
+        for i, ply in enumerate(pv):
+            _validate_uci(ply, "{0}.pv[{1}]".format(field, i))
+    return item
+
+
+def validate_position_payload(positions: Any) -> List[Dict[str, Any]]:
+    """Validate the whole ``positions`` list; returns the items unchanged."""
+    if not isinstance(positions, list):
+        raise PositionPayloadError("positions must be a list")
+    return [validate_position_item(item, i) for i, item in enumerate(positions)]
+
+
 def _evaluation_from_client(
     data: Dict[str, Any], *, engine_name: str, depth: int
 ) -> EngineEvaluation:
     score_cp = data.get("score_cp")
     mate_in = data.get("mate_in")
+    try:
+        score_cp = int(score_cp) if score_cp is not None else None
+        mate_in = int(mate_in) if mate_in is not None else None
+    except (TypeError, ValueError) as exc:
+        # validate_position_payload should have caught this; keep the same
+        # readable-4xx semantics as a last line of defence (never a 500).
+        raise PositionPayloadError("score_cp/mate_in must be numbers") from exc
     return EngineEvaluation(
         engine=engine_name,
         # The actual depth the browser search reached (0 = terminal position,
@@ -57,8 +159,8 @@ def _evaluation_from_client(
         # payloads, so a shallow timed-out result is never mislabelled.
         depth=client_search_depth(data, depth),
         nodes=client_search_nodes(data),
-        score_cp=int(score_cp) if score_cp is not None else None,
-        mate_in=int(mate_in) if mate_in is not None else None,
+        score_cp=score_cp,
+        mate_in=mate_in,
         best_move_uci=data.get("best_move_uci") or None,
         pv=list(data.get("pv") or []),
     )
@@ -112,6 +214,8 @@ def classify_precomputed_game(
     depth: int,
     brilliant_analyzer: Optional[BrilliantAnalyzer] = None,
     brilliant_config: Optional[BrilliantConfig] = None,
+    maia_available: Optional[bool] = None,
+    maia_rating: Optional[int] = None,
 ) -> AnalysisResult:
     """Apply client evals, classify each move exactly once, build the result.
 
@@ -135,7 +239,15 @@ def classify_precomputed_game(
             normalized[fen] = fen
     by_normalized: Dict[str, Dict[str, Any]] = {}
     for fen, data in position_map.items():
-        by_normalized.setdefault(normalized[fen], data)
+        key = normalized[fen]
+        existing = by_normalized.get(key)
+        if existing is not None and existing != data:
+            # Two spellings of one position carrying DIFFERENT evals: the
+            # result would depend on dict order (D-03 "duplicate conflicts").
+            raise PositionPayloadError(
+                "conflicting evaluations for the same position: {0}".format(fen)
+            )
+        by_normalized.setdefault(key, data)
 
     def _lookup(fen: str) -> Dict[str, Any]:
         data = by_normalized.get(normalized.get(fen, fen))
@@ -178,7 +290,19 @@ def classify_precomputed_game(
             comment=comment,
             config=brilliant_config,
         )
-        move.comment = "{0}\n{1}".format(move.comment, comment) if move.comment else comment
+        # A-04: the explanation is GENERATED content owned by this run. It is
+        # stored apart from the original/user comment and REPLACED (never
+        # appended) on re-analysis, so re-running can't accumulate duplicates.
+        # The meta records who wrote it (versioned), so the generated block is
+        # identifiable without text matching.
+        move.generated_comment = comment
+        move.generated_meta = {
+            "algorithm_version": EXPLANATION_ALGORITHM_VERSION,
+            "classification_version": CLASSIFICATION_ALGORITHM_VERSION,
+            "engine": engine_name,
+            "depth": depth,
+            "analyzed_at": utc_now().isoformat(),
+        }
 
     critical = [
         move.ply
@@ -201,4 +325,65 @@ def classify_precomputed_game(
         move_results=game.moves,
         summary=dict(summary),
         critical_ply=critical,
+        quality=_build_quality(
+            game,
+            target_depth=depth,
+            engine_name=engine_name,
+            maia_available=(
+                brilliant_analyzer is not None if maia_available is None else maia_available
+            ),
+            maia_rating=maia_rating,
+        ),
     )
+
+
+def _build_quality(
+    game: Game,
+    *,
+    target_depth: int,
+    engine_name: str,
+    maia_available: bool,
+    maia_rating: Optional[int],
+) -> Dict[str, Any]:
+    """A-05: search/model quality of this run, so the report can say what was
+    actually analysed instead of implying uniform full-depth coverage.
+
+    "depth" per move is the ACTUAL search depth the browser reached (0 =
+    terminal); anything below the requested target is "shallow" and counted."""
+    actual_depths: List[int] = []
+    for move in game.moves:
+        for evaluation in (move.engine_eval_before, move.engine_eval_after):
+            if evaluation is not None and evaluation.depth is not None:
+                actual_depths.append(int(evaluation.depth))
+    shallow = sum(1 for d in actual_depths if 0 < d < target_depth)
+    terminal = sum(1 for d in actual_depths if d == 0)
+    search = "full" if actual_depths and shallow == 0 else (
+        "partial-shallow" if actual_depths else "none"
+    )
+    issues: List[str] = []
+    if shallow:
+        issues.append("partial-shallow")
+    if not maia_available:
+        issues.append("no-maia")
+    return {
+        "target_depth": target_depth,
+        "actual_depth_min": min(actual_depths) if actual_depths else None,
+        "actual_depth_max": max(actual_depths) if actual_depths else None,
+        "actual_depth_avg": (
+            round(sum(actual_depths) / len(actual_depths), 1) if actual_depths else None
+        ),
+        "shallow_positions": shallow,
+        "terminal_positions": terminal,
+        "search": search,
+        "maia": {
+            "available": bool(maia_available),
+            "model": "maia3" if maia_available else None,
+            "rating": maia_rating,
+        },
+        # "complete" only when every position met the target depth AND the
+        # human model ran; otherwise the labelled issues list what is missing.
+        "completeness": "complete" if not issues else ",".join(issues),
+        "engine": engine_name,
+        "classification_version": CLASSIFICATION_ALGORITHM_VERSION,
+        "explanation_version": EXPLANATION_ALGORITHM_VERSION,
+    }

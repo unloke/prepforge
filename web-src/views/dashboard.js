@@ -124,76 +124,114 @@ export function createDashboardView({
     el.textContent = n == null ? "" : String(n);
   }
 
-  // The backend ships personalized next actions on /api/dashboard
-  // (payload.recommendations — ordered by account state, see
-  // services/dashboard_recommendations.py). Each item is
-  // {id, title, detail, cta: {label, view}} and renders as a numbered step
-  // with a CTA button that jumps straight to the matching view. Plain strings
-  // (legacy payloads) still render as plain steps. One "Next steps" card
-  // (first-run: "Get started") under the repertoire table shows them all.
-  function stepsHtml(recommendations) {
-    return (Array.isArray(recommendations) ? recommendations : [])
-      .slice(0, 3)
-      .map((item) => {
-        if (typeof item === "string") {
-          return item.trim() ? { title: item.trim(), detail: "", cta: null, id: "item" } : null;
-        }
-        if (!item || typeof item !== "object" || !item.title) return null;
-        return item;
-      })
-      .filter(Boolean)
-      .map((item, i) => {
-        const detail = item.detail ? `<p>${escapeHtml(String(item.detail))}</p>` : "";
-        const cta =
-          item.cta && item.cta.view
-            ? `<button type="button" class="btn sm rec-cta" ` +
-              `data-rec-view="${escapeHtml(String(item.cta.view))}" ` +
-              `data-testid="rec-cta-${escapeHtml(String(item.id || "item"))}">` +
-              `${escapeHtml(String(item.cta.label || item.cta.view))}</button>`
-            : "";
-        return (
-          `<div class="step"><span class="step-n" aria-hidden="true">${i + 1}</span>` +
-          `<div class="step-text"><b>${escapeHtml(String(item.title))}</b>${detail}</div>${cta}</div>`
-        );
-      })
-      .join("");
+  // Setup checklist (signed in). Every step ticks off from state the app
+  // already has — repertoire count, linked Lichess identities, finished
+  // training sessions — so there is no separate onboarding status to track.
+  // The card stays until the whole setup is done (linking Lichess no longer
+  // vanishes the moment a repertoire exists), and it carries setup only:
+  // due/weak training lives in the Today strip, never here.
+  let lastSetupPayload = null;
+  // The user can put the checklist away before finishing it (not everyone
+  // wants to link Lichess); remembered per browser.
+  const SETUP_DISMISSED_KEY = "prepforge.setup_dismissed";
+
+  function setupDismissed() {
+    try {
+      return localStorage.getItem(SETUP_DISMISSED_KEY) === "1";
+    } catch (_) {
+      return false;
+    }
   }
 
-  function renderSteps(hasRepertoires) {
+  function dismissSetup() {
+    try {
+      localStorage.setItem(SETUP_DISMISSED_KEY, "1");
+    } catch (_) {
+      // storage blocked: hide for this page view only
+    }
+    const card = document.getElementById("dashboard-steps");
+    if (card) {
+      card.hidden = true;
+      card.innerHTML = "";
+    }
+  }
+
+  function setupSteps(payload) {
+    const repertoires = (payload && payload.repertoires) || 0;
+    const accounts = Array.isArray(appState.lichessAccounts) ? appState.lichessAccounts : [];
+    const linked = accounts.length > 0 || !!appState.lichessUsername;
+    return [
+      {
+        id: "repertoire",
+        title: "Build your first repertoire",
+        // No button here: while this step is open the library's empty state
+        // already offers New repertoire / Import PGN right beside it.
+        detail: "New repertoire or Import PGN, in your library.",
+        done: repertoires > 0,
+      },
+      {
+        id: "lichess",
+        title: "Link your Lichess account",
+        detail: "Games and Scout read every linked identity as Self.",
+        done: linked,
+        action: "lichess",
+        label: "Link Lichess",
+      },
+      {
+        id: "train",
+        title: "Finish a training session",
+        detail: repertoires > 0
+          ? "The smart queue schedules your reviews from there."
+          : "Unlocks once you have a repertoire.",
+        done: ((payload && payload.training_sessions) || 0) > 0,
+        action: "train",
+        label: "Train",
+        locked: repertoires === 0,
+      },
+    ];
+  }
+
+  function renderSteps(payload) {
     const card = document.getElementById("dashboard-steps");
     if (!card) return;
-    const html = stepsHtml(lastDashboardRecommendations);
-    if (!html && !hasRepertoires) {
-      // Empty account with no server recommendation: the prototype's
-      // onboarding checklist (every action is a real flow).
-      renderOnboardingSteps([
-        ["Create your first repertoire", "Pick a side and an opening — or turn one of your games into one.", "new", "New repertoire"],
-        ["Link your Lichess account", "Games and Scout use every linked identity as Self.", "lichess", "Link Lichess"],
-        ["Import a PGN study", ".pgn or .json from Lichess studies or ChessBase exports.", "import", "Import PGN"],
-      ]);
-      return;
-    }
-    if (!html) {
+    lastSetupPayload = payload || lastSetupPayload || {};
+    const steps = setupSteps(lastSetupPayload);
+    const doneCount = steps.filter((step) => step.done).length;
+    if (doneCount === steps.length || setupDismissed()) {
       card.hidden = true;
       card.innerHTML = "";
       return;
     }
     card.innerHTML =
-      `<header class="card-head"><h2>${hasRepertoires ? "Next steps" : "Get started"}</h2></header>` +
-      html;
+      `<header class="card-head"><h2>Get started</h2>` +
+      `<span class="setup-count" data-testid="setup-progress">${doneCount} of ${steps.length} done</span>` +
+      `<button type="button" class="ib setup-dismiss" data-setup-dismiss data-testid="setup-dismiss" ` +
+      `aria-label="Hide Get started" title="Hide this checklist">&times;</button></header>` +
+      `<div class="setup-bar" aria-hidden="true"><i style="width:${Math.round((doneCount / steps.length) * 100)}%"></i></div>` +
+      steps
+        .map((step, i) => {
+          const mark = step.done
+            ? `<span class="step-n is-done" aria-hidden="true">✓</span>`
+            : `<span class="step-n" aria-hidden="true">${i + 1}</span>`;
+          const cta = step.done
+            ? `<span class="step-done">Done</span>`
+            : !step.action
+            ? ""
+            : `<button type="button" class="btn sm" data-lib-action="${step.action}"` +
+              `${step.locked ? " disabled" : ""} data-testid="setup-cta-${step.id}">${escapeHtml(step.label)}</button>`;
+          return (
+            `<div class="step${step.done ? " is-done" : ""}" data-setup-step="${step.id}">${mark}` +
+            `<div class="step-text"><b>${escapeHtml(step.title)}</b><p>${escapeHtml(step.detail)}</p></div>${cta}</div>`
+          );
+        })
+        .join("");
     card.hidden = false;
-    bindRecommendationCtas(card);
   }
 
-  // CTA buttons route one click to the view the recommendation targets.
-  function bindRecommendationCtas(container) {
-    if (!container || !container.querySelectorAll) return;
-    container.querySelectorAll(".rec-cta").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const view = btn.dataset && btn.dataset.recView;
-        if (view && goToView) goToView(view);
-      });
-    });
+  // Linking / unlinking Lichess happens outside the Library (Settings, OAuth
+  // popup); re-tick the checklist from the last dashboard payload.
+  function refreshSetup() {
+    if (lastSetupPayload) renderSteps(lastSetupPayload);
   }
 
   function renderDashboardToday(payload) {
@@ -280,8 +318,6 @@ export function createDashboardView({
     const dueMetric = card.querySelector('[data-action="due-review"]');
     if (dueMetric) dueMetric.addEventListener("click", trainNow);
   }
-
-  let lastDashboardRecommendations = [];
 
   // ---- Library list rendering ----------------------------------------------
   // The list renders from `repListCache` (the /api/repertoires listing: own
@@ -673,11 +709,8 @@ export function createDashboardView({
       throw error;
     }
     if (payload.streak) appState.dayStreak = payload.streak;
-    lastDashboardRecommendations = Array.isArray(payload.recommendations)
-      ? payload.recommendations
-      : [];
     renderDashboardToday(payload);
-    renderSteps((payload.repertoires || 0) > 0);
+    renderSteps(payload);
     try {
       await fetchDashboardRepertoires();
     } catch (error) {
@@ -756,6 +789,7 @@ export function createDashboardView({
           if (ok) setStatus("Ready");
         });
       } else if (action === "analyze" && goToView) goToView("analyze");
+      else if (action === "train" && goToSmartTraining) goToSmartTraining("Starting training…");
       else if (action === "lichess") {
         // Linking lives in Settings → Connections; the app opens Settings via
         // its tab and jumps to the section once the view has rendered.
@@ -780,6 +814,10 @@ export function createDashboardView({
     const stepsEl = document.getElementById("dashboard-steps");
     if (stepsEl) {
       stepsEl.addEventListener("click", (event) => {
+        if (event.target.closest && event.target.closest("[data-setup-dismiss]")) {
+          dismissSetup();
+          return;
+        }
         const btn = event.target.closest && event.target.closest("[data-lib-action]");
         if (btn) libAction(btn.dataset.libAction);
       });
@@ -813,6 +851,7 @@ export function createDashboardView({
     loadDashboardRepertoires,
     renderDashboardToday,
     renderSignedOut,
+    refreshSetup,
     setLibraryFilter,
     setLibraryQuery,
   };

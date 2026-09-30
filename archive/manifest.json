@@ -1,0 +1,62 @@
+[
+  {
+    "source": "web-src/scout-bias-cohort.test.js",
+    "destination": "archive/tests/web-src/scout-bias-cohort.test.js",
+    "reason": "Research-only study; no product runtime importer."
+  },
+  {
+    "source": "web-src/scout-bias-fit.test.js",
+    "destination": "archive/tests/web-src/scout-bias-fit.test.js",
+    "reason": "Research-only study; no product runtime importer."
+  },
+  {
+    "source": "web-src/scout-bias-fit-split.test.js",
+    "destination": "archive/tests/web-src/scout-bias-fit-split.test.js",
+    "reason": "Research-only study; no product runtime importer."
+  },
+  {
+    "source": "web-src/scout-shadow-prep-p0.test.js",
+    "destination": "archive/tests/web-src/scout-shadow-prep-p0.test.js",
+    "reason": "Research-only study; no product runtime importer."
+  },
+  {
+    "source": "web-src/scout-shadow-prep-p0-cli.test.js",
+    "destination": "archive/tests/web-src/scout-shadow-prep-p0-cli.test.js",
+    "reason": "Research-only study; no product runtime importer."
+  },
+  {
+    "source": "web-src/scout-shadow-prep-exact-solver.test.js",
+    "destination": "archive/tests/web-src/scout-shadow-prep-exact-solver.test.js",
+    "reason": "Research-only study; no product runtime importer."
+  },
+  {
+    "source": "scripts/scout-benchmark-metrics.test.js",
+    "destination": "archive/tests/scripts/scout-benchmark-metrics.test.js",
+    "reason": "Offline benchmark metrics, not product behavior."
+  },
+  {
+    "source": "research/scout-robust-y/robust-y-p1.protocol.json",
+    "destination": "archive/research/scout-robust-y/robust-y-p1.protocol.json",
+    "reason": "Incomplete historical bundle; missing Meta-Maia dependency; test was already excluded."
+  },
+  {
+    "source": "research/scout-robust-y/robust-y-phase0.js",
+    "destination": "archive/research/scout-robust-y/robust-y-phase0.js",
+    "reason": "Incomplete historical bundle; missing Meta-Maia dependency; test was already excluded."
+  },
+  {
+    "source": "research/scout-robust-y/robust-y-phase0.test.js",
+    "destination": "archive/research/scout-robust-y/robust-y-phase0.test.js",
+    "reason": "Incomplete historical bundle; missing Meta-Maia dependency; test was already excluded."
+  },
+  {
+    "source": "scripts/scout-robust-y-p1.mjs",
+    "destination": "archive/research/scout-robust-y/scout-robust-y-p1.mjs",
+    "reason": "Runner belongs to the same incomplete retired study."
+  },
+  {
+    "source": "web-src/scout-v12-report.test.js",
+    "destination": "archive/tests/web-src/scout-v12-report.test.js",
+    "reason": "Retired v12 renderer has no UI call site; v13 shared constant remains covered by its active funnel/report tests."
+  }
+]

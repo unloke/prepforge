@@ -153,10 +153,15 @@ async function runViewport(vp) {
   check(todayText.includes("9"), "today card should show 9 due");
 
   // Prototype composition: one Today strip, the table with its column header,
-  // a Next steps card — and none of the legacy list-item rows / metric cards.
+  // the Get started setup card — and none of the legacy list-item rows / metric cards.
   check((await page.locator("#dashboard-today .today-streak").count()) === 1, "today strip should carry the streak");
   check((await page.locator("#dashboard-today #dashboard-train-now").count()) === 1, "Train button should live in the today strip");
-  check((await page.locator("#dashboard-steps:not([hidden]) .step").count()) === 1, "next steps card should render the fixture recommendation");
+  // "Get started" is the 3-step setup checklist ticked from real state — the
+  // fixture has a repertoire + a training session done, Lichess unlinked.
+  // Recommendations never render here; the Today strip owns due/weak.
+  check((await page.locator("#dashboard-steps:not([hidden]) .step").count()) === 3, "Get started card should list all 3 setup steps");
+  check((await page.locator("#dashboard-steps .step.is-done").count()) === 2, "fixture state should tick 2 of the 3 setup steps");
+  check(((await page.locator("#dashboard-steps .setup-count").textContent().catch(() => "")) || "").includes("2 of 3 done"), "setup progress should read 2 of 3 done");
   check((await page.locator("#dashboard-repertoires .list-item").count()) === 0, "rows must not use the legacy list-item card");
   const metricsShown = await page.locator("#dashboard-today .today-metrics").isVisible();
   check(metricsShown === (vp.width > 1279), `today metrics visible=${metricsShown} at ${vp.width}px`);

@@ -8,6 +8,10 @@ import threading
 from typing import Callable, Dict, List, Optional
 
 from prepforge_chess.core.models import AnalysisResult, Game, MoveClassification, utc_now
+from prepforge_chess.services.browser_compute import (
+    CLASSIFICATION_ALGORITHM_VERSION,
+    EXPLANATION_ALGORITHM_VERSION,
+)
 from prepforge_chess.services.brilliant import (
     BRILLIANT_ELIGIBLE_CLASSIFICATIONS,
     BrilliantAnalyzer,
@@ -446,7 +450,17 @@ class AnalysisService:
                     )
                 )
 
-        move.comment = "{0}\n{1}".format(move.comment, comment) if move.comment else comment
+        # A-04: the explanation is generated content, stored apart from the
+        # original/user comment and REPLACED on re-analysis — same contract as
+        # the browser-compute fast path, so the two paths stay in parity and
+        # re-running can never accumulate duplicate explanations.
+        move.generated_comment = comment
+        move.generated_meta = {
+            "algorithm_version": EXPLANATION_ALGORITHM_VERSION,
+            "classification_version": CLASSIFICATION_ALGORITHM_VERSION,
+            "engine": self.engine_name,
+            "analyzed_at": utc_now().isoformat(),
+        }
 
         return move
 

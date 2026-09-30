@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 class Color(str, Enum):
@@ -118,7 +118,15 @@ class MoveRecord:
     best_move_uci: Optional[str] = None
     best_move_eval: Optional[EngineEvaluation] = None
     classification: MoveClassification = MoveClassification.UNKNOWN
+    # ``comment`` is the ORIGINAL / user-authored note (PGN import, user edit).
+    # ``generated_comment`` is the classifier's explanation, owned by the
+    # analysis run: re-analysis REPLACES it (never appends), so explanations
+    # cannot accumulate across runs (improvement review A-04). ``generated_meta``
+    # records which algorithm/engine/depth wrote it, so the generated block is
+    # identifiable by version, not by text matching.
     comment: Optional[str] = None
+    generated_comment: Optional[str] = None
+    generated_meta: Optional[Dict[str, Any]] = None
     tags: List[str] = field(default_factory=list)
 
 
@@ -148,6 +156,11 @@ class AnalysisResult:
     move_results: List[MoveRecord]
     summary: Dict[str, int] = field(default_factory=dict)
     critical_ply: List[int] = field(default_factory=list)
+    # Search/model quality of THIS run (target vs actual depth, shallow spots,
+    # Maia status, algorithm versions) so a report can say "complete" /
+    # "partial-shallow" / "no Maia" instead of implying full coverage
+    # (improvement review A-05).
+    quality: Optional[Dict[str, Any]] = None
 
 
 @dataclass

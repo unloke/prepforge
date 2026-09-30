@@ -43,6 +43,7 @@ from prepforge_chess.services.progress import (
     MASTERY_DUE,
     MASTERY_UNTRAINED,
     MASTERY_WEAK,
+    effective_children,
     node_mastery,
 )
 
@@ -209,14 +210,16 @@ class _Candidate:
 def _collect_candidates(root: OpeningNode, color: Color) -> List[_Candidate]:
     """Every trainable own-move node reachable through enabled children, in
     preorder. Each node appears exactly once no matter how many leaf lines
-    share it — that is the whole point of card-based training."""
+    share it — that is the whole point of card-based training.
+
+    A-02: the descent shares ``progress.effective_children`` with the health
+    walk — a disabled node makes its whole subtree unreachable for BOTH, so
+    the scheduler's candidate set always equals health's trainable set."""
     out: List[_Candidate] = []
     counter = [0]
 
     def visit(node: OpeningNode, prev_own_id: Optional[str], family_id: Optional[str]) -> None:
-        for child in node.children:
-            if not child.is_enabled:
-                continue
+        for child in effective_children(node):
             child_family = family_id or child.id
             trainable = child.move is not None and child.move.side_to_move is color
             if trainable:
@@ -276,11 +279,13 @@ def build_session_plan(
         else:
             polish.append(cand)
 
-    def accuracy(cand: _Candidate) -> float:
+    def recent_score(cand: _Candidate) -> float:
+        """A-01: weak ordering follows the SAME recent-form signal as the
+        mastery classification (spaced-repetition score), not the lifetime
+        ratio — a node recovering from a bad start ranks after one still
+        failing today."""
         progress = progress_by_id.get(cand.node.id)
-        if progress is None or progress.attempts <= 0:
-            return 1.0
-        return progress.correct_attempts / progress.attempts
+        return progress.spaced_repetition_score if progress is not None else 0.0
 
     def due_key(cand: _Candidate) -> Tuple[datetime, int]:
         progress = progress_by_id.get(cand.node.id)
@@ -289,7 +294,13 @@ def build_session_plan(
             due_at = due_at.replace(tzinfo=timezone.utc)
         return (due_at, cand.order)
 
-    weak.sort(key=lambda c: (accuracy(c), -(progress_by_id[c.node.id].attempts if c.node.id in progress_by_id else 0), c.order))
+    weak.sort(
+        key=lambda c: (
+            recent_score(c),
+            -(progress_by_id[c.node.id].attempts if c.node.id in progress_by_id else 0),
+            c.order,
+        )
+    )
     due.sort(key=due_key)
     new.sort(key=lambda c: (c.ply, c.order))  # shallow lines first
     polish.sort(key=due_key)  # soonest-due first: closest to slipping

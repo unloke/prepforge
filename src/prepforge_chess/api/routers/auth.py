@@ -8,6 +8,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+# F-02: password recovery lives here next to login/logout so the auth contract
+# (hashing, session lifetime, enumeration safety) stays in one file.
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
@@ -17,7 +20,7 @@ from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_user
 from prepforge_chess.api.middleware import CSRF_COOKIE
-from prepforge_chess.api.models import AuthSession, Plan, User
+from prepforge_chess.api.models import AuthSession, PasswordResetToken, Plan, User
 from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.api.security import (
     hash_password,
@@ -186,3 +189,137 @@ def providers(settings: Settings = Depends(get_settings)) -> AuthProviders:
     """Public: which sign-in methods the deployment offers, so the SPA can show the
     right buttons (Google when configured; email/password always available)."""
     return AuthProviders(google=settings.google_oauth_enabled, password=True)
+
+
+# ---- Password recovery (F-02) ----------------------------------------------
+# Email/password accounts get a self-service recovery path: a single-use,
+# expiring token delivered to the account's own email. OAuth-only accounts
+# (password_hash NULL) receive "you sign in with Google" instead of a reset
+# link, so nobody is sent down a path that cannot work for them.
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=16, max_length=400)
+    password: str = Field(min_length=8, max_length=200)
+
+
+def _deliver_mail(user: User, subject: str, body: str, settings: Settings) -> None:
+    """Delivery seam for recovery mail. The deployment has no bundled SMTP
+    client, so the message is logged (ops can wire a real mailer over this one
+    function); in non-production, ``password_reset_dev_link`` additionally
+    returns the link in the API response so dev/test flows work end to end."""
+    print(
+        "[mail] to={0} subject={1!r}: {2}".format(user.email, subject, body)
+    )
+
+
+def _aware(value: datetime) -> datetime:
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+
+
+@router.post("/password/forgot")
+@limiter.limit("5/hour")
+def forgot_password(
+    request: Request,
+    body: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    """Start password recovery. Always 200 with the same body — whether or not
+    the address has an account — so the endpoint cannot be used to enumerate
+    users. What the account OWNER receives differs honestly: a reset link for
+    email/password accounts, a "you use Google sign-in" note for OAuth-only
+    accounts."""
+    now = datetime.now(timezone.utc)
+    email = body.email.lower()
+    user = db.scalar(select(User).where(User.email == email))
+    response: dict = {"status": "sent"}
+    if user is not None:
+        if user.password_hash is None:
+            _deliver_mail(
+                user,
+                "How you sign in",
+                "This account signs in with Google — no password to reset. "
+                "Use the Google button on the login page.",
+                settings,
+            )
+            if settings.password_reset_dev_link and not settings.is_production:
+                response["dev_delivery"] = "oauth_only"
+        else:
+            raw = new_session_token()
+            db.add(
+                PasswordResetToken(
+                    user_id=user.id,
+                    token_hash=hash_session_token(raw),
+                    expires_at=now + timedelta(minutes=settings.password_reset_ttl_minutes),
+                )
+            )
+            db.commit()
+            link = "/?reset_password={0}".format(raw)
+            _deliver_mail(
+                user,
+                "Reset your PrepForge password",
+                "Open {0} within {1} minutes to choose a new password. "
+                "The link works once.".format(link, settings.password_reset_ttl_minutes),
+                settings,
+            )
+            if settings.password_reset_dev_link and not settings.is_production:
+                # Dev/test convenience only (never in production): the SPA can
+                # complete the flow without a mail inbox.
+                response["dev_delivery"] = "reset_link"
+                response["dev_reset_token"] = raw
+    return response
+
+
+@router.post("/password/reset", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("10/hour")
+def reset_password(
+    request: Request,
+    body: ResetPasswordRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> Response:
+    """Consume a reset token and set the new password.
+
+    The token is single-use and expiring; one message covers bad/used/expired.
+    A successful reset invalidates EVERY session of the account (a password
+    change is a session-invalidation event) and consumes any other outstanding
+    reset tokens, so recovery ends with a clean, explicit re-login."""
+    now = datetime.now(timezone.utc)
+    row = db.scalar(
+        select(PasswordResetToken).where(
+            PasswordResetToken.token_hash == hash_session_token(body.token)
+        )
+    )
+    if row is None or row.used_at is not None or _aware(row.expires_at) <= now:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="this reset link is invalid or has expired",
+        )
+    user = db.get(User, row.user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="this reset link is invalid or has expired",
+        )
+    user.password_hash = hash_password(body.password)
+    row.used_at = now
+    for other in db.scalars(
+        select(PasswordResetToken).where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_at.is_(None),
+        )
+    ):
+        other.used_at = now
+    for session in db.scalars(
+        select(AuthSession).where(AuthSession.user_id == user.id)
+    ):
+        db.delete(session)
+    db.commit()
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response

@@ -6,9 +6,9 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-Dl4pDPTy.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-CRhq1BvS.js"></script>
     <link rel="modulepreload" crossorigin href="/static/assets/chess-DwBov9dY.js">
-    <link rel="stylesheet" crossorigin href="/static/assets/index-CVJUGuhJ.css">
+    <link rel="stylesheet" crossorigin href="/static/assets/index-CNArfXvC.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -146,7 +146,7 @@
                 <span class="faint" id="analysis-game-meta">Paste a PGN or play on the board</span>
               </div>
               <span class="panel-actions" id="analyze-actions">
-                <button class="btn sm" id="open-engine-widget" data-testid="open-engine-widget">Engine</button>
+                <button class="btn sm" id="open-engine-widget" data-testid="open-engine-widget" type="button" aria-pressed="false">Engine</button>
                 <button class="btn sm" id="fetch-my-game" data-testid="fetch-my-game">My last game</button>
                 <button class="btn sm primary" id="run-analysis" data-testid="run-analysis">Analyze</button>
               </span>
@@ -165,14 +165,27 @@
                 <p class="coach-maia" id="coach-maia" data-testid="coach-maia" hidden></p>
                 <p class="coach-bookline" id="coach-bookline" data-testid="coach-bookline" hidden></p>
               </section>
+              <!-- One Evaluation card: the game graph (after an analysis) and the
+                   live engine (when on) share it, so there is one place to look. -->
+              <section class="res-block eval-card" id="analysis-eval-card" data-testid="analysis-eval-card" aria-label="Evaluation" hidden>
+                <div class="rb-head"><b>Evaluation</b><span class="eval-now" id="analysis-chart-caption"></span></div>
+                <div class="eval-chart-wrap" id="analysis-eval-graph" hidden>
+                  <svg class="eval-chart" id="eval-chart" viewBox="0 0 640 96" role="img" aria-label="Evaluation by move"></svg>
+                  <div class="eval-chart-tooltip" id="eval-chart-tooltip" aria-hidden="true" hidden></div>
+                </div>
+                <div class="engine-slot" id="analysis-engine-slot"></div>
+              </section>
+              <!-- F-03: finished-but-unsaved analysis: the compute lives on this
+                   device; Retry save re-posts it without re-analyzing. -->
+              <div class="analysis-retry-save" id="analysis-retry-save" data-testid="analysis-retry-save" hidden>
+                <span class="pf-row-text" id="analysis-retry-save-text"></span>
+                <button type="button" class="btn sm primary" id="analysis-retry-save-btn" data-testid="analysis-retry-save-btn">Retry save</button>
+                <button type="button" class="btn sm ghost" id="analysis-retry-save-discard">Discard</button>
+              </div>
+              <!-- F-04: after a batch import — what was stored, and which game
+                   this report covers (switchable). -->
+              <div class="analysis-import-picker" id="analysis-import-picker" data-testid="analysis-import-picker" hidden></div>
               <div class="res-stack" id="analysis-results" hidden>
-                <section class="res-block" aria-label="Evaluation">
-                  <div class="rb-head"><b>Evaluation</b><span class="eval-now" id="analysis-chart-caption"></span></div>
-                  <div class="eval-chart-wrap">
-                    <svg class="eval-chart" id="eval-chart" viewBox="0 0 640 96" role="img" aria-label="Evaluation by move"></svg>
-                    <div class="eval-chart-tooltip" id="eval-chart-tooltip" aria-hidden="true" hidden></div>
-                  </div>
-                </section>
                 <div class="moves-grid" id="analysis-moves" data-testid="analysis-moves"></div>
                 <section class="res-block" id="analysis-summary"></section>
                 <div class="analysis-handoff" id="analysis-handoff" data-testid="analysis-handoff" hidden>
@@ -264,7 +277,6 @@
               <div class="dock-tabs" role="tablist" aria-label="Inspector">
                 <button class="is-active" id="build-tool-explorer" data-testid="build-tool-explorer" type="button" role="tab" aria-controls="explorer-drawer" aria-selected="true">Explorer</button>
                 <button id="build-tool-coverage" data-testid="build-tool-coverage" type="button" role="tab" aria-controls="coverage-drawer" aria-selected="false" tabindex="-1">Coverage <span class="count" id="build-coverage-count" hidden></span></button>
-                <button id="build-tool-engine" data-testid="open-engine-widget-build" type="button" role="tab" aria-controls="engine-drawer" aria-selected="false" tabindex="-1">Engine</button>
               </div>
               <div class="dock-body">
                 <div class="dock-tools" id="build-dock-tools">
@@ -276,15 +288,19 @@
                   <span class="score-chip" id="coverage-score" hidden></span>
                   <button type="button" class="ib inspector-info" id="inspector-info" aria-label="About this panel">ⓘ</button>
                   <span class="spacer"></span>
+                  <span class="dock-engine-switch" id="explorer-engine-switch" title="Stockfish's eval beside every move">
+                    <span class="pf-row-label" id="explorer-engine-label">Engine</span>
+                    <button type="button" class="pf-switch" id="explorer-engine-toggle" data-testid="open-engine-widget-build" role="switch" aria-checked="false" aria-labelledby="explorer-engine-label"><span class="pf-knob"></span></button>
+                  </span>
                   <button type="button" class="btn sm inspector-scan" id="coverage-run" data-testid="coverage-run" hidden>Scan</button>
                 </div>
                 <div class="inspector-panel" id="explorer-drawer" data-testid="explorer-drawer" role="tabpanel" aria-labelledby="build-tool-explorer">
+                  <div class="engine-slot" id="explorer-engine-slot"></div>
                   <div class="explorer-rows" id="explorer-rows"></div>
                 </div>
                 <div class="inspector-panel" id="coverage-drawer" data-testid="coverage-drawer" role="tabpanel" aria-labelledby="build-tool-coverage" hidden>
                   <div class="coverage-gaps" id="coverage-gaps"><div class="muted hint">Scan to find the human moves this repertoire doesn't answer yet.</div></div>
                 </div>
-                <div class="inspector-panel" id="engine-drawer" data-testid="engine-drawer" role="tabpanel" aria-labelledby="build-tool-engine" hidden></div>
               </div>
             </section>
           </aside>
@@ -816,6 +832,6 @@
         <div class="palette-results" id="palette-results" data-testid="palette-results" role="listbox" aria-label="Commands"></div>
       </div>
     </div>
-
+
   </body>
 </html>

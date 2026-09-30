@@ -13,7 +13,30 @@ import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
 import { applyTheme } from "./theme.js";
 import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
 import { squareInDirection } from "./board-navigation.js";
+import { pgnPlayers, selfSide } from "./analyze-orient.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
+import { classifySyncError, describeSyncError } from "./sync-errors.js";
+import {
+  acquireFlushLock,
+  clearOutbox,
+  loadOutbox,
+  outboxHasWork,
+  releaseFlushLock,
+  saveOutbox,
+} from "./sync-outbox.js";
+import {
+  clearCheckpoint,
+  evalMapFrom,
+  loadCheckpoint,
+  saveCheckpoint,
+} from "./analyze-checkpoint.js";
+import {
+  loadReturnState,
+  pendingHandoffs,
+  rememberHandoff,
+  saveReturnState,
+  takeHandoff,
+} from "./handoff-context.js";
 import { describeMove } from "./explain.js";
 import {
   activateWorkspaceTab,
@@ -155,6 +178,10 @@ const DEFAULT_PREFS = {
   moveAnim: true,
   sounds: true,
   bestArrow: true,
+  // Live engine on/off, remembered per view: Build shows it inside the
+  // Explorer (an eval per candidate), Analyze inside the Evaluation card.
+  engineBuild: false,
+  engineAnalyze: false,
   // Analysis-layer gate for the Maia3 human model. OFF by default: the Analyze
   // pipeline skips its Maia pass (classifier / human probability / coach
   // intuition / brilliant signals) and no analysis-layer Maia inference runs —
@@ -548,8 +575,8 @@ const boards = {};
 
 // Delays (ms) for auto-collapsing/auto-dismissing a card. The countdown only
 // runs while the user is *not* actively pointing at the card (see _holdDismiss).
-const TOAST_MINIMIZE_DELAY = 7500;
-const TOAST_DONE_DELAY = 12000;
+const TOAST_MINIMIZE_DELAY = 4000;
+const TOAST_DONE_DELAY = 7000;
 const TOAST_FAILED_DELAY = 6000;
 const TOAST_CANCELLED_DELAY = 4500;
 // Minimum gap between progress repaints. A tight loop (e.g. per-ply Brilliant checks, where
@@ -1092,6 +1119,9 @@ class EngineWidget {
     this.lastFen = null;
     this.lastSnapshot = null;
     this.multipv = 1;
+    // Lines actually searched: the shown lines, widened in Build so every
+    // Explorer candidate can carry its own eval (see engineExtraLines).
+    this.searchedMultipv = 1;
     this.maxMultipv = 5;
     this.minMultipv = 1;
     // Engine compute seam: browser Stockfish (WASM Worker) only. No server
@@ -1115,7 +1145,7 @@ class EngineWidget {
         /* best-effort */
       }
     }
-    this.engine = createEngineProvider({ maxDepth: depth });
+    this.engine = createEngineProvider({ maxDepth: depth, maxMultipv: ENGINE_SEARCH_MAX_LINES });
     this.engineDepth = depth;
   }
 
@@ -1168,6 +1198,9 @@ class EngineWidget {
     if (activeViewName() === "build") {
       const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
       if (node && node.fen) return node.fen;
+      // No repertoire open: analyse what the Build board shows, never the
+      // Analyze board's position.
+      return (boards.build && boards.build.fen) || START_FEN;
     }
     return appState.analysisBoardFen || START_FEN;
   }
@@ -1178,9 +1211,7 @@ class EngineWidget {
     // probing positions while a long job runs in the background.
     this.open = true;
     this.el.hidden = false;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => this.el.classList.add("is-visible"));
-    });
+    this.el.classList.add("is-visible");
     await this._restartForCurrentBoard();
     this._startPolling();
   }
@@ -1201,17 +1232,22 @@ class EngineWidget {
     }
   }
 
+  _searchMultipv() {
+    return Math.max(this.multipv, engineExtraLines());
+  }
+
   /** Re-analyze whenever the active board changes. No-op if widget closed. */
   async onBoardChanged() {
     if (!this.open) return;
     const fen = this.currentFen();
-    if (fen === this.lastFen) return;
+    if (fen === this.lastFen) return this.onSearchWidthChanged();
     this._ensureEngine();
     const engine = this.engine;
     this.lastFen = fen;
     this._clearAnalysisView();
     try {
-      const snapshot = await engine.update({ fen, multipv: this.multipv });
+      this.searchedMultipv = this._searchMultipv();
+      const snapshot = await engine.update({ fen, multipv: this.searchedMultipv });
       // Bail if the world moved while update() was in flight: the panel closed, a NEWER board
       // change set a different lastFen, or a depth change swapped the provider out. Otherwise we'd
       // paint this (now stale) FEN's eval onto the current board, or poll the wrong provider.
@@ -1232,7 +1268,8 @@ class EngineWidget {
     this.lastFen = fen;
     this._clearAnalysisView();
     try {
-      const snapshot = await engine.open({ fen, multipv: this.multipv });
+      this.searchedMultipv = this._searchMultipv();
+      const snapshot = await engine.open({ fen, multipv: this.searchedMultipv });
       // Bail if the panel closed, the board moved on, or a depth change swapped the provider
       // while open() was in flight (see onBoardChanged).
       if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
@@ -1255,7 +1292,8 @@ class EngineWidget {
     const engine = this.engine;
     const fen = this.lastFen || this.currentFen();
     try {
-      const snapshot = await engine.update({ fen, multipv: clamped });
+      this.searchedMultipv = this._searchMultipv();
+      const snapshot = await engine.update({ fen, multipv: this.searchedMultipv });
       // Bail if the world moved while update() was in flight: panel closed, provider swapped, the
       // board changed, or the line count was clicked again (this.multipv !== clamped). See
       // onBoardChanged.
@@ -1275,8 +1313,29 @@ class EngineWidget {
     }
   }
 
+  // The Explorer's candidate count changed (new rows, or Build entered/left):
+  // re-search the same position at the new width. The shown lines stay put.
+  async onSearchWidthChanged() {
+    if (!this.open || !this.engine || !this.lastFen) return;
+    const width = this._searchMultipv();
+    if (width === this.searchedMultipv) return;
+    const engine = this.engine;
+    const fen = this.lastFen;
+    this.searchedMultipv = width;
+    try {
+      const snapshot = await engine.update({ fen, multipv: width });
+      if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
+      this._renderSnapshot(snapshot);
+      this._startPolling();
+    } catch (error) {
+      if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
+      this._showError(error.message);
+    }
+  }
+
   _showError(message) {
     setEngineBestArrow(null);
+    paintExplorerEvals(null);
     setStatusError(message);
     if (this.pvsEl) {
       this.pvsEl.innerHTML = `<div class="empty-state">${escapeHtml(
@@ -1287,6 +1346,7 @@ class EngineWidget {
 
   _clearAnalysisView() {
     setEngineBestArrow(null);
+    paintExplorerEvals(null);
     if (this.pvsEl) {
       this.pvsEl.innerHTML = '<div class="empty-state">Calculating...</div>';
     }
@@ -1303,7 +1363,7 @@ class EngineWidget {
   }
 
   _bindControls() {
-    this.closeBtn.addEventListener("click", () => this.close());
+    this.closeBtn.addEventListener("click", () => setEngineOn(activeViewName(), false));
     this.linesUpBtn.addEventListener("click", () => this._setMultipv(this.multipv + 1));
     this.linesDownBtn.addEventListener("click", () => this._setMultipv(this.multipv - 1));
   }
@@ -1364,6 +1424,7 @@ class EngineWidget {
       setEngineBestArrow(null);
       this.pvsEl.innerHTML = '<div class="empty-state">Calculating...</div>';
     }
+    paintExplorerEvals(snapshot);
     // Keep the coach's one-line rationale in sync with this (deeper) search.
     if (typeof positionCoach !== "undefined") positionCoach.onWidgetSnapshot(snapshot);
     // Once the engine reaches max depth it stops; no point polling further
@@ -2215,6 +2276,22 @@ async function updateBookline() {
     el.querySelector('[data-act="train"]').addEventListener("click", async (event) => {
       const btn = event.currentTarget;
       btn.disabled = true;
+      // F-06: keep the task context across the jump — source line, the ply and
+      // anchor FEN of the mistake, the side and target repertoire — so the
+      // later practice lands on this exact position and the mistake→practice
+      // time is measurable. Same target = same key = one record, however often
+      // the button is clicked.
+      rememberHandoff({
+        source: "analyze",
+        reason: "practice-missed-move",
+        gameId: appState.analysis?.game_id || null,
+        lineUcis: [...prefix, prescribed.uci],
+        ply: path.length,
+        anchorFen: node.fenBefore,
+        rootFen: appState.analysis?.moves?.[0]?.fen_before || null,
+        side: rep.color,
+        repertoireId: rep.id,
+      });
       try {
         await postJson("/api/train/record-miss", {
           repertoire_id: rep.id,
@@ -2240,9 +2317,22 @@ async function updateBookline() {
       `${escapeHtml(text)} ` +
       `<button class="coach-bookaction" type="button" data-act="build">Add it in Build<span class="cba-arrow" aria-hidden="true">›</span></button>`;
     el.hidden = false;
-    el.querySelector('[data-act="build"]').addEventListener("click", () =>
-      editRepertoire(rep.id, prev.nodeId)
-    );
+    el.querySelector('[data-act="build"]').addEventListener("click", () => {
+      // F-06: Analyze→Repertoire handoff — the novelty line + anchor position
+      // travel with the jump into Build.
+      rememberHandoff({
+        source: "analyze",
+        reason: "extend-book",
+        gameId: appState.analysis?.game_id || null,
+        lineUcis: [...prefix, node.uci],
+        ply: path.length,
+        anchorFen: node.fenBefore,
+        rootFen: appState.analysis?.moves?.[0]?.fen_before || null,
+        side: rep.color,
+        repertoireId: rep.id,
+      });
+      editRepertoire(rep.id, prev.nodeId);
+    });
   }
 }
 
@@ -2416,8 +2506,13 @@ class BoardController {
         }
       }
       if (this.hasLegalFrom(squareName)) {
+        // Pressing the already-selected piece again arms a deselect: a plain
+        // click (release on the same square) clears the legal-move dots, while
+        // dragging it away still plays the move.
+        const wasSelected = this.selected === squareName;
         this._setSelected(squareName);
         this._beginDrag(squareName, event);
+        this._deselectOnRelease = wasSelected;
       } else {
         this._setSelected(null);
       }
@@ -2482,7 +2577,7 @@ class BoardController {
         return;
       }
     }
-    if (this.hasLegalFrom(squareName)) {
+    if (this.hasLegalFrom(squareName) && this.selected !== squareName) {
       this._setSelected(squareName);
     } else {
       this._setSelected(null);
@@ -2559,11 +2654,18 @@ class BoardController {
 
   _endDrag(event) {
     const from = this.dragFrom;
+    const deselect = this._deselectOnRelease;
+    this._deselectOnRelease = false;
     this._cancelDrag();
     if (!from) return;
     const target = this._squareAt(event);
     // Same-square release is treated as a click: the piece stays selected so a
-    // follow-up click on a target square plays the move.
+    // follow-up click on a target square plays the move — unless it was already
+    // selected, in which case the second click toggles the selection off.
+    if (target === from && deselect) {
+      this._setSelected(null);
+      return;
+    }
     if (!target || target === from) return;
     if (isPromotionMove(from, target, this.legalMoves)) {
       this._setSelected(null);
@@ -2637,9 +2739,16 @@ class BoardController {
   }
 
   setPosition({ fen, legalMoves = [], lastMove = null }) {
-    this._cancelDrag();
     const fenChanged = this.fen !== fen;
     const prevFen = this.fen;
+    // A same-position refresh (an autosave landing, a panel re-render) must not
+    // yank a piece out of the user's hand: keep the drag and selection alive
+    // while the dragged/selected piece still has legal moves.
+    const keepInteraction =
+      !fenChanged &&
+      (this.dragFrom || this.selected) &&
+      legalMoves.some((move) => move.startsWith(this.dragFrom || this.selected));
+    if (!keepInteraction) this._cancelDrag();
 
     // Read slide offsets NOW, before any DOM writes, so _animateSlide never
     // triggers a mid-write forced reflow to measure layout.
@@ -2656,10 +2765,12 @@ class BoardController {
 
     this.fen = fen;
     this.legalMoves = legalMoves;
-    this.selected = null;
+    if (!keepInteraction) {
+      this.selected = null;
+      this.dragFrom = null;
+    }
     this.lastMove = lastMove;
     this.moveBadge = null;
-    this.dragFrom = null;
     this.annotationStart = null;
     if (fenChanged) {
       this._renderPieces();
@@ -2850,6 +2961,8 @@ function engineLifecycleMark(name, origin = performance.now()) {
   } catch (_) { /* logging only */ }
   return origin;
 }
+const STATUS_PROGRESS_SHOW_DELAY = 700;
+
 function setStatus(message, { severity = "info" } = {}) {
   const status = document.getElementById("app-status");
   if (!status) return;
@@ -2860,11 +2973,21 @@ function setStatus(message, { severity = "info" } = {}) {
   // The floating status pill only shows messages set after load (not the
   // static "Ready" placeholder); it hides again when the text clears.
   // "Ready" is the idle state, not news: it clears the pill instead.
-  status.classList.toggle("is-fresh", !!text && text !== "Ready");
   const normalizedSeverity = ["info", "success", "warning", "error"].includes(severity)
     ? severity
     : "info";
   const isError = normalizedSeverity === "error";
+  // In-progress messages ("Loading...") usually resolve within a moment; only
+  // surface one if it is still the current message after a beat, so quick
+  // steps never flash a pill in the corner.
+  const inProgress = !isError && /(\.\.\.|…)$/.test(text);
+  if (typeof window !== "undefined") window.clearTimeout(setStatus._showTimer);
+  status.classList.toggle("is-fresh", !!text && text !== "Ready" && !inProgress);
+  if (inProgress && typeof window !== "undefined") {
+    setStatus._showTimer = window.setTimeout(() => {
+      if (status.textContent === text) status.classList.add("is-fresh");
+    }, STATUS_PROGRESS_SHOW_DELAY);
+  }
   status.setAttribute("role", isError ? "alert" : "status");
   status.setAttribute("aria-live", isError ? "assertive" : "polite");
   status.dataset.severity = normalizedSeverity;
@@ -2880,8 +3003,52 @@ function setStatus(message, { severity = "info" } = {}) {
       status.dataset.severity = "info";
       status.dataset.state = "ready";
       if (closeBtn) closeBtn.hidden = true;
-    }, normalizedSeverity === "warning" ? 8000 : 6000);
+    }, normalizedSeverity === "warning" ? 6000 : 4000);
   }
+}
+
+// Keep the floating status pill out of the way: it rides above the job-toast
+// stack (never on top of it), is click-through unless it holds an error, and
+// fades to a ghost while the pointer is over its spot — so a message never
+// blocks the button underneath it.
+function bindStatusPillAvoidance() {
+  const slot = document.getElementById("topbar-status-slot");
+  const stack = document.getElementById("toast-stack");
+  if (!slot || typeof window === "undefined") return;
+  if (stack && typeof ResizeObserver === "function") {
+    const sync = () => {
+      const h = stack.getBoundingClientRect().height;
+      document.documentElement.style.setProperty("--toast-stack-h", `${Math.round(h)}px`);
+    };
+    new ResizeObserver(sync).observe(stack);
+    sync();
+  }
+  let frame = 0;
+  let last = null;
+  const evaluate = () => {
+    frame = 0;
+    if (!last) return;
+    const status = document.getElementById("app-status");
+    const isError = status && status.dataset.state === "error";
+    const r = slot.getBoundingClientRect();
+    const pad = 18;
+    const near =
+      !isError &&
+      r.width > 0 &&
+      last.x >= r.left - pad &&
+      last.x <= r.right + pad &&
+      last.y >= r.top - pad &&
+      last.y <= r.bottom + pad;
+    slot.classList.toggle("is-ghost", near);
+  };
+  document.addEventListener(
+    "pointermove",
+    (event) => {
+      last = { x: event.clientX, y: event.clientY };
+      if (!frame) frame = requestAnimationFrame(evaluate);
+    },
+    { passive: true }
+  );
 }
 
 function setStatusError(message) {
@@ -2923,13 +3090,93 @@ async function api(path, options = {}) {
     }
   }
   // Legacy server returned {error}; FastAPI returns {detail}. Accept both so the
-  // SPA surfaces real messages during and after the cutover.
+  // SPA surfaces real messages during and after the cutover. `detail` may be a
+  // structured object (e.g. D-02 revision conflicts): keep it on the error so
+  // recovery flows can read current_revision, and flatten its message for display.
   if (!response.ok) {
-    const err = new Error(payload.error || payload.detail || `Request failed (${response.status})`);
+    const detail = payload.error || payload.detail;
+    const message =
+      typeof detail === "string"
+        ? detail
+        : (detail && detail.message) || `Request failed (${response.status})`;
+    const err = new Error(message);
     err.status = response.status; // lets callers (e.g. Build sync) tell 4xx from 5xx/network
+    err.detail = detail;
+    if (response.headers && typeof response.headers.get === "function") {
+      err.retryAfter = response.headers.get("retry-after");
+    }
     throw err;
   }
   return payload;
+}
+
+// ----- Durable outbox (R-03) -----------------------------------------------
+// Queued Build/Train edits persist to localStorage per OWNER, so a refresh,
+// crash, or sign-out can't silently drop work the user already did. Operation
+// identity survives (Build temp ids, Train attempt UUIDs) — replays after a
+// lost response are recognized server-side instead of double-counted.
+const OUTBOX_TAB_ID = Math.random().toString(36).slice(2);
+
+function currentOwnerId() {
+  return appState.accountUserId || null;
+}
+
+function persistOutbox() {
+  saveOutbox(currentOwnerId(), {
+    build: {
+      pending: appState.buildPending,
+      pendingDeletes: appState.buildPendingDeletes,
+      idMap: appState.buildIdMap,
+      rejected: appState.buildRejected || [],
+    },
+    train: {
+      pending: appState.trainSync.pending,
+      rejected: appState.trainRejected || [],
+    },
+  });
+}
+
+// Re-hydrate THIS owner's queued edits after a reload. Owner-scoped on
+// purpose: signing in as someone else never replays another account's ops.
+function restoreOutbox() {
+  const outbox = loadOutbox(currentOwnerId());
+  if (!outboxHasWork(outbox)) return false;
+  appState.buildPending = outbox.build.pending.concat(appState.buildPending);
+  appState.buildPendingDeletes = outbox.build.pendingDeletes.concat(
+    appState.buildPendingDeletes,
+  );
+  Object.assign(appState.buildIdMap, outbox.build.idMap);
+  appState.trainSync.pending = outbox.train.pending.concat(appState.trainSync.pending);
+  if (appState.trainSync.pending.length) {
+    appState.trainSync.dirty = true;
+    setTrainSyncState("dirty");
+    scheduleTrainSync();
+  }
+  return true;
+}
+
+// R-03: sign-out coordination. Persist the durable outbox FIRST (it survives
+// even if the flush can't run), then flush both queues while the session can
+// still authenticate. Reports how much work could not be saved — those drafts
+// stay in this owner's outbox and replay after the next sign-in, never to
+// another account.
+async function flushAllPendingForSignOut() {
+  persistOutbox();
+  clearTimeout(appState.buildFlushTimer);
+  appState.buildFlushTimer = null;
+  clearTimeout(appState.trainSync.timer);
+  appState.trainSync.timer = null;
+  await Promise.all([
+    flushBuildMoves().catch(() => false),
+    flushTrainSync().catch(() => false),
+  ]);
+  persistOutbox();
+  return {
+    pending:
+      appState.buildPending.length +
+      appState.buildPendingDeletes.length +
+      appState.trainSync.pending.length,
+  };
 }
 
 function postJson(path, body, options = {}) {
@@ -3221,6 +3468,17 @@ function bindCommandPalette() {
 
 async function restoreWorkspaceLocation() {
   const loc = parseWorkspaceLocation(window.location.href);
+  // F-06 return state: coming back to Games (even after a reload) restores the
+  // selected game and the active filter, so the source page is where you left it.
+  const replayReturn = loadReturnState("replay");
+  if (replayReturn) {
+    if (typeof replayReturn.filter === "string" && replayReturn.filter) {
+      appState.replayFilter = replayReturn.filter;
+    }
+    if (Number.isFinite(replayReturn.openIndex)) {
+      appState.replayOpen = new Set([replayReturn.openIndex]);
+    }
+  }
   if (loc.repertoireId && appState.signedIn) {
     try {
       const payload = await api(
@@ -3429,22 +3687,11 @@ function switchView(name, { fromUrl = false } = {}) {
     preloadTeamsView().catch(() => {});
     if (appState.signedIn) loadTeams().catch(() => { /* best-effort */ });
   }
-  // The engine widget is shared across tabs: it stays open while navigating and
-  // re-syncs to whichever board the new tab shows (Analyze or Build). In Build
-  // it docks into the inspector's Engine tab; elsewhere it floats.
-  if (name === "build") {
-    if (engineWidget.isOpen()) setBuildInspector("engine");
-    else if (buildDockTab === "engine") setBuildInspector("explorer");
-    scheduleExplorerRefresh();
-  } else {
-    undockEngine();
-  }
-  if (engineWidget && engineWidget.isOpen && engineWidget.isOpen()) {
-    if (name === "analyze" || name === "build") engineWidget.onBoardChanged();
-    // Library / Train / Games / Scout / Teams / Settings have no analysis
-    // board: the floating engine window must not follow the user there.
-    else void engineWidget.close();
-  }
+  if (name === "build") scheduleExplorerRefresh();
+  // One engine session, shown inside whichever view owns a board: Build's
+  // Explorer or Analyze's Evaluation card. Each view remembers its own on/off;
+  // views without an analysis board close it.
+  syncEngineForView(name);
 }
 
 function parseFenBoard(fen) {
@@ -3491,12 +3738,23 @@ function setPieceStyle(style) {
 function renderPieceStylePicker() {
   const host = document.getElementById("piece-style-picker");
   if (!host) return;
+  // A tiny sample of each set on board squares, so the choice is visible
+  // before (and after) picking — the label alone didn't say what you'd get.
+  const sample = ["K", "Q", "N", "p"];
   host.innerHTML = Object.keys(PIECE_SETS)
     .map((style) => {
       const active = style === appState.pieceStyle;
+      const set = PIECE_SETS[style];
+      const previews = sample
+        .map((pc) => {
+          const colorClass = pc === pc.toUpperCase() ? "piece-white" : "piece-black";
+          return `<svg class="piece ${colorClass}" viewBox="0 0 45 45" aria-hidden="true"><g>${set[pc.toLowerCase()]}</g></svg>`;
+        })
+        .join("");
       return (
         `<button type="button" class="seg-btn piece-style-option${active ? " is-active" : ""}" data-style="${escapeHtml(style)}" aria-pressed="${active}">` +
-        `${escapeHtml(PIECE_STYLE_LABELS[style] || style)}</button>`
+        `<span class="piece-style-preview" aria-hidden="true">${previews}</span>` +
+        `<span class="piece-style-name">${escapeHtml(PIECE_STYLE_LABELS[style] || style)}</span></button>`
       );
     })
     .join("");
@@ -3920,10 +4178,13 @@ function initAccountController() {
     showConfirmModal,
     refreshAutoMaiaRating,
     onLichessConnected: startLichessGameWatch,
+    // The Library setup checklist ticks "Link Lichess" from the live accounts.
+    onLichessAccountsChanged: () => dashboardView?.refreshSetup?.(),
     onOpenSettings: () => {
       switchView("settings");
       loadSettings();
     },
+    beforeSignOut: flushAllPendingForSignOut,
   });
 }
 
@@ -4278,6 +4539,32 @@ async function resolveLichessAccountId(actionLabel) {
 // "My game" button: pull the newest game across ALL linked Lichess identities
 // ("self") straight into the PGN box — no chooser. account_id is only for
 // explicit single-account callers; the default path aggregates.
+// Point Analyze's board at the user's side of a game they played: match either
+// player name against every linked Lichess identity (plus the account the game
+// came from). Leaves the orientation alone when neither side is recognisably Self.
+function orientAnalysisForSelf(white, black, extraNames = []) {
+  if (!boards.analysis) return;
+  const side = selfSide(white, black, [
+    appState.lichessUsername,
+    ...lichessAccounts().map((a) => a.username),
+    ...extraNames,
+  ]);
+  if (side) boards.analysis.setOrientation(side);
+}
+
+// Same, for a PGN the user pasted or dropped: read its White/Black headers.
+// Only re-orients when the pair of names changes, so the debounced re-parse on
+// every keystroke never undoes a manual flip.
+let lastOrientedPgnPlayers = "";
+function orientAnalysisFromPgn(text) {
+  const { white, black } = pgnPlayers(text);
+  const key = `${white}\n${black}`;
+  if (!white && !black) return;
+  if (key === lastOrientedPgnPlayers) return;
+  lastOrientedPgnPlayers = key;
+  orientAnalysisForSelf(white, black);
+}
+
 async function fetchMyLichessGame(accountId = null) {
   if (!appState.lichessUsername && !lichessAccounts().length) {
     setStatus("Connect a Lichess account first");
@@ -4302,6 +4589,8 @@ async function fetchMyLichessGame(accountId = null) {
   if (drawer) drawer.open = true;
   // Show the game in the move list right away (steppable before Analyze).
   void loadPgnIntoAnalyze(latest.pgn || "", { goToEnd: false, quiet: true }).catch(() => {});
+  orientAnalysisForSelf(latest.white, latest.black, [latest.source_account]);
+  lastOrientedPgnPlayers = `${latest.white || ""}\n${latest.black || ""}`;
   if (latest.lichess_id) markLichessSeen(latest.lichess_id);
   const source = latest.source_account ? ` · from ${latest.source_account}` : "";
   setStatus(`Loaded ${latest.white || "?"} vs ${latest.black || "?"}${source} - press Analyze`);
@@ -5470,10 +5759,16 @@ function prefillDemoPgn() {
   document.getElementById("pgn-input").value = DEMO_PGN;
 }
 
-async function runAnalysis() {
+async function runAnalysis(options = {}) {
   // Phase 2: whole-game analysis runs in the browser. The server only parses
   // the PGN (/api/analyze/prepare) and classifies + saves the browser-computed
   // evals (/api/analyze/classify-save) — it never runs an engine.
+  //
+  // F-04: `options.mode` is "single" (default — a multi-game paste is
+  // rejected BEFORE anything is stored) or "multi" (every game is imported
+  // with per-game status and `options.selectIndex` names the analyzed one).
+  const importMode = options.mode === "multi" ? "multi" : "single";
+  const selectIndex = Number(options.selectIndex) || 0;
   if (!isBrowserEngineAvailable()) {
     setStatusError(BROWSER_ENGINE_UNAVAILABLE);
     return;
@@ -5502,9 +5797,33 @@ async function runAnalysis() {
   let cancelled = false;
   const jobId = `browser-analysis-${Date.now()}`;
   try {
-    const prep = await postJson("/api/analyze/prepare", { pgn });
+    let prep;
+    try {
+      prep = await postJson("/api/analyze/prepare", {
+        pgn,
+        mode: importMode,
+        select_index: selectIndex,
+      });
+    } catch (prepError) {
+      // F-04: single mode refuses multi-game pastes BEFORE storing anything.
+      // Offer the batch path explicitly instead of silently importing extras.
+      if (prepError.status === 400 && /games in the PGN/i.test(prepError.message || "")) {
+        const go = await showConfirmModal({
+          title: "Multiple games in this PGN",
+          body: `${prepError.message} Analyze them as a batch instead? You can pick which game to analyze.`,
+          okLabel: "Analyze batch",
+          cancelLabel: "Cancel",
+        });
+        runButton.disabled = false;
+        if (go) void runAnalysis({ mode: "multi" });
+        else setStatus("Nothing was imported");
+        return;
+      }
+      throw prepError;
+    }
     const positions = prep.positions || [];
     if (!positions.length) throw new Error("No positions to analyze");
+    renderImportPicker(prep.import_summary, importMode);
 
     // Phase instrumentation: each pipeline stage reports through one `timed`
     // wrapper so the toast label always names the work actually running (the
@@ -5669,6 +5988,17 @@ async function runAnalysis() {
       phase: "classifying",
       message: "classifying",
     });
+    // F-03: the engine/model compute is DONE — checkpoint it to the device so
+    // a failed SAVE below never costs a re-analysis (retry = re-post only).
+    saveCheckpoint({
+      gameId: prep.game_id,
+      engine: prep.engine || "stockfish (browser)",
+      depth: prep.depth,
+      positions,
+      evals: [...evals.entries()],
+      maiaAssessments,
+      pgn,
+    });
 
     const payload = await timed("classify", () =>
       postJson("/api/analyze/classify-save", {
@@ -5709,6 +6039,8 @@ async function runAnalysis() {
       })
     );
 
+    clearCheckpoint(prep.game_id); // saved: the compute is confirmed durable
+    hideAnalysisRetrySave();
     appState.analysis = payload;
     resetAnalysisVariations();
     showAnalysisPly(0);
@@ -5748,8 +6080,119 @@ async function runAnalysis() {
       setStatusError(error.message);
       jobToast.failJob(error.message);
     }
+    // F-03: if the compute finished but the SAVE didn't, offer "Retry save" —
+    // the checkpoint holds the evals, so a retry never re-runs the engine.
+    const checkpoint = loadCheckpoint();
+    if (checkpoint && checkpoint.gameId) {
+      showAnalysisRetrySave(checkpoint, error.message);
+    }
   } finally {
     runButton.disabled = false;
+  }
+}
+
+// F-04: after a batch import, name what was stored and which game is being
+// analyzed, and let the user switch to another imported game.
+function renderImportPicker(summary, mode) {
+  const host = document.getElementById("analysis-import-picker");
+  if (!host) return;
+  if (!summary || mode !== "multi" || summary.total_games <= 1) {
+    host.hidden = true;
+    host.innerHTML = "";
+    return;
+  }
+  const games = summary.games || [];
+  const label = (g) =>
+    `Game ${g.index + 1}: ${g.white || "?"} vs ${g.black || "?"} — ${g.status}${g.error ? ` (${g.error})` : ""}`;
+  host.hidden = false;
+  host.innerHTML =
+    `<span class="import-summary">${summary.imported_count} new · ${summary.existing_count} already present · ${summary.failed_count} failed of ${summary.total_games}</span>` +
+    `<select id="analysis-import-select" aria-label="Choose analyzed game">` +
+    games
+      .map(
+        (g) =>
+          `<option value="${g.index}"${g.index === summary.selected_index ? " selected" : ""}${
+            g.status === "failed" ? " disabled" : ""
+          }>${escapeHtml(label(g))}</option>`,
+      )
+      .join("") +
+    `</select>`;
+  const select = host.querySelector("#analysis-import-select");
+  if (select) {
+    select.addEventListener("change", () => {
+      void runAnalysis({ mode: "multi", selectIndex: Number(select.value) });
+    });
+  }
+  setStatus(
+    `Imported ${summary.imported_count} new, ${summary.existing_count} already present, ${summary.failed_count} failed — analyzing game ${summary.selected_index + 1}.`,
+  );
+}
+
+// F-03: "Retry save" affordance for a finished-but-unsaved analysis.
+function showAnalysisRetrySave(checkpoint, message) {
+  const bar = document.getElementById("analysis-retry-save");
+  if (!bar) return;
+  const text = document.getElementById("analysis-retry-save-text");
+  if (text) {
+    text.textContent =
+      `${message || "Save failed"} — the analysis is stored on this device. ` +
+      `Retry saves it without re-analyzing.`;
+  }
+  bar.hidden = false;
+}
+
+function hideAnalysisRetrySave() {
+  const bar = document.getElementById("analysis-retry-save");
+  if (bar) bar.hidden = true;
+}
+
+// Re-post classify-save from the checkpoint — engine/model work is NOT redone.
+async function retryAnalyzeSave() {
+  const checkpoint = loadCheckpoint();
+  if (!checkpoint || !checkpoint.gameId) {
+    hideAnalysisRetrySave();
+    return;
+  }
+  const runButton = document.getElementById("run-analysis");
+  if (runButton) runButton.disabled = true;
+  try {
+    const evals = evalMapFrom(checkpoint);
+    const payload = await postJson("/api/analyze/classify-save", {
+      game_id: checkpoint.gameId,
+      engine: checkpoint.engine || "stockfish (browser)",
+      depth: checkpoint.depth,
+      positions: (checkpoint.positions || []).map((fen) => {
+        const ev = evals.get(fen) || {};
+        return {
+          fen,
+          score_cp: ev.score_cp ?? null,
+          mate_in: ev.mate_in ?? null,
+          best_move_uci: ev.best_move_uci ?? null,
+          pv: ev.pv || [],
+          depth: ev.depth ?? null,
+          nodes: ev.nodes ?? null,
+        };
+      }),
+      maia_assessments: checkpoint.maiaAssessments || [],
+    });
+    clearCheckpoint(checkpoint.gameId);
+    hideAnalysisRetrySave();
+    appState.analysis = payload;
+    resetAnalysisVariations();
+    showAnalysisPly(0);
+    await renderAnalysis(payload);
+    setStatus("Analysis saved", { severity: "success" });
+    appState.analysisSourcePgn = checkpoint.pgn || appState.analysisSourcePgn;
+    revealAnalysisResults();
+    await updateAnalysisHandoff();
+  } catch (error) {
+    if (error && error.status === 401) {
+      setStatus("Sign in to save — the analysis stays on this device", { severity: "warning" });
+      openAuthModal("login");
+    }
+    showAnalysisRetrySave(checkpoint, error.message);
+  } finally {
+    if (runButton) runButton.disabled = false;
   }
 }
 
@@ -5816,12 +6259,14 @@ function hideAnalysisResults() {
   panel.hidden = true;
   appState.analysisSourcePgn = null;
   hideAnalysisHandoff();
+  syncAnalysisEvalCard();
 }
 
 function revealAnalysisResults() {
   const panel = document.getElementById("analysis-results");
   if (!panel) return;
   panel.hidden = false;
+  syncAnalysisEvalCard();
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       panel.classList.add("is-visible");
@@ -5863,6 +6308,7 @@ async function ensureAnalyzeView() {
       showAnalysisPly,
       selectAnalysisNode,
       revealAnalysisResults,
+      onEvalChartRendered: () => syncAnalysisEvalCard(),
     });
   }
   return analyzeView;
@@ -6324,7 +6770,11 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   appState.buildNodeById = new Map(payload.nodes.map((node) => [node.id, node]));
   // Any (re)hydrate means the repertoire may have changed — drop Analyze's book copy.
   invalidateBook();
-  if (boards.build) boards.build.setOrientation(payload.color === "black" ? "black" : "white");
+  // Orient only when a repertoire opens — a reconcile re-hydrate after an
+  // autosave must not undo the user's manual flip (or rebuild the grid mid-drag).
+  if (boards.build && payload.repertoire_id !== prevRepId) {
+    boards.build.setOrientation(payload.color === "black" ? "black" : "white");
+  }
   renderBuildRepHeader();
   const nextNodeId = selectedNodeId || payload.selected_node_id || payload.nodes[0]?.id;
   await selectBuildNode(nextNodeId);
@@ -6523,28 +6973,143 @@ function explorerDrawerOpen() {
   return !!(panel && !panel.hidden && activeViewName() === "build");
 }
 
-const BUILD_DOCK_TABS = ["explorer", "coverage", "engine"];
+const BUILD_DOCK_TABS = ["explorer", "coverage"];
 let buildDockTab = "explorer";
-let engineHome = null;
 
-// Engine tab: the shared engine widget docks into the inspector instead of
-// floating over the board. It floats again everywhere else (Analyze).
-function dockEngine() {
+// ---- Live engine placement -------------------------------------------------
+// The engine never floats over the board: it lives inside the panel that
+// already answers "which move?" - Build's Explorer (pinned best line + an Eval
+// column per candidate) and Analyze's Evaluation card (game graph + live lines).
+const ENGINE_VIEW_SLOTS = { build: "explorer-engine-slot", analyze: "analysis-engine-slot" };
+const ENGINE_VIEW_PREFS = { build: "engineBuild", analyze: "engineAnalyze" };
+// Widest MultiPV the Explorer asks for. More lines means a shallower search per
+// second, so only as many as there are candidate rows, capped here.
+const ENGINE_SEARCH_MAX_LINES = 8;
+let explorerRowCount = 0;
+
+function dockEngine(slotId) {
   const el = document.getElementById("engine-window");
-  const slot = document.getElementById("engine-drawer");
-  if (!el || !slot || el.classList.contains("is-docked")) return;
-  engineHome = { parent: el.parentNode, next: el.nextSibling };
+  const slot = document.getElementById(slotId);
+  if (!el || !slot || el.parentNode === slot) return;
   for (const prop of ["left", "top", "right", "width", "height"]) el.style.removeProperty(prop);
   el.classList.add("is-docked");
   slot.appendChild(el);
 }
 
-function undockEngine() {
-  const el = document.getElementById("engine-window");
-  if (!el || !el.classList.contains("is-docked") || !engineHome) return;
-  el.classList.remove("is-docked");
-  engineHome.parent.insertBefore(el, engineHome.next);
-  engineHome = null;
+function engineWantedIn(view) {
+  const key = ENGINE_VIEW_PREFS[view];
+  return !!key && !!pref(key);
+}
+
+function syncEngineForView(view = activeViewName()) {
+  const slot = ENGINE_VIEW_SLOTS[view];
+  if (slot && engineWantedIn(view)) {
+    dockEngine(slot);
+    if (engineWidget.isOpen()) void engineWidget.onBoardChanged();
+    else void engineWidget.openForCurrent();
+  } else if (engineWidget.isOpen()) {
+    void engineWidget.close();
+  }
+  syncEngineChrome();
+}
+
+function setEngineOn(view, on) {
+  const key = ENGINE_VIEW_PREFS[view];
+  if (!key) return;
+  setPref(key, !!on);
+  syncEngineForView(view);
+}
+
+function syncEngineChrome() {
+  const buildOn = engineWantedIn("build");
+  const analyzeOn = engineWantedIn("analyze");
+  const toggle = document.getElementById("explorer-engine-toggle");
+  if (toggle) {
+    toggle.classList.toggle("is-on", buildOn);
+    toggle.setAttribute("aria-checked", String(buildOn));
+  }
+  const analyzeBtn = document.getElementById("open-engine-widget");
+  if (analyzeBtn) {
+    analyzeBtn.classList.toggle("is-active", analyzeOn);
+    analyzeBtn.setAttribute("aria-pressed", String(analyzeOn));
+  }
+  const rows = document.getElementById("explorer-rows");
+  if (rows) rows.classList.toggle("has-eval", buildOn);
+  paintExplorerEvals(buildOn ? engineWidget.lastSnapshot : null);
+  syncAnalysisEvalCard();
+}
+
+// The Evaluation card shows when there is a game graph or the engine is on;
+// the graph itself only once an analysis has plotted points (a loaded but not
+// yet analyzed game has nothing to draw, so no empty grey box).
+function syncAnalysisEvalCard() {
+  const card = document.getElementById("analysis-eval-card");
+  const graph = document.getElementById("analysis-eval-graph");
+  const results = document.getElementById("analysis-results");
+  const points = Array.isArray(appState.evalChartPoints) ? appState.evalChartPoints : [];
+  const hasGraph = !!results && !results.hidden && points.length > 0;
+  if (graph) graph.hidden = !hasGraph;
+  if (card) card.hidden = !hasGraph && !engineWantedIn("analyze");
+}
+
+// Extra lines Build wants searched so each Explorer candidate gets an eval.
+function engineExtraLines() {
+  if (activeViewName() !== "build" || !engineWantedIn("build")) return 0;
+  return Math.min(ENGINE_SEARCH_MAX_LINES, explorerRowCount);
+}
+
+// Explorer reports castling king-to-rook (e1h1); Stockfish king-two-squares.
+const CASTLE_UCI = { e1h1: "e1g1", e1a1: "e1c1", e8h8: "e8g8", e8a8: "e8c8" };
+function normalizeUci(uci) {
+  const key = String(uci || "").toLowerCase();
+  return CASTLE_UCI[key] || key;
+}
+
+function engineScoreCp(pv) {
+  if (pv.mate_in !== null && pv.mate_in !== undefined) {
+    return pv.mate_in > 0 ? 100000 - pv.mate_in : -100000 - pv.mate_in;
+  }
+  return Number(pv.score_cp) || 0;
+}
+
+function sameFenPosition(a, b) {
+  if (!a || !b) return false;
+  return a.split(" ").slice(0, 4).join(" ") === b.split(" ").slice(0, 4).join(" ");
+}
+
+// Paint each Explorer row's Eval cell from the engine's lines. Evals are White's
+// view (like the bar); the colour says how much the mover gives up vs the best.
+function paintExplorerEvals(snapshot) {
+  const rows = document.getElementById("explorer-rows");
+  if (!rows || !rows.classList.contains("has-eval")) return;
+  const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  const fen = (node && node.fen) || START_FEN;
+  const live = !!snapshot && !snapshot.error && sameFenPosition(snapshot.fen, fen);
+  const pvs = live && Array.isArray(snapshot.pvs)
+    ? snapshot.pvs.filter((pv) => Array.isArray(pv.pv_uci) && pv.pv_uci.length)
+    : [];
+  const byUci = new Map();
+  pvs.forEach((pv) => {
+    const key = normalizeUci(pv.pv_uci[0]);
+    if (!byUci.has(key)) byUci.set(key, pv);
+  });
+  const best = pvs.length ? engineScoreCp(pvs[0]) : 0;
+  const sign = live && snapshot.side_to_move === "black" ? -1 : 1;
+  rows.querySelectorAll(".explorer-row").forEach((row) => {
+    const cell = row.querySelector(".explorer-eval");
+    if (!cell) return;
+    cell.classList.remove("is-best", "is-ok", "is-weak");
+    const pv = byUci.get(normalizeUci(row.dataset.uci));
+    if (!pv) {
+      cell.textContent = pvs.length ? "\u2014" : "\u2026";
+      cell.title = pvs.length ? "Outside the engine's top lines" : "Calculating\u2026";
+      return;
+    }
+    cell.textContent = engineWidget._formatEval(pv.score_cp, pv.mate_in);
+    const drop = (best - engineScoreCp(pv)) * sign;
+    cell.classList.add(drop <= 20 ? "is-best" : drop <= 80 ? "is-ok" : "is-weak");
+    cell.title = `Stockfish, depth ${pv.depth || snapshot.current_depth || 0}`;
+  });
 }
 
 function setBuildInspector(tool) {
@@ -6552,14 +7117,11 @@ function setBuildInspector(tool) {
   const panels = {
     explorer: document.getElementById("explorer-drawer"),
     coverage: document.getElementById("coverage-drawer"),
-    engine: document.getElementById("engine-drawer"),
   };
   const buttons = {
     explorer: document.getElementById("build-tool-explorer"),
     coverage: document.getElementById("build-tool-coverage"),
-    engine: document.getElementById("build-tool-engine"),
   };
-  const wasEngine = buildDockTab === "engine";
   buildDockTab = tab;
   BUILD_DOCK_TABS.forEach((name) => {
     const on = name === tab;
@@ -6570,16 +7132,14 @@ function setBuildInspector(tool) {
     button.setAttribute("aria-selected", String(on));
     button.tabIndex = on ? 0 : -1;
   });
-  const tools = document.getElementById("build-dock-tools");
   const dbs = document.getElementById("inspector-dbs");
   const opening = document.getElementById("explorer-opening");
-  const info = document.getElementById("inspector-info");
+  const engineSwitch = document.getElementById("explorer-engine-switch");
   const scan = document.getElementById("coverage-run");
   const score = document.getElementById("coverage-score");
-  if (tools) tools.hidden = tab === "engine";
   if (dbs) dbs.hidden = tab !== "explorer";
   if (opening) opening.hidden = tab !== "explorer";
-  if (info) info.hidden = tab === "engine";
+  if (engineSwitch) engineSwitch.hidden = tab !== "explorer";
   if (score) score.hidden = tab !== "coverage" || !score.dataset.ready;
   if (scan) {
     const readOnly = typeof isBuildReadOnly === "function" && isBuildReadOnly();
@@ -6587,16 +7147,7 @@ function setBuildInspector(tool) {
     scan.disabled = readOnly;
     scan.title = readOnly ? "Read-only — copy to your account first" : "Scan coverage with Maia3";
   }
-  if (tab === "engine") {
-    dockEngine();
-    if (!engineWidget.isOpen()) void engineWidget.openForCurrent();
-  } else if (wasEngine) {
-    if (engineWidget.isOpen()) void engineWidget.close();
-    const el = document.getElementById("engine-window");
-    if (el) el.hidden = true;
-    undockEngine();
-  }
-  if (tab !== "engine") paintInspectorScope();
+  paintInspectorScope();
   if (tab === "explorer") refreshExplorerPanel();
 }
 
@@ -6635,8 +7186,18 @@ function onInspectorInfo() {
   pop.id = "inspector-info-pop";
   pop.setAttribute("role", "status");
   pop.textContent = text;
-  const head = document.getElementById("build-dock-tools");
-  (head || info.parentElement).appendChild(pop);
+  const head = document.getElementById("build-dock-tools") || info.parentElement;
+  head.appendChild(pop);
+  // Anchor under the ⓘ itself (not the toolbar's far edge), clamped so the
+  // bubble never spills past the toolbar's right side.
+  const headRect = head.getBoundingClientRect();
+  const infoRect = info.getBoundingClientRect();
+  const left = Math.max(
+    0,
+    Math.min(infoRect.left - headRect.left - 8, headRect.width - pop.offsetWidth)
+  );
+  pop.style.left = `${Math.round(left)}px`;
+  pop.style.right = "auto";
   window.setTimeout(() => pop?.remove(), 4000);
 }
 
@@ -6705,8 +7266,10 @@ function renderExplorerRows(stats) {
   if (!rows) return;
   const openingEl = document.getElementById("explorer-opening");
   if (openingEl) openingEl.textContent = stats.opening || "";
+  explorerRowCount = stats.moves.length;
   if (!stats.moves.length) {
     rows.innerHTML = '<div class="muted hint">No games reached this position - true novelty territory.</div>';
+    void engineWidget.onSearchWidthChanged();
     return;
   }
   // Dot the continuations already in the repertoire at this node, so gaps between
@@ -6719,12 +7282,13 @@ function renderExplorerRows(stats) {
   );
   const pct = (n) => (n >= 14 ? `${n}%` : "");
   rows.innerHTML =
-    '<div class="explorer-head" aria-hidden="true"><span>Move</span><span>Games</span><span>White / Draw / Black</span></div>' +
+    '<div class="explorer-head" aria-hidden="true"><span>Move</span><span class="explorer-eval">Eval</span><span>Games</span><span>White / Draw / Black</span></div>' +
     stats.moves
     .map(
       (m) => `
     <button type="button" class="explorer-row" data-uci="${escapeHtml(m.uci)}" title="Add ${escapeHtml(m.san)} to the repertoire">
       <span class="explorer-san">${escapeHtml(m.san)}${inRep.has(m.uci) ? '<span class="explorer-inrep" title="In your repertoire">&#9679;</span>' : ""}</span>
+      <span class="explorer-eval">&hellip;</span>
       <span class="explorer-games">${explorerModule.formatGames(m.total)}</span>
       <span class="explorer-bar" aria-label="White ${m.whitePct}% / draw ${m.drawPct}% / Black ${m.blackPct}%">
         <span class="explorer-bar-w" style="width:${m.whitePct}%">${pct(m.whitePct)}</span><span class="explorer-bar-d" style="width:${m.drawPct}%">${pct(m.drawPct)}</span><span class="explorer-bar-b" style="width:${m.blackPct}%">${pct(m.blackPct)}</span>
@@ -6735,6 +7299,8 @@ function renderExplorerRows(stats) {
   rows.querySelectorAll(".explorer-row").forEach((btn) => {
     btn.addEventListener("click", () => onBuildBoardMove(btn.dataset.uci));
   });
+  paintExplorerEvals(engineWidget.lastSnapshot);
+  void engineWidget.onSearchWidthChanged();
 }
 
 function renderBuilderTreeEmptyState() {
@@ -6952,6 +7518,10 @@ const SYNC_CHIP_VARIANTS = {
   syncing: { cls: "is-syncing", text: "↻ Saving…" },
   error: { cls: "is-error", text: "⚠ Offline — will retry" },
   rejected: { cls: "is-error", text: "⚠ Some attempts couldn't be saved" },
+  // R-01/R-04: unconfirmed work is never claimed as Saved. These two states
+  // say WHY nothing is moving: waiting for sign-in vs a stale-edit conflict.
+  blocked: { cls: "is-error", text: "⚠ Waiting for sign-in — edits kept" },
+  conflict: { cls: "is-error", text: "⚠ Changed elsewhere — draft kept" },
 };
 
 function renderSyncChip(el, state) {
@@ -7060,6 +7630,7 @@ async function renderSmartSummary(smart, stats, after) {
 
 // ----- Debounce + flush -------------------------------------------------------
 function scheduleBuildFlush() {
+  persistOutbox(); // R-03: queued edits hit localStorage before any timer/network
   clearTimeout(appState.buildFlushTimer);
   appState.buildFlushTimer = setTimeout(() => {
     appState.buildFlushTimer = null;
@@ -7075,6 +7646,10 @@ function flushBuildMoves() {
   if (appState.buildFlushing) return appState.buildFlushing;
   if (!appState.build || (!appState.buildPending.length && !appState.buildPendingDeletes.length))
     return Promise.resolve(true);
+  // R-03: one flusher per owner at a time — a second tab holding the lock
+  // means its flush is already carrying these ops (server receipts are the
+  // hard guarantee; this avoids duplicate traffic and double toasts).
+  if (!acquireFlushLock(currentOwnerId(), OUTBOX_TAB_ID)) return Promise.resolve(false);
   clearTimeout(appState.buildFlushTimer);
   appState.buildFlushTimer = null;
 
@@ -7123,6 +7698,7 @@ function flushBuildMoves() {
       }
       const idMap = payload.id_map || {};
       Object.assign(appState.buildIdMap, idMap);
+      persistOutbox();
 
       // Translate the current selection + branch pick through tmp -> real.
       const prevSelection = appState.buildCurrentNodeId;
@@ -7161,53 +7737,77 @@ function flushBuildMoves() {
         prevSelection !== appState.buildCurrentNodeId
       ) {
         await selectBuildNode(prevSelection);
-      }
-
-      appState.buildSyncRetry = 0;
+      }      appState.buildSyncRetry = 0;
+      persistOutbox();
       if (appState.buildPending.length || appState.buildPendingDeletes.length) {
         setBuildSync("dirty");
         scheduleBuildFlush();
       } else {
+        clearOutbox(currentOwnerId());
         setBuildSync("saved");
       }
       return true;
     } catch (error) {
-      const status = error && error.status;
-      if (status && status >= 400 && status < 500) {
-        // Validation 4xx shouldn't happen for legal moves, but defend: drop the bad
-        // batches and re-hydrate from server truth so the local tree can't drift.
-        setStatusError(error.message);
-        try {
-          const fresh = await api(
-            `/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`
-          );
-          await hydrateBuild(fresh, fresh.selected_node_id);
-          reapplyPendingBuildDeletes();
-        } catch (_) {
-          /* best-effort resync */
-        }
+      // R-01/R-04: every failure class gets its own outcome. NOTHING
+      // unconfirmed is ever dropped or claimed as Saved — 401/403/409/429
+      // used to lose the whole batch here.
+      const info = classifySyncError(error);
+      const inFlightCount = batch.length + deleteBatch.length;
+      if (info.kind === "validation") {
+        // A genuinely invalid payload must not take legitimate edits down
+        // with it: isolate by replaying the ops one at a time — whatever
+        // lands is saved, whatever fails is kept, marked, and reportable.
+        const rejected = await isolateRejectedBuildOps(batch, deleteBatch, repertoireId);
+        appState.buildRejected = (appState.buildRejected || []).concat(rejected);
+        persistOutbox();
+        setStatusError(
+          rejected.length
+            ? `${rejected.length} edit${rejected.length === 1 ? "" : "s"} could not be saved and are kept for review. The rest saved.`
+            : error.message,
+        );
         if (appState.buildPending.length || appState.buildPendingDeletes.length) {
           setBuildSync("dirty");
           scheduleBuildFlush();
+        } else if (appState.buildRejected.length) {
+          setBuildSync("rejected");
         } else {
+          clearOutbox(currentOwnerId());
           setBuildSync("saved");
         }
         return false;
       }
-      // Network / 5xx: requeue the in-flight batches ahead of any newer ops and
-      // back off exponentially. The next played move also re-arms a flush.
-      // Adds whose node was deleted locally while the batch was in flight stay
-      // dropped — recreating them server-side would resurrect a deleted branch.
+      // auth / csrf / conflict / rate-limit / network / server: the batch was
+      // never acknowledged — requeue it ahead of newer ops (op identity is
+      // stable, so a later replay is safe even if this one actually landed).
       appState.buildPending = batch
         .filter((m) => appState.buildNodeById.has(m.tempId))
         .concat(appState.buildPending);
       appState.buildPendingDeletes = deleteBatch.concat(appState.buildPendingDeletes);
+      persistOutbox();
+      setStatus(describeSyncError(info, { count: inFlightCount }), info.kind === "conflict" ? "warning" : "info");
+      if (info.pauseForAuth) {
+        // R-04: 401 needs a sign-in, not a backoff timer. Stop sending until
+        // loadSignedInWorkspace re-arms the flush after sign-in.
+        appState.syncPausedForAuth = true;
+        setBuildSync("blocked");
+        return false;
+      }
+      if (info.kind === "conflict") {
+        // D-02: base revision was stale — the draft stays queued; the user
+        // reconciles (reload the tree) and the queue replays after it.
+        setBuildSync("conflict");
+        return false;
+      }
       appState.buildSyncRetry = Math.min(appState.buildSyncRetry + 1, 6);
       setBuildSync("error");
-      const delay = Math.min(
-        BUILD_FLUSH_MAX_BACKOFF_MS,
-        1000 * 2 ** (appState.buildSyncRetry - 1)
-      );
+      const delay =
+        info.retryAfterMs != null
+          ? info.retryAfterMs
+          : Math.min(
+              BUILD_FLUSH_MAX_BACKOFF_MS,
+              1000 * 2 ** (appState.buildSyncRetry - 1)
+            );
+
       appState.buildFlushTimer = setTimeout(() => {
         appState.buildFlushTimer = null;
         flushBuildMoves();
@@ -7215,9 +7815,46 @@ function flushBuildMoves() {
       return false;
     } finally {
       appState.buildFlushing = null;
+      releaseFlushLock(OUTBOX_TAB_ID);
     }
   })();
   return appState.buildFlushing;
+}
+
+// R-01: isolate a permanently-rejected batch. Deletes first (per id), then
+// adds one by one: each success is a save, each failure becomes a kept,
+// reportable rejection instead of a silent drop of the whole batch.
+async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId) {
+  const rejected = [];
+  for (const entry of deleteBatch) {
+    const id = resolveBuildId(entry);
+    if (String(id).startsWith("tmp-")) continue; // never reached the server
+    try {
+      await postJson("/api/build/delete-nodes", {
+        repertoire_id: repertoireId,
+        node_ids: [id],
+      });
+    } catch (err) {
+      rejected.push({ kind: "delete", id, message: err.message, status: err.status });
+    }
+  }
+  for (const m of batch) {
+    try {
+      await postJson("/api/build/add-moves", {
+        repertoire_id: repertoireId,
+        moves: [{ tempId: m.tempId, parentRef: m.parentRef, uci: m.uci }],
+      });
+    } catch (err) {
+      if (classifySyncError(err).retriable) {
+        // Not actually a permanent rejection (network blip mid-isolation):
+        // keep it queued like any retriable failure.
+        appState.buildPending.push(m);
+        continue;
+      }
+      rejected.push({ kind: "add", tempId: m.tempId, uci: m.uci, message: err.message, status: err.status });
+    }
+  }
+  return rejected;
 }
 
 // Re-insert still-pending provisional nodes onto the freshly hydrated tree (which
@@ -7407,6 +8044,7 @@ function beaconFlushBuild() {
   // Close undo windows so their deletes ride this last-ditch flush (the rep
   // delete commit is itself keepalive-safe).
   commitPendingUndos();
+  persistOutbox(); // R-03: the durable copy lands even if the keepalive drops
   if (!appState.build) return;
   if (!appState.buildPending.length && !appState.buildPendingDeletes.length) return;
   const token = readCsrfCookie();
@@ -7597,6 +8235,7 @@ async function fillPgnInputFromFile(file) {
     const drawer = document.querySelector("#view-analyze .drawer");
     if (drawer) drawer.open = true;
     void loadPgnIntoAnalyze(text, { goToEnd: false, quiet: true }).catch(() => {});
+    orientAnalysisFromPgn(text);
     setStatus(`Loaded ${file.name} - press Analyze`);
   } catch (_) {
     setStatus("Could not read file", { severity: "error" });
@@ -9239,6 +9878,7 @@ async function openPlayInAnalyze() {
   const drawer = document.getElementById("pgn-drawer");
   if (drawer) drawer.open = true;
   switchView("analyze");
+  if (boards.analysis) boards.analysis.setOrientation(play.userColor === "black" ? "black" : "white");
   if (input) {
     await loadPgnIntoAnalyze(input.value, { goToEnd: true, quiet: true }).catch(() => {});
   }
@@ -9258,6 +9898,10 @@ async function submitTrainingMove(playedUci) {
   }
   const prompt = currentTrainingPrompt();
   if (!prompt || !playedUci || appState.trainBusy) return;
+  // A mode switch replaces appState.training; every await below re-checks it so
+  // an abandoned session never paints onto the new mode's board.
+  const training = appState.training;
+  const superseded = () => appState.training !== training || appState.smart;
   // Land the dragged move on the board right away; the server response below
   // decides whether it advances (correct) or resets (wrong).
   await optimisticBoardMove(boards.train, prompt.fen_before, playedUci);
@@ -9321,6 +9965,7 @@ async function submitTrainingMove(playedUci) {
     playSound("capture");
     if (appState.training) appState.training.prompt = result.prompt;
     await sleep(1450);
+    if (superseded()) return;
     appState.trainBusy = false;
     if (result.prompt) await renderTraining(result.prompt);
     return;
@@ -9346,6 +9991,7 @@ async function submitTrainingMove(playedUci) {
   // 2) After a beat, let the opponent reply as its own animated step.
   if (result.reply_uci && result.fen_after_reply) {
     await sleep(520);
+    if (superseded()) return;
     boards.train.setPosition({
       fen: result.fen_after_reply,
       legalMoves: [],
@@ -9356,6 +10002,7 @@ async function submitTrainingMove(playedUci) {
   } else {
     await sleep(480);
   }
+  if (superseded()) return;
 
   appState.trainBusy = false;
   if (result.prompt) {
@@ -9738,6 +10385,11 @@ async function startSmartTraining(options = {}) {
     blitz: blitzEnabled(),
     timeouts: 0,
   };
+  // F-06: this session is the first practice for every queued "train this
+  // mistake" handoff — stamp takenAt so the mistake→practice time is measurable.
+  for (const handoff of pendingHandoffs({ reason: "practice-missed-move" })) {
+    takeHandoff({ key: handoff.key });
+  }
   setBlitzBarVisible(appState.smart.blitz);
   if (boards.train && payload.color) {
     boards.train.setOrientation(payload.color === "black" ? "black" : "white");
@@ -9818,7 +10470,10 @@ async function presentSmartPrompt(prompt) {
     document.getElementById("train-board-label").textContent =
       `${cardMeta.repertoire_name || smart.repertoireName} - you play ${cardMeta.color}`;
   }
-  let cueUci = board.lastMove || null;
+  // The previous card's last move only counts as the cue when the board is
+  // already sitting on this prompt's position; a jump to a new position (e.g.
+  // a move-1 card back at the start) must not keep the old highlight.
+  let cueUci = board.fen === prompt.fen_before ? board.lastMove || null : null;
   if (board.fen !== prompt.fen_before) {
     appState.trainBusy = true;
     syncTrainSessionControls();
@@ -10050,6 +10705,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   setTrainBanner("correct", praise, target.san ? `You played ${target.san}` : "");
   if (target.reply && target.reply.uci && target.reply.fen_after) {
     await sleep(520);
+    if (appState.smart !== smart) return; // mode switched mid-animation
     boards.train.setPosition({
       fen: target.reply.fen_after,
       legalMoves: [],
@@ -10163,6 +10819,10 @@ async function finishSmartSession() {
   } catch (_) {
     // The summary is a bonus — never block the finish on it.
   }
+  // The flush + summary fetch take a moment; if the user already moved on
+  // (switched to Line rehearsal / Play, or restarted), the report belongs to a
+  // session that is no longer on screen — don't paint it over the new mode.
+  if (appState.smart !== smart || (appState.trainMode || "smart") !== "smart") return;
   await renderSmartSummary(smart, stats, after);
   syncTrainSessionControls();
 }
@@ -10196,6 +10856,7 @@ function markTrainPositionDirty() {
 
 function scheduleTrainSync() {
   const sync = appState.trainSync;
+  persistOutbox(); // R-03: the queue is durable from the moment it exists
   clearTimeout(sync.timer);
   sync.timer = setTimeout(() => {
     sync.timer = null;
@@ -10229,6 +10890,7 @@ function flushTrainSync() {
 
   sync.flushing = (async () => {
     let outcome;
+    let lastError = null;
     try {
       outcome = await flushGroups(groups, async (sessionId, attempts) => {
         const body = { session_id: sessionId, attempts, local_date: localDateString() };
@@ -10236,23 +10898,40 @@ function flushTrainSync() {
           body.card_index = smart.cardIndex;
           body.queue = smart.queue.map((c) => c.encoded);
         }
-        const result = await postJson("/api/train/smart/sync", body);
-        if (result.day_streak) appState.dayStreak = result.day_streak;
+        try {
+          const result = await postJson("/api/train/smart/sync", body);
+          if (result.day_streak) appState.dayStreak = result.day_streak;
+        } catch (error) {
+          lastError = error;
+          throw error;
+        }
       });
     } finally {
       sync.flushing = null;
     }
+    // R-02: permanently rejected attempts are reported on EVERY round — a
+    // mixed failure (one rejected group + one retriable) used to hide the
+    // rejection behind the retry, so attempts vanished without a word. The
+    // rejected groups are kept (outbox) for review/export, never dropped.
+    const rejectedCount = (outcome.rejectedGroups || []).reduce(
+      (n, group) => n + (group.attempts ? group.attempts.length : 0),
+      0,
+    );
+    if (rejectedCount) {
+      appState.trainRejected = (appState.trainRejected || []).concat(outcome.rejectedGroups);
+      persistOutbox();
+    }
+    const info = lastError ? classifySyncError(lastError) : null;
+    const failedCount = outcome.failedGroups
+      ? outcome.failedGroups.reduce((n, [, attempts]) => n + attempts.length, 0)
+      : 0;
     if (!outcome.retriable) {
       sync.retry = 0;
-      // Permanently rejected attempts (e.g. the session's repertoire is gone)
-      // leave the queue, but "Saved" must never be claimed for them.
-      const rejectedCount = (outcome.rejectedGroups || []).reduce(
-        (n, group) => n + (group.attempts ? group.attempts.length : 0),
-        0,
-      );
       if (rejectedCount) {
         setStatus(
-          `${rejectedCount} training attempt${rejectedCount === 1 ? "" : "s"} could not be saved`,
+          `${rejectedCount} training attempt${rejectedCount === 1 ? "" : "s"} could not be saved${
+            failedCount ? `; ${failedCount} kept for retry` : ""
+          }`,
           { severity: "error" },
         );
       }
@@ -10262,21 +10941,40 @@ function flushTrainSync() {
       } else if (rejectedCount) {
         setTrainSyncState("rejected");
       } else {
+        clearOutbox(currentOwnerId());
         setTrainSyncState("saved");
       }
       return rejectedCount === 0;
     }
-    setTrainSyncState("error");
+    // R-02 (mixed failure): even while some groups retry, the permanently
+    // rejected ones get their own message — "1 kept for review, 2 will retry".
+    if (rejectedCount) {
+      setStatus(
+        `${rejectedCount} training attempt${rejectedCount === 1 ? "" : "s"} kept for review; ` +
+          `${failedCount} will retry`,
+        { severity: "error" },
+      );
+    }
+    setTrainSyncState(info && info.pauseForAuth ? "blocked" : "error");
     // Requeue failed groups ahead of newer attempts and back off. SR deltas
     // are precious but small; they also flush on hide/unload and session end.
     sync.pending = ungroupAttempts(outcome.failedGroups).concat(sync.pending);
+    persistOutbox();
     // Only re-mark the position dirty if the current session's group is the
     // one that failed — other sessions carry no position payload.
     if (smart && outcome.failedGroups.some(([sessionId]) => sessionId === smart.sessionId)) {
       sync.dirty = true;
     }
+    if (info && info.pauseForAuth) {
+      // R-04: 401 waits for a sign-in — a backoff timer can't fix it. The
+      // flush re-arms from loadSignedInWorkspace after sign-in.
+      return false;
+    }
     sync.retry = Math.min(sync.retry + 1, 6);
-    const delay = Math.min(TRAIN_SYNC_MAX_BACKOFF_MS, 1000 * 2 ** (sync.retry - 1));
+    const delay =
+      info && info.retryAfterMs != null
+        ? info.retryAfterMs
+        : Math.min(TRAIN_SYNC_MAX_BACKOFF_MS, 1000 * 2 ** (sync.retry - 1));
     sync.timer = setTimeout(() => {
       sync.timer = null;
       flushTrainSync();
@@ -10290,6 +10988,7 @@ function flushTrainSync() {
 // mechanics as beaconFlushBuild; sendBeacon can't carry the CSRF header).
 function beaconFlushTrain() {
   const sync = appState.trainSync;
+  persistOutbox(); // R-03: attempts survive the tab even if the beacon drops
   if (!sync.pending.length && !sync.dirty) return;
   const token = readCsrfCookie();
   const smart = appState.smart;
@@ -10844,17 +11543,26 @@ async function ensureReplayView() {
       onToggleFilter: (kind) => {
         appState.replayFilter = appState.replayFilter === kind ? null : kind;
         appState.replayOpen.clear();
+        saveReturnState("replay", { filter: appState.replayFilter, openIndex: null });
         void renderReplayResults(appState.replayResults).catch(() => {});
       },
       onToggleGame: (index) => {
         appState.replayOpen = new Set([index]);
+        saveReturnState("replay", { filter: appState.replayFilter, openIndex: index });
         void renderReplayResults(appState.replayResults).catch(() => {});
       },
-      onTrainMiss: () =>
-        goToSmartTraining("Your missed move is due now — press Start"),
-      onBuildReply: (game) =>
-        editRepertoire(game.repertoire_id, game.last_matched_node_id || null),
-      onAnalyze: (game) => replayToAnalyze(game),
+      onTrainMiss: (game, focus) => {
+        rememberHandoff(gameHandoff(game, focus, "practice-missed-move"));
+        goToSmartTraining("Your missed move is due now — press Start");
+      },
+      onBuildReply: (game, focus) => {
+        rememberHandoff(gameHandoff(game, focus, "build-reply"));
+        editRepertoire(game.repertoire_id, game.last_matched_node_id || null);
+      },
+      onAnalyze: (game, focus) => {
+        rememberHandoff(gameHandoff(game, focus, "review-in-analyze"));
+        replayToAnalyze(game);
+      },
     });
   }
   return replayView;
@@ -10862,6 +11570,24 @@ async function ensureReplayView() {
 
 async function renderReplayResults(payload) {
   return (await ensureReplayView()).renderReplayResults(payload);
+}
+
+// F-06: the Games→Train/Analyze handoff record — source game, the decision
+// ply + anchor FEN (the position where the user left prep), the user's side and
+// the matched repertoire. Identity covers the whole tuple, so white/black,
+// transpositions and different root FENs never interleave.
+function gameHandoff(game, focus, reason) {
+  return {
+    source: "games",
+    sourceView: "replay",
+    reason,
+    gameId: game.lichess_id || null,
+    lineUcis: [game.expected_move_uci].filter(Boolean),
+    ply: Number(game.departure_ply) || null,
+    anchorFen: (focus && focus.fen) || null,
+    side: game.user_color === "black" ? "black" : "white",
+    repertoireId: game.repertoire_id ?? null,
+  };
 }
 
 // "Review in Analyze": rebuild the game's PGN from the fetched move list and
@@ -10886,8 +11612,24 @@ function replayToAnalyze(game) {
   const drawer = document.getElementById("pgn-drawer");
   if (drawer) drawer.open = true;
   switchView("analyze");
+  orientAnalysisForSelf(game.white, game.black);
   // Populate the move list immediately so the game is steppable before Analyze.
-  if (input) void loadPgnIntoAnalyze(input.value, { goToEnd: false, quiet: true }).catch(() => {});
+  if (input) {
+    void loadPgnIntoAnalyze(input.value, { goToEnd: false, quiet: true })
+      .then(() => {
+        // F-06: land on the decision position (the ply before the divergence)
+        // instead of move 1 — the handoff carries the anchor so the user never
+        // has to re-find the moment in the game.
+        const handoff = takeHandoff({
+          reason: "review-in-analyze",
+          gameId: game.lichess_id || undefined,
+        });
+        const departPly =
+          (handoff && handoff.ply != null ? handoff.ply : Number(game.departure_ply)) || 1;
+        return showAnalysisPly(Math.max(0, departPly - 1));
+      })
+      .catch(() => {});
+  }
   setStatus(
     `Loaded ${game.white || "?"} vs ${game.black || "?"} — press Analyze game`
   );
@@ -11675,6 +12417,16 @@ function bindEvents() {
   });
 
   document.getElementById("run-analysis").addEventListener("click", runAnalysis);
+  // F-03: retry just the save from the on-device checkpoint (no re-analysis).
+  document.getElementById("analysis-retry-save-btn")?.addEventListener("click", () => {
+    void retryAnalyzeSave();
+  });
+  document.getElementById("analysis-retry-save-discard")?.addEventListener("click", () => {
+    const checkpoint = loadCheckpoint();
+    if (checkpoint && checkpoint.gameId) clearCheckpoint(checkpoint.gameId);
+    hideAnalysisRetrySave();
+    setStatus("Discarded the unsaved analysis on this device");
+  });
   const createRepFromGame = document.getElementById("create-repertoire-from-game");
   if (createRepFromGame) {
     createRepFromGame.addEventListener("click", () => {
@@ -11713,7 +12465,7 @@ function bindEvents() {
     });
   }
   document.getElementById("inspector-info")?.addEventListener("click", onInspectorInfo);
-  const dockTabs = { explorer: "build-tool-explorer", coverage: "build-tool-coverage", engine: "build-tool-engine" };
+  const dockTabs = { explorer: "build-tool-explorer", coverage: "build-tool-coverage" };
   Object.entries(dockTabs).forEach(([name, id]) => {
     const tab = document.getElementById(id);
     if (!tab) return;
@@ -11726,7 +12478,7 @@ function bindEvents() {
     tab.addEventListener("keydown", (event) => {
       // ← / → are reserved for stepping the board everywhere in Build (a
       // clicked tab keeps focus, so a tablist arrow handler here would switch
-      // Explorer → Coverage → Engine while the user is stepping moves).
+      // Explorer → Coverage while the user is stepping moves).
       const next = event.key === "Home" ? 0 : event.key === "End" ? BUILD_DOCK_TABS.length - 1 : -1;
       if (next < 0) return;
       event.preventDefault();
@@ -11748,6 +12500,7 @@ function bindEvents() {
       syncViewHeads();
       clearTimeout(analyzePgnInputTimer);
       analyzePgnInputTimer = setTimeout(() => {
+        orientAnalysisFromPgn(pgnInput.value);
         void loadPgnIntoAnalyze(pgnInput.value, { goToEnd: true, quiet: true }).catch(
           () => {}
         );
@@ -11756,7 +12509,10 @@ function bindEvents() {
   }
   document
     .getElementById("open-engine-widget")
-    .addEventListener("click", () => engineWidget.openForCurrent());
+    .addEventListener("click", () => setEngineOn("analyze", !engineWantedIn("analyze")));
+  document
+    .getElementById("explorer-engine-toggle")
+    ?.addEventListener("click", () => setEngineOn("build", !engineWantedIn("build")));
   bindEvalChart();
   document.getElementById("analysis-start").addEventListener("click", () => {
     void analysisTreeNav("start").catch(() => {});
@@ -11891,6 +12647,7 @@ function bindEvents() {
         .forEach((b) => b.classList.toggle("is-active", b === btn));
       appState.trainMode = mode;
       appState.play = null;
+      appState.trainBusy = false;
       if (mode !== "smart") appState.smart = null;
       if (mode !== "all_lines") appState.training = null;
       clearBlitzTimer();
@@ -12038,6 +12795,7 @@ async function init() {
     onMove: (moveUci) => submitTrainingMove(moveUci),
   });
   jobToast.bind();
+  bindStatusPillAvoidance();
   engineWidget.bind();
   positionCoach.bind();
   bindEvents();
@@ -12104,6 +12862,22 @@ async function loadSignedInWorkspace() {
   // so signing in doesn't need to re-fetch them.
   renderBuilderTree();
   await loadDashboard();
+  // R-03/R-04: this OWNER's durable outbox comes back after a reload or an
+  // earlier sign-out, and any flush paused waiting for sign-in re-arms.
+  appState.syncPausedForAuth = false;
+  restoreOutbox();
+  if (appState.buildPending.length || appState.buildPendingDeletes.length) {
+    setBuildSync("dirty");
+    scheduleBuildFlush();
+  }
+  // F-03: a finished-but-unsaved analysis waits for its retry — surface it.
+  const checkpoint = loadCheckpoint();
+  if (checkpoint && checkpoint.gameId) {
+    setStatus(
+      `Unsaved analysis on this device (${checkpoint.positions?.length || 0} positions) — open Analyze and press Retry save.`,
+      { severity: "warning" },
+    );
+  }
 }
 
 appReadyPromise = init().catch((error) => setStatusError(error.message));

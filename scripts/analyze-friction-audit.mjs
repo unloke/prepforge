@@ -6,14 +6,14 @@
 //
 //   node scripts/analyze-friction-audit.mjs
 //
-// Writes docs/analyze-friction-audit-evidence.json
+// Writes tmp/audits/analyze-friction-audit-evidence.json
 // Exits 1 when any required signed-in scenario fails.
 import { writeFile, mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const OUT_JSON = join(ROOT, "docs", "analyze-friction-audit-evidence.json");
+const OUT_JSON = join(ROOT, "tmp", "audits", "analyze-friction-audit-evidence.json");
 const BASE = process.env.AUDIT_BASE_URL || "http://127.0.0.1:8000";
 const ANALYSIS_TIMEOUT_MS = Number(process.env.AUDIT_ANALYSIS_TIMEOUT_MS || 180_000);
 

@@ -77,6 +77,11 @@ class Settings(BaseSettings):
     # Session cookie.
     session_cookie_name: str = Field(default="pf_session")
     session_ttl_days: int = Field(default=30)
+    # Password recovery (F-02): reset links are single-use and short-lived.
+    password_reset_ttl_minutes: int = Field(default=60)
+    # Dev/test only: return the reset link in the API response so flows can be
+    # completed without a mail inbox. Ignored in production.
+    password_reset_dev_link: bool = Field(default=False)
     # Cap concurrent sessions per user (oldest pruned on new login). 0 disables.
     session_max_per_user: int = Field(default=10)
 

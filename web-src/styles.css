@@ -1721,6 +1721,17 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .step-text b { display: block; }
 .step-text p { margin: 0; color: var(--muted); font-size: var(--fs-s); }
+/* Setup checklist: progress in the head, finished steps tick and quiet down. */
+.steps .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.setup-count { color: var(--muted); font-size: var(--fs-xs); font-weight: 650; font-variant-numeric: tabular-nums; }
+.steps .card-head h2 { margin-right: auto; }
+.setup-dismiss { align-self: center; min-width: 24px; height: 24px; padding: 0; border-color: transparent; background: none; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
+.setup-dismiss:hover { color: var(--text); background: var(--surface-hover); }
+.setup-bar { height: 3px; margin: 0 12px 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+.setup-bar i { display: block; height: 100%; background: var(--good); transition: width 0.3s ease; }
+.step-n.is-done { background: color-mix(in srgb, var(--good) 22%, transparent); color: var(--good-text); }
+.step.is-done .step-text b { color: var(--muted); font-weight: 600; }
+.step-done { color: var(--good-text); font-size: var(--fs-xs); font-weight: 650; }
 
 /* ≤ 1279px: lower-value columns drop, the preview narrows */
 @media (max-width: 1279px) {
@@ -3094,11 +3105,16 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   grid-template-columns: minmax(0, 1fr) 340px;
   gap: 12px;
 }
-.scout-main { min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding-right: 2px; }
+/* position: relative makes the scrolling columns the containing block for
+   absolutely-positioned descendants (the .visually-hidden chart summaries).
+   Without it those resolve against the page and, sitting deep inside the
+   scrolled list, stretched the document — the whole Scout page could be
+   dragged down into empty space. */
+.scout-main { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding-right: 2px; }
 .scout-main > * { flex-shrink: 0; }
 .scout-results { display: flex; flex-direction: column; gap: 10px; }
 .scout-v3-results[hidden] { display: none; }
-.scout-side { min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: auto; padding: 12px; }
+.scout-side { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: auto; padding: 12px; }
 .scout-side[hidden] { display: none; }
 /* No report yet: the detail card has nothing to show. */
 .scout-panel:not(:has(.scout-section)) .scout-grid { grid-template-columns: minmax(0, 1fr); }
@@ -3406,6 +3422,33 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 .explorer-bar-w { background: #f2f2ef; color: #333; }
+/* Engine on: an Eval column between Move and Games. Off: the cell is gone and
+   the three-column layout above is untouched. */
+.explorer-eval { display: none; }
+.explorer-rows.has-eval .explorer-head,
+.explorer-rows.has-eval .explorer-row {
+  grid-template-columns: minmax(44px, 60px) minmax(46px, 56px) minmax(40px, 60px) minmax(0, 1fr);
+}
+.explorer-rows.has-eval .explorer-eval {
+  display: block;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--muted);
+}
+.explorer-rows.has-eval .explorer-head .explorer-eval { font-weight: 600; color: var(--label); }
+.explorer-eval.is-best { color: var(--good-text); }
+.explorer-eval.is-ok { color: var(--text); }
+.explorer-eval.is-weak { color: var(--warn-text); }
+
+.dock-engine-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dock-engine-switch[hidden] { display: none; }
+.dock-engine-switch .pf-row-label { font-size: var(--fs-s); color: var(--label); font-weight: 600; }
+
 .explorer-bar-d { background: #9a9fa6; color: #fff; }
 .explorer-bar-b { background: #2e3136; color: #fff; }
 
@@ -4347,6 +4390,28 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .engine-window.is-visible {
   opacity: 1;
   transform: none;
+}
+
+/* In-panel slots (Build Explorer / Analyze Evaluation card): a compact block,
+   no fixed body height - one pinned line takes one line of space. */
+.engine-slot:empty,
+.engine-slot:has(> .engine-window[hidden]) { display: none; }
+.engine-slot .engine-window.is-docked .engine-window-body { min-height: 0; }
+.engine-slot .engine-window.is-docked .engine-window-head { min-height: 0; padding: 2px 0; }
+.engine-slot .engine-window.is-docked .engine-window-pvs { padding: 2px 0 0; gap: 0; }
+#explorer-engine-slot {
+  margin-bottom: 6px;
+  padding: 4px 8px 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-soft);
+}
+/* Analyze: the card's own off switch sits with the engine controls. */
+#analysis-engine-slot .engine-window.is-docked .engine-window-close { display: inline-flex; }
+#open-engine-widget[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
 }
 
 /* ---- Slim header: meta on the left, controls on the right -------------- */
@@ -6102,7 +6167,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   position: fixed;
   top: auto;
   right: 16px;
-  bottom: 16px;
+  /* Ride above any job toasts instead of sitting on top of them
+     (--toast-stack-h is kept in sync from JS). */
+  bottom: calc(16px + var(--toast-stack-h, 0px));
   left: auto;
   z-index: 55;
   transform: none;
@@ -6112,9 +6179,14 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   background: var(--panel);
   box-shadow: var(--shadow-2);
   font-size: 12px;
-  pointer-events: auto;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  /* Informational pill: click-through so it never blocks what's underneath.
+     Errors (with their × button) stay interactive. */
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease, bottom 0.25s ease;
 }
+.topbar-status-slot:has(.status[data-state="error"]) { pointer-events: auto; }
+/* Pointer over the pill's spot: fade it to a ghost so the content under it is readable. */
+.topbar-status-slot.is-ghost { opacity: 0.12; }
 .topbar-status-slot:has(.status:empty),
 .topbar-status-slot:has(.status:not(.is-fresh)) {
   opacity: 0;

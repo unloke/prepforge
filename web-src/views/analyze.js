@@ -11,6 +11,7 @@ export function createAnalyzeView({
   showAnalysisPly,
   selectAnalysisNode,
   revealAnalysisResults,
+  onEvalChartRendered = () => {},
 }) {
   const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks } =
     createMoveTreeRenderer({ escapeHtml });
@@ -118,6 +119,44 @@ export function createAnalyzeView({
     if (match) showAnalysisPly(Number(match.ply));
   }
 
+  // A-05: one short "what this run covered" line — complete vs partial-shallow
+  // vs no-Maia — with the raw metadata tucked into a disclosure. A report must
+  // never imply uniform full-depth coverage it did not have.
+  function qualitySummaryHtml() {
+    const quality = appState.analysis && appState.analysis.quality;
+    if (!quality) return "";
+    const parts = [];
+    if (quality.search === "full") {
+      parts.push(`Stockfish depth ${quality.actual_depth_max}`);
+    } else if (quality.search === "partial-shallow") {
+      parts.push(
+        `partial search (${quality.shallow_positions} positions below depth ${quality.target_depth})`,
+      );
+    }
+    parts.push(quality.maia && quality.maia.available ? "Maia on" : "no Maia");
+    const complete = quality.completeness === "complete";
+    const label = complete ? "complete" : String(quality.completeness || "partial").replace(/,/g, " · ");
+    const rows = [
+      ["coverage", label],
+      ["target depth", quality.target_depth],
+      ["actual depth", `${quality.actual_depth_min}–${quality.actual_depth_max} (avg ${quality.actual_depth_avg})`],
+      ["shallow positions", quality.shallow_positions],
+      ["terminal positions", quality.terminal_positions],
+      ["Maia", quality.maia?.available ? `maia3${quality.maia.rating ? ` @ ${quality.maia.rating}` : ""}` : "not run"],
+      ["engine", quality.engine],
+      ["classification", quality.classification_version],
+      ["explanation", quality.explanation_version],
+    ]
+      .map(([k, v]) => `<div><b>${escapeHtml(String(k))}</b> ${escapeHtml(String(v))}</div>`)
+      .join("");
+    return (
+      `<details class="quality-note">` +
+      `<summary>${complete ? "✓" : "△"} Analysis quality: ${escapeHtml(parts.join(" · "))} — ${escapeHtml(label)}</summary>` +
+      `<div class="quality-rows">${rows}</div>` +
+      `</details>`
+    );
+  }
+
   function renderClassificationBars(moves) {
     const host = document.getElementById("analysis-summary");
     if (!host) return;
@@ -167,7 +206,8 @@ export function createAnalyzeView({
       rowHtml("white", "White") +
       rowHtml("black", "Black") +
       `<div class="cbar-legend">${legend}</div>` +
-      `</div>`;
+      `</div>` +
+      qualitySummaryHtml();
 
     host.querySelectorAll(".cbar-seg").forEach((seg) => {
       seg.addEventListener("click", () => {
@@ -437,6 +477,7 @@ export function createAnalyzeView({
     const svgNS = "http://www.w3.org/2000/svg";
     chart.innerHTML = "";
     appState.evalChartPoints = points || [];
+    onEvalChartRendered();
     const width = EVAL_CHART_W;
     const height = EVAL_CHART_H;
     // Win% → y. Up = White winning (standard advantage-graph convention, matching

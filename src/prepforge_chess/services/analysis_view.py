@@ -53,6 +53,10 @@ def analysis_result_to_payload(result: AnalysisResult) -> Dict[str, Any]:
         "engine": result.engine,
         "depth": result.depth,
         "summary": result.summary,
+        # A-05: what this run actually covered (target vs actual depth, shallow
+        # spots, Maia status, algorithm versions) so the report can label
+        # partial results instead of implying uniform full coverage.
+        "quality": result.quality,
         "position_evals": _position_evals(result),
         "moves": [
             {
@@ -68,7 +72,10 @@ def analysis_result_to_payload(result: AnalysisResult) -> Dict[str, Any]:
                 "score_cp": move.engine_eval_after.score_cp
                 if move.engine_eval_after is not None
                 else None,
+                # Original/user note and the generated explanation stay separate
+                # (A-04); the UI joins them for display.
                 "comment": move.comment,
+                "generated_comment": move.generated_comment,
             }
             for move in result.move_results
         ],

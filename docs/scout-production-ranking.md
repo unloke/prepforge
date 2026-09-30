@@ -2,7 +2,7 @@
 
 Updated 2026-09-26. Scoring version **9**, Module B identity `scout-v2`.
 This supersedes scoring version 8's conservative full-route coverage objective.
-See [selection research](scout-selection-research.md) for rationale, formulas,
+See [selection research](archive/research/scout-selection-research.md) for rationale, formulas,
 real before/after results, reproduction commands and limitations.
 
 ## 1. Product objective
@@ -81,7 +81,7 @@ Existing evidence transport, report, queue, prefilter and live fallback tests re
 
 The frozen v8 objective is in `research/scout-selection-v8.js`; only the offline
 study imports it. Production imports no historical selector. The implementation
-and test details are in [selection research](scout-selection-research.md).
+and test details are in [selection research](archive/research/scout-selection-research.md).
 
 ## 5. Experimental runtime（?scoutV13=1）與 research/archive
 

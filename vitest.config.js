@@ -15,6 +15,7 @@ export default defineConfig({
       "**/.git/**",
       "**/.claude/**",
       "**/tmp/**",
+      "**/archive/**",
     ],
   },
 });
