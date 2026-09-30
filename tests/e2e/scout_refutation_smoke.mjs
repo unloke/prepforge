@@ -15,7 +15,9 @@ const SCENARIOS = [
       const prepLine = page.locator(".scout-line").first();
       await prepLine.waitFor({ timeout: TIMEOUT_MS });
       const prepText = await prepLine.textContent();
-      if (!prepText || !/When they play/i.test(prepText) || !/(you play|needs prep)/i.test(prepText)) {
+      // Same copy contract as scout_smoke.mjs: the framing is
+      // "After <their line> -> your move: X" / "no answer in your prep".
+      if (!prepText || !/After /i.test(prepText) || !/(your move|no answer in your prep)/i.test(prepText)) {
         fail(`prep column missing framing (got: ${prepText?.trim().slice(0, 160) || "(empty)"})`);
       }
       const card = page.locator('[data-testid="scout-refutation-card"]').first();

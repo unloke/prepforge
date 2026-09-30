@@ -324,8 +324,11 @@ async function main() {
     const firstLine = page.locator(".scout-line").first();
     await firstLine.waitFor({ timeout: TIMEOUT_MS });
     const prepText = (await firstLine.textContent()) || "";
-    if (!/When they play/i.test(prepText) || !/(you play|needs prep)/i.test(prepText)) {
-      fail(`prep row missing when-they-play framing (got: ${prepText.trim().slice(0, 120) || "(empty)"})`);
+    // The line carries BOTH sides' moves, so the framing reads
+    // "After <their line> -> your move: X" (or "no answer in your prep"),
+    // not the older "When they play ... you play / needs prep".
+    if (!/After /i.test(prepText) || !/(your move|no answer in your prep)/i.test(prepText)) {
+      fail(`prep row missing after/your-move framing (got: ${prepText.trim().slice(0, 120) || "(empty)"})`);
     }
     await firstLine.click();
     // ui-v2 dropped the .scout-line-detail wrapper: the opened line's detail is
