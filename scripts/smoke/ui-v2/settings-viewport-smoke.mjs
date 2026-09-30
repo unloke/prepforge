@@ -122,11 +122,12 @@ async function runViewport(vp) {
 
   // Section nav (prototype 180px column): all prototype sections present, first active.
   const navLabels = await page.locator(".settings-nav .settings-nav-link").allTextContents();
-  for (const expected of ["Appearance", "Engine", "Maia3", "Playing strength", "Board", "Connections", "About"]) {
+  for (const expected of ["Account", "Appearance", "Engine", "Maia3", "Playing strength", "Board", "Connections", "About"]) {
     check(navLabels.some((l) => l.trim() === expected), `section nav should list "${expected}", got [${navLabels.map((l) => l.trim()).join(", ")}]`);
   }
   const firstActive = await page.locator('.settings-nav .settings-nav-link.is-active').textContent().catch(() => "");
-  check(firstActive.trim() === "Appearance", `first section should start active, got "${firstActive}"`);
+  // Account is deliberately the first Settings section (sign-in, plan, export, delete).
+  check(firstActive.trim() === "Account", `first section should start active, got "${firstActive}"`);
 
   // Theme segment: System starts active; clicking Dark flips the real pref
   // (documentElement data-theme follows).
