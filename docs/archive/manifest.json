@@ -2,240 +2,287 @@
   {
     "source": "docs/analyze-friction-audit.md",
     "destination": "docs/archive/audits/analyze-friction-audit.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "a501b02e93462e313c9f7cf3d760e6ba179b51d961b0edeb3d40d6f7836600d5"
   },
   {
     "source": "docs/analyze-friction-audit-evidence.json",
     "destination": "docs/archive/audits/analyze-friction-audit-evidence.json",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "daf519adf995cb19c8cbc0e1db317635fa033baaae33258237f6e09374ead214"
   },
   {
     "source": "docs/build-friction-audit.md",
     "destination": "docs/archive/audits/build-friction-audit.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "ce3c7f57559d5a208a2e7de521ff6b8cc63a1f9f8cd6dff31ecadbaa5b5cef73"
   },
   {
     "source": "docs/build-friction-audit-evidence.json",
     "destination": "docs/archive/audits/build-friction-audit-evidence.json",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "619ca565c6fb78fe982021d59ae28d7251fd4fbc178c04703e51a116c3465ed7"
   },
   {
     "source": "docs/train-friction-audit.md",
     "destination": "docs/archive/audits/train-friction-audit.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "c8c0cb367abc2fad096d163c754a25b2890dea89710f15a7b80c5da6edff59f3"
   },
   {
     "source": "docs/train-friction-audit-evidence.json",
     "destination": "docs/archive/audits/train-friction-audit-evidence.json",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "9a3b7b051b9da6b246373de0771d62a62e11dca010a494d87bc24c337a2a4529"
   },
   {
     "source": "docs/release-cross-flow-audit.md",
     "destination": "docs/archive/audits/release-cross-flow-audit.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "4f218b2b0ff00efcdbc2a82ad87a207f584f6a29b87d8f208909bcc3c34ff8f1"
   },
   {
     "source": "docs/release-cross-flow-audit-evidence.json",
     "destination": "docs/archive/audits/release-cross-flow-audit-evidence.json",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "e2de55b1a3ba37a457bd63ab423f5cfa8e79663c6d8b9b381deeda40f175318f"
   },
   {
     "source": "docs/ui-comfort-audit-2026-09-26.md",
     "destination": "docs/archive/audits/ui-comfort-audit-2026-09-26.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "580ee849b232549d630f9f23fe16f60384a09d6b682a7c970fb9863a6e8a6601"
   },
   {
     "source": "docs/fullstack-improvement-audit-2026-09-25.md",
     "destination": "docs/archive/audits/fullstack-improvement-audit-2026-09-25.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "1a5a5579c586045ae5b45bef47d5f3c72a779a6accdac413f6b5b13e8ec23ccd"
   },
   {
     "source": "docs/fullstack-improvement-audit-2026-09-27.md",
     "destination": "docs/archive/audits/fullstack-improvement-audit-2026-09-27.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "c7860a179ece59d24d21fbef4d595b7a7253a0ed2ef1c8dbec3ac95c1457880d"
   },
   {
     "source": "docs/project-improvement-review-2026-09-29.md",
     "destination": "docs/archive/audits/project-improvement-review-2026-09-29.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "745161b360fd74113e90e9edfa8ceaaee9474c3405d557818dfaf2861088fe61"
   },
   {
     "source": "docs/build-db-performance-2026-09-23.md",
     "destination": "docs/archive/audits/build-db-performance-2026-09-23.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "5fb2c9e2fdbee75e47fbb5d34c0e06943528377415bfa121e13a10b05d2a74dd"
   },
   {
     "source": "docs/analyze-build-concurrency.md",
     "destination": "docs/archive/design/analyze-build-concurrency.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "4a09c1af179e79cb29c0a6ddfcc0bebac391cebed63ac32e1f4f7fa5fd0b834a"
   },
   {
     "source": "docs/frontend-architecture-maintenance-2026-09-18.md",
     "destination": "docs/archive/design/frontend-architecture-maintenance-2026-09-18.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "1aaf4399706656b0234e70ed45698c2571dd948a0e1d57f68d5151700a873a68"
   },
   {
     "source": "docs/games-teams-redesign-20260923.md",
     "destination": "docs/archive/design/games-teams-redesign-20260923.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "3e41dbef6e395e4facdff9d9d6521a7af3311493b77abaf955409a035df02ca8"
   },
   {
     "source": "docs/scout-games-teams-plan-20260924.md",
     "destination": "docs/archive/design/scout-games-teams-plan-20260924.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "37835ece2712989d12abd2c127c939a4296133b2fd16d949f6f9b0d077caa1a6"
   },
   {
     "source": "docs/scout-next-round-brief.md",
     "destination": "docs/archive/design/scout-next-round-brief.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "8a9a91c4905730c11d2a6c9918026d6cf744d1a60b37a8de5741d8e1fbb940b2"
   },
   {
     "source": "docs/stability-perf-plan.md",
     "destination": "docs/archive/design/stability-perf-plan.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "238657f61516135826a2fdc970576008b9941b6e52e791b869b3d6f495c5e9eb"
   },
   {
     "source": "docs/engineering-health-state-map.md",
     "destination": "docs/archive/design/engineering-health-state-map.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "5e4fc2270c85748616095a3883ea6c64e0ca7bb3a6c719d27be4b6302bf03828"
   },
   {
     "source": "docs/scout-orcbr-b1-acquisition.md",
     "destination": "docs/archive/research/scout-orcbr-b1-acquisition.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "b4a6fa125b4812f303eac1b229565686ecfaaa173de7fea6c1d90aba35269642"
   },
   {
     "source": "docs/scout-orcbr-b1-protocol.md",
     "destination": "docs/archive/research/scout-orcbr-b1-protocol.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "095555588c29a4c4cca53e1169d71d828a47649ce9d35cc18a50533febd1c08d"
   },
   {
     "source": "docs/scout-plausibility-benchmark-20260924.md",
     "destination": "docs/archive/research/scout-plausibility-benchmark-20260924.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "0679b567a7db627ab5cf823a863ba0c0777c575986f60b862c85242a5fb23c1b"
   },
   {
     "source": "docs/scout-plausibility-case-trace.json",
     "destination": "docs/archive/research/scout-plausibility-case-trace.json",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "ee5e596be82452b72004356e720ddc210667d3340a25ca31c4c3163c96143a0d"
   },
   {
     "source": "docs/scout-route-reach-benchmark.md",
     "destination": "docs/archive/research/scout-route-reach-benchmark.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "4cfec1e7c17ea0c58db8d9d83938af5d40be6717e488c8478e782a0ddf26a6e5"
   },
   {
     "source": "docs/scout-sample-aware-followup.md",
     "destination": "docs/archive/research/scout-sample-aware-followup.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "9dfa9804e03eb2918f0f0e95ed9d866612a0097acf5f5410e928d56db8124c92"
   },
   {
     "source": "docs/scout-sample-dr.json",
     "destination": "docs/archive/research/scout-sample-dr.json",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "ef8f1f2de0aae6bddcefc3818cac555682f0f4aaf4f1175758b0871e00bead3c"
   },
   {
     "source": "docs/scout-sample-eric.json",
     "destination": "docs/archive/research/scout-sample-eric.json",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "9cd87e13c38d0312c7fb6bdee10b3114cfe6cab0773fa060f56a8d3835f879c6"
   },
   {
     "source": "docs/scout-selection-after.json",
     "destination": "docs/archive/research/scout-selection-after.json",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "ff1e9e858b0fc9fb38bef9b32dd684edbcf319e281d7baf6d472c5638eaab2cd"
   },
   {
     "source": "docs/scout-selection-before.json",
     "destination": "docs/archive/research/scout-selection-before.json",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "135f0220701345c9633b2a7430703e40adb1f3e294daba6d25180245464039fe"
   },
   {
     "source": "docs/scout-selection-v2-results.json",
     "destination": "docs/archive/research/scout-selection-v2-results.json",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "9bc07f83c1c4f814fe88f2014800b5cd7e1fef6e3bbb5393aff9ab95ed1092f7"
   },
   {
     "source": "docs/scout-selection-v8-research.md",
     "destination": "docs/archive/research/scout-selection-v8-research.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "484dd947865e708f11d7679f4f0c73c1265c771c7d555f48f0dceb9257ac961d"
   },
   {
     "source": "docs/scout-sparse-benchmark-results.json",
     "destination": "docs/archive/research/scout-sparse-benchmark-results.json",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "a883f3bf64808afaa396b0cb8ef1c08a96ed16085dc1db4eb2dbe4af31f66e2f"
   },
   {
     "source": "docs/scout-sparse-plausibility-followup.md",
     "destination": "docs/archive/research/scout-sparse-plausibility-followup.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "d2f8cecdf85e91df649a980cca6c1c8b133b24293ecf1b8f511231d712c6983e"
   },
   {
     "source": "docs/scout-v12-design.md",
     "destination": "docs/archive/research/scout-v12-design.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "c8712da499b89cd1a98aeb504baa3b962490785c0bf285fc68f5bed9b2eafc1b"
   },
   {
     "source": "docs/scout-v13-design.md",
     "destination": "docs/archive/research/scout-v13-design.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "b081521b3f4f03ee5b55d2c80b4a8667eb60b2505c40214f197797d28629961b"
   },
   {
     "source": "docs/scout-selection-research.md",
     "destination": "docs/archive/research/scout-selection-research.md",
-    "reason": "Historical snapshot, completed design, or research evidence; not current instructions."
+    "reason": "Historical snapshot, completed design, or research evidence; not current instructions.",
+    "sha256": "2a05e2112bcb3c129c2880956802f5ec024123e7d6b60ec37f39e428bece7f31"
   },
   {
     "source": "SCOUT_FINAL_STATE.md",
     "destination": "docs/archive/research/SCOUT_FINAL_STATE.md",
-    "reason": "Superseded Scout version or historical research protocol."
+    "reason": "Superseded Scout version or historical research protocol.",
+    "sha256": "fba15f8de9830564a13408d1a8f250e1a3162ac96c8f466e3ce58385c2bb91a8"
   },
   {
     "source": "SCOUT_BUG_INVESTIGATION.md",
     "destination": "docs/archive/research/SCOUT_BUG_INVESTIGATION.md",
-    "reason": "Superseded Scout version or historical research protocol."
+    "reason": "Superseded Scout version or historical research protocol.",
+    "sha256": "3b6c888872a0e6a218d939f3e01b254047b705a4f2092ebe13b3cccc4df9f602"
   },
   {
     "source": "COMFORT_ZONE_FIX_VERIFICATION.md",
     "destination": "docs/archive/research/COMFORT_ZONE_FIX_VERIFICATION.md",
-    "reason": "Superseded Scout version or historical research protocol."
+    "reason": "Superseded Scout version or historical research protocol.",
+    "sha256": "34e533ecda7773e15a10942096c37b98779f457ef259451a49c067d7bbcc375c"
   },
   {
     "source": "MODULE_B_BENCHMARK_V2.md",
     "destination": "docs/archive/research/MODULE_B_BENCHMARK_V2.md",
-    "reason": "Superseded Scout version or historical research protocol."
+    "reason": "Superseded Scout version or historical research protocol.",
+    "sha256": "5eec536ab61706f891fc951d329b2a81aef5ccb84b522513bf9dbf3614258077"
   },
   {
     "source": "MODULE_B_BENCHMARK_V3.md",
     "destination": "docs/archive/research/MODULE_B_BENCHMARK_V3.md",
-    "reason": "Superseded Scout version or historical research protocol."
+    "reason": "Superseded Scout version or historical research protocol.",
+    "sha256": "6be4a0826b4d79795783608a5dfbffb67867c1f49ca629165430fe9c411a9f68"
   },
   {
     "source": "memory/repertoire-health-cache.md",
     "destination": "docs/archive/memory/repertoire-health-cache.md",
-    "reason": "Historical migration head, schema.sql, test counts, and missing memory links."
+    "reason": "Historical migration head, schema.sql, test counts, and missing memory links.",
+    "sha256": "49a36808ad7c7cb8c0fe7baa1305867aa8e8344e8d6d69a4aaa828913a379273"
   },
   {
     "source": "docs/ARCHITECTURE.md",
     "destination": "docs/archive/history/ARCHITECTURE.md",
     "reason": "Original retained before replacing mixed current/history material with concise current documentation.",
-    "replacement": true
+    "replacement": true,
+    "sha256": "a0ea2cc73c8385d59385db3240b885a409b473c6dd53b257eef5132245fbbffd"
   },
   {
     "source": "docs/ROADMAP.md",
     "destination": "docs/archive/history/ROADMAP.md",
     "reason": "Original retained before replacing mixed current/history material with concise current documentation.",
-    "replacement": true
+    "replacement": true,
+    "sha256": "9be1729445b99ec700ad55acb49e825340c15a1498f37f9e76551e82705cb7aa"
   },
   {
     "source": "docs/browser-engine-migration.md",
     "destination": "docs/archive/history/browser-engine-migration.md",
     "reason": "Original retained before replacing mixed current/history material with concise current documentation.",
-    "replacement": true
+    "replacement": true,
+    "sha256": "6c027c3d9967fefe492c00b980d7239a4c246e7e94ec78a6289dd20497a8775e"
   },
   {
     "source": "docs/local-first-sync-plan.md",
     "destination": "docs/archive/history/local-first-sync-plan.md",
     "reason": "Original retained before replacing mixed current/history material with concise current documentation.",
-    "replacement": true
+    "replacement": true,
+    "sha256": "a95431c402ba4685b108909284693b9c5d852d7f46c98c8919fbe2c04a916ace"
   }
 ]
