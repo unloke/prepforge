@@ -62,3 +62,24 @@ export function localBoardAfterMove(fen, moveUci) {
     board: localBoardInfo(fenAfter),
   };
 }
+
+// Game-over state for a FEN, or null while play continues. The engine has no
+// line to show in these positions (Stockfish answers `bestmove (none)`), so the
+// UI reports the result instead of waiting on a search that never produces one.
+//   { kind: "checkmate", winner: "white" | "black", result: "1-0" | "0-1" }
+//   { kind: "stalemate" | "draw", winner: null, result: "½-½" }
+export function localGameOver(fen) {
+  let chess;
+  try {
+    chess = new Chess(fen);
+  } catch (_) {
+    return null;
+  }
+  if (chess.isCheckmate()) {
+    const winner = chess.turn() === "w" ? "black" : "white";
+    return { kind: "checkmate", winner, result: winner === "white" ? "1-0" : "0-1" };
+  }
+  if (chess.isStalemate()) return { kind: "stalemate", winner: null, result: "½-½" };
+  if (chess.isDraw()) return { kind: "draw", winner: null, result: "½-½" };
+  return null;
+}

@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 
-from sqlalchemy import delete, func, select, union, update
+from sqlalchemy import and_, case, delete, func, literal, not_, select, union, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import Connection, Engine
@@ -1156,19 +1156,89 @@ class PrepForgeRepository:
     def due_counts_by_repertoire(
         self, owner_user_id: str, *, now: Optional[datetime] = None
     ) -> Dict[str, int]:
-        """D-01: live due-review counts per repertoire, straight from
-        ``training_progress``. Time-dependent numbers are never served from the
-        cached health JSON — one grouped statement per listing (no N+1)."""
+        """D-01/D-02: live due-review counts per repertoire.
+
+        Time-dependent numbers are never served from the cached health JSON —
+        one grouped statement per listing (no N+1) — but the count must mean
+        the SAME thing ``compute_health().due`` means, or the Library badge and
+        the Smart queue disagree (the library could promise reviews nothing can
+        be scheduled for). So this counts a node as due only when:
+
+        - it is REACHABLE: every ancestor is enabled (the effective-enabled
+          rule — a disabled node makes its whole subtree untrainable), and
+        - it is TRAINABLE: an enabled own-side move (``is_user_prepared_move``
+          is the server-recomputed "parent's side to move is the repertoire
+          colour" flag, i.e. exactly ``_is_trainable``'s move-side test), and
+        - its mastery is ``due``: attempts > 0, not ``weak``, and
+          ``due_at <= now`` — weak is checked BEFORE due in
+          ``services.progress.node_mastery``, so a weak-and-due node counts as
+          weak, here as everywhere else.
+
+        "due" therefore means "scheduled for review now", not merely "has a
+        due_at timestamp in the past".
+        """
+        # Imported here, not at module scope: services/__init__ imports the
+        # repository, so a top-level import would be circular.
+        from prepforge_chess.services.progress import WEAK_SCORE_BELOW
+
         tp = t.training_progress
+        nodes = t.opening_nodes
         now_text = _dt_to_text(now or datetime.now(timezone.utc))
+        # The walk is scoped to THIS owner's repertoires. The outer query already
+        # filters on tp.owner_user_id and node ids are globally unique, so the
+        # scope cannot change the counts — it only keeps the recursion off
+        # every other tenant's trees (the Library listing runs this per owner).
+        owner_reps = select(t.repertoires.c.id).where(
+            t.repertoires.c.owner_user_id == owner_user_id
+        )
+        # blocked = 1 once a DISABLED ancestor is on the path (the node's own
+        # disabled flag is checked separately below, matching _is_trainable).
+        blocked = (
+            select(nodes.c.id.label("id"), literal(0).label("blocked"))
+            .where(nodes.c.parent_id.is_(None))
+            .where(nodes.c.repertoire_id.in_(owner_reps))
+            .cte("effective_nodes", recursive=True)
+        )
+        blocked = blocked.union_all(
+            select(
+                nodes.c.id,
+                case(
+                    (blocked.c.blocked > 0, literal(1)),
+                    (nodes.c.is_enabled == 0, literal(1)),
+                    else_=literal(0),
+                ),
+            )
+            .where(nodes.c.parent_id == blocked.c.id)
+            .where(nodes.c.repertoire_id.in_(owner_reps))
+        )
+        # weak, in SQL: attempts >= 2 and lifetime accuracy below half and the
+        # recent-form score still low. correct*2 < attempts avoids the
+        # integer/float division difference between SQLite and Postgres.
+        is_weak = and_(
+            tp.c.attempts >= 2,
+            tp.c.correct_attempts * 2 < tp.c.attempts,
+            tp.c.spaced_repetition_score < WEAK_SCORE_BELOW,
+        )
+        stmt = (
+            select(tp.c.repertoire_id, func.count())
+            .select_from(
+                tp.join(blocked, blocked.c.id == tp.c.node_id).join(
+                    nodes, nodes.c.id == tp.c.node_id
+                )
+            )
+            .where(tp.c.owner_user_id == owner_user_id)
+            .where(tp.c.due_at.is_not(None))
+            .where(tp.c.due_at <= now_text)
+            .where(blocked.c.blocked == 0)
+            .where(nodes.c.is_enabled == 1)
+            .where(nodes.c.is_user_prepared_move == 1)
+            .where(nodes.c.uci.is_not(None))
+            .where(tp.c.attempts > 0)
+            .where(not_(is_weak))
+            .group_by(tp.c.repertoire_id)
+        )
         with self.engine.connect() as conn:
-            rows = conn.execute(
-                select(tp.c.repertoire_id, func.count())
-                .where(tp.c.owner_user_id == owner_user_id)
-                .where(tp.c.due_at.is_not(None))
-                .where(tp.c.due_at <= now_text)
-                .group_by(tp.c.repertoire_id)
-            ).all()
+            rows = conn.execute(stmt).all()
         return {row[0]: int(row[1]) for row in rows}
 
     def set_repertoire_sharing(
@@ -1471,7 +1541,9 @@ class PrepForgeRepository:
             for row in rows
         ]
 
-    def delete_owner_data(self, owner_user_id: str) -> Dict[str, int]:
+    def delete_owner_data(
+        self, owner_user_id: str, *, conn: Optional[Connection] = None
+    ) -> Dict[str, int]:
         """Delete everything one owner owns, with per-table counts (F-05).
 
         User content cascades (games → moves/analysis, repertoires →
@@ -1479,106 +1551,118 @@ class PrepForgeRepository:
         evaluation snapshots) is intentionally left to the lifecycle reclaim.
         Sessions and reset tokens go with the account so no live credential
         outlives the deletion; share links die with their repertoire row.
+
+        Pass ``conn`` to run inside a caller-owned transaction (D-05): account
+        deletion also removes identity rows through an ORM Session, and two
+        independent transactions can leave a half-deleted account ("content
+        gone, login still works"). Sharing the connection makes it one unit of
+        work that either commits or rolls back whole.
         """
+        if conn is not None:
+            return self._delete_owner_data(conn, owner_user_id)
+        with self.engine.begin() as owned:
+            return self._delete_owner_data(owned, owner_user_id)
+
+    def _delete_owner_data(self, conn: Connection, owner_user_id: str) -> Dict[str, int]:
+        """Conn-scoped body of :meth:`delete_owner_data` (see there for the contract)."""
         counts: Dict[str, int] = {}
-        with self.engine.begin() as conn:
-            game_ids = [
-                row[0]
-                for row in conn.execute(
-                    select(t.games.c.id).where(t.games.c.owner_user_id == owner_user_id)
-                ).all()
-            ]
-            rep_ids = [
-                row[0]
-                for row in conn.execute(
-                    select(t.repertoires.c.id).where(
-                        t.repertoires.c.owner_user_id == owner_user_id
-                    )
-                ).all()
-            ]
-            # Receipts hang off training sessions of the owner's repertoires.
-            session_ids = [
-                row[0]
-                for row in conn.execute(
-                    select(t.training_sessions.c.id).where(
-                        t.training_sessions.c.repertoire_id.in_(rep_ids)
-                    )
-                ).all()
-            ] if rep_ids else []
+        game_ids = [
+            row[0]
+            for row in conn.execute(
+                select(t.games.c.id).where(t.games.c.owner_user_id == owner_user_id)
+            ).all()
+        ]
+        rep_ids = [
+            row[0]
+            for row in conn.execute(
+                select(t.repertoires.c.id).where(
+                    t.repertoires.c.owner_user_id == owner_user_id
+                )
+            ).all()
+        ]
+        # Receipts hang off training sessions of the owner's repertoires.
+        session_ids = [
+            row[0]
+            for row in conn.execute(
+                select(t.training_sessions.c.id).where(
+                    t.training_sessions.c.repertoire_id.in_(rep_ids)
+                )
+            ).all()
+        ] if rep_ids else []
 
-            def _count(table, where) -> int:
-                return int(
-                    conn.execute(select(func.count()).select_from(table).where(where)).scalar_one()
-                )
+        def _count(table, where) -> int:
+            return int(
+                conn.execute(select(func.count()).select_from(table).where(where)).scalar_one()
+            )
 
-            if session_ids:
-                counts["train_attempt_receipts"] = _count(
-                    t.train_attempt_receipts,
-                    t.train_attempt_receipts.c.session_id.in_(session_ids),
-                )
-                conn.execute(
-                    delete(t.train_attempt_receipts).where(
-                        t.train_attempt_receipts.c.session_id.in_(session_ids)
-                    )
-                )
-            else:
-                counts["train_attempt_receipts"] = 0
-            counts["training_progress"] = _count(
-                t.training_progress, t.training_progress.c.owner_user_id == owner_user_id
+        if session_ids:
+            counts["train_attempt_receipts"] = _count(
+                t.train_attempt_receipts,
+                t.train_attempt_receipts.c.session_id.in_(session_ids),
             )
             conn.execute(
-                delete(t.training_progress).where(
-                    t.training_progress.c.owner_user_id == owner_user_id
+                delete(t.train_attempt_receipts).where(
+                    t.train_attempt_receipts.c.session_id.in_(session_ids)
                 )
             )
-            counts["training_sessions"] = len(session_ids)
-            if session_ids:
-                conn.execute(
-                    delete(t.training_sessions).where(
-                        t.training_sessions.c.id.in_(session_ids)
-                    )
-                )
-            counts["analysis_results"] = (
-                _count(t.analysis_results, t.analysis_results.c.game_id.in_(game_ids))
-                if game_ids
-                else 0
+        else:
+            counts["train_attempt_receipts"] = 0
+        counts["training_progress"] = _count(
+            t.training_progress, t.training_progress.c.owner_user_id == owner_user_id
+        )
+        conn.execute(
+            delete(t.training_progress).where(
+                t.training_progress.c.owner_user_id == owner_user_id
             )
-            if game_ids:
-                conn.execute(
-                    delete(t.analysis_results).where(
-                        t.analysis_results.c.game_id.in_(game_ids)
-                    )
-                )
-            counts["moves"] = (
-                _count(t.moves, t.moves.c.game_id.in_(game_ids)) if game_ids else 0
-            )
-            if game_ids:
-                conn.execute(delete(t.moves).where(t.moves.c.game_id.in_(game_ids)))
-            counts["games"] = len(game_ids)
-            if game_ids:
-                conn.execute(delete(t.games).where(t.games.c.id.in_(game_ids)))
-            counts["opening_nodes"] = (
-                _count(t.opening_nodes, t.opening_nodes.c.repertoire_id.in_(rep_ids))
-                if rep_ids
-                else 0
-            )
-            if rep_ids:
-                conn.execute(
-                    delete(t.opening_nodes).where(
-                        t.opening_nodes.c.repertoire_id.in_(rep_ids)
-                    )
-                )
-            counts["repertoires"] = len(rep_ids)
-            if rep_ids:
-                conn.execute(
-                    delete(t.repertoires).where(t.repertoires.c.id.in_(rep_ids))
-                )
-            counts["user_settings"] = _count(
-                t.user_settings, t.user_settings.c.user_id == owner_user_id
-            )
+        )
+        counts["training_sessions"] = len(session_ids)
+        if session_ids:
             conn.execute(
-                delete(t.user_settings).where(t.user_settings.c.user_id == owner_user_id)
+                delete(t.training_sessions).where(
+                    t.training_sessions.c.id.in_(session_ids)
+                )
             )
+        counts["analysis_results"] = (
+            _count(t.analysis_results, t.analysis_results.c.game_id.in_(game_ids))
+            if game_ids
+            else 0
+        )
+        if game_ids:
+            conn.execute(
+                delete(t.analysis_results).where(
+                    t.analysis_results.c.game_id.in_(game_ids)
+                )
+            )
+        counts["moves"] = (
+            _count(t.moves, t.moves.c.game_id.in_(game_ids)) if game_ids else 0
+        )
+        if game_ids:
+            conn.execute(delete(t.moves).where(t.moves.c.game_id.in_(game_ids)))
+        counts["games"] = len(game_ids)
+        if game_ids:
+            conn.execute(delete(t.games).where(t.games.c.id.in_(game_ids)))
+        counts["opening_nodes"] = (
+            _count(t.opening_nodes, t.opening_nodes.c.repertoire_id.in_(rep_ids))
+            if rep_ids
+            else 0
+        )
+        if rep_ids:
+            conn.execute(
+                delete(t.opening_nodes).where(
+                    t.opening_nodes.c.repertoire_id.in_(rep_ids)
+                )
+            )
+        counts["repertoires"] = len(rep_ids)
+        if rep_ids:
+            conn.execute(
+                delete(t.repertoires).where(t.repertoires.c.id.in_(rep_ids))
+            )
+        counts["user_settings"] = _count(
+            t.user_settings, t.user_settings.c.user_id == owner_user_id
+        )
+        conn.execute(
+            delete(t.user_settings).where(t.user_settings.c.user_id == owner_user_id)
+        )
         return counts
 
     def delete_opening_nodes(self, repertoire_id: str, node_ids: List[str]) -> None:
@@ -1876,49 +1960,46 @@ class PrepForgeRepository:
         D-05: fixed page size + stable keyset cursor on ``(analyzed_at,
         game_id)`` — equal timestamps page without gaps or repeats — and the
         latest-analysis aggregation is owner-scoped from the inside, so a big
-        account never aggregates other owners' games first."""
+        account never aggregates other owners' games first.
+
+        D-03: the latest snapshot per game is picked by ROW_NUMBER over
+        ``(analyzed_at DESC, id DESC)``. The old ``max(analyzed_at)`` join
+        could not break a tie, so two snapshots written in the same instant
+        both matched and the SAME game appeared twice in one page."""
         ar = t.analysis_results
         g = t.games
-        # Owner-scoped aggregation: only this owner's games enter the "latest
-        # per game" grouping (D-05).
-        latest_base = select(
+        ranked = select(
             ar.c.game_id.label("game_id"),
-            func.max(ar.c.analyzed_at).label("max_at"),
-        )
+            ar.c.analyzed_at.label("analyzed_at"),
+            ar.c.engine.label("engine"),
+            ar.c.depth.label("depth"),
+            ar.c.summary_json.label("summary_json"),
+            g.c.white.label("white"),
+            g.c.black.label("black"),
+            g.c.result.label("result"),
+            g.c.played_at.label("played_at"),
+            g.c.lichess_id.label("lichess_id"),
+            func.row_number()
+            .over(
+                partition_by=ar.c.game_id,
+                order_by=(ar.c.analyzed_at.desc(), ar.c.id.desc()),
+            )
+            .label("rn"),
+        ).select_from(ar.join(g, g.c.id == ar.c.game_id))
+        # Owner-scoped aggregation: only this owner's games enter the "latest
+        # per game" ranking (D-05).
         if owner_user_id is not None:
-            latest_base = latest_base.join(g, g.c.id == ar.c.game_id).where(
-                g.c.owner_user_id == owner_user_id
-            )
-        latest = latest_base.group_by(ar.c.game_id).subquery()
-        stmt = (
-            select(
-                ar.c.game_id.label("game_id"),
-                ar.c.analyzed_at.label("analyzed_at"),
-                ar.c.engine.label("engine"),
-                ar.c.depth.label("depth"),
-                ar.c.summary_json.label("summary_json"),
-                g.c.white.label("white"),
-                g.c.black.label("black"),
-                g.c.result.label("result"),
-                g.c.played_at.label("played_at"),
-                g.c.lichess_id.label("lichess_id"),
-            )
-            .select_from(
-                ar.join(g, g.c.id == ar.c.game_id).join(
-                    latest,
-                    (latest.c.game_id == ar.c.game_id) & (latest.c.max_at == ar.c.analyzed_at),
-                )
-            )
-            .order_by(ar.c.analyzed_at.desc(), ar.c.game_id.desc())
-            .limit(max(1, min(int(limit), 200)) + 1)  # +1: detect a next page
-        )
-        if owner_user_id is not None:
-            stmt = stmt.where(g.c.owner_user_id == owner_user_id)
+            ranked = ranked.where(g.c.owner_user_id == owner_user_id)
+        ranked = ranked.subquery()
+        stmt = select(ranked).where(ranked.c.rn == 1)
+        stmt = stmt.order_by(ranked.c.analyzed_at.desc(), ranked.c.game_id.desc()).limit(
+            max(1, min(int(limit), 200)) + 1
+        )  # +1: detect a next page
         if cursor is not None:
             cursor_at, cursor_id = cursor
             stmt = stmt.where(
-                (ar.c.analyzed_at < cursor_at)
-                | ((ar.c.analyzed_at == cursor_at) & (ar.c.game_id < cursor_id))
+                (ranked.c.analyzed_at < cursor_at)
+                | ((ranked.c.analyzed_at == cursor_at) & (ranked.c.game_id < cursor_id))
             )
         with self.engine.connect() as conn:
             rows = conn.execute(stmt).mappings().all()

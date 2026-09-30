@@ -1,7 +1,6 @@
 // Scout v2 — pure PGN-derived statistics (no engine, no explorer).
 // Games are newest-first from Lichess export; chronological helpers reverse for trends.
 
-import { Chess } from "chess.js";
 import { SLIP_MIN_GAMES, wilsonScorePct } from "./scout.js";
 
 const MS_PER_DAY = 86_400_000;
@@ -104,32 +103,28 @@ function castlingPly(sans, color) {
   return { side: "uncastled", ply: null };
 }
 
-function bothQueensOffBoard(chess) {
-  const board = chess.board();
-  let whiteQueen = false;
-  let blackQueen = false;
-  for (const row of board) {
-    for (const piece of row) {
-      if (!piece) continue;
-      if (piece.type === "q" && piece.color === "w") whiteQueen = true;
-      if (piece.type === "q" && piece.color === "b") blackQueen = true;
-    }
-  }
-  return !whiteQueen && !blackQueen;
-}
-
+// Full move at which both queens are gone, or null. Tracks the queens' squares
+// straight from the UCI moves (a queen leaves only by moving or by being
+// captured on its square; one appears only by promotion) instead of replaying
+// every game through chess.js — that replay was ~70% of each Scout render.
 function queensTradedPly(game) {
   const ucis = game.ucis || [];
   if (!ucis.length) return null;
-  const chess = new Chess();
+  const queens = new Map([["d1", "w"], ["d8", "b"]]);
   for (let i = 0; i < ucis.length; i += 1) {
     const uci = ucis[i];
-    try {
-      chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
-    } catch (_) {
-      break;
+    if (typeof uci !== "string" || uci.length < 4) break;
+    const from = uci.slice(0, 2);
+    const to = uci.slice(2, 4);
+    const mover = queens.get(from);
+    queens.delete(to);
+    if (mover) {
+      queens.delete(from);
+      queens.set(to, mover);
+    } else if (uci[4] === "q") {
+      queens.set(to, i % 2 === 0 ? "w" : "b");
     }
-    if (bothQueensOffBoard(chess)) return Math.floor(i / 2) + 1;
+    if (!queens.size) return Math.floor(i / 2) + 1;
   }
   return null;
 }

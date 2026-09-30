@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
+import { localBoardInfo, localBoardAfterMove, localGameOver } from "./chess-local.js";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -50,5 +50,26 @@ describe("localBoardAfterMove", () => {
 
   it("throws on an illegal move (callers translate to a status message)", () => {
     expect(() => localBoardAfterMove(START, "e2e5")).toThrow();
+  });
+});
+
+describe("localGameOver", () => {
+  it("is null while play continues", () => {
+    expect(localGameOver(START)).toBeNull();
+  });
+
+  it("names the winner of a checkmate", () => {
+    // Fool's mate: White is mated.
+    const fen = "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3";
+    expect(localGameOver(fen)).toEqual({ kind: "checkmate", winner: "black", result: "0-1" });
+  });
+
+  it("reports stalemate as a draw", () => {
+    const fen = "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1";
+    expect(localGameOver(fen)).toEqual({ kind: "stalemate", winner: null, result: "½-½" });
+  });
+
+  it("is null for an unparseable FEN", () => {
+    expect(localGameOver("not a fen")).toBeNull();
   });
 });

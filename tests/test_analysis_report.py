@@ -53,3 +53,20 @@ def test_terminal_analysis_renderer_outputs_report_sections():
     assert "Eval:" in rendered
     assert "Jump: 5" in rendered
     assert "Key Moments:" in rendered
+
+
+def test_analysis_payload_eval_graph_carries_mate_distance():
+    from dataclasses import replace
+
+    from prepforge_chess.services.analysis_view import analysis_result_to_payload
+
+    result = _analysis_result()
+    last = result.move_results[-1]
+    last.engine_eval_after = replace(last.engine_eval_after, score_cp=None, mate_in=2)
+
+    graph = analysis_result_to_payload(result)["eval_graph"]
+
+    # The chart labels a forced mate "#2"; without mate_in it could only say "+M".
+    assert graph[-1]["mate_in"] == 2
+    assert graph[-1]["bounded_score_cp"] == 1000
+    assert graph[0]["mate_in"] is None
