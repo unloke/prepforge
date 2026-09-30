@@ -55,6 +55,19 @@
    fails the axe baseline (serious). Matches the pre-ui-v2 behaviour, where
    only the slider itself was dimmed. */
 .set-row:has(input:disabled) > .slider input:disabled { opacity: 0.45; }
+/* Piece set: each option carries a four-piece sample on board squares so the
+   active set is recognisable at a glance, not just by name. */
+#piece-style-picker .piece-style-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  min-height: 34px;
+}
+.piece-style-preview { display: flex; border-radius: 4px; overflow: hidden; }
+.piece-style-preview .piece { width: 24px; height: 24px; padding: 1px; }
+.piece-style-preview .piece:nth-child(odd) { background: var(--square-dark); }
+.piece-style-preview .piece:nth-child(even) { background: var(--square-light); }
 .set .hint,
 .set .note,
 .set .faint { margin: 8px 0 0; }

@@ -12,6 +12,7 @@ export function createAccountController({
   showConfirmModal,
   refreshAutoMaiaRating,
   onLichessConnected = () => {},
+  onLichessAccountsChanged = () => {},
   onOpenSettings = () => {},
   onReload = () => window.location.reload(),
 }) {
@@ -41,6 +42,7 @@ export function createAccountController({
     }
     renderAccountChip();
     syncReplayControls();
+    onLichessAccountsChanged();
     // The player's own strength feeds Maia's AUTO rating; resolve it (cached)
     // whenever the linked account changes. Fire-and-forget — AUTO falls back
     // until it lands.

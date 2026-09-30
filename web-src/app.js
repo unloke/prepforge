@@ -548,8 +548,8 @@ const boards = {};
 
 // Delays (ms) for auto-collapsing/auto-dismissing a card. The countdown only
 // runs while the user is *not* actively pointing at the card (see _holdDismiss).
-const TOAST_MINIMIZE_DELAY = 7500;
-const TOAST_DONE_DELAY = 12000;
+const TOAST_MINIMIZE_DELAY = 4000;
+const TOAST_DONE_DELAY = 7000;
 const TOAST_FAILED_DELAY = 6000;
 const TOAST_CANCELLED_DELAY = 4500;
 // Minimum gap between progress repaints. A tight loop (e.g. per-ply Brilliant checks, where
@@ -2416,8 +2416,13 @@ class BoardController {
         }
       }
       if (this.hasLegalFrom(squareName)) {
+        // Pressing the already-selected piece again arms a deselect: a plain
+        // click (release on the same square) clears the legal-move dots, while
+        // dragging it away still plays the move.
+        const wasSelected = this.selected === squareName;
         this._setSelected(squareName);
         this._beginDrag(squareName, event);
+        this._deselectOnRelease = wasSelected;
       } else {
         this._setSelected(null);
       }
@@ -2482,7 +2487,7 @@ class BoardController {
         return;
       }
     }
-    if (this.hasLegalFrom(squareName)) {
+    if (this.hasLegalFrom(squareName) && this.selected !== squareName) {
       this._setSelected(squareName);
     } else {
       this._setSelected(null);
@@ -2559,11 +2564,18 @@ class BoardController {
 
   _endDrag(event) {
     const from = this.dragFrom;
+    const deselect = this._deselectOnRelease;
+    this._deselectOnRelease = false;
     this._cancelDrag();
     if (!from) return;
     const target = this._squareAt(event);
     // Same-square release is treated as a click: the piece stays selected so a
-    // follow-up click on a target square plays the move.
+    // follow-up click on a target square plays the move — unless it was already
+    // selected, in which case the second click toggles the selection off.
+    if (target === from && deselect) {
+      this._setSelected(null);
+      return;
+    }
     if (!target || target === from) return;
     if (isPromotionMove(from, target, this.legalMoves)) {
       this._setSelected(null);
@@ -2637,9 +2649,16 @@ class BoardController {
   }
 
   setPosition({ fen, legalMoves = [], lastMove = null }) {
-    this._cancelDrag();
     const fenChanged = this.fen !== fen;
     const prevFen = this.fen;
+    // A same-position refresh (an autosave landing, a panel re-render) must not
+    // yank a piece out of the user's hand: keep the drag and selection alive
+    // while the dragged/selected piece still has legal moves.
+    const keepInteraction =
+      !fenChanged &&
+      (this.dragFrom || this.selected) &&
+      legalMoves.some((move) => move.startsWith(this.dragFrom || this.selected));
+    if (!keepInteraction) this._cancelDrag();
 
     // Read slide offsets NOW, before any DOM writes, so _animateSlide never
     // triggers a mid-write forced reflow to measure layout.
@@ -2656,10 +2675,12 @@ class BoardController {
 
     this.fen = fen;
     this.legalMoves = legalMoves;
-    this.selected = null;
+    if (!keepInteraction) {
+      this.selected = null;
+      this.dragFrom = null;
+    }
     this.lastMove = lastMove;
     this.moveBadge = null;
-    this.dragFrom = null;
     this.annotationStart = null;
     if (fenChanged) {
       this._renderPieces();
@@ -2880,8 +2901,52 @@ function setStatus(message, { severity = "info" } = {}) {
       status.dataset.severity = "info";
       status.dataset.state = "ready";
       if (closeBtn) closeBtn.hidden = true;
-    }, normalizedSeverity === "warning" ? 8000 : 6000);
+    }, normalizedSeverity === "warning" ? 6000 : 4000);
   }
+}
+
+// Keep the floating status pill out of the way: it rides above the job-toast
+// stack (never on top of it), is click-through unless it holds an error, and
+// fades to a ghost while the pointer is over its spot — so a message never
+// blocks the button underneath it.
+function bindStatusPillAvoidance() {
+  const slot = document.getElementById("topbar-status-slot");
+  const stack = document.getElementById("toast-stack");
+  if (!slot || typeof window === "undefined") return;
+  if (stack && typeof ResizeObserver === "function") {
+    const sync = () => {
+      const h = stack.getBoundingClientRect().height;
+      document.documentElement.style.setProperty("--toast-stack-h", `${Math.round(h)}px`);
+    };
+    new ResizeObserver(sync).observe(stack);
+    sync();
+  }
+  let frame = 0;
+  let last = null;
+  const evaluate = () => {
+    frame = 0;
+    if (!last) return;
+    const status = document.getElementById("app-status");
+    const isError = status && status.dataset.state === "error";
+    const r = slot.getBoundingClientRect();
+    const pad = 18;
+    const near =
+      !isError &&
+      r.width > 0 &&
+      last.x >= r.left - pad &&
+      last.x <= r.right + pad &&
+      last.y >= r.top - pad &&
+      last.y <= r.bottom + pad;
+    slot.classList.toggle("is-ghost", near);
+  };
+  document.addEventListener(
+    "pointermove",
+    (event) => {
+      last = { x: event.clientX, y: event.clientY };
+      if (!frame) frame = requestAnimationFrame(evaluate);
+    },
+    { passive: true }
+  );
 }
 
 function setStatusError(message) {
@@ -3491,12 +3556,23 @@ function setPieceStyle(style) {
 function renderPieceStylePicker() {
   const host = document.getElementById("piece-style-picker");
   if (!host) return;
+  // A tiny sample of each set on board squares, so the choice is visible
+  // before (and after) picking — the label alone didn't say what you'd get.
+  const sample = ["K", "Q", "N", "p"];
   host.innerHTML = Object.keys(PIECE_SETS)
     .map((style) => {
       const active = style === appState.pieceStyle;
+      const set = PIECE_SETS[style];
+      const previews = sample
+        .map((pc) => {
+          const colorClass = pc === pc.toUpperCase() ? "piece-white" : "piece-black";
+          return `<svg class="piece ${colorClass}" viewBox="0 0 45 45" aria-hidden="true"><g>${set[pc.toLowerCase()]}</g></svg>`;
+        })
+        .join("");
       return (
         `<button type="button" class="seg-btn piece-style-option${active ? " is-active" : ""}" data-style="${escapeHtml(style)}" aria-pressed="${active}">` +
-        `${escapeHtml(PIECE_STYLE_LABELS[style] || style)}</button>`
+        `<span class="piece-style-preview" aria-hidden="true">${previews}</span>` +
+        `<span class="piece-style-name">${escapeHtml(PIECE_STYLE_LABELS[style] || style)}</span></button>`
       );
     })
     .join("");
@@ -3920,6 +3996,8 @@ function initAccountController() {
     showConfirmModal,
     refreshAutoMaiaRating,
     onLichessConnected: startLichessGameWatch,
+    // The Library setup checklist ticks "Link Lichess" from the live accounts.
+    onLichessAccountsChanged: () => dashboardView?.refreshSetup?.(),
     onOpenSettings: () => {
       switchView("settings");
       loadSettings();
@@ -4278,6 +4356,22 @@ async function resolveLichessAccountId(actionLabel) {
 // "My game" button: pull the newest game across ALL linked Lichess identities
 // ("self") straight into the PGN box — no chooser. account_id is only for
 // explicit single-account callers; the default path aggregates.
+// Point Analyze's board at the user's side of a game they played: match either
+// player name against every linked Lichess identity (plus the account the game
+// came from). Leaves the orientation alone when neither side is recognisably Self.
+function orientAnalysisForSelf(white, black, extraNames = []) {
+  if (!boards.analysis) return;
+  const mine = new Set(
+    [appState.lichessUsername, ...lichessAccounts().map((a) => a.username), ...extraNames]
+      .filter(Boolean)
+      .map((name) => String(name).toLowerCase())
+  );
+  const w = String(white || "").toLowerCase();
+  const b = String(black || "").toLowerCase();
+  if (b && mine.has(b) && !mine.has(w)) boards.analysis.setOrientation("black");
+  else if (w && mine.has(w) && !mine.has(b)) boards.analysis.setOrientation("white");
+}
+
 async function fetchMyLichessGame(accountId = null) {
   if (!appState.lichessUsername && !lichessAccounts().length) {
     setStatus("Connect a Lichess account first");
@@ -4302,6 +4396,7 @@ async function fetchMyLichessGame(accountId = null) {
   if (drawer) drawer.open = true;
   // Show the game in the move list right away (steppable before Analyze).
   void loadPgnIntoAnalyze(latest.pgn || "", { goToEnd: false, quiet: true }).catch(() => {});
+  orientAnalysisForSelf(latest.white, latest.black, [latest.source_account]);
   if (latest.lichess_id) markLichessSeen(latest.lichess_id);
   const source = latest.source_account ? ` · from ${latest.source_account}` : "";
   setStatus(`Loaded ${latest.white || "?"} vs ${latest.black || "?"}${source} - press Analyze`);
@@ -6324,7 +6419,11 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   appState.buildNodeById = new Map(payload.nodes.map((node) => [node.id, node]));
   // Any (re)hydrate means the repertoire may have changed — drop Analyze's book copy.
   invalidateBook();
-  if (boards.build) boards.build.setOrientation(payload.color === "black" ? "black" : "white");
+  // Orient only when a repertoire opens — a reconcile re-hydrate after an
+  // autosave must not undo the user's manual flip (or rebuild the grid mid-drag).
+  if (boards.build && payload.repertoire_id !== prevRepId) {
+    boards.build.setOrientation(payload.color === "black" ? "black" : "white");
+  }
   renderBuildRepHeader();
   const nextNodeId = selectedNodeId || payload.selected_node_id || payload.nodes[0]?.id;
   await selectBuildNode(nextNodeId);
@@ -6635,8 +6734,18 @@ function onInspectorInfo() {
   pop.id = "inspector-info-pop";
   pop.setAttribute("role", "status");
   pop.textContent = text;
-  const head = document.getElementById("build-dock-tools");
-  (head || info.parentElement).appendChild(pop);
+  const head = document.getElementById("build-dock-tools") || info.parentElement;
+  head.appendChild(pop);
+  // Anchor under the ⓘ itself (not the toolbar's far edge), clamped so the
+  // bubble never spills past the toolbar's right side.
+  const headRect = head.getBoundingClientRect();
+  const infoRect = info.getBoundingClientRect();
+  const left = Math.max(
+    0,
+    Math.min(infoRect.left - headRect.left - 8, headRect.width - pop.offsetWidth)
+  );
+  pop.style.left = `${Math.round(left)}px`;
+  pop.style.right = "auto";
   window.setTimeout(() => pop?.remove(), 4000);
 }
 
@@ -9818,7 +9927,10 @@ async function presentSmartPrompt(prompt) {
     document.getElementById("train-board-label").textContent =
       `${cardMeta.repertoire_name || smart.repertoireName} - you play ${cardMeta.color}`;
   }
-  let cueUci = board.lastMove || null;
+  // The previous card's last move only counts as the cue when the board is
+  // already sitting on this prompt's position; a jump to a new position (e.g.
+  // a move-1 card back at the start) must not keep the old highlight.
+  let cueUci = board.fen === prompt.fen_before ? board.lastMove || null : null;
   if (board.fen !== prompt.fen_before) {
     appState.trainBusy = true;
     syncTrainSessionControls();
@@ -10163,6 +10275,10 @@ async function finishSmartSession() {
   } catch (_) {
     // The summary is a bonus — never block the finish on it.
   }
+  // The flush + summary fetch take a moment; if the user already moved on
+  // (switched to Line rehearsal / Play, or restarted), the report belongs to a
+  // session that is no longer on screen — don't paint it over the new mode.
+  if (appState.smart !== smart || (appState.trainMode || "smart") !== "smart") return;
   await renderSmartSummary(smart, stats, after);
   syncTrainSessionControls();
 }
@@ -10886,6 +11002,7 @@ function replayToAnalyze(game) {
   const drawer = document.getElementById("pgn-drawer");
   if (drawer) drawer.open = true;
   switchView("analyze");
+  orientAnalysisForSelf(game.white, game.black);
   // Populate the move list immediately so the game is steppable before Analyze.
   if (input) void loadPgnIntoAnalyze(input.value, { goToEnd: false, quiet: true }).catch(() => {});
   setStatus(
@@ -12038,6 +12155,7 @@ async function init() {
     onMove: (moveUci) => submitTrainingMove(moveUci),
   });
   jobToast.bind();
+  bindStatusPillAvoidance();
   engineWidget.bind();
   positionCoach.bind();
   bindEvents();

@@ -2,13 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDashboardView } from "./dashboard.js";
 
-// Characterization for the /api/dashboard recommendations rendering:
-//  - the backend's personalized list (stored by loadDashboard) renders once, as
-//    the numbered "Next steps" card under the repertoire table ("Get started"
-//    for an account with no repertoires) — never inside the table itself;
-//  - every object recommendation carries a CTA button that routes one click to
-//    the view it targets (services/dashboard_recommendations.py owns the copy
-//    and the ordering — this side just renders and routes).
+// Library "Get started" setup checklist (signed in):
+//  - three steps — build a repertoire / link Lichess / finish a training
+//    session — each ticked from state the app already has (dashboard counts,
+//    linked Lichess identities), so no separate onboarding status exists;
+//  - the card stays until EVERY step is done (linking Lichess no longer
+//    disappears as soon as a repertoire exists), then hides;
+//  - it carries setup only: due / weak training never renders here (the Today
+//    strip owns it), even when the backend ships recommendations.
 
 function makeContainer() {
   return {
@@ -20,18 +21,8 @@ function makeContainer() {
   };
 }
 
-function makeCtaButton(view) {
-  const listeners = {};
-  return {
-    dataset: { recView: view },
-    addEventListener: (type, fn) => {
-      listeners[type] = fn;
-    },
-    click: () => listeners.click && listeners.click(),
-  };
-}
-
-describe("dashboard empty-state recommendations", () => {
+describe("dashboard setup checklist", () => {
+  let appState;
   let elements;
   let container;
   let todayCard;
@@ -39,6 +30,21 @@ describe("dashboard empty-state recommendations", () => {
   let api;
   let goToView;
   let view;
+
+  const dashboardPayload = (extra = {}) => ({
+    streak: { current: 0, best: 0, trained_today: false },
+    due_reviews: 0,
+    due_soon: 0,
+    games: 0,
+    repertoires: 0,
+    training_sessions: 0,
+    recommendations: [],
+    ...extra,
+  });
+  const mockDashboard = (extra, repertoires = []) =>
+    api.mockImplementation(async (url) =>
+      String(url).startsWith("/api/dashboard") ? dashboardPayload(extra) : { repertoires },
+    );
 
   beforeEach(() => {
     container = makeContainer();
@@ -84,8 +90,9 @@ describe("dashboard empty-state recommendations", () => {
 
     const noop = vi.fn();
     goToView = vi.fn();
+    appState = { signedIn: true, teams: [], pendingRepDeletes: new Set(), lichessAccounts: [] };
     view = createDashboardView({
-      appState: { signedIn: true, teams: [], pendingRepDeletes: new Set() },
+      appState,
       api,
       postJson: noop,
       escapeHtml: (s) => s,
@@ -107,228 +114,69 @@ describe("dashboard empty-state recommendations", () => {
     delete globalThis.document;
   });
 
-  it("renders the stored /api/dashboard recommendations in the empty state", async () => {
+  it("shows all three setup steps for a brand-new account", async () => {
     await view.loadDashboard();
     expect(container.innerHTML).toContain('class="empty-state big"');
     expect(container.innerHTML).not.toContain("step-n");
     expect(steps.hidden).toBe(false);
     expect(steps.innerHTML).toContain("<h2>Get started</h2>");
-    expect(steps.innerHTML).toContain("<b>Build a repertoire in Build</b>");
-    expect(steps.innerHTML).toContain("<b>Import your games in Replay</b>");
-  });
-
-  it("shows the onboarding checklist for an empty account without recommendations", async () => {
-    api.mockImplementation(async (url) => {
-      if (String(url).startsWith("/api/dashboard")) {
-        return {
-          streak: { current: 0, best: 0, trained_today: false },
-          recommendations: [],
-        };
-      }
-      return { repertoires: [] };
-    });
-    await view.loadDashboard();
-    expect(container.innerHTML).toContain('class="empty-state big"');
-    // Prototype A2: Get started with create / link Lichess / import.
-    expect(steps.hidden).toBe(false);
-    expect(steps.innerHTML).toContain("<h2>Get started</h2>");
-    expect(steps.innerHTML.match(/class="step"/g)).toHaveLength(3);
-    for (const action of ["new", "lichess", "import"]) {
-      expect(steps.innerHTML).toContain(`data-lib-action="${action}"`);
+    expect(steps.innerHTML).toContain("0 of 3 done");
+    for (const id of ["repertoire", "lichess", "train"]) {
+      expect(steps.innerHTML).toContain(`data-setup-step="${id}"`);
     }
+    // One entry point per job: the repertoire step doesn't repeat Import PGN
+    // (the empty state and the list header already carry it).
+    expect(steps.innerHTML).not.toContain('data-lib-action="import"');
+    // Training is locked until there is something to train.
+    expect(steps.innerHTML).toMatch(/data-lib-action="train" disabled/);
   });
 
-  it("omits the next-steps list when repertoires exist but nothing is recommended", async () => {
-    api.mockImplementation(async (url) => {
-      if (String(url).startsWith("/api/dashboard")) {
-        return {
-          streak: { current: 2, best: 4, trained_today: true },
-          repertoires: 2,
-          recommendations: [],
-        };
-      }
-      return { repertoires: [] };
-    });
+  it("keeps Link Lichess on the card after the first repertoire exists", async () => {
+    mockDashboard({ repertoires: 1 }, [
+      { id: "rep-1", name: "e4", color: "white", is_active: true, health: null },
+    ]);
+    await view.loadDashboard();
+    expect(steps.hidden).toBe(false);
+    expect(steps.innerHTML).toContain("1 of 3 done");
+    expect(steps.innerHTML).toMatch(/data-setup-step="repertoire"[^>]*>.*Done/s);
+    expect(steps.innerHTML).toContain('data-lib-action="lichess"');
+    expect(steps.innerHTML).not.toMatch(/data-lib-action="train" disabled/);
+    expect(container.innerHTML).not.toContain("step-n");
+  });
+
+  it("ticks Link Lichess from the linked accounts and re-renders on refreshSetup", async () => {
+    mockDashboard({ repertoires: 1 });
+    await view.loadDashboard();
+    expect(steps.innerHTML).toContain('data-lib-action="lichess"');
+    appState.lichessAccounts = [{ id: "a1", username: "me", is_primary: true }];
+    view.refreshSetup();
+    expect(steps.innerHTML).toContain("2 of 3 done");
+    expect(steps.innerHTML).not.toContain('data-lib-action="lichess"');
+  });
+
+  it("hides the card once every setup step is done", async () => {
+    appState.lichessAccounts = [{ id: "a1", username: "me", is_primary: true }];
+    mockDashboard({ repertoires: 2, training_sessions: 1 });
     await view.loadDashboard();
     expect(steps.hidden).toBe(true);
     expect(steps.innerHTML).toBe("");
   });
 
-  it("titles the steps card Next steps and keeps the table free of them when repertoires exist", async () => {
-    api.mockImplementation(async (url) => {
-      if (String(url).startsWith("/api/dashboard")) {
-        return {
-          streak: { current: 1, best: 3, trained_today: true },
-          repertoires: 1,
-          recommendations: ["Build a repertoire in Build"],
-        };
-      }
-      return {
-        repertoires: [
-          { id: "rep-1", name: "e4", color: "white", is_active: true, health: null },
-        ],
-      };
+  it("never renders training recommendations on the setup card", async () => {
+    mockDashboard({
+      repertoires: 2,
+      due_reviews: 5,
+      recommendations: [
+        { id: "train-due", title: "5 review cards due now", detail: "", cta: { label: "Start due review", view: "train" } },
+        { id: "review-weak", title: "Sharpen your weak spots", detail: "2 weak moves.", cta: { label: "Review weak moves", view: "train" } },
+      ],
     });
     await view.loadDashboard();
-    expect(container.innerHTML).not.toContain("empty-state");
-    expect(container.innerHTML).not.toContain("step-n");
-    expect(container.innerHTML).toContain("data-repertoire-id=\"rep-1\"");
-    expect(steps.innerHTML).toContain("<h2>Next steps</h2>");
-    expect(steps.innerHTML).toContain("<b>Build a repertoire in Build</b>");
-  });
-
-  it("renders object recommendations with a CTA into the target view", async () => {
-    api.mockImplementation(async (url) => {
-      if (String(url).startsWith("/api/dashboard")) {
-        return {
-          streak: { current: 0, best: 0, trained_today: false },
-          recommendations: [
-            {
-              id: "train-due",
-              title: "5 review cards due now",
-              detail: "Spaced repetition has cards ready today.",
-              cta: { label: "Start due review", view: "train" },
-            },
-            {
-              id: "create-repertoire",
-              title: "Create or import your first repertoire",
-              detail: "Build one from an opening you play.",
-              cta: { label: "Open Build", view: "build" },
-            },
-          ],
-        };
-      }
-      return { repertoires: [] };
-    });
-    await view.loadDashboard();
-    expect(steps.innerHTML).toContain("<b>5 review cards due now</b>");
-    expect(steps.innerHTML).toContain("data-testid=\"rec-cta-train-due\"");
-    expect(steps.innerHTML).toContain("data-rec-view=\"train\"");
-    expect(steps.innerHTML).toContain("data-testid=\"rec-cta-create-repertoire\"");
-    expect(steps.innerHTML).toContain("data-rec-view=\"build\"");
-    // Order is the backend's (priority) order — preserved in the render.
-    expect(steps.innerHTML.indexOf("rec-cta-train-due")).toBeLessThan(
-      steps.innerHTML.indexOf("rec-cta-create-repertoire"),
-    );
-  });
-
-  it("routes a CTA click to the recommendation's target view", async () => {
-    const trainBtn = makeCtaButton("train");
-    const buildBtn = makeCtaButton("build");
-    steps.querySelectorAll.mockImplementation((selector) =>
-      selector === ".rec-cta" ? [trainBtn, buildBtn] : [],
-    );
-    api.mockImplementation(async (url) => {
-      if (String(url).startsWith("/api/dashboard")) {
-        return {
-          streak: { current: 0, best: 0, trained_today: false },
-          recommendations: [
-            {
-              id: "train-due",
-              title: "2 review cards due now",
-              detail: "Clear the queue.",
-              cta: { label: "Start due review", view: "train" },
-            },
-            {
-              id: "extend-repertoire",
-              title: "Extend a repertoire branch",
-              detail: "Widen your coverage.",
-              cta: { label: "Open Build", view: "build" },
-            },
-          ],
-        };
-      }
-      return { repertoires: [] };
-    });
-    await view.loadDashboard();
-
-    trainBtn.click();
-    expect(goToView).toHaveBeenCalledWith("train");
-    buildBtn.click();
-    expect(goToView).toHaveBeenCalledWith("build");
-  });
-
-  it("surfaces priority actions as numbered steps when repertoires exist", async () => {
-    api.mockImplementation(async (url) => {
-      if (String(url).startsWith("/api/dashboard")) {
-        return {
-          streak: { current: 1, best: 3, trained_today: false },
-          due_reviews: 5,
-          repertoires: 2,
-          recommendations: [
-            {
-              id: "train-due",
-              title: "5 review cards due now",
-              detail: "Clear the queue.",
-              cta: { label: "Start due review", view: "train" },
-            },
-          ],
-        };
-      }
-      return {
-        repertoires: [
-          { id: "rep-1", name: "e4", color: "white", is_active: true, health: null },
-        ],
-      };
-    });
-    await view.loadDashboard();
-    expect(todayCard.hidden).toBe(false);
-    expect(steps.hidden).toBe(false);
-    expect(steps.innerHTML).toContain("<h2>Next steps</h2>");
-    expect(steps.innerHTML).toContain("data-testid=\"rec-cta-train-due\"");
-    // …and not twice: the Today strip and the table carry no steps.
-    expect(todayCard.innerHTML).not.toContain("rec-cta");
-    expect(container.innerHTML).not.toContain("rec-cta");
-  });
-
-  it("renders state-driven actions compactly — no generic navigation, no prose", async () => {
-    // Converged contract (services/dashboard_recommendations.py): the Next
-    // steps card carries only state actions (due / weak) — the old generic rows
-    // ("Analyze a game → Open Analyze", "Extend a repertoire branch → Open
-    // Build") crowded the card and duplicated the top nav.
-    api.mockImplementation(async (url) => {
-      if (String(url).startsWith("/api/dashboard")) {
-        return {
-          streak: { current: 1, best: 3, trained_today: false },
-          due_reviews: 5,
-          repertoires: 2,
-          recommendations: [
-            {
-              id: "train-due",
-              title: "5 review cards due now",
-              detail: "",
-              cta: { label: "Start due review", view: "train" },
-            },
-            {
-              id: "review-weak",
-              title: "Sharpen your weak spots",
-              detail: "2 weak moves.",
-              cta: { label: "Review weak moves", view: "train" },
-            },
-          ],
-        };
-      }
-      return {
-        repertoires: [
-          { id: "rep-1", name: "e4", color: "white", is_active: true, health: null },
-        ],
-      };
-    });
-    await view.loadDashboard();
-    expect(steps.innerHTML).toContain("rec-cta-train-due");
-    expect(steps.innerHTML).toContain("rec-cta-review-weak");
-    expect(steps.innerHTML).not.toContain("Analyze a game");
-    expect(steps.innerHTML).not.toContain("Extend a repertoire branch");
-    // A state item without prose renders title-only — no empty detail paragraph.
-    expect(steps.innerHTML).not.toContain('<p></p>');
-  });
-
-  it("keeps the Today strip free of steps and titles the card Get started for a repertoire-less account", async () => {
-    await view.loadDashboard(); // default mock: brand-new account, no repertoires
-    expect(todayCard.innerHTML).not.toContain("rec-cta");
+    expect(steps.innerHTML).not.toContain("rec-cta");
+    expect(steps.innerHTML).not.toContain("due now");
+    expect(steps.innerHTML).not.toContain("weak spots");
+    // The Today strip keeps the Train entry point.
     expect(todayCard.innerHTML).toContain("dashboard-train-now");
-    expect(steps.innerHTML).toContain("Get started");
-    expect(container.innerHTML).not.toContain("step-n");
   });
 
   it("renders the signed-out Library as the onboarding card without any API call", () => {

@@ -1721,6 +1721,14 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .step-text b { display: block; }
 .step-text p { margin: 0; color: var(--muted); font-size: var(--fs-s); }
+/* Setup checklist: progress in the head, finished steps tick and quiet down. */
+.steps .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.setup-count { color: var(--muted); font-size: var(--fs-xs); font-weight: 650; font-variant-numeric: tabular-nums; }
+.setup-bar { height: 3px; margin: 0 12px 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+.setup-bar i { display: block; height: 100%; background: var(--good); transition: width 0.3s ease; }
+.step-n.is-done { background: color-mix(in srgb, var(--good) 22%, transparent); color: var(--good-text); }
+.step.is-done .step-text b { color: var(--muted); font-weight: 600; }
+.step-done { color: var(--good-text); font-size: var(--fs-xs); font-weight: 650; }
 
 /* ≤ 1279px: lower-value columns drop, the preview narrows */
 @media (max-width: 1279px) {
@@ -3094,11 +3102,16 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   grid-template-columns: minmax(0, 1fr) 340px;
   gap: 12px;
 }
-.scout-main { min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding-right: 2px; }
+/* position: relative makes the scrolling columns the containing block for
+   absolutely-positioned descendants (the .visually-hidden chart summaries).
+   Without it those resolve against the page and, sitting deep inside the
+   scrolled list, stretched the document — the whole Scout page could be
+   dragged down into empty space. */
+.scout-main { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding-right: 2px; }
 .scout-main > * { flex-shrink: 0; }
 .scout-results { display: flex; flex-direction: column; gap: 10px; }
 .scout-v3-results[hidden] { display: none; }
-.scout-side { min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: auto; padding: 12px; }
+.scout-side { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: auto; padding: 12px; }
 .scout-side[hidden] { display: none; }
 /* No report yet: the detail card has nothing to show. */
 .scout-panel:not(:has(.scout-section)) .scout-grid { grid-template-columns: minmax(0, 1fr); }
@@ -6102,7 +6115,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   position: fixed;
   top: auto;
   right: 16px;
-  bottom: 16px;
+  /* Ride above any job toasts instead of sitting on top of them
+     (--toast-stack-h is kept in sync from JS). */
+  bottom: calc(16px + var(--toast-stack-h, 0px));
   left: auto;
   z-index: 55;
   transform: none;
@@ -6112,9 +6127,14 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   background: var(--panel);
   box-shadow: var(--shadow-2);
   font-size: 12px;
-  pointer-events: auto;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  /* Informational pill: click-through so it never blocks what's underneath.
+     Errors (with their × button) stay interactive. */
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease, bottom 0.25s ease;
 }
+.topbar-status-slot:has(.status[data-state="error"]) { pointer-events: auto; }
+/* Pointer over the pill's spot: fade it to a ghost so the content under it is readable. */
+.topbar-status-slot.is-ghost { opacity: 0.12; }
 .topbar-status-slot:has(.status:empty),
 .topbar-status-slot:has(.status:not(.is-fresh)) {
   opacity: 0;
