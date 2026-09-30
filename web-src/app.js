@@ -219,8 +219,8 @@ function applyPref(name) {
   }
 }
 
-// Top-bar theme toggle: flips the effective theme (an explicit light/dark
-// choice). Settings keeps the full System / Light / Dark control.
+// Rail (and phone More sheet) theme toggle: flips the effective theme (an
+// explicit light/dark choice). Settings keeps the full System / Light / Dark control.
 function syncThemeToggle() {
   const btn = document.getElementById("theme-toggle");
   if (!btn) return;
@@ -230,7 +230,7 @@ function syncThemeToggle() {
   btn.setAttribute("aria-label", label);
 }
 
-function toggleThemeFromTopbar() {
+function toggleTheme() {
   const dark = document.documentElement.dataset.theme === "dark";
   setPref("theme", dark ? "light" : "dark");
   settingsView?.renderThemeControl?.();
@@ -1440,8 +1440,17 @@ class EngineWidget {
     if (this.evalBarWhite) {
       this.evalBarWhite.style.height = `${Math.round(wc * 100)}%`;
     }
-    if (this.evalBarText) this.evalBarText.textContent = evalStr;
-    if (this.evalHead) this.evalHead.textContent = evalStr;
+    if (this.evalBarText) {
+      this.evalBarText.textContent = evalStr;
+      // The number sits at the winning side's end of the bar, in that side's
+      // contrasting ink — top/light text on black, bottom/dark text on white —
+      // so a big White advantage never renders white-on-white.
+      this.evalBarText.classList.toggle("is-white-side", wc >= 0.5);
+    }
+    if (this.evalHead) {
+      this.evalHead.textContent = evalStr;
+      this.evalHead.dataset.side = wc > 0.52 ? "white" : wc < 0.48 ? "black" : "even";
+    }
   }
 
   _bindDrag() {
@@ -2848,6 +2857,10 @@ function setStatus(message, { severity = "info" } = {}) {
   const text = String(message || "");
   status.textContent = text;
   status.title = text;
+  // The floating status pill only shows messages set after load (not the
+  // static "Ready" placeholder); it hides again when the text clears.
+  // "Ready" is the idle state, not news: it clears the pill instead.
+  status.classList.toggle("is-fresh", !!text && text !== "Ready");
   const normalizedSeverity = ["info", "success", "warning", "error"].includes(severity)
     ? severity
     : "info";
@@ -3243,7 +3256,7 @@ function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
     button.classList.toggle("is-active", active && appState.currentView === "replay");
     button.setAttribute("aria-current", active && appState.currentView === "replay" ? "page" : "false");
   });
-  syncTopbarTitle();
+  syncPageTitle();
   // Scout is a section of Replay, and its view chunk carries its own stylesheet
   // (views/scout.css). Load it as soon as the section is shown so the pre-Start
   // panel is styled by the same rules as every other state, rather than rendering
@@ -3270,19 +3283,18 @@ const VIEW_TITLES = {
   settings: "Settings",
 };
 
-function syncTopbarTitle() {
-  const title = document.getElementById("topbar-title");
-  if (!title) return;
-  if (appState.currentView === "replay") {
-    title.textContent = appState.replaySection === "scout" ? "Scout" : "Games";
-  } else {
-    title.textContent = VIEW_TITLES[appState.currentView] || "PrepForge";
-  }
-  syncTopbarExtras();
+// No visible page title (the active nav item names the page): the document
+// title carries it for tabs, history and screen readers.
+function syncPageTitle() {
+  const page = appState.currentView === "replay"
+    ? (appState.replaySection === "scout" ? "Scout" : "Games")
+    : VIEW_TITLES[appState.currentView] || "";
+  document.title = page ? `${page} · PrepForge Chess` : "PrepForge Chess";
+  syncViewHeads();
 }
 
 // Analyze head: the loaded game's identity (PGN headers, else the recalled
-// analysis) in the panel head, and the plies + engine summary in the topbar.
+// analysis) in the panel head.
 function analyzeHeaderTags(pgnText) {
   const tags = {};
   const re = /^\s*\[(\w+)\s+"([^"]*)"\]\s*$/gm;
@@ -3294,7 +3306,7 @@ function analyzeHeaderTags(pgnText) {
 function syncAnalyzeHead() {
   const title = document.getElementById("analysis-game-title");
   const meta = document.getElementById("analysis-game-meta");
-  if (!title || !meta) return "";
+  if (!title || !meta) return;
   const tags = analyzeHeaderTags(document.getElementById("pgn-input")?.value || "");
   const analysis = appState.analysis;
   const known = (v) => (v && !/^[?*.\s]+$/.test(v) ? v : "");
@@ -3309,92 +3321,28 @@ function syncAnalyzeHead() {
     : plies
       ? `${plies} plies`
       : "Paste a PGN or play on the board";
-  if (!plies) return "Coach + engine review";
-  const engine = String(analysis.engine || "");
-  return `${plies} plies${engine ? ` · reviewed with ${engine.charAt(0).toUpperCase()}${engine.slice(1)}` : ""}`;
 }
 
-// Per-view topbar extras: a one-line context summary next to the title, plus
-// Repertoire's Generate action and Analyze's Engine / My last game / Analyze.
-function syncTopbarExtras() {
-  const isBuild = appState.currentView === "build";
-  const isAnalyze = appState.currentView === "analyze";
-  const analyzeActions = document.getElementById("analyze-actions");
-  if (analyzeActions) analyzeActions.hidden = !isAnalyze;
-  const libraryActions = document.getElementById("library-actions");
-  if (libraryActions) libraryActions.hidden = appState.currentView !== "dashboard";
-  // ≤760px the top-bar actions are hidden (prototype); the More sheet mirrors them.
+// Per-view heads that live inside the pages: Analyze's game identity, the
+// Repertoire header's size summary, and (phones) the More sheet's Library
+// mirrors of Import / New.
+function syncViewHeads() {
   document.querySelectorAll("[data-lib-mirror]").forEach((item) => {
     item.hidden = appState.currentView !== "dashboard";
   });
-  const generate = document.getElementById("build-generate-node");
-  if (generate) {
-    generate.hidden = !isBuild;
-    const slot = generate.closest(".tb-actions");
-    if (slot) slot.hidden = !isBuild;
-  }
-  const sub = document.getElementById("topbar-sub");
-  if (isAnalyze) {
-    const text = syncAnalyzeHead();
-    if (sub) {
-      sub.textContent = text;
-      sub.hidden = !text;
-    }
-    return;
-  }
-  if (!sub) return;
-  if (appState.currentView === "train") {
-    const smart = appState.smart;
-    const card = smart && smart.queue && smart.queue[smart.cardIndex];
-    const live = (card && card.repertoire_name) || (smart && smart.repertoireName) ||
-      (appState.training && appState.training.repertoire_name) || "";
-    const text = appState.trainMode === "play" ? "Play against your book" : live;
-    sub.textContent = text;
-    sub.hidden = !text;
-    return;
-  }
-  if (appState.currentView === "dashboard") {
-    // Prototype: today's date over a populated library, a welcome line while
-    // it is empty (signed out or no repertoires yet). A failed load is not
-    // an empty library, so it keeps the date.
-    const empty = !!document.querySelector("#view-dashboard .lib-list.is-empty:not(.is-error)");
-    sub.textContent = empty
-      ? "Welcome — let's build your first repertoire"
-      : new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }).replace(", ", " · ");
-    sub.hidden = false;
-    return;
-  }
-  if (appState.currentView === "teams" || appState.currentView === "settings") {
-    sub.textContent = appState.currentView === "teams" ? "Shared preparation" : "Account, engine and board";
-    sub.hidden = false;
-    return;
-  }
-  if (appState.currentView === "replay") {
-    if (appState.replaySection !== "scout") {
-      sub.textContent = "Did your recent games stay in prep?";
-    } else {
-      // "<opponent> · N games" once a scout has games (read from the rendered profile).
-      const name = document.querySelector("#scout-profile:not([hidden]) .scout-username-link")?.dataset.username;
-      const n = Number(document.getElementById("scout-live-count")?.textContent) || 0;
-      sub.textContent = name && n ? `${name} · ${n} game${n === 1 ? "" : "s"}` : "Opponent preparation";
-    }
-    sub.hidden = false;
-    return;
-  }
-  sub.hidden = !isBuild;
-  if (!isBuild) return;
+  if (appState.currentView === "analyze") syncAnalyzeHead();
+  const stats = document.getElementById("build-rep-stats");
+  if (!stats) return;
   const build = appState.build;
-  if (!build) {
-    sub.textContent = "Workspace";
-  } else if (isBuildReadOnly()) {
-    sub.textContent = "Shared repertoire · read-only";
+  if (!build || isBuildReadOnly()) {
+    stats.textContent = "";
   } else {
     const played = build.nodes.filter((n) => n.depth > 0);
     const parents = new Set(build.nodes.map((n) => n.parent_id));
     const lines = played.filter((n) => !parents.has(n.id)).length;
-    sub.textContent =
-      `${lines} line${lines === 1 ? "" : "s"} · ${played.length} move${played.length === 1 ? "" : "s"}`;
+    stats.textContent = `${lines} line${lines === 1 ? "" : "s"} · ${played.length} move${played.length === 1 ? "" : "s"}`;
   }
+  stats.hidden = !stats.textContent;
 }
 
 function switchView(name, { fromUrl = false } = {}) {
@@ -3423,7 +3371,7 @@ function switchView(name, { fromUrl = false } = {}) {
     moreBtn.classList.toggle("is-active", active);
     moreBtn.setAttribute("aria-current", active ? "page" : "false");
   }
-  syncTopbarTitle();
+  syncPageTitle();
   document.querySelectorAll(".view").forEach((view) => {
     view.classList.toggle("is-active", view.id === `view-${name}`);
   });
@@ -3492,6 +3440,9 @@ function switchView(name, { fromUrl = false } = {}) {
   }
   if (engineWidget && engineWidget.isOpen && engineWidget.isOpen()) {
     if (name === "analyze" || name === "build") engineWidget.onBoardChanged();
+    // Library / Train / Games / Scout / Teams / Settings have no analysis
+    // board: the floating engine window must not follow the user there.
+    else void engineWidget.close();
   }
 }
 
@@ -3879,7 +3830,7 @@ async function ensureDashboardView() {
       promptImportRepertoireFromPgn,
       requireSignIn,
       openSignIn: () => openAuthModal("login"),
-      onLibraryStateChange: syncTopbarExtras,
+      onLibraryStateChange: syncViewHeads,
       goToView: switchView,
       openSettingsSection,
       // Library preview mini-board: FEN decode + the product's piece SVGs over
@@ -5271,7 +5222,7 @@ function removeReadOnlyBanner() {
   const banner = document.getElementById("shared-banner");
   if (banner) banner.hidden = true;
   syncCoverageReadOnlyState();
-  syncTopbarExtras();
+  syncViewHeads();
 }
 
 function syncCoverageReadOnlyState() {
@@ -5931,7 +5882,7 @@ async function ensureMoveTreeRenderer() {
 async function renderAnalysis(payload) {
   const view = await ensureAnalyzeView();
   const rendered = view.renderAnalysis(payload);
-  syncTopbarExtras();
+  syncViewHeads();
   return rendered;
 }
 
@@ -6022,7 +5973,7 @@ async function showAnalysisPly(ply) {
     ? `${move.move_number}${move.side === "black" ? "..." : "."} ${move.san}`
     : "Initial position";
   highlightCurrentMove();
-  syncTopbarExtras();
+  syncViewHeads();
   refreshAnalysisExplain({
     fen,
     lastUci: move ? move.uci : null,
@@ -6399,7 +6350,7 @@ async function ensureBuildView() {
       selectBuildNode,
       openNodeContextMenu,
       buildBranchContext,
-      onTreeRendered: syncTopbarExtras,
+      onTreeRendered: syncViewHeads,
     });
   }
   return buildView;
@@ -6702,6 +6653,13 @@ async function refreshExplorerPanel() {
   }
   renderExplorerScope();
   const seq = ++explorerSeq;
+  const db = explorerDb;
+  // Never leave the previous database's rows (or opening name) on screen while
+  // the other one loads or fails — that read as Masters and Players "mixing".
+  rows.dataset.db = db;
+  const openingEl = document.getElementById("explorer-opening");
+  if (openingEl) openingEl.textContent = "";
+  rows.innerHTML = `<div class="muted hint">Loading ${db === "lichess" ? "Players" : "Masters"}…</div>`;
   try {
     if (!explorerModule) {
       rows.innerHTML = '<div class="muted hint">Loading explorer…</div>';
@@ -6709,18 +6667,22 @@ async function refreshExplorerPanel() {
       explorerClient = explorerModule.createExplorerClient({});
       renderExplorerScope(); // now that ratingBucketsFor is available, show the pool
     }
-    const stats = await explorerClient.fetchStats(explorerDb, fen, {
+    const stats = await explorerClient.fetchStats(db, fen, {
       rating: effectiveMaiaRating(),
     });
-    if (seq !== explorerSeq || !explorerDrawerOpen()) return; // superseded
+    if (seq !== explorerSeq || db !== explorerDb || !explorerDrawerOpen()) return; // superseded
     renderExplorerRows(stats);
   } catch (error) {
-    if (seq !== explorerSeq) return;
+    if (seq !== explorerSeq || db !== explorerDb) return;
+    const label = db === "lichess" ? "Players" : "Masters";
     if (explorerModule && error instanceof explorerModule.ExplorerRateLimited) {
       const secs = Math.max(1, Math.ceil(error.retryInMs / 1000));
       rows.innerHTML = `<div class="muted hint">Lichess asks for a short pause - try again in ~${secs}s.</div>`;
     } else {
-      rows.innerHTML = `<div class="muted hint">Explorer unavailable: ${escapeHtml(error.message)}</div>`;
+      rows.innerHTML =
+        `<div class="muted hint">${label} explorer unavailable: ${escapeHtml(error.message)} ` +
+        `<button type="button" class="btn sm ghost" data-explorer-retry>Retry</button></div>`;
+      rows.querySelector("[data-explorer-retry]")?.addEventListener("click", () => refreshExplorerPanel());
     }
   }
 }
@@ -6781,7 +6743,7 @@ function renderBuilderTreeEmptyState() {
     '<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>';
   if (branchBar) branchBar.hidden = true;
   if (boards.build) boards.build.setBranchArrows([]);
-  syncTopbarExtras();
+  syncViewHeads();
 }
 
 function renderBuilderTree() {
@@ -8434,7 +8396,7 @@ function syncTrainSessionControls() {
       : "Skip this card";
   }
   if (fresh) fresh.disabled = !(appState.smart || appState.training);
-  syncTopbarExtras();
+  syncViewHeads();
   if (blitzToggle) {
     blitzToggle.disabled = !!appState.smart;
     blitzToggle.classList.toggle("is-on", blitzEnabled());
@@ -11008,7 +10970,7 @@ function renderReadOnlyBanner(payload) {
   const title = document.getElementById("shared-banner-title");
   if (title) title.textContent = `Read-only · ${payload.name} · shared with you`;
   banner.hidden = false;
-  syncTopbarExtras();
+  syncViewHeads();
 }
 
 function renderSharedBanner(payload) {
@@ -11317,7 +11279,6 @@ async function ensureScoutView() {
       escapeHtml,
       setStatus,
       switchView,
-      syncTopbar: syncTopbarExtras,
       api,
       showInputModal,
       createRepertoirePrompt,
@@ -11604,6 +11565,9 @@ function wireMobileNav() {
   document.getElementById("account-menu")?.addEventListener("click", (event) => {
     if (event.target.closest?.('[role="menuitem"]')) closeSheet({ restoreFocus: false });
   });
+  // Phones have no rail: the sheet carries the light/dark toggle (it stays
+  // open so the switch is visible behind it).
+  document.getElementById("sheet-theme")?.addEventListener("click", toggleTheme);
   const paletteItem = document.getElementById("sheet-palette");
   if (paletteItem) {
     paletteItem.addEventListener("click", () => {
@@ -11619,6 +11583,15 @@ function wireMobileNav() {
 }
 
 function bindEvents() {
+  // A mouse click leaves focus on the rail button; the next key press (e.g. →
+  // to step the board) then makes it :focus-visible, which expands the rail
+  // overlay. Drop pointer focus from rail controls so only real keyboard
+  // navigation (Tab) opens the rail.
+  document.getElementById("app-rail")?.addEventListener("click", (event) => {
+    if (event.detail === 0) return; // keyboard activation keeps its focus
+    const control = event.target.closest("button");
+    if (control && control.id !== "account-chip") control.blur();
+  });
   document.querySelectorAll(".tab[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
       dismissTransientOverlays();
@@ -11659,7 +11632,7 @@ function bindEvents() {
 
   // Account chip (folds in the old standalone Sign out button as a menu action)
   document.getElementById("account-chip").addEventListener("click", () => onAccountChipClick());
-  document.getElementById("theme-toggle")?.addEventListener("click", toggleThemeFromTopbar);
+  document.getElementById("theme-toggle")?.addEventListener("click", toggleTheme);
 
   // Replay tab
   document.getElementById("lichess-compare-btn").addEventListener("click", runLichessCompare);
@@ -11717,14 +11690,17 @@ function bindEvents() {
   Object.entries(dockTabs).forEach(([name, id]) => {
     const tab = document.getElementById(id);
     if (!tab) return;
-    tab.addEventListener("click", () => {
+    tab.addEventListener("click", (event) => {
       if (buildDockTab !== name) setBuildInspector(name);
+      // A mouse click shouldn't leave a focus ring that lights up the moment
+      // the user steps moves with the arrow keys.
+      if (event.detail !== 0) tab.blur();
     });
     tab.addEventListener("keydown", (event) => {
-      const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
-      const at = BUILD_DOCK_TABS.indexOf(name);
-      const next = event.key === "Home" ? 0 : event.key === "End" ? BUILD_DOCK_TABS.length - 1
-        : step ? (at + step + BUILD_DOCK_TABS.length) % BUILD_DOCK_TABS.length : -1;
+      // ← / → are reserved for stepping the board everywhere in Build (a
+      // clicked tab keeps focus, so a tablist arrow handler here would switch
+      // Explorer → Coverage → Engine while the user is stepping moves).
+      const next = event.key === "Home" ? 0 : event.key === "End" ? BUILD_DOCK_TABS.length - 1 : -1;
       if (next < 0) return;
       event.preventDefault();
       setBuildInspector(BUILD_DOCK_TABS[next]);
@@ -11742,7 +11718,7 @@ function bindEvents() {
   if (pgnInput) {
     pgnInput.addEventListener("input", () => {
       if (analyzePgnWriting) return;
-      syncTopbarExtras();
+      syncViewHeads();
       clearTimeout(analyzePgnInputTimer);
       analyzePgnInputTimer = setTimeout(() => {
         void loadPgnIntoAnalyze(pgnInput.value, { goToEnd: true, quiet: true }).catch(
@@ -11852,23 +11828,6 @@ function bindEvents() {
   });
   document.getElementById("train-hint").addEventListener("click", trainHint);
   const statusClose = document.getElementById("app-status-close");
-  const statusSlot = document.getElementById("topbar-status-slot");
-  const lastNav = document.querySelector(".tb-left");
-  const palette = document.getElementById("open-palette");
-  if (statusSlot && lastNav && palette) {
-    const syncStatusRoom = () => {
-      const room = Math.max(0,
-        Math.floor(palette.getBoundingClientRect().left - lastNav.getBoundingClientRect().right - 20));
-      statusSlot.style.setProperty("--topbar-status-room", `${room}px`);
-    };
-    syncStatusRoom();
-    window.addEventListener("resize", syncStatusRoom);
-    const observer = new ResizeObserver(syncStatusRoom);
-    for (const element of [lastNav, palette]) {
-      if (element) observer.observe(element);
-    }
-    document.fonts?.ready.then(syncStatusRoom);
-  }
   if (statusClose) {
     statusClose.addEventListener("click", () => {
       const status = document.getElementById("app-status");

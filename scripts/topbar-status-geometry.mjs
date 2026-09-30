@@ -3,8 +3,9 @@ import { chromium } from 'playwright';
 // Chrome geometry contract (see prototype/HANDOFF.md):
 //  - desktop: the 60px rail overlays to 204px on hover/keyboard focus and must
 //    never move main content or the board;
-//  - the topbar status overlays the free space left of Ctrl K, stays a single
-//    ellipsised line, and never shifts the chrome around it;
+//  - there is no desktop top bar: search and theme live in the rail foot, and
+//    status messages float as a bottom-right pill that stays a single
+//    ellipsised line and never shifts the chrome around it;
 //  - mobile (390): bottom tab bar with 44px targets, no horizontal scroll.
 const DESKTOP_WIDTHS = [1024, 1180, 1200, 1440];
 const MOBILE_WIDTH = 390;
@@ -33,7 +34,7 @@ try {
       };
       const status = document.querySelector('#app-status');
       return {
-        header: rect('.topbar'), left: rect('.tb-left'), main: rect('.workspace'),
+        hasTopbar: document.querySelector('.topbar') !== null, main: rect('.workspace'),
         rail: rect('#app-rail'),
         palette: rect('#open-palette'),
         account: rect('#theme-toggle'), status: rect('#app-status'),
@@ -43,13 +44,20 @@ try {
       };
     });
     const before = await snapshot();
+    if (before.hasTopbar || before.main.y !== 0) {
+      throw new Error(`${viewportWidth}px should have no top bar above the workspace: ${JSON.stringify(before.main)}`);
+    }
     await page.locator('#app-status').evaluate((element) => {
       element.textContent = 'A very long Build status message '.repeat(30);
+      element.classList.add('is-fresh');
     });
     const long = await snapshot();
-    await page.locator('#app-status').evaluate((element) => { element.textContent = ''; });
+    await page.locator('#app-status').evaluate((element) => {
+      element.textContent = '';
+      element.classList.remove('is-fresh');
+    });
     const cleared = await snapshot();
-    for (const key of ['header', 'left', 'main', 'palette', 'account']) {
+    for (const key of ['main', 'palette', 'account']) {
       for (const coordinate of ['x', 'y', 'width', 'height']) {
         if (before[key][coordinate] !== long[key][coordinate]
             || before[key][coordinate] !== cleared[key][coordinate]) {
@@ -62,8 +70,11 @@ try {
         || long.statusWhiteSpace !== 'nowrap' || long.statusOverflow !== 'ellipsis') {
       throw new Error('Long status failed single-line ellipsis geometry');
     }
-    if (long.status.x < long.left.x + long.left.width + 8) {
-      throw new Error(`${viewportWidth}px status overlaps title block: ${JSON.stringify(long)}`);
+    // The pill floats in the bottom-right corner, clear of the rail.
+    if (long.status.x < long.rail.x + long.rail.width + 8
+        || long.status.x + long.status.width > viewportWidth
+        || long.status.y < 900 / 2) {
+      throw new Error(`${viewportWidth}px status pill is out of its corner: ${JSON.stringify(long.status)}`);
     }
 
     // Rail contract: collapsed width is the 60px track; hover expands to the
@@ -77,7 +88,7 @@ try {
     if (hovered.rail.width < 200) {
       throw new Error(`${viewportWidth}px rail did not overlay-expand on hover: ${JSON.stringify(hovered.rail)}`);
     }
-    for (const key of ['header', 'main']) {
+    for (const key of ['main']) {
       for (const coordinate of ['x', 'y', 'width', 'height']) {
         if (before[key][coordinate] !== hovered[key][coordinate]) {
           throw new Error(`${viewportWidth}px rail hover moved ${key}.${coordinate}`);
@@ -101,7 +112,7 @@ try {
     if (focused.rail.width < 200 && focused.rail.width !== 60) {
       throw new Error(`${viewportWidth}px rail in unexpected state: ${JSON.stringify(focused.rail)}`);
     }
-    for (const key of ['header', 'main']) {
+    for (const key of ['main']) {
       for (const coordinate of ['x', 'y', 'width', 'height']) {
         if (before[key][coordinate] !== focused[key][coordinate]) {
           throw new Error(`${viewportWidth}px rail focus moved ${key}.${coordinate}`);
@@ -129,11 +140,16 @@ try {
       itemCount: items.length,
       items,
       railHidden: getComputedStyle(document.querySelector('#app-rail')).display === 'none',
+      hasTopbar: document.querySelector('.topbar') !== null,
+      workspaceTop: document.querySelector('.workspace').getBoundingClientRect().y,
       scrollWidth: document.documentElement.scrollWidth,
     };
   });
   if (!mobileCheck.tabbarVisible || mobileCheck.itemCount !== 5) {
     throw new Error(`390px bottom tab bar wrong: ${JSON.stringify(mobileCheck)}`);
+  }
+  if (mobileCheck.hasTopbar || mobileCheck.workspaceTop !== 0) {
+    throw new Error(`390px should have no top bar above the workspace: ${JSON.stringify(mobileCheck)}`);
   }
   if (!mobileCheck.railHidden) {
     throw new Error('390px rail should be hidden');

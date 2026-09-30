@@ -251,13 +251,14 @@ function doc(chart) {
 // ---- Mouse ------------------------------------------------------------------
 
 describe("eval chart mouse behaviour", () => {
-  it("hover shows SAN, win chance, and classification as text", () => {
+  it("hover shows the move, its eval in pawns, and classification as text", () => {
     const { chart, tooltip, view } = setup();
     view.renderEvalChart(POINTS);
     chart.dispatch("mousemove", { clientX: 480 }); // ratio .75 -> idx 3 (ply 4)
     expect(tooltip.hidden).toBe(false);
     expect(tooltip.innerHTML).toContain("<b>Nc6</b>");
-    expect(tooltip.innerHTML).toContain("win chance");
+    expect(tooltip.innerHTML).toContain("−1.2");
+    expect(tooltip.innerHTML).not.toContain("win chance");
     expect(tooltip.innerHTML).toContain("Mistake");
     expect(tooltip.innerHTML).toContain("?"); // glyph — a non-colour cue
     chart.dispatch("mouseleave");
@@ -276,58 +277,29 @@ describe("eval chart mouse behaviour", () => {
 
 // ---- Keyboard ---------------------------------------------------------------
 
-describe("eval chart keyboard behaviour", () => {
-  it("is focusable once it has plies, and drops tabindex when empty", () => {
-    const { chart, view } = setup();
-    view.renderEvalChart(POINTS);
-    expect(chart.getAttribute("tabindex")).toBe("0");
-    view.renderEvalChart([]);
-    expect(chart.getAttribute("tabindex")).toBe(null);
-  });
-
-  it("focus shows the current ply's tooltip; arrows step; Enter selects like a click", () => {
-    const { chart, tooltip, appState, showAnalysisPly, view } = setup();
-    view.renderEvalChart(POINTS);
-    appState.analysisPly = 2;
-    chart.dispatch("focus");
-    expect(tooltip.innerHTML).toContain("<b>e5</b>");
-
-    chart.dispatch("keydown", { key: "ArrowRight" });
-    expect(tooltip.innerHTML).toContain("<b>Nf3</b>");
-    chart.dispatch("keydown", { key: "ArrowRight" });
-    expect(tooltip.innerHTML).toContain("<b>Nc6</b>");
-    chart.dispatch("keydown", { key: "ArrowLeft" });
-    expect(tooltip.innerHTML).toContain("<b>Nf3</b>");
-
-    // Enter switches to the indicated ply — identical to a mouse click there.
-    chart.dispatch("keydown", { key: "Enter" });
-    expect(showAnalysisPly).toHaveBeenCalledWith(3);
-    chart.dispatch("click", { clientX: xOfIdx(2, 5) });
-    expect(showAnalysisPly).toHaveBeenLastCalledWith(3);
-  });
-
-  it("clamps at the ends and supports Home/End", () => {
+describe("eval chart pointer focus", () => {
+  it("never takes focus (so no tooltip lingers after the mouse leaves)", () => {
     const { chart, tooltip, view } = setup();
     view.renderEvalChart(POINTS);
-    chart.dispatch("focus");
-    chart.dispatch("keydown", { key: "ArrowLeft" });
-    expect(tooltip.innerHTML).toContain("<b>e4</b>"); // clamped at first ply
-    chart.dispatch("keydown", { key: "End" });
-    expect(tooltip.innerHTML).toContain("<b>Bb5</b>");
-    chart.dispatch("keydown", { key: "ArrowRight" });
-    expect(tooltip.innerHTML).toContain("<b>Bb5</b>"); // clamped at last ply
-    chart.dispatch("keydown", { key: "Home" });
-    expect(tooltip.innerHTML).toContain("<b>e4</b>");
+    expect(chart.getAttribute("tabindex")).toBe(null);
+    const down = chart.dispatch("mousedown");
+    expect(down.preventDefault).toHaveBeenCalled();
+    chart.dispatch("mousemove", { clientX: 160 });
+    expect(tooltip.hidden).toBe(false);
+    chart.dispatch("mouseleave");
+    expect(tooltip.hidden).toBe(true);
   });
 
-  it("marks the current ply inside the tooltip with text", () => {
-    const { chart, tooltip, appState, view } = setup();
+  it("fills White's advantage above the centre line and Black's below it", () => {
+    const { chart, view } = setup();
     view.renderEvalChart(POINTS);
-    appState.analysisPly = 4;
-    chart.dispatch("focus"); // ply 4 -> idx 3
-    expect(tooltip.innerHTML).toContain("current");
-    chart.dispatch("keydown", { key: "ArrowLeft" });
-    expect(tooltip.innerHTML).not.toContain("current");
+    const areas = allElements(chart).filter((el) => (el.getAttribute("class") || "").startsWith("eval-area "));
+    expect(areas.map((el) => el.getAttribute("class"))).toEqual([
+      "eval-area eval-area-white",
+      "eval-area eval-area-black",
+    ]);
+    expect(areas[0].getAttribute("clip-path")).toBe("url(#eval-clip-white)");
+    expect(areas[1].getAttribute("clip-path")).toBe("url(#eval-clip-black)");
   });
 });
 
@@ -345,9 +317,13 @@ describe("eval chart helpers", () => {
   it("evalChartTooltipHtml carries the full text readout", () => {
     const { view } = setup();
     const html = view.evalChartTooltipHtml(POINTS[3], { isCurrent: true });
-    expect(html).toContain("<b>Nc6</b>");
-    expect(html).toContain("% win chance");
+    expect(html).toContain("2… <b>Nc6</b>");
+    expect(html).toContain("−1.2");
     expect(html).toContain("Mistake");
     expect(html).toContain("current");
+    expect(view.evalChartTooltipHtml(POINTS[0])).toContain("1. <b>e4</b> · +0.3");
+    expect(
+      view.evalChartTooltipHtml({ ply: 9, san: "Qh5", score_cp: null, bounded_score_cp: 1000, classification: "best" }),
+    ).toContain("+M");
   });
 });

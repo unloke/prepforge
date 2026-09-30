@@ -172,7 +172,14 @@ export function createExplorerClient({ fetchImpl, storage, now } = {}) {
         throw new ExplorerRateLimited(COOLDOWN_MS);
       }
       if (resp.status === 400) {
-        throw new Error("link your Lichess account to use the opening explorer");
+        // The proxy says why (never linked vs. an expired connection).
+        let detail = "";
+        try {
+          detail = String((await resp.json())?.detail || "");
+        } catch (_) {
+          /* non-JSON body */
+        }
+        throw new Error(detail || "link your Lichess account to use the opening explorer");
       }
       if (!resp.ok) throw new Error(`Explorer responded ${resp.status}`);
       const data = normalizeExplorer(await resp.json());

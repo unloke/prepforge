@@ -1,14 +1,14 @@
-// Playwright smoke: the Analyze eval chart — mouse hover/click, keyboard
-// stepping + Enter, the dark-theme token wiring, and the current-ply position
+// Playwright smoke: the Analyze eval chart — mouse hover/click, the tooltip
+// hiding on pointer leave, the dark-theme token wiring, and the current-ply position
 // indicator. Invoked by tests/e2e/test_eval_chart_smoke.py after uvicorn boots
 // locally (E2E build: VITE_ENABLE_SCOUT_E2E=1 + ?analyze_e2e=1).
 //
 // Assertions:
-//   1. hover shows a text tooltip with SAN, win chance, and classification
-//      (never colour alone),
+//   1. hover shows a text tooltip with SAN, the eval in pawns, and the
+//      classification (never colour alone),
 //   2. click selects the nearest ply (board label + app state move with it),
-//   3. the chart is keyboard-focusable; Left/Right step ply-by-ply and Enter
-//      selects exactly like a click,
+//   3. the tooltip never lingers: leaving the chart hides it, and the chart
+//      is not a focus stop (moves are stepped with the global arrow keys),
 //   4. the chart colours resolve from theme tokens and actually change with
 //      data-theme (light vs dark),
 //   5. the current-ply vertical indicator (dashed line + ring) tracks the
@@ -91,7 +91,7 @@ async function main() {
     if (!chartBox) fail("eval chart has no bounding box");
     const xForRatio = (ratio) => chartBox.x + chartBox.width * ratio;
 
-    // --- 1. Mouse hover: text tooltip (SAN, win chance, classification). ---
+    // --- 1. Mouse hover: text tooltip (SAN, eval, classification). ---
     await page.mouse.move(xForRatio(0.75), chartBox.y + chartBox.height / 2); // ply 4
     await page.waitForFunction(
       () => {
@@ -105,7 +105,7 @@ async function main() {
       () => document.getElementById("eval-chart-tooltip").textContent,
     );
     check(/Nc6/.test(tooltipText), "hover tooltip names the ply's SAN");
-    check(/win chance/.test(tooltipText), "hover tooltip states the win chance in text");
+    check(/[+−]\d+\.\d|[+−]M|0\.0/.test(tooltipText), "hover tooltip states the eval in pawns");
     check(/Mistake/.test(tooltipText), "hover tooltip names the classification in text");
 
     // --- 2. Mouse click: selects the nearest ply. ---
@@ -129,30 +129,24 @@ async function main() {
     check(cursor.ring === "visible", "current-ply ring marker is visible");
     check(cursor.dash === "3 3", "cursor line carries a dashed (non-colour) cue");
 
-    // --- 3. Keyboard: focusable, arrows step ply-by-ply, Enter selects. ---
-    await page.locator("#eval-chart").focus();
+    // --- 3. The tooltip never lingers; the chart is not a focus stop. ---
+    await page.mouse.move(chartBox.x + chartBox.width / 2, chartBox.y - 120);
     await page.waitForFunction(
-      () => {
-        const t = document.getElementById("eval-chart-tooltip");
-        return t && !t.hidden;
-      },
+      () => document.getElementById("eval-chart-tooltip")?.hidden === true,
       null,
       { timeout: 5_000 },
     );
-    await page.keyboard.press("ArrowLeft");
-    await page.keyboard.press("ArrowLeft");
-    const stepped = await page.evaluate(
-      () => document.getElementById("eval-chart-tooltip").textContent,
+    check(
+      (await page.evaluate(() => document.getElementById("eval-chart").hasAttribute("tabindex"))) === false,
+      "the chart is not a keyboard focus stop (no pinned tooltip)",
     );
-    check(/e5/.test(stepped), "ArrowLeft steps the chart focus ply-by-ply");
-    await page.keyboard.press("ArrowRight");
-    await page.keyboard.press("Enter");
+    await page.mouse.click(xForRatio(0.5), chartBox.y + chartBox.height / 2); // ply 3
     check(
       (await page.evaluate(() => window.__prepforgeAnalyzeE2e.getPly())) === 3,
-      "Enter switches to the indicated ply exactly like a click",
+      "click on another point switches to that ply",
     );
-    const afterEnter = await page.evaluate(() => document.getElementById("eval-chart-cursor").getAttribute("x1"));
-    check(afterEnter === "320", `cursor follows keyboard selection (got ${afterEnter})`);
+    const afterClick = await page.evaluate(() => document.getElementById("eval-chart-cursor").getAttribute("x1"));
+    check(afterClick === "320", `cursor follows the new selection (got ${afterClick})`);
 
     // --- 4. Dark theme: chart colours resolve from tokens and flip. ---
     const readColors = () =>

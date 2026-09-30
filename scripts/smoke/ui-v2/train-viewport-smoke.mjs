@@ -80,7 +80,9 @@ async function runViewport(vp) {
     // pause for the 60ms+transition, then click while the label is still up.
     await page.mouse.move(30, 300);
     await page.waitForTimeout(400);
-    await page.mouse.move(60, 236); // onto the Train row itself (y=216..254)
+    // Onto the Train row itself, wherever the rail's density puts it.
+    const row = await page.locator('[data-testid="nav-train"]').boundingBox();
+    await page.mouse.move(row.x + row.width / 2, row.y + row.height / 2);
     await page.waitForTimeout(120);
     await page.mouse.down();
     await page.mouse.up();

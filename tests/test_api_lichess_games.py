@@ -1190,3 +1190,40 @@ def test_record_miss_rejects_other_owners_repertoire(client):
     assert other.post("/api/train/record-miss", json={
         "repertoire_id": rep["repertoire_id"], "node_id": rep["add"]["selected_node_id"],
     }, headers=csrf_headers(other)).status_code == 404
+
+
+def test_compare_many_identities_returns_newest_n_across_accounts(monkeypatch):
+    """"Last 10" across two linked accounts is the newest 10 overall, not 5 + 5."""
+    from prepforge_chess.services import lichess_fetch as fetch_mod
+
+    def _games_for(username, stamps):
+        out = []
+        for i, stamp in enumerate(stamps):
+            g = _game(f"{username}{i}")
+            g.white = username
+            g.finished_at = stamp
+            out.append(g)
+        return out
+
+    # Account A played its 8 games most recently; B's 8 games are all older.
+    a = _games_for("alpha", [f"2026-09-2{9 - i // 2}T1{i}:00:00Z" for i in range(8)])
+    b = _games_for("beta", [f"2026-08-{20 - i:02d}T10:00:00Z" for i in range(8)])
+    requested = {}
+
+    def _fake(username, count, **kwargs):
+        requested[username] = count
+        return list({"alpha": a, "beta": b}[username][:count])
+
+    monkeypatch.setattr(fetch_mod, "fetch_recent_pgns", _fake)
+
+    class _Repo:
+        def list_repertoires(self, owner_user_id=None):
+            return []
+
+    pairs = fetch_mod.compare_many_identities(_Repo(), ["alpha", "beta"], 10)
+    assert requested == {"alpha": 10, "beta": 10}
+    assert len(pairs) == 10
+    stamps = [s.finished_at for s, _ in pairs]
+    assert stamps == sorted(stamps, reverse=True)
+    assert [src for _, src in pairs].count("alpha") == 8
+    assert [src for _, src in pairs].count("beta") == 2

@@ -109,6 +109,9 @@ class GameMatchSummary:
     training_recorded: bool = False
     # Identity whose perspective was compared; never inferred from batch membership.
     source_account: Optional[str] = None
+    # ISO-8601 UTC finish time (from the PGN UTCDate/UTCTime headers) so games from
+    # several identities can be merged into one newest-first list.
+    finished_at: Optional[str] = None
 
 
 def fetch_recent_pgns(
@@ -477,6 +480,7 @@ def _summarize_fetched(entry, username, core, active_repertoires):
     san_history = [move.san for move in game.moves]
     summary = _build_summary(entry, user_color, match, san_history, game)
     summary.source_account = username
+    summary.finished_at = entry.finished_at
     return summary
 
 
@@ -492,11 +496,12 @@ def compare_many_identities(
 ) -> List[tuple]:
     """Compare recent games for linked and external identities.
 
-    Each identity gets a fair share of ``count`` (round-robin budget, at least
-    one game each), fetched with bounded concurrency. Results carry their
-    source username as ``(summary, source)`` pairs, deduped by game id and
-    newest-first by PGN order per identity. Partial failures degrade: one
-    account failing never blocks the others.
+    Each identity fetches up to ``count`` recent games (bounded concurrency);
+    the union is deduped by game id, ordered newest-first by finish time and
+    truncated to ``count`` — i.e. "the last N games across all accounts", not
+    N/len(accounts) per account. Results carry their source username as
+    ``(summary, source)`` pairs. Partial failures degrade: one account failing
+    never blocks the others.
     """
     from concurrent.futures import ThreadPoolExecutor
 
@@ -504,7 +509,7 @@ def compare_many_identities(
     if not names:
         return []
     count = max(1, min(int(count or 10), MAX_FETCH))
-    per_account = max(1, count // len(names))
+    per_account = count
     core = chess_core or ChessCore()
     all_repertoires = repository.list_repertoires(owner_user_id=owner_user_id)
     active_repertoires = [rep for rep in all_repertoires if getattr(rep, "is_active", True)]
@@ -554,6 +559,9 @@ def compare_many_identities(
         merged.append((summary, source))
     if not merged and errors:
         raise errors[0]
+    # Stable sort: games without a finish time keep their per-identity PGN order
+    # (Lichess returns newest first) after every timestamped game.
+    merged.sort(key=lambda pair: pair[0].finished_at or "", reverse=True)
     return merged[:count]
 
 

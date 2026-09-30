@@ -269,49 +269,6 @@ h2 {
   font-size: 15px;
 }
 
-/* Topbar */
-
-.topbar {
-  min-height: 52px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 0 16px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--line);
-  min-width: 0;
-  /* The body is a flex column; without this the topbar (default flex-shrink:1)
-     gets compressed on tall, scrolling views (e.g. Settings) below the height
-     its content needs. Never let the bar shrink under its content. */
-  flex-shrink: 0;
-}
-
-.tb-left {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  min-width: 0;
-  flex: 0 1 auto;
-}
-
-.tb-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.tb-sub {
-  color: var(--label);
-  font-size: var(--fs-s);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* Left icon rail (desktop > 760px). A fixed 60px track reserved by body
    padding; the rail itself is a fixed panel that grows past the track as an
    OVERLAY (hover, or keyboard focus inside it), so main content and the board
@@ -471,17 +428,6 @@ h2 {
   }
 }
 
-.topbar-actions {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: none;
-  /* Anchor the action cluster to the right edge (the rail owns the left rail;
-     the title block must not push the actions along the bar). */
-  margin-left: auto;
-}
-
 /* Status overlays the free space before Ctrl K and has no layout width. */
 .topbar-status-slot {
   position: absolute;
@@ -492,7 +438,7 @@ h2 {
   align-items: center;
   gap: 6px;
   width: max-content;
-  max-width: min(420px, 30vw, var(--topbar-status-room, 0px));
+  max-width: min(420px, 60vw);
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
@@ -644,17 +590,6 @@ h2 {
   cursor: pointer;
 }
 
-/* ≤ 1279px: the top-bar subtitle hides and the status narrows (prototype
-   responsive rule — lower-value chrome yields space to the board). */
-@media (max-width: 1279px) {
-  .tb-sub {
-    display: none;
-  }
-
-  .topbar-status-slot {
-    max-width: min(240px, 30vw, var(--topbar-status-room, 0px));
-  }
-}
 
 .status {
   font-size: 12px;
@@ -691,10 +626,6 @@ h2 {
   font-weight: 650;
 }
 
-.topbar-actions > .icon-btn {
-  height: 30px;
-}
-
 /* Prototype top-bar icon buttons: borderless, 30px, tinted on hover. */
 .icon-btn {
   display: inline-grid;
@@ -720,7 +651,6 @@ h2 {
   color: var(--muted);
   font: 600 10.5px/16px var(--mono, ui-monospace, monospace);
 }
-.topbar-actions { gap: 6px; }
 .theme-ic-sun { display: none; }
 :root[data-theme="dark"] .theme-ic-sun { display: block; }
 :root[data-theme="dark"] .theme-ic-moon { display: none; }
@@ -1480,17 +1410,17 @@ h2 {
 a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 /* Grid: list + preview (spans both rows) + steps under the list */
+/* Grid: the repertoire list, with "Next steps" as a side column when there
+   are any (the old start-position preview board carried no information). */
 .lib-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--pv-w, 340px);
-  grid-template-rows: auto 1fr;
+  grid-template-columns: minmax(0, 1fr) 340px;
   gap: 12px;
   align-items: start;
 }
-.lib-grid:has(> .lib-preview[hidden]) { grid-template-columns: minmax(0, 1fr); }
-.lib-list { grid-column: 1; min-width: 0; overflow: hidden; }
-.lib-preview { grid-column: 2; grid-row: 1 / 3; }
-.steps { grid-column: 1; overflow: hidden; }
+.lib-grid:has(> .steps[hidden]) { grid-template-columns: minmax(0, 1fr); }
+.lib-list { grid-column: 1; grid-row: 1; min-width: 0; overflow: hidden; }
+.steps { grid-column: 2; grid-row: 1; overflow: hidden; }
 
 /* Filter chips + search share the card head row (prototype). */
 .search-field {
@@ -1783,15 +1713,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 /* ≤ 1279px: lower-value columns drop, the preview narrows */
 @media (max-width: 1279px) {
-  .lib-grid { --pv-w: 290px; }
+  .lib-grid:not(:has(> .steps[hidden])) { grid-template-columns: minmax(0, 1fr) 290px; }
   .today { grid-template-columns: auto minmax(0, 1fr) auto; }
   .today-metrics { display: none; }
 }
 /* ≤ 1020px: single column */
 @media (max-width: 1020px) {
   .lib-grid { grid-template-columns: minmax(0, 1fr); }
-  .lib .lib-preview { grid-column: auto; grid-row: auto; position: static; }
-  .steps { grid-column: auto; }
+  .lib-list,
+  .steps { grid-column: auto; grid-row: auto; }
 }
 /* ≤ 760px: no preview pane (a tap opens the workspace), two-line rows,
    44px touch targets. */
@@ -1862,7 +1792,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    the left edge and is only as wide as the board, so there is no dead gutter
    on either side. The right workspace takes the rest and scrolls internally. */
 .study {
-  --study-h: calc(100dvh - 52px - 36px);
+  --study-h: calc(100dvh - 36px);
   /* Board square budget (prototype design rule): min(100dvh − chrome,
      (100vw − rail − 48) × 0.58, 820px). The column then wraps exactly around
      it (max-content), so width never dictates a too-small board and no fixed
@@ -2741,9 +2671,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .inspector-panel { min-width: 0; }
 .inspector-panel[hidden] { display: none; }
 
-.tb-left { align-items: center; }
-.tb-actions { display: flex; align-items: center; gap: 8px; margin-left: 6px; }
-.tb-actions[hidden] { display: none; }
 
 @media (max-width: 1020px) {
   #view-build .sidebar { max-height: none; overflow: hidden; }
@@ -2757,12 +2684,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .dock-tabs button { min-height: 44px; }
   /* Library's Import / New live in the More sheet on phones (prototype). */
   #library-actions { display: none; }
-  /* Generate stays reachable on phones: it takes the palette chip's room. */
-  .topbar:has(.tb-actions:not([hidden]):not(#library-actions)) .palette-open { display: none; }
-  .tb-actions { margin-left: 0; gap: 6px; }
-  .tb-actions .btn { white-space: nowrap; padding-inline: 8px; font-size: 13px; }
-  /* The title keeps its width; the action buttons are the compact part. */
-  .tb-left .tb-title { flex: none; }
   .board-bar { height: 44px; }
 }
 
@@ -3907,20 +3828,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
     display: none;
   }
 
-  .topbar {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    min-height: 50px;
-    height: auto;
-    padding: 0 12px;
-    gap: 8px;
-  }
-
-  .tb-title {
-    font-size: 17px;
-  }
-
   .tabbar {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -4406,7 +4313,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 .engine-window.is-docked .engine-window-body {
   min-height: 140px;
+  /* Docked: the head's eval chip already carries the number, and a second
+     narrow bar beside the dock added noise, not information. */
+  grid-template-columns: 1fr;
 }
+.engine-window.is-docked .engine-bar { display: none; }
+.engine-window.is-docked .engine-window-pvs { padding: 4px 0; }
+.engine-window.is-docked .engine-pv { background: none; border-color: transparent; border-bottom-color: var(--line-soft); border-radius: 0; }
+.engine-window.is-docked .engine-pv.is-top { background: var(--panel-soft); border-color: transparent; border-bottom-color: var(--line-soft); }
+.engine-window.is-docked .engine-pv-line { white-space: normal; line-height: 1.45; }
 
 .engine-window.is-docked .engine-window-close,
 .engine-window.is-docked .engine-window-resize {
@@ -4563,7 +4478,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .engine-bar {
   position: relative;
   background: #1a1a1a;
-  border-right: 1px solid var(--line-soft);
+  border-right: 1px solid var(--line-strong);
 }
 
 .engine-bar-white {
@@ -4573,6 +4488,17 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   background: #f4f1e8;
   transition: height 220ms ease;
 }
+
+.engine-bar-text.is-white-side {
+  inset: auto 0 3px 0;
+  color: #1a1a1a;
+  text-shadow: none;
+}
+
+/* Eval chip: a two-tone pill that says whose advantage it is by shape of
+   fill, not by an accent colour that reads the same for both sides. */
+.engine-head-eval[data-side="white"] { background: #f4f1e8; color: #1a1a1a; border-color: #cfc9b8; }
+.engine-head-eval[data-side="black"] { background: #1f1f1f; color: #f4f1e8; border-color: #1f1f1f; }
 
 .engine-bar-text {
   position: absolute;
@@ -6144,3 +6070,105 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 
 
+
+/* ===========================================================================
+   Shell without a top bar (every width)
+   The left rail (bottom tab bar + More sheet on phones) is the only chrome:
+   the current page is the active nav item, page actions live inside each
+   page's own header, and Search / Theme / Account sit in the rail foot. The app status is a small floating pill (bottom-right)
+   that appears on change and fades out; errors stay until dismissed.
+   =========================================================================== */
+@media (min-width: 761px) {
+  .workspace { padding-top: 18px; }
+}
+
+.topbar-status-slot {
+  position: fixed;
+  top: auto;
+  right: 16px;
+  bottom: 16px;
+  left: auto;
+  z-index: 55;
+  transform: none;
+  padding: 6px 8px 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  box-shadow: var(--shadow-2);
+  font-size: 12px;
+  pointer-events: auto;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.topbar-status-slot:has(.status:empty),
+.topbar-status-slot:has(.status:not(.is-fresh)) {
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+}
+.topbar-status-slot .status { max-width: min(380px, 60vw); }
+
+/* Rail foot: Search and Theme read as rail rows (icon, label on expand). */
+.rail-btn {
+  position: relative;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  height: 38px;
+  padding: 0 13px;
+  white-space: nowrap;
+}
+.rail-btn .ic { width: 18px; height: 18px; }
+.rail-btn .nav-label { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; }
+.rail-btn kbd { font-size: 10px; }
+
+/* Page actions inside page headers. */
+.lib-actions,
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.lib-list .card-head .search-field { margin-left: auto; }
+#view-analyze .panel-head { justify-content: space-between; }
+#view-analyze .panel-actions { margin-left: auto; }
+#build-rep-header .rep-stats {
+  flex: none;
+  font-size: var(--fs-s);
+  white-space: nowrap;
+}
+#build-rep-header #build-generate-node { margin-left: auto; flex: none; }
+#build-rep-header .rep-menu-btn { margin-left: 0; }
+.panel:has(> .build-empty:not([hidden])) #build-generate-node { display: none; }
+
+@media (max-width: 760px) {
+  .topbar-status-slot { left: 12px; right: 12px; bottom: calc(70px + env(safe-area-inset-bottom)); border-radius: var(--radius); }
+  .lib-actions { width: 100%; }
+  .lib-actions .btn { flex: 1; }
+  #view-analyze .panel-head { flex-wrap: wrap; }
+  #view-analyze .panel-actions { margin-left: 0; width: 100%; }
+  #view-analyze .panel-actions .btn { flex: 1; min-height: 40px; }
+}
+
+/* Rail density: brand + 8 destinations + 4 foot controls must fit a ~740px
+   laptop viewport without a scrollbar. */
+@media (min-width: 761px) {
+  .rail { gap: 4px; padding-top: 8px; padding-bottom: 8px; }
+  .rail .tab,
+  .rail .rail-btn { height: 34px; }
+  .rail .nav-group-label { height: 14px; line-height: 14px; }
+  .rail-foot { gap: 2px; padding-top: 6px; }
+  .rail .account-btn { height: 36px; }
+}
+
+/* Train coach banner: one fixed height (title + two clamped lines), so a
+   short "Learned!" and a long coach note never push the cards below it. */
+#view-train .train-coach {
+  box-sizing: border-box;
+  height: 84px;
+}
+/* Progress card rows keep their size as the session advances: the pip row is
+   as tall as its "No moves yet" placeholder, and Up next reserves its three
+   rows, so the buttons below never creep upward card by card. */
+#train-progress-panel .pips { min-height: 1.4em; align-content: center; }
+#train-progress-panel .upnext:not([hidden]) { min-height: 116px; box-sizing: border-box; }
