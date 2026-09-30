@@ -100,7 +100,9 @@ describe("workspace chrome layout", () => {
     expect(html.indexOf('id="app-status-close"')).toBeGreaterThan(slot);
     expect(css).toMatch(/\.topbar-status-slot\s*\{[^}]*position:\s*fixed/s);
     expect(css).toMatch(/\.topbar-status-slot:has\(\.status:not\(\.is-fresh\)\)/);
-    expect(app).toContain('status.classList.toggle("is-fresh", !!text && text !== "Ready")');
+    expect(app).toContain('status.classList.toggle("is-fresh", !!text && text !== "Ready" && !inProgress)');
+    // In-progress ("...") messages only surface if still current after a beat.
+    expect(app).toContain("STATUS_PROGRESS_SHOW_DELAY");
     expect(app).toContain('function setStatus(message, { severity = "info" } = {})');
     expect(app).toContain('getElementById("app-status-close")');
     // Library's Import / New live in the repertoire list header, mirrored in the

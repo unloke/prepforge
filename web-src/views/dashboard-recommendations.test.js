@@ -162,6 +162,27 @@ describe("dashboard setup checklist", () => {
     expect(steps.innerHTML).toBe("");
   });
 
+  it("does not repeat New repertoire on the checklist (the empty state has it)", async () => {
+    await view.loadDashboard();
+    expect(steps.innerHTML).not.toContain('data-lib-action="new"');
+    expect(container.innerHTML).toContain('data-lib-action="new"');
+  });
+
+  it("offers a dismiss and stays hidden once dismissed", async () => {
+    mockDashboard({ repertoires: 1 });
+    await view.loadDashboard();
+    expect(steps.innerHTML).toContain("data-setup-dismiss");
+    const store = new Map([["prepforge.setup_dismissed", "1"]]);
+    globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+    try {
+      await view.loadDashboard();
+      expect(steps.hidden).toBe(true);
+      expect(steps.innerHTML).toBe("");
+    } finally {
+      delete globalThis.localStorage;
+    }
+  });
+
   it("never renders training recommendations on the setup card", async () => {
     mockDashboard({
       repertoires: 2,

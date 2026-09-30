@@ -1724,6 +1724,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 /* Setup checklist: progress in the head, finished steps tick and quiet down. */
 .steps .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .setup-count { color: var(--muted); font-size: var(--fs-xs); font-weight: 650; font-variant-numeric: tabular-nums; }
+.steps .card-head h2 { margin-right: auto; }
+.setup-dismiss { align-self: center; min-width: 24px; height: 24px; padding: 0; border-color: transparent; background: none; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
+.setup-dismiss:hover { color: var(--text); background: var(--surface-hover); }
 .setup-bar { height: 3px; margin: 0 12px 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
 .setup-bar i { display: block; height: 100%; background: var(--good); transition: width 0.3s ease; }
 .step-n.is-done { background: color-mix(in srgb, var(--good) 22%, transparent); color: var(--good-text); }

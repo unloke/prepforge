@@ -131,6 +131,30 @@ export function createDashboardView({
   // vanishes the moment a repertoire exists), and it carries setup only:
   // due/weak training lives in the Today strip, never here.
   let lastSetupPayload = null;
+  // The user can put the checklist away before finishing it (not everyone
+  // wants to link Lichess); remembered per browser.
+  const SETUP_DISMISSED_KEY = "prepforge.setup_dismissed";
+
+  function setupDismissed() {
+    try {
+      return localStorage.getItem(SETUP_DISMISSED_KEY) === "1";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function dismissSetup() {
+    try {
+      localStorage.setItem(SETUP_DISMISSED_KEY, "1");
+    } catch (_) {
+      // storage blocked: hide for this page view only
+    }
+    const card = document.getElementById("dashboard-steps");
+    if (card) {
+      card.hidden = true;
+      card.innerHTML = "";
+    }
+  }
 
   function setupSteps(payload) {
     const repertoires = (payload && payload.repertoires) || 0;
@@ -140,10 +164,10 @@ export function createDashboardView({
       {
         id: "repertoire",
         title: "Build your first repertoire",
-        detail: "From scratch, a PGN study, or one of your games.",
+        // No button here: while this step is open the library's empty state
+        // already offers New repertoire / Import PGN right beside it.
+        detail: "New repertoire or Import PGN, in your library.",
         done: repertoires > 0,
-        action: "new",
-        label: "New repertoire",
       },
       {
         id: "lichess",
@@ -173,14 +197,16 @@ export function createDashboardView({
     lastSetupPayload = payload || lastSetupPayload || {};
     const steps = setupSteps(lastSetupPayload);
     const doneCount = steps.filter((step) => step.done).length;
-    if (doneCount === steps.length) {
+    if (doneCount === steps.length || setupDismissed()) {
       card.hidden = true;
       card.innerHTML = "";
       return;
     }
     card.innerHTML =
       `<header class="card-head"><h2>Get started</h2>` +
-      `<span class="setup-count" data-testid="setup-progress">${doneCount} of ${steps.length} done</span></header>` +
+      `<span class="setup-count" data-testid="setup-progress">${doneCount} of ${steps.length} done</span>` +
+      `<button type="button" class="ib setup-dismiss" data-setup-dismiss data-testid="setup-dismiss" ` +
+      `aria-label="Hide Get started" title="Hide this checklist">&times;</button></header>` +
       `<div class="setup-bar" aria-hidden="true"><i style="width:${Math.round((doneCount / steps.length) * 100)}%"></i></div>` +
       steps
         .map((step, i) => {
@@ -189,6 +215,8 @@ export function createDashboardView({
             : `<span class="step-n" aria-hidden="true">${i + 1}</span>`;
           const cta = step.done
             ? `<span class="step-done">Done</span>`
+            : !step.action
+            ? ""
             : `<button type="button" class="btn sm" data-lib-action="${step.action}"` +
               `${step.locked ? " disabled" : ""} data-testid="setup-cta-${step.id}">${escapeHtml(step.label)}</button>`;
           return (
@@ -786,6 +814,10 @@ export function createDashboardView({
     const stepsEl = document.getElementById("dashboard-steps");
     if (stepsEl) {
       stepsEl.addEventListener("click", (event) => {
+        if (event.target.closest && event.target.closest("[data-setup-dismiss]")) {
+          dismissSetup();
+          return;
+        }
         const btn = event.target.closest && event.target.closest("[data-lib-action]");
         if (btn) libAction(btn.dataset.libAction);
       });

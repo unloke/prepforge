@@ -11,6 +11,7 @@ export function createAnalyzeView({
   showAnalysisPly,
   selectAnalysisNode,
   revealAnalysisResults,
+  onEvalChartRendered = () => {},
 }) {
   const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks } =
     createMoveTreeRenderer({ escapeHtml });
@@ -437,6 +438,7 @@ export function createAnalyzeView({
     const svgNS = "http://www.w3.org/2000/svg";
     chart.innerHTML = "";
     appState.evalChartPoints = points || [];
+    onEvalChartRendered();
     const width = EVAL_CHART_W;
     const height = EVAL_CHART_H;
     // Win% → y. Up = White winning (standard advantage-graph convention, matching

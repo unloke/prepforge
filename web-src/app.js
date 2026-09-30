@@ -13,6 +13,7 @@ import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
 import { applyTheme } from "./theme.js";
 import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
 import { squareInDirection } from "./board-navigation.js";
+import { pgnPlayers, selfSide } from "./analyze-orient.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { describeMove } from "./explain.js";
 import {
@@ -2909,6 +2910,8 @@ function engineLifecycleMark(name, origin = performance.now()) {
   } catch (_) { /* logging only */ }
   return origin;
 }
+const STATUS_PROGRESS_SHOW_DELAY = 700;
+
 function setStatus(message, { severity = "info" } = {}) {
   const status = document.getElementById("app-status");
   if (!status) return;
@@ -2919,11 +2922,21 @@ function setStatus(message, { severity = "info" } = {}) {
   // The floating status pill only shows messages set after load (not the
   // static "Ready" placeholder); it hides again when the text clears.
   // "Ready" is the idle state, not news: it clears the pill instead.
-  status.classList.toggle("is-fresh", !!text && text !== "Ready");
   const normalizedSeverity = ["info", "success", "warning", "error"].includes(severity)
     ? severity
     : "info";
   const isError = normalizedSeverity === "error";
+  // In-progress messages ("Loading...") usually resolve within a moment; only
+  // surface one if it is still the current message after a beat, so quick
+  // steps never flash a pill in the corner.
+  const inProgress = !isError && /(\.\.\.|…)$/.test(text);
+  if (typeof window !== "undefined") window.clearTimeout(setStatus._showTimer);
+  status.classList.toggle("is-fresh", !!text && text !== "Ready" && !inProgress);
+  if (inProgress && typeof window !== "undefined") {
+    setStatus._showTimer = window.setTimeout(() => {
+      if (status.textContent === text) status.classList.add("is-fresh");
+    }, STATUS_PROGRESS_SHOW_DELAY);
+  }
   status.setAttribute("role", isError ? "alert" : "status");
   status.setAttribute("aria-live", isError ? "assertive" : "polite");
   status.dataset.severity = normalizedSeverity;
@@ -4388,15 +4401,25 @@ async function resolveLichessAccountId(actionLabel) {
 // came from). Leaves the orientation alone when neither side is recognisably Self.
 function orientAnalysisForSelf(white, black, extraNames = []) {
   if (!boards.analysis) return;
-  const mine = new Set(
-    [appState.lichessUsername, ...lichessAccounts().map((a) => a.username), ...extraNames]
-      .filter(Boolean)
-      .map((name) => String(name).toLowerCase())
-  );
-  const w = String(white || "").toLowerCase();
-  const b = String(black || "").toLowerCase();
-  if (b && mine.has(b) && !mine.has(w)) boards.analysis.setOrientation("black");
-  else if (w && mine.has(w) && !mine.has(b)) boards.analysis.setOrientation("white");
+  const side = selfSide(white, black, [
+    appState.lichessUsername,
+    ...lichessAccounts().map((a) => a.username),
+    ...extraNames,
+  ]);
+  if (side) boards.analysis.setOrientation(side);
+}
+
+// Same, for a PGN the user pasted or dropped: read its White/Black headers.
+// Only re-orients when the pair of names changes, so the debounced re-parse on
+// every keystroke never undoes a manual flip.
+let lastOrientedPgnPlayers = "";
+function orientAnalysisFromPgn(text) {
+  const { white, black } = pgnPlayers(text);
+  const key = `${white}\n${black}`;
+  if (!white && !black) return;
+  if (key === lastOrientedPgnPlayers) return;
+  lastOrientedPgnPlayers = key;
+  orientAnalysisForSelf(white, black);
 }
 
 async function fetchMyLichessGame(accountId = null) {
@@ -4424,6 +4447,7 @@ async function fetchMyLichessGame(accountId = null) {
   // Show the game in the move list right away (steppable before Analyze).
   void loadPgnIntoAnalyze(latest.pgn || "", { goToEnd: false, quiet: true }).catch(() => {});
   orientAnalysisForSelf(latest.white, latest.black, [latest.source_account]);
+  lastOrientedPgnPlayers = `${latest.white || ""}\n${latest.black || ""}`;
   if (latest.lichess_id) markLichessSeen(latest.lichess_id);
   const source = latest.source_account ? ` · from ${latest.source_account}` : "";
   setStatus(`Loaded ${latest.white || "?"} vs ${latest.black || "?"}${source} - press Analyze`);
@@ -5987,6 +6011,7 @@ async function ensureAnalyzeView() {
       showAnalysisPly,
       selectAnalysisNode,
       revealAnalysisResults,
+      onEvalChartRendered: () => syncAnalysisEvalCard(),
     });
   }
   return analyzeView;
@@ -6718,12 +6743,14 @@ function syncEngineChrome() {
 }
 
 // The Evaluation card shows when there is a game graph or the engine is on;
-// the graph itself only once a game has results.
+// the graph itself only once an analysis has plotted points (a loaded but not
+// yet analyzed game has nothing to draw, so no empty grey box).
 function syncAnalysisEvalCard() {
   const card = document.getElementById("analysis-eval-card");
   const graph = document.getElementById("analysis-eval-graph");
   const results = document.getElementById("analysis-results");
-  const hasGraph = !!results && !results.hidden;
+  const points = Array.isArray(appState.evalChartPoints) ? appState.evalChartPoints : [];
+  const hasGraph = !!results && !results.hidden && points.length > 0;
   if (graph) graph.hidden = !hasGraph;
   if (card) card.hidden = !hasGraph && !engineWantedIn("analyze");
 }
@@ -7839,6 +7866,7 @@ async function fillPgnInputFromFile(file) {
     const drawer = document.querySelector("#view-analyze .drawer");
     if (drawer) drawer.open = true;
     void loadPgnIntoAnalyze(text, { goToEnd: false, quiet: true }).catch(() => {});
+    orientAnalysisFromPgn(text);
     setStatus(`Loaded ${file.name} - press Analyze`);
   } catch (_) {
     setStatus("Could not read file", { severity: "error" });
@@ -9481,6 +9509,7 @@ async function openPlayInAnalyze() {
   const drawer = document.getElementById("pgn-drawer");
   if (drawer) drawer.open = true;
   switchView("analyze");
+  if (boards.analysis) boards.analysis.setOrientation(play.userColor === "black" ? "black" : "white");
   if (input) {
     await loadPgnIntoAnalyze(input.value, { goToEnd: true, quiet: true }).catch(() => {});
   }
@@ -9500,6 +9529,10 @@ async function submitTrainingMove(playedUci) {
   }
   const prompt = currentTrainingPrompt();
   if (!prompt || !playedUci || appState.trainBusy) return;
+  // A mode switch replaces appState.training; every await below re-checks it so
+  // an abandoned session never paints onto the new mode's board.
+  const training = appState.training;
+  const superseded = () => appState.training !== training || appState.smart;
   // Land the dragged move on the board right away; the server response below
   // decides whether it advances (correct) or resets (wrong).
   await optimisticBoardMove(boards.train, prompt.fen_before, playedUci);
@@ -9563,6 +9596,7 @@ async function submitTrainingMove(playedUci) {
     playSound("capture");
     if (appState.training) appState.training.prompt = result.prompt;
     await sleep(1450);
+    if (superseded()) return;
     appState.trainBusy = false;
     if (result.prompt) await renderTraining(result.prompt);
     return;
@@ -9588,6 +9622,7 @@ async function submitTrainingMove(playedUci) {
   // 2) After a beat, let the opponent reply as its own animated step.
   if (result.reply_uci && result.fen_after_reply) {
     await sleep(520);
+    if (superseded()) return;
     boards.train.setPosition({
       fen: result.fen_after_reply,
       legalMoves: [],
@@ -9598,6 +9633,7 @@ async function submitTrainingMove(playedUci) {
   } else {
     await sleep(480);
   }
+  if (superseded()) return;
 
   appState.trainBusy = false;
   if (result.prompt) {
@@ -10295,6 +10331,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   setTrainBanner("correct", praise, target.san ? `You played ${target.san}` : "");
   if (target.reply && target.reply.uci && target.reply.fen_after) {
     await sleep(520);
+    if (appState.smart !== smart) return; // mode switched mid-animation
     boards.train.setPosition({
       fen: target.reply.fen_after,
       legalMoves: [],
@@ -11998,6 +12035,7 @@ function bindEvents() {
       syncViewHeads();
       clearTimeout(analyzePgnInputTimer);
       analyzePgnInputTimer = setTimeout(() => {
+        orientAnalysisFromPgn(pgnInput.value);
         void loadPgnIntoAnalyze(pgnInput.value, { goToEnd: true, quiet: true }).catch(
           () => {}
         );
@@ -12144,6 +12182,7 @@ function bindEvents() {
         .forEach((b) => b.classList.toggle("is-active", b === btn));
       appState.trainMode = mode;
       appState.play = null;
+      appState.trainBusy = false;
       if (mode !== "smart") appState.smart = null;
       if (mode !== "all_lines") appState.training = null;
       clearBlitzTimer();
