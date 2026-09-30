@@ -1138,8 +1138,9 @@ class EngineWidget {
     // Line indexes the user unfolded (reset whenever the position changes).
     this.expandedLines = new Set();
     this.multipv = 1;
-    // Lines actually searched: the shown lines, widened in Build so every
-    // Explorer candidate can carry its own eval (see engineExtraLines).
+    // Lines actually searched. Always the shown lines: Explorer row evals come
+    // from their own worker (explorerEvalEngine), so the main line keeps the
+    // full-strength single-PV search instead of being widened to every row.
     this.searchedMultipv = 1;
     this.maxMultipv = 5;
     this.minMultipv = 1;
@@ -1164,7 +1165,7 @@ class EngineWidget {
         /* best-effort */
       }
     }
-    this.engine = createEngineProvider({ maxDepth: depth, maxMultipv: ENGINE_SEARCH_MAX_LINES });
+    this.engine = createEngineProvider({ maxDepth: depth, maxMultipv: this.maxMultipv });
     this.engineDepth = depth;
   }
 
@@ -1252,14 +1253,14 @@ class EngineWidget {
   }
 
   _searchMultipv() {
-    return Math.max(this.multipv, engineExtraLines());
+    return this.multipv;
   }
 
   /** Re-analyze whenever the active board changes. No-op if widget closed. */
   async onBoardChanged() {
     if (!this.open) return;
     const fen = this.currentFen();
-    if (fen === this.lastFen) return this.onSearchWidthChanged();
+    if (fen === this.lastFen) return;
     this._ensureEngine();
     const engine = this.engine;
     this.lastFen = fen;
@@ -1332,29 +1333,8 @@ class EngineWidget {
     }
   }
 
-  // The Explorer's candidate count changed (new rows, or Build entered/left):
-  // re-search the same position at the new width. The shown lines stay put.
-  async onSearchWidthChanged() {
-    if (!this.open || !this.engine || !this.lastFen) return;
-    const width = this._searchMultipv();
-    if (width === this.searchedMultipv) return;
-    const engine = this.engine;
-    const fen = this.lastFen;
-    this.searchedMultipv = width;
-    try {
-      const snapshot = await engine.update({ fen, multipv: width });
-      if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
-      this._renderSnapshot(snapshot);
-      this._startPolling();
-    } catch (error) {
-      if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
-      this._showError(error.message);
-    }
-  }
-
   _showError(message) {
     setEngineBestArrow(null);
-    paintExplorerEvals(null);
     setStatusError(message);
     if (this.pvsEl) {
       this.pvsEl.innerHTML = `<div class="empty-state">${escapeHtml(
@@ -1365,7 +1345,6 @@ class EngineWidget {
 
   _clearAnalysisView() {
     setEngineBestArrow(null);
-    paintExplorerEvals(null);
     this.expandedLines.clear();
     if (this.lastFen && this._renderGameOver(this.lastFen)) return;
     if (this.pvsEl) this.pvsEl.innerHTML = this._pendingRows(0);
@@ -1497,7 +1476,6 @@ class EngineWidget {
     }
     const pvs = Array.isArray(snapshot.pvs) ? snapshot.pvs : [];
     if (!pvs.length && this._renderGameOver(snapshot.fen || this.lastFen)) {
-      paintExplorerEvals(snapshot);
       this._stopPolling();
       return;
     }
@@ -1520,7 +1498,8 @@ class EngineWidget {
     } else {
       setEngineBestArrow(null);
     }
-    paintExplorerEvals(snapshot);
+    // The main line is the reference the Explorer's per-row colours compare against.
+    explorerEvalEngine.repaint();
     // Keep the coach's one-line rationale in sync with this (deeper) search.
     if (typeof positionCoach !== "undefined") positionCoach.onWidgetSnapshot(snapshot);
     // Once the engine reaches max depth it stops; no point polling further
@@ -4332,6 +4311,9 @@ function initAccountController() {
     onOpenSettings: () => {
       switchView("settings");
       loadSettings();
+    },
+    onOpenAccount: () => {
+      void openSettingsSection("set-account");
     },
     beforeSignOut: flushAllPendingForSignOut,
   });
@@ -7168,10 +7150,9 @@ let buildDockTab = "explorer";
 // column per candidate) and Analyze's Evaluation card (game graph + live lines).
 const ENGINE_VIEW_SLOTS = { build: "explorer-engine-slot", analyze: "analysis-engine-slot" };
 const ENGINE_VIEW_PREFS = { build: "engineBuild", analyze: "engineAnalyze" };
-// Widest MultiPV the Explorer asks for. More lines means a shallower search per
-// second, so only as many as there are candidate rows, capped here.
-const ENGINE_SEARCH_MAX_LINES = 8;
-let explorerRowCount = 0;
+// Most Explorer rows the eval worker scores (the most-played ones). More lines
+// means a shallower search per second, so the rest show a dash.
+const EXPLORER_EVAL_MAX_LINES = 8;
 
 function dockEngine(slotId) {
   const el = document.getElementById("engine-window");
@@ -7197,6 +7178,7 @@ function syncEngineForView(view = activeViewName()) {
     void engineWidget.close();
   }
   syncEngineChrome();
+  void explorerEvalEngine.sync();
 }
 
 function setEngineOn(view, on) {
@@ -7221,7 +7203,7 @@ function syncEngineChrome() {
   }
   const rows = document.getElementById("explorer-rows");
   if (rows) rows.classList.toggle("has-eval", buildOn);
-  paintExplorerEvals(buildOn ? engineWidget.lastSnapshot : null);
+  explorerEvalEngine.repaint();
   syncAnalysisEvalCard();
 }
 
@@ -7238,11 +7220,148 @@ function syncAnalysisEvalCard() {
   if (card) card.hidden = !hasGraph && !engineWantedIn("analyze");
 }
 
-// Extra lines Build wants searched so each Explorer candidate gets an eval.
-function engineExtraLines() {
-  if (activeViewName() !== "build" || !engineWantedIn("build")) return 0;
-  return Math.min(ENGINE_SEARCH_MAX_LINES, explorerRowCount);
+// ---- Explorer row evals ------------------------------------------------------
+// A second Stockfish worker, separate from the live engine lines: it searches the
+// same position at the same depth, restricted (UCI `searchmoves`) to exactly the
+// Explorer's candidate moves with one PV per candidate. The main widget keeps its
+// own line count, so its best line reaches full depth as fast as a single-PV
+// search; the row evals cost one extra worker, only while Build's Explorer is
+// showing with the engine on.
+class ExplorerEvalEngine {
+  constructor() {
+    this.engine = null;
+    this.engineDepth = null;
+    this.key = null; // fen + candidate moves of the running search
+    this.snapshot = null;
+    this.pollTimer = null;
+  }
+
+  wanted() {
+    return (
+      activeViewName() === "build" &&
+      engineWantedIn("build") &&
+      buildDockTab === "explorer" &&
+      explorerDrawerOpen()
+    );
+  }
+
+  // Candidate moves on screen for the current node, most-played first.
+  _candidates() {
+    const rows = document.getElementById("explorer-rows");
+    const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+    const fen = (node && node.fen) || null;
+    if (!rows || !fen || !sameFenPosition(rows.dataset.fen, fen)) return null;
+    const moves = [];
+    rows.querySelectorAll(".explorer-row").forEach((row) => {
+      const uci = normalizeUci(row.dataset.uci);
+      if (uci && !moves.includes(uci)) moves.push(uci);
+    });
+    return moves.length ? { fen, moves: moves.slice(0, EXPLORER_EVAL_MAX_LINES) } : null;
+  }
+
+  _ensureEngine() {
+    const depth = effectiveStockfishDepth();
+    if (this.engine && this.engineDepth === depth) return;
+    this.stop();
+    this.engine = createEngineProvider({ maxDepth: depth, maxMultipv: EXPLORER_EVAL_MAX_LINES });
+    this.engineDepth = depth;
+  }
+
+  // Start, retarget or stop the search to match what the Explorer shows now.
+  async sync() {
+    if (!this.wanted()) {
+      this.stop();
+      this.repaint();
+      return;
+    }
+    const want = this._candidates();
+    if (!want) {
+      // No rows belong to a live position (mid-fetch, empty, or failed). The search
+      // on the old position must actually STOP, not just be forgotten — otherwise it
+      // burns a core at full depth on an off-screen position with nothing left to
+      // poll it. Park it (worker stays warm; `_ensureEngine` rebuilds if it is gone).
+      this.key = null;
+      this.snapshot = null;
+      this._stopPolling();
+      if (this.engine) {
+        try {
+          this.engine.stopSearch();
+        } catch (_) {
+          /* best-effort */
+        }
+      }
+      this.repaint();
+      return;
+    }
+    this._ensureEngine();
+    const key = `${want.fen}|${want.moves.join(",")}|${this.engineDepth}`;
+    if (key === this.key) return;
+    this.key = key;
+    this.snapshot = null;
+    this._stopPolling();
+    this.repaint();
+    const engine = this.engine;
+    try {
+      const snapshot = await engine.update({
+        fen: want.fen,
+        multipv: want.moves.length,
+        searchmoves: want.moves,
+      });
+      if (engine !== this.engine || key !== this.key) return;
+      this._accept(snapshot);
+      if (snapshot.running !== false) this._poll();
+    } catch (error) {
+      if (engine !== this.engine || key !== this.key) return;
+      this.snapshot = { error: error.message };
+      this.repaint();
+    }
+  }
+
+  _accept(snapshot) {
+    this.snapshot = snapshot;
+    this.repaint();
+    if (snapshot && snapshot.running === false) this._stopPolling();
+  }
+
+  _poll() {
+    this._stopPolling();
+    const engine = this.engine;
+    const key = this.key;
+    this.pollTimer = setInterval(() => {
+      if (engine !== this.engine || key !== this.key) {
+        this._stopPolling();
+        return;
+      }
+      this._accept(engine.snapshot());
+    }, 450);
+  }
+
+  _stopPolling() {
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+  }
+
+  stop() {
+    this._stopPolling();
+    this.key = null;
+    this.snapshot = null;
+    if (this.engine) {
+      const engine = this.engine;
+      this.engine = null;
+      this.engineDepth = null;
+      Promise.resolve()
+        .then(() => engine.close())
+        .catch(() => {});
+    }
+  }
+
+  repaint() {
+    paintExplorerEvals(this.snapshot, engineWidget.isOpen() ? engineWidget.lastSnapshot : null);
+  }
 }
+const explorerEvalEngine = new ExplorerEvalEngine();
 
 // Explorer reports castling king-to-rook (e1h1); Stockfish king-two-squares.
 const CASTLE_UCI = { e1h1: "e1g1", e1a1: "e1c1", e8h8: "e8g8", e8a8: "e8c8" };
@@ -7263,14 +7382,17 @@ function sameFenPosition(a, b) {
   return a.split(" ").slice(0, 4).join(" ") === b.split(" ").slice(0, 4).join(" ");
 }
 
-// Paint each Explorer row's Eval cell from the engine's lines. Evals are White's
-// view (like the bar); the colour says how much the mover gives up vs the best.
-function paintExplorerEvals(snapshot) {
+// Paint each Explorer row's Eval cell from the eval worker's lines. Evals are
+// White's view (like the bar); the colour says how much the mover gives up
+// versus the best move: the main engine line when it is on this position,
+// else the best candidate.
+function paintExplorerEvals(snapshot, mainSnapshot = null) {
   const rows = document.getElementById("explorer-rows");
   if (!rows || !rows.classList.contains("has-eval")) return;
   const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
   const fen = (node && node.fen) || START_FEN;
   const live = !!snapshot && !snapshot.error && sameFenPosition(snapshot.fen, fen);
+  const failed = !!snapshot && !!snapshot.error;
   const pvs = live && Array.isArray(snapshot.pvs)
     ? snapshot.pvs.filter((pv) => Array.isArray(pv.pv_uci) && pv.pv_uci.length)
     : [];
@@ -7279,20 +7401,43 @@ function paintExplorerEvals(snapshot) {
     const key = normalizeUci(pv.pv_uci[0]);
     if (!byUci.has(key)) byUci.set(key, pv);
   });
-  const best = pvs.length ? engineScoreCp(pvs[0]) : 0;
   const sign = live && snapshot.side_to_move === "black" ? -1 : 1;
+  // Mover's-view reference: the best of the candidates and the main line.
+  let best = pvs.length ? Math.max(...pvs.map((pv) => engineScoreCp(pv) * sign)) : 0;
+  const mainPv =
+    mainSnapshot && !mainSnapshot.error && sameFenPosition(mainSnapshot.fen, fen)
+      ? (mainSnapshot.pvs || [])[0]
+      : null;
+  if (pvs.length && mainPv && Array.isArray(mainPv.pv_uci) && mainPv.pv_uci.length) {
+    best = Math.max(best, engineScoreCp(mainPv) * sign);
+  }
+  // A row the cap never asked about is genuinely "not scored"; a row we asked about
+  // that has no PV yet is still calculating. `beyondCap` is what the worker could
+  // never score, so the cap tooltip is only ever shown for those rows.
+  const rowCount = rows.querySelectorAll(".explorer-row").length;
+  const beyondCap = rowCount > EXPLORER_EVAL_MAX_LINES;
+  const settled = live && (snapshot.running === false || pvs.length >= EXPLORER_EVAL_MAX_LINES);
   rows.querySelectorAll(".explorer-row").forEach((row) => {
     const cell = row.querySelector(".explorer-eval");
     if (!cell) return;
     cell.classList.remove("is-best", "is-ok", "is-weak");
+    if (failed) {
+      cell.textContent = "—";
+      cell.title = `Engine unavailable: ${snapshot.error}`;
+      return;
+    }
     const pv = byUci.get(normalizeUci(row.dataset.uci));
     if (!pv) {
-      cell.textContent = pvs.length ? "\u2014" : "\u2026";
-      cell.title = pvs.length ? "Outside the engine's top lines" : "Calculating\u2026";
+      cell.textContent = settled || beyondCap ? "—" : "…";
+      cell.title = beyondCap
+        ? `Not scored: only the ${EXPLORER_EVAL_MAX_LINES} most-played moves are evaluated`
+        : settled
+          ? "Not scored — the engine returned no line for this move"
+          : "Calculating…";
       return;
     }
     cell.textContent = engineWidget._formatEval(pv.score_cp, pv.mate_in);
-    const drop = (best - engineScoreCp(pv)) * sign;
+    const drop = best - engineScoreCp(pv) * sign;
     cell.classList.add(drop <= 20 ? "is-best" : drop <= 80 ? "is-ok" : "is-weak");
     cell.title = `Stockfish, depth ${pv.depth || snapshot.current_depth || 0}`;
   });
@@ -7335,6 +7480,7 @@ function setBuildInspector(tool) {
   }
   paintInspectorScope();
   if (tab === "explorer") refreshExplorerPanel();
+  void explorerEvalEngine.sync();
 }
 
 // Compact scope line for the ⓘ popover: what the panel shows, nothing more.
@@ -7403,6 +7549,9 @@ async function refreshExplorerPanel() {
   const fen = node ? node.fen : null;
   if (!fen) {
     rows.innerHTML = '<div class="muted hint">Open a repertoire to see real-game stats.</div>';
+    // No rows can belong to a position now, so park the search instead of
+    // leaving the old one burning a core at full depth.
+    void explorerEvalEngine.sync();
     return;
   }
   renderExplorerScope();
@@ -7411,6 +7560,11 @@ async function refreshExplorerPanel() {
   // Never leave the previous database's rows (or opening name) on screen while
   // the other one loads or fails — that read as Masters and Players "mixing".
   rows.dataset.db = db;
+  // Rows stop being actionable here, but the re-render below that would re-sync
+  // the eval engine only lands after the network round-trip. Park the search now
+  // so the previous position is not still searched at full depth meanwhile.
+  delete rows.dataset.fen;
+  void explorerEvalEngine.sync();
   const openingEl = document.getElementById("explorer-opening");
   if (openingEl) openingEl.textContent = "";
   rows.innerHTML = `<div class="muted hint">Loading ${db === "lichess" ? "Players" : "Masters"}…</div>`;
@@ -7425,7 +7579,7 @@ async function refreshExplorerPanel() {
       rating: effectiveMaiaRating(),
     });
     if (seq !== explorerSeq || db !== explorerDb || !explorerDrawerOpen()) return; // superseded
-    renderExplorerRows(stats);
+    renderExplorerRows(stats, fen);
   } catch (error) {
     if (seq !== explorerSeq || db !== explorerDb) return;
     const label = db === "lichess" ? "Players" : "Masters";
@@ -7447,15 +7601,16 @@ function renderExplorerScope() {
   paintInspectorScope();
 }
 
-function renderExplorerRows(stats) {
+function renderExplorerRows(stats, fen) {
   const rows = document.getElementById("explorer-rows");
   if (!rows) return;
   const openingEl = document.getElementById("explorer-opening");
   if (openingEl) openingEl.textContent = stats.opening || "";
-  explorerRowCount = stats.moves.length;
+  rows.dataset.fen = fen || "";
+  rows.classList.remove("is-stale");
   if (!stats.moves.length) {
     rows.innerHTML = '<div class="muted hint">No games reached this position - true novelty territory.</div>';
-    void engineWidget.onSearchWidthChanged();
+    void explorerEvalEngine.sync();
     return;
   }
   // Dot the continuations already in the repertoire at this node, so gaps between
@@ -7483,11 +7638,36 @@ function renderExplorerRows(stats) {
     )
     .join("");
   rows.querySelectorAll(".explorer-row").forEach((btn) => {
-    btn.addEventListener("click", () => onBuildBoardMove(btn.dataset.uci));
+    btn.addEventListener("click", () => onExplorerRowClick(rows, btn.dataset.uci));
   });
-  paintExplorerEvals(engineWidget.lastSnapshot);
-  void engineWidget.onSearchWidthChanged();
+  explorerEvalEngine.repaint();
+  void explorerEvalEngine.sync();
 }
+
+// Rows belong to the position they were fetched for. A second click (a double
+// click, or a click while the next position's stats load) must not replay the
+// old position's move from the new one: that was the "Illegal move" toast. The
+// first click consumes the rows; they come back live only if the move didn't
+// land (cancelled or rejected) and the board is still on their position.
+async function onExplorerRowClick(rows, uci) {
+  const rowsFen = rows.dataset.fen;
+  const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  const currentFen = node ? node.fen : boards.build && boards.build.fen;
+  if (!rowsFen || !sameFenPosition(rowsFen, currentFen)) return;
+  delete rows.dataset.fen;
+  rows.classList.add("is-stale");
+  try {
+    await onBuildBoardMove(uci);
+  } finally {
+    const now = appState.buildNodeById.get(appState.buildCurrentNodeId);
+    const nowFen = now ? now.fen : boards.build && boards.build.fen;
+    if (!rows.dataset.fen && sameFenPosition(rowsFen, nowFen)) {
+      rows.dataset.fen = rowsFen;
+      rows.classList.remove("is-stale");
+    }
+  }
+}
+
 
 function renderBuilderTreeEmptyState() {
   const container = document.getElementById("builder-tree");
@@ -11417,6 +11597,9 @@ async function ensureSettingsView() {
       onAccountsChanged: () => {
         void refreshLichessStatus();
       },
+      signOut: () => accountController.signOut(),
+      openAuthModal: (mode) => accountController.openAuthModal(mode),
+      refreshAuthStatus: () => accountController.refreshAuthStatus(),
     });
     settingsView.bind();
   }
@@ -11495,6 +11678,7 @@ async function saveSettings(patch) {
     // open Engine widget needs an explicit nudge to rebuild + re-analyze right now.
     if (patch && Object.prototype.hasOwnProperty.call(patch, "stockfish_depth")) {
       engineWidget.onDepthSettingChanged().catch(() => { /* best-effort */ });
+      void explorerEvalEngine.sync();
     }
     // A Maia-rating change moves the Explorer Players pool (and its scope readout), which
     // both read effectiveMaiaRating() at fetch time — re-render if the drawer is open.
@@ -13206,7 +13390,40 @@ async function init() {
   await maybeOpenSharedView();
   // A join URL (/?join=<code>) redeems a team invite (requires sign-in).
   await maybeHandleJoinLink();
+  // A password-reset link (/?reset_password=<token>) opens the reset form, and a
+  // Stripe return (/?billing=success|cancelled) reports the outcome once.
+  accountService().openResetFromUrl();
+  handleBillingReturn();
   syncWorkspaceUrl();
+}
+
+function handleBillingReturn() {
+  let url;
+  try {
+    url = new URL(window.location.href);
+  } catch (_) {
+    return;
+  }
+  const outcome = url.searchParams.get("billing");
+  if (!outcome) return;
+  url.searchParams.delete("billing");
+  window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+  if (outcome === "success") {
+    // The webhook is the source of truth for the plan, not this redirect (the
+    // param is user-editable, and the webhook may not have landed yet). Re-fetch
+    // and only claim Pro if the server actually reports Pro.
+    void refreshAuthStatus().then(() => {
+      if (appState.account && appState.account.plan === "pro") {
+        setStatus("Thanks — your Pro plan is active.");
+      } else {
+        setStatus(
+          "Payment received — your Pro plan is being activated. It can take a moment to show.",
+        );
+      }
+    });
+  } else if (outcome === "cancelled") {
+    setStatus("Checkout cancelled — nothing was charged.", { severity: "warning" });
+  }
 }
 
 // Everything that needs an authenticated session. Called from init only when
