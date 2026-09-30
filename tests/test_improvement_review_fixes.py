@@ -695,3 +695,289 @@ def test_account_export_scope_matches_deletion(client):
     assert counts["sessions"] >= 1
     # Session is gone with the account: the cookie is now worthless.
     assert client.get("/api/auth/me").status_code in (401, 403)
+
+
+# ---- D-02: the SQL due count means the same thing as health.due ------------
+
+
+def _due_listing(client: TestClient, rep_id: str) -> dict:
+    listing = client.get("/api/repertoires").json()["repertoires"]
+    return next(row for row in listing if row["id"] == rep_id)
+
+
+def _insert_progress(rep_id: str, owner: str, node_id: str, **overrides) -> None:
+    from prepforge_chess.api import db
+    from prepforge_chess.storage import sa_tables as t
+
+    now = datetime.now(timezone.utc)
+    values = {
+        "id": "tp-{0}".format(node_id),
+        "owner_user_id": owner,
+        "repertoire_id": rep_id,
+        "node_id": node_id,
+        "attempts": 1,
+        "correct_attempts": 1,
+        "last_reviewed_at": now.isoformat(),
+        "spaced_repetition_score": 1.0,
+        "due_at": (now - timedelta(minutes=1)).isoformat(),
+        "is_mastered": 0,
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+    }
+    values.update(overrides)
+    with db.make_engine().begin() as conn:
+        conn.execute(t.training_progress.insert().values(**values))
+
+
+def test_listing_due_count_is_scoped_to_the_owning_account(client):
+    """The due-count walk must not mix tenants.
+
+    The recursive CTE that resolves "is any ancestor disabled" is scoped to the
+    owner's repertoires. Node ids are globally unique so the scope cannot change
+    a count, but an unscoped walk reads every tenant's tree on every Library
+    listing — and would break outright if ids were ever reused.
+    """
+    owner_a = _register(client, "d02-scope-a@example.com")
+    create_a = client.post(
+        "/api/repertoires/create",
+        json={"name": "Mine", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+    rep_a = create_a["repertoire_id"]
+    own_a = client.post(
+        "/api/build/add-move",
+        json={
+            "repertoire_id": rep_a,
+            "parent_node_id": create_a["selected_node_id"],
+            "move_uci": "e2e4",
+        },
+        headers=csrf_headers(client),
+    ).json()["selected_node_id"]
+    _insert_progress(rep_a, owner_a, own_a)
+
+    # A second, fully real account in the same database, with its own due node.
+    from prepforge_chess.api import main
+
+    other = TestClient(main.app)
+    owner_b = _register(other, "d02-scope-b@example.com")
+    create_b = other.post(
+        "/api/repertoires/create",
+        json={"name": "Theirs", "color": "white"},
+        headers=csrf_headers(other),
+    ).json()
+    own_b = other.post(
+        "/api/build/add-move",
+        json={
+            "repertoire_id": create_b["repertoire_id"],
+            "parent_node_id": create_b["selected_node_id"],
+            "move_uci": "d2d4",
+        },
+        headers=csrf_headers(other),
+    ).json()["selected_node_id"]
+    _insert_progress(create_b["repertoire_id"], owner_b, own_b)
+
+    # Each account sees exactly its own one due node — not two.
+    assert _due_listing(other, create_b["repertoire_id"])["health"]["due"] == 1
+    assert _due_listing(client, rep_a)["health"]["due"] == 1
+    # And the other account's repertoire does not appear in A's listing.
+    assert {row["id"] for row in client.get("/api/repertoires").json()["repertoires"]} == {rep_a}
+
+
+def test_listing_due_count_ignores_subtrees_behind_a_disabled_ancestor(client):
+    """A disabled ancestor makes its whole subtree untrainable.
+
+    The cached health already reported 0 in this state; the SQL due count used
+    to report 1, so the Library promised reviews the Smart queue could not
+    produce.
+    """
+    _register(client, "d02a@example.com")
+    owner = client.get("/api/auth/me").json()["id"]
+    create = client.post(
+        "/api/repertoires/create",
+        json={"name": "Due subtree", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+    rep_id = create["repertoire_id"]
+    root_id = create["selected_node_id"]
+    own = client.post(
+        "/api/build/add-move",
+        json={"repertoire_id": rep_id, "parent_node_id": root_id, "move_uci": "e2e4"},
+        headers=csrf_headers(client),
+    ).json()["selected_node_id"]
+    reply = client.post(
+        "/api/build/add-move",
+        json={"repertoire_id": rep_id, "parent_node_id": own, "move_uci": "e7e5"},
+        headers=csrf_headers(client),
+    ).json()["selected_node_id"]
+    buried = client.post(
+        "/api/build/add-move",
+        json={"repertoire_id": rep_id, "parent_node_id": reply, "move_uci": "g1f3"},
+        headers=csrf_headers(client),
+    ).json()["selected_node_id"]
+    _insert_progress(rep_id, owner, buried)
+
+    assert _due_listing(client, rep_id)["health"]["due"] == 1
+
+    client.post(
+        "/api/build/action",
+        json={
+            "repertoire_id": rep_id,
+            "node_id": reply,
+            "action": "disable_branch",
+        },
+        headers=csrf_headers(client),
+    )
+    after = _due_listing(client, rep_id)
+    assert after["health"]["due"] == 0
+
+    # Re-enabling restores the same number — the boundary is not sticky.
+    client.post(
+        "/api/build/action",
+        json={
+            "repertoire_id": rep_id,
+            "node_id": reply,
+            "action": "disable_branch",
+        },
+        headers=csrf_headers(client),
+    )
+    assert _due_listing(client, rep_id)["health"]["due"] == 1
+
+
+def test_listing_due_count_respects_weak_before_due_precedence(client):
+    """node_mastery checks weak BEFORE due, so a weak-and-due node is weak."""
+    _register(client, "d02b@example.com")
+    owner = client.get("/api/auth/me").json()["id"]
+    create = client.post(
+        "/api/repertoires/create",
+        json={"name": "Due weak", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+    rep_id = create["repertoire_id"]
+    node_id = client.post(
+        "/api/build/add-move",
+        json={
+            "repertoire_id": rep_id,
+            "parent_node_id": create["selected_node_id"],
+            "move_uci": "d2d4",
+        },
+        headers=csrf_headers(client),
+    ).json()["selected_node_id"]
+    # 4 attempts, 1 right, recent form still low → weak, even though due.
+    _insert_progress(
+        rep_id,
+        owner,
+        node_id,
+        id="tp-weak",
+        attempts=4,
+        correct_attempts=1,
+        spaced_repetition_score=1.0,
+    )
+    assert _due_listing(client, rep_id)["health"]["due"] == 0
+
+    # Same row, but with recent form (score >= WEAK_SCORE_BELOW) it reads due.
+    from prepforge_chess.api import db
+    from prepforge_chess.storage import sa_tables as t
+    from sqlalchemy import update
+
+    with db.make_engine().begin() as conn:
+        conn.execute(
+            update(t.training_progress)
+            .where(t.training_progress.c.id == "tp-weak")
+            .values(spaced_repetition_score=6.0)
+        )
+    assert _due_listing(client, rep_id)["health"]["due"] == 1
+
+
+# ---- D-03: one latest snapshot per game, even on an exact timestamp tie ----
+
+
+def test_analysis_history_shows_a_game_once_when_snapshots_tie(client):
+    _register(client, "d03@example.com")
+    prepared = _prepare(client, '[Event "T"]\n[White "a"]\n[Black "b"]\n\n1. e4 e5 *').json()
+    assert _classify_save(client, prepared).status_code == 200
+
+    from prepforge_chess.api import db
+    from prepforge_chess.storage import sa_tables as t
+    from sqlalchemy import select
+
+    game_id = prepared["game_id"]
+    with db.make_engine().connect() as conn:
+        same_moment = conn.execute(
+            select(t.analysis_results.c.analyzed_at).where(
+                t.analysis_results.c.game_id == game_id
+            )
+        ).scalar_one()
+    # Two extra snapshots at the EXACT same instant as the saved one: the old
+    # max(analyzed_at) join could not break this tie, so the game showed up
+    # three times in one page.
+    with db.make_engine().begin() as conn:
+        for index, depth in enumerate((12, 14)):
+            conn.execute(
+                t.analysis_results.insert().values(
+                    # Ids sort after the saved snapshot's uuid, so the tie
+                    # break is deterministic: the newest row wins.
+                    id="zz-an-tie-{0}".format(index),
+                    game_id=game_id,
+                    analyzed_at=same_moment,
+                    engine="stockfish",
+                    depth=depth,
+                    summary_json="{}",
+                    critical_ply="",
+                    quality_json=None,
+                )
+            )
+
+    analyses = client.get("/api/analyses").json()["analyses"]
+    ids = [item["game_id"] for item in analyses]
+    assert ids.count(game_id) == 1
+    # The tie is broken deterministically on the analysis id, not at random.
+    assert analyses[0]["depth"] == 14
+
+
+# ---- D-05: account deletion is one transaction ------------------------------
+
+
+def test_account_deletion_rolls_back_the_content_delete_when_identity_fails(
+    client, monkeypatch
+):
+    """An injected failure in the identity half must not leave a half account.
+
+    Content (Core repository) and identity (ORM session) used to commit as two
+    transactions, so this state — repertoire gone, account still usable — was
+    reachable. Both halves now share one transaction.
+    """
+    import pytest
+    from sqlalchemy.orm import Session
+
+    from prepforge_chess.api import models as api_models
+
+    _register(client, "d05@example.com")
+    owner = client.get("/api/auth/me").json()["id"]
+    create = client.post(
+        "/api/repertoires/create",
+        json={"name": "Doomed", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+
+    class Boom(RuntimeError):
+        pass
+
+    original_delete = Session.delete
+
+    def explode(self, instance, *args, **kwargs):
+        if isinstance(instance, api_models.User):
+            raise Boom("identity delete failed")
+        return original_delete(self, instance, *args, **kwargs)
+
+    monkeypatch.setattr(Session, "delete", explode)
+    with pytest.raises(Boom):
+        client.request(
+            "DELETE", "/api/account", json={"confirm": "DELETE"},
+            headers=csrf_headers(client),
+        )
+    monkeypatch.undo()
+
+    # Nothing partial survived: the repertoire AND the account are intact.
+    listing = client.get("/api/repertoires").json()["repertoires"]
+    assert any(row["id"] == create["repertoire_id"] for row in listing)
+    assert client.get("/api/auth/me").json()["id"] == owner

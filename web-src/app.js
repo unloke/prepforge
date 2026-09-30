@@ -9,20 +9,26 @@ import {
   peekSharedMaia3Provider,
 } from "./engine/maia3-provider.js";
 import { createCsrfTokenSource, headersWithCsrf, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
-import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
+import { localBoardInfo, localBoardAfterMove, localGameOver } from "./chess-local.js";
 import { applyTheme } from "./theme.js";
 import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
 import { squareInDirection } from "./board-navigation.js";
 import { pgnPlayers, selfSide } from "./analyze-orient.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { classifySyncError, describeSyncError } from "./sync-errors.js";
+import { orderPendingBuildAdds } from "./build-queue.js";
 import {
   acquireFlushLock,
+  buildAddId,
+  buildDeleteId,
   clearOutbox,
   loadOutbox,
+  outboxHasRejected,
   outboxHasWork,
+  outboxIsQuiescent,
   releaseFlushLock,
   saveOutbox,
+  trainAttemptId,
 } from "./sync-outbox.js";
 import {
   clearCheckpoint,
@@ -392,6 +398,9 @@ const appState = {
   analysis: null,
   // Raw PGN from the most recent in-session Analyze run (not history recall).
   analysisSourcePgn: null,
+  // A finished-but-unsaved analysis held only in memory (device storage
+  // refused the checkpoint) so "Retry save" can still reach it.
+  analysisUnsavedCheckpoint: null,
   analysisJobId: null,
   analysisPolling: false,
   analysisPly: 0,
@@ -457,6 +466,14 @@ const appState = {
     flushing: null, // in-flight flush promise
     retry: 0, // exponential-backoff attempt counter
   },
+  // R-03: ops the server permanently refused. Kept for inspection/export —
+  // restored on reload, never silently dropped, never auto-retried.
+  buildRejected: [],
+  trainRejected: [],
+  // Whether the durable outbox write succeeded. False means the queue only
+  // lives in this tab, which the UI must state honestly.
+  outboxPersisted: true,
+  outboxStorageWarned: false,
   trainSyncState: "saved", // saved | dirty | syncing | error (Train save chip)
   // The LIVE Lichess token's username (drives latest-game fetch / replay). Null when
   // the token is absent/expired even if still signed in.
@@ -1118,6 +1135,8 @@ class EngineWidget {
     this.pollTimer = null;
     this.lastFen = null;
     this.lastSnapshot = null;
+    // Line indexes the user unfolded (reset whenever the position changes).
+    this.expandedLines = new Set();
     this.multipv = 1;
     // Lines actually searched: the shown lines, widened in Build so every
     // Explorer candidate can carry its own eval (see engineExtraLines).
@@ -1347,12 +1366,61 @@ class EngineWidget {
   _clearAnalysisView() {
     setEngineBestArrow(null);
     paintExplorerEvals(null);
-    if (this.pvsEl) {
-      this.pvsEl.innerHTML = '<div class="empty-state">Calculating...</div>';
-    }
+    this.expandedLines.clear();
+    if (this.lastFen && this._renderGameOver(this.lastFen)) return;
+    if (this.pvsEl) this.pvsEl.innerHTML = this._pendingRows(0);
     if (this.depthReadout) this.depthReadout.textContent = "0 / ?";
     if (this.evalBarText) this.evalBarText.textContent = "...";
-    if (this.evalHead) this.evalHead.textContent = "...";
+    if (this.evalHead) {
+      this.evalHead.textContent = "...";
+      delete this.evalHead.dataset.side;
+    }
+  }
+
+  // Placeholder rows so the panel keeps the same height while a search warms up:
+  // one row per requested line, identical in size to a real line.
+  _pendingRows(from) {
+    let html = "";
+    for (let i = from; i < this.multipv; i += 1) {
+      html +=
+        '<div class="engine-pv is-pending" aria-hidden="true">' +
+        '<span class="engine-pv-eval">…</span>' +
+        `<span class="engine-pv-line">${i === 0 ? "Calculating…" : ""}</span>` +
+        "</div>";
+    }
+    return html;
+  }
+
+  // Checkmate / stalemate / draw on the board: there is no line to search, so
+  // say the result instead of "Calculating…" forever. Returns true if shown.
+  _renderGameOver(fen) {
+    const over = localGameOver(fen);
+    if (!over) return false;
+    setEngineBestArrow(null);
+    const text =
+      over.kind === "checkmate"
+        ? `Checkmate — ${over.winner === "white" ? "White" : "Black"} wins`
+        : over.kind === "stalemate"
+          ? "Stalemate — draw"
+          : "Draw";
+    if (this.pvsEl) {
+      this.pvsEl.innerHTML =
+        '<div class="engine-pv is-top is-final">' +
+        `<span class="engine-pv-eval">${escapeHtml(over.result)}</span>` +
+        `<span class="engine-pv-line">${escapeHtml(text)}</span>` +
+        "</div>";
+    }
+    if (this.depthReadout) this.depthReadout.textContent = "—";
+    if (this.evalBarWhite) {
+      this.evalBarWhite.style.height =
+        over.winner === "white" ? "100%" : over.winner === "black" ? "0%" : "50%";
+    }
+    if (this.evalBarText) this.evalBarText.textContent = over.result;
+    if (this.evalHead) {
+      this.evalHead.textContent = over.result;
+      this.evalHead.dataset.side = over.winner || "even";
+    }
+    return true;
   }
 
   _renderLinesReadout() {
@@ -1366,6 +1434,30 @@ class EngineWidget {
     this.closeBtn.addEventListener("click", () => setEngineOn(activeViewName(), false));
     this.linesUpBtn.addEventListener("click", () => this._setMultipv(this.multipv + 1));
     this.linesDownBtn.addEventListener("click", () => this._setMultipv(this.multipv - 1));
+    this.pvsEl.addEventListener("click", (event) => {
+      const row = event.target.closest(".engine-pv[data-line]");
+      if (row) this._toggleExpandedLine(row);
+    });
+    // The rows are real controls, so Enter/Space must work too — a click-only
+    // affordance is unreachable from the keyboard.
+    this.pvsEl.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const row = event.target.closest(".engine-pv[data-line]");
+      if (!row) return;
+      event.preventDefault(); // Space would otherwise scroll the dock
+      this._toggleExpandedLine(row);
+    });
+  }
+
+  _toggleExpandedLine(row) {
+    const index = Number(row.dataset.line);
+    if (!Number.isFinite(index)) return;
+    if (this.expandedLines.has(index)) this.expandedLines.delete(index);
+    else this.expandedLines.add(index);
+    // Repaint so aria-expanded matches; the next 450ms snapshot would do it
+    // anyway, and expandedLines survives that repaint.
+    row.classList.toggle("is-expanded", this.expandedLines.has(index));
+    row.setAttribute("aria-expanded", String(this.expandedLines.has(index)));
   }
 
   _startPolling() {
@@ -1403,26 +1495,30 @@ class EngineWidget {
       this._showError(snapshot.error);
       return;
     }
+    const pvs = Array.isArray(snapshot.pvs) ? snapshot.pvs : [];
+    if (!pvs.length && this._renderGameOver(snapshot.fen || this.lastFen)) {
+      paintExplorerEvals(snapshot);
+      this._stopPolling();
+      return;
+    }
     const depthText = `${snapshot.current_depth || 0} / ${snapshot.max_depth || "?"}`;
     if (this.depthReadout) this.depthReadout.textContent = depthText;
-    const pvs = Array.isArray(snapshot.pvs) ? snapshot.pvs : [];
     // Render only as many PV slots as the user asked for; engines occasionally
-    // emit transient extra ranks while changing multipv.
+    // emit transient extra ranks while changing multipv. Missing ranks keep a
+    // placeholder row so the block never changes height mid-search.
     const sideToMove = snapshot.side_to_move || "white";
     const fullmoveNumber = this._fullmoveFromFen(snapshot.fen) || 1;
+    const shown = pvs.slice(0, this.multipv);
+    this.pvsEl.innerHTML =
+      shown
+        .map((pv, index) => this._renderPv(pv, index, sideToMove, fullmoveNumber))
+        .join("") + this._pendingRows(shown.length);
     if (pvs.length) {
-      this.pvsEl.innerHTML = pvs
-        .slice(0, this.multipv)
-        .map((pv, index) =>
-          this._renderPv(pv, index === 0, sideToMove, fullmoveNumber)
-        )
-        .join("");
       this._renderEvalBar(pvs[0]);
       const best = (pvs[0].pv_uci || [])[0] || null;
       setEngineBestArrow(best);
     } else {
       setEngineBestArrow(null);
-      this.pvsEl.innerHTML = '<div class="empty-state">Calculating...</div>';
     }
     paintExplorerEvals(snapshot);
     // Keep the coach's one-line rationale in sync with this (deeper) search.
@@ -1432,16 +1528,21 @@ class EngineWidget {
     if (snapshot.running === false) this._stopPolling();
   }
 
-  _renderPv(pv, isTop, sideToMove, fullmoveNumber) {
+  // One line per row, cut off at the panel edge; clicking a row unfolds the
+  // full continuation (remembered across the 450ms repaints).
+  _renderPv(pv, index, sideToMove, fullmoveNumber) {
     const evalText = this._formatEval(pv.score_cp, pv.mate_in);
     const moves = this._formatPvLine(
       pv.pv_san || [],
       sideToMove,
       fullmoveNumber
     );
-    const cls = isTop ? "engine-pv is-top" : "engine-pv";
+    let cls = index === 0 ? "engine-pv is-top" : "engine-pv";
+    const expanded = this.expandedLines.has(index);
+    if (expanded) cls += " is-expanded";
     return (
-      `<div class="${cls}">` +
+      `<div class="${cls}" data-line="${index}" role="button" tabindex="0"` +
+      ` aria-expanded="${expanded}" title="Show the whole line">` +
       `<span class="engine-pv-eval">${escapeHtml(evalText)}</span>` +
       `<span class="engine-pv-line">${moves || "..."}</span>` +
       `</div>`
@@ -3121,8 +3222,8 @@ function currentOwnerId() {
   return appState.accountUserId || null;
 }
 
-function persistOutbox() {
-  saveOutbox(currentOwnerId(), {
+function outboxSnapshot() {
+  return {
     build: {
       pending: appState.buildPending,
       pendingDeletes: appState.buildPendingDeletes,
@@ -3133,26 +3234,67 @@ function persistOutbox() {
       pending: appState.trainSync.pending,
       rejected: appState.trainRejected || [],
     },
-  });
+  };
+}
+
+// R-03/R-04: the durable copy MERGES with whatever is already stored per
+// operation, so a second tab holding an older view can no longer overwrite
+// ops it never saw. `settled` tombstones the operations the server just
+// confirmed, so a stale snapshot can't resurrect already-saved work either.
+function persistOutbox(settled = null) {
+  const ok = saveOutbox(currentOwnerId(), outboxSnapshot(), settled);
+  // A refused write means the queue lives only in this tab: the UI must not
+  // promise device recovery it cannot deliver.
+  appState.outboxPersisted = ok;
+  if (!ok && !appState.outboxStorageWarned) {
+    appState.outboxStorageWarned = true;
+    setStatus(
+      "This browser is not letting us store your unsynced edits — they stay in this tab only. Don't close it.",
+      { severity: "warning" },
+    );
+  }
+  return ok;
+}
+
+// R-01: a feature finishing its own queue must never wipe the OTHER feature's
+// unsynced work (nor the rejected ops kept for review). Only a state with
+// nothing left for anyone may drop the owner's key.
+function clearOutboxWhenQuiescent() {
+  if (!outboxIsQuiescent(loadOutbox(currentOwnerId()))) {
+    persistOutbox();
+    return false;
+  }
+  clearOutbox(currentOwnerId());
+  return true;
 }
 
 // Re-hydrate THIS owner's queued edits after a reload. Owner-scoped on
 // purpose: signing in as someone else never replays another account's ops.
 function restoreOutbox() {
   const outbox = loadOutbox(currentOwnerId());
-  if (!outboxHasWork(outbox)) return false;
+  const rejectedCount =
+    (outbox.build.rejected || []).length + (outbox.train.rejected || []).length;
+  if (!outboxHasWork(outbox) && !rejectedCount) return null;
   appState.buildPending = outbox.build.pending.concat(appState.buildPending);
   appState.buildPendingDeletes = outbox.build.pendingDeletes.concat(
     appState.buildPendingDeletes,
   );
   Object.assign(appState.buildIdMap, outbox.build.idMap);
+  // R-03: rejected ops are user work too — without this they silently vanish
+  // on reload (the sync chip would read "saved" with nothing left to review).
+  appState.buildRejected = (outbox.build.rejected || []).concat(appState.buildRejected || []);
+  appState.trainRejected = (outbox.train.rejected || []).concat(appState.trainRejected || []);
   appState.trainSync.pending = outbox.train.pending.concat(appState.trainSync.pending);
   if (appState.trainSync.pending.length) {
     appState.trainSync.dirty = true;
     setTrainSyncState("dirty");
     scheduleTrainSync();
   }
-  return true;
+  return {
+    build: appState.buildPending.length + appState.buildPendingDeletes.length,
+    train: appState.trainSync.pending.length,
+    rejected: rejectedCount,
+  };
 }
 
 // R-03: sign-out coordination. Persist the durable outbox FIRST (it survives
@@ -4179,7 +4321,14 @@ function initAccountController() {
     refreshAutoMaiaRating,
     onLichessConnected: startLichessGameWatch,
     // The Library setup checklist ticks "Link Lichess" from the live accounts.
-    onLichessAccountsChanged: () => dashboardView?.refreshSetup?.(),
+    // The Games/Scout source trays resolve "Self" against the same list: painted
+    // before it arrived they read "No sources" while Start still fetched every
+    // linked account, so repaint them from the live list too.
+    onLichessAccountsChanged: () => {
+      dashboardView?.refreshSetup?.();
+      paintGamesSource();
+      paintScoutSource();
+    },
     onOpenSettings: () => {
       switchView("settings");
       loadSettings();
@@ -5795,6 +5944,9 @@ async function runAnalysis(options = {}) {
   const tAnalyze = engineLifecycleMark("analyze-click");
 
   let cancelled = false;
+  // F-04: when the device refuses the checkpoint, the retry copy is built from
+  // these (declared out here so the catch block can reach them).
+  let inMemoryCheckpoint = null;
   const jobId = `browser-analysis-${Date.now()}`;
   try {
     let prep;
@@ -5990,15 +6142,23 @@ async function runAnalysis(options = {}) {
     });
     // F-03: the engine/model compute is DONE — checkpoint it to the device so
     // a failed SAVE below never costs a re-analysis (retry = re-post only).
-    saveCheckpoint({
+    // F-04: a refused write means the work lives only in THIS page — keep an
+    // in-memory copy for Retry save and say so, instead of promising a
+    // device-recoverable checkpoint that was never written.
+    const checkpoint = {
       gameId: prep.game_id,
-      engine: prep.engine || "stockfish (browser)",
-      depth: prep.depth,
       positions,
       evals: [...evals.entries()],
       maiaAssessments,
       pgn,
+    };
+    const checkpointStored = saveCheckpoint({
+      ...checkpoint,
+      ownerId: currentOwnerId(),
+      engine: prep.engine || "stockfish (browser)",
+      depth: prep.depth,
     });
+    if (!checkpointStored) inMemoryCheckpoint = { ...checkpoint, inMemoryOnly: true };
 
     const payload = await timed("classify", () =>
       postJson("/api/analyze/classify-save", {
@@ -6039,7 +6199,7 @@ async function runAnalysis(options = {}) {
       })
     );
 
-    clearCheckpoint(prep.game_id); // saved: the compute is confirmed durable
+    clearCheckpoint(prep.game_id, currentOwnerId()); // saved: the compute is confirmed durable
     hideAnalysisRetrySave();
     appState.analysis = payload;
     resetAnalysisVariations();
@@ -6082,8 +6242,11 @@ async function runAnalysis(options = {}) {
     }
     // F-03: if the compute finished but the SAVE didn't, offer "Retry save" —
     // the checkpoint holds the evals, so a retry never re-runs the engine.
-    const checkpoint = loadCheckpoint();
+    const checkpoint = inMemoryCheckpoint || loadCheckpoint(null, currentOwnerId());
     if (checkpoint && checkpoint.gameId) {
+      // Keep the in-memory-only variant reachable for Retry save — the device
+      // copy doesn't exist in that case.
+      appState.analysisUnsavedCheckpoint = checkpoint.inMemoryOnly ? checkpoint : null;
       showAnalysisRetrySave(checkpoint, error.message);
     }
   } finally {
@@ -6134,9 +6297,12 @@ function showAnalysisRetrySave(checkpoint, message) {
   if (!bar) return;
   const text = document.getElementById("analysis-retry-save-text");
   if (text) {
+    // F-04: never claim a device guarantee the storage layer didn't give us.
+    const where = checkpoint.inMemoryOnly
+      ? "the analysis is kept in this page only — don't close it. "
+      : "the analysis is stored on this device. ";
     text.textContent =
-      `${message || "Save failed"} — the analysis is stored on this device. ` +
-      `Retry saves it without re-analyzing.`;
+      `${message || "Save failed"} — ${where}` + `Retry saves it without re-analyzing.`;
   }
   bar.hidden = false;
 }
@@ -6148,7 +6314,8 @@ function hideAnalysisRetrySave() {
 
 // Re-post classify-save from the checkpoint — engine/model work is NOT redone.
 async function retryAnalyzeSave() {
-  const checkpoint = loadCheckpoint();
+  // Owner-scoped: this only ever retries work saved under the CURRENT account.
+  const checkpoint = appState.analysisUnsavedCheckpoint || loadCheckpoint(null, currentOwnerId());
   if (!checkpoint || !checkpoint.gameId) {
     hideAnalysisRetrySave();
     return;
@@ -6175,7 +6342,8 @@ async function retryAnalyzeSave() {
       }),
       maia_assessments: checkpoint.maiaAssessments || [],
     });
-    clearCheckpoint(checkpoint.gameId);
+    clearCheckpoint(checkpoint.gameId, currentOwnerId());
+    appState.analysisUnsavedCheckpoint = null;
     hideAnalysisRetrySave();
     appState.analysis = payload;
     resetAnalysisVariations();
@@ -6748,21 +6916,28 @@ function bindEvalChart() {
 }
 
 async function hydrateBuild(payload, selectedNodeId = null) {
-  // Opening/switching to a DIFFERENT repertoire drops any local-first sync state
-  // from the previous one (callers hard-flush before switching, so nothing is
-  // lost). A reconcile re-hydrate keeps the same id, so its pending queue + id map
-  // survive — that's the load-bearing distinction for the in-flight-move case.
+  // Opening/switching to a DIFFERENT repertoire must not throw away local-first
+  // sync state: callers hard-flush before switching, and anything still queued
+  // (a restored queue, a flush that failed) is tagged with its target and kept
+  // (R-02). A reconcile re-hydrate keeps the same id, so its pending queue +
+  // id map survive — that's the load-bearing distinction for the in-flight case.
   const prevRepId = appState.build && appState.build.repertoire_id;
   if (payload.repertoire_id !== prevRepId) {
     clearTimeout(appState.buildFlushTimer);
     appState.buildFlushTimer = null;
-    appState.buildPending = [];
-    appState.buildPendingDeletes = [];
+    // R-02: opening a repertoire only changes what is DISPLAYED. Ops queued
+    // for ANOTHER tree (restored after a reload, or left by a failed flush)
+    // stay on the device for their own repertoire; ops for THIS tree are
+    // re-applied onto the fresh payload below.
+    appState.buildPendingDeletes = appState.buildPendingDeletes.filter(
+      (entry) => !buildOpMatchesRepertoire(entry, payload.repertoire_id),
+    );
     // Stale undo windows from the old repertoire become no-ops (their commit
     // guards on repertoire id), but their ids must not prune the new tree.
     appState.buildUndoDeletes = new Set();
     appState.buildUndoCommitByMove = new Map();
-    appState.buildIdMap = {};
+    // buildIdMap is additive and tmp ids are tab-unique, so it stays: another
+    // tree's queued children still need their parent translated.
     appState.buildSyncState = "saved";
     appState.buildSyncRetry = 0;
   }
@@ -6778,6 +6953,17 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   renderBuildRepHeader();
   const nextNodeId = selectedNodeId || payload.selected_node_id || payload.nodes[0]?.id;
   await selectBuildNode(nextNodeId);
+  // R-02: put this repertoire's unsynced local edits back onto the tree the
+  // server just sent, and re-prune what is queued for deletion.
+  reapplyPendingBuildNodes(
+    appState.buildPending.filter((m) => buildOpMatchesRepertoire(m, payload.repertoire_id)),
+    appState.buildIdMap,
+  );
+  reapplyPendingBuildDeletes();
+  if (hasPendingBuildOpsFor(payload.repertoire_id)) {
+    setBuildSync("dirty");
+    scheduleBuildFlush();
+  }
   renderBuildSync();
   syncWorkspaceUrl();
 }
@@ -7453,8 +7639,15 @@ async function saveBuildAnnotations(arrows, circles) {
 const BUILD_FLUSH_IDLE_MS = 2000;
 const BUILD_FLUSH_MAX_BACKOFF_MS = 30000;
 
+// R-04: the temp id is the outbox's operation identity — mergeById dedupes adds
+// and tombstones settle by it. A bare per-tab counter would restart at 1 in
+// EVERY tab, so two tabs of the same account mint the same "tmp-1" for different
+// moves; the merge would then treat the second tab's new move as the first
+// tab's already-settled op and drop it from the durable queue (silent data
+// loss on close). The tab id keeps ids unique per tab while still matching the
+// server's 'tmp-' prefix rule.
 function mintBuildTmpId() {
-  return `tmp-${++appState.buildTmpCounter}`;
+  return `tmp-${OUTBOX_TAB_ID}-${++appState.buildTmpCounter}`;
 }
 
 // True when the parent already has at least one enabled child — used to decide a
@@ -7467,8 +7660,38 @@ function someEnabledChildOf(parentId) {
 
 // Resolve a possibly-stale `tmp-` id to its real id once a flush has reconciled
 // it. Used by hard-flush call sites that captured a tmp node id before sync.
-function resolveBuildId(id) {
+// Resolve a possibly-stale `tmp-` id to its real id once a flush has reconciled
+// the tree. Queued deletes are `{ id, repertoire_id }` entries (see
+// queueBuildDelete) so they carry their target too; plain ids still work.
+function resolveBuildId(ref) {
+  const id = ref && typeof ref === "object" ? ref.id : ref;
   return (id && appState.buildIdMap[id]) || id;
+}
+
+// R-02: every queued op records WHICH repertoire it belongs to. A flush may
+// only send ops for the repertoire it is flushing; anything else stays queued
+// for its own tree, so restored work can never land in the wrong opening.
+function buildOpTarget(entry) {
+  return (entry && entry.repertoire_id) || null;
+}
+
+function buildOpMatchesRepertoire(entry, repertoireId) {
+  const target = buildOpTarget(entry);
+  return !target || String(target) === String(repertoireId);
+}
+
+function queueBuildDelete(nodeId) {
+  appState.buildPendingDeletes.push({
+    id: nodeId,
+    repertoire_id: appState.build ? appState.build.repertoire_id : null,
+  });
+}
+
+function hasPendingBuildOpsFor(repertoireId) {
+  return (
+    appState.buildPending.some((m) => buildOpMatchesRepertoire(m, repertoireId)) ||
+    appState.buildPendingDeletes.some((entry) => buildOpMatchesRepertoire(entry, repertoireId))
+  );
 }
 
 // Build a provisional Build node matching the serializer shape (workspace_view.py
@@ -7646,20 +7869,42 @@ function flushBuildMoves() {
   if (appState.buildFlushing) return appState.buildFlushing;
   if (!appState.build || (!appState.buildPending.length && !appState.buildPendingDeletes.length))
     return Promise.resolve(true);
-  // R-03: one flusher per owner at a time — a second tab holding the lock
+  // R-03/R-04: one flusher per owner at a time — a second tab holding the lock
   // means its flush is already carrying these ops (server receipts are the
-  // hard guarantee; this avoids duplicate traffic and double toasts).
-  if (!acquireFlushLock(currentOwnerId(), OUTBOX_TAB_ID)) return Promise.resolve(false);
+  // hard guarantee; this avoids duplicate traffic and double toasts). A failed
+  // acquire must NOT strand the queue as "dirty" with no timer, so a retry is
+  // always armed before returning.
+  if (!acquireFlushLock(currentOwnerId(), OUTBOX_TAB_ID)) {
+    appState.buildFlushTimer = setTimeout(() => {
+      appState.buildFlushTimer = null;
+      flushBuildMoves();
+    }, BUILD_FLUSH_IDLE_MS);
+    return Promise.resolve(false);
+  }
   clearTimeout(appState.buildFlushTimer);
   appState.buildFlushTimer = null;
 
   // Snapshot the in-flight batches; moves made DURING the round-trip accumulate
   // in fresh queues and must survive the reconcile (§1.4 — the load-bearing bit).
-  const batch = appState.buildPending;
-  appState.buildPending = [];
-  const deleteBatch = appState.buildPendingDeletes;
-  appState.buildPendingDeletes = [];
+  // R-02: only THIS repertoire's ops may ride the flush — entries restored from
+  // another tree stay queued for their own repertoire.
   const repertoireId = appState.build.repertoire_id;
+  const batch = appState.buildPending.filter((m) => buildOpMatchesRepertoire(m, repertoireId));
+  appState.buildPending = appState.buildPending.filter(
+    (m) => !buildOpMatchesRepertoire(m, repertoireId),
+  );
+  const deleteBatch = appState.buildPendingDeletes.filter((entry) =>
+    buildOpMatchesRepertoire(entry, repertoireId),
+  );
+  appState.buildPendingDeletes = appState.buildPendingDeletes.filter(
+    (entry) => !buildOpMatchesRepertoire(entry, repertoireId),
+  );
+  const deferredCount = appState.buildPending.length + appState.buildPendingDeletes.length;
+  if (deferredCount) {
+    setStatus(
+      `${deferredCount} edit${deferredCount === 1 ? "" : "s"} for another repertoire kept on this device — open that repertoire to save ${deferredCount === 1 ? "it" : "them"}.`,
+    );
+  }
   setBuildSync("syncing");
 
   appState.buildFlushing = (async () => {
@@ -7688,17 +7933,27 @@ function flushBuildMoves() {
       // nodes): nothing reached the server, so there's nothing to reconcile.
       if (!payload) {
         appState.buildSyncRetry = 0;
-        if (appState.buildPending.length || appState.buildPendingDeletes.length) {
+        // Those tmp-only deletes are resolved either way — tombstone them so a
+        // second tab can't put them back in the durable queue.
+        persistOutbox({ deletes: deleteBatch.map(buildDeleteId) });
+        if (hasPendingBuildOpsFor(repertoireId)) {
           setBuildSync("dirty");
           scheduleBuildFlush();
         } else {
+          clearOutboxWhenQuiescent();
           setBuildSync("saved");
         }
         return true;
       }
       const idMap = payload.id_map || {};
       Object.assign(appState.buildIdMap, idMap);
-      persistOutbox();
+      // The server confirmed this batch: tombstone it so neither this tab nor
+      // a concurrent one replays it.
+      const settled = {
+        build: batch.map(buildAddId),
+        deletes: deleteIds,
+      };
+      persistOutbox(settled);
 
       // Translate the current selection + branch pick through tmp -> real.
       const prevSelection = appState.buildCurrentNodeId;
@@ -7708,7 +7963,11 @@ function flushBuildMoves() {
         : null;
 
       // Re-point still-pending nodes whose parentRef was a tmp from THIS batch.
-      const stillPending = appState.buildPending;
+      // Only THIS repertoire's entries: a queued op for another tree must not
+      // be re-inserted into this one (R-02).
+      const stillPending = appState.buildPending.filter((m) =>
+        buildOpMatchesRepertoire(m, repertoireId),
+      );
       for (const m of stillPending) {
         if (idMap[m.parentRef]) {
           m.parentRef = idMap[m.parentRef];
@@ -7737,13 +7996,18 @@ function flushBuildMoves() {
         prevSelection !== appState.buildCurrentNodeId
       ) {
         await selectBuildNode(prevSelection);
-      }      appState.buildSyncRetry = 0;
+      }
+      appState.buildSyncRetry = 0;
       persistOutbox();
-      if (appState.buildPending.length || appState.buildPendingDeletes.length) {
+      // R-02: ops queued for ANOTHER repertoire stay put; re-arming on them
+      // would spin a timer that can never drain them.
+      if (hasPendingBuildOpsFor(repertoireId)) {
         setBuildSync("dirty");
         scheduleBuildFlush();
       } else {
-        clearOutbox(currentOwnerId());
+        // R-01: only drop the owner's durable copy when Train's queue (and
+        // anything kept for review) is empty too.
+        clearOutboxWhenQuiescent();
         setBuildSync("saved");
       }
       return true;
@@ -7757,21 +8021,42 @@ function flushBuildMoves() {
         // A genuinely invalid payload must not take legitimate edits down
         // with it: isolate by replaying the ops one at a time — whatever
         // lands is saved, whatever fails is kept, marked, and reportable.
-        const rejected = await isolateRejectedBuildOps(batch, deleteBatch, repertoireId);
+        const { rejected, settled, idMap, payload } = await isolateRejectedBuildOps(
+          batch,
+          deleteBatch,
+          repertoireId,
+        );
         appState.buildRejected = (appState.buildRejected || []).concat(rejected);
-        persistOutbox();
+        if (idMap && Object.keys(idMap).length) {
+          // Ops that landed mid-isolation have real ids now; the local tree and
+          // any queued children must be reconciled against them (R-05).
+          Object.assign(appState.buildIdMap, idMap);
+          const stillPending = appState.buildPending;
+          for (const m of stillPending) {
+            if (idMap[m.parentRef]) {
+              m.parentRef = idMap[m.parentRef];
+              m.node.parent_id = m.parentRef;
+            }
+          }
+          if (payload) {
+            await hydrateBuild(payload, null);
+            reapplyPendingBuildNodes(stillPending, idMap);
+            reapplyPendingBuildDeletes();
+          }
+        }
+        persistOutbox(settled);
         setStatusError(
           rejected.length
             ? `${rejected.length} edit${rejected.length === 1 ? "" : "s"} could not be saved and are kept for review. The rest saved.`
             : error.message,
         );
-        if (appState.buildPending.length || appState.buildPendingDeletes.length) {
+        if (hasPendingBuildOpsFor(repertoireId)) {
           setBuildSync("dirty");
           scheduleBuildFlush();
         } else if (appState.buildRejected.length) {
           setBuildSync("rejected");
         } else {
-          clearOutbox(currentOwnerId());
+          clearOutboxWhenQuiescent();
           setBuildSync("saved");
         }
         return false;
@@ -7821,40 +8106,80 @@ function flushBuildMoves() {
   return appState.buildFlushing;
 }
 
-// R-01: isolate a permanently-rejected batch. Deletes first (per id), then
+// R-05: isolate a permanently-rejected batch. Deletes first (per id), then
 // adds one by one: each success is a save, each failure becomes a kept,
 // reportable rejection instead of a silent drop of the whole batch.
+//
+// Three things this must get right:
+//  - parents land before their children (orderPendingBuildAdds), and each
+//    successful op's `id_map` feeds the NEXT ops, so a legal chain survives
+//    next to one invalid sibling;
+//  - a retriable failure mid-isolation (network, 401, 429) is not a rejection:
+//    it and every later op go back on the queue untouched;
+//  - everything resolved — saved OR rejected — is reported as settled so the
+//    durable copy drops it instead of replaying it.
 async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId) {
   const rejected = [];
-  for (const entry of deleteBatch) {
+  const settled = { build: [], deletes: [], train: [] };
+  const idMap = {};
+  let lastPayload = null;
+
+  for (let i = 0; i < deleteBatch.length; i += 1) {
+    const entry = deleteBatch[i];
     const id = resolveBuildId(entry);
-    if (String(id).startsWith("tmp-")) continue; // never reached the server
+    if (String(id).startsWith("tmp-")) {
+      settled.deletes.push(buildDeleteId(entry)); // never reached the server
+      continue;
+    }
     try {
       await postJson("/api/build/delete-nodes", {
         repertoire_id: repertoireId,
         node_ids: [id],
       });
+      settled.deletes.push(buildDeleteId(entry));
     } catch (err) {
-      rejected.push({ kind: "delete", id, message: err.message, status: err.status });
-    }
-  }
-  for (const m of batch) {
-    try {
-      await postJson("/api/build/add-moves", {
-        repertoire_id: repertoireId,
-        moves: [{ tempId: m.tempId, parentRef: m.parentRef, uci: m.uci }],
-      });
-    } catch (err) {
-      if (classifySyncError(err).retriable) {
-        // Not actually a permanent rejection (network blip mid-isolation):
-        // keep it queued like any retriable failure.
-        appState.buildPending.push(m);
-        continue;
+      const info = classifySyncError(err);
+      if (info.retriable) {
+        // Sign-out/network blip mid-isolation: stop here and keep this delete
+        // plus every later one queued for the next flush.
+        appState.buildPendingDeletes = deleteBatch.slice(i).concat(appState.buildPendingDeletes);
+        break;
       }
-      rejected.push({ kind: "add", tempId: m.tempId, uci: m.uci, message: err.message, status: err.status });
+      settled.deletes.push(buildDeleteId(entry));
+      rejected.push({ kind: "delete", id, message: err.message, status: err.status ?? null });
     }
   }
-  return rejected;
+
+  const ordered = orderPendingBuildAdds(batch);
+  for (let i = 0; i < ordered.length; i += 1) {
+    const m = ordered[i];
+    // A parent from this same isolation round now has a real id.
+    const parentRef = idMap[m.parentRef] || resolveBuildId(m.parentRef);
+    try {
+      const payload = await postJson("/api/build/add-moves", {
+        repertoire_id: repertoireId,
+        moves: [{ tempId: m.tempId, parentRef, uci: m.uci }],
+      });
+      if (payload && payload.id_map) Object.assign(idMap, payload.id_map);
+      if (payload && payload.nodes) lastPayload = payload;
+      settled.build.push(buildAddId(m));
+    } catch (err) {
+      const info = classifySyncError(err);
+      if (info.retriable) {
+        appState.buildPending = ordered.slice(i).concat(appState.buildPending);
+        break;
+      }
+      settled.build.push(buildAddId(m));
+      rejected.push({
+        kind: "add",
+        tempId: m.tempId,
+        uci: m.uci,
+        message: err.message,
+        status: err.status ?? null,
+      });
+    }
+  }
+  return { rejected, settled, idMap, payload: lastPayload };
 }
 
 // Re-insert still-pending provisional nodes onto the freshly hydrated tree (which
@@ -7865,6 +8190,9 @@ function reapplyPendingBuildNodes(pending, idMap) {
   if (!pending.length) return;
   for (const entry of pending) {
     const node = entry.node;
+    // Idempotent: hydrateBuild and the flush reconcile both call this for the
+    // same queue, and re-inserting a node would duplicate it in the tree.
+    if (!node || appState.buildNodeById.has(node.id)) continue;
     const realParent = idMap[entry.parentRef] || entry.parentRef;
     entry.parentRef = realParent;
     node.parent_id = realParent;
@@ -7910,7 +8238,12 @@ function pruneLocalBuildSubtree(rootId) {
 function reapplyPendingBuildDeletes() {
   // Undo-window prunes count too: the server still has those subtrees, so a
   // hydrate resurrects them just like queued-but-unflushed deletes.
-  const ids = [...appState.buildPendingDeletes, ...appState.buildUndoDeletes];
+  const ids = [
+    ...appState.buildPendingDeletes.filter((entry) =>
+      buildOpMatchesRepertoire(entry, appState.build.repertoire_id),
+    ),
+    ...appState.buildUndoDeletes,
+  ];
   if (!appState.build || !ids.length) return;
   let pruned = false;
   for (const id of ids) {
@@ -7974,7 +8307,7 @@ async function deleteBuildNodeLocal(nodeId) {
       appState.buildUndoCommitByMove.delete(undoMoveKey);
       appState.buildUndoDeletes.delete(nodeId);
       if (!appState.build || appState.build.repertoire_id !== repId) return;
-      if (!rootWasLocalOnly) appState.buildPendingDeletes.push(nodeId);
+      if (!rootWasLocalOnly) queueBuildDelete(nodeId);
       if (appState.buildPending.length || appState.buildPendingDeletes.length) {
         setBuildSync("dirty");
         scheduleBuildFlush();
@@ -8028,7 +8361,14 @@ async function hardFlushBuild() {
   commitPendingUndos();
   if (!appState.build) return;
   if (appState.buildFlushing) await appState.buildFlushing.catch(() => {});
-  while (appState.buildPending.length || appState.buildPendingDeletes.length) {
+  // R-02: drain THIS repertoire's ops. Ops queued for another tree are not
+  // part of this request (and must not spin the loop) — they stay on the
+  // device until their own repertoire is open.
+  const repId = appState.build.repertoire_id;
+  const hasWorkForThisRep = () =>
+    appState.buildPending.some((m) => buildOpMatchesRepertoire(m, repId)) ||
+    appState.buildPendingDeletes.some((entry) => buildOpMatchesRepertoire(entry, repId));
+  while (hasWorkForThisRep()) {
     const ok = await flushBuildMoves();
     if (appState.buildFlushing) await appState.buildFlushing.catch(() => {});
     if (!ok) {
@@ -8046,7 +8386,14 @@ function beaconFlushBuild() {
   commitPendingUndos();
   persistOutbox(); // R-03: the durable copy lands even if the keepalive drops
   if (!appState.build) return;
-  if (!appState.buildPending.length && !appState.buildPendingDeletes.length) return;
+  const repId = appState.build.repertoire_id;
+  // R-02: only this repertoire's ops — a queued op for another tree must not
+  // ride this keepalive into the open tree.
+  const pending = appState.buildPending.filter((m) => buildOpMatchesRepertoire(m, repId));
+  const pendingDeletes = appState.buildPendingDeletes.filter((entry) =>
+    buildOpMatchesRepertoire(entry, repId),
+  );
+  if (!pending.length && !pendingDeletes.length) return;
   const token = readCsrfCookie();
   const send = (path, payload) => {
     try {
@@ -8065,21 +8412,19 @@ function beaconFlushBuild() {
   // the next page load re-hydrates from server truth regardless.
   const deleteIds = [
     ...new Set(
-      appState.buildPendingDeletes
-        .map(resolveBuildId)
-        .filter((id) => !String(id).startsWith("tmp-"))
+      pendingDeletes.map(resolveBuildId).filter((id) => !String(id).startsWith("tmp-"))
     ),
   ];
   if (deleteIds.length) {
     send("/api/build/delete-nodes", {
-      repertoire_id: appState.build.repertoire_id,
+      repertoire_id: repId,
       node_ids: deleteIds,
     });
   }
-  if (appState.buildPending.length) {
+  if (pending.length) {
     send("/api/build/add-moves", {
-      repertoire_id: appState.build.repertoire_id,
-      moves: appState.buildPending.map((m) => ({
+      repertoire_id: repId,
+      moves: pending.map((m) => ({
         tempId: m.tempId,
         parentRef: m.parentRef,
         uci: m.uci,
@@ -8166,7 +8511,15 @@ async function onBuildBoardMove(moveUci) {
   const node = buildProvisionalNode(parent, moveUci, after);
   appState.build.nodes.push(node);
   appState.buildNodeById.set(node.id, node);
-  appState.buildPending.push({ tempId: node.id, parentRef: parentId, uci: moveUci, node });
+  appState.buildPending.push({
+    tempId: node.id,
+    parentRef: parentId,
+    uci: moveUci,
+    node,
+    // R-02: the target travels with the op, so a reload/restored queue can
+    // never be flushed into whichever repertoire happens to be open.
+    repertoire_id: appState.build ? appState.build.repertoire_id : null,
+  });
   await selectBuildNode(node.id);
   setBuildSync("dirty");
   scheduleBuildFlush();
@@ -10917,10 +11270,23 @@ function flushTrainSync() {
       (n, group) => n + (group.attempts ? group.attempts.length : 0),
       0,
     );
+    // Everything the server answered for is settled: saved attempts and rejected
+    // ones both LEFT the queue, so both are tombstoned. A stale tab holding
+    // them would otherwise replay confirmed attempts (harmless — the receipt
+    // dedupes) or re-report rejected ones forever.
+    const unsettled = new Set([
+      ...ungroupAttempts(outcome.failedGroups || []),
+      ...ungroupAttempts(
+        (outcome.rejectedGroups || []).map((group) => [group.sessionId, group.attempts]),
+      ),
+    ].map((attempt) => trainAttemptId(attempt)));
+    const settledAttempts = batch
+      .map((attempt) => trainAttemptId(attempt))
+      .filter((id) => !unsettled.has(id));
     if (rejectedCount) {
       appState.trainRejected = (appState.trainRejected || []).concat(outcome.rejectedGroups);
-      persistOutbox();
     }
+    if (settledAttempts.length) persistOutbox({ train: settledAttempts });
     const info = lastError ? classifySyncError(lastError) : null;
     const failedCount = outcome.failedGroups
       ? outcome.failedGroups.reduce((n, [, attempts]) => n + attempts.length, 0)
@@ -10941,7 +11307,9 @@ function flushTrainSync() {
       } else if (rejectedCount) {
         setTrainSyncState("rejected");
       } else {
-        clearOutbox(currentOwnerId());
+        // R-01: Train finishing its queue says nothing about Build's — only a
+        // fully quiescent owner copy may be dropped.
+        clearOutboxWhenQuiescent();
         setTrainSyncState("saved");
       }
       return rejectedCount === 0;
@@ -12422,8 +12790,8 @@ function bindEvents() {
     void retryAnalyzeSave();
   });
   document.getElementById("analysis-retry-save-discard")?.addEventListener("click", () => {
-    const checkpoint = loadCheckpoint();
-    if (checkpoint && checkpoint.gameId) clearCheckpoint(checkpoint.gameId);
+    const checkpoint = loadCheckpoint(null, currentOwnerId());
+    if (checkpoint && checkpoint.gameId) clearCheckpoint(checkpoint.gameId, currentOwnerId());
     hideAnalysisRetrySave();
     setStatus("Discarded the unsaved analysis on this device");
   });
@@ -12865,13 +13233,31 @@ async function loadSignedInWorkspace() {
   // R-03/R-04: this OWNER's durable outbox comes back after a reload or an
   // earlier sign-out, and any flush paused waiting for sign-in re-arms.
   appState.syncPausedForAuth = false;
-  restoreOutbox();
+  const restored = restoreOutbox();
   if (appState.buildPending.length || appState.buildPendingDeletes.length) {
     setBuildSync("dirty");
     scheduleBuildFlush();
   }
-  // F-03: a finished-but-unsaved analysis waits for its retry — surface it.
-  const checkpoint = loadCheckpoint();
+  if (restored && (restored.build || restored.train)) {
+    const parts = [];
+    if (restored.build) parts.push(`${restored.build} Build edit${restored.build === 1 ? "" : "s"}`);
+    if (restored.train) parts.push(`${restored.train} training attempt${restored.train === 1 ? "" : "s"}`);
+    setStatus(`Unsynced work kept on this device: ${parts.join(" and ")} — saving…`, "info");
+  }
+  if (restored && restored.rejected) {
+    setBuildSync("rejected");
+    setStatus(
+      `${restored.rejected} edit${restored.rejected === 1 ? "" : "s"} couldn't be saved earlier and ${restored.rejected === 1 ? "is" : "are"} kept for review.`,
+      { severity: "warning" },
+    );
+  }
+  // F-03/F-04: a finished-but-unsaved analysis waits for its retry. The
+  // checkpoint is owner-scoped, so signing in as someone else never surfaces
+  // (or retries) another account's pending save.
+  // loadCheckpoint(gameId, ownerId) — the owner goes in the SECOND slot.
+  // Passing the owner as the gameId read the "anon" bucket keyed by the owner
+  // id, so this banner never fired for a signed-in user.
+  const checkpoint = loadCheckpoint(null, currentOwnerId());
   if (checkpoint && checkpoint.gameId) {
     setStatus(
       `Unsaved analysis on this device (${checkpoint.positions?.length || 0} positions) — open Analyze and press Retry save.`,

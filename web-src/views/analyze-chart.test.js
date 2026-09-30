@@ -326,4 +326,17 @@ describe("eval chart helpers", () => {
       view.evalChartTooltipHtml({ ply: 9, san: "Qh5", score_cp: null, bounded_score_cp: 1000, classification: "best" }),
     ).toContain("+M");
   });
+
+  it("names the mate distance and a checkmate on the board", () => {
+    const { view } = setup();
+    expect(
+      view.evalChartTooltipHtml({ ply: 78, san: "Qf4", score_cp: null, mate_in: 1, bounded_score_cp: 1000, classification: "best" }),
+    ).toContain("· #1");
+    const mated = view.evalChartTooltipHtml({ ply: 79, san: "Qxf4#", score_cp: 100000, mate_in: null, bounded_score_cp: 1000, classification: "best" });
+    expect(mated).toContain("· 1-0");
+    expect(mated).not.toContain("1000");
+    expect(
+      view.evalChartTooltipHtml({ ply: 80, san: "Qxf2#", score_cp: -100000, mate_in: null, bounded_score_cp: -1000, classification: "best" }),
+    ).toContain("· 0-1");
+  });
 });

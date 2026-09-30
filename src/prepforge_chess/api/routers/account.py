@@ -129,55 +129,64 @@ def delete_account(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='confirm must be exactly "DELETE"',
         )
-    counts = repo.delete_owner_data(user.id)
+    # D-05: domain rows (Core repository) and identity rows (ORM Session) used
+    # to commit as two transactions, so a failure in the second left an account
+    # whose content was gone but which could still sign in. Both halves now run
+    # on THIS session's connection and commit together.
+    counts = repo.delete_owner_data(user.id, conn=db.connection())
 
-    # Identity rows: explicit deletes (FK cascades are not relied on — SQLite
-    # in tests does not enforce them, and a dangling session would be a
-    # credential outliving the account).
-    counts["sessions"] = len(
-        db.scalars(select(AuthSession).where(AuthSession.user_id == user.id)).all()
-    )
-    for row in db.scalars(select(AuthSession).where(AuthSession.user_id == user.id)).all():
-        db.delete(row)
-    counts["password_reset_tokens"] = len(
-        db.scalars(
+    try:
+        # Identity rows: explicit deletes (FK cascades are not relied on — SQLite
+        # in tests does not enforce them, and a dangling session would be a
+        # credential outliving the account).
+        counts["sessions"] = len(
+            db.scalars(select(AuthSession).where(AuthSession.user_id == user.id)).all()
+        )
+        for row in db.scalars(select(AuthSession).where(AuthSession.user_id == user.id)).all():
+            db.delete(row)
+        counts["password_reset_tokens"] = len(
+            db.scalars(
+                select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
+            ).all()
+        )
+        for row in db.scalars(
             select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
-        ).all()
-    )
-    for row in db.scalars(
-        select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
-    ).all():
-        db.delete(row)
-    counts["linked_accounts"] = len(
-        db.scalars(select(LinkedAccount).where(LinkedAccount.user_id == user.id)).all()
-    )
-    for row in db.scalars(
-        select(LinkedAccount).where(LinkedAccount.user_id == user.id)
-    ).all():
-        db.delete(row)
-    # Teams this user owns die with the account; memberships elsewhere end too
-    # (a removed member can no longer read anything shared to that team).
-    owned_teams = db.scalars(select(Team).where(Team.owner_user_id == user.id)).all()
-    counts["teams"] = len(owned_teams)
-    for team in owned_teams:
-        for member in db.scalars(
-            select(TeamMember).where(TeamMember.team_id == team.id)
         ).all():
-            db.delete(member)
-        invite = db.scalar(select(TeamInvite).where(TeamInvite.team_id == team.id))
-        if invite is not None:
-            db.delete(invite)
-        db.delete(team)
-    counts["team_memberships"] = len(
-        db.scalars(select(TeamMember).where(TeamMember.user_id == user.id)).all()
-    )
-    for row in db.scalars(
-        select(TeamMember).where(TeamMember.user_id == user.id)
-    ).all():
-        db.delete(row)
+            db.delete(row)
+        counts["linked_accounts"] = len(
+            db.scalars(select(LinkedAccount).where(LinkedAccount.user_id == user.id)).all()
+        )
+        for row in db.scalars(
+            select(LinkedAccount).where(LinkedAccount.user_id == user.id)
+        ).all():
+            db.delete(row)
+        # Teams this user owns die with the account; memberships elsewhere end too
+        # (a removed member can no longer read anything shared to that team).
+        owned_teams = db.scalars(select(Team).where(Team.owner_user_id == user.id)).all()
+        counts["teams"] = len(owned_teams)
+        for team in owned_teams:
+            for member in db.scalars(
+                select(TeamMember).where(TeamMember.team_id == team.id)
+            ).all():
+                db.delete(member)
+            invite = db.scalar(select(TeamInvite).where(TeamInvite.team_id == team.id))
+            if invite is not None:
+                db.delete(invite)
+            db.delete(team)
+        counts["team_memberships"] = len(
+            db.scalars(select(TeamMember).where(TeamMember.user_id == user.id)).all()
+        )
+        for row in db.scalars(
+            select(TeamMember).where(TeamMember.user_id == user.id)
+        ).all():
+            db.delete(row)
 
-    db.delete(user)
-    db.commit()
+        db.delete(user)
+        db.commit()
+    except Exception:
+        # Nothing partial survives: the content delete is in this transaction too.
+        db.rollback()
+        raise
 
     response.delete_cookie(settings.session_cookie_name, path="/")
     return {"deleted": counts}

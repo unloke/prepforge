@@ -84,6 +84,7 @@ def analysis_result_to_payload(result: AnalysisResult) -> Dict[str, Any]:
                 "ply": point.ply,
                 "san": point.san,
                 "score_cp": point.score_cp,
+                "mate_in": point.mate_in,
                 "bounded_score_cp": point.bounded_score_cp,
                 "classification": point.classification.value,
             }

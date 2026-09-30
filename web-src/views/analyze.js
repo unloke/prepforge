@@ -62,6 +62,8 @@ export function createAnalyzeView({
   const EVAL_CHART_W = 640;
   const EVAL_CHART_H = 96;
   const EVAL_CHART_PAD = 10;
+  // Checkmate-on-board sentinel (game-analyzer terminalEval / engine.py mate_score).
+  const CHECKMATE_CP = 10000;
 
   function evalChartYOf(winPct) {
     const usable = EVAL_CHART_H - 2 * EVAL_CHART_PAD;
@@ -76,12 +78,18 @@ export function createAnalyzeView({
   }
 
   // Engine evaluation as players read it: "+1.4" / "−0.3" in pawns (White's
-  // point of view), "#3" / "#-2" for forced mates.
+  // point of view), "#3" / "#-2" for forced mates, "1-0" / "0-1" once the
+  // board itself is checkmate.
   function formatPointEval(point) {
     if (point.mate_in != null && point.mate_in !== 0) {
       return point.mate_in > 0 ? `#${point.mate_in}` : `#-${Math.abs(point.mate_in)}`;
     }
-    // Mate scores arrive as score_cp = null with bounded_score_cp = ±1000.
+    // A position that IS checkmate is stored as score_cp = ±100000 (no line to
+    // search); reading that as pawns printed "+1000.0".
+    if (point.score_cp != null && Math.abs(point.score_cp) >= CHECKMATE_CP) {
+      return point.score_cp > 0 ? "1-0" : "0-1";
+    }
+    // Older reports carry mate only as score_cp = null with bounded_score_cp = ±1000.
     if (point.score_cp == null && Math.abs(point.bounded_score_cp || 0) >= 1000) {
       return point.bounded_score_cp > 0 ? "+M" : "−M";
     }

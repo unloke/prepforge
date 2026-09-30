@@ -1472,8 +1472,40 @@ export function gradeLines(lookup, lines) {
 // FEN + opponent profile
 // ---------------------------------------------------------------------------
 
+// Scout re-aggregates every branch on each streaming render, and most games
+// share their opening lines — replaying each one through chess.js every time
+// was a quarter of the render cost. Pure in `ucis`, so memoize (bounded).
+//
+// Bound is ~850 bytes per entry (the joined-UCI key dominates: a 60-move game
+// is ~720 chars, plus the FEN and the Map slot). 4000 entries is a few MB —
+// far more than one render's working set — and evicts ONE oldest entry at a
+// time. A wholesale clear() at the cap was a cliff: every cached replay
+// rebuilt at once, right after the 4499th distinct game.
+const FEN_BEFORE_LAST_CACHE_MAX = 4000;
+const fenBeforeLastCache = new Map();
+
 export function fenBeforeLastMove(ucis) {
   if (!ucis?.length) return null;
+  const key = ucis.join(" ");
+  if (fenBeforeLastCache.has(key)) {
+    // Re-insert so a game stays warm while the streaming render keeps asking
+    // for it; Map iteration order is insertion order, so the first key is the
+    // least recently used.
+    const fen = fenBeforeLastCache.get(key);
+    fenBeforeLastCache.delete(key);
+    fenBeforeLastCache.set(key, fen);
+    return fen;
+  }
+  const fen = replayFenBeforeLastMove(ucis);
+  if (fenBeforeLastCache.size >= FEN_BEFORE_LAST_CACHE_MAX) {
+    const oldest = fenBeforeLastCache.keys().next().value;
+    fenBeforeLastCache.delete(oldest);
+  }
+  fenBeforeLastCache.set(key, fen);
+  return fen;
+}
+
+function replayFenBeforeLastMove(ucis) {
   const chess = new Chess();
   for (let i = 0; i < ucis.length - 1; i += 1) {
     const uci = ucis[i];
