@@ -1793,13 +1793,14 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    on either side. The right workspace takes the rest and scrolls internally. */
 .study {
   --study-h: calc(100dvh - 36px);
-  /* Board square budget (prototype design rule): min(100dvh − chrome,
-     (100vw − rail − 48) × 0.58, 820px). The column then wraps exactly around
-     it (max-content), so width never dictates a too-small board and no fixed
-     52/48 split is involved. */
+  /* Board square budget: min(100dvh − chrome, (100vw − rail − 48) × share,
+     820px). With no top bar the height budget is generous, so the width share
+     is what sizes the board: 62% on wide screens, 60% on laptops, leaving the
+     side panel ≥ ~420px. The column wraps exactly around it (max-content). */
+  --board-share: 0.62;
   --board-size: min(
     calc(var(--study-h) - var(--board-chrome)),
-    calc((100vw - 60px - 48px) * 0.58),
+    calc((100vw - 60px - 48px) * var(--board-share)),
     820px
   );
   display: grid;
@@ -6172,3 +6173,14 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    rows, so the buttons below never creep upward card by card. */
 #train-progress-panel .pips { min-height: 1.4em; align-content: center; }
 #train-progress-panel .upnext:not([hidden]) { min-height: 116px; box-sizing: border-box; }
+
+@media (max-width: 1279px) {
+  .study { --board-share: 0.6; }
+}
+
+/* Explorer database toggle: the chosen database reads at a glance (accent
+   text + underline), not just a slightly different chip shade. */
+.explorer-db.is-active {
+  color: var(--accent-strong);
+  box-shadow: var(--shadow-1), 0 0 0 1px var(--line), inset 0 -2px 0 var(--accent-strong);
+}

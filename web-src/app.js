@@ -11676,10 +11676,14 @@ function bindEvents() {
   const inspectorDbs = document.getElementById("inspector-dbs");
   if (inspectorDbs) {
     inspectorDbs.querySelectorAll(".explorer-db").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", (event) => {
+        // Mouse clicks drop focus so stepping moves with ← / → never draws a
+        // focus ring on the toggle.
+        if (event.detail !== 0) btn.blur();
         explorerDb = btn.dataset.db === "lichess" ? "lichess" : "masters";
         inspectorDbs.querySelectorAll(".explorer-db").forEach((b) => {
           b.classList.toggle("is-active", b === btn);
+          b.setAttribute("aria-pressed", String(b === btn));
         });
         refreshExplorerPanel();
       });
