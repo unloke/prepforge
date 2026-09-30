@@ -1717,9 +1717,13 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .today { grid-template-columns: auto minmax(0, 1fr) auto; }
   .today-metrics { display: none; }
 }
-/* ≤ 1020px: single column */
+/* ≤ 1020px: single column. The 1279px rule above uses
+   `.lib-grid:not(:has(> .steps[hidden]))` (specificity 0,2,0), so the plain
+   `.lib-grid` selector here would lose to it and keep the two-column track on
+   phones - squeezing the list to ~70px. Match the same specificity. */
 @media (max-width: 1020px) {
-  .lib-grid { grid-template-columns: minmax(0, 1fr); }
+  .lib-grid,
+  .lib-grid:not(:has(> .steps[hidden])) { grid-template-columns: minmax(0, 1fr); }
   .lib-list,
   .steps { grid-column: auto; grid-row: auto; }
 }

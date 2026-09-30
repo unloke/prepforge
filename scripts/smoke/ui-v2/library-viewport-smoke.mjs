@@ -165,6 +165,15 @@ async function runViewport(vp) {
 
   // No preview pane: the table takes the full width and a row click opens.
   check((await page.locator("#lib-preview").count()) === 0, "the library should not render a preview pane");
+  // The list must actually fill its column. A two-column track leaking into the
+  // phone breakpoint squeezed this to ~70px, and `overflow: hidden` on the list
+  // hid the clipped text from the document-level overflow check below - only a
+  // measured width catches it. Above 1020px the Next-steps column is meant to
+  // sit beside the list, so only the single-column widths must fill.
+  if (vp.width <= 1020) {
+    const listWidth = await page.locator("#dashboard-repertoires").evaluate((el) => el.getBoundingClientRect().width);
+    check(listWidth >= vp.width - 60, `library list should fill the single column, got ${Math.round(listWidth)}px at ${vp.width}px`);
+  }
 
   // Mastery bar carries the health pct.
   const barWidth = await page.locator("#dashboard-repertoires .lib-row:first-child .lib-mbar i").getAttribute("style");
