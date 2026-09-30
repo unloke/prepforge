@@ -1,5 +1,9 @@
 const LICHESS_KEY = "prepforge.lichess_username";
 
+// The API caps passwords at 200 characters (ResetPasswordRequest). Mirroring it on
+// the input keeps a long passphrase from being rejected as an opaque 422.
+const PASSWORD_MAX = 200;
+
 // Account/auth and Lichess connection UI live behind this controller so app.js
 // does not also own the session boundary. The controller deliberately receives
 // the app services it needs instead of importing the application singleton.
@@ -14,6 +18,8 @@ export function createAccountController({
   onLichessConnected = () => {},
   onLichessAccountsChanged = () => {},
   onOpenSettings = () => {},
+  // Settings → Account (profile, password, plan, export, delete).
+  onOpenAccount = () => onOpenSettings(),
   onReload = () => window.location.reload(),
   // R-03: sign-out must coordinate the local outbox first. The app owns the
   // outbox, so it hands in a hook that persists + flushes and reports how much
@@ -122,8 +128,18 @@ export function createAccountController({
   }
 
   // The sign-in / create-account modal. Google (when configured) is the primary
-  // path; email/password is the always-available fallback.
-  function openAuthModal(mode = "login") {
+  // path; email/password is the always-available fallback. Two recovery modes
+  // share the shell: "forgot" asks for the email a reset link goes to, and
+  // "reset" (opened from that link's ?reset_password=… token) sets the new
+  // password.
+  const AUTH_MODES = {
+    login: { title: "Sign in", submit: "Sign in" },
+    register: { title: "Create account", submit: "Create account" },
+    forgot: { title: "Reset your password", submit: "Send reset link" },
+    reset: { title: "Choose a new password", submit: "Set password" },
+  };
+
+  function openAuthModal(mode = "login", { resetToken = null, notice = "" } = {}) {
     const existing = document.querySelector(".modal-overlay.auth-overlay");
     if (existing) {
       // The modal registers a document-level keydown listener on open, so a bare
@@ -134,46 +150,77 @@ export function createAccountController({
     const overlay = document.createElement("div");
     overlay.className = "modal-overlay auth-overlay";
     const providers = appState.authProviders || { google: false, password: true };
-    const render = (currentMode) => {
-      const isRegister = currentMode === "register";
-      const title = isRegister ? "Create account" : "Sign in";
-      const googleBlock = providers.google
-        ? `<button class="btn primary auth-google" data-action="google" type="button">Continue with Google</button>
+    let token = resetToken;
+    const render = (currentMode, { email = "", message = "" } = {}) => {
+      const spec = AUTH_MODES[currentMode] || AUTH_MODES.login;
+      const signing = currentMode === "login" || currentMode === "register";
+      const googleBlock =
+        providers.google && signing
+          ? `<button class="btn primary auth-google" data-action="google" type="button">Continue with Google</button>
          <div class="auth-divider"><span>or use email</span></div>`
-        : "";
-      overlay.innerHTML = `
-      <div class="modal auth-modal" role="dialog" aria-modal="true" aria-label="${title}">
-        <div class="modal-title">${title}</div>
-        <div class="modal-body">
-          ${googleBlock}
+          : "";
+      let fields = "";
+      if (currentMode === "reset") {
+        fields = `
+          <label class="modal-field"><span>New password (8+ characters)</span>
+            <input type="password" data-auth="password" autocomplete="new-password" maxlength="${PASSWORD_MAX}" /></label>
+          <label class="modal-field"><span>Repeat new password</span>
+            <input type="password" data-auth="confirm" autocomplete="new-password" maxlength="${PASSWORD_MAX}" /></label>`;
+      } else {
+        fields = `
           <label class="modal-field"><span>Email</span>
-            <input type="email" data-auth="email" autocomplete="email" /></label>
+            <input type="email" data-auth="email" autocomplete="email" value="${escapeHtml(email)}" /></label>`;
+        if (currentMode !== "forgot") {
+          fields += `
           <label class="modal-field"><span>Password</span>
             <input type="password" data-auth="password"
-              autocomplete="${isRegister ? "new-password" : "current-password"}" /></label>
+              autocomplete="${currentMode === "register" ? "new-password" : "current-password"}" /></label>`;
+        }
+      }
+      const intro =
+        currentMode === "forgot"
+          ? '<p class="modal-copy">Enter the email you signed up with. If it has an account, a single-use reset link is sent there.</p>'
+          : "";
+      const forgotLink =
+        currentMode === "login"
+          ? '<button class="auth-link" data-action="forgot" type="button">Forgot password?</button>'
+          : "";
+      const secondary =
+        currentMode === "login"
+          ? "New here? Create account"
+          : currentMode === "register"
+            ? "Have an account? Sign in"
+            : "Back to sign in";
+      overlay.innerHTML = `
+      <div class="modal auth-modal" role="dialog" aria-modal="true" aria-label="${spec.title}">
+        <div class="modal-title">${spec.title}</div>
+        <div class="modal-body">
+          ${googleBlock}
+          ${intro}
+          ${fields}
+          ${forgotLink}
+          <p class="auth-notice" data-auth="notice" role="status"${message ? "" : " hidden"}>${escapeHtml(message)}</p>
           <p class="auth-error" data-auth="error" role="alert" hidden></p>
         </div>
         <div class="modal-footer">
-          <button class="btn ghost" data-action="toggle" type="button">${
-            isRegister ? "Have an account? Sign in" : "New here? Create account"
-          }</button>
-          <button class="btn primary" data-action="submit" type="button">${
-            isRegister ? "Create account" : "Sign in"
-          }</button>
+          <button class="btn ghost" data-action="toggle" type="button">${secondary}</button>
+          <button class="btn primary" data-action="submit" type="button">${spec.submit}</button>
         </div>
       </div>`;
       overlay.dataset.mode = currentMode;
-      const emailInput = overlay.querySelector('[data-auth="email"]');
-      if (emailInput) emailInput.focus();
+      overlay.querySelector("input")?.focus();
     };
-    render(mode);
+    render(mode, { message: notice });
     document.body.appendChild(overlay);
     // render() runs before the overlay is attached, so focus again now.
-    overlay.querySelector('[data-auth="email"]')?.focus();
+    overlay.querySelector("input")?.focus();
 
     const close = () => {
       document.removeEventListener("keydown", onKey);
       overlay.remove();
+      // Abandoning a reset (Escape, overlay click, palette close) must scrub the
+      // token from the URL too, or it stays bookmarkable/shareable in history.
+      if (overlay.dataset.mode === "reset") clearResetParam();
     };
     // Tab/command-palette navigation uses this same teardown path.
     overlay._closeAuthModal = close;
@@ -184,29 +231,53 @@ export function createAccountController({
         el.hidden = !msg;
       }
     };
+    const value = (name) => overlay.querySelector(`[data-auth="${name}"]`)?.value ?? "";
     const submit = async () => {
       const currentMode = overlay.dataset.mode;
-      const email = overlay.querySelector('[data-auth="email"]').value.trim();
-      const password = overlay.querySelector('[data-auth="password"]').value;
-      if (!email || !password) {
-        showError("Enter your email and password.");
-        return;
-      }
-      if (currentMode === "register" && password.length < 8) {
-        showError("Password must be at least 8 characters.");
-        return;
+      const email = value("email").trim();
+      const password = value("password");
+      if (currentMode === "forgot") {
+        if (!email) return showError("Enter your email.");
+      } else if (currentMode === "reset") {
+        if (password.length < 8) return showError("Password must be at least 8 characters.");
+        if (password !== value("confirm")) return showError("The two passwords don't match.");
+      } else {
+        if (!email || !password) return showError("Enter your email and password.");
+        if (currentMode === "register" && password.length < 8) {
+          return showError("Password must be at least 8 characters.");
+        }
       }
       showError("");
       const submitBtn = overlay.querySelector('[data-action="submit"]');
       if (submitBtn) submitBtn.disabled = true;
       try {
+        if (currentMode === "forgot") {
+          const result = await postJson("/api/auth/password/forgot", { email });
+          // Dev builds hand the token back (no mail server locally): go straight on.
+          if (result && result.dev_reset_token) {
+            token = result.dev_reset_token;
+            render("reset", { message: "Development build: the reset link was opened for you." });
+            return;
+          }
+          render("login", {
+            email,
+            message: "If that email has an account, a reset link is on its way. It works once and expires soon.",
+          });
+          return;
+        }
+        if (currentMode === "reset") {
+          await postJson("/api/auth/password/reset", { token, password });
+          clearResetParam();
+          render("login", { message: "Password updated. Sign in with the new one — other devices were signed out." });
+          return;
+        }
         const endpoint = currentMode === "register" ? "/api/auth/register" : "/api/auth/login";
         await postJson(endpoint, { email, password });
         close();
         // A fresh session changes every owner-scoped view — reload for a clean slate.
         onReload();
       } catch (error) {
-        showError(error.message || "Sign-in failed.");
+        showError(error.message || "Something went wrong.");
         if (submitBtn) submitBtn.disabled = false;
       }
     };
@@ -222,16 +293,46 @@ export function createAccountController({
     document.addEventListener("keydown", onKey);
     overlay.addEventListener("click", (event) => {
       const action = event.target?.dataset?.action;
+      const currentMode = overlay.dataset.mode;
       if (event.target === overlay) {
         close();
       } else if (action === "google") {
         window.location.assign("/api/auth/google/login");
+      } else if (action === "forgot") {
+        render("forgot", { email: value("email").trim() });
       } else if (action === "toggle") {
-        render(overlay.dataset.mode === "register" ? "login" : "register");
+        if (currentMode === "reset") clearResetParam();
+        render(currentMode === "login" ? "register" : "login", { email: value("email").trim() });
       } else if (action === "submit") {
         submit();
       }
     });
+  }
+
+  // The reset link lands on /?reset_password=<token>. Drop the token from the
+  // address bar once used (or abandoned) so it is not bookmarked or shared.
+  function clearResetParam() {
+    try {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has("reset_password")) return;
+      url.searchParams.delete("reset_password");
+      window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  // Boot hook: a reset link opens the modal in reset mode.
+  function openResetFromUrl() {
+    let token = null;
+    try {
+      token = new URL(window.location.href).searchParams.get("reset_password");
+    } catch (_) {
+      token = null;
+    }
+    if (!token) return false;
+    openAuthModal("reset", { resetToken: token });
+    return true;
   }
 
   // The control that opened the menu (rail chip or the More sheet's account
@@ -310,6 +411,7 @@ export function createAccountController({
     const items = [
       `<div class="context-section">Signed in as ${escapeHtml(name)}</div>`,
       lichessItem,
+      `<button type="button" role="menuitem" data-action="account">Account</button>`,
       `<button type="button" role="menuitem" data-action="settings">Settings</button>`,
       `<button type="button" role="menuitem" data-action="signout">Sign out</button>`,
     ];
@@ -362,6 +464,8 @@ export function createAccountController({
       await signOut();
     } else if (action === "settings") {
       onOpenSettings();
+    } else if (action === "account") {
+      onOpenAccount();
     } else if (action === "connect-lichess") {
       startLichessOAuth();
     }
@@ -373,10 +477,17 @@ export function createAccountController({
       appState.signedIn = !!me.id;
       appState.accountUsername = me.display_name || me.email || null;
       appState.accountUserId = me.id || null;
+      appState.account = {
+        email: me.email || "",
+        displayName: me.display_name || "",
+        plan: me.plan || "free",
+        hasPassword: !!me.has_password,
+      };
     } catch (_) {
       appState.signedIn = false;
       appState.accountUsername = null;
       appState.accountUserId = null;
+      appState.account = null;
     }
     renderAccountChip();
   }
@@ -518,6 +629,7 @@ export function createAccountController({
     refreshAuthProviders,
     requireSignIn,
     openAuthModal,
+    openResetFromUrl,
     onAccountChipClick,
     openAccountMenu,
     closeAccountMenu,

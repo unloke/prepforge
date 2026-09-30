@@ -129,12 +129,22 @@ async function runViewport(vp) {
   const check = (ok, label) => { if (!ok) failures.push(`${vp.name}: ${label}`); };
 
   await page.goto(base, { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(1000); // boot + signed-in hydration
+  // Wait for the real hydrated row, not a fixed sleep. This smoke has no
+  // Playwright auto-wait on this path, so a slow CI runner (the Library
+  // smoke took 47s there vs 4.5s locally) could click before the delegated
+  // dashboard handler was bound - which surfaced as
+  // 'rep header should show Caro-Kann, got "No repertoire open"'.
+  await page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-1"]')
+    .waitFor({ state: "visible", timeout: 15000 });
 
   // Open the workspace the way users do: double-click the repertoire row in the
   // Library (selects + previews on first click, opens Build on the second).
   await page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-1"]').dblclick();
-  await page.waitForTimeout(1000); // /api/build/load + tree render
+  // Same reasoning for the build load: wait until the header actually carries
+  // the repertoire instead of hoping 1s was enough.
+  await page.locator("#build-rep-name")
+    .filter({ hasText: "Caro-Kann" })
+    .waitFor({ state: "attached", timeout: 15000 });
 
   // Rep header shows the real repertoire from /api/build/load.
   const repName = await page.locator("#build-rep-name").textContent().catch(() => "");

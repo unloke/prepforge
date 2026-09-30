@@ -370,7 +370,7 @@ export function createStockfishWasmProvider({
   // Start a fresh search for `fen`. If a previous search is still in flight, drain it first so
   // its trailing UCI output can't pollute this one — only THEN reset state and launch, so the
   // window where stale `info`/`bestmove` could land on the new FEN is closed.
-  async function startSearch(fen, multipv, gen) {
+  async function startSearch(fen, multipv, gen, searchmoves) {
     if (state.running) {
       await drainCurrentSearch();
     }
@@ -406,7 +406,14 @@ export function createStockfishWasmProvider({
     }
     worker.postMessage("setoption name MultiPV value " + state.multipv);
     worker.postMessage("position fen " + fen);
-    worker.postMessage("go depth " + state.max_depth);
+    // Optional root-move restriction (UCI `searchmoves`): the Explorer eval worker scores
+    // exactly the candidate rows on screen instead of whatever Stockfish ranks top-N.
+    const restrict = Array.isArray(searchmoves)
+      ? searchmoves.filter((m) => /^[a-h][1-8][a-h][1-8][qrbn]?$/.test(m))
+      : [];
+    worker.postMessage(
+      "go depth " + state.max_depth + (restrict.length ? " searchmoves " + restrict.join(" ") : ""),
+    );
   }
 
   return {
@@ -414,18 +421,18 @@ export function createStockfishWasmProvider({
     // open/update both run through serialize() so a search-switch never overlaps another (see
     // opChain). update() inlines the no-worker fallback rather than delegating to open(), since
     // re-entering serialize() from within a serialized op would deadlock on opChain.
-    open({ fen, multipv }) {
+    open({ fen, multipv, searchmoves }) {
       const gen = generation; // capture at call time, before this op queues behind opChain
       return serialize(async () => {
         if (gen !== generation) return this.snapshot(); // a close() landed after this call
         await ensureWorker();
         if (gen !== generation) return this.snapshot();
         state.session_id = state.session_id || uid();
-        await startSearch(fen, multipv, gen);
+        await startSearch(fen, multipv, gen, searchmoves);
         return this.snapshot();
       });
     },
-    update({ fen, multipv }) {
+    update({ fen, multipv, searchmoves }) {
       const gen = generation; // capture at call time, before this op queues behind opChain
       return serialize(async () => {
         if (gen !== generation) return this.snapshot(); // a close() landed after this call
@@ -436,7 +443,7 @@ export function createStockfishWasmProvider({
           await readyPromise;
         }
         if (gen !== generation) return this.snapshot();
-        await startSearch(fen, multipv, gen);
+        await startSearch(fen, multipv, gen, searchmoves);
         return this.snapshot();
       });
     },
@@ -534,6 +541,14 @@ export function createStockfishWasmProvider({
         }
       });
     },
+    // Halt the in-flight search but KEEP the worker warm. For callers that park a
+    // search (e.g. the Explorer eval worker while its rows are mid-fetch) without
+    // losing the engine: `close()` would terminate the worker and force a full
+    // wasm re-init on the next search. Idempotent; safe to call when idle.
+    stopSearch() {
+      if (!worker || !state.running) return;
+      worker.postMessage("stop");
+    },
     close() {
       // Bump generation BEFORE releasing the drain: the awaited startSearch resumes synchronously
       // off finishDrain()'s resolve, and must see the new generation so it bails instead of
@@ -595,6 +610,9 @@ function createUnavailableProvider(message) {
     },
     snapshot() {
       return { session_id: null, running: false, pvs: [], error: message };
+    },
+    stopSearch() {
+      return Promise.resolve();
     },
     close() {
       return Promise.resolve();

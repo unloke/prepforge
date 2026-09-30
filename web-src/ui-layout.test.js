@@ -168,8 +168,32 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("setBuildInspector(name)");
     expect(app).toContain("panels[name].hidden = !on");
     expect(app).toContain("function dockEngine(slotId)");
-    expect(app).toContain("function paintExplorerEvals(snapshot)");
+    expect(app).toContain("function paintExplorerEvals(snapshot, mainSnapshot = null)");
+    expect(app).toContain("class ExplorerEvalEngine");
+    expect(app).toContain("function onExplorerRowClick(rows, uci)");
     expect(ruleBody(".engine-window.is-docked")).toMatch(/position:\s*static/);
+  });
+
+  it("parks the Explorer eval search by stopping it, not by forgetting it", () => {
+    // Rows for the next position arrive async. While they load, the previous
+    // position's search must be HALTED — nulling `key` alone left the worker
+    // running to full depth on an off-screen position with no poll to observe it.
+    // `stopSearch` (not `close`) keeps the worker warm so each row refresh does
+    // not force a full wasm re-init.
+    expect(app).toContain("this.engine.stopSearch()");
+    const park = app.slice(app.indexOf("const want = this._candidates()"));
+    expect(park.slice(0, 600)).toContain("stopSearch");
+  });
+
+  it("never claims a Pro plan from a client-supplied URL param alone", () => {
+    // ?billing=success is user-editable, and the Stripe webhook (not the redirect)
+    // is the source of truth for `users.plan`. The success copy must therefore be
+    // gated on the re-fetched plan actually being pro.
+    const fn = app.slice(app.indexOf("function handleBillingReturn()"));
+    const success = fn.slice(0, fn.indexOf("checkout cancelled"));
+    expect(success).toContain("refreshAuthStatus()");
+    expect(success).toContain("plan === \"pro\"");
+    expect(success).not.toContain("your Pro plan is active (it can take a moment to show)");
   });
 
   it("keeps the dock chrome to one tools row above the panel", () => {

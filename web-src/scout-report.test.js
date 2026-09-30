@@ -23,10 +23,12 @@ import {
   scoutSparkline,
   scoutSvgBar,
   scoutScoreCell,
+  scoutDisplayDistribution,
   scoutWdlBar,
   scoutLineWdlCounts,
   patchScoutLineMaiaCells,
   buildScoutIntelligenceA11ySummary,
+  renderScoutColorTabsHtml,
 } from "./scout-report.js";
 import {
   MAIA_ENRICH_LOADING,
@@ -678,7 +680,7 @@ describe("scout-report rendering", () => {
       { speedFilter: "all", escapeHtml, v3Mode: true },
     );
     expect(html).toContain("scout-coverage-bar-row");
-    expect(html).toContain("lines covered");
+    expect(html).toMatch(/your prep answers \d+ of \d+ lines/);
     expect(html).toContain("scout-prepare-all");
     expect(html).not.toContain("scout-ranked-list");
   });
@@ -701,7 +703,9 @@ describe("scout-report rendering", () => {
       { speedFilter: "all", escapeHtml },
     );
     expect(html).toContain("Your game plan");
-    expect(html).toContain("When they play");
+    expect(html).toContain("After <b");
+    expect(html).not.toContain("When they play");
+    expect(html).toContain("Their score");
     expect(html).toContain("scout-ranked-list");
     expect(html).not.toContain("scout-lr-rank");
     expect(html).toContain("scout-n");
@@ -1080,16 +1084,16 @@ describe("scout intelligence panel", () => {
     expect(html).toContain("scout-ranked-list");
     expect(html).toContain("scout-ranked-note");
     expect(html).not.toContain("scout-lr-rank");
-    expect(html).toContain("Worst performance");
-    expect(html).toContain("Activity");
-    expect(html).toContain("Repertoire focus");
+    expect(html).toContain("score by first move");
+    expect(html).toContain("Games per week");
+    expect(html).toContain("scout-axis-chart");
     expect(html).toContain("scout-sparkline");
     expect(html).toContain("scout-bar-chart");
     expect(html).toContain("visually-hidden");
     expect(html).toContain("scout-repertoire-reads");
     expect(html).toContain("scout-read-chip");
-    expect(html).toContain("Engine ACPL");
-    expect(html).toContain("Engine scan: run Deep scan");
+    expect(html).toContain("makes mistakes");
+    expect(html).toContain("Not scanned yet");
     expect(sectionData.stats).toBeDefined();
     expect(sectionData.summary?.headline).toBeTruthy();
   });
@@ -1113,7 +1117,7 @@ describe("scout intelligence panel", () => {
   });
 
   it("renderScoutEnginePanel shows insufficient coverage or ACPL bars", () => {
-    expect(renderScoutEnginePanel(null, escapeHtml)).toContain("run Deep scan");
+    expect(renderScoutEnginePanel(null, escapeHtml)).toContain("Deep scan checks");
     expect(
       renderScoutEnginePanel(
         {
@@ -1147,6 +1151,25 @@ describe("scout intelligence panel", () => {
         escapeHtml,
       ),
     ).toContain("based on latest 60 games");
+  });
+
+  // The ACPL is the most sample-sensitive figure on the card (it averages over
+  // opponent plies), so it must show its n. Engine families carry `analyzedGames`
+  // — reading a `games` key silently yielded no count at all.
+  it("renderScoutEnginePanel shows the analyzed-games count on each ACPL bar", () => {
+    const html = renderScoutEnginePanel(
+      {
+        sufficient: true,
+        families: [
+          { san: "e4", acpl: 42, firstInaccuracyPly: 3, analyzedGames: 5 },
+          { san: "d4", acpl: 18, firstInaccuracyPly: 2, analyzedGames: 12 },
+        ],
+      },
+      escapeHtml,
+    );
+    expect(html).toContain("has-n");
+    expect(html).toContain(">5</span>");
+    expect(html).toContain(">12</span>");
   });
 
   it("renderScoutRefutationPanel shows only confirmed refutations", () => {
@@ -1304,5 +1327,53 @@ describe("scout intelligence panel", () => {
     expect(html).toContain("+0.4");
     expect(html).not.toContain("-0.4");
     expect(html).toContain("Nc3");
+  });
+});
+
+
+describe("scoutDisplayDistribution", () => {
+  it("shares first moves by real game counts, not the recency-weighted count", () => {
+    const node = { gameCount: 100 };
+    const fakeDist = () => [
+      { uci: "d2d4", san: "d4", count: 0.9, gameCount: 1, scorePct: 100, share: 0.9 },
+      { uci: "e2e4", san: "e4", count: 0.1, gameCount: 49, scorePct: 80, share: 0.1 },
+    ];
+    const rows = scoutDisplayDistribution(node, fakeDist);
+    expect(rows[0].san).toBe("e4");
+    expect(rows[0].share).toBeCloseTo(0.49);
+    expect(rows[1].share).toBeCloseTo(0.01);
+  });
+});
+
+// Regression: the "first slip around move N" sentence used Math.ceil(ply / 2).
+// `firstInaccuracyPly` is a 0-based ABSOLUTE ply index, so an opponent-White
+// inaccuracy on their own 1st move (ply 0) rendered as "move 0" - not a valid
+// move number - and every White figure was one short.
+describe("scout engine panel move numbering", () => {
+  it("renders the opponent 1-based move number for either opponent colour", () => {
+    // ply 0 / 1 are White's / Black's first move; ply 6 / 7 their 4th.
+    for (const ply of [0, 1, 2, 3, 6, 7]) {
+      const html = renderScoutEnginePanel(
+        {
+          sufficient: true,
+          families: [{ san: "e4", acpl: 42, firstInaccuracyPly: ply, analyzedGames: 5 }],
+        },
+        escapeHtml,
+      );
+      expect(html).toContain("first slip around move " + (Math.floor(ply / 2) + 1));
+      expect(html).not.toContain("move 0");
+    }
+  });
+
+  it("omits the move sentence entirely when there is no inaccuracy ply", () => {
+    const html = renderScoutEnginePanel(
+      {
+        sufficient: true,
+        families: [{ san: "e4", acpl: 42, firstInaccuracyPly: null, analyzedGames: 5 }],
+      },
+      escapeHtml,
+    );
+    expect(html).toContain("42 cp");
+    expect(html).not.toContain("first slip");
   });
 });

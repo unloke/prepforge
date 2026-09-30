@@ -22,6 +22,7 @@ import {
   restoreScoutExpanded,
   ensureScoutLineSelection,
   scoutDistRowHtml,
+  scoutDisplayDistribution,
   scoutLineDetailHtml,
   scoutLineKey,
 } from "../scout-report.js";
@@ -407,6 +408,7 @@ export function createScoutView(deps) {
     // from the opponent profile; hidden while streaming (both sections build live).
     const tabsHtml = renderScoutColorTabsHtml(scoutState.profile, escapeHtml, {
       hidden: isStreaming(),
+      username: scoutState.username,
     });
 
     if (profileEl) {
@@ -419,6 +421,7 @@ export function createScoutView(deps) {
           colorRecHtml: buildColorRecommendationBanner(
             colorRecommendation(scoutState.games),
             escapeHtml,
+            { username: scoutState.username },
           ),
         },
       );
@@ -1633,12 +1636,14 @@ export function createScoutView(deps) {
     }
     if (!childNode) return;
 
-    const subDist = scoutModule.moveDistribution(childNode).slice(0, 6);
+    const subDist = scoutDisplayDistribution(childNode, scoutModule.moveDistribution, { limit: 6 });
     const parentSan = distRowEl.querySelector(".scout-dist-san")?.textContent || uci;
     const rows = subDist.map((m) => scoutDistRowHtml(m, escapeHtml, { clickable: false })).join("");
 
+    // The replies to their first move are their OPPONENTS' moves; the score is
+    // still theirs.
     distCol.innerHTML = `
-    <div class="scout-dist-drill-head muted">${escapeHtml(parentSan)} — their replies</div>
+    <div class="scout-dist-drill-head muted">After 1.${escapeHtml(parentSan)}: what their opponents answered, and how ${escapeHtml(scoutState.username || "they")} scored</div>
     ${rows}
     <button type="button" class="scout-btn btn ghost scout-dist-back">Back ↑</button>`;
     distCol.dataset.drillUci = uci;
@@ -1647,7 +1652,7 @@ export function createScoutView(deps) {
   function restoreDistRoot(sectionEl, oppColor) {
     const sectionData = scoutState.sections[oppColor];
     if (!sectionData) return;
-    const dist = scoutModule.moveDistribution(sectionData.trie).slice(0, 4);
+    const dist = scoutDisplayDistribution(sectionData.trie, scoutModule.moveDistribution);
     const distCol = sectionEl.querySelector("[data-dist-root]");
     if (!distCol) return;
     distCol.innerHTML = dist.map((m) => scoutDistRowHtml(m, escapeHtml)).join("");

@@ -58,6 +58,49 @@ describe("createStockfishWasmProvider — search lifecycle", () => {
     expect(snap.pvs[0].pv_uci).toEqual(["e2e4", "e7e5"]);
   });
 
+  it("restricts the root moves with searchmoves when given candidates", async () => {
+    const { provider, fake } = makeProvider();
+    await provider.open({ fen: FEN_A, multipv: 3, searchmoves: ["e2e4", "d2d4", "bogus", "g1f3"] });
+    expect(fake.posted).toContain("setoption name MultiPV value 3");
+    expect(fake.posted).toContain("go depth 18 searchmoves e2e4 d2d4 g1f3");
+    fake.emit("bestmove e2e4");
+    await provider.update({ fen: FEN_B, multipv: 1 });
+    expect(fake.posted[fake.posted.length - 1]).toBe("go depth 18");
+  });
+
+  // The Explorer eval worker parks its search while the next position's rows load.
+  // That must actually HALT the in-flight search, but keep the worker warm — a
+  // close() here would force a full wasm re-init on every row refresh.
+  it("stopSearch halts a running search but keeps the worker alive", async () => {
+    const { provider, fake } = makeProvider();
+    await provider.open({ fen: FEN_A, multipv: 2, searchmoves: ["e2e4", "d2d4"] });
+    expect(provider.snapshot().running).toBe(true);
+    provider.stopSearch();
+    // A real engine concludes a stopped search with `bestmove`; the provider only
+    // clears `running` on that line (same contract the drain path relies on).
+    await tick();
+    expect(fake.posted).toContain("stop");
+    fake.emit("bestmove e2e4");
+    expect(provider.snapshot().running).toBe(false);
+    expect(fake.terminated).toBe(false);
+    // Still usable: a later update reuses the same warm worker.
+    await provider.update({ fen: FEN_B, multipv: 1 });
+    expect(fake.terminated).toBe(false);
+    expect(fake.posted[fake.posted.length - 1]).toBe("go depth 18");
+  });
+
+  it("stopSearch is a no-op when no search is running", async () => {
+    const { provider, fake } = makeProvider();
+    await provider.open({ fen: FEN_A, multipv: 1 });
+    fake.emit("bestmove e2e4");
+    expect(provider.snapshot().running).toBe(false);
+    const before = fake.posted.length;
+    provider.stopSearch();
+    await tick();
+    expect(fake.posted.length).toBe(before);
+    expect(fake.terminated).toBe(false);
+  });
+
   it("drains the previous search so its late info/bestmove cannot pollute the next FEN (#6)", async () => {
     const { provider, fake } = makeProvider();
     await provider.open({ fen: FEN_A, multipv: 1 });

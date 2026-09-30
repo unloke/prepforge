@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 # (hashing, session lifetime, enumeration safety) stays in one file.
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -48,8 +48,25 @@ class UserOut(BaseModel):
     email: str
     plan: Plan
     display_name: str | None
+    # Whether the account has a password (email sign-up) or signs in with an
+    # OAuth provider only. The Account settings offer "Change password" only
+    # when there is one to change. The hash itself never leaves the server.
+    has_password: bool = False
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _derive_has_password(cls, data):
+        if isinstance(data, User):
+            return {
+                "id": data.id,
+                "email": data.email,
+                "plan": data.plan,
+                "display_name": data.display_name,
+                "has_password": data.password_hash is not None,
+            }
+        return data
 
 
 def _set_session_cookie(response: Response, settings: Settings, token: str) -> None:
@@ -177,6 +194,93 @@ def logout(
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(current_user)) -> User:
     return user
+
+
+class ProfileUpdate(BaseModel):
+    display_name: str | None = Field(default=None, max_length=120)
+
+    @field_validator("display_name")
+    @classmethod
+    def _reject_control_chars(cls, value: str | None) -> str | None:
+        # PostgreSQL text columns cannot store NUL: the insert fails at the
+        # driver and surfaces as a 500. SQLite accepts it, so a SQLite-only
+        # suite never caught this. Reject NUL outright and drop the other C0
+        # controls, which are never intentional in a displayed name.
+        if value is None:
+            return None
+        if "\x00" in value:
+            raise ValueError("display_name cannot contain NUL characters")
+        return "".join(ch for ch in value if ch >= " " or ch == "\t")
+
+
+@router.patch("/me", response_model=UserOut)
+def update_me(
+    body: ProfileUpdate,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """Edit the profile fields the account owns (the display name). Blank clears
+    it, so the app falls back to the email.
+
+    A PATCH that omits `display_name` entirely must not clear it: an absent
+    field means leave-as-is, while an explicit blank string still clears it.
+    """
+    if "display_name" not in body.model_fields_set:
+        return user
+    name = (body.display_name or "").strip()
+    user.display_name = name or None
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=8, max_length=200)
+
+
+@router.post("/password/change", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("10/hour")
+def change_password(
+    request: Request,
+    body: ChangePasswordRequest,
+    response: Response,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> Response:
+    """Change the password of a signed-in email/password account.
+
+    Requires the current password (a borrowed session alone cannot take the
+    account over). Every OTHER session of the account ends and outstanding
+    reset links are consumed; this browser stays signed in. OAuth-only
+    accounts have no password to change."""
+    if user.password_hash is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="this account signs in with Google and has no password",
+        )
+    if not verify_password(body.current_password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="current password is incorrect"
+        )
+    now = datetime.now(timezone.utc)
+    user.password_hash = hash_password(body.new_password)
+    token = request.cookies.get(settings.session_cookie_name)
+    keep = hash_session_token(token) if token else None
+    for session in db.scalars(select(AuthSession).where(AuthSession.user_id == user.id)):
+        if session.token_hash != keep:
+            db.delete(session)
+    for pending in db.scalars(
+        select(PasswordResetToken).where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_at.is_(None),
+        )
+    ):
+        pending.used_at = now
+    db.commit()
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
 
 
 class AuthProviders(BaseModel):
