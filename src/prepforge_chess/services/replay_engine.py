@@ -34,11 +34,38 @@ class ReplayEngineError(ValueError):
     silent misclassification."""
 
 
+def client_search_depth(data: Dict[str, object], fallback: Optional[int]) -> Optional[int]:
+    """The ACTUAL depth the browser search reached for one position.
+
+    ``0`` means the position needed no search (terminal); a shallow result that
+    timed out reports the depth it really reached, never the requested one.
+    Legacy payloads without a per-position ``depth`` fall back to the requested
+    depth (the only information they carry)."""
+    value = data.get("depth")
+    if isinstance(value, bool):
+        return fallback
+    if isinstance(value, (int, float)) and value >= 0:
+        return int(value)
+    return fallback
+
+
+def client_search_nodes(data: Dict[str, object]) -> Optional[int]:
+    """Nodes the browser search actually explored (part of the evaluation's
+    identity), or ``None`` when the payload carries none."""
+    value = data.get("nodes")
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)) and value >= 0:
+        return int(value)
+    return None
+
+
 class ReplayEngine:
     """Inert engine that returns browser-computed evaluations by FEN.
 
-    ``positions`` maps a FEN to ``{score_cp, mate_in, best_move_uci, pv}`` as
-    produced by the browser Stockfish provider (scores already White-POV). The
+    ``positions`` maps a FEN to ``{score_cp, mate_in, best_move_uci, pv, depth}``
+    as produced by the browser Stockfish provider (scores already White-POV;
+    ``depth`` is the actual search depth reached). The
     pipeline calls ``analyze_position(fen_before)`` (needs eval + best move +
     eval-after-best) and ``evaluate_position(fen_after)`` (needs that position's
     eval). Because a position's eval under best play equals the eval after the
@@ -82,7 +109,8 @@ class ReplayEngine:
         mate_in = data.get("mate_in")
         return EngineEvaluation(
             engine=self.name,
-            depth=config.depth,
+            depth=client_search_depth(data, config.depth),
+            nodes=client_search_nodes(data),
             score_cp=int(score_cp) if score_cp is not None else None,
             mate_in=int(mate_in) if mate_in is not None else None,
             best_move_uci=data.get("best_move_uci") or None,

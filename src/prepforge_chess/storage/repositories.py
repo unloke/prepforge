@@ -363,8 +363,54 @@ class PrepForgeRepository:
                 ).all():
                     pos_ids[row.fen] = int(row.id)
 
-        # 2. Deduplicate engine evaluations by their unique key and upsert
-        # them in one statement with RETURNING ids.
+        # 2. Deduplicate engine evaluations by their unique key (identity +
+        # content fingerprint) and insert them in chunks with RETURNING ids.
+        # Rows are immutable snapshots: identical content dedupes onto one row,
+        # while a different result carries a different fingerprint and gets its
+        # own row — nothing is ever rewritten (improvement review D-01).
+
+        def _eval_payload(evaluation, fen) -> Dict[str, Any]:
+            wdl = codec.encode_wdl(evaluation.wdl)
+            payload = {
+                "position_id": pos_ids[codec.position_key(fen)],
+                "engine": evaluation.engine,
+                "depth": codec.encode_search_limit(evaluation.depth),
+                "nodes": codec.encode_search_limit(evaluation.nodes),
+                "time_ms": codec.encode_search_limit(evaluation.time_ms),
+                "score_cp": evaluation.score_cp,
+                "mate_in": evaluation.mate_in,
+                "best_move_uci": evaluation.best_move_uci,
+                "pv": codec.encode_pv(evaluation.pv),
+                "wdl_win": None if wdl is None else wdl[0],
+                "wdl_draw": None if wdl is None else wdl[1],
+                "wdl_loss": None if wdl is None else wdl[2],
+            }
+            payload["fingerprint"] = codec.evaluation_fingerprint(
+                engine=payload["engine"],
+                position_fen=codec.position_key(fen),
+                depth=payload["depth"],
+                nodes=payload["nodes"],
+                time_ms=payload["time_ms"],
+                score_cp=payload["score_cp"],
+                mate_in=payload["mate_in"],
+                best_move_uci=payload["best_move_uci"],
+                pv=payload["pv"],
+                wdl_win=payload["wdl_win"],
+                wdl_draw=payload["wdl_draw"],
+                wdl_loss=payload["wdl_loss"],
+            )
+            return payload
+
+        def _eval_key(payload: Dict[str, Any]) -> tuple:
+            return (
+                payload["position_id"],
+                payload["engine"],
+                payload["depth"],
+                payload["nodes"],
+                payload["time_ms"],
+                payload["fingerprint"],
+            )
+
         eval_keys: List[tuple] = []
         seen_evals: set = set()
         eval_payloads: Dict[tuple, Dict[str, Any]] = {}
@@ -376,54 +422,33 @@ class PrepForgeRepository:
             ):
                 if evaluation is None:
                     continue
-                key = (
-                    pos_ids[codec.position_key(fen)],
-                    evaluation.engine,
-                    codec.encode_search_limit(evaluation.depth),
-                    codec.encode_search_limit(evaluation.nodes),
-                    codec.encode_search_limit(evaluation.time_ms),
-                )
+                payload = _eval_payload(evaluation, fen)
+                key = _eval_key(payload)
                 if key in seen_evals:
                     continue
                 seen_evals.add(key)
                 eval_keys.append(key)
-                wdl = codec.encode_wdl(evaluation.wdl)
-                eval_payloads[key] = {
-                    "position_id": key[0],
-                    "engine": evaluation.engine,
-                    "depth": key[2],
-                    "nodes": key[3],
-                    "time_ms": key[4],
-                    "score_cp": evaluation.score_cp,
-                    "mate_in": evaluation.mate_in,
-                    "best_move_uci": evaluation.best_move_uci,
-                    "pv": codec.encode_pv(evaluation.pv),
-                    "wdl_win": None if wdl is None else wdl[0],
-                    "wdl_draw": None if wdl is None else wdl[1],
-                    "wdl_loss": None if wdl is None else wdl[2],
-                }
+                eval_payloads[key] = payload
         eval_ids: Dict[tuple, int] = {}
         if eval_payloads:
             # Same SQLite executemany-upsert limitation as move rows: use
-            # chunked multi-row VALUES (12 columns per eval row → a 40-row
-            # chunk is 480 variables). One round-trip per chunk.
+            # chunked multi-row VALUES (13 columns per eval row → a 40-row
+            # chunk is 520 variables). One round-trip per chunk.
             CHUNK = 40
             for chunk_start in range(0, len(eval_keys), CHUNK):
                 chunk = eval_keys[chunk_start : chunk_start + CHUNK]
                 stmt = _insert(conn, t.engine_evaluations).values(
                     [eval_payloads[key] for key in chunk]
                 )
-                stmt = stmt.on_conflict_do_update(
-                    index_elements=["position_id", "engine", "depth", "nodes", "time_ms"],
-                    set_={
-                        "score_cp": stmt.excluded.score_cp,
-                        "mate_in": stmt.excluded.mate_in,
-                        "best_move_uci": stmt.excluded.best_move_uci,
-                        "pv": stmt.excluded.pv,
-                        "wdl_win": stmt.excluded.wdl_win,
-                        "wdl_draw": stmt.excluded.wdl_draw,
-                        "wdl_loss": stmt.excluded.wdl_loss,
-                    },
+                stmt = stmt.on_conflict_do_nothing(
+                    index_elements=[
+                        "position_id",
+                        "engine",
+                        "depth",
+                        "nodes",
+                        "time_ms",
+                        "fingerprint",
+                    ],
                 ).returning(
                     t.engine_evaluations.c.id,
                     t.engine_evaluations.c.position_id,
@@ -431,6 +456,7 @@ class PrepForgeRepository:
                     t.engine_evaluations.c.depth,
                     t.engine_evaluations.c.nodes,
                     t.engine_evaluations.c.time_ms,
+                    t.engine_evaluations.c.fingerprint,
                 )
                 for row in conn.execute(stmt).all():
                     eval_ids[
@@ -440,11 +466,12 @@ class PrepForgeRepository:
                             int(row.depth),
                             int(row.nodes),
                             int(row.time_ms),
+                            row.fingerprint,
                         )
                     ] = int(row.id)
-            # RETURNING only yields inserted rows on SQLite (upserted
-            # conflicts return nothing). Backfill the rest with chunked
-            # selects (same variable-cap reason as above).
+            # RETURNING only yields the rows this call INSERTED — snapshots
+            # already stored (cache hits) come back via these selects (same
+            # variable-cap reason as above).
             missing = [key for key in eval_keys if key not in eval_ids]
             if missing:
                 pos_chunks = sorted({key[0] for key in missing})
@@ -459,6 +486,7 @@ class PrepForgeRepository:
                             t.engine_evaluations.c.depth,
                             t.engine_evaluations.c.nodes,
                             t.engine_evaluations.c.time_ms,
+                            t.engine_evaluations.c.fingerprint,
                         ).where(
                             t.engine_evaluations.c.position_id.in_(pos_chunk),
                             t.engine_evaluations.c.engine == engine_name,
@@ -471,6 +499,7 @@ class PrepForgeRepository:
                             int(row.depth),
                             int(row.nodes),
                             int(row.time_ms),
+                            row.fingerprint,
                         )
                         if key in eval_payloads:
                             eval_ids[key] = int(row.id)
@@ -478,15 +507,7 @@ class PrepForgeRepository:
         def _eval_id(evaluation, fen) -> Optional[int]:
             if evaluation is None:
                 return None
-            return eval_ids.get(
-                (
-                    pos_ids[codec.position_key(fen)],
-                    evaluation.engine,
-                    codec.encode_search_limit(evaluation.depth),
-                    codec.encode_search_limit(evaluation.nodes),
-                    codec.encode_search_limit(evaluation.time_ms),
-                )
-            )
+            return eval_ids.get(_eval_key(_eval_payload(evaluation, fen)))
 
         # 3. Deterministic upsert of move rows by (game_id, ply) in one
         # bulk statement. It replaces annotations on re-analysis; plies
@@ -1644,20 +1665,49 @@ class PrepForgeRepository:
             "wdl_draw": None if wdl is None else wdl[1],
             "wdl_loss": None if wdl is None else wdl[2],
         }
+        values["fingerprint"] = codec.evaluation_fingerprint(
+            engine=values["engine"],
+            position_fen=codec.position_key(fen),
+            depth=values["depth"],
+            nodes=values["nodes"],
+            time_ms=values["time_ms"],
+            score_cp=values["score_cp"],
+            mate_in=values["mate_in"],
+            best_move_uci=values["best_move_uci"],
+            pv=values["pv"],
+            wdl_win=values["wdl_win"],
+            wdl_draw=values["wdl_draw"],
+            wdl_loss=values["wdl_loss"],
+        )
+        # Evaluations are immutable snapshots: identical content dedupes onto
+        # one row (cache hit below), while a DIFFERENT result carries a
+        # different fingerprint and therefore gets its own row. Nothing is ever
+        # rewritten, so rows referenced by earlier analyses/classifications can
+        # never change (improvement review D-01).
         stmt = _insert(conn, t.engine_evaluations).values(**values)
-        stmt = stmt.on_conflict_do_update(
-            index_elements=["position_id", "engine", "depth", "nodes", "time_ms"],
-            set_={
-                "score_cp": stmt.excluded.score_cp,
-                "mate_in": stmt.excluded.mate_in,
-                "best_move_uci": stmt.excluded.best_move_uci,
-                "pv": stmt.excluded.pv,
-                "wdl_win": stmt.excluded.wdl_win,
-                "wdl_draw": stmt.excluded.wdl_draw,
-                "wdl_loss": stmt.excluded.wdl_loss,
-            },
+        stmt = stmt.on_conflict_do_nothing(
+            index_elements=[
+                "position_id",
+                "engine",
+                "depth",
+                "nodes",
+                "time_ms",
+                "fingerprint",
+            ],
         ).returning(t.engine_evaluations.c.id)
-        ev_id = conn.execute(stmt).scalar_one()
+        ev_id = conn.execute(stmt).scalar_one_or_none()
+        if ev_id is None:
+            # Identical snapshot already stored — reuse its id.
+            ev_id = conn.execute(
+                select(t.engine_evaluations.c.id).where(
+                    t.engine_evaluations.c.position_id == values["position_id"],
+                    t.engine_evaluations.c.engine == values["engine"],
+                    t.engine_evaluations.c.depth == values["depth"],
+                    t.engine_evaluations.c.nodes == values["nodes"],
+                    t.engine_evaluations.c.time_ms == values["time_ms"],
+                    t.engine_evaluations.c.fingerprint == values["fingerprint"],
+                )
+            ).scalar_one()
         return int(ev_id)
 
     def _load_evaluations(

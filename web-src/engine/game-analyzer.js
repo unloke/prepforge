@@ -65,15 +65,19 @@ export function terminalEval(fen) {
         mate_in: null,
         best_move_uci: null,
         pv: [],
+        depth: 0,
+        nodes: 0,
       };
     }
   } catch (_) {
     // Unparseable FEN — fall through to a neutral score.
   }
-  return { score_cp: 0, mate_in: null, best_move_uci: null, pv: [] };
+  return { score_cp: 0, mate_in: null, best_move_uci: null, pv: [], depth: 0, nodes: 0 };
 }
 
 // Extract a White-POV eval from the provider's snapshot, or a terminal fallback.
+// The result carries the ACTUAL depth the search reached — a timeout that
+// accepted a shallow result must never be stored/marked as the requested depth.
 function evalFromSnapshot(fen, snapshot) {
   const top = snapshot && snapshot.pvs && snapshot.pvs[0];
   if (!top || (top.score_cp === null && top.mate_in === null)) {
@@ -84,6 +88,8 @@ function evalFromSnapshot(fen, snapshot) {
     mate_in: top.mate_in,
     best_move_uci: top.pv_uci && top.pv_uci.length ? top.pv_uci[0] : null,
     pv: top.pv_uci ? top.pv_uci.slice() : [],
+    depth: (snapshot && snapshot.current_depth) || top.depth || 0,
+    nodes: (snapshot && snapshot.nodes) ?? null,
   };
 }
 

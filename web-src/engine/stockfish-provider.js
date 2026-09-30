@@ -158,6 +158,7 @@ export function createStockfishWasmProvider({
     multipv: 1,
     max_depth: maxDepth,
     current_depth: 0,
+    nodes: 0,
     pvs: [],
     running: false,
     error: null,
@@ -238,11 +239,13 @@ export function createStockfishWasmProvider({
     let multipv = 1;
     let scoreCp = null;
     let mateIn = null;
+    let nodes = null;
     let pv = [];
     for (let i = 1; i < parts.length; i += 1) {
       const tok = parts[i];
       if (tok === "depth") depth = Number(parts[i + 1]);
       else if (tok === "multipv") multipv = Number(parts[i + 1]);
+      else if (tok === "nodes") nodes = Number(parts[i + 1]);
       else if (tok === "score") {
         if (parts[i + 1] === "cp") scoreCp = Number(parts[i + 2]);
         else if (parts[i + 1] === "mate") mateIn = Number(parts[i + 2]);
@@ -261,6 +264,9 @@ export function createStockfishWasmProvider({
     }
 
     if (depth !== null && depth > state.current_depth) state.current_depth = depth;
+    // Nodes searched so far (cumulative within one search) — part of the
+    // evaluation's identity so different searches never share one row.
+    if (nodes !== null && Number.isFinite(nodes)) state.nodes = nodes;
 
     const rank = Math.max(1, multipv);
     while (state.pvs.length < rank) {
@@ -390,6 +396,7 @@ export function createStockfishWasmProvider({
     state.side_to_move = fen.split(" ")[1] === "b" ? "black" : "white";
     state.multipv = Math.max(1, Math.min(maxMultipv, multipv || 1));
     state.current_depth = 0;
+    state.nodes = 0;
     state.pvs = [];
     state.running = true;
     state.error = null;

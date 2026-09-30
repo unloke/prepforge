@@ -97,6 +97,17 @@
   --fs-xs: 11px;
   --shadow-1: 0 1px 2px rgba(20, 20, 30, 0.06);
   --shadow-2: 0 8px 28px rgba(20, 20, 30, 0.16), 0 2px 6px rgba(20, 20, 30, 0.08);
+  /* Overlay stacking: one ordered ladder instead of ad-hoc numbers. Floating
+     tools (engine window) never out-rank a modal and its scrim; menus and the
+     command palette escape overlays; toasts stay visible above everything and
+     the skip link wins when focused. */
+  --z-chrome: 45;    /* app chrome (rail) */
+  --z-popover: 300;  /* in-page popovers (train selector, promotion picker) */
+  --z-tool: 500;     /* floating tools (engine window) */
+  --z-overlay: 1000; /* modal overlay and scrims */
+  --z-menu: 1100;    /* context/account menus, command palette, drag ghost */
+  --z-toast: 1200;   /* toast stack, confetti */
+  --z-skip: 1300;    /* skip link */
   font-family: var(--font);
   font-size: var(--fs);
   font-feature-settings: "tnum" 1, "cv11" 1;
@@ -187,7 +198,7 @@
   position: absolute;
   left: 12px;
   top: -48px;
-  z-index: 200;
+  z-index: var(--z-skip);
   padding: 8px 14px;
   border: 1px solid var(--accent-strong);
   border-radius: var(--radius);
@@ -281,7 +292,7 @@ h2 {
   top: 0;
   bottom: 0;
   left: 0;
-  z-index: 45;
+  z-index: var(--z-chrome);
   width: 60px;
   min-width: 0;
   background: var(--panel);
@@ -543,7 +554,7 @@ h2 {
 .sheet-scrim {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: var(--z-overlay);
   background: rgba(15, 17, 22, 0.32);
   display: flex;
   align-items: flex-end;
@@ -693,8 +704,8 @@ h2 {
 
 /* The account menu reuses .context-menu chrome. Sign out is the only destructive
    action here. */
-/* On phones it opens from the More sheet (z-index 60) and must sit above it. */
-.context-menu.account-menu { z-index: 70; }
+/* On phones it opens from the More sheet (--z-overlay) and must sit above it. */
+.context-menu.account-menu { z-index: var(--z-menu); }
 .account-menu button[data-action="signout"] {
   color: var(--danger);
 }
@@ -792,7 +803,7 @@ h2 {
 .src-composer-overlay {
   position: fixed;
   inset: 0;
-  z-index: 55;
+  z-index: var(--z-overlay);
   background: transparent;
 }
 
@@ -2239,7 +2250,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .train-repertoire-menu[open] .train-repertoire-chevron { transform: rotate(180deg); }
 .train-repertoire-popover {
   position: absolute;
-  z-index: 30;
+  z-index: var(--z-popover);
   top: calc(100% + 5px);
   left: 0;
   right: 0;
@@ -2302,7 +2313,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  z-index: 1200;
+  z-index: var(--z-toast);
 }
 .confetti-bit {
   position: absolute;
@@ -2332,7 +2343,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 .drag-ghost {
   position: fixed;
-  z-index: 1100;
+  z-index: var(--z-menu);
   pointer-events: none;
   transform: translate(-50%, -50%);
   display: flex;
@@ -3554,7 +3565,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 .context-menu {
   position: fixed;
-  z-index: 30;
+  z-index: var(--z-menu);
   min-width: 220px;
   max-width: min(280px, calc(100vw - 16px));
   max-height: calc(100vh - 16px);
@@ -3628,7 +3639,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: var(--z-overlay);
   display: grid;
   place-items: center;
   background: rgba(20, 18, 14, 0.36);
@@ -3822,8 +3833,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 @media (max-width: 760px) {
-  /* Mobile: no rail — a fixed 5-item bottom tab bar (Library, Prep, Train,
-     Review → Games, More sheet). Page scroll replaces panel scroll; the board
+  /* Mobile: no rail — a fixed 5-item bottom tab bar (Library, Repertoire,
+     Train, Games, More sheet). Page scroll replaces panel scroll; the board
      is full-width and first. Touch targets are 44px; no horizontal scroll. */
   body {
     padding-left: 0;
@@ -3943,7 +3954,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   position: fixed;
   right: 18px;
   bottom: 18px;
-  z-index: 1000;
+  z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -4280,7 +4291,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   box-shadow: 0 18px 44px rgba(28, 28, 28, 0.18), 0 4px 12px rgba(28, 28, 28, 0.08);
   display: flex;
   flex-direction: column;
-  z-index: 950;
+  z-index: var(--z-tool);
   overflow: hidden;
   opacity: 0;
   transform: translateY(-6px) scale(0.96);
@@ -5849,7 +5860,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .promotion-picker-overlay {
   position: absolute;
   inset: 0;
-  z-index: 12;
+  z-index: var(--z-popover);
   display: grid;
   place-items: center;
   background: rgba(20, 18, 14, 0.24);
@@ -5960,7 +5971,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .palette {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: var(--z-menu);
   background: color-mix(in srgb, var(--text) 28%, transparent);
   display: flex;
   align-items: flex-start;

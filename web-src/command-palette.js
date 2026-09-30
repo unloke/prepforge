@@ -1,14 +1,19 @@
 // Command palette (Ctrl/Cmd+K). Pure ranking lives here so vitest can drive
 // it without the DOM; createCommandPalette wires the overlay.
 
+// Single naming table shared with the rail/tabbar (index.html): the label is
+// what the nav shows, and `keywords` keeps older/alternate names searchable as
+// aliases so nobody has to remember a second set of names. `section` narrows
+// Replay's two sections (Games vs Scout) into explicit entries.
 export const PALETTE_VIEWS = [
-  { id: "dashboard", label: "Dashboard" },
-  { id: "analyze", label: "Analyze" },
-  { id: "build", label: "Build" },
-  { id: "train", label: "Train" },
-  { id: "replay", label: "Replay" },
-  { id: "teams", label: "Teams" },
-  { id: "settings", label: "Settings" },
+  { id: "dashboard", label: "Library", keywords: ["library", "dashboard", "home", "repertoires"] },
+  { id: "analyze", label: "Analyze", keywords: ["analyze", "analysis", "game", "pgn", "report"] },
+  { id: "build", label: "Repertoire", keywords: ["repertoire", "build", "builder", "opening", "tree", "prep"] },
+  { id: "train", label: "Train", keywords: ["train", "practice", "review", "drill", "srs"] },
+  { id: "replay", section: "games", label: "Games", keywords: ["games", "replay", "review", "my games"] },
+  { id: "replay", section: "scout", label: "Scout", keywords: ["scout", "opponent", "prepare", "scouting"] },
+  { id: "teams", label: "Teams", keywords: ["teams", "team", "share", "sharing"] },
+  { id: "settings", label: "Settings", keywords: ["settings", "preferences", "account", "profile"] },
 ];
 
 export const PALETTE_ACTIONS = [
@@ -22,10 +27,11 @@ export const PALETTE_ACTIONS = [
 export function buildPaletteItems({ repertoires = [] } = {}) {
   const views = PALETTE_VIEWS.map((view) => ({
     kind: "view",
-    id: `view:${view.id}`,
+    id: `view:${view.id}${view.section ? `:${view.section}` : ""}`,
     view: view.id,
+    section: view.section || null,
     label: view.label,
-    keywords: [view.id, view.label],
+    keywords: [view.id, view.label, ...(view.keywords || [])],
     group: "Views",
   }));
   const actions = PALETTE_ACTIONS.map((action) => ({

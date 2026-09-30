@@ -4,8 +4,11 @@ Compact persistent representation (no legacy dual-format):
 * games store ``initial_fen`` + ``uci_blob``; PGN/SAN/FEN sequences are derived;
 * moves hold only per-ply annotations that cannot be rebuilt from the UCI blob;
 * positions is a full-FEN catalog (6 fields, unique); never a short hash;
-* engine_evaluations key by (position_id, engine, depth, nodes, time_ms)
-  with unset limits stored as ``codec.UNSET_SEARCH_LIMIT`` so UNIQUE is NULL-safe;
+* engine_evaluations key by (position_id, engine, depth, nodes, time_ms,
+  fingerprint) with unset limits stored as ``codec.UNSET_SEARCH_LIMIT`` so
+  UNIQUE is NULL-safe; rows are immutable evaluation snapshots, because the
+  fingerprint commits to identity AND result, so a different result is always
+  a different row and no snapshot is ever overwritten in place;
 * opening nodes store arriving UCI and reconstruct FEN by walking the tree.
 """
 from __future__ import annotations
@@ -78,7 +81,17 @@ engine_evaluations = Table(
     Column("wdl_win", Integer),
     Column("wdl_draw", Integer),
     Column("wdl_loss", Integer),
-    UniqueConstraint("position_id", "engine", "depth", "nodes", "time_ms"),
+    # Snapshot digest of identity + result (codec.evaluation_fingerprint).
+    Column("fingerprint", Text, nullable=False),
+    UniqueConstraint(
+        "position_id",
+        "engine",
+        "depth",
+        "nodes",
+        "time_ms",
+        "fingerprint",
+        name="uq_engine_evaluations_identity",
+    ),
 )
 
 moves = Table(
