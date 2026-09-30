@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { epdOf } from "./scout-graph.js";
+import { epdOf } from "../../../web-src/scout-graph.js";
 import {
   attachSharedYToPackages,
   buildPinnedSharedEngineIdentity,
@@ -13,14 +13,14 @@ import {
   scoreToWhiteCp,
   validateSharedYReceipt,
   verifyShadowPrepBuildArtifacts,
-} from "./scout-shadow-prep-p0.js";
+} from "../../../web-src/scout-shadow-prep-p0.js";
 import {
   packagesWithSharedY,
   sharedYAttachmentIntegrityIssues,
-} from "../scripts/scout-shadow-prep-p0.mjs";
+} from "../../../scripts/scout-shadow-prep-p0.mjs";
 
 const protocolPath = fileURLToPath(new URL(
-  "../research/scout-shadow-prep/ericrosen-shadow-prep-p0.protocol.json",
+  "../../../research/scout-shadow-prep/ericrosen-shadow-prep-p0.protocol.json",
   import.meta.url,
 ));
 const protocol = JSON.parse(readFileSync(protocolPath, "utf8"));

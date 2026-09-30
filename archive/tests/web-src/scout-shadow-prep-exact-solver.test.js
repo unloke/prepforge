@@ -6,14 +6,14 @@ import {
   MEM_MAX_FORKS,
   MEM_MAX_LEAVES,
   MEM_MAX_REPLIES_PER_FORK,
-} from "./scout-v13-style.js";
+} from "../../../web-src/scout-v13-style.js";
 import {
   comparePackageLex,
   extractEligibleAtomsFromGames,
   packageMeetsCandidateGates,
   projectAtomForRoot,
   selectCandidatePackage,
-} from "./scout-shadow-prep-p0.js";
+} from "../../../web-src/scout-shadow-prep-p0.js";
 import {
   EXACT_SOLVER_STATUSES,
   buildSolverDevWitnessHash,
@@ -24,14 +24,14 @@ import {
   solveExactCandidatePackage,
   validateEligibleAtom,
   validateSolverDevProtocol,
-} from "./scout-shadow-prep-exact-solver.js";
+} from "../../../web-src/scout-shadow-prep-exact-solver.js";
 
 const protocolPath = fileURLToPath(new URL(
-  "../research/scout-shadow-prep/ericrosen-shadow-prep-solver-dev.protocol.json",
+  "../../../research/scout-shadow-prep/ericrosen-shadow-prep-solver-dev.protocol.json",
   import.meta.url,
 ));
 const p0ProtocolPath = fileURLToPath(new URL(
-  "../research/scout-shadow-prep/ericrosen-shadow-prep-p0.protocol.json",
+  "../../../research/scout-shadow-prep/ericrosen-shadow-prep-p0.protocol.json",
   import.meta.url,
 ));
 const solverProtocol = JSON.parse(readFileSync(protocolPath, "utf8"));

@@ -1,6 +1,6 @@
 // Reproduce #80 on pinned public games. --refresh-engine regenerates actual
 // Stockfish 19 lite depth-8 reads; normal runs are deterministic and offline.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
 import { buildOpeningTrie, rankedOpeningBranches, fenAfterLine, rankGamePlan, opponentColorBaseline } from '../web-src/scout.js';
@@ -72,6 +72,7 @@ const results=inputs.map(({color,baseline,all,before,after})=>{
     samePoolBefore:summarize(oldSelect(assess(after),{baseline})),
   };
 });
-writeFileSync('docs/scout-selection-v2-results.json',JSON.stringify({fixture,games:games.length,engine:cache.engine,depth:cache.depth,
+mkdirSync('tmp', { recursive: true });
+writeFileSync('tmp/scout-selection-v2-results.json',JSON.stringify({fixture,games:games.length,engine:cache.engine,depth:cache.depth,
   maia:'unavailable; separately tested as bounded supplemental evidence',results},null,2)+'\n');
 console.table(results.flatMap(r=>['fallbackBefore','fallbackAfter','assessedBefore','assessedAfter','samePoolBefore'].map(mode=>({color:r.color,mode,...Object.fromEntries(Object.entries(r[mode]).filter(([k])=>k!=='routes'))}))));

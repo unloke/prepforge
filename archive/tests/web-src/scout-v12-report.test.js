@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { annotateRoute } from "./scout-route-audit.js";
+import { annotateRoute } from "../../../web-src/scout-route-audit.js";
 import {
   dedupNestedRoutes,
   renderV12PanelShell,
   renderV12Report,
   V12_BANNED_VOCAB,
-} from "./scout-v12-report.js";
+} from "../../../web-src/scout-v12-report.js";
 
 const esc = (s) =>
   String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));

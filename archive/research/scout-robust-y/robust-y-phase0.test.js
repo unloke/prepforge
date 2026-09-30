@@ -39,7 +39,7 @@ import {
   validateRobustYProtocol,
   verifyRobustYStudy,
 } from "./robust-y-phase0.js";
-import { lineLastSeen } from "../../web-src/scout-stats.js";
+import { lineLastSeen } from "../../../web-src/scout-stats.js";
 import {
   SCOUT_BRANCH_SCORE_CAP,
   branchPathKey,
@@ -47,10 +47,10 @@ import {
   isEarlyResignCollapse,
   rankGamePlan,
   rankedOpeningBranches,
-} from "../../web-src/scout.js";
+} from "../../../web-src/scout.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(HERE, "../..");
+const ROOT = join(HERE, "../../..");
 const PROTOCOL_PATH = join(HERE, "robust-y-p1.protocol.json");
 const COHORT_ROOT = join(ROOT, "tmp/cohort-unbrainless87");
 

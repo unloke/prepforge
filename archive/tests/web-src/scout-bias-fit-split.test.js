@@ -6,7 +6,7 @@ import {
   fitBias,
   reliabilitySplit,
   samplePlayedFromModel,
-} from "./scout-bias-fit.js";
+} from "../../../web-src/scout-bias-fit.js";
 
 function mulberry32(seed) {
   let a = seed >>> 0;

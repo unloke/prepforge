@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pressureMetrics } from "./scout-benchmark-metrics.mjs";
+import { pressureMetrics } from "../../../scripts/scout-benchmark-metrics.mjs";
 
 describe("Scout offline pressure metrics", () => {
   it("rewards sustained pressure and quantifies alternate replies", () => {

@@ -6,14 +6,14 @@
 //
 //   node scripts/release-cross-flow.mjs
 //
-// Writes docs/release-cross-flow-audit-evidence.json
+// Writes tmp/audits/release-cross-flow-audit-evidence.json
 // Exits 1 when any required release step fails.
 import { writeFile, mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const OUT_JSON = join(ROOT, "docs", "release-cross-flow-audit-evidence.json");
+const OUT_JSON = join(ROOT, "tmp", "audits", "release-cross-flow-audit-evidence.json");
 const BASE = process.env.RELEASE_BASE_URL || process.env.AUDIT_BASE_URL || "http://127.0.0.1:8000";
 const ANALYSIS_TIMEOUT_MS = Number(process.env.AUDIT_ANALYSIS_TIMEOUT_MS || 180_000);
 const TRAIN_ANIM_MS = Number(process.env.AUDIT_TRAIN_ANIM_MS || 3_500);

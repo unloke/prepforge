@@ -48,11 +48,11 @@ import {
   shouldRunFullScientificRecompute,
   validateRobustYProtocol,
   verifyRobustYStudy,
-} from "../research/scout-robust-y/robust-y-phase0.js";
+} from "./robust-y-phase0.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(HERE, "..");
-const DEFAULT_PROTOCOL = resolve(ROOT, "research/scout-robust-y/robust-y-p1.protocol.json");
+const ROOT = resolve(HERE, "../../..");
+const DEFAULT_PROTOCOL = resolve(ROOT, "archive/research/scout-robust-y/robust-y-p1.protocol.json");
 const DEFAULT_STUDY_ROOT = resolve(ROOT, "tmp/scout-robust-y/robust-y-p1");
 const DEFAULT_COHORT_ROOT = resolve(ROOT, "tmp/cohort-unbrainless87");
 

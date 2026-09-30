@@ -15,6 +15,7 @@
     "gate:cross-origin": "node scripts/run-provider-harness-headless.mjs",
     "test": "vitest run",
     "test:research": "vitest run --config vitest.research.config.mjs",
+    "test:archive": "vitest run --config vitest.archive.config.mjs",
     "lint:js": "eslint web-src scripts",
     "smoke:ui-v2": "node scripts/smoke/ui-v2/run-all.mjs",
     "smoke:lazy-chunks": "node scripts/lazy-chunk-smoke.mjs",

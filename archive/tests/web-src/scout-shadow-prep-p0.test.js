@@ -51,10 +51,10 @@ import {
   verifyShadowPrepBuildArtifacts,
   verifyShadowPrepPinnedSources,
   verifyShadowPrepProtocolIdentity,
-} from "./scout-shadow-prep-p0.js";
+} from "../../../web-src/scout-shadow-prep-p0.js";
 
 const protocolPath = fileURLToPath(new URL(
-  "../research/scout-shadow-prep/ericrosen-shadow-prep-p0.protocol.json",
+  "../../../research/scout-shadow-prep/ericrosen-shadow-prep-p0.protocol.json",
   import.meta.url,
 ));
 const repositoryProtocol = JSON.parse(readFileSync(protocolPath, "utf8"));
@@ -763,7 +763,7 @@ describe("protocol, report, source, and lifecycle boundaries", () => {
     const legacy = ["le-0"];
     const d0 = ["d0-0", "hm-0"];
     const sources = {
-      refDfProtocol: { content: JSON.stringify(JSON.parse(readFileSync(fileURLToPath(new URL("../research/scout-ref-df/ericrosen-ref-df-phase0.protocol.json", import.meta.url)), "utf8"))) },
+      refDfProtocol: { content: JSON.stringify(JSON.parse(readFileSync(fileURLToPath(new URL("../../../research/scout-ref-df/ericrosen-ref-df-phase0.protocol.json", import.meta.url)), "utf8"))) },
       d0CorpusGames: source(p.buildPartition.refDfCorpusGames.sha256, d0),
       d0CorpusManifest: source(p.buildPartition.refDfCorpusManifest.sha256),
       d0CensusReport: source(p.buildPartition.refDfCensusReport.sha256),
@@ -787,7 +787,7 @@ describe("protocol, report, source, and lifecycle boundaries", () => {
     const hr = Array.from({ length: 446 }, (_, i) => `hr-${i}`);
     const legacy = Array.from({ length: 203 }, (_, i) => `le-${i}`);
     const sources = {
-      refDfProtocol: { content: JSON.stringify(JSON.parse(readFileSync(fileURLToPath(new URL("../research/scout-ref-df/ericrosen-ref-df-phase0.protocol.json", import.meta.url)), "utf8"))) },
+      refDfProtocol: { content: JSON.stringify(JSON.parse(readFileSync(fileURLToPath(new URL("../../../research/scout-ref-df/ericrosen-ref-df-phase0.protocol.json", import.meta.url)), "utf8"))) },
       d0CorpusGames: source(p.buildPartition.refDfCorpusGames.sha256),
       d0CorpusManifest: source(p.buildPartition.refDfCorpusManifest.sha256),
       d0CensusReport: source(p.buildPartition.refDfCensusReport.sha256),

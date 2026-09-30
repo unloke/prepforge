@@ -11,12 +11,12 @@ import {
   computePlayersSha256,
   discoverCohortPairs,
   orderedPlayerIds,
-} from "../../web-src/scout-meta-maia-p0.js";
+} from "../../../web-src/scout-meta-maia-p0.js";
 import {
   sha256Buffer,
   sha256Hex,
-} from "../../web-src/scout-v15-study.js";
-import { lineLastSeen } from "../../web-src/scout-stats.js";
+} from "../../../web-src/scout-v15-study.js";
+import { lineLastSeen } from "../../../web-src/scout-stats.js";
 import {
   SCOUT_BRANCH_SCORE_CAP,
   buildOpeningTrie,
@@ -27,7 +27,7 @@ import {
   rankedOpeningBranches,
   terminalMoveIsOpponent,
   triePathKey,
-} from "../../web-src/scout.js";
+} from "../../../web-src/scout.js";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 

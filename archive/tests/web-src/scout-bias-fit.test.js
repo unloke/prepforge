@@ -8,7 +8,7 @@ import {
   samplePlayedFromMaia,
   samplePlayedFromModel,
   solveSpd,
-} from "./scout-bias-fit.js";
+} from "../../../web-src/scout-bias-fit.js";
 
 function mulberry32(seed) {
   let a = seed >>> 0;
