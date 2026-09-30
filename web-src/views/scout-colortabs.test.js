@@ -258,3 +258,26 @@ describe("scout colour tabs", () => {
     expect(blackSection.hidden).toBe(false);
   });
 });
+
+// Regression: the colour tabs inlined the "- you have <Colour>" clause into the
+// visible label. .scout-color-tabs is a nowrap flex row, so two ~246px tabs
+// pushed the page to 503px at a 390px viewport (smoke: mobile-390 horizontal
+// overflow of 113px). The wording must stay in the title / accessible name.
+describe("scout colour tab label width", () => {
+  it("keeps the visible label short but retains the colour context accessibly", () => {
+    const html = renderScoutColorTabsHtml(profile, escapeHtml, { username: "scouttarget" });
+    expect(html).toContain("<small>312 games</small>");
+    expect(html).toContain("<small>287 games</small>");
+    expect(html).not.toContain("games &middot;");
+    expect(html).not.toContain("games ·");
+    // The wording itself is preserved in the tooltip and the accessible name.
+    expect(html).toContain("you have Black");
+    expect(html).toContain("you have White");
+    expect(html).toContain(
+      'title="scouttarget with White: 312 games; in these games you have Black"',
+    );
+    expect(html).toContain(
+      'aria-label="scouttarget with Black: 287 games; in these games you have White"',
+    );
+  });
+});

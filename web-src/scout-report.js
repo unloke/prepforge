@@ -63,7 +63,7 @@ function findLineByKey(sections, color, lineKey) {
   return null;
 }
 
-export function renderScoutColorTabsHtml(profile, escapeHtml, { hidden = false } = {}) {
+export function renderScoutColorTabsHtml(profile, escapeHtml, { hidden = false, username = "" } = {}) {
   const colors = ["white", "black"].filter(
     (c) => profile?.colorStats?.[c] && profile.colorStats[c].games > 0,
   );
@@ -76,12 +76,18 @@ export function renderScoutColorTabsHtml(profile, escapeHtml, { hidden = false }
     .map((c, i) => {
       const stats = profile.colorStats[c];
       const label = c === "white" ? "With White" : "With Black";
+      const you = c === "white" ? "you have Black" : "you have White";
       const selected = i === 0 ? "true" : "false";
       const tabindex = i === 0 ? "" : ' tabindex="-1"';
-      return `<button type="button" class="scout-color-tab${i === 0 ? " is-active" : ""}" role="tab" data-scout-tab="${c}" aria-selected="${selected}"${tabindex} aria-controls="scout-section-${c}"><span class="scout-color-dot ${c}" aria-hidden="true"></span>${escapeHtml(label)} <small>${stats.games} games</small></button>`;
+      const title = `${username || "Opponent"} ${c === "white" ? "with White" : "with Black"}: ${stats.games} games; in these games ${you}`;
+      // The "you have <Colour>" clause lives in `title` only. Inlining it in the
+      // always-visible label made each tab ~246px wide, and the nowrap flex row
+      // then pushed the whole page to 503px at 390px. Keeping it in the tooltip
+      // (and the a11y name) preserves the wording without the overflow.
+      return `<button type="button" class="scout-color-tab${i === 0 ? " is-active" : ""}" role="tab" data-scout-tab="${c}" aria-selected="${selected}"${tabindex} aria-controls="scout-section-${c}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><span class="scout-color-dot ${c}" aria-hidden="true"></span>${escapeHtml(label)} <small>${stats.games} games</small></button>`;
     })
     .join("");
-  return `<div class="scout-color-tabs" role="tablist" aria-label="Opponent colour"${hidden ? ' hidden' : ''}>${buttons}</div>`;
+  return `<div class="scout-color-tabs" role="tablist" aria-label="Colour the opponent plays"${hidden ? ' hidden' : ''}>${buttons}</div>`;
 }
 
 // Tab switch = visibility only: the sections keep their computed line state
@@ -283,6 +289,56 @@ export function scoutSparkline(
   </svg>`;
 }
 
+// A mini chart with its axes spelled out: the y range on the left, what the
+// x axis runs over underneath. Charts without them read as decoration.
+function scoutAxisChart(plotHtml, { yTop, yBottom, xStart, xEnd, yTitle }) {
+  return `<div class="scout-axis-chart">
+      <span class="scout-axis-y" aria-hidden="true"><span>${yTop}</span><span>${yBottom}</span></span>
+      <span class="scout-axis-plot">${plotHtml}</span>
+      <span class="scout-axis-x" aria-hidden="true"><span>${xStart}</span><span>${xEnd}</span></span>
+      ${yTitle ? `<span class="scout-axis-title">${yTitle}</span>` : ""}
+    </div>`;
+}
+
+// Games per week as columns, oldest week on the left. Weeks without games stay
+// as empty slots so gaps in activity are visible.
+function scoutWeeklyColumns(buckets, { weeks = 12, bucketDays = 7 } = {}) {
+  if (!buckets?.length) return null;
+  const bucketMs = bucketDays * 86400000;
+  // A non-finite datestamp collapses every bucket onto one NaN key, which left
+  // slots empty and made slots[0] below throw. Skip them.
+  const byKey = new Map(
+    buckets
+      .filter((b) => Number.isFinite(b.datestamp))
+      .map((b) => [Math.floor(b.datestamp / bucketMs), b.count]),
+  );
+  if (!byKey.size) return null;
+  const endKey = Math.max(...byKey.keys());
+  const slots = [];
+  for (let key = endKey - weeks + 1; key <= endKey; key += 1) {
+    slots.push({ datestamp: key * bucketMs, count: byKey.get(key) || 0 });
+  }
+  const max = Math.max(1, ...slots.map((s) => s.count));
+  const cols = slots
+    .map((s) => {
+      const h = s.count ? Math.max(6, Math.round((s.count / max) * 100)) : 0;
+      return `<i style="height:${h}%" title="${s.count} game${s.count === 1 ? "" : "s"} · week of ${formatShortDate(s.datestamp)}"></i>`;
+    })
+    .join("");
+  return {
+    html: `<span class="scout-columns">${cols}</span>`,
+    max,
+    start: slots[0].datestamp,
+    end: slots[slots.length - 1].datestamp,
+  };
+}
+
+function formatShortDate(ms) {
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en", { month: "short", day: "numeric" });
+}
+
 export function scoutSvgBar(
   items,
   {
@@ -291,30 +347,34 @@ export function scoutSvgBar(
     maxValue = 100,
     valueSuffix = "%",
     escapeHtml,
+    // Colour by what the value means for YOU: "low-good" (their score: low is
+    // good news) or "high-good" (their error rate: high is good news).
+    tone = "low-good",
+    // Optional reference line (e.g. their overall score) drawn on every track.
+    reference = null,
+    countKey = null,
   } = {},
 ) {
   if (!items?.length) {
     return `<div class="scout-bar-chart scout-bar-empty muted hint">No family data yet.</div>`;
   }
   const scale = maxValue > 0 ? maxValue : 100;
+  const refPct = reference != null ? Math.max(0, Math.min(100, (reference / scale) * 100)) : null;
   const rows = items.slice(0, 6).map((item) => {
     const val = item[valueKey] ?? 0;
     const pct = Math.max(2, Math.round((val / scale) * 100));
-    const tone =
-      valueSuffix === "%" && val <= 40
-        ? " is-cold"
-        : valueSuffix === "%" && val >= 55
-          ? " is-hot"
-          : val >= scale * 0.55
-            ? " is-hot"
-            : val <= scale * 0.25
-              ? " is-cold"
-              : "";
+    const high = valueSuffix === "%" ? val >= 55 : val >= scale * 0.55;
+    const low = valueSuffix === "%" ? val <= 40 : val <= scale * 0.25;
+    const good = tone === "high-good" ? high : low;
+    const bad = tone === "high-good" ? low : high;
+    const toneCls = good ? " is-good" : bad ? " is-bad" : "";
     const label = escapeHtml ? escapeHtml(String(item[labelKey] || "?")) : String(item[labelKey] || "?");
-    return `<div class="scout-bar-row${tone}">
+    const count = countKey && item[countKey] != null ? `<span class="scout-bar-n">${item[countKey]}</span>` : "";
+    const ref = refPct != null ? `<span class="scout-bar-ref" style="left:${refPct}%"></span>` : "";
+    return `<div class="scout-bar-row${toneCls}${count ? " has-n" : ""}">
       <span class="scout-bar-label">${label}</span>
-      <span class="scout-bar-track"><span class="scout-bar-fill" style="width:${pct}%"></span></span>
-      <span class="scout-bar-val">${val}${valueSuffix}</span>
+      <span class="scout-bar-track"><span class="scout-bar-fill" style="width:${pct}%"></span>${ref}</span>
+      <span class="scout-bar-val">${val}${valueSuffix}</span>${count}
     </div>`;
   }).join("");
   return `<div class="scout-bar-chart">${rows}</div>`;
@@ -322,7 +382,7 @@ export function scoutSvgBar(
 
 export function renderScoutEnginePanel(engineAgg, escapeHtml) {
   if (!engineAgg) {
-    return `<div class="scout-engine-panel muted hint">Engine scan: run Deep scan for eval trends</div>`;
+    return `<div class="scout-engine-panel muted hint">Not scanned yet. Deep scan checks their opening moves with Stockfish and shows where they lose the most.</div>`;
   }
   if (!engineAgg.sufficient) {
     const analyzed = engineAgg.analyzedGames ?? 0;
@@ -339,6 +399,11 @@ export function renderScoutEnginePanel(engineAgg, escapeHtml) {
     valueKey: "acpl",
     maxValue: maxAcpl,
     valueSuffix: " cp",
+    tone: "high-good",
+    // The ACPL is the most sample-sensitive number on the card (it averages over
+    // opponent plies, not games), so it must carry its n. Engine families expose
+    // `analyzedGames`, not `games` — see scout-engine.js.
+    countKey: "analyzedGames",
   });
   const worst = families[0];
   const scopeNote =
@@ -346,7 +411,7 @@ export function renderScoutEnginePanel(engineAgg, escapeHtml) {
       ? ` — based on latest ${engineAgg.maxGames} games`
       : "";
   const summary = worst
-    ? `<div class="scout-engine-summary muted hint">Highest ACPL: 1.${escapeHtml(worst.san)} (${worst.acpl} cp${worst.firstInaccuracyPly != null ? `, first inaccuracy ~ply ${worst.firstInaccuracyPly}` : ""})${escapeHtml(scopeNote)}</div>`
+    ? `<div class="scout-engine-summary muted hint">Most mistakes after 1.${escapeHtml(worst.san)}: ${worst.acpl} cp lost per move${worst.firstInaccuracyPly != null ? `, first slip around move ${Math.floor(worst.firstInaccuracyPly / 2) + 1}` : ""}${escapeHtml(scopeNote)}</div>`
     : engineAgg.scopeLimited && engineAgg.maxGames
       ? `<div class="scout-engine-summary muted hint">Based on latest ${engineAgg.maxGames} games</div>`
       : "";
@@ -620,53 +685,66 @@ function readChip(title, label, value) {
   return `<span class="scout-read-chip" title="${title}"><small>${label}</small>${value}</span>`;
 }
 
+const AGGRESSION_WORD = { aggressive: "attacking", passive: "quiet", balanced: "balanced" };
+const CASTLING_WORD = {
+  uncastled: "often uncastled",
+  late: "castles late",
+  kingside: "castles short",
+  queenside: "castles long",
+};
+const TRADE_WORD = { simplifier: "trades queens early", complicator: "keeps queens on", balanced: "trades queens midgame" };
+
 function renderScoutRepertoireReads(stats, escapeHtml) {
   const chips = [];
   const predict = stats?.predictability;
   if (predict?.topMove && predict.games > 0) {
     const pct = Math.round((predict.topMove.share || 0) * 100);
+    const how = predict.label === "predictable" ? "predictable" : predict.label === "unpredictable" ? "varied" : "mixed";
     chips.push(
-      readChip("First-move entropy", "Predictability", `${escapeHtml(predict.label)} · 1.${escapeHtml(predict.topMove.san)} ${pct}%`),
+      readChip("Share of games that start with their most common first move", "Favourite first move", `1.${escapeHtml(predict.topMove.san)} in ${pct}% · ${how}`),
     );
   }
   const pets = stats?.petLineConcentration;
   if (pets?.games > 0) {
     chips.push(
-      readChip("Share in top 3 opening paths", "Pet lines", `${pets.top3SharePct}% top-3 · ${escapeHtml(pets.label)}`),
+      readChip("Share of games that follow one of their three most-played opening paths", "Top 3 lines", `${pets.top3SharePct}% of games`),
     );
   }
   const breadth = stats?.repertoireBreadth;
   if (breadth?.games > 0) {
     chips.push(
-      readChip("First moves with enough sample", "Breadth", `${breadth.breadth} main moves (n≥${breadth.minGames})`),
+      readChip(`First moves played in at least ${breadth.minGames} games`, "First moves used", `${breadth.breadth} regularly`),
     );
   }
   const fresh = stats?.repertoireFreshness;
   if (fresh?.freshFamilies?.length) {
     const top = fresh.freshFamilies[0];
     chips.push(
-      readChip("New families in recent window", "Fresh", `1.${escapeHtml(top.san)} (${top.recentGames} recent)`),
+      readChip("A first move that only shows up in their recent games", "New lately", `1.${escapeHtml(top.san)} (${top.recentGames} recent)`),
     );
   }
   const shift = stats?.repertoireChangeTrend;
   if (shift?.points?.length >= 2) {
     const label =
       shift.trend === "up"
-        ? "concentrating"
+        ? "narrowing"
         : shift.trend === "down"
           ? "experimenting"
           : "stable";
-    chips.push(readChip("First-move mix over time", "Repertoire", label));
+    chips.push(readChip("How their first-move mix changed from older to newer games", "Opening mix", label));
   }
   const persona = stats?.personaTags;
   if (persona?.systemSetup?.detected && persona.systemSetup.label) {
     chips.push(
-      readChip("Recurring system setup", "System", escapeHtml(persona.systemSetup.label)),
+      readChip("A setup they reach regardless of your moves", "System", escapeHtml(persona.systemSetup.label)),
     );
   } else if (persona?.games >= 5) {
-    chips.push(
-      readChip("Opening style tendencies", "Style", `${escapeHtml(persona.aggression.label)} · ${escapeHtml(persona.castling.label)} · ${escapeHtml(persona.tradeSpeed.label)}`),
-    );
+    const parts = [
+      AGGRESSION_WORD[persona.aggression?.label] || persona.aggression?.label,
+      CASTLING_WORD[persona.castling?.label] || persona.castling?.label,
+      TRADE_WORD[persona.tradeSpeed?.label] || persona.tradeSpeed?.label,
+    ].filter(Boolean);
+    chips.push(readChip("Opening style tendencies", "Style", escapeHtml(parts.join(" · "))));
   }
   if (!chips.length) return "";
   return `<div class="scout-repertoire-reads">${chips.join("")}</div>`;
@@ -678,8 +756,7 @@ export function renderScoutIntelSummary(
   escapeHtml,
   { explorerReads = null } = {},
 ) {
-  const bullets = (summary?.bullets || [])
-    .slice(1)
+  const bullets = (summary?.notes || (summary?.bullets || []).slice(1))
     .map((b) => `<li>${escapeHtml(b)}</li>`)
     .join("");
   const headline = summary?.headline ? escapeHtml(summary.headline) : "";
@@ -695,24 +772,34 @@ export function renderScoutIntelSummary(
 export function renderScoutIntelChartsStrip(
   stats,
   escapeHtml,
-  { engineAgg = null, explorerReads = null, refutations = null } = {},
+  { engineAgg = null, explorerReads = null, refutations = null, username = "", baseline = null } = {},
 ) {
+  const who = escapeHtml(username || "Opponent");
   const families = stats?.scoreByFamily?.families?.slice(0, 6) || [];
-  const scoreBars = scoutSvgBar(families, { escapeHtml, valueKey: "scorePct" });
-  const repChangeSpark = scoutSparkline(stats?.repertoireChangeTrend?.points || [], {
-    min: 0,
-    max: 100,
-    className: "scout-repchange-spark",
+  const scoreBars = scoutSvgBar(families, {
+    escapeHtml,
+    valueKey: "scorePct",
+    reference: baseline,
+    countKey: "games",
   });
-  const activityBuckets = stats?.activitySeries?.recentWindow?.length
-    ? stats.activitySeries.recentWindow
-    : stats?.activitySeries?.buckets || [];
-  const activityCounts = activityBuckets.map((b) => b.count);
-  const activitySpark = scoutSparkline(activityCounts, {
-    min: 0,
-    max: stats?.activitySeries?.max || 1,
-    className: "scout-activity-spark",
+  const repPoints = stats?.repertoireChangeTrend?.points || [];
+  const repChart = repPoints.length >= 2
+    ? scoutAxisChart(
+      scoutSparkline(repPoints, { min: 0, max: 100, className: "scout-repchange-spark" }),
+      { yTop: "100%", yBottom: "0%", xStart: "older games", xEnd: "newer" },
+    )
+    : '<div class="muted hint">Needs more dated games.</div>';
+  const weekly = scoutWeeklyColumns(stats?.activitySeries?.buckets || [], {
+    bucketDays: stats?.activitySeries?.bucketDays || 7,
   });
+  const activityChart = weekly
+    ? scoutAxisChart(weekly.html, {
+      yTop: `${weekly.max}`,
+      yBottom: "0",
+      xStart: formatShortDate(weekly.start),
+      xEnd: formatShortDate(weekly.end),
+    })
+    : '<div class="muted hint">No dated games.</div>';
   const chartSummary = [
     buildScoutIntelligenceA11ySummary(stats),
     explorerA11ySummary(explorerReads),
@@ -725,26 +812,30 @@ export function renderScoutIntelChartsStrip(
     ? `<p class="visually-hidden">${escapeHtml(chartSummary)}</p>`
     : "";
   const enginePanel = renderScoutEnginePanel(engineAgg, escapeHtml);
+  const refNote = baseline != null
+    ? `<span class="scout-chart-key"><span class="scout-key-ref"></span>their average ${baseline}%</span>`
+    : "";
 
   return `
       ${a11yBlock}
       <div class="scout-intel-charts charts">
         <div class="scout-intel-panel card chart">
-          <h3 class="scout-col-label">Worst performance <small>by score · n≥3</small></h3>
+          <h3 class="scout-col-label">${who}'s score by first move</h3>
+          <p class="scout-chart-sub">Bar = their score (win + ½ draw) · right column = games · weakest first, allowing for sample size</p>
           ${scoreBars}
+          <div class="scout-chart-keys"><span class="scout-chart-key"><span class="scout-key-good"></span>low: good for you</span>${refNote}</div>
         </div>
         <div class="scout-intel-panel card chart">
-          <h3 class="scout-col-label scout-engine-label">Engine ACPL <small>deep scan</small></h3>
+          <h3 class="scout-col-label scout-engine-label">Where ${who} makes mistakes</h3>
+          <p class="scout-chart-sub">Bar = average centipawns lost per move after each first move (Deep scan) · higher = more errors</p>
           ${enginePanel}
         </div>
         <div class="scout-intel-panel scout-intel-trends card chart">
-          <h3 class="scout-col-label">Activity</h3>
-          <div class="scout-spark-row">
-            <span class="scout-spark-label">Repertoire focus</span>
-            <span class="scout-spark-box">${repChangeSpark}</span>
-            <span class="scout-spark-label">Games</span>
-            <span class="scout-spark-box">${activitySpark}</span>
-          </div>
+          <h3 class="scout-col-label">Activity and habits</h3>
+          <p class="scout-chart-sub">Games per week, last 12 weeks of their games</p>
+          ${activityChart}
+          <p class="scout-chart-sub">How often they repeat the same first move (100% = always the same)</p>
+          ${repChart}
         </div>
       </div>`;
 }
@@ -762,18 +853,19 @@ export function renderScoutIntelligencePanel(
     </div>`;
 }
 
-// Stacked score cell: the score% on top, the sample size below, plus (for weakness
-// rows) how far the line sits under the opponent's own baseline. Fixed width, no wrap.
+// Stacked score cell: the opponent's score% on top, the sample size below, plus
+// (for game-plan rows) their usual score to compare against. Fixed width, no wrap.
 export function scoutScoreCell(scorePct, games, { baseline, showGap = false, maiaEstimate = false, showN = true } = {}) {
   const gap =
     showGap && baseline != null && baseline > scorePct
-      ? `<span class="scout-gap" title="${baseline - scorePct} points below their overall ${baseline}%">−${baseline - scorePct} vs ${baseline}%</span>`
+      ? `<span class="scout-gap" title="${baseline - scorePct} points below their usual ${baseline}%">usually ${baseline}%</span>`
       : "";
   const estTitle = maiaEstimate ? ' title="Maia strength estimate"' : "";
   const estCls = maiaEstimate ? " scout-maia-estimate" : "";
+  const n = games === 1 ? "1 game" : `${games} games`;
   return `<span class="scout-score-cell${estCls}"${estTitle}>
       <span class="scout-score-pct">${scorePct}%</span>
-      ${showN ? `<span class="scout-n">n=${games}</span>` : ''}${gap}
+      ${showN ? `<span class="scout-n">${n}</span>` : ''}${gap}
     </span>`;
 }
 
@@ -874,9 +966,9 @@ export function scoutRouteReasonText(line, baseline) {
   if (line?.maiaScorePct != null) {
     parts.push(`Maia estimates they score ${line.maiaScorePct}% here`);
   } else if (baseline != null && line?.belowBaseline > 0) {
-    parts.push(`${line.belowBaseline} points below their ${baseline}% baseline`);
+    parts.push(`${line.belowBaseline} points below their usual ${baseline}%`);
   } else if (line?.prepCategory === "attack") {
-    parts.push("below their own baseline");
+    parts.push("they score below their usual result");
   } else if (line?.prepCategory === "weapon") {
     parts.push("a frequent line they score well on");
   }
@@ -964,32 +1056,45 @@ export function legalScoutLineSans(line) {
   return sans;
 }
 
-// First-move distribution row — lives in the narrow left column, so it stays simple:
-// move, frequency bar, share%, score%. Its own grid (not the wide line-row grid).
+// Rows for a move-distribution node, using REAL game counts for the share. The
+// trie's `count` is recency-weighted (it ranks lines), so a single recent game
+// could otherwise read as "100%" next to a 49% favourite.
+export function scoutDisplayDistribution(node, moveDistribution, { limit = 4 } = {}) {
+  if (!node) return [];
+  const total = node.gameCount || 0;
+  return moveDistribution(node)
+    .map((m) => ({ ...m, share: total ? (m.gameCount || 0) / total : m.share }))
+    .sort((a, b) => (b.gameCount || 0) - (a.gameCount || 0))
+    .slice(0, limit);
+}
+
+// First-move distribution row: move, frequency bar + share, score.
 export function scoutDistRowHtml(m, escapeHtml, { clickable = true } = {}) {
   const heat = m.scorePct >= 55 ? " is-hot" : m.scorePct <= 45 ? " is-cold" : "";
   const clickAttrs = clickable && m.uci
-    ? ` data-first-uci="${escapeHtml(m.uci)}" role="button" tabindex="0"`
+    ? ` data-first-uci="${escapeHtml(m.uci)}" role="button" tabindex="0" title="Show the replies to ${escapeHtml(m.san)}"`
     : "";
+  const games = m.gameCount ?? m.count;
   return `
       <div class="scout-dist-row fm${heat}"${clickAttrs}>
         <b class="scout-dist-san">${escapeHtml(m.san)}</b>
         <span class="scout-dist-bar share"><i style="width:${Math.round(m.share * 100)}%"></i></span>
-        <span class="scout-dist-share">${Math.round(m.share * 100)}%</span>
-        <span class="scout-dist-score sc" title="Their score with this move · n=${m.gameCount}">${m.scorePct}%</span>
+        <span class="scout-dist-share" title="${games} game${games === 1 ? "" : "s"}">${formatSharePct(m.share)}</span>
+        <span class="scout-dist-score sc" title="Their score in these games · ${games} game${games === 1 ? "" : "s"}"><small>scores</small>${m.scorePct}%</span>
       </div>`;
 }
 
 function scoutPrepFramingHtml(line, escapeHtml) {
+  // The line holds BOTH sides' moves, so it is "after", not "when they play".
   const theirLine = scoutLineText(line.sans);
   const reply = line.suggestedReply;
-  const when = `<span class="when">When they play <b class="scout-prep-them">${escapeHtml(theirLine)}</b></span>`;
+  const when = `<span class="when">After <b class="scout-prep-them">${escapeHtml(theirLine)}</b></span>`;
   if (reply?.uci) {
     const replyLabel = escapeHtml(formatReplyLabel(reply));
-    return `<span class="scout-prep-framing">${when}<span class="then"><span class="scout-prep-arrow">→</span> you play <b class="scout-prep-you">${replyLabel}</b></span></span>`;
+    return `<span class="scout-prep-framing">${when}<span class="then"><span class="scout-prep-arrow">→</span> your move: <b class="scout-prep-you">${replyLabel}</b></span></span>`;
   }
   if (line.needsPrep) {
-    return `<span class="scout-prep-framing">${when}<span class="then needs"><span class="scout-prep-arrow">→</span> <span class="scout-prep-needs">needs prep</span></span></span>`;
+    return `<span class="scout-prep-framing">${when}<span class="then needs"><span class="scout-prep-arrow">→</span> <span class="scout-prep-needs">no answer in your prep</span></span></span>`;
   }
   return escapeHtml(theirLine);
 }
@@ -1004,10 +1109,10 @@ function formatSharePct(share) {
 
 function scoutPrepCategoryBadge(line) {
   if (line.prepCategory === "attack") {
-    return '<span class="scout-prep-chip scout-prep-chip-attack cat c-attack" title="Below their baseline">attack</span>';
+    return '<span class="scout-prep-chip scout-prep-chip-attack cat c-attack" title="They score below their usual result here">weak spot</span>';
   }
   if (line.prepCategory === "weapon") {
-    return '<span class="scout-prep-chip scout-prep-chip-weapon cat c-main" title="Strong repertoire line">main</span>';
+    return '<span class="scout-prep-chip scout-prep-chip-weapon cat c-main" title="A line they play often and score well in: have an answer ready">main line</span>';
   }
   return "";
 }
@@ -1124,7 +1229,6 @@ export function buildScoutSectionReport(
       ? colorWdl.scorePct
       : (profileBaseline ?? (trie.count ? Math.round((trie.score / trie.count) * 100) : colorWdl.scorePct));
 
-  const dist = scoutModule.moveDistribution(trie).slice(0, 4);
   const lines = scoutModule.topLines(trie);
   let graded = lines.map((line) => {
     let best = null;
@@ -1212,6 +1316,8 @@ export function buildScoutSectionReport(
     explorerReads,
     engineAgg,
     refutations,
+    username,
+    baseline,
   });
 
   const sectionData = {
@@ -1241,7 +1347,9 @@ export function buildScoutSectionReport(
     ? '<span class="scout-trending kchip k-due" title="Their recent games show a different opening">⚡ Recently changed</span>'
     : "";
 
-  const firstMoves = dist.map((m) => scoutDistRowHtml(m, escapeHtml)).join("");
+  const firstMoves = scoutDisplayDistribution(trie, scoutModule.moveDistribution)
+    .map((m) => scoutDistRowHtml(m, escapeHtml))
+    .join("");
   const refutationGaps = collectActionableRefutationGapActions(refutations);
   const gapActionsHtml = refutationGaps.length
     ? renderScoutRefutationGapActions(refutationGaps, escapeHtml)
@@ -1255,19 +1363,23 @@ export function buildScoutSectionReport(
   const rankedNote = scoutMaiaRankedNote(prepTargets, maiaEnrichState, {
     prefilterState: prefilterEnrichState,
   });
+  const who = escapeHtml(username || "Opponent");
+  const yourSide = oppColor === "white" ? "Black" : "White";
   const planHead = `<div class="scout-game-plan-head plan-head">
-            <b class="scout-col-label">${v3Mode ? "First moves" : "Your game plan"}</b>
-            ${v3Mode ? "" : '<span class="scout-col-hint faint">most exploitable first · when they play X → you play Y</span>'}
+            <b class="scout-col-label">${v3Mode ? "First moves" : `Your game plan as ${yourSide}`}</b>
+            ${v3Mode ? "" : `<span class="scout-col-hint faint">lines ${who} reached, best chances for you first</span>`}
           </div>`;
   const firstMovesHtml = `<div class="scout-first-moves">
-            <span class="visually-hidden">First moves</span>
+            <span class="scout-sub-label">${who}'s first moves <small>bar = share of their games · click one to see the replies they faced</small></span>
             <div class="scout-dist scout-dist-compact first-moves" data-dist-root="true">${firstMoves}</div>
           </div>`;
+  const listHead = `<div class="scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Type · last seen</span><span>Their score</span><span>Their results W/D/L</span><span></span></div>`;
   const prepPanel = prepRows
     ? `<div class="scout-game-plan plan">
           ${planHead}
           ${firstMovesHtml}
           ${gapActionsHtml}
+          ${listHead}
           <div class="scout-lines scout-ranked-list lines" role="list">${prepRows}</div>
           ${rankedNote}
         </div>`
@@ -1284,15 +1396,16 @@ export function buildScoutSectionReport(
       <h3 class="visually-hidden">${heading} · <span class="scout-games-count">${trie.gameCount} games</span></h3>
       <section class="color-sec card">
         <div class="scout-section-head cs-head">
-          <span class="scout-section-wdl wdl-compact">${scoutWdlHtml(colorWdl.w, colorWdl.d, colorWdl.l, { compact: true })} <small class="scout-n">n=${colorWdl.games}</small></span>
-          <span class="scout-section-score faint">${baseline}% overall</span>
+          <span class="scout-section-who">${who} with ${oppColor === "white" ? "White" : "Black"}</span>
+          <span class="scout-section-wdl wdl-compact">${scoutWdlHtml(colorWdl.w, colorWdl.d, colorWdl.l, { compact: true })} <small class="scout-n">${colorWdl.games} games</small></span>
+          <span class="scout-section-score faint" title="Wins plus half the draws">scores ${baseline}%</span>
           ${trending}
           <span class="spacer"></span>
-          <div class="scout-coverage-bar-row cov">
+          <div class="scout-coverage-bar-row cov"${totalLines ? "" : " hidden"}>
             <div class="scout-coverage-bar hbar">
               <div class="scout-coverage-fill ${covTone}" style="width:${covPct}%"></div>
             </div>
-            <span class="scout-coverage-label">${preparedCount}/${totalLines} lines covered</span>
+            <span class="scout-coverage-label" title="Their most-played lines that your repertoires already answer">your prep answers ${preparedCount} of ${totalLines} lines</span>
           </div>
           ${prepareAll}
         </div>
@@ -1334,8 +1447,8 @@ export function buildScoutShareText({ username, profile, sections, activeSpeed }
       lines.push("", "**Your game plan:**");
       for (const t of prep) {
         const their = scoutLineText(t.sans);
-        const reply = t.suggestedReply?.uci ? ` → you play ${t.suggestedReply.uci}` : " → needs prep";
-        let row = `- When they play ${their}${reply} — ${Math.round(t.share * 100)}% share, ${t.scorePct}% score (n=${t.games})`;
+        const reply = t.suggestedReply?.uci ? ` → your move ${t.suggestedReply.uci}` : " → no answer in your prep";
+        let row = `- After ${their}${reply} — ${Math.round(t.share * 100)}% of their games, they score ${t.scorePct}% (${t.games} game${t.games === 1 ? "" : "s"})`;
         if (t.enginePattern) {
           row += `; often …${t.enginePattern.playedSan}`;
         }
