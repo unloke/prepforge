@@ -201,6 +201,16 @@ describe("sign-in gate", () => {
     expect(session.has("prepforge.auth_return")).toBe(true);
   });
 
+  it("passes the original Analyze source through the gate and Google redirect", () => {
+    const { controller } = makeController();
+    const data = { pgn: "1. d4 d5 *", mode: "single", selectIndex: 0 };
+    controller.requireSignIn("Sign in to review", "analyze-game", data);
+    overlays[0].listeners.click({ target: { dataset: { action: "google" } } });
+    expect(JSON.parse(session.get("prepforge.pending_action")).data).toEqual(data);
+    overlays[0].listeners.click({ target: { dataset: { action: "close" } } });
+    expect(session.has("prepforge.pending_action")).toBe(false);
+  });
+
   it("does not store an unknown action id", () => {
     const { controller } = makeController();
     controller.requireSignIn("Sign in", "rm -rf");

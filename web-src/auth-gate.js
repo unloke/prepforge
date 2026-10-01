@@ -50,10 +50,23 @@ function safeStorage(storage) {
   }
 }
 
-export function savePendingAction(id, { route = "", storage, now = Date.now() } = {}) {
+// Only Analyze needs an action payload: keep its source and batch selection
+// with the same once-only, expiring record as the interrupted action.
+function pendingActionData(id, data) {
+  if (id !== "analyze-game" || !data || typeof data.pgn !== "string" || !data.pgn.trim()) return null;
+  return {
+    pgn: data.pgn,
+    mode: data.mode === "multi" ? "multi" : "single",
+    selectIndex: Number.isSafeInteger(data.selectIndex) && data.selectIndex >= 0 ? data.selectIndex : 0,
+  };
+}
+
+export function savePendingAction(id, { route = "", data = null, storage, now = Date.now() } = {}) {
   const store = safeStorage(storage);
   if (!store || !isPendingActionId(id)) return false;
   const record = { id, at: now };
+  const actionData = pendingActionData(id, data);
+  if (actionData) record.data = actionData;
   if (isSafeRoute(route)) record.route = route;
   try {
     store.setItem(PENDING_ACTION_KEY, JSON.stringify(record));
@@ -94,7 +107,10 @@ export function takePendingAction({ storage, now = Date.now() } = {}) {
   if (!record || typeof record !== "object" || !isPendingActionId(record.id)) return null;
   const at = Number(record.at);
   if (!Number.isFinite(at) || now - at > PENDING_ACTION_TTL_MS || at - now > 60_000) return null;
-  return { id: record.id, route: isSafeRoute(record.route) ? record.route : null };
+  const action = { id: record.id, route: isSafeRoute(record.route) ? record.route : null };
+  const data = pendingActionData(record.id, record.data);
+  if (data) action.data = data;
+  return action;
 }
 
 const JOIN_CODE_RE = /^[A-Za-z0-9_-]{1,128}$/;

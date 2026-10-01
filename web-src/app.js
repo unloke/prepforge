@@ -18,6 +18,7 @@ import { isReviewedMove, pgnPlayers, selfSide } from "./analyze-orient.js";
 import { buildGameSummary, hasClassifiedMoves } from "./coach/game-summary.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { classifySyncError, describeSyncError } from "./sync-errors.js";
+import { apiErrorMessage } from "./api-errors.js";
 import { orderPendingBuildAdds } from "./build-queue.js";
 import {
   acquireFlushLock,
@@ -3317,9 +3318,7 @@ async function api(path, options = {}) {
     const authRequired = isSessionAuthFailure(response.status, detail);
     const message = authRequired
       ? AUTH_REQUIRED_MESSAGE
-      : typeof detail === "string"
-        ? detail
-        : (detail && detail.message) || `Request failed (${response.status})`;
+      : apiErrorMessage(response.status, detail);
     const err = new Error(message);
     err.status = response.status; // lets callers (e.g. Build sync) tell 4xx from 5xx/network
     err.detail = detail;
@@ -4514,8 +4513,8 @@ async function refreshAuthProviders() {
 // sign-in modal instead of filling out a form only to hit a cryptic 401 in the status bar.
 // `reason` is shown inside the modal; `pendingActionId` (allowlisted in
 // auth-gate.js) resumes the action after sign-in — see resumePendingAction.
-function requireSignIn(reason = "Sign in (or create an account) to continue", pendingActionId = null) {
-  return accountService().requireSignIn(reason, pendingActionId);
+function requireSignIn(reason = "Sign in (or create an account) to continue", pendingActionId = null, pendingData = null) {
+  return accountService().requireSignIn(reason, pendingActionId, pendingData);
 }
 
 // The sign-in / create-account modal. Google (when configured) is the primary path;
@@ -6090,7 +6089,9 @@ async function runAnalysis(options = {}) {
   // classifies + stores the browser's evals (/api/analyze/prepare and
   // classify-save are owner-scoped). Live engine + coach on the board work
   // signed out.
-  if (!requireSignIn("Sign in to run a full-game review — it's saved to your library", "analyze-game")) return;
+  if (!requireSignIn("Sign in to run a full-game review — it's saved to your library", "analyze-game", {
+    pgn, mode: importMode, selectIndex,
+  })) return;
   setStatus("Analyzing PGN");
   // Keep the game on screen while the engine works: (re)load the source into the move
   // list instead of hiding it behind the "Play on the board" placeholder. Only a source
@@ -14238,9 +14239,19 @@ const PENDING_ACTION_HANDLERS = {
     switchView("teams");
     return createTeam();
   },
-  "analyze-game": () => {
+  "analyze-game": (pending) => {
     switchView("analyze");
-    setStatus("Signed in — press Analyze to run the full-game review.");
+    const input = document.getElementById("pgn-input");
+    // Old records or unavailable session storage have no source. Never run
+    // the demo in place of a game the user asked us to review.
+    input.value = pending.data?.pgn || "";
+    if (!input.value) {
+      const drawer = document.getElementById("pgn-drawer");
+      if (drawer) drawer.open = true;
+      setStatus("Signed in — paste your PGN to run the full-game review.");
+      return;
+    }
+    return runAnalysis({ mode: pending.data.mode, selectIndex: pending.data.selectIndex });
   },
   // #/train was restored and restoreWorkspaceLocation already started it.
   train: () => {
@@ -14279,7 +14290,7 @@ async function resumeAfterSignIn({ pending, returned } = {}) {
     : null;
   if (!handler) return;
   try {
-    await handler();
+    await handler(pending);
   } catch (error) {
     setStatusError(error.message);
   }

@@ -133,9 +133,9 @@ export function createAccountController({
   // them up front so a guest gets the sign-in modal — with the reason shown
   // inside it — instead of a cryptic 401. `pendingActionId` (allowlisted in
   // auth-gate.js) lets the action resume once the sign-in completes.
-  function requireSignIn(reason = "Sign in (or create an account) to continue", pendingActionId = null) {
+  function requireSignIn(reason = "Sign in (or create an account) to continue", pendingActionId = null, pendingData = null) {
     if (appState.signedIn) return true;
-    openAuthModal("login", { notice: reason, pendingAction: pendingActionId });
+    openAuthModal("login", { notice: reason, pendingAction: pendingActionId, pendingData });
     return false;
   }
 
@@ -174,7 +174,7 @@ export function createAccountController({
     reset: { title: "Choose a new password", submit: "Set password" },
   };
 
-  function openAuthModal(mode = "login", { resetToken = null, notice = "", pendingAction = null } = {}) {
+  function openAuthModal(mode = "login", { resetToken = null, notice = "", pendingAction = null, pendingData = null } = {}) {
     const existing = document.querySelector(".modal-overlay.auth-overlay");
     if (existing) {
       // The modal registers a document-level keydown listener on open, so a bare
@@ -187,7 +187,7 @@ export function createAccountController({
     // (or the Google redirect). Opening without one clears any stale intent.
     if (isPendingActionId(pendingAction)) {
       const route = typeof window !== "undefined" ? window.location?.hash || "" : "";
-      savePendingAction(pendingAction, { route });
+      savePendingAction(pendingAction, { route, data: pendingData });
     } else {
       clearPendingAction();
     }

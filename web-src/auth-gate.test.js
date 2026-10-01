@@ -87,6 +87,30 @@ describe("pending action allowlist", () => {
     clearPendingAction({ storage });
     expect(takePendingAction({ storage })).toBeNull();
   });
+
+  it("keeps Analyze's original PGN and batch selection across either sign-in return, once", () => {
+    for (const href of ["https://x.test/#/analyze", "https://x.test/?signed_in=1"]) {
+      const storage = memoryStorage();
+      const data = { pgn: '[White "Original"]\n\n1. d4 d5 *', mode: "multi", selectIndex: 2 };
+      savePendingAction("analyze-game", { storage, route: "#/analyze", data, now: 0 });
+      markAuthReturn({ storage, href: "https://x.test/#/analyze", now: 0 });
+      const action = takePendingAction({ storage, now: 1 });
+      expect(action.data).toEqual(data);
+      const back = takeAuthReturn({ storage, now: 1 });
+      expect(restoredAuthHref(href, back) || href).toContain("#/analyze");
+      expect(takePendingAction({ storage, now: 2 })).toBeNull();
+    }
+  });
+
+  it("only accepts the Analyze payload and discards invalid selection fields", () => {
+    const storage = memoryStorage();
+    savePendingAction("new-team", { storage, data: { pgn: "1. e4 *" } });
+    expect(takePendingAction({ storage })).not.toHaveProperty("data");
+    savePendingAction("analyze-game", { storage, data: { pgn: "1. e4 *", mode: "delete", selectIndex: -1 } });
+    expect(takePendingAction({ storage }).data).toEqual({ pgn: "1. e4 *", mode: "single", selectIndex: 0 });
+    savePendingAction("analyze-game", { storage, data: { pgn: {} } });
+    expect(takePendingAction({ storage })).not.toHaveProperty("data");
+  });
 });
 
 describe("sign-in return URL", () => {
