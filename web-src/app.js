@@ -2483,7 +2483,7 @@ async function updateBookline() {
     });
     el.innerHTML =
       `${escapeHtml(text)} ` +
-      `<button class="coach-bookaction" type="button" data-act="build">Add it in Build<span class="cba-arrow" aria-hidden="true">›</span></button>`;
+      `<button class="coach-bookaction" type="button" data-act="build">Add it to repertoire<span class="cba-arrow" aria-hidden="true">›</span></button>`;
     el.hidden = false;
     el.querySelector('[data-act="build"]').addEventListener("click", () => {
       // F-06: Analyze→Repertoire handoff — the novelty line + anchor position
@@ -4448,7 +4448,7 @@ async function promptImportRepertoireFromPgn(pgnText, { defaultName = "Imported 
     if (switchToBuild) switchView("build");
     setStatus(
       switchToBuild
-        ? `Repertoire “${payload.name}” created — edit it in Build`
+        ? `Repertoire “${payload.name}” created — edit it in Repertoire`
         : `Imported ${payload.name}`,
     );
     return payload;
@@ -6576,7 +6576,7 @@ async function onCreateRepertoireFromGameClick() {
   try {
     const payload = await importRepertoireFromPgnText(pgn, { name, color });
     switchView("build");
-    setStatus(`Repertoire “${payload.name}” created — edit it in Build`, { severity: "success" });
+    setStatus(`Repertoire “${payload.name}” created — edit it in Repertoire`, { severity: "success" });
     appState.analysisSourcePgn = null;
     hideAnalysisHandoff();
   } catch (error) {

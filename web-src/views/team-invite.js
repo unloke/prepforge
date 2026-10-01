@@ -28,7 +28,10 @@ export function knownInviteUrl(teamId, status) {
 
 function formatDay(iso) {
   if (!iso) return "";
-  const d = new Date(iso);
+  // SQLite hands back naive UTC timestamps; without a zone JS would read them as
+  // local time and show the wrong day near midnight.
+  const s = String(iso);
+  const d = new Date(/T.*(Z|[+-]\d\d:?\d\d)$/.test(s) ? s : `${s}Z`);
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
