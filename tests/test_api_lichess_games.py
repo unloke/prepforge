@@ -1140,7 +1140,12 @@ def test_external_compare_preserves_mastery_health_and_queue(client, monkeypatch
     assert repo.load_training_progress(rep["repertoire_id"], node, owner_user_id=owner) == saved
     assert repo.get_user_setting(owner, DEPARTURE_INGESTED_KEY) is None
     assert client.get("/api/train/smart/summary", params=params).json() == before
-    assert start() == queue_before
+    queue_after = start()
+    assert queue_after[0] == queue_before[0]
+    # Both calls explicitly rebuild. Only the logical session generation
+    # changes; external comparisons must still leave every queue fact intact.
+    assert queue_after[1].pop("session_generation") != queue_before[1].pop("session_generation")
+    assert queue_after[1] == queue_before[1]
 
 
 def test_record_miss_is_explicit_adoption_without_link(client, monkeypatch):

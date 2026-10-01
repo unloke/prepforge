@@ -109,6 +109,8 @@ describe("maia3 health status model", () => {
     await view.renderMaia3Status();
     expect(constructed).toBe(0);
     expect(elements["settings-maia-model"].textContent).toBe("Cache missing");
+    // Nothing failed yet: the button offers the download, not a "Retry".
+    expect(elements["settings-maia-retry"].textContent).toBe("Download");
     await view.retryMaia3();
     expect(constructed).toBe(1);
     expect(statuses).toContain("Maia3 ready");

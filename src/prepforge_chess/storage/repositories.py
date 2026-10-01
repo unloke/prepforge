@@ -1713,7 +1713,9 @@ class PrepForgeRepository:
             update_cols=(
                 "repertoire_id", "mode", "line_order_json", "current_index",
                 "current_node_id", "mistakes_json", "mastered_nodes_json", "seed",
-                "updated_at",
+                # A rebuilt smart queue reuses its row; created_at is its
+                # session generation (see /api/train/smart/start).
+                "created_at", "updated_at",
             ),
         )
 

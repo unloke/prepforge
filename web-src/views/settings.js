@@ -312,9 +312,17 @@ export function createSettingsView({
   const MAIA_STATUS_TONE = {
     [MAIA_STATUS.READY]: "ok",
     [MAIA_STATUS.LOADING]: "warn",
-    [MAIA_STATUS.CACHE_MISSING]: "warn",
     [MAIA_STATUS.UNAVAILABLE]: "err",
     [MAIA_STATUS.ERROR]: "err",
+  };
+
+  // The one action button runs the same load verification in every state; its
+  // label says what that means here. "Retry" over a model that was never
+  // downloaded read as if something had failed.
+  const MAIA_ACTION_LABEL = {
+    [MAIA_STATUS.READY]: "Verify",
+    [MAIA_STATUS.AVAILABLE]: "Download",
+    [MAIA_STATUS.CACHE_MISSING]: "Download",
   };
 
   async function renderMaia3Status() {
@@ -327,6 +335,10 @@ export function createSettingsView({
     const set = (model, note = "", error = "", source = "") => {
       modelEl.textContent = model;
       modelEl.className = `status-pill ${MAIA_STATUS_TONE[model] || ""}`.trim();
+      const actionBtn = document.getElementById("settings-maia-retry");
+      if (actionBtn && model !== MAIA_STATUS.LOADING) {
+        actionBtn.textContent = MAIA_ACTION_LABEL[model] || "Retry";
+      }
       if (noteEl) {
         noteEl.textContent = note;
         noteEl.title = source ? `Model source: ${source}` : "";
@@ -406,7 +418,7 @@ export function createSettingsView({
       await provider.predictions({ fen: startFen });
       setStatus("Maia3 ready");
     } catch (err) {
-      setStatus(`Maia3 retry failed: ${err.message}`);
+      setStatus(`Maia3 could not load: ${err.message}`);
     } finally {
       renderMaia3Status();
     }

@@ -20,19 +20,20 @@ export function unavailableExplorer(error) {
 }
 
 const UNAVAILABLE_NOTES = {
-  "sign-in": "Lichess explorer needs sign-in and a linked Lichess account",
-  link: "link your Lichess account to use the explorer",
+  "sign-in": "the explorer needs sign-in and a linked Lichess account",
+  link: "the explorer needs a linked Lichess account",
   "rate-limit": "Lichess explorer is busy",
   error: "Lichess explorer unavailable",
 };
 
-// The " · …" suffix after "<source> played <san>" in the Play panel.
+// The " · …" suffix after "<source> played <san>" in the Play panel. The
+// source already reads "Maia played …", so the note says only why.
 export function replyReasonNote(reply) {
   const reason = reply && reply.reason;
-  if (reason === "thin-sample") return " · sample too thin, Maia stepped in";
+  if (reason === "thin-sample") return " · explorer sample too thin here";
   if (reason === "explorer-unavailable") {
     const note = UNAVAILABLE_NOTES[reply.explorerUnavailable] || UNAVAILABLE_NOTES.error;
-    return ` · ${note}, Maia stepped in`;
+    return ` · ${note}`;
   }
   if (reason === "out-of-book") return " · out of book";
   return "";

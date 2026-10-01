@@ -23,6 +23,7 @@ export const PALETTE_ACTIONS = [
   { id: "play-human", label: "Play vs human", keywords: ["play", "opponent", "human", "maia"] },
   { id: "feeling-lucky", label: "I'm Feeling Lucky", keywords: ["lucky", "key", "position"] },
   { id: "analyze", label: "Analyze", keywords: ["game", "pgn", "engine", "analyse"] },
+  { id: "toggle-theme", label: "Toggle light / dark theme", keywords: ["theme", "dark", "light", "mode", "appearance"] },
 ];
 
 export function buildPaletteItems({ repertoires = [] } = {}) {

@@ -168,6 +168,18 @@ export function createTeamsView({
       search.addEventListener("input", renderTeamsList);
     }
     bindTeamTabs();
+    // Nothing to search until there is a team (signed out or none yet).
+    const searchField = search?.closest?.(".search-field");
+    if (searchField) searchField.hidden = !(appState.signedIn && appState.teams.length);
+    // A guest already gets the Sign in button in the main card; a second
+    // primary "New team" beside it only competes with it.
+    const newTeam = document.getElementById("teams-new");
+    if (newTeam) newTeam.hidden = !appState.signedIn;
+    // hideTeamDetail() re-renders the list; keep the guest's sign-in line.
+    if (!appState.signedIn) {
+      list.innerHTML = '<div class="empty-state">Sign in to create and join teams.</div>';
+      return;
+    }
     if (!appState.teams.length) {
       list.innerHTML = '<div class="empty-state">No teams yet.</div>';
       return;

@@ -33,7 +33,15 @@ describe("command palette filter", () => {
       "Play vs human",
       "I'm Feeling Lucky",
       "Analyze",
+      "Toggle light / dark theme",
     ]);
+  });
+
+  it("finds the theme switch by the words people type", async () => {
+    const { filterPaletteItems } = await import("./command-palette.js");
+    for (const q of ["theme", "dark"]) {
+      expect(filterPaletteItems(items, q).map((i) => i.label)).toContain("Toggle light / dark theme");
+    }
   });
 
   it("lists views in the same order as the rail", async () => {

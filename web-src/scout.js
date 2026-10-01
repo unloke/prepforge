@@ -1731,6 +1731,24 @@ export function createScoutClient({ fetchImpl, storage, now } = {}) {
       ? { getItem: () => null, setItem: () => {} }
       : localStorage);
 
+  // The games export 404s both for a missing account and for an existing one
+  // whose games Lichess will not export; only the profile lookup tells them
+  // apart. Telling a user that a real account "does not exist" sent them
+  // hunting for a typo that was not there.
+  async function notFoundError(username, signal) {
+    try {
+      const safe = encodeURIComponent(String(username || "").trim());
+      const probe = await doFetch(`https://lichess.org/api/user/${safe}`, { signal });
+      if (probe && probe.ok) {
+        return new Error(`Lichess won't export ${username}'s games, so Scout can't read them.`);
+      }
+      if (probe?.status === 404) return new Error(`No Lichess user named "${username}"`);
+    } catch (error) {
+      if (signal?.aborted) throw error;
+    }
+    return new Error(`Lichess did not export ${username}'s games, and Scout couldn't verify the account. Try again in a moment.`);
+  }
+
   function readCache() {
     try {
       const parsed = JSON.parse(store.getItem(CACHE_KEY) || "null");
@@ -1753,7 +1771,7 @@ export function createScoutClient({ fetchImpl, storage, now } = {}) {
       headers: { Accept: "application/x-ndjson" },
       signal,
     });
-    if (resp.status === 404) throw new Error(`No Lichess user named "${username}"`);
+    if (resp.status === 404) throw await notFoundError(username, signal);
     if (resp.status === 429) throw new Error(SCOUT_ERR_RATE_LIMIT);
     if (!resp.ok) throw new Error(`Lichess responded ${resp.status}`);
     const games = parseNdjsonGames(await resp.text(), username);
@@ -1781,7 +1799,7 @@ export function createScoutClient({ fetchImpl, storage, now } = {}) {
       headers: { Accept: "application/x-chess-pgn" },
       signal,
     });
-    if (resp.status === 404) throw new Error(`No Lichess user named "${username}"`);
+    if (resp.status === 404) throw await notFoundError(username, signal);
     if (resp.status === 429) throw new Error(SCOUT_ERR_RATE_LIMIT);
     if (!resp.ok) throw new Error(`Lichess responded ${resp.status}`);
     return streamPgn(resp, username, onGame, signal);

@@ -201,6 +201,36 @@ def test_smart_start_returns_queue_and_prompt(client):
     assert "e2e4" in prompt["legal_moves"]
 
 
+def test_smart_resume_at_card_zero_and_rebuild_generation(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    first = _smart_start(client, rep, seed=5).json()
+    resumed = _smart_start(client, rep).json()
+    assert resumed["card_index"] == 0
+    assert resumed["resumed"] is True
+    assert resumed["session_generation"] == first["session_generation"]
+    # Even the same seed/cards and reused DB row are a new logical session.
+    fresh = _smart_start(client, rep, fresh=True, seed=5).json()
+    assert fresh["resumed"] is False
+    assert fresh["session_generation"] != first["session_generation"]
+    # The rebuilt row must persist its new generation, so resuming it later
+    # still matches the memo saved under the fresh start.
+    again = _smart_start(client, rep).json()
+    assert again["resumed"] is True
+    assert again["session_generation"] == fresh["session_generation"]
+
+
+def test_mixed_smart_resume_at_card_zero(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    _white_repertoire_with_e4(client)
+    first = _smart_start(client, rep, mixed=True, seed=5).json()
+    resumed = _smart_start(client, rep, mixed=True).json()
+    assert resumed["card_index"] == 0
+    assert resumed["resumed"] is True
+    assert resumed["session_generation"] == first["session_generation"]
+
+
 def test_smart_start_loads_each_tree_once(client, monkeypatch):
     """Regression guard: /smart/start reads each repertoire tree from the DB at
     most once. The pre-cache path loaded the anchor tree three times (the plan,

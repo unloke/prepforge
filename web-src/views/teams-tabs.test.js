@@ -209,6 +209,48 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     expect(byId("teams-shared").innerHTML).toMatch(/Sign in/);
     expect(byId("teams-shared-hint").hidden).toBe(true);
   });
+  it("New team is offered only when signed in (guests get the card's Sign in)", async () => {
+    const guest = makeHarness({ appState: { signedIn: false, teams: [], selectedTeamId: null } });
+    await guest.view.loadTeams();
+    guest.view.renderTeamsList();
+    expect(guest.byId("teams-new").hidden).toBe(true);
+    const member = makeHarness({ appState: { signedIn: true, teams: [], selectedTeamId: null } });
+    member.view.renderTeamsList();
+    expect(member.byId("teams-new").hidden).toBe(false);
+  });
+  it("signed out: a list re-render (hideTeamDetail) keeps the sign-in line, not 'No teams yet'", async () => {
+    const { view, byId } = makeHarness({
+      appState: { signedIn: false, teams: [], selectedTeamId: null },
+    });
+    await view.loadTeams();
+    // app.js hideTeamDetail() calls renderTeamsList() after the signed-out paint.
+    view.renderTeamsList();
+    expect(byId("teams-list").innerHTML).toMatch(/Sign in to create and join teams/);
+    expect(byId("teams-list").innerHTML).not.toMatch(/No teams yet/);
+  });
+  it("search visibility follows the team collection, including an unmatched typed filter", () => {
+    const appState = { signedIn: true, teams: [], selectedTeamId: null };
+    const { view, byId } = makeHarness({ appState });
+    const field = { hidden: false };
+    const search = byId("teams-search");
+    search.closest = () => field;
+    search.value = "unmatched";
+    view.renderTeamsList();
+    expect(field.hidden).toBe(true);
+    appState.teams = [{ id: "a", name: "Club", role: "owner", member_count: 1 }];
+    view.renderTeamsList();
+    expect(field.hidden).toBe(false);
+    expect(byId("teams-list").innerHTML).toContain("No teams match your search");
+    search.value = "";
+    search.__listeners.input.forEach((fn) => fn());
+    expect(byId("teams-list").innerHTML).toContain('data-team-id="a"');
+    appState.teams = [];
+    view.renderTeamsList();
+    expect(field.hidden).toBe(true);
+    appState.signedIn = false;
+    view.renderTeamsList();
+    expect(byId("teams-list").innerHTML).toContain("Sign in");
+  });
   it("invite expiry reads in English whatever the browser locale (UX 2026-10-01 P2-13)", () => {
     const { view, byId } = makeHarness();
     view.renderTeamInviteFooter({ invite: { exists: true, expires_at: "2030-10-04T12:00:00Z" } });

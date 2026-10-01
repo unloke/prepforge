@@ -32,7 +32,7 @@ function harness() {
     maiaPhaseCoach: () => coach.promise, trainTeachLine: () => "", coachTipMayReplace, wrongMoveTip,
     clearBlitzTimer: vi.fn(), optimisticBoardMove: async () => {}, queueTrainAttempt: vi.fn(),
     renderTrainStats: async () => {}, boardAfterMove: async () => ({ board: { fen: "preview" } }),
-    playSound: vi.fn(), sleep: () => sleepGate.promise,
+    playSound: vi.fn(), sleep: () => sleepGate.promise, rememberSmartSession: vi.fn(),
   };
   return { appState, banner, coach, sleepGate, deps, prompt };
 }
@@ -65,5 +65,6 @@ describe("Smart coach response ownership", () => {
     await Promise.resolve();
     expect(h.banner.dataset.state).toBe(state);
     expect(h.banner.sub).toBe("Current feedback");
+    expect(h.deps.rememberSmartSession).toHaveBeenCalledWith({ attempt: 2 });
   });
 });
