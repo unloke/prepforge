@@ -162,6 +162,9 @@
                 <p class="coach-maia" id="coach-maia" data-testid="coach-maia" hidden></p>
                 <p class="coach-bookline" id="coach-bookline" data-testid="coach-bookline" hidden></p>
               </section>
+              <!-- Whole-game analysis progress / "Analysis ready" docks here, above the
+                   eval graph, instead of floating over it. -->
+              <div class="analysis-job-dock" id="analysis-job-dock" data-testid="analysis-job-dock"></div>
               <!-- One Evaluation card: the game graph (after an analysis) and the
                    live engine (when on) share it, so there is one place to look. -->
               <section class="res-block eval-card" id="analysis-eval-card" data-testid="analysis-eval-card" aria-label="Evaluation" hidden>
@@ -324,7 +327,7 @@
                 <button class="ib" id="train-hint" title="Hint (show the piece to move)" aria-label="Show hint">💡</button>
                 <button class="ib" id="train-skip" title="Skip this card" aria-label="Skip this card">⏭</button>
               </div>
-              <span class="board-label" id="train-board-label">Press Start to train</span>
+              <span class="board-label" id="train-board-label"></span>
               <div class="bb-right">
                 <span class="build-sync" id="train-sync" aria-live="polite" hidden></span>
               </div>
@@ -342,7 +345,7 @@
             <section class="coach-banner train-coach" id="train-banner" data-testid="train-feedback" data-state="idle" aria-live="polite">
               <span class="train-coach-icon" id="train-banner-icon" aria-hidden="true"></span>
               <div class="train-coach-text">
-                <span class="train-coach-title" id="train-banner-title" data-testid="train-prompt">Press Start to begin</span>
+                <span class="train-coach-title" id="train-banner-title" data-testid="train-prompt">Ready to train</span>
                 <span class="train-coach-sub" id="train-banner-sub"></span>
               </div>
               <span class="train-turn-badge" id="train-turn-badge" hidden></span>
@@ -351,6 +354,7 @@
               <section class="tcard train-setup">
                 <h3 id="train-setup-title">Smart queue</h3>
                 <p class="muted" id="train-setup-blurb">Mixed over all your active repertoires. Weak spots and due reviews first, then new moves, then polish.</p>
+                <p class="train-session-preview" id="train-session-preview" data-testid="train-session-preview" hidden></p>
                 <div class="field" id="train-srs-picker">
                   <label class="train-picker-label" for="train-repertoire-select">Repertoire</label>
                   <select id="train-repertoire-select" data-testid="train-repertoire-select"></select>
@@ -421,10 +425,10 @@
                   <b id="train-line-label">Card 1 / 1</b>
                   <span class="kchip" id="train-card-kind" hidden></span>
                   <span class="spacer"></span>
-                  <span class="train-accuracy" id="train-accuracy">—</span>
+                  <span class="train-accuracy" id="train-accuracy" title="Share of moves you got right on the first try this session">—</span>
                 </div>
                 <div class="card-dots" id="train-card-dots" title="Moves in this card"></div>
-                <div class="prog"><i id="train-progress-fill"></i></div>
+                <div class="prog" id="train-progress" role="progressbar" aria-label="Cards done this session" title="Cards done this session"><i id="train-progress-fill"></i></div>
                 <div class="qstrip" id="train-queue" hidden>
                   <div class="qbar" id="train-queue-bar" role="img" aria-label="Queue composition"></div>
                   <div class="chips" id="train-queue-legend"></div>
@@ -456,7 +460,7 @@
               </section>
 
               <section class="tcard summary train-summary" id="train-summary" hidden data-testid="train-summary">
-                <h3 id="train-summary-title">Session complete</h3>
+                <h3 id="train-summary-title">Session results</h3>
                 <div class="sum-cells" id="train-summary-stats"></div>
                 <div class="delta" id="train-summary-delta"></div>
                 <p class="muted" id="train-summary-foot"></p>
