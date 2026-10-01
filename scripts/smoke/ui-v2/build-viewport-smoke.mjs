@@ -6,7 +6,7 @@
 //   - rep header + board label render; sync chip reads Saved
 //   - breadcrumb strip renders; fork bar appears at the fork with chips + count
 //   - a rendered practical share (maia_probability) shows on a chip
-//   - mastery legend renders when own-side nodes are trained
+//   - trained moves carry mastery classes without a standing legend
 //   - the dock tabs (Explorer/Coverage/Engine) are a single-select tablist and
 //     the Explorer tab is open by default with real W/D/L rows
 // Tracked UI-v2 smoke: run the whole eight-view suite with
@@ -31,7 +31,7 @@ const MIME = {
 
 // One repertoire, one real fork at e5: mainline 3...Bf5 (generated — carries a
 // real-shaped maia_probability), alternative 3...Na6 (manual — no probability).
-// Own-side nodes carry mastery so the legend has something to mirror.
+// Own-side nodes carry mastery so the tree colours have real training data.
 // FENs are chess.js-verified (1.e4 c6 2.d4 d5 3.e5 with Bf5/Na6 branches).
 const BUILD_NODES = [
   { id: "n0", parent_id: null, depth: 0, san: null, uci: null, move_number: 1, ply: 0, move_side: "white", is_mainline: false, is_enabled: true, is_prepared: false, mastery: null, maia_probability: null },
@@ -178,7 +178,7 @@ async function runViewport(vp) {
   check(/2 lines · 7 moves/.test(repStats), `build header should read "2 lines · 7 moves", got "${repStats}"`);
   check((await page.locator("#build-generate-node:visible").count()) === 1, "Generate moves should be visible in the build header");
 
-  // Fork bar at e5: two chips, count, hint, and the real practical share on Bf5.
+  // Fork bar at e5: two chips, count, and the real practical share on Bf5.
   const barVisible = await page.locator("#build-branchbar:not([hidden])").count();
   check(barVisible === 1, "fork bar should be visible at the e5 fork");
   const chips = await page.locator("#build-branchbar .fork-chip").count();
@@ -191,11 +191,9 @@ async function runViewport(vp) {
   const nc6Chip = page.locator('#build-branchbar .fork-chip', { hasText: "Na6" });
   check((await nc6Chip.locator("small").count()) === 0, "Na6 (manual) chip must not fake a share");
 
-  // Mastery legend mirrors the trained own-side nodes (mastered + learning + due + weak).
+  // Mastery stays on the moves; the panel has no standing colour legend.
   const legend = await page.locator("#build-tree-meta .legend").count();
-  check(legend === 1, "mastery legend should render under the breadcrumbs");
-  const legendText = await page.locator("#build-tree-meta .legend").textContent().catch(() => "");
-  check(/mastered/.test(legendText) && /learning/.test(legendText) && /due/.test(legendText) && /weak/.test(legendText), `legend should list all four trained kinds, got "${legendText}"`);
+  check(legend === 0, "breadcrumbs should not have a standing mastery legend");
 
   // Tree rows carry mastery classes on own-side moves.
   const trained = await page.locator("#builder-tree .mtree-move.m-mastered, #builder-tree .mtree-move.m-learning, #builder-tree .mtree-move.m-due, #builder-tree .mtree-move.m-weak").count();
