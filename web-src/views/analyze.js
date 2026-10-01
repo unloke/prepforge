@@ -3,6 +3,7 @@
 
 import "./analyze-chart.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
+import { treeToMovetext } from "../analyze-pgn.js";
 
 export function createAnalyzeView({
   appState,
@@ -299,6 +300,80 @@ export function createAnalyzeView({
       parent.children.push(node);
     }
     return { root, byId };
+  }
+
+  // Flatten the parser's generic tree (root → children, children[0] = mainline,
+  // children[1..] = variations) into the two structures the Analyze view renders
+  // from: a flat `moves` array (the mainline) and an `analysisVarNodes` map keyed by
+  // `v<seq>` whose `parentId` points at the node a variation branches from. Mirrors
+  // the ids buildAnalysisTree() expects (`m<ply>` on the mainline, `root` at start).
+  function adaptParsedTree(root) {
+    const moves = [];
+    const varNodes = new Map();
+    let seq = 0;
+    function walk(node, parentId, onMainline, ply) {
+      let id;
+      if (onMainline) {
+        id = `m${ply}`;
+        moves.push({
+          ply,
+          san: node.san,
+          uci: node.uci,
+          fen_before: node.fenBefore,
+          fen_after: node.fenAfter,
+          move_number: node.moveNumber,
+          side: node.side,
+          classification: null,
+        });
+      } else {
+        seq += 1;
+        id = `v${seq}`;
+        varNodes.set(id, {
+          id,
+          seq,
+          parentId,
+          uci: node.uci,
+          san: node.san,
+          fenBefore: node.fenBefore,
+          fenAfter: node.fenAfter,
+          moveNumber: node.moveNumber,
+          side: node.side,
+        });
+      }
+      const kids = node.children || [];
+      if (kids[0]) walk(kids[0], id, onMainline, onMainline ? ply + 1 : 0);
+      for (let i = 1; i < kids.length; i += 1) walk(kids[i], id, false, 0);
+    }
+    const top = root.children || [];
+    if (top[0]) walk(top[0], "root", true, 1);
+    for (let i = 1; i < top.length; i += 1) walk(top[i], "root", false, 0);
+    return { moves, varNodes };
+  }
+
+  function serializeAnalysisPgn(sourcePgn) {
+    const analysis = appState.analysis;
+    const moves = analysis?.moves || [];
+    const movetext = treeToMovetext(buildAnalysisTree(moves).root);
+    if (!movetext) return "";
+    let headers = String(sourcePgn || "")
+      .split(/\r?\n/)
+      .filter((line) => /^\s*\[[^\]]*\]\s*$/.test(line))
+      .join("\n")
+      .trim();
+    if (!headers && analysis?.game_id) {
+      // A recall has no source PGN. Keep its known tags and starting FEN so
+      // copying or re-analyzing it reproduces the same game.
+      const safe = (s) => String(s || "?").replace(/["\r\n]/g, "'");
+      const tags = [
+        `[White "${safe(analysis.white)}"]`,
+        `[Black "${safe(analysis.black)}"]`,
+        `[Result "${safe(analysis.result || "*")}"]`,
+      ];
+      const fen = moves[0]?.fen_before;
+      if (fen && fen !== START_FEN) tags.push('[SetUp "1"]', `[FEN "${safe(fen)}"]`);
+      headers = tags.join("\n");
+    }
+    return headers ? `${headers}\n\n${movetext}` : movetext;
   }
 
   function analysisPathIds(nodeId, tree) {
@@ -662,6 +737,8 @@ export function createAnalyzeView({
     renderEvalChart,
     renderAnalysisTree,
     buildAnalysisTree,
+    serializeAnalysisPgn,
+    adaptParsedTree,
     classBadgeSymbol,
     updateEvalChartCursor,
     rescaleEvalMarkers,

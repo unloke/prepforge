@@ -104,7 +104,7 @@ async function openPage({ width = 1440, height = 900, handler }) {
   await page.route("**/api/**", async (route) => {
     const u = new URL(route.request().url());
     apiCalls.push(u.pathname);
-    let out = handler(u.pathname, route.request());
+    let out = await handler(u.pathname, route.request());
     if (!out || !("status" in out && "body" in out)) out = { status: 200, body: out ?? {} };
     await route.fulfill({
       status: out.status,
@@ -416,6 +416,32 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
   await page.waitForTimeout(150);
   check(S, !(await menu.isVisible()), "Escape should close the rail account menu");
   check(S, await page.evaluate(() => document.activeElement?.id === "account-chip"), "focus should return to #account-chip");
+  await page.close();
+}
+
+// A Train navigation while auth is pending must enter with the real session,
+// including the auto-start normally performed by the URL restore path.
+for (const width of [1440, 390]) {
+  const S = `boot-train-${width}`;
+  let releaseAuth, sawAuth;
+  const authGate = new Promise((r) => { releaseAuth = r; });
+  const authRequested = new Promise((r) => { sawAuth = r; });
+  const { page, apiCalls } = await openPage({ width, handler: async (path) => {
+    if (path === "/api/auth/me") { sawAuth(); await authGate; return SIGNED_IN; }
+    if (path === "/api/dashboard") return EMPTY_DASHBOARD;
+    if (path === "/api/repertoires") return { repertoires: [], shared: [] };
+    if (path === "/api/lichess/accounts") return { accounts: [] };
+    if (path === "/api/train/smart/start") return { status: 400, body: { detail: "no active repertoires to train" } };
+    return {};
+  } });
+  await page.goto(base, { waitUntil: "domcontentloaded" });
+  await authRequested;
+  await page.locator('.tab[data-view="train"]:visible').first().click();
+  check(S, !apiCalls.includes("/api/train/smart/start"), "Train must wait for the session");
+  const started = page.waitForRequest("**/api/train/smart/start", { timeout: 5000 }).then(() => true, () => false);
+  releaseAuth();
+  check(S, await started, "Train selected during boot should auto-start after auth");
+  check(S, await page.locator("#view-train.is-active").count() === 1, "boot must keep Train selected");
   await page.close();
 }
 

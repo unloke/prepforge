@@ -56,7 +56,8 @@ function harness() {
   const start = source.indexOf("async function editRepertoire(");
   const end = source.indexOf("\n}\n", start) + 2;
   const edit = new Function(...Object.keys(deps),
-    `let buildLoadSeq = 0; ${source.slice(start, end)}; return editRepertoire;`)(...Object.values(deps));
+    `let buildLoadSeq = 0, workspaceNavigationSeq = 0, workspaceUrlReady = true, navigatedDuringBoot = false;
+      ${source.slice(start, end)}; return editRepertoire;`)(...Object.values(deps));
   const optimisticBoardMove = vi.fn();
   const move = compile("async function onBuildBoardMove(", {
     ...common, optimisticBoardMove, isBuildReadOnly: () => false,
