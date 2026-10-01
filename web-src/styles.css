@@ -789,6 +789,16 @@ h2 {
   white-space: nowrap;
 }
 
+/* Guest Games tray: an action, not a selected source. */
+.src-chip.src-chip-signin {
+  padding: 0 10px;
+  border: 1px dashed var(--line-strong);
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+.src-chip.src-chip-signin:hover { background: var(--accent-soft); }
+
 .src-chip-x {
   width: 20px;
   height: 20px;
@@ -4068,6 +4078,69 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: var(--danger);
   font-size: 13px;
   line-height: 1.4;
+  /* Reserve the line up front: an error appearing must not resize the dialog. */
+  min-height: 1.4em;
+}
+
+/* Anchor the sign-in dialog near the top instead of centring it, so any
+   remaining growth (a two-line error, Forgot ↔ Sign in) only extends downward
+   rather than making the whole box jump. */
+.modal-overlay.auth-overlay {
+  place-items: start center;
+  padding-top: min(14vh, 120px);
+}
+
+.auth-modal-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-right: 8px;
+}
+
+.auth-close {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.auth-close:hover { background: var(--panel-soft); color: var(--text); }
+.auth-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Why the gate opened ("Sign in to start training"). */
+.auth-reason {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.auth-footer {
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* "New here? Create account" reads as a link, not stray text. */
+.auth-footer .auth-switch {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .modal-field > span {
@@ -4490,6 +4563,18 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Notification cards carry sentences, not a progress label: wrap them in
+   full instead of cutting them off ("…turn it on in Settings → Playing stren…"). */
+.job-toast.variant-info:not(.is-leaving),
+.job-toast.state-failed:not(.is-leaving) { max-height: 360px; }
+.job-toast.variant-info .job-toast-message,
+.job-toast.state-failed .job-toast-message {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
 }
 
 .job-toast-track {
@@ -6467,9 +6552,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   padding: 0;
   min-width: 0;
   max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Long messages wrap onto more lines instead of being cut off with "…". */
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  line-height: 1.4;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -6527,7 +6615,21 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   transform: translateY(6px);
   pointer-events: none;
 }
-.topbar-status-slot .status { max-width: min(380px, 60vw); }
+/* JS marks the slot idle whenever there is nothing to show (setStatus), so an
+   empty pill can never linger — even mid-fade or with the ghost class on. */
+.topbar-status-slot.is-idle {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s;
+}
+.topbar-status-slot {
+  white-space: normal;
+  overflow: visible;
+  max-width: min(440px, calc(100vw - 32px));
+  border-radius: 16px;
+}
+.topbar-status-slot .status { max-width: min(400px, calc(100vw - 80px)); }
 
 /* Rail foot: Search and Theme read as rail rows (icon, label on expand). */
 .rail-btn {

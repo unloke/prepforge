@@ -182,6 +182,14 @@ export function createSettingsView({
     if (!list) return;
     const accounts = connectionAccounts();
     const linkBtn = document.getElementById("settings-link-lichess");
+    if (appState.signedIn === false) {
+      // Linking attaches Lichess to a PrepForge account: the button leads to
+      // sign-in (startLichessOAuth gates it) and says so up front.
+      if (linkBtn) linkBtn.textContent = "Sign in to link Lichess";
+      list.innerHTML =
+        '<p class="muted hint">Sign in first, then link a Lichess account to import your games and see yourself in Games and Scout.</p>';
+      return;
+    }
     if (linkBtn) linkBtn.textContent = accounts.length ? "Link another Lichess account" : "Link a Lichess account";
     if (!accounts.length) {
       list.innerHTML =

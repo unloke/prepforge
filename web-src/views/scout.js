@@ -134,6 +134,8 @@ export function createScoutView(deps) {
     scoutPickedUsernames = () => [],
     getLichessUsername = () => null,
     effectiveStockfishDepth = () => 16,
+    // Unified sign-in gate (app.js): false + sign-in modal for a guest.
+    requireSignIn = () => true,
   } = deps;
 
   let scoutModule = null;
@@ -2184,6 +2186,9 @@ export function createScoutView(deps) {
   }
 
   async function startScout() {
+    // Scout reads your repertoires and the account-scoped Explorer proxy; a
+    // guest gets the sign-in gate instead of a "not authenticated" banner.
+    if (!requireSignIn("Sign in to scout an opponent", "scout-start")) return;
     const initToken = initGuard.tryBegin();
     if (initToken == null) return;
 

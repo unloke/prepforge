@@ -70,6 +70,18 @@ import {
 } from "./command-palette.js";
 import { createAccountController } from "./controllers/account.js";
 import {
+  AUTH_REQUIRED_MESSAGE,
+  isAuthError,
+  isAuthRequiredMessage,
+  isPendingActionId,
+  isSessionAuthFailure,
+  restoredAuthHref,
+  stripSignedInParam,
+  takeAuthReturn,
+  takePendingAction,
+} from "./auth-gate.js";
+import { shouldClearStatusOnNavigate } from "./status-pill.js";
+import {
   openSourceComposer,
   normalizeSelection,
   selectionChips,
@@ -3107,11 +3119,27 @@ function engineLifecycleMark(name, origin = performance.now()) {
 }
 const STATUS_PROGRESS_SHOW_DELAY = 700;
 
+// True while a 401 is being turned into the sign-in modal, so the modal's own
+// fallback warning can't loop back through here.
+let routingAuthStatus = false;
+
 function setStatus(message, { severity = "info" } = {}) {
   const status = document.getElementById("app-status");
   if (!status) return;
   const closeBtn = document.getElementById("app-status-close");
   const text = String(message || "");
+  // A guest (or expired session) hit an account-only endpoint: the sign-in
+  // modal with an explanation replaces the backend's "not authenticated".
+  if (!routingAuthStatus && accountController && isAuthRequiredMessage(text)) {
+    routingAuthStatus = true;
+    try {
+      accountController.handleAuthRequired();
+    } finally {
+      routingAuthStatus = false;
+    }
+    return;
+  }
+  const slot = document.getElementById("topbar-status-slot");
   status.textContent = text;
   status.title = text;
   // The floating status pill only shows messages set after load (not the
@@ -3126,10 +3154,18 @@ function setStatus(message, { severity = "info" } = {}) {
   // steps never flash a pill in the corner.
   const inProgress = !isError && /(\.\.\.|…)$/.test(text);
   if (typeof window !== "undefined") window.clearTimeout(setStatus._showTimer);
-  status.classList.toggle("is-fresh", !!text && text !== "Ready" && !inProgress);
+  const showNow = !!text && text !== "Ready" && !inProgress;
+  status.classList.toggle("is-fresh", showNow);
+  if (slot) slot.classList.toggle("is-idle", !showNow);
+  // Error pills are dropped on navigation (clearStaleStatusOnNavigate); note
+  // when this one was raised so an error set by the navigation itself stays.
+  setStatus._errorAt = isError && text ? Date.now() : 0;
   if (inProgress && typeof window !== "undefined") {
     setStatus._showTimer = window.setTimeout(() => {
-      if (status.textContent === text) status.classList.add("is-fresh");
+      if (status.textContent === text) {
+        status.classList.add("is-fresh");
+        if (slot) slot.classList.remove("is-idle");
+      }
     }, STATUS_PROGRESS_SHOW_DELAY);
   }
   status.setAttribute("role", isError ? "alert" : "status");
@@ -3142,13 +3178,38 @@ function setStatus(message, { severity = "info" } = {}) {
   if (text && !isError) {
     setStatus._timer = window.setTimeout(() => {
       if (status.textContent !== text) return;
-      status.textContent = "";
-      status.title = "";
-      status.dataset.severity = "info";
-      status.dataset.state = "ready";
-      if (closeBtn) closeBtn.hidden = true;
+      clearStatus();
     }, normalizedSeverity === "warning" ? 6000 : 4000);
   }
+}
+
+// Empty the floating status pill and hide its slot (no leftover empty pill).
+function clearStatus() {
+  const status = document.getElementById("app-status");
+  if (typeof window !== "undefined") {
+    window.clearTimeout(setStatus._timer);
+    window.clearTimeout(setStatus._showTimer);
+  }
+  setStatus._errorAt = 0;
+  if (status) {
+    status.textContent = "";
+    status.title = "";
+    status.classList.remove("is-fresh");
+    status.dataset.severity = "info";
+    status.dataset.state = "ready";
+  }
+  document.getElementById("topbar-status-slot")?.classList.add("is-idle");
+  const closeBtn = document.getElementById("app-status-close");
+  if (closeBtn) closeBtn.hidden = true;
+}
+
+// An error belongs to the page it happened on: leaving that page drops it,
+// unless it was raised a moment ago by the very action that is navigating.
+const STATUS_ERROR_NAV_GRACE_MS = 400;
+function clearStaleStatusOnNavigate() {
+  const status = document.getElementById("app-status");
+  if (!status || status.dataset.state !== "error") return;
+  if (shouldClearStatusOnNavigate(setStatus._errorAt, Date.now(), STATUS_ERROR_NAV_GRACE_MS)) clearStatus();
 }
 
 // Keep the floating status pill out of the way: it rides above the job-toast
@@ -3239,13 +3300,18 @@ async function api(path, options = {}) {
   // recovery flows can read current_revision, and flatten its message for display.
   if (!response.ok) {
     const detail = payload.error || payload.detail;
-    const message =
-      typeof detail === "string"
+    // A session 401 reads as an explanation, not the backend's "not
+    // authenticated"; setStatus turns it into the sign-in modal.
+    const authRequired = isSessionAuthFailure(response.status, detail);
+    const message = authRequired
+      ? AUTH_REQUIRED_MESSAGE
+      : typeof detail === "string"
         ? detail
         : (detail && detail.message) || `Request failed (${response.status})`;
     const err = new Error(message);
     err.status = response.status; // lets callers (e.g. Build sync) tell 4xx from 5xx/network
     err.detail = detail;
+    if (authRequired) err.authRequired = true;
     if (response.headers && typeof response.headers.get === "function") {
       err.retryAfter = response.headers.get("retry-after");
     }
@@ -3689,6 +3755,9 @@ async function restoreWorkspaceLocation() {
 
 function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
   const next = section === "scout" ? "scout" : "games";
+  // Games ↔ Scout is a page change for the user even though both live in the
+  // replay view: an error from one must not follow them to the other.
+  if (appState.replaySection && appState.replaySection !== next) clearStaleStatusOnNavigate();
   appState.replaySection = next;
   document.querySelectorAll("[data-replay-panel]").forEach((panel) => {
     const active = panel.dataset.replayPanel === next;
@@ -3812,6 +3881,7 @@ function countBuildMovesToTrain(build) {
 }
 
 function switchView(name, { fromUrl = false } = {}) {
+  if (appState.currentView !== name) clearStaleStatusOnNavigate();
   appState.currentView = name;
   // Navigating is user activity; if the Lichess watch is running, switching to
   // Analyze (where a fresh game matters most) tightens the poll cadence briefly.
@@ -4427,14 +4497,17 @@ async function refreshAuthProviders() {
 // Owner-scoped actions (create/import a repertoire, teams, analysis) call server endpoints
 // that require an account and return 401 for guests. Guard them up front so a guest gets the
 // sign-in modal instead of filling out a form only to hit a cryptic 401 in the status bar.
-function requireSignIn(message = "Sign in (or create an account) to continue") {
-  return accountService().requireSignIn(message);
+// `reason` is shown inside the modal; `pendingActionId` (allowlisted in
+// auth-gate.js) resumes the action after sign-in — see resumePendingAction.
+function requireSignIn(reason = "Sign in (or create an account) to continue", pendingActionId = null) {
+  return accountService().requireSignIn(reason, pendingActionId);
 }
 
 // The sign-in / create-account modal. Google (when configured) is the primary path;
-// email/password is the always-available fallback.
-function openAuthModal(mode = "login") {
-  return accountService().openAuthModal(mode);
+// email/password is the always-available fallback. Options ({ notice,
+// pendingAction, resetToken }) pass straight through to the controller.
+function openAuthModal(mode = "login", options = {}) {
+  return accountService().openAuthModal(mode, options);
 }
 
 // Guest → the chip is a single Connect action (straight to OAuth). Signed in → the
@@ -4783,6 +4856,8 @@ function orientAnalysisFromPgn(text) {
 }
 
 async function fetchMyLichessGame(accountId = null) {
+  // Your games come from the Lichess account linked to your PrepForge account.
+  if (!requireSignIn("Sign in to load your latest Lichess game", "my-last-game")) return;
   if (!appState.lichessUsername && !lichessAccounts().length) {
     setStatus("Connect a Lichess account first");
     startLichessOAuth();
@@ -5071,10 +5146,7 @@ async function unshareRepertoireFromTeam(teamId, repertoireId, name) {
 }
 
 async function createTeam() {
-  if (!appState.signedIn) {
-    openAuthModal("login");
-    return;
-  }
+  if (!requireSignIn("Sign in to create a team", "new-team")) return;
   const result = await showInputModal({
     title: "New team",
     okLabel: "Create",
@@ -6058,11 +6130,11 @@ async function runAnalysis(options = {}) {
     setStatus("Another job is already running");
     return;
   }
-  if (!appState.signedIn) {
-    setStatus("Sign in (or create an account) to analyze and save games");
-    openAuthModal("login");
-    return;
-  }
+  // Whole-game review needs an account: the server imports the PGN and
+  // classifies + stores the browser's evals (/api/analyze/prepare and
+  // classify-save are owner-scoped). Live engine + coach on the board work
+  // signed out.
+  if (!requireSignIn("Sign in to run a full-game review — it's saved to your library", "analyze-game")) return;
   setStatus("Analyzing PGN");
   hideAnalysisResults();
   const runButton = document.getElementById("run-analysis");
@@ -6359,9 +6431,8 @@ async function runAnalysis(options = {}) {
       hideAnalysisHandoff();
       setStatus("Analysis stopped");
       jobToast.cancelJob(error.message || "Analysis stopped");
-    } else if (error && error.status === 401) {
-      setStatus("Sign in (or create an account) to analyze and save games");
-      openAuthModal("login");
+    } else if (isAuthError(error)) {
+      accountService().handleAuthRequired("Sign in to run a full-game review — it's saved to your library");
       jobToast.failJob("Sign in required");
     } else {
       setStatusError(error.message);
@@ -6481,9 +6552,8 @@ async function retryAnalyzeSave() {
     revealAnalysisResults();
     await updateAnalysisHandoff();
   } catch (error) {
-    if (error && error.status === 401) {
-      setStatus("Sign in to save — the analysis stays on this device", { severity: "warning" });
-      openAuthModal("login");
+    if (isAuthError(error)) {
+      accountService().handleAuthRequired("Sign in to save — the analysis stays on this device until you do");
     }
     showAnalysisRetrySave(checkpoint, error.message);
   } finally {
@@ -9139,6 +9209,12 @@ async function onBuildBoardMove(moveUci) {
   // Bootstrap: the very first move on an empty workspace still creates the
   // repertoire server-side (a modal), then we play onto its real root locally.
   if (!hadRep) {
+    // A guest's move would need a repertoire to live in: show the sign-in
+    // gate (with its reason) instead of a "Cancelled" for a choice never made.
+    if (!requireSignIn("Sign in to save moves to a repertoire", "new-repertoire")) {
+      rollback();
+      return;
+    }
     let created;
     try {
       created = await createRepertoirePrompt({
@@ -9210,7 +9286,7 @@ async function onBuildBoardMove(moveUci) {
 }
 
 async function createRepertoirePrompt({ title, defaultName, openAfter = true, defaultColor = "white" } = {}) {
-  if (!requireSignIn("Sign in (or create an account) to build a repertoire")) return null;
+  if (!requireSignIn("Sign in to create a repertoire", "new-repertoire")) return null;
   const result = await showInputModal({
     title: title || "New repertoire",
     okLabel: "Create",
@@ -9937,7 +10013,11 @@ async function loadTrainRepertoireOptions() {
           (r) =>
             `<option value="${escapeHtml(r.id)}">${escapeHtml(r.name)} (${escapeHtml(r.color)})</option>`,
         )
-      : ['<option value="" disabled selected>Build a repertoire first</option>'];
+      : [
+          appState.signedIn
+            ? '<option value="" disabled selected>Create a repertoire first</option>'
+            : '<option value="" disabled selected>Sign in to train your repertoires</option>',
+        ];
     select.innerHTML = options.join("");
     const valid = new Set(active.map((r) => r.id));
     select.value = valid.has(previous) ? previous : active.length ? active[0].id : "";
@@ -10241,6 +10321,14 @@ function setTrainBanner(state, title, sub) {
 async function startTraining(mode, options = {}) {
   mode = mode || appState.trainMode || "smart";
   appState.trainMode = mode;
+  // Training runs against your own repertoires and review schedule, so a
+  // guest gets the sign-in gate — not a "Nothing to train yet" that blames an
+  // empty repertoire and a raw "not authenticated".
+  if (!appState.signedIn) {
+    setTrainBanner("done", "Sign in to train", "Your repertoires and review schedule live in your account.");
+    requireSignIn("Sign in to start training", "train");
+    return;
+  }
   if (mode === "smart") {
     await startSmartTraining(options);
     return;
@@ -10257,8 +10345,8 @@ async function startTraining(mode, options = {}) {
   // user's own repertoires. Without one, prompt them to build first instead of
   // hitting a (now-removed) demo endpoint.
   if (!repertoireId) {
-    setStatus("Create a repertoire in Build first, then train it.");
-    setTrainBanner("done", "No repertoire to train", "Build a repertoire, then start the trainer.");
+    setStatus("Create a repertoire in Repertoire first, then train it.");
+    setTrainBanner("done", "No repertoire to train", "Create a repertoire, then start the trainer.");
     return;
   }
   // Same freshness rule as the smart queue: unsynced Build edits must land
@@ -10285,7 +10373,7 @@ async function startTraining(mode, options = {}) {
       await renderTraining(payload);
     } else {
       boards.train.setEngineArrow(null);
-      setTrainBanner("done", "No trainable lines here", "Add prepared moves in Build, then train.");
+      setTrainBanner("done", "No trainable lines here", "Add prepared moves in Repertoire, then train.");
       document.getElementById("train-board-label").textContent = "Nothing to train yet";
     }
     setStatus(
@@ -10895,8 +10983,7 @@ async function runFeelingLuckyClick() {
     }
   }
   if (!appState.accountUsername) {
-    setStatus("Sign in first, then try Feeling Lucky.");
-    openAuthModal();
+    openAuthModal("login", { notice: "Sign in first, then try Feeling Lucky." });
     return;
   }
   // No Lichess-link hard gate: the live Lichess game-feed endpoints are
@@ -11458,8 +11545,13 @@ async function startSmartTraining(options = {}) {
       fresh,
     });
   } catch (error) {
+    if (isAuthError(error)) {
+      setTrainBanner("done", "Sign in to train", "Your repertoires and review schedule live in your account.");
+      accountService().handleAuthRequired("Sign in to start training");
+      return;
+    }
     setStatusError(error.message);
-    setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Build, then train.");
+    setTrainBanner("done", "Couldn't build your queue", "Try Start again in a moment.");
     return;
   }
   appState.trainingRepertoireId = payload.repertoire_id;
@@ -11475,7 +11567,7 @@ async function startSmartTraining(options = {}) {
   const queue = mapped.queue;
   if (!queue.length) {
     setStatus("Nothing to train yet");
-    setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Build, then train.");
+    setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Repertoire, then train.");
     return;
   }
   appState.smart = {
@@ -12178,7 +12270,7 @@ async function ensureSettingsView() {
         void refreshLichessStatus();
       },
       signOut: () => accountController.signOut(),
-      openAuthModal: (mode) => accountController.openAuthModal(mode),
+      openAuthModal: (mode, options) => accountController.openAuthModal(mode, options),
       refreshAuthStatus: () => accountController.refreshAuthStatus(),
     });
     settingsView.bind();
@@ -12329,6 +12421,8 @@ function applyServerEngineGating() {
 // server.py for a future admin mode (gated by PREPFORGE_SERVER_ENGINE_ENABLED).
 
 async function runLichessCompare() {
+  // Games are checked against your repertoires (owner-scoped /api/lichess/compare).
+  if (!requireSignIn("Sign in to check your games against your repertoire", "games-check")) return;
   const selection = gamesSourceSelection();
   const usernames = resolveFetchUsernames({
     selection,
@@ -12499,6 +12593,15 @@ function openGamesComposer(anchor) {
 function paintGamesSource() {
   const tray = document.getElementById("games-source-chips");
   if (!tray) return;
+  // Signed out there is no "Self" (no linked accounts) and Check needs an
+  // account anyway: a selected-looking "Self · all linked" chip contradicted
+  // the "No Games sources selected" error. Offer the sign-in instead.
+  if (!appState.signedIn) {
+    tray.hidden = false;
+    tray.innerHTML =
+      '<button type="button" class="src-chip src-chip-signin" data-games-signin>Sign in to use your games</button>';
+    return;
+  }
   const selection = gamesSourceSelection();
   const { chips, selfState } = selectionChips(selection, lichessAccounts());
   const n = lichessAccounts().length;
@@ -12526,9 +12629,16 @@ function paintGamesSource() {
 
 function bindGamesSource() {
   document.getElementById("games-source-add")?.addEventListener("click", (event) => {
+    // Sources only matter for a Check, which needs an account — don't let a
+    // guest collect usernames that would silently ride into their account.
+    if (!requireSignIn("Sign in to check your games against your repertoire", "games-check")) return;
     openGamesComposer(event?.currentTarget || document.getElementById("games-source-add"));
   });
   document.getElementById("games-source-chips")?.addEventListener("click", (event) => {
+    if (event.target.closest("[data-games-signin]")) {
+      requireSignIn("Sign in to check your games against your repertoire", "games-check");
+      return;
+    }
     const removeExt = event.target.closest("[data-games-unpick-external]");
     if (removeExt) {
       const sel = gamesSourceSelection();
@@ -12629,6 +12739,7 @@ function paintScoutSource() {
 
 function bindScoutSource() {
   document.getElementById("scout-source-add")?.addEventListener("click", (event) => {
+    if (!requireSignIn("Sign in to scout an opponent", "scout-start")) return;
     openScoutComposer(event?.currentTarget || document.getElementById("scout-source-add"));
   });
   document.getElementById("scout-source-chips")?.addEventListener("click", (event) => {
@@ -12819,8 +12930,7 @@ async function maybeHandleJoinLink() {
   }
   if (!code) return false;
   if (!appState.signedIn) {
-    setStatus("Sign in (or create an account) to join the team");
-    openAuthModal("login");
+    openAuthModal("login", { notice: "Sign in (or create an account) to join the team" });
     return false; // ?join= stays in the URL; we resume after the sign-in reload
   }
   let preview;
@@ -12888,11 +12998,7 @@ async function forkReadableRepertoire() {
   const viaToken = !!appState.sharedToken;
   const viaTeam = appState.build && appState.build.writable === false;
   if (!viaToken && !viaTeam) return;
-  if (!appState.signedIn) {
-    setStatus("Sign in (or create an account) to copy this repertoire");
-    openAuthModal("login");
-    return;
-  }
+  if (!requireSignIn("Sign in (or create an account) to copy this repertoire")) return;
   try {
     const result = viaToken
       ? await postJson(
@@ -13259,6 +13365,7 @@ async function ensureScoutView() {
       effectiveMaiaRating,
       maiaAnalysisEnabled: () => maiaAnalysisEnabled(),
       scoutPickedUsernames: () => scoutPickedUsernames(),
+      requireSignIn,
       getLichessUsername: () => appState.lichessUsername,
       getLichessAccounts: () => lichessAccounts(),
       effectiveStockfishDepth,
@@ -13806,17 +13913,7 @@ function bindEvents() {
   document.getElementById("train-hint").addEventListener("click", trainHint);
   const statusClose = document.getElementById("app-status-close");
   if (statusClose) {
-    statusClose.addEventListener("click", () => {
-      const status = document.getElementById("app-status");
-      if (status) {
-        window.clearTimeout(setStatus._timer);
-        status.textContent = "";
-        status.title = "";
-        status.dataset.severity = "info";
-        status.dataset.state = "ready";
-      }
-      statusClose.hidden = true;
-    });
+    statusClose.addEventListener("click", () => clearStatus());
   }
   const blitzToggle = document.getElementById("train-blitz-toggle");
   if (blitzToggle) {
@@ -14028,6 +14125,13 @@ async function init() {
       .then((view) => view.renderSignedOut())
       .catch(() => { /* the Library chunk failing leaves the static shell */ });
   }
+  // Back from a sign-in (password reload or Google redirect): clean the URL,
+  // put the user back on the page they were on, and pick up the action the
+  // sign-in gate interrupted (after the workspace has loaded).
+  const signInReturn = prepareSignInReturn();
+  // The Games tray shows a sign-in chip for guests; repaint for the session.
+  paintGamesSource();
+  paintScoutSource();
   workspaceUrlReady = true;
   await restoreWorkspaceLocation();
   // A share URL opens the read-only viewer last, so it lands on top of whatever
@@ -14040,6 +14144,115 @@ async function init() {
   accountService().openResetFromUrl();
   handleBillingReturn();
   syncWorkspaceUrl();
+  await resumeAfterSignIn(signInReturn);
+}
+
+// Phase 1 of the sign-in return (before the route is restored). Strips
+// ?signed_in=1, restores the hash route / ?join= the Google redirect dropped,
+// and takes (read-and-remove) the allowlisted pending action.
+function prepareSignInReturn() {
+  try {
+    const cleaned = stripSignedInParam(window.location.href);
+    if (cleaned) window.history.replaceState(window.history.state, "", cleaned);
+  } catch (_) {
+    /* cosmetic */
+  }
+  if (!appState.signedIn) return { pending: null, returned: false };
+  const authReturn = takeAuthReturn();
+  const pending = takePendingAction();
+  try {
+    const restored = restoredAuthHref(window.location.href, {
+      route: (authReturn && authReturn.route) || (pending && pending.route) || null,
+      join: authReturn ? authReturn.join : null,
+    });
+    if (restored) window.history.replaceState(window.history.state, "", restored);
+  } catch (_) {
+    /* cosmetic */
+  }
+  return { pending, returned: !!authReturn };
+}
+
+// Resume handlers for the allowlisted pending actions (auth-gate.js). Each
+// re-opens the step the guest was stopped at; nothing here runs stored code.
+// Popups and file pickers need a fresh click, so those only lead the user to
+// the right control instead of firing it unprompted.
+const PENDING_ACTION_HANDLERS = {
+  "new-repertoire": () => createRepertoirePrompt({ title: "New repertoire" }),
+  "import-pgn": () => {
+    switchView("dashboard");
+    setStatus("Signed in — choose Import PGN to pick your file.");
+  },
+  "new-team": () => {
+    switchView("teams");
+    return createTeam();
+  },
+  "analyze-game": () => {
+    switchView("analyze");
+    setStatus("Signed in — press Analyze to run the full-game review.");
+  },
+  // #/train was restored and restoreWorkspaceLocation already started it.
+  train: () => {
+    if (appState.currentView !== "train") goToSmartTraining("Starting training…");
+  },
+  "games-check": () => {
+    setReplaySection("games", { syncUrl: false });
+    switchView("replay");
+    setStatus("Signed in — press Check to compare your games with your repertoire.");
+  },
+  "scout-start": () => {
+    setReplaySection("scout", { syncUrl: false });
+    switchView("replay");
+    setStatus("Signed in — add the player to scout, then press Start.");
+  },
+  "lichess-link": () => {
+    void openSettingsSection("set-connections").catch(() => {});
+    setStatus("Signed in — now link your Lichess account.");
+  },
+  "my-last-game": () => {
+    switchView("analyze");
+    if (lichessAccounts().length || appState.lichessUsername) return fetchMyLichessGame();
+    setStatus("Signed in — link a Lichess account (Settings → Account) to load your games.");
+    return undefined;
+  },
+};
+
+// Phase 2: the workspace is loaded — run the interrupted action and say
+// what came along from the guest session.
+async function resumeAfterSignIn({ pending, returned } = {}) {
+  if (!appState.signedIn) return;
+  if (returned) noteKeptGuestSources();
+  if (!pending || !isPendingActionId(pending.id)) return;
+  const handler = Object.prototype.hasOwnProperty.call(PENDING_ACTION_HANDLERS, pending.id)
+    ? PENDING_ACTION_HANDLERS[pending.id]
+    : null;
+  if (!handler) return;
+  try {
+    await handler();
+  } catch (error) {
+    setStatusError(error.message);
+  }
+}
+
+// Lichess usernames added as Games/Scout sources live in this browser, not
+// the account, so they carry over a sign-in. Say so once instead of letting
+// them appear unannounced in the account's Games and Scout.
+function noteKeptGuestSources() {
+  const names = new Set([
+    ...normalizeSelection(gamesSourceSelection()).external,
+    ...normalizeSelection(scoutSelection()).external,
+  ]);
+  if (!names.size) return;
+  const list = [...names].slice(0, 3).join(", ") + (names.size > 3 ? ` +${names.size - 3}` : "");
+  // A card, not the status pill: the resumed action may own the pill.
+  const toast = jobToast.notify({
+    id: "kept-guest-sources",
+    title: "Kept your Games/Scout sources",
+    message:
+      `${list} — added before you signed in — stay as Games/Scout sources. ` +
+      "Remove them from the source chips if you don't need them.",
+    actions: [{ label: "OK", primary: true, onClick: () => {} }],
+  });
+  if (toast && typeof toast._arm === "function") toast._arm(20000, () => {});
 }
 
 function handleBillingReturn() {
