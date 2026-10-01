@@ -355,6 +355,34 @@ def test_invite_unknown_code_404(client):
     assert joiner.post("/api/teams/join/nope", headers=csrf_headers(joiner)).status_code == 404
 
 
+def test_invite_status_reads_without_rotating(client):
+    _register(client, "owner@example.com")
+    team_id = _create_team(client)
+    assert client.get(f"/api/teams/{team_id}/invite").json() == {"exists": False}
+    code = _mint_invite(client, team_id)
+    status = client.get(f"/api/teams/{team_id}/invite")
+    assert status.status_code == 200, status.text
+    body = status.json()
+    assert body["exists"] is True
+    assert body["created_at"]
+    # The raw code is never re-displayed, and reading does not rotate the link.
+    assert "code" not in body and "url" not in body
+    joiner = _new_client()
+    _register(joiner, "joiner@example.com")
+    assert joiner.get(f"/api/teams/join/{code}").status_code == 200
+    client.delete(f"/api/teams/{team_id}/invite", headers=csrf_headers(client))
+    assert client.get(f"/api/teams/{team_id}/invite").json() == {"exists": False}
+
+
+def test_invite_status_requires_manager(client):
+    member_client = _new_client()
+    team_id, _member_id = _setup_owner_and_member(client, member_client)
+    assert member_client.get(f"/api/teams/{team_id}/invite").status_code == 403
+    outsider = _new_client()
+    _register(outsider, "outsider@example.com")
+    assert outsider.get(f"/api/teams/{team_id}/invite").status_code in (403, 404)
+
+
 def test_invite_requires_manager(client):
     member_client = _new_client()
     team_id, _member_id = _setup_owner_and_member(client, member_client)

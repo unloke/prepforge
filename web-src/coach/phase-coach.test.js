@@ -81,6 +81,23 @@ describe("buildPhaseCoach", () => {
     expect(coach.tip).not.toMatch(/Maia/i);
   });
 
+  it("flags the canned phase tip as generic so Train can drop it (UX P1-6)", () => {
+    // Mid-opening, Maia off: the old banner said "Develop your pieces, occupy the
+    // center, and get the king safe." for every card, f3 included.
+    const fen = "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
+    const coach = buildPhaseCoach({ fen, predictions: [], expectedUci: "f2f3", expectedSan: "f3" });
+    expect(coach.generic).toBe(true);
+    const specific = buildPhaseCoach({
+      fen,
+      predictions: [{ move_uci: "f2f3", probability: 0.4 }],
+      expectedUci: "f2f3",
+      expectedSan: "f3",
+    });
+    expect(specific.generic).toBe(false);
+    expect(specific.tip).toMatch(/f3/);
+    expect(specific.tip).not.toMatch(/develops toward the center/);
+  });
+
   it("treats null predictions the same as empty (unknown, no Maia numbers)", () => {
     const coach = buildPhaseCoach({ fen: START, predictions: null, expectedUci: "e2e4" });
     expect(coach.agreement).toBe("unknown");

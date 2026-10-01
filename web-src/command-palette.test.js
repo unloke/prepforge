@@ -36,6 +36,20 @@ describe("command palette filter", () => {
     ]);
   });
 
+  it("lists views in the same order as the rail", async () => {
+    const { readFileSync } = await import("node:fs");
+    const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
+    const rail = html.slice(html.indexOf('<nav class="rail"'), html.indexOf("</nav>"));
+    const railOrder = [...rail.matchAll(/class="tab nav-item[^"]*" data-view="([^"]+)"(?: data-replay-section="([^"]+)")?/g)]
+      .map((m) => (m[2] ? `${m[1]}:${m[2]}` : m[1]));
+    const paletteOrder = PALETTE_VIEWS.map((v) => (v.section ? `${v.id}:${v.section}` : v.id));
+    expect(railOrder.slice(0, 3)).toEqual(["dashboard", "build", "analyze"]);
+    expect(paletteOrder).toEqual(railOrder);
+    // Empty query keeps the rail order too.
+    const views = filterPaletteItems(items, "").filter((item) => item.kind === "view");
+    expect(views.map((item) => item.label).slice(0, 3)).toEqual(["Library", "Repertoire", "Analyze"]);
+  });
+
   it("empty query keeps views, repertoires, and the three actions", () => {
     const filtered = filterPaletteItems(items, "");
     expect(filtered).toHaveLength(items.length);

@@ -4,8 +4,8 @@ import { chromium } from 'playwright';
 //  - desktop: the 60px rail overlays to 204px on hover/keyboard focus and must
 //    never move main content or the board;
 //  - there is no desktop top bar: search and theme live in the rail foot, and
-//    status messages float as a bottom-right pill that stays a single
-//    ellipsised line and never shifts the chrome around it;
+//    status messages float as a bottom-right pill; long messages wrap fully
+//    without clipping or shifting the chrome around them;
 //  - mobile (390): bottom tab bar with 44px targets, no horizontal scroll.
 const DESKTOP_WIDTHS = [1024, 1180, 1200, 1440];
 const MOBILE_WIDTH = 390;
@@ -39,6 +39,8 @@ try {
         palette: rect('#open-palette'),
         account: rect('#theme-toggle'), status: rect('#app-status'),
         statusScrollWidth: status.scrollWidth,
+        statusScrollHeight: status.scrollHeight,
+        statusClientHeight: status.clientHeight,
         statusWhiteSpace: getComputedStyle(status).whiteSpace,
         statusOverflow: getComputedStyle(status).textOverflow,
       };
@@ -48,13 +50,18 @@ try {
       throw new Error(`${viewportWidth}px should have no top bar above the workspace: ${JSON.stringify(before.main)}`);
     }
     await page.locator('#app-status').evaluate((element) => {
-      element.textContent = 'A very long Build status message '.repeat(30);
+      element.textContent = 'A long repertoire status message '.repeat(10);
       element.classList.add('is-fresh');
+      element.dataset.state = 'ready';
+      element.dataset.severity = 'info';
+      document.querySelector('#app-status-close').hidden = true;
+      document.querySelector('#topbar-status-slot').classList.remove('is-idle');
     });
     const long = await snapshot();
     await page.locator('#app-status').evaluate((element) => {
       element.textContent = '';
       element.classList.remove('is-fresh');
+      document.querySelector('#topbar-status-slot').classList.add('is-idle');
     });
     const cleared = await snapshot();
     for (const key of ['main', 'palette', 'account']) {
@@ -65,10 +72,11 @@ try {
         }
       }
     }
-    if (long.status.height > 20 || long.status.width > 420
-        || long.statusScrollWidth <= long.status.width
-        || long.statusWhiteSpace !== 'nowrap' || long.statusOverflow !== 'ellipsis') {
-      throw new Error('Long status failed single-line ellipsis geometry');
+    if (long.status.height <= 20 || long.status.width > 420
+        || long.statusScrollWidth > Math.ceil(long.status.width)
+        || long.statusScrollHeight > long.statusClientHeight
+        || long.statusWhiteSpace !== 'normal' || long.statusOverflow !== 'clip') {
+      throw new Error(`Long status must wrap without clipping: ${JSON.stringify(long)}`);
     }
     // The pill floats in the bottom-right corner, clear of the rail.
     if (long.status.x < long.rail.x + long.rail.width + 8

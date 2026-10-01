@@ -19,6 +19,7 @@ import {
   renderMiniBoardHtml as renderScoutMiniBoardHtml,
   renderScoutColorTabsHtml,
   renderScoutProfile,
+  scoutAnalyzedLabel,
   restoreScoutExpanded,
   ensureScoutLineSelection,
   scoutDistRowHtml,
@@ -134,6 +135,8 @@ export function createScoutView(deps) {
     scoutPickedUsernames = () => [],
     getLichessUsername = () => null,
     effectiveStockfishDepth = () => 16,
+    // Unified sign-in gate (app.js): false + sign-in modal for a guest.
+    requireSignIn = () => true,
   } = deps;
 
   let scoutModule = null;
@@ -216,8 +219,15 @@ export function createScoutView(deps) {
   }
 
   function updateLiveCounter() {
+    const fetched = scoutState?.games?.length || 0;
     const el = document.getElementById("scout-live-count");
-    if (el) el.textContent = String(scoutState?.games?.length || 0);
+    if (el) el.textContent = String(fetched);
+    // The report re-renders in batches, so its "N games analyzed" lags the live
+    // fetch counter; say "N of M analyzed" instead of two disagreeing totals.
+    const analyzedEl = document.querySelector?.(".scout-profile-games[data-analyzed]");
+    if (analyzedEl) {
+      analyzedEl.textContent = scoutAnalyzedLabel(Number(analyzedEl.dataset.analyzed), fetched);
+    }
   }
 
   function engineProgressLabel(p) {
@@ -418,6 +428,7 @@ export function createScoutView(deps) {
         scoutState.activeSpeed,
         escapeHtml,
         {
+          fetchedTotal: scoutState.games?.length || 0,
           colorRecHtml: buildColorRecommendationBanner(
             colorRecommendation(scoutState.games),
             escapeHtml,
@@ -2184,6 +2195,9 @@ export function createScoutView(deps) {
   }
 
   async function startScout() {
+    // Scout reads your repertoires and the account-scoped Explorer proxy; a
+    // guest gets the sign-in gate instead of a "not authenticated" banner.
+    if (!requireSignIn("Sign in to scout an opponent", "scout-start")) return;
     const initToken = initGuard.tryBegin();
     if (initToken == null) return;
 

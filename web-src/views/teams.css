@@ -208,7 +208,27 @@
   text-align: center;
 }
 .team-empty h3 { margin: 0; }
-.team-empty p { margin: 0; }
+.team-empty p { margin: 0; max-width: 42ch; }
+.teams .hint[hidden],
+.teams .team-help[hidden] { display: none; }
+.teams .team-help { margin: 0; padding: 0 12px 6px; }
+
+/* ---- Invite dialog ------------------------------------------------------ */
+
+/* Copy is the primary action; Revoke is a quiet, secondary danger action set
+   apart on the left so it isn't the most prominent button. */
+.invite-modal .modal-footer { flex-wrap: wrap; }
+.invite-modal .btn.danger-quiet {
+  margin-right: auto;
+  background: transparent;
+  border-color: transparent;
+  color: var(--danger);
+}
+.invite-modal .btn.danger-quiet:hover {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  color: var(--danger-strong);
+}
 
 /* ---- Responsive --------------------------------------------------------- */
 

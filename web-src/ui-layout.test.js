@@ -55,6 +55,31 @@ describe("workspace chrome layout", () => {
     expect(css).toMatch(/#analyze-sidebar\s*\{[^}]*max-height:\s*var\(--study-h\)[^}]*overflow:\s*hidden/);
   });
 
+  it("keeps board + panel side by side down to 860px, then stacks with a capped board", () => {
+    // Narrow laptops / split screens (~980×614) keep two columns: the board
+    // yields width so the panel never drops below its floor.
+    expect(ruleBody(".study")).toMatch(/--study-panel-min:\s*360px/);
+    expect(ruleBody(".study")).toMatch(/calc\(100vw - 60px - 44px - var\(--study-panel-min\)\)/);
+    expect(css).toMatch(/max-width:\s*1100px\)\s*\{\s*\.study\s*\{\s*--board-share:\s*0\.56/);
+    // Each media block body, keyed by its query.
+    const blocks = [...css.matchAll(/@media \(max-width: (\d+)px\) \{([\s\S]*?)\n\}/g)].map((m) => [Number(m[1]), m[2]]);
+    const stackers = blocks.filter(([, body]) => /\.study\s*\{[^}]*grid-template-columns:\s*1fr/.test(body));
+    expect(stackers.map(([w]) => w)).toEqual([860]);
+    const stacked = stackers[0][1];
+    expect(stacked).toMatch(/\.board-stack\s*\{[^}]*max-width:\s*min\(55vh,\s*560px\)/);
+    // Train / Build panels give up their inner scroll only once stacked.
+    const trainStack = blocks.find(([, body]) => body.includes("#view-train .train-sidebar { max-height: none"));
+    expect(trainStack[0]).toBe(860);
+    const buildStack = blocks.find(([, body]) => body.includes("#view-build .sidebar { max-height: none"));
+    expect(buildStack[0]).toBe(860);
+    // Games: ledger + detail side by side to 860px, then one column.
+    expect(replayCss).toMatch(/max-width:\s*1020px\)\s*\{\s*\.triage\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+320px/);
+    expect(replayCss).toMatch(/max-width:\s*860px\)\s*\{\s*\.triage\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
+    expect(css).toMatch(/max-width:\s*860px\)\s*\{\s*\.review,\s*\.games-panel,\s*\.replay-results\s*\{\s*height:\s*auto/);
+    // Nested lists hand the wheel back to their scrolling parent.
+    expect(analyzeCss).not.toMatch(/\.moves-grid\s*\{[^}]*overscroll-behavior:\s*contain/);
+  });
+
   it("keeps the Train coach in the sidebar with the board starting at the top", () => {
     const trainStart = html.indexOf('id="view-train"');
     const train = html.slice(trainStart);
@@ -100,7 +125,13 @@ describe("workspace chrome layout", () => {
     expect(html.indexOf('id="app-status-close"')).toBeGreaterThan(slot);
     expect(css).toMatch(/\.topbar-status-slot\s*\{[^}]*position:\s*fixed/s);
     expect(css).toMatch(/\.topbar-status-slot:has\(\.status:not\(\.is-fresh\)\)/);
-    expect(app).toContain('status.classList.toggle("is-fresh", !!text && text !== "Ready" && !inProgress)');
+    expect(app).toContain('const showNow = !!text && text !== "Ready" && !inProgress;');
+    expect(app).toContain('status.classList.toggle("is-fresh", showNow)');
+    // The slot itself is marked idle when empty, so no empty pill can linger.
+    expect(app).toContain('slot.classList.toggle("is-idle", !showNow)');
+    expect(css).toMatch(/\.topbar-status-slot\.is-idle\s*\{[^}]*visibility:\s*hidden/s);
+    // Long messages wrap instead of being cut off.
+    expect(css).toMatch(/\.topbar-status-slot \.status:not\(\[hidden\]\)\s*\{[^}]*white-space:\s*normal/s);
     // In-progress ("...") messages only surface if still current after a beat.
     expect(app).toContain("STATUS_PROGRESS_SHOW_DELAY");
     expect(app).toContain('function setStatus(message, { severity = "info" } = {})');

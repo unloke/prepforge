@@ -1,5 +1,21 @@
 // Train tab rendering (lazy-loaded from app.js).
 
+// Mirrors services/scheduler.py DEFAULT_NEW_CAP.
+export const SMART_NEW_CAP = 4;
+
+// Health counts moves, not cards. The scheduler merges consecutive review
+// moves into cards and may add polish, so only name the available moves here.
+export function sessionPreviewText(health) {
+  if (!health) return "";
+  const reviews = (Number(health.weak) || 0) + (Number(health.due) || 0);
+  const fresh = Number(health.untrained) || 0;
+  const parts = [];
+  if (reviews) parts.push(`${reviews} review move${reviews === 1 ? "" : "s"} ready`);
+  if (fresh) parts.push(`${fresh} new available (up to ${Math.min(SMART_NEW_CAP, fresh)} this session)`);
+  if (!parts.length) return health.trainable > 0 ? "Nothing due — polish available" : "No moves to train yet";
+  return parts.join(" · ");
+}
+
 export function createTrainView({
   appState,
   boards,
@@ -40,9 +56,10 @@ export function createTrainView({
     document.getElementById("train-stat-correct").textContent = s.correct;
     document.getElementById("train-stat-mistakes").textContent = s.mistakes;
     const total = s.correct + s.mistakes;
+    // Labelled, not a bare "67%": first-try accuracy for this session.
     document.getElementById("train-accuracy").textContent = total
-      ? `${Math.round((s.correct / total) * 100)}%`
-      : "—";
+      ? `${Math.round((s.correct / total) * 100)}% first try`
+      : "";
     const trail = document.getElementById("train-line-trail");
     if (!s.history.length) {
       trail.innerHTML = '<span class="trail-empty">No moves yet</span>';
@@ -90,9 +107,14 @@ export function createTrainView({
       return;
     }
     wrap.hidden = false;
-    document.getElementById("train-queue-bar").innerHTML = kinds
-      .map((k) => `<i class="k-${k}" style="flex:${counts[k]}"></i>`)
-      .join("");
+    // One progress bar only (cards done, above). The queue's make-up is told by the
+    // labelled chips; a second, always-full composition bar read as an unlabeled
+    // duplicate progress bar (UX 2026-09-30 P2-10).
+    const bar = document.getElementById("train-queue-bar");
+    if (bar) {
+      bar.hidden = true;
+      bar.innerHTML = "";
+    }
     const cluster = smart.phaseCluster;
     const phaseChip =
       cluster && cluster.total

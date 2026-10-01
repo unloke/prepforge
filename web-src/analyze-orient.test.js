@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pgnPlayers, selfSide } from "./analyze-orient.js";
+import { isReviewedMove, pgnPlayers, selfSide } from "./analyze-orient.js";
 
 describe("selfSide", () => {
   it("picks the side that matches a linked identity, case-insensitively", () => {
@@ -27,5 +27,18 @@ describe("pgnPlayers", () => {
 
   it("returns empty names for bare movetext", () => {
     expect(pgnPlayers("1. e4 e5 *")).toEqual({ white: "", black: "" });
+  });
+});
+
+describe("isReviewedMove (Review my moves)", () => {
+  it("grades only the user's own mainline moves on a game they played as Black", () => {
+    // UX walkthrough P1-6: the user played Black; 14. a3 was the opponent's move.
+    expect(isReviewedMove({ mover: "white", selfSide: "black", mainline: true })).toBe(false);
+    expect(isReviewedMove({ mover: "black", selfSide: "black", mainline: true })).toBe(true);
+  });
+
+  it("reviews every move when Self is unknown or the move is a free variation", () => {
+    expect(isReviewedMove({ mover: "white", selfSide: null, mainline: true })).toBe(true);
+    expect(isReviewedMove({ mover: "white", selfSide: "black", mainline: false })).toBe(true);
   });
 });

@@ -11,11 +11,14 @@ import {
 import { createCsrfTokenSource, headersWithCsrf, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove, localGameOver } from "./chess-local.js";
 import { applyTheme } from "./theme.js";
+import { bindRailCollapseOnNavigate } from "./rail-nav.js";
 import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
 import { squareInDirection } from "./board-navigation.js";
-import { pgnPlayers, selfSide } from "./analyze-orient.js";
+import { isReviewedMove, pgnPlayers, selfSide } from "./analyze-orient.js";
+import { buildGameSummary, hasClassifiedMoves } from "./coach/game-summary.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { classifySyncError, describeSyncError } from "./sync-errors.js";
+import { apiErrorMessage } from "./api-errors.js";
 import { orderPendingBuildAdds } from "./build-queue.js";
 import {
   acquireFlushLock,
@@ -68,6 +71,18 @@ import {
   renderPaletteItems,
 } from "./command-palette.js";
 import { createAccountController } from "./controllers/account.js";
+import {
+  AUTH_REQUIRED_MESSAGE,
+  isAuthError,
+  isAuthRequiredMessage,
+  isPendingActionId,
+  isSessionAuthFailure,
+  restoredAuthHref,
+  stripSignedInParam,
+  takeAuthReturn,
+  takePendingAction,
+} from "./auth-gate.js";
+import { shouldClearStatusOnNavigate } from "./status-pill.js";
 import {
   openSourceComposer,
   normalizeSelection,
@@ -416,6 +431,7 @@ const appState = {
   explainContext: { fen: START_FEN, lastUci: null, lastSan: null },
   evalChartPoints: [],
   build: null,
+  buildLoading: false,
   buildNodeById: new Map(),
   buildCurrentNodeId: null,
   buildBranchChoiceId: null,
@@ -650,7 +666,11 @@ class Toast {
     this.hovering = false;
     this.pointerActive = false;
     this.el = this._build(title || "Working...", message, actions);
-    stack.container.appendChild(this.el);
+    // `dock`: an in-page host (e.g. the Analyze panel) for a job whose card would
+    // otherwise float over the very result it is producing.
+    const dock = opts.dock && opts.dock.isConnected ? opts.dock : null;
+    if (dock) this.el.classList.add("is-docked");
+    (dock || stack.container).appendChild(this.el);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => this.el.classList.add("is-visible"));
     });
@@ -1069,7 +1089,8 @@ const jobToast = new ToastStack();
 const UNDO_TOAST_MS = 5000;
 const pendingUndoCommits = new Set();
 
-function showUndoToast({ title, message, onUndo, onCommit }) {
+function showUndoToast({ title, message, onUndo, onCommit, host = null }) {
+  if (host) return showInlineUndo(host, { title, message, onUndo, onCommit });
   let settled = false;
   let toast = null;
   const commit = () => {
@@ -1107,6 +1128,68 @@ function showUndoToast({ title, message, onUndo, onCommit }) {
   // Hovering the card pauses the countdown (Toast's pointer gating), so the
   // window never closes while the user is reaching for Undo.
   toast._arm(UNDO_TOAST_MS, commit);
+  return commit;
+}
+
+// The same undo window rendered inside a view (`host`) instead of the toast
+// stack — Build's move delete uses it so the card sits with the move tree
+// rather than over the Explorer. One window per host: a newer delete commits
+// the older one first. Hover pauses the countdown, like the toast.
+function showInlineUndo(host, { title, message, onUndo, onCommit }) {
+  if (host._undoCommit) host._undoCommit();
+  let settled = false;
+  let timer = null;
+  let remaining = UNDO_TOAST_MS;
+  let startedAt = 0;
+  const close = () => {
+    window.clearTimeout(timer);
+    if (host._undoCommit === commit) {
+      host._undoCommit = null;
+      host.hidden = true;
+      host.innerHTML = "";
+    }
+  };
+  const commit = () => {
+    if (settled) return;
+    settled = true;
+    pendingUndoCommits.delete(commit);
+    close();
+    try {
+      onCommit();
+    } catch (_) {
+      /* best-effort */
+    }
+  };
+  const arm = () => {
+    startedAt = Date.now();
+    timer = window.setTimeout(commit, remaining);
+  };
+  pendingUndoCommits.add(commit);
+  host._undoCommit = commit;
+  host.innerHTML =
+    `<span class="inline-undo-text"><b>${escapeHtml(title)}</b> ${escapeHtml(message || "")}</span>` +
+    '<button type="button" class="btn sm" data-inline-undo>Undo</button>';
+  host.hidden = false;
+  host.onpointerenter = () => {
+    if (settled) return;
+    window.clearTimeout(timer);
+    remaining = Math.max(800, remaining - (Date.now() - startedAt));
+  };
+  host.onpointerleave = () => {
+    if (!settled) arm();
+  };
+  host.querySelector("[data-inline-undo]").addEventListener("click", () => {
+    if (settled) return;
+    settled = true;
+    pendingUndoCommits.delete(commit);
+    close();
+    try {
+      onUndo();
+    } catch (_) {
+      /* best-effort */
+    }
+  });
+  arm();
   return commit;
 }
 
@@ -1216,6 +1299,7 @@ class EngineWidget {
   /** FEN of whichever board the active tab is showing. */
   currentFen() {
     if (activeViewName() === "build") {
+      if (buildPreviewActive()) return buildPreview.fen;
       const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
       if (node && node.fen) return node.fen;
       // No repertoire open: analyse what the Build board shows, never the
@@ -1835,6 +1919,10 @@ class PositionCoach {
     const ctx = this.ctx;
     const prevFen = ctx.prevFen;
     const token = ++this.token;
+    const mover = fen.split(" ")[1] === "b" ? "white" : "black";
+    // "Review my moves" on a game the user played: grade only their own mainline
+    // moves and leave the plain instant read on the opponent's.
+    if (!isReviewedMove({ mover, selfSide: analysisSelfSide(), mainline: Number.isInteger(ctx.ply) })) return;
     try {
       const c = await (_coachReady || preloadCoach());
       this._ensureEngine();
@@ -1842,8 +1930,6 @@ class PositionCoach {
       const before = await this._eval(prevFen, token);
       if (token !== this.token || fen !== this.fen) return;
       if (!before || !before.lines.length) return;
-
-      const mover = fen.split(" ")[1] === "b" ? "white" : "black";
 
       // A move that ends the game (checkmate/stalemate) leaves no position for the
       // engine to search — _eval(fen) comes back empty and we'd silently produce no
@@ -2181,7 +2267,12 @@ function renderInstantCoach() {
   } else {
     paintPhaseChip(null);
     paintMaiaCoachLine(null);
-    setCoachProse("Make a move and I'll tell you what I think.", "info");
+    // A finished whole-game analysis on the start position: summarise the game instead
+    // of the empty-board invitation.
+    const summary = hasClassifiedMoves(appState.analysis)
+      ? buildGameSummary({ moves: appState.analysis.moves, selfSide: analysisSelfSide() })
+      : "";
+    setCoachProse(summary || "Make a move and I'll tell you what I think.", "info");
   }
 }
 
@@ -2395,7 +2486,7 @@ async function updateBookline() {
     });
     el.innerHTML =
       `${escapeHtml(text)} ` +
-      `<button class="coach-bookaction" type="button" data-act="build">Add it in Build<span class="cba-arrow" aria-hidden="true">›</span></button>`;
+      `<button class="coach-bookaction" type="button" data-act="build">Add it to repertoire<span class="cba-arrow" aria-hidden="true">›</span></button>`;
     el.hidden = false;
     el.querySelector('[data-act="build"]').addEventListener("click", () => {
       // F-06: Analyze→Repertoire handoff — the novelty line + anchor position
@@ -3043,11 +3134,27 @@ function engineLifecycleMark(name, origin = performance.now()) {
 }
 const STATUS_PROGRESS_SHOW_DELAY = 700;
 
+// True while a 401 is being turned into the sign-in modal, so the modal's own
+// fallback warning can't loop back through here.
+let routingAuthStatus = false;
+
 function setStatus(message, { severity = "info" } = {}) {
   const status = document.getElementById("app-status");
   if (!status) return;
   const closeBtn = document.getElementById("app-status-close");
   const text = String(message || "");
+  // A guest (or expired session) hit an account-only endpoint: the sign-in
+  // modal with an explanation replaces the backend's "not authenticated".
+  if (!routingAuthStatus && accountController && isAuthRequiredMessage(text)) {
+    routingAuthStatus = true;
+    try {
+      accountController.handleAuthRequired();
+    } finally {
+      routingAuthStatus = false;
+    }
+    return;
+  }
+  const slot = document.getElementById("topbar-status-slot");
   status.textContent = text;
   status.title = text;
   // The floating status pill only shows messages set after load (not the
@@ -3062,10 +3169,18 @@ function setStatus(message, { severity = "info" } = {}) {
   // steps never flash a pill in the corner.
   const inProgress = !isError && /(\.\.\.|…)$/.test(text);
   if (typeof window !== "undefined") window.clearTimeout(setStatus._showTimer);
-  status.classList.toggle("is-fresh", !!text && text !== "Ready" && !inProgress);
+  const showNow = !!text && text !== "Ready" && !inProgress;
+  status.classList.toggle("is-fresh", showNow);
+  if (slot) slot.classList.toggle("is-idle", !showNow);
+  // Error pills are dropped on navigation (clearStaleStatusOnNavigate); note
+  // when this one was raised so an error set by the navigation itself stays.
+  setStatus._errorAt = isError && text ? Date.now() : 0;
   if (inProgress && typeof window !== "undefined") {
     setStatus._showTimer = window.setTimeout(() => {
-      if (status.textContent === text) status.classList.add("is-fresh");
+      if (status.textContent === text) {
+        status.classList.add("is-fresh");
+        if (slot) slot.classList.remove("is-idle");
+      }
     }, STATUS_PROGRESS_SHOW_DELAY);
   }
   status.setAttribute("role", isError ? "alert" : "status");
@@ -3078,13 +3193,38 @@ function setStatus(message, { severity = "info" } = {}) {
   if (text && !isError) {
     setStatus._timer = window.setTimeout(() => {
       if (status.textContent !== text) return;
-      status.textContent = "";
-      status.title = "";
-      status.dataset.severity = "info";
-      status.dataset.state = "ready";
-      if (closeBtn) closeBtn.hidden = true;
+      clearStatus();
     }, normalizedSeverity === "warning" ? 6000 : 4000);
   }
+}
+
+// Empty the floating status pill and hide its slot (no leftover empty pill).
+function clearStatus() {
+  const status = document.getElementById("app-status");
+  if (typeof window !== "undefined") {
+    window.clearTimeout(setStatus._timer);
+    window.clearTimeout(setStatus._showTimer);
+  }
+  setStatus._errorAt = 0;
+  if (status) {
+    status.textContent = "";
+    status.title = "";
+    status.classList.remove("is-fresh");
+    status.dataset.severity = "info";
+    status.dataset.state = "ready";
+  }
+  document.getElementById("topbar-status-slot")?.classList.add("is-idle");
+  const closeBtn = document.getElementById("app-status-close");
+  if (closeBtn) closeBtn.hidden = true;
+}
+
+// An error belongs to the page it happened on: leaving that page drops it,
+// unless it was raised a moment ago by the very action that is navigating.
+const STATUS_ERROR_NAV_GRACE_MS = 400;
+function clearStaleStatusOnNavigate() {
+  const status = document.getElementById("app-status");
+  if (!status || status.dataset.state !== "error") return;
+  if (shouldClearStatusOnNavigate(setStatus._errorAt, Date.now(), STATUS_ERROR_NAV_GRACE_MS)) clearStatus();
 }
 
 // Keep the floating status pill out of the way: it rides above the job-toast
@@ -3175,13 +3315,16 @@ async function api(path, options = {}) {
   // recovery flows can read current_revision, and flatten its message for display.
   if (!response.ok) {
     const detail = payload.error || payload.detail;
-    const message =
-      typeof detail === "string"
-        ? detail
-        : (detail && detail.message) || `Request failed (${response.status})`;
+    // A session 401 reads as an explanation, not the backend's "not
+    // authenticated"; setStatus turns it into the sign-in modal.
+    const authRequired = isSessionAuthFailure(response.status, detail);
+    const message = authRequired
+      ? AUTH_REQUIRED_MESSAGE
+      : apiErrorMessage(response.status, detail);
     const err = new Error(message);
     err.status = response.status; // lets callers (e.g. Build sync) tell 4xx from 5xx/network
     err.detail = detail;
+    if (authRequired) err.authRequired = true;
     if (response.headers && typeof response.headers.get === "function") {
       err.retryAfter = response.headers.get("retry-after");
     }
@@ -3625,6 +3768,9 @@ async function restoreWorkspaceLocation() {
 
 function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
   const next = section === "scout" ? "scout" : "games";
+  // Games ↔ Scout is a page change for the user even though both live in the
+  // replay view: an error from one must not follow them to the other.
+  if (appState.replaySection && appState.replaySection !== next) clearStaleStatusOnNavigate();
   appState.replaySection = next;
   document.querySelectorAll("[data-replay-panel]").forEach((panel) => {
     const active = panel.dataset.replayPanel === next;
@@ -3687,8 +3833,11 @@ function syncAnalyzeHead() {
   const title = document.getElementById("analysis-game-title");
   const meta = document.getElementById("analysis-game-meta");
   if (!title || !meta) return;
-  const tags = analyzeHeaderTags(document.getElementById("pgn-input")?.value || "");
   const analysis = appState.analysis;
+  // Only name a game the board actually shows: the prefilled demo PGN sitting unloaded in
+  // the source box must not title an empty board "PrepForge vs Demo".
+  const loaded = !!(analysis && ((analysis.moves && analysis.moves.length) || analysis.initialFen));
+  const tags = loaded ? analyzeHeaderTags(document.getElementById("pgn-input")?.value || "") : {};
   const known = (v) => (v && !/^[?*.\s]+$/.test(v) ? v : "");
   const white = known(tags.White) || known(analysis?.white);
   const black = known(tags.Black) || known(analysis?.black);
@@ -3716,16 +3865,39 @@ function syncViewHeads() {
   const build = appState.build;
   if (!build || isBuildReadOnly()) {
     stats.textContent = "";
+    stats.title = "";
   } else {
     const played = build.nodes.filter((n) => n.depth > 0);
     const parents = new Set(build.nodes.map((n) => n.parent_id));
     const lines = played.filter((n) => !parents.has(n.id)).length;
-    stats.textContent = `${lines} line${lines === 1 ? "" : "s"} · ${played.length} move${played.length === 1 ? "" : "s"}`;
+    // "to train" is the Library's count too: your own enabled moves — the
+    // ones Train drills (opponent replies are context, not cards).
+    const train = countBuildMovesToTrain(build);
+    stats.textContent =
+      `${lines} line${lines === 1 ? "" : "s"} · ${played.length} move${played.length === 1 ? "" : "s"}` +
+      ` · ${train} to train`;
+    stats.title = `${played.length} moves in the tree; ${train} of them are your moves, which Train drills. Opponent replies aren't drilled.`;
   }
   stats.hidden = !stats.textContent;
 }
 
+// Own-side moves on the enabled tree (a disabled node hides its subtree) —
+// mirrors the server's trainable count shown on the Library row.
+function countBuildMovesToTrain(build) {
+  const byId = new Map(build.nodes.map((n) => [n.id, n]));
+  const enabledMemo = new Map();
+  const reachable = (node) => {
+    if (!node) return true;
+    if (enabledMemo.has(node.id)) return enabledMemo.get(node.id);
+    const ok = node.is_enabled !== false && reachable(byId.get(node.parent_id));
+    enabledMemo.set(node.id, ok);
+    return ok;
+  };
+  return build.nodes.filter((n) => n.depth > 0 && n.move_side === build.color && reachable(n)).length;
+}
+
 function switchView(name, { fromUrl = false } = {}) {
+  if (appState.currentView !== name) clearStaleStatusOnNavigate();
   appState.currentView = name;
   // Navigating is user activity; if the Lichess watch is running, switching to
   // Analyze (where a fresh game matters most) tightens the poll cadence briefly.
@@ -4277,7 +4449,7 @@ async function promptImportRepertoireFromPgn(pgnText, { defaultName = "Imported 
     if (switchToBuild) switchView("build");
     setStatus(
       switchToBuild
-        ? `Repertoire “${payload.name}” created — edit it in Build`
+        ? `Repertoire “${payload.name}” created — edit it in Repertoire`
         : `Imported ${payload.name}`,
     );
     return payload;
@@ -4341,14 +4513,17 @@ async function refreshAuthProviders() {
 // Owner-scoped actions (create/import a repertoire, teams, analysis) call server endpoints
 // that require an account and return 401 for guests. Guard them up front so a guest gets the
 // sign-in modal instead of filling out a form only to hit a cryptic 401 in the status bar.
-function requireSignIn(message = "Sign in (or create an account) to continue") {
-  return accountService().requireSignIn(message);
+// `reason` is shown inside the modal; `pendingActionId` (allowlisted in
+// auth-gate.js) resumes the action after sign-in — see resumePendingAction.
+function requireSignIn(reason = "Sign in (or create an account) to continue", pendingActionId = null, pendingData = null) {
+  return accountService().requireSignIn(reason, pendingActionId, pendingData);
 }
 
 // The sign-in / create-account modal. Google (when configured) is the primary path;
-// email/password is the always-available fallback.
-function openAuthModal(mode = "login") {
-  return accountService().openAuthModal(mode);
+// email/password is the always-available fallback. Options ({ notice,
+// pendingAction, resetToken }) pass straight through to the controller.
+function openAuthModal(mode = "login", options = {}) {
+  return accountService().openAuthModal(mode, options);
 }
 
 // Guest → the chip is a single Connect action (straight to OAuth). Signed in → the
@@ -4683,6 +4858,17 @@ function orientAnalysisForSelf(white, black, extraNames = []) {
   if (side) boards.analysis.setOrientation(side);
 }
 
+// Which side of the Analyze game is the user ("white" | "black" | null): the PGN box's
+// White/Black tags, else the recalled analysis, matched against linked Lichess names.
+function analysisSelfSide() {
+  const tags = analyzeHeaderTags(document.getElementById("pgn-input")?.value || "");
+  const analysis = appState.analysis || {};
+  return selfSide(tags.White || analysis.white, tags.Black || analysis.black, [
+    appState.lichessUsername,
+    ...lichessAccounts().map((a) => a.username),
+  ]);
+}
+
 // Same, for a PGN the user pasted or dropped: read its White/Black headers.
 // Only re-orients when the pair of names changes, so the debounced re-parse on
 // every keystroke never undoes a manual flip.
@@ -4697,6 +4883,8 @@ function orientAnalysisFromPgn(text) {
 }
 
 async function fetchMyLichessGame(accountId = null) {
+  // Your games come from the Lichess account linked to your PrepForge account.
+  if (!requireSignIn("Sign in to load your latest Lichess game", "my-last-game")) return;
   if (!appState.lichessUsername && !lichessAccounts().length) {
     setStatus("Connect a Lichess account first");
     startLichessOAuth();
@@ -4716,15 +4904,15 @@ async function fetchMyLichessGame(accountId = null) {
     return;
   }
   document.getElementById("pgn-input").value = latest.pgn || "";
-  const drawer = document.querySelector("#view-analyze .drawer");
-  if (drawer) drawer.open = true;
-  // Show the game in the move list right away (steppable before Analyze).
-  void loadPgnIntoAnalyze(latest.pgn || "", { goToEnd: false, quiet: true }).catch(() => {});
+  // Show the game in the move list right away, then analyze it in the same step —
+  // "My last game" means "review my last game", not "paste it and wait for me".
+  await loadPgnIntoAnalyze(latest.pgn || "", { goToEnd: false, quiet: true }).catch(() => {});
   orientAnalysisForSelf(latest.white, latest.black, [latest.source_account]);
   lastOrientedPgnPlayers = `${latest.white || ""}\n${latest.black || ""}`;
   if (latest.lichess_id) markLichessSeen(latest.lichess_id);
   const source = latest.source_account ? ` · from ${latest.source_account}` : "";
-  setStatus(`Loaded ${latest.white || "?"} vs ${latest.black || "?"}${source} - press Analyze`);
+  setStatus(`Loaded ${latest.white || "?"} vs ${latest.black || "?"}${source} - analyzing`);
+  await runAnalysis();
 }
 
 // Analyze "History": list previously analyzed games; click to recall a saved
@@ -4826,6 +5014,11 @@ async function ensureTeamsView() {
       unshareRepertoireFromTeam,
       copySharedRepertoire,
       teamRoleLabel,
+      postJson,
+      setStatus,
+      setStatusError,
+      activateModal,
+      showConfirmModal,
     });
   }
   return teamsView;
@@ -4875,6 +5068,8 @@ async function openTeamDetail(teamId) {
     addBtn.hidden = !canManage;
     addBtn.onclick = () => addTeamMember(teamId);
   }
+  const membersHint = document.getElementById("team-members-hint");
+  if (membersHint) membersHint.hidden = !canManage;
   const inviteBtn = document.getElementById("team-detail-invite");
   if (inviteBtn) {
     inviteBtn.hidden = !canManage;
@@ -4985,10 +5180,7 @@ async function unshareRepertoireFromTeam(teamId, repertoireId, name) {
 }
 
 async function createTeam() {
-  if (!appState.signedIn) {
-    openAuthModal("login");
-    return;
-  }
+  if (!requireSignIn("Sign in to create a team", "new-team")) return;
   const result = await showInputModal({
     title: "New team",
     okLabel: "Create",
@@ -5141,96 +5333,16 @@ async function removeTeamMember(teamId, userId, label, isSelf) {
   }
 }
 
-// The team's shareable join link. The raw code is returned ONLY at mint time (it's
-// hashed at rest), so opening this rotates the link and shows the fresh one; any
-// previously shared link stops working.
+// The team's shareable join link. Opening the dialog reads the link's status and
+// never rotates it; minting a new code is an explicit, confirmed action inside
+// the dialog (views/team-invite.js).
 async function teamInvite(teamId) {
-  let payload;
   try {
-    payload = await postJson(`/api/teams/${encodeURIComponent(teamId)}/invite`, {});
+    await (await ensureTeamsView()).openInviteDialog(teamId);
   } catch (error) {
     setStatusError(error.message);
-    return;
-  }
-  const url = `${window.location.origin}${payload.url}`;
-  try {
-    await navigator.clipboard.writeText(url);
-    setStatus("Invite link copied");
-  } catch (_) {
-    /* clipboard blocked — the modal still shows the link to copy by hand */
-  }
-  const choice = await showInviteModal({ url });
-  if (choice === "revoke") {
-    try {
-      await api(`/api/teams/${encodeURIComponent(teamId)}/invite`, { method: "DELETE" });
-      setStatus("Invite link revoked");
-    } catch (error) {
-      setStatusError(error.message);
-    }
   }
   await openTeamDetail(teamId);
-}
-
-function showInviteModal({ url }) {
-  return new Promise((resolve) => {
-    const overlay = document.createElement("div");
-    overlay.className = "modal-overlay";
-    overlay.innerHTML = `
-      <div class="modal" role="dialog" aria-modal="true">
-        <div class="modal-title">Team invite link</div>
-        <div class="modal-body">
-          <p class="modal-note muted">Anyone signed in who opens this link joins the team as a member. For security it's shown only once and replaces any previous link — copy it now. Revoke to disable joining by link.</p>
-          <label class="modal-field">
-            <span>Invite link</span>
-            <input type="text" value="${escapeHtml(url)}" data-invite-url readonly />
-          </label>
-        </div>
-        <div class="modal-footer">
-          <button class="btn danger" data-action="revoke" type="button">Revoke</button>
-          <button class="btn ghost" data-action="copy" type="button">Copy</button>
-          <button class="btn primary" data-action="done" type="button">Done</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-    activateModal(overlay);
-    const input = overlay.querySelector("[data-invite-url]");
-    if (input) {
-      input.focus();
-      if (input.select) input.select();
-    }
-    const cleanup = () => {
-      document.removeEventListener("keydown", onKey);
-      overlay.remove();
-    };
-    const close = (value) => {
-      cleanup();
-      resolve(value);
-    };
-    const onKey = (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        close(null);
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    overlay.querySelector('[data-action="copy"]').addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(url);
-        setStatus("Invite link copied");
-      } catch (_) {
-        if (input) {
-          input.focus();
-          if (input.select) input.select();
-        }
-      }
-    });
-    overlay.querySelector('[data-action="revoke"]').addEventListener("click", () => close("revoke"));
-    overlay.querySelector('[data-action="done"]').addEventListener("click", () => close("done"));
-    overlay.addEventListener("click", (event) => {
-      if (event.target === overlay) close(null);
-    });
-  });
 }
 
 // In-team "add a repertoire": share one of the caller's OWN repertoires with this
@@ -5304,8 +5416,11 @@ async function loadSharedRepertoires() {
   try {
     const payload = await api("/api/repertoires");
     const shared = payload.shared || [];
+    const sharedHint = document.getElementById("teams-shared-hint");
+    if (sharedHint) sharedHint.hidden = !shared.length;
     if (!shared.length) {
-      container.innerHTML = '<div class="empty-state">Nothing shared with you yet.</div>';
+      container.innerHTML =
+        '<div class="empty-state">Nothing shared with you yet. Repertoires a teammate shares with your team show up here, read-only.</div>';
       return;
     }
     container.innerHTML = shared
@@ -5439,18 +5554,20 @@ function escapeHtml(text) {
   }[ch]));
 }
 
-function showInputModal({ title, fields, okLabel = "OK" }) {
+// `advanced: true` fields fold into a closed "Advanced" section; `onInput`
+// (values, overlay) runs on open and on every change — e.g. to repaint a live
+// note (a `note` field is addressable as [data-note="<name>"]).
+function showInputModal({ title, fields, okLabel = "OK", onInput = null }) {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
     overlay.className = "modal-overlay";
-    const inputsHtml = fields
-      .map((field) => {
+    const fieldHtml = (field) => {
         const safeName = escapeHtml(field.name);
         const safeLabel = escapeHtml(field.label || field.name);
         const safeValue = escapeHtml(field.default == null ? "" : String(field.default));
         if (field.type === "note") {
           // Read-only informational line (no input, never collected).
-          return `<p class="modal-note muted">${safeLabel}</p>`;
+          return `<p class="modal-note muted" data-note="${safeName}">${safeLabel}</p>`;
         }
         if (field.type === "textarea") {
           return `
@@ -5487,8 +5604,14 @@ function showInputModal({ title, fields, okLabel = "OK" }) {
             <input name="${safeName}" type="${inputType}" value="${safeValue}"${numericAttrs} data-field />
           </label>
         `;
-      })
-      .join("");
+    };
+    const basic = fields.filter((field) => !field.advanced).map(fieldHtml).join("");
+    const advanced = fields.filter((field) => field.advanced).map(fieldHtml).join("");
+    const inputsHtml =
+      basic +
+      (advanced
+        ? `<details class="modal-advanced"><summary>Advanced</summary>${advanced}</details>`
+        : "");
     overlay.innerHTML = `
       <div class="modal" role="dialog" aria-modal="true">
         <div class="modal-title">${escapeHtml(title)}</div>
@@ -5537,6 +5660,18 @@ function showInputModal({ title, fields, okLabel = "OK" }) {
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay) close(null);
     });
+    if (typeof onInput === "function") {
+      const fire = () => {
+        try {
+          onInput(collect(), overlay);
+        } catch (_) {
+          /* a live hint must never break the form */
+        }
+      };
+      overlay.addEventListener("input", fire);
+      overlay.addEventListener("change", fire);
+      fire();
+    }
   });
 }
 
@@ -5600,30 +5735,88 @@ function isBuildReadOnly() {
   );
 }
 
+let buildLoadSeq = 0;
 async function editRepertoire(repertoireId, nodeId = null) {
   // Switching repertoires replaces the local Build tree — flush pending moves of
   // the current one first so they aren't dropped. An optional `nodeId` opens the
   // builder at that position (Analyze's "Open in Build" deep link).
+  // The Repertoire view opens NOW with a skeleton; the tree fills in when the
+  // load lands (it used to sit on the previous page for seconds).
+  const loadSeq = ++buildLoadSeq;
+  setBuildLoading(true);
   try {
     await hardFlushBuild();
   } catch (error) {
+    if (loadSeq !== buildLoadSeq) return;
+    setBuildLoading(false);
     setStatusError(error.message);
     return;
   }
+  if (loadSeq !== buildLoadSeq) return;
   appState.sharedToken = null;
-  setStatus("Loading repertoire");
   try {
     const payload = await api(
       `/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`
     );
+    if (loadSeq !== buildLoadSeq) return;
     const target = nodeId && payload.nodes.some((n) => n.id === nodeId) ? nodeId : null;
     await hydrateBuild(payload, target || payload.selected_node_id);
+    if (loadSeq !== buildLoadSeq) return;
+    setBuildLoading(false, { restore: false });
     appState.trainingRepertoireId = payload.repertoire_id;
-    switchView("build");
+    // The rail remains usable during loading; a response must not pull the
+    // user back after they have navigated to another page.
     syncWorkspaceUrl();
     updateBuildReadOnlyUi(payload);
   } catch (error) {
+    if (loadSeq !== buildLoadSeq) return;
+    setBuildLoading(false);
     setStatusError(error.message);
+  }
+}
+
+// Repertoire loading state: switch to the view (without touching the URL —
+// the caller syncs it once the tree is in) and show a skeleton in place of the
+// previous tree. Turning it off restores whatever is actually loaded.
+function setBuildLoading(on, { restore = true } = {}) {
+  appState.buildLoading = on;
+  const view = document.getElementById("view-build");
+  if (view) {
+    view.inert = on;
+    view.classList.toggle("is-loading", on);
+    view.setAttribute("aria-busy", String(on));
+  }
+  if (!on) {
+    if (!restore) return;
+    const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+    if (node && boards.build) {
+      const info = localBoardInfo(node.fen);
+      boards.build.setPosition({ fen: node.fen, legalMoves: info.legal_moves, lastMove: node.uci });
+    }
+    renderBuildRepHeader();
+    renderBuilderTree();
+    syncViewHeads();
+    return;
+  }
+  takeBuildPreview();
+  if (boards.build) {
+    boards.build.setPosition({ fen: boards.build.fen, legalMoves: [], lastMove: null });
+  }
+  if (appState.currentView !== "build") switchView("build", { fromUrl: true });
+  const empty = document.getElementById("build-empty");
+  if (empty) empty.hidden = true;
+  const nameEl = document.getElementById("build-rep-name");
+  if (nameEl) nameEl.innerHTML = '<span class="skeleton-text">Loading repertoire…</span>';
+  const stats = document.getElementById("build-rep-stats");
+  if (stats) stats.hidden = true;
+  const meta = document.getElementById("build-tree-meta");
+  if (meta) meta.innerHTML = "";
+  const tree = document.getElementById("builder-tree");
+  if (tree) {
+    tree.innerHTML =
+      '<div class="tree-skeleton" role="status" aria-label="Loading repertoire">' +
+      [72, 56, 84, 48, 64, 40].map((w) => `<span style="width:${w}%"></span>`).join("") +
+      "</div>";
   }
 }
 
@@ -5705,7 +5898,7 @@ function openRepertoireContextMenu(event, repertoireId, isActive) {
   const safeId = escapeHtml(repertoireId);
   const items = [
     ["train", "Start training"],
-    ["edit", "Edit in builder"],
+    ["edit", "Open in Repertoire"],
     ["rename", "Rename..."],
     ["share-link", "Share link..."],
     ["share-team", "Share with team..."],
@@ -5913,13 +6106,21 @@ async function runAnalysis(options = {}) {
     setStatus("Another job is already running");
     return;
   }
-  if (!appState.signedIn) {
-    setStatus("Sign in (or create an account) to analyze and save games");
-    openAuthModal("login");
-    return;
-  }
+  // Whole-game review needs an account: the server imports the PGN and
+  // classifies + stores the browser's evals (/api/analyze/prepare and
+  // classify-save are owner-scoped). Live engine + coach on the board work
+  // signed out.
+  if (!requireSignIn("Sign in to run a full-game review — it's saved to your library", "analyze-game", {
+    pgn, mode: importMode, selectIndex,
+  })) return;
   setStatus("Analyzing PGN");
-  hideAnalysisResults();
+  // Keep the game on screen while the engine works: (re)load the source into the move
+  // list instead of hiding it behind the "Play on the board" placeholder. Only a source
+  // that won't parse here (e.g. a multi-game paste) falls back to hiding the old list.
+  appState.analysisSourcePgn = null;
+  hideAnalysisHandoff();
+  const listed = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true }).catch(() => false);
+  if (!listed) hideAnalysisResults();
   const runButton = document.getElementById("run-analysis");
   runButton.disabled = true;
   // Lifecycle origin for the timing marks below (click → stockfish/maia starts).
@@ -5981,6 +6182,9 @@ async function runAnalysis(options = {}) {
       id: jobId,
       title: "Analyzing game",
       tab: "analyze",
+      // Docked in the Analyze panel (above the eval card) rather than floating
+      // bottom-right, where it covered the right half of the eval graph.
+      dock: document.getElementById("analysis-job-dock"),
       total: positions.length,
       onCancel: () => {
         cancelled = true;
@@ -6207,6 +6411,9 @@ async function runAnalysis(options = {}) {
     });
     appState.analysisSourcePgn = pgn;
     revealAnalysisResults();
+    // The source has done its job — fold it away so the report gets the room.
+    const pgnDrawer = document.getElementById("pgn-drawer");
+    if (pgnDrawer) pgnDrawer.open = false;
     await updateAnalysisHandoff();
   } catch (error) {
     if (error && error.cancelled) {
@@ -6214,9 +6421,8 @@ async function runAnalysis(options = {}) {
       hideAnalysisHandoff();
       setStatus("Analysis stopped");
       jobToast.cancelJob(error.message || "Analysis stopped");
-    } else if (error && error.status === 401) {
-      setStatus("Sign in (or create an account) to analyze and save games");
-      openAuthModal("login");
+    } else if (isAuthError(error)) {
+      accountService().handleAuthRequired("Sign in to run a full-game review — it's saved to your library");
       jobToast.failJob("Sign in required");
     } else {
       setStatusError(error.message);
@@ -6336,9 +6542,8 @@ async function retryAnalyzeSave() {
     revealAnalysisResults();
     await updateAnalysisHandoff();
   } catch (error) {
-    if (error && error.status === 401) {
-      setStatus("Sign in to save — the analysis stays on this device", { severity: "warning" });
-      openAuthModal("login");
+    if (isAuthError(error)) {
+      accountService().handleAuthRequired("Sign in to save — the analysis stays on this device until you do");
     }
     showAnalysisRetrySave(checkpoint, error.message);
   } finally {
@@ -6393,7 +6598,7 @@ async function onCreateRepertoireFromGameClick() {
   try {
     const payload = await importRepertoireFromPgnText(pgn, { name, color });
     switchView("build");
-    setStatus(`Repertoire “${payload.name}” created — edit it in Build`, { severity: "success" });
+    setStatus(`Repertoire “${payload.name}” created — edit it in Repertoire`, { severity: "success" });
     appState.analysisSourcePgn = null;
     hideAnalysisHandoff();
   } catch (error) {
@@ -6796,6 +7001,14 @@ function highlightCurrentMove() {
   updateEvalChartCursor();
 }
 
+// Board label for an off-mainline move. "· variation" only means something when there is
+// a mainline to vary from — the first moves played on an empty board are just the game.
+function analysisVariationLabel(moveNumber, side, san) {
+  const base = `${moveNumber}${side === "black" ? "..." : "."} ${san}`;
+  const hasMainline = !!(appState.analysis && appState.analysis.moves && appState.analysis.moves.length);
+  return hasMainline ? `${base} · variation` : base;
+}
+
 async function selectAnalysisNode(nodeId) {
   const tree = appState.analysisTree;
   const node = tree ? tree.byId.get(nodeId) : null;
@@ -6816,9 +7029,11 @@ async function selectAnalysisNode(nodeId) {
     lastMove: node.uci,
   });
   boards.analysis.setMoveBadge(null, null, "");
-  document.getElementById("analysis-board-label").textContent = `${node.moveNumber}${
-    node.side === "black" ? "..." : "."
-  } ${node.san} · variation`;
+  document.getElementById("analysis-board-label").textContent = analysisVariationLabel(
+    node.moveNumber,
+    node.side,
+    node.san,
+  );
   highlightCurrentMove();
   refreshAnalysisExplain({ fen, lastUci: node.uci, lastSan: node.san, prevFen: node.fenBefore });
   if (engineWidget) engineWidget.onBoardChanged();
@@ -6868,9 +7083,11 @@ async function onAnalysisBoardMove(moveUci, fen) {
       lastMove: moveUci,
     });
     boards.analysis.setMoveBadge(null, null, "");
-    document.getElementById("analysis-board-label").textContent = `${moveNumber}${
-      side === "black" ? "..." : "."
-    } ${payload.move.san} · variation`;
+    document.getElementById("analysis-board-label").textContent = analysisVariationLabel(
+      moveNumber,
+      side,
+      payload.move.san,
+    );
     highlightCurrentMove();
     refreshAnalysisExplain({
       fen: payload.board.fen,
@@ -6996,28 +7213,43 @@ function renderBuildRepHeader() {
   void ensureBuildView().then((view) => view.renderBuildRepHeader()).catch(() => {});
 }
 
-// The ⋯ menu in the Build sidebar header: every repertoire-scoped action in one
-// place (the board bar keeps only position navigation, the tools row only
-// position-scoped work). Reuses the shared context-menu element.
+// The ⋯ menu in the Repertoire header: the same repertoire actions as the
+// Library row's ⋯ (minus "Open in Repertoire" — you are here), plus the
+// page-only Export PGN and New repertoire. Reuses the shared context-menu
+// element and the Library's action handler so the two menus cannot drift.
+function buildMenuItems({ hasRep, isActive }) {
+  return [
+    ...(hasRep
+      ? [
+          ["train", "Start training"],
+          ["build-rename", "Rename..."],
+          ["build-export-pgn", "Export PGN"],
+          ["share-link", "Share link..."],
+          ["share-team", "Share with team..."],
+          ["toggle-active", isActive ? "Disable" : "Enable"],
+          ["delete", "Delete..."],
+        ]
+      : []),
+    ["build-new-rep", "New repertoire..."],
+  ];
+}
+
 function openBuildMenu(event) {
   event.preventDefault();
   event.stopPropagation();
   const menu = document.getElementById("repertoire-context-menu");
   if (!menu) return;
   const hasRep = !!appState.build && !isBuildReadOnly();
-  const items = [
-    ...(hasRep
-      ? [
-          ["build-rename", "Rename..."],
-          ["build-export-pgn", "Export PGN"],
-        ]
-      : []),
-    ["build-new-rep", "New repertoire..."],
-  ];
+  const repId = hasRep ? appState.build.repertoire_id : null;
+  const meta = hasRep
+    ? (appState.repertoireList || []).find((r) => String(r.id) === String(repId))
+    : null;
+  const isActive = !meta || meta.is_active !== false;
+  const items = buildMenuItems({ hasRep, isActive });
   menu.innerHTML = items
     .map(
       ([action, label]) =>
-        `<button type="button" data-action="${escapeHtml(action)}">${escapeHtml(label)}</button>`
+        `<button type="button" data-action="${escapeHtml(action)}"${action === "build-new-rep" && hasRep ? ' class="menu-sep-before"' : ""}>${escapeHtml(label)}</button>`
     )
     .join("");
   menu.hidden = false;
@@ -7033,6 +7265,8 @@ function openBuildMenu(event) {
       else if (action === "build-export-pgn") await exportBuild("pgn");
       else if (action === "build-new-rep") {
         await createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" });
+      } else if (repId) {
+        await handleRepertoireContextAction(action, repId, isActive);
       }
     });
   });
@@ -7102,6 +7336,8 @@ async function skipTrainingLine() {
 
 async function selectBuildNode(nodeId) {
   if (!appState.buildNodeById.has(nodeId)) return;
+  // Landing on a real repertoire node ends any Explorer preview.
+  buildPreview = null;
   appState.buildCurrentNodeId = nodeId;
   // Landing on a position resets the fork pick to the mainline continuation.
   appState.buildBranchChoiceId = null;
@@ -7119,6 +7355,7 @@ async function selectBuildNode(nodeId) {
       : `${node.move_number}${node.move_side === "black" ? "..." : "."} ${node.san}`;
   document.getElementById("build-board-label").textContent = label;
   renderBuilderTree();
+  paintBuildPreview();
   if (engineWidget) engineWidget.onBoardChanged();
   scheduleExplorerRefresh();
 }
@@ -7135,6 +7372,9 @@ let explorerClient = null;
 let explorerDb = "masters";
 let explorerTimer = null;
 let explorerSeq = 0;
+// Explorer move being previewed on the Build board (never persisted): see
+// onExplorerRowClick. { parentId, uci, san, fen } or null.
+let buildPreview = null;
 
 function explorerDrawerOpen() {
   const panel = document.getElementById("explorer-drawer");
@@ -7622,6 +7862,7 @@ function setBuildInspector(tool) {
   }
   paintInspectorScope();
   if (tab === "explorer") refreshExplorerPanel();
+  if (tab === "coverage") syncCoverageMaiaGate();
   void explorerEvalEngine.sync();
 }
 
@@ -7777,41 +8018,195 @@ function renderExplorerRows(stats, fen) {
       .filter((n) => n.parent_id === current && n.depth > 0)
       .map((n) => n.uci),
   );
-  const pct = (n) => (n >= 14 ? `${n}%` : "");
+  const inRepNorm = new Set([...inRep].map(normalizeUci));
+  const canAdd = !isBuildReadOnly();
+  const maxTotal = Math.max(1, ...stats.moves.map((m) => m.total));
   rows.innerHTML =
-    '<div class="explorer-head" aria-hidden="true"><span>Move</span><span class="explorer-eval">Eval</span><span>Games</span><span>White / Draw / Black</span></div>' +
+    '<div class="explorer-head" aria-hidden="true"><span>Move</span><span class="explorer-eval">Eval</span><span>Games</span><span>White / Draw / Black</span><span></span></div>' +
     stats.moves
-    .map(
-      (m) => `
-    <button type="button" class="explorer-row" data-uci="${escapeHtml(m.uci)}" title="Add ${escapeHtml(m.san)} to the repertoire">
-      <span class="explorer-san">${escapeHtml(m.san)}${inRep.has(m.uci) ? '<span class="explorer-inrep" title="In your repertoire">&#9679;</span>' : ""}</span>
+      .map((m) => {
+        const has = inRep.has(m.uci) || inRepNorm.has(normalizeUci(m.uci));
+        const games = explorerModule.formatGames(m.total);
+        const bar = explorerBarGeometry(m, maxTotal);
+        const add = !canAdd
+          ? "<span></span>"
+          : has
+            ? '<span class="explorer-add is-in" title="Already in your repertoire" aria-hidden="true">&#10003;</span>'
+            : `<button type="button" class="explorer-add" data-explorer-add aria-label="Add ${escapeHtml(m.san)} to repertoire" title="Add ${escapeHtml(m.san)} to repertoire">+</button>`;
+        const seg = (cls, label, value) =>
+          `<span class="${cls}" style="width:${value}%" title="${label} ${value}%">${bar.labels ? explorerSegLabel(value, bar.width) : ""}</span>`;
+        return `
+    <div class="explorer-row${bar.thin ? " is-thin" : ""}" data-uci="${escapeHtml(m.uci)}">
+      <button type="button" class="explorer-pick" data-explorer-pick aria-label="Preview ${escapeHtml(m.san)} on the board (${games} games, White ${m.whitePct}%, draw ${m.drawPct}%, Black ${m.blackPct}%)" title="Preview ${escapeHtml(m.san)} on the board">
+        <span class="explorer-san">${escapeHtml(m.san)}${has ? '<span class="explorer-inrep" title="In your repertoire">&#9679;</span>' : ""}</span>
+      </button>
       <span class="explorer-eval">&hellip;</span>
-      <span class="explorer-games">${explorerModule.formatGames(m.total)}</span>
-      <span class="explorer-bar" aria-label="White ${m.whitePct}% / draw ${m.drawPct}% / Black ${m.blackPct}%">
-        <span class="explorer-bar-w" style="width:${m.whitePct}%">${pct(m.whitePct)}</span><span class="explorer-bar-d" style="width:${m.drawPct}%">${pct(m.drawPct)}</span><span class="explorer-bar-b" style="width:${m.blackPct}%">${pct(m.blackPct)}</span>
-      </span>
-    </button>`,
-    )
-    .join("");
-  rows.querySelectorAll(".explorer-row").forEach((btn) => {
-    btn.addEventListener("click", () => onExplorerRowClick(rows, btn.dataset.uci));
+      <span class="explorer-games"${bar.thin ? ` title="Only ${m.total} game${m.total === 1 ? "" : "s"} — too few to trust the split"` : ""}>${games}</span>
+      <span class="explorer-bar-track"><span class="explorer-bar" style="width:${bar.width}%" aria-hidden="true">${seg("explorer-bar-w", "White wins", m.whitePct)}${seg("explorer-bar-d", "Draws", m.drawPct)}${seg("explorer-bar-b", "Black wins", m.blackPct)}</span></span>
+      ${add}
+    </div>`;
+      })
+      .join("");
+  rows.querySelectorAll(".explorer-row").forEach((row) => {
+    const uci = row.dataset.uci;
+    // The whole row previews (segment tooltips stay hoverable); the Move
+    // button inside is the focusable handle and its click bubbles here.
+    row.addEventListener("click", (event) => {
+      if (event.target.closest("[data-explorer-add]")) return;
+      void onExplorerRowClick(rows, uci).catch(() => {});
+      row.querySelector("[data-explorer-pick]")?.blur();
+    });
+    row.querySelector("[data-explorer-add]")?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      void onExplorerRowAdd(rows, uci).catch(() => {});
+    });
   });
+  paintBuildPreview();
   explorerEvalEngine.repaint();
   void explorerEvalEngine.sync();
 }
 
-// Rows belong to the position they were fetched for. A second click (a double
-// click, or a click while the next position's stats load) must not replay the
-// old position's move from the new one: that was the "Illegal move" toast. The
-// first click consumes the rows; they come back live only if the move didn't
-// land (cancelled or rejected) and the board is still on their position.
+// Explorer bar geometry. The bar's LENGTH says how much data stands behind the
+// split (log-scaled against the most-played row, so a 3-game row no longer
+// draws as long as a 1.3M-game one); thin samples are also dimmed.
+const EXPLORER_THIN_SAMPLE = 10;
+function explorerBarGeometry(m, maxTotal) {
+  const total = Math.max(0, Number(m.total) || 0);
+  const scale = Math.log10(total + 1) / Math.log10(Math.max(1, maxTotal) + 1);
+  const width = Math.max(8, Math.min(100, Math.round(scale * 100)));
+  return { width, thin: total < EXPLORER_THIN_SAMPLE, labels: true };
+}
+
+// A percent label only where the segment is wide enough to hold it; narrower
+// segments keep the figure in their tooltip.
+function explorerSegLabel(pct, barWidth) {
+  return (pct * barWidth) / 100 >= 14 ? `${pct}%` : "";
+}
+
+// Explorer rows: one click PREVIEWS a move (the board shows it, nothing is
+// saved); adding it to the repertoire is the row's explicit "+" button, or the
+// "Add to repertoire" action on the preview strip. A move already in the
+// repertoire just navigates to it.
+
+function buildChildForUci(parentId, uci) {
+  const want = normalizeUci(uci);
+  return (appState.build ? appState.build.nodes : []).find(
+    (n) => n.parent_id === parentId && n.depth > 0 && (n.uci === uci || normalizeUci(n.uci) === want),
+  );
+}
+
+function buildPreviewActive() {
+  return !!buildPreview && buildPreview.parentId === appState.buildCurrentNodeId;
+}
+
 async function onExplorerRowClick(rows, uci) {
+  const rowsFen = rows.dataset.fen;
+  const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  const currentFen = node ? node.fen : boards.build && boards.build.fen;
+  if (!node || !rowsFen || !sameFenPosition(rowsFen, currentFen)) return;
+  // Clicking the row already previewed toggles back to the position.
+  if (buildPreview && buildPreview.parentId === node.id && buildPreview.uci === uci) {
+    await exitBuildPreview();
+    return;
+  }
+  const existing = buildChildForUci(node.id, uci);
+  if (existing) {
+    await selectBuildNode(existing.id);
+    return;
+  }
+  await previewBuildMove(node, uci);
+}
+
+async function previewBuildMove(parent, uci) {
+  let after;
+  try {
+    after = await boardAfterMove(parent.fen, uci);
+  } catch (_) {
+    try {
+      after = await boardAfterMove(parent.fen, normalizeUci(uci));
+    } catch (_) {
+      setStatus("That move isn't legal here");
+      return;
+    }
+  }
+  if (appState.buildCurrentNodeId !== parent.id || !boards.build) return; // navigated meanwhile
+  buildPreview = { parentId: parent.id, uci, san: after.move.san, fen: after.board.fen };
+  // Read-only board: a preview is a look, not an edit — no move can be played
+  // from it until the user adds the move or steps back.
+  boards.build.setPosition({ fen: after.board.fen, legalMoves: [], lastMove: after.move.uci || uci });
+  boards.build.setAnnotations([], []);
+  boards.build.setBranchArrows([]);
+  paintBuildPreview();
+  if (engineWidget) engineWidget.onBoardChanged();
+}
+
+async function exitBuildPreview() {
+  if (!buildPreview) return;
+  const parentId = buildPreview.parentId;
+  buildPreview = null;
+  if (appState.buildNodeById.has(parentId)) await selectBuildNode(parentId);
+  else paintBuildPreview();
+}
+
+async function addBuildPreview() {
+  if (!buildPreviewActive()) return;
+  const rows = document.getElementById("explorer-rows");
+  const { uci } = buildPreview;
+  if (rows) await onExplorerRowAdd(rows, uci);
+}
+
+function buildPreviewMoveLabel(parent, san) {
+  const parts = String((parent && parent.fen) || "").split(" ");
+  const number = Number(parts[5]) || 1;
+  return `${number}${parts[1] === "b" ? "…" : "."} ${san}`;
+}
+
+// The strip above the Explorer rows (visible in every layout, unlike the board
+// on narrow screens) plus the board label and the row highlight.
+function paintBuildPreview() {
+  const strip = document.getElementById("explorer-preview");
+  const rows = document.getElementById("explorer-rows");
+  const active = buildPreviewActive();
+  if (!active && buildPreview) buildPreview = null; // navigated away from its parent
+  rows?.querySelectorAll(".explorer-row").forEach((row) => {
+    row.classList.toggle("is-previewing", active && row.dataset.uci === buildPreview.uci);
+  });
+  if (!strip) return;
+  strip.hidden = !active;
+  if (!active) {
+    strip.innerHTML = "";
+    return;
+  }
+  const parent = appState.buildNodeById.get(buildPreview.parentId);
+  const label = buildPreviewMoveLabel(parent, buildPreview.san);
+  const boardLabel = document.getElementById("build-board-label");
+  if (boardLabel) boardLabel.textContent = `Preview: ${label}`;
+  const canAdd = !isBuildReadOnly();
+  strip.innerHTML =
+    `<span class="explorer-preview-text">Previewing <b>${escapeHtml(label)}</b> — not in your repertoire</span>` +
+    (canAdd
+      ? '<button type="button" class="btn sm primary" data-preview-add>+ Add to repertoire</button>'
+      : "") +
+    '<button type="button" class="btn sm ghost" data-preview-back>Back</button>';
+  strip.querySelector("[data-preview-add]")?.addEventListener("click", () => void addBuildPreview().catch(() => {}));
+  strip.querySelector("[data-preview-back]")?.addEventListener("click", () => void exitBuildPreview().catch(() => {}));
+}
+
+// Explicit add (the row's "+"). Rows belong to the position they were fetched
+// for. A second click (a double click, or a click while the next position's
+// stats load) must not replay the old position's move from the new one: that
+// was the "Illegal move" toast. The first click consumes the rows; they come
+// back live only if the move didn't land (cancelled or rejected) and the board
+// is still on their position.
+async function onExplorerRowAdd(rows, uci) {
   const rowsFen = rows.dataset.fen;
   const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
   const currentFen = node ? node.fen : boards.build && boards.build.fen;
   if (!rowsFen || !sameFenPosition(rowsFen, currentFen)) return;
   delete rows.dataset.fen;
   rows.classList.add("is-stale");
+  // The add plays from the repertoire position, so any preview ends here.
+  const wasPreviewing = takeBuildPreview();
   try {
     await onBuildBoardMove(uci);
   } finally {
@@ -7821,7 +8216,24 @@ async function onExplorerRowClick(rows, uci) {
       rows.dataset.fen = rowsFen;
       rows.classList.remove("is-stale");
     }
+    // The move didn't land (read-only, rejected): the board still shows the
+    // preview position, so put it back on the repertoire node.
+    if (wasPreviewing && node && appState.buildCurrentNodeId === node.id) {
+      await restoreBuildBoard(node.id);
+    }
   }
+}
+
+// Ends a preview without touching the board; true if one was showing.
+function takeBuildPreview() {
+  const was = buildPreviewActive();
+  buildPreview = null;
+  paintBuildPreview();
+  return was;
+}
+
+async function restoreBuildBoard(nodeId) {
+  if (appState.buildNodeById.has(nodeId)) await selectBuildNode(nodeId);
 }
 
 
@@ -7869,11 +8281,17 @@ function buildGoRoot() {
 }
 
 function buildGoBack() {
+  // Previewing an Explorer move: back means "back to the position".
+  if (buildPreviewActive()) {
+    void exitBuildPreview().catch(() => {});
+    return;
+  }
   const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
   if (node && node.parent_id) selectBuildNode(node.parent_id);
 }
 
 function buildGoForward() {
+  if (buildPreviewActive()) return; // a preview has no continuation yet
   // At a fork, → plays the picked continuation (mainline unless ↑/↓ changed it);
   // anywhere else it just walks the line.
   const ctx = buildBranchContext();
@@ -8636,7 +9054,10 @@ async function deleteBuildNodeLocal(nodeId) {
   // delete first (see onBuildBoardMove). The slot is freed in both settle paths.
   const undoMoveKey = `${parentId}:${node.uci}`;
   const extra = doomed.size > 1 ? ` (+${doomed.size - 1} after it)` : "";
+  // One notice only: the inline Undo card beside the tree (no extra status
+  // toast), so nothing lands on top of the Explorer.
   const undoCommit = showUndoToast({
+    host: document.getElementById("build-undo"),
     title: "Move deleted",
     message: `${node.san || "Move"}${extra} removed`,
     onCommit: () => {
@@ -8685,7 +9106,6 @@ async function deleteBuildNodeLocal(nodeId) {
     },
   });
   appState.buildUndoCommitByMove.set(undoMoveKey, undoCommit);
-  setStatus(`Deleted ${node.san || "move"}`);
 }
 
 // Drain every pending move before an operation that needs server truth or a real
@@ -8769,7 +9189,19 @@ function beaconFlushBuild() {
   }
 }
 
+function canonicalBuildUci(fen, uci) {
+  const normalized = normalizeUci(uci);
+  // A rook/queen can legally move along these same squares. Only translate
+  // king-to-rook notation when the raw move is not legal in this position.
+  return normalized !== uci && !localBoardInfo(fen).legal_moves.includes(uci) ? normalized : uci;
+}
+
 async function onBuildBoardMove(moveUci) {
+  if (appState.buildLoading) return;
+  // Explorer castling uses king-to-rook UCI; the board, local tree and
+  // durable queue all use the standard king destination instead.
+  const moveParent = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  moveUci = canonicalBuildUci(moveParent?.fen || boards.build.fen, moveUci);
   if (isBuildReadOnly()) {
     setStatus("Read-only — copy to your account to edit");
     return;
@@ -8791,6 +9223,12 @@ async function onBuildBoardMove(moveUci) {
   // Bootstrap: the very first move on an empty workspace still creates the
   // repertoire server-side (a modal), then we play onto its real root locally.
   if (!hadRep) {
+    // A guest's move would need a repertoire to live in: show the sign-in
+    // gate (with its reason) instead of a "Cancelled" for a choice never made.
+    if (!requireSignIn("Sign in to save moves to a repertoire", "new-repertoire")) {
+      rollback();
+      return;
+    }
     let created;
     try {
       created = await createRepertoirePrompt({
@@ -8828,7 +9266,7 @@ async function onBuildBoardMove(moveUci) {
   // Dedupe (parity with the server): replaying an existing line just navigates to
   // the child — no provisional node, no dirty state.
   const existing = appState.build.nodes.find(
-    (n) => n.parent_id === parentId && n.uci === moveUci
+    (n) => n.parent_id === parentId && canonicalBuildUci(parent.fen, n.uci) === moveUci
   );
   if (existing) {
     await selectBuildNode(existing.id);
@@ -8862,7 +9300,7 @@ async function onBuildBoardMove(moveUci) {
 }
 
 async function createRepertoirePrompt({ title, defaultName, openAfter = true, defaultColor = "white" } = {}) {
-  if (!requireSignIn("Sign in (or create an account) to build a repertoire")) return null;
+  if (!requireSignIn("Sign in to create a repertoire", "new-repertoire")) return null;
   const result = await showInputModal({
     title: title || "New repertoire",
     okLabel: "Create",
@@ -8966,6 +9404,127 @@ function estimateBuildGenerateTotal({ plyDepth, ownSideCandidateCount, detailMod
   return Math.max(12, Math.ceil(total));
 }
 
+// Generate dialog in plain words: a Depth preset up front, the engine knobs
+// folded under "Advanced", and a live estimate of how much will be added.
+// Kept conservative on purpose: the recursion runs locally (deep × branches
+// is slow on the user's machine) and a huge tree risks exceeding the server
+// apply-plan caps. See GEN_MAX_* / GEN_PLAN_CHANGES_SOFT_CAP.
+const GEN_DEPTH_PRESETS = {
+  shallow: { plies: 4, label: "Shallow — about 2 moves each side" },
+  medium: { plies: 6, label: "Medium — about 3 moves each side" },
+  deep: { plies: 8, label: "Deep — about 4 moves each side" },
+};
+
+function generateDialogFields({ repColor }) {
+  return [
+    {
+      name: "depth_preset",
+      label: "Depth",
+      type: "select",
+      default: "medium",
+      options: Object.entries(GEN_DEPTH_PRESETS).map(([value, p]) => ({ value, label: p.label })),
+    },
+    { name: "estimate", label: "", type: "note" },
+    {
+      name: "own_color",
+      label: "Build moves for",
+      type: "select",
+      default: repColor,
+      advanced: true,
+      options: [
+        { value: "white", label: "White" + (repColor === "white" ? " (your side)" : " (explore the opponent)") },
+        { value: "black", label: "Black" + (repColor === "black" ? " (your side)" : " (explore the opponent)") },
+      ],
+    },
+    {
+      name: "ply_depth",
+      label: `Exact depth in half-moves (1-${GEN_MAX_PLY_DEPTH}; blank = use the preset)`,
+      type: "number",
+      default: "",
+      min: 1,
+      max: GEN_MAX_PLY_DEPTH,
+      advanced: true,
+    },
+    {
+      name: "own_side_candidate_count",
+      label: `Your alternatives per position (1-${GEN_MAX_BRANCHES})`,
+      type: "number",
+      default: 1,
+      min: 1,
+      max: GEN_MAX_BRANCHES,
+      advanced: true,
+    },
+    {
+      name: "detail_mode",
+      label: "Opponent replies to cover",
+      type: "select",
+      default: "balanced",
+      advanced: true,
+      options: [
+        { value: "simple", label: "Their main reply, plus the first alternatives" },
+        { value: "balanced", label: "Every reply humans play often (recommended)" },
+        { value: "deep", label: "Every common reply — best with a shallow depth" },
+      ],
+    },
+    // Defaults to the player's own strength (Settings → Playing strength), so the
+    // generated tree leans toward replies THEIR opponents actually play.
+    {
+      name: "maia_rating",
+      label: "Opponent strength (rating, 600-2600)",
+      type: "number",
+      default: effectiveMaiaRating(),
+      min: 600,
+      max: 2600,
+      advanced: true,
+    },
+    // Depth (above) = how far the tree grows; Stockfish depth (here) = how deep
+    // each our-turn search runs. The latter comes from Settings to avoid a second
+    // depth knob that could fight it; shown read-only so the distinction is clear.
+    {
+      name: "stockfish_depth_note",
+      label: `Engine search depth: ${effectiveStockfishDepth()} (change in Settings)`,
+      type: "note",
+      advanced: true,
+    },
+  ];
+}
+
+function readGenerateOptions(values) {
+  const preset = GEN_DEPTH_PRESETS[values.depth_preset] || GEN_DEPTH_PRESETS.medium;
+  const exact = String(values.ply_depth ?? "").trim();
+  const plyDepth = Math.max(1, Math.min(GEN_MAX_PLY_DEPTH, Number(exact) || preset.plies));
+  const ownSideCandidateCount = Math.max(
+    1,
+    Math.min(GEN_MAX_BRANCHES, Number(values.own_side_candidate_count) || 1),
+  );
+  const detailMode = ["simple", "balanced", "deep"].includes(values.detail_mode)
+    ? values.detail_mode
+    : "balanced";
+  return {
+    ownColor: values.own_color === "black" ? "black" : "white",
+    plyDepth,
+    ownSideCandidateCount,
+    detailMode,
+    maiaRating: Math.max(600, Math.min(2600, Number(values.maia_rating) || effectiveMaiaRating())),
+  };
+}
+
+// Rough range from depth × branching (the same model that sizes the progress
+// bar). Moves already in the repertoire are reused, so the real number is
+// often lower — the copy says so.
+function generateEstimateRange({ plyDepth, ownSideCandidateCount, detailMode }) {
+  const ceiling = estimateBuildGenerateTotal({ plyDepth, ownSideCandidateCount, detailMode });
+  const nice = (n) => (n >= 50 ? Math.round(n / 10) * 10 : n >= 20 ? Math.round(n / 5) * 5 : Math.round(n));
+  const low = Math.max(1, nice(ceiling * 0.4));
+  const high = Math.max(low + 1, nice(ceiling));
+  return { low, high };
+}
+
+function generateEstimateText(options) {
+  const { low, high } = generateEstimateRange(options);
+  return `Estimate: roughly ${low}–${high} new moves (fewer where your repertoire already has them).`;
+}
+
 async function generateFromCurrentNode() {
   // True click origin for [engine-lifecycle] timing: recorded before any
   // toast/status/rAF so click → feedback-paint measures the real delay.
@@ -9004,60 +9563,15 @@ async function generateFromCurrentNode() {
   const values = await showInputModal({
     title: "Generate moves from this position",
     okLabel: "Generate",
-    fields: [
-      {
-        name: "own_color",
-        label: "Your side (whose best moves to build)",
-        type: "select",
-        default: repColor,
-        options: [
-          { value: "white", label: "White" + (repColor === "white" ? " - your repertoire" : " - explore opponent") },
-          { value: "black", label: "Black" + (repColor === "black" ? " - your repertoire" : " - explore opponent") },
-        ],
-      },
-      // Kept conservative on purpose: the recursion runs locally (deep × branches
-      // is slow on the user's machine) and a huge tree risks exceeding the server
-      // apply-plan caps. See GEN_MAX_* / GEN_PLAN_CHANGES_SOFT_CAP.
-      { name: "ply_depth", label: `Ply depth (1-${GEN_MAX_PLY_DEPTH})`, type: "number", default: 6, min: 1, max: GEN_MAX_PLY_DEPTH },
-      {
-        name: "own_side_candidate_count",
-        label: `Your-move branches per node (1-${GEN_MAX_BRANCHES})`,
-        type: "number",
-        default: 1,
-        min: 1,
-        max: GEN_MAX_BRANCHES,
-      },
-      {
-        name: "detail_mode",
-        label: "Detail mode",
-        type: "select",
-        default: "balanced",
-        options: [
-          { value: "simple", label: "simple - mainline + first-level branches" },
-          { value: "balanced", label: "balanced - recurse, 10% / 30% thresholds" },
-          { value: "deep", label: "deep - same as balanced, intended for shallower depth" },
-        ],
-      },
-      // Defaults to the player's own strength (Settings → Playing strength), so the
-      // generated tree leans toward replies THEIR opponents actually play.
-      { name: "maia_rating", label: "Maia rating (600-2600)", type: "number", default: effectiveMaiaRating(), min: 600, max: 2600 },
-      // Ply depth (above) = how far the tree grows; Stockfish depth (here) = how deep
-      // each our-turn search runs. The latter comes from Settings to avoid a second
-      // depth knob that could fight it; shown read-only so the distinction is clear.
-      { name: "stockfish_depth_note", label: `Stockfish search depth: ${effectiveStockfishDepth()} (from Settings)`, type: "note" },
-    ],
+    fields: generateDialogFields({ repColor }),
+    onInput: (current, overlay) => {
+      const note = overlay.querySelector('[data-note="estimate"]');
+      if (note) note.textContent = generateEstimateText(readGenerateOptions(current));
+    },
   });
   if (!values) return;
-  const ownColor = values.own_color === "black" ? "black" : "white";
-  const plyDepth = Math.max(1, Math.min(GEN_MAX_PLY_DEPTH, Number(values.ply_depth) || 6));
-  const ownSideCandidateCount = Math.max(
-    1,
-    Math.min(GEN_MAX_BRANCHES, Number(values.own_side_candidate_count) || 1),
-  );
-  const detailMode = ["simple", "balanced", "deep"].includes(values.detail_mode)
-    ? values.detail_mode
-    : "balanced";
-  const maiaRating = Math.max(600, Math.min(2600, Number(values.maia_rating) || effectiveMaiaRating()));
+  const { ownColor, plyDepth, ownSideCandidateCount, detailMode, maiaRating } =
+    readGenerateOptions(values);
 
   const jobId = `browser-generate-${Date.now()}`;
   // Cancel model has two phases. GENERATION (local, before the POST) is
@@ -9513,7 +10027,11 @@ async function loadTrainRepertoireOptions() {
           (r) =>
             `<option value="${escapeHtml(r.id)}">${escapeHtml(r.name)} (${escapeHtml(r.color)})</option>`,
         )
-      : ['<option value="" disabled selected>Build a repertoire first</option>'];
+      : [
+          appState.signedIn
+            ? '<option value="" disabled selected>Create a repertoire first</option>'
+            : '<option value="" disabled selected>Sign in to train your repertoires</option>',
+        ];
     select.innerHTML = options.join("");
     const valid = new Set(active.map((r) => r.id));
     select.value = valid.has(previous) ? previous : active.length ? active[0].id : "";
@@ -9693,6 +10211,46 @@ function syncTrainPickerVisibility() {
   syncPlayColorLock();
   paintPlayBookHint();
   syncTrainSessionControls();
+  void refreshTrainSessionPreview().catch(() => {});
+}
+
+// Before Start: show review moves and available new moves from the health summary.
+// The scheduler merges targets and adds polish, so these are not card counts. Cached briefly
+// so the many syncTrainPickerVisibility() calls don't each refetch.
+const trainPreviewCache = { at: 0, text: "", loading: null };
+function invalidateTrainSessionPreview() {
+  trainPreviewCache.at = 0;
+}
+async function refreshTrainSessionPreview() {
+  const el = document.getElementById("train-session-preview");
+  if (!el) return;
+  const smartIdle = (appState.trainMode || "smart") === "smart" && !(appState.smart && appState.smart.prompt);
+  if (!smartIdle || !appState.signedIn) {
+    el.hidden = true;
+    return;
+  }
+  const paint = (text) => {
+    el.textContent = text;
+    el.hidden = !text;
+  };
+  if (Date.now() - trainPreviewCache.at < 30000) {
+    paint(trainPreviewCache.text);
+    return;
+  }
+  if (!trainPreviewCache.loading) {
+    trainPreviewCache.loading = (async () => {
+      const [mod, payload] = await Promise.all([
+        preloadTrainView(),
+        api(`/api/train/smart/summary?mixed=true&local_date=${encodeURIComponent(localDateString())}`),
+      ]);
+      trainPreviewCache.text = mod.sessionPreviewText(payload && payload.health);
+      trainPreviewCache.at = Date.now();
+    })().finally(() => {
+      trainPreviewCache.loading = null;
+    });
+  }
+  await trainPreviewCache.loading;
+  paint(trainPreviewCache.text);
 }
 
 function trainSessionLive() {
@@ -9756,7 +10314,7 @@ function syncTrainSessionControls() {
 async function resetTrainBoardIdle(label) {
   updateTrainTurnBadge(null);
   const labelEl = document.getElementById("train-board-label");
-  if (labelEl) labelEl.textContent = label || "Press Start to train";
+  if (labelEl) labelEl.textContent = label || "";
   if (!boards.train) return;
   boards.train.setEngineArrow(null);
   try {
@@ -9817,6 +10375,14 @@ function setTrainBanner(state, title, sub) {
 async function startTraining(mode, options = {}) {
   mode = mode || appState.trainMode || "smart";
   appState.trainMode = mode;
+  // Training runs against your own repertoires and review schedule, so a
+  // guest gets the sign-in gate — not a "Nothing to train yet" that blames an
+  // empty repertoire and a raw "not authenticated".
+  if (!appState.signedIn) {
+    setTrainBanner("done", "Sign in to train", "Your repertoires and review schedule live in your account.");
+    requireSignIn("Sign in to start training", "train");
+    return;
+  }
   if (mode === "smart") {
     await startSmartTraining(options);
     return;
@@ -9833,8 +10399,8 @@ async function startTraining(mode, options = {}) {
   // user's own repertoires. Without one, prompt them to build first instead of
   // hitting a (now-removed) demo endpoint.
   if (!repertoireId) {
-    setStatus("Create a repertoire in Build first, then train it.");
-    setTrainBanner("done", "No repertoire to train", "Build a repertoire, then start the trainer.");
+    setStatus("Create a repertoire in Repertoire first, then train it.");
+    setTrainBanner("done", "No repertoire to train", "Create a repertoire, then start the trainer.");
     return;
   }
   // Same freshness rule as the smart queue: unsynced Build edits must land
@@ -9861,7 +10427,7 @@ async function startTraining(mode, options = {}) {
       await renderTraining(payload);
     } else {
       boards.train.setEngineArrow(null);
-      setTrainBanner("done", "No trainable lines here", "Add prepared moves in Build, then train.");
+      setTrainBanner("done", "No trainable lines here", "Add prepared moves in Repertoire, then train.");
       document.getElementById("train-board-label").textContent = "Nothing to train yet";
     }
     setStatus(
@@ -10471,8 +11037,7 @@ async function runFeelingLuckyClick() {
     }
   }
   if (!appState.accountUsername) {
-    setStatus("Sign in first, then try Feeling Lucky.");
-    openAuthModal();
+    openAuthModal("login", { notice: "Sign in first, then try Feeling Lucky." });
     return;
   }
   // No Lichess-link hard gate: the live Lichess game-feed endpoints are
@@ -10914,6 +11479,15 @@ function teachWhy(prompt, fallback) {
   return hint.strategy || fallback;
 }
 
+// Teach/reveal explanation: the move's own description (teachWhy) plus the phase
+// coach's note only when that note is specific to the position (model.generic marks
+// the canned phase advice, which is dropped instead of repeated on every card).
+function trainTeachLine(prompt, model) {
+  const parts = [teachWhy(prompt, "")];
+  if (model && model.tip && !model.generic) parts.push(model.tip);
+  return parts.filter(Boolean).join(" ");
+}
+
 function setSmartPanelsHidden() {
   const queue = document.getElementById("train-queue");
   if (queue) queue.hidden = true;
@@ -11034,8 +11608,13 @@ async function startSmartTraining(options = {}) {
       fresh,
     });
   } catch (error) {
+    if (isAuthError(error)) {
+      setTrainBanner("done", "Sign in to train", "Your repertoires and review schedule live in your account.");
+      accountService().handleAuthRequired("Sign in to start training");
+      return;
+    }
     setStatusError(error.message);
-    setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Build, then train.");
+    setTrainBanner("done", "Couldn't build your queue", "Try Start again in a moment.");
     return;
   }
   appState.trainingRepertoireId = payload.repertoire_id;
@@ -11051,7 +11630,7 @@ async function startSmartTraining(options = {}) {
   const queue = mapped.queue;
   if (!queue.length) {
     setStatus("Nothing to train yet");
-    setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Build, then train.");
+    setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Repertoire, then train.");
     return;
   }
   appState.smart = {
@@ -11080,6 +11659,8 @@ async function startSmartTraining(options = {}) {
     takeHandoff({ key: handoff.key });
   }
   setBlitzBarVisible(appState.smart.blitz);
+  const preview = document.getElementById("train-session-preview");
+  if (preview) preview.hidden = true;
   if (boards.train && payload.color) {
     boards.train.setOrientation(payload.color === "black" ? "black" : "white");
   }
@@ -11245,7 +11826,13 @@ function prefetchTrainCoach(prompt) {
         titleEl &&
         /New move/.test(titleEl.textContent || "");
       if (stillTeaching) {
-        setTrainBanner("teach", `${model.title}: ${prompt.expected_san}`, model.tip);
+        // What THIS move does, plus the human-play note only when it is specific —
+        // never the canned "Develop your pieces..." on every card (UX P1-6).
+        setTrainBanner(
+          "teach",
+          `${model.title}: ${prompt.expected_san}`,
+          trainTeachLine(prompt, model) || "Watch the arrow, then play the move.",
+        );
       } else if (prompt.kind !== "new" && state === "move") {
         // promptTip never names the prepared SAN — model.tip would leak e4
         // (and every other answer) onto the Your-move banner.
@@ -11348,7 +11935,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       }
       // The answer is on screen anyway, so say WHY it's the move — a reveal that
       // teaches sticks better than a bare "it's Nf3".
-      const why = (prompt.phaseCoach && prompt.phaseCoach.tip) || teachWhy(prompt, "");
+      const why = trainTeachLine(prompt, prompt.phaseCoach);
       setTrainBanner(
         "reveal",
         `It's ${prompt.expected_san}`,
@@ -11491,7 +12078,21 @@ async function finishSmartSession() {
     smart.blitz ? "Blitz session complete!" : "Session complete!",
     `${stats.correct || 0} first-try correct - ${stats.mistakes || 0} missed${blitzed}${fixed}`
   );
-  document.getElementById("train-board-label").textContent = "Press Start for a fresh queue";
+  // End on the last card's final position (its last answer, plus the reply when the
+  // line has one) instead of wherever the board happened to be mid-line.
+  const lastCard = smart.queue[smart.queue.length - 1];
+  const lastTarget = lastCard && lastCard.targets && lastCard.targets[lastCard.targets.length - 1];
+  const finalReply = lastTarget && lastTarget.reply && lastTarget.reply.fen_after ? lastTarget.reply : null;
+  const finalFen = finalReply ? finalReply.fen_after : lastTarget && lastTarget.fen_after;
+  if (finalFen) {
+    boards.train.setPosition({
+      fen: finalFen,
+      legalMoves: [],
+      lastMove: finalReply ? finalReply.uci : lastTarget.uci,
+    });
+  }
+  document.getElementById("train-board-label").textContent = finalFen ? "Final position of the last card" : "";
+  invalidateTrainSessionPreview();
   celebrate();
   // End-of-session report: what this session changed, and what lands tomorrow.
   // Flush the graded attempts FIRST so the "after" health actually includes
@@ -11754,7 +12355,7 @@ async function ensureSettingsView() {
         void refreshLichessStatus();
       },
       signOut: () => accountController.signOut(),
-      openAuthModal: (mode) => accountController.openAuthModal(mode),
+      openAuthModal: (mode, options) => accountController.openAuthModal(mode, options),
       refreshAuthStatus: () => accountController.refreshAuthStatus(),
     });
     settingsView.bind();
@@ -11905,6 +12506,8 @@ function applyServerEngineGating() {
 // server.py for a future admin mode (gated by PREPFORGE_SERVER_ENGINE_ENABLED).
 
 async function runLichessCompare() {
+  // Games are checked against your repertoires (owner-scoped /api/lichess/compare).
+  if (!requireSignIn("Sign in to check your games against your repertoire", "games-check")) return;
   const selection = gamesSourceSelection();
   const usernames = resolveFetchUsernames({
     selection,
@@ -12075,6 +12678,15 @@ function openGamesComposer(anchor) {
 function paintGamesSource() {
   const tray = document.getElementById("games-source-chips");
   if (!tray) return;
+  // Signed out there is no "Self" (no linked accounts) and Check needs an
+  // account anyway: a selected-looking "Self · all linked" chip contradicted
+  // the "No Games sources selected" error. Offer the sign-in instead.
+  if (!appState.signedIn) {
+    tray.hidden = false;
+    tray.innerHTML =
+      '<button type="button" class="src-chip src-chip-signin" data-games-signin>Sign in to use your games</button>';
+    return;
+  }
   const selection = gamesSourceSelection();
   const { chips, selfState } = selectionChips(selection, lichessAccounts());
   const n = lichessAccounts().length;
@@ -12102,9 +12714,16 @@ function paintGamesSource() {
 
 function bindGamesSource() {
   document.getElementById("games-source-add")?.addEventListener("click", (event) => {
+    // Sources only matter for a Check, which needs an account — don't let a
+    // guest collect usernames that would silently ride into their account.
+    if (!requireSignIn("Sign in to check your games against your repertoire", "games-check")) return;
     openGamesComposer(event?.currentTarget || document.getElementById("games-source-add"));
   });
   document.getElementById("games-source-chips")?.addEventListener("click", (event) => {
+    if (event.target.closest("[data-games-signin]")) {
+      requireSignIn("Sign in to check your games against your repertoire", "games-check");
+      return;
+    }
     const removeExt = event.target.closest("[data-games-unpick-external]");
     if (removeExt) {
       const sel = gamesSourceSelection();
@@ -12205,6 +12824,7 @@ function paintScoutSource() {
 
 function bindScoutSource() {
   document.getElementById("scout-source-add")?.addEventListener("click", (event) => {
+    if (!requireSignIn("Sign in to scout an opponent", "scout-start")) return;
     openScoutComposer(event?.currentTarget || document.getElementById("scout-source-add"));
   });
   document.getElementById("scout-source-chips")?.addEventListener("click", (event) => {
@@ -12395,8 +13015,7 @@ async function maybeHandleJoinLink() {
   }
   if (!code) return false;
   if (!appState.signedIn) {
-    setStatus("Sign in (or create an account) to join the team");
-    openAuthModal("login");
+    openAuthModal("login", { notice: "Sign in (or create an account) to join the team" });
     return false; // ?join= stays in the URL; we resume after the sign-in reload
   }
   let preview;
@@ -12464,11 +13083,7 @@ async function forkReadableRepertoire() {
   const viaToken = !!appState.sharedToken;
   const viaTeam = appState.build && appState.build.writable === false;
   if (!viaToken && !viaTeam) return;
-  if (!appState.signedIn) {
-    setStatus("Sign in (or create an account) to copy this repertoire");
-    openAuthModal("login");
-    return;
-  }
+  if (!requireSignIn("Sign in (or create an account) to copy this repertoire")) return;
   try {
     const result = viaToken
       ? await postJson(
@@ -12521,7 +13136,9 @@ async function runCoverageScanUI() {
   // when analysis-layer Maia is OFF the scan states its requirement instead of
   // silently producing a different (Stockfish-only) answer.
   if (!maiaAnalysisEnabled()) {
-    setStatus("Coverage needs Maia analysis — turn it on in Settings → Playing strength.");
+    // Inline, with a one-click fix — not a truncated, vanishing toast.
+    if (buildDockTab !== "coverage") setBuildInspector("coverage");
+    renderCoverageMaiaGate();
     return;
   }
   const button = document.getElementById("coverage-run");
@@ -12563,6 +13180,50 @@ async function runCoverageScanUI() {
     if (button && !isBuildReadOnly()) button.disabled = false;
     coverageController = null;
   }
+}
+
+// Coverage's Maia requirement, stated where the user is looking: what is
+// needed, why, and a button that turns it on (and scans) right here.
+// Settings' "Maia3 · Ready" means the model is cached; the analysis switch is
+// what lets features use it — this card is where those two meet.
+const COVERAGE_MAIA_GATE =
+  '<div class="coverage-gate" data-testid="coverage-maia-gate">' +
+  "<p><b>Coverage needs Maia analysis.</b> Maia predicts what humans at your level actually play here; " +
+  "it runs in your browser (one-time model download, then cached). Maia analysis is off right now.</p>" +
+  '<div class="row">' +
+  '<button type="button" class="btn sm primary" data-coverage-enable-maia>Turn on Maia analysis &amp; scan</button>' +
+  '<button type="button" class="btn sm ghost" data-coverage-open-settings>Open Settings</button>' +
+  "</div></div>";
+
+function renderCoverageMaiaGate() {
+  const gapsEl = document.getElementById("coverage-gaps");
+  if (!gapsEl) return;
+  gapsEl.innerHTML = COVERAGE_MAIA_GATE;
+  gapsEl.querySelector("[data-coverage-enable-maia]")?.addEventListener("click", () => {
+    setPref("maiaAnalysis", true);
+    gapsEl.innerHTML = COVERAGE_IDLE_HINT;
+    void runCoverageScanUI();
+  });
+  gapsEl.querySelector("[data-coverage-open-settings]")?.addEventListener("click", () => {
+    switchView("settings");
+    window.setTimeout(() => {
+      const toggle = document.getElementById("settings-maia-analysis");
+      if (!toggle) return;
+      toggle.scrollIntoView({ block: "center", behavior: "smooth" });
+      toggle.focus({ preventScroll: true });
+    }, 60);
+  });
+}
+
+// Coverage tab opened with Maia off and nothing scanned yet: say so up front
+// instead of waiting for a Scan click to fail.
+function syncCoverageMaiaGate() {
+  const gapsEl = document.getElementById("coverage-gaps");
+  if (!gapsEl || isBuildReadOnly()) return;
+  const gateShown = !!gapsEl.querySelector("[data-coverage-enable-maia]");
+  const idle = !coverageGaps.length && !document.getElementById("coverage-score")?.dataset.ready;
+  if (!maiaAnalysisEnabled() && idle && !gateShown) renderCoverageMaiaGate();
+  else if (maiaAnalysisEnabled() && gateShown) gapsEl.innerHTML = COVERAGE_IDLE_HINT;
 }
 
 function renderCoverageResult(result, rating) {
@@ -12789,6 +13450,7 @@ async function ensureScoutView() {
       effectiveMaiaRating,
       maiaAnalysisEnabled: () => maiaAnalysisEnabled(),
       scoutPickedUsernames: () => scoutPickedUsernames(),
+      requireSignIn,
       getLichessUsername: () => appState.lichessUsername,
       getLichessAccounts: () => lichessAccounts(),
       effectiveStockfishDepth,
@@ -13075,6 +13737,9 @@ function bindEvents() {
     const control = event.target.closest("button");
     if (control && control.id !== "account-chip") control.blur();
   });
+  // The hover-expanded rail overlays the board; picking a page collapses it
+  // right away instead of waiting for the pointer to leave.
+  bindRailCollapseOnNavigate(document.getElementById("app-rail"));
   document.querySelectorAll(".tab[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
       dismissTransientOverlays();
@@ -13333,17 +13998,7 @@ function bindEvents() {
   document.getElementById("train-hint").addEventListener("click", trainHint);
   const statusClose = document.getElementById("app-status-close");
   if (statusClose) {
-    statusClose.addEventListener("click", () => {
-      const status = document.getElementById("app-status");
-      if (status) {
-        window.clearTimeout(setStatus._timer);
-        status.textContent = "";
-        status.title = "";
-        status.dataset.severity = "info";
-        status.dataset.state = "ready";
-      }
-      statusClose.hidden = true;
-    });
+    statusClose.addEventListener("click", () => clearStatus());
   }
   const blitzToggle = document.getElementById("train-blitz-toggle");
   if (blitzToggle) {
@@ -13379,8 +14034,9 @@ function bindEvents() {
         setTrainBanner("idle", "Play vs human", "Start, or I'm Feeling Lucky for a key position.");
         void resetTrainBoardIdle("Play vs human");
       } else {
-        setTrainBanner("idle", "Press Start to begin", "");
-        void resetTrainBoardIdle("Press Start to train");
+        // "Press Start" is said once, by the Start button itself (UX P2-10).
+        setTrainBanner("idle", "Ready to train", "");
+        void resetTrainBoardIdle("");
         const progress = document.getElementById("train-progress-panel");
         if (progress) progress.hidden = true;
         const summary = document.getElementById("train-summary");
@@ -13455,6 +14111,9 @@ function bindEvents() {
         event.preventDefault();
         board.flip();
       }
+    }
+    if (event.key === "Escape" && inBuild && buildPreviewActive()) {
+      void exitBuildPreview().catch(() => {});
     }
     if (event.key === "Escape") {
       closeNodeContextMenu();
@@ -13552,6 +14211,13 @@ async function init() {
       .then((view) => view.renderSignedOut())
       .catch(() => { /* the Library chunk failing leaves the static shell */ });
   }
+  // Back from a sign-in (password reload or Google redirect): clean the URL,
+  // put the user back on the page they were on, and pick up the action the
+  // sign-in gate interrupted (after the workspace has loaded).
+  const signInReturn = prepareSignInReturn();
+  // The Games tray shows a sign-in chip for guests; repaint for the session.
+  paintGamesSource();
+  paintScoutSource();
   workspaceUrlReady = true;
   await restoreWorkspaceLocation();
   // A share URL opens the read-only viewer last, so it lands on top of whatever
@@ -13564,6 +14230,125 @@ async function init() {
   accountService().openResetFromUrl();
   handleBillingReturn();
   syncWorkspaceUrl();
+  await resumeAfterSignIn(signInReturn);
+}
+
+// Phase 1 of the sign-in return (before the route is restored). Strips
+// ?signed_in=1, restores the hash route / ?join= the Google redirect dropped,
+// and takes (read-and-remove) the allowlisted pending action.
+function prepareSignInReturn() {
+  try {
+    const cleaned = stripSignedInParam(window.location.href);
+    if (cleaned) window.history.replaceState(window.history.state, "", cleaned);
+  } catch (_) {
+    /* cosmetic */
+  }
+  if (!appState.signedIn) return { pending: null, returned: false };
+  const authReturn = takeAuthReturn();
+  const pending = takePendingAction();
+  try {
+    const restored = restoredAuthHref(window.location.href, {
+      route: (authReturn && authReturn.route) || (pending && pending.route) || null,
+      join: authReturn ? authReturn.join : null,
+    });
+    if (restored) window.history.replaceState(window.history.state, "", restored);
+  } catch (_) {
+    /* cosmetic */
+  }
+  return { pending, returned: !!authReturn };
+}
+
+// Resume handlers for the allowlisted pending actions (auth-gate.js). Each
+// re-opens the step the guest was stopped at; nothing here runs stored code.
+// Popups and file pickers need a fresh click, so those only lead the user to
+// the right control instead of firing it unprompted.
+const PENDING_ACTION_HANDLERS = {
+  "new-repertoire": () => createRepertoirePrompt({ title: "New repertoire" }),
+  "import-pgn": () => {
+    switchView("dashboard");
+    setStatus("Signed in — choose Import PGN to pick your file.");
+  },
+  "new-team": () => {
+    switchView("teams");
+    return createTeam();
+  },
+  "analyze-game": (pending) => {
+    switchView("analyze");
+    const input = document.getElementById("pgn-input");
+    // Old records or unavailable session storage have no source. Never run
+    // the demo in place of a game the user asked us to review.
+    input.value = pending.data?.pgn || "";
+    if (!input.value) {
+      const drawer = document.getElementById("pgn-drawer");
+      if (drawer) drawer.open = true;
+      setStatus("Signed in — paste your PGN to run the full-game review.");
+      return;
+    }
+    return runAnalysis({ mode: pending.data.mode, selectIndex: pending.data.selectIndex });
+  },
+  // #/train was restored and restoreWorkspaceLocation already started it.
+  train: () => {
+    if (appState.currentView !== "train") goToSmartTraining("Starting training…");
+  },
+  "games-check": () => {
+    setReplaySection("games", { syncUrl: false });
+    switchView("replay");
+    setStatus("Signed in — press Check to compare your games with your repertoire.");
+  },
+  "scout-start": () => {
+    setReplaySection("scout", { syncUrl: false });
+    switchView("replay");
+    setStatus("Signed in — add the player to scout, then press Start.");
+  },
+  "lichess-link": () => {
+    void openSettingsSection("set-connections").catch(() => {});
+    setStatus("Signed in — now link your Lichess account.");
+  },
+  "my-last-game": () => {
+    switchView("analyze");
+    if (lichessAccounts().length || appState.lichessUsername) return fetchMyLichessGame();
+    setStatus("Signed in — link a Lichess account (Settings → Account) to load your games.");
+    return undefined;
+  },
+};
+
+// Phase 2: the workspace is loaded — run the interrupted action and say
+// what came along from the guest session.
+async function resumeAfterSignIn({ pending, returned } = {}) {
+  if (!appState.signedIn) return;
+  if (returned) noteKeptGuestSources();
+  if (!pending || !isPendingActionId(pending.id)) return;
+  const handler = Object.prototype.hasOwnProperty.call(PENDING_ACTION_HANDLERS, pending.id)
+    ? PENDING_ACTION_HANDLERS[pending.id]
+    : null;
+  if (!handler) return;
+  try {
+    await handler(pending);
+  } catch (error) {
+    setStatusError(error.message);
+  }
+}
+
+// Lichess usernames added as Games/Scout sources live in this browser, not
+// the account, so they carry over a sign-in. Say so once instead of letting
+// them appear unannounced in the account's Games and Scout.
+function noteKeptGuestSources() {
+  const names = new Set([
+    ...normalizeSelection(gamesSourceSelection()).external,
+    ...normalizeSelection(scoutSelection()).external,
+  ]);
+  if (!names.size) return;
+  const list = [...names].slice(0, 3).join(", ") + (names.size > 3 ? ` +${names.size - 3}` : "");
+  // A card, not the status pill: the resumed action may own the pill.
+  const toast = jobToast.notify({
+    id: "kept-guest-sources",
+    title: "Kept your Games/Scout sources",
+    message:
+      `${list} — added before you signed in — stay as Games/Scout sources. ` +
+      "Remove them from the source chips if you don't need them.",
+    actions: [{ label: "OK", primary: true, onClick: () => {} }],
+  });
+  if (toast && typeof toast._arm === "function") toast._arm(20000, () => {});
 }
 
 function handleBillingReturn() {

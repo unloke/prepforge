@@ -10,6 +10,10 @@
   --panel-soft: #f8f8f6;
   --surface-2: #f8f8f6;
   --surface-3: #efefec;
+  --explorer-white: #f2f2ef;
+  --explorer-draw: #9a9fa6;
+  --explorer-black: #2e3136;
+  --explorer-track: #e6e6e2;
   --line: #e2e1dc;
   --line-soft: #eeeeec;
   --line-strong: #cfcdc6;
@@ -187,6 +191,12 @@
   --coord-on-light: #5a6c7b;
   --coord-on-dark: #d8dee3;
   --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.5);
+  /* Explorer W/D/B bar: the draw grey sits between the two ends and the
+     Black end is lifted off the panel so it never melts into the background. */
+  --explorer-white: #e9eaec;
+  --explorer-draw: #7c838c;
+  --explorer-black: #45494f;
+  --explorer-track: #2b3035;
 }
 
 * {
@@ -285,7 +295,9 @@ h2 {
    OVERLAY (hover, or keyboard focus inside it), so main content and the board
    never move or resize. It opens after a 60ms delay and collapses as soon as
    the pointer or focus leaves; mouse clicks don't hold it open (it relies on
-   :focus-visible, not :focus-within). */
+   :focus-visible, not :focus-within). Clicking a destination adds
+   .is-nav-collapsed (rail-nav.js) so the overlay closes at once, until the
+   pointer leaves the rail. */
 .rail {
   --rail-open: 204px;
   position: fixed;
@@ -305,7 +317,7 @@ h2 {
   transition: width 0.14s ease, box-shadow 0.14s ease;
 }
 
-.rail:hover,
+.rail:not(.is-nav-collapsed):hover,
 .rail:has(:focus-visible) {
   width: var(--rail-open);
   box-shadow: var(--shadow-2);
@@ -381,13 +393,13 @@ h2 {
   transition: opacity 0.1s ease;
 }
 
-.rail:hover :is(.brand-name, .nav-label, .nav-group-label span),
+.rail:not(.is-nav-collapsed):hover :is(.brand-name, .nav-label, .nav-group-label span),
 .rail:has(:focus-visible) :is(.brand-name, .nav-label, .nav-group-label span) {
   opacity: 1;
   transition-delay: 90ms;
 }
 
-.rail:hover .nav-group-label::after,
+.rail:not(.is-nav-collapsed):hover .nav-group-label::after,
 .rail:has(:focus-visible) .nav-group-label::after {
   opacity: 0;
 }
@@ -423,7 +435,7 @@ h2 {
   border-radius: 9px;
 }
 
-.rail:hover .nav-badge,
+.rail:not(.is-nav-collapsed):hover .nav-badge,
 .rail:has(:focus-visible) .nav-badge {
   position: static;
   margin-left: auto;
@@ -776,6 +788,16 @@ h2 {
   font-weight: 600;
   white-space: nowrap;
 }
+
+/* Guest Games tray: an action, not a selected source. */
+.src-chip.src-chip-signin {
+  padding: 0 10px;
+  border: 1px dashed var(--line-strong);
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+.src-chip.src-chip-signin:hover { background: var(--accent-soft); }
 
 .src-chip-x {
   width: 20px;
@@ -1544,12 +1566,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-cell-queue { flex-wrap: wrap; }
 .lib-mastery { display: flex; align-items: center; gap: 8px; width: 100%; }
 .lib-mastery b { font-size: var(--fs-s); font-variant-numeric: tabular-nums; }
+/* Mastery bar: a visible track (so 0% still reads as an empty bar, not a
+   missing one) and enough height to compare rows at a glance. */
 .lib-mbar {
   flex: 1;
   min-width: 60px;
-  height: 6px;
+  height: 10px;
   border-radius: 999px;
-  background: var(--line-soft);
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--line);
   overflow: hidden;
 }
 .lib-mbar i { display: block; height: 100%; border-radius: inherit; background: var(--k-mastered); }
@@ -1585,14 +1610,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .kchip.k-due { color: var(--warn-text); background: color-mix(in srgb, var(--k-due) 15%, transparent); }
 .kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
 .row-menu-btn {
-  width: 28px;
-  height: 28px;
+  justify-self: end;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: 0;
   border-radius: var(--radius);
   background: transparent;
   color: var(--label);
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1;
   opacity: 0.7;
 }
@@ -1611,8 +1637,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border: 0;
   background: none;
 }
-.empty-state.big h3 { color: var(--text); font-size: 16px; }
-.empty-state.big p { max-width: 460px; margin: 0; }
+.empty-state.big h3 { color: var(--text); font-size: 16px; text-wrap: balance; }
+/* `pretty` keeps a lone last word ("…you play Y.") from wrapping by itself. */
+.empty-state.big p { max-width: 460px; margin: 0; text-wrap: pretty; }
 .empty-state.big .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .es-mark { color: var(--label); font-size: 34px; line-height: 1; }
 .empty-state.is-error .es-mark { color: var(--danger); font-weight: 700; }
@@ -1749,6 +1776,24 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .lib-list,
   .steps { grid-column: auto; grid-row: auto; }
 }
+/* Empty library (signed out / first run) on desktop: instead of a strip of
+   cards in the top third, the cards take the screen's height (capped) — the
+   empty state centres in its card and the Get started steps grow. */
+@media (min-width: 1021px) {
+  .lib { min-height: 100%; }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) {
+    flex: 1 1 auto;
+    max-height: 620px;
+    align-items: stretch;
+  }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .lib-list { display: flex; flex-direction: column; }
+  .lib-list.is-empty:not(.is-error) > .lib-rep-list { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .steps { display: flex; flex-direction: column; }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step { flex: 1 1 auto; max-height: 140px; grid-template-columns: 28px minmax(0, 1fr) auto; padding: 16px 14px; }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-n { width: 28px; height: 28px; font-size: var(--fs-s); }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-text b { font-size: 14px; }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-text p { margin-top: 2px; font-size: 13px; }
+}
 /* ≤ 760px: no preview pane (a tap opens the workspace), two-line rows,
    44px touch targets. */
 @media (max-width: 760px) {
@@ -1820,13 +1865,18 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .study {
   --study-h: calc(100dvh - 36px);
   /* Board square budget: min(100dvh − chrome, (100vw − rail − 48) × share,
-     820px). With no top bar the height budget is generous, so the width share
-     is what sizes the board: 62% on wide screens, 60% on laptops, leaving the
-     side panel ≥ ~420px. The column wraps exactly around it (max-content). */
+     100vw − rail − padding/gap − panel floor, 820px). With no top bar the
+     height budget is generous, so the width share is what sizes the board:
+     62% on wide screens, 60% on laptops, 56% on narrow laptops / split
+     screens. The panel-floor term keeps the side panel ≥ 360px down to the
+     860px stacking breakpoint, so board and feedback share one screen at
+     ~980×614. The column wraps exactly around it (max-content). */
   --board-share: 0.62;
+  --study-panel-min: 360px;
   --board-size: min(
     calc(var(--study-h) - var(--board-chrome)),
     calc((100vw - 60px - 48px) * var(--board-share)),
+    calc(100vw - 60px - 44px - var(--study-panel-min)),
     820px
   );
   display: grid;
@@ -2748,9 +2798,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .inspector-panel[hidden] { display: none; }
 
 
-@media (max-width: 1020px) {
+/* Stacked (≤860): the page is the scroll owner. The move tree keeps a cap but
+   hands the wheel back to the page at its ends instead of trapping it. */
+@media (max-width: 860px) {
   #view-build .sidebar { max-height: none; overflow: hidden; }
-  .tree-wrap { max-height: 60vh; }
+  .tree-wrap { max-height: 60vh; overscroll-behavior: auto; }
   .dock { flex: none !important; }
   .dock-resizer { display: none; }
 }
@@ -2965,16 +3017,21 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .kchip.k-polish, .kchip.phase { color: var(--muted); background: var(--surface-3); }
 .kchip[hidden] { display: none; }
 
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.train-session-preview { margin: 0; font-size: var(--fs-xs); font-weight: 600; color: var(--label); }
+.train-session-preview[hidden] { display: none; }
+
+/* Compact one-line counters (UX 2026-09-30 P2-10): they must not outshout the board cue. */
+.stats { display: flex; flex-wrap: wrap; gap: 6px; }
 .stat {
-  display: flex;
-  flex-direction: column;
-  padding: 8px 10px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 3px 9px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 999px;
   transition: background 200ms ease, border-color 200ms ease;
 }
-.stat b { font-size: 20px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat b { font-size: var(--fs-sm, 13px); line-height: 1.2; font-variant-numeric: tabular-nums; }
 .stat b.good { color: var(--good-text); }
 .stat b.bad { color: var(--danger); }
 .stat span { color: var(--label); font-size: var(--fs-xs); }
@@ -3050,7 +3107,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #view-train .train-sidebar[data-session-state="summary"] .train-setup,
 #view-train .train-sidebar[data-session-state="summary"] #train-progress-panel { display: none; }
 
-@media (max-width: 1020px) {
+@media (max-width: 860px) {
   #view-train .train-sidebar { max-height: none; overflow: visible; }
   #view-train .panel-scroll { overflow: visible; }
 }
@@ -3197,15 +3254,20 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 @media (max-width: 1279px) {
   .scout-grid { grid-template-columns: minmax(0, 1fr) 300px; }
 }
+/* Scout stacks at ≤1020; Games keeps ledger + detail side by side (and the
+   viewport-height shell) down to 860px, see views/replay.css. */
 @media (max-width: 1020px) {
-  .review,
-  .games-panel,
-  .scout-panel,
-  .replay-results { height: auto; }
+  .review:has(> .scout-panel:not([hidden])),
+  .scout-panel { height: auto; }
   .scout-grid,
   .scout-panel:not(:has(.scout-section)) .scout-grid { grid-template-columns: minmax(0, 1fr); }
   .scout-main,
   .scout-side { overflow: visible; }
+}
+@media (max-width: 860px) {
+  .review,
+  .games-panel,
+  .replay-results { height: auto; }
 }
 @media (max-width: 760px) {
   .workspace:has(> .view.is-active#view-replay) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
@@ -3398,7 +3460,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 .explorer-head, .explorer-row {
   display: grid;
-  grid-template-columns: minmax(48px, 64px) minmax(44px, 68px) minmax(0, 1fr);
+  grid-template-columns: minmax(48px, 64px) minmax(44px, 68px) minmax(0, 1fr) 24px;
   align-items: center;
   gap: 10px;
   min-width: 0;
@@ -3420,6 +3482,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 .explorer-row {
+  position: relative;
   min-width: 0;
   border-top: 0;
   border-right: 0;
@@ -3435,6 +3498,125 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .explorer-row:hover {
   background: var(--surface-hover);
 }
+
+/* One click anywhere on the row previews (the row listens; the Move button
+   is its keyboard/screen-reader handle). "+" is a separate button. */
+.explorer-pick {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.explorer-pick:focus-visible { outline: none; }
+.explorer-row:has(.explorer-pick:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.explorer-row.is-previewing {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* Fewer than a handful of games: the split is noise, so the row steps back. */
+.explorer-row.is-thin .explorer-bar-track,
+.explorer-row.is-thin .explorer-games { opacity: 0.55; }
+
+.explorer-add {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--line-strong, var(--line));
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.explorer-add:hover { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.explorer-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.explorer-add.is-in {
+  border-color: transparent;
+  background: transparent;
+  color: var(--good-text, var(--muted));
+  font-size: 12px;
+  cursor: default;
+}
+
+.explorer-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 2px 0 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent-soft);
+  font-size: var(--fs-s);
+  color: var(--text);
+}
+.explorer-preview[hidden] { display: none; }
+.inline-undo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 10px;
+  padding: 6px 8px 6px 10px;
+  border: 1px solid var(--line-strong, var(--line));
+  border-radius: 6px;
+  background: var(--panel-soft, var(--panel));
+  font-size: var(--fs-s);
+  color: var(--text);
+}
+.inline-undo[hidden] { display: none; }
+/* Repertoire loading skeleton (editRepertoire → setBuildLoading). */
+.tree-skeleton {
+  display: grid;
+  gap: 10px;
+  padding: 14px 12px;
+}
+.tree-skeleton span {
+  display: block;
+  height: 12px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--surface-3) 0%, var(--surface-2, var(--surface-3)) 50%, var(--surface-3) 100%);
+  background-size: 200% 100%;
+  animation: tree-skeleton-pulse 1.2s ease-in-out infinite;
+}
+.skeleton-text { color: var(--muted); font-style: italic; }
+@keyframes tree-skeleton-pulse {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tree-skeleton span { animation: none; }
+}
+.coverage-gate {
+  margin: 4px 0 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong, var(--line));
+  border-radius: 6px;
+  background: var(--panel-soft, var(--panel));
+  font-size: var(--fs-s);
+  color: var(--text);
+}
+.coverage-gate p { margin: 0 0 8px; line-height: 1.45; }
+.coverage-gate .row { display: flex; flex-wrap: wrap; gap: 6px; }
+.inline-undo-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.explorer-preview-text { flex: 1 1 180px; min-width: 0; }
 
 /* A row was just played: these rows describe the previous position until the
    next position's stats arrive, so they stop reading as clickable. */
@@ -3469,12 +3651,19 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-variant-numeric: tabular-nums;
 }
 
+.explorer-bar-track {
+  display: block;
+  min-width: 0;
+}
+
+/* Width = how much data backs the split (set inline, log-scaled per row). */
 .explorer-bar {
   display: flex;
   height: 18px;
+  max-width: 100%;
   border-radius: 3px;
   overflow: hidden;
-  background: var(--surface-3);
+  background: var(--explorer-track);
 }
 
 .explorer-bar span {
@@ -3486,13 +3675,13 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-weight: 650;
 }
 
-.explorer-bar-w { background: #f2f2ef; color: #333; }
+.explorer-bar-w { background: var(--explorer-white); color: #333; }
 /* Engine on: an Eval column between Move and Games. Off: the cell is gone and
    the three-column layout above is untouched. */
 .explorer-eval { display: none; }
 .explorer-rows.has-eval .explorer-head,
 .explorer-rows.has-eval .explorer-row {
-  grid-template-columns: minmax(44px, 60px) minmax(46px, 56px) minmax(40px, 60px) minmax(0, 1fr);
+  grid-template-columns: minmax(44px, 60px) minmax(46px, 56px) minmax(40px, 60px) minmax(0, 1fr) 24px;
 }
 .explorer-rows.has-eval .explorer-eval {
   display: block;
@@ -3514,8 +3703,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .dock-engine-switch[hidden] { display: none; }
 .dock-engine-switch .pf-row-label { font-size: var(--fs-s); color: var(--label); font-weight: 600; }
 
-.explorer-bar-d { background: #9a9fa6; color: #fff; }
-.explorer-bar-b { background: #2e3136; color: #fff; }
+.explorer-bar-d { background: var(--explorer-draw); color: #fff; }
+.explorer-bar-b { background: var(--explorer-black); color: #fff; }
 
 /* Analyze panel styles (coach, chart, move grid, class bars, drawers) live in
    views/analyze-chart.css, lazy-loaded with the Analyze view. */
@@ -3638,6 +3827,22 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .mtree-move.m-weak {
   box-shadow: inset 0 -2px 0 var(--k-weak);
 }
+/* The selected move keeps full contrast whatever it is decorated with: the
+   opponent-move grey (and a disabled move's fade) must not bleed onto the
+   accent fill. Dark theme: white on the lighter accent is only ~3:1, so the
+   label goes dark instead. */
+.mtree-move.is-current.is-opp,
+.mtree-move.is-current.is-prep,
+.mtree-move.is-current {
+  color: var(--on-accent);
+  text-decoration-color: currentColor;
+}
+.mtree-move.is-current.is-disabled { opacity: 0.8; }
+:root[data-theme="dark"] .mtree-move.is-current,
+:root[data-theme="dark"] .mtree-move.is-current.is-opp,
+:root[data-theme="dark"] .mtree-move.is-current.is-prep {
+  color: #0f1a3a;
+}
 
 /* Per-variation collapse toggle. */
 .mtree-collapse {
@@ -3733,6 +3938,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   cursor: not-allowed;
 }
 
+.context-menu button.menu-sep-before {
+  margin-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
 .context-menu button[data-action="delete"] {
   color: var(--danger);
 }
@@ -3804,6 +4014,21 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-width: 0;
 }
 
+.modal-advanced {
+  margin-top: 4px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+.modal-advanced > summary {
+  cursor: pointer;
+  font-size: var(--fs-s);
+  font-weight: 600;
+  color: var(--label);
+  margin-bottom: 8px;
+}
+.modal-advanced > .modal-field,
+.modal-advanced > .modal-note { margin-bottom: 10px; }
+
 .modal-note {
   margin: 0;
   font-size: 12px;
@@ -3858,6 +4083,69 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: var(--danger);
   font-size: 13px;
   line-height: 1.4;
+  /* Reserve the line up front: an error appearing must not resize the dialog. */
+  min-height: 1.4em;
+}
+
+/* Anchor the sign-in dialog near the top instead of centring it, so any
+   remaining growth (a two-line error, Forgot ↔ Sign in) only extends downward
+   rather than making the whole box jump. */
+.modal-overlay.auth-overlay {
+  place-items: start center;
+  padding-top: min(14vh, 120px);
+}
+
+.auth-modal-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-right: 8px;
+}
+
+.auth-close {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.auth-close:hover { background: var(--panel-soft); color: var(--text); }
+.auth-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Why the gate opened ("Sign in to start training"). */
+.auth-reason {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.auth-footer {
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* "New here? Create account" reads as a link, not stray text. */
+.auth-footer .auth-switch {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .modal-field > span {
@@ -3925,9 +4213,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* Responsive */
 
-@media (max-width: 1020px) {
+@media (max-width: 860px) {
   /* Stacked: board over sidebar. Drop the one-screen fit and let the page scroll
-     normally — a fixed height here would crush the board on a phone. */
+     normally — a fixed height here would crush the board on a phone. Two
+     columns hold down to 860px (see .study --study-panel-min), so this only
+     covers small tablets and phones. */
   .study {
     grid-template-columns: 1fr;
     height: auto;
@@ -3948,8 +4238,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
     overflow: visible;
   }
 
+  /* Cap the board at ~55% of the viewport height so the panel's head (Train
+     feedback + Start, Analyze coach, Repertoire tree) starts above the fold. */
   .board-stack {
-    max-width: min(72vh, 560px);
+    max-width: min(55vh, 560px);
     margin: 0 auto;
   }
 
@@ -4278,6 +4570,18 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   text-overflow: ellipsis;
 }
 
+/* Notification cards carry sentences, not a progress label: wrap them in
+   full instead of cutting them off ("…turn it on in Settings → Playing stren…"). */
+.job-toast.variant-info:not(.is-leaving),
+.job-toast.state-failed:not(.is-leaving) { max-height: 360px; }
+.job-toast.variant-info .job-toast-message,
+.job-toast.state-failed .job-toast-message {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+
 .job-toast-track {
   height: 6px;
   border-radius: 999px;
@@ -4521,7 +4825,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 /* Engine on in Build: the inspector takes more of the column so the lines and
    the Explorer both fit; the (mostly short) move tree scrolls instead. */
-@media (min-width: 1021px) {
+@media (min-width: 861px) {
   .dock:has(#explorer-rows.has-eval) { flex-basis: clamp(300px, 58%, 520px); }
 }
 /* Analyze: the card's own off switch sits with the engine controls. */
@@ -6253,9 +6557,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   padding: 0;
   min-width: 0;
   max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Long messages wrap onto more lines instead of being cut off with "…". */
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  line-height: 1.4;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -6313,7 +6620,21 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   transform: translateY(6px);
   pointer-events: none;
 }
-.topbar-status-slot .status { max-width: min(380px, 60vw); }
+/* JS marks the slot idle whenever there is nothing to show (setStatus), so an
+   empty pill can never linger — even mid-fade or with the ghost class on. */
+.topbar-status-slot.is-idle {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s;
+}
+.topbar-status-slot {
+  white-space: normal;
+  overflow: visible;
+  max-width: min(440px, calc(100vw - 32px));
+  border-radius: 16px;
+}
+.topbar-status-slot .status { max-width: min(400px, calc(100vw - 80px)); }
 
 /* Rail foot: Search and Theme read as rail rows (icon, label on expand). */
 .rail-btn {
@@ -6383,6 +6704,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 @media (max-width: 1279px) {
   .study { --board-share: 0.6; }
+}
+@media (max-width: 1100px) {
+  .study { --board-share: 0.56; }
 }
 
 /* Explorer database toggle: the chosen database reads at a glance (accent

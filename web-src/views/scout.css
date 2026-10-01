@@ -311,6 +311,18 @@
 .c-attack { background: var(--bad-soft); color: var(--danger); }
 .c-main { background: var(--info-soft); color: var(--accent-text); }
 .seen { color: var(--label); font-size: var(--fs-xs); }
+.c-small { background: var(--surface-3); color: var(--muted); }
+.scout-line-more { font-size: var(--fs-xs); white-space: nowrap; }
+.scout-wdlbar-wrap { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.scout-wdlbar-nums {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+.scout-refutation-gap-actions { align-items: center; }
+.scout-refutation-gap-lead { font-size: var(--fs-xs); }
 .scout-score-cell { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25; }
 .scout-score-pct { font-size: 14px; font-weight: 700; }
 .scout-gap { color: var(--danger); font-size: 10.5px; white-space: nowrap; }
@@ -516,10 +528,13 @@
 .scout-source-warnings .source-chip.is-empty { opacity: 0.75; }
 .scout-source-warnings .btn { margin-left: auto; }
 
-/* ≤1279: lower-value columns drop. */
+/* ≤1279: the Type · last seen column folds under the line (it used to be
+   hidden while its header stayed, leaving an empty, misaligned column). */
 @media (max-width: 1279px) {
   .line-row { grid-template-columns: minmax(0, 1fr) 70px 110px 40px; }
-  .line-row .lr-meta { display: none; }
+  .line-row .lr-meta { grid-column: 1; grid-row: 2; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .scout-lines-head { grid-template-columns: minmax(0, 1fr) 70px 110px 40px; }
+  .scout-lines-head span:nth-child(2) { display: none; }
   .scout-intel-bullets { columns: 1; }
 }
 /* ≤760: phone — plan first, the open line's detail after it, then the charts. */

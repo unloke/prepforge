@@ -34,6 +34,10 @@
 // 157,912 → 162,742 B of the built index-*.css against origin/main b521bff —
 // and ~0.6 KiB JS raw of eager view glue (the page renderers themselves stay
 // in lazy chunks); gzip stays within its caps.
+// The 2026-09-30 UX walkthrough adds sign-in/resume state, isolated Explorer
+// previews, Build loading guards and Analyze/Train integration. The production
+// main chunk is now ~319.4 KB raw / 99.3 KB gzip; allow only 320 KB / 100 KB.
+// Keep worker and CSS budgets unchanged; this accounts for the reviewed UX delta.
 import { readdirSync, statSync, readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { fileURLToPath, URL } from "node:url";
@@ -48,8 +52,8 @@ const LIMITS = [
   {
     prefix: "index-",
     suffix: ".js",
-    maxBytes: 300_000, // reskin +0.04 KiB over the 299,000 roving-focus ceiling (see header)
-    maxGzipBytes: 95_000,
+    maxBytes: 320_000, // reviewed walkthrough integration (see measured delta above)
+    maxGzipBytes: 100_000,
     label: "main app chunk",
   },
   { prefix: "maia3-worker-", suffix: ".js", maxBytes: 220_000, label: "maia3 worker chunk" },

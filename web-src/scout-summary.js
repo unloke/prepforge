@@ -142,7 +142,9 @@ function predictableLabel(predict, persona) {
   const top = predict?.topMove;
   if (!top) return "Varied opener";
   const pct = Math.round((top.share || 0) * 100);
-  const system = persona?.systemSetup?.detected ? persona.systemSetup.label : null;
+  const system = persona?.systemSetup?.detected
+    ? persona.systemSetup.name || persona.systemSetup.label
+    : null;
   if (system) return `Predictable 1.${top.san} ${system} player`;
   if (predict.label === "predictable") return `Predictable 1.${top.san} player (${pct}%)`;
   return `Mostly 1.${top.san} (${pct}%)`;
@@ -428,7 +430,7 @@ export function buildScoutSectionSummary(
   if (persona?.systemSetup?.detected && persona.systemSetup.label) {
     bullets.push(
       choose({ san: persona.systemSetup.label }, "scout-persona-system", PERSONA_SYSTEM, {
-        system: persona.systemSetup.label,
+        system: persona.systemSetup.name || persona.systemSetup.label,
         qualifier: qualifier(persona.confidence),
       }),
     );

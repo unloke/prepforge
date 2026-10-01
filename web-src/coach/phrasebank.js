@@ -219,6 +219,48 @@ export const BLUNDER_LEAD = [
   "A bad one, I'm afraid: a blunder.",
 ];
 
+// A blunder by the win% drop that nonetheless leaves the game about level: the cost is the
+// advantage, not the game. Paired with AFTERMATH_LEVEL so the read stays consistent.
+export const BLUNDER_LEAD_LEVEL = [
+  "That's a blunder: it throws away {me}'s advantage.",
+  "A blunder, and {me}'s edge is gone with it.",
+  "That's a blunder that lets {me}'s advantage slip away.",
+  "A blunder: {me} had the upper hand and gives it back.",
+  "That's a blunder, handing back {me}'s advantage.",
+];
+
+// A blunder by the win% drop where the mover is still ahead afterwards.
+export const BLUNDER_LEAD_BETTER = [
+  "That's a blunder, even if {me} keeps some of the edge.",
+  "A blunder: {me} gives away most of the advantage.",
+  "That's a blunder that throws away a big chunk of {me}'s edge.",
+  "A blunder, though {me} is still the one pressing.",
+];
+
+// The standing after an error that left the game about level (full sentences).
+export const AFTERMATH_LEVEL = [
+  "The position is about level now.",
+  "It's roughly equal from here.",
+  "The game is back to about even.",
+  "Now it's about level.",
+];
+
+// The standing after an error the mover is still ahead after (full sentences).
+export const AFTERMATH_BETTER = [
+  "{me} is still {standing}, but much of the edge is gone.",
+  "{me} stays {standing}, just by a lot less.",
+  "{me} is still {standing}, only not by as much.",
+];
+
+// The opponent's reply as its own sentence. {rt} is the reply's idea as a trailing
+// modifier (", claiming the centre and eyeing the bishop on c4") or "".
+export const REPLY_SENTENCE = [
+  "{opp} answers with {reply}{rt}.",
+  "{opp} replies {reply}{rt}.",
+  "{opp} can answer {reply}{rt}.",
+  "Now {opp} has {reply}{rt}.",
+];
+
 export const MISTAKE_LEAD = [
   "Not quite, that's a slip.",
   "Hmm, that's a mistake.",
@@ -322,13 +364,12 @@ export const MISSED_WIN = [
 
 // The played move plus its idea, as the subject of "... loses material" / "... hands
 // over the initiative". When there's no idea, commentary.js uses the bare SAN instead.
+// {idea} is a participle phrase ("claiming the centre and eyeing the bishop on c4"), so
+// only shapes that take a participle belong here.
 export const OPENER_WITH_IDEA = [
   "{san}, {idea},",
   "{san}, {idea},",
   "{san}, with the idea of {idea},",
-  "{san}, intending {idea},",
-  "{san}, the point being {idea},",
-  "{san}, idea: {idea},",
 ];
 
 export const LOSE_MATERIAL_VERB = [
@@ -422,7 +463,8 @@ export const PHASE_HINT_ENDGAME = [
   "lets a decisive tempo go in the endgame",
 ];
 
-// The resulting standing, as a standalone capitalised sentence.
+// The resulting standing, as a standalone capitalised sentence. Only used when the
+// opponent is now actually better (see AFTERMATH_* for the level/still-better cases).
 export const STANDING_TAIL = [
   "{opp} is now {standing}.",
   "That leaves {opp} {standing}.",
@@ -433,23 +475,19 @@ export const STANDING_TAIL = [
   "That tips it: {opp} is {standing}.",
 ];
 
-// With a named punishing reply (folded into a sentence, no dash).
+// With a named punishing reply. Every piece is a complete sentence: {replySentence}
+// (REPLY_SENTENCE) and {standingTail} (STANDING_TAIL / AFTERMATH_*), so no clause is left
+// without a main verb and nothing capitalised follows a comma.
 export const INITIATIVE_WITH_PUNISH = [
-  "{opener} {phaseHint}. {punishCap} {standingTail}",
-  "{opener} {phaseHint}, and {punish} {standingTail}",
-  "{opener} {phaseHint}. {punishCap} Now {opp} is {standing}.",
-  "{opener} {phaseHint}. {punishCap} {opp} is {standing} for it.",
-  "{opener} {phaseHint}, so {punish} {standingTail}",
+  "{opener} {phaseHint}. {replySentence} {standingTail}",
+  "{opener} {phaseHint}. {replySentence} {standingTail}",
+  "{opener} {phaseHint}, and it shows. {replySentence} {standingTail}",
 ];
 
 // No reply to name — the standing stands on its own.
 export const INITIATIVE_NO_PUNISH = [
   "{opener} {phaseHint}. {standingTail}",
-  "{opener} {phaseHint}, and that leaves {opp} {standing}.",
-  "{opener} {phaseHint}, so {opp} is {standing} now.",
-  "{opener} {phaseHint}. {standingTailCap}",
-  "{opener} {phaseHint}, and {opp} is {standing} for it.",
-  "{opener} {phaseHint}. From here {opp} is {standing}.",
+  "{opener} {phaseHint}, and it shows. {standingTail}",
 ];
 
 // The recommendation: what to play instead, and what it keeps/saves (via {merit}).
@@ -466,7 +504,7 @@ export const BETTER_MOVE = [
   "{bestSan} was the one to play{merit}.",
   "{bestSan} was cleaner{merit}.",
   "The move was {bestSan}{merit}.",
-  "{bestSan} kept it simple{merit}.",
+  "{bestSan} was the simple way{merit}.",
   "You wanted {bestSan}{merit}.",
   "{bestSan} steers clear of trouble{merit}.",
 ];

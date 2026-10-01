@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createReplayView } from "./replay.js";
+import {
+  createReplayView,
+  displayReplayResult,
+  formatReplayDate,
+  revealIfOffscreen,
+} from "./replay.js";
 
 // Characterization for the ui-prototype-v2 Games focus internals:
 //  - the focus card renders a board derived from the real move_san_history
@@ -158,6 +163,95 @@ describe("replay focus internals", () => {
     expect(html).not.toContain('data-testid="replay-focus-board"');
     // The production detail text survives the fallback.
     expect(html).toContain("You diverged on ply 4");
+  });
+
+  it("keeps draws on one line and names a single source account once", () => {
+    const draw = { ...stayedGame, result: "1/2-1/2", finished_at: "2026-09-28T12:00:00Z" };
+    makeView(elements).renderReplayResults({ games: [draw, userErrorGame], misses_recorded: 0 });
+    const html = elements["replay-results"].innerHTML;
+    expect(html).toContain(">½–½</span>");
+    expect(html).not.toContain("1/2-1/2");
+    // Both games come from "self": the account sits in the header, not per row.
+    expect(html.match(/class="acct"/g)).toHaveLength(1);
+    expect(html).toMatch(/shown · <i class="acct"[^>]*>self<\/i>/);
+    // The finish date is shown on the row.
+    expect(html).toContain('<time class="lr-date" datetime="2026-09-28T12:00:00Z">');
+  });
+
+  it("labels rows with their account when several accounts are mixed", () => {
+    const other = { ...stayedGame, source_account: "alt_account" };
+    makeView(elements).renderReplayResults({ games: [userErrorGame, other], misses_recorded: 0 });
+    const html = elements["replay-results"].innerHTML;
+    expect(html.match(/class="acct"/g)).toHaveLength(2);
+    expect(html).not.toMatch(/shown · <i class="acct"/);
+  });
+
+  it("reveals the detail card after a row click when it is off screen", () => {
+    const listeners = [];
+    const focusCard = {
+      getBoundingClientRect: () => ({ top: 900, bottom: 1300, height: 400 }),
+      scrollIntoView: (opts) => listeners.push(["scroll", opts]),
+    };
+    const row = {
+      dataset: { index: "1" },
+      addEventListener: (_type, fn) => listeners.push(["click", fn]),
+      focus: () => listeners.push(["focus"]),
+    };
+    elements["replay-results"] = {
+      innerHTML: "",
+      querySelectorAll: (sel) => (sel === ".lr[data-index]" ? [row] : []),
+      querySelector: (sel) => (sel === ".focus" ? focusCard : sel.startsWith(".lr[") ? row : null),
+    };
+    globalThis.window = { innerHeight: 614, matchMedia: () => ({ matches: true }) };
+    let open = 0;
+    globalThis.document = { getElementById: (id) => elements[id] || null };
+    const view = createReplayView({
+      escapeHtml: (s) => String(s),
+      boardRenderers: RENDERERS,
+      getReplayFilter: () => null,
+      isGameOpen: (index) => index === open,
+      onToggleFilter: () => {},
+      onToggleGame: (index) => {
+        open = index;
+        view.renderReplayResults(payload);
+      },
+      onTrainMiss: () => {},
+      onBuildReply: () => {},
+      onAnalyze: () => {},
+    });
+    const payload = { games: [userErrorGame, stayedGame], misses_recorded: 0 };
+    view.renderReplayResults(payload);
+    // Initial render never scrolls.
+    expect(listeners.some(([kind]) => kind === "scroll")).toBe(false);
+    const click = listeners.find(([kind]) => kind === "click")[1];
+    click();
+    const scroll = listeners.find(([kind]) => kind === "scroll");
+    expect(scroll[1]).toEqual({ block: "nearest", behavior: "auto" }); // reduced motion
+    expect(listeners.some(([kind]) => kind === "focus")).toBe(true);
+    globalThis.window = undefined;
+  });
+
+  it("does not scroll when the detail card is already visible", () => {
+    const calls = [];
+    const el = {
+      getBoundingClientRect: () => ({ top: 80, bottom: 520, height: 440 }),
+      scrollIntoView: (opts) => calls.push(opts),
+    };
+    expect(revealIfOffscreen(el, { innerHeight: 614 })).toBe(false);
+    const below = { ...el, getBoundingClientRect: () => ({ top: 700, bottom: 1100, height: 400 }) };
+    expect(revealIfOffscreen(below, { innerHeight: 614, matchMedia: () => ({ matches: false }) })).toBe(true);
+    expect(calls).toEqual([{ block: "nearest", behavior: "smooth" }]);
+  });
+
+  it("formats results and dates for display only", () => {
+    expect(displayReplayResult("1/2-1/2")).toBe("½–½");
+    expect(displayReplayResult("1-0")).toBe("1-0");
+    expect(displayReplayResult(null)).toBe("*");
+    const now = new Date("2026-09-30T12:00:00Z");
+    expect(formatReplayDate("2026-09-28T12:00:00Z", now)).toBe("Sep 28");
+    expect(formatReplayDate("2025-03-02T12:00:00Z", now)).toBe("Mar 2, 2025");
+    expect(formatReplayDate("", now)).toBe("");
+    expect(formatReplayDate("not a date", now)).toBe("");
   });
 
   it("drops the arrow when the payload expected move is illegal on the derived position", () => {

@@ -82,14 +82,16 @@ export function createDashboardView({
   let libraryFilter = "all";
   let libraryQuery = "";
   let repListCache = { own: [], shared: [] };
+  let repListLoaded = false;
 
-  // "Black · 142 trainable moves" (+ disabled / shared-with in the preview) —
+  // "Black · 142 moves to train" (+ disabled / shared-with in the preview) —
   // only real listing fields (colour, health.trainable, visibility/team). The
   // listing has no line count or last-trained date, so neither is shown.
   function repSubline(item, { detail = false } = {}) {
     const bits = [String(item.color || "") === "black" ? "Black" : "White"];
     if (item.health && item.health.trainable) {
-      bits.push(`${item.health.trainable} trainable move${item.health.trainable === 1 ? "" : "s"}`);
+      // Same wording as the Repertoire header's "· N to train".
+      bits.push(`${item.health.trainable} move${item.health.trainable === 1 ? "" : "s"} to train`);
     }
     if (!detail) return bits.join(" · ");
     if (item.is_active === false) bits.push("disabled");
@@ -234,9 +236,37 @@ export function createDashboardView({
     if (lastSetupPayload) renderSteps(lastSetupPayload);
   }
 
+  // Never-trained moves across the caller's active repertoires, from the
+  // listing's per-repertoire health. null until the listing has loaded.
+  function newMovesToLearn() {
+    if (!repListLoaded) return null;
+    return repListCache.own.reduce((sum, item) => {
+      if (item.is_active === false || !item.health) return sum;
+      return sum + (Number(item.health.untrained) || 0);
+    }, 0);
+  }
+
+  // Queue line for the Today strip. "Queue is clear" next to a "41 new" row
+  // read as a contradiction (UX walkthrough P1-4): reviews and never-trained
+  // moves are reported separately.
+  function todayQueueText(due, soon, newMoves) {
+    const bits = [];
+    bits.push(due > 0 ? `<b>${due} due now</b>` : "Reviews clear");
+    if (newMoves > 0) {
+      const label = `${newMoves} new move${newMoves === 1 ? "" : "s"} to learn`;
+      bits.push(due > 0 ? label : `<b>${label}</b>`);
+    }
+    if (soon > 0) bits.push(`${soon} coming up in 24h`);
+    if (bits.length === 1 && due === 0 && newMoves === 0) return "Queue is clear";
+    return bits.join(" &middot; ");
+  }
+
+  let lastTodayPayload = null;
+
   function renderDashboardToday(payload) {
     const card = document.getElementById("dashboard-today");
     if (!card) return;
+    lastTodayPayload = payload;
     const streak = payload.streak || { current: 0, best: 0, trained_today: false };
     const due = payload.due_reviews || 0;
     const soon = payload.due_soon || 0;
@@ -261,10 +291,10 @@ export function createDashboardView({
       }
     }
     const best = streak.best > 1 ? `<small>best ${streak.best}</small>` : "";
-    const queueBits = [];
-    if (due > 0) queueBits.push(`<b>${due} due now</b>`);
-    if (soon > 0) queueBits.push(`${soon} coming up in 24h`);
-    const queueText = queueBits.length ? queueBits.join(" &middot; ") : "Queue is clear";
+    const newMoves = newMovesToLearn();
+    const queueText = todayQueueText(due, soon, newMoves);
+    // Nothing due but new moves waiting: the smart queue teaches them, so say so.
+    const learnNew = due === 0 && newMoves > 0;
     const recap = payload.recap || null;
     let recapHtml = "";
     if (recap && (recap.reviews_7d > 0 || recap.mastered_now > 0 || recap.weak_now > 0)) {
@@ -309,11 +339,13 @@ export function createDashboardView({
       ${recapHtml}
     </div>
     <div class="today-metrics">${metricsHtml}</div>
-    <button class="btn primary lg" id="dashboard-train-now" data-testid="dashboard-train-now">Train</button>
+    <button class="btn primary lg" id="dashboard-train-now" data-testid="dashboard-train-now">${learnNew ? "Learn new moves" : "Train"}</button>
   `;
     card.hidden = false;
     const trainNow = () =>
-      goToSmartTraining(due > 0 ? "Starting due review…" : "Starting training…");
+      goToSmartTraining(
+        due > 0 ? "Starting due review…" : learnNew ? "Starting new moves…" : "Starting training…",
+      );
     document.getElementById("dashboard-train-now").addEventListener("click", trainNow);
     const dueMetric = card.querySelector('[data-action="due-review"]');
     if (dueMetric) dueMetric.addEventListener("click", trainNow);
@@ -488,6 +520,7 @@ export function createDashboardView({
     const container = document.getElementById("dashboard-repertoires");
     if (!container) return;
     repListCache = { own: [], shared: [] };
+    repListLoaded = false;
     countBadge(null);
     setListboxRole(container, false);
     setLibraryEmpty(true, { error: true });
@@ -517,6 +550,7 @@ export function createDashboardView({
     const container = document.getElementById("dashboard-repertoires");
     if (!container) return;
     repListCache = { own: [], shared: [] };
+    repListLoaded = false;
     countBadge(null);
     setListboxRole(container, false);
     setLibraryEmpty(true, { error: true });
@@ -635,7 +669,11 @@ export function createDashboardView({
       countBadge(visible.length);
     }
     repListCache = { own: visible, shared: sharedRows };
+    repListLoaded = true;
     renderRepertoireList();
+    // The Today strip's "new moves to learn" depends on this listing.
+    const today = document.getElementById("dashboard-today");
+    if (lastTodayPayload && today && !today.hidden) renderDashboardToday(lastTodayPayload);
   }
 
   // Background refresh (after CRUD elsewhere): a failure only replaces the
@@ -658,6 +696,7 @@ export function createDashboardView({
     const container = document.getElementById("dashboard-repertoires");
     if (!container) return;
     repListCache = { own: [], shared: [] };
+    repListLoaded = false;
     countBadge(null);
     setListboxRole(container, false);
     setLibraryEmpty(true);
@@ -672,12 +711,18 @@ export function createDashboardView({
         </div>
       </div>`;
     selectedRepId = null;
+    lastTodayPayload = null;
     const today = document.getElementById("dashboard-today");
     if (today) today.hidden = true;
     renderOnboardingSteps([
       ["Sign in or create an account", "Your library, streak and queue follow you across devices.", "signin", "Sign in"],
       ["Create your first repertoire", "Pick a side and an opening — or turn one of your games into one.", "new", "New repertoire"],
-      ["Analyze a game", "Engine review and coach notes work before you sign in.", "analyze", "Open Analyze"],
+      [
+        "Analyze a game",
+        "Play through any position with the engine and live coach notes — no account needed. Full-game reviews are saved to your account.",
+        "analyze",
+        "Open Analyze",
+      ],
     ]);
   }
 
@@ -721,14 +766,14 @@ export function createDashboardView({
   }
 
   async function dashboardImportPgn() {
-    if (!requireSignIn("Sign in (or create an account) to import a repertoire")) return;
+    if (!requireSignIn("Sign in to import a repertoire", "import-pgn")) return;
     const input = document.getElementById("dashboard-import-input");
     input.value = "";
     input.click();
   }
 
   async function handleImportPgnFile(file) {
-    if (!requireSignIn("Sign in (or create an account) to import a repertoire")) return;
+    if (!requireSignIn("Sign in to import a repertoire", "import-pgn")) return;
     if (!file) return;
     let text;
     try {

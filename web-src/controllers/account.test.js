@@ -103,6 +103,141 @@ describe("account controller", () => {
   });
 });
 
+// Unified sign-in gate: the reason shows inside the modal, the interrupted
+// action is remembered (allowlisted), and closing the modal forgets it.
+describe("sign-in gate", () => {
+  let overlays;
+  let docListeners;
+  let session;
+  beforeEach(() => {
+    overlays = [];
+    docListeners = {};
+    session = new Map();
+    globalThis.sessionStorage = {
+      getItem: (k) => (session.has(k) ? session.get(k) : null),
+      setItem: (k, v) => session.set(k, String(v)),
+      removeItem: (k) => session.delete(k),
+    };
+    globalThis.window = {
+      location: { hash: "#/dashboard", href: "https://x.test/#/dashboard", assign: vi.fn() },
+      open: vi.fn(),
+    };
+    globalThis.document = {
+      getElementById: () => null,
+      querySelector: (sel) => (sel === ".modal-overlay.auth-overlay" ? overlays.find((o) => !o.removed) || null : null),
+      createElement: () => {
+        const listeners = {};
+        const overlay = {
+          className: "",
+          dataset: {},
+          innerHTML: "",
+          removed: false,
+          listeners,
+          addEventListener: (name, fn) => {
+            listeners[name] = fn;
+          },
+          querySelector: () => null,
+          remove() {
+            this.removed = true;
+          },
+        };
+        overlays.push(overlay);
+        return overlay;
+      },
+      body: { appendChild: () => {} },
+      addEventListener: (name, fn) => {
+        docListeners[name] = fn;
+      },
+      removeEventListener: (name) => {
+        delete docListeners[name];
+      },
+    };
+  });
+  afterEach(() => {
+    delete globalThis.sessionStorage;
+    delete globalThis.window;
+  });
+
+  it("returns true without a modal when signed in", () => {
+    const { appState, controller } = makeController();
+    appState.signedIn = true;
+    expect(controller.requireSignIn("Sign in to start training", "train")).toBe(true);
+    expect(overlays).toHaveLength(0);
+  });
+
+  it("opens the modal with the reason, a close button and labelled inputs", () => {
+    const { controller, setStatus } = makeController();
+    expect(controller.requireSignIn("Sign in to create a repertoire", "new-repertoire")).toBe(false);
+    const html = overlays[0].innerHTML;
+    expect(html).toContain("Sign in to create a repertoire");
+    expect(html).toContain('data-action="close"');
+    expect(html).toContain('for="auth-email"');
+    expect(html).toContain('id="auth-email"');
+    expect(html).toContain('for="auth-password"');
+    expect(html).toContain("auth-switch");
+    // The reason lives in the modal, not a toast hidden behind the backdrop.
+    expect(setStatus).not.toHaveBeenCalled();
+    expect(JSON.parse(session.get("prepforge.pending_action"))).toMatchObject({
+      id: "new-repertoire",
+      route: "#/dashboard",
+    });
+  });
+
+  it("forgets the pending action when the user closes the modal", () => {
+    const { controller } = makeController();
+    controller.requireSignIn("Sign in to create a team", "new-team");
+    overlays[0].listeners.click({ target: { dataset: { action: "close" } } });
+    expect(overlays[0].removed).toBe(true);
+    expect(session.has("prepforge.pending_action")).toBe(false);
+    expect(docListeners.keydown).toBeUndefined();
+  });
+
+  it("keeps the pending action across the Google redirect", () => {
+    const { controller } = makeController();
+    controller.requireSignIn("Sign in to start training", "train");
+    overlays[0].listeners.click({ target: { dataset: { action: "google" } } });
+    expect(window.location.assign).toHaveBeenCalledWith("/api/auth/google/login");
+    expect(session.has("prepforge.pending_action")).toBe(true);
+    expect(session.has("prepforge.auth_return")).toBe(true);
+  });
+
+  it("passes the original Analyze source through the gate and Google redirect", () => {
+    const { controller } = makeController();
+    const data = { pgn: "1. d4 d5 *", mode: "single", selectIndex: 0 };
+    controller.requireSignIn("Sign in to review", "analyze-game", data);
+    overlays[0].listeners.click({ target: { dataset: { action: "google" } } });
+    expect(JSON.parse(session.get("prepforge.pending_action")).data).toEqual(data);
+    overlays[0].listeners.click({ target: { dataset: { action: "close" } } });
+    expect(session.has("prepforge.pending_action")).toBe(false);
+  });
+
+  it("does not store an unknown action id", () => {
+    const { controller } = makeController();
+    controller.requireSignIn("Sign in", "rm -rf");
+    expect(session.has("prepforge.pending_action")).toBe(false);
+  });
+
+  it("gates Lichess linking for a guest instead of opening the 401 popup", () => {
+    const { controller } = makeController();
+    expect(controller.startLichessOAuth()).toBe(false);
+    expect(window.open).not.toHaveBeenCalled();
+    expect(overlays[0].innerHTML).toContain("Sign in to link your Lichess account");
+  });
+
+  it("turns a 401 into the sign-in modal, but backs off right after a dismissal", () => {
+    const { controller, setStatus } = makeController();
+    controller.handleAuthRequired();
+    expect(overlays).toHaveLength(1);
+    // Already open: no second modal.
+    controller.handleAuthRequired();
+    expect(overlays).toHaveLength(1);
+    overlays[0].listeners.click({ target: { dataset: { action: "close" } } });
+    controller.handleAuthRequired();
+    expect(overlays).toHaveLength(1);
+    expect(setStatus).toHaveBeenCalledWith(expect.stringContaining("Sign in"), { severity: "warning" });
+  });
+});
+
 // M2: the account menu opened from the mobile More sheet takes focus, marks
 // its trigger expanded, and hands focus back to that trigger on Escape-close.
 describe("account menu focus", () => {

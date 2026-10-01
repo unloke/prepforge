@@ -1,4 +1,15 @@
+import {
+  AUTH_REQUIRED_MESSAGE,
+  clearPendingAction,
+  isPendingActionId,
+  markAuthReturn,
+  savePendingAction,
+} from "../auth-gate.js";
+
 const LICHESS_KEY = "prepforge.lichess_username";
+// After the guest dismisses the sign-in modal, a burst of 401s from the same
+// action must not pop it straight back open.
+const AUTH_PROMPT_COOLDOWN_MS = 10_000;
 
 // The API caps passwords at 200 characters (ResetPasswordRequest). Mirroring it on
 // the input keeps a long passphrase from being rejected as an opaque 422.
@@ -119,12 +130,36 @@ export function createAccountController({
   }
 
   // Owner-scoped actions call server endpoints that require an account. Guard
-  // them up front so a guest gets the sign-in modal instead of a cryptic 401.
-  function requireSignIn(message = "Sign in (or create an account) to continue") {
+  // them up front so a guest gets the sign-in modal — with the reason shown
+  // inside it — instead of a cryptic 401. `pendingActionId` (allowlisted in
+  // auth-gate.js) lets the action resume once the sign-in completes.
+  function requireSignIn(reason = "Sign in (or create an account) to continue", pendingActionId = null, pendingData = null) {
     if (appState.signedIn) return true;
-    setStatus(message, { severity: "warning" });
-    openAuthModal("login");
+    openAuthModal("login", { notice: reason, pendingAction: pendingActionId, pendingData });
     return false;
+  }
+
+  let authDismissedAt = 0;
+
+  function isAuthModalOpen() {
+    return typeof document !== "undefined" && !!document.querySelector?.(".modal-overlay.auth-overlay");
+  }
+
+  // An API call answered 401: show the sign-in modal with an explanation
+  // instead of the backend's "not authenticated". Never stacks a second modal
+  // and backs off right after the user closed one.
+  function handleAuthRequired(reason = "") {
+    if (isAuthModalOpen()) return;
+    const message =
+      reason ||
+      (appState.signedIn
+        ? "Your session has ended — sign in again to continue."
+        : AUTH_REQUIRED_MESSAGE);
+    if (Date.now() - authDismissedAt < AUTH_PROMPT_COOLDOWN_MS) {
+      setStatus(message, { severity: "warning" });
+      return;
+    }
+    openAuthModal("login", { notice: message });
   }
 
   // The sign-in / create-account modal. Google (when configured) is the primary
@@ -139,18 +174,30 @@ export function createAccountController({
     reset: { title: "Choose a new password", submit: "Set password" },
   };
 
-  function openAuthModal(mode = "login", { resetToken = null, notice = "" } = {}) {
+  function openAuthModal(mode = "login", { resetToken = null, notice = "", pendingAction = null, pendingData = null } = {}) {
     const existing = document.querySelector(".modal-overlay.auth-overlay");
     if (existing) {
       // The modal registers a document-level keydown listener on open, so a bare
-      // remove() here would orphan it.
-      if (typeof existing._closeAuthModal === "function") existing._closeAuthModal();
+      // remove() here would orphan it. Replacing it is not a user dismissal:
+      // this open decides the pending action below.
+      if (typeof existing._closeAuthModal === "function") existing._closeAuthModal({ replaced: true });
       else existing.remove();
+    }
+    // Remember the interrupted action so it resumes after the sign-in reload
+    // (or the Google redirect). Opening without one clears any stale intent.
+    if (isPendingActionId(pendingAction)) {
+      const route = typeof window !== "undefined" ? window.location?.hash || "" : "";
+      savePendingAction(pendingAction, { route, data: pendingData });
+    } else {
+      clearPendingAction();
     }
     const overlay = document.createElement("div");
     overlay.className = "modal-overlay auth-overlay";
     const providers = appState.authProviders || { google: false, password: true };
     let token = resetToken;
+    // Why the modal opened ("Sign in to start training"): shown on the sign-in
+    // and create-account screens and kept across the toggle between them.
+    const reason = String(notice || "");
     const render = (currentMode, { email = "", message = "" } = {}) => {
       const spec = AUTH_MODES[currentMode] || AUTH_MODES.login;
       const signing = currentMode === "login" || currentMode === "register";
@@ -162,18 +209,18 @@ export function createAccountController({
       let fields = "";
       if (currentMode === "reset") {
         fields = `
-          <label class="modal-field"><span>New password (8+ characters)</span>
-            <input type="password" data-auth="password" autocomplete="new-password" maxlength="${PASSWORD_MAX}" /></label>
-          <label class="modal-field"><span>Repeat new password</span>
-            <input type="password" data-auth="confirm" autocomplete="new-password" maxlength="${PASSWORD_MAX}" /></label>`;
+          <label class="modal-field" for="auth-password"><span>New password (8+ characters)</span>
+            <input id="auth-password" type="password" data-auth="password" autocomplete="new-password" maxlength="${PASSWORD_MAX}" /></label>
+          <label class="modal-field" for="auth-confirm"><span>Repeat new password</span>
+            <input id="auth-confirm" type="password" data-auth="confirm" autocomplete="new-password" maxlength="${PASSWORD_MAX}" /></label>`;
       } else {
         fields = `
-          <label class="modal-field"><span>Email</span>
-            <input type="email" data-auth="email" autocomplete="email" value="${escapeHtml(email)}" /></label>`;
+          <label class="modal-field" for="auth-email"><span>Email</span>
+            <input id="auth-email" type="email" data-auth="email" autocomplete="email" value="${escapeHtml(email)}" /></label>`;
         if (currentMode !== "forgot") {
           fields += `
-          <label class="modal-field"><span>Password</span>
-            <input type="password" data-auth="password"
+          <label class="modal-field" for="auth-password"><span>Password</span>
+            <input id="auth-password" type="password" data-auth="password"
               autocomplete="${currentMode === "register" ? "new-password" : "current-password"}" /></label>`;
         }
       }
@@ -191,45 +238,60 @@ export function createAccountController({
           : currentMode === "register"
             ? "Have an account? Sign in"
             : "Back to sign in";
+      const reasonBlock =
+        reason && signing ? `<p class="auth-reason" data-auth="reason">${escapeHtml(reason)}</p>` : "";
       overlay.innerHTML = `
-      <div class="modal auth-modal" role="dialog" aria-modal="true" aria-label="${spec.title}">
-        <div class="modal-title">${spec.title}</div>
+      <div class="modal auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+        <div class="modal-title auth-modal-title">
+          <span id="auth-modal-title">${spec.title}</span>
+          <button class="auth-close" data-action="close" type="button" aria-label="Close" title="Close">×</button>
+        </div>
         <div class="modal-body">
+          ${reasonBlock}
           ${googleBlock}
           ${intro}
           ${fields}
           ${forgotLink}
           <p class="auth-notice" data-auth="notice" role="status"${message ? "" : " hidden"}>${escapeHtml(message)}</p>
-          <p class="auth-error" data-auth="error" role="alert" hidden></p>
+          <p class="auth-error" data-auth="error" role="alert"></p>
         </div>
-        <div class="modal-footer">
-          <button class="btn ghost" data-action="toggle" type="button">${secondary}</button>
+        <div class="modal-footer auth-footer">
+          <button class="auth-link auth-switch" data-action="toggle" type="button">${secondary}</button>
           <button class="btn primary" data-action="submit" type="button">${spec.submit}</button>
         </div>
       </div>`;
       overlay.dataset.mode = currentMode;
       overlay.querySelector("input")?.focus();
     };
-    render(mode, { message: notice });
+    // Sign-in / create-account screens show the reason as their lead line;
+    // the recovery screens fall back to the plain notice slot.
+    render(mode, { message: mode === "login" || mode === "register" ? "" : reason });
     document.body.appendChild(overlay);
     // render() runs before the overlay is attached, so focus again now.
     overlay.querySelector("input")?.focus();
 
-    const close = () => {
+    // `signedIn`: closing because the sign-in succeeded (keep the pending
+    // action for the reload). `replaced`: another openAuthModal takes over.
+    // Anything else is the user walking away — drop the pending action.
+    const close = ({ signedIn = false, replaced = false } = {}) => {
       document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onOutsidePointer, true);
       overlay.remove();
+      if (!signedIn && !replaced) {
+        clearPendingAction();
+        authDismissedAt = Date.now();
+      }
       // Abandoning a reset (Escape, overlay click, palette close) must scrub the
       // token from the URL too, or it stays bookmarkable/shareable in history.
       if (overlay.dataset.mode === "reset") clearResetParam();
     };
     // Tab/command-palette navigation uses this same teardown path.
     overlay._closeAuthModal = close;
+    // The error line keeps its reserved space (styles.css .auth-error), so a
+    // message appearing never makes the dialog jump.
     const showError = (msg) => {
       const el = overlay.querySelector('[data-auth="error"]');
-      if (el) {
-        el.textContent = msg;
-        el.hidden = !msg;
-      }
+      if (el) el.textContent = msg || "";
     };
     const value = (name) => overlay.querySelector(`[data-auth="${name}"]`)?.value ?? "";
     const submit = async () => {
@@ -273,8 +335,10 @@ export function createAccountController({
         }
         const endpoint = currentMode === "register" ? "/api/auth/register" : "/api/auth/login";
         await postJson(endpoint, { email, password });
-        close();
-        // A fresh session changes every owner-scoped view — reload for a clean slate.
+        markAuthReturn({ href: window.location.href });
+        close({ signedIn: true });
+        // A fresh session changes every owner-scoped view — reload for a clean
+        // slate; the pending action (if any) resumes after it.
         onReload();
       } catch (error) {
         showError(error.message || "Something went wrong.");
@@ -290,13 +354,27 @@ export function createAccountController({
         submit();
       }
     };
+    // The overlay itself is click-through (styles.css: rail tabs stay usable
+    // behind the dim layer), so "click the backdrop to close" is detected at
+    // the document: a press outside the dialog dismisses it, and the press
+    // still reaches whatever it landed on.
+    const onOutsidePointer = (event) => {
+      const dialog = overlay.querySelector(".auth-modal");
+      if (dialog && event.target && typeof dialog.contains === "function" && !dialog.contains(event.target)) {
+        close();
+      }
+    };
     document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onOutsidePointer, true);
     overlay.addEventListener("click", (event) => {
       const action = event.target?.dataset?.action;
       const currentMode = overlay.dataset.mode;
-      if (event.target === overlay) {
+      if (event.target === overlay || action === "close") {
         close();
       } else if (action === "google") {
+        // The Google round trip lands on "/?signed_in=1"; the pending action
+        // lives in sessionStorage and survives it.
+        markAuthReturn({ href: window.location.href });
         window.location.assign("/api/auth/google/login");
       } else if (action === "forgot") {
         render("forgot", { email: value("email").trim() });
@@ -411,8 +489,9 @@ export function createAccountController({
     const items = [
       `<div class="context-section">Signed in as ${escapeHtml(name)}</div>`,
       lichessItem,
-      `<button type="button" role="menuitem" data-action="account">Account</button>`,
-      `<button type="button" role="menuitem" data-action="settings">Settings</button>`,
+      // One entry: "Account" and "Settings" used to open the same page (the
+      // Account card is the top of Settings), which read as a duplicate.
+      `<button type="button" role="menuitem" data-action="settings">Account &amp; settings</button>`,
       `<button type="button" role="menuitem" data-action="signout">Sign out</button>`,
     ];
     menu.innerHTML = items.join("");
@@ -575,6 +654,9 @@ export function createAccountController({
   // Open Lichess sign-in in a popup; the callback page postMessages back, and
   // polling remains as a fallback if the message is blocked.
   function startLichessOAuth() {
+    // Linking attaches the Lichess identity to a PrepForge account: the server
+    // answers a guest with a 401, which used to open a popup of raw JSON.
+    if (!requireSignIn("Sign in to link your Lichess account", "lichess-link")) return false;
     const w = 520;
     const h = 660;
     const left = window.screenX + Math.max(0, (window.outerWidth - w) / 2);
@@ -628,6 +710,8 @@ export function createAccountController({
     renderAccountChip,
     refreshAuthProviders,
     requireSignIn,
+    handleAuthRequired,
+    isAuthModalOpen,
     openAuthModal,
     openResetFromUrl,
     onAccountChipClick,

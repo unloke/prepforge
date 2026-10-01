@@ -1,5 +1,5 @@
 // Analyze viewport smoke — fixture-backed (same stack as games/scout smokes).
-// Checks at 1440x900 / 1180x900 / 390x844:
+// Checks at 1440x900 / 1180x900 / 982x614 / 390x844:
 //   - no horizontal overflow, no console errors
 //   - COOP/COEP headers → the real browser Stockfish is available
 //   - demo PGN runs through the REAL pipeline: server stubs provide prepare
@@ -265,7 +265,7 @@ async function runViewport(vp) {
       panelHead: !!document.querySelector("#analyze-sidebar > .panel-head #analysis-game-title"),
       glyphs: document.querySelectorAll("#analysis-moves .mtree-glyph").length,
       noEvalBar: !document.getElementById("analysis-evalbar"),
-      panelNextToBoard: window.innerWidth > 1020 ? panel.left >= boardBox.right : panel.top >= boardBox.bottom,
+      panelNextToBoard: window.innerWidth > 860 ? panel.left >= boardBox.right : panel.top >= boardBox.bottom,
     };
   });
   check(layout.sameRow && layout.order, `move grid should lay number | White | Black in one row: ${JSON.stringify(layout)}`);
@@ -332,6 +332,7 @@ try {
   for (const vp of [
     { name: "desktop-1440", width: 1440, height: 900 },
     { name: "laptop-1180", width: 1180, height: 900 },
+    { name: "split-982", width: 982, height: 614 },
     { name: "mobile-390", width: 390, height: 844 },
   ]) await runViewport(vp);
 } finally {
@@ -343,4 +344,4 @@ if (failures.length) {
   for (const f of failures) console.error(`  - ${f}`);
   process.exit(1);
 }
-console.log("[analyze-smoke] ok — all three viewports render Analyze (coach, chart, move grid, class bars, eval readout) through the real browser-engine pipeline with no overflow and no console errors.");
+console.log("[analyze-smoke] ok — all four viewports render Analyze (coach, chart, move grid, class bars, eval readout) through the real browser-engine pipeline with no overflow and no console errors.");
