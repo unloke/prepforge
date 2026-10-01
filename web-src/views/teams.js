@@ -4,6 +4,7 @@
 // repertoires as two tabs over ONE panel (counts live on the tabs), with the
 // invite-link status as a footer line under the tabs.
 import "./teams.css";
+import { createInviteDialogUi, runInviteDialog } from "./team-invite.js";
 
 export function createTeamsView({
   appState,
@@ -16,6 +17,11 @@ export function createTeamsView({
   unshareRepertoireFromTeam,
   copySharedRepertoire,
   teamRoleLabel,
+  postJson,
+  setStatus = () => {},
+  setStatusError = () => {},
+  activateModal = () => {},
+  showConfirmModal = async () => false,
 }) {
   function selectTeamPane(pane) {
     document.querySelectorAll("[data-team-pane]").forEach((tab) => {
@@ -68,7 +74,12 @@ export function createTeamsView({
     if (!list) return;
     if (!appState.signedIn) {
       list.innerHTML = '<div class="empty-state">Sign in to create and join teams.</div>';
-      if (shared) shared.innerHTML = "";
+      if (shared) {
+        shared.innerHTML =
+          '<div class="empty-state">Sign in to see repertoires your teams share with you.</div>';
+      }
+      setSharedHintVisible(false);
+      renderTeamEmptyCard("signed-out");
       hideTeamDetail();
       return;
     }
@@ -77,9 +88,13 @@ export function createTeamsView({
       const payload = await api("/api/teams");
       appState.teams = payload.teams || [];
       renderTeamsList();
+      renderTeamEmptyCard(appState.teams.length ? "choose" : "no-teams");
       // Re-open an expanded team after a reload so a member add/remove stays in view.
       if (appState.selectedTeamId && appState.teams.some((tm) => tm.id === appState.selectedTeamId)) {
         openTeamDetail(appState.selectedTeamId);
+      } else if (appState.teams.length === 1) {
+        // Only one team: open it rather than leaving a big "Choose a team" blank.
+        openTeamDetail(appState.teams[0].id);
       } else {
         hideTeamDetail();
       }
@@ -87,6 +102,50 @@ export function createTeamsView({
       list.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
     }
     loadSharedRepertoires();
+  }
+
+  // The placeholder card beside the directory explains what to do next for the
+  // current state (signed out / no teams yet / pick one) instead of a bare blank.
+  const EMPTY_CARD_COPY = {
+    "signed-out": {
+      title: "Teams",
+      body: "Coaches and clubs use teams to share repertoires read-only with their members. Sign in to create or join a team.",
+    },
+    "no-teams": {
+      title: "No teams yet",
+      body: "Create a team, then invite people with a shareable link or add existing PrepForge users by their Lichess username.",
+    },
+    choose: {
+      title: "Choose a team",
+      body: "Members and shared repertoires appear here.",
+    },
+  };
+  function renderTeamEmptyCard(kind) {
+    const copy = EMPTY_CARD_COPY[kind] || EMPTY_CARD_COPY.choose;
+    const title = document.getElementById("team-empty-title");
+    const body = document.getElementById("team-empty-body");
+    if (title) title.textContent = copy.title;
+    if (body) body.textContent = copy.body;
+  }
+
+  // "Click to open (read-only)." only makes sense above a non-empty list.
+  function setSharedHintVisible(visible) {
+    const hint = document.getElementById("teams-shared-hint");
+    if (hint) hint.hidden = !visible;
+  }
+
+  async function openInviteDialog(teamId) {
+    const ui = createInviteDialogUi({ escapeHtml, activateModal });
+    await runInviteDialog(teamId, {
+      api,
+      postJson,
+      origin: window.location.origin,
+      copyText: (text) => navigator.clipboard.writeText(text),
+      confirm: showConfirmModal,
+      setStatus,
+      setStatusError,
+      ui,
+    });
   }
 
   function renderTeamsList() {
@@ -215,5 +274,16 @@ export function createTeamsView({
     foot.hidden = false;
   }
 
-  return { loadTeams, renderTeamsList, renderTeamSharedRepertoires, selectTeamPane, renderTeamTabCounts, renderTeamInviteFooter, bindTeamTabs };
+  return {
+    loadTeams,
+    renderTeamsList,
+    renderTeamSharedRepertoires,
+    selectTeamPane,
+    renderTeamTabCounts,
+    renderTeamInviteFooter,
+    bindTeamTabs,
+    renderTeamEmptyCard,
+    setSharedHintVisible,
+    openInviteDialog,
+  };
 }

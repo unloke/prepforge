@@ -525,7 +525,7 @@
               </label>
               <button class="btn primary" id="scout-btn" data-testid="scout-btn" data-scout-action="start">Start</button>
               <button class="btn ghost" id="scout-reset-btn" type="button" hidden>Reset</button>
-              <span class="counter"><span id="scout-live-count" class="scout-live-count" data-testid="scout-live-count" aria-live="polite">0</span> games</span>
+              <span class="counter"><span id="scout-live-count" class="scout-live-count" data-testid="scout-live-count" aria-live="polite">0</span> games fetched</span>
             </div>
             <div class="scout-grid">
               <div class="scout-main">
@@ -561,8 +561,8 @@
               <h2 id="team-detail-name">Team</h2>
               <span class="team-role-badge" id="team-detail-role"></span>
               <span class="spacer"></span>
-              <button class="btn sm" id="team-detail-invite" data-testid="team-detail-invite" title="Invite link" hidden>Invite</button>
-              <button class="ib" id="team-detail-rename" data-testid="team-detail-rename" title="Rename" aria-label="Rename team" hidden>✎</button>
+              <button class="btn sm" id="team-detail-invite" data-testid="team-detail-invite" title="Invite by link — get a shareable link; anyone signed in who opens it joins as a member" hidden>Invite</button>
+              <button class="ib" id="team-detail-rename" data-testid="team-detail-rename" title="Rename team" aria-label="Rename team" hidden>✎</button>
               <button class="ib danger" id="team-detail-delete" data-testid="team-detail-delete" title="Delete team" aria-label="Delete team" hidden>🗑</button>
               <button class="ib" id="team-detail-close" title="Close" aria-label="Close team details">×</button>
             </header>
@@ -573,8 +573,9 @@
             <section id="team-panel-members" data-team-panel="members" role="tabpanel" aria-labelledby="team-tab-members">
               <div class="sub-head">
                 <b>Members</b>
-                <button class="btn sm" id="team-add-member" data-testid="team-add-member" hidden>Add member</button>
+                <button class="btn sm" id="team-add-member" data-testid="team-add-member" title="Add someone who already has a PrepForge account, by their linked Lichess username" hidden>Add member</button>
               </div>
+              <p class="muted small team-help" id="team-members-hint" hidden><b>Add member</b> adds an existing PrepForge user by their linked Lichess username. For anyone else, use <b>Invite</b> to share a join link.</p>
               <div id="team-members" data-testid="team-members"></div>
             </section>
             <section id="team-panel-repertoires" data-team-panel="repertoires" role="tabpanel" aria-labelledby="team-tab-repertoires" hidden>
@@ -589,13 +590,13 @@
 
           <section class="card team-empty">
             <div class="es-mark" aria-hidden="true">♙</div>
-            <h3>Choose a team</h3>
-            <p class="muted">Members and shared repertoires appear here.</p>
+            <h3 id="team-empty-title">Choose a team</h3>
+            <p class="muted" id="team-empty-body">Members and shared repertoires appear here.</p>
           </section>
 
           <section class="card incoming">
             <header class="card-head"><h2 id="teams-shared-title">Incoming shares</h2></header>
-            <p class="muted hint" id="teams-shared-hint">Click to open (read-only).</p>
+            <p class="muted hint" id="teams-shared-hint" hidden>Click to open (read-only).</p>
             <div id="teams-shared" data-testid="teams-shared"></div>
           </section>
         </div>
@@ -628,8 +629,8 @@
                 <div class="pf-info-pop" id="connections-info-pop" hidden>
                   Every linked account counts as you (Self) in Games and Scout. Narrow to one account from its source picker there.
                 </div>
-                <div id="settings-lichess-accounts" data-testid="settings-lichess-accounts"></div>
-                <button class="btn sm conn-link" id="settings-link-lichess" data-testid="settings-link-lichess" type="button">Link a Lichess account</button>
+                <div id="settings-lichess-accounts" data-testid="settings-lichess-accounts"><p class="muted small conn-loading" aria-busy="true">Checking linked accounts…</p></div>
+                <button class="btn sm conn-link" id="settings-link-lichess" data-testid="settings-link-lichess" type="button" hidden>Link a Lichess account</button>
               </div>
               <div class="acct-block" id="settings-account-data" data-testid="settings-account-data"></div>
             </section>
@@ -679,6 +680,7 @@
               </div>
               <div class="set-row"><span>Browser Maia3</span><span class="status-pill" id="settings-maia-model">checking…</span></div>
               <p class="faint small" id="settings-maia-status"></p>
+              <p class="faint small" id="settings-maia-usage" data-testid="settings-maia-usage"></p>
               <p class="note warn settings-error" id="settings-maia-error" hidden></p>
             </section>
             <section class="card set" id="set-strength">
@@ -714,8 +716,9 @@
                   <span class="pf-row-label" id="settings-maia-analysis-label">Maia analysis</span>
                   <button type="button" class="pf-info pf-info-inline" id="maia-analysis-info" aria-label="About Maia analysis" title="About Maia analysis" aria-expanded="false">ⓘ</button>
                 </span>
-                <button type="button" class="pf-switch" id="settings-maia-analysis" role="switch" aria-checked="false" aria-labelledby="settings-maia-analysis-label"><span class="pf-knob"></span></button>
+                <button type="button" class="pf-switch" id="settings-maia-analysis" role="switch" aria-checked="false" aria-labelledby="settings-maia-analysis-label" aria-describedby="settings-maia-analysis-hint"><span class="pf-knob"></span></button>
               </div>
+              <p class="faint small set-note" id="settings-maia-analysis-hint" data-testid="settings-maia-analysis-hint"></p>
               <div class="pf-info-pop" id="maia-analysis-info-pop" hidden>
                 Adds the Maia3 human layer to analysis: classification, coach intuition, and brilliant signals. Stockfish always runs; this layer is skipped when off.
               </div>
@@ -730,7 +733,7 @@
             </section>
             <section class="card set" id="set-about">
               <h2>About</h2>
-              <p class="muted hint">PrepForge Chess — local opening preparation and replay tool.</p>
+              <p class="muted hint">PrepForge Chess — online opening prep: repertoires, training, game review, scouting.</p>
             </section>
           </div>
         </div>

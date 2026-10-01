@@ -200,6 +200,40 @@ describe("dashboard setup checklist", () => {
     expect(todayCard.innerHTML).toContain("dashboard-train-now");
   });
 
+  it("Today strip separates clear reviews from new moves still to learn (P1-4)", async () => {
+    mockDashboard(
+      { repertoires: 1, streak: { current: 2, best: 2, trained_today: true } },
+      [
+        { id: "rep-1", name: "anti caro", color: "black", is_active: true, health: { untrained: 41, due: 0, weak: 0, mastery_pct: 0 } },
+        { id: "rep-2", name: "off", color: "white", is_active: false, health: { untrained: 9 } },
+      ],
+    );
+    await view.loadDashboard();
+    expect(todayCard.innerHTML).toContain("Reviews clear");
+    expect(todayCard.innerHTML).toContain("41 new moves to learn");
+    expect(todayCard.innerHTML).not.toContain("Queue is clear");
+    expect(todayCard.innerHTML).toContain("Learn new moves");
+  });
+
+  it("Today strip only says the queue is clear when nothing is due or new", async () => {
+    mockDashboard({ repertoires: 1 }, [
+      { id: "rep-1", name: "e4", color: "white", is_active: true, health: { untrained: 0, due: 0 } },
+    ]);
+    await view.loadDashboard();
+    expect(todayCard.innerHTML).toContain("Queue is clear");
+    expect(todayCard.innerHTML).toMatch(/data-testid="dashboard-train-now">Train</);
+  });
+
+  it("due reviews stay the headline, with new moves as a secondary count", async () => {
+    mockDashboard({ repertoires: 1, due_reviews: 3 }, [
+      { id: "rep-1", name: "e4", color: "white", is_active: true, health: { untrained: 5, due: 3 } },
+    ]);
+    await view.loadDashboard();
+    expect(todayCard.innerHTML).toContain("<b>3 due now</b>");
+    expect(todayCard.innerHTML).toContain("5 new moves to learn");
+    expect(todayCard.innerHTML).toMatch(/data-testid="dashboard-train-now">Train</);
+  });
+
   it("renders the signed-out Library as the onboarding card without any API call", () => {
     view.renderSignedOut();
     expect(api).not.toHaveBeenCalled();
