@@ -359,7 +359,7 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
   await page.waitForTimeout(3500);
   check(S, await page.locator("#view-settings").isVisible(), "Settings view should be active");
   const active = await attr(page.locator(".settings-nav-link.is-active"), "href");
-  check(S, active === "#set-connections", `Connections should be the active section, got ${active}`);
+  check(S, active === "#set-account", `Account (with Chess accounts) should be the active section, got ${active}`);
   const inView = await page.evaluate(() => {
     const el = document.getElementById("set-connections");
     if (!el) return false;

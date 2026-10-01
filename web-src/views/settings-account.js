@@ -1,7 +1,11 @@
 // Settings → Account: the self-service side of the account backend — profile,
-// password, plan/billing, data export and account deletion. Rendered into
-// #settings-account-body by the Settings view; every action goes through the
-// same api()/postJson() helpers (CSRF, error flattening) as the rest of the app.
+// password, plan/billing, data export and account deletion. The card reads top
+// to bottom as "who you are → the chess accounts that are you → your data":
+//   #settings-account-body  identity header (+ password / plan rows when they apply)
+//   #set-connections        linked Lichess accounts (static markup, settings.js)
+//   #settings-account-data  export, then a folded danger zone
+// Every action goes through the same api()/postJson() helpers (CSRF, error
+// flattening) as the rest of the app.
 
 // The API caps passwords at 200 characters (ChangePasswordRequest). Mirroring it
 // here keeps a long passphrase from being rejected as an opaque "Request failed
@@ -29,76 +33,105 @@ export function createAccountSection({
     return document.getElementById("settings-account-body");
   }
 
-  function row(label, value, action = "") {
+  function dataBody() {
+    return document.getElementById("settings-account-data");
+  }
+
+  // One labelled row: the label may carry a one-line explanation under it.
+  function row(label, action, note = "") {
     return (
-      `<div class="set-row acct-row"><span>${label}</span>` +
-      `<span class="acct-value">${value}${action}</span></div>`
+      `<div class="set-row acct-row"><span class="acct-row-text"><span>${label}</span>` +
+      (note ? `<small class="acct-row-note">${note}</small>` : "") +
+      `</span>${action}</div>`
     );
+  }
+
+  // The avatar mark: first letter of the display name (or the email).
+  function initialOf(text) {
+    const first = Array.from(String(text || "").trim())[0] || "?";
+    return escapeHtml(first.toUpperCase());
   }
 
   function render() {
     const el = body();
+    const data = dataBody();
     if (!el) return;
     if (!appState.signedIn) {
       el.innerHTML =
-        '<p class="muted hint">You are using PrepForge as a guest. Sign in to keep repertoires, ' +
+        '<div class="acct-guest">' +
+        '<p><b>You are using PrepForge as a guest.</b> Sign in to keep repertoires, ' +
         "games and training in sync across devices.</p>" +
         '<div class="acct-actions">' +
         '<button type="button" class="btn sm primary" data-acct="signin">Sign in</button>' +
         '<button type="button" class="btn sm" data-acct="register">Create account</button>' +
-        "</div>";
+        "</div></div>";
+      if (data) data.innerHTML = "";
       return;
     }
     const account = appState.account || {};
-    const email = escapeHtml(account.email || appState.accountUsername || "");
-    const name = account.displayName
-      ? escapeHtml(account.displayName)
-      : '<span class="muted">Not set — your email is shown</span>';
-    const method = account.hasPassword ? "Email and password" : "Google";
+    const rawEmail = account.email || appState.accountUsername || "";
+    const email = escapeHtml(rawEmail);
+    const displayName = account.displayName || "";
+    const shownName = displayName
+      ? escapeHtml(displayName)
+      : escapeHtml(rawEmail.split("@")[0] || "Your account");
+    const method = account.hasPassword ? "Email sign-in" : "Google sign-in";
     const plan = (billing && billing.plan) || account.plan || "free";
-    const planPill = `<span class="status-pill ${plan === "pro" ? "ok" : ""}">${plan === "pro" ? "Pro" : "Free"}</span>`;
-    let planAction = "";
+    const planTag = `<span class="status-pill ${plan === "pro" ? "ok" : ""}">${plan === "pro" ? "Pro" : "Free"} plan</span>`;
+    let planRow = "";
     if (billing && billing.billing_enabled) {
       if (plan === "pro") {
-        planAction = '<button type="button" class="btn sm" data-acct="portal">Manage subscription</button>';
+        planRow = row(
+          "PrepForge Pro",
+          '<button type="button" class="btn sm" data-acct="portal">Manage subscription</button>',
+          "Invoices, payment method and cancellation are handled on the billing page.",
+        );
       } else if (billing.price_configured) {
-        planAction = '<button type="button" class="btn sm primary" data-acct="upgrade">Upgrade to Pro</button>';
+        planRow = row(
+          "PrepForge Pro",
+          '<button type="button" class="btn sm primary" data-acct="upgrade">Upgrade</button>',
+          "You're on the free plan.",
+        );
       }
     }
     el.innerHTML =
-      '<div class="sub-head"><b>Profile</b></div>' +
-      row("Email", `<b>${email}</b>`) +
-      row(
-        "Display name",
-        `<span data-acct-name>${name}</span>`,
-        '<button type="button" class="btn sm ghost" data-acct="rename">Edit</button>',
-      ) +
-      row("Sign-in method", escapeHtml(method)) +
+      '<div class="acct-id">' +
+      `<span class="acct-avatar" aria-hidden="true">${initialOf(displayName || rawEmail)}</span>` +
+      '<div class="acct-id-text">' +
+      '<div class="acct-id-name">' +
+      `<b data-acct-name${displayName ? "" : ' class="is-placeholder" title="No display name set: this part of your email is shown"'}>${shownName}</b>` +
+      '<button type="button" class="btn sm ghost acct-edit" data-acct="rename" aria-label="Edit display name">Edit</button>' +
+      "</div>" +
+      `<div class="acct-id-email">${email}</div>` +
+      `<div class="acct-id-meta"><span class="acct-tag">${escapeHtml(method)}</span>${planTag}</div>` +
+      "</div>" +
+      '<button type="button" class="btn sm acct-signout" data-acct="signout">Sign out</button>' +
+      "</div>" +
       (account.hasPassword
         ? row(
           "Password",
-          '<span class="muted">••••••••</span>',
-          '<button type="button" class="btn sm ghost" data-acct="password">Change</button>',
+          '<button type="button" class="btn sm" data-acct="password">Change password</button>',
+          "Changing it signs out your other devices.",
         )
         : "") +
-      '<div class="sub-head"><b>Plan</b></div>' +
-      row("Current plan", planPill, planAction) +
-      '<div class="sub-head"><b>Your data</b></div>' +
+      planRow;
+    const dataHtml =
+      '<div class="acct-block-head"><b>Your data</b></div>' +
       row(
-        "Export everything",
-        '<span class="muted">Profile, games (PGN), repertoires, training history — one JSON file</span>',
+        "Download a copy",
         '<button type="button" class="btn sm" data-acct="export">Download</button>',
+        "Profile, games (PGN), repertoires and training history in one JSON file.",
       ) +
-      row(
-        "Sign out on this browser",
-        "",
-        '<button type="button" class="btn sm" data-acct="signout">Sign out</button>',
-      ) +
+      '<details class="acct-danger-zone">' +
+      "<summary>Delete account</summary>" +
       '<div class="acct-danger">' +
-      '<div><b>Delete account</b><p class="muted small">Removes the account and everything it owns. ' +
-      "Copies other people already made of your shared repertoires stay theirs. This cannot be undone.</p></div>" +
+      '<p class="muted small">Removes the account and everything it owns. ' +
+      "Copies other people already made of your shared repertoires stay theirs. This cannot be undone.</p>" +
       '<button type="button" class="btn sm danger" data-acct="delete">Delete account…</button>' +
-      "</div>";
+      "</div></details>";
+    // Unit tests (and any host without the data slot) get everything in one place.
+    if (data) data.innerHTML = dataHtml;
+    else el.innerHTML += dataHtml;
   }
 
   async function refresh() {
@@ -211,7 +244,7 @@ export function createAccountSection({
     const el = body();
     if (!el || bound) return;
     bound = true;
-    el.addEventListener("click", (event) => {
+    const onClick = (event) => {
       const button = event.target.closest("[data-acct]");
       if (!button || button.disabled) return;
       const run = ACTIONS[button.dataset.acct];
@@ -223,7 +256,9 @@ export function createAccountSection({
         .finally(() => {
           button.disabled = false;
         });
-    });
+    };
+    el.addEventListener("click", onClick);
+    dataBody()?.addEventListener("click", onClick);
   }
 
   // A small form dialog. With `submit`, the request runs inside the dialog so a
