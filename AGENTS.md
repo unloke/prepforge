@@ -18,3 +18,18 @@ Get-Content -Raw -Encoding UTF8 path\to\file.md
 ```
 
 - `rg`, Node `fs.readFileSync(path, "utf8")`, and PowerShell `Get-Content -Encoding UTF8` are acceptable. Do not diagnose a document as corrupted until the raw bytes or an explicit UTF-8 read has been checked.
+
+## UI Copy: No Standing Explanations
+
+- Do not add persistent explanatory text to the UI: no blurbs under headings that
+  describe what a tab, panel, chart or control does, no "How this works" sections,
+  no legends that restate a label, no "Ranked by …" / "Bar = …" captions.
+- Allowed: labels and titles (a few words), live data and status, errors and
+  blocking states with the action that fixes them, and empty states that tell a
+  new user how to put the first thing in (for example the empty Library or Games).
+  An empty state disappears once there is content.
+- Extra detail belongs in on-demand affordances (a `title` tooltip, an ⓘ popover),
+  never in always-visible copy. If a control needs a sentence to be understood,
+  fix the control instead.
+- When editing a view, remove any standing explanation you find rather than
+  rewording it.

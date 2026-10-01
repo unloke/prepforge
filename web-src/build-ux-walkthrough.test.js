@@ -30,31 +30,26 @@ function compile(names, deps = {}) {
   );
 }
 
-describe("Explorer bars (P2-6)", () => {
-  const { explorerBarGeometry, explorerSegLabel } = compile(
-    ["function explorerBarGeometry(m, maxTotal) {", "function explorerSegLabel(pct, barWidth) {"],
+describe("Explorer bars", () => {
+  const { explorerThinSample, explorerSegLabel } = compile(
+    ["function explorerThinSample(m) {", "function explorerSegLabel(pct) {"],
     { EXPLORER_THIN_SAMPLE: 10 },
   );
 
-  it("scales bar length by sample size instead of drawing every row full width", () => {
-    const max = 1_300_000;
-    const big = explorerBarGeometry({ total: max }, max);
-    const tiny = explorerBarGeometry({ total: 3 }, max);
-    const mid = explorerBarGeometry({ total: 18 }, max);
-    expect(big.width).toBe(100);
-    expect(tiny.width).toBeLessThan(15);
-    expect(mid.width).toBeGreaterThan(tiny.width);
-    expect(mid.width).toBeLessThan(big.width);
+  it("draws every split full width so win rate, not game count, sets the bar", () => {
+    const render = extractByMarker("function renderExplorerRows(stats, fen) {");
+    expect(render).not.toContain("bar.width");
+    expect(render).not.toMatch(/explorer-bar" style="width/);
   });
 
   it("flags thin samples so the row can step back", () => {
-    expect(explorerBarGeometry({ total: 3 }, 1000).thin).toBe(true);
-    expect(explorerBarGeometry({ total: 500 }, 1000).thin).toBe(false);
+    expect(explorerThinSample({ total: 3 })).toBe(true);
+    expect(explorerThinSample({ total: 500 })).toBe(false);
   });
 
   it("labels a segment only when it is wide enough; narrow ones rely on the tooltip", () => {
-    expect(explorerSegLabel(72, 100)).toBe("72%");
-    expect(explorerSegLabel(17, 50)).toBe("");
+    expect(explorerSegLabel(72)).toBe("72%");
+    expect(explorerSegLabel(8)).toBe("");
     expect(app).toContain('title="${label} ${value}%"');
   });
 

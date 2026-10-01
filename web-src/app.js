@@ -1,5 +1,6 @@
 import "./styles.css";
 import {
+  ANALYSIS_MAX_NODES,
   createEngineProvider,
   isBrowserEngineAvailable,
 } from "./engine/stockfish-provider.js";
@@ -67,7 +68,6 @@ import {
 import { isStartFen } from "./train-lucky.js";
 import {
   resolvePlayColor,
-  playPoolLabel,
   formatPlayTrail,
   takebackToUserMove,
   playSessionPgn,
@@ -620,9 +620,7 @@ const GEN_PLAN_CHANGES_SOFT_CAP = 2000;
 
 const boards = {};
 
-// Delays (ms) for auto-collapsing/auto-dismissing a card. The countdown only
-// runs while the user is *not* actively pointing at the card (see _holdDismiss).
-const TOAST_MINIMIZE_DELAY = 4000;
+// Delays (ms) for auto-dismissing a card. The countdown pauses during pointer activity.
 const TOAST_DONE_DELAY = 7000;
 const TOAST_FAILED_DELAY = 6000;
 const TOAST_CANCELLED_DELAY = 4500;
@@ -679,20 +677,24 @@ class Toast {
     this.idleTimer = null;
     this.hovering = false;
     this.pointerActive = false;
-    this.el = this._build(title || "Working...", message, actions);
     // `dock`: an in-page host (e.g. the Analyze panel) for a job whose card would
-    // otherwise float over the very result it is producing.
+    // otherwise float over the very result it is producing. A docked job is a panel
+    // card, not a floating toast: one header row (title, live status, Stop) over a thin
+    // progress track, and it never minimizes itself.
     const dock = opts.dock && opts.dock.isConnected ? opts.dock : null;
-    if (dock) this.el.classList.add("is-docked");
+    this.dock = dock;
+    this.docked = !!dock;
+    this.el = this._build(title || "Working...", message, actions);
+    if (dock) {
+      this.el.classList.add("is-docked");
+      // One card per dock: a new job replaces the previous job's finished card.
+      if (dock._jobToast) dock._jobToast.dismiss(true);
+      dock._jobToast = this;
+    }
     (dock || stack.container).appendChild(this.el);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => this.el.classList.add("is-visible"));
     });
-    if (this.variant === "job") {
-      this._arm(TOAST_MINIMIZE_DELAY, () => {
-        if (this.state === "running") this.toggleMinimize(true);
-      });
-    }
   }
 
   _build(title, message, actions) {
@@ -706,36 +708,39 @@ class Toast {
       ? '<button class="job-toast-stop" type="button">Stop</button>'
       : "";
     let bodyInner;
-    if (this.variant === "info") {
+    if (this.variant === "job") {
+      el.innerHTML =
+        '<div class="job-toast-head">' +
+        `<span class="job-toast-title">${escapeHtml(title)}</span>` +
+        '<span class="job-toast-message">Queued</span>' +
+        stopBtn +
+        "</div>" +
+        '<div class="job-toast-track"><div class="job-toast-fill"></div></div>';
+    } else {
       bodyInner =
         `<div class="job-toast-message">${escapeHtml(message || "")}</div>` +
         '<div class="job-toast-actions"></div>';
-    } else {
-      // Track and Stop share one row so they never crowd each other, and the
-      // track stays visible when the card is minimized.
-      bodyInner =
-        '<div class="job-toast-message">Queued</div>' +
-        '<div class="job-toast-progress">' +
-        '<div class="job-toast-track"><div class="job-toast-fill"></div></div>' +
-        stopBtn +
-        "</div>";
     }
-    el.innerHTML =
-      '<div class="job-toast-head">' +
-      '<span class="job-toast-icon" aria-hidden="true"></span>' +
-      `<span class="job-toast-title">${escapeHtml(title)}</span>` +
-      '<button class="job-toast-collapse" type="button" title="Minimize" aria-label="Minimize">_</button>' +
-      "</div>" +
-      `<div class="job-toast-body">${bodyInner}</div>`;
+    if (bodyInner !== undefined) {
+      el.innerHTML =
+        '<div class="job-toast-head">' +
+        '<span class="job-toast-icon" aria-hidden="true"></span>' +
+        `<span class="job-toast-title">${escapeHtml(title)}</span>` +
+        '<button class="job-toast-collapse" type="button" title="Minimize" aria-label="Minimize">_</button>' +
+        "</div>" +
+        `<div class="job-toast-body">${bodyInner}</div>`;
+    }
     this.titleEl = el.querySelector(".job-toast-title");
     this.messageEl = el.querySelector(".job-toast-message");
     this.fillEl = el.querySelector(".job-toast-fill");
     this.collapseBtn = el.querySelector(".job-toast-collapse");
     this.stopBtn = el.querySelector(".job-toast-stop");
-    this.collapseBtn.addEventListener("click", (event) => {
-      event.stopPropagation();
-      this.toggleMinimize(true);
-    });
+    if (this.collapseBtn) {
+      this.collapseBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.toggleMinimize(true);
+      });
+    }
     if (this.stopBtn) {
       this.stopBtn.addEventListener("click", (event) => {
         event.stopPropagation();
@@ -921,23 +926,24 @@ class Toast {
   }
 
   toggleMinimize(force) {
+    if (this.variant === "job") return;
     const next = typeof force === "boolean" ? force : !this.minimized;
     this.minimized = next;
     this.el.classList.toggle("is-minimized", next);
-    // Re-arm the running-job minimize timer when the user expands it again.
-    if (!next && this.state === "running") {
-      this._arm(TOAST_MINIMIZE_DELAY, () => {
-        if (this.state === "running") this.toggleMinimize(true);
-      });
-    }
   }
 
-  dismiss() {
+  dismiss(immediate = false) {
     if (this.removed) return;
     this.removed = true;
     this._clearProgressFlush();
     this._clearDismiss();
     this._clearIdle();
+    if (this.dock && this.dock._jobToast === this) this.dock._jobToast = null;
+    if (immediate) {
+      this.el.remove();
+      this.stack._forget(this);
+      return;
+    }
     // Collapse out: slide away + shrink height so the cards below rise smoothly.
     this.el.classList.remove("is-visible");
     this.el.classList.add("is-leaving");
@@ -1313,7 +1319,6 @@ class EngineWidget {
   /** FEN of whichever board the active tab is showing. */
   currentFen() {
     if (activeViewName() === "build") {
-      if (buildPreviewActive()) return buildPreview.fen;
       const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
       if (node && node.fen) return node.fen;
       // No repertoire open: analyse what the Build board shows, never the
@@ -1879,7 +1884,7 @@ class PositionCoach {
         /* best-effort */
       }
     }
-    this.engine = createEngineProvider({ maxDepth: depth });
+    this.engine = createEngineProvider({ maxDepth: depth, maxNodes: ANALYSIS_MAX_NODES });
     this.engineDepth = depth;
     this.evalCache.clear();
   }
@@ -3891,7 +3896,7 @@ function syncAnalyzeHead() {
     ? bits.join(" · ")
     : plies
       ? `${plies} half-move${plies === 1 ? "" : "s"}`
-      : "Paste a PGN or play on the board";
+      : "";
 }
 
 // Per-view heads that live inside the pages: Analyze's game identity, the
@@ -5164,8 +5169,6 @@ async function openTeamDetail(teamId) {
     addBtn.hidden = !canManage;
     addBtn.onclick = () => addTeamMember(teamId);
   }
-  const membersHint = document.getElementById("team-members-hint");
-  if (membersHint) membersHint.hidden = !canManage;
   const inviteBtn = document.getElementById("team-detail-invite");
   if (inviteBtn) {
     inviteBtn.hidden = !canManage;
@@ -5512,11 +5515,9 @@ async function loadSharedRepertoires() {
   try {
     const payload = await api("/api/repertoires");
     const shared = payload.shared || [];
-    const sharedHint = document.getElementById("teams-shared-hint");
-    if (sharedHint) sharedHint.hidden = !shared.length;
     if (!shared.length) {
       container.innerHTML =
-        '<div class="empty-state">Nothing shared with you yet. Repertoires a teammate shares with your team show up here, read-only.</div>';
+        '<div class="empty-state">Nothing shared with you yet.</div>';
       return;
     }
     container.innerHTML = shared
@@ -5897,7 +5898,6 @@ function setBuildLoading(on, { restore = true } = {}) {
     syncViewHeads();
     return;
   }
-  takeBuildPreview();
   if (boards.build) {
     boards.build.setPosition({ fen: boards.build.fen, legalMoves: [], lastMove: null });
   }
@@ -6213,7 +6213,6 @@ async function runAnalysis(options = {}) {
     pgn, mode: importMode, selectIndex,
   })) return;
   const seq = invalidateAnalysisSource();
-  setStatus("Analyzing PGN");
   // Keep the game on screen while the engine works: (re)load the source into the move
   // list instead of hiding it behind the "Play on the board" placeholder. Only a source
   // that won't parse here (e.g. a multi-game paste) falls back to hiding the old list.
@@ -6323,7 +6322,7 @@ async function runAnalysis(options = {}) {
             current: done,
             total,
             phase: "stockfish",
-            message: `stockfish ${done}/${total} positions`,
+            message: `Stockfish ${done}/${total} positions`,
           });
         },
         shouldCancel: () => cancelled,
@@ -6396,9 +6395,9 @@ async function runAnalysis(options = {}) {
                 timings[`maia_${sub}`] = detail || 1;
               },
               onProgress: (done, total) =>
-                jobToast.updateJob({ current: done, total, phase: "maia-inference", message: `maia ${done}/${total} moves` }),
+                jobToast.updateJob({ current: done, total, phase: "maia-inference", message: `Maia ${done}/${total} moves` }),
               onTrapProgress: (done, total) =>
-                jobToast.updateJob({ current: done, total, phase: "maia-traps", message: `maia traps ${done}/${total}` }),
+                jobToast.updateJob({ current: done, total, phase: "maia-traps", message: `Maia traps ${done}/${total}` }),
             })
           );
         } finally {
@@ -6427,7 +6426,7 @@ async function runAnalysis(options = {}) {
       current: positions.length,
       total: positions.length,
       phase: "classifying",
-      message: "classifying",
+      message: "Classifying moves",
     });
     // F-03: the engine/model compute is DONE — checkpoint it to the device so
     // a failed SAVE below never costs a re-analysis (retry = re-post only).
@@ -6481,7 +6480,7 @@ async function runAnalysis(options = {}) {
             current: positions.length,
             total: positions.length,
             phase: "saving",
-            message: "saving analysis",
+            message: "Saving analysis",
           });
         }
         return response;
@@ -7396,8 +7395,6 @@ async function skipTrainingLine() {
 
 async function selectBuildNode(nodeId) {
   if (!appState.buildNodeById.has(nodeId)) return;
-  // Landing on a real repertoire node ends any Explorer preview.
-  buildPreview = null;
   appState.buildCurrentNodeId = nodeId;
   // Landing on a position resets the fork pick to the mainline continuation.
   appState.buildBranchChoiceId = null;
@@ -7415,7 +7412,6 @@ async function selectBuildNode(nodeId) {
       : `${node.move_number}${node.move_side === "black" ? "..." : "."} ${node.san}`;
   document.getElementById("build-board-label").textContent = label;
   renderBuilderTree();
-  paintBuildPreview();
   if (engineWidget) engineWidget.onBoardChanged();
   scheduleExplorerRefresh();
 }
@@ -7432,9 +7428,6 @@ let explorerClient = null;
 let explorerDb = "masters";
 let explorerTimer = null;
 let explorerSeq = 0;
-// Explorer move being previewed on the Build board (never persisted): see
-// onExplorerRowClick. { parentId, uci, san, fen } or null.
-let buildPreview = null;
 
 function explorerDrawerOpen() {
   const panel = document.getElementById("explorer-drawer");
@@ -8088,73 +8081,56 @@ function renderExplorerRows(stats, fen) {
   );
   const inRepNorm = new Set([...inRep].map(normalizeUci));
   const canAdd = !isBuildReadOnly();
-  const maxTotal = Math.max(1, ...stats.moves.map((m) => m.total));
   rows.innerHTML =
-    '<div class="explorer-head" aria-hidden="true"><span>Move</span><span class="explorer-eval">Eval</span><span>Games</span><span>White / Draw / Black</span><span></span></div>' +
+    '<div class="explorer-head" aria-hidden="true"><span>Move</span><span class="explorer-eval">Eval</span><span>Games</span><span>White / Draw / Black</span></div>' +
     stats.moves
       .map((m) => {
         const has = inRep.has(m.uci) || inRepNorm.has(normalizeUci(m.uci));
         const games = explorerModule.formatGames(m.total);
-        const bar = explorerBarGeometry(m, maxTotal);
-        const add = !canAdd
-          ? "<span></span>"
-          : has
-            ? '<span class="explorer-add is-in" title="Already in your repertoire" aria-hidden="true">&#10003;</span>'
-            : `<button type="button" class="explorer-add" data-explorer-add aria-label="Add ${escapeHtml(m.san)} to repertoire" title="Add ${escapeHtml(m.san)} to repertoire">+</button>`;
+        const thin = explorerThinSample(m);
+        const action = has ? `Go to ${m.san}` : canAdd ? `Add ${m.san} to repertoire` : m.san;
         const seg = (cls, label, value) =>
-          `<span class="${cls}" style="width:${value}%" title="${label} ${value}%">${bar.labels ? explorerSegLabel(value, bar.width) : ""}</span>`;
+          `<span class="${cls}" style="width:${value}%" title="${label} ${value}%">${explorerSegLabel(value)}</span>`;
         return `
-    <div class="explorer-row${bar.thin ? " is-thin" : ""}" data-uci="${escapeHtml(m.uci)}">
-      <button type="button" class="explorer-pick" data-explorer-pick aria-label="Preview ${escapeHtml(m.san)} on the board (${games} games, White ${m.whitePct}%, draw ${m.drawPct}%, Black ${m.blackPct}%)" title="Preview ${escapeHtml(m.san)} on the board">
+    <div class="explorer-row${thin ? " is-thin" : ""}${has ? " is-in" : ""}" data-uci="${escapeHtml(m.uci)}">
+      <button type="button" class="explorer-pick" data-explorer-pick aria-label="${escapeHtml(action)} (${games} games, White ${m.whitePct}%, draw ${m.drawPct}%, Black ${m.blackPct}%)">
         <span class="explorer-san">${escapeHtml(m.san)}${has ? '<span class="explorer-inrep" title="In your repertoire">&#9679;</span>' : ""}</span>
       </button>
       <span class="explorer-eval">&hellip;</span>
-      <span class="explorer-games"${bar.thin ? ` title="Only ${m.total} game${m.total === 1 ? "" : "s"} — too few to trust the split"` : ""}>${games}</span>
-      <span class="explorer-bar-track"><span class="explorer-bar" style="width:${bar.width}%" aria-hidden="true">${seg("explorer-bar-w", "White wins", m.whitePct)}${seg("explorer-bar-d", "Draws", m.drawPct)}${seg("explorer-bar-b", "Black wins", m.blackPct)}</span></span>
-      ${add}
+      <span class="explorer-games">${games}</span>
+      <span class="explorer-bar" aria-hidden="true">${seg("explorer-bar-w", "White wins", m.whitePct)}${seg("explorer-bar-d", "Draws", m.drawPct)}${seg("explorer-bar-b", "Black wins", m.blackPct)}</span>
     </div>`;
       })
       .join("");
   rows.querySelectorAll(".explorer-row").forEach((row) => {
     const uci = row.dataset.uci;
-    // The whole row previews (segment tooltips stay hoverable); the Move
-    // button inside is the focusable handle and its click bubbles here.
-    row.addEventListener("click", (event) => {
-      if (event.target.closest("[data-explorer-add]")) return;
+    // The whole row is the action; the Move button inside is the focusable
+    // handle and its click bubbles here.
+    row.addEventListener("click", () => {
       void onExplorerRowClick(rows, uci).catch(() => {});
       row.querySelector("[data-explorer-pick]")?.blur();
     });
-    row.querySelector("[data-explorer-add]")?.addEventListener("click", (event) => {
-      event.stopPropagation();
-      void onExplorerRowAdd(rows, uci).catch(() => {});
-    });
   });
-  paintBuildPreview();
   explorerEvalEngine.repaint();
   void explorerEvalEngine.sync();
 }
 
-// Explorer bar geometry. The bar's LENGTH says how much data stands behind the
-// split (log-scaled against the most-played row, so a 3-game row no longer
-// draws as long as a 1.3M-game one); thin samples are also dimmed.
+// Explorer bars are always full width: the W/D/B split is what a row is read
+// for, and the game count beside it says how far to trust it. Thin samples are
+// dimmed rather than shortened.
 const EXPLORER_THIN_SAMPLE = 10;
-function explorerBarGeometry(m, maxTotal) {
-  const total = Math.max(0, Number(m.total) || 0);
-  const scale = Math.log10(total + 1) / Math.log10(Math.max(1, maxTotal) + 1);
-  const width = Math.max(8, Math.min(100, Math.round(scale * 100)));
-  return { width, thin: total < EXPLORER_THIN_SAMPLE, labels: true };
+function explorerThinSample(m) {
+  return Math.max(0, Number(m.total) || 0) < EXPLORER_THIN_SAMPLE;
 }
 
 // A percent label only where the segment is wide enough to hold it; narrower
 // segments keep the figure in their tooltip.
-function explorerSegLabel(pct, barWidth) {
-  return (pct * barWidth) / 100 >= 14 ? `${pct}%` : "";
+function explorerSegLabel(pct) {
+  return pct >= 12 ? `${pct}%` : "";
 }
 
-// Explorer rows: one click PREVIEWS a move (the board shows it, nothing is
-// saved); adding it to the repertoire is the row's explicit "+" button, or the
-// "Add to repertoire" action on the preview strip. A move already in the
-// repertoire just navigates to it.
+// Explorer rows: a click adds the move to the repertoire and goes there; a move
+// already in the repertoire just navigates to it.
 
 function buildChildForUci(parentId, uci) {
   const want = normalizeUci(uci);
@@ -8163,104 +8139,20 @@ function buildChildForUci(parentId, uci) {
   );
 }
 
-function buildPreviewActive() {
-  return !!buildPreview && buildPreview.parentId === appState.buildCurrentNodeId;
-}
-
 async function onExplorerRowClick(rows, uci) {
   const rowsFen = rows.dataset.fen;
   const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
   const currentFen = node ? node.fen : boards.build && boards.build.fen;
   if (!node || !rowsFen || !sameFenPosition(rowsFen, currentFen)) return;
-  // Clicking the row already previewed toggles back to the position.
-  if (buildPreview && buildPreview.parentId === node.id && buildPreview.uci === uci) {
-    await exitBuildPreview();
-    return;
-  }
   const existing = buildChildForUci(node.id, uci);
   if (existing) {
     await selectBuildNode(existing.id);
     return;
   }
-  await previewBuildMove(node, uci);
+  await onExplorerRowAdd(rows, uci);
 }
 
-async function previewBuildMove(parent, uci) {
-  let after;
-  try {
-    after = await boardAfterMove(parent.fen, uci);
-  } catch (_) {
-    try {
-      after = await boardAfterMove(parent.fen, normalizeUci(uci));
-    } catch (_) {
-      setStatus("That move isn't legal here");
-      return;
-    }
-  }
-  if (appState.buildCurrentNodeId !== parent.id || !boards.build) return; // navigated meanwhile
-  buildPreview = { parentId: parent.id, uci, san: after.move.san, fen: after.board.fen };
-  // Read-only board: a preview is a look, not an edit — no move can be played
-  // from it until the user adds the move or steps back.
-  boards.build.setPosition({ fen: after.board.fen, legalMoves: [], lastMove: after.move.uci || uci });
-  boards.build.setAnnotations([], []);
-  boards.build.setBranchArrows([]);
-  paintBuildPreview();
-  if (engineWidget) engineWidget.onBoardChanged();
-}
-
-async function exitBuildPreview() {
-  if (!buildPreview) return;
-  const parentId = buildPreview.parentId;
-  buildPreview = null;
-  if (appState.buildNodeById.has(parentId)) await selectBuildNode(parentId);
-  else paintBuildPreview();
-}
-
-async function addBuildPreview() {
-  if (!buildPreviewActive()) return;
-  const rows = document.getElementById("explorer-rows");
-  const { uci } = buildPreview;
-  if (rows) await onExplorerRowAdd(rows, uci);
-}
-
-function buildPreviewMoveLabel(parent, san) {
-  const parts = String((parent && parent.fen) || "").split(" ");
-  const number = Number(parts[5]) || 1;
-  return `${number}${parts[1] === "b" ? "…" : "."} ${san}`;
-}
-
-// The strip above the Explorer rows (visible in every layout, unlike the board
-// on narrow screens) plus the board label and the row highlight.
-function paintBuildPreview() {
-  const strip = document.getElementById("explorer-preview");
-  const rows = document.getElementById("explorer-rows");
-  const active = buildPreviewActive();
-  if (!active && buildPreview) buildPreview = null; // navigated away from its parent
-  rows?.querySelectorAll(".explorer-row").forEach((row) => {
-    row.classList.toggle("is-previewing", active && row.dataset.uci === buildPreview.uci);
-  });
-  if (!strip) return;
-  strip.hidden = !active;
-  if (!active) {
-    strip.innerHTML = "";
-    return;
-  }
-  const parent = appState.buildNodeById.get(buildPreview.parentId);
-  const label = buildPreviewMoveLabel(parent, buildPreview.san);
-  const boardLabel = document.getElementById("build-board-label");
-  if (boardLabel) boardLabel.textContent = `Preview: ${label}`;
-  const canAdd = !isBuildReadOnly();
-  strip.innerHTML =
-    `<span class="explorer-preview-text">Previewing <b>${escapeHtml(label)}</b> — not in your repertoire</span>` +
-    (canAdd
-      ? '<button type="button" class="btn sm primary" data-preview-add>+ Add to repertoire</button>'
-      : "") +
-    '<button type="button" class="btn sm ghost" data-preview-back>Back</button>';
-  strip.querySelector("[data-preview-add]")?.addEventListener("click", () => void addBuildPreview().catch(() => {}));
-  strip.querySelector("[data-preview-back]")?.addEventListener("click", () => void exitBuildPreview().catch(() => {}));
-}
-
-// Explicit add (the row's "+"). Rows belong to the position they were fetched
+// Add from an Explorer row. Rows belong to the position they were fetched
 // for. A second click (a double click, or a click while the next position's
 // stats load) must not replay the old position's move from the new one: that
 // was the "Illegal move" toast. The first click consumes the rows; they come
@@ -8273,8 +8165,6 @@ async function onExplorerRowAdd(rows, uci) {
   if (!rowsFen || !sameFenPosition(rowsFen, currentFen)) return;
   delete rows.dataset.fen;
   rows.classList.add("is-stale");
-  // The add plays from the repertoire position, so any preview ends here.
-  const wasPreviewing = takeBuildPreview();
   try {
     await onBuildBoardMove(uci);
   } finally {
@@ -8284,24 +8174,7 @@ async function onExplorerRowAdd(rows, uci) {
       rows.dataset.fen = rowsFen;
       rows.classList.remove("is-stale");
     }
-    // The move didn't land (read-only, rejected): the board still shows the
-    // preview position, so put it back on the repertoire node.
-    if (wasPreviewing && node && appState.buildCurrentNodeId === node.id) {
-      await restoreBuildBoard(node.id);
-    }
   }
-}
-
-// Ends a preview without touching the board; true if one was showing.
-function takeBuildPreview() {
-  const was = buildPreviewActive();
-  buildPreview = null;
-  paintBuildPreview();
-  return was;
-}
-
-async function restoreBuildBoard(nodeId) {
-  if (appState.buildNodeById.has(nodeId)) await selectBuildNode(nodeId);
 }
 
 
@@ -8349,17 +8222,11 @@ function buildGoRoot() {
 }
 
 function buildGoBack() {
-  // Previewing an Explorer move: back means "back to the position".
-  if (buildPreviewActive()) {
-    void exitBuildPreview().catch(() => {});
-    return;
-  }
   const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
   if (node && node.parent_id) selectBuildNode(node.parent_id);
 }
 
 function buildGoForward() {
-  if (buildPreviewActive()) return; // a preview has no continuation yet
   // At a fork, → plays the picked continuation (mainline unless ↑/↓ changed it);
   // anywhere else it just walks the line.
   const ctx = buildBranchContext();
@@ -9654,6 +9521,7 @@ async function generateFromCurrentNode() {
       id: jobId,
       title: "Generating moves",
       tab: "build",
+      dock: document.getElementById("build-job-dock"),
       total: progress.total,
       onCancel: () => controller.abort(),
     });
@@ -10228,7 +10096,6 @@ function syncTrainPickerVisibility() {
   const book = document.getElementById("train-play-book");
   const progress = document.getElementById("train-progress-panel");
   const summary = document.getElementById("train-summary");
-  const help = document.getElementById("train-help");
   const hint = document.getElementById("train-hint");
   const skip = document.getElementById("train-skip");
   const wantRep = !smart && !play;
@@ -10244,23 +10111,13 @@ function syncTrainPickerVisibility() {
   if (playSetup) playSetup.hidden = !play;
   if (blitzRow) blitzRow.hidden = mode !== "smart";
   const setupTitle = document.getElementById("train-setup-title");
-  const setupBlurb = document.getElementById("train-setup-blurb");
   if (setupTitle) {
     setupTitle.hidden = play;
     setupTitle.textContent = smart ? "Smart queue" : "Line rehearsal";
   }
-  if (setupBlurb) {
-    setupBlurb.hidden = play;
-    setupBlurb.textContent = smart
-      ? "Mixed over all your active repertoires. Weak spots and due reviews first, then new moves, then polish."
-      : "Play every line of one repertoire start to finish, in order.";
-  }
   if (play) {
     if (progress) progress.hidden = true;
     if (summary) summary.hidden = true;
-    if (help) help.hidden = true;
-  } else if (help) {
-    help.hidden = false;
   }
   // Keep hint/skip in the board bar so hiding them cannot shove the label.
   if (hint) hint.hidden = false;
@@ -10574,16 +10431,13 @@ function syncPlayColorLock() {
   });
 }
 
+// Only a blocking state gets a line here: the repertoire book with nothing selected.
 function paintPlayBookHint() {
   const hint = document.getElementById("train-play-book-hint");
   if (!hint) return;
-  if (playBook() === "repertoire") {
-    hint.textContent = selectedTrainRepertoireIds().length
-      ? "Repertoires first, Explorer out of book, Maia when thin."
-      : "Select at least one active repertoire, or switch back to Lichess explorer.";
-    return;
-  }
-  hint.textContent = `Explorer ${playPoolLabel(effectiveMaiaRating())} pool; thin positions fall back to Maia.`;
+  const blocked = playBook() === "repertoire" && !selectedTrainRepertoireIds().length;
+  hint.hidden = !blocked;
+  hint.textContent = blocked ? "Select at least one active repertoire, or switch back to Lichess explorer." : "";
 }
 
 function playBookLabel(play) {
@@ -13300,6 +13154,7 @@ async function runCoverageScanUI() {
     id: jobId,
     title: "Scanning coverage",
     tab: "build",
+    dock: document.getElementById("coverage-job-dock"),
     total: 0,
     onCancel: () => coverageController.abort(),
   });
@@ -13331,14 +13186,12 @@ async function runCoverageScanUI() {
   }
 }
 
-// Coverage's Maia requirement, stated where the user is looking: what is
-// needed, why, and a button that turns it on (and scans) right here.
+// Coverage's Maia requirement and the action that unblocks it.
 // Settings' "Maia3 · Ready" means the model is cached; the analysis switch is
 // what lets features use it — this card is where those two meet.
 const COVERAGE_MAIA_GATE =
   '<div class="coverage-gate" data-testid="coverage-maia-gate">' +
-  "<p><b>Coverage needs Maia analysis.</b> Maia predicts what humans at your level actually play here; " +
-  "it runs in your browser (one-time model download, then cached). Maia analysis is off right now.</p>" +
+  "<p><b>Coverage needs Maia analysis.</b> Turn it on to scan.</p>" +
   '<div class="row">' +
   '<button type="button" class="btn sm primary" data-coverage-enable-maia>Turn on Maia analysis &amp; scan</button>' +
   '<button type="button" class="btn sm ghost" data-coverage-open-settings>Open Settings</button>' +
@@ -13475,6 +13328,7 @@ async function completeSelectedGaps(gaps) {
     id: `coverage-complete-${Date.now()}`,
     title: "Completing lines",
     tab: "build",
+    dock: document.getElementById("coverage-job-dock"),
     total: gaps.length,
     onCancel: () => controller.abort(),
   });
@@ -14260,9 +14114,6 @@ function bindEvents() {
         event.preventDefault();
         board.flip();
       }
-    }
-    if (event.key === "Escape" && inBuild && buildPreviewActive()) {
-      void exitBuildPreview().catch(() => {});
     }
     if (event.key === "Escape") {
       closeNodeContextMenu();

@@ -176,7 +176,6 @@ export function createDashboardView({
       {
         id: "lichess",
         title: "Link your Lichess account",
-        detail: "Games and Scout read every linked identity as Self.",
         done: linked,
         action: "lichess",
         label: "Link Lichess",
@@ -186,9 +185,7 @@ export function createDashboardView({
         // Counted from started sessions (there is no "finished" flag), so the
         // step promises only what it measures.
         title: "Start a training session",
-        detail: repertoires > 0
-          ? "The smart queue schedules your reviews from there."
-          : "Unlocks once you have a repertoire.",
+        detail: repertoires > 0 ? "" : "Unlocks once you have a repertoire.",
         done: ((payload && payload.training_sessions) || 0) > 0,
         action: "train",
         label: "Train",
@@ -227,7 +224,7 @@ export function createDashboardView({
               `${step.locked ? " disabled" : ""} data-testid="setup-cta-${step.id}">${escapeHtml(step.label)}</button>`;
           return (
             `<div class="step${step.done ? " is-done" : ""}" data-setup-step="${step.id}">${mark}` +
-            `<div class="step-text"><b>${escapeHtml(step.title)}</b><p>${escapeHtml(step.detail)}</p></div>${cta}</div>`
+            `<div class="step-text"><b>${escapeHtml(step.title)}</b>${step.detail ? `<p>${escapeHtml(step.detail)}</p>` : ""}</div>${cta}</div>`
           );
         })
         .join("");
@@ -609,7 +606,7 @@ export function createDashboardView({
         <div class="empty-state big">
           <div class="es-mark" aria-hidden="true">♜</div>
           <h3>No repertoires yet.</h3>
-          <p>A repertoire is your prepared tree of moves. Start from scratch, import a PGN, or build one from a game you just played.</p>
+          <p>Create a repertoire, import a PGN, or build one from a game.</p>
           <div class="row gap">
             <button type="button" class="btn primary" data-lib-action="new">New repertoire</button>
             <button type="button" class="btn" data-lib-action="import">Import PGN</button>
@@ -739,7 +736,7 @@ export function createDashboardView({
       <div class="empty-state big" data-testid="library-signed-out">
         <div class="es-mark" aria-hidden="true">♜</div>
         <h3>Sign in to start your library.</h3>
-        <p>Repertoires, the training queue and game reviews are saved to your account. You can explore the board in Analyze without one.</p>
+        <p>Sign in, then create a repertoire or import a PGN.</p>
         <div class="row gap">
           <button type="button" class="btn primary" data-lib-action="signin">Sign in</button>
           <button type="button" class="btn" data-lib-action="import">Import PGN</button>
@@ -750,11 +747,11 @@ export function createDashboardView({
     const today = document.getElementById("dashboard-today");
     if (today) today.hidden = true;
     renderOnboardingSteps([
-      ["Sign in or create an account", "Your library, streak and queue follow you across devices.", "signin", "Sign in"],
+      ["Sign in or create an account", "", "signin", "Sign in"],
       ["Create your first repertoire", "Pick a side and an opening — or turn one of your games into one.", "new", "New repertoire"],
       [
         "Analyze a game",
-        "Play through any position with the engine and live coach notes — no account needed. Full-game reviews are saved to your account.",
+        "Paste a PGN or import a game.",
         "analyze",
         "Open Analyze",
       ],
@@ -771,7 +768,7 @@ export function createDashboardView({
         .map(
           ([title, detail, action, label], i) =>
             `<div class="step"><span class="step-n" aria-hidden="true">${i + 1}</span>` +
-            `<div class="step-text"><b>${escapeHtml(title)}</b><p>${escapeHtml(detail)}</p></div>` +
+            `<div class="step-text"><b>${escapeHtml(title)}</b>${detail ? `<p>${escapeHtml(detail)}</p>` : ""}</div>` +
             `<button type="button" class="btn sm" data-lib-action="${action}">${escapeHtml(label)}</button></div>`,
         )
         .join("");

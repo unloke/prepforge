@@ -132,11 +132,9 @@ describe("settings chess accounts loading state", () => {
 });
 
 describe("Maia analysis vs Maia3 Ready", () => {
-  it("explains that Ready means downloaded while analysis is off", () => {
+  it("reports Maia analysis as off without a standing explanation", () => {
     const { view, elements } = setup({ pref: () => false });
     view.renderSettings(null);
-    expect(elements["settings-maia-analysis-hint"].textContent).toMatch(/Stockfish only/);
-    expect(elements["settings-maia-analysis-hint"].textContent).toMatch(/Coverage scans require Maia analysis/);
     expect(elements["settings-maia-usage"].textContent).toMatch(/Maia analysis is off/);
   });
 });

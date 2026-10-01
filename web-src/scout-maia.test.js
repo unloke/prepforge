@@ -480,21 +480,13 @@ describe("scoutMaiaRankedNote", () => {
     );
   });
 
-  it("shows unavailable after all Maia reads fail", () => {
-    const note = scoutMaiaRankedNote([{ scorePct: 50 }], MAIA_ENRICH_FAILED);
-    expect(note).toContain("Maia unavailable");
-    expect(note).toContain("Ranked by preparation value and coverage");
-    expect(note).not.toContain("Ranked by recency");
-    expect(note).not.toContain("loading");
-  });
-
-  it("shows partial fallback when some lines have Maia", () => {
-    const note = scoutMaiaRankedNote(
-      [{ maiaScorePct: 40, scorePct: 40 }, { scorePct: 55 }],
-      MAIA_ENRICH_PARTIAL,
-    );
-    expect(note).toContain("partial Maia estimates");
-    expect(note).not.toContain("loading");
+  // Settled states carry no standing explanation of how the list is ranked.
+  it("keeps failures actionable and omits ranking explanations once reads settle", () => {
+    expect(scoutMaiaRankedNote([{ scorePct: 50 }], MAIA_ENRICH_FAILED)).toContain("Maia unavailable on 1/1 lines. Retry in Settings");
+    expect(
+      scoutMaiaRankedNote([{ maiaScorePct: 40, scorePct: 40 }, { scorePct: 55 }], MAIA_ENRICH_PARTIAL),
+    ).toContain("Maia unavailable on 1/2 lines.");
+    expect(scoutMaiaRankedNote([{ maiaScorePct: 40, scorePct: 40 }], "done")).toBe("");
   });
 });
 
@@ -536,6 +528,7 @@ describe("Maia failure UI", () => {
         maiaEnrichState: MAIA_ENRICH_FAILED,
       },
     );
+    expect(html).not.toContain("scout-maia-estimate");
     expect(html).toContain("Maia unavailable");
     expect(html).not.toContain("Evaluating");
   });

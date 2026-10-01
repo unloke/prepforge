@@ -330,7 +330,7 @@ describe("workspace chrome layout", () => {
     expect(view).toContain('<div class="settings">');
     expect(view).toContain('class="settings-nav"');
     expect(view).toContain('class="settings-content"');
-    for (const id of ["appearance", "engine", "maia", "strength", "board", "connections", "about"]) {
+    for (const id of ["appearance", "engine", "maia", "strength", "board", "connections"]) {
       expect(view).toContain(`id="set-${id}"`);
     }
     expect(view).toContain('id="piece-style-picker"');

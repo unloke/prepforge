@@ -176,7 +176,7 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
     expect(maiaRows).toBeGreaterThan(0);
     expect(wdlReadMock.mock.calls.length).toBeLessThanOrEqual(48);
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
-    expect(html).toMatch(/Maia estimates|partial Maia estimates/);
+    expect(html).toContain("scout-maia-estimate");
     },
     15_000,
   );

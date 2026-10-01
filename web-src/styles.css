@@ -85,9 +85,9 @@
   --arrow: rgba(47, 91, 211, 0.72);
   /* Board annotation arrows: user arrows take the ink-blue accent, the engine's
      best-move arrow keeps the calm "good" green (colour means chess). */
-  --arrow-user: rgba(47, 91, 211, 0.85);
+  --arrow-user: rgba(47, 91, 211, 0.72);
   --arrow-user-stroke: rgba(18, 38, 90, 0.30);
-  --arrow-engine: rgba(29, 138, 79, 0.90);
+  --arrow-engine: rgba(29, 138, 79, 0.72);
   --arrow-engine-stroke: rgba(12, 62, 34, 0.32);
   /* Board coordinate labels. */
   --coord-on-light: #6f8394;
@@ -184,9 +184,9 @@
   --last-move: rgba(236, 182, 48, 0.46);
   --highlight: rgba(109, 143, 240, 0.42);
   --arrow: rgba(109, 143, 240, 0.78);
-  --arrow-user: rgba(109, 143, 240, 0.90);
+  --arrow-user: rgba(109, 143, 240, 0.75);
   --arrow-user-stroke: rgba(10, 18, 42, 0.55);
-  --arrow-engine: rgba(69, 185, 122, 0.95);
+  --arrow-engine: rgba(69, 185, 122, 0.75);
   --arrow-engine-stroke: rgba(14, 44, 27, 0.52);
   --coord-on-light: #5a6c7b;
   --coord-on-dark: #d8dee3;
@@ -1499,23 +1499,20 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   font-size: var(--fs-xs);
   font-weight: 600;
 }
-.lib-cols[hidden],
-.lib-cols[hidden] ~ .lib-hint { display: none; }
+.lib-cols[hidden] { display: none; }
 /* Empty library (signed out / no repertoires): the onboarding card has no
-   filter chips, column header or row hint — only the search stays. */
+   filter chips or column header — only the search stays. */
 .lib-list.is-empty .card-head .seg,
-.lib-list.is-empty .lib-cols,
-.lib-list.is-empty .lib-hint { display: none; }
+.lib-list.is-empty .lib-cols { display: none; }
 /* Failed load: same empty layout, and the search goes too (nothing to filter). */
 .lib-list.is-error .card-head .search-field { display: none; }
 /* Nothing to filter or add over yet: the empty card (and Get started) carry
    New / Import / Sign in, so the header keeps only its title. While the first
-   load runs, the column header and row hint stay out over an empty table. */
+   load runs, the column header stays out over an empty table. */
 .lib-list.is-empty .card-head .search-field,
 .lib-list.is-empty:not(.is-error) .lib-actions,
 .lib-list.is-loading .card-head .seg,
-.lib-list.is-loading .lib-cols,
-.lib-list.is-loading .lib-hint { display: none; }
+.lib-list.is-loading .lib-cols { display: none; }
 .lib-loading { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 12px; }
 .lib-row {
   min-height: 54px;
@@ -1636,7 +1633,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-row.is-selected .row-menu-btn,
 .row-menu-btn:focus-visible { opacity: 1; color: var(--text); }
 .row-menu-btn:hover { background: var(--surface-3); }
-.lib-hint { margin: 0; padding: 8px 12px; color: var(--label); font-size: var(--fs-s); }
 .lib-rep-list .empty-state:not(.big) { border: 0; background: none; border-radius: 0; }
 .empty-state.big {
   display: flex;
@@ -1707,25 +1703,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .pv-mix i { display: block; min-width: 2px; }
 .pv-mix-empty { align-self: center; font-size: var(--fs-xs); }
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-}
-.legend i {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 4px;
-  border-radius: 2px;
-}
-.pv-mix i.k-mastered, .legend i.k-mastered { background: var(--k-mastered); }
-.pv-mix i.k-learning, .legend i.k-learning { background: var(--k-learning); }
-.pv-mix i.k-due, .legend i.k-due { background: var(--k-due); }
-.pv-mix i.k-weak, .legend i.k-weak { background: var(--k-weak); }
-.pv-mix i.k-new, .legend i.k-new { background: var(--k-new); }
+.pv-mix i.k-mastered { background: var(--k-mastered); }
+.pv-mix i.k-learning { background: var(--k-learning); }
+.pv-mix i.k-due { background: var(--k-due); }
+.pv-mix i.k-weak { background: var(--k-weak); }
+.pv-mix i.k-new { background: var(--k-new); }
 /* The preview column is a fixed track (340px, 290px at ≤1279px) and the
    action labels never wrap, so the row itself wraps when the labels are wider
    than the track (e.g. wider fallback fonts): the primary action keeps the
@@ -1820,7 +1802,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .today-streak { padding-right: 0; border-right: 0; }
   .today-body { grid-column: 1 / -1; }
   .lib .lib-preview { display: none; }
-  .lib-hint { display: none; }
   .search-field { width: 100%; margin-left: 0; }
   .lib .card-head .seg { max-width: 100%; overflow-x: auto; }
   .lib-cols { display: none; }
@@ -1979,12 +1960,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   grid-template-rows: repeat(8, 1fr);
 }
 
+/* Arrows paint above the pieces (z-index 2) so an arrowhead is never hidden under
+   the piece on its target square; coordinates (4) and move badges (5) stay on top. */
 .annotations {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
+  z-index: 3;
 }
 
 /* Filled triangular annotation arrows (paths built in app.js). Colours are
@@ -2381,7 +2365,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   line-height: 1.35;
 }
 .train-repertoire-empty[hidden] { display: none; }
-.train-repertoire-hint { margin: 0; }
 /* Confetti */
 .confetti-layer {
   position: fixed;
@@ -2539,8 +2522,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 /* ===========================================================================
    Repertoire — Opus prototype composition
-   One raised panel beside the board: identity head, position trail + mastery
-   legend, fork picker, the move tree, and a bottom dock (Explorer / Coverage /
+   One raised panel beside the board: identity head, position trail,
+   fork picker, the move tree, and a bottom dock (Explorer / Coverage /
    Engine). Mirrors prototype .panel / .tree-meta / .forkbar / .tree-wrap / .dock.
    =========================================================================== */
 .panel {
@@ -2588,7 +2571,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   padding-right: 12px;
   border-bottom: 1px solid var(--line);
 }
-.tree-meta .legend { flex: none; }
 .crumbs {
   flex: 1;
   min-width: 0;
@@ -2628,24 +2610,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   gap: 8px;
   margin-bottom: 6px;
   font-size: var(--fs-s);
-}
-.fork-head .keys {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  margin-left: auto;
-  color: var(--label);
-  font-size: var(--fs-xs);
-  white-space: nowrap;
-}
-.fork-head kbd {
-  min-width: 16px;
-  padding: 0 4px;
-  border: 1px solid var(--line-strong);
-  border-radius: 4px;
-  background: var(--panel);
-  font: inherit;
-  text-align: center;
 }
 .fork-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .fork-chip {
@@ -2821,9 +2785,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   .dock-resizer { display: none; }
 }
 @media (max-width: 760px) {
-  .tree-meta .legend { display: none; }
   .tree-wrap { max-height: none; }
-  .fork-head .keys { display: none; }
   .dock-tabs button { min-height: 44px; }
   /* Library's Import / New live in the More sheet on phones (prototype). */
   #library-actions { display: none; }
@@ -2836,7 +2798,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    strip, then a scrolling stack of .tcard sections (setup / progress /
    summary / help). The blitz clock overlays the board's top edge, so toggling
    it never moves the board. Mirrors prototype .train .panel / .coach-banner /
-   .tcard / .stats / .upnext / .summary / .help.
+   .tcard / .stats / .upnext / .summary.
    =========================================================================== */
 #view-train .train-sidebar {
   gap: 0;
@@ -3002,7 +2964,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-weight: 650;
 }
 .train-play-chip[hidden] { display: none; }
-.train-repertoire-hint { margin: 0; }
 
 /* Progress */
 .prog-head { display: flex; align-items: center; gap: 8px; }
@@ -3101,18 +3062,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .tsum-row .down { color: var(--danger); font-weight: 650; }
 .btn.block { width: 100%; }
 
-/* How it works */
-.help { padding-top: 8px; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--fs-s); }
-.help summary { color: var(--text); font-weight: 600; cursor: pointer; }
-.help p { margin: 6px 0 0; }
-.help dl { display: grid; grid-template-columns: 76px 1fr; gap: 3px 8px; margin: 6px 0; }
-.help dt { font-weight: 650; }
-.help dd { margin: 0; }
-.help dt.k-weak { color: var(--danger); }
-.help dt.k-due { color: var(--warn-text); }
-.help dt.k-new { color: var(--k-new); }
-.help dt.k-learning { color: var(--accent-text); }
-.help dt.k-mastered { color: var(--good-text); }
 .faint { color: var(--label); }
 
 @keyframes streakPop {
@@ -3483,7 +3432,7 @@ body.is-guest .replay-results:empty::before {
 
 .explorer-head, .explorer-row {
   display: grid;
-  grid-template-columns: minmax(48px, 64px) minmax(44px, 68px) minmax(0, 1fr) 24px;
+  grid-template-columns: minmax(48px, 64px) minmax(44px, 68px) minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   min-width: 0;
@@ -3522,8 +3471,8 @@ body.is-guest .replay-results:empty::before {
   background: var(--surface-hover);
 }
 
-/* One click anywhere on the row previews (the row listens; the Move button
-   is its keyboard/screen-reader handle). "+" is a separate button. */
+/* One click anywhere on the row adds the move (or goes to it when it is already
+   in the repertoire); the Move button is its keyboard/screen-reader handle. */
 .explorer-pick {
   min-width: 0;
   padding: 0;
@@ -3540,58 +3489,10 @@ body.is-guest .replay-results:empty::before {
   outline-offset: -2px;
 }
 
-.explorer-row.is-previewing {
-  background: var(--accent-soft);
-  box-shadow: inset 3px 0 0 var(--accent);
-}
-
 /* Fewer than a handful of games: the split is noise, so the row steps back. */
-.explorer-row.is-thin .explorer-bar-track,
+.explorer-row.is-thin .explorer-bar,
 .explorer-row.is-thin .explorer-games { opacity: 0.55; }
 
-.explorer-add {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: 1px solid var(--line-strong, var(--line));
-  border-radius: 5px;
-  background: var(--panel);
-  color: var(--accent-text);
-  font: inherit;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-}
-.explorer-add:hover { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.explorer-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.explorer-add.is-in {
-  border-color: transparent;
-  background: transparent;
-  color: var(--good-text, var(--muted));
-  font-size: 12px;
-  cursor: default;
-}
-
-.explorer-preview {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 8px;
-  margin: 2px 0 6px;
-  padding: 6px 8px;
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  background: var(--accent-soft);
-  font-size: var(--fs-s);
-  color: var(--text);
-}
-.explorer-preview[hidden] { display: none; }
 .inline-undo {
   display: flex;
   align-items: center;
@@ -3639,7 +3540,6 @@ body.is-guest .replay-results:empty::before {
 .coverage-gate p { margin: 0 0 8px; line-height: 1.45; }
 .coverage-gate .row { display: flex; flex-wrap: wrap; gap: 6px; }
 .inline-undo-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
-.explorer-preview-text { flex: 1 1 180px; min-width: 0; }
 
 /* A row was just played: these rows describe the previous position until the
    next position's stats arrive, so they stop reading as clickable. */
@@ -3674,16 +3574,12 @@ body.is-guest .replay-results:empty::before {
   font-variant-numeric: tabular-nums;
 }
 
-.explorer-bar-track {
-  display: block;
-  min-width: 0;
-}
-
-/* Width = how much data backs the split (set inline, log-scaled per row). */
+/* Always full width: the split is the reading, the game count beside it is
+   the confidence. */
 .explorer-bar {
   display: flex;
+  min-width: 0;
   height: 18px;
-  max-width: 100%;
   border-radius: 3px;
   overflow: hidden;
   background: var(--explorer-track);
@@ -3704,7 +3600,7 @@ body.is-guest .replay-results:empty::before {
 .explorer-eval { display: none; }
 .explorer-rows.has-eval .explorer-head,
 .explorer-rows.has-eval .explorer-row {
-  grid-template-columns: minmax(44px, 60px) minmax(46px, 56px) minmax(40px, 60px) minmax(0, 1fr) 24px;
+  grid-template-columns: minmax(44px, 60px) minmax(46px, 56px) minmax(40px, 60px) minmax(0, 1fr);
 }
 .explorer-rows.has-eval .explorer-eval {
   display: block;
@@ -4468,17 +4364,6 @@ body.is-guest .replay-results:empty::before {
   gap: 9px;
 }
 
-/* Progress track + Stop button share one row. */
-.job-toast-progress {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.job-toast-progress .job-toast-track {
-  flex: 1 1 auto;
-}
-
 .job-toast.is-minimized {
   width: 200px;
   padding: 8px 12px;
@@ -4509,10 +4394,6 @@ body.is-guest .replay-results:empty::before {
 .job-toast.is-minimized:hover {
   transform: translateY(-2px) scale(1.03);
   box-shadow: 0 22px 44px rgba(28, 28, 28, 0.22), 0 6px 14px rgba(28, 28, 28, 0.1);
-}
-
-.job-toast.is-minimized.state-running .job-toast-icon {
-  animation: jobToastPulse 1.4s ease-in-out infinite;
 }
 
 .job-toast.is-minimized:hover .job-toast-icon {
@@ -4673,6 +4554,68 @@ body.is-guest .replay-results:empty::before {
   40%  { transform: translateY(-6px) scale(1.04); }
   70%  { transform: translateY(0) scale(0.98); }
   100% { transform: translateY(0) scale(1); }
+}
+
+/* ---- Docked job cards ----------------------------------------------------
+   A job that produces something on the page (whole-game analysis, coverage scan,
+   line completion, generation) runs as a panel card in that page's flow, not a
+   floating toast: one header row (title, live status, Stop) over a thin track. */
+.job-dock:empty {
+  display: none;
+}
+#build-job-dock,
+#coverage-job-dock {
+  margin: 6px 0 8px;
+}
+.job-dock .job-toast.is-docked {
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 10px 12px;
+  gap: 8px;
+  border-radius: 8px;
+  box-shadow: none;
+  transform: none;
+  opacity: 1;
+}
+.job-dock .job-toast.is-docked .job-toast-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.job-dock .job-toast.is-docked .job-toast-title {
+  flex: none;
+  font-size: var(--fs-s);
+  font-weight: 700;
+}
+.job-dock .job-toast.is-docked .job-toast-message {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+.job-dock .job-toast.is-docked .job-toast-stop {
+  flex: none;
+  margin-left: auto;
+}
+.job-dock .job-toast.is-docked.state-failed .job-toast-message {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.job-dock .job-toast.is-docked .job-toast-track {
+  height: 4px;
+}
+.job-dock .job-toast.is-docked.state-done {
+  cursor: pointer;
+}
+.job-dock .job-toast.is-docked.is-leaving {
+  transform: none;
 }
 
 /* ---- Stop control (cancel a running heavy job) ------------------------- */

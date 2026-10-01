@@ -962,7 +962,7 @@ describe("Maia estimate rendering", () => {
     expect(secondRow?.maiaScorePct).toBe(27);
     expect(first.html).toContain("scout-maia-estimate");
     expect(second.html).toContain('style="width:70%"');
-    expect(second.html).toContain("score/WDL are Maia estimates");
+    expect(second.html).toContain("scout-maia-estimate");
   });
 
   it("re-ranks prep rows when Maia scores change exploitability", () => {
@@ -1082,7 +1082,9 @@ describe("scout intelligence panel", () => {
     expect(html).toContain("scout-intel-summary-only");
     expect(html).toContain("scout-intel-charts-strip");
     expect(html).toContain("scout-ranked-list");
-    expect(html).toContain("scout-ranked-note");
+    expect(html).not.toContain("scout-ranked-note");
+    expect(html).not.toContain("scout-chart-sub");
+    expect(html).toContain("scout-chart-title");
     expect(html).not.toContain("scout-lr-rank");
     expect(html).toContain("score by first move");
     expect(html).toContain("Games per week");
@@ -1117,7 +1119,7 @@ describe("scout intelligence panel", () => {
   });
 
   it("renderScoutEnginePanel shows insufficient coverage or ACPL bars", () => {
-    expect(renderScoutEnginePanel(null, escapeHtml)).toContain("Deep scan checks");
+    expect(renderScoutEnginePanel(null, escapeHtml)).toContain("Not scanned yet.");
     expect(
       renderScoutEnginePanel(
         {

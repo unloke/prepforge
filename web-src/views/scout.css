@@ -220,7 +220,6 @@
 .plan-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
 .scout-col-label { font-size: var(--fs-s); font-weight: 700; }
 .scout-col-label small { color: var(--label); font-weight: 500; }
-.scout-col-hint { font-size: var(--fs-xs); }
 .first-moves { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; }
 .first-moves > :not(.fm) { grid-column: 1 / -1; }
 .scout-dist-drill-head { font-size: var(--fs-xs); }
@@ -311,7 +310,6 @@
 .c-attack { background: var(--bad-soft); color: var(--danger); }
 .c-main { background: var(--info-soft); color: var(--accent-text); }
 .seen { color: var(--label); font-size: var(--fs-xs); }
-.c-small { background: var(--surface-3); color: var(--muted); }
 .scout-line-more { font-size: var(--fs-xs); white-space: nowrap; }
 .scout-wdlbar-wrap { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .scout-wdlbar-nums {
@@ -422,11 +420,7 @@
   border-left: 1.5px dashed var(--text);
   opacity: 0.6;
 }
-.scout-chart-sub { margin: -2px 0 2px; color: var(--muted); font-size: 10.5px; line-height: 1.35; }
-.scout-chart-keys { display: flex; flex-wrap: wrap; gap: 10px; color: var(--muted); font-size: 10.5px; }
-.scout-chart-key { display: inline-flex; align-items: center; gap: 4px; }
-.scout-key-good { width: 10px; height: 6px; border-radius: 2px; background: var(--good); }
-.scout-key-ref { width: 0; height: 10px; border-left: 1.5px dashed var(--text); opacity: 0.6; }
+.scout-chart-title { margin: 4px 0 2px; color: var(--label, var(--muted)); font-size: var(--fs-xs, 11px); font-weight: 600; }
 /* Mini chart with labelled axes: y range on the left, x span underneath. */
 .scout-axis-chart {
   display: grid;

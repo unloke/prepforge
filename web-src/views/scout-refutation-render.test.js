@@ -199,7 +199,6 @@ describe("scout refutation render sync", () => {
     await vi.runOnlyPendingTimersAsync();
 
     const html = elements.get("scout-results").innerHTML;
-    expect(html).toContain("scout-ranked-note");
     expect(html).toContain("Not scanned yet");
     expect(html).not.toContain("scout-refutation-hit");
     expect(html).not.toContain("STALE_REFUTE_GAP");

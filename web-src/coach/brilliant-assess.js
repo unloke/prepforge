@@ -229,7 +229,9 @@ export async function attachClientTrapGaps({ candidates, evals, depth, rating, p
     } catch (_) {
       humanFen = null;
     }
-    if (humanFen && !seen.has(humanFen)) {
+    // A natural-move position the main pass already searched (it can coincide with a
+    // game position) reuses that eval instead of being searched again.
+    if (humanFen && !seen.has(humanFen) && !evals.has(humanFen)) {
       seen.add(humanFen);
       humanFens.push(humanFen);
     }
@@ -267,7 +269,7 @@ export async function attachClientTrapGaps({ candidates, evals, depth, rating, p
       continue; // un-evaluable → leave trap_gap absent
     }
     const playedEval = evals.get(p.cand.playedAfterFen);
-    const humanEval = humanEvals.get(p.humanFen);
+    const humanEval = humanEvals.get(p.humanFen) || evals.get(p.humanFen);
     if (!playedEval || !humanEval) {
       continue; // a missing eval → trap layer un-evaluable, leave trap_gap absent
     }

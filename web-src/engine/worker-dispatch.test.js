@@ -129,12 +129,31 @@ describe("Claim 2/3 — duplicate FENs in the input", () => {
     expect(out.get(B).score_cp).toBe(positions.indexOf(B));
   });
 
+  it("passes a per-position node budget to every provider", async () => {
+    const seen = [];
+    const factory = makeRecordingFactory({ searches: [], workers: new Set() }, [A, B]);
+    await analyzeGamePositions({
+      positions: [A, B],
+      depth: 16,
+      concurrency: 2,
+      createProvider: (opts) => {
+        seen.push(opts);
+        return factory(opts);
+      },
+    });
+    expect(seen.length).toBe(2);
+    for (const opts of seen) {
+      expect(opts.maxDepth).toBe(16);
+      expect(opts.maxNodes).toBeGreaterThan(0);
+    }
+  });
+
   it("explicit concurrency is honoured verbatim", () => {
     expect(resolveConcurrency(3)).toBe(3);
     expect(resolveConcurrency(1)).toBe(1);
   });
 
-  it("default concurrency reserves a core and is clamped to [1, 6]", () => {
+  it("default concurrency uses half the cores, clamped to [1, 4]", () => {
     const desc = Object.getOwnPropertyDescriptor(globalThis, "navigator");
     const setHw = (n) =>
       Object.defineProperty(globalThis, "navigator", {
@@ -142,10 +161,12 @@ describe("Claim 2/3 — duplicate FENs in the input", () => {
         configurable: true,
       });
     try {
+      setHw(16);
+      expect(resolveConcurrency()).toBe(4); // min(4, 16/2)
       setHw(8);
-      expect(resolveConcurrency()).toBe(6); // min(6, 8-1)
+      expect(resolveConcurrency()).toBe(4); // 8/2
       setHw(4);
-      expect(resolveConcurrency()).toBe(3); // 4-1
+      expect(resolveConcurrency()).toBe(2); // 4/2
       setHw(1);
       expect(resolveConcurrency()).toBe(1); // never below 1
     } finally {

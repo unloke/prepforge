@@ -199,15 +199,13 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     expect(byId("team-empty-title").textContent).toBe("Choose a team");
   });
 
-  it("signed out: explains Teams and hides the 'Click to open' hint", async () => {
+  it("signed out: the empty card says how to start", async () => {
     const { view, byId } = makeHarness({
       appState: { signedIn: false, teams: [], selectedTeamId: null },
     });
-    byId("teams-shared-hint").hidden = false;
     await view.loadTeams();
     expect(byId("team-empty-body").textContent).toMatch(/Sign in to create or join a team/);
     expect(byId("teams-shared").innerHTML).toMatch(/Sign in/);
-    expect(byId("teams-shared-hint").hidden).toBe(true);
   });
   it("New team is offered only when signed in (guests get the card's Sign in)", async () => {
     const guest = makeHarness({ appState: { signedIn: false, teams: [], selectedTeamId: null } });
