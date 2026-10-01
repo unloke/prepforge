@@ -165,15 +165,16 @@ async function main() {
     }
 
     await page.reload({ waitUntil: "networkidle", timeout: 60000 });
-    const statusResp = await page.request.get(`${BASE}/api/auth/status`);
+    await page.locator('html[data-app-ready="true"]').waitFor({ timeout: 30000 });
+    const statusResp = await page.request.get(`${BASE}/api/auth/me`);
     const status = await statusResp.json();
-    if (!status.signed_in) {
+    if (!status.id) {
       throw new Error("signed_in false after register reload");
     }
 
     evidence.auth.signedInVerified = true;
-    evidence.auth.lastUserId = status.user_id || null;
-    return { ctx, page, userId: status.user_id || null };
+    evidence.auth.lastUserId = status.id || null;
+    return { ctx, page, userId: status.id || null };
   }
 
   async function getAppStatus(page) {
@@ -184,19 +185,24 @@ async function main() {
   }
 
   async function gotoBuild(page) {
-    await page.click('[data-testid="nav-build"]');
+    await page.locator('[data-testid="nav-build"]:visible, [data-testid="bottom-build"]:visible').click();
     await page.locator("#view-build.is-active").waitFor({ state: "attached", timeout: 10000 });
     await page.waitForTimeout(400);
   }
 
   async function gotoDashboard(page) {
-    await page.click('[data-testid="nav-dashboard"]');
+    await page.locator('[data-testid="nav-dashboard"]:visible, [data-testid="bottom-dashboard"]:visible').click();
     await page.locator("#view-dashboard.is-active").waitFor({ state: "attached", timeout: 10000 });
     await page.waitForTimeout(400);
   }
 
   async function gotoAnalyze(page) {
-    await page.click('[data-testid="nav-analyze"]');
+    if (await page.locator('[data-testid="nav-analyze"]').isVisible()) {
+      await page.click('[data-testid="nav-analyze"]');
+    } else {
+      await page.click('[data-testid="bottom-more"]');
+      await page.click('[data-nav-mirror="analyze"]');
+    }
     await page.locator("#view-analyze.is-active").waitFor({ state: "attached", timeout: 10000 });
     await page.waitForTimeout(400);
     await page.evaluate(() => {
@@ -229,7 +235,7 @@ async function main() {
       repName: document.getElementById("build-rep-name")?.textContent?.trim() || "",
       boardLabel: document.getElementById("build-board-label")?.textContent?.trim() || "",
       treeText: (document.getElementById("builder-tree")?.textContent || "").trim().slice(0, 240),
-      treeHasEmptyState: !!document.querySelector("#builder-tree .empty-state"),
+      treeHasEmptyState: !!document.querySelector("#builder-tree .tree-empty"),
       buildMenuVisible: !document.getElementById("build-menu")?.hidden,
       dashboardNewRep: Array.from(document.querySelectorAll('[data-testid="dashboard-new-rep"], #dashboard-repertoires [data-lib-action="new"]'))
         .some((button) => button.getClientRects().length > 0),
@@ -264,7 +270,7 @@ async function main() {
     await page.locator(".modal-overlay").waitFor({ state: "visible", timeout: 10000 });
     await page.fill('.modal-overlay input[name="name"]', name);
     if (color) {
-      await page.fill('.modal-overlay input[name="color"]', color);
+      await page.selectOption('.modal-overlay select[name="color"]', color);
     }
     await page.click('.modal-overlay [data-action="ok"]');
     await page.locator(".modal-overlay").waitFor({ state: "hidden", timeout: 10000 });
@@ -280,7 +286,7 @@ async function main() {
       .click();
     await fillCreateModal(page, { name, color });
     await page.locator("#view-build.is-active").waitFor({ state: "attached", timeout: 30000 });
-    await page.locator("#build-rep-name", { hasText: name }).waitFor({ timeout: 30000 });
+    await page.locator("#build-rep-name", { hasText: name }).waitFor({ state: "attached", timeout: 30000 });
   }
 
   async function createRepertoireFromBuildMenu(page, { name, color = "white" }) {
@@ -288,7 +294,7 @@ async function main() {
     await page.click('[data-testid="build-menu"]');
     await page.locator('#repertoire-context-menu button[data-action="build-new-rep"]').click();
     await fillCreateModal(page, { name, color });
-    await page.locator("#build-rep-name", { hasText: name }).waitFor({ timeout: 30000 });
+    await page.locator("#build-rep-name", { hasText: name }).waitFor({ state: "attached", timeout: 30000 });
   }
 
   async function playBuildMove(page, from, to) {
@@ -321,9 +327,9 @@ async function main() {
 
   async function openRepertoireFromDashboard(page, name) {
     await gotoDashboard(page);
-    await page.locator(`#dashboard-repertoires .list-item .name`, { hasText: name }).first().click();
+    await page.locator(`#dashboard-repertoires .lib-row .name`, { hasText: name }).first().click();
     await page.locator("#view-build.is-active").waitFor({ state: "attached", timeout: 30000 });
-    await page.locator("#build-rep-name", { hasText: name }).waitFor({ timeout: 30000 });
+    await page.locator("#build-rep-name", { hasText: name }).waitFor({ state: "attached", timeout: 30000 });
   }
 
   async function addMainlineAndBranch(page) {
@@ -472,6 +478,7 @@ async function main() {
       await page.locator("#builder-tree", { hasText: "e4" }).waitFor({ timeout: 10000 });
       const syncBefore = await waitForBuildSaved(page);
       await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+    await page.locator('html[data-app-ready="true"]').waitFor({ timeout: 30000 });
       await openRepertoireFromDashboard(page, repName);
       const afterReload = await snapshotBuild(page);
       record("4-signed-in", "reload-persist", {
@@ -561,7 +568,7 @@ async function main() {
       await page.locator(".modal-overlay").waitFor({ state: "visible", timeout: 10000 });
       await page.fill('.modal-overlay input[name="name"]', repName);
       await page.keyboard.press("Enter");
-      await page.locator("#build-rep-name", { hasText: repName }).waitFor({ timeout: 30000 });
+      await page.locator("#build-rep-name", { hasText: repName }).waitFor({ state: "attached", timeout: 30000 });
 
       // Board squares use pointerdown — document keyboard path for moves separately.
       await playBuildMove(page, "e2", "e4");
@@ -625,7 +632,7 @@ async function main() {
       await page.fill('.modal-overlay input[name="name"]', repName);
       await page.click('.modal-overlay [data-action="ok"]');
       await page.locator("#view-build.is-active").waitFor({ state: "attached", timeout: 60000 });
-      await page.locator("#build-rep-name", { hasText: repName }).waitFor({ timeout: 30000 });
+      await page.locator("#build-rep-name", { hasText: repName }).waitFor({ state: "attached", timeout: 30000 });
 
       const afterHandoff = await snapshotBuild(page);
       const treeHasMoves = /e4|Nf3|Bb5/i.test(afterHandoff.treeText);

@@ -324,6 +324,8 @@ def analyze_classify_save(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     position_map: dict[str, dict[str, Any]] = {}
     for item in validated:
+        if item["fen"] in position_map and position_map[item["fen"]] != item:
+            raise HTTPException(status_code=400, detail="conflicting evaluations for the same position")
         position_map[item["fen"]] = item
     if not position_map:
         raise HTTPException(
@@ -376,7 +378,7 @@ def analyze_classify_save(
     timings_ms["save_game_ms"] = int((time.perf_counter() - mark) * 1000)
 
     mark = time.perf_counter()
-    repo.save_analysis_result(result)
+    # save_game_batched already stores the analysis in the same transaction.
     timings_ms["save_analysis_ms"] = int((time.perf_counter() - mark) * 1000)
 
     mark = time.perf_counter()

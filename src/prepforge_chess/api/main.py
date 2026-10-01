@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -37,6 +38,7 @@ from prepforge_chess.api.routers import (
 )
 from prepforge_chess.api.routers import settings as settings_router
 from prepforge_chess.api.static import register_static
+from prepforge_chess.storage.repositories import RevisionConflict
 
 
 @asynccontextmanager
@@ -70,6 +72,13 @@ def create_app() -> FastAPI:
     # RateLimitExceeded, which this handler turns into a 429.
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+    @app.exception_handler(RevisionConflict)
+    async def revision_conflict(request: Request, exc: RevisionConflict):
+        return JSONResponse(status_code=409, content={"detail": {
+            "error": "revision_conflict", "current_revision": exc.current_revision,
+            "message": str(exc),
+        }})
 
     # Middleware order: last added is outermost. We want CORS outermost so even
     # CSRF/rate-limit rejections carry CORS headers (so the browser can read

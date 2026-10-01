@@ -102,6 +102,12 @@ def _upsert(
     conn.execute(stmt)
 
 
+class RevisionConflict(RuntimeError):
+    def __init__(self, current_revision: Optional[int]):
+        super().__init__("This repertoire changed elsewhere. Reload it and re-apply the edit, or keep your draft.")
+        self.current_revision = current_revision
+
+
 class PrepForgeRepository:
     """SQLAlchemy persistence for shared domain models.
 
@@ -113,6 +119,11 @@ class PrepForgeRepository:
 
     def __init__(self, engine: Engine):
         self.engine = engine
+        self._expected_revisions: Dict[str, int] = {}
+
+    def expect_repertoire_revision(self, repertoire_id: str, revision: int) -> None:
+        """Fence a request's writes at commit, not just at its earlier HTTP read."""
+        self._expected_revisions[repertoire_id] = revision
 
     # ---- Per-user settings (canonical 1:1 key/value store) ---------------------
     # Every user fact that used to hide in a settings blob lives in its own
@@ -734,11 +745,19 @@ class PrepForgeRepository:
     def _bump_revision(self, conn: Connection, repertoire_id: str) -> None:
         """D-02: every tree/metadata mutation bumps the repertoire revision, so a
         client holding ``base_revision`` can detect stale writes (409)."""
-        conn.execute(
-            update(t.repertoires)
-            .where(t.repertoires.c.id == repertoire_id)
-            .values(revision=t.repertoires.c.revision + 1)
-        )
+        stmt = update(t.repertoires).where(t.repertoires.c.id == repertoire_id)
+        expected = self._expected_revisions.get(repertoire_id)
+        if expected is not None:
+            stmt = stmt.where(t.repertoires.c.revision == expected)
+        changed = conn.execute(stmt.values(revision=t.repertoires.c.revision + 1))
+        if expected is not None:
+            if changed.rowcount != 1:
+                current = conn.scalar(select(t.repertoires.c.revision).where(
+                    t.repertoires.c.id == repertoire_id
+                ))
+                # Raising here rolls back the node/metadata writes in this transaction.
+                raise RevisionConflict(current)
+            self._expected_revisions[repertoire_id] = expected + 1
 
     def repertoire_revision(self, repertoire_id: str) -> Optional[int]:
         """Current mutation revision, or None when the repertoire is absent."""
@@ -749,6 +768,12 @@ class PrepForgeRepository:
                 )
             ).first()
         return int(row[0]) if row is not None else None
+
+    def repertoire_reply_revision(self, repertoire_id: str) -> Optional[int]:
+        """A mutation reply must describe its own commit, not a later writer."""
+        if repertoire_id in self._expected_revisions:
+            return self._expected_revisions[repertoire_id]
+        return self.repertoire_revision(repertoire_id)
 
     def save_repertoire(self, repertoire: Repertoire, owner_user_id: Optional[str] = None) -> None:
         now = _now_text()

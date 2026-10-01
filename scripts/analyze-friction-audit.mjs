@@ -171,15 +171,16 @@ async function main() {
     }
 
     await page.reload({ waitUntil: "networkidle", timeout: 60000 });
-    const statusResp = await page.request.get(`${BASE}/api/auth/status`);
+    await page.locator('html[data-app-ready="true"]').waitFor({ timeout: 30000 });
+    const statusResp = await page.request.get(`${BASE}/api/auth/me`);
     const status = await statusResp.json();
-    if (!status.signed_in) {
+    if (!status.id) {
       throw new Error("signed_in false after register reload");
     }
 
     evidence.auth.signedInVerified = true;
-    evidence.auth.lastUserId = status.user_id || null;
-    return { ctx, page, userId: status.user_id || null };
+    evidence.auth.lastUserId = status.id || null;
+    return { ctx, page, userId: status.id || null };
   }
 
   async function getAppStatus(page) {
@@ -191,7 +192,12 @@ async function main() {
 
   async function gotoAnalyze(page) {
     await page.goto(`${BASE}/`, { waitUntil: "networkidle", timeout: 60000 });
-    await page.click('[data-testid="nav-analyze"]');
+    if (await page.locator('[data-testid="nav-analyze"]').isVisible()) {
+      await page.click('[data-testid="nav-analyze"]');
+    } else {
+      await page.click('[data-testid="bottom-more"]');
+      await page.click('[data-nav-mirror="analyze"]');
+    }
     await page.waitForTimeout(800);
     await page.evaluate(() => {
       const drawer = document.getElementById("pgn-drawer");

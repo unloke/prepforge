@@ -7,6 +7,7 @@ Postgres with a connection pool.
 from __future__ import annotations
 
 from collections.abc import Iterator
+from threading import Lock
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -58,13 +59,20 @@ def make_engine(settings: Settings | None = None):
 
 _engine = None
 _SessionLocal: sessionmaker[Session] | None = None
+_session_factory_lock = Lock()
 
 
 def _ensure_session_factory() -> sessionmaker[Session]:
     global _engine, _SessionLocal
     if _SessionLocal is None:
-        _engine = make_engine()
-        _SessionLocal = sessionmaker(bind=_engine, autoflush=False, expire_on_commit=False)
+        # First requests can arrive on different worker threads. Publish one
+        # engine/factory pair; concurrent SQLite WAL initialization can lock.
+        with _session_factory_lock:
+            if _SessionLocal is None:
+                engine = make_engine()
+                factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+                _engine = engine
+                _SessionLocal = factory
     return _SessionLocal
 
 

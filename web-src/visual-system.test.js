@@ -314,6 +314,11 @@ describe("semantic text colors meet WCAG AA", () => {
   const TEXT_TOKENS = ["--label", "--warn-text", "--good-text", "--brilliant-text", "--accent-text"];
 
   for (const [themeName, tokens] of [["light", light], ["dark", dark]]) {
+    it(`${themeName} board coordinates meet small-text contrast`, () => {
+      for (const square of ["light", "dark"]) {
+        expect(contrast(tokens[`--coord-on-${square}`], tokens[`--square-${square}`])).toBeGreaterThanOrEqual(4.5);
+      }
+    });
     it(`${themeName} theme: text tokens clear 4.5:1 on panel-family surfaces`, () => {
       for (const name of TEXT_TOKENS) {
         const fg = tokens[name];

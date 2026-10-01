@@ -117,7 +117,7 @@ function opponentSans(game) {
 function castlingPly(sans, color) {
   const start = color === "white" ? 0 : 1;
   for (let i = start; i < sans.length; i += 2) {
-    const san = sans[i];
+    const san = sans[i].replace(/[+#?!]+$/, "");
     if (san === "O-O-O") return { side: "queenside", ply: Math.floor(i / 2) + 1 };
     if (san === "O-O") return { side: "kingside", ply: Math.floor(i / 2) + 1 };
   }
@@ -177,18 +177,18 @@ export function systemSetupName(id) {
 
 function detectSystemSetup(sans, color) {
   const moves = opponentSans({ sans, color }).slice(0, 8).map((s) => s.replace(/[+#]/g, "").toLowerCase());
-  const joined = moves.join("|");
+  const tokens = new Set(moves);
   if (color === "white") {
-    if (joined.includes("d4") && (joined.includes("bf4") || joined.includes("nf3")) && joined.includes("e3")) {
+    if (tokens.has("d4") && (tokens.has("bf4") || tokens.has("nf3")) && tokens.has("e3")) {
       return "london";
     }
-    if (joined.includes("nf3") && joined.includes("g3") && joined.includes("bg2")) return "kia";
-    if (joined.includes("d4") && joined.includes("e3") && joined.includes("bd3")) return "colle";
+    if (tokens.has("nf3") && tokens.has("g3") && tokens.has("bg2")) return "kia";
+    if (tokens.has("d4") && tokens.has("e3") && tokens.has("bd3")) return "colle";
   } else {
-    const qsideFianchetto = joined.includes("b6") && joined.includes("bb7");
-    const ksideFianchetto = joined.includes("g6") && joined.includes("bg7");
-    const closedCenter = joined.includes("d6") && joined.includes("e6");
-    const avoidsOpenBreaks = !joined.includes("e5") && !joined.includes("c5") && !joined.includes("d5");
+    const qsideFianchetto = tokens.has("b6") && tokens.has("bb7");
+    const ksideFianchetto = tokens.has("g6") && tokens.has("bg7");
+    const closedCenter = tokens.has("d6") && tokens.has("e6");
+    const avoidsOpenBreaks = !tokens.has("e5") && !tokens.has("c5") && !tokens.has("d5");
     if (qsideFianchetto && ksideFianchetto && closedCenter && avoidsOpenBreaks) return "hippo";
   }
   return null;

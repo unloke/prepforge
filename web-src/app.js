@@ -1,4 +1,5 @@
 import "./styles.css";
+import { advanceBuildRevision, queuedBuildRevision, rebaseQueuedBuildRevision, withBuildRevision } from "./build-revision.js";
 import {
   ANALYSIS_MAX_NODES,
   createEngineProvider,
@@ -3462,14 +3463,20 @@ async function flushAllPendingForSignOut() {
   };
 }
 
-function postJson(path, body, options = {}) {
+async function postJson(path, body, options = {}) {
   // `options` (e.g. an AbortSignal) is forwarded to fetch via api(); it spreads
   // last so a caller can pass `signal` for a cancellable request.
-  return api(path, {
+  const build = appState.build;
+  const requestBody = withBuildRevision(path, body, build);
+  const payload = await api(path, {
     method: "POST",
-    body: JSON.stringify(body || {}),
+    body: JSON.stringify(requestBody || {}),
     ...options,
   });
+  if (requestBody?.base_revision !== undefined && appState.build === build) {
+    advanceBuildRevision(build, payload, [...appState.buildPending, ...appState.buildPendingDeletes]);
+  }
+  return payload;
 }
 
 function downloadText(filename, mime, content) {
@@ -3519,10 +3526,10 @@ let paletteItems = [];
 let paletteActive = 0;
 let paletteA11yCleanup = null;
 
-function activateModal(overlay, { initialFocus = null } = {}) {
+function activateModal(overlay, { initialFocus = null, additionalRoots = [] } = {}) {
   const previouslyFocused = document.activeElement;
   const background = [...document.body.children].filter(
-    (child) => child !== overlay && !child.inert,
+    (child) => child !== overlay && !additionalRoots.includes(child) && !child.inert,
   );
   for (const child of background) child.inert = true;
 
@@ -3537,9 +3544,9 @@ function activateModal(overlay, { initialFocus = null } = {}) {
     }
   }
 
-  const focusable = () => [...overlay.querySelectorAll(
+  const focusable = () => [overlay, ...additionalRoots].flatMap((root) => [...root.querySelectorAll(
     'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
-  )].filter((el) => !el.hidden && el.getClientRects().length > 0);
+  )]).filter((el) => !el.hidden && el.getClientRects().length > 0);
   const onKeyDown = (event) => {
     if (event.key !== "Tab") return;
     const items = focusable();
@@ -3557,16 +3564,18 @@ function activateModal(overlay, { initialFocus = null } = {}) {
       first.focus();
     }
   };
-  overlay.addEventListener("keydown", onKeyDown);
+  const keyTarget = additionalRoots.length ? document : overlay;
+  keyTarget.addEventListener("keydown", onKeyDown);
   queueMicrotask(() => (initialFocus || focusable()[0] || dialog || overlay).focus?.());
 
   let cleaned = false;
-  const cleanup = () => {
+  const cleanup = ({ restoreFocus = true } = {}) => {
     if (cleaned) return;
     cleaned = true;
-    overlay.removeEventListener("keydown", onKeyDown);
+    keyTarget.removeEventListener("keydown", onKeyDown);
     for (const child of background) child.inert = false;
-    if (previouslyFocused?.isConnected) previouslyFocused.focus();
+    overlay.remove = nativeRemove;
+    if (restoreFocus && previouslyFocused?.isConnected) previouslyFocused.focus();
   };
   const nativeRemove = overlay.remove.bind(overlay);
   overlay.remove = () => {
@@ -6213,13 +6222,14 @@ async function runAnalysis(options = {}) {
     pgn, mode: importMode, selectIndex,
   })) return;
   const seq = invalidateAnalysisSource();
+  const analysisOwnerId = currentOwnerId();
   // Keep the game on screen while the engine works: (re)load the source into the move
   // list instead of hiding it behind the "Play on the board" placeholder. Only a source
   // that won't parse here (e.g. a multi-game paste) falls back to hiding the old list.
   appState.analysisSourcePgn = null;
   hideAnalysisHandoff();
   const listed = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true, sourceSeq: seq }).catch(() => false);
-  if (seq !== analysisRecallSeq) return;
+  if (seq !== analysisRecallSeq || analysisOwnerId !== currentOwnerId()) return;
   if (!listed) hideAnalysisResults();
   const runButton = document.getElementById("run-analysis");
   runButton.disabled = true;
@@ -6240,7 +6250,7 @@ async function runAnalysis(options = {}) {
         select_index: selectIndex,
       });
     } catch (prepError) {
-      if (seq !== analysisRecallSeq) return;
+      if (seq !== analysisRecallSeq || analysisOwnerId !== currentOwnerId()) return;
       // F-04: single mode refuses multi-game pastes BEFORE storing anything.
       // Offer the batch path explicitly instead of silently importing extras.
       if (prepError.status === 400 && /games in the PGN/i.test(prepError.message || "")) {
@@ -6257,7 +6267,7 @@ async function runAnalysis(options = {}) {
       }
       throw prepError;
     }
-    if (seq !== analysisRecallSeq) return;
+    if (seq !== analysisRecallSeq || analysisOwnerId !== currentOwnerId()) return;
     const positions = prep.positions || [];
     if (!positions.length) throw new Error("No positions to analyze");
     renderImportPicker(prep.import_summary, importMode);
@@ -6325,7 +6335,7 @@ async function runAnalysis(options = {}) {
             message: `Stockfish ${done}/${total} positions`,
           });
         },
-        shouldCancel: () => cancelled,
+        shouldCancel: () => cancelled || analysisOwnerId !== currentOwnerId(),
       })
     );
     engineLifecycleMark("analyze-stockfish-done", tAnalyze);
@@ -6390,7 +6400,7 @@ async function runAnalysis(options = {}) {
               rating: effectiveMaiaRating(),
               provider,
               analyzeFn: analyzeGamePositions,
-              shouldCancel: () => cancelled,
+              shouldCancel: () => cancelled || analysisOwnerId !== currentOwnerId(),
               onPhase: ({ phase: sub, detail }) => {
                 timings[`maia_${sub}`] = detail || 1;
               },
@@ -6435,6 +6445,9 @@ async function runAnalysis(options = {}) {
     // device-recoverable checkpoint that was never written.
     const checkpoint = {
       gameId: prep.game_id,
+      ownerId: analysisOwnerId,
+      engine: prep.engine || "stockfish (browser)",
+      depth: prep.depth,
       positions,
       evals: [...evals.entries()],
       maiaAssessments,
@@ -6442,11 +6455,12 @@ async function runAnalysis(options = {}) {
     };
     const checkpointStored = saveCheckpoint({
       ...checkpoint,
-      ownerId: currentOwnerId(),
+      ownerId: analysisOwnerId,
       engine: prep.engine || "stockfish (browser)",
       depth: prep.depth,
     });
     if (!checkpointStored) inMemoryCheckpoint = { ...checkpoint, inMemoryOnly: true };
+    if (analysisOwnerId !== currentOwnerId()) throw Object.assign(new Error("Account changed"), { cancelled: true });
 
     const payload = await timed("classify", () =>
       postJson("/api/analyze/classify-save", {
@@ -6487,7 +6501,8 @@ async function runAnalysis(options = {}) {
       })
     );
 
-    clearCheckpoint(prep.game_id, currentOwnerId()); // saved: the compute is confirmed durable
+    clearCheckpoint(prep.game_id, analysisOwnerId); // saved: the compute is confirmed durable
+    if (analysisOwnerId !== currentOwnerId()) throw Object.assign(new Error("Account changed"), { cancelled: true });
     hideAnalysisRetrySave();
     refreshAnalysisHistoryIfOpen();
     const complete = (current = false) => jobToast.completeJob({
@@ -6495,7 +6510,7 @@ async function runAnalysis(options = {}) {
       message: `${payload.moves.length} plies classified`,
       onClick: current ? () => switchView("analyze") : null,
     });
-    if (seq !== analysisRecallSeq) {
+    if (seq !== analysisRecallSeq || analysisOwnerId !== currentOwnerId()) {
       complete();
       return;
     }
@@ -6503,7 +6518,7 @@ async function runAnalysis(options = {}) {
     resetAnalysisVariations();
     await showAnalysisPly(0);
     await timed("render", () => renderAnalysis(payload, { sourceSeq: seq }));
-    if (seq !== analysisRecallSeq) {
+    if (seq !== analysisRecallSeq || analysisOwnerId !== currentOwnerId()) {
       complete();
       return;
     }
@@ -6528,7 +6543,7 @@ async function runAnalysis(options = {}) {
     if (pgnDrawer) pgnDrawer.open = false;
     await updateAnalysisHandoff();
   } catch (error) {
-    const current = seq === analysisRecallSeq;
+    const current = seq === analysisRecallSeq && analysisOwnerId === currentOwnerId();
     if (error && error.cancelled) {
       if (current) {
         appState.analysisSourcePgn = null;
@@ -6545,7 +6560,7 @@ async function runAnalysis(options = {}) {
     }
     // F-03: if the compute finished but the SAVE didn't, offer "Retry save" —
     // the checkpoint holds the evals, so a retry never re-runs the engine.
-    const checkpoint = inMemoryCheckpoint || loadCheckpoint(null, currentOwnerId());
+    const checkpoint = current && (inMemoryCheckpoint || loadCheckpoint(null, analysisOwnerId));
     if (checkpoint && checkpoint.gameId) {
       // Keep the in-memory-only variant reachable for Retry save — the device
       // copy doesn't exist in that case.
@@ -6618,7 +6633,9 @@ function hideAnalysisRetrySave() {
 // Re-post classify-save from the checkpoint — engine/model work is NOT redone.
 async function retryAnalyzeSave() {
   // Owner-scoped: this only ever retries work saved under the CURRENT account.
-  const checkpoint = appState.analysisUnsavedCheckpoint || loadCheckpoint(null, currentOwnerId());
+  const ownerId = currentOwnerId();
+  const checkpoint = [appState.analysisUnsavedCheckpoint, loadCheckpoint(null, ownerId)]
+    .find((candidate) => candidate?.ownerId === ownerId);
   if (!checkpoint || !checkpoint.gameId) {
     hideAnalysisRetrySave();
     return;
@@ -6646,23 +6663,25 @@ async function retryAnalyzeSave() {
       }),
       maia_assessments: checkpoint.maiaAssessments || [],
     });
-    clearCheckpoint(checkpoint.gameId, currentOwnerId());
+    clearCheckpoint(checkpoint.gameId, ownerId);
+    if (ownerId !== currentOwnerId()) return;
     appState.analysisUnsavedCheckpoint = null;
     hideAnalysisRetrySave();
     refreshAnalysisHistoryIfOpen();
-    if (seq !== analysisRecallSeq) return;
+    if (seq !== analysisRecallSeq || ownerId !== currentOwnerId()) return;
     const input = document.getElementById("pgn-input");
     if (input && checkpoint.pgn) input.value = checkpoint.pgn;
     appState.analysis = payload;
     resetAnalysisVariations();
     await showAnalysisPly(0);
     await renderAnalysis(payload, { sourceSeq: seq });
-    if (seq !== analysisRecallSeq) return;
+    if (seq !== analysisRecallSeq || ownerId !== currentOwnerId()) return;
     setStatus("Analysis saved", { severity: "success" });
     appState.analysisSourcePgn = checkpoint.pgn || appState.analysisSourcePgn;
     revealAnalysisResults();
     await updateAnalysisHandoff();
   } catch (error) {
+    if (ownerId !== currentOwnerId()) return;
     if (isAuthError(error)) {
       accountService().handleAuthRequired("Sign in to save — the analysis stays on this device until you do");
     }
@@ -8372,6 +8391,7 @@ function buildOpMatchesRepertoire(entry, repertoireId) {
 function queueBuildDelete(nodeId) {
   appState.buildPendingDeletes.push({
     id: nodeId,
+    base_revision: appState.build?.revision,
     repertoire_id: appState.build ? appState.build.repertoire_id : null,
   });
 }
@@ -8594,15 +8614,21 @@ function flushBuildMoves() {
       ];
       let payload = null;
       if (deleteIds.length) {
+        const beforeRevision = queuedBuildRevision([...deleteBatch, ...batch], appState.build);
         payload = await postJson("/api/build/delete-nodes", {
           repertoire_id: repertoireId,
+          base_revision: beforeRevision,
           node_ids: deleteIds,
         });
+        rebaseQueuedBuildRevision(batch, repertoireId, beforeRevision, payload.revision);
+        persistOutbox({ deletes: deleteBatch.map(buildDeleteId) });
+        deleteBatch.length = 0;
       }
       if (batch.length) {
         // The add response supersedes the delete payload (it's newer truth).
         payload = await postJson("/api/build/add-moves", {
           repertoire_id: repertoireId,
+          base_revision: queuedBuildRevision(batch, appState.build),
           moves: batch.map((m) => ({ tempId: m.tempId, parentRef: m.parentRef, uci: m.uci })),
         });
       }
@@ -8809,10 +8835,13 @@ async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId) {
       continue;
     }
     try {
-      await postJson("/api/build/delete-nodes", {
+      const beforeRevision = queuedBuildRevision([...deleteBatch.slice(i), ...batch], appState.build);
+      const payload = await postJson("/api/build/delete-nodes", {
         repertoire_id: repertoireId,
+        base_revision: beforeRevision,
         node_ids: [id],
       });
+      rebaseQueuedBuildRevision([...deleteBatch.slice(i + 1), ...batch], repertoireId, beforeRevision, payload.revision);
       settled.deletes.push(buildDeleteId(entry));
     } catch (err) {
       const info = classifySyncError(err);
@@ -8833,10 +8862,13 @@ async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId) {
     // A parent from this same isolation round now has a real id.
     const parentRef = idMap[m.parentRef] || resolveBuildId(m.parentRef);
     try {
+      const beforeRevision = queuedBuildRevision(ordered.slice(i), appState.build);
       const payload = await postJson("/api/build/add-moves", {
         repertoire_id: repertoireId,
+        base_revision: beforeRevision,
         moves: [{ tempId: m.tempId, parentRef, uci: m.uci }],
       });
+      rebaseQueuedBuildRevision(ordered.slice(i + 1), repertoireId, beforeRevision, payload.revision);
       if (payload && payload.id_map) Object.assign(idMap, payload.id_map);
       if (payload && payload.nodes) lastPayload = payload;
       settled.build.push(buildAddId(m));
@@ -9097,12 +9129,14 @@ function beaconFlushBuild() {
   if (deleteIds.length) {
     send("/api/build/delete-nodes", {
       repertoire_id: repId,
+      base_revision: queuedBuildRevision([...pendingDeletes, ...pending], appState.build),
       node_ids: deleteIds,
     });
   }
   if (pending.length) {
     send("/api/build/add-moves", {
       repertoire_id: repId,
+      base_revision: queuedBuildRevision(pending, appState.build),
       moves: pending.map((m) => ({
         tempId: m.tempId,
         parentRef: m.parentRef,
@@ -9210,6 +9244,7 @@ async function onBuildBoardMove(moveUci) {
   appState.buildNodeById.set(node.id, node);
   appState.buildPending.push({
     tempId: node.id,
+    base_revision: appState.build?.revision,
     parentRef: parentId,
     uci: moveUci,
     node,
@@ -9497,6 +9532,8 @@ async function generateFromCurrentNode() {
     readGenerateOptions(values);
 
   const jobId = `browser-generate-${Date.now()}`;
+  const generatedRepertoireId = appState.build.repertoire_id;
+  const generatedBaseRevision = appState.build.revision;
   // Cancel model has two phases. GENERATION (local, before the POST) is
   // cancellable: jobToast's Stop aborts the controller, the recursion checks the
   // signal, and an explicit re-check below bails before the POST — so Stop here
@@ -9688,7 +9725,8 @@ async function generateFromCurrentNode() {
     const payload = await postJson(
       "/api/build/generate/apply-plan",
       {
-        repertoire_id: appState.build.repertoire_id,
+        repertoire_id: generatedRepertoireId,
+        base_revision: generatedBaseRevision,
         root_node_id: nodeId,
         plan,
       },
@@ -11559,6 +11597,11 @@ async function startSmartTraining(options = {}) {
       accountService().handleAuthRequired("Sign in to start training");
       return;
     }
+    if (error.status === 400 && /no active repertoires to train/i.test(error.message)) {
+      setStatus("Nothing to train yet");
+      setTrainBanner("done", "Nothing to train yet", "Create or activate a repertoire in Library.");
+      return;
+    }
     setStatusError(error.message);
     setTrainBanner("done", "Couldn't build your queue", "Try Start again in a moment.");
     return;
@@ -12201,9 +12244,6 @@ function flushTrainSync() {
     // dedupes) or re-report rejected ones forever.
     const unsettled = new Set([
       ...ungroupAttempts(outcome.failedGroups || []),
-      ...ungroupAttempts(
-        (outcome.rejectedGroups || []).map((group) => [group.sessionId, group.attempts]),
-      ),
     ].map((attempt) => trainAttemptId(attempt)));
     const settledAttempts = batch
       .map((attempt) => trainAttemptId(attempt))
@@ -13371,6 +13411,8 @@ async function completeOneGap(gap, signal) {
   // apply-plan anchors on a REAL node id, so drain pending local adds and re-resolve.
   await hardFlushBuild();
   const nodeId = resolveBuildId(appState.buildCurrentNodeId);
+  const repertoireId = appState.build.repertoire_id;
+  const baseRevision = appState.build.revision;
   const { runBrowserBuildGenerate } = await (_buildGenReady || preloadBuildGen());
   const plan = await runBrowserBuildGenerate({
     build: appState.build,
@@ -13399,7 +13441,7 @@ async function completeOneGap(gap, signal) {
   // and hydrateBuild runs, so the client never drifts from server truth.
   const payload = await postJson(
     "/api/build/generate/apply-plan",
-    { repertoire_id: appState.build.repertoire_id, root_node_id: nodeId, plan },
+    { repertoire_id: repertoireId, base_revision: baseRevision, root_node_id: nodeId, plan },
   );
   await hydrateBuild(payload, nodeId);
   return (payload.summary && payload.summary.added_nodes) || 0;
@@ -13665,16 +13707,20 @@ function wireMobileNav() {
   const sheet = document.getElementById("more-sheet");
   const moreBtn = document.getElementById("more-nav-btn");
   if (!sheet || !moreBtn) return;
+  let sheetCleanup = null;
   const closeSheet = ({ restoreFocus = true } = {}) => {
     if (sheet.hidden) return;
     sheet.hidden = true;
+    sheetCleanup?.({ restoreFocus: false });
+    sheetCleanup = null;
     moreBtn.setAttribute("aria-expanded", "false");
     if (restoreFocus) moreBtn.focus();
   };
   const openSheet = () => {
     sheet.hidden = false;
     moreBtn.setAttribute("aria-expanded", "true");
-    sheet.querySelector(".sheet-item")?.focus();
+    const menu = document.getElementById("account-menu");
+    sheetCleanup = activateModal(sheet, { additionalRoots: menu ? [menu] : [] });
   };
   moreBtn.addEventListener("click", () => {
     if (sheet.hidden) openSheet();
@@ -14435,4 +14481,6 @@ async function loadSignedInWorkspace() {
   }
 }
 
-appReadyPromise = init().catch((error) => setStatusError(error.message));
+appReadyPromise = init().then(() => {
+  document.documentElement.dataset.appReady = "true";
+}).catch((error) => setStatusError(error.message));

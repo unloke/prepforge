@@ -29,8 +29,8 @@ import {
 } from "../scout-report.js";
 import { createScoutInitGuard, scoutStateCarryover } from "../scout-init-guard.js";
 import { sameFetchSources } from "./shared/source-composer.js";
-import { renderV13PanelShell, renderV13Report } from "../scout-v13-report.js";
-import { CancelledError, runStreamV13 } from "../scout-v13-stream.js";
+let v13ReportModule = null;
+let v13ReportPromise = null;
 
 const SCOUT_E2E_BUILD_ENABLED = import.meta.env.VITE_ENABLE_SCOUT_E2E === "1";
 import { colorRecommendation } from "../scout-stats.js";
@@ -569,6 +569,17 @@ export function createScoutView(deps) {
   function paintV13Panel() {
     const el = getV12PanelEl();
     if (!el) return;
+    if (!v13ReportModule) {
+      v13ReportPromise ||= import("../scout-v13-report.js").then((module) => {
+        v13ReportModule = module;
+        paintV13Panel();
+      }).catch((error) => {
+        v13ReportPromise = null;
+        setStatus(error.message);
+      });
+      return;
+    }
+    const { renderV13PanelShell, renderV13Report } = v13ReportModule;
     el.hidden = false;
     const reportHtml = (v13Result || [])
       .map(({ color, result }) => {
@@ -611,6 +622,7 @@ export function createScoutView(deps) {
 
     let provider = null;
     try {
+      const { runStreamV13 } = await import("../scout-v13-stream.js");
       const sfDepth = effectiveStockfishDepth();
       const extDepth = Math.max(12, sfDepth - 4);
       const opponentRating =
@@ -698,7 +710,7 @@ export function createScoutView(deps) {
         setStatus(`Prep packages ready: ${totalPkgs} package(s)`);
       }
     } catch (err) {
-      if (err instanceof CancelledError || isStale()) {
+      if (err?.name === "CancelledError" || isStale()) {
         setStatus("Prep package generation cancelled");
       } else {
         setStatus(`Prep package generation failed: ${err.message || err}`);
@@ -1658,7 +1670,7 @@ export function createScoutView(deps) {
     // The replies to their first move are their OPPONENTS' moves; the score is
     // still theirs.
     distCol.innerHTML = `
-    <div class="scout-dist-drill-head muted">After 1.${escapeHtml(parentSan)}: what their opponents answered, and how ${escapeHtml(scoutState.username || "they")} scored</div>
+    <div class="scout-dist-drill-head muted" title="Opponent replies and player score">1.${escapeHtml(parentSan)}</div>
     ${rows}
     <button type="button" class="scout-btn btn ghost scout-dist-back">Back ↑</button>`;
     distCol.dataset.drillUci = uci;

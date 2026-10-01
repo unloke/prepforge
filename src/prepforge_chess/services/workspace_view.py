@@ -114,7 +114,7 @@ def build_workspace_payload(
     # D-01: the cache records computed_at + tree revision so readers can tell how
     # fresh the static numbers are; time-dependent numbers (due) are recomputed
     # live wherever they are displayed (see repository.due_counts_by_repertoire).
-    revision = repository.repertoire_revision(repertoire.id)
+    revision = repository.repertoire_reply_revision(repertoire.id)
     cached = getattr(repertoire, "_cached_health", None) or {}
     cached_static = {k: v for k, v in cached.items() if k not in ("computed_at", "revision")}
     if cached_static != health.to_dict() or cached.get("revision") != revision:

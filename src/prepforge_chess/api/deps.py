@@ -36,6 +36,10 @@ def current_user_optional(
     # this only fires on SQLite.) Treat the naive value as UTC for the comparison.
     if last_seen is not None and last_seen.tzinfo is None:
         last_seen = last_seen.replace(tzinfo=timezone.utc)
+    if last_seen is None or now - last_seen >= timedelta(days=settings.session_ttl_days):
+        db.delete(session)
+        db.commit()
+        return None
     if last_seen is None or now - last_seen >= _LAST_SEEN_REFRESH:
         session.last_seen_at = now
         db.commit()

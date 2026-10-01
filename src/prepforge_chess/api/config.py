@@ -82,6 +82,12 @@ class Settings(BaseSettings):
     # Dev/test only: return the reset link in the API response so flows can be
     # completed without a mail inbox. Ignored in production.
     password_reset_dev_link: bool = Field(default=False)
+    public_base_url: str = Field(default="")
+    smtp_host: str = Field(default="")
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_from: str = Field(default="")
+    smtp_username: str = Field(default="")
+    smtp_password: str = Field(default="")
     # Cap concurrent sessions per user (oldest pruned on new login). 0 disables.
     session_max_per_user: int = Field(default=10)
 

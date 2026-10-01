@@ -90,6 +90,7 @@ async function main() {
     const { csrf } = await registerSession(page);
     await seedRepertoire(page, csrf);
     await page.reload({ waitUntil: "domcontentloaded" });
+    await page.locator('html[data-app-ready="true"]').waitFor({ timeout: 30_000 });
 
     // Let the signed-in workspace load finish before navigating: mid-boot the
     // later restoreWorkspaceLocation() re-enters the restored view and (for

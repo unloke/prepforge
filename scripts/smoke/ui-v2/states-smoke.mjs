@@ -275,6 +275,13 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
   const item = page.locator("#sheet-account");
   await tap(page.locator("#more-nav-btn"));
   await page.waitForTimeout(150);
+  check(S, await page.evaluate(() => document.querySelector("main")?.closest("[inert]") != null), "More should make the workspace inert");
+  const visibleItems = page.locator("#more-sheet button:visible");
+  await visibleItems.last().focus();
+  await page.keyboard.press("Tab");
+  check(S, await visibleItems.first().evaluate((node) => node === document.activeElement), "Tab wraps to the first sheet control");
+  await page.keyboard.press("Shift+Tab");
+  check(S, await visibleItems.last().evaluate((node) => node === document.activeElement), "Shift+Tab wraps to the last sheet control");
   check(S, (await attr(item, "aria-haspopup")) === "menu", "signed-in #sheet-account should have aria-haspopup=menu");
   check(S, (await attr(item, "aria-expanded")) === "false", "#sheet-account should start aria-expanded=false");
   await tap(item);

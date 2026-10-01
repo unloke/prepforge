@@ -25,6 +25,20 @@ function makeController({ api = vi.fn(), postJson = vi.fn(), onOpenSettings = vi
 }
 
 describe("account controller", () => {
+  it("keeps the owner on transient auth refresh failures; only 401 ends the session", async () => {
+    const api = vi.fn().mockResolvedValue({ id: "owner", email: "owner@example.com" });
+    const { appState, controller } = makeController({ api });
+    await controller.refreshAuthStatus();
+    for (const error of [new Error("offline"), Object.assign(new Error("down"), { status: 503 })]) {
+      api.mockRejectedValueOnce(error);
+      await controller.refreshAuthStatus();
+      expect(appState.accountUserId).toBe("owner");
+      expect(appState.signedIn).toBe(true);
+    }
+    api.mockRejectedValueOnce(Object.assign(new Error("expired"), { status: 401 }));
+    await controller.refreshAuthStatus();
+    expect(appState.accountUserId).toBeNull();
+  });
   beforeEach(() => {
     globalThis.document = { getElementById: () => null };
     globalThis.localStorage = {

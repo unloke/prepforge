@@ -52,6 +52,8 @@ def run_e2e_script(script: Path, tmp_path, env_overrides: dict | None = None):
     if migrate.returncode != 0:
         pytest.fail(f"alembic upgrade failed:\n{migrate.stderr or migrate.stdout}")
 
+    server_log_path = tmp_path / "server.log"
+    server_log = server_log_path.open("w", encoding="utf-8")
     proc = subprocess.Popen(
         [
             sys.executable,
@@ -68,7 +70,7 @@ def run_e2e_script(script: Path, tmp_path, env_overrides: dict | None = None):
         cwd=ROOT,
         env=env,
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+        stderr=server_log,
         text=True,
         encoding="utf-8",
         errors="replace",
@@ -88,7 +90,7 @@ def run_e2e_script(script: Path, tmp_path, env_overrides: dict | None = None):
                 pass
             time.sleep(0.3)
         if not ok:
-            err = proc.stderr.read() if proc.stderr else ""
+            err = server_log_path.read_text(encoding="utf-8", errors="replace")
             pytest.fail(f"uvicorn did not become ready on :{port}\n{err}")
 
         result = subprocess.run(
@@ -106,10 +108,13 @@ def run_e2e_script(script: Path, tmp_path, env_overrides: dict | None = None):
             combined = (result.stdout or "") + (result.stderr or "")
             if "playwright not installed" in combined or "no Chromium" in combined:
                 pytest.skip(combined.strip())
-            pytest.fail(combined.strip() or f"{script.name} exited {result.returncode}")
+            server_errors = server_log_path.read_text(encoding="utf-8", errors="replace")
+            pytest.fail((combined + "\n" + server_errors).strip() or f"{script.name} exited {result.returncode}")
     finally:
         proc.terminate()
         try:
             proc.wait(timeout=10)
         except subprocess.TimeoutExpired:
             proc.kill()
+            proc.wait(timeout=10)
+        server_log.close()

@@ -49,6 +49,16 @@ function card(kind, rep, color, san) {
 }
 
 describe("train up-next preview", () => {
+  it("updates the accessible progress value as cards advance", () => {
+    const els = makeElements();
+    const values = {};
+    els["train-progress"] = { setAttribute: (name, value) => { values[name] = value; } };
+    const view = makeView({ smart: null }, els);
+    view.renderSmartProgress({ total_cards: 6, card_index: 2, kind: "due", targets_total: 1 });
+    expect(values).toMatchObject({ "aria-valuemin": "0", "aria-valuemax": "6", "aria-valuenow": "2" });
+    view.renderSmartProgress({ total_cards: 6, card_index: 6, kind: "due", targets_total: 1 });
+    expect(values["aria-valuenow"]).toBe("6");
+  });
   let elements;
   beforeEach(() => {
     elements = makeElements();

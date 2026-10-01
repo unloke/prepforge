@@ -76,7 +76,8 @@ def evaluation_to_white_win_chance(evaluation: EngineEvaluation) -> float:
             return cp_to_win_chance(CP_CLAMP)
         if evaluation.mate_in < 0:
             return cp_to_win_chance(-CP_CLAMP)
-        return 0.5
+        # Mate(0) loses its sign; engines retain the winner in the White score.
+        return cp_to_win_chance(evaluation.score_cp)
     return cp_to_win_chance(evaluation.score_cp)
 
 

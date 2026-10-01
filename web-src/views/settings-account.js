@@ -58,8 +58,6 @@ export function createAccountSection({
     if (!appState.signedIn) {
       el.innerHTML =
         '<div class="acct-guest">' +
-        '<p><b>You are using PrepForge as a guest.</b> Sign in to keep repertoires, ' +
-        "games and training in sync across devices.</p>" +
         '<div class="acct-actions">' +
         '<button type="button" class="btn sm primary" data-acct="signin">Sign in</button>' +
         '<button type="button" class="btn sm" data-acct="register">Create account</button>' +
