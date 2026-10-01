@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { localBoardInfo } from "./chess-local.js";
 
-const source = readFileSync(new URL("./app.js", import.meta.url), "utf8");
+const source = readFileSync(new URL("./app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
 function compile(marker, deps) {
   const start = source.indexOf(marker);
   const end = source.indexOf("\n}\n", start) + 2;

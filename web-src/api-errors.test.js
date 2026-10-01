@@ -32,7 +32,7 @@ describe("API error messages", () => {
 // Run the real shared adapter as well: both messages and recovery metadata
 // must survive the boundary to the auth modal / sync callers.
 describe("shared API adapter", () => {
-  const source = readFileSync(new URL("./app.js", import.meta.url), "utf8");
+  const source = readFileSync(new URL("./app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
   const start = source.indexOf("async function api(path, options = {}) {");
   const end = source.indexOf("\n}\n", start) + 2;
   function adapter(status, detail) {
