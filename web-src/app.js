@@ -620,9 +620,7 @@ const GEN_PLAN_CHANGES_SOFT_CAP = 2000;
 
 const boards = {};
 
-// Delays (ms) for auto-collapsing/auto-dismissing a card. The countdown only
-// runs while the user is *not* actively pointing at the card (see _holdDismiss).
-const TOAST_MINIMIZE_DELAY = 4000;
+// Delays (ms) for auto-dismissing a card. The countdown pauses during pointer activity.
 const TOAST_DONE_DELAY = 7000;
 const TOAST_FAILED_DELAY = 6000;
 const TOAST_CANCELLED_DELAY = 4500;
@@ -697,11 +695,6 @@ class Toast {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => this.el.classList.add("is-visible"));
     });
-    if (this.variant === "job" && !this.docked) {
-      this._arm(TOAST_MINIMIZE_DELAY, () => {
-        if (this.state === "running") this.toggleMinimize(true);
-      });
-    }
   }
 
   _build(title, message, actions) {
@@ -715,7 +708,7 @@ class Toast {
       ? '<button class="job-toast-stop" type="button">Stop</button>'
       : "";
     let bodyInner;
-    if (this.docked && this.variant === "job") {
+    if (this.variant === "job") {
       el.innerHTML =
         '<div class="job-toast-head">' +
         `<span class="job-toast-title">${escapeHtml(title)}</span>` +
@@ -723,19 +716,10 @@ class Toast {
         stopBtn +
         "</div>" +
         '<div class="job-toast-track"><div class="job-toast-fill"></div></div>';
-    } else if (this.variant === "info") {
+    } else {
       bodyInner =
         `<div class="job-toast-message">${escapeHtml(message || "")}</div>` +
         '<div class="job-toast-actions"></div>';
-    } else {
-      // Track and Stop share one row so they never crowd each other, and the
-      // track stays visible when the card is minimized.
-      bodyInner =
-        '<div class="job-toast-message">Queued</div>' +
-        '<div class="job-toast-progress">' +
-        '<div class="job-toast-track"><div class="job-toast-fill"></div></div>' +
-        stopBtn +
-        "</div>";
     }
     if (bodyInner !== undefined) {
       el.innerHTML =
@@ -942,16 +926,10 @@ class Toast {
   }
 
   toggleMinimize(force) {
-    if (this.docked) return;
+    if (this.variant === "job") return;
     const next = typeof force === "boolean" ? force : !this.minimized;
     this.minimized = next;
     this.el.classList.toggle("is-minimized", next);
-    // Re-arm the running-job minimize timer when the user expands it again.
-    if (!next && this.state === "running") {
-      this._arm(TOAST_MINIMIZE_DELAY, () => {
-        if (this.state === "running") this.toggleMinimize(true);
-      });
-    }
   }
 
   dismiss(immediate = false) {

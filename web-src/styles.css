@@ -4364,17 +4364,6 @@ body.is-guest .replay-results:empty::before {
   gap: 9px;
 }
 
-/* Progress track + Stop button share one row. */
-.job-toast-progress {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.job-toast-progress .job-toast-track {
-  flex: 1 1 auto;
-}
-
 .job-toast.is-minimized {
   width: 200px;
   padding: 8px 12px;
@@ -4405,10 +4394,6 @@ body.is-guest .replay-results:empty::before {
 .job-toast.is-minimized:hover {
   transform: translateY(-2px) scale(1.03);
   box-shadow: 0 22px 44px rgba(28, 28, 28, 0.22), 0 6px 14px rgba(28, 28, 28, 0.1);
-}
-
-.job-toast.is-minimized.state-running .job-toast-icon {
-  animation: jobToastPulse 1.4s ease-in-out infinite;
 }
 
 .job-toast.is-minimized:hover .job-toast-icon {
