@@ -134,12 +134,13 @@ async function main() {
     }
 
     await page.reload({ waitUntil: "networkidle", timeout: 60000 });
-    const status = await page.request.get(`${BASE}/api/auth/status`).then((r) => r.json());
-    if (!status.signed_in) throw new Error("signed_in false after register reload");
+    await page.locator('html[data-app-ready="true"]').waitFor({ timeout: 30000 });
+    const status = await page.request.get(`${BASE}/api/auth/me`).then((r) => r.json());
+    if (!status.id) throw new Error("signed_in false after register reload");
 
     evidence.auth.signedInVerified = true;
-    evidence.auth.lastUserId = status.user_id || null;
-    return { ctx, page, userId: status.user_id || null };
+    evidence.auth.lastUserId = status.id || null;
+    return { ctx, page, userId: status.id || null };
   }
 
   async function getAppStatus(page) {
@@ -147,19 +148,19 @@ async function main() {
   }
 
   async function gotoDashboard(page) {
-    await page.click('[data-testid="nav-dashboard"]');
+    await page.locator('[data-testid="nav-dashboard"]:visible, [data-testid="bottom-dashboard"]:visible').click();
     await page.locator("#view-dashboard.is-active").waitFor({ state: "attached", timeout: 10000 });
     await page.waitForTimeout(300);
   }
 
   async function gotoBuild(page) {
-    await page.click('[data-testid="nav-build"]');
+    await page.locator('[data-testid="nav-build"]:visible, [data-testid="bottom-build"]:visible').click();
     await page.locator("#view-build.is-active").waitFor({ state: "attached", timeout: 10000 });
     await page.waitForTimeout(300);
   }
 
   async function gotoTrain(page) {
-    await page.click('[data-testid="nav-train"]');
+    await page.locator('[data-testid="nav-train"]:visible, [data-testid="bottom-train"]:visible').click();
     await page.locator("#view-train.is-active").waitFor({ state: "attached", timeout: 10000 });
     await page.waitForTimeout(400);
   }
@@ -167,17 +168,17 @@ async function main() {
   async function fillCreateModal(page, { name, color }) {
     await page.locator(".modal-overlay").waitFor({ state: "visible", timeout: 10000 });
     await page.fill('.modal-overlay input[name="name"]', name);
-    if (color) await page.fill('.modal-overlay input[name="color"]', color);
+    if (color) await page.selectOption('.modal-overlay select[name="color"]', color);
     await page.click('.modal-overlay [data-action="ok"]');
     await page.locator(".modal-overlay").waitFor({ state: "hidden", timeout: 10000 });
   }
 
   async function createRepertoireFromDashboard(page, { name, color = "white" }) {
     await gotoDashboard(page);
-    await page.click('[data-testid="dashboard-new-rep"]');
+    await page.locator('[data-testid="dashboard-new-rep"]:visible, #dashboard-repertoires [data-lib-action="new"]:visible').first().click();
     await fillCreateModal(page, { name, color });
     await page.locator("#view-build.is-active").waitFor({ state: "attached", timeout: 30000 });
-    await page.locator("#build-rep-name", { hasText: name }).waitFor({ timeout: 30000 });
+    await page.locator("#build-rep-name", { hasText: name }).waitFor({ state: "attached", timeout: 30000 });
   }
 
   async function playBuildMove(page, from, to) {
@@ -261,12 +262,13 @@ async function main() {
   }
 
   async function startSmartSession(page) {
-    const respPromise = page.waitForResponse(
-      (r) => r.url().includes("/api/train/smart/start") && r.status() === 200,
-      { timeout: 60_000 },
-    );
-    await clickStartTrain(page);
-    const resp = await respPromise;
+    const [resp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes("/api/train/smart/start") && r.status() === 200,
+        { timeout: 60_000 },
+      ),
+      clickStartTrain(page),
+    ]);
     const payload = await resp.json();
     await waitForTrainActive(page);
     return payload;
@@ -340,7 +342,7 @@ async function main() {
             : "P1 — unclear Train prerequisites",
         pass:
           beforeStart.viewTrainActive &&
-          /press start/i.test(beforeStart.bannerTitle + beforeStart.boardLabel) &&
+          /press start|ready to train/i.test(beforeStart.bannerTitle + beforeStart.boardLabel) &&
           beforeStart.startVisible &&
           beforeStart.navBuild &&
           (/nothing to train|add prepared moves/i.test(
@@ -520,13 +522,15 @@ async function main() {
         /* sync chip may stay hidden until dirty — still record */
       }
       await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+      await page.locator('html[data-app-ready="true"]').waitFor({ timeout: 30000 });
       await gotoTrain(page);
-      await startSmartSession(page);
+      // Restoring #/train resumes the durable session during boot.
+      await waitForTrainActive(page);
       const afterReload = await getTrainStats(page);
 
       record("5-signed-in", "reload-persist", {
         expected:
-          "After graded move + reload: can restart training cleanly; session UI resets without errors (sync prevents double-count server-side)",
+          "Reload resumes an unfinished session; after completion the next queue starts with fresh counters",
         actual: { repName, beforeReload, afterReload },
         recovery: "Start training again; prior attempts should have flushed via sync/beacon",
         priority:
@@ -538,7 +542,10 @@ async function main() {
           (afterReload.bannerState === "move" ||
             afterReload.bannerState === "teach" ||
             afterReload.bannerState === "runin") &&
-          Number(afterReload.correct) === 0,
+          (beforeReload.bannerState === "done"
+            ? Number(afterReload.correct) === 0 && Number(afterReload.mistakes) === 0
+            : Number(afterReload.correct) === Number(beforeReload.correct) &&
+              Number(afterReload.mistakes) === Number(beforeReload.mistakes)),
       });
     } catch (err) {
       record("5-signed-in", "reload-persist", {
@@ -795,6 +802,7 @@ async function main() {
       await page.waitForTimeout(800);
       const before = await getTrainStats(page);
       await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+      await page.locator('html[data-app-ready="true"]').waitFor({ timeout: 30000 });
       await gotoTrain(page);
       await clickStartTrain(page);
       await page.waitForTimeout(2000);

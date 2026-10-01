@@ -287,10 +287,13 @@ class SmartTrainingService:
         # still get a slot); build_session_plan handles the per-rep urgency.
         total_size = session_size if session_size is not None else DEFAULT_SESSION_SIZE
         total_new = new_cap if new_cap is not None else DEFAULT_NEW_CAP
-        per_size = max(2, -(-total_size // len(reps)))
-        per_new = max(1, -(-total_new // len(reps)))
+        remaining_size = max(0, total_size)
+        remaining_new = max(0, total_new)
         plans: List[tuple[str, SessionPlan]] = []
         for index, rep in enumerate(reps):
+            remaining_reps = len(reps) - index
+            per_size = -(-remaining_size // remaining_reps)
+            per_new = -(-remaining_new // remaining_reps)
             progress_by_id = {
                 p.node_id: p
                 for p in self.repository.list_training_progress(
@@ -310,6 +313,8 @@ class SmartTrainingService:
                     ),
                 )
             )
+            remaining_size -= plans[-1][1].counts.get("targets", 0)
+            remaining_new -= plans[-1][1].counts.get("new", 0)
         mixed = mix_plans(plans, seed=actual_seed)
         if not mixed.cards:
             raise ValueError("repertoires have no trainable moves yet")
@@ -668,6 +673,8 @@ class SmartTrainingService:
         for item in attempts:
             if not item.get("attempt_uuid"):
                 raise ValueError("each attempt requires an attempt_uuid")
+        if queue is not None and len(queue) > MAX_SYNC_QUEUE:
+            raise ValueError("queue too long ({0} > {1})".format(len(queue), MAX_SYNC_QUEUE))
         session = self._load_session_or_raise(session_id)
         repertoire = self._load_repertoire_or_raise(session.repertoire_id)
         session_owner = owner_user_id
@@ -814,10 +821,6 @@ class SmartTrainingService:
 
         if queue is not None or card_index is not None:
             if queue is not None:
-                if len(queue) > MAX_SYNC_QUEUE:
-                    raise ValueError(
-                        "queue too long ({0} > {1})".format(len(queue), MAX_SYNC_QUEUE)
-                    )
                 # Only well-formed encoded cards land; a malformed entry is dropped
                 # rather than poisoning the stored session.
                 cleaned = [raw for raw in queue if decode_card(raw) is not None]

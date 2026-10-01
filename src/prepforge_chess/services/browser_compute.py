@@ -240,6 +240,7 @@ def classify_precomputed_game(
     by_normalized: Dict[str, Dict[str, Any]] = {}
     for fen, data in position_map.items():
         key = normalized[fen]
+        data = {name: value for name, value in data.items() if name != "fen"}
         existing = by_normalized.get(key)
         if existing is not None and existing != data:
             # Two spellings of one position carrying DIFFERENT evals: the

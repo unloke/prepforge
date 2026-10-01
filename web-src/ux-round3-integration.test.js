@@ -126,7 +126,7 @@ describe("Recall source ownership", () => {
     const h = harness();
     const save = deferred();
     h.deps.postJson.mockReturnValue(save.promise);
-    h.appState.analysisUnsavedCheckpoint = { gameId: "retry", pgn: "1. e4", positions: [] };
+    h.appState.analysisUnsavedCheckpoint = { ownerId: "owner", gameId: "retry", pgn: "1. e4", positions: [] };
     const recall = order === "recall-before-retry" ? h.recallAnalysis("old") : null;
     const retry = h.retryAnalyzeSave();
     if (order === "paste-during-retry") {

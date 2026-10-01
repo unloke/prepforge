@@ -90,8 +90,8 @@
   --arrow-engine: rgba(29, 138, 79, 0.72);
   --arrow-engine-stroke: rgba(12, 62, 34, 0.32);
   /* Board coordinate labels. */
-  --coord-on-light: #6f8394;
-  --coord-on-dark: #eef1f3;
+  --coord-on-light: #354655;
+  --coord-on-dark: #172a38;
   /* Type: 13px base, 12px small, 11px extra-small; tabular numbers everywhere,
      mono for SAN/lines. */
   --font: "Inter", "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -188,8 +188,8 @@
   --arrow-user-stroke: rgba(10, 18, 42, 0.55);
   --arrow-engine: rgba(69, 185, 122, 0.75);
   --arrow-engine-stroke: rgba(14, 44, 27, 0.52);
-  --coord-on-light: #5a6c7b;
-  --coord-on-dark: #d8dee3;
+  --coord-on-light: #354655;
+  --coord-on-dark: #07121a;
   --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.5);
   /* Explorer W/D/B bar: the draw grey sits between the two ends and the
      Black end is lifted off the panel so it never melts into the background. */
@@ -6661,7 +6661,7 @@ body.is-guest .replay-results:empty::before {
   .lib-actions .btn { flex: 1; }
   #view-analyze .panel-head { flex-wrap: wrap; }
   #view-analyze .panel-actions { margin-left: 0; width: 100%; }
-  #view-analyze .panel-actions .btn { flex: 1; min-height: 40px; }
+  #view-analyze .panel-actions .btn { flex: 1; min-height: 44px; }
 }
 
 /* Rail density: brand + 8 destinations + 4 foot controls must fit a ~740px

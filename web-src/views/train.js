@@ -91,6 +91,11 @@ export function createTrainView({
     paintCardKind(null);
     document.getElementById("train-progress-fill").style.width =
       `${Math.round(((prompt.current_index || 0) / Math.max(1, total)) * 100)}%`;
+    const progress = document.getElementById("train-progress");
+    progress?.setAttribute("aria-valuemin", "0");
+    progress?.setAttribute("aria-valuemax", String(total));
+    progress?.setAttribute("aria-valuenow", String(prompt.current_index || 0));
+    progress?.setAttribute("aria-label", "Lines done this session");
     const name = (appState.training && appState.training.repertoire_name) || "Repertoire";
     const color = (appState.training && appState.training.color) || "white";
     document.getElementById("train-board-label").textContent = `${name} - you play ${color}`;
@@ -193,6 +198,11 @@ export function createTrainView({
     renderUpNext();
     document.getElementById("train-progress-fill").style.width =
       `${Math.round((prompt.card_index / total) * 100)}%`;
+    const progress = document.getElementById("train-progress");
+    progress?.setAttribute("aria-valuemin", "0");
+    progress?.setAttribute("aria-valuemax", String(total));
+    progress?.setAttribute("aria-valuenow", String(Math.max(0, Math.min(prompt.card_index, total))));
+    progress?.setAttribute("aria-label", "Cards done this session");
     const dots = document.getElementById("train-card-dots");
     if (dots) {
       dots.innerHTML =

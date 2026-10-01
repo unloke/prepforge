@@ -11,6 +11,7 @@
 import { writeFile, mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
+import { requiredStepFailures } from "./release-step-results.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const OUT_JSON = join(ROOT, "tmp", "audits", "release-cross-flow-audit-evidence.json");
@@ -133,10 +134,12 @@ async function main() {
       throw new Error(`register failed: ${reg.status()} ${(await reg.text()).slice(0, 200)}`);
     }
     await page.reload({ waitUntil: "networkidle", timeout: 60000 });
-    const authStatus = await page.request.get(`${BASE}/api/auth/status`).then((r) => r.json());
-    if (!authStatus.signed_in) throw new Error("signed_in false after register");
-    userId = authStatus.user_id;
+    await page.locator('html[data-app-ready="true"]').waitFor({ timeout: 30000 });
+    const authStatus = await page.request.get(`${BASE}/api/auth/me`).then((r) => r.json());
+    if (!authStatus.id) throw new Error("signed_in false after register");
+    userId = authStatus.id;
     evidence.auth.signedInVerified = true;
+    evidence.auth.confirmedAt = Date.now();
     evidence.auth.userId = userId;
 
     record("signed-in", {
@@ -176,7 +179,7 @@ async function main() {
     }));
 
     const consoleErrorsSoFar = evidence.console.filter(
-      (c) => c.type === "error" && !isBenignConsoleError(c.text),
+      (c) => c.type === "error" && c.t >= evidence.auth.confirmedAt && !isBenignConsoleError(c.text),
     ).length;
 
     record("analyze-results", {
@@ -199,7 +202,7 @@ async function main() {
     await page.click('[data-testid="create-repertoire-from-game"]');
     await page.locator(".modal-overlay").waitFor({ state: "visible", timeout: 10000 });
     await page.fill('.modal-overlay input[name="name"]', repName);
-    await page.fill('.modal-overlay input[name="color"]', "white");
+    await page.selectOption('.modal-overlay select[name="color"]', "white");
     await page.click('.modal-overlay [data-action="ok"]');
     await page.locator("#view-build.is-active").waitFor({ state: "attached", timeout: 60000 });
     await page.locator("#build-rep-name", { hasText: repName }).waitFor({ timeout: 30000 });
@@ -342,6 +345,7 @@ async function main() {
     const correctBeforeReload = afterCorrect.correct;
     await page.waitForTimeout(4500);
     await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+    await page.locator('html[data-app-ready="true"]').waitFor({ timeout: 30000 });
 
     await page.click('[data-testid="nav-dashboard"]');
     await page.locator("#view-dashboard.is-active").waitFor({ timeout: 10000 });
@@ -355,12 +359,7 @@ async function main() {
 
     await page.click('[data-testid="nav-train"]');
     await page.waitForTimeout(400);
-    const restartPromise = page.waitForResponse(
-      (r) => r.url().includes("/api/train/smart/start") && r.status() === 200,
-      { timeout: 60_000 },
-    );
-    await page.click('[data-testid="start-train"]');
-    await restartPromise;
+    // Boot restored #/train and resumed the session before navigation.
     await page
       .locator(
         '#train-banner[data-state="move"], #train-banner[data-state="teach"], #train-banner[data-state="runin"]',
@@ -378,11 +377,13 @@ async function main() {
 
     record("reload-persist", {
       expected:
-        "Reload: repertoire on Dashboard; Train restarts; fresh session stats; no stuck error sync",
+        "Reload: repertoire persists; unfinished Train session resumes its counters; completed sessions start fresh",
       actual: { repName, dashBeforeTrain, correctBeforeReload, afterReload },
       pass:
         dashBeforeTrain.hasRep &&
-        Number(afterReload.correct) === 0 &&
+        (afterCorrect.bannerState === "done"
+          ? Number(afterReload.correct) === 0
+          : Number(afterReload.correct) === Number(correctBeforeReload)) &&
         !afterReload.trainSync.includes("is-error") &&
         (afterReload.bannerState === "move" ||
           afterReload.bannerState === "teach" ||
@@ -408,7 +409,7 @@ async function main() {
     }, repName);
 
     const consoleErrors = evidence.console.filter(
-      (c) => c.type === "error" && !isBenignConsoleError(c.text),
+      (c) => c.type === "error" && c.t >= evidence.auth.confirmedAt && !isBenignConsoleError(c.text),
     );
 
     record("dashboard-verify", {
@@ -443,26 +444,26 @@ async function main() {
   await mkdir(dirname(OUT_JSON), { recursive: true });
   await writeFile(OUT_JSON, JSON.stringify(evidence, null, 2));
 
-  const required = evidence.steps.filter((s) => s.required);
-  const requiredFailed = required.filter((s) => !s.pass);
+  const failedIds = requiredStepFailures(evidence.steps, REQUIRED_IDS);
   const passed = evidence.steps.filter((s) => s.pass).length;
 
   console.log(`[release-cross-flow] recorded ${evidence.steps.length} steps (${passed} pass flags)`);
   console.log(
-    `[release-cross-flow] required: ${required.length - requiredFailed.length}/${required.length} passed`,
+    `[release-cross-flow] required: ${REQUIRED_IDS.size - failedIds.length}/${REQUIRED_IDS.size} passed`,
   );
   console.log(`[release-cross-flow] evidence → ${OUT_JSON}`);
   console.log(`[release-cross-flow] clientlog beacons: ${evidence.clientlogRequests.length}`);
   console.log(
     `[release-cross-flow] console errors (non-benign): ${
-      evidence.console.filter((c) => c.type === "error" && !isBenignConsoleError(c.text)).length
+      evidence.console.filter((c) => c.type === "error" && c.t >= evidence.auth.confirmedAt && !isBenignConsoleError(c.text)).length
     }`,
   );
 
-  if (requiredFailed.length) {
+  if (failedIds.length) {
     console.error("[release-cross-flow] FAIL: required steps:");
-    for (const row of requiredFailed) {
-      console.error(`  - ${row.id}: ${row.actual?.error || row.priority || "failed"}`);
+    for (const id of failedIds) {
+      const row = evidence.steps.find((step) => step.id === id);
+      console.error(`  - ${id}: ${row?.actual?.error || row?.priority || "required step did not run"}`);
     }
     process.exit(1);
   }

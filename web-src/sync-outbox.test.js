@@ -77,7 +77,7 @@ describe("sync-outbox storage", () => {
     expect(loaded.build).toEqual(state.build);
     expect(loaded.train).toEqual(state.train);
     clearOutbox("owner");
-    expect(loadOutbox("owner").build.pending).toHaveLength(0);
+    expect(loadOutbox("owner").build.pending).toEqual([buildEntry]);
   });
 
   it("normalizes corrupt or partial payloads instead of throwing", () => {

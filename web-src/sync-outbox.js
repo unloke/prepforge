@@ -23,9 +23,8 @@
 const KEY_PREFIX = "prepforge.outbox.v1.";
 const LOCK_KEY = "prepforge.outbox.lock.v1";
 const LOCK_STALE_MS = 30_000;
-// Tombstones only have to outlive a concurrent tab's stale snapshot, which is
-// seconds old — a bounded tail is plenty and keeps the record small.
-const SETTLED_LIMIT = 200;
+// A suspended tab can retain a stale snapshot indefinitely. Do not evict
+// tombstones until an enforced replay horizon exists.
 // Rejected ops are kept for review, but a device that never drains them must
 // not grow without bound — the newest tail is what the user is working on.
 const REJECTED_LIMIT = 100;
@@ -134,6 +133,12 @@ function mergeById(base, incoming, idOf) {
   }
   for (const entry of incoming) {
     const id = idOf(entry);
+    if (id && seen.has(id) && Number.isInteger(entry.base_revision)) {
+      const index = out.findIndex((stored) => idOf(stored) === id);
+      if (!Number.isInteger(out[index].base_revision) || entry.base_revision > out[index].base_revision) {
+        out[index] = entry;
+      }
+    }
     if (!id || !seen.has(id)) {
       if (id) seen.add(id);
       out.push(entry);
@@ -142,14 +147,14 @@ function mergeById(base, incoming, idOf) {
   return out;
 }
 
-function cap(list, limit = SETTLED_LIMIT) {
+function cap(list, limit) {
   return list.length > limit ? list.slice(list.length - limit) : list;
 }
 
 /**
  * Merge this tab's view of the queue into what is already stored (R-04).
  *
- * Union per operation, `incoming` wins on conflict, and anything named in
+ * Union per immutable operation, stored payload wins on conflict, and anything named in
  * `settled` is dropped from BOTH sides — those ops are confirmed on the
  * server, so a stale tab must not resurrect them.
  *
@@ -162,10 +167,15 @@ export function mergeOutboxState(stored, incoming, settled = null) {
   const base = stored || emptyOutbox();
   const next = incoming || EMPTY;
   const done = {
-    build: new Set(asArray(settled?.build).map(String)),
-    deletes: new Set(asArray(settled?.deletes).map(String)),
-    train: new Set(asArray(settled?.train).map(String)),
+    build: new Set([...asArray(base.settled?.build), ...asArray(settled?.build)].map(String)),
+    deletes: new Set([...asArray(base.settled?.deletes), ...asArray(settled?.deletes)].map(String)),
+    train: new Set([...asArray(base.settled?.train), ...asArray(settled?.train)].map(String)),
   };
+  for (const group of [...asArray(base.train.rejected), ...asArray(next.train?.rejected)]) {
+    for (const attempt of asArray(group.attempts)) {
+      done.train.add(trainAttemptId({ ...attempt, session_id: group.sessionId }));
+    }
+  }
   const keepBuild = (entry) => !done.build.has(buildAddId(entry));
   const keepDelete = (entry) => !done.deletes.has(buildDeleteId(entry));
   const keepTrain = (entry) => !done.train.has(trainAttemptId(entry));
@@ -201,9 +211,9 @@ export function mergeOutboxState(stored, incoming, settled = null) {
       ),
     },
     settled: {
-      build: cap([...asArray(base.settled?.build), ...asArray(settled?.build)]),
-      deletes: cap([...asArray(base.settled?.deletes), ...asArray(settled?.deletes)]),
-      train: cap([...asArray(base.settled?.train), ...asArray(settled?.train)]),
+      build: [...done.build],
+      deletes: [...done.deletes],
+      train: [...done.train],
     },
   };
 }
@@ -227,13 +237,16 @@ export function saveOutbox(ownerId, state, settled = null) {
 }
 
 /**
- * Drop the owner's outbox once everything is confirmed saved — but only when
- * NOTHING is left for anyone (R-01: one feature succeeding must never erase
+ * Retain the owner's settlement history once everything is confirmed saved.
+ * Only act when NOTHING is left for anyone (one feature must never erase
  * the other feature's unsynced work, nor the rejected ops kept for review).
  */
 export function clearOutbox(ownerId) {
   try {
-    localStorage.removeItem(outboxKey(ownerId));
+    const stored = loadOutbox(ownerId);
+    if (!outboxIsQuiescent(stored)) return;
+    // Keep tombstones and id mappings: a suspended tab may still hold these ops.
+    localStorage.setItem(outboxKey(ownerId), JSON.stringify(stored));
   } catch (_) {
     /* ignore */
   }
@@ -260,7 +273,7 @@ export function outboxHasRejected(state) {
 
 /**
  * True when this owner's durable copy holds no unconfirmed work AND nothing
- * kept for review — the only state where dropping the key loses information.
+ * kept for review. Settlement history still needs to survive stale tabs.
  */
 export function outboxIsQuiescent(state) {
   return !outboxHasWork(state) && !outboxHasRejected(state);

@@ -22,7 +22,7 @@ import {
 
 // White-POV win% from a (cp|mate) eval. Mate is decisive.
 function winWhite({ cp, mate }) {
-  if (mate !== null && mate !== undefined) return mate > 0 ? 100 : 0;
+  if (mate !== null && mate !== undefined && mate !== 0) return mate > 0 ? 100 : 0;
   if (cp === null || cp === undefined) return 50;
   return cpToWin(cp);
 }

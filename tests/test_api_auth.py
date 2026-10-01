@@ -4,6 +4,27 @@ from __future__ import annotations
 from api_helpers import csrf_headers
 
 
+def test_idle_expired_session_cannot_be_refreshed(client):
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+    from prepforge_chess.api.config import get_settings
+    from prepforge_chess.api.db import get_engine
+    from prepforge_chess.api.models import AuthSession
+
+    h = csrf_headers(client)
+    client.post("/api/auth/register", headers=h,
+                json={"email": "expired@example.com", "password": "longpassword1"})
+    with Session(get_engine()) as db:
+        row = db.scalar(select(AuthSession))
+        row.last_seen_at = datetime.now(timezone.utc) - timedelta(
+            days=get_settings().session_ttl_days, minutes=1
+        )
+        db.commit()
+    assert client.get("/api/auth/me").status_code == 401
+    assert client.get("/api/auth/me").status_code == 401
+
+
 def test_health(client):
     r = client.get("/healthz")
     assert r.status_code == 200

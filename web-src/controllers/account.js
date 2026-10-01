@@ -629,7 +629,11 @@ export function createAccountController({
         plan: me.plan || "free",
         hasPassword: !!me.has_password,
       };
-    } catch (_) {
+    } catch (error) {
+      if (error?.status !== 401) {
+        renderAccountChip();
+        return;
+      }
       appState.signedIn = false;
       appState.accountUsername = null;
       appState.accountUserId = null;

@@ -7,13 +7,16 @@ cookie is Secure + SameSite=Lax (set in main.set_session_cookie).
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from email.message import EmailMessage
+import logging
+import smtplib
 
 # F-02: password recovery lives here next to login/logout so the auth contract
 # (hashing, session lifetime, enumeration safety) stays in one file.
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from prepforge_chess.api.config import Settings, get_settings
@@ -85,10 +88,12 @@ def _purge_expired(db: Session, settings: Settings) -> int:
     """Delete sessions idle longer than ``session_ttl_days``. Does NOT commit — the
     caller owns the transaction (called inside ``_open_session``)."""
     cutoff = datetime.now(timezone.utc) - timedelta(days=settings.session_ttl_days)
-    rows = db.scalars(select(AuthSession).where(AuthSession.last_seen_at < cutoff)).all()
-    for row in rows:
-        db.delete(row)
-    return len(rows)
+    result = db.execute(
+        delete(AuthSession)
+        .where(AuthSession.last_seen_at < cutoff)
+        .execution_options(synchronize_session=False)
+    )
+    return result.rowcount
 
 
 def _enforce_session_cap(db: Session, settings: Settings, user_id: str) -> None:
@@ -156,7 +161,8 @@ def login(
     # One bcrypt verify on every path (unknown user and OAuth-only NULL hash go
     # through the dummy hash inside verify_password); the message never leaks
     # which half failed.
-    if user is None or not verify_password(body.password, user.password_hash):
+    valid = verify_password(body.password, user.password_hash if user else None)
+    if user is None or not valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid email or password"
         )
@@ -312,13 +318,26 @@ class ResetPasswordRequest(BaseModel):
 
 
 def _deliver_mail(user: User, subject: str, body: str, settings: Settings) -> None:
-    """Delivery seam for recovery mail. The deployment has no bundled SMTP
-    client, so the message is logged (ops can wire a real mailer over this one
-    function); in non-production, ``password_reset_dev_link`` additionally
-    returns the link in the API response so dev/test flows work end to end."""
-    print(
-        "[mail] to={0} subject={1!r}: {2}".format(user.email, subject, body)
-    )
+    """SMTP with STARTTLS; development can instead expose the link in its response."""
+    if not settings.smtp_host:
+        return  # Development responses can expose the link; never log a reset token.
+    message = EmailMessage()
+    message["From"] = settings.smtp_from
+    message["To"] = user.email
+    message["Subject"] = subject
+    message.set_content(body)
+    try:
+        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.ehlo()
+            if settings.smtp_username:
+                smtp.login(settings.smtp_username, settings.smtp_password)
+            smtp.send_message(message)
+    except (OSError, smtplib.SMTPException):
+        # Keep the public response identical for known and unknown addresses.
+        # Log no message body, token, address, or provider exception text.
+        logging.getLogger(__name__).error("Password recovery mail delivery failed")
 
 
 def _aware(value: datetime) -> datetime:
@@ -340,6 +359,8 @@ def forgot_password(
     accounts."""
     now = datetime.now(timezone.utc)
     email = body.email.lower()
+    if settings.is_production and not (settings.smtp_host and settings.smtp_from and settings.public_base_url):
+        raise HTTPException(status_code=503, detail="Password recovery is unavailable. Try again later.")
     user = db.scalar(select(User).where(User.email == email))
     response: dict = {"status": "sent"}
     if user is not None:
@@ -363,7 +384,7 @@ def forgot_password(
                 )
             )
             db.commit()
-            link = "/?reset_password={0}".format(raw)
+            link = "{0}/?reset_password={1}".format(settings.public_base_url.rstrip("/"), raw)
             _deliver_mail(
                 user,
                 "Reset your PrepForge password",
@@ -411,19 +432,23 @@ def reset_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="this reset link is invalid or has expired",
         )
-    user.password_hash = hash_password(body.password)
-    row.used_at = now
-    for other in db.scalars(
-        select(PasswordResetToken).where(
-            PasswordResetToken.user_id == user.id,
-            PasswordResetToken.used_at.is_(None),
-        )
-    ):
-        other.used_at = now
-    for session in db.scalars(
-        select(AuthSession).where(AuthSession.user_id == user.id)
-    ):
-        db.delete(session)
+    hashed = hash_password(body.password)
+    # Serialize links for one account on both SQLite and PostgreSQL before
+    # claiming a token. Different links must not overwrite each other's reset.
+    db.execute(update(User).where(User.id == user.id).values(password_hash=User.password_hash))
+    claimed = db.execute(update(PasswordResetToken).where(
+        PasswordResetToken.token_hash == row.token_hash,
+        PasswordResetToken.used_at.is_(None),
+        PasswordResetToken.expires_at > now,
+    ).values(used_at=now).execution_options(synchronize_session=False))
+    if claimed.rowcount != 1:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="this reset link is invalid or has expired")
+    user.password_hash = hashed
+    db.execute(update(PasswordResetToken).where(
+        PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None),
+    ).values(used_at=now).execution_options(synchronize_session=False))
+    db.execute(delete(AuthSession).where(AuthSession.user_id == user.id))
     db.commit()
     response.status_code = status.HTTP_204_NO_CONTENT
     return response

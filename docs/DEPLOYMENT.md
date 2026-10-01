@@ -41,6 +41,16 @@ The live deploy runs on Render's **free tier**.
    | `PREPFORGE_GOOGLE_CLIENT_ID` | Optional | Google OAuth sign-in. |
    | `PREPFORGE_GOOGLE_CLIENT_SECRET` | Optional | Google OAuth sign-in. |
    | `PREPFORGE_SENTRY_DSN` | Optional | Error reporting (dark-by-default). |
+   | `PREPFORGE_PUBLIC_BASE_URL` | For password recovery | Public HTTPS origin used in reset links. |
+   | `PREPFORGE_SMTP_HOST` / `PREPFORGE_SMTP_PORT` | For password recovery | SMTP service with STARTTLS; port defaults to 587. |
+   | `PREPFORGE_SMTP_FROM` | For password recovery | Verified sender address. |
+   | `PREPFORGE_SMTP_USERNAME` / `PREPFORGE_SMTP_PASSWORD` | For password recovery | Credentials when required by the SMTP service. |
+
+   Production password recovery returns 503 uniformly until its host, sender and
+   public URL are configured. Reset links are never logged. Delivery failures
+   emit a sanitized server error; the public reply stays identical for registered
+   and unregistered addresses. Verify delivery through the configured service
+   before enabling recovery in production.
 
 5. Deploy. Confirm `/healthz` returns OK and the SPA loads with
    `crossOriginIsolated === true` (COOP/COEP headers for WASM engines).

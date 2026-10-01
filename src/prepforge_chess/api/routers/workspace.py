@@ -72,15 +72,17 @@ def _owned_repertoire(repo: PrepForgeRepository, repertoire_id: str, owner: str)
     return meta
 
 
-def _check_base_revision(meta: dict[str, Any], base_revision: int | None) -> None:
+def _check_base_revision(
+    meta: dict[str, Any], base_revision: int | None, repo: PrepForgeRepository
+) -> None:
     """D-02 conflict contract: a mutation may name the revision it was built on.
     If the repertoire moved on since then, 409 (with the fresh revision) so the
     client can reconcile instead of silently overwriting another edit. Passing
-    no base_revision keeps the legacy merge-anywhere behaviour."""
-    if base_revision is None:
-        return
+    no base_revision accepts the current snapshot but still fences racing writes."""
     current = meta.get("revision")
-    if current is not None and int(base_revision) != int(current):
+    if current is not None:
+        repo.expect_repertoire_revision(meta["id"], int(current))
+    if base_revision is not None and current is not None and int(base_revision) != int(current):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
@@ -784,7 +786,7 @@ def build_rename(
 ) -> dict[str, Any]:
     """Rename one of the caller's repertoires and return its refreshed Build payload."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
-    _check_base_revision(meta, body.base_revision)
+    _check_base_revision(meta, body.base_revision, repo)
     try:
         OpeningBuilderService(repo).rename_repertoire(body.repertoire_id, body.name)
     except ValueError as exc:
@@ -809,7 +811,7 @@ def build_add_move(
     Mirrors the legacy classification: a move played on the owner's turn is flagged
     ``prepared``; the first enabled child of a parent becomes the mainline."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
-    _check_base_revision(meta, body.base_revision)
+    _check_base_revision(meta, body.base_revision, repo)
     repertoire = repo.load_repertoire(body.repertoire_id)
     if repertoire is None:  # gate passed but row vanished — treat as not found
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
@@ -880,7 +882,7 @@ def build_add_moves(
     persisted flags itself, so a malformed batch raises ``ValueError`` → 400
     before anything lands. Owner-gated so a user can't flush onto another's tree."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
-    _check_base_revision(meta, body.base_revision)
+    _check_base_revision(meta, body.base_revision, repo)
     try:
         repertoire, summary, id_map = OpeningBuilderService(repo).add_moves_batch(
             body.repertoire_id,
@@ -926,7 +928,7 @@ def build_delete_nodes(
     an earlier subtree in the batch, or by a previous flush, is skipped) so an
     optimistic over-delete can't fail the whole flush. Owner-gated."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
-    _check_base_revision(meta, body.base_revision)
+    _check_base_revision(meta, body.base_revision, repo)
     try:
         removed = OpeningBuilderService(repo).delete_nodes_batch(
             body.repertoire_id, list(body.node_ids)
@@ -971,7 +973,7 @@ def build_apply_plan(
     if not isinstance(body.plan, dict):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="plan must be an object")
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
-    _check_base_revision(meta, body.base_revision)
+    _check_base_revision(meta, body.base_revision, repo)
     try:
         repertoire, summary = OpeningBuilderService(repo).apply_generation_plan(
             body.repertoire_id, body.root_node_id, body.plan
@@ -1024,7 +1026,7 @@ def build_action(
     """Apply a node action (set-mainline / toggle-prepared / toggle-branch / delete /
     comment / tag / queue / critical) and return the refreshed Build payload."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
-    _check_base_revision(meta, body.base_revision)
+    _check_base_revision(meta, body.base_revision, repo)
     builder = OpeningBuilderService(repo)
     action = body.action
     selected_node_id: str | None = body.node_id
@@ -1084,7 +1086,7 @@ def build_annotations(
     """Persist a node's arrows/circles and echo them back (the SPA ignores the rest of
     a Build payload here, so no full reserialization)."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
-    _check_base_revision(meta, body.base_revision)
+    _check_base_revision(meta, body.base_revision, repo)
     try:
         OpeningBuilderService(repo).set_annotations(
             body.repertoire_id, body.node_id, body.arrows, body.circles
@@ -1095,7 +1097,7 @@ def build_annotations(
         "node_id": body.node_id,
         "arrows": list(body.arrows),
         "circles": list(body.circles),
-        "revision": repo.repertoire_revision(body.repertoire_id),
+        "revision": repo.repertoire_reply_revision(body.repertoire_id),
     }
 
 
