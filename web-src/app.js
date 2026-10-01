@@ -7138,11 +7138,153 @@ let explorerSeq = 0;
 
 function explorerDrawerOpen() {
   const panel = document.getElementById("explorer-drawer");
-  return !!(panel && !panel.hidden && activeViewName() === "build");
+  return !!(panel && !panel.hidden && !buildDockFolded() && activeViewName() === "build");
 }
 
 const BUILD_DOCK_TABS = ["explorer", "coverage"];
 let buildDockTab = "explorer";
+
+// ---- Inspector dock: fold + drag-to-resize ---------------------------------
+// The seam between the move tree and the inspector is a drag handle; the height
+// (and whether the dock is folded down to its tab strip) is a per-browser
+// layout convenience, so it lives in localStorage, never in synced prefs.
+const BUILD_DOCK_HEIGHT_KEY = "pf.buildDock.height";
+const BUILD_DOCK_FOLDED_KEY = "pf.buildDock.folded";
+const BUILD_DOCK_MIN = 150; // tabs + tools row + a couple of Explorer rows
+const BUILD_DOCK_TREE_MIN = 90; // matches .tree-wrap min-height
+
+function buildDockFolded() {
+  const dock = document.getElementById("build-inspector");
+  return !!(dock && dock.classList.contains("is-folded"));
+}
+
+function readDockStore(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeDockStore(key, value) {
+  try {
+    if (value == null) localStorage.removeItem(key);
+    else localStorage.setItem(key, String(value));
+  } catch {
+    /* private mode / blocked storage: the layout just isn't remembered */
+  }
+}
+
+// Largest dock that still leaves the move tree its minimum inside the panel.
+function buildDockMaxHeight() {
+  const dock = document.getElementById("build-inspector");
+  const panel = dock && dock.parentElement;
+  if (!panel) return 600;
+  let others = 0;
+  for (const child of panel.children) {
+    if (child === dock || child.id === "builder-tree") continue;
+    others += child.getBoundingClientRect().height;
+  }
+  return Math.max(BUILD_DOCK_MIN, panel.clientHeight - others - BUILD_DOCK_TREE_MIN);
+}
+
+function applyBuildDockHeight(px) {
+  const dock = document.getElementById("build-inspector");
+  if (!dock) return null;
+  const clamped = Math.round(Math.min(Math.max(px, BUILD_DOCK_MIN), buildDockMaxHeight()));
+  dock.style.flexBasis = `${clamped}px`;
+  return clamped;
+}
+
+function setBuildDockFolded(folded, { remember = true } = {}) {
+  const dock = document.getElementById("build-inspector");
+  if (!dock) return;
+  const was = dock.classList.contains("is-folded");
+  dock.classList.toggle("is-folded", folded);
+  const fold = document.getElementById("build-dock-fold");
+  if (fold) {
+    const label = folded ? "Unfold the inspector" : "Fold the inspector";
+    fold.setAttribute("aria-expanded", String(!folded));
+    fold.setAttribute("aria-label", label);
+    fold.title = label;
+  }
+  if (remember) writeDockStore(BUILD_DOCK_FOLDED_KEY, folded ? "1" : null);
+  if (was === folded) return;
+  // Folding parks the Explorer fetch and the row-eval worker; unfolding catches up.
+  if (!folded && buildDockTab === "explorer") refreshExplorerPanel();
+  void explorerEvalEngine.sync();
+}
+
+function initBuildDockLayout() {
+  const dock = document.getElementById("build-inspector");
+  const resizer = document.getElementById("build-dock-resizer");
+  const fold = document.getElementById("build-dock-fold");
+  if (!dock || !resizer) return;
+  const stored = Number(readDockStore(BUILD_DOCK_HEIGHT_KEY));
+  if (Number.isFinite(stored) && stored > 0) dock.style.flexBasis = `${Math.round(stored)}px`;
+  setBuildDockFolded(readDockStore(BUILD_DOCK_FOLDED_KEY) === "1", { remember: false });
+  fold?.addEventListener("click", (event) => {
+    setBuildDockFolded(!buildDockFolded());
+    if (event.detail !== 0) fold.blur();
+  });
+
+  let drag = null;
+  const onMove = (event) => {
+    if (!drag) return;
+    const want = drag.startHeight + (drag.startY - event.clientY);
+    // Dragging well below the minimum folds the dock; dragging back up unfolds.
+    if (want < BUILD_DOCK_MIN * 0.5) {
+      if (!buildDockFolded()) setBuildDockFolded(true);
+      return;
+    }
+    if (buildDockFolded()) setBuildDockFolded(false);
+    drag.height = applyBuildDockHeight(want);
+  };
+  const onUp = () => {
+    if (!drag) return;
+    if (drag.height) writeDockStore(BUILD_DOCK_HEIGHT_KEY, drag.height);
+    drag = null;
+    resizer.classList.remove("is-dragging");
+    document.body.classList.remove("is-resizing-dock");
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    window.removeEventListener("pointercancel", onUp);
+  };
+  resizer.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const startHeight = buildDockFolded() ? BUILD_DOCK_MIN * 0.5 : dock.getBoundingClientRect().height;
+    drag = { startY: event.clientY, startHeight, height: null };
+    resizer.classList.add("is-dragging");
+    document.body.classList.add("is-resizing-dock");
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  });
+  resizer.addEventListener("dblclick", () => setBuildDockFolded(!buildDockFolded()));
+  resizer.addEventListener("keydown", (event) => {
+    // Up/Down are the fork picker's keys elsewhere in Build; on the focused
+    // handle they resize instead, so they stop here.
+    const step = event.shiftKey ? 96 : 32;
+    let delta = 0;
+    if (event.key === "ArrowUp") delta = step;
+    else if (event.key === "ArrowDown") delta = -step;
+    else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      event.stopPropagation();
+      setBuildDockFolded(!buildDockFolded());
+      return;
+    } else return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (buildDockFolded()) {
+      if (delta > 0) setBuildDockFolded(false);
+      return;
+    }
+    const height = applyBuildDockHeight(dock.getBoundingClientRect().height + delta);
+    if (height) writeDockStore(BUILD_DOCK_HEIGHT_KEY, height);
+  });
+}
 
 // ---- Live engine placement -------------------------------------------------
 // The engine never floats over the board: it lives inside the panel that
@@ -7557,8 +7699,12 @@ async function refreshExplorerPanel() {
   renderExplorerScope();
   const seq = ++explorerSeq;
   const db = explorerDb;
-  // Never leave the previous database's rows (or opening name) on screen while
-  // the other one loads or fails — that read as Masters and Players "mixing".
+  // Same database, new position: keep the previous rows on screen (dimmed and
+  // inert via .is-stale) until the new ones land, so stepping through a line
+  // doesn't flash a one-line "Loading…" that collapses the panel and makes the
+  // dock's scrollbar blink. Switching database still clears: the previous
+  // database's rows left on screen read as Masters and Players "mixing".
+  const keepRows = rows.dataset.db === db && !!rows.querySelector(".explorer-row");
   rows.dataset.db = db;
   // Rows stop being actionable here, but the re-render below that would re-sync
   // the eval engine only lands after the network round-trip. Park the search now
@@ -7566,8 +7712,14 @@ async function refreshExplorerPanel() {
   delete rows.dataset.fen;
   void explorerEvalEngine.sync();
   const openingEl = document.getElementById("explorer-opening");
-  if (openingEl) openingEl.textContent = "";
-  rows.innerHTML = `<div class="muted hint">Loading ${db === "lichess" ? "Players" : "Masters"}…</div>`;
+  if (keepRows) {
+    rows.classList.add("is-stale");
+    rows.setAttribute("aria-busy", "true");
+  } else {
+    if (openingEl) openingEl.textContent = "";
+    rows.classList.remove("is-stale");
+    rows.innerHTML = `<div class="muted hint">Loading ${db === "lichess" ? "Players" : "Masters"}…</div>`;
+  }
   try {
     if (!explorerModule) {
       rows.innerHTML = '<div class="muted hint">Loading explorer…</div>';
@@ -7582,6 +7734,9 @@ async function refreshExplorerPanel() {
     renderExplorerRows(stats, fen);
   } catch (error) {
     if (seq !== explorerSeq || db !== explorerDb) return;
+    rows.classList.remove("is-stale");
+    rows.removeAttribute("aria-busy");
+    if (openingEl) openingEl.textContent = "";
     const label = db === "lichess" ? "Players" : "Masters";
     if (explorerModule && error instanceof explorerModule.ExplorerRateLimited) {
       const secs = Math.max(1, Math.ceil(error.retryInMs / 1000));
@@ -7608,6 +7763,7 @@ function renderExplorerRows(stats, fen) {
   if (openingEl) openingEl.textContent = stats.opening || "";
   rows.dataset.fen = fen || "";
   rows.classList.remove("is-stale");
+  rows.removeAttribute("aria-busy");
   if (!stats.moves.length) {
     rows.innerHTML = '<div class="muted hint">No games reached this position - true novelty territory.</div>';
     void explorerEvalEngine.sync();
@@ -11627,7 +11783,17 @@ async function openSettingsSection(sectionId) {
   if (tab) tab.click();
   else switchView("settings");
   await settingsSettled();
-  document.querySelector(`.settings-nav-link[href="#${sectionId}"]`)?.click();
+  const link = document.querySelector(`.settings-nav-link[href="#${sectionId}"]`);
+  if (link) {
+    link.click();
+    return;
+  }
+  // A block inside a card (Chess accounts lives in Account): mark the card's
+  // nav link, then bring the block itself into view.
+  const target = document.getElementById(sectionId);
+  const card = target?.closest(".card[id]");
+  if (card) document.querySelector(`.settings-nav-link[href="#${card.id}"]`)?.click();
+  target?.scrollIntoView({ block: "start" });
 }
 
 async function loadSettingsOnce() {
@@ -13017,11 +13183,14 @@ function bindEvents() {
     });
   }
   document.getElementById("inspector-info")?.addEventListener("click", onInspectorInfo);
+  initBuildDockLayout();
   const dockTabs = { explorer: "build-tool-explorer", coverage: "build-tool-coverage" };
   Object.entries(dockTabs).forEach(([name, id]) => {
     const tab = document.getElementById(id);
     if (!tab) return;
     tab.addEventListener("click", (event) => {
+      // A tab on a folded dock opens the dock on that tab.
+      if (buildDockFolded()) setBuildDockFolded(false);
       if (buildDockTab !== name) setBuildInspector(name);
       // A mouse click shouldn't leave a focus ring that lights up the moment
       // the user steps moves with the arrow keys.

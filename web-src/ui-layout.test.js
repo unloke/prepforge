@@ -138,6 +138,20 @@ describe("workspace chrome layout", () => {
     expect(account).toContain("onOpenSettings();");
   });
 
+  it("lets the Build inspector fold and resize, and keeps rows while the next position loads", () => {
+    expect(html).toContain('id="build-dock-resizer"');
+    expect(html).toContain('role="separator"');
+    expect(html).toContain('id="build-dock-fold"');
+    expect(ruleBody(".dock.is-folded > .dock-body")).toMatch(/display:\s*none/);
+    expect(app).toContain("function initBuildDockLayout()");
+    // A folded dock is a closed Explorer: no fetch, no row-eval worker.
+    expect(app).toMatch(/function explorerDrawerOpen\(\)[\s\S]{0,200}!buildDockFolded\(\)/);
+    // Same database, new position: the old rows stay (dimmed) instead of a
+    // one-line "Loading…" that collapses the panel on every move.
+    expect(app).toMatch(/const keepRows = rows\.dataset\.db === db/);
+    expect(ruleBody(".explorer-rows.is-stale .explorer-row")).toMatch(/transition:\s*opacity\s+\d+ms\s+\w+\s+\d+ms/);
+  });
+
   it("docks one single-select Build inspector (Explorer / Coverage)", () => {
     expect(html).toContain('id="build-inspector"');
     expect(html).toContain('class="dock"');

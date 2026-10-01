@@ -270,10 +270,12 @@
             <div class="tree-meta" id="build-tree-meta"></div>
             <div class="forkbar" id="build-branchbar" data-testid="build-branchbar" hidden></div>
             <div class="tree-wrap" id="builder-tree" data-testid="builder-tree"></div>
+            <div class="dock-resizer" id="build-dock-resizer" data-testid="build-dock-resizer" role="separator" aria-orientation="horizontal" aria-controls="build-inspector" aria-label="Resize the inspector (drag, or ↑/↓; double-click to fold)" tabindex="0"></div>
             <section class="dock" id="build-inspector" aria-label="Inspector">
               <div class="dock-tabs" role="tablist" aria-label="Inspector">
                 <button class="is-active" id="build-tool-explorer" data-testid="build-tool-explorer" type="button" role="tab" aria-controls="explorer-drawer" aria-selected="true">Explorer</button>
                 <button id="build-tool-coverage" data-testid="build-tool-coverage" type="button" role="tab" aria-controls="coverage-drawer" aria-selected="false" tabindex="-1">Coverage <span class="count" id="build-coverage-count" hidden></span></button>
+                <button class="dock-fold" id="build-dock-fold" data-testid="build-dock-fold" type="button" aria-controls="build-inspector" aria-expanded="true" title="Fold the inspector" aria-label="Fold the inspector"><span aria-hidden="true">&#9662;</span></button>
               </div>
               <div class="dock-body">
                 <div class="dock-tools" id="build-dock-tools">
@@ -606,7 +608,6 @@
             <a class="settings-nav-link" href="#set-maia">Maia3</a>
             <a class="settings-nav-link" href="#set-strength">Playing strength</a>
             <a class="settings-nav-link" href="#set-board">Board</a>
-            <a class="settings-nav-link" href="#set-connections">Connections</a>
             <a class="settings-nav-link" href="#set-about">About</a>
           </nav>
           <div class="settings-content">
@@ -615,6 +616,20 @@
               <div id="settings-account-body" data-testid="settings-account-body">
                 <p class="muted small">Loading account…</p>
               </div>
+              <!-- Chess accounts sit with the account: each linked Lichess
+                   identity IS you ("Self") in Games and Scout. -->
+              <div class="acct-block" id="set-connections" data-testid="settings-connections">
+                <div class="acct-block-head">
+                  <b>Chess accounts</b>
+                  <button type="button" class="pf-info" id="connections-info" aria-label="About chess accounts" title="About chess accounts" aria-expanded="false">ⓘ</button>
+                </div>
+                <div class="pf-info-pop" id="connections-info-pop" hidden>
+                  Every linked account counts as you (Self) in Games and Scout. Narrow to one account from its source picker there.
+                </div>
+                <div id="settings-lichess-accounts" data-testid="settings-lichess-accounts"></div>
+                <button class="btn sm conn-link" id="settings-link-lichess" data-testid="settings-link-lichess" type="button">Link a Lichess account</button>
+              </div>
+              <div class="acct-block" id="settings-account-data" data-testid="settings-account-data"></div>
             </section>
             <section class="card set" id="set-appearance">
               <h2>Appearance</h2>
@@ -710,18 +725,6 @@
                 <div class="seg" role="group" aria-labelledby="piece-style-label" id="piece-style-picker"></div>
               </div>
               <div class="sw-grid" id="board-prefs"></div>
-            </section>
-            <section class="card set" id="set-connections" data-testid="settings-connections">
-              <h2>
-                Connections
-                <button type="button" class="pf-info" id="connections-info" aria-label="About Connections" title="About Connections" aria-expanded="false">ⓘ</button>
-              </h2>
-              <div class="pf-info-pop" id="connections-info-pop" hidden>
-                Every linked identity counts as Self in Games and Scout. Narrow to one account from its source picker.
-              </div>
-              <div class="sub-head"><b>Lichess accounts</b></div>
-              <div id="settings-lichess-accounts" data-testid="settings-lichess-accounts"></div>
-              <button class="btn sm conn-link" id="settings-link-lichess" data-testid="settings-link-lichess" type="button">Link another account</button>
             </section>
             <section class="card set" id="set-about">
               <h2>About</h2>
