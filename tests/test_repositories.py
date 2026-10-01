@@ -2,7 +2,7 @@ import os
 import uuid
 
 import pytest
-from sqlalchemy import create_engine, text, update
+from sqlalchemy import create_engine, text, update, event
 
 from prepforge_chess.core.chess_core import STARTING_FEN, ChessCore
 from prepforge_chess.core.models import (
@@ -72,6 +72,51 @@ def test_game_round_trip_persists_full_move_identity():
     assert loaded.moves[0].engine_eval_after is not None
     assert loaded.moves[0].engine_eval_after.score_cp == 28
     assert loaded.moves[0].tags == ["queen_pawn"]
+
+
+def test_game_listing_batches_large_owner_and_retains_annotations():
+    repo = _repository()
+    game = ChessCore().import_single_pgn('[Result "*"]\n\n1. e4 *')
+    game.moves[0].engine_eval_after = EngineEvaluation(engine="stockfish", score_cp=15)
+    game.moves[0].comment = "saved comment"
+    for i in range(201):
+        game.id = f"game-{i:04}"
+        repo.save_game(game, owner_user_id="owner")
+    game.id = "other"
+    repo.save_game(game, owner_user_id="someone-else")
+    statements = []
+
+    def collect(*args):
+        statements.append(args[2])
+
+    event.listen(repo.engine, "before_cursor_execute", collect)
+    try:
+        games = repo.list_games("owner")
+    finally:
+        event.remove(repo.engine, "before_cursor_execute", collect)
+    assert len(games) == 201
+    assert len(statements) <= 10  # three batches, not 2-3 queries per game
+    assert len({g.id for g in games}) == 201
+    assert all(g.moves[0].comment == "saved comment" for g in games)
+    assert all(g.moves[0].engine_eval_after.score_cp == 15 for g in games)
+
+
+def test_corrupt_setting_is_visible_without_logging_value(caplog):
+    repo = _repository()
+    repo.set_user_setting("owner", "theme", "dark")
+    with repo.engine.begin() as conn:
+        conn.execute(update(sa_tables.user_settings).values(value_json="secret-corrupt-payload"))
+    assert repo.get_user_setting("owner", "theme", "default") == "default"
+    assert "Invalid stored setting JSON" in caplog.text
+    assert "theme" in caplog.text
+    assert "secret-corrupt-payload" not in caplog.text
+
+
+@pytest.mark.parametrize("field", ["owner_user_id", "revision", "id", "team_id", "updated_at"])
+def test_repertoire_generic_update_has_write_boundary(field):
+    repo = _repository()
+    with pytest.raises(ValueError, match="unsupported repertoire fields"):
+        repo.update_repertoire_fields("rep", **{field: "value"})
 
 
 def test_repertoire_tree_round_trip_rebuilds_children_and_metadata():

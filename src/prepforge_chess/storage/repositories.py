@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 
-from sqlalchemy import and_, case, delete, func, literal, not_, select, union, update
+from sqlalchemy import or_, and_, case, delete, func, literal, not_, select, union, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import Connection, Engine
@@ -28,6 +29,8 @@ from prepforge_chess.core.models import (
 from prepforge_chess.storage import codec
 from prepforge_chess.storage import sa_tables as t
 
+
+logger = logging.getLogger(__name__)
 
 def _setting_row(user_id: str, key: str, value: Any) -> Dict[str, Any]:
     return {
@@ -144,6 +147,7 @@ class PrepForgeRepository:
         try:
             return json.loads(row["value_json"])
         except (json.JSONDecodeError, TypeError):
+            logger.warning("Invalid stored setting JSON user=%s key=%s", user_id, key)
             return default
 
     def set_user_setting(self, user_id: str, key: str, value: Any) -> None:
@@ -663,7 +667,6 @@ class PrepForgeRepository:
             if owner_user_id is not None and row["owner_user_id"] != owner_user_id:
                 return None
 
-            uci_list = codec.decode_uci_sequence(row["uci_blob"])
             move_rows = conn.execute(
                 select(t.moves).where(t.moves.c.game_id == game_id).order_by(t.moves.c.ply)
             ).mappings().all()
@@ -677,23 +680,27 @@ class PrepForgeRepository:
                     ]
                 )
             evals = self._load_evaluations(conn, eval_ids)
-            annotations: Dict[int, Dict[str, Any]] = {}
-            for move_row in move_rows:
-                annotations[int(move_row["ply"])] = {
-                    "source": move_row["source"],
-                    "classification": move_row["classification"],
-                    "comment": move_row["comment"],
-                    "generated_comment": move_row["generated_comment"],
-                    "generated_meta": _json_load(move_row["generated_meta_json"], None),
-                    "tags": _json_load(move_row["tags_json"], []),
-                    "engine_eval_before": evals.get(move_row["engine_eval_before_id"]),
-                    "engine_eval_after": evals.get(move_row["engine_eval_after_id"]),
-                    "best_move_uci": move_row["best_move_uci"],
-                    "best_move_eval": evals.get(move_row["best_move_eval_id"]),
-                }
-            for ply in range(1, len(uci_list) + 1):
-                annotations.setdefault(ply, {"source": row["source"]})
-            moves = codec.rebuild_moves(row["initial_fen"], uci_list, annotations)
+        return self._game_from_rows(row, move_rows, evals)
+
+    def _game_from_rows(self, row, move_rows, evals) -> Game:
+        uci_list = codec.decode_uci_sequence(row["uci_blob"])
+        annotations: Dict[int, Dict[str, Any]] = {}
+        for move_row in move_rows:
+            annotations[int(move_row["ply"])] = {
+                "source": move_row["source"],
+                "classification": move_row["classification"],
+                "comment": move_row["comment"],
+                "generated_comment": move_row["generated_comment"],
+                "generated_meta": _json_load(move_row["generated_meta_json"], None),
+                "tags": _json_load(move_row["tags_json"], []),
+                "engine_eval_before": evals.get(move_row["engine_eval_before_id"]),
+                "engine_eval_after": evals.get(move_row["engine_eval_after_id"]),
+                "best_move_uci": move_row["best_move_uci"],
+                "best_move_eval": evals.get(move_row["best_move_eval_id"]),
+            }
+        for ply in range(1, len(uci_list) + 1):
+            annotations.setdefault(ply, {"source": row["source"]})
+        moves = codec.rebuild_moves(row["initial_fen"], uci_list, annotations)
 
         game = Game(
             id=row["id"],
@@ -734,13 +741,37 @@ class PrepForgeRepository:
             ).first()
         return row is not None
 
+    def iter_games(self, owner_user_id: Optional[str] = None, *, batch_size: int = 100):
+        """Hydrate a bounded page at a time; stable keysets avoid growing OFFSET scans."""
+        if batch_size < 1 or batch_size > 100:
+            raise ValueError("batch_size must be between 1 and 100")
+        cursor = None
+        while True:
+            stmt = select(t.games).order_by(t.games.c.created_at.desc(), t.games.c.id.desc()).limit(batch_size)
+            if owner_user_id is not None:
+                stmt = stmt.where(t.games.c.owner_user_id == owner_user_id)
+            if cursor is not None:
+                created_at, game_id = cursor
+                stmt = stmt.where(or_(t.games.c.created_at < created_at,
+                                      and_(t.games.c.created_at == created_at, t.games.c.id < game_id)))
+            with self.engine.connect() as conn:
+                rows = conn.execute(stmt).mappings().all()
+                if not rows:
+                    return
+                ids = [row["id"] for row in rows]
+                move_rows = conn.execute(select(t.moves).where(t.moves.c.game_id.in_(ids))
+                                         .order_by(t.moves.c.ply)).mappings().all()
+                evals = self._load_evaluations(conn, (move[key] for move in move_rows for key in
+                    ("engine_eval_before_id", "engine_eval_after_id", "best_move_eval_id")))
+            by_game = {game_id: [] for game_id in ids}
+            for move in move_rows:
+                by_game[move["game_id"]].append(move)
+            for row in rows:
+                yield self._game_from_rows(row, by_game[row["id"]], evals)
+            cursor = (rows[-1]["created_at"], rows[-1]["id"])
+
     def list_games(self, owner_user_id: Optional[str] = None) -> List[Game]:
-        stmt = select(t.games.c.id).order_by(t.games.c.created_at.desc())
-        if owner_user_id is not None:
-            stmt = stmt.where(t.games.c.owner_user_id == owner_user_id)
-        with self.engine.connect() as conn:
-            ids = [row["id"] for row in conn.execute(stmt).mappings().all()]
-        return [game for game in (self.load_game(game_id) for game_id in ids) if game is not None]
+        return list(self.iter_games(owner_user_id))
 
     def _bump_revision(self, conn: Connection, repertoire_id: str) -> None:
         """D-02: every tree/metadata mutation bumps the repertoire revision, so a
@@ -862,6 +893,8 @@ class PrepForgeRepository:
     def update_repertoire_fields(self, repertoire_id: str, **fields: Any) -> None:
         if not fields:
             return
+        if fields.keys() - {"name", "is_active"}:
+            raise ValueError("unsupported repertoire fields")
         with self.engine.begin() as conn:
             conn.execute(
                 update(t.repertoires)
@@ -1520,28 +1553,32 @@ class PrepForgeRepository:
         return {row[0]: _json_load(row[1], None) for row in rows}
 
     def list_owner_training_progress(self, owner_user_id: str) -> List[Dict[str, Any]]:
+        return list(self.iter_owner_training_progress(owner_user_id))
+
+    def iter_owner_training_progress(self, owner_user_id: str):
         """Raw progress rows across all repertoires (account export, F-05)."""
         with self.engine.connect() as conn:
             rows = conn.execute(
                 select(t.training_progress).where(
                     t.training_progress.c.owner_user_id == owner_user_id
                 )
-            ).mappings().all()
-        return [
-            {
-                "repertoire_id": row["repertoire_id"],
-                "node_id": row["node_id"],
-                "attempts": row["attempts"],
-                "correct_attempts": row["correct_attempts"],
-                "last_reviewed_at": row["last_reviewed_at"],
-                "spaced_repetition_score": row["spaced_repetition_score"],
-                "due_at": row["due_at"],
-                "is_mastered": _int_to_bool(row["is_mastered"]),
-            }
-            for row in rows
-        ]
+             .execution_options(yield_per=100)).mappings()
+            for row in rows:
+                yield {
+                    "repertoire_id": row["repertoire_id"],
+                    "node_id": row["node_id"],
+                    "attempts": row["attempts"],
+                    "correct_attempts": row["correct_attempts"],
+                    "last_reviewed_at": row["last_reviewed_at"],
+                    "spaced_repetition_score": row["spaced_repetition_score"],
+                    "due_at": row["due_at"],
+                    "is_mastered": _int_to_bool(row["is_mastered"]),
+                }
 
     def list_owner_training_sessions(self, owner_user_id: str) -> List[Dict[str, Any]]:
+        return list(self.iter_owner_training_sessions(owner_user_id))
+
+    def iter_owner_training_sessions(self, owner_user_id: str):
         """Session summaries across the owner's repertoires (account export, F-05)."""
         with self.engine.connect() as conn:
             rows = conn.execute(
@@ -1551,20 +1588,18 @@ class PrepForgeRepository:
                     t.repertoires.c.id == t.training_sessions.c.repertoire_id,
                 )
                 .where(t.repertoires.c.owner_user_id == owner_user_id)
-            ).mappings().all()
-        return [
-            {
-                "id": row["id"],
-                "repertoire_id": row["repertoire_id"],
-                "mode": row["mode"],
-                "current_index": row["current_index"],
-                "mistakes": _json_load(row["mistakes_json"], []),
-                "mastered_nodes": _json_load(row["mastered_nodes_json"], []),
-                "created_at": row["created_at"],
-                "updated_at": row["updated_at"],
-            }
-            for row in rows
-        ]
+             .execution_options(yield_per=100)).mappings()
+            for row in rows:
+                yield {
+                    "id": row["id"],
+                    "repertoire_id": row["repertoire_id"],
+                    "mode": row["mode"],
+                    "current_index": row["current_index"],
+                    "mistakes": _json_load(row["mistakes_json"], []),
+                    "mastered_nodes": _json_load(row["mastered_nodes_json"], []),
+                    "created_at": row["created_at"],
+                    "updated_at": row["updated_at"],
+                }
 
     def delete_owner_data(
         self, owner_user_id: str, *, conn: Optional[Connection] = None
@@ -2265,10 +2300,13 @@ class PrepForgeRepository:
         wanted = sorted({int(i) for i in eval_ids if i is not None})
         if not wanted:
             return {}
-        rows = conn.execute(
-            select(t.engine_evaluations).where(t.engine_evaluations.c.id.in_(wanted))
-        ).mappings().all()
-        return {int(row["id"]): self._eval_from_row(row) for row in rows}
+        result = {}
+        for offset in range(0, len(wanted), 1000):
+            rows = conn.execute(
+                select(t.engine_evaluations).where(t.engine_evaluations.c.id.in_(wanted[offset:offset + 1000]))
+            ).mappings()
+            result.update({int(row["id"]): self._eval_from_row(row) for row in rows})
+        return result
 
     def _eval_from_row(self, row: Mapping[str, Any]) -> EngineEvaluation:
         return EngineEvaluation(

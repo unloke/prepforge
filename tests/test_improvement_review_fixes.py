@@ -697,6 +697,26 @@ def test_account_export_scope_matches_deletion(client):
     assert client.get("/api/auth/me").status_code in (401, 403)
 
 
+def test_account_export_streams_without_full_content_lists(client, monkeypatch):
+    from prepforge_chess.storage.repositories import PrepForgeRepository
+
+    _register(client, "stream@example.com")
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("export must not materialize a full content list")
+
+    for method in ["list_games", "list_repertoires", "list_owner_training_progress", "list_owner_training_sessions"]:
+        monkeypatch.setattr(PrepForgeRepository, method, forbidden)
+    response = client.get("/api/account/export")
+    assert response.status_code == 200
+    assert "content-length" not in response.headers
+    bundle = response.json()
+    assert bundle["games"] == []
+    assert bundle["repertoires"] == []
+    assert bundle["training_progress"] == []
+    assert bundle["training_sessions"] == []
+
+
 # ---- D-02: the SQL due count means the same thing as health.due ------------
 
 
