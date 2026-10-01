@@ -677,7 +677,12 @@ export function createDashboardView({
     renderOnboardingSteps([
       ["Sign in or create an account", "Your library, streak and queue follow you across devices.", "signin", "Sign in"],
       ["Create your first repertoire", "Pick a side and an opening — or turn one of your games into one.", "new", "New repertoire"],
-      ["Analyze a game", "Engine review and coach notes work before you sign in.", "analyze", "Open Analyze"],
+      [
+        "Analyze a game",
+        "Play through any position with the engine and live coach notes — no account needed. Full-game reviews are saved to your account.",
+        "analyze",
+        "Open Analyze",
+      ],
     ]);
   }
 
@@ -721,14 +726,14 @@ export function createDashboardView({
   }
 
   async function dashboardImportPgn() {
-    if (!requireSignIn("Sign in (or create an account) to import a repertoire")) return;
+    if (!requireSignIn("Sign in to import a repertoire", "import-pgn")) return;
     const input = document.getElementById("dashboard-import-input");
     input.value = "";
     input.click();
   }
 
   async function handleImportPgnFile(file) {
-    if (!requireSignIn("Sign in (or create an account) to import a repertoire")) return;
+    if (!requireSignIn("Sign in to import a repertoire", "import-pgn")) return;
     if (!file) return;
     let text;
     try {

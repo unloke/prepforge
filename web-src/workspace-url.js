@@ -110,6 +110,12 @@ export function serializeWorkspaceLocation(loc, currentHref) {
   return `${url.pathname}${url.search}${formatWorkspaceHash(loc)}`;
 }
 
+// Views whose URL carries the open repertoire: the builder and trainer work
+// on it, and Analyze's coach reads its book line. Elsewhere (Library, Games,
+// Scout, Teams, Settings) a ?rep= would just leak across unrelated pages.
+export const REPERTOIRE_VIEWS = Object.freeze(["build", "train", "analyze"]);
+const REPERTOIRE_VIEW_SET = new Set(REPERTOIRE_VIEWS);
+
 export function workspaceLocationFromState(state = {}) {
   const view = asView(state.currentView || state.view);
   return {
@@ -118,11 +124,12 @@ export function workspaceLocationFromState(state = {}) {
       view === "replay"
         ? asReplaySection(state.replaySection || state.replay_section)
         : null,
-    repertoireId:
-      (state.build && state.build.repertoire_id) ||
-      state.trainingRepertoireId ||
-      state.repertoireId ||
-      null,
+    repertoireId: REPERTOIRE_VIEW_SET.has(view)
+      ? (state.build && state.build.repertoire_id) ||
+        state.trainingRepertoireId ||
+        state.repertoireId ||
+        null
+      : null,
     ply:
       (state.currentView || state.view) === "analyze"
         ? asPly(state.analysisPly) || null

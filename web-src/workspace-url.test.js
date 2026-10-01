@@ -120,6 +120,14 @@ describe("workspace URL codec", () => {
       }),
     ).toEqual({ view: "build", replaySection: null, repertoireId: "r2", ply: null });
   });
+
+  it("does not leak ?rep= into views that don't use a repertoire", () => {
+    for (const currentView of ["dashboard", "teams", "settings", "replay"]) {
+      const loc = workspaceLocationFromState({ currentView, build: { repertoire_id: "r9" } });
+      expect(loc.repertoireId).toBeNull();
+      expect(formatWorkspaceHash(loc)).not.toContain("rep=");
+    }
+  });
 });
 
 describe("games/scout deep links", () => {

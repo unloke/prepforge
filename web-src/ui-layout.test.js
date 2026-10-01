@@ -100,7 +100,13 @@ describe("workspace chrome layout", () => {
     expect(html.indexOf('id="app-status-close"')).toBeGreaterThan(slot);
     expect(css).toMatch(/\.topbar-status-slot\s*\{[^}]*position:\s*fixed/s);
     expect(css).toMatch(/\.topbar-status-slot:has\(\.status:not\(\.is-fresh\)\)/);
-    expect(app).toContain('status.classList.toggle("is-fresh", !!text && text !== "Ready" && !inProgress)');
+    expect(app).toContain('const showNow = !!text && text !== "Ready" && !inProgress;');
+    expect(app).toContain('status.classList.toggle("is-fresh", showNow)');
+    // The slot itself is marked idle when empty, so no empty pill can linger.
+    expect(app).toContain('slot.classList.toggle("is-idle", !showNow)');
+    expect(css).toMatch(/\.topbar-status-slot\.is-idle\s*\{[^}]*visibility:\s*hidden/s);
+    // Long messages wrap instead of being cut off.
+    expect(css).toMatch(/\.topbar-status-slot \.status:not\(\[hidden\]\)\s*\{[^}]*white-space:\s*normal/s);
     // In-progress ("...") messages only surface if still current after a beat.
     expect(app).toContain("STATUS_PROGRESS_SHOW_DELAY");
     expect(app).toContain('function setStatus(message, { severity = "info" } = {})');
