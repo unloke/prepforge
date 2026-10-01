@@ -452,6 +452,14 @@ export function createSettingsView({
     const btn = document.getElementById(btnId);
     const pop = document.getElementById(popId);
     if (!btn || !pop) return;
+    btn.setAttribute("aria-controls", popId);
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || pop.hidden) return;
+      event.stopPropagation();
+      pop.hidden = true;
+      btn.setAttribute("aria-expanded", "false");
+      btn.focus();
+    }, true);
     btn.addEventListener("click", (event) => {
       event.stopPropagation();
       const open = pop.hidden;

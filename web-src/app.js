@@ -6000,9 +6000,14 @@ async function trainRepertoire(repertoireId) {
   await startTraining();
 }
 
+let repertoireMenuOpener = null;
+
 function openRepertoireContextMenu(event, repertoireId, isActive) {
   event.preventDefault();
   const menu = document.getElementById("repertoire-context-menu");
+  closeRepertoireContextMenu(false);
+  repertoireMenuOpener = event.currentTarget || document.activeElement;
+  repertoireMenuOpener?.setAttribute("aria-expanded", "true");
   const safeId = escapeHtml(repertoireId);
   const items = [
     ["train", "Start training"],
@@ -6016,7 +6021,7 @@ function openRepertoireContextMenu(event, repertoireId, isActive) {
   menu.innerHTML = items
     .map(
       ([action, label]) =>
-        `<button type="button" data-action="${escapeHtml(action)}" data-repertoire-id="${safeId}">${escapeHtml(label)}</button>`
+        `<button type="button" role="menuitem" tabindex="-1" data-action="${escapeHtml(action)}" data-repertoire-id="${safeId}">${escapeHtml(label)}</button>`
     )
     .join("");
   menu.hidden = false;
@@ -6030,11 +6035,31 @@ function openRepertoireContextMenu(event, repertoireId, isActive) {
       handleRepertoireContextAction(button.dataset.action, button.dataset.repertoireId, isActive)
     );
   });
+  const buttons = [...menu.querySelectorAll("button")];
+  menu.onkeydown = (event) => {
+    if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const index = buttons.indexOf(document.activeElement);
+      const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1
+        : (index + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length;
+      buttons[next]?.focus();
+    } else if (event.key === "Escape" || event.key === "Tab") {
+      if (event.key === "Escape") event.preventDefault();
+      event.stopPropagation();
+      closeRepertoireContextMenu();
+    }
+  };
+  buttons[0]?.focus();
 }
 
-function closeRepertoireContextMenu() {
+function closeRepertoireContextMenu(restoreFocus = true) {
   const menu = document.getElementById("repertoire-context-menu");
-  if (menu) menu.hidden = true;
+  if (!menu || menu.hidden) return;
+  menu.hidden = true;
+  repertoireMenuOpener?.setAttribute("aria-expanded", "false");
+  if (restoreFocus && repertoireMenuOpener?.isConnected) repertoireMenuOpener.focus();
+  repertoireMenuOpener = null;
 }
 
 async function fetchRepertoireMeta(repertoireId) {
@@ -14170,7 +14195,7 @@ function bindEvents() {
   });
   document.addEventListener("click", (event) => {
     if (!event.target.closest("#node-context-menu")) closeNodeContextMenu();
-    if (!event.target.closest("#repertoire-context-menu")) closeRepertoireContextMenu();
+    if (!event.target.closest("#repertoire-context-menu")) closeRepertoireContextMenu(false);
     // The chip's own click toggles the menu; ignore it here so we don't immediately
     // re-close what the toggle just opened.
     if (
