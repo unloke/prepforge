@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { localBoardAfterMove, localBoardInfo } from "./chess-local.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const app = readFileSync(join(root, "app.js"), "utf8");
@@ -252,5 +253,80 @@ describe("Explorer rows markup", () => {
     expect(render).not.toContain('title="Add ${escapeHtml(m.san)} to the repertoire">');
     expect(render).toContain("onExplorerRowAdd(rows, uci)");
     expect(render).toContain("onExplorerRowClick(rows, uci)");
+  });
+});
+
+describe("Explorer preview / engine / mutation integration", () => {
+  function makePreviewHarness(fen, uci) {
+    const parent = { id: "parent", fen, depth: 0 };
+    const appState = {
+      build: { repertoire_id: "rep", nodes: [parent] }, buildCurrentNodeId: parent.id,
+      buildNodeById: new Map([[parent.id, parent]]), buildPending: [], buildUndoCommitByMove: new Map(),
+    };
+    const board = {
+      fen, legalMoves: [], setPosition(next) { Object.assign(this, next); },
+      setAnnotations() {}, setBranchArrows() {},
+    };
+    const selectBuildNode = vi.fn(async (id) => { appState.buildCurrentNodeId = id; });
+    const status = vi.fn();
+    const widget = { onBoardChanged: vi.fn() };
+    const normalizeUci = (u) => ({ e1h1: "e1g1", e1a1: "e1c1", e8h8: "e8g8", e8a8: "e8c8" })[u] || u;
+    const currentStart = app.indexOf("  currentFen() {");
+    const currentEnd = app.indexOf("\n  }", currentStart) + 4;
+    const getter = app.slice(currentStart, currentEnd).replace("currentFen()", "function currentFen()");
+    const deps = {
+      appState, boards: { build: board }, boardAfterMove: async (f, u) => localBoardAfterMove(f, u),
+      normalizeUci, localBoardInfo, setStatus: status, engineWidget: widget, paintBuildPreview: () => {},
+      activeViewName: () => "build", START_FEN: fen, isBuildReadOnly: () => false,
+      optimisticBoardMove: async () => false, selectBuildNode, setBuildSync: vi.fn(), scheduleBuildFlush: vi.fn(),
+      buildProvisionalNode: (p, u, after) => ({ id: "new", parent_id: p.id, uci: u, fen: after.board.fen }),
+    };
+    const make = new Function(...Object.keys(deps), `
+      let buildPreview = null;
+      ${extractByMarker("function buildPreviewActive() {")}
+      ${extractByMarker("async function previewBuildMove(parent, uci) {")}
+      ${extractByMarker("function canonicalBuildUci(fen, uci) {")}
+      ${extractByMarker("async function onBuildBoardMove(moveUci) {")}
+      ${getter}
+      return { preview: () => previewBuildMove(appState.build.nodes[0], ${JSON.stringify(uci)}),
+        currentFen, add: () => onBuildBoardMove(${JSON.stringify(uci)}) };
+    `);
+    return { ...make(...Object.values(deps)), appState, board, status, selectBuildNode };
+  }
+
+  it("the live engine follows the preview while the repertoire stays at its parent", async () => {
+    const h = makePreviewHarness(START_FEN, "e7e5");
+    await h.preview();
+    expect(h.currentFen()).toBe(h.board.fen);
+    expect(h.currentFen()).not.toBe(START_FEN);
+    expect(h.appState.buildCurrentNodeId).toBe("parent");
+    expect(h.appState.build.nodes).toHaveLength(1);
+    expect(h.appState.buildPending).toEqual([]);
+  });
+
+  for (const [side, raw, canonical] of [
+    ["w", "e1h1", "e1g1"], ["w", "e1a1", "e1c1"],
+    ["b", "e8h8", "e8g8"], ["b", "e8a8", "e8c8"],
+  ]) {
+    it(`previews and queues ${raw} as canonical castling ${canonical}`, async () => {
+      const fen = `r3k2r/8/8/8/8/8/8/R3K2R ${side} KQkq - 0 1`;
+      const h = makePreviewHarness(fen, raw);
+      await h.preview();
+      const previewFen = h.board.fen;
+      await h.add();
+      expect(h.status).not.toHaveBeenCalledWith("Illegal move");
+      expect(h.appState.buildPending).toHaveLength(1);
+      expect(h.appState.buildPending[0]).toMatchObject({ repertoire_id: "rep", uci: canonical });
+      expect(h.appState.buildPending[0].node.fen).toBe(previewFen);
+      expect(h.selectBuildNode).toHaveBeenCalledWith("new");
+    });
+  }
+  it("keeps a legal rook move on castling-shaped squares unchanged", async () => {
+    const h = makePreviewHarness("k7/8/8/8/8/8/8/K3R3 w - - 0 1", "e1h1");
+    await h.preview();
+    const previewFen = h.board.fen;
+    await h.add();
+    expect(h.appState.buildPending[0].uci).toBe("e1h1");
+    expect(h.appState.buildPending[0].node.fen).toBe(previewFen);
   });
 });

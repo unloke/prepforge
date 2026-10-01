@@ -431,6 +431,7 @@ const appState = {
   explainContext: { fen: START_FEN, lastUci: null, lastSan: null },
   evalChartPoints: [],
   build: null,
+  buildLoading: false,
   buildNodeById: new Map(),
   buildCurrentNodeId: null,
   buildBranchChoiceId: null,
@@ -1298,6 +1299,7 @@ class EngineWidget {
   /** FEN of whichever board the active tab is showing. */
   currentFen() {
     if (activeViewName() === "build") {
+      if (buildPreviewActive()) return buildPreview.fen;
       const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
       if (node && node.fen) return node.fen;
       // No repertoire open: analyse what the Build board shows, never the
@@ -5733,33 +5735,41 @@ function isBuildReadOnly() {
   );
 }
 
+let buildLoadSeq = 0;
 async function editRepertoire(repertoireId, nodeId = null) {
   // Switching repertoires replaces the local Build tree — flush pending moves of
   // the current one first so they aren't dropped. An optional `nodeId` opens the
   // builder at that position (Analyze's "Open in Build" deep link).
   // The Repertoire view opens NOW with a skeleton; the tree fills in when the
   // load lands (it used to sit on the previous page for seconds).
+  const loadSeq = ++buildLoadSeq;
   setBuildLoading(true);
   try {
     await hardFlushBuild();
   } catch (error) {
+    if (loadSeq !== buildLoadSeq) return;
     setBuildLoading(false);
     setStatusError(error.message);
     return;
   }
+  if (loadSeq !== buildLoadSeq) return;
   appState.sharedToken = null;
   try {
     const payload = await api(
       `/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`
     );
+    if (loadSeq !== buildLoadSeq) return;
     const target = nodeId && payload.nodes.some((n) => n.id === nodeId) ? nodeId : null;
-    setBuildLoading(false, { restore: false }); // hydrate paints the new tree
     await hydrateBuild(payload, target || payload.selected_node_id);
+    if (loadSeq !== buildLoadSeq) return;
+    setBuildLoading(false, { restore: false });
     appState.trainingRepertoireId = payload.repertoire_id;
-    switchView("build");
+    // The rail remains usable during loading; a response must not pull the
+    // user back after they have navigated to another page.
     syncWorkspaceUrl();
     updateBuildReadOnlyUi(payload);
   } catch (error) {
+    if (loadSeq !== buildLoadSeq) return;
     setBuildLoading(false);
     setStatusError(error.message);
   }
@@ -5769,17 +5779,28 @@ async function editRepertoire(repertoireId, nodeId = null) {
 // the caller syncs it once the tree is in) and show a skeleton in place of the
 // previous tree. Turning it off restores whatever is actually loaded.
 function setBuildLoading(on, { restore = true } = {}) {
+  appState.buildLoading = on;
   const view = document.getElementById("view-build");
   if (view) {
+    view.inert = on;
     view.classList.toggle("is-loading", on);
     view.setAttribute("aria-busy", String(on));
   }
   if (!on) {
     if (!restore) return;
+    const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+    if (node && boards.build) {
+      const info = localBoardInfo(node.fen);
+      boards.build.setPosition({ fen: node.fen, legalMoves: info.legal_moves, lastMove: node.uci });
+    }
     renderBuildRepHeader();
     renderBuilderTree();
     syncViewHeads();
     return;
+  }
+  takeBuildPreview();
+  if (boards.build) {
+    boards.build.setPosition({ fen: boards.build.fen, legalMoves: [], lastMove: null });
   }
   if (appState.currentView !== "build") switchView("build", { fromUrl: true });
   const empty = document.getElementById("build-empty");
@@ -9168,7 +9189,19 @@ function beaconFlushBuild() {
   }
 }
 
+function canonicalBuildUci(fen, uci) {
+  const normalized = normalizeUci(uci);
+  // A rook/queen can legally move along these same squares. Only translate
+  // king-to-rook notation when the raw move is not legal in this position.
+  return normalized !== uci && !localBoardInfo(fen).legal_moves.includes(uci) ? normalized : uci;
+}
+
 async function onBuildBoardMove(moveUci) {
+  if (appState.buildLoading) return;
+  // Explorer castling uses king-to-rook UCI; the board, local tree and
+  // durable queue all use the standard king destination instead.
+  const moveParent = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  moveUci = canonicalBuildUci(moveParent?.fen || boards.build.fen, moveUci);
   if (isBuildReadOnly()) {
     setStatus("Read-only — copy to your account to edit");
     return;
@@ -9233,7 +9266,7 @@ async function onBuildBoardMove(moveUci) {
   // Dedupe (parity with the server): replaying an existing line just navigates to
   // the child — no provisional node, no dirty state.
   const existing = appState.build.nodes.find(
-    (n) => n.parent_id === parentId && n.uci === moveUci
+    (n) => n.parent_id === parentId && canonicalBuildUci(parent.fen, n.uci) === moveUci
   );
   if (existing) {
     await selectBuildNode(existing.id);
