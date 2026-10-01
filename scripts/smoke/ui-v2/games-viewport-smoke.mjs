@@ -5,7 +5,7 @@
 //     /api/lichess/compare payload (page.route stub, no backend)
 //   - outcome chips show real counts; ledger lists games with tone'd results
 //   - focus detail: derived board + expected(good)/played(bad) arrows for the
-//     user-error game; arrows/legend react to the selected game
+//     user-error game; arrows react to the selected game without a standing legend
 //   - outcome filter chip narrows the ledger
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
@@ -164,17 +164,17 @@ async function runViewport(vp) {
   const arrowBad = await page.locator("#replay-results .replay-arrows polygon.t-bad").count();
   check(arrowGood === 1 && arrowBad === 1, `user-error focus should draw expected(good)+played(bad), got ${arrowGood}/${arrowBad}`);
   const focusText = await page.locator("#replay-results .focus").textContent().catch(() => "");
-  check(/expected/.test(focusText || "") && /played/.test(focusText || ""), "focus legend should explain expected vs played");
+  check(/expected/.test(focusText || "") && /e6/.test(focusText || "") && /d5/.test(focusText || ""), "focus detail should name the expected and actual moves");
+  check((await page.locator("#replay-results .focus .legend").count()) === 0, "focus should not show a standing arrow legend");
 
   await shot("triage");
 
-  // Selecting the stayed-in-prep game drops the arrows and arrow legend.
+  // Selecting the stayed-in-prep game drops the arrows.
   await page.locator("#replay-results .lr[data-index]").nth(2).evaluate((el) => el.click());
   await page.waitForTimeout(400);
   const arrowsAfter = await page.locator("#replay-results .replay-arrows").count();
   check(arrowsAfter === 0, `stayed-in-prep focus should have no arrow overlay, got ${arrowsAfter}`);
-  const legendAfter = await page.locator("#replay-results .focus").textContent().catch(() => "");
-  check(!/played/.test(legendAfter || ""), "stayed-in-prep focus should not show the played legend entry");
+  check((await page.locator("#replay-results .focus .legend").count()) === 0, "stayed-in-prep focus should not show a standing legend");
 
   // Outcome filter chip narrows the ledger to its kind.
   await page.locator("#replay-summary [data-filter=\"user-error\"]").click();
