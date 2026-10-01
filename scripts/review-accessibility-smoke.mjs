@@ -9,6 +9,7 @@ const staticDir=join(root,'src/prepforge_chess/web/static');
 const fen='rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const rep={id:'audit-rep',name:'Audit repertoire',color:'white',root_fen:fen,notes:'',tags:[],is_active:true,visibility:'private',health:{trainable:1,mastered:0,weak:0,due:0,learning:0,untrained:1,mastery_pct:0}};
 let repertoireCalls=0;
+let libraryMode='populated';
 const server=createServer(async(req,res)=>{
   const url=new URL(req.url,'http://localhost');
   if(url.pathname.startsWith('/api/')){
@@ -16,7 +17,14 @@ const server=createServer(async(req,res)=>{
     if(url.pathname==='/api/auth/me')data={id:'audit',display_name:'Audit',email:'audit@example.invalid'};
     if(url.pathname==='/api/auth/providers')data={google:false};
     if(url.pathname==='/api/csrf')data={csrf_token:'audit'};
-    if(url.pathname==='/api/repertoires'){repertoireCalls++;data={repertoires:[rep],shared:[]};}
+    if(url.pathname==='/api/repertoires'){
+      repertoireCalls++;
+      if(libraryMode==='error'){
+        res.writeHead(503,{'Content-Type':'application/json'});
+        res.end(JSON.stringify({detail:'Library temporarily unavailable'}));return;
+      }
+      data={repertoires:libraryMode==='empty'?[]:[rep],shared:[]};
+    }
     if(url.pathname==='/api/dashboard')data={games:0,repertoires:1,training_sessions:0,open_mistakes:0,due_reviews:0,due_soon:0,streak:{current:0,best:0,trained_today:false},recap:{},recommendations:[]};
     if(url.pathname.startsWith('/api/lichess'))data={linked:false,accounts:[]};
     if(url.pathname==='/api/build/load')data={repertoire_id:rep.id,name:rep.name,color:'white',root_fen:fen,selected_node_id:'root',nodes:[{id:'root',depth:0,parent_id:null,uci:null,fen,children:[]}],health:rep.health};
@@ -37,6 +45,8 @@ try{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(`http://127.0.0.1:${server.address().port}`,{waitUntil:'networkidle'});
   await page.locator('[data-row-menu="audit-rep"]').waitFor();
+  assert.equal(await page.locator('#dashboard-repertoires .empty-state').count(), 0);
+  assert.equal(await page.locator('#shared-banner-note').count(), 0);
   const opener=page.locator('[data-row-menu="audit-rep"]');
   await opener.focus();await opener.press('Enter');
   results.menu=await page.locator('#repertoire-context-menu').evaluate(el=>({visible:!el.hidden,role:el.getAttribute('role'),items:[...el.querySelectorAll('button')].map(b=>b.getAttribute('role')),focus:document.activeElement?.outerHTML.slice(0,180)}));
@@ -52,6 +62,10 @@ try{
   await page.keyboard.press('Escape');
   results.menu.afterEscape=await page.locator('#repertoire-context-menu').evaluate(el=>({hidden:el.hidden,focus:document.activeElement?.getAttribute('data-row-menu')}));
   assert.deepEqual(results.menu.afterEscape, { hidden: true, focus: 'audit-rep' });
+  await opener.press('Enter');
+  await page.locator('#lib-filter-search').click();
+  assert.equal(await page.locator('#repertoire-context-menu').evaluate(el=>el.hidden), true);
+  assert.equal(await page.evaluate(()=>document.activeElement.id), 'lib-filter-search');
   await page.setViewportSize({ width: 390, height: 844 });
   await opener.tap();
   assert.equal(await page.locator('#repertoire-context-menu').getAttribute('role'), 'menu');
@@ -85,6 +99,21 @@ try{
   results.forcedColors={};
   await page.emulateMedia({forcedColors:'active',reducedMotion:'reduce'});
   results.forcedColors.active=await page.evaluate(()=>({forced:matchMedia('(forced-colors: active)').matches,reduced:matchMedia('(prefers-reduced-motion: reduce)').matches}));
+  libraryMode='empty';
+  await page.reload({waitUntil:'networkidle'});
+  await page.locator('.rail [data-view="dashboard"]').click();
+  await page.locator('#dashboard-repertoires .empty-state').waitFor();
+  await page.locator('#dashboard-repertoires [data-lib-action="new"]').click();
+  await page.locator('[role="dialog"] .modal-title').filter({hasText:'New repertoire'}).waitFor();
+  await page.keyboard.press('Escape');
+  libraryMode='error';
+  await page.reload({waitUntil:'networkidle'});
+  await page.locator('#dashboard-repertoires [role="alert"]').waitFor();
+  libraryMode='populated';
+  await page.locator('#dashboard-repertoires [data-lib-action="retry"]').click();
+  await page.locator('[data-row-menu="audit-rep"]').waitFor();
+  assert.equal(await page.locator('#dashboard-repertoires .empty-state').count(), 0);
+  results.errors=errors;
 }
 finally{await browser.close();await new Promise(r=>server.close(r));}
 assert.deepEqual(results.errors, []);

@@ -329,5 +329,3 @@ def classify_precomputed_game(
             maia_rating=maia_rating,
         ),
     )
-
-
