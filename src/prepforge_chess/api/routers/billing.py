@@ -16,8 +16,12 @@ Design
 """
 from __future__ import annotations
 
+import logging
+
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from prepforge_chess.api.config import Settings, get_settings
@@ -26,6 +30,7 @@ from prepforge_chess.api.deps import current_user
 from prepforge_chess.api.models import Plan, StripeEvent, User
 
 router = APIRouter(tags=["billing"])
+logger = logging.getLogger(__name__)
 
 # The Stripe webhook is machine-to-machine and authenticated by its signature, so
 # it must bypass the double-submit CSRF check. main.create_app() reads this and
@@ -144,14 +149,16 @@ def _apply_event(db: Session, event: dict) -> None:
     obj = event.get("data", {}).get("object", {})
     if etype == "checkout.session.completed":
         customer_id = obj.get("customer")
-        user_id = obj.get("client_reference_id") or obj.get("metadata", {}).get("user_id")
-        user = db.get(User, user_id) if user_id else None
-        if user is not None:
-            user.plan = Plan.pro
-            if customer_id and not user.stripe_customer_id:
-                user.stripe_customer_id = customer_id
-        else:
-            _set_plan_by_customer(db, customer_id, Plan.pro)
+        if not customer_id:
+            return
+        user = db.query(User).filter(User.stripe_customer_id == customer_id).one_or_none()
+        if user is None:
+            return
+        references = [obj.get("client_reference_id"), (obj.get("metadata") or {}).get("user_id")]
+        if any(reference and reference != user.id for reference in references):
+            logger.warning("Checkout customer/reference mismatch for event %s", event.get("id"))
+            return
+        user.plan = Plan.pro
     elif etype == "customer.subscription.updated":
         plan = Plan.pro if obj.get("status") in _ACTIVE_STATUSES else Plan.free
         _set_plan_by_customer(db, obj.get("customer"), plan)
@@ -184,11 +191,19 @@ async def stripe_webhook(
     # construct_event returns a stripe object; normalize to a plain dict.
     event = dict(event)
     event_id = event.get("id")
-    if event_id and db.get(StripeEvent, event_id) is not None:
-        return {"received": True}  # already processed — idempotent no-op
+    if not isinstance(event_id, str) or not event_id:
+        raise HTTPException(status_code=400, detail="missing event id")
+    insert = pg_insert if db.get_bind().dialect.name == "postgresql" else sqlite_insert
+    # The unique insert serializes concurrent deliveries before either can mutate
+    # plan state. Claim and effect commit together; a failed effect rolls both back.
+    claimed = db.execute(
+        insert(StripeEvent).values(id=event_id, type=event.get("type", ""))
+        .on_conflict_do_nothing(index_elements=[StripeEvent.id]).returning(StripeEvent.id)
+    ).scalar_one_or_none()
+    if claimed is None:
+        db.rollback()
+        return {"received": True}
 
     _apply_event(db, event)
-    if event_id:
-        db.add(StripeEvent(id=event_id, type=event.get("type", "")))
     db.commit()
     return {"received": True}

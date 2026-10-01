@@ -128,6 +128,7 @@ def test_portal_returns_url_after_customer_exists(client, monkeypatch):
 
 
 def _flip_to_pro_via_webhook(client, monkeypatch, user_id, customer_id="cus_abc"):
+    _checkout_customer(client, monkeypatch, customer_id)
     event = {
         "id": "evt_pro_{0}".format(user_id),
         "type": "checkout.session.completed",
@@ -138,6 +139,12 @@ def _flip_to_pro_via_webhook(client, monkeypatch, user_id, customer_id="cus_abc"
                     headers={"Stripe-Signature": "t=1,v1=sig"})
     assert r.status_code == 200, r.text
     return event
+
+
+def _checkout_customer(client, monkeypatch, customer_id):
+    monkeypatch.setattr(stripe.Customer, "create", lambda **k: {"id": customer_id})
+    monkeypatch.setattr(stripe.checkout.Session, "create", lambda **k: {"url": "u"})
+    assert client.post("/api/billing/checkout", headers=csrf_headers(client)).status_code == 200
 
 
 def test_webhook_503_without_secret(client, monkeypatch):
@@ -170,6 +177,7 @@ def test_webhook_checkout_completed_flips_plan_to_pro(client, monkeypatch):
 def test_webhook_is_idempotent(client, monkeypatch):
     user_id = _register(client)
     _enable_billing(monkeypatch)
+    _checkout_customer(client, monkeypatch, "cus_1")
     event = {
         "id": "evt_same",
         "type": "checkout.session.completed",
