@@ -199,7 +199,9 @@ export async function runInviteDialog(teamId, {
 export function createInviteDialogUi({ escapeHtml, activateModal }) {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
-  overlay.innerHTML = '<div class="modal invite-modal" role="dialog" aria-modal="true"></div>';
+  // The name lives on the persistent dialog: replacing its body after a
+  // generate/copy/revoke action cannot orphan an aria-labelledby reference.
+  overlay.innerHTML = '<div class="modal invite-modal" role="dialog" aria-modal="true" aria-label="Team invite link"></div>';
   const dialog = overlay.querySelector(".modal");
   let pending = null;
   const resolveWith = (value) => {

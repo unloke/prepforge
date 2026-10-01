@@ -176,7 +176,7 @@ export function createSettingsView({
     if (hint) {
       hint.textContent = on
         ? "On — Analyze and Coverage add Maia3's human-move layer."
-        : "Off — Analyze and Coverage use Stockfish only, even when the Maia3 model is downloaded (Ready).";
+        : "Off — Analyze uses Stockfish only. Coverage scans require Maia analysis, even when the Maia3 model is downloaded (Ready).";
     }
     const usage = document.getElementById("settings-maia-usage");
     if (usage) {

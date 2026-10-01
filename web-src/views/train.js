@@ -1,23 +1,18 @@
 // Train tab rendering (lazy-loaded from app.js).
 
-// Mirrors services/scheduler.py DEFAULT_SESSION_SIZE / DEFAULT_NEW_CAP.
-export const SMART_SESSION_SIZE = 12;
+// Mirrors services/scheduler.py DEFAULT_NEW_CAP.
 export const SMART_NEW_CAP = 4;
 
-// Pre-start line for the smart queue: how big this session will be and how much new
-// material is waiting, from the mixed /smart/summary health ("4 cards · 41 new
-// available"). Reviews (weak + due) come first, then at most SMART_NEW_CAP new moves;
-// polish may top up a session, so the count is the floor the queue is built from.
+// Health counts moves, not cards. The scheduler merges consecutive review
+// moves into cards and may add polish, so only name the available moves here.
 export function sessionPreviewText(health) {
   if (!health) return "";
   const reviews = (Number(health.weak) || 0) + (Number(health.due) || 0);
   const fresh = Number(health.untrained) || 0;
-  const cards = Math.min(SMART_SESSION_SIZE, reviews + Math.min(SMART_NEW_CAP, fresh));
   const parts = [];
-  if (cards > 0) parts.push(`${cards} card${cards === 1 ? "" : "s"} this session`);
-  else parts.push("Nothing due, a short polish session");
-  if (reviews) parts.push(`${reviews} due`);
-  if (fresh) parts.push(`${fresh} new available`);
+  if (reviews) parts.push(`${reviews} review move${reviews === 1 ? "" : "s"} ready`);
+  if (fresh) parts.push(`${fresh} new available (up to ${Math.min(SMART_NEW_CAP, fresh)} this session)`);
+  if (!parts.length) return health.trainable > 0 ? "Nothing due — polish available" : "No moves to train yet";
   return parts.join(" · ");
 }
 

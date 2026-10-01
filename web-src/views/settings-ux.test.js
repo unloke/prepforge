@@ -136,6 +136,7 @@ describe("Maia analysis vs Maia3 Ready", () => {
     const { view, elements } = setup({ pref: () => false });
     view.renderSettings(null);
     expect(elements["settings-maia-analysis-hint"].textContent).toMatch(/Stockfish only/);
+    expect(elements["settings-maia-analysis-hint"].textContent).toMatch(/Coverage scans require Maia analysis/);
     expect(elements["settings-maia-usage"].textContent).toMatch(/Maia analysis is off/);
   });
 });

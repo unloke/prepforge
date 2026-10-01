@@ -10214,8 +10214,8 @@ function syncTrainPickerVisibility() {
   void refreshTrainSessionPreview().catch(() => {});
 }
 
-// Before Start: say how big the smart session will be ("4 cards this session · 41 new
-// available") — once, in the setup card, from the mixed health summary. Cached briefly
+// Before Start: show review moves and available new moves from the health summary.
+// The scheduler merges targets and adds polish, so these are not card counts. Cached briefly
 // so the many syncTrainPickerVisibility() calls don't each refetch.
 const trainPreviewCache = { at: 0, text: "", loading: null };
 function invalidateTrainSessionPreview() {
