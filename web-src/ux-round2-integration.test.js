@@ -122,3 +122,39 @@ describe("Games link chip respects explicit Self selection", () => {
     expect(tray.innerHTML).not.toContain("data-games-link");
   });
 });
+
+describe("Navigation during boot", () => {
+  it("restoreWorkspaceLocation keeps a page picked mid-boot instead of the load URL", async () => {
+    const appState = { currentView: "replay", signedIn: true };
+    const deps = {
+      appState, switchView: vi.fn(), syncWorkspaceUrl: vi.fn(),
+      parseWorkspaceLocation: vi.fn(() => ({ view: "dashboard" })), loadReturnState: vi.fn(),
+      window: { location: { href: "http://x/#/dashboard" } },
+    };
+    const restore = compile("async function restoreWorkspaceLocation(", deps, "let navigatedDuringBoot = true;");
+    await restore();
+    expect(deps.parseWorkspaceLocation).not.toHaveBeenCalled();
+    // Re-entered with the real session (it may have painted signed-out mid-boot).
+    expect(deps.switchView).toHaveBeenCalledWith("replay");
+    expect(deps.switchView).not.toHaveBeenCalledWith("dashboard", expect.anything());
+  });
+
+  it("without a boot-time click the URL route is restored as before", async () => {
+    const appState = { currentView: "dashboard", signedIn: false };
+    const deps = {
+      appState, switchView: vi.fn(), syncWorkspaceUrl: vi.fn(),
+      parseWorkspaceLocation: vi.fn(() => ({ view: "teams" })), loadReturnState: vi.fn(),
+      window: { location: { href: "http://x/#/teams" } },
+    };
+    const restore = compile("async function restoreWorkspaceLocation(", deps, "let navigatedDuringBoot = false;");
+    await restore();
+    expect(deps.switchView).toHaveBeenCalledWith("teams", { fromUrl: true });
+  });
+
+  it("switchView marks only non-URL navigation before the workspace URL is ready", () => {
+    const start = source.indexOf("function switchView(");
+    const body = source.slice(start, source.indexOf("\n", start + 60));
+    expect(source.slice(start, start + 200)).toMatch(/if \(!fromUrl && !workspaceUrlReady\) navigatedDuringBoot = true;/);
+    expect(body).toContain("fromUrl");
+  });
+});

@@ -3505,6 +3505,10 @@ function activeBoardController() {
 }
 
 let workspaceUrlReady = false;
+// Set when the user picks a page while boot is still awaiting auth / the
+// workspace: restoreWorkspaceLocation must not then snap them back to the URL
+// the page loaded with (a Scout click during boot landed on the dashboard).
+let navigatedDuringBoot = false;
 let paletteItems = [];
 let paletteActive = 0;
 let paletteA11yCleanup = null;
@@ -3750,6 +3754,14 @@ function bindCommandPalette() {
 }
 
 async function restoreWorkspaceLocation() {
+  if (navigatedDuringBoot) {
+    // The user already moved on: stay there, re-entering the page so it loads
+    // with the now-known session (it may have painted signed-out mid-boot),
+    // and record it in the URL.
+    switchView(appState.currentView);
+    syncWorkspaceUrl();
+    return;
+  }
   const loc = parseWorkspaceLocation(window.location.href);
   // F-06 return state: coming back to Games (even after a reload) restores the
   // selected game and the active filter, so the source page is where you left it.
@@ -3916,6 +3928,7 @@ function countBuildMovesToTrain(build) {
 }
 
 function switchView(name, { fromUrl = false } = {}) {
+  if (!fromUrl && !workspaceUrlReady) navigatedDuringBoot = true;
   if (appState.currentView !== name) clearStaleStatusOnNavigate();
   appState.currentView = name;
   // Navigating is user activity; if the Lichess watch is running, switching to
