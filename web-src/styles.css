@@ -2965,16 +2965,21 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .kchip.k-polish, .kchip.phase { color: var(--muted); background: var(--surface-3); }
 .kchip[hidden] { display: none; }
 
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.train-session-preview { margin: 0; font-size: var(--fs-xs); font-weight: 600; color: var(--label); }
+.train-session-preview[hidden] { display: none; }
+
+/* Compact one-line counters (UX 2026-09-30 P2-10): they must not outshout the board cue. */
+.stats { display: flex; flex-wrap: wrap; gap: 6px; }
 .stat {
-  display: flex;
-  flex-direction: column;
-  padding: 8px 10px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 3px 9px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 999px;
   transition: background 200ms ease, border-color 200ms ease;
 }
-.stat b { font-size: 20px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat b { font-size: var(--fs-sm, 13px); line-height: 1.2; font-variant-numeric: tabular-nums; }
 .stat b.good { color: var(--good-text); }
 .stat b.bad { color: var(--danger); }
 .stat span { color: var(--label); font-size: var(--fs-xs); }

@@ -39,6 +39,11 @@ import {
   RARITY_TIER4,
   BRILLIANT_WHY,
   BLUNDER_LEAD,
+  BLUNDER_LEAD_LEVEL,
+  BLUNDER_LEAD_BETTER,
+  AFTERMATH_LEVEL,
+  AFTERMATH_BETTER,
+  REPLY_SENTENCE,
   MISTAKE_LEAD,
   IN_MATE_NET,
   MISSED_MATE,
@@ -304,12 +309,35 @@ function moveClauses(fen, uci, san) {
 
 const RELOCATION_RE = /^(develops|brings|pushes|takes|castles|fianchettoes|promotes)\b/;
 
+// describeMove() writes its follow-up clauses for a "<mover> <verb>s ..." sentence, so a
+// couple of them are finite verbs ("and now eyes the bishop on c4"). Once the leading verb
+// clause is dropped the tail hangs off a SAN as a modifier, where only participles read as
+// English — so recast those into participle form.
+const FINITE_TO_PARTICIPLE = [
+  [/^and now eyes\b/, "eyeing"],
+  [/^and it's checkmate$/, "delivering checkmate"],
+];
+
+function participle(clause) {
+  for (const [re, rep] of FINITE_TO_PARTICIPLE) {
+    if (re.test(clause)) return clause.replace(re, rep);
+  }
+  return clause;
+}
+
+// "a", "a and b", "a, b and c" — one modifier phrase, never a dangling ", and now ...".
+function joinIdeas(parts) {
+  if (parts.length <= 1) return parts[0] || "";
+  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
 // Drop the leading bare relocation/capture (the SAN already says "piece to square"),
-// keep what the move accomplishes: "forking the rook and queen", "with check",
-// "claiming the centre", "and now eyes the bishop on c4".
+// keep what the move accomplishes as one participle phrase: "forking the rook and queen",
+// "with check", "claiming the centre and eyeing the bishop on c4".
 function ideaTail(clauses) {
   if (!clauses.length) return "";
-  return RELOCATION_RE.test(clauses[0]) ? clauses.slice(1).join(", ") : clauses.join(", ");
+  const rest = RELOCATION_RE.test(clauses[0]) ? clauses.slice(1) : clauses;
+  return joinIdeas(rest.map(participle));
 }
 
 // The value-add idea of the move just played (no "piece to square" — the SAN has it).
@@ -327,17 +355,45 @@ function gistOf(f) {
 // The refutation — the opponent's reply, named with its own idea.
 // ---------------------------------------------------------------------------
 
-// "after Nxc4, forking the queen and rook," — reply SAN plus the threat it sets up,
-// folded into a sentence (lowercase-start, trailing comma). "" when there's no reply.
-function replyWithTail(f) {
+// The reply's idea as a trailing modifier: ", claiming the centre and eyeing the bishop
+// on c4" — or "" when the reply has no point beyond the SAN.
+function replyTailOf(f) {
   if (!f.replySan) return "";
   const tail = ideaTail(moveClauses(f.fenAfter, f.replyUci, f.replySan));
-  return tail ? `after ${f.replySan}, ${tail},` : `after ${f.replySan},`;
+  return tail ? `, ${tail}` : "";
 }
 
 // The opponent's standing after the move (used when a move goes wrong).
 function oppStanding(f) {
   return standingWord(100 - f.winAfterMover);
+}
+
+// Where an error leaves the mover, as one bucket the lead AND the standing sentence both
+// read from — so a "costly blunder" is never followed by "that leaves it about level":
+//   "worse"  — the opponent is now better (the classic, costly error)
+//   "level"  — an edge was thrown away, but the game is about even
+//   "better" — still ahead, just by much less than before
+function errorAftermath(f) {
+  if (f.winAfterMover >= 57) return "better";
+  if (f.winAfterMover > 43) return "level";
+  return "worse";
+}
+
+// One standalone sentence on the resulting standing, consistent with errorAftermath().
+function aftermathSentence(f, me, opp) {
+  const kind = errorAftermath(f);
+  if (kind === "worse") return choose(f, "standingTail", STANDING_TAIL, { opp, standing: oppStanding(f) });
+  if (kind === "level") return choose(f, "aftermathLevel", AFTERMATH_LEVEL, { me, opp });
+  return choose(f, "aftermathBetter", AFTERMATH_BETTER, { me, standing: standingWord(f.winAfterMover) });
+}
+
+function errorLead(f, code, me) {
+  const kind = errorAftermath(f);
+  if (code === "blunder") {
+    const bank = kind === "level" ? BLUNDER_LEAD_LEVEL : kind === "better" ? BLUNDER_LEAD_BETTER : BLUNDER_LEAD;
+    return choose(f, "lead", bank, { me });
+  }
+  return choose(f, "lead", MISTAKE_LEAD, { me });
 }
 
 // ---------------------------------------------------------------------------
@@ -620,7 +676,7 @@ function buildProse(f) {
 
   // Blunder / mistake — say what broke and (when there's a clean fix) what to play.
   if (code === "blunder" || code === "mistake") {
-    const lead = choose(f, "lead", code === "blunder" ? BLUNDER_LEAD : MISTAKE_LEAD, {});
+    const lead = errorLead(f, code, me);
 
     let why;
     let namedBetterAlready = false;
@@ -641,9 +697,17 @@ function buildProse(f) {
       const sq = f.hangingOwnTop.square;
       const desc = choose(f, "hangDesc", HANG_DESC, { san: f.san, piece, sq });
       const standing = oppStanding(f);
-      const punish = f.replySan
-        ? choose(f, "hangPunish", HANG_PUNISH_WITH_REPLY, { reply: f.replySan, opp, standing })
-        : choose(f, "hangPunishNo", HANG_PUNISH_NO_REPLY, { opp, standing });
+      let punish;
+      if (errorAftermath(f) !== "worse") {
+        // The piece hangs but the mover is still level/better: name the grab, then the
+        // honest standing — never "Black is about level" phrased as a punishment.
+        const grab = f.replySan ? `${choose(f, "replySentence", REPLY_SENTENCE, { opp, reply: f.replySan, rt: "" })} ` : "";
+        punish = `${grab}${aftermathSentence(f, me, opp)}`;
+      } else {
+        punish = f.replySan
+          ? choose(f, "hangPunish", HANG_PUNISH_WITH_REPLY, { reply: f.replySan, opp, standing })
+          : choose(f, "hangPunishNo", HANG_PUNISH_NO_REPLY, { opp, standing });
+      }
       why = `${desc}. ${punish}`;
     } else if (f.missedWin && f.looseBefore[0] && f.bestSan) {
       // Left a free piece on the board and didn't take it.
@@ -683,28 +747,24 @@ function buildProse(f) {
         const phaseBank =
           f.phase === "opening" ? PHASE_HINT_OPENING : f.phase === "endgame" ? PHASE_HINT_ENDGAME : PHASE_HINT_MIDDLEGAME;
         const phaseHint = choose(f, "phaseHint", phaseBank, {});
-        const standing = oppStanding(f);
-        const standingTail = choose(f, "standingTail", STANDING_TAIL, { opp, standing });
+        // Every clause below is a complete sentence: the reply (with its idea folded in
+        // as a participle) and the resulting standing, which is read from the same
+        // errorAftermath() bucket as the lead so the two can't contradict each other.
+        const standingTail = aftermathSentence(f, me, opp);
         if (f.replySan) {
-          const punish = replyWithTail(f);
+          const replySentence = choose(f, "replySentence", REPLY_SENTENCE, {
+            opp,
+            reply: f.replySan,
+            rt: replyTailOf(f),
+          });
           why = choose(f, "initiativeWith", INITIATIVE_WITH_PUNISH, {
             opener,
             phaseHint,
-            punish,
-            punishCap: cap(punish),
+            replySentence,
             standingTail,
-            opp,
-            standing,
           });
         } else {
-          why = choose(f, "initiativeNo", INITIATIVE_NO_PUNISH, {
-            opener,
-            phaseHint,
-            standingTail,
-            standingTailCap: cap(standingTail),
-            opp,
-            standing,
-          });
+          why = choose(f, "initiativeNo", INITIATIVE_NO_PUNISH, { opener, phaseHint, standingTail });
         }
       }
     }

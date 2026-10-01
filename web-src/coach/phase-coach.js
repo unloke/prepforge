@@ -176,7 +176,9 @@ function buildTip({
 
   if (phase === "opening") {
     if (agreement === "prepared" && expectedSan) {
-      return `This is what ${crowd} actually play. ${expectedSan} develops toward the center; castle before the fight opens.`;
+      // No claim about what the move does ("develops toward the center" was said of f3
+      // too); the caller pairs this with the move's own description.
+      return `This is what ${crowd} actually play here: ${expectedSan}.`;
     }
     if (agreement === "human-also" && expectedSan) {
       return `${expectedSan} is also what humans play here. Develop, occupy the center, and get the king safe.`;
@@ -281,24 +283,29 @@ export function buildPhaseCoach({
 
   const resolvedExpectedSan = expectedSan || sanOf(fen, expectedUci);
   const agreement = agreementOf(sorted, expectedUci);
+  const tip = buildTip({
+    phase,
+    sorted,
+    agreement,
+    expectedSan: resolvedExpectedSan,
+    playedUci,
+    expectedUci,
+    playedProb,
+    rating,
+    humanSan,
+    fen,
+    reveal,
+  });
 
   return {
     phase,
     phaseLabel,
     title: `${phaseLabel} coach`,
-    tip: buildTip({
-      phase,
-      sorted,
-      agreement,
-      expectedSan: resolvedExpectedSan,
-      playedUci,
-      expectedUci,
-      playedProb,
-      rating,
-      humanSan,
-      fen,
-      reveal,
-    }),
+    tip,
+    // True when the tip is only the phase's canned advice ("Develop your pieces, ...")
+    // with nothing about this move or position — callers should prefer a move-specific
+    // explanation (or say nothing) over repeating it on every card.
+    generic: tip === genericTip(phase),
     promptTip: promptTipFor(fen, phase),
     humanUci,
     humanSan,

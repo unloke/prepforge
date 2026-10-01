@@ -13,7 +13,8 @@ import { localBoardInfo, localBoardAfterMove, localGameOver } from "./chess-loca
 import { applyTheme } from "./theme.js";
 import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
 import { squareInDirection } from "./board-navigation.js";
-import { pgnPlayers, selfSide } from "./analyze-orient.js";
+import { isReviewedMove, pgnPlayers, selfSide } from "./analyze-orient.js";
+import { buildGameSummary, hasClassifiedMoves } from "./coach/game-summary.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { classifySyncError, describeSyncError } from "./sync-errors.js";
 import { orderPendingBuildAdds } from "./build-queue.js";
@@ -650,7 +651,11 @@ class Toast {
     this.hovering = false;
     this.pointerActive = false;
     this.el = this._build(title || "Working...", message, actions);
-    stack.container.appendChild(this.el);
+    // `dock`: an in-page host (e.g. the Analyze panel) for a job whose card would
+    // otherwise float over the very result it is producing.
+    const dock = opts.dock && opts.dock.isConnected ? opts.dock : null;
+    if (dock) this.el.classList.add("is-docked");
+    (dock || stack.container).appendChild(this.el);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => this.el.classList.add("is-visible"));
     });
@@ -1835,6 +1840,10 @@ class PositionCoach {
     const ctx = this.ctx;
     const prevFen = ctx.prevFen;
     const token = ++this.token;
+    const mover = fen.split(" ")[1] === "b" ? "white" : "black";
+    // "Review my moves" on a game the user played: grade only their own mainline
+    // moves and leave the plain instant read on the opponent's.
+    if (!isReviewedMove({ mover, selfSide: analysisSelfSide(), mainline: Number.isInteger(ctx.ply) })) return;
     try {
       const c = await (_coachReady || preloadCoach());
       this._ensureEngine();
@@ -1842,8 +1851,6 @@ class PositionCoach {
       const before = await this._eval(prevFen, token);
       if (token !== this.token || fen !== this.fen) return;
       if (!before || !before.lines.length) return;
-
-      const mover = fen.split(" ")[1] === "b" ? "white" : "black";
 
       // A move that ends the game (checkmate/stalemate) leaves no position for the
       // engine to search — _eval(fen) comes back empty and we'd silently produce no
@@ -2181,7 +2188,12 @@ function renderInstantCoach() {
   } else {
     paintPhaseChip(null);
     paintMaiaCoachLine(null);
-    setCoachProse("Make a move and I'll tell you what I think.", "info");
+    // A finished whole-game analysis on the start position: summarise the game instead
+    // of the empty-board invitation.
+    const summary = hasClassifiedMoves(appState.analysis)
+      ? buildGameSummary({ moves: appState.analysis.moves, selfSide: analysisSelfSide() })
+      : "";
+    setCoachProse(summary || "Make a move and I'll tell you what I think.", "info");
   }
 }
 
@@ -3687,8 +3699,11 @@ function syncAnalyzeHead() {
   const title = document.getElementById("analysis-game-title");
   const meta = document.getElementById("analysis-game-meta");
   if (!title || !meta) return;
-  const tags = analyzeHeaderTags(document.getElementById("pgn-input")?.value || "");
   const analysis = appState.analysis;
+  // Only name a game the board actually shows: the prefilled demo PGN sitting unloaded in
+  // the source box must not title an empty board "PrepForge vs Demo".
+  const loaded = !!(analysis && ((analysis.moves && analysis.moves.length) || analysis.initialFen));
+  const tags = loaded ? analyzeHeaderTags(document.getElementById("pgn-input")?.value || "") : {};
   const known = (v) => (v && !/^[?*.\s]+$/.test(v) ? v : "");
   const white = known(tags.White) || known(analysis?.white);
   const black = known(tags.Black) || known(analysis?.black);
@@ -4683,6 +4698,17 @@ function orientAnalysisForSelf(white, black, extraNames = []) {
   if (side) boards.analysis.setOrientation(side);
 }
 
+// Which side of the Analyze game is the user ("white" | "black" | null): the PGN box's
+// White/Black tags, else the recalled analysis, matched against linked Lichess names.
+function analysisSelfSide() {
+  const tags = analyzeHeaderTags(document.getElementById("pgn-input")?.value || "");
+  const analysis = appState.analysis || {};
+  return selfSide(tags.White || analysis.white, tags.Black || analysis.black, [
+    appState.lichessUsername,
+    ...lichessAccounts().map((a) => a.username),
+  ]);
+}
+
 // Same, for a PGN the user pasted or dropped: read its White/Black headers.
 // Only re-orients when the pair of names changes, so the debounced re-parse on
 // every keystroke never undoes a manual flip.
@@ -4716,15 +4742,15 @@ async function fetchMyLichessGame(accountId = null) {
     return;
   }
   document.getElementById("pgn-input").value = latest.pgn || "";
-  const drawer = document.querySelector("#view-analyze .drawer");
-  if (drawer) drawer.open = true;
-  // Show the game in the move list right away (steppable before Analyze).
-  void loadPgnIntoAnalyze(latest.pgn || "", { goToEnd: false, quiet: true }).catch(() => {});
+  // Show the game in the move list right away, then analyze it in the same step —
+  // "My last game" means "review my last game", not "paste it and wait for me".
+  await loadPgnIntoAnalyze(latest.pgn || "", { goToEnd: false, quiet: true }).catch(() => {});
   orientAnalysisForSelf(latest.white, latest.black, [latest.source_account]);
   lastOrientedPgnPlayers = `${latest.white || ""}\n${latest.black || ""}`;
   if (latest.lichess_id) markLichessSeen(latest.lichess_id);
   const source = latest.source_account ? ` · from ${latest.source_account}` : "";
-  setStatus(`Loaded ${latest.white || "?"} vs ${latest.black || "?"}${source} - press Analyze`);
+  setStatus(`Loaded ${latest.white || "?"} vs ${latest.black || "?"}${source} - analyzing`);
+  await runAnalysis();
 }
 
 // Analyze "History": list previously analyzed games; click to recall a saved
@@ -5919,7 +5945,13 @@ async function runAnalysis(options = {}) {
     return;
   }
   setStatus("Analyzing PGN");
-  hideAnalysisResults();
+  // Keep the game on screen while the engine works: (re)load the source into the move
+  // list instead of hiding it behind the "Play on the board" placeholder. Only a source
+  // that won't parse here (e.g. a multi-game paste) falls back to hiding the old list.
+  appState.analysisSourcePgn = null;
+  hideAnalysisHandoff();
+  const listed = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true }).catch(() => false);
+  if (!listed) hideAnalysisResults();
   const runButton = document.getElementById("run-analysis");
   runButton.disabled = true;
   // Lifecycle origin for the timing marks below (click → stockfish/maia starts).
@@ -5981,6 +6013,9 @@ async function runAnalysis(options = {}) {
       id: jobId,
       title: "Analyzing game",
       tab: "analyze",
+      // Docked in the Analyze panel (above the eval card) rather than floating
+      // bottom-right, where it covered the right half of the eval graph.
+      dock: document.getElementById("analysis-job-dock"),
       total: positions.length,
       onCancel: () => {
         cancelled = true;
@@ -6207,6 +6242,9 @@ async function runAnalysis(options = {}) {
     });
     appState.analysisSourcePgn = pgn;
     revealAnalysisResults();
+    // The source has done its job — fold it away so the report gets the room.
+    const pgnDrawer = document.getElementById("pgn-drawer");
+    if (pgnDrawer) pgnDrawer.open = false;
     await updateAnalysisHandoff();
   } catch (error) {
     if (error && error.cancelled) {
@@ -6796,6 +6834,14 @@ function highlightCurrentMove() {
   updateEvalChartCursor();
 }
 
+// Board label for an off-mainline move. "· variation" only means something when there is
+// a mainline to vary from — the first moves played on an empty board are just the game.
+function analysisVariationLabel(moveNumber, side, san) {
+  const base = `${moveNumber}${side === "black" ? "..." : "."} ${san}`;
+  const hasMainline = !!(appState.analysis && appState.analysis.moves && appState.analysis.moves.length);
+  return hasMainline ? `${base} · variation` : base;
+}
+
 async function selectAnalysisNode(nodeId) {
   const tree = appState.analysisTree;
   const node = tree ? tree.byId.get(nodeId) : null;
@@ -6816,9 +6862,11 @@ async function selectAnalysisNode(nodeId) {
     lastMove: node.uci,
   });
   boards.analysis.setMoveBadge(null, null, "");
-  document.getElementById("analysis-board-label").textContent = `${node.moveNumber}${
-    node.side === "black" ? "..." : "."
-  } ${node.san} · variation`;
+  document.getElementById("analysis-board-label").textContent = analysisVariationLabel(
+    node.moveNumber,
+    node.side,
+    node.san,
+  );
   highlightCurrentMove();
   refreshAnalysisExplain({ fen, lastUci: node.uci, lastSan: node.san, prevFen: node.fenBefore });
   if (engineWidget) engineWidget.onBoardChanged();
@@ -6868,9 +6916,11 @@ async function onAnalysisBoardMove(moveUci, fen) {
       lastMove: moveUci,
     });
     boards.analysis.setMoveBadge(null, null, "");
-    document.getElementById("analysis-board-label").textContent = `${moveNumber}${
-      side === "black" ? "..." : "."
-    } ${payload.move.san} · variation`;
+    document.getElementById("analysis-board-label").textContent = analysisVariationLabel(
+      moveNumber,
+      side,
+      payload.move.san,
+    );
     highlightCurrentMove();
     refreshAnalysisExplain({
       fen: payload.board.fen,
@@ -9693,6 +9743,46 @@ function syncTrainPickerVisibility() {
   syncPlayColorLock();
   paintPlayBookHint();
   syncTrainSessionControls();
+  void refreshTrainSessionPreview().catch(() => {});
+}
+
+// Before Start: say how big the smart session will be ("4 cards this session · 41 new
+// available") — once, in the setup card, from the mixed health summary. Cached briefly
+// so the many syncTrainPickerVisibility() calls don't each refetch.
+const trainPreviewCache = { at: 0, text: "", loading: null };
+function invalidateTrainSessionPreview() {
+  trainPreviewCache.at = 0;
+}
+async function refreshTrainSessionPreview() {
+  const el = document.getElementById("train-session-preview");
+  if (!el) return;
+  const smartIdle = (appState.trainMode || "smart") === "smart" && !(appState.smart && appState.smart.prompt);
+  if (!smartIdle || !appState.signedIn) {
+    el.hidden = true;
+    return;
+  }
+  const paint = (text) => {
+    el.textContent = text;
+    el.hidden = !text;
+  };
+  if (Date.now() - trainPreviewCache.at < 30000) {
+    paint(trainPreviewCache.text);
+    return;
+  }
+  if (!trainPreviewCache.loading) {
+    trainPreviewCache.loading = (async () => {
+      const [mod, payload] = await Promise.all([
+        preloadTrainView(),
+        api(`/api/train/smart/summary?mixed=true&local_date=${encodeURIComponent(localDateString())}`),
+      ]);
+      trainPreviewCache.text = mod.sessionPreviewText(payload && payload.health);
+      trainPreviewCache.at = Date.now();
+    })().finally(() => {
+      trainPreviewCache.loading = null;
+    });
+  }
+  await trainPreviewCache.loading;
+  paint(trainPreviewCache.text);
 }
 
 function trainSessionLive() {
@@ -9756,7 +9846,7 @@ function syncTrainSessionControls() {
 async function resetTrainBoardIdle(label) {
   updateTrainTurnBadge(null);
   const labelEl = document.getElementById("train-board-label");
-  if (labelEl) labelEl.textContent = label || "Press Start to train";
+  if (labelEl) labelEl.textContent = label || "";
   if (!boards.train) return;
   boards.train.setEngineArrow(null);
   try {
@@ -10914,6 +11004,15 @@ function teachWhy(prompt, fallback) {
   return hint.strategy || fallback;
 }
 
+// Teach/reveal explanation: the move's own description (teachWhy) plus the phase
+// coach's note only when that note is specific to the position (model.generic marks
+// the canned phase advice, which is dropped instead of repeated on every card).
+function trainTeachLine(prompt, model) {
+  const parts = [teachWhy(prompt, "")];
+  if (model && model.tip && !model.generic) parts.push(model.tip);
+  return parts.filter(Boolean).join(" ");
+}
+
 function setSmartPanelsHidden() {
   const queue = document.getElementById("train-queue");
   if (queue) queue.hidden = true;
@@ -11080,6 +11179,8 @@ async function startSmartTraining(options = {}) {
     takeHandoff({ key: handoff.key });
   }
   setBlitzBarVisible(appState.smart.blitz);
+  const preview = document.getElementById("train-session-preview");
+  if (preview) preview.hidden = true;
   if (boards.train && payload.color) {
     boards.train.setOrientation(payload.color === "black" ? "black" : "white");
   }
@@ -11245,7 +11346,13 @@ function prefetchTrainCoach(prompt) {
         titleEl &&
         /New move/.test(titleEl.textContent || "");
       if (stillTeaching) {
-        setTrainBanner("teach", `${model.title}: ${prompt.expected_san}`, model.tip);
+        // What THIS move does, plus the human-play note only when it is specific —
+        // never the canned "Develop your pieces..." on every card (UX P1-6).
+        setTrainBanner(
+          "teach",
+          `${model.title}: ${prompt.expected_san}`,
+          trainTeachLine(prompt, model) || "Watch the arrow, then play the move.",
+        );
       } else if (prompt.kind !== "new" && state === "move") {
         // promptTip never names the prepared SAN — model.tip would leak e4
         // (and every other answer) onto the Your-move banner.
@@ -11348,7 +11455,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       }
       // The answer is on screen anyway, so say WHY it's the move — a reveal that
       // teaches sticks better than a bare "it's Nf3".
-      const why = (prompt.phaseCoach && prompt.phaseCoach.tip) || teachWhy(prompt, "");
+      const why = trainTeachLine(prompt, prompt.phaseCoach);
       setTrainBanner(
         "reveal",
         `It's ${prompt.expected_san}`,
@@ -11491,7 +11598,21 @@ async function finishSmartSession() {
     smart.blitz ? "Blitz session complete!" : "Session complete!",
     `${stats.correct || 0} first-try correct - ${stats.mistakes || 0} missed${blitzed}${fixed}`
   );
-  document.getElementById("train-board-label").textContent = "Press Start for a fresh queue";
+  // End on the last card's final position (its last answer, plus the reply when the
+  // line has one) instead of wherever the board happened to be mid-line.
+  const lastCard = smart.queue[smart.queue.length - 1];
+  const lastTarget = lastCard && lastCard.targets && lastCard.targets[lastCard.targets.length - 1];
+  const finalReply = lastTarget && lastTarget.reply && lastTarget.reply.fen_after ? lastTarget.reply : null;
+  const finalFen = finalReply ? finalReply.fen_after : lastTarget && lastTarget.fen_after;
+  if (finalFen) {
+    boards.train.setPosition({
+      fen: finalFen,
+      legalMoves: [],
+      lastMove: finalReply ? finalReply.uci : lastTarget.uci,
+    });
+  }
+  document.getElementById("train-board-label").textContent = finalFen ? "Final position of the last card" : "";
+  invalidateTrainSessionPreview();
   celebrate();
   // End-of-session report: what this session changed, and what lands tomorrow.
   // Flush the graded attempts FIRST so the "after" health actually includes
@@ -13379,8 +13500,9 @@ function bindEvents() {
         setTrainBanner("idle", "Play vs human", "Start, or I'm Feeling Lucky for a key position.");
         void resetTrainBoardIdle("Play vs human");
       } else {
-        setTrainBanner("idle", "Press Start to begin", "");
-        void resetTrainBoardIdle("Press Start to train");
+        // "Press Start" is said once, by the Start button itself (UX P2-10).
+        setTrainBanner("idle", "Ready to train", "");
+        void resetTrainBoardIdle("");
         const progress = document.getElementById("train-progress-panel");
         if (progress) progress.hidden = true;
         const summary = document.getElementById("train-summary");

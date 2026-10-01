@@ -12,6 +12,25 @@ const REPLAY_KINDS = {
 
 const MINI_FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
+// An opponent who leaves the repertoire within the first couple of moves didn't play a
+// "novelty" — they simply chose a different opening. Same bucket (filter, Add reply), but
+// the badge and copy say what actually happened.
+const EARLY_DEPARTURE_PLY = 4;
+
+export function isDifferentOpening(game) {
+  const ply = Number(game && game.departure_ply) || 0;
+  return (
+    !!game &&
+    game.departure_reason === "opponent_unprepared_branch" &&
+    ply > 0 &&
+    ply <= EARLY_DEPARTURE_PLY
+  );
+}
+
+function replayBadge(game, meta) {
+  return isDifferentOpening(game) ? "Different opening" : meta.badge;
+}
+
 function replayGameKind(game) {
   if (game.in_repertoire && game.departure_reason === "game_stayed_in_preparation")
     return "in-prep";
@@ -237,7 +256,14 @@ export function createReplayView({
     } else if (game.departure_reason === "opponent_unprepared_branch") {
       const playedSan = replayDepartureSan(game);
       const played = playedSan ? ` <strong>${escapeHtml(playedSan)}</strong>` : "";
-      lines.push(`Opponent took an unprepared branch on ply ${game.departure_ply}${played}.`);
+      if (isDifferentOpening(game)) {
+        const with_ = playedSan ? ` with <strong>${escapeHtml(playedSan)}</strong>` : "";
+        lines.push(
+          `Opponent chose a different opening on ply ${game.departure_ply}${with_}, before your repertoire got going. Add a reply to cover it.`
+        );
+      } else {
+        lines.push(`Opponent took an unprepared branch on ply ${game.departure_ply}${played}.`);
+      }
     } else if (game.departure_reason === "game_stayed_in_preparation") {
       lines.push("Game stayed entirely within preparation. Nice.");
     } else if (game.departure_reason === "no_repertoire_for_color") {
@@ -262,7 +288,7 @@ export function createReplayView({
     const departure = game.departure_ply ? `Ply ${Number(game.departure_ply)}` : meta.departure || "—";
     return (
       `<button type="button" class="lr${open ? " is-open" : ""}" data-index="${index}" aria-pressed="${open}">` +
-      `<span><i class="kind-badge t-${meta.tone}">${escapeHtml(meta.badge)}</i></span>` +
+      `<span><i class="kind-badge t-${meta.tone}">${escapeHtml(replayBadge(game, meta))}</i></span>` +
       `<span class="players"><span class="pl"><b>${playerName(game, "white")}</b> vs <b>${playerName(game, "black")}</b></span>${source}</span>` +
       `<span class="res ${replayResultClass(game)}">${escapeHtml(game.result || "*")}</span>` +
       `<span class="open-prev">${escapeHtml(preview)}${preview ? "…" : ""}</span>` +
@@ -293,7 +319,7 @@ export function createReplayView({
       `<div class="focus-top${boardHtml ? "" : " no-board"}">${boardHtml}` +
       `<div class="focus-info"><div class="eyebrow">Preparation detail · ${escapeHtml(game.result || "*")}</div>` +
       `<h2>${escapeHtml(game.white || "?")} vs ${escapeHtml(game.black || "?")}</h2>` +
-      `<i class="kind-badge t-${meta.tone}">${escapeHtml(meta.badge)}</i>` +
+      `<i class="kind-badge t-${meta.tone}">${escapeHtml(replayBadge(game, meta))}</i>` +
       `<ul class="reasons">${renderReplayDetail(game)}</ul>` +
       `<div class="actions">${actions.join("")}${lichessLink}</div></div></div>` +
       `<div class="moveline">${renderReplayMoveLine(game)}</div>` +

@@ -127,6 +127,22 @@ export function createAnalyzeView({
     if (match) showAnalysisPly(Number(match.ply));
   }
 
+  // The server's completeness codes ("complete" | "partial-shallow,no-maia" ...) as
+  // human copy — the raw codes ("— no-maia") must never reach the page.
+  const COVERAGE_COPY = {
+    complete: "complete",
+    "partial-shallow": "some positions searched below the target depth",
+    "no-maia": "no human-move model (Maia)",
+  };
+  function coverageCopy(completeness) {
+    const codes = String(completeness || "")
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean);
+    if (!codes.length) return "partial";
+    return codes.map((c) => COVERAGE_COPY[c] || c.replace(/-/g, " ")).join("; ");
+  }
+
   // A-05: one short "what this run covered" line — complete vs partial-shallow
   // vs no-Maia — with the raw metadata tucked into a disclosure. A report must
   // never imply uniform full-depth coverage it did not have.
@@ -143,9 +159,8 @@ export function createAnalyzeView({
     }
     parts.push(quality.maia && quality.maia.available ? "Maia on" : "no Maia");
     const complete = quality.completeness === "complete";
-    const label = complete ? "complete" : String(quality.completeness || "partial").replace(/,/g, " · ");
     const rows = [
-      ["coverage", label],
+      ["coverage", coverageCopy(quality.completeness)],
       ["target depth", quality.target_depth],
       ["actual depth", `${quality.actual_depth_min}–${quality.actual_depth_max} (avg ${quality.actual_depth_avg})`],
       ["shallow positions", quality.shallow_positions],
@@ -159,7 +174,7 @@ export function createAnalyzeView({
       .join("");
     return (
       `<details class="quality-note">` +
-      `<summary>${complete ? "✓" : "△"} Analysis quality: ${escapeHtml(parts.join(" · "))} — ${escapeHtml(label)}</summary>` +
+      `<summary>${complete ? "✓" : "△"} Analysis quality: ${escapeHtml(parts.join(" · "))}</summary>` +
       `<div class="quality-rows">${rows}</div>` +
       `</details>`
     );
