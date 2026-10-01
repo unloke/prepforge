@@ -55,6 +55,7 @@ games = Table(
     Column("created_at", Text, nullable=False),
     Column("updated_at", Text, nullable=False),
     Index("idx_games_owner", "owner_user_id"),
+    Index("idx_games_owner_created", "owner_user_id", "created_at", "id"),
     Index("idx_games_owner_lichess", "owner_user_id", "lichess_id", unique=True),
 )
 
@@ -135,6 +136,8 @@ analysis_results = Table(
     # depth, shallow spots, Maia status, algorithm versions.
     Column("quality_json", Text),
 )
+Index("idx_analysis_results_game_latest", analysis_results.c.game_id,
+      analysis_results.c.analyzed_at.desc(), analysis_results.c.id.desc())
 
 repertoires = Table(
     "repertoires",
