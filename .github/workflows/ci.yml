@@ -113,6 +113,8 @@ jobs:
         run: npm test -- --run
       - name: Build SPA
         run: npm run build
+      - name: Committed production output freshness
+        run: node scripts/check-static-freshness.mjs
       - name: Bundle-size gate
         run: node scripts/check-bundle-size.mjs
       # UI v2 viewport + states smoke (scripts/smoke/ui-v2/run-all.mjs) serves
@@ -173,6 +175,8 @@ jobs:
         env:
           VITE_ENABLE_SCOUT_E2E: "1"
         run: npm run build
+      - name: Menu, popover and command palette browser contracts
+        run: node scripts/review-accessibility-smoke.mjs
       - name: Topbar status geometry (1024 / 1200 / 1440)
         run: |
           npx vite --host 127.0.0.1 > /tmp/prepforge-vite.log 2>&1 &
@@ -181,10 +185,11 @@ jobs:
             sleep 1
           done
           node scripts/topbar-status-geometry.mjs
-      - name: Scout + axe + eval-chart E2E
+      - name: Scout + axe + eval-chart + Train keyboard E2E
         run: >-
           uv run pytest -m e2e
           tests/e2e/test_scout_smoke.py
           tests/e2e/test_axe_baseline.py
           tests/e2e/test_eval_chart_smoke.py
+          tests/e2e/test_train_keyboard_smoke.py
           -q
