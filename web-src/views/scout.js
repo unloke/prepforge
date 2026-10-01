@@ -1278,6 +1278,7 @@ export function createScoutView(deps) {
         const positions = scoutExplorerModule.collectExplorerProbePositions(
           section.trie,
           scoutModule.fenAfterLine,
+          { oppColor },
         );
         const reads = await scoutExplorerModule.fetchExplorerReads({
           fetchStats: scoutExplorerClient.fetchStats.bind(scoutExplorerClient),

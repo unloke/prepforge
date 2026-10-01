@@ -37,86 +37,77 @@ export function isAuthExplorerError(error) {
   return /link your Lichess account/i.test(msg);
 }
 
+// Probe only the positions where the SCOUTED player chooses: with White their
+// first move and (under their main first move) their second move; with Black
+// their reply to each of the first moves they usually face. Shares are plain game
+// counts, the same numbers the first-move bars show — the trie's `count` is
+// recency-weighted, and using it here printed "1.e4 87%" beside a "48%" bar.
 export function collectExplorerProbePositions(
   root,
   fenAfterLine,
   {
+    oppColor = "white",
     maxFirstMoves = EXPLORER_PROBE_MAX_FIRST_MOVES,
     maxReplies = EXPLORER_PROBE_MAX_REPLIES,
   } = {},
 ) {
   if (!root?.children?.size) return [];
-  const startFen = fenAfterLine([]);
-  const total = root.count || 1;
   const positions = [];
-
-  const firstMoves = [...root.children.entries()]
-    .map(([key, child]) => {
-      const [uci, san] = key.split("|");
-      return {
-        uci,
-        san,
-        child,
-        share: child.count / total,
-        games: child.gameCount,
-        scorePct: nodeScorePct(child),
-      };
-    })
-    .sort((a, b) => b.games - a.games)
-    .slice(0, maxFirstMoves);
-
-  for (const move of firstMoves) {
-    positions.push({
-      fen: startFen,
-      parentUcis: [],
-      moveUci: move.uci,
-      moveSan: move.san,
-      opponentShare: move.share,
-      opponentGames: move.games,
-      opponentScorePct: move.scorePct,
-      ply: 1,
-    });
-  }
-
-  const topFirst = firstMoves[0];
-  if (topFirst?.child?.children?.size) {
-    const parentUcis = [topFirst.uci];
-    const fen = fenAfterLine(parentUcis);
-    const replyTotal = topFirst.child.count || 1;
-    const replies = [...topFirst.child.children.entries()]
+  const childrenOf = (node) =>
+    [...node.children.entries()]
       .map(([key, child]) => {
         const [uci, san] = key.split("|");
-        return {
-          uci,
-          san,
-          share: child.count / replyTotal,
-          games: child.gameCount,
-          scorePct: nodeScorePct(child),
-        };
+        return { uci, san, child, games: child.gameCount || 0, scorePct: nodeScorePct(child) };
       })
-      .sort((a, b) => b.games - a.games)
-      .slice(0, maxReplies);
-
-    for (const reply of replies) {
+      .sort((a, b) => b.games - a.games);
+  const probeAt = (node, parentUcis, parentSans, limit) => {
+    const total = node.gameCount || 0;
+    if (!total || !node.children?.size) return [];
+    const fen = fenAfterLine(parentUcis);
+    const moves = childrenOf(node).slice(0, limit);
+    for (const move of moves) {
       positions.push({
         fen,
         parentUcis,
-        moveUci: reply.uci,
-        moveSan: reply.san,
-        opponentShare: reply.share,
-        opponentGames: reply.games,
-        opponentScorePct: reply.scorePct,
-        ply: 2,
+        parentSans,
+        moveUci: move.uci,
+        moveSan: move.san,
+        opponentShare: move.games / total,
+        opponentGames: move.games,
+        opponentScorePct: move.scorePct,
+        ply: parentUcis.length + 1,
       });
     }
+    return moves;
+  };
+
+  if (oppColor === "black") {
+    // Their replies to the (up to two) first moves they face most.
+    const faced = childrenOf(root).slice(0, 2);
+    for (const first of faced) {
+      probeAt(first.child, [first.uci], [first.san], maxFirstMoves);
+    }
+    return positions;
   }
 
+  const firstMoves = probeAt(root, [], [], maxFirstMoves);
+  const topFirst = firstMoves[0];
+  if (topFirst?.child?.children?.size) {
+    // Their second move, after the reply they meet most under their main first move.
+    const reply = childrenOf(topFirst.child)[0];
+    if (reply?.child?.children?.size) {
+      probeAt(reply.child, [topFirst.uci, reply.uci], [topFirst.san, reply.san], maxReplies);
+    }
+  }
   return positions;
 }
 
+// "1.e4", "1…c5", "2.Nf3", "2…d6" — the move with its number, so a chip reads
+// on its own ("Theory: 1…c5 62% vs 35% book").
 function lineLabel(parentUcis, moveSan) {
-  if (!parentUcis?.length) return `1.${moveSan}`;
-  return `…${moveSan}`;
+  const ply = (parentUcis?.length || 0) + 1;
+  const moveNo = Math.ceil(ply / 2);
+  return ply % 2 === 1 ? `${moveNo}.${moveSan}` : `${moveNo}…${moveSan}`;
 }
 
 function analyzeProbe(position, mastersStats) {

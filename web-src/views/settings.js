@@ -181,19 +181,25 @@ export function createSettingsView({
     const list = document.getElementById("settings-lichess-accounts");
     if (!list) return;
     const accounts = connectionAccounts();
+    const linkBtn = document.getElementById("settings-link-lichess");
+    if (linkBtn) linkBtn.textContent = accounts.length ? "Link another Lichess account" : "Link a Lichess account";
     if (!accounts.length) {
-      list.innerHTML = '<p class="muted hint">No Lichess account linked.</p>';
+      list.innerHTML =
+        '<p class="muted hint">No Lichess account linked yet. Link one to import your games and see yourself in Games and Scout.</p>';
       return;
     }
+    const esc = (value) =>
+      String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
     list.innerHTML = accounts
       .map(
         (account) =>
-          `<div class="conn-row" data-account-id="${account.id}">` +
-          `<span class="conn-name">${account.username}` +
+          `<div class="conn-row" data-account-id="${esc(account.id)}">` +
+          `<span class="conn-name"><span class="conn-site">Lichess</span>` +
+          `<a class="conn-user" href="https://lichess.org/@/${encodeURIComponent(account.username)}" target="_blank" rel="noopener">${esc(account.username)}</a>` +
           (account.is_primary ? ' <span class="conn-primary">Primary</span>' : "") +
           `</span>` +
           `<span class="conn-actions">` +
-          `<button type="button" class="conn-menu-btn" data-conn-action="menu" aria-label="Account actions for ${account.username}" aria-haspopup="menu" aria-expanded="false">⋯</button>` +
+          `<button type="button" class="conn-menu-btn" data-conn-action="menu" aria-label="Account actions for ${esc(account.username)}" aria-haspopup="menu" aria-expanded="false">⋯</button>` +
           `<span class="conn-menu" role="menu" hidden>` +
           (account.is_primary
             ? ""

@@ -122,7 +122,7 @@ async function runViewport(vp) {
 
   // Section nav (prototype 180px column): all prototype sections present, first active.
   const navLabels = await page.locator(".settings-nav .settings-nav-link").allTextContents();
-  for (const expected of ["Account", "Appearance", "Engine", "Maia3", "Playing strength", "Board", "Connections", "About"]) {
+  for (const expected of ["Account", "Appearance", "Engine", "Maia3", "Playing strength", "Board", "About"]) {
     check(navLabels.some((l) => l.trim() === expected), `section nav should list "${expected}", got [${navLabels.map((l) => l.trim()).join(", ")}]`);
   }
   const firstActive = await page.locator('.settings-nav .settings-nav-link.is-active').textContent().catch(() => "");
@@ -168,10 +168,15 @@ async function runViewport(vp) {
   // the nav must stay operable. The active marker follows the visible section
   // (scrollspy) — we don't assert the animation path or that the marker equals
   // the clicked label at every instant.
-  await page.locator('.settings-nav .settings-nav-link', { hasText: "Connections" }).click();
+  // (Connections merged into the Account card — "Chess accounts" is a block
+  // inside it now, navigated via its own deep link, see states-smoke.)
+  await page.locator('.settings-nav .settings-nav-link', { hasText: "Board" }).click();
   await page.waitForTimeout(900); // smooth-scroll settles
-  const connectionsActive = await page.locator('.settings-nav .settings-nav-link.is-active').textContent().catch(() => "");
-  check(/Connections/.test(connectionsActive || "") || /Board|About/.test(connectionsActive || ""), `nav should remain operable with a sane active section, got "${connectionsActive}"`);
+  const boardActive = await page.locator('.settings-nav .settings-nav-link.is-active').textContent().catch(() => "");
+  check(/Board|About|Playing strength/.test(boardActive || ""), `nav should remain operable with a sane active section, got "${boardActive}"`);
+  // Jump back to Account: the Chess accounts block must come on screen.
+  await page.locator('.settings-nav .settings-nav-link', { hasText: "Account" }).click();
+  await page.waitForTimeout(900);
   await shot("connections");
   // True viewport intersection: after the nav click the target card must be on
   // screen (top above the fold line, bottom below the top edge). The card fully

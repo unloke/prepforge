@@ -220,37 +220,114 @@
 }
 
 /* ---- Account ----------------------------------------------------------- */
+/* Identity header, then "Chess accounts" and "Your data" as blocks inside the
+   same card, then a folded danger zone. */
 
-.acct-value {
-  display: inline-flex;
+.acct-id {
+  display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  min-width: 0;
-  text-align: right;
-  overflow-wrap: anywhere;
+  gap: 14px;
+  padding: 6px 0 14px;
+  border-bottom: 1px solid var(--line);
 }
+.acct-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 20px;
+  font-weight: 700;
+}
+.acct-id-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.acct-id-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.acct-id-name b {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.acct-id-name b.is-placeholder { color: var(--muted); font-weight: 600; }
+.acct-edit { padding-inline: 6px; color: var(--muted); }
+.acct-id-email {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--fs-s);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.acct-id-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+.acct-tag {
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+}
+.acct-signout { flex: none; align-self: flex-start; margin-top: 4px; }
+.acct-row-text { display: grid; gap: 1px; min-width: 0; }
+.acct-row-note { color: var(--muted); font-size: var(--fs-xs); }
+.acct-row > .btn { flex: none; white-space: nowrap; }
+.acct-block { margin-top: 14px; }
+.acct-block:empty { display: none; }
+#settings-account-data { padding-top: 10px; border-top: 1px solid var(--line); }
+.acct-block-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 4px;
+  font-size: 13px;
+}
+.acct-block .pf-info-pop { margin: 0 0 6px; }
+.acct-block > .btn { margin-top: 8px; }
+.acct-guest p { margin: 2px 0 8px; }
 .acct-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   padding: 4px 0 2px;
 }
+.conn-site {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.conn-user { color: var(--text); text-decoration: none; }
+.conn-user:hover { text-decoration: underline; }
+.acct-danger-zone { margin-top: 14px; }
+.acct-danger-zone > summary {
+  width: max-content;
+  color: var(--muted);
+  font-size: var(--fs-s);
+  cursor: pointer;
+}
+.acct-danger-zone > summary:hover { color: var(--danger-strong); }
+.acct-danger-zone[open] > summary { color: var(--danger-strong); }
 .acct-danger {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 14px;
+  margin-top: 8px;
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--line));
   border-radius: var(--radius);
 }
-.acct-danger p { margin: 2px 0 0; }
-.acct-danger .btn,
-.acct-value .btn { white-space: nowrap; flex: none; }
+.acct-danger p { margin: 0; }
+.acct-danger .btn { white-space: nowrap; flex: none; }
 @media (max-width: 560px) {
+  .acct-id { flex-wrap: wrap; }
+  .acct-signout { margin-left: 62px; }
   .acct-row { flex-wrap: wrap; }
-  .acct-value { justify-content: flex-start; text-align: left; }
   .acct-danger { flex-direction: column; align-items: flex-start; }
 }

@@ -791,7 +791,7 @@ export function createDashboardView({
       } else if (action === "analyze" && goToView) goToView("analyze");
       else if (action === "train" && goToSmartTraining) goToSmartTraining("Starting training…");
       else if (action === "lichess") {
-        // Linking lives in Settings → Connections; the app opens Settings via
+        // Linking lives in Settings → Account (Chess accounts); the app opens Settings via
         // its tab and jumps to the section once the view has rendered.
         if (openSettingsSection) openSettingsSection("set-connections").catch(() => {});
         else if (goToView) goToView("settings");

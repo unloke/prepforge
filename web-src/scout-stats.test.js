@@ -11,6 +11,8 @@ import {
   buildScoutStats,
   COLOR_COMPARE_MIN_GAMES,
   colorRecommendation,
+  firstChoices,
+  openingBranches,
   confidence,
   FRESHNESS_MIN_RECENT,
   formTrend,
@@ -461,10 +463,11 @@ describe("repertoireFreshness", () => {
     const games = [
       game({ san: "d4", uci: "d2d4", datestamp: 3000, gameId: "r1" }),
       game({ san: "d4", uci: "d2d4", datestamp: 2900, gameId: "r2" }),
+      game({ san: "d4", uci: "d2d4", datestamp: 2800, gameId: "r3" }),
       game({ san: "e4", uci: "e2e4", datestamp: 1000, gameId: "p1" }),
       game({ san: "e4", uci: "e2e4", datestamp: 900, gameId: "p2" }),
     ];
-    const out = repertoireFreshness(games, "white", { minRecent: FRESHNESS_MIN_RECENT, recentWindow: 2, previousWindow: 2 });
+    const out = repertoireFreshness(games, "white", { minRecent: FRESHNESS_MIN_RECENT, recentWindow: 3, previousWindow: 2 });
     expect(out.freshFamilies).toHaveLength(1);
     expect(out.freshFamilies[0].san).toBe("d4");
     expect(out.freshFamilies[0].previousGames).toBe(0);
@@ -482,17 +485,113 @@ describe("repertoireFreshness", () => {
     expect(out.freshFamilies.some((f) => f.san === "e4")).toBe(false);
   });
 
-  it("filters by White/Black", () => {
+  it("filters by White/Black and reads Black's first decision as their reply", () => {
     const games = [
       game({ color: "white", san: "d4", uci: "d2d4", datestamp: 2000, gameId: "w1" }),
       game({ color: "white", san: "d4", uci: "d2d4", datestamp: 1900, gameId: "w2" }),
-      game({ color: "black", san: "e4", uci: "e2e4", datestamp: 1000, gameId: "b1" }),
+      game({ color: "white", san: "e4", uci: "e2e4", datestamp: 100, gameId: "w0" }),
+      game({ color: "black", sans: ["e4", "c5"], ucis: ["e2e4", "c7c5"], datestamp: 1000, gameId: "b1" }),
+      game({ color: "black", sans: ["e4", "e5"], ucis: ["e2e4", "e7e5"], datestamp: 500, gameId: "b0" }),
     ];
     const white = repertoireFreshness(games, "white", { minRecent: 2, recentWindow: 2, previousWindow: 2 });
     const black = repertoireFreshness(games, "black", { minRecent: 1, recentWindow: 1, previousWindow: 1 });
     expect(white.freshFamilies).toHaveLength(1);
     expect(black.freshFamilies).toHaveLength(1);
-    expect(black.freshFamilies[0].san).toBe("e4");
+    expect(black.freshFamilies[0].san).toBe("c5");
+    expect(black.freshFamilies[0].label).toBe("1. e4 c5");
+  });
+
+  it("never calls anything new without older games to compare against", () => {
+    const games = Array.from({ length: 6 }, (_, i) =>
+      game({ san: "d4", uci: "d2d4", datestamp: 2000 - i, gameId: `n${i}` }),
+    );
+    expect(repertoireFreshness(games, "white").freshFamilies).toEqual([]);
+  });
+
+  it("scales its windows so a couple of games in a big history is not 'new'", () => {
+    // 300 older 1.e4 games, then the newest 60 hold two 1.b3 games.
+    const older = Array.from({ length: 300 }, (_, i) =>
+      game({ san: "e4", uci: "e2e4", datestamp: 1000 - i, gameId: `o${i}` }),
+    );
+    const recent = Array.from({ length: 60 }, (_, i) =>
+      i < 2
+        ? game({ san: "b3", uci: "b2b3", datestamp: 5000 - i, gameId: `r${i}` })
+        : game({ san: "e4", uci: "e2e4", datestamp: 5000 - i, gameId: `r${i}` }),
+    );
+    expect(repertoireFreshness([...recent, ...older], "white").freshFamilies).toEqual([]);
+    const switched = Array.from({ length: 60 }, (_, i) =>
+      i < 20
+        ? game({ san: "b3", uci: "b2b3", datestamp: 5000 - i, gameId: `r${i}` })
+        : game({ san: "e4", uci: "e2e4", datestamp: 5000 - i, gameId: `r${i}` }),
+    );
+    const out = repertoireFreshness([...switched, ...older], "white");
+    expect(out.freshFamilies.map((f) => f.san)).toEqual(["b3"]);
+  });
+});
+
+describe("colorRecommendation significance", () => {
+  const sample = (color, n, scorePct, prefix) =>
+    Array.from({ length: n }, (_, i) =>
+      game({ color, score: i < Math.round((n * scorePct) / 100) ? 1 : 0, gameId: `${prefix}${i}` }),
+    );
+
+  it("does not pick a colour on a 49% vs 44% split — that's noise", () => {
+    const rec = colorRecommendation([...sample("white", 300, 49, "w"), ...sample("black", 300, 44, "b")]);
+    expect(rec.pick).toBeNull();
+    expect(rec.whiteScore).toBe(49);
+    expect(rec.blackScore).toBe(44);
+  });
+
+  it("picks when the gap is well beyond chance", () => {
+    const rec = colorRecommendation([...sample("white", 300, 60, "w"), ...sample("black", 300, 40, "b")]);
+    expect(rec.pick).toBe("white");
+    expect(rec.theirWeakColor).toBe("black");
+  });
+});
+
+describe("openingBranches", () => {
+  const g = (ucis, sans, score, i) => game({ ucis, sans, score, gameId: `x${i}`, datestamp: 1000 + i });
+
+  it("finds a well-sampled prefix where they score clearly below their usual", () => {
+    const games = [];
+    // 60 games of 1.e4 e5 where they score 80%; 40 games of 1.e4 c5 where they score 20%.
+    for (let i = 0; i < 60; i += 1) games.push(g(["e2e4", "e7e5", "g1f3"], ["e4", "e5", "Nf3"], i < 48 ? 1 : 0, i));
+    for (let i = 0; i < 40; i += 1) games.push(g(["e2e4", "c7c5", "g1f3"], ["e4", "c5", "Nf3"], i < 8 ? 1 : 0, 100 + i));
+    const out = openingBranches(games, "white");
+    expect(out.baselinePct).toBe(56);
+    expect(out.weak[0].sans.slice(0, 2)).toEqual(["e4", "c5"]);
+    expect(out.weak[0].games).toBe(40);
+    expect(out.weak).toHaveLength(1); // 1.e4 c5 2.Nf3 is the same story, not a second target
+    expect(out.strong[0].sans.slice(0, 2)).toEqual(["e4", "e5"]);
+    expect(out.mainPath.sans).toEqual(["e4", "e5", "Nf3"]);
+  });
+
+  it("reports nothing when every branch scores like their average", () => {
+    const games = [];
+    for (let i = 0; i < 50; i += 1) games.push(g(["e2e4", "e7e5"], ["e4", "e5"], i % 2, i));
+    for (let i = 0; i < 50; i += 1) games.push(g(["d2d4", "d7d5"], ["d4", "d5"], i % 2, 100 + i));
+    const out = openingBranches(games, "white");
+    expect(out.weak).toEqual([]);
+    expect(out.strong).toEqual([]);
+  });
+});
+
+describe("firstChoices", () => {
+  it("groups Black's replies by the first move they face", () => {
+    const games = [
+      ...Array.from({ length: 6 }, (_, i) =>
+        game({ color: "black", sans: ["e4", "c5"], ucis: ["e2e4", "c7c5"], gameId: `s${i}` }),
+      ),
+      ...Array.from({ length: 2 }, (_, i) =>
+        game({ color: "black", sans: ["e4", "e6"], ucis: ["e2e4", "e7e6"], gameId: `f${i}` }),
+      ),
+      ...Array.from({ length: 4 }, (_, i) =>
+        game({ color: "black", sans: ["d4", "Nf6"], ucis: ["d2d4", "g8f6"], gameId: `d${i}` }),
+      ),
+    ];
+    const out = firstChoices(games, "black");
+    expect(out.groups.map((grp) => grp.against.san)).toEqual(["e4", "d4"]);
+    expect(out.groups[0].replies[0]).toMatchObject({ san: "c5", games: 6 });
   });
 });
 

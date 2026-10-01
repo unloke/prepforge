@@ -2514,7 +2514,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .rep-color-sub { color: var(--label); font-size: var(--fs-s); }
 .rep-menu-btn { margin-left: auto; flex: none; opacity: 1; }
 .build-empty { flex: 1; justify-content: center; }
-.panel:has(> .build-empty:not([hidden])) > :is(.tree-meta, .forkbar, .tree-wrap, .dock) { display: none; }
+.panel:has(> .build-empty:not([hidden])) > :is(.tree-meta, .forkbar, .tree-wrap, .dock-resizer, .dock) { display: none; }
 
 .tree-meta {
   display: flex;
@@ -2649,6 +2649,55 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .dock-tabs button.is-active { color: var(--text); border-bottom-color: var(--accent); }
 .dock-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .dock-body { flex: 1; min-height: 0; padding: 8px 12px; overflow: auto; }
+/* Drag handle between the move tree and the inspector: the whole seam is the
+   grab area, the visible grip is a short pill in the middle. */
+.dock-resizer {
+  position: relative;
+  flex: none;
+  height: 0;
+  z-index: 2;
+}
+.dock-resizer::before {
+  content: "";
+  position: absolute;
+  inset: -5px 0 -4px;
+  cursor: row-resize;
+  touch-action: none;
+}
+.dock-resizer::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  margin-left: -18px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  opacity: 0;
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+.dock-resizer:hover::after,
+.dock-resizer:focus-visible::after,
+.dock-resizer.is-dragging::after { opacity: 1; background: var(--accent); }
+.dock-resizer:focus-visible { outline: none; }
+.dock-resizer[hidden] { display: none; }
+body.is-resizing-dock { cursor: row-resize; user-select: none; }
+.dock-tabs .dock-fold {
+  margin-left: auto;
+  padding: 6px 8px;
+  border-bottom-color: transparent;
+  color: var(--label);
+  line-height: 1;
+}
+.dock-tabs .dock-fold:hover { color: var(--text); }
+.dock-fold span { display: inline-block; transition: transform 140ms ease; }
+.dock.is-folded { flex: none !important; }
+.dock.is-folded > .dock-body { display: none; }
+.dock.is-folded .dock-tabs { border-bottom: 0; }
+.dock.is-folded .dock-tabs button.is-active { border-bottom-color: transparent; }
+.dock.is-folded .dock-fold span { transform: rotate(180deg); }
 .dock-tools {
   position: relative;
   display: flex;
@@ -2702,7 +2751,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 @media (max-width: 1020px) {
   #view-build .sidebar { max-height: none; overflow: hidden; }
   .tree-wrap { max-height: 60vh; }
-  .dock { flex: none; }
+  .dock { flex: none !important; }
+  .dock-resizer { display: none; }
 }
 @media (max-width: 760px) {
   .tree-meta .legend { display: none; }
@@ -3391,6 +3441,10 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .explorer-rows.is-stale .explorer-row {
   cursor: progress;
   opacity: 0.55;
+  /* Dim only if the next position's stats take a moment: a cached answer lands
+     before the delay, so stepping through a line doesn't flash. Leaving the
+     stale state uses the row's own (no) transition, so fresh rows are instant. */
+  transition: opacity 120ms ease 180ms;
 }
 
 .explorer-rows.is-stale .explorer-row:hover {

@@ -1,7 +1,7 @@
 // Scout v2 — pure PGN-derived statistics (no engine, no explorer).
 // Games are newest-first from Lichess export; chronological helpers reverse for trends.
 
-import { SLIP_MIN_GAMES, wilsonScorePct } from "./scout.js";
+import { SLIP_MIN_GAMES, scoutLineText, wilsonScorePct } from "./scout.js";
 
 const MS_PER_DAY = 86_400_000;
 
@@ -9,9 +9,30 @@ export const COLOR_COMPARE_MIN_GAMES = 3;
 export const ACTIVITY_RECENT_BUCKETS = 3;
 export const PET_LINE_DEPTH = 4;
 export const BREADTH_MIN_GAMES = 3;
+// Freshness compares their newest games with everything older. The windows
+// scale with the sample (a fixed 20-vs-20 split flagged two-game coincidences
+// as "new" in a 600-game history): recent = ~20% of the games, clamped.
 export const FRESHNESS_RECENT_WINDOW = 20;
+export const FRESHNESS_RECENT_MAX = 80;
+export const FRESHNESS_RECENT_SHARE = 0.2;
 export const FRESHNESS_PREVIOUS_WINDOW = 20;
-export const FRESHNESS_MIN_RECENT = 2;
+export const FRESHNESS_PREVIOUS_MAX = 320;
+export const FRESHNESS_MIN_RECENT = 3;
+export const FRESHNESS_MIN_RECENT_SHARE = 0.1;
+export const FRESHNESS_LINE_MIN_RECENT_SHARE = 0.08;
+// "New" means (almost) absent before: at most this share of the older games.
+export const FRESHNESS_MAX_PREVIOUS_SHARE = 0.02;
+// Opening branches: a prefix of up to BRANCH_MAX_PLIES plies seen in enough
+// games to say something. Deep full-game lines are nearly always unique (n=1),
+// so "does a line repeat" is asked about opening prefixes, never whole games.
+export const BRANCH_MAX_PLIES = 8;
+export const BRANCH_MIN_GAMES = 8;
+export const BRANCH_MIN_SHARE = 0.03;
+export const BRANCH_MIN_GAP_PCT = 6;
+export const BRANCH_Z = 1.96;
+export const MAIN_PATH_MIN_SHARE = 0.1;
+export const MAIN_PATH_MIN_GAMES = 5;
+export const COLOR_MIN_GAP_PCT = 4;
 export const SYSTEM_TAG_MIN_GAMES = 3;
 export const SYSTEM_TAG_MIN_SHARE = 0.3;
 export const STRONGER_DEFAULT_THRESHOLD = 100;
@@ -328,6 +349,22 @@ function insufficientColorComparison(wN, bN) {
   };
 }
 
+// Per-game score variance (wins 1, draws ½, losses 0).
+function scoreVariance(games) {
+  if (!games.length) return 0;
+  let sum = 0;
+  let sq = 0;
+  for (const g of games) {
+    sum += g.score;
+    sq += g.score * g.score;
+  }
+  const mean = sum / games.length;
+  return Math.max(0, sq / games.length - mean * mean);
+}
+
+// A colour is only "better for you" when the gap is both practically visible
+// and larger than chance: two-sample z on the per-game scores. A 49% vs 44% split
+// over ~300 games each is noise, not a reason to pick a side.
 export function colorRecommendation(games) {
   const white = filterGames(games, { color: "white" });
   const black = filterGames(games, { color: "black" });
@@ -341,8 +378,12 @@ export function colorRecommendation(games) {
 
   const wScore = scorePct(white);
   const bScore = scorePct(black);
+  const se = Math.sqrt(scoreVariance(white) / wN + scoreVariance(black) / bN) * 100;
+  const gap = Math.abs(wScore - bScore);
+  // All-win vs all-loss samples have zero variance; any visible gap is real then.
+  const significant = gap >= COLOR_MIN_GAP_PCT && (se === 0 || gap >= BRANCH_Z * se);
 
-  if (wScore < bScore - 3) {
+  if (significant && wScore < bScore) {
     return {
       pick: "black",
       theirWeakColor: "white",
@@ -351,7 +392,7 @@ export function colorRecommendation(games) {
       confidence: confidence(Math.min(wN, bN)),
     };
   }
-  if (bScore < wScore - 3) {
+  if (significant && bScore < wScore) {
     return {
       pick: "white",
       theirWeakColor: "black",
@@ -365,7 +406,202 @@ export function colorRecommendation(games) {
     theirWeakColor: null,
     weakScore: Math.min(wScore, bScore),
     otherScore: Math.max(wScore, bScore),
+    whiteScore: wScore,
+    blackScore: bScore,
+    whiteGames: wN,
+    blackGames: bN,
     confidence: confidence(Math.min(wN, bN)),
+  };
+}
+
+// ---- The scouted player's own decisions ------------------------------------
+// With Black, every game "starts" with the other player's first move, which says
+// nothing about the person being scouted. Their first real choice is the reply.
+export function decisionOf(game, color = game?.color) {
+  const plies = color === "black" ? 2 : 1;
+  if (!game || (game.ucis?.length || 0) < plies) return null;
+  const ucis = game.ucis.slice(0, plies);
+  const sans = (game.sans || []).slice(0, plies);
+  return { key: ucis.join(">"), ucis, sans, label: scoutLineText(sans) };
+}
+
+function tallyScores(list) {
+  let w = 0;
+  let d = 0;
+  let l = 0;
+  let sum = 0;
+  for (const g of list) {
+    if (g.score === 1) w += 1;
+    else if (g.score === 0.5) d += 1;
+    else l += 1;
+    sum += g.score;
+  }
+  return { w, d, l, scorePct: list.length ? Math.round((sum / list.length) * 100) : 0 };
+}
+
+// What to expect on move one. White: their first-move mix. Black: for each of
+// the (up to two) first moves they usually face, the replies they choose.
+export function firstChoices(games, color, { speedFilter = "all", minFacedShare = 0.1 } = {}) {
+  const filtered = filterGames(games, { color, speedFilter }).filter(
+    (g) => (g.ucis?.length || 0) >= (color === "black" ? 2 : 1),
+  );
+  const total = filtered.length;
+  const distribution = (list) => {
+    const byMove = new Map();
+    for (const g of list) {
+      const i = color === "black" ? 1 : 0;
+      const key = g.ucis[i];
+      if (!byMove.has(key)) byMove.set(key, { uci: key, san: g.sans[i], list: [] });
+      byMove.get(key).list.push(g);
+    }
+    return [...byMove.values()]
+      .map((m) => ({
+        uci: m.uci,
+        san: m.san,
+        games: m.list.length,
+        share: m.list.length / (list.length || 1),
+        ...tallyScores(m.list),
+      }))
+      .sort((a, b) => b.games - a.games);
+  };
+  if (!total) return { color, games: 0, groups: [], confidence: confidence(0) };
+  if (color !== "black") {
+    return {
+      color,
+      games: total,
+      groups: [{ against: null, games: total, replies: distribution(filtered) }],
+      confidence: confidence(total),
+    };
+  }
+  const byFirst = new Map();
+  for (const g of filtered) {
+    if (!byFirst.has(g.ucis[0])) byFirst.set(g.ucis[0], { uci: g.ucis[0], san: g.sans[0], list: [] });
+    byFirst.get(g.ucis[0]).list.push(g);
+  }
+  const groups = [...byFirst.values()]
+    .sort((a, b) => b.list.length - a.list.length)
+    .filter((f, i) => i === 0 || f.list.length / total >= minFacedShare)
+    .slice(0, 2)
+    .map((f) => ({
+      against: { uci: f.uci, san: f.san, share: f.list.length / total },
+      games: f.list.length,
+      replies: distribution(f.list),
+    }));
+  return { color, games: total, groups, confidence: confidence(total) };
+}
+
+// Opening branches: every prefix (1..maxPlies plies) of their games that enough
+// games share, scored against their overall result for this colour.
+//   weak   — they score clearly below their usual here (steer into these)
+//   strong — they score clearly above it (have an answer ready)
+//   mainPath — the most-travelled path, followed while it still holds a real
+//              share of their games (how far ahead you can predict them)
+// "Clearly" = the gap is at least BRANCH_MIN_GAP_PCT points AND z ≥ BRANCH_Z,
+// with a finite-population correction (a branch holding most of their games
+// can't differ much from their average, and shouldn't be reported as if it did).
+export function openingBranches(
+  games,
+  color,
+  { speedFilter = "all", maxPlies = BRANCH_MAX_PLIES, minGames = null } = {},
+) {
+  const filtered = filterGames(games, { color, speedFilter }).filter((g) => g.ucis?.length);
+  const total = filtered.length;
+  const empty = {
+    games: total,
+    baselinePct: 0,
+    minGames: minGames ?? BRANCH_MIN_GAMES,
+    weak: [],
+    strong: [],
+    mainPath: null,
+    confidence: confidence(total),
+  };
+  if (!total) return empty;
+  const base = filtered.reduce((s, g) => s + g.score, 0) / total;
+  const variance = scoreVariance(filtered);
+  const floor = minGames ?? Math.max(BRANCH_MIN_GAMES, Math.ceil(total * BRANCH_MIN_SHARE));
+  const nodes = new Map();
+  for (const g of filtered) {
+    const depth = Math.min(maxPlies, g.ucis.length);
+    let key = "";
+    for (let i = 0; i < depth; i += 1) {
+      const parent = key;
+      key = key ? `${key}>${g.ucis[i]}` : g.ucis[i];
+      let node = nodes.get(key);
+      if (!node) {
+        node = { key, parent, ucis: g.ucis.slice(0, i + 1), sans: g.sans.slice(0, i + 1), list: [] };
+        nodes.set(key, node);
+      }
+      node.list.push(g);
+    }
+  }
+  const describe = (node) => {
+    const n = node.list.length;
+    const t = tallyScores(node.list);
+    const mean = node.list.reduce((s, g) => s + g.score, 0) / n;
+    const fpc = total > 1 ? Math.max(0, (total - n) / (total - 1)) : 0;
+    const se = Math.sqrt((variance / n) * fpc);
+    const z = se > 0 ? (mean - base) / se : 0;
+    return {
+      ucis: node.ucis,
+      sans: node.sans,
+      label: scoutLineText(node.sans),
+      plies: node.ucis.length,
+      games: n,
+      share: n / total,
+      ...t,
+      gapPct: Math.round((mean - base) * 100),
+      z: Math.round(z * 100) / 100,
+    };
+  };
+  const sampled = [...nodes.values()].filter((n) => n.list.length >= floor).map(describe);
+  const byEvidence = (a, b) => Math.abs(b.z) - Math.abs(a.z) || a.plies - b.plies;
+  // Keep one branch per family of prefixes: once a line is reported, its longer
+  // continuations (same story, fewer games) and its prefixes are dropped.
+  const pickDistinct = (list) => {
+    const out = [];
+    for (const b of list.sort(byEvidence)) {
+      const key = b.ucis.join(">");
+      const related = out.some((o) => {
+        const k = o.ucis.join(">");
+        return key.startsWith(`${k}>`) || k.startsWith(`${key}>`);
+      });
+      if (!related) out.push(b);
+      if (out.length >= 3) break;
+    }
+    return out;
+  };
+  const weak = pickDistinct(
+    sampled.filter((b) => b.gapPct <= -BRANCH_MIN_GAP_PCT && b.z <= -BRANCH_Z),
+  );
+  const strong = pickDistinct(
+    sampled.filter((b) => b.gapPct >= BRANCH_MIN_GAP_PCT && b.z >= BRANCH_Z),
+  );
+
+  const children = new Map();
+  for (const node of nodes.values()) {
+    if (!children.has(node.parent)) children.set(node.parent, []);
+    children.get(node.parent).push(node);
+  }
+  const pathFloor = Math.max(MAIN_PATH_MIN_GAMES, Math.ceil(total * MAIN_PATH_MIN_SHARE));
+  let cursor = "";
+  let mainNode = null;
+  for (;;) {
+    const kids = children.get(cursor) || [];
+    let best = null;
+    for (const k of kids) if (!best || k.list.length > best.list.length) best = k;
+    if (!best || best.list.length < pathFloor) break;
+    mainNode = best;
+    cursor = best.key;
+  }
+
+  return {
+    games: total,
+    baselinePct: Math.round(base * 100),
+    minGames: floor,
+    weak,
+    strong,
+    mainPath: mainNode ? describe(mainNode) : null,
+    confidence: confidence(total),
   };
 }
 
@@ -505,26 +741,55 @@ export function repertoireBreadth(games, color, { speedFilter = "all", minGames 
   };
 }
 
-// First-move families that show up in the recent window but not the previous one.
+// Adaptive windows: newest ~20% of the games (20..80) against up to four times
+// as many older ones.
+export function freshnessWindows(total) {
+  const recentWindow = Math.min(
+    FRESHNESS_RECENT_MAX,
+    Math.max(FRESHNESS_RECENT_WINDOW, Math.round(total * FRESHNESS_RECENT_SHARE)),
+  );
+  const previousWindow = Math.min(
+    FRESHNESS_PREVIOUS_MAX,
+    Math.max(FRESHNESS_PREVIOUS_WINDOW, recentWindow * 4),
+  );
+  return { recentWindow, previousWindow };
+}
+
+// Openings that show up in their recent games but (almost) never before: their
+// first decision (see decisionOf) and 4-ply lines. "New" needs a real older
+// sample to be new against — with no older games nothing is flagged.
 export function repertoireFreshness(
   games,
   color,
   {
     speedFilter = "all",
-    recentWindow = FRESHNESS_RECENT_WINDOW,
-    previousWindow = FRESHNESS_PREVIOUS_WINDOW,
-    minRecent = FRESHNESS_MIN_RECENT,
+    recentWindow = null,
+    previousWindow = null,
+    minRecent = null,
+    maxPreviousShare = FRESHNESS_MAX_PREVIOUS_SHARE,
   } = {},
 ) {
-  const filtered = filterGames(games, { color, speedFilter }).filter((g) => g.ucis?.length);
+  const filtered = filterGames(games, { color, speedFilter }).filter(
+    (g) => (g.ucis?.length || 0) >= (color === "black" ? 2 : 1),
+  );
+  const windows = freshnessWindows(filtered.length);
+  recentWindow = recentWindow ?? windows.recentWindow;
+  previousWindow = previousWindow ?? windows.previousWindow;
   const recent = filtered.slice(0, recentWindow);
   const previous = filtered.slice(recentWindow, recentWindow + previousWindow);
+  const familyFloor =
+    minRecent ?? Math.max(FRESHNESS_MIN_RECENT, Math.ceil(recent.length * FRESHNESS_MIN_RECENT_SHARE));
+  const lineFloor =
+    minRecent ?? Math.max(FRESHNESS_MIN_RECENT, Math.ceil(recent.length * FRESHNESS_LINE_MIN_RECENT_SHARE));
+  const wasAbsent = (previousGames) =>
+    previousGames <= Math.floor(previous.length * maxPreviousShare);
 
-  if (!recent.length) {
+  if (!recent.length || !previous.length) {
     return {
       recentWindow,
       previousWindow,
       freshFamilies: [],
+      freshLines: [],
       games: filtered.length,
       confidence: confidence(0),
     };
@@ -533,9 +798,10 @@ export function repertoireFreshness(
   const countFamilies = (slice) => {
     const counts = new Map();
     for (const game of slice) {
-      const key = game.ucis[0];
-      if (!counts.has(key)) counts.set(key, { uci: key, san: game.sans[0], games: 0 });
-      counts.get(key).games += 1;
+      const decision = decisionOf(game, color);
+      if (!decision) continue;
+      if (!counts.has(decision.key)) counts.set(decision.key, { ...decision, games: 0 });
+      counts.get(decision.key).games += 1;
     }
     return counts;
   };
@@ -544,12 +810,15 @@ export function repertoireFreshness(
   const previousCounts = countFamilies(previous);
   const freshFamilies = [];
 
-  for (const [uci, entry] of recentCounts) {
-    const previousGames = previousCounts.get(uci)?.games || 0;
-    if (entry.games >= minRecent && previousGames === 0) {
+  for (const [key, entry] of recentCounts) {
+    const previousGames = previousCounts.get(key)?.games || 0;
+    if (entry.games >= familyFloor && wasAbsent(previousGames)) {
       freshFamilies.push({
-        uci,
-        san: entry.san,
+        uci: entry.ucis[entry.ucis.length - 1],
+        san: entry.sans[entry.sans.length - 1],
+        ucis: entry.ucis,
+        sans: entry.sans,
+        label: entry.label,
         recentGames: entry.games,
         previousGames,
         recentShare: entry.games / recent.length,
@@ -586,7 +855,9 @@ export function repertoireFreshness(
   const freshLines = [];
   for (const [key, entry] of recentLineCounts) {
     const previousGames = previousLineCounts.get(key) || 0;
-    if (entry.games >= minRecent && previousGames === 0) {
+    // A fresh line inside an already-fresh family repeats the family's story.
+    const insideFreshFamily = freshFamilies.some((f) => key.startsWith(`${f.ucis.join(">")}>`));
+    if (entry.games >= lineFloor && wasAbsent(previousGames) && !insideFreshFamily) {
       freshLines.push({
         ...entry,
         previousGames,
@@ -640,7 +911,7 @@ export function repertoireChangeTrend(
   { speedFilter = "all", buckets = 6 } = {},
 ) {
   const filtered = filterGames(games, { color, speedFilter }).filter(
-    (g) => g.ucis?.length && g.datestamp > 0,
+    (g) => decisionOf(g, color) && g.datestamp > 0,
   );
   if (filtered.length < buckets) {
     return { points: [], trend: "flat", games: filtered.length, confidence: confidence(0) };
@@ -653,7 +924,7 @@ export function repertoireChangeTrend(
     if (!slice.length) continue;
     const counts = new Map();
     for (const game of slice) {
-      const key = game.ucis[0];
+      const key = decisionOf(game, color).key;
       counts.set(key, (counts.get(key) || 0) + 1);
     }
     const shares = [...counts.values()].map((c) => c / slice.length);
@@ -847,5 +1118,7 @@ export function buildScoutStats(games, { color, speedFilter = "all" } = {}) {
     repertoireFreshness: repertoireFreshness(games, color, { speedFilter }),
     repertoireChangeTrend: repertoireChangeTrend(games, color, { speedFilter }),
     personaTags: personaTags(games, color, { speedFilter }),
+    firstChoices: firstChoices(games, color, { speedFilter }),
+    openingBranches: openingBranches(games, color, { speedFilter }),
   };
 }

@@ -24,7 +24,7 @@ import {
   scoutLineWdlCounts,
   scoutMaiaRankedNote,
 } from "./scout-maia.js";
-import { buildScoutSectionSummary } from "./scout-summary.js";
+import { buildScoutSectionSummary, expectationText } from "./scout-summary.js";
 import { PRODUCTION_MODULE_B_ID, selectProductionRoutes } from "./scout-selector.js";
 
 export function scoutLineKey(ucis) {
@@ -612,7 +612,7 @@ export function buildScoutIntelligenceA11ySummary(stats) {
   if (fresh?.freshFamilies?.length) {
     const names = fresh.freshFamilies
       .slice(0, 3)
-      .map((f) => `1.${f.san} (${f.recentGames})`)
+      .map((f) => `${f.label || `1.${f.san}`} (${f.recentGames})`)
       .join(", ");
     parts.push(`Fresh families in the last ${fresh.recentWindow} games: ${names}.`);
   }
@@ -657,7 +657,11 @@ function renderScoutExplorerReads(explorerReads, escapeHtml) {
   const dev = explorerReads.theoryDeviation?.items?.[0];
   if (explorerReads.theoryDeviation?.available && dev) {
     chips.push(
-      readChip("Opponent share vs masters DB", "Theory", `${escapeHtml(dev.label)} ${dev.opponentSharePct}% vs ${dev.mastersSharePct}% book`),
+      readChip(
+        `How often they choose it (${dev.games} games) vs how often masters do in the same position`,
+        "More than the book",
+        `${escapeHtml(dev.label)} ${dev.opponentSharePct}% vs masters ${dev.mastersSharePct}%`,
+      ),
     );
   }
 
@@ -694,44 +698,50 @@ const CASTLING_WORD = {
 };
 const TRADE_WORD = { simplifier: "trades queens early", complicator: "keeps queens on", balanced: "trades queens midgame" };
 
+// Read chips: each one answers a prep question on its own, with the numbers
+// that back it. (Replaced: "Favourite first move" / "Top 3 lines" / "First moves
+// used", which restated the first-move bars below them, and with Black described
+// the OTHER player's first move.)
 function renderScoutRepertoireReads(stats, escapeHtml) {
   const chips = [];
-  const predict = stats?.predictability;
-  if (predict?.topMove && predict.games > 0) {
-    const pct = Math.round((predict.topMove.share || 0) * 100);
-    const how = predict.label === "predictable" ? "predictable" : predict.label === "unpredictable" ? "varied" : "mixed";
+  const black = stats?.oppColor === "black";
+  const expect = expectationText(stats?.firstChoices);
+  if (expect) {
     chips.push(
-      readChip("Share of games that start with their most common first move", "Favourite first move", `1.${escapeHtml(predict.topMove.san)} in ${pct}% · ${how}`),
+      readChip(
+        black ? "Their usual reply to each first move they face" : "Their first move, most common first",
+        black ? "Their replies" : "Expect",
+        escapeHtml(expect),
+      ),
     );
   }
-  const pets = stats?.petLineConcentration;
-  if (pets?.games > 0) {
+  const main = stats?.openingBranches?.mainPath;
+  if (main && main.plies >= 2) {
     chips.push(
-      readChip("Share of games that follow one of their three most-played opening paths", "Top 3 lines", `${pets.top3SharePct}% of games`),
-    );
-  }
-  const breadth = stats?.repertoireBreadth;
-  if (breadth?.games > 0) {
-    chips.push(
-      readChip(`First moves played in at least ${breadth.minGames} games`, "First moves used", `${breadth.breadth} regularly`),
+      readChip(
+        "The route most of their games follow, as far as at least 1 in 10 of their games still share it",
+        "Predictable until",
+        `${escapeHtml(main.label)} · ${Math.round(main.share * 100)}% of games`,
+      ),
     );
   }
   const fresh = stats?.repertoireFreshness;
   if (fresh?.freshFamilies?.length) {
     const top = fresh.freshFamilies[0];
+    const recent = Math.min(fresh.recentWindow || 0, fresh.games || 0);
     chips.push(
-      readChip("A first move that only shows up in their recent games", "New lately", `1.${escapeHtml(top.san)} (${top.recentGames} recent)`),
+      readChip(
+        `Common in their last ${recent} games, almost never in the ${fresh.previousWindow} before`,
+        "New lately",
+        `${escapeHtml(top.label || `1.${top.san}`)} · ${top.recentGames} of ${recent}`,
+      ),
     );
   }
   const shift = stats?.repertoireChangeTrend;
-  if (shift?.points?.length >= 2) {
-    const label =
-      shift.trend === "up"
-        ? "narrowing"
-        : shift.trend === "down"
-          ? "experimenting"
-          : "stable";
-    chips.push(readChip("How their first-move mix changed from older to newer games", "Opening mix", label));
+  if (shift?.points?.length >= 2 && shift.trend !== "flat") {
+    // Only worth a chip when it moved; "stable" is the default expectation.
+    const label = shift.trend === "up" ? "narrowing to fewer openings" : "trying new openings";
+    chips.push(readChip("How varied their first choice is, older games vs newer", "Opening mix", label));
   }
   const persona = stats?.personaTags;
   if (persona?.systemSetup?.detected && persona.systemSetup.label) {
@@ -816,11 +826,17 @@ export function renderScoutIntelChartsStrip(
     ? `<span class="scout-chart-key"><span class="scout-key-ref"></span>their average ${baseline}%</span>`
     : "";
 
+  // With Black the first move is the other player's, so the same bars answer
+  // "which first move should I play against them".
+  const byFirstTitle =
+    stats?.oppColor === "black"
+      ? `${who}'s score against each first move`
+      : `${who}'s score by first move`;
   return `
       ${a11yBlock}
       <div class="scout-intel-charts charts">
         <div class="scout-intel-panel card chart">
-          <h3 class="scout-col-label">${who}'s score by first move</h3>
+          <h3 class="scout-col-label">${byFirstTitle}</h3>
           <p class="scout-chart-sub">Bar = their score (win + ½ draw) · right column = games · weakest first, allowing for sample size</p>
           ${scoreBars}
           <div class="scout-chart-keys"><span class="scout-chart-key"><span class="scout-key-good"></span>low: good for you</span>${refNote}</div>
@@ -1190,6 +1206,30 @@ function scoutWeaknessRowHtml(target, i, oppColor, baseline, escapeHtml, opts = 
   });
 }
 
+// How many of their games your repertoires follow move for move through the
+// first PREPARED_PLIES plies (or the whole game, if shorter). Best repertoire
+// per game.
+export function scoutGameCoverage(games, oppColor, myLookups, scoutModule, { speedFilter = "all" } = {}) {
+  const depth = scoutModule.PREPARED_PLIES || 8;
+  if (typeof scoutModule.lineCoverage !== "function") return { games: 0, followed: 0 };
+  let total = 0;
+  let followed = 0;
+  for (const game of games || []) {
+    if (game.color !== oppColor || !game.ucis?.length) continue;
+    if (speedFilter !== "all" && game.speed !== speedFilter) continue;
+    total += 1;
+    const need = Math.min(depth, game.ucis.length);
+    const path = game.ucis.slice(0, need);
+    for (const { lookup } of myLookups || []) {
+      if (scoutModule.lineCoverage(lookup, path).covered >= need) {
+        followed += 1;
+        break;
+      }
+    }
+  }
+  return { games: total, followed };
+}
+
 export function buildScoutSectionReport(
   scoutModule,
   { games, profile, username },
@@ -1337,10 +1377,15 @@ export function buildScoutSectionReport(
     refutations,
   };
 
-  const preparedCount = graded.filter((g) => g.prepared).length;
-  const totalLines = graded.length;
-  const covPct = totalLines ? Math.round((preparedCount / totalLines) * 100) : 0;
-  const covTone = scoutCoverageTone(preparedCount, totalLines);
+  // Coverage over their actual games, not over a handful of summary lines ("0 of
+  // 2 lines" said little): the share of games whose opening your repertoire
+  // follows move for move to move 4 (or to the end of a shorter game).
+  const coverage = scoutGameCoverage(games, oppColor, myLookups, scoutModule, { speedFilter });
+  const covPct = coverage.games ? Math.round((coverage.followed / coverage.games) * 100) : 0;
+  const covTone = scoutCoverageTone(coverage.followed, coverage.games);
+  const coverageLabel = myLookups.length
+    ? `your prep follows ${covPct}% of their games to move ${Math.ceil((scoutModule.PREPARED_PLIES || 8) / 2)}`
+    : `no ${oppColor === "white" ? "Black" : "White"} repertoire to compare`;
   const prepareAll = `<button type="button" class="btn sm primary scout-prepare-all" data-color="${oppColor}">Add all gaps ▾</button>`;
 
   const trending = profile.recentlyChanged[oppColor]
@@ -1401,11 +1446,11 @@ export function buildScoutSectionReport(
           <span class="scout-section-score faint" title="Wins plus half the draws">scores ${baseline}%</span>
           ${trending}
           <span class="spacer"></span>
-          <div class="scout-coverage-bar-row cov"${totalLines ? "" : " hidden"}>
+          <div class="scout-coverage-bar-row cov"${coverage.games ? "" : " hidden"}>
             <div class="scout-coverage-bar hbar">
               <div class="scout-coverage-fill ${covTone}" style="width:${covPct}%"></div>
             </div>
-            <span class="scout-coverage-label" title="Their most-played lines that your repertoires already answer">your prep answers ${preparedCount} of ${totalLines} lines</span>
+            <span class="scout-coverage-label" title="${coverage.followed} of ${coverage.games} games: your repertoire has every move of the game up to move ${Math.ceil((scoutModule.PREPARED_PLIES || 8) / 2)}">${coverageLabel}</span>
           </div>
           ${prepareAll}
         </div>
