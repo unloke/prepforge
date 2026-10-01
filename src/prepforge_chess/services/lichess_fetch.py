@@ -2,10 +2,14 @@
 from __future__ import annotations
 
 import json
+import math
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass, replace
+from collections import OrderedDict
+from threading import BoundedSemaphore, RLock
 from typing import List, Optional
 
 from prepforge_chess.core.chess_core import ChessCore
@@ -22,10 +26,74 @@ LICHESS_USER_PGN_URL = "https://lichess.org/api/games/user/{username}"
 EXPLORER_BASE_URL = "https://explorer.lichess.ovh"
 DEFAULT_TIMEOUT_SECONDS = 15
 MAX_FETCH = 50
+MAX_IDENTITIES = 8
+MAX_REQUEST_GAMES = 200
+
+
+def validate_fetch_budget(usernames: list, count: int) -> None:
+    if len(usernames) > MAX_IDENTITIES:
+        raise ValueError(f"select at most {MAX_IDENTITIES} Lichess accounts")
+    if len(usernames) * count > MAX_REQUEST_GAMES:
+        raise ValueError(f"select fewer accounts or lower the count (maximum {MAX_REQUEST_GAMES} fetched games)")
 
 
 class LichessFetchError(RuntimeError):
     pass
+
+
+class GamesRateLimitedError(LichessFetchError):
+    def __init__(self, retry_after: int):
+        super().__init__("Lichess game export rate limit - try again shortly")
+        self.retry_after = retry_after
+
+
+# Public game exports share the server IP. Bound work across requests in this
+# process, and stop queued requests during an upstream cooldown. Each worker has
+# its own state; request budgets and client limits remain necessary as well.
+_export_slots = BoundedSemaphore(4)
+_export_lock = RLock()
+_export_cache: OrderedDict = OrderedDict()
+_export_cooldown_until = 0.0
+_EXPORT_CACHE_TTL = 15
+_EXPORT_CACHE_BYTES = 16 * 1024 * 1024
+_EXPORT_RESPONSE_BYTES = 2 * 1024 * 1024
+
+
+def _read_game_export(request, *, timeout: float) -> str:
+    global _export_cooldown_until
+    key = (request.full_url, request.get_header("Accept"))
+    with _export_slots:
+        with _export_lock:
+            now = time.monotonic()
+            cached = _export_cache.get(key)
+            if cached and now - cached[0] < _EXPORT_CACHE_TTL:
+                _export_cache.move_to_end(key)
+                return cached[1].decode("utf-8", errors="replace")
+            if now < _export_cooldown_until:
+                raise GamesRateLimitedError(math.ceil(_export_cooldown_until - now))
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                raw = response.read(_EXPORT_RESPONSE_BYTES + 1)
+        except urllib.error.HTTPError as exc:
+            if exc.code == 429:
+                try:
+                    delay = max(60, min(3600, int(exc.headers.get("Retry-After", "60"))))
+                except (ValueError, TypeError):
+                    delay = 60
+                with _export_lock:
+                    _export_cooldown_until = max(_export_cooldown_until, time.monotonic() + delay)
+                raise GamesRateLimitedError(delay) from exc
+            raise LichessFetchError(f"Lichess responded with HTTP {exc.code}") from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            raise LichessFetchError("Could not reach Lichess") from exc
+        if len(raw) > _EXPORT_RESPONSE_BYTES:
+            raise LichessFetchError("Lichess game export exceeds the response size limit")
+        with _export_lock:
+            _export_cache[key] = (time.monotonic(), raw)
+            _export_cache.move_to_end(key)
+            while len(_export_cache) > 128 or sum(len(item[1]) for item in _export_cache.values()) > _EXPORT_CACHE_BYTES:
+                _export_cache.popitem(last=False)
+        return raw.decode("utf-8", errors="replace")
 
 
 class ExplorerRateLimitedError(LichessFetchError):
@@ -144,17 +212,7 @@ def fetch_recent_pgns(
             "User-Agent": "PrepForge/0.1 (local-tool)",
         },
     )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            raw = response.read().decode("utf-8", errors="replace")
-    except urllib.error.HTTPError as exc:
-        raise LichessFetchError(
-            "Lichess responded with HTTP {0} for user {1}".format(exc.code, username)
-        ) from exc
-    except urllib.error.URLError as exc:
-        raise LichessFetchError(
-            "Could not reach Lichess: {0}".format(exc.reason)
-        ) from exc
+    raw = _read_game_export(request, timeout=timeout)
 
     return _split_multi_pgn(raw)
 
@@ -225,17 +283,8 @@ def fetch_latest_games_meta(
             "User-Agent": "PrepForge/0.1 (local-tool)",
         },
     )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            raw = response.read().decode("utf-8", errors="replace")
-    except urllib.error.HTTPError as exc:
-        raise LichessFetchError(
-            "Lichess responded with HTTP {0} for user {1}".format(exc.code, username)
-        ) from exc
-    except urllib.error.URLError as exc:
-        raise LichessFetchError(
-            "Could not reach Lichess: {0}".format(exc.reason)
-        ) from exc
+    raw = _read_game_export(request, timeout=timeout)
+
     return _parse_ndjson_games(raw)
 
 
@@ -297,6 +346,7 @@ def newest_game_across(
         return username, games
 
     per_account = max(1, min(int(per_account or 1), MAX_FETCH))
+    validate_fetch_budget(names, per_account)
     errors: list = []
     workers = max(1, min(_SELF_FANOUT_MAX_WORKERS, len(names)))
     results: list = []
@@ -509,6 +559,7 @@ def compare_many_identities(
     if not names:
         return []
     count = max(1, min(int(count or 10), MAX_FETCH))
+    validate_fetch_budget(names, count)
     per_account = count
     core = chess_core or ChessCore()
     all_repertoires = repository.list_repertoires(owner_user_id=owner_user_id)

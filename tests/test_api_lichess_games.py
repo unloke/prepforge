@@ -97,6 +97,52 @@ def test_compare_requires_auth(client):
     assert client.get("/api/lichess/compare").status_code == 401
 
 
+@pytest.mark.parametrize("method", ["GET", "POST"])
+@pytest.mark.parametrize("names,count", [(9, 10), (5, 50)])
+def test_compare_rejects_upstream_amplification(client, monkeypatch, method, names, count):
+    _register(client, "budget@example.com")
+    calls = []
+    monkeypatch.setattr("prepforge_chess.services.lichess_fetch.fetch_recent_pgns",
+                        lambda *a, **k: calls.append(1) or [])
+    usernames = [f"user{i}" for i in range(names)]
+    if method == "GET":
+        response = client.get("/api/lichess/compare", params={"usernames": ",".join(usernames), "count": count})
+    else:
+        response = client.post("/api/lichess/compare", json={"usernames": usernames, "count": count},
+                               headers=csrf_headers(client))
+    assert response.status_code == 422
+    assert calls == []
+
+
+def test_compare_get_and_post_share_client_limit(client, monkeypatch):
+    from prepforge_chess.api.ratelimit import limiter
+
+    _register(client, "limited@example.com")
+    _mock_fetch(monkeypatch)
+    monkeypatch.setattr(limiter, "enabled", True)
+    for _ in range(3):
+        assert client.get("/api/lichess/compare", params={"usernames": "user"}).status_code == 200
+        assert client.post("/api/lichess/compare", json={"usernames": ["user"]},
+                           headers=csrf_headers(client)).status_code == 200
+    assert client.get("/api/lichess/compare", params={"usernames": "user"}).status_code == 429
+
+
+def test_games_429_has_retry_after(client, monkeypatch):
+    from prepforge_chess.services.lichess_fetch import GamesRateLimitedError
+
+    _register(client, "cooldown@example.com")
+    _link(client)
+
+    def limited(*a, **k):
+        raise GamesRateLimitedError(60)
+
+    monkeypatch.setattr("prepforge_chess.services.lichess_fetch.fetch_recent_pgns", limited)
+    for path in ["compare", "latest"]:
+        response = client.get(f"/api/lichess/{path}")
+        assert response.status_code == 429
+        assert response.headers["retry-after"] == "60"
+
+
 def test_latest_requires_auth(client):
     assert client.get("/api/lichess/latest").status_code == 401
 
