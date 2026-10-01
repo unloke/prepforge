@@ -65,6 +65,9 @@ try{
   }
   await page.locator('#palette-input').fill('game');await page.locator('#palette-input').press('Enter');
   results.palette.gameEnter=await page.evaluate(()=>document.querySelector('.view.is-active')?.id||document.querySelector('.view:not([hidden])')?.id);
+  assert.equal(results.palette.game[0].id, 'view:replay:games');
+  assert.equal(results.palette.analyze.length, 1);
+  assert.equal(results.palette.gameEnter, 'view-replay');
   await page.locator('#open-palette').click();await page.locator('#palette-input').fill('settings');await page.locator('#palette-input').press('Enter');
   await page.locator('#engine-info').waitFor({state:'visible'});await page.locator('#engine-info').click();
   results.info=await page.locator('#engine-info').evaluate(el=>({expanded:el.getAttribute('aria-expanded'),controls:el.getAttribute('aria-controls'),hidden:document.getElementById('engine-info-pop').hidden}));
