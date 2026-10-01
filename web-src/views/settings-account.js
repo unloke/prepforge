@@ -37,11 +37,10 @@ export function createAccountSection({
     return document.getElementById("settings-account-data");
   }
 
-  // One labelled row: the label may carry a one-line explanation under it.
+  // Row detail is available on demand through its tooltip.
   function row(label, action, note = "") {
     return (
-      `<div class="set-row acct-row"><span class="acct-row-text"><span>${label}</span>` +
-      (note ? `<small class="acct-row-note">${note}</small>` : "") +
+      `<div class="set-row acct-row"${note ? ` title="${escapeHtml(note)}"` : ""}><span class="acct-row-text"><span>${label}</span>` +
       `</span>${action}</div>`
     );
   }

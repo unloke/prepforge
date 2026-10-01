@@ -167,17 +167,11 @@ export function createSettingsView({
   }
 
   // "Ready" on the Maia3 card means the model is downloaded; whether analysis
-  // USES it is the separate Maia analysis switch. Say so next to both.
+  // USES it is the separate Maia analysis switch. Report both states.
   function renderMaiaAnalysis() {
     const on = !!pref("maiaAnalysis");
     const maiaToggle = document.getElementById("settings-maia-analysis");
     if (maiaToggle) paintSwitch(maiaToggle, on);
-    const hint = document.getElementById("settings-maia-analysis-hint");
-    if (hint) {
-      hint.textContent = on
-        ? "On — Analyze and Coverage add Maia3's human-move layer."
-        : "Off — Analyze uses Stockfish only. Coverage scans require Maia analysis, even when the Maia3 model is downloaded (Ready).";
-    }
     const usage = document.getElementById("settings-maia-usage");
     if (usage) {
       usage.textContent = on
@@ -400,7 +394,7 @@ export function createSettingsView({
         // nothing cached, the cache is verifiably empty (not merely on-demand).
         set(MAIA_STATUS.CACHE_MISSING, "Maia analysis is off — model not cached · fp16", "", base);
       } else {
-        set(MAIA_STATUS.AVAILABLE, `Downloads ${sizeMb} on first use, then cached · fp16`, "", base);
+        set(MAIA_STATUS.AVAILABLE, `${sizeMb} · not cached · fp16`, "", base);
       }
     } catch {
       set(MAIA_STATUS.ERROR, "Could not determine the browser Maia3 state.");

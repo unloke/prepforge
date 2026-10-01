@@ -68,6 +68,17 @@ describe("createStockfishWasmProvider — search lifecycle", () => {
     expect(fake.posted[fake.posted.length - 1]).toBe("go depth 18");
   });
 
+  it("adds a node budget to the depth limit when maxNodes is set", async () => {
+    const fake = new FakeWorker();
+    const provider = createStockfishWasmProvider({
+      maxDepth: 16,
+      maxNodes: 1500000,
+      createWorker: () => fake,
+    });
+    await provider.open({ fen: FEN_A, multipv: 1 });
+    expect(fake.posted[fake.posted.length - 1]).toBe("go depth 16 nodes 1500000");
+  });
+
   // The Explorer eval worker parks its search while the next position's rows load.
   // That must actually HALT the in-flight search, but keep the worker warm — a
   // close() here would force a full wasm re-init on every row refresh.

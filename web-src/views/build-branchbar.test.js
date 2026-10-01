@@ -145,7 +145,7 @@ describe("build tree — mastery legend", () => {
     globalThis.document = undefined;
   });
 
-  it("renders the legend when own-side nodes carry mastery", () => {
+  it("keeps breadcrumbs without a standing legend when nodes carry mastery", () => {
     const e5 = makeNode({
       id: "e5", depth: 1, parent_id: "root", san: "e5", uci: "e7e5",
       move_side: "black", is_mainline: true, mastery: "mastered",
@@ -159,9 +159,8 @@ describe("build tree — mastery legend", () => {
       currentNodeId: "e5",
     });
     view.renderBuilderTree();
-    expect(meta.innerHTML).toContain("legend");
-    expect(meta.innerHTML).toContain("mastered");
-    expect(meta.innerHTML).toContain("weak");
+    expect(meta.innerHTML).toContain('aria-label="Position"');
+    expect(meta.innerHTML).not.toContain("legend");
   });
 
   it("omits the legend when nothing is trained yet", () => {

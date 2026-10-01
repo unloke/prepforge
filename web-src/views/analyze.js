@@ -220,16 +220,10 @@ export function createAnalyzeView({
       );
     };
 
-    const legend = CLASS_GROUPS.map(
-      (g) =>
-        `<span class="cbar-key"><i class="seg-${g.key}"></i>${classBadgeSymbol(g.members[0])} ${g.label}</span>`
-    ).join("");
-
     host.innerHTML =
       `<div class="class-bars">` +
       rowHtml("white", "White") +
       rowHtml("black", "Black") +
-      `<div class="cbar-legend">${legend}</div>` +
       `</div>` +
       qualitySummaryHtml();
 

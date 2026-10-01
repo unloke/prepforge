@@ -55,8 +55,6 @@
    fails the axe baseline (serious). Matches the pre-ui-v2 behaviour, where
    only the slider itself was dimmed. */
 .set-row:has(input:disabled) > .slider input:disabled { opacity: 0.45; filter: grayscale(1); cursor: not-allowed; }
-.set .set-note { margin: 4px 0 0; }
-.set .set-note:empty { display: none; }
 /* Piece set: each option carries a four-piece sample on board squares so the
    active set is recognisable at a glance, not just by name. */
 /* The two sets sit side by side on desktop; on narrow screens (and with wider
@@ -273,7 +271,6 @@
 }
 .acct-signout { flex: none; align-self: flex-start; margin-top: 4px; }
 .acct-row-text { display: grid; gap: 1px; min-width: 0; }
-.acct-row-note { color: var(--muted); font-size: var(--fs-xs); }
 .acct-row > .btn { flex: none; white-space: nowrap; }
 .acct-block { margin-top: 14px; }
 .acct-block:empty { display: none; }

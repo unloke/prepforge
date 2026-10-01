@@ -7,9 +7,9 @@
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111318'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23ffffff'%3E%E2%99%9E%3C/text%3E%3C/svg%3E" />
-    <script type="module" crossorigin src="/static/assets/index-DRZ8JnWZ.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-1eQOtWAl.js"></script>
     <link rel="modulepreload" crossorigin href="/static/assets/chess-DwBov9dY.js">
-    <link rel="stylesheet" crossorigin href="/static/assets/index-CxIRwKvD.css">
+    <link rel="stylesheet" crossorigin href="/static/assets/index-B4e1HpEG.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -110,7 +110,6 @@
               </header>
               <div class="lib-cols" id="lib-cols" aria-hidden="true"><span>Repertoire</span><span>Mastery</span><span>Queue</span><span></span></div>
               <div id="dashboard-repertoires" class="lib-rep-list"><div class="empty-state lib-loading" role="status" data-testid="library-loading"><div class="spinner" aria-hidden="true"></div><p>Loading your library…</p></div></div>
-              <p class="lib-hint">Click a repertoire to open it &middot; &#8943; for train, rename, share, delete.</p>
               <input type="file" id="dashboard-import-input" accept=".pgn,.json,application/x-chess-pgn,application/json" hidden />
             </section>
             <section class="steps card" id="dashboard-steps" aria-label="Next steps" hidden></section>
@@ -144,7 +143,7 @@
             <div class="panel-head">
               <div class="game-id">
                 <b id="analysis-game-title">Analysis board</b>
-                <span class="faint" id="analysis-game-meta">Paste a PGN or play on the board</span>
+                <span class="faint" id="analysis-game-meta"></span>
               </div>
               <span class="panel-actions" id="analyze-actions">
                 <button class="btn sm" id="open-engine-widget" data-testid="open-engine-widget" type="button" aria-pressed="false">Engine</button>
@@ -168,7 +167,7 @@
               </section>
               <!-- Whole-game analysis progress / "Analysis ready" docks here, above the
                    eval graph, instead of floating over it. -->
-              <div class="analysis-job-dock" id="analysis-job-dock" data-testid="analysis-job-dock"></div>
+              <div class="job-dock analysis-job-dock" id="analysis-job-dock" data-testid="analysis-job-dock"></div>
               <!-- One Evaluation card: the game graph (after an analysis) and the
                    live engine (when on) share it, so there is one place to look. -->
               <section class="res-block eval-card" id="analysis-eval-card" data-testid="analysis-eval-card" aria-label="Evaluation" hidden>
@@ -277,6 +276,7 @@
             <div class="tree-meta" id="build-tree-meta"></div>
             <div class="forkbar" id="build-branchbar" data-testid="build-branchbar" hidden></div>
             <div class="inline-undo" id="build-undo" data-testid="build-undo" role="status" aria-live="polite" hidden></div>
+            <div class="job-dock" id="build-job-dock" data-testid="build-job-dock"></div>
             <div class="tree-wrap" id="builder-tree" data-testid="builder-tree"></div>
             <div class="dock-resizer" id="build-dock-resizer" data-testid="build-dock-resizer" role="separator" aria-orientation="horizontal" aria-controls="build-inspector" aria-label="Resize the inspector (drag, or ↑/↓; double-click to fold)" tabindex="0"></div>
             <section class="dock" id="build-inspector" aria-label="Inspector">
@@ -303,10 +303,10 @@
                 </div>
                 <div class="inspector-panel" id="explorer-drawer" data-testid="explorer-drawer" role="tabpanel" aria-labelledby="build-tool-explorer">
                   <div class="engine-slot" id="explorer-engine-slot"></div>
-                  <div class="explorer-preview" id="explorer-preview" data-testid="explorer-preview" role="status" aria-live="polite" hidden></div>
                   <div class="explorer-rows" id="explorer-rows"></div>
                 </div>
                 <div class="inspector-panel" id="coverage-drawer" data-testid="coverage-drawer" role="tabpanel" aria-labelledby="build-tool-coverage" hidden>
+                  <div class="job-dock" id="coverage-job-dock" data-testid="coverage-job-dock"></div>
                   <div class="coverage-gaps" id="coverage-gaps"><div class="muted hint">Scan to find the human moves this repertoire doesn't answer yet.</div></div>
                 </div>
               </div>
@@ -357,7 +357,6 @@
             <div class="panel-scroll">
               <section class="tcard train-setup">
                 <h3 id="train-setup-title">Smart queue</h3>
-                <p class="muted" id="train-setup-blurb">Mixed over all your active repertoires. Weak spots and due reviews first, then new moves, then polish.</p>
                 <p class="train-session-preview" id="train-session-preview" data-testid="train-session-preview" hidden></p>
                 <div class="field" id="train-srs-picker">
                   <label class="train-picker-label" for="train-repertoire-select">Repertoire</label>
@@ -396,9 +395,6 @@
                         </p>
                       </div>
                     </details>
-                    <small class="muted train-repertoire-hint" id="train-repertoire-hint">
-                      Repertoires the opponent draws from.
-                    </small>
                   </div>
                   <div class="field">
                     <span class="train-picker-label" id="train-play-color-label">You play</span>
@@ -407,7 +403,7 @@
                       <button type="button" class="seg-btn train-mode" data-color="black" data-testid="play-color-black">Black</button>
                     </div>
                   </div>
-                  <p class="note muted" id="train-play-book-hint">Explorer by rating; Maia fills thin spots.</p>
+                  <p class="note warn" id="train-play-book-hint" hidden></p>
                   <p class="train-play-chip" id="train-play-chip" hidden data-testid="train-play-chip"></p>
                   <div class="train-play-trail" id="train-play-trail" data-testid="train-play-trail">
                     <span class="trail-empty">No moves yet</span>
@@ -471,18 +467,6 @@
                 <button class="btn primary block" id="train-summary-new" type="button">New session</button>
               </section>
 
-              <details class="help train-help" id="train-help" data-testid="train-help">
-                <summary>How this works</summary>
-                <p>Queued by urgency:</p>
-                <dl>
-                  <dt class="k-weak">Weak</dt><dd>Missed more than answered.</dd>
-                  <dt class="k-due">Due</dt><dd>Spaced repetition says now.</dd>
-                  <dt class="k-new">New</dt><dd>Shown once, then tested.</dd>
-                  <dt class="k-learning">Learning</dt><dd>Being spaced out.</dd>
-                  <dt class="k-mastered">Mastered</dt><dd>3+ recalls; reviews days apart.</dd>
-                </dl>
-                <p class="faint"><b>In a row</b> counts this session only. <b>Day streak &#128293;</b> counts calendar days with one graded move.</p>
-              </details>
             </div>
 
             <!-- legacy hooks kept for app.js compatibility; hidden -->
@@ -537,8 +521,8 @@
             </div>
             <div class="scout-grid">
               <div class="scout-main">
-                <div class="scout-stream stream card" role="status"><div class="spinner" aria-hidden="true"></div><div><b>Streaming games from Lichess…</b><p class="muted">The report builds as games arrive — you can Stop at any time and Resume later.</p></div></div>
-                <div class="scout-empty empty-state big"><div class="es-mark">♘</div><h3>Scout an opponent</h3><p>Add a Lichess username (or pick Self) as a source, then Start. PrepForge streams their history and ranks the lines worth preparing — when they play X, you play Y.</p></div>
+                <div class="scout-stream stream card" role="status"><div class="spinner" aria-hidden="true"></div><div><b>Streaming games from Lichess…</b></div></div>
+                <div class="scout-empty empty-state big"><div class="es-mark">♘</div><h3>Scout an opponent</h3><p>Add a Lichess username (or pick Self) as a source, then Start.</p></div>
                 <div id="scout-profile" class="scout-profile profile card" hidden></div>
                 <div id="scout-v3-results" class="scout-v3-results" hidden></div>
                 <div id="scout-results" class="scout-results"></div>
@@ -583,7 +567,6 @@
                 <b>Members</b>
                 <button class="btn sm" id="team-add-member" data-testid="team-add-member" title="Add someone who already has a PrepForge account, by their linked Lichess username" hidden>Add member</button>
               </div>
-              <p class="muted small team-help" id="team-members-hint" hidden><b>Add member</b> adds an existing PrepForge user by their linked Lichess username. For anyone else, use <b>Invite</b> to share a join link.</p>
               <div id="team-members" data-testid="team-members"></div>
             </section>
             <section id="team-panel-repertoires" data-team-panel="repertoires" role="tabpanel" aria-labelledby="team-tab-repertoires" hidden>
@@ -605,7 +588,6 @@
 
           <section class="card incoming">
             <header class="card-head"><h2 id="teams-shared-title">Incoming shares</h2></header>
-            <p class="muted hint" id="teams-shared-hint" hidden>Click to open (read-only).</p>
             <div id="teams-shared" data-testid="teams-shared"></div>
           </section>
         </div>
@@ -620,7 +602,6 @@
             <a class="settings-nav-link" href="#set-maia">Maia3</a>
             <a class="settings-nav-link" href="#set-strength">Playing strength</a>
             <a class="settings-nav-link" href="#set-board">Board</a>
-            <a class="settings-nav-link" href="#set-about">About</a>
           </nav>
           <div class="settings-content">
             <section class="card set" id="set-account" data-testid="settings-account">
@@ -698,7 +679,7 @@
                 <button type="button" class="pf-info" id="strength-info" aria-label="About Playing strength" title="About Playing strength" aria-expanded="false">ⓘ</button>
               </h2>
               <div class="pf-info-pop" id="strength-info-pop" hidden>
-                Higher depth is stronger but slower. Maia3 rating shapes how human the model plays.
+                Stockfish depth is a target. Analyze and coach searches also stop at 1.5 million nodes per position, so tactical positions may finish below that depth. Maia3 rating shapes how human the model plays.
               </div>
               <div class="set-row">
                 <span id="settings-depth-label">Stockfish analysis depth</span>
@@ -725,9 +706,8 @@
                   <span class="pf-row-label" id="settings-maia-analysis-label">Maia analysis</span>
                   <button type="button" class="pf-info pf-info-inline" id="maia-analysis-info" aria-label="About Maia analysis" title="About Maia analysis" aria-expanded="false">ⓘ</button>
                 </span>
-                <button type="button" class="pf-switch" id="settings-maia-analysis" role="switch" aria-checked="false" aria-labelledby="settings-maia-analysis-label" aria-describedby="settings-maia-analysis-hint"><span class="pf-knob"></span></button>
+                <button type="button" class="pf-switch" id="settings-maia-analysis" role="switch" aria-checked="false" aria-labelledby="settings-maia-analysis-label"><span class="pf-knob"></span></button>
               </div>
-              <p class="faint small set-note" id="settings-maia-analysis-hint" data-testid="settings-maia-analysis-hint"></p>
               <div class="pf-info-pop" id="maia-analysis-info-pop" hidden>
                 Adds the Maia3 human layer to analysis: classification, coach intuition, and brilliant signals. Stockfish always runs; this layer is skipped when off.
               </div>
@@ -739,10 +719,6 @@
                 <div class="seg" role="group" aria-labelledby="piece-style-label" id="piece-style-picker"></div>
               </div>
               <div class="sw-grid" id="board-prefs"></div>
-            </section>
-            <section class="card set" id="set-about">
-              <h2>About</h2>
-              <p class="muted hint">PrepForge Chess — online opening prep: repertoires, training, game review, scouting.</p>
             </section>
           </div>
         </div>
@@ -853,6 +829,5 @@
         <div class="palette-results" id="palette-results" data-testid="palette-results" role="listbox" aria-label="Commands"></div>
       </div>
     </div>
-
   </body>
 </html>

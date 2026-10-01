@@ -387,7 +387,7 @@ export function scoutSvgBar(
 
 export function renderScoutEnginePanel(engineAgg, escapeHtml) {
   if (!engineAgg) {
-    return `<div class="scout-engine-panel muted hint">Not scanned yet. Deep scan checks their opening moves with Stockfish and shows where they lose the most.</div>`;
+    return `<div class="scout-engine-panel muted hint">Not scanned yet.</div>`;
   }
   if (!engineAgg.sufficient) {
     const analyzed = engineAgg.analyzedGames ?? 0;
@@ -831,9 +831,6 @@ export function renderScoutIntelChartsStrip(
     ? `<p class="visually-hidden">${escapeHtml(chartSummary)}</p>`
     : "";
   const enginePanel = renderScoutEnginePanel(engineAgg, escapeHtml);
-  const refNote = baseline != null
-    ? `<span class="scout-chart-key"><span class="scout-key-ref"></span>their average ${baseline}%</span>`
-    : "";
 
   // With Black the first move is the other player's, so the same bars answer
   // "which first move should I play against them".
@@ -845,21 +842,18 @@ export function renderScoutIntelChartsStrip(
       ${a11yBlock}
       <div class="scout-intel-charts charts">
         <div class="scout-intel-panel card chart">
-          <h3 class="scout-col-label">${byFirstTitle}</h3>
-          <p class="scout-chart-sub">Bar = their score (win + ½ draw) · right column = games · weakest first, allowing for sample size</p>
+          <h3 class="scout-col-label"${baseline != null ? ` title="Their average ${baseline}%"` : ""}>${byFirstTitle}</h3>
           ${scoreBars}
-          <div class="scout-chart-keys"><span class="scout-chart-key"><span class="scout-key-good"></span>low: good for you</span>${refNote}</div>
         </div>
         <div class="scout-intel-panel card chart">
           <h3 class="scout-col-label scout-engine-label">Where ${who} makes mistakes</h3>
-          <p class="scout-chart-sub">Bar = average centipawns lost per move after each first move (Deep scan) · higher = more errors</p>
           ${enginePanel}
         </div>
         <div class="scout-intel-panel scout-intel-trends card chart">
           <h3 class="scout-col-label">Activity and habits</h3>
-          <p class="scout-chart-sub">Games per week, last 12 weeks of their games</p>
+          <p class="scout-chart-title">Games per week</p>
           ${activityChart}
-          <p class="scout-chart-sub">How often they repeat the same first move (100% = always the same)</p>
+          <p class="scout-chart-title">First-move repetition</p>
           ${repChart}
         </div>
       </div>`;
@@ -1175,9 +1169,6 @@ function scoutPrepCategoryBadge(line) {
   return "";
 }
 
-// Fewer games than this on a line: the score is one or two results, not a habit.
-export const SCOUT_SMALL_SAMPLE_GAMES = 3;
-
 // Prep rows: framing, last-seen badge, optional inline refutation card.
 function scoutLineRowHtml(
   line,
@@ -1202,9 +1193,6 @@ function scoutLineRowHtml(
     ? `<span class="scout-last-seen seen">${escapeHtml(formatLastSeenLabel(line.lastSeen))}</span>`
     : "";
   const categoryBadge = weakness ? scoutPrepCategoryBadge(line) : "";
-  const smallSample = rawCount > 0 && rawCount < SCOUT_SMALL_SAMPLE_GAMES
-    ? `<span class="scout-small-sample cat c-small" title="Only ${rawCount} game${rawCount === 1 ? "" : "s"} reached this line, so the score says little">small sample</span>`
-    : "";
   const refCard =
     weakness && line.refutation
       ? renderInlineRefutationCard(line, oppColor, escapeHtml, { renderBoard })
@@ -1226,7 +1214,7 @@ function scoutLineRowHtml(
           <span class="scout-line-moves">${framing}</span>
           ${refCard}
         </div>
-        <span class="lr-meta">${categoryBadge}${smallSample}${lastSeenBadge}</span>
+        <span class="lr-meta">${categoryBadge}${lastSeenBadge}</span>
         <span class="scout-lr-score lr-score">${scoutScoreCell(displayScore, rawCount, { baseline, showGap: line.belowBaseline > 0, maiaEstimate, showN: rawCount > 1 })}</span>
         <span class="scout-lr-wdl lr-wdl">${scoutWdlBar(wdl.w, wdl.d, wdl.l, { maiaEstimate })}</span>
         <span class="scout-lr-action lr-flags">${engineFlag}${addBtn}</span>
@@ -1460,10 +1448,9 @@ export function buildScoutSectionReport(
   const yourSide = oppColor === "white" ? "Black" : "White";
   const planHead = `<div class="scout-game-plan-head plan-head">
             <b class="scout-col-label">${v3Mode ? "First moves" : `Your game plan as ${yourSide}`}</b>
-            ${v3Mode ? "" : `<span class="scout-col-hint faint">lines ${who} reached, best chances for you first</span>`}
           </div>`;
   const firstMovesHtml = `<div class="scout-first-moves">
-            <span class="scout-sub-label">${who}'s first moves <small>bar = share of their games · click one to see the replies they faced</small></span>
+            <span class="scout-sub-label">${who}'s first moves</span>
             <div class="scout-dist scout-dist-compact first-moves" data-dist-root="true">${firstMoves}</div>
           </div>`;
   const listHead = `<div class="scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Type · last seen</span><span>Their score</span><span>Their results W/D/L</span><span></span></div>`;

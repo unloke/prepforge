@@ -206,7 +206,7 @@ describe("scout maia enrichment orchestration", () => {
     const results = elements.get("scout-results");
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
     expect(results.innerHTML).toContain("scout-maia-estimate");
-    expect(results.innerHTML).toMatch(/Maia estimates|partial Maia estimates/);
+    expect(results.innerHTML).not.toContain("scout-ranked-note");
   });
 
   // Regression: a Lichess NDJSON stream that drops mid-fetch (non-abort) AFTER games

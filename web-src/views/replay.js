@@ -389,13 +389,7 @@ export function createReplayView({
       `<ul class="reasons">${renderReplayDetail(game)}</ul>` +
       `<div class="actions">${actions.join("")}${lichessLink}</div></div></div>` +
       `<div class="moveline">${renderReplayMoveLine(game)}</div>` +
-      `<div class="legend"><span><i class="k-inprep"></i>in prep</span>${
-        game.departure_ply ? `<span><i class="k-dep"></i>departure</span>` : ""
-      }${
-        kind === "user-error"
-          ? `<span><i class="k-arrow-good"></i>expected</span><span><i class="k-arrow-bad"></i>played</span>`
-          : ""
-      }</div></section>`
+      `</section>`
     );
   }
 

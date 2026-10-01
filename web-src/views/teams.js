@@ -79,7 +79,6 @@ export function createTeamsView({
         shared.innerHTML =
           '<div class="empty-state">Sign in to see repertoires your teams share with you.</div>';
       }
-      setSharedHintVisible(false);
       renderTeamEmptyCard("signed-out");
       hideTeamDetail();
       return;
@@ -110,7 +109,7 @@ export function createTeamsView({
   const EMPTY_CARD_COPY = {
     "signed-out": {
       title: "Teams",
-      body: "Coaches and clubs use teams to share repertoires read-only with their members. Sign in to create or join a team.",
+      body: "Sign in to create or join a team.",
     },
     "no-teams": {
       title: "No teams yet",
@@ -118,7 +117,7 @@ export function createTeamsView({
     },
     choose: {
       title: "Choose a team",
-      body: "Members and shared repertoires appear here.",
+      body: "Select a team from the list.",
     },
   };
   function renderTeamEmptyCard(kind) {
@@ -139,11 +138,6 @@ export function createTeamsView({
     }
   }
 
-  // "Click to open (read-only)." only makes sense above a non-empty list.
-  function setSharedHintVisible(visible) {
-    const hint = document.getElementById("teams-shared-hint");
-    if (hint) hint.hidden = !visible;
-  }
 
   async function openInviteDialog(teamId) {
     const ui = createInviteDialogUi({ escapeHtml, activateModal });
@@ -303,7 +297,6 @@ export function createTeamsView({
     renderTeamInviteFooter,
     bindTeamTabs,
     renderTeamEmptyCard,
-    setSharedHintVisible,
     openInviteDialog,
   };
 }

@@ -209,9 +209,7 @@
 }
 .team-empty h3 { margin: 0; }
 .team-empty p { margin: 0; max-width: 42ch; }
-.teams .hint[hidden],
-.teams .team-help[hidden] { display: none; }
-.teams .team-help { margin: 0; padding: 0 12px 6px; }
+.teams .hint[hidden] { display: none; }
 
 /* ---- Invite dialog ------------------------------------------------------ */
 

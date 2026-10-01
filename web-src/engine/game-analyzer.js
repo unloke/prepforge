@@ -1,5 +1,5 @@
 import { Chess } from "chess.js";
-import { createEngineProvider } from "./stockfish-provider.js";
+import { ANALYSIS_MAX_NODES, createEngineProvider } from "./stockfish-provider.js";
 import { waitForEngineSearch } from "./engine-search-wait.js";
 
 // Whole-game analysis in the browser (Phase 2). Drives the browser Stockfish
@@ -17,20 +17,21 @@ import { waitForEngineSearch } from "./engine-search-wait.js";
 
 // Hard ceiling per position so a stuck search can't hang the whole run.
 const PER_POSITION_TIMEOUT_MS = 30000;
-// Upper bound on concurrent Stockfish providers. Each provider runs its own Web Worker
-// with a single Stockfish search thread (the provider never sends `setoption Threads`, so
-// the engine stays at its default of one), so one worker ≈ one core. We still cap the pool
-// to keep WASM memory bounded (each provider loads its own engine image).
-const MAX_CONCURRENCY = 6;
+// Node budget per position (see ANALYSIS_MAX_NODES), applied with the depth limit.
+const DEFAULT_MAX_NODES = ANALYSIS_MAX_NODES;
+// Upper bound on concurrent Stockfish providers. Each provider is a threaded-lite engine
+// instance that reserves its own 128 MB shared WASM heap plus a pthread worker, and the
+// Maia pass and the live board engine run beside it, so the pool stays small.
+const MAX_CONCURRENCY = 4;
 
-// Pick a worker count when the caller didn't pin one: roughly one worker per core but
-// reserve a core for the UI/main thread, then clamp to [1, MAX_CONCURRENCY]. Exported so
-// the heuristic itself is unit-testable without spinning up real engines.
+// Pick a worker count when the caller didn't pin one: half the logical cores (leaving room
+// for the UI, Maia and the live engine), clamped to [1, MAX_CONCURRENCY]. Exported so the
+// heuristic itself is unit-testable without spinning up real engines.
 export function resolveConcurrency(requested) {
   if (Number.isFinite(requested) && requested >= 1) return Math.floor(requested);
   const hw =
     (typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 4;
-  return Math.max(1, Math.min(MAX_CONCURRENCY, hw - 1));
+  return Math.max(1, Math.min(MAX_CONCURRENCY, Math.floor(hw / 2)));
 }
 
 class AnalysisCancelled extends Error {
@@ -128,7 +129,8 @@ async function waitForEval(provider, fen, targetDepth, cancelled) {
  *   onProgress?: (done: number, total: number) => void,
  *   shouldCancel?: () => boolean,
  *   concurrency?: number,
- *   createProvider?: (opts: { maxDepth: number }) => object,
+ *   maxNodes?: number,
+ *   createProvider?: (opts: { maxDepth: number, maxNodes: number }) => object,
  * }} opts
  */
 export async function analyzeGamePositions({
@@ -138,6 +140,7 @@ export async function analyzeGamePositions({
   onProgress,
   shouldCancel,
   concurrency,
+  maxNodes = DEFAULT_MAX_NODES,
   // Injectable for tests; the live flow always uses the browser Stockfish provider.
   createProvider = createEngineProvider,
 }) {
@@ -188,7 +191,7 @@ export async function analyzeGamePositions({
   }
 
   async function workerLoop() {
-    const provider = createProvider({ maxDepth: targetDepth });
+    const provider = createProvider({ maxDepth: targetDepth, maxNodes });
     let opened = false;
     try {
       while (!cancelled()) {

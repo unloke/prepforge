@@ -40,6 +40,26 @@ function brilliantCandidate(overrides = {}) {
 }
 
 describe("attachClientTrapGaps", () => {
+  it("reuses a natural-move evaluation from the main pass without another search", async () => {
+    const cand = brilliantCandidate();
+    await attachClientTrapGaps({
+      candidates: [cand],
+      evals: new Map([
+        [AFTER_E4, { score_cp: 200, mate_in: null }],
+        [AFTER_D4, { score_cp: -100, mate_in: null }],
+      ]),
+      depth: 16,
+      rating: 1500,
+      provider: fakeProvider(),
+      analyzeFn: async () => { throw new Error("Redundant search"); },
+      shouldCancel: () => false,
+      cancelledError,
+    });
+    const expected = moverWinChanceAfter({ cp: 200, mate: null }, "white") -
+      moverWinChanceAfter({ cp: -100, mate: null }, "white");
+    expect(cand.item.trap_gap).toBeCloseTo(expected, 10);
+  });
+
   it("computes trap_gap from the provider policy + the eval-map shapes (the value the server replays)", async () => {
     const cand = brilliantCandidate();
     await attachClientTrapGaps({

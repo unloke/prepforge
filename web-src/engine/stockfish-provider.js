@@ -20,6 +20,13 @@ const ENGINE_SCRIPT_URL = "/static/engine/stockfish-lite.js";
 export const STOCKFISH_PACKAGE_VERSION = globalThis.__STOCKFISH_PACKAGE_VERSION__;
 
 const DEFAULT_MAX_DEPTH = 18;
+// Node budget for searches that must finish (whole-game analysis, the coach's verdict),
+// sent together with the depth limit; UCI stops at whichever comes first. A typical game
+// position reaches depth 16 in 100k-500k nodes, but a forcing finish can explode: the last
+// position of Levitsky-Marshall 1912 (after 23...Qg3) needs ~16M nodes / ~18 s for depth 16,
+// and more threads do not shorten it (measured 1/2/4/8 threads: 18/17/21/19 s). The depth
+// actually reached is what gets reported and stored.
+export const ANALYSIS_MAX_NODES = 1500000;
 // MultiPV ceiling. The engine widget only ever shows a few lines, but Build Generate
 // (Phase 3c) needs `branchLimit + manualPreparedCount` candidates so it can skip preserved
 // manual moves and still find a new branch — so the cap is configurable per provider.
@@ -59,6 +66,9 @@ function uciToSan(fen, uciMoves) {
 export function createStockfishWasmProvider({
   maxDepth = DEFAULT_MAX_DEPTH,
   maxMultipv = DEFAULT_MAX_MULTIPV,
+  // Optional per-search node budget, sent alongside the depth limit. Whole-game analysis
+  // uses it so one explosive tactical position cannot dominate the run.
+  maxNodes = null,
   // Injectable for tests; the live flow always constructs the real Web Worker. A factory
   // (not a worker instance) so the provider still owns the worker lifecycle and can rebuild
   // it after a fatal error exactly as before.
@@ -411,8 +421,13 @@ export function createStockfishWasmProvider({
     const restrict = Array.isArray(searchmoves)
       ? searchmoves.filter((m) => /^[a-h][1-8][a-h][1-8][qrbn]?$/.test(m))
       : [];
+    const nodeLimit =
+      Number.isFinite(maxNodes) && maxNodes > 0 ? " nodes " + Math.floor(maxNodes) : "";
     worker.postMessage(
-      "go depth " + state.max_depth + (restrict.length ? " searchmoves " + restrict.join(" ") : ""),
+      "go depth " +
+        state.max_depth +
+        nodeLimit +
+        (restrict.length ? " searchmoves " + restrict.join(" ") : ""),
     );
   }
 

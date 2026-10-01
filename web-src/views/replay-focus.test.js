@@ -140,9 +140,8 @@ describe("replay focus internals", () => {
     expect(html).toContain('class="replay-arrows"');
     expect(html).toContain('class="t-good"');
     expect(html).toContain('class="t-bad"');
-    // Legend explains the two arrows (prototype spec, user-error focus).
-    expect(html).toContain(">expected</span>");
-    expect(html).toContain(">played</span>");
+    // Move details name both moves; no standing colour legend.
+    expect(html).not.toContain('class="legend"');
   });
 
   it("tints ledger results by outcome and omits arrow legend for stayed games", () => {

@@ -112,31 +112,6 @@
   opacity: 0.7;
 }
 
-/* ---- Docked analysis job card ------------------------------------------
-   The whole-game progress / "Analysis ready" card sits in the panel flow above
-   the eval graph instead of floating over its right half (UX 2026-09-30 P2-9). */
-.analysis-job-dock:empty {
-  display: none;
-}
-.analysis-job-dock .job-toast.is-docked {
-  width: auto;
-  max-width: none;
-  margin: 0;
-  box-shadow: none;
-  transform: none;
-  transform-origin: top center;
-}
-.analysis-job-dock .job-toast.is-docked.is-minimized {
-  width: auto;
-}
-.analysis-job-dock .job-toast.is-docked.is-minimized:hover {
-  transform: none;
-  box-shadow: none;
-}
-.analysis-job-dock .job-toast.is-docked.is-leaving {
-  transform: none;
-}
-
 /* ---- Results: win chance, move grid, class bars ----------------------- */
 
 /* Fades in with the first analysed position (revealAnalysisResults). */
@@ -360,23 +335,6 @@
 .cbar-empty {
   color: var(--label);
   font-size: var(--fs-xs);
-}
-.cbar-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-}
-.cbar-key {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.cbar-key i {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
 }
 .seg-brilliant { background: var(--brilliant); }
 .seg-good { background: var(--good); }

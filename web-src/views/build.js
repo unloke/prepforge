@@ -129,9 +129,9 @@ export function createBuildView({
     bar.setAttribute("role", "group");
     bar.setAttribute("aria-label", "Fork — pick the next move");
     bar.innerHTML =
-      `<div class="fork-head"><b>Fork — pick the next move</b>` +
+      `<div class="fork-head" title="↑/↓ pick · → play · ← back"><b>Next move</b>` +
       `<span class="count">${ctx.options.length}</span>` +
-      `<span class="keys"><kbd>↑</kbd><kbd>↓</kbd> pick · <kbd>→</kbd> play · <kbd>←</kbd> back</span></div>` +
+      `</div>` +
       `<div class="fork-chips">${chips}</div>`;
     bar.querySelectorAll(".fork-chip[data-node-id]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -147,31 +147,12 @@ export function createBuildView({
     }
   }
 
-  // Mastery legend beside the breadcrumbs: mirrors the heatmap classes the tree
-  // actually paints (see .mtree-move.m-* below). Only shown when the repertoire
-  // has at least one trained own-side node — never a decorative always-on row.
-  function renderMasteryLegend() {
-    const kinds = ["mastered", "learning", "due", "weak"];
-    const present = new Set(
-      (appState.build ? appState.build.nodes : [])
-        .filter((n) => n.depth > 0 && n.is_enabled && n.mastery)
-        .map((n) => n.mastery),
-    );
-    const items = kinds.filter((k) => present.has(k));
-    if (!items.length) return "";
-    return (
-      '<div class="legend" aria-label="Mastery legend">' +
-      items.map((k) => `<span><i class="k-${k}"></i>${k}</span>`).join("") +
-      "</div>"
-    );
-  }
-
-  function renderTreeMeta(withLegend) {
+  function renderTreeMeta() {
     const meta = document.getElementById("build-tree-meta");
     if (!meta) return;
     meta.hidden = !appState.build;
     meta.innerHTML = appState.build
-      ? renderBuildBreadcrumb() + (withLegend ? renderMasteryLegend() : "")
+      ? renderBuildBreadcrumb()
       : "";
     meta.querySelectorAll(".mtree-crumb[data-node-id]").forEach((btn) => {
       btn.addEventListener("click", (event) => {
@@ -185,7 +166,7 @@ export function createBuildView({
     const container = document.getElementById("builder-tree");
     const branchBar = document.getElementById("build-branchbar");
     if (!appState.build) {
-      renderTreeMeta(false);
+      renderTreeMeta();
       container.innerHTML =
         '<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>';
       if (branchBar) branchBar.hidden = true;
@@ -195,7 +176,7 @@ export function createBuildView({
     }
     const root = buildNormalizedTree();
     if (!root || !root.children.length) {
-      renderTreeMeta(false);
+      renderTreeMeta();
       container.innerHTML = '<div class="tree-empty">Play a move to add it to this line.</div>';
       if (branchBar) branchBar.hidden = true;
       if (boards.build) boards.build.setBranchArrows([]);
@@ -227,7 +208,7 @@ export function createBuildView({
         return { classes };
       },
     });
-    renderTreeMeta(true);
+    renderTreeMeta();
     container.innerHTML = treeHtml;
     container.querySelectorAll(".mtree-collapse[data-collapse-id]").forEach((toggle) => {
       toggle.addEventListener("click", (event) => {

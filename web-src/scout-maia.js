@@ -212,22 +212,15 @@ export function scoutMaiaRankedNote(
   if (state === MAIA_ENRICH_LOADING && withMaia < total) {
     return `<div class="scout-ranked-note muted hint">Evaluating ${total} candidates…</div>`;
   }
-  if (withMaia === total) {
-    return `<div class="scout-ranked-note muted hint">Ranked by preparation value and coverage · score/WDL are Maia estimates</div>`;
+  // Settled states carry no standing note: how the list is ranked is not repeated
+  // on every report. Keep errors and the action that fixes a blocked state.
+  if (withMaia < total && (state === MAIA_ENRICH_FAILED || state === MAIA_ENRICH_PARTIAL)) {
+    return `<div class="scout-ranked-note muted hint">Maia unavailable on ${total - withMaia}/${total} lines. Retry in Settings → Maia3.</div>`;
   }
-  if (withMaia > 0 && withMaia < total) {
-    return `<div class="scout-ranked-note muted hint">Ranked by preparation value and coverage · partial Maia estimates · empirical score/WDL on remaining lines</div>`;
+  if (state === MAIA_ENRICH_OFF && withMaia === 0) {
+    return `<div class="scout-ranked-note muted hint">Turn on Maia analysis in Settings → Playing strength for human-likeness reads.</div>`;
   }
-  if (state === MAIA_ENRICH_PARTIAL) {
-    return `<div class="scout-ranked-note muted hint">Ranked by preparation value and coverage · empirical score/WDL (Maia unavailable on some lines)</div>`;
-  }
-  if (state === MAIA_ENRICH_FAILED) {
-    return `<div class="scout-ranked-note muted hint">Ranked by preparation value and coverage · empirical score/WDL (Maia unavailable)</div>`;
-  }
-  if (state === MAIA_ENRICH_OFF) {
-    return `<div class="scout-ranked-note muted hint">Maia enrichment needs Maia analysis — turn it on in Settings → Playing strength for human-likeness reads.</div>`;
-  }
-  return `<div class="scout-ranked-note muted hint">Ranked by preparation value and coverage · empirical score/WDL</div>`;
+  return "";
 }
 
 export function markUnattemptedMaiaFailures(
