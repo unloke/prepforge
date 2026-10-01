@@ -309,9 +309,12 @@ def smart_start(
         "session_id": session.id,
         "seed": session.seed,
         "mode": TrainingMode.SMART.value,
+        # A rebuilt queue reuses its DB row/id. Its start timestamp identifies
+        # the logical session, including fresh starts using the same seed.
+        "session_generation": session.created_at.isoformat(),
         "total_cards": len(session.line_order),
         "card_index": session.current_index,
-        "resumed": (not body.fresh) and session.current_index > 0,
+        "resumed": service.resumed,
         "counts": service.counts(session),
         "prompt": smart_prompt_to_json(prompt, _CHESS),
         # The full queue, expanded per target (expected move, run-in, hint,

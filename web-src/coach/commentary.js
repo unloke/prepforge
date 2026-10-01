@@ -56,6 +56,7 @@ import {
   LOSE_MATERIAL_TEMPLATE,
   PUNISH_WITH_REPLY_COUNT,
   PUNISH_NO_REPLY_COUNT,
+  RECAPTURE_SLIP,
   PHASE_HINT_OPENING,
   PHASE_HINT_MIDDLEGAME,
   PHASE_HINT_ENDGAME,
@@ -728,7 +729,21 @@ function buildProse(f) {
       const opener = idea ? choose(f, "opener", OPENER_WITH_IDEA, { san: f.san, idea }) : f.san;
       const loss = playedLineLoss(f);
       const lossPhrase = playedLineLossPhrase(f);
-      if (loss >= 1 && lossPhrase) {
+      if (isRecapture(f) && moverMaterialAfter(f) === 0) {
+        // Separate what this move does from the material at a later PV endpoint.
+        // In particular, gxh3 can restore equality before ...Nxe5 wins a pawn.
+        const line = f.playedLine;
+        const balance = line?.settledEndBalance ?? line?.endBalance ?? 0;
+        const edge = f.mover === "white" ? -balance : balance;
+        const diff = line?.settledEndDiff || line?.perPieceDiff;
+        const phrase = materialEdgePhrase(f.mover === "white" ? negateDiff(diff) : diff, edge);
+        const continuation = edge > 0 && phrase
+          ? `In the continuation${f.replySan ? ` starting with ${f.replySan}` : ""}, ${opp} eventually ends up ${phrase} ahead.`
+          : aftermathSentence(f, me, opp);
+        why = choose(f, "recaptureSlip", RECAPTURE_SLIP, {
+          san: f.san, piece: PIECE_NAME[capturedType(f)], continuation,
+        });
+      } else if (loss >= 1 && lossPhrase) {
         const phrase = lossPhrase;
         const replyTail = ideaTail(moveClauses(f.fenAfter, f.replyUci, f.replySan));
         const punish = f.replySan

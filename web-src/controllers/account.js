@@ -130,6 +130,9 @@ export function createAccountController({
       el.classList.toggle("is-guest", !appState.signedIn);
       if (appState.signedIn && initial) el.textContent = initial;
     };
+    // Page-level guest marker for copy that only applies signed out (the Games
+    // empty state cannot invite a guest to "run a check").
+    document.body?.classList.toggle("is-guest", !appState.signedIn);
     paintAvatar(document.getElementById("account-avatar"));
     paintAvatar(document.getElementById("sheet-account-avatar"));
     const sheetLabel = document.getElementById("sheet-account-label");

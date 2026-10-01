@@ -118,7 +118,12 @@ async function main() {
     await page.keyboard.press("Escape").catch(() => {});
     await scan("modal-dialog", async () => {
       await page.click('[data-testid="nav-dashboard"]');
-      await page.click('[data-testid="dashboard-new-rep"]');
+      // An empty library hides the header actions and offers New repertoire in
+      // its empty state instead; use whichever entry point is showing.
+      await page
+        .locator('[data-testid="dashboard-new-rep"]:visible, #dashboard-repertoires [data-lib-action="new"]:visible')
+        .first()
+        .click();
       await page.locator(".modal-overlay .modal").first().waitFor({ timeout: 10_000 });
     });
 

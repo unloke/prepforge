@@ -132,6 +132,7 @@ class SmartTrainingService:
     def __init__(self, repository: PrepForgeRepository, owner_user_id: str | None = None):
         self.repository = repository
         self.owner_user_id = owner_user_id
+        self.resumed = False
         # Per-request caches. A service instance is created fresh per request
         # (see api/routers/train.py), so a repertoire and its node index are
         # loaded/built at most once even though /smart/start touches the same
@@ -178,11 +179,13 @@ class SmartTrainingService:
         """Resume an unfinished, still-intact smart session, else build a new
         queue from current mastery. ``fresh`` forces a rebuild (the explicit
         "start over" button)."""
+        self.resumed = False
         repertoire = self._load_repertoire_or_raise(repertoire_id)
         existing = self.repository.load_latest_training_session(
             repertoire_id, TrainingMode.SMART
         )
         if existing is not None and not fresh and self._resumable(existing, repertoire):
+            self.resumed = True
             return existing
 
         progress_by_id = {
@@ -212,6 +215,7 @@ class SmartTrainingService:
                 current_node_id=None,
                 mistakes=[],
                 seed=actual_seed,
+                created_at=_utc_now(),
                 updated_at=_utc_now(),
             )
         else:
@@ -258,6 +262,7 @@ class SmartTrainingService:
         mixedness lives in the cards themselves (4-part ``kind:rep:first:last``
         encoding). With a single active repertoire this simply delegates to the
         plain per-repertoire start."""
+        self.resumed = False
         reps = self.active_repertoires(owner_user_id)
         if not reps:
             raise ValueError("no active repertoires to train")
@@ -274,6 +279,7 @@ class SmartTrainingService:
             anchor.id, TrainingMode.SMART
         )
         if existing is not None and not fresh and self._resumable_mixed(existing, reps):
+            self.resumed = True
             return existing
 
         actual_seed = seed if seed is not None else random.SystemRandom().randint(1, 2**31 - 1)
@@ -317,6 +323,7 @@ class SmartTrainingService:
                 current_node_id=None,
                 mistakes=[],
                 seed=actual_seed,
+                created_at=_utc_now(),
                 updated_at=_utc_now(),
             )
         else:

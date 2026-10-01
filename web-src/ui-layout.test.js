@@ -355,7 +355,9 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("async function restoreWorkspaceLocation()");
     expect(startup).toContain("restoreWorkspaceLocation()");
     const restore = app.slice(app.indexOf("async function restoreWorkspaceLocation()"));
-    expect(restore.slice(0, 1200)).toMatch(/switchView\(loc\.view,\s*\{\s*fromUrl:\s*true\s*\}\)/);
+    // (A page the user picked mid-boot is kept instead: their own navigation,
+    // not hydration; see navigatedDuringBoot.)
+    expect(restore.slice(0, 1800)).toMatch(/switchView\(loc\.view,\s*\{\s*fromUrl:\s*true\s*\}\)/);
     expect(startup).not.toMatch(/switchView\(\s*["']settings["']\s*\)/);
     for (const name of [
       "loadSignedInWorkspace",

@@ -6,9 +6,10 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
-    <script type="module" crossorigin src="/static/assets/index-BFNogVaX.js"></script>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111318'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23ffffff'%3E%E2%99%9E%3C/text%3E%3C/svg%3E" />
+    <script type="module" crossorigin src="/static/assets/index-JJY1cBwW.js"></script>
     <link rel="modulepreload" crossorigin href="/static/assets/chess-DwBov9dY.js">
-    <link rel="stylesheet" crossorigin href="/static/assets/index-x-BYxErI.css">
+    <link rel="stylesheet" crossorigin href="/static/assets/index-CxIRwKvD.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -88,7 +89,7 @@
         <div class="lib">
           <section class="today card" id="dashboard-today" data-testid="dashboard-today" aria-label="Today" hidden></section>
           <div class="lib-grid">
-            <section class="lib-list card">
+            <section class="lib-list card is-loading">
               <header class="card-head">
                 <h2>Repertoires <span class="count" id="dashboard-rep-count" hidden></span></h2>
                 <div class="seg" role="group" aria-label="Filter repertoires">
@@ -108,7 +109,7 @@
                 </span>
               </header>
               <div class="lib-cols" id="lib-cols" aria-hidden="true"><span>Repertoire</span><span>Mastery</span><span>Queue</span><span></span></div>
-              <div id="dashboard-repertoires" class="lib-rep-list"></div>
+              <div id="dashboard-repertoires" class="lib-rep-list"><div class="empty-state lib-loading" role="status" data-testid="library-loading"><div class="spinner" aria-hidden="true"></div><p>Loading your library…</p></div></div>
               <p class="lib-hint">Click a repertoire to open it &middot; &#8943; for train, rename, share, delete.</p>
               <input type="file" id="dashboard-import-input" accept=".pgn,.json,application/x-chess-pgn,application/json" hidden />
             </section>
@@ -852,6 +853,6 @@
         <div class="palette-results" id="palette-results" data-testid="palette-results" role="listbox" aria-label="Commands"></div>
       </div>
     </div>
-
+
   </body>
 </html>

@@ -58,7 +58,6 @@ import {
   serializeWorkspaceLocation,
   workspaceLocationFromState,
 } from "./workspace-url.js";
-import { mapTrainUiSession, shouldResetTrainStats } from "./train-resume.js";
 import {
   pickOpponentReply,
   playPositionAfterReply,
@@ -103,6 +102,10 @@ import {
   sameFetchSources,
 } from "./views/shared/source-composer.js";
 let _coachReady = null;
+function loadTrainResume() {
+  return import("./train-resume.js");
+}
+
 function preloadCoach() {
   if (!_coachReady) {
     _coachReady = import("./coach/bundle.js").catch((err) => {
@@ -3502,6 +3505,10 @@ function activeBoardController() {
 }
 
 let workspaceUrlReady = false;
+// Set when the user picks a page while boot is still awaiting auth / the
+// workspace: restoreWorkspaceLocation must not then snap them back to the URL
+// the page loaded with (a Scout click during boot landed on the dashboard).
+let navigatedDuringBoot = false;
 let paletteItems = [];
 let paletteActive = 0;
 let paletteA11yCleanup = null;
@@ -3691,7 +3698,9 @@ function runPaletteItem(item) {
   }
   if (item.action === "analyze") {
     switchView("analyze");
+    return;
   }
+  if (item.action === "toggle-theme") toggleTheme();
 }
 
 function bindCommandPalette() {
@@ -3745,6 +3754,14 @@ function bindCommandPalette() {
 }
 
 async function restoreWorkspaceLocation() {
+  if (navigatedDuringBoot) {
+    // The user already moved on: stay there, re-entering the page so it loads
+    // with the now-known session (it may have painted signed-out mid-boot),
+    // and record it in the URL.
+    switchView(appState.currentView);
+    syncWorkspaceUrl();
+    return;
+  }
   const loc = parseWorkspaceLocation(window.location.href);
   // F-06 return state: coming back to Games (even after a reload) restores the
   // selected game and the active filter, so the source page is where you left it.
@@ -3911,6 +3928,7 @@ function countBuildMovesToTrain(build) {
 }
 
 function switchView(name, { fromUrl = false } = {}) {
+  if (!fromUrl && !workspaceUrlReady) navigatedDuringBoot = true;
   if (appState.currentView !== name) clearStaleStatusOnNavigate();
   appState.currentView = name;
   // Navigating is user activity; if the Lichess watch is running, switching to
@@ -3991,8 +4009,9 @@ function switchView(name, { fromUrl = false } = {}) {
   }
   // Entering Teams (re)loads the caller's teams + shared list.
   if (name === "teams") {
-    preloadTeamsView().catch(() => {});
-    if (appState.signedIn) loadTeams().catch(() => { /* best-effort */ });
+    // Signed out, loadTeams() makes no API call and paints the sign-in state;
+    // skipping it left a deep link to #/teams on the bare "Choose a team" shell.
+    loadTeams().catch(() => { /* best-effort */ });
   }
   if (name === "build") scheduleExplorerRefresh();
   // One engine session, shown inside whichever view owns a board: Build's
@@ -4409,10 +4428,25 @@ async function ensureDashboardView() {
 }
 
 async function loadDashboard() {
+  let view;
   try {
-    const view = await ensureDashboardView();
-    await view.loadDashboard();
+    view = await ensureDashboardView();
+    if (appState.signedIn) await view.loadDashboard();
+    else view.renderSignedOut();
   } catch (error) {
+    // An import failure happens before the view can clear the initial spinner.
+    if (!view) {
+      const card = document.querySelector("#view-dashboard .lib-list");
+      for (const name of ["is-loading", "is-empty", "is-error"]) {
+        card?.classList.toggle(name, name !== "is-loading");
+      }
+      const host = document.getElementById("dashboard-repertoires");
+      if (host) {
+        host.innerHTML = `<div class="empty-state" role="alert"><h3>Could not load your library.</h3>` +
+          `<p>${escapeHtml(error.message)}</p><button type="button" class="btn" data-library-retry>Try again</button></div>`;
+        host.querySelector("[data-library-retry]")?.addEventListener("click", loadDashboard);
+      }
+    }
     setStatusError(error.message);
   }
 }
@@ -4932,7 +4966,16 @@ async function fetchMyLichessGame(accountId = null) {
 
 // Analyze "History": list previously analyzed games; click to recall a saved
 // report without re-running the engine.
+// A save adds a row to "Recent analyses": refresh the open drawer so it never
+// keeps saying "No saved analyses yet" beside the review just saved.
+function refreshAnalysisHistoryIfOpen() {
+  const drawer = document.getElementById("history-drawer");
+  if (appState.signedIn && drawer && drawer.open) void loadAnalysisHistory();
+}
+
+let analysisHistorySeq = 0;
 async function loadAnalysisHistory() {
+  const seq = ++analysisHistorySeq;
   const host = document.getElementById("analysis-history");
   if (!host) return;
   host.innerHTML = '<div class="muted hint">Loading...</div>';
@@ -4940,9 +4983,11 @@ async function loadAnalysisHistory() {
   try {
     payload = await api("/api/analyses");
   } catch (error) {
+    if (seq !== analysisHistorySeq) return;
     host.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
     return;
   }
+  if (seq !== analysisHistorySeq) return;
   if (!payload.analyses || !payload.analyses.length) {
     host.innerHTML = '<div class="muted hint">No saved analyses yet.</div>';
     return;
@@ -4958,30 +5003,44 @@ async function loadAnalysisHistory() {
       );
     })
     .join("");
-  host.querySelectorAll(".history-item").forEach((btn) => {
-    btn.addEventListener("click", () => recallAnalysis(btn.dataset.gameId));
+  host.querySelectorAll(".history-item").forEach((btn, i) => {
+    btn.addEventListener("click", () => recallAnalysis(btn.dataset.gameId, payload.analyses[i]));
   });
 }
 
-async function recallAnalysis(gameId) {
+// Bumped per recall: two quick clicks in Recent analyses must not let the
+// slower, older response replace the game picked last.
+let analysisRecallSeq = 0;
+
+async function recallAnalysis(gameId, listItem = null) {
+  const seq = ++analysisRecallSeq;
   setStatus("Loading saved analysis...");
   appState.analysisSourcePgn = null;
   hideAnalysisHandoff();
   try {
     const payload = await api(`/api/analyses/${encodeURIComponent(gameId)}`);
+    if (seq !== analysisRecallSeq) return;
+    // The saved result carries no player names; the history row does. Without
+    // them the head fell back to "Analysis board" for a named game.
+    for (const key of ["white", "black", "result"]) {
+      if (!payload[key] && listItem?.[key]) payload[key] = listItem[key];
+    }
     appState.analysis = payload;
+    // Mirror the recalled game into the PGN box so it stays the source of truth
+    // for any board variations the user then explores (and a clean export). The
+    // box has no headers for a recalled game, so syncPgnFromTree writes movetext.
+    // Clear it before rendering: the head reads its tags first, and a leftover
+    // (e.g. the demo PGN) would title the recalled game "PrepForge vs Demo".
+    const pgnInput = document.getElementById("pgn-input");
+    if (pgnInput) pgnInput.value = "";
     resetAnalysisVariations();
     showAnalysisPly(0);
     await renderAnalysis(payload);
     revealAnalysisResults();
-    // Mirror the recalled game into the PGN box so it stays the source of truth
-    // for any board variations the user then explores (and a clean export). The
-    // box has no headers for a recalled game, so syncPgnFromTree writes movetext.
-    const pgnInput = document.getElementById("pgn-input");
-    if (pgnInput) pgnInput.value = "";
     void syncPgnFromTree().catch(() => {});
     setStatus(`Recalled analysis: ${payload.moves.length} plies`);
   } catch (error) {
+    if (seq !== analysisRecallSeq) return;
     setStatusError(error.message);
   }
 }
@@ -6430,6 +6489,7 @@ async function runAnalysis(options = {}) {
     // The source has done its job — fold it away so the report gets the room.
     const pgnDrawer = document.getElementById("pgn-drawer");
     if (pgnDrawer) pgnDrawer.open = false;
+    refreshAnalysisHistoryIfOpen();
     await updateAnalysisHandoff();
   } catch (error) {
     if (error && error.cancelled) {
@@ -6554,6 +6614,7 @@ async function retryAnalyzeSave() {
     showAnalysisPly(0);
     await renderAnalysis(payload);
     setStatus("Analysis saved", { severity: "success" });
+    refreshAnalysisHistoryIfOpen();
     appState.analysisSourcePgn = checkpoint.pgn || appState.analysisSourcePgn;
     revealAnalysisResults();
     await updateAnalysisHandoff();
@@ -7998,6 +8059,14 @@ async function refreshExplorerPanel() {
     if (explorerModule && error instanceof explorerModule.ExplorerRateLimited) {
       const secs = Math.max(1, Math.ceil(error.retryInMs / 1000));
       rows.innerHTML = `<div class="muted hint">Lichess asks for a short pause - try again in ~${secs}s.</div>`;
+    } else if (/link your lichess account/i.test(error.message || "")) {
+      // Retrying cannot help until an account is linked: offer the link.
+      rows.innerHTML =
+        `<div class="muted hint">The ${label} explorer reads Lichess with your linked account. ` +
+        `<button type="button" class="btn sm" data-explorer-link>Link Lichess</button></div>`;
+      rows.querySelector("[data-explorer-link]")?.addEventListener("click", () => {
+        openSettingsSection("set-connections").catch(() => {});
+      });
     } else {
       rows.innerHTML =
         `<div class="muted hint">${label} explorer unavailable: ${escapeHtml(error.message)} ` +
@@ -10220,6 +10289,9 @@ function syncTrainPickerVisibility() {
       signedIn: appState.signedIn,
       hasRepertoire: !!selectedTrainRepertoireId(),
     });
+    // A guest's Start opens the sign-in gate; say so on the button instead of
+    // promising a session that cannot begin.
+    startBtn.textContent = appState.signedIn ? "Start" : "Sign in to start";
   }
   const startPlay = document.getElementById("start-play");
   const bookEl = document.getElementById("train-play-book");
@@ -10436,6 +10508,7 @@ async function startTraining(mode, options = {}) {
   const fresh = !!options.fresh;
   const body = { seed: 13, mode, repertoire_id: repertoireId, fresh };
   try {
+    const { mapTrainUiSession, shouldResetTrainStats } = await loadTrainResume();
     const payload = await postJson("/api/train/start", body);
     appState.training = payload;
     const mapped = mapTrainUiSession(payload, { fresh });
@@ -11600,7 +11673,11 @@ function startBlitzTimer(smart, prompt) {
   }, BLITZ_SECONDS * 1000);
 }
 
+let smartStartSeq = 0;
 async function startSmartTraining(options = {}) {
+  const seq = ++smartStartSeq;
+  const owner = currentOwnerId();
+  const isCurrent = () => seq === smartStartSeq && owner === currentOwnerId() && (appState.trainMode || "smart") === "smart";
   const fresh = !!options.fresh;
   setStatus(fresh ? "Building a new queue" : "Building your queue");
   setTrainBanner(
@@ -11614,6 +11691,7 @@ async function startSmartTraining(options = {}) {
   try {
     await hardFlushBuild();
   } catch (error) {
+    if (!isCurrent()) return;
     setStatusError(error.message);
     return;
   }
@@ -11621,20 +11699,24 @@ async function startSmartTraining(options = {}) {
   // the new queue is scheduled from SR state. Strict: starting anyway would
   // schedule the queue off stale SR state, so block until the sync lands.
   const trainSynced = await flushTrainSync().catch(() => false);
+  if (!isCurrent()) return;
   if (!trainSynced) {
     setStatus("Couldn't sync your last session — check your connection and try again.");
     return;
   }
   let payload;
+  let trainResume;
   try {
     // mixed: one queue over ALL active repertoires (the picker only matters
     // for line rehearsal). fresh: always rebuild the queue from the current
     // tree + SR state — a resumed stale queue is exactly the desync this avoids.
+    trainResume = await loadTrainResume();
     payload = await postJson("/api/train/smart/start", {
       mixed: true,
       fresh,
     });
   } catch (error) {
+    if (!isCurrent()) return;
     if (isAuthError(error)) {
       setTrainBanner("done", "Sign in to train", "Your repertoires and review schedule live in your account.");
       accountService().handleAuthRequired("Sign in to start training");
@@ -11644,9 +11726,15 @@ async function startSmartTraining(options = {}) {
     setTrainBanner("done", "Couldn't build your queue", "Try Start again in a moment.");
     return;
   }
+  if (!isCurrent()) return;
   appState.trainingRepertoireId = payload.repertoire_id;
-  const mapped = mapTrainUiSession(payload, { fresh });
-  if (shouldResetTrainStats(mapped)) trainStatsReset();
+  try {
+    trainSessionMemo ||= await import("./train-session-memo.js");
+  } catch (_) { /* recovery is optional if the chunk cannot load */ }
+  if (!isCurrent()) return;
+  const mapped = trainResume.mapTrainUiSession(payload, { fresh });
+  // A resumed session without a memo must not inherit unrelated counters.
+  trainStatsReset();
   appState.training = null; // leave legacy mode if it was active
   // A restart can interrupt an in-flight run-in; its early-return leaves the
   // busy flag set, so clear it before the new session takes the board.
@@ -11662,6 +11750,8 @@ async function startSmartTraining(options = {}) {
   }
   appState.smart = {
     sessionId: mapped.sessionId,
+    generation: mapped.generation,
+    seed: mapped.seed,
     repertoireId: mapped.repertoireId,
     repertoireName: mapped.repertoireName,
     color: mapped.color,
@@ -11680,6 +11770,11 @@ async function startSmartTraining(options = {}) {
     blitz: blitzEnabled(),
     timeouts: 0,
   };
+  // A reload resumes at the server's card index; bring back this session's
+  // own first-try stats and starting health so the summary covers all of it.
+  appState.trainStats = trainSessionMemo?.restoreSmartSession(currentOwnerId(), mapped, appState.smart) || appState.trainStats;
+  const smart = appState.smart;
+  rememberSmartSession();
   // F-06: this session is the first practice for every queued "train this
   // mistake" handoff — stamp takenAt so the mistake→practice time is measurable.
   for (const handoff of pendingHandoffs({ reason: "practice-missed-move" })) {
@@ -11695,23 +11790,30 @@ async function startSmartTraining(options = {}) {
   setSmartPanelsHidden();
   await renderSmartQueueStrip();
   await renderTrainStats();
+  if (!isCurrent()) return;
   setTrainSyncState("saved");
   document.getElementById("train-board-label").textContent =
     `${payload.repertoire_name} - you play ${payload.color}`;
   loadPhaseCoach()
     .then((m) => {
-      if (!appState.smart) return;
-      appState.smart.phaseCluster = m.clusterQueueByPhase(queue);
+      if (appState.smart !== smart) return;
+      smart.phaseCluster = m.clusterQueueByPhase(smart.queue);
       return renderSmartQueueStrip();
     })
     .catch(() => {});
   setStatus(
     mapped.resumed
-      ? `Resumed queue: card ${mapped.cardIndex + 1} / ${queue.length}`
-      : `Queue ready: ${queue.length} cards`,
+      ? `Resumed queue: card ${smart.cardIndex + 1} / ${smart.queue.length}`
+      : `Queue ready: ${smart.queue.length} cards`,
   );
   syncWorkspaceUrl();
-  await presentSmartPrompt(smartLocalPrompt(appState.smart));
+  const resumedAttempt = appState.smart.attempt;
+  const prompt = smartLocalPrompt(appState.smart);
+  if (!prompt) {
+    await finishSmartSession();
+    return;
+  }
+  await presentSmartPrompt(prompt, { attempt: resumedAttempt });
 }
 
 // Build the current prompt from the local queue — the client-side counterpart
@@ -11750,11 +11852,11 @@ function smartLocalPrompt(smart) {
 // Show one card prompt: animate the run-in (unless the board is already on the
 // position, i.e. mid-card right after the opponent's reply), then open the
 // board for the answer — teach-first when the card is new.
-async function presentSmartPrompt(prompt) {
+async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
   const smart = appState.smart;
   if (!smart || !prompt) return;
   smart.prompt = prompt;
-  smart.attempt = 1;
+  smart.attempt = attempt;
   appState.trainHintLevel = 0;
   await renderSmartProgress(prompt);
   const board = boards.train;
@@ -11826,7 +11928,7 @@ async function presentSmartPrompt(prompt) {
       "Your move",
       `${SMART_KIND_LABELS[prompt.kind] || "Review"} · play the prepared idea`,
     );
-    if (smart.blitz) startBlitzTimer(smart, prompt);
+    if (smart.blitz && smart.attempt === 1) startBlitzTimer(smart, prompt);
     else clearBlitzTimer();
   }
   prefetchTrainCoach(prompt);
@@ -11906,6 +12008,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
     if (attempt === 1) {
       stats.mistakes += 1;
       stats.history.push(false);
+      rememberSmartSession({ attempt: attempt + 1 });
       await renderTrainStats();
     }
     appState.trainBusy = true;
@@ -11969,6 +12072,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
         await renderSmartQueueStrip();
         markTrainPositionDirty();
       }
+      rememberSmartSession({ attempt: attempt + 1 });
       // The answer is on screen anyway, so say WHY it's the move — a reveal that
       // teaches sticks better than a bare "it's Nf3".
       const why = trainTeachLine(prompt, prompt.phaseCoach);
@@ -11999,6 +12103,8 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   } else {
     smart.retriesFixed += 1;
   }
+  // Store the next cursor before animating an already-counted answer.
+  rememberSmartSession({ advance: true });
   await renderTrainStats();
   appState.trainBusy = true;
   boards.train.setEngineArrow(null);
@@ -12060,6 +12166,7 @@ async function skipSmartCard() {
   smart.cardIndex += 1;
   smart.targetIndex = 0;
   smart.attempt = 1;
+  rememberSmartSession();
   markTrainPositionDirty();
   const next = smartLocalPrompt(smart);
   if (next) {
@@ -12095,11 +12202,19 @@ function smartHint() {
   }
 }
 
+let trainSessionMemo = null;
+function rememberSmartSession(progress = {}) {
+  const smart = appState.smart;
+  if (!smart || !smart.sessionId || !appState.trainStats) return;
+  trainSessionMemo?.saveSmartSession(currentOwnerId(), smart, appState.trainStats, progress);
+}
+
 async function finishSmartSession() {
   const smart = appState.smart;
   if (!smart) return;
   const stats = appState.trainStats || {};
   smart.prompt = null;
+  trainSessionMemo?.clearSessionMemo(currentOwnerId(), smart.sessionId, smart.generation);
   syncTrainSessionControls();
   clearBlitzTimer();
   setBlitzBarVisible(false);
@@ -12729,6 +12844,13 @@ function paintGamesSource() {
   const label = n > 0 ? `Self · ${n}` : "Self · all linked";
   const visible = chips.length ? chips : [{ kind: "self", label }];
   tray.hidden = false;
+  // Signed in with nothing linked and no usernames added: "Self · all linked"
+  // named an empty set and Check stayed disabled without saying why.
+  if (n === 0 && !selection.external.length && selection.linkedMode === "all") {
+    tray.innerHTML =
+      '<button type="button" class="src-chip src-chip-signin" data-games-link>Link Lichess to use your games</button>';
+    return;
+  }
   tray.innerHTML = visible
     .map((c) =>
       c.kind === "self"
@@ -12741,7 +12863,7 @@ function paintGamesSource() {
             `<button type="button" class="src-chip-x" data-games-unpick="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Games sources">×</button></span>`
     )
     .join("");
-  if (selfState === "none" && !selection.external.length) {
+  if ((selfState === "none" || (!chips.length && selection.linkedMode !== "all")) && !selection.external.length) {
     tray.innerHTML =
       '<span class="src-empty">No sources — open Add and pick one</span>';
     return;
@@ -12758,6 +12880,10 @@ function bindGamesSource() {
   document.getElementById("games-source-chips")?.addEventListener("click", (event) => {
     if (event.target.closest("[data-games-signin]")) {
       requireSignIn("Sign in to check your games against your repertoire", "games-check");
+      return;
+    }
+    if (event.target.closest("[data-games-link]")) {
+      openSettingsSection("set-connections").catch(() => {});
       return;
     }
     const removeExt = event.target.closest("[data-games-unpick-external]");
@@ -14247,9 +14373,7 @@ async function init() {
   } else {
     setStatus("Sign in to build and train your repertoires.");
     renderBuilderTree();
-    ensureDashboardView()
-      .then((view) => view.renderSignedOut())
-      .catch(() => { /* the Library chunk failing leaves the static shell */ });
+    void loadDashboard();
   }
   // Back from a sign-in (password reload or Google redirect): clean the URL,
   // put the user back on the page they were on, and pick up the action the

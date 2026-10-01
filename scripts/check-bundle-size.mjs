@@ -42,6 +42,9 @@
 // reasons, sign-in modal guards, hint retention, Games move labels, Scout
 // source reset, Teams sign-in CTA) grow the main chunk 319,444 → 322,032 B
 // raw and 99,236 → 100,208 B gzip; allow 323 KB / 101 KB.
+// The round-2 walkthrough fixes (Smart-queue session memo across reloads,
+// guest Train/Teams/Games states, Lichess link chip) add ~1.2 KB raw;
+// allow 325 KB / 101 KB.
 import { readdirSync, statSync, readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { fileURLToPath, URL } from "node:url";
@@ -56,7 +59,7 @@ const LIMITS = [
   {
     prefix: "index-",
     suffix: ".js",
-    maxBytes: 323_000, // reviewed walkthrough fixes (see measured deltas above)
+    maxBytes: 325_000, // reviewed walkthrough fixes (see measured deltas above)
     maxGzipBytes: 101_000,
     label: "main app chunk",
   },

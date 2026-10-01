@@ -397,35 +397,42 @@ export const LOSE_MATERIAL_TEMPLATE = [
   "{opener} walks into a poor trade. {punish}",
 ];
 
-// The forcing line's material count, named with the punishing reply. Standalone,
-// capitalised sentences.
+// The forcing line's material CHANGE, named with its first reply. This is not
+// the final balance: a side already a rook up can win two more pawns.
 export const PUNISH_WITH_REPLY_COUNT = [
-  "After {reply}, {tailComma}{opp} ends up {phrase} ahead.",
-  "{opp} grabs it: {reply} nets {phrase}{tailParen}.",
-  "After {reply}{tailDash}, {opp} comes away {phrase} up.",
-  "Once {reply} lands, {opp} is {phrase} to the good{tailParen}.",
-  "{opp} plays {reply} and is suddenly {phrase} up{tailParen}.",
-  "After {reply}, {tailComma}{opp} is simply {phrase} to the good.",
-  "{reply} does the damage: {opp} is {phrase} up{tailParen}.",
-  "After {reply}, {tailComma}{opp} walks off {phrase} ahead.",
-  "Once {reply} hits, {tailComma}{opp} banks {phrase}.",
-  "{reply} clears it up, and the trade leaves {opp} with {phrase}.",
-  "The point is {reply}: after that, {opp} has won {phrase}.",
-  "After {reply}, {tailComma}the material story is {phrase} for {opp}.",
+  "In the line starting with {reply}, {opp} wins {phrase}.",
+  "{opp} gains {phrase} in the continuation beginning with {reply}{tailParen}.",
+  "The line starting with {reply} gains {phrase} for {opp}.",
+  "{opp} wins {phrase} over the line beginning with {reply}{tailParen}.",
+  "{opp} starts with {reply} and wins {phrase} in the continuation.",
+  "Following {reply}, {opp} gains {phrase} over the rest of the line.",
+  "{reply} begins a line in which {opp} wins {phrase}{tailParen}.",
+  "{opp} takes {phrase} over the continuation starting with {reply}.",
+  "The continuation beginning with {reply} wins {phrase} for {opp}.",
+  "{reply} starts the trade, which gains {phrase} for {opp}.",
+  "The point is {reply}: the continuation wins {phrase} for {opp}.",
+  "Over the line starting with {reply}, the material gain is {phrase} for {opp}.",
 ];
 
 export const PUNISH_NO_REPLY_COUNT = [
-  "{opp} ends up {phrase} ahead in the line that follows.",
-  "The position settles with {opp} {phrase} up.",
-  "{opp} comes out {phrase} to the good from here.",
-  "That's {phrase} gone, just like that.",
-  "{opp} is left {phrase} up once the dust settles.",
-  "The line runs out with {opp} {phrase} ahead.",
-  "When it all settles, {opp} is {phrase} to the good.",
-  "{opp} pockets {phrase} out of it.",
-  "The trade resolves as {phrase} for {opp}.",
-  "Once the dust clears, {opp} has taken {phrase}.",
-  "The resulting exchange favours {opp} by {phrase}.",
+  "{opp} wins {phrase} in the line that follows.",
+  "The continuation gains {phrase} for {opp}.",
+  "{opp} gains {phrase} from here.",
+  "That's {phrase} lost over the continuation.",
+  "{opp} wins {phrase} once the trades settle.",
+  "The line gains {phrase} for {opp}.",
+  "When the trades settle, {opp} has gained {phrase}.",
+  "{opp} wins {phrase} out of it.",
+  "The trade gains {phrase} for {opp}.",
+  "Over the continuation, {opp} takes {phrase}.",
+  "The resulting exchange gains {phrase} for {opp}.",
+];
+
+// A level recapture can still be a positional mistake. Any later material edge
+// belongs to the continuation, not to the recapture itself.
+export const RECAPTURE_SLIP = [
+  "{san} takes back the {piece}, keeping material level. {continuation}",
+  "The {piece} is recaptured with {san}, and material is level. {continuation}",
 ];
 
 // What the move costs when nothing is materially lost — initiative/tempo, by phase.

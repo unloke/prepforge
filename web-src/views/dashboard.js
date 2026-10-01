@@ -183,7 +183,9 @@ export function createDashboardView({
       },
       {
         id: "train",
-        title: "Finish a training session",
+        // Counted from started sessions (there is no "finished" flag), so the
+        // step promises only what it measures.
+        title: "Start a training session",
         detail: repertoires > 0
           ? "The smart queue schedules your reviews from there."
           : "Unlocks once you have a repertoire.",
@@ -524,6 +526,7 @@ export function createDashboardView({
   function setLibraryEmpty(empty, { error = false } = {}) {
     const card = document.querySelector("#view-dashboard .lib-list");
     if (card) {
+      card.classList.toggle("is-loading", false);
       card.classList.toggle("is-empty", empty || error);
       card.classList.toggle("is-error", error);
     }

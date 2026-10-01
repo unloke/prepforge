@@ -1602,6 +1602,31 @@ describe("createScoutClient", () => {
     await expect(client429.fetchGames("foe")).rejects.toThrow(/rate limit/i);
   });
 
+  it("a 404 export for an account that exists is not reported as a missing user", async () => {
+    const client = createScoutClient({
+      fetchImpl: async (url) =>
+        String(url).includes("/api/user/")
+          ? { ok: true, status: 200, json: async () => ({ id: "drnykterstein" }) }
+          : { ok: false, status: 404, text: async () => "" },
+      storage: memoryStorage(),
+    });
+    await expect(client.fetchGames("DrNykterstein")).rejects.toThrow(/won't export DrNykterstein's games/);
+    await expect(client.streamGames("DrNykterstein")).rejects.toThrow(/won't export/);
+  });
+
+  it.each([429, 500, "network"])("an inconclusive profile probe (%s) cannot declare the user missing", async (status) => {
+    const client = createScoutClient({
+      fetchImpl: async (url) => {
+        if (!String(url).includes("/api/user/")) return { ok: false, status: 404 };
+        if (status === "network") throw new TypeError("fetch failed");
+        return { ok: false, status };
+      },
+      storage: memoryStorage(),
+    });
+    await expect(client.fetchGames("Foe")).rejects.toThrow(/couldn't verify/i);
+    await expect(client.streamGames("Foe")).rejects.toThrow(/couldn't verify/i);
+  });
+
   it("builds an export URL without max by default", () => {
     const url = scoutUrl("Foe");
     expect(url).toContain("/api/games/user/Foe?");

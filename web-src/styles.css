@@ -1456,6 +1456,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .steps { grid-column: 2; grid-row: 1; overflow: hidden; }
 
 /* Filter chips + search share the card head row (prototype). */
+.search-field[hidden] { display: none; }
 .search-field {
   display: flex;
   align-items: center;
@@ -1507,6 +1508,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-list.is-empty .lib-hint { display: none; }
 /* Failed load: same empty layout, and the search goes too (nothing to filter). */
 .lib-list.is-error .card-head .search-field { display: none; }
+/* Nothing to filter or add over yet: the empty card (and Get started) carry
+   New / Import / Sign in, so the header keeps only its title. While the first
+   load runs, the column header and row hint stay out over an empty table. */
+.lib-list.is-empty .card-head .search-field,
+.lib-list.is-empty:not(.is-error) .lib-actions,
+.lib-list.is-loading .card-head .seg,
+.lib-list.is-loading .lib-cols,
+.lib-list.is-loading .lib-hint { display: none; }
+.lib-loading { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 12px; }
 .lib-row {
   min-height: 54px;
   padding-top: 8px;
@@ -1754,6 +1764,10 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .steps .card-head h2 { margin-right: auto; }
 .setup-dismiss { align-self: center; min-width: 24px; height: 24px; padding: 0; border-color: transparent; background: none; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
 .setup-dismiss:hover { color: var(--text); background: var(--surface-hover); }
+/* The later generic .ib rule re-adds a border (a heavy boxed × on mobile, where
+   .ib grows to a 44px tap target). Keep the target, drop the box. */
+.ib.setup-dismiss:not(:hover) { border-color: transparent; background: none; }
+.ib.setup-dismiss { border-color: transparent; }
 .setup-bar { height: 3px; margin: 0 12px 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
 .setup-bar i { display: block; height: 100%; background: var(--good); transition: width 0.3s ease; }
 .step-n.is-done { background: color-mix(in srgb, var(--good) 22%, transparent); color: var(--good-text); }
@@ -3236,6 +3250,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .scout-panel.is-streaming .scout-stream { display: flex; }
 .scout-panel .scout-empty { display: none; }
 .scout-panel:not(.is-streaming):has(#scout-results:empty) .scout-empty { display: flex; }
+/* "0 games fetched" before any scout has run is noise next to the empty card. */
+.scout-panel:not(.is-streaming):has(#scout-results:empty):has(#scout-profile[hidden]) .counter { visibility: hidden; }
 .spinner {
   flex: none;
   width: 26px;
@@ -3253,6 +3269,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: var(--muted);
   font-size: 13px;
   text-align: center;
+}
+body.is-guest .replay-results:empty::before {
+  content: "Sign in to check your games against your repertoires.";
 }
 
 @media (max-width: 1279px) {

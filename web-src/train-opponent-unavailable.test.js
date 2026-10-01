@@ -37,7 +37,8 @@ describe("Explorer failure is not a thin sample", () => {
     const note = replyReasonNote(reply);
     expect(note).not.toMatch(/too thin/);
     expect(note).toMatch(/sign-in/);
-    expect(note).toMatch(/Maia stepped in/);
+    // The panel already reads "Maia played …"; the note gives only the reason.
+    expect(note).not.toMatch(/Maia/);
   });
 
   it("a genuinely thin sample still says so", () => {
@@ -49,7 +50,7 @@ describe("Explorer failure is not a thin sample", () => {
       rng: () => 0.1,
     });
     expect(reply.reason).toBe("thin-sample");
-    expect(replyReasonNote(reply)).toBe(" · sample too thin, Maia stepped in");
+    expect(replyReasonNote(reply)).toBe(" · explorer sample too thin here");
   });
 
   it("keeps the Explorer failure reason when the repertoire falls out of book", () => {
@@ -59,8 +60,7 @@ describe("Explorer failure is not a thin sample", () => {
       maiaPredictions: MAIA, rng: () => 0.1,
     });
     expect(reply.source).toBe("maia");
-    expect(replyReasonNote(reply)).toContain("link your Lichess account");
-    expect(replyReasonNote(reply)).toContain("Maia stepped in");
+    expect(replyReasonNote(reply)).toContain("needs a linked Lichess account");
   });
 
   it("keeps the existing out-of-book and plain notes", () => {

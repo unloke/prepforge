@@ -137,6 +137,22 @@ describe("Library error state", () => {
     expect(statuses).not.toContainEqual(["status", "Ready"]);
   });
 
+  it("the first-load spinner state (is-loading from index.html) clears on success and on failure", async () => {
+    build(async (url) => {
+      if (String(url).startsWith("/api/dashboard")) return DASHBOARD;
+      return REPS;
+    });
+    card.classList.set.add("is-loading");
+    await view.loadDashboard();
+    expect(card.classList.contains("is-loading")).toBe(false);
+    build(async () => {
+      throw new Error("dashboard 500");
+    });
+    card.classList.set.add("is-loading");
+    await expect(view.loadDashboard()).rejects.toThrow();
+    expect(card.classList.contains("is-loading")).toBe(false);
+  });
+
   it("a later successful load clears is-error and reports Ready", async () => {
     let fail = true;
     build(async (url) => {

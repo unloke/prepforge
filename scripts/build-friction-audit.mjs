@@ -271,7 +271,12 @@ async function main() {
 
   async function createRepertoireFromDashboard(page, { name, color = "white" }) {
     await gotoDashboard(page);
-    await page.click('[data-testid="dashboard-new-rep"]');
+    // An empty library hides the header actions and offers New repertoire in
+    // its empty state instead; use whichever entry point is showing.
+    await page
+      .locator('[data-testid="dashboard-new-rep"]:visible, #dashboard-repertoires [data-lib-action="new"]:visible')
+      .first()
+      .click();
     await fillCreateModal(page, { name, color });
     await page.locator("#view-build.is-active").waitFor({ state: "attached", timeout: 30000 });
     await page.locator("#build-rep-name", { hasText: name }).waitFor({ timeout: 30000 });

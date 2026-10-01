@@ -364,6 +364,22 @@ describe("account menu focus", () => {
     expect(item.getAttribute("aria-expanded")).toBe("false");
   });
 
+  it("the page guest marker follows auth refresh through sign-in, sign-out and sign-in", async () => {
+    const classes = new Set();
+    document.body = { classList: { toggle: (name, on) => on ? classes.add(name) : classes.delete(name) } };
+    const api = vi.fn().mockResolvedValueOnce({ id: "alice" }).mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ id: "bob" });
+    const { controller } = makeController({ api });
+    controller.renderAccountChip();
+    expect(classes.has("is-guest")).toBe(true);
+    await controller.refreshAuthStatus();
+    expect(classes.has("is-guest")).toBe(false);
+    await controller.refreshAuthStatus();
+    expect(classes.has("is-guest")).toBe(true);
+    await controller.refreshAuthStatus();
+    expect(classes.has("is-guest")).toBe(false);
+  });
+
   it("moves focus into the menu and restores it to the sheet trigger on Escape-close", () => {
     const { appState, controller } = makeController();
     appState.signedIn = true;
