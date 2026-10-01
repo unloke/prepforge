@@ -680,7 +680,7 @@ describe("scout-report rendering", () => {
       { speedFilter: "all", escapeHtml, v3Mode: true },
     );
     expect(html).toContain("scout-coverage-bar-row");
-    expect(html).toMatch(/your prep answers \d+ of \d+ lines/);
+    expect(html).toMatch(/your prep follows \d+% of their games to move 4/);
     expect(html).toContain("scout-prepare-all");
     expect(html).not.toContain("scout-ranked-list");
   });

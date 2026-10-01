@@ -1530,34 +1530,49 @@ export function fenAfterLine(ucis) {
   return chess.fen();
 }
 
-function mostCommonFirstMove(games, color) {
+// The player's own first decision: the first move with White, the reply to
+// White's first move with Black (the move before it was the other player's).
+function firstDecisionKey(game, color) {
+  const plies = color === "black" ? 2 : 1;
+  return game.ucis.length >= plies ? game.ucis.slice(0, plies).join(">") : null;
+}
+
+function decisionShares(games) {
   const counts = new Map();
-  for (const g of games) {
-    if (g.color !== color || !g.ucis.length) continue;
-    const key = g.ucis[0];
-    counts.set(key, (counts.get(key) || 0) + 1);
-  }
-  let best = null;
-  for (const [uci, count] of counts) {
-    if (!best || count > best.count) best = { uci, count };
-  }
-  return best ? best.uci : null;
+  for (const key of games) counts.set(key, (counts.get(key) || 0) + 1);
+  const shares = new Map();
+  for (const [key, n] of counts) shares.set(key, n / games.length);
+  return shares;
 }
 
 export const RECENT_CHANGE_MIN_GAMES = 3;
+// The recent favourite must have gained this much share for the badge: with a
+// near 50/50 split between two openings, the "most common" one flips between
+// windows by chance, which used to light the badge up for no reason.
+export const RECENT_CHANGE_MIN_SHIFT = 0.3;
 
-function colorGamesWithMoves(games, color) {
-  return games.filter((g) => g.color === color && g.ucis.length);
+function colorDecisions(games, color) {
+  return games
+    .filter((g) => g.color === color && g.ucis.length)
+    .map((g) => firstDecisionKey(g, color))
+    .filter(Boolean);
 }
 
 function detectRecentChange(last20, prev20) {
   const changed = (color) => {
-    const last = colorGamesWithMoves(last20, color);
-    const prev = colorGamesWithMoves(prev20, color);
+    const last = colorDecisions(last20, color);
+    const prev = colorDecisions(prev20, color);
     if (last.length < RECENT_CHANGE_MIN_GAMES || prev.length < RECENT_CHANGE_MIN_GAMES) {
       return false;
     }
-    return mostCommonFirstMove(last20, color) !== mostCommonFirstMove(prev20, color);
+    const lastShares = decisionShares(last);
+    const prevShares = decisionShares(prev);
+    let top = null;
+    for (const [key, share] of lastShares) if (!top || share > top.share) top = { key, share };
+    let prevTop = null;
+    for (const [key, share] of prevShares) if (!prevTop || share > prevTop.share) prevTop = { key, share };
+    if (!top || !prevTop || top.key === prevTop.key) return false;
+    return top.share - (prevShares.get(top.key) || 0) >= RECENT_CHANGE_MIN_SHIFT;
   };
   return { white: changed("white"), black: changed("black") };
 }

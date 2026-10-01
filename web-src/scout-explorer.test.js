@@ -68,8 +68,25 @@ describe("collectExplorerProbePositions", () => {
       maxReplies: 1,
     });
     expect(positions.some((p) => p.ply === 1 && p.moveSan === "e4")).toBe(true);
-    expect(positions.some((p) => p.ply === 2 && p.moveSan === "c5")).toBe(true);
+    // Only the scouted player's own choices: their 2.Nf3, never the reply they faced.
+    expect(positions.some((p) => p.ply === 2)).toBe(false);
+    expect(positions.some((p) => p.ply === 3 && p.moveSan === "Nf3")).toBe(true);
     expect(positions.every((p) => p.fen && p.opponentGames > 0)).toBe(true);
+    // Shares are real game counts (6 of 8 games), not the recency-weighted trie count.
+    expect(positions.find((p) => p.moveSan === "e4").opponentShare).toBeCloseTo(6 / 8);
+  });
+
+  it("probes Black's replies to the first moves they face", () => {
+    const games = [
+      ...Array.from({ length: 4 }, (_, i) =>
+        game({ color: "black", sans: ["e4", "c5"], ucis: ["e2e4", "c7c5"], gameId: `s${i}` }),
+      ),
+      game({ color: "black", sans: ["d4", "d5"], ucis: ["d2d4", "d7d5"], gameId: "d0" }),
+    ];
+    const trie = buildOpeningTrie(games, "black");
+    const positions = collectExplorerProbePositions(trie, fenAfterLine, { oppColor: "black" });
+    expect(positions.map((p) => p.moveSan).sort()).toEqual(["c5", "d5"]);
+    expect(positions.every((p) => p.ply === 2)).toBe(true);
   });
 });
 

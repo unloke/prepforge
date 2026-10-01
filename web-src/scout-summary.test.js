@@ -81,8 +81,56 @@ describe("buildScoutSectionSummary", () => {
     const stats = buildScoutStats(games, { color: "white" });
     const out = buildScoutSectionSummary(stats);
     expect(out.bullets.some((b) => /predictably|First move is usually/i.test(b))).toBe(true);
-    expect(out.bullets.some((b) => /Pet lines|top 3|Heavy reuse/i.test(b))).toBe(true);
-    expect(out.bullets.some((b) => /main first moves|first moves with a real sample/i.test(b))).toBe(true);
+    // The helper's default SAN is d4 (only the UCI is overridden above).
+    expect(out.bullets.some((b) => /Expect 1\. \w+ \(100%\)/.test(b))).toBe(true);
+  });
+
+  it("never asks whether a full game line repeats (deep lines are always n=1)", () => {
+    const games = Array.from({ length: 40 }, (_, i) =>
+      game({ score: i % 2, san: "e4", ucis: ["e2e4", "e7e5"], sans: ["e4", "e5"], gameId: `g${i}` }),
+    );
+    const stats = buildScoutStats(games, { color: "white" });
+    const prepTargets = [{ sans: ["e4", "e5"], ucis: ["e2e4", "e7e5"], games: 1, scorePct: 0 }];
+    const out = buildScoutSectionSummary(stats, { username: "foe", prepTargets });
+    expect(out.headline).not.toMatch(/repeats enough|Load more games/);
+    expect(out.headline).toMatch(/Expect 1\. e4 \(100%\)/);
+    expect(out.headline).toMatch(/50% average/);
+  });
+
+  it("leads with a well-sampled weak opening branch", () => {
+    const games = [
+      ...Array.from({ length: 60 }, (_, i) =>
+        game({ score: i < 48 ? 1 : 0, ucis: ["e2e4", "e7e5"], sans: ["e4", "e5"], gameId: `a${i}` }),
+      ),
+      ...Array.from({ length: 40 }, (_, i) =>
+        game({ score: i < 8 ? 1 : 0, ucis: ["e2e4", "c7c5"], sans: ["e4", "c5"], gameId: `b${i}` }),
+      ),
+    ];
+    const stats = buildScoutStats(games, { color: "white" });
+    const out = buildScoutSectionSummary(stats, { username: "foe" });
+    // 1...c5 is the preparing (Black) player's own move, so it's something to steer into.
+    expect(out.headline).toBe("Steer toward 1. e4 c5: foe scores 20% there over 40 games, against 56% overall.");
+    expect(out.notes.some((n) => /Their best ground: 1\. e4 e5/.test(n))).toBe(true);
+  });
+
+  it("keeps the top weak branch in the notes when the headline is taken by a prep target", () => {
+    // Same shape as above: 1.e4 c5 is clearly their weak branch. But a prep
+    // target with enough games owns the headline — weak[0] must NOT vanish.
+    const games = [
+      ...Array.from({ length: 60 }, (_, i) =>
+        game({ score: i < 48 ? 1 : 0, ucis: ["e2e4", "e7e5"], sans: ["e4", "e5"], gameId: `a${i}` }),
+      ),
+      ...Array.from({ length: 40 }, (_, i) =>
+        game({ score: i < 8 ? 1 : 0, ucis: ["e2e4", "c7c5"], sans: ["e4", "c5"], gameId: `b${i}` }),
+      ),
+    ];
+    const stats = buildScoutStats(games, { color: "white" });
+    const prepTargets = [
+      { sans: ["e4", "e5"], ucis: ["e2e4", "e7e5"], games: 60, scorePct: 80, belowBaseline: 24 },
+    ];
+    const out = buildScoutSectionSummary(stats, { username: "foe", prepTargets });
+    expect(out.headline).toMatch(/hit them in|punish/);
+    expect(out.notes.some((n) => /1\. e4 c5/.test(n))).toBe(true);
   });
 
   it("does not surface rating, form, or speed bullets", () => {
@@ -177,7 +225,7 @@ describe("buildScoutSectionSummary", () => {
     expect(activityLine.recentGames).toBe(1);
     const out = buildScoutSectionSummary(stats);
     expect(out.bullets.some((b) => b.includes("3 games in recent weeks"))).toBe(false);
-    expect(out.bullets.some((b) => /1 game in the last 3 weeks/i.test(b))).toBe(true);
+    expect(out.bullets.some((b) => /1 White game in the last 3 weeks/i.test(b))).toBe(true);
   });
 });
 
