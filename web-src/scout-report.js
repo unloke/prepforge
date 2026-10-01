@@ -262,11 +262,16 @@ export function scoutWdlBar(w, d, l, { maiaEstimate = false } = {}) {
     ? "Maia W/D/L estimate (not from their games)"
     : `W${w} D${d} L${l}`;
   const cls = maiaEstimate ? " scout-maia-estimate" : "";
-  return `<span class="scout-wdlbar${cls}" title="${title}" aria-label="${title}">
+  // Counts under the bar: a one-game line is a single solid segment, which read
+  // as "a white bar" with no meaning until the numbers sat next to it.
+  const nums = maiaEstimate
+    ? ""
+    : `<span class="scout-wdlbar-nums" aria-hidden="true"><span class="n-w">${w}W</span><span class="n-d">${d}D</span><span class="n-l">${l}L</span></span>`;
+  return `<span class="scout-wdlbar-wrap"><span class="scout-wdlbar${cls}" title="${title}" aria-label="${title}">
     <span class="scout-wdlbar-w" style="width:${pct(w)}"></span>
     <span class="scout-wdlbar-d" style="width:${pct(d)}"></span>
     <span class="scout-wdlbar-l" style="width:${pct(l)}"></span>
-  </span>`;
+  </span>${nums}</span>`;
 }
 
 export function scoutSparkline(
@@ -452,10 +457,10 @@ export function renderScoutRefutationGapActions(actions, escapeHtml) {
   const buttons = actions
     .map(
       (action) =>
-        `<button type="button" class="scout-btn btn ghost scout-refutation-gap-btn" data-refutation-gap="${escapeHtml(action.id)}" data-testid="${escapeHtml(action.testId)}" aria-label="${escapeHtml(action.ariaLabel)}">${escapeHtml(action.label)}</button>`,
+        `<button type="button" class="scout-btn btn sm scout-refutation-gap-btn" data-refutation-gap="${escapeHtml(action.id)}" data-testid="${escapeHtml(action.testId)}" aria-label="${escapeHtml(action.ariaLabel)}">${escapeHtml(action.label)}</button>`,
     )
     .join("");
-  return `<div class="scout-refutation-gap-actions" role="group" aria-label="Refutation preparation actions">${buttons}</div>`;
+  return `<div class="scout-refutation-gap-actions" role="group" aria-label="Refutation preparation actions"><span class="scout-refutation-gap-lead faint">Engine refutations for these lines need a Stockfish pass:</span>${buttons}</div>`;
 }
 
 export function handleScoutRefutationGapClick(event, { callbacks } = {}) {
@@ -619,7 +624,7 @@ export function buildScoutIntelligenceA11ySummary(stats) {
 
   const persona = stats.personaTags;
   if (persona?.systemSetup?.detected && persona.systemSetup.label) {
-    parts.push(`Persona system: ${persona.systemSetup.label}.`);
+    parts.push(`Persona system: ${persona.systemSetup.name || persona.systemSetup.label}.`);
   } else if (persona?.games) {
     parts.push(
       `Persona: ${persona.aggression.label} aggression, ${persona.castling.label} castling, ${persona.tradeSpeed.label} queen trades.`,
@@ -746,7 +751,11 @@ function renderScoutRepertoireReads(stats, escapeHtml) {
   const persona = stats?.personaTags;
   if (persona?.systemSetup?.detected && persona.systemSetup.label) {
     chips.push(
-      readChip("A setup they reach regardless of your moves", "System", escapeHtml(persona.systemSetup.label)),
+      readChip(
+        "A setup they reach regardless of your moves",
+        "System",
+        escapeHtml(persona.systemSetup.name || persona.systemSetup.label),
+      ),
     );
   } else if (persona?.games >= 5) {
     const parts = [
@@ -929,7 +938,16 @@ export function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg 
   return `${html}</div>`;
 }
 
-export function renderScoutProfile(profile, username, activeSpeed, escapeHtml, { colorRecHtml = "" } = {}) {
+// "59 games analyzed" next to a live "66 games" counter read as a mismatch
+// while streaming: the report lags the fetch. Name both numbers.
+export function scoutAnalyzedLabel(analyzed, fetched = null) {
+  const a = Number(analyzed) || 0;
+  const f = Number(fetched) || 0;
+  if (f > a) return `${a} of ${f} games analyzed`;
+  return `${a} game${a === 1 ? "" : "s"} analyzed`;
+}
+
+export function renderScoutProfile(profile, username, activeSpeed, escapeHtml, { colorRecHtml = "", fetchedTotal = null } = {}) {
   const speeds = ["bullet", "blitz", "rapid", "classical"];
   const chips = speeds
     .filter((s) => (profile.speedCounts[s] || 0) >= 5)
@@ -942,7 +960,7 @@ export function renderScoutProfile(profile, username, activeSpeed, escapeHtml, {
     <div class="prof-row">
       <div class="prof-id scout-profile-main">
         <a class="scout-username-link prof-name" data-username="${escapeHtml(username)}" href="https://lichess.org/@/${encodeURIComponent(username)}" target="_blank" rel="noopener">${escapeHtml(username)} ↗</a>
-        <span class="scout-profile-games faint">${profile.total} games analyzed</span>
+        <span class="scout-profile-games faint" data-analyzed="${profile.total}">${scoutAnalyzedLabel(profile.total, fetchedTotal)}</span>
       </div>
       <div class="scout-speed-chips speed-chips" role="group" aria-label="Speed">
         <button type="button" class="scout-speed-chip speed${activeSpeed === "all" ? " is-on" : ""}" data-speed="all" aria-pressed="${activeSpeed === "all"}">All</button>
@@ -1100,11 +1118,35 @@ export function scoutDistRowHtml(m, escapeHtml, { clickable = true } = {}) {
       </div>`;
 }
 
+// Rows used to print the whole game (19 moves of monospace). Show up to the
+// move where it leaves your prep (the deviation point; at least 4 moves, at
+// most 12), or the first 8 moves when there is no prep to compare. The full
+// line is the tooltip and the expanded detail's title. A row that names YOUR
+// reply keeps its whole line: the reply answers the final position.
+export const SCOUT_ROW_DEFAULT_PLIES = 16;
+export const SCOUT_ROW_MIN_PLIES = 8;
+export const SCOUT_ROW_MAX_PLIES = 24;
+export function scoutRowPlyLimit(line) {
+  const total = line?.sans?.length || 0;
+  if (line?.suggestedReply?.uci) return total;
+  const hasDeviation = !line?.prepared && Number.isFinite(line?.covered) && line.covered >= 0;
+  const limit = hasDeviation
+    ? Math.min(SCOUT_ROW_MAX_PLIES, Math.max(SCOUT_ROW_MIN_PLIES, line.covered + 1))
+    : SCOUT_ROW_DEFAULT_PLIES;
+  return Math.min(total, limit);
+}
+
 function scoutPrepFramingHtml(line, escapeHtml) {
   // The line holds BOTH sides' moves, so it is "after", not "when they play".
-  const theirLine = scoutLineText(line.sans);
+  const fullLine = scoutLineText(line.sans);
+  const shown = scoutRowPlyLimit(line);
+  const hidden = (line.sans?.length || 0) - shown;
+  const theirLine = hidden > 0 ? `${scoutLineText(line.sans.slice(0, shown))} …` : fullLine;
+  const more = hidden > 0
+    ? ` <span class="scout-line-more faint">+${Math.ceil(hidden / 2)} more move${Math.ceil(hidden / 2) === 1 ? "" : "s"}</span>`
+    : "";
   const reply = line.suggestedReply;
-  const when = `<span class="when">After <b class="scout-prep-them">${escapeHtml(theirLine)}</b></span>`;
+  const when = `<span class="when" title="${escapeHtml(fullLine)}">After <b class="scout-prep-them">${escapeHtml(theirLine)}</b>${more}</span>`;
   if (reply?.uci) {
     const replyLabel = escapeHtml(formatReplyLabel(reply));
     return `<span class="scout-prep-framing">${when}<span class="then"><span class="scout-prep-arrow">→</span> your move: <b class="scout-prep-you">${replyLabel}</b></span></span>`;
@@ -1112,7 +1154,7 @@ function scoutPrepFramingHtml(line, escapeHtml) {
   if (line.needsPrep) {
     return `<span class="scout-prep-framing">${when}<span class="then needs"><span class="scout-prep-arrow">→</span> <span class="scout-prep-needs">no answer in your prep</span></span></span>`;
   }
-  return escapeHtml(theirLine);
+  return `<span title="${escapeHtml(fullLine)}">${escapeHtml(theirLine)}</span>`;
 }
 
 // A rare line (1 game in a big sample) is a real prep target, not noise — show "<1%"
@@ -1132,6 +1174,9 @@ function scoutPrepCategoryBadge(line) {
   }
   return "";
 }
+
+// Fewer games than this on a line: the score is one or two results, not a habit.
+export const SCOUT_SMALL_SAMPLE_GAMES = 3;
 
 // Prep rows: framing, last-seen badge, optional inline refutation card.
 function scoutLineRowHtml(
@@ -1157,6 +1202,9 @@ function scoutLineRowHtml(
     ? `<span class="scout-last-seen seen">${escapeHtml(formatLastSeenLabel(line.lastSeen))}</span>`
     : "";
   const categoryBadge = weakness ? scoutPrepCategoryBadge(line) : "";
+  const smallSample = rawCount > 0 && rawCount < SCOUT_SMALL_SAMPLE_GAMES
+    ? `<span class="scout-small-sample cat c-small" title="Only ${rawCount} game${rawCount === 1 ? "" : "s"} reached this line, so the score says little">small sample</span>`
+    : "";
   const refCard =
     weakness && line.refutation
       ? renderInlineRefutationCard(line, oppColor, escapeHtml, { renderBoard })
@@ -1178,7 +1226,7 @@ function scoutLineRowHtml(
           <span class="scout-line-moves">${framing}</span>
           ${refCard}
         </div>
-        <span class="lr-meta">${categoryBadge}${lastSeenBadge}</span>
+        <span class="lr-meta">${categoryBadge}${smallSample}${lastSeenBadge}</span>
         <span class="scout-lr-score lr-score">${scoutScoreCell(displayScore, rawCount, { baseline, showGap: line.belowBaseline > 0, maiaEstimate, showN: rawCount > 1 })}</span>
         <span class="scout-lr-wdl lr-wdl">${scoutWdlBar(wdl.w, wdl.d, wdl.l, { maiaEstimate })}</span>
         <span class="scout-lr-action lr-flags">${engineFlag}${addBtn}</span>

@@ -294,18 +294,7 @@ def team_detail(
         for item in shared
     ]
     if me.role in _MANAGER_ROLES:
-        invite = db.execute(
-            select(TeamInvite).where(TeamInvite.team_id == team_id)
-        ).scalar_one_or_none()
-        out["invite"] = (
-            {
-                "exists": True,
-                "created_at": invite.created_at.isoformat() if invite.created_at else None,
-                "expires_at": invite.expires_at.isoformat() if invite.expires_at else None,
-            }
-            if invite is not None
-            else {"exists": False}
-        )
+        out["invite"] = _invite_status(db, team_id)
     return out
 
 
@@ -431,6 +420,35 @@ def update_member_role(
 
 
 # --- invite link: manage ----------------------------------------------------
+
+
+def _invite_status(db: Session, team_id: str) -> dict[str, object]:
+    """Whether the team has a live invite link (never the code -- it's hashed)."""
+    invite = db.execute(
+        select(TeamInvite).where(TeamInvite.team_id == team_id)
+    ).scalar_one_or_none()
+    if invite is None:
+        return {"exists": False}
+    return {
+        "exists": True,
+        "created_at": invite.created_at.isoformat() if invite.created_at else None,
+        "expires_at": invite.expires_at.isoformat() if invite.expires_at else None,
+    }
+
+
+@router.get("/{team_id}/invite")
+@limiter.limit("60/minute")
+def invite_status(
+    request: Request,
+    team_id: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, object]:
+    """Read the team's invite-link status without rotating it. Owner/admin only.
+    The raw code is never returned here (only its hash is stored); the client
+    shows the existing link's state and mints a new one only on explicit request."""
+    _require_manager(db, team_id, user)
+    return _invite_status(db, team_id)
 
 
 @router.post("/{team_id}/invite")

@@ -9,7 +9,7 @@ import { createTeamsView } from "./teams.js";
 //  - the invite footer renders from the real `invite` field (managers only)
 //    and never implies a link exists when the payload says otherwise.
 
-function makeHarness() {
+function makeHarness(overrides = {}) {
   const elements = new Map();
   const makeEl = (id) => {
     const listeners = {};
@@ -88,6 +88,7 @@ function makeHarness() {
     unshareRepertoireFromTeam: () => {},
     copySharedRepertoire: () => {},
     teamRoleLabel: (r) => r,
+    ...overrides,
   });
   return { view, byId, paneEls };
 }
@@ -164,5 +165,48 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     ]);
     expect(byId("count-repertoires").textContent).toBe("1");
     expect(byId("count-repertoires").hidden).toBe(false);
+  });
+
+  it("auto-opens the only team instead of a 'Choose a team' blank (P2-11)", async () => {
+    const opened = [];
+    const appState = { signedIn: true, teams: [], selectedTeamId: null, accountUserId: "u1" };
+    const { view } = makeHarness({
+      appState,
+      api: async () => ({ teams: [{ id: "t9", name: "magnus", role: "owner", member_count: 2 }] }),
+      openTeamDetail: async (id) => opened.push(id),
+    });
+    await view.loadTeams();
+    expect(opened).toEqual(["t9"]);
+  });
+
+  it("does not auto-open when there are several teams", async () => {
+    const opened = [];
+    const hidden = [];
+    const { view, byId } = makeHarness({
+      appState: { signedIn: true, teams: [], selectedTeamId: null, accountUserId: "u1" },
+      api: async () => ({
+        teams: [
+          { id: "a", name: "A", role: "owner", member_count: 1 },
+          { id: "b", name: "B", role: "member", member_count: 3 },
+        ],
+      }),
+      openTeamDetail: async (id) => opened.push(id),
+      hideTeamDetail: () => hidden.push(true),
+    });
+    await view.loadTeams();
+    expect(opened).toEqual([]);
+    expect(hidden).toHaveLength(1);
+    expect(byId("team-empty-title").textContent).toBe("Choose a team");
+  });
+
+  it("signed out: explains Teams and hides the 'Click to open' hint", async () => {
+    const { view, byId } = makeHarness({
+      appState: { signedIn: false, teams: [], selectedTeamId: null },
+    });
+    byId("teams-shared-hint").hidden = false;
+    await view.loadTeams();
+    expect(byId("team-empty-body").textContent).toMatch(/Sign in to create or join a team/);
+    expect(byId("teams-shared").innerHTML).toMatch(/Sign in/);
+    expect(byId("teams-shared-hint").hidden).toBe(true);
   });
 });

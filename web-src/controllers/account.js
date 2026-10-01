@@ -411,8 +411,9 @@ export function createAccountController({
     const items = [
       `<div class="context-section">Signed in as ${escapeHtml(name)}</div>`,
       lichessItem,
-      `<button type="button" role="menuitem" data-action="account">Account</button>`,
-      `<button type="button" role="menuitem" data-action="settings">Settings</button>`,
+      // One entry: "Account" and "Settings" used to open the same page (the
+      // Account card is the top of Settings), which read as a duplicate.
+      `<button type="button" role="menuitem" data-action="settings">Account &amp; settings</button>`,
       `<button type="button" role="menuitem" data-action="signout">Sign out</button>`,
     ];
     menu.innerHTML = items.join("");

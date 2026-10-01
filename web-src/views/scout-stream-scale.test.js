@@ -25,12 +25,16 @@ describe("scout streaming render cadence", () => {
 describe("scout game-plan rows at narrow widths", () => {
   const css = readFileSync(resolve(here, "./scout.css"), "utf8");
 
-  it("drops the meta column at 1279px so the score / WDL / action cells keep their room", () => {
+  it("folds the meta column under the line at 1279px (header column hidden too)", () => {
     const at = css.indexOf("@media (max-width: 1279px)");
     expect(at).toBeGreaterThan(-1);
     const block = css.slice(at, css.indexOf("@media (max-width: 760px)"));
     expect(block).toMatch(/\.line-row \{ grid-template-columns: minmax\(0, 1fr\) 70px 110px 40px; \}/);
-    expect(block).toContain(".line-row .lr-meta { display: none; }");
+    // UX walkthrough P2-8: hiding only the cells left an empty "Type · last seen"
+    // header column. The meta moves under the line and the header drops its slot.
+    expect(block).not.toContain(".line-row .lr-meta { display: none; }");
+    expect(block).toMatch(/\.line-row \.lr-meta \{ grid-column: 1; grid-row: 2;/);
+    expect(block).toContain(".scout-lines-head span:nth-child(2) { display: none; }");
   });
 
   it("collapses rows to move + score on phones (WDL, meta and flags hidden)", () => {

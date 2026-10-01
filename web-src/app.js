@@ -4826,6 +4826,11 @@ async function ensureTeamsView() {
       unshareRepertoireFromTeam,
       copySharedRepertoire,
       teamRoleLabel,
+      postJson,
+      setStatus,
+      setStatusError,
+      activateModal,
+      showConfirmModal,
     });
   }
   return teamsView;
@@ -4875,6 +4880,8 @@ async function openTeamDetail(teamId) {
     addBtn.hidden = !canManage;
     addBtn.onclick = () => addTeamMember(teamId);
   }
+  const membersHint = document.getElementById("team-members-hint");
+  if (membersHint) membersHint.hidden = !canManage;
   const inviteBtn = document.getElementById("team-detail-invite");
   if (inviteBtn) {
     inviteBtn.hidden = !canManage;
@@ -5141,96 +5148,16 @@ async function removeTeamMember(teamId, userId, label, isSelf) {
   }
 }
 
-// The team's shareable join link. The raw code is returned ONLY at mint time (it's
-// hashed at rest), so opening this rotates the link and shows the fresh one; any
-// previously shared link stops working.
+// The team's shareable join link. Opening the dialog reads the link's status and
+// never rotates it; minting a new code is an explicit, confirmed action inside
+// the dialog (views/team-invite.js).
 async function teamInvite(teamId) {
-  let payload;
   try {
-    payload = await postJson(`/api/teams/${encodeURIComponent(teamId)}/invite`, {});
+    await (await ensureTeamsView()).openInviteDialog(teamId);
   } catch (error) {
     setStatusError(error.message);
-    return;
-  }
-  const url = `${window.location.origin}${payload.url}`;
-  try {
-    await navigator.clipboard.writeText(url);
-    setStatus("Invite link copied");
-  } catch (_) {
-    /* clipboard blocked — the modal still shows the link to copy by hand */
-  }
-  const choice = await showInviteModal({ url });
-  if (choice === "revoke") {
-    try {
-      await api(`/api/teams/${encodeURIComponent(teamId)}/invite`, { method: "DELETE" });
-      setStatus("Invite link revoked");
-    } catch (error) {
-      setStatusError(error.message);
-    }
   }
   await openTeamDetail(teamId);
-}
-
-function showInviteModal({ url }) {
-  return new Promise((resolve) => {
-    const overlay = document.createElement("div");
-    overlay.className = "modal-overlay";
-    overlay.innerHTML = `
-      <div class="modal" role="dialog" aria-modal="true">
-        <div class="modal-title">Team invite link</div>
-        <div class="modal-body">
-          <p class="modal-note muted">Anyone signed in who opens this link joins the team as a member. For security it's shown only once and replaces any previous link — copy it now. Revoke to disable joining by link.</p>
-          <label class="modal-field">
-            <span>Invite link</span>
-            <input type="text" value="${escapeHtml(url)}" data-invite-url readonly />
-          </label>
-        </div>
-        <div class="modal-footer">
-          <button class="btn danger" data-action="revoke" type="button">Revoke</button>
-          <button class="btn ghost" data-action="copy" type="button">Copy</button>
-          <button class="btn primary" data-action="done" type="button">Done</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-    activateModal(overlay);
-    const input = overlay.querySelector("[data-invite-url]");
-    if (input) {
-      input.focus();
-      if (input.select) input.select();
-    }
-    const cleanup = () => {
-      document.removeEventListener("keydown", onKey);
-      overlay.remove();
-    };
-    const close = (value) => {
-      cleanup();
-      resolve(value);
-    };
-    const onKey = (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        close(null);
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    overlay.querySelector('[data-action="copy"]').addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(url);
-        setStatus("Invite link copied");
-      } catch (_) {
-        if (input) {
-          input.focus();
-          if (input.select) input.select();
-        }
-      }
-    });
-    overlay.querySelector('[data-action="revoke"]').addEventListener("click", () => close("revoke"));
-    overlay.querySelector('[data-action="done"]').addEventListener("click", () => close("done"));
-    overlay.addEventListener("click", (event) => {
-      if (event.target === overlay) close(null);
-    });
-  });
 }
 
 // In-team "add a repertoire": share one of the caller's OWN repertoires with this
@@ -5304,8 +5231,11 @@ async function loadSharedRepertoires() {
   try {
     const payload = await api("/api/repertoires");
     const shared = payload.shared || [];
+    const sharedHint = document.getElementById("teams-shared-hint");
+    if (sharedHint) sharedHint.hidden = !shared.length;
     if (!shared.length) {
-      container.innerHTML = '<div class="empty-state">Nothing shared with you yet.</div>';
+      container.innerHTML =
+        '<div class="empty-state">Nothing shared with you yet. Repertoires a teammate shares with your team show up here, read-only.</div>';
       return;
     }
     container.innerHTML = shared

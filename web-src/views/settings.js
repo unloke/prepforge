@@ -83,8 +83,12 @@ export function createSettingsView({
     const auto = !Number.isFinite(appState.maiaRatingPinned);
     paintSwitch(autoEl, auto);
     ratingEl.disabled = auto;
-    ratingEl.value = String(effectiveMaiaRating());
-    if (ratingOut) ratingOut.textContent = ratingEl.value;
+    const effective = effectiveMaiaRating();
+    ratingEl.value = String(effective);
+    // The range snaps to its 50-point step (2377 -> 2400); while Auto drives the
+    // rating, the readout shows the real value Maia uses, not the snapped thumb.
+    if (ratingOut) ratingOut.textContent = auto ? String(effective) : ratingEl.value;
+    ratingEl.title = auto ? "Auto is on — turn it off to set the strength by hand" : "";
     if (autoLabel) {
       autoLabel.textContent = appState.lichessUsername
         ? Number.isFinite(appState.maiaAutoRating)
@@ -162,9 +166,24 @@ export function createSettingsView({
     return Promise.all([connections, account]);
   }
 
+  // "Ready" on the Maia3 card means the model is downloaded; whether analysis
+  // USES it is the separate Maia analysis switch. Say so next to both.
   function renderMaiaAnalysis() {
+    const on = !!pref("maiaAnalysis");
     const maiaToggle = document.getElementById("settings-maia-analysis");
-    if (maiaToggle) paintSwitch(maiaToggle, !!pref("maiaAnalysis"));
+    if (maiaToggle) paintSwitch(maiaToggle, on);
+    const hint = document.getElementById("settings-maia-analysis-hint");
+    if (hint) {
+      hint.textContent = on
+        ? "On — Analyze and Coverage add Maia3's human-move layer."
+        : "Off — Analyze and Coverage use Stockfish only, even when the Maia3 model is downloaded (Ready).";
+    }
+    const usage = document.getElementById("settings-maia-usage");
+    if (usage) {
+      usage.textContent = on
+        ? "In use: Maia analysis is on."
+        : "Not in use: Maia analysis is off (Playing strength → Maia analysis).";
+    }
     renderMaia3Status();
   }
 
@@ -177,11 +196,27 @@ export function createSettingsView({
     return [];
   }
 
+  // Signed in but the /api/lichess answer hasn't landed yet: rendering the
+  // empty "Link a Lichess account" state here flashed for seconds before the
+  // linked accounts appeared. Show a loading line and fetch once instead.
+  let connectionsFetchTried = false;
+  function connectionsUnknown() {
+    return !!appState.signedIn && !Array.isArray(appState.lichessAccounts) && !appState.lichessUsername;
+  }
+
   async function renderConnections() {
     const list = document.getElementById("settings-lichess-accounts");
     if (!list) return;
-    const accounts = connectionAccounts();
     const linkBtn = document.getElementById("settings-link-lichess");
+    if (connectionsUnknown() && !connectionsFetchTried) {
+      connectionsFetchTried = true;
+      list.innerHTML =
+        '<p class="muted small conn-loading" data-testid="settings-connections-loading" aria-busy="true">Checking linked accounts…</p>';
+      if (linkBtn) linkBtn.hidden = true;
+      return refreshConnections();
+    }
+    if (linkBtn) linkBtn.hidden = false;
+    const accounts = connectionAccounts();
     if (linkBtn) linkBtn.textContent = accounts.length ? "Link another Lichess account" : "Link a Lichess account";
     if (!accounts.length) {
       list.innerHTML =

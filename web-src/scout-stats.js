@@ -162,6 +162,19 @@ function aggressionScore(opponentMoves) {
   return Math.min(100, Math.round((raw / window.length) * 18));
 }
 
+// Display names for the detected setup ids ("kia" read as a typo in the report).
+const SYSTEM_SETUP_NAMES = {
+  london: "London",
+  kia: "King's Indian Attack",
+  colle: "Colle",
+  hippo: "Hippopotamus",
+};
+
+export function systemSetupName(id) {
+  if (!id) return null;
+  return SYSTEM_SETUP_NAMES[id] || String(id).charAt(0).toUpperCase() + String(id).slice(1);
+}
+
 function detectSystemSetup(sans, color) {
   const moves = opponentSans({ sans, color }).slice(0, 8).map((s) => s.replace(/[+#]/g, "").toLowerCase());
   const joined = moves.join("|");
@@ -1034,6 +1047,7 @@ export function personaTags(games, color, { speedFilter = "all" } = {}) {
     },
     systemSetup: {
       label: systemDetected ? topSystem.label : null,
+      name: systemDetected ? systemSetupName(topSystem.label) : null,
       detected: Boolean(systemDetected),
     },
     games: filtered.length,
