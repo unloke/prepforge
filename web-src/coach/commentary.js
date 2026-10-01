@@ -802,8 +802,11 @@ function buildProse(f) {
     // Only call it a "flip" when the move actually tipped the balance — the side was at least
     // even before and is worse after. Restating "you're worse" on a position that was already
     // worse before the move just nags (the user's repeated complaint).
+    // "Edges ahead" needs the opponent to actually be ahead: the after-standing
+    // must have left "about level" (> 43), or the line said "Black edges ahead,
+    // and White is about level" in one breath (UX walkthrough 2026-10-01 P1-5).
     const flip =
-      f.winBeforeMover >= 47 && f.winAfterMover < 50
+      f.winBeforeMover >= 47 && f.winAfterMover < 50 && standingWord(f.winAfterMover) !== "about level"
         ? choose(f, "inaccFlip", INACC_FLIP, { opp, me, standing: standingWord(f.winAfterMover) })
         : "";
     return `${head}${punish}${cleaner}${flip}${intuitionNote(f)}`;

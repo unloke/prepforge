@@ -173,6 +173,56 @@ describe("scout view initialization reentrancy", () => {
     expect(elements.get("scout-live-count").textContent).toBe("1");
   });
 
+  it("discards the report when its sources change (UX 2026-10-01 P2-11)", async () => {
+    await view.runScout();
+    const results = elements.get("scout-results");
+    expect(results.innerHTML).toContain("scout-section");
+
+    view.discardReport();
+    expect(results.innerHTML).toBe("");
+    // Showing the page again must not repaint the old sources' report.
+    view.onShow();
+    expect(results.innerHTML).not.toContain("scout-section");
+    expect(elements.get("scout-btn").disabled).toBe(false);
+  });
+
+  it("discards the old report's source warnings and retry action", async () => {
+    await view.runScout();
+    const warning = makeEl("scout-source-warnings", {
+      innerHTML: "Old rival failed · Retry failed sources",
+      remove: () => elements.delete("scout-source-warnings"),
+    });
+    elements.set(warning.id, warning);
+
+    view.discardReport();
+
+    expect(document.getElementById("scout-source-warnings")).toBeNull();
+    expect(elements.get("scout-live-count").textContent).toBe("0");
+  });
+
+  it("invalidates a report when Self resolves to different linked accounts on return", async () => {
+    await view.runScout();
+    view.__setPickedUsernames(["rival", "newly-linked"]);
+    view.onShow();
+    expect(elements.get("scout-results").innerHTML).not.toContain("scout-section");
+    expect(elements.get("scout-live-count").textContent).toBe("0");
+    expect(elements.get("scout-btn").dataset.scoutAction).toBe("start");
+  });
+
+  it("does not finish initializing a report under sources changed during the load", async () => {
+    let resolve;
+    api.mockImplementationOnce(() => new Promise((yes) => { resolve = yes; }));
+    const load = view.runScout();
+    await vi.waitFor(() => expect(resolve).toBeTypeOf("function"));
+    view.__setPickedUsernames(["newly-linked"]);
+    view.onShow();
+    resolve({ repertoires: [] });
+    await load;
+    expect(streamGames).not.toHaveBeenCalled();
+    expect(elements.get("scout-results").innerHTML).toBe("");
+    expect(elements.get("scout-btn").disabled).toBe(false);
+  });
+
   it("rebinds Scout delegated events when Replay DOM nodes are replaced", async () => {
     const oldProfile = elements.get("scout-profile");
     const oldResults = elements.get("scout-results");

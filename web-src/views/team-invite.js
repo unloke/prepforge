@@ -26,14 +26,16 @@ export function knownInviteUrl(teamId, status) {
   return entry.url;
 }
 
-function formatDay(iso) {
+// Dates read "Sep 30" in the English UI whatever the browser locale (Scout and
+// Games already pin "en"; a zh-TW browser showed "9月30日" here).
+export function formatDay(iso) {
   if (!iso) return "";
   // SQLite hands back naive UTC timestamps; without a zone JS would read them as
   // local time and show the wrong day near midnight.
   const s = String(iso);
   const d = new Date(/T.*(Z|[+-]\d\d:?\d\d)$/.test(s) ? s : `${s}Z`);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 // Pure view model for the dialog: what it says and which buttons it offers.

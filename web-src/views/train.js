@@ -30,7 +30,7 @@ export function createTrainView({
   function renderTrainSync() {
     const el = document.getElementById("train-sync");
     if (!el) return;
-    renderSyncChip(el, appState.trainSyncState);
+    renderSyncChip(el, appState.trainSyncState, "training");
   }
 
   function renderTrainStats() {
@@ -160,7 +160,10 @@ export function createTrainView({
           const kind = smartKindLabels[card.kind] || card.kind || "";
           const rep = card.repertoire_name || smart.repertoireName || "";
           const dot = card.color === "black" ? "black" : "white";
-          const target = card.targets && card.targets[0];
+          // Only a new move is shown before it is asked (the card demonstrates
+          // it anyway). Weak/due/polish cards test recall, so printing their
+          // answer here would give it away (UX walkthrough 2026-10-01 P1-2).
+          const target = card.kind === "new" && card.targets && card.targets[0];
           const lineTail = target && target.san ? escapeHtml(target.san) : "";
           return (
             `<div class="un-row">` +

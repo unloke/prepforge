@@ -93,7 +93,8 @@
 .moveline .dep.t-bad { background: var(--danger); }
 .moveline .dep.t-warn { background: var(--warn); }
 .focus .legend { padding-top: 10px; border-top: 1px solid var(--line); }
-.focus .legend .k-inprep { background: var(--accent-soft); border: 1px solid var(--accent-strong); }
+/* Same tokens as `.moveline .inprep` above, so the key matches the moves it explains. */
+.focus .legend .k-inprep { background: var(--good-soft); border: 1px solid var(--good-text); }
 .focus .legend .k-dep { background: var(--danger); opacity: 0.7; }
 .focus .legend .k-arrow-good,
 .focus .legend .k-arrow-bad { border-radius: 999px; }

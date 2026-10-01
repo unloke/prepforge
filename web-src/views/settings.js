@@ -94,7 +94,7 @@ export function createSettingsView({
         ? Number.isFinite(appState.maiaAutoRating)
           ? `Auto — match my Lichess rating (~${appState.maiaAutoRating})`
           : "Auto — match my Lichess rating"
-        : `Auto — Lichess not linked, using ${maiaFallbackRating}`;
+        : `Auto — link Lichess to match your rating (using ${maiaFallbackRating} for now)`;
     }
   }
 

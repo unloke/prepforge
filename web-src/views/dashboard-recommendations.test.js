@@ -215,6 +215,19 @@ describe("dashboard setup checklist", () => {
     expect(todayCard.innerHTML).toContain("Learn new moves");
   });
 
+  it("Today strip does not call reviews clear while a weak spot waits (UX 2026-10-01 P1-1)", async () => {
+    mockDashboard({ repertoires: 1, due_reviews: 0 }, [
+      { id: "rep-1", name: "anti caro", color: "white", is_active: true, health: { untrained: 33, due: 0, weak: 1 } },
+      { id: "rep-2", name: "off", color: "white", is_active: false, health: { untrained: 0, weak: 4 } },
+    ]);
+    await view.loadDashboard();
+    expect(todayCard.innerHTML).not.toContain("Reviews clear");
+    expect(todayCard.innerHTML).not.toContain("Queue is clear");
+    expect(todayCard.innerHTML).toContain("<b>1 weak spot to review</b>");
+    expect(todayCard.innerHTML).toContain("33 new moves to learn");
+    expect(todayCard.innerHTML).not.toContain("Learn new moves");
+  });
+
   it("Today strip only says the queue is clear when nothing is due or new", async () => {
     mockDashboard({ repertoires: 1 }, [
       { id: "rep-1", name: "e4", color: "white", is_active: true, health: { untrained: 0, due: 0 } },
@@ -243,5 +256,39 @@ describe("dashboard setup checklist", () => {
     expect(steps.hidden).toBe(false);
     expect(steps.innerHTML).toContain("<h2>Get started</h2>");
     expect(steps.innerHTML.match(/class="step"/g)).toHaveLength(3);
+  });
+
+  it.each(["resolve", "reject"])("ignores an older listing's late %s after a mutation refresh", async (outcome) => {
+    mockDashboard({ repertoires: 1 });
+    await view.loadDashboard();
+    let resolve, reject;
+    const oldRequest = new Promise((yes, no) => { resolve = yes; reject = no; });
+    const oldRep = { id: "old", name: "Old repertoire", color: "white", health: { weak: 4, untrained: 9 } };
+    const newRep = { id: "new", name: "Current repertoire", color: "black", health: { weak: 1, untrained: 2 } };
+    appState.teams = [{ id: "team" }];
+    api.mockImplementationOnce(() => oldRequest).mockResolvedValue({ repertoires: [newRep] });
+    const oldLoad = view.loadDashboardRepertoires();
+    await view.loadDashboardRepertoires();
+    if (outcome === "resolve") resolve({ repertoires: [oldRep] });
+    else reject(new Error("Old load failed"));
+    await oldLoad;
+    expect(appState.repertoireList).toEqual([newRep]);
+    expect(container.innerHTML).toContain("Current repertoire");
+    expect(container.innerHTML).not.toContain("Old load failed");
+    expect(todayCard.innerHTML).toContain("1 weak spot to review");
+    expect(todayCard.innerHTML).toContain("2 new moves to learn");
+  });
+
+  it("does not restore owner data when a dashboard response lands after sign-out", async () => {
+    let resolve;
+    api.mockImplementationOnce(() => new Promise((yes) => { resolve = yes; }));
+    const load = view.loadDashboard();
+    appState.signedIn = false;
+    view.renderSignedOut();
+    resolve(dashboardPayload({ repertoires: 3, due_reviews: 8 }));
+    await load;
+    expect(container.innerHTML).toContain('data-testid="library-signed-out"');
+    expect(todayCard.hidden).toBe(true);
+    expect(api).toHaveBeenCalledTimes(1);
   });
 });

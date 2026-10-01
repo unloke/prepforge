@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createAccountController } from "./account.js";
 
-function makeController({ api = vi.fn(), postJson = vi.fn(), onOpenSettings = vi.fn() } = {}) {
+function makeController({ api = vi.fn(), postJson = vi.fn(), onOpenSettings = vi.fn(), onReload = vi.fn() } = {}) {
   const appState = {
     signedIn: false,
     accountUsername: null,
@@ -19,8 +19,9 @@ function makeController({ api = vi.fn(), postJson = vi.fn(), onOpenSettings = vi
     showConfirmModal: vi.fn(),
     refreshAutoMaiaRating: vi.fn(),
     onOpenSettings,
+    onReload,
   });
-  return { appState, controller, setStatus, onOpenSettings };
+  return { appState, controller, setStatus, onOpenSettings, onReload };
 }
 
 describe("account controller", () => {
@@ -163,6 +164,79 @@ describe("sign-in gate", () => {
     appState.signedIn = true;
     expect(controller.requireSignIn("Sign in to start training", "train")).toBe(true);
     expect(overlays).toHaveLength(0);
+  });
+
+  function fillForm(overlay) {
+    const fields = {
+      email: { value: "alice@example.com" },
+      password: { value: "longenough" },
+      confirm: { value: "longenough" },
+      error: { textContent: "" },
+    };
+    const submit = { disabled: false };
+    overlay.querySelector = (selector) => selector === '[data-action="submit"]'
+      ? submit : fields[selector.match(/data-auth="([^"]+)"/)?.[1]] || null;
+    return fields;
+  }
+
+  it("serializes Enter submissions even while the button is disabled", async () => {
+    let resolve;
+    const postJson = vi.fn(() => new Promise((yes) => { resolve = yes; }));
+    const { controller } = makeController({ postJson });
+    controller.openAuthModal("login");
+    fillForm(overlays[0]);
+    docListeners.keydown({ key: "Enter", preventDefault() {} });
+    docListeners.keydown({ key: "Enter", preventDefault() {} });
+    expect(postJson).toHaveBeenCalledTimes(1);
+    resolve({});
+    await Promise.resolve();
+  });
+
+  it("lets Enter activate an auth button instead of submitting the form", () => {
+    const postJson = vi.fn();
+    const { controller } = makeController({ postJson });
+    controller.openAuthModal("login");
+    fillForm(overlays[0]);
+    const button = { dataset: { action: "toggle" }, closest: () => button };
+    const preventDefault = vi.fn();
+    docListeners.keydown({ key: "Enter", target: button, preventDefault });
+    // Browser default activation fires the button's click unless cancelled.
+    if (!preventDefault.mock.calls.length) overlays[0].listeners.click({ target: button });
+    expect(overlays[0].dataset.mode).toBe("register");
+    expect(postJson).not.toHaveBeenCalled();
+  });
+
+  it("ignores a recovery response after the user changes auth mode", async () => {
+    let resolve;
+    const postJson = vi.fn(() => new Promise((yes) => { resolve = yes; }));
+    const { controller } = makeController({ postJson });
+    controller.openAuthModal("forgot");
+    fillForm(overlays[0]);
+    overlays[0].listeners.click({ target: { dataset: { action: "submit" } } });
+    overlays[0].listeners.click({ target: { dataset: { action: "toggle" } } });
+    expect(overlays[0].dataset.mode).toBe("login");
+    expect(postJson.mock.calls[0][2]?.signal?.aborted).toBe(true);
+    resolve({ dev_reset_token: "old-token" });
+    await Promise.resolve();
+    expect(overlays[0].dataset.mode).toBe("login");
+    expect(overlays[0].innerHTML).not.toContain("old-token");
+  });
+
+  it("does not reload or change a replacement modal when old sign-in completes", async () => {
+    let resolve;
+    const postJson = vi.fn(() => new Promise((yes) => { resolve = yes; }));
+    const { controller, onReload } = makeController({ postJson });
+    controller.openAuthModal("login");
+    fillForm(overlays[0]);
+    overlays[0].listeners.click({ target: { dataset: { action: "submit" } } });
+    controller.openAuthModal("register", { pendingAction: "new-team" });
+    expect(postJson.mock.calls[0][2]?.signal?.aborted).toBe(true);
+    resolve({});
+    await Promise.resolve();
+    expect(onReload).not.toHaveBeenCalled();
+    expect(overlays[1].removed).toBe(false);
+    expect(JSON.parse(session.get("prepforge.pending_action")).id).toBe("new-team");
+    expect(docListeners.keydown).toBeTypeOf("function");
   });
 
   it("opens the modal with the reason, a close button and labelled inputs", () => {

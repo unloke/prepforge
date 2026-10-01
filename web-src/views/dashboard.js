@@ -83,6 +83,8 @@ export function createDashboardView({
   let libraryQuery = "";
   let repListCache = { own: [], shared: [] };
   let repListLoaded = false;
+  // Full loads and mutation refreshes share ownership of the same list/cache.
+  let loadSeq = 0;
 
   // "Black · 142 moves to train" (+ disabled / shared-with in the preview) —
   // only real listing fields (colour, health.trainable, visibility/team). The
@@ -246,18 +248,31 @@ export function createDashboardView({
     }, 0);
   }
 
+  // Weak moves across the caller's active repertoires. The Smart queue trains
+  // them as reviews ("1 review move ready"), so the Today strip must not call
+  // reviews clear while one is waiting (UX walkthrough 2026-10-01 P1-1).
+  function weakMovesToReview() {
+    if (!repListLoaded) return 0;
+    return repListCache.own.reduce((sum, item) => {
+      if (item.is_active === false || !item.health) return sum;
+      return sum + (Number(item.health.weak) || 0);
+    }, 0);
+  }
+
   // Queue line for the Today strip. "Queue is clear" next to a "41 new" row
   // read as a contradiction (UX walkthrough P1-4): reviews and never-trained
   // moves are reported separately.
-  function todayQueueText(due, soon, newMoves) {
+  function todayQueueText(due, soon, newMoves, weak = 0) {
     const bits = [];
-    bits.push(due > 0 ? `<b>${due} due now</b>` : "Reviews clear");
+    if (due > 0) bits.push(`<b>${due} due now</b>`);
+    else if (weak > 0) bits.push(`<b>${weak} weak spot${weak === 1 ? "" : "s"} to review</b>`);
+    else bits.push("Reviews clear");
     if (newMoves > 0) {
       const label = `${newMoves} new move${newMoves === 1 ? "" : "s"} to learn`;
-      bits.push(due > 0 ? label : `<b>${label}</b>`);
+      bits.push(due > 0 || weak > 0 ? label : `<b>${label}</b>`);
     }
     if (soon > 0) bits.push(`${soon} coming up in 24h`);
-    if (bits.length === 1 && due === 0 && newMoves === 0) return "Queue is clear";
+    if (bits.length === 1 && due === 0 && weak === 0 && newMoves === 0) return "Queue is clear";
     return bits.join(" &middot; ");
   }
 
@@ -292,9 +307,10 @@ export function createDashboardView({
     }
     const best = streak.best > 1 ? `<small>best ${streak.best}</small>` : "";
     const newMoves = newMovesToLearn();
-    const queueText = todayQueueText(due, soon, newMoves);
+    const weak = weakMovesToReview();
+    const queueText = todayQueueText(due, soon, newMoves, weak);
     // Nothing due but new moves waiting: the smart queue teaches them, so say so.
-    const learnNew = due === 0 && newMoves > 0;
+    const learnNew = due === 0 && weak === 0 && newMoves > 0;
     const recap = payload.recap || null;
     let recapHtml = "";
     if (recap && (recap.reviews_7d > 0 || recap.mastered_now > 0 || recap.weak_now > 0)) {
@@ -569,6 +585,10 @@ export function createDashboardView({
   function renderRepertoireList() {
     const container = document.getElementById("dashboard-repertoires");
     if (!container) return;
+    const focused = document.activeElement;
+    const focusedRow = focused?.closest?.(".lib-row");
+    const focusedId = focusedRow && container.contains(focusedRow) ? focusedRow.dataset.repertoireId : null;
+    const focusedMenu = focusedId && focused.matches(".row-menu-btn");
     const useSharedFallback =
       !repListCache.own.length && repListCache.shared.length > 0;
     const universe = useSharedFallback ? repListCache.shared : repListCache.own;
@@ -606,9 +626,15 @@ export function createDashboardView({
     setListboxRole(container, true);
     if (useSharedFallback) {
       renderSharedFallbackRows(container, shown);
-      return;
+    } else {
+      renderOwnRepertoireRows(container, shown);
     }
-    renderOwnRepertoireRows(container, shown);
+    // Refresh replaces the row elements. Keep keyboard navigation on the same
+    // repertoire, without stealing focus from search, menus or another view.
+    if (focusedId) {
+      const row = [...container.querySelectorAll(".lib-row")].find((el) => el.dataset.repertoireId === focusedId);
+      (focusedMenu ? row?.querySelector(".row-menu-btn") : row)?.focus({ preventScroll: true });
+    }
   }
 
   // role=option rows need a real listbox owner; empty states drop the role.
@@ -645,16 +671,19 @@ export function createDashboardView({
 
   // Fetches and renders the listing; throws on failure so each caller picks
   // its own error composition.
-  async function fetchDashboardRepertoires() {
+  async function fetchDashboardRepertoires(seq) {
     if (appState.signedIn && !appState.teams.length) {
       try {
         const teamsPayload = await api("/api/teams");
+        if (seq !== loadSeq) return false;
         appState.teams = teamsPayload.teams || [];
       } catch (_) {
         /* team names for share badges are optional */
       }
     }
+    if (seq !== loadSeq) return false;
     const payload = await api("/api/repertoires");
+    if (seq !== loadSeq) return false;
     appState.repertoireList = payload.repertoires || [];
     const visible = (payload.repertoires || []).filter(
       (item) => !appState.pendingRepDeletes.has(String(item.id)),
@@ -674,16 +703,18 @@ export function createDashboardView({
     // The Today strip's "new moves to learn" depends on this listing.
     const today = document.getElementById("dashboard-today");
     if (lastTodayPayload && today && !today.hidden) renderDashboardToday(lastTodayPayload);
+    return true;
   }
 
   // Background refresh (after CRUD elsewhere): a failure only replaces the
   // list with a scoped error card — Today / Get started stay as they were —
   // and is reported through setStatusError. Resolves to false on failure.
   async function loadDashboardRepertoires() {
+    const seq = ++loadSeq;
     try {
-      await fetchDashboardRepertoires();
-      return true;
+      return await fetchDashboardRepertoires(seq);
     } catch (error) {
+      if (seq !== loadSeq) return false;
       renderLibraryListError(error.message);
       setStatusError(error.message);
       return false;
@@ -693,6 +724,7 @@ export function createDashboardView({
   // Signed-out Library: the same empty-library composition as a first-run
   // account, with sign-in as the primary action. No owner-scoped API calls.
   function renderSignedOut() {
+    loadSeq += 1;
     const container = document.getElementById("dashboard-repertoires");
     if (!container) return;
     repListCache = { own: [], shared: [] };
@@ -746,19 +778,23 @@ export function createDashboardView({
   // Either endpoint failing leaves the error card and rethrows, so the caller
   // reports it via setStatusError — "Ready" is only set on a full success.
   async function loadDashboard() {
+    const seq = ++loadSeq;
     let payload;
     try {
       payload = await api(`/api/dashboard?local_date=${localDateString()}`);
     } catch (error) {
+      if (seq !== loadSeq) return;
       renderLibraryError(error.message);
       throw error;
     }
+    if (seq !== loadSeq) return;
     if (payload.streak) appState.dayStreak = payload.streak;
     renderDashboardToday(payload);
     renderSteps(payload);
     try {
-      await fetchDashboardRepertoires();
+      if (!(await fetchDashboardRepertoires(seq))) return;
     } catch (error) {
+      if (seq !== loadSeq) return;
       renderLibraryError(error.message);
       throw error;
     }

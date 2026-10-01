@@ -81,6 +81,28 @@ describe("train up-next preview", () => {
     expect(host.innerHTML).toContain("color-dot black");
   });
 
+  it("never prints the answer of an upcoming recall card (UX 2026-10-01 P1-2)", () => {
+    const appState = {
+      smart: {
+        cardIndex: 0,
+        repertoireName: "Caro-Kann: Advance",
+        queue: [
+          card("new", "Caro-Kann: Advance", "white", "Nc3"),
+          card("weak", "London System", "white", "Qxb7"),
+          card("due", "Caro-Kann: Advance", "white", "Bd3"),
+          card("new", "Najdorf — 6.Bg5 prep", "black", "Be7"),
+        ],
+      },
+    };
+    const view = makeView(appState, elements);
+    view.renderSmartProgress({ total_cards: 4, card_index: 0, kind: "new", targets_total: 1, target_index: 0 });
+    const html = elements["train-upnext"].innerHTML;
+    expect(html).not.toContain("Qxb7");
+    expect(html).not.toContain("Bd3");
+    // A new move is demonstrated by its card anyway, so it may be previewed.
+    expect(html).toContain("Be7");
+  });
+
   it("hides entirely on the last card", () => {
     const appState = {
       smart: {

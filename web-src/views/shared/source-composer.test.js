@@ -15,6 +15,7 @@ import {
   selectionToLegacyIds,
   resolveFetchUsernames,
   positionPopover,
+  sameFetchSources,
 } from "./source-composer.js";
 
 const linked = [
@@ -207,5 +208,21 @@ describe("source composer selection model", () => {
       viewport: { width: 1280, height: 800 },
     });
     expect(second).toEqual(first);
+  });
+});
+
+describe("sameFetchSources (UX 2026-10-01 P2-11)", () => {
+  it("ignores order and case", () => {
+    expect(sameFetchSources(["Me", "Alt"], ["alt", "me"])).toBe(true);
+  });
+  it("compares account sets even when linked and external names differ only in case", () => {
+    expect(sameFetchSources(["Me", "me", "Alt"], ["alt", "me"])).toBe(true);
+  });
+  it("notices an added or removed account", () => {
+    expect(sameFetchSources(["me", "alt"], ["me", "alt", "DrNykterstein"])).toBe(false);
+    expect(sameFetchSources(["me", "alt", "DrNykterstein"], ["me", "alt"])).toBe(false);
+  });
+  it("treats missing lists as empty", () => {
+    expect(sameFetchSources(undefined, [])).toBe(true);
   });
 });
