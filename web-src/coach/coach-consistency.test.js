@@ -11,7 +11,12 @@ import { Chess } from "chess.js";
 import { buildMoveFeatures } from "./features.js";
 import { buildCommentary } from "./commentary.js";
 
+// The position/evals stay fixed across the seed sweep. Compute their expensive
+// tactical features once; ply only selects commentary templates.
+const scenarioFeatures = new Map();
 function scenario(ply, { before = 200, after = 0 } = {}) {
+  const key = `${before}:${after}`;
+  if (scenarioFeatures.has(key)) return { ...scenarioFeatures.get(key), ply };
   const c = new Chess();
   for (const m of ["e4", "e5", "Nf3", "Nc6", "Bc4", "Nf6", "d3", "Be7", "O-O", "O-O", "Nc3", "d6", "Re1", "Bg4"]) {
     c.move(m);
@@ -20,7 +25,7 @@ function scenario(ply, { before = 200, after = 0 } = {}) {
   const mv = c.move("a3");
   const fenAfter = c.fen();
   const reply = new Chess(fenAfter).move("d5");
-  return buildMoveFeatures({
+  const features = buildMoveFeatures({
     ply,
     mover: "white",
     uci: mv.from + mv.to,
@@ -30,6 +35,8 @@ function scenario(ply, { before = 200, after = 0 } = {}) {
     beforeEval: { lines: [{ uci: "c4b3", san: "Bb3", cp: before, mate: null, pvUci: ["c4b3"], pvSan: ["Bb3"] }] },
     afterEval: { cp: after, mate: null, pvUci: [reply.from + reply.to], pvSan: ["d5"] },
   });
+  scenarioFeatures.set(key, features);
+  return { ...features, ply };
 }
 
 // Every seed picks different templates; sweep enough plies to cover each bank entry.
