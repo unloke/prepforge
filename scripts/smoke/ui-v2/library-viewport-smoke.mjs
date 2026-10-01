@@ -55,10 +55,18 @@ const FIXTURE_REPS = {
   shared: [],
 };
 
-const api = (path) => {
+const api = (path, url) => {
   if (path.startsWith("/api/auth/me")) return { id: "u1", display_name: "Smoke Tester", email: "s@x.test" };
   if (path.startsWith("/api/auth/providers")) return { google: false };
   if (path.startsWith("/api/csrf")) return { csrf_token: "x" };
+  if (path === "/api/build/load") {
+    const rep = FIXTURE_REPS.repertoires.find((r) => r.id === url.searchParams.get("repertoire_id"));
+    return {
+      repertoire_id: rep.id, name: rep.name, color: rep.color, root_fen: rep.root_fen,
+      writable: true, selected_node_id: "root",
+      nodes: [{ id: "root", parent_id: null, depth: 0, fen: rep.root_fen, san: null, uci: null, arrows: [], circles: [] }],
+    };
+  }
   if (path.startsWith("/api/dashboard")) {
     return {
       games: 12, repertoires: 3, training_sessions: 7, open_mistakes: 6,
@@ -84,7 +92,7 @@ const server = createServer(async (req, res) => {
   }
   if (url.pathname.startsWith("/api/")) {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(api(url.pathname)));
+    res.end(JSON.stringify(api(url.pathname, url)));
     return;
   }
   let path = url.pathname === "/" ? "/index.html" : url.pathname;
@@ -187,16 +195,19 @@ async function runViewport(vp) {
   const row2 = page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]');
   // A click (or tap) on a row opens the workspace directly.
   await row2.click();
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => document.getElementById("view-build").classList.contains("is-active") &&
+    document.getElementById("view-build").getAttribute("aria-busy") === "false");
   check(loadRequests.some((u) => u.includes("rep-2")), "clicking a row should open the workspace (/api/build/load)");
+  check(/London System/.test(await page.locator("#build-rep-name").textContent().catch(() => "")), "the clicked repertoire must be hydrated");
 
-  // Keyboard: focus the selected row, press Enter — the row opens the workspace
-  // via /api/build/load (asserted by the request hitting the fixture server).
+  // Return to the visible Library before exercising its keyboard path.
+  await page.evaluate(() => document.querySelector('[data-testid="nav-dashboard"]').click());
+  const loadsBeforeKeyboard = loadRequests.length;
   await page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]').focus();
   await page.keyboard.press("Enter");
-  // Enter on the selected row triggers editRepertoire -> /api/build/load; the
-  // fixture 404s nothing but the SPA switches to the build view only on
-  // success — assert the call happened instead (intercepted below via route).
+  await page.waitForFunction(() => document.getElementById("view-build").getAttribute("aria-busy") === "false" &&
+    document.getElementById("view-build").classList.contains("is-active"));
+  check(loadRequests.length === loadsBeforeKeyboard + 1, "Enter on the visible row must load its repertoire once");
 
   // Overflow check.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

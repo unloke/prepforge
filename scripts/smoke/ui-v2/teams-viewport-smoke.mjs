@@ -102,6 +102,22 @@ async function runViewport(vp) {
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text()); });
   page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
   const check = (ok, label) => { if (!ok) failures.push(`${vp.name}: ${label}`); };
+  let inviteStatus = { ...TEAM_DETAIL.invite };
+  let generated = 0, revoked = 0;
+  await page.route("**/api/teams/t1/invite", async (route) => {
+    const method = route.request().method();
+    let payload = inviteStatus;
+    if (method === "POST") {
+      generated++;
+      inviteStatus = { exists: true, created_at: "2026-09-30T00:00:00Z", expires_at: null };
+      payload = { url: "/?join=session-only-invite", expires_at: null };
+    } else if (method === "DELETE") {
+      revoked++;
+      inviteStatus = { exists: false };
+      payload = {};
+    }
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(payload) });
+  });
   // Optional review screenshots (UI_V2_SHOTS=<dir> UI_V2_TAG=before|after); the
   // pointer is parked bottom-right so the hover rail stays collapsed.
   const shot = async (state) => {
@@ -216,6 +232,34 @@ async function runViewport(vp) {
   const incoming = await page.locator("#teams-shared .shared-rep-row").first().textContent().catch(() => "");
   check(/French Fort/.test(incoming || "") && /Taipei Knights/.test(incoming || ""), `incoming shares should list the real shared rep via its team, got "${incoming}"`);
   check(await page.locator('#teams-shared .shared-rep-row .team-role-badge.sm, #teams-shared .team-role-badge').count() >= 1, "incoming share should carry a read-only badge");
+
+  // Exercise real DOM redraws: its accessible name must survive confirmation,
+  // generation, copying and revocation. Opening/reopening must only read status.
+  await page.locator("#team-detail-invite").click();
+  const invite = page.getByRole("dialog", { name: "Team invite link", exact: true });
+  await invite.waitFor();
+  check(generated === 0, "opening Invite must not rotate the link");
+  await invite.getByRole("button", { name: "Generate new link", exact: true }).click();
+  await page.getByRole("dialog", { name: "Generate a new invite link?", exact: true })
+    .getByRole("button", { name: "Generate new link", exact: true }).click();
+  await invite.getByLabel("Invite link", { exact: true }).waitFor();
+  check(generated === 1, "explicit generation must mint exactly once");
+  await invite.getByRole("button", { name: "Copy link", exact: true }).click();
+  await page.waitForFunction(() => document.activeElement?.textContent === "Copy link");
+  check(await invite.count() === 1, "Copy redraw must preserve the dialog's accessible name");
+  await invite.getByRole("button", { name: "Done", exact: true }).click();
+  await invite.waitFor({ state: "detached" });
+  await page.locator("#team-detail-invite").click();
+  await invite.getByLabel("Invite link", { exact: true }).waitFor();
+  check(generated === 1, "reopening the session link must not rotate it");
+  await invite.getByRole("button", { name: "Revoke link", exact: true }).click();
+  await page.getByRole("dialog", { name: "Revoke invite link?", exact: true })
+    .getByRole("button", { name: "Revoke link", exact: true }).click();
+  await invite.getByRole("button", { name: "Generate link", exact: true }).waitFor();
+  check(revoked === 1, "explicit revocation must revoke exactly once");
+  check(await invite.getByLabel("Invite link", { exact: true }).count() === 0, "revoke must remove the plaintext link");
+  await page.keyboard.press("Escape");
+  await invite.waitFor({ state: "detached" });
 
   // Close detail → the empty state returns (single-page grid fallback).
   await page.evaluate(() => document.getElementById("team-detail-close").click());

@@ -2,7 +2,7 @@
 // Checks at 1440x900 / 1180x900 / 390x844:
 //   - no horizontal overflow, no console errors
 //   - mode tabs render (Smart queue / Line rehearsal / Play vs human)
-//   - coach banner + board label + blitz row present in setup
+//   - coach banner + named board controls + blitz row present in setup
 //   - play mode shows opponent-book picker; switching back works
 //   - progress panel + queue strip + up-next render from a live session fixture
 import { createServer } from "node:http";
@@ -98,11 +98,12 @@ async function runViewport(vp) {
   const activeMode = await page.locator("#train-modes .train-mode.is-active").textContent().catch(() => "");
   check(/Smart queue/.test(activeMode), `Smart queue should be the default mode, got "${activeMode}"`);
 
-  // Coach banner + board label + blitz row in setup.
+  // Setup feedback lives in the coach banner; the position label is populated
+  // during a session. Assert the actual named controls, not idle label text.
   const bannerState = await page.locator("#train-banner").getAttribute("data-state").catch(() => "");
   check(!!bannerState, "coach banner should carry a data-state");
-  const label = await page.locator("#train-board-label").textContent().catch(() => "");
-  check(label.length > 0, "board label should be non-empty");
+  check(await page.locator("#view-train").getByRole("button", { name: "Flip board", exact: true }).count() === 1, "board flip must have an accessible name");
+  check(await page.locator("#view-train").getByRole("button", { name: "Show hint", exact: true }).isDisabled(), "hints should be disabled before a session starts");
   // Optional review screenshots (UI_V2_SHOTS=<dir> UI_V2_TAG=before|after).
   const shot = async (state) => {
     if (process.env.UI_V2_SHOTS) {
