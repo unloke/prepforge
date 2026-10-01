@@ -1069,7 +1069,8 @@ const jobToast = new ToastStack();
 const UNDO_TOAST_MS = 5000;
 const pendingUndoCommits = new Set();
 
-function showUndoToast({ title, message, onUndo, onCommit }) {
+function showUndoToast({ title, message, onUndo, onCommit, host = null }) {
+  if (host) return showInlineUndo(host, { title, message, onUndo, onCommit });
   let settled = false;
   let toast = null;
   const commit = () => {
@@ -1107,6 +1108,68 @@ function showUndoToast({ title, message, onUndo, onCommit }) {
   // Hovering the card pauses the countdown (Toast's pointer gating), so the
   // window never closes while the user is reaching for Undo.
   toast._arm(UNDO_TOAST_MS, commit);
+  return commit;
+}
+
+// The same undo window rendered inside a view (`host`) instead of the toast
+// stack — Build's move delete uses it so the card sits with the move tree
+// rather than over the Explorer. One window per host: a newer delete commits
+// the older one first. Hover pauses the countdown, like the toast.
+function showInlineUndo(host, { title, message, onUndo, onCommit }) {
+  if (host._undoCommit) host._undoCommit();
+  let settled = false;
+  let timer = null;
+  let remaining = UNDO_TOAST_MS;
+  let startedAt = 0;
+  const close = () => {
+    window.clearTimeout(timer);
+    if (host._undoCommit === commit) {
+      host._undoCommit = null;
+      host.hidden = true;
+      host.innerHTML = "";
+    }
+  };
+  const commit = () => {
+    if (settled) return;
+    settled = true;
+    pendingUndoCommits.delete(commit);
+    close();
+    try {
+      onCommit();
+    } catch (_) {
+      /* best-effort */
+    }
+  };
+  const arm = () => {
+    startedAt = Date.now();
+    timer = window.setTimeout(commit, remaining);
+  };
+  pendingUndoCommits.add(commit);
+  host._undoCommit = commit;
+  host.innerHTML =
+    `<span class="inline-undo-text"><b>${escapeHtml(title)}</b> ${escapeHtml(message || "")}</span>` +
+    '<button type="button" class="btn sm" data-inline-undo>Undo</button>';
+  host.hidden = false;
+  host.onpointerenter = () => {
+    if (settled) return;
+    window.clearTimeout(timer);
+    remaining = Math.max(800, remaining - (Date.now() - startedAt));
+  };
+  host.onpointerleave = () => {
+    if (!settled) arm();
+  };
+  host.querySelector("[data-inline-undo]").addEventListener("click", () => {
+    if (settled) return;
+    settled = true;
+    pendingUndoCommits.delete(commit);
+    close();
+    try {
+      onUndo();
+    } catch (_) {
+      /* best-effort */
+    }
+  });
+  arm();
   return commit;
 }
 
@@ -3716,13 +3779,35 @@ function syncViewHeads() {
   const build = appState.build;
   if (!build || isBuildReadOnly()) {
     stats.textContent = "";
+    stats.title = "";
   } else {
     const played = build.nodes.filter((n) => n.depth > 0);
     const parents = new Set(build.nodes.map((n) => n.parent_id));
     const lines = played.filter((n) => !parents.has(n.id)).length;
-    stats.textContent = `${lines} line${lines === 1 ? "" : "s"} · ${played.length} move${played.length === 1 ? "" : "s"}`;
+    // "to train" is the Library's count too: your own enabled moves — the
+    // ones Train drills (opponent replies are context, not cards).
+    const train = countBuildMovesToTrain(build);
+    stats.textContent =
+      `${lines} line${lines === 1 ? "" : "s"} · ${played.length} move${played.length === 1 ? "" : "s"}` +
+      ` · ${train} to train`;
+    stats.title = `${played.length} moves in the tree; ${train} of them are your moves, which Train drills. Opponent replies aren't drilled.`;
   }
   stats.hidden = !stats.textContent;
+}
+
+// Own-side moves on the enabled tree (a disabled node hides its subtree) —
+// mirrors the server's trainable count shown on the Library row.
+function countBuildMovesToTrain(build) {
+  const byId = new Map(build.nodes.map((n) => [n.id, n]));
+  const enabledMemo = new Map();
+  const reachable = (node) => {
+    if (!node) return true;
+    if (enabledMemo.has(node.id)) return enabledMemo.get(node.id);
+    const ok = node.is_enabled !== false && reachable(byId.get(node.parent_id));
+    enabledMemo.set(node.id, ok);
+    return ok;
+  };
+  return build.nodes.filter((n) => n.depth > 0 && n.move_side === build.color && reachable(n)).length;
 }
 
 function switchView(name, { fromUrl = false } = {}) {
@@ -5439,18 +5524,20 @@ function escapeHtml(text) {
   }[ch]));
 }
 
-function showInputModal({ title, fields, okLabel = "OK" }) {
+// `advanced: true` fields fold into a closed "Advanced" section; `onInput`
+// (values, overlay) runs on open and on every change — e.g. to repaint a live
+// note (a `note` field is addressable as [data-note="<name>"]).
+function showInputModal({ title, fields, okLabel = "OK", onInput = null }) {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
     overlay.className = "modal-overlay";
-    const inputsHtml = fields
-      .map((field) => {
+    const fieldHtml = (field) => {
         const safeName = escapeHtml(field.name);
         const safeLabel = escapeHtml(field.label || field.name);
         const safeValue = escapeHtml(field.default == null ? "" : String(field.default));
         if (field.type === "note") {
           // Read-only informational line (no input, never collected).
-          return `<p class="modal-note muted">${safeLabel}</p>`;
+          return `<p class="modal-note muted" data-note="${safeName}">${safeLabel}</p>`;
         }
         if (field.type === "textarea") {
           return `
@@ -5487,8 +5574,14 @@ function showInputModal({ title, fields, okLabel = "OK" }) {
             <input name="${safeName}" type="${inputType}" value="${safeValue}"${numericAttrs} data-field />
           </label>
         `;
-      })
-      .join("");
+    };
+    const basic = fields.filter((field) => !field.advanced).map(fieldHtml).join("");
+    const advanced = fields.filter((field) => field.advanced).map(fieldHtml).join("");
+    const inputsHtml =
+      basic +
+      (advanced
+        ? `<details class="modal-advanced"><summary>Advanced</summary>${advanced}</details>`
+        : "");
     overlay.innerHTML = `
       <div class="modal" role="dialog" aria-modal="true">
         <div class="modal-title">${escapeHtml(title)}</div>
@@ -5537,6 +5630,18 @@ function showInputModal({ title, fields, okLabel = "OK" }) {
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay) close(null);
     });
+    if (typeof onInput === "function") {
+      const fire = () => {
+        try {
+          onInput(collect(), overlay);
+        } catch (_) {
+          /* a live hint must never break the form */
+        }
+      };
+      overlay.addEventListener("input", fire);
+      overlay.addEventListener("change", fire);
+      fire();
+    }
   });
 }
 
@@ -5604,26 +5709,65 @@ async function editRepertoire(repertoireId, nodeId = null) {
   // Switching repertoires replaces the local Build tree — flush pending moves of
   // the current one first so they aren't dropped. An optional `nodeId` opens the
   // builder at that position (Analyze's "Open in Build" deep link).
+  // The Repertoire view opens NOW with a skeleton; the tree fills in when the
+  // load lands (it used to sit on the previous page for seconds).
+  setBuildLoading(true);
   try {
     await hardFlushBuild();
   } catch (error) {
+    setBuildLoading(false);
     setStatusError(error.message);
     return;
   }
   appState.sharedToken = null;
-  setStatus("Loading repertoire");
   try {
     const payload = await api(
       `/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`
     );
     const target = nodeId && payload.nodes.some((n) => n.id === nodeId) ? nodeId : null;
+    setBuildLoading(false, { restore: false }); // hydrate paints the new tree
     await hydrateBuild(payload, target || payload.selected_node_id);
     appState.trainingRepertoireId = payload.repertoire_id;
     switchView("build");
     syncWorkspaceUrl();
     updateBuildReadOnlyUi(payload);
   } catch (error) {
+    setBuildLoading(false);
     setStatusError(error.message);
+  }
+}
+
+// Repertoire loading state: switch to the view (without touching the URL —
+// the caller syncs it once the tree is in) and show a skeleton in place of the
+// previous tree. Turning it off restores whatever is actually loaded.
+function setBuildLoading(on, { restore = true } = {}) {
+  const view = document.getElementById("view-build");
+  if (view) {
+    view.classList.toggle("is-loading", on);
+    view.setAttribute("aria-busy", String(on));
+  }
+  if (!on) {
+    if (!restore) return;
+    renderBuildRepHeader();
+    renderBuilderTree();
+    syncViewHeads();
+    return;
+  }
+  if (appState.currentView !== "build") switchView("build", { fromUrl: true });
+  const empty = document.getElementById("build-empty");
+  if (empty) empty.hidden = true;
+  const nameEl = document.getElementById("build-rep-name");
+  if (nameEl) nameEl.innerHTML = '<span class="skeleton-text">Loading repertoire…</span>';
+  const stats = document.getElementById("build-rep-stats");
+  if (stats) stats.hidden = true;
+  const meta = document.getElementById("build-tree-meta");
+  if (meta) meta.innerHTML = "";
+  const tree = document.getElementById("builder-tree");
+  if (tree) {
+    tree.innerHTML =
+      '<div class="tree-skeleton" role="status" aria-label="Loading repertoire">' +
+      [72, 56, 84, 48, 64, 40].map((w) => `<span style="width:${w}%"></span>`).join("") +
+      "</div>";
   }
 }
 
@@ -5705,7 +5849,7 @@ function openRepertoireContextMenu(event, repertoireId, isActive) {
   const safeId = escapeHtml(repertoireId);
   const items = [
     ["train", "Start training"],
-    ["edit", "Edit in builder"],
+    ["edit", "Open in Repertoire"],
     ["rename", "Rename..."],
     ["share-link", "Share link..."],
     ["share-team", "Share with team..."],
@@ -6996,28 +7140,43 @@ function renderBuildRepHeader() {
   void ensureBuildView().then((view) => view.renderBuildRepHeader()).catch(() => {});
 }
 
-// The ⋯ menu in the Build sidebar header: every repertoire-scoped action in one
-// place (the board bar keeps only position navigation, the tools row only
-// position-scoped work). Reuses the shared context-menu element.
+// The ⋯ menu in the Repertoire header: the same repertoire actions as the
+// Library row's ⋯ (minus "Open in Repertoire" — you are here), plus the
+// page-only Export PGN and New repertoire. Reuses the shared context-menu
+// element and the Library's action handler so the two menus cannot drift.
+function buildMenuItems({ hasRep, isActive }) {
+  return [
+    ...(hasRep
+      ? [
+          ["train", "Start training"],
+          ["build-rename", "Rename..."],
+          ["build-export-pgn", "Export PGN"],
+          ["share-link", "Share link..."],
+          ["share-team", "Share with team..."],
+          ["toggle-active", isActive ? "Disable" : "Enable"],
+          ["delete", "Delete..."],
+        ]
+      : []),
+    ["build-new-rep", "New repertoire..."],
+  ];
+}
+
 function openBuildMenu(event) {
   event.preventDefault();
   event.stopPropagation();
   const menu = document.getElementById("repertoire-context-menu");
   if (!menu) return;
   const hasRep = !!appState.build && !isBuildReadOnly();
-  const items = [
-    ...(hasRep
-      ? [
-          ["build-rename", "Rename..."],
-          ["build-export-pgn", "Export PGN"],
-        ]
-      : []),
-    ["build-new-rep", "New repertoire..."],
-  ];
+  const repId = hasRep ? appState.build.repertoire_id : null;
+  const meta = hasRep
+    ? (appState.repertoireList || []).find((r) => String(r.id) === String(repId))
+    : null;
+  const isActive = !meta || meta.is_active !== false;
+  const items = buildMenuItems({ hasRep, isActive });
   menu.innerHTML = items
     .map(
       ([action, label]) =>
-        `<button type="button" data-action="${escapeHtml(action)}">${escapeHtml(label)}</button>`
+        `<button type="button" data-action="${escapeHtml(action)}"${action === "build-new-rep" && hasRep ? ' class="menu-sep-before"' : ""}>${escapeHtml(label)}</button>`
     )
     .join("");
   menu.hidden = false;
@@ -7033,6 +7192,8 @@ function openBuildMenu(event) {
       else if (action === "build-export-pgn") await exportBuild("pgn");
       else if (action === "build-new-rep") {
         await createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" });
+      } else if (repId) {
+        await handleRepertoireContextAction(action, repId, isActive);
       }
     });
   });
@@ -7102,6 +7263,8 @@ async function skipTrainingLine() {
 
 async function selectBuildNode(nodeId) {
   if (!appState.buildNodeById.has(nodeId)) return;
+  // Landing on a real repertoire node ends any Explorer preview.
+  buildPreview = null;
   appState.buildCurrentNodeId = nodeId;
   // Landing on a position resets the fork pick to the mainline continuation.
   appState.buildBranchChoiceId = null;
@@ -7119,6 +7282,7 @@ async function selectBuildNode(nodeId) {
       : `${node.move_number}${node.move_side === "black" ? "..." : "."} ${node.san}`;
   document.getElementById("build-board-label").textContent = label;
   renderBuilderTree();
+  paintBuildPreview();
   if (engineWidget) engineWidget.onBoardChanged();
   scheduleExplorerRefresh();
 }
@@ -7135,6 +7299,9 @@ let explorerClient = null;
 let explorerDb = "masters";
 let explorerTimer = null;
 let explorerSeq = 0;
+// Explorer move being previewed on the Build board (never persisted): see
+// onExplorerRowClick. { parentId, uci, san, fen } or null.
+let buildPreview = null;
 
 function explorerDrawerOpen() {
   const panel = document.getElementById("explorer-drawer");
@@ -7622,6 +7789,7 @@ function setBuildInspector(tool) {
   }
   paintInspectorScope();
   if (tab === "explorer") refreshExplorerPanel();
+  if (tab === "coverage") syncCoverageMaiaGate();
   void explorerEvalEngine.sync();
 }
 
@@ -7777,41 +7945,195 @@ function renderExplorerRows(stats, fen) {
       .filter((n) => n.parent_id === current && n.depth > 0)
       .map((n) => n.uci),
   );
-  const pct = (n) => (n >= 14 ? `${n}%` : "");
+  const inRepNorm = new Set([...inRep].map(normalizeUci));
+  const canAdd = !isBuildReadOnly();
+  const maxTotal = Math.max(1, ...stats.moves.map((m) => m.total));
   rows.innerHTML =
-    '<div class="explorer-head" aria-hidden="true"><span>Move</span><span class="explorer-eval">Eval</span><span>Games</span><span>White / Draw / Black</span></div>' +
+    '<div class="explorer-head" aria-hidden="true"><span>Move</span><span class="explorer-eval">Eval</span><span>Games</span><span>White / Draw / Black</span><span></span></div>' +
     stats.moves
-    .map(
-      (m) => `
-    <button type="button" class="explorer-row" data-uci="${escapeHtml(m.uci)}" title="Add ${escapeHtml(m.san)} to the repertoire">
-      <span class="explorer-san">${escapeHtml(m.san)}${inRep.has(m.uci) ? '<span class="explorer-inrep" title="In your repertoire">&#9679;</span>' : ""}</span>
+      .map((m) => {
+        const has = inRep.has(m.uci) || inRepNorm.has(normalizeUci(m.uci));
+        const games = explorerModule.formatGames(m.total);
+        const bar = explorerBarGeometry(m, maxTotal);
+        const add = !canAdd
+          ? "<span></span>"
+          : has
+            ? '<span class="explorer-add is-in" title="Already in your repertoire" aria-hidden="true">&#10003;</span>'
+            : `<button type="button" class="explorer-add" data-explorer-add aria-label="Add ${escapeHtml(m.san)} to repertoire" title="Add ${escapeHtml(m.san)} to repertoire">+</button>`;
+        const seg = (cls, label, value) =>
+          `<span class="${cls}" style="width:${value}%" title="${label} ${value}%">${bar.labels ? explorerSegLabel(value, bar.width) : ""}</span>`;
+        return `
+    <div class="explorer-row${bar.thin ? " is-thin" : ""}" data-uci="${escapeHtml(m.uci)}">
+      <button type="button" class="explorer-pick" data-explorer-pick aria-label="Preview ${escapeHtml(m.san)} on the board (${games} games, White ${m.whitePct}%, draw ${m.drawPct}%, Black ${m.blackPct}%)" title="Preview ${escapeHtml(m.san)} on the board">
+        <span class="explorer-san">${escapeHtml(m.san)}${has ? '<span class="explorer-inrep" title="In your repertoire">&#9679;</span>' : ""}</span>
+      </button>
       <span class="explorer-eval">&hellip;</span>
-      <span class="explorer-games">${explorerModule.formatGames(m.total)}</span>
-      <span class="explorer-bar" aria-label="White ${m.whitePct}% / draw ${m.drawPct}% / Black ${m.blackPct}%">
-        <span class="explorer-bar-w" style="width:${m.whitePct}%">${pct(m.whitePct)}</span><span class="explorer-bar-d" style="width:${m.drawPct}%">${pct(m.drawPct)}</span><span class="explorer-bar-b" style="width:${m.blackPct}%">${pct(m.blackPct)}</span>
-      </span>
-    </button>`,
-    )
-    .join("");
-  rows.querySelectorAll(".explorer-row").forEach((btn) => {
-    btn.addEventListener("click", () => onExplorerRowClick(rows, btn.dataset.uci));
+      <span class="explorer-games"${bar.thin ? ` title="Only ${m.total} game${m.total === 1 ? "" : "s"} — too few to trust the split"` : ""}>${games}</span>
+      <span class="explorer-bar-track"><span class="explorer-bar" style="width:${bar.width}%" aria-hidden="true">${seg("explorer-bar-w", "White wins", m.whitePct)}${seg("explorer-bar-d", "Draws", m.drawPct)}${seg("explorer-bar-b", "Black wins", m.blackPct)}</span></span>
+      ${add}
+    </div>`;
+      })
+      .join("");
+  rows.querySelectorAll(".explorer-row").forEach((row) => {
+    const uci = row.dataset.uci;
+    // The whole row previews (segment tooltips stay hoverable); the Move
+    // button inside is the focusable handle and its click bubbles here.
+    row.addEventListener("click", (event) => {
+      if (event.target.closest("[data-explorer-add]")) return;
+      void onExplorerRowClick(rows, uci).catch(() => {});
+      row.querySelector("[data-explorer-pick]")?.blur();
+    });
+    row.querySelector("[data-explorer-add]")?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      void onExplorerRowAdd(rows, uci).catch(() => {});
+    });
   });
+  paintBuildPreview();
   explorerEvalEngine.repaint();
   void explorerEvalEngine.sync();
 }
 
-// Rows belong to the position they were fetched for. A second click (a double
-// click, or a click while the next position's stats load) must not replay the
-// old position's move from the new one: that was the "Illegal move" toast. The
-// first click consumes the rows; they come back live only if the move didn't
-// land (cancelled or rejected) and the board is still on their position.
+// Explorer bar geometry. The bar's LENGTH says how much data stands behind the
+// split (log-scaled against the most-played row, so a 3-game row no longer
+// draws as long as a 1.3M-game one); thin samples are also dimmed.
+const EXPLORER_THIN_SAMPLE = 10;
+function explorerBarGeometry(m, maxTotal) {
+  const total = Math.max(0, Number(m.total) || 0);
+  const scale = Math.log10(total + 1) / Math.log10(Math.max(1, maxTotal) + 1);
+  const width = Math.max(8, Math.min(100, Math.round(scale * 100)));
+  return { width, thin: total < EXPLORER_THIN_SAMPLE, labels: true };
+}
+
+// A percent label only where the segment is wide enough to hold it; narrower
+// segments keep the figure in their tooltip.
+function explorerSegLabel(pct, barWidth) {
+  return (pct * barWidth) / 100 >= 14 ? `${pct}%` : "";
+}
+
+// Explorer rows: one click PREVIEWS a move (the board shows it, nothing is
+// saved); adding it to the repertoire is the row's explicit "+" button, or the
+// "Add to repertoire" action on the preview strip. A move already in the
+// repertoire just navigates to it.
+
+function buildChildForUci(parentId, uci) {
+  const want = normalizeUci(uci);
+  return (appState.build ? appState.build.nodes : []).find(
+    (n) => n.parent_id === parentId && n.depth > 0 && (n.uci === uci || normalizeUci(n.uci) === want),
+  );
+}
+
+function buildPreviewActive() {
+  return !!buildPreview && buildPreview.parentId === appState.buildCurrentNodeId;
+}
+
 async function onExplorerRowClick(rows, uci) {
+  const rowsFen = rows.dataset.fen;
+  const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  const currentFen = node ? node.fen : boards.build && boards.build.fen;
+  if (!node || !rowsFen || !sameFenPosition(rowsFen, currentFen)) return;
+  // Clicking the row already previewed toggles back to the position.
+  if (buildPreview && buildPreview.parentId === node.id && buildPreview.uci === uci) {
+    await exitBuildPreview();
+    return;
+  }
+  const existing = buildChildForUci(node.id, uci);
+  if (existing) {
+    await selectBuildNode(existing.id);
+    return;
+  }
+  await previewBuildMove(node, uci);
+}
+
+async function previewBuildMove(parent, uci) {
+  let after;
+  try {
+    after = await boardAfterMove(parent.fen, uci);
+  } catch (_) {
+    try {
+      after = await boardAfterMove(parent.fen, normalizeUci(uci));
+    } catch (_) {
+      setStatus("That move isn't legal here");
+      return;
+    }
+  }
+  if (appState.buildCurrentNodeId !== parent.id || !boards.build) return; // navigated meanwhile
+  buildPreview = { parentId: parent.id, uci, san: after.move.san, fen: after.board.fen };
+  // Read-only board: a preview is a look, not an edit — no move can be played
+  // from it until the user adds the move or steps back.
+  boards.build.setPosition({ fen: after.board.fen, legalMoves: [], lastMove: after.move.uci || uci });
+  boards.build.setAnnotations([], []);
+  boards.build.setBranchArrows([]);
+  paintBuildPreview();
+  if (engineWidget) engineWidget.onBoardChanged();
+}
+
+async function exitBuildPreview() {
+  if (!buildPreview) return;
+  const parentId = buildPreview.parentId;
+  buildPreview = null;
+  if (appState.buildNodeById.has(parentId)) await selectBuildNode(parentId);
+  else paintBuildPreview();
+}
+
+async function addBuildPreview() {
+  if (!buildPreviewActive()) return;
+  const rows = document.getElementById("explorer-rows");
+  const { uci } = buildPreview;
+  if (rows) await onExplorerRowAdd(rows, uci);
+}
+
+function buildPreviewMoveLabel(parent, san) {
+  const parts = String((parent && parent.fen) || "").split(" ");
+  const number = Number(parts[5]) || 1;
+  return `${number}${parts[1] === "b" ? "…" : "."} ${san}`;
+}
+
+// The strip above the Explorer rows (visible in every layout, unlike the board
+// on narrow screens) plus the board label and the row highlight.
+function paintBuildPreview() {
+  const strip = document.getElementById("explorer-preview");
+  const rows = document.getElementById("explorer-rows");
+  const active = buildPreviewActive();
+  if (!active && buildPreview) buildPreview = null; // navigated away from its parent
+  rows?.querySelectorAll(".explorer-row").forEach((row) => {
+    row.classList.toggle("is-previewing", active && row.dataset.uci === buildPreview.uci);
+  });
+  if (!strip) return;
+  strip.hidden = !active;
+  if (!active) {
+    strip.innerHTML = "";
+    return;
+  }
+  const parent = appState.buildNodeById.get(buildPreview.parentId);
+  const label = buildPreviewMoveLabel(parent, buildPreview.san);
+  const boardLabel = document.getElementById("build-board-label");
+  if (boardLabel) boardLabel.textContent = `Preview: ${label}`;
+  const canAdd = !isBuildReadOnly();
+  strip.innerHTML =
+    `<span class="explorer-preview-text">Previewing <b>${escapeHtml(label)}</b> — not in your repertoire</span>` +
+    (canAdd
+      ? '<button type="button" class="btn sm primary" data-preview-add>+ Add to repertoire</button>'
+      : "") +
+    '<button type="button" class="btn sm ghost" data-preview-back>Back</button>';
+  strip.querySelector("[data-preview-add]")?.addEventListener("click", () => void addBuildPreview().catch(() => {}));
+  strip.querySelector("[data-preview-back]")?.addEventListener("click", () => void exitBuildPreview().catch(() => {}));
+}
+
+// Explicit add (the row's "+"). Rows belong to the position they were fetched
+// for. A second click (a double click, or a click while the next position's
+// stats load) must not replay the old position's move from the new one: that
+// was the "Illegal move" toast. The first click consumes the rows; they come
+// back live only if the move didn't land (cancelled or rejected) and the board
+// is still on their position.
+async function onExplorerRowAdd(rows, uci) {
   const rowsFen = rows.dataset.fen;
   const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
   const currentFen = node ? node.fen : boards.build && boards.build.fen;
   if (!rowsFen || !sameFenPosition(rowsFen, currentFen)) return;
   delete rows.dataset.fen;
   rows.classList.add("is-stale");
+  // The add plays from the repertoire position, so any preview ends here.
+  const wasPreviewing = takeBuildPreview();
   try {
     await onBuildBoardMove(uci);
   } finally {
@@ -7821,7 +8143,24 @@ async function onExplorerRowClick(rows, uci) {
       rows.dataset.fen = rowsFen;
       rows.classList.remove("is-stale");
     }
+    // The move didn't land (read-only, rejected): the board still shows the
+    // preview position, so put it back on the repertoire node.
+    if (wasPreviewing && node && appState.buildCurrentNodeId === node.id) {
+      await restoreBuildBoard(node.id);
+    }
   }
+}
+
+// Ends a preview without touching the board; true if one was showing.
+function takeBuildPreview() {
+  const was = buildPreviewActive();
+  buildPreview = null;
+  paintBuildPreview();
+  return was;
+}
+
+async function restoreBuildBoard(nodeId) {
+  if (appState.buildNodeById.has(nodeId)) await selectBuildNode(nodeId);
 }
 
 
@@ -7869,11 +8208,17 @@ function buildGoRoot() {
 }
 
 function buildGoBack() {
+  // Previewing an Explorer move: back means "back to the position".
+  if (buildPreviewActive()) {
+    void exitBuildPreview().catch(() => {});
+    return;
+  }
   const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
   if (node && node.parent_id) selectBuildNode(node.parent_id);
 }
 
 function buildGoForward() {
+  if (buildPreviewActive()) return; // a preview has no continuation yet
   // At a fork, → plays the picked continuation (mainline unless ↑/↓ changed it);
   // anywhere else it just walks the line.
   const ctx = buildBranchContext();
@@ -8636,7 +8981,10 @@ async function deleteBuildNodeLocal(nodeId) {
   // delete first (see onBuildBoardMove). The slot is freed in both settle paths.
   const undoMoveKey = `${parentId}:${node.uci}`;
   const extra = doomed.size > 1 ? ` (+${doomed.size - 1} after it)` : "";
+  // One notice only: the inline Undo card beside the tree (no extra status
+  // toast), so nothing lands on top of the Explorer.
   const undoCommit = showUndoToast({
+    host: document.getElementById("build-undo"),
     title: "Move deleted",
     message: `${node.san || "Move"}${extra} removed`,
     onCommit: () => {
@@ -8685,7 +9033,6 @@ async function deleteBuildNodeLocal(nodeId) {
     },
   });
   appState.buildUndoCommitByMove.set(undoMoveKey, undoCommit);
-  setStatus(`Deleted ${node.san || "move"}`);
 }
 
 // Drain every pending move before an operation that needs server truth or a real
@@ -8966,6 +9313,127 @@ function estimateBuildGenerateTotal({ plyDepth, ownSideCandidateCount, detailMod
   return Math.max(12, Math.ceil(total));
 }
 
+// Generate dialog in plain words: a Depth preset up front, the engine knobs
+// folded under "Advanced", and a live estimate of how much will be added.
+// Kept conservative on purpose: the recursion runs locally (deep × branches
+// is slow on the user's machine) and a huge tree risks exceeding the server
+// apply-plan caps. See GEN_MAX_* / GEN_PLAN_CHANGES_SOFT_CAP.
+const GEN_DEPTH_PRESETS = {
+  shallow: { plies: 4, label: "Shallow — about 2 moves each side" },
+  medium: { plies: 6, label: "Medium — about 3 moves each side" },
+  deep: { plies: 8, label: "Deep — about 4 moves each side" },
+};
+
+function generateDialogFields({ repColor }) {
+  return [
+    {
+      name: "depth_preset",
+      label: "Depth",
+      type: "select",
+      default: "medium",
+      options: Object.entries(GEN_DEPTH_PRESETS).map(([value, p]) => ({ value, label: p.label })),
+    },
+    { name: "estimate", label: "", type: "note" },
+    {
+      name: "own_color",
+      label: "Build moves for",
+      type: "select",
+      default: repColor,
+      advanced: true,
+      options: [
+        { value: "white", label: "White" + (repColor === "white" ? " (your side)" : " (explore the opponent)") },
+        { value: "black", label: "Black" + (repColor === "black" ? " (your side)" : " (explore the opponent)") },
+      ],
+    },
+    {
+      name: "ply_depth",
+      label: `Exact depth in half-moves (1-${GEN_MAX_PLY_DEPTH}; blank = use the preset)`,
+      type: "number",
+      default: "",
+      min: 1,
+      max: GEN_MAX_PLY_DEPTH,
+      advanced: true,
+    },
+    {
+      name: "own_side_candidate_count",
+      label: `Your alternatives per position (1-${GEN_MAX_BRANCHES})`,
+      type: "number",
+      default: 1,
+      min: 1,
+      max: GEN_MAX_BRANCHES,
+      advanced: true,
+    },
+    {
+      name: "detail_mode",
+      label: "Opponent replies to cover",
+      type: "select",
+      default: "balanced",
+      advanced: true,
+      options: [
+        { value: "simple", label: "Their main reply, plus the first alternatives" },
+        { value: "balanced", label: "Every reply humans play often (recommended)" },
+        { value: "deep", label: "Every common reply — best with a shallow depth" },
+      ],
+    },
+    // Defaults to the player's own strength (Settings → Playing strength), so the
+    // generated tree leans toward replies THEIR opponents actually play.
+    {
+      name: "maia_rating",
+      label: "Opponent strength (rating, 600-2600)",
+      type: "number",
+      default: effectiveMaiaRating(),
+      min: 600,
+      max: 2600,
+      advanced: true,
+    },
+    // Depth (above) = how far the tree grows; Stockfish depth (here) = how deep
+    // each our-turn search runs. The latter comes from Settings to avoid a second
+    // depth knob that could fight it; shown read-only so the distinction is clear.
+    {
+      name: "stockfish_depth_note",
+      label: `Engine search depth: ${effectiveStockfishDepth()} (change in Settings)`,
+      type: "note",
+      advanced: true,
+    },
+  ];
+}
+
+function readGenerateOptions(values) {
+  const preset = GEN_DEPTH_PRESETS[values.depth_preset] || GEN_DEPTH_PRESETS.medium;
+  const exact = String(values.ply_depth ?? "").trim();
+  const plyDepth = Math.max(1, Math.min(GEN_MAX_PLY_DEPTH, Number(exact) || preset.plies));
+  const ownSideCandidateCount = Math.max(
+    1,
+    Math.min(GEN_MAX_BRANCHES, Number(values.own_side_candidate_count) || 1),
+  );
+  const detailMode = ["simple", "balanced", "deep"].includes(values.detail_mode)
+    ? values.detail_mode
+    : "balanced";
+  return {
+    ownColor: values.own_color === "black" ? "black" : "white",
+    plyDepth,
+    ownSideCandidateCount,
+    detailMode,
+    maiaRating: Math.max(600, Math.min(2600, Number(values.maia_rating) || effectiveMaiaRating())),
+  };
+}
+
+// Rough range from depth × branching (the same model that sizes the progress
+// bar). Moves already in the repertoire are reused, so the real number is
+// often lower — the copy says so.
+function generateEstimateRange({ plyDepth, ownSideCandidateCount, detailMode }) {
+  const ceiling = estimateBuildGenerateTotal({ plyDepth, ownSideCandidateCount, detailMode });
+  const nice = (n) => (n >= 50 ? Math.round(n / 10) * 10 : n >= 20 ? Math.round(n / 5) * 5 : Math.round(n));
+  const low = Math.max(1, nice(ceiling * 0.4));
+  const high = Math.max(low + 1, nice(ceiling));
+  return { low, high };
+}
+
+function generateEstimateText(options) {
+  const { low, high } = generateEstimateRange(options);
+  return `Estimate: roughly ${low}–${high} new moves (fewer where your repertoire already has them).`;
+}
+
 async function generateFromCurrentNode() {
   // True click origin for [engine-lifecycle] timing: recorded before any
   // toast/status/rAF so click → feedback-paint measures the real delay.
@@ -9004,60 +9472,15 @@ async function generateFromCurrentNode() {
   const values = await showInputModal({
     title: "Generate moves from this position",
     okLabel: "Generate",
-    fields: [
-      {
-        name: "own_color",
-        label: "Your side (whose best moves to build)",
-        type: "select",
-        default: repColor,
-        options: [
-          { value: "white", label: "White" + (repColor === "white" ? " - your repertoire" : " - explore opponent") },
-          { value: "black", label: "Black" + (repColor === "black" ? " - your repertoire" : " - explore opponent") },
-        ],
-      },
-      // Kept conservative on purpose: the recursion runs locally (deep × branches
-      // is slow on the user's machine) and a huge tree risks exceeding the server
-      // apply-plan caps. See GEN_MAX_* / GEN_PLAN_CHANGES_SOFT_CAP.
-      { name: "ply_depth", label: `Ply depth (1-${GEN_MAX_PLY_DEPTH})`, type: "number", default: 6, min: 1, max: GEN_MAX_PLY_DEPTH },
-      {
-        name: "own_side_candidate_count",
-        label: `Your-move branches per node (1-${GEN_MAX_BRANCHES})`,
-        type: "number",
-        default: 1,
-        min: 1,
-        max: GEN_MAX_BRANCHES,
-      },
-      {
-        name: "detail_mode",
-        label: "Detail mode",
-        type: "select",
-        default: "balanced",
-        options: [
-          { value: "simple", label: "simple - mainline + first-level branches" },
-          { value: "balanced", label: "balanced - recurse, 10% / 30% thresholds" },
-          { value: "deep", label: "deep - same as balanced, intended for shallower depth" },
-        ],
-      },
-      // Defaults to the player's own strength (Settings → Playing strength), so the
-      // generated tree leans toward replies THEIR opponents actually play.
-      { name: "maia_rating", label: "Maia rating (600-2600)", type: "number", default: effectiveMaiaRating(), min: 600, max: 2600 },
-      // Ply depth (above) = how far the tree grows; Stockfish depth (here) = how deep
-      // each our-turn search runs. The latter comes from Settings to avoid a second
-      // depth knob that could fight it; shown read-only so the distinction is clear.
-      { name: "stockfish_depth_note", label: `Stockfish search depth: ${effectiveStockfishDepth()} (from Settings)`, type: "note" },
-    ],
+    fields: generateDialogFields({ repColor }),
+    onInput: (current, overlay) => {
+      const note = overlay.querySelector('[data-note="estimate"]');
+      if (note) note.textContent = generateEstimateText(readGenerateOptions(current));
+    },
   });
   if (!values) return;
-  const ownColor = values.own_color === "black" ? "black" : "white";
-  const plyDepth = Math.max(1, Math.min(GEN_MAX_PLY_DEPTH, Number(values.ply_depth) || 6));
-  const ownSideCandidateCount = Math.max(
-    1,
-    Math.min(GEN_MAX_BRANCHES, Number(values.own_side_candidate_count) || 1),
-  );
-  const detailMode = ["simple", "balanced", "deep"].includes(values.detail_mode)
-    ? values.detail_mode
-    : "balanced";
-  const maiaRating = Math.max(600, Math.min(2600, Number(values.maia_rating) || effectiveMaiaRating()));
+  const { ownColor, plyDepth, ownSideCandidateCount, detailMode, maiaRating } =
+    readGenerateOptions(values);
 
   const jobId = `browser-generate-${Date.now()}`;
   // Cancel model has two phases. GENERATION (local, before the POST) is
@@ -12521,7 +12944,9 @@ async function runCoverageScanUI() {
   // when analysis-layer Maia is OFF the scan states its requirement instead of
   // silently producing a different (Stockfish-only) answer.
   if (!maiaAnalysisEnabled()) {
-    setStatus("Coverage needs Maia analysis — turn it on in Settings → Playing strength.");
+    // Inline, with a one-click fix — not a truncated, vanishing toast.
+    if (buildDockTab !== "coverage") setBuildInspector("coverage");
+    renderCoverageMaiaGate();
     return;
   }
   const button = document.getElementById("coverage-run");
@@ -12563,6 +12988,50 @@ async function runCoverageScanUI() {
     if (button && !isBuildReadOnly()) button.disabled = false;
     coverageController = null;
   }
+}
+
+// Coverage's Maia requirement, stated where the user is looking: what is
+// needed, why, and a button that turns it on (and scans) right here.
+// Settings' "Maia3 · Ready" means the model is cached; the analysis switch is
+// what lets features use it — this card is where those two meet.
+const COVERAGE_MAIA_GATE =
+  '<div class="coverage-gate" data-testid="coverage-maia-gate">' +
+  "<p><b>Coverage needs Maia analysis.</b> Maia predicts what humans at your level actually play here; " +
+  "it runs in your browser (one-time model download, then cached). Maia analysis is off right now.</p>" +
+  '<div class="row">' +
+  '<button type="button" class="btn sm primary" data-coverage-enable-maia>Turn on Maia analysis &amp; scan</button>' +
+  '<button type="button" class="btn sm ghost" data-coverage-open-settings>Open Settings</button>' +
+  "</div></div>";
+
+function renderCoverageMaiaGate() {
+  const gapsEl = document.getElementById("coverage-gaps");
+  if (!gapsEl) return;
+  gapsEl.innerHTML = COVERAGE_MAIA_GATE;
+  gapsEl.querySelector("[data-coverage-enable-maia]")?.addEventListener("click", () => {
+    setPref("maiaAnalysis", true);
+    gapsEl.innerHTML = COVERAGE_IDLE_HINT;
+    void runCoverageScanUI();
+  });
+  gapsEl.querySelector("[data-coverage-open-settings]")?.addEventListener("click", () => {
+    switchView("settings");
+    window.setTimeout(() => {
+      const toggle = document.getElementById("settings-maia-analysis");
+      if (!toggle) return;
+      toggle.scrollIntoView({ block: "center", behavior: "smooth" });
+      toggle.focus({ preventScroll: true });
+    }, 60);
+  });
+}
+
+// Coverage tab opened with Maia off and nothing scanned yet: say so up front
+// instead of waiting for a Scan click to fail.
+function syncCoverageMaiaGate() {
+  const gapsEl = document.getElementById("coverage-gaps");
+  if (!gapsEl || isBuildReadOnly()) return;
+  const gateShown = !!gapsEl.querySelector("[data-coverage-enable-maia]");
+  const idle = !coverageGaps.length && !document.getElementById("coverage-score")?.dataset.ready;
+  if (!maiaAnalysisEnabled() && idle && !gateShown) renderCoverageMaiaGate();
+  else if (maiaAnalysisEnabled() && gateShown) gapsEl.innerHTML = COVERAGE_IDLE_HINT;
 }
 
 function renderCoverageResult(result, rating) {
@@ -13455,6 +13924,9 @@ function bindEvents() {
         event.preventDefault();
         board.flip();
       }
+    }
+    if (event.key === "Escape" && inBuild && buildPreviewActive()) {
+      void exitBuildPreview().catch(() => {});
     }
     if (event.key === "Escape") {
       closeNodeContextMenu();

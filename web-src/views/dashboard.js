@@ -83,13 +83,14 @@ export function createDashboardView({
   let libraryQuery = "";
   let repListCache = { own: [], shared: [] };
 
-  // "Black · 142 trainable moves" (+ disabled / shared-with in the preview) —
+  // "Black · 142 moves to train" (+ disabled / shared-with in the preview) —
   // only real listing fields (colour, health.trainable, visibility/team). The
   // listing has no line count or last-trained date, so neither is shown.
   function repSubline(item, { detail = false } = {}) {
     const bits = [String(item.color || "") === "black" ? "Black" : "White"];
     if (item.health && item.health.trainable) {
-      bits.push(`${item.health.trainable} trainable move${item.health.trainable === 1 ? "" : "s"}`);
+      // Same wording as the Repertoire header's "· N to train".
+      bits.push(`${item.health.trainable} move${item.health.trainable === 1 ? "" : "s"} to train`);
     }
     if (!detail) return bits.join(" · ");
     if (item.is_active === false) bits.push("disabled");

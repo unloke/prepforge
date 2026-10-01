@@ -10,6 +10,10 @@
   --panel-soft: #f8f8f6;
   --surface-2: #f8f8f6;
   --surface-3: #efefec;
+  --explorer-white: #f2f2ef;
+  --explorer-draw: #9a9fa6;
+  --explorer-black: #2e3136;
+  --explorer-track: #e6e6e2;
   --line: #e2e1dc;
   --line-soft: #eeeeec;
   --line-strong: #cfcdc6;
@@ -187,6 +191,12 @@
   --coord-on-light: #5a6c7b;
   --coord-on-dark: #d8dee3;
   --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.5);
+  /* Explorer W/D/B bar: the draw grey sits between the two ends and the
+     Black end is lifted off the panel so it never melts into the background. */
+  --explorer-white: #e9eaec;
+  --explorer-draw: #7c838c;
+  --explorer-black: #45494f;
+  --explorer-track: #2b3035;
 }
 
 * {
@@ -3398,7 +3408,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 .explorer-head, .explorer-row {
   display: grid;
-  grid-template-columns: minmax(48px, 64px) minmax(44px, 68px) minmax(0, 1fr);
+  grid-template-columns: minmax(48px, 64px) minmax(44px, 68px) minmax(0, 1fr) 24px;
   align-items: center;
   gap: 10px;
   min-width: 0;
@@ -3420,6 +3430,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 .explorer-row {
+  position: relative;
   min-width: 0;
   border-top: 0;
   border-right: 0;
@@ -3435,6 +3446,125 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .explorer-row:hover {
   background: var(--surface-hover);
 }
+
+/* One click anywhere on the row previews (the row listens; the Move button
+   is its keyboard/screen-reader handle). "+" is a separate button. */
+.explorer-pick {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.explorer-pick:focus-visible { outline: none; }
+.explorer-row:has(.explorer-pick:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.explorer-row.is-previewing {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* Fewer than a handful of games: the split is noise, so the row steps back. */
+.explorer-row.is-thin .explorer-bar-track,
+.explorer-row.is-thin .explorer-games { opacity: 0.55; }
+
+.explorer-add {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--line-strong, var(--line));
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.explorer-add:hover { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.explorer-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.explorer-add.is-in {
+  border-color: transparent;
+  background: transparent;
+  color: var(--good-text, var(--muted));
+  font-size: 12px;
+  cursor: default;
+}
+
+.explorer-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 2px 0 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent-soft);
+  font-size: var(--fs-s);
+  color: var(--text);
+}
+.explorer-preview[hidden] { display: none; }
+.inline-undo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 10px;
+  padding: 6px 8px 6px 10px;
+  border: 1px solid var(--line-strong, var(--line));
+  border-radius: 6px;
+  background: var(--panel-soft, var(--panel));
+  font-size: var(--fs-s);
+  color: var(--text);
+}
+.inline-undo[hidden] { display: none; }
+/* Repertoire loading skeleton (editRepertoire → setBuildLoading). */
+.tree-skeleton {
+  display: grid;
+  gap: 10px;
+  padding: 14px 12px;
+}
+.tree-skeleton span {
+  display: block;
+  height: 12px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--surface-3) 0%, var(--surface-2, var(--surface-3)) 50%, var(--surface-3) 100%);
+  background-size: 200% 100%;
+  animation: tree-skeleton-pulse 1.2s ease-in-out infinite;
+}
+.skeleton-text { color: var(--muted); font-style: italic; }
+@keyframes tree-skeleton-pulse {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tree-skeleton span { animation: none; }
+}
+.coverage-gate {
+  margin: 4px 0 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong, var(--line));
+  border-radius: 6px;
+  background: var(--panel-soft, var(--panel));
+  font-size: var(--fs-s);
+  color: var(--text);
+}
+.coverage-gate p { margin: 0 0 8px; line-height: 1.45; }
+.coverage-gate .row { display: flex; flex-wrap: wrap; gap: 6px; }
+.inline-undo-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.explorer-preview-text { flex: 1 1 180px; min-width: 0; }
 
 /* A row was just played: these rows describe the previous position until the
    next position's stats arrive, so they stop reading as clickable. */
@@ -3469,12 +3599,19 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-variant-numeric: tabular-nums;
 }
 
+.explorer-bar-track {
+  display: block;
+  min-width: 0;
+}
+
+/* Width = how much data backs the split (set inline, log-scaled per row). */
 .explorer-bar {
   display: flex;
   height: 18px;
+  max-width: 100%;
   border-radius: 3px;
   overflow: hidden;
-  background: var(--surface-3);
+  background: var(--explorer-track);
 }
 
 .explorer-bar span {
@@ -3486,13 +3623,13 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-weight: 650;
 }
 
-.explorer-bar-w { background: #f2f2ef; color: #333; }
+.explorer-bar-w { background: var(--explorer-white); color: #333; }
 /* Engine on: an Eval column between Move and Games. Off: the cell is gone and
    the three-column layout above is untouched. */
 .explorer-eval { display: none; }
 .explorer-rows.has-eval .explorer-head,
 .explorer-rows.has-eval .explorer-row {
-  grid-template-columns: minmax(44px, 60px) minmax(46px, 56px) minmax(40px, 60px) minmax(0, 1fr);
+  grid-template-columns: minmax(44px, 60px) minmax(46px, 56px) minmax(40px, 60px) minmax(0, 1fr) 24px;
 }
 .explorer-rows.has-eval .explorer-eval {
   display: block;
@@ -3514,8 +3651,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .dock-engine-switch[hidden] { display: none; }
 .dock-engine-switch .pf-row-label { font-size: var(--fs-s); color: var(--label); font-weight: 600; }
 
-.explorer-bar-d { background: #9a9fa6; color: #fff; }
-.explorer-bar-b { background: #2e3136; color: #fff; }
+.explorer-bar-d { background: var(--explorer-draw); color: #fff; }
+.explorer-bar-b { background: var(--explorer-black); color: #fff; }
 
 /* Analyze panel styles (coach, chart, move grid, class bars, drawers) live in
    views/analyze-chart.css, lazy-loaded with the Analyze view. */
@@ -3638,6 +3775,22 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .mtree-move.m-weak {
   box-shadow: inset 0 -2px 0 var(--k-weak);
 }
+/* The selected move keeps full contrast whatever it is decorated with: the
+   opponent-move grey (and a disabled move's fade) must not bleed onto the
+   accent fill. Dark theme: white on the lighter accent is only ~3:1, so the
+   label goes dark instead. */
+.mtree-move.is-current.is-opp,
+.mtree-move.is-current.is-prep,
+.mtree-move.is-current {
+  color: var(--on-accent);
+  text-decoration-color: currentColor;
+}
+.mtree-move.is-current.is-disabled { opacity: 0.8; }
+:root[data-theme="dark"] .mtree-move.is-current,
+:root[data-theme="dark"] .mtree-move.is-current.is-opp,
+:root[data-theme="dark"] .mtree-move.is-current.is-prep {
+  color: #0f1a3a;
+}
 
 /* Per-variation collapse toggle. */
 .mtree-collapse {
@@ -3733,6 +3886,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   cursor: not-allowed;
 }
 
+.context-menu button.menu-sep-before {
+  margin-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
 .context-menu button[data-action="delete"] {
   color: var(--danger);
 }
@@ -3803,6 +3961,21 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   gap: 4px;
   min-width: 0;
 }
+
+.modal-advanced {
+  margin-top: 4px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+.modal-advanced > summary {
+  cursor: pointer;
+  font-size: var(--fs-s);
+  font-weight: 600;
+  color: var(--label);
+  margin-bottom: 8px;
+}
+.modal-advanced > .modal-field,
+.modal-advanced > .modal-note { margin-bottom: 10px; }
 
 .modal-note {
   margin: 0;
