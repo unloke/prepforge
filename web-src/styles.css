@@ -3004,6 +3004,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .qstrip { display: flex; flex-direction: column; gap: 6px; }
 .qstrip[hidden] { display: none; }
 .qbar { display: flex; height: 8px; gap: 1px; overflow: hidden; border-radius: 4px; background: var(--surface-3); }
+/* views/train.js hides the bar when the queue has no composition to show; the
+   flex display above would otherwise beat the UA [hidden] rule and leave an
+   empty grey strip under the progress bar. */
+.qbar[hidden] { display: none; }
 .qbar i { display: block; min-width: 4px; }
 .qbar i.k-weak, .tsum-row i.k-weak { background: var(--k-weak); }
 .qbar i.k-due, .tsum-row i.k-due { background: var(--k-due); }
@@ -3902,6 +3906,23 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 .context-section:first-child {
   padding-top: 4px;
+}
+
+/* Names the move the node menu acts on (UX walkthrough 2026-10-01 P2-8). */
+.context-target {
+  padding: 6px 10px 6px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 2px;
+}
+
+.context-target + .context-section {
+  padding-top: 8px;
+}
+
+.mtree-move.is-menu-target {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .context-menu button {
@@ -6461,7 +6482,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   position: fixed;
   inset: 0;
   z-index: var(--z-menu);
-  background: color-mix(in srgb, var(--text) 28%, transparent);
+  /* Same scrim as .modal-overlay. Mixing var(--text) turned the backdrop a
+     light grey wash in dark mode (UX walkthrough 2026-10-01 P2-3). */
+  background: rgba(20, 18, 14, 0.36);
   display: flex;
   align-items: flex-start;
   justify-content: center;

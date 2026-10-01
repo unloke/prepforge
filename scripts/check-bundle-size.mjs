@@ -38,6 +38,10 @@
 // previews, Build loading guards and Analyze/Train integration. The production
 // main chunk is now ~319.4 KB raw / 99.3 KB gzip; allow only 320 KB / 100 KB.
 // Keep worker and CSS budgets unchanged; this accounts for the reviewed UX delta.
+// The 2026-10-01 walkthrough fixes (repertoire color select, Explorer failure
+// reasons, sign-in modal guards, hint retention, Games move labels, Scout
+// source reset, Teams sign-in CTA) grow the main chunk 319,444 → 322,032 B
+// raw and 99,236 → 100,208 B gzip; allow 323 KB / 101 KB.
 import { readdirSync, statSync, readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { fileURLToPath, URL } from "node:url";
@@ -52,8 +56,8 @@ const LIMITS = [
   {
     prefix: "index-",
     suffix: ".js",
-    maxBytes: 320_000, // reviewed walkthrough integration (see measured delta above)
-    maxGzipBytes: 100_000,
+    maxBytes: 323_000, // reviewed walkthrough fixes (see measured deltas above)
+    maxGzipBytes: 101_000,
     label: "main app chunk",
   },
   { prefix: "maia3-worker-", suffix: ".js", maxBytes: 220_000, label: "maia3 worker chunk" },

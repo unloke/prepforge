@@ -4,6 +4,8 @@ import {
   createReplayView,
   displayReplayResult,
   formatReplayDate,
+  moveNumberLabel,
+  plyMoveLabel,
   revealIfOffscreen,
 } from "./replay.js";
 
@@ -162,7 +164,7 @@ describe("replay focus internals", () => {
     const html = elements["replay-results"].innerHTML;
     expect(html).not.toContain('data-testid="replay-focus-board"');
     // The production detail text survives the fallback.
-    expect(html).toContain("You diverged on ply 4");
+    expect(html).toContain("You diverged at 2…");
   });
 
   it("keeps draws on one line and names a single source account once", () => {
@@ -263,5 +265,18 @@ describe("replay focus internals", () => {
     expect(html).toContain('class="replay-arrows"');
     expect(html).not.toContain('class="t-good"');
     expect(html).toContain('class="t-bad"');
+  });
+  it("names departures by move number, not ply (UX 2026-10-01 P2-9)", () => {
+    expect(moveNumberLabel(1)).toBe("1.");
+    expect(moveNumberLabel(2)).toBe("1…");
+    expect(moveNumberLabel(5)).toBe("3.");
+    expect(moveNumberLabel(0)).toBe("");
+    expect(plyMoveLabel(2, ["e4", "c5"])).toBe("1… c5");
+    makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
+    const html = elements["replay-results"].innerHTML;
+    expect(html).not.toMatch(/Ply \d/);
+    expect(html).not.toMatch(/plies/);
+    expect(html).toContain("2… d5");
+    expect(html).toContain("in prep through 2. Nf3");
   });
 });

@@ -20,6 +20,11 @@ import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { classifySyncError, describeSyncError } from "./sync-errors.js";
 import { apiErrorMessage } from "./api-errors.js";
 import { orderPendingBuildAdds } from "./build-queue.js";
+import { normalizeRepertoireColor, repertoireColorField } from "./repertoire-color.js";
+import { trainStartDisabled } from "./train-start.js";
+import { coachTipMayReplace, wrongMoveTip } from "./train-hint.js";
+import { syncChipVariant } from "./sync-chip.js";
+import { nodeMenuHeading } from "./node-menu.js";
 import {
   acquireFlushLock,
   buildAddId,
@@ -54,7 +59,12 @@ import {
   workspaceLocationFromState,
 } from "./workspace-url.js";
 import { mapTrainUiSession, shouldResetTrainStats } from "./train-resume.js";
-import { pickOpponentReply, playPositionAfterReply } from "./train-opponent.js";
+import {
+  pickOpponentReply,
+  playPositionAfterReply,
+  replyReasonNote,
+  unavailableExplorer,
+} from "./train-opponent.js";
 import { isStartFen } from "./train-lucky.js";
 import {
   resolvePlayColor,
@@ -90,6 +100,7 @@ import {
   selectionFromStorage,
   selectionToStorage,
   resolveFetchUsernames,
+  sameFetchSources,
 } from "./views/shared/source-composer.js";
 let _coachReady = null;
 function preloadCoach() {
@@ -3714,6 +3725,9 @@ function bindCommandPalette() {
         paintPalette();
       } else if (event.key === "Enter") {
         event.preventDefault();
+        // The item may open a dialog with its own document keydown handler
+        // (sign-in submits on Enter); this keystroke must not reach it.
+        event.stopPropagation();
         runPaletteItem(paletteItems[paletteActive]);
       } else if (event.key === "Escape") {
         event.preventDefault();
@@ -3848,7 +3862,7 @@ function syncAnalyzeHead() {
   meta.textContent = bits.length
     ? bits.join(" · ")
     : plies
-      ? `${plies} plies`
+      ? `${plies} half-move${plies === 1 ? "" : "s"}`
       : "Paste a PGN or play on the board";
 }
 
@@ -4438,12 +4452,12 @@ async function promptImportRepertoireFromPgn(pgnText, { defaultName = "Imported 
     okLabel: "Import",
     fields: [
       { name: "name", label: "Name", default: defaultName },
-      { name: "color", label: "Your color (white / black)", default: "white" },
+      repertoireColorField("white"),
     ],
   });
   if (!meta) return null;
   const name = (meta.name || "").trim() || "Imported";
-  const color = (meta.color || "white").trim().toLowerCase() === "black" ? "black" : "white";
+  const color = normalizeRepertoireColor(meta.color);
   try {
     const payload = await importRepertoireFromPgnText(pgnText, { name, color });
     if (switchToBuild) switchView("build");
@@ -4477,6 +4491,7 @@ function initAccountController() {
     // linked account, so repaint them from the live list too.
     onLichessAccountsChanged: () => {
       dashboardView?.refreshSetup?.();
+      scoutView?.syncSources();
       paintGamesSource();
       paintScoutSource();
     },
@@ -5019,6 +5034,7 @@ async function ensureTeamsView() {
       setStatusError,
       activateModal,
       showConfirmModal,
+      requireSignIn,
     });
   }
   return teamsView;
@@ -6588,12 +6604,12 @@ async function onCreateRepertoireFromGameClick() {
     okLabel: "Create",
     fields: [
       { name: "name", label: "Repertoire name", default: defaultRepertoireNameFromPgn(pgn) },
-      { name: "color", label: "Your color (white / black)", default: "white" },
+      repertoireColorField("white"),
     ],
   });
   if (!meta) return;
   const name = (meta.name || "").trim() || "Imported game";
-  const color = (meta.color || "white").trim().toLowerCase() === "black" ? "black" : "white";
+  const color = normalizeRepertoireColor(meta.color);
   if (btn) btn.disabled = true;
   try {
     const payload = await importRepertoireFromPgnText(pgn, { name, color });
@@ -8489,20 +8505,8 @@ function setBuildSync(state) {
   renderBuildSync();
 }
 
-const SYNC_CHIP_VARIANTS = {
-  saved: { cls: "is-saved", text: "✓ Saved" },
-  dirty: { cls: "is-dirty", text: "• Unsaved changes" },
-  syncing: { cls: "is-syncing", text: "↻ Saving…" },
-  error: { cls: "is-error", text: "⚠ Offline — will retry" },
-  rejected: { cls: "is-error", text: "⚠ Some attempts couldn't be saved" },
-  // R-01/R-04: unconfirmed work is never claimed as Saved. These two states
-  // say WHY nothing is moving: waiting for sign-in vs a stale-edit conflict.
-  blocked: { cls: "is-error", text: "⚠ Waiting for sign-in — edits kept" },
-  conflict: { cls: "is-error", text: "⚠ Changed elsewhere — draft kept" },
-};
-
-function renderSyncChip(el, state) {
-  const v = SYNC_CHIP_VARIANTS[state] || SYNC_CHIP_VARIANTS.saved;
+function renderSyncChip(el, state, scope = "repertoire") {
+  const v = syncChipVariant(state, scope);
   el.hidden = false;
   el.className = `build-sync ${v.cls}`;
   el.textContent = v.text;
@@ -9306,12 +9310,12 @@ async function createRepertoirePrompt({ title, defaultName, openAfter = true, de
     okLabel: "Create",
     fields: [
       { name: "name", label: "Name", default: defaultName || "New repertoire" },
-      { name: "color", label: "Your color (white / black)", default: defaultColor },
+      repertoireColorField(defaultColor),
     ],
   });
   if (!result) return null;
   const name = (result.name || "").trim() || "New repertoire";
-  const color = ((result.color || "white").trim().toLowerCase() === "black") ? "black" : "white";
+  const color = normalizeRepertoireColor(result.color);
   try {
     const payload = await postJson("/api/repertoires/create", { name, color });
     await hydrateBuild(payload, payload.selected_node_id);
@@ -9836,7 +9840,9 @@ function openNodeContextMenu(event, nodeId) {
     },
   ];
   const safeId = escapeHtml(nodeId);
-  menu.innerHTML = sections
+  menu.innerHTML =
+    `<div class="context-target" data-testid="context-target">${escapeHtml(nodeMenuHeading(node))}</div>` +
+    sections
     .map(
       (section) =>
         `<div class="context-section">${escapeHtml(section.title)}</div>` +
@@ -9851,6 +9857,7 @@ function openNodeContextMenu(event, nodeId) {
     )
     .join("");
   menu.hidden = false;
+  markNodeMenuTarget(nodeId);
   const rect = menu.getBoundingClientRect();
   const left = Math.max(8, Math.min(event.clientX, window.innerWidth - rect.width - 8));
   const top = Math.max(8, Math.min(event.clientY, window.innerHeight - rect.height - 8));
@@ -9956,6 +9963,17 @@ async function handleNodeContextAction(action, nodeId) {
 
 function closeNodeContextMenu() {
   document.getElementById("node-context-menu").hidden = true;
+  markNodeMenuTarget(null);
+}
+
+// Outline the tree move the context menu acts on while it is open.
+function markNodeMenuTarget(nodeId) {
+  document.querySelectorAll(".mtree-move.is-menu-target").forEach((el) => el.classList.remove("is-menu-target"));
+  if (nodeId == null) return;
+  const id = String(nodeId);
+  document.querySelectorAll(".mtree-move[data-node-id]").forEach((el) => {
+    if (el.dataset.nodeId === id) el.classList.add("is-menu-target");
+  });
 }
 
 async function exportBuild(format, nodeId = null) {
@@ -10197,7 +10215,11 @@ function syncTrainPickerVisibility() {
   if (skip) skip.hidden = false;
   const startBtn = document.getElementById("start-train");
   if (startBtn) {
-    startBtn.disabled = !smart && !play && !selectedTrainRepertoireId();
+    startBtn.disabled = trainStartDisabled({
+      mode: smart ? "smart" : play ? "play" : "all_lines",
+      signedIn: appState.signedIn,
+      hasRepertoire: !!selectedTrainRepertoireId(),
+    });
   }
   const startPlay = document.getElementById("start-play");
   const bookEl = document.getElementById("train-play-book");
@@ -10682,8 +10704,9 @@ async function fetchPlayExplorer(fen) {
   try {
     const client = await ensurePlayExplorer();
     return await client.fetchStats("lichess", fen, { rating: effectiveMaiaRating() });
-  } catch (_) {
-    return { totalGames: 0, moves: [] };
+  } catch (error) {
+    // Keep why it failed: a 401/unlinked/rate-limited read is not a thin sample.
+    return unavailableExplorer(error);
   }
 }
 
@@ -10857,7 +10880,12 @@ async function startPlaySession({
 async function playOpponentReply() {
   const play = appState.play;
   if (!play || !play.active) return;
-  const info = await boardInfo(play.fen);
+  const fen = play.fen;
+  const seq = (play.replySeq || 0) + 1;
+  play.replySeq = seq;
+  const isCurrent = () => appState.play === play && play.active && play.fen === fen && play.replySeq === seq;
+  const info = await boardInfo(fen);
+  if (!isCurrent()) return;
   const alreadyOver = playPositionAfterReply(info);
   if (alreadyOver.terminal) {
     play.active = false;
@@ -10878,7 +10906,8 @@ async function playOpponentReply() {
   // selected book is out of book; Maia is fetched only if that Explorer read
   // is thin/unavailable (or has no legal move).
   if (play.book === "explorer" || (play.book === "repertoire" && !repertoireReplies.length)) {
-    explorer = await fetchPlayExplorer(play.fen);
+    explorer = await fetchPlayExplorer(fen);
+    if (!isCurrent()) return;
   }
   let maiaPredictions = [];
   let reply = pickOpponentReply({
@@ -10890,7 +10919,8 @@ async function playOpponentReply() {
     maiaPredictions,
   });
   if (!reply.uci) {
-    maiaPredictions = await fetchPlayMaia(play.fen);
+    maiaPredictions = await fetchPlayMaia(fen);
+    if (!isCurrent()) return;
     reply = pickOpponentReply({
       book: play.book,
       legalUcis: info.legal_moves,
@@ -10908,7 +10938,8 @@ async function playOpponentReply() {
     return;
   }
   const nodeIdBefore = play.nodeId;
-  const after = await boardAfterMove(play.fen, reply.uci);
+  const after = await boardAfterMove(fen, reply.uci);
+  if (!isCurrent()) return;
   play.fen = after.board.fen;
   play.ply += 1;
   const repertoireCursorsBefore = playAdvanceNode(reply.uci);
@@ -10945,12 +10976,7 @@ async function playOpponentReply() {
           ? `Repertoire · ${reply.repertoireNames.length === 1 ? reply.repertoireNames[0] : `${reply.repertoireNames[0]} +${reply.repertoireNames.length - 1}`}`
           : "Repertoire"
         : "Maia";
-  const reason =
-    reply.reason === "thin-sample"
-      ? " · sample too thin, Maia stepped in"
-      : reply.reason === "out-of-book"
-        ? " · out of book"
-        : "";
+  const reason = replyReasonNote(reply);
   paintPlayPosition({
     fen: after.board.fen,
     legalMoves: ended.legalMoves,
@@ -11077,6 +11103,7 @@ async function runFeelingLuckyClick() {
 async function takebackPlaySession() {
   const play = appState.play;
   if (!play || !play.history || !play.history.length) return;
+  play.replySeq = (play.replySeq || 0) + 1;
   const undone = takebackToUserMove(play.history);
   play.history = undone.history;
   play.active = true;
@@ -11833,7 +11860,7 @@ function prefetchTrainCoach(prompt) {
           `${model.title}: ${prompt.expected_san}`,
           trainTeachLine(prompt, model) || "Watch the arrow, then play the move.",
         );
-      } else if (prompt.kind !== "new" && state === "move") {
+      } else if (prompt.kind !== "new" && state === "move" && coachTipMayReplace(appState.trainHintLevel)) {
         // promptTip never names the prepared SAN — model.tip would leak e4
         // (and every other answer) onto the Your-move banner.
         setTrainBanner("move", "Your move", model.promptTip || "Play your prepared idea");
@@ -11902,7 +11929,12 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       setTrainBanner(
         "wrong",
         timedOut ? "Time's up - try again" : "Not that one - try again",
-        (cached && cached.promptTip) || prompt.hint.strategy || prompt.hint.piece || "Think about the idea behind the line."
+        wrongMoveTip({
+          hintLevel: appState.trainHintLevel,
+          hint: prompt.hint,
+          expectedSan: prompt.expected_san,
+          coachTip: cached && cached.promptTip,
+        }),
       );
       maiaPhaseCoach({
         fen: prompt.fen_before,
@@ -11913,6 +11945,10 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
         .then((model) => {
           if (appState.smart && appState.smart.prompt === prompt && model) {
             prompt.phaseCoach = model;
+            if (!coachTipMayReplace(appState.trainHintLevel)) return;
+            // A retry can already have succeeded or revealed the answer while
+            // this inference was pending; its feedback owns the banner now.
+            if (document.getElementById("train-banner")?.dataset.state !== "wrong") return;
             setTrainBanner(
               "wrong",
               timedOut ? "Time's up - try again" : "Not that one - try again",
@@ -12766,7 +12802,11 @@ function scoutSelection() {
 }
 
 function writeScoutSelection(selection) {
+  const before = scoutPickedUsernames();
   writeSourceStore(SCOUT_SOURCE_KEY, SCOUT_EXTERNAL_KEY, SCOUT_SELF_KEY, selection);
+  // A report scouted from other accounts would sit under chips that no longer
+  // describe it; drop it so the next Start reflects the picked sources.
+  if (scoutView && !sameFetchSources(before, scoutPickedUsernames())) scoutView.discardReport();
 }
 
 function openScoutComposer(anchor) {

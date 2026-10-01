@@ -3,6 +3,41 @@
 
 export const EXPLORER_THIN_SAMPLE = 8;
 
+// A failed Explorer read is not a thin sample: after 1.e4 the Lichess database
+// has millions of games, so "sample too thin" for a 401 misreports why Maia is
+// playing (UX walkthrough 2026-10-01 P0-2). Keep the failure kind instead.
+export function explorerFailureKind(error) {
+  if (!error) return "error";
+  if (error.name === "ExplorerRateLimited") return "rate-limit";
+  const message = String(error.message || "");
+  if (/\b401\b/.test(message)) return "sign-in";
+  if (/\blink\b|\blichess\b/i.test(message) && !/responded/i.test(message)) return "link";
+  return "error";
+}
+
+export function unavailableExplorer(error) {
+  return { totalGames: 0, moves: [], unavailable: explorerFailureKind(error) };
+}
+
+const UNAVAILABLE_NOTES = {
+  "sign-in": "Lichess explorer needs sign-in and a linked Lichess account",
+  link: "link your Lichess account to use the explorer",
+  "rate-limit": "Lichess explorer is busy",
+  error: "Lichess explorer unavailable",
+};
+
+// The " · …" suffix after "<source> played <san>" in the Play panel.
+export function replyReasonNote(reply) {
+  const reason = reply && reply.reason;
+  if (reason === "thin-sample") return " · sample too thin, Maia stepped in";
+  if (reason === "explorer-unavailable") {
+    const note = UNAVAILABLE_NOTES[reply.explorerUnavailable] || UNAVAILABLE_NOTES.error;
+    return ` · ${note}, Maia stepped in`;
+  }
+  if (reason === "out-of-book") return " · out of book";
+  return "";
+}
+
 function legalSet(legalUcis) {
   return new Set((legalUcis || []).map((uci) => String(uci).toLowerCase()));
 }
@@ -140,6 +175,9 @@ export function pickOpponentReply({
         repertoireNames: names,
       };
     }
+    if (explorer && explorer.unavailable) {
+      return { ...maiaOrNone("explorer-unavailable"), explorerUnavailable: explorer.unavailable };
+    }
     const total = Number(explorer && explorer.totalGames) || 0;
     if (total >= EXPLORER_THIN_SAMPLE) {
       const uci = pickExplorerReply(explorer, legalUcis, rng);
@@ -149,6 +187,9 @@ export function pickOpponentReply({
   }
 
   if (book === "explorer") {
+    if (explorer && explorer.unavailable) {
+      return { ...maiaOrNone("explorer-unavailable"), explorerUnavailable: explorer.unavailable };
+    }
     const total = Number(explorer && explorer.totalGames) || 0;
     if (total < EXPLORER_THIN_SAMPLE) return maiaOrNone("thin-sample");
     const uci = pickExplorerReply(explorer, legalUcis, rng);

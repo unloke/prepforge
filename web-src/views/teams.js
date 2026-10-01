@@ -4,7 +4,7 @@
 // repertoires as two tabs over ONE panel (counts live on the tabs), with the
 // invite-link status as a footer line under the tabs.
 import "./teams.css";
-import { createInviteDialogUi, runInviteDialog } from "./team-invite.js";
+import { createInviteDialogUi, formatDay, runInviteDialog } from "./team-invite.js";
 
 export function createTeamsView({
   appState,
@@ -22,6 +22,7 @@ export function createTeamsView({
   setStatusError = () => {},
   activateModal = () => {},
   showConfirmModal = async () => false,
+  requireSignIn = () => false,
 }) {
   function selectTeamPane(pane) {
     document.querySelectorAll("[data-team-pane]").forEach((tab) => {
@@ -126,6 +127,16 @@ export function createTeamsView({
     const body = document.getElementById("team-empty-body");
     if (title) title.textContent = copy.title;
     if (body) body.textContent = copy.body;
+    // The signed-out card says "Sign in to create or join a team"; give it the
+    // button to do so (UX walkthrough 2026-10-01 P2-10).
+    const signIn = document.getElementById("team-empty-signin");
+    if (signIn) {
+      signIn.hidden = kind !== "signed-out";
+      if (!signIn.dataset.bound) {
+        signIn.dataset.bound = "true";
+        signIn.addEventListener("click", () => requireSignIn("Sign in to create or join a team"));
+      }
+    }
   }
 
   // "Click to open (read-only)." only makes sense above a non-empty list.
@@ -264,11 +275,8 @@ export function createTeamsView({
       foot.innerHTML = "";
       return;
     }
-    const expires = invite.expires_at ? new Date(invite.expires_at) : null;
-    const when =
-      expires && !Number.isNaN(expires.getTime())
-        ? ` · expires ${expires.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
-        : "";
+    const expiresDay = formatDay(invite.expires_at);
+    const when = expiresDay ? ` · expires ${expiresDay}` : "";
     foot.innerHTML =
       `Invite link active${when} · revoke from Invite`;
     foot.hidden = false;

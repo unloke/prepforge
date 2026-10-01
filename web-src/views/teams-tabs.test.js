@@ -209,4 +209,26 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     expect(byId("teams-shared").innerHTML).toMatch(/Sign in/);
     expect(byId("teams-shared-hint").hidden).toBe(true);
   });
+  it("invite expiry reads in English whatever the browser locale (UX 2026-10-01 P2-13)", () => {
+    const { view, byId } = makeHarness();
+    view.renderTeamInviteFooter({ invite: { exists: true, expires_at: "2030-10-04T12:00:00Z" } });
+    expect(byId("team-invite-foot").innerHTML).toContain("expires Oct 4");
+    expect(byId("team-invite-foot").innerHTML).not.toMatch(/月|日/);
+  });
+
+  it("the signed-out empty card offers a Sign in button (UX 2026-10-01 P2-10)", () => {
+    const calls = [];
+    const { view, byId } = makeHarness({ requireSignIn: (reason) => calls.push(reason) });
+    const button = byId("team-empty-signin");
+    view.renderTeamEmptyCard("signed-out");
+    expect(button.hidden).toBe(false);
+    button.__listeners.click.forEach((fn) => fn());
+    expect(calls).toEqual(["Sign in to create or join a team"]);
+
+    view.renderTeamEmptyCard("choose");
+    expect(button.hidden).toBe(true);
+    // Re-rendering never stacks a second click handler.
+    view.renderTeamEmptyCard("signed-out");
+    expect(button.__listeners.click).toHaveLength(1);
+  });
 });

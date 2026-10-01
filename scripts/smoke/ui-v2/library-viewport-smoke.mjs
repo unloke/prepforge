@@ -200,10 +200,28 @@ async function runViewport(vp) {
   check(loadRequests.some((u) => u.includes("rep-2")), "clicking a row should open the workspace (/api/build/load)");
   check(/London System/.test(await page.locator("#build-rep-name").textContent().catch(() => "")), "the clicked repertoire must be hydrated");
 
+  // Hold the refresh so keyboard focus is acquired before its rows are replaced.
+  // Waiting for a quiet list hid the real focus-loss regression.
+  let releaseRefresh, markRefreshStarted;
+  const refreshGate = new Promise((resolve) => { releaseRefresh = resolve; });
+  const refreshStarted = new Promise((resolve) => { markRefreshStarted = resolve; });
+  await page.route("**/api/repertoires", async (route) => {
+    markRefreshStarted();
+    await refreshGate;
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(FIXTURE_REPS) });
+  });
   // Return to the visible Library before exercising its keyboard path.
   await page.evaluate(() => document.querySelector('[data-testid="nav-dashboard"]').click());
+  await refreshStarted;
   const loadsBeforeKeyboard = loadRequests.length;
   await page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]').focus();
+  await page.evaluate(() => { window.__focusedLibraryRow = document.activeElement; });
+  releaseRefresh();
+  await page.waitForFunction(() => !window.__focusedLibraryRow.isConnected);
+  const focusRetained = await page.evaluate(() => document.activeElement?.dataset?.repertoireId === "rep-2");
+  check(focusRetained, "a background Library refresh must retain keyboard focus on the repertoire row");
+  // Continue the other checks even if focus retention failed.
+  if (!focusRetained) await page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]').focus();
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => document.getElementById("view-build").getAttribute("aria-busy") === "false" &&
     document.getElementById("view-build").classList.contains("is-active"));

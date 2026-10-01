@@ -15,6 +15,48 @@ const AUTH_PROMPT_COOLDOWN_MS = 10_000;
 // the input keeps a long passphrase from being rejected as an opaque 422.
 const PASSWORD_MAX = 200;
 
+// The gate reasons are phrased for the sign-in screen ("Sign in to start
+// training"); on the create-account screen the same reason reads as an account
+// invitation instead of telling a new user to sign in.
+export function authReasonFor(mode, reason) {
+  const text = String(reason || "");
+  if (mode !== "register") return text;
+  return text.replace(/^Sign in to /, "Create an account to ");
+}
+
+// Shape the server's EmailStr accepts: a local part, "@", and a dotted domain.
+// `type="email"` alone lets "abc@x" through, which only fails after a round trip.
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Client-side check before posting; returns the error line or "" when the form
+// may be sent.
+export function authInputError(mode, { email = "", password = "", confirm = "" } = {}) {
+  if (mode === "forgot") {
+    if (!email) return "Enter your email.";
+    if (!EMAIL_SHAPE.test(email)) return "Enter a valid email address.";
+    return "";
+  }
+  if (mode === "reset") {
+    if (password.length < 8) return "Password must be at least 8 characters.";
+    if (password !== confirm) return "The two passwords don't match.";
+    return "";
+  }
+  if (!email || !password) return "Enter your email and password.";
+  if (mode === "register") {
+    if (!EMAIL_SHAPE.test(email)) return "Enter a valid email address.";
+    if (password.length < 8) return "Password must be at least 8 characters.";
+  }
+  return "";
+}
+
+// The key press that opened the modal (Enter in the command palette) is still
+// bubbling to the document when the modal registers its own keydown listener.
+// Events stamped before the modal opened belong to whatever opened it.
+export function isOpeningKeystroke(event, openedAt) {
+  const stamp = Number(event && event.timeStamp);
+  return Number.isFinite(stamp) && stamp > 0 && stamp < openedAt;
+}
+
 // Account/auth and Lichess connection UI live behind this controller so app.js
 // does not also own the session boundary. The controller deliberately receives
 // the app services it needs instead of importing the application singleton.
@@ -195,10 +237,18 @@ export function createAccountController({
     overlay.className = "modal-overlay auth-overlay";
     const providers = appState.authProviders || { google: false, password: true };
     let token = resetToken;
+    let renderSeq = 0;
+    let submitting = false;
+    let closed = false;
+    let requestController = null;
     // Why the modal opened ("Sign in to start training"): shown on the sign-in
     // and create-account screens and kept across the toggle between them.
     const reason = String(notice || "");
     const render = (currentMode, { email = "", message = "" } = {}) => {
+      requestController?.abort();
+      requestController = null;
+      renderSeq += 1;
+      submitting = false;
       const spec = AUTH_MODES[currentMode] || AUTH_MODES.login;
       const signing = currentMode === "login" || currentMode === "register";
       const googleBlock =
@@ -239,7 +289,9 @@ export function createAccountController({
             ? "Have an account? Sign in"
             : "Back to sign in";
       const reasonBlock =
-        reason && signing ? `<p class="auth-reason" data-auth="reason">${escapeHtml(reason)}</p>` : "";
+        reason && signing
+          ? `<p class="auth-reason" data-auth="reason">${escapeHtml(authReasonFor(currentMode, reason))}</p>`
+          : "";
       overlay.innerHTML = `
       <div class="modal auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
         <div class="modal-title auth-modal-title">
@@ -274,6 +326,10 @@ export function createAccountController({
     // action for the reload). `replaced`: another openAuthModal takes over.
     // Anything else is the user walking away — drop the pending action.
     const close = ({ signedIn = false, replaced = false } = {}) => {
+      if (closed) return;
+      closed = true;
+      requestController?.abort();
+      requestController = null;
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onOutsidePointer, true);
       overlay.remove();
@@ -295,26 +351,24 @@ export function createAccountController({
     };
     const value = (name) => overlay.querySelector(`[data-auth="${name}"]`)?.value ?? "";
     const submit = async () => {
+      if (closed || submitting) return;
       const currentMode = overlay.dataset.mode;
       const email = value("email").trim();
       const password = value("password");
-      if (currentMode === "forgot") {
-        if (!email) return showError("Enter your email.");
-      } else if (currentMode === "reset") {
-        if (password.length < 8) return showError("Password must be at least 8 characters.");
-        if (password !== value("confirm")) return showError("The two passwords don't match.");
-      } else {
-        if (!email || !password) return showError("Enter your email and password.");
-        if (currentMode === "register" && password.length < 8) {
-          return showError("Password must be at least 8 characters.");
-        }
-      }
+      const inputError = authInputError(currentMode, { email, password, confirm: value("confirm") });
+      if (inputError) return showError(inputError);
+      submitting = true;
+      requestController = new AbortController();
+      const requestOptions = { signal: requestController.signal };
+      const seq = renderSeq;
+      const isCurrent = () => !closed && seq === renderSeq;
       showError("");
       const submitBtn = overlay.querySelector('[data-action="submit"]');
       if (submitBtn) submitBtn.disabled = true;
       try {
         if (currentMode === "forgot") {
-          const result = await postJson("/api/auth/password/forgot", { email });
+          const result = await postJson("/api/auth/password/forgot", { email }, requestOptions);
+          if (!isCurrent()) return;
           // Dev builds hand the token back (no mail server locally): go straight on.
           if (result && result.dev_reset_token) {
             token = result.dev_reset_token;
@@ -328,28 +382,38 @@ export function createAccountController({
           return;
         }
         if (currentMode === "reset") {
-          await postJson("/api/auth/password/reset", { token, password });
+          await postJson("/api/auth/password/reset", { token, password }, requestOptions);
+          if (!isCurrent()) return;
           clearResetParam();
           render("login", { message: "Password updated. Sign in with the new one — other devices were signed out." });
           return;
         }
         const endpoint = currentMode === "register" ? "/api/auth/register" : "/api/auth/login";
-        await postJson(endpoint, { email, password });
+        await postJson(endpoint, { email, password }, requestOptions);
+        if (!isCurrent()) return;
         markAuthReturn({ href: window.location.href });
         close({ signedIn: true });
         // A fresh session changes every owner-scoped view — reload for a clean
         // slate; the pending action (if any) resumes after it.
         onReload();
       } catch (error) {
+        if (!isCurrent()) return;
         showError(error.message || "Something went wrong.");
-        if (submitBtn) submitBtn.disabled = false;
+      } finally {
+        if (isCurrent()) {
+          requestController = null;
+          submitting = false;
+          if (submitBtn) submitBtn.disabled = false;
+        }
       }
     };
+    const openedAt = typeof performance !== "undefined" ? performance.now() : 0;
     const onKey = (event) => {
+      if (isOpeningKeystroke(event, openedAt)) return;
       if (event.key === "Escape") {
         event.preventDefault();
         close();
-      } else if (event.key === "Enter") {
+      } else if (event.key === "Enter" && !event.target?.closest?.("button")) {
         event.preventDefault();
         submit();
       }

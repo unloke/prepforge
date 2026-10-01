@@ -167,6 +167,23 @@ export function displayReplayResult(result) {
   return text === "1/2-1/2" ? "½–½" : text;
 }
 
+// Move-number prefix for a half-move: ply 1 → "1.", ply 2 → "1…", ply 5 → "3.".
+// "Ply 2" / "matched 2 plies" was engine jargon (UX walkthrough 2026-10-01 P2-9).
+export function moveNumberLabel(ply) {
+  const n = Number(ply) || 0;
+  if (n < 1) return "";
+  const moveNumber = Math.ceil(n / 2);
+  return n % 2 === 1 ? `${moveNumber}.` : `${moveNumber}…`;
+}
+
+// "1… c5": the move-number prefix plus the SAN played on that half-move.
+export function plyMoveLabel(ply, history) {
+  const label = moveNumberLabel(ply);
+  if (!label) return "";
+  const san = (history || [])[Number(ply) - 1];
+  return san ? `${label} ${san}` : label;
+}
+
 // Short local date for a game's ISO finish time ("Sep 28"; the year only when
 // it is not the current one). Empty when the payload has no usable date.
 export function formatReplayDate(iso, now = new Date()) {
@@ -277,7 +294,11 @@ export function createReplayView({
     const lines = [];
     if (game.repertoire_name) {
       lines.push(
-        `Repertoire: <strong>${escapeHtml(game.repertoire_name)}</strong> · matched ${game.matched_plies} plies`
+        `Repertoire: <strong>${escapeHtml(game.repertoire_name)}</strong> · ${
+          Number(game.matched_plies) > 0
+            ? `in prep through ${escapeHtml(plyMoveLabel(game.matched_plies, game.move_san_history))}`
+            : "left prep on the first move"
+        }`
       );
     } else {
       lines.push(`Played as ${escapeHtml(game.user_color)}, but no active repertoire matched.`);
@@ -289,17 +310,16 @@ export function createReplayView({
       const queued = game.training_recorded
         ? " Added to your training queue."
         : " Already in your training queue.";
-      lines.push(`You diverged on ply ${game.departure_ply}${played}${expected}.${queued}`);
+      lines.push(`You diverged at ${moveNumberLabel(game.departure_ply)}${played}${expected}.${queued}`);
     } else if (game.departure_reason === "opponent_unprepared_branch") {
       const playedSan = replayDepartureSan(game);
       const played = playedSan ? ` <strong>${escapeHtml(playedSan)}</strong>` : "";
       if (isDifferentOpening(game)) {
-        const with_ = playedSan ? ` with <strong>${escapeHtml(playedSan)}</strong>` : "";
         lines.push(
-          `Opponent chose a different opening on ply ${game.departure_ply}${with_}, before your repertoire got going. Add a reply to cover it.`
+          `Opponent chose a different opening at ${moveNumberLabel(game.departure_ply)}${played}, before your repertoire got going. Add a reply to cover it.`
         );
       } else {
-        lines.push(`Opponent took an unprepared branch on ply ${game.departure_ply}${played}.`);
+        lines.push(`Opponent took an unprepared branch at ${moveNumberLabel(game.departure_ply)}${played}.`);
       }
     } else if (game.departure_reason === "game_stayed_in_preparation") {
       lines.push("Game stayed entirely within preparation. Nice.");
@@ -329,7 +349,9 @@ export function createReplayView({
     }
     const source = subParts.length ? `<small>${subParts.join(" · ")}</small>` : "";
     const preview = (game.move_san_history || []).slice(0, 6).join(" ");
-    const departure = game.departure_ply ? `Ply ${Number(game.departure_ply)}` : meta.departure || "—";
+    const departure = game.departure_ply
+      ? plyMoveLabel(game.departure_ply, game.move_san_history)
+      : meta.departure || "—";
     return (
       `<button type="button" class="lr${open ? " is-open" : ""}" data-index="${index}" aria-pressed="${open}">` +
       `<span><i class="kind-badge t-${meta.tone}">${escapeHtml(replayBadge(game, meta))}</i></span>` +

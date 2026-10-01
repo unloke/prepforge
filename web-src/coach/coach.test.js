@@ -157,13 +157,32 @@ describe("buildCommentary (prose)", () => {
       san: "Kf2",
       fenBefore,
       fenAfter: "6k1/8/2p5/8/8/8/5K2/5B2 b - - 1 1",
+      beforeEval: { lines: [{ uci: "g1g2", san: "Kg2", cp: 20, mate: null, pvUci: ["g1g2"] }] },
+      afterEval: { cp: -80, mate: null, pvUci: [] },
+    });
+    expect(f.classification.code).toBe("inaccuracy");
+    expect(f.winAfterMover).toBeLessThanOrEqual(43);
+    const c = buildCommentary(f);
+    expect(c.prose).toMatch(/edges ahead/i);
+    expect(c.prose).not.toMatch(/about level/i);
+  });
+
+  it("never says the opponent edges ahead while calling the position level (UX 2026-10-01 P1-5)", () => {
+    const fenBefore = "6k1/8/2p5/8/8/8/8/5BK1 w - - 0 1";
+    const f = buildMoveFeatures({
+      mover: "white",
+      uci: "g1f2",
+      san: "Kf2",
+      fenBefore,
+      fenAfter: "6k1/8/2p5/8/8/8/5K2/5B2 b - - 1 1",
       beforeEval: { lines: [{ uci: "g1g2", san: "Kg2", cp: 100, mate: null, pvUci: ["g1g2"] }] },
       afterEval: { cp: -4, mate: null, pvUci: [] },
     });
     expect(f.classification.code).toBe("inaccuracy");
+    expect(f.winAfterMover).toBeGreaterThan(43);
     expect(f.winAfterMover).toBeLessThan(50);
     const c = buildCommentary(f);
-    expect(c.prose).toMatch(/edges ahead/i);
+    expect(c.prose).not.toMatch(/edges ahead/i);
   });
 
   it("calls out a forced mate the move just delivered", () => {

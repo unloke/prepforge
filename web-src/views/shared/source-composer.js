@@ -635,3 +635,14 @@ export function resolveFetchUsernames({ selection, linkedAccounts, external = []
   }
   return uniqueStrings([...linkedNames, ...externals]);
 }
+
+// Whether two resolved username lists name the same accounts (order and case
+// do not matter). A report built from one set must not stay on screen under
+// chips that name another (UX walkthrough 2026-10-01 P2-11).
+export function sameFetchSources(before, after) {
+  const key = (names) =>
+    uniqueStrings((Array.isArray(names) ? names : []).map((n) => normalizeUsername(n).toLowerCase()).filter(Boolean))
+      .sort()
+      .join(",");
+  return key(before) === key(after);
+}

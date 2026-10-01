@@ -28,6 +28,7 @@ import {
   scoutLineKey,
 } from "../scout-report.js";
 import { createScoutInitGuard, scoutStateCarryover } from "../scout-init-guard.js";
+import { sameFetchSources } from "./shared/source-composer.js";
 import { renderV13PanelShell, renderV13Report } from "../scout-v13-report.js";
 import { CancelledError, runStreamV13 } from "../scout-v13-stream.js";
 
@@ -146,6 +147,7 @@ export function createScoutView(deps) {
   let scoutEngineModule = null;
   let scoutState = null;
   let scoutSession = null;
+  let scoutSourceNames = null;
   const scoutBoundEventTargets = new WeakSet();
   let explorerEnrichTimer = null;
   let explorerEnrichSeq = 0;
@@ -334,6 +336,7 @@ export function createScoutView(deps) {
   }
 
   function syncVisibleState() {
+    syncSources();
     bindScoutEvents();
     updateScoutControls();
     updateLiveCounter();
@@ -2179,10 +2182,15 @@ export function createScoutView(deps) {
     v13Progress = { stage: "", done: 0, total: 0 };
     scoutState = null;
     scoutSession = null;
+    scoutSourceNames = null;
+    document.getElementById("scout-source-warnings")?.remove();
     const results = getResultsEl();
     const profile = getProfileEl();
     const experimental = getV12PanelEl();
-    if (results) results.innerHTML = "";
+    if (results) {
+      results.innerHTML = "";
+      results.classList.remove("is-streaming");
+    }
     if (profile) profile.hidden = true;
     clearScoutSide();
     if (experimental) {
@@ -2192,6 +2200,12 @@ export function createScoutView(deps) {
     updateLiveCounter();
     updateScoutControls();
     setStatus("");
+  }
+
+  // Self can change when accounts are linked/unlinked in Settings, without a
+  // source-composer write. This also invalidates an initialization in flight.
+  function syncSources() {
+    if (scoutSourceNames && !sameFetchSources(scoutSourceNames, scoutPickedUsernames())) resetScout();
   }
 
   async function startScout() {
@@ -2215,6 +2229,7 @@ export function createScoutView(deps) {
       return;
     }
     const color = colorSel?.value || "both";
+    scoutSourceNames = usernames.slice();
     const results = getResultsEl();
     const profile = getProfileEl();
 
@@ -2323,6 +2338,9 @@ export function createScoutView(deps) {
     handleScoutAction,
     bindControls,
     onShow: syncVisibleState,
+    // Sources changed under a finished or running report (app.js).
+    discardReport: resetScout,
+    syncSources,
     ...(SCOUT_E2E_BUILD_ENABLED ? { mountE2eRefutationScenario } : {}),
     preload: () => import("../scout.js"),
   };
