@@ -11,6 +11,7 @@ import {
 import { createCsrfTokenSource, headersWithCsrf, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove, localGameOver } from "./chess-local.js";
 import { applyTheme } from "./theme.js";
+import { bindRailCollapseOnNavigate } from "./rail-nav.js";
 import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
 import { squareInDirection } from "./board-navigation.js";
 import { pgnPlayers, selfSide } from "./analyze-orient.js";
@@ -13075,6 +13076,9 @@ function bindEvents() {
     const control = event.target.closest("button");
     if (control && control.id !== "account-chip") control.blur();
   });
+  // The hover-expanded rail overlays the board; picking a page collapses it
+  // right away instead of waiting for the pointer to leave.
+  bindRailCollapseOnNavigate(document.getElementById("app-rail"));
   document.querySelectorAll(".tab[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
       dismissTransientOverlays();

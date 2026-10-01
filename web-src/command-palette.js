@@ -1,14 +1,15 @@
 // Command palette (Ctrl/Cmd+K). Pure ranking lives here so vitest can drive
 // it without the DOM; createCommandPalette wires the overlay.
 
-// Single naming table shared with the rail/tabbar (index.html): the label is
+// Single naming table shared with the rail/tabbar (index.html), listed in the
+// rail's order so the empty-query palette reads like the sidebar: the label is
 // what the nav shows, and `keywords` keeps older/alternate names searchable as
 // aliases so nobody has to remember a second set of names. `section` narrows
 // Replay's two sections (Games vs Scout) into explicit entries.
 export const PALETTE_VIEWS = [
   { id: "dashboard", label: "Library", keywords: ["library", "dashboard", "home", "repertoires"] },
-  { id: "analyze", label: "Analyze", keywords: ["analyze", "analysis", "game", "pgn", "report"] },
   { id: "build", label: "Repertoire", keywords: ["repertoire", "build", "builder", "opening", "tree", "prep"] },
+  { id: "analyze", label: "Analyze", keywords: ["analyze", "analysis", "game", "pgn", "report"] },
   { id: "train", label: "Train", keywords: ["train", "practice", "review", "drill", "srs"] },
   { id: "replay", section: "games", label: "Games", keywords: ["games", "replay", "review", "my games"] },
   { id: "replay", section: "scout", label: "Scout", keywords: ["scout", "opponent", "prepare", "scouting"] },

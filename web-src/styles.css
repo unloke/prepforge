@@ -285,7 +285,9 @@ h2 {
    OVERLAY (hover, or keyboard focus inside it), so main content and the board
    never move or resize. It opens after a 60ms delay and collapses as soon as
    the pointer or focus leaves; mouse clicks don't hold it open (it relies on
-   :focus-visible, not :focus-within). */
+   :focus-visible, not :focus-within). Clicking a destination adds
+   .is-nav-collapsed (rail-nav.js) so the overlay closes at once, until the
+   pointer leaves the rail. */
 .rail {
   --rail-open: 204px;
   position: fixed;
@@ -305,7 +307,7 @@ h2 {
   transition: width 0.14s ease, box-shadow 0.14s ease;
 }
 
-.rail:hover,
+.rail:not(.is-nav-collapsed):hover,
 .rail:has(:focus-visible) {
   width: var(--rail-open);
   box-shadow: var(--shadow-2);
@@ -381,13 +383,13 @@ h2 {
   transition: opacity 0.1s ease;
 }
 
-.rail:hover :is(.brand-name, .nav-label, .nav-group-label span),
+.rail:not(.is-nav-collapsed):hover :is(.brand-name, .nav-label, .nav-group-label span),
 .rail:has(:focus-visible) :is(.brand-name, .nav-label, .nav-group-label span) {
   opacity: 1;
   transition-delay: 90ms;
 }
 
-.rail:hover .nav-group-label::after,
+.rail:not(.is-nav-collapsed):hover .nav-group-label::after,
 .rail:has(:focus-visible) .nav-group-label::after {
   opacity: 0;
 }
@@ -423,7 +425,7 @@ h2 {
   border-radius: 9px;
 }
 
-.rail:hover .nav-badge,
+.rail:not(.is-nav-collapsed):hover .nav-badge,
 .rail:has(:focus-visible) .nav-badge {
   position: static;
   margin-left: auto;
@@ -1544,12 +1546,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-cell-queue { flex-wrap: wrap; }
 .lib-mastery { display: flex; align-items: center; gap: 8px; width: 100%; }
 .lib-mastery b { font-size: var(--fs-s); font-variant-numeric: tabular-nums; }
+/* Mastery bar: a visible track (so 0% still reads as an empty bar, not a
+   missing one) and enough height to compare rows at a glance. */
 .lib-mbar {
   flex: 1;
   min-width: 60px;
-  height: 6px;
+  height: 10px;
   border-radius: 999px;
-  background: var(--line-soft);
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--line);
   overflow: hidden;
 }
 .lib-mbar i { display: block; height: 100%; border-radius: inherit; background: var(--k-mastered); }
@@ -1585,14 +1590,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .kchip.k-due { color: var(--warn-text); background: color-mix(in srgb, var(--k-due) 15%, transparent); }
 .kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
 .row-menu-btn {
-  width: 28px;
-  height: 28px;
+  justify-self: end;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: 0;
   border-radius: var(--radius);
   background: transparent;
   color: var(--label);
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1;
   opacity: 0.7;
 }
@@ -1611,8 +1617,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border: 0;
   background: none;
 }
-.empty-state.big h3 { color: var(--text); font-size: 16px; }
-.empty-state.big p { max-width: 460px; margin: 0; }
+.empty-state.big h3 { color: var(--text); font-size: 16px; text-wrap: balance; }
+/* `pretty` keeps a lone last word ("…you play Y.") from wrapping by itself. */
+.empty-state.big p { max-width: 460px; margin: 0; text-wrap: pretty; }
 .empty-state.big .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .es-mark { color: var(--label); font-size: 34px; line-height: 1; }
 .empty-state.is-error .es-mark { color: var(--danger); font-weight: 700; }
@@ -1749,6 +1756,24 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .lib-list,
   .steps { grid-column: auto; grid-row: auto; }
 }
+/* Empty library (signed out / first run) on desktop: instead of a strip of
+   cards in the top third, the cards take the screen's height (capped) — the
+   empty state centres in its card and the Get started steps grow. */
+@media (min-width: 1021px) {
+  .lib { min-height: 100%; }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) {
+    flex: 1 1 auto;
+    max-height: 620px;
+    align-items: stretch;
+  }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .lib-list { display: flex; flex-direction: column; }
+  .lib-list.is-empty:not(.is-error) > .lib-rep-list { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .steps { display: flex; flex-direction: column; }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step { flex: 1 1 auto; max-height: 140px; grid-template-columns: 28px minmax(0, 1fr) auto; padding: 16px 14px; }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-n { width: 28px; height: 28px; font-size: var(--fs-s); }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-text b { font-size: 14px; }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-text p { margin-top: 2px; font-size: 13px; }
+}
 /* ≤ 760px: no preview pane (a tap opens the workspace), two-line rows,
    44px touch targets. */
 @media (max-width: 760px) {
@@ -1820,13 +1845,18 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .study {
   --study-h: calc(100dvh - 36px);
   /* Board square budget: min(100dvh − chrome, (100vw − rail − 48) × share,
-     820px). With no top bar the height budget is generous, so the width share
-     is what sizes the board: 62% on wide screens, 60% on laptops, leaving the
-     side panel ≥ ~420px. The column wraps exactly around it (max-content). */
+     100vw − rail − padding/gap − panel floor, 820px). With no top bar the
+     height budget is generous, so the width share is what sizes the board:
+     62% on wide screens, 60% on laptops, 56% on narrow laptops / split
+     screens. The panel-floor term keeps the side panel ≥ 360px down to the
+     860px stacking breakpoint, so board and feedback share one screen at
+     ~980×614. The column wraps exactly around it (max-content). */
   --board-share: 0.62;
+  --study-panel-min: 360px;
   --board-size: min(
     calc(var(--study-h) - var(--board-chrome)),
     calc((100vw - 60px - 48px) * var(--board-share)),
+    calc(100vw - 60px - 44px - var(--study-panel-min)),
     820px
   );
   display: grid;
@@ -2748,9 +2778,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .inspector-panel[hidden] { display: none; }
 
 
-@media (max-width: 1020px) {
+/* Stacked (≤860): the page is the scroll owner. The move tree keeps a cap but
+   hands the wheel back to the page at its ends instead of trapping it. */
+@media (max-width: 860px) {
   #view-build .sidebar { max-height: none; overflow: hidden; }
-  .tree-wrap { max-height: 60vh; }
+  .tree-wrap { max-height: 60vh; overscroll-behavior: auto; }
   .dock { flex: none !important; }
   .dock-resizer { display: none; }
 }
@@ -3050,7 +3082,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #view-train .train-sidebar[data-session-state="summary"] .train-setup,
 #view-train .train-sidebar[data-session-state="summary"] #train-progress-panel { display: none; }
 
-@media (max-width: 1020px) {
+@media (max-width: 860px) {
   #view-train .train-sidebar { max-height: none; overflow: visible; }
   #view-train .panel-scroll { overflow: visible; }
 }
@@ -3197,15 +3229,20 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 @media (max-width: 1279px) {
   .scout-grid { grid-template-columns: minmax(0, 1fr) 300px; }
 }
+/* Scout stacks at ≤1020; Games keeps ledger + detail side by side (and the
+   viewport-height shell) down to 860px, see views/replay.css. */
 @media (max-width: 1020px) {
-  .review,
-  .games-panel,
-  .scout-panel,
-  .replay-results { height: auto; }
+  .review:has(> .scout-panel:not([hidden])),
+  .scout-panel { height: auto; }
   .scout-grid,
   .scout-panel:not(:has(.scout-section)) .scout-grid { grid-template-columns: minmax(0, 1fr); }
   .scout-main,
   .scout-side { overflow: visible; }
+}
+@media (max-width: 860px) {
+  .review,
+  .games-panel,
+  .replay-results { height: auto; }
 }
 @media (max-width: 760px) {
   .workspace:has(> .view.is-active#view-replay) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
@@ -3925,9 +3962,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* Responsive */
 
-@media (max-width: 1020px) {
+@media (max-width: 860px) {
   /* Stacked: board over sidebar. Drop the one-screen fit and let the page scroll
-     normally — a fixed height here would crush the board on a phone. */
+     normally — a fixed height here would crush the board on a phone. Two
+     columns hold down to 860px (see .study --study-panel-min), so this only
+     covers small tablets and phones. */
   .study {
     grid-template-columns: 1fr;
     height: auto;
@@ -3948,8 +3987,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
     overflow: visible;
   }
 
+  /* Cap the board at ~55% of the viewport height so the panel's head (Train
+     feedback + Start, Analyze coach, Repertoire tree) starts above the fold. */
   .board-stack {
-    max-width: min(72vh, 560px);
+    max-width: min(55vh, 560px);
     margin: 0 auto;
   }
 
@@ -4521,7 +4562,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 /* Engine on in Build: the inspector takes more of the column so the lines and
    the Explorer both fit; the (mostly short) move tree scrolls instead. */
-@media (min-width: 1021px) {
+@media (min-width: 861px) {
   .dock:has(#explorer-rows.has-eval) { flex-basis: clamp(300px, 58%, 520px); }
 }
 /* Analyze: the card's own off switch sits with the engine controls. */
@@ -6383,6 +6424,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 @media (max-width: 1279px) {
   .study { --board-share: 0.6; }
+}
+@media (max-width: 1100px) {
+  .study { --board-share: 0.56; }
 }
 
 /* Explorer database toggle: the chosen database reads at a glance (accent

@@ -141,6 +141,41 @@ function replayFocusBoardHtml(game, renderers) {
   return `<div class="focus-board" data-testid="replay-focus-board"><div class="scout-miniboard" aria-hidden="true">${squares}</div>${svg}</div>`;
 }
 
+// Display-only result text: "1/2-1/2" wraps onto two lines in the narrow
+// Result column, the half glyph keeps a draw on one line.
+export function displayReplayResult(result) {
+  const text = String(result || "*");
+  return text === "1/2-1/2" ? "½–½" : text;
+}
+
+// Short local date for a game's ISO finish time ("Sep 28"; the year only when
+// it is not the current one). Empty when the payload has no usable date.
+export function formatReplayDate(iso, now = new Date()) {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const options = { month: "short", day: "numeric" };
+  if (date.getFullYear() !== now.getFullYear()) options.year = "numeric";
+  return date.toLocaleDateString("en-US", options);
+}
+
+// Bring an element into view when less than half of it (or of the viewport,
+// for tall elements) is on screen — e.g. the Games detail card that renders
+// below the ledger in the stacked layout. Honours prefers-reduced-motion.
+export function revealIfOffscreen(el, win = globalThis.window) {
+  if (!el || typeof el.getBoundingClientRect !== "function" || typeof el.scrollIntoView !== "function") {
+    return false;
+  }
+  const viewH = Number(win?.innerHeight) || 0;
+  if (!viewH) return false;
+  const rect = el.getBoundingClientRect();
+  const visible = Math.min(rect.bottom, viewH) - Math.max(rect.top, 0);
+  if (visible >= Math.min(rect.height, viewH) * 0.5) return false;
+  const reduce = Boolean(win?.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
+  el.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+  return true;
+}
+
 export function createReplayView({
   escapeHtml,
   boardRenderers = null,
@@ -156,6 +191,8 @@ export function createReplayView({
   // the product's active piece style; without them the card falls back to
   // text-only detail (the pre-prototype rendering).
   const renderers = boardRenderers && boardRenderers.parseFenBoard && boardRenderers.pieceSvg ? boardRenderers : null;
+  // Index of the row the user just clicked; the next render reveals its detail.
+  let pendingRevealIndex = null;
   function renderReplaySummary(payload) {
     const el = document.getElementById("replay-summary");
     if (!el) return;
@@ -251,20 +288,27 @@ export function createReplayView({
     return game.user_color === side ? "You" : escapeHtml(game[side] || "?");
   }
 
-  function renderReplayRow(game, index, selectedIndex) {
+  function renderReplayRow(game, index, selectedIndex, { showAccount = true } = {}) {
     const kind = replayGameKind(game);
     const meta = REPLAY_KINDS[kind];
     const open = index === selectedIndex;
-    const source = game.source_account
-      ? `<small><i class="acct" title="Fetched from this linked account">${escapeHtml(game.source_account)}</i></small>`
-      : "";
+    // Second line: the finish date, plus the source account only when the
+    // list mixes several accounts (one account repeated on every row is noise;
+    // the ledger header names it once instead).
+    const date = formatReplayDate(game.finished_at);
+    const subParts = [];
+    if (date) subParts.push(`<time class="lr-date" datetime="${escapeHtml(game.finished_at)}">${escapeHtml(date)}</time>`);
+    if (showAccount && game.source_account) {
+      subParts.push(`<i class="acct" title="Fetched from this linked account">${escapeHtml(game.source_account)}</i>`);
+    }
+    const source = subParts.length ? `<small>${subParts.join(" · ")}</small>` : "";
     const preview = (game.move_san_history || []).slice(0, 6).join(" ");
     const departure = game.departure_ply ? `Ply ${Number(game.departure_ply)}` : meta.departure || "—";
     return (
       `<button type="button" class="lr${open ? " is-open" : ""}" data-index="${index}" aria-pressed="${open}">` +
       `<span><i class="kind-badge t-${meta.tone}">${escapeHtml(meta.badge)}</i></span>` +
       `<span class="players"><span class="pl"><b>${playerName(game, "white")}</b> vs <b>${playerName(game, "black")}</b></span>${source}</span>` +
-      `<span class="res ${replayResultClass(game)}">${escapeHtml(game.result || "*")}</span>` +
+      `<span class="res ${replayResultClass(game)}">${escapeHtml(displayReplayResult(game.result))}</span>` +
       `<span class="open-prev">${escapeHtml(preview)}${preview ? "…" : ""}</span>` +
       `<span class="num">${escapeHtml(departure)}</span>` +
       "</button>"
@@ -291,7 +335,7 @@ export function createReplayView({
     return (
       `<section class="focus card" aria-label="Preparation detail">` +
       `<div class="focus-top${boardHtml ? "" : " no-board"}">${boardHtml}` +
-      `<div class="focus-info"><div class="eyebrow">Preparation detail · ${escapeHtml(game.result || "*")}</div>` +
+      `<div class="focus-info"><div class="eyebrow">Preparation detail · ${escapeHtml(displayReplayResult(game.result))}</div>` +
       `<h2>${escapeHtml(game.white || "?")} vs ${escapeHtml(game.black || "?")}</h2>` +
       `<i class="kind-badge t-${meta.tone}">${escapeHtml(meta.badge)}</i>` +
       `<ul class="reasons">${renderReplayDetail(game)}</ul>` +
@@ -326,15 +370,35 @@ export function createReplayView({
     }
     const selectedIndex = rows.find(({ index }) => isGameOpen(index))?.index ?? rows[0].index;
     const focused = rows.find(({ index }) => index === selectedIndex);
+    const accounts = new Set(payload.games.map((game) => game.source_account).filter(Boolean));
+    const showAccount = accounts.size > 1;
+    const singleAccount = accounts.size === 1 ? [...accounts][0] : "";
+    const accountNote = singleAccount
+      ? ` · <i class="acct" title="Fetched from this linked account">${escapeHtml(singleAccount)}</i>`
+      : "";
+    // A row click re-renders the list: keep the ledger's scroll position and
+    // the keyboard focus on the clicked row, then reveal the detail card.
+    const revealIndex = pendingRevealIndex;
+    pendingRevealIndex = null;
+    const ledgerScroll = revealIndex != null ? container.querySelector?.(".ledger-table")?.scrollTop || 0 : 0;
     container.innerHTML =
       `<div class="triage"><section class="ledger card" aria-label="Games to review">` +
-      `<header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} shown</span></header>` +
+      `<header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} shown${accountNote}</span></header>` +
       `<div class="ledger-table"><div class="lr head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>` +
-      rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex)).join("") +
+      rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount })).join("") +
       `</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
     container.querySelectorAll(".lr[data-index]").forEach((row) => {
-      row.addEventListener("click", () => onToggleGame(Number(row.dataset.index)));
+      row.addEventListener("click", () => {
+        pendingRevealIndex = Number(row.dataset.index);
+        onToggleGame(Number(row.dataset.index));
+      });
     });
+    if (revealIndex != null && revealIndex === focused.index) {
+      const table = container.querySelector?.(".ledger-table");
+      if (table && ledgerScroll) table.scrollTop = ledgerScroll;
+      container.querySelector?.(`.lr[data-index="${revealIndex}"]`)?.focus?.({ preventScroll: true });
+      revealIfOffscreen(container.querySelector?.(".focus"));
+    }
     container.querySelectorAll("[data-act]").forEach((btn) => {
       btn.addEventListener("click", (event) => {
         event.stopPropagation();

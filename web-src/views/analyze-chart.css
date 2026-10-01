@@ -231,11 +231,12 @@
 /* Moves: the mainline is a three-column grid (number | White | Black); a
    variation the reader explores interrupts it as a full-width row. Only the
    direct children of the mainline are grid cells — variation moves keep the
-   shared inline tree flow. */
+   shared inline tree flow. The list sits inside the scrolling panel, so it
+   does not contain overscroll: at its top/bottom the wheel moves the panel
+   (or the page when stacked) instead of feeling stuck. */
 .moves-grid {
   max-height: 190px;
   overflow: auto;
-  overscroll-behavior: contain;
   border: 1px solid var(--line);
   border-radius: 8px;
   font-size: 13px;

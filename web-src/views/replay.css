@@ -56,7 +56,8 @@
 .players small { color: var(--label); font-size: var(--fs-xs); }
 .acct { padding: 0 4px; border-radius: 3px; background: var(--surface-3); font-style: normal; }
 .open-prev { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
-.res { font-weight: 700; }
+.res { font-weight: 700; white-space: nowrap; }
+.lr-date { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .res.r-win { color: var(--good-text); }
 .res.r-loss { color: var(--danger); }
 .res.r-draw { color: var(--muted); }
@@ -113,8 +114,13 @@
   .focus-top { grid-template-columns: 1fr; }
   .focus-board { max-width: 300px; }
 }
-/* ≤1020: one column, page scroll. */
+/* ≤1020: narrow laptop / split screen. Ledger and detail stay side by side
+   (a row click must visibly change the detail beside it); the detail narrows. */
 @media (max-width: 1020px) {
+  .triage { grid-template-columns: minmax(0, 1fr) 320px; }
+}
+/* ≤860: one column, page scroll (the row click scrolls the detail into view). */
+@media (max-width: 860px) {
   .triage { grid-template-columns: minmax(0, 1fr); }
   .ledger-table,
   .focus { overflow: visible; }
