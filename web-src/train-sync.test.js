@@ -92,8 +92,8 @@ describe("flushGroups", () => {
     ]);
   });
 
-  it("auth, CSRF, conflict and rate-limit 4xx keep the attempts queued and retriable", async () => {
-    for (const status of [401, 403, 409, 429]) {
+  it("auth, CSRF and rate-limit 4xx keep the attempts queued and retriable", async () => {
+    for (const status of [401, 403, 429]) {
       const input = groups("a", "b");
       const posted = [];
       const result = await flushGroups(input, async (id) => {
@@ -119,18 +119,30 @@ describe("flushGroups", () => {
       { sessionId: "a", attempts: input[0][1], status: 422 },
     ]);
   });
+
+  it("isolates a UUID payload conflict for review and continues later sessions", async () => {
+    const input = groups("collision", "next");
+    const posted = [];
+    const result = await flushGroups(input, async (id) => {
+      if (id === "collision") throw httpError(409);
+      posted.push(id);
+    });
+    expect(result.retriable).toBe(false);
+    expect(result.rejectedGroups).toEqual([{ sessionId: "collision", attempts: input[0][1], status: 409 }]);
+    expect(posted).toEqual(["next"]);
+  });
 });
 
 describe("isRetriableSyncError", () => {
   it("treats network errors, 5xx and transient 4xx as retriable", () => {
     expect(isRetriableSyncError(new TypeError("Failed to fetch"))).toBe(true);
-    for (const status of [401, 403, 408, 409, 423, 425, 429, 500, 503]) {
+    for (const status of [401, 403, 408, 423, 425, 429, 500, 503]) {
       expect(isRetriableSyncError({ status })).toBe(true);
     }
   });
 
   it("treats permanent 4xx as non-retriable", () => {
-    for (const status of [400, 404, 410, 422]) {
+    for (const status of [400, 404, 409, 410, 422]) {
       expect(isRetriableSyncError({ status })).toBe(false);
     }
   });
