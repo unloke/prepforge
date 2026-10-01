@@ -6,6 +6,7 @@ import {
   explainEngineIdea,
   classifyMove,
   cpToWin,
+  evaluationToWin,
 } from "./explain.js";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -21,8 +22,16 @@ describe("cpToWin", () => {
   });
 
   it("saturates near 0/100 for huge evals", () => {
-    expect(cpToWin(5000)).toBeGreaterThan(98);
-    expect(cpToWin(-5000)).toBeLessThan(2);
+    expect(cpToWin(5000)).toBe(cpToWin(1000));
+    expect(cpToWin(-5000)).toBe(cpToWin(-1000));
+  });
+
+  it("uses the server's finite mate mapping and terminal score", () => {
+    expect(evaluationToWin({ mate: 3 })).toBe(cpToWin(1000));
+    expect(evaluationToWin({ mate: -3 })).toBe(cpToWin(-1000));
+    expect(evaluationToWin({ mate: 0, cp: -10000 })).toBe(cpToWin(-1000));
+    expect(evaluationToWin({})).toBe(50);
+    expect(cpToWin(10.9)).toBe(cpToWin(10));
   });
 });
 

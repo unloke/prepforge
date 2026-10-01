@@ -11,6 +11,7 @@
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
+import { classifyMove, evaluationToWin } from "../explain.js";
 
 import {
   BRILLIANT_MAX_CANDIDATE_WIN_DELTA,
@@ -61,6 +62,14 @@ describe("classification golden contract (browser side)", () => {
       const features = featuresFor(testCase);
       expect(features.classification.code).toBe(testCase.expected.browser);
       expect(features.brilliantCandidate).toBe(testCase.expected.brilliant_candidate);
+      const verdict = classifyMove({
+        winBefore: evaluationToWin(testCase.best_eval_after),
+        winAfter: evaluationToWin(testCase.played_eval_after),
+        mover: testCase.side_to_move,
+        isBest: testCase.played.uci === testCase.best.uci,
+      });
+      expect(verdict.label).toBe({ best: "Best move", good: "Good move",
+        inaccuracy: "Inaccuracy", mistake: "Mistake", blunder: "Blunder" }[testCase.expected.browser]);
       if (testCase.expected.loss_pct !== null) {
         // Shared numeric contract: the same evals must yield the same mover-POV
         // win-chance loss on both ends (within rounding of the fixture value).
@@ -113,5 +122,12 @@ describe("classification golden contract (browser side)", () => {
       expect(losses.some((loss) => loss > boundary)).toBe(true);
     }
     expect(losses).toContain(0);
+  });
+
+  it("keeps forced and great as browser presentation tiers", () => {
+    const base = { winDelta: 0, winAfterMover: 50, isBest: true, onlyMove: true };
+    expect(classifyMoveRich({ ...base, forced: true }).code).toBe("forced");
+    expect(classifyMoveRich({ ...base, forced: false }).code).toBe("great");
+    expect(classifyMoveRich({ ...base, forced: false, winAfterMover: 24 }).code).toBe("best");
   });
 });

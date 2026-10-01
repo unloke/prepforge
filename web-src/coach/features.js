@@ -8,7 +8,7 @@
 // and so on. No DOM, no engine calls here — just chess.js + arithmetic — so it tests
 // headlessly and the orchestration (which owns the worker) stays thin.
 import { Chess } from "chess.js";
-import { cpToWin, moveAccuracy } from "../explain.js";
+import { evaluationToWin as winWhite, moveAccuracy } from "../explain.js";
 import {
   PIECE_VALUE,
   walkLine,
@@ -20,22 +20,13 @@ import {
   seeCapture,
 } from "./material.js";
 
-// White-POV win% from a (cp|mate) eval. Mate is decisive.
-function winWhite({ cp, mate }) {
-  if (mate !== null && mate !== undefined && mate !== 0) return mate > 0 ? 100 : 0;
-  if (cp === null || cp === undefined) return 50;
-  return cpToWin(cp);
-}
-
 function toMover(winWhiteVal, mover) {
   return mover === "white" ? winWhiteVal : 100 - winWhiteVal;
 }
 
 // Mover-POV win CHANCE (0..1) from a White-POV {cp, mate} eval — the same fraction the
 // server's win_chance_for_side produces, so a browser-computed trap_gap lands on the
-// server's scale (compared against min_trap_gap = 0.05). (A mate maps to 1/0 here; the
-// server maps it to ~0.975/0.025 — a negligible gap that only shows when the human's
-// natural move walks into a forced mate, which a "trap" alternative essentially never is.)
+// server's scale (compared against min_trap_gap = 0.05), including mate evaluations.
 export function moverWinChanceAfter(evalWhite, mover) {
   return toMover(winWhite(evalWhite || {}), mover) / 100;
 }

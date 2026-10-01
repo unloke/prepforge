@@ -59,8 +59,13 @@ function other(turn) {
 
 // Centipawns (White POV) -> White win expectancy 0..100. Lichess's logistic fit.
 export function cpToWin(cp) {
-  const c = Math.max(-1500, Math.min(1500, cp));
-  return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * c)) - 1);
+  const c = Math.max(-1000, Math.min(1000, Math.trunc(cp ?? 0)));
+  return 100 / (1 + Math.exp(-0.00368208 * c));
+}
+
+// Match services/classification.py, including the signed cp retained for mate(0).
+export function evaluationToWin({ cp, mate } = {}) {
+  return cpToWin(mate > 0 ? 1000 : mate < 0 ? -1000 : cp);
 }
 
 // Lichess's single-move accuracy: how faithful a move was to the best, from the
