@@ -12,7 +12,7 @@ import { createCsrfTokenSource, headersWithCsrf, readCsrfCookie, CSRF_HEADER } f
 import { localBoardInfo, localBoardAfterMove, localGameOver } from "./chess-local.js";
 import { applyTheme } from "./theme.js";
 import { bindRailCollapseOnNavigate } from "./rail-nav.js";
-import { parsePgn, treeToMovetext } from "./analyze-pgn.js";
+import { parsePgn } from "./analyze-pgn.js";
 import { squareInDirection } from "./board-navigation.js";
 import { isReviewedMove, pgnPlayers, selfSide } from "./analyze-orient.js";
 import { buildGameSummary, hasClassifiedMoves } from "./coach/game-summary.js";
@@ -3505,6 +3505,7 @@ function activeBoardController() {
 }
 
 let workspaceUrlReady = false;
+let workspaceNavigationSeq = 0;
 // Set when the user picks a page while boot is still awaiting auth / the
 // workspace: restoreWorkspaceLocation must not then snap them back to the URL
 // the page loaded with (a Scout click during boot landed on the dashboard).
@@ -3760,9 +3761,13 @@ async function restoreWorkspaceLocation() {
     // and record it in the URL.
     switchView(appState.currentView);
     syncWorkspaceUrl();
+    if (appState.currentView === "train" && appState.signedIn) {
+      await startTraining(appState.trainMode, { fresh: false });
+    }
     return;
   }
   const loc = parseWorkspaceLocation(window.location.href);
+  const seq = workspaceNavigationSeq;
   // F-06 return state: coming back to Games (even after a reload) restores the
   // selected game and the active filter, so the source page is where you left it.
   const replayReturn = loadReturnState("replay");
@@ -3779,11 +3784,17 @@ async function restoreWorkspaceLocation() {
       const payload = await api(
         `/api/build/load?repertoire_id=${encodeURIComponent(loc.repertoireId)}`,
       );
-      await hydrateBuild(payload, payload.selected_node_id);
-      appState.trainingRepertoireId = payload.repertoire_id;
+      if (seq === workspaceNavigationSeq) {
+        await hydrateBuild(payload, payload.selected_node_id);
+        if (seq === workspaceNavigationSeq) appState.trainingRepertoireId = payload.repertoire_id;
+      }
     } catch (_) {
       /* stale id — still restore the view */
     }
+  }
+  if (seq !== workspaceNavigationSeq) {
+    syncWorkspaceUrl();
+    return;
   }
   if (loc.view === "replay" && loc.replaySection) {
     appState.replaySection = loc.replaySection;
@@ -3928,6 +3939,7 @@ function countBuildMovesToTrain(build) {
 }
 
 function switchView(name, { fromUrl = false } = {}) {
+  workspaceNavigationSeq += 1;
   if (!fromUrl && !workspaceUrlReady) navigatedDuringBoot = true;
   if (appState.currentView !== name) clearStaleStatusOnNavigate();
   appState.currentView = name;
@@ -5008,17 +5020,23 @@ async function loadAnalysisHistory() {
   });
 }
 
-// Bumped per recall: two quick clicks in Recent analyses must not let the
-// slower, older response replace the game picked last.
+// All Analyze sources share an order: a recall, paste or new review must not
+// let an older request (including a lazy view load) replace the latest game.
 let analysisRecallSeq = 0;
 
+function invalidateAnalysisSource() {
+  clearTimeout(analyzePgnInputTimer);
+  return ++analysisRecallSeq;
+}
+
 async function recallAnalysis(gameId, listItem = null) {
-  const seq = ++analysisRecallSeq;
+  const seq = invalidateAnalysisSource();
   setStatus("Loading saved analysis...");
   appState.analysisSourcePgn = null;
   hideAnalysisHandoff();
   try {
     const payload = await api(`/api/analyses/${encodeURIComponent(gameId)}`);
+    const view = await ensureAnalyzeView();
     if (seq !== analysisRecallSeq) return;
     // The saved result carries no player names; the history row does. Without
     // them the head fell back to "Analysis board" for a named game.
@@ -5026,18 +5044,21 @@ async function recallAnalysis(gameId, listItem = null) {
       if (!payload[key] && listItem?.[key]) payload[key] = listItem[key];
     }
     appState.analysis = payload;
-    // Mirror the recalled game into the PGN box so it stays the source of truth
-    // for any board variations the user then explores (and a clean export). The
-    // box has no headers for a recalled game, so syncPgnFromTree writes movetext.
+    // Mirror the recalled game into the PGN box for further exploration.
     // Clear it before rendering: the head reads its tags first, and a leftover
     // (e.g. the demo PGN) would title the recalled game "PrepForge vs Demo".
     const pgnInput = document.getElementById("pgn-input");
     if (pgnInput) pgnInput.value = "";
+    orientAnalysisForSelf(payload.white, payload.black);
+    lastOrientedPgnPlayers = `${payload.white || ""}\n${payload.black || ""}`;
     resetAnalysisVariations();
-    showAnalysisPly(0);
-    await renderAnalysis(payload);
+    await showAnalysisPly(0);
+    if (seq !== analysisRecallSeq) return;
+    view.renderAnalysis(payload);
+    syncViewHeads();
     revealAnalysisResults();
-    void syncPgnFromTree().catch(() => {});
+    await syncPgnFromTree();
+    if (seq !== analysisRecallSeq) return;
     setStatus(`Recalled analysis: ${payload.moves.length} plies`);
   } catch (error) {
     if (seq !== analysisRecallSeq) return;
@@ -5812,6 +5833,9 @@ function isBuildReadOnly() {
 
 let buildLoadSeq = 0;
 async function editRepertoire(repertoireId, nodeId = null) {
+  // Picking a repertoire is navigation; its loading skeleton defers URL sync.
+  workspaceNavigationSeq += 1;
+  if (!workspaceUrlReady) navigatedDuringBoot = true;
   // Switching repertoires replaces the local Build tree — flush pending moves of
   // the current one first so they aren't dropped. An optional `nodeId` opens the
   // builder at that position (Analyze's "Open in Build" deep link).
@@ -6188,13 +6212,15 @@ async function runAnalysis(options = {}) {
   if (!requireSignIn("Sign in to run a full-game review — it's saved to your library", "analyze-game", {
     pgn, mode: importMode, selectIndex,
   })) return;
+  const seq = invalidateAnalysisSource();
   setStatus("Analyzing PGN");
   // Keep the game on screen while the engine works: (re)load the source into the move
   // list instead of hiding it behind the "Play on the board" placeholder. Only a source
   // that won't parse here (e.g. a multi-game paste) falls back to hiding the old list.
   appState.analysisSourcePgn = null;
   hideAnalysisHandoff();
-  const listed = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true }).catch(() => false);
+  const listed = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true, sourceSeq: seq }).catch(() => false);
+  if (seq !== analysisRecallSeq) return;
   if (!listed) hideAnalysisResults();
   const runButton = document.getElementById("run-analysis");
   runButton.disabled = true;
@@ -6215,6 +6241,7 @@ async function runAnalysis(options = {}) {
         select_index: selectIndex,
       });
     } catch (prepError) {
+      if (seq !== analysisRecallSeq) return;
       // F-04: single mode refuses multi-game pastes BEFORE storing anything.
       // Offer the batch path explicitly instead of silently importing extras.
       if (prepError.status === 400 && /games in the PGN/i.test(prepError.message || "")) {
@@ -6231,6 +6258,7 @@ async function runAnalysis(options = {}) {
       }
       throw prepError;
     }
+    if (seq !== analysisRecallSeq) return;
     const positions = prep.positions || [];
     if (!positions.length) throw new Error("No positions to analyze");
     renderImportPicker(prep.import_summary, importMode);
@@ -6462,10 +6490,24 @@ async function runAnalysis(options = {}) {
 
     clearCheckpoint(prep.game_id, currentOwnerId()); // saved: the compute is confirmed durable
     hideAnalysisRetrySave();
+    refreshAnalysisHistoryIfOpen();
+    const complete = (current = false) => jobToast.completeJob({
+      title: current ? "Analysis ready" : "Analysis saved",
+      message: `${payload.moves.length} plies classified`,
+      onClick: current ? () => switchView("analyze") : null,
+    });
+    if (seq !== analysisRecallSeq) {
+      complete();
+      return;
+    }
     appState.analysis = payload;
     resetAnalysisVariations();
-    showAnalysisPly(0);
-    await timed("render", () => renderAnalysis(payload));
+    await showAnalysisPly(0);
+    await timed("render", () => renderAnalysis(payload, { sourceSeq: seq }));
+    if (seq !== analysisRecallSeq) {
+      complete();
+      return;
+    }
     jobToast.updateJob({
       current: positions.length,
       total: positions.length,
@@ -6479,29 +6521,27 @@ async function runAnalysis(options = {}) {
       /* logging only */
     }
     setStatus(`Analysis ready: ${payload.moves.length} plies`, { severity: "success" });
-    jobToast.completeJob({
-      title: "Analysis ready",
-      message: `${payload.moves.length} plies classified`,
-      onClick: () => switchView("analyze"),
-    });
+    complete(true);
     appState.analysisSourcePgn = pgn;
     revealAnalysisResults();
     // The source has done its job — fold it away so the report gets the room.
     const pgnDrawer = document.getElementById("pgn-drawer");
     if (pgnDrawer) pgnDrawer.open = false;
-    refreshAnalysisHistoryIfOpen();
     await updateAnalysisHandoff();
   } catch (error) {
+    const current = seq === analysisRecallSeq;
     if (error && error.cancelled) {
-      appState.analysisSourcePgn = null;
-      hideAnalysisHandoff();
-      setStatus("Analysis stopped");
+      if (current) {
+        appState.analysisSourcePgn = null;
+        hideAnalysisHandoff();
+        setStatus("Analysis stopped");
+      }
       jobToast.cancelJob(error.message || "Analysis stopped");
     } else if (isAuthError(error)) {
-      accountService().handleAuthRequired("Sign in to run a full-game review — it's saved to your library");
+      if (current) accountService().handleAuthRequired("Sign in to run a full-game review — it's saved to your library");
       jobToast.failJob("Sign in required");
     } else {
-      setStatusError(error.message);
+      if (current) setStatusError(error.message);
       jobToast.failJob(error.message);
     }
     // F-03: if the compute finished but the SAVE didn't, offer "Retry save" —
@@ -6584,6 +6624,7 @@ async function retryAnalyzeSave() {
     hideAnalysisRetrySave();
     return;
   }
+  const seq = invalidateAnalysisSource();
   const runButton = document.getElementById("run-analysis");
   if (runButton) runButton.disabled = true;
   try {
@@ -6609,12 +6650,16 @@ async function retryAnalyzeSave() {
     clearCheckpoint(checkpoint.gameId, currentOwnerId());
     appState.analysisUnsavedCheckpoint = null;
     hideAnalysisRetrySave();
+    refreshAnalysisHistoryIfOpen();
+    if (seq !== analysisRecallSeq) return;
+    const input = document.getElementById("pgn-input");
+    if (input && checkpoint.pgn) input.value = checkpoint.pgn;
     appState.analysis = payload;
     resetAnalysisVariations();
-    showAnalysisPly(0);
-    await renderAnalysis(payload);
+    await showAnalysisPly(0);
+    await renderAnalysis(payload, { sourceSeq: seq });
+    if (seq !== analysisRecallSeq) return;
     setStatus("Analysis saved", { severity: "success" });
-    refreshAnalysisHistoryIfOpen();
     appState.analysisSourcePgn = checkpoint.pgn || appState.analysisSourcePgn;
     revealAnalysisResults();
     await updateAnalysisHandoff();
@@ -6764,8 +6809,9 @@ async function ensureMoveTreeRenderer() {
   return moveTreeRenderer;
 }
 
-async function renderAnalysis(payload) {
+async function renderAnalysis(payload, { sourceSeq = analysisRecallSeq } = {}) {
   const view = await ensureAnalyzeView();
+  if (sourceSeq !== analysisRecallSeq || appState.analysis !== payload) return;
   const rendered = view.renderAnalysis(payload);
   syncViewHeads();
   return rendered;
@@ -6835,6 +6881,8 @@ function updateEvalChartCursor() {
 }
 
 async function showAnalysisPly(ply) {
+  const analysis = appState.analysis;
+  const seq = analysisRecallSeq;
   const moves = appState.analysis ? appState.analysis.moves : [];
   const boundedPly = Math.max(0, Math.min(ply, moves.length));
   appState.analysisPly = boundedPly;
@@ -6843,6 +6891,7 @@ async function showAnalysisPly(ply) {
   const move = boundedPly > 0 ? moves[boundedPly - 1] : null;
   const fen = move ? move.fen_after : moves[0]?.fen_before || appState.analysis?.initialFen || START_FEN;
   const info = await boardInfo(fen);
+  if (seq !== analysisRecallSeq || analysis !== appState.analysis || appState.analysisCurrentNodeId !== (boundedPly === 0 ? "root" : `m${boundedPly}`)) return;
   appState.analysisBoardFen = fen;
   boards.analysis.setPosition({
     fen,
@@ -6914,64 +6963,6 @@ let analyzePgnInputTimer = null;
 // `.value` does not fire `input`, so this is belt-and-suspenders.)
 let analyzePgnWriting = false;
 
-// Pull just the `[Tag "Value"]` header lines out of a raw PGN textarea value, so a
-// tree→PGN rewrite can preserve the user's headers and replace only the movetext.
-function analyzePgnHeaderBlock(raw) {
-  return String(raw || "")
-    .split(/\r?\n/)
-    .filter((line) => /^\s*\[[^\]]*\]\s*$/.test(line))
-    .join("\n")
-    .trim();
-}
-
-// Flatten the parser's generic tree (root → children, children[0] = mainline,
-// children[1..] = variations) into the two structures the Analyze view renders
-// from: a flat `moves` array (the mainline) and an `analysisVarNodes` map keyed by
-// `v<seq>` whose `parentId` points at the node a variation branches from. Mirrors
-// the ids buildAnalysisTree() expects (`m<ply>` on the mainline, `root` at start).
-function adaptParsedTree(root) {
-  const moves = [];
-  const varNodes = new Map();
-  let seq = 0;
-  function walk(node, parentId, onMainline, ply) {
-    let id;
-    if (onMainline) {
-      id = `m${ply}`;
-      moves.push({
-        ply,
-        san: node.san,
-        uci: node.uci,
-        fen_before: node.fenBefore,
-        fen_after: node.fenAfter,
-        move_number: node.moveNumber,
-        side: node.side,
-        classification: null,
-      });
-    } else {
-      seq += 1;
-      id = `v${seq}`;
-      varNodes.set(id, {
-        id,
-        seq,
-        parentId,
-        uci: node.uci,
-        san: node.san,
-        fenBefore: node.fenBefore,
-        fenAfter: node.fenAfter,
-        moveNumber: node.moveNumber,
-        side: node.side,
-      });
-    }
-    const kids = node.children || [];
-    if (kids[0]) walk(kids[0], id, onMainline, onMainline ? ply + 1 : 0);
-    for (let i = 1; i < kids.length; i += 1) walk(kids[i], id, false, 0);
-  }
-  const top = root.children || [];
-  if (top[0]) walk(top[0], "root", true, 1);
-  for (let i = 1; i < top.length; i += 1) walk(top[i], "root", false, 0);
-  return { moves, varNodes };
-}
-
 // Board / move-list → PGN box. Serialize the current Analyze tree (analyzed or
 // typed mainline + explored variations) and write it back, preserving the header
 // block. No-op while the textarea is focused (board moves happen with the board
@@ -6979,16 +6970,16 @@ function adaptParsedTree(root) {
 async function syncPgnFromTree() {
   const input = document.getElementById("pgn-input");
   if (!input || document.activeElement === input) return;
-  const moves = appState.analysis ? appState.analysis.moves : [];
+  const analysis = appState.analysis;
+  const seq = analysisRecallSeq;
+  const original = input.value;
+  const moves = analysis ? analysis.moves : [];
   const hasVars = appState.analysisVarNodes && appState.analysisVarNodes.size;
   if ((!moves || !moves.length) && !hasVars) return;
   const view = await ensureAnalyzeView();
-  // buildAnalysisTree() folds in appState.analysisVarNodes itself.
-  const root = view.buildAnalysisTree(moves).root;
-  const movetext = treeToMovetext(root);
-  if (!movetext) return;
-  const headers = analyzePgnHeaderBlock(input.value);
-  const next = headers ? `${headers}\n\n${movetext}` : movetext;
+  if (seq !== analysisRecallSeq || input.value !== original || document.activeElement === input) return;
+  const next = view.serializeAnalysisPgn(input.value);
+  if (!next) return;
   if (next !== input.value && document.activeElement !== input) {
     analyzePgnWriting = true;
     input.value = next;
@@ -7000,14 +6991,15 @@ async function syncPgnFromTree() {
 // (mainline + variations) from it. Returns false (and, unless quiet, sets a status
 // hint) when the movetext has an illegal/unparseable move — leaving the existing
 // tree untouched so mid-typing never flickers the list to empty.
-async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false } = {}) {
+async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, sourceSeq = invalidateAnalysisSource() } = {}) {
   const parsed = parsePgn(pgnText);
   if (!parsed.ok) {
     if (!quiet) setStatus(`PGN: ${parsed.error}`, { severity: "error" });
     return false;
   }
-  const { moves, varNodes } = adaptParsedTree(parsed.root);
   const view = await ensureAnalyzeView();
+  if (sourceSeq !== analysisRecallSeq) return false;
+  const { moves, varNodes } = view.adaptParsedTree(parsed.root);
   if (!moves.length && !varNodes.size) {
     // Check for FEN-only PGN (has FEN header but no moves)
     const fenHeader = parsed.headers.FEN;
@@ -7025,20 +7017,11 @@ async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false } = {
         view.renderClassificationBars([]);
         hideAnalysisHandoff();
         revealAnalysisResults();
-        // Load the board with the FEN position, not START_FEN
-        const info = await boardInfo(fenHeader);
-        appState.analysisPly = 0;
-        appState.analysisBoardFen = fenHeader;
-        boards.analysis.setPosition({
-          fen: fenHeader,
-          legalMoves: info.legal_moves,
-          lastMove: null,
-        });
-        boards.analysis.setMoveBadge(null, null, "");
-        document.getElementById("analysis-board-label").textContent = "Initial position";
-        highlightCurrentMove();
+        // Use the same guarded board path as a movetext PGN or recall.
+        await showAnalysisPly(0);
         return true;
       } catch (err) {
+        if (sourceSeq !== analysisRecallSeq) return false;
         // FEN is invalid or boardInfo failed; fall through to empty-box logic
         console.warn("Failed to load FEN-only PGN:", err);
       }
@@ -14049,8 +14032,8 @@ function bindEvents() {
   if (pgnInput) {
     pgnInput.addEventListener("input", () => {
       if (analyzePgnWriting) return;
+      invalidateAnalysisSource();
       syncViewHeads();
-      clearTimeout(analyzePgnInputTimer);
       analyzePgnInputTimer = setTimeout(() => {
         orientAnalysisFromPgn(pgnInput.value);
         void loadPgnIntoAnalyze(pgnInput.value, { goToEnd: true, quiet: true }).catch(

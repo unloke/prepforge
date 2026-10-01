@@ -42,8 +42,13 @@ describe("Recall from Recent analyses", () => {
       hideAnalysisHandoff: vi.fn(), resetAnalysisVariations: vi.fn(), showAnalysisPly: vi.fn(),
       renderAnalysis: vi.fn(async () => {}), revealAnalysisResults: vi.fn(),
       syncPgnFromTree: vi.fn(async () => {}), setStatus: vi.fn(), setStatusError: vi.fn(),
+      orientAnalysisForSelf: vi.fn(), syncViewHeads: vi.fn(),
     };
-    const recall = compile("async function recallAnalysis(", deps, "let analysisRecallSeq = 0;");
+    deps.ensureAnalyzeView = vi.fn(async () => ({ renderAnalysis: deps.renderAnalysis }));
+    const start = source.indexOf("function invalidateAnalysisSource(");
+    const helper = source.slice(start, source.indexOf("\n}\n", start) + 2);
+    const recall = compile("async function recallAnalysis(", deps,
+      `let analysisRecallSeq = 0, analyzePgnInputTimer = null, lastOrientedPgnPlayers = "";\n${helper}`);
     return { appState, deps, pgn, recall };
   }
 
@@ -146,7 +151,7 @@ describe("Navigation during boot", () => {
       parseWorkspaceLocation: vi.fn(() => ({ view: "teams" })), loadReturnState: vi.fn(),
       window: { location: { href: "http://x/#/teams" } },
     };
-    const restore = compile("async function restoreWorkspaceLocation(", deps, "let navigatedDuringBoot = false;");
+    const restore = compile("async function restoreWorkspaceLocation(", deps, "let navigatedDuringBoot = false, workspaceNavigationSeq = 0;");
     await restore();
     expect(deps.switchView).toHaveBeenCalledWith("teams", { fromUrl: true });
   });

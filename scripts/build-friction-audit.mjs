@@ -231,7 +231,8 @@ async function main() {
       treeText: (document.getElementById("builder-tree")?.textContent || "").trim().slice(0, 240),
       treeHasEmptyState: !!document.querySelector("#builder-tree .empty-state"),
       buildMenuVisible: !document.getElementById("build-menu")?.hidden,
-      dashboardNewRep: !!document.querySelector('[data-testid="dashboard-new-rep"]'),
+      dashboardNewRep: Array.from(document.querySelectorAll('[data-testid="dashboard-new-rep"], #dashboard-repertoires [data-lib-action="new"]'))
+        .some((button) => button.getClientRects().length > 0),
       dashboardEmptyText: (document.getElementById("dashboard-repertoires")?.textContent || "")
         .trim()
         .slice(0, 120),
@@ -354,7 +355,8 @@ async function main() {
       const snap = await snapshotBuildEmpty(page);
       await gotoDashboard(page);
       const dashSnap = await page.evaluate(() => ({
-        newRepVisible: !!document.querySelector('[data-testid="dashboard-new-rep"]'),
+        newRepVisible: Array.from(document.querySelectorAll('[data-testid="dashboard-new-rep"], #dashboard-repertoires [data-lib-action="new"]'))
+          .some((button) => button.getClientRects().length > 0),
         repertoiresText: (document.getElementById("dashboard-repertoires")?.textContent || "").trim().slice(0, 160),
       }));
       record("1-signed-in", "empty-state", {

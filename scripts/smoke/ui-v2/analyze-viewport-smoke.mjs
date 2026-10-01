@@ -51,6 +51,10 @@ const api = (path) => {
   if (path.startsWith("/api/auth/providers")) return { google: false };
   if (path.startsWith("/api/csrf")) return { csrf_token: "x" };
   if (path.startsWith("/api/repertoires")) return { repertoires: [], shared: [] };
+  if (path.startsWith("/api/analyses/")) return {
+    game_id: path.split("/").pop(), engine: "stockfish", depth: 4, summary: {},
+    moves: DEMO_MOVES.map((m) => ({ ...m, classification: "good" })), eval_graph: [],
+  };
   if (path.startsWith("/api/analyses")) {
     return {
       analyses: [
@@ -110,6 +114,7 @@ async function runViewport(vp) {
   // evaluates them at depth 4); classify-save echoes a real-shape contract
   // response. Maia stays OFF (no brilliant config) so no 46 MB model download.
   let savedPositions = [];
+  let saveGate = null, sawSave = null;
   await page.route("**/api/analyze/prepare", async (route) => {
     await route.fulfill({
       status: 200,
@@ -155,6 +160,7 @@ async function runViewport(vp) {
       bounded_score_cp: m.score_cp == null ? 0 : Math.max(-1000, Math.min(1000, m.score_cp)),
       classification: m.classification,
     }));
+    if (saveGate) { sawSave(); await saveGate; }
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -317,6 +323,54 @@ async function runViewport(vp) {
       return !!tip && !tip.hidden && getComputedStyle(tip).display !== "none" && getComputedStyle(tip).visibility !== "hidden" && getComputedStyle(tip).opacity !== "0";
     });
     check(!tipVisible, "the chart tooltip should hide once the pointer leaves the chart");
+  }
+
+  // History recall must yield to a paste even if the saved report arrives last.
+  let releaseRecall, sawRecall;
+  const recallGate = new Promise((r) => { releaseRecall = r; });
+  const recallRequested = new Promise((r) => { sawRecall = r; });
+  await page.route("**/api/analyses/g1", async (route) => {
+    sawRecall();
+    await recallGate;
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(api("/api/analyses/g1")) });
+  });
+  await page.locator('.history-item[data-game-id="g1"]').focus();
+  await page.keyboard.press("Enter");
+  await recallRequested;
+  await page.locator("#pgn-drawer").evaluate((d) => { d.open = true; });
+  await page.locator("#pgn-input").fill("1. d4 d5");
+  await page.waitForFunction(() => document.getElementById("analysis-moves").textContent.includes("d4"));
+  const recalled = page.waitForResponse("**/api/analyses/g1");
+  releaseRecall();
+  await recalled;
+  await page.waitForTimeout(300);
+  check(await page.locator("#pgn-input").inputValue() === "1. d4 d5", "pending recall must not overwrite a new paste");
+  check((await page.locator("#analysis-moves").textContent()).includes("d4"), "pending recall must not replace the pasted move tree");
+
+  // The history row supplies Black's linked identity, so recall uses that side.
+  await page.locator('.history-item[data-game-id="g2"]').focus();
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => /opp_two/.test(document.getElementById("analysis-game-title").textContent));
+  check(await page.locator("#analysis-board [data-square]").first().getAttribute("data-square") === "h1", "a recalled Self-as-Black game should face Black");
+  const recalledPgn = await page.locator("#pgn-input").inputValue();
+  check(recalledPgn.includes('[Black "me_user"]') && recalledPgn.includes('[Result "1-0"]'), "recalled PGN should retain its game metadata");
+
+  if (vp.width === 1440) {
+    // Conversely, a review may finish saving in the background after recall.
+    // Its result must not replace the selected report's empty eval graph.
+    let releaseSave;
+    saveGate = new Promise((r) => { releaseSave = r; });
+    const saveRequested = new Promise((r) => { sawSave = r; });
+    await page.locator("#pgn-input").fill(DEMO_PGN_MOVETEXT);
+    await page.locator("#run-analysis").click();
+    await saveRequested;
+    await page.locator('.history-item[data-game-id="g2"]').focus();
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => /Recalled analysis/.test(document.getElementById("app-status").textContent));
+    releaseSave();
+    await page.waitForFunction(() => !document.getElementById("run-analysis").disabled);
+    check(await page.locator("#eval-chart .eval-area").count() === 0, "a completed older review must not repaint the recalled report");
+    check((await page.locator("#pgn-input").inputValue()).includes('[Black "me_user"]'), "a completed older review must keep the recalled PGN");
   }
 
   // Overflow + console errors (ignore engine/resource noise from wasm fetches).
