@@ -12,10 +12,9 @@ nothing points at any more:
   owners' identical analyses can share one snapshot row);
 * orphan ``positions`` — no evaluation references them (safe: a later save
   re-inserts the FEN);
-* old train attempt receipts — older than ``RECEIPT_RETENTION_DAYS``, which is
-  deliberately LONGER than the offline-retry window (``OFFLINE_RETRY_DAYS``):
-  cleaning up must never let a replayed offline attempt score again after its
-  receipt is gone;
+* old train attempt receipts — inventoried but retained until the server
+  enforces a replay horizon. A client can still replay an arbitrarily old UUID;
+  deleting its receipt would allow it to score twice;
 * analysis history — optionally trimmed to the newest
   ``ANALYSIS_KEEP_PER_GAME`` per game (off unless a caller opts in).
 
@@ -33,9 +32,8 @@ from typing import Any, Dict, Optional
 
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
-# Receipts must outlive the longest offline retry we allow (the SPA keeps its
-# outbox for at most OFFLINE_RETRY_DAYS before giving up on replay), so an old
-# attempt can never be re-scored after its receipt is reclaimed.
+# Proposed windows, not currently enforced by the server or SPA. Do not enable
+# receipt pruning until an authenticated replay epoch/horizon fences old clients.
 OFFLINE_RETRY_DAYS = 30
 RECEIPT_RETENTION_DAYS = 90
 # Analysis rows are immutable snapshots; trimming is opt-in per call site.
@@ -58,8 +56,9 @@ def lifecycle_report(
         "expired_receipts": repository.count_receipts_before(receipt_cutoff),
         "analysis_snapshots": repository.count_analysis_snapshots(),
         "retention": {
-            "receipt_days": RECEIPT_RETENTION_DAYS,
-            "offline_retry_days": OFFLINE_RETRY_DAYS,
+            "receipt_days": None,
+            "offline_retry_days": None,
+            "receipt_cleanup_enabled": False,
             "analysis_keep_per_game": ANALYSIS_KEEP_PER_GAME,
         },
         "generated_at": now.isoformat(),
@@ -80,7 +79,6 @@ def reclaim_orphans(
     because analysis history is user-visible record, not just cache.
     """
     now = now or datetime.now(timezone.utc)
-    receipt_cutoff = (now - timedelta(days=RECEIPT_RETENTION_DAYS)).isoformat()
     report: Dict[str, Any] = {
         "dry_run": dry_run,
         "deleted": {},
@@ -90,19 +88,19 @@ def reclaim_orphans(
     if dry_run:
         deleted["evaluations"] = repository.count_orphan_evaluations()
         deleted["positions"] = repository.count_orphan_positions()
-        deleted["receipts"] = repository.count_receipts_before(receipt_cutoff)
+        deleted["receipts"] = 0
         if trim_analyses:
             deleted["analyses"] = repository.count_trimable_analyses(ANALYSIS_KEEP_PER_GAME)
         else:
             deleted["analyses"] = 0
     else:
-        deleted["evaluations"] = repository.delete_orphan_evaluations()
-        deleted["positions"] = repository.delete_orphan_positions()
-        deleted["receipts"] = repository.delete_receipts_before(receipt_cutoff)
         deleted["analyses"] = (
             repository.delete_trimable_analyses(ANALYSIS_KEEP_PER_GAME)
             if trim_analyses
             else 0
         )
+        deleted["evaluations"] = repository.delete_orphan_evaluations()
+        deleted["positions"] = repository.delete_orphan_positions()
+        deleted["receipts"] = 0
     report["after"] = lifecycle_report(repository, now=now)
     return report

@@ -237,6 +237,30 @@ npx playwright install chromium   # one-time
 uv run pytest -q -m e2e tests/e2e
 ```
 
+## Data lifecycle operations
+
+Run the lifecycle command with the same `DATABASE_URL` and environment as the
+server, after applying Alembic migrations. It uses the production engine and
+does not create or modify the schema.
+
+```powershell
+uv run python -m prepforge_chess lifecycle
+uv run python -m prepforge_chess lifecycle --apply
+# Explicitly opt in to keeping the newest 10 analysis snapshots per game:
+uv run python -m prepforge_chess lifecycle --apply --trim-analyses
+```
+
+The first command is a dry run. `--apply` removes unreferenced evaluation
+snapshots and positions. Analysis trimming runs before orphan reclamation.
+Dry-run counts describe currently orphaned rows; deleting evaluations can make
+additional positions reclaimable during the apply pass.
+
+Receipts remain retained: the server has no enforced replay horizon yet, so
+removing old receipts would let a stale offline attempt score twice. The report
+counts receipts older than the proposed 90-day window but reports
+`receipt_cleanup_enabled: false`. No periodic job is enabled by this command;
+operators can run or schedule the apply command after reviewing its dry run.
+
 ## Local Docker check
 
 ```powershell

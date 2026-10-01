@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 from typing import Callable, List, Optional, Sequence, Tuple
 
@@ -621,6 +622,9 @@ def _add_engine_args(parser: argparse.ArgumentParser, *, include_analysis_contro
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(prog="prepforge-chess")
     subparsers = parser.add_subparsers(dest="command")
+    lifecycle_parser = subparsers.add_parser("lifecycle", help="Inventory or reclaim unreferenced production data.")
+    lifecycle_parser.add_argument("--apply", action="store_true", help="Apply cleanup; default is dry-run.")
+    lifecycle_parser.add_argument("--trim-analyses", action="store_true", help="Keep the newest 10 analyses per game.")
     subparsers.add_parser("smoke", help="Run a minimal end-to-end project smoke check.")
     demo_parser = subparsers.add_parser("demo-viewer", help="Render the built-in demo PGN.")
     demo_parser.add_argument("--ply", type=int, default=0, help="Ply to render.")
@@ -712,6 +716,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="Training mode for the demo session.",
     )
     args = parser.parse_args(argv)
+    if args.command == "lifecycle":
+        from prepforge_chess.api.db import make_engine
+        from prepforge_chess.services.data_lifecycle import reclaim_orphans
+
+        engine = make_engine()
+        try:
+            print(json.dumps(reclaim_orphans(PrepForgeRepository(engine), dry_run=not args.apply,
+                                           trim_analyses=args.trim_analyses), sort_keys=True))
+        finally:
+            engine.dispose()
+        return 0
     if args.command == "smoke":
         return run_smoke()
     if args.command == "demo-viewer":

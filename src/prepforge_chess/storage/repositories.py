@@ -1452,13 +1452,10 @@ class PrepForgeRepository:
 
     def delete_orphan_evaluations(self) -> int:
         with self.engine.begin() as conn:
-            ids = [row[0] for row in conn.execute(self._orphan_eval_select()).all()]
-            if not ids:
-                return 0
-            conn.execute(
-                delete(t.engine_evaluations).where(t.engine_evaluations.c.id.in_(ids))
+            result = conn.execute(
+                delete(t.engine_evaluations).where(t.engine_evaluations.c.id.in_(self._orphan_eval_select()))
             )
-            return len(ids)
+            return int(result.rowcount or 0)
 
     def _orphan_position_select(self) -> Any:
         referenced = select(t.engine_evaluations.c.position_id.label("id"))
@@ -1474,11 +1471,8 @@ class PrepForgeRepository:
 
     def delete_orphan_positions(self) -> int:
         with self.engine.begin() as conn:
-            ids = [row[0] for row in conn.execute(self._orphan_position_select()).all()]
-            if not ids:
-                return 0
-            conn.execute(delete(t.positions).where(t.positions.c.id.in_(ids)))
-            return len(ids)
+            result = conn.execute(delete(t.positions).where(t.positions.c.id.in_(self._orphan_position_select())))
+            return int(result.rowcount or 0)
 
     def count_receipts_before(self, cutoff_text: str) -> int:
         with self.engine.connect() as conn:
@@ -1507,40 +1501,25 @@ class PrepForgeRepository:
                 ).scalar_one()
             )
 
-    def _trimable_analysis_ids(self, keep_per_game: int) -> List[str]:
+    def _trimable_analysis_select(self, keep_per_game: int):
         """Ids of analysis rows beyond the newest ``keep_per_game`` per game."""
-        with self.engine.connect() as conn:
-            rows = conn.execute(
-                select(
-                    t.analysis_results.c.id,
-                    t.analysis_results.c.game_id,
-                    t.analysis_results.c.analyzed_at,
-                ).order_by(
-                    t.analysis_results.c.game_id,
-                    t.analysis_results.c.analyzed_at.desc(),
-                    t.analysis_results.c.id.desc(),
-                )
-            ).all()
-        seen: Dict[str, int] = {}
-        drop: List[str] = []
-        for row in rows:
-            count = seen.get(row.game_id, 0)
-            if count < keep_per_game:
-                seen[row.game_id] = count + 1
-            else:
-                drop.append(row.id)
-        return drop
+        if keep_per_game < 1:
+            raise ValueError("keep_per_game must be positive")
+        ranked = select(
+            t.analysis_results.c.id,
+            func.row_number().over(partition_by=t.analysis_results.c.game_id,
+                order_by=(t.analysis_results.c.analyzed_at.desc(), t.analysis_results.c.id.desc())).label("rank"),
+        ).subquery()
+        return select(ranked.c.id).where(ranked.c.rank > keep_per_game)
 
     def count_trimable_analyses(self, keep_per_game: int) -> int:
-        return len(self._trimable_analysis_ids(keep_per_game))
+        with self.engine.connect() as conn:
+            return int(conn.scalar(select(func.count()).select_from(self._trimable_analysis_select(keep_per_game).subquery())))
 
     def delete_trimable_analyses(self, keep_per_game: int) -> int:
-        ids = self._trimable_analysis_ids(keep_per_game)
-        if not ids:
-            return 0
         with self.engine.begin() as conn:
-            conn.execute(delete(t.analysis_results).where(t.analysis_results.c.id.in_(ids)))
-        return len(ids)
+            result = conn.execute(delete(t.analysis_results).where(t.analysis_results.c.id.in_(self._trimable_analysis_select(keep_per_game))))
+            return int(result.rowcount or 0)
 
     def list_owner_settings(self, owner_user_id: str) -> Dict[str, Any]:
         """All stored settings keys for one owner (account export, F-05)."""
