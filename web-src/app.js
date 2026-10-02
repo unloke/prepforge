@@ -37,10 +37,11 @@ import {
 } from "./engine/maia3-provider.js";
 import { createCsrfTokenSource, headersWithCsrf, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove, localGameOver } from "./chess-local.js";
+import { buildPvPreview, clampPly, previewPosition, previewLabel, stepPreview } from "./pv-preview.js";
 import { applyTheme } from "./theme.js";
 import { bindRailCollapseOnNavigate } from "./rail-nav.js";
 import { parsePgn } from "./analyze-pgn.js";
-import { squareInDirection } from "./board-navigation.js";
+import { typedSquare } from "./board-navigation.js";
 import { isReviewedMove, pgnPlayers, selfSide } from "./analyze-orient.js";
 import { buildGameSummary, hasClassifiedMoves } from "./coach/game-summary.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
@@ -1277,8 +1278,8 @@ class EngineWidget {
     this.pollTimer = null;
     this.lastFen = null;
     this.lastSnapshot = null;
-    // Line indexes the user unfolded (reset whenever the position changes).
-    this.expandedLines = new Set();
+    // The engine line shown on the board (see _previewLine), or null.
+    this.preview = null;
     this.multipv = 1;
     // Lines actually searched. Always the shown lines: Explorer row evals come
     // from their own worker (explorerEvalEngine), so the main line keeps the
@@ -1378,6 +1379,7 @@ class EngineWidget {
 
   async close() {
     if (!this.open) return;
+    this.exitPreview();
     this.open = false;
     this._stopPolling();
     setEngineBestArrow(null);
@@ -1485,7 +1487,7 @@ class EngineWidget {
 
   _clearAnalysisView() {
     setEngineBestArrow(null);
-    this.expandedLines.clear();
+    this.exitPreview();
     if (this.lastFen && this._renderGameOver(this.lastFen)) return;
     if (this.pvsEl) this.pvsEl.innerHTML = this._pendingRows(0);
     if (this.depthReadout) this.depthReadout.textContent = "0 / ?";
@@ -1553,30 +1555,92 @@ class EngineWidget {
     this.closeBtn.addEventListener("click", () => setEngineOn(activeViewName(), false));
     this.linesUpBtn.addEventListener("click", () => this._setMultipv(this.multipv + 1));
     this.linesDownBtn.addEventListener("click", () => this._setMultipv(this.multipv - 1));
+    // A line is for the board: clicking it (or one of its moves) plays it out there,
+    // ◀ ▶ / ← → step through it, and "Back to game" (or Esc) returns. The game, the
+    // analysis tree and repertoires are never touched.
     this.pvsEl.addEventListener("click", (event) => {
       const row = event.target.closest(".engine-pv[data-line]");
-      if (row) this._toggleExpandedLine(row);
+      if (!row) return;
+      const move = event.target.closest(".pv-move[data-ply]");
+      this._previewLine(Number(row.dataset.line), move ? Number(move.dataset.ply) + 1 : null);
     });
-    // The rows are real controls, so Enter/Space must work too — a click-only
-    // affordance is unreachable from the keyboard.
+    // The rows are real controls, so Enter/Space must work too.
     this.pvsEl.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") return;
       const row = event.target.closest(".engine-pv[data-line]");
       if (!row) return;
       event.preventDefault(); // Space would otherwise scroll the dock
-      this._toggleExpandedLine(row);
+      this._previewLine(Number(row.dataset.line), null);
     });
   }
 
-  _toggleExpandedLine(row) {
-    const index = Number(row.dataset.line);
+  isPreviewing() {
+    return !!this.preview;
+  }
+
+  // Put line `index` of the current search on the board at `ply` (1 = after its first
+  // move). Clicking the previewed row again (not one of its moves) goes back to the game.
+  _previewLine(index, ply) {
     if (!Number.isFinite(index)) return;
-    if (this.expandedLines.has(index)) this.expandedLines.delete(index);
-    else this.expandedLines.add(index);
-    // Repaint so aria-expanded matches; the next 450ms snapshot would do it
-    // anyway, and expandedLines survives that repaint.
-    row.classList.toggle("is-expanded", this.expandedLines.has(index));
-    row.setAttribute("aria-expanded", String(this.expandedLines.has(index)));
+    if (this.preview && this.preview.index === index && ply === null) {
+      this.exitPreview();
+      return;
+    }
+    // A move in the previewed row belongs to the line shown there, not to whatever
+    // the search has since put in that slot.
+    const board = activeBoardController();
+    const same = this.preview && this.preview.index === index && this.preview.board === board ? this.preview : null;
+    const pv = same ? same.pv : (this.lastSnapshot?.pvs || [])[index];
+    const data = same ? same.data : pv && board ? buildPvPreview(this.lastFen, pv.pv_uci || []) : null;
+    if (!data) return;
+    if (this.preview && this.preview.board !== board) this.exitPreview();
+    const view = activeViewName();
+    const labelEl = document.getElementById(view === "build" ? "build-board-label" : "analysis-board-label");
+    const exitBtn = document.getElementById(view === "build" ? "build-pv-exit" : "analysis-pv-exit");
+    if (!this.preview) {
+      board.beginPreview({ onEnd: ({ restored }) => this._onPreviewEnded(restored) });
+      this.preview = { labelEl, exitBtn, savedLabel: labelEl ? labelEl.textContent : "" };
+    }
+    Object.assign(this.preview, { index, data, pv, board, ply: clampPly(data, ply ?? 1) });
+    this._showPreviewPly();
+  }
+
+  // ◀ ▶ ⏮ ⏭ and ← → while a line is on the board. Returns false when not previewing.
+  stepPreview(action) {
+    if (!this.preview) return false;
+    this.preview.ply = stepPreview(this.preview.data, this.preview.ply, action);
+    this._showPreviewPly();
+    return true;
+  }
+
+  _showPreviewPly() {
+    const p = this.preview;
+    if (!p) return;
+    p.board.showPreview(previewPosition(p.data, p.ply));
+    if (p.labelEl) p.labelEl.textContent = previewLabel(p.data, p.ply, p.index);
+    if (p.exitBtn) p.exitBtn.hidden = false;
+    this._repaintRows();
+  }
+
+  // Back to the game position (no-op when not previewing).
+  exitPreview() {
+    if (!this.preview) return;
+    this.preview.board.endPreview({ restore: true });
+  }
+
+  // The board left the preview: restored to the game (restored) or replaced by a new real
+  // position the caller is about to label (not restored).
+  _onPreviewEnded(restored) {
+    const p = this.preview;
+    if (!p) return;
+    this.preview = null;
+    if (restored && p.labelEl) p.labelEl.textContent = p.savedLabel;
+    if (p.exitBtn) p.exitBtn.hidden = true;
+    this._repaintRows();
+  }
+
+  _repaintRows() {
+    if (this.lastSnapshot && this.lastSnapshot.fen === this.lastFen) this._renderSnapshot(this.lastSnapshot);
   }
 
   _startPolling() {
@@ -1650,40 +1714,45 @@ class EngineWidget {
     if (snapshot.running === false) this._stopPolling();
   }
 
-  // One line per row, cut off at the panel edge; clicking a row unfolds the
-  // full continuation (remembered across the 450ms repaints).
+  // One line per row, cut off at the panel edge. Clicking a row plays it out on the
+  // board; the previewed row keeps the line it was clicked on (the search goes on
+  // underneath) and marks the move on the board; rows stay one line.
   _renderPv(pv, index, sideToMove, fullmoveNumber) {
-    const evalText = this._formatEval(pv.score_cp, pv.mate_in);
+    const previewing = this.preview && this.preview.index === index ? this.preview : null;
+    const line = previewing ? previewing.pv : pv;
+    const evalText = this._formatEval(line.score_cp, line.mate_in);
     const moves = this._formatPvLine(
-      pv.pv_san || [],
+      line.pv_san || [],
       sideToMove,
-      fullmoveNumber
+      fullmoveNumber,
+      previewing ? previewing.ply - 1 : -1
     );
     let cls = index === 0 ? "engine-pv is-top" : "engine-pv";
-    const expanded = this.expandedLines.has(index);
-    if (expanded) cls += " is-expanded";
+    if (previewing) cls += " is-previewing";
+    const title = previewing ? "Back to game" : "Show on board";
     return (
       `<div class="${cls}" data-line="${index}" role="button" tabindex="0"` +
-      ` aria-expanded="${expanded}" title="Show the whole line">` +
+      ` aria-pressed="${!!previewing}" title="${title}">` +
       `<span class="engine-pv-eval">${escapeHtml(evalText)}</span>` +
       `<span class="engine-pv-line">${moves || "..."}</span>` +
       `</div>`
     );
   }
 
-  _formatPvLine(moves, sideToMove, fullmoveNumber) {
+  _formatPvLine(moves, sideToMove, fullmoveNumber, currentPly = -1) {
     if (!moves || !moves.length) return "";
     const out = [];
     let move = fullmoveNumber;
     let whiteToMove = sideToMove === "white";
     for (let i = 0; i < moves.length; i += 1) {
+      const san = `<span class="pv-move${i === currentPly ? " is-current" : ""}" data-ply="${i}">${escapeHtml(moves[i])}</span>`;
       if (whiteToMove) {
-        out.push(`<span class="pv-move-num">${move}.</span>${escapeHtml(moves[i])}`);
+        out.push(`<span class="pv-move-num">${move}.</span>${san}`);
       } else {
         if (i === 0) {
-          out.push(`<span class="pv-move-num">${move}...</span>${escapeHtml(moves[i])}`);
+          out.push(`<span class="pv-move-num">${move}...</span>${san}`);
         } else {
-          out.push(escapeHtml(moves[i]));
+          out.push(san);
         }
         move += 1;
       }
@@ -2571,6 +2640,8 @@ class BoardController {
     this._lastMoveSqs = null;   // tracks the [from, to] squares of the current last-move
     this.orientation = "white";
     this._rovingSquare = null; // tabbable-square cursor for the roving tabindex
+    this._typedFile = null; // file letter typed toward a keyboard square jump ("e" of "e4")
+    this._typedAt = 0;
     this._buildGrid();
     this._bindBoardEvents();
   }
@@ -2581,8 +2652,6 @@ class BoardController {
     this.orientation = next;
     // Rebuilding the grid drops DOM focus (innerHTML wipe); restore it to the
     // same square so a keyboard user isn't dumped out of the board on a flip.
-    // Arrow directions then track the new orientation via squareInDirection's
-    // screen-direction geometry.
     const focusedSquare = document.activeElement?.dataset?.square;
     this._buildGrid();
     if (focusedSquare && this.squares.has(focusedSquare)) {
@@ -2611,8 +2680,73 @@ class BoardController {
     );
   }
 
+  // --- Engine-line preview ---------------------------------------------------
+  // Shows positions that are not the game's (an engine PV) without touching the game,
+  // the analysis tree or a repertoire. The real position is saved on entry and put back
+  // by endPreview(); a real setPosition() while previewing ends the preview instead (the
+  // game moved on), so a stale preview can never hide the real board. Moves are off while
+  // previewing (no legal moves), and engine/fork arrows meant for the real position wait.
+  isPreviewing() {
+    return !!this._preview;
+  }
+
+  beginPreview({ onEnd = null } = {}) {
+    if (!this._preview) {
+      this._preview = {
+        fen: this.fen,
+        legalMoves: this.legalMoves,
+        lastMove: this.lastMove,
+        moveBadge: this.moveBadge,
+        engineArrow: this.engineArrow,
+        branchArrows: this.branchArrows,
+        branchPick: this.branchPick,
+      };
+    }
+    this._preview.onEnd = onEnd;
+    this.board.classList.add("is-previewing");
+  }
+
+  showPreview({ fen, lastMove = null }) {
+    if (!this._preview || !fen) return;
+    this._renderingPreview = true;
+    try {
+      this.setPosition({ fen, legalMoves: [], lastMove });
+    } finally {
+      this._renderingPreview = false;
+    }
+    this.moveBadge = null;
+    this._syncMoveBadge();
+    this.engineArrow = null;
+    this.branchArrows = [];
+    this.branchPick = null;
+    this._renderArrows();
+  }
+
+  // Put the saved real position back (restore = true), or just drop the preview because
+  // the caller is about to show a new real position (restore = false).
+  endPreview({ restore = true } = {}) {
+    const saved = this._preview;
+    if (!saved) return;
+    this._preview = null;
+    this.board.classList.remove("is-previewing");
+    if (restore) {
+      this.setPosition({ fen: saved.fen, legalMoves: saved.legalMoves, lastMove: saved.lastMove });
+      this.moveBadge = saved.moveBadge;
+      this._syncMoveBadge();
+      this.engineArrow = saved.engineArrow;
+      this.branchArrows = saved.branchArrows;
+      this.branchPick = saved.branchPick;
+      this._renderArrows();
+    }
+    if (saved.onEnd) saved.onEnd({ restored: restore });
+  }
+
   setEngineArrow(uci) {
     const next = uci || null;
+    if (this._preview) {
+      this._preview.engineArrow = next;
+      return;
+    }
     if (this.engineArrow === next) return;
     this.engineArrow = next;
     this._renderArrows();
@@ -2624,6 +2758,11 @@ class BoardController {
   setBranchArrows(list, pickUci = null) {
     const next = Array.isArray(list) ? list.filter((u) => typeof u === "string" && u.length >= 4) : [];
     const pick = typeof pickUci === "string" && pickUci.length >= 4 ? pickUci : null;
+    if (this._preview) {
+      this._preview.branchArrows = next;
+      this._preview.branchPick = pick;
+      return;
+    }
     const same =
       pick === this.branchPick &&
       next.length === this.branchArrows.length &&
@@ -2680,6 +2819,17 @@ class BoardController {
   _bindBoardEvents() {
     this.board.addEventListener("contextmenu", (event) => event.preventDefault());
 
+    // A mouse or touch press never focuses a square: a focused square shows the
+    // keyboard focus ring, and the ring would then follow later key presses.
+    // The press still blurs whatever had focus (as a normal click would), so ←/→
+    // step the game right after clicking the board.
+    this.board.addEventListener("mousedown", (event) => {
+      if (!event.target.closest(".square")) return;
+      event.preventDefault();
+      const active = document.activeElement;
+      if (active && active !== document.body && typeof active.blur === "function") active.blur();
+    });
+
     this.board.addEventListener("pointerdown", (event) => {
       const square = event.target.closest(".square");
       if (!square) return;
@@ -2732,32 +2882,46 @@ class BoardController {
       if (event.button === 2) this._finishAnnotation(event);
     });
 
-    // Keyboard parity for the click-to-move model. The board uses a roving
-    // tabindex — exactly one tabbable square (see _applyRovingTabindex) — so:
-    //   • Arrow keys move focus square-to-square (no wrap at the edges);
+    // Keyboard parity for the click-to-move model. The board is one Tab stop
+    // (see _applyRovingTabindex):
+    //   • Arrow keys are not board-local — they bubble to the app's move
+    //     navigation (← → step the game) like anywhere else on the page;
+    //   • typing a square name ("e4") moves focus to that square;
     //   • Enter/Space on a square selects a movable piece, then selects a legal
-    //     target to play — the pointer path minus the drag (which keyboards
-    //     can't do). Without this, keyboard users could focus squares but never
-    //     move (flagged P2 in the Build and Train friction audits).
+    //     target to play — the pointer path minus the drag.
     this.board.addEventListener("keydown", (event) => {
       const square = event.target.closest(".square");
       if (!square) return;
-      // Arrow keys move focus (screen-direction; squareInDirection answers null
-      // at the edges or for a key it doesn't know, holding focus where it is).
-      if (event.key.startsWith("Arrow")) {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
+        // Swallow the default button activation so Space doesn't also scroll and
+        // Enter doesn't fire a redundant synthetic click.
         event.preventDefault();
-        const target = squareInDirection(square.dataset.square, event.key, this.orientation);
-        if (target) {
-          this.squares.get(target)?.focus();
-          this._applyRovingTabindex(target);
-        }
+        this._typedFile = null;
+        this._keyActivatedAt = Date.now();
+        this._handleSquareActivation(square.dataset.square);
         return;
       }
-      if (event.key !== "Enter" && event.key !== " " && event.key !== "Spacebar") return;
-      // Swallow the default button activation so Space doesn't also scroll and
-      // Enter doesn't fire a redundant synthetic click.
+      const pending = this._typedFile && Date.now() - this._typedAt < 1500 ? this._typedFile : null;
+      const typed = typedSquare(pending, event.key);
+      this._typedFile = typed.pending;
+      this._typedAt = Date.now();
+      if (!typed.handled) return;
+      // A file letter here is part of a square name, not a page shortcut (F flips).
       event.preventDefault();
-      this._handleSquareActivation(square.dataset.square);
+      event.stopPropagation();
+      if (typed.square && this.squares.has(typed.square)) {
+        this.squares.get(typed.square).focus();
+        this._applyRovingTabindex(typed.square);
+      }
+    });
+
+    // Assistive tech activates a square with a click and no pointer press
+    // (event.detail === 0): route it through the same select/play flow.
+    this.board.addEventListener("click", (event) => {
+      if (event.detail !== 0 || Date.now() - (this._keyActivatedAt || 0) < 400) return;
+      const square = event.target.closest(".square");
+      if (square) this._handleSquareActivation(square.dataset.square);
     });
   }
 
@@ -2795,13 +2959,13 @@ class BoardController {
   }
 
   // Roving tabindex over the 64 square buttons: exactly ONE square stays in the
-  // Tab order (the ARIA grid pattern), so keyboard users don't Tab through 64
-  // stops — arrows move focus inside the board instead. The tabbable square is
-  // the remembered cursor (last arrow-navigated square) when it still exists,
+  // Tab order, so keyboard users don't Tab through 64 stops — typing a square
+  // name moves focus inside the board instead. The tabbable square is the
+  // remembered cursor (last typed square) when it still exists,
   // else the anchor on the player's home rank (e2 for White, e7 for Black —
   // the closest thing to a natural starting point on either orientation).
   // Called from _buildGrid (constructor + every orientation flip) and after
-  // arrow-key focus moves, keeping DOM focus and the tabbable square in sync.
+  // typed focus moves, keeping DOM focus and the tabbable square in sync.
   _applyRovingTabindex(anchor = null) {
     let tabbable = anchor || this._rovingSquare;
     if (!tabbable || !this.squares.has(tabbable)) {
@@ -2949,6 +3113,8 @@ class BoardController {
   }
 
   setPosition({ fen, legalMoves = [], lastMove = null }) {
+    // A real position arriving mid-preview ends the preview (see beginPreview).
+    if (this._preview && !this._renderingPreview) this.endPreview({ restore: false });
     const fenChanged = this.fen !== fen;
     const prevFen = this.fen;
     // A same-position refresh (an autosave landing, a panel re-render) must not
@@ -2994,6 +3160,7 @@ class BoardController {
   }
 
   setMoveBadge(squareName, classification, label) {
+    if (this._preview) return;
     if (!squareName) {
       this.moveBadge = null;
     } else {
@@ -3992,6 +4159,7 @@ function switchView(name, { fromUrl = false } = {}) {
   if (!fromUrl && !workspaceUrlReady) navigatedDuringBoot = true;
   if (appState.currentView !== name) clearStaleStatusOnNavigate();
   if (name !== "analyze") positionCoach.cancel();
+  if (appState.currentView !== name && engineWidget) engineWidget.exitPreview();
   appState.currentView = name;
   // Navigating is user activity; if the Lichess watch is running, switching to
   // Analyze (where a fresh game matters most) tightens the poll cadence briefly.
@@ -13841,6 +14009,13 @@ function installAnalyzeE2eHook() {
       await showAnalysisPly(0);
       return true;
     },
+    // The user's Lichess name, so a loaded PGN has a known side ("you") and the coach
+    // reads the other side's moves as the opponent's.
+    setSelfName(name) {
+      appState.lichessUsername = name || null;
+      return true;
+    },
+    getCoachProse: () => (document.getElementById("coach-prose") || {}).textContent || "",
     getPly: () => appState.analysisPly,
     getBoardLabel: () =>
       (document.getElementById("analysis-board-label") || {}).textContent || "",
@@ -14178,23 +14353,31 @@ function bindEvents() {
     .getElementById("explorer-engine-toggle")
     ?.addEventListener("click", () => setEngineOn("build", !engineWantedIn("build")));
   bindEvalChart();
-  document.getElementById("analysis-start").addEventListener("click", () => {
+  // While an engine line is on the board, the board-bar arrows step through it.
+  const navOrPreview = (action, nav) => () => {
+    if (engineWidget && engineWidget.stepPreview(action)) return;
+    nav();
+  };
+  document.getElementById("analysis-start").addEventListener("click", navOrPreview("start", () => {
     void analysisTreeNav("start").catch(() => {});
-  });
-  document.getElementById("analysis-prev").addEventListener("click", () => {
+  }));
+  document.getElementById("analysis-prev").addEventListener("click", navOrPreview("prev", () => {
     void analysisTreeNav("prev").catch(() => {});
-  });
-  document.getElementById("analysis-next").addEventListener("click", () => {
+  }));
+  document.getElementById("analysis-next").addEventListener("click", navOrPreview("next", () => {
     void analysisTreeNav("next").catch(() => {});
-  });
-  document.getElementById("analysis-end").addEventListener("click", () => {
+  }));
+  document.getElementById("analysis-end").addEventListener("click", navOrPreview("end", () => {
     void analysisTreeNav("end").catch(() => {});
-  });
+  }));
+  for (const id of ["analysis-pv-exit", "build-pv-exit"]) {
+    document.getElementById(id)?.addEventListener("click", () => engineWidget?.exitPreview());
+  }
 
-  document.getElementById("build-root").addEventListener("click", buildGoRoot);
-  document.getElementById("build-parent").addEventListener("click", buildGoBack);
-  document.getElementById("build-next").addEventListener("click", buildGoForward);
-  document.getElementById("build-end").addEventListener("click", buildGoToEnd);
+  document.getElementById("build-root").addEventListener("click", navOrPreview("start", buildGoRoot));
+  document.getElementById("build-parent").addEventListener("click", navOrPreview("prev", buildGoBack));
+  document.getElementById("build-next").addEventListener("click", navOrPreview("next", buildGoForward));
+  document.getElementById("build-end").addEventListener("click", navOrPreview("end", buildGoToEnd));
   document.getElementById("build-generate-node").addEventListener("click", generateFromCurrentNode);
   document.getElementById("build-menu").addEventListener("click", openBuildMenu);
   document.getElementById("build-empty-create").addEventListener("click", () => createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" }));
@@ -14395,6 +14578,20 @@ function bindEvents() {
       (["TEXTAREA", "INPUT", "SELECT"].includes(active.tagName) ||
         active.isContentEditable === true);
     if (inEditable) return;
+    // An engine line on the board: ← → step through it, Esc goes back to the game.
+    if (engineWidget && engineWidget.isPreviewing()) {
+      const action = { ArrowLeft: "prev", ArrowRight: "next", Home: "start", End: "end" }[event.key];
+      if (action) {
+        event.preventDefault();
+        engineWidget.stepPreview(action);
+        return;
+      }
+      if (event.key === "Escape" && !paletteIsOpen()) {
+        event.preventDefault();
+        engineWidget.exitPreview();
+        return;
+      }
+    }
     // Arrow keys navigate the active tab's board. We blur clicked move buttons
     // on click, so focus returns to the document for these to fire.
     const inBuild = activeViewName() === "build";

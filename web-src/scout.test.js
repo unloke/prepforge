@@ -357,7 +357,7 @@ function expectTrieDisplayEqual(a, b, path = "root") {
 describe("incremental opening trie (streaming path)", () => {
   it("insertGameIntoTrie with the newest-game anchor reproduces buildOpeningTrie exactly", () => {
     const oneShot = buildOpeningTrie(GAMES, "white", { recency: true });
-    const anchorTs = trieAnchorTs(GAMES); // buildOpeningTrie uses max datestamp over ALL games
+    const anchorTs = trieAnchorTs(GAMES.filter(g => g.color === "white")); // newest eligible game for the posterior
     const incremental = createOpeningTrie();
     for (const g of GAMES) insertGameIntoTrie(incremental, g, "white", { anchorTs, recency: true });
     expect(incremental).toEqual(oneShot);
@@ -812,6 +812,7 @@ describe("triePrefixStats + branchStruggle + exploitability prior", () => {
     const trie = buildOpeningTrie(games, "black", { recency: false });
     const { branches } = rankedOpeningBranches(games, "black", {
       trie,
+      limit: 0,
       baselineScorePct: 50,
     });
     const e5 = branches.find((b) => b.ucis.join(">") === "e2e4>e7e5");
@@ -824,7 +825,7 @@ describe("triePrefixStats + branchStruggle + exploitability prior", () => {
 
 describe("rankedOpeningBranches + rankGamePlan", () => {
   it("collects one real opening branch per game", () => {
-    const { branches: lines } = rankedOpeningBranches(GAMES, "white");
+    const { branches: lines } = rankedOpeningBranches(GAMES, "white", { limit: 0 });
     expect(lines.some((g) => g.sans[0] === "e4")).toBe(true);
     expect(lines.some((g) => g.sans[0] === "d4")).toBe(true);
     for (const line of lines) {
@@ -851,7 +852,7 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
         gameId: "d-old",
       }),
     ];
-    const { branches: lines } = rankedOpeningBranches(games, "white");
+    const { branches: lines } = aggregateOpeningBranches(games, "white");
     const d4 = lines.find((l) => l.ucis[0] === "d2d4");
     expect(d4).toBeDefined();
     expect(d4.games).toBe(1);
@@ -881,14 +882,16 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
         }),
       ),
     ];
-    const { branches: lines } = rankedOpeningBranches(londonGames, "white");
+    const { branches: lines } = rankedOpeningBranches(londonGames, "white", { limit: 0 });
     const nf6 = lines.find((l) => l.ucis.join(">") === "d2d4>g8f6>c2c4");
     const d5 = lines.find((l) => l.ucis.join(">") === "d2d4>d7d5>c2c4");
     expect(nf6).toBeDefined();
     expect(d5).toBeDefined();
     expect(terminalMoveIsOpponent(nf6.ucis, "white")).toBe(true);
     expect(terminalMoveIsOpponent(d5.ucis, "white")).toBe(true);
-    expect(lines.find((l) => l.ucis.length === 1 && l.ucis[0] === "d2d4")).toBeUndefined();
+    // Rows are observed full lines only; no truncated "d4" trunk row.
+    expect(lines.some((l) => l.ucis.length === 1)).toBe(false);
+    expect(nf6.routeSupportGames).toBe(10);
   });
 
   it("With Black ends each branch on Black's actual opening move", () => {
@@ -914,7 +917,7 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
         }),
       ),
     ];
-    const { branches: lines } = rankedOpeningBranches(games, "black");
+    const { branches: lines } = rankedOpeningBranches(games, "black", { limit: 0 });
     const sicilian = lines.find((l) => l.ucis.join(">") === "e2e4>c7c5");
     expect(sicilian).toBeDefined();
     expect(terminalMoveIsOpponent(sicilian.ucis, "black")).toBe(true);
@@ -1042,7 +1045,7 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
         gameId: "legacy-2",
       },
     ];
-    const { branches } = rankedOpeningBranches(legacy, "white");
+    const { branches } = rankedOpeningBranches(legacy, "white", { limit: 0 });
     expect(branches).toHaveLength(2);
     expect(branches.some((b) => b.ucis.join(">") === "e2e4>c7c5>g1f3")).toBe(true);
     expect(branches.some((b) => b.ucis.join(">") === "d2d4>d7d5>c2c4")).toBe(true);
@@ -1057,10 +1060,11 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
         datestamp: i,
       }),
     );
-    expect(rankedOpeningBranches(games, "white").branches).toHaveLength(SCOUT_BRANCH_SCORE_CAP);
+    expect(rankedOpeningBranches(games, "white").branches).toHaveLength(0);
+    expect(rankedOpeningBranches(games, "white").branches.length).toBeLessThanOrEqual(SCOUT_BRANCH_SCORE_CAP);
   });
 
-  it("ranks most-exploitable lines first and collapses nested prefixes", () => {
+  it("ranks most-exploitable lines first, the frequent strong line last", () => {
     const weak = {
       line: "e2e4>c7c5>g1f3",
       sans: ["e4", "c5", "Nf3"],
@@ -1097,10 +1101,9 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
       share: 0.45,
       count: 12,
     };
-    const ranked = rankGamePlan([strong, nested, weak], 50, { minGames: 7, oppColor: "white" });
-    expect(ranked).toHaveLength(2);
-    expect(ranked[0].ucis).toEqual(["e2e4"]);
-    expect(ranked[0].opportunity).toBeGreaterThan(ranked[1].opportunity);
+    const ranked = rankGamePlan([strong, nested, weak].map(r => ({ ...r, conditionalReach: 0.4 })), 50, { minGames: 7, oppColor: "white" });
+    expect(ranked.map((r) => r.ucis)).toEqual([["e2e4"], ["e2e4", "c7c5", "g1f3"], ["d2d4"]]);
+    expect(ranked.at(-1).preparationEvidence.value).toBe(0);
     expect(terminalMoveIsOpponent(ranked[0].ucis, "white")).toBe(true);
   });
 
@@ -1137,9 +1140,22 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
       maiaScorePct: 32,
       maiaWdl: { win: 32, draw: 10, loss: 58 },
     };
-    const ranked = rankGamePlan([stockfishFavorite, maiaAttack], 50, { oppColor: "black" });
-    expect(ranked[0].maiaScorePct).toBe(58);
-    expect(ranked[1].maiaScorePct).toBe(32);
+    const ranked = rankGamePlan([stockfishFavorite, maiaAttack].map(r => ({ ...r, conditionalReach: 0.4 })), 50, { oppColor: "black" });
+    expect(ranked.filter((r) => r.preparationEvidence.value > 0)).toHaveLength(1);
+    expect(ranked[0].maiaScorePct).toBe(32);
+  });
+
+  it("the WEAK SPOT category follows the selection, never a Maia estimate", () => {
+    const base = { games: 10, d: 0, share: 0.3, count: 10, prefilterScore: 0, conditionalReach: 0.4 };
+    const strongMaiaLow = { ...base, line: "e2e4>e7e5", sans: ["e4", "e5"], ucis: ["e2e4", "e7e5"],
+      w: 9, l: 1, scorePct: 90, maiaScorePct: 0, maiaWdl: { win: 0, draw: 0, loss: 100 } };
+    const weakMaiaHigh = { ...base, line: "d2d4>d7d5", sans: ["d4", "d5"], ucis: ["d2d4", "d7d5"],
+      w: 1, l: 9, scorePct: 10, maiaScorePct: 100, maiaWdl: { win: 100, draw: 0, loss: 0 } };
+    const ranked = rankGamePlan([strongMaiaLow, weakMaiaHigh], 50, { oppColor: "black" });
+    for (const route of ranked) {
+      expect(route.prepCategory === "attack").toBe(route.preparationEvidence.value > 0);
+    }
+    expect(ranked.find((r) => r.line === "d2d4>d7d5")?.prepCategory).toBe("attack");
   });
 
   it("Maia availability does not give an ordering bonus", () => {
@@ -1167,12 +1183,7 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
     const ranked = rankGamePlan([weaponWithMaia, attackNoMaia, attackWithMaia], 50, {
       oppColor: "white",
     });
-    // Maia attack (28%) beats Maia weapon (74%) — lower opp score = more exploitable.
-    expect(ranked[0].maiaScorePct).toBe(28);
-    // Maia weapon (74%) beats no-Maia line — real data beats noise.
-    expect(ranked[1].maiaScorePct).toBeUndefined();
-    // Maia availability cannot rescue the comfortable line.
-    expect(ranked[2].maiaScorePct).toBe(74);
+    expect(ranked).toEqual([]); // Maia cannot rescue singleton historical evidence.
   });
 
   it("returns all qualifying lines without an artificial cap", () => {
@@ -1214,8 +1225,9 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
         count: 7,
       },
     ];
-    const ranked = rankGamePlan(lines, 55, { minGames: 7, oppColor: "white" });
-    expect(ranked.length).toBeGreaterThanOrEqual(3);
+    const ranked = rankGamePlan(lines.map(r => ({ ...r, conditionalReach: 0.4 })), 55, { minGames: 7, oppColor: "white" });
+    expect(ranked.length).toBe(3);
+    expect(ranked.filter((r) => r.preparationEvidence.value > 0)).toHaveLength(2);
   });
 });
 

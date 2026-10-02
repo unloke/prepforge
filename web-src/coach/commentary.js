@@ -196,7 +196,9 @@ function goodPoint(f, x) {
   }
   // A quiet move that wins real material by force within a few moves.
   const strong = ["best", "great", "brilliant"].includes(f.classification.code);
-  if (strong && !capture && !x.prevWasCapture) {
+  // Skipped when the mover is worse after it: a line that "wins a queen" for the side that
+  // is losing is the other side's sacrifice, not a win.
+  if (strong && !capture && !x.prevWasCapture && bucket(f.winAfterMover) >= 0) {
     const quick = lineOutcome(f.fenBefore, f.playedPvUci || [], { maxPlies: 6 });
     const net = quick && quick.quiet ? netFor(quick, x.m) : null;
     if (net && netValue(net) >= 2) {
@@ -398,23 +400,41 @@ export function buildCommentary(features, opts = {}) {
 
 const ERROR_WORD = { inaccuracy: "an inaccuracy", mistake: "a mistake", blunder: "a blunder" };
 
-// Pieces a move hits or takes belong to the user: "the bishop on c4" -> "your bishop on c4".
+// Pieces the opponent's move hits, takes, pins or skewers belong to the user:
+// "attacks the pawn on e4" -> "attacks your pawn on e4", "pins the knight to the king" ->
+// "pins your knight to your king". The mover's own piece ("develops the knight") keeps "the".
 function yours(phrase) {
-  return String(phrase || "")
-    .replace(/\bthe (queen|rook|bishop|knight|pawn) on /g, "your $1 on ")
-    .replace(/\bthe king\b/g, "your king");
+  const p = String(phrase || "");
+  const whole = /^(pins|skewers) /.test(p) || /, (pinning|skewering) /.test(p);
+  return whole
+    ? p.replace(/\bthe (queen|rook|bishop|knight|pawn|king)\b/g, "your $1")
+    : p.replace(/\bthe (queen|rook|bishop|knight|pawn) on /g, "your $1 on ").replace(/\bthe king\b/g, "your king");
 }
 
-// "Best reply: 19.Bxd4 (you are clearly better)."
+// What the user's best reply threatens, as a participle clause (the pieces it hits are
+// the opponent's, so they keep "the"): "forking the king and the rook on a8",
+// "attacking the bishop on g4". "" when the reply threatens nothing concrete.
+function replyPoint(f) {
+  if (!f.replySan || !f.replyUci) return "";
+  const motif = motifPhrase(f.fenAfter, f.replyUci, f.replySan);
+  if (/^forks /.test(motif)) return participle(motif);
+  const threat = threatPhrase(f.fenAfter, f.replyUci, f.replySan);
+  if (!threat || threat === "gives check") return "";
+  return threat.replace(/^(attack|hit|fork)s/, "$1ing").replace(/^gives check and hits/, "with check, hitting");
+}
+
+// "Best reply: 19.Bxd4, attacking the knight on c6 (you are clearly better)."
 function replySentence(f, v) {
   if (!f.replySan) return "";
   const reply = numberLine(f.fenAfter, [f.replySan]);
   if (Number.isFinite(f.mateAfter) && f.inMateNet) return `Best reply: ${reply}, with ${mateCount(f.mateAfter)}.`;
-  return `Best reply: ${reply} (${v.standing(bucket(100 - f.winAfterMover))}).`;
+  const point = replyPoint(f);
+  return `Best reply: ${reply}${point ? `, ${point}` : ""} (${v.standing(bucket(100 - f.winAfterMover))}).`;
 }
 
-// The slip, in what it gives the user: mate, a hanging piece, material, or position.
-// `named` = the reply already appears in the sentence.
+// The slip, in what it gives the user: mate, a hanging piece, material (with the tactic
+// that wins it), a chance they missed, or the position. `named` = the reply already
+// appears in the sentence. Mirrors errorConsequence for the user's own moves.
 function opponentSlip(f, x, san) {
   const reply = f.replySan ? numberLine(f.fenAfter, [f.replySan]) : "";
   if (f.inMateNet && reply) return { text: `${san} walks into ${mateCount(f.mateAfter)}, starting with ${reply}.`, named: true };
@@ -427,11 +447,34 @@ function opponentSlip(f, x, san) {
     return { text: `${san} leaves the ${PIECE_NAME[hung.type]} on ${hung.square} hanging; ${reply} wins it.`, named: true };
   }
   if (lost) {
+    // Name the tactic the user's reply executes when there is one: the engine line
+    // confirms it wins material, so a fork / pin / skewer is a fact, not a guess.
+    const motif = reply ? motifPhrase(f.fenAfter, f.replyUci, f.replySan) : "";
+    if (motif) return { text: `${san} drops ${lost}: ${reply} ${motif}.`, named: true };
     const line = trimmedLine(f.fenAfter, x.played, x.opp, 6);
     return { text: `${san} drops ${lost}${line ? ` after ${line}` : ""}.`, named: !!line };
   }
+  // A chance they missed: their best move won material and the one played doesn't.
+  if (f.bestSan && !f.isBest && x.rel && x.relValue >= 1 && x.bestNet !== null && x.bestNet >= 1) {
+    const gain = gainPhrase(netFor(x.best, x.m));
+    const motif = motifPhrase(f.fenBefore, f.bestUci, f.bestSan);
+    if (gain) {
+      const how = motif ? `${yours(motif)} and wins ${gain}` : `wins ${gain}`;
+      return { text: `${san} misses ${f.bestSan}, which ${how}.`, named: false };
+    }
+  }
+  // Positional: what the user's best reply does and where it leaves them.
   const better = f.bestSan && !f.isBest ? `; ${f.bestSan} was their best` : "";
   return { text: `${san} is ${ERROR_WORD[f.classification.code]}${better}.`, named: false };
+}
+
+// What a sound move by the opponent does, said for the user: the same point the user's
+// own read would make (material won, a forced mate, a take-back, a trade, the threat),
+// with the user's pieces called "your".
+function opponentPoint(f, x) {
+  const point = goodPoint(f, x);
+  // "takes back the bishop" / "trades rooks" name the piece that changed hands, not whose.
+  return /^(takes back|recaptures|trades|gives)/.test(point) ? point : yours(point);
 }
 
 function opponentProse(f, selfSide) {
@@ -452,12 +495,14 @@ function opponentProse(f, selfSide) {
     best: pick(f, "opp-best", [`${san} is accurate`, `${san} is the engine's choice`, `${san} is a solid move`]),
     good: `${san} is reasonable`,
   }[code] || `${san} is playable`;
-  const threat = threatPhrase(f.fenBefore, f.uci, f.san);
-  const did = yours(describeMove(f.fenBefore, f.uci, f.san));
+  const point = opponentPoint(f, x);
   const reply = replySentence(f, v);
-  // A move that wins material or hits a piece asks for an answer: say so in the tone.
-  const pressing = !!threat || /^takes your /.test(did);
-  return { tone: pressing ? "warn" : "info", prose: `${lead}${did ? `: it ${did}` : ""}.${reply ? ` ${reply}` : ""}` };
+  const threat = threatPhrase(f.fenBefore, f.uci, f.san);
+  // A move that wins material, forces mate or hits a piece asks for an answer: say so in the tone.
+  const forcing = /^(forces|wins)|mate/.test(point);
+  const pressing = forcing || !!threat || /^takes your /.test(point);
+  const tone = /^forces/.test(point) ? "danger" : pressing ? "warn" : "info";
+  return { tone, prose: `${lead}${point ? `: it ${point}` : ""}.${reply ? ` ${reply}` : ""}` };
 }
 
 // The opponent's move on a game the user played, read for the user.

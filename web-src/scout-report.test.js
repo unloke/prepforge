@@ -105,7 +105,7 @@ const PLAN_GAMES = [
   ...Array.from({ length: 8 }, (_, i) =>
     scoutGameRecord({
       color: "white",
-      score: i % 3 === 0 ? 1 : 0,
+      score: 0,
       sans: ["e4", "c5", "Nf3"],
       ucis: ["e2e4", "c7c5", "g1f3"],
       rating: 1800,
@@ -117,7 +117,7 @@ const PLAN_GAMES = [
   ...Array.from({ length: 7 }, (_, i) =>
     scoutGameRecord({
       color: "white",
-      score: i % 2 === 0 ? 1 : 0,
+      score: 1,
       sans: ["d4", "d5", "c4"],
       ucis: ["d2d4", "d7d5", "c2c4"],
       rating: 1800,
@@ -323,6 +323,7 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
     const line = createStubElement("div");
     line.classList.add("scout-line", "is-expanded");
     line.dataset.lineKey = "e2e4>c7c5>g1f3";
+    line.dataset.userOpen = "1";
     results._lines = [line];
     results.querySelectorAll = (sel) => {
       if (sel === ".scout-line.is-expanded[data-line-key]") return results._lines;
@@ -334,6 +335,16 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
     expect(captured.expandedKeys.has("e2e4>c7c5>g1f3")).toBe(true);
     expect(captured.scrollTop).toBe(120);
     expect(scoutLineKey(["e2e4", "c7c5", "g1f3"])).toBe("e2e4>c7c5>g1f3");
+  });
+
+  it("does not pin the default-open row across a rebuild", () => {
+    const results = createStubElement("div");
+    const line = createStubElement("div");
+    line.classList.add("scout-line", "is-expanded");
+    line.dataset.lineKey = "e2e4>e7e6";
+    results.querySelectorAll = (sel) =>
+      sel === ".scout-line.is-expanded[data-line-key]" ? [line] : [];
+    expect(captureScoutExpanded(results).expandedKeys.size).toBe(0);
   });
 
   it("restores expansion by line key after a rebuild", () => {
@@ -405,6 +416,7 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
     lineElBefore.classList.add("scout-line", "is-expanded");
     lineElBefore.dataset.lineKey = key;
     lineElBefore.dataset.color = "white";
+    lineElBefore.dataset.userOpen = "1";
     const resultsBefore = createStubElement("div");
     resultsBefore._lines = [lineElBefore];
     resultsBefore.querySelectorAll = (sel) =>
@@ -615,7 +627,7 @@ describe("scout-report rendering", () => {
       { speedFilter: "blitz", escapeHtml },
     );
     expect(sectionData.baselineScorePct).toBe(100);
-    expect(sectionData.prepTargets.length).toBeGreaterThan(0);
+    expect(sectionData.prepTargets).toEqual([]);
   });
 
   it("explains why a game-plan row was recommended from existing selector fields", () => {

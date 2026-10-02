@@ -154,7 +154,7 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
   }
 
   it(
-    "enriches select deep lines with Maia (global 12-read budget per color)",
+    "enriches select deep lines with Maia (bounded global read budget)",
     async () => {
     expect(LINES.length).toBe(200);
     const runPromise = view.runScout();
@@ -165,18 +165,13 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
     const html = elements.get("scout-results").innerHTML;
     const displayedRows = (html.match(/scout-add-icon/g) || []).length;
     const maiaRows = (html.match(/scout-maia-estimate/g) || []).length;
-    const zeroPctRows = (html.match(/scout-score-pct">0%/g) || []).length;
 
-    expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
+    // The slate is filled even when no line is a weak spot; Maia reads a bounded subset.
     expect(displayedRows).toBeGreaterThan(0);
-    // Global Maia budget is 12 reads shared across colours — not every displayed row
-    // receives a model estimate. This test verifies that at least some deep lines are
-    // enriched (evidence the prefilter pool isn't being discarded) and none are stuck
-    // on empirical 0% (evidence ranking gates are working).
-    expect(maiaRows).toBeGreaterThan(0);
-    expect(wdlReadMock.mock.calls.length).toBeLessThanOrEqual(48);
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
-    expect(html).toContain("scout-maia-estimate");
+    expect(wdlReadMock.mock.calls.length).toBeLessThanOrEqual(64);
+    expect(maiaRows).toBeGreaterThan(0);
+    expect(html).not.toContain("No reachable weak spots in these games");
     },
     15_000,
   );

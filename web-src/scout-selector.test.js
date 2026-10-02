@@ -84,7 +84,7 @@ function makeCorpus() {
       scoutGame({
         color: "black",
         gameId: `black-e5-${i}`,
-        score: 0,
+        score: i < 3 ? 0 : 1,
         sans: ["e4", "e5", "Nf3", "Nc6"],
         ucis: ["e2e4", "e7e5", "g1f3", "b8c6"],
         datestamp: 1_700_000_000_000 - i * 86_400_000,
@@ -133,13 +133,14 @@ describe("production Module B contract (Scout v2)", () => {
   });
 
   it("keeps distinct opponent-terminal routes that share only the first 16 plies", () => {
-    const shared = Array.from({ length: 16 }, (_, i) => (i % 2 === 0 ? "e2e4" : "e7e5"));
+    const shared = Array.from({ length: 16 }, (_, i) => ["g1f3", "g8f6", "f3g1", "f6g8"][i % 4]);
     // Legal-looking unique tails after the shared display-trie prefix.
     const a = {
-      line: [...shared, "a17"].join(">"),
-      ucis: [...shared, "a17"],
-      sans: [...shared, "a17"],
-      games: 2,
+      line: [...shared, "e2e4"].join(">"),
+      ucis: [...shared, "e2e4"],
+      sans: [...shared, "e2e4"],
+      games: 12,
+      conditionalReach: 0.4,
       share: 0.2,
       branchScore: 2,
       scorePct: 25,
@@ -148,10 +149,11 @@ describe("production Module B contract (Scout v2)", () => {
       l: 2,
     };
     const b = {
-      line: [...shared, "b17"].join(">"),
-      ucis: [...shared, "b17"],
-      sans: [...shared, "b17"],
-      games: 2,
+      line: [...shared, "d2d4"].join(">"),
+      ucis: [...shared, "d2d4"],
+      sans: [...shared, "d2d4"],
+      games: 12,
+      conditionalReach: 0.4,
       share: 0.2,
       branchScore: 1,
       scorePct: 25,
@@ -169,7 +171,8 @@ describe("production Module B contract (Scout v2)", () => {
       line: "e2e4>e7e5",
       ucis: ["e2e4", "e7e5"],
       sans: ["e4", "e5"],
-      games: 2,
+      games: 12,
+      conditionalReach: 0.4,
       share: 0.25,
       branchScore: 1,
       scorePct: 40,
@@ -181,7 +184,8 @@ describe("production Module B contract (Scout v2)", () => {
       line: "d2d4>d7d5",
       ucis: ["d2d4", "d7d5"],
       sans: ["d4", "d5"],
-      games: 2,
+      games: 12,
+      conditionalReach: 0.4,
       share: 0.25,
       branchScore: 1,
       scorePct: 40,
@@ -193,6 +197,7 @@ describe("production Module B contract (Scout v2)", () => {
     const second = selectProductionRoutes([twinA, twinB], 50, { oppColor: "white" });
     const keys = first.map((r) => r.ucis.join(">"));
     expect(keys).toEqual(second.map((r) => r.ucis.join(">")));
+    expect(first).toHaveLength(2);
     expect(keys[0] < keys[1]).toBe(true);
   });
 

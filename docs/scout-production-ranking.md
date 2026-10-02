@@ -1,124 +1,111 @@
-# Scout production ranking — observed decision preparation
+# Scout production ranking
 
-Updated 2026-09-26. Scoring version **9**, Module B identity `scout-v2`.
-This supersedes scoring version 8's conservative full-route coverage objective.
-See [selection research](archive/research/scout-selection-research.md) for rationale, formulas,
-real before/after results, reproduction commands and limitations.
+Updated 2026-10-02. Scoring version **10**; Module B identity remains `scout-v2`.
 
-## 1. Product objective
+Production shows twelve observed opening lines per colour (fewer only when the
+games hold fewer distinct branches). Every row is a real game's line played to the end of the
+opening; no row is a truncated prefix. Weak spots lead; the remaining slots are
+filled with the opponent's likeliest other lines. "No reachable weak spots in
+these games" appears only when no line qualifies at all.
 
-Choose at most 12 observed, non-nested routes per opponent colour. Maximize unique
-opponent-decision preparation coverage plus bounded leaf opportunities. A route
-is a plan through controllable user moves and historically observed opponent
-responses; historical user move frequency is not an opponent-response probability.
+## Anchors
 
-`web-src/scout-preparation-value.js` implements the objective and exact budgeted
-prefix-tree DP. Each opponent decision receives conditional reach times a
-sample-reliability weight. Repeated decisions supported by the same nested game
-set receive diminishing credit. Shared decision prefixes are counted once across
-the selected set. The DP compares a parent with every feasible child combination,
-then adds an edge's decision credit once if that subtree is used.
+A line's evidence is its **anchor**: the deepest prefix ending on an opponent
+move with raw `n >= 3` and `n_eff >= 2`. The rest of the line is the observed
+continuation and is not charged as depth. `routeSupportGames`, `routeWdl`,
+`routeScorePct` and `selectionWdl` describe the anchor; `exactGames` counts games
+that played the whole line, `pathGames` the games behind each move. A line with
+no supported anchor has support 0 and is never planned.
 
-No minimum route length, opening-family quota, singleton exclusion, or length-only
-bonus is used. A deeper route adds value only through observed decisions and/or
-leaf opportunity. Short tactical routes can still win. Full-route `n=1` remains
-one game, even if its shared opening decisions have much more historical evidence.
+## Evidence and utility
 
-## 2. Production pipeline
+The colour/speed-filtered cohort excludes early-resignation collapses. Each
+full prefix carries raw W/D/L, raw support `n`, and selection-weighted W/D/L.
+Weights have a 90-day half-life anchored at the newest eligible game. Undated
+games have weight one. Streaming display tries are rebuilt for selection when
+their anchor or depth differs; a fixed-strength prior requires normalized counts.
+The baseline uses exactly the same cohort and weights.
 
-1. Actual games generate exact opponent-terminal opening routes and supported
-   branching prefixes. No population or engine-generated route becomes a candidate.
-2. The full same-colour/speed trie supplies exact support, empirical results and
-   `preparationDecisions`: opponent-only `{ ply, moveGames, parentGames }` counts.
-3. The existing weakest-opponent-decision Jeffreys plausibility gate stays at 10%.
-   This is separate from the raw conditional product used in decision utility.
-4. The bounded engine queue ranks single-route preparation utility and retains up
-   to 300 candidates per colour. This remains a heuristic compute allocation;
-   parent/child candidates can both reach the engine.
-5. Stockfish depth 8, three workers, cached leaf FEN reads. The existing actionable
-   reply / positive user opportunity gate remains. Assessed metrics and decision
-   evidence travel with each line; no intermediate nested collapse is performed.
-6. Prospective DP recommendations receive optional Maia enrichment first, then
-   backups (global 64 attempts/pool, 12-success target per opponent colour). Maia is at most two
-   pseudo-games for leaf outcome opportunity, never opponent reach or support.
-7. The report overlays assessed metrics and Maia onto observed branch evidence,
-   then invokes the same DP. Available Maia is not a separate selection class.
-8. An assessed empty opportunity set remains empty. Engine-unavailable fallback
-   uses the same decision objective on observed candidates with provisional leaf
-   opportunity 0.1. Only callers without conditional evidence use conservative
-   observed-frequency leaf utility; they get no invented decision-coverage credit.
-   Cache scopes include scoring version 9.
+With weighted counts `x`, the baseline-centred Dirichlet prior has strength 8.
+Cohort W/D/L proportions receive 0.001 smoothing per component. Let
+`alpha = x + 8q`, `A = sum(alpha)`, and `b` be the weighted cohort score:
 
-## 3. Evidence and score fields
+```
+mu = (alphaW + 0.5 alphaD) / A
+sigma² = ((alphaW + 0.25 alphaD) / A - mu²) / (A + 1)
+H = max(0, b - mu - 0.5 sigma)
+U = R H (1 + 0.2 E) / (1 + 0.03 max(0, ceil(plies / 2) - 4))
+```
 
-| Field | Meaning |
-| --- | --- |
-| `games` | Exact terminal branch count; zero for generated nonterminal candidates |
-| `routeSupportGames` | Personal games reaching the entire prefix, never ancestor support |
-| `evidenceGames` | Same-colour/speed corpus count |
-| `preparationDecisions` | Opponent-only exact conditional counts, one-based ply |
-| `routeScorePct` | Full-prefix empirical opponent score |
-| `routeReach`, `routePlausibility` | Weakest Jeffreys estimate / evidence for the plausibility gate |
-| `prefilterScore`, `mateIn`, `hasUserReply` | User-perspective engine opportunity / usability |
-| `maiaScorePct`, `maiaWdl` | Supplemental opponent WDL estimate |
-| `preparationEvidence.coverage` | Wilson lower observed frequency, retained as a diagnostic and incomplete-evidence fallback |
-| `preparationEvidence.conditionalReach` | Product of raw opponent-only conditional frequencies; a descriptive plug-in estimate |
-| `preparationEvidence.decisionCoverage` | Single-route sum of diminishing decision credits |
-| `preparationEvidence.terminalValue` | Conditional reach × full-route reliability × bounded opportunity |
-| `preparationEvidence.value` | Single-route utility, used for queue/display; set utility deduplicates shared decisions |
+A weak spot requires anchor `n >= 3`, effective support
+`n_eff = sum(weights)² / sum(weights²) >= 2`, and positive utility. There is no
+weighted-support floor. The uncertainty deduction is a ranking parameter,
+not a significance test.
 
-`ancestorGames`, `ancestorScorePct`, recency, clocks and game lengths remain
-aggregation/display diagnostics, not direct route-selection drivers. No old
-family-prior, Maia-presence sort, or terminal-count nested replacement is restored.
+`R` multiplies weighted child/parent support only at opponent decisions;
+our chosen moves multiply by one. Require whole-route `R >= 0.10` and the
+existing weakest-choice Jeffreys estimate >= 0.10. Maia never changes reach,
+support or the posterior. Raw reach, Wilson frequency and decision coverage
+remain diagnostics; coverage earns no selection reward.
 
-## 4. Verification and research boundary
+## Pipeline and caches
 
-`scout-selection-v2.test.js` covers the pinned public-game failure both before
-engine availability and after actual depth-8 reads, controllable user moves,
-rare opponent responses, single-game continuations, repeated-evidence saturation,
-bounded Maia and 90 exhaustive comparisons of the shared-decision DP.
-Existing evidence transport, report, queue, prefilter and live fallback tests remain.
+1. Exact observed opponent-terminal opening lines supply the candidate pool,
+   each annotated with its anchor (`annotateRouteEvidence`).
+2. Cheap utility ranks eligible candidates for at most 300 Stockfish candidates
+   per colour. Depth 8 and three workers remain. Require a usable reply; reject
+   opponent-favouring mates and user CP below -75 (the only engine gate). `E` is one for a user mate,
+   `max(cp,0)/(100+max(cp,0))` for CP reads, and 0.1 when unavailable.
+3. Rows never share a canonical terminal FEN (four fields, without counters).
+   Counter-only transpositions also reuse engine reads under their existing cache keys.
+4. Selection (`selectPreparationRoutes`): anchors in utility order, one row each,
+   shown by the most common observed line through the anchor (more games behind
+   the first differing move). A weak anchor is shown by a line whose own
+   evidence is also weak. An anchor already covered by a picked line is skipped,
+   so a family of nested branches is one row. Then further lines by utility,
+   stubs under eight plies last. Every pass keeps the same rule: a row parts from
+   every picked line no later than its own anchor, so a slot stays empty rather
+   than repeat a branch past its anchor.
+   Once weak spots run out, `softValue = R (1 + (b - mu - 0.5 sigma) / b)`
+   orders the fill: likely lines first, tilted toward weaker results.
+5. Maia supplies optional WDL to prospective picks and bounded backups: global
+   64 attempts/pool and 12 successful reads per colour. It earns no utility bonus.
+   Engine-unavailable fallback uses the same evidence, gates and selection.
+6. Derived branch/prefilter scopes use scoring version 10. Maia attempt scopes
+   also include scoring version and game-ID hash. Successful engine FEN/depth
+   and Maia FEN/rating read keys remain unchanged.
 
-The frozen v8 objective is in `research/scout-selection-v8.js`; only the offline
-study imports it. Production imports no historical selector. The implementation
-and test details are in [selection research](archive/research/scout-selection-research.md).
+`selectionBaseline` supplies the weighted cohort.
+`routeReach` remains the weakest-choice diagnostic;
+`preparationEvidence.conditionalReach` is whole-route weighted reach.
+`preparationEvidence` also exposes raw/shrunk scores, uncertainty, effective
+support, weakness and utility. Report sample sizes and summary confidence use
+anchor support; Maia results are identified separately.
 
-## 5. Experimental runtime（?scoutV13=1）與 research/archive
+## Verification and comparison
 
-### 5.1 Experimental runtime path — Scout v13
+`scout-preparation-value.test.js` pins anchor-first ordering, fill order,
+alternatives and stub handling. Scout regression tests retain legality, evidence transport, cancellation,
+cache and empty-plan UI coverage, and add posterior, recency and transposition cases.
 
-`views/scout.js` 的 `isV13Mode()`（`new URLSearchParams(window.location.search).has("scoutV13")`）
-目前仍可從 UI runtime 啟用，因此 v13 **不是 pure archive**：它有活的 runtime entry，
-但不屬於 default production ranking。
+Run `node scripts/scout-route-ranking-benchmark.mjs`. It reads the pinned
+Eric Rosen games and Stockfish cache offline, prints Markdown plus JSON, and
+writes only when given `--out path`. Frozen v9 candidate generation, queue math,
+engine gates and selector live in `research/scout*-v9.js`, imported only by this
+benchmark. End-to-end and fallback measure the full ranking pipeline; same-pool
+compares selectors using a common cached assessed pool. Each version receives
+five warmups and thirty timed runs; diagnostics are excluded from timing.
+Missing NEW cache reads make end-to-end inconclusive. There is no engine refresh.
 
-- 進入點：`web-src/views/scout.js` `isV13Mode()`；v13 是獨立 panel，
-  `!isV13Mode()` 才會排程 classic prefilter/Maia enrichment（v13 與 default path 互斥）。
-- 模組：`scout-v13-stream.js` → `scout-v13-adapter.js` / `scout-v13-funnel.js` /
-  `scout-v13-extension.js` / `scout-v13-package.js` / `scout-v13-style.js` /
-  `scout-v13-report.js`。
-- v13 仍共用部分 research 模組：`scout-v13-*.js` import `scout-route-audit.js`、
-  `scout-bias-routes.js`、`scout-bias-features.js`——這些模組自身沒有 runtime entry，
-  目前僅透過 v13（及彼此）被載入，因此歸類為 experimental runtime 的共享依賴，
-  而非 pure archive。
+Both versions are judged on the same anchor evidence. The acceptance targets
+are a full slate of twelve, rows of at least eight plies, no fewer weak picks
+than OLD, a five-point lower mean shrunk score, reach >= 10% with median >= half
+OLD's, zero anchor support below three, no nested or duplicate rows, median
+runtime <= 125% and p95 <= 150% of OLD. Results on one
+in-sample corpus do not establish predictive quality; chronological held-out
+validation is required before making that claim.
 
-### 5.2 Legacy/archive module with a remaining shared dependency
-
-`scout-v12-report.js`：v12 production branch 已於先前清理輪從 production runtime
-graph 移除（`views/scout.js` 的 `?scoutV12` mode：`v12Audits` 永遠為空 → report
-不可能渲染，含 `isV12Mode`/`paintV12Panel`/`handleV12ActionClick` 等，以及
-`app.js` 的 `?scoutV12` eager-init hook）。但 `scout-v13-funnel.js` 與
-`scout-v13-report.js` 仍 import 其 `V12_BANNED_VOCAB`，因此它是
-**legacy/archive module with a remaining shared dependency**，不是完全 dead code。
-
-### 5.3 Research / archive（沒有目前 runtime entry）
-
-- bias experiments：`scout-bias-cohort.js`、`scout-bias-fit.js`
-- census / ref-df：`scout-ref-df-census.js`
-- graph：`scout-graph.js`（僅被其他 archive 模組引用）
-- v15 studies：`scout-v15-study.js`、`scout-v15-engine-cache.js`
-- shadow-prep：`scout-shadow-prep-p0.js`、`scout-shadow-prep-exact-solver.js`
-- 其他：`scout-stockfish-uci.js`（目前無任何 importers）
-- `research/**`、`scripts/scout-*.mjs`、protocol JSON、歷史設計文件
-  （`docs/scout-v12-design.md`、`docs/scout-v13-design.md`）。
-
-測試、E2E infrastructure、benchmark / verification scripts、protocol JSON 原樣保留。
+`?scoutV13=1` remains a separate experimental runtime, unrelated to scoring
+version 10. Its existing shared research dependencies and legacy v12 vocabulary
+module retain their previous status. Historical `archive/` material does not
+constrain current production ranking.

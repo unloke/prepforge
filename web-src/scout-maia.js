@@ -1,6 +1,6 @@
 // Maia3 reads for Scout game-plan rows: leaf-FEN WDL from the opponent's perspective.
 
-import { branchPathKey, enrichPrepTarget, terminalMoveIsOpponent } from "./scout.js";
+import { branchPathKey, enrichPrepTarget, terminalMoveIsOpponent, hashGameIdsForScope, SCOUT_SCORING_VERSION } from "./scout.js";
 
 export const MAIA_ENRICH_IDLE = "idle";
 export const MAIA_ENRICH_LOADING = "loading";
@@ -134,8 +134,8 @@ export function openingLinesNeedMaia(lines, { maiaResults, rating, fenAfterLine 
 }
 
 /** Scope key — failures retry only when speed, game count, or median rating changes. */
-export function computeMaiaScopeKey({ activeSpeed, gameCount, ratings }) {
-  return `${activeSpeed || "all"}|${gameCount || 0}|${ratings?.white ?? 0}|${ratings?.black ?? 0}`;
+export function computeMaiaScopeKey({ activeSpeed, gameCount, games, ratings }) {
+  return `${activeSpeed || "all"}|${gameCount || 0}|${ratings?.white ?? 0}|${ratings?.black ?? 0}|${games?.length ? hashGameIdsForScope(games) : gameCount || 0}|${SCOUT_SCORING_VERSION}`;
 }
 
 export function maiaProviderCacheKey(resultKey) {
@@ -181,7 +181,7 @@ export function scoutLineWdlCounts(line) {
       l: line.maiaWdl.loss ?? 0,
     };
   }
-  return { w: line?.w || 0, d: line?.d || 0, l: line?.l || 0 };
+  return line?.routeWdl ?? { w: line?.w || 0, d: line?.d || 0, l: line?.l || 0 };
 }
 
 export function applyMaiaToLine(line, cached, baselineScorePct, enrich = enrichPrepTarget) {

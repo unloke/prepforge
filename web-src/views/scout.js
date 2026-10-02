@@ -871,6 +871,7 @@ export function createScoutView(deps) {
     const scopeKey = computeMaiaScopeKey({
       activeSpeed: scoutState.activeSpeed,
       gameCount: scoutState.games.length,
+      games: scoutState.games,
       ratings: scoutState.maiaRatings,
     });
     if (resetMaiaScopeCache(scoutState, scopeKey)) {
@@ -975,10 +976,9 @@ export function createScoutView(deps) {
       scoutState.prefilterEnrichState === PREFILTER_FAILED;
     if (
       prefilterSettled &&
-      scoutState.prefilterScopeKey === scopeKey &&
-      globalMaiaRankedPool().length
+      scoutState.prefilterScopeKey === scopeKey
     ) {
-      scheduleMaiaEnrich();
+      if (globalMaiaRankedPool().length) scheduleMaiaEnrich();
       return;
     }
 

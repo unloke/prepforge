@@ -10,11 +10,16 @@ import {
   prefilterCacheKey,
   prefilterMaiaLines,
   prefilterPoolLines,
-  rankPrefilterCandidates,
+  rankPrefilterCandidates as productionRankPrefilterCandidates,
   runStockfishPrefilter,
   scorePrefilterLine,
 } from "./scout-prefilter.js";
 import { fenAfterLine } from "./scout.js";
+import { preparationValue } from "./scout-preparation-value.js";
+
+// Older engine lifecycle fixtures need explicit historical evidence under v10.
+const rankPrefilterCandidates = (lines, evals, options) => productionRankPrefilterCandidates(
+  lines.map(line => ({ conditionalReach: 0.4, scorePct: 0, ...line })), evals, options);
 
 const OPP = "white";
 
@@ -242,8 +247,9 @@ describe("scout-prefilter scoring", () => {
       oppColor: "black",
       ancestorFreq: ancestorFreqForLine(rareBlunder.ucis, 0.005),
     });
+    // Kept as a filler row; a single game is never a weak spot.
     expect(ranked).toHaveLength(1);
-    expect(ranked[0].line.ucis).toEqual(rareBlunder.ucis);
+    expect(preparationValue(ranked[0].line, 50).value).toBe(0);
   });
 
   it("retains engine opportunities even when the opponent historically wins", () => {
@@ -271,6 +277,7 @@ describe("scout-prefilter scoring", () => {
       baselineScorePct: 50,
     });
     expect(ranked).toHaveLength(1);
+    expect(preparationValue(ranked[0].line, 50).weakness).toBe(0);
   });
 
   it("ranks struggling frequent lines above comfortable ones at equal Stockfish edge", () => {
@@ -314,8 +321,7 @@ describe("scout-prefilter scoring", () => {
       ancestorFreq,
       baselineScorePct: 50,
     });
-    expect(ranked).toHaveLength(2);
-    expect(ranked[0].line.ucis).toEqual(struggling.ucis);
+    expect(ranked.map((entry) => entry.line.ucis)).toEqual([struggling.ucis, comfortable.ucis]);
   });
 
   it("populates funnelOut with per-stage drop counts", () => {
@@ -354,7 +360,7 @@ describe("scout-prefilter scoring", () => {
     expect(funnelOut.gateDrops.noOpportunity).toBe(0);
   });
 
-  it("filters a line that clears no OR-gate: weak edge, no slip, no struggle, not off-modal", () => {
+  it("keeps a small engine edge as a filler: only losing positions are gated", () => {
     // oppColor white, small cp-loss => userLeafAdvantage = cpLoss - 20 = -15 (< 20), cpLoss 5
     // (< 12), no annotated struggle/offModal => fails every survival condition.
     const gatedOut = {
@@ -369,13 +375,13 @@ describe("scout-prefilter scoring", () => {
       oppColor: "white",
       ancestorFreq: ancestorFreqForLine(gatedOut.ucis, 0.005),
     });
-    expect(ranked).toHaveLength(0);
+    expect(ranked).toHaveLength(1);
   });
 
   it("retains modest positive edges for continuous utility comparison", () => {
     const line = {
       ucis: ["e2e4", "e7e5", "g1f3"], sans: ["e4", "e5", "Nf3"],
-      games: 1, routeReach: 0.2, offModal: 20, exploitabilityPrior: 0,
+      games: 10, routeReach: 0.2, offModal: 20, exploitabilityPrior: 0,
     };
     const ranked = rankPrefilterCandidates([line], evalMapForLine(line.ucis, "white", { cpLoss: 28 }), {
       fenAfterLine, oppColor: "white", ancestorFreq: ancestorFreqForLine(line.ucis),
@@ -406,7 +412,7 @@ describe("computePrefilterScopeKey", () => {
       activeSpeed: "blitz",
       games,
     });
-    expect(key).toMatch(/^rival\|blitz\|\d+\|9$/);
+    expect(key).toMatch(/^rival\|blitz\|\d+\|10$/);
     expect(
       computePrefilterScopeKey({ username: "rival", activeSpeed: "blitz", games }),
     ).toBe(key);
@@ -416,7 +422,7 @@ describe("computePrefilterScopeKey", () => {
 describe("runStockfishPrefilter limits", () => {
   it("limits Maia to 12 unique branches from a 48-candidate ranked pool", () => {
     const ranked = Array.from({ length: SCOUT_PREFILTER_LIMIT }, (_, i) => ({
-      line: { ucis: [`u${i}`], sans: [`m${i}`], line: `u${i}`, games: 1, evidenceGames: 48 },
+      line: { ucis: [`u${i}`], sans: [`m${i}`], line: `u${i}`, games: 10, scorePct: 0, conditionalReach: 0.4, evidenceGames: 48 },
       prefilterScore: SCOUT_PREFILTER_LIMIT - i,
     }));
     const maia = prefilterMaiaLines(ranked);
@@ -456,8 +462,7 @@ describe("runStockfishPrefilter limits", () => {
       ancestorFreq,
     });
     const pool = prefilterPoolLines(ranked, 2);
-    expect(pool[0].ucis).toEqual(frequentWeak.ucis);
-    expect(pool[1].ucis).toEqual(rareStrong.ucis);
+    expect(pool.map((line) => line.ucis)).toEqual([frequentWeak.ucis, rareStrong.ucis]);
   });
 
   it("deduplicates a shared leaf FEN across branches", () => {
@@ -479,7 +484,7 @@ describe("buildFallbackPrefilterData", () => {
     const lines = Array.from({ length: 70 }, (_, i) => ({
       ucis: [`m${i}`],
       sans: [`m${i}`],
-      games: 1,
+      games: 10, scorePct: 0, conditionalReach: 0.4,
     }));
     const { ranked, pool, maiaLines } = buildFallbackPrefilterData(lines);
     expect(pool).toHaveLength(SCOUT_PREFILTER_POOL_SIZE);
@@ -523,7 +528,7 @@ describe("rankPrefilterCandidates mate gates and budget expiry", () => {
     const mateInLine = {
       ucis: ["e2e4"],
       sans: ["e4"],
-      games: 1,
+      games: 10,
       share: 0.01,
     };
     const fenLeaf = fenAfterLine(mateInLine.ucis);
@@ -575,18 +580,21 @@ describe("runStockfishPrefilter budget expiry + partial results", () => {
         ucis: ["e2e4", "e7e5"],
         sans: ["e4", "e5"],
         games: 50,
+        conditionalReach: 0.4, scorePct: 0,
         share: 0.8,
       },
       {
         ucis: ["e2e4", "e7e5", "g1f3", "d7d6"],
         sans: ["e4", "e5", "Nf3", "d6"],
         games: 30,
+        conditionalReach: 0.4, scorePct: 0,
         share: 0.6,
       },
       {
         ucis: ["e2e4", "e7e5", "g1f3", "g8f6"],
         sans: ["e4", "e5", "Nf3", "Nf6"],
         games: 20,
+        conditionalReach: 0.4, scorePct: 0,
         share: 0.4,
       },
     ];

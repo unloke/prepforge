@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { trimRankedBranches, SCOUT_BRANCH_HARD_CEILING } from './scout.js';
 
 describe('bounded evidence-driven engine queue', () => {
-  const route = (family, i, n = 10) => ({ ucis: [family,'reply',String(i)], games:n, evidenceGames:100 });
-  it('retains thin data for engine assessment instead of calling it noise', () => {
-    const rows = Array.from({length:110},(_,i)=>route(String(i),i,1));
-    expect(trimRankedBranches(rows)).toHaveLength(110);
+  const route = (family, i, n = 10) => ({ ucis: [family,'reply',String(i)], games:n, scorePct:0, conditionalReach:0.4, evidenceGames:100 });
+  it('spends engine reads on supported evidence before singleton history', () => {
+    const rows = [...Array.from({length:110},(_,i)=>route(String(i),i,1)), ...Array.from({length:5},(_,i)=>route(`s${i}`,i))];
+    expect(trimRankedBranches(rows,{ceiling:5}).map(r=>r.games)).toEqual([10,10,10,10,10]);
   });
   it('caps actual engine reads', () => {
     const rows = Array.from({length:450},(_,i)=>route(String(i),i));
@@ -16,7 +16,7 @@ describe('bounded evidence-driven engine queue', () => {
     expect(trimRankedBranches(rows,{ceiling:2}).map(r=>r.ucis[0])).toEqual(['a','a']);
   });
   it('retains parent and child until opportunity is measured', () => {
-    expect(trimRankedBranches([{ucis:['e2e4'],games:40},{ucis:['e2e4','e7e5','g1f3'],games:1}])).toHaveLength(2);
+    expect(trimRankedBranches([route('e2e4',0,40), {...route('e2e4',0,10),ucis:['e2e4','reply','0','tail','move']}])).toHaveLength(2);
   });
   it('handles empty input', () => {
     expect(trimRankedBranches([])).toEqual([]);

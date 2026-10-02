@@ -222,7 +222,7 @@
 .skip-link:focus-visible {
   top: 8px;
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: -3px;
 }
 
 html,
@@ -264,7 +264,7 @@ button {
    mouse click. Applies to every interactive control for consistency. */
 :focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: -3px;
   border-radius: 4px;
 }
 
@@ -1037,7 +1037,7 @@ h2 {
 
 .pf-switch:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: -3px;
 }
 
 .pf-switch:disabled {
@@ -1142,7 +1142,7 @@ h2 {
 
 .pf-info:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: -3px;
 }
 
 .pf-info-inline {
@@ -1855,7 +1855,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 /* File drag-and-drop target feedback (Analyze box, dashboard import card). */
 .drag-over {
   outline: 2px dashed var(--accent);
-  outline-offset: 2px;
+  outline-offset: -3px;
   background: var(--accent-soft);
 }
 
@@ -2306,7 +2306,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .train-repertoire-summary:hover { border-color: var(--accent); }
 .train-repertoire-summary:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: -3px;
 }
 .train-repertoire-chevron {
   flex: none;
@@ -2472,6 +2472,35 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   background: var(--line);
   margin: 0 4px;
 }
+
+/* An engine line on the board (not the game's position): an accent frame on the
+   board and an accent label, with "Back to game" beside it. */
+.chessboard.is-previewing::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 3px solid var(--accent);
+  pointer-events: none;
+  z-index: 6;
+}
+.board-bar:has(.pv-exit:not([hidden])) .board-label {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+.pv-exit {
+  flex: none;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.pv-exit:hover { background: var(--accent); color: #fff; }
+.pv-exit[hidden] { display: none; }
 
 .board-label {
   flex: 1;
@@ -4763,7 +4792,7 @@ body.is-guest .replay-results:empty::before {
 .engine-window.is-docked .engine-window-pvs { padding: 4px 0; }
 /* Docked lines: one fixed-height row each, cut at the edge, so N lines always
    take N rows — the block never grows while searching or jumps when a line
-   gets longer. A click unfolds one row to the full continuation. */
+   gets longer. */
 .engine-window.is-docked .engine-pv {
   grid-template-columns: 54px 1fr;
   gap: 8px;
@@ -4782,8 +4811,7 @@ body.is-guest .replay-results:empty::before {
 .engine-window.is-docked .engine-pv.is-top { background: none; border-color: var(--line-soft); }
 .engine-window.is-docked .engine-pv-eval { padding: 1px 6px; min-width: 0; font-size: 11.5px; }
 .engine-window.is-docked .engine-pv-line { line-height: 22px; text-overflow: ellipsis; }
-.engine-window.is-docked .engine-pv.is-expanded { height: auto; }
-.engine-window.is-docked .engine-pv.is-expanded .engine-pv-line { white-space: normal; line-height: 1.5; padding: 3px 0; }
+.engine-window.is-docked .engine-pv.is-previewing { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
 .engine-pv.is-pending { cursor: default; }
 .engine-pv.is-pending .engine-pv-eval { color: var(--muted); background: none; border-color: var(--line-soft); }
 .engine-pv.is-pending .engine-pv-line { color: var(--muted); font-style: italic; }
@@ -5066,6 +5094,16 @@ body.is-guest .replay-results:empty::before {
 .engine-pv-line .pv-move-num {
   color: var(--muted);
   margin-right: 2px;
+}
+
+.engine-pv-line .pv-move {
+  border-radius: 3px;
+  padding: 0 1px;
+}
+.engine-pv[data-line] .pv-move:hover { background: var(--surface-hover); }
+.engine-pv-line .pv-move.is-current {
+  background: var(--accent);
+  color: #fff;
 }
 
 .engine-window-resize {
@@ -5409,7 +5447,7 @@ body.is-guest .replay-results:empty::before {
 }
 .scout-v12-card > .scout-v12-card-head:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: -3px;
 }
 .scout-v12-card-body {
   margin-top: 8px;
@@ -5615,7 +5653,7 @@ body.is-guest .replay-results:empty::before {
 .scout-v13-card > .scout-v13-summary:hover { color: var(--accent-strong, var(--fg)); }
 .scout-v13-card > .scout-v13-summary:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: -3px;
 }
 .scout-v13-entry {
   grid-column: 2;
@@ -6066,7 +6104,7 @@ body.is-guest .replay-results:empty::before {
 }
 .scout-v14-evidence > summary:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: -3px;
 }
 .scout-v14-evidence-grid {
   display: grid;

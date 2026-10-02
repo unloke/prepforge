@@ -148,7 +148,11 @@ const SCOUT_FIXTURE_BLOCKS = [
 
 1. d4 Nf6 2. c4 e6 3. Nf3 b6 4. g3 Ba6 5. b3 Bb4+ 1/2-1/2`,
 ];
-const SCOUT_FIXTURE_PGN = SCOUT_FIXTURE_BLOCKS.join("\n\n");
+// Keep the handoff checks on a supported historical weak spot under scoring v10.
+const supportedLosses = Array.from({ length: 4 }, (_, i) => SCOUT_FIXTURE_BLOCKS[0]
+  .replace('e2e0001', `e2e-supported-${i}`)
+  .replaceAll('1-0', '0-1'));
+const SCOUT_FIXTURE_PGN = [...SCOUT_FIXTURE_BLOCKS, ...supportedLosses].join("\n\n");
 
 function fail(msg) {
   console.error(`[scout-smoke] FAIL: ${msg}`);

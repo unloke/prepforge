@@ -2,12 +2,12 @@
 // exercise the board's roving-focus navigation.
 // Invoked by tests/e2e/test_train_keyboard_smoke.py after uvicorn boots locally.
 //
-// The Train board keeps a roving tabindex (one tabbable square, arrows move
-// focus — the ARIA grid pattern) and supports Enter/Space pick-and-move
+// The Train board keeps a roving tabindex (one tabbable square; typing a square
+// name moves focus) and supports Enter/Space pick-and-move
 // (squares are <button>s). This walks the real flow — API-created repertoire,
 // Smart queue start, keyboard selection + move — and asserts:
 //   1. the board exposes exactly ONE tab stop (never 64),
-//   2. arrow keys move focus (including across the flipped board),
+//   2. typing a square name moves focus (arrows stay with move navigation),
 //   3. the from-square button exposes aria-pressed="true" while selected,
 //   4. the move lands (graded banner flips to the correct state),
 //   5. aria-pressed resets on every square after the move.
@@ -180,40 +180,30 @@ async function main() {
       fail(`Tab from the roving square must leave the board, but it landed on square ${afterTab}`);
     }
 
-    // --- Arrows move focus inside the board (white orientation). ---
+    // --- Typing a square name moves focus inside the board; arrows do not. ---
+    // Arrow keys belong to the app's move navigation, never a square cursor.
     const focusOf = () =>
       page.evaluate(() => document.activeElement?.dataset?.square || null);
     await board.locator('button.square[data-square="e2"]').focus();
-    await page.keyboard.press("ArrowRight"); // e2 -> f2
-    if ((await focusOf()) !== "f2") fail(`ArrowRight from e2 should focus f2, got ${await focusOf()}`);
-    await page.keyboard.press("ArrowUp"); // f2 -> f3
-    if ((await focusOf()) !== "f3") fail(`ArrowUp from f2 should focus f3, got ${await focusOf()}`);
-    await page.keyboard.press("ArrowLeft"); // f3 -> e3
-    if ((await focusOf()) !== "e3") fail(`ArrowLeft from f3 should focus e3, got ${await focusOf()}`);
-    await page.keyboard.press("ArrowDown"); // e3 -> e2
-    if ((await focusOf()) !== "e2") fail(`ArrowDown from e3 should focus e2, got ${await focusOf()}`);
-    // Edge: no wrap-around, focus holds.
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("ArrowDown");
-    if ((await focusOf()) !== "e1") fail(`ArrowDown should hold at the edge e1, got ${await focusOf()}`);
-
-    // --- Roving cursor survives a board flip; arrows follow the screen. ---
-    // Keyboard flip (F flips the active tab's board): focus stays in the board
-    // on the same square.
+    await page.keyboard.press("ArrowRight");
+    if ((await focusOf()) !== "e2") fail(`ArrowRight must not move a square cursor, focus went to ${await focusOf()}`);
     await page.keyboard.press("f");
-    if ((await focusOf()) !== "e1") fail(`F-flip should keep focus on e1, got ${await focusOf()}`);
-    await page.keyboard.press("ArrowLeft"); // visually left from e1 is f1 on a flipped board
-    if ((await focusOf()) !== "f1") fail(`ArrowLeft from e1 on a flipped board should focus f1, got ${await focusOf()}`);
-    // Flipped board draws rank 1 at the TOP, so visually DOWN from f1 is f2.
-    await page.keyboard.press("ArrowDown");
-    if ((await focusOf()) !== "f2") fail(`ArrowDown from f1 on a flipped board should focus f2, got ${await focusOf()}`);
-    // Visually UP from f2 is back to f1 (the top row on a flipped board).
-    await page.keyboard.press("ArrowUp");
-    if ((await focusOf()) !== "f1") fail(`ArrowUp from f2 on a flipped board should focus f1, got ${await focusOf()}`);
-    // Edge: f1 is the top row when flipped, so UP holds.
-    await page.keyboard.press("ArrowUp");
-    if ((await focusOf()) !== "f1") fail(`ArrowUp from f1 on a flipped board should hold (top row), got ${await focusOf()}`);
+    await page.keyboard.press("3");
+    if ((await focusOf()) !== "f3") fail(`typing f3 should focus f3, got ${await focusOf()}`);
+    await page.keyboard.press("e");
+    await page.keyboard.press("1");
+    if ((await focusOf()) !== "e1") fail(`typing e1 should focus e1, got ${await focusOf()}`);
+
+    // --- Roving cursor survives a board flip. ---
+    // Shift+F flips the active board even with a square focused (a lowercase f is a
+    // file letter there); focus stays on the same square.
+    await page.keyboard.press("Shift+F");
+    const flipped = await page.evaluate(() => document.querySelector("#train-board button.square")?.dataset?.square);
+    if (flipped !== "h1") fail(`Shift+F should flip the board (top-left h1), got ${String(flipped)}`);
+    if ((await focusOf()) !== "e1") fail(`flip should keep focus on e1, got ${await focusOf()}`);
+    await page.keyboard.press("f");
+    await page.keyboard.press("1");
+    if ((await focusOf()) !== "f1") fail(`typing f1 on a flipped board should focus f1, got ${await focusOf()}`);
     // Button flip: focus moves to the toolbar button (browser default), but the
     // roving cursor must survive the rebuild on the last-visited square.
     await page.click("#train-flip"); // back to white

@@ -1,13 +1,14 @@
+// Frozen scoring v9; benchmark only.
 // Hidden Stockfish pre-filter for Scout: shallow eval on all opening-line candidates,
 // rank by objective prep value, and pick the top pool for Maia3 WDL enrichment.
 // Engine metrics travel with candidates to the final budgeted selector.
 
-import { preparationValue, selectPreparationRoutes, routeKey, canonicalPosition } from "./scout-preparation-value.js";
-import { analyzeGamePositions } from "./engine/game-analyzer.js";
+import { preparationValue, selectPreparationRoutes, routeKey } from "./scout-preparation-value-v9.js";
+import { analyzeGamePositions } from "../web-src/engine/game-analyzer.js";
 import {
   createEngineProvider,
   STOCKFISH_PACKAGE_VERSION,
-} from "./engine/stockfish-provider.js";
+} from "../web-src/engine/stockfish-provider.js";
 import {
   SCOUT_BRANCH_SCORE_CAP,
   SCOUT_MAIA_LIMIT,
@@ -18,7 +19,7 @@ import {
   hashGameIdsForScope,
   normalizeToOpponentTerminal,
   terminalMoveIsOpponent,
-} from "./scout.js";
+} from "./scout-v9.js";
 
 export const SCOUT_PREFILTER_DEPTH = SCOUT_STOCKFISH_DEPTH;
 export const SCOUT_PREFILTER_LIMIT = SCOUT_BRANCH_SCORE_CAP;
@@ -64,8 +65,8 @@ export function collectPrefilterFens(lines, { fenAfterLine, oppColor }) {
     const ucis = normalized.ucis;
     if (!terminalMoveIsOpponent(ucis, oppColor)) continue;
     const leaf = fenAfterLine(ucis);
-    if (!leaf || seen.has(canonicalPosition(leaf))) continue;
-    seen.add(canonicalPosition(leaf));
+    if (!leaf || seen.has(leaf)) continue;
+    seen.add(leaf);
     fens.push(leaf);
   }
   return fens;
@@ -96,7 +97,7 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
   // ancestor-frequency lookup; only its Stockfish eval is gone.
   const fenBefore = fenBeforeLastMove(ucis);
   const fenLeaf = fenAfterLine(ucis);
-  const leafEval = fenLeaf ? evalMap.get(fenLeaf) ?? evalMap.get(canonicalEvalIndex(evalMap).get(canonicalPosition(fenLeaf))) : null;
+  const leafEval = fenLeaf ? evalMap.get(fenLeaf) : null;
   if (!leafEval || (!Number.isFinite(leafEval.score_cp) && !Number.isFinite(leafEval.mate_in))) {
     drop("noEval");
     return null;
@@ -128,9 +129,6 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
 
   return {
     userLeafAdvantage,
-    userMate,
-    terminalFen: fenLeaf,
-    oppColor,
     mateIn,
     hasUserReply,
     prefilterScore: userLeafAdvantage,
@@ -186,17 +184,14 @@ export function rankPrefilterCandidates(
       funnel.gateDrops.unreachable++;
       return false;
     }
-    if (!preparationValue({ ...entry.line, ...entry }, baselineScorePct).engineOk) {
+    if (!(entry.mateIn > 0 || entry.prefilterScore > 0)) {
       funnel.gateDrops.noOpportunity++;
       return false;
     }
     return true;
   }).map((entry) => ({ ...entry, line: { ...entry.line, ...Object.fromEntries(
     Object.entries(entry).filter(([key]) => key !== "line")), baselineScorePct } }));
-  const rank = new Map(selectPreparationRoutes(gated.map(e => e.line), { limit: gated.length, baseline: baselineScorePct })
-    .map((line, i) => [routeKey(line), i]));
-  gated.sort((a,b) => (rank.get(routeKey(a.line)) ?? Infinity) - (rank.get(routeKey(b.line)) ?? Infinity) ||
-    preparationValue(b.line,baselineScorePct).softValue - preparationValue(a.line,baselineScorePct).softValue || routeKey(a.line).localeCompare(routeKey(b.line)));
+  gated.sort((a,b) => preparationValue(b.line,baselineScorePct).value - preparationValue(a.line,baselineScorePct).value || routeKey(a.line).localeCompare(routeKey(b.line)));
   funnel.survived = gated.length;
   if (funnelOut) Object.assign(funnelOut, funnel);
   return gated;
@@ -210,7 +205,7 @@ export function prefilterMaiaLines(ranked, limit = SCOUT_MAIA_PREFILTER_LIMIT) {
   const lines = (ranked || []).map(entry => ({ ...entry.line,
     prefilterScore: entry.prefilterScore ?? entry.line.prefilterScore,
     mateIn: entry.mateIn ?? entry.line.mateIn }));
-  return selectPreparationRoutes(lines, { limit, baseline: lines[0]?.baselineScorePct ?? 50, oppColor: lines[0]?.oppColor ?? "white" });
+  return selectPreparationRoutes(lines, { limit, baseline: lines[0]?.baselineScorePct ?? 50 });
 }
 
 /** Ranked-opening fallback when Stockfish prefilter cannot run. */
@@ -245,7 +240,7 @@ export function mergeGlobalPrefilterRanked(
   const front = new Set();
   for (const color of ["white", "black"]) {
     const lines = entries.filter(e => e.oppColor === color).map(e => e.line);
-    for (const line of selectPreparationRoutes(lines, { baseline: baselineByColor[color] ?? 50, oppColor: color })) front.add(`${color}|${routeKey(line)}`);
+    for (const line of selectPreparationRoutes(lines, { baseline: baselineByColor[color] ?? 50 })) front.add(`${color}|${routeKey(line)}`);
   }
   entries.sort((a,b) => Number(front.has(`${b.oppColor}|${routeKey(b.line)}`)) - Number(front.has(`${a.oppColor}|${routeKey(a.line)}`)) ||
     preparationValue(b.line,baselineByColor[b.oppColor] ?? 50).value - preparationValue(a.line,baselineByColor[a.oppColor] ?? 50).value ||
@@ -253,35 +248,11 @@ export function mergeGlobalPrefilterRanked(
   return entries.slice(0, poolSize);
 }
 
-// Counter-only transpositions reuse successful reads without changing their cache keys.
-function cachedPositionEval(cache, fen, depth) {
-  const hit = cache?.get(prefilterCacheKey(fen, depth));
-  if (hit?.complete === true) return hit;
-  const scope = `${SCOUT_PREFILTER_ENGINE_VERSION}|d${depth}|`;
-  const position = canonicalPosition(fen);
-  for (const [key, value] of cache || []) if (value?.complete === true && key.startsWith(scope) &&
-    canonicalPosition(key.slice(scope.length)) === position) return value;
-  return hit;
-}
-
-// Counter-only transpositions: canonical position -> stored FEN, per eval map.
-const canonicalEvalIndexes = new WeakMap();
-function canonicalEvalIndex(evalMap) {
-  let index = canonicalEvalIndexes.get(evalMap);
-  if (!index || index.size0 !== evalMap.size) {
-    index = new Map();
-    for (const fen of evalMap.keys()) if (!index.has(canonicalPosition(fen))) index.set(canonicalPosition(fen), fen);
-    index.size0 = evalMap.size;
-    canonicalEvalIndexes.set(evalMap, index);
-  }
-  return index;
-}
-
 /** Read cached evals from an in-memory Map keyed by prefilterCacheKey. */
 export function evalMapFromCache(fens, cache, depth = SCOUT_PREFILTER_DEPTH) {
   const map = new Map();
   for (const fen of fens || []) {
-    const hit = cachedPositionEval(cache, fen, depth);
+    const hit = cache?.get(prefilterCacheKey(fen, depth));
     if (hit) map.set(fen, hit);
   }
   return map;
@@ -335,7 +306,7 @@ export async function runStockfishPrefilter(
 
   const allFens = collectPrefilterFens(lines, { fenAfterLine, oppColor });
   const missing = allFens.filter((fen) => {
-    const hit = cachedPositionEval(cache, fen, depth);
+    const hit = cache.get(prefilterCacheKey(fen, depth));
     return !hit || hit.complete !== true;
   });
 

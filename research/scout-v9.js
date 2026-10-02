@@ -1,3 +1,4 @@
+// Frozen scoring v9; benchmark only.
 // Opponent scouting: fetch a Lichess player's recent games (public PGN export,
 // CORS-open, no token), aggregate their opening tendencies per colour, and grade
 // the user's own repertoires against the lines that opponent actually plays.
@@ -10,9 +11,9 @@
 // Pure functions + an injected-deps fetcher, unit-testable without network/DOM.
 
 import { Chess } from "chess.js";
-import { preparationValue, routeKey, selectPreparationRoutes, opponentOnlyReach } from "./scout-preparation-value.js";
+import { preparationValue, routeKey, selectPreparationRoutes } from "./scout-preparation-value-v9.js";
 
-import { gamePhase } from "./coach/material.js";
+import { gamePhase } from "../web-src/coach/material.js";
 
 export const SCOUT_ERR_RATE_LIMIT =
   "Lichess rate limit — please wait a minute and try again.";
@@ -29,9 +30,10 @@ export function scoutFetchErrorMessage(error) {
 }
 export const MAX_PLIES = 16; // default depth for compact display/legacy trie callers
 export const ANALYZE_PLIES = 24; // deeper capture for weakness / engine scan
-/** Minimum raw full-prefix support for historical weakness. */
-export const GAME_PLAN_MIN_GAMES = 3;
-/** Max game-plan rows per colour; fewer supported targets are allowed. */
+/** Minimum games for game-plan lines (ranking filters slips; no hard ply gate). */
+export const GAME_PLAN_MIN_GAMES = 1;
+/** Max game-plan rows shown per colour. The floor is gone, so the cap (not n≥7)
+ * is what keeps the list readable and bounds the Maia enrichment cost. */
 export const SCOUT_GAME_PLAN_LIMIT = 12;
 /** Legacy floor kept for recommendTargets / refutation repertoire gates. */
 export const WEAKNESS_MIN_GAMES = 7;
@@ -45,10 +47,10 @@ export const SCOUT_BRANCH_HARD_CEILING = 300;
 /** Any observed opponent choice below this conditional share makes a route poor prep. */
 export const SCOUT_MIN_ROUTE_REACH = 0.1;
 /** Fewer parent games leave an opponent decision unmeasured, rather than certain. */
-import { opponentMoveProbability } from "./scout-probability.js";
+import { opponentMoveProbability } from "../web-src/scout-probability.js";
 export const SCOUT_STOCKFISH_DEPTH = 8;
 export const SCOUT_MAIA_LIMIT = 12;
-export const SCOUT_SCORING_VERSION = 10;
+export const SCOUT_SCORING_VERSION = 9;
 export const SCOUT_THINK_TIME_CLAMP_MIN = 0.7;
 export const SCOUT_THINK_TIME_CLAMP_MAX = 1.3;
 export const SCOUT_THINK_TIME_Z_SCALE = 0.1;
@@ -611,14 +613,7 @@ export function parseNdjsonGames(text, username) {
 // ---------------------------------------------------------------------------
 
 function trieNode() {
-  return { count: 0, score: 0, gameCount: 0, w: 0, d: 0, l: 0, selectionWdl: { w: 0, d: 0, l: 0, weight: 0, weightSquared: 0 }, children: new Map() };
-}
-
-function incrementSelection(node, score, weight) {
-  const x = node.selectionWdl;
-  x[score === 1 ? "w" : score === 0.5 ? "d" : "l"] += weight;
-  x.weight += weight;
-  x.weightSquared += weight * weight;
+  return { count: 0, score: 0, gameCount: 0, w: 0, d: 0, l: 0, children: new Map() };
 }
 
 function incrementResult(node, score) {
@@ -670,9 +665,6 @@ export function insertGameIntoTrie(
   if (excludeCollapse && isEarlyResignCollapse(game)) return root;
   const anchor = anchorTs ?? (game.datestamp && game.datestamp > 0 ? game.datestamp : Date.now());
   const w = trieRecencyWeight(game, anchor, recency);
-  const selectionWeight = game.datestamp > 0
-    ? 2 ** (-Math.max(0, (anchor - game.datestamp) / MS_PER_DAY) / SCOUT_RECENCY_HALF_LIFE_DAYS) : 1;
-  incrementSelection(root, game.score, selectionWeight);
   root.count += w;
   root.score += game.score * w;
   root.gameCount += 1;
@@ -687,7 +679,6 @@ export function insertGameIntoTrie(
     node.score += game.score * w;
     node.gameCount += 1;
     incrementResult(node, game.score);
-    incrementSelection(node, game.score, selectionWeight);
   }
   return root;
 }
@@ -783,9 +774,7 @@ export function buildOpeningTrie(
     speedFilter !== "all" ? games.filter((g) => g.speed === speedFilter) : games;
   // Anchor recency to the newest game ONCE (not per game — that was the O(N²)). Feeding
   // the same anchor to every insert reproduces the old gameWeight output exactly.
-  const eligible = filtered.filter(g => g.color === color && (!excludeCollapse || !isEarlyResignCollapse(g)));
-  const anchorTs = trieAnchorTs(eligible);
-  Object.defineProperties(root, { selectionAnchorTs: { value: anchorTs }, selectionMaxPlies: { value: maxPlies } });
+  const anchorTs = trieAnchorTs(filtered);
   for (const game of filtered) {
     insertGameIntoTrie(root, game, color, { maxPlies, anchorTs, recency, excludeCollapse });
   }
@@ -844,14 +833,12 @@ export const SCOUT_BADGE_MIN_GAMES = 3;
 
 export function enrichPrepTarget(g, baselineScorePct, { maiaScorePct = null } = {}) {
   const useMaia = maiaScorePct != null;
-  // A game-plan row is judged on its anchor, not the single game that played the whole line.
-  const r = g.routeWdl ? { ...g.routeWdl, scorePct: g.routeScorePct, games: g.routeSupportGames } : g;
-  const scoreForBadge = useMaia ? maiaScorePct : r.scorePct;
-  const wilsonLower = wilsonScorePct(r.w ?? 0, r.d ?? 0, r.l ?? 0);
-  const wilsonUpper = wilsonScoreUpperPct(r.w ?? 0, r.d ?? 0, r.l ?? 0);
+  const scoreForBadge = useMaia ? maiaScorePct : g.scorePct;
+  const wilsonLower = wilsonScorePct(g.w ?? 0, g.d ?? 0, g.l ?? 0);
+  const wilsonUpper = wilsonScoreUpperPct(g.w ?? 0, g.d ?? 0, g.l ?? 0);
   const below = baselineScorePct - scoreForBadge;
   const wilsonMargin = useMaia ? 0 : Math.max(0, baselineScorePct - wilsonUpper);
-  const realSample = useMaia || (r.games ?? 0) >= SCOUT_BADGE_MIN_GAMES;
+  const realSample = useMaia || (g.games ?? 0) >= SCOUT_BADGE_MIN_GAMES;
   const isAttack =
     below > 0 && (wilsonMargin > 0 || (below >= SCOUT_ATTACK_MIN_MARGIN && realSample));
   const isWeapon = !isAttack && realSample && scoreForBadge >= baselineScorePct;
@@ -1081,16 +1068,6 @@ export function opponentColorBaseline(games, color, { speedFilter = "all" } = {}
   return stats.games > 0 ? stats.scorePct : 50;
 }
 
-/** Same eligible cohort and recency weights as the route posterior. */
-export function selectionBaselineFromTrie(trie) {
-  const x = trie.selectionWdl;
-  const weight = x?.weight || 0;
-  const smoothing = 0.001; // Avoid zero prior components without creating weakness in an unbeaten cohort.
-  return { score: weight > 0 ? (x.w + 0.5 * x.d) / weight : 0.5,
-    prior: { w: ((x?.w || 0) + smoothing) / (weight + 3 * smoothing),
-      d: ((x?.d || 0) + smoothing) / (weight + 3 * smoothing), l: ((x?.l || 0) + smoothing) / (weight + 3 * smoothing) } };
-}
-
 /**
  * Downweight prep value when the opponent performs at/above baseline.
  * Returns 1 when empirical data is missing (do not penalize rare samples).
@@ -1122,8 +1099,6 @@ export function triePrefixStats(trie, ucis) {
       ply: i,
       uci: ucis[i],
       parentGames,
-      parentWeight: node.selectionWdl?.weight,
-      selectionWdl: child.selectionWdl,
       gameCount: gc,
       w: child.w || 0,
       d: child.d || 0,
@@ -1137,11 +1112,11 @@ export function triePrefixStats(trie, ucis) {
 }
 
 /** The weakest sample-aware opponent choice determines route plausibility. */
-export function opponentRoutePlausibility(trie, ucis, opponentColor, prefixStats = null) {
+export function opponentRoutePlausibility(trie, ucis, opponentColor) {
   const empty = { complete: false, weakestEstimatedProbability: 0, decisionCount: 0,
     deepestDecisionPly: null, weakestDecision: null };
   if (!trie || !ucis?.length || !["white", "black"].includes(opponentColor)) return empty;
-  const stats = prefixStats ?? triePrefixStats(trie, ucis);
+  const stats = triePrefixStats(trie, ucis);
   if (stats.length !== ucis.length) return empty;
   const evidence = { complete: true, weakestEstimatedProbability: null, decisionCount: 0,
     deepestDecisionPly: null, weakestDecision: null };
@@ -1172,74 +1147,64 @@ export function trimRankedBranches(
   { ceiling = SCOUT_BRANCH_HARD_CEILING } = {},
 ) {
   return (branches || [])
-    .map(route => ({ route, evidence: preparationValue(route, route.baselineScorePct ?? 50) }))
-    .sort((a, b) => b.evidence.value - a.evidence.value || b.evidence.softValue - a.evidence.softValue ||
-      (b.route.continuationShare ?? 0) - (a.route.continuationShare ?? 0) || routeKey(a.route).localeCompare(routeKey(b.route)))
+    .map(route => ({ route, value: preparationValue(route, route.baselineScorePct ?? 50).value }))
+    .sort((a, b) => b.value - a.value || routeKey(a.route).localeCompare(routeKey(b.route)))
     .slice(0, ceiling)
     .map(entry => entry.route);
 }
 
-/** Attach anchor evidence to an observed route (mutates `b`): the deepest
- * prefix ending on an opponent move with enough games to judge them. */
-export function annotateRouteEvidence(b, trie, color, { total = trie.gameCount, baselineScorePct = 50,
-  selectionBaseline = selectionBaselineFromTrie(trie) } = {}) {
-  const effective = x => x?.weightSquared > 0 ? x.weight ** 2 / x.weightSquared : 0;
-  b.evidenceGames = total;
-  b.baselineScorePct = baselineScorePct;
-  b.selectionBaseline = selectionBaseline;
-  b.oppColor = color;
-  const stats = triePrefixStats(trie, b.ucis);
-  b.routePlausibility = opponentRoutePlausibility(trie, b.ucis, color, stats);
-  b.routeReach = b.routePlausibility.weakestEstimatedProbability;
-  // The anchor ends on an opponent move, like every row: our own move choice
-  // is not evidence about them. No supported anchor leaves the row unranked.
-  let k = -1;
-  for (let i = stats.length - 1; i >= 0; i--) {
-    if ((i % 2 === 0 ? "white" : "black") !== color) continue;
-    if (stats[i].gameCount >= GAME_PLAN_MIN_GAMES && effective(stats[i].selectionWdl) >= 2) { k = i; break; }
-  }
-  const anchor = k >= 0 ? stats[k] : null;
-  const leaf = stats.length === b.ucis.length ? stats.at(-1) : null;
-  b.anchorUcis = b.ucis.slice(0, k + 1);
-  b.anchorSans = b.sans.slice(0, k + 1);
-  b.evidencePlies = k + 1;
-  b.exactGames = leaf?.gameCount ?? b.games;
-  b.continuationShare = anchor?.selectionWdl?.weight > 0
-    ? (leaf?.selectionWdl?.weight ?? 0) / anchor.selectionWdl.weight : 0;
-  // Games behind each move of the line: the most common continuation through a
-  // branch follows the more-played move at the first point of difference.
-  b.pathGames = stats.map(node => node.gameCount);
-  b.preparationDecisions = stats.slice(0, k + 1).filter(node => (node.ply % 2 === 0 ? "white" : "black") === color)
-    .map(node => ({ ply: node.ply + 1, moveGames: node.gameCount, parentGames: node.parentGames, moveWeight: node.selectionWdl?.weight, parentWeight: node.parentWeight }));
-  b.routeSupportGames = anchor?.gameCount ?? 0;
-  b.routeScorePct = anchor?.scorePct ?? b.scorePct;
-  b.routeWdl = anchor ? { w: anchor.w, d: anchor.d, l: anchor.l } : null;
-  b.selectionWdl = anchor?.selectionWdl;
-  b.conditionalReach = anchor ? opponentOnlyReach(b) : 0;
-  const parent = k > 0 ? stats[k - 1] : null;
-  b.ancestorGames = parent?.gameCount ?? total;
-  b.ancestorScorePct = parent?.scorePct ?? baselineScorePct;
-  return b;
-}
-
-/** Observed full opening routes, each scored by its anchor: the deepest prefix
- * with enough games. No invented moves and no truncated rows. */
+/** Observed terminal routes plus supported branching prefixes; no invented moves. */
 export function rankedOpeningBranches(
   games,
   color,
-  { speedFilter = "all", limit = SCOUT_BRANCH_SCORE_CAP, now = Date.now(), trie = null, baselineScorePct = 50, plausibleOnly = true } = {},
+  { speedFilter = "all", limit = SCOUT_BRANCH_SCORE_CAP, now = Date.now(), trie = null, baselineScorePct = 50 } = {},
 ) {
-  const eligibleGames = games.filter(g => g.color === color && (speedFilter === "all" || g.speed === speedFilter) && !isEarlyResignCollapse(g));
-  // Streaming display tries use a session anchor. Fixed-strength priors require the newest eligible game.
-  if (!trie || trie.selectionAnchorTs !== trieAnchorTs(eligibleGames) || trie.selectionMaxPlies !== Infinity)
-    trie = buildOpeningTrie(games, color, { speedFilter, maxPlies: Infinity });
-  const selectionBaseline = selectionBaselineFromTrie(trie);
   const { branches, ancestorFreq } = aggregateOpeningBranches(games, color, { speedFilter, now });
-  const total = trie.gameCount ?? branches.reduce((n,b) => n + b.games, 0);
-  for (const b of branches) annotateRouteEvidence(b, trie, color, { total, baselineScorePct, selectionBaseline });
-  const plausible = !plausibleOnly ? branches : branches.filter((branch) => branch.routePlausibility.complete &&
-    (branch.routeReach == null || branch.routeReach >= SCOUT_MIN_ROUTE_REACH));
-  const ranked = trimRankedBranches(plausible, { ceiling: limit > 0 ? limit : plausible.length });
+  // Add observed branching prefixes even when no game ended exactly there.
+  // Never synthesize an unplayed move or walk beyond the extracted opening.
+  if (trie) {
+    const existing = new Set(branches.map(routeKey));
+    const prefixes = new Map();
+    for (const branch of branches) {
+      for (let n = color === "white" ? 1 : 2; n < branch.ucis.length; n += 2) {
+        const key = branch.ucis.slice(0, n).join(">");
+        if (existing.has(key)) continue;
+        if (!prefixes.has(key)) prefixes.set(key, { branch, n, continuations: new Set() });
+        prefixes.get(key).continuations.add(branch.ucis.slice(n, n + 2).join(">"));
+      }
+    }
+    for (const [key, { branch, n, continuations }] of prefixes) {
+      if (continuations.size < 2) continue;
+      const stats = triePrefixStats(trie, branch.ucis.slice(0, n)).at(-1);
+      if (!stats || stats.gameCount < 3) continue;
+      branches.push({ line: key, ucis: branch.ucis.slice(0,n), sans: branch.sans.slice(0,n),
+        games: 0, gameCount: stats.gameCount, w: stats.w, d: stats.d, l: stats.l, scorePct: stats.scorePct, share: stats.gameCount / trie.gameCount });
+    }
+  }
+  const total = trie?.gameCount ?? branches.reduce((n,b) => n + b.games, 0);
+  for (const b of branches) {
+    b.routeSupportGames = b.games;
+    b.evidenceGames = total;
+    b.baselineScorePct = baselineScorePct;
+    if (!trie) continue;
+    b.routePlausibility = opponentRoutePlausibility(trie, b.ucis, color);
+    b.routeReach = b.routePlausibility.weakestEstimatedProbability;
+    const stats = triePrefixStats(trie, b.ucis);
+    b.preparationDecisions = stats.filter(node => (node.ply % 2 === 0 ? "white" : "black") === color)
+      .map(node => ({ ply: node.ply + 1, moveGames: node.gameCount, parentGames: node.parentGames }));
+    const leaf = stats.length === b.ucis.length ? stats.at(-1) : null;
+    b.routeSupportGames = leaf?.gameCount ?? b.games;
+    b.routeScorePct = leaf?.scorePct ?? b.scorePct;
+    const parent = stats.at(-2);
+    b.ancestorGames = parent?.gameCount ?? total;
+    b.ancestorScorePct = parent?.scorePct ?? baselineScorePct;
+  }
+  branches.sort((a,b) => preparationValue(b,baselineScorePct).value - preparationValue(a,baselineScorePct).value || routeKey(a).localeCompare(routeKey(b)));
+  const plausible = trie
+    ? branches.filter((branch) => branch.routePlausibility.complete &&
+      (branch.routeReach == null || branch.routeReach >= SCOUT_MIN_ROUTE_REACH))
+    : branches;
+  const ranked = limit > 0 ? trimRankedBranches(plausible, { ceiling: limit }) : plausible;
   return { branches: ranked, ancestorFreq };
 }
 
@@ -1280,7 +1245,6 @@ export function rankGamePlan(
           ...g,
           ucis: normalized.ucis,
           sans: normalized.sans,
-          terminalFen: normalized.ucis.length === g.ucis.length ? g.terminalFen : null,
           line: branchPathKey(normalized.ucis),
           maiaWdl: g.maiaWdl,
           prefilterScore: g.prefilterScore,
@@ -1291,16 +1255,7 @@ export function rankGamePlan(
       return enriched;
     })
     .filter((line) => line && (line.routeReach == null || line.routeReach >= SCOUT_MIN_ROUTE_REACH));
-  const selected = selectPreparationRoutes(eligible.map(line => ({ ...line, terminalFen: line.terminalFen ?? fenAfterLine(line.ucis) })), { baseline: baselineScorePct, limit, oppColor: oppColor ?? eligible[0]?.oppColor ?? "white" });
-  // The weak-spot label is exactly the selection's weak-spot test; a Maia estimate
-  // changes the shown score, never the category.
-  for (const route of selected) if (route.prepCategory === "attack" && !(route.preparationEvidence.value > 0)) {
-    route.prepCategory = "neutral";
-    route.belowBaseline = 0;
-  } else if (route.preparationEvidence.value > 0 && route.prepCategory !== "attack") {
-    route.prepCategory = "attack";
-    route.belowBaseline = Math.max(1, Math.round(baselineScorePct - (route.routeScorePct ?? route.scorePct)));
-  }
+  const selected = selectPreparationRoutes(eligible, { baseline: baselineScorePct, limit });
   if (oppColor && games && lineLastSeen) {
     for (const route of selected) if (!route.lastSeen) {
       route.lastSeen = lineLastSeen(games, route.ucis, { color: oppColor, speedFilter });
@@ -1571,25 +1526,7 @@ function replayFenBeforeLastMove(ucis) {
   return chess.fen();
 }
 
-// Same bounded memo as fenBeforeLastMove: every ranked route is replayed by the
-// prefilter, the selector and the report on each pass.
-const fenAfterLineCache = new Map();
-
 export function fenAfterLine(ucis) {
-  const key = (ucis || []).join(" ");
-  if (fenAfterLineCache.has(key)) {
-    const fen = fenAfterLineCache.get(key);
-    fenAfterLineCache.delete(key);
-    fenAfterLineCache.set(key, fen);
-    return fen;
-  }
-  const fen = replayFenAfterLine(ucis || []);
-  if (fenAfterLineCache.size >= FEN_BEFORE_LAST_CACHE_MAX) fenAfterLineCache.delete(fenAfterLineCache.keys().next().value);
-  fenAfterLineCache.set(key, fen);
-  return fen;
-}
-
-function replayFenAfterLine(ucis) {
   const chess = new Chess();
   for (const uci of ucis) {
     try {
