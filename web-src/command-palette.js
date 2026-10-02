@@ -9,7 +9,7 @@
 export const PALETTE_VIEWS = [
   { id: "dashboard", label: "Library", keywords: ["library", "dashboard", "home", "repertoires"] },
   { id: "build", label: "Repertoire", keywords: ["repertoire", "build", "builder", "opening", "tree", "prep"] },
-  { id: "analyze", label: "Analyze", keywords: ["analyze", "analysis", "game", "pgn", "report"] },
+  { id: "analyze", label: "Analyze", keywords: ["analyze", "analyse", "analysis", "game", "pgn", "report", "engine"] },
   { id: "train", label: "Train", keywords: ["train", "practice", "review", "drill", "srs"] },
   { id: "replay", section: "games", label: "Games", keywords: ["games", "replay", "review", "my games"] },
   { id: "replay", section: "scout", label: "Scout", keywords: ["scout", "opponent", "prepare", "scouting"] },
@@ -22,7 +22,6 @@ export const PALETTE_ACTIONS = [
   { id: "start-training", label: "Start training", keywords: ["train", "practice", "start"] },
   { id: "play-human", label: "Play vs human", keywords: ["play", "opponent", "human", "maia"] },
   { id: "feeling-lucky", label: "I'm Feeling Lucky", keywords: ["lucky", "key", "position"] },
-  { id: "analyze", label: "Analyze", keywords: ["game", "pgn", "engine", "analyse"] },
   { id: "toggle-theme", label: "Toggle light / dark theme", keywords: ["theme", "dark", "light", "mode", "appearance"] },
 ];
 
@@ -64,6 +63,11 @@ function haystack(item) {
 export function scorePaletteItem(item, query) {
   const q = String(query || "").trim().toLowerCase();
   if (!q) return 1;
+  // A visible destination label outranks an alias on another destination.
+  const label = String(item.label || "").toLowerCase();
+  if (label === q) return 300;
+  if (label.startsWith(q)) return 250;
+  if (label.includes(q)) return 200;
   const fields = haystack(item);
   let best = 0;
   for (const field of fields) {

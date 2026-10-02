@@ -216,7 +216,7 @@ class TrainAttemptReceipt(Base):
     attempt_uuid: Mapped[str] = mapped_column(String(64), primary_key=True)
     node_id: Mapped[str] = mapped_column(String(64), nullable=False)
     correct: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    created_at: Mapped[str] = mapped_column(String(64), nullable=False, default=_now_text)
+    created_at: Mapped[str] = mapped_column(String(64), nullable=False, default=_now_text, index=True)
 
 
 class PasswordResetToken(Base):

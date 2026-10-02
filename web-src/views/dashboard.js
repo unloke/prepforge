@@ -474,7 +474,7 @@ export function createDashboardView({
               <span class="lib-cell-mastery">${mastery}</span>
               <span class="lib-cell-queue">${queueHtml}</span>
             </span>
-            <button type="button" class="row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-label="Actions for ${name}" aria-haspopup="menu">⋯</button>
+            <button type="button" class="row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-label="Actions for ${name}" aria-haspopup="menu" aria-expanded="false" aria-controls="repertoire-context-menu">⋯</button>
           </div>
         `;
       })
@@ -508,7 +508,7 @@ export function createDashboardView({
         const row = btn.closest(".lib-row");
         const rect = btn.getBoundingClientRect();
         openRepertoireContextMenu(
-          { preventDefault: () => {}, clientX: rect.left, clientY: rect.bottom + 4 },
+          { preventDefault: () => {}, currentTarget: btn, clientX: rect.left, clientY: rect.bottom + 4 },
           row.dataset.repertoireId,
           row.dataset.active === "1",
         );

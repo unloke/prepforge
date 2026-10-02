@@ -28,7 +28,7 @@ SERVER_BRILLIANT_ELIGIBLE = {MoveClassification.BEST, MoveClassification.EXCELLE
 
 def _eval(spec: dict) -> EngineEvaluation:
     if spec.get("mate") is not None:
-        return EngineEvaluation(engine="stockfish", mate_in=spec["mate"])
+        return EngineEvaluation(engine="stockfish", mate_in=spec["mate"], score_cp=spec.get("cp"))
     return EngineEvaluation(engine="stockfish", score_cp=spec.get("cp"))
 
 

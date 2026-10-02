@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -50,20 +51,18 @@ def export_account(
     owner: str = Depends(current_owner),
     repo: PrepForgeRepository = Depends(get_repository),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> StreamingResponse:
     """Download everything this account owns as one JSON bundle.
 
     The scope is exactly the deletion scope below — what you can take with you
     is what leaving removes (minus shared engine snapshots)."""
     del owner  # == user.id; the ORM row is the richer read
     exporter = RepertoireExportService()
-    games = repo.list_games(owner_user_id=user.id)
-    repertoires = repo.list_repertoires(owner_user_id=user.id)
     linked = db.scalars(
         select(LinkedAccount).where(LinkedAccount.user_id == user.id)
     ).all()
     settings_rows = repo.list_owner_settings(user.id)
-    return {
+    metadata = {
         "exported_at": datetime.now(timezone.utc).isoformat(),
         "account": {
             "id": user.id,
@@ -81,8 +80,11 @@ def export_account(
             for row in linked
         ],
         "settings": settings_rows,
-        "games": [
-            {
+    }
+
+    def games():
+        for game in repo.iter_games(owner_user_id=user.id):
+            yield {
                 "id": game.id,
                 "source": game.source.value,
                 "white": game.white,
@@ -92,14 +94,30 @@ def export_account(
                 "lichess_id": game.lichess_id,
                 "pgn": game.pgn,
             }
-            for game in games
-        ],
-        "repertoires": [
-            json.loads(exporter.export_package_json(rep)) for rep in repertoires
-        ],
-        "training_progress": repo.list_owner_training_progress(user.id),
-        "training_sessions": repo.list_owner_training_sessions(user.id),
-    }
+
+    def repertoires():
+        for row in repo.list_repertoire_metas(owner_user_id=user.id):
+            rep = repo.load_repertoire(row["id"], owner_user_id=user.id)
+            if rep is not None:
+                yield json.loads(exporter.export_package_json(rep))
+
+    def stream():
+        yield json.dumps(metadata, ensure_ascii=True)[:-1]
+        for key, entries in [
+            ("games", games()),
+            ("repertoires", repertoires()),
+            ("training_progress", repo.iter_owner_training_progress(user.id)),
+            ("training_sessions", repo.iter_owner_training_sessions(user.id)),
+        ]:
+            yield f',"{key}":['
+            first = True
+            for entry in entries:
+                yield ("" if first else ",") + json.dumps(entry, ensure_ascii=True)
+                first = False
+            yield "]"
+        yield "}"
+
+    return StreamingResponse(stream(), media_type="application/json")
 
 
 class DeleteAccountBody(BaseModel):

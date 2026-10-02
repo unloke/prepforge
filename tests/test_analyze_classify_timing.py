@@ -26,6 +26,7 @@ replay fixed payloads, so timings are call-counts and statement-counts.
 from __future__ import annotations
 
 from copy import deepcopy
+import pytest
 
 from sqlalchemy import event
 
@@ -261,7 +262,8 @@ def _snapshot(moves):
     ]
 
 
-def test_fast_path_matches_legacy_path_fixture():
+@pytest.mark.parametrize("depth", [10, None])
+def test_fast_path_matches_legacy_path_fixture(depth):
     """Same fixture, same evals: fast path == legacy AnalysisService path on
     classifications, comments, summary, critical ply, and stored evals.
 
@@ -291,15 +293,20 @@ def test_fast_path_matches_legacy_path_fixture():
     legacy_service = AnalysisService(_Repo(), engine=legacy_engine, engine_name="t")  # type: ignore[arg-type]
     legacy_result = legacy_service.analyze_game(
         deepcopy(legacy_game),
-        config=AnalysisConfig(engine=EngineAnalysisConfig(depth=10), persist=False),
+        config=AnalysisConfig(engine=EngineAnalysisConfig(depth=depth), persist=False),
     )
 
     fast_result = classify_precomputed_game(
-        deepcopy(legal), dict(legal_fens), engine_name="t", depth=10
+        deepcopy(legal), dict(legal_fens), engine_name="t", depth=depth
     )
     assert _snapshot(fast_result.move_results) == _snapshot(legacy_result.move_results)
     assert fast_result.summary == legacy_result.summary
     assert fast_result.critical_ply == legacy_result.critical_ply
+    assert fast_result.quality == legacy_result.quality
+    for fast_move, legacy_move in zip(fast_result.move_results, legacy_result.move_results):
+        assert {key: value for key, value in fast_move.generated_meta.items() if key != "analyzed_at"} == {
+            key: value for key, value in legacy_move.generated_meta.items() if key != "analyzed_at"
+        }
 
 
 class _StatementCounter:

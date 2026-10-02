@@ -7,13 +7,16 @@
 // - Network errors and 5xx stop the flush and return the failing group plus
 //   everything not yet sent as `failedGroups` (retriable) — the caller requeues
 //   exactly those, UUIDs intact.
-// - Auth/CSRF/conflict/rate-limit errors (401/403/408/409/423/425/429) are
+// - Auth/CSRF/locked/rate-limit errors (401/403/408/423/425/429) are
 //   ALSO retriable: the attempt was never acknowledged, so it must stay in the
 //   queue until the server confirms it (e.g. after signing in again).
 // - Only permanently-rejected groups (e.g. 404/410 when the session's
 //   repertoire is gone, or a malformed payload) are dropped — and they are
 //   returned as `rejectedGroups` so the caller can report them instead of
 //   pretending the attempts were saved.
+// - 409 means an attempt UUID was reused with different data. Replaying that
+//   payload cannot reconcile it; retain it in rejectedGroups for review.
+import { classifySyncError } from "./sync-errors.js";
 
 /**
  * Group flat pending attempts by session, preserving play order within each
@@ -46,18 +49,7 @@ export function groupAttempts(pending, currentSessionId) {
  * @returns {boolean}
  */
 export function isRetriableSyncError(error) {
-  const status = error && error.status;
-  if (!status || status < 400) return true;
-  if (status >= 500) return true;
-  return (
-    status === 401 || // session expired — land after re-login
-    status === 403 || // CSRF token stale / permission — recoverable
-    status === 408 ||
-    status === 409 || // conflict — keep the data, surface it, retry
-    status === 423 ||
-    status === 425 ||
-    status === 429 // rate limited — respect the backoff and retry
-  );
+  return classifySyncError(error).retriable;
 }
 
 /**

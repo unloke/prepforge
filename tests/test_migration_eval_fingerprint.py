@@ -235,3 +235,39 @@ def test_fingerprint_identity_migration_sqlite(tmp_path, monkeypatch) -> None:
         version = conn.execute(sa.text("SELECT version_num FROM alembic_version")).scalar()
     assert version == _chain_head(cfg)
     _check_upgraded(engine, seed)
+
+
+def test_large_fingerprint_backfill_batches_driver_calls(tmp_path, monkeypatch) -> None:
+    db_url = f"sqlite:///{(tmp_path / 'large-mig.sqlite3').as_posix()}"
+    engine = sa.create_engine(db_url)
+    cfg = _alembic_config(db_url, monkeypatch)
+    command.upgrade(cfg, "b7d21c93e4a8")
+    with engine.begin() as conn:
+        conn.execute(sa.text("INSERT INTO positions (id, fen) VALUES (1, :fen)"), {"fen": "starting-fen"})
+        conn.execute(sa.text(
+            "INSERT INTO engine_evaluations (id, position_id, engine, depth, nodes, time_ms, score_cp, pv)"
+            " VALUES (:id, 1, 'stockfish', :id, -1, -1, 25, '')"
+        ), [{"id": i} for i in range(1, 10002)])
+    calls = []
+
+    def collect(conn, cursor, statement, parameters, context, executemany):
+        if statement.startswith("UPDATE engine_evaluations SET fingerprint"):
+            calls.append((executemany, len(parameters)))
+
+    # Alembic creates its own engine; observe driver calls rather than replacing
+    # the migration's connection with a mock.
+    sa.event.listen(sa.engine.Engine, "before_cursor_execute", collect)
+    try:
+        command.upgrade(cfg, "f3a9c1e7b2d4")
+    finally:
+        sa.event.remove(sa.engine.Engine, "before_cursor_execute", collect)
+    assert len(calls) <= 25  # 10k snapshots must not produce 10k driver executions
+    assert sum(size if many else 1 for many, size in calls) == 10001
+    with engine.connect() as conn:
+        assert conn.scalar(sa.text("SELECT COUNT(*) FROM engine_evaluations WHERE fingerprint IS NOT NULL")) == 10001
+        for row_id in (1, 5000, 10001):
+            stored = conn.scalar(sa.text("SELECT fingerprint FROM engine_evaluations WHERE id=:id"), {"id": row_id})
+            assert stored == codec.evaluation_fingerprint(
+                engine="stockfish", position_fen="starting-fen", depth=row_id, nodes=-1, time_ms=-1,
+                score_cp=25, mate_in=None, best_move_uci=None, pv="", wdl_win=None, wdl_draw=None, wdl_loss=None,
+            )

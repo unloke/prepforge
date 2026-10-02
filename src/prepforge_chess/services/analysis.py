@@ -8,9 +8,9 @@ import threading
 from typing import Callable, Dict, List, Optional
 
 from prepforge_chess.core.models import AnalysisResult, Game, MoveClassification, utc_now
-from prepforge_chess.services.browser_compute import (
-    CLASSIFICATION_ALGORITHM_VERSION,
-    EXPLANATION_ALGORITHM_VERSION,
+from prepforge_chess.services.analysis_metadata import (
+    build_analysis_quality,
+    generated_analysis_metadata,
 )
 from prepforge_chess.services.brilliant import (
     BRILLIANT_ELIGIBLE_CLASSIFICATIONS,
@@ -246,6 +246,11 @@ class AnalysisService:
             move_results=game.moves,
             summary=dict(summary),
             critical_ply=critical,
+            quality=build_analysis_quality(
+                game, target_depth=config.engine.depth, engine_name=self.engine_name,
+                maia_available=self.brilliant_analyzer is not None,
+                maia_rating=config.brilliant.rating if self.brilliant_analyzer is not None else None,
+            ),
         )
 
         if config.persist:
@@ -455,12 +460,7 @@ class AnalysisService:
         # the browser-compute fast path, so the two paths stay in parity and
         # re-running can never accumulate duplicate explanations.
         move.generated_comment = comment
-        move.generated_meta = {
-            "algorithm_version": EXPLANATION_ALGORITHM_VERSION,
-            "classification_version": CLASSIFICATION_ALGORITHM_VERSION,
-            "engine": self.engine_name,
-            "analyzed_at": utc_now().isoformat(),
-        }
+        move.generated_meta = generated_analysis_metadata(self.engine_name, config.engine.depth)
 
         return move
 

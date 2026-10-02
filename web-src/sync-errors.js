@@ -38,7 +38,7 @@ export function classifySyncError(error) {
   if (status === null || status === undefined) {
     return { ...base, kind: "network" }; // fetch failed: offline, DNS, CORS…
   }
-  if (status >= 500 || status === 408 || status === 425) {
+  if (status >= 500 || status === 408 || status === 423 || status === 425) {
     return { ...base, kind: "server" };
   }
   if (status === 401) {

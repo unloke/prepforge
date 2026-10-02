@@ -32,7 +32,6 @@ describe("command palette filter", () => {
       "Start training",
       "Play vs human",
       "I'm Feeling Lucky",
-      "Analyze",
       "Toggle light / dark theme",
     ]);
   });
@@ -63,7 +62,19 @@ describe("command palette filter", () => {
     expect(filtered).toHaveLength(items.length);
     expect(filtered.some((item) => item.action === "new-repertoire")).toBe(true);
     expect(filtered.some((item) => item.action === "start-training")).toBe(true);
-    expect(filtered.some((item) => item.action === "analyze")).toBe(true);
+    expect(filtered.some((item) => item.view === "analyze")).toBe(true);
+  });
+
+  it("ranks visible Games labels before Analyze's game alias", () => {
+    expect(filterPaletteItems(items, "game")[0].id).toBe("view:replay:games");
+    expect(filterPaletteItems(items, "games")[0].id).toBe("view:replay:games");
+  });
+
+  it("has one Analyze destination and retains engine and analyse aliases", () => {
+    expect(filterPaletteItems(items, "analyze")).toHaveLength(1);
+    for (const query of ["engine", "analyse"]) {
+      expect(filterPaletteItems(items, query)[0].id).toBe("view:analyze");
+    }
   });
 
   it("ranks Analyze above unrelated views for 'anal'", () => {

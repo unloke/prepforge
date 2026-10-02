@@ -55,35 +55,46 @@ def upgrade() -> None:
     op.add_column(
         "engine_evaluations", sa.Column("fingerprint", sa.Text(), nullable=True)
     )
-    rows = bind.execute(
-        sa.text(
-            "SELECT e.id, e.engine, p.fen, e.depth, e.nodes, e.time_ms,"
-            " e.score_cp, e.mate_in, e.best_move_uci, e.pv,"
-            " e.wdl_win, e.wdl_draw, e.wdl_loss"
-            " FROM engine_evaluations e JOIN positions p ON p.id = e.position_id"
-        )
-    ).mappings().all()
-    for row in rows:
-        fingerprint = codec.evaluation_fingerprint(
-            engine=row["engine"],
-            position_fen=row["fen"],
-            depth=row["depth"],
-            nodes=row["nodes"],
-            time_ms=row["time_ms"],
-            score_cp=row["score_cp"],
-            mate_in=row["mate_in"],
-            best_move_uci=row["best_move_uci"],
-            pv=row["pv"],
-            wdl_win=row["wdl_win"],
-            wdl_draw=row["wdl_draw"],
-            wdl_loss=row["wdl_loss"],
-        )
-        bind.execute(
+    # Keyset pages bound Python memory. Executemany batches avoid one driver
+    # round trip per row; the migration remains one DDL transaction, so this does
+    # not shorten PostgreSQL's schema-lock lifetime by committing partial work.
+    last_id = None
+    while True:
+        predicate = " WHERE e.id > :last_id" if last_id is not None else ""
+        rows = bind.execute(
             sa.text(
-                "UPDATE engine_evaluations SET fingerprint = :fingerprint WHERE id = :id"
+                "SELECT e.id, e.engine, p.fen, e.depth, e.nodes, e.time_ms,"
+                " e.score_cp, e.mate_in, e.best_move_uci, e.pv,"
+                " e.wdl_win, e.wdl_draw, e.wdl_loss"
+                " FROM engine_evaluations e JOIN positions p ON p.id = e.position_id"
+                + predicate + " ORDER BY e.id LIMIT 500"
             ),
-            {"fingerprint": fingerprint, "id": row["id"]},
+            {"last_id": last_id} if last_id is not None else {},
+        ).mappings().all()
+        if not rows:
+            break
+        updates = []
+        for row in rows:
+            fingerprint = codec.evaluation_fingerprint(
+                engine=row["engine"],
+                position_fen=row["fen"],
+                depth=row["depth"],
+                nodes=row["nodes"],
+                time_ms=row["time_ms"],
+                score_cp=row["score_cp"],
+                mate_in=row["mate_in"],
+                best_move_uci=row["best_move_uci"],
+                pv=row["pv"],
+                wdl_win=row["wdl_win"],
+                wdl_draw=row["wdl_draw"],
+                wdl_loss=row["wdl_loss"],
+            )
+            updates.append({"fingerprint": fingerprint, "id": row["id"]})
+        bind.execute(
+            sa.text("UPDATE engine_evaluations SET fingerprint = :fingerprint WHERE id = :id"),
+            updates,
         )
+        last_id = rows[-1]["id"]
 
     # Phase 2: NOT NULL + swap the unique constraint. Rows were unique on the
     # old 5-tuple, so the backfilled 6-tuple is unique too and the swap is safe.

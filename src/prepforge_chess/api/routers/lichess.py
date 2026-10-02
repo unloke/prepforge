@@ -18,7 +18,7 @@ from collections import OrderedDict
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -452,6 +452,8 @@ def _run_compare(
     opponents added on Games or Scout — fetched the same way, owner-scoped to
     the caller's repertoires for comparison."""
     count = max(1, min(_COMPARE_COUNT_MAX, count))
+    if len(account_ids or []) > lichess_fetch.MAX_IDENTITIES or len(usernames or []) > lichess_fetch.MAX_IDENTITIES:
+        raise HTTPException(status_code=422, detail="select at most 8 Lichess accounts")
     if account_ids is not None:
         # An explicit list — including EMPTY — is authoritative: the Source
         # Composer resolved the selection client-side, so an external-only
@@ -481,6 +483,10 @@ def _run_compare(
             detail="link your Lichess account first",
         )
     try:
+        lichess_fetch.validate_fetch_budget(usernames, count)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    try:
         if len(usernames) == 1:
             summaries = lichess_fetch.compare_recent_games(
                 repo, usernames[0], count, owner_user_id=owner
@@ -491,6 +497,9 @@ def _run_compare(
                 repo, usernames, count, owner_user_id=owner,
                 verified_usernames=verified_usernames
             )
+    except lichess_fetch.GamesRateLimitedError as exc:
+        raise HTTPException(status_code=429, detail=str(exc),
+                            headers={"Retry-After": str(exc.retry_after)}) from exc
     except lichess_fetch.LichessFetchError as exc:
         # Upstream Lichess failed -- this server proxied the fetch, so 502.
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
@@ -535,7 +544,9 @@ def _run_compare(
 
 
 @router.get("/compare")
+@limiter.shared_limit("6/minute", scope="lichess-compare")
 def compare(
+    request: Request,
     count: int = 10,
     account_id: str | None = None,
     account_ids: str | None = None,
@@ -553,12 +564,14 @@ def compare(
 class CompareBody(BaseModel):
     count: int = 10
     account_id: str | None = None
-    account_ids: list[str] | None = None
-    usernames: list[str] | None = None
+    account_ids: list[str] | None = Field(default=None, max_length=lichess_fetch.MAX_IDENTITIES)
+    usernames: list[str] | None = Field(default=None, max_length=lichess_fetch.MAX_IDENTITIES)
 
 
 @router.post("/compare")
+@limiter.shared_limit("6/minute", scope="lichess-compare")
 def compare_post(
+    request: Request,
     body: CompareBody,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
@@ -573,7 +586,9 @@ def compare_post(
 
 
 @router.get("/latest")
+@limiter.limit("60/minute")
 def latest(
+    request: Request,
     include_moves: bool = True,
     light: bool = False,
     account_id: str | None = None,
@@ -607,6 +622,10 @@ def latest(
             detail="link your Lichess account first",
         )
     try:
+        lichess_fetch.validate_fetch_budget(links, 1)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    try:
         if include_moves:
             game, source = lichess_fetch.newest_game_across(
                 [link.provider_user_id for link in links],
@@ -619,6 +638,9 @@ def latest(
                 per_account=1,
                 with_moves=False,
             )
+    except lichess_fetch.GamesRateLimitedError as exc:
+        raise HTTPException(status_code=429, detail=str(exc),
+                            headers={"Retry-After": str(exc.retry_after)}) from exc
     except lichess_fetch.LichessFetchError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     if game is None:
