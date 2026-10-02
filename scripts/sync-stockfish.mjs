@@ -2,6 +2,7 @@
 // browser URLs, and emit metadata describing the exact bundled engine.
 import {
   copyFileSync,
+  chmodSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -60,7 +61,11 @@ export function syncStockfish() {
   ];
   mkdirSync(dstDir, { recursive: true });
   for (const output of outputs) {
-    copyFileSync(join(srcDir, output.source), join(dstDir, output.bundled));
+    const destination = join(dstDir, output.bundled);
+    copyFileSync(join(srcDir, output.source), destination);
+    // npm preserves executable bits for some package files on Linux. Browser
+    // assets are data, so keep their committed permissions platform-independent.
+    chmodSync(destination, 0o644);
     console.log(`[sync-stockfish] copied ${output.source} -> ${output.bundled}`);
   }
   const manifest = {
