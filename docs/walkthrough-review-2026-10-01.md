@@ -69,6 +69,8 @@ coverage especially important.
 - Production build and bundle size: passed; generated deploy output is committed.
 - UI v2: 9/9 suites passed, including real Stockfish Analyze at four viewports.
 - Accessibility/menu/popover/palette browser smoke: passed.
+- Rail/status/mobile geometry: passed at 1024/1180/1200/1440 and 390px;
+  mobile checks six tabs, 44px targets, and zero horizontal overflow.
 - Stockfish browser smoke: passed.
 - Maia cross-origin provider gate: passed with real worker/model fetching;
   runner restored the production build afterward.
