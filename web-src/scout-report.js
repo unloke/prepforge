@@ -46,8 +46,10 @@ export function captureScoutExpanded(resultsEl) {
   const expandedKeys = new Set();
   const expanded =
     resultsEl.querySelectorAll?.(".scout-line.is-expanded[data-line-key]") || [];
+  // Only a row the user opened survives a rebuild. The default-open first row
+  // re-defaults, so it follows the ranking as streamed games reorder it.
   for (const el of expanded) {
-    if (el.dataset.lineKey) expandedKeys.add(el.dataset.lineKey);
+    if (el.dataset.lineKey && el.dataset.userOpen === "1") expandedKeys.add(el.dataset.lineKey);
   }
   return { expandedKeys, scrollTop: resultsEl.scrollTop };
 }
@@ -167,6 +169,7 @@ export function restoreScoutExpanded(resultsEl, sections, captured, ctx) {
     const match = findLineByKey(sections, el.dataset.color, el.dataset.lineKey);
     if (!match) continue;
     openScoutLine(el, match.line, match.rowKind, ctx);
+    el.dataset.userOpen = "1";
     break;
   }
   resultsEl.scrollTop = scrollTop || 0;
@@ -179,6 +182,7 @@ export function openScoutLine(lineEl, line, rowKind, ctx) {
   const root = lineEl.closest?.(".scout-results") || lineEl.parentElement?.parentElement;
   for (const el of root?.querySelectorAll?.(".scout-line.is-expanded") || []) {
     if (el === lineEl) continue;
+    delete el.dataset.userOpen;
     el.classList.remove("is-expanded");
     el.setAttribute("aria-expanded", "false");
   }
@@ -897,7 +901,7 @@ export function patchScoutLineMaiaCells(rowEl, line, baseline) {
   const scoreEl = rowEl.querySelector(".scout-lr-score");
   const wdlEl = rowEl.querySelector(".scout-lr-wdl");
   if (scoreEl) {
-    scoreEl.innerHTML = scoutScoreCell(line.maiaScorePct, line.games, {
+    scoreEl.innerHTML = scoutScoreCell(line.maiaScorePct, line.routeSupportGames ?? line.games, {
       baseline,
       showGap: line.belowBaseline > 0,
       maiaEstimate: true,
@@ -1001,8 +1005,9 @@ export function scoutRouteReasonText(line, baseline) {
   } else if (line?.prepCategory === "weapon") {
     parts.push("a frequent line they score well on");
   }
-  if ((line?.games || 0) === 1) parts.push("thin sample (1 game)");
-  else if ((line?.games || 0) > 1) parts.push(`seen in ${line.games} games`);
+  const support = line?.routeSupportGames ?? line?.games ?? 0;
+  if (support === 1) parts.push("thin sample (1 game)");
+  else if (support > 1) parts.push(`seen in ${support} games`);
   if (line?.lastSeen) {
     const seen = formatLastSeenLabel(line.lastSeen);
     if (seen) parts.push(seen);
@@ -1184,7 +1189,7 @@ function scoutLineRowHtml(
   const framing = scoutPrepFramingHtml(line, escapeHtml);
   // Real integer game count for display — never the recency-weighted `count`, which
   // decays toward 0 for old lines and would render a true n=1 line as "n=0".
-  const rawCount = line.gameCount ?? line.games ?? Math.round(line.count ?? 0);
+  const rawCount = line.routeSupportGames ?? line.gameCount ?? line.games ?? Math.round(line.count ?? 0);
   const engineFlag = line.hasEngineMistake || line.refutation
     ? '<i class="scout-err-marker eng" title="Engine-backed refutation available">⚠</i>'
     : "";
@@ -1203,7 +1208,7 @@ function scoutLineRowHtml(
     : "Add this line to a repertoire";
   const addBtn = `<button type="button" class="scout-add-icon scout-action-add-prep add" title="${escapeHtml(addTitle)}" aria-label="Add to prep" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}">+</button>`;
   const maiaEstimate = line.maiaScorePct != null;
-  const displayScore = maiaEstimate ? line.maiaScorePct : line.scorePct;
+  const displayScore = maiaEstimate ? line.maiaScorePct : (line.routeScorePct ?? line.scorePct);
   const wdl = scoutLineWdlCounts(line);
   if (weakness) {
     // Game-plan rows: no ×N count or share% — on n=1 deep lines these are always
@@ -1475,7 +1480,7 @@ export function buildScoutSectionReport(
           ${planHead}
           ${firstMovesHtml}
           ${gapActionsHtml}
-          ${v3Mode ? "" : '<div class="muted hint">No actionable lines yet — fetch more games or try a broader speed filter.</div>'}
+          ${v3Mode ? "" : '<div class="muted hint">No reachable weak spots in these games</div>'}
         </div>`;
 
   const heading = oppColor === "white" ? "With White" : "With Black";
@@ -1648,6 +1653,7 @@ export async function handleScoutResultsClick(event, ctx) {
     const line = resolveRow(state, rowKind, color, idx);
     if (!line) return;
     openScoutLine(lineEl, line, rowKind, { ...ctx, sideEl: ctx.getSideEl?.() || null });
+    lineEl.dataset.userOpen = "1";
     ctx.callbacks.revealScoutDetail?.();
   }
 }

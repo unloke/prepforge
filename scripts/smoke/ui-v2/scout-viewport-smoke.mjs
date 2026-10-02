@@ -231,7 +231,7 @@ async function runViewport(vp) {
     await page.waitForTimeout(200);
     const titleAfter = await page.locator("#scout-side .line-title").textContent();
     const openRows = await page.locator("#scout-results .scout-line.is-expanded").count();
-    check(titleAfter !== titleBefore, "selecting another row should swap the line-detail card");
+    check(titleAfter !== titleBefore, `selecting another row should swap the line-detail card (${titleBefore} -> ${titleAfter})`);
     check(openRows === 1, `exactly one row should be open, got ${openRows}`);
   }
 

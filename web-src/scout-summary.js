@@ -184,7 +184,7 @@ function sideWord(stats) {
 // entirely (the notes used to skip it unconditionally).
 function headlineTakesTopWeak(prepTargets, stats) {
   const top = prepTargets?.[0];
-  if (top && top.games >= 5) return false;
+  if (top && (top.routeSupportGames ?? top.games) >= 5) return false;
   const branches = stats?.openingBranches;
   const games = branches?.games ?? stats?.predictability?.games ?? 0;
   return games >= 10 && !!branches?.weak?.[0];
@@ -202,10 +202,10 @@ function buildActionableHeadline(prepTargets, stats, username) {
   const branches = stats?.openingBranches;
   const games = branches?.games ?? predict?.games ?? 0;
   const side = sideWord(stats);
-  if (!top || top.games < 5) {
+  if (!top || (top.routeSupportGames ?? top.games) < 5) {
     if (games < 10) {
       return games
-        ? `Only ${games} ${side} game${games === 1 ? "" : "s"} from ${username} so far. Treat the lines below as hints, not habits.`
+        ? `Only ${games} ${side} game${games === 1 ? "" : "s"} from ${username} so far.`
         : `No ${side} games from ${username} in this filter.`;
     }
     const weak = branches?.weak?.[0];
@@ -223,15 +223,16 @@ function buildActionableHeadline(prepTargets, stats, username) {
     }
     const expect = expectationText(stats?.firstChoices);
     const lead = expect ? `Expect ${expect}. ` : "";
-    return `${lead}No opening where ${username} scores clearly below their ${branches?.baselinePct ?? 0}% average. Prepare the main paths and use the ranked lines below.`;
+    return `${lead}No opening where ${username} scores clearly below their ${branches?.baselinePct ?? 0}% average.`;
   }
-  const line = scoutLineText(top.sans);
+  // Name the branch where they struggle, not the whole sample game.
+  const line = scoutLineText(top.anchorSans?.length ? top.anchorSans : top.sans);
   if (top.prepCategory === "attack" || top.belowBaseline > 0) {
     return choose({ san: top.sans?.[0], uci: top.ucis?.[0] }, "scout-headline-attack", HEADLINE_ATTACK, {
       predictable,
       line,
-      score: top.scorePct,
-      n: top.games,
+      score: top.routeScorePct ?? top.scorePct,
+      n: top.routeSupportGames ?? top.games,
     });
   }
   return choose({ san: top.sans?.[0], uci: top.ucis?.[0] }, "scout-headline-weapon", HEADLINE_WEAPON, {

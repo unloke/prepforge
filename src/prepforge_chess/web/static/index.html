@@ -7,9 +7,9 @@
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111318'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23ffffff'%3E%E2%99%9E%3C/text%3E%3C/svg%3E" />
-    <script type="module" crossorigin src="/static/assets/index-C6XEK3cK.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-B_KoBti6.js"></script>
     <link rel="modulepreload" crossorigin href="/static/assets/chess-DwBov9dY.js">
-    <link rel="stylesheet" crossorigin href="/static/assets/index-CiZFQSlo.css">
+    <link rel="stylesheet" crossorigin href="/static/assets/index-C4hOrqu4.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -132,6 +132,7 @@
                 <button class="ib" id="analysis-end" title="End" aria-label="Go to end">⏭</button>
               </div>
               <span class="board-label" id="analysis-board-label">Initial position</span>
+              <button class="pv-exit" id="analysis-pv-exit" type="button" title="Back to game (Esc)" hidden>Back to game</button>
               <div class="bb-right">
                 <button class="ib" id="analysis-flip" title="Flip board" aria-label="Flip board">⇅</button>
               </div>
@@ -247,6 +248,7 @@
                 <button class="ib" id="build-end" title="To end of line" aria-label="Go to end of line">⏭</button>
               </div>
               <span class="board-label" id="build-board-label">No repertoire</span>
+              <button class="pv-exit" id="build-pv-exit" type="button" title="Back to the repertoire position (Esc)" hidden>Back to game</button>
               <div class="bb-right">
                 <span class="build-sync" id="build-sync" aria-live="polite" hidden></span>
                 <button class="ib" id="build-flip" title="Flip board" aria-label="Flip board">⇅</button>

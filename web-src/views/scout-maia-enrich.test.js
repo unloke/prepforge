@@ -60,8 +60,8 @@ const DEEP_LINES = [
   ["d2d4","d7d5","c2c4","c7c6","b1c3","g8f6","g1f3","d5c4","e2e4","b7b5","e4e5","f6d5","a2a4","e7e6","a4b5"],
 ];
 function weaknessGames() {
-  return DEEP_LINES.map((ucis, i) => ({
-    gameId: `w-${i}`,
+  return DEEP_LINES.flatMap((ucis, i) => Array.from({ length: 3 }, (_, copy) => ({
+    gameId: `w-${i}-${copy}`,
     color: "white",
     score: i % 3 === 0 ? 0 : i % 3 === 1 ? 1 : 0.5,
     ucis,
@@ -77,7 +77,7 @@ function weaknessGames() {
     speed: "blitz",
     rating: 1800,
     opponentRating: 1700,
-  }));
+  })));
 }
 
 describe("scout maia enrichment orchestration", () => {
@@ -179,7 +179,7 @@ describe("scout maia enrichment orchestration", () => {
     streamGames.mockImplementation((_u, opts = {}) =>
       new Promise((resolve) => {
         finishStream = async () => {
-          for (const g of weaknessGames().slice(0, 2)) opts.onGame?.(g);
+          for (const g of weaknessGames()) opts.onGame?.(g);
           resolve({ accepted: 2, lastDatestamp: 1000 });
         };
       }),
@@ -219,7 +219,7 @@ describe("scout maia enrichment orchestration", () => {
     const { runStockfishPrefilter } = await import("../scout-prefilter.js");
     streamGames.mockReset();
     streamGames.mockImplementation(async (_u, opts = {}) => {
-      for (const g of weaknessGames().slice(0, 3)) opts.onGame?.(g);
+      for (const g of weaknessGames().slice(0, 12)) opts.onGame?.(g);
       return { accepted: 3, lastDatestamp: 1000 };
     });
 
@@ -229,7 +229,7 @@ describe("scout maia enrichment orchestration", () => {
     expect(callsAfterFirstBatch).toBeGreaterThan(0);
 
     streamGames.mockImplementation(async (_u, opts = {}) => {
-      for (const g of weaknessGames().slice(3)) opts.onGame?.(g);
+      for (const g of weaknessGames().slice(12)) opts.onGame?.(g);
       return { accepted: 3, lastDatestamp: 999 };
     });
     runStockfishPrefilter.mockClear();
@@ -250,7 +250,7 @@ describe("scout maia enrichment orchestration", () => {
     await view.runScout();
     await flushDeferredTimers();
     expect(wdlReadMock).not.toHaveBeenCalled();
-    expect(elements.get("scout-results").innerHTML).toContain("No actionable lines yet");
+    expect(elements.get("scout-results").innerHTML).toContain("No reachable weak spots in these games");
   });
 
   it("still enriches with Maia when Stockfish provides no evaluation evidence", async () => {

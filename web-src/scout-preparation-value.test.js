@@ -1,77 +1,104 @@
 import { describe, it, expect } from 'vitest';
-import { scenarios } from '../scripts/scout-production-selection-study.mjs';
-import { preparationValue, selectPreparationRoutes, nestedRoutes } from './scout-preparation-value.js';
+import { preparationValue, selectPreparationRoutes } from './scout-preparation-value.js';
+const row = (ucis, overrides = {}) => ({ ucis, games: 15, scorePct: 30, conditionalReach: 0.4, prefilterScore: 0, ...overrides });
+const select = (rows, options = {}) => selectPreparationRoutes(rows, { baseline: 70, oppColor: 'white', ...options });
 
-describe('budgeted practical preparation value', () => {
-  it.each(scenarios)('$name', ({ rows, budget, expected }) => {
-    for (const input of [rows, [...rows].reverse()]) {
-      const result = selectPreparationRoutes(input, { limit: budget });
-      expect(result.map(r => r.id)).toEqual(expected);
-      expect(result.every((r,i) => result.slice(i+1).every(s => !nestedRoutes(r,s)))).toBe(true);
+describe('v10 reachable historical weakness', () => {
+  it('chooses supported weakness over frequent strength and singleton disasters', () => {
+    const weak = row(['weak']);
+    expect(select([row(['strong'], { games: 40, scorePct: 85, conditionalReach: 0.8 }), row(['singleton'], { games: 1, scorePct: 0, prefilterScore: 1000 }), weak], { limit: 1 }).map(r => r.ucis)).toEqual([weak.ucis]);
+  });
+  it('models draws explicitly in posterior mean and variance', () => {
+    const e = preparationValue(row(['a'], { selectionWdl: { w: 1, d: 4, l: 5, weight: 10, weightSquared: 10 }, selectionBaseline: { score: 0.7, prior: { w: 0.6, d: 0.2, l: 0.2 } } }));
+    const mu = (5.8 + 0.5 * 5.6) / 18;
+    expect(e.shrunkScore).toBeCloseTo(mu);
+    expect(e.sigma ** 2).toBeCloseTo(((5.8 + 0.25 * 5.6) / 18 - mu ** 2) / 19);
+    expect(e.value).toBeCloseTo(0.4 * Math.max(0, 0.7 - mu - 0.5 * e.sigma));
+  });
+  it('requires raw n >= 3 and n_eff >= 2 without a weighted n floor', () => {
+    const input = row(['a'], { games: 3, selectionWdl: { w: 0, d: 0, l: 2.7, weight: 2.7, weightSquared: 2.43 } });
+    expect(preparationValue(input, 70).value).toBeGreaterThan(0);
+    expect(preparationValue({ ...input, selectionWdl: { ...input.selectionWdl, weightSquared: 7 } }, 70).value).toBe(0);
+  });
+  it('ignores our move frequency in reach while preserving confidence effects', () => {
+    const make = n => row(['a','b','c','d'], { games: n, preparationDecisions: [{ ply: 2, moveGames: 80, parentGames: 100 }, { ply: 4, moveGames: n, parentGames: n }] });
+    expect(preparationValue(make(1), 70).conditionalReach).toBeCloseTo(0.8);
+    expect(preparationValue(make(40), 70).conditionalReach).toBeCloseTo(0.8);
+    expect(preparationValue(make(1), 70).value).toBe(0);
+    expect(preparationValue(make(40), 70).value).toBeGreaterThan(0);
+  });
+  it('gates cumulative reach and weakest-choice plausibility separately', () => {
+    const input = row(['a','b','c','d','e'], { routeReach: 0.4, preparationDecisions: [1,3,5].map(ply => ({ ply, moveGames: 40, parentGames: 100 })) });
+    expect(preparationValue(input, 70).conditionalReach).toBeCloseTo(0.064);
+    expect(preparationValue(input, 70).value).toBe(0);
+    // A rarely reached line is never a weak spot, only a filler behind one.
+    const weak = row(['w']);
+    expect(select([row(['a'], { conditionalReach: 0.01 }), weak]).map(r => r.ucis)).toEqual([['w'], ['a']]);
+    expect(select([row(['a'], { routeReach: 0.09 })])).toEqual([]);
+  });
+  it('keeps alternative user moves as separate rows', () => {
+    expect(select([row(['a','x','i']), row(['a','y','j'])])).toHaveLength(2);
+    expect(select([row(['a','x']), row(['b','y'])], { oppColor: 'black' })).toHaveLength(2);
+  });
+  it('accepts usable CP, rejects losing CP and opponent mates', () => {
+    for (const cp of [-75,-20,0,5]) expect(select([row(['a'], { prefilterScore: cp })])).toHaveLength(1);
+    expect(select([row(['a'], { prefilterScore: -76 })])).toEqual([]);
+    expect(select([row(['a'], { userMate: -2, prefilterScore: 1000 })])).toEqual([]);
+  });
+  it('charges depth by the evidence anchor, not the full line length', () => {
+    const anchored = row(['a','b','c','d','e','f','g'], { anchorUcis: ['a','b','c'], evidencePlies: 3 });
+    const longer = { ...anchored, ucis: [...anchored.ucis, 'h', 'i', 'j', 'k', 'l', 'm'] };
+    expect(preparationValue(longer, 70).value).toBeCloseTo(preparationValue(anchored, 70).value);
+    const deepAnchor = { ...longer, evidencePlies: longer.ucis.length };
+    expect(preparationValue(deepAnchor, 70).value).toBeLessThan(preparationValue(longer, 70).value);
+  });
+  it('fills unused slots with non-weak lines, likeliest and least comfortable first', () => {
+    const usual = row(['a'], { scorePct: 70 }), comfortable = row(['b'], { scorePct: 95 });
+    for (const input of [[usual, comfortable], [comfortable, usual]])
+      expect(select(input).map(r => r.ucis)).toEqual([['a'], ['b']]);
+    const rare = row(['c'], { scorePct: 70, conditionalReach: 0.05 });
+    expect(select([rare, usual]).map(r => r.ucis)).toEqual([['a'], ['c']]);
+    expect(select([])).toEqual([]);
+    expect(select([usual], { limit: 0 })).toEqual([]);
+  });
+  it('gives each anchor one row and never a second continuation past it', () => {
+    const full = (tail, extra = {}) => row(['p','q','r','s','t','u','v', ...tail], extra);
+    const a1 = full(['a1'], { anchorUcis: ['p','q','r'], continuationShare: 0.6 });
+    const a2 = full(['a2'], { anchorUcis: ['p','q','r'], continuationShare: 0.3 });
+    const b1 = { ...row(['p','q','x','s','t','u','v','b1'], { scorePct: 60 }), anchorUcis: ['p','q','x'], continuationShare: 0.2 };
+    expect(select([a2, b1, a1]).map(r => r.ucis.at(-1))).toEqual(['a1', 'b1']);
+  });
+  it('shows a family of nested weak branches once', () => {
+    const line = (tail, anchorUcis, extra = {}) => ({ ...row(['p','q','r', ...tail], extra), anchorUcis });
+    const deep1 = line(['s','t','u','v','w'], ['p','q','r','s','t'], { scorePct: 20 });
+    const deep2 = line(['s','t','u','v','x'], ['p','q','r','s','t'], { scorePct: 20 });
+    const other = line(['z','y','u','v','w'], ['p','q','r'], { scorePct: 40 });
+    for (const input of [[deep1, deep2, other], [other, deep2, deep1]])
+      expect(select(input).map(r => r.ucis)).toEqual([deep1.ucis, other.ucis]);
+  });
+  it('leaves slots empty rather than fill them with lines that differ only past a shared anchor', () => {
+    const anchorUcis = ['e4','e5','Nf3','Nc6','d3','Nf6','Be2'];
+    const tails = ['O-O','c3','Nbd2','a4'].map(m => ({ ...row([...anchorUcis, 'Be7', m, 'x', 'y'], { scorePct: 75 }), anchorUcis }));
+    expect(select(tails)).toHaveLength(1);
+  });
+  it('prefers lines that reach the end of the opening over stubs', () => {
+    const stub = row(['a'], { scorePct: 10 });
+    const line = row(['b','c','d','e','f','g','h','i'], { scorePct: 30 });
+    expect(select([stub, line]).map(r => r.ucis.length)).toEqual([8, 1]);
+  });
+  it('dedupes canonical positions using the higher utility without summing support', () => {
+    const a = row(['a'], { terminalFen: 'position w - - 0 1', scorePct: 20 });
+    const b = row(['b'], { terminalFen: 'position w - - 4 7', scorePct: 40 });
+    for (const inputs of [[a,b],[b,a]]) {
+      expect(select(inputs).map(r => r.ucis)).toEqual([a.ucis]);
+      expect(select(inputs)[0].preparationEvidence.support).toBe(15);
     }
   });
-  it('never treats tiny perfect samples as certain', () => {
-    const values = [1,2,40].map(n => preparationValue({ games:n, evidenceGames:n }).coverage);
-    expect(values[0]).toBeLessThan(values[1]);
-    expect(values[1]).toBeLessThan(values[2]);
-    expect(values[2]).toBeLessThan(1);
+  it('Maia outcomes never alter posterior, support, reach or utility', () => {
+    const input = row(['a']);
+    for (const maiaScorePct of [0,100,null]) expect(preparationValue({ ...input, maiaScorePct },70)).toEqual(preparationValue(input,70));
   });
-  it('Maia opportunity influence decays with personal support, and never changes coverage', () => {
-    const delta = n => [0,100].map(maiaScorePct => preparationValue({games:n,scorePct:30,maiaScorePct}));
-    expect(delta(2)[0].coverage).toBe(delta(2)[1].coverage);
-    expect(delta(100)[0].opportunity-delta(100)[1].opportunity).toBeLessThan(delta(2)[0].opportunity-delta(2)[1].opportunity);
-  });
-  it('empty, zero budget, zero edge and impossible routes do not fill slots', () => {
-    expect(selectPreparationRoutes([])).toEqual([]);
-    expect(selectPreparationRoutes(scenarios[0].rows,{limit:0})).toEqual([]);
-    expect(selectPreparationRoutes([{ucis:['e2e4'],games:10,prefilterScore:0}])).toEqual([]);
-    expect(selectPreparationRoutes([{ucis:['e2e4'],games:10,routeReach:0.09}])).toEqual([]);
-  });
-  it('matches exhaustive subset search on small trees, including one-ply parents', () => {
-    let seed = 4129;
-    const random = () => ((seed = (1664525 * seed + 1013904223) >>> 0) / 2 ** 32);
-    const paths = [['a'],['a','x'],['a','x','i'],['a','x','j'],['a','y'],['b','x'],['b','x','i'],['c','x']];
-    for (let sample = 0; sample < 40; sample++) {
-      const rows = paths.map(ucis => ({ucis,games:1+Math.floor(random()*80),evidenceGames:100,prefilterScore:random()*300}));
-      const objective = set => set.reduce((sum, route) => sum + preparationValue(route).value, 0);
-      for (const limit of [1,2,3,4]) {
-        let optimum = 0;
-        for (let mask=0;mask<2**rows.length;mask++) {
-          const set = rows.filter((_,i)=>mask & (1<<i));
-          if (set.length>limit || set.some((r,i)=>set.slice(i+1).some(s=>nestedRoutes(r,s)))) continue;
-          optimum = Math.max(optimum,objective(set));
-        }
-        expect(objective(selectPreparationRoutes(rows,{limit}))).toBeCloseTo(optimum,10);
-      }
-    }
-  });
-  it('depth alone does not improve utility; identical evidence prefers the shorter representative', () => {
-    const parent = {ucis:['e2e4','e7e5'],games:40,evidenceGames:50,prefilterScore:40};
-    const child = {...parent,ucis:[...parent.ucis,'g1f3','b8c6']};
-    expect(selectPreparationRoutes([child,parent]).map(r=>r.ucis)).toEqual([parent.ucis]);
-  });
-  it('always enforces the product cap even for larger requested budgets', () => {
-    const rows = Array.from({length:20},(_,i)=>({ucis:[String(i),'reply'],games:2}));
-    expect(selectPreparationRoutes(rows,{limit:100})).toHaveLength(12);
-  });
-  it('can spend all twelve targets on distinct valuable continuations in one family', () => {
-    const strong = Array.from({length:12},(_,i)=>({
-      id: `strong-${i}`, ucis:['e2e4','c7c5',`continuation-${i}`],
-      games:20,evidenceGames:300,prefilterScore:100,
-    }));
-    const alternatives = ['d2d4','c2c4','g1f3'].map(move=>({
-      id:move,ucis:[move,'reply'],games:10,evidenceGames:300,prefilterScore:50,
-    }));
-    const chosen = selectPreparationRoutes([...alternatives,...strong]);
-    expect(chosen).toHaveLength(12);
-    expect(chosen.every(r=>r.id.startsWith('strong-'))).toBe(true);
-  });
-  it('changing family labels without changing overlap does not change selected values', () => {
-    const rows = Array.from({length:8},(_,i)=>({
-      ucis:['shared','reply',String(i)],games:5+i,evidenceGames:100,prefilterScore:100,
-    }));
-    const splitFamilies = rows.map((r,i)=>({...r,ucis:[String(i),'reply','tail']}));
-    const values = input => selectPreparationRoutes(input,{limit:4}).map(r=>r.preparationEvidence.value);
-    expect(values(rows)).toEqual(values(splitFamilies));
+  it('caps the budget at twelve without family quotas', () => {
+    expect(select(Array.from({ length: 20 }, (_,i) => row(['shared','reply',String(i)])), { limit: 100 })).toHaveLength(12);
   });
 });

@@ -336,6 +336,37 @@ describe("the opponent's move, read for the user", () => {
     }
   });
 
+  it("names the tactic your reply uses to punish a slip, not just the material", () => {
+    const f = scenario({ fen: "r3k3/7p/8/3N4/8/8/8/4K3 b - - 0 1", san: "h6", best: "Kd7",
+      before: 0, after: 500, playedLine: ["Nc7+", "Kd7", "Nxa8", "Kc6"] });
+    const read = buildOpponentCommentary(f, { selfSide: "white" });
+    expect(read.prose).toBe("1...h6 drops a rook: 2.Nc7+ forks the king and the rook on a8.");
+    expect(read.tone).toBe("good");
+  });
+
+  it("calls out a win they missed, with the tactic and the material, instead of a bare grade", () => {
+    const f = scenario({ fen: "4k3/7p/8/8/1n6/8/8/R3K3 b - - 0 1", san: "h6", best: "Nc2+",
+      bestLine: ["Nc2+", "Kd2", "Nxa1", "Kc1"], before: -500, after: 0, playedLine: ["Kd2"] });
+    const { prose } = buildOpponentCommentary(f, { selfSide: "white" });
+    expect(prose).toMatch(/^1\.\.\.h6 misses Nc2\+, which forks your king and your rook on a1 and wins a rook\./);
+    expect(prose).not.toMatch(/is an? (inaccuracy|mistake|blunder);/);
+  });
+
+  it("reads a sound capture by the opponent as the material it wins", () => {
+    const f = scenario({ fen: "4k3/1n6/8/8/8/8/8/1R2K3 w - - 0 1", san: "Rxb7", best: "Rxb7",
+      before: 500, after: 500, playedLine: ["Kd8"] });
+    const read = buildOpponentCommentary(f, { selfSide: "black" });
+    expect(read.prose).toMatch(/^1\.Rxb7 is [^:]+: it wins a knight/);
+    expect(read.tone).toBe("warn");
+  });
+
+  it("keeps the opponent's own piece as 'the' and the user's targets as 'your'", () => {
+    const f = scenario({ fen: afterNf3, san: "Nf6", best: "Nf6", before: 30, after: 30, playedLine: ["Nxe5"] });
+    const { prose } = buildOpponentCommentary(f, { selfSide: "white" });
+    expect(prose).toContain("develops the knight");
+    expect(prose).toContain("your pawn on e4");
+  });
+
   it("reads their missed mate as a reprieve for the user", () => {
     const c = new Chess();
     ["f3", "e5", "g4"].forEach((san) => c.move(san));

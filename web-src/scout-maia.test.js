@@ -571,7 +571,7 @@ describe("Maia failure UI", () => {
       },
     );
     expect(html).not.toContain("scout-maia-estimate");
-    expect(html).toContain("Maia unavailable");
+    expect(html).toContain("No reachable weak spots in these games");
     expect(html).not.toContain("Evaluating");
   });
 });

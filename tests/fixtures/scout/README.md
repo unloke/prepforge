@@ -12,12 +12,13 @@ SHA256 (repository LF bytes): `9c1782cf3fd11034b44232bb08c5878d8aefd7d88e4345be7
 
 `selection-stockfish.json` contains real Stockfish **19 lite single**, depth **8**,
 16 MiB hash, `ucinewgame` reset per FEN, single-PV reads for the union of old/new
-300-candidate queues per colour (890 distinct FENs). Scores are converted from
+300-candidate queues per colour (890 distinct FENs), plus 136 FENs added
+2026-10-02 with identical settings for the full-line v10 queue (1,026 total). Scores are converted from
 side-to-move to White POV before the production prefilter converts to user POV.
 Terminal positions without a legal move have no usable reply. No Maia outputs
 are fabricated; Maia effects are covered separately by deterministic unit tests.
 
-Engine fixture SHA256 (repository LF bytes): `ea199bb20f8eaa98a5b7362d2da0555095ab1996958cafb4ee206beee0a05c27`.
+Engine fixture SHA256 (repository LF bytes): `b7832e2ad53cbe12babd9b222c5426851384b2d1e4fa393c8b9d2cb92c06605d`.
 
 Reproduce offline:
 
