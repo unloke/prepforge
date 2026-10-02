@@ -154,7 +154,8 @@
   gap: 8px;
 }
 #analyze-sidebar .panel-scroll > * { min-width: 0; }
-#analyze-sidebar .panel-head { flex-wrap: wrap; gap: 8px; }
+/* Wrapped actions keep their height; only the result body may shrink/scroll. */
+#analyze-sidebar .panel-head { flex: none; flex-wrap: wrap; gap: 8px; }
 #analyze-actions { flex-wrap: wrap; }
 #analysis-engine-slot:not(:empty) {
   padding-top: 6px;
