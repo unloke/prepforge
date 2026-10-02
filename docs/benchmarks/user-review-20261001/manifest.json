@@ -1,0 +1,16 @@
+{
+  "id": "user-review-20261001",
+  "baseline_commit": "aecebd3257ad375ed26b808da87b13bffc5aa582",
+  "baseline_tag": "benchmark/user-review-20261001",
+  "source_archive": "artifacts/benchmarks/user-review-20261001/source.zip",
+  "source_archive_sha256": "BE1A304C450E2EDDBD66FC9991E0D927CAFFB76FBCA2A9D4C7CC5FB2DFA282A2",
+  "source_archive_bytes": 18776066,
+  "tracked_worktree_clean_at_freeze": true,
+  "scope": "tracked source and committed assets; excludes ignored runtime data and untracked files",
+  "reference_status": "user-reported; not independently reproduced during benchmark preparation",
+  "default_viewports": [[1366, 768], [1440, 900]],
+  "browser_zoom_percent": 100,
+  "scored_items": 12,
+  "maximum_score": 100,
+  "grading": "manual after blind inspection; preserve agent output before revealing rubric"
+}
