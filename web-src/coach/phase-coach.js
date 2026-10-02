@@ -10,7 +10,6 @@ export const PHASE_LABELS = {
 };
 
 const TOP_CLOSE = 0.05; // prepared if expected is within 5 percentage points of Maia's top
-const SURPRISE_MAX = 0.08; // Maia barely plays it
 const HUMAN_ALSO_RANK = 3;
 
 export function phaseOfFen(fen) {
@@ -83,12 +82,8 @@ function agreementOf(sorted, expectedUci) {
   return "surprise";
 }
 
-function ratingCrowd(rating) {
-  return Number.isFinite(rating) ? "players at your rating" : "players at this level";
-}
-
-function capitalize(s) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+function crowd(rating) {
+  return Number.isFinite(rating) ? "players at your level" : "players";
 }
 
 const START_PLACEMENT = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
@@ -98,139 +93,52 @@ export function isStartFen(fen) {
   return parts[0] === START_PLACEMENT && parts[1] === "w";
 }
 
-// Spoiler-safe line for the Train "Your move" banner. Never names a SAN —
-// naming the prepared move (or Maia's e4 at the start) is the answer.
-export function promptTipFor(fen, phase) {
-  if (isStartFen(fen)) return "Play the first move of your repertoire.";
-  return phaseFollowup(phase || phaseOfFen(fen));
+// The Train "Your move" banner no longer carries canned phase advice ("Develop toward
+// the center...") that had nothing to do with the position. Kept for callers; always "".
+export function promptTipFor() {
+  return "";
 }
 
-function genericTip(phase) {
-  if (phase === "opening") {
-    return "Develop your pieces, occupy the center, and get the king safe.";
-  }
-  if (phase === "endgame") {
-    return "Activate the king, push your pawns, and don't rush tactics.";
-  }
-  return "Look for typical plans: improve your pieces, create a target, and keep the king safe.";
+function pctText(pct) {
+  return pct === null || pct < 1 ? "under 1%" : `${pct}%`;
 }
 
-function phaseFollowup(phase) {
-  if (phase === "opening") return "Develop toward the center and keep the king safe.";
-  if (phase === "endgame") return "Activate the king, push pawns, and don't rush tactics.";
-  return "Improve your pieces, create a target, and keep the king safe.";
-}
+// One short sentence grounded in Maia's move distribution, or "" when there is nothing
+// specific to say. Never names the prepared move unless `reveal` (or it is being taught).
+function buildTip({ fen, sorted, agreement, expectedSan, expectedUci, expectedPct, playedUci, playedPct, playedRank, humanSan, humanPct, rating, reveal }) {
+  if (!sorted.length) return "";
+  const who = crowd(rating);
+  const playedSan = sanOf(fen, playedUci);
+  const missed = !!playedUci && !!expectedUci && uciKey(playedUci) !== uciKey(expectedUci);
 
-function missTip({ phase, expectedSan, rating, playedRare, reveal }) {
-  const crowd = capitalize(ratingCrowd(rating));
-  // First miss is a retry: never name the prepared SAN. The second miss
-  // already titles the banner "It's Nf3".
-  if (!reveal) {
-    const lead = playedRare
-      ? `${crowd} almost never play that.`
-      : "That's not the prepared move.";
-    return `${lead} ${phaseFollowup(phase)}`;
-  }
-  const lead = playedRare
-    ? `${crowd} almost never play that; they choose ${expectedSan}.`
-    : `That's not the prepared move. ${crowd} choose ${expectedSan}.`;
-  return `${lead} ${phaseFollowup(phase)}`;
-}
-
-function buildTip({
-  phase,
-  sorted,
-  agreement,
-  expectedSan,
-  playedUci,
-  expectedUci,
-  playedProb,
-  rating,
-  humanSan,
-  fen,
-  reveal,
-}) {
-  const playedDiffers =
-    !!playedUci && !!expectedUci && uciKey(playedUci) !== uciKey(expectedUci);
-  const humanSan2 = sorted.length > 1 ? sanOf(fen, sorted[1].move_uci) : null;
-  const crowd = ratingCrowd(rating);
-
-  if (playedDiffers && expectedSan && sorted.length) {
-    const playedRare = !Number.isFinite(playedProb) || playedProb < SURPRISE_MAX;
-    return missTip({ phase, expectedSan, rating, playedRare, reveal });
+  // Train: a wrong answer.
+  if (missed) {
+    if (reveal && expectedSan) return `${expectedSan} is your prep; ${pctText(expectedPct)} of ${who} play it.`;
+    if (!playedSan) return "";
+    if (playedPct !== null && playedPct >= 20) return `${playedSan} is popular here, but it isn't your prep.`;
+    if (playedPct === null || playedPct < 5) return `Few ${who} play ${playedSan} here.`;
+    return "";
   }
 
-  // Waiting at the start FEN (no move played yet): never say "everyone plays
-  // e4". That is both a spoiler and not a real opening lesson.
-  if (isStartFen(fen) && !playedUci) {
-    if (expectedSan && agreement === "surprise") {
-      return `This is the first move of your repertoire. Humans almost never play ${expectedSan} here, so treat it as a sideline and still develop, occupy the center, and castle.`;
+  // Train: the prepared move is on screen (teach card or reveal).
+  if (expectedUci && expectedSan) {
+    if (agreement === "prepared") {
+      return uciKey(sorted[0].move_uci) === uciKey(expectedUci)
+        ? `Also the most popular move among ${who}.`
+        : `One of the main moves among ${who}.`;
     }
-    if (expectedSan) {
-      return `This is the first move of your repertoire. ${expectedSan} occupies the center; develop and castle next.`;
-    }
-    return genericTip(phase);
+    if (agreement === "human-also") return `A common choice among ${who} (${pctText(expectedPct)}).`;
+    if (agreement === "surprise") return `Only ${pctText(expectedPct)} of ${who} play it, so expect a surprise.`;
+    return "";
   }
 
-  if (!sorted.length) return genericTip(phase);
-
-  if (phase === "opening") {
-    if (agreement === "prepared" && expectedSan) {
-      // No claim about what the move does ("develops toward the center" was said of f3
-      // too); the caller pairs this with the move's own description.
-      return `This is what ${crowd} actually play here: ${expectedSan}.`;
-    }
-    if (agreement === "human-also" && expectedSan) {
-      return `${expectedSan} is also what humans play here. Develop, occupy the center, and get the king safe.`;
-    }
-    if (agreement === "surprise" && expectedSan) {
-      return `Your prep is a trap humans miss. They almost never play ${expectedSan} here, so treat it as a sideline and still develop, occupy the center, and castle.`;
-    }
-    if (humanSan) {
-      return `Humans go ${humanSan} here. Develop, occupy the center, and get the king safe.`;
-    }
-    return genericTip(phase);
+  // Analyze: how human the move just played is.
+  if (playedSan) {
+    if (playedRank === 1) return `${playedSan} is the most common choice among ${who} (${pctText(playedPct)}).`;
+    if (humanSan) return `${humanSan} is the usual move among ${who} (${pctText(humanPct)}); ${playedSan} gets ${pctText(playedPct)}.`;
+    return "";
   }
-
-  if (phase === "endgame") {
-    const conversion = expectedSan || humanSan;
-    if (agreement === "prepared" && conversion) {
-      return `${conversion} is the human conversion move. Activate the king, push pawns, and don't rush tactics.`;
-    }
-    if (agreement === "human-also" && expectedSan) {
-      return `Humans look at ${humanSan || expectedSan} to convert; ${expectedSan} is in that mix. Activate the king, push pawns, and don't rush tactics.`;
-    }
-    if (agreement === "surprise" && expectedSan) {
-      return `Your prep with ${expectedSan} is a sideline humans miss. Activate the king, push pawns, and don't rush tactics.`;
-    }
-    if (humanSan) {
-      return `Humans look at ${humanSan} to convert. Activate the king, push pawns, and don't rush tactics.`;
-    }
-    return genericTip(phase);
-  }
-
-  // middlegame
-  if (agreement === "prepared" && expectedSan) {
-    const second =
-      humanSan2 && humanSan2 !== expectedSan ? ` Humans also look at ${humanSan2}.` : "";
-    return `The prepared move ${expectedSan} is the human choice.${second} Improve your pieces and create a target.`;
-  }
-  if (agreement === "human-also" && expectedSan) {
-    if (humanSan && humanSan2) {
-      return `Humans look at ${humanSan} and ${humanSan2}; ${expectedSan} is in that mix. Improve your pieces and create a target.`;
-    }
-    return `${expectedSan} is a human choice here. Improve your pieces, create a target, and keep the king safe.`;
-  }
-  if (agreement === "surprise" && expectedSan) {
-    return `Your prep is a sideline humans miss. They rarely play ${expectedSan}; typical plans still apply: improve pieces and create a target.`;
-  }
-  if (humanSan && humanSan2) {
-    return `Humans look at ${humanSan} and ${humanSan2}. Improve your pieces, create a target, and keep the king safe.`;
-  }
-  if (humanSan) {
-    return `Humans look at ${humanSan}. Improve your pieces, create a target, and keep the king safe.`;
-  }
-  return genericTip(phase);
+  return humanSan ? `${humanSan} is the usual move among ${who} (${pctText(humanPct)}).` : "";
 }
 
 export function clusterQueueByPhase(queue) {
@@ -279,34 +187,34 @@ export function buildPhaseCoach({
   const expectedPct = expectedHit ? toPct(expectedHit.pred.probability) : null;
   const playedHit = findPred(sorted, playedUci);
   const playedPct = playedHit ? toPct(playedHit.pred.probability) : null;
-  const playedProb = playedHit ? playedHit.pred.probability : null;
+  const playedRank = playedHit ? playedHit.index + 1 : null;
 
   const resolvedExpectedSan = expectedSan || sanOf(fen, expectedUci);
   const agreement = agreementOf(sorted, expectedUci);
   const tip = buildTip({
-    phase,
+    fen,
     sorted,
     agreement,
     expectedSan: resolvedExpectedSan,
-    playedUci,
     expectedUci,
-    playedProb,
-    rating,
+    expectedPct,
+    playedUci,
+    playedPct,
+    playedRank,
     humanSan,
-    fen,
+    humanPct,
+    rating,
     reveal,
   });
 
   return {
     phase,
     phaseLabel,
-    title: `${phaseLabel} coach`,
+    title: phaseLabel,
     tip,
-    // True when the tip is only the phase's canned advice ("Develop your pieces, ...")
-    // with nothing about this move or position — callers should prefer a move-specific
-    // explanation (or say nothing) over repeating it on every card.
-    generic: tip === genericTip(phase),
-    promptTip: promptTipFor(fen, phase),
+    // Nothing position-specific to say: callers show nothing rather than filler.
+    generic: !tip,
+    promptTip: "",
     humanUci,
     humanSan,
     humanPct,

@@ -30,7 +30,7 @@ describe("pgnPlayers", () => {
   });
 });
 
-describe("isReviewedMove (Review my moves)", () => {
+describe("isReviewedMove (Engine review)", () => {
   it("grades only the user's own mainline moves on a game they played as Black", () => {
     // UX walkthrough P1-6: the user played Black; 14. a3 was the opponent's move.
     expect(isReviewedMove({ mover: "white", selfSide: "black", mainline: true })).toBe(false);

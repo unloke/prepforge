@@ -1,0 +1,672 @@
+{
+    "date":  "2026-10-01",
+    "operation":  "Organization only; existing file contents unchanged.",
+    "note":  "Existing document links and indexes are retained as-is for the next documentation agent to update. Duplicate report copies are preserved.",
+    "moves":  [
+                  {
+                      "source":  "docs/ARCHITECTURE.md",
+                      "destination":  "docs/archive/history/2026-09-29/ARCHITECTURE.md",
+                      "sha256":  "d43cb0f18ba82d8202568a4b4a33b671b6af2ec19a5ca58e22f9f2c14b3733ab"
+                  },
+                  {
+                      "source":  "docs/ROADMAP.md",
+                      "destination":  "docs/archive/history/2026-09-29/ROADMAP.md",
+                      "sha256":  "35bb3a6ccd92df9c711954350b3f9ace28207e0d144bf403c60280a70cc90741"
+                  },
+                  {
+                      "source":  "docs/local-first-sync-plan.md",
+                      "destination":  "docs/archive/history/2026-09-29/local-first-sync-plan.md",
+                      "sha256":  "85fa29f23cf1c4ced5d6195b03bee0e2eca2944be3dee51968f6f6c00876dcf4"
+                  },
+                  {
+                      "source":  "docs/backend-map.md",
+                      "destination":  "docs/archive/history/2026-09-27/backend-map.md",
+                      "sha256":  "47a8e5a96d963d3f703486214274419b54d5f1ace0373b146f524e134ef8afd8"
+                  },
+                  {
+                      "source":  "docs/backend-map.json",
+                      "destination":  "docs/archive/history/2026-09-27/backend-map.json",
+                      "sha256":  "073bc76378036a3b5afcf03ef9e7316d7f5199831ce5b621a2b2488201946792"
+                  },
+                  {
+                      "source":  "docs/backend-flows.md",
+                      "destination":  "docs/archive/history/2026-09-27/backend-flows.md",
+                      "sha256":  "7174bec2dd647e3dc1d921c6a33d9b11dc0f2f95b00e40ed2a4ee52bf1e5194f"
+                  },
+                  {
+                      "source":  "docs/archive/project-review-current-2026-09-30.md",
+                      "destination":  "docs/archive/audits/project-review-current-2026-09-30.md",
+                      "sha256":  "c5020a9f31180d5dff7faf20b2590e939f0a236fde7a4d49377fb7811fc88041"
+                  },
+                  {
+                      "source":  "docs/archive/project-review-verification-2026-09-30.md",
+                      "destination":  "docs/archive/audits/project-review-verification-2026-09-30.md",
+                      "sha256":  "616281eb75b56a05f41e2911467af0222d14d366deea5ae8bfa759249d30f46c"
+                  },
+                  {
+                      "source":  "docs/archive/project-review-followup-2026-09-29.md",
+                      "destination":  "docs/archive/duplicates/project-review-followup-2026-09-29.md",
+                      "sha256":  "3796e8bd896e98e56983926f94064ff4b0f5d15181041616f3f3bf6c0067b726"
+                  },
+                  {
+                      "source":  "docs/archive/round4-sol-review.md",
+                      "destination":  "docs/archive/audits/round4-sol-review.md",
+                      "sha256":  "dc9e62607a584b640bfbc86f196eb6d9ebd95dceaa1eb0e14e625617cb552058"
+                  },
+                  {
+                      "source":  "docs/archive/ux-walkthrough-2026-09-30.md",
+                      "destination":  "docs/archive/audits/ux-walkthrough-2026-09-30.md",
+                      "sha256":  "723ab839e96057bd6a014360fc5ae0bc3b49c4e3a7b96611dae86f4ac048858b"
+                  },
+                  {
+                      "source":  "docs/archive/ux-walkthrough-2026-10-01.md",
+                      "destination":  "docs/archive/audits/ux-walkthrough-2026-10-01.md",
+                      "sha256":  "9caeb6c13f962fa5021994d01f490bdd25f6be521c3a287d10a671c0230fc3ba"
+                  },
+                  {
+                      "source":  "docs/archive/ux-walkthrough-2026-10-01-verification.md",
+                      "destination":  "docs/archive/audits/ux-walkthrough-2026-10-01-verification.md",
+                      "sha256":  "b87563ea3123120b55a29cda9136a648a64bc0e5c5b80c236ef04f3d6b7bcde8"
+                  },
+                  {
+                      "source":  "docs/archive/reports/project-improvement-audit-2026-10-01.md",
+                      "destination":  "docs/archive/audits/project-improvement-audit-2026-10-01.md",
+                      "sha256":  "d0790e77d327bb7f58d12ada7b1e03824845bb8c3de49e933e79686ef9c43c5f"
+                  },
+                  {
+                      "source":  "docs/agent-context/backend-library.json",
+                      "destination":  "docs/archive/history/2026-09-29/agent-context/backend-library.json",
+                      "sha256":  "1c251607556a4ce2d4bba21be3887654cd260f0dd78833f5c29a3c7394f57c2c"
+                  },
+                  {
+                      "source":  "docs/agent-context/backend-library.md",
+                      "destination":  "docs/archive/history/2026-09-29/agent-context/backend-library.md",
+                      "sha256":  "9b55689e64308f340e4faac6df1ab08f79fa185d32e82e87d09e8f3a76b36fbb"
+                  },
+                  {
+                      "source":  "docs/agent-context/frontend-library.json",
+                      "destination":  "docs/archive/history/2026-09-29/agent-context/frontend-library.json",
+                      "sha256":  "6002bf65207fcb6ccb6651d4f4f0ba578224572cdaf7a5eb3d907fd1d5e63e36"
+                  },
+                  {
+                      "source":  "docs/agent-context/frontend-library.md",
+                      "destination":  "docs/archive/history/2026-09-29/agent-context/frontend-library.md",
+                      "sha256":  "e68f36cb5562a499f19d25d4170704d75fd0496986e7255b26c1b34083e7e9cb"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29/analyze-results-audit-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29/analyze-results-audit-desktop-1440.png",
+                      "sha256":  "80aa7e0e2606ee39233af4e6a74d85a534a032bb82a8fe1c5a0862484e611281"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29/engine-palette-audit.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29/engine-palette-audit.png",
+                      "sha256":  "c6061df08868b43a7b8c5d66ef1d9e9fc594e9e66b501ea866eb0474b3a63930"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29/games-triage-audit-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29/games-triage-audit-mobile-390.png",
+                      "sha256":  "cb78a390f7f9f9de48349d25ab021fe5575cb28625a25fb08295184a0418e2be"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29/library-audit-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29/library-audit-desktop-1440.png",
+                      "sha256":  "6e806195b9a6161afd7364b8be8bf3d32da7e0237067f2df2f4b0ae1503f225e"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29/scout-report-white-audit-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29/scout-report-white-audit-desktop-1440.png",
+                      "sha256":  "bc4477e5dd4828f233c63b56550bb82b2333cb228f1fce7eefab1d44aa4c0490"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29/settings-top-audit-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29/settings-top-audit-mobile-390.png",
+                      "sha256":  "774ae452cc8dfe09fb0a7178200d7a03a274862e0428c3b7793b9a218f49caf0"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29/train-active-audit-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29/train-active-audit-mobile-390.png",
+                      "sha256":  "97be8ec55867e6001fbdcf9093ee186d446a81257c5e63f357894e030d99a442"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/scout-report-black-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/scout-report-black-current-desktop-1440.png",
+                      "sha256":  "032e05faad0675e2538c26379a41bcb16805295a6cca3645a287000856c6cc87"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/scout-report-black-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/scout-report-black-current-laptop-1180.png",
+                      "sha256":  "f4ecd0d908f1fc5d3ec63fd8a3b5d0b34ea1247297615343aea8b025c665a4cd"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/scout-report-black-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/scout-report-black-current-mobile-390.png",
+                      "sha256":  "4d03fd60fdf02ae1cd8e5ec500016b0f4c4993b62ac8beb7a968238b1a1f7065"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/scout-report-white-bottom-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/scout-report-white-bottom-current-desktop-1440.png",
+                      "sha256":  "b0b74ddcfa891ac8b3b8ae895a35878cfb95af598d46062340b24f3009b5a3be"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/scout-report-white-bottom-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/scout-report-white-bottom-current-laptop-1180.png",
+                      "sha256":  "a9ad8bc82573259ec695f49f85f53e0dfe8682a4d3a8f7e7fc9249d56485f03e"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/scout-report-white-bottom-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/scout-report-white-bottom-current-mobile-390.png",
+                      "sha256":  "ad6ad3b350a41679be8bba1fea3e76c8d8319ae75876b2a96f1f704ec86e10ea"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/scout-report-white-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/scout-report-white-current-desktop-1440.png",
+                      "sha256":  "8c55cdaa10b3241a128f23edd325cef2606efad07836606a6232c59cb844b4d9"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/scout-report-white-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/scout-report-white-current-laptop-1180.png",
+                      "sha256":  "0e6c0df2e04ce7614285cebe5c2c849d6e4fca9cb6c42d0d4d764d92a8174054"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/scout-report-white-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/scout-report-white-current-mobile-390.png",
+                      "sha256":  "a35f6014ac642e17694b8675d4ee831d636c1fd1faa2cbda4fcc9f5fc767c3e4"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/scout-setup-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/scout-setup-current-desktop-1440.png",
+                      "sha256":  "e7f80084410dd5c18eb228f97e89e3104f2ca15dfede4ff436b994821d939531"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/scout-setup-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/scout-setup-current-laptop-1180.png",
+                      "sha256":  "e8d931d9e76a6ad0e95f4f882e103b306ab1d63dbd9b4e35a8b634132a56874a"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/scout-setup-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/scout-setup-current-mobile-390.png",
+                      "sha256":  "5eb16b25d9a5de2389572cafc9983b8aff8e23c3cc06ca2996a4ff2d3f0bff0a"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/train-active-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/train-active-current-desktop-1440.png",
+                      "sha256":  "4ee2af4bf871674989ccd8dd9a66771affe5ef10571f27163ee93b0c70a94d08"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/train-active-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/train-active-current-laptop-1180.png",
+                      "sha256":  "44edd29e489d4b537260934dc1ac72340da272185b380174bf01eb0e87b3607d"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/train-active-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/train-active-current-mobile-390.png",
+                      "sha256":  "5833f333fc1420088770064185f9747eed950938056a82c155b6cb04e661a723"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/train-play-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/train-play-current-desktop-1440.png",
+                      "sha256":  "3a079e92a6dfb5e2b71cfca1107732d5736b3e83d1ba5f90141cc03eeb2ad5b1"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/train-play-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/train-play-current-laptop-1180.png",
+                      "sha256":  "8cb5c7b1691842aca6f0d64c856c048b6403f9436a6f3f9e1d4010ad8bb7ee83"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/train-play-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/train-play-current-mobile-390.png",
+                      "sha256":  "71a15048ace382dcdec6e8ef07429f20ca71dba05cf435ddf30b72fc45c9172a"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/train-setup-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/train-setup-current-desktop-1440.png",
+                      "sha256":  "0056ce8f778cd0c9f69861827d87dd4714872f07fc2fbff590b62dc4d05a0e17"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/train-setup-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/train-setup-current-laptop-1180.png",
+                      "sha256":  "a556669011616ca0f14392f52583ba6550dc23f8c76c021e8e985e2c727e07dc"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-29-followup/train-setup-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-29-followup/train-setup-current-mobile-390.png",
+                      "sha256":  "e462fca070eb38bf3eae567544e748e26b8a60be0d58f871df0fac9b8d5c844f"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/analyze-results-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/analyze-results-current-desktop-1440.png",
+                      "sha256":  "39b0e6c44cc792f58e9074588f546196e87602eae9c72601b4188d47f9e55d94"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/analyze-results-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/analyze-results-current-laptop-1180.png",
+                      "sha256":  "dd6d03ef36976a5a1488679286e6f27428bb0b33e924872882013e362fb8b989"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/analyze-results-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/analyze-results-current-mobile-390.png",
+                      "sha256":  "b6633f33370adc9b1b47ec6b2a0148423ad21d636451fbe3fe74b85272876d5f"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/analyze-setup-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/analyze-setup-current-desktop-1440.png",
+                      "sha256":  "6d2fa17de519cdee3d9db7dba9ae428381109d31086e60a0a3c1e01fa7509b2e"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/analyze-setup-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/analyze-setup-current-laptop-1180.png",
+                      "sha256":  "6f321a65aa7f00542c149755d550da232de18c75f7baad80326a43d6b882bcb1"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/analyze-setup-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/analyze-setup-current-mobile-390.png",
+                      "sha256":  "54730668dff74cf7879b6e3ee3074210fcb8d2ae414c3d575184a67ac91e42c7"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/library-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/library-current-desktop-1440.png",
+                      "sha256":  "671852829dc22f0acce67973804efb31007445d375e0ae78ced5f3d384f6777d"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/library-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/library-current-laptop-1180.png",
+                      "sha256":  "56f9fdc3bd784a2aba1abc4a0d9312e5c692ab110587cc16462b40a56337027b"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/library-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/library-current-mobile-390.png",
+                      "sha256":  "ed46696d95927626764620ce15b05366eccdad6acdc395820a9f8838901d7593"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/scout-report-black-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/scout-report-black-current-desktop-1440.png",
+                      "sha256":  "16d314475020088a3f18d078e8ec3919c670121abf16ca02ff87663173927535"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/scout-report-black-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/scout-report-black-current-laptop-1180.png",
+                      "sha256":  "3094f8b1c22445a876edfd414c6efc5e7dd2423b3acbebb39eb8000861ab08aa"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/scout-report-black-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/scout-report-black-current-mobile-390.png",
+                      "sha256":  "cf933a121c26436d0e008c1b97be9160881eb6d30dba1ce43b1d1beff3a1a133"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/scout-report-white-bottom-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/scout-report-white-bottom-current-desktop-1440.png",
+                      "sha256":  "afd5d460a9e7d1dbfaad774d3ea4d652fc50d3af687aee4372e5e29c5278b347"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/scout-report-white-bottom-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/scout-report-white-bottom-current-laptop-1180.png",
+                      "sha256":  "b530e379131539695e86e29fc87302eb39f5f1601dfcfe614f3eb74962eedba7"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/scout-report-white-bottom-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/scout-report-white-bottom-current-mobile-390.png",
+                      "sha256":  "941e7366e24506f75c0cc97fd2d3b5b814ba034f1113125c4c0f1136b78d9b55"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/scout-report-white-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/scout-report-white-current-desktop-1440.png",
+                      "sha256":  "c63084e872d7c5d0e9a545c34ae07e1216d5ca5b77cdc0acca39c2bc4f6843b4"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/scout-report-white-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/scout-report-white-current-laptop-1180.png",
+                      "sha256":  "b8f9006e810f623b5d8466da3b7d50a0fc1b98b2dfcc0abcc54dbd3d80224667"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/scout-report-white-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/scout-report-white-current-mobile-390.png",
+                      "sha256":  "f1efb85f9fa9ae20becec6685c2c61253b14c56cc027fa96e825b996c6470e1d"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/scout-setup-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/scout-setup-current-desktop-1440.png",
+                      "sha256":  "e7f80084410dd5c18eb228f97e89e3104f2ca15dfede4ff436b994821d939531"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/scout-setup-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/scout-setup-current-laptop-1180.png",
+                      "sha256":  "e8d931d9e76a6ad0e95f4f882e103b306ab1d63dbd9b4e35a8b634132a56874a"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/scout-setup-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/scout-setup-current-mobile-390.png",
+                      "sha256":  "5eb16b25d9a5de2389572cafc9983b8aff8e23c3cc06ca2996a4ff2d3f0bff0a"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/settings-top-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/settings-top-current-desktop-1440.png",
+                      "sha256":  "5f0e7b2c7184bfc0e8311fd378d81439534c241a906fed14d7dd19046c31c2ab"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/train-active-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/train-active-current-desktop-1440.png",
+                      "sha256":  "f8c74f197191b46c6be96230a74fbd31404d949a7b3fa093460c7bea45c3b5d8"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/train-active-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/train-active-current-laptop-1180.png",
+                      "sha256":  "e5bbebdb24adf9d772808c04308dc3337105f28e5006f2cf4ac327c30134e5ad"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/train-active-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/train-active-current-mobile-390.png",
+                      "sha256":  "5833f333fc1420088770064185f9747eed950938056a82c155b6cb04e661a723"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/train-play-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/train-play-current-desktop-1440.png",
+                      "sha256":  "3a079e92a6dfb5e2b71cfca1107732d5736b3e83d1ba5f90141cc03eeb2ad5b1"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/train-play-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/train-play-current-laptop-1180.png",
+                      "sha256":  "8cb5c7b1691842aca6f0d64c856c048b6403f9436a6f3f9e1d4010ad8bb7ee83"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/train-play-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/train-play-current-mobile-390.png",
+                      "sha256":  "71a15048ace382dcdec6e8ef07429f20ca71dba05cf435ddf30b72fc45c9172a"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/train-setup-current-desktop-1440.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/train-setup-current-desktop-1440.png",
+                      "sha256":  "0056ce8f778cd0c9f69861827d87dd4714872f07fc2fbff590b62dc4d05a0e17"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/train-setup-current-laptop-1180.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/train-setup-current-laptop-1180.png",
+                      "sha256":  "a556669011616ca0f14392f52583ba6550dc23f8c76c021e8e985e2c727e07dc"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-current/train-setup-current-mobile-390.png",
+                      "destination":  "docs/archive/review-assets/2026-09-30-current/train-setup-current-mobile-390.png",
+                      "sha256":  "e462fca070eb38bf3eae567544e748e26b8a60be0d58f871df0fac9b8d5c844f"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-ux-walkthrough/01-signin-modal.jpg",
+                      "destination":  "docs/archive/review-assets/2026-09-30-ux-walkthrough/01-signin-modal.jpg",
+                      "sha256":  "22516cf99a510283c1d86194277cb3fce469560092041635e3e085482b5e14f5"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-ux-walkthrough/02-train-not-authenticated.jpg",
+                      "destination":  "docs/archive/review-assets/2026-09-30-ux-walkthrough/02-train-not-authenticated.jpg",
+                      "sha256":  "2c9c9e9129067c7f4b6dcfb75a5435d018809eb42d092502f52ba9c5923bf4ce"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-ux-walkthrough/03-games-source-contradiction.jpg",
+                      "destination":  "docs/archive/review-assets/2026-09-30-ux-walkthrough/03-games-source-contradiction.jpg",
+                      "sha256":  "8132eebb1b6f9289aa2d081fe13de431a61c83558cc4135d7ef03b5f961e68ce"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-ux-walkthrough/04-scout-not-authenticated.jpg",
+                      "destination":  "docs/archive/review-assets/2026-09-30-ux-walkthrough/04-scout-not-authenticated.jpg",
+                      "sha256":  "e5e8b5aef1be0a0a653b7179cb57ff1f3bc417ab5935f154358fc792189efdb2"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-ux-walkthrough/05-train-narrow-layout.jpg",
+                      "destination":  "docs/archive/review-assets/2026-09-30-ux-walkthrough/05-train-narrow-layout.jpg",
+                      "sha256":  "e09eb942ae767ec35ef06d98f179b6704ef9153037ec6b69bccf2f6981375842"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-ux-walkthrough/06-library-signed-in.jpg",
+                      "destination":  "docs/archive/review-assets/2026-09-30-ux-walkthrough/06-library-signed-in.jpg",
+                      "sha256":  "6e5585fc30737e87e22d3144c1d8fde23d116a63e6ff10a4d658587a3b6bca3a"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-ux-walkthrough/07-explorer-click-adds-move.jpg",
+                      "destination":  "docs/archive/review-assets/2026-09-30-ux-walkthrough/07-explorer-click-adds-move.jpg",
+                      "sha256":  "5e038d785a7a8b2df5ce471e2ea7b2351e7ef66d806c91d9130081120ce73546"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-ux-walkthrough/08-coverage-truncated-toast.jpg",
+                      "destination":  "docs/archive/review-assets/2026-09-30-ux-walkthrough/08-coverage-truncated-toast.jpg",
+                      "sha256":  "4566a1b32b19ada8fbb2ce5b40afa14da03bb0da26876a21514dda3ec7dcb010"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-ux-walkthrough/09-generate-dialog.jpg",
+                      "destination":  "docs/archive/review-assets/2026-09-30-ux-walkthrough/09-generate-dialog.jpg",
+                      "sha256":  "6336ddbea0dfec54461273d2cbe14d231e18b5d1b2f1d9c8006e5c3acaa1e291"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-ux-walkthrough/10-train-session.jpg",
+                      "destination":  "docs/archive/review-assets/2026-09-30-ux-walkthrough/10-train-session.jpg",
+                      "sha256":  "66346e447fe6924952a5878ff62806dc8f193dd9064ab47e6a224a2c2a71c9e3"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-ux-walkthrough/11-analyze-progress-overlap.jpg",
+                      "destination":  "docs/archive/review-assets/2026-09-30-ux-walkthrough/11-analyze-progress-overlap.jpg",
+                      "sha256":  "4b7d80b2ab105255b7b2fcf2ce057ed9d413a219c5884091eba30ec2dff97316"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-ux-walkthrough/12-analyze-coach-text.jpg",
+                      "destination":  "docs/archive/review-assets/2026-09-30-ux-walkthrough/12-analyze-coach-text.jpg",
+                      "sha256":  "3e5fe3ad17efb20ceb68dd24b2fe0e7e0a15945d767c065893019d5cf7b3e406"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-ux-walkthrough/13-games-detail-below-fold.jpg",
+                      "destination":  "docs/archive/review-assets/2026-09-30-ux-walkthrough/13-games-detail-below-fold.jpg",
+                      "sha256":  "b7a71a32b766682907a8d0ddbc818881451ba39e6d648c935a7a45c72a60279f"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-ux-walkthrough/14-scout-lines-wall.jpg",
+                      "destination":  "docs/archive/review-assets/2026-09-30-ux-walkthrough/14-scout-lines-wall.jpg",
+                      "sha256":  "15007b4d49d73904eff6edb7e2d84c554788809933f9d10f869b9dfdf0ba8b3e"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-ux-walkthrough/15-teams-invite-regenerates.jpg",
+                      "destination":  "docs/archive/review-assets/2026-09-30-ux-walkthrough/15-teams-invite-regenerates.jpg",
+                      "sha256":  "c36d1fde621dd86e7889ebc73262663e118441c7bff6fea37e5dcaa472d4663b"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-09-30-ux-walkthrough/16-settings-maia.jpg",
+                      "destination":  "docs/archive/review-assets/2026-09-30-ux-walkthrough/16-settings-maia.jpg",
+                      "sha256":  "c76449d9a608f06bd36b91672a691a4ebeb46c714ccc4a3b0c4b99e8959abe86"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/01-guest-library.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/01-guest-library.jpg",
+                      "sha256":  "da7ef14f0b25f95c96818520b5777ac674599b56fba926d37243494ac01d266f"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/02-signin-modal-with-reason.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/02-signin-modal-with-reason.jpg",
+                      "sha256":  "13e0b21a45562a17948c40061241641b5563b6406f38b771f489bca7377d5392"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/03-create-account-wrong-notice.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/03-create-account-wrong-notice.jpg",
+                      "sha256":  "c296b7114ccc20e6d80bb5e62cba1fa6db56e035e5b27b92c4a2a5abd76cd653"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/04-guest-repertoire.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/04-guest-repertoire.jpg",
+                      "sha256":  "9dc3767577e24ae98aafb2664b9e54d3b70f6c0175d4a8cbf7baf8b4f461a9ef"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/05-guest-analyze-coach-blunder.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/05-guest-analyze-coach-blunder.jpg",
+                      "sha256":  "b31af6dc8013b7d501101d991b020d08570a7b1f2dc25432975e773cf5933152"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/06-guest-analyze-engine.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/06-guest-analyze-engine.jpg",
+                      "sha256":  "fd2a7b8e59db10448274df955e4cb1c14fc27d88fa5a8ba4204cc5966706a8f0"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/07-guest-pgn-replaces-board.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/07-guest-pgn-replaces-board.jpg",
+                      "sha256":  "0c8f56357c8938e745a5561744c514dd7674d1e6af350b3b29514de46cfdd57f"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/08-guest-line-rehearsal-dead-start.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/08-guest-line-rehearsal-dead-start.jpg",
+                      "sha256":  "6d3813ab13514c5e42448221c652bee338476797e90913706ba6bcd07734e2db"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/09-guest-play-explorer-401-thin-sample.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/09-guest-play-explorer-401-thin-sample.jpg",
+                      "sha256":  "38b0ac8926cc753c8c31ea8ff4fd8afb85e6ece2d204a3c368029a4ab425b83c"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/10-guest-games-empty.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/10-guest-games-empty.jpg",
+                      "sha256":  "a0cae6d55cc81f538c5cb757f875133b1fecef9976fdac2e7b0322b0a789fa94"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/11-guest-scout.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/11-guest-scout.jpg",
+                      "sha256":  "f8ecf17580cf994e635063c832cc0a68d4c0488a5741a6afe188627e837d0959"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/12-guest-teams.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/12-guest-teams.jpg",
+                      "sha256":  "ec64ff3e1a6077b2209cba00b6fa9544516949c54c4ba1e82052c9d5262950c7"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/13-palette-light-backdrop.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/13-palette-light-backdrop.jpg",
+                      "sha256":  "c7df6c25c610252ad4f00239f062f1c1020093c5f4262c2bd1e41b1188a10ed7"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/14-palette-enter-submits-signin.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/14-palette-enter-submits-signin.jpg",
+                      "sha256":  "ffea7e59fde81b672b2ce1e98af87f8bf926a8f7988851e474de1d42abe42efa"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/15-play-header-says-sign-in-to-train.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/15-play-header-says-sign-in-to-train.jpg",
+                      "sha256":  "461ddc9c9fe904d4abe9f5feac87fc76ffbe356becd394cede21fa4f1e840c06"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/16-post-login-empty-library-flash.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/16-post-login-empty-library-flash.jpg",
+                      "sha256":  "a82681c6b9916723f64a65b99007bbf88c9bff27808d6dfd1368e22696c5bde2"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/17-train-autostart-up-next-spoilers.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/17-train-autostart-up-next-spoilers.jpg",
+                      "sha256":  "4918e2df36185b06b54bc730dc0ab77de73203ea801663a1f1c28bb90c8f6f3a"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/18-train-wrong-move-hint-reset.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/18-train-wrong-move-hint-reset.jpg",
+                      "sha256":  "043fcbf977a954d200340de7f72c57a667b2a3445305723d5983a145f2e91560"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/19-train-new-move-demo.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/19-train-new-move-demo.jpg",
+                      "sha256":  "c3a7c30cebb585b1d9fa77df901a701fb1409b67a7933ea80ca409bd189d7519"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/20-train-three-progress-bars.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/20-train-three-progress-bars.jpg",
+                      "sha256":  "1138cadac132343424d994eb64717e90c432a036b6e280800011b6decc056f30"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/21-train-session-complete-cluttered.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/21-train-session-complete-cluttered.jpg",
+                      "sha256":  "554bdc3eb94869b50380a8b4c871384e1702f774242712b5c8d1133ea469bdcb"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/22-library-signed-in.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/22-library-signed-in.jpg",
+                      "sha256":  "b0054798711b52939e1a5bafba26d9dc9f09a985359b826eca06ca389bbd98f1"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/23-repertoire-toast-covers-explorer.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/23-repertoire-toast-covers-explorer.jpg",
+                      "sha256":  "d5bec2e63ddd1744bd93b33e263d76998348aa10e85e1bcccd2088a9fdc9898b"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/24-explorer-preview.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/24-explorer-preview.jpg",
+                      "sha256":  "8517cf8f5e5419ce5a529486ca861a3e942bf43604b84b2fa2bc841cc48feb04"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/25-coverage-results.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/25-coverage-results.jpg",
+                      "sha256":  "a608b37cd6f00d1e511e883d7f6aed1a178a57ffa6c6bc7993f4b0d1e045b492"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/26-generate-dialog.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/26-generate-dialog.jpg",
+                      "sha256":  "bb789fe202f5e0af062fd8774bd51c6c8857cb71c9d6feefd8c2f7998cc957cf"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/27-context-menu-no-target.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/27-context-menu-no-target.jpg",
+                      "sha256":  "2f429b1e8e5182473f0992cbeaf3a4ec2a5510c3929e4f394a28984cc378f4a4"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/28-analyze-summary.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/28-analyze-summary.jpg",
+                      "sha256":  "c4a7983ae17f1cb7db155779e85ab0a769340c06f885236e4cbcb47cd65f3466"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/29-analyze-opponent-blunder-thin-coach.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/29-analyze-opponent-blunder-thin-coach.jpg",
+                      "sha256":  "6521fbdb00f7d2b7e4bbb84e84c5c07fd1242274c2636c764ab8bcd7896589c1"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/30-analyze-my-mistake-arrow.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/30-analyze-my-mistake-arrow.jpg",
+                      "sha256":  "668d03c97e8f6cc45aeb2ba527af7decb6b93f8d3e23b6fa06dc9724041b9d6c"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/31-games-empty-on-return.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/31-games-empty-on-return.jpg",
+                      "sha256":  "0ed0c5682b072dc263bce8d666eec78813938d1157665432654128096a272dcc"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/32-games-results.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/32-games-results.jpg",
+                      "sha256":  "a9eacac6ca427a2bc42db5d83afa5016cfb8a98527a564c3022a8cdca204aafd"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/33-games-sources.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/33-games-sources.jpg",
+                      "sha256":  "f26c268bf4d8cd7af9466414a6b899d937829022ee2038a3172a41946fbd0a60"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/34-scout-self-stays-checked.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/34-scout-self-stays-checked.jpg",
+                      "sha256":  "196831a5279b1faccf7fa3f8b03aefd61edcb907df98b4ab9620d8211e8c1adc"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/35-scout-report.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/35-scout-report.jpg",
+                      "sha256":  "9e2611f51d6a79899eb7f7cb3ff36037561ec28f9176629b098eac12639bdc52"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/36-scout-lines-reorder.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/36-scout-lines-reorder.jpg",
+                      "sha256":  "afdae1d1f60ec27350b154d03046a526893ec1e7f6a8d81eb774da7adaeb471a"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/37-teams-invite.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/37-teams-invite.jpg",
+                      "sha256":  "95ecc92a0937c1ede7069320ffab339a4fc58944aa3056bffe4caa3be174a14e"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/38-new-repertoire-color-textbox.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/38-new-repertoire-color-textbox.jpg",
+                      "sha256":  "74a5909ddd909deef9efa17100faacff3e99d42e3c994909c027f4b5895e2757"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/39-settings-account.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/39-settings-account.jpg",
+                      "sha256":  "19de0a363b070059f645cfd8f16e03960ca7ed0a5062c3c5a004c59610a1547c"
+                  },
+                  {
+                      "source":  "docs/review-assets/2026-10-01-ux-walkthrough/40-teams-redundant-text.jpg",
+                      "destination":  "docs/archive/review-assets/2026-10-01-ux-walkthrough/40-teams-redundant-text.jpg",
+                      "sha256":  "ec55e86c296988ba073406829a879dd4f204a9b7be093b19c4d7110550dfa54f"
+                  }
+              ]
+}

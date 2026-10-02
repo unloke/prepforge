@@ -2,14 +2,14 @@
 
 Use these documents to navigate the current implementation:
 
-- [Architecture](ARCHITECTURE.md): runtime boundaries and source locations.
-- [Development and remaining work](ROADMAP.md): checks and candidate improvements.
+- [Architecture snapshot](archive/history/2026-09-29/ARCHITECTURE.md): historical runtime map; verify against source.
+- [Roadmap snapshot](archive/history/2026-09-29/ROADMAP.md): historical checks and candidate improvements.
 - [Deployment](DEPLOYMENT.md): environment variables and operational setup.
 - [Browser engines](browser-engine-migration.md): current engine lifecycle and assets.
-- [Local editing and sync](local-first-sync-plan.md): current persistence behavior and gaps.
+- [Local editing and sync snapshot](archive/history/2026-09-29/local-first-sync-plan.md): historical persistence plan.
 - [Scout ranking](scout-production-ranking.md): the current production selector and experimental runtime boundaries.
 - [Compare identity boundary](compare-identity-boundary.md): ownership of personal training evidence.
-- [Latest review](project-review-followup-2026-09-29.md): dated observations and improvement proposals, not implementation instructions.
+- [Review follow-up](archive/audits/project-review-followup-2026-09-29.md): dated observations and improvement proposals, not implementation instructions.
 
 The implementation, migrations, test configuration, and the user's current task
 determine present behavior and intended changes. A dated report is evidence for

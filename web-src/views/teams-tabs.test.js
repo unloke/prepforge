@@ -205,7 +205,7 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     });
     await view.loadTeams();
     expect(byId("team-empty-body").textContent).toMatch(/Sign in to create or join a team/);
-    expect(byId("teams-shared").innerHTML).toMatch(/Sign in/);
+    expect(byId("teams-shared").innerHTML).toBe("");
   });
   it("New team is offered only when signed in (guests get the card's Sign in)", async () => {
     const guest = makeHarness({ appState: { signedIn: false, teams: [], selectedTeamId: null } });
@@ -216,15 +216,15 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     member.view.renderTeamsList();
     expect(member.byId("teams-new").hidden).toBe(false);
   });
-  it("signed out: a list re-render (hideTeamDetail) keeps the sign-in line, not 'No teams yet'", async () => {
+  it("signed out: a list re-render (hideTeamDetail) stays empty, not 'No teams yet'", async () => {
     const { view, byId } = makeHarness({
       appState: { signedIn: false, teams: [], selectedTeamId: null },
     });
     await view.loadTeams();
     // app.js hideTeamDetail() calls renderTeamsList() after the signed-out paint.
     view.renderTeamsList();
-    expect(byId("teams-list").innerHTML).toMatch(/Sign in to create and join teams/);
-    expect(byId("teams-list").innerHTML).not.toMatch(/No teams yet/);
+    // The main card carries the one Sign in; the list doesn't repeat it.
+    expect(byId("teams-list").innerHTML).toBe("");
   });
   it("search visibility follows the team collection, including an unmatched typed filter", () => {
     const appState = { signedIn: true, teams: [], selectedTeamId: null };
@@ -247,7 +247,7 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     expect(field.hidden).toBe(true);
     appState.signedIn = false;
     view.renderTeamsList();
-    expect(byId("teams-list").innerHTML).toContain("Sign in");
+    expect(byId("teams-list").innerHTML).toBe("");
   });
   it("invite expiry reads in English whatever the browser locale (UX 2026-10-01 P2-13)", () => {
     const { view, byId } = makeHarness();

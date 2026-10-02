@@ -45,6 +45,9 @@
 // The round-2 walkthrough fixes (Smart-queue session memo across reloads,
 // guest Train/Teams/Games states, Lichess link chip) add ~1.2 KB raw;
 // allow 325 KB / 101 KB.
+// The product walkthrough follow-up adds bounded Scout batches, explicit Maia
+// practice selection, Games auto-check and lifecycle ownership guards. The
+// reviewed entry is ~326 KB raw / 102 KB gzip; retain a narrow 327/102 KB cap.
 import { readdirSync, statSync, readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { fileURLToPath, URL } from "node:url";
@@ -59,8 +62,8 @@ const LIMITS = [
   {
     prefix: "index-",
     suffix: ".js",
-    maxBytes: 325_000, // reviewed walkthrough fixes (see measured deltas above)
-    maxGzipBytes: 101_000,
+    maxBytes: 327_000, // reviewed walkthrough fixes (see measured deltas above)
+    maxGzipBytes: 102_000,
     label: "main app chunk",
   },
   { prefix: "maia3-worker-", suffix: ".js", maxBytes: 220_000, label: "maia3 worker chunk" },

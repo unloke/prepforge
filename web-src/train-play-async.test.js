@@ -27,6 +27,7 @@ function harness() {
     boardAfterMove: async (fen, uci) => localBoardAfterMove(fen, uci),
     fetchPlayExplorer: vi.fn(() => explorer.promise), fetchPlayMaia: vi.fn(async () => []),
     pickOpponentReply, playPositionAfterReply, replyReasonNote,
+    playThinkingSub: () => "Explorer → Maia",
     playRepertoireReplies: () => [], playChildren: () => [], playBookLabel: () => "Explorer",
     playAdvanceNode: () => ({}), playCursorSnapshot: () => ({}),
     recordPlayPly: (ply) => appState.play.history.push(ply),
@@ -39,6 +40,52 @@ function harness() {
 }
 
 describe("Play opponent response ownership", () => {
+  it("routes the palette practice action through the New game confirmation button", async () => {
+    const click = vi.fn();
+    const directStart = vi.fn();
+    const run = compile("async function runPaletteItem(", {
+      closePalette: vi.fn(), switchView: vi.fn(),
+      document: { querySelector: () => ({ click: vi.fn() }), getElementById: () => ({ click }) },
+      startPlaySessionTracked: directStart,
+    });
+    await run({ action: "play-human" });
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(directStart).not.toHaveBeenCalled();
+  });
+  function startHarness() {
+    const info = deferred();
+    const appState = { trainMode: "play" };
+    const paint = vi.fn();
+    const deps = {
+      appState, START_FEN: FEN, playBook: () => "maia", playPickerColor: () => "white",
+      resolvePlayColor: () => "white", boardInfo: () => info.promise,
+      document: { getElementById: () => ({ hidden: false }) }, boards: { train: { setOrientation: vi.fn() } },
+      paintPlayPosition: paint, playBookLabel: () => "Maia", isStartFen: () => true,
+      sideToMoveFromFen: () => "white", setStatus: vi.fn(), setStatusError: vi.fn(),
+      syncTrainPickerVisibility: vi.fn(), syncTrainSessionControls: vi.fn(), syncWorkspaceUrl: vi.fn(),
+      updateTrainTurnBadge: vi.fn(), playOpponentReply: vi.fn(), renderPlayTrail: vi.fn(),
+    };
+    return { appState, info, paint, start: compile("async function startPlaySession(", deps) };
+  }
+
+  it("does not install a practice session after switching modes during Start", async () => {
+    const h = startHarness();
+    const pending = h.start();
+    h.appState.trainMode = "smart";
+    h.info.resolve(localBoardInfo(FEN));
+    await pending;
+    expect(h.appState.play).toBeUndefined();
+    expect(h.paint).not.toHaveBeenCalled();
+  });
+
+  it("only installs the latest overlapping practice Start", async () => {
+    const h = startHarness();
+    const first = h.start();
+    const second = h.start();
+    h.info.resolve(localBoardInfo(FEN));
+    await Promise.all([first, second]);
+    expect(h.paint).toHaveBeenCalledTimes(1);
+  });
   it("only applies the latest of overlapping replies for the same position", async () => {
     const h = harness();
     const newerExplorer = deferred();

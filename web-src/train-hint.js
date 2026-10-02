@@ -9,7 +9,7 @@ export function wrongMoveTip({ hintLevel = 0, hint = {}, expectedSan = "", coach
   if (level >= 3 && expectedSan) return `Play ${expectedSan}`;
   if (level >= 2 && piece) return piece;
   if (level >= 1 && strategy) return strategy;
-  return coachTip || strategy || piece || "Think about the idea behind the line.";
+  return coachTip || strategy || piece || "";
 }
 
 // The Maia coach tip arrives asynchronously; it may only replace the line when

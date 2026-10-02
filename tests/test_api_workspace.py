@@ -137,6 +137,85 @@ def test_dashboard_recap_counts_this_weeks_reviews(client):
     assert recap["weak_now"] == 0 and recap["weak_delta"] == 0
 
 
+def test_dashboard_recap_keeps_reviews_of_deleted_moves(client):
+    """Deleting a reviewed move removes its progress row, but the review still
+    happened this week: the recap count must not drop."""
+    _register(client, "coach@example.com", display_name="Coach")
+    created = client.post(
+        "/api/repertoires/create",
+        json={"name": "KP", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+    added = client.post(
+        "/api/build/add-move",
+        json={
+            "repertoire_id": created["repertoire_id"],
+            "parent_node_id": created["selected_node_id"],
+            "move_uci": "e2e4",
+        },
+        headers=csrf_headers(client),
+    ).json()
+    start = client.post(
+        "/api/train/smart/start",
+        json={"repertoire_id": created["repertoire_id"], "seed": 5},
+        headers=csrf_headers(client),
+    ).json()
+    client.post(
+        "/api/train/smart/move",
+        json={"session_id": start["session_id"], "played_uci": "e2e4", "attempt": 1},
+        headers=csrf_headers(client),
+    )
+    assert client.get("/api/dashboard").json()["recap"]["reviews_7d"] == 1
+
+    deleted = client.post(
+        "/api/build/delete-nodes",
+        json={"repertoire_id": created["repertoire_id"], "node_ids": [added["selected_node_id"]]},
+        headers=csrf_headers(client),
+    )
+    assert deleted.status_code == 200, deleted.text
+    assert client.get("/api/dashboard").json()["recap"]["reviews_7d"] == 1
+
+
+def test_dashboard_session_count_grows_when_a_played_session_is_restarted(client):
+    """Smart training reuses one session row per repertoire; restarting after
+    playing must still add to the Sessions count, while an unplayed restart
+    must not."""
+    _register(client, "sessions@example.com", display_name="Sess")
+    created = client.post(
+        "/api/repertoires/create",
+        json={"name": "KP", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+    client.post(
+        "/api/build/add-move",
+        json={
+            "repertoire_id": created["repertoire_id"],
+            "parent_node_id": created["selected_node_id"],
+            "move_uci": "e2e4",
+        },
+        headers=csrf_headers(client),
+    )
+
+    def start():
+        return client.post(
+            "/api/train/smart/start",
+            json={"repertoire_id": created["repertoire_id"], "seed": 5},
+            headers=csrf_headers(client),
+        ).json()
+
+    first = start()
+    client.post(
+        "/api/train/smart/move",
+        json={"session_id": first["session_id"], "played_uci": "e2e4", "attempt": 1},
+        headers=csrf_headers(client),
+    )
+    assert client.get("/api/dashboard").json()["training_sessions"] == 1
+    start()
+    assert client.get("/api/dashboard").json()["training_sessions"] == 2
+    start()
+    assert client.get("/api/dashboard").json()["training_sessions"] == 2
+
+
 def test_dashboard_get_is_pure_read_once_week_snapshot_exists(client):
     """The steady-state dashboard read must not write: only the first GET of a
     new week seeds ``recap.weekly_snapshot``. A write here would take a row lock

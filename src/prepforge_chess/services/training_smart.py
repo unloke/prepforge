@@ -214,6 +214,7 @@ class SmartTrainingService:
                 current_index=0,
                 current_node_id=None,
                 mistakes=[],
+                mastered_nodes=[],
                 seed=actual_seed,
                 created_at=_utc_now(),
                 updated_at=_utc_now(),
@@ -227,7 +228,7 @@ class SmartTrainingService:
                 current_index=0,
                 seed=actual_seed,
             )
-        self.repository.save_training_session(session)
+        self.repository.restart_training_session(session, self.owner_user_id)
         return session
 
     # --------------------------------------------------------- mixed sessions
@@ -327,6 +328,7 @@ class SmartTrainingService:
                 current_index=0,
                 current_node_id=None,
                 mistakes=[],
+                mastered_nodes=[],
                 seed=actual_seed,
                 created_at=_utc_now(),
                 updated_at=_utc_now(),
@@ -340,7 +342,7 @@ class SmartTrainingService:
                 current_index=0,
                 seed=actual_seed,
             )
-        self.repository.save_training_session(session)
+        self.repository.restart_training_session(session, self.owner_user_id)
         return session
 
     def _resumable_mixed(

@@ -41,7 +41,7 @@ export function createAnalyzeView({
         mistake: "?",
         blunder: "??",
         missed: "x",
-      }[group] || "."
+      }[group] || ""
     );
   }
 
@@ -95,9 +95,9 @@ export function createAnalyzeView({
       return point.bounded_score_cp > 0 ? "+M" : "−M";
     }
     const cp = point.score_cp != null ? point.score_cp : point.bounded_score_cp;
-    if (cp === null || cp === undefined) return "0.0";
+    if (cp === null || cp === undefined) return "0.00";
     const pawns = cp / 100;
-    return `${pawns > 0 ? "+" : pawns < 0 ? "−" : ""}${Math.abs(pawns).toFixed(1)}`;
+    return `${pawns > 0 ? "+" : pawns < 0 ? "−" : ""}${Math.abs(pawns).toFixed(2)}`;
   }
 
   // Tooltip body for one ply — move, evaluation, and classification as TEXT
@@ -468,7 +468,9 @@ export function createAnalyzeView({
       return;
     }
     dot.setAttribute("visibility", "visible");
-    dot.setAttribute("cx", String(x));
+    // Keep the whole ring inside the chart at the first and last ply.
+    const rx = Number(dot.getAttribute("rx")) || 0;
+    dot.setAttribute("cx", String(Math.min(width - rx - 1, Math.max(rx + 1, x))));
     dot.setAttribute("cy", String(evalChartYOf(pointWinPct(points[idx]))));
   }
 
@@ -680,7 +682,8 @@ export function createAnalyzeView({
       if (!markerClass) return;
       const dot = document.createElementNS(svgNS, "ellipse");
       dot.classList.add("eval-marker", "eval-dot", markerClass);
-      dot.setAttribute("cx", String(c.x));
+      // Inset end markers so they aren't cut in half by the chart edge.
+      dot.setAttribute("cx", String(Math.min(EVAL_CHART_W - 6, Math.max(6, c.x))));
       dot.setAttribute("cy", String(c.y));
       dot.setAttribute("data-ply", String(c.ply));
       dot.dataset.baseR = "4.5";

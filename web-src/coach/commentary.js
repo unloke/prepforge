@@ -1,939 +1,367 @@
-// Commentary — turns a move's feature vector into something a human coach would say.
+// Coach commentary: one or two short sentences on the move just played.
 //
-// The output is ONE short conversational paragraph (1–3 sentences) that points out
-// the few things that matter about the move just played: what it was trying to do,
-// the concrete consequence (named, with the line and the material at stake), and —
-// when it went wrong — the better move and what it would have kept. No grades-as-data,
-// no percentages, no bullet lists. Just a coach talking.
+//   buildCommentary(features, { selfSide }) -> { tone, grade, prose }
 //
-//   buildCommentary(features) -> { tone, grade, prose }
-//     tone   — "good" | "warn" | "danger" | "brilliant" | "info" (for subtle colour)
-//     grade  — human label of the move quality (kept for aria / optional display)
-//     prose  — the sentence(s) to show
-//
-// Every clause traces to a computed fact in `features`. The actual WORDING comes from
-// phrasebank.js: each "slot" (lead-in, hang description, punishing reply, recommended
-// fix, ...) is a small bank of interchangeable templates, and `choose()` picks one per
-// slot from a per-move-per-slot deterministic seed. Slots vary independently, so a
-// handful of small banks compose into thousands of distinct sentences — same facts,
-// different voice — while each bank stays short enough to tweak in isolation.
-import { Chess } from "chess.js";
-import { describeMove } from "../explain.js";
-import { PIECE_NAME, materialPhrase, materialEdgePhrase, materialSwingPhrase } from "./material.js";
-import { describeThreat, describeAnyThreat } from "./tactics.js";
-import { detectIntent } from "./intent.js";
+// Rules the wording follows:
+//   - Say only what the engine line or the board shows (move-facts.js). Material is
+//     named only when it actually changes hands in the engine's line, and errors are
+//     priced against the better move's line, so a pending recapture never reads as a
+//     loss or a win.
+//   - Lead with the verdict, then the one fact that explains it, then (for errors) the
+//     better move. No filler and no repeated "you're two pawns up" on every move.
+//   - Describe the position change before -> after only when the verdict moved.
+//   - "you" for the user's own side when it is known, colour names otherwise.
 import {
-  choose,
-  tailComma,
-  tailDash,
-  tailParen,
-  MATE_DELIVERED,
-  FORCED_MOVE,
-  FORCED_CHECK,
-  BRILLIANT_LEAD,
-  LOOKS_HANGS,
-  LOOKS_PLAIN,
-  RARITY_TIER1,
-  RARITY_TIER2,
-  RARITY_TIER3,
-  RARITY_TIER4,
-  BRILLIANT_WHY,
-  BLUNDER_LEAD,
-  BLUNDER_LEAD_LEVEL,
-  BLUNDER_LEAD_BETTER,
-  AFTERMATH_LEVEL,
-  AFTERMATH_BETTER,
-  REPLY_SENTENCE,
-  MISTAKE_LEAD,
-  IN_MATE_NET,
-  MISSED_MATE,
-  HANG_DESC,
-  HANG_PUNISH_WITH_REPLY,
-  HANG_PUNISH_NO_REPLY,
-  MISSED_WIN,
-  OPENER_WITH_IDEA,
-  LOSE_MATERIAL_VERB,
-  LOSE_MATERIAL_TEMPLATE,
-  PUNISH_WITH_REPLY_COUNT,
-  PUNISH_NO_REPLY_COUNT,
-  RECAPTURE_SLIP,
-  PHASE_HINT_OPENING,
-  PHASE_HINT_MIDDLEGAME,
-  PHASE_HINT_ENDGAME,
-  STANDING_TAIL,
-  INITIATIVE_WITH_PUNISH,
-  INITIATIVE_NO_PUNISH,
-  BETTER_MOVE,
-  INACC_HEAD_WITH_IDEA,
-  INACC_HEAD_PLAIN,
-  INACC_CLEANER,
-  INACC_FLIP,
-  GREAT_DECISIVE,
-  GREAT_ONLY_MOVE,
-  LEAD_BEST,
-  LEAD_GOOD,
-  POINT_MATERIAL,
-  POINT_TRADE,
-  POINT_TRADE_AHEAD,
-  POINT_TARGET,
-  STAND_TAIL,
-  GOOD_SOLID,
-  GOOD_HOLD,
-  GOOD_THREAT_FORK,
-  GOOD_THREAT_PIN,
-  GOOD_THREAT_PIN_ABS,
-  GOOD_THREAT_SKEWER,
-  ERROR_OPP_THREAT_FORK,
-  ERROR_OPP_THREAT_PIN,
-  ERROR_OPP_THREAT_PIN_ABS,
-  ERROR_OPP_THREAT_SKEWER,
-  INTENT_DEFEND,
-  INTENT_DEFEND_AWAY,
-  INTENT_OPEN_LINE,
-  INTENT_PROPHYLAXIS,
-  INTENT_TRADE,
-  INTENT_TRADE_AHEAD,
-  INTENT_KING_STORM,
-  INTENT_KING_PIECE,
-  INTENT_AVOID_TRADE,
-  INTENT_FIANCHETTO,
-  INTENT_FIANCHETTO_PREP,
-  INTENT_CENTER,
-  INTENT_CENTER_KNIGHT,
-  INTENT_DEVELOP,
-  INTENT_DEVELOP_ROOK,
-  INTENT_CENTER_STRIKE,
-  INTENT_SPACE,
-  INTENT_PRESSURE,
-  INTENT_PRESSURE_REINFORCE,
-  INTENT_SUPPORT,
-  POINT_RECAPTURE,
-  POINT_PAWN_PRESSURE,
-  POINT_PAWN_DOUBLE,
-  GREAT_RECAPTURE,
-  INACC_PUNISH,
-  GOOD_HOLD_TAG,
-  GOOD_HOLD_QUIET,
-  INTUITION_SLIP,
-  INTUITION_HARD,
-  INTUITION_OWN_PATH,
-  INTUITION_AVOIDED,
-  INTUITION_RICH_HANDLED,
-  INTUITION_NATURAL,
-} from "./phrasebank.js";
+  lineOutcome,
+  netFor,
+  netValue,
+  gainPhrase,
+  tradePhrase,
+  numberLine,
+  oppositeBishopsOnly,
+  fenAfterLine,
+  describeMove,
+  threatPhrase,
+  hasCaptures,
+} from "./move-facts.js";
+import { Chess } from "chess.js";
+import { PIECE_VALUE } from "./material.js";
 
-function cap(s) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-}
-function sideWord(mover) {
-  return mover === "white" ? "White" : "Black";
-}
-function oppWord(mover) {
-  return mover === "white" ? "Black" : "White";
-}
+const TYPES = ["q", "r", "b", "n", "p"];
 
-// Qualitative read of a side's standing from its win% — humans say "winning", not "88%".
-function standingWord(winPct) {
-  if (winPct >= 85) return "winning";
-  if (winPct >= 68) return "clearly better";
-  if (winPct >= 57) return "a little better";
-  if (winPct > 43) return "about level";
-  if (winPct > 32) return "slightly worse";
-  if (winPct > 15) return "clearly worse";
-  return "lost";
-}
-
-// ---------------------------------------------------------------------------
-// Material read of the lines (mover-POV, in pawns).
-// ---------------------------------------------------------------------------
-
-// Net material the mover holds after the move, in pawns (mover-POV, + = ahead). Uses the
-// exchange-resolved count so a move that captures into an even trade reads as level, not
-// "a pawn up" (the recapture is already priced in). Falls back to the raw count if the
-// settled figure is ever absent.
-function moverMaterialAfter(f) {
-  const after = Number.isFinite(f.materialAfterSettled) ? f.materialAfterSettled : f.materialAfter;
-  return f.mover === "white" ? after : -after;
-}
-
-// Net material the mover held BEFORE the move, mover-POV, in pawns.
-function moverMaterialBefore(f) {
-  return f.mover === "white" ? f.materialBefore : -f.materialBefore;
-}
-
-// Negate a White-POV per-piece count delta to the other side's point of view.
-function negateDiff(d) {
-  if (!d) return d;
-  const out = {};
-  for (const k of Object.keys(d)) out[k] = -d[k];
-  return out;
-}
-
-// The mover's current material edge as a human phrase, composition-aware: "the exchange"
-// for a rook-for-minor imbalance, otherwise the plain "two pawns" / "a piece" magnitude.
-// `up` is the mover-POV pawn magnitude (the fallback when the shape isn't an exchange).
-function moverEdgePhrase(f, up) {
-  const diff = f.materialDiffAfter
-    ? f.mover === "white"
-      ? f.materialDiffAfter
-      : negateDiff(f.materialDiffAfter)
-    : null;
-  return materialEdgePhrase(diff, up);
-}
-
-// The enemy piece type captured by this move (the piece standing on the destination
-// before the move). null for a quiet move (or an en-passant capture, which we treat as
-// no named victim — rare enough not to matter for the wording).
-function capturedType(f) {
-  if (!/x/.test(f.san || "") || !f.uci) return null;
+function capturedBy(fen, uci) {
+  if (!fen || !uci) return null;
   try {
-    const c = new Chess(f.fenBefore);
-    const p = c.get(f.uci.slice(2, 4));
-    return p ? p.type : null;
+    const mv = new Chess(fen).move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || undefined });
+    return mv && mv.captured ? mv.captured : null;
   } catch (_) {
     return null;
   }
 }
 
-// A recapture: a capture that wins back material the opponent had just taken, with the
-// mover behind beforehand and no further behind after. Narrated as "takes it back" rather
-// than a fresh gain — what the user actually sees on the board after a trade on one square.
-function isRecapture(f) {
-  if (!/x/.test(f.san || "")) return false;
-  const before = moverMaterialBefore(f);
-  const after = moverMaterialAfter(f);
-  return before < 0 && after > before;
+function hash(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
 }
 
-// Loose enemy pawns the just-moved piece (on its destination) now attacks — the concrete
-// "this move leans on the c4 pawn" the generic filler was missing. Returns the squares,
-// richest-first isn't meaningful for pawns so we keep board order, capped at two.
-function pawnTargetsOf(f) {
-  const dest = f.uci ? f.uci.slice(2, 4) : null;
-  const pawns = (f.looseAfter || []).filter((t) => t.type === "p");
-  if (!dest || !pawns.length) return [];
-  let chess;
-  try {
-    chess = new Chess(f.fenAfter);
-  } catch (_) {
-    return [];
-  }
-  const mine = f.mover === "white" ? "w" : "b";
-  return pawns
-    .filter((p) => {
-      try {
-        return chess.attackers(p.square, mine).includes(dest);
-      } catch (_) {
-        return false;
-      }
-    })
-    .map((p) => p.square)
-    .slice(0, 2);
+// Deterministic variety: the same move always reads the same way.
+function pick(f, key, options) {
+  return options[hash(`${key}:${f.san}:${f.uci}:${f.ply ?? ""}`) % options.length];
 }
 
-// A capturing move whose settled material is unchanged from before — a clean, even
-// trade. Leans on the exchange-resolved count so a recapture reads as a swap, not a
-// phantom material gain. Returns false for a capture that actually wins or loses wood.
-function isEvenTrade(f) {
-  if (!/x/.test(f.san || "")) return false;
-  return moverMaterialAfter(f) === moverMaterialBefore(f);
+function cap(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 
-// Material the best line nets the mover over the move played (relative, honest). Compared
-// at the SETTLED end of each line so two PVs that happen to stop at different points in a
-// capture sequence don't read a phantom piece of difference between them.
-function lineMaterialDiff(f) {
-  const end = (line) => {
-    if (!line) return null;
-    const bal = Number.isFinite(line.settledEndBalance) ? line.settledEndBalance : line.endBalance;
-    return f.mover === "white" ? bal : -bal;
+// -3..3 from the mover's point of view: lost .. level .. winning.
+export function bucket(winMover) {
+  if (winMover >= 85) return 3;
+  if (winMover >= 68) return 2;
+  if (winMover >= 57) return 1;
+  if (winMover > 43) return 0;
+  if (winMover > 32) return -1;
+  if (winMover > 15) return -2;
+  return -3;
+}
+
+const LEVEL_WORD = { 1: "slightly better", 2: "clearly better", 3: "winning" };
+
+function makeVoice(mover, selfSide) {
+  const colour = (side) => (side === "white" ? "White" : "Black");
+  const opp = mover === "white" ? "black" : "white";
+  const name = (side) => (selfSide && side === selfSide ? "you" : colour(side));
+  // "you are clearly better" / "it was level" for a mover-POV bucket.
+  const standing = (b, past = false) => {
+    if (b === 0) return past ? "it was level" : "it's level";
+    const who = name(b > 0 ? mover : opp);
+    const verb = who === "you" ? (past ? "were" : "are") : past ? "was" : "is";
+    return `${who} ${verb} ${LEVEL_WORD[Math.abs(b)]}`;
   };
-  const b = end(f.bestLine);
-  const p = end(f.playedLine);
-  if (b === null || p === null) return null;
-  return b - p;
+  // "keeping you clearly better" / "keeping it level" / "limiting the damage".
+  const keeping = (b) => {
+    if (b === 0) return "keeping it level";
+    if (b < 0) return "limiting the damage";
+    return `keeping ${name(mover)} ${LEVEL_WORD[b]}`;
+  };
+  return { me: name(mover), standing, keeping };
 }
 
-function linePieceDiff(f) {
-  const end = (line) => {
-    if (!line) return null;
-    return line.settledEndDiff || line.perPieceDiff || null;
-  };
-  const b = end(f.bestLine);
-  const p = end(f.playedLine);
-  if (!b || !p) return null;
+function mateCount(m) {
+  const n = Math.abs(Number(m) || 0);
+  return n <= 1 ? "mate next move" : `mate in ${n}`;
+}
+
+function negate(net) {
   const out = {};
-  for (const k of ["p", "n", "b", "r", "q"]) {
-    const v = (b[k] || 0) - (p[k] || 0);
-    out[k] = f.mover === "white" ? v : -v;
-  }
+  for (const k of Object.keys(net)) out[k] = -net[k];
   return out;
 }
 
-// Pawns the mover actually drops over the line they played (best play by both sides from
-// the engine's PV), measured on the exchange-resolved swing so a clean recapture doesn't
-// register as a loss. 0 when the line is materially level — the "positional" case where
-// the cost is initiative, not wood. This is the "loses two pawns" number.
-function playedLineLoss(f) {
-  if (!f.playedLine) return 0;
-  const swing = Number.isFinite(f.playedLine.settledSwing)
-    ? f.playedLine.settledSwing
-    : f.playedLine.swing;
-  const swingMover = f.mover === "white" ? swing : -swing;
-  // swing/settledSwing are differences of materialBalance() sums, which add up whole
-  // PIECE_VALUE points — always an integer. Math.round is just a defensive guard
-  // against future fractional piece values, not a real rounding step today.
-  return swingMover < 0 ? Math.round(-swingMover) : 0;
+function minus(a, b) {
+  const out = {};
+  for (const t of TYPES) out[t] = (a[t] || 0) - (b[t] || 0);
+  return out;
 }
 
-function playedLineLossPhrase(f) {
-  const loss = playedLineLoss(f);
-  if (loss < 1) return "";
-  const diff = f.playedLine?.settledDiffSwing || null;
-  const moverDiff = diff ? (f.mover === "white" ? diff : negateDiff(diff)) : null;
-  return materialSwingPhrase(moverDiff, -loss) || materialPhrase(loss);
+// The line after the first move of `outcome`, numbered and trimmed to the capture that
+// settles it: the last capture by `byColor` within `cap` plies (or two plies when none).
+function trimmedLine(startFen, outcome, byColor, cap = 4) {
+  if (!outcome || outcome.plies < 2) return "";
+  const rest = outcome.moves.slice(1, cap + 1);
+  let end = -1;
+  rest.forEach((mv, i) => {
+    if (mv.captured && mv.color === byColor) end = i;
+  });
+  const n = end >= 0 ? end + 1 : Math.min(2, rest.length);
+  return numberLine(startFen, rest.slice(0, n).map((mv) => mv.san));
 }
 
-// ---------------------------------------------------------------------------
-// Move-idea narration — what a move *does*, reusing the motif detector. We split
-// describeMove()'s comma-joined clauses and keep the "idea" tail (the consequence),
-// dropping the bare relocation/capture clause the SAN already encodes.
-// ---------------------------------------------------------------------------
-
-function moveClauses(fen, uci, san) {
-  const d = describeMove(fen, uci, san) || "";
-  return d
-    .split(", ")
-    .map((s) => s.trim())
-    .filter(Boolean);
+// The best line including its first move: "20.c5 Rfd8 21.Bd6".
+function bestLineText(f, outcome, byColor) {
+  if (!outcome || !outcome.moves.length) return "";
+  const moves = outcome.moves.slice(0, 5);
+  let end = 0;
+  moves.forEach((mv, i) => {
+    if (mv.captured && mv.color === byColor) end = i;
+  });
+  return numberLine(f.fenBefore, moves.slice(0, end + 1).map((mv) => mv.san));
 }
 
-const RELOCATION_RE = /^(develops|brings|pushes|takes|castles|fianchettoes|promotes)\b/;
+// Everything the wording needs, computed once.
+function readFacts(f) {
+  const m = f.mover === "white" ? "w" : "b";
+  const opp = m === "w" ? "b" : "w";
+  const played = lineOutcome(f.fenBefore, f.playedPvUci || [], { maxPlies: 8 });
+  const own = /x/.test(f.san || "") ? lineOutcome(f.fenBefore, f.playedPvUci || [], { maxPlies: 6, first: true }) : null;
+  const best = lineOutcome(f.fenBefore, f.bestPvUci || [], { maxPlies: 8 });
+  const playedNet = played && played.quiet ? netValue(netFor(played, m)) : null;
+  const bestNet = best && best.quiet ? netValue(netFor(best, m)) : null;
+  // What the played move costs against the best line, per piece type (+ = the best line
+  // keeps/wins it). Both lines start from the same position, so a pending recapture
+  // cancels out instead of reading as a loss or a gain.
+  const rel = played && best && played.quiet && best.quiet ? minus(netFor(best, m), netFor(played, m)) : null;
+  const relValue = rel ? netValue(rel) : 0;
+  const prevWasCapture = /x/.test(f.prevSan || "");
+  const prevDest = f.prevUci ? f.prevUci.slice(2, 4) : null;
+  // A take-back answers the opponent's capture on the same square and only restores what
+  // it took: in Bxf3 Qxf3 Qxf3 gxf3 the first Qxf3 and gxf3 take back, the second Qxf3
+  // starts a queen trade. Needs the piece the previous move captured, when known.
+  const prevTook = capturedBy(f.prevFenBefore, f.prevUci);
+  const nowTook = capturedBy(f.fenBefore, f.uci);
+  // Classify this exchange from its captures, independent of material won earlier.
+  const restores = prevTook && nowTook ? PIECE_VALUE[nowTook] <= PIECE_VALUE[prevTook] : true;
+  const recapture = prevWasCapture && !!prevDest && /x/.test(f.san || "") && f.uci?.slice(2, 4) === prevDest && restores;
+  const bestTakesBack = prevWasCapture && !!prevDest && f.bestUci?.slice(2, 4) === prevDest && /x/.test(f.bestSan || "");
+  return { m, opp, played, own, best, playedNet, bestNet, rel, relValue, prevWasCapture, recapture, bestTakesBack };
+}
 
-// describeMove() writes its follow-up clauses for a "<mover> <verb>s ..." sentence, so a
-// couple of them are finite verbs ("and now eyes the bishop on c4"). Once the leading verb
-// clause is dropped the tail hangs off a SAN as a modifier, where only participles read as
-// English — so recast those into participle form.
-const FINITE_TO_PARTICIPLE = [
-  [/^and now eyes\b/, "eyeing"],
-  [/^and it's checkmate$/, "delivering checkmate"],
-];
+// --- Good moves --------------------------------------------------------------
 
-function participle(clause) {
-  for (const [re, rep] of FINITE_TO_PARTICIPLE) {
-    if (re.test(clause)) return clause.replace(re, rep);
+function capturedName(f) {
+  const m = /^takes the (\w+)/.exec(describeMove(f.fenBefore, f.uci, f.san));
+  return m ? m[1] : "";
+}
+
+function withThreat(f, phrase) {
+  const threat = threatPhrase(f.fenBefore, f.uci, f.san);
+  return threat && threat !== "gives check" ? `${phrase} and ${threat}` : phrase;
+}
+
+// The one point worth making about a sound move, as a verb phrase ("wins a pawn",
+// "trades rooks", "develops the knight"), or "".
+function goodPoint(f, x) {
+  if (f.hasMateAfter && Number.isFinite(f.mateAfter)) return `forces ${mateCount(f.mateAfter)}`;
+  const capture = /x/.test(f.san || "");
+  if (capture && x.recapture) {
+    const what = capturedName(f);
+    return what ? `takes back the ${what}` : "recaptures";
   }
-  return clause;
-}
-
-// "a", "a and b", "a, b and c" — one modifier phrase, never a dangling ", and now ...".
-function joinIdeas(parts) {
-  if (parts.length <= 1) return parts[0] || "";
-  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
-}
-
-// Drop the leading bare relocation/capture (the SAN already says "piece to square"),
-// keep what the move accomplishes as one participle phrase: "forking the rook and queen",
-// "with check", "claiming the centre and eyeing the bishop on c4".
-function ideaTail(clauses) {
-  if (!clauses.length) return "";
-  const rest = RELOCATION_RE.test(clauses[0]) ? clauses.slice(1) : clauses;
-  return joinIdeas(rest.map(participle));
-}
-
-// The value-add idea of the move just played (no "piece to square" — the SAN has it).
-function moveIdea(f) {
-  return ideaTail(moveClauses(f.fenBefore, f.uci, f.san));
-}
-
-// "Nf3, with an eye on the centre" / "Kf2" — SAN, plus the idea when there is one.
-function gistOf(f) {
-  const idea = moveIdea(f);
-  return idea ? `${f.san}, ${idea}` : f.san;
-}
-
-// ---------------------------------------------------------------------------
-// The refutation — the opponent's reply, named with its own idea.
-// ---------------------------------------------------------------------------
-
-// The reply's idea as a trailing modifier: ", claiming the centre and eyeing the bishop
-// on c4" — or "" when the reply has no point beyond the SAN.
-function replyTailOf(f) {
-  if (!f.replySan) return "";
-  const tail = ideaTail(moveClauses(f.fenAfter, f.replyUci, f.replySan));
-  return tail ? `, ${tail}` : "";
-}
-
-// The opponent's standing after the move (used when a move goes wrong).
-function oppStanding(f) {
-  return standingWord(100 - f.winAfterMover);
-}
-
-// Where an error leaves the mover, as one bucket the lead AND the standing sentence both
-// read from — so a "costly blunder" is never followed by "that leaves it about level":
-//   "worse"  — the opponent is now better (the classic, costly error)
-//   "level"  — an edge was thrown away, but the game is about even
-//   "better" — still ahead, just by much less than before
-function errorAftermath(f) {
-  if (f.winAfterMover >= 57) return "better";
-  if (f.winAfterMover > 43) return "level";
-  return "worse";
-}
-
-// One standalone sentence on the resulting standing, consistent with errorAftermath().
-function aftermathSentence(f, me, opp) {
-  const kind = errorAftermath(f);
-  if (kind === "worse") return choose(f, "standingTail", STANDING_TAIL, { opp, standing: oppStanding(f) });
-  if (kind === "level") return choose(f, "aftermathLevel", AFTERMATH_LEVEL, { me, opp });
-  return choose(f, "aftermathBetter", AFTERMATH_BETTER, { me, standing: standingWord(f.winAfterMover) });
-}
-
-function errorLead(f, code, me) {
-  const kind = errorAftermath(f);
-  if (code === "blunder") {
-    const bank = kind === "level" ? BLUNDER_LEAD_LEVEL : kind === "better" ? BLUNDER_LEAD_BETTER : BLUNDER_LEAD;
-    return choose(f, "lead", bank, { me });
-  }
-  return choose(f, "lead", MISTAKE_LEAD, { me });
-}
-
-// ---------------------------------------------------------------------------
-// The better move — what to play instead, and what it would have kept.
-// ---------------------------------------------------------------------------
-
-// A short clause for the recommended move's material payoff: keeps material it dropped,
-// wins material outright, or "" when the gain isn't about wood.
-function betterPayoff(f) {
-  const diff = lineMaterialDiff(f);
-  if (diff !== null && diff >= 2) {
-    const phrase = materialSwingPhrase(linePieceDiff(f), diff) || materialPhrase(diff);
-    const droppedMaterial = playedLineLoss(f) >= 1;
-    if (phrase) return droppedMaterial ? `, saving ${phrase}` : `, winning ${phrase}`;
-  }
-  return "";
-}
-
-// What the best move *keeps* in positional terms — the standing the engine's top line
-// holds for the mover (winBeforeMover is that line's win%). Used when the gain isn't a
-// clean material count: "keeping White clearly better", "holding the balance".
-function meritStanding(f) {
-  const w = f.winBeforeMover;
-  const me = sideWord(f.mover);
-  if (w >= 57) return `keeping ${me} ${standingWord(w)}`;
-  if (w > 43) return "holding the balance";
-  if (w > 32) return `keeping ${me} in the game`;
-  return "limiting the damage";
-}
-
-// The trailing clause on a "X was the move" recommendation: material payoff if there is
-// one, otherwise what the move keeps.
-function betterMerit(f) {
-  return betterPayoff(f) || `, ${meritStanding(f)}`;
-}
-
-// ---------------------------------------------------------------------------
-// Brilliant — grounded in the Maia/Stockfish disagreement, not just a label.
-// ---------------------------------------------------------------------------
-
-// "It's mate in 3." / "It's mate next move." when the move just played forces mate.
-function mateInClause(f) {
-  if (!f.hasMateAfter || !Number.isFinite(f.mateAfter)) return "";
-  const n = Math.abs(f.mateAfter);
-  return n <= 1 ? " It's mate next move." : ` It's mate in ${n}.`;
-}
-
-// The grounded "why" behind a Brilliant call: how rarely a human finds it, and how
-// differently a human model reads the position — the actual Maia/Stockfish gap.
-function brilliantWhyClause(f, me) {
-  const mate = mateInClause(f);
-  if (!f.maia || !Number.isFinite(f.maia.humanProb) || !Number.isFinite(f.maia.winChanceAfter)) {
-    return mate;
-  }
-  const p = f.maia.humanProb;
-  const rarityBank = p < 0.01 ? RARITY_TIER1 : p < 0.03 ? RARITY_TIER2 : p < 0.06 ? RARITY_TIER3 : RARITY_TIER4;
-  const rarity = choose(f, "rarity", rarityBank, {});
-  const maiaStand = standingWord(f.maia.winChanceAfter * 100);
-  const why = choose(f, "brilliantWhy", BRILLIANT_WHY, { rarityCap: cap(rarity), maiaStand, me });
-  return ` ${why}${mate}`;
-}
-
-// ---------------------------------------------------------------------------
-// Tactics — the concrete motif a move creates, or the one it hands the opponent.
-// ---------------------------------------------------------------------------
-
-function moverLetter(f) {
-  return f.mover === "white" ? "w" : "b";
-}
-function oppLetter(f) {
-  return f.mover === "white" ? "b" : "w";
-}
-
-// A leading-space sentence naming the tactic the move just played creates (fork / pin /
-// skewer), for a strong move's "why". "" when the move makes no concrete threat.
-function threatPoint(f, me, opp) {
-  const motif = describeThreat(f.fenAfter, f.uci, moverLetter(f));
-  if (!motif) return "";
-  if (motif.kind === "fork") return choose(f, "goodForkThreat", GOOD_THREAT_FORK, { targets: motif.targets, me, opp });
-  if (motif.kind === "skewer")
-    return choose(f, "goodSkewerThreat", GOOD_THREAT_SKEWER, { front: motif.front, back: motif.back, me, opp });
-  if (motif.kind === "pin") {
-    const bank = motif.absolute ? GOOD_THREAT_PIN_ABS : GOOD_THREAT_PIN;
-    return choose(f, "goodPinThreat", bank, { front: motif.front, back: motif.back, me, opp });
-  }
-  return "";
-}
-
-// A leading-space sentence naming the tactic a weak move hands the opponent. "" when
-// there's nothing concrete to point at.
-function oppThreatClause(f, opp) {
-  const motif = describeAnyThreat(f.fenAfter, oppLetter(f));
-  if (!motif) return "";
-  if (motif.kind === "fork") return choose(f, "oppForkThreat", ERROR_OPP_THREAT_FORK, { targets: motif.targets, opp });
-  if (motif.kind === "skewer")
-    return choose(f, "oppSkewerThreat", ERROR_OPP_THREAT_SKEWER, { front: motif.front, back: motif.back, opp });
-  if (motif.kind === "pin") {
-    const bank = motif.absolute ? ERROR_OPP_THREAT_PIN_ABS : ERROR_OPP_THREAT_PIN;
-    return choose(f, "oppPinThreat", bank, { front: motif.front, back: motif.back, opp });
-  }
-  return "";
-}
-
-// ---------------------------------------------------------------------------
-// Intent — the quiet, strategic POINT of a move that wins nothing and forces nothing
-// (defends a piece, opens a line, prevents a threat, offers a trade, attacks the king).
-// A leading-space sentence, or "" when the move has no readable strategic point. Slotted
-// below the concrete tactic/material points, above the generic "sound move" filler.
-// ---------------------------------------------------------------------------
-
-// Core formatter: given a pre-computed intent object, return the phrase. `prefix` lets the
-// caller vary the choose() key so played-move and best-move intent can draw from the same
-// bank without always landing on the same template.
-function intentPointFromObj(intent, f, me, opp, prefix = "") {
-  if (!intent) return "";
-  const k = (s) => `${prefix}${s}`;
-  switch (intent.kind) {
-    case "defend": {
-      const bank = intent.moved ? INTENT_DEFEND_AWAY : INTENT_DEFEND;
-      return choose(f, k("intentDefend"), bank, { piece: intent.piece, sq: intent.sq });
-    }
-    case "openLine":
-      return choose(f, k("intentOpenLine"), INTENT_OPEN_LINE, { piece: intent.piece, line: intent.line });
-    case "prophylaxis":
-      return choose(f, k("intentProphylaxis"), INTENT_PROPHYLAXIS, { stopped: intent.stopped });
-    case "trade": {
-      const bank = intent.ahead ? INTENT_TRADE_AHEAD : INTENT_TRADE;
-      return choose(f, k("intentTrade"), bank, { piece: intent.piece, me });
-    }
-    case "kingAttack": {
-      const bank = intent.via === "pawn storm" ? INTENT_KING_STORM : INTENT_KING_PIECE;
-      return choose(f, k("intentKing"), bank, { me, opp });
-    }
-    case "avoidTrade":
-      return choose(f, k("intentAvoid"), INTENT_AVOID_TRADE, { piece: intent.piece });
-    case "fianchetto":
-      return choose(f, k("intentFian"), INTENT_FIANCHETTO, { sq: intent.sq });
-    case "fianchettoPrep":
-      return choose(f, k("intentFianPrep"), INTENT_FIANCHETTO_PREP, {});
-    case "center": {
-      const bank = intent.knight ? INTENT_CENTER_KNIGHT : INTENT_CENTER;
-      return choose(f, k("intentCenter"), bank, { piece: intent.piece, sq: intent.sq });
-    }
-    case "centerStrike":
-      return choose(f, k("intentStrike"), INTENT_CENTER_STRIKE, { sq: intent.sq });
-    case "develop":
-      return intent.file
-        ? choose(f, k("intentDevRook"), INTENT_DEVELOP_ROOK, { file: intent.file, openFile: intent.openFile })
-        : choose(f, k("intentDevelop"), INTENT_DEVELOP, { piece: intent.piece });
-    case "space": {
-      const sqs = intent.squares || [];
-      const squares =
-        sqs.length >= 2 ? `the ${sqs[0]} and ${sqs[1]} squares` : sqs.length === 1 ? `the ${sqs[0]} square` : "key squares";
-      return choose(f, k("intentSpace"), INTENT_SPACE, { squares, opp });
-    }
-    case "pressure": {
-      const bank = intent.reinforce ? INTENT_PRESSURE_REINFORCE : INTENT_PRESSURE;
-      return choose(f, k("intentPressure"), bank, { piece: intent.piece, sq: intent.sq, file: intent.file });
-    }
-    case "support":
-      return choose(f, k("intentSupport"), INTENT_SUPPORT, { sq: intent.sq });
-    default:
-      return "";
-  }
-}
-
-function intentPoint(f, me, opp) {
-  const intent = detectIntent(f.fenBefore, f.fenAfter, f.uci, f.san, moverLetter(f));
-  return intentPointFromObj(intent, f, me, opp);
-}
-
-// The strategic idea behind the ENGINE'S recommended move — what makes it better.
-// Plays bestUci on fenBefore with chess.js (no engine call), runs detectIntent, and
-// returns an intent sentence like " It develops the knight to an active square." or "".
-// Falls back to "" for pure repositioning moves detectIntent can't classify.
-function bestMoveIdea(f, me, opp) {
-  if (!f.bestSan || !f.bestUci || f.isBest) return "";
-  try {
-    const c = new Chess(f.fenBefore);
-    c.move({ from: f.bestUci.slice(0, 2), to: f.bestUci.slice(2, 4), promotion: f.bestUci[4] || undefined });
-    const intent = detectIntent(f.fenBefore, c.fen(), f.bestUci, f.bestSan, moverLetter(f));
-    return intentPointFromObj(intent, f, me, opp, "best_");
-  } catch (_) {
-    return "";
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Intuition — the position's texture (from Maia) crossed with the move's quality. A
-// trailing sentence that explains WHY a move went the way it did: a slip in an obvious
-// spot, a hard choice in a rich one, an inventive path, a trap dodged. "" when there's no
-// Maia read (it arrives async) or the texture adds nothing to this particular move.
-// ---------------------------------------------------------------------------
-// A position that is sharp FOR ITS PHASE (top quartile/decile of the WDL sharpness band) —
-// the honest "easy to mess up" read that policy entropy got wrong (many calm options also
-// spread the policy). "lively" or "sharp" both count as worth flagging.
-function isSharp(intu) {
-  const s = intu && intu.sharpness;
-  return !!s && (s.band === "sharp" || s.band === "lively");
-}
-
-function intuitionNote(f) {
-  const intu = f.intuition;
-  if (!intu) return "";
-  const code = f.classification.code;
-  const isError = code === "blunder" || code === "mistake" || code === "inaccuracy";
-  const isGood = code === "best" || code === "good" || code === "great";
-
-  if (isError) {
-    // Obvious position, the natural move was best, you played something else: a slip.
-    if (intu.texture === "obvious" && intu.obviousIsBest && !intu.playedWasObvious && intu.obviousSan) {
-      return choose(f, "intuSlip", INTUITION_SLIP, { obviousSan: intu.obviousSan });
-    }
-    // Sharp-for-its-phase position: a sympathetic "this was genuinely hard".
-    if (isSharp(intu)) return choose(f, "intuHard", INTUITION_HARD, {});
-    return "";
-  }
-
-  if (isGood) {
-    // The human-obvious move wasn't best, and you played the engine's best instead.
-    if (
-      (code === "best" || code === "great") &&
-      intu.texture === "obvious" &&
-      !intu.obviousIsBest &&
-      !intu.playedWasObvious &&
-      intu.obviousSan
-    ) {
-      return choose(f, "intuAvoided", INTUITION_AVOIDED, { obviousSan: intu.obviousSan, san: f.san });
-    }
-    // Obvious position, but you found a strong move humans rarely pick: your own path.
-    if (intu.texture === "obvious" && intu.surprise && !intu.playedWasObvious && intu.obviousSan) {
-      return choose(f, "intuOwnPath", INTUITION_OWN_PATH, { obviousSan: intu.obviousSan, san: f.san });
-    }
-    // A sharp position navigated well — but not while clearly worse, where "handled it
-    // well" would jar against the prose's own "this is the best you can do here" read.
-    if (isSharp(intu) && f.winAfterMover >= 33) {
-      return choose(f, "intuRichGood", INTUITION_RICH_HANDLED, { san: f.san });
-    }
-    // An obvious position, played the obvious move: natural and correct — but saying so
-    // adds nothing ("the obvious move here, and rightly so" on top of an already-positive
-    // read just pads the sentence), so stay silent rather than tack on filler.
-    if (intu.texture === "obvious" && intu.playedWasObvious) {
-      return "";
-    }
-    return "";
-  }
-  return "";
-}
-
-// ---------------------------------------------------------------------------
-// The prose.
-// ---------------------------------------------------------------------------
-
-function buildProse(f) {
-  const me = sideWord(f.mover);
-  const opp = oppWord(f.mover);
-  const code = f.classification.code;
-
-  // Checkmate delivered — the SAN already carries the '#'.
-  if (/#/.test(f.san)) {
-    return choose(f, "mateDelivered", MATE_DELIVERED, { san: f.san });
-  }
-
-  // Forced — only one legal move existed. State that plainly; there was nothing to find
-  // and nothing to fault, so no praise and no grade-shaming.
-  if (code === "forced") {
-    const bank = f.wasInCheck ? FORCED_CHECK : FORCED_MOVE;
-    return choose(f, "forced", bank, { san: f.san });
-  }
-
-  // Brilliant — the engine loves it, humans wouldn't find it (Maia disagreement).
-  if (code === "brilliant") {
-    const stand = standingWord(f.winAfterMover);
-    const looks = f.hangingOwnTop
-      ? choose(f, "looksHangs", LOOKS_HANGS, { piece: PIECE_NAME[f.hangingOwnTop.type] })
-      : choose(f, "looksPlain", LOOKS_PLAIN, {});
-    const lead = choose(f, "brilliantLead", BRILLIANT_LEAD, { san: f.san, looks, looksCap: cap(looks), me, stand });
-    return `${lead}${brilliantWhyClause(f, me)}`;
-  }
-
-  // Blunder / mistake — say what broke and (when there's a clean fix) what to play.
-  if (code === "blunder" || code === "mistake") {
-    const lead = errorLead(f, code, me);
-
-    let why;
-    let namedBetterAlready = false;
-    let quiet = false; // a quiet error — the place a "now the opponent threatens X" fits
-
-    if (f.inMateNet && f.replySan) {
-      // Walking into a forced mate — the heaviest consequence there is.
-      const tail = ideaTail(moveClauses(f.fenAfter, f.replyUci, f.replySan));
-      const extra = tail ? `${tail}, and ` : "";
-      why = choose(f, "inMateNet", IN_MATE_NET, { san: f.san, reply: f.replySan, extra, opp });
-    } else if (f.missedMate && f.bestSan) {
-      // A forced mate was on the board and the move stepped past it.
-      why = choose(f, "missedMate", MISSED_MATE, { me, bestSan: f.bestSan });
-      namedBetterAlready = true;
-    } else if (f.hangingOwnTop && f.hangingOwnTop.worth >= 3) {
-      // Hangs a piece outright — name it, the punishment, and the resulting standing.
-      const piece = PIECE_NAME[f.hangingOwnTop.type];
-      const sq = f.hangingOwnTop.square;
-      const desc = choose(f, "hangDesc", HANG_DESC, { san: f.san, piece, sq });
-      const standing = oppStanding(f);
-      let punish;
-      if (errorAftermath(f) !== "worse") {
-        // The piece hangs but the mover is still level/better: name the grab, then the
-        // honest standing — never "Black is about level" phrased as a punishment.
-        const grab = f.replySan ? `${choose(f, "replySentence", REPLY_SENTENCE, { opp, reply: f.replySan, rt: "" })} ` : "";
-        punish = `${grab}${aftermathSentence(f, me, opp)}`;
-      } else {
-        punish = f.replySan
-          ? choose(f, "hangPunish", HANG_PUNISH_WITH_REPLY, { reply: f.replySan, opp, standing })
-          : choose(f, "hangPunishNo", HANG_PUNISH_NO_REPLY, { opp, standing });
-      }
-      why = `${desc}. ${punish}`;
-    } else if (f.missedWin && f.looseBefore[0] && f.bestSan) {
-      // Left a free piece on the board and didn't take it.
-      const t = f.looseBefore[0];
-      why = choose(f, "missedWin", MISSED_WIN, {
-        san: f.san,
-        piece: PIECE_NAME[t.type],
-        sq: t.square,
-        bestSan: f.bestSan,
-      });
-      namedBetterAlready = true;
-    } else {
-      // Quiet error: no single piece hangs, but the line still costs something. Lead
-      // with what the move was trying to do, then the concrete cost — material if the
-      // forcing line wins it, otherwise the initiative.
-      quiet = true;
-      const idea = moveIdea(f);
-      const opener = idea ? choose(f, "opener", OPENER_WITH_IDEA, { san: f.san, idea }) : f.san;
-      const loss = playedLineLoss(f);
-      const lossPhrase = playedLineLossPhrase(f);
-      if (isRecapture(f) && moverMaterialAfter(f) === 0) {
-        // Separate what this move does from the material at a later PV endpoint.
-        // In particular, gxh3 can restore equality before ...Nxe5 wins a pawn.
-        const line = f.playedLine;
-        const balance = line?.settledEndBalance ?? line?.endBalance ?? 0;
-        const edge = f.mover === "white" ? -balance : balance;
-        const diff = line?.settledEndDiff || line?.perPieceDiff;
-        const phrase = materialEdgePhrase(f.mover === "white" ? negateDiff(diff) : diff, edge);
-        const continuation = edge > 0 && phrase
-          ? `In the continuation${f.replySan ? ` starting with ${f.replySan}` : ""}, ${opp} eventually ends up ${phrase} ahead.`
-          : aftermathSentence(f, me, opp);
-        why = choose(f, "recaptureSlip", RECAPTURE_SLIP, {
-          san: f.san, piece: PIECE_NAME[capturedType(f)], continuation,
-        });
-      } else if (loss >= 1 && lossPhrase) {
-        const phrase = lossPhrase;
-        const replyTail = ideaTail(moveClauses(f.fenAfter, f.replyUci, f.replySan));
-        const punish = f.replySan
-          ? choose(f, "punishCount", PUNISH_WITH_REPLY_COUNT, {
-              reply: f.replySan,
-              opp,
-              phrase,
-              tailComma: tailComma(replyTail),
-              tailDash: tailDash(replyTail),
-              tailParen: tailParen(replyTail),
-            })
-          : choose(f, "punishCountNo", PUNISH_NO_REPLY_COUNT, { opp, phrase });
-        const verb = choose(f, "loseVerb", LOSE_MATERIAL_VERB, {});
-        why = choose(f, "loseTemplate", LOSE_MATERIAL_TEMPLATE, { opener, verb, punish });
-      } else {
-        const phaseBank =
-          f.phase === "opening" ? PHASE_HINT_OPENING : f.phase === "endgame" ? PHASE_HINT_ENDGAME : PHASE_HINT_MIDDLEGAME;
-        const phaseHint = choose(f, "phaseHint", phaseBank, {});
-        // Every clause below is a complete sentence: the reply (with its idea folded in
-        // as a participle) and the resulting standing, which is read from the same
-        // errorAftermath() bucket as the lead so the two can't contradict each other.
-        const standingTail = aftermathSentence(f, me, opp);
-        if (f.replySan) {
-          const replySentence = choose(f, "replySentence", REPLY_SENTENCE, {
-            opp,
-            reply: f.replySan,
-            rt: replyTailOf(f),
-          });
-          why = choose(f, "initiativeWith", INITIATIVE_WITH_PUNISH, {
-            opener,
-            phaseHint,
-            replySentence,
-            standingTail,
-          });
-        } else {
-          why = choose(f, "initiativeNo", INITIATIVE_NO_PUNISH, { opener, phaseHint, standingTail });
-        }
+  if (capture && x.own && x.own.quiet) {
+    const ownNet = netFor(x.own, x.m);
+    const value = netValue(ownNet);
+    if (value >= 1 && !x.prevWasCapture) return withThreat(f, `wins ${gainPhrase(ownNet)}`);
+    if (value === 0 && hasCaptures(x.own)) {
+      const trade = tradePhrase(x.own, x.m);
+      if (trade) {
+        const end = fenAfterLine(f.fenBefore, f.playedPvUci, x.own.plies);
+        return end && oppositeBishopsOnly(end) ? `${trade}, leaving opposite-coloured bishops` : trade;
       }
     }
-
-    // On a quiet error, spell out the concrete tactic it hands the opponent, if any —
-    // the "this lets Black fork the rook and king" the read was missing.
-    const consequence = quiet ? oppThreatClause(f, opp) : "";
-
-    // Only name a "better move" when we haven't already named one inside `why`.
-    const betterIdea = !namedBetterAlready && f.bestSan && !f.isBest ? bestMoveIdea(f, me, opp) : "";
-    const better =
-      !namedBetterAlready && f.bestSan && !f.isBest
-        ? ` ${choose(f, "betterMove", BETTER_MOVE, { bestSan: f.bestSan, merit: betterMerit(f) })}${betterIdea}`
-        : "";
-    return `${lead} ${why}${consequence}${better}${intuitionNote(f)}`;
-  }
-
-  // Inaccuracy — gentle; mention the cleaner move, and flag it if it actually flipped
-  // who's better (a "small" slip that changes the verdict is worth knowing about).
-  if (code === "inaccuracy") {
-    const idea = moveIdea(f);
-    const head = idea
-      ? choose(f, "inaccHead", INACC_HEAD_WITH_IDEA, { san: f.san, idea })
-      : choose(f, "inaccHeadPlain", INACC_HEAD_PLAIN, { me });
-    // The "why it isn't the sharpest": name the opponent's strong reply and what it does, when
-    // that reply has a concrete idea ("Black gets to play Ne5, eyeing the queen"). Skip a bare
-    // reply with no point — "after Kg7," adds nothing.
-    const replyTail = ideaTail(moveClauses(f.fenAfter, f.replyUci, f.replySan));
-    const punish = f.replySan && replyTail ? choose(f, "inaccPunish", INACC_PUNISH, { opp, reply: f.replySan, tail: replyTail }) : "";
-    const cleanerIdea = f.bestSan && !f.isBest ? bestMoveIdea(f, me, opp) : "";
-    const cleaner =
-      f.bestSan && !f.isBest
-        ? choose(f, "inaccCleaner", INACC_CLEANER, { bestSan: f.bestSan, payoff: betterPayoff(f) }) + cleanerIdea
-        : "";
-    // Only call it a "flip" when the move actually tipped the balance — the side was at least
-    // even before and is worse after. Restating "you're worse" on a position that was already
-    // worse before the move just nags (the user's repeated complaint).
-    // "Edges ahead" needs the opponent to actually be ahead: the after-standing
-    // must have left "about level" (> 43), or the line said "Black edges ahead,
-    // and White is about level" in one breath (UX walkthrough 2026-10-01 P1-5).
-    const flip =
-      f.winBeforeMover >= 47 && f.winAfterMover < 50 && standingWord(f.winAfterMover) !== "about level"
-        ? choose(f, "inaccFlip", INACC_FLIP, { opp, me, standing: standingWord(f.winAfterMover) })
-        : "";
-    return `${head}${punish}${cleaner}${flip}${intuitionNote(f)}`;
-  }
-
-  // Great — far and away the best move. Two flavours: a decisive winning blow, or the
-  // single move that holds a difficult position together. Pick the words to fit which.
-  if (code === "great") {
-    const up = moverMaterialAfter(f);
-    const mate = mateInClause(f);
-    if (/x/.test(f.san) && up >= 3 && materialPhrase(up)) {
-      return choose(f, "greatDecisive", GREAT_DECISIVE, { san: f.san, phrase: moverEdgePhrase(f, up), me }) + mate + intuitionNote(f);
+    if (value < 0) {
+      const gave = gainPhrase(negate(ownNet));
+      if (gave) return `gives up ${gave}`;
     }
-    // A "great" that is really just the forced recapture / even trade keeping the balance —
-    // say so plainly, no "you found the only saving move!" theatrics over an obvious takeback.
-    if (!mate && (isRecapture(f) || isEvenTrade(f))) {
-      return choose(f, "greatRecap", GREAT_RECAPTURE, { san: f.san, me }) + intuitionNote(f);
-    }
-    const threat = mate ? "" : threatPoint(f, me, opp);
-    // When the save isn't a tactic, lean on the move's positional point (centralises, shores
-    // up a piece) for the "why it's the move" rather than a bare standing word.
-    const intentVal = mate || threat ? "" : intentPoint(f, me, opp);
-    const stand =
-      !mate && !threat && !intentVal && f.winAfterMover >= 57
-        ? choose(f, "greatStand", STAND_TAIL, { me, standing: standingWord(f.winAfterMover) })
-        : "";
-    return choose(f, "greatOnly", GREAT_ONLY_MOVE, { san: f.san, me }) + (mate || threat || intentVal || stand) + intuitionNote(f);
   }
-
-  // Best / good — keep it warm and short, with one positive, factual point. A forced
-  // mate trumps everything; then a concrete tactic the move sets up (fork/pin/skewer);
-  // then material, a pressured target, the endgame edge, the standing, and failing all
-  // that a plain word on why it's sound — so even a quiet good move gets a "because".
-  const lead = code === "best" ? choose(f, "leadBest", LEAD_BEST, {}) : choose(f, "leadGood", LEAD_GOOD, {});
-
-  const gist = gistOf(f);
-  const up = moverMaterialAfter(f);
-  const target = f.looseAfter[0];
-  const mate = mateInClause(f);
-  // The strategic point of a quiet move (defend/open-line/prophylaxis/trade/king-attack),
-  // computed once. It outranks the bland "White is winning" / "solid and sound" fillers but
-  // sits below concrete tactics, material, and the honest "you're worse" read.
-  const intentObj = detectIntent(f.fenBefore, f.fenAfter, f.uci, f.san, moverLetter(f));
-  const intentVal = intentPoint(f, me, opp);
-  const pawnHits = pawnTargetsOf(f);
-  let point = "";
-  if (mate) {
-    point = mate;
-  } else if (threatPoint(f, me, opp)) {
-    point = threatPoint(f, me, opp);
-  } else if (isRecapture(f) && capturedType(f)) {
-    // A capture that takes back what was just lost — say "recaptures", not "up material".
-    point = choose(f, "pointRecapture", POINT_RECAPTURE, { piece: PIECE_NAME[capturedType(f)] });
-  } else if (/x/.test(f.san) && up >= 1 && materialPhrase(up)) {
-    point = choose(f, "pointMaterial", POINT_MATERIAL, { me, phrase: moverEdgePhrase(f, up) });
-  } else if (isEvenTrade(f)) {
-    point =
-      up >= 2
-        ? choose(f, "pointTradeAhead", POINT_TRADE_AHEAD, { me })
-        : choose(f, "pointTrade", POINT_TRADE, { me });
-  } else if (target && target.worth >= 3) {
-    point = choose(f, "pointTarget", POINT_TARGET, { piece: PIECE_NAME[target.type], sq: target.square });
-  } else if (pawnHits.length >= 2) {
-    // The move hits two loose enemy pawns at once — a pawn-level double attack.
-    point = choose(f, "pointPawnDouble", POINT_PAWN_DOUBLE, { sq1: pawnHits[0], sq2: pawnHits[1] });
-  } else if (pawnHits.length === 1) {
-    // A quiet move that leans on a single loose enemy pawn ("puts the c4 pawn under
-    // pressure") — concrete, and what the generic "solid move" line was glossing over.
-    point = choose(f, "pointPawn", POINT_PAWN_PRESSURE, { sq: pawnHits[0] });
-  } else if (f.winAfterMover < 33) {
-    // The move is sound, but the side is clearly worse. Two cases, and the difference matters:
-    //   - This move is (part of) WHY it's worse (it was roughly even before): acknowledge the
-    //     drop once — lead with any constructive idea plus a brief honest "still worse" tag,
-    //     else the plain "tough but best try" line.
-    //   - It was ALREADY lost before the move: the user knows, and restating "you're clearly
-    //     worse" every single move is the harping they flagged. Give just the constructive
-    //     idea, or a neutral "stubborn try" with NO standing word.
-    const newlyWorse = f.winBeforeMover >= 33;
-    // An upbeat "attacking" idea (a king storm, a space grab) jars when you're being crushed —
-    // it reads as oblivious. Only DEFENSIVE/neutral ideas (rescue a piece, shore up a pawn,
-    // trade off, grab a file) survive into a clearly-worse read; an optimistic one is dropped
-    // in favour of the honest hold line.
-    const OPTIMISTIC = new Set(["kingAttack", "space", "pressure", "center", "centerStrike", "fianchetto", "fianchettoPrep"]);
-    const holdIntent = intentVal && intentObj && OPTIMISTIC.has(intentObj.kind) ? "" : intentVal;
-    if (holdIntent) {
-      point = newlyWorse ? `${holdIntent}${choose(f, "holdTag", GOOD_HOLD_TAG, { me, standing: standingWord(f.winAfterMover) })}` : holdIntent;
-    } else if (newlyWorse) {
-      point = choose(f, "goodHold", GOOD_HOLD, { me, opp, standing: standingWord(f.winAfterMover) });
-    } else {
-      point = choose(f, "goodHoldQuiet", GOOD_HOLD_QUIET, {});
+  // A quiet move that wins real material by force within a few moves.
+  const strong = ["best", "great", "brilliant"].includes(f.classification.code);
+  if (strong && !capture && !x.prevWasCapture) {
+    const quick = lineOutcome(f.fenBefore, f.playedPvUci || [], { maxPlies: 6 });
+    const net = quick && quick.quiet ? netFor(quick, x.m) : null;
+    if (net && netValue(net) >= 2) {
+      const line = trimmedLine(f.fenAfter, quick, x.m);
+      return `wins ${gainPhrase(net)}${line ? ` (${line})` : ""}`;
     }
-  } else if (intentVal) {
-    // The quiet move actually has a point — say it, instead of "White is winning" filler.
-    point = intentVal;
-  } else if (f.winAfterMover >= 68) {
-    point = choose(f, "standTailGood", STAND_TAIL, { me, standing: standingWord(f.winAfterMover) });
-  } else if (isSharp(f.intuition)) {
-    // A position that's sharp for its phase (WDL sharpness band): don't reach for the bland
-    // "keeps it simple and sound" line — that's the "calls a knife-fight stable" misread.
-    // Let the intuition note below ("a sharp, many-sided position...") carry the point.
-    point = "";
+  }
+  return describeMove(f.fenBefore, f.uci, f.san);
+}
+
+function bestProse(f, x) {
+  const point = goodPoint(f, x);
+  if (point) return `${pick(f, "best", ["Best move.", "Accurate.", "Exactly right.", "Good move."])} ${f.san} ${point}.`;
+  return `${f.san} ${pick(f, "best-bare", ["is the best move here", "is spot on", "is exactly right", "is accurate", "is the right move"])}.`;
+}
+
+function goodProse(f, x) {
+  const point = goodPoint(f, x);
+  const alt = f.bestSan && !f.isBest ? ` ${f.bestSan} was slightly more precise.` : "";
+  if (point) return `${pick(f, "good", ["Good.", "Fine move.", "Reasonable."])} ${f.san} ${point}.${alt}`;
+  return `${f.san} is fine.${alt}`;
+}
+
+function greatProse(f, x) {
+  const point = goodPoint(f, x);
+  if (/^(wins|forces)/.test(point)) return `Great move! ${f.san} ${point}.`;
+  // An only-move recapture or trade is necessary, not spectacular: say so plainly.
+  if (/^(takes back|recaptures|trades|gives an? )/.test(point)) return `${f.san} ${point}; anything else loses ground.`;
+  return `Great move! ${f.san} is the only move that holds${point ? `: it ${point}` : ""}.`;
+}
+
+function brilliantProse(f, x) {
+  const point = goodPoint(f, x);
+  const head = point ? `Brilliant! ${f.san} ${point}.` : `Brilliant! ${f.san} is a hidden resource.`;
+  const p = f.maia && Number.isFinite(f.maia.humanProb) ? f.maia.humanProb : null;
+  if (p === null) return head;
+  const pct = Math.round(p * 100);
+  const rarity = pct < 1 ? "Hardly anyone at this level would find it." : `Only about ${pct}% of players at this level would find it.`;
+  return `${head} ${rarity}`;
+}
+
+// --- Errors ------------------------------------------------------------------
+
+// "You were clearly better; now it's level." "" when the verdict didn't move.
+function changeSentence(f, v) {
+  const b0 = bucket(f.winBeforeMover);
+  const b1 = bucket(f.winAfterMover);
+  if (b1 >= b0) return ""; // two separate searches can disagree slightly; never narrate a gain
+  if (b0 === 0) return `${cap(v.standing(b1))} now.`;
+  return `${cap(v.standing(b0, true))}; now ${v.standing(b1)}.`;
+}
+
+// What should have been played and what it would have kept or won.
+function betterSentence(f, x, v) {
+  if (!f.bestSan || f.isBest) return "";
+  if (f.hadMateBefore && Number.isFinite(f.mateBefore)) return `${f.bestSan} was the move, with ${mateCount(f.mateBefore)}.`;
+  if (x.bestTakesBack) return `${f.bestSan} was the right way to take back.`;
+  if (x.relValue >= 1 && x.bestNet !== null && x.bestNet >= 1) return `${f.bestSan} was the move, winning ${gainPhrase(netFor(x.best, x.m))}.`;
+  if (x.relValue >= 1) return `${f.bestSan} was the move, keeping the material.`;
+  const b0 = bucket(f.winBeforeMover);
+  if (b0 !== bucket(f.winAfterMover)) return `${f.bestSan} was the move, ${v.keeping(b0)}.`;
+  return `${f.bestSan} was the move.`;
+}
+
+// "a trade of bishops" / "a bishop-for-knight trade" for an even exchange the reply starts.
+function replyTrade(f, x) {
+  if (!/x/.test(f.replySan || "")) return "";
+  const after = lineOutcome(f.fenAfter, (f.playedPvUci || []).slice(1), { maxPlies: 6, first: true });
+  if (!after || !after.quiet || netValue(netFor(after, x.m)) !== 0 || !hasCaptures(after)) return "";
+  const phrase = tradePhrase(after, x.m);
+  const same = /^trades (\w+)$/.exec(phrase);
+  if (same) return `a trade of ${same[1]}`;
+  const mixed = /^gives an? (\w+) for an? (\w+)$/.exec(phrase);
+  return mixed ? `a ${mixed[1]}-for-${mixed[2]} trade` : "";
+}
+
+// The concrete consequence of an error, as a sentence. Mate first, then material against
+// the better line, then the reply it allows and how the position changed.
+function errorConsequence(f, x, v) {
+  if (f.missedMate && f.bestSan) {
+    const n = Number.isFinite(f.mateBefore) ? ` in ${Math.abs(f.mateBefore)}` : "";
+    return { text: `${f.san} misses mate: ${f.bestSan} mates${n}.`, namedBest: true };
+  }
+  const alreadyMated = Number.isFinite(f.mateBefore) && !f.hadMateBefore;
+  if (f.inMateNet && !alreadyMated) {
+    const out = lineOutcome(f.fenBefore, f.playedPvUci || [], { maxPlies: 6 });
+    const line = out ? numberLine(f.fenAfter, out.sans.slice(1, 4)) : "";
+    return { text: `${f.san} allows ${mateCount(f.mateAfter)}${line ? `: ${line}` : ""}.` };
+  }
+  // Traded into opposite-coloured bishops while the better line avoids it.
+  const playedEnd = x.played && x.played.quiet ? fenAfterLine(f.fenBefore, f.playedPvUci, x.played.plies) : null;
+  const bestEnd = x.best && x.best.quiet ? fenAfterLine(f.fenBefore, f.bestPvUci, x.best.plies) : null;
+  if (f.replySan && playedEnd && oppositeBishopsOnly(playedEnd) && !(bestEnd && oppositeBishopsOnly(bestEnd))) {
+    const reply = numberLine(f.fenAfter, [f.replySan]);
+    const change = changeSentence(f, v);
+    return { text: `${f.san} allows ${reply} and a trade into opposite-coloured bishops, usually a draw.${change ? ` ${change}` : ""}` };
+  }
+  if (x.rel && x.relValue >= 1) {
+    const lossText = () => {
+      const line = trimmedLine(f.fenAfter, x.played, x.opp, 6);
+      const lost = gainPhrase(x.rel);
+      return lost ? { text: `${f.san} loses ${lost}${line ? ` after ${line}` : ""}.` } : null;
+    };
+    if (x.bestTakesBack) {
+      const t = lossText();
+      if (t) return t;
+    } else if (x.bestNet !== null && x.bestNet >= 1 && f.bestSan) {
+      const line = bestLineText(f, x.best, x.m);
+      const gain = gainPhrase(netFor(x.best, x.m));
+      if (gain) return { text: `${f.san} misses ${f.bestSan}, which wins ${gain}${line && line.includes(" ") ? ` (${line})` : ""}.`, namedBest: true };
+    } else if (x.playedNet !== null && x.playedNet < 0) {
+      const t = lossText();
+      if (t) return t;
+    }
+  }
+  // Positional: name the reply the move allows, then how the verdict moved.
+  let text;
+  if (f.replySan) {
+    const reply = numberLine(f.fenAfter, [f.replySan]);
+    const trade = replyTrade(f, x);
+    const did = trade ? "" : describeMove(f.fenAfter, f.replyUci, f.replySan);
+    if (trade) text = `${f.san} allows ${reply} and ${trade}.`;
+    else if (did && !/^takes the/.test(did)) text = `${f.san} allows ${reply}, which ${did}.`;
+    else text = `${f.san} allows ${reply}.`;
   } else {
-    point = choose(f, "goodSolid", GOOD_SOLID, {});
+    text = `${f.san} isn't the right idea here.`;
   }
-  return `${lead} ${gist}.${point}${intuitionNote(f)}`;
+  const change = changeSentence(f, v);
+  return { text: change ? `${text} ${change}` : text };
 }
 
-export function buildCommentary(features) {
+function errorProse(f, x, v) {
+  const code = f.classification.code;
+  const { text, namedBest } = errorConsequence(f, x, v);
+  const better = namedBest ? "" : betterSentence(f, x, v);
+  if (code === "inaccuracy") {
+    // Gentler: a small slip only needs the fix and, if it tipped the balance, that.
+    if (/ (loses|allows mate|misses)/.test(text)) return `${text}${better ? ` ${better}` : ""}`;
+    const change = changeSentence(f, v);
+    const fix = f.bestSan && !f.isBest ? ` ${f.bestSan} was better.` : "";
+    return `${f.san} is slightly inaccurate.${fix}${change ? ` ${change}` : ""}`;
+  }
+  const lead = code === "blunder" ? "Blunder." : "Mistake.";
+  return `${lead} ${text}${better ? ` ${better}` : ""}`;
+}
+
+// --- Entry -------------------------------------------------------------------
+
+function buildProse(f, opts) {
+  const v = makeVoice(f.mover, opts.selfSide || null);
+  const code = f.classification.code;
+  if (/#/.test(f.san || "")) return v.me === "you" ? "Checkmate. Well played." : "Checkmate.";
+  if (code === "forced") return `${f.san} was the only legal move.`;
+  const x = readFacts(f);
+  if (code === "brilliant") return brilliantProse(f, x);
+  if (code === "great") return greatProse(f, x);
+  if (code === "best") return bestProse(f, x);
+  if (code === "good") return goodProse(f, x);
+  return errorProse(f, x, v);
+}
+
+export function buildCommentary(features, opts = {}) {
   if (!features) return { tone: "info", grade: "", prose: "" };
   return {
     tone: features.classification.tone,
     grade: features.classification.label,
-    prose: buildProse(features),
+    prose: buildProse(features, opts),
   };
 }

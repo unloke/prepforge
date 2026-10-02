@@ -265,7 +265,16 @@ export function openSourceComposer({
   const linkedCount = linked.length;
 
   let popoverEl = null;
-  const place = () => positionPopover({ anchor: opener, popover: popoverEl });
+  // Every render rebuilds the popover element, so the first anchor rect lives
+  // here: otherwise a toggle that reflows the trigger (chips change) re-reads
+  // the moved button and the whole menu jumps under the pointer.
+  let anchorRect = null;
+  const place = () => {
+    if (popoverEl && anchorRect) popoverEl.__srcAnchorRect = anchorRect;
+    const out = positionPopover({ anchor: opener, popover: popoverEl });
+    if (popoverEl && popoverEl.__srcAnchorRect) anchorRect = popoverEl.__srcAnchorRect;
+    return out;
+  };
 
   const render = () => {
     const state = selfState();

@@ -69,6 +69,11 @@
   padding: 4px 10px 4px 4px;
   min-height: 34px;
 }
+/* The chosen set needs to read as chosen: accent ring + weight, not a faint tint. */
+#piece-style-picker .piece-style-option.is-active {
+  box-shadow: inset 0 0 0 2px var(--accent);
+  font-weight: 650;
+}
 .piece-style-preview { display: flex; border-radius: 4px; overflow: hidden; }
 .piece-style-preview .piece { width: 24px; height: 24px; padding: 1px; }
 .piece-style-preview .piece:nth-child(odd) { background: var(--square-dark); }
@@ -135,17 +140,6 @@
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.conn-primary {
-  padding: 1px 6px;
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  background: var(--panel);
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 .conn-actions {
   position: relative;

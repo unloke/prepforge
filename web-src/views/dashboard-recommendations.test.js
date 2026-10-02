@@ -255,7 +255,9 @@ describe("dashboard setup checklist", () => {
     expect(todayCard.hidden).toBe(true);
     expect(steps.hidden).toBe(false);
     expect(steps.innerHTML).toContain("<h2>Get started</h2>");
-    expect(steps.innerHTML.match(/class="step"/g)).toHaveLength(3);
+    // One Sign in on the page: the empty state has it, the checklist doesn't repeat it.
+    expect(steps.innerHTML.match(/class="step"/g)).toHaveLength(2);
+    expect(steps.innerHTML).not.toContain('data-lib-action="signin"');
   });
 
   it.each(["resolve", "reject"])("ignores an older listing's late %s after a mutation refresh", async (outcome) => {

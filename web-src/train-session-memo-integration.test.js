@@ -30,6 +30,7 @@ function harness(overrides = {}) {
   const present = vi.fn(async () => {});
   const phase = deferred();
   const deps = {
+    countOf: (n, one) => `${n} ${n === 1 ? one : `${one}s`}`,
     appState, mapTrainUiSession, shouldResetTrainStats, saveSessionMemo, loadSessionMemo, clearSessionMemo, trainSessionMemo,
     loadTrainResume: async () => ({ mapTrainUiSession, shouldResetTrainStats }),
     currentOwnerId: () => appState.accountUserId,

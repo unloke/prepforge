@@ -73,12 +73,13 @@ export function createTeamsView({
     const list = document.getElementById("teams-list");
     const shared = document.getElementById("teams-shared");
     if (!list) return;
+    // A guest gets one Sign in, in the main card; the list and the shares card
+    // have nothing to show yet, so they don't repeat it.
+    const sharedCard = shared && shared.closest ? shared.closest(".card") : null;
+    if (sharedCard) sharedCard.hidden = !appState.signedIn;
     if (!appState.signedIn) {
-      list.innerHTML = '<div class="empty-state">Sign in to create and join teams.</div>';
-      if (shared) {
-        shared.innerHTML =
-          '<div class="empty-state">Sign in to see repertoires your teams share with you.</div>';
-      }
+      list.innerHTML = "";
+      if (shared) shared.innerHTML = "";
       renderTeamEmptyCard("signed-out");
       hideTeamDetail();
       return;
@@ -171,7 +172,7 @@ export function createTeamsView({
     if (newTeam) newTeam.hidden = !appState.signedIn;
     // hideTeamDetail() re-renders the list; keep the guest's sign-in line.
     if (!appState.signedIn) {
-      list.innerHTML = '<div class="empty-state">Sign in to create and join teams.</div>';
+      list.innerHTML = "";
       return;
     }
     if (!appState.teams.length) {

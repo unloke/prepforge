@@ -1,7 +1,7 @@
 // Train viewport smoke — fixture-backed (same stack as build smoke).
 // Checks at 1440x900 / 1180x900 / 390x844:
 //   - no horizontal overflow, no console errors
-//   - mode tabs render (Smart queue / Line rehearsal / Play vs human)
+//   - mode tabs render (Smart queue / Line rehearsal / Practice game)
 //   - coach banner + named board controls + blitz row present in setup
 //   - play mode shows opponent-book picker; switching back works
 //   - progress panel + queue strip + up-next render from a live session fixture
@@ -122,7 +122,7 @@ async function runViewport(vp) {
   const repOptions = await page.locator("#train-repertoire-select option").count();
   check(repOptions === 2, `repertoire picker should have 2 options loaded, got ${repOptions}`);
 
-  // Mode switch to Play vs human works (and back). The rail overlay collapses on
+  // Mode switch to Practice game works (and back). The rail overlay collapses on
   // mouse-out, so use the keyboard path users have: focus the tab, press Enter.
   await page.evaluate(() => {
     const btn = document.querySelector('[data-testid="train-mode-play"]');

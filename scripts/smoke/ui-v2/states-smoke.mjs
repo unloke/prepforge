@@ -156,7 +156,7 @@ async function clickTab(page, view) {
   check(S, !(await page.locator("#lib-cols").isVisible()), "signed-out Library should hide the column header");
   check(S, !(await page.locator(".lib-list .card-head .seg").isVisible()), "signed-out Library should hide the filter chips");
   check(S, !(await page.locator(".lib-hint").isVisible()), "signed-out Library should hide the row hint");
-  check(S, (await page.locator("#dashboard-steps:not([hidden]) .step").count()) === 3, "signed-out Get started card should list 3 steps");
+  check(S, (await page.locator("#dashboard-steps:not([hidden]) .step").count()) === 2, "signed-out Get started card should list 2 actions");
   check(S, ownerCalls(apiCalls).length === 0, `signed-out Library made owner-scoped calls: ${ownerCalls(apiCalls).join(", ")}`);
 
   for (const view of ["train", "settings"]) {

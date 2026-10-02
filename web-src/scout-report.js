@@ -1,6 +1,7 @@
 // Scout report rendering + delegated interaction handlers (testable without app.js).
 
 import { Chess } from "chess.js";
+import { countOf } from "./plural.js";
 
 import { engineScanPatterns } from "./scout-engine.js";
 import {
@@ -79,12 +80,12 @@ export function renderScoutColorTabsHtml(profile, escapeHtml, { hidden = false, 
       const you = c === "white" ? "you have Black" : "you have White";
       const selected = i === 0 ? "true" : "false";
       const tabindex = i === 0 ? "" : ' tabindex="-1"';
-      const title = `${username || "Opponent"} ${c === "white" ? "with White" : "with Black"}: ${stats.games} games; in these games ${you}`;
+      const title = `${username || "Opponent"} ${c === "white" ? "with White" : "with Black"}: ${countOf(stats.games, "game")}; in these games ${you}`;
       // The "you have <Colour>" clause lives in `title` only. Inlining it in the
       // always-visible label made each tab ~246px wide, and the nowrap flex row
       // then pushed the whole page to 503px at 390px. Keeping it in the tooltip
       // (and the a11y name) preserves the wording without the overflow.
-      return `<button type="button" class="scout-color-tab${i === 0 ? " is-active" : ""}" role="tab" data-scout-tab="${c}" aria-selected="${selected}"${tabindex} aria-controls="scout-section-${c}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><span class="scout-color-dot ${c}" aria-hidden="true"></span>${escapeHtml(label)} <small>${stats.games} games</small></button>`;
+      return `<button type="button" class="scout-color-tab${i === 0 ? " is-active" : ""}" role="tab" data-scout-tab="${c}" aria-selected="${selected}"${tabindex} aria-controls="scout-section-${c}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><span class="scout-color-dot ${c}" aria-hidden="true"></span>${escapeHtml(label)} <small>${countOf(stats.games, "game")}</small></button>`;
     })
     .join("");
   return `<div class="scout-color-tabs" role="tablist" aria-label="Colour the opponent plays"${hidden ? ' hidden' : ''}>${buttons}</div>`;
@@ -442,7 +443,7 @@ export function refutationA11ySummary(refutations) {
     const explorerEv = item.evidence?.find((e) => e.layer === "explorer");
     const acpl = engineEv?.acpl != null ? `, ACPL ${engineEv.acpl} cp` : "";
     const sample =
-      engineEv?.analyzedGames != null ? ` over ${engineEv.analyzedGames} games` : "";
+      engineEv?.analyzedGames != null ? ` over ${countOf(engineEv.analyzedGames, "game")}` : "";
     const masters =
       explorerEv?.mastersSharePct != null
         ? `, masters ${explorerEv.mastersSharePct}%`
@@ -495,7 +496,7 @@ export function renderInlineRefutationCard(line, oppColor, escapeHtml, { renderB
   const replyLabel = escapeHtml(ref.suggestedSan || line.suggestedReply?.san || ref.suggestedUci);
   const recurrence = line.enginePattern?.occurrences || line.refutationGames || null;
   const recurrenceNote =
-    recurrence != null ? `In ${recurrence} games here they played …${escapeHtml(theirMove)}` : `They played …${escapeHtml(theirMove)}`;
+    recurrence != null ? `In ${countOf(recurrence, "game")} here they played …${escapeHtml(theirMove)}` : `They played …${escapeHtml(theirMove)}`;
   const swingNote = cpSwing ? ` <span class="scout-refutation-swing">(${cpSwing})</span>` : "";
   const replyFen = fenAfterLine([...(line.ucis || []), ref.suggestedUci].filter(Boolean));
   const boardHtml = renderBoard
@@ -578,7 +579,7 @@ export function buildScoutIntelligenceA11ySummary(stats) {
   const families = stats.scoreByFamily?.families?.slice(0, 6) || [];
   if (families.length) {
     const familyText = families
-      .map((f) => `1.${f.san} ${f.scorePct}% over ${f.games} games`)
+      .map((f) => `1.${f.san} ${f.scorePct}% over ${countOf(f.games, "game")}`)
       .join(", ");
     parts.push(`Opening families by score, worst first: ${familyText}.`);
   }
@@ -610,7 +611,9 @@ export function buildScoutIntelligenceA11ySummary(stats) {
 
   const breadth = stats.repertoireBreadth;
   if (breadth?.breadth > 0) {
-    parts.push(`Repertoire breadth: ${breadth.breadth} first moves with at least ${breadth.minGames} games.`);
+    parts.push(
+      `Repertoire breadth: ${breadth.breadth} first move${breadth.breadth === 1 ? "" : "s"} with at least ${breadth.minGames} game${breadth.minGames === 1 ? "" : "s"}.`,
+    );
   }
 
   const fresh = stats.repertoireFreshness;
@@ -627,7 +630,7 @@ export function buildScoutIntelligenceA11ySummary(stats) {
     parts.push(`Persona system: ${persona.systemSetup.name || persona.systemSetup.label}.`);
   } else if (persona?.games) {
     parts.push(
-      `Persona: ${persona.aggression.label} aggression, ${persona.castling.label} castling, ${persona.tradeSpeed.label} queen trades.`,
+      `Persona: ${AGGRESSION_WORD[persona.aggression.label] || persona.aggression.label}, ${CASTLING_WORD[persona.castling.label] || persona.castling.label}, ${TRADE_WORD[persona.tradeSpeed.label] || persona.tradeSpeed.label}.`,
     );
   }
 
@@ -877,7 +880,7 @@ export function renderScoutIntelligencePanel(
 export function scoutScoreCell(scorePct, games, { baseline, showGap = false, maiaEstimate = false, showN = true } = {}) {
   const gap =
     showGap && baseline != null && baseline > scorePct
-      ? `<span class="scout-gap" title="${baseline - scorePct} points below their usual ${baseline}%">usually ${baseline}%</span>`
+      ? `<span class="scout-gap" title="They usually score ${baseline}%">usually ${baseline}%</span>`
       : "";
   const estTitle = maiaEstimate ? ' title="Maia strength estimate"' : "";
   const estCls = maiaEstimate ? " scout-maia-estimate" : "";
@@ -915,8 +918,10 @@ export function patchScoutLineMaiaCells(rowEl, line, baseline) {
   }
 }
 
-export function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg }) {
+export function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg }, lastUci = null) {
   const pieces = parseFenBoard(fen);
+  // Rows abbreviate long lines; marking the final move ties the board to the line's end.
+  const last = lastUci ? new Set([lastUci.slice(0, 2), lastUci.slice(2, 4)]) : null;
   const ranks = orientation === "black" ? [1, 2, 3, 4, 5, 6, 7, 8] : [8, 7, 6, 5, 4, 3, 2, 1];
   const files = orientation === "black" ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7];
   const labels = ["a", "b", "c", "d", "e", "f", "g", "h"];
@@ -926,7 +931,7 @@ export function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg 
       const sq = `${labels[fi]}${rank}`;
       const dark = (rank + fi) % 2 === 1;
       const p = pieces[sq];
-      html += `<div class="scout-minisquare ${dark ? "dark" : "light"}">${p ? pieceSvg(p) : ""}</div>`;
+      html += `<div class="scout-minisquare ${dark ? "dark" : "light"}${last?.has(sq) ? " last" : ""}">${p ? pieceSvg(p) : ""}</div>`;
     }
   }
   return `${html}</div>`;
@@ -994,7 +999,7 @@ export function scoutRouteReasonText(line, baseline) {
   if (line?.maiaScorePct != null) {
     parts.push(`Maia estimates they score ${line.maiaScorePct}% here`);
   } else if (baseline != null && line?.belowBaseline > 0) {
-    parts.push(`${line.belowBaseline} points below their usual ${baseline}%`);
+    parts.push(`they score ${Math.max(0, baseline - line.belowBaseline)}% here, usually ${baseline}%`);
   } else if (line?.prepCategory === "attack") {
     parts.push("they score below their usual result");
   } else if (line?.prepCategory === "weapon") {
@@ -1028,7 +1033,7 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
       : "";
   const engineNote =
     line.enginePattern && line.hasEngineMistake
-      ? `<p class="scout-engine-note note eng" title="Recurring mistake from deep scan">Often errs: …${escapeHtml(line.enginePattern.playedSan)} (−${(line.enginePattern.avgCpLoss / 100).toFixed(1)}) in ${line.enginePattern.occurrences} games</p>`
+      ? `<p class="scout-engine-note note eng" title="Recurring mistake from deep scan">Often errs: …${escapeHtml(line.enginePattern.playedSan)} (−${(line.enginePattern.avgCpLoss / 100).toFixed(1)}) in ${countOf(line.enginePattern.occurrences, "game")}</p>`
       : line.hasEngineMistake || line.refutation
         ? `<p class="scout-engine-note note eng">Engine refutation available</p>`
         : "";
@@ -1046,7 +1051,7 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
   return `
       <div class="eyebrow">Line detail</div>
       <h2 class="line-title">${escapeHtml(scoutLineText(line.sans))}</h2>
-      <div class="scout-miniboard-wrap focus-board">${renderBoard(fen, viewColor)}</div>
+      <div class="scout-miniboard-wrap focus-board">${renderBoard(fen, viewColor, line.ucis?.at(-1) || null)}</div>
       ${statusLine}
       ${reasonLine}
       ${replyNote}
@@ -1473,11 +1478,11 @@ export function buildScoutSectionReport(
   const heading = oppColor === "white" ? "With White" : "With Black";
   const html = `
     <div class="scout-section" id="scout-section-${oppColor}" data-scout-color="${oppColor}" data-module-b="${PRODUCTION_MODULE_B_ID}">
-      <h3 class="visually-hidden">${heading} · <span class="scout-games-count">${trie.gameCount} games</span></h3>
+      <h3 class="visually-hidden">${heading} · <span class="scout-games-count">${countOf(trie.gameCount, "game")}</span></h3>
       <section class="color-sec card">
         <div class="scout-section-head cs-head">
           <span class="scout-section-who">${who} with ${oppColor === "white" ? "White" : "Black"}</span>
-          <span class="scout-section-wdl wdl-compact">${scoutWdlHtml(colorWdl.w, colorWdl.d, colorWdl.l, { compact: true })} <small class="scout-n">${colorWdl.games} games</small></span>
+          <span class="scout-section-wdl wdl-compact">${scoutWdlHtml(colorWdl.w, colorWdl.d, colorWdl.l, { compact: true })} <small class="scout-n">${countOf(colorWdl.games, "game")}</small></span>
           <span class="scout-section-score faint" title="Wins plus half the draws">scores ${baseline}%</span>
           ${trending}
           <span class="spacer"></span>
@@ -1512,7 +1517,7 @@ export function mergeEnginePatternsIntoSections(sections, engineByColor, { speed
 }
 
 export function buildScoutShareText({ username, profile, sections, activeSpeed }) {
-  const lines = [`# Scout: ${username}`, "", `${profile.total} games · filter: ${activeSpeed}`, ""];
+  const lines = [`# Scout: ${username}`, "", `${countOf(profile.total, "game")} · filter: ${activeSpeed}`, ""];
   for (const color of ["white", "black"]) {
     const section = sections[color];
     if (!section) continue;

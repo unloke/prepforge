@@ -1,0 +1,323 @@
+{
+  "generated_from": "origin/main @ 4b962e4 (2026-09-27, audit round #84)",
+  "scope": "PrepForge backend (src/prepforge_chess + its API contracts). Objective navigation index; no findings.",
+  "entrypoint": {
+    "file": "src/prepforge_chess/api/main.py",
+    "factory": "create_app",
+    "middleware_order_inner_to_outer": ["GZip", "SecurityHeaders", "CSRF", "CORS"],
+    "auth_chain": ["api/deps.current_user (session cookie -> AuthSession.token_hash)", "api/deps.current_owner (users.id)", "api/deps.get_repository (PrepForgeRepository(get_engine()))"]
+  },
+  "stack": {
+    "framework": "FastAPI",
+    "orm": "SQLAlchemy (Core tables in storage/sa_tables.py; ORM identity models in api/models.py; shared engine api/db.py)",
+    "schema_authority": "Alembic (migrations/); storage/database.py is ephemeral SQLite for CLI/tests only (guarded by tests/test_sa_tables.py)",
+    "db": "SQLite (dev/test, WAL, per-connection PRAGMA foreign_keys=ON) / PostgreSQL (prod, pool_size=10 max_overflow=20)",
+    "chess": "python-chess (core/chess_core.py)",
+    "engines": "Stockfish WASM + Maia3 ONNX run in the browser; server build/train/match paths run no engine"
+  },
+  "areas": [
+    {
+      "id": "training_scheduler",
+      "title": "Training / Scheduler",
+      "files": [
+        "src/prepforge_chess/services/scheduler.py",
+        "src/prepforge_chess/services/training_smart.py",
+        "src/prepforge_chess/services/training.py",
+        "src/prepforge_chess/services/progress.py",
+        "src/prepforge_chess/services/streak.py",
+        "src/prepforge_chess/services/training_view.py",
+        "src/prepforge_chess/api/routers/train.py"
+      ],
+      "entrypoints": [
+        "scheduler.build_session_plan / scheduler.mix_plans / encode_card / decode_card",
+        "SmartTrainingService.start_or_resume / start_or_resume_mixed / current_prompt / session_card_bundle / submit_move / skip_card / sync_progress / counts",
+        "TrainingService.start_or_resume_session / training_lines / current_prompt / submit_move / skip_current_line",
+        "training.record_attempt / training.update_spaced_repetition (pure)",
+        "streak.advance / resolve_day / as_view (pure)",
+        "progress.compute_health / due_forecast / mastery_map / node_mastery (pure)"
+      ],
+      "call_chains": [
+        "POST /api/train/smart/start -> SmartTrainingService.start_or_resume[_mixed] -> scheduler.build_session_plan (repertoire tree + training_progress) -> repository.save_training_session (cards into training_sessions.line_order) -> current_prompt + session_card_bundle -> router _smart_summary_payload (health bookend)",
+        "POST /api/train/smart/move -> SmartTrainingService.submit_move -> training.record_attempt -> repository.save_training_progress + save_training_session (SR written only when attempt == 1)",
+        "POST /api/train/smart/sync -> SmartTrainingService.sync_progress -> repository.record_attempt_receipt + training_progress + training_sessions upsert in ONE transaction per attempt",
+        "graded endpoints -> train._touch_streak -> repository.mutate_user_setting(owner, 'training_streak', ...)",
+        "legacy: POST /api/train/start|move|skip|hint|record-miss -> TrainingService (python-chess legality only)"
+      ],
+      "state": {
+        "read": ["training_sessions", "training_progress", "train_attempt_receipts", "repertoires", "opening_nodes", "user_settings"],
+        "write": ["training_sessions (line_order_json = encoded cards)", "training_progress", "train_attempt_receipts", "repertoires.health_json (cache refresh)", "user_settings: training_streak"]
+      },
+      "cross_module": [
+        "scheduler -> progress.node_mastery",
+        "training_smart -> scheduler (card codec), training.record_attempt/update_spaced_repetition, repositories (incl. private _upsert helpers for single-transaction writes)",
+        "routers/train.py -> routers/workspace._owned_repertoire (shared ownership gate), progress, streak, training_view",
+        "lichess_fetch.record_departure_misses -> training.update_spaced_repetition"
+      ],
+      "api_routes": [
+        "POST /api/train/start", "POST /api/train/move", "POST /api/train/skip", "POST /api/train/hint", "POST /api/train/record-miss",
+        "POST /api/train/smart/start", "GET /api/train/smart/summary", "POST /api/train/smart/move", "POST /api/train/smart/sync", "POST /api/train/smart/skip"
+      ],
+      "tests": ["tests/test_scheduler.py", "tests/test_training.py", "tests/test_training_smart.py", "tests/test_api_train.py", "tests/test_streak.py", "tests/test_progress.py", "tests/e2e/test_train_keyboard_smoke.py"],
+      "invariants": [
+        "Grading contract: only attempt == 1 writes SR progress; retries and play-after-reveal never inflate accuracy (training_smart docstring)",
+        "Exactly-once sync keyed by (session_id, attempt_uuid): identical retry is a no-op, same UUID with different (node_id, correct) is a ValueError (409-class); receipt + SR + session commit in one transaction so streak advances only on new attempts",
+        "MAX_SYNC_ATTEMPTS = 500, MAX_SYNC_QUEUE = 500; malformed queue entries are dropped, not persisted",
+        "SR formula: correct -> score=min(10, score+1), due in round(score) days; wrong -> score*=0.5, due +10min; is_mastered = score>=7.0 and correct_attempts>=3",
+        "Cards stored in existing training_sessions.line_order as kind:first:last (mixed: kind:repertoire_id:first:last); decode_card accepts both encodings; root->last_target path is unique in the tree",
+        "Scheduler constants: DEFAULT_SESSION_SIZE=12, DEFAULT_NEW_CAP=4, DEFAULT_MAX_TARGETS_PER_CARD=3, WEAK_SHARE=0.6, RUN_IN_PLIES=3",
+        "SmartPrompt ships expected move + hint texts to the client on purpose (own repertoire, not a quiz)",
+        "Streak day = player's calendar date, clamped +/-1 day around UTC; advance is an atomic mutate_user_setting (no lost update vs recap snapshot)",
+        "training_sessions has no owner column: ownership resolves session -> repertoire -> owner (_owned_session)"
+      ]
+    },
+    {
+      "id": "repertoire_matching",
+      "title": "Repertoire matching",
+      "files": [
+        "src/prepforge_chess/services/repertoire_matching.py",
+        "src/prepforge_chess/services/lichess_fetch.py",
+        "src/prepforge_chess/api/routers/lichess.py"
+      ],
+      "entrypoints": [
+        "match_game_to_repertoire(moves, repertoire, user_color) -> RepertoireMatchResult",
+        "match_game_against_repertoires(moves, repertoires, user_color) (filters rep.color == user_color)",
+        "select_deepest_match",
+        "consumers: lichess_fetch.compare_recent_games / compare_many_identities / _summarize_fetched / _build_summary / record_departure_misses"
+      ],
+      "call_chains": [
+        "GET|POST /api/lichess/compare -> _run_compare -> lichess_fetch.fetch_recent_pgns -> ChessCore.import_pgn_games -> match_game_against_repertoires (enabled children only) -> _build_summary (with expected_node_id) -> record_departure_misses -> JSON (each game tagged source_account)"
+      ],
+      "state": {
+        "read": ["repertoires", "opening_nodes (owner-scoped list_repertoires, is_active only)"],
+        "write": ["training_progress (departure recall misses, due immediately)", "user_settings: lichess.departure_misses_ingested (cap 300)"]
+      },
+      "cross_module": [
+        "repertoire_matching is pure (core/models only, no DB)",
+        "lichess_fetch -> repertoire_matching, training.update_spaced_repetition, repositories",
+        "routers/lichess.py -> lichess_fetch"
+      ],
+      "api_routes": ["GET /api/lichess/compare", "POST /api/lichess/compare"],
+      "tests": ["tests/test_repertoire_matching.py", "tests/test_lichess_fetch.py", "tests/test_api_lichess_games.py"],
+      "invariants": [
+        "departure_reason in {user_left_preparation, opponent_unprepared_branch, game_stayed_in_preparation, no_repertoire_for_color}",
+        "Only user_left_preparation records a recall miss (opponent novelties are not misses); expected_node_id is the move the user should have played; miss lands due_at = last_reviewed_at (next session)",
+        "Idempotent per game via lichess.departure_misses_ingested (capped 300); recorded summaries set training_recorded=true",
+        "Matching walks enabled children only; expected child = first is_mainline, else first enabled",
+        "Comparison is owner-scoped (only the caller's repertoires)"
+      ]
+    },
+    {
+      "id": "opening_tree_persistence",
+      "title": "Opening tree / persistence (Build)",
+      "files": [
+        "src/prepforge_chess/services/opening_builder.py",
+        "src/prepforge_chess/services/opening_generation.py",
+        "src/prepforge_chess/services/workspace_view.py",
+        "src/prepforge_chess/services/repertoire_export.py",
+        "src/prepforge_chess/api/routers/workspace.py",
+        "src/prepforge_chess/storage/repositories.py",
+        "src/prepforge_chess/storage/sa_tables.py"
+      ],
+      "entrypoints": [
+        "OpeningBuilderService: create_repertoire / add_move / add_moves_batch / apply_generation_plan / set_as_mainline / mark_prepared / disable_branch / enable_branch / add_comment / add_tag / set_annotations / delete_node / delete_nodes_batch / rename_repertoire / set_repertoire_active / remove_repertoire / tree_report (generate_from_node is CLI-only)",
+        "workspace_view.build_workspace_payload (every Build mutation response funnels through it)",
+        "RepertoireExportService: export_package_json / export_mainline_pgn / export_node_path_pgn / import_package_json / import_tree_pgn",
+        "repositories: save_repertoire / update_opening_nodes / save_changed_nodes / delete_opening_nodes / _save_opening_node"
+      ],
+      "call_chains": [
+        "POST /api/build/add-move -> _owned_repertoire -> OpeningBuilderService.add_move (flags is_prepared/is_mainline) -> save_changed_nodes -> build_workspace_payload",
+        "POST /api/build/add-moves (local-first flush) -> add_moves_batch (all-or-nothing; returns id_map tempId->real) -> build_workspace_payload",
+        "Build-Generate: recursion runs in the BROWSER (Stockfish+Maia3); POST /api/build/generate/apply-plan -> apply_generation_plan (server re-validates legality/parentage, recomputes persisted flags, no compute) -> build_workspace_payload",
+        "POST /api/build/action -> dispatch per action to builder methods -> build_workspace_payload",
+        "POST /api/build/export | GET /api/repertoires/export-pgn -> RepertoireExportService (pure serialization)",
+        "POST /api/repertoires/import|import-pgn -> RepertoireExportService.import_* -> (_package path) _reassign_ids -> repository.save_repertoire(owner_user_id=owner) -> build_workspace_payload"
+      ],
+      "state": {
+        "read": ["repertoires", "opening_nodes", "engine_evaluations", "positions", "training_progress (mastery overlay)"],
+        "write": ["repertoires (incl. health_json), opening_nodes, engine_evaluations, positions; delete_opening_nodes nulls training_sessions.current_node_id first"]
+      },
+      "cross_module": [
+        "opening_builder -> opening_generation (constants/protocols/merge), services/engine (EngineAdapter/MockEngine), services/maia (MaiaAdapter, CLI generate path), core/chess_core, repositories",
+        "workspace_view -> opening_builder.tree_report (pure traversal), progress.mastery_map/compute_health",
+        "routers/workspace.py -> workspace_view, opening_builder, repertoire_export, api/config.Settings (quota: free_repertoire_limit), routers.teams.user_team_ids (team share reads), dashboard_recommendations",
+        "routers/train.py shares _owned_repertoire / _readable_repertoire with workspace"
+      ],
+      "api_routes": [
+        "GET /api/build/load", "POST /api/build/add-move", "POST /api/build/add-moves (30/min)", "POST /api/build/delete-nodes (30/min)",
+        "POST /api/build/generate/apply-plan (10/min)", "POST /api/build/action", "POST /api/build/annotations (60/min)", "POST /api/build/rename", "POST /api/build/export",
+        "GET /api/repertoires", "POST /api/repertoires/create", "POST /api/repertoires/fork", "POST /api/repertoires/delete", "POST /api/repertoires/set-active",
+        "POST /api/repertoires/share", "POST /api/repertoires/share-link", "GET /api/shared/{token}", "POST /api/shared/{token}/fork",
+        "GET /api/repertoires/export-pgn", "POST /api/repertoires/import (10/min)", "POST /api/repertoires/import-pgn (10/min)",
+        "GET /api/dashboard"
+      ],
+      "tests": ["tests/test_opening_builder.py", "tests/test_opening_generation_v2.py", "tests/test_repertoire_export.py", "tests/test_api_workspace.py", "tests/test_api_build_actions.py", "tests/test_api_build_generate.py", "tests/test_build_route_sql.py", "tests/test_build_sql_counts.py", "tests/test_dashboard_recommendations.py"],
+      "invariants": [
+        "Zero server engine compute on Build mutation paths: evals arrive from the browser (White-POV EngineEvaluation); server validates, recomputes flags, persists. generate_from_node (server-side generate) is CLI-only",
+        "Untrusted plan guards: plan sources restricted to GENERATED_STOCKFISH/GENERATED_MAIA3 (_PLAN_GENERATED_SOURCES, cannot forge MANUAL/IMPORTED_PGN authorship); MAX_PLAN_CHANGES=2000, MAX_PLAN_DEPTH=64, MAX_PLAN_PV_LENGTH=64; MAX_ADD_MOVES_BATCH=500, MAX_DELETE_NODES_BATCH=200, MAX_BULK_MOVES=500, MAX_BULK_DELETE_NODES=200",
+        "Persisted flags: own-move (repertoire.color to move) = is_user_prepared_move; first enabled child of a parent = is_mainline",
+        "Tree persistence: opening_nodes stores arriving UCI + parent; FEN reconstructed by walking from repertoires.root_fen; update_opening_nodes writes diffs only (_changed_nodes snapshot)",
+        "Import de-identifies: package import always _reassign_ids (fresh ids = importer's own copy, no cross-tenant clobber); _enforce_repertoire_quota (free_repertoire_limit, 402) on every repertoire-producing route",
+        "Read-only shares strip personal data: _strip_readonly_build_payload removes health/summary/per-node mastery from share-link and team read views",
+        "Package contract: PACKAGE_KIND='prepforge_repertoire_package', PACKAGE_SCHEMA_VERSION=1; id/tag/name/comment validated (_ID_PATTERN, _TAG_PATTERN, _NAME_MAX=200, _COMMENT_MAX=2000)",
+        "delete_opening_nodes clears training_sessions.current_node_id references before deleting (FK safety)"
+      ]
+    },
+    {
+      "id": "games_attribution",
+      "title": "Games attribution",
+      "summary": "How a game row is attributed to an owner / linked account / source, including dedup and claiming rules.",
+      "files": [
+        "src/prepforge_chess/services/pgn_import.py",
+        "src/prepforge_chess/storage/repositories.py",
+        "src/prepforge_chess/api/routers/lichess.py",
+        "src/prepforge_chess/services/lichess_fetch.py",
+        "src/prepforge_chess/api/models.py",
+        "src/prepforge_chess/api/routers/analyze.py"
+      ],
+      "entrypoints": [
+        "PgnImportService.import_text(pgn_text, options, owner_user_id) -> PgnImportResult",
+        "PrepForgeRepository.claim_or_verify_game / claim_repertoire / find_game_id_by_lichess_id / save_game / save_game_batched / load_game / list_games",
+        "lichess_fetch.determine_user_color / newest_game_across / compare_many_identities",
+        "routers/lichess.set_primary (_demote_others), latest (is_new vs lichess.last_seen_game_id), mark_seen"
+      ],
+      "call_chains": [
+        "Paste/import: POST /api/analyze/prepare (_import_pgn_for_analysis) or Lichess import -> PgnImportService.import_text -> dedup (lichess_id -> move-signature) -> repository.save_game(game, owner_user_id=owner)",
+        "Claim: POST /api/analyze/classify-save -> repo.claim_or_verify_game(game_id, owner) -> False => 404",
+        "Watcher: GET /api/lichess/latest -> _links_for (primary first) -> newest_game_across (bounded concurrency, dedup by game id, newest by finish time) -> payload with source_account; POST /api/lichess/seen writes lichess.last_seen_game_id"
+      ],
+      "state": {
+        "read": ["games", "moves", "positions", "engine_evaluations", "linked_accounts", "user_settings (lichess.last_seen_game_id, lichess.departure_misses_ingested)"],
+        "write": ["games (upsert; owner_user_id coalesce-fill, lichess_id, source), moves/positions/engine_evaluations (save_game rebuild or save_game_batched bulk), linked_accounts (link/unlink/set-primary), user_settings"]
+      },
+      "cross_module": [
+        "pgn_import -> core/chess_core.import_pgn_games, repositories",
+        "analyze.py -> pgn_import (prepare), browser_compute (classify-save), repositories",
+        "routers/lichess.py -> api/security.encrypt_token (OAuth token at rest), lichess_fetch"
+      ],
+      "api_routes": ["GET /api/lichess", "POST /api/lichess/primary", "GET /api/lichess/login", "GET /api/lichess/callback", "DELETE /api/lichess", "DELETE /api/lichess/{account_id}", "GET /api/lichess/latest", "POST /api/lichess/seen", "GET /api/lichess/compare", "POST /api/lichess/compare"],
+      "tests": ["tests/test_pgn_import.py", "tests/test_api_lichess.py", "tests/test_api_lichess_games.py", "tests/test_api_analyze.py", "tests/test_migration_lichess_primary.py", "tests/test_repositories.py", "tests/test_storage_reload.py"],
+      "invariants": [
+        "Owner is fill-only: save_game upsert uses coalesce_cols=('owner_user_id',) — a re-save never reassigns; claim_* only fill NULL (first writer wins). claim_or_verify_game returns False (treated as not-found) when the game is missing or owned by another user",
+        "Owner-scoped dedup: duplicate lookups (lichess_id / move-signature) only scan the caller's own games — two users importing the same game keep independent rows",
+        "Signature dedup: signature = ' '.join(move.uci); in-batch duplicates are skipped and the EXISTING id is reported (for re-analysis)",
+        "LinkedAccount.is_primary: exactly one primary per provider (_demote_others) is the default source for My-last-game / compare / explorer; backfill migration must use typed Boolean updates (tests/test_migration_lichess_primary.py)",
+        "source_account attribution: compare/latest tag each game with its source linked username; compare_many_identities splits the count budget (_COMPARE_COUNT_MAX = 50) with bounded concurrency, dedups by game id, and degrades partially on per-account failure",
+        "External usernames: compare accepts arbitrary public Lichess usernames (shared Source Composer), but matching stays owner-scoped",
+        "is_new compares newest game id to user_settings lichess.last_seen_game_id, updated only by POST /api/lichess/seen"
+      ]
+    },
+    {
+      "id": "scout_backend_contracts",
+      "title": "Scout backend contracts",
+      "summary": "Scout (opponent scouting) runs in the browser; the backend provides data sources and boundary contracts only.",
+      "files": [
+        "web-src/scout.js",
+        "web-src/scout-*.js (40+ modules with *.test.js)",
+        "web-src/explorer.js",
+        "src/prepforge_chess/api/routers/lichess.py",
+        "src/prepforge_chess/api/middleware.py",
+        "tests/test_scout_production_boundary.py"
+      ],
+      "entrypoints": [
+        "web-src/scout.js: fetcher (injected deps), trie/triePathKey, scoutFetchErrorMessage; MAX_PLIES=16, ANALYZE_PLIES=24",
+        "web-src/scout-engine.js: opt-in Stockfish deep scan (SCOUT_ENGINE_DEPTH=12, localStorage cache schema v3)",
+        "web-src/scout-maia.js / scout-maia-harness.js: Maia3 ONNX in browser worker",
+        "server: lichess.explorer_proxy"
+      ],
+      "contracts": [
+        "Direct Lichess public API from the browser (no backend fetch): scout.js fetches public PGN exports. CSP contract: middleware._LICHESS_API_HOSTS puts https://lichess.org in connect-src (AUTO Maia rating also reads the public profile)",
+        "Explorer proxy: GET /api/lichess/explorer/{db_name} (masters | player pool). Server pins query params (not a general proxy), requires a linked token, in-process LRU cache (TTL 24h, cap 500), upstream 429 -> 429 pass-through, route limit 120/min. Client cache in web-src/explorer.js: localStorage prepforge.explorer.cache.v1, TTL 1 week, cap 150, 60s cooldown on 429",
+        "Shared Source Composer: Games + Scout share source selection (localStorage prepforge.scout_self / scout_source / scout_external), resolved into usernames/account_ids for GET|POST /api/lichess/compare",
+        "Repertoire data for grading prep against opponent lines comes from workspace endpoints (/api/repertoires, /api/build/load)",
+        "Boundary: tests/test_scout_production_boundary.py forbids 'from research' / 'import research' / 'research/module_b' / 'scripts/run_' in src/ and web-src/; research runners (scripts/scout-*.mjs, research/scout-*) are not product runtime"
+      ],
+      "state": {
+        "read": ["(server) repertoires/opening_nodes via workspace APIs", "(server) explorer upstream via proxy"],
+        "write": ["(browser) localStorage: scout engine cache prepforge.scout.engine.v3:* (v1/v2 stale prefixes cleaned), explorer cache, source selection keys"]
+      },
+      "api_routes": ["GET /api/lichess/explorer/{db_name}", "GET /api/lichess/compare", "POST /api/lichess/compare", "GET /api/repertoires", "GET /api/build/load"],
+      "tests": ["tests/test_scout_production_boundary.py", "tests/e2e/test_scout_smoke.py", "tests/e2e/scout_refutation_smoke.mjs", "web-src/scout-*.test.js (vitest)"],
+      "invariants": [
+        "Scout never fetches opponent games through the server and never runs number-crunching there (web-src/scout.js header)",
+        "Tokenless direct fetches need no proxy (middleware comment); any tokened upstream goes through the server proxy (explorer)",
+        "All scout caches are schema-versioned (engine cache v3 with stale-prefix cleanup; explorer cache v1)",
+        "Product code must not import research Module B runners (enforced by test)"
+      ]
+    },
+    {
+      "id": "db_mutation_caching",
+      "title": "Database mutation / caching / invalidation",
+      "files": [
+        "src/prepforge_chess/storage/repositories.py",
+        "src/prepforge_chess/storage/sa_tables.py",
+        "src/prepforge_chess/storage/codec.py",
+        "src/prepforge_chess/api/db.py",
+        "src/prepforge_chess/api/models.py",
+        "migrations/"
+      ],
+      "entrypoints": [
+        "PrepForgeRepository._upsert (conflict update + coalesce_cols)",
+        "PrepForgeRepository.mutate_user_setting (atomic read-modify-write, row-locked)",
+        "PrepForgeRepository.record_attempt_receipt (in-transaction exactly-once claim)",
+        "save_game vs save_game_batched (per-move rebuild vs single-transaction bulk)",
+        "codec: game_uci_blob / move_needs_row / position_key / encode_search_limit (UNSET_SEARCH_LIMIT) / encode_pv / encode_wdl"
+      ],
+      "caches": [
+        {"name": "repertoires.health_json", "where": "DB column (migration a1b2c3d4e5f6)", "write": "build_workspace_payload (every Build mutation; IS DISTINCT FROM skip) + train._smart_summary_payload (smart bookends)", "read": "/api/repertoires listing (no per-row tree walk)", "invalidation": "recompute-and-overwrite; no TTL"},
+        {"name": "recap.weekly_snapshot", "where": "user_settings key", "write": "workspace._weekly_recap via mutate_user_setting (idempotent weekly reseed)", "invalidation": "new player-local week rolls baseline"},
+        {"name": "lichess.departure_misses_ingested", "where": "user_settings key", "write": "lichess_fetch.record_departure_misses (cap 300)", "invalidation": "n/a (append log)"},
+        {"name": "lichess.last_seen_game_id", "where": "user_settings key", "write": "POST /api/lichess/seen", "invalidation": "n/a"},
+        {"name": "explorer proxy LRU", "where": "process memory (routers/lichess.py)", "write": "explorer_proxy", "invalidation": "TTL 24h, cap 500"},
+        {"name": "explorer client cache", "where": "localStorage (web-src/explorer.js)", "invalidation": "TTL 1 week, cap 150, 429 cooldown 60s"},
+        {"name": "scout engine scan cache", "where": "localStorage (web-src/scout-engine.js)", "invalidation": "schema v3 keys; stale v1/v2 prefixes purged"},
+        {"name": "_PositionEvalCache", "where": "request-scoped (services/analysis.py, engine-driven path)", "invalidation": "request end"}
+      ],
+      "tests": ["tests/test_repositories.py", "tests/test_storage_codec.py", "tests/test_storage_reload.py", "tests/test_storage_datetime_persistence.py", "tests/test_database.py", "tests/test_sa_tables.py", "tests/test_api_db_config.py", "tests/test_postgres_backup.py", "tests/test_migration_lichess_primary.py", "tests/test_build_sql_counts.py"],
+      "invariants": [
+        "Alembic is the sole production schema lifecycle: no runtime create_all patching, no schema.sql fixture (tests/test_sa_tables.py drift guard)",
+        "user_settings is one fact per row (streak, recap, lichess markers, prefs); cross-key concurrent writes never clobber; same-key RMW goes through mutate_user_setting",
+        "Ownership columns are fill-only (coalesce_cols / claim_*); never reassigned",
+        "FK safety: SQLite re-asserts PRAGMA foreign_keys=ON per connection; delete_opening_nodes nulls training_sessions.current_node_id first",
+        "Compact codec contract: disk truth = initial_fen + uci_blob (moves rows only for non-rebuildable annotations via move_needs_row); positions are full 6-field FEN (unique); eval key = (position_id, engine, depth, nodes, time_ms) with UNSET_SEARCH_LIMIT for unset limits (NULL-safe UNIQUE); opening nodes = (parent, uci) with FEN walked from root_fen; SAN/FEN/PGN derived on read",
+        "Datetime persistence: domain tables store ISO-8601 TEXT; dashboard due queries compare LEXICALLY (due_at <= now_iso) — the format is load-bearing (tests/test_storage_datetime_persistence.py)"
+      ]
+    }
+  ],
+  "api_route_index": {
+    "/api/auth, /api/auth/google": ["api/routers/auth.py", "api/routers/google_auth.py"],
+    "/api/lichess": ["api/routers/lichess.py"],
+    "/api (workspace)": ["api/routers/workspace.py"],
+    "/api (analyze)": ["api/routers/analyze.py"],
+    "/api/train": ["api/routers/train.py"],
+    "/api (settings)": ["api/routers/settings.py"],
+    "/api/teams": ["api/routers/teams.py"],
+    "billing webhook (CSRF-exempt)": ["api/routers/billing.py"],
+    "ops/legal (clientlog CSRF-exempt)": ["api/routers/clientlog.py", "api/routers/legal.py"],
+    "/healthz, /api/csrf, static SPA": ["api/main.py", "api/static.py"]
+  },
+  "tests_index": {
+    "training_scheduler": ["tests/test_scheduler.py", "tests/test_training.py", "tests/test_training_smart.py", "tests/test_api_train.py", "tests/test_streak.py", "tests/test_progress.py", "tests/e2e/test_train_keyboard_smoke.py"],
+    "repertoire_matching": ["tests/test_repertoire_matching.py", "tests/test_lichess_fetch.py", "tests/test_api_lichess_games.py"],
+    "opening_tree_persistence": ["tests/test_opening_builder.py", "tests/test_opening_generation_v2.py", "tests/test_repertoire_export.py", "tests/test_api_workspace.py", "tests/test_api_build_actions.py", "tests/test_api_build_generate.py", "tests/test_build_route_sql.py", "tests/test_build_sql_counts.py"],
+    "games_attribution": ["tests/test_pgn_import.py", "tests/test_api_lichess.py", "tests/test_api_lichess_games.py", "tests/test_api_analyze.py", "tests/test_migration_lichess_primary.py"],
+    "scout_backend_contracts": ["tests/test_scout_production_boundary.py", "tests/e2e/test_scout_smoke.py", "tests/e2e/scout_refutation_smoke.mjs", "web-src/scout-*.test.js"],
+    "db_mutation_caching": ["tests/test_repositories.py", "tests/test_storage_codec.py", "tests/test_storage_reload.py", "tests/test_storage_datetime_persistence.py", "tests/test_database.py", "tests/test_sa_tables.py", "tests/test_api_db_config.py", "tests/test_postgres_backup.py"]
+  },
+  "tables_index": {
+    "games": {"defined": "storage/sa_tables.py", "writers": ["pgn_import", "repositories.save_game[_batched]", "analyze classify-save", "claim_or_verify_game"]},
+    "moves": {"defined": "storage/sa_tables.py", "writers": ["repositories._save_move_annotation", "save_game_batched"]},
+    "positions": {"defined": "storage/sa_tables.py", "writers": ["repositories._ensure_position", "save_game_batched"]},
+    "engine_evaluations": {"defined": "storage/sa_tables.py", "writers": ["repositories._save_engine_evaluation", "save_game_batched", "opening_builder apply-plan"]},
+    "analysis_results": {"defined": "storage/sa_tables.py", "writers": ["analyze classify-save", "AnalysisService"]},
+    "repertoires": {"defined": "storage/sa_tables.py", "writers": ["OpeningBuilderService", "workspace routes (create/fork/import/share)", "set_repertoire_health"]},
+    "opening_nodes": {"defined": "storage/sa_tables.py", "writers": ["OpeningBuilderService", "repositories.update_opening_nodes/save_changed_nodes/delete_opening_nodes"]},
+    "training_sessions": {"defined": "storage/sa_tables.py", "writers": ["TrainingService", "SmartTrainingService"]},
+    "training_progress": {"defined": "storage/sa_tables.py", "writers": ["training.record_attempt path", "SmartTrainingService", "lichess_fetch.record_departure_misses"]},
+    "user_settings": {"defined": "api/models.UserSetting", "writers": ["mutate_user_setting/set_user_setting (streak, recap, lichess markers, prefs)"]},
+    "train_attempt_receipts": {"defined": "api/models.TrainAttemptReceipt", "writers": ["SmartTrainingService.sync_progress"]},
+    "users, linked_accounts, auth_sessions": {"defined": "api/models.py", "writers": ["auth routers", "lichess router (token via security.encrypt_token)"]},
+    "teams, team_members, team_invites": {"defined": "api/models.py", "writers": ["api/routers/teams.py"]},
+    "stripe_events": {"defined": "api/models.py", "writers": ["api/routers/billing.py (webhook idempotency)"]},
+    "engine_settings, app_settings": {"defined": "storage/sa_tables.py", "writers": ["services/app_settings.py", "settings router"]}
+  }
+}

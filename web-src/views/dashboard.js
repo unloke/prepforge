@@ -746,8 +746,8 @@ export function createDashboardView({
     lastTodayPayload = null;
     const today = document.getElementById("dashboard-today");
     if (today) today.hidden = true;
+    // The empty state above already carries the one Sign in action.
     renderOnboardingSteps([
-      ["Sign in or create an account", "", "signin", "Sign in"],
       ["Create your first repertoire", "Pick a side and an opening — or turn one of your games into one.", "new", "New repertoire"],
       [
         "Analyze a game",

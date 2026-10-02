@@ -122,7 +122,7 @@ describe("Train keeps the requested hint after a miss (P1-4)", () => {
   it("without a requested hint, uses the coach tip, then the line's hints", () => {
     expect(wrongMoveTip({ hintLevel: 0, hint, coachTip: "Coach says" })).toBe("Coach says");
     expect(wrongMoveTip({ hintLevel: 0, hint })).toBe("Fight for the center");
-    expect(wrongMoveTip({ hintLevel: 0, hint: {} })).toBe("Think about the idea behind the line.");
+    expect(wrongMoveTip({ hintLevel: 0, hint: {} })).toBe("");
   });
 
   it("a late coach tip never overwrites a requested hint", () => {

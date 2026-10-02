@@ -1,4 +1,4 @@
-// Play vs human session helpers. Pure: history + color + PGN, no DOM.
+// Practice game session helpers. Pure: history + color + PGN, no DOM.
 
 import { ratingBucketsFor } from "./explorer.js";
 
@@ -80,7 +80,7 @@ export function playSessionPgn(play) {
   const trail = formatPlayTrail(session.history, startFen);
   const youWhite = session.userColor !== "black";
   const headers = [
-    `[Event "Play vs human"]`,
+    `[Event "Practice game"]`,
     `[White "${youWhite ? "You" : "Opponent"}"]`,
     `[Black "${youWhite ? "Opponent" : "You"}"]`,
   ];

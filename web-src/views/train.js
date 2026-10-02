@@ -98,7 +98,7 @@ export function createTrainView({
     progress?.setAttribute("aria-label", "Lines done this session");
     const name = (appState.training && appState.training.repertoire_name) || "Repertoire";
     const color = (appState.training && appState.training.color) || "white";
-    document.getElementById("train-board-label").textContent = `${name} - you play ${color}`;
+    document.getElementById("train-board-label").textContent = `${name} · you play ${color}`;
   }
 
   function renderSmartQueueStrip() {

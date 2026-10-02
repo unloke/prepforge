@@ -1792,3 +1792,27 @@ describe("createScoutClient", () => {
     expect(ANALYZE_PLIES).toBeGreaterThan(MAX_PLIES);
   });
 });
+
+describe("prep badges need a real sample", () => {
+  it("does not call a one-game line a main line or a weak spot", async () => {
+    const { enrichPrepTarget } = await import("./scout.js");
+    const won = enrichPrepTarget({ games: 1, w: 1, d: 0, l: 0, scorePct: 100, share: 0.01 }, 50);
+    expect(won.prepCategory).toBe("neutral");
+    const lost = enrichPrepTarget({ games: 1, w: 0, d: 0, l: 1, scorePct: 0, share: 0.01 }, 29);
+    expect(lost.prepCategory).toBe("neutral");
+    const main = enrichPrepTarget({ games: 12, w: 8, d: 2, l: 2, scorePct: 75, share: 0.3 }, 50);
+    expect(main.prepCategory).toBe("weapon");
+  });
+
+  it("advances the stream cursor through rejected and unparseable games", async () => {
+    const full = [
+      pgn({ moves: "1. e4 e5", utcDate: "2026.06.12", white: "Foe" }),
+      pgn({ moves: "1. d4 d5", utcDate: "2026.06.11", white: "SomeoneElse", black: "Other" }),
+    ].join("\n\n");
+    const client = createScoutClient({ fetchImpl: async () => new Response(full), storage: { getItem: () => null, setItem: () => {} } });
+    const result = await client.streamGames("Foe", { onGame: () => false });
+    expect(result.accepted).toBe(0);
+    expect(result.received).toBe(2);
+    expect(result.lastDatestamp).toBe(Date.parse("2026-06-11T00:00:00Z"));
+  });
+});

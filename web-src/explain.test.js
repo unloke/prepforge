@@ -37,7 +37,7 @@ describe("cpToWin", () => {
 
 describe("describeMove", () => {
   it("calls a central pawn push grabbing the centre", () => {
-    expect(describeMove(START, "e2e4", "e4")).toMatch(/pawn to e4.*centre/);
+    expect(describeMove(START, "e2e4", "e4")).toBe("takes the centre");
   });
 
   it("calls a knight sortie a development move", () => {
@@ -53,6 +53,23 @@ describe("describeMove", () => {
   it("recognises castling", () => {
     const fen = "rnbqk2r/pppp1ppp/5n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
     expect(describeMove(fen, "e1g1", "O-O")).toMatch(/castles/);
+  });
+
+  it("does not claim a pin or a target it cannot win", () => {
+    // 3.Bb5 in the Ruy Lopez: the c6 knight is defended, so it is just development.
+    const fen = "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3";
+    expect(describeMove(fen, "f1b5", "Bb5")).toBe("develops the bishop");
+  });
+
+  it("names every piece a move can win", () => {
+    // Rook to d4 hits the undefended knight on d7 and bishop on h4 at once.
+    const fen = "6k1/3n4/8/8/7b/8/8/3R2K1 w - - 0 1";
+    expect(describeMove(fen, "d1d4", "Rd4")).toMatch(/the knight on d7 and the bishop on h4/);
+  });
+
+  it("does not say a rook takes an open file it was already on", () => {
+    const fen = "6k1/8/8/8/8/8/8/R5K1 w - - 0 1";
+    expect(describeMove(fen, "a1a7", "Ra7")).toBe("");
   });
 
   it("spots a knight fork of king and queen", () => {
@@ -72,9 +89,7 @@ describe("describePosition", () => {
   it("leads the headline with what the last move did", () => {
     const after = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
     const out = describePosition(after, { lastSan: "e4", lastUci: "e2e4", prevFen: START });
-    expect(out.headline).toMatch(/White/);
-    expect(out.headline).toMatch(/e4/);
-    expect(out.headline).toMatch(/centre/);
+    expect(out.headline).toBe("White takes the centre.");
   });
 
   it("announces checkmate with the winner", () => {

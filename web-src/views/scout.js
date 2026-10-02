@@ -2,6 +2,7 @@
 // Pure fetch/parse logic stays in ../scout.js; rendering helpers in ../scout-report.js.
 
 import "./scout.css";
+import { countOf } from "../plural.js";
 
 import {
   applyScoutColorTabs,
@@ -71,6 +72,8 @@ import {
 } from "../scout.js";
 
 const RENDER_DEBOUNCE_MS = 400;
+// Games per account per fetch; "Load older" pulls the next batch.
+const SCOUT_STREAM_BATCH = 500;
 const RENDER_FORCE_EVERY_INITIAL = 25;
 
 const PREFILTER_ENRICH_DEBOUNCE_MS = 400;
@@ -311,7 +314,9 @@ export function createScoutView(deps) {
         btn.dataset.scoutAction = "stop";
         btn.disabled = false;
       } else if (state === "paused") {
-        btn.textContent = "Resume";
+        // A full batch pauses on its own; the same button pulls the next, older one.
+        btn.textContent = scoutSession?.batchFull ? "Load older" : "Resume";
+        btn.title = scoutSession?.batchFull ? `Fetch up to ${SCOUT_STREAM_BATCH} older games per account` : "";
         btn.dataset.scoutAction = "resume";
         btn.disabled = false;
       } else if (state === "done") {
@@ -1328,8 +1333,8 @@ export function createScoutView(deps) {
   function localScoutLineDetailHtml(line, idx, oppColor, rowKind = "line") {
     return scoutLineDetailHtml(line, idx, oppColor, rowKind, {
       fenAfterLine: (ucis) => scoutModule.fenAfterLine(ucis),
-      renderBoard: (fen, orientation) =>
-        renderScoutMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg }),
+      renderBoard: (fen, orientation, lastUci) =>
+        renderScoutMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg }, lastUci),
       escapeHtml,
       baseline: scoutState?.sections?.[oppColor]?.baselineScorePct ?? null,
     });
@@ -1932,6 +1937,11 @@ export function createScoutView(deps) {
 
   function onScoutGame(game, session) {
     if (!scoutState || !isActiveSession(session)) return false;
+    if (game.scoutUsername && game.datestamp > 0) {
+      const previous = session.oldestDatestampByUser[game.scoutUsername];
+      session.oldestDatestampByUser[game.scoutUsername] = previous == null
+        ? game.datestamp : Math.min(previous, game.datestamp);
+    }
     if (game.gameId && session.seenIds.has(game.gameId)) return false;
     if (game.gameId) session.seenIds.add(game.gameId);
     // Tag the source identity so merged "self" reports stay attributable.
@@ -1966,7 +1976,7 @@ export function createScoutView(deps) {
 
     if (session.userStopped) {
       session.state = "paused";
-    } else if (accepted === 0) {
+    } else if (!session.batchFull) {
       session.state = "done";
     } else {
       session.state = "paused";
@@ -1992,10 +2002,10 @@ export function createScoutView(deps) {
       const n = scoutState.games.length;
       const label =
         session.state === "done"
-          ? `Scouted ${n} games for ${scoutState.username} — no more history`
+          ? `Scouted ${countOf(n, "game")} for ${scoutState.username} · no more history`
           : session.state === "paused"
-            ? `Paused at ${n} games — Resume for older games`
-            : `Scouted ${n} games for ${scoutState.username}`;
+            ? `Paused at ${countOf(n, "game")}`
+            : `Scouted ${countOf(n, "game")} for ${scoutState.username}`;
       setStatus(label);
     }
   }
@@ -2030,7 +2040,7 @@ export function createScoutView(deps) {
       .map(([user, s]) => {
         const label =
           s.status === "ok"
-            ? `${s.accepted} games`
+            ? countOf(s.accepted, "game")
             : s.status === "failed"
               ? `failed${s.error ? ` · ${s.error}` : ""}`
               : "no games";
@@ -2069,6 +2079,7 @@ export function createScoutView(deps) {
     session.state = "running";
     session.userStopped = false;
     session.acceptedThisBatch = 0;
+    session.batchFull = false;
     if (!session.oldestDatestampByUser) session.oldestDatestampByUser = {};
     updateScoutControls();
 
@@ -2079,7 +2090,10 @@ export function createScoutView(deps) {
             color: session.color,
             // R-05: per-source cursor — a failed source resumes from ITS OWN
             // watermark, so its time range is never silently skipped.
-            until: only?.length ? session.oldestDatestampByUser[username] ?? until : until,
+            until: session.oldestDatestampByUser[username] ?? until,
+            // Big accounts (thousands of games) arrive in batches instead of one
+            // unbounded stream that locks the page.
+            max: SCOUT_STREAM_BATCH,
             onGame: (game) => {
               game.scoutUsername = username;
               return onScoutGame(game, session);
@@ -2121,6 +2135,10 @@ export function createScoutView(deps) {
         }
       }
       const batchAccepted = session.acceptedThisBatch;
+      // Any source that filled its batch probably has older games left.
+      session.batchFull = settled.some(
+        (r) => r.status === "fulfilled" && (r.value?.received || 0) >= SCOUT_STREAM_BATCH,
+      );
       if (batchAccepted === 0 && failures.length) {
         throw failures[0];
       }

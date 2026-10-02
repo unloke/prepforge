@@ -1,4 +1,4 @@
-// Opponent-reply picker for Play vs human. Pure: explorer rows / repertoire
+// Opponent-reply picker for Practice game. Pure: explorer rows / repertoire
 // children / Maia policy + legal UCIs in, one UCI out. No DOM, no network.
 
 export const EXPLORER_THIN_SAMPLE = 8;

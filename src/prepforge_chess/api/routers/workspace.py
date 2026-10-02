@@ -32,7 +32,12 @@ from prepforge_chess.services.dashboard_recommendations import (
 from prepforge_chess.services.repertoire_export import RepertoireExportService
 from prepforge_chess.services.workspace_view import build_workspace_payload
 from prepforge_chess.storage import sa_tables as t
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories import (
+    PLAYED_SESSIONS_KEY,
+    REVIEW_ARCHIVE_KEY,
+    PrepForgeRepository,
+    prune_review_archive,
+)
 
 router = APIRouter(prefix="/api", tags=["workspace"])
 
@@ -139,8 +144,6 @@ def dashboard(
     ``local_date`` is the client's calendar day, used only to phrase the daily
     streak (is it alive? trained today?) in the player's timezone."""
     now = datetime.now(timezone.utc)
-    now_iso = now.isoformat()
-    soon_iso = (now + timedelta(hours=24)).isoformat()
     reps = t.repertoires
     with repo.engine.connect() as conn:
         games = conn.execute(
@@ -151,6 +154,9 @@ def dashboard(
         repertoires = conn.execute(
             select(func.count()).select_from(reps).where(reps.c.owner_user_id == owner)
         ).scalar_one()
+        active_ids = set(conn.scalars(select(reps.c.id).where(
+            reps.c.owner_user_id == owner, reps.c.is_active == 1,
+        )))
         sessions = conn.execute(
             select(func.count())
             .select_from(t.training_sessions.join(reps, reps.c.id == t.training_sessions.c.repertoire_id))
@@ -165,20 +171,30 @@ def dashboard(
             return func.coalesce(func.sum(case((predicate, 1), else_=0)), 0)
 
         (
-            open_mistakes, due_reviews, due_soon, reviews_7d, mastered_now, weak_now,
+            open_mistakes, reviews_7d, mastered_now, weak_now,
         ) = conn.execute(
             select(
                 tally(tp.c.attempts > tp.c.correct_attempts),
-                tally(tp.c.due_at.is_not(None) & (tp.c.due_at <= now_iso)),
-                tally(tp.c.due_at.is_not(None) & (tp.c.due_at > now_iso)
-                      & (tp.c.due_at <= soon_iso)),
                 tally(tp.c.last_reviewed_at.is_not(None)
                       & (tp.c.last_reviewed_at >= week_ago_iso)),
                 tally(tp.c.is_mastered == 1),
                 tally((tp.c.attempts >= 2)
                       & (tp.c.correct_attempts * 2 < tp.c.attempts)),
-            ).select_from(joined).where(reps.c.owner_user_id == owner)
+            ).select_from(joined).where(reps.c.owner_user_id == owner, tp.c.owner_user_id == owner)
         ).one()
+    # Today promises work the Smart queue can actually schedule. Reuse the
+    # Library's effective-enabled, own-move and weak-before-due rules.
+    due_counts = repo.due_counts_by_repertoire(owner, now=now)
+    soon_counts = repo.due_counts_by_repertoire(owner, now=now + timedelta(hours=24))
+    due_reviews = sum(due_counts.get(rid, 0) for rid in active_ids)
+    due_soon = sum(soon_counts.get(rid, 0) for rid in active_ids) - due_reviews
+    replaced = repo.get_user_setting(owner, PLAYED_SESSIONS_KEY)
+    if isinstance(replaced, int) and replaced > 0:
+        sessions += replaced
+    # Reviews of moves deleted since then still count toward the week.
+    archived = repo.get_user_setting(owner, REVIEW_ARCHIVE_KEY)
+    if isinstance(archived, list):
+        reviews_7d += len(prune_review_archive(archived, week_ago_iso))
     local_day = streak.resolve_day(local_date)
     return {
         "games": games,

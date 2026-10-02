@@ -1,0 +1,268 @@
+{
+  "meta": {
+    "repo": "PrepForge Chess",
+    "commit": "e1a9ce1d1bc374a8b8dde26a32c5e2ff0c3ad5dc",
+    "ref": "origin/main (2026-09-29)",
+    "scope": "web-src/**, scripts/smoke/ui-v2/**, frontend Vitest tests; backend only as endpoints + payload fields consumed by the frontend",
+    "companion_md": "docs/agent-context/frontend-library.md",
+    "neutrality": "factual records only; no findings/severity/recommendations",
+    "line_numbers": "refer to the commit above; '~' prefix means approximate"
+  },
+  "records": [
+    {
+      "area": "global",
+      "state_or_flow": "SPA boot",
+      "entrypoint": "web-src/app.js init() ~11901",
+      "files": [
+        {"path": "web-src/index.html", "symbols": ["single <script type=module src=/app.js> ~818"]},
+        {"path": "web-src/app.js", "symbols": ["init ~11901", "loadSignedInWorkspace ~11980", "appReadyPromise ~12000"]}
+      ],
+      "calls": ["init -> prefs/theme -> 3 BoardControllers -> bindEvents -> refreshAuthProviders + refreshAuthStatus -> [signedIn] loadSignedInWorkspace -> restoreWorkspaceLocation -> maybeOpenSharedView -> maybeHandleJoinLink -> syncWorkspaceUrl"],
+      "reads": ["?shared=<token>", "?join=<code>", "location.hash"],
+      "writes": ["appState.*", "DOM shell"],
+      "conditions": ["signedIn gates loadSignedInWorkspace"],
+      "tests": ["web-src/ui-layout.test.js"],
+      "notes": ["No framework; vanilla ES modules. Vite app root web-src, build output committed to src/prepforge_chess/web/static."]
+    },
+    {
+      "area": "global",
+      "state_or_flow": "shell composition",
+      "entrypoint": "web-src/index.html",
+      "files": [
+        {"path": "web-src/index.html", "symbols": ["nav.rail#app-rail ~11-63", "header.topbar ~64-84", "main#workspace-main ~87", "nav.tabbar#app-tabbar ~773", "#more-sheet ~788", "#engine-window ~819", "#toast-stack / #command-palette ~843-855"]}
+      ],
+      "calls": ["switchView -> toggles .view.is-active", "setReplaySection -> flips [data-replay-panel]"],
+      "reads": [],
+      "writes": ["aria-current on .tab", "#topbar-title", ".view.is-active"],
+      "conditions": ["Games/Scout are two panels of one replay view; deep links #/games and #/scout"],
+      "tests": ["web-src/ui-layout.test.js (skip link first focusable :25)"],
+      "notes": ["Skip link a.skip-link[href=#workspace-main]. Context menu hosts #node-context-menu, #repertoire-context-menu, #account-menu are static and filled at runtime."]
+    },
+    {
+      "area": "global",
+      "state_or_flow": "view switching + deep links",
+      "entrypoint": "web-src/app.js switchView ~3365",
+      "files": [
+        {"path": "web-src/app.js", "symbols": ["switchView ~3365", "setReplaySection ~3215", "restoreWorkspaceLocation ~3190", "syncWorkspaceUrl ~3013", "popstate handler ~11713", "activateWorkspaceTab binding ~11511"]},
+        {"path": "web-src/workspace-url.js", "symbols": ["formatWorkspaceHash 55", "parseWorkspaceHash 76", "parseWorkspaceLocation 108", "workspaceLocationFromState 119", "activateWorkspaceTab 22"]}
+      ],
+      "calls": ["nav click -> activateWorkspaceTab -> switchView/setReplaySection -> syncWorkspaceUrl({push:true})"],
+      "reads": ["hash params ?rep=<id>&ply=<n>"],
+      "writes": ["location.hash", "appState.currentView", "appState.replaySection"],
+      "conditions": ["popstate re-applies parsed hash without pushing"],
+      "tests": ["web-src/workspace-url.test.js"],
+      "notes": []
+    },
+    {
+      "area": "global",
+      "state_or_flow": "lazy module loading",
+      "entrypoint": "dynamic import() sites in web-src/app.js",
+      "files": [
+        {"path": "web-src/app.js", "symbols": ["preloadCoach/preloadBuildGen 51-66", "ensureDashboardView ~3818", "ensureTeamsView ~4391", "runAnalysis inline import 5534", "ensureAnalyzeView ~5828", "ensureMoveTreeRenderer ~5861", "ensureBuildView ~6321", "ensureTrainView ~6950", "feeling-lucky import 9127", "ensureSettingsView ~10287", "ensureReplayView ~10747", "coverage.js import 11007", "preloadScoutUi ~11404"]}
+      ],
+      "calls": ["switchView -> ensure<X>View -> import('./views/<x>.js') -> create<X>View(deps)"],
+      "reads": [],
+      "writes": [],
+      "conditions": ["chunk + its CSS load on first entry; Scout chunk preloads when its panel is shown; build-generate-runner preloads but Maia weights download only on explicit Generate click"],
+      "tests": ["web-src/engine-loading-lifecycle.test.js"],
+      "notes": ["Scout chunk has its own lazy imports: explorer.js, scout-engine.js, scout-explorer.js, scout.js, maia3-provider.js, build-generate-runner.js (views/scout.js 616-2208)."]
+    },
+    {
+      "area": "global",
+      "state_or_flow": "lazy CSS loading",
+      "entrypoint": "CSS imports inside lazy JS chunks",
+      "files": [
+        {"path": "web-src/views/analyze-chart.css", "symbols": ["imported views/analyze.js:4"]},
+        {"path": "web-src/views/replay.css", "symbols": ["imported views/replay.js:4"]},
+        {"path": "web-src/views/scout.css", "symbols": ["imported views/scout.js:4"]},
+        {"path": "web-src/views/settings.css", "symbols": ["imported views/settings.js:3"]},
+        {"path": "web-src/views/teams.css", "symbols": ["imported views/teams.js:6"]}
+      ],
+      "calls": ["lazy JS chunk load -> browser fetches its .css"],
+      "reads": [],
+      "writes": [],
+      "conditions": ["no runtime <link> injection exists (DOM-writer scan found only a download anchor, app.js:2917)"],
+      "tests": [],
+      "notes": ["styles.css (6,084 lines) is eager via app.js:1."]
+    },
+    {
+      "area": "global",
+      "state_or_flow": "API transport + CSRF + status",
+      "entrypoint": "web-src/app.js api() ~2862",
+      "files": [
+        {"path": "web-src/app.js", "symbols": ["api 2862-2903", "postJson 2904-2912", "setStatus 2826-2855", "setStatusError 2856", "beaconFlushBuild 7380", "beaconFlushTrain 10247"]},
+        {"path": "web-src/csrf.js", "symbols": ["headersWithCsrf 27-34", "cookie pf_csrf / header X-CSRF-Token 17-18", "GET /api/csrf bootstrap 44-74"]}
+      ],
+      "calls": ["view code -> api/postJson -> fetch(credentials: same-origin) -> [unsafe method] headersWithCsrf"],
+      "reads": ["{error} and {detail} error shapes"],
+      "writes": ["#app-status data-state/data-severity"],
+      "conditions": ["keepalive fetch with manual CSRF header on unload flushes; visibilitychange triggers hardFlushBuild + flushTrainSync (app.js:11525-11541)"],
+      "tests": ["(CSRF server-side tests in backend suite)"],
+      "notes": ["Direct browser fetches outside api(): Lichess public API (train-lucky-db.js:661, train-lucky-titled.js:158-212, scout.js:1679), lichess-profile.js:48, static manifests (views/settings.js:121,292, engine/maia3-provider.js:358)."]
+    },
+    {
+      "area": "global",
+      "state_or_flow": "shared UI layers (modal/popover/overlay/engine/board/toast)",
+      "entrypoint": "web-src/app.js",
+      "files": [
+        {"path": "web-src/app.js", "symbols": ["activateModal 2956-3012", "showInputModal 5018-5118", "showConfirmModal 5119-5172", "showPromotionPicker 3570-3646", "EngineWidget 1058-1495", "paintEngineBanners 3023-3036", "BoardController 2222-2815", "boardAfterMove/boardInfo -> chess-local 3762-3770", "Toast 556-947", "jobToast 1000", "showUndoToast 1010"]},
+        {"path": "web-src/views/shared/source-composer.js", "symbols": ["openSourceComposer 243", "positionPopover 208", "selectionToStorage/FromStorage 582/557", "resolveFetchUsernames 617"]},
+        {"path": "web-src/engine/engine-banner.js", "symbols": ["engineUnavailableBanner 8", "engineBannerHtml 33"]}
+      ],
+      "calls": ["page code -> showInputModal/showConfirmModal -> activateModal (focus trap + restore)", "interactive board move -> showPromotionPicker (shared Q/R/B/N)", "engine widget <-> dockEngine/undockEngine (app.js:6518-6535) into Build inspector"],
+      "reads": [],
+      "writes": ["body overlays", "#engine-window", "#toast-stack"],
+      "conditions": ["applyServerEngineGating (10394) disables #run-analysis and #build-generate-node when browser engine unavailable"],
+      "tests": ["web-src/promotion.test.js:64-99", "web-src/ui-layout.test.js:501"],
+      "notes": ["Maia idle teardown after 10 min backgrounded (app.js:11437-11465)."]
+    },
+    {
+      "area": "library",
+      "state_or_flow": "empty / own / shared / filtered",
+      "entrypoint": "views/dashboard.js createDashboardView 70",
+      "files": [
+        {"path": "web-src/index.html", "symbols": ["#view-dashboard ~87-155"]},
+        {"path": "web-src/views/dashboard.js", "symbols": ["filterLibraryRows 59", "renderLibraryPreview 128-195", "renderDashboardToday 291-371", "renderSharedFallbackRows 385", "renderOwnRepertoireRows 433", "renderRepertoireList 550", "loadDashboardRepertoires 622", "handleImportPgnFile 688"]},
+        {"path": "web-src/app.js", "symbols": ["refreshDashboardRepertoires 3857", "editRepertoire 5179", "openRepertoireContextMenu 5278", "createRepertoirePrompt 7511"]}
+      ],
+      "calls": ["switchView(dashboard) -> ensureDashboardView -> loadDashboard -> GET /api/dashboard + GET /api/repertoires + GET /api/teams -> renderRepertoireList"],
+      "reads": ["GET /api/dashboard?local_date=", "GET /api/repertoires (repertoires[] with health{mastery_pct,trainable,mastered,learning,due,weak,untrained}, shared[])", "GET /api/teams"],
+      "writes": ["#dashboard-today", "#dashboard-repertoires", "#lib-preview-*", "#dashboard-steps", "POST /api/repertoires/import|import-pgn|create|delete|set-active|share"],
+      "conditions": ["empty -> 'No repertoires yet.' + New/Import", "own empty but shared[] -> renderSharedFallbackRows", "filter no-match -> 'No repertoires match this filter.'", "previewPaneShown() false (<=760px) -> row click opens workspace directly"],
+      "tests": ["web-src/views/library-filters.test.js", "web-src/views/dashboard-recommendations.test.js"],
+      "dom_hosts": ["#dashboard-repertoires", "#dashboard-today", "#lib-preview", "#dashboard-steps"],
+      "css": ["eager styles.css 1288-1740+"],
+      "viewport_states": ["1440x900", "1180x900", "390x844"],
+      "notes": ["Keyboard: rows tabindex=0, Enter opens, Space previews (dashboard.js:502-512); listbox role dropped in empty states (setListboxRole 598-608)."]
+    },
+    {
+      "area": "repertoire",
+      "state_or_flow": "writable / shared read-only / fork / engine dock",
+      "entrypoint": "views/build.js createBuildView 3 + app.js hydrateBuild 6290",
+      "files": [
+        {"path": "web-src/index.html", "symbols": ["#view-build ~262-343"]},
+        {"path": "web-src/views/build.js", "symbols": ["renderBuildRepHeader 58", "renderBuildBreadcrumb 65", "renderBuildBranchBar 93-146", "renderTreeMeta 166", "renderBuilderTree 182-241"]},
+        {"path": "web-src/app.js", "symbols": ["selectBuildNode 6471", "flushBuildMoves 7048-7200", "deleteBuildNodeLocal 7272", "isBuildReadOnly 5173", "updateBuildReadOnlyUi 5206", "maybeOpenSharedView 10828", "forkReadableRepertoire 10929", "runCoverageScanUI 10974", "generateFromCurrentNode 7615"]}
+      ],
+      "calls": ["editRepertoire -> GET /api/build/load -> hydrateBuild -> renderBuilderTree", "board move -> buildProvisionalNode -> scheduleBuildFlush -> flushBuildMoves -> POST /api/build/add-moves", "delete -> deleteBuildNodeLocal -> POST /api/build/delete-nodes"],
+      "reads": ["GET /api/build/load?repertoire_id=", "GET /api/shared/{token}", "GET /api/lichess/explorer/{masters|lichess}"],
+      "writes": ["POST /api/build/add-moves {repertoire_id, moves:[{tempId,parentRef,uci}]}", "POST /api/build/delete-nodes {node_ids[]}", "POST /api/build/annotations|action|rename|export|generate/apply-plan", "POST /api/shared/{token}/fork", "POST /api/repertoires/fork"],
+      "conditions": ["build.writable===false -> #shared-banner + mutations gated client-side (isBuildReadOnly)", "fork alternatives -> #build-branchbar chips + buildBranchChoiceId", "sync chip states saved|dirty|syncing|error (SYNC_CHIP_VARIANTS 6924-6930)"],
+      "tests": ["web-src/views/build-branchbar.test.js", "web-src/views/shared/movetree.test.js", "web-src/engine-loading-lifecycle.test.js", "web-src/promotion.test.js"],
+      "dom_hosts": ["#builder-tree", "#build-branchbar", "#build-inspector", "#shared-banner", "#explorer-rows", "#coverage-gaps"],
+      "css": ["eager styles.css 1805+, 1936, 2361, 2423"],
+      "notes": ["Local-first sync: tmp ids (mintBuildTmpId 6865), id_map tmp->real, reapplyPendingBuildNodes 7201, reapplyPendingBuildDeletes 7247, beaconFlushBuild on unload."]
+    },
+    {
+      "area": "train",
+      "state_or_flow": "setup / active / summary / smart / play+all_lines / blitz",
+      "entrypoint": "views/train.js createTrainView 3 + app.js syncTrainSessionControls 8348",
+      "files": [
+        {"path": "web-src/index.html", "symbols": ["#view-train ~345-470"]},
+        {"path": "web-src/views/train.js", "symbols": ["renderTrainStats 20", "renderSmartQueueStrip 79", "renderUpNext 110", "renderSmartProgress 160", "renderSmartSummary 181"]},
+        {"path": "web-src/app.js", "symbols": ["startTraining 8460", "startSmartTraining 9637-9741", "presentSmartPrompt 9775", "submitSmartMove 9901-10053", "finishSmartSession 10101-10145", "startPlaySession 8800", "submitPlayMove 9041", "setTrainBanner 8443-8458", "flushTrainSync 10181-10246"]},
+        {"path": "web-src/train-sync.js", "symbols": ["groupAttempts/flushGroups (retry semantics)"]}
+      ],
+      "calls": ["start -> POST /api/train/smart/start {mixed,fresh} -> prompt cards -> submitSmartMove -> queueTrainAttempt -> scheduleTrainSync -> flushTrainSync -> POST /api/train/smart/sync {session_id, attempts:[{node_id,correct,attempt_uuid}], card_index, queue, local_date}", "all_lines -> POST /api/train/start|/move|/skip|/hint"],
+      "reads": ["GET /api/train/smart/summary", "GET /api/repertoires", "GET /api/build/load (play books)"],
+      "writes": ["POST /api/train/smart/sync (also keepalive beacon 10260)", "POST /api/train/record-miss"],
+      "conditions": ["sidebar data-session-state setup|active|summary (8353)", "banner data-state idle|move|correct|wrong|teach|reveal|runin|done", "blitz locked while a smart session runs (8376-8383)", "play repertoire multi-select persisted per browser (playRepertoireStorageKey 8184)"],
+      "tests": ["web-src/views/train-upnext.test.js", "web-src/train-resume.test.js", "web-src/train-sync.test.js", "web-src/train-play.test.js", "web-src/train-opponent.test.js", "web-src/train-lucky*.test.js", "web-src/feeling-lucky.test.js"],
+      "dom_hosts": ["#train-progress-panel", "#train-summary", "#train-banner", "#train-queue-bar", "#train-upnext"],
+      "css": ["eager styles.css 1881+, 2757"],
+      "notes": ["Smart prompt fields used: fen_before, legal_moves, kind, targets[], total_cards, card_index, target_index, session_id, repertoire_name, color, encoded card."]
+    },
+    {
+      "area": "games",
+      "state_or_flow": "no source / populated / departure selected / focus board / filtered",
+      "entrypoint": "views/replay.js createReplayView 127 + app.js runLichessCompare 10416",
+      "files": [
+        {"path": "web-src/index.html", "symbols": ["games-panel [data-replay-panel=games] ~574-599"]},
+        {"path": "web-src/views/replay.js", "symbols": ["REPLAY_KINDS 6", "replayGameKind 15", "replayFocusPosition 37", "replayArrowsFor 75", "replayFocusBoardHtml 85", "renderReplaySummary 135", "renderReplayDetail 208", "renderReplayRow 239", "renderReplayFocus 259"]},
+        {"path": "web-src/app.js", "symbols": ["gamesSourceSelection 10518", "openGamesComposer 10566", "paintGamesSource 10584", "checkLatestLichessGame 4089", "showNewGameWidget 4125", "markLichessSeen 4177", "replayToAnalyze 10796"]}
+      ],
+      "calls": ["source composer -> gamesSourceSelection -> runLichessCompare -> POST /api/lichess/compare -> renderReplayResults", "row click -> replayOpen Set (one open) -> renderReplayFocus (FEN derived client-side at departure_ply-1 via chess.js)"],
+      "reads": ["POST /api/lichess/compare response (per game: lichess_id, white, black, result, user_color, in_repertoire, matched_plies, departure_ply, departure_move_uci, departure_reason, repertoire_id/name, move_san_history[], expected_move_uci/san, expected_node_id, training_recorded, source_account; top: count, misses_recorded, sources[])", "GET /api/lichess/latest?light=1", "GET /api/lichess"],
+      "writes": ["POST /api/lichess/seen"],
+      "conditions": ["Compare button enabled only with a selection", "expected arrow dropped when the expected move is illegal in the derived position (replayFocusPosition 37-73)", "filter-empty -> 'No games in this bucket'"],
+      "tests": ["web-src/views/replay-focus.test.js", "web-src/workspace-url.test.js", "web-src/ui-layout.test.js:305"],
+      "dom_hosts": ["#replay-results", "#replay-summary", "#games-source-chips"],
+      "css": ["lazy views/replay.css 140; toolbar eager styles.css 744-758"],
+      "viewport_states": ["1440x900", "1180x900", "390x844"],
+      "notes": ["Rows are <button aria-pressed>; deep link #/games."]
+    },
+    {
+      "area": "scout",
+      "state_or_flow": "pre-start / streaming / completed / error / white-black / line detail",
+      "entrypoint": "views/scout.js createScoutView 107",
+      "files": [
+        {"path": "web-src/index.html", "symbols": ["scout-panel [data-replay-panel=scout] ~601-637"]},
+        {"path": "web-src/views/scout.js", "symbols": ["isStreaming 173", "clearScoutSide 187", "updateScoutControls 285", "renderScoutReport 402", "paintV13Panel 553", "scheduleRender 701", "schedulePrefilterEnrich 766", "enrichMaiaReads 1094", "computeEngineAggregation 1209", "enrichExplorerReads 1256", "scoutWriteLineToRep 1403", "scoutAddToPrep 1457", "bindScoutEvents 1703", "handleScoutAction 2164", "scoutErrorHtml 95"]},
+        {"path": "web-src/scout-report.js", "symbols": ["scoutLineKey 30", "captureScoutExpanded/restoreScoutExpanded 43/149", "renderScoutColorTabsHtml 66", "openScoutLine 170", "renderScoutIntelligencePanel 752", "renderMiniBoardHtml 807", "renderScoutProfile 824"]},
+        {"path": "web-src/scout.js", "symbols": ["stream + PGN parse (1,744 lines)"]}
+      ],
+      "calls": ["Start click -> preloadScoutUi -> runScout -> stream (web-src/scout.js) -> scheduleRender throttled -> renderScoutReport", "enrichment deferred while streaming: prefilter/maia/engine/explorer enrichers", "line click -> openScoutLine -> #scout-side detail -> scoutAnalyzeLine 1350"],
+      "reads": ["browser-side Lichess public game export (scout.js:1679; clocks=true, standard chess only)", "GET /api/lichess/explorer/{db}", "GET /api/repertoires", "GET /api/build/load"],
+      "writes": ["POST /api/build/add-moves (prep write-back via injected buildProvisionalNode/hardFlushBuild)"],
+      "conditions": ["scoutSession.state running|paused (handleScoutAction: running->stop, paused->resume, else start)", "one line detail open at a time", "colour tabs roving tabindex"],
+      "tests": ["web-src/views/scout-init.test.js", "scout-stream-scale.test.js", "scout-colortabs.test.js", "scout-engine-scan.test.js", "scout-explorer-enrich.test.js", "scout-maia-enrich.test.js", "scout-maia-candidate-cap.test.js", "scout-maia-scope.test.js", "scout-refutation-render.test.js", "web-src/scout.test.js", "web-src/scout-report.test.js"],
+      "dom_hosts": ["#scout-results", "#scout-side", "#scout-profile", "#scout-live-count", "#scout-v3-results"],
+      "css": ["lazy views/scout.css 436; panel/grid/empty/stream eager styles.css 744+"],
+      "notes": ["Render throttling constants scoutRenderForceEvery 76 / scoutRenderDebounceMs 85; generation counters (scoutOpGen, enrich gens) drop stale responses."]
+    },
+    {
+      "area": "analyze",
+      "state_or_flow": "initial / evaluating / result / engine unavailable / history / variations",
+      "entrypoint": "views/analyze.js createAnalyzeView 7 + app.js runAnalysis 5469-5745",
+      "files": [
+        {"path": "web-src/index.html", "symbols": ["#view-analyze ~158-260"]},
+        {"path": "web-src/views/analyze.js", "symbols": ["CLASS_GROUPS 9", "renderClassificationBars 109/149", "renderAnalysisTree 243/250", "updateBoardEvalBar 289", "pointWinPct 313", "bindEvalChartInteractions 361-426", "renderEvalChart 427-583"]},
+        {"path": "web-src/app.js", "symbols": ["showAnalysisPly 5949", "analysisTreeNav 5989", "loadPgnIntoAnalyze 6115", "selectAnalysisNode 6193", "onAnalysisBoardMove 6221", "loadAnalysisHistory 4308", "recallAnalysis 4339", "fetchMyLichessGame 4277", "updateAnalysisHandoff 5765", "PositionCoach 1588-1896"]}
+      ],
+      "calls": ["runAnalysis -> isBrowserEngineAvailable gate -> lazy engine/game-analyzer.js (5534) -> POST /api/analyze/prepare -> browser Stockfish (+optional Maia) -> POST /api/analyze/classify-save -> revealAnalysisResults 5811"],
+      "reads": ["POST /api/analyze/prepare {pgn} -> {game_id, engine, depth, positions[], moves[], brilliant{enabled,rating}}", "GET /api/analyses", "GET /api/analyses/{game_id}", "GET /api/lichess/latest"],
+      "writes": ["POST /api/analyze/classify-save {game_id, engine, depth, positions[{fen,...evals}], maia_assessments[{fen,uci,human_probability,win_chance_after,trap_gap?}]}", "POST /api/train/record-miss (coach miss)"],
+      "conditions": ["engine unavailable -> #run-analysis gated with BROWSER_ENGINE_UNAVAILABLE + #analyze-engine-banner", "jobToast phases load/stockfish/maia/classifying/saving/rendering", "variation branches client-side (analysisVarNodes)"],
+      "tests": ["web-src/views/analyze-chart.test.js", "analyze-evalbar.test.js", "web-src/analyze-pgn.test.js", "web-src/explain.test.js", "web-src/coach/*", "web-src/engine-loading-lifecycle.test.js"],
+      "dom_hosts": ["svg#eval-chart", "#analysis-summary", "#analysis-moves", "#analysis-explain", "#analysis-history"],
+      "css": ["lazy views/analyze-chart.css 483; study grid eager"],
+      "notes": ["Eval chart keyboard: arrows step, Enter selects, Home/End (bindEvalChartInteractions 361-426). Board legality local via chess-local.js."]
+    },
+    {
+      "area": "teams",
+      "state_or_flow": "owner/admin/member / incoming shared / invite / join-link",
+      "entrypoint": "views/teams.js createTeamsView 8 + app.js openTeamDetail 4426",
+      "files": [
+        {"path": "web-src/index.html", "symbols": ["#view-teams 544-595"]},
+        {"path": "web-src/views/teams.js", "symbols": ["selectTeamPane 20", "bindTeamTabs 32", "renderTeamTabCounts 51", "loadTeams 65", "renderTeamsList 92", "renderTeamSharedRepertoires 137", "renderTeamInviteFooter 199"]},
+        {"path": "web-src/app.js", "symbols": ["unshareRepertoireFromTeam 4541", "createTeam 4563", "renameTeam 4592", "deleteTeam 4616", "addTeamMember 4636", "updateMemberRole 4678", "removeTeamMember 4693", "teamInvite 4723", "showInviteModal 4750", "shareRepertoireIntoTeam 4815", "copySharedRepertoire 4867", "loadSharedRepertoires 4877", "openSharedRepertoire 4933", "shareRepertoireWithTeam 4940", "maybeHandleJoinLink 10855"]}
+      ],
+      "calls": ["loadTeams -> GET /api/teams -> renderTeamsList", "row click -> openTeamDetail -> GET /api/teams/{id} -> member rows + renderTeamSharedRepertoires + renderTeamInviteFooter", "invite -> POST /api/teams/{id}/invite -> showInviteModal -> [revoke] DELETE", "?join= -> GET /api/teams/join/{code} preview -> POST join"],
+      "reads": ["GET /api/teams", "GET /api/teams/{id} ({name, role, members[], shared_repertoires[], invite{exists,expires_at}})", "GET /api/repertoires ({repertoires, shared})"],
+      "writes": ["POST /api/teams {name}", "PATCH/DELETE /api/teams/{id}", "POST /api/teams/{id}/members {lichess_username, role}", "PATCH/DELETE /api/teams/{id}/members/{user_id}", "POST/DELETE /api/teams/{id}/invite", "POST /api/teams/join/{code}", "POST /api/repertoires/share {repertoire_id, team_id?, visibility}", "POST /api/repertoires/fork {repertoire_id}"],
+      "conditions": ["canManage = owner|admin shows Invite/Rename/Add member; Delete owner-only; Share-a-repertoire visible to any member", "invite.raw code returned only at mint (hashed at rest); opening Invite rotates the link", "own shared row -> Unshare; other's -> Copy (fork)", "?join= survives sign-in reload (idempotent join server-side)"],
+      "tests": ["web-src/views/teams-tabs.test.js"],
+      "dom_hosts": ["#teams-list", "#team-members", "#team-shared-repertoires", "#teams-shared", "#team-invite-foot"],
+      "css": ["lazy views/teams.css 224"],
+      "notes": ["Member row tail: owner fixed badge; managers get inline role <select> + remove (incl. self step-down); plain member sees badge + Leave on own row (app.js 4482+). Smoke asserts owner controls, tab counts, invite footer, Copy button, incoming read-only badge (teams-viewport-smoke.mjs 147-223)."]
+    },
+    {
+      "area": "settings",
+      "state_or_flow": "connections / auto-manual Maia rating / engine status / Maia3 health / theme / section nav",
+      "entrypoint": "views/settings.js createSettingsView 7 + app.js loadSettings 10315",
+      "files": [
+        {"path": "web-src/index.html", "symbols": ["#view-settings 604-730"]},
+        {"path": "web-src/views/settings.js", "symbols": ["bindSwitch 37", "renderStrengthControls 56", "renderThemeControl 83", "renderBrowserEngineStatus 96", "renderStockfishVersion 117", "renderConnections 161", "refreshConnections 188", "MAIA_STATUS 232", "renderMaia3Status 249", "verifyMaia3 325", "resetMaia3Cache 349", "bindSectionNav 397", "ensureBound (test hook) 605"]},
+        {"path": "web-src/app.js", "symbols": ["applySettingsPayload 10340", "saveSettings 10348", "applyServerEngineGating 10394"]}
+      ],
+      "calls": ["loadSettings -> GET /api/settings -> applySettingsPayload -> renderSettings", "saveSettings(patch) -> POST /api/settings -> re-render (+engineWidget.onDepthSettingChanged / refreshExplorerPanel side nudges)", "verifyMaia3 -> getSharedMaia3Provider -> provider.predictions({fen: startFen})"],
+      "reads": ["GET /api/settings ({stockfish_depth, maia_rating, server_engine_enabled})", "GET /api/lichess ({accounts:[{id,username,is_primary}]})", "/static/engine/stockfish.manifest.json", "/static/maia3/maia3.manifest.json", "IDB weight cache (getCachedWeights)"],
+      "writes": ["POST /api/settings {stockfish_depth} | {maia_rating: 'auto'|number}", "POST /api/lichess/primary {account_id}", "DELETE /api/lichess/{id}", "prefs theme/maiaAnalysis via setPref"],
+      "conditions": ["maiaRatingPinned null -> auto switch on, slider disabled", "renderMaia3Status is peek-only (never constructs the Maia worker); Retry runs real inference", "MAIA_STATUS vocabulary: Ready / Available on demand / Loading / Cache missing / Unavailable / Error", "theme seg synced with hidden native select for assistive tech", "section nav scroll-spy with 800ms click-lock; prefers-reduced-motion jump"],
+      "tests": ["web-src/views/settings-connections.test.js", "web-src/views/settings-maia-health.test.js"],
+      "dom_hosts": ["#settings-lichess-accounts", "#settings-maia-model", "#settings-browser-engine-status", "#settings-stockfish-version"],
+      "css": ["lazy views/settings.css 202"],
+      "notes": ["connectionAccounts() falls back to a synthesized id:'legacy' row when only appState.lichessUsername exists. Smoke asserts engine status/manifest, Maia pill, switch aria sync, nav scroll, real account row (settings-viewport-smoke.mjs 115-207)."]
+    }
+  ]
+}
