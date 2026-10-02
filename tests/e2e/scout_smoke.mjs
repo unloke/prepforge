@@ -288,7 +288,8 @@ async function main() {
     const countAfterStart = await waitForCounterAtLeast(page, 1, TIMEOUT_MS);
     if (countAfterStart < 1) fail("live counter did not increment after Start");
 
-    await page.waitForSelector(".scout-coverage-bar", { timeout: TIMEOUT_MS });
+    // The report is on screen (the coverage bar is drawn only with a repertoire to compare).
+    await page.waitForSelector(".scout-section-head", { timeout: TIMEOUT_MS });
 
     const scoutBtn = page.locator('[data-testid="scout-btn"]');
     await scoutBtn.filter({ hasText: /^Stop$/ }).waitFor({ timeout: TIMEOUT_MS });
