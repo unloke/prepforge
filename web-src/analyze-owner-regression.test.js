@@ -63,6 +63,7 @@ it("switching accounts during classify-save releases the analysis job without re
     invalidateAnalysisSource: () => 1, analysisRecallSeq: 1,
     hideAnalysisHandoff: vi.fn(), loadPgnIntoAnalyze: async () => true,
     engineLifecycleMark: vi.fn(), renderImportPicker: vi.fn(), maiaAnalysisEnabled: () => false,
+    createSharedEvaluationProvider: vi.fn(),
     engineModule: { analyzeGamePositions: async () => new Map([["fen", { score_cp: 0 }]]) },
     postJson: vi.fn(async (path) => {
       if (path === "/api/analyze/prepare") return { game_id: "alice-game", positions: ["fen"], depth: 12 };

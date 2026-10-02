@@ -202,12 +202,11 @@ export function createAnalyzeView({
       const segs = CLASS_GROUPS.filter((g) => counts[g.key] > 0)
         .map((g) => {
           const n = counts[g.key];
-          const pct = Math.round((n / total) * 100);
           return (
             `<button class="cbar-seg seg-${g.key}" style="flex:${n}" ` +
             `data-side="${side}" data-group="${g.key}" ` +
             `title="${g.label}: ${n}" aria-label="${label} ${g.label}: ${n}">` +
-            `<span class="cbar-seg-n">${pct >= 10 ? n : ""}</span></button>`
+            `<span class="cbar-seg-n">${n}</span></button>`
           );
         })
         .join("");
@@ -510,7 +509,11 @@ export function createAnalyzeView({
     // Anchor under the hovered ply: the SVG maps its width onto the wrap box.
     const rect = chart.getBoundingClientRect();
     const px = rect.width > 0 ? (x / EVAL_CHART_W) * rect.width : 0;
-    tooltip.style.left = `${Math.max(0, Math.min(px, rect.width))}px`;
+    // Clamp the centred box so its edges stay inside the chart (it used to spill
+    // past the panel's right edge on the last plies).
+    const half = (tooltip.offsetWidth || 0) / 2;
+    const left = rect.width > 2 * half ? Math.max(half, Math.min(px, rect.width - half)) : rect.width / 2;
+    tooltip.style.left = `${left}px`;
     const hover = document.getElementById("eval-chart-hover");
     if (hover) {
       hover.setAttribute("x1", String(x));

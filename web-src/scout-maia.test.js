@@ -319,6 +319,46 @@ describe("enrichGlobalMaiaPool", () => {
     expect(calls[0]).toBe("fen-b1");
   });
 
+  it("reads every recommendation of both colours, not 12 in total", async () => {
+    const { enrichGlobalMaiaPool, countGlobalMaiaOutcomes, globalMaiaPoolNeedsWork } =
+      await import("./scout-maia.js");
+    // White routes outrank every black route, so a shared 12-read budget would
+    // spend it all on white and leave the 12 black recommendations without Maia.
+    const entries = [
+      ...Array.from({ length: 12 }, (_, i) => ({
+        oppColor: "white",
+        line: { ucis: [`w${i}`], sans: [`w${i}`], games: 1 },
+      })),
+      ...Array.from({ length: 12 }, (_, i) => ({
+        oppColor: "black",
+        line: { ucis: [`b${i}`], sans: [`b${i}`], games: 1 },
+      })),
+    ];
+    const provider = {
+      wdlRead: vi.fn(() => Promise.resolve({ wdl: { win: 200, draw: 200, loss: 600 } })),
+    };
+    const maiaResults = new Map();
+    const context = {
+      maiaResults,
+      getRating: () => 1800,
+      fenAfterLine: (ucis) => `fen-${ucis[0]}`,
+    };
+    const progress = [];
+    const { successesByColor } = await enrichGlobalMaiaPool(entries, {
+      ...context,
+      provider,
+      getBaselineScorePct: () => 50,
+      onProgress: (p) => progress.push(p),
+    });
+    expect(successesByColor.white).toHaveLength(12);
+    expect(successesByColor.black).toHaveLength(12);
+    expect(progress.at(-1)).toMatchObject({ done: 24, total: 24 });
+    expect(countGlobalMaiaOutcomes(entries, context)).toMatchObject({
+      resolved: 24, missing: 0, expected: 24,
+    });
+    expect(globalMaiaPoolNeedsWork(entries, { ...context, attemptsUsed: 24 })).toBe(false);
+  });
+
   it("can still reach successTarget after failures consume extra attempts", async () => {
     const { enrichGlobalMaiaPool, SCOUT_MAIA_SUCCESS_TARGET } = await import("./scout-maia.js");
     const entries = Array.from({ length: 14 }, (_, i) => ({
@@ -473,8 +513,10 @@ describe("scope change streaming", () => {
 });
 
 describe("scoutMaiaRankedNote", () => {
-  it("shows loading copy before Maia results arrive", () => {
-    expect(scoutMaiaRankedNote([{ scorePct: 50 }], "loading")).toContain("Evaluating");
+  it("leaves loading feedback to the shared inline state", () => {
+    expect(scoutMaiaRankedNote([{ scorePct: 50 }], "loading")).toBe("");
+    expect(scoutMaiaRankedNote([{ scorePct: 50 }], "idle", { prefilterState: "loading" })).toBe("");
+    expect(scoutMaiaRankedNote([{ scorePct: 50 }], "maia-off")).toBe("");
     expect(scoutMaiaRankedNote([{ scorePct: 50 }], "loading")).not.toContain(
       "score/WDL are Maia estimates",
     );

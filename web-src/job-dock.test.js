@@ -7,6 +7,23 @@ const Toast = new Function("requestAnimationFrame", `${toastSource}\nreturn Toas
 
 afterEach(() => vi.useRealTimers());
 
+it("completed Analyze progress disappears even with a pending trailing repaint", () => {
+  vi.useFakeTimers();
+  const toast = Object.create(Toast.prototype);
+  Object.assign(toast, {
+    dock: { id: "analysis-job-dock" }, state: "running", el: { remove: vi.fn() },
+    stack: { _forget: vi.fn() }, _applyState: vi.fn(), _renderFill: vi.fn(), _dropStop: vi.fn(),
+    titleEl: {}, messageEl: {},
+  });
+  toast.dock._jobToast = toast;
+  toast._progressFlushTimer = setTimeout(() => toast._flushProgress(), 90);
+  toast.complete({ title: "Analysis ready" });
+  expect(toast.removed).toBe(true);
+  expect(toast.el.remove).toHaveBeenCalledOnce();
+  expect(toast.dock._jobToast).toBeNull();
+  expect(vi.getTimerCount()).toBe(0);
+});
+
 it("replacing a docked card disposes its timers and keeps the new card active", () => {
   vi.useFakeTimers();
   class Card extends Toast {

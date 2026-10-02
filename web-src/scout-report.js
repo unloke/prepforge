@@ -937,16 +937,14 @@ export function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg 
   return `${html}</div>`;
 }
 
-// "59 games analyzed" next to a live "66 games" counter read as a mismatch
-// while streaming: the report lags the fetch. Name both numbers.
-export function scoutAnalyzedLabel(analyzed, fetched = null) {
+// Games in the rendered report. The live fetch total lives in the toolbar
+// counter ("N games fetched"); the report label only changes when the report does.
+export function scoutAnalyzedLabel(analyzed) {
   const a = Number(analyzed) || 0;
-  const f = Number(fetched) || 0;
-  if (f > a) return `${a} of ${f} games analyzed`;
   return `${a} game${a === 1 ? "" : "s"} analyzed`;
 }
 
-export function renderScoutProfile(profile, username, activeSpeed, escapeHtml, { colorRecHtml = "", fetchedTotal = null } = {}) {
+export function renderScoutProfile(profile, username, activeSpeed, escapeHtml, { colorRecHtml = "" } = {}) {
   const speeds = ["bullet", "blitz", "rapid", "classical"];
   const chips = speeds
     .filter((s) => (profile.speedCounts[s] || 0) >= 5)
@@ -959,7 +957,7 @@ export function renderScoutProfile(profile, username, activeSpeed, escapeHtml, {
     <div class="prof-row">
       <div class="prof-id scout-profile-main">
         <a class="scout-username-link prof-name" data-username="${escapeHtml(username)}" href="https://lichess.org/@/${encodeURIComponent(username)}" target="_blank" rel="noopener">${escapeHtml(username)} ↗</a>
-        <span class="scout-profile-games faint" data-analyzed="${profile.total}">${scoutAnalyzedLabel(profile.total, fetchedTotal)}</span>
+        <span class="scout-profile-games faint">${scoutAnalyzedLabel(profile.total)}</span>
       </div>
       <div class="scout-speed-chips speed-chips" role="group" aria-label="Speed">
         <button type="button" class="scout-speed-chip speed${activeSpeed === "all" ? " is-on" : ""}" data-speed="all" aria-pressed="${activeSpeed === "all"}">All</button>

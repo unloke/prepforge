@@ -20,7 +20,6 @@ import {
   renderMiniBoardHtml as renderScoutMiniBoardHtml,
   renderScoutColorTabsHtml,
   renderScoutProfile,
-  scoutAnalyzedLabel,
   restoreScoutExpanded,
   ensureScoutLineSelection,
   scoutDistRowHtml,
@@ -227,23 +226,17 @@ export function createScoutView(deps) {
     const fetched = scoutState?.games?.length || 0;
     const el = document.getElementById("scout-live-count");
     if (el) el.textContent = String(fetched);
-    // The report re-renders in batches, so its "N games analyzed" lags the live
-    // fetch counter; say "N of M analyzed" instead of two disagreeing totals.
-    const analyzedEl = document.querySelector?.(".scout-profile-games[data-analyzed]");
-    if (analyzedEl) {
-      analyzedEl.textContent = scoutAnalyzedLabel(Number(analyzedEl.dataset.analyzed), fetched);
-    }
   }
 
   function engineProgressLabel(p) {
     if (p?.phase === "maia") {
       return p.total > 0
-        ? `Reading human tendencies · ${p.done}/${p.total}`
-        : "Reading human tendencies…";
+        ? `Maia ${p.done}/${p.total}`
+        : "Maia…";
     }
     return p && p.total > 0
-      ? `Analyzing openings · ${p.done}/${p.total}`
-      : "Analyzing openings…";
+      ? `Stockfish ${p.done}/${p.total}`
+      : "Stockfish…";
   }
 
   function engineProgressPct(p) {
@@ -283,12 +276,8 @@ export function createScoutView(deps) {
     } else {
       el.setAttribute("aria-valuenow", String(pct));
     }
-    el.innerHTML = `
-      <div class="scout-progress-row">
-        <span class="scout-progress-label">${escapeHtml(engineProgressLabel(p))}</span>
-        <span class="scout-progress-count">${indeterminate ? "" : `${pct}%`}</span>
-      </div>
-      <div class="scout-progress-track"><div class="scout-progress-fill" style="width:${indeterminate ? 40 : pct}%"></div></div>`;
+    el.innerHTML = `<span class="scout-progress-label">${escapeHtml(engineProgressLabel(p))}</span>
+      <progress max="100"${indeterminate ? "" : ` value="${pct}"`} aria-label="Scout evaluation"></progress>`;
   }
 
   function setEngineProgress(progress) {
@@ -436,7 +425,6 @@ export function createScoutView(deps) {
         scoutState.activeSpeed,
         escapeHtml,
         {
-          fetchedTotal: scoutState.games?.length || 0,
           colorRecHtml: buildColorRecommendationBanner(
             colorRecommendation(scoutState.games),
             escapeHtml,
@@ -501,7 +489,8 @@ export function createScoutView(deps) {
       });
     }
     const sections = [whiteReport.html, blackReport.html].filter(Boolean);
-    const progressHtml = '<div id="scout-engine-progress" class="scout-engine-progress" hidden></div>';
+    const progressHtml = document.getElementById("scout-engine-progress")?.outerHTML ||
+      '<div id="scout-engine-progress" class="scout-engine-progress" hidden></div>';
     if (results) {
       results.innerHTML = sections.length
         ? progressHtml + tabsHtml + sections.join("")
