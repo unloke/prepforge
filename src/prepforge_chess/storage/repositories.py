@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 
@@ -28,6 +28,18 @@ from prepforge_chess.core.models import (
 )
 from prepforge_chess.storage import codec
 from prepforge_chess.storage import sa_tables as t
+
+
+# Review timestamps (ISO UTC) of progress rows deleted with their nodes in the
+# last week, so "reviews this week" doesn't shrink when a move is removed.
+REVIEW_ARCHIVE_KEY = "recap.deleted_reviews"
+# Smart sessions reuse one row per repertoire (or per mixed queue); each played
+# session that a new start replaces is counted here so "Sessions" keeps growing.
+PLAYED_SESSIONS_KEY = "recap.replaced_sessions"
+
+
+def prune_review_archive(stamps: Iterable[Any], since_iso: str) -> List[str]:
+    return sorted(s for s in stamps if isinstance(s, str) and s >= since_iso)
 
 
 logger = logging.getLogger(__name__)
@@ -1707,7 +1719,19 @@ class PrepForgeRepository:
     def delete_opening_nodes(self, repertoire_id: str, node_ids: List[str]) -> None:
         if not node_ids:
             return
+        week_ago_iso = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
         with self.engine.begin() as conn:
+            # Progress rows cascade away with their nodes; keep the review
+            # timestamps of this week so the dashboard's review count stays put.
+            tp = t.training_progress
+            reviewed = conn.execute(
+                select(tp.c.owner_user_id, tp.c.last_reviewed_at).where(
+                    tp.c.repertoire_id == repertoire_id,
+                    tp.c.node_id.in_(node_ids),
+                    tp.c.last_reviewed_at.is_not(None),
+                    tp.c.last_reviewed_at >= week_ago_iso,
+                )
+            ).all()
             # Clear references that don't cascade, otherwise the node delete trips
             # a FOREIGN KEY constraint (e.g. a live training session still points
             # at one of these nodes via current_node_id).
@@ -1723,6 +1747,33 @@ class PrepForgeRepository:
                 )
             )
             self._bump_revision(conn, repertoire_id)
+            by_owner: Dict[str, List[str]] = {}
+            for owner, stamp in reviewed:
+                if owner:
+                    by_owner.setdefault(owner, []).append(stamp)
+            for owner, stamps in sorted(by_owner.items()):
+                cur = self.lock_user_setting(conn, owner, REVIEW_ARCHIVE_KEY, [])
+                self.write_user_setting(conn, owner, REVIEW_ARCHIVE_KEY, prune_review_archive(
+                    (cur if isinstance(cur, list) else []) + stamps, week_ago_iso
+                ))
+
+    def restart_training_session(self, session: TrainingSession, owner: str | None) -> None:
+        """Count a replaced played generation and install its successor atomically.
+
+        Reread under a row lock: overlapping Starts must not both count the same
+        generation. A partially answered first card has a current_node_id even
+        though current_index is still zero.
+        """
+        with self.engine.begin() as conn:
+            existing = self.lock_training_session(conn, session_id=session.id)
+            if owner and existing and (
+                existing.current_index > 0 or existing.current_node_id
+                or existing.mistakes or existing.mastered_nodes
+            ):
+                cur = self.lock_user_setting(conn, owner, PLAYED_SESSIONS_KEY, 0)
+                count = cur if isinstance(cur, int) and cur >= 0 else 0
+                self.write_user_setting(conn, owner, PLAYED_SESSIONS_KEY, count + 1)
+            self.write_training_session(conn, session)
 
     def save_training_session(self, session: TrainingSession) -> None:
         with self.engine.begin() as conn:

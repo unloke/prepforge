@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
 import { Chess } from "chess.js";
 
-// The demo PGN the app prefills (app.js DEMO_PGN) — the browser engine
+// Explicit test PGN — the browser engine
 // evaluates these REAL positions, so the prepare stub derives real FENs.
 const DEMO_PGN_MOVETEXT = "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6";
 const DEMO_SANS = DEMO_PGN_MOVETEXT.split(" ").filter((t) => !/^\d+\.$/.test(t));
@@ -191,9 +191,7 @@ async function runViewport(vp) {
       await page.mouse.up();
     }
   } else {
-    await page.evaluate(() => document.querySelector('[data-testid="bottom-more"]').click());
-    await page.waitForTimeout(300);
-    await page.evaluate(() => document.querySelector('[data-nav-mirror="analyze"]').click());
+    await page.locator('[data-testid="bottom-analyze"]').click();
   }
   await page.waitForTimeout(700);
 
@@ -224,6 +222,8 @@ async function runViewport(vp) {
   check(isolated, "page should be cross-origin isolated (COOP/COEP)");
 
   // Run the REAL analysis pipeline on the demo PGN (5-ply Ruy fragment).
+  check(await page.locator("#pgn-input").inputValue() === "", "Analyze should start with an empty PGN source");
+  await page.locator("#pgn-input").evaluate((el, pgn) => { el.value = pgn; }, DEMO_PGN_MOVETEXT);
   await page.evaluate(() => document.getElementById("run-analysis").click());
   // Stockfish at depth 4 over ~5 positions finishes in well under a second;
   // wait on the RESULTS (not a fixed sleep) and grab the transient success
@@ -285,7 +285,7 @@ async function runViewport(vp) {
   await page.waitForTimeout(300);
   await shot("results");
   const caption = await page.locator("#analysis-chart-caption").textContent();
-  check(/^([+−]?\d+\.\d|[+−]M|#-?\d+)$/.test(caption || ""), `the chart caption should show the current eval, got "${caption}"`);
+  check(/^([+−]?\d+\.\d{2}|[+−]M|#-?\d+)$/.test(caption || ""), `the chart caption should show the current eval, got "${caption}"`);
   // A side line played on the board interrupts the mainline grid as a
   // full-width row and the mainline resumes in its own columns afterwards.
   await page.locator('[data-testid="analysis-board"] [data-square="d7"]').click();

@@ -5,6 +5,7 @@ import {
   MASTERS_MIN_TOTAL_GAMES,
   mastersShareForMove,
 } from "./scout-explorer.js";
+import { countOf } from "./plural.js";
 import {
   ENGINE_AGG_MIN_ANALYZED_GAMES,
   ENGINE_AGG_MIN_COVERAGE_PCT,
@@ -132,7 +133,7 @@ function evaluateRepertoireLayer(candidate, { baselineScorePct } = {}) {
       opportunity: candidate.opportunity,
     });
     reasons.push(
-      `Opponent scores ${candidate.scorePct}% over ${candidate.games} games (${candidate.belowBaseline} pts below baseline)`,
+      `Opponent scores ${candidate.scorePct}% over ${countOf(candidate.games, "game")} (${candidate.belowBaseline} pts below baseline)`,
     );
   }
 

@@ -900,12 +900,20 @@ h2 {
   color: var(--warn-text);
 }
 
+/* One tag style for account kinds (Primary, External) everywhere: Settings,
+   the source picker and the Games/Scout chips. Lives here, not in the lazy
+   settings.css, so it is styled before Settings has ever been opened. */
+.conn-primary,
 .src-kind {
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--muted);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--label);
 }
 
 .src-row.is-external .src-chip-x {
@@ -2301,9 +2309,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   outline-offset: 2px;
 }
 .train-repertoire-chevron {
+  flex: none;
   color: var(--muted);
-  font-size: 16px;
-  line-height: 1;
   transition: transform 160ms ease;
 }
 .train-repertoire-menu[open] .train-repertoire-chevron { transform: rotate(180deg); }
@@ -2855,6 +2862,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #train-banner[data-state="correct"] { --cb: var(--good); --g: "✓"; background: var(--good-soft); }
 #train-banner[data-state="done"] { --cb: var(--good); --g: "★"; }
 #train-banner[data-state="runin"] { --g: "…"; }
+/* Idle has nothing to signal; a ▶ in a circle read as a play button. */
+#train-banner[data-state="idle"] { grid-template-columns: minmax(0, 1fr) auto; }
+#train-banner[data-state="idle"] .train-coach-icon { display: none; }
 #train-banner.flash { animation: trainFlash 420ms ease; }
 #train-banner[data-state="wrong"].flash { animation: trainWrongFlash 760ms ease; }
 @keyframes trainFlash {
@@ -2878,7 +2888,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: 15px;
   font-weight: 800;
 }
-.train-coach-icon::before { content: var(--g, "▶"); }
+.train-coach-icon::before { content: var(--g, "•"); }
 .train-coach-text { display: flex; flex-direction: column; min-width: 0; }
 .train-coach-title {
   overflow: hidden;
@@ -3304,6 +3314,7 @@ body.is-guest .replay-results:empty::before {
 }
 .scout-minisquare.light { background: var(--square-light, #f0d9b5); }
 .scout-minisquare.dark  { background: var(--square-dark,  #b58863); }
+.scout-minisquare.last { background-image: linear-gradient(var(--last-move), var(--last-move)); }
 .scout-minisquare svg, .scout-minisquare .piece { width: 80%; height: 80%; }
 
 /* Shared repertoire viewer */
@@ -3895,7 +3906,10 @@ body.is-guest .replay-results:empty::before {
   inset: 0;
   z-index: var(--z-overlay);
   display: grid;
-  place-items: center;
+  /* Every dialog opens at the same height (sign-in, confirm, share, invite), so
+     they don't jump between centred and top-anchored; growth extends downward. */
+  place-items: start center;
+  padding-top: min(14vh, 120px);
   background: rgba(20, 18, 14, 0.36);
   backdrop-filter: blur(2px);
 }
@@ -4019,17 +4033,13 @@ body.is-guest .replay-results:empty::before {
   color: var(--danger);
   font-size: 13px;
   line-height: 1.4;
-  /* Reserve the line up front: an error appearing must not resize the dialog. */
-  min-height: 1.4em;
+}
+/* No reserved blank line under "Forgot password?"; the dialog is top-anchored,
+   so an error appearing only grows it downward. */
+.auth-error:empty {
+  display: none;
 }
 
-/* Anchor the sign-in dialog near the top instead of centring it, so any
-   remaining growth (a two-line error, Forgot ↔ Sign in) only extends downward
-   rather than making the whole box jump. */
-.modal-overlay.auth-overlay {
-  place-items: start center;
-  padding-top: min(14vh, 120px);
-}
 
 .auth-modal-title {
   display: flex;
@@ -4124,7 +4134,8 @@ body.is-guest .replay-results:empty::before {
 }
 
 .modal-footer {
-  padding: 10px 14px 14px;
+  /* Same side inset as .modal-body so buttons line up with the fields. */
+  padding: 10px 16px 14px;
   display: flex;
   gap: 8px;
   justify-content: flex-end;
@@ -4202,7 +4213,7 @@ body.is-guest .replay-results:empty::before {
 
   .tabbar {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     position: fixed;
     left: 0;
     right: 0;
@@ -6699,4 +6710,8 @@ body.is-guest .replay-results:empty::before {
 .explorer-db.is-active {
   color: var(--accent-strong);
   box-shadow: var(--shadow-1), 0 0 0 1px var(--line), inset 0 -2px 0 var(--accent-strong);
+}
+
+.pgn-file-row {
+  margin-top: 6px;
 }

@@ -30,7 +30,7 @@ describe("command palette filter", () => {
     expect(PALETTE_ACTIONS.map((a) => a.label)).toEqual([
       "New repertoire",
       "Start training",
-      "Play vs human",
+      "Practice game",
       "I'm Feeling Lucky",
       "Toggle light / dark theme",
     ]);

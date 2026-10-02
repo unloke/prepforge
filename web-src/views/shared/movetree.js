@@ -91,6 +91,8 @@ export function createMoveTreeRenderer({ escapeHtml }) {
         event.currentTarget.blur();
       });
       if (onContext) {
+        // The move menu has no visible button; the tooltip says where it is.
+        if (!button.title) button.title = "Right-click for move options";
         button.addEventListener("contextmenu", (event) =>
           onContext(event, button.dataset.nodeId)
         );

@@ -826,6 +826,9 @@ export function isNestedLine(a, b) {
 // raw margin on a real sample. A line a couple of points under baseline is neither a
 // weakness to punish nor a weapon to fear, so it stays neutral (no badge, not a target).
 export const SCOUT_ATTACK_MIN_MARGIN = 6;
+// Fewer games than this can't make a line "main" or a raw-margin weak spot:
+// one loss is not a pattern.
+export const SCOUT_BADGE_MIN_GAMES = 3;
 
 export function enrichPrepTarget(g, baselineScorePct, { maiaScorePct = null } = {}) {
   const useMaia = maiaScorePct != null;
@@ -834,8 +837,10 @@ export function enrichPrepTarget(g, baselineScorePct, { maiaScorePct = null } = 
   const wilsonUpper = wilsonScoreUpperPct(g.w ?? 0, g.d ?? 0, g.l ?? 0);
   const below = baselineScorePct - scoreForBadge;
   const wilsonMargin = useMaia ? 0 : Math.max(0, baselineScorePct - wilsonUpper);
-  const isAttack = below > 0 && (wilsonMargin > 0 || below >= SCOUT_ATTACK_MIN_MARGIN);
-  const isWeapon = !isAttack && scoreForBadge >= baselineScorePct;
+  const realSample = useMaia || (g.games ?? 0) >= SCOUT_BADGE_MIN_GAMES;
+  const isAttack =
+    below > 0 && (wilsonMargin > 0 || (below >= SCOUT_ATTACK_MIN_MARGIN && realSample));
+  const isWeapon = !isAttack && realSample && scoreForBadge >= baselineScorePct;
   const opportunity =
     g.share *
     (wilsonMargin > 0 ? wilsonMargin : below >= SCOUT_ATTACK_MIN_MARGIN ? below * 0.25 : 0);
@@ -1681,11 +1686,16 @@ async function streamPgn(resp, username, onGame, signal) {
   const decoder = new TextDecoder();
   let buffer = "";
   let accepted = 0;
+  let received = 0; // every game block Lichess sent, kept or not (batch-full check)
   let lastDatestamp = null;
 
   const emitBlock = (block) => {
     const trimmed = String(block || "").trim();
     if (!trimmed) return;
+    received += 1;
+    // Pagination follows the export, even when parsing or deduplication drops a game.
+    const stamp = parseScoutDatestamp(headerValue(trimmed, "UTCDate"), headerValue(trimmed, "UTCTime"));
+    if (stamp > 0 && (lastDatestamp == null || stamp < lastDatestamp)) lastDatestamp = stamp;
     const game = parseGameBlock(trimmed, username);
     if (!game) return;
     if (onGame(game) === false) return;
@@ -1719,7 +1729,7 @@ async function streamPgn(resp, username, onGame, signal) {
     }
     if (!signal?.aborted) emitBlock(buffer);
   }
-  return { accepted, emitted: accepted, lastDatestamp };
+  return { accepted, emitted: accepted, received, lastDatestamp };
 }
 
 export function createScoutClient({ fetchImpl, storage, now } = {}) {

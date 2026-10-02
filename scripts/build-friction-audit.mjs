@@ -200,8 +200,7 @@ async function main() {
     if (await page.locator('[data-testid="nav-analyze"]').isVisible()) {
       await page.click('[data-testid="nav-analyze"]');
     } else {
-      await page.click('[data-testid="bottom-more"]');
-      await page.click('[data-nav-mirror="analyze"]');
+      await page.click('[data-testid="bottom-analyze"]');
     }
     await page.locator("#view-analyze.is-active").waitFor({ state: "attached", timeout: 10000 });
     await page.waitForTimeout(400);

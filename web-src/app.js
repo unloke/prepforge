@@ -1,4 +1,5 @@
 import "./styles.css";
+import { countOf } from "./plural.js";
 import { advanceBuildRevision, queuedBuildRevision, rebaseQueuedBuildRevision, withBuildRevision } from "./build-revision.js";
 import {
   ANALYSIS_MAX_NODES,
@@ -166,14 +167,6 @@ window.addEventListener("unhandledrejection", (e) => {
 });
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-const DEMO_PGN = `[Event "PrepForge UI Demo"]
-[Site "https://lichess.org/prepforge-ui"]
-[Date "2026.05.25"]
-[White "PrepForge"]
-[Black "Demo"]
-[Result "1-0"]
-
-1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 1-0`;
 const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
 // Piece artwork sets. Each value is the inner SVG markup for a 0 0 45 45
 // viewBox; fill/stroke come from CSS (.piece). "berlin" is a cleaner,
@@ -279,6 +272,10 @@ function applyPref(name) {
   }
   if (name === "bestArrow" && !pref("bestArrow")) {
     Object.values(boards).forEach((b) => b && b.setEngineArrow && b.setEngineArrow(null));
+  }
+  if (name === "maiaAnalysis" && buildDockTab === "coverage") {
+    // Re-gate Coverage's Scan button and its Maia card.
+    setBuildInspector("coverage");
   }
 }
 
@@ -471,7 +468,7 @@ const appState = {
   // Repertoire ids hidden from lists while their delete-undo window is open.
   pendingRepDeletes: new Set(),
   trainingRepertoireId: null,
-  // Play vs human keeps its own multi-select independent of the legacy
+  // Practice game keeps its own multi-select independent of the legacy
   // line-rehearsal picker. `null` means the list has not been hydrated yet;
   // the first active-list load then selects every active repertoire by default.
   playRepertoireIds: null,
@@ -622,7 +619,7 @@ const GEN_PLAN_CHANGES_SOFT_CAP = 2000;
 const boards = {};
 
 // Delays (ms) for auto-dismissing a card. The countdown pauses during pointer activity.
-const TOAST_DONE_DELAY = 7000;
+const TOAST_DONE_DELAY = 5000;
 const TOAST_FAILED_DELAY = 6000;
 const TOAST_CANCELLED_DELAY = 4500;
 // Minimum gap between progress repaints. A tight loop (e.g. per-ply Brilliant checks, where
@@ -686,6 +683,7 @@ class Toast {
     this.dock = dock;
     this.docked = !!dock;
     this.el = this._build(title || "Working...", message, actions);
+    this.el._toast = this;
     if (dock) {
       this.el.classList.add("is-docked");
       // One card per dock: a new job replaces the previous job's finished card.
@@ -1056,6 +1054,21 @@ class ToastStack {
 
   bind() {
     this.container = document.getElementById("toast-stack");
+    // A finished job's card has said its piece: the next click anywhere else
+    // clears it, so it never sits over the control the user reaches for next.
+    document.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (!this.container || this.container.contains(event.target)) return;
+        this.container
+          .querySelectorAll(".job-toast.state-done, .job-toast.state-failed, .job-toast.state-cancelled")
+          .forEach((el) => {
+            // Cards that still offer something (open result, Retry) stay until their timer.
+            if (el._toast && !el._toast.onClick && !el.querySelector(".toast-action")) el._toast.dismiss();
+          });
+      },
+      true,
+    );
   }
 
   isBusy() {
@@ -1940,7 +1953,7 @@ class PositionCoach {
     const prevFen = ctx.prevFen;
     const token = ++this.token;
     const mover = fen.split(" ")[1] === "b" ? "white" : "black";
-    // "Review my moves" on a game the user played: grade only their own mainline
+    // "Engine review" on a game the user played: grade only their own mainline
     // moves and leave the plain instant read on the opponent's.
     if (!isReviewedMove({ mover, selfSide: analysisSelfSide(), mainline: Number.isInteger(ctx.ply) })) return;
     try {
@@ -1966,18 +1979,22 @@ class PositionCoach {
         if (!after) return;
         top = after.lines[0] || {};
       }
+      const prevMove = previousAnalysisMove();
       const features = c.buildMoveFeatures({
         ply: ctx.ply ?? null,
         moveNumber: Number(prevFen.split(" ")[5]) || null,
         mover,
         uci: ctx.lastUci,
         san: ctx.lastSan,
+        prevSan: prevMove ? prevMove.san : null,
+        prevUci: prevMove ? prevMove.uci : null,
+        prevFenBefore: prevMove ? prevMove.fenBefore : null,
         fenBefore: prevFen,
         fenAfter: fen,
         beforeEval: { lines: before.lines },
         afterEval: { cp: top.cp ?? null, mate: top.mate ?? null, pvUci: top.pvUci || [], pvSan: top.pvSan || [] },
       });
-      renderCoachProse(c.buildCommentary(features));
+      renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
       // Read the position's "texture" from Maia's human-move distribution (one obvious
       // move vs. a rich spread) and fold it into the commentary — best-effort and async,
       // reusing the same Maia worker the brilliant check uses.
@@ -2037,7 +2054,7 @@ class PositionCoach {
       });
       if (brilliant) {
         c.markBrilliant(features, { humanProb: a.humanProbability, winChanceAfter: a.winChanceAfter });
-        renderCoachProse(c.buildCommentary(features));
+        renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
       }
     } catch (err) {
       console.warn("Coach: Maia brilliancy check unavailable", err);
@@ -2059,7 +2076,7 @@ class PositionCoach {
     // render, so the token is still current here; guard anyway for safety.
     if (token !== this.token || fen !== this.fen) return;
     c.markBrilliant(features, null);
-    renderCoachProse(c.buildCommentary(features));
+    renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
     // Then enrich — non-blocking — with how rarely a human finds it. This is a cosmetic detail
     // on top of an already-shown Brilliant; a re-render only if the user is still on this move
     // when Maia answers. Analysis-layer Maia off (or unavailable) → the star
@@ -2070,7 +2087,7 @@ class PositionCoach {
       const a = await provider.moveAssessment({ fen: prevFen, moveUci: uci, rating: effectiveMaiaRating() });
       if (!a || token !== this.token || fen !== this.fen) return;
       c.markBrilliant(features, { humanProb: a.humanProbability, winChanceAfter: a.winChanceAfter });
-      renderCoachProse(c.buildCommentary(features));
+      renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
     } catch (_) {
       /* Maia unavailable → brilliant read with no rarity detail */
     }
@@ -2120,7 +2137,7 @@ class PositionCoach {
       const read = await provider.positionRead({ fen: prevFen, rating: effectiveMaiaRating() });
       if (token !== this.token || fen !== this.fen || !read) return;
       c.attachIntuition(features, read);
-      renderCoachProse(c.buildCommentary(features));
+      renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
       paintMaiaCoachFromRead(prevFen, read, { playedUci: features.uci });
     } catch (err) {
       console.warn("Coach: Maia intuition read unavailable", err);
@@ -2177,6 +2194,16 @@ function setCoachProse(text, tone = "info") {
   if (!el) return;
   el.textContent = text || "";
   for (const t of COACH_TONES) el.classList.toggle(`is-${t}`, t === tone);
+}
+
+// The move before the current Analyze node (lets the coach tell a recapture from a
+// fresh capture). null at the root or one move in.
+function previousAnalysisMove() {
+  const tree = appState.analysisTree;
+  const node = tree && tree.byId ? tree.byId.get(appState.analysisCurrentNodeId || "root") : null;
+  const parent = node && node.parent;
+  if (!parent || !parent.uci) return null;
+  return { san: parent.san, uci: parent.uci, fenBefore: parent.fenBefore };
 }
 
 // Render the engine's read of the move just played, in the coach's own voice.
@@ -3673,7 +3700,7 @@ function dismissTransientOverlays() {
   if (paletteIsOpen()) closePalette();
 }
 
-function runPaletteItem(item) {
+async function runPaletteItem(item) {
   closePalette();
   if (!item) return;
   if (item.kind === "view") {
@@ -3693,14 +3720,30 @@ function runPaletteItem(item) {
   }
   if (item.action === "start-training") {
     switchView("train");
-    startTraining();
+    // A guest gets the sign-in gate only; a live game on the board stays as it is.
+    if (!appState.signedIn) {
+      requireSignIn("Sign in to start training", "train");
+      return;
+    }
+    const livePlay = appState.play && appState.play.active && (appState.play.history || []).length > 0;
+    if (livePlay) {
+      const ok = await showConfirmModal({
+        title: "Leave this game?",
+        body: "The current game will be abandoned.",
+        okLabel: "Start training",
+        cancelLabel: "Keep playing",
+      });
+      if (!ok) return;
+    }
+    if (appState.trainMode === "play") goToSmartTraining();
+    else startTraining();
     return;
   }
   if (item.action === "play-human") {
     switchView("train");
     const playBtn = document.querySelector('#train-modes .train-mode[data-mode="play"]');
     if (playBtn) playBtn.click();
-    startPlaySession();
+    document.getElementById("start-play")?.click();
     return;
   }
   if (item.action === "feeling-lucky") {
@@ -3844,6 +3887,7 @@ function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
   // panel is styled by the same rules as every other state, rather than rendering
   // on the eager sheet alone until the first click pulls the chunk in.
   if (next === "scout") preloadScoutUi().catch(() => {});
+  if (next === "games" && appState.currentView === "replay") maybeAutoCheckGames();
   if (focus) {
     document.querySelector(`[data-replay-panel="${next}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -3932,7 +3976,7 @@ function syncViewHeads() {
     stats.textContent =
       `${lines} line${lines === 1 ? "" : "s"} · ${played.length} move${played.length === 1 ? "" : "s"}` +
       ` · ${train} to train`;
-    stats.title = `${played.length} moves in the tree; ${train} of them are your moves, which Train drills. Opponent replies aren't drilled.`;
+    stats.title = `${countOf(played.length, "move")} in the tree; ${train} of them are your moves, which Train drills. Opponent replies aren't drilled.`;
   }
   stats.hidden = !stats.textContent;
 }
@@ -4005,6 +4049,7 @@ function switchView(name, { fromUrl = false } = {}) {
   }
   if (name === "replay") {
     preloadReplayView().catch(() => {});
+    maybeAutoCheckGames();
   }
   if (name === "settings") {
     preloadSettingsView().catch(() => {});
@@ -4030,7 +4075,11 @@ function switchView(name, { fromUrl = false } = {}) {
   if (name === "dashboard") {
     ensureDashboardView().catch(() => {});
     if (appState.signedIn) {
-      loadDashboard().catch(() => { /* counters refresh is best-effort */ });
+      // Moves added in Repertoire sit in the debounced outbox for a moment;
+      // send them first so the listing's move counts include them.
+      settleBuildOutbox()
+        .then(() => loadDashboard())
+        .catch(() => { /* counters refresh is best-effort */ });
     }
   }
   // Entering Teams (re)loads the caller's teams + shared list.
@@ -4986,7 +5035,7 @@ async function fetchMyLichessGame(accountId = null) {
   lastOrientedPgnPlayers = `${latest.white || ""}\n${latest.black || ""}`;
   if (latest.lichess_id) markLichessSeen(latest.lichess_id);
   const source = latest.source_account ? ` · from ${latest.source_account}` : "";
-  setStatus(`Loaded ${latest.white || "?"} vs ${latest.black || "?"}${source} - analyzing`);
+  setStatus(`Loaded ${latest.white || "?"} vs ${latest.black || "?"}${source} · analyzing`);
   await runAnalysis();
 }
 
@@ -5020,7 +5069,7 @@ async function loadAnalysisHistory() {
   }
   host.innerHTML = payload.analyses
     .map((a) => {
-      const when = (a.analyzed_at || "").slice(0, 10);
+      const when = localDayOf(a.analyzed_at);
       return (
         `<button class="history-item" data-game-id="${escapeHtml(a.game_id)}">` +
         `<span class="hi-players">${escapeHtml(a.white || "?")} vs ${escapeHtml(a.black || "?")}</span>` +
@@ -5663,7 +5712,7 @@ function escapeHtml(text) {
 // `advanced: true` fields fold into a closed "Advanced" section; `onInput`
 // (values, overlay) runs on open and on every change — e.g. to repaint a live
 // note (a `note` field is addressable as [data-note="<name>"]).
-function showInputModal({ title, fields, okLabel = "OK", onInput = null }) {
+function showInputModal({ title, fields, okLabel = "OK", onInput = null, cancel = true }) {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
     overlay.className = "modal-overlay";
@@ -5723,7 +5772,7 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null }) {
         <div class="modal-title">${escapeHtml(title)}</div>
         <div class="modal-body">${inputsHtml}</div>
         <div class="modal-footer">
-          <button class="btn ghost" data-action="cancel" type="button">Cancel</button>
+          ${cancel ? '<button class="btn ghost" data-action="cancel" type="button">Cancel</button>' : ""}
           <button class="btn primary" data-action="ok" type="button">${escapeHtml(okLabel)}</button>
         </div>
       </div>
@@ -5761,7 +5810,7 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null }) {
       }
     };
     document.addEventListener("keydown", onKey);
-    overlay.querySelector('[data-action="cancel"]').addEventListener("click", () => close(null));
+    overlay.querySelector('[data-action="cancel"]')?.addEventListener("click", () => close(null));
     overlay.querySelector('[data-action="ok"]').addEventListener("click", () => close(collect()));
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay) close(null);
@@ -6026,8 +6075,14 @@ function openRepertoireContextMenu(event, repertoireId, isActive) {
     .join("");
   menu.hidden = false;
   const rect = menu.getBoundingClientRect();
-  const left = Math.max(8, Math.min(event.clientX, window.innerWidth - rect.width - 8));
-  const top = Math.max(8, Math.min(event.clientY, window.innerHeight - rect.height - 8));
+  // From the ⋯ button: drop down under it, right edges aligned, so the menu stays
+  // over the row instead of running past the card. A right-click opens at the cursor.
+  const opener = event.type === "contextmenu" ? null : event.currentTarget;
+  const anchor = opener && opener.getBoundingClientRect ? opener.getBoundingClientRect() : null;
+  const wantLeft = anchor ? anchor.right - rect.width : event.clientX;
+  const wantTop = anchor ? anchor.bottom + 4 : event.clientY;
+  const left = Math.max(8, Math.min(wantLeft, window.innerWidth - rect.width - 8));
+  const top = Math.max(8, Math.min(wantTop, window.innerHeight - rect.height - 8));
   menu.style.left = `${left}px`;
   menu.style.top = `${top}px`;
   menu.querySelectorAll("button").forEach((button) => {
@@ -6115,10 +6170,12 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       await showInputModal({
         title: copied ? "Share link copied!" : "Share link",
         okLabel: "Done",
+        // Nothing to cancel: the link already exists.
+        cancel: false,
         fields: [
           {
             name: "url",
-            label: "Anyone with this link can view (not edit) the repertoire",
+            label: "View-only link",
             default: url,
           },
         ],
@@ -6210,10 +6267,6 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
   } catch (error) {
     setStatusError(error.message);
   }
-}
-
-function prefillDemoPgn() {
-  document.getElementById("pgn-input").value = DEMO_PGN;
 }
 
 async function runAnalysis(options = {}) {
@@ -6884,7 +6937,7 @@ function classBadgeSymbol(classification) {
       mistake: "?",
         blunder: "??",
       missed: "x",
-    }[group] || "."
+    }[group] || ""
   );
 }
 
@@ -6941,11 +6994,10 @@ async function showAnalysisPly(ply) {
     legalMoves: info.legal_moves,
     lastMove: move ? move.uci : null,
   });
-  boards.analysis.setMoveBadge(
-    move ? move.uci.slice(2, 4) : null,
-    move ? move.classification : null,
-    move ? classBadgeSymbol(move.classification) : ""
-  );
+  // Only an analysed move gets a badge; an unclassified one (a pasted PGN, a game sent
+  // from Train) shows none instead of an empty placeholder dot.
+  const badge = move && move.classification ? classBadgeSymbol(move.classification) : "";
+  boards.analysis.setMoveBadge(badge ? move.uci.slice(2, 4) : null, badge ? move.classification : null, badge);
   document.getElementById("analysis-board-label").textContent = move
     ? `${move.move_number}${move.side === "black" ? "..." : "."} ${move.san}`
     : "Initial position";
@@ -7452,7 +7504,7 @@ async function selectBuildNode(nodeId) {
   boards.build.setAnnotations(node.arrows || [], node.circles || []);
   const label =
     node.depth === 0
-      ? `${appState.build.name} - ${appState.build.color}`
+      ? `${appState.build.name} · ${appState.build.color}`
       : `${node.move_number}${node.move_side === "black" ? "..." : "."} ${node.san}`;
   document.getElementById("build-board-label").textContent = label;
   renderBuilderTree();
@@ -7954,8 +8006,14 @@ function setBuildInspector(tool) {
   if (scan) {
     const readOnly = typeof isBuildReadOnly === "function" && isBuildReadOnly();
     scan.hidden = tab !== "coverage";
-    scan.disabled = readOnly;
-    scan.title = readOnly ? "Read-only — copy to your account first" : "Scan coverage with Maia3";
+    const maiaOff = !maiaAnalysisEnabled();
+    // Coverage is Maia-only: with Maia off the button would do nothing, so say why.
+    scan.disabled = readOnly || maiaOff;
+    scan.title = readOnly
+      ? "Read-only — copy to your account first"
+      : maiaOff
+        ? "Turn on Maia in Settings to scan"
+        : "Scan coverage with Maia3";
   }
   paintInspectorScope();
   if (tab === "explorer") refreshExplorerPanel();
@@ -8137,7 +8195,7 @@ function renderExplorerRows(stats, fen) {
           `<span class="${cls}" style="width:${value}%" title="${label} ${value}%">${explorerSegLabel(value)}</span>`;
         return `
     <div class="explorer-row${thin ? " is-thin" : ""}${has ? " is-in" : ""}" data-uci="${escapeHtml(m.uci)}">
-      <button type="button" class="explorer-pick" data-explorer-pick aria-label="${escapeHtml(action)} (${games} games, White ${m.whitePct}%, draw ${m.drawPct}%, Black ${m.blackPct}%)">
+      <button type="button" class="explorer-pick" data-explorer-pick aria-label="${escapeHtml(action)} (${countOf(games, "game")}, White ${m.whitePct}%, draw ${m.drawPct}%, Black ${m.blackPct}%)">
         <span class="explorer-san">${escapeHtml(m.san)}${has ? '<span class="explorer-inrep" title="In your repertoire">&#9679;</span>' : ""}</span>
       </button>
       <span class="explorer-eval">&hellip;</span>
@@ -9088,6 +9146,22 @@ async function deleteBuildNodeLocal(nodeId) {
   appState.buildUndoCommitByMove.set(undoMoveKey, undoCommit);
 }
 
+// Soft drain for read-only refreshes (Library counts): sends whatever is queued
+// without closing undo windows, and never throws.
+async function settleBuildOutbox() {
+  if (!appState.build) return;
+  try {
+    if (appState.buildFlushing) await appState.buildFlushing;
+    if (appState.buildPending.length || appState.buildPendingDeletes.length) {
+      clearTimeout(appState.buildFlushTimer);
+      appState.buildFlushTimer = null;
+      await flushBuildMoves();
+    }
+  } catch (_) {
+    // the outbox retries on its own; the Library just shows server truth
+  }
+}
+
 // Drain every pending move before an operation that needs server truth or a real
 // node id (Generate anchor, export, node actions, repertoire switch). Throws if a
 // move can't be synced so the caller can abort rather than 400 on a tmp id.
@@ -9223,7 +9297,7 @@ async function onBuildBoardMove(moveUci) {
       return;
     }
     if (!created) {
-      setStatus("Cancelled - playing the move would create a new repertoire");
+      setStatus("Cancelled · playing the move would create a new repertoire");
       rollback();
       return;
     }
@@ -9346,7 +9420,7 @@ async function fillPgnInputFromFile(file) {
     if (drawer) drawer.open = true;
     void loadPgnIntoAnalyze(text, { goToEnd: false, quiet: true }).catch(() => {});
     orientAnalysisFromPgn(text);
-    setStatus(`Loaded ${file.name} - press Analyze`);
+    setStatus(`Loaded ${file.name} · press Analyze`);
   } catch (_) {
     setStatus("Could not read file", { severity: "error" });
   }
@@ -10138,9 +10212,11 @@ function renderPlayRepertoirePicker(active = null) {
     summary.textContent = !list.length
       ? "No active repertoires"
       : selected.size === list.length
-        ? `All ${list.length} repertoires`
+        ? list.length === 1
+          ? list[0].name || "1 repertoire"
+          : `All ${list.length} repertoires`
         : selected.size
-          ? `${selected.size} of ${list.length} repertoires`
+          ? `${selected.size} of ${list.length} repertoire${list.length === 1 ? "" : "s"}`
           : "Select repertoires";
   }
 }
@@ -10162,6 +10238,7 @@ function syncTrainPickerVisibility() {
   const hint = document.getElementById("train-hint");
   const skip = document.getElementById("train-skip");
   const wantRep = !smart && !play;
+  if (book && !(appState.play && appState.play.active)) syncPlayBookOptions(book);
   const wantPlayRep = play && book && book.value === "repertoire";
   if (select) select.hidden = !wantRep;
   if (picker) picker.hidden = !wantRep;
@@ -10199,11 +10276,16 @@ function syncTrainPickerVisibility() {
   const startPlay = document.getElementById("start-play");
   const bookEl = document.getElementById("train-play-book");
   const livePlay = !!(appState.play && appState.play.active);
-  if (bookEl) bookEl.disabled = livePlay;
+  if (bookEl) {
+    bookEl.disabled = livePlay;
+    if (!livePlay) syncPlayBookOptions(bookEl);
+  }
   if (startPlay) {
     const needRep = wantPlayRep && !selectedTrainRepertoireIds().length;
     startPlay.disabled = !!needRep;
     startPlay.textContent = livePlay ? "New game" : "Start";
+    // Mid-game the board is the main action; the restart button steps back.
+    startPlay.classList.toggle("primary", !livePlay);
   }
   syncPlayColorLock();
   paintPlayBookHint();
@@ -10296,7 +10378,7 @@ function syncTrainSessionControls() {
   if (blitzRow) {
     blitzRow.title = appState.smart
       ? "Blitz is locked for this session — applies on next Start"
-      : "10s per move - a timeout counts as a miss";
+      : "10s per move · a timeout counts as a miss";
   }
   const takeback = document.getElementById("play-takeback");
   const resign = document.getElementById("play-resign");
@@ -10346,10 +10428,19 @@ function sideToMoveFromFen(fen) {
 // The player's calendar day in their own timezone (not UTC) — the server keys
 // the daily training streak off this so a late-evening session counts for the
 // day the player actually lived it.
-function localDateString() {
-  const d = new Date();
+function localDateString(d = new Date()) {
   const pad = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// A server timestamp (UTC ISO) as the player's local calendar day. Timestamps
+// without an offset are UTC too.
+function localDayOf(iso) {
+  const raw = String(iso || "");
+  if (!raw.includes("T")) return raw.slice(0, 10); // already a calendar day
+  const stamp = /[zZ]$|[+-]\d\d:?\d\d$/.test(raw) ? raw : `${raw}Z`;
+  const d = new Date(stamp);
+  return Number.isNaN(d.getTime()) ? raw.slice(0, 10) : localDateString(d);
 }
 
 function setTrainBanner(state, title, sub) {
@@ -10376,7 +10467,10 @@ async function startTraining(mode, options = {}) {
   // guest gets the sign-in gate — not a "Nothing to train yet" that blames an
   // empty repertoire and a raw "not authenticated".
   if (!appState.signedIn) {
-    setTrainBanner("done", "Sign in to train", "Your repertoires and review schedule live in your account.");
+    // Never repaint the banner over a live game (Practice game runs for guests).
+    if (!(appState.play && appState.play.active)) {
+      setTrainBanner("done", "Sign in to train", "Your repertoires live in your account.");
+    }
     requireSignIn("Sign in to start training", "train");
     return;
   }
@@ -10431,7 +10525,7 @@ async function startTraining(mode, options = {}) {
     setStatus(
       mapped.resumed
         ? `Resumed trainer: line ${mapped.cardIndex + 1} / ${mapped.totalCards}`
-        : `Trainer ready: ${payload.lines.length} lines`,
+        : `Trainer ready: ${payload.lines.length} line${payload.lines.length === 1 ? "" : "s"}`,
     );
     syncWorkspaceUrl();
   } catch (error) {
@@ -10441,7 +10535,30 @@ async function startTraining(mode, options = {}) {
 
 function playBook() {
   const el = document.getElementById("train-play-book");
-  return el && el.value === "repertoire" ? "repertoire" : "explorer";
+  const value = el && el.value;
+  return value === "repertoire" || value === "maia" ? value : "explorer";
+}
+
+// The Lichess explorer answers only for a signed-in user with a linked Lichess
+// account; My repertoire needs an account. Unusable books are disabled, and a
+// book that became unusable falls back to Maia (and returns once usable again).
+function syncPlayBookOptions(bookEl) {
+  const linked = appState.signedIn && (!!appState.lichessUsername || lichessAccounts().length > 0);
+  const usable = { explorer: linked, repertoire: !!appState.signedIn, maia: true };
+  const reasons = { explorer: appState.signedIn ? "Link a Lichess account in Settings" : "Sign in and link a Lichess account", repertoire: "Sign in to use your repertoires" };
+  for (const option of bookEl.options) {
+    const ok = usable[option.value] !== false;
+    option.disabled = !ok;
+    option.title = ok ? "" : reasons[option.value] || "";
+  }
+  if (!usable[bookEl.value]) {
+    bookEl.dataset.autoFrom = bookEl.value;
+    bookEl.value = "maia";
+  } else if (bookEl.dataset.autoFrom && usable[bookEl.dataset.autoFrom] && bookEl.value === "maia") {
+    bookEl.value = bookEl.dataset.autoFrom;
+    delete bookEl.dataset.autoFrom;
+  }
+  bookEl.title = bookEl.value === "maia" && bookEl.dataset.autoFrom ? reasons[bookEl.dataset.autoFrom] || "" : "";
 }
 
 const PLAY_COLOR_KEY = "prepforge.play_color";
@@ -10505,7 +10622,8 @@ function paintPlayBookHint() {
 
 function playBookLabel(play) {
   const session = play || appState.play;
-  const book = session && session.book === "repertoire" ? "My repertoire" : "Lichess explorer";
+  const book =
+    session && session.book === "repertoire" ? "My repertoire" : session && session.book === "maia" ? "Maia" : "Lichess explorer";
   const color = session && session.userColor === "black" ? "Black" : "White";
   const they = session && session.lastOppSan ? ` · they ${session.lastOppSan}` : "";
   const reps =
@@ -10716,6 +10834,16 @@ function paintPlayPosition({ fen, legalMoves, lastMove, banner, sub, label, stat
   if (labelEl) labelEl.textContent = label || playBookLabel();
 }
 
+// Start a practice game and remember the in-flight start, so a move made on the
+// board while it sets up is played into the new game instead of being dropped.
+function startPlaySessionTracked(options) {
+  const pending = startPlaySession(options).finally(() => {
+    if (appState.playStarting === pending) appState.playStarting = null;
+  });
+  appState.playStarting = pending;
+  return pending;
+}
+
 async function startPlaySession({
   fen,
   reason,
@@ -10727,6 +10855,9 @@ async function startPlaySession({
   source: luckySource,
   sourceUrl: luckySourceUrl,
 } = {}) {
+  if (appState.trainMode !== "play") return false;
+  const startToken = appState.playStartToken = (appState.playStartToken || 0) + 1;
+  const isCurrentStart = () => appState.playStartToken === startToken && appState.trainMode === "play";
   appState.smart = null;
   appState.training = null;
   const startFen = fen || START_FEN;
@@ -10753,6 +10884,7 @@ async function startPlaySession({
       const metas = playRepertoireMeta(selectedIds);
       const metasById = new Map(metas.map((rep) => [String(rep.id), rep]));
       const payloads = await Promise.all(selectedIds.map((id) => loadPlayRepertoirePayload(id)));
+      if (!isCurrentStart()) return false;
       playRepertoires = payloads
         .map((payload, index) => normalizePlayRepertoire(payload, metasById.get(String(selectedIds[index])) || { id: selectedIds[index] }))
         .filter((rep) => rep.id && rep.rootId);
@@ -10763,7 +10895,7 @@ async function startPlaySession({
       repertoireCursors = playCursorsAtFen(playRepertoires, startFen);
       nodeId = playRepertoires.find((rep) => repertoireCursors[rep.id]?.length)?.rootId || null;
     } catch (error) {
-      setStatusError(error.message);
+      if (isCurrentStart()) setStatusError(error.message);
       return false;
     }
   }
@@ -10786,9 +10918,10 @@ async function startPlaySession({
   try {
     info = await boardInfo(startFen);
   } catch (error) {
-    setStatusError(error.message || "Could not open that position");
+    if (isCurrentStart()) setStatusError(error.message || "Could not open that position");
     return false;
   }
+  if (!isCurrentStart()) return false;
   appState.play = {
     active: true,
     fen: info.fen,
@@ -10827,9 +10960,7 @@ async function startPlaySession({
                 ? `Master game, critical ${phase || "moment"} — your move`
               : reason === "titled-game"
                   ? `${String(luckySource || "").startsWith("lichess-") ? "Live Lichess game" : "Titled reference"}, critical ${phase || "moment"} — your move`
-              : book === "explorer"
-              ? "Explorer at your rating, Maia when the sample thins"
-              : "Repertoires first, Explorer out of book, Maia when thin";
+              : "";
   const luckyMeta =
     reason === "titled-game" && luckyGameId
       ? ` · ${[luckyWhite, luckyBlack].filter(Boolean).join(" vs ") || "Lichess game"} (${luckyGameId})`
@@ -10848,6 +10979,13 @@ async function startPlaySession({
     await playOpponentReply();
   }
   return true;
+}
+
+// Where the next reply comes from, shown while the opponent thinks.
+function playThinkingSub(play) {
+  if (play.book === "maia") return "Maia";
+  const explorer = play.explorerOff ? "" : "Explorer → ";
+  return play.book === "explorer" ? `${explorer}Maia` : `Repertoire → ${explorer}Maia`;
 }
 
 async function playOpponentReply() {
@@ -10871,7 +11009,7 @@ async function playOpponentReply() {
   setTrainBanner(
     "runin",
     "Opponent thinking…",
-    play.book === "explorer" ? "Lichess Explorer → Maia" : "Active repertoires → Explorer → Maia",
+    playThinkingSub(play),
   );
   const repertoireReplies = play.book === "repertoire" ? playRepertoireReplies(play, info.legal_moves) : [];
   let explorer = { totalGames: 0, moves: [] };
@@ -10879,8 +11017,16 @@ async function playOpponentReply() {
   // selected book is out of book; Maia is fetched only if that Explorer read
   // is thin/unavailable (or has no legal move).
   if (play.book === "explorer" || (play.book === "repertoire" && !repertoireReplies.length)) {
-    explorer = await fetchPlayExplorer(fen);
-    if (!isCurrent()) return;
+    if (play.explorerOff) {
+      // Already known to need sign-in / a linked account: don't ask every move.
+      explorer = { totalGames: 0, moves: [], unavailable: play.explorerOff };
+    } else {
+      explorer = await fetchPlayExplorer(fen);
+      if (!isCurrent()) return;
+      if (explorer.unavailable === "sign-in" || explorer.unavailable === "link") {
+        play.explorerOff = explorer.unavailable;
+      }
+    }
   }
   let maiaPredictions = [];
   let reply = pickOpponentReply({
@@ -10949,7 +11095,12 @@ async function playOpponentReply() {
           ? `Repertoire · ${reply.repertoireNames.length === 1 ? reply.repertoireNames[0] : `${reply.repertoireNames[0]} +${reply.repertoireNames.length - 1}`}`
           : "Repertoire"
         : "Maia";
-  const reason = replyReasonNote(reply);
+  // Say once per game why the explorer is out; later Maia replies speak for themselves.
+  let reason = replyReasonNote(reply);
+  if (reply.reason === "explorer-unavailable") {
+    if (play.explorerNoted) reason = "";
+    play.explorerNoted = true;
+  }
   paintPlayPosition({
     fen: after.board.fen,
     legalMoves: ended.legalMoves,
@@ -11056,7 +11207,7 @@ async function runFeelingLuckyClick() {
       setBanner: (state, title, sub) => setTrainBanner(state, title, sub),
       startSession: async (session) => {
         appState.lastLuckyFen = session.fen;
-        return startPlaySession(session);
+        return startPlaySessionTracked(session);
       },
     });
   } catch (error) {
@@ -11098,9 +11249,7 @@ async function takebackPlaySession() {
     banner: yourMove ? "Your move" : "Opponent thinking…",
     sub: yourMove
       ? "Takeback — play again"
-      : play.book === "explorer"
-        ? "Lichess Explorer → Maia"
-        : "Active repertoires → Explorer → Maia",
+      : playThinkingSub(play),
     label: playBookLabel(play),
     state: yourMove ? "move" : "runin",
   });
@@ -11136,11 +11285,20 @@ async function openPlayInAnalyze() {
   if (input) {
     await loadPgnIntoAnalyze(input.value, { goToEnd: true, quiet: true }).catch(() => {});
   }
-  setStatus("Loaded this Play vs human game in Analyze");
+  setStatus("Loaded this Practice game in Analyze");
 }
 
 async function submitTrainingMove(playedUci) {
   if ((appState.trainMode || "smart") === "play") {
+    if (!(appState.play && appState.play.active)) {
+      // A move made while Start is still setting up, or on the idle start board,
+      // opens the game with that move rather than vanishing.
+      if (appState.playStarting) {
+        const pending = appState.playStarting;
+        if (!await pending || appState.trainMode !== "play") return;
+      }
+      else if (!appState.play && playPickerColor() === "white") await startPlaySessionTracked();
+    }
     if (appState.play && appState.play.active) return submitPlayMove(playedUci);
     return;
   }
@@ -11210,7 +11368,7 @@ async function submitTrainingMove(playedUci) {
     const expectedSan = result.expected_san || "the prepared move";
     const sub = review.savedStreak > 0
       ? `Prepared move: ${expectedSan}. Fix it in recovery to win your run back.`
-      : `Prepared move: ${expectedSan}. Resetting the position.`;
+      : `Prepared move: ${expectedSan}.`;
     setTrainBanner(
       "wrong",
       playedSan ? `Not ${playedSan}` : "Not the prepared move",
@@ -11240,7 +11398,7 @@ async function submitTrainingMove(playedUci) {
     legalMoves: [],
     lastMove: result.played_uci,
   });
-  setTrainBanner("correct", "Correct!", result.played_san ? `You played ${result.played_san}` : "Nice - that's the prep");
+  setTrainBanner("correct", "Correct!", result.played_san ? `You played ${result.played_san}` : "");
 
   // 2) After a beat, let the opponent reply as its own animated step.
   if (result.reply_uci && result.fen_after_reply) {
@@ -11275,7 +11433,7 @@ async function enterReviewRound() {
   review.active = true;
   review.index = 0;
   boards.train.setEngineArrow(null);
-  setTrainBanner("review", "Recovery round", `Fix ${review.queue.length} missed move${review.queue.length === 1 ? "" : "s"} to win your run back`);
+  setTrainBanner("review", "Recovery round", `Fix ${countOf(review.queue.length, "missed move")} to win your run back`);
   await sleep(700);
   showReviewItem();
 }
@@ -11297,8 +11455,8 @@ async function showReviewItem() {
   boards.train.setPosition({ fen: item.fen, legalMoves: info.legal_moves || [], lastMove: null });
   const side = sideToMoveFromFen(item.fen);
   updateTrainTurnBadge(side);
-  setTrainBanner("review", `Recovery - ${review.index + 1} / ${review.queue.length}`, `${side === "white" ? "White" : "Black"} to move - the one you missed`);
-  document.getElementById("train-board-label").textContent = "Recovery round - get it right to win your run back";
+  setTrainBanner("review", `Recovery · ${review.index + 1} / ${review.queue.length}`, `${side === "white" ? "White" : "Black"} to move`);
+  document.getElementById("train-board-label").textContent = "Recovery round";
 }
 
 async function submitReviewMove(playedUci) {
@@ -11318,18 +11476,16 @@ async function submitReviewMove(playedUci) {
       boards.train.setPosition({ fen: after.board.fen, legalMoves: [], lastMove: playedUci });
     }
     review.recovered += 1;
-    stats.history.push(true);
+    // The trail mirrors the first-try counters; recovery answers are not graded.
     await renderTrainStats();
-    setTrainBanner("correct", "Recovered!", "Mistake fixed - nice save");
+    setTrainBanner("correct", "Recovered!", "Mistake fixed");
     playSound("move");
     await sleep(640);
     appState.trainBusy = false;
     review.index += 1;
     showReviewItem();
   } else {
-    stats.history.push(false);
-    await renderTrainStats();
-    setTrainBanner("wrong", "Still not it", "Try again - you've got this");
+    setTrainBanner("wrong", "Still not it", "Try again");
     playSound("capture");
   }
 }
@@ -11344,11 +11500,11 @@ function finishReviewRound() {
     stats.streak = review.savedStreak;
     stats.best = Math.max(stats.best, review.savedStreak);
     void renderTrainStats().catch(() => {});
-    setTrainBanner("done", "Run recovered!", `Fixed ${review.recovered} - back to ${review.savedStreak} in a row - best ${stats.best}`);
+    setTrainBanner("done", "Run recovered!", `Fixed ${review.recovered} · back to ${review.savedStreak} in a row · best ${stats.best}`);
   } else {
-    setTrainBanner("done", "All cleaned up!", `Fixed ${review.recovered} missed move${review.recovered === 1 ? "" : "s"}`);
+    setTrainBanner("done", "All cleaned up!", `Fixed ${countOf(review.recovered, "missed move")}`);
   }
-  document.getElementById("train-board-label").textContent = "Press Start to train again";
+  document.getElementById("train-board-label").textContent = "Session complete";
   celebrate();
 }
 
@@ -11357,8 +11513,8 @@ function finishTrainingSession() {
   if (appState.training) appState.training.prompt = null;
   boards.train.setEngineArrow(null);
   document.getElementById("train-progress-fill").style.width = "100%";
-  setTrainBanner("done", "Session complete!", `${stats.correct} correct - ${stats.mistakes} mistakes - best run ${stats.best}`);
-  document.getElementById("train-board-label").textContent = "Press Start to train again";
+  setTrainBanner("done", "Session complete!", `${stats.correct} correct · ${countOf(stats.mistakes, "mistake")} · best run ${stats.best}`);
+  document.getElementById("train-board-label").textContent = "Session complete";
   syncTrainSessionControls();
   celebrate();
 }
@@ -11430,11 +11586,13 @@ function updateTrainTurnBadge(side) {
   if (!side) {
     badge.hidden = true;
     badge.innerHTML = "";
+    badge.title = "";
     delete badge.dataset.side;
     return;
   }
   badge.hidden = false;
   badge.dataset.side = side;
+  badge.title = side === "white" ? "White to move" : "Black to move";
   // Show the side-to-move as a real piece (king of that colour), not a bare
   // letter. Pieces are inline SVG (see pieceSvg) — there is no PNG asset.
   badge.innerHTML = pieceSvg(side === "white" ? "K" : "k");
@@ -11698,7 +11856,7 @@ async function startSmartTraining(options = {}) {
   if (!isCurrent()) return;
   setTrainSyncState("saved");
   document.getElementById("train-board-label").textContent =
-    `${payload.repertoire_name} - you play ${payload.color}`;
+    `${payload.repertoire_name} · you play ${payload.color}`;
   loadPhaseCoach()
     .then((m) => {
       if (appState.smart !== smart) return;
@@ -11709,7 +11867,7 @@ async function startSmartTraining(options = {}) {
   setStatus(
     mapped.resumed
       ? `Resumed queue: card ${smart.cardIndex + 1} / ${smart.queue.length}`
-      : `Queue ready: ${smart.queue.length} cards`,
+      : `Queue ready: ${countOf(smart.queue.length, "card")}`,
   );
   syncWorkspaceUrl();
   const resumedAttempt = appState.smart.attempt;
@@ -11772,7 +11930,7 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
   if (cardMeta && cardMeta.color) {
     board.setOrientation(cardMeta.color === "black" ? "black" : "white");
     document.getElementById("train-board-label").textContent =
-      `${cardMeta.repertoire_name || smart.repertoireName} - you play ${cardMeta.color}`;
+      `${cardMeta.repertoire_name || smart.repertoireName} · you play ${cardMeta.color}`;
   }
   // The previous card's last move only counts as the cue when the board is
   // already sitting on this prompt's position; a jump to a new position (e.g.
@@ -11828,16 +11986,34 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
     board.setEngineArrow(prompt.expected_uci);
     clearBlitzTimer(); // learning is never against the clock
   } else {
+    const cueSan = smartPromptCueSan(smart, prompt);
     setTrainBanner(
       "move",
       "Your move",
-      `${SMART_KIND_LABELS[prompt.kind] || "Review"} · play the prepared idea`,
+      `${SMART_KIND_LABELS[prompt.kind] || "Review"} · ${cueSan ? `answer ${cueSan}` : "play your prep"}`,
     );
     if (smart.blitz && smart.attempt === 1) startBlitzTimer(smart, prompt);
     else clearBlitzTimer();
   }
   prefetchTrainCoach(prompt);
   syncTrainSessionControls();
+}
+
+// The opponent move this card answers ("answer 3...Nf6"), from the run-in or the
+// previous step of the same card. "" when the card starts from the initial position.
+function smartPromptCueSan(smart, prompt) {
+  const runIn = prompt.run_in || [];
+  let san = runIn.length ? runIn[runIn.length - 1].san : "";
+  if (!san) {
+    const card = smart.queue[smart.cardIndex];
+    const prev = card && smart.targetIndex > 0 ? card.targets[smart.targetIndex - 1] : null;
+    san = prev && prev.reply ? prev.reply.san : "";
+  }
+  if (!san) return "";
+  const parts = String(prompt.fen_before || "").split(" ");
+  const num = Number(parts[5]) || 1;
+  // The cue was played by the other side: number it from the prompt's position.
+  return parts[1] === "w" ? `${num - 1}...${san}` : `${num}.${san}`;
 }
 
 function prefetchTrainCoach(prompt) {
@@ -11864,13 +12040,9 @@ function prefetchTrainCoach(prompt) {
         // never the canned "Develop your pieces..." on every card (UX P1-6).
         setTrainBanner(
           "teach",
-          `${model.title}: ${prompt.expected_san}`,
+          `New move: ${prompt.expected_san}`,
           trainTeachLine(prompt, model) || "Watch the arrow, then play the move.",
         );
-      } else if (prompt.kind !== "new" && state === "move" && coachTipMayReplace(appState.trainHintLevel)) {
-        // promptTip never names the prepared SAN — model.tip would leak e4
-        // (and every other answer) onto the Your-move banner.
-        setTrainBanner("move", "Your move", model.promptTip || "Play your prepared idea");
       }
     })
     .catch(() => {});
@@ -11912,6 +12084,8 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
     // accuracy chips therefore never count retries.
     if (attempt === 1) {
       stats.mistakes += 1;
+      // A first-try miss ends the run, same as Line rehearsal.
+      stats.streak = 0;
       stats.history.push(false);
       rememberSmartSession({ attempt: attempt + 1 });
       await renderTrainStats();
@@ -11930,13 +12104,13 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
     }
     playSound("capture");
     if (attempt === 1) {
-      // First miss: auto-hint and a free retry, streak intact, no reveal.
+      // First miss: auto-hint and a free retry, no reveal.
       // The blitz retry is deliberately untimed — the clock tests recall,
       // the retry rebuilds it.
       const cached = prompt.phaseCoach;
       setTrainBanner(
         "wrong",
-        timedOut ? "Time's up - try again" : "Not that one - try again",
+        timedOut ? "Time's up · try again" : "Not that one · try again",
         wrongMoveTip({
           hintLevel: appState.trainHintLevel,
           hint: prompt.hint,
@@ -11957,9 +12131,10 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
             // A retry can already have succeeded or revealed the answer while
             // this inference was pending; its feedback owns the banner now.
             if (document.getElementById("train-banner")?.dataset.state !== "wrong") return;
+            if (!model.tip) return;
             setTrainBanner(
               "wrong",
-              timedOut ? "Time's up - try again" : "Not that one - try again",
+              timedOut ? "Time's up · try again" : "Not that one · try again",
               model.tip,
             );
           }
@@ -11984,7 +12159,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       setTrainBanner(
         "reveal",
         `It's ${prompt.expected_san}`,
-        `${why ? `${why} ` : ""}${requeued ? "Play it to continue - this card comes back in a few cards." : "Play it to continue."}`
+        `${why ? `${why} ` : ""}${requeued ? "Play it to continue; this card comes back soon." : "Play it to continue."}`
       );
     }
     await sleep(950);
@@ -12127,12 +12302,12 @@ async function finishSmartSession() {
   document.getElementById("train-progress-fill").style.width = "100%";
   const dots = document.getElementById("train-card-dots");
   if (dots) dots.innerHTML = "";
-  const fixed = smart.retriesFixed ? ` - ${smart.retriesFixed} fixed on retry` : "";
+  const fixed = smart.retriesFixed ? ` · ${smart.retriesFixed} fixed on retry` : "";
   const blitzed = smart.blitz && smart.timeouts ? ` (${smart.timeouts} timed out)` : "";
   setTrainBanner(
     "done",
     smart.blitz ? "Blitz session complete!" : "Session complete!",
-    `${stats.correct || 0} first-try correct - ${stats.mistakes || 0} missed${blitzed}${fixed}`
+    `${stats.correct || 0} first-try correct · ${stats.mistakes || 0} missed${blitzed}${fixed}`
   );
   // End on the last card's final position (its last answer, plus the reply when the
   // line has one) instead of wherever the board happened to be mid-line.
@@ -12558,10 +12733,30 @@ function applyServerEngineGating() {
 // installs or runs an engine on the server. Server install endpoints remain in
 // server.py for a future admin mode (gated by PREPFORGE_SERVER_ENGINE_ENABLED).
 
+// Games opened with nothing loaded yet: check the recent games once per visit
+// instead of showing an empty page until Check is pressed.
+function maybeAutoCheckGames() {
+  if (appState.replayAutoChecked || appState.replayResults || !appState.signedIn) return;
+  if ((appState.replaySection || "games") !== "games") return;
+  const usernames = resolveFetchUsernames({
+    selection: gamesSourceSelection(),
+    linkedAccounts: lichessAccounts(),
+    includeExternal: true,
+  });
+  if (!usernames.length) return;
+  appState.replayAutoChecked = true;
+  void runLichessCompare();
+}
+
 async function runLichessCompare() {
   // Games are checked against your repertoires (owner-scoped /api/lichess/compare).
   if (!requireSignIn("Sign in to check your games against your repertoire", "games-check")) return;
   const selection = gamesSourceSelection();
+  const token = appState.replayCheckToken = (appState.replayCheckToken || 0) + 1;
+  const owner = appState.accountUserId;
+  const sourceKey = JSON.stringify(selection);
+  const isCurrent = () => appState.replayCheckToken === token && appState.signedIn
+    && appState.accountUserId === owner && JSON.stringify(gamesSourceSelection()) === sourceKey;
   const usernames = resolveFetchUsernames({
     selection,
     linkedAccounts: lichessAccounts(),
@@ -12587,10 +12782,13 @@ async function runLichessCompare() {
       ...(linkedIds !== null ? { account_ids: linkedIds } : {}),
       ...(hasExternal ? { usernames } : {}),
     });
+    if (!isCurrent()) return;
+    payload.requested_sources = usernames.length;
     appState.replayResults = payload;
     appState.replayFilter = null;
     appState.replayOpen = new Set();
-    await renderReplayResults(payload);
+    await renderReplayResults(payload, isCurrent);
+    if (!isCurrent()) return;
     const queued = Number(payload.misses_recorded) || 0;
     const sources = Array.isArray(payload.sources) ? payload.sources : [];
     const sourceLabel =
@@ -12602,12 +12800,12 @@ async function runLichessCompare() {
     setStatus(
       queued > 0
         ? `Fetched ${payload.count} games · ${queued} forgotten move${queued === 1 ? "" : "s"} added to training`
-        : `Fetched ${payload.count} games for ${sourceLabel}`
+        : `Fetched ${countOf(payload.count, "game")} for ${sourceLabel}`
     );
   } catch (error) {
-    setStatusError(error.message);
+    if (isCurrent()) setStatusError(error.message);
   } finally {
-    button.disabled = false;
+    if (appState.replayCheckToken === token) button.disabled = false;
   }
 }
 
@@ -12888,6 +13086,17 @@ function paintScoutSource() {
         )
         .join("")
     : '<span class="src-empty">No sources — open Add and pick one</span>';
+  // The empty state names the next step for where the user actually is.
+  const hint = document.getElementById("scout-empty-hint");
+  if (hint) {
+    hint.textContent = !appState.signedIn
+      ? "Sign in, add a Lichess username, then Start."
+      : visible.length
+        ? "Press Start."
+        : linked.length
+          ? "Add a Lichess username or pick Self, then Start."
+          : "Add a Lichess username as a source, then Start.";
+  }
 }
 
 function bindScoutSource() {
@@ -12961,9 +13170,18 @@ async function ensureReplayView() {
         rememberHandoff(gameHandoff(game, focus, "practice-missed-move"));
         goToSmartTraining("Your missed move is due now — press Start");
       },
-      onBuildReply: (game, focus) => {
+      onBuildReply: async (game, focus) => {
         rememberHandoff(gameHandoff(game, focus, "build-reply"));
-        editRepertoire(game.repertoire_id, game.last_matched_node_id || null);
+        await editRepertoire(game.repertoire_id, game.last_matched_node_id || null);
+        // Land on the position that needs the reply: play the opponent's new move
+        // from the last prepared position, so the next move on the board is yours.
+        const uci = game.departure_move_uci;
+        const node = appState.build && appState.buildNodeById.get(appState.buildCurrentNodeId);
+        if (!uci || !node || node.id !== game.last_matched_node_id || isBuildReadOnly()) return;
+        const toMove = String(node.fen || "").split(" ")[1] === "b" ? "black" : "white";
+        if (game.user_color && toMove === game.user_color) return; // the user's own move: nothing to add
+        if (!localBoardInfo(node.fen).legal_moves.includes(uci)) return;
+        await onBuildBoardMove(uci);
       },
       onAnalyze: (game, focus) => {
         rememberHandoff(gameHandoff(game, focus, "review-in-analyze"));
@@ -12974,8 +13192,9 @@ async function ensureReplayView() {
   return replayView;
 }
 
-async function renderReplayResults(payload) {
-  return (await ensureReplayView()).renderReplayResults(payload);
+async function renderReplayResults(payload, isCurrent = () => true) {
+  const view = await ensureReplayView();
+  if (isCurrent()) return view.renderReplayResults(payload);
 }
 
 // F-06: the Games→Train/Analyze handoff record — source game, the decision
@@ -14003,7 +14222,22 @@ function bindEvents() {
   document.getElementById("start-train").addEventListener("click", () => startTraining());
   document.getElementById("train-summary-new").addEventListener("click", () => startTraining(undefined, { fresh: true }));
   const startPlay = document.getElementById("start-play");
-  if (startPlay) startPlay.addEventListener("click", () => startPlaySession());
+  if (startPlay) {
+    startPlay.addEventListener("click", async () => {
+      // Mid-game the same button starts over: ask before throwing the game away.
+      const live = appState.play && appState.play.active && (appState.play.history || []).length > 0;
+      if (live) {
+        const ok = await showConfirmModal({
+          title: "Start a new game?",
+          body: "The current game will be abandoned.",
+          okLabel: "New game",
+          cancelLabel: "Keep playing",
+        });
+        if (!ok) return;
+      }
+      startPlaySessionTracked();
+    });
+  }
   const luckyBtn = document.getElementById("feeling-lucky");
   if (luckyBtn) luckyBtn.addEventListener("click", () => onFeelingLucky());
   const takebackBtn = document.getElementById("play-takeback");
@@ -14096,6 +14330,8 @@ function bindEvents() {
         .querySelectorAll("#train-modes .train-mode")
         .forEach((b) => b.classList.toggle("is-active", b === btn));
       appState.trainMode = mode;
+      appState.playStartToken = (appState.playStartToken || 0) + 1;
+      appState.playStarting = null;
       appState.play = null;
       appState.trainBusy = false;
       if (mode !== "smart") appState.smart = null;
@@ -14105,8 +14341,8 @@ function bindEvents() {
       if (mode === "play") {
         appState.smart = null;
         appState.training = null;
-        setTrainBanner("idle", "Play vs human", "Start, or I'm Feeling Lucky for a key position.");
-        void resetTrainBoardIdle("Play vs human");
+        setTrainBanner("idle", "Practice game", "");
+        void resetTrainBoardIdle("Practice game");
       } else {
         // "Press Start" is said once, by the Start button itself (UX P2-10).
         setTrainBanner("idle", "Ready to train", "");
@@ -14127,6 +14363,26 @@ function bindEvents() {
     trainSelect.addEventListener("change", () => {
       const value = trainSelect.value;
       appState.trainingRepertoireId = value && value !== "__demo__" ? value : null;
+    });
+  }
+
+  // Analyze takes a PGN file as well as a paste (Library imports from a file too).
+  const pgnFileBtn = document.getElementById("pgn-file-btn");
+  const pgnFileInput = document.getElementById("pgn-file-input");
+  if (pgnFileBtn && pgnFileInput) {
+    pgnFileBtn.addEventListener("click", () => {
+      pgnFileInput.value = "";
+      pgnFileInput.click();
+    });
+    pgnFileInput.addEventListener("change", async () => {
+      const file = pgnFileInput.files && pgnFileInput.files[0];
+      if (!file) return;
+      try {
+        document.getElementById("pgn-input").value = await file.text();
+        setStatus(`Loaded ${file.name}`);
+      } catch (_) {
+        setStatus("Could not read file");
+      }
     });
   }
 
@@ -14252,7 +14508,6 @@ async function init() {
   bindEvents();
   renderPieceStylePicker();
   renderPrefsToggles();
-  prefillDemoPgn();
   // Paint the starting position on every board up front — board state is now
   // browser-computed (chess.js), so a signed-out visitor sees real pieces and can
   // explore freely instead of staring at an empty grid waiting on a 401'd /api/board.
@@ -14276,7 +14531,6 @@ async function init() {
   if (appState.signedIn) {
     await loadSignedInWorkspace();
   } else {
-    setStatus("Sign in to build and train your repertoires.");
     renderBuilderTree();
     void loadDashboard();
   }
@@ -14353,7 +14607,15 @@ const PENDING_ACTION_HANDLERS = {
       setStatus("Signed in — paste your PGN to run the full-game review.");
       return;
     }
-    return runAnalysis({ mode: pending.data.mode, selectIndex: pending.data.selectIndex });
+    // The sign-in round trip keeps #/analyze?ply=N; put the board back on that move
+    // once the game is loaded instead of the start position.
+    const wantPly =
+      parseWorkspaceLocation(window.location.href).ply ||
+      (pending.route ? parseWorkspaceLocation(`/${pending.route}`).ply : null);
+    return runAnalysis({ mode: pending.data.mode, selectIndex: pending.data.selectIndex }).then(async (result) => {
+      if (wantPly && appState.analysis && !(appState.analysisPly > 0)) await showAnalysisPly(wantPly);
+      return result;
+    });
   },
   // #/train was restored and restoreWorkspaceLocation already started it.
   train: () => {
@@ -14464,7 +14726,10 @@ async function loadSignedInWorkspace() {
   } catch (_) {
     /* ignore storage errors */
   }
-  refreshLichessStatus();
+  // The Play opponent book depends on a linked Lichess account.
+  refreshLichessStatus()
+    .then(() => syncTrainPickerVisibility())
+    .catch(() => {});
   syncReplayControls();
   // Boards are already seeded with the start position in init() (browser-computed),
   // so signing in doesn't need to re-fetch them.

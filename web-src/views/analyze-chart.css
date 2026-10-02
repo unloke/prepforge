@@ -133,12 +133,6 @@
 @media (prefers-reduced-motion: reduce) {
   .res-stack { transition: none; }
 }
-.res-stack:not([hidden]) + .empty-state {
-  display: none;
-}
-#analysis-empty p {
-  margin: 0;
-}
 .res-block {
   display: flex;
   flex-direction: column;

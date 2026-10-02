@@ -12,9 +12,8 @@
 //      it Best / Good / Inaccuracy / Mistake / Blunder by how much win % was thrown
 //      away — the same idea both sites use to put glyphs on your moves.
 //
-//   3. Motif narration. describeMove() replays the move on a board and reports what
-//      it *does* in chess terms — develops, castles, grabs the centre, forks, hangs
-//      a piece — instead of "moves the knight to f3".
+//   3. Move narration. describeMove() (coach/move-facts.js) says what a move plainly
+//      does: develops, castles, takes the centre, attacks a piece it can win.
 //
 // Two entry points:
 //
@@ -29,7 +28,9 @@
 // Kept DOM-free and dependency-light (just chess.js) so it unit-tests headlessly.
 import { Chess } from "chess.js";
 import { seeCapture } from "./coach/material.js";
-import { forkWinsMaterial } from "./coach/tactics.js";
+import { describeMove } from "./coach/move-facts.js";
+
+export { describeMove };
 
 const PIECE_VALUE = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 const PIECE_NAME = {
@@ -40,10 +41,6 @@ const PIECE_NAME = {
   q: "queen",
   k: "king",
 };
-const PLURAL = { p: "pawns", n: "knights", b: "bishops", r: "rooks", q: "queens", k: "kings" };
-const CENTER = new Set(["d4", "e4", "d5", "e5"]);
-const BIG_CENTER = new Set(["c3", "c4", "c5", "c6", "d3", "d4", "d5", "d6", "e3", "e4", "e5", "e6", "f3", "f4", "f5", "f6"]);
-const FIANCHETTO = new Set(["b2", "g2", "b7", "g7"]);
 
 function sideWord(turn) {
   return turn === "w" ? "White" : "Black";
@@ -137,9 +134,6 @@ function describeMaterial(balance) {
 // Move narration — what a move *does*, in chess terms.
 // ---------------------------------------------------------------------------
 
-function backRank(color) {
-  return color === "w" ? "1" : "8";
-}
 
 // Pieces of `victimColor` that `byColor` attacks more often than they are defended
 // (or that hang outright). Used both for tactic hints and to say a move "forks".
@@ -176,153 +170,6 @@ function attackedTargets(chess, byColor, victimColor) {
     }
   }
   return out.sort((a, b) => b.worth - a.worth);
-}
-
-// A pawn now on `to` either challenging an enemy pawn on a central square (it attacks
-// one) or backing up a friendly pawn on a central square (it defends one). Returns a
-// clause for describeMove, or "" when the push makes no central contact.
-function centralPawnContact(chess, to, moverColor) {
-  const file = to.charCodeAt(0) - 97;
-  const rank = Number(to[1]);
-  const fwd = moverColor === "w" ? 1 : -1;
-  for (const df of [-1, 1]) {
-    const f = file + df;
-    if (f < 0 || f > 7) continue;
-    const sq = String.fromCharCode(97 + f) + (rank + fwd);
-    if (!CENTER.has(sq)) continue;
-    const pc = chess.get(sq);
-    if (!pc || pc.type !== "p") continue;
-    if (pc.color !== moverColor) return `challenging the centre pawn on ${sq}`;
-    return `backing up the centre pawn on ${sq}`;
-  }
-  return "";
-}
-
-// Describe the move `uci`/`san` played from `fenBefore` as a human phrase, e.g.
-// "develops the knight and eyes the centre" or "grabs the bishop on c4 for free".
-// Returns "" when the move can't be replayed (bad input).
-export function describeMove(fenBefore, uci, san) {
-  if (!san) return "";
-  let chess;
-  try {
-    chess = new Chess(fenBefore);
-  } catch (_) {
-    return "";
-  }
-  const from = uci ? uci.slice(0, 2) : null;
-  const to = uci ? uci.slice(2, 4) : san.replace(/[+#!?]/g, "").slice(-2);
-  const moverColor = chess.turn();
-  const moverBefore = from ? chess.get(from) : null;
-
-  let move;
-  try {
-    move = chess.move(san);
-  } catch (_) {
-    if (!from) return "";
-    try {
-      move = chess.move({ from, to, promotion: uci && uci.length > 4 ? uci[4] : undefined });
-    } catch (_) {
-      return "";
-    }
-  }
-  if (!move) return "";
-
-  const pieceType = move.piece;
-  const name = PIECE_NAME[pieceType] || "piece";
-  const clauses = [];
-
-  // Special moves the SAN already names.
-  if (san.startsWith("O-O-O")) {
-    clauses.push("castles queenside, getting the king to safety");
-  } else if (san.startsWith("O-O")) {
-    clauses.push("castles, getting the king safe and the rook into the game");
-  } else if (move.promotion) {
-    clauses.push(`promotes to a ${PIECE_NAME[move.promotion]}`);
-  } else if (move.captured) {
-    const took = PIECE_NAME[move.captured] || "piece";
-    clauses.push(`takes the ${took} on ${to}`);
-  } else if (pieceType === "p") {
-    // Only a genuine central pawn gets the "claiming the centre" editorial. A flank/quiet
-    // push is described bare ("pushes the c-pawn") and stripped by the commentary's
-    // ideaTail, so the move's CONCRETE consequence (the "eyes the knight on d4" below, a
-    // check, a capture) carries the point instead of a blanket "gaining space" that was
-    // wrong far more often than right (it fired on every non-central push).
-    if (CENTER.has(to)) clauses.push(`pushes a pawn to ${to}, claiming the centre`);
-    else clauses.push(`pushes the ${to.replace(/[0-9]/, "")}-pawn`);
-  } else if (
-    (pieceType === "n" || pieceType === "b") &&
-    from &&
-    from.endsWith(backRank(moverColor)) &&
-    !to.endsWith(backRank(moverColor))
-  ) {
-    if (FIANCHETTO.has(to)) clauses.push(`fianchettoes the bishop on ${to}`);
-    else clauses.push(`develops the ${name} to ${to}`);
-  } else {
-    clauses.push(`brings the ${name} to ${to}`);
-  }
-
-  // Secondary ideas, drawn from the resulting position (mover already moved, so it
-  // is now the opponent's turn — look at what the just-moved side threatens). Restrict
-  // to pieces the JUST-MOVED piece (now on `to`) attacks: a "fork" / "eyes the X" must be
-  // about THIS move, not "the side happens to also attack something across the board" —
-  // that loose reading produced fake forks ("Nxf4, forking the knight and knight") and
-  // mis-attributed threats that another piece, not the one just played, was making.
-  const targets = attackedTargets(chess, moverColor, other(moverColor)).filter((t) => {
-    if (t.square === to) return false; // not "attacks the piece it just captured onto"
-    try {
-      return chess.attackers(t.square, moverColor).includes(to);
-    } catch (_) {
-      return false;
-    }
-  });
-  // The enemy king counts as a fork target ONLY for a knight — the textbook royal fork
-  // ("Nc7+, forking the king and rook") where the knight gives check AND wins a piece and
-  // can't be captured. For everything else a move that hits the king is simply a check,
-  // already named by the '+': counting the king there produced the redundant "with check,
-  // also hitting the king on g1" and the fake "forking the rook and king" on a rook/pawn
-  // check that merely also eyed one piece. So sliders/pawns need a real SECOND piece to
-  // read as a double attack; knights may pair the king with one.
-  const moverIsKnight = pieceType === "n";
-  const heavy = targets.filter((t) => t.type !== "p" && (moverIsKnight || t.type !== "k"));
-  // If the piece that just moved is itself en prise (the opponent simply wins it back), its
-  // "follow-up" threats are moot — it won't be there to collect. The classic case is a capture
-  // that's an even trade or a sacrifice: "Nxe5, and now eyes the knight on d7" reads wrong when
-  // ...Nxe5 just takes the knight straight back. Drop the eyes/fork clause; a check still holds.
-  const movedEnPrise = (() => {
-    try {
-      return (seeCapture(chess, to, other(moverColor)) || 0) > 0;
-    } catch (_) {
-      return false;
-    }
-  })();
-  const usableHeavy = movedEnPrise ? [] : heavy;
-  // A double attack is only a "fork" if it actually wins material against best defence —
-  // otherwise the opponent saves both and the brag is false (the user's "Ne5 forks the queen
-  // and the bishop" complaint, where Qe2 covers both).
-  const isFork = usableHeavy.length >= 2 && forkWinsMaterial(chess.fen(), to, moverColor);
-  if (san.includes("#")) {
-    clauses.push("and it's checkmate");
-  } else if (isFork) {
-    const a = usableHeavy[0].type;
-    const b = usableHeavy[1].type;
-    const forkText = a === b ? `both ${PLURAL[a] || PIECE_NAME[a]}` : `the ${PIECE_NAME[a]} and the ${PIECE_NAME[b]}`;
-    clauses.push(`forking ${forkText}`);
-  } else if (san.includes("+") && usableHeavy.length) {
-    clauses.push(`with check, also hitting the ${PIECE_NAME[usableHeavy[0].type]} on ${usableHeavy[0].square}`);
-  } else if (san.includes("+")) {
-    clauses.push("with check");
-  } else if (usableHeavy.length) {
-    const t = usableHeavy[0];
-    clauses.push(`and now eyes the ${PIECE_NAME[t.type]} on ${t.square}`);
-  } else if (pieceType === "p" && !move.captured && !san.includes("+")) {
-    // A pawn that makes contact with an enemy pawn in the centre (the ...c5 break), or
-    // backs up one of our own central pawns (c3 holding d4) — the "challenges the centre"
-    // / "supports the centre" idea the bare "pushes the c-pawn" was dropping.
-    const central = centralPawnContact(chess, to, moverColor);
-    if (central) clauses.push(central);
-  }
-
-  return clauses.join(", ");
 }
 
 // ---------------------------------------------------------------------------

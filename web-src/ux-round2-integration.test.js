@@ -19,7 +19,7 @@ describe("Recent analyses refresh ordering", () => {
     const old = deferred();
     const fresh = deferred();
     const host = { innerHTML: "", querySelectorAll: () => [] };
-    const deps = { document: { getElementById: () => host }, escapeHtml: String,
+    const deps = { document: { getElementById: () => host }, escapeHtml: String, localDayOf: (iso) => String(iso || "").slice(0, 10),
       api: vi.fn().mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise) };
     const load = compile("async function loadAnalysisHistory(", deps, "let analysisHistorySeq = 0;");
     const first = load();

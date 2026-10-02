@@ -1,0 +1,1756 @@
+[
+ {
+  "prose": "Blunder. Bxd4 loses two pieces for two pawns after 16...e5 17.Qc2 exd4. Nxd4 was the right way to take back.",
+  "input": {
+   "ply": 31,
+   "mover": "white",
+   "uci": "b2d4",
+   "san": "Bxd4",
+   "fenBefore": "r2q1rk1/1b1n1ppp/p3pb2/1p6/3p4/1P1BPN2/PB3PPP/2RQR1K1 w - - 0 16",
+   "fenAfter": "r2q1rk1/1b1n1ppp/p3pb2/1p6/3B4/1P1BPN2/P4PPP/2RQR1K1 b - - 0 16",
+   "prevSan": "cxd4",
+   "prevUci": "c5d4",
+   "prevFenBefore": "r2q1rk1/1b1n1ppp/p3pb2/1pp5/3P4/1P1BPN2/PB3PPP/2RQR1K1 b - - 3 15",
+   "beforeEval": {
+    "lines": [
+     {
+      "uci": "f3d4",
+      "san": "Nxd4",
+      "cp": -17,
+      "mate": null,
+      "pvUci": [
+       "f3d4",
+       "d8b6",
+       "d1c2",
+       "h7h6",
+       "c2c7",
+       "f8d8",
+       "d3e2",
+       "a8c8",
+       "c7b6",
+       "d7b6",
+       "c1c8",
+       "d8c8"
+      ],
+      "pvSan": [
+       "Nxd4",
+       "Qb6",
+       "Qc2",
+       "h6",
+       "Qc7",
+       "Rfd8",
+       "Be2",
+       "Rac8",
+       "Qxb6",
+       "Nxb6",
+       "Rxc8",
+       "Rxc8"
+      ]
+     },
+     {
+      "uci": "e3d4",
+      "san": "exd4",
+      "cp": -41,
+      "mate": null,
+      "pvUci": [
+       "e3d4",
+       "f6e7",
+       "a2a4",
+       "d8b6",
+       "d1e2",
+       "d7f6",
+       "f3e5",
+       "b7d5",
+       "h2h3",
+       "h7h6",
+       "a4b5",
+       "a6b5"
+      ],
+      "pvSan": [
+       "exd4",
+       "Be7",
+       "a4",
+       "Qb6",
+       "Qe2",
+       "Nf6",
+       "Ne5",
+       "Bd5",
+       "h3",
+       "h6",
+       "axb5",
+       "axb5"
+      ]
+     }
+    ]
+   },
+   "afterEval": {
+    "cp": -336,
+    "mate": null,
+    "pvUci": [
+     "e6e5",
+     "d1c2",
+     "e5d4",
+     "d3h7",
+     "g8h8",
+     "f3d4",
+     "f6d4",
+     "c2f5",
+     "g7g6",
+     "f5h3",
+     "h8g7",
+     "e1d1"
+    ],
+    "pvSan": [
+     "e5",
+     "Qc2",
+     "exd4",
+     "Bxh7+",
+     "Kh8",
+     "Nxd4",
+     "Bxd4",
+     "Qf5",
+     "g6",
+     "Qh3",
+     "Kg7",
+     "Red1"
+    ]
+   }
+  }
+ },
+ {
+  "prose": "Blunder. Bxd4 misses e5, which wins a bishop for a pawn (16...e5 17.Qc2 exd4).",
+  "input": {
+   "ply": 32,
+   "mover": "black",
+   "uci": "f6d4",
+   "san": "Bxd4",
+   "fenBefore": "r2q1rk1/1b1n1ppp/p3pb2/1p6/3B4/1P1BPN2/P4PPP/2RQR1K1 b - - 0 16",
+   "fenAfter": "r2q1rk1/1b1n1ppp/p3p3/1p6/3b4/1P1BPN2/P4PPP/2RQR1K1 w - - 0 17",
+   "prevSan": "Bxd4",
+   "prevUci": "b2d4",
+   "prevFenBefore": "r2q1rk1/1b1n1ppp/p3pb2/1p6/3p4/1P1BPN2/PB3PPP/2RQR1K1 w - - 0 16",
+   "beforeEval": {
+    "lines": [
+     {
+      "uci": "e6e5",
+      "san": "e5",
+      "cp": -347,
+      "mate": null,
+      "pvUci": [
+       "e6e5",
+       "d1c2",
+       "e5d4",
+       "d3h7",
+       "g8h8",
+       "c2f5",
+       "g7g6",
+       "h7g6",
+       "f7g6",
+       "f5h3",
+       "h8g8",
+       "f3d4"
+      ],
+      "pvSan": [
+       "e5",
+       "Qc2",
+       "exd4",
+       "Bxh7+",
+       "Kh8",
+       "Qf5",
+       "g6",
+       "Bxg6",
+       "fxg6",
+       "Qh3+",
+       "Kg8",
+       "Nxd4"
+      ]
+     },
+     {
+      "uci": "d8a5",
+      "san": "Qa5",
+      "cp": -39,
+      "mate": null,
+      "pvUci": [
+       "d8a5",
+       "d1c2",
+       "a8c8",
+       "c2b2"
+      ],
+      "pvSan": [
+       "Qa5",
+       "Qc2",
+       "Rac8",
+       "Qb2"
+      ]
+     }
+    ]
+   },
+   "afterEval": {
+    "cp": 5,
+    "mate": null,
+    "pvUci": [
+     "f3d4",
+     "d8b6",
+     "d3f1",
+     "d7f6",
+     "b3b4",
+     "a8c8",
+     "d1e2",
+     "f6e4",
+     "e2b2",
+     "h7h5",
+     "d4f3",
+     "b6d6"
+    ],
+    "pvSan": [
+     "Nxd4",
+     "Qb6",
+     "Bf1",
+     "Nf6",
+     "b4",
+     "Rac8",
+     "Qe2",
+     "Ne4",
+     "Qb2",
+     "h5",
+     "Nf3",
+     "Qd6"
+    ]
+   }
+  }
+ },
+ {
+  "prose": "Good move. Rc3 attacks the pawn on b3.",
+  "input": {
+   "ply": 48,
+   "mover": "black",
+   "uci": "c8c3",
+   "san": "Rc3",
+   "fenBefore": "2r2rk1/5ppp/B3pn2/8/Pp6/1P2PP2/5P1P/3RR1K1 b - - 0 24",
+   "fenAfter": "5rk1/5ppp/B3pn2/8/Pp6/1Pr1PP2/5P1P/3RR1K1 w - - 1 25",
+   "prevSan": "gxf3",
+   "prevUci": "g2f3",
+   "prevFenBefore": "2r2rk1/5ppp/B3pn2/8/Pp6/1P2Pq2/5PPP/3RR1K1 w - - 0 24",
+   "beforeEval": {
+    "lines": [
+     {
+      "uci": "c8c2",
+      "san": "Rc2",
+      "cp": 232,
+      "mate": null,
+      "pvUci": [
+       "c8c2",
+       "e1e2",
+       "c2c5",
+       "a6c4",
+       "f8c8",
+       "e2d2",
+       "g8f8",
+       "d2d6",
+       "f8e7",
+       "d6b6",
+       "f6d5"
+      ],
+      "pvSan": [
+       "Rc2",
+       "Re2",
+       "Rc5",
+       "Bc4",
+       "Rfc8",
+       "Red2",
+       "Kf8",
+       "Rd6",
+       "Ke7",
+       "Rb6",
+       "Nd5"
+      ]
+     },
+     {
+      "uci": "c8c3",
+      "san": "Rc3",
+      "cp": 235,
+      "mate": null,
+      "pvUci": [
+       "c8c3",
+       "a6c4",
+       "f8a8",
+       "d1c1",
+       "c3c1",
+       "e1c1",
+       "g8f8",
+       "g1f1",
+       "f8e7",
+       "c4b5",
+       "f6d5",
+       "c1c6"
+      ],
+      "pvSan": [
+       "Rc3",
+       "Bc4",
+       "Ra8",
+       "Rc1",
+       "Rxc1",
+       "Rxc1",
+       "Kf8",
+       "Kf1",
+       "Ke7",
+       "Bb5",
+       "Nd5",
+       "Rc6"
+      ]
+     }
+    ]
+   },
+   "afterEval": {
+    "cp": 230,
+    "mate": null,
+    "pvUci": [
+     "a6c4",
+     "f8b8",
+     "d1d3",
+     "f6d5",
+     "e1d1",
+     "g8f8",
+     "d3c3",
+     "b4c3",
+     "d1c1",
+     "b8d8",
+     "c4d5"
+    ],
+    "pvSan": [
+     "Bc4",
+     "Rb8",
+     "Rd3",
+     "Nd5",
+     "Red1",
+     "Kf8",
+     "Rxc3",
+     "bxc3",
+     "Rc1",
+     "Rd8",
+     "Bxd5"
+    ]
+   }
+  }
+ },
+ {
+  "prose": "Rd3 is the right move.",
+  "input": {
+   "ply": 49,
+   "mover": "white",
+   "uci": "d1d3",
+   "san": "Rd3",
+   "fenBefore": "5rk1/5ppp/B3pn2/8/Pp6/1Pr1PP2/5P1P/3RR1K1 w - - 1 25",
+   "fenAfter": "5rk1/5ppp/B3pn2/8/Pp6/1PrRPP2/5P1P/4R1K1 b - - 2 25",
+   "prevSan": "Rc3",
+   "prevUci": "c8c3",
+   "prevFenBefore": "2r2rk1/5ppp/B3pn2/8/Pp6/1P2PP2/5P1P/3RR1K1 b - - 0 24",
+   "beforeEval": {
+    "lines": [
+     {
+      "uci": "a6c4",
+      "san": "Bc4",
+      "cp": 218,
+      "mate": null,
+      "pvUci": [
+       "a6c4",
+       "f8b8",
+       "d1c1",
+       "f6d5",
+       "a4a5",
+       "g8f8",
+       "c1a1",
+       "f8e7",
+       "f3f4",
+       "e7d7",
+       "a1a4",
+       "d7c6"
+      ],
+      "pvSan": [
+       "Bc4",
+       "Rb8",
+       "Rc1",
+       "Nd5",
+       "a5",
+       "Kf8",
+       "Ra1",
+       "Ke7",
+       "f4",
+       "Kd7",
+       "Ra4",
+       "Kc6"
+      ]
+     },
+     {
+      "uci": "d1d3",
+      "san": "Rd3",
+      "cp": 200,
+      "mate": null,
+      "pvUci": [
+       "d1d3",
+       "f6d5",
+       "a6c4",
+       "d5b6",
+       "d3c3",
+       "b4c3",
+       "c4e2",
+       "f8c8",
+       "e1c1",
+       "g8f8",
+       "g1f1",
+       "f8e7"
+      ],
+      "pvSan": [
+       "Rd3",
+       "Nd5",
+       "Bc4",
+       "Nb6",
+       "Rxc3",
+       "bxc3",
+       "Be2",
+       "Rc8",
+       "Rc1",
+       "Kf8",
+       "Kf1",
+       "Ke7"
+      ]
+     }
+    ]
+   },
+   "afterEval": {
+    "cp": 218,
+    "mate": null,
+    "pvUci": [
+     "f6d5",
+     "a6c4",
+     "c3d3",
+     "c4d3",
+     "d5c3",
+     "a4a5",
+     "f8a8",
+     "a5a6",
+     "g8f8",
+     "e1a1",
+     "f8e7",
+     "h2h4"
+    ],
+    "pvSan": [
+     "Nd5",
+     "Bc4",
+     "Rxd3",
+     "Bxd3",
+     "Nc3",
+     "a5",
+     "Ra8",
+     "a6",
+     "Kf8",
+     "Ra1",
+     "Ke7",
+     "h4"
+    ]
+   }
+  }
+ },
+ {
+  "prose": "Blunder. Rc1 allows 28...Nxc4 and a bishop-for-knight trade. You were clearly better; now it's level. Be2 was the move, keeping you clearly better.",
+  "input": {
+   "ply": 55,
+   "mover": "white",
+   "uci": "e1c1",
+   "san": "Rc1",
+   "fenBefore": "5rk1/5ppp/1n2p3/8/P1B5/1Pp1PP2/5P1P/4R1K1 w - - 0 28",
+   "fenAfter": "5rk1/5ppp/1n2p3/8/P1B5/1Pp1PP2/5P1P/2R3K1 b - - 1 28",
+   "prevSan": "bxc3",
+   "prevUci": "b4c3",
+   "prevFenBefore": "5rk1/5ppp/1n2p3/8/PpB5/1PR1PP2/5P1P/4R1K1 b - - 0 27",
+   "beforeEval": {
+    "lines": [
+     {
+      "uci": "c4e2",
+      "san": "Be2",
+      "cp": 248,
+      "mate": null,
+      "pvUci": [
+       "c4e2",
+       "f8c8",
+       "e1c1",
+       "g7g5",
+       "g1f1",
+       "g8g7",
+       "f1e1",
+       "b6d5",
+       "e2c4",
+       "c8c5",
+       "c4d5"
+      ],
+      "pvSan": [
+       "Be2",
+       "Rc8",
+       "Rc1",
+       "g5",
+       "Kf1",
+       "Kg7",
+       "Ke1",
+       "Nd5",
+       "Bc4",
+       "Rc5",
+       "Bxd5"
+      ]
+     },
+     {
+      "uci": "c4b5",
+      "san": "Bb5",
+      "cp": 206,
+      "mate": null,
+      "pvUci": [
+       "c4b5",
+       "f8c8",
+       "b5a6",
+       "c8c5",
+       "e1c1",
+       "g8f8",
+       "g1f1",
+       "g7g5",
+       "a6d3",
+       "b6d5"
+      ],
+      "pvSan": [
+       "Bb5",
+       "Rc8",
+       "Ba6",
+       "Rc5",
+       "Rc1",
+       "Kf8",
+       "Kf1",
+       "g5",
+       "Bd3",
+       "Nd5"
+      ]
+     }
+    ]
+   },
+   "afterEval": {
+    "cp": 39,
+    "mate": null,
+    "pvUci": [
+     "b6c4",
+     "b3c4",
+     "f8a8",
+     "c1c3",
+     "a8a4",
+     "c4c5",
+     "g8f8",
+     "c5c6"
+    ],
+    "pvSan": [
+     "Nxc4",
+     "bxc4",
+     "Ra8",
+     "Rxc3",
+     "Rxa4",
+     "c5",
+     "Kf8",
+     "c6"
+    ]
+   }
+  }
+ },
+ {
+  "prose": "Exactly right. Rxc3 trades pawns.",
+  "input": {
+   "ply": 59,
+   "mover": "white",
+   "uci": "c1c3",
+   "san": "Rxc3",
+   "fenBefore": "r5k1/5ppp/4p3/8/P1P5/2p1PP2/5P1P/2R3K1 w - - 1 30",
+   "fenAfter": "r5k1/5ppp/4p3/8/P1P5/2R1PP2/5P1P/6K1 b - - 0 30",
+   "prevSan": "Ra8",
+   "prevUci": "f8a8",
+   "prevFenBefore": "5rk1/5ppp/4p3/8/P1P5/2p1PP2/5P1P/2R3K1 b - - 0 29",
+   "beforeEval": {
+    "lines": [
+     {
+      "uci": "c1c3",
+      "san": "Rxc3",
+      "cp": 52,
+      "mate": null,
+      "pvUci": [
+       "c1c3",
+       "a8a4",
+       "g1g2",
+       "g8f8",
+       "f3f4",
+       "f8e7",
+       "h2h4",
+       "h7h5",
+       "g2f3",
+       "a4a1",
+       "f3e4",
+       "a1f1"
+      ],
+      "pvSan": [
+       "Rxc3",
+       "Rxa4",
+       "Kg2",
+       "Kf8",
+       "f4",
+       "Ke7",
+       "h4",
+       "h5",
+       "Kf3",
+       "Ra1",
+       "Ke4",
+       "Rf1"
+      ]
+     },
+     {
+      "uci": "g1g2",
+      "san": "Kg2",
+      "cp": 52,
+      "mate": null,
+      "pvUci": [
+       "g1g2",
+       "a8a4",
+       "c1c3",
+       "g8f8",
+       "f3f4",
+       "f8e7",
+       "h2h4",
+       "e7d6",
+       "g2f3",
+       "g7g6",
+       "f3e4",
+       "f7f6"
+      ],
+      "pvSan": [
+       "Kg2",
+       "Rxa4",
+       "Rxc3",
+       "Kf8",
+       "f4",
+       "Ke7",
+       "h4",
+       "Kd6",
+       "Kf3",
+       "g6",
+       "Ke4",
+       "f6"
+      ]
+     }
+    ]
+   },
+   "afterEval": {
+    "cp": 54,
+    "mate": null,
+    "pvUci": [
+     "a8a4",
+     "g1g2",
+     "g8f8",
+     "f3f4",
+     "f8e7",
+     "h2h4",
+     "e7d6",
+     "g2f3",
+     "g7g6",
+     "c3c1",
+     "d6c6",
+     "f3e4"
+    ],
+    "pvSan": [
+     "Rxa4",
+     "Kg2",
+     "Kf8",
+     "f4",
+     "Ke7",
+     "h4",
+     "Kd6",
+     "Kf3",
+     "g6",
+     "Rc1",
+     "Kc6",
+     "Ke4"
+    ]
+   }
+  }
+ },
+ {
+  "prose": "Reasonable. c5 pushes the passed pawn. Kg2 was slightly more precise.",
+  "input": {
+   "ply": 61,
+   "mover": "white",
+   "uci": "c4c5",
+   "san": "c5",
+   "fenBefore": "6k1/5ppp/4p3/8/r1P5/2R1PP2/5P1P/6K1 w - - 0 31",
+   "fenAfter": "6k1/5ppp/4p3/2P5/r7/2R1PP2/5P1P/6K1 b - - 0 31",
+   "prevSan": "Rxa4",
+   "prevUci": "a8a4",
+   "prevFenBefore": "r5k1/5ppp/4p3/8/P1P5/2R1PP2/5P1P/6K1 b - - 0 30",
+   "beforeEval": {
+    "lines": [
+     {
+      "uci": "g1g2",
+      "san": "Kg2",
+      "cp": 64,
+      "mate": null,
+      "pvUci": [
+       "g1g2",
+       "g8f8",
+       "f3f4",
+       "f8e7",
+       "g2f3",
+       "a4a5",
+       "h2h4",
+       "e7d6",
+       "c3b3",
+       "d6c7",
+       "f3e4",
+       "a5h5"
+      ],
+      "pvSan": [
+       "Kg2",
+       "Kf8",
+       "f4",
+       "Ke7",
+       "Kf3",
+       "Ra5",
+       "h4",
+       "Kd6",
+       "Rb3",
+       "Kc7",
+       "Ke4",
+       "Rh5"
+      ]
+     },
+     {
+      "uci": "f3f4",
+      "san": "f4",
+      "cp": 63,
+      "mate": null,
+      "pvUci": [
+       "f3f4",
+       "g8f8",
+       "g1g2",
+       "f8e7",
+       "h2h4",
+       "e7d6",
+       "g2f3",
+       "h7h5"
+      ],
+      "pvSan": [
+       "f4",
+       "Kf8",
+       "Kg2",
+       "Ke7",
+       "h4",
+       "Kd6",
+       "Kf3",
+       "h5"
+      ]
+     }
+    ]
+   },
+   "afterEval": {
+    "cp": 28,
+    "mate": null,
+    "pvUci": [
+     "g8f8",
+     "c5c6",
+     "a4a8",
+     "e3e4",
+     "f8e7",
+     "e4e5",
+     "e7d8",
+     "c3d3",
+     "d8c7",
+     "d3d7",
+     "c7c6",
+     "d7f7"
+    ],
+    "pvSan": [
+     "Kf8",
+     "c6",
+     "Ra8",
+     "e4",
+     "Ke7",
+     "e5",
+     "Kd8",
+     "Rd3+",
+     "Kc7",
+     "Rd7+",
+     "Kxc6",
+     "Rxf7"
+    ]
+   }
+  }
+ },
+ {
+  "prose": "Ra7 is fine. Kf8 was slightly more precise.",
+  "input": {
+   "ply": 62,
+   "mover": "black",
+   "uci": "a4a7",
+   "san": "Ra7",
+   "fenBefore": "6k1/5ppp/4p3/2P5/r7/2R1PP2/5P1P/6K1 b - - 0 31",
+   "fenAfter": "6k1/r4ppp/4p3/2P5/8/2R1PP2/5P1P/6K1 w - - 1 32",
+   "prevSan": "c5",
+   "prevUci": "c4c5",
+   "prevFenBefore": "6k1/5ppp/4p3/8/r1P5/2R1PP2/5P1P/6K1 w - - 0 31",
+   "beforeEval": {
+    "lines": [
+     {
+      "uci": "g8f8",
+      "san": "Kf8",
+      "cp": 22,
+      "mate": null,
+      "pvUci": [
+       "g8f8",
+       "c5c6",
+       "a4a8",
+       "e3e4",
+       "f8e7",
+       "e4e5",
+       "e7d8",
+       "c3d3",
+       "d8c7",
+       "d3d7",
+       "c7c6",
+       "d7f7"
+      ],
+      "pvSan": [
+       "Kf8",
+       "c6",
+       "Ra8",
+       "e4",
+       "Ke7",
+       "e5",
+       "Kd8",
+       "Rd3+",
+       "Kc7",
+       "Rd7+",
+       "Kxc6",
+       "Rxf7"
+      ]
+     },
+     {
+      "uci": "a4a8",
+      "san": "Ra8",
+      "cp": 30,
+      "mate": null,
+      "pvUci": [
+       "a4a8",
+       "g1f1",
+       "g8f8",
+       "f1e2",
+       "f8e7"
+      ],
+      "pvSan": [
+       "Ra8",
+       "Kf1",
+       "Kf8",
+       "Ke2",
+       "Ke7"
+      ]
+     }
+    ]
+   },
+   "afterEval": {
+    "cp": 52,
+    "mate": null,
+    "pvUci": [
+     "f3f4",
+     "g8f8",
+     "c5c6",
+     "a7c7",
+     "e3e4",
+     "f8e7",
+     "g1g2",
+     "e7d6",
+     "e4e5",
+     "d6d5",
+     "g2f3",
+     "d5d4"
+    ],
+    "pvSan": [
+     "f4",
+     "Kf8",
+     "c6",
+     "Rc7",
+     "e4",
+     "Ke7",
+     "Kg2",
+     "Kd6",
+     "e5+",
+     "Kd5",
+     "Kf3",
+     "Kd4"
+    ]
+   }
+  }
+ },
+ {
+  "prose": "Ke3 is spot on.",
+  "input": {
+   "ply": 75,
+   "mover": "white",
+   "uci": "d4e3",
+   "san": "Ke3",
+   "fenBefore": "8/6pp/2k1pp2/2P5/3KPP2/2R5/r4P1P/8 w - - 1 38",
+   "fenAfter": "8/6pp/2k1pp2/2P5/4PP2/2R1K3/r4P1P/8 b - - 2 38",
+   "prevSan": "Ra2",
+   "prevUci": "a7a2",
+   "prevFenBefore": "8/r5pp/2k1pp2/2P5/3KPP2/2R5/5P1P/8 b - - 0 37",
+   "beforeEval": {
+    "lines": [
+     {
+      "uci": "f2f3",
+      "san": "f3",
+      "cp": 0,
+      "mate": null,
+      "pvUci": [
+       "f2f3",
+       "a2a4",
+       "d4e3",
+       "a4a5",
+       "e3d4"
+      ],
+      "pvSan": [
+       "f3",
+       "Ra4+",
+       "Ke3",
+       "Ra5",
+       "Kd4"
+      ]
+     },
+     {
+      "uci": "h2h4",
+      "san": "h4",
+      "cp": 0,
+      "mate": null,
+      "pvUci": [
+       "h2h4",
+       "a2f2",
+       "c3a3",
+       "f2d2",
+       "d4c3",
+       "d2d1",
+       "c3c4",
+       "d1c1",
+       "c4b4"
+      ],
+      "pvSan": [
+       "h4",
+       "Rxf2",
+       "Ra3",
+       "Rd2+",
+       "Kc3",
+       "Rd1",
+       "Kc4",
+       "Rc1+",
+       "Kb4"
+      ]
+     }
+    ]
+   },
+   "afterEval": {
+    "cp": 0,
+    "mate": null,
+    "pvUci": [
+     "a2a5",
+     "h2h4",
+     "g7g6",
+     "e3d4",
+     "a5a8",
+     "f2f3",
+     "a8a4",
+     "d4e3",
+     "a4a5",
+     "e3d4"
+    ],
+    "pvSan": [
+     "Ra5",
+     "h4",
+     "g6",
+     "Kd4",
+     "Ra8",
+     "f3",
+     "Ra4+",
+     "Ke3",
+     "Ra5",
+     "Kd4"
+    ]
+   }
+  }
+ },
+ {
+  "prose": "Best move. Bxb4 trades pawns.",
+  "input": {
+   "ply": 20,
+   "mover": "black",
+   "uci": "c5b4",
+   "san": "Bxb4",
+   "fenBefore": "r1bq1rk1/p4ppp/1pn1pn2/2b5/NPPp4/4PN2/P3BPPP/R1BQ1RK1 b - - 0 10",
+   "fenAfter": "r1bq1rk1/p4ppp/1pn1pn2/8/NbPp4/4PN2/P3BPPP/R1BQ1RK1 w - - 0 11",
+   "prevSan": "b4",
+   "prevUci": "b2b4",
+   "prevFenBefore": "r1bq1rk1/p4ppp/1pn1pn2/2b5/N1Pp4/4PN2/PP2BPPP/R1BQ1RK1 w - - 0 10",
+   "beforeEval": {
+    "lines": [
+     {
+      "uci": "c5b4",
+      "san": "Bxb4",
+      "cp": -51,
+      "mate": null,
+      "pvUci": [
+       "c5b4",
+       "e3d4",
+       "c8b7",
+       "a1b1",
+       "d8c7",
+       "c1e3",
+       "f8d8",
+       "d1c1",
+       "b4f8",
+       "f1d1",
+       "f6g4",
+       "c4c5"
+      ],
+      "pvSan": [
+       "Bxb4",
+       "exd4",
+       "Bb7",
+       "Rb1",
+       "Qc7",
+       "Be3",
+       "Rfd8",
+       "Qc1",
+       "Bf8",
+       "Rd1",
+       "Ng4",
+       "c5"
+      ]
+     },
+     {
+      "uci": "c6b4",
+      "san": "Nxb4",
+      "cp": 65,
+      "mate": null,
+      "pvUci": [
+       "c6b4",
+       "a4c5",
+       "b6c5",
+       "e3d4",
+       "d8c7",
+       "h2h3",
+       "f8d8",
+       "d1b3",
+       "a8b8"
+      ],
+      "pvSan": [
+       "Nxb4",
+       "Nxc5",
+       "bxc5",
+       "exd4",
+       "Qc7",
+       "h3",
+       "Rd8",
+       "Qb3",
+       "Rb8"
+      ]
+     }
+    ]
+   },
+   "afterEval": {
+    "cp": -47,
+    "mate": null,
+    "pvUci": [
+     "e3d4",
+     "c8b7",
+     "a1b1",
+     "h7h6",
+     "c1e3",
+     "a8c8",
+     "f3e5",
+     "b4a5",
+     "e2f3",
+     "d8e7",
+     "e5c6"
+    ],
+    "pvSan": [
+     "exd4",
+     "Bb7",
+     "Rb1",
+     "h6",
+     "Be3",
+     "Rc8",
+     "Ne5",
+     "Ba5",
+     "Bf3",
+     "Qe7",
+     "Nxc6"
+    ]
+   }
+  }
+ },
+ {
+  "prose": "Exactly right. Rxc4 wins a pawn and hits the rook on c2 and the bishop on f4.",
+  "input": {
+   "ply": 50,
+   "mover": "black",
+   "uci": "c8c4",
+   "san": "Rxc4",
+   "fenBefore": "2r2rk1/p4ppp/1p1R4/n7/2P2B2/5B2/PbR2P1P/6K1 b - - 1 25",
+   "fenAfter": "5rk1/p4ppp/1p1R4/n7/2r2B2/5B2/PbR2P1P/6K1 w - - 0 26",
+   "prevSan": "Rc2",
+   "prevUci": "c1c2",
+   "prevFenBefore": "2r2rk1/p4ppp/1p1R4/n7/2P2B2/5B2/Pb3P1P/2R3K1 w - - 0 25",
+   "beforeEval": {
+    "lines": [
+     {
+      "uci": "a5c4",
+      "san": "Nxc4",
+      "cp": -66,
+      "mate": null,
+      "pvUci": [
+       "a5c4",
+       "d6c6",
+       "c8c6",
+       "f3c6",
+       "c4e5",
+       "c6e4",
+       "b2d4",
+       "c2c7",
+       "a7a5",
+       "e4d5",
+       "e5g4",
+       "f4g3"
+      ],
+      "pvSan": [
+       "Nxc4",
+       "Rc6",
+       "Rxc6",
+       "Bxc6",
+       "Ne5",
+       "Be4",
+       "Bd4",
+       "Rc7",
+       "a5",
+       "Bd5",
+       "Ng4",
+       "Bg3"
+      ]
+     },
+     {
+      "uci": "c8c4",
+      "san": "Rxc4",
+      "cp": -35,
+      "mate": null,
+      "pvUci": [
+       "c8c4",
+       "c2c4",
+       "a5c4",
+       "d6d7",
+       "b2e5",
+       "f3d5",
+       "e5f4",
+       "d5c4",
+       "f4b8",
+       "h2h3",
+       "g7g5",
+       "d7d5"
+      ],
+      "pvSan": [
+       "Rxc4",
+       "Rxc4",
+       "Nxc4",
+       "Rd7",
+       "Be5",
+       "Bd5",
+       "Bxf4",
+       "Bxc4",
+       "Bb8",
+       "h3",
+       "g5",
+       "Rd5"
+      ]
+     }
+    ]
+   },
+   "afterEval": {
+    "cp": -61,
+    "mate": null,
+    "pvUci": [
+     "c2c4",
+     "a5c4",
+     "d6d5",
+     "h7h6",
+     "f3e2",
+     "f8c8",
+     "d5d7",
+     "a7a5",
+     "a2a4",
+     "g8f8",
+     "d7c7",
+     "c8c7"
+    ],
+    "pvSan": [
+     "Rxc4",
+     "Nxc4",
+     "Rd5",
+     "h6",
+     "Be2",
+     "Rc8",
+     "Rd7",
+     "a5",
+     "a4",
+     "Kf8",
+     "Rc7",
+     "Rxc7"
+    ]
+   }
+  }
+ },
+ {
+  "prose": "Blunder. Rc6 allows 27...Ne5, which hits the rook on c6 and the bishop on f3. Black is clearly better now. Rd7 was the move, keeping it level.",
+  "input": {
+   "ply": 53,
+   "mover": "white",
+   "uci": "d6c6",
+   "san": "Rc6",
+   "fenBefore": "5rk1/p4ppp/1p1R4/8/2n2B2/5B2/Pb3P1P/6K1 w - - 0 27",
+   "fenAfter": "5rk1/p4ppp/1pR5/8/2n2B2/5B2/Pb3P1P/6K1 b - - 1 27",
+   "prevSan": "Nxc4",
+   "prevUci": "a5c4",
+   "prevFenBefore": "5rk1/p4ppp/1p1R4/n7/2R2B2/5B2/Pb3P1P/6K1 b - - 0 26",
+   "beforeEval": {
+    "lines": [
+     {
+      "uci": "d6d7",
+      "san": "Rd7",
+      "cp": -40,
+      "mate": null,
+      "pvUci": [
+       "d6d7",
+       "b2e5",
+       "f3d5",
+       "e5f4",
+       "d5c4",
+       "a7a5",
+       "g1g2",
+       "g7g5",
+       "h2h4",
+       "g5h4",
+       "g2h3"
+      ],
+      "pvSan": [
+       "Rd7",
+       "Be5",
+       "Bd5",
+       "Bxf4",
+       "Bxc4",
+       "a5",
+       "Kg2",
+       "g5",
+       "h4",
+       "gxh4",
+       "Kh3"
+      ]
+     },
+     {
+      "uci": "d6d5",
+      "san": "Rd5",
+      "cp": -43,
+      "mate": null,
+      "pvUci": [
+       "d6d5",
+       "b2f6",
+       "d5d7",
+       "a7a5"
+      ],
+      "pvSan": [
+       "Rd5",
+       "Bf6",
+       "Rd7",
+       "a5"
+      ]
+     }
+    ]
+   },
+   "afterEval": {
+    "cp": -221,
+    "mate": null,
+    "pvUci": [
+     "c4e5",
+     "f4e5",
+     "b2e5",
+     "f3g4",
+     "g7g6",
+     "c6c8",
+     "f8c8",
+     "g4c8",
+     "b6b5",
+     "h2h3",
+     "g8g7",
+     "c8a6"
+    ],
+    "pvSan": [
+     "Ne5",
+     "Bxe5",
+     "Bxe5",
+     "Bg4",
+     "g6",
+     "Rc8",
+     "Rxc8",
+     "Bxc8",
+     "b5",
+     "h3",
+     "Kg7",
+     "Ba6"
+    ]
+   }
+  }
+ },
+ {
+  "prose": "Best move. Rd8 takes the open d-file.",
+  "input": {
+   "ply": 60,
+   "mover": "black",
+   "uci": "f8d8",
+   "san": "Rd8",
+   "fenBefore": "5rk1/p4p1p/1p4p1/4b3/8/5B2/P1R2PKP/8 b - - 1 30",
+   "fenAfter": "3r2k1/p4p1p/1p4p1/4b3/8/5B2/P1R2PKP/8 w - - 2 31",
+   "prevSan": "Rc2",
+   "prevUci": "c6c2",
+   "prevFenBefore": "5rk1/p4p1p/1pR3p1/4b3/8/5B2/P4PKP/8 w - - 0 30",
+   "beforeEval": {
+    "lines": [
+     {
+      "uci": "f8d8",
+      "san": "Rd8",
+      "cp": -255,
+      "mate": null,
+      "pvUci": [
+       "f8d8",
+       "a2a4",
+       "g8g7",
+       "c2e2",
+       "f7f6",
+       "h2h3",
+       "d8d4",
+       "e2e4",
+       "d4d5",
+       "e4e2",
+       "d5d3",
+       "e2e3"
+      ],
+      "pvSan": [
+       "Rd8",
+       "a4",
+       "Kg7",
+       "Re2",
+       "f6",
+       "h3",
+       "Rd4",
+       "Re4",
+       "Rd5",
+       "Re2",
+       "Rd3",
+       "Re3"
+      ]
+     },
+     {
+      "uci": "f8e8",
+      "san": "Re8",
+      "cp": -214,
+      "mate": null,
+      "pvUci": [
+       "f8e8",
+       "c2e2",
+       "e8e7",
+       "h2h3",
+       "f7f6",
+       "e2d2",
+       "e7c7",
+       "f3e2"
+      ],
+      "pvSan": [
+       "Re8",
+       "Re2",
+       "Re7",
+       "h3",
+       "f6",
+       "Rd2",
+       "Rc7",
+       "Be2"
+      ]
+     }
+    ]
+   },
+   "afterEval": {
+    "cp": -259,
+    "mate": null,
+    "pvUci": [
+     "a2a4",
+     "g8g7",
+     "c2e2",
+     "g7f6",
+     "h2h3",
+     "d8d3",
+     "f3c6",
+     "e5d6",
+     "c6b5",
+     "d3d4",
+     "e2e3",
+     "d6c5"
+    ],
+    "pvSan": [
+     "a4",
+     "Kg7",
+     "Re2",
+     "Kf6",
+     "h3",
+     "Rd3",
+     "Bc6",
+     "Bd6",
+     "Bb5",
+     "Rd4",
+     "Re3",
+     "Bc5"
+    ]
+   }
+  }
+ },
+ {
+  "prose": "Kg7 is accurate.",
+  "input": {
+   "ply": 62,
+   "mover": "black",
+   "uci": "g8g7",
+   "san": "Kg7",
+   "fenBefore": "3r2k1/p4p1p/1p4p1/4b3/8/5B1P/P1R2PK1/8 b - - 0 31",
+   "fenAfter": "3r4/p4pkp/1p4p1/4b3/8/5B1P/P1R2PK1/8 w - - 1 32",
+   "prevSan": "h3",
+   "prevUci": "h2h3",
+   "prevFenBefore": "3r2k1/p4p1p/1p4p1/4b3/8/5B2/P1R2PKP/8 w - - 2 31",
+   "beforeEval": {
+    "lines": [
+     {
+      "uci": "d8d3",
+      "san": "Rd3",
+      "cp": -287,
+      "mate": null,
+      "pvUci": [
+       "d8d3",
+       "c2e2",
+       "e5d4",
+       "e2e1",
+       "d4c5",
+       "e1d1",
+       "d3c3",
+       "d1d8",
+       "g8g7",
+       "d8d2",
+       "a7a5",
+       "f3e2"
+      ],
+      "pvSan": [
+       "Rd3",
+       "Re2",
+       "Bd4",
+       "Re1",
+       "Bc5",
+       "Rd1",
+       "Rc3",
+       "Rd8+",
+       "Kg7",
+       "Rd2",
+       "a5",
+       "Be2"
+      ]
+     },
+     {
+      "uci": "g8g7",
+      "san": "Kg7",
+      "cp": -256,
+      "mate": null,
+      "pvUci": [
+       "g8g7",
+       "c2e2",
+       "e5f6",
+       "a2a4",
+       "g7f8",
+       "e2c2",
+       "f6e7",
+       "c2c7",
+       "d8d2",
+       "c7a7",
+       "e7c5",
+       "g2h1"
+      ],
+      "pvSan": [
+       "Kg7",
+       "Re2",
+       "Bf6",
+       "a4",
+       "Kf8",
+       "Rc2",
+       "Be7",
+       "Rc7",
+       "Rd2",
+       "Rxa7",
+       "Bc5",
+       "Kh1"
+      ]
+     }
+    ]
+   },
+   "afterEval": {
+    "cp": -260,
+    "mate": null,
+    "pvUci": [
+     "c2e2",
+     "e5f6",
+     "a2a4",
+     "g7f8",
+     "e2e1",
+     "d8c8",
+     "e1d1",
+     "c8c4",
+     "a4a5",
+     "b6a5",
+     "d1d7",
+     "f6d4"
+    ],
+    "pvSan": [
+     "Re2",
+     "Bf6",
+     "a4",
+     "Kf8",
+     "Re1",
+     "Rc8",
+     "Rd1",
+     "Rc4",
+     "a5",
+     "bxa5",
+     "Rd7",
+     "Bd4"
+    ]
+   }
+  }
+ },
+ {
+  "prose": "Blunder. Rd4 allows 41.Rxd4 and a trade into opposite-coloured bishops, usually a draw. Black was clearly better; now it's level. Kf8 was the move, winning a pawn.",
+  "input": {
+   "ply": 80,
+   "mover": "black",
+   "uci": "b4d4",
+   "san": "Rd4",
+   "fenBefore": "8/6k1/1p3pp1/p1b4p/Pr3P2/1B1R1K1P/8/8 b - - 2 40",
+   "fenAfter": "8/6k1/1p3pp1/p1b4p/P2r1P2/1B1R1K1P/8/8 w - - 3 41",
+   "prevSan": "Kf3",
+   "prevUci": "g2f3",
+   "prevFenBefore": "8/6k1/1p3pp1/p1b4p/Pr3P2/1B1R3P/6K1/8 w - - 1 40",
+   "beforeEval": {
+    "lines": [
+     {
+      "uci": "g7f8",
+      "san": "Kf8",
+      "cp": -327,
+      "mate": null,
+      "pvUci": [
+       "g7f8",
+       "b3e6",
+       "b4a4",
+       "d3d7",
+       "f6f5",
+       "d7h7",
+       "a4a3",
+       "f3g2",
+       "a3e3",
+       "e6f7",
+       "e3e7",
+       "f7g6"
+      ],
+      "pvSan": [
+       "Kf8",
+       "Be6",
+       "Rxa4",
+       "Rd7",
+       "f5",
+       "Rh7",
+       "Ra3+",
+       "Kg2",
+       "Re3",
+       "Bf7",
+       "Re7",
+       "Bxg6"
+      ]
+     },
+     {
+      "uci": "g7h6",
+      "san": "Kh6",
+      "cp": -311,
+      "mate": null,
+      "pvUci": [
+       "g7h6",
+       "h3h4",
+       "c5d4",
+       "b3d1",
+       "f6f5",
+       "d1c2",
+       "d4c5"
+      ],
+      "pvSan": [
+       "Kh6",
+       "h4",
+       "Bd4",
+       "Bd1",
+       "f5",
+       "Bc2",
+       "Bc5"
+      ]
+     }
+    ]
+   },
+   "afterEval": {
+    "cp": -19,
+    "mate": null,
+    "pvUci": [
+     "d3d4",
+     "c5d4",
+     "b3c4",
+     "d4c3",
+     "c4d3",
+     "c3b4",
+     "d3b5",
+     "b4e1",
+     "b5c4",
+     "e1d2",
+     "c4a6",
+     "g7f7"
+    ],
+    "pvSan": [
+     "Rxd4",
+     "Bxd4",
+     "Bc4",
+     "Bc3",
+     "Bd3",
+     "Bb4",
+     "Bb5",
+     "Be1",
+     "Bc4",
+     "Bd2",
+     "Ba6",
+     "Kf7"
+    ]
+   }
+  }
+ },
+ {
+  "prose": "Rxd4 trades rooks, leaving opposite-coloured bishops; anything else loses ground.",
+  "input": {
+   "ply": 81,
+   "mover": "white",
+   "uci": "d3d4",
+   "san": "Rxd4",
+   "fenBefore": "8/6k1/1p3pp1/p1b4p/P2r1P2/1B1R1K1P/8/8 w - - 3 41",
+   "fenAfter": "8/6k1/1p3pp1/p1b4p/P2R1P2/1B3K1P/8/8 b - - 0 41",
+   "prevSan": "Rd4",
+   "prevUci": "b4d4",
+   "prevFenBefore": "8/6k1/1p3pp1/p1b4p/Pr3P2/1B1R1K1P/8/8 b - - 2 40",
+   "beforeEval": {
+    "lines": [
+     {
+      "uci": "d3d4",
+      "san": "Rxd4",
+      "cp": -9,
+      "mate": null,
+      "pvUci": [
+       "d3d4",
+       "c5d4",
+       "b3c4",
+       "d4c3",
+       "c4a6",
+       "c3d2",
+       "a6b5",
+       "g7f7",
+       "b5c4",
+       "f7e7",
+       "c4a6"
+      ],
+      "pvSan": [
+       "Rxd4",
+       "Bxd4",
+       "Bc4",
+       "Bc3",
+       "Ba6",
+       "Bd2",
+       "Bb5",
+       "Kf7",
+       "Bc4+",
+       "Ke7",
+       "Ba6"
+      ]
+     },
+     {
+      "uci": "b3c2",
+      "san": "Bc2",
+      "cp": -319,
+      "mate": null,
+      "pvUci": [
+       "b3c2",
+       "d4c4",
+       "c2b3",
+       "c4b4",
+       "b3d1",
+       "f6f5",
+       "h3h4",
+       "c5e7"
+      ],
+      "pvSan": [
+       "Bc2",
+       "Rc4",
+       "Bb3",
+       "Rb4",
+       "Bd1",
+       "f5",
+       "h4",
+       "Be7"
+      ]
+     }
+    ]
+   },
+   "afterEval": {
+    "cp": -10,
+    "mate": null,
+    "pvUci": [
+     "c5d4",
+     "b3c4",
+     "d4g1",
+     "c4a6",
+     "g7f8",
+     "a6d3",
+     "f8f7",
+     "d3c4",
+     "f7e7",
+     "c4d3",
+     "g6g5",
+     "f4g5"
+    ],
+    "pvSan": [
+     "Bxd4",
+     "Bc4",
+     "Bg1",
+     "Ba6",
+     "Kf8",
+     "Bd3",
+     "Kf7",
+     "Bc4+",
+     "Ke7",
+     "Bd3",
+     "g5",
+     "fxg5"
+    ]
+   }
+  }
+ }
+]

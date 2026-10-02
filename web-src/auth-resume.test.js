@@ -10,6 +10,8 @@ function harness() {
     document: { getElementById: (id) => id === "pgn-input" ? input : drawer },
     switchView: vi.fn(), runAnalysis, setStatus: vi.fn(), setStatusError: vi.fn(),
     appState: { signedIn: true }, isPendingActionId, noteKeptGuestSources: vi.fn(),
+    window: { location: { href: "http://x/#/analyze" } },
+    parseWorkspaceLocation: () => ({ ply: null }), showAnalysisPly: vi.fn(),
   };
   const start = source.indexOf("const PENDING_ACTION_HANDLERS = {");
   const end = source.indexOf("\n};", start) + 3;

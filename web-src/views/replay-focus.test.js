@@ -187,6 +187,13 @@ describe("replay focus internals", () => {
     expect(html).not.toMatch(/shown · <i class="acct"/);
   });
 
+  it("names the account per row when two accounts were selected but one supplied every game", () => {
+    makeView(elements).renderReplayResults({ games: [stayedGame, userErrorGame], misses_recorded: 0, requested_sources: 2 });
+    const html = elements["replay-results"].innerHTML;
+    expect(html).not.toMatch(/shown · <i class="acct"/);
+    expect(html.match(/class="acct"/g)).toHaveLength(2);
+  });
+
   it("reveals the detail card after a row click when it is off screen", () => {
     const listeners = [];
     const focusCard = {

@@ -1,0 +1,343 @@
+{
+  "meta": {
+    "repo": "PrepForge Chess",
+    "commit": "e1a9ce1d1bc374a8b8dde26a32c5e2ff0c3ad5dc",
+    "ref": "origin/main (2026-09-29)",
+    "scope": "src/prepforge_chess/**, migrations/**, tests/** (backend)",
+    "companion_md": "docs/agent-context/backend-library.md",
+    "neutrality": "factual records only; no findings/severity/recommendations",
+    "line_numbers": "refer to the commit above; '~' prefix means approximate"
+  },
+  "records": [
+    {
+      "area": "architecture",
+      "state_or_flow": "app composition + middleware + DI",
+      "entrypoint": "src/prepforge_chess/api/main.py create_app() 53",
+      "files": [
+        {"path": "src/prepforge_chess/api/main.py", "symbols": ["create_app 53", "_lifespan 42"]},
+        {"path": "src/prepforge_chess/api/middleware.py", "symbols": ["build_csp 56", "SecurityHeadersMiddleware 75", "CSRFMiddleware 91"]},
+        {"path": "src/prepforge_chess/api/deps.py", "symbols": ["current_user_optional 21", "current_user 45", "require_pro 51", "get_repository 60", "current_owner 69"]},
+        {"path": "src/prepforge_chess/api/security.py", "symbols": ["hash_password 48", "new_session_token 71", "hash_session_token 76", "encrypt_token 88"]},
+        {"path": "src/prepforge_chess/api/static.py", "symbols": ["register_static 256", "_render_index 206", "_document_csp 180"]}
+      ],
+      "calls": ["request -> GZip -> SecurityHeaders -> CSRF -> CORS -> router -> Depends(current_user/get_repository)"],
+      "reads": ["session cookie -> auth_sessions.token_hash", "pf_csrf cookie"],
+      "writes": [],
+      "conditions": ["CSRF exempt: stripe webhook + clientlog", "require_pro gates Plan", "static index gets injected asset-base script + document CSP"],
+      "tests": ["tests/test_api_security.py", "tests/test_api_static.py", "tests/test_deployment_contract.py"],
+      "transaction": "Session per request via api/db.py get_db 80",
+      "identity": "AuthSession token hash -> User (deps.py:21)",
+      "permissions": "current_owner = user.id used as owner_user_id",
+      "idempotency": "n/a"
+    },
+    {
+      "area": "users/auth",
+      "state_or_flow": "register/login/logout/session cap",
+      "entrypoint": "src/prepforge_chess/api/routers/auth.py",
+      "files": [
+        {"path": "src/prepforge_chess/api/routers/auth.py", "symbols": ["register 103", "login 128", "logout 158", "me 175", "_open_session 90", "_enforce_session_cap 74", "_purge_expired 64"]},
+        {"path": "src/prepforge_chess/api/models.py", "symbols": ["User 58", "AuthSession 236"]}
+      ],
+      "calls": ["register/login -> hash_password -> _open_session -> _set_session_cookie", "logout -> _close_session"],
+      "reads": ["users", "auth_sessions"],
+      "writes": ["users", "auth_sessions"],
+      "conditions": ["session tokens stored hashed", "expired sessions purged on open; per-user session cap enforced"],
+      "tests": ["tests/test_api_auth.py", "tests/test_api_google_auth.py"],
+      "tables": ["users", "auth_sessions"],
+      "identity": "cookie session token",
+      "idempotency": "repeat login opens additional capped sessions"
+    },
+    {
+      "area": "repertoires",
+      "state_or_flow": "create/fork/import/quota",
+      "entrypoint": "src/prepforge_chess/api/routers/workspace.py create_repertoire 442",
+      "files": [
+        {"path": "src/prepforge_chess/api/routers/workspace.py", "symbols": ["create_repertoire 442", "fork_repertoire 576", "import_repertoire 982", "import_repertoire_pgn 1021", "_enforce_repertoire_quota 46", "_reassign_ids 412"]},
+        {"path": "src/prepforge_chess/storage/repositories.py", "symbols": ["save_repertoire 703", "count_repertoires 1005"]}
+      ],
+      "calls": ["router -> quota check -> (fork/import: _reassign_ids) -> save_repertoire"],
+      "reads": ["repertoires", "opening_nodes"],
+      "writes": ["repertoires (owner_user_id=caller)", "opening_nodes (fresh ids on fork/import)"],
+      "conditions": ["quota enforced before create", "fork target may be a share token or another owner's shared repertoire"],
+      "tests": ["tests/test_api_workspace.py", "tests/test_repertoire_export.py", "tests/test_pgn_import.py"],
+      "tables": ["repertoires", "opening_nodes"],
+      "transaction": "one transaction per repertoire write",
+      "identity": "session user becomes new owner",
+      "permissions": "caller-authenticated; source readable via _readable_repertoire",
+      "idempotency": "fork always creates a new row; import dedupes games by lichess_id/move_signature"
+    },
+    {
+      "area": "repertoires",
+      "state_or_flow": "build node writes (add/delete/action/annotations/apply-plan)",
+      "entrypoint": "src/prepforge_chess/api/routers/workspace.py build_add_moves 698",
+      "files": [
+        {"path": "src/prepforge_chess/api/routers/workspace.py", "symbols": ["build_add_move 633", "build_add_moves 698", "build_delete_nodes 740", "build_apply_plan 784", "build_action 841", "build_annotations 898", "_owned_repertoire 66", "_load_node_or_400 396"]},
+        {"path": "src/prepforge_chess/storage/repositories.py", "symbols": ["update_opening_nodes 744", "save_changed_nodes 765", "delete_opening_nodes 1159"]}
+      ],
+      "calls": ["router -> _owned_repertoire (owner gate) -> repository node write -> id_map/summary response"],
+      "reads": ["opening_nodes", "repertoires"],
+      "writes": ["opening_nodes"],
+      "conditions": ["parentRef resolved against current tree (_load_node_or_400)", "tmp ids mapped to real ids in id_map"],
+      "tests": ["tests/test_api_build_actions.py", "tests/test_api_build_generate.py", "tests/test_opening_generation_v2.py", "tests/test_build_sql_counts.py", "tests/test_build_route_sql.py"],
+      "tables": ["opening_nodes"],
+      "transaction": "per request batch",
+      "identity": "session user",
+      "permissions": "_owned_repertoire 404/403 for non-owners",
+      "idempotency": "delete is idempotent per node id (test_api_build_actions.py:204)"
+    },
+    {
+      "area": "sharing",
+      "state_or_flow": "share token mint/read/fork",
+      "entrypoint": "src/prepforge_chess/api/routers/workspace.py create_share_link 508",
+      "files": [
+        {"path": "src/prepforge_chess/api/routers/workspace.py", "symbols": ["_share_signature 474", "mint_share_token 483", "parse_share_token 488", "shared_repertoire 521", "fork_shared_repertoire 550", "_readable_repertoire 75", "_strip_readonly_build_payload 91"]}
+      ],
+      "calls": ["create_share_link -> mint_share_token (HMAC over repertoire id)", "GET /api/shared/{token} -> parse_share_token -> read-only payload", "fork -> _reassign_ids -> save_repertoire (owner=caller)"],
+      "reads": ["repertoires", "opening_nodes"],
+      "writes": ["repertoires/opening_nodes on fork only"],
+      "conditions": ["token is the credential for read; payload stripped to read-only for non-owners"],
+      "tests": ["tests/test_api_workspace.py"],
+      "tables": ["repertoires", "opening_nodes"],
+      "identity": "share token (HMAC, secret from Settings) or session user",
+      "permissions": "read allowed via token; write requires ownership",
+      "idempotency": "mint replaces previous link semantics (same signature per repertoire id)"
+    },
+    {
+      "area": "teams/sharing",
+      "state_or_flow": "team lifecycle + membership + invite + repertoire sharing",
+      "entrypoint": "src/prepforge_chess/api/routers/teams.py",
+      "files": [
+        {"path": "src/prepforge_chess/api/routers/teams.py", "symbols": ["create_team 143", "join_preview 181", "join_team 206", "team_detail 242", "add_member 330", "remove_member 375", "update_member_role 406", "create_invite 438", "revoke_invite 470", "delete_team 523", "_require_member 72", "_require_manager 80", "_hash_invite_code 110", "_live_invite 114"]},
+        {"path": "src/prepforge_chess/storage/repositories.py", "symbols": ["set_repertoire_sharing 1041", "unshare_all_for_team 1109", "list_team_shared_repertoires 1053"]}
+      ],
+      "calls": ["team ops -> _require_member/_require_manager -> ORM team tables", "invite -> random code -> _hash_invite_code stored -> raw url returned once", "join_team -> _live_invite lookup -> add member (idempotent)", "delete_team -> unshare_all_for_team"],
+      "reads": ["teams", "team_members", "team_invites", "repertoires"],
+      "writes": ["teams", "team_members", "team_invites", "repertoires.visibility/team_id"],
+      "conditions": ["_MANAGER_ROLES = owner/admin for management ops; delete_team owner-only", "add_member resolves target by linked Lichess username", "a repertoire is shared with one team at a time"],
+      "tests": ["tests/test_api_teams.py (incl. test_join_is_idempotent:314)"],
+      "tables": ["teams", "team_members", "team_invites", "repertoires"],
+      "transaction": "per request; delete cascades unshare in one path",
+      "identity": "session user; added members identified via linked_accounts username",
+      "permissions": "_require_manager (80) / _require_member (72)",
+      "idempotency": "join_team idempotent (already_member path)"
+    },
+    {
+      "area": "training",
+      "state_or_flow": "smart session start / queue selection",
+      "entrypoint": "src/prepforge_chess/api/routers/train.py smart_start 247",
+      "files": [
+        {"path": "src/prepforge_chess/api/routers/train.py", "symbols": ["smart_start 247", "smart_summary 322", "_smart_summary_payload 205", "_mixed_summary_payload 227"]},
+        {"path": "src/prepforge_chess/services/training_smart.py", "symbols": ["SmartTrainingService 131", "start_or_resume 169", "start_or_resume_mixed 245", "session_card_bundle 531"]},
+        {"path": "src/prepforge_chess/services/scheduler.py", "symbols": ["build_session_plan 243", "mix_plans 431", "encode_card 92", "decode_card 100"]}
+      ],
+      "calls": ["smart_start -> start_or_resume(_mixed) -> scheduler.build_session_plan/mix_plans -> session saved -> smart_prompt_to_json"],
+      "reads": ["repertoires", "opening_nodes", "training_progress", "training_sessions"],
+      "writes": ["training_sessions (create/resume)"] ,
+      "conditions": ["resume prefers an existing caller-owned session; queue cards encoded in the session row"],
+      "tests": ["tests/test_scheduler.py", "tests/test_training_smart.py", "tests/test_api_train.py"],
+      "tables": ["training_sessions"],
+      "transaction": "per request", "identity": "session user (owner_user_id)",
+      "permissions": "caller-owned sessions only", "idempotency": "resume reuses the active session"
+    },
+    {
+      "area": "training",
+      "state_or_flow": "smart attempt sync (exactly-once) + SRS update",
+      "entrypoint": "src/prepforge_chess/api/routers/train.py smart_sync 425 / smart_move 359",
+      "files": [
+        {"path": "src/prepforge_chess/services/training_smart.py", "symbols": ["sync_progress 624-837", "submit_move 838-928", "_requeue_card 929", "_owner_or_raise 970"]},
+        {"path": "src/prepforge_chess/storage/repositories.py", "symbols": ["record_attempt_receipt 264", "lock_training_progress 1311", "write_training_progress 1274", "lock_training_session 1234", "write_training_session 1182"]},
+        {"path": "src/prepforge_chess/services/training.py", "symbols": ["update_spaced_repetition 507"]}
+      ],
+      "calls": ["smart_sync -> sync_progress -> record_attempt_receipt (per attempt_uuid) -> lock_training_progress -> write_training_progress -> lock_training_session -> write_training_session", "smart_move -> submit_move -> update_spaced_repetition (attempt==1) + _requeue_card"],
+      "reads": ["training_progress", "training_sessions", "train_attempt_receipts", "opening_nodes"],
+      "writes": ["training_progress (SRS/mastery)", "training_sessions (card_index, queue)", "train_attempt_receipts"],
+      "conditions": ["attempts keyed by attempt_uuid", "SRS mutation only when attempt==1", "requeue inserts a REQUEUE_GAP delay"],
+      "tests": ["tests/test_training_smart.py::test_postgres_concurrent_attempt_receipt:566", "test_postgres_interleaved_attempts_never_lose_an_update:679", "test_postgres_concurrent_sync_different_uuids_do_not_lose_updates:774", "test_postgres_interleaved_session_updates_never_lose_one:890", "test_postgres_concurrent_sync_session_state_keeps_every_update:984"],
+      "tables": ["training_progress", "training_sessions", "train_attempt_receipts"],
+      "transaction": "one transaction per sync; progress + session updated together under row locks",
+      "identity": "session user; _owner_or_raise (training_smart.py:970)",
+      "permissions": "caller-owned session + progress rows",
+      "idempotency": "TrainAttemptReceipt ON CONFLICT DO NOTHING -> exactly-once per attempt_uuid"
+    },
+    {
+      "area": "training",
+      "state_or_flow": "classic line training (start/move/skip/hint/record-miss)",
+      "entrypoint": "src/prepforge_chess/api/routers/train.py start 81 / move 537",
+      "files": [
+        {"path": "src/prepforge_chess/api/routers/train.py", "symbols": ["start 81", "move 537", "skip 468", "hint 480", "record_miss 130", "_owned_session 55"]},
+        {"path": "src/prepforge_chess/services/training.py", "symbols": ["TrainingService 108", "record_attempt 474", "create_training_session 68"]}
+      ],
+      "calls": ["start -> create/resume session -> prompts", "move -> record_attempt -> progress/session writes", "record_miss -> miss entry for a coach/line miss"],
+      "reads": ["training_sessions", "training_progress", "opening_nodes"],
+      "writes": ["training_progress", "training_sessions"],
+      "conditions": ["_owned_session gates every session-scoped route"],
+      "tests": ["tests/test_training.py", "tests/test_api_train.py", "tests/e2e/test_train_keyboard_smoke.py"],
+      "tables": ["training_progress", "training_sessions"],
+      "transaction": "per request", "identity": "session user",
+      "permissions": "_owned_session (train.py:55)", "idempotency": "per-request (no receipt layer on this path)"
+    },
+    {
+      "area": "training",
+      "state_or_flow": "streak update",
+      "entrypoint": "src/prepforge_chess/api/routers/train.py _touch_streak 187",
+      "files": [
+        {"path": "src/prepforge_chess/services/streak.py", "symbols": ["resolve_day 44", "advance 55", "as_view 82"]},
+        {"path": "src/prepforge_chess/storage/repositories.py", "symbols": ["mutate_user_setting 196", "lock_user_setting 162"]}
+      ],
+      "calls": ["training write path -> _touch_streak -> streak.advance -> mutate_user_setting (row-locked)"],
+      "reads": ["user_settings (streak state)"],
+      "writes": ["user_settings"],
+      "conditions": ["local_date-based day resolution; same-day advance is a no-op"],
+      "tests": ["tests/test_streak.py:50", "tests/test_api_train.py::test_streak_is_idempotent_within_a_day_and_extends_next_day:593"],
+      "tables": ["user_settings"],
+      "transaction": "within the triggering training transaction",
+      "identity": "session user", "permissions": "own settings row",
+      "idempotency": "idempotent within a day"
+    },
+    {
+      "area": "games",
+      "state_or_flow": "game ingestion + dedupe",
+      "entrypoint": "src/prepforge_chess/services/pgn_import.py PgnImportService 37 + repositories.save_game_batched 569",
+      "files": [
+        {"path": "src/prepforge_chess/storage/repositories.py", "symbols": ["save_game 284", "save_game_batched 569", "find_game_id_by_lichess_id 674", "existing_move_signature_ids 1372", "claim_or_verify_game 1140", "_ensure_position 1603"]},
+        {"path": "src/prepforge_chess/storage/codec.py", "symbols": ["move_signature 238", "rebuild_moves 204"]}
+      ],
+      "calls": ["import/compare/analyze -> PgnImportService or direct save -> dedupe checks -> save_game_batched (games/moves/positions/engine_evaluations)"],
+      "reads": ["games", "positions"],
+      "writes": ["games", "moves", "positions", "engine_evaluations"],
+      "conditions": ["dedupe by lichess_id and by move_signature", "ownership claimed on first save, verified on later saves (claim_or_verify_game)"],
+      "tests": ["tests/test_pgn_import.py", "tests/test_storage_codec.py", "tests/test_api_lichess_games.py", "tests/test_api_analyze.py (test_analyses_isolated_between_users)"],
+      "tables": ["games", "moves", "positions", "engine_evaluations"],
+      "transaction": "one transaction per game batch",
+      "identity": "owner_user_id stamped on games",
+      "permissions": "claim-or-verify owner gate",
+      "idempotency": "re-import of the same game is a no-op/refresh"
+    },
+    {
+      "area": "departure/miss",
+      "state_or_flow": "Lichess compare + departure miss ingest",
+      "entrypoint": "src/prepforge_chess/api/routers/lichess.py _run_compare 408 / compare_post 529",
+      "files": [
+        {"path": "src/prepforge_chess/services/lichess_fetch.py", "symbols": ["fetch_recent_pgns 112", "_build_fetched_game 179", "compare_recent_games 436", "compare_many_identities 479", "record_departure_misses 551-615", "_build_summary 617"]},
+        {"path": "src/prepforge_chess/services/repertoire_matching.py", "symbols": ["match_game_to_repertoire 65", "match_game_against_repertoires 134", "select_deepest_match 125"]}
+      ],
+      "calls": ["compare -> compare_many_identities -> fetch_recent_pgns (external) -> _summarize_fetched -> match_game_against_repertoires -> record_departure_misses"],
+      "reads": ["linked_accounts", "repertoires", "opening_nodes", "games"],
+      "writes": ["training_progress (miss entries)"],
+      "conditions": ["external usernames accepted in body; multi-account sources attributed via source_account", "ingest marker DEPARTURE_INGESTED_KEY per game; cap 300"],
+      "tests": ["tests/test_lichess_fetch.py", "tests/test_repertoire_matching.py", "tests/test_api_lichess.py", "tests/test_lichess_departure_misses.py"],
+      "tables": ["training_progress", "games"],
+      "transaction": "record_departure_misses runs in a single transaction",
+      "identity": "session user is the write target; external usernames are read-only inputs",
+      "permissions": "writes scoped to caller's training_progress",
+      "idempotency": "once per game via DEPARTURE_INGESTED_KEY (postgres count-once test:256)"
+    },
+    {
+      "area": "games",
+      "state_or_flow": "latest game watch / seen marker",
+      "entrypoint": "src/prepforge_chess/api/routers/lichess.py latest 544 / mark_seen 615",
+      "files": [
+        {"path": "src/prepforge_chess/services/lichess_fetch.py", "symbols": ["fetch_latest_games_meta 192", "_parse_ndjson_games 237", "newest_game_across 263"]}
+      ],
+      "calls": ["latest -> fetch_latest_games_meta (external) -> newest_game_across", "mark_seen -> stores last-seen marker"],
+      "reads": ["linked_accounts"],
+      "writes": ["user_settings-style seen marker (per identity)"],
+      "conditions": ["light=1 variant for polling"],
+      "tests": ["tests/test_api_lichess.py", "tests/test_lichess_fetch.py"],
+      "tables": ["linked_accounts"],
+      "identity": "session user + linked identities", "permissions": "caller's links only",
+      "idempotency": "seen marker is last-write-wins"
+    },
+    {
+      "area": "scout",
+      "state_or_flow": "explorer proxy (server-side Scout input)",
+      "entrypoint": "src/prepforge_chess/api/routers/lichess.py explorer_proxy 330",
+      "files": [
+        {"path": "src/prepforge_chess/services/lichess_fetch.py", "symbols": ["fetch_explorer_json 35", "ExplorerRateLimitedError 31"]}
+      ],
+      "calls": ["explorer_proxy -> _linked_token (318) -> fetch_explorer_json (Lichess explorer) -> cached response"],
+      "reads": ["linked_accounts (optional token)"],
+      "writes": [],
+      "conditions": ["in-process cache 24h / 500 entries; rate-limit surfaces ExplorerRateLimitedError"],
+      "tests": ["tests/test_api_lichess.py", "tests/test_scout_production_boundary.py"],
+      "tables": [],
+      "identity": "session user (token optional)", "permissions": "authenticated route",
+      "idempotency": "read-only; cache makes repeats cheap"
+    },
+    {
+      "area": "analyze",
+      "state_or_flow": "prepare + classify-save (browser compute)",
+      "entrypoint": "src/prepforge_chess/api/routers/analyze.py analyze_prepare 128 / analyze_classify_save 206",
+      "files": [
+        {"path": "src/prepforge_chess/api/routers/analyze.py", "symbols": ["_import_pgn_for_analysis 48", "_brilliant_analyzer_from_client 66", "list_analyses 311", "recall_analysis 320"]},
+        {"path": "src/prepforge_chess/services/browser_compute.py", "symbols": ["classify_precomputed_game 99", "_apply_brilliant 59"]},
+        {"path": "src/prepforge_chess/services/classification.py", "symbols": ["classify_move 88", "cp_to_win_chance 58"]}
+      ],
+      "calls": ["prepare -> _import_pgn_for_analysis (game claim) -> returns server metadata", "classify-save -> classify_precomputed_game (client evals) -> save_analysis_result"],
+      "reads": ["games", "repertoires (brilliant context)"],
+      "writes": ["analysis_results", "moves.classification", "engine_evaluations"],
+      "conditions": ["evals computed in the browser; server classifies + persists", "maia_assessments[] optional (human layer)"],
+      "tests": ["tests/test_api_analyze.py", "tests/test_analyze_classify_timing.py", "tests/test_classification_golden.py", "tests/test_classification_crosslang.py", "tests/test_brilliant.py"],
+      "tables": ["analysis_results", "games", "moves", "engine_evaluations"],
+      "transaction": "per request", "identity": "session user; game claimed via claim_or_verify_game",
+      "permissions": "owner gate on game_id; analyses isolated per owner (test_api_analyze.py)",
+      "idempotency": "save keyed by derived _analysis_result_id (repositories 1721)"
+    },
+    {
+      "area": "settings",
+      "state_or_flow": "settings read/update (depth, maia rating, engine gating)",
+      "entrypoint": "src/prepforge_chess/api/routers/settings.py get_settings 58 / update_settings 77",
+      "files": [
+        {"path": "src/prepforge_chess/services/app_settings.py", "symbols": ["AppSettingsService 76", "clamp_stockfish_depth 31", "clamp_maia_rating 42", "owner_maia_rating 51", "owner_stockfish_depth 59"]},
+        {"path": "src/prepforge_chess/storage/repositories.py", "symbols": ["lock_user_setting 162", "mutate_user_setting 196", "get_user_setting 123"]}
+      ],
+      "calls": ["update_settings -> clamps -> mutate_user_setting (row-locked)", "get_settings -> _settings_payload (server_engine_enabled flag)"],
+      "reads": ["user_settings", "app_settings/engine_settings"],
+      "writes": ["user_settings"],
+      "conditions": ["maia_rating 'auto' resolves to null pin", "PREPFORGE_SERVER_ENGINE_ENABLED surfaces as server_engine_enabled"],
+      "tests": ["tests/test_api_settings.py", "tests/test_maia_adapter.py"],
+      "tables": ["user_settings", "app_settings", "engine_settings"],
+      "transaction": "per request under lock_user_setting",
+      "identity": "session user", "permissions": "own row only",
+      "idempotency": "repeat set is idempotent"
+    },
+    {
+      "area": "identity",
+      "state_or_flow": "Lichess link / primary / unlink",
+      "entrypoint": "src/prepforge_chess/api/routers/lichess.py callback 176 / set_primary 121 / unlink_one 250",
+      "files": [
+        {"path": "src/prepforge_chess/services/lichess_oauth.py", "symbols": ["build_authorize_url 52", "exchange_code 82", "fetch_account 100"]},
+        {"path": "src/prepforge_chess/api/models.py", "symbols": ["LinkedAccount 84"]}
+      ],
+      "calls": ["login -> build_authorize_url -> callback -> exchange_code -> fetch_account -> linked_accounts row (token encrypted via security.encrypt_token)", "set_primary -> _demote_others (99)", "unlink_one -> row delete"],
+      "reads": ["linked_accounts"],
+      "writes": ["linked_accounts"],
+      "conditions": ["exactly one primary maintained by _demote_others", "migrations backfill is_primary (test_migration_lichess_primary.py:148)"],
+      "tests": ["tests/test_api_lichess.py", "tests/test_migration_lichess_primary.py"],
+      "tables": ["linked_accounts"],
+      "transaction": "per request",
+      "identity": "session user + verified Lichess account",
+      "permissions": "rows scoped by user_id (_links_for 72)",
+      "idempotency": "relink updates the same row"
+    },
+    {
+      "area": "billing",
+      "state_or_flow": "stripe checkout/portal/webhook",
+      "entrypoint": "src/prepforge_chess/api/routers/billing.py stripe_webhook 163",
+      "files": [
+        {"path": "src/prepforge_chess/api/routers/billing.py", "symbols": ["billing_status 70", "create_checkout 84", "create_portal 114", "_apply_event 141", "_set_plan_by_customer 133", "_ensure_customer 58"]},
+        {"path": "src/prepforge_chess/api/models.py", "symbols": ["StripeEvent 222", "Plan 47"]}
+      ],
+      "calls": ["checkout/portal -> Stripe SDK (_stripe 40)", "webhook (CSRF-exempt) -> _apply_event -> _set_plan_by_customer"],
+      "reads": ["stripe_events", "users"],
+      "writes": ["stripe_events", "users.plan"],
+      "conditions": ["customer id stored on user; plan updated by customer id"],
+      "tests": ["tests/test_api_billing.py (test_webhook_is_idempotent:170)"],
+      "tables": ["stripe_events", "users"],
+      "transaction": "per webhook event",
+      "identity": "Stripe customer id -> User (webhook has no session)",
+      "permissions": "signature-verified webhook; user routes require session",
+      "idempotency": "StripeEvent row per event id"
+    }
+  ]
+}

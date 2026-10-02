@@ -206,6 +206,10 @@ export function buildMoveFeatures(input) {
   return {
     ply: input.ply ?? null,
     moveNumber: input.moveNumber ?? null,
+    // The move before this one (lets the coach tell a recapture from a fresh win).
+    prevSan: input.prevSan ?? null,
+    prevUci: input.prevUci ?? null,
+    prevFenBefore: input.prevFenBefore ?? null,
     mover,
     san,
     uci,
@@ -235,6 +239,9 @@ export function buildMoveFeatures(input) {
     bestLine,
     altLine,
     playedLine,
+    // Raw engine lines for the commentary's own line reading.
+    bestPvUci: best && Array.isArray(best.pvUci) ? best.pvUci.slice() : [],
+    playedPvUci: uci ? [uci, ...((afterEval && afterEval.pvUci) || [])] : [],
 
     phase,
     materialBefore,

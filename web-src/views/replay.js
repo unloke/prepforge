@@ -6,7 +6,8 @@ import "./replay.css";
 const REPLAY_KINDS = {
   "in-prep": { icon: "✓", badge: "Stayed in prep", label: "stayed in prep", tone: "good" },
   "user-error": { icon: "✗", badge: "You left prep", label: "you left prep", tone: "bad" },
-  "left-prep": { icon: "⚡", badge: "Opponent novelty", label: "novelties", tone: "warn" },
+  // Covers both a late novelty and an early "Different opening": the filter names what they share.
+  "left-prep": { icon: "⚡", badge: "Opponent novelty", label: "opponent left prep", tone: "warn" },
   "no-prep": { icon: "—", badge: "No repertoire", label: "not covered", tone: "none", departure: "—" },
 };
 
@@ -413,8 +414,11 @@ export function createReplayView({
     const selectedIndex = rows.find(({ index }) => isGameOpen(index))?.index ?? rows[0].index;
     const focused = rows.find(({ index }) => index === selectedIndex);
     const accounts = new Set(payload.games.map((game) => game.source_account).filter(Boolean));
-    const showAccount = accounts.size > 1;
-    const singleAccount = accounts.size === 1 ? [...accounts][0] : "";
+    // Several selected accounts whose games all came from one of them must not
+    // read as if that account were the whole selection: name it on each row.
+    const sourceCount = Number(payload.requested_sources) || accounts.size;
+    const showAccount = accounts.size > 1 || sourceCount > 1;
+    const singleAccount = !showAccount && accounts.size === 1 ? [...accounts][0] : "";
     const accountNote = singleAccount
       ? ` · <i class="acct" title="Fetched from this linked account">${escapeHtml(singleAccount)}</i>`
       : "";

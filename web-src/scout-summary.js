@@ -1,5 +1,5 @@
 // Scout v2 — natural-language readouts from scout-stats output only.
-import { choose } from "./coach/phrasebank.js";
+import { choose } from "./coach/voice.js";
 import { scoutLineText } from "./scout.js";
 
 // {qualifier} is either "" or " (low confidence)" — never wrap it in more

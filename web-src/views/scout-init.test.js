@@ -186,6 +186,22 @@ describe("scout view initialization reentrancy", () => {
     expect(elements.get("scout-btn").disabled).toBe(false);
   });
 
+  it("loads older batches from each source's own cursor", async () => {
+    view.__setPickedUsernames(["recent", "older"]);
+    streamGames.mockImplementation(async (username, opts) => {
+      const stamp = username === "recent" ? 9000 : 1000;
+      opts.onGame({ gameId: username, color: "white", score: 1,
+        ucis: ["e2e4"], sans: ["e4"], datestamp: stamp, speed: "blitz" });
+      return { accepted: 1, received: 500, lastDatestamp: stamp };
+    });
+    await view.runScout();
+    await view.runScout();
+    expect(streamGames.mock.calls[2][1].until).toBe(9000);
+    expect(streamGames.mock.calls[3][1].until).toBe(1000);
+    // A full duplicate page still offers older history.
+    expect(elements.get("scout-btn").textContent).toBe("Load older");
+  });
+
   it("discards the old report's source warnings and retry action", async () => {
     await view.runScout();
     const warning = makeEl("scout-source-warnings", {

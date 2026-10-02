@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from prepforge_chess.core.models import Color, TrainingMode, TrainingProgress
 from prepforge_chess.services.engine import MockEngine
 from prepforge_chess.services.opening_builder import CreateRepertoireRequest, OpeningBuilderService
@@ -117,6 +119,87 @@ def test_fresh_rebuilds_queue():
     assert rebuilt.id == first.id  # same row, rebuilt content
     assert rebuilt.current_index == 0
     assert rebuilt.seed == 6
+
+
+def test_restart_counts_a_partially_played_first_card():
+    repository = _repository()
+    repertoire, ids = _build(repository)
+    _seed_progress(repository, repertoire.id, [_due(ids["e4"]), _due(ids["nf3"])]
+                   + [_mastered(ids[k]) for k in ("bb5", "d4", "c4")])
+    service = SmartTrainingService(repository, "t-owner")
+    first = service.start_or_resume(repertoire.id, seed=5, session_size=2)
+    prompt = service.current_prompt(first.id)
+    service.submit_move(first.id, prompt.expected_move_uci)
+    played = repository.load_training_session(first.id)
+    assert played.current_index == 0 and played.current_node_id
+    service.start_or_resume(repertoire.id, fresh=True, seed=6)
+    assert repository.get_user_setting("t-owner", "recap.replaced_sessions") == 1
+
+
+def test_restart_count_rolls_back_when_session_write_fails(monkeypatch):
+    repository = _repository()
+    repertoire, _ = _build(repository)
+    service = SmartTrainingService(repository, "t-owner")
+    first = service.start_or_resume(repertoire.id, seed=5)
+    service.submit_move(first.id, "a2a3")
+    def fail(*args, **kwargs):
+        raise RuntimeError("session write failed")
+    monkeypatch.setattr(repository, "write_training_session", fail)
+    with pytest.raises(RuntimeError, match="session write failed"):
+        service.start_or_resume(repertoire.id, fresh=True)
+    assert repository.get_user_setting("t-owner", "recap.replaced_sessions", 0) == 0
+
+
+def test_deleted_review_archive_and_nodes_commit_together(monkeypatch):
+    repository = _repository()
+    repertoire, ids = _build(repository)
+    _seed_progress(repository, repertoire.id, [_due(ids["bb5"])])
+    def fail(*args, **kwargs):
+        raise RuntimeError("archive write failed")
+    monkeypatch.setattr(repository, "write_user_setting", fail)
+    monkeypatch.setattr(repository, "mutate_user_setting", fail)
+    with pytest.raises(RuntimeError, match="archive write failed"):
+        repository.delete_opening_nodes(repertoire.id, [ids["bb5"]])
+    assert ids["bb5"] in {n.id for n in repository._walk_nodes(repository.load_repertoire(repertoire.id).root_node)}
+
+
+@pytest.mark.parametrize("excluded", ["disabled", "weak", "other-owner", "inactive"])
+def test_dashboard_due_matches_trainable_personal_reviews(excluded):
+    from prepforge_chess.api.routers.workspace import dashboard
+
+    repository = _repository()
+    repertoire, ids = _build(repository)
+    repository.save_repertoire(repertoire, owner_user_id="t-owner")
+    progress = _due(ids["bb5"])
+    if excluded == "weak":
+        progress.correct_attempts = 0
+        progress.spaced_repetition_score = 0
+    _seed_progress(repository, repertoire.id, [progress],
+                   owner="other" if excluded == "other-owner" else "t-owner")
+    if excluded == "disabled":
+        repository.update_opening_nodes(repertoire.id, [{"id": ids["bb5"], "is_enabled": False}])
+    if excluded == "inactive":
+        repository.set_repertoire_active(repertoire.id, False)
+    else:
+        assert repository.due_counts_by_repertoire("t-owner").get(repertoire.id, 0) == 0
+    assert dashboard(owner="t-owner", repo=repository)["due_reviews"] == 0
+
+
+def test_dashboard_due_and_soon_partition_valid_review_times():
+    from prepforge_chess.api.routers.workspace import dashboard
+
+    repository = _repository()
+    repertoire, ids = _build(repository)
+    repository.save_repertoire(repertoire, owner_user_id="t-owner")
+    now = _due(ids["e4"])
+    soon = _due(ids["nf3"])
+    later = _due(ids["bb5"])
+    soon.due_at = datetime.now(timezone.utc) + timedelta(hours=12)
+    later.due_at = datetime.now(timezone.utc) + timedelta(days=2)
+    _seed_progress(repository, repertoire.id, [now, soon, later])
+    data = dashboard(owner="t-owner", repo=repository)
+    assert data["due_reviews"] == 1
+    assert data["due_soon"] == 1
 
 
 def test_start_raises_when_nothing_trainable():

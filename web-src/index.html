@@ -153,8 +153,8 @@
                 <header class="cc-head">
                   <b>Coach</b>
                   <span class="phase-chip" id="coach-phase" data-testid="coach-phase" hidden></span>
-                  <span class="pf-row-text explain-review">
-                    <span class="pf-row-label" id="explain-engine-label">Review my moves</span>
+                  <span class="pf-row-text explain-review" title="Grade each move with the engine. On your own games, only your moves are graded.">
+                    <span class="pf-row-label" id="explain-engine-label">Engine review</span>
                     <button type="button" class="pf-switch is-on" id="explain-engine-toggle" role="switch" aria-checked="true" aria-labelledby="explain-engine-label"><span class="pf-knob"></span></button>
                   </span>
                 </header>
@@ -199,7 +199,6 @@
                   </button>
                 </div>
               </div>
-              <div class="empty-state" id="analysis-empty"><p>Play on the board, or analyze a PGN.</p></div>
               <details class="drawer" id="pgn-drawer">
                 <summary>Analyze source · PGN</summary>
                 <textarea
@@ -210,6 +209,10 @@
                   spellcheck="false"
                   placeholder="[Event &quot;Training Game&quot;]&#10;&#10;1. e4 e5 2. Nf3 Nc6 *"
                 ></textarea>
+                <div class="row gap pgn-file-row">
+                  <button type="button" class="btn sm ghost" id="pgn-file-btn" data-testid="pgn-file-btn">Open .pgn file</button>
+                  <input type="file" id="pgn-file-input" accept=".pgn,application/x-chess-pgn,text/plain" hidden />
+                </div>
               </details>
               <details class="drawer" id="history-drawer" data-testid="history-drawer" open hidden>
                 <summary>Recent analyses</summary>
@@ -324,13 +327,13 @@
             </div>
             <div class="board-bar">
               <div class="bb-nav">
-                <button class="ib" id="train-flip" title="Flip board" aria-label="Flip board">⇅</button>
                 <button class="ib" id="train-hint" title="Hint (show the piece to move)" aria-label="Show hint">💡</button>
                 <button class="ib" id="train-skip" title="Skip this card" aria-label="Skip this card">⏭</button>
               </div>
               <span class="board-label" id="train-board-label"></span>
               <div class="bb-right">
                 <span class="build-sync" id="train-sync" aria-live="polite" hidden></span>
+                <button class="ib" id="train-flip" title="Flip board" aria-label="Flip board">⇅</button>
               </div>
             </div>
           </div>
@@ -340,7 +343,7 @@
               <div class="seg" id="train-modes" role="group" aria-label="Training mode">
                 <button type="button" class="seg-btn train-mode is-active" data-mode="smart">Smart queue</button>
                 <button type="button" class="seg-btn train-mode" data-mode="all_lines">Line rehearsal</button>
-                <button type="button" class="seg-btn train-mode" data-mode="play" data-testid="train-mode-play">Play vs human</button>
+                <button type="button" class="seg-btn train-mode" data-mode="play" data-testid="train-mode-play" title="Play a game from the opening against Lichess database moves or Maia">Practice game</button>
               </div>
             </div>
             <section class="coach-banner train-coach" id="train-banner" data-testid="train-feedback" data-state="idle" aria-live="polite">
@@ -372,6 +375,7 @@
                     <select id="train-play-book" data-testid="train-play-book">
                       <option value="explorer">Lichess explorer</option>
                       <option value="repertoire">My repertoire</option>
+                      <option value="maia">Maia</option>
                     </select>
                   </div>
                   <div class="field train-play-repertoires" id="train-play-repertoire-picker" hidden>
@@ -379,7 +383,7 @@
                     <details class="train-repertoire-menu" id="train-repertoire-menu">
                       <summary class="train-repertoire-summary" data-testid="train-repertoire-summary">
                         <span id="train-repertoire-summary-label">Select repertoires</span>
-                        <span class="train-repertoire-chevron" aria-hidden="true">⌄</span>
+                        <svg class="train-repertoire-chevron" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                       </summary>
                       <div class="train-repertoire-popover" role="group" aria-label="Active repertoires">
                         <label class="train-repertoire-option train-repertoire-select-all">
@@ -519,7 +523,7 @@
             <div class="scout-grid">
               <div class="scout-main">
                 <div class="scout-stream stream card" role="status"><div class="spinner" aria-hidden="true"></div><div><b>Streaming games from Lichess…</b></div></div>
-                <div class="scout-empty empty-state big"><div class="es-mark">♘</div><h3>Scout an opponent</h3><p>Add a Lichess username (or pick Self) as a source, then Start.</p></div>
+                <div class="scout-empty empty-state big"><div class="es-mark">♘</div><h3>Scout an opponent</h3><p id="scout-empty-hint">Add a Lichess username as a source, then Start.</p></div>
                 <div id="scout-profile" class="scout-profile profile card" hidden></div>
                 <div id="scout-v3-results" class="scout-v3-results" hidden></div>
                 <div id="scout-results" class="scout-results"></div>
@@ -551,8 +555,8 @@
               <span class="team-role-badge" id="team-detail-role"></span>
               <span class="spacer"></span>
               <button class="btn sm" id="team-detail-invite" data-testid="team-detail-invite" title="Invite by link — get a shareable link; anyone signed in who opens it joins as a member" hidden>Invite</button>
-              <button class="ib" id="team-detail-rename" data-testid="team-detail-rename" title="Rename team" aria-label="Rename team" hidden>✎</button>
-              <button class="ib danger" id="team-detail-delete" data-testid="team-detail-delete" title="Delete team" aria-label="Delete team" hidden>🗑</button>
+              <button class="ib" id="team-detail-rename" data-testid="team-detail-rename" title="Rename team" aria-label="Rename team" hidden><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M10.5 2.5l3 3L6 13H3v-3z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
+              <button class="ib danger" id="team-detail-delete" data-testid="team-detail-delete" title="Delete team" aria-label="Delete team" hidden><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
               <button class="ib" id="team-detail-close" title="Close" aria-label="Close team details">×</button>
             </header>
             <div class="tabs" role="tablist" aria-label="Team workspace">
@@ -735,6 +739,10 @@
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".8"/></svg>
         <span>Train</span>
       </button>
+      <button class="tab tabbar-item" data-view="analyze" data-testid="bottom-analyze" aria-current="false">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18"/><path d="M5 16l4-5 3 3 6-8"/><circle cx="18" cy="6" r="1.2"/></svg>
+        <span>Analyze</span>
+      </button>
       <button class="tab tabbar-item" data-view="replay" data-replay-section="games" data-review-tab data-testid="bottom-review" aria-current="false">
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
         <span>Games</span>
@@ -755,10 +763,6 @@
         <button class="sheet-item" type="button" id="sheet-lib-import" data-lib-mirror="dashboard-import-pgn" hidden>
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg>
           <span>Import PGN</span>
-        </button>
-        <button class="sheet-item" type="button" data-nav-mirror="analyze">
-          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18"/><path d="M5 16l4-5 3 3 6-8"/><circle cx="18" cy="6" r="1.2"/></svg>
-          <span>Analyze</span>
         </button>
         <button class="sheet-item" type="button" data-nav-mirror="replay:scout">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="15" r="3.5"/><circle cx="17" cy="15" r="3.5"/><path d="M10.5 15h3M5 11.5 7.5 5h2l1 6M19 11.5 16.5 5h-2l-1 6"/></svg>

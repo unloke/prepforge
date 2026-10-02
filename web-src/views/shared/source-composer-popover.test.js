@@ -166,6 +166,44 @@ describe("source composer popover", () => {
     }
   });
 
+  it("stays put when a toggle rebuilds the popover and the trigger reflows", async () => {
+    const { doc, overlay, listeners, restore } = makeDoc();
+    // Each render makes a fresh popover element, like the real innerHTML rebuild.
+    let current = { style: {} };
+    let html = "";
+    Object.defineProperty(overlay, "innerHTML", {
+      get: () => html,
+      set: (v) => {
+        html = v;
+        current = { style: {} };
+      },
+    });
+    const baseQuery = overlay.querySelector;
+    overlay.querySelector = (sel) => (sel === ".src-popover" ? current : baseQuery(sel));
+    try {
+      let rect = { left: 50, top: 50, bottom: 80, right: 120 };
+      const anchor = { focus: vi.fn(), getBoundingClientRect: () => rect };
+      openSourceComposer({
+        document: doc,
+        anchor,
+        selection: { linkedMode: "all" },
+        linkedAccounts: linked,
+        escapeHtml: (s) => String(s),
+        onChange: () => {},
+        onClose: () => {},
+      });
+      const first = { top: current.style.top, left: current.style.left };
+      // Unchecking Self removes a chip, the toolbar rewraps and the trigger moves.
+      rect = { left: 120, top: 120, bottom: 150, right: 190 };
+      listeners.click({
+        target: { closest: (sel) => (sel === "[data-src-self-checkbox]" ? { checked: false } : null) },
+      });
+      expect({ top: current.style.top, left: current.style.left }).toEqual(first);
+    } finally {
+      restore();
+    }
+  });
+
   it("esc closes, focus returns to the opener", async () => {
     const { doc, overlay, listeners, docListeners, restore } = makeDoc();
     const opener = { focus: vi.fn() };

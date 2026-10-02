@@ -174,9 +174,8 @@ export function createSettingsView({
     if (maiaToggle) paintSwitch(maiaToggle, on);
     const usage = document.getElementById("settings-maia-usage");
     if (usage) {
-      usage.textContent = on
-        ? "In use: Maia analysis is on."
-        : "Not in use: Maia analysis is off (Playing strength → Maia analysis).";
+      usage.textContent = on ? "In use" : "Not in use";
+      usage.title = on ? "" : "Turn on Maia analysis under Playing strength";
     }
     renderMaia3Status();
   }
@@ -209,8 +208,8 @@ export function createSettingsView({
         linkBtn.hidden = false;
         linkBtn.textContent = "Sign in to link Lichess";
       }
-      list.innerHTML =
-        '<p class="muted hint">Sign in first, then link a Lichess account to import your games and see yourself in Games and Scout.</p>';
+      // The button already says what to do; no standing explanation.
+      list.innerHTML = "";
       return;
     }
     if (connectionsUnknown() && !connectionsFetchTried) {
