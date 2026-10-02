@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Chess } from "chess.js";
 
 import { buildMoveFeatures } from "./features.js";
-import { buildCommentary, bucket } from "./commentary.js";
+import { buildCommentary, buildOpponentCommentary, bucket } from "./commentary.js";
 import { lineOutcome, netFor, gainPhrase, numberLine } from "./move-facts.js";
 import { motifPhrase, participle, hangingCapture } from "./motifs.js";
 import RATED from "./fixtures/rated-moves.json";
@@ -249,6 +249,103 @@ describe("buildCommentary", () => {
       expect(prose).not.toMatch(/\{|\}|undefined|null|NaN| {2}|(^|[^.])\.\.(?!\.)|—/);
       expect(prose.split(/(?<=[.!])\s/).length).toBeLessThanOrEqual(4);
     }
+  });
+});
+
+describe("the opponent's move, read for the user", () => {
+  const afterNf3 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2";
+
+  it("names the piece a slip leaves hanging and the reply that takes it", () => {
+    const f = scenario({ fen: afterNf3, san: "Qh4", best: "Nc6", before: 30, after: 900, playedLine: ["Nxh4"] });
+    const read = buildOpponentCommentary(f, { selfSide: "white" });
+    expect(read.prose).toBe("2...Qh4 leaves the queen on h4 hanging; 3.Nxh4 wins it.");
+    expect(read.tone).toBe("good");
+  });
+
+  it("is what buildCommentary returns for a move flagged as the opponent's", () => {
+    const f = scenario({ fen: afterNf3, san: "Qh4", best: "Nc6", before: 30, after: 900, playedLine: ["Nxh4"] });
+    f.opponentRead = true;
+    expect(buildCommentary(f, { selfSide: "white" })).toEqual(buildOpponentCommentary(f, { selfSide: "white" }));
+  });
+
+  it("says what a sound move asks of you, and your best reply", () => {
+    const f = scenario({ fen: afterNf3, san: "Nf6", best: "Nf6", before: 30, after: 30, playedLine: ["Nxe5"] });
+    const read = buildOpponentCommentary(f, { selfSide: "white" });
+    expect(read.prose).toMatch(/^2\.\.\.Nf6 is [^:]+: it develops the knight and attacks your pawn on e4\. Best reply: 3\.Nxe5 \(it's level\)\.$/);
+    expect(read.tone).toBe("warn");
+  });
+
+  it("points out a positional slip with their better move and where your reply leaves you", () => {
+    const f = scenario({ fen: afterNf3, san: "a6", best: "Nc6", before: 30, after: 160, playedLine: ["Nxe5"] });
+    const read = buildOpponentCommentary(f, { selfSide: "white" });
+    expect(read.prose).toMatch(/^2\.\.\.a6 is an? (inaccuracy|mistake|blunder); Nc6 was their best\. Best reply: 3\.Nxe5 \(you are (slightly|clearly) better\)\.$/);
+  });
+
+  it("calls out a move that walks into mate", () => {
+    const fen = "3r2k1/5ppp/8/8/8/8/5PPP/R5K1 b - - 0 1";
+    const c = new Chess(fen);
+    const mv = c.move("Rd2");
+    const f = buildMoveFeatures({
+      ply: 2,
+      mover: "black",
+      uci: mv.from + mv.to,
+      san: mv.san,
+      fenBefore: fen,
+      fenAfter: c.fen(),
+      beforeEval: { lines: [{ uci: "g8f8", san: "Kf8", cp: 0, mate: null, pvUci: ["g8f8"], pvSan: ["Kf8"] }] },
+      afterEval: { cp: null, mate: 2, pvUci: play(c.fen(), ["Ra8+", "Rd8", "Rxd8#"]), pvSan: ["Ra8+", "Rd8", "Rxd8#"] },
+    });
+    expect(buildOpponentCommentary(f, { selfSide: "white" }).prose).toBe("1...Rd2 walks into mate in 2, starting with 2.Ra8+.");
+  });
+
+  it("stays short and clean, and needs a known side", () => {
+    const f = scenario({ fen: afterNf3, san: "Qh4", best: "Nc6", before: 30, after: 900, playedLine: ["Nxh4"] });
+    expect(buildOpponentCommentary(f, {}).prose).toBe("");
+    for (const { input } of RATED) {
+      const self = input.mover === "white" ? "black" : "white";
+      const { prose } = buildOpponentCommentary(buildMoveFeatures(input), { selfSide: self });
+      expect(prose.length).toBeLessThanOrEqual(240);
+      expect(prose).not.toMatch(/\{|\}|undefined|null|NaN| {2}|(^|[^.])\.\.(?!\.)|—/);
+      expect(prose.split(/(?<=[.!])\s/).length).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it("does not call a reply on the capture square a hanging piece", () => {
+    const f = scenario({ fen: "4k3/8/8/8/4b3/3P4/8/3QK3 b - - 0 1", san: "Bxd3",
+      best: "Bf5", before: 0, after: 300, playedLine: ["Qxd3", "Kf7"] });
+    const { prose } = buildOpponentCommentary(f, { selfSide: "white" });
+    expect(prose).not.toContain("hanging");
+    expect(prose).toContain("Qxd3");
+  });
+
+  it("reads a mating reply from either user's side with White-POV mate signs", () => {
+    for (const [fen, mover, selfSide, mate, reply] of [
+      ["3r2k1/5ppp/8/8/8/8/5PPP/R5K1 b - - 0 1", "black", "white", 2, ["Ra8+", "Rd8", "Rxd8#"]],
+      ["r5k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1", "white", "black", -2, ["Ra1+", "Rd1", "Rxd1#"]],
+    ]) {
+      const c = new Chess(fen);
+      const mv = c.move("Rd2");
+      const best = mover === "white" ? "Kf1" : "Kf8";
+      const f = buildMoveFeatures({ mover, san: mv.san, uci: mv.from + mv.to, fenBefore: fen, fenAfter: c.fen(),
+        beforeEval: { lines: [{ uci: play(fen, [best])[0], san: best, cp: 0, pvUci: play(fen, [best]) }] },
+        afterEval: { mate, pvUci: play(c.fen(), reply), pvSan: reply } });
+      expect(f.inMateNet).toBe(true);
+      const { prose } = buildOpponentCommentary(f, { selfSide });
+      expect(prose).toContain("walks into mate in 2");
+      expect(prose).toContain(reply[0]);
+    }
+  });
+
+  it("reads their missed mate as a reprieve for the user", () => {
+    const c = new Chess();
+    ["f3", "e5", "g4"].forEach((san) => c.move(san));
+    const fen = c.fen();
+    const mv = c.move("Nc6");
+    const f = buildMoveFeatures({ mover: "black", san: mv.san, uci: mv.from + mv.to, fenBefore: fen, fenAfter: c.fen(),
+      beforeEval: { lines: [{ uci: "d8h4", san: "Qh4#", mate: -1, pvUci: ["d8h4"] }] },
+      afterEval: { cp: 0, pvUci: play(c.fen(), ["Nh3"]), pvSan: ["Nh3"] } });
+    expect(f.missedMate).toBe(true);
+    expect(buildOpponentCommentary(f, { selfSide: "white" }).prose).toContain("lets you off: Qh4# would have mated");
   });
 });
 

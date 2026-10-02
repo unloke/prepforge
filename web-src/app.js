@@ -1926,9 +1926,9 @@ class PositionCoach {
     const prevFen = ctx.prevFen;
     const token = ++this.token;
     const mover = fen.split(" ")[1] === "b" ? "white" : "black";
-    // "Engine review" on a game the user played: grade only their own mainline
-    // moves and leave the plain instant read on the opponent's.
-    if (!isReviewedMove({ mover, selfSide: analysisSelfSide(), mainline: Number.isInteger(ctx.ply) })) return;
+    // "Engine review" on a game the user played grades only their own mainline moves;
+    // the opponent's get their own read: the threat, the slip to punish, your reply.
+    const opponentRead = !isReviewedMove({ mover, selfSide: analysisSelfSide(), mainline: Number.isInteger(ctx.ply) });
     try {
       const c = await (_coachReady || preloadCoach());
       if (token !== this.token || fen !== this.fen || !this.enabled || activeViewName() !== "analyze") return;
@@ -1968,6 +1968,7 @@ class PositionCoach {
         beforeEval: { lines: before.lines },
         afterEval: { cp: top.cp ?? null, mate: top.mate ?? null, pvUci: top.pvUci || [], pvSan: top.pvSan || [] },
       });
+      features.opponentRead = opponentRead;
       renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
       // Read the position's "texture" from Maia's human-move distribution (one obvious
       // move vs. a rich spread) and fold it into the commentary — best-effort and async,
@@ -2247,13 +2248,12 @@ function paintPhaseFromFen(fen) {
 function paintMaiaCoachFromRead(fen, read, extra = {}) {
   loadPhaseCoach()
     .then((m) => {
-      const model = m.buildPhaseCoach({
+      m.paintAnalysisCoach({
         fen,
-        predictions: (read && read.predictions) || [],
+        predictions: read?.predictions,
         rating: effectiveMaiaRating(),
         ...extra,
-      });
-      paintMaiaCoachLine(model);
+      }, appState.explainContext, paintMaiaCoachLine);
     })
     .catch(() => {});
 }
@@ -2298,6 +2298,8 @@ function renderInstantCoach() {
   const turn = fen.split(" ")[1] === "b" ? "black" : "white";
   if (ctx.prevFen && ctx.lastSan) {
     paintPhaseFromFen(ctx.prevFen || fen);
+    // The Maia note belongs to the previous move until this move's read lands.
+    paintMaiaCoachLine(null);
     const mover = turn === "white" ? "Black" : "White"; // the side that just moved
     const did = describeMove(ctx.prevFen, ctx.lastUci, ctx.lastSan);
     setCoachProse(did ? `${mover} ${did}.` : `${mover} plays ${ctx.lastSan}.`, "info");
@@ -6390,13 +6392,18 @@ async function runAnalysis(options = {}) {
     // are reused, and each result is published for the Engine panel and the Coach.
     const store = await timed("load", analysisStore);
     const live = (await ensureAnalyzeView()).liveEvalChart(positions);
+    // Every job update also drives the live graph's animation for that phase.
+    const job = (update) => {
+      live.phase?.(update.phase, update.current, update.total);
+      jobToast.updateJob(update);
+    };
     const evals = await timed("stockfish", () =>
       store.analyzeGame({
         positions,
         depth: prep.depth,
         onResult: live,
         onProgress: (done, total) => {
-          jobToast.updateJob({
+          job({
             current: done,
             total,
             phase: "stockfish",
@@ -6408,6 +6415,7 @@ async function runAnalysis(options = {}) {
     );
     engineLifecycleMark("analyze-stockfish-done", tAnalyze);
     if (wantsMaia && maiaReady && typeof maiaReady.then === "function") {
+      live.phase?.("maia-load");
       try {
         await maiaReady;
         engineLifecycleMark("analyze-maia-ready", tAnalyze);
@@ -6431,14 +6439,14 @@ async function runAnalysis(options = {}) {
         provider.setInitProgressHandler(({ phase, loaded, total }) => {
           if (phase === "download") {
             const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
-            jobToast.updateJob({
+            job({
               current: 0,
               total: 1,
               phase: "maia-load",
               message: `downloading Maia model · ${pct}%`,
             });
           } else if (phase === "cache") {
-            jobToast.updateJob({
+            job({
               current: 0,
               total: 1,
               phase: "maia-load",
@@ -6448,7 +6456,7 @@ async function runAnalysis(options = {}) {
             // Cached weights still need an ORT session rebuild (the slow part). Say so, rather
             // than leaving the stale "downloading" message up — that's what made a cached
             // re-init (after an idle teardown) look like a fresh 46 MB download.
-            jobToast.updateJob({
+            job({
               current: 0,
               total: 1,
               phase: "maia-load",
@@ -6473,9 +6481,9 @@ async function runAnalysis(options = {}) {
                 timings[`maia_${sub}`] = detail || 1;
               },
               onProgress: (done, total) =>
-                jobToast.updateJob({ current: done, total, phase: "maia-inference", message: `Maia ${done}/${total} moves` }),
+                job({ current: done, total, phase: "maia-inference", message: `Maia ${done}/${total} moves` }),
               onTrapProgress: (done, total) =>
-                jobToast.updateJob({ current: done, total, phase: "maia-traps", message: `Maia traps ${done}/${total}` }),
+                job({ current: done, total, phase: "maia-traps", message: `Maia traps ${done}/${total}` }),
             })
           );
         } finally {
@@ -6500,7 +6508,7 @@ async function runAnalysis(options = {}) {
     // imply a cancel that wouldn't hold. Classifying (CPU) and saving (DB)
     // are separate phases — the server reports both in server_timings_ms.
     jobToast.lockJob();
-    jobToast.updateJob({
+    job({
       current: positions.length,
       total: positions.length,
       phase: "classifying",

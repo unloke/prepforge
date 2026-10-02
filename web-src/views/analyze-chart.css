@@ -157,15 +157,15 @@
 /* Wrapped actions keep their height; only the result body may shrink/scroll. */
 #analyze-sidebar .panel-head { flex: none; flex-wrap: wrap; gap: 8px; }
 #analyze-actions { flex-wrap: wrap; }
-/* One header row: title | eval chip | win meter | depth ring | lines | Engine.
-   The docked engine window and its head dissolve into the card's grid
-   (display: contents), so its depth readout and line stepper sit in the header
-   and its lines run under the chart instead of a second "SF" row. */
+/* One header row: eval (or the title while there is none) | win meter | depth
+   | lines | Engine. The docked engine window and its head dissolve into the
+   card's grid (display: contents), so its depth readout and line stepper sit
+   in the header and its lines run under the chart instead of a second row. */
 #analysis-eval-card {
   display: grid;
-  grid-template-columns: auto auto minmax(24px, 1fr) auto auto auto;
+  grid-template-columns: auto minmax(24px, 1fr) auto auto auto;
   align-items: center;
-  column-gap: 8px;
+  column-gap: 10px;
   row-gap: 8px;
   container-type: inline-size;
 }
@@ -173,11 +173,12 @@
 #analysis-engine-slot .engine-window-body { grid-column: 1 / -1; }
 #analysis-eval-card .ev-head { display: contents; }
 .ev-title { grid-area: 1 / 1; font-size: var(--fs-s); }
-#analysis-chart-caption { grid-area: 1 / 2; }
-.ev-meter { grid-area: 1 / 3; }
-#analysis-engine-slot .engine-head-depth { grid-area: 1 / 4; }
-#analysis-engine-slot .engine-lines { grid-area: 1 / 5; }
-.ev-engine { grid-area: 1 / 6; }
+.ev-head.has-eval .ev-title { display: none; }
+#analysis-chart-caption { grid-area: 1 / 1; }
+.ev-meter { grid-area: 1 / 2; }
+#analysis-engine-slot .engine-head-depth { grid-area: 1 / 3; }
+#analysis-engine-slot .engine-lines { grid-area: 1 / 4; }
+.ev-engine { grid-area: 1 / 5; }
 #analysis-engine-slot,
 #analysis-engine-slot > .engine-window:not([hidden]),
 #analysis-engine-slot .engine-window-head,
@@ -187,78 +188,83 @@
 #analysis-engine-slot .engine-head-eval,
 #analysis-engine-slot .engine-window-close,
 #analysis-engine-slot .engine-window-resize { display: none; }
-@container (max-width: 340px) {
-  .ev-title { display: none; }
-}
 
-/* The current eval as a chip in the winning side's colours (the text says it
-   too), fixed width so stepping never shifts the row; empty keeps its box. */
+/* The current eval as plain figures; a small disc in the leading side's colour
+   says who is better (the sign says it too), so stepping through a game never
+   flips a whole box between light and dark. Fixed width: no row shift. */
 .eval-now {
-  min-width: 60px;
-  padding: 3px 8px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 64px;
   color: var(--text);
-  font-size: 13px;
-  font-weight: 750;
-  line-height: 18px;
-  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
-.eval-now:empty { visibility: hidden; }
-.eval-now[data-side="white"] { background: #f4f3ef; color: #1a1a1a; border-color: #cfc9b8; }
-.eval-now[data-side="black"] { background: #25282d; color: #f4f3ef; border-color: #25282d; }
+.eval-now:empty { display: none; }
+.eval-now::before {
+  content: "";
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid #8a8d93;
+  background: #8a8d93;
+}
+.eval-now[data-side="white"]::before { background: #f4f3ef; border-color: #b9b4a6; }
+.eval-now[data-side="black"]::before { background: #25282d; border-color: #5b5f66; }
 /* White's share of the win chance: light from the left over a dark track. */
 .ev-meter {
-  height: 8px;
-  border: 1px solid var(--line);
+  height: 6px;
   border-radius: 999px;
-  background: #25282d;
+  background: #3a3d43;
   overflow: hidden;
 }
 .ev-meter > i {
   display: block;
   width: 50%;
   height: 100%;
-  background: #f4f3ef;
+  border-radius: inherit;
+  background: #ecebe6;
   transition: width 0.3s ease;
 }
 .ev-head:not(.has-eval) .ev-meter { opacity: 0.35; }
+/* Search depth as quiet figures with a hairline of progress under them. */
 #analysis-engine-slot .engine-head-depth {
   --p: 0;
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 28px;
   min-width: 0;
-  height: 28px;
-  padding: 0;
+  padding: 0 0 2px;
   border: 0;
-  border-radius: 50%;
-  background: conic-gradient(var(--accent) calc(var(--p) * 1turn), var(--line) 0);
+  border-radius: 0;
+  background: linear-gradient(var(--accent), var(--accent)) 0 100% / calc(var(--p) * 100%) 2px no-repeat,
+    linear-gradient(var(--line), var(--line)) 0 100% / 100% 2px no-repeat;
+  color: var(--muted);
   font-size: 0;
 }
-#analysis-engine-slot .engine-head-depth::before {
-  content: "";
-  position: absolute;
-  inset: 3px;
-  border-radius: 50%;
-  background: var(--panel);
-}
 #analysis-engine-slot .engine-head-depth::after {
-  content: attr(data-d);
-  position: relative;
-  color: var(--text);
-  font-size: 10.5px;
-  font-weight: 750;
+  content: "d" attr(data-d);
+  font-size: 11px;
+  font-weight: 650;
 }
+#analysis-engine-slot .engine-lines { gap: 2px; padding: 0; border: 0; background: none; }
+#analysis-engine-slot .engine-step {
+  width: 18px;
+  height: 18px;
+  background: none;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+#analysis-engine-slot .engine-step:hover { color: var(--text); background: var(--surface-2); transform: none; }
+#analysis-engine-slot .engine-step:disabled { background: none; opacity: 0.4; }
 .ev-engine {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
-  padding: 0 10px 0 9px;
+  height: 24px;
+  padding: 0 9px 0 8px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--panel);
@@ -270,21 +276,49 @@
 }
 .ev-engine::before {
   content: "";
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--line-strong, var(--line));
 }
 .ev-engine:hover { color: var(--text); }
 .ev-engine:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.ev-engine.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.ev-engine.is-active { border-color: var(--accent); color: var(--text); }
 .ev-engine.is-active::before {
   background: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
 }
-#analysis-engine-slot .engine-window-body { padding-top: 4px; border-top: 1px solid var(--line-soft, var(--line)); }
-#analysis-engine-slot .engine-pv { grid-template-columns: 52px minmax(0, 1fr); }
-#analysis-engine-slot .engine-pv-line { min-width: 0; overflow-wrap: anywhere; }
+/* Engine lines: one 22px row each, eval as muted figures, the move list cut
+   at the edge (a click unfolds it). */
+#analysis-engine-slot .engine-window-body { padding-top: 2px; }
+#analysis-engine-slot .engine-window-pvs { padding: 0; gap: 0; }
+#analysis-engine-slot .engine-pv,
+#analysis-engine-slot .engine-pv.is-top {
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 6px;
+  height: 22px;
+  min-height: 22px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+}
+#analysis-engine-slot .engine-pv:hover { background: var(--surface-2); }
+#analysis-engine-slot .engine-pv.is-expanded { height: auto; }
+#analysis-engine-slot .engine-pv-eval,
+#analysis-engine-slot .engine-pv.is-top .engine-pv-eval {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 650;
+  text-align: right;
+}
+#analysis-engine-slot .engine-pv.is-top .engine-pv-eval { color: var(--text); }
+#analysis-engine-slot .engine-pv-line { min-width: 0; line-height: 22px; text-overflow: ellipsis; }
+#analysis-engine-slot .engine-pv.is-expanded .engine-pv-line { overflow-wrap: anywhere; }
 
 /* Whole-game progress: the graph draws itself as positions finish, with the
    job's count, Stop and a thin track under it. */
@@ -305,6 +339,29 @@
   .eval-live::after { display: none; animation: none; }
 }
 .eval-chart .eval-front { stroke: var(--accent); stroke-opacity: 0.55; }
+/* Maia's passes on the finished curve: while the model loads the curve
+   breathes; while it reads the game a glowing sweep recolours the curve up to
+   its front, move by move. The count and Stop stay in the dock below. */
+.eval-live { color: var(--brilliant); }
+.eval-live[data-phase="maia"]::after,
+.eval-live[data-phase="maia-load"]::after,
+.eval-live[data-phase="saving"]::after {
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--brilliant) 20%, transparent), transparent);
+}
+.eval-live[data-phase="maia-load"] .eval-line { animation: eval-breathe 1.4s ease-in-out infinite; }
+.eval-chart .eval-maia-line {
+  fill: none;
+  stroke: var(--brilliant);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.eval-chart .eval-maia-band { fill: url(#eval-maia-glow); }
+.eval-chart .eval-maia-front { stroke: var(--brilliant); stroke-width: 2; }
+@keyframes eval-breathe { 50% { stroke-opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) {
+  .eval-live[data-phase="maia-load"] .eval-line { animation: none; }
+}
 .analysis-job-dock:empty { display: none; }
 .analysis-job-dock .job-toast.is-docked {
   padding: 0;
@@ -325,14 +382,8 @@
   font-variant-numeric: tabular-nums;
 }
 .analysis-job-dock .job-toast-stop { flex: none; }
-.analysis-job-dock .job-toast-track {
-  height: 3px;
-  margin-top: 6px;
-  border-radius: 999px;
-  background: var(--surface-3, var(--line));
-  overflow: hidden;
-}
-.analysis-job-dock .job-toast-fill { border-radius: inherit; background: var(--accent); }
+/* The live graph is the progress display; the dock keeps the count and Stop. */
+.analysis-job-dock .job-toast-track { display: none; }
 .rb-head {
   display: flex;
   flex-wrap: wrap;
@@ -352,7 +403,7 @@
 .eval-chart {
   display: block;
   width: 100%;
-  height: 88px;
+  height: 64px;
   border: 1px solid var(--line);
   border-radius: 6px;
   /* Mid-grey field in both themes, so the light (White) and dark (Black)
@@ -398,10 +449,14 @@
   background: var(--panel);
   color: var(--text);
   font-size: 11px;
+  /* Intrinsic width: with only `left` set, a shrink-to-fit box near the right
+     edge collapsed to the leftover sliver and wrapped one letter per line. */
+  width: max-content;
   max-width: 100%;
   box-sizing: border-box;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   pointer-events: none;
 }
 
@@ -560,20 +615,12 @@
   max-width: 100%;
 }
 
-/* A-05: one-line coverage note with the metadata tucked away. */
+/* A-05: shown only for a partial search; the run's metadata is its tooltip. */
 .quality-note {
-  margin-top: 8px;
+  margin: 8px 0 0;
   font-size: var(--fs-s, 12px);
-  color: var(--muted);
-}
-.quality-note summary {
-  cursor: pointer;
-}
-.quality-rows {
-  display: grid;
-  gap: 2px;
-  margin-top: 6px;
-  padding-left: 12px;
+  color: var(--warn-text, var(--muted));
+  cursor: help;
 }
 
 /* ---- Drawers: PGN source + recent analyses ---------------------------- */

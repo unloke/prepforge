@@ -376,11 +376,93 @@ function buildProse(f, opts) {
   return errorProse(f, x, v);
 }
 
+// `features.opponentRead` (set by the Analyze coach on a game the user played)
+// switches to the opponent's read below.
 export function buildCommentary(features, opts = {}) {
   if (!features) return { tone: "info", grade: "", prose: "" };
+  if (features.opponentRead) return buildOpponentCommentary(features, opts);
   return {
     tone: features.classification.tone,
     grade: features.classification.label,
     prose: buildProse(features, opts),
   };
+}
+
+// --- The opponent's move, read for the user ------------------------------------
+//
+// On a game the user played, the opponent's moves are not graded as if they were the
+// user's: the read says what the move means for the user. A slip is an opening to
+// punish (what it drops, and the reply that takes it), a sound move is a question to
+// answer (what it threatens), and every read ends on the user's best reply and where
+// that leaves them. Same facts as the user's own read: the engine line and the board.
+
+const ERROR_WORD = { inaccuracy: "an inaccuracy", mistake: "a mistake", blunder: "a blunder" };
+
+// Pieces a move hits or takes belong to the user: "the bishop on c4" -> "your bishop on c4".
+function yours(phrase) {
+  return String(phrase || "")
+    .replace(/\bthe (queen|rook|bishop|knight|pawn) on /g, "your $1 on ")
+    .replace(/\bthe king\b/g, "your king");
+}
+
+// "Best reply: 19.Bxd4 (you are clearly better)."
+function replySentence(f, v) {
+  if (!f.replySan) return "";
+  const reply = numberLine(f.fenAfter, [f.replySan]);
+  if (Number.isFinite(f.mateAfter) && f.inMateNet) return `Best reply: ${reply}, with ${mateCount(f.mateAfter)}.`;
+  return `Best reply: ${reply} (${v.standing(bucket(100 - f.winAfterMover))}).`;
+}
+
+// The slip, in what it gives the user: mate, a hanging piece, material, or position.
+// `named` = the reply already appears in the sentence.
+function opponentSlip(f, x, san) {
+  const reply = f.replySan ? numberLine(f.fenAfter, [f.replySan]) : "";
+  if (f.inMateNet && reply) return { text: `${san} walks into ${mateCount(f.mateAfter)}, starting with ${reply}.`, named: true };
+  if (f.missedMate && f.bestSan) return { text: `${san} lets you off: ${f.bestSan} would have mated.`, named: false };
+  const lost = x.rel && x.relValue >= 1 && x.playedNet !== null && x.playedNet < 0 ? gainPhrase(x.rel) : "";
+  // Taking back on the square the slip captured on is a trade, not a hanging piece.
+  const recapture = /x/.test(f.san || "") && f.replyUci?.slice(2, 4) === f.uci?.slice(2, 4);
+  const hung = reply && !recapture ? hangingCapture(f.fenAfter, f.replyUci) : null;
+  if (hung && (!x.rel || (x.rel[hung.type] || 0) >= 1)) {
+    return { text: `${san} leaves the ${PIECE_NAME[hung.type]} on ${hung.square} hanging; ${reply} wins it.`, named: true };
+  }
+  if (lost) {
+    const line = trimmedLine(f.fenAfter, x.played, x.opp, 6);
+    return { text: `${san} drops ${lost}${line ? ` after ${line}` : ""}.`, named: !!line };
+  }
+  const better = f.bestSan && !f.isBest ? `; ${f.bestSan} was their best` : "";
+  return { text: `${san} is ${ERROR_WORD[f.classification.code]}${better}.`, named: false };
+}
+
+function opponentProse(f, selfSide) {
+  const v = makeVoice(selfSide, selfSide);
+  const code = f.classification.code;
+  const san = numberLine(f.fenBefore, [f.san]);
+  if (/#/.test(f.san || "")) return { tone: "danger", prose: `${san} is checkmate.` };
+  if (code === "forced") return { tone: "info", prose: `${san} was their only legal move. ${replySentence(f, v)}`.trim() };
+  const x = readFacts(f);
+  if (ERROR_WORD[code]) {
+    const { text, named } = opponentSlip(f, x, san);
+    const reply = named ? "" : replySentence(f, v);
+    return { tone: "good", prose: reply ? `${text} ${reply}` : text };
+  }
+  const lead = {
+    brilliant: `${san} is a brilliant resource`,
+    great: `${san} is the only move that holds for them`,
+    best: pick(f, "opp-best", [`${san} is accurate`, `${san} is the engine's choice`, `${san} is a solid move`]),
+    good: `${san} is reasonable`,
+  }[code] || `${san} is playable`;
+  const threat = threatPhrase(f.fenBefore, f.uci, f.san);
+  const did = yours(describeMove(f.fenBefore, f.uci, f.san));
+  const reply = replySentence(f, v);
+  // A move that wins material or hits a piece asks for an answer: say so in the tone.
+  const pressing = !!threat || /^takes your /.test(did);
+  return { tone: pressing ? "warn" : "info", prose: `${lead}${did ? `: it ${did}` : ""}.${reply ? ` ${reply}` : ""}` };
+}
+
+// The opponent's move on a game the user played, read for the user.
+export function buildOpponentCommentary(features, { selfSide } = {}) {
+  if (!features || !selfSide) return { tone: "info", grade: "", prose: "" };
+  const { tone, prose } = opponentProse(features, selfSide);
+  return { tone, grade: `Their ${features.classification.label.toLowerCase()}`, prose };
 }

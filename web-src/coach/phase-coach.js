@@ -166,6 +166,11 @@ export function clusterQueueByPhase(queue) {
   };
 }
 
+// A delayed Analyze module import must not restore the previous move's tip.
+export function paintAnalysisCoach(input, context, paint) {
+  if (input.fen === context?.prevFen && input.playedUci === context?.lastUci) paint(buildPhaseCoach(input));
+}
+
 export function buildPhaseCoach({
   fen,
   predictions,

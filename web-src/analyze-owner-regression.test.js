@@ -2,6 +2,20 @@ import { expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 
 const source = readFileSync(new URL("./app.js", import.meta.url), "utf8");
+
+it("the live chart enters Maia loading while warmup is still pending", async () => {
+  let resolve;
+  const maiaReady = new Promise((done) => { resolve = done; });
+  const live = { phase: vi.fn() };
+  const start = source.indexOf('    engineLifecycleMark("analyze-stockfish-done"');
+  const end = source.indexOf("    // Browser Maia pass", start);
+  const run = new Function("live", "maiaReady", "wantsMaia", "engineLifecycleMark", "tAnalyze",
+    `return (async () => { ${source.slice(start, end)} })();`);
+  const pending = run(live, maiaReady, true, vi.fn(), 0);
+  expect(live.phase).toHaveBeenCalledWith("maia-load");
+  resolve();
+  await pending;
+});
 const code = source.slice(source.indexOf("async function retryAnalyzeSave()"), source.indexOf("\nfunction hideAnalysisHandoff("));
 
 it("Retry save cannot replay a previous owner's in-memory checkpoint", async () => {

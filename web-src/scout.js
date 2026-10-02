@@ -1343,7 +1343,9 @@ export function attachPrepReplies(targets, { lookups = [], refutations = [], opp
     return {
       ...target,
       suggestedReply,
-      needsPrep: !suggestedReply,
+      // "No answer in your prep" only means something when there is a prep to look in;
+      // with no repertoire for this side every row would say it.
+      needsPrep: !suggestedReply && (lookups || []).length > 0,
       refutation,
       oppColor,
     };

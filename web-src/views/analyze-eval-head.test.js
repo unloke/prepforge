@@ -27,6 +27,7 @@ function setup() {
     "engine-head-eval": el(),
     "engine-eval-bar-white": el({ style: { height: "" } }),
     "eval-chart-live": el(),
+    "analysis-eval-live": el(),
     "eval-chart-cursor": el({ setAttribute() {} }),
   };
   const fill = el({ style: { width: "" } });
@@ -106,6 +107,22 @@ describe("live whole-game progress chart", () => {
     expect(svg.innerHTML).toMatch(/class="eval-front" x1="426.7"/);
   });
 
+  it("animates Maia's read on the finished curve: a sweep up to its front", async () => {
+    const { view, ids } = setup();
+    const live = view.liveEvalChart(["p0", "p1", "p2"]);
+    ["p0", "p1", "p2"].forEach((p) => live(p, { score_cp: 40 }));
+    live.phase("maia", 1, 2);
+    await new Promise((r) => setTimeout(r, 30));
+    const html = ids["eval-chart-live"].innerHTML;
+    expect(html).not.toContain("eval-front");
+    expect(html).toMatch(/class="eval-maia-front" x1="320.0"/);
+    // Only the part of the curve Maia has read is recoloured.
+    expect(/class="eval-maia-line" points="([^"]+)"/.exec(html)[1].split(" ")).toHaveLength(2);
+    live.phase("maia-load");
+    await new Promise((r) => setTimeout(r, 30));
+    expect(ids["eval-chart-live"].innerHTML).not.toMatch(/eval-maia-(line|front)/);
+  });
+
   it("maps mates to the edge of the chart instead of a flat line", async () => {
     const { view, ids } = setup();
     const onResult = view.liveEvalChart(["a", "b"]);
@@ -115,5 +132,20 @@ describe("live whole-game progress chart", () => {
     const ys = /points="([^"]+)"/.exec(ids["eval-chart-live"].innerHTML)[1].split(" ").map((p) => Number(p.split(",")[1]));
     expect(ys[0]).toBeLessThan(20);
     expect(ys[1]).toBeGreaterThan(76);
+  });
+
+  it("maps the job's real phases and clears the previous game's caption", async () => {
+    const { view, ids, appState } = setup();
+    appState.evalChartPoints = [{ ply: 1, score_cp: 250 }];
+    appState.analysisPly = 1;
+    view.updateEvalChartCursor();
+    const live = view.liveEvalChart(["p0", "p1"]);
+    expect(ids["analysis-chart-caption"].textContent).toBe("");
+    for (const [jobPhase, graphPhase] of [["maia-load", "maia-load"], ["maia-inference", "maia"],
+      ["maia-traps", "maia"], ["classifying", "saving"]]) {
+      live.phase(jobPhase, 1, 2);
+      await new Promise((r) => setTimeout(r, 30));
+      expect(ids["analysis-eval-live"].dataset.phase).toBe(graphPhase);
+    }
   });
 });
