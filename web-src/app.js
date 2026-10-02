@@ -10855,6 +10855,7 @@ async function startPlaySession({
   source: luckySource,
   sourceUrl: luckySourceUrl,
 } = {}) {
+  if (appState.trainMode !== "play") return false;
   const startToken = appState.playStartToken = (appState.playStartToken || 0) + 1;
   const isCurrentStart = () => appState.playStartToken === startToken && appState.trainMode === "play";
   appState.smart = null;
@@ -10883,6 +10884,7 @@ async function startPlaySession({
       const metas = playRepertoireMeta(selectedIds);
       const metasById = new Map(metas.map((rep) => [String(rep.id), rep]));
       const payloads = await Promise.all(selectedIds.map((id) => loadPlayRepertoirePayload(id)));
+      if (!isCurrentStart()) return false;
       playRepertoires = payloads
         .map((payload, index) => normalizePlayRepertoire(payload, metasById.get(String(selectedIds[index])) || { id: selectedIds[index] }))
         .filter((rep) => rep.id && rep.rootId);
@@ -10893,7 +10895,7 @@ async function startPlaySession({
       repertoireCursors = playCursorsAtFen(playRepertoires, startFen);
       nodeId = playRepertoires.find((rep) => repertoireCursors[rep.id]?.length)?.rootId || null;
     } catch (error) {
-      setStatusError(error.message);
+      if (isCurrentStart()) setStatusError(error.message);
       return false;
     }
   }
@@ -10916,7 +10918,7 @@ async function startPlaySession({
   try {
     info = await boardInfo(startFen);
   } catch (error) {
-    setStatusError(error.message || "Could not open that position");
+    if (isCurrentStart()) setStatusError(error.message || "Could not open that position");
     return false;
   }
   if (!isCurrentStart()) return false;

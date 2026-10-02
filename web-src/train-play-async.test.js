@@ -11,8 +11,9 @@ function compile(marker, deps) {
 }
 function deferred() {
   let resolve;
-  const promise = new Promise((yes) => { resolve = yes; });
-  return { promise, resolve };
+  let reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
 }
 const FEN = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
 const STATS = { totalGames: 100, moves: [{ uci: "e7e5", total: 100, share: 1 }] };
@@ -65,7 +66,7 @@ describe("Play opponent response ownership", () => {
       syncTrainPickerVisibility: vi.fn(), syncTrainSessionControls: vi.fn(), syncWorkspaceUrl: vi.fn(),
       updateTrainTurnBadge: vi.fn(), playOpponentReply: vi.fn(), renderPlayTrail: vi.fn(),
     };
-    return { appState, info, paint, start: compile("async function startPlaySession(", deps) };
+    return { appState, info, paint, deps, start: compile("async function startPlaySession(", deps) };
   }
 
   it("does not install a practice session after switching modes during Start", async () => {
@@ -85,6 +86,23 @@ describe("Play opponent response ownership", () => {
     h.info.resolve(localBoardInfo(FEN));
     await Promise.all([first, second]);
     expect(h.paint).toHaveBeenCalledTimes(1);
+  });
+  it("does not report a stale Start failure over the newly selected mode", async () => {
+    const h = startHarness();
+    const pending = h.start();
+    h.appState.trainMode = "smart";
+    h.info.reject(new Error("old board load failed"));
+    await pending;
+    expect(h.deps.setStatusError).not.toHaveBeenCalled();
+  });
+  it("ignores a delayed start confirmation after leaving Practice game", async () => {
+    const h = startHarness();
+    const smart = { cardIndex: 2 };
+    h.appState.trainMode = "smart";
+    h.appState.smart = smart;
+    expect(await h.start()).toBe(false);
+    expect(h.appState.smart).toBe(smart);
+    expect(h.paint).not.toHaveBeenCalled();
   });
   it("only applies the latest of overlapping replies for the same position", async () => {
     const h = harness();

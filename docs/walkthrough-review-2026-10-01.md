@@ -11,7 +11,7 @@ Playwright viewport flows, and real browser Stockfish/Maia workers.
 | --- | --- |
 | Scout bounded batches skipped one source's history | Two sources with different oldest dates resumed from one global minimum. Each source now resumes from its own watermark. |
 | Scout duplicate/filtered pages ended pagination | A full duplicate page became `done`; rejected games did not advance the export cursor. Full pages remain resumable and raw PGN timestamps advance the cursor before parsing/deduplication. |
-| Practice Start outlived its mode/session | Deferred board loading followed by a mode switch or overlapping Start installed an obsolete game. Generation ownership now guards installation and queued board input. |
+| Practice Start outlived its mode/session | Deferred board loading followed by a mode switch or overlapping Start installed an obsolete game. Generation ownership now guards installation, stale errors, delayed confirmations, and queued board input. |
 | Palette bypassed New game confirmation | The palette called Start directly. It now uses the same button and confirmation path as the page. |
 | Games auto/manual checks raced | Earlier responses replaced later results, released the later busy state, or displayed results for changed sources. Request, source, and account ownership guard state, lazy rendering, errors, and busy cleanup. |
 | Partially played first Smart card was not counted on restart | A two-target card had `current_index == 0` but a next target. Restart now recognizes its `current_node_id`. |
@@ -61,7 +61,7 @@ coverage especially important.
 
 ## 5. Full gate results
 
-- Vitest: 141 files, 1,876 tests passed.
+- Vitest: 141 files, 1,878 tests passed.
 - Python: 747 passed, 17 skipped, 5 deselected; PostgreSQL and browser E2E are also
   required in PR CI. Local skips concern optional backend/browser execution.
 - Ruff and ESLint: passed.
