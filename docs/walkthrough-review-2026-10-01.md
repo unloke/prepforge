@@ -21,6 +21,7 @@ Playwright viewport flows, and real browser Stockfish/Maia workers.
 | Dashboard due differed from schedulable reviews | Disabled/weak nodes and another owner's progress appeared due. Today now uses Library's effective-enabled/own-move/weak rules and only the owner's active repertoires; due soon is the next 24-hour partition. |
 | Moved documents broke current navigation | Updated the documentation index to the archived snapshots and explicitly identified their historical status. |
 | Browser gates used obsolete UI contracts | Updated explicit PGN setup, direct mobile Analyze navigation, two-decimal eval, Games departure label, and guest onboarding actions. Assertions still exercise actual analysis, board state, and navigation. |
+| Windows checkout changed generated HTML | A post-commit rebuild exposed CRLF-dependent Vite HTML output. Targeted LF attributes keep the source and generated HTML deterministic across checkout/build. |
 
 Behavioral tests were run failing before fixes for the async, transaction,
 recapture, and dashboard findings. Added positive due/soon partition coverage.
