@@ -778,15 +778,13 @@ export function renderScoutIntelSummary(
   escapeHtml,
   { explorerReads = null } = {},
 ) {
-  const bullets = (summary?.notes || (summary?.bullets || []).slice(1))
-    .map((b) => `<li>${escapeHtml(b)}</li>`)
-    .join("");
+  // Supporting notes ride on the headline's tooltip, not as a standing list.
+  const notes = (summary?.notes || (summary?.bullets || []).slice(1)).filter(Boolean).join("\n");
   const headline = summary?.headline ? escapeHtml(summary.headline) : "";
   const repertoireReads = renderScoutRepertoireReads(stats, escapeHtml);
   const explorerReadsHtml = renderScoutExplorerReads(explorerReads, escapeHtml);
   return `
-      <p class="scout-intel-headline headline">${headline}</p>
-      ${bullets ? `<ul class="scout-intel-bullets">${bullets}</ul>` : ""}
+      <p class="scout-intel-headline headline"${notes ? ` title="${escapeHtml(notes)}"` : ""}>${headline}</p>
       ${repertoireReads}
       ${explorerReadsHtml}`;
 }
@@ -1492,9 +1490,9 @@ export function buildScoutSectionReport(
           ${trending}
           <span class="spacer"></span>
           <div class="scout-coverage-bar-row cov"${coverage.games ? "" : " hidden"}>
-            <div class="scout-coverage-bar hbar">
+            ${myLookups.length ? `<div class="scout-coverage-bar hbar">
               <div class="scout-coverage-fill ${covTone}" style="width:${covPct}%"></div>
-            </div>
+            </div>` : ""}
             <span class="scout-coverage-label" title="${coverage.followed} of ${coverage.games} games: your repertoire has every move of the game up to move ${Math.ceil((scoutModule.PREPARED_PLIES || 8) / 2)}">${coverageLabel}</span>
           </div>
           ${prepareAll}
@@ -1537,7 +1535,7 @@ export function buildScoutShareText({ username, profile, sections, activeSpeed }
       lines.push("", "**Your game plan:**");
       for (const t of prep) {
         const their = scoutLineText(t.sans);
-        const reply = t.suggestedReply?.uci ? ` → your move ${t.suggestedReply.uci}` : " → no answer in your prep";
+        const reply = t.suggestedReply?.uci ? ` → your move ${t.suggestedReply.uci}` : t.needsPrep ? " → no answer in your prep" : "";
         let row = `- After ${their}${reply} — ${Math.round(t.share * 100)}% of their games, they score ${t.scorePct}% (${t.games} game${t.games === 1 ? "" : "s"})`;
         if (t.enginePattern) {
           row += `; often …${t.enginePattern.playedSan}`;

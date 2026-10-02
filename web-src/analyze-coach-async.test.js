@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 const source = readFileSync(new URL("./app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+import * as phaseCoach from "./coach/phase-coach.js";
 function deferred() { let resolve; const promise = new Promise((yes) => { resolve = yes; }); return { promise, resolve }; }
 
 // A fake position store: each acquire returns a lease whose until() resolves when the
@@ -26,7 +27,7 @@ function fakeStore() {
 }
 const read = (fen, depth = 16) => ({ fen, current_depth: depth, running: false, pvs: [{ score_cp: 20, pv_uci: ["e2e4"], pv_san: ["e4"] }] });
 
-function harness() {
+function harness({ reviewed = true } = {}) {
   let view = "analyze";
   let gameOver = null;
   const moduleGate = deferred();
@@ -35,7 +36,7 @@ function harness() {
   const deps = {
     window: globalThis, effectiveStockfishDepth: () => 16, analysisStore: async () => store,
     setEngineBestArrow: vi.fn(), activeViewName: () => view, isBrowserEngineAvailable: () => true,
-    isReviewedMove: () => true, analysisSelfSide: () => null,
+    isReviewedMove: () => reviewed, analysisSelfSide: () => (reviewed ? null : "black"),
     _coachReady: moduleGate.promise, preloadCoach: () => moduleGate.promise,
     savedPositionEvalRead: () => null, savedMainlineMove: () => ({ classification: "good" }),
     previousAnalysisMove: () => null, localBoardInfo: () => ({ status: {} }),
@@ -49,13 +50,38 @@ function harness() {
   const coach = new Coach();
   coach.fen = "after b - - 0 1";
   coach.ctx = { prevFen: "before w - - 0 1", lastUci: "e2e4", lastSan: "e4", ply: 1 };
-  const mod = { buildMoveFeatures: (x) => x, buildCommentary: (f) => ({ prose: `Engine verdict on ${f.fenAfter}` }) };
+  const mod = {
+    buildMoveFeatures: (x) => x,
+    buildCommentary: (f, { selfSide }) =>
+      ({ prose: f.opponentRead ? `Read for ${selfSide} on ${f.fenAfter}` : `Engine verdict on ${f.fenAfter}` }),
+  };
   const answerAll = (depth) => store.leases.filter((l) => !l.released).forEach((l) => l.answer(read(l.fen, depth)));
   return { coach, store, moduleGate, mod, render, answerAll, terminal: (over) => { gameOver = over; }, leave: () => { view = "build"; coach.cancel(); } };
 }
 afterEach(() => vi.useRealTimers());
 
 describe("PositionCoach async continuation ownership", () => {
+  it("does not restore an old Maia tip when its lazy module resolves after navigation", async () => {
+    const gate = deferred();
+    const paint = vi.fn();
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    const appState = { explainContext: { prevFen: fen, lastUci: "e2e4" } };
+    const start = source.indexOf("function paintMaiaCoachFromRead(");
+    const end = source.indexOf("\nasync function maiaPhaseCoach", start);
+    const run = new Function("loadPhaseCoach", "effectiveMaiaRating", "paintMaiaCoachLine", "appState",
+      `${source.slice(start, end)}; return paintMaiaCoachFromRead;`)(() => gate.promise, () => 1500, paint, appState);
+    const read = { predictions: [{ move_uci: "e2e4", probability: 0.6 }] };
+    run(fen, read, { playedUci: "e2e4" });
+    // A sibling variation has the same before-FEN but a different played move.
+    appState.explainContext = { prevFen: fen, lastUci: "d2d4" };
+    gate.resolve(phaseCoach);
+    await gate.promise;
+    await Promise.resolve();
+    expect(paint).not.toHaveBeenCalled();
+    run(fen, read, { playedUci: "d2d4" });
+    await Promise.resolve();
+    expect(paint).toHaveBeenCalledOnce();
+  });
   it("produces commentary for a terminal draw without waiting on a nonexistent after PV", async () => {
     const h = harness();
     h.terminal({ kind: "draw", winner: null });
@@ -92,6 +118,16 @@ describe("PositionCoach async continuation ownership", () => {
     await pending;
     expect(h.render).toHaveBeenCalledWith({ prose: "Engine verdict on after b - - 0 1" });
     expect(h.store.leases.every((l) => l.release.mock.calls.length === 1)).toBe(true);
+  });
+
+  it("reads the opponent's move for the user instead of leaving it blank", async () => {
+    const h = harness({ reviewed: false });
+    h.moduleGate.resolve(h.mod);
+    const pending = h.coach._run(h.coach.fen);
+    await vi.waitFor(() => expect(h.store.acquire).toHaveBeenCalledTimes(2));
+    h.answerAll();
+    await pending;
+    expect(h.render).toHaveBeenCalledWith({ prose: "Read for black on after b - - 0 1" });
   });
 
   it("never paints a departed view and releases its leases", async () => {

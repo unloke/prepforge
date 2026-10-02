@@ -144,40 +144,26 @@ export function createAnalyzeView({
     return codes.map((c) => COVERAGE_COPY[c] || c.replace(/-/g, " ")).join("; ");
   }
 
-  // A-05: one short "what this run covered" line — complete vs partial-shallow
-  // vs no-Maia — with the raw metadata tucked into a disclosure. A report must
-  // never imply uniform full-depth coverage it did not have.
+  // A-05: a report must never imply uniform full-depth coverage it did not
+  // have. A complete run says nothing (that is the expectation); a run with
+  // positions searched below the target depth gets one status line, with the
+  // run's metadata in its tooltip.
   function qualitySummaryHtml() {
     const quality = appState.analysis && appState.analysis.quality;
-    if (!quality) return "";
-    const parts = [];
-    if (quality.search === "full") {
-      parts.push(`Stockfish depth ${quality.actual_depth_max}`);
-    } else if (quality.search === "partial-shallow") {
-      parts.push(
-        `partial search (${quality.shallow_positions} positions below depth ${quality.target_depth})`,
-      );
-    }
-    parts.push(quality.maia && quality.maia.available ? "Maia on" : "no Maia");
-    const complete = quality.completeness === "complete";
+    if (!quality || quality.search !== "partial-shallow") return "";
     const rows = [
       ["coverage", coverageCopy(quality.completeness)],
       ["target depth", quality.target_depth],
       ["actual depth", `${quality.actual_depth_min}–${quality.actual_depth_max} (avg ${quality.actual_depth_avg})`],
-      ["shallow positions", quality.shallow_positions],
-      ["terminal positions", quality.terminal_positions],
       ["Maia", quality.maia?.available ? `maia3${quality.maia.rating ? ` @ ${quality.maia.rating}` : ""}` : "not run"],
       ["engine", quality.engine],
-      ["classification", quality.classification_version],
-      ["explanation", quality.explanation_version],
     ]
-      .map(([k, v]) => `<div><b>${escapeHtml(String(k))}</b> ${escapeHtml(String(v))}</div>`)
-      .join("");
+      .map(([k, v]) => `${k}: ${v}`)
+      .join("\n");
     return (
-      `<details class="quality-note">` +
-      `<summary>${complete ? "✓" : "△"} Analysis quality: ${escapeHtml(parts.join(" · "))}</summary>` +
-      `<div class="quality-rows">${rows}</div>` +
-      `</details>`
+      `<p class="quality-note" data-testid="analysis-quality" title="${escapeHtml(rows)}">` +
+      `△ ${escapeHtml(`${quality.shallow_positions} positions below depth ${quality.target_depth}`)}` +
+      `</p>`
     );
   }
 
@@ -495,9 +481,14 @@ export function createAnalyzeView({
 
   // Whole-game progress: returns onResult(fen, ev) for the Stockfish pass, which
   // plots each White-POV result at its position's x as it lands, so the graph
-  // draws itself while the job runs (the job dock carries count and Stop).
+  // draws itself while the job runs (the job dock carries the count and Stop).
+  // onResult.phase(name, done, total) then animates the later passes on the same
+  // graph: "maia-load" (the model is loading: the curve breathes), "maia" (Maia
+  // reads the game move by move: a sweep recolours the curve up to its front)
+  // and "saving". It takes the job's own phase names.
   function liveEvalChart(positions) {
     const svg = document.getElementById("eval-chart-live");
+    const host = document.getElementById("analysis-eval-live");
     const list = Array.isArray(positions) ? positions : [];
     const slots = new Map();
     list.forEach((fen, i) => slots.set(fen, [...(slots.get(fen) || []), i]));
@@ -506,10 +497,17 @@ export function createAnalyzeView({
     const xOf = (i) => ((i / span) * EVAL_CHART_W).toFixed(1);
     const line = (cls, x1, y1, x2, y2) =>
       `<line class="${cls}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" vector-effect="non-scaling-stroke"/>`;
+    const poly = (cls, pts) =>
+      pts.length > 1 ? `<polyline class="${cls}" points="${pts.join(" ")}" vector-effect="non-scaling-stroke"/>` : "";
+    let phase = "stockfish";
+    let ratio = 0;
     let frame = 0;
+    // Clear the analysed game's reading: until this run lands, it describes another game.
+    updateChartCaption(null);
     const draw = () => {
       frame = 0;
       if (!svg) return;
+      if (host) host.dataset.phase = phase;
       const centerY = evalChartYOf(50);
       const pts = [];
       let front = -1;
@@ -518,20 +516,46 @@ export function createAnalyzeView({
         pts.push(`${xOf(i)},${evalChartYOf(w).toFixed(1)}`);
         front = i;
       });
+      let overlay = "";
+      if (phase === "stockfish") {
+        if (front >= 0) overlay = line("eval-front", xOf(front), 0, xOf(front), EVAL_CHART_H);
+      } else if (phase === "maia") {
+        const x = ratio * EVAL_CHART_W;
+        const read = pts.filter((p) => Number(p.split(",")[0]) <= x + 0.05);
+        overlay =
+          poly("eval-maia-line", read) +
+          `<rect class="eval-maia-band" x="${Math.max(0, x - 48).toFixed(1)}" y="0" width="${Math.min(48, x).toFixed(1)}" height="${EVAL_CHART_H}"/>` +
+          line("eval-maia-front", x.toFixed(1), 0, x.toFixed(1), EVAL_CHART_H);
+      }
       svg.innerHTML =
+        `<defs><linearGradient id="eval-maia-glow" x1="0" x2="1" y1="0" y2="0">` +
+        `<stop offset="0" stop-color="currentColor" stop-opacity="0"/>` +
+        `<stop offset="1" stop-color="currentColor" stop-opacity="0.35"/></linearGradient></defs>` +
         line("eval-axis", 0, centerY, EVAL_CHART_W, centerY) +
-        (pts.length > 1 ? `<polyline class="eval-line" points="${pts.join(" ")}" vector-effect="non-scaling-stroke"/>` : "") +
-        (front >= 0 ? line("eval-front", xOf(front), 0, xOf(front), EVAL_CHART_H) : "");
+        poly("eval-line", pts) +
+        overlay;
+    };
+    const schedule = () => {
+      if (!frame) frame = (globalThis.requestAnimationFrame || setTimeout)(draw);
     };
     draw();
-    return (fen, ev) => {
+    const onResult = (fen, ev) => {
       const at = slots.get(fen);
       if (!at || !ev) return;
       const cp = ev.mate_in ? Math.sign(ev.mate_in) * 1500 : ev.score_cp;
       const win = pointWinPct({ score_cp: Number.isFinite(cp) ? cp : 0 });
       at.forEach((i) => (wins[i] = win));
-      if (!frame) frame = (globalThis.requestAnimationFrame || setTimeout)(draw);
+      schedule();
     };
+    // Job phases → graph states (the job reports maia-inference / maia-traps /
+    // classifying; the graph only needs to know which animation to run).
+    const PHASE_OF = { "maia-inference": "maia", "maia-traps": "maia", classifying: "saving" };
+    onResult.phase = (name, done = 0, total = 0) => {
+      phase = PHASE_OF[name] || name || phase;
+      ratio = total > 0 ? Math.max(0, Math.min(1, done / total)) : 0;
+      schedule();
+    };
+    return onResult;
   }
 
   function updateEvalChartCursor() {

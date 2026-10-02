@@ -1332,6 +1332,18 @@ describe("repertoire coverage", () => {
     expect(target.suggestedReply).toMatchObject({ uci: "g1f3", source: "repertoire" });
   });
 
+  it("attachPrepReplies flags a missing answer only when there is a prep to look in", () => {
+    const line = { sans: ["d4"], ucis: ["d2d4"], games: 4, scorePct: 40, share: 0.2 };
+    const [noRep] = attachPrepReplies([line], { lookups: [], refutations: [], oppColor: "white" });
+    expect(noRep.needsPrep).toBe(false);
+    const lookup = repertoireChildLookup([
+      { id: "root", depth: 0, parent_id: null, uci: null },
+      { id: "n1", depth: 1, parent_id: "root", uci: "e2e4" },
+    ]);
+    const [gap] = attachPrepReplies([line], { lookups: [{ lookup }], refutations: [], oppColor: "white" });
+    expect(gap.needsPrep).toBe(true);
+  });
+
   it("suggestReplyFromRepertoire falls back to UCI order when no mainline is marked", () => {
     const nodes = [
       { id: "root", depth: 0, parent_id: null, uci: null },

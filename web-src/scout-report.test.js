@@ -4,6 +4,7 @@ import { Chess } from "chess.js";
 import * as scoutModule from "./scout.js";
 import {
   buildScoutAnalyzePgn,
+  buildScoutShareText,
   buildScoutSectionReport,
   captureScoutExpanded,
   consumeEcoCacheEntry,
@@ -43,6 +44,17 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+it("shared prep gaps follow the same repertoire flag as the report", () => {
+  const target = { sans: ["e4", "c5"], share: 0.5, scorePct: 50, games: 2, needsPrep: false };
+  const state = { username: "opponent", profile: { total: 4 }, activeSpeed: "all",
+    sections: { white: { prepTargets: [target] } } };
+  expect(buildScoutShareText(state)).not.toContain("no answer in your prep");
+  target.needsPrep = true;
+  expect(buildScoutShareText(state)).toContain("no answer in your prep");
+  target.suggestedReply = { uci: "g1f3" };
+  expect(buildScoutShareText(state)).toContain("your move g1f3");
+});
 
 function scoutGameRecord(game) {
   const ucis = game.ucis || [];
