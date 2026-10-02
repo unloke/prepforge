@@ -631,3 +631,32 @@ describe("read cache", () => {
     expect(workers[0].idsOf("predictions").length).toBe(2); // every call hits the worker
   });
 });
+
+describe("Maia3Provider batch", () => {
+  it("sends many reads as ONE worker request with the default rating", async () => {
+    const f = trackedFactory((msg, worker) => {
+      if (msg.type === "init") worker.reply(msg.id, { backend: "wasm" });
+      if (msg.type === "positionReadBatch") worker.reply(msg.id, msg.fens.map((fen) => ({ fen, rating: msg.rating })));
+    });
+    const p = createMaia3Provider({ manifest: validManifest(), assetBase: "/x/", createWorker: f.createWorker });
+    const reads = await p.batch("positionReadBatch", { fens: ["A", "B"] });
+    expect(reads).toEqual([{ fen: "A", rating: p._defaultRating }, { fen: "B", rating: p._defaultRating }]);
+    expect(f.workers[0].posted.filter((x) => x.type === "positionReadBatch")).toHaveLength(1);
+    await expect(p.batch("positionReadBatch", { fens: ["C"], rating: 1700 })).resolves.toEqual([{ fen: "C", rating: 1700 }]);
+  });
+
+  it("a failed batch rejects so the caller can retry", async () => {
+    let fail = true;
+    const f = trackedFactory((msg, worker) => {
+      if (msg.type === "init") worker.reply(msg.id, { backend: "wasm" });
+      if (msg.type === "positionReadBatch") {
+        if (fail) worker.replyError(msg.id, "ORT failed");
+        else worker.reply(msg.id, msg.fens.map((fen) => ({ fen })));
+      }
+    });
+    const p = createMaia3Provider({ manifest: validManifest(), assetBase: "/x/", createWorker: f.createWorker });
+    await expect(p.batch("positionReadBatch", { fens: ["A", "B"], rating: 1500 })).rejects.toThrow("ORT failed");
+    fail = false;
+    await expect(p.batch("positionReadBatch", { fens: ["A", "B"], rating: 1500 })).resolves.toEqual([{ fen: "A" }, { fen: "B" }]);
+  });
+});

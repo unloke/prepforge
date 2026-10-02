@@ -254,6 +254,14 @@ class Maia3Provider {
     );
   }
 
+  // batch(type, payload) → one worker request answering many reads at once
+  // ("positionReadBatch" { fens }, "moveAssessmentMany" { items }; see maia3-worker.js),
+  // results aligned to the input. Callers (the analysis store, brilliant-assess) own caching.
+  async batch(type, payload = {}) {
+    await this._ensureReady();
+    return this._request(type, { ...payload, rating: payload.rating ?? this._defaultRating });
+  }
+
   // wdlRead({ fen, rating }) → { wdl: { win, draw, loss } } | null (malformed FEN).
   // Value head only — skips buildPredictions/legalMoveIndices. Use when only the WDL is
   // needed (e.g. Scout enrichment): policy post-processing can throw for edge-case positions

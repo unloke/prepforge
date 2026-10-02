@@ -256,7 +256,7 @@ export function scoutWdlHtml(w, d, l, { compact = false } = {}) {
 
 // Win/draw/loss as one compact proportional bar — fixed width, never wraps, so it
 // stays aligned inside a row. The pill version above is for the header where there's room.
-export function scoutWdlBar(w, d, l, { maiaEstimate = false } = {}) {
+export function scoutWdlBar(w, d, l, { maiaEstimate = false, counts = true } = {}) {
   const total = w + d + l || 1;
   const pct = (n) => `${(n / total) * 100}%`;
   const title = maiaEstimate
@@ -265,7 +265,7 @@ export function scoutWdlBar(w, d, l, { maiaEstimate = false } = {}) {
   const cls = maiaEstimate ? " scout-maia-estimate" : "";
   // Counts under the bar: a one-game line is a single solid segment, which read
   // as "a white bar" with no meaning until the numbers sat next to it.
-  const nums = maiaEstimate
+  const nums = maiaEstimate || !counts
     ? ""
     : `<span class="scout-wdlbar-nums" aria-hidden="true"><span class="n-w">${w}W</span><span class="n-d">${d}D</span><span class="n-l">${l}L</span></span>`;
   return `<span class="scout-wdlbar-wrap"><span class="scout-wdlbar${cls}" title="${title}" aria-label="${title}">
@@ -461,7 +461,7 @@ export function renderScoutRefutationGapActions(actions, escapeHtml) {
         `<button type="button" class="scout-btn btn sm scout-refutation-gap-btn" data-refutation-gap="${escapeHtml(action.id)}" data-testid="${escapeHtml(action.testId)}" aria-label="${escapeHtml(action.ariaLabel)}">${escapeHtml(action.label)}</button>`,
     )
     .join("");
-  return `<div class="scout-refutation-gap-actions" role="group" aria-label="Refutation preparation actions"><span class="scout-refutation-gap-lead faint">Engine refutations for these lines need a Stockfish pass:</span>${buttons}</div>`;
+  return `<div class="scout-refutation-gap-actions" role="group" aria-label="Refutation preparation actions" title="Engine refutations for these lines need a Stockfish pass">${buttons}</div>`;
 }
 
 export function handleScoutRefutationGapClick(event, { callbacks } = {}) {
@@ -1209,7 +1209,14 @@ function scoutLineRowHtml(
   const wdl = scoutLineWdlCounts(line);
   if (weakness) {
     // Game-plan rows: no ×N count or share% — on n=1 deep lines these are always
-    // trivially 1 and <1%, so they add visual noise without information.
+    // trivially 1 and <1%, so they add visual noise without information. One game
+    // reads as its result ("Lost"), not as 0% over a one-segment bar; larger samples
+    // show score + n with a label-free W/D/L bar (counts in its tooltip).
+    const oneGame = !maiaEstimate && rawCount === 1;
+    const scoreHtml = oneGame
+      ? `<span class="scout-score-cell scout-one-game" title="Their result in the only game">${wdl.w ? "Won" : wdl.l ? "Lost" : "Drew"}</span>`
+      : scoutScoreCell(displayScore, rawCount, { baseline, showGap: line.belowBaseline > 0, maiaEstimate, showN: rawCount > 1 });
+    const wdlHtml = oneGame ? "" : scoutWdlBar(wdl.w, wdl.d, wdl.l, { maiaEstimate, counts: false });
     return `
       <div class="scout-line scout-line-row line-row ${status.cls} scout-weakness-row scout-ranked-row" data-line-key="${escapeHtml(lineKey)}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
         <div class="scout-lr-main lr-main">
@@ -1218,8 +1225,8 @@ function scoutLineRowHtml(
           ${refCard}
         </div>
         <span class="lr-meta">${categoryBadge}${lastSeenBadge}</span>
-        <span class="scout-lr-score lr-score">${scoutScoreCell(displayScore, rawCount, { baseline, showGap: line.belowBaseline > 0, maiaEstimate, showN: rawCount > 1 })}</span>
-        <span class="scout-lr-wdl lr-wdl">${scoutWdlBar(wdl.w, wdl.d, wdl.l, { maiaEstimate })}</span>
+        <span class="scout-lr-score lr-score">${scoreHtml}</span>
+        <span class="scout-lr-wdl lr-wdl">${wdlHtml}</span>
         <span class="scout-lr-action lr-flags">${engineFlag}${addBtn}</span>
       </div>`;
   }
@@ -1456,7 +1463,7 @@ export function buildScoutSectionReport(
             <span class="scout-sub-label">${who}'s first moves</span>
             <div class="scout-dist scout-dist-compact first-moves" data-dist-root="true">${firstMoves}</div>
           </div>`;
-  const listHead = `<div class="scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Type · last seen</span><span>Their score</span><span>Their results W/D/L</span><span></span></div>`;
+  const listHead = `<div class="scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Type · last seen</span><span>Their result</span><span></span><span></span></div>`;
   const prepPanel = prepRows
     ? `<div class="scout-game-plan plan">
           ${planHead}
@@ -1480,7 +1487,7 @@ export function buildScoutSectionReport(
       <section class="color-sec card">
         <div class="scout-section-head cs-head">
           <span class="scout-section-who">${who} with ${oppColor === "white" ? "White" : "Black"}</span>
-          <span class="scout-section-wdl wdl-compact">${scoutWdlHtml(colorWdl.w, colorWdl.d, colorWdl.l, { compact: true })} <small class="scout-n">${countOf(colorWdl.games, "game")}</small></span>
+          <span class="scout-section-wdl wdl-compact" title="${escapeHtml(countOf(colorWdl.games, "game"))}">${scoutWdlHtml(colorWdl.w, colorWdl.d, colorWdl.l, { compact: true })}</span>
           <span class="scout-section-score faint" title="Wins plus half the draws">scores ${baseline}%</span>
           ${trending}
           <span class="spacer"></span>

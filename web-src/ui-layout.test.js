@@ -278,18 +278,25 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
     // Analyze actions live in the panel head.
     const head = view.slice(view.indexOf('class="panel-head"'), view.indexOf('class="panel-scroll"'));
-    for (const id of ["analyze-actions", "open-engine-widget", "fetch-my-game", "run-analysis"]) {
+    for (const id of ["analyze-actions", "fetch-my-game", "run-analysis"]) {
       expect(head).toContain(`id="${id}"`);
     }
-    // The live engine shares the Evaluation card with the game graph, after Coach.
+    // The live engine shares the Evaluation card with the game graph, after Coach:
+    // its switch sits in the card's header row beside the eval chip and win meter,
+    // and the whole-game progress docks inside the card.
     const body = view.slice(view.indexOf('class="panel-scroll"'));
+    const card = body.slice(body.indexOf('id="analysis-eval-card"'), body.indexOf("</section>", body.indexOf('id="analysis-eval-card"')));
+    for (const id of ["analysis-chart-caption", "analysis-eval-meter", "open-engine-widget", "eval-chart-live", "analysis-job-dock", "analysis-engine-slot"]) {
+      expect(card).toContain(`id="${id}"`);
+    }
+    expect(head).not.toContain('id="open-engine-widget"');
     expect(body.indexOf('id="analysis-eval-card"')).toBeGreaterThan(body.indexOf('id="analysis-explain"'));
     expect(body.indexOf('id="analysis-engine-slot"')).toBeGreaterThan(body.indexOf('id="eval-chart"'));
     expect(body.indexOf('id="analysis-eval-card"')).toBeLessThan(body.indexOf('id="analysis-results"'));
     // Coach copy wraps instead of clipping; the card has a fixed height so a
     // longer comment never shifts the chart below it.
     expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);
-    expect(rule(".coach-card")).toMatch(/height:\s*120px/);
+    expect(rule(".coach-card")).toMatch(/height:\s*108px/);
     expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
     expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/grid-template-columns:\s*32px\s+minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/);
     expect(rule(".moves-grid")).toMatch(/overflow:\s*auto/);

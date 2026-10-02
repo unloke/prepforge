@@ -24,8 +24,9 @@ import {
   threatPhrase,
   hasCaptures,
 } from "./move-facts.js";
+import { motifPhrase, participle, hangingCapture } from "./motifs.js";
 import { Chess } from "chess.js";
-import { PIECE_VALUE } from "./material.js";
+import { PIECE_VALUE, PIECE_NAME } from "./material.js";
 
 const TYPES = ["q", "r", "b", "n", "p"];
 
@@ -199,6 +200,9 @@ function goodPoint(f, x) {
     const quick = lineOutcome(f.fenBefore, f.playedPvUci || [], { maxPlies: 6 });
     const net = quick && quick.quiet ? netFor(quick, x.m) : null;
     if (net && netValue(net) >= 2) {
+      // The engine line wins material, so the tactic that does it is a fact worth naming.
+      const motif = motifPhrase(f.fenBefore, f.uci, f.san);
+      if (motif) return `${motif}, winning ${gainPhrase(net)}`;
       const line = trimmedLine(f.fenAfter, quick, x.m);
       return `wins ${gainPhrase(net)}${line ? ` (${line})` : ""}`;
     }
@@ -253,7 +257,10 @@ function betterSentence(f, x, v) {
   if (!f.bestSan || f.isBest) return "";
   if (f.hadMateBefore && Number.isFinite(f.mateBefore)) return `${f.bestSan} was the move, with ${mateCount(f.mateBefore)}.`;
   if (x.bestTakesBack) return `${f.bestSan} was the right way to take back.`;
-  if (x.relValue >= 1 && x.bestNet !== null && x.bestNet >= 1) return `${f.bestSan} was the move, winning ${gainPhrase(netFor(x.best, x.m))}.`;
+  if (x.relValue >= 1 && x.bestNet !== null && x.bestNet >= 1) {
+    const motif = motifPhrase(f.fenBefore, f.bestUci, f.bestSan);
+    return `${f.bestSan} was the move, ${motif ? `${participle(motif)} and ` : ""}winning ${gainPhrase(netFor(x.best, x.m))}.`;
+  }
   if (x.relValue >= 1) return `${f.bestSan} was the move, keeping the material.`;
   const b0 = bucket(f.winBeforeMover);
   if (b0 !== bucket(f.winAfterMover)) return `${f.bestSan} was the move, ${v.keeping(b0)}.`;
@@ -295,9 +302,19 @@ function errorConsequence(f, x, v) {
   }
   if (x.rel && x.relValue >= 1) {
     const lossText = () => {
-      const line = trimmedLine(f.fenAfter, x.played, x.opp, 6);
       const lost = gainPhrase(x.rel);
-      return lost ? { text: `${f.san} loses ${lost}${line ? ` after ${line}` : ""}.` } : null;
+      if (!lost) return null;
+      // Name the tactic the reply executes: a piece left hanging, or a fork / pin / skewer.
+      const reply = f.replySan ? numberLine(f.fenAfter, [f.replySan]) : "";
+      const hung = reply ? hangingCapture(f.fenAfter, f.replyUci) : null;
+      if (hung && (x.rel[hung.type] || 0) >= 1) {
+        const what = hung.square === f.uci?.slice(2, 4) ? `the ${PIECE_NAME[hung.type]}` : `the ${PIECE_NAME[hung.type]} on ${hung.square}`;
+        return { text: `${f.san} hangs ${what} to ${reply}.` };
+      }
+      const motif = reply ? motifPhrase(f.fenAfter, f.replyUci, f.replySan) : "";
+      if (motif) return { text: `${f.san} loses ${lost} to ${reply}, which ${motif}.` };
+      const line = trimmedLine(f.fenAfter, x.played, x.opp, 6);
+      return { text: `${f.san} loses ${lost}${line ? ` after ${line}` : ""}.` };
     };
     if (x.bestTakesBack) {
       const t = lossText();
@@ -305,6 +322,8 @@ function errorConsequence(f, x, v) {
     } else if (x.bestNet !== null && x.bestNet >= 1 && f.bestSan) {
       const line = bestLineText(f, x.best, x.m);
       const gain = gainPhrase(netFor(x.best, x.m));
+      const motif = motifPhrase(f.fenBefore, f.bestUci, f.bestSan);
+      if (gain && motif) return { text: `${f.san} misses ${f.bestSan}, which ${motif} and wins ${gain}.`, namedBest: true };
       if (gain) return { text: `${f.san} misses ${f.bestSan}, which wins ${gain}${line && line.includes(" ") ? ` (${line})` : ""}.`, namedBest: true };
     } else if (x.playedNet !== null && x.playedNet < 0) {
       const t = lossText();
@@ -333,7 +352,7 @@ function errorProse(f, x, v) {
   const better = namedBest ? "" : betterSentence(f, x, v);
   if (code === "inaccuracy") {
     // Gentler: a small slip only needs the fix and, if it tipped the balance, that.
-    if (/ (loses|allows mate|misses)/.test(text)) return `${text}${better ? ` ${better}` : ""}`;
+    if (/ (loses|hangs|allows mate|misses)/.test(text)) return `${text}${better ? ` ${better}` : ""}`;
     const change = changeSentence(f, v);
     const fix = f.bestSan && !f.isBest ? ` ${f.bestSan} was better.` : "";
     return `${f.san} is slightly inaccurate.${fix}${change ? ` ${change}` : ""}`;

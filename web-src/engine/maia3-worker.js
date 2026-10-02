@@ -154,6 +154,33 @@ async function positionRead({ fen, rating }) {
   };
 }
 
+// positionReadBatch(): positionRead for many positions in ONE forward (dynamic batch axis).
+// Aligned to `fens`; null in the slot of a malformed FEN. Batching amortises the per-run
+// overhead that dominates batch=1 WASM inference when a game's positions are read together.
+async function positionReadBatch({ fens, rating }) {
+  const list = Array.isArray(fens) ? fens : [];
+  const results = new Array(list.length).fill(null);
+  const slots = [];
+  for (let i = 0; i < list.length; i++) if (isValidFen(list[i])) slots.push(i);
+  if (!slots.length) return results;
+  const elo = rating || defaultRating;
+  const n = slots.length;
+  const batch = new Float32Array(n * TOKENS_PER_POSITION);
+  slots.forEach((slot, k) => batch.set(tokensFromFen(list[slot]), k * TOKENS_PER_POSITION));
+  const elos = new Array(n).fill(elo);
+  const out = await session.run(feeds(batch, n, elos, elos));
+  const moveData = out.logits_move.data;
+  const valueData = out.logits_value.data;
+  const perMove = moveData.length / n;
+  slots.forEach((slot, k) => {
+    results[slot] = {
+      predictions: buildPredictions(moveData.subarray(k * perMove, (k + 1) * perMove), list[slot]),
+      wdl: wdlCurrent(valueData.subarray(k * 3, k * 3 + 3)),
+    };
+  });
+  return results;
+}
+
 // wdlRead(): value head only — skips buildPredictions/legalMoveIndices entirely.
 // Use when ONLY the WDL is needed (e.g. Scout line enrichment): buildPredictions can
 // throw for edge-case positions (vocab/mirror drift in legalMoveIndices) even though
@@ -227,7 +254,49 @@ async function moveAssessmentBatch({ fen, moves, rating }) {
   return results;
 }
 
-const HANDLERS = { init, predictions, positionRead, wdlRead, moveAssessment, moveAssessmentBatch };
+// moveAssessmentMany(): moveAssessment for many (position, move) pairs in two forwards —
+// one batched policy forward over the positions, one batched value forward over the
+// positions after each move. Aligned to `items`; null for a malformed FEN or illegal move.
+async function moveAssessmentMany({ items, rating }) {
+  const list = Array.isArray(items) ? items : [];
+  const results = new Array(list.length).fill(null);
+  const slots = [];
+  const afters = [];
+  for (let i = 0; i < list.length; i++) {
+    const { fen, moveUci } = list[i] || {};
+    if (!isValidFen(fen)) continue;
+    const after = tokensAfterMove(fen, moveUci);
+    if (after === null) continue;
+    slots.push(i);
+    afters.push(after);
+  }
+  if (!slots.length) return results;
+  const elo = rating || defaultRating;
+  const n = slots.length;
+  const elos = new Array(n).fill(elo);
+  const before = new Float32Array(n * TOKENS_PER_POSITION);
+  const after = new Float32Array(n * TOKENS_PER_POSITION);
+  slots.forEach((slot, k) => {
+    before.set(tokensFromFen(list[slot].fen), k * TOKENS_PER_POSITION);
+    after.set(afters[k], k * TOKENS_PER_POSITION);
+  });
+  const outPolicy = await session.run(feeds(before, n, elos, elos));
+  const outValue = await session.run(feeds(after, n, elos, elos));
+  const moveData = outPolicy.logits_move.data;
+  const perMove = moveData.length / n;
+  const valueData = outValue.logits_value.data;
+  slots.forEach((slot, k) => {
+    const { fen, moveUci } = list[slot];
+    const lookup = makeHumanProbabilityLookup(moveData.subarray(k * perMove, (k + 1) * perMove), fen);
+    results[slot] = {
+      humanProbability: lookup(moveUci),
+      winChanceAfter: winChanceAfter([valueData[k * 3], valueData[k * 3 + 1], valueData[k * 3 + 2]]),
+    };
+  });
+  return results;
+}
+
+const HANDLERS = { init, predictions, positionRead, positionReadBatch, wdlRead, moveAssessment, moveAssessmentBatch, moveAssessmentMany };
 
 self.onmessage = async (ev) => {
   const { id, type } = ev.data || {};

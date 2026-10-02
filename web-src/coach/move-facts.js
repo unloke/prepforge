@@ -5,11 +5,12 @@
 //     point (no capture pending, no check), never "settled" by a static exchange guess;
 //   - threats: only pieces the moved piece can really win right now;
 //   - descriptions: castles, develops, central pawn contact, passed pawns, rooks to a
-//     fully open file. No pins, space or "opens the diagonal" guesses: those were the
-//     reads that kept being wrong.
+//     fully open file. No space or "opens the diagonal" guesses: those were the reads
+//     that kept being wrong. Pins and skewers (motifs.js) are named only when the
+//     engine line confirms they win material.
 import { Chess } from "chess.js";
 import { PIECE_VALUE, PIECE_NAME, seeCapture } from "./material.js";
-import { forkWinsMaterial } from "./tactics.js";
+import { forkWinsMaterial } from "./fork-check.js";
 
 const TYPES = ["q", "r", "b", "n", "p"];
 const PLURAL = { p: "pawns", n: "knights", b: "bishops", r: "rooks", q: "queens" };
@@ -24,7 +25,7 @@ function safeChess(fen) {
   }
 }
 
-function playUci(chess, uci) {
+export function playUci(chess, uci) {
   try {
     return chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci.length > 4 ? uci[4] : undefined });
   } catch (_) {
@@ -281,7 +282,7 @@ export function threatPhrase(fenBefore, uci, san) {
   return threatOf(chess, mv, color);
 }
 
-function threatOf(chess, mv, color) {
+export function threatOf(chess, mv, color) {
   const targets = winnableTargets(chess.fen(), mv.to, color);
   if (chess.isCheck()) {
     if (!targets.length) return "gives check";

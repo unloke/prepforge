@@ -425,3 +425,48 @@ describe("computeBrilliantAssessments (first + second pass together)", () => {
     ).rejects.toMatchObject({ cancelled: true });
   });
 });
+
+describe("computeBrilliantAssessments batching", () => {
+  // 20 eligible moves (every played move is the engine's best) across two chunks.
+  const many = Array.from({ length: 20 }, (_, i) => ({
+    ply: i + 1, side: "white", uci: "e2e4", fen_before: `${START_FEN}#${i}`, fen_after: `${AFTER_E4}#${i}`,
+  }));
+  const evals = new Map(many.flatMap((m) => [
+    [m.fen_before, { score_cp: 20, mate_in: null, best_move_uci: "e2e4" }],
+    [m.fen_after, { score_cp: 20, mate_in: null }],
+  ]));
+
+  it("asks a batching provider once per chunk and keeps per-move order and progress", async () => {
+    const calls = [];
+    const provider = {
+      moveAssessment: async () => { throw new Error("single path must not run"); },
+      batch: async (type, { items }) => {
+        calls.push(items.length);
+        return items.map((_, k) => ({ humanProbability: 0.5, winChanceAfter: 0.5 + k / 1000 }));
+      },
+      predictions: async () => [],
+    };
+    const progress = [];
+    const out = await computeBrilliantAssessments({
+      moves: many, evals, depth: 12, rating: 1500, provider,
+      analyzeFn: fakeAnalyzeFn({}), shouldCancel: () => false,
+      onProgress: (done) => progress.push(done),
+    });
+    expect(calls).toEqual([16, 4]);
+    expect(out).toHaveLength(20);
+    expect(out.map((a) => a.fen)).toEqual(many.map((m) => m.fen_before));
+    expect(progress.at(-1)).toBe(20);
+  });
+
+  it("a Stop during a batch records nothing from it", async () => {
+    let stop = false;
+    const provider = {
+      batch: async (type, { items }) => { stop = true; return items.map(() => ({ humanProbability: 0.5, winChanceAfter: 0.5 })); },
+      predictions: async () => [],
+    };
+    await expect(computeBrilliantAssessments({
+      moves: many, evals, depth: 12, rating: 1500, provider,
+      analyzeFn: fakeAnalyzeFn({}), shouldCancel: () => stop,
+    })).rejects.toMatchObject({ cancelled: true });
+  });
+});

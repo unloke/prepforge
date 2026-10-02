@@ -4822,13 +4822,6 @@ body.is-guest .replay-results:empty::before {
 @media (min-width: 861px) {
   .dock:has(#explorer-rows.has-eval) { flex-basis: clamp(300px, 58%, 520px); }
 }
-/* Analyze: the card's own off switch sits with the engine controls. */
-#analysis-engine-slot .engine-window.is-docked .engine-window-close { display: inline-flex; }
-#open-engine-widget[aria-pressed="true"] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--text);
-}
 
 /* ---- Slim header: meta on the left, controls on the right -------------- */
 

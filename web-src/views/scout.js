@@ -2025,21 +2025,23 @@ export function createScoutView(deps) {
       bar.className = "scout-source-warnings";
       results.parentNode.insertBefore(bar, results);
     }
+    // With no source left, the report area already shows the reason; don't repeat it.
+    const anyOk = Object.values(session.sourceStatus || {}).some((s) => s.status === "ok");
     const chips = Object.entries(session.sourceStatus || {})
       .map(([user, s]) => {
         const label =
           s.status === "ok"
             ? countOf(s.accepted, "game")
             : s.status === "failed"
-              ? `failed${s.error ? ` · ${s.error}` : ""}`
+              ? `failed${s.error && anyOk ? ` · ${s.error}` : ""}`
               : "no games";
         return `<span class="source-chip is-${escapeHtml(s.status)}"><b>${escapeHtml(user)}</b> ${escapeHtml(label)}</span>`;
       })
       .join("");
     const failedCount = statuses.length;
     bar.innerHTML =
-      `<div class="source-warn-text">⚠ ${failedCount} source${failedCount === 1 ? "" : "s"} incomplete — ` +
-      `this report covers only the sources listed as games above.</div>` +
+      `<div class="source-warn-text" title="The report covers only the sources that returned games">` +
+      `⚠ ${failedCount} source${failedCount === 1 ? "" : "s"} incomplete</div>` +
       `<div class="source-chips">${chips}</div>` +
       `<button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>`;
     bar.querySelector("#scout-retry-failed")?.addEventListener("click", () => {

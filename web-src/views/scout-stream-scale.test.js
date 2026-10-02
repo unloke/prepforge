@@ -29,7 +29,7 @@ describe("scout game-plan rows at narrow widths", () => {
     const at = css.indexOf("@media (max-width: 1279px)");
     expect(at).toBeGreaterThan(-1);
     const block = css.slice(at, css.indexOf("@media (max-width: 760px)"));
-    expect(block).toMatch(/\.line-row \{ grid-template-columns: minmax\(0, 1fr\) 70px 110px 40px; \}/);
+    expect(block).toMatch(/\.line-row \{ grid-template-columns: minmax\(0, 1fr\) 70px 72px 40px; \}/);
     // UX walkthrough P2-8: hiding only the cells left an empty "Type · last seen"
     // header column. The meta moves under the line and the header drops its slot.
     expect(block).not.toContain(".line-row .lr-meta { display: none; }");

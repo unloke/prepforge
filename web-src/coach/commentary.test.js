@@ -4,6 +4,7 @@ import { Chess } from "chess.js";
 import { buildMoveFeatures } from "./features.js";
 import { buildCommentary, bucket } from "./commentary.js";
 import { lineOutcome, netFor, gainPhrase, numberLine } from "./move-facts.js";
+import { motifPhrase, participle, hangingCapture } from "./motifs.js";
 import RATED from "./fixtures/rated-moves.json";
 
 function play(fen, sans) {
@@ -109,7 +110,57 @@ describe("buildCommentary", () => {
       after: -300,
       playedLine: ["cxb5", "Kf2"],
     });
-    expect(buildCommentary(f).prose).toBe("Blunder. Bb5 loses a bishop after 1...cxb5. Kf2 was the move, keeping the material.");
+    expect(buildCommentary(f).prose).toBe("Blunder. Bb5 hangs the bishop to 1...cxb5. Kf2 was the move, keeping the material.");
+  });
+
+  it("names the fork the reply executes instead of a bare material count", () => {
+    const f = scenario({
+      fen: "r3k3/7p/8/1N6/8/8/8/4K3 b - - 0 1",
+      san: "h6",
+      best: "Kd7",
+      before: 0,
+      after: 500,
+      playedLine: ["Nc7+", "Kd7", "Nxa8", "Kc8"],
+    });
+    expect(buildCommentary(f).prose).toBe("Blunder. h6 loses a rook to 2.Nc7+, which forks the king and the rook on a8. Kd7 was the move, keeping the material.");
+  });
+
+  it("names the tactic in the line the player missed", () => {
+    const f = scenario({
+      fen: "r3k3/8/8/1N6/8/8/8/4K3 w - - 0 1",
+      san: "Kd2",
+      best: "Nc7+",
+      bestLine: ["Nc7+", "Kd7", "Nxa8", "Kc8"],
+      before: 500,
+      after: 0,
+      playedLine: ["Ra5", "Nc3"],
+    });
+    expect(buildCommentary(f).prose).toBe("Blunder. Kd2 misses Nc7+, which forks the king and the rook on a8 and wins a rook.");
+  });
+
+  it("leads a winning move's read with the tactic that wins the material", () => {
+    const f = scenario({
+      fen: "r3k3/8/8/1N6/8/8/8/4K3 w - - 0 1",
+      san: "Nc7+",
+      best: "Nc7+",
+      bestLine: ["Nc7+", "Kd7", "Nxa8", "Kc8"],
+      before: 500,
+      after: 500,
+      playedLine: ["Kd7", "Nxa8", "Kc8"],
+    });
+    expect(buildCommentary(f).prose).toBe("Good move. Nc7+ forks the king and the rook on a8, winning a rook.");
+  });
+
+  it("does not call a defended piece hanging", () => {
+    expect(hangingCapture("6k1/8/2p5/1B6/P7/8/8/6K1 b - - 0 1", "c6b5")).toBeNull();
+    expect(hangingCapture("6k1/8/2p5/1B6/8/8/8/6K1 b - - 0 1", "c6b5")).toEqual({ type: "b", square: "b5" });
+  });
+
+  it("names pins and skewers set up by the moved piece", () => {
+    expect(motifPhrase("3k4/8/5n2/8/7B/8/8/4K3 w - - 0 1", "h4g5", "Bg5")).toBe("pins the knight to the king");
+    expect(motifPhrase("4r1k1/8/8/4q3/8/8/4R3/3K4 w - - 0 1", "e2e1", "Re1")).toBe("skewers the queen and the rook behind it");
+    expect(motifPhrase("3k4/8/8/8/8/8/8/1N2K3 w - - 0 1", "b1c3", "Nc3")).toBe("");
+    expect(["forks a", "pins a", "skewers a"].map(participle)).toEqual(["forking a", "pinning a", "skewering a"]);
   });
 
   it("speaks to the user as 'you' and to the opponent by colour", () => {
