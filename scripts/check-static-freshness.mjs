@@ -6,10 +6,20 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 // Run after the production build. Include new output files as well as tracked
 // changes: diff alone misses an untracked generated chunk.
 export function checkStaticFreshness(cwd = root) {
-  const changes = execFileSync("git", ["status", "--porcelain", "--untracked-files=all", "--",
-    "src/prepforge_chess/web/static"], { cwd, encoding: "utf8" }).trim();
+  const scope = "src/prepforge_chess/web/static";
+  const changes = execFileSync("git", ["status", "--porcelain", "--untracked-files=all", "--", scope],
+    { cwd, encoding: "utf8" }).trim();
   if (changes) {
-    throw new Error(`Production static output is stale. Run npm run build and commit its output.\n${changes}`);
+    const summary = execFileSync("git", ["diff", "--summary", "--", scope],
+      { cwd, encoding: "utf8" }).trim();
+    const textDiff = execFileSync("git", ["diff", "--", `${scope}/maia3/maia3.manifest.json`],
+      { cwd, encoding: "utf8" }).trim();
+    throw new Error([
+      "Production static output is stale. Run npm run build and commit its output.",
+      changes,
+      summary && `Git diff summary:\n${summary}`,
+      textDiff && `Manifest diff:\n${textDiff}`,
+    ].filter(Boolean).join("\n"));
   }
 }
 
