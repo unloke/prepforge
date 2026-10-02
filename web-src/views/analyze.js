@@ -437,12 +437,101 @@ export function createAnalyzeView({
     });
   }
 
-  // Current position's evaluation beside the chart title: one short number
-  // ("+1.4"), not a sentence — the hover tooltip carries the detail.
-  function updateChartCaption(point) {
-    const el = document.getElementById("analysis-chart-caption");
+  // ---- Evaluation head: one chip + win meter -------------------------------
+  // With the engine on, the chip and meter follow the live search (the docked
+  // engine's own eval chip and bar, which the card hides); otherwise the analysed
+  // game's point for the current ply. Empty when neither has a number.
+  let chartPoint = null;
+  function paintEvalHead() {
+    const chip = document.getElementById("analysis-chart-caption");
+    if (!chip) return;
+    let text = "";
+    let side = "even";
+    let pct = NaN;
+    if (document.getElementById("analysis-eval-card")?.classList.contains("is-engine")) {
+      const head = document.getElementById("engine-head-eval");
+      const live = (head?.textContent || "").trim();
+      if (/\d|#|M/.test(live)) {
+        text = live;
+        side = head.dataset.side || "even";
+        pct = parseFloat(document.getElementById("engine-eval-bar-white")?.style.height);
+      }
+    }
+    if (!text && chartPoint) {
+      text = formatPointEval(chartPoint);
+      pct = pointWinPct(chartPoint);
+      side = pct > 52 ? "white" : pct < 48 ? "black" : "even";
+    }
+    chip.textContent = text;
+    chip.dataset.side = side;
+    chip.parentElement?.classList.toggle("has-eval", !!text);
+    const fill = document.querySelector("#analysis-eval-meter > i");
+    if (fill) fill.style.width = `${Number.isFinite(pct) ? Math.round(pct) : 50}%`;
+  }
+
+  // "12 / 16" -> a ring filled to 12/16 showing "12"; the full text is the tooltip.
+  function paintDepthRing() {
+    const el = document.getElementById("engine-window-depth-readout");
     if (!el) return;
-    el.textContent = point ? formatPointEval(point) : "";
+    const m = /(\d+)\s*\/\s*(\d+)/.exec(el.textContent || "");
+    el.dataset.d = m ? m[1] : "";
+    el.style.setProperty("--p", m && Number(m[2]) ? String(Math.min(1, Number(m[1]) / Number(m[2]))) : "0");
+    el.title = m ? `Depth ${m[1]} of ${m[2]}` : "";
+  }
+
+  const watch = (id, fn, options) => {
+    const el = globalThis.document?.getElementById(id);
+    if (el && typeof MutationObserver === "function") new MutationObserver(fn).observe(el, options);
+  };
+  const TEXT_CHANGES = { childList: true, characterData: true, subtree: true };
+  watch("engine-head-eval", paintEvalHead, { ...TEXT_CHANGES, attributes: true });
+  watch("analysis-eval-card", paintEvalHead, { attributes: true, attributeFilter: ["class"] });
+  watch("engine-window-depth-readout", paintDepthRing, TEXT_CHANGES);
+
+  function updateChartCaption(point) {
+    chartPoint = point || null;
+    paintEvalHead();
+  }
+
+  // Whole-game progress: returns onResult(fen, ev) for the Stockfish pass, which
+  // plots each White-POV result at its position's x as it lands, so the graph
+  // draws itself while the job runs (the job dock carries count and Stop).
+  function liveEvalChart(positions) {
+    const svg = document.getElementById("eval-chart-live");
+    const list = Array.isArray(positions) ? positions : [];
+    const slots = new Map();
+    list.forEach((fen, i) => slots.set(fen, [...(slots.get(fen) || []), i]));
+    const wins = new Array(list.length).fill(null);
+    const span = Math.max(1, list.length - 1);
+    const xOf = (i) => ((i / span) * EVAL_CHART_W).toFixed(1);
+    const line = (cls, x1, y1, x2, y2) =>
+      `<line class="${cls}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" vector-effect="non-scaling-stroke"/>`;
+    let frame = 0;
+    const draw = () => {
+      frame = 0;
+      if (!svg) return;
+      const centerY = evalChartYOf(50);
+      const pts = [];
+      let front = -1;
+      wins.forEach((w, i) => {
+        if (w === null) return;
+        pts.push(`${xOf(i)},${evalChartYOf(w).toFixed(1)}`);
+        front = i;
+      });
+      svg.innerHTML =
+        line("eval-axis", 0, centerY, EVAL_CHART_W, centerY) +
+        (pts.length > 1 ? `<polyline class="eval-line" points="${pts.join(" ")}" vector-effect="non-scaling-stroke"/>` : "") +
+        (front >= 0 ? line("eval-front", xOf(front), 0, xOf(front), EVAL_CHART_H) : "");
+    };
+    draw();
+    return (fen, ev) => {
+      const at = slots.get(fen);
+      if (!at || !ev) return;
+      const cp = ev.mate_in ? Math.sign(ev.mate_in) * 1500 : ev.score_cp;
+      const win = pointWinPct({ score_cp: Number.isFinite(cp) ? cp : 0 });
+      at.forEach((i) => (wins[i] = win));
+      if (!frame) frame = (globalThis.requestAnimationFrame || setTimeout)(draw);
+    };
   }
 
   function updateEvalChartCursor() {
@@ -733,6 +822,8 @@ export function createAnalyzeView({
 
   return {
     renderAnalysis,
+    liveEvalChart,
+    paintEvalHead,
     renderClassificationBars,
     renderEvalChart,
     renderAnalysisTree,

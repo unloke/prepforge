@@ -739,6 +739,40 @@ describe("scout-report rendering", () => {
       expect(rowSlice).toContain(cell);
     }
   });
+
+  it("a one-game row states their result instead of a 0%/100% score over a one-segment bar", () => {
+    const { html } = buildScoutSectionReport(
+      scoutModule,
+      {
+        games: PLAN_GAMES,
+        profile: {
+          recentlyChanged: { white: false, black: false },
+          colorStats: {
+            white: { games: 15, w: 7, d: 0, l: 8, scorePct: 47 },
+            black: { games: 0, w: 0, d: 0, l: 0, scorePct: 0 },
+          },
+        },
+      },
+      "white",
+      LOOKUPS.black,
+      { speedFilter: "all", escapeHtml },
+    );
+    const rows = html.split('class="scout-line scout-line-row').slice(1);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      // Label-free bars: the counts live in the bar's tooltip, never as "0W 0D 1L" text.
+      expect(row).not.toContain("scout-wdlbar-nums");
+      const score = /<span class="scout-lr-score[^"]*">([\s\S]*?)<\/span>\s*<span class="scout-lr-wdl/.exec(row)[1];
+      if (score.includes("scout-one-game")) {
+        expect(score).toMatch(/>(Won|Lost|Drew)</);
+        expect(row).not.toContain("scout-wdlbar-w");
+      } else {
+        expect(score).toMatch(/\d+%/);
+        expect(score).toMatch(/\d+ games/);
+      }
+    }
+    expect(html).toContain("<span>Their result</span>");
+  });
 });
 
 describe("scout-report interactions", () => {

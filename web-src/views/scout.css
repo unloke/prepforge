@@ -241,7 +241,7 @@
 .fm .sc small { margin-right: 3px; color: var(--label); font-size: 9.5px; font-weight: 500; }
 .scout-lines-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 150px 74px 120px 44px;
+  grid-template-columns: minmax(0, 1fr) 150px 74px 72px 44px;
   gap: 10px;
   padding: 0 10px;
 }
@@ -271,7 +271,7 @@
 .lines { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .line-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 150px 74px 120px 44px;
+  grid-template-columns: minmax(0, 1fr) 150px 74px 72px 44px;
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
@@ -325,7 +325,9 @@
   font-variant-numeric: tabular-nums;
 }
 .scout-refutation-gap-actions { align-items: center; }
-.scout-refutation-gap-lead { font-size: var(--fs-xs); }
+/* Row bars carry no count labels (tooltip has them): a thin strip, not a slab. */
+.lr-wdl .scout-wdlbar { min-width: 0; height: 8px; }
+.scout-one-game { color: var(--muted); font-size: var(--fs-s); font-weight: 650; }
 .scout-score-cell { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25; }
 .scout-score-pct { font-size: 14px; font-weight: 700; }
 .scout-gap { color: var(--danger); font-size: 10.5px; white-space: nowrap; }
@@ -530,9 +532,9 @@
 /* ≤1279: the Type · last seen column folds under the line (it used to be
    hidden while its header stayed, leaving an empty, misaligned column). */
 @media (max-width: 1279px) {
-  .line-row { grid-template-columns: minmax(0, 1fr) 70px 110px 40px; }
+  .line-row { grid-template-columns: minmax(0, 1fr) 70px 72px 40px; }
   .line-row .lr-meta { grid-column: 1; grid-row: 2; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px; }
-  .scout-lines-head { grid-template-columns: minmax(0, 1fr) 70px 110px 40px; }
+  .scout-lines-head { grid-template-columns: minmax(0, 1fr) 70px 72px 40px; }
   .scout-lines-head span:nth-child(2) { display: none; }
   .scout-intel-bullets { columns: 1; }
 }

@@ -7,9 +7,9 @@
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111318'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23ffffff'%3E%E2%99%9E%3C/text%3E%3C/svg%3E" />
-    <script type="module" crossorigin src="/static/assets/index-Cyt_rtHr.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-DKosS-4c.js"></script>
     <link rel="modulepreload" crossorigin href="/static/assets/chess-DwBov9dY.js">
-    <link rel="stylesheet" crossorigin href="/static/assets/index-CG3cjMoi.css">
+    <link rel="stylesheet" crossorigin href="/static/assets/index-CiZFQSlo.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -146,7 +146,6 @@
                 <span class="faint" id="analysis-game-meta"></span>
               </div>
               <span class="panel-actions" id="analyze-actions">
-                <button class="btn sm" id="open-engine-widget" data-testid="open-engine-widget" type="button" aria-pressed="false">Engine</button>
                 <button class="btn sm" id="fetch-my-game" data-testid="fetch-my-game">My last game</button>
                 <button class="btn sm primary" id="run-analysis" data-testid="run-analysis">Analyze</button>
               </span>
@@ -165,17 +164,24 @@
                 <p class="coach-maia" id="coach-maia" data-testid="coach-maia" hidden></p>
                 <p class="coach-bookline" id="coach-bookline" data-testid="coach-bookline" hidden></p>
               </section>
-              <!-- Whole-game analysis progress / "Analysis ready" docks here, above the
-                   eval graph, instead of floating over it. -->
-              <div class="job-dock analysis-job-dock" id="analysis-job-dock" data-testid="analysis-job-dock"></div>
-              <!-- One Evaluation card: the game graph (after an analysis) and the
-                   live engine (when on) share it, so there is one place to look. -->
-              <section class="res-block eval-card" id="analysis-eval-card" data-testid="analysis-eval-card" aria-label="Evaluation" hidden>
-                <div class="rb-head"><b>Evaluation</b><span class="eval-now" id="analysis-chart-caption"></span></div>
+              <!-- One Evaluation card: current eval + win meter, the live engine's
+                   depth, line count and lines, the game graph, and the whole-game
+                   progress all live here, so there is one place to look. -->
+              <section class="res-block eval-card" id="analysis-eval-card" data-testid="analysis-eval-card" aria-label="Evaluation">
+                <div class="rb-head ev-head">
+                  <b class="ev-title">Evaluation</b>
+                  <span class="eval-now" id="analysis-chart-caption" data-side="even"></span>
+                  <span class="ev-meter" id="analysis-eval-meter" aria-hidden="true"><i></i></span>
+                  <button class="ev-engine" id="open-engine-widget" data-testid="open-engine-widget" type="button" aria-pressed="false" title="Live Stockfish lines for this position">Engine</button>
+                </div>
+                <div class="eval-live" id="analysis-eval-live" aria-hidden="true">
+                  <svg class="eval-chart" id="eval-chart-live" viewBox="0 0 640 96" preserveAspectRatio="none"></svg>
+                </div>
                 <div class="eval-chart-wrap" id="analysis-eval-graph" hidden>
                   <svg class="eval-chart" id="eval-chart" viewBox="0 0 640 96" role="img" aria-label="Evaluation by move"></svg>
                   <div class="eval-chart-tooltip" id="eval-chart-tooltip" aria-hidden="true" hidden></div>
                 </div>
+                <div class="job-dock analysis-job-dock" id="analysis-job-dock" data-testid="analysis-job-dock"></div>
                 <div class="engine-slot" id="analysis-engine-slot"></div>
               </section>
               <!-- F-03: finished-but-unsaved analysis: the compute lives on this

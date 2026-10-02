@@ -112,7 +112,7 @@ async function runViewport(vp) {
     const layout = await page.evaluate(() => {
       const head = document.querySelector("#analyze-sidebar > .panel-head");
       const bounds = head.getBoundingClientRect();
-      const buttons = ["open-engine-widget", "fetch-my-game", "run-analysis"].map((id) => {
+      const buttons = ["fetch-my-game", "run-analysis"].map((id) => {
         const button = document.getElementById(id);
         const rect = button.getBoundingClientRect();
         return { id, inHead: head.contains(button) && rect.width > 0 && rect.height > 0 &&
@@ -124,7 +124,7 @@ async function runViewport(vp) {
         bodyBelow: document.querySelector("#analyze-sidebar > .panel-scroll").getBoundingClientRect().top >= bounds.bottom - 1 };
     });
     check(layout.buttons.every((b) => b.inHead) && layout.bodyBelow,
-      `${state}: Engine / My last game / Analyze must fit inside the panel head: ${JSON.stringify(layout)}`);
+      `${state}: My last game / Analyze must fit inside the panel head: ${JSON.stringify(layout)}`);
     return layout.head;
   };
 
@@ -299,9 +299,15 @@ async function runViewport(vp) {
   } catch { check(false, "Coach must produce an engine verdict after rapid stepping stops"); }
   const engineLayout = await page.evaluate(() => {
     const panel = document.getElementById("analysis-eval-card").getBoundingClientRect();
-    const engine = document.getElementById("engine-window").getBoundingClientRect();
+    // The docked engine dissolves into the card (display: contents): measure its lines,
+    // and require its depth ring and line stepper on the card's header row.
+    const engine = document.getElementById("engine-window-pvs").getBoundingClientRect();
     const coach = document.getElementById("analysis-explain").getBoundingClientRect();
-    return { fits: engine.left >= panel.left && engine.right <= panel.right + 1, coachHeight: coach.height,
+    const head = ["#analysis-chart-caption", "#analysis-eval-meter", "#engine-window-depth-readout", "#engine-window .engine-lines", "#open-engine-widget"]
+      .map((sel) => document.querySelector(sel).getBoundingClientRect());
+    const oneRow = head.every((r) => r.width > 0 && Math.abs((r.top + r.bottom) / 2 - (head[0].top + head[0].bottom) / 2) < 4 &&
+      r.left >= panel.left && r.right <= panel.right + 1);
+    return { fits: engine.width > 0 && engine.left >= panel.left && engine.right <= panel.right + 1 && oneRow, oneRow, coachHeight: coach.height,
       scrollOverflow: document.querySelector("#analyze-sidebar .panel-scroll").scrollWidth - document.querySelector("#analyze-sidebar .panel-scroll").clientWidth };
   });
   check(engineLayout.fits && engineLayout.scrollOverflow <= 1, `Engine must fit the evaluation card: ${JSON.stringify(engineLayout)}`);
@@ -375,7 +381,8 @@ async function runViewport(vp) {
     for (const ratio of [0.001, 0.999]) {
       await page.mouse.move(chartBox.x + chartBox.width * ratio, chartBox.y + chartBox.height / 2);
       const bounds = await page.locator("#eval-chart-tooltip").boundingBox();
-      check(bounds && bounds.x >= chartBox.x - 1 && bounds.x + bounds.width <= chartBox.x + chartBox.width + 1, `chart edge tooltip must stay inside the chart: ${JSON.stringify({ bounds, chartBox })}`);
+      check(bounds && bounds.x >= chartBox.x - 1 && bounds.x + bounds.width <= chartBox.x + chartBox.width + 1 &&
+        bounds.y >= chartBox.y - 1 && bounds.y + bounds.height <= chartBox.y + chartBox.height + 1, `chart edge tooltip must stay inside the chart: ${JSON.stringify({ bounds, chartBox })}`);
     }
     await page.mouse.move(chartBox.x + chartBox.width / 2, chartBox.y + chartBox.height / 2);
     await page.mouse.move(chartBox.x + chartBox.width / 2, chartBox.y - 150);

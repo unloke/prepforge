@@ -40,14 +40,21 @@ describe("scout lines table", () => {
     expect(html).toContain("0L");
   });
 
-  it("Run Deep scan is a bordered button with a lead-in, not a bare text line", () => {
+  it("Run Deep scan is a bordered button; its explanation is a tooltip, not standing copy", () => {
     const html = renderScoutRefutationGapActions(
       [{ id: "deep-scan", label: "Run Deep scan", ariaLabel: "Run deep scan", testId: "t" }],
       esc,
     );
     expect(html).toContain('class="scout-btn btn sm scout-refutation-gap-btn"');
     expect(html).not.toContain("btn ghost");
-    expect(html).toContain("scout-refutation-gap-lead");
+    expect(html).not.toContain("scout-refutation-gap-lead");
+    expect(html).toMatch(/title="Engine refutations for these lines need a Stockfish pass"/);
+  });
+
+  it("W/D/L bar can drop its count labels (row cells keep them in the tooltip)", () => {
+    const html = scoutWdlBar(3, 1, 2, { counts: false });
+    expect(html).not.toContain("scout-wdlbar-nums");
+    expect(html).toContain('title="W3 D1 L2"');
   });
 
   it("labels only the games in the rendered report, never the live fetch lag", () => {

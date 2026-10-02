@@ -1,9 +1,15 @@
 import "./styles.css";
 import { countOf } from "./plural.js";
-let evaluationSourceReady;
-function sharedEvaluationSource() {
-  return evaluationSourceReady ||= import("./engine/evaluation-source.js")
-    .then(({ createEvaluationSource }) => createEvaluationSource());
+// One per-position analysis store (engine/position-analysis-store.js) behind the
+// Engine panel, the Coach and the whole-game pass.
+let analysisStoreReady;
+function analysisStore() {
+  return analysisStoreReady ||= import("./engine/position-analysis-store.js")
+    .then(({ createPositionAnalysisStore }) => createPositionAnalysisStore({
+      getMaia: () => (maiaAnalysisEnabled() ? getSharedMaia3Provider() : null),
+      sanLine: sanLineFromUci,
+      savedEval: (fen) => appState.analysis?.position_evals?.[fen],
+    }));
 }
 
 function createSharedEvaluationProvider(options) {
@@ -11,19 +17,9 @@ function createSharedEvaluationProvider(options) {
   let seq = 0;
   const select = async (request) => {
     const token = ++seq;
-    const evaluationSource = await sharedEvaluationSource();
+    const store = await analysisStore();
     if (token !== seq) return null;
-    handle ||= evaluationSource.createHandle(options);
-    const saved = savedPositionEvalRead(request.fen, 0);
-    if (saved && saved.depth >= options.maxDepth) {
-      evaluationSource.publish(request.fen, options.maxDepth, {
-        session_id: "saved-analysis", fen: request.fen, running: false,
-        current_depth: saved.depth, max_depth: options.maxDepth,
-        side_to_move: request.fen.split(" ")[1] === "b" ? "black" : "white",
-        pvs: saved.lines.map((line) => ({ score_cp: line.cp, mate_in: line.mate,
-          pv_uci: line.pvUci, pv_san: line.pvSan })),
-      });
-    }
+    handle ||= store.createHandle(options);
     return handle.open(request);
   };
   return { open: select, update: select, snapshot: () => handle?.snapshot(),
@@ -1841,8 +1837,9 @@ const COACH_MIN_REUSE_DEPTH = 10;
 
 class PositionCoach {
   constructor() {
-    this.engine = null;
     this.engineDepth = null;
+    // Store leases this coach holds; cancel() releases them so a newer move frees the lanes.
+    this.leases = new Set();
     this.fen = null;
     this.ctx = {};
     this.enabled = true;
@@ -1855,19 +1852,10 @@ class PositionCoach {
     this.evalCache = new Map();
   }
 
-  // Build the coach's own Stockfish at the current Settings depth, rebuilding (and
-  // dropping the now-stale eval cache) if that depth changed since we last built.
+  // Follow the Settings depth, dropping the now-stale eval cache when it changes.
   _ensureEngine() {
     const depth = effectiveStockfishDepth();
-    if (this.engine && this.engineDepth === depth) return;
-    if (this.engine) {
-      try {
-        this.engine.close();
-      } catch (_) {
-        /* best-effort */
-      }
-    }
-    this.engine = createSharedEvaluationProvider({ maxDepth: depth });
+    if (this.engineDepth === depth) return;
     this.engineDepth = depth;
     this.evalCache.clear();
   }
@@ -1897,7 +1885,7 @@ class PositionCoach {
   // Both consumers subscribe to the shared position search. Keep the deeper
   // panel snapshot in the Coach's small, immediate-read cache too.
   onWidgetSnapshot(snapshot) {
-    if (!this.engine || this.engineDepth !== effectiveStockfishDepth()) return;
+    if (this.engineDepth !== effectiveStockfishDepth()) return;
     if (!snapshot || snapshot.fen !== this.fen && snapshot.fen !== this.ctx.prevFen) return;
     this._remember(snapshot.fen, snapshot, COACH_MIN_REUSE_DEPTH);
   }
@@ -1909,7 +1897,8 @@ class PositionCoach {
     window.clearTimeout(this.timer);
     this.timer = null;
     this.token += 1;
-    void this.engine?.close();
+    for (const lease of this.leases) lease.release();
+    this.leases.clear();
   }
 
   update(fen, ctx) {
@@ -1944,23 +1933,23 @@ class PositionCoach {
       const c = await (_coachReady || preloadCoach());
       if (token !== this.token || fen !== this.fen || !this.enabled || activeViewName() !== "analyze") return;
       this._ensureEngine();
-      // The position BEFORE the move (best line + best alternative) and AFTER it.
-      const before = await this._eval(prevFen, token);
+      // A move that ends the game leaves no position for the
+      // engine to search, so the "after" read is synthesized instead.
+      const over = localGameOver(fen);
+      // The position BEFORE the move (best line + best alternative) and AFTER it, read
+      // at once: the store gives each its own warm lane.
+      const [before, after] = await Promise.all([
+        this._eval(prevFen, token),
+        over ? null : this._eval(fen, token),
+      ]);
       if (token !== this.token || fen !== this.fen) return;
       if (!before || !before.lines.length) return;
-
-      // A move that ends the game (checkmate/stalemate) leaves no position for the
-      // engine to search — _eval(fen) comes back empty and we'd silently produce no
-      // commentary at all for the final move. Synthesize the "after" read instead.
       let top;
-      const status = localBoardInfo(fen).status;
-      if (status.is_checkmate) {
+      if (over?.kind === "checkmate") {
         top = { cp: null, mate: mover === "white" ? 1 : -1, pvUci: [], pvSan: [] };
-      } else if (status.is_stalemate) {
+      } else if (over) {
         top = { cp: 0, mate: null, pvUci: [], pvSan: [] };
       } else {
-        const after = await this._eval(fen, token);
-        if (token !== this.token || fen !== this.fen) return;
         if (!after) return;
         top = after.lines[0] || {};
       }
@@ -2116,10 +2105,10 @@ class PositionCoach {
     if (!maiaAnalysisEnabled()) return;
     try {
       const c = await (_coachReady || preloadCoach());
-      const provider = getSharedMaia3Provider();
       // Personalized: the texture read runs at the player's own strength (Settings →
-      // Playing strength), so "one obvious move" means obvious to THEM.
-      const read = await provider.positionRead({ fen: prevFen, rating: effectiveMaiaRating() });
+      // Playing strength), so "one obvious move" means obvious to THEM. The store batches
+      // it with other pending Maia reads; Stockfish never waits on it.
+      const read = await (await analysisStore()).maiaRead(prevFen, effectiveMaiaRating());
       if (token !== this.token || fen !== this.fen || !read) return;
       c.attachIntuition(features, read);
       renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
@@ -2141,26 +2130,22 @@ class PositionCoach {
       this.evalCache.set(key, saved);
       return saved;
     }
-    if (token !== this.token) return null;
-    const engine = this.engine;
-    await engine.open({ fen, multipv: 2 });
-    if (token !== this.token || engine !== this.engine) return null;
-    const deadline = Date.now() + 5000;
-    let snap = engine.snapshot();
-    while (Date.now() < deadline) {
-      await sleep(150);
-      if (token !== this.token) {
-        // Superseded by a newer click: keep what the search already found. The next
-        // move's "before" position is this one, so fast stepping no longer throws
-        // every read away and leaves the coach on the instant sentence.
-        this._remember(fen, engine.snapshot(), COACH_MIN_REUSE_DEPTH);
-        return null;
-      }
-      snap = engine.snapshot();
-      const ready = snap && snap.pvs && snap.pvs.length && snap.pvs[0].pv_uci.length;
-      if (ready && (snap.running === false || snap.current_depth >= 14)) break;
+    const store = await analysisStore();
+    // Two tries: a worker that dies mid-search gets one fresh lane before the coach gives up.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      if (token !== this.token) return null;
+      const lease = store.acquire(fen, { depth: this.engineDepth, multipv: 2 });
+      this.leases.add(lease);
+      // No wall-clock deadline: a busy machine is slower, not wrong. Only a newer move
+      // (cancel releases the lease, resolving null) or an engine failure ends the wait.
+      // An interrupted search keeps its depth in the store, so stepping back is instant.
+      const snap = await lease.until((s) => s.pvs?.[0]?.pv_uci?.length && (s.running === false || s.current_depth >= 14));
+      this.leases.delete(lease);
+      lease.release();
+      if (token !== this.token || !snap) return null;
+      if (!snap.error) return this._remember(fen, snap, 0);
     }
-    return this._remember(fen, snap, 0);
+    return null;
   }
 
   // Cache a snapshot of `fen` (if it is for that position and deep enough) as a
@@ -2193,10 +2178,11 @@ const positionCoach = new PositionCoach();
 const COACH_TONES = ["good", "warn", "danger", "info", "brilliant"];
 
 // The Coach speaks in one short paragraph. Set its text + tone (subtle colour).
-function setCoachProse(text, tone = "info") {
+function setCoachProse(text, tone = "info", state = "instant") {
   const el = document.getElementById("coach-prose");
   if (!el) return;
   el.textContent = text || "";
+  el.dataset.state = state;
   for (const t of COACH_TONES) el.classList.toggle(`is-${t}`, t === tone);
 }
 
@@ -2213,7 +2199,7 @@ function previousAnalysisMove() {
 // Render the engine's read of the move just played, in the coach's own voice.
 function renderCoachProse(c) {
   if (!c) return;
-  setCoachProse(c.prose, c.tone);
+  setCoachProse(c.prose, c.tone, "engine");
 }
 
 let _phaseCoachMod = null;
@@ -6384,9 +6370,6 @@ async function runAnalysis(options = {}) {
       },
     });
 
-    const { analyzeGamePositions } = await timed("load", () =>
-      import("./engine/game-analyzer.js")
-    );
     // Start the shared Maia init (worker spawn + weight fetch + ORT session) NOW,
     // in parallel with the Stockfish pass below — but only when this run can
     // actually use Maia signals. The Stockfish, classification and inference
@@ -6403,12 +6386,15 @@ async function runAnalysis(options = {}) {
     const maiaReady = wantsMaia ? getSharedMaia3Provider().warmup() : null;
     if (wantsMaia) engineLifecycleMark("analyze-maia-init-start", tAnalyze);
     engineLifecycleMark("analyze-stockfish-start", tAnalyze);
+    // Dedicated full-speed workers; positions the store already answers at this depth
+    // are reused, and each result is published for the Engine panel and the Coach.
+    const store = await timed("load", analysisStore);
+    const live = (await ensureAnalyzeView()).liveEvalChart(positions);
     const evals = await timed("stockfish", () =>
-      analyzeGamePositions({
+      store.analyzeGame({
         positions,
         depth: prep.depth,
-        multipv: 1,
-        createProvider: createSharedEvaluationProvider,
+        onResult: live,
         onProgress: (done, total) => {
           jobToast.updateJob({
             current: done,
@@ -6481,7 +6467,7 @@ async function runAnalysis(options = {}) {
               depth: prep.depth,
               rating: effectiveMaiaRating(),
               provider,
-              analyzeFn: analyzeGamePositions,
+              analyzeFn: (o) => store.analyzeGame(o),
               shouldCancel: () => cancelled || analysisOwnerId !== currentOwnerId(),
               onPhase: ({ phase: sub, detail }) => {
                 timings[`maia_${sub}`] = detail || 1;
@@ -7752,7 +7738,7 @@ function syncAnalysisEvalCard() {
   const points = Array.isArray(appState.evalChartPoints) ? appState.evalChartPoints : [];
   const hasGraph = !!results && !results.hidden && points.length > 0;
   if (graph) graph.hidden = !hasGraph;
-  if (card) card.hidden = !hasGraph && !engineWantedIn("analyze");
+  card?.classList.toggle("is-engine", engineWantedIn("analyze"));
 }
 
 // ---- Explorer row evals ------------------------------------------------------

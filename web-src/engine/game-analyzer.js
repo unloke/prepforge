@@ -89,6 +89,7 @@ function evalFromSnapshot(fen, snapshot) {
     mate_in: top.mate_in,
     best_move_uci: top.pv_uci && top.pv_uci.length ? top.pv_uci[0] : null,
     pv: top.pv_uci ? top.pv_uci.slice() : [],
+    pv_san: top.pv_san ? top.pv_san.slice() : [],
     depth: (snapshot && snapshot.current_depth) || top.depth || 0,
     nodes: (snapshot && snapshot.nodes) ?? null,
   };
@@ -131,6 +132,8 @@ async function waitForEval(provider, fen, targetDepth, cancelled) {
  *   concurrency?: number,
  *   maxNodes?: number,
  *   createProvider?: (opts: { maxDepth: number, maxNodes: number }) => object,
+ *   reuse?: (fen: string) => object | null,
+ *   onResult?: (fen: string, evalResult: object) => void,
  * }} opts
  */
 export async function analyzeGamePositions({
@@ -143,6 +146,12 @@ export async function analyzeGamePositions({
   maxNodes = DEFAULT_MAX_NODES,
   // Injectable for tests; the live flow always uses the browser Stockfish provider.
   createProvider = createEngineProvider,
+  // A finished eval the caller already holds for a FEN at this depth (or null): it is
+  // used as-is instead of searching again.
+  reuse = null,
+  // Called once per distinct FEN as soon as its eval is known (reused or searched), so
+  // a consumer can show results while the rest of the game is still running.
+  onResult = null,
 }) {
   const targetDepth = Math.max(1, Math.min(Number(depth) || 16, 60));
   const total = positions.length;
@@ -165,9 +174,29 @@ export async function analyzeGamePositions({
   }
 
   const evalByFen = new Map();
+  let completed = 0;
+  // Advance progress by every original index this FEN covered, so the bar reaches the
+  // full position total even though the engine ran fewer distinct searches.
+  function reportProgress(fen) {
+    completed += coverage.get(fen) || 1;
+    if (typeof onProgress === "function") onProgress(completed, total);
+  }
+  function record(fen, ev) {
+    evalByFen.set(fen, ev);
+    if (typeof onResult === "function") {
+      try { onResult(fen, ev); } catch (_) { /* a consumer's error never stops the pass */ }
+    }
+    reportProgress(fen);
+  }
+  // Positions the caller already has never reach a worker.
+  const pending = [];
+  for (const fen of uniqueFens) {
+    const known = typeof reuse === "function" ? reuse(fen) : null;
+    if (known) record(fen, known);
+    else pending.push(fen);
+  }
   // Shared dynamic queue over distinct FENs: workers hand out by index, not by chunk.
   let nextUnique = 0;
-  let completed = 0;
   // Set by any worker that throws (real error or cancel) so its siblings stop pulling
   // new work instead of running the rest of the queue to completion.
   let aborted = false;
@@ -177,17 +206,10 @@ export async function analyzeGamePositions({
   const cancelled = () => aborted || externalCancel();
 
   function takeNextFen() {
-    if (cancelled() || nextUnique >= uniqueFens.length) return null;
-    const fen = uniqueFens[nextUnique];
+    if (cancelled() || nextUnique >= pending.length) return null;
+    const fen = pending[nextUnique];
     nextUnique += 1;
     return fen;
-  }
-
-  // Advance progress by every original index this FEN covered, so the bar reaches the
-  // full position total even though the engine ran fewer distinct searches.
-  function reportProgress(fen) {
-    completed += coverage.get(fen) || 1;
-    if (typeof onProgress === "function") onProgress(completed, total);
   }
 
   async function workerLoop() {
@@ -202,8 +224,7 @@ export async function analyzeGamePositions({
         // produce no engine info — Stockfish just returns `bestmove (none)`. Skip
         // the engine entirely so we don't block on the per-position timeout.
         if (isTerminalPosition(fen)) {
-          evalByFen.set(fen, terminalEval(fen));
-          reportProgress(fen);
+          record(fen, terminalEval(fen));
           continue;
         }
 
@@ -216,8 +237,7 @@ export async function analyzeGamePositions({
           await provider.update({ fen, multipv });
         }
 
-        evalByFen.set(fen, await waitForEval(provider, fen, targetDepth, cancelled));
-        reportProgress(fen);
+        record(fen, await waitForEval(provider, fen, targetDepth, cancelled));
       }
     } catch (err) {
       // Stop the other workers, then surface the failure to the caller.
@@ -234,10 +254,10 @@ export async function analyzeGamePositions({
 
   const workerCount = Math.max(
     1,
-    Math.min(resolveConcurrency(concurrency), uniqueFens.length),
+    Math.min(resolveConcurrency(concurrency), pending.length),
   );
   const settled = await Promise.allSettled(
-    Array.from({ length: workerCount }, () => workerLoop()),
+    pending.length ? Array.from({ length: workerCount }, () => workerLoop()) : [],
   );
 
   const rejection = settled.find((s) => s.status === "rejected");

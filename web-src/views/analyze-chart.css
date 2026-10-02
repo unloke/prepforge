@@ -30,7 +30,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: 120px;
+  height: 108px;
   padding: 10px 12px;
   background: var(--surface-2);
   border: 1px solid var(--line);
@@ -157,14 +157,154 @@
 /* Wrapped actions keep their height; only the result body may shrink/scroll. */
 #analyze-sidebar .panel-head { flex: none; flex-wrap: wrap; gap: 8px; }
 #analyze-actions { flex-wrap: wrap; }
-#analysis-engine-slot:not(:empty) {
-  padding-top: 6px;
-  border-top: 1px solid var(--line);
+/* One header row: title | eval chip | win meter | depth ring | lines | Engine.
+   The docked engine window and its head dissolve into the card's grid
+   (display: contents), so its depth readout and line stepper sit in the header
+   and its lines run under the chart instead of a second "SF" row. */
+#analysis-eval-card {
+  display: grid;
+  grid-template-columns: auto auto minmax(24px, 1fr) auto auto auto;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 8px;
+  container-type: inline-size;
 }
-#analysis-engine-slot .engine-window-head { flex-wrap: wrap; gap: 6px; }
-#analysis-engine-slot .engine-head-meta { min-width: 0; flex-wrap: wrap; }
-#analysis-engine-slot .engine-pv { grid-template-columns: 48px minmax(0, 1fr); }
+#analysis-eval-card > :not(.ev-head):not(.engine-slot),
+#analysis-engine-slot .engine-window-body { grid-column: 1 / -1; }
+#analysis-eval-card .ev-head { display: contents; }
+.ev-title { grid-area: 1 / 1; font-size: var(--fs-s); }
+#analysis-chart-caption { grid-area: 1 / 2; }
+.ev-meter { grid-area: 1 / 3; }
+#analysis-engine-slot .engine-head-depth { grid-area: 1 / 4; }
+#analysis-engine-slot .engine-lines { grid-area: 1 / 5; }
+.ev-engine { grid-area: 1 / 6; }
+#analysis-engine-slot,
+#analysis-engine-slot > .engine-window:not([hidden]),
+#analysis-engine-slot .engine-window-head,
+#analysis-engine-slot .engine-head-meta,
+#analysis-engine-slot .engine-head-tools { display: contents; }
+#analysis-engine-slot .engine-head-label,
+#analysis-engine-slot .engine-head-eval,
+#analysis-engine-slot .engine-window-close,
+#analysis-engine-slot .engine-window-resize { display: none; }
+@container (max-width: 340px) {
+  .ev-title { display: none; }
+}
+
+/* The current eval as a chip in the winning side's colours (the text says it
+   too), fixed width so stepping never shifts the row; empty keeps its box. */
+.eval-now {
+  min-width: 60px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.eval-now:empty { visibility: hidden; }
+.eval-now[data-side="white"] { background: #f4f3ef; color: #1a1a1a; border-color: #cfc9b8; }
+.eval-now[data-side="black"] { background: #25282d; color: #f4f3ef; border-color: #25282d; }
+/* White's share of the win chance: light from the left over a dark track. */
+.ev-meter {
+  height: 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #25282d;
+  overflow: hidden;
+}
+.ev-meter > i {
+  display: block;
+  width: 50%;
+  height: 100%;
+  background: #f4f3ef;
+  transition: width 0.3s ease;
+}
+.ev-head:not(.has-eval) .ev-meter { opacity: 0.35; }
+#analysis-engine-slot .engine-head-depth {
+  --p: 0;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  min-width: 0;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) calc(var(--p) * 1turn), var(--line) 0);
+  font-size: 0;
+}
+#analysis-engine-slot .engine-head-depth::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--panel);
+}
+#analysis-engine-slot .engine-head-depth::after {
+  content: attr(data-d);
+  position: relative;
+  color: var(--text);
+  font-size: 10.5px;
+  font-weight: 750;
+}
+.ev-engine {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+.ev-engine::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line-strong, var(--line));
+}
+.ev-engine:hover { color: var(--text); }
+.ev-engine:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ev-engine.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.ev-engine.is-active::before {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+#analysis-engine-slot .engine-window-body { padding-top: 4px; border-top: 1px solid var(--line-soft, var(--line)); }
+#analysis-engine-slot .engine-pv { grid-template-columns: 52px minmax(0, 1fr); }
 #analysis-engine-slot .engine-pv-line { min-width: 0; overflow-wrap: anywhere; }
+
+/* Whole-game progress: the graph draws itself as positions finish, with the
+   job's count, Stop and a thin track under it. */
+.eval-live { display: none; position: relative; overflow: hidden; border-radius: 6px; }
+#analysis-eval-card:has(.job-toast[data-state="running"]) .eval-live { display: block; }
+#analysis-eval-card:has(.job-toast[data-state="running"]) #analysis-eval-graph { display: none; }
+.eval-live::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 16%, transparent), transparent);
+  transform: translateX(-100%);
+  animation: eval-scan 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes eval-scan { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .eval-live::after { display: none; animation: none; }
+}
+.eval-chart .eval-front { stroke: var(--accent); stroke-opacity: 0.55; }
 .analysis-job-dock:empty { display: none; }
 .analysis-job-dock .job-toast.is-docked {
   padding: 0;
@@ -175,11 +315,24 @@
   transition: none;
 }
 .analysis-job-dock .job-toast-title { display: none; }
-.analysis-job-dock .job-toast-head { display: flex; padding: 0; gap: 8px; }
-.analysis-job-dock .job-toast-message { flex: 1; }
+.analysis-job-dock .job-toast-head { display: flex; align-items: center; gap: 8px; padding: 0; }
+.analysis-job-dock .job-toast-message {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
 .analysis-job-dock .job-toast-stop { flex: none; }
-.analysis-job-dock .job-toast-message { min-width: 0; overflow-wrap: anywhere; }
-.analysis-job-dock .job-toast-track { height: 2px; margin-top: 4px; }
+.analysis-job-dock .job-toast-track {
+  height: 3px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--surface-3, var(--line));
+  overflow: hidden;
+}
+.analysis-job-dock .job-toast-fill { border-radius: inherit; background: var(--accent); }
 .rb-head {
   display: flex;
   flex-wrap: wrap;
@@ -190,15 +343,6 @@
 .rb-head .faint b {
   color: var(--text);
 }
-/* Current position's eval beside the "Evaluation" title: one number, fixed
-   width so stepping moves never shifts the header. */
-.eval-now {
-  min-width: 4ch;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-}
-
 /* Eval chart: a neutral field split by the centre line. The area between the
    curve and the line is light above it (White better) and dark below it
    (Black better), so the fill reads as "who is ahead" at a glance. */
@@ -242,10 +386,11 @@
 
 /* Hover/focus readout for the chart: SAN, win chance, and classification as
    text, so the tooltip never depends on colour alone. */
+/* Inside the chart box, so the panel's scroll edge never clips it. */
 .eval-chart-tooltip {
   position: absolute;
-  top: -4px;
-  transform: translate(-50%, -100%);
+  top: 4px;
+  transform: translateX(-50%);
   z-index: 5;
   padding: 4px 8px;
   border: 1px solid var(--line-strong);
