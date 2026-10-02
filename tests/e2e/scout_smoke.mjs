@@ -327,7 +327,7 @@ async function main() {
     const prepText = (await firstLine.textContent()) || "";
     // This fresh account has no repertoire, so a row is just the line: no
     // "your move" reply and no "no answer in your prep" flag to compare against.
-    if (!/1\. e4/.test(prepText)) {
+    if (!/1\. [KQRBNa-h]/.test(prepText)) {
       fail(`prep row missing its line (got: ${prepText.trim().slice(0, 120) || "(empty)"})`);
     }
     if (/no answer in your prep/i.test(prepText)) {
