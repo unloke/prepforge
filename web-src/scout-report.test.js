@@ -998,7 +998,7 @@ describe("Maia estimate rendering", () => {
     expect(sectionData.prepTargets[0].maiaScorePct).toBe(15);
   });
 
-  it("shows loading note while Maia enrichment is in flight", () => {
+  it("does not duplicate the shared loading state inside colour cards", () => {
     const { html } = buildScoutSectionReport(
       scoutModule,
       {
@@ -1010,7 +1010,7 @@ describe("Maia estimate rendering", () => {
       LOOKUPS.black,
       { speedFilter: "all", escapeHtml, maiaEnrichState: MAIA_ENRICH_LOADING },
     );
-    expect(html).toContain("Evaluating");
+    expect(html).not.toContain("Evaluating");
     expect(html).not.toContain("score/WDL are Maia estimates");
   });
 

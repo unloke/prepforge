@@ -7,11 +7,6 @@
 
 .scout-panel.is-streaming .scout-live-count {
   color: var(--accent-strong);
-  animation: scout-pulse 1.2s ease-in-out infinite;
-}
-@keyframes scout-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
 }
 
 .scout-error {
@@ -75,7 +70,17 @@
 .scout-color-rec-muted { background: var(--surface-2); color: var(--muted); font-weight: 500; }
 
 /* Engine / Maia enrichment progress: a quiet status line, not a card. */
-.scout-engine-progress { padding: 0 4px; color: var(--accent-text); }
+.scout-engine-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 20px;
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: var(--fs-s);
+  font-variant-numeric: tabular-nums;
+}
+.scout-engine-progress progress { width: 72px; height: 4px; accent-color: var(--accent); }
 .scout-engine-progress[hidden] { display: none; }
 .scout-progress-row {
   display: flex;

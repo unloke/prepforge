@@ -50,19 +50,12 @@ describe("scout lines table", () => {
     expect(html).toContain("scout-refutation-gap-lead");
   });
 
-  it("names both counters while games are still streaming", () => {
-    expect(scoutAnalyzedLabel(59, 66)).toBe("59 of 66 games analyzed");
-    expect(scoutAnalyzedLabel(66, 66)).toBe("66 games analyzed");
+  it("labels only the games in the rendered report, never the live fetch lag", () => {
+    expect(scoutAnalyzedLabel(66)).toBe("66 games analyzed");
     expect(scoutAnalyzedLabel(1)).toBe("1 game analyzed");
-    const html = renderScoutProfile(
-      { total: 59, speedCounts: {} },
-      "DrNykterstein",
-      "all",
-      esc,
-      { fetchedTotal: 66 },
-    );
-    expect(html).toContain("59 of 66 games analyzed");
-    expect(html).toContain('data-analyzed="59"');
+    const html = renderScoutProfile({ total: 59, speedCounts: {} }, "DrNykterstein", "all", esc);
+    expect(html).toContain("59 games analyzed");
+    expect(html).not.toMatch(/ of \d+ games analyzed/);
   });
 
   it("system setups get display names, not lowercase ids", () => {

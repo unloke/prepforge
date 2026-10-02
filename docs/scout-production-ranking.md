@@ -39,7 +39,7 @@ one game, even if its shared opening decisions have much more historical evidenc
    reply / positive user opportunity gate remains. Assessed metrics and decision
    evidence travel with each line; no intermediate nested collapse is performed.
 6. Prospective DP recommendations receive optional Maia enrichment first, then
-   backups (global 64 attempts/pool, 12-success target). Maia is at most two
+   backups (global 64 attempts/pool, 12-success target per opponent colour). Maia is at most two
    pseudo-games for leaf outcome opportunity, never opponent reach or support.
 7. The report overlays assessed metrics and Maia onto observed branch evidence,
    then invokes the same DP. Available Maia is not a separate selection class.

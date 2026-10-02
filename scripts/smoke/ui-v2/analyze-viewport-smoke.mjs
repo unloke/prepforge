@@ -59,7 +59,7 @@ const api = (path) => {
     return {
       analyses: [
         { game_id: "g1", white: "me_user", black: "opp_one", result: "0-1", analyzed_at: "2026-09-28T12:00:00Z" },
-        { game_id: "g2", white: "opp_two", black: "me_user", result: "1-0", analyzed_at: "2026-09-27T12:00:00Z" },
+        { game_id: "g2", white: "opp_two_with_a_long_name", black: "me_user", result: "1-0", analyzed_at: "2026-09-27T12:00:00Z" },
       ],
     };
   }
@@ -93,7 +93,7 @@ await new Promise((r) => server.listen(PORT, r));
 
 const { chromium } = await import("playwright");
 let browser;
-for (const channel of ["msedge", "chrome", undefined]) {
+for (const channel of [undefined, "msedge", "chrome"]) {
   try { browser = await chromium.launch({ headless: true, ...(channel ? { channel } : {}) }); break; }
   catch { /* next */ }
 }
@@ -108,6 +108,25 @@ async function runViewport(vp) {
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text()); });
   page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
   const check = (ok, label) => { if (!ok) failures.push(`${vp.name}: ${label}`); };
+  const checkPanelHead = async (state) => {
+    const layout = await page.evaluate(() => {
+      const head = document.querySelector("#analyze-sidebar > .panel-head");
+      const bounds = head.getBoundingClientRect();
+      const buttons = ["open-engine-widget", "fetch-my-game", "run-analysis"].map((id) => {
+        const button = document.getElementById(id);
+        const rect = button.getBoundingClientRect();
+        return { id, inHead: head.contains(button) && rect.width > 0 && rect.height > 0 &&
+          rect.left >= bounds.left && rect.right <= bounds.right &&
+          rect.top >= bounds.top && rect.bottom <= bounds.bottom,
+        bounds: rect.toJSON() };
+      });
+      return { buttons, head: bounds.toJSON(),
+        bodyBelow: document.querySelector("#analyze-sidebar > .panel-scroll").getBoundingClientRect().top >= bounds.bottom - 1 };
+    });
+    check(layout.buttons.every((b) => b.inHead) && layout.bodyBelow,
+      `${state}: Engine / My last game / Analyze must fit inside the panel head: ${JSON.stringify(layout)}`);
+    return layout.head;
+  };
 
   // Server-side analysis pipeline stubs: prepare returns the demo game's REAL
   // position FENs (derived in Node with chess.js — the browser Stockfish
@@ -203,6 +222,7 @@ async function runViewport(vp) {
     await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `analyze-${state}-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
   };
   await shot("setup");
+  await checkPanelHead("setup");
 
   // Board + coach + tool row render in setup.
   const board = await page.locator('[data-testid="analysis-board"] .square, [data-testid="analysis-board"] [data-square]').count();
@@ -252,6 +272,44 @@ async function runViewport(vp) {
   const classBars = await page.locator("#analysis-summary .cbar-row").count();
   check(classBars === 2, `class bars should show White + Black rows, got ${classBars}`);
 
+  check(await page.locator("#analysis-job-dock .job-toast").count() === 0, "completed analysis progress must disappear immediately");
+
+  // Exercise shared live evaluation and rapid forward/back navigation with the
+  // real worker, not a mirrored test implementation.
+  await page.locator("#open-engine-widget").click();
+  await page.waitForFunction(() => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)"), null, { timeout: 20000 });
+  await page.evaluate(async () => {
+    for (const id of ["analysis-next", "analysis-next", "analysis-prev", "analysis-next", "analysis-prev", "analysis-next"]) {
+      document.getElementById(id).click();
+      await new Promise((r) => setTimeout(r, 60));
+    }
+  });
+  await page.waitForFunction(() => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)"), null, { timeout: 20000 });
+  await page.locator("#explain-engine-toggle").click();
+  // Use the board navigation's real async path, allowing each render to settle.
+  await page.evaluate(() => document.getElementById("analysis-start").click());
+  for (let i = 0; i < 3; i += 1) {
+    await page.evaluate(() => document.getElementById("analysis-next").click());
+    await page.waitForTimeout(80);
+  }
+  const instant = await page.locator("#coach-prose").textContent();
+  await page.locator("#explain-engine-toggle").click();
+  try {
+    await page.waitForFunction((text) => document.getElementById("coach-prose").textContent !== text, instant, { timeout: 15000 });
+  } catch { check(false, "Coach must produce an engine verdict after rapid stepping stops"); }
+  const engineLayout = await page.evaluate(() => {
+    const panel = document.getElementById("analysis-eval-card").getBoundingClientRect();
+    const engine = document.getElementById("engine-window").getBoundingClientRect();
+    const coach = document.getElementById("analysis-explain").getBoundingClientRect();
+    return { fits: engine.left >= panel.left && engine.right <= panel.right + 1, coachHeight: coach.height,
+      scrollOverflow: document.querySelector("#analyze-sidebar .panel-scroll").scrollWidth - document.querySelector("#analyze-sidebar .panel-scroll").clientWidth };
+  });
+  check(engineLayout.fits && engineLayout.scrollOverflow <= 1, `Engine must fit the evaluation card: ${JSON.stringify(engineLayout)}`);
+  check(engineLayout.coachHeight <= 134, "Coach must remain compact");
+  await shot("engine");
+  await page.locator("#open-engine-widget").click();
+  await page.evaluate(() => document.getElementById("analysis-start").click());
+
   // Composition: actions live in the panel head (there is no desktop top
   // bar), the mainline is a number | White | Black grid inside the panel, and
   // the board has no side eval bar, so it lines up with Build and Train.
@@ -260,14 +318,11 @@ async function runViewport(vp) {
     const white = box("#analysis-moves .mtree-move.is-white");
     const black = box("#analysis-moves .mtree-move.is-black");
     const num = box("#analysis-moves .mtree-num");
-    const actions = box("#analyze-actions");
-    const head = box("#analyze-sidebar > .panel-head");
     const panel = box("#analyze-sidebar");
     const boardBox = box("#analysis-board");
     return {
       sameRow: Math.abs(white.top - black.top) < 2,
       order: num.right <= white.left + 1 && white.right <= black.left + 1,
-      actionsInHead: !!actions && actions.width > 0 && actions.top >= head.top - 1 && actions.bottom <= head.bottom + 1,
       panelHead: !!document.querySelector("#analyze-sidebar > .panel-head #analysis-game-title"),
       glyphs: document.querySelectorAll("#analysis-moves .mtree-glyph").length,
       noEvalBar: !document.getElementById("analysis-evalbar"),
@@ -275,7 +330,7 @@ async function runViewport(vp) {
     };
   });
   check(layout.sameRow && layout.order, `move grid should lay number | White | Black in one row: ${JSON.stringify(layout)}`);
-  check(layout.actionsInHead, "Engine / My last game / Analyze should sit in the panel head");
+  await checkPanelHead("results");
   check(layout.panelHead, "the panel head should carry the game title");
   check(layout.glyphs >= 1, "classified moves should carry a glyph");
   check(layout.noEvalBar, "the Analyze board should not carry a side eval bar");
@@ -313,8 +368,15 @@ async function runViewport(vp) {
     { timeout: 5000 },
   );
   // Leaving the chart hides the hover tooltip (it never lingers).
+  await page.locator("#eval-chart").evaluate((el) => el.scrollIntoView({ block: "center", behavior: "instant" }));
+  await page.waitForTimeout(100);
   const chartBox = await page.locator("#eval-chart").boundingBox();
   if (chartBox) {
+    for (const ratio of [0.001, 0.999]) {
+      await page.mouse.move(chartBox.x + chartBox.width * ratio, chartBox.y + chartBox.height / 2);
+      const bounds = await page.locator("#eval-chart-tooltip").boundingBox();
+      check(bounds && bounds.x >= chartBox.x - 1 && bounds.x + bounds.width <= chartBox.x + chartBox.width + 1, `chart edge tooltip must stay inside the chart: ${JSON.stringify({ bounds, chartBox })}`);
+    }
     await page.mouse.move(chartBox.x + chartBox.width / 2, chartBox.y + chartBox.height / 2);
     await page.mouse.move(chartBox.x + chartBox.width / 2, chartBox.y - 150);
     await page.waitForTimeout(150);
@@ -354,6 +416,14 @@ async function runViewport(vp) {
   check(await page.locator("#analysis-board [data-square]").first().getAttribute("data-square") === "h1", "a recalled Self-as-Black game should face Black");
   const recalledPgn = await page.locator("#pgn-input").inputValue();
   check(recalledPgn.includes('[Black "me_user"]') && recalledPgn.includes('[Result "1-0"]'), "recalled PGN should retain its game metadata");
+  // A real recalled title wraps the actions at narrow widths. The header must
+  // keep its full content height while the result body owns scrolling.
+  const recalledHead = await checkPanelHead("long recalled title");
+  await page.locator("#analyze-sidebar > .panel-scroll").evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  const scrolledHead = await checkPanelHead("scrolled recalled report");
+  check(Math.abs(recalledHead.top - scrolledHead.top) < 1 && Math.abs(recalledHead.height - scrolledHead.height) < 1,
+    "scrolling the report must keep the panel head in place");
+  await shot("recalled");
 
   if (vp.width === 1440) {
     // Conversely, a review may finish saving in the background after recall.
@@ -387,6 +457,8 @@ try {
     { name: "desktop-1440", width: 1440, height: 900 },
     { name: "laptop-1180", width: 1180, height: 900 },
     { name: "split-982", width: 982, height: 614 },
+    { name: "laptop-1280", width: 1280, height: 609 },
+    { name: "tablet-860", width: 860, height: 900 },
     { name: "mobile-390", width: 390, height: 844 },
   ]) await runViewport(vp);
 } finally {
@@ -398,4 +470,4 @@ if (failures.length) {
   for (const f of failures) console.error(`  - ${f}`);
   process.exit(1);
 }
-console.log("[analyze-smoke] ok — all four viewports render Analyze (coach, chart, move grid, class bars, eval readout) through the real browser-engine pipeline with no overflow and no console errors.");
+console.log("[analyze-smoke] ok — all six viewports render Analyze (coach, chart, move grid, class bars, eval readout) through the real browser-engine pipeline with no overflow and no console errors.");

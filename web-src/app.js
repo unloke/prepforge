@@ -1,8 +1,36 @@
 import "./styles.css";
 import { countOf } from "./plural.js";
+let evaluationSourceReady;
+function sharedEvaluationSource() {
+  return evaluationSourceReady ||= import("./engine/evaluation-source.js")
+    .then(({ createEvaluationSource }) => createEvaluationSource());
+}
+
+function createSharedEvaluationProvider(options) {
+  let handle = null;
+  let seq = 0;
+  const select = async (request) => {
+    const token = ++seq;
+    const evaluationSource = await sharedEvaluationSource();
+    if (token !== seq) return null;
+    handle ||= evaluationSource.createHandle(options);
+    const saved = savedPositionEvalRead(request.fen, 0);
+    if (saved && saved.depth >= options.maxDepth) {
+      evaluationSource.publish(request.fen, options.maxDepth, {
+        session_id: "saved-analysis", fen: request.fen, running: false,
+        current_depth: saved.depth, max_depth: options.maxDepth,
+        side_to_move: request.fen.split(" ")[1] === "b" ? "black" : "white",
+        pvs: saved.lines.map((line) => ({ score_cp: line.cp, mate_in: line.mate,
+          pv_uci: line.pvUci, pv_san: line.pvSan })),
+      });
+    }
+    return handle.open(request);
+  };
+  return { open: select, update: select, snapshot: () => handle?.snapshot(),
+    close: async () => { seq += 1; await handle?.close(); } };
+}
 import { advanceBuildRevision, queuedBuildRevision, rebaseQueuedBuildRevision, withBuildRevision } from "./build-revision.js";
 import {
-  ANALYSIS_MAX_NODES,
   createEngineProvider,
   isBrowserEngineAvailable,
 } from "./engine/stockfish-provider.js";
@@ -898,7 +926,8 @@ class Toast {
     if (message) this.messageEl.textContent = message;
     this.lastDisplayedPercent = 1;
     this._renderFill(1);
-    this._arm(TOAST_DONE_DELAY, () => this.dismiss());
+    if (this.dock?.id === "analysis-job-dock") this.dismiss(true);
+    else this._arm(TOAST_DONE_DELAY, () => this.dismiss());
   }
 
   fail(message) {
@@ -1282,7 +1311,7 @@ class EngineWidget {
         /* best-effort */
       }
     }
-    this.engine = createEngineProvider({ maxDepth: depth, maxMultipv: this.maxMultipv });
+    this.engine = createSharedEvaluationProvider({ maxDepth: depth });
     this.engineDepth = depth;
   }
 
@@ -1322,8 +1351,6 @@ class EngineWidget {
     this.resizeHandle = document.getElementById("engine-window-resize");
     this._renderLinesReadout();
     this._bindControls();
-    this._bindDrag();
-    this._bindResize();
   }
 
   isOpen() {
@@ -1370,7 +1397,7 @@ class EngineWidget {
   }
 
   _searchMultipv() {
-    return this.multipv;
+    return activeViewName() === "analyze" ? Math.max(2, this.multipv) : this.multipv;
   }
 
   /** Re-analyze whenever the active board changes. No-op if widget closed. */
@@ -1564,8 +1591,10 @@ class EngineWidget {
     this._stopPolling();
     this.pollTimer = setInterval(async () => {
       try {
-        const snapshot = await this.engine.snapshot();
-        if (!this.open) return; // closed between the _stopPolling() in close() and this tick
+        const engine = this.engine;
+        const fen = this.lastFen;
+        const snapshot = await engine.snapshot();
+        if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
         this._renderSnapshot(snapshot);
       } catch (_) {
         // Ignore transient polling errors.
@@ -1581,6 +1610,7 @@ class EngineWidget {
   }
 
   _renderSnapshot(snapshot) {
+    if (snapshot?.fen && snapshot.fen !== this.lastFen) return;
     if (!snapshot || !snapshot.session_id) {
       setEngineBestArrow(null);
       if (this.depthReadout) this.depthReadout.textContent = "0 / 0";
@@ -1711,70 +1741,6 @@ class EngineWidget {
     }
   }
 
-  _bindDrag() {
-    let startX = 0;
-    let startY = 0;
-    let startLeft = 0;
-    let startTop = 0;
-    let dragging = false;
-    const onMove = (event) => {
-      if (!dragging) return;
-      const dx = event.clientX - startX;
-      const dy = event.clientY - startY;
-      this.el.style.left = `${Math.max(0, startLeft + dx)}px`;
-      this.el.style.top = `${Math.max(0, startTop + dy)}px`;
-      this.el.style.right = "auto";
-    };
-    const onUp = () => {
-      dragging = false;
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-    this.head.addEventListener("pointerdown", (event) => {
-      if (event.target.closest("button") || this.el.classList.contains("is-docked")) return;
-      event.preventDefault();
-      this.head.setPointerCapture(event.pointerId);
-      dragging = true;
-      const rect = this.el.getBoundingClientRect();
-      startX = event.clientX;
-      startY = event.clientY;
-      startLeft = rect.left;
-      startTop = rect.top;
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
-    });
-  }
-
-  _bindResize() {
-    let startX = 0;
-    let startY = 0;
-    let startW = 0;
-    let startH = 0;
-    let resizing = false;
-    const onMove = (event) => {
-      if (!resizing) return;
-      const dx = event.clientX - startX;
-      const dy = event.clientY - startY;
-      this.el.style.width = `${Math.max(260, startW + dx)}px`;
-      this.el.style.height = `${Math.max(220, startH + dy)}px`;
-    };
-    const onUp = () => {
-      resizing = false;
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-    this.resizeHandle.addEventListener("pointerdown", (event) => {
-      resizing = true;
-      const rect = this.el.getBoundingClientRect();
-      startX = event.clientX;
-      startY = event.clientY;
-      startW = rect.width;
-      startH = rect.height;
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
-      event.preventDefault();
-    });
-  }
 }
 
 const engineWidget = new EngineWidget();
@@ -1856,7 +1822,7 @@ function savedPositionEvalRead(fen, depth) {
   const pvSan = sanLineFromUci(fen, pvUci);
   return {
     fen,
-    depth: ev.depth || depth || 0,
+    depth: ev.depth ?? depth ?? 0,
     lines: [
       {
         uci: firstUci,
@@ -1869,6 +1835,9 @@ function savedPositionEvalRead(fen, depth) {
     ],
   };
 }
+
+// Shallowest interrupted/borrowed search the coach reuses as a position read.
+const COACH_MIN_REUSE_DEPTH = 10;
 
 class PositionCoach {
   constructor() {
@@ -1898,7 +1867,7 @@ class PositionCoach {
         /* best-effort */
       }
     }
-    this.engine = createEngineProvider({ maxDepth: depth, maxNodes: ANALYSIS_MAX_NODES });
+    this.engine = createSharedEvaluationProvider({ maxDepth: depth });
     this.engineDepth = depth;
     this.evalCache.clear();
   }
@@ -1918,18 +1887,33 @@ class PositionCoach {
       paint(next);
       this.enabled = next;
       if (this.enabled) this.update(this.fen, this.ctx);
-      else renderInstantCoach(); // engine off → fall back to the plain read
+      else {
+        this.cancel();
+        renderInstantCoach();
+      }
     });
   }
 
-  // Kept as a no-op: the coach runs its own searches and draws no competing arrow,
-  // so it no longer needs to mirror the Engine window's snapshots.
-  onWidgetSnapshot() {}
+  // Both consumers subscribe to the shared position search. Keep the deeper
+  // panel snapshot in the Coach's small, immediate-read cache too.
+  onWidgetSnapshot(snapshot) {
+    if (!this.engine || this.engineDepth !== effectiveStockfishDepth()) return;
+    if (!snapshot || snapshot.fen !== this.fen && snapshot.fen !== this.ctx.prevFen) return;
+    this._remember(snapshot.fen, snapshot, COACH_MIN_REUSE_DEPTH);
+  }
 
   // Called on every Analyze position change. The instant plain-language read is
   // already on screen (renderInstantCoach); this replaces it with the engine's
   // verdict on the move that was JUST PLAYED — never a next-move instruction.
+  cancel() {
+    window.clearTimeout(this.timer);
+    this.timer = null;
+    this.token += 1;
+    void this.engine?.close();
+  }
+
   update(fen, ctx) {
+    this.cancel();
     this.fen = fen;
     this.ctx = ctx || {};
     setEngineBestArrow(null); // review mode: the board shows your move, not a hint
@@ -1958,6 +1942,7 @@ class PositionCoach {
     if (!isReviewedMove({ mover, selfSide: analysisSelfSide(), mainline: Number.isInteger(ctx.ply) })) return;
     try {
       const c = await (_coachReady || preloadCoach());
+      if (token !== this.token || fen !== this.fen || !this.enabled || activeViewName() !== "analyze") return;
       this._ensureEngine();
       // The position BEFORE the move (best line + best alternative) and AFTER it.
       const before = await this._eval(prevFen, token);
@@ -2156,16 +2141,32 @@ class PositionCoach {
       this.evalCache.set(key, saved);
       return saved;
     }
-    await this.engine.open({ fen, multipv: 2 });
-    const deadline = Date.now() + 1200;
-    let snap = this.engine.snapshot();
+    if (token !== this.token) return null;
+    const engine = this.engine;
+    await engine.open({ fen, multipv: 2 });
+    if (token !== this.token || engine !== this.engine) return null;
+    const deadline = Date.now() + 5000;
+    let snap = engine.snapshot();
     while (Date.now() < deadline) {
       await sleep(150);
-      if (token !== this.token) return null;
-      snap = this.engine.snapshot();
+      if (token !== this.token) {
+        // Superseded by a newer click: keep what the search already found. The next
+        // move's "before" position is this one, so fast stepping no longer throws
+        // every read away and leaves the coach on the instant sentence.
+        this._remember(fen, engine.snapshot(), COACH_MIN_REUSE_DEPTH);
+        return null;
+      }
+      snap = engine.snapshot();
       const ready = snap && snap.pvs && snap.pvs.length && snap.pvs[0].pv_uci.length;
       if (ready && (snap.running === false || snap.current_depth >= 14)) break;
     }
+    return this._remember(fen, snap, 0);
+  }
+
+  // Cache a snapshot of `fen` (if it is for that position and deep enough) as a
+  // coach read; returns the read or null.
+  _remember(fen, snap, minDepth) {
+    if (!snap || snap.fen !== fen || (snap.current_depth || 0) < minDepth) return null;
     const lines = (snap.pvs || [])
       .filter((pv) => pv.pv_uci && pv.pv_uci.length)
       .map((pv) => ({
@@ -2178,6 +2179,9 @@ class PositionCoach {
       }));
     if (!lines.length) return null;
     const result = { fen, depth: snap.current_depth || 0, lines };
+    const key = `${this.engineDepth}|${fen}`;
+    const existing = this.evalCache.get(key);
+    if (existing && existing.depth > result.depth) return existing;
     this.evalCache.set(key, result);
     if (this.evalCache.size > 50) this.evalCache.delete(this.evalCache.keys().next().value);
     return result;
@@ -3887,7 +3891,6 @@ function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
   // panel is styled by the same rules as every other state, rather than rendering
   // on the eager sheet alone until the first click pulls the chunk in.
   if (next === "scout") preloadScoutUi().catch(() => {});
-  if (next === "games" && appState.currentView === "replay") maybeAutoCheckGames();
   if (focus) {
     document.querySelector(`[data-replay-panel="${next}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -4000,6 +4003,7 @@ function switchView(name, { fromUrl = false } = {}) {
   workspaceNavigationSeq += 1;
   if (!fromUrl && !workspaceUrlReady) navigatedDuringBoot = true;
   if (appState.currentView !== name) clearStaleStatusOnNavigate();
+  if (name !== "analyze") positionCoach.cancel();
   appState.currentView = name;
   // Navigating is user activity; if the Lichess watch is running, switching to
   // Analyze (where a fresh game matters most) tightens the poll cadence briefly.
@@ -4049,7 +4053,6 @@ function switchView(name, { fromUrl = false } = {}) {
   }
   if (name === "replay") {
     preloadReplayView().catch(() => {});
-    maybeAutoCheckGames();
   }
   if (name === "settings") {
     preloadSettingsView().catch(() => {});
@@ -6405,6 +6408,7 @@ async function runAnalysis(options = {}) {
         positions,
         depth: prep.depth,
         multipv: 1,
+        createProvider: createSharedEvaluationProvider,
         onProgress: (done, total) => {
           jobToast.updateJob({
             current: done,
@@ -12672,7 +12676,9 @@ async function saveSettings(patch) {
     // rebuilds lazily (its _ensureEngine sees the new depth on the next run), but an
     // open Engine widget needs an explicit nudge to rebuild + re-analyze right now.
     if (patch && Object.prototype.hasOwnProperty.call(patch, "stockfish_depth")) {
+      positionCoach.cancel();
       engineWidget.onDepthSettingChanged().catch(() => { /* best-effort */ });
+      if (activeViewName() === "analyze") positionCoach.update(positionCoach.fen, positionCoach.ctx);
       void explorerEvalEngine.sync();
     }
     // A Maia-rating change moves the Explorer Players pool (and its scope readout), which
@@ -12732,21 +12738,6 @@ function applyServerEngineGating() {
 // prompt were removed — the public flow runs Stockfish in the browser and never
 // installs or runs an engine on the server. Server install endpoints remain in
 // server.py for a future admin mode (gated by PREPFORGE_SERVER_ENGINE_ENABLED).
-
-// Games opened with nothing loaded yet: check the recent games once per visit
-// instead of showing an empty page until Check is pressed.
-function maybeAutoCheckGames() {
-  if (appState.replayAutoChecked || appState.replayResults || !appState.signedIn) return;
-  if ((appState.replaySection || "games") !== "games") return;
-  const usernames = resolveFetchUsernames({
-    selection: gamesSourceSelection(),
-    linkedAccounts: lichessAccounts(),
-    includeExternal: true,
-  });
-  if (!usernames.length) return;
-  appState.replayAutoChecked = true;
-  void runLichessCompare();
-}
 
 async function runLichessCompare() {
   // Games are checked against your repertoires (owner-scoped /api/lichess/compare).

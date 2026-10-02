@@ -177,6 +177,21 @@ afterEach(() => {
 
 // ---- Theme wiring (light/dark) ---------------------------------------------
 
+describe("eval chart tooltip boundaries", () => {
+  it.each([240, 640])("clamps both edge tooltips in a %ipx chart", (width) => {
+    const { chart, tooltip, view } = setup();
+    chart.rectWidth = width;
+    tooltip.offsetWidth = 180;
+    view.renderEvalChart(POINTS);
+    for (const x of [0, width]) {
+      chart.dispatch("mousemove", { clientX: x });
+      const left = Number.parseFloat(tooltip.style.left);
+      expect(left - 90).toBeGreaterThanOrEqual(0);
+      expect(left + 90).toBeLessThanOrEqual(width);
+    }
+  });
+});
+
 describe("eval chart theme colours", () => {
   it("renders no hardcoded colours — every hue comes from CSS classes", () => {
     const { chart, view } = setup();

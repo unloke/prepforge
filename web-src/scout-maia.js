@@ -14,8 +14,12 @@ export const MAIA_ENRICH_OFF = "maia-off";
 import { SCOUT_PREFILTER_LIMIT, SCOUT_PREFILTER_POOL_SIZE } from "./scout-prefilter.js";
 
 export const SCOUT_MAIA_TARGET_COUNT = 12;
-/** Target successful Maia3 WDL reads per Scout run (global across both colours). */
-export const SCOUT_MAIA_SUCCESS_TARGET = 12;
+/**
+ * Target successful Maia3 WDL reads per opponent colour. The report recommends up
+ * to SCOUT_MAIA_TARGET_COUNT routes for EACH colour, so a run that scouts both
+ * colours needs up to 2 × this many reads.
+ */
+export const SCOUT_MAIA_SUCCESS_TARGET = SCOUT_MAIA_TARGET_COUNT;
 /**
  * Max new wdlRead attempts while chasing successTarget — failures pull backups
  * without reducing the success goal.
@@ -206,20 +210,15 @@ export function scoutMaiaRankedNote(
   if (!prepTargets?.length) return "";
   const withMaia = prepTargets.filter((t) => t.maiaScorePct != null).length;
   const total = prepTargets.length;
-  if (prefilterState === "loading") {
-    return `<div class="scout-ranked-note muted hint">Ranking candidates…</div>`;
-  }
-  if (state === MAIA_ENRICH_LOADING && withMaia < total) {
-    return `<div class="scout-ranked-note muted hint">Evaluating ${total} candidates…</div>`;
-  }
+  // One shared inline progress state already names this work; never repeat
+  // transient loading sentences in both colour cards.
+  if (prefilterState === "loading" || state === MAIA_ENRICH_LOADING) return "";
   // Settled states carry no standing note: how the list is ranked is not repeated
   // on every report. Keep errors and the action that fixes a blocked state.
   if (withMaia < total && (state === MAIA_ENRICH_FAILED || state === MAIA_ENRICH_PARTIAL)) {
     return `<div class="scout-ranked-note muted hint">Maia unavailable on ${total - withMaia}/${total} lines. Retry in Settings → Maia3.</div>`;
   }
-  if (state === MAIA_ENRICH_OFF && withMaia === 0) {
-    return `<div class="scout-ranked-note muted hint">Turn on Maia analysis in Settings → Playing strength for human-likeness reads.</div>`;
-  }
+
   return "";
 }
 
@@ -370,6 +369,18 @@ export async function enrichMaiaUntilFull(
   return successes;
 }
 
+/** Per-colour success targets: min(successTarget, pool entries of that colour). */
+function maiaTargetsByColor(rankedEntries, successTarget) {
+  const counts = { white: 0, black: 0 };
+  for (const entry of rankedEntries || []) {
+    if (entry?.oppColor in counts) counts[entry.oppColor] += 1;
+  }
+  return {
+    white: Math.min(successTarget, counts.white),
+    black: Math.min(successTarget, counts.black),
+  };
+}
+
 /**
  * Globally ranked Stockfish pool → Maia WDL. Success target and attempt budget are
  * separate so backup reads can still reach 12 successes after failures.
@@ -395,7 +406,9 @@ export async function enrichGlobalMaiaPool(
   const successesByColor = { white: [], black: [] };
   let attempts = attemptsUsed;
   const seenKeys = new Set();
-  const target = Math.min(successTarget, (rankedEntries || []).length);
+  const targets = maiaTargetsByColor(rankedEntries, successTarget);
+  const target = targets.white + targets.black;
+  const colorDone = (color) => successesByColor[color].length >= targets[color];
   const reportProgress = () => {
     if (typeof onProgress === "function") {
       onProgress({ done: successes.length, total: target, phase: "maia" });
@@ -405,12 +418,13 @@ export async function enrichGlobalMaiaPool(
 
   for (const entry of rankedEntries || []) {
     if (shouldCancel()) break;
-    if (successes.length >= successTarget) break;
+    if (colorDone("white") && colorDone("black")) break;
     if (attempts >= maxAttempts) break;
 
     const line = entry?.line;
     const oppColor = entry?.oppColor;
-    if (!line?.ucis?.length || !oppColor) continue;
+    if (!line?.ucis?.length || !(oppColor in successesByColor)) continue;
+    if (colorDone(oppColor)) continue;
 
     const key = `${oppColor}|${branchPathKey(line.ucis)}`;
     if (seenKeys.has(key)) continue;
@@ -443,17 +457,22 @@ export async function enrichGlobalMaiaPool(
   return { successes, successesByColor, attempts };
 }
 
+/** Successful reads per colour, capped at that colour's target. */
 export function countGlobalMaiaSuccesses(
   rankedEntries,
-  { maiaResults, getRating, fenAfterLine },
+  { successTarget = SCOUT_MAIA_SUCCESS_TARGET, maiaResults, getRating, fenAfterLine },
 ) {
-  let resolved = 0;
+  const resolved = { white: 0, black: 0 };
   for (const entry of rankedEntries || []) {
+    if (!(entry.oppColor in resolved)) continue;
     const rating = getRating(entry.oppColor);
     const fen = fenAfterLine(entry.line.ucis);
-    if (getCachedMaiaResult(maiaResults, fen, rating)) resolved += 1;
+    if (getCachedMaiaResult(maiaResults, fen, rating)) resolved[entry.oppColor] += 1;
   }
-  return resolved;
+  return {
+    white: Math.min(resolved.white, successTarget),
+    black: Math.min(resolved.black, successTarget),
+  };
 }
 
 export function countGlobalMaiaOutcomes(
@@ -461,21 +480,22 @@ export function countGlobalMaiaOutcomes(
   { successTarget = SCOUT_MAIA_SUCCESS_TARGET, maiaResults, getRating, fenAfterLine },
 ) {
   const pool = rankedEntries || [];
-  const expected = Math.min(successTarget, pool.length);
-  let resolved = 0;
+  const targets = maiaTargetsByColor(pool, successTarget);
+  const expected = targets.white + targets.black;
+  const resolvedByColor = { white: 0, black: 0 };
   let failed = 0;
-  let missing = 0;
 
   for (const entry of pool) {
+    if (!(entry.oppColor in resolvedByColor)) continue;
     const rating = getRating(entry.oppColor);
     const fen = fenAfterLine(entry.line.ucis);
     const result = getMaiaResultEntry(maiaResults, fen, rating);
     if (result?.failed) failed += 1;
-    else if (result?.maiaWdl && result.maiaScorePct != null) resolved += 1;
-    else missing += 1;
+    else if (result?.maiaWdl && result.maiaScorePct != null) resolvedByColor[entry.oppColor] += 1;
   }
 
-  const targetResolved = Math.min(resolved, expected);
+  const targetResolved =
+    Math.min(resolvedByColor.white, targets.white) + Math.min(resolvedByColor.black, targets.black);
   return {
     resolved: targetResolved,
     failed,
@@ -516,11 +536,15 @@ export function globalMaiaPoolNeedsWork(
 ) {
   const pool = rankedEntries || [];
   if (!pool.length) return false;
-  if (countGlobalMaiaSuccesses(pool, { maiaResults, getRating, fenAfterLine }) >= successTarget) {
-    return false;
-  }
   if (attemptsUsed >= maxAttempts) return false;
+  const targets = maiaTargetsByColor(pool, successTarget);
+  const resolved = countGlobalMaiaSuccesses(pool, {
+    successTarget, maiaResults, getRating, fenAfterLine,
+  });
   return pool.some((entry) => {
+    if (!(entry.oppColor in targets) || resolved[entry.oppColor] >= targets[entry.oppColor]) {
+      return false;
+    }
     const rating = getRating(entry.oppColor);
     const fen = fenAfterLine(entry.line.ucis);
     return !isMaiaAttempted(maiaResults, fen, rating);
