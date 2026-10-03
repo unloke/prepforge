@@ -799,7 +799,7 @@ def test_postgres_interleaved_attempts_never_lose_an_update():
 
         raced = {"done": False}
         original_load = PrepForgeRepository.load_training_progress
-        original_lock = PrepForgeRepository.lock_training_progress
+        original_lock = PrepForgeRepository.lock_training_session
 
         def racing_attempts():
             raced["done"] = True
@@ -823,8 +823,9 @@ def test_postgres_interleaved_attempts_never_lose_an_update():
             return value
 
         def race_then_lock(self, conn, **kwargs):
-            # Fixed seam: the racing attempts commit before the locked
-            # read-modify-write, which therefore builds on their values.
+            # Race before the batch takes its first session lock. A racing
+            # sync inside the progress lock would now correctly block on this
+            # batch, making synchronous test injection deadlock.
             if not raced["done"]:
                 racing_attempts()
             return original_lock(self, conn, **kwargs)
@@ -834,7 +835,7 @@ def test_postgres_interleaved_attempts_never_lose_an_update():
             monkeypatch.setattr(
                 PrepForgeRepository, "load_training_progress", snapshot_then_race
             )
-            monkeypatch.setattr(PrepForgeRepository, "lock_training_progress", race_then_lock)
+            monkeypatch.setattr(PrepForgeRepository, "lock_training_session", race_then_lock)
             written = service.sync_progress(
                 session.id,
                 [{"node_id": node_id, "correct": True, "attempt_uuid": "slow-pg"}],
@@ -1013,7 +1014,7 @@ def test_postgres_interleaved_session_updates_never_lose_one():
         node_y = node_ids["d4"]
 
         raced = {"done": False}
-        original_lock = PrepForgeRepository.lock_training_progress
+        original_lock = PrepForgeRepository.lock_training_session
 
         def racing_sync():
             raced["done"] = True
@@ -1035,7 +1036,7 @@ def test_postgres_interleaved_session_updates_never_lose_one():
 
         monkeypatch = pytest.MonkeyPatch()
         try:
-            monkeypatch.setattr(PrepForgeRepository, "lock_training_progress", race_then_lock)
+            monkeypatch.setattr(PrepForgeRepository, "lock_training_session", race_then_lock)
             written = service.sync_progress(
                 session.id,
                 [{"node_id": node_x, "correct": False, "attempt_uuid": "slow-sess"}],

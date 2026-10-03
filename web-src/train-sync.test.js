@@ -158,3 +158,12 @@ describe("ungroupAttempts", () => {
     expect(ungroupAttempts([["a", []]])).toEqual([]);
   });
 });
+
+
+it("keeps rebuilt generations separate through grouping and retry", () => {
+  const pending = ["old", "new"].map((generation) => ({ session_id: "s", session_generation: generation,
+    node_id: "n", correct: true, attempt_uuid: generation }));
+  const groups = groupAttempts(pending, "s", "new");
+  expect(groups).toHaveLength(2);
+  expect(ungroupAttempts(groups)).toEqual(pending);
+});

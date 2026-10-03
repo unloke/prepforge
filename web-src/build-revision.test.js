@@ -26,7 +26,7 @@ it("gap completion saves against the repertoire and revision used for computatio
   const code = source.slice(source.indexOf("async function completeOneGap("), source.indexOf("// ----- Opponent scouting", source.indexOf("async function completeOneGap(")));
   const appState = { build: { repertoire_id: "r", revision: 4, color: "white" }, buildCurrentNodeId: "root" };
   const deps = {
-    appState, selectBuildNode: async () => {},
+    appState, captureBuildContext: () => { const id = appState.build.repertoire_id; return () => appState.build.repertoire_id === id; }, selectBuildNode: async () => {},
     onBuildBoardMove: async () => { appState.buildCurrentNodeId = "anchor"; },
     hardFlushBuild: async () => {}, resolveBuildId: (id) => id,
     _buildGenReady: Promise.resolve({ runBrowserBuildGenerate: async () => {
@@ -39,4 +39,5 @@ it("gap completion saves against the repertoire and revision used for computatio
   const run = new Function(...Object.keys(deps), `${code}\nreturn completeOneGap;`)(...Object.values(deps));
   await run({ nodeId: "root", moveUci: "e7e5" });
   expect(deps.postJson).toHaveBeenCalledWith("/api/build/generate/apply-plan", expect.objectContaining({ repertoire_id: "r", base_revision: 4 }));
+  expect(deps.hydrateBuild).not.toHaveBeenCalled();
 });

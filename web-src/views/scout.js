@@ -1441,6 +1441,7 @@ export function createScoutView(deps) {
     let parent = getBuildNodeById(parentId);
     let lastNodeId = parentId;
 
+    let complete = true;
     for (const uci of remaining) {
       const existing = freshBuild.nodes.find((n) => n.parent_id === parentId && n.uci === uci);
       if (existing) {
@@ -1449,11 +1450,12 @@ export function createScoutView(deps) {
         lastNodeId = parentId;
         continue;
       }
-      if (!parent) break;
+      if (!parent) { complete = false; break; }
       let after;
       try {
         after = await boardAfterMove(parent.fen, uci);
       } catch (_) {
+        complete = false;
         break;
       }
       const node = buildProvisionalNode(parent, uci, after);
@@ -1471,6 +1473,7 @@ export function createScoutView(deps) {
       setStatus(error.message);
       return null;
     }
+    if (!complete || getBuildState()?.repertoire_id !== repId) return null;
     const resolvedId = resolveBuildId(lastNodeId);
     await selectBuildNode(resolvedId);
     // F-06: Scout→prep handoff — the scouted line (plus the suggested reply),
@@ -1525,6 +1528,8 @@ export function createScoutView(deps) {
       onCancel: () => ctrl.abort(),
     });
     let done = 0;
+    let written = 0;
+    let failed = 0;
     for (const line of unique) {
       if (ctrl.signal.aborted) break;
       jobToast.updateJob({
@@ -1532,15 +1537,21 @@ export function createScoutView(deps) {
         total: unique.length,
         message: `${line.sans.at(-1) || "line"} · ${done + 1}/${unique.length}`,
       });
-      await scoutWriteLineToRep(line, repId, {
-        reload: done === 0,
-        side: oppColor === "white" ? "black" : "white",
-      });
+      try {
+        const nodeId = await scoutWriteLineToRep(line, repId, {
+          reload: done === 0,
+          side: oppColor === "white" ? "black" : "white",
+        });
+        if (nodeId) written++;
+        else failed++;
+      } catch (_) {
+        failed++;
+      }
       done++;
     }
     jobToast.completeJob({
-      title: "Lines added",
-      message: `Wrote ${done} line${done === 1 ? "" : "s"} into prep`,
+      title: ctrl.signal.aborted ? "Stopped" : failed ? "Finished with errors" : "Lines added",
+      message: `Wrote ${written} line${written === 1 ? "" : "s"} into prep${failed ? ` ? ${failed} failed` : ""}`,
     });
   }
 
