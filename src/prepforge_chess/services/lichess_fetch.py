@@ -543,6 +543,7 @@ def compare_many_identities(
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
     owner_user_id: Optional[str] = None,
     verified_usernames: frozenset[str] = frozenset(),
+    source_errors: Optional[List[dict]] = None,
 ) -> List[tuple]:
     """Compare recent games for linked and external identities.
 
@@ -586,6 +587,8 @@ def compare_many_identities(
             username, pairs, error = future.result()
             if error is not None:
                 errors.append(error)
+                if source_errors is not None:
+                    source_errors.append({"username": username, "message": str(error)})
                 continue
             collected.extend(pairs)
     # Resolve duplicate perspectives before truncation. A linked self perspective
@@ -608,7 +611,7 @@ def compare_many_identities(
             seen_ids.add(gid)
             _, summary, source = preferred[gid]
         merged.append((summary, source))
-    if not merged and errors:
+    if len(errors) == len(names):
         raise errors[0]
     # Stable sort: games without a finish time keep their per-identity PGN order
     # (Lichess returns newest first) after every timestamped game.

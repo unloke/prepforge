@@ -1,8 +1,10 @@
 """Workspace endpoints: owner-scoped data reads and repertoire mutations."""
 from __future__ import annotations
 
-import base64
 import hashlib
+import json
+
+import base64
 import hmac
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -877,6 +879,13 @@ class AddMovesItem(BaseModel):
     uci: str
 
 
+def _build_batch_receipt(repo, owner, kind, body):
+    # The complete request (including base revision) is the stable retry identity.
+    digest = hashlib.sha256(json.dumps(body.model_dump(), sort_keys=True).encode()).hexdigest()
+    key = "build-receipt:" + kind + ":" + digest
+    return key, repo.get_user_setting(owner, key)
+
+
 class AddMovesBody(BaseModel):
     repertoire_id: str
     moves: list[AddMovesItem] = Field(default_factory=list, max_length=MAX_BULK_MOVES)
@@ -898,11 +907,17 @@ def build_add_moves(
     persisted flags itself, so a malformed batch raises ``ValueError`` → 400
     before anything lands. Owner-gated so a user can't flush onto another's tree."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    key, receipt = _build_batch_receipt(repo, owner, "adds", body)
+    if receipt is not None:
+        payload = build_workspace_payload(repo, body.repertoire_id, owner_user_id=owner)
+        payload.update(receipt)
+        return payload
     _check_base_revision(meta, body.base_revision, repo)
     try:
         repertoire, summary, id_map = OpeningBuilderService(repo).add_moves_batch(
             body.repertoire_id,
             [item.model_dump() for item in body.moves],
+            receipt_target=(owner, key),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -944,10 +959,15 @@ def build_delete_nodes(
     an earlier subtree in the batch, or by a previous flush, is skipped) so an
     optimistic over-delete can't fail the whole flush. Owner-gated."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    key, receipt = _build_batch_receipt(repo, owner, "deletes", body)
+    if receipt is not None:
+        payload = build_workspace_payload(repo, body.repertoire_id, owner_user_id=owner)
+        payload.update(receipt)
+        return payload
     _check_base_revision(meta, body.base_revision, repo)
     try:
         removed = OpeningBuilderService(repo).delete_nodes_batch(
-            body.repertoire_id, list(body.node_ids)
+            body.repertoire_id, list(body.node_ids), receipt_target=(owner, key)
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

@@ -657,3 +657,20 @@ def test_share_bad_visibility_400(client):
         headers=csrf_headers(client),
     )
     assert r.status_code == 422
+
+
+def test_team_delete_failure_rolls_back_sharing(client, monkeypatch):
+    import pytest
+    from sqlalchemy.orm import Session
+    member = _new_client()
+    team, rep = _setup_shared(client, member)
+    def fail_commit(_self):
+        raise RuntimeError("commit failed")
+    with monkeypatch.context() as patch:
+        patch.setattr(Session, "commit", fail_commit)
+        with pytest.raises(RuntimeError, match="commit failed"):
+            client.delete(f"/api/teams/{team}", headers=csrf_headers(client))
+    assert member.get(f"/api/build/load?repertoire_id={rep}").status_code == 200
+    meta = next(r for r in client.get("/api/repertoires").json()["repertoires"] if r["id"] == rep)
+    assert meta["team_id"] == team
+    assert meta["visibility"] == "team"

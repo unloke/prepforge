@@ -643,6 +643,7 @@ class SmartTrainingService:
         card_index: Optional[int] = None,
         queue: Optional[List[str]] = None,
         owner_user_id: Optional[str] = None,
+        session_generation: Optional[str] = None,
     ) -> int:
         """Persist a batch of locally graded first attempts plus the session's
         position — the local-first Train flush. Exactly-once per
@@ -699,40 +700,34 @@ class SmartTrainingService:
             if card_rep is not None:
                 _index(card_rep)
 
-        written = 0
-        for item in attempts:
-            node_id = item.get("node_id")
-            correct = bool(item.get("correct"))
-            attempt_uuid = item.get("attempt_uuid")
-            rep_id = rep_of_node.get(node_id)
-            if rep_id is None:
-                continue
-            receipt = self.repository.get_attempt_receipt(session_id, attempt_uuid)
-            if receipt is not None:
-                if receipt["node_id"] != node_id or receipt["correct"] != correct:
-                    raise ValueError(
-                        "attempt_uuid {0} already recorded with different payload".format(
-                            attempt_uuid
-                        )
-                    )
-                continue
-            from prepforge_chess.storage import sa_tables as _t
-            from prepforge_chess.storage.repositories import (
-                _bool_to_int as _b2i,
-            )
-            from prepforge_chess.storage.repositories import (
-                _dt_to_text as _dt2t,
-            )
-            from prepforge_chess.storage.repositories import (
-                _now_text as _nowt,
-            )
-            from prepforge_chess.storage.repositories import (
-                _upsert as _upsert_rows,
-            )
-            from sqlalchemy import select as _select
+        from prepforge_chess.storage import sa_tables as _t
+        from prepforge_chess.storage.repositories import (
+            _bool_to_int as _b2i,
+        )
+        from prepforge_chess.storage.repositories import (
+            _dt_to_text as _dt2t,
+        )
+        from prepforge_chess.storage.repositories import (
+            _now_text as _nowt,
+        )
+        from prepforge_chess.storage.repositories import (
+            _upsert as _upsert_rows,
+        )
+        from sqlalchemy import select as _select
 
-            progress_id = self.repository._training_progress_id(session_owner, rep_id, node_id)
-            with self.repository.engine.begin() as conn:
+        with self.repository.engine.begin() as conn:
+            session = self.repository.lock_training_session(conn, session_id=session_id) or session
+            if session_generation is not None and session_generation != session.created_at.isoformat():
+                raise ValueError("stale session generation")
+            written = 0
+            for item in attempts:
+                node_id = item.get("node_id")
+                correct = bool(item.get("correct"))
+                attempt_uuid = item.get("attempt_uuid")
+                rep_id = rep_of_node.get(node_id)
+                if rep_id is None:
+                    continue
+                progress_id = self.repository._training_progress_id(session_owner, rep_id, node_id)
                 stored_row = conn.execute(
                     _select(
                         _t.train_attempt_receipts.c.node_id,
@@ -818,20 +813,19 @@ class SmartTrainingService:
                     ),
                 )
                 self.repository.write_training_session(conn, next_session)
-            session = next_session
-            written += 1
+                session = next_session
+                written += 1
 
-        if queue is not None or card_index is not None:
-            if queue is not None:
-                # Only well-formed encoded cards land; a malformed entry is dropped
-                # rather than poisoning the stored session.
-                cleaned = [raw for raw in queue if decode_card(raw) is not None]
-            # Queue/position are client-directed fields, but they are applied on
-            # a locked reread of the row so a concurrent sync's attempt updates
-            # are not clobbered. (With no view fields to send, the attempt
-            # transactions above already persisted the session row — rewriting
-            # it here from the in-memory chain would only widen the race.)
-            with self.repository.engine.begin() as conn:
+            if queue is not None or card_index is not None:
+                if queue is not None:
+                    # Only well-formed encoded cards land; a malformed entry is dropped
+                    # rather than poisoning the stored session.
+                    cleaned = [raw for raw in queue if decode_card(raw) is not None]
+                # Queue/position are client-directed fields, but they are applied on
+                # a locked reread of the row so a concurrent sync's attempt updates
+                # are not clobbered. (With no view fields to send, the attempt
+                # transactions above already persisted the session row — rewriting
+                # it here from the in-memory chain would only widen the race.)
                 fresh = self.repository.lock_training_session(conn, session_id=session_id)
                 if fresh is None:
                     fresh = session

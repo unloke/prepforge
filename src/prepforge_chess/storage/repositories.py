@@ -882,9 +882,11 @@ class PrepForgeRepository:
                 )
             self._bump_revision(conn, repertoire_id)
 
-    def save_changed_nodes(self, repertoire_id: str, nodes: List[OpeningNode]) -> None:
+    def save_changed_nodes(self, repertoire_id: str, nodes: List[OpeningNode], *, receipt: Optional[tuple] = None) -> None:
         """Persist changed or new nodes without walking the rest of the tree."""
         if not nodes:
+            if receipt is not None:
+                self.set_user_setting(*receipt)
             return
         with self.engine.begin() as conn:
             pos_cache: Dict[str, int] = {}
@@ -901,6 +903,8 @@ class PrepForgeRepository:
             )
             conn.execute(stmt, rows)
             self._bump_revision(conn, repertoire_id)
+            if receipt is not None:
+                self.write_user_setting(conn, *receipt)
 
     def update_repertoire_fields(self, repertoire_id: str, **fields: Any) -> None:
         if not fields:
@@ -1379,14 +1383,15 @@ class PrepForgeRepository:
             for r in rows
         ]
 
-    def unshare_all_for_team(self, team_id: str) -> None:
-        """Make every repertoire shared to ``team_id`` private again (team delete)."""
-        with self.engine.begin() as conn:
-            conn.execute(
-                update(t.repertoires)
-                .where(t.repertoires.c.team_id == team_id)
-                .values(team_id=None, visibility="private", updated_at=_now_text())
-            )
+    def unshare_all_for_team(self, team_id: str, *, conn: Optional[Connection] = None) -> None:
+        """Unshare in the caller's team-deletion transaction when supplied."""
+        stmt = (update(t.repertoires).where(t.repertoires.c.team_id == team_id)
+                .values(team_id=None, visibility="private", updated_at=_now_text()))
+        if conn is not None:
+            conn.execute(stmt)
+        else:
+            with self.engine.begin() as own_conn:
+                own_conn.execute(stmt)
 
     def set_repertoire_active(self, repertoire_id: str, active: bool) -> None:
         with self.engine.begin() as conn:
@@ -1716,7 +1721,7 @@ class PrepForgeRepository:
         )
         return counts
 
-    def delete_opening_nodes(self, repertoire_id: str, node_ids: List[str]) -> None:
+    def delete_opening_nodes(self, repertoire_id: str, node_ids: List[str], *, receipt: Optional[tuple] = None) -> None:
         if not node_ids:
             return
         week_ago_iso = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
@@ -1747,6 +1752,8 @@ class PrepForgeRepository:
                 )
             )
             self._bump_revision(conn, repertoire_id)
+            if receipt is not None:
+                self.write_user_setting(conn, *receipt)
             by_owner: Dict[str, List[str]] = {}
             for owner, stamp in reviewed:
                 if owner:

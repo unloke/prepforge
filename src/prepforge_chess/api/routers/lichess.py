@@ -486,6 +486,7 @@ def _run_compare(
         lichess_fetch.validate_fetch_budget(usernames, count)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    source_errors: list[dict] = []
     try:
         if len(usernames) == 1:
             summaries = lichess_fetch.compare_recent_games(
@@ -495,7 +496,7 @@ def _run_compare(
         else:
             pairs = lichess_fetch.compare_many_identities(
                 repo, usernames, count, owner_user_id=owner,
-                verified_usernames=verified_usernames
+                verified_usernames=verified_usernames, source_errors=source_errors
             )
     except lichess_fetch.GamesRateLimitedError as exc:
         raise HTTPException(status_code=429, detail=str(exc),
@@ -515,6 +516,7 @@ def _run_compare(
         "count": len(summaries),
         "misses_recorded": misses_recorded,
         "sources": sources,
+        "source_errors": source_errors,
         "games": [
             {
                 "lichess_id": s.lichess_id,

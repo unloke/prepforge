@@ -1134,3 +1134,33 @@ def test_postgres_concurrent_sync_session_state_keeps_every_update():
         with admin.connect() as conn:
             conn.exec_driver_sql('DROP SCHEMA "' + schema + '" CASCADE')
         admin.dispose()
+
+
+def test_sync_batch_rolls_back_on_later_uuid_collision():
+    repo = _repository()
+    rep, ids = _build(repo)
+    service = SmartTrainingService(repo, "t-owner")
+    session = service.start_or_resume(rep.id)
+    service.sync_progress(session.id, [{"node_id": ids["e4"], "correct": True, "attempt_uuid": "taken"}], owner_user_id="t-owner")
+    before = repo.load_training_session(session.id)
+    with pytest.raises(ValueError, match="different payload"):
+        service.sync_progress(session.id, [
+            {"node_id": ids["d4"], "correct": False, "attempt_uuid": "new"},
+            {"node_id": ids["e4"], "correct": False, "attempt_uuid": "taken"},
+        ], owner_user_id="t-owner")
+    assert repo.get_attempt_receipt(session.id, "new") is None
+    assert repo.load_training_session(session.id) == before
+
+
+def test_sync_old_generation_cannot_mutate_rebuilt_session():
+    repo = _repository()
+    rep, ids = _build(repo)
+    service = SmartTrainingService(repo, "t-owner")
+    old = service.start_or_resume(rep.id)
+    rebuilt = service.start_or_resume(rep.id, fresh=True)
+    assert old.id == rebuilt.id
+    with pytest.raises(ValueError, match="generation"):
+        service.sync_progress(old.id, [{"node_id": ids["e4"], "correct": False, "attempt_uuid": "late"}],
+            card_index=999, queue=[], session_generation=old.created_at.isoformat(), owner_user_id="t-owner")
+    assert repo.get_attempt_receipt(old.id, "late") is None
+    assert repo.load_training_session(old.id) == rebuilt
