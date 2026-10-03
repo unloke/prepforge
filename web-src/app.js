@@ -2397,6 +2397,7 @@ function renderInstantCoach() {
 //     (POST /api/train/record-miss) so the move leads the next smart session
 // ---------------------------------------------------------------------------
 const bookState = {
+  generation: 0,
   loaded: false,
   loading: null,
   reps: [], // { id, name, color, rootId, children: Map("parentId|uci" -> node), kids: Map(parentId -> [node]) }
@@ -2404,215 +2405,27 @@ const bookState = {
 
 // Build edits make this copy stale; drop it so the next Analyze look refetches.
 function invalidateBook() {
+  bookState.generation++;
   bookState.loaded = false;
   bookState.loading = null;
   bookState.reps = [];
 }
 
+let bookActionsPromise = null;
+function loadBookActions() {
+  bookActionsPromise ||= import("./analyze-book.js").then(({ createBookActions }) => createBookActions({
+    bookState, appState, currentOwnerId, api, loadCoach: () => (_coachReady || preloadCoach()),
+    escapeHtml, rememberHandoff, postJson, setStatus, setStatusError, editRepertoire,
+  })).catch((error) => { bookActionsPromise = null; throw error; });
+  return bookActionsPromise;
+}
+
 async function ensureBookLoaded() {
-  if (bookState.loaded) return;
-  if (bookState.loading) return bookState.loading;
-  bookState.loading = (async () => {
-    let reps = [];
-    try {
-      const payload = await api("/api/repertoires");
-      const active = (payload.repertoires || []).filter(
-        (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id))
-      );
-      reps = (
-        await Promise.all(
-          active.map(async (meta) => {
-            const data = await api(
-              `/api/build/load?repertoire_id=${encodeURIComponent(meta.id)}`
-            );
-            const children = new Map();
-            const kids = new Map();
-            let rootId = null;
-            for (const node of data.nodes || []) {
-              if (!node.parent_id) {
-                rootId = node.id;
-                continue;
-              }
-              if (node.is_enabled === false || !node.uci) continue;
-              children.set(`${node.parent_id}|${node.uci}`, node);
-              if (!kids.has(node.parent_id)) kids.set(node.parent_id, []);
-              kids.get(node.parent_id).push(node);
-            }
-            return rootId
-              ? { id: data.repertoire_id, name: data.name, color: data.color, rootId, children, kids }
-              : null;
-          })
-        )
-      ).filter(Boolean);
-    } catch (_) {
-      /* guest / fetch failure → no book; the banner simply stays hidden */
-    }
-    bookState.reps = reps;
-    bookState.loaded = true;
-    bookState.loading = null;
-  })();
-  return bookState.loading;
+  return (await loadBookActions()).ensureBookLoaded();
 }
 
-// Deepest full-prefix match of `ucis` across the loaded repertoires.
-// Returns { rep, node, matched } for the best rep, or null when none loaded.
-function bookMatch(ucis) {
-  let best = null;
-  for (const rep of bookState.reps) {
-    let cur = rep.rootId;
-    let node = null;
-    let matched = 0;
-    for (const uci of ucis) {
-      const child = rep.children.get(`${cur}|${uci}`);
-      if (!child) break;
-      node = child;
-      cur = child.id;
-      matched += 1;
-    }
-    if (!best || matched > best.matched) best = { rep, node, nodeId: cur, matched };
-  }
-  return best;
-}
-
-// The uci path from the analysis-tree root down to `node` (mainline or variation).
-function analysisNodePath(node) {
-  const path = [];
-  for (let cur = node; cur && cur.parent; cur = cur.parent) path.push(cur.uci);
-  return path.reverse();
-}
-
-function hideBookline() {
-  const el = document.getElementById("coach-bookline");
-  if (el) {
-    el.hidden = true;
-    el.innerHTML = "";
-  }
-}
-
-// Called on every Analyze position change (via refreshAnalysisExplain). Async and
-// best-effort: the first call kicks off the lazy load and re-renders when it lands.
-//
-// The departure note is part of the coach's CONVERSATION, not a status widget:
-// while the line is in book, nothing is shown (the screen only carries what's
-// useful right now); at the exact ply a move steps out of the book, the coach
-// adds one sentence from the bookline phrase bank, with the single useful
-// action (train the forgotten move / add the novelty in Build) as an inline
-// chip at the end of the sentence, like a spoken link.
 async function updateBookline() {
-  const el = document.getElementById("coach-bookline");
-  if (!el) return;
-  if (!appState.signedIn) return hideBookline();
-  const { buildBookline } = await (_coachReady || preloadCoach());
-  const nodeId = appState.analysisCurrentNodeId || "root";
-  await ensureBookLoaded();
-  // Re-read after the await — the user may have navigated while the trees loaded.
-  if ((appState.analysisCurrentNodeId || "root") !== nodeId) return;
-  if (!bookState.reps.length) return hideBookline();
-  const tree = appState.analysisTree;
-  const node = tree && tree.byId.get(nodeId);
-  if (!node || !node.parent) return hideBookline(); // root: nothing played yet
-  const path = analysisNodePath(node);
-  const cur = bookMatch(path);
-  // Still in book: the coach has nothing to flag, so it says nothing.
-  if (cur && cur.matched === path.length) return hideBookline();
-  // Out of book. Only speak at the departure ply: the PARENT was fully in book.
-  // When the parent position sits in SEVERAL books, prefer the repertoire where
-  // the mover is the player — forgetting your own prep outranks a novelty note.
-  const prefix = path.slice(0, -1);
-  const fullPrev = bookState.reps
-    .map((rep) => {
-      let walk = rep.rootId;
-      for (const uci of prefix) {
-        const child = rep.children.get(`${walk}|${uci}`);
-        if (!child) return null;
-        walk = child.id;
-      }
-      return { rep, nodeId: walk };
-    })
-    .filter(Boolean);
-  if (!fullPrev.length) return hideBookline();
-  const prev = fullPrev.find((m) => node.side === m.rep.color) || fullPrev[0];
-  const rep = prev.rep;
-  const moverIsUser = node.side === rep.color;
-
-  if (moverIsUser) {
-    // The player left their own prep: say what the script wanted, offer to drill it.
-    const prescribed = (rep.kids.get(prev.nodeId) || [])
-      .sort((a, b) => Number(b.is_mainline) - Number(a.is_mainline))[0];
-    if (!prescribed) return hideBookline(); // book actually ends here — no miss
-    const text = buildBookline({
-      kind: "user",
-      san: node.san,
-      uci: node.uci,
-      ply: path.length,
-      repName: rep.name,
-      expectedSan: prescribed.san,
-    });
-    el.innerHTML =
-      `${escapeHtml(text)} ` +
-      `<button class="coach-bookaction" type="button" data-act="train">Train it<span class="cba-arrow" aria-hidden="true">›</span></button>`;
-    el.hidden = false;
-    el.querySelector('[data-act="train"]').addEventListener("click", async (event) => {
-      const btn = event.currentTarget;
-      btn.disabled = true;
-      // F-06: keep the task context across the jump — source line, the ply and
-      // anchor FEN of the mistake, the side and target repertoire — so the
-      // later practice lands on this exact position and the mistake→practice
-      // time is measurable. Same target = same key = one record, however often
-      // the button is clicked.
-      rememberHandoff({
-        source: "analyze",
-        reason: "practice-missed-move",
-        gameId: appState.analysis?.game_id || null,
-        lineUcis: [...prefix, prescribed.uci],
-        ply: path.length,
-        anchorFen: node.fenBefore,
-        rootFen: appState.analysis?.moves?.[0]?.fen_before || null,
-        side: rep.color,
-        repertoireId: rep.id,
-      });
-      try {
-        await postJson("/api/train/record-miss", {
-          repertoire_id: rep.id,
-          node_id: prescribed.id,
-        });
-        btn.textContent = "Queued ✓";
-        setStatus(`${prescribed.san} will lead your next smart session`);
-      } catch (error) {
-        btn.disabled = false;
-        setStatusError(error.message);
-      }
-    });
-  } else {
-    // Opponent novelty: nothing to recall — offer to extend the book instead.
-    const text = buildBookline({
-      kind: "opponent",
-      san: node.san,
-      uci: node.uci,
-      ply: path.length,
-      repName: rep.name,
-    });
-    el.innerHTML =
-      `${escapeHtml(text)} ` +
-      `<button class="coach-bookaction" type="button" data-act="build">Add it to repertoire<span class="cba-arrow" aria-hidden="true">›</span></button>`;
-    el.hidden = false;
-    el.querySelector('[data-act="build"]').addEventListener("click", () => {
-      // F-06: Analyze→Repertoire handoff — the novelty line + anchor position
-      // travel with the jump into Build.
-      rememberHandoff({
-        source: "analyze",
-        reason: "extend-book",
-        gameId: appState.analysis?.game_id || null,
-        lineUcis: [...prefix, node.uci],
-        ply: path.length,
-        anchorFen: node.fenBefore,
-        rootFen: appState.analysis?.moves?.[0]?.fen_before || null,
-        side: rep.color,
-        repertoireId: rep.id,
-      });
-      editRepertoire(rep.id, prev.nodeId);
-    });
-  }
+  return (await loadBookActions()).updateBookline();
 }
 
 class BoardController {
@@ -5358,7 +5171,11 @@ function hideTeamDetail() {
   renderTeamsList();
 }
 
+let teamDetailSeq = 0;
 async function openTeamDetail(teamId) {
+  const seq = ++teamDetailSeq;
+  const owner = currentOwnerId();
+  const isCurrent = () => seq === teamDetailSeq && appState.selectedTeamId === teamId && owner === currentOwnerId();
   appState.selectedTeamId = teamId;
   renderTeamsList(); // reflect the selected row
   const card = document.getElementById("team-detail-card");
@@ -5370,9 +5187,11 @@ async function openTeamDetail(teamId) {
   try {
     detail = await api(`/api/teams/${encodeURIComponent(teamId)}`);
   } catch (error) {
+    if (!isCurrent()) return;
     membersEl.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
     return;
   }
+  if (!isCurrent()) return;
   const myRole = detail.role;
   const canManage = myRole === "owner" || myRole === "admin";
   document.getElementById("team-detail-name").textContent = detail.name;
@@ -7449,9 +7268,6 @@ async function hydrateBuild(payload, selectedNodeId = null) {
     // for ANOTHER tree (restored after a reload, or left by a failed flush)
     // stay on the device for their own repertoire; ops for THIS tree are
     // re-applied onto the fresh payload below.
-    appState.buildPendingDeletes = appState.buildPendingDeletes.filter(
-      (entry) => !buildOpMatchesRepertoire(entry, payload.repertoire_id),
-    );
     // Stale undo windows from the old repertoire become no-ops (their commit
     // guards on repertoire id), but their ids must not prune the new tree.
     appState.buildUndoDeletes = new Set();
@@ -8813,6 +8629,8 @@ function scheduleBuildFlush() {
 // hard-flush callers can simply await it.
 function flushBuildMoves() {
   if (appState.buildFlushing) return appState.buildFlushing;
+  const owner = currentOwnerId();
+  const isCurrent = captureBuildContext();
   if (!appState.build || (!appState.buildPending.length && !appState.buildPendingDeletes.length))
     return Promise.resolve(true);
   // R-03/R-04: one flusher per owner at a time — a second tab holding the lock
@@ -8845,7 +8663,17 @@ function flushBuildMoves() {
   appState.buildPendingDeletes = appState.buildPendingDeletes.filter(
     (entry) => !buildOpMatchesRepertoire(entry, repertoireId),
   );
-  const deferredCount = appState.buildPending.length + appState.buildPendingDeletes.length;
+  // A delete of an in-flight add needs that add's acknowledged real ID.
+  // Recover the add first; leaving the delete queued prevents tmp-only pruning
+  // from silently settling a deletion whose server commit is still uncertain.
+  const inFlightAdds = new Set(batch.map((op) => op.tempId));
+  for (let i = deleteBatch.length - 1; i >= 0; i--) {
+    if (inFlightAdds.has(resolveBuildId(deleteBatch[i]))) {
+      appState.buildPendingDeletes.push(...deleteBatch.splice(i, 1));
+    }
+  }
+  const deferredCount = [...appState.buildPending, ...appState.buildPendingDeletes]
+    .filter((op) => !buildOpMatchesRepertoire(op, repertoireId)).length;
   if (deferredCount) {
     setStatus(
       `${deferredCount} edit${deferredCount === 1 ? "" : "s"} for another repertoire kept on this device — open that repertoire to save ${deferredCount === 1 ? "it" : "them"}.`,
@@ -8854,6 +8682,7 @@ function flushBuildMoves() {
   setBuildSync("syncing");
 
   appState.buildFlushing = (async () => {
+    let acknowledged = false;
     try {
       // Deletes go FIRST: replaying a just-deleted move must create a fresh
       // node, not dedupe against the dying server one. A still-tmp id means the
@@ -8869,6 +8698,7 @@ function flushBuildMoves() {
           base_revision: beforeRevision,
           node_ids: deleteIds,
         });
+        if (owner !== currentOwnerId()) return false;
         rebaseQueuedBuildRevision(batch, repertoireId, beforeRevision, payload.revision);
         persistOutbox({ deletes: deleteBatch.map(buildDeleteId) });
         deleteBatch.length = 0;
@@ -8897,6 +8727,8 @@ function flushBuildMoves() {
         }
         return true;
       }
+      if (owner !== currentOwnerId()) return false;
+      acknowledged = true;
       const idMap = payload.id_map || {};
       Object.assign(appState.buildIdMap, idMap);
       // The server confirmed this batch: tombstone it so neither this tab nor
@@ -8931,6 +8763,7 @@ function flushBuildMoves() {
       // user is sitting on a still-pending tmp node, pick a safe anchor now and
       // restore the tmp selection after we re-insert it below.
       const payloadHasSelection = payload.nodes.some((n) => n.id === translatedSelection);
+      if (!isCurrent()) return true;
       await hydrateBuild(payload, payloadHasSelection ? translatedSelection : null);
       if (branchPick) appState.buildBranchChoiceId = branchPick;
 
@@ -8964,6 +8797,20 @@ function flushBuildMoves() {
       }
       return true;
     } catch (error) {
+      if (owner !== currentOwnerId()) return false;
+      if (acknowledged) {
+        // Rendering failed after the server confirmed persistence. Never replay
+        // confirmed operations or misreport this as a failed network commit.
+        persistOutbox();
+        setStatusError(`Edits saved. Reload the repertoire to refresh it: ${error.message}`);
+        if (hasPendingBuildOpsFor(repertoireId)) {
+          setBuildSync("dirty");
+          scheduleBuildFlush();
+        } else {
+          setBuildSync("saved");
+        }
+        return true;
+      }
       // R-01/R-04: every failure class gets its own outcome. NOTHING
       // unconfirmed is ever dropped or claimed as Saved — 401/403/409/429
       // used to lose the whole batch here.
@@ -9016,9 +8863,7 @@ function flushBuildMoves() {
       // auth / csrf / conflict / rate-limit / network / server: the batch was
       // never acknowledged — requeue it ahead of newer ops (op identity is
       // stable, so a later replay is safe even if this one actually landed).
-      appState.buildPending = batch
-        .filter((m) => appState.buildNodeById.has(m.tempId))
-        .concat(appState.buildPending);
+      appState.buildPending = batch.concat(appState.buildPending);
       appState.buildPendingDeletes = deleteBatch.concat(appState.buildPendingDeletes);
       persistOutbox();
       setStatus(describeSyncError(info, { count: inFlightCount }), info.kind === "conflict" ? "warning" : "info");
@@ -9051,7 +8896,7 @@ function flushBuildMoves() {
       }, delay);
       return false;
     } finally {
-      appState.buildFlushing = null;
+      if (owner === currentOwnerId()) appState.buildFlushing = null;
       releaseFlushLock(OUTBOX_TAB_ID);
     }
   })();
@@ -9748,6 +9593,13 @@ function generateEstimateText(options) {
   return `Estimate: roughly ${low}–${high} new moves (fewer where your repertoire already has them).`;
 }
 
+function captureBuildContext() {
+  const repertoireId = appState.build?.repertoire_id;
+  const seq = buildLoadSeq;
+  const owner = currentOwnerId();
+  return () => repertoireId === appState.build?.repertoire_id && seq === buildLoadSeq && owner === currentOwnerId();
+}
+
 async function generateFromCurrentNode() {
   // True click origin for [engine-lifecycle] timing: recorded before any
   // toast/status/rAF so click → feedback-paint measures the real delay.
@@ -9764,6 +9616,8 @@ async function generateFromCurrentNode() {
     setStatusError(BROWSER_ENGINE_UNAVAILABLE);
     return;
   }
+  const isCurrent = captureBuildContext();
+  const generationBuild = appState.build;
   let nodeId = appState.buildCurrentNodeId;
   if (!appState.build || !nodeId) {
     setStatus("Open or create a repertoire first");
@@ -9777,6 +9631,7 @@ async function generateFromCurrentNode() {
   // pending local moves first, then re-resolve the (now-real) anchor id.
   try {
     await hardFlushBuild();
+    if (!isCurrent()) return;
   } catch (error) {
     setStatusError(error.message);
     return;
@@ -9792,7 +9647,7 @@ async function generateFromCurrentNode() {
       if (note) note.textContent = generateEstimateText(readGenerateOptions(current));
     },
   });
-  if (!values) return;
+  if (!values || !isCurrent()) return;
   const { ownColor, plyDepth, ownSideCandidateCount, detailMode, maiaRating } =
     readGenerateOptions(values);
 
@@ -9864,7 +9719,7 @@ async function generateFromCurrentNode() {
     }
     engineLifecycleMark("build-inference-start", tGenerate);
     const plan = await runBrowserBuildGenerate({
-      build: appState.build,
+      build: generationBuild,
       rootNodeId: nodeId,
       ownColor,
       plyDepth,
@@ -9997,7 +9852,7 @@ async function generateFromCurrentNode() {
       },
       { signal: controller.signal },
     );
-    await hydrateBuild(payload, nodeId);
+    if (isCurrent()) await hydrateBuild(payload, nodeId);
     const summary = payload.summary || {};
     setStatus(
       `Generated from ${appState.buildNodeById.get(nodeId)?.san || "node"} · +${summary.added_nodes || 0} new`
@@ -10645,6 +10500,9 @@ async function startTraining(mode, options = {}) {
     return;
   }
   // ----- legacy line rehearsal (all_lines) below -----
+  const seq = ++smartStartSeq;
+  const owner = currentOwnerId();
+  const isCurrent = () => seq === smartStartSeq && owner === currentOwnerId() && appState.trainMode === mode;
   appState.smart = null;
   clearBlitzTimer();
   setBlitzBarVisible(false);
@@ -10664,15 +10522,18 @@ async function startTraining(mode, options = {}) {
   // before the server walks the tree into lines.
   try {
     await hardFlushBuild();
+    if (!isCurrent()) return;
   } catch (error) {
-    setStatusError(error.message);
+    if (isCurrent()) setStatusError(error.message);
     return;
   }
   const fresh = !!options.fresh;
   const body = { seed: 13, mode, repertoire_id: repertoireId, fresh };
   try {
     const { mapTrainUiSession, shouldResetTrainStats } = await loadTrainResume();
+    if (!isCurrent()) return;
     const payload = await postJson("/api/train/start", body);
+    if (!isCurrent()) return;
     appState.training = payload;
     const mapped = mapTrainUiSession(payload, { fresh });
     if (shouldResetTrainStats(mapped)) trainStatsReset();
@@ -10695,7 +10556,7 @@ async function startTraining(mode, options = {}) {
     );
     syncWorkspaceUrl();
   } catch (error) {
-    setStatusError(error.message);
+    if (isCurrent()) setStatusError(error.message);
   }
 }
 
@@ -12525,6 +12386,7 @@ const TRAIN_SYNC_MAX_BACKOFF_MS = 30000;
 function queueTrainAttempt(smart, nodeId, correct) {
   appState.trainSync.pending.push({
     session_id: smart.sessionId,
+    session_generation: smart.generation,
     node_id: nodeId,
     correct,
     attempt_uuid: crypto.randomUUID(),
@@ -12557,6 +12419,8 @@ function scheduleTrainSync() {
 // blocks on the network.
 function flushTrainSync() {
   const sync = appState.trainSync;
+  const owner = currentOwnerId();
+  const isCurrent = () => owner === currentOwnerId() && sync === appState.trainSync;
   if (sync.flushing) return sync.flushing;
   if (!sync.pending.length && !sync.dirty) return Promise.resolve(true);
   clearTimeout(sync.timer);
@@ -12572,7 +12436,8 @@ function flushTrainSync() {
   // safe to retry. Only a permanently rejected group drops (and is reported);
   // auth/CSRF/conflict/rate-limit errors keep their attempts queued.
   const smart = appState.smart;
-  const groups = groupAttempts(batch, smart ? smart.sessionId : null);
+  const position = smart ? { card_index: smart.cardIndex, queue: smart.queue.map((c) => c.encoded) } : null;
+  const groups = groupAttempts(batch, smart ? smart.sessionId : null, smart?.generation);
   setTrainSyncState("syncing");
 
   sync.flushing = (async () => {
@@ -12580,14 +12445,15 @@ function flushTrainSync() {
     let lastError = null;
     try {
       outcome = await flushGroups(groups, async (sessionId, attempts) => {
-        const body = { session_id: sessionId, attempts, local_date: localDateString() };
-        if (smart && sessionId === smart.sessionId) {
-          body.card_index = smart.cardIndex;
-          body.queue = smart.queue.map((c) => c.encoded);
+        if (!isCurrent()) throw new Error("Workspace changed");
+        const generation = attempts.length ? attempts[0].session_generation : (smart?.sessionId === sessionId ? smart.generation : undefined);
+        const body = { session_id: sessionId, session_generation: generation, attempts, local_date: localDateString() };
+        if (smart && sessionId === smart.sessionId && generation === smart.generation) {
+          Object.assign(body, position);
         }
         try {
           const result = await postJson("/api/train/smart/sync", body);
-          if (result.day_streak) appState.dayStreak = result.day_streak;
+          if (isCurrent() && result.day_streak) appState.dayStreak = result.day_streak;
         } catch (error) {
           lastError = error;
           throw error;
@@ -12596,6 +12462,7 @@ function flushTrainSync() {
     } finally {
       sync.flushing = null;
     }
+    if (!isCurrent()) return false;
     // R-02: permanently rejected attempts are reported on EVERY round — a
     // mixed failure (one rejected group + one retriable) used to hide the
     // rejection behind the retry, so attempts vanished without a word. The
@@ -12661,7 +12528,7 @@ function flushTrainSync() {
     persistOutbox();
     // Only re-mark the position dirty if the current session's group is the
     // one that failed — other sessions carry no position payload.
-    if (smart && outcome.failedGroups.some(([sessionId]) => sessionId === smart.sessionId)) {
+    if (smart && smart === appState.smart && outcome.failedGroups.some(([sessionId]) => sessionId === smart.sessionId)) {
       sync.dirty = true;
     }
     if (info && info.pauseForAuth) {
@@ -12691,10 +12558,11 @@ function beaconFlushTrain() {
   if (!sync.pending.length && !sync.dirty) return;
   const token = readCsrfCookie();
   const smart = appState.smart;
-  const groups = groupAttempts(sync.pending, smart ? smart.sessionId : null);
+  const groups = groupAttempts(sync.pending, smart ? smart.sessionId : null, smart?.generation);
   for (const [sessionId, attempts] of groups) {
-    const body = { session_id: sessionId, attempts, local_date: localDateString() };
-    if (smart && sessionId === smart.sessionId) {
+    const generation = attempts.length ? attempts[0].session_generation : (smart?.sessionId === sessionId ? smart.generation : undefined);
+    const body = { session_id: sessionId, session_generation: generation, attempts, local_date: localDateString() };
+    if (smart && sessionId === smart.sessionId && generation === smart.generation) {
       body.card_index = smart.cardIndex;
       body.queue = smart.queue.map((c) => c.encoded);
     }
@@ -12791,33 +12659,18 @@ async function openSettingsSection(sectionId) {
   target?.scrollIntoView({ block: "start" });
 }
 
+let settingsActionsPromise = null;
+function loadSettingsActions() {
+  settingsActionsPromise ||= import("./settings-actions.js").then(({ createSettingsActions }) => createSettingsActions({
+    appState, currentOwnerId, ensureSettingsView, api, applySettingsPayload,
+    applyServerEngineGating, setStatusError, positionCoach, engineWidget,
+    activeViewName, explorerEvalEngine, explorerDrawerOpen, refreshExplorerPanel,
+  })).catch((error) => { settingsActionsPromise = null; throw error; });
+  return settingsActionsPromise;
+}
+
 async function loadSettingsOnce() {
-  let view = null;
-  try {
-    view = await ensureSettingsView();
-  } catch (error) {
-    setStatusError(error.message);
-    return;
-  }
-  if (!appState.signedIn) {
-    // Signed out: browser-local settings only (theme, board, engine status) —
-    // no /api/settings call and no 401 in the top bar.
-    await view.renderSettings(null);
-    return;
-  }
-  try {
-    const payload = await api("/api/settings");
-    applySettingsPayload(payload);
-    applyServerEngineGating();
-    await view.renderSettings(payload);
-  } catch (error) {
-    setStatusError(error.message);
-    try {
-      await view.renderSettings(null);
-    } catch (_) {
-      /* best-effort local render */
-    }
-  }
+  return (await loadSettingsActions()).loadSettingsOnce();
 }
 
 // Fold a /api/settings payload into state: the blob itself, the server-engine flag,
@@ -12831,26 +12684,7 @@ function applySettingsPayload(payload) {
 
 // Persist a partial settings patch ({stockfish_depth} / {maia_rating}) and re-render.
 async function saveSettings(patch) {
-  try {
-    const payload = await api("/api/settings", { method: "POST", body: JSON.stringify(patch) });
-    applySettingsPayload(payload);
-    // A depth change must reach the live Stockfish consumers. The Position coach
-    // rebuilds lazily (its _ensureEngine sees the new depth on the next run), but an
-    // open Engine widget needs an explicit nudge to rebuild + re-analyze right now.
-    if (patch && Object.prototype.hasOwnProperty.call(patch, "stockfish_depth")) {
-      positionCoach.cancel();
-      engineWidget.onDepthSettingChanged().catch(() => { /* best-effort */ });
-      if (activeViewName() === "analyze") positionCoach.update(positionCoach.fen, positionCoach.ctx);
-      void explorerEvalEngine.sync();
-    }
-    // A Maia-rating change moves the Explorer Players pool (and its scope readout), which
-    // both read effectiveMaiaRating() at fetch time — re-render if the drawer is open.
-    if (patch && Object.prototype.hasOwnProperty.call(patch, "maia_rating") && explorerDrawerOpen()) {
-      refreshExplorerPanel();
-    }
-  } catch (error) {
-    setStatusError(error.message);
-  }
+  return (await loadSettingsActions()).saveSettings(patch);
 }
 
 // Apply one button's gated state: disable + greyed style + explanatory title,
@@ -13760,6 +13594,7 @@ async function completeSelectedGaps(gaps) {
     setStatus("Another job is already running");
     return;
   }
+  const isCurrent = captureBuildContext();
   const controller = new AbortController();
   jobToast.startJob({
     id: `coverage-complete-${Date.now()}`,
@@ -13774,7 +13609,7 @@ async function completeSelectedGaps(gaps) {
   let failed = 0;
   try {
     for (const gap of gaps) {
-      if (controller.signal.aborted) break;
+      if (controller.signal.aborted || !isCurrent()) break;
       jobToast.updateJob({ current: done, total: gaps.length, message: `${gap.moveSan} · ${done + 1}/${gaps.length}` });
       try {
         added += await completeOneGap(gap, controller.signal);
@@ -13797,7 +13632,9 @@ async function completeSelectedGaps(gaps) {
 
 async function completeOneGap(gap, signal) {
   // Add the opponent's unanswered human move, landing on the resulting (my-turn) node.
+  const isCurrent = captureBuildContext();
   await selectBuildNode(gap.nodeId);
+  if (!isCurrent()) throw new Error("Repertoire changed");
   const before = appState.buildCurrentNodeId;
   await onBuildBoardMove(gap.moveUci);
   // onBuildBoardMove bails (without moving) on an illegal/blocked move — guard so we never
@@ -13807,14 +13644,16 @@ async function completeOneGap(gap, signal) {
   }
   // apply-plan anchors on a REAL node id, so drain pending local adds and re-resolve.
   await hardFlushBuild();
+  if (!isCurrent()) throw new Error("Repertoire changed");
   const nodeId = resolveBuildId(appState.buildCurrentNodeId);
   const repertoireId = appState.build.repertoire_id;
   const baseRevision = appState.build.revision;
+  const generationBuild = appState.build;
   const { runBrowserBuildGenerate } = await (_buildGenReady || preloadBuildGen());
   const plan = await runBrowserBuildGenerate({
-    build: appState.build,
+    build: generationBuild,
     rootNodeId: nodeId,
-    ownColor: appState.build.color,
+    ownColor: generationBuild.color,
     plyDepth: 3, // my move → their reply → my move ⇒ 2 own moves on the line ("deep enough")
     detailMode: "simple", // keep the per-line tree small for a batch run on the user's device
     ownSideCandidateCount: 1,
@@ -13840,7 +13679,7 @@ async function completeOneGap(gap, signal) {
     "/api/build/generate/apply-plan",
     { repertoire_id: repertoireId, base_revision: baseRevision, root_node_id: nodeId, plan },
   );
-  await hydrateBuild(payload, nodeId);
+  if (isCurrent()) await hydrateBuild(payload, nodeId);
   return (payload.summary && payload.summary.added_nodes) || 0;
 }
 
@@ -13889,6 +13728,7 @@ async function ensureScoutView() {
       },
       connectLichess: startLichessOAuth,
       loadPgnIntoAnalyze,
+      rememberHandoff,
       effectiveMaiaRating,
       maiaAnalysisEnabled: () => maiaAnalysisEnabled(),
       scoutPickedUsernames: () => scoutPickedUsernames(),
@@ -14896,10 +14736,15 @@ function handleBillingReturn() {
 // Everything that needs an authenticated session. Called from init only when
 // signed in, and after a successful sign-in.
 async function loadSignedInWorkspace() {
+  const owner = currentOwnerId();
+  const seq = appState.settingsRequestSeq = (appState.settingsRequestSeq || 0) + 1;
   try {
-    applySettingsPayload(await api("/api/settings"));
+    const payload = await api("/api/settings");
+    if (owner !== currentOwnerId()) return;
+    if (seq === appState.settingsRequestSeq) applySettingsPayload(payload);
   } catch (_) {
-    appState.serverEngineEnabled = false;
+    if (owner !== currentOwnerId()) return;
+    if (seq === appState.settingsRequestSeq) appState.serverEngineEnabled = false;
   }
   applyServerEngineGating();
   try {

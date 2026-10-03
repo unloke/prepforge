@@ -450,6 +450,7 @@ class OpeningBuilderService:
         self,
         repertoire_id: str,
         moves: list,
+        *, receipt_target: Optional[tuple] = None,
     ) -> Tuple[Repertoire, GenerationSummary, dict]:
         """Append a batch of MANUAL moves in one all-or-nothing persist.
 
@@ -564,7 +565,8 @@ class OpeningBuilderService:
                 GeneratedNodeChange(child.id, move_uci, "added", MoveSource.MANUAL)
             )
 
-        self.repository.save_changed_nodes(repertoire_id, self._changed_nodes(repertoire, before))
+        receipt = (*receipt_target, {"id_map": id_map}) if receipt_target else None
+        self.repository.save_changed_nodes(repertoire_id, self._changed_nodes(repertoire, before), receipt=receipt)
         return repertoire, summary, id_map
 
     @staticmethod
@@ -1183,7 +1185,7 @@ class OpeningBuilderService:
         self.repository.delete_opening_nodes(repertoire_id, removed_ids)
         return parent.id
 
-    def delete_nodes_batch(self, repertoire_id: str, node_ids: List[str]) -> List[str]:
+    def delete_nodes_batch(self, repertoire_id: str, node_ids: List[str], *, receipt_target: Optional[tuple] = None) -> List[str]:
         """Delete a batch of subtrees in one load + one persist (local-first flush).
 
         Idempotent per id: an id that no longer exists — already deleted, or
@@ -1223,8 +1225,11 @@ class OpeningBuilderService:
             collect(node)
             parent.children = [c for c in parent.children if c.id != node_id]
 
+        receipt = (*receipt_target, {"removed_node_ids": removed_ids}) if receipt_target else None
         if removed_ids:
-            self.repository.delete_opening_nodes(repertoire_id, removed_ids)
+            self.repository.delete_opening_nodes(repertoire_id, removed_ids, receipt=receipt)
+        elif receipt is not None:
+            self.repository.set_user_setting(*receipt)
         return removed_ids
 
     def rename_repertoire(self, repertoire_id: str, new_name: str) -> Repertoire:

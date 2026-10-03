@@ -1,0 +1,350 @@
+
+ RUN  v5.0.2 D:/auto_art/PrepForge Chess/.worktrees/correctness-baseline-ec04e7d
+
+ ❯ web-src/build-revision.test.js (3 tests | 1 failed) 8ms
+   × gap completion saves against the repertoire and revision used for computation 6ms
+ ❯ web-src/views/replay-focus.test.js (13 tests | 1 failed) 29ms
+   × keeps partial-source failures visible with results and empty results 5ms
+ ❯ web-src/async-persistence-regression.test.js (11 tests | 11 failed) 147ms
+   × opening a repertoire retains and reapplies its durable pending deletes 7ms
+   × an invalidated book load cannot publish or clear its replacement load 2ms
+   × team detail B stays visible after slow A responds 1ms
+   × settings saves serialize patches and only publish the latest state 1ms
+   × a legacy Train start cannot overwrite a newer session 129ms
+   × Scout bulk counts only confirmed complete lines and continues after failures 2ms
+   × the application wires Scout's handoff recorder 1ms
+   × Build render failure after commit does not requeue confirmed adds 1ms
+   × a late Smart sync failure keeps the old generation and cannot dirty its rebuilt session 2ms
+   × a Train sync response after changing owners cannot settle the new owner's outbox or streak 1ms
+   × a late Generate save response cannot hydrate the repertoire the user left 1ms
+node.exe : 
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+⎯⎯⎯⎯⎯⎯ Failed Tests 13 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  web-src/async-persistence-regression.test.js > opening a repertoire retains and reapplies its durable pending de
+letes
+AssertionError: expected [] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+- [
+-   {
+-     "id": "B-node",
+-     "repertoire_id": "B",
+-   },
+- ]
++ []
+
+ ❯ web-src/async-persistence-regression.test.js:21:42
+     19|   const appState = { build: { repertoire_id: "A" }, buildPendingDelete…
+     20|   const reapplyPendingBuildDeletes = vi.fn(() => {
+     21|     expect(appState.buildPendingDeletes).toEqual([deletion]);
+       |                                          ^
+     22|   });
+     23|   const run = compile("async function hydrateBuild(", {
+ ❯ hydrateBuild web-src/async-persistence-regression.test.js:9:10
+ ❯ web-src/async-persistence-regression.test.js:29:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/13]⎯
+
+ FAIL  web-src/async-persistence-regression.test.js > an invalidated book load cannot publish or clear its replacement 
+load
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ web-src/async-persistence-regression.test.js:44:28
+     42|   const old = load(); invalidate(); const latest = load(); const repla…
+     43|   first.resolve({ repertoires: [] }); await old;
+     44|   expect(bookState.loaded).toBe(false);
+       |                            ^
+     45|   expect(bookState.loading).toBe(replacement);
+     46|   second.resolve({ repertoires: [] }); await latest;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/13]⎯
+
+ FAIL  web-src/async-persistence-regression.test.js > team detail B stays visible after slow A responds
+AssertionError: expected 'A' to be 'B' // Object.is equality
+
+Expected: "B"
+Received: "A"
+
+ ❯ web-src/async-persistence-regression.test.js:66:56
+     64|   second.resolve({ name: "B", role: "member", members: [] }); await b;
+     65|   first.resolve({ name: "A", role: "owner", members: [] }); await a;
+     66|   expect(elements.get("team-detail-name").textContent).toBe("B");
+       |                                                        ^
+     67|   expect(deps.renderTeamSharedRepertoires).toHaveBeenCalledTimes(1);
+     68| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/13]⎯
+
+ FAIL  web-src/async-persistence-regression.test.js > settings saves serialize patches and only publish the latest stat
+e
+AssertionError: expected "vi.fn()" to be called 1 times, but got 2 times
+ ❯ web-src/async-persistence-regression.test.js:80:15
+     78|   const a = save({ maia_rating: 1500 }), b = save({ maia_rating: 2000 …
+     79|   await Promise.resolve();
+     80|   expect(api).toHaveBeenCalledTimes(1);
+       |               ^
+     81|   first.resolve({ maia_rating: 1500 }); await a;
+     82|   await vi.waitFor(() => expect(api).toHaveBeenCalledTimes(2));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/13]⎯
+
+ FAIL  web-src/async-persistence-regression.test.js > a legacy Train start cannot overwrite a newer session
+AssertionError: expected 'old' to be 'new' // Object.is equality
+
+Expected: "new"
+Received: "old"
+
+ ❯ web-src/async-persistence-regression.test.js:104:40
+    102|   second.resolve({ session_id: "new", prompt: {}, lines: [] }); await …
+    103|   first.resolve({ session_id: "old", prompt: {}, lines: [] }); await a;
+    104|   expect(appState.training.session_id).toBe("new");
+       |                                        ^
+    105|   expect(deps.renderTraining).toHaveBeenCalledTimes(1);
+    106| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/13]⎯
+
+ FAIL  web-src/async-persistence-regression.test.js > Scout bulk counts only confirmed complete lines and continues aft
+er failures
+Error: offline
+ ❯ web-src/async-persistence-regression.test.js:114:75
+    112|   const code = scoutSource.replace(/^  /gm, "");
+    113|   const jobToast = { isBusy: () => false, startJob: vi.fn(), updateJob…
+    114|   const write = vi.fn().mockResolvedValueOnce(null).mockRejectedValueO…
+       |                                                                           ^
+    115|   const run = compile("async function scoutPrepareAll(", {
+    116|     scoutLineKey: (ucis) => ucis.join(" "), setStatus: vi.fn(), jobToa…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/13]⎯
+
+ FAIL  web-src/async-persistence-regression.test.js > the application wires Scout's handoff recorder
+AssertionError: expected "vi.fn()" to be called with arguments: [ { source: 'scout' } ]
+
+Number of calls: 0
+
+ ❯ web-src/async-persistence-regression.test.js:137:27
+    135|     preloadScoutView: async () => ({ createScoutView }) }, "let scoutV…
+    136|   await run();
+    137|   expect(rememberHandoff).toHaveBeenCalledWith({ source: "scout" });
+       |                           ^
+    138| });
+    139|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/13]⎯
+
+ FAIL  web-src/async-persistence-regression.test.js > Build render failure after commit does not requeue confirmed adds
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ web-src/async-persistence-regression.test.js:156:23
+    154|   };
+    155|   const run = compile("function flushBuildMoves(", deps);
+    156|   expect(await run()).toBe(true);
+       |                       ^
+    157|   expect(appState.buildPending).toEqual([]);
+    158|   expect(appState.buildIdMap["tmp-a"]).toBe("real");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/13]⎯
+
+ FAIL  web-src/async-persistence-regression.test.js > a late Smart sync failure keeps the old generation and cannot dir
+ty its rebuilt session
+AssertionError: expected { session_id: 's', …(4) } to match object { session_generation: 'old', …(2) }
+(3 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "card_index": 1,
+    "queue": [
+      "old-card",
+    ],
+-   "session_generation": "old",
+  }
+
+ ❯ web-src/async-persistence-regression.test.js:180:44
+    178|   const h = trainFlushHarness();
+    179|   const pending = h.run();
+    180|   expect(h.deps.postJson.mock.calls[0][1]).toMatchObject({ session_gen…
+       |                                            ^
+    181|   h.appState.smart = { sessionId: "s", generation: "new", queue: [], c…
+    182|   h.response.reject(Object.assign(new Error("offline"), { status: 503 …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/13]⎯
+
+ FAIL  web-src/async-persistence-regression.test.js > a Train sync response after changing owners cannot settle the new
+ owner's outbox or streak
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ web-src/async-persistence-regression.test.js:195:25
+    193|   h.appState.trainSync = bob;
+    194|   h.response.resolve({ day_streak: 99 });
+    195|   expect(await pending).toBe(false);
+       |                         ^
+    196|   expect(h.appState.trainSync).toBe(bob);
+    197|   expect(h.appState.dayStreak).toBeUndefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/13]⎯
+
+ FAIL  web-src/async-persistence-regression.test.js > a late Generate save response cannot hydrate the repertoire the u
+ser left
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+
+Received:
+
+  1st vi.fn() call:
+
+    Array [
+      Object {
+        "nodes": Array [],
+        "repertoire_id": "A",
+      },
+      "node",
+    ]
+
+
+Number of calls: 1
+
+ ❯ web-src/async-persistence-regression.test.js:215:28
+    213|   current = false;
+    214|   response.resolve({ repertoire_id: "A", nodes: [] }); await pending;
+    215|   expect(hydrateBuild).not.toHaveBeenCalled();
+       |                            ^
+    216| });
+    217|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/13]⎯
+
+ FAIL  web-src/build-revision.test.js > gap completion saves against the repertoire and revision used for computation
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+
+Received:
+
+  1st vi.fn() call:
+
+    Array [
+      Object {
+        "summary": Object {
+          "added_nodes": 1,
+        },
+      },
+      "anchor",
+    ]
+
+
+Number of calls: 1
+
+ ❯ web-src/build-revision.test.js:42:33
+     40|   await run({ nodeId: "root", moveUci: "e7e5" });
+     41|   expect(deps.postJson).toHaveBeenCalledWith("/api/build/generate/appl…
+     42|   expect(deps.hydrateBuild).not.toHaveBeenCalled();
+       |                                 ^
+     43| });
+     44|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/13]⎯
+
+ FAIL  web-src/views/replay-focus.test.js > keeps partial-source failures visible with results and empty results
+AssertionError: expected '<div class="triage"><section class="l…' to contain 'role="alert"'
+
+Expected: "role="alert""
+Received: "<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>
+Games to review</h2><span class="faint">1 shown · <i class="acct" title="Fetched from this linked account">self</i></sp
+an></header><div class="ledger-table"><div class="lr head" aria-hidden="true"><span>Preparation</span><span>Game</span>
+<span>Result</span><span>First moves</span><span>Departure</span></div><button type="button" class="lr is-open" data-in
+dex="0" aria-pressed="true"><span><i class="kind-badge t-bad">You left prep</i></span><span class="players"><span class
+="pl"><b>opp_one</b> vs <b>You</b></span></span><span class="res r-win">0-1</span><span class="open-prev">e4 c6 Nf3 d5…
+</span><span class="num">2… d5</span></button></div></section><section class="focus card" aria-label="Preparation detai
+l"><div class="focus-top"><div class="focus-board" data-testid="replay-focus-board"><div class="scout-miniboard" aria-h
+idden="true"><div class="scout-minisquare light" data-square="h1"><svg data-piece="R"></svg></div><div class="scout-min
+isquare dark" data-square="g1"></div><div class="scout-minisquare light" data-square="f1"><svg data-piece="B"></svg></d
+iv><div class="scout-minisquare dark" data-square="e1"><svg data-piece="K"></svg></div><div class="scout-minisquare lig
+ht" data-square="d1"><svg data-piece="Q"></svg></div><div class="scout-minisquare dark" data-square="c1"><svg data-piec
+e="B"></svg></div><div class="scout-minisquare light" data-square="b1"><svg data-piece="N"></svg></div><div class="scou
+t-minisquare dark" data-square="a1"><svg data-piece="R"></svg></div><div class="scout-minisquare dark" data-square="h2"
+><svg data-piece="P"></svg></div><div class="scout-minisquare light" data-square="g2"><svg data-piece="P"></svg></div><
+div class="scout-minisquare dark" data-square="f2"><svg data-piece="P"></svg></div><div class="scout-minisquare light" 
+data-square="e2"></div><div class="scout-minisquare dark" data-square="d2"><svg data-piece="P"></svg></div><div class="
+scout-minisquare light" data-square="c2"><svg data-piece="P"></svg></div><div class="scout-minisquare dark" data-square
+="b2"><svg data-piece="P"></svg></div><div class="scout-minisquare light" data-square="a2"><svg data-piece="P"></svg></
+div><div class="scout-minisquare light" data-square="h3"></div><div class="scout-minisquare dark" data-square="g3"></di
+v><div class="scout-minisquare light" data-square="f3"><svg data-piece="N"></svg></div><div class="scout-minisquare dar
+k" data-square="e3"></div><div class="scout-minisquare light" data-square="d3"></div><div class="scout-minisquare dark"
+ data-square="c3"></div><div class="scout-minisquare light" data-square="b3"></div><div class="scout-minisquare dark" d
+ata-square="a3"></div><div class="scout-minisquare dark" data-square="h4"></div><div class="scout-minisquare light" dat
+a-square="g4"></div><div class="scout-minisquare dark" data-square="f4"></div><div class="scout-minisquare light" data-
+square="e4"><svg data-piece="P"></svg></div><div class="scout-minisquare dark" data-square="d4"></div><div class="scout
+-minisquare light" data-square="c4"></div><div class="scout-minisquare dark" data-square="b4"></div><div class="scout-m
+inisquare light" data-square="a4"></div><div class="scout-minisquare light" data-square="h5"></div><div class="scout-mi
+nisquare dark" data-square="g5"></div><div class="scout-minisquare light" data-square="f5"></div><div class="scout-mini
+square dark" data-square="e5"></div><div class="scout-minisquare light" data-square="d5"></div><div class="scout-minisq
+uare dark" data-square="c5"></div><div class="scout-minisquare light" data-square="b5"></div><div class="scout-minisqua
+re dark" data-square="a5"></div><div class="scout-minisquare dark" data-square="h6"></div><div class="scout-minisquare 
+light" data-square="g6"></div><div class="scout-minisquare dark" data-square="f6"></div><div class="scout-minisquare li
+ght" data-square="e6"></div><div class="scout-minisquare dark" data-square="d6"></div><div class="scout-minisquare ligh
+t" data-square="c6"><svg data-piece="p"></svg></div><div class="scout-minisquare dark" data-square="b6"></div><div clas
+s="scout-minisquare light" data-square="a6"></div><div class="scout-minisquare light" data-square="h7"><svg data-piece=
+"p"></svg></div><div class="scout-minisquare dark" data-square="g7"><svg data-piece="p"></svg></div><div class="scout-m
+inisquare light" data-square="f7"><svg data-piece="p"></svg></div><div class="scout-minisquare dark" data-square="e7"><
+svg data-piece="p"></svg></div><div class="scout-minisquare light" data-square="d7"><svg data-piece="p"></svg></div><di
+v class="scout-minisquare dark" data-square="c7"></div><div class="scout-minisquare light" data-square="b7"><svg data-p
+iece="p"></svg></div><div class="scout-minisquare dark" data-square="a7"><svg data-piece="p"></svg></div><div class="sc
+out-minisquare dark" data-square="h8"><svg data-piece="r"></svg></div><div class="scout-minisquare light" data-square="
+g8"><svg data-piece="n"></svg></div><div class="scout-minisquare dark" data-square="f8"><svg data-piece="b"></svg></div
+><div class="scout-minisquare light" data-square="e8"><svg data-piece="k"></svg></div><div class="scout-minisquare dark
+" data-square="d8"><svg data-piece="q"></svg></div><div class="scout-minisquare light" data-square="c8"><svg data-piece
+="b"></svg></div><div class="scout-minisquare dark" data-square="b8"><svg data-piece="n"></svg></div><div class="scout-
+minisquare light" data-square="a8"><svg data-piece="r"></svg></div></div><svg class="replay-arrows" viewBox="0 0 100 10
+0" aria-hidden="true"><polygon class="t-bad" points="57.65,81.25 57.65,61.75 59.85,61.75 56.25,56.25 52.65,61.75 54.85,
+61.75 54.85,81.25" /><polygon class="t-good" points="45.15,81.25 45.15,74.25 47.35,74.25 43.75,68.75 40.15,74.25 42.35,
+74.25 42.35,81.25" /></svg></div><div class="focus-info"><div class="eyebrow">Preparation detail · 0-1</div><h2>opp_one
+ vs me_user</h2><i class="kind-badge t-bad">You left prep</i><ul class="reasons"><li>Repertoire: <strong>Caro-Kann: Adv
+ance</strong> · in prep through 2. Nf3</li><li>You diverged at 2… <strong>d5</strong> (expected <strong>e6</strong>). A
+dded to your training queue.</li></ul><div class="actions"><button class="btn primary" data-act="train" data-index="0">
+Train</button><button class="btn" data-act="analyze" data-index="0">Analyze</button><a class="btn ghost" target="_blank
+" rel="noopener noreferrer" href="https://lichess.org/abc123" title="Open on Lichess">lichess ↗</a></div></div></div><d
+iv class="moveline"><span class="mvw"><span class="mn">1.</span><span class="inprep">e4</span></span> <span class="mvw"
+><span class="inprep">c6</span></span> <span class="mvw"><span class="mn">2.</span><span class="inprep">Nf3</span></spa
+n> <span class="mvw"><span class="mn">2…</span><span class="dep t-bad">d5</span></span></div></section></div>"
+
+ ❯ web-src/views/replay-focus.test.js:296:50
+    294|   for (const games of [[userErrorGame], []]) {
+    295|     view.renderReplayResults({ games, source_errors: [{ username: "Una…
+    296|     expect(elements["replay-results"].innerHTML).toContain('role="aler…
+       |                                                  ^
+    297|     expect(elements["replay-results"].innerHTML).toContain("Unavailabl…
+    298|     expect(elements["replay-results"].innerHTML).toContain("Retry Chec…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/13]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  13 failed | 14 passed (27)
+   Start at  19:24:36
+   Duration  276ms (tests 60%, transform 26%, import 12%, worker 3%)
+

@@ -1,0 +1,187 @@
+F.FFFFFF                                                                 [100%]
+================================== FAILURES ===================================
+_____ test_build_response_lost_retries_recover_add_ids_and_delete_receipt _____
+
+client = <starlette.testclient.TestClient object at 0x00000278949EE660>
+
+    def test_build_response_lost_retries_recover_add_ids_and_delete_receipt(client):
+        _register(client, "recovery@example.com")
+        rep, root, e4 = _create_with_move(client)
+        revision = client.get(f"/api/build/load?repertoire_id={rep}").json()["revision"]
+        body = {"repertoire_id": rep, "base_revision": revision,
+                "moves": [{"tempId": "tmp-recovery", "parentRef": e4, "uci": "e7e5"}]}
+        first = client.post("/api/build/add-moves", json=body, headers=csrf_headers(client))
+        assert first.status_code == 200
+        retry = client.post("/api/build/add-moves", json=body, headers=csrf_headers(client))
+>       assert retry.status_code == 200, retry.text
+E       AssertionError: {"detail":{"error":"revision_conflict","current_revision":3,"message":"This repertoire changed somewhere else since your copy was loaded. Reload it and re-apply the edit, or keep your draft."}}
+E       assert 409 == 200
+E        +  where 409 = <Response [409 Conflict]>.status_code
+
+tests\test_api_build_actions.py:578: AssertionError
+__________ test_analyze_train_it_merges_a_competing_progress_update ___________
+
+client = <starlette.testclient.TestClient object at 0x0000027895155450>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000278951A67B0>
+
+    def test_analyze_train_it_merges_a_competing_progress_update(client, monkeypatch):
+        from dataclasses import replace
+        from prepforge_chess.core.models import TrainingProgress
+        from prepforge_chess.storage.repositories import PrepForgeRepository
+        _register(client, "miss-race@example.com")
+        rep = _white_repertoire_with_e4(client)
+        node = next(n["id"] for n in client.get(f"/api/build/load?repertoire_id={rep}").json()["nodes"] if n.get("uci") == "e2e4")
+        read = PrepForgeRepository.load_training_progress
+        lock = PrepForgeRepository.lock_training_progress
+        raced = False
+        def competitor(repo, owner):
+            nonlocal raced
+            if raced:
+                return
+            raced = True
+            repo.save_training_progress(rep, replace(TrainingProgress(node_id=node), attempts=1), owner_user_id=owner)
+        def stale_read(repo, repertoire_id, node_id, *, owner_user_id):
+            before = read(repo, repertoire_id, node_id, owner_user_id=owner_user_id)
+            competitor(repo, owner_user_id)
+            return before
+        def locked_read(repo, conn, *, repertoire_id, node_id, owner_user_id):
+            competitor(repo, owner_user_id)
+            return lock(repo, conn, repertoire_id=repertoire_id, node_id=node_id, owner_user_id=owner_user_id)
+        monkeypatch.setattr(PrepForgeRepository, "load_training_progress", stale_read)
+        monkeypatch.setattr(PrepForgeRepository, "lock_training_progress", locked_read)
+        response = client.post("/api/train/record-miss", json={"repertoire_id": rep, "node_id": node}, headers=csrf_headers(client))
+        assert response.status_code == 200, response.text
+        assert raced
+        from prepforge_chess.api import db
+        repo = PrepForgeRepository(db.get_engine())
+        owner = client.get("/api/auth/me").json()["id"]
+>       assert read(repo, rep, node, owner_user_id=owner).attempts == 2
+E       AssertionError: assert 1 == 2
+E        +  where 1 = TrainingProgress(node_id='546d9bb3-5a40-4242-821b-196f00742ef1', attempts=1, correct_attempts=0, last_reviewed_at=date...n_score=0.0, due_at=datetime.datetime(2026, 10, 3, 2, 24, 39, 714627, tzinfo=datetime.timezone.utc), is_mastered=False).attempts
+E        +    where TrainingProgress(node_id='546d9bb3-5a40-4242-821b-196f00742ef1', attempts=1, correct_attempts=0, last_reviewed_at=date...n_score=0.0, due_at=datetime.datetime(2026, 10, 3, 2, 24, 39, 714627, tzinfo=datetime.timezone.utc), is_mastered=False) = <function PrepForgeRepository.load_training_progress at 0x0000027894669D00>(<prepforge_chess.storage.repositories.PrepForgeRepository object at 0x000002789509E340>, '08c0cb3f-0de3-4e69-9058-14bf98f90151', '546d9bb3-5a40-4242-821b-196f00742ef1', owner_user_id='d8c326970b204ba796401e9ccce03a85')
+
+tests\test_api_train.py:773: AssertionError
+_______ test_smart_sync_generation_is_required_and_old_rebuild_is_gone ________
+
+client = <starlette.testclient.TestClient object at 0x0000027895116190>
+
+    def test_smart_sync_generation_is_required_and_old_rebuild_is_gone(client):
+        _register(client, "generation@example.com")
+        rep = _white_repertoire_with_e4(client)
+        old = _smart_start(client, rep).json()
+        rebuilt = _smart_start(client, rep, fresh=True).json()
+        assert old["session_id"] == rebuilt["session_id"]
+        body = {"session_id": old["session_id"], "card_index": 999, "queue": []}
+>       assert client.post("/api/train/smart/sync", json=body, headers=csrf_headers(client)).status_code == 410
+E       AssertionError: assert 200 == 410
+E        +  where 200 = <Response [200 OK]>.status_code
+E        +    where <Response [200 OK]> = post('/api/train/smart/sync', json={'card_index': 999, 'queue': [], 'session_id': '3b9aefae-2401-4c57-a295-e65abb30420b'}, headers={'X-CSRF-Token': 'P5qyyyxafikpSqg8mwHhYCZPxUIgqJCyKNB4gIMkD8w'})
+E        +      where post = <starlette.testclient.TestClient object at 0x0000027895116190>.post
+E        +      and   {'X-CSRF-Token': 'P5qyyyxafikpSqg8mwHhYCZPxUIgqJCyKNB4gIMkD8w'} = csrf_headers(<starlette.testclient.TestClient object at 0x0000027895116190>)
+
+tests\test_api_train.py:783: AssertionError
+_____________ test_sync_batch_rolls_back_on_later_uuid_collision ______________
+
+    def test_sync_batch_rolls_back_on_later_uuid_collision():
+        repo = _repository()
+        rep, ids = _build(repo)
+        service = SmartTrainingService(repo, "t-owner")
+        session = service.start_or_resume(rep.id)
+        service.sync_progress(session.id, [{"node_id": ids["e4"], "correct": True, "attempt_uuid": "taken"}], owner_user_id="t-owner")
+        before = repo.load_training_session(session.id)
+        with pytest.raises(ValueError, match="different payload"):
+            service.sync_progress(session.id, [
+                {"node_id": ids["d4"], "correct": False, "attempt_uuid": "new"},
+                {"node_id": ids["e4"], "correct": False, "attempt_uuid": "taken"},
+            ], owner_user_id="t-owner")
+>       assert repo.get_attempt_receipt(session.id, "new") is None
+E       AssertionError: assert {'attempt_uuid': 'new', 'correct': False, 'node_id': '5e29d885-2bda-416b-b616-bfe615e6a5f9', 'session_id': '56db2ab5-09a4-4053-985f-bc6d2b5ebc37'} is None
+E        +  where {'attempt_uuid': 'new', 'correct': False, 'node_id': '5e29d885-2bda-416b-b616-bfe615e6a5f9', 'session_id': '56db2ab5-09a4-4053-985f-bc6d2b5ebc37'} = get_attempt_receipt('56db2ab5-09a4-4053-985f-bc6d2b5ebc37', 'new')
+E        +    where get_attempt_receipt = <prepforge_chess.storage.repositories.PrepForgeRepository object at 0x00000278952C6490>.get_attempt_receipt
+E        +    and   '56db2ab5-09a4-4053-985f-bc6d2b5ebc37' = TrainingSession(id='56db2ab5-09a4-4053-985f-bc6d2b5ebc37', repertoire_id='d98a3b5f-2ef0-48d9-a35a-32d85fe69c55', mode=...ezone.utc), updated_at=datetime.datetime(2026, 10, 3, 2, 24, 40, 21486, tzinfo=datetime.timezone.utc), seed=2120752051).id
+
+tests\test_training_smart.py:1151: AssertionError
+___________ test_sync_old_generation_cannot_mutate_rebuilt_session ____________
+
+    def test_sync_old_generation_cannot_mutate_rebuilt_session():
+        repo = _repository()
+        rep, ids = _build(repo)
+        service = SmartTrainingService(repo, "t-owner")
+        old = service.start_or_resume(rep.id)
+        rebuilt = service.start_or_resume(rep.id, fresh=True)
+        assert old.id == rebuilt.id
+        with pytest.raises(ValueError, match="generation"):
+>           service.sync_progress(old.id, [{"node_id": ids["e4"], "correct": False, "attempt_uuid": "late"}],
+                card_index=999, queue=[], session_generation=old.created_at.isoformat(), owner_user_id="t-owner")
+E           TypeError: SmartTrainingService.sync_progress() got an unexpected keyword argument 'session_generation'
+
+tests\test_training_smart.py:1163: TypeError
+_________________ test_team_delete_failure_rolls_back_sharing _________________
+
+client = <starlette.testclient.TestClient object at 0x00000278964BD220>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000278950E1BF0>
+
+    def test_team_delete_failure_rolls_back_sharing(client, monkeypatch):
+        import pytest
+        from sqlalchemy.orm import Session
+        member = _new_client()
+        team, rep = _setup_shared(client, member)
+        def fail_commit(_self):
+            raise RuntimeError("commit failed")
+        with monkeypatch.context() as patch:
+            patch.setattr(Session, "commit", fail_commit)
+            with pytest.raises(RuntimeError, match="commit failed"):
+                client.delete(f"/api/teams/{team}", headers=csrf_headers(client))
+>       assert member.get(f"/api/build/load?repertoire_id={rep}").status_code == 200
+E       AssertionError: assert 404 == 200
+E        +  where 404 = <Response [404 Not Found]>.status_code
+E        +    where <Response [404 Not Found]> = get('/api/build/load?repertoire_id=1c16f8bf-e65b-4153-b4fd-86f082addc51')
+E        +      where get = <starlette.testclient.TestClient object at 0x00000278952A8B90>.get
+
+tests\test_api_teams.py:673: AssertionError
+____________ test_compare_self_partial_failure_still_returns_games ____________
+
+client = <starlette.testclient.TestClient object at 0x00000278950E3AC0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002789647B450>
+
+    def test_compare_self_partial_failure_still_returns_games(client, monkeypatch):
+        _register(client, "partcompare@example.com")
+        _link_as(client, monkeypatch, "PartCmpA")
+        _link_as(client, monkeypatch, "PartCmpB")
+    
+        def _fake_pgn(username, count=1, **kwargs):
+            if username == "PartCmpA":
+                raise LichessFetchError("Lichess responded with HTTP 429 for user PartCmpA")
+            return [_self_game_for("PartCmpB")]
+    
+        monkeypatch.setattr(
+            "prepforge_chess.services.lichess_fetch.fetch_recent_pgns",
+            lambda username, count=1, **kwargs: _fake_pgn(username, count, **kwargs),
+        )
+        body = client.post(
+            "/api/lichess/compare",
+            json={"count": 10},
+            headers=csrf_headers(client),
+        ).json()
+        assert body["count"] == 1
+        assert body["games"][0]["source_account"] == "PartCmpB"
+>       assert body["source_errors"][0]["username"] == "PartCmpA"
+               ^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'source_errors'
+
+tests\test_api_lichess_games.py:1012: KeyError
+============================== warnings summary ===============================
+..\..\.venv\Lib\site-packages\fastapi\testclient.py:1
+  D:\auto_art\PrepForge Chess\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_api_build_actions.py::test_build_response_lost_retries_recover_add_ids_and_delete_receipt
+FAILED tests/test_api_train.py::test_analyze_train_it_merges_a_competing_progress_update
+FAILED tests/test_api_train.py::test_smart_sync_generation_is_required_and_old_rebuild_is_gone
+FAILED tests/test_training_smart.py::test_sync_batch_rolls_back_on_later_uuid_collision
+FAILED tests/test_training_smart.py::test_sync_old_generation_cannot_mutate_rebuilt_session
+FAILED tests/test_api_teams.py::test_team_delete_failure_rolls_back_sharing
+FAILED tests/test_api_lichess_games.py::test_compare_self_partial_failure_still_returns_games
+7 failed, 1 passed, 235 deselected, 1 warning in 2.90s

@@ -397,8 +397,11 @@ export function createReplayView({
   function renderReplayResults(payload) {
     const container = document.getElementById("replay-results");
     renderReplaySummary(payload);
+    const sourceErrors = (payload?.source_errors || []).map((error) =>
+      `${escapeHtml(error.username)}: ${escapeHtml(error.message)}`).join(" ? ");
+    const warning = sourceErrors ? `<div class="empty-state" role="alert">${sourceErrors} ? Retry Check</div>` : "";
     if (!payload || !payload.games || !payload.games.length) {
-      container.innerHTML =
+      container.innerHTML = warning +
         '<div class="empty-state big"><div class="es-mark">♙</div><h3>No recent games found</h3></div>';
       return;
     }
@@ -407,7 +410,7 @@ export function createReplayView({
       .map((game, index) => ({ game, index }))
       .filter(({ game }) => !filter || replayGameKind(game) === filter);
     if (!rows.length) {
-      container.innerHTML =
+      container.innerHTML = warning +
         '<div class="empty-state big"><div class="es-mark">♙</div><h3>No games in this bucket</h3></div>';
       return;
     }
@@ -427,7 +430,7 @@ export function createReplayView({
     const revealIndex = pendingRevealIndex;
     pendingRevealIndex = null;
     const ledgerScroll = revealIndex != null ? container.querySelector?.(".ledger-table")?.scrollTop || 0 : 0;
-    container.innerHTML =
+    container.innerHTML = warning +
       `<div class="triage"><section class="ledger card" aria-label="Games to review">` +
       `<header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} shown${accountNote}</span></header>` +
       `<div class="ledger-table"><div class="lr head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>` +

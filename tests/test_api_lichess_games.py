@@ -1009,6 +1009,8 @@ def test_compare_self_partial_failure_still_returns_games(client, monkeypatch):
     ).json()
     assert body["count"] == 1
     assert body["games"][0]["source_account"] == "PartCmpB"
+    assert body["source_errors"][0]["username"] == "PartCmpA"
+    assert "429" in body["source_errors"][0]["message"]
 
 
 def test_latest_rejects_unknown_account_id(client, monkeypatch):

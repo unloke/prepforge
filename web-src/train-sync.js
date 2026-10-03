@@ -27,16 +27,18 @@ import { classifySyncError } from "./sync-errors.js";
  * @param {string|null} currentSessionId
  * @returns {Array<[string, Array<{node_id: string, correct: boolean, attempt_uuid: string}>]>}
  */
-export function groupAttempts(pending, currentSessionId) {
+export function groupAttempts(pending, currentSessionId, currentGeneration) {
   const bySession = new Map();
+  const key = (id, generation) => JSON.stringify([id, generation ?? null]);
   for (const item of pending) {
-    if (!bySession.has(item.session_id)) bySession.set(item.session_id, []);
-    bySession.get(item.session_id).push({ node_id: item.node_id, correct: item.correct, attempt_uuid: item.attempt_uuid });
+    const k = key(item.session_id, item.session_generation);
+    if (!bySession.has(k)) bySession.set(k, [item.session_id, []]);
+    bySession.get(k)[1].push({ node_id: item.node_id, correct: item.correct, attempt_uuid: item.attempt_uuid,
+      ...(item.session_generation != null ? { session_generation: item.session_generation } : {}) });
   }
-  if (currentSessionId && !bySession.has(currentSessionId)) {
-    bySession.set(currentSessionId, []);
-  }
-  return [...bySession];
+  const currentKey = key(currentSessionId, currentGeneration);
+  if (currentSessionId && !bySession.has(currentKey)) bySession.set(currentKey, [currentSessionId, []]);
+  return [...bySession.values()];
 }
 
 /**
@@ -98,7 +100,8 @@ export function ungroupAttempts(groups) {
   const flat = [];
   for (const [sessionId, attempts] of groups) {
     for (const a of attempts) {
-      flat.push({ session_id: sessionId, node_id: a.node_id, correct: a.correct, attempt_uuid: a.attempt_uuid });
+      flat.push({ session_id: sessionId, node_id: a.node_id, correct: a.correct, attempt_uuid: a.attempt_uuid,
+        ...(a.session_generation != null ? { session_generation: a.session_generation } : {}) });
     }
   }
   return flat;

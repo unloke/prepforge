@@ -286,3 +286,18 @@ describe("replay focus internals", () => {
     expect(html).toContain("in prep through 2. Nf3");
   });
 });
+
+
+it("keeps partial-source failures visible with results and empty results", () => {
+  const elements = makeElements();
+  const view = makeView(elements);
+  for (const games of [[userErrorGame], []]) {
+    view.renderReplayResults({ games, source_errors: [{ username: "Unavailable", message: "429 rate limited" }] });
+    expect(elements["replay-results"].innerHTML).toContain('role="alert"');
+    expect(elements["replay-results"].innerHTML).toContain("Unavailable: 429 rate limited");
+    expect(elements["replay-results"].innerHTML).toContain("Retry Check");
+  }
+  view.renderReplayResults({ games: [] });
+  expect(elements["replay-results"].innerHTML).not.toContain('role="alert"');
+  delete globalThis.document;
+});

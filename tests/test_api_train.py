@@ -363,9 +363,13 @@ def test_smart_skip_advances_past_the_card(client):
 
 
 def _smart_sync(client: TestClient, session_id: str, **extra):
+    from prepforge_chess.api import db
+    from prepforge_chess.storage.repositories import PrepForgeRepository
+    session = PrepForgeRepository(db.get_engine()).load_training_session(session_id)
+    generation = session.created_at.isoformat() if session else "unknown"
     return client.post(
         "/api/train/smart/sync",
-        json={"session_id": session_id, **extra},
+        json={"session_id": session_id, "session_generation": generation, **extra},
         headers=csrf_headers(client),
     )
 
@@ -733,3 +737,52 @@ def test_logout_clears_session(client):
 def test_logout_requires_csrf(client):
     _register(client, "a@example.com")
     assert client.post("/api/auth/logout").status_code == 403
+
+
+def test_analyze_train_it_merges_a_competing_progress_update(client, monkeypatch):
+    from dataclasses import replace
+    from prepforge_chess.core.models import TrainingProgress
+    from prepforge_chess.storage.repositories import PrepForgeRepository
+    _register(client, "miss-race@example.com")
+    rep = _white_repertoire_with_e4(client)
+    node = next(n["id"] for n in client.get(f"/api/build/load?repertoire_id={rep}").json()["nodes"] if n.get("uci") == "e2e4")
+    read = PrepForgeRepository.load_training_progress
+    lock = PrepForgeRepository.lock_training_progress
+    raced = False
+    def competitor(repo, owner):
+        nonlocal raced
+        if raced:
+            return
+        raced = True
+        repo.save_training_progress(rep, replace(TrainingProgress(node_id=node), attempts=1), owner_user_id=owner)
+    def stale_read(repo, repertoire_id, node_id, *, owner_user_id):
+        before = read(repo, repertoire_id, node_id, owner_user_id=owner_user_id)
+        competitor(repo, owner_user_id)
+        return before
+    def locked_read(repo, conn, *, repertoire_id, node_id, owner_user_id):
+        competitor(repo, owner_user_id)
+        return lock(repo, conn, repertoire_id=repertoire_id, node_id=node_id, owner_user_id=owner_user_id)
+    monkeypatch.setattr(PrepForgeRepository, "load_training_progress", stale_read)
+    monkeypatch.setattr(PrepForgeRepository, "lock_training_progress", locked_read)
+    response = client.post("/api/train/record-miss", json={"repertoire_id": rep, "node_id": node}, headers=csrf_headers(client))
+    assert response.status_code == 200, response.text
+    assert raced
+    from prepforge_chess.api import db
+    repo = PrepForgeRepository(db.get_engine())
+    owner = client.get("/api/auth/me").json()["id"]
+    assert read(repo, rep, node, owner_user_id=owner).attempts == 2
+
+
+def test_smart_sync_generation_is_required_and_old_rebuild_is_gone(client):
+    _register(client, "generation@example.com")
+    rep = _white_repertoire_with_e4(client)
+    old = _smart_start(client, rep).json()
+    rebuilt = _smart_start(client, rep, fresh=True).json()
+    assert old["session_id"] == rebuilt["session_id"]
+    body = {"session_id": old["session_id"], "card_index": 999, "queue": []}
+    assert client.post("/api/train/smart/sync", json=body, headers=csrf_headers(client)).status_code == 410
+    body["session_generation"] = old["session_generation"]
+    assert client.post("/api/train/smart/sync", json=body, headers=csrf_headers(client)).status_code == 410
+    resumed = _smart_start(client, rep).json()
+    assert resumed["session_generation"] == rebuilt["session_generation"]
+    assert resumed["total_cards"] == rebuilt["total_cards"]

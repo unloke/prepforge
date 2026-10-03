@@ -555,7 +555,7 @@ def delete_team(
     team = db.get(Team, team_id)
     if team is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="team not found")
-    repo.unshare_all_for_team(team_id)
+    repo.unshare_all_for_team(team_id, conn=db.connection())
     db.delete(team)
     db.commit()
     return {"deleted": True}

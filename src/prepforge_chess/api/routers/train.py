@@ -20,7 +20,6 @@ from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import (
     Repertoire,
     TrainingMode,
-    TrainingProgress,
     TrainingSession,
 )
 from prepforge_chess.services import streak
@@ -151,14 +150,16 @@ def record_miss(
     )
     if node is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="opening node not found")
-    progress = repo.load_training_progress(
-        body.repertoire_id, body.node_id, owner_user_id=owner
-    ) or TrainingProgress(node_id=body.node_id)
-    updated = update_spaced_repetition(progress, correct=False)
-    # An in-session miss retries after 10 minutes; a miss spotted on the Analyze
-    # board should land in the very next session, so it is due immediately.
-    updated = replace(updated, due_at=updated.last_reviewed_at)
-    repo.save_training_progress(body.repertoire_id, updated, owner_user_id=owner)
+    with repo.engine.begin() as conn:
+        progress = repo.lock_training_progress(
+            conn, repertoire_id=body.repertoire_id, node_id=body.node_id, owner_user_id=owner
+        )
+        updated = update_spaced_repetition(progress, correct=False)
+        # A miss spotted in Analyze is due in the very next session.
+        updated = replace(updated, due_at=updated.last_reviewed_at)
+        repo.write_training_progress(
+            conn, repertoire_id=body.repertoire_id, progress=updated, owner_user_id=owner
+        )
     return {"recorded": True, "node_id": body.node_id}
 
 
@@ -421,6 +422,7 @@ class SmartSyncAttempt(BaseModel):
 
 class SmartSyncBody(BaseModel):
     session_id: str
+    session_generation: str | None = None
     # Graded FIRST attempts only, in play order — retries are never graded, so
     # the client doesn't send them. Replayed through record_attempt server-side.
     attempts: list[SmartSyncAttempt] = []
@@ -443,6 +445,8 @@ def smart_sync(
     are rejected. Touches the daily streak once per batch that graded
     something NEW (duplicate retries never re-touch it)."""
     _owned_session(repo, body.session_id, owner)
+    if body.session_generation is None:
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="missing session generation")
     try:
         written = SmartTrainingService(repo, owner).sync_progress(
             body.session_id,
@@ -450,10 +454,12 @@ def smart_sync(
             card_index=body.card_index,
             queue=body.queue,
             owner_user_id=owner,
+            session_generation=body.session_generation,
         )
     except ValueError as exc:
         detail = str(exc)
-        code = status.HTTP_409_CONFLICT if "different payload" in detail else status.HTTP_400_BAD_REQUEST
+        code = (status.HTTP_410_GONE if "session generation" in detail else
+                status.HTTP_409_CONFLICT if "different payload" in detail else status.HTTP_400_BAD_REQUEST)
         raise HTTPException(status_code=code, detail=detail) from exc
     return {
         "synced": written,
