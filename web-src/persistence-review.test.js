@@ -1,4 +1,4 @@
-﻿import { readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { expect, it, vi } from 'vitest';
 const source = readFileSync(new URL('./app.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 function compile(marker, deps) {
@@ -53,8 +53,8 @@ it('parse failure never reports a file as loaded',async()=>{
 it('discard clears the checkpoint bound to the prompt and its memory copy',async()=>{
   const a={ownerId:'owner',gameId:'A',inMemoryOnly:true},appState={analysisRetryCheckpoint:a,analysisUnsavedCheckpoint:a};
   const clearCheckpoint=vi.fn(), loadCheckpoint=vi.fn(()=>({ownerId:'owner',gameId:'B'}));
-  const run=compile('function discardAnalyzeCheckpoint(',{appState,currentOwnerId:()=> 'owner',clearCheckpoint,loadCheckpoint,hideAnalysisRetrySave:vi.fn(),setStatus:vi.fn()});
-  run();expect(appState.analysisUnsavedCheckpoint).toBeNull();expect(clearCheckpoint).not.toHaveBeenCalled();expect(loadCheckpoint).not.toHaveBeenCalled();
+  const run=compile('async function discardAnalyzeCheckpoint(',{appState,currentOwnerId:()=> 'owner',clearCheckpoint,loadCheckpoint,hideAnalysisRetrySave:vi.fn(),setStatus:vi.fn()});
+  await run();expect(appState.analysisUnsavedCheckpoint).toBeNull();expect(clearCheckpoint).not.toHaveBeenCalled();expect(loadCheckpoint).not.toHaveBeenCalled();
 });
 it('Retry save has only one request in flight',async()=>{
   const response=deferred(),checkpoint={ownerId:'owner',gameId:'g'},appState={analysisUnsavedCheckpoint:checkpoint};

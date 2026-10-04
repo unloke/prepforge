@@ -6600,7 +6600,7 @@ async function runAnalysis(options = {}) {
       maiaAssessments,
       pgn,
     };
-    const checkpointStored = saveCheckpoint({
+    const checkpointStored = await saveCheckpoint({
       ...checkpoint,
       ownerId: analysisOwnerId,
       engine: prep.engine || "stockfish (browser)",
@@ -6648,7 +6648,7 @@ async function runAnalysis(options = {}) {
       })
     );
 
-    clearCheckpoint(prep.game_id, analysisOwnerId); // saved: the compute is confirmed durable
+    await clearCheckpoint(prep.game_id, analysisOwnerId); // saved: the compute is confirmed durable
     if (analysisOwnerId !== currentOwnerId()) throw Object.assign(new Error("Account changed"), { cancelled: true });
     hideAnalysisRetrySave();
     refreshAnalysisHistoryIfOpen();
@@ -6707,8 +6707,8 @@ async function runAnalysis(options = {}) {
     }
     // F-03: if the compute finished but the SAVE didn't, offer "Retry save" —
     // the checkpoint holds the evals, so a retry never re-runs the engine.
-    const checkpoint = current && (inMemoryCheckpoint || loadCheckpoint(null, analysisOwnerId));
-    if (checkpoint && checkpoint.gameId) {
+    const checkpoint = current && (inMemoryCheckpoint || await loadCheckpoint(null, analysisOwnerId));
+    if (checkpoint && checkpoint.gameId && seq === analysisRecallSeq && analysisOwnerId === currentOwnerId()) {
       // Keep the in-memory-only variant reachable for Retry save — the device
       // copy doesn't exist in that case.
       appState.analysisUnsavedCheckpoint = checkpoint.inMemoryOnly ? checkpoint : null;
@@ -6778,11 +6778,14 @@ function hideAnalysisRetrySave() {
   if (bar) bar.hidden = true;
 }
 
-function discardAnalyzeCheckpoint() {
+async function discardAnalyzeCheckpoint() {
   if (appState.analysisSaveInFlight) return;
   const checkpoint = appState.analysisRetryCheckpoint;
   if (!checkpoint || checkpoint.ownerId !== currentOwnerId()) return;
-  if (!checkpoint.inMemoryOnly) clearCheckpoint(checkpoint.gameId, checkpoint.ownerId);
+  if (!checkpoint.inMemoryOnly && !await clearCheckpoint(checkpoint.gameId, checkpoint.ownerId, checkpoint.savedAt)) {
+    setStatusError("Could not discard analysis ? try again");
+    return;
+  }
   if (appState.analysisUnsavedCheckpoint === checkpoint) appState.analysisUnsavedCheckpoint = null;
   appState.analysisRetryCheckpoint = null;
   hideAnalysisRetrySave();
@@ -6792,11 +6795,13 @@ function discardAnalyzeCheckpoint() {
 // Re-post classify-save from the checkpoint — engine/model work is NOT redone.
 async function retryAnalyzeSave() {
   if (appState.analysisSaveInFlight) return;
+  appState.analysisSaveInFlight = true;
   // Owner-scoped: this only ever retries work saved under the CURRENT account.
   const ownerId = currentOwnerId();
-  const checkpoint = [appState.analysisRetryCheckpoint, appState.analysisUnsavedCheckpoint, loadCheckpoint(null, ownerId)]
-    .find((candidate) => candidate?.ownerId === ownerId);
-  if (!checkpoint || !checkpoint.gameId) {
+  const checkpoint = [appState.analysisRetryCheckpoint, appState.analysisUnsavedCheckpoint]
+    .find((candidate) => candidate?.ownerId === ownerId) || await loadCheckpoint(null, ownerId);
+  if (!checkpoint || !checkpoint.gameId || ownerId !== currentOwnerId()) {
+    appState.analysisSaveInFlight = false;
     hideAnalysisRetrySave();
     return;
   }
@@ -6826,7 +6831,7 @@ async function retryAnalyzeSave() {
       }),
       maia_assessments: checkpoint.maiaAssessments || [],
     });
-    clearCheckpoint(checkpoint.gameId, ownerId);
+    await clearCheckpoint(checkpoint.gameId, ownerId, checkpoint.savedAt);
     if (ownerId !== currentOwnerId()) return;
     if (appState.analysisUnsavedCheckpoint === checkpoint) appState.analysisUnsavedCheckpoint = null;
     if (appState.analysisRetryCheckpoint === checkpoint) appState.analysisRetryCheckpoint = null;
@@ -14900,8 +14905,9 @@ async function loadSignedInWorkspace() {
   // loadCheckpoint(gameId, ownerId) — the owner goes in the SECOND slot.
   // Passing the owner as the gameId read the "anon" bucket keyed by the owner
   // id, so this banner never fired for a signed-in user.
-  const checkpoint = loadCheckpoint(null, currentOwnerId());
-  if (checkpoint && checkpoint.gameId) {
+  const checkpoint = await loadCheckpoint(null, currentOwnerId());
+  if (checkpoint && checkpoint.gameId && checkpoint.ownerId === currentOwnerId()) {
+    showAnalysisRetrySave(checkpoint);
     setStatus(
       `Unsaved analysis on this device (${checkpoint.positions?.length || 0} positions) — open Analyze and press Retry save.`,
       { severity: "warning" },

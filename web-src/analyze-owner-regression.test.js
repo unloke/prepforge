@@ -53,7 +53,7 @@ it("a save response after switching accounts cannot paint or clear the new owner
   deps.appState.analysisUnsavedCheckpoint = bobCheckpoint;
   resolve({ game_id: "alice-game" });
   await pending;
-  expect(deps.clearCheckpoint).toHaveBeenCalledWith("alice-game", "alice");
+  expect(deps.clearCheckpoint).toHaveBeenCalledWith("alice-game", "alice", undefined);
   expect(deps.appState.analysisUnsavedCheckpoint).toBe(bobCheckpoint);
   expect(deps.appState.analysis).toBeUndefined();
   expect(deps.hideAnalysisRetrySave).not.toHaveBeenCalled();
