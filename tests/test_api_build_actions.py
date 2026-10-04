@@ -621,3 +621,22 @@ def test_build_receipt_failure_rolls_back_the_tree_and_revision(client, monkeypa
     retry = client.post("/api/build/add-moves", json=body, headers=csrf_headers(client))
     assert retry.status_code == 200, retry.text
     assert "tmp-atomic" in retry.json()["id_map"]
+
+def test_annotations_foreign_node_and_revision_conflict_do_not_modify_tree(client):
+    _register(client, "annotation-check@example.com")
+    rep_id, _root, node_id = _create_with_move(client)
+    _other_rep, _other_root, other_node = _create_with_move(client)
+    loaded = client.get("/api/build/load", params={"repertoire_id": rep_id}).json()
+    revision = loaded["revision"]
+    foreign = client.post("/api/build/annotations", json={"repertoire_id": rep_id,
+        "node_id": other_node, "arrows": ["Ga1a2"], "base_revision": revision}, headers=csrf_headers(client))
+    assert foreign.status_code == 400
+    assert client.get("/api/build/load", params={"repertoire_id": rep_id}).json()["revision"] == revision
+    saved = client.post("/api/build/annotations", json={"repertoire_id": rep_id,
+        "node_id": node_id, "arrows": ["Ga1a2"], "base_revision": revision}, headers=csrf_headers(client))
+    assert saved.status_code == 200
+    stale = client.post("/api/build/annotations", json={"repertoire_id": rep_id,
+        "node_id": node_id, "arrows": ["Ga1a3"], "base_revision": revision}, headers=csrf_headers(client))
+    assert stale.status_code == 409
+    nodes = client.get("/api/build/load", params={"repertoire_id": rep_id}).json()["nodes"]
+    assert next(n for n in nodes if n["id"] == node_id)["arrows"] == ["Ga1a2"]

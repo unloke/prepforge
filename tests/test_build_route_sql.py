@@ -96,7 +96,8 @@ def _exercise_routes(client):
         json={"repertoire_id": rep_id, "node_id": node_id, "action": "disable_branch"},
         headers=csrf_headers(client),
     ))
-    for count, reads, _payload in [load, prepared, annotations, branch]:
+    assert annotations[1] == 0  # point update never hydrates the opening tree
+    for count, reads, _payload in [load, prepared, branch]:
         assert reads == 1, (count, reads)
     assert prepared[2]["nodes"][0]["is_prepared"]
     assert not branch[2]["nodes"][0]["is_enabled"]

@@ -887,6 +887,20 @@ class PrepForgeRepository:
                 )
             self._bump_revision(conn, repertoire_id)
 
+    def set_node_annotations(self, repertoire_id: str, node_id: str, arrows: List[str], circles: List[str]) -> None:
+        with self.engine.begin() as conn:
+            changed = conn.execute(update(t.opening_nodes).where(
+                t.opening_nodes.c.id == node_id,
+                t.opening_nodes.c.repertoire_id == repertoire_id,
+            ).values(
+                arrows_json=_json_dump(arrows) if arrows else None,
+                circles_json=_json_dump(circles) if circles else None,
+                updated_at=_now_text(),
+            ))
+            if changed.rowcount != 1:
+                raise ValueError("node not found in repertoire")
+            self._bump_revision(conn, repertoire_id)
+
     def save_changed_nodes(self, repertoire_id: str, nodes: List[OpeningNode], *, receipt: Optional[tuple] = None) -> None:
         """Persist changed or new nodes without walking the rest of the tree."""
         if not nodes:
@@ -1239,9 +1253,18 @@ class PrepForgeRepository:
         return {rep_id: counts["due"] for rep_id, counts in
                 self.mastery_counts_by_repertoire(owner_user_id, now=now).items()}
 
+    def due_windows_by_repertoire(self, owner_user_id: str, *, now: datetime, until: datetime) -> Dict[str, Dict[str, int]]:
+        return self._progress_counts_by_repertoire(owner_user_id, now=now, due_until=until)
+
     def mastery_counts_by_repertoire(
         self, owner_user_id: str, *, now: Optional[datetime] = None,
         conn: Optional[Connection] = None,
+    ) -> Dict[str, Dict[str, int]]:
+        return self._progress_counts_by_repertoire(owner_user_id, now=now, conn=conn)
+
+    def _progress_counts_by_repertoire(
+        self, owner_user_id: str, *, now: Optional[datetime] = None,
+        conn: Optional[Connection] = None, due_until: Optional[datetime] = None,
     ) -> Dict[str, Dict[str, int]]:
         """All exclusive mastery buckets in one owner-scoped statement/snapshot.
 
@@ -1288,18 +1311,25 @@ class PrepForgeRepository:
             tp.c.correct_attempts * 2 < tp.c.attempts,
             tp.c.spaced_repetition_score < WEAK_SCORE_BELOW,
         )
-        state = case(
-            (or_(tp.c.attempts.is_(None), tp.c.attempts <= 0), "untrained"),
-            (is_weak, "weak"),
-            (tp.c.due_at <= now_text, "due"),
-            (or_(tp.c.is_mastered == 1, tp.c.spaced_repetition_score >= MASTERED_SCORE_AT), "mastered"),
-            else_="learning",
-        )
+        def state_at(deadline):
+            return case(
+                (or_(tp.c.attempts.is_(None), tp.c.attempts <= 0), "untrained"),
+                (is_weak, "weak"),
+                (tp.c.due_at <= deadline, "due"),
+                (or_(tp.c.is_mastered == 1, tp.c.spaced_repetition_score >= MASTERED_SCORE_AT), "mastered"),
+                else_="learning",
+            )
+
+        state = state_at(now_text)
         states = ("mastered", "learning", "due", "weak", "untrained")
+        aggregates = [func.sum(case((state == name, 1), else_=0)).label(name) for name in states]
+        if due_until is not None:
+            aggregates = [
+                func.sum(case((state == "due", 1), else_=0)).label("due"),
+                func.sum(case((state_at(_dt_to_text(due_until)) == "due", 1), else_=0)).label("due_until"),
+            ]
         stmt = (
-            select(nodes.c.repertoire_id, *[
-                func.sum(case((state == name, 1), else_=0)).label(name) for name in states
-            ])
+            select(nodes.c.repertoire_id, *aggregates)
             .select_from(nodes.join(blocked, blocked.c.id == nodes.c.id).outerjoin(
                 tp, and_(tp.c.node_id == nodes.c.id, tp.c.repertoire_id == nodes.c.repertoire_id,
                          tp.c.owner_user_id == owner_user_id)
@@ -1312,6 +1342,8 @@ class PrepForgeRepository:
         )
         with nullcontext(conn) if conn is not None else self.engine.connect() as conn:
             rows = conn.execute(stmt).mappings().all()
+        if due_until is not None:
+            return {row["repertoire_id"]: {"due": int(row["due"]), "due_until": int(row["due_until"])} for row in rows}
         out = {}
         for row in rows:
             counts = {name: int(row[name]) for name in states}
@@ -2158,6 +2190,15 @@ class PrepForgeRepository:
                 t.analysis_results.c.id == self.analysis_save_id(game_id, save_id)
             )).mappings().first()
         return self._analysis_from_row(row) if row is not None else None
+
+    def has_analysis_save(self, game_id: str, save_id: str, owner_user_id: str) -> bool:
+        with self.engine.connect() as conn:
+            return conn.scalar(select(t.analysis_results.c.id).join(
+                t.games, t.games.c.id == t.analysis_results.c.game_id
+            ).where(
+                t.analysis_results.c.id == self.analysis_save_id(game_id, save_id),
+                t.games.c.owner_user_id == owner_user_id,
+            )) is not None
 
     @staticmethod
     def _analysis_from_row(row) -> AnalysisResult:

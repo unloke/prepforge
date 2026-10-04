@@ -53,14 +53,14 @@ it('parse failure never reports a file as loaded',async()=>{
 it('discard clears the checkpoint bound to the prompt and its memory copy',async()=>{
   const a={ownerId:'owner',gameId:'A',inMemoryOnly:true},appState={analysisRetryCheckpoint:a,analysisUnsavedCheckpoint:a};
   const clearCheckpoint=vi.fn(), loadCheckpoint=vi.fn(()=>({ownerId:'owner',gameId:'B'}));
-  const run=compile('async function discardAnalyzeCheckpoint(',{appState,currentOwnerId:()=> 'owner',clearCheckpoint,loadCheckpoint,hideAnalysisRetrySave:vi.fn(),setStatus:vi.fn()});
+  const run=compile('async function discardAnalyzeCheckpoint(',{appState,currentOwnerId:()=> 'owner',clearCheckpoint,loadCheckpoint,refreshAnalyzeRecovery:vi.fn(),hideAnalysisRetrySave:vi.fn(),setStatus:vi.fn()});
   await run();expect(appState.analysisUnsavedCheckpoint).toBeNull();expect(clearCheckpoint).not.toHaveBeenCalled();expect(loadCheckpoint).not.toHaveBeenCalled();
 });
 it('Retry save has only one request in flight',async()=>{
   const response=deferred(),checkpoint={ownerId:'owner',gameId:'g'},appState={analysisUnsavedCheckpoint:checkpoint};
   const postJson=vi.fn(()=>response.promise),run=compile('async function retryAnalyzeSave(',{
     appState,currentOwnerId:()=> 'owner',loadCheckpoint:()=>null,invalidateAnalysisSource:()=>1,analysisRecallSeq:2,
-    document:{getElementById:()=>null},evalMapFrom:()=>new Map(),postJson,clearCheckpoint:vi.fn(),hideAnalysisRetrySave:vi.fn(),
+    document:{getElementById:()=>null},evalMapFrom:()=>new Map(),postJson,finishAnalyzeCheckpoint:vi.fn(),clearCheckpoint:vi.fn(),hideAnalysisRetrySave:vi.fn(),
     refreshAnalysisHistoryIfOpen:vi.fn(),isAuthError:()=>false,showAnalysisRetrySave:vi.fn()});
   const a=run(),b=run(); expect(postJson).toHaveBeenCalledTimes(1);response.resolve({});await Promise.all([a,b]);
 });
@@ -70,8 +70,9 @@ it('annotation saves serialize so a failed first drawing cannot poison a later r
   const postJson=vi.fn().mockReturnValueOnce(first.promise).mockResolvedValueOnce({});
   const run=compile('async function saveBuildAnnotations(',{appState,currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,
     hardFlushBuild:async()=>{},resolveBuildId:id=>id,postJson,setStatusError:vi.fn(),boards:{build:{setAnnotations:vi.fn()}}});
-  const a=run(['Ge2e4'],[]),b=run(['Gd2d4'],[]);
+  const a=run(['Ge2e4'],[]);
   await vi.waitFor(()=>expect(postJson).toHaveBeenCalledTimes(1));
+  const b=run(['Gd2d4'],[]);
   first.reject(Error('offline'));await Promise.all([a,b]);
   expect(postJson).toHaveBeenCalledTimes(2);expect(node.arrows).toEqual(['Gd2d4']);
 });

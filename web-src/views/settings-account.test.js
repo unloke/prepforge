@@ -16,7 +16,7 @@ function setup({ appState, billing = null, api } = {}) {
       (async (path) => {
         calls.push(path);
         if (path === "/api/billing/status") return billing;
-        if (path === "/api/account/export") return { account: { id: "u1" } };
+        if (path === "/api/account/export") return new Blob(['{"account":{"id":"u1"}}'], {type:"application/json"});
         return {};
       }),
     postJson: async (path) => {
@@ -119,7 +119,8 @@ describe("Settings → Account", () => {
     await section.actions.export();
     expect(download).toHaveBeenCalledTimes(1);
     const [data, name] = download.mock.calls[0];
-    expect(data).toEqual({ account: { id: "u1" } });
+    expect(data).toBeInstanceOf(Blob);
+    expect(await data.text()).toBe('{"account":{"id":"u1"}}');
     expect(name).toMatch(/^prepforge-export-\d{4}-\d{2}-\d{2}\.json$/);
   });
 

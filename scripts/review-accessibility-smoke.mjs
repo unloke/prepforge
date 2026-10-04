@@ -110,7 +110,7 @@ try{
   await page.reload({waitUntil:'networkidle'});
   await page.locator('#dashboard-repertoires [role="alert"]').waitFor();
   libraryMode='populated';
-  await page.locator('#dashboard-repertoires [data-lib-action="retry"]').click();
+  await page.locator('#dashboard-repertoires [data-lib-action="retry-list"]').click();
   await page.locator('[data-row-menu="audit-rep"]').waitFor();
   assert.equal(await page.locator('#dashboard-repertoires .empty-state').count(), 0);
   results.errors=errors;

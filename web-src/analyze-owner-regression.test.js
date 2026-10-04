@@ -1,7 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 
-const source = readFileSync(new URL("./app.js", import.meta.url), "utf8");
+const source = readFileSync(new URL("./app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
 
 it("the live chart enters Maia loading while warmup is still pending", async () => {
   let resolve;
@@ -16,6 +16,12 @@ it("the live chart enters Maia loading while warmup is still pending", async () 
   resolve();
   await pending;
 });
+function attachFinish(deps) {
+  const start = source.indexOf("async function finishAnalyzeCheckpoint(");
+  const finish = source.slice(start, source.indexOf("\n}\n", start) + 2);
+  const helpers = { ...deps, markCheckpointSaved: vi.fn(), refreshAnalyzeRecovery: vi.fn() };
+  deps.finishAnalyzeCheckpoint = new Function(...Object.keys(helpers), `return (${finish});`)(...Object.values(helpers));
+}
 const code = source.slice(source.indexOf("async function retryAnalyzeSave()"), source.indexOf("\nfunction hideAnalysisHandoff("));
 
 it("Retry save cannot replay a previous owner's in-memory checkpoint", async () => {
@@ -28,6 +34,7 @@ it("Retry save cannot replay a previous owner's in-memory checkpoint", async () 
     refreshAnalysisHistoryIfOpen: vi.fn(), analysisRecallSeq: 1,
     isAuthError: () => false, showAnalysisRetrySave: vi.fn(),
   };
+  attachFinish(deps);
   const run = new Function(...Object.keys(deps), `${code}\nreturn retryAnalyzeSave;`)(...Object.values(deps));
   await run();
   expect(deps.postJson).not.toHaveBeenCalled();
@@ -46,6 +53,7 @@ it("a save response after switching accounts cannot paint or clear the new owner
     refreshAnalysisHistoryIfOpen: vi.fn(), analysisRecallSeq: 1,
     isAuthError: () => false, showAnalysisRetrySave: vi.fn(),
   };
+  attachFinish(deps);
   const run = new Function(...Object.keys(deps), `${code}\nreturn retryAnalyzeSave;`)(...Object.values(deps));
   const pending = run();
   owner = "bob";
@@ -92,6 +100,7 @@ it("switching accounts during classify-save releases the analysis job without re
   const start = source.indexOf("async function runAnalysis(");
   const runCode = source.slice(start, source.indexOf("function renderImportPicker(", start))
     .replace('import("./engine/game-analyzer.js")', "Promise.resolve(engineModule)");
+  attachFinish(deps);
   const run = new Function(...Object.keys(deps), `${runCode}\nreturn runAnalysis;`)(...Object.values(deps));
   await run();
   expect(deps.postJson).toHaveBeenCalledWith("/api/analyze/classify-save", expect.any(Object));

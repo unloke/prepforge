@@ -79,6 +79,7 @@ export function createAccountController({
   // work could NOT be saved ({ pending }). Drafts are always kept locally under
   // this owner's key — never sent as another account.
   beforeSignOut = null,
+  onOwnerChanged = () => {},
 }) {
   function getStoredLichessUsername() {
     try {
@@ -618,6 +619,7 @@ export function createAccountController({
   }
 
   async function refreshAuthStatus() {
+    const previousOwner = appState.accountUserId;
     try {
       const me = await api("/api/auth/me");
       appState.signedIn = !!me.id;
@@ -638,6 +640,10 @@ export function createAccountController({
       appState.accountUsername = null;
       appState.accountUserId = null;
       appState.account = null;
+    }
+    if (previousOwner !== appState.accountUserId) {
+      appState.ownerGeneration = (appState.ownerGeneration || 0) + 1;
+      onOwnerChanged();
     }
     renderAccountChip();
   }
@@ -696,6 +702,10 @@ export function createAccountController({
     } catch (_) {
       /* ignore storage errors */
     }
+    appState.signedIn = false;
+    appState.accountUserId = null;
+    appState.ownerGeneration = (appState.ownerGeneration || 0) + 1;
+    onOwnerChanged();
     setStatus("Signed out");
     onReload();
   }

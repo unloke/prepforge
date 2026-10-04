@@ -1,39 +1,46 @@
-// Settings requests share ordering across reads, writes and account changes.
+// Reads wait for queued writes; a read cannot invalidate a committed write.
 export function createSettingsActions({
   appState, currentOwnerId, ensureSettingsView, api, applySettingsPayload,
   applyServerEngineGating, setStatusError, positionCoach, engineWidget,
   activeViewName, explorerEvalEngine, explorerDrawerOpen, refreshExplorerPanel,
 }) {
-async function loadSettingsOnce() {
-  const seq = appState.settingsRequestSeq = (appState.settingsRequestSeq || 0) + 1;
+async function loadSettingsOnce({ render = true } = {}) {
+  const seq = appState.settingsReadSeq = (appState.settingsReadSeq || 0) + 1;
   const owner = currentOwnerId();
-  const isCurrent = () => seq === appState.settingsRequestSeq && owner === currentOwnerId();
+  const generation = appState.ownerGeneration;
+  let writeSeq = appState.settingsRequestSeq;
+  const isCurrent = () => seq === appState.settingsReadSeq && owner === currentOwnerId() && generation === appState.ownerGeneration && writeSeq === appState.settingsRequestSeq;
   let view = null;
   try {
-    view = await ensureSettingsView();
+    view = render ? await ensureSettingsView() : null;
   } catch (error) {
     if (!isCurrent()) return;
     setStatusError(error.message);
     return;
   }
-  if (!isCurrent()) return;
+  if (seq !== appState.settingsReadSeq || owner !== currentOwnerId() || generation !== appState.ownerGeneration) return;
   if (!appState.signedIn) {
     // Signed out: browser-local settings only (theme, board, engine status) —
     // no /api/settings call and no 401 in the top bar.
-    await view.renderSettings(null);
+    await view?.renderSettings(null);
     return;
   }
   try {
+    while (appState.settingsSaving) {
+      await appState.settingsSaving;
+      if (seq !== appState.settingsReadSeq || owner !== currentOwnerId() || generation !== appState.ownerGeneration) return;
+    }
+    writeSeq = appState.settingsRequestSeq;
     const payload = await api("/api/settings");
     if (!isCurrent()) return;
     applySettingsPayload(payload);
     applyServerEngineGating();
-    await view.renderSettings(payload);
+    await view?.renderSettings(payload);
   } catch (error) {
     if (!isCurrent()) return;
     setStatusError(error.message);
     try {
-      await view.renderSettings(null);
+      await view?.renderSettings(null);
     } catch (_) {
       /* best-effort local render */
     }
@@ -43,14 +50,15 @@ async function loadSettingsOnce() {
 async function saveSettings(patch) {
   const seq = appState.settingsRequestSeq = (appState.settingsRequestSeq || 0) + 1;
   const owner = currentOwnerId();
-  const isCurrent = () => seq === appState.settingsRequestSeq && owner === currentOwnerId();
+  const generation = appState.ownerGeneration;
+  const isCurrent = () => seq === appState.settingsRequestSeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
   const previous = appState.settingsSaving;
   let release;
   const saving = new Promise((resolve) => { release = resolve; });
   appState.settingsSaving = saving;
   try {
     await previous;
-    if (owner !== currentOwnerId()) return;
+    if (owner !== currentOwnerId() || generation !== appState.ownerGeneration) return;
     const payload = await api("/api/settings", { method: "POST", body: JSON.stringify(patch) });
     if (!isCurrent()) return;
     const previousSettings = appState.settings;

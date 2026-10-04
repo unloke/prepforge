@@ -434,6 +434,16 @@ def list_analyses(
     }
 
 
+@router.get("/analyses/{game_id}/saves/{request_id}/status")
+def analysis_save_status(
+    game_id: str,
+    request_id: UUID,
+    owner: str = Depends(current_owner),
+    repo: PrepForgeRepository = Depends(get_repository),
+) -> dict[str, bool]:
+    return {"saved": repo.has_analysis_save(game_id, str(request_id), owner)}
+
+
 @router.get("/analyses/{game_id}")
 def recall_analysis(
     game_id: str,

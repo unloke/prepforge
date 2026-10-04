@@ -10,6 +10,7 @@ Use these documents to navigate the current implementation:
 - [Scout ranking](scout-production-ranking.md): the current production selector and experimental runtime boundaries.
 - [Compare identity boundary](compare-identity-boundary.md): ownership of personal training evidence.
 - [Persistence review](async-persistence-review.md): current async action fixes, recovery storage and measured costs.
+- [Persistence follow-up](async-persistence-followup-results.md): validated follow-up fixes; IndexedDB-only recovery.
 - [Backend consistency](backend-consistency.md): analysis snapshots, training transactions and sync versions.
 - [User-reported issue discovery benchmark](benchmarks/user-review-20261001/README.md): frozen source version, blind inspection prompt, and manual scoring workflow.
 - [Review follow-up](archive/audits/project-review-followup-2026-09-29.md): dated observations and improvement proposals, not implementation instructions.

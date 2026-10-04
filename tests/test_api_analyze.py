@@ -305,3 +305,17 @@ def test_classify_save_retry_reuses_the_same_snapshot(client):
     assert _classify_save(client, prepared, request_id=str(uuid4())).status_code == 200
     with db.get_engine().connect() as conn:
         assert conn.execute(select(func.count()).select_from(t.analysis_results).where(t.analysis_results.c.game_id == prepared["game_id"])).scalar_one() == 2
+
+
+def test_analysis_save_status_is_receipt_and_owner_scoped(client):
+    from uuid import uuid4
+    _register(client, "status@example.com")
+    prepared = _prepare(client)
+    request_id = str(uuid4())
+    path = f"/api/analyses/{prepared['game_id']}/saves/{request_id}/status"
+    assert client.get(path).json() == {"saved": False}
+    assert _classify_save(client, prepared, request_id=request_id).status_code == 200
+    assert client.get(path).json() == {"saved": True}
+    client.post("/api/auth/logout")
+    _register(client, "other-status@example.com")
+    assert client.get(path).json() == {"saved": False}

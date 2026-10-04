@@ -1,3 +1,4 @@
+import { loadTeamDirectory } from "../team-directory.js";
 // Dashboard tab rendering (lazy-loaded from app.js).
 
 import {
@@ -85,6 +86,23 @@ export function createDashboardView({
   let repListLoaded = false;
   // Full loads and mutation refreshes share ownership of the same list/cache.
   let loadSeq = 0;
+  function currentLoad(seq) {
+    const owner = appState.accountUserId;
+    const generation = appState.ownerGeneration;
+    return () => seq === loadSeq && owner === appState.accountUserId && generation === appState.ownerGeneration;
+  }
+  function reportListFailure(message) {
+    if (!repListLoaded) renderLibraryListError(message);
+    else {
+      const status = document.getElementById("library-refresh-status");
+      if (status) {
+        status.hidden = false;
+        status.innerHTML = `${escapeHtml(message)} <button class="btn sm" type="button">Retry</button>`;
+        status.querySelector("button")?.addEventListener("click", loadDashboardRepertoires);
+      }
+    }
+    setStatusError(message);
+  }
 
   // "Black · 142 moves to train" (+ disabled / shared-with in the preview) —
   // only real listing fields (colour, health.trainable, visibility/team). The
@@ -530,38 +548,7 @@ export function createDashboardView({
     if (onLibraryStateChange) onLibraryStateChange();
   }
 
-  // One error card for either failing endpoint: no stale rows, no filter
-  // chips / columns / hint, no preview, and a Retry that reruns the full load.
-  function renderLibraryError(message) {
-    const container = document.getElementById("dashboard-repertoires");
-    if (!container) return;
-    repListCache = { own: [], shared: [] };
-    repListLoaded = false;
-    countBadge(null);
-    setListboxRole(container, false);
-    setLibraryEmpty(true, { error: true });
-    container.innerHTML = `
-      <div class="empty-state big is-error" role="alert" data-testid="library-error">
-        <div class="es-mark" aria-hidden="true">!</div>
-        <h3>Could not load your library.</h3>
-        <p>${escapeHtml(String(message || "The server did not respond."))}</p>
-        <div class="row gap">
-          <button type="button" class="btn primary" data-lib-action="retry">Try again</button>
-        </div>
-      </div>`;
-    selectedRepId = null;
-    const today = document.getElementById("dashboard-today");
-    if (today) today.hidden = true;
-    const steps = document.getElementById("dashboard-steps");
-    if (steps) {
-      steps.hidden = true;
-      steps.innerHTML = "";
-    }
-  }
-
-  // Background-refresh failure: the error is scoped to the list card. The
-  // page composition (Today strip, Get started steps) is left untouched and
-  // Retry reloads only the listing.
+  // First listing failure offers a scoped Retry; refresh keeps usable rows.
   function renderLibraryListError(message) {
     const container = document.getElementById("dashboard-repertoires");
     if (!container) return;
@@ -671,19 +658,17 @@ export function createDashboardView({
 
   // Fetches and renders the listing; throws on failure so each caller picks
   // its own error composition.
-  async function fetchDashboardRepertoires(seq) {
-    if (appState.signedIn && !appState.teams.length) {
-      try {
-        const teamsPayload = await api("/api/teams");
-        if (seq !== loadSeq) return false;
-        appState.teams = teamsPayload.teams || [];
-      } catch (_) {
-        /* team names for share badges are optional */
-      }
+  async function fetchDashboardRepertoires(seq, isCurrent = currentLoad(seq)) {
+    // Team names are optional and never block usable repertoire rows.
+    if (appState.signedIn) {
+      void loadTeamDirectory(appState, api).then((teams) => {
+        if (teams !== null && isCurrent() && repListLoaded) renderRepertoireList();
+      }).catch(() => {});
     }
-    if (seq !== loadSeq) return false;
     const payload = await api("/api/repertoires");
-    if (seq !== loadSeq) return false;
+    if (!isCurrent()) return false;
+    const status = document.getElementById("library-refresh-status");
+    if (status) status.hidden = true;
     appState.repertoireList = payload.repertoires || [];
     const visible = (payload.repertoires || []).filter(
       (item) => !appState.pendingRepDeletes.has(String(item.id)),
@@ -711,12 +696,12 @@ export function createDashboardView({
   // and is reported through setStatusError. Resolves to false on failure.
   async function loadDashboardRepertoires() {
     const seq = ++loadSeq;
+    const isCurrent = currentLoad(seq);
     try {
-      return await fetchDashboardRepertoires(seq);
+      return await fetchDashboardRepertoires(seq, isCurrent);
     } catch (error) {
-      if (seq !== loadSeq) return false;
-      renderLibraryListError(error.message);
-      setStatusError(error.message);
+      if (!isCurrent()) return false;
+      reportListFailure(error.message);
       return false;
     }
   }
@@ -779,25 +764,33 @@ export function createDashboardView({
   // reports it via setStatusError — "Ready" is only set on a full success.
   async function loadDashboard() {
     const seq = ++loadSeq;
-    let payload;
-    try {
-      payload = await api(`/api/dashboard?local_date=${localDateString()}`);
-    } catch (error) {
-      if (seq !== loadSeq) return;
-      renderLibraryError(error.message);
+    const isCurrent = currentLoad(seq);
+    const statistics = (async () => {
+      try {
+        const payload = await api(`/api/dashboard?local_date=${localDateString()}`);
+        if (!isCurrent()) return;
+        if (payload.streak) appState.dayStreak = payload.streak;
+        renderDashboardToday(payload);
+        renderSteps(payload);
+      } catch (error) {
+        if (!isCurrent()) return;
+        const today = document.getElementById("dashboard-today");
+        if (today) {
+          today.hidden = false;
+          today.innerHTML = `<div role="alert">${escapeHtml(error.message)} <button class="btn sm">Retry</button></div>`;
+          today.querySelector("button")?.addEventListener("click", () => loadDashboard().catch((e) => setStatusError(e.message)));
+        }
+        throw error;
+      }
+    })();
+    const listing = fetchDashboardRepertoires(seq, isCurrent).catch((error) => {
+      if (isCurrent()) reportListFailure(error.message);
       throw error;
-    }
-    if (seq !== loadSeq) return;
-    if (payload.streak) appState.dayStreak = payload.streak;
-    renderDashboardToday(payload);
-    renderSteps(payload);
-    try {
-      if (!(await fetchDashboardRepertoires(seq))) return;
-    } catch (error) {
-      if (seq !== loadSeq) return;
-      renderLibraryError(error.message);
-      throw error;
-    }
+    });
+    const results = await Promise.allSettled([statistics, listing]);
+    if (!isCurrent()) return;
+    const failure = results.find((result) => result.status === "rejected");
+    if (failure) throw failure.reason;
     setStatus("Ready");
   }
 

@@ -67,8 +67,8 @@ const LIMITS = [
   {
     prefix: "index-",
     suffix: ".js",
-    maxBytes: 338_000, // request deadlines, captured targets and atomic recovery add <3 KB raw
-    maxGzipBytes: 106_000,
+    maxBytes: 342_000, // follow-up: receipt recovery, pagination and ordered/coalesced Build saves
+    maxGzipBytes: 109_000,
     label: "main app chunk",
   },
   { prefix: "maia3-worker-", suffix: ".js", maxBytes: 220_000, label: "maia3 worker chunk" },

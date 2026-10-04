@@ -69,7 +69,8 @@ import {
   saveOutbox,
   trainAttemptId,
 } from "./sync-outbox.js";
-import { clearCheckpoint, evalMapFrom, loadCheckpoint, saveCheckpoint } from "./analyze-checkpoint.js";
+import { loadTeamDirectory } from "./team-directory.js";
+import { clearCheckpoint, evalMapFrom, loadCheckpoint, markCheckpointSaved, saveCheckpoint } from "./analyze-checkpoint.js";
 import {
   loadReturnState,
   pendingHandoffs,
@@ -3395,7 +3396,7 @@ const getCsrfToken = createCsrfTokenSource();
 
 async function api(path, options = {}) {
   const method = (options.method || "GET").toUpperCase();
-  const { timeoutMs = method === "GET" ? 30_000 : 90_000, signal: callerSignal, ...fetchOptions } = options;
+  const { timeoutMs = method === "GET" ? 30_000 : 90_000, signal: callerSignal, responseType = "json", ...fetchOptions } = options;
   return withRequestDeadline(async (signal) => {
   // Merge caller headers over the JSON default, then attach the CSRF token on
   // unsafe methods (bootstrapping /api/csrf if the cookie isn't set yet). The
@@ -3412,6 +3413,7 @@ async function api(path, options = {}) {
     signal,
     headers,
   });
+  if (response.ok && responseType === "blob") return response.blob();
   // Read as text first so a non-JSON body (a 500 "Internal Server Error", a 502
   // from the proxy, an HTML error page) surfaces a clear message instead of a raw
   // "Unexpected token 'I' ... is not valid JSON" from response.json().
@@ -3562,19 +3564,30 @@ async function flushAllPendingForSignOut() {
 }
 
 async function postJson(path, body, options = {}) {
-  // `options` (e.g. an AbortSignal) is forwarded to fetch via api(); it spreads
-  // last so a caller can pass `signal` for a cancellable request.
   const build = appState.build;
+  const owner = currentOwnerId();
+  const generation = appState.ownerGeneration;
   const requestBody = withBuildRevision(path, body, build);
-  const payload = await api(path, {
-    method: "POST",
-    body: JSON.stringify(requestBody || {}),
-    ...options,
-  });
-  if (requestBody?.base_revision !== undefined && appState.build === build) {
-    advanceBuildRevision(build, payload, [...appState.buildPending, ...appState.buildPendingDeletes]);
-  }
-  return payload;
+  const before = build?.revision;
+  const mutation = requestBody?.base_revision !== undefined;
+  const previous = mutation ? appState.buildMutationSaving : null;
+  const task = (async () => {
+    if (previous) await previous.catch(() => {});
+    if (owner !== currentOwnerId() || generation !== appState.ownerGeneration) throw new Error("Account changed");
+    // A queued request may follow our own acknowledged write. Preserve older
+    // conflict bases; rebase only the revision current when this call was made.
+    if (mutation && build === appState.build && requestBody.repertoire_id === build?.repertoire_id && requestBody.base_revision === before) {
+      requestBody.base_revision = build.revision;
+    }
+    const payload = await api(path, { method: "POST", body: JSON.stringify(requestBody || {}), ...options });
+    if (mutation && requestBody.repertoire_id === build?.repertoire_id && appState.build === build && owner === currentOwnerId() && generation === appState.ownerGeneration) {
+      advanceBuildRevision(build, payload, [...appState.buildPending, ...appState.buildPendingDeletes]);
+    }
+    return payload;
+  })();
+  if (mutation) appState.buildMutationSaving = task;
+  try { return await task; }
+  finally { if (appState.buildMutationSaving === task) appState.buildMutationSaving = null; }
 }
 
 function downloadText(filename, mime, content) {
@@ -4069,6 +4082,11 @@ function countBuildMovesToTrain(build) {
 function switchView(name, { fromUrl = false } = {}) {
   workspaceNavigationSeq += 1;
   if (!fromUrl && !workspaceUrlReady) navigatedDuringBoot = true;
+  if (appState.currentView === "teams" && name !== "teams") {
+    teamsView?.invalidateRequests();
+    sharedRepertoiresSeq++;
+    teamDetailSeq++;
+  }
   if (appState.currentView !== name) clearStaleStatusOnNavigate();
   if (name !== "analyze") positionCoach.cancel();
   if (appState.currentView !== name && engineWidget) engineWidget.exitPreview();
@@ -4639,6 +4657,26 @@ function initAccountController() {
       void openSettingsSection("set-account");
     },
     beforeSignOut: flushAllPendingForSignOut,
+    onOwnerChanged: () => {
+      appState.settingsRequestSeq = (appState.settingsRequestSeq || 0) + 1;
+      appState.settingsReadSeq = (appState.settingsReadSeq || 0) + 1;
+      appState.settingsSaving = null;
+      appState.buildMutationSaving = null;
+      analysisHistorySeq++;
+      sharedRepertoiresSeq++;
+      appState.teamsRequestSeq = (appState.teamsRequestSeq || 0) + 1;
+      appState.teams = [];
+      appState.teamsCache = null;
+      appState.analysisRetryCheckpoint = null;
+      appState.analysisUnsavedCheckpoint = null;
+      hideAnalysisRetrySave();
+      for (const id of ["analysis-history", "teams-list", "teams-shared"]) {
+        const host = document.getElementById(id);
+        if (host) host.innerHTML = "";
+      }
+      hideTeamDetail();
+      dashboardView?.renderSignedOut();
+    },
   });
 }
 
@@ -5078,36 +5116,50 @@ function refreshAnalysisHistoryIfOpen() {
 let analysisHistorySeq = 0;
 async function loadAnalysisHistory() {
   const seq = ++analysisHistorySeq;
+  const owner = currentOwnerId();
+  const generation = appState.ownerGeneration;
+  const isCurrent = () => seq === analysisHistorySeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
   const host = document.getElementById("analysis-history");
   if (!host) return;
   host.innerHTML = '<div class="muted hint">Loading...</div>';
-  let payload;
-  try {
-    payload = await api("/api/analyses");
-  } catch (error) {
-    if (seq !== analysisHistorySeq) return;
-    host.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
-    return;
-  }
-  if (seq !== analysisHistorySeq) return;
-  if (!payload.analyses || !payload.analyses.length) {
-    host.innerHTML = '<div class="muted hint">No saved analyses yet.</div>';
-    return;
-  }
-  host.innerHTML = payload.analyses
-    .map((a) => {
-      const when = localDayOf(a.analyzed_at);
-      return (
+  const rows = new Map();
+  let cursor = null, loading = false;
+  async function loadPage() {
+    if (loading || !isCurrent()) return;
+    loading = true;
+    const button = host.querySelector("[data-history-more]");
+    if (button) button.disabled = true;
+    try {
+      const payload = await api(`/api/analyses${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`);
+      if (!isCurrent()) return;
+      for (const row of payload.analyses || []) rows.set(row.game_id, row);
+      cursor = payload.next_cursor || null;
+      const scroll = host.scrollTop;
+      host.innerHTML = [...rows.values()].map((a) =>
         `<button class="history-item" data-game-id="${escapeHtml(a.game_id)}">` +
         `<span class="hi-players">${escapeHtml(a.white || "?")} vs ${escapeHtml(a.black || "?")}</span>` +
-        `<span class="hi-meta">${escapeHtml(a.result || "")} · ${escapeHtml(when)}</span>` +
-        `</button>`
-      );
-    })
-    .join("");
-  host.querySelectorAll(".history-item").forEach((btn, i) => {
-    btn.addEventListener("click", () => recallAnalysis(btn.dataset.gameId, payload.analyses[i]));
-  });
+        `<span class="hi-meta">${escapeHtml(a.result || "")} ? ${escapeHtml(localDayOf(a.analyzed_at))}</span></button>`
+      ).join("") || '<div class="muted hint">No saved analyses yet.</div>';
+      if (cursor) host.innerHTML += '<button class="btn sm" data-history-more>Load more</button>';
+      host.scrollTop = scroll;
+      host.querySelectorAll(".history-item").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          if (isCurrent()) recallAnalysis(btn.dataset.gameId, rows.get(btn.dataset.gameId));
+        });
+      });
+      host.querySelector("[data-history-more]")?.addEventListener("click", loadPage);
+    } catch (error) {
+      if (!isCurrent()) return;
+      if (rows.size) {
+        if (button) button.textContent = "Retry load more";
+        setStatusError(error.message);
+      } else host.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+    } finally {
+      loading = false;
+      if (button && isCurrent()) button.disabled = false;
+    }
+  }
+  await loadPage();
 }
 
 // All Analyze sources share an order: a recall, paste or new review must not
@@ -5231,9 +5283,22 @@ let teamDetailSeq = 0;
 async function openTeamDetail(teamId) {
   const seq = ++teamDetailSeq;
   const owner = currentOwnerId();
-  const isCurrent = () => seq === teamDetailSeq && appState.selectedTeamId === teamId && owner === currentOwnerId();
+  const generation = appState.ownerGeneration;
+  const isCurrent = () => seq === teamDetailSeq && appState.selectedTeamId === teamId && owner === currentOwnerId() && generation === appState.ownerGeneration;
   appState.selectedTeamId = teamId;
   renderTeamsList(); // reflect the selected row
+  for (const id of ["team-add-member", "team-detail-invite", "team-share-rep", "team-detail-rename", "team-detail-delete"]) {
+    const button = document.getElementById(id);
+    if (button) { button.hidden = true; button.onclick = null; }
+  }
+  const name = document.getElementById("team-detail-name");
+  if (name) name.textContent = "Loading?";
+  const role = document.getElementById("team-detail-role");
+  if (role) role.textContent = "";
+  const shares = document.getElementById("team-shared-repertoires");
+  if (shares) shares.innerHTML = "";
+  teamsView?.renderTeamTabCounts({ members: 0, repertoires: 0 });
+  teamsView?.renderTeamInviteFooter(null);
   const card = document.getElementById("team-detail-card");
   const membersEl = document.getElementById("team-members");
   if (!card || !membersEl) return;
@@ -5601,11 +5666,17 @@ async function copySharedRepertoire(repertoireId) {
   }
 }
 
+let sharedRepertoiresSeq = 0;
 async function loadSharedRepertoires() {
+  const seq = ++sharedRepertoiresSeq;
+  const owner = currentOwnerId();
+  const generation = appState.ownerGeneration;
+  const isCurrent = () => seq === sharedRepertoiresSeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
   const container = document.getElementById("teams-shared");
   if (!container) return;
   try {
     const payload = await api("/api/repertoires");
+    if (!isCurrent()) return;
     const shared = payload.shared || [];
     if (!shared.length) {
       container.innerHTML =
@@ -5654,6 +5725,7 @@ async function loadSharedRepertoires() {
       });
     });
   } catch (error) {
+    if (!isCurrent()) return;
     container.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
   }
 }
@@ -6651,9 +6723,8 @@ async function runAnalysis(options = {}) {
       })
     );
 
-    await clearCheckpoint(prep.game_id, analysisOwnerId, checkpoint.requestId); // saved: the compute is confirmed durable
+    await finishAnalyzeCheckpoint(inMemoryCheckpoint || checkpoint);
     if (analysisOwnerId !== currentOwnerId()) throw Object.assign(new Error("Account changed"), { cancelled: true });
-    hideAnalysisRetrySave();
     refreshAnalysisHistoryIfOpen();
     const complete = (current = false) => jobToast.completeJob({
       title: current ? "Analysis ready" : "Analysis saved",
@@ -6711,6 +6782,7 @@ async function runAnalysis(options = {}) {
     // F-03: if the compute finished but the SAVE didn't, offer "Retry save" —
     // the checkpoint holds the evals, so a retry never re-runs the engine.
     const checkpoint = current && (inMemoryCheckpoint || completedCheckpoint);
+    if (checkpoint?.serverSaved) { await refreshAnalyzeRecovery(); return; }
     if (checkpoint && checkpoint.gameId && seq === analysisRecallSeq && analysisOwnerId === currentOwnerId()) {
       // Keep the in-memory-only variant reachable for Retry save — the device
       // copy doesn't exist in that case.
@@ -6766,19 +6838,69 @@ function showAnalysisRetrySave(checkpoint, message) {
   if (!bar) return;
   const text = document.getElementById("analysis-retry-save-text");
   if (text) {
-    // F-04: never claim a device guarantee the storage layer didn't give us.
-    const where = checkpoint.inMemoryOnly
-      ? "the analysis is kept in this page only — don't close it. "
-      : "the analysis is stored on this device. ";
-    text.textContent =
-      `${message || "Save failed"} — ${where}` + `Retry saves it without re-analyzing.`;
+    const white = checkpoint.pgn?.match(/\[White "([^"\n]*)"\]/)?.[1];
+    const black = checkpoint.pgn?.match(/\[Black "([^"\n]*)"\]/)?.[1];
+    const game = white || black ? `${white || "?"} vs ${black || "?"}` : checkpoint.gameId;
+    text.textContent = checkpoint.serverSaved
+      ? `${game} ? Analysis saved. Device cleanup failed ? retry cleanup.`
+      : `${game} ? ${message || "Unsaved analysis"} ? ${checkpoint.inMemoryOnly ? "Kept in this page only" : "Kept on this device"}`;
   }
+  const button = document.getElementById("analysis-retry-save-btn");
+  if (button) button.textContent = checkpoint.serverSaved ? "Retry cleanup" : "Retry save";
   bar.hidden = false;
 }
 
 function hideAnalysisRetrySave() {
   const bar = document.getElementById("analysis-retry-save");
   if (bar) bar.hidden = true;
+}
+
+async function refreshAnalyzeRecovery() {
+  const owner = currentOwnerId();
+  const generation = appState.ownerGeneration;
+  const seq = appState.analysisRecoverySeq = (appState.analysisRecoverySeq || 0) + 1;
+  const isCurrent = () => owner === currentOwnerId() && generation === appState.ownerGeneration && seq === appState.analysisRecoverySeq;
+  let checkpoint = appState.analysisUnsavedCheckpoint?.ownerId === owner ? appState.analysisUnsavedCheckpoint : await loadCheckpoint(null, owner);
+  while (checkpoint && isCurrent()) {
+    if (!checkpoint.serverSaved && !checkpoint.inMemoryOnly) {
+      try {
+        const status = await api(`/api/analyses/${encodeURIComponent(checkpoint.gameId)}/saves/${encodeURIComponent(checkpoint.requestId)}/status`);
+        if (!isCurrent()) return;
+        checkpoint.serverSaved = status.saved;
+      } catch (error) {
+        if (isCurrent()) showAnalysisRetrySave(checkpoint, `Save status unconfirmed: ${error.message}`);
+        return;
+      }
+    }
+    if (checkpoint.serverSaved) {
+      if (!await clearCheckpoint(checkpoint.gameId, owner, checkpoint.requestId)) {
+        if (isCurrent()) showAnalysisRetrySave(checkpoint);
+        return;
+      }
+      if (!isCurrent()) return;
+      checkpoint = await loadCheckpoint(null, owner);
+    } else {
+      showAnalysisRetrySave(checkpoint);
+      return;
+    }
+  }
+  if (isCurrent()) {
+    appState.analysisRetryCheckpoint = null;
+    hideAnalysisRetrySave();
+  }
+}
+
+async function finishAnalyzeCheckpoint(checkpoint) {
+  checkpoint.serverSaved = true;
+  // Record confirmation separately; if storage is unavailable, recovery checks
+  // the server's request receipt before describing the work as unsaved.
+  if (!checkpoint.inMemoryOnly) await markCheckpointSaved(checkpoint.gameId, checkpoint.ownerId, checkpoint.requestId);
+  const cleared = checkpoint.inMemoryOnly || await clearCheckpoint(checkpoint.gameId, checkpoint.ownerId, checkpoint.requestId);
+  if (checkpoint.ownerId !== currentOwnerId()) return;
+  if (appState.analysisUnsavedCheckpoint === checkpoint) appState.analysisUnsavedCheckpoint = null;
+  if (!cleared) { showAnalysisRetrySave(checkpoint); return; }
+  if (appState.analysisRetryCheckpoint === checkpoint) appState.analysisRetryCheckpoint = null;
+  await refreshAnalyzeRecovery();
 }
 
 async function discardAnalyzeCheckpoint() {
@@ -6793,8 +6915,8 @@ async function discardAnalyzeCheckpoint() {
   if (appState.analysisUnsavedCheckpoint === checkpoint) appState.analysisUnsavedCheckpoint = null;
   if (appState.analysisRetryCheckpoint !== checkpoint) return;
   appState.analysisRetryCheckpoint = null;
-  hideAnalysisRetrySave();
-  setStatus("Discarded unsaved analysis");
+  await refreshAnalyzeRecovery();
+  setStatus(checkpoint.serverSaved ? "Device copy removed" : "Discarded unsaved analysis");
 }
 
 // Re-post classify-save from the checkpoint — engine/model work is NOT redone.
@@ -6816,6 +6938,10 @@ async function retryAnalyzeSave() {
   const runButton = document.getElementById("run-analysis");
   if (runButton) runButton.disabled = true;
   try {
+    if (checkpoint.serverSaved) {
+      await finishAnalyzeCheckpoint(checkpoint);
+      return;
+    }
     const evals = evalMapFrom(checkpoint);
     const payload = await postJson("/api/analyze/classify-save", {
       game_id: checkpoint.gameId,
@@ -6836,11 +6962,8 @@ async function retryAnalyzeSave() {
       }),
       maia_assessments: checkpoint.maiaAssessments || [],
     });
-    await clearCheckpoint(checkpoint.gameId, ownerId, checkpoint.requestId);
+    await finishAnalyzeCheckpoint(checkpoint);
     if (ownerId !== currentOwnerId()) return;
-    if (appState.analysisUnsavedCheckpoint === checkpoint) appState.analysisUnsavedCheckpoint = null;
-    if (appState.analysisRetryCheckpoint === checkpoint) appState.analysisRetryCheckpoint = null;
-    hideAnalysisRetrySave();
     refreshAnalysisHistoryIfOpen();
     if (seq !== analysisRecallSeq || ownerId !== currentOwnerId()) return;
     const input = document.getElementById("pgn-input");
@@ -6856,6 +6979,7 @@ async function retryAnalyzeSave() {
     await updateAnalysisHandoff();
   } catch (error) {
     if (ownerId !== currentOwnerId()) return;
+    if (checkpoint.serverSaved) { setStatusError(error.message); return; }
     if (isAuthError(error)) {
       accountService().handleAuthRequired("Sign in to save — the analysis stays on this device until you do");
     }
@@ -8462,52 +8586,66 @@ async function saveBuildAnnotations(arrows, circles) {
   if (activeViewName() !== "build" || isBuildReadOnly()) return;
   if (!appState.build || !appState.buildCurrentNodeId) return;
   const ownerId = currentOwnerId();
+  const generation = appState.ownerGeneration;
+  const isOwner = () => ownerId === currentOwnerId() && generation === appState.ownerGeneration;
   const build = appState.build;
   const repertoireId = build.repertoire_id;
   const selectedId = appState.buildCurrentNodeId;
   const idMap = appState.buildIdMap;
   const resolvedId = () => idMap?.[selectedId] || selectedId;
-  arrows = arrows.slice();
-  circles = circles.slice();
+  const slots = appState.buildAnnotationSlots ||= new Map();
+  const key = JSON.stringify([ownerId, generation, repertoireId, resolvedId()]);
+  let slot = slots.get(key);
+  const node = appState.buildNodeById.get(resolvedId());
+  if (!slot) {
+    slot = { confirmed: { arrows: (node?.arrows || []).slice(), circles: (node?.circles || []).slice() }, latest: null, task: null };
+    slots.set(key, slot);
+  }
+  slot.latest = { arrows: arrows.slice(), circles: circles.slice() };
+  if (node) Object.assign(node, slot.latest);
+  if (slot.task) return slot.task;
   const previousSave = appState.buildAnnotationsSaving;
   const task = (async () => {
     if (previousSave) await previousSave;
-    if (ownerId !== currentOwnerId()) return;
-    let node, previous;
-    try {
-      await hardFlushBuild();
-      if (ownerId !== currentOwnerId()) return;
-      const nodeId = resolvedId();
-      const current = appState.build?.repertoire_id === repertoireId;
-      node = current ? appState.buildNodeById.get(nodeId) : null;
-      if (node) {
-        previous = { arrows: node.arrows || [], circles: node.circles || [] };
-        node.arrows = arrows;
-        node.circles = circles;
+    while (slot.latest && isOwner()) {
+      let snapshot;
+      try {
+        await hardFlushBuild();
+        if (!isOwner()) return;
+        snapshot = slot.latest;
+        slot.latest = null;
+        const current = appState.build?.repertoire_id === repertoireId;
+        const nodeId = resolvedId();
+        const payload = await postJson("/api/build/annotations", {
+          repertoire_id: repertoireId, node_id: nodeId, ...snapshot,
+          base_revision: current ? appState.build.revision : build.revision,
+        });
+        if (Number.isInteger(payload?.revision)) build.revision = Math.max(build.revision || 0, payload.revision);
+        slot.confirmed = snapshot;
+      } catch (error) {
+        if (!isOwner()) return;
+        setStatusError(`Annotations not saved: ${error.message}`);
+        // A failed prerequisite flush has not consumed latest yet.
+        if (!snapshot) slot.latest = null;
       }
-      await postJson("/api/build/annotations", {
-        repertoire_id: repertoireId, node_id: nodeId, arrows, circles,
-        base_revision: current ? appState.build.revision : build.revision,
-      });
-      if (current && appState.build?.repertoire_id === repertoireId &&
-          appState.buildCurrentNodeId === nodeId && ownerId === currentOwnerId()) {
-        boards.build.setAnnotations(arrows, circles);
+      if (!isOwner()) return;
+      // Only the newest visible draft can repaint this position. An earlier
+      // success advances confirmation/revision without replaying an old drawing.
+      if (appState.build?.repertoire_id === repertoireId) {
+        const visible = slot.latest || slot.confirmed;
+        const currentNode = appState.buildNodeById.get(resolvedId());
+        if (currentNode) Object.assign(currentNode, visible);
+        if (resolveBuildId(appState.buildCurrentNodeId) === resolvedId()) boards.build.setAnnotations(visible.arrows, visible.circles);
       }
-    } catch (error) {
-      if (ownerId !== currentOwnerId()) return;
-      if (node && previous) Object.assign(node, previous);
-      // A failed prerequisite flush must restore the drawing too.
-      if (appState.build?.repertoire_id === repertoireId &&
-          resolveBuildId(appState.buildCurrentNodeId) === resolvedId()) {
-        const confirmed = appState.buildNodeById.get(resolvedId());
-        if (confirmed) boards.build.setAnnotations(confirmed.arrows || [], confirmed.circles || []);
-      }
-      setStatusError(`Annotations not saved: ${error.message}`);
     }
   })();
+  slot.task = task;
   appState.buildAnnotationsSaving = task;
   try { await task; }
-  finally { if (appState.buildAnnotationsSaving === task) appState.buildAnnotationsSaving = null; }
+  finally {
+    slots.delete(key);
+    if (appState.buildAnnotationsSaving === task) appState.buildAnnotationsSaving = null;
+  }
 }
 
 // ===== Local-first Build sync ================================================
@@ -14871,16 +15009,12 @@ function handleBillingReturn() {
 // signed in, and after a successful sign-in.
 async function loadSignedInWorkspace() {
   const owner = currentOwnerId();
-  const seq = appState.settingsRequestSeq = (appState.settingsRequestSeq || 0) + 1;
-  try {
-    const payload = await api("/api/settings");
-    if (owner !== currentOwnerId()) return;
-    if (seq === appState.settingsRequestSeq) applySettingsPayload(payload);
-  } catch (_) {
-    if (owner !== currentOwnerId()) return;
-    if (seq === appState.settingsRequestSeq) appState.serverEngineEnabled = false;
-  }
-  applyServerEngineGating();
+  const generation = appState.ownerGeneration;
+  const isCurrent = () => owner === currentOwnerId() && generation === appState.ownerGeneration;
+  const settingsReady = loadSettingsActions().then((actions) => {
+    if (isCurrent()) return actions.loadSettingsOnce({ render: false });
+  }).catch((error) => { if (isCurrent()) setStatusError(error.message); });
+  const dashboardReady = loadDashboard();
   try {
     const stored = getStoredLichessUsername();
     if (stored) setLichessUsername(stored);
@@ -14895,7 +15029,6 @@ async function loadSignedInWorkspace() {
   // Boards are already seeded with the start position in init() (browser-computed),
   // so signing in doesn't need to re-fetch them.
   renderBuilderTree();
-  await loadDashboard();
   // R-03/R-04: this OWNER's durable outbox comes back after a reload or an
   // earlier sign-out, and any flush paused waiting for sign-in re-arms.
   appState.syncPausedForAuth = false;
@@ -14917,20 +15050,9 @@ async function loadSignedInWorkspace() {
       { severity: "warning" },
     );
   }
-  // F-03/F-04: a finished-but-unsaved analysis waits for its retry. The
-  // checkpoint is owner-scoped, so signing in as someone else never surfaces
-  // (or retries) another account's pending save.
-  // loadCheckpoint(gameId, ownerId) — the owner goes in the SECOND slot.
-  // Passing the owner as the gameId read the "anon" bucket keyed by the owner
-  // id, so this banner never fired for a signed-in user.
-  const checkpoint = await loadCheckpoint(null, currentOwnerId());
-  if (checkpoint && checkpoint.gameId && checkpoint.ownerId === currentOwnerId()) {
-    showAnalysisRetrySave(checkpoint);
-    setStatus(
-      `Unsaved analysis on this device (${checkpoint.positions?.length || 0} positions) — open Analyze and press Retry save.`,
-      { severity: "warning" },
-    );
-  }
+  await refreshAnalyzeRecovery();
+  if (!isCurrent()) return;
+  await Promise.allSettled([settingsReady, dashboardReady]);
 }
 
 appReadyPromise = init().then(() => {

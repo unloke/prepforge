@@ -4,6 +4,7 @@
 // repertoires as two tabs over ONE panel (counts live on the tabs), with the
 // invite-link status as a footer line under the tabs.
 import "./teams.css";
+import { loadTeamDirectory } from "../team-directory.js";
 import { createInviteDialogUi, formatDay, runInviteDialog } from "./team-invite.js";
 
 export function createTeamsView({
@@ -69,7 +70,12 @@ export function createTeamsView({
     return `${n} member${n === 1 ? "" : "s"}`;
   }
 
+  let loadSeq = 0;
   async function loadTeams() {
+    const seq = ++loadSeq;
+    const owner = appState.accountUserId;
+    const generation = appState.ownerGeneration;
+    const isCurrent = () => seq === loadSeq && owner === appState.accountUserId && generation === appState.ownerGeneration;
     const list = document.getElementById("teams-list");
     const shared = document.getElementById("teams-shared");
     if (!list) return;
@@ -86,8 +92,8 @@ export function createTeamsView({
     }
     list.innerHTML = '<div class="empty-state">Loading…</div>';
     try {
-      const payload = await api("/api/teams");
-      appState.teams = payload.teams || [];
+      const teams = await loadTeamDirectory(appState, api, { refresh: true });
+      if (!isCurrent() || teams === null) return;
       renderTeamsList();
       renderTeamEmptyCard(appState.teams.length ? "choose" : "no-teams");
       // Re-open an expanded team after a reload so a member add/remove stays in view.
@@ -100,9 +106,10 @@ export function createTeamsView({
         hideTeamDetail();
       }
     } catch (error) {
+      if (!isCurrent()) return;
       list.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
     }
-    loadSharedRepertoires();
+    if (isCurrent()) loadSharedRepertoires();
   }
 
   // The placeholder card beside the directory explains what to do next for the
@@ -290,6 +297,7 @@ export function createTeamsView({
   }
 
   return {
+    invalidateRequests: () => { loadSeq++; },
     loadTeams,
     renderTeamsList,
     renderTeamSharedRepertoires,
