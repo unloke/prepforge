@@ -245,3 +245,32 @@ def test_export_pgn_without_original_still_rebuilds_legacy_games():
     game.pgn = None
     assert "Original" in codec.export_pgn(game)
     assert "e4" in codec.export_pgn(game)
+def test_rebuild_uses_one_board_and_preserves_all_records(monkeypatch):
+    from unittest.mock import Mock
+    from dataclasses import asdict
+    ucis = ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "a7a6", "b5a4", "g8f6", "e1g1"]
+    expected = []
+    fen = STARTING_FEN
+    for ply, uci in enumerate(ucis, 1):
+        record = codec.replay_uci(fen, uci, source=MoveSource.IMPORTED_PGN, ply=ply)
+        expected.append(record)
+        fen = record.fen_after
+    make_board = Mock(wraps=chess.Board)
+    monkeypatch.setattr(codec.chess, "Board", make_board)
+    assert [asdict(m) for m in codec.rebuild_moves(STARTING_FEN, ucis)] == [asdict(m) for m in expected]
+    # Canonicalization parses once; replay uses one additional board for every ply.
+    assert make_board.call_count == 2
+
+
+def test_compressed_snapshot_round_trip_and_independence():
+    import json
+    from dataclasses import asdict
+    moves = codec.rebuild_moves(STARTING_FEN, ["g1f3", "g8f6", "f3g1", "f6g8"] * 50)
+    moves[0].comment = "保存原始分析"
+    moves[0].engine_eval_after = EngineEvaluation(engine="test", depth=12, score_cp=42)
+    raw = json.dumps([asdict(m) for m in moves], separators=(",", ":"))
+    encoded = codec.encode_analysis_moves(moves)
+    assert len(encoded) < len(raw) / 4
+    assert codec.decode_analysis_moves(encoded) == moves
+    moves[0].comment = "changed"
+    assert codec.decode_analysis_moves(encoded)[0].comment == "保存原始分析"

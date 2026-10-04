@@ -15,6 +15,8 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import base64
+import zlib
 from dataclasses import asdict
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
@@ -265,13 +267,14 @@ def rebuild_moves(
     """Replay a UCI sequence and overlay persisted per-ply annotations."""
     notes = annotations or {}
     fen = canonicalize_fen(initial_fen)
+    board = chess.Board(fen)
     out: List[MoveRecord] = []
     for index, uci in enumerate(uci_list, start=1):
         note = notes.get(index) or notes.get(str(index)) or {}
         source = note.get("source", MoveSource.IMPORTED_PGN)
         if not isinstance(source, MoveSource):
             source = MoveSource(source)
-        record = replay_uci(fen, uci, source=source, ply=index)
+        record = _replay_on_board(board, uci, source=source, ply=index, fen_before=fen)
         classification = note.get("classification", MoveClassification.UNKNOWN)
         if not isinstance(classification, MoveClassification):
             classification = MoveClassification(classification)
@@ -296,7 +299,8 @@ def game_uci_blob(game: Game) -> str:
 
 def encode_analysis_moves(moves: Sequence[MoveRecord]) -> str:
     """Self-contained run snapshot; never references mutable game annotations."""
-    return json.dumps([asdict(move) for move in moves], separators=(",", ":"))
+    raw = json.dumps([asdict(move) for move in moves], separators=(",", ":")).encode("utf-8")
+    return json.dumps({"codec": "zlib-base64-v1", "data": base64.b64encode(zlib.compress(raw)).decode("ascii")}, separators=(",", ":"))
 
 
 def decode_analysis_moves(payload: Optional[str]) -> List[MoveRecord]:
@@ -305,7 +309,10 @@ def decode_analysis_moves(payload: Optional[str]) -> List[MoveRecord]:
     if payload is None:
         return []
     moves = []
-    for row in json.loads(payload):
+    envelope = json.loads(payload)
+    if envelope["codec"] != "zlib-base64-v1":
+        raise ValueError("unsupported analysis snapshot codec")
+    for row in json.loads(zlib.decompress(base64.b64decode(envelope["data"], validate=True))):
         row["side_to_move"] = Color(row["side_to_move"])
         row["source"] = MoveSource(row["source"])
         row["classification"] = MoveClassification(row["classification"])
