@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple
 
 import chess
 
@@ -16,7 +16,7 @@ from prepforge_chess.services.maia import MaiaAdapter
 class BrilliantConfig:
     """Thresholds for Brilliant detection, powered by Maia3 + Stockfish.
 
-    A Brilliant move clears three layers, all required:
+    A Brilliant move clears four layers, all required:
 
     1. **Unintuitive** — a human is unlikely to find it: the Maia3 policy
        probability of the move is at most ``max_human_probability``.
@@ -49,6 +49,33 @@ class BrilliantConfig:
     ``ReplayMaia.precomputed_trap_gap``. When neither is available (no engine and
     no client value) the trap layer can't be evaluated and the move is not flagged.
 
+    4. **Decisive** — the move is the *only* one that holds, or it gives up
+       material. ``only_move_gap = sf_truth(played) − sf_truth(the best other
+       move) ≥ min_only_move_gap``, or ``sacrifice`` (material the mover is down
+       after the engine's reply, in pawns) ``≥ min_sacrifice``. The trap layer
+       only says the *most natural* move fails; in a drawn rook ending where
+       Maia puts 83% on a losing check, every other quiet rook move can hold
+       just as well, and finding "one of eight" is not brilliant. On the labeled
+       set every genuine brilliancy is either an only move (gap 0.09–0.43) or a
+       sacrifice (Marshall's Qg3, 54...Rxg4), while every false positive sits at
+       gap ≤ 0.03 with no sacrifice.
+
+    **Great** (``!``) is the tier below, for a Best/Excellent move that is not
+    Brilliant but still a real find. Either route earns it:
+
+    * *Hard find* — layers 1–3 pass but layer 4 does not: unintuitive, looks bad,
+      the natural move fails, yet another quiet move would also have held.
+    * *Critical find* — the move is only moderately expected
+      (``human_probability ≤ great_max_human_probability``), the move a human
+      would naturally play throws the position away (``trap_gap ≥
+      great_min_trap_gap``) and at most one other move comes close
+      (``two_move_gap = sf_truth(played) − sf_truth(the second-best other move) ≥
+      great_min_two_move_gap``). The mover must still be alive after it
+      (``sf_truth ≥ great_min_win``) and the game not already decided before it
+      (``sf_before ≤ great_max_win_before``). The trap comes first because it is
+      one single-line eval; only the few moves that fail it need the MultiPV-3
+      search. On 38 rated games (3416 plies) this grades about 0.6 moves a game.
+
     No Lc0: Maia3 is the human model (policy *and* value), Stockfish is the
     objective truth.
     """
@@ -58,6 +85,13 @@ class BrilliantConfig:
     max_human_probability: float = 0.10
     min_reveal_score: float = 0.30
     min_trap_gap: float = 0.05
+    min_only_move_gap: float = 0.05
+    min_sacrifice: int = 2
+    great_max_human_probability: float = 0.35
+    great_min_trap_gap: float = 0.10
+    great_min_two_move_gap: float = 0.10
+    great_min_win: float = 0.25
+    great_max_win_before: float = 0.97
 
 
 @dataclass(frozen=True)
@@ -69,6 +103,75 @@ class BrilliantResult:
     sf_before_wc: float
     reveal_score: float
     trap_gap: Optional[float] = None
+    only_move_gap: Optional[float] = None
+    sacrifice: int = 0
+    two_move_gap: Optional[float] = None
+    is_great: bool = False
+
+
+_PIECE_POINTS = {
+    chess.PAWN: 1,
+    chess.KNIGHT: 3,
+    chess.BISHOP: 3,
+    chess.ROOK: 5,
+    chess.QUEEN: 9,
+    chess.KING: 0,
+}
+
+
+def _material_for(board: chess.Board, color: chess.Color) -> int:
+    total = 0
+    for piece in board.piece_map().values():
+        value = _PIECE_POINTS[piece.piece_type]
+        total += value if piece.color == color else -value
+    return total
+
+
+def material_invested(fen_before: str, played_move_uci: str, reply_uci: Optional[str]) -> int:
+    """Material (pawns) the mover is down after the move AND the engine's reply,
+    relative to before it: Qxh7+ Kxh7 invests 8, an exchange sac 2, a trade 0.
+    0 when the move or reply can't be played (no reply line → nothing proven)."""
+    try:
+        board = chess.Board(fen_before)
+        mover = board.turn
+        before = _material_for(board, mover)
+        board.push(chess.Move.from_uci(played_move_uci))
+        if not reply_uci:
+            return 0
+        board.push(chess.Move.from_uci(reply_uci))
+    except Exception:
+        return 0
+    return max(0, before - _material_for(board, mover))
+
+
+def _signed(value: Optional[float]) -> str:
+    return "{0:+.2f}".format(value) if value is not None else "n/a"
+
+
+def apply_brilliant_result(move, result: Optional[BrilliantResult], comment: str) -> str:
+    """Upgrade ``move`` to Brilliant or Great per ``result`` and return the comment
+    with the evidence appended (unchanged when neither grade applies)."""
+    if result is None or not (result.is_brilliant or result.is_great):
+        return comment
+    grade = "brilliant" if result.is_brilliant else "great"
+    move.classification = (
+        MoveClassification.BRILLIANT if result.is_brilliant else MoveClassification.GREAT
+    )
+    return (
+        "{0} ({1}: only {2:.0%} of humans find it, Maia glance {3:.2f} vs truth {4:.2f}, "
+        "reveal {5:+.2f}, trap {6}, only-move gap {7}, two-move gap {8}, sacrifice {9})".format(
+            comment,
+            grade,
+            result.human_probability,
+            result.maia_glance_wc,
+            result.sf_truth_wc,
+            result.reveal_score,
+            _signed(result.trap_gap),
+            _signed(result.only_move_gap),
+            _signed(result.two_move_gap),
+            result.sacrifice,
+        )
+    )
 
 
 BRILLIANT_ELIGIBLE_CLASSIFICATIONS = frozenset(
@@ -151,11 +254,21 @@ class BrilliantAnalyzer:
         )
         reveal_score = sf_truth_wc - maia_glance_wc
 
+        unintuitive = human_probability <= effective.max_human_probability
+        revealed = reveal_score >= effective.min_reveal_score
+        # Great's second route ("critical find") needs a moderately unintuitive move in a
+        # live position; the searches below only run for moves that can still earn a grade.
+        great_candidate = (
+            human_probability <= effective.great_max_human_probability
+            and sf_truth_wc >= effective.great_min_win
+            and sf_before_wc <= effective.great_max_win_before
+        )
+
         # Prefer a client-precomputed trap_gap: the public browser flow runs no server
         # engine, so it computes trap_gap locally and supplies it via ReplayMaia. Fall
         # back to computing it here when an engine is wired (the local/script path).
         trap_gap = self._precomputed_trap_gap(fen_before, played_move_uci)
-        if trap_gap is None:
+        if trap_gap is None and ((unintuitive and revealed) or great_candidate):
             trap_gap = self._trap_gap(
                 fen_before=fen_before,
                 played_move_uci=played_move_uci,
@@ -163,13 +276,41 @@ class BrilliantAnalyzer:
                 sf_truth_wc=sf_truth_wc,
                 effective=effective,
             )
-
-        is_brilliant = (
-            human_probability <= effective.max_human_probability
-            and reveal_score >= effective.min_reveal_score
+        hard_find = (
+            unintuitive
+            and revealed
             and trap_gap is not None
             and trap_gap >= effective.min_trap_gap
         )
+
+        only_move_gap = self._precomputed_gap("precomputed_only_move_gap", fen_before, played_move_uci)
+        two_move_gap = self._precomputed_gap("precomputed_two_move_gap", fen_before, played_move_uci)
+        natural_fails = (
+            great_candidate
+            and trap_gap is not None
+            and trap_gap >= effective.great_min_trap_gap
+        )
+        if (only_move_gap is None or two_move_gap is None) and (hard_find or natural_fails):
+            engine_only, engine_two = self._alternative_gaps(
+                fen_before=fen_before,
+                played_move_uci=played_move_uci,
+                side_to_move=side_to_move,
+            )
+            only_move_gap = engine_only if only_move_gap is None else only_move_gap
+            two_move_gap = engine_two if two_move_gap is None else two_move_gap
+        reply = stockfish_eval_after.pv[0] if stockfish_eval_after.pv else None
+        sacrifice = material_invested(fen_before, played_move_uci, reply)
+        decisive = sacrifice >= effective.min_sacrifice or (
+            only_move_gap is not None and only_move_gap >= effective.min_only_move_gap
+        )
+
+        is_brilliant = hard_find and decisive
+        critical_find = (
+            natural_fails
+            and two_move_gap is not None
+            and two_move_gap >= effective.great_min_two_move_gap
+        )
+        is_great = not is_brilliant and (hard_find or critical_find)
 
         return BrilliantResult(
             is_brilliant=is_brilliant,
@@ -179,7 +320,57 @@ class BrilliantAnalyzer:
             sf_before_wc=sf_before_wc,
             reveal_score=reveal_score,
             trap_gap=trap_gap,
+            only_move_gap=only_move_gap,
+            sacrifice=sacrifice,
+            two_move_gap=two_move_gap,
+            is_great=is_great,
         )
+
+    def _precomputed_gap(
+        self, method: str, fen_before: str, played_move_uci: str
+    ) -> Optional[float]:
+        """A browser-computed gap the Maia adapter replays (ReplayMaia), or None."""
+        lookup = getattr(self.maia, method, None)
+        if not callable(lookup):
+            return None
+        try:
+            value = lookup(fen_before, played_move_uci)
+            return None if value is None else float(value)
+        except Exception:
+            return None
+
+    def _alternative_gaps(
+        self,
+        *,
+        fen_before: str,
+        played_move_uci: str,
+        side_to_move: Color,
+    ) -> Tuple[Optional[float], Optional[float]]:
+        """(only_move_gap, two_move_gap) from one MultiPV-3 search of the position
+        before the move: sf_truth(played) minus the best, and the second-best, OTHER
+        move. A gap is None without an engine, or when there are too few legal moves
+        to have that many alternatives."""
+        if self.engine is None:
+            return None, None
+        config = EngineAnalysisConfig(
+            depth=self.engine_config.depth,
+            nodes=self.engine_config.nodes,
+            time_ms=self.engine_config.time_ms,
+            multipv=3,
+        )
+        try:
+            with self._lock:
+                analysis = self.engine.analyze_position(fen_before, config)
+        except Exception:
+            return None, None
+        candidates = list(analysis.candidates or [])
+        played = next((c for c in candidates if c.move_uci == played_move_uci), None)
+        others = [c for c in candidates if c.move_uci != played_move_uci]
+        if played is None or not others:
+            return None, None
+        mine = win_chance_for_side(played.evaluation_after, side_to_move)
+        gaps = [mine - win_chance_for_side(c.evaluation_after, side_to_move) for c in others[:2]]
+        return gaps[0], (gaps[1] if len(gaps) > 1 else None)
 
     def _precomputed_trap_gap(
         self, fen_before: str, played_move_uci: str

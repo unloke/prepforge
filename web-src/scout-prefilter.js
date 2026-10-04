@@ -195,8 +195,14 @@ export function rankPrefilterCandidates(
     Object.entries(entry).filter(([key]) => key !== "line")), baselineScorePct } }));
   const rank = new Map(selectPreparationRoutes(gated.map(e => e.line), { limit: gated.length, baseline: baselineScorePct })
     .map((line, i) => [routeKey(line), i]));
-  gated.sort((a,b) => (rank.get(routeKey(a.line)) ?? Infinity) - (rank.get(routeKey(b.line)) ?? Infinity) ||
-    preparationValue(b.line,baselineScorePct).softValue - preparationValue(a.line,baselineScorePct).softValue || routeKey(a.line).localeCompare(routeKey(b.line)));
+  // Materialize pure sort inputs once per call; nothing survives receipt updates.
+  const ordered = gated.map(entry => {
+    const key = routeKey(entry.line);
+    return { entry, key, rank: rank.get(key) ?? Infinity,
+      soft: preparationValue(entry.line, baselineScorePct).softValue };
+  });
+  ordered.sort((a,b) => a.rank - b.rank || b.soft - a.soft || a.key.localeCompare(b.key));
+  for (let n = 0; n < ordered.length; n++) gated[n] = ordered[n].entry;
   funnel.survived = gated.length;
   if (funnelOut) Object.assign(funnelOut, funnel);
   return gated;
@@ -247,9 +253,14 @@ export function mergeGlobalPrefilterRanked(
     const lines = entries.filter(e => e.oppColor === color).map(e => e.line);
     for (const line of selectPreparationRoutes(lines, { baseline: baselineByColor[color] ?? 50, oppColor: color })) front.add(`${color}|${routeKey(line)}`);
   }
-  entries.sort((a,b) => Number(front.has(`${b.oppColor}|${routeKey(b.line)}`)) - Number(front.has(`${a.oppColor}|${routeKey(a.line)}`)) ||
-    preparationValue(b.line,baselineByColor[b.oppColor] ?? 50).value - preparationValue(a.line,baselineByColor[a.oppColor] ?? 50).value ||
-    a.oppColor.localeCompare(b.oppColor) || routeKey(a.line).localeCompare(routeKey(b.line)));
+  const ordered = entries.map(entry => {
+    const key = routeKey(entry.line);
+    return { entry, key, front: Number(front.has(`${entry.oppColor}|${key}`)),
+      value: preparationValue(entry.line, baselineByColor[entry.oppColor] ?? 50).value };
+  });
+  ordered.sort((a,b) => b.front - a.front || b.value - a.value ||
+    a.entry.oppColor.localeCompare(b.entry.oppColor) || a.key.localeCompare(b.key));
+  for (let n = 0; n < ordered.length; n++) entries[n] = ordered[n].entry;
   return entries.slice(0, poolSize);
 }
 

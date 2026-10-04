@@ -20,7 +20,7 @@ function sideOf(m) {
 }
 
 function tallySide(moves, side) {
-  const counts = { blunder: 0, mistake: 0, inaccuracy: 0, brilliant: 0 };
+  const counts = { blunder: 0, mistake: 0, inaccuracy: 0, brilliant: 0, great: 0 };
   for (const m of moves) {
     if (sideOf(m) !== side) continue;
     const cls = String(m.classification || "").toLowerCase();
@@ -34,6 +34,7 @@ function sideLine(label, counts) {
   const brill = counts.brilliant ? `${counts.brilliant} brilliant` : "";
   const parts = errs.length ? errs : ["no errors"];
   if (brill) parts.push(brill);
+  if (counts.great) parts.push(`${counts.great} great`);
   return `${label}: ${parts.join(", ")}.`;
 }
 

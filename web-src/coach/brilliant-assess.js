@@ -1,9 +1,16 @@
 import { localBoardAfterMove } from "../chess-local.js";
 import {
   moverWinChanceAfter,
+  materialInvested,
   BRILLIANT_MAX_HUMAN_PROB,
   BRILLIANT_MIN_WIN_GAP,
+  BRILLIANT_MIN_TRAP_GAP,
+  BRILLIANT_MIN_SACRIFICE,
   BRILLIANT_MAX_CANDIDATE_WIN_DELTA,
+  GREAT_MAX_HUMAN_PROB,
+  GREAT_MIN_TRAP_GAP,
+  GREAT_MIN_WIN,
+  GREAT_MAX_WIN_BEFORE,
 } from "./features.js";
 
 // Stockfish concurrency for the trap-line batch. This pass runs WHILE the ~1 GB Maia session is
@@ -12,6 +19,12 @@ import {
 // of de-duplicated candidate positions, so a small pool barely costs wall-clock while meaningfully
 // trimming that peak — capped here (game-analyzer still clamps to the position count).
 const TRAP_STOCKFISH_CONCURRENCY = 2;
+
+// The critical-find (Great) gap only has to tell "at most one other move comes close"
+// apart at a 10-point margin, which holds below the analysis depth, so it searches
+// shallower than the brilliancy candidates do.
+const CRITICAL_DEPTH_DROP = 4;
+const CRITICAL_MIN_DEPTH = 10;
 
 // Mover-POV win chance (0..1) from an analysis eval-map entry ({score_cp, mate_in},
 // White-POV), or null when that position wasn't evaluated.
@@ -52,14 +65,13 @@ function brilliantEligible(evalMap, move) {
 // recompute any of it, so a typo here silently ships no trap_gap). The heavy collaborators
 // (the Maia provider and the Stockfish batch analyzer) are injected so a test never spins up
 // a real engine:
-//   provider  — getSharedMaia3Provider(): .moveAssessment() / .predictions()
+//   provider  — getSharedMaia3Provider(): .batch("moveAssessmentMany") / .moveAssessment() / .predictions()
 //   analyzeFn — analyzeGamePositions() from engine/game-analyzer.js
-
-// Phase 3d: compute each played move's Maia3 assessment (humanProbability,
-// winChanceAfter) IN THE BROWSER so the server's BrilliantAnalyzer (via ReplayMaia) can
-// flag brilliancies with zero server compute. Best-effort: if Maia is unavailable (no
-// weights) or any inference fails, we return what we have (possibly []), and the analysis
-// still completes without brilliancies — exactly the server's no-Maia degradation.
+//
+// The per-move Maia3 assessment (humanProbability, winChanceAfter) is computed IN THE BROWSER
+// so the server's BrilliantAnalyzer (via ReplayMaia) can grade with zero server compute.
+// Best-effort: if Maia is unavailable (no weights) or any inference fails, the caller drops
+// the Maia signals and the analysis still completes — exactly the server's no-Maia path.
 //
 // `rating` is the player's effective Maia3 strength (Settings-pinned, else AUTO from the
 // linked Lichess account, else the model default) — the SAME effectiveMaiaRating() the live
@@ -67,41 +79,75 @@ function brilliantEligible(evalMap, move) {
 // and the read is personalized ("因材施教"). The server's ReplayMaia ignores its own rating and
 // trusts these numbers, so the client is the single source of truth for strength.
 //
-// Brilliant has three layers (services/brilliant.py / isBrilliantByMaia), and they get
+// Brilliant has four layers (services/brilliant.py / isBrilliantByMaia), and they get
 // steadily more expensive — so we check them CHEAPEST-FIRST and only ever pay for a layer
 // once everything cheaper has passed:
 //   0. Eligible (free): winDelta <= candidate cap — pure arithmetic over `evals`, no model
-//      call at all. A move that isn't Best/Excellent can't be brilliant, so this gate spares
-//      a Maia forward on the (many) clearly-suboptimal plies.
-//   1. Unintuitive (one Maia value forward, shared with the assessment): humanProbability
-//      <= the cap.
+//      call at all. A move that isn't Best/Excellent can't be graded, so this gate spares a
+//      Maia forward on the (many) clearly-suboptimal plies.
+//   1. Unintuitive (one batched Maia forward pair, shared with the assessment).
 //   2. Reveal (free, from the numbers already in hand): Stockfish's win% sits far above
 //      Maia's first-glance read.
-//   3. trap_gap (the costly one): sf_truth(played) − sf_truth(the move a human would
-//      NATURALLY play). The server can't compute it (no engine), so we do it here and ship
-//      it. It alone needs an extra Maia POLICY read AND an extra Stockfish eval, so it runs
-//      only for the handful of candidates that already cleared layers 0–2 — never on a move
-//      a free check already ruled out. (This ordering is the fix for the trap_gap layer
-//      slowing whole-game analysis: it used to fire on every UNINTUITIVE ply, blunders
-//      included.) `evals` is the analysis run's per-FEN eval map (so sf_truth(played) =
-//      eval of fen_after, reused, not recomputed).
+//   3. trap_gap: sf_truth(played) − sf_truth(the move a human would NATURALLY play). The
+//      natural move comes off the same policy forward as the assessment; its position needs
+//      one Stockfish eval (free when it is the played move, the engine's first choice, or a
+//      game position the main pass already searched).
+//   4. Decisive: an only move (only_move_gap) or a sacrifice (read off the reply line).
+//
+// Great (the tier under Brilliant) adds a critical find for moderately unintuitive moves in a
+// live position: the natural move fails by GREAT_MIN_TRAP_GAP and at most one other move comes
+// close (two_move_gap). It is checked as a two-stage funnel so it costs almost nothing: a
+// SHALLOW single-line eval of the natural move first (the screen), and the MultiPV-3 search
+// only for the few moves that survive it.
+//
+// The Maia pass streams: createBrilliantAssessor().push(fen, eval) takes each Stockfish
+// result as the main pass produces it, and a move is assessed as soon as both of its
+// positions are known — so Maia runs WHILE Stockfish does instead of after it. finish(evals)
+// drains the rest and runs the (small) trap / gap batches.
 //
 // We only ship assessments for eligible moves; the server consults assessments solely for
 // the Best/Excellent ones it classifies, so dropping the rest is both safe and faster.
 //
-// Optional phase instrumentation (onPhase): the Analyze pipeline passes a hook
-// recording per-phase detail — pgn/load, stockfish, maia-load, maia-inference,
-// maia-traps, classify-save, render — so a "classifying is slow" report can be
-// attributed to the real phase instead of the toast label. Each call is
-// `{ phase, detail }`; never throws (guarded internally).
-// Moves per batched Maia request in computeBrilliantAssessments.
+// Optional phase instrumentation (onPhase): `{ phase, detail }` per sub-phase, so a slow
+// analysis can be attributed to the real phase. Never throws (guarded internally).
+
+// Moves per batched Maia request.
 const ASSESS_CHUNK = 16;
 
-export async function computeBrilliantAssessments({ moves, evals, depth, rating, onProgress, onTrapProgress, shouldCancel, provider, analyzeFn, onPhase }) {
-  const assessments = [];
-  const candidates = []; // moves through layers 0–2 needing a trap_gap: { item, side, playedAfterFen }
-  const evalMap = evals && typeof evals.get === "function" ? evals : new Map();
+// The Great screen: a single-line eval of the natural move this far below the analysis depth.
+// It only has to tell a natural move that loses 10+ points from one that doesn't; the few that
+// pass are then searched properly (MultiPV-3, CRITICAL_DEPTH_DROP below the analysis depth).
+const SCREEN_DEPTH_DROP = 6;
+const SCREEN_MIN_DEPTH = 8;
+
+function cancelledError() {
+  const err = new Error("Analysis stopped");
+  err.cancelled = true;
+  return err;
+}
+
+export function createBrilliantAssessor({ moves, depth, rating, onProgress, onTrapProgress, shouldCancel, provider, analyzeFn, onPhase }) {
   const total = moves.length;
+  const evalMap = new Map();
+  const movesByFen = new Map(); // fen → indices of the moves it belongs to
+  moves.forEach((m, i) => {
+    for (const fen of [m && m.fen_before, m && m.fen_after]) {
+      if (fen) movesByFen.set(fen, [...(movesByFen.get(fen) || []), i]);
+    }
+  });
+  const state = new Array(total).fill(0); // 0 waiting · 1 queued for Maia · 2 done
+  const slots = new Array(total).fill(null); // the assessment item per move, in move order
+  const naturals = new Map(); // item → the natural (Maia top-policy) move, when the batch said
+  const queue = [];
+  let failure = null;
+  let streamFailed = false; // a chunk failed before finish(): retry it there, stop streaming
+  const retry = [];
+  let finishing = false;
+  let done = 0;
+  let assessed = 0;
+  let skippedIneligible = 0;
+  const batched = typeof provider.batch === "function";
+  const cancelled = () => !!(shouldCancel && shouldCancel());
   const phase = (name, detail) => {
     try {
       if (typeof onPhase === "function") onPhase({ phase: name, detail });
@@ -109,111 +155,189 @@ export async function computeBrilliantAssessments({ moves, evals, depth, rating,
       /* instrumentation only */
     }
   };
-  const cancelledError = () => {
-    const err = new Error("Analysis stopped");
-    err.cancelled = true;
-    return err;
+  const progress = () => {
+    if (finishing && onProgress) onProgress(done, total);
   };
-  let assessed = 0;
-  let skippedIneligible = 0;
-  phase("maia-inference-start", { total });
-  // Eligible moves are assessed in chunks: a provider with batch() answers a
-  // chunk with two batched forwards (measured ~1.5x faster than one forward pair per move
-  // on WASM); otherwise each move is its own request, as before.
-  const batched = typeof provider.batch === "function";
-  for (let start = 0; start < total; start += ASSESS_CHUNK) {
-    // Before kicking off each chunk. The FIRST chunk also drives the model download +
-    // session init, so this is the pre-init checkpoint too.
-    if (shouldCancel && shouldCancel()) throw cancelledError();
-    const chunk = moves.slice(start, start + ASSESS_CHUNK);
-    const eligible = chunk.map((m) => !!(m && m.fen_before && m.uci && brilliantEligible(evalMap, m)));
-    let answers = null;
-    if (batched && eligible.some(Boolean)) {
-      const asked = chunk.filter((_, k) => eligible[k]);
-      const reads = await provider.batch("moveAssessmentMany", { items: asked.map((m) => ({ fen: m.fen_before, moveUci: m.uci })), rating });
-      // The await can span the model download/init/inference: honour a Stop that arrived.
-      if (shouldCancel && shouldCancel()) throw cancelledError();
-      answers = new Map(asked.map((m, k) => [m, reads ? reads[k] : null]));
-    }
-    for (let k = 0; k < chunk.length; k++) {
-      const i = start + k;
-      const m = chunk[k];
-      if (eligible[k]) {
-        let a;
-        if (answers) {
-          a = answers.get(m);
-        } else {
-          if (shouldCancel && shouldCancel()) throw cancelledError();
-          a = await provider.moveAssessment({ fen: m.fen_before, moveUci: m.uci, rating });
-          // The await above can span a long download/init/inference; honour a Stop that
-          // arrived during it so we neither record this result nor proceed to the next move.
-          if (shouldCancel && shouldCancel()) throw cancelledError();
-        }
-        assessed += 1;
-        if (a && Number.isFinite(a.humanProbability) && Number.isFinite(a.winChanceAfter)) {
-          const item = {
-            fen: m.fen_before,
-            uci: m.uci,
-            human_probability: a.humanProbability,
-            win_chance_after: a.winChanceAfter,
-          };
-          assessments.push(item);
-          // Layers 1 & 2, both free now that we hold the assessment: unintuitive AND reveal.
-          // Only a move clearing both earns the costly trap_gap layer below.
-          const unintuitive = a.humanProbability <= BRILLIANT_MAX_HUMAN_PROB;
-          const engineWin = moverWinChanceFromEval(evalMap.get(m.fen_after), m.side) * 100;
-          const revealClears = engineWin - a.winChanceAfter * 100 >= BRILLIANT_MIN_WIN_GAP;
-          if (unintuitive && revealClears) {
-            candidates.push({ item, side: m.side, playedAfterFen: m.fen_after });
-          }
-        }
-      } else {
-        skippedIneligible += 1;
-      }
-      if (onProgress) onProgress(i + 1, total);
-    }
-  }
-  phase("maia-inference-done", { assessed, skippedIneligible, total });
 
-  // Second pass: attach trap_gap to the unintuitive candidates (in place, on their items).
-  // A failure HERE must not discard the first-pass assessments we already computed for the
-  // whole game: a candidate that ends up with no trap_gap simply fails closed on the server
-  // (its trap layer is un-judgeable, so it won't be flagged), which is the correct local
-  // degradation — losing every move's assessment over one batched-Stockfish hiccup is not. A
-  // cancel still propagates, so a Stop can't be swallowed into a "finished" analysis.
-  if (candidates.length) {
-    try {
-      await attachClientTrapGaps({
-        candidates,
-        evals: evals || new Map(),
-        depth,
+  function settle(i) {
+    state[i] = 2;
+    done += 1;
+    progress();
+  }
+
+  // Decide a move once both of its positions are evaluated: ineligible ones are settled for
+  // free, eligible ones join the Maia queue.
+  function consider(i) {
+    if (state[i] !== 0) return;
+    const m = moves[i];
+    if (!m || !m.fen_before || !m.uci) {
+      skippedIneligible += 1;
+      settle(i);
+      return;
+    }
+    if (!evalMap.has(m.fen_before) || !evalMap.has(m.fen_after)) {
+      if (!finishing) return; // wait for the other position
+      skippedIneligible += 1; // never evaluated → can't be graded
+      settle(i);
+      return;
+    }
+    if (!brilliantEligible(evalMap, m)) {
+      skippedIneligible += 1;
+      settle(i);
+      return;
+    }
+    state[i] = 1;
+    queue.push(i);
+  }
+
+  function record(i, a) {
+    const m = moves[i];
+    assessed += 1;
+    if (a && Number.isFinite(a.humanProbability) && Number.isFinite(a.winChanceAfter)) {
+      const item = { fen: m.fen_before, uci: m.uci, human_probability: a.humanProbability, win_chance_after: a.winChanceAfter };
+      if (typeof a.naturalUci === "string") naturals.set(item, a.naturalUci);
+      slots[i] = item;
+    }
+    settle(i);
+  }
+
+  async function runChunk(indices) {
+    if (cancelled()) throw cancelledError();
+    if (batched) {
+      const reads = await provider.batch("moveAssessmentMany", {
+        items: indices.map((i) => ({ fen: moves[i].fen_before, moveUci: moves[i].uci })),
         rating,
-        provider,
-        analyzeFn,
-        onProgress: onTrapProgress,
-        shouldCancel,
-        cancelledError,
-        onPhase: (evt) => phase(evt?.phase || "maia-traps", evt?.detail),
       });
-    } catch (err) {
-      if (err && err.cancelled) throw err;
-      // Non-cancel trap failure: keep the assessments already in hand; affected candidates
-      // just ship without a trap_gap.
+      // The await can span the model download/init/inference: honour a Stop that arrived.
+      if (cancelled()) throw cancelledError();
+      indices.forEach((i, k) => record(i, reads ? reads[k] : null));
+      return;
+    }
+    for (const i of indices) {
+      if (cancelled()) throw cancelledError();
+      const a = await provider.moveAssessment({ fen: moves[i].fen_before, moveUci: moves[i].uci, rating });
+      if (cancelled()) throw cancelledError();
+      record(i, a);
     }
   }
-  return assessments;
+
+  // While Stockfish runs, Maia takes a full chunk at a time whenever it is free. (Smaller,
+  // eager chunks measured no faster: they only take more CPU from the Stockfish workers.)
+  // A chunk that fails here (say Maia's init failed) is retried once in finish(), the way the
+  // pass used to retry init when it ran after Stockfish; a Stop is kept and surfaced there.
+  let busy = null;
+  function pump() {
+    if (busy || finishing || streamFailed || failure || queue.length < ASSESS_CHUNK) return;
+    const indices = queue.splice(0, ASSESS_CHUNK);
+    busy = runChunk(indices)
+      .catch((err) => {
+        if (err && err.cancelled) failure = failure || err;
+        else {
+          streamFailed = true;
+          retry.push(...indices);
+        }
+      })
+      .finally(() => {
+        busy = null;
+        pump();
+      });
+  }
+
+  return {
+    // One main-pass result. Safe to call any number of times, in any order.
+    push(fen, ev) {
+      if (finishing || streamFailed || failure || !ev || !movesByFen.has(fen)) return;
+      evalMap.set(fen, ev);
+      for (const i of movesByFen.get(fen)) consider(i);
+      pump();
+    },
+
+    // The complete eval map: assess whatever is left, then run the trap / gap batches.
+    async finish(evals) {
+      finishing = true;
+      if (evals && typeof evals.forEach === "function") evals.forEach((ev, fen) => evalMap.set(fen, ev));
+      phase("maia-inference-start", { total, streamed: done });
+      if (done) progress();
+      while (busy) await busy; // let the streamed chunk settle first
+      if (failure) throw failure;
+      queue.unshift(...retry.splice(0));
+      for (let i = 0; i < total; i++) consider(i);
+      // Before draining: the first chunk can also drive the model download + session init.
+      if (cancelled()) throw cancelledError();
+      while (queue.length) await runChunk(queue.splice(0, ASSESS_CHUNK));
+      phase("maia-inference-done", { assessed, skippedIneligible, total });
+
+      const assessments = slots.filter(Boolean);
+      const candidates = []; // layers 0–2 passed: need a full-depth trap_gap
+      const screens = []; // Great critical-find candidates: need the shallow screen
+      moves.forEach((m, i) => {
+        const item = slots[i];
+        if (!item) return;
+        const engineWin = moverWinChanceFromEval(evalMap.get(m.fen_after), m.side) * 100;
+        const winBefore = moverWinChanceFromEval(evalMap.get(m.fen_before), m.side) * 100;
+        const greatLive = item.human_probability <= GREAT_MAX_HUMAN_PROB && engineWin >= GREAT_MIN_WIN && winBefore <= GREAT_MAX_WIN_BEFORE;
+        const cand = { item, side: m.side, playedAfterFen: m.fen_after, naturalUci: naturals.get(item), greatLive };
+        if (item.human_probability <= BRILLIANT_MAX_HUMAN_PROB && engineWin - item.win_chance_after * 100 >= BRILLIANT_MIN_WIN_GAP) {
+          candidates.push(cand);
+        } else if (greatLive) {
+          screens.push(cand);
+        }
+      });
+
+      // A failure HERE must not discard the assessments already computed for the whole game:
+      // a move left without a trap_gap / gap simply fails closed on the server. A cancel still
+      // propagates, so a Stop can't be swallowed into a "finished" analysis.
+      if (candidates.length || screens.length) {
+        try {
+          await attachClientTrapGaps({
+            candidates,
+            screens,
+            evals: evalMap,
+            depth,
+            rating,
+            provider,
+            analyzeFn,
+            onProgress: onTrapProgress,
+            shouldCancel,
+            cancelledError,
+            onPhase: (evt) => phase(evt?.phase || "maia-traps", evt?.detail),
+          });
+          await attachAlternativeGaps({
+            candidates,
+            // Only the moves whose natural alternative failed earn the MultiPV-3 search.
+            critical: [...candidates, ...screens].filter((c) => c.greatLive && c.item.trap_gap >= GREAT_MIN_TRAP_GAP),
+            evals: evalMap,
+            depth,
+            analyzeFn,
+            shouldCancel,
+            cancelledError,
+            onPhase: (evt) => phase(evt?.phase || "maia-only-move", evt?.detail),
+          });
+        } catch (err) {
+          if (err && err.cancelled) throw err;
+        }
+      }
+      return assessments;
+    },
+  };
 }
 
-// For each candidate (a move that already cleared the eligible + unintuitive + reveal layers
-// in computeBrilliantAssessments), ask Maia for the move a human would naturally play, then
-// run Stockfish once on the position it leads to; trap_gap = sf_truth(played) − sf_truth(that
-// natural move), mover POV (0..1). The natural-move positions are de-duplicated and evaluated
-// in ONE Stockfish batch (analyzeFn), so even several candidates cost a small, shared pool
-// rather than a provider each. A candidate whose trap can't be evaluated (no policy / illegal
-// natural move / missing eval) is left with no trap_gap — the server then can't judge its
-// trap layer and won't flag it (fail closed). A natural move equal to the played one is a
-// real 0 (no trap), shipped as such.
-export async function attachClientTrapGaps({ candidates, evals, depth, rating, provider, analyzeFn, onProgress, shouldCancel, cancelledError, onPhase }) {
+// The whole Maia pass over a finished eval map (no streaming).
+export async function computeBrilliantAssessments({ evals, ...options }) {
+  return createBrilliantAssessor(options).finish(evals || new Map());
+}
+
+// trap_gap = sf_truth(played) − sf_truth(the move a human would naturally play), mover POV
+// (0..1), for each Brilliant candidate (searched at the analysis depth) and each Great screen
+// (searched SCREEN_DEPTH_DROP shallower — it only has to spot a natural move that loses 10+
+// points). The natural move is the one the assessment batch already read off Maia's policy;
+// only a candidate without it asks Maia again. Its value costs no search when it is the
+// played move (a real 0), the engine's first choice (the pre-move eval), or a position the
+// main pass already searched; the rest are de-duplicated into one Stockfish batch per depth.
+// A candidate whose trap can't be evaluated (no policy / illegal natural move / missing
+// eval) is left with no trap_gap — the server then can't judge its trap layer and won't
+// flag it (fail closed).
+export async function attachClientTrapGaps({ candidates, screens = [], evals, depth, rating, provider, analyzeFn, onProgress, shouldCancel, cancelledError, onPhase }) {
   const emit = (name, detail) => {
     try {
       if (typeof onPhase === "function") onPhase({ phase: name, detail });
@@ -221,28 +345,33 @@ export async function attachClientTrapGaps({ candidates, evals, depth, rating, p
       /* instrumentation only */
     }
   };
-  const plan = []; // { cand, humanFen?, sameAsPlayed? }
-  const humanFens = [];
-  const seen = new Set();
+  const plan = []; // { cand, known? (an eval in hand), humanFen? }
+  const deepFens = new Set();
+  const screenFens = new Set();
   let policyCalls = 0;
-  emit("maia-traps-policy-start", { candidates: candidates.length });
-  for (const cand of candidates) {
+  emit("maia-traps-policy-start", { candidates: candidates.length, screens: screens.length });
+  const work = [...candidates.map((cand) => [cand, true]), ...screens.map((cand) => [cand, false])];
+  for (const [cand, deep] of work) {
     if (shouldCancel && shouldCancel()) throw cancelledError();
-    let naturalUci = null;
-    try {
-      policyCalls += 1;
-      const preds = await provider.predictions({ fen: cand.item.fen, rating });
-      naturalUci = preds && preds.length ? preds[0].move_uci : null;
-    } catch (_) {
-      naturalUci = null;
+    let naturalUci = typeof cand.naturalUci === "string" ? cand.naturalUci : null;
+    if (cand.naturalUci === undefined) {
+      try {
+        policyCalls += 1;
+        const preds = await provider.predictions({ fen: cand.item.fen, rating });
+        naturalUci = preds && preds.length ? preds[0].move_uci : null;
+      } catch (_) {
+        naturalUci = null;
+      }
+      if (shouldCancel && shouldCancel()) throw cancelledError();
     }
-    if (shouldCancel && shouldCancel()) throw cancelledError();
-    if (!naturalUci) {
-      plan.push({ cand, naturalUci: null }); // no policy → trap un-evaluable
+    if (!naturalUci) continue; // no policy → trap un-evaluable
+    if (naturalUci.toLowerCase() === String(cand.item.uci).toLowerCase()) {
+      cand.item.trap_gap = 0; // the natural move IS the played one: no trap
       continue;
     }
-    if (naturalUci.toLowerCase() === String(cand.item.uci).toLowerCase()) {
-      plan.push({ cand, sameAsPlayed: true, naturalUci });
+    const before = evals.get(cand.item.fen);
+    if (before && before.best_move_uci === naturalUci) {
+      plan.push({ cand, known: before });
       continue;
     }
     let humanFen = null;
@@ -251,58 +380,98 @@ export async function attachClientTrapGaps({ candidates, evals, depth, rating, p
     } catch (_) {
       humanFen = null;
     }
-    // A natural-move position the main pass already searched (it can coincide with a
-    // game position) reuses that eval instead of being searched again.
-    if (humanFen && !seen.has(humanFen) && !evals.has(humanFen)) {
-      seen.add(humanFen);
-      humanFens.push(humanFen);
-    }
-    plan.push({ cand, humanFen, naturalUci });
+    if (!humanFen) continue;
+    if (!evals.has(humanFen)) (deep ? deepFens : screenFens).add(humanFen);
+    plan.push({ cand, humanFen });
   }
+  for (const fen of deepFens) screenFens.delete(fen);
 
-  let humanEvals = new Map();
-  emit("maia-traps-policy-done", { policyCalls, distinctFens: humanFens.length });
-  if (humanFens.length) {
-    // ONE Stockfish batch over the de-duplicated natural-move positions (not
-    // one search per candidate): the batch shares the pool with the resident
-    // Maia session, so fan-out stays capped (TRAP_STOCKFISH_CONCURRENCY).
-    emit("maia-traps-stockfish-start", { positions: humanFens.length });
-    humanEvals = await analyzeFn({
-      positions: humanFens,
-      depth,
+  const searched = new Map();
+  emit("maia-traps-policy-done", { policyCalls, deep: deepFens.size, screen: screenFens.size });
+  const run = async (fens, searchDepth) => {
+    if (!fens.size) return;
+    if (shouldCancel && shouldCancel()) throw cancelledError();
+    emit("maia-traps-stockfish-start", { positions: fens.size, depth: searchDepth });
+    const reads = await analyzeFn({
+      positions: [...fens],
+      depth: searchDepth,
       multipv: 1,
       // Keep the trap pool small: it runs alongside the resident Maia session, so a big
       // Stockfish fan-out here is the main avoidable contributor to the memory peak.
       concurrency: TRAP_STOCKFISH_CONCURRENCY,
-      // Surface the trap-line Stockfish batch as its own progress (the toast's "traps" phase),
-      // so a game with brilliancy candidates doesn't look frozen while this batch runs.
+      // Surface the trap-line batch as its own progress (the toast's "traps" phase), so a
+      // game with candidates doesn't look frozen while it runs.
       onProgress,
       shouldCancel,
     });
-    emit("maia-traps-stockfish-done", { positions: humanFens.length });
-  }
+    reads.forEach((ev, fen) => searched.set(fen, ev));
+  };
+  await run(deepFens, depth);
+  await run(screenFens, Math.max(SCREEN_MIN_DEPTH, (Number(depth) || SCREEN_MIN_DEPTH) - SCREEN_DEPTH_DROP));
+  emit("maia-traps-stockfish-done", { positions: deepFens.size + screenFens.size });
 
   for (const p of plan) {
-    if (p.sameAsPlayed) {
-      p.cand.item.trap_gap = 0;
-      continue;
-    }
-    if (!p.humanFen) {
-      continue; // un-evaluable → leave trap_gap absent
-    }
     const playedEval = evals.get(p.cand.playedAfterFen);
-    const humanEval = humanEvals.get(p.humanFen) || evals.get(p.humanFen);
-    if (!playedEval || !humanEval) {
-      continue; // a missing eval → trap layer un-evaluable, leave trap_gap absent
-    }
-    const playedWc = moverWinChanceAfter(
-      { cp: playedEval.score_cp ?? null, mate: playedEval.mate_in ?? null },
-      p.cand.side,
-    );
-    const humanWc = moverWinChanceAfter(
-      { cp: humanEval.score_cp ?? null, mate: humanEval.mate_in ?? null },
-      p.cand.side,
-    );
+    const humanEval = p.known || searched.get(p.humanFen) || evals.get(p.humanFen);
+    if (!playedEval || !humanEval) continue; // a missing eval → trap layer un-evaluable
+    const playedWc = moverWinChanceAfter({ cp: playedEval.score_cp ?? null, mate: playedEval.mate_in ?? null }, p.cand.side);
+    const humanWc = moverWinChanceAfter({ cp: humanEval.score_cp ?? null, mate: humanEval.mate_in ?? null }, p.cand.side);
     p.cand.item.trap_gap = playedWc - humanWc;
   }
+}
+
+// only_move_gap / two_move_gap = sf_truth(played) − sf_truth(the best / second-best OTHER
+// move), mover POV (0..1), from MultiPV-3 reads of the position before the move.
+//   • Brilliant layer 4 (candidates the trap layer kept) needs only_move_gap. A move that
+//     isn't Stockfish's first choice is measured against that first choice for free; a
+//     sacrifice passes layer 4 on its own. The rest are searched at the analysis depth.
+//   • Great's critical find (critical: moves whose natural alternative already failed the
+//     screen) needs two_move_gap, searched CRITICAL_DEPTH_DROP shallower in its own batch.
+// Every position is searched once; a gap that can't be read is left absent (fail closed).
+export async function attachAlternativeGaps({ candidates, critical = [], evals, depth, analyzeFn, shouldCancel, cancelledError, onPhase }) {
+  const wc = (ev, side) => moverWinChanceAfter({ cp: ev.score_cp ?? null, mate: ev.mate_in ?? null }, side);
+  const deep = new Map(); // fen → [cand]
+  const shallow = new Map();
+  const queue = (map, cand) => map.set(cand.item.fen, [...(map.get(cand.item.fen) || []), cand]);
+  for (const cand of candidates) {
+    const { item, side, playedAfterFen } = cand;
+    if (!(item.trap_gap >= BRILLIANT_MIN_TRAP_GAP)) continue;
+    const before = evals.get(item.fen);
+    const played = evals.get(playedAfterFen);
+    if (!before || !played) continue;
+    if (materialInvested(item.fen, item.uci, (played.pv || [])[0]) >= BRILLIANT_MIN_SACRIFICE) continue;
+    if (before.best_move_uci && before.best_move_uci !== item.uci) {
+      item.only_move_gap = wc(played, side) - wc(before, side);
+      continue;
+    }
+    queue(deep, cand);
+  }
+  for (const cand of critical) {
+    if (!(cand.item.trap_gap >= GREAT_MIN_TRAP_GAP) || !evals.get(cand.playedAfterFen)) continue;
+    if (deep.has(cand.item.fen)) queue(deep, cand);
+    else queue(shallow, cand);
+  }
+  const apply = (reads, groups) => {
+    for (const [fen, cands] of groups) {
+      const read = reads.get(fen);
+      if (!read || !read.second) continue;
+      const lines = [{ move_uci: read.best_move_uci, score_cp: read.score_cp, mate_in: read.mate_in }, read.second, read.third].filter(Boolean);
+      for (const { item, side, playedAfterFen } of cands) {
+        const mine = lines.find((l) => l.move_uci === item.uci);
+        const others = lines.filter((l) => l.move_uci !== item.uci);
+        const playedWc = mine ? wc(mine, side) : wc(evals.get(playedAfterFen), side);
+        if (others[0]) item.only_move_gap = playedWc - wc(others[0], side);
+        if (others[1]) item.two_move_gap = playedWc - wc(others[1], side);
+      }
+    }
+  };
+  const run = async (groups, searchDepth, phase) => {
+    if (!groups.size) return;
+    if (shouldCancel && shouldCancel()) throw cancelledError();
+    if (typeof onPhase === "function") onPhase({ phase, detail: { positions: groups.size } });
+    const reads = await analyzeFn({ positions: [...groups.keys()], depth: searchDepth, multipv: 3, concurrency: TRAP_STOCKFISH_CONCURRENCY, shouldCancel });
+    apply(reads, groups);
+  };
+  await run(deep, depth, "maia-only-move-start");
+  await run(shallow, Math.max(CRITICAL_MIN_DEPTH, (Number(depth) || CRITICAL_MIN_DEPTH) - CRITICAL_DEPTH_DROP), "maia-critical-start");
 }

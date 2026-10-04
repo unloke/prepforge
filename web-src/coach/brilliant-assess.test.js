@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { computeBrilliantAssessments, attachClientTrapGaps } from "./brilliant-assess.js";
+import { computeBrilliantAssessments, createBrilliantAssessor, attachClientTrapGaps, attachAlternativeGaps } from "./brilliant-assess.js";
 import { moverWinChanceAfter } from "./features.js";
 import { localBoardAfterMove } from "../chess-local.js";
 
@@ -331,8 +331,9 @@ describe("computeBrilliantAssessments (first + second pass together)", () => {
     expect(assessCalls).toBe(1);
   });
 
-  it("records the assessment but SKIPS trap_gap when the reveal gap is too small (the costly layer is gated)", async () => {
+  it("gives a move without a reveal only the shallow Great screen, not the full-depth trap search", async () => {
     let predictionCalls = 0;
+    const depths = [];
     const provider = {
       moveAssessment: async () => ({ humanProbability: 0.02, winChanceAfter: 0.62 }), // unintuitive, but...
       predictions: async () => {
@@ -342,17 +343,22 @@ describe("computeBrilliantAssessments (first + second pass together)", () => {
     };
     const out = await computeBrilliantAssessments({
       moves,
-      // engineWin ≈ 67.6 (cp 200) vs Maia 62 → reveal ≈ 5.6 < 30, so trap_gap must not run
+      // engineWin ≈ 67.6 (cp 200) vs Maia 62 → reveal ≈ 5.6 < 30: no Brilliant trap search
       evals: ELIGIBLE_REVEALING_EVALS,
-      depth: 12,
+      depth: 16,
       rating: 1500,
       provider,
-      analyzeFn: fakeAnalyzeFn({ [AFTER_D4]: -100 }),
+      analyzeFn: async (o) => {
+        depths.push(o.depth);
+        return fakeAnalyzeFn({ [AFTER_D4]: 150 })(o);
+      },
       shouldCancel: () => false,
     });
     expect(out).toHaveLength(1);
-    expect("trap_gap" in out[0]).toBe(false);
-    expect(predictionCalls).toBe(0); // reveal gate ran before the policy read
+    expect(predictionCalls).toBe(1);
+    expect(depths).toEqual([10]); // the screen only; the natural move held, so no MultiPV search
+    expect(out[0].trap_gap).toBeLessThan(0.1);
+    expect("two_move_gap" in out[0]).toBe(false);
   });
 
   it("skips a move whose assessment is non-finite (Maia inference failed)", async () => {
@@ -468,5 +474,236 @@ describe("computeBrilliantAssessments batching", () => {
       moves: many, evals, depth: 12, rating: 1500, provider,
       analyzeFn: fakeAnalyzeFn({}), shouldCancel: () => stop,
     })).rejects.toMatchObject({ cancelled: true });
+  });
+});
+
+describe("attachAlternativeGaps", () => {
+  const wc = (cp) => moverWinChanceAfter({ cp, mate: null }, "white");
+  const base = { depth: 16, shouldCancel: () => false, cancelledError };
+
+  it("measures the engine's first choice against its second line from one MultiPV-3 batch", async () => {
+    const cand = brilliantCandidate({ item: { fen: START_FEN, uci: "e2e4", trap_gap: 0.2 } });
+    const calls = [];
+    await attachAlternativeGaps({
+      ...base,
+      candidates: [cand],
+      evals: new Map([
+        [START_FEN, { score_cp: 30, mate_in: null, best_move_uci: "e2e4" }],
+        [AFTER_E4, { score_cp: 30, mate_in: null, pv: ["e7e5"] }],
+      ]),
+      analyzeFn: async (o) => {
+        calls.push(o);
+        return new Map([[START_FEN, { score_cp: 30, mate_in: null, best_move_uci: "e2e4", second: { move_uci: "d2d4", score_cp: -200, mate_in: null } }]]);
+      },
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0].multipv).toBe(3);
+    expect(calls[0].depth).toBe(16);
+    expect(cand.item.only_move_gap).toBeCloseTo(wc(30) - wc(-200), 10);
+  });
+
+  it("measures a move that isn't the first choice against that choice, with no search", async () => {
+    const cand = brilliantCandidate({ item: { fen: START_FEN, uci: "e2e4", trap_gap: 0.2 } });
+    await attachAlternativeGaps({
+      ...base,
+      candidates: [cand],
+      evals: new Map([
+        [START_FEN, { score_cp: 40, mate_in: null, best_move_uci: "d2d4" }],
+        [AFTER_E4, { score_cp: 30, mate_in: null, pv: ["e7e5"] }],
+      ]),
+      analyzeFn: async () => { throw new Error("no search expected"); },
+    });
+    expect(cand.item.only_move_gap).toBeCloseTo(wc(30) - wc(40), 10);
+  });
+
+  it("skips candidates the trap layer already rejected", async () => {
+    const cand = brilliantCandidate({ item: { fen: START_FEN, uci: "e2e4", trap_gap: 0.01 } });
+    await attachAlternativeGaps({
+      ...base,
+      candidates: [cand],
+      evals: new Map([[START_FEN, { score_cp: 30, best_move_uci: "e2e4" }], [AFTER_E4, { score_cp: 30 }]]),
+      analyzeFn: async () => { throw new Error("no search expected"); },
+    });
+    expect(cand.item.only_move_gap).toBeUndefined();
+  });
+  it("reads two_move_gap for a critical-find candidate from a shallower batch", async () => {
+    const cand = brilliantCandidate({ item: { fen: START_FEN, uci: "e2e4", trap_gap: 0.2 } });
+    const calls = [];
+    await attachAlternativeGaps({
+      ...base,
+      candidates: [],
+      critical: [cand],
+      evals: new Map([
+        [START_FEN, { score_cp: 30, mate_in: null, best_move_uci: "e2e4" }],
+        [AFTER_E4, { score_cp: 30, mate_in: null, pv: ["e7e5"] }],
+      ]),
+      analyzeFn: async (o) => {
+        calls.push(o);
+        return new Map([[START_FEN, {
+          score_cp: 30, mate_in: null, best_move_uci: "e2e4",
+          second: { move_uci: "d2d4", score_cp: 10, mate_in: null },
+          third: { move_uci: "g1f3", score_cp: -250, mate_in: null },
+        }]]);
+      },
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ multipv: 3, depth: 12 });
+    expect(cand.item.only_move_gap).toBeCloseTo(wc(30) - wc(10), 10);
+    expect(cand.item.two_move_gap).toBeCloseTo(wc(30) - wc(-250), 10);
+  });
+
+  it("searches a position once when it is both a brilliancy and a critical candidate", async () => {
+    const item = { fen: START_FEN, uci: "e2e4", trap_gap: 0.2 };
+    const cand = brilliantCandidate({ item });
+    const calls = [];
+    await attachAlternativeGaps({
+      ...base,
+      candidates: [cand],
+      critical: [brilliantCandidate({ item })],
+      evals: new Map([
+        [START_FEN, { score_cp: 30, mate_in: null, best_move_uci: "e2e4" }],
+        [AFTER_E4, { score_cp: 30, mate_in: null, pv: ["e7e5"] }],
+      ]),
+      analyzeFn: async (o) => {
+        calls.push(o);
+        return new Map([[START_FEN, { score_cp: 30, mate_in: null, best_move_uci: "e2e4", second: { move_uci: "d2d4", score_cp: -200, mate_in: null } }]]);
+      },
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0].depth).toBe(16);
+    expect(item.two_move_gap).toBeUndefined();
+  });
+});
+
+describe("createBrilliantAssessor (Maia streams alongside Stockfish)", () => {
+  const many = Array.from({ length: 20 }, (_, i) => ({
+    ply: i + 1, side: "white", uci: "e2e4", fen_before: `${START_FEN}#${i}`, fen_after: `${AFTER_E4}#${i}`,
+  }));
+  const evalsOf = (moves) => new Map(moves.flatMap((m) => [
+    [m.fen_before, { score_cp: 20, mate_in: null, best_move_uci: "e2e4" }],
+    [m.fen_after, { score_cp: 20, mate_in: null }],
+  ]));
+  const batchingProvider = (log, { failFirst = false } = {}) => ({
+    batch: async (type, { items }) => {
+      log.push(items.length);
+      if (failFirst && log.length === 1) throw new Error("Maia init failed");
+      return items.map(() => ({ humanProbability: 0.5, winChanceAfter: 0.5, naturalUci: "e2e4" }));
+    },
+    predictions: async () => { throw new Error("the batch already named the natural move"); },
+  });
+
+  it("assesses moves while the main pass is still running, and finish() only drains the rest", async () => {
+    const calls = [];
+    const a = createBrilliantAssessor({
+      moves: many, depth: 16, rating: 1500, provider: batchingProvider(calls),
+      analyzeFn: fakeAnalyzeFn({}), shouldCancel: () => false,
+    });
+    const evals = evalsOf(many);
+    // Stockfish finishes the first 16 moves' positions…
+    for (const m of many.slice(0, 16)) {
+      a.push(m.fen_before, evals.get(m.fen_before));
+      a.push(m.fen_after, evals.get(m.fen_after));
+    }
+    await new Promise((r) => setTimeout(r, 0));
+    expect(calls).toEqual([16]); // …and Maia has already answered them
+    const out = await a.finish(evals);
+    expect(calls).toEqual([16, 4]);
+    expect(out.map((x) => x.fen)).toEqual(many.map((m) => m.fen_before));
+  });
+
+  it("waits for both positions of a move before deciding it", async () => {
+    const calls = [];
+    const a = createBrilliantAssessor({
+      moves: many.slice(0, 1), depth: 16, rating: 1500, provider: batchingProvider(calls),
+      analyzeFn: fakeAnalyzeFn({}), shouldCancel: () => false,
+    });
+    const evals = evalsOf(many.slice(0, 1));
+    a.push(many[0].fen_before, evals.get(many[0].fen_before));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(calls).toEqual([]);
+    expect(await a.finish(evals)).toHaveLength(1);
+  });
+
+  it("retries a chunk that failed mid-stream (e.g. Maia's init) when the pass finishes", async () => {
+    const calls = [];
+    const a = createBrilliantAssessor({
+      moves: many, depth: 16, rating: 1500, provider: batchingProvider(calls, { failFirst: true }),
+      analyzeFn: fakeAnalyzeFn({}), shouldCancel: () => false,
+    });
+    const evals = evalsOf(many);
+    for (const [fen, ev] of evals) a.push(fen, ev);
+    const out = await a.finish(evals);
+    expect(out).toHaveLength(20);
+    expect(calls).toEqual([16, 16, 4]); // the failed chunk goes again with the rest
+  });
+
+  it("surfaces a Stop that arrived while streaming", async () => {
+    let stop = false;
+    const a = createBrilliantAssessor({
+      moves: many, depth: 16, rating: 1500,
+      provider: { batch: async (type, { items }) => { stop = true; return items.map(() => ({ humanProbability: 0.5, winChanceAfter: 0.5 })); } },
+      analyzeFn: fakeAnalyzeFn({}), shouldCancel: () => stop,
+    });
+    const evals = evalsOf(many);
+    for (const [fen, ev] of evals) a.push(fen, ev);
+    await expect(a.finish(evals)).rejects.toMatchObject({ cancelled: true });
+  });
+});
+
+describe("Great critical-find funnel", () => {
+  const moves = [{ fen_before: START_FEN, uci: "e2e4", fen_after: AFTER_E4, side: "white" }];
+  const evals = new Map([
+    [START_FEN, { score_cp: 100, mate_in: null, best_move_uci: "e2e4" }],
+    [AFTER_E4, { score_cp: 100, mate_in: null }],
+  ]);
+  // 25% of players find it and Maia's first glance agrees with the engine: never a Brilliant
+  // candidate, only a Great one.
+  const provider = (naturalUci) => ({
+    batch: async (type, { items }) => items.map(() => ({ humanProbability: 0.25, winChanceAfter: 0.6, naturalUci })),
+    predictions: async () => { throw new Error("the batch already named the natural move"); },
+  });
+
+  it("screens the natural move shallow, then searches MultiPV-3 only because it failed", async () => {
+    const calls = [];
+    const out = await computeBrilliantAssessments({
+      moves, evals, depth: 16, rating: 1500, provider: provider("d2d4"), shouldCancel: () => false,
+      analyzeFn: async (o) => {
+        calls.push({ depth: o.depth, multipv: o.multipv, positions: o.positions });
+        if (o.multipv === 1) return new Map([[AFTER_D4, { score_cp: -150, mate_in: null }]]);
+        return new Map([[START_FEN, {
+          score_cp: 100, mate_in: null, best_move_uci: "e2e4",
+          second: { move_uci: "c2c4", score_cp: 90, mate_in: null },
+          third: { move_uci: "g1f3", score_cp: -200, mate_in: null },
+        }]]);
+      },
+    });
+    expect(calls).toEqual([
+      { depth: 10, multipv: 1, positions: [AFTER_D4] },
+      { depth: 12, multipv: 3, positions: [START_FEN] },
+    ]);
+    expect(out[0].trap_gap).toBeGreaterThan(0.1);
+    expect(out[0].two_move_gap).toBeGreaterThan(0.1);
+  });
+
+  it("costs no search at all when the natural move is the played one or the engine's first choice", async () => {
+    const noSearch = async () => { throw new Error("no search expected"); };
+    const same = await computeBrilliantAssessments({ moves, evals, depth: 16, rating: 1500, provider: provider("e2e4"), analyzeFn: noSearch, shouldCancel: () => false });
+    expect(same[0].trap_gap).toBe(0);
+    const notBest = new Map(evals);
+    notBest.set(START_FEN, { score_cp: 110, mate_in: null, best_move_uci: "d2d4" });
+    const best = await computeBrilliantAssessments({ moves, evals: notBest, depth: 16, rating: 1500, provider: provider("d2d4"), analyzeFn: noSearch, shouldCancel: () => false });
+    expect(best[0].trap_gap).toBeCloseTo(moverWinChanceAfter({ cp: 100, mate: null }, "white") - moverWinChanceAfter({ cp: 110, mate: null }, "white"), 10);
+  });
+
+  it("skips a decided game", async () => {
+    const decided = new Map([
+      [START_FEN, { score_cp: 900, mate_in: null, best_move_uci: "e2e4" }],
+      [AFTER_E4, { score_cp: 900, mate_in: null }],
+    ]);
+    const out = await computeBrilliantAssessments({
+      moves, evals: decided, depth: 16, rating: 1500, provider: provider("d2d4"), shouldCancel: () => false,
+      analyzeFn: async () => { throw new Error("no search expected"); },
+    });
+    expect("trap_gap" in out[0]).toBe(false);
   });
 });

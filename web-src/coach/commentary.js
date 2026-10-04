@@ -230,7 +230,14 @@ function greatProse(f, x) {
   if (/^(wins|forces)/.test(point)) return `Great move! ${f.san} ${point}.`;
   // An only-move recapture or trade is necessary, not spectacular: say so plainly.
   if (/^(takes back|recaptures|trades|gives an? )/.test(point)) return `${f.san} ${point}; anything else loses ground.`;
-  return `Great move! ${f.san} is the only move that holds${point ? `: it ${point}` : ""}.`;
+  if (f.onlyMove) return `Great move! ${f.san} is the only move that holds${point ? `: it ${point}` : ""}.`;
+  // Great from the Maia read: a hard or critical find, not necessarily the only move.
+  const head = point
+    ? `Great move! ${f.san} ${point}.`
+    : `Great move! ${f.san} keeps the position together where most moves would not.`;
+  const p = f.maia && Number.isFinite(f.maia.humanProb) ? Math.round(f.maia.humanProb * 100) : null;
+  if (p === null || p > 35) return head;
+  return `${head} ${p < 1 ? "Hardly anyone" : `Only about ${p}% of players`} at this level would play it.`;
 }
 
 function brilliantProse(f, x) {
@@ -386,6 +393,7 @@ export function buildCommentary(features, opts = {}) {
   return {
     tone: features.classification.tone,
     grade: features.classification.label,
+    quality: features.classification.code,
     prose: buildProse(features, opts),
   };
 }
@@ -489,6 +497,13 @@ function opponentProse(f, selfSide) {
     const reply = named ? "" : replySentence(f, v);
     return { tone: "good", prose: reply ? `${text} ${reply}` : text };
   }
+  // Their position is already lost: even their best try changes nothing, so the read is
+  // the reply that decides the game, not a grade of their defence.
+  if (["best", "great", "good"].includes(code) && bucket(f.winAfterMover) <= -3) {
+    const reply = replySentence(f, v);
+    const lead = code === "good" ? `${san} doesn't change the verdict` : `${san} is their most stubborn try`;
+    return { tone: "good", prose: `${lead}.${reply ? ` ${reply}` : ""}` };
+  }
   const lead = {
     brilliant: `${san} is a brilliant resource`,
     great: `${san} is the only move that holds for them`,
@@ -509,5 +524,5 @@ function opponentProse(f, selfSide) {
 export function buildOpponentCommentary(features, { selfSide } = {}) {
   if (!features || !selfSide) return { tone: "info", grade: "", prose: "" };
   const { tone, prose } = opponentProse(features, selfSide);
-  return { tone, grade: `Their ${features.classification.label.toLowerCase()}`, prose };
+  return { tone, grade: `Their ${features.classification.label.toLowerCase()}`, quality: features.classification.code, prose };
 }

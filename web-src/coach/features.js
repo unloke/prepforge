@@ -74,6 +74,22 @@ function safeChess(fen) {
   }
 }
 
+// Material (pawns) the mover is down after the move AND the engine's reply, relative to
+// before it: Qxh7+ Kxh7 invests 8, an exchange sac 2, a trade 0. Same arithmetic as the
+// server's material_invested (services/brilliant.py); 0 when there is no reply line.
+export function materialInvested(fenBefore, uci, replyUci) {
+  const board = safeChess(fenBefore);
+  if (!board || !uci || !replyUci) return 0;
+  const sign = board.turn() === "w" ? 1 : -1;
+  const before = materialBalance(board) * sign;
+  try {
+    for (const m of [uci, replyUci]) board.move({ from: m.slice(0, 2), to: m.slice(2, 4), promotion: m[4] || undefined });
+  } catch (_) {
+    return 0;
+  }
+  return Math.max(0, before - materialBalance(board) * sign);
+}
+
 // input: {
 //   ply, moveNumber, mover ('white'|'black'), uci, san, fenBefore, fenAfter,
 //   beforeEval: { lines: [{ uci, san, cp, mate, pvUci, pvSan }, ...] },  // MultiPV >= 1
@@ -202,6 +218,11 @@ export function buildMoveFeatures(input) {
   // brilliant resource in a worse-but-defensible position still qualifies. The trap_gap,
   // not a win floor, is what keeps the false positives out.)
   const brilliantCandidate = isBest || winDelta <= BRILLIANT_MAX_CANDIDATE_WIN_DELTA;
+  // Layer 4 inputs (see isBrilliantByMaia): how far the move stands above the best OTHER
+  // move (win% points, mover POV), and the material it gives up after the reply. A move
+  // that isn't the engine's first choice is measured against that first choice.
+  const onlyMoveGap = isBest ? (altWinMover === null ? null : winAfterMover - altWinMover) : winAfterMover - winBeforeMover;
+  const sacrifice = materialInvested(fenBefore, uci, replyUci);
 
   return {
     ply: input.ply ?? null,
@@ -264,6 +285,8 @@ export function buildMoveFeatures(input) {
     replyUci,
 
     brilliantCandidate,
+    onlyMoveGap,
+    sacrifice,
     maia: null, // filled in by markBrilliant() if the orchestration runs the Maia check
     classification,
   };
@@ -289,12 +312,19 @@ export function buildMoveFeatures(input) {
 //                    far more false positives on the labeled set. trapGap is computed by
 //                    the orchestration (it needs an extra Stockfish read of the natural
 //                    move) and passed in; un-evaluable (null/NaN) → not brilliant.
+//   4. Decisive    — it is the ONLY move that holds (onlyMoveGap >= 5 points over the best
+//                    other move) or it gives up material (sacrifice >= 2 pawns after the
+//                    reply). Server min_only_move_gap / min_sacrifice. The trap layer only
+//                    says the most natural move fails; in a drawn rook ending where eight
+//                    quiet rook moves hold, finding one of them is not brilliant.
 //   maiaHumanProb — Maia's probability a human plays this move (0..1)
 //   maiaWinAfter  — Maia's win chance for the mover after the move (0..1)
 //   trapGap       — win chance the natural human move throws away vs the played one (0..1)
 export const BRILLIANT_MAX_HUMAN_PROB = 0.1; // (1) humans rarely find it
 export const BRILLIANT_MIN_WIN_GAP = 30; // (2) engine win% over Maia win%, in points
 export const BRILLIANT_MIN_TRAP_GAP = 0.05; // (3) win chance the natural move throws away
+export const BRILLIANT_MIN_ONLY_MOVE_GAP = 5; // (4) win% points over the best other move
+export const BRILLIANT_MIN_SACRIFICE = 2; // (4) …or pawns given up after the reply
 // Brilliant is only considered for a move the SERVER classifies BEST or EXCELLENT: either
 // the played move is Stockfish's first choice (classify_move returns BEST before looking at
 // any loss), or the win-chance loss is at most this many points (winDelta <= 2 ⇔ the
@@ -315,7 +345,8 @@ export const BRILLIANT_MIN_TRAP_GAP = 0.05; // (3) win chance the natural move t
 // web-src/coach/classification-golden.test.js — extend the fixture whenever a
 // threshold or conversion here changes.
 export const BRILLIANT_MAX_CANDIDATE_WIN_DELTA = 2;
-export function isBrilliantByMaia(features, { maiaHumanProb, maiaWinAfter, trapGap }) {
+// Layers 1–3: unintuitive, looks bad but is good, and the natural move fails.
+export function isHardFindByMaia(features, { maiaHumanProb, maiaWinAfter, trapGap }) {
   if (!features || !features.brilliantCandidate) return false;
   if (!Number.isFinite(maiaHumanProb) || !Number.isFinite(maiaWinAfter)) return false;
   // No trap value (Maia had no policy, or the natural move couldn't be evaluated) → we
@@ -330,10 +361,63 @@ export function isBrilliantByMaia(features, { maiaHumanProb, maiaWinAfter, trapG
   );
 }
 
+// Layer 4: the only move that holds, or a real sacrifice.
+export function isDecisive(features) {
+  return (
+    (features.sacrifice || 0) >= BRILLIANT_MIN_SACRIFICE ||
+    (Number.isFinite(features.onlyMoveGap) && features.onlyMoveGap >= BRILLIANT_MIN_ONLY_MOVE_GAP)
+  );
+}
+
+export function isBrilliantByMaia(features, maia) {
+  return isHardFindByMaia(features, maia) && isDecisive(features);
+}
+
+// Great ("!") — the tier under Brilliant (server BrilliantConfig.great_*). Either a hard
+// find that fails only layer 4 (another quiet move would also have held), or a critical
+// find: the move is only moderately expected, the move a human would naturally play
+// throws at least GREAT_MIN_TRAP_GAP away, and at most one other move comes close
+// (twoMoveGap = played − the second-best OTHER move, win% points) — with the mover still
+// alive after it and the game not already decided.
+export const GREAT_MAX_HUMAN_PROB = 0.35;
+export const GREAT_MIN_TRAP_GAP = 0.1; // win chance the natural move throws away (0..1)
+export const GREAT_MIN_TWO_MOVE_GAP = 10; // win% points
+export const GREAT_MIN_WIN = 25; // win% after the move, mover POV
+export const GREAT_MAX_WIN_BEFORE = 97; // win% before the move, mover POV
+
+export function isCriticalFind(features, { maiaHumanProb, trapGap, twoMoveGap }) {
+  if (!features || !features.brilliantCandidate) return false;
+  return (
+    Number.isFinite(maiaHumanProb) &&
+    maiaHumanProb <= GREAT_MAX_HUMAN_PROB &&
+    features.winAfterMover >= GREAT_MIN_WIN &&
+    features.winBeforeMover <= GREAT_MAX_WIN_BEFORE &&
+    Number.isFinite(trapGap) &&
+    trapGap >= GREAT_MIN_TRAP_GAP &&
+    Number.isFinite(twoMoveGap) &&
+    twoMoveGap >= GREAT_MIN_TWO_MOVE_GAP
+  );
+}
+
+// "brilliant" | "great" | null for a move, from the Maia read and the gaps in hand.
+export function gradeByMaia(features, maia) {
+  if (isBrilliantByMaia(features, maia)) return "brilliant";
+  if (isHardFindByMaia(features, maia) || isCriticalFind(features, maia)) return "great";
+  return null;
+}
+
 // Upgrade a feature vector to Brilliant in place once the Maia check confirms it.
 export function markBrilliant(features, maia) {
   features.maia = maia || null;
   features.classification = { code: "brilliant", label: "Brilliant", glyph: "!!", tone: "brilliant" };
+  return features;
+}
+
+export const GREAT_CLASSIFICATION = Object.freeze({ code: "great", label: "Great move", glyph: "!", tone: "good" });
+
+export function markGreat(features, maia) {
+  features.maia = maia || features.maia || null;
+  features.classification = { ...GREAT_CLASSIFICATION };
   return features;
 }
 
@@ -352,7 +436,7 @@ export function classifyMoveRich({ winDelta, winAfterMover, isBest, onlyMove, fo
   // position (or better); below that the mover is still losing even after finding the
   // only try, which reads as "Best" (still correct, just not a save worth celebrating).
   if (isBest && onlyMove && winAfterMover >= 25) {
-    return { code: "great", label: "Great move", glyph: "!", tone: "good" };
+    return { ...GREAT_CLASSIFICATION };
   }
   if (isBest || winDelta <= 2) {
     return { code: "best", label: "Best move", glyph: "✓", tone: "good" };

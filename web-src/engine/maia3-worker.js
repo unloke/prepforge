@@ -257,6 +257,7 @@ async function moveAssessmentBatch({ fen, moves, rating }) {
 // moveAssessmentMany(): moveAssessment for many (position, move) pairs in two forwards —
 // one batched policy forward over the positions, one batched value forward over the
 // positions after each move. Aligned to `items`; null for a malformed FEN or illegal move.
+// Each answer is { humanProbability, winChanceAfter, naturalUci }.
 async function moveAssessmentMany({ items, rating }) {
   const list = Array.isArray(items) ? items : [];
   const results = new Array(list.length).fill(null);
@@ -287,9 +288,13 @@ async function moveAssessmentMany({ items, rating }) {
   const valueData = outValue.logits_value.data;
   slots.forEach((slot, k) => {
     const { fen, moveUci } = list[slot];
-    const lookup = makeHumanProbabilityLookup(moveData.subarray(k * perMove, (k + 1) * perMove), fen);
+    const logits = moveData.subarray(k * perMove, (k + 1) * perMove);
+    const lookup = makeHumanProbabilityLookup(logits, fen);
     results[slot] = {
       humanProbability: lookup(moveUci),
+      // The move a human would naturally play here, off the same policy forward — the
+      // trap layer needs it, so it never has to ask Maia again.
+      naturalUci: buildPredictions(logits, fen, { topN: 1 })[0]?.move_uci ?? null,
       winChanceAfter: winChanceAfter([valueData[k * 3], valueData[k * 3 + 1], valueData[k * 3 + 2]]),
     };
   });

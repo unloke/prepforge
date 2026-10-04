@@ -24,21 +24,22 @@
 
 /* Fixed height: the coach's comment changes length on every move, and a
    growing card used to shove the chart and move list up and down ("jitter").
-   Longer notes scroll inside the card instead. */
+   A longer note scrolls inside its own row; the human picks stay pinned under it. */
 .coach-card {
   flex: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: 108px;
+  height: 140px;
   padding: 10px 12px;
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: 8px;
-  overflow-y: auto;
-  scrollbar-width: thin;
+  overflow: hidden;
 }
-.coach-card > .cc-head { flex: none; }
+.coach-card > .cc-head,
+.coach-card > .coach-maia,
+.coach-card > .coach-bookline { flex: none; }
 .coach-card > * {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -64,6 +65,10 @@
 /* One short paragraph; a quiet left rule carries the verdict's tone so the read
    never depends on colour alone (the words say it too). */
 .coach-prose {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
   margin: 0;
   padding: 2px 0 2px 11px;
   border-left: 3px solid var(--line);
@@ -76,13 +81,59 @@
 .coach-prose.is-warn { border-left-color: var(--warn); }
 .coach-prose.is-danger { border-left-color: var(--danger); }
 .coach-prose.is-brilliant { border-left-color: var(--brilliant); }
-.coach-maia,
+/* The move's grade, in the move list's palette, outranks the tone. */
+.coach-prose[data-quality="brilliant"] { border-left-color: var(--brilliant); }
+.coach-prose[data-quality="great"] { border-left-color: var(--great); }
+.coach-prose[data-quality="good"] { border-left-color: var(--good); }
+.coach-prose[data-quality="inaccuracy"] { border-left-color: var(--inaccuracy); }
+.coach-prose[data-quality="mistake"] { border-left-color: var(--warn); }
+.coach-prose[data-quality="blunder"] { border-left-color: var(--danger); }
+.coach-prose[data-quality="missed"] { border-left-color: var(--missed); }
 .coach-bookline {
   margin: 0;
   font-size: var(--fs-s);
   line-height: 1.5;
   color: var(--muted);
 }
+/* Human picks (Maia): pills filled to each move's share. */
+.coach-maia {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: auto;
+  overflow: hidden;
+}
+.hp-label {
+  flex: none;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+}
+.hp {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 26%, transparent) var(--p), transparent var(--p)),
+    var(--surface-3);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.hp:hover { border-color: var(--line-strong, var(--muted)); }
+.hp b { overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
+.hp-pct { color: var(--muted); font-variant-numeric: tabular-nums; }
+.hp.is-played { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.hp.is-best b::before { content: "✓ "; color: var(--good-text, var(--good)); }
 .coach-bookline {
   padding-top: 8px;
   border-top: 1px dashed var(--line);
@@ -430,6 +481,7 @@
 }
 .eval-chart .eval-hover { stroke: var(--text); stroke-opacity: 0.35; }
 .eval-chart .eval-m-brilliant { color: var(--brilliant); }
+.eval-chart .eval-m-great { color: var(--great); }
 .eval-chart .eval-m-inaccuracy { color: var(--inaccuracy); }
 .eval-chart .eval-m-mistake { color: var(--warn); }
 .eval-chart .eval-m-blunder { color: var(--danger); }
@@ -512,6 +564,7 @@
   font-weight: 800;
 }
 .mtree-move.cls-brilliant .mtree-glyph { color: var(--brilliant); }
+.mtree-move.cls-great .mtree-glyph { color: var(--great-text); }
 .mtree-move.cls-excellent .mtree-glyph,
 .mtree-move.cls-best .mtree-glyph,
 .mtree-move.cls-good .mtree-glyph,
@@ -572,6 +625,7 @@
   font-size: var(--fs-xs);
 }
 .seg-brilliant { background: var(--brilliant); }
+.seg-great { background: var(--great); }
 .seg-good { background: var(--good); }
 .seg-inaccuracy { background: var(--inaccuracy); }
 .seg-mistake { background: var(--warn); }
@@ -613,14 +667,6 @@
 }
 .analysis-import-picker select {
   max-width: 100%;
-}
-
-/* A-05: shown only for a partial search; the run's metadata is its tooltip. */
-.quality-note {
-  margin: 8px 0 0;
-  font-size: var(--fs-s, 12px);
-  color: var(--warn-text, var(--muted));
-  cursor: help;
 }
 
 /* ---- Drawers: PGN source + recent analyses ---------------------------- */
@@ -699,11 +745,19 @@
   white-space: nowrap;
 }
 
+/* Desktop: the move list takes whatever height the sidebar has left instead
+   of a fixed 190px window, and only scrolls once the sidebar is full. */
+@media (min-width: 761px) {
+  #analysis-results:not([hidden]) { flex: 0 1 auto; min-height: 0; }
+  #analysis-results > :not(.moves-grid) { flex: none; }
+  #analysis-results .moves-grid { flex: 0 1 auto; min-height: 120px; max-height: none; }
+}
+
 /* ---- Responsive ------------------------------------------------------- */
 
 @media (max-width: 760px) {
   .moves-grid { max-height: 240px; }
-  .coach-card { height: 132px; }
+  .coach-card { height: 160px; }
   .explain-review { margin-left: auto; }
   .drawer summary { min-height: 44px; }
 }

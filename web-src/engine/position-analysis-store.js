@@ -403,17 +403,20 @@ export function createPositionAnalysisStore({
     maiaRead,
     // Whole-game pass: dedicated workers at full concurrency; positions the store can
     // already answer at this depth are reused, and every finished eval is published.
-    analyzeGame({ positions, depth, onProgress, shouldCancel, concurrency, onResult }) {
+    // multipv > 1 (the brilliant check's best-other-move read) runs on the same
+    // dedicated pool but neither reuses nor publishes: the game channel is single-line.
+    analyzeGame({ positions, depth, multipv = 1, onProgress, shouldCancel, concurrency, onResult }) {
+      const single = multipv <= 1;
       return analyzeFn({
         positions,
         depth,
-        multipv: 1,
+        multipv: single ? 1 : multipv,
         concurrency,
         onProgress,
         shouldCancel,
-        reuse: (fen) => reusableGameEval(fen, depth),
+        reuse: single ? (fen) => reusableGameEval(fen, depth) : null,
         onResult: (fen, ev) => {
-          publishGame(fen, ev, depth);
+          if (single) publishGame(fen, ev, depth);
           if (typeof onResult === "function") onResult(fen, ev);
         },
       });

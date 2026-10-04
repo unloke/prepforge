@@ -56,6 +56,17 @@ function evalMapForLine(ucis, oppColor, { cpLoss = 30, bestUci = null, complete 
 }
 
 describe("scout-prefilter scoring", () => {
+  it("recomputes materialized ordering after the same row objects change", () => {
+    const a = { ucis: ['a'], games: 20, conditionalReach: 0.5, scorePct: 0, prefilterScore: 0 };
+    const b = { ...a, ucis: ['b'], prefilterScore: 1000 };
+    const ranked = { white: [{ line: a }, { line: b }] };
+    expect(mergeGlobalPrefilterRanked(ranked)[0].line).toBe(b);
+    a.prefilterScore = 1000;
+    b.prefilterScore = 0;
+    expect(mergeGlobalPrefilterRanked(ranked)[0].line).toBe(a);
+    a.conditionalReach = 0.1;
+    expect(mergeGlobalPrefilterRanked(ranked)[0].line).toBe(b);
+  });
   it("treats a missing-evaluation cache marker as unavailable, not as a position without a reply", () => {
     const line = { ucis: ['e2e4'], sans: ['e4'], games: 1 };
     const funnelOut = {};

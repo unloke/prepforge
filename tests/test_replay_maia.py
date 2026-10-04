@@ -65,3 +65,19 @@ def test_replay_maia_trap_gap_none_when_absent_or_unseeded():
     )
     assert maia.precomputed_trap_gap(START_FEN, "e2e4") is None
     assert maia.precomputed_trap_gap(START_FEN, "d2d4") is None
+
+
+def test_replay_maia_replays_client_only_move_gap():
+    maia = ReplayMaia(
+        [
+            {"fen": START_FEN, "uci": "e2e4", "human_probability": 0.05,
+             "win_chance_after": 0.41, "trap_gap": 0.18, "only_move_gap": 0.12,
+             "two_move_gap": 0.31},
+            {"fen": START_FEN, "uci": "d2d4", "human_probability": 0.05,
+             "win_chance_after": 0.40},
+        ]
+    )
+    assert maia.precomputed_only_move_gap(START_FEN, "e2e4") == 0.12
+    assert maia.precomputed_only_move_gap(START_FEN, "d2d4") is None
+    assert maia.precomputed_two_move_gap(START_FEN, "e2e4") == 0.31
+    assert maia.precomputed_two_move_gap(START_FEN, "d2d4") is None

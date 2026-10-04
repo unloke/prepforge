@@ -36,6 +36,7 @@ from prepforge_chess.core.models import (
 )
 from prepforge_chess.services.brilliant import (
     BRILLIANT_ELIGIBLE_CLASSIFICATIONS,
+    apply_brilliant_result,
     BrilliantAnalyzer,
     BrilliantConfig,
 )
@@ -188,21 +189,7 @@ def _apply_brilliant(
         stockfish_eval_after=eval_after,
         config=config,
     )
-    if brilliant_result is not None and brilliant_result.is_brilliant:
-        move.classification = MoveClassification.BRILLIANT
-        trap = brilliant_result.trap_gap
-        comment = (
-            "{0} (brilliant: only {1:.0%} of humans find it, Maia glance "
-            "{2:.2f} vs truth {3:.2f}, reveal {4:+.2f}, trap {5})".format(
-                comment,
-                brilliant_result.human_probability,
-                brilliant_result.maia_glance_wc,
-                brilliant_result.sf_truth_wc,
-                brilliant_result.reveal_score,
-                "{0:+.2f}".format(trap) if trap is not None else "n/a",
-            )
-        )
-    return comment
+    return apply_brilliant_result(move, brilliant_result, comment)
 
 
 def classify_precomputed_game(
@@ -304,6 +291,7 @@ def classify_precomputed_game(
         if move.classification
         in {
             MoveClassification.BRILLIANT,
+            MoveClassification.GREAT,
             MoveClassification.MISTAKE,
             MoveClassification.BLUNDER,
             MoveClassification.MISSED_WIN,

@@ -43,6 +43,7 @@
   --warn: #b26a00;
   --good: #1d8a4f;
   --brilliant: #2f7fe0;
+  --great: #4a7fb5;
   /* Text-only companions for the semantic colours. The base tokens also fill
      charts, dots, badges, and borders, so darkening them for WCAG AA would
      change the visual language; text usages pick up the *-text variants instead
@@ -51,6 +52,7 @@
   --warn-text: #8a5200;
   --good-text: #166b3e;
   --brilliant-text: #2563b8;
+  --great-text: #3d6c9c;
   /* Semantic status family (fills, badges, banners) and its text-safe shades. */
   --good-soft: #e3f4ea;
   --warn-soft: #fbf0dc;
@@ -80,15 +82,23 @@
   --ib-h: 30px;
   --square-light: #e4e8eb;
   --square-dark: #97a8b6;
-  --last-move: rgba(236, 182, 48, 0.46);
+  /* Board marks (styles.css "Board marks"): last move, selection, legal targets,
+     arrows and the per-grade square tints. */
+  --last-move: rgba(64, 190, 172, 0.36);
   --highlight: rgba(47, 91, 211, 0.38);
-  --arrow: rgba(47, 91, 211, 0.72);
+  --mark-select: rgba(47, 91, 211, 0.3);
+  --mark-legal: rgba(22, 36, 58, 0.22);
+  --mark-legal-hover: rgba(47, 91, 211, 0.45);
+  --mark-brilliant: rgba(47, 127, 224, 0.42);
+  --mark-great: rgba(74, 127, 181, 0.4);
+  --mark-inaccuracy: rgba(232, 172, 64, 0.48);
+  --mark-mistake: rgba(226, 128, 40, 0.48);
+  --mark-blunder: rgba(214, 64, 48, 0.46);
+  --mark-missed: rgba(122, 95, 184, 0.42);
   /* Board annotation arrows: user arrows take the ink-blue accent, the engine's
      best-move arrow keeps the calm "good" green (colour means chess). */
-  --arrow-user: rgba(47, 91, 211, 0.72);
-  --arrow-user-stroke: rgba(18, 38, 90, 0.30);
-  --arrow-engine: rgba(29, 138, 79, 0.72);
-  --arrow-engine-stroke: rgba(12, 62, 34, 0.32);
+  --arrow-user: rgba(47, 91, 211, 0.78);
+  --arrow-engine: rgba(29, 138, 79, 0.8);
   /* Board coordinate labels. */
   --coord-on-light: #354655;
   --coord-on-dark: #172a38;
@@ -154,12 +164,14 @@
   --warn: #e0a23a;
   --good: #45b97a;
   --brilliant: #6d9ff0;
+  --great: #8db0da;
   /* Dark surfaces already clear AA for these hues by a wide margin, so the
      text variants alias the base colours (kept as separate tokens so text and
      fill can diverge per theme if a future tuning needs it). */
   --warn-text: #e0a23a;
   --good-text: #45b97a;
   --brilliant-text: #6d9ff0;
+  --great-text: #8db0da;
   --good-soft: #17301f;
   --warn-soft: #33270f;
   --bad-soft: #3a1c18;
@@ -181,13 +193,19 @@
   --board-frame: #5a6c7b;
   --square-light: #b9c3cb;
   --square-dark: #6f8292;
-  --last-move: rgba(236, 182, 48, 0.46);
+  --last-move: rgba(90, 214, 192, 0.36);
   --highlight: rgba(109, 143, 240, 0.42);
-  --arrow: rgba(109, 143, 240, 0.78);
-  --arrow-user: rgba(109, 143, 240, 0.75);
-  --arrow-user-stroke: rgba(10, 18, 42, 0.55);
-  --arrow-engine: rgba(69, 185, 122, 0.75);
-  --arrow-engine-stroke: rgba(14, 44, 27, 0.52);
+  --mark-select: rgba(109, 143, 240, 0.38);
+  --mark-legal: rgba(10, 18, 30, 0.3);
+  --mark-legal-hover: rgba(109, 143, 240, 0.55);
+  --mark-brilliant: rgba(80, 150, 240, 0.5);
+  --mark-great: rgba(110, 155, 210, 0.48);
+  --mark-inaccuracy: rgba(236, 184, 90, 0.5);
+  --mark-mistake: rgba(236, 140, 60, 0.5);
+  --mark-blunder: rgba(232, 90, 72, 0.5);
+  --mark-missed: rgba(160, 135, 230, 0.48);
+  --arrow-user: rgba(120, 152, 245, 0.82);
+  --arrow-engine: rgba(80, 196, 132, 0.82);
   --coord-on-light: #354655;
   --coord-on-dark: #07121a;
   --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -267,6 +285,9 @@ button {
   outline-offset: -3px;
   border-radius: 4px;
 }
+/* The skip link's target. A click on empty space focuses it, and the next key
+   press would ring the whole workspace. */
+#workspace-main:focus { outline: none; }
 
 /* Inputs/selects/textareas already carry a border, so use a softer ring
    without the offset to avoid a doubled outline. */
@@ -1979,44 +2000,32 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   z-index: 3;
 }
 
-/* Filled triangular annotation arrows (paths built in app.js). Colours are
-   tokenised so they match the warm theme; a soft shadow lifts them off busy
-   board textures. */
+/* Board marks share one language: a mark is the colour of what it means (accent =
+   yours, good-green = the engine's choice, the grade colours = move quality), drawn
+   translucent so the square and piece under it stay readable, with one soft shadow. */
 .annot-arrow {
-  stroke-width: 0.35;
-  stroke-linejoin: round;
-  filter: drop-shadow(0 0.3px 0.4px rgba(0, 0, 0, 0.25));
+  stroke: none;
+  filter: drop-shadow(0 0.3px 0.6px rgba(0, 0, 0, 0.22));
   transition: opacity 120ms ease;
 }
 
 .annot-user {
   fill: var(--arrow-user);
-  stroke: var(--arrow-user-stroke);
 }
 
 .annot-engine {
   fill: var(--arrow-engine);
-  stroke: var(--arrow-engine-stroke);
 }
 
-/* Fork-option hints — faint, so they read as "options here" and never compete
-   with explicit user/engine arrows drawn on top of them. The picked option
-   (the one → will play) is drawn noticeably stronger. */
+/* Fork-option hints: faint, under explicit arrows; the picked option is stronger. */
 .annot-branch {
   fill: var(--accent);
-  stroke: var(--accent-strong);
-  opacity: 0.32;
+  opacity: 0.3;
+  filter: none;
 }
 
 .annot-branch.is-pick {
-  opacity: 0.78;
-}
-
-.board-arrow {
-  stroke: var(--arrow);
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  fill: none;
+  opacity: 0.7;
 }
 
 .square {
@@ -2043,31 +2052,74 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--highlight);
-  opacity: 0.4;
+  background: var(--mark-select);
   pointer-events: none;
 }
 
+/* Legal targets: a dot on an empty square, a corner ring around a capturable piece. */
 .square.legal::after {
   content: "";
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 28%;
-  height: 28%;
+  width: 30%;
+  height: 30%;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.16);
+  background: var(--mark-legal);
   pointer-events: none;
   z-index: 1;
 }
 
+.square.legal:not([data-piece=""])::after {
+  inset: 0;
+  left: 0;
+  top: 0;
+  width: auto;
+  height: auto;
+  transform: none;
+  border-radius: 0;
+  background: radial-gradient(circle, transparent 66%, var(--mark-legal) 67%);
+  z-index: 3;
+}
+
+.square.legal:hover::after {
+  background: var(--mark-legal-hover);
+}
+
+.square.legal:not([data-piece=""]):hover::after {
+  background: radial-gradient(circle, transparent 66%, var(--mark-legal-hover) 67%);
+}
+
+/* A square you mark (right-click) is a ring, the same colour as your arrows. */
 .square.highlighted {
-  background-image: linear-gradient(var(--highlight), var(--highlight));
+  background-image: radial-gradient(
+    circle,
+    transparent 56%,
+    var(--arrow-user) 57.5%,
+    var(--arrow-user) 66%,
+    transparent 67.5%
+  );
 }
 
 .square.last-move {
   background-image: linear-gradient(var(--last-move), var(--last-move));
+}
+
+/* An analysed move tints both of its squares with its grade colour (the badge's
+   colour), so quality reads at a glance; routine good moves keep the neutral tint. */
+.chessboard[data-move-class="brilliant"] .square.last-move { --last-move: var(--mark-brilliant); }
+.chessboard[data-move-class="great"] .square.last-move { --last-move: var(--mark-great); }
+.chessboard[data-move-class="inaccuracy"] .square.last-move { --last-move: var(--mark-inaccuracy); }
+.chessboard[data-move-class="mistake"] .square.last-move { --last-move: var(--mark-mistake); }
+.chessboard[data-move-class="blunder"] .square.last-move { --last-move: var(--mark-blunder); }
+.chessboard[data-move-class="missed_win"] .square.last-move,
+.chessboard[data-move-class="missed_tactic"] .square.last-move { --last-move: var(--mark-missed); }
+
+.square.highlighted.last-move {
+  background-image:
+    radial-gradient(circle, transparent 56%, var(--arrow-user) 57.5%, var(--arrow-user) 66%, transparent 67.5%),
+    linear-gradient(var(--last-move), var(--last-move));
 }
 
 .piece {
@@ -2135,74 +2187,67 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   box-shadow: inset 0 0 0 3px var(--accent);
 }
 
-/* Move-classification chip shown on the destination square of the last move.
-   A compact color-coded pill pinned to the top-right corner of the square
-   so it stays out of the way of the piece. A thin white border plus a soft
-   drop shadow keep it legible on both light and dark squares. The brilliant
-   variant gets a subtle blue glow so the rare highlight really pops. */
+/* Move-quality badge on the destination square: a round coin in the grade's colour,
+   sized from the square (so it scales with the board), sitting in the top-right
+   corner clear of the piece. One shape for every grade; only colour and glyph change. */
+.chessboard {
+  container-type: inline-size;
+}
+
 .square-badge {
+  --badge: var(--good);
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 3%;
+  right: 3%;
   z-index: 5;
   pointer-events: none;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
+  width: 42%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--badge);
   color: #ffffff;
-  font-size: 9.5px;
+  font-family: var(--font);
+  font-size: clamp(10px, calc(100cqw / 8 * 0.26), 20px);
   font-weight: 800;
   line-height: 1;
-  letter-spacing: 0.01em;
-  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.06em;
   white-space: nowrap;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
-  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  font-variant-numeric: tabular-nums;
   box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.32),
-    0 2px 4px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    0 0 0 1.5px rgba(255, 255, 255, 0.92),
+    0 1px 3px rgba(0, 0, 0, 0.38);
+  animation: badgeIn 180ms cubic-bezier(0.2, 0.9, 0.3, 1.25);
 }
 
-.square-badge.class-brilliant {
-  background: linear-gradient(135deg, #5fa6ec 0%, #2f7fe0 60%, #1f66c2 100%);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(47, 127, 224, 0.32),
-    0 0 14px rgba(47, 127, 224, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-
+.square-badge.class-brilliant { --badge: var(--brilliant); }
+.square-badge.class-great { --badge: var(--great); }
 .square-badge.class-best,
 .square-badge.class-excellent,
 .square-badge.class-good,
-.square-badge.class-book {
-  background: linear-gradient(135deg, #65ad7d 0%, #4a8964 60%, #356c4b 100%);
-}
-
-.square-badge.class-inaccuracy {
-  background: linear-gradient(135deg, #e2b25a 0%, #c98439 60%, #a4692a 100%);
-}
-
-.square-badge.class-mistake {
-  background: linear-gradient(135deg, #dc8d5a 0%, #c46a52 60%, #a14c3b 100%);
-}
-
-.square-badge.class-blunder {
-  background: linear-gradient(135deg, #d35d54 0%, #b1413a 60%, #872c27 100%);
-}
-
+.square-badge.class-book { --badge: var(--good); }
+.square-badge.class-inaccuracy { --badge: var(--inaccuracy); }
+.square-badge.class-mistake { --badge: var(--warn); }
+.square-badge.class-blunder { --badge: var(--danger); }
 .square-badge.class-missed_win,
-.square-badge.class-missed_tactic {
-  background: linear-gradient(135deg, #a484c8 0%, #8a6db5 60%, #6a4f95 100%);
+.square-badge.class-missed_tactic { --badge: var(--missed); }
+.square-badge.class-unknown { --badge: var(--inert); }
+
+.square-badge.class-brilliant {
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.92),
+    0 1px 3px rgba(0, 0, 0, 0.38),
+    0 0 12px color-mix(in srgb, var(--brilliant) 70%, transparent);
 }
 
-.square-badge.class-unknown {
-  background: linear-gradient(135deg, #6b6863 0%, #46443f 100%);
+@keyframes badgeIn {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .square-badge { animation: none; }
 }
 
 .chessboard.show-coords .coord {
@@ -2229,9 +2274,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 /* Last-move pulse */
 @keyframes squarePulse {
-  0% { box-shadow: inset 0 0 0 0 rgba(214, 92, 50, 0.0); }
-  35% { box-shadow: inset 0 0 0 4px rgba(214, 92, 50, 0.55); }
-  100% { box-shadow: inset 0 0 0 0 rgba(214, 92, 50, 0.0); }
+  0% { box-shadow: inset 0 0 0 0 transparent; }
+  35% { box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--accent) 60%, transparent); }
+  100% { box-shadow: inset 0 0 0 0 transparent; }
 }
 
 .square.move-pulse {

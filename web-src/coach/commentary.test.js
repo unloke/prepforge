@@ -275,6 +275,14 @@ describe("the opponent's move, read for the user", () => {
     expect(read.tone).toBe("warn");
   });
 
+  it("reads their best move in a lost position as a stubborn try, not a grade", () => {
+    const f = scenario({ fen: afterNf3, san: "Nc6", best: "Nc6", before: 900, after: 900, playedLine: ["Nxe5"] });
+    const read = buildOpponentCommentary(f, { selfSide: "white" });
+    expect(read.prose).toMatch(/^2\.\.\.Nc6 is their most stubborn try\. Best reply: 3\.Nxe5/);
+    expect(read.tone).toBe("good");
+    expect(read.quality).toBe(f.classification.code);
+  });
+
   it("points out a positional slip with their better move and where your reply leaves you", () => {
     const f = scenario({ fen: afterNf3, san: "a6", best: "Nc6", before: 30, after: 160, playedLine: ["Nxe5"] });
     const read = buildOpponentCommentary(f, { selfSide: "white" });

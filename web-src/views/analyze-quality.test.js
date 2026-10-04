@@ -1,5 +1,5 @@
-// UX walkthrough 2026-09-30 P3-9: the quality line leaked the server's completeness
-// code. Only human copy may reach the page, and only for a partial search.
+// The run's search coverage stays in the saved report's metadata; the page does not
+// print it (a "2 positions below depth 16" line told players nothing they could act on).
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createAnalyzeView } from "./analyze.js";
@@ -32,20 +32,19 @@ const BASE = {
   engine: "stockfish (browser)",
 };
 
-describe("analysis quality summary copy", () => {
+describe("analysis quality summary", () => {
   afterEach(() => {
     delete globalThis.document;
   });
 
-  it("says nothing when every position reached the target depth", () => {
-    const html = render({ ...BASE, completeness: "no-maia" });
-    expect(html).not.toMatch(/quality-note|Analysis quality|no-maia/);
-  });
-
-  it("flags a partial search in one line, with human copy only", () => {
-    const html = render({ ...BASE, search: "partial-shallow", shallow_positions: 3, completeness: "partial-shallow,no-maia" });
-    expect(html).toMatch(/△ 3 positions below depth 16/);
-    expect(html).not.toMatch(/partial-shallow|no-maia/);
-    expect(html).toMatch(/some positions searched below the target depth; no human-move model/);
+  it("never prints search coverage under the class bars", () => {
+    for (const quality of [
+      { ...BASE, completeness: "no-maia" },
+      { ...BASE, search: "partial-shallow", shallow_positions: 2, completeness: "partial-shallow,no-maia" },
+    ]) {
+      const html = render(quality);
+      expect(html).toMatch(/class-bars/);
+      expect(html).not.toMatch(/quality-note|below depth|partial-shallow|no-maia/);
+    }
   });
 });

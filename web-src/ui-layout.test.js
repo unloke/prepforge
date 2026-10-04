@@ -296,7 +296,7 @@ describe("workspace chrome layout", () => {
     // Coach copy wraps instead of clipping; the card has a fixed height so a
     // longer comment never shifts the chart below it.
     expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);
-    expect(rule(".coach-card")).toMatch(/height:\s*108px/);
+    expect(rule(".coach-card")).toMatch(/height:\s*140px/);
     expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
     expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/grid-template-columns:\s*32px\s+minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/);
     expect(rule(".moves-grid")).toMatch(/overflow:\s*auto/);

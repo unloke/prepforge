@@ -61,7 +61,8 @@ async function staticChecks() {
   assert(!/analyze-/.test(build.text), `${build.name} must not reference analyze chunk`);
   assert(!/movetree-/.test(build.text), `${build.name} must not reference movetree chunk`);
 
-  const analyze = await readAsset(/^analyze-/);
+  // analyze-book is a helper chunk; filesystem order changes with view hashes.
+  const analyze = await readAsset(/^analyze-(?!book-)/);
   assert(/movetree-/.test(analyze.text), `${analyze.name} must static-import movetree chunk`);
 
   const index = await readAsset(/^index-/);

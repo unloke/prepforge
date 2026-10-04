@@ -380,7 +380,7 @@ export function createStockfishWasmProvider({
   // Start a fresh search for `fen`. If a previous search is still in flight, drain it first so
   // its trailing UCI output can't pollute this one — only THEN reset state and launch, so the
   // window where stale `info`/`bestmove` could land on the new FEN is closed.
-  async function startSearch(fen, multipv, gen, searchmoves) {
+  async function startSearch(fen, multipv, gen, searchmoves, depth) {
     if (state.running) {
       await drainCurrentSearch();
     }
@@ -405,6 +405,9 @@ export function createStockfishWasmProvider({
     state.fen = fen;
     state.side_to_move = fen.split(" ")[1] === "b" ? "black" : "white";
     state.multipv = Math.max(1, Math.min(maxMultipv, multipv || 1));
+    // A per-search depth (a pooled whole-game worker serves batches of different depths)
+    // overrides the provider's own limit for this search only.
+    state.max_depth = Number.isFinite(depth) && depth > 0 ? Math.floor(depth) : maxDepth;
     state.current_depth = 0;
     state.nodes = 0;
     state.pvs = [];
@@ -436,18 +439,18 @@ export function createStockfishWasmProvider({
     // open/update both run through serialize() so a search-switch never overlaps another (see
     // opChain). update() inlines the no-worker fallback rather than delegating to open(), since
     // re-entering serialize() from within a serialized op would deadlock on opChain.
-    open({ fen, multipv, searchmoves }) {
+    open({ fen, multipv, searchmoves, depth }) {
       const gen = generation; // capture at call time, before this op queues behind opChain
       return serialize(async () => {
         if (gen !== generation) return this.snapshot(); // a close() landed after this call
         await ensureWorker();
         if (gen !== generation) return this.snapshot();
         state.session_id = state.session_id || uid();
-        await startSearch(fen, multipv, gen, searchmoves);
+        await startSearch(fen, multipv, gen, searchmoves, depth);
         return this.snapshot();
       });
     },
-    update({ fen, multipv, searchmoves }) {
+    update({ fen, multipv, searchmoves, depth }) {
       const gen = generation; // capture at call time, before this op queues behind opChain
       return serialize(async () => {
         if (gen !== generation) return this.snapshot(); // a close() landed after this call
@@ -458,7 +461,7 @@ export function createStockfishWasmProvider({
           await readyPromise;
         }
         if (gen !== generation) return this.snapshot();
-        await startSearch(fen, multipv, gen, searchmoves);
+        await startSearch(fen, multipv, gen, searchmoves, depth);
         return this.snapshot();
       });
     },

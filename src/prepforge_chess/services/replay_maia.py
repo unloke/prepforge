@@ -28,7 +28,8 @@ class ReplayMaia:
 
         {"fen": <fen_before>, "uci": <played_move>,
          "human_probability": <0..1>, "win_chance_after": <0..1>,
-         "trap_gap": <-1..1, optional>}
+         "trap_gap": <-1..1, optional>, "only_move_gap": <-1..1, optional>,
+         "two_move_gap": <-1..1, optional>}
 
     :meth:`move_assessment` and :meth:`precomputed_trap_gap` are the two methods
     ``BrilliantAnalyzer`` consults; both replay browser-computed numbers.
@@ -50,6 +51,10 @@ class ReplayMaia:
         # the browser never deemed eligible (or had no Maia for) carries no trap_gap,
         # and the analyzer treats its absence as "trap layer un-evaluable" → not flagged.
         self._trap_by_key: Dict[Tuple[str, str], float] = {}
+        # Browser-supplied only_move_gap (played vs the best other move), optional too.
+        self._only_by_key: Dict[Tuple[str, str], float] = {}
+        # ...and two_move_gap (played vs the SECOND-best other move), for Great.
+        self._two_by_key: Dict[Tuple[str, str], float] = {}
         for item in assessments:
             fen = item.get("fen")
             uci = item.get("uci")
@@ -63,6 +68,12 @@ class ReplayMaia:
             trap = item.get("trap_gap")
             if isinstance(trap, (int, float)) and not isinstance(trap, bool):
                 self._trap_by_key[key] = float(trap)
+            only = item.get("only_move_gap")
+            if isinstance(only, (int, float)) and not isinstance(only, bool):
+                self._only_by_key[key] = float(only)
+            two = item.get("two_move_gap")
+            if isinstance(two, (int, float)) and not isinstance(two, bool):
+                self._two_by_key[key] = float(two)
 
     def _key(self, fen: str, uci: str) -> Tuple[str, str]:
         try:
@@ -100,6 +111,24 @@ class ReplayMaia:
         for this move → it is not flagged Brilliant.
         """
         return self._trap_by_key.get(self._key(fen, move_uci))
+
+    def precomputed_only_move_gap(
+        self,
+        fen: str,
+        move_uci: str,
+    ) -> Optional[float]:
+        """The browser-computed ``only_move_gap`` (played vs the best other move,
+        mover POV) for (fen, played move), or None."""
+        return self._only_by_key.get(self._key(fen, move_uci))
+
+    def precomputed_two_move_gap(
+        self,
+        fen: str,
+        move_uci: str,
+    ) -> Optional[float]:
+        """The browser-computed ``two_move_gap`` (played vs the second-best other
+        move, mover POV) for (fen, played move), or None."""
+        return self._two_by_key.get(self._key(fen, move_uci))
 
     def predictions(self, *args, **kwargs):  # pragma: no cover - never called here
         raise NotImplementedError(

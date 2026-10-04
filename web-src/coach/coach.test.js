@@ -3,10 +3,17 @@ import { describe, it, expect } from "vitest";
 import {
   buildMoveFeatures,
   isBrilliantByMaia,
+  gradeByMaia,
   markBrilliant,
+  markGreat,
+  GREAT_MIN_TWO_MOVE_GAP,
+  GREAT_MIN_TRAP_GAP,
   BRILLIANT_MAX_HUMAN_PROB,
   BRILLIANT_MIN_WIN_GAP,
   BRILLIANT_MIN_TRAP_GAP,
+  BRILLIANT_MIN_ONLY_MOVE_GAP,
+  BRILLIANT_MIN_SACRIFICE,
+  materialInvested,
 } from "./features.js";
 
 // A passing trap_gap (well over the 0.05 bar) for the brilliant tests that isolate the
@@ -167,8 +174,60 @@ describe("Brilliant detection (Maia vs engine, no SEE)", () => {
     inp.san = "Kf2";
     inp.fenAfter = "6k1/8/2p5/8/8/8/5K2/5B2 b - - 1 1";
     inp.afterEval = { cp: 0, mate: null, pvUci: [] };
+    // The only move that holds: the best OTHER move loses (layer 4).
+    inp.beforeEval.lines[1] = { uci: "g1g2", san: "Kg2", cp: -300, mate: null, pvUci: ["g1g2"] };
     return buildMoveFeatures(inp);
   }
+
+  it("is NOT brilliant when another move holds just as well and nothing is sacrificed", () => {
+    const inp = hangingBishopInput();
+    inp.uci = "g1f2";
+    inp.san = "Kf2";
+    inp.fenAfter = "6k1/8/2p5/8/8/8/5K2/5B2 b - - 1 1";
+    inp.afterEval = { cp: 0, mate: null, pvUci: [] };
+    const f = buildMoveFeatures(inp); // Kg2 is only 10 cp worse
+    expect(f.onlyMoveGap).toBeLessThan(BRILLIANT_MIN_ONLY_MOVE_GAP);
+    expect(f.sacrifice).toBe(0);
+    expect(isBrilliantByMaia(f, { maiaHumanProb: 0.02, maiaWinAfter: 0.2, trapGap: TRAP_OK })).toBe(false);
+    // ...but as a hard find it is still Great.
+    expect(gradeByMaia(f, { maiaHumanProb: 0.02, maiaWinAfter: 0.2, trapGap: TRAP_OK })).toBe("great");
+    // The same move as a sacrifice passes layer 4.
+    f.sacrifice = BRILLIANT_MIN_SACRIFICE;
+    expect(isBrilliantByMaia(f, { maiaHumanProb: 0.02, maiaWinAfter: 0.2, trapGap: TRAP_OK })).toBe(true);
+    expect(gradeByMaia(f, { maiaHumanProb: 0.02, maiaWinAfter: 0.2, trapGap: TRAP_OK })).toBe("brilliant");
+  });
+
+  it("grades a critical find Great: the natural move fails and only one other move comes close", () => {
+    const f = bestMoveFeatures();
+    // 25% of players find it, no reveal, but the move they'd naturally play throws 15 points
+    // away and the third-best move falls behind too.
+    const read = { maiaHumanProb: 0.25, maiaWinAfter: 0.5, trapGap: 0.15, twoMoveGap: GREAT_MIN_TWO_MOVE_GAP };
+    expect(gradeByMaia(f, read)).toBe("great");
+    expect(gradeByMaia(f, { ...read, twoMoveGap: GREAT_MIN_TWO_MOVE_GAP - 1 })).toBe(null);
+    expect(gradeByMaia(f, { ...read, maiaHumanProb: 0.5 })).toBe(null);
+    expect(gradeByMaia(f, { ...read, twoMoveGap: null })).toBe(null);
+    // The natural move holds as well (or nothing measured it): only two good moves is not enough.
+    expect(gradeByMaia(f, { ...read, trapGap: GREAT_MIN_TRAP_GAP - 0.01 })).toBe(null);
+    expect(gradeByMaia(f, { ...read, trapGap: null })).toBe(null);
+  });
+
+  it("calls a Maia-graded Great a find, not the only move", () => {
+    const f = bestMoveFeatures();
+    f.onlyMove = false;
+    markGreat(f, { humanProb: 0.04, winChanceAfter: 0.2 });
+    const c = buildCommentary(f);
+    expect(c.quality).toBe("great");
+    expect(c.prose).toMatch(/^Great move! Kf2/);
+    expect(c.prose).not.toMatch(/only move/);
+    expect(c.prose).toMatch(/Only about 4% of players/);
+  });
+
+  it("measures the material a sacrifice gives up after the reply", () => {
+    // Immortal-style Qxh7+ Kxh7: a queen for a pawn.
+    expect(materialInvested("6k1/6pp/8/8/8/8/8/3Q2K1 w - - 0 1", "d1h5", "g7g6")).toBe(0);
+    expect(materialInvested("6k1/6pp/8/8/8/8/8/6KQ w - - 0 1", "h1h7", "g8h7")).toBe(8);
+    expect(materialInvested("6k1/6pp/8/8/8/8/8/6KQ w - - 0 1", "h1h7", null)).toBe(0);
+  });
 
   it("marks the move a candidate when the engine has it best and on top", () => {
     expect(bestMoveFeatures().brilliantCandidate).toBe(true);

@@ -140,7 +140,8 @@ def _brilliant_analyzer_from_client(
 
     Validates the untrusted payload: each item needs a FEN + UCI string and finite
     ``human_probability`` / ``win_chance_after`` in [0, 1], plus an OPTIONAL finite
-    ``trap_gap`` in [-1, 1] (the browser-computed trap layer). A malformed item raises
+    ``trap_gap``, ``only_move_gap`` and ``two_move_gap`` in [-1, 1] (the
+    browser-computed trap, decisive and Great layers). A malformed item raises
     ValueError (→ 400). Empty/omitted → None (no Brilliant detection — the browser
     has no Maia)."""
     if not maia_assessments:
@@ -170,12 +171,14 @@ def _brilliant_analyzer_from_client(
         # trap_gap is optional (only the browser's eligible/unintuitive moves carry one):
         # validate it when present, leave it absent otherwise. It is a difference of two
         # win chances, so it ranges over [-1, 1] rather than [0, 1].
-        trap = item.get("trap_gap")
-        if trap is not None:
-            if not isinstance(trap, (int, float)) or isinstance(trap, bool):
-                raise ValueError("maia_assessment trap_gap must be a number")
-            if not math.isfinite(trap) or trap < -1.0 or trap > 1.0:
-                raise ValueError("maia_assessment trap_gap must be in [-1, 1]")
+        for key in ("trap_gap", "only_move_gap", "two_move_gap"):
+            gap = item.get(key)
+            if gap is None:
+                continue
+            if not isinstance(gap, (int, float)) or isinstance(gap, bool):
+                raise ValueError("maia_assessment {0} must be a number".format(key))
+            if not math.isfinite(gap) or gap < -1.0 or gap > 1.0:
+                raise ValueError("maia_assessment {0} must be in [-1, 1]".format(key))
         cleaned.append(item)
     # No engine is wired here (Stockfish + Maia3 run in the browser), so the trap layer's
     # extra eval can't run server-side. Instead the browser computes each eligible move's

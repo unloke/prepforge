@@ -30,6 +30,7 @@ class MoveClassification(str, Enum):
     BOOK = "book"
     BEST = "best"
     BRILLIANT = "brilliant"
+    GREAT = "great"
     EXCELLENT = "excellent"
     GOOD = "good"
     INACCURACY = "inaccuracy"

@@ -1,4 +1,6 @@
 import "./styles.css";
+import { buildArrowPath } from "./board-arrows.js";
+import { classBadgeSymbol } from "./move-grades.js";
 import { countOf } from "./plural.js";
 // One per-position analysis store (engine/position-analysis-store.js) behind the
 // Engine panel, the Coach and the whole-game pass.
@@ -2038,6 +2040,14 @@ class PositionCoach {
         afterEval: { cp: top.cp ?? null, mate: top.mate ?? null, pvUci: top.pvUci || [], pvSan: top.pvSan || [] },
       });
       features.opponentRead = opponentRead;
+      const saved = savedMainlineMove(ctx.ply, prevFen, ctx.lastUci, fen);
+      // The saved grade is authoritative for Great both ways: the board badge and the move
+      // list show it, so the coach neither drops a saved Great nor calls a saved ✓ move Great
+      // off its shallower live read.
+      if (saved && saved.classification === "great") c.markGreat(features);
+      else if (saved && features.classification?.code === "great") {
+        features.classification = { code: "best", label: "Best move", glyph: "✓", tone: "good" };
+      }
       renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
       // Read the position's "texture" from Maia's human-move distribution (one obvious
       // move vs. a rich spread) and fold it into the commentary — best-effort and async,
@@ -2051,12 +2061,12 @@ class PositionCoach {
       // analysis even when the two disagree on eligibility. It also skips the per-click
       // recompute (a Maia assessment + policy read + a Stockfish eval). Only free exploration
       // (a variation with no saved move) is judged by the live brilliantCandidate gate here.
-      const saved = savedMainlineMove(ctx.ply, prevFen, ctx.lastUci, fen);
       if (saved) {
         if (saved.classification === "brilliant") {
           this._showSavedBrilliant(c, features, prevFen, ctx.lastUci, fen, token);
         }
-        // A saved non-brilliant verdict is authoritative → leave the base read as is.
+        // Any other saved verdict is authoritative → the base read (already reconciled
+        // with the saved Great grade above) stands.
       } else if (features.brilliantCandidate && maiaAnalysisEnabled()) {
         this._checkBrilliant(features, prevFen, ctx.lastUci, fen, token);
       }
@@ -2080,26 +2090,28 @@ class PositionCoach {
       // (Settings → Playing strength), so a move can be brilliant FOR THEM.
       const a = await provider.moveAssessment({ fen: prevFen, moveUci: uci, rating });
       if (token !== this.token || fen !== this.fen || !a) return;
-      // Brilliant has three layers, cheapest-first (see brilliant-assess.js). The two cheap
+      // Brilliant has four layers, cheapest-first (see brilliant-assess.js). The cheap
       // ones gate the costly trap_gap (a Maia policy read + a Stockfish eval of the natural
       // move), so we never pay for it on a move a free check already ruled out:
       //   • Unintuitive — a human rarely finds it.
       if (!(a.humanProbability <= c.BRILLIANT_MAX_HUMAN_PROB)) return;
       //   • Reveal — Stockfish's truth sits far above Maia's first-glance read. (Free: both
-      //     numbers are already in hand.) This is the gate that used to be checked only after
-      //     trap_gap had already run, inside isBrilliantByMaia.
+      //     numbers are already in hand.)
       if (features.winAfterMover - a.winChanceAfter * 100 < c.BRILLIANT_MIN_WIN_GAP) return;
       const trapGap = await this._trapGap(features, prevFen, uci, fen, token, rating);
       if (token !== this.token || fen !== this.fen) return;
-      const brilliant = c.isBrilliantByMaia(features, {
+      //   • Trap, then Decisive — a hard find that is also the only move (or a sacrifice) is
+      //     Brilliant; one that another quiet move would match is Great.
+      const grade = c.gradeByMaia(features, {
         maiaHumanProb: a.humanProbability,
         maiaWinAfter: a.winChanceAfter,
         trapGap,
       });
-      if (brilliant) {
-        c.markBrilliant(features, { humanProb: a.humanProbability, winChanceAfter: a.winChanceAfter });
-        renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
-      }
+      const maia = { humanProb: a.humanProbability, winChanceAfter: a.winChanceAfter };
+      if (grade === "brilliant") c.markBrilliant(features, maia);
+      else if (grade === "great") c.markGreat(features, maia);
+      else return;
+      renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
     } catch (err) {
       console.warn("Coach: Maia brilliancy check unavailable", err);
       /* Maia unavailable → no brilliancy; the engine read stands. */
@@ -2182,7 +2194,7 @@ class PositionCoach {
       if (token !== this.token || fen !== this.fen || !read) return;
       c.attachIntuition(features, read);
       renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
-      paintMaiaCoachFromRead(prevFen, read, { playedUci: features.uci });
+      paintMaiaCoachFromRead(prevFen, read, { playedUci: features.uci, bestUci: features.bestUci });
     } catch (err) {
       console.warn("Coach: Maia intuition read unavailable", err);
       /* Maia unavailable → no texture/sharpness note; the engine read stands. */
@@ -2247,12 +2259,38 @@ const positionCoach = new PositionCoach();
 
 const COACH_TONES = ["good", "warn", "danger", "info", "brilliant"];
 
-// The Coach speaks in one short paragraph. Set its text + tone (subtle colour).
-function setCoachProse(text, tone = "info", state = "instant") {
+// A grade (the saved analysis' classification or the live read's code) as the move
+// list's colour group, for the coach's left rule.
+const COACH_QUALITY_GROUP = {
+  brilliant: "brilliant",
+  great: "great",
+  best: "good",
+  excellent: "good",
+  good: "good",
+  book: "good",
+  forced: "good",
+  inaccuracy: "inaccuracy",
+  mistake: "mistake",
+  blunder: "blunder",
+  missed_win: "missed",
+  missed_tactic: "missed",
+};
+
+// The saved whole-game verdict on the move the coach is reading, when it has one.
+function savedCoachQuality(ctx) {
+  if (!ctx || !ctx.prevFen || !ctx.lastUci) return null;
+  const saved = savedMainlineMove(ctx.ply, ctx.prevFen, ctx.lastUci, ctx.fen);
+  return saved ? saved.classification || null : null;
+}
+
+// The Coach speaks in one short paragraph. Set its text + tone (subtle colour); the
+// left rule takes the move's grade when there is one.
+function setCoachProse(text, tone = "info", state = "instant", quality = null) {
   const el = document.getElementById("coach-prose");
   if (!el) return;
   el.textContent = text || "";
   el.dataset.state = state;
+  el.dataset.quality = COACH_QUALITY_GROUP[String(quality || "").toLowerCase()] || "";
   for (const t of COACH_TONES) el.classList.toggle(`is-${t}`, t === tone);
 }
 
@@ -2269,7 +2307,8 @@ function previousAnalysisMove() {
 // Render the engine's read of the move just played, in the coach's own voice.
 function renderCoachProse(c) {
   if (!c) return;
-  setCoachProse(c.prose, c.tone, "engine");
+  // A saved verdict outranks the live read's grade, so the rule matches the move list.
+  setCoachProse(c.prose, c.tone, "engine", savedCoachQuality(positionCoach.ctx) || c.quality);
 }
 
 let _phaseCoachMod = null;
@@ -2290,18 +2329,48 @@ function paintPhaseChip(phase, label) {
   el.textContent = label || phase;
 }
 
+// What players at this level pick in the position the move was played from (Maia):
+// one pill per move, filled to its share, the played move outlined, the engine's
+// choice ticked. A pill plays its move from that position as a variation.
 function paintMaiaCoachLine(model) {
   const el = document.getElementById("coach-maia");
   if (!el) return;
-  if (!model || !model.tip) {
+  const picks = (model && model.picks) || [];
+  if (!picks.length) {
     el.hidden = true;
+    el.innerHTML = "";
     return;
   }
-  // The footer is a fixed, non-scrolling row: keep guidance to a concise
-  // two-line note so it always fits beside the explanation scroll region.
+  const rating = effectiveMaiaRating();
+  const who = Number.isFinite(rating) ? `players around ${rating}` : "players";
+  const pct = (p) => (p.pct < 1 ? "<1%" : `${Math.round(p.pct)}%`);
   el.hidden = false;
-  el.textContent = model.tip;
+  el.title = `How ${who} choose here (Maia 3)`;
+  el.innerHTML =
+    `<span class="hp-label">Humans</span>` +
+    picks
+      .map((p) => {
+        const notes = [p.played ? "played" : "", p.best ? "engine's choice" : ""].filter(Boolean).join(", ");
+        return (
+          `<button type="button" class="hp${p.played ? " is-played" : ""}${p.best ? " is-best" : ""}" ` +
+          `data-uci="${escapeHtml(p.uci)}" style="--p:${Math.min(100, Math.max(0, p.pct))}%" ` +
+          `title="${escapeHtml(`${p.san}: ${pct(p)} of ${who}${notes ? ` (${notes})` : ""}`)}">` +
+          `<b>${escapeHtml(p.san)}</b><span class="hp-pct">${pct(p)}</span></button>`
+        );
+      })
+      .join("");
   paintPhaseChip(model.phase, model.title);
+}
+
+// Play a human pick from the position before the current move (a variation, or the
+// existing continuation when it is the move that was played).
+async function playHumanPick(uci) {
+  const tree = appState.analysisTree;
+  const node = tree && tree.byId ? tree.byId.get(appState.analysisCurrentNodeId || "root") : null;
+  const parent = node && node.parent;
+  if (!parent || !uci) return;
+  await selectAnalysisNode(parent.id);
+  await onAnalysisBoardMove(uci, parent.fenAfter);
 }
 
 function paintPhaseFromFen(fen) {
@@ -2371,7 +2440,7 @@ function renderInstantCoach() {
     paintMaiaCoachLine(null);
     const mover = turn === "white" ? "Black" : "White"; // the side that just moved
     const did = describeMove(ctx.prevFen, ctx.lastUci, ctx.lastSan);
-    setCoachProse(did ? `${mover} ${did}.` : `${mover} plays ${ctx.lastSan}.`, "info");
+    setCoachProse(did ? `${mover} ${did}.` : `${mover} plays ${ctx.lastSan}.`, "info", "instant", savedCoachQuality(ctx));
   } else {
     paintPhaseChip(null);
     paintMaiaCoachLine(null);
@@ -3103,11 +3172,15 @@ class BoardController {
       if (existing) existing.remove();
       this._badgeEl = null;
     }
+    // The last-move squares take the grade's colour (styles.css), so the tint and the
+    // badge read as one mark.
+    if (this.board) delete this.board.dataset.moveClass;
     if (!this.moveBadge) return;
     const square = this.squares.get(this.moveBadge.square);
     if (!square) return;
     this._badgeEl = square;
     const cls = this.moveBadge.classification.replace(/[^a-z0-9_-]/g, "");
+    if (this.board) this.board.dataset.moveClass = cls;
     const label = escapeHtml(this.moveBadge.label);
     square.insertAdjacentHTML(
       "beforeend",
@@ -4295,50 +4368,6 @@ function resolveBoardMove({ from, to, moves, board, play }) {
   }).then((uci) => {
     if (uci) play(uci);
   });
-}
-
-// Build a single closed polygon for an arrow from `from` to `to`.
-// Doing shaft + head as one path (instead of a <line> + <marker>) means the
-// arrowhead and shaft are guaranteed to be in perfect alignment regardless of
-// stroke width, marker scale, or board orientation. The tip lands exactly on
-// the to-square center and the tail starts near the edge of the from-square.
-function buildArrowPath(from, to) {
-  const tailOffset = 4.0;
-  const headLength = 5.0;
-  const halfBase = 1.05;
-  const halfNeck = 0.85;
-  const halfHead = 2.25;
-
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const length = Math.hypot(dx, dy) || 1;
-  const ux = dx / length;
-  const uy = dy / length;
-  const px = -uy;
-  const py = ux;
-
-  const sx = from.x + ux * tailOffset;
-  const sy = from.y + uy * tailOffset;
-  const nx = to.x - ux * headLength;
-  const ny = to.y - uy * headLength;
-
-  const p1x = sx + px * halfBase, p1y = sy + py * halfBase;
-  const p2x = nx + px * halfNeck, p2y = ny + py * halfNeck;
-  const p3x = nx + px * halfHead, p3y = ny + py * halfHead;
-  const p5x = nx - px * halfHead, p5y = ny - py * halfHead;
-  const p6x = nx - px * halfNeck, p6y = ny - py * halfNeck;
-  const p7x = sx - px * halfBase, p7y = sy - py * halfBase;
-
-  return [
-    `M${p1x.toFixed(3)},${p1y.toFixed(3)}`,
-    `L${p2x.toFixed(3)},${p2y.toFixed(3)}`,
-    `L${p3x.toFixed(3)},${p3y.toFixed(3)}`,
-    `L${to.x.toFixed(3)},${to.y.toFixed(3)}`,
-    `L${p5x.toFixed(3)},${p5y.toFixed(3)}`,
-    `L${p6x.toFixed(3)},${p6y.toFixed(3)}`,
-    `L${p7x.toFixed(3)},${p7y.toFixed(3)}`,
-    "Z",
-  ].join(" ");
 }
 
 function renderAnnotations(
@@ -6384,11 +6413,44 @@ async function runAnalysis(options = {}) {
       live.phase?.(update.phase, update.current, update.total);
       jobToast.updateJob(update);
     };
+    // The Maia pass streams alongside Stockfish: every finished eval goes to the assessor,
+    // which assesses a move as soon as both of its positions are known, so most of the Maia
+    // work is done by the time the last Stockfish search lands.
+    const shouldCancel = () => cancelled || analysisOwnerId !== currentOwnerId();
+    let assessor = null;
+    const pendingEvals = [];
+    const assessorReady = wantsMaia
+      ? (_coachReady || preloadCoach())
+          .then((c) => {
+            assessor = c.createBrilliantAssessor({
+              moves: prep.moves,
+              depth: prep.depth,
+              rating: effectiveMaiaRating(),
+              provider: getSharedMaia3Provider(),
+              analyzeFn: (o) => store.analyzeGame(o),
+              shouldCancel,
+              onPhase: ({ phase: sub, detail }) => {
+                timings[`maia_${sub}`] = detail || 1;
+              },
+              onProgress: (done, total) =>
+                job({ current: done, total, phase: "maia-inference", message: `Maia ${done}/${total} moves` }),
+              onTrapProgress: (done, total) =>
+                job({ current: done, total, phase: "maia-traps", message: `Maia traps ${done}/${total}` }),
+            });
+            for (const [fen, ev] of pendingEvals.splice(0)) assessor.push(fen, ev);
+            return assessor;
+          })
+          .catch(() => null)
+      : null;
     const evals = await timed("stockfish", () =>
       store.analyzeGame({
         positions,
         depth: prep.depth,
-        onResult: live,
+        onResult: (fen, ev) => {
+          live(fen, ev);
+          if (assessor) assessor.push(fen, ev);
+          else if (wantsMaia) pendingEvals.push([fen, ev]);
+        },
         onProgress: (done, total) => {
           job({
             current: done,
@@ -6397,7 +6459,7 @@ async function runAnalysis(options = {}) {
             message: `Stockfish ${done}/${total} positions`,
           });
         },
-        shouldCancel: () => cancelled || analysisOwnerId !== currentOwnerId(),
+        shouldCancel,
       })
     );
     engineLifecycleMark("analyze-stockfish-done", tAnalyze);
@@ -6415,9 +6477,9 @@ async function runAnalysis(options = {}) {
     // Maia's ~46 MB model downloads once (then cached) when the pass runs;
     // progress shows in the toast. Any failure (no weights / inference error)
     // is swallowed → analysis without Maia signals, mirroring the server's
-    // no-Maia path. Init already started in parallel with Stockfish above, so
-    // this phase usually finds a warm provider; it still awaits the same
-    // shared ready promise via predictions(), never a second worker/session.
+    // no-Maia path. Init and most of the inference already ran alongside
+    // Stockfish above (the streaming assessor); this phase drains the rest and
+    // runs the trap / gap batches on the same shared worker.
     let maiaAssessments = [];
     if (wantsMaia) {
       engineLifecycleMark("analyze-maia-phase-start", tAnalyze);
@@ -6452,27 +6514,9 @@ async function runAnalysis(options = {}) {
           }
         });
         try {
-          const { computeBrilliantAssessments } = await timed("maia-load", () =>
-            _coachReady || preloadCoach()
-          ).then((m) => m);
-          maiaAssessments = await timed("maia-inference", () =>
-            computeBrilliantAssessments({
-              moves: prep.moves,
-              evals,
-              depth: prep.depth,
-              rating: effectiveMaiaRating(),
-              provider,
-              analyzeFn: (o) => store.analyzeGame(o),
-              shouldCancel: () => cancelled || analysisOwnerId !== currentOwnerId(),
-              onPhase: ({ phase: sub, detail }) => {
-                timings[`maia_${sub}`] = detail || 1;
-              },
-              onProgress: (done, total) =>
-                job({ current: done, total, phase: "maia-inference", message: `Maia ${done}/${total} moves` }),
-              onTrapProgress: (done, total) =>
-                job({ current: done, total, phase: "maia-traps", message: `Maia traps ${done}/${total}` }),
-            })
-          );
+          const ready = await timed("maia-load", () => assessorReady);
+          if (!ready) throw new Error("Coach bundle unavailable");
+          maiaAssessments = await timed("maia-inference", () => ready.finish(evals));
         } finally {
           provider.setInitProgressHandler(null);
         }
@@ -6896,34 +6940,6 @@ async function renderAnalysis(payload, { sourceSeq = analysisRecallSeq } = {}) {
   const rendered = view.renderAnalysis(payload);
   syncViewHeads();
   return rendered;
-}
-
-// Inline badge symbols so move badges render correctly before analyze.js loads.
-const ANALYSIS_CLASS_GROUP_OF = {
-  brilliant: "brilliant",
-  best: "good",
-  excellent: "good",
-  good: "good",
-  book: "good",
-  inaccuracy: "inaccuracy",
-  mistake: "mistake",
-  blunder: "blunder",
-  missed_win: "missed",
-  missed_tactic: "missed",
-};
-function classBadgeSymbol(classification) {
-  if (analyzeView) return analyzeView.classBadgeSymbol(classification);
-  const group = ANALYSIS_CLASS_GROUP_OF[String(classification || "").toLowerCase()];
-  return (
-    {
-      brilliant: "!!",
-      good: "+",
-      inaccuracy: "?!",
-      mistake: "?",
-        blunder: "??",
-      missed: "x",
-    }[group] || ""
-  );
 }
 
 function analysisTreeHasContent(movesArg) {
@@ -14400,6 +14416,10 @@ function bindEvents() {
   document.getElementById("train-flip").addEventListener("click", () => boards.train.flip());
   document.getElementById("train-skip").addEventListener("click", skipTrainingLine);
 
+  // How the current focus arrived: a pointer press, or the keyboard (Tab).
+  let focusFromPointer = false;
+  document.addEventListener("pointerdown", () => { focusFromPointer = true; }, true);
+  document.addEventListener("keydown", (event) => { if (event.key === "Tab") focusFromPointer = false; }, true);
   document.addEventListener("keydown", (event) => {
     if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === "k") {
       event.preventDefault();
@@ -14435,6 +14455,11 @@ function bindEvents() {
     // Arrow keys navigate the active tab's board. We blur clicked move buttons
     // on click, so focus returns to the document for these to fire.
     const inBuild = activeViewName() === "build";
+    // A control the mouse focused (Engine, the review switch) would otherwise take
+    // the keyboard focus ring on the first arrow press, though the arrows drive the board.
+    if ((event.key === "ArrowLeft" || event.key === "ArrowRight") && focusFromPointer && active && active !== document.body) {
+      active.blur();
+    }
     if (event.key === "ArrowLeft") {
       event.preventDefault();
       if (inBuild) buildGoBack();
@@ -14527,6 +14552,12 @@ async function init() {
   bindStatusPillAvoidance();
   engineWidget.bind();
   positionCoach.bind();
+  document.getElementById("coach-maia")?.addEventListener("click", (event) => {
+    const pill = event.target.closest(".hp[data-uci]");
+    if (!pill) return;
+    pill.blur();
+    void playHumanPick(pill.dataset.uci).catch(() => {});
+  });
   bindEvents();
   renderPieceStylePicker();
   renderPrefsToggles();

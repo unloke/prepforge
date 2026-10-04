@@ -1,6 +1,7 @@
 // Analyze tab rendering (lazy-loaded from app.js). Classification bars, eval chart,
 // move tree, and results orchestration.
 
+import { CLASS_GROUPS, CLASS_GROUP_OF, classBadgeSymbol } from "../move-grades.js";
 import "./analyze-chart.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
 import { treeToMovetext } from "../analyze-pgn.js";
@@ -17,39 +18,12 @@ export function createAnalyzeView({
   const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks } =
     createMoveTreeRenderer({ escapeHtml });
 
-  const CLASS_GROUPS = [
-    { key: "brilliant", label: "Brilliant", members: ["brilliant"] },
-    { key: "good", label: "Good", members: ["best", "excellent", "good", "book"] },
-    { key: "inaccuracy", label: "Inaccuracy", members: ["inaccuracy"] },
-    { key: "mistake", label: "Mistake", members: ["mistake"] },
-    { key: "blunder", label: "Blunder", members: ["blunder"] },
-    { key: "missed", label: "Missed", members: ["missed_win", "missed_tactic"] },
-  ];
-  const CLASS_GROUP_OF = (() => {
-    const map = {};
-    CLASS_GROUPS.forEach((g) => g.members.forEach((m) => (map[m] = g.key)));
-    return map;
-  })();
-
-  function classBadgeSymbol(classification) {
-    const group = CLASS_GROUP_OF[String(classification || "").toLowerCase()];
-    return (
-      {
-        brilliant: "!!",
-        good: "+",
-        inaccuracy: "?!",
-        mistake: "?",
-        blunder: "??",
-        missed: "x",
-      }[group] || ""
-    );
-  }
-
   // Chart colours come from CSS theme tokens (styles.css, .eval-chart rules), so
   // the graph follows light/dark like the rest of the app — no hardcoded hex in
   // JS. The class suffixes mirror the classification-bar palette (.seg-*).
   const EVAL_MARKER_CLASS = {
     brilliant: "eval-m-brilliant",
+    great: "eval-m-great",
     inaccuracy: "eval-m-inaccuracy",
     mistake: "eval-m-mistake",
     blunder: "eval-m-blunder",
@@ -62,13 +36,42 @@ export function createAnalyzeView({
   // rescaleEvalMarkers so nothing distorts.
   const EVAL_CHART_W = 640;
   const EVAL_CHART_H = 96;
-  const EVAL_CHART_PAD = 10;
   // Checkmate-on-board sentinel (game-analyzer terminalEval / engine.py mate_score).
   const CHECKMATE_CP = 10000;
 
+  // Plot insets, in screen pixels: the first/last ply's ring and markers sit wholly
+  // inside the frame instead of being pushed off their point. The SVG stretches, so the
+  // insets become user units per measured size (fallbacks for a hidden chart).
+  const EVAL_CHART_INSET_PX = 9;
+  let plotPadX = EVAL_CHART_INSET_PX;
+  let plotPadY = (EVAL_CHART_INSET_PX * EVAL_CHART_H) / 64;
+
+  function measurePlotPads(svg) {
+    const rect = svg && svg.getBoundingClientRect ? svg.getBoundingClientRect() : null;
+    const padX = rect && rect.width > 0 ? (EVAL_CHART_INSET_PX * EVAL_CHART_W) / rect.width : plotPadX;
+    const padY = rect && rect.height > 0 ? (EVAL_CHART_INSET_PX * EVAL_CHART_H) / rect.height : plotPadY;
+    const changed = Math.abs(padX - plotPadX) > 0.5 || Math.abs(padY - plotPadY) > 0.5;
+    plotPadX = Math.min(padX, EVAL_CHART_W / 4);
+    plotPadY = Math.min(padY, EVAL_CHART_H / 4);
+    return changed;
+  }
+
+  function evalChartXOf(idx, count) {
+    if (count <= 1) return EVAL_CHART_W / 2;
+    return plotPadX + (idx / (count - 1)) * (EVAL_CHART_W - 2 * plotPadX);
+  }
+
+  // The pointer's position as a 0..1 ratio along the plotted plies.
+  function evalChartRatioAt(chart, clientX) {
+    const rect = chart.getBoundingClientRect();
+    if (!(rect.width > 0)) return 0;
+    const x = ((clientX - rect.left) / rect.width) * EVAL_CHART_W;
+    return (x - plotPadX) / (EVAL_CHART_W - 2 * plotPadX);
+  }
+
   function evalChartYOf(winPct) {
-    const usable = EVAL_CHART_H - 2 * EVAL_CHART_PAD;
-    return EVAL_CHART_PAD + (1 - winPct / 100) * usable;
+    const usable = EVAL_CHART_H - 2 * plotPadY;
+    return plotPadY + (1 - winPct / 100) * usable;
   }
 
   // Nearest point index for a horizontal ratio (0..1) across the chart.
@@ -128,45 +131,6 @@ export function createAnalyzeView({
     if (match) showAnalysisPly(Number(match.ply));
   }
 
-  // The server's completeness codes ("complete" | "partial-shallow,no-maia" ...) as
-  // human copy — the raw codes ("— no-maia") must never reach the page.
-  const COVERAGE_COPY = {
-    complete: "complete",
-    "partial-shallow": "some positions searched below the target depth",
-    "no-maia": "no human-move model (Maia)",
-  };
-  function coverageCopy(completeness) {
-    const codes = String(completeness || "")
-      .split(",")
-      .map((c) => c.trim())
-      .filter(Boolean);
-    if (!codes.length) return "partial";
-    return codes.map((c) => COVERAGE_COPY[c] || c.replace(/-/g, " ")).join("; ");
-  }
-
-  // A-05: a report must never imply uniform full-depth coverage it did not
-  // have. A complete run says nothing (that is the expectation); a run with
-  // positions searched below the target depth gets one status line, with the
-  // run's metadata in its tooltip.
-  function qualitySummaryHtml() {
-    const quality = appState.analysis && appState.analysis.quality;
-    if (!quality || quality.search !== "partial-shallow") return "";
-    const rows = [
-      ["coverage", coverageCopy(quality.completeness)],
-      ["target depth", quality.target_depth],
-      ["actual depth", `${quality.actual_depth_min}–${quality.actual_depth_max} (avg ${quality.actual_depth_avg})`],
-      ["Maia", quality.maia?.available ? `maia3${quality.maia.rating ? ` @ ${quality.maia.rating}` : ""}` : "not run"],
-      ["engine", quality.engine],
-    ]
-      .map(([k, v]) => `${k}: ${v}`)
-      .join("\n");
-    return (
-      `<p class="quality-note" data-testid="analysis-quality" title="${escapeHtml(rows)}">` +
-      `△ ${escapeHtml(`${quality.shallow_positions} positions below depth ${quality.target_depth}`)}` +
-      `</p>`
-    );
-  }
-
   function renderClassificationBars(moves) {
     const host = document.getElementById("analysis-summary");
     if (!host) return;
@@ -209,8 +173,7 @@ export function createAnalyzeView({
       `<div class="class-bars">` +
       rowHtml("white", "White") +
       rowHtml("black", "Black") +
-      `</div>` +
-      qualitySummaryHtml();
+      `</div>`;
 
     host.querySelectorAll(".cbar-seg").forEach((seg) => {
       seg.addEventListener("click", () => {
@@ -409,6 +372,11 @@ export function createAnalyzeView({
   function rescaleEvalMarkers() {
     const chart = document.getElementById("eval-chart");
     if (!chart) return;
+    // A new chart size changes the insets in user units: redraw at the new geometry.
+    if (measurePlotPads(chart) && (appState.evalChartPoints || []).length) {
+      renderEvalChart(appState.evalChartPoints);
+      return;
+    }
     const markers = chart.querySelectorAll(".eval-marker");
     if (!markers.length) return;
     const viewWidth = 640;
@@ -566,8 +534,7 @@ export function createAnalyzeView({
     const ply = appState.analysisPly;
     const idx = points.findIndex((p) => p.ply === ply);
     const hidden = !points.length || idx < 0;
-    const width = EVAL_CHART_W;
-    const x = hidden ? -10 : points.length === 1 ? width / 2 : (idx / (points.length - 1)) * width;
+    const x = hidden ? -10 : evalChartXOf(idx, points.length);
     marker.setAttribute("x1", String(x));
     marker.setAttribute("x2", String(x));
     updateChartCaption(hidden ? null : points[idx]);
@@ -580,9 +547,7 @@ export function createAnalyzeView({
       return;
     }
     dot.setAttribute("visibility", "visible");
-    // Keep the whole ring inside the chart at the first and last ply.
-    const rx = Number(dot.getAttribute("rx")) || 0;
-    dot.setAttribute("cx", String(Math.min(width - rx - 1, Math.max(rx + 1, x))));
+    dot.setAttribute("cx", String(x));
     dot.setAttribute("cy", String(evalChartYOf(pointWinPct(points[idx]))));
   }
 
@@ -614,7 +579,7 @@ export function createAnalyzeView({
       return;
     }
     const point = points[idx];
-    const x = points.length === 1 ? EVAL_CHART_W / 2 : (idx / (points.length - 1)) * EVAL_CHART_W;
+    const x = evalChartXOf(idx, points.length);
     tooltip.innerHTML = evalChartTooltipHtml(point, {
       isCurrent: point.ply === appState.analysisPly,
     });
@@ -658,17 +623,13 @@ export function createAnalyzeView({
     chart.addEventListener("click", (event) => {
       const points = appState.evalChartPoints || [];
       if (!points.length) return;
-      const rect = chart.getBoundingClientRect();
-      const ratio = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 0;
-      selectEvalChartIdx(evalChartNearestIndex(points, ratio));
+      selectEvalChartIdx(evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX)));
     });
 
     chart.addEventListener("mousemove", (event) => {
       const points = appState.evalChartPoints || [];
       if (!points.length) return;
-      const rect = chart.getBoundingClientRect();
-      const ratio = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 0;
-      evalChartFocusIdx = evalChartNearestIndex(points, ratio);
+      evalChartFocusIdx = evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX));
       showEvalChartTooltip(evalChartFocusIdx);
     });
 
@@ -685,6 +646,7 @@ export function createAnalyzeView({
   function renderEvalChart(points) {
     const chart = document.getElementById("eval-chart");
     const svgNS = "http://www.w3.org/2000/svg";
+    measurePlotPads(chart);
     chart.innerHTML = "";
     appState.evalChartPoints = points || [];
     onEvalChartRendered();
@@ -734,7 +696,7 @@ export function createAnalyzeView({
     }
 
     const coords = points.map((point, index) => {
-      const x = points.length === 1 ? width / 2 : (index / (points.length - 1)) * width;
+      const x = evalChartXOf(index, points.length);
       const y = yOf(pointWinPct(point));
       return { x, y, ply: point.ply, classification: point.classification };
     });
@@ -798,8 +760,7 @@ export function createAnalyzeView({
       if (!markerClass) return;
       const dot = document.createElementNS(svgNS, "ellipse");
       dot.classList.add("eval-marker", "eval-dot", markerClass);
-      // Inset end markers so they aren't cut in half by the chart edge.
-      dot.setAttribute("cx", String(Math.min(EVAL_CHART_W - 6, Math.max(6, c.x))));
+      dot.setAttribute("cx", String(c.x));
       dot.setAttribute("cy", String(c.y));
       dot.setAttribute("data-ply", String(c.ply));
       dot.dataset.baseR = "4.5";

@@ -24,6 +24,33 @@ const DEFAULT_MAX_NODES = ANALYSIS_MAX_NODES;
 // Maia pass and the live board engine run beside it, so the pool stays small.
 const MAX_CONCURRENCY = 4;
 
+// Warm browser engines a finished pass leaves behind for the next one. Starting a Stockfish
+// worker (WASM + network load) costs ~250 ms, and a game analysis runs a few small batches
+// right after the main pass (the Maia trap and gap reads): they pick these up instead of
+// paying that again. Only the real browser engine is pooled; an idle one closes on its own.
+const POOL_IDLE_MS = 8000;
+const idleEngines = []; // { provider, maxNodes, timer }
+
+function takeIdleEngine(maxNodes) {
+  const k = idleEngines.findIndex((e) => e.maxNodes === maxNodes);
+  if (k < 0) return null;
+  const [entry] = idleEngines.splice(k, 1);
+  clearTimeout(entry.timer);
+  return entry.provider;
+}
+
+function parkIdleEngine(provider, maxNodes) {
+  if (idleEngines.length >= MAX_CONCURRENCY) return false;
+  const entry = { provider, maxNodes, timer: null };
+  entry.timer = setTimeout(() => {
+    const k = idleEngines.indexOf(entry);
+    if (k >= 0) idleEngines.splice(k, 1);
+    Promise.resolve(provider.close()).catch(() => {});
+  }, POOL_IDLE_MS);
+  idleEngines.push(entry);
+  return true;
+}
+
 // Pick a worker count when the caller didn't pin one: half the logical cores (leaving room
 // for the UI, Maia and the live engine), clamped to [1, MAX_CONCURRENCY]. Exported so the
 // heuristic itself is unit-testable without spinning up real engines.
@@ -92,7 +119,16 @@ function evalFromSnapshot(fen, snapshot) {
     pv_san: top.pv_san ? top.pv_san.slice() : [],
     depth: (snapshot && snapshot.current_depth) || top.depth || 0,
     nodes: (snapshot && snapshot.nodes) ?? null,
+    // The second line of a MultiPV >= 2 search (the best OTHER move), when there is one.
+    second: lineAt(snapshot, 1),
+    third: lineAt(snapshot, 2),
   };
+}
+
+function lineAt(snapshot, index) {
+  const line = snapshot && snapshot.pvs && snapshot.pvs[index];
+  if (!line || !line.pv_uci || !line.pv_uci.length || (line.score_cp == null && line.mate_in == null)) return null;
+  return { move_uci: line.pv_uci[0], score_cp: line.score_cp ?? null, mate_in: line.mate_in ?? null };
 }
 
 // Block until `provider` has a usable eval for `fen` at `targetDepth`, then
@@ -213,8 +249,11 @@ export async function analyzeGamePositions({
   }
 
   async function workerLoop() {
-    const provider = createProvider({ maxDepth: targetDepth, maxNodes });
-    let opened = false;
+    const pooled = createProvider === createEngineProvider;
+    const warm = pooled ? takeIdleEngine(maxNodes) : null;
+    const provider = warm || createProvider({ maxDepth: targetDepth, maxNodes });
+    let opened = !!warm;
+    let clean = false;
     try {
       while (!cancelled()) {
         const fen = takeNextFen();
@@ -231,23 +270,28 @@ export async function analyzeGamePositions({
         // Reuse this worker's session across its positions: open the first,
         // update the rest.
         if (!opened) {
-          await provider.open({ fen, multipv });
+          await provider.open({ fen, multipv, depth: targetDepth });
           opened = true;
         } else {
-          await provider.update({ fen, multipv });
+          await provider.update({ fen, multipv, depth: targetDepth });
         }
 
         record(fen, await waitForEval(provider, fen, targetDepth, cancelled));
       }
+      clean = !cancelled();
     } catch (err) {
       // Stop the other workers, then surface the failure to the caller.
       aborted = true;
       throw err;
     } finally {
-      try {
-        await provider.close();
-      } catch (_) {
-        /* ignore teardown errors */
+      // A worker that finished its share cleanly stays warm for the next batch; one that
+      // failed or was stopped mid-search is torn down.
+      if (!(pooled && clean && opened && parkIdleEngine(provider, maxNodes))) {
+        try {
+          await provider.close();
+        } catch (_) {
+          /* ignore teardown errors */
+        }
       }
     }
   }

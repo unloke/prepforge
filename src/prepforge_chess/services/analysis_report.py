@@ -88,6 +88,7 @@ class AnalysisReportBuilder:
     def _is_report_critical(self, move: MoveRecord) -> bool:
         return move.classification in {
             MoveClassification.BRILLIANT,
+            MoveClassification.GREAT,
             MoveClassification.INACCURACY,
             MoveClassification.MISTAKE,
             MoveClassification.BLUNDER,

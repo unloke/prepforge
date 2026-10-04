@@ -141,6 +141,27 @@ function buildTip({ fen, sorted, agreement, expectedSan, expectedUci, expectedPc
   return humanSan ? `${humanSan} is the usual move among ${who} (${pctText(humanPct)}).` : "";
 }
 
+// Analyze: the moves players at this level pick here, most popular first: Maia's top
+// three, plus the move played and the engine's choice when they sit lower down.
+const PICKS_TOP = 3;
+function humanPicks(fen, sorted, { playedUci, bestUci }) {
+  const played = uciKey(playedUci);
+  const best = uciKey(bestUci);
+  const shown = sorted.slice(0, PICKS_TOP);
+  for (const key of [played, best]) {
+    if (!key || shown.some((p) => uciKey(p.move_uci) === key)) continue;
+    const hit = findPred(sorted, key);
+    shown.push(hit ? hit.pred : { move_uci: key, probability: 0 });
+  }
+  return shown
+    .sort((a, b) => b.probability - a.probability)
+    .map((p) => {
+      const key = uciKey(p.move_uci);
+      const pct = Math.round(p.probability * 1000) / 10;
+      return { uci: key, san: sanOf(fen, key) || key, pct, played: key === played, best: !!best && key === best };
+    });
+}
+
 export function clusterQueueByPhase(queue) {
   const counts = { opening: 0, middlegame: 0, endgame: 0 };
   for (const card of queue || []) {
@@ -177,6 +198,7 @@ export function buildPhaseCoach({
   expectedUci,
   expectedSan,
   playedUci,
+  bestUci,
   rating,
   reveal,
 } = {}) {
@@ -226,5 +248,6 @@ export function buildPhaseCoach({
     expectedPct,
     playedPct,
     agreement,
+    picks: humanPicks(fen, sorted, { playedUci, bestUci }),
   };
 }
