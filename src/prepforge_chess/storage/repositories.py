@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from contextlib import nullcontext
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
@@ -986,9 +987,10 @@ class PrepForgeRepository:
         return repertoire
 
     def load_repertoire(
-        self, repertoire_id: str, owner_user_id: Optional[str] = None
+        self, repertoire_id: str, owner_user_id: Optional[str] = None,
+        *, conn: Optional[Connection] = None,
     ) -> Optional[Repertoire]:
-        with self.engine.connect() as conn:
+        with nullcontext(conn) if conn is not None else self.engine.connect() as conn:
             rep_row = conn.execute(
                 select(t.repertoires).where(t.repertoires.c.id == repertoire_id)
             ).mappings().first()
@@ -1152,12 +1154,12 @@ class PrepForgeRepository:
         with self.engine.connect() as conn:
             return int(conn.execute(stmt).scalar_one())
 
-    def repertoire_meta(self, repertoire_id: str) -> Optional[Dict[str, Any]]:
+    def repertoire_meta(self, repertoire_id: str, *, conn: Optional[Connection] = None) -> Optional[Dict[str, Any]]:
         """Lightweight ``(id, name, is_active, owner_user_id, team_id, visibility)`` for
         owner/share-gating and write responses, without loading the whole opening tree.
         ``None`` if absent; ``owner_user_id``/``team_id`` are ``None`` for an
         unclaimed/unshared row, and ``visibility`` defaults to ``"private"``."""
-        with self.engine.connect() as conn:
+        with nullcontext(conn) if conn is not None else self.engine.connect() as conn:
             row = conn.execute(
                 select(
                     t.repertoires.c.id,

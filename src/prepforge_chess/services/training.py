@@ -217,60 +217,65 @@ class TrainingService:
         return self._prompt_for_session(repertoire, updated)
 
     def submit_move(self, session_id: str, played_uci: str) -> TrainingAttemptResult:
-        session = self._load_session_or_raise(session_id)
-        repertoire = self._load_repertoire_or_raise(session.repertoire_id)
-        prompt = self._prompt_for_session(repertoire, session)
-        if prompt is None:
-            raise ValueError("training session has no current prompt")
+        with self.repository.engine.begin() as conn:
+            session = self.repository.lock_training_session(conn, session_id=session_id)
+            if session is None:
+                raise ValueError("training session not found")
+            repertoire = self.repository.load_repertoire(session.repertoire_id, conn=conn)
+            if repertoire is None:
+                raise ValueError("repertoire not found")
+            prompt = self._prompt_for_session(repertoire, session)
+            if prompt is None:
+                raise ValueError("training session has no current prompt")
 
-        progress = self.repository.load_training_progress(
-            repertoire.id,
-            prompt.expected_node_id,
-            owner_user_id=self._owner_or_raise(),
-        ) or TrainingProgress(node_id=prompt.expected_node_id)
-        correct = played_uci == prompt.expected_move_uci
-        updated_session, updated_progress = record_attempt(
-            session=session,
-            progress=progress,
-            node_id=prompt.expected_node_id,
-            correct=correct,
-        )
-
-        completed_line = False
-        if correct:
-            next_expected = self._next_expected_node_after(
-                repertoire,
-                updated_session,
-                prompt.expected_node_id,
+            progress = self.repository.lock_training_progress(
+                conn, repertoire_id=repertoire.id,
+                node_id=prompt.expected_node_id,
+                owner_user_id=self._owner_or_raise(),
             )
-            if next_expected is None:
-                completed_line = True
-                updated_session = replace(
+            correct = played_uci == prompt.expected_move_uci
+            updated_session, updated_progress = record_attempt(
+                session=session,
+                progress=progress,
+                node_id=prompt.expected_node_id,
+                correct=correct,
+            )
+
+            completed_line = False
+            if correct:
+                next_expected = self._next_expected_node_after(
+                    repertoire,
                     updated_session,
-                    current_index=min(
-                        updated_session.current_index + 1,
-                        len(updated_session.line_order),
-                    ),
-                    current_node_id=None,
-                    updated_at=_utc_now(),
+                    prompt.expected_node_id,
                 )
+                if next_expected is None:
+                    completed_line = True
+                    updated_session = replace(
+                        updated_session,
+                        current_index=min(
+                            updated_session.current_index + 1,
+                            len(updated_session.line_order),
+                        ),
+                        current_node_id=None,
+                        updated_at=_utc_now(),
+                    )
+                else:
+                    updated_session = replace(
+                        updated_session,
+                        current_node_id=next_expected.id,
+                        updated_at=_utc_now(),
+                    )
             else:
                 updated_session = replace(
                     updated_session,
-                    current_node_id=next_expected.id,
+                    current_node_id=prompt.expected_node_id,
                     updated_at=_utc_now(),
                 )
-        else:
-            updated_session = replace(
-                updated_session,
-                current_node_id=prompt.expected_node_id,
-                updated_at=_utc_now(),
-            )
 
-        self.repository.save_training_session(updated_session)
-        self.repository.save_training_progress(
-            repertoire.id, updated_progress, owner_user_id=self._owner_or_raise()
-        )
+            self.repository.write_training_session(conn, updated_session)
+            self.repository.write_training_progress(
+                conn, repertoire_id=repertoire.id, progress=updated_progress, owner_user_id=self._owner_or_raise()
+            )
 
         # Surface the player's move result and the opponent's single reply so
         # the UI can animate them as two separate steps instead of jumping the
