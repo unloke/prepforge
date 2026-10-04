@@ -1853,6 +1853,12 @@ class PrepForgeRepository:
         from a stale snapshot silently clobbers the other sync's mistakes,
         mastered nodes, and position. Follow up with ``write_training_session``
         before the transaction ends. Returns None when the row is absent."""
+        # SQLite has no FOR UPDATE. Acquire its writer lock before reading the
+        # session so file-backed concurrent requests cannot use stale state.
+        if conn.dialect.name == "sqlite":
+            conn.execute(update(t.training_sessions).where(
+                t.training_sessions.c.id == session_id
+            ).values(state_version=t.training_sessions.c.state_version))
         row = (
             conn.execute(
                 select(t.training_sessions)
@@ -2128,23 +2134,22 @@ class PrepForgeRepository:
     def load_latest_analysis_result(
         self, game_id: str, owner_user_id: Optional[str] = None
     ) -> Optional[AnalysisResult]:
+        # Owner, summary, and self-contained move snapshot come from ONE SELECT,
+        # including on PostgreSQL's default READ COMMITTED isolation level.
+        stmt = select(t.analysis_results).where(t.analysis_results.c.game_id == game_id)
+        if owner_user_id is not None:
+            stmt = stmt.join(t.games, t.games.c.id == t.analysis_results.c.game_id).where(
+                t.games.c.owner_user_id == owner_user_id
+            )
+        stmt = stmt.order_by(t.analysis_results.c.analyzed_at.desc(), t.analysis_results.c.id.desc()).limit(1)
         with self.engine.connect() as conn:
-            # The analysis is owned through its game; gate on the game's owner first.
-            if owner_user_id is not None:
-                game_row = conn.execute(
-                    select(t.games.c.owner_user_id).where(t.games.c.id == game_id)
-                ).mappings().first()
-                if game_row is None or game_row["owner_user_id"] != owner_user_id:
-                    return None
-            row = conn.execute(
-                select(t.analysis_results)
-                .where(t.analysis_results.c.game_id == game_id)
-                .order_by(t.analysis_results.c.analyzed_at.desc(), t.analysis_results.c.id.desc())
-                .limit(1)
-            ).mappings().first()
+            row = conn.execute(stmt).mappings().first()
         if row is None:
             return None
 
+        quality = _json_load(row["quality_json"], None)
+        if row["move_results_json"] is None:
+            quality = dict(quality or {}, move_snapshot_missing=True)
         return AnalysisResult(
             game_id=row["game_id"],
             analyzed_at=_dt_from_text(row["analyzed_at"]) or datetime.now(timezone.utc),
@@ -2153,7 +2158,7 @@ class PrepForgeRepository:
             move_results=codec.decode_analysis_moves(row["move_results_json"]),
             summary=_json_load(row["summary_json"], {}),
             critical_ply=_parse_critical_ply(row["critical_ply"]),
-            quality=_json_load(row["quality_json"], None),
+            quality=quality,
         )
 
     def _save_move_annotation(

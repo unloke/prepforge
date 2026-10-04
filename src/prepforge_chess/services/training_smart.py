@@ -845,7 +845,18 @@ class SmartTrainingService:
                 session = replace(fresh, updated_at=_utc_now())
                 self.repository.write_training_session(conn, session)
             self.sync_state_version = session.state_version
-            self.sync_state_applied = state_applied
+            # A lost response may retry an already committed state. Acknowledge
+            # the matching view without writing it or forcing a resume. A stale
+            # view with different queue/position still cannot acquire a new token.
+            state_matches = (
+                state_version is not None and state_version <= session.state_version
+                and (queue is not None or card_index is not None)
+                and session.current_node_id is None
+                and (queue is None or [raw for raw in queue if decode_card(raw) is not None]
+                     == session.line_order)
+                and (card_index is None or int(card_index) == session.current_index)
+            )
+            self.sync_state_applied = state_applied or state_matches
         return written
 
     # ------------------------------------------------------------------- move
@@ -911,6 +922,12 @@ class SmartTrainingService:
 
             self.repository.write_training_session(conn, session)
 
+            # Skipping any now-stale following cards is part of the same
+            # locked session update, never a post-commit blind overwrite.
+            next_context = self._context(session, repertoire, conn=conn)
+            if next_context is not None:
+                session = next_context.session
+
         played_san = fen_after_player = None
         reply_uci = reply_san = fen_after_reply = None
         if correct:
@@ -922,7 +939,6 @@ class SmartTrainingService:
                 reply_san = reply.move.san
                 fen_after_reply = reply.move.fen_after
 
-        next_context = self._context(session, repertoire)
         next_prompt = (
             self._prompt_from_context(next_context) if next_context is not None else None
         )

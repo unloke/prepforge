@@ -243,6 +243,25 @@ def test_recall_unknown_game_is_404(client):
     assert client.get("/api/analyses/does-not-exist").status_code == 404
 
 
+def test_recall_legacy_snapshot_requests_reanalysis(client):
+    from sqlalchemy import update
+    from prepforge_chess.api import db
+    from prepforge_chess.storage import sa_tables as t
+
+    _register(client, "legacy-report@example.com")
+    prepared = _prepare(client)
+    assert _classify_save(client, prepared).status_code == 200
+    with db.get_engine().begin() as conn:
+        conn.execute(update(t.analysis_results).where(
+            t.analysis_results.c.game_id == prepared["game_id"]
+        ).values(move_results_json=None))
+    response = client.get(f"/api/analyses/{prepared['game_id']}")
+    assert response.status_code == 409
+    assert "Analyze this game again" in response.json()["detail"]
+    assert _classify_save(client, prepared).status_code == 200
+    assert client.get(f"/api/analyses/{prepared['game_id']}").status_code == 200
+
+
 # ---- board utility ---------------------------------------------------------
 
 _START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"

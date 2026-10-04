@@ -441,6 +441,9 @@ def recall_analysis(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="no saved analysis for that game"
         )
+    if result.quality and result.quality.get("move_snapshot_missing"):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail="Saved analysis has no move snapshot. Analyze this game again.")
     return analysis_result_to_payload(result)
 
 

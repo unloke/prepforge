@@ -92,6 +92,7 @@ jobs:
           tests/test_api_lichess_games.py
           tests/test_lichess_departure_misses.py
           tests/test_training_smart.py
+          tests/test_backend_consistency.py
           tests/test_billing_concurrency.py
           tests/test_build_route_sql.py::test_build_route_sql_counts_postgres
           tests/test_repositories.py::test_list_repertoires_postgres
