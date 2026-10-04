@@ -21,6 +21,7 @@ const CACHE_KEY = "prepforge.explorer.cache.v1";
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // a week: opening stats are slow-moving
 const CACHE_CAP = 150; // ~a long Build session of distinct positions
 const COOLDOWN_MS = 60 * 1000;
+const memoryCaches = new WeakMap();
 
 // The player-pool endpoint wants rating buckets, not a number. Map a rating to its
 // bucket and one neighbour so the pool is "people about as strong as you".
@@ -117,7 +118,7 @@ export function formatGames(n) {
   return String(n);
 }
 
-export function createExplorerClient({ fetchImpl, storage, now } = {}) {
+export function createExplorerClient({ fetchImpl, storage, now, events = globalThis } = {}) {
   const doFetch = fetchImpl || ((...args) => fetch(...args));
   const clock = now || (() => Date.now());
   const store =
@@ -129,13 +130,23 @@ export function createExplorerClient({ fetchImpl, storage, now } = {}) {
   let cooldownUntil = 0;
   const inflight = new Map();
 
+  const invalidate = (event) => {
+    if ((event.key === CACHE_KEY || event.key === null) &&
+        (!event.storageArea || event.storageArea === store)) memoryCaches.delete(store);
+  };
+  events.addEventListener?.("storage", invalidate);
+
   function readCache() {
+    let memoryCache = memoryCaches.get(store);
+    if (memoryCache) return memoryCache;
     try {
       const parsed = JSON.parse(store.getItem(CACHE_KEY) || "null");
-      return parsed && typeof parsed === "object" && parsed.entries ? parsed : { entries: {} };
+      memoryCache = parsed && typeof parsed === "object" && parsed.entries ? parsed : { entries: {} };
     } catch (_) {
-      return { entries: {} };
+      memoryCache = { entries: {} };
     }
+    memoryCaches.set(store, memoryCache);
+    return memoryCache;
   }
 
   function writeCache(cache) {
@@ -192,5 +203,5 @@ export function createExplorerClient({ fetchImpl, storage, now } = {}) {
     return request;
   }
 
-  return { fetchStats };
+  return { fetchStats, dispose: () => events.removeEventListener?.("storage", invalidate) };
 }

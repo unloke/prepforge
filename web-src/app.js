@@ -49,6 +49,7 @@ import { buildGameSummary, hasClassifiedMoves } from "./coach/game-summary.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { classifySyncError, describeSyncError } from "./sync-errors.js";
 import { apiErrorMessage } from "./api-errors.js";
+import { withRequestDeadline } from "./request-deadline.js";
 import { orderPendingBuildAdds } from "./build-queue.js";
 import { normalizeRepertoireColor, repertoireColorField } from "./repertoire-color.js";
 import { trainStartDisabled } from "./train-start.js";
@@ -68,12 +69,7 @@ import {
   saveOutbox,
   trainAttemptId,
 } from "./sync-outbox.js";
-import {
-  clearCheckpoint,
-  evalMapFrom,
-  loadCheckpoint,
-  saveCheckpoint,
-} from "./analyze-checkpoint.js";
+import { clearCheckpoint, evalMapFrom, loadCheckpoint, saveCheckpoint } from "./analyze-checkpoint.js";
 import {
   loadReturnState,
   pendingHandoffs,
@@ -3399,6 +3395,8 @@ const getCsrfToken = createCsrfTokenSource();
 
 async function api(path, options = {}) {
   const method = (options.method || "GET").toUpperCase();
+  const { timeoutMs = method === "GET" ? 30_000 : 90_000, signal: callerSignal, ...fetchOptions } = options;
+  return withRequestDeadline(async (signal) => {
   // Merge caller headers over the JSON default, then attach the CSRF token on
   // unsafe methods (bootstrapping /api/csrf if the cookie isn't set yet). The
   // FastAPI backend 403s any unsafe request that doesn't echo the cookie.
@@ -3407,9 +3405,11 @@ async function api(path, options = {}) {
     { "Content-Type": "application/json", ...(options.headers || {}) },
     getCsrfToken,
   );
+  signal.throwIfAborted();
   const response = await fetch(path, {
     credentials: "same-origin",
-    ...options,
+    ...fetchOptions,
+    signal,
     headers,
   });
   // Read as text first so a non-JSON body (a 500 "Internal Server Error", a 502
@@ -3429,12 +3429,9 @@ async function api(path, options = {}) {
       throw new Error("Unexpected non-JSON response from server");
     }
   }
-  // Legacy server returned {error}; FastAPI returns {detail}. Accept both so the
-  // SPA surfaces real messages during and after the cutover. `detail` may be a
-  // structured object (e.g. D-02 revision conflicts): keep it on the error so
-  // recovery flows can read current_revision, and flatten its message for display.
+  // Keep structured FastAPI detail for conflict recovery and flatten it for display.
   if (!response.ok) {
-    const detail = payload.error || payload.detail;
+    const detail = payload.detail;
     // A session 401 reads as an explanation, not the backend's "not
     // authenticated"; setStatus turns it into the sign-in modal.
     const authRequired = isSessionAuthFailure(response.status, detail);
@@ -3451,6 +3448,7 @@ async function api(path, options = {}) {
     throw err;
   }
   return payload;
+  }, { signal: callerSignal, timeoutMs, method });
 }
 
 // ----- Durable outbox (R-03) -----------------------------------------------
@@ -5117,6 +5115,7 @@ async function loadAnalysisHistory() {
 let analysisRecallSeq = 0;
 
 function invalidateAnalysisSource() {
+  appState.analysisFileSeq = null;
   clearTimeout(analyzePgnInputTimer);
   return ++analysisRecallSeq;
 }
@@ -6364,6 +6363,7 @@ async function runAnalysis(options = {}) {
   // F-04: when the device refuses the checkpoint, the retry copy is built from
   // these (declared out here so the catch block can reach them).
   let inMemoryCheckpoint = null;
+  let completedCheckpoint = null;
   const jobId = `browser-analysis-${Date.now()}`;
   try {
     let prep;
@@ -6591,6 +6591,8 @@ async function runAnalysis(options = {}) {
     // device-recoverable checkpoint that was never written.
     const checkpoint = {
       gameId: prep.game_id,
+      requestId: crypto.randomUUID(),
+      savedAt: Date.now(),
       ownerId: analysisOwnerId,
       engine: prep.engine || "stockfish (browser)",
       depth: prep.depth,
@@ -6599,7 +6601,8 @@ async function runAnalysis(options = {}) {
       maiaAssessments,
       pgn,
     };
-    const checkpointStored = saveCheckpoint({
+    completedCheckpoint = checkpoint;
+    const checkpointStored = await saveCheckpoint({
       ...checkpoint,
       ownerId: analysisOwnerId,
       engine: prep.engine || "stockfish (browser)",
@@ -6611,6 +6614,7 @@ async function runAnalysis(options = {}) {
     const payload = await timed("classify", () =>
       postJson("/api/analyze/classify-save", {
         game_id: prep.game_id,
+        request_id: checkpoint.requestId,
         engine: prep.engine || "stockfish (browser)",
         depth: prep.depth,
         positions: positions.map((fen) => {
@@ -6647,7 +6651,7 @@ async function runAnalysis(options = {}) {
       })
     );
 
-    clearCheckpoint(prep.game_id, analysisOwnerId); // saved: the compute is confirmed durable
+    await clearCheckpoint(prep.game_id, analysisOwnerId, checkpoint.requestId); // saved: the compute is confirmed durable
     if (analysisOwnerId !== currentOwnerId()) throw Object.assign(new Error("Account changed"), { cancelled: true });
     hideAnalysisRetrySave();
     refreshAnalysisHistoryIfOpen();
@@ -6706,8 +6710,8 @@ async function runAnalysis(options = {}) {
     }
     // F-03: if the compute finished but the SAVE didn't, offer "Retry save" —
     // the checkpoint holds the evals, so a retry never re-runs the engine.
-    const checkpoint = current && (inMemoryCheckpoint || loadCheckpoint(null, analysisOwnerId));
-    if (checkpoint && checkpoint.gameId) {
+    const checkpoint = current && (inMemoryCheckpoint || completedCheckpoint);
+    if (checkpoint && checkpoint.gameId && seq === analysisRecallSeq && analysisOwnerId === currentOwnerId()) {
       // Keep the in-memory-only variant reachable for Retry save — the device
       // copy doesn't exist in that case.
       appState.analysisUnsavedCheckpoint = checkpoint.inMemoryOnly ? checkpoint : null;
@@ -6757,6 +6761,7 @@ function renderImportPicker(summary, mode) {
 
 // F-03: "Retry save" affordance for a finished-but-unsaved analysis.
 function showAnalysisRetrySave(checkpoint, message) {
+  appState.analysisRetryCheckpoint = checkpoint;
   const bar = document.getElementById("analysis-retry-save");
   if (!bar) return;
   const text = document.getElementById("analysis-retry-save-text");
@@ -6776,16 +6781,37 @@ function hideAnalysisRetrySave() {
   if (bar) bar.hidden = true;
 }
 
+async function discardAnalyzeCheckpoint() {
+  if (appState.analysisSaveInFlight) return;
+  const checkpoint = appState.analysisRetryCheckpoint;
+  if (!checkpoint || checkpoint.ownerId !== currentOwnerId()) return;
+  if (!checkpoint.inMemoryOnly && !await clearCheckpoint(checkpoint.gameId, checkpoint.ownerId, checkpoint.requestId)) {
+    setStatusError("Could not discard analysis: try again");
+    return;
+  }
+  if (checkpoint.ownerId !== currentOwnerId()) return;
+  if (appState.analysisUnsavedCheckpoint === checkpoint) appState.analysisUnsavedCheckpoint = null;
+  if (appState.analysisRetryCheckpoint !== checkpoint) return;
+  appState.analysisRetryCheckpoint = null;
+  hideAnalysisRetrySave();
+  setStatus("Discarded unsaved analysis");
+}
+
 // Re-post classify-save from the checkpoint — engine/model work is NOT redone.
 async function retryAnalyzeSave() {
+  if (appState.analysisSaveInFlight) return;
+  appState.analysisSaveInFlight = true;
   // Owner-scoped: this only ever retries work saved under the CURRENT account.
   const ownerId = currentOwnerId();
-  const checkpoint = [appState.analysisUnsavedCheckpoint, loadCheckpoint(null, ownerId)]
-    .find((candidate) => candidate?.ownerId === ownerId);
-  if (!checkpoint || !checkpoint.gameId) {
+  const checkpoint = [appState.analysisRetryCheckpoint, appState.analysisUnsavedCheckpoint]
+    .find((candidate) => candidate?.ownerId === ownerId) || await loadCheckpoint(null, ownerId);
+  if (!checkpoint || !checkpoint.gameId || ownerId !== currentOwnerId()) {
+    appState.analysisSaveInFlight = false;
     hideAnalysisRetrySave();
     return;
   }
+  const retryButton = document.getElementById("analysis-retry-save-btn");
+  if (retryButton) retryButton.disabled = true;
   const seq = invalidateAnalysisSource();
   const runButton = document.getElementById("run-analysis");
   if (runButton) runButton.disabled = true;
@@ -6793,6 +6819,7 @@ async function retryAnalyzeSave() {
     const evals = evalMapFrom(checkpoint);
     const payload = await postJson("/api/analyze/classify-save", {
       game_id: checkpoint.gameId,
+      request_id: checkpoint.requestId,
       engine: checkpoint.engine || "stockfish (browser)",
       depth: checkpoint.depth,
       positions: (checkpoint.positions || []).map((fen) => {
@@ -6809,9 +6836,10 @@ async function retryAnalyzeSave() {
       }),
       maia_assessments: checkpoint.maiaAssessments || [],
     });
-    clearCheckpoint(checkpoint.gameId, ownerId);
+    await clearCheckpoint(checkpoint.gameId, ownerId, checkpoint.requestId);
     if (ownerId !== currentOwnerId()) return;
-    appState.analysisUnsavedCheckpoint = null;
+    if (appState.analysisUnsavedCheckpoint === checkpoint) appState.analysisUnsavedCheckpoint = null;
+    if (appState.analysisRetryCheckpoint === checkpoint) appState.analysisRetryCheckpoint = null;
     hideAnalysisRetrySave();
     refreshAnalysisHistoryIfOpen();
     if (seq !== analysisRecallSeq || ownerId !== currentOwnerId()) return;
@@ -6833,6 +6861,8 @@ async function retryAnalyzeSave() {
     }
     showAnalysisRetrySave(checkpoint, error.message);
   } finally {
+    appState.analysisSaveInFlight = false;
+    if (retryButton) retryButton.disabled = false;
     if (runButton) runButton.disabled = false;
   }
 }
@@ -8429,33 +8459,55 @@ function renderBuildBranchBar() {
 }
 
 async function saveBuildAnnotations(arrows, circles) {
-  if (activeViewName() !== "build") return;
-  if (isBuildReadOnly()) return;
+  if (activeViewName() !== "build" || isBuildReadOnly()) return;
   if (!appState.build || !appState.buildCurrentNodeId) return;
-  // The annotation POST keys off a real node id — drain any pending local moves so
-  // a freshly-played (tmp) node has been reconciled first.
-  try {
-    await hardFlushBuild();
-  } catch (error) {
-    setStatusError(error.message);
-    return;
-  }
-  const nodeId = resolveBuildId(appState.buildCurrentNodeId);
-  const node = appState.buildNodeById.get(nodeId);
-  if (node) {
-    node.arrows = arrows.slice();
-    node.circles = circles.slice();
-  }
-  try {
-    await postJson("/api/build/annotations", {
-      repertoire_id: appState.build.repertoire_id,
-      node_id: nodeId,
-      arrows,
-      circles,
-    });
-  } catch (error) {
-    setStatusError(error.message);
-  }
+  const ownerId = currentOwnerId();
+  const build = appState.build;
+  const repertoireId = build.repertoire_id;
+  const selectedId = appState.buildCurrentNodeId;
+  const idMap = appState.buildIdMap;
+  const resolvedId = () => idMap?.[selectedId] || selectedId;
+  arrows = arrows.slice();
+  circles = circles.slice();
+  const previousSave = appState.buildAnnotationsSaving;
+  const task = (async () => {
+    if (previousSave) await previousSave;
+    if (ownerId !== currentOwnerId()) return;
+    let node, previous;
+    try {
+      await hardFlushBuild();
+      if (ownerId !== currentOwnerId()) return;
+      const nodeId = resolvedId();
+      const current = appState.build?.repertoire_id === repertoireId;
+      node = current ? appState.buildNodeById.get(nodeId) : null;
+      if (node) {
+        previous = { arrows: node.arrows || [], circles: node.circles || [] };
+        node.arrows = arrows;
+        node.circles = circles;
+      }
+      await postJson("/api/build/annotations", {
+        repertoire_id: repertoireId, node_id: nodeId, arrows, circles,
+        base_revision: current ? appState.build.revision : build.revision,
+      });
+      if (current && appState.build?.repertoire_id === repertoireId &&
+          appState.buildCurrentNodeId === nodeId && ownerId === currentOwnerId()) {
+        boards.build.setAnnotations(arrows, circles);
+      }
+    } catch (error) {
+      if (ownerId !== currentOwnerId()) return;
+      if (node && previous) Object.assign(node, previous);
+      // A failed prerequisite flush must restore the drawing too.
+      if (appState.build?.repertoire_id === repertoireId &&
+          resolveBuildId(appState.buildCurrentNodeId) === resolvedId()) {
+        const confirmed = appState.buildNodeById.get(resolvedId());
+        if (confirmed) boards.build.setAnnotations(confirmed.arrows || [], confirmed.circles || []);
+      }
+      setStatusError(`Annotations not saved: ${error.message}`);
+    }
+  })();
+  appState.buildAnnotationsSaving = task;
+  try { await task; }
+  finally { if (appState.buildAnnotationsSaving === task) appState.buildAnnotationsSaving = null; }
 }
 
 // ===== Local-first Build sync ================================================
@@ -9236,15 +9288,19 @@ async function hardFlushBuild() {
   // deletes (or the undone restore) before any operation depends on it.
   commitPendingUndos();
   if (!appState.build) return;
+  const repId = appState.build.repertoire_id;
+  const ownerId = currentOwnerId();
   if (appState.buildFlushing) await appState.buildFlushing.catch(() => {});
   // R-02: drain THIS repertoire's ops. Ops queued for another tree are not
   // part of this request (and must not spin the loop) — they stay on the
   // device until their own repertoire is open.
-  const repId = appState.build.repertoire_id;
   const hasWorkForThisRep = () =>
     appState.buildPending.some((m) => buildOpMatchesRepertoire(m, repId)) ||
     appState.buildPendingDeletes.some((entry) => buildOpMatchesRepertoire(entry, repId));
   while (hasWorkForThisRep()) {
+    if (ownerId !== currentOwnerId() || appState.build?.repertoire_id !== repId) {
+      throw new Error("Repertoire changed before sync completed ? reopen it and try again");
+    }
     const ok = await flushBuildMoves();
     if (appState.buildFlushing) await appState.buildFlushing.catch(() => {});
     if (!ok) {
@@ -9479,16 +9535,22 @@ function bindDropZone(element, onFile) {
 
 // Drop a PGN file onto the Analyze textarea to load its text (ready to Analyze).
 async function fillPgnInputFromFile(file) {
+  const sourceSeq = invalidateAnalysisSource();
+  const ownerId = currentOwnerId();
+  appState.analysisFileSeq = sourceSeq;
+  const isCurrent = () => appState.analysisFileSeq === sourceSeq && ownerId === currentOwnerId();
   try {
     const text = await file.text();
+    if (!isCurrent()) return;
     document.getElementById("pgn-input").value = text;
     const drawer = document.querySelector("#view-analyze .drawer");
     if (drawer) drawer.open = true;
-    void loadPgnIntoAnalyze(text, { goToEnd: false, quiet: true }).catch(() => {});
+    const loaded = await loadPgnIntoAnalyze(text, { goToEnd: false, sourceSeq });
+    if (!isCurrent() || !loaded) return;
     orientAnalysisFromPgn(text);
-    setStatus(`Loaded ${file.name} · press Analyze`);
-  } catch (_) {
-    setStatus("Could not read file", { severity: "error" });
+    setStatus(`Loaded ${file.name}`);
+  } catch (error) {
+    if (isCurrent()) setStatusError(`Could not load file: ${error.message}`);
   }
 }
 
@@ -10114,6 +10176,8 @@ async function exportBuild(format, nodeId = null) {
     setStatus("Open a repertoire first");
     return;
   }
+  const repertoireId = appState.build.repertoire_id;
+  const ownerId = currentOwnerId();
   // Export reads server-side tree state (and may scope to a node id) — sync first.
   try {
     await hardFlushBuild();
@@ -10121,21 +10185,24 @@ async function exportBuild(format, nodeId = null) {
     setStatusError(error.message);
     return;
   }
+  if (ownerId !== currentOwnerId()) return;
   if (nodeId) nodeId = resolveBuildId(nodeId);
   // Full tree-with-variations PGN for top-level "Export PGN" calls
   if (format === "pgn" && !nodeId) {
     const payload = await api(
-      `/api/repertoires/export-pgn?repertoire_id=${encodeURIComponent(appState.build.repertoire_id)}`
+      `/api/repertoires/export-pgn?repertoire_id=${encodeURIComponent(repertoireId)}`
     );
+    if (ownerId !== currentOwnerId()) return;
     downloadText(payload.filename, payload.mime, payload.content);
     setStatus(`Downloaded ${payload.filename}`);
     return;
   }
   const payload = await postJson("/api/build/export", {
-    repertoire_id: appState.build.repertoire_id,
+    repertoire_id: repertoireId,
     format,
     node_id: nodeId,
   });
+  if (ownerId !== currentOwnerId()) return;
   downloadText(payload.filename, payload.mime, payload.content);
   setStatus(`Downloaded ${payload.filename}`);
 }
@@ -14159,12 +14226,7 @@ function bindEvents() {
   document.getElementById("analysis-retry-save-btn")?.addEventListener("click", () => {
     void retryAnalyzeSave();
   });
-  document.getElementById("analysis-retry-save-discard")?.addEventListener("click", () => {
-    const checkpoint = loadCheckpoint(null, currentOwnerId());
-    if (checkpoint && checkpoint.gameId) clearCheckpoint(checkpoint.gameId, currentOwnerId());
-    hideAnalysisRetrySave();
-    setStatus("Discarded the unsaved analysis on this device");
-  });
+  document.getElementById("analysis-retry-save-discard")?.addEventListener("click", discardAnalyzeCheckpoint);
   const createRepFromGame = document.getElementById("create-repertoire-from-game");
   if (createRepFromGame) {
     createRepFromGame.addEventListener("click", () => {
@@ -14447,12 +14509,7 @@ function bindEvents() {
     pgnFileInput.addEventListener("change", async () => {
       const file = pgnFileInput.files && pgnFileInput.files[0];
       if (!file) return;
-      try {
-        document.getElementById("pgn-input").value = await file.text();
-        setStatus(`Loaded ${file.name}`);
-      } catch (_) {
-        setStatus("Could not read file");
-      }
+      await fillPgnInputFromFile(file);
     });
   }
 
@@ -14866,8 +14923,9 @@ async function loadSignedInWorkspace() {
   // loadCheckpoint(gameId, ownerId) — the owner goes in the SECOND slot.
   // Passing the owner as the gameId read the "anon" bucket keyed by the owner
   // id, so this banner never fired for a signed-in user.
-  const checkpoint = loadCheckpoint(null, currentOwnerId());
-  if (checkpoint && checkpoint.gameId) {
+  const checkpoint = await loadCheckpoint(null, currentOwnerId());
+  if (checkpoint && checkpoint.gameId && checkpoint.ownerId === currentOwnerId()) {
+    showAnalysisRetrySave(checkpoint);
     setStatus(
       `Unsaved analysis on this device (${checkpoint.positions?.length || 0} positions) — open Analyze and press Retry save.`,
       { severity: "warning" },

@@ -158,7 +158,7 @@ def test_reload_preserves_pgn_tree_and_current_annotations(tmp_path):
     )
     for save in (repo.save_game, repo.save_game_batched):
         save(game)
-        loaded = repo.load_game(game.id)
+        loaded = repo.load_game(game.id, render_pgn=True)
         tree = chess.pgn.read_game(io.StringIO(loaded.pgn))
         assert tree.comment == "Before the game"
         assert tree.variations[0].nags == {1}
@@ -166,7 +166,7 @@ def test_reload_preserves_pgn_tree_and_current_annotations(tmp_path):
         assert tree.variations[1].variations[1].nags == {2}
         loaded.moves[0].generated_comment = "Engine explanation"
         save(loaded)
-        loaded = repo.load_game(game.id)
+        loaded = repo.load_game(game.id, render_pgn=True)
         tree = chess.pgn.read_game(io.StringIO(loaded.pgn))
         assert tree.variations[0].comment == "Original\nEngine explanation"
         assert len(tree.variations) == 2

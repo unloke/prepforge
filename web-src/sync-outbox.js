@@ -25,9 +25,7 @@ const LOCK_KEY = "prepforge.outbox.lock.v1";
 const LOCK_STALE_MS = 30_000;
 // A suspended tab can retain a stale snapshot indefinitely. Do not evict
 // tombstones until an enforced replay horizon exists.
-// Rejected ops are kept for review, but a device that never drains them must
-// not grow without bound — the newest tail is what the user is working on.
-const REJECTED_LIMIT = 100;
+// Rejected operations remain available until the user resolves them.
 
 /** Outbox storage key for one owner ("" = not signed in yet). */
 export function outboxKey(ownerId) {
@@ -147,9 +145,7 @@ function mergeById(base, incoming, idOf) {
   return out;
 }
 
-function cap(list, limit) {
-  return list.length > limit ? list.slice(list.length - limit) : list;
-}
+
 
 /**
  * Merge this tab's view of the queue into what is already stored (R-04).
@@ -194,10 +190,7 @@ export function mergeOutboxState(stored, incoming, settled = null) {
       ),
       // tmp -> real ids are additive facts: a later flush's mapping always wins.
       idMap: { ...(base.build.idMap || {}), ...(next.build?.idMap || {}) },
-      rejected: cap(
-        mergeById(asArray(base.build.rejected), asArray(next.build?.rejected), rejectedId),
-        REJECTED_LIMIT,
-      ),
+      rejected: mergeById(asArray(base.build.rejected), asArray(next.build?.rejected), rejectedId),
     },
     train: {
       pending: mergeById(
@@ -205,10 +198,7 @@ export function mergeOutboxState(stored, incoming, settled = null) {
         asArray(next.train?.pending).filter(keepTrain),
         trainAttemptId,
       ),
-      rejected: cap(
-        mergeById(asArray(base.train.rejected), asArray(next.train?.rejected), rejectedId),
-        REJECTED_LIMIT,
-      ),
+      rejected: mergeById(asArray(base.train.rejected), asArray(next.train?.rejected), rejectedId),
     },
     settled: {
       build: [...done.build],

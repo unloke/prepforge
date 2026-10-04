@@ -67,7 +67,7 @@ const LIMITS = [
   {
     prefix: "index-",
     suffix: ".js",
-    maxBytes: 335_000, // reviewed walkthrough fixes (see measured deltas above)
+    maxBytes: 338_000, // request deadlines, captured targets and atomic recovery add <3 KB raw
     maxGzipBytes: 106_000,
     label: "main app chunk",
   },

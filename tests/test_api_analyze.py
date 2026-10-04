@@ -285,3 +285,23 @@ def test_board_rejects_bad_fen(client):
     _register(client, "a@example.com")
     r = client.get("/api/board", params={"fen": "not-a-fen"})
     assert r.status_code == 400
+
+def test_classify_save_retry_reuses_the_same_snapshot(client):
+    from uuid import uuid4
+    from sqlalchemy import select, func
+    from prepforge_chess.api import db
+    from prepforge_chess.storage import sa_tables as t
+    _register(client, "retry-save@example.com")
+    prepared = _prepare(client)
+    request_id = str(uuid4())
+    first = _classify_save(client, prepared, request_id=request_id)
+    second = _classify_save(client, prepared, request_id=request_id)
+    assert first.status_code == second.status_code == 200
+    assert first.json()["moves"] == second.json()["moves"]
+    assert first.json()["summary"] == second.json()["summary"]
+    with db.get_engine().connect() as conn:
+        count = conn.execute(select(func.count()).select_from(t.analysis_results).where(t.analysis_results.c.game_id == prepared["game_id"])).scalar_one()
+    assert count == 1
+    assert _classify_save(client, prepared, request_id=str(uuid4())).status_code == 200
+    with db.get_engine().connect() as conn:
+        assert conn.execute(select(func.count()).select_from(t.analysis_results).where(t.analysis_results.c.game_id == prepared["game_id"])).scalar_one() == 2

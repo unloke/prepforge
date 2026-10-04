@@ -162,6 +162,7 @@ class AnalysisResult:
     # "partial-shallow" / "no Maia" instead of implying full coverage
     # (improvement review A-05).
     quality: Optional[Dict[str, Any]] = None
+    save_id: Optional[str] = None
 
 
 @dataclass

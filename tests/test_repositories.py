@@ -708,3 +708,19 @@ def test_list_repertoires_postgres(monkeypatch):
     sa_tables.metadata.create_all(engine, tables=list(sa_tables.DOMAIN_TABLES))
     repo = PrepForgeRepository(engine)
     _exercise_list_repertoires(repo, owner="u-list-" + uuid.uuid4().hex[:8])
+
+def test_load_game_renders_pgn_only_when_requested(monkeypatch):
+    from prepforge_chess.storage import codec
+    from unittest.mock import Mock
+    repo = _repository()
+    game = ChessCore().import_single_pgn('1. e4 e5 *')
+    game.moves[0].comment = "saved annotation"
+    repo.save_game(game)
+    render = Mock(wraps=codec.export_pgn)
+    monkeypatch.setattr(codec, "export_pgn", render)
+    assert repo.load_game(game.id).moves[0].comment == "saved annotation"
+    assert list(repo.iter_games())[0].moves[0].comment == "saved annotation"
+    render.assert_not_called()
+    assert "saved annotation" in repo.load_game(game.id, render_pgn=True).pgn
+    assert "saved annotation" in list(repo.iter_games(render_pgn=True))[0].pgn
+    assert render.call_count == 2

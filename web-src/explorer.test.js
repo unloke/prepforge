@@ -223,3 +223,31 @@ describe("createExplorerClient", () => {
     expect(keys).toContain(explorerUrl("masters", `${FEN}-159`));
   });
 });
+it("memory hits do not reread disk and storage events invalidate them", async () => {
+  const storage = memoryStorage();
+  const get = vi.spyOn(storage, "getItem");
+  let invalidate;
+  const events = { addEventListener: (_, fn) => { invalidate = fn; }, removeEventListener: vi.fn() };
+  const fetchImpl = vi.fn(async () => okResponse(RAW));
+  const client = createExplorerClient({ storage, fetchImpl, events });
+  await client.fetchStats("masters", FEN);
+  await client.fetchStats("masters", FEN);
+  expect(get).toHaveBeenCalledTimes(1);
+  storage.setItem("prepforge.explorer.cache.v1", JSON.stringify({ entries: {} }));
+  invalidate({ key: "prepforge.explorer.cache.v1", storageArea: storage });
+  await client.fetchStats("masters", FEN);
+  expect(fetchImpl).toHaveBeenCalledTimes(2);
+  client.dispose();
+  expect(events.removeEventListener).toHaveBeenCalled();
+});
+it("two clients in one tab share memory without overwriting each other's entries", async () => {
+  const storage = memoryStorage(), events = {};
+  const fetchImpl = vi.fn(async () => okResponse(RAW));
+  const a = createExplorerClient({ storage, events, fetchImpl });
+  const b = createExplorerClient({ storage, events, fetchImpl });
+  await a.fetchStats("masters", FEN);
+  await b.fetchStats("lichess", FEN);
+  await a.fetchStats("lichess", FEN);
+  expect(fetchImpl).toHaveBeenCalledTimes(2);
+  expect(Object.keys(JSON.parse(storage.getItem("prepforge.explorer.cache.v1")).entries)).toHaveLength(2);
+});

@@ -144,7 +144,7 @@ describe("Recall source ownership", () => {
       expect(h.appState.analysis.game_id).toBeUndefined();
       expect(h.input.value).toBe("1. d4");
     }
-    expect(h.deps.clearCheckpoint).toHaveBeenCalledWith("retry", "owner");
+    expect(h.deps.clearCheckpoint).toHaveBeenCalledWith("retry", "owner", undefined);
   });
 
   it("recalled PGN retains names, result and its nonstandard starting position", async () => {

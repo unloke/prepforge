@@ -1,135 +1,90 @@
-// Analyze checkpoint store (F-03/F-04).
-//
-// A full-game analysis spends minutes of engine/model compute BEFORE the one
-// classify-save write. If that write fails (network drop, expired session,
-// refresh) the work used to be gone. This store keeps the computed result on
-// the device, keyed by OWNER + game identity, so the user can retry just the
-// SAVE — never the analysis — and a page reload can pick the work back up.
-//
-// Owner scoping matters: the keys are per account, so signing in as B never
-// offers to "retry save" A's pending analysis, and a shared machine does not
-// leak one account's game list to another. When no game id is given, the
-// NEWEST checkpoint for this owner wins (the one the user just lost), instead
-// of whichever key happened to be stored first.
-
-const KEY_PREFIX = "prepforge.analyze_checkpoint.v2.";
-// Checkpoints hold per-position evals (small) but Maia assessments too; a
-// generous cap keeps localStorage from filling up on a huge game.
-const MAX_CHARS = 4_000_000;
-
-function ownerSegment(ownerId) {
-  return ownerId || "anon";
-}
-
-function indexKey(ownerId) {
-  return `${KEY_PREFIX}index.${ownerSegment(ownerId)}`;
-}
+﻿// Finished analysis is user work, not an evictable cache. Payload and metadata
+// commit in one IndexedDB transaction; quota failure keeps the caller's memory copy.
+const DATABASE = "prepforge-analysis-checkpoints";
+const PAYLOADS = "payloads";
+const METADATA = "metadata";
 
 export function checkpointKey(gameId, ownerId) {
-  return `${KEY_PREFIX}${ownerSegment(ownerId)}.${gameId || "anon"}`;
+  return [ownerId || "", gameId];
 }
 
-function readJson(raw) {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : null;
-  } catch (_) {
-    return null;
-  }
-}
-
-/** Stored game ids for one owner, newest first. */
-export function listCheckpointGames(ownerId) {
-  const index = readJson(localStorage.getItem(indexKey(ownerId))) || {};
-  return Object.keys(index)
-    .map((gameId) => ({ gameId, savedAt: Number(index[gameId]) || 0 }))
-    .sort((a, b) => b.savedAt - a.savedAt);
-}
-
-function writeIndex(ownerId, entries) {
-  const kept = {};
-  for (const { gameId, savedAt } of entries.sort((a, b) => b.savedAt - a.savedAt).slice(0, 50)) {
-    kept[gameId] = savedAt;
-  }
-  localStorage.setItem(indexKey(ownerId), JSON.stringify(kept));
-  // Also reclaim payloads orphaned by older versions of the index cap.
-  const prefix = `${KEY_PREFIX}${ownerSegment(ownerId)}.`;
-  for (let i = localStorage.length - 1; i >= 0; i -= 1) {
-    const key = localStorage.key(i);
-    if (!key?.startsWith(prefix)) continue;
-    const payload = readJson(localStorage.getItem(key));
-    if (payload?.ownerId === (ownerId || null) &&
-        key === checkpointKey(payload.gameId, ownerId) &&
-        !Object.hasOwn(kept, payload.gameId)) localStorage.removeItem(key);
-  }
-}
-
-/**
- * Persist one finished-but-unsaved analysis.
- * @param {{gameId: string, ownerId?: string, engine?: string, depth?: number,
- *          positions: string[], evals: Array<[string, object]>,
- *          maiaAssessments?: object[], pgn?: string, savedAt?: number}} checkpoint
- */
-export function saveCheckpoint(checkpoint) {
-  const ownerId = checkpoint.ownerId;
-  try {
-    const payload = {
-      gameId: checkpoint.gameId,
-      ownerId: ownerId || null,
-      engine: checkpoint.engine,
-      depth: checkpoint.depth,
-      positions: checkpoint.positions || [],
-      evals: checkpoint.evals || [],
-      maiaAssessments: checkpoint.maiaAssessments || [],
-      pgn: checkpoint.pgn || "",
-      savedAt: checkpoint.savedAt || Date.now(),
+function openDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DATABASE, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      db.createObjectStore(PAYLOADS);
+      db.createObjectStore(METADATA).createIndex("owner", "ownerId");
     };
-    const text = JSON.stringify(payload);
-    if (text.length > MAX_CHARS) return false;
-    localStorage.setItem(checkpointKey(checkpoint.gameId, ownerId), text);
-    const index = readJson(localStorage.getItem(indexKey(ownerId))) || {};
-    index[checkpoint.gameId] = payload.savedAt;
-    writeIndex(ownerId, Object.keys(index).map((gameId) => ({ gameId, savedAt: index[gameId] })));
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error("Checkpoint database blocked"));
+  });
+}
+
+async function transaction(mode, action) {
+  const db = await openDatabase();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction([PAYLOADS, METADATA], mode);
+      let result;
+      tx.oncomplete = () => resolve(result?.result);
+      tx.onerror = tx.onabort = () => reject(tx.error || new Error("Checkpoint transaction aborted"));
+      try { result = action(tx.objectStore(PAYLOADS), tx.objectStore(METADATA)); }
+      catch (error) { tx.abort(); reject(error); }
+    });
+  } finally { db.close(); }
+}
+
+/** Metadata only: never parse other games' analysis payloads during a save. */
+export async function listCheckpointGames(ownerId) {
+  try {
+    const entries = await transaction("readonly", (_, metadata) => metadata.index("owner").getAll(ownerId || ""));
+    return entries.sort((a, b) => b.savedAt - a.savedAt).map(({ gameId, savedAt }) => ({ gameId, savedAt }));
+  } catch (_) { return []; }
+}
+
+export async function saveCheckpoint(checkpoint) {
+  try {
+    const payload = { ...checkpoint, ownerId: checkpoint.ownerId || null, savedAt: checkpoint.savedAt || Date.now() };
+    const key = checkpointKey(payload.gameId, payload.ownerId);
+    await transaction("readwrite", (payloads, metadata) => {
+      payloads.put(payload, key);
+      metadata.put({ gameId: payload.gameId, ownerId: payload.ownerId || "", savedAt: payload.savedAt,
+        version: payload.requestId || payload.savedAt }, key);
+    });
     return true;
-  } catch (_) {
-    return false;
-  }
+  } catch (_) { return false; }
 }
 
-/**
- * The stored checkpoint for a game (or this owner's most recent one when the
- * id is omitted). Owner-scoped: another account's work is invisible here.
- */
-export function loadCheckpoint(gameId, ownerId) {
+export async function loadCheckpoint(gameId, ownerId) {
   try {
-    if (gameId) {
-      return readJson(localStorage.getItem(checkpointKey(gameId, ownerId)));
-    }
-    const [newest] = listCheckpointGames(ownerId);
-    return newest ? readJson(localStorage.getItem(checkpointKey(newest.gameId, ownerId))) : null;
-  } catch (_) {
-    return null;
-  }
+    if (!gameId) gameId = (await listCheckpointGames(ownerId))[0]?.gameId;
+    if (!gameId) return null;
+    return (await transaction("readonly", (payloads) => payloads.get(checkpointKey(gameId, ownerId)))) || null;
+  } catch (_) { return null; }
 }
 
-/** Drop the checkpoint once the save is confirmed (or the user discards it). */
-export function clearCheckpoint(gameId, ownerId) {
+/** Delete only the version the prompt/save owns, preserving a newer computation. */
+export async function clearCheckpoint(gameId, ownerId, version = null) {
   try {
-    localStorage.removeItem(checkpointKey(gameId, ownerId));
-    const index = readJson(localStorage.getItem(indexKey(ownerId))) || {};
-    delete index[gameId];
-    writeIndex(ownerId, Object.keys(index).map((id) => ({ gameId: id, savedAt: index[id] })));
-  } catch (_) {
-    /* ignore */
-  }
+    await transaction("readwrite", (payloads, metadata) => {
+      const key = checkpointKey(gameId, ownerId);
+      const request = metadata.get(key);
+      request.onsuccess = () => {
+        if (version !== null && request.result?.version !== version) return;
+        payloads.delete(key);
+        metadata.delete(key);
+      };
+    });
+    return true;
+  } catch (_) { return false; }
 }
 
-/** Eval pairs → the fen-keyed map the classify-save payload builder wants. */
 export function evalMapFrom(checkpoint) {
   const map = new Map();
-  for (const entry of (checkpoint && checkpoint.evals) || []) {
+  for (const entry of checkpoint?.evals || []) {
     if (Array.isArray(entry) && entry.length === 2) map.set(entry[0], entry[1]);
   }
   return map;
-}
+}
