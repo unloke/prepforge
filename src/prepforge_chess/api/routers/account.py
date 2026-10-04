@@ -83,7 +83,7 @@ def export_account(
     }
 
     def games():
-        for game in repo.iter_games(owner_user_id=user.id):
+        for game in repo.iter_games(owner_user_id=user.id, render_pgn=True):
             yield {
                 "id": game.id,
                 "source": game.source.value,

@@ -671,7 +671,7 @@ class PrepForgeRepository:
             )
             self._save_moves_batched(conn, game, result)
 
-    def load_game(self, game_id: str, owner_user_id: Optional[str] = None) -> Optional[Game]:
+    def load_game(self, game_id: str, owner_user_id: Optional[str] = None, *, render_pgn: bool = False) -> Optional[Game]:
         with self.engine.connect() as conn:
             row = conn.execute(
                 select(t.games).where(t.games.c.id == game_id)
@@ -696,9 +696,9 @@ class PrepForgeRepository:
                     ]
                 )
             evals = self._load_evaluations(conn, eval_ids)
-        return self._game_from_rows(row, move_rows, evals)
+        return self._game_from_rows(row, move_rows, evals, render_pgn=render_pgn)
 
-    def _game_from_rows(self, row, move_rows, evals) -> Game:
+    def _game_from_rows(self, row, move_rows, evals, *, render_pgn: bool = False) -> Game:
         uci_list = codec.decode_uci_sequence(row["uci_blob"])
         annotations: Dict[int, Dict[str, Any]] = {}
         for move_row in move_rows:
@@ -733,7 +733,8 @@ class PrepForgeRepository:
             lichess_id=row["lichess_id"],
             tags=_json_load(row["tags_json"], {}),
         )
-        game.pgn = codec.export_pgn(game)
+        if render_pgn:
+            game.pgn = codec.export_pgn(game)
         return game
 
     def find_game_id_by_lichess_id(
@@ -757,7 +758,7 @@ class PrepForgeRepository:
             ).first()
         return row is not None
 
-    def iter_games(self, owner_user_id: Optional[str] = None, *, batch_size: int = 100):
+    def iter_games(self, owner_user_id: Optional[str] = None, *, batch_size: int = 100, render_pgn: bool = False):
         """Hydrate a bounded page at a time; stable keysets avoid growing OFFSET scans."""
         if batch_size < 1 or batch_size > 100:
             raise ValueError("batch_size must be between 1 and 100")
@@ -783,7 +784,7 @@ class PrepForgeRepository:
             for move in move_rows:
                 by_game[move["game_id"]].append(move)
             for row in rows:
-                yield self._game_from_rows(row, by_game[row["id"]], evals)
+                yield self._game_from_rows(row, by_game[row["id"]], evals, render_pgn=render_pgn)
             cursor = (rows[-1]["created_at"], rows[-1]["id"])
 
     def list_games(self, owner_user_id: Optional[str] = None) -> List[Game]:
@@ -2149,6 +2150,17 @@ class PrepForgeRepository:
         if row is None:
             return None
 
+        return self._analysis_from_row(row)
+
+    def load_analysis_save(self, game_id: str, save_id: str) -> Optional[AnalysisResult]:
+        with self.engine.connect() as conn:
+            row = conn.execute(select(t.analysis_results).where(
+                t.analysis_results.c.id == self.analysis_save_id(game_id, save_id)
+            )).mappings().first()
+        return self._analysis_from_row(row) if row is not None else None
+
+    @staticmethod
+    def _analysis_from_row(row) -> AnalysisResult:
         quality = _json_load(row["quality_json"], None)
         if row["move_results_json"] is None:
             quality = dict(quality or {}, move_snapshot_missing=True)
@@ -2400,6 +2412,8 @@ class PrepForgeRepository:
                 yield node
 
     def _analysis_result_id(self, result: AnalysisResult) -> str:
+        if result.save_id:
+            return self.analysis_save_id(result.game_id, result.save_id)
         payload = {
             "game_id": result.game_id,
             "analyzed_at": _dt_to_text(result.analyzed_at),
@@ -2408,6 +2422,11 @@ class PrepForgeRepository:
         }
         digest = sha256(_json_dump(payload).encode("utf-8")).hexdigest()[:32]
         return "analysis:{0}".format(digest)
+
+    @staticmethod
+    def analysis_save_id(game_id: str, save_id: str) -> str:
+        digest = sha256(_json_dump([game_id, save_id]).encode("utf-8")).hexdigest()
+        return "analysis-save:{0}".format(digest)
 
     def _training_progress_id(
         self,

@@ -1,3 +1,4 @@
+import { withRequestDeadline } from "./request-deadline.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { apiErrorMessage } from "./api-errors.js";
@@ -37,9 +38,9 @@ describe("shared API adapter", () => {
   const end = source.indexOf("\n}\n", start) + 2;
   function adapter(status, detail) {
     return new Function("fetch", "headersWithCsrf", "getCsrfToken", "isSessionAuthFailure",
-      "AUTH_REQUIRED_MESSAGE", "apiErrorMessage", `return (${source.slice(start, end)});`)(
+      "AUTH_REQUIRED_MESSAGE", "apiErrorMessage", "withRequestDeadline", `return (${source.slice(start, end)});`)(
       async () => new Response(JSON.stringify({ detail }), { status, headers: { "retry-after": "4" } }),
-      async (_method, headers) => headers, () => "csrf", isSessionAuthFailure, AUTH_REQUIRED_MESSAGE, apiErrorMessage,
+      async (_method, headers) => headers, () => "csrf", isSessionAuthFailure, AUTH_REQUIRED_MESSAGE, apiErrorMessage, withRequestDeadline,
     );
   }
   it("exposes the validation explanation and preserves status/detail", async () => {

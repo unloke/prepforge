@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import math
 import time
+from uuid import UUID, uuid4
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -275,6 +276,7 @@ def analyze_prepare(
 
 class ClassifySavePayload(BaseModel):
     game_id: str = ""
+    request_id: UUID = Field(default_factory=uuid4)
     engine: str = "stockfish (browser)"
     depth: int | None = None
     positions: list[dict[str, Any]] | None = Field(default=None, max_length=MAX_ANALYSIS_POSITIONS)
@@ -312,6 +314,9 @@ def analyze_classify_save(
     timings_ms["ownership_ms"] = int((time.perf_counter() - mark) * 1000)
     if not owned:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="game not found")
+    saved = repo.load_analysis_save(body.game_id, str(body.request_id))
+    if saved is not None:
+        return analysis_result_to_payload(saved)
     if not isinstance(body.positions, list):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="positions must be a list"
@@ -377,6 +382,7 @@ def analyze_classify_save(
     timings_ms["classify_ms"] = int((time.perf_counter() - mark) * 1000)
 
     mark = time.perf_counter()
+    result.save_id = str(body.request_id)
     repo.save_game_batched(game, result, owner_user_id=owner)
     timings_ms["save_game_ms"] = int((time.perf_counter() - mark) * 1000)
 

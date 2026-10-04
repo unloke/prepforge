@@ -95,7 +95,7 @@ it("switching accounts during classify-save releases the analysis job without re
   const run = new Function(...Object.keys(deps), `${runCode}\nreturn runAnalysis;`)(...Object.values(deps));
   await run();
   expect(deps.postJson).toHaveBeenCalledWith("/api/analyze/classify-save", expect.any(Object));
-  expect(deps.clearCheckpoint).toHaveBeenCalledWith("alice-game", "alice");
+  expect(deps.clearCheckpoint).toHaveBeenCalledWith("alice-game", "alice", expect.any(Number));
   expect(appState.analysis).toBe(bobAnalysis);
   expect(jobToast.failJob).not.toHaveBeenCalled();
   expect(busy).toBe(false);

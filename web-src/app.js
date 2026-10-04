@@ -49,6 +49,7 @@ import { buildGameSummary, hasClassifiedMoves } from "./coach/game-summary.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
 import { classifySyncError, describeSyncError } from "./sync-errors.js";
 import { apiErrorMessage } from "./api-errors.js";
+import { withRequestDeadline } from "./request-deadline.js";
 import { orderPendingBuildAdds } from "./build-queue.js";
 import { normalizeRepertoireColor, repertoireColorField } from "./repertoire-color.js";
 import { trainStartDisabled } from "./train-start.js";
@@ -3399,6 +3400,8 @@ const getCsrfToken = createCsrfTokenSource();
 
 async function api(path, options = {}) {
   const method = (options.method || "GET").toUpperCase();
+  const { timeoutMs = method === "GET" ? 30_000 : 90_000, signal: callerSignal, ...fetchOptions } = options;
+  return withRequestDeadline(async (signal) => {
   // Merge caller headers over the JSON default, then attach the CSRF token on
   // unsafe methods (bootstrapping /api/csrf if the cookie isn't set yet). The
   // FastAPI backend 403s any unsafe request that doesn't echo the cookie.
@@ -3407,9 +3410,11 @@ async function api(path, options = {}) {
     { "Content-Type": "application/json", ...(options.headers || {}) },
     getCsrfToken,
   );
+  signal.throwIfAborted();
   const response = await fetch(path, {
     credentials: "same-origin",
-    ...options,
+    ...fetchOptions,
+    signal,
     headers,
   });
   // Read as text first so a non-JSON body (a 500 "Internal Server Error", a 502
@@ -3429,12 +3434,9 @@ async function api(path, options = {}) {
       throw new Error("Unexpected non-JSON response from server");
     }
   }
-  // Legacy server returned {error}; FastAPI returns {detail}. Accept both so the
-  // SPA surfaces real messages during and after the cutover. `detail` may be a
-  // structured object (e.g. D-02 revision conflicts): keep it on the error so
-  // recovery flows can read current_revision, and flatten its message for display.
+  // Keep structured FastAPI detail for conflict recovery and flatten it for display.
   if (!response.ok) {
-    const detail = payload.error || payload.detail;
+    const detail = payload.detail;
     // A session 401 reads as an explanation, not the backend's "not
     // authenticated"; setStatus turns it into the sign-in modal.
     const authRequired = isSessionAuthFailure(response.status, detail);
@@ -3451,6 +3453,7 @@ async function api(path, options = {}) {
     throw err;
   }
   return payload;
+  }, { signal: callerSignal, timeoutMs, method });
 }
 
 // ----- Durable outbox (R-03) -----------------------------------------------
@@ -6592,6 +6595,8 @@ async function runAnalysis(options = {}) {
     // device-recoverable checkpoint that was never written.
     const checkpoint = {
       gameId: prep.game_id,
+      requestId: crypto.randomUUID(),
+      savedAt: Date.now(),
       ownerId: analysisOwnerId,
       engine: prep.engine || "stockfish (browser)",
       depth: prep.depth,
@@ -6612,6 +6617,7 @@ async function runAnalysis(options = {}) {
     const payload = await timed("classify", () =>
       postJson("/api/analyze/classify-save", {
         game_id: prep.game_id,
+        request_id: checkpoint.requestId,
         engine: prep.engine || "stockfish (browser)",
         depth: prep.depth,
         positions: positions.map((fen) => {
@@ -6648,7 +6654,7 @@ async function runAnalysis(options = {}) {
       })
     );
 
-    await clearCheckpoint(prep.game_id, analysisOwnerId); // saved: the compute is confirmed durable
+    await clearCheckpoint(prep.game_id, analysisOwnerId, checkpoint.savedAt); // saved: the compute is confirmed durable
     if (analysisOwnerId !== currentOwnerId()) throw Object.assign(new Error("Account changed"), { cancelled: true });
     hideAnalysisRetrySave();
     refreshAnalysisHistoryIfOpen();
@@ -6786,7 +6792,9 @@ async function discardAnalyzeCheckpoint() {
     setStatusError("Could not discard analysis ? try again");
     return;
   }
+  if (checkpoint.ownerId !== currentOwnerId()) return;
   if (appState.analysisUnsavedCheckpoint === checkpoint) appState.analysisUnsavedCheckpoint = null;
+  if (appState.analysisRetryCheckpoint !== checkpoint) return;
   appState.analysisRetryCheckpoint = null;
   hideAnalysisRetrySave();
   setStatus("Discarded unsaved analysis");
@@ -6815,6 +6823,7 @@ async function retryAnalyzeSave() {
     const evals = evalMapFrom(checkpoint);
     const payload = await postJson("/api/analyze/classify-save", {
       game_id: checkpoint.gameId,
+      request_id: checkpoint.requestId,
       engine: checkpoint.engine || "stockfish (browser)",
       depth: checkpoint.depth,
       positions: (checkpoint.positions || []).map((fen) => {
@@ -8457,39 +8466,52 @@ async function saveBuildAnnotations(arrows, circles) {
   if (activeViewName() !== "build" || isBuildReadOnly()) return;
   if (!appState.build || !appState.buildCurrentNodeId) return;
   const ownerId = currentOwnerId();
-  const repertoireId = appState.build.repertoire_id;
+  const build = appState.build;
+  const repertoireId = build.repertoire_id;
   const selectedId = appState.buildCurrentNodeId;
+  const idMap = appState.buildIdMap;
+  const resolvedId = () => idMap?.[selectedId] || selectedId;
   arrows = arrows.slice();
   circles = circles.slice();
-  let node, previous;
-  try {
-    await hardFlushBuild();
+  const previousSave = appState.buildAnnotationsSaving;
+  const task = (async () => {
+    if (previousSave) await previousSave;
     if (ownerId !== currentOwnerId()) return;
-    const nodeId = resolveBuildId(selectedId);
-    // A switched repertoire must never contribute its nodes or revision.
-    const current = appState.build?.repertoire_id === repertoireId;
-    node = current ? appState.buildNodeById.get(nodeId) : null;
-    if (node) {
-      previous = { arrows: node.arrows || [], circles: node.circles || [] };
-      node.arrows = arrows;
-      node.circles = circles;
-    }
-    await postJson("/api/build/annotations", {
-      repertoire_id: repertoireId, node_id: nodeId, arrows, circles,
-      base_revision: current ? appState.build.revision : undefined,
-    });
-  } catch (error) {
-    if (ownerId !== currentOwnerId()) return;
-    // Restore only this operation's optimistic change, never a newer drawing.
-    if (node && previous && node.arrows === arrows && node.circles === circles) {
-      Object.assign(node, previous);
-      if (appState.build?.repertoire_id === repertoireId &&
-          resolveBuildId(appState.buildCurrentNodeId) === resolveBuildId(selectedId)) {
-        boards.build.setAnnotations(node.arrows, node.circles);
+    let node, previous;
+    try {
+      await hardFlushBuild();
+      if (ownerId !== currentOwnerId()) return;
+      const nodeId = resolvedId();
+      const current = appState.build?.repertoire_id === repertoireId;
+      node = current ? appState.buildNodeById.get(nodeId) : null;
+      if (node) {
+        previous = { arrows: node.arrows || [], circles: node.circles || [] };
+        node.arrows = arrows;
+        node.circles = circles;
       }
+      await postJson("/api/build/annotations", {
+        repertoire_id: repertoireId, node_id: nodeId, arrows, circles,
+        base_revision: current ? appState.build.revision : build.revision,
+      });
+      if (current && appState.build?.repertoire_id === repertoireId &&
+          appState.buildCurrentNodeId === nodeId && ownerId === currentOwnerId()) {
+        boards.build.setAnnotations(arrows, circles);
+      }
+    } catch (error) {
+      if (ownerId !== currentOwnerId()) return;
+      if (node && previous) Object.assign(node, previous);
+      // A failed prerequisite flush must restore the drawing too.
+      if (appState.build?.repertoire_id === repertoireId &&
+          resolveBuildId(appState.buildCurrentNodeId) === resolvedId()) {
+        const confirmed = appState.buildNodeById.get(resolvedId());
+        if (confirmed) boards.build.setAnnotations(confirmed.arrows || [], confirmed.circles || []);
+      }
+      setStatusError(`Annotations not saved: ${error.message}`);
     }
-    setStatusError(`Annotations not saved: ${error.message}`);
-  }
+  })();
+  appState.buildAnnotationsSaving = task;
+  try { await task; }
+  finally { if (appState.buildAnnotationsSaving === task) appState.buildAnnotationsSaving = null; }
 }
 
 // ===== Local-first Build sync ================================================
