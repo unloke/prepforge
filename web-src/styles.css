@@ -2201,7 +2201,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   right: 3%;
   z-index: 5;
   pointer-events: none;
-  width: 42%;
+  width: 30%;
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -2209,7 +2209,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   background: var(--badge);
   color: #ffffff;
   font-family: var(--font);
-  font-size: clamp(10px, calc(100cqw / 8 * 0.26), 20px);
+  font-size: clamp(8px, calc(100cqw / 8 * 0.19), 15px);
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.06em;
