@@ -5,9 +5,9 @@
 //
 //   1. signed-out Library: onboarding card, empty layout, no owner-scoped API
 //   2. signed-out Train / Settings: no authenticated API call, no error status
-//   3. Library error: /api/dashboard and /api/repertoires failures each render
-//      the same error card in the empty layout; the status stays an error
-//      (never overwritten by "Ready"); Retry recovers to the real table
+//   3. Library errors stay scoped: failed statistics retain usable rows;
+//      first-list failure keeps available statistics. Retry reloads the failed
+//      resource and returns to a usable table and non-error status.
 //   4. a window resize outside Analyze never loads the Analyze chunk / CSS
 //   5. mobile More → account: focus moves into the menu, Escape returns it to
 //      #sheet-account (aria-haspopup / aria-expanded), next Escape closes the
@@ -190,24 +190,27 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
   });
   await page.goto(base, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1200);
-  const card = page.locator('#dashboard-repertoires [data-testid="library-error"]');
-  check(S, (await card.count()) === 1, "error card should render");
+  const statisticsFailed = failing === "/api/dashboard";
+  const card = statisticsFailed
+    ? page.locator('#dashboard-today [role="alert"]')
+    : page.locator('#dashboard-repertoires [data-testid="library-list-error"]');
+  check(S, (await card.count()) === 1, "scoped error card should render");
   check(S, (await attr(card, "role")) === "alert", "error card should be role=alert");
   check(S, (await text(card)).includes("exploded"), "error card should carry the server message");
   const cls = await attr(page.locator("#view-dashboard .lib-list"), "class");
-  check(S, /\bis-empty\b/.test(cls || "") && /\bis-error\b/.test(cls || ""), `lib-list should be is-empty + is-error, got "${cls}"`);
+  check(S, statisticsFailed
+    ? !/\bis-error\b/.test(cls || "") && !/\bis-empty\b/.test(cls || "")
+    : /\bis-empty\b/.test(cls || "") && /\bis-error\b/.test(cls || ""), `list error state should match the failing endpoint, got "${cls}"`);
   for (const [sel, label] of [
     ["#lib-cols", "column header"],
     [".lib-list .card-head .seg", "filter chips"],
     [".lib-list .card-head .search-field", "search"],
-    [".lib-hint", "row hint"],
-    ["#dashboard-today", "Today strip"],
-    ["#dashboard-steps", "steps card"],
     ["#dashboard-rep-count", "count badge"],
   ]) {
-    check(S, !(await page.locator(sel).isVisible()), `${label} should be hidden`);
+    check(S, (await page.locator(sel).isVisible()) === statisticsFailed, `${label} visibility should follow usable rows`);
   }
-  check(S, (await page.locator("#dashboard-repertoires .lib-row").count()) === 0, "no rows under the error card");
+  check(S, await page.locator("#dashboard-today").isVisible(), "statistics or its error should stay independent of the list");
+  check(S, (await page.locator("#dashboard-repertoires .lib-row").count()) === (statisticsFailed ? 1 : 0), "statistics failure should retain usable rows");
   // Let any trailing status write land, then confirm the error was not replaced.
   await page.waitForTimeout(500);
   const st = await statusOf(page);
@@ -215,9 +218,9 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
 
   down = false;
   const before = apiCalls.length;
-  await tap(card.locator('[data-lib-action="retry"]'));
+  await tap(card.locator(statisticsFailed ? "button" : '[data-lib-action="retry-list"]'));
   await page.waitForTimeout(800);
-  check(S, apiCalls.slice(before).some((p) => p.startsWith("/api/dashboard")), "Retry should rerun the dashboard load");
+  check(S, apiCalls.slice(before).some((p) => p.startsWith(failing)), "Retry should reload the failed resource");
   check(S, (await page.locator("#dashboard-repertoires .lib-row").count()) === 1, "Retry should recover to the real table");
   const cls2 = await attr(page.locator("#view-dashboard .lib-list"), "class");
   check(S, !/\bis-error\b/.test(cls2 || "") && !/\bis-empty\b/.test(cls2 || ""), `recovered lib-list should drop is-empty/is-error, got "${cls2}"`);

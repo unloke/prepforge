@@ -30,3 +30,5 @@ Annotation drafts 仍屬本頁工作，没有新增 durable annotation outbox。
 SQL regression：annotation route 的 opening-tree SELECT 次數為 0；due windows 與原本兩次查詢結果一致，statement 次數為 1。這些是成本形狀驗證，不是整頁固定加速比例。
 
 Production 主 bundle 約 341 KB raw；本輪 recovery receipt、pagination、寫入排序與快照合併把上限由 338,000/106,000 B 調整成 342,000/109,000 B（raw/gzip），保留窄幅 gate。
+
+??????? 151 files?2030 tests ????? 798 passed?32 skipped?6 deselected?Ruff?ESLint?production build?bundle gate?static freshness ????? UI viewport/state smoke ??????States ???statistics ????? Library???????????????? Retry?
