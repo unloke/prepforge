@@ -100,6 +100,15 @@ describe("analyze checkpoint store", () => {
     expect(loadCheckpoint("g42", "b")).not.toBeNull();
   });
 
+  it("reclaims legacy orphans when writing the owner's index", () => {
+    localStorage.setItem(checkpointKey("orphan", "a"), JSON.stringify({ ...sample, gameId: "orphan", ownerId: "a" }));
+    saveCheckpoint({ ...sample, ownerId: "b" });
+    expect(loadCheckpoint("orphan", "a")).not.toBeNull();
+    saveCheckpoint({ ...sample, ownerId: "a" });
+    expect(loadCheckpoint("orphan", "a")).toBeNull();
+    expect(loadCheckpoint("g42", "b")).not.toBeNull();
+  });
+
   it("keeps a caller-provided savedAt", () => {
     saveCheckpoint({ ...sample, savedAt: 123 });
     expect(loadCheckpoint("g42").savedAt).toBe(123);
