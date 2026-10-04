@@ -140,3 +140,11 @@ it('download responses become Blob directly without text parsing',async()=>{
   const api=compile('async function api(',{withRequestDeadline:async fn=>fn(new AbortController().signal),headersWithCsrf:async()=>({}),getCsrfToken:noop,fetch:async()=>({ok:true,blob:async()=>blob,text})});
   expect(await api('/api/account/export',{responseType:'blob',timeoutMs:300000})).toBe(blob);expect(text).not.toHaveBeenCalled();
 });
+it('a Settings read still runs after a write during lazy view loading',async()=>{
+  const view=deferred(),appState={signedIn:true};
+  const renderSettings=vi.fn();const api=vi.fn(async(_url,options)=>options?.method==='POST'?{maia_rating:2000}:{maia_rating:2000});
+  const actions=createSettingsActions({appState,currentOwnerId:()=> 'owner',api,ensureSettingsView:()=>view.promise,applySettingsPayload:p=>{appState.settings=p;},applyServerEngineGating:noop,setStatusError:noop,explorerDrawerOpen:()=>false});
+  const load=actions.loadSettingsOnce();await actions.saveSettings({maia_rating:2000});
+  view.resolve({renderSettings});await load;
+  expect(api).toHaveBeenCalledTimes(2);expect(renderSettings).toHaveBeenCalledWith({maia_rating:2000});
+});

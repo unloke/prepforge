@@ -18,7 +18,7 @@ async function loadSettingsOnce({ render = true } = {}) {
     setStatusError(error.message);
     return;
   }
-  if (!isCurrent()) return;
+  if (seq !== appState.settingsReadSeq || owner !== currentOwnerId() || generation !== appState.ownerGeneration) return;
   if (!appState.signedIn) {
     // Signed out: browser-local settings only (theme, board, engine status) —
     // no /api/settings call and no 401 in the top bar.
