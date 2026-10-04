@@ -1,13 +1,14 @@
-// Settings requests share ordering across reads, writes and account changes.
+// Reads wait for queued writes; a read cannot invalidate a committed write.
 export function createSettingsActions({
   appState, currentOwnerId, ensureSettingsView, api, applySettingsPayload,
   applyServerEngineGating, setStatusError, positionCoach, engineWidget,
   activeViewName, explorerEvalEngine, explorerDrawerOpen, refreshExplorerPanel,
 }) {
 async function loadSettingsOnce() {
-  const seq = appState.settingsRequestSeq = (appState.settingsRequestSeq || 0) + 1;
+  const seq = appState.settingsReadSeq = (appState.settingsReadSeq || 0) + 1;
   const owner = currentOwnerId();
-  const isCurrent = () => seq === appState.settingsRequestSeq && owner === currentOwnerId();
+  let writeSeq = appState.settingsRequestSeq;
+  const isCurrent = () => seq === appState.settingsReadSeq && owner === currentOwnerId() && writeSeq === appState.settingsRequestSeq;
   let view = null;
   try {
     view = await ensureSettingsView();
@@ -24,6 +25,11 @@ async function loadSettingsOnce() {
     return;
   }
   try {
+    while (appState.settingsSaving) {
+      await appState.settingsSaving;
+      if (seq !== appState.settingsReadSeq || owner !== currentOwnerId()) return;
+    }
+    writeSeq = appState.settingsRequestSeq;
     const payload = await api("/api/settings");
     if (!isCurrent()) return;
     applySettingsPayload(payload);
