@@ -258,7 +258,7 @@ describe("the opponent's move, read for the user", () => {
   it("names the piece a slip leaves hanging and the reply that takes it", () => {
     const f = scenario({ fen: afterNf3, san: "Qh4", best: "Nc6", before: 30, after: 900, playedLine: ["Nxh4"] });
     const read = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(read.prose).toBe("2...Qh4 leaves the queen on h4 hanging; 3.Nxh4 wins it.");
+    expect(read.prose).toBe("2...Qh4 leaves their queen on h4 hanging. Take it with 3.Nxh4.");
     expect(read.tone).toBe("good");
   });
 
@@ -271,14 +271,23 @@ describe("the opponent's move, read for the user", () => {
   it("says what a sound move asks of you, and your best reply", () => {
     const f = scenario({ fen: afterNf3, san: "Nf6", best: "Nf6", before: 30, after: 30, playedLine: ["Nxe5"] });
     const read = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(read.prose).toMatch(/^2\.\.\.Nf6 is [^:]+: it develops the knight and attacks your pawn on e4\. Best reply: 3\.Nxe5 \(it's level\)\.$/);
+    expect(read.prose).toMatch(/^[A-Z][^:.]*: 2\.\.\.Nf6 develops the knight and attacks your pawn on e4\. Answer with 3\.Nxe5 and it's level\.$/);
+    expect(read.prose).not.toMatch(/engine|White|Black|Best reply/);
     expect(read.tone).toBe("warn");
+  });
+
+  it("talks about their good move as a coach would: you and they, never the engine or a colour", () => {
+    const f = scenario({ fen: "8/3R4/5pk1/3p3p/4r2P/6K1/8/8 b - - 1 48", san: "Rg4+", best: "Rg4+",
+      before: -560, after: -571, playedLine: ["Kh3", "Rd4"], ply: 96 });
+    const { prose } = buildOpponentCommentary(f, { selfSide: "white" });
+    expect(prose).toMatch(/48\.\.\.Rg4\+ takes the open g-file with check\. 49\.Kh3 is your most stubborn defence, but you're losing\.$/);
+    expect(prose).not.toMatch(/engine|White|Black|Best reply/);
   });
 
   it("reads their best move in a lost position as a stubborn try, not a grade", () => {
     const f = scenario({ fen: afterNf3, san: "Nc6", best: "Nc6", before: 900, after: 900, playedLine: ["Nxe5"] });
     const read = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(read.prose).toMatch(/^2\.\.\.Nc6 is their most stubborn try\. Best reply: 3\.Nxe5/);
+    expect(read.prose).toBe("2...Nc6 is their most stubborn try, but you're still winning. Keep going with 3.Nxe5.");
     expect(read.tone).toBe("good");
     expect(read.quality).toBe(f.classification.code);
   });
@@ -286,7 +295,7 @@ describe("the opponent's move, read for the user", () => {
   it("points out a positional slip with their better move and where your reply leaves you", () => {
     const f = scenario({ fen: afterNf3, san: "a6", best: "Nc6", before: 30, after: 160, playedLine: ["Nxe5"] });
     const read = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(read.prose).toMatch(/^2\.\.\.a6 is an? (inaccuracy|mistake|blunder); Nc6 was their best\. Best reply: 3\.Nxe5 \(you are (slightly|clearly) better\)\.$/);
+    expect(read.prose).toMatch(/^2\.\.\.a6 is (a little loose; Nc6 was better|a mistake; Nc6 was the right move for them|a blunder; they had to play Nc6)\. Punish it with 3\.Nxe5 and you're (slightly|clearly) better\.$/);
   });
 
   it("calls out a move that walks into mate", () => {
@@ -303,7 +312,7 @@ describe("the opponent's move, read for the user", () => {
       beforeEval: { lines: [{ uci: "g8f8", san: "Kf8", cp: 0, mate: null, pvUci: ["g8f8"], pvSan: ["Kf8"] }] },
       afterEval: { cp: null, mate: 2, pvUci: play(c.fen(), ["Ra8+", "Rd8", "Rxd8#"]), pvSan: ["Ra8+", "Rd8", "Rxd8#"] },
     });
-    expect(buildOpponentCommentary(f, { selfSide: "white" }).prose).toBe("1...Rd2 walks into mate in 2, starting with 2.Ra8+.");
+    expect(buildOpponentCommentary(f, { selfSide: "white" }).prose).toBe("1...Rd2 walks into mate in 2. It starts with 2.Ra8+.");
   });
 
   it("stays short and clean, and needs a known side", () => {
@@ -348,7 +357,7 @@ describe("the opponent's move, read for the user", () => {
     const f = scenario({ fen: "r3k3/7p/8/3N4/8/8/8/4K3 b - - 0 1", san: "h6", best: "Kd7",
       before: 0, after: 500, playedLine: ["Nc7+", "Kd7", "Nxa8", "Kc6"] });
     const read = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(read.prose).toBe("1...h6 drops a rook: 2.Nc7+ forks the king and the rook on a8.");
+    expect(read.prose).toBe("1...h6 is a blunder: 2.Nc7+ forks the king and the rook on a8.");
     expect(read.tone).toBe("good");
   });
 
@@ -356,7 +365,7 @@ describe("the opponent's move, read for the user", () => {
     const f = scenario({ fen: "4k3/7p/8/8/1n6/8/8/R3K3 b - - 0 1", san: "h6", best: "Nc2+",
       bestLine: ["Nc2+", "Kd2", "Nxa1", "Kc1"], before: -500, after: 0, playedLine: ["Kd2"] });
     const { prose } = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(prose).toMatch(/^1\.\.\.h6 misses Nc2\+, which forks your king and your rook on a1 and wins a rook\./);
+    expect(prose).toMatch(/^Lucky for you: they missed Nc2\+, which forks your king and your rook on a1\./);
     expect(prose).not.toMatch(/is an? (inaccuracy|mistake|blunder);/);
   });
 
@@ -364,7 +373,7 @@ describe("the opponent's move, read for the user", () => {
     const f = scenario({ fen: "4k3/1n6/8/8/8/8/8/1R2K3 w - - 0 1", san: "Rxb7", best: "Rxb7",
       before: 500, after: 500, playedLine: ["Kd8"] });
     const read = buildOpponentCommentary(f, { selfSide: "black" });
-    expect(read.prose).toMatch(/^1\.Rxb7 is [^:]+: it wins a knight/);
+    expect(read.prose).toMatch(/^[A-Z][^:.]*: 1\.Rxb7 wins a knight\./);
     expect(read.tone).toBe("warn");
   });
 
@@ -384,7 +393,7 @@ describe("the opponent's move, read for the user", () => {
       beforeEval: { lines: [{ uci: "d8h4", san: "Qh4#", mate: -1, pvUci: ["d8h4"] }] },
       afterEval: { cp: 0, pvUci: play(c.fen(), ["Nh3"]), pvSan: ["Nh3"] } });
     expect(f.missedMate).toBe(true);
-    expect(buildOpponentCommentary(f, { selfSide: "white" }).prose).toContain("lets you off: Qh4# would have mated");
+    expect(buildOpponentCommentary(f, { selfSide: "white" }).prose).toContain("They had mate with Qh4# and missed it.");
   });
 });
 

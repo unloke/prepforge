@@ -746,9 +746,14 @@
 }
 
 /* Desktop: the move list takes whatever height the sidebar has left instead
-   of a fixed 190px window, and only scrolls once the sidebar is full. */
+   of a fixed 190px window, and only scrolls once the sidebar is full. The
+   stack shrinks only through the move list: its floor is the list's 120px
+   plus the class bars (38px) and, when shown, the handoff (52px), each with
+   the 14px gap. Below that the panel scrolls instead of the bars spilling
+   over the drawers underneath. */
 @media (min-width: 761px) {
-  #analysis-results:not([hidden]) { flex: 0 1 auto; min-height: 0; }
+  #analysis-results:not([hidden]) { flex: 0 1 auto; min-height: 172px; }
+  #analysis-results:not([hidden]):has(> .analysis-handoff:not([hidden])) { min-height: 238px; }
   #analysis-results > :not(.moves-grid) { flex: none; }
   #analysis-results .moves-grid { flex: 0 1 auto; min-height: 120px; max-height: none; }
 }
