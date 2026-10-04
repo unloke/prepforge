@@ -10,11 +10,13 @@ export function checkpointKey(gameId, ownerId) {
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DATABASE, 1);
+    const request = indexedDB.open(DATABASE, 2);
     request.onupgradeneeded = () => {
       const db = request.result;
-      db.createObjectStore(PAYLOADS);
-      db.createObjectStore(METADATA).createIndex("owner", "ownerId");
+      if (!db.objectStoreNames.contains(PAYLOADS)) db.createObjectStore(PAYLOADS);
+      const metadata = db.objectStoreNames.contains(METADATA)
+        ? request.transaction.objectStore(METADATA) : db.createObjectStore(METADATA);
+      metadata.createIndex("owner_saved", ["ownerId", "savedAt", "gameId"]);
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -39,19 +41,29 @@ async function transaction(mode, action) {
 /** Metadata only: never parse other games' analysis payloads during a save. */
 export async function listCheckpointGames(ownerId) {
   try {
-    const entries = await transaction("readonly", (_, metadata) => metadata.index("owner").getAll(ownerId || ""));
-    return entries.sort((a, b) => b.savedAt - a.savedAt).map(({ gameId, savedAt }) => ({ gameId, savedAt }));
+    return await transaction("readonly", (_, metadata) => {
+      const result = { result: [] };
+      const cursor = metadata.index("owner_saved").openCursor(IDBKeyRange.bound([ownerId || ""], [ownerId || "", []]), "prev");
+      cursor.onsuccess = () => {
+        if (!cursor.result) return;
+        const { gameId, savedAt } = cursor.result.value;
+        result.result.push({ gameId, savedAt });
+        cursor.result.continue();
+      };
+      return result;
+    });
   } catch (_) { return []; }
 }
 
 export async function saveCheckpoint(checkpoint) {
   try {
+    if (!checkpoint.requestId) return false;
     const payload = { ...checkpoint, ownerId: checkpoint.ownerId || null, savedAt: checkpoint.savedAt || Date.now() };
     const key = checkpointKey(payload.gameId, payload.ownerId);
     await transaction("readwrite", (payloads, metadata) => {
       payloads.put(payload, key);
       metadata.put({ gameId: payload.gameId, ownerId: payload.ownerId || "", savedAt: payload.savedAt,
-        version: payload.requestId || payload.savedAt }, key);
+        version: payload.requestId }, key);
     });
     return true;
   } catch (_) { return false; }
@@ -59,13 +71,34 @@ export async function saveCheckpoint(checkpoint) {
 
 export async function loadCheckpoint(gameId, ownerId) {
   try {
-    if (!gameId) gameId = (await listCheckpointGames(ownerId))[0]?.gameId;
-    if (!gameId) return null;
-    return (await transaction("readonly", (payloads) => payloads.get(checkpointKey(gameId, ownerId)))) || null;
+    return (await transaction("readonly", (payloads, metadata) => {
+      if (gameId) return payloads.get(checkpointKey(gameId, ownerId));
+      const result = { result: null };
+      const cursor = metadata.index("owner_saved").openCursor(IDBKeyRange.bound([ownerId || ""], [ownerId || "", []]), "prev");
+      cursor.onsuccess = () => {
+        if (!cursor.result) return;
+        const payload = payloads.get(cursor.result.primaryKey);
+        payload.onsuccess = () => { result.result = payload.result; };
+      };
+      return result;
+    })) || null;
   } catch (_) { return null; }
 }
 
 /** Delete only the version the prompt/save owns, preserving a newer computation. */
+export async function markCheckpointSaved(gameId, ownerId, requestId) {
+  try {
+    await transaction("readwrite", (payloads) => {
+      const key = checkpointKey(gameId, ownerId);
+      const request = payloads.get(key);
+      request.onsuccess = () => {
+        if (request.result?.requestId === requestId) payloads.put({ ...request.result, serverSaved: true }, key);
+      };
+    });
+    return true;
+  } catch (_) { return false; }
+}
+
 export async function clearCheckpoint(gameId, ownerId, version = null) {
   try {
     await transaction("readwrite", (payloads, metadata) => {

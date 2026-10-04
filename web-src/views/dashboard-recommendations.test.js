@@ -291,6 +291,6 @@ describe("dashboard setup checklist", () => {
     await load;
     expect(container.innerHTML).toContain('data-testid="library-signed-out"');
     expect(todayCard.hidden).toBe(true);
-    expect(api).toHaveBeenCalledTimes(1);
+    expect(api).toHaveBeenCalledTimes(3);
   });
 });

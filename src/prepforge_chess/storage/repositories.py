@@ -2159,6 +2159,15 @@ class PrepForgeRepository:
             )).mappings().first()
         return self._analysis_from_row(row) if row is not None else None
 
+    def has_analysis_save(self, game_id: str, save_id: str, owner_user_id: str) -> bool:
+        with self.engine.connect() as conn:
+            return conn.scalar(select(t.analysis_results.c.id).join(
+                t.games, t.games.c.id == t.analysis_results.c.game_id
+            ).where(
+                t.analysis_results.c.id == self.analysis_save_id(game_id, save_id),
+                t.games.c.owner_user_id == owner_user_id,
+            )) is not None
+
     @staticmethod
     def _analysis_from_row(row) -> AnalysisResult:
         quality = _json_load(row["quality_json"], None)

@@ -4,14 +4,14 @@ export function createSettingsActions({
   applyServerEngineGating, setStatusError, positionCoach, engineWidget,
   activeViewName, explorerEvalEngine, explorerDrawerOpen, refreshExplorerPanel,
 }) {
-async function loadSettingsOnce() {
+async function loadSettingsOnce({ render = true } = {}) {
   const seq = appState.settingsReadSeq = (appState.settingsReadSeq || 0) + 1;
   const owner = currentOwnerId();
   let writeSeq = appState.settingsRequestSeq;
   const isCurrent = () => seq === appState.settingsReadSeq && owner === currentOwnerId() && writeSeq === appState.settingsRequestSeq;
   let view = null;
   try {
-    view = await ensureSettingsView();
+    view = render ? await ensureSettingsView() : null;
   } catch (error) {
     if (!isCurrent()) return;
     setStatusError(error.message);
@@ -21,7 +21,7 @@ async function loadSettingsOnce() {
   if (!appState.signedIn) {
     // Signed out: browser-local settings only (theme, board, engine status) —
     // no /api/settings call and no 401 in the top bar.
-    await view.renderSettings(null);
+    await view?.renderSettings(null);
     return;
   }
   try {
@@ -34,12 +34,12 @@ async function loadSettingsOnce() {
     if (!isCurrent()) return;
     applySettingsPayload(payload);
     applyServerEngineGating();
-    await view.renderSettings(payload);
+    await view?.renderSettings(payload);
   } catch (error) {
     if (!isCurrent()) return;
     setStatusError(error.message);
     try {
-      await view.renderSettings(null);
+      await view?.renderSettings(null);
     } catch (_) {
       /* best-effort local render */
     }

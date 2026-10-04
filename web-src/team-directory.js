@@ -1,9 +1,9 @@
-﻿// Owner-scoped team names shared by Library and Teams. Empty is a loaded result.
+// Owner-scoped team names shared by Library and Teams. Empty is a loaded result.
 export function loadTeamDirectory(appState, api, { refresh = false } = {}) {
   const owner = appState.accountUserId;
   const generation = appState.ownerGeneration;
   const cache = appState.teamsCache;
-  if (!refresh && cache?.owner === owner && cache.generation === generation) {
+  if (!refresh && cache && cache.owner === owner && cache.generation === generation) {
     if (cache.pending) return cache.pending;
     if (cache.loaded) return Promise.resolve(appState.teams);
   }

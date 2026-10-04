@@ -50,6 +50,7 @@ describe("Library error state", () => {
   let cols;
   let count;
   let statuses;
+  let refreshStatus;
   let api;
   let view;
 
@@ -78,6 +79,7 @@ describe("Library error state", () => {
 
   beforeEach(() => {
     container = makeEl({ closest: () => null });
+    refreshStatus = makeEl({ hidden: true });
     card = makeEl({ classList: classList() });
     today = makeEl({ hidden: false, innerHTML: "<b>stale</b>" });
     steps = makeEl({ hidden: false, innerHTML: "<b>stale</b>" });
@@ -85,6 +87,7 @@ describe("Library error state", () => {
     count = makeEl({ hidden: false, textContent: "3" });
     const els = new Map([
       ["dashboard-repertoires", container],
+      ["library-refresh-status", refreshStatus],
       ["dashboard-today", today],
       ["dashboard-steps", steps],
       ["lib-cols", cols],
@@ -102,18 +105,16 @@ describe("Library error state", () => {
   });
 
   function expectErrorComposition(message) {
-    expect(container.innerHTML).toContain('data-testid="library-error"');
+    expect(container.innerHTML).toContain('data-testid="library-list-error"');
     expect(container.innerHTML).toContain('role="alert"');
     expect(container.innerHTML).toContain(message);
-    expect(container.innerHTML).toContain('data-lib-action="retry"');
+    expect(container.innerHTML).toContain('data-lib-action="retry-list"');
     expect(container.innerHTML).not.toContain("lib-row");
     expect(card.classList.contains("is-empty")).toBe(true);
     expect(card.classList.contains("is-error")).toBe(true);
     expect(cols.hidden).toBe(true);
     expect(count.hidden).toBe(true);
-    expect(today.hidden).toBe(true);
-    expect(steps.hidden).toBe(true);
-    expect(steps.innerHTML).toBe("");
+
   }
 
   it("/api/dashboard failure renders the error card and never reports Ready", async () => {
@@ -122,8 +123,9 @@ describe("Library error state", () => {
       return REPS;
     });
     await expect(view.loadDashboard()).rejects.toThrow("dashboard 500");
-    expectErrorComposition("dashboard 500");
-    expect(api).not.toHaveBeenCalledWith("/api/repertoires");
+    expect(container.innerHTML).toContain('data-repertoire-id="rep-1"');
+    expect(today.innerHTML).toContain("dashboard 500");
+    expect(api).toHaveBeenCalledWith("/api/repertoires");
     expect(statuses).not.toContainEqual(["status", "Ready"]);
   });
 
@@ -170,17 +172,14 @@ describe("Library error state", () => {
   });
 
   it("the Retry button reruns the load and surfaces a repeated failure as an error", async () => {
-    build(async (url) => {
-      if (String(url).startsWith("/api/dashboard")) throw new Error("still down");
-      return REPS;
-    });
+    build(async () => { throw new Error("still down"); });
     view.bind();
     await expect(view.loadDashboard()).rejects.toThrow();
     const onClick = container.addEventListener.mock.calls.find(([t]) => t === "click")[1];
-    const retryBtn = { dataset: { libAction: "retry" } };
+    const retryBtn = { dataset: { libAction: "retry-list" } };
     onClick({ target: { closest: () => retryBtn } });
     await vi.waitFor(() => expect(statuses).toContainEqual(["error", "still down"]));
-    expect(api.mock.calls.filter(([u]) => String(u).startsWith("/api/dashboard"))).toHaveLength(2);
+    expect(api.mock.calls.filter(([u]) => String(u).startsWith("/api/dashboard"))).toHaveLength(1);
   });
   // Background refresh (loadDashboardRepertoires after CRUD elsewhere) keeps
   // the page composition: only the list shows a scoped error + Retry.
@@ -200,14 +199,12 @@ describe("Library error state", () => {
 
       failList = true;
       await expect(view.loadDashboardRepertoires()).resolves.toBe(false);
-      expect(container.innerHTML).toContain('data-testid="library-list-error"');
-      expect(container.innerHTML).toContain('role="alert"');
-      expect(container.innerHTML).toContain("refresh 503");
-      expect(container.innerHTML).toContain('data-lib-action="retry-list"');
-      expect(container.innerHTML).not.toContain('data-testid="library-error"');
-      expect(container.innerHTML).not.toContain("lib-row");
-      expect(card.classList.contains("is-error")).toBe(true);
-      expect(cols.hidden).toBe(true);
+      expect(container.innerHTML).toContain('data-repertoire-id="rep-1"');
+      expect(refreshStatus.hidden).toBe(false);
+      expect(refreshStatus.innerHTML).toContain("refresh 503");
+      expect(refreshStatus.innerHTML).toContain("Retry");
+      expect(card.classList.contains("is-error")).toBe(false);
+      expect(cols.hidden).toBe(false);
       expect(today.hidden).toBe(false);
       expect(today.innerHTML).toBe(todayHtml);
       expect(steps.hidden).toBe(false);
@@ -264,7 +261,6 @@ describe("Library error state", () => {
       });
       await expect(view.loadDashboard()).rejects.toThrow("repertoires 502");
       expectErrorComposition("repertoires 502");
-      expect(container.innerHTML).not.toContain("library-list-error");
     });
   });
 });

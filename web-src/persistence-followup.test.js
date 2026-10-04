@@ -85,3 +85,30 @@ it('shared repertoire refresh ignores an older response',async()=>{
   const appState={};const load=compile('async function loadSharedRepertoires(',{appState,currentOwnerId:()=> 'owner',document:{getElementById:()=>host},api:vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),escapeHtml:String,teamById:()=>null},'let sharedRepertoiresSeq=0;');
   const a=load(),b=load();second.resolve({shared:[]});await b;first.resolve({shared:[{id:'stale'}]});await a;expect(host.innerHTML).not.toContain('stale');
 });
+it('discarding one recovery refreshes the remaining work',async()=>{
+  const checkpoint={ownerId:'owner',gameId:'new',requestId:'r'};
+  const appState={analysisRetryCheckpoint:checkpoint};const refreshAnalyzeRecovery=vi.fn();
+  await compile('async function discardAnalyzeCheckpoint(',{appState,currentOwnerId:()=> 'owner',clearCheckpoint:async()=>true,refreshAnalyzeRecovery,setStatus:noop,setStatusError:noop})();
+  expect(refreshAnalyzeRecovery).toHaveBeenCalledOnce();expect(appState.analysisRetryCheckpoint).toBeNull();
+});
+it('confirmed save with failed cleanup offers cleanup without classify-save',async()=>{
+  const checkpoint={ownerId:'owner',gameId:'g',requestId:'r'};const appState={analysisRetryCheckpoint:checkpoint};
+  const showAnalysisRetrySave=vi.fn();
+  const finish=compile('async function finishAnalyzeCheckpoint(',{appState,currentOwnerId:()=> 'owner',markCheckpointSaved:async()=>true,clearCheckpoint:async()=>false,showAnalysisRetrySave,refreshAnalyzeRecovery:vi.fn()});
+  await finish(checkpoint);expect(checkpoint.serverSaved).toBe(true);expect(showAnalysisRetrySave).toHaveBeenCalledWith(checkpoint);
+  const postJson=vi.fn();const retry=compile('async function retryAnalyzeSave(',{appState,currentOwnerId:()=> 'owner',document:{getElementById:()=>null},invalidateAnalysisSource:()=>1,finishAnalyzeCheckpoint:finish,postJson});
+  await retry();expect(postJson).not.toHaveBeenCalled();
+});
+it('recovery rechecks server confirmation after reload when local cleanup failed',async()=>{
+  const checkpoint={ownerId:'owner',gameId:'g',requestId:'r'};const appState={};const showAnalysisRetrySave=vi.fn();
+  const refresh=compile('async function refreshAnalyzeRecovery(',{appState,currentOwnerId:()=> 'owner',loadCheckpoint:async()=>checkpoint,api:async()=>({saved:true}),clearCheckpoint:async()=>false,showAnalysisRetrySave});
+  await refresh();expect(showAnalysisRetrySave).toHaveBeenCalledWith(expect.objectContaining({serverSaved:true}));
+});
+it('workspace restores local work before remote settings or dashboard resolve',async()=>{
+  const settings=deferred(),dashboard=deferred();const appState={buildPending:[],buildPendingDeletes:[]};
+  const restoreOutbox=vi.fn();const recovery=vi.fn(async()=>{});
+  const run=compile('async function loadSignedInWorkspace(',{appState,currentOwnerId:()=> 'owner',loadSettingsActions:async()=>({loadSettingsOnce:()=>settings.promise}),loadDashboard:()=>dashboard.promise,
+    getStoredLichessUsername:()=>null,refreshLichessStatus:async()=>{},syncTrainPickerVisibility:noop,syncReplayControls:noop,renderBuilderTree:noop,restoreOutbox,refreshAnalyzeRecovery:recovery});
+  const pending=run();expect(restoreOutbox).toHaveBeenCalledOnce();expect(recovery).toHaveBeenCalledOnce();
+  settings.resolve();dashboard.resolve();await pending;
+});
