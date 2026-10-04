@@ -476,6 +476,7 @@ def test_smart_sync_persists_position_for_resume(client):
         attempts=[],
         card_index=1,
         queue=[encoded, encoded, "garbage-entry"],
+        state_version=start["state_version"],
     )
     assert r.status_code == 200, r.text
     resumed = _smart_start(client, rep).json()  # no fresh -> resume

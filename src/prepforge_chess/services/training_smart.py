@@ -644,6 +644,7 @@ class SmartTrainingService:
         queue: Optional[List[str]] = None,
         owner_user_id: Optional[str] = None,
         session_generation: Optional[str] = None,
+        state_version: Optional[int] = None,
     ) -> int:
         """Persist a batch of locally graded first attempts plus the session's
         position — the local-first Train flush. Exactly-once per
@@ -719,6 +720,9 @@ class SmartTrainingService:
             session = self.repository.lock_training_session(conn, session_id=session_id) or session
             if session_generation is not None and session_generation != session.created_at.isoformat():
                 raise ValueError("stale session generation")
+            # Receipts merge independently; an obsolete client must never
+            # replace the current queue/position, even with new attempt UUIDs.
+            state_applied = state_version is not None and state_version == session.state_version
             written = 0
             for item in attempts:
                 node_id = item.get("node_id")
@@ -816,7 +820,7 @@ class SmartTrainingService:
                 session = next_session
                 written += 1
 
-            if queue is not None or card_index is not None:
+            if state_applied and (queue is not None or card_index is not None):
                 if queue is not None:
                     # Only well-formed encoded cards land; a malformed entry is dropped
                     # rather than poisoning the stored session.
@@ -834,9 +838,10 @@ class SmartTrainingService:
                 if card_index is not None:
                     clamped = max(0, min(int(card_index), len(fresh.line_order)))
                     fresh = replace(fresh, current_index=clamped, current_node_id=None)
-                self.repository.write_training_session(
-                    conn, replace(fresh, updated_at=_utc_now())
-                )
+                session = replace(fresh, updated_at=_utc_now())
+                self.repository.write_training_session(conn, session)
+            self.sync_state_version = session.state_version
+            self.sync_state_applied = state_applied
         return written
 
     # ------------------------------------------------------------------- move

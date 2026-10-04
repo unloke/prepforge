@@ -1791,10 +1791,7 @@ class PrepForgeRepository:
         """Conn-scoped ``save_training_session``: run inside the caller's
         transaction so the session write commits together with related writes
         (attempt receipts, progress rows)."""
-        _upsert(
-            conn,
-            t.training_sessions,
-            {
+        values = {
                 "id": session.id,
                 "repertoire_id": session.repertoire_id,
                 "mode": session.mode.value,
@@ -1806,16 +1803,15 @@ class PrepForgeRepository:
                 "seed": session.seed,
                 "created_at": _dt_to_text(session.created_at),
                 "updated_at": _dt_to_text(session.updated_at),
-            },
-            conflict=[t.training_sessions.c.id],
-            update_cols=(
-                "repertoire_id", "mode", "line_order_json", "current_index",
-                "current_node_id", "mistakes_json", "mastered_nodes_json", "seed",
-                # A rebuilt smart queue reuses its row; created_at is its
-                # session generation (see /api/train/smart/start).
-                "created_at", "updated_at",
-            ),
-        )
+                "state_version": 1,
+        }
+        stmt = _insert(conn, t.training_sessions).values(values)
+        updates = {key: stmt.excluded[key] for key in values if key not in {"id", "state_version"}}
+        updates["state_version"] = t.training_sessions.c.state_version + 1
+        stmt = stmt.on_conflict_do_update(index_elements=["id"], set_=updates)
+        session.state_version = conn.execute(
+            stmt.returning(t.training_sessions.c.state_version)
+        ).scalar_one()
 
     def load_training_session(self, session_id: str) -> Optional[TrainingSession]:
         with self.engine.connect() as conn:
@@ -2374,6 +2370,7 @@ class PrepForgeRepository:
             created_at=created_at,
             updated_at=updated_at,
             seed=row["seed"],
+            state_version=row["state_version"],
         )
 
     def _training_progress_from_row(self, row: Mapping[str, Any]) -> TrainingProgress:

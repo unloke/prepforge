@@ -176,7 +176,7 @@ function trainFlushHarness() {
   let owner = "alice";
   const response = deferred();
   const sync = { pending: [{ session_id: "s", session_generation: "old", node_id: "n", correct: true, attempt_uuid: "u" }], dirty: true, retry: 0 };
-  const appState = { trainSync: sync, smart: { sessionId: "s", generation: "old", cardIndex: 1, queue: [{ encoded: "old-card" }] } };
+  const appState = { trainSync: sync, smart: { sessionId: "s", generation: "old", stateVersion: 3, cardIndex: 1, queue: [{ encoded: "old-card" }] } };
   const deps = { appState, currentOwnerId: () => owner, flushGroups, groupAttempts, ungroupAttempts,
     setTrainSyncState: vi.fn(), clearTimeout: vi.fn(), postJson: vi.fn(() => response.promise),
     localDateString: () => "2026-10-02", persistOutbox: vi.fn(), trainAttemptId: (a) => a.attempt_uuid,
@@ -194,6 +194,25 @@ it("a late Smart sync failure keeps the old generation and cannot dirty its rebu
   expect(await pending).toBe(false);
   expect(h.appState.trainSync.pending[0].session_generation).toBe("old");
   expect(h.appState.trainSync.dirty).toBe(false);
+});
+
+it("Smart sync sends the captured version and advances it only after accepting state", async () => {
+  const h = trainFlushHarness();
+  const pending = h.run();
+  expect(h.deps.postJson.mock.calls[0][1].state_version).toBe(3);
+  h.response.resolve({ state_applied: true, state_version: 5 });
+  await pending;
+  expect(h.appState.smart.stateVersion).toBe(5);
+});
+
+it("Smart sync settles attempts but does not adopt a conflicting state's version", async () => {
+  const h = trainFlushHarness();
+  const pending = h.run();
+  h.response.resolve({ synced: 1, state_applied: false, state_version: 7 });
+  await pending;
+  expect(h.appState.smart.stateVersion).toBe(3);
+  expect(h.appState.trainSync.pending).toEqual([]);
+  expect(h.deps.setStatus).toHaveBeenCalledWith(expect.stringContaining("Resume"), { severity: "error" });
 });
 
 it("a Train sync response after changing owners cannot settle the new owner's outbox or streak", async () => {

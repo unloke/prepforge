@@ -12483,7 +12483,7 @@ function flushTrainSync() {
   // safe to retry. Only a permanently rejected group drops (and is reported);
   // auth/CSRF/conflict/rate-limit errors keep their attempts queued.
   const smart = appState.smart;
-  const position = smart ? { card_index: smart.cardIndex, queue: smart.queue.map((c) => c.encoded) } : null;
+  const position = smart ? { card_index: smart.cardIndex, queue: smart.queue.map((c) => c.encoded), state_version: smart.stateVersion } : null;
   const groups = groupAttempts(batch, smart ? smart.sessionId : null, smart?.generation);
   setTrainSyncState("syncing");
 
@@ -12500,6 +12500,12 @@ function flushTrainSync() {
         }
         try {
           const result = await postJson("/api/train/smart/sync", body);
+          if (isCurrent() && appState.smart === smart && body.state_version != null) {
+            if (result.state_applied) smart.stateVersion = result.state_version;
+            else if (result.state_applied === false) {
+              setStatus("Training session changed elsewhere. Resume it to sync your position.", { severity: "error" });
+            }
+          }
           if (isCurrent() && result.day_streak) appState.dayStreak = result.day_streak;
         } catch (error) {
           lastError = error;
@@ -12611,6 +12617,7 @@ function beaconFlushTrain() {
     const body = { session_id: sessionId, session_generation: generation, attempts, local_date: localDateString() };
     if (smart && sessionId === smart.sessionId && generation === smart.generation) {
       body.card_index = smart.cardIndex;
+      body.state_version = smart.stateVersion;
       body.queue = smart.queue.map((c) => c.encoded);
     }
     try {

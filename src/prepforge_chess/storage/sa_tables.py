@@ -226,6 +226,7 @@ training_sessions = Table(
     Column("mistakes_json", Text, nullable=False),
     Column("mastered_nodes_json", Text, nullable=False),
     Column("seed", Integer),
+    Column("state_version", Integer, nullable=False, server_default="0"),
     Column("created_at", Text, nullable=False),
     Column("updated_at", Text, nullable=False),
     Index(
