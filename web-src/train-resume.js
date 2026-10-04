@@ -40,6 +40,7 @@ export function mapTrainUiSession(payload, { fresh = false } = {}) {
     mode: smart ? "smart" : payload.mode || "all_lines",
     sessionId: payload.session_id,
     generation: payload.session_generation,
+    stateVersion: payload.state_version,
     repertoireId: payload.repertoire_id,
     repertoireName: payload.repertoire_name,
     color: payload.color === "black" ? "black" : "white",

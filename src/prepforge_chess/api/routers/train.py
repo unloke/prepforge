@@ -313,6 +313,7 @@ def smart_start(
         # A rebuilt queue reuses its DB row/id. Its start timestamp identifies
         # the logical session, including fresh starts using the same seed.
         "session_generation": session.created_at.isoformat(),
+        "state_version": session.state_version,
         "total_cards": len(session.line_order),
         "card_index": session.current_index,
         "resumed": service.resumed,
@@ -423,6 +424,7 @@ class SmartSyncAttempt(BaseModel):
 class SmartSyncBody(BaseModel):
     session_id: str
     session_generation: str | None = None
+    state_version: int | None = Field(default=None, ge=0)
     # Graded FIRST attempts only, in play order — retries are never graded, so
     # the client doesn't send them. Replayed through record_attempt server-side.
     attempts: list[SmartSyncAttempt] = []
@@ -448,13 +450,15 @@ def smart_sync(
     if body.session_generation is None:
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="missing session generation")
     try:
-        written = SmartTrainingService(repo, owner).sync_progress(
+        service = SmartTrainingService(repo, owner)
+        written = service.sync_progress(
             body.session_id,
             [a.model_dump() for a in body.attempts],
             card_index=body.card_index,
             queue=body.queue,
             owner_user_id=owner,
             session_generation=body.session_generation,
+            state_version=body.state_version,
         )
     except ValueError as exc:
         detail = str(exc)
@@ -463,6 +467,8 @@ def smart_sync(
         raise HTTPException(status_code=code, detail=detail) from exc
     return {
         "synced": written,
+        "state_version": service.sync_state_version,
+        "state_applied": service.sync_state_applied,
         "day_streak": _touch_streak(repo, owner, body.local_date) if written else None,
     }
 

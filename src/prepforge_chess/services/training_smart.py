@@ -144,7 +144,7 @@ class SmartTrainingService:
 
     # ------------------------------------------------------------- repertoire cache
 
-    def repertoire(self, repertoire_id: str) -> Optional[Repertoire]:
+    def repertoire(self, repertoire_id: str, *, conn=None) -> Optional[Repertoire]:
         """Load a repertoire once per request and memoise it with its node
         index. Every other load path (``_load_repertoire_or_raise``,
         ``_card_repertoire``, ``active_repertoires``, the router's bundle/label
@@ -152,7 +152,7 @@ class SmartTrainingService:
         time."""
         if repertoire_id in self._rep_cache:
             return self._rep_cache[repertoire_id]
-        rep = self.repository.load_repertoire(repertoire_id)
+        rep = self.repository.load_repertoire(repertoire_id, conn=conn)
         self._rep_cache[repertoire_id] = rep
         if rep is not None:
             self._index_cache[repertoire_id] = index_nodes(rep.root_node)
@@ -374,6 +374,7 @@ class SmartTrainingService:
         session: TrainingSession,
         card: TrainingCard,
         cache: Dict[str, Optional[Repertoire]],
+        *, conn=None,
     ) -> Optional[Repertoire]:
         """Resolve the repertoire a card's targets live in. Foreign-repertoire
         cards (mixed sessions) are honoured only when that repertoire belongs
@@ -384,10 +385,10 @@ class SmartTrainingService:
             return cache[rep_id]
         rep: Optional[Repertoire] = None
         if rep_id == session.repertoire_id:
-            rep = self.repertoire(rep_id)
+            rep = self.repertoire(rep_id, conn=conn)
         else:
-            anchor_meta = self.repository.repertoire_meta(session.repertoire_id)
-            meta = self.repository.repertoire_meta(rep_id)
+            anchor_meta = self.repository.repertoire_meta(session.repertoire_id, conn=conn)
+            meta = self.repository.repertoire_meta(rep_id, conn=conn)
             if (
                 anchor_meta is not None
                 and meta is not None
@@ -396,7 +397,7 @@ class SmartTrainingService:
                 # Only cache the tree globally once ownership is cleared; a
                 # rejected foreign rep stays out of the per-request rep cache and
                 # is memoised as None in the caller's local ``cache`` instead.
-                rep = self.repertoire(rep_id)
+                rep = self.repertoire(rep_id, conn=conn)
         cache[rep_id] = rep
         return rep
 
@@ -441,7 +442,7 @@ class SmartTrainingService:
         return self._prompt_from_context(context) if context is not None else None
 
     def _context(
-        self, session: TrainingSession, repertoire: Repertoire
+        self, session: TrainingSession, repertoire: Repertoire, *, conn=None
     ) -> Optional[_CardContext]:
         """Resolve the current card to live tree nodes, skipping (and
         persisting past) cards whose targets were edited away in Build.
@@ -452,7 +453,7 @@ class SmartTrainingService:
             card = decode_card(session.line_order[session.current_index])
             context = None
             if card is not None:
-                card_rep = self._card_repertoire(session, card, cache)
+                card_rep = self._card_repertoire(session, card, cache, conn=conn)
                 if card_rep is not None:
                     context = self._card_context(session, card_rep, card)
             if context is not None:
@@ -463,7 +464,10 @@ class SmartTrainingService:
                 current_node_id=None,
                 updated_at=_utc_now(),
             )
-            self.repository.save_training_session(session)
+            if conn is None:
+                self.repository.save_training_session(session)
+            else:
+                self.repository.write_training_session(conn, session)
         return None
 
     def _card_context(
@@ -644,6 +648,7 @@ class SmartTrainingService:
         queue: Optional[List[str]] = None,
         owner_user_id: Optional[str] = None,
         session_generation: Optional[str] = None,
+        state_version: Optional[int] = None,
     ) -> int:
         """Persist a batch of locally graded first attempts plus the session's
         position — the local-first Train flush. Exactly-once per
@@ -719,6 +724,9 @@ class SmartTrainingService:
             session = self.repository.lock_training_session(conn, session_id=session_id) or session
             if session_generation is not None and session_generation != session.created_at.isoformat():
                 raise ValueError("stale session generation")
+            # Receipts merge independently; an obsolete client must never
+            # replace the current queue/position, even with new attempt UUIDs.
+            state_applied = state_version is not None and state_version == session.state_version
             written = 0
             for item in attempts:
                 node_id = item.get("node_id")
@@ -816,7 +824,7 @@ class SmartTrainingService:
                 session = next_session
                 written += 1
 
-            if queue is not None or card_index is not None:
+            if state_applied and (queue is not None or card_index is not None):
                 if queue is not None:
                     # Only well-formed encoded cards land; a malformed entry is dropped
                     # rather than poisoning the stored session.
@@ -834,9 +842,21 @@ class SmartTrainingService:
                 if card_index is not None:
                     clamped = max(0, min(int(card_index), len(fresh.line_order)))
                     fresh = replace(fresh, current_index=clamped, current_node_id=None)
-                self.repository.write_training_session(
-                    conn, replace(fresh, updated_at=_utc_now())
-                )
+                session = replace(fresh, updated_at=_utc_now())
+                self.repository.write_training_session(conn, session)
+            self.sync_state_version = session.state_version
+            # A lost response may retry an already committed state. Acknowledge
+            # the matching view without writing it or forcing a resume. A stale
+            # view with different queue/position still cannot acquire a new token.
+            state_matches = (
+                state_version is not None and state_version <= session.state_version
+                and (queue is not None or card_index is not None)
+                and session.current_node_id is None
+                and (queue is None or [raw for raw in queue if decode_card(raw) is not None]
+                     == session.line_order)
+                and (card_index is None or int(card_index) == session.current_index)
+            )
+            self.sync_state_applied = state_applied or state_matches
         return written
 
     # ------------------------------------------------------------------- move
@@ -844,58 +864,69 @@ class SmartTrainingService:
     def submit_move(
         self, session_id: str, played_uci: str, *, attempt: int = 1
     ) -> SmartMoveResult:
-        session = self._load_session_or_raise(session_id)
-        repertoire = self._load_repertoire_or_raise(session.repertoire_id)
-        context = self._context(session, repertoire)
-        if context is None:
-            raise ValueError("training session has no current prompt")
-        session = context.session  # _context may have skipped stale cards
-        card_rep = context.repertoire  # the card's own repertoire (mixed sessions)
-        expected = context.expected
-        move = expected.move
-        correct = played_uci == move.uci
+        with self.repository.engine.begin() as conn:
+            session = self.repository.lock_training_session(conn, session_id=session_id)
+            if session is None:
+                raise ValueError("training session not found")
+            repertoire = self.repertoire(session.repertoire_id, conn=conn)
+            if repertoire is None:
+                raise ValueError("repertoire not found")
+            context = self._context(session, repertoire, conn=conn)
+            if context is None:
+                raise ValueError("training session has no current prompt")
+            session = context.session  # _context may have skipped stale cards
+            card_rep = context.repertoire  # the card's own repertoire (mixed sessions)
+            expected = context.expected
+            move = expected.move
+            correct = played_uci == move.uci
 
-        progress: Optional[TrainingProgress] = None
-        sr_written = attempt <= 1
-        if sr_written:
-            stored = self.repository.load_training_progress(
-                card_rep.id, expected.id, owner_user_id=self._owner_or_raise()
-            ) or TrainingProgress(node_id=expected.id)
-            session, progress = record_attempt(
-                session=session,
-                progress=stored,
-                node_id=expected.id,
-                correct=correct,
-            )
-            self.repository.save_training_progress(
-                card_rep.id, progress, owner_user_id=self._owner_or_raise()
-            )
-
-        card_completed = False
-        requeued = False
-        if correct:
-            if context.expected_target_index + 1 < len(context.targets):
-                session = replace(
-                    session,
-                    current_node_id=context.targets[context.expected_target_index + 1].id,
-                    updated_at=_utc_now(),
+            progress: Optional[TrainingProgress] = None
+            sr_written = attempt <= 1
+            if sr_written:
+                stored = self.repository.lock_training_progress(
+                    conn, repertoire_id=card_rep.id, node_id=expected.id, owner_user_id=self._owner_or_raise()
                 )
+                session, progress = record_attempt(
+                    session=session,
+                    progress=stored,
+                    node_id=expected.id,
+                    correct=correct,
+                )
+                self.repository.write_training_progress(
+                    conn, repertoire_id=card_rep.id, progress=progress, owner_user_id=self._owner_or_raise()
+                )
+
+            card_completed = False
+            requeued = False
+            if correct:
+                if context.expected_target_index + 1 < len(context.targets):
+                    session = replace(
+                        session,
+                        current_node_id=context.targets[context.expected_target_index + 1].id,
+                        updated_at=_utc_now(),
+                    )
+                else:
+                    card_completed = True
+                    session = replace(
+                        session,
+                        current_index=session.current_index + 1,
+                        current_node_id=None,
+                        updated_at=_utc_now(),
+                    )
             else:
-                card_completed = True
                 session = replace(
-                    session,
-                    current_index=session.current_index + 1,
-                    current_node_id=None,
-                    updated_at=_utc_now(),
+                    session, current_node_id=expected.id, updated_at=_utc_now()
                 )
-        else:
-            session = replace(
-                session, current_node_id=expected.id, updated_at=_utc_now()
-            )
-            if attempt >= 2:
-                session, requeued = self._requeue_card(session, context.card)
+                if attempt >= 2:
+                    session, requeued = self._requeue_card(session, context.card)
 
-        self.repository.save_training_session(session)
+            self.repository.write_training_session(conn, session)
+
+            # Skipping any now-stale following cards is part of the same
+            # locked session update, never a post-commit blind overwrite.
+            next_context = self._context(session, repertoire, conn=conn)
+            if next_context is not None:
+                session = next_context.session
 
         played_san = fen_after_player = None
         reply_uci = reply_san = fen_after_reply = None
@@ -908,7 +939,6 @@ class SmartTrainingService:
                 reply_san = reply.move.san
                 fen_after_reply = reply.move.fen_after
 
-        next_context = self._context(session, repertoire)
         next_prompt = (
             self._prompt_from_context(next_context) if next_context is not None else None
         )

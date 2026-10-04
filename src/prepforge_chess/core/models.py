@@ -244,6 +244,7 @@ class TrainingSession:
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)
     seed: Optional[int] = None
+    state_version: int = 0
 
 
 @dataclass

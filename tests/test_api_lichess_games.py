@@ -1190,9 +1190,10 @@ def test_external_compare_preserves_mastery_health_and_queue(client, monkeypatch
     assert client.get("/api/train/smart/summary", params=params).json() == before
     queue_after = start()
     assert queue_after[0] == queue_before[0]
-    # Both calls explicitly rebuild. Only the logical session generation
-    # changes; external comparisons must still leave every queue fact intact.
+    # Both calls explicitly rebuild, advancing generation and state version;
+    # external comparisons must still leave every queue fact intact.
     assert queue_after[1].pop("session_generation") != queue_before[1].pop("session_generation")
+    assert queue_after[1].pop("state_version") > queue_before[1].pop("state_version")
     assert queue_after[1] == queue_before[1]
 
 

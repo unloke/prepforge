@@ -957,6 +957,7 @@ def test_sync_persists_the_session_without_a_blind_row_save(monkeypatch):
         session.id,
         [{"node_id": node_id, "correct": False, "attempt_uuid": "sess-1"}],
         card_index=0,
+        state_version=session.state_version,
         queue=[first_card, "garbage-not-a-card"],
         owner_user_id=owner,
     )

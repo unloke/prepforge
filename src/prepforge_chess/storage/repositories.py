@@ -3,11 +3,12 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from contextlib import nullcontext
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 
-from sqlalchemy import or_, and_, case, delete, func, literal, not_, select, union, update
+from sqlalchemy import or_, and_, case, delete, func, literal, select, union, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import Connection, Engine
@@ -614,11 +615,12 @@ class PrepForgeRepository:
                     "summary_json": _json_dump(result.summary),
                     "critical_ply": ",".join(str(p) for p in result.critical_ply),
                     "quality_json": _json_dump(result.quality) if result.quality else None,
+                    "move_results_json": codec.encode_analysis_moves(result.move_results),
                 },
                 conflict=[t.analysis_results.c.id],
                 update_cols=(
                     "analyzed_at", "engine", "depth", "summary_json", "critical_ply",
-                    "quality_json",
+                    "quality_json", "move_results_json",
                 ),
             )
 
@@ -985,9 +987,10 @@ class PrepForgeRepository:
         return repertoire
 
     def load_repertoire(
-        self, repertoire_id: str, owner_user_id: Optional[str] = None
+        self, repertoire_id: str, owner_user_id: Optional[str] = None,
+        *, conn: Optional[Connection] = None,
     ) -> Optional[Repertoire]:
-        with self.engine.connect() as conn:
+        with nullcontext(conn) if conn is not None else self.engine.connect() as conn:
             rep_row = conn.execute(
                 select(t.repertoires).where(t.repertoires.c.id == repertoire_id)
             ).mappings().first()
@@ -1050,9 +1053,7 @@ class PrepForgeRepository:
     def list_owner_repertoire_listings(
         self, owner_user_id: str
     ) -> List[Dict[str, Any]]:
-        """Lightweight owner listing rows for the dashboard — metadata only, no
-        opening-tree load and no training-progress scan. Health is computed on
-        drill-in (``/api/build/load``) instead of here."""
+        """Owner listing metadata with grouped live mastery counts, no tree hydration."""
         stmt = (
             select(
                 t.repertoires.c.id,
@@ -1072,15 +1073,17 @@ class PrepForgeRepository:
         )
         with self.engine.connect() as conn:
             rows = conn.execute(stmt).mappings().all()
-        # D-01: due counts are time-dependent — recompute live in one grouped
-        # query. Static coverage (trainable/mastered/…) stays cached.
-        due_counts = self.due_counts_by_repertoire(owner_user_id)
+        # Every mastery category can change at a due-time boundary.
+        mastery_counts = self.mastery_counts_by_repertoire(owner_user_id)
         out = []
         for row in rows:
             health = _json_load(row["health_json"], None)
             if health is not None:
                 health = dict(health)
-                health["due"] = due_counts.get(row["id"], 0)
+                health.update(mastery_counts.get(row["id"], {
+                    "trainable": 0, "mastered": 0, "learning": 0, "due": 0,
+                    "weak": 0, "untrained": 0, "mastery_pct": 0,
+                }))
             out.append(
                 {
                     "id": row["id"],
@@ -1093,7 +1096,7 @@ class PrepForgeRepository:
                     "team_id": row["team_id"],
                     "visibility": row["visibility"] or "private",
                     # Cached coverage summary (NULL until the rep is first
-                    # opened/trained) with the live due overlay.
+                    # opened/trained) with live mastery counts.
                     "health": health,
                     "revision": int(row["revision"] or 0),
                 }
@@ -1151,12 +1154,12 @@ class PrepForgeRepository:
         with self.engine.connect() as conn:
             return int(conn.execute(stmt).scalar_one())
 
-    def repertoire_meta(self, repertoire_id: str) -> Optional[Dict[str, Any]]:
+    def repertoire_meta(self, repertoire_id: str, *, conn: Optional[Connection] = None) -> Optional[Dict[str, Any]]:
         """Lightweight ``(id, name, is_active, owner_user_id, team_id, visibility)`` for
         owner/share-gating and write responses, without loading the whole opening tree.
         ``None`` if absent; ``owner_user_id``/``team_id`` are ``None`` for an
         unclaimed/unshared row, and ``visibility`` defaults to ``"private"``."""
-        with self.engine.connect() as conn:
+        with nullcontext(conn) if conn is not None else self.engine.connect() as conn:
             row = conn.execute(
                 select(
                     t.repertoires.c.id,
@@ -1230,36 +1233,25 @@ class PrepForgeRepository:
     def due_counts_by_repertoire(
         self, owner_user_id: str, *, now: Optional[datetime] = None
     ) -> Dict[str, int]:
-        """D-01/D-02: live due-review counts per repertoire.
+        return {rep_id: counts["due"] for rep_id, counts in
+                self.mastery_counts_by_repertoire(owner_user_id, now=now).items()}
 
-        Time-dependent numbers are never served from the cached health JSON —
-        one grouped statement per listing (no N+1) — but the count must mean
-        the SAME thing ``compute_health().due`` means, or the Library badge and
-        the Smart queue disagree (the library could promise reviews nothing can
-        be scheduled for). So this counts a node as due only when:
+    def mastery_counts_by_repertoire(
+        self, owner_user_id: str, *, now: Optional[datetime] = None,
+        conn: Optional[Connection] = None,
+    ) -> Dict[str, Dict[str, int]]:
+        """All exclusive mastery buckets in one owner-scoped statement/snapshot.
 
-        - it is REACHABLE: every ancestor is enabled (the effective-enabled
-          rule — a disabled node makes its whole subtree untrainable), and
-        - it is TRAINABLE: an enabled own-side move (``is_user_prepared_move``
-          is the server-recomputed "parent's side to move is the repertoire
-          colour" flag, i.e. exactly ``_is_trainable``'s move-side test), and
-        - its mastery is ``due``: attempts > 0, not ``weak``, and
-          ``due_at <= now`` — weak is checked BEFORE due in
-          ``services.progress.node_mastery``, so a weak-and-due node counts as
-          weak, here as everywhere else.
-
-        "due" therefore means "scheduled for review now", not merely "has a
-        due_at timestamp in the past".
+        Match node_mastery precedence over reachable own-side nodes. Only static
+        tree coverage (shallow_lines) remains cached in the listing.
         """
-        # Imported here, not at module scope: services/__init__ imports the
-        # repository, so a top-level import would be circular.
-        from prepforge_chess.services.progress import WEAK_SCORE_BELOW
+        from prepforge_chess.services.progress import MASTERED_SCORE_AT, WEAK_SCORE_BELOW
 
         tp = t.training_progress
         nodes = t.opening_nodes
         now_text = _dt_to_text(now or datetime.now(timezone.utc))
         # The walk is scoped to THIS owner's repertoires. The outer query already
-        # filters on tp.owner_user_id and node ids are globally unique, so the
+        # scopes progress to owner_user_id and node ids are globally unique, so the
         # scope cannot change the counts — it only keeps the recursion off
         # every other tenant's trees (the Library listing runs this per owner).
         owner_reps = select(t.repertoires.c.id).where(
@@ -1293,27 +1285,38 @@ class PrepForgeRepository:
             tp.c.correct_attempts * 2 < tp.c.attempts,
             tp.c.spaced_repetition_score < WEAK_SCORE_BELOW,
         )
+        state = case(
+            (or_(tp.c.attempts.is_(None), tp.c.attempts <= 0), "untrained"),
+            (is_weak, "weak"),
+            (tp.c.due_at <= now_text, "due"),
+            (or_(tp.c.is_mastered == 1, tp.c.spaced_repetition_score >= MASTERED_SCORE_AT), "mastered"),
+            else_="learning",
+        )
+        states = ("mastered", "learning", "due", "weak", "untrained")
         stmt = (
-            select(tp.c.repertoire_id, func.count())
-            .select_from(
-                tp.join(blocked, blocked.c.id == tp.c.node_id).join(
-                    nodes, nodes.c.id == tp.c.node_id
-                )
-            )
-            .where(tp.c.owner_user_id == owner_user_id)
-            .where(tp.c.due_at.is_not(None))
-            .where(tp.c.due_at <= now_text)
+            select(nodes.c.repertoire_id, *[
+                func.sum(case((state == name, 1), else_=0)).label(name) for name in states
+            ])
+            .select_from(nodes.join(blocked, blocked.c.id == nodes.c.id).outerjoin(
+                tp, and_(tp.c.node_id == nodes.c.id, tp.c.repertoire_id == nodes.c.repertoire_id,
+                         tp.c.owner_user_id == owner_user_id)
+            ))
             .where(blocked.c.blocked == 0)
             .where(nodes.c.is_enabled == 1)
             .where(nodes.c.is_user_prepared_move == 1)
             .where(nodes.c.uci.is_not(None))
-            .where(tp.c.attempts > 0)
-            .where(not_(is_weak))
-            .group_by(tp.c.repertoire_id)
+            .group_by(nodes.c.repertoire_id)
         )
-        with self.engine.connect() as conn:
-            rows = conn.execute(stmt).all()
-        return {row[0]: int(row[1]) for row in rows}
+        with nullcontext(conn) if conn is not None else self.engine.connect() as conn:
+            rows = conn.execute(stmt).mappings().all()
+        out = {}
+        for row in rows:
+            counts = {name: int(row[name]) for name in states}
+            counts["trainable"] = sum(counts.values())
+            counts["mastery_pct"] = (round(counts["mastered"] / counts["trainable"] * 100)
+                                     if counts["trainable"] else 0)
+            out[row["repertoire_id"]] = counts
+        return out
 
     def set_repertoire_sharing(
         self, repertoire_id: str, team_id: Optional[str], visibility: str
@@ -1790,10 +1793,7 @@ class PrepForgeRepository:
         """Conn-scoped ``save_training_session``: run inside the caller's
         transaction so the session write commits together with related writes
         (attempt receipts, progress rows)."""
-        _upsert(
-            conn,
-            t.training_sessions,
-            {
+        values = {
                 "id": session.id,
                 "repertoire_id": session.repertoire_id,
                 "mode": session.mode.value,
@@ -1805,16 +1805,15 @@ class PrepForgeRepository:
                 "seed": session.seed,
                 "created_at": _dt_to_text(session.created_at),
                 "updated_at": _dt_to_text(session.updated_at),
-            },
-            conflict=[t.training_sessions.c.id],
-            update_cols=(
-                "repertoire_id", "mode", "line_order_json", "current_index",
-                "current_node_id", "mistakes_json", "mastered_nodes_json", "seed",
-                # A rebuilt smart queue reuses its row; created_at is its
-                # session generation (see /api/train/smart/start).
-                "created_at", "updated_at",
-            ),
-        )
+                "state_version": 1,
+        }
+        stmt = _insert(conn, t.training_sessions).values(values)
+        updates = {key: stmt.excluded[key] for key in values if key not in {"id", "state_version"}}
+        updates["state_version"] = t.training_sessions.c.state_version + 1
+        stmt = stmt.on_conflict_do_update(index_elements=["id"], set_=updates)
+        session.state_version = conn.execute(
+            stmt.returning(t.training_sessions.c.state_version)
+        ).scalar_one()
 
     def load_training_session(self, session_id: str) -> Optional[TrainingSession]:
         with self.engine.connect() as conn:
@@ -1854,6 +1853,12 @@ class PrepForgeRepository:
         from a stale snapshot silently clobbers the other sync's mistakes,
         mastered nodes, and position. Follow up with ``write_training_session``
         before the transaction ends. Returns None when the row is absent."""
+        # SQLite has no FOR UPDATE. Acquire its writer lock before reading the
+        # session so file-backed concurrent requests cannot use stale state.
+        if conn.dialect.name == "sqlite":
+            conn.execute(update(t.training_sessions).where(
+                t.training_sessions.c.id == session_id
+            ).values(state_version=t.training_sessions.c.state_version))
         row = (
             conn.execute(
                 select(t.training_sessions)
@@ -2036,11 +2041,12 @@ class PrepForgeRepository:
                     "summary_json": _json_dump(result.summary),
                     "critical_ply": ",".join(str(p) for p in result.critical_ply),
                     "quality_json": _json_dump(result.quality) if result.quality else None,
+                    "move_results_json": codec.encode_analysis_moves(result.move_results),
                 },
                 conflict=[t.analysis_results.c.id],
                 update_cols=(
                     "analyzed_at", "engine", "depth", "summary_json", "critical_ply",
-                    "quality_json",
+                    "quality_json", "move_results_json",
                 ),
             )
 
@@ -2128,33 +2134,31 @@ class PrepForgeRepository:
     def load_latest_analysis_result(
         self, game_id: str, owner_user_id: Optional[str] = None
     ) -> Optional[AnalysisResult]:
+        # Owner, summary, and self-contained move snapshot come from ONE SELECT,
+        # including on PostgreSQL's default READ COMMITTED isolation level.
+        stmt = select(t.analysis_results).where(t.analysis_results.c.game_id == game_id)
+        if owner_user_id is not None:
+            stmt = stmt.join(t.games, t.games.c.id == t.analysis_results.c.game_id).where(
+                t.games.c.owner_user_id == owner_user_id
+            )
+        stmt = stmt.order_by(t.analysis_results.c.analyzed_at.desc(), t.analysis_results.c.id.desc()).limit(1)
         with self.engine.connect() as conn:
-            # The analysis is owned through its game; gate on the game's owner first.
-            if owner_user_id is not None:
-                game_row = conn.execute(
-                    select(t.games.c.owner_user_id).where(t.games.c.id == game_id)
-                ).mappings().first()
-                if game_row is None or game_row["owner_user_id"] != owner_user_id:
-                    return None
-            row = conn.execute(
-                select(t.analysis_results)
-                .where(t.analysis_results.c.game_id == game_id)
-                .order_by(t.analysis_results.c.analyzed_at.desc())
-                .limit(1)
-            ).mappings().first()
+            row = conn.execute(stmt).mappings().first()
         if row is None:
             return None
 
-        game = self.load_game(game_id)
+        quality = _json_load(row["quality_json"], None)
+        if row["move_results_json"] is None:
+            quality = dict(quality or {}, move_snapshot_missing=True)
         return AnalysisResult(
             game_id=row["game_id"],
             analyzed_at=_dt_from_text(row["analyzed_at"]) or datetime.now(timezone.utc),
             engine=row["engine"],
             depth=row["depth"],
-            move_results=game.moves if game is not None else [],
+            move_results=codec.decode_analysis_moves(row["move_results_json"]),
             summary=_json_load(row["summary_json"], {}),
             critical_ply=_parse_critical_ply(row["critical_ply"]),
-            quality=_json_load(row["quality_json"], None),
+            quality=quality,
         )
 
     def _save_move_annotation(
@@ -2373,6 +2377,7 @@ class PrepForgeRepository:
             created_at=created_at,
             updated_at=updated_at,
             seed=row["seed"],
+            state_version=row["state_version"],
         )
 
     def _training_progress_from_row(self, row: Mapping[str, Any]) -> TrainingProgress:

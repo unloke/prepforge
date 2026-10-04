@@ -135,6 +135,7 @@ analysis_results = Table(
     # Search/model quality metadata for this run (A-05): target vs actual
     # depth, shallow spots, Maia status, algorithm versions.
     Column("quality_json", Text),
+    Column("move_results_json", Text),
 )
 Index("idx_analysis_results_game_latest", analysis_results.c.game_id,
       analysis_results.c.analyzed_at.desc(), analysis_results.c.id.desc())
@@ -225,6 +226,7 @@ training_sessions = Table(
     Column("mistakes_json", Text, nullable=False),
     Column("mastered_nodes_json", Text, nullable=False),
     Column("seed", Integer),
+    Column("state_version", Integer, nullable=False, server_default="0"),
     Column("created_at", Text, nullable=False),
     Column("updated_at", Text, nullable=False),
     Index(
