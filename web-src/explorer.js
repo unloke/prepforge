@@ -21,6 +21,7 @@ const CACHE_KEY = "prepforge.explorer.cache.v1";
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // a week: opening stats are slow-moving
 const CACHE_CAP = 150; // ~a long Build session of distinct positions
 const COOLDOWN_MS = 60 * 1000;
+const memoryCaches = new WeakMap();
 
 // The player-pool endpoint wants rating buckets, not a number. Map a rating to its
 // bucket and one neighbour so the pool is "people about as strong as you".
@@ -129,14 +130,14 @@ export function createExplorerClient({ fetchImpl, storage, now, events = globalT
   let cooldownUntil = 0;
   const inflight = new Map();
 
-  let memoryCache = null;
   const invalidate = (event) => {
     if ((event.key === CACHE_KEY || event.key === null) &&
-        (!event.storageArea || event.storageArea === store)) memoryCache = null;
+        (!event.storageArea || event.storageArea === store)) memoryCaches.delete(store);
   };
   events.addEventListener?.("storage", invalidate);
 
   function readCache() {
+    let memoryCache = memoryCaches.get(store);
     if (memoryCache) return memoryCache;
     try {
       const parsed = JSON.parse(store.getItem(CACHE_KEY) || "null");
@@ -144,6 +145,7 @@ export function createExplorerClient({ fetchImpl, storage, now, events = globalT
     } catch (_) {
       memoryCache = { entries: {} };
     }
+    memoryCaches.set(store, memoryCache);
     return memoryCache;
   }
 

@@ -240,3 +240,14 @@ it("memory hits do not reread disk and storage events invalidate them", async ()
   client.dispose();
   expect(events.removeEventListener).toHaveBeenCalled();
 });
+it("two clients in one tab share memory without overwriting each other's entries", async () => {
+  const storage = memoryStorage(), events = {};
+  const fetchImpl = vi.fn(async () => okResponse(RAW));
+  const a = createExplorerClient({ storage, events, fetchImpl });
+  const b = createExplorerClient({ storage, events, fetchImpl });
+  await a.fetchStats("masters", FEN);
+  await b.fetchStats("lichess", FEN);
+  await a.fetchStats("lichess", FEN);
+  expect(fetchImpl).toHaveBeenCalledTimes(2);
+  expect(Object.keys(JSON.parse(storage.getItem("prepforge.explorer.cache.v1")).entries)).toHaveLength(2);
+});

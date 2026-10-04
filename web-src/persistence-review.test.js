@@ -64,3 +64,21 @@ it('Retry save has only one request in flight',async()=>{
     refreshAnalysisHistoryIfOpen:vi.fn(),isAuthError:()=>false,showAnalysisRetrySave:vi.fn()});
   const a=run(),b=run(); expect(postJson).toHaveBeenCalledTimes(1);response.resolve({});await Promise.all([a,b]);
 });
+it('annotation saves serialize so a failed first drawing cannot poison a later rollback',async()=>{
+  const first=deferred(),node={arrows:['Ga1a2'],circles:[]};
+  const appState={build:{repertoire_id:'r',revision:1},buildCurrentNodeId:'a',buildNodeById:new Map([['a',node]])};
+  const postJson=vi.fn().mockReturnValueOnce(first.promise).mockResolvedValueOnce({});
+  const run=compile('async function saveBuildAnnotations(',{appState,currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,
+    hardFlushBuild:async()=>{},resolveBuildId:id=>id,postJson,setStatusError:vi.fn(),boards:{build:{setAnnotations:vi.fn()}}});
+  const a=run(['Ge2e4'],[]),b=run(['Gd2d4'],[]);
+  await vi.waitFor(()=>expect(postJson).toHaveBeenCalledTimes(1));
+  first.reject(Error('offline'));await Promise.all([a,b]);
+  expect(postJson).toHaveBeenCalledTimes(2);expect(node.arrows).toEqual(['Gd2d4']);
+});
+it('failed prerequisite sync restores the visible confirmed annotation',async()=>{
+  const board={setAnnotations:vi.fn()},node={arrows:['Ga1a2'],circles:[]};
+  const appState={build:{repertoire_id:'r'},buildCurrentNodeId:'a',buildNodeById:new Map([['a',node]])};
+  const run=compile('async function saveBuildAnnotations(',{appState,currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,
+    hardFlushBuild:async()=>{throw Error('offline');},resolveBuildId:id=>id,postJson:vi.fn(),setStatusError:vi.fn(),boards:{build:board}});
+  await run(['Ge2e4'],[]);expect(board.setAnnotations).toHaveBeenCalledWith(['Ga1a2'],[]);
+});

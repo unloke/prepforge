@@ -50,7 +50,8 @@ export async function saveCheckpoint(checkpoint) {
     const key = checkpointKey(payload.gameId, payload.ownerId);
     await transaction("readwrite", (payloads, metadata) => {
       payloads.put(payload, key);
-      metadata.put({ gameId: payload.gameId, ownerId: payload.ownerId || "", savedAt: payload.savedAt }, key);
+      metadata.put({ gameId: payload.gameId, ownerId: payload.ownerId || "", savedAt: payload.savedAt,
+        version: payload.requestId || payload.savedAt }, key);
     });
     return true;
   } catch (_) { return false; }
@@ -65,13 +66,13 @@ export async function loadCheckpoint(gameId, ownerId) {
 }
 
 /** Delete only the version the prompt/save owns, preserving a newer computation. */
-export async function clearCheckpoint(gameId, ownerId, savedAt = null) {
+export async function clearCheckpoint(gameId, ownerId, version = null) {
   try {
     await transaction("readwrite", (payloads, metadata) => {
       const key = checkpointKey(gameId, ownerId);
       const request = metadata.get(key);
       request.onsuccess = () => {
-        if (savedAt !== null && request.result?.savedAt !== savedAt) return;
+        if (version !== null && request.result?.version !== version) return;
         payloads.delete(key);
         metadata.delete(key);
       };

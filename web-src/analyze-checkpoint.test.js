@@ -42,3 +42,9 @@ it("storage unavailable reports failure and leaves memory recovery to the caller
 it("restores evaluation pairs and skips malformed entries",()=>{
   expect([...evalMapFrom({evals:[["f",{}],null,["bad"]]})]).toEqual([["f",{}]]);
 });
+it("same-millisecond computations still have distinct checkpoint versions", async () => {
+  await saveCheckpoint({ ...sample, requestId: "first" });
+  await saveCheckpoint({ ...sample, requestId: "second" });
+  await clearCheckpoint("g", "a", "first");
+  expect((await loadCheckpoint("g", "a")).requestId).toBe("second");
+});

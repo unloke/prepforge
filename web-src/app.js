@@ -69,12 +69,7 @@ import {
   saveOutbox,
   trainAttemptId,
 } from "./sync-outbox.js";
-import {
-  clearCheckpoint,
-  evalMapFrom,
-  loadCheckpoint,
-  saveCheckpoint,
-} from "./analyze-checkpoint.js";
+import { clearCheckpoint, evalMapFrom, loadCheckpoint, saveCheckpoint } from "./analyze-checkpoint.js";
 import {
   loadReturnState,
   pendingHandoffs,
@@ -6368,6 +6363,7 @@ async function runAnalysis(options = {}) {
   // F-04: when the device refuses the checkpoint, the retry copy is built from
   // these (declared out here so the catch block can reach them).
   let inMemoryCheckpoint = null;
+  let completedCheckpoint = null;
   const jobId = `browser-analysis-${Date.now()}`;
   try {
     let prep;
@@ -6605,6 +6601,7 @@ async function runAnalysis(options = {}) {
       maiaAssessments,
       pgn,
     };
+    completedCheckpoint = checkpoint;
     const checkpointStored = await saveCheckpoint({
       ...checkpoint,
       ownerId: analysisOwnerId,
@@ -6654,7 +6651,7 @@ async function runAnalysis(options = {}) {
       })
     );
 
-    await clearCheckpoint(prep.game_id, analysisOwnerId, checkpoint.savedAt); // saved: the compute is confirmed durable
+    await clearCheckpoint(prep.game_id, analysisOwnerId, checkpoint.requestId); // saved: the compute is confirmed durable
     if (analysisOwnerId !== currentOwnerId()) throw Object.assign(new Error("Account changed"), { cancelled: true });
     hideAnalysisRetrySave();
     refreshAnalysisHistoryIfOpen();
@@ -6713,7 +6710,7 @@ async function runAnalysis(options = {}) {
     }
     // F-03: if the compute finished but the SAVE didn't, offer "Retry save" —
     // the checkpoint holds the evals, so a retry never re-runs the engine.
-    const checkpoint = current && (inMemoryCheckpoint || await loadCheckpoint(null, analysisOwnerId));
+    const checkpoint = current && (inMemoryCheckpoint || completedCheckpoint);
     if (checkpoint && checkpoint.gameId && seq === analysisRecallSeq && analysisOwnerId === currentOwnerId()) {
       // Keep the in-memory-only variant reachable for Retry save — the device
       // copy doesn't exist in that case.
@@ -6788,8 +6785,8 @@ async function discardAnalyzeCheckpoint() {
   if (appState.analysisSaveInFlight) return;
   const checkpoint = appState.analysisRetryCheckpoint;
   if (!checkpoint || checkpoint.ownerId !== currentOwnerId()) return;
-  if (!checkpoint.inMemoryOnly && !await clearCheckpoint(checkpoint.gameId, checkpoint.ownerId, checkpoint.savedAt)) {
-    setStatusError("Could not discard analysis ? try again");
+  if (!checkpoint.inMemoryOnly && !await clearCheckpoint(checkpoint.gameId, checkpoint.ownerId, checkpoint.requestId)) {
+    setStatusError("Could not discard analysis: try again");
     return;
   }
   if (checkpoint.ownerId !== currentOwnerId()) return;
@@ -6813,7 +6810,6 @@ async function retryAnalyzeSave() {
     hideAnalysisRetrySave();
     return;
   }
-  appState.analysisSaveInFlight = true;
   const retryButton = document.getElementById("analysis-retry-save-btn");
   if (retryButton) retryButton.disabled = true;
   const seq = invalidateAnalysisSource();
@@ -6840,7 +6836,7 @@ async function retryAnalyzeSave() {
       }),
       maia_assessments: checkpoint.maiaAssessments || [],
     });
-    await clearCheckpoint(checkpoint.gameId, ownerId, checkpoint.savedAt);
+    await clearCheckpoint(checkpoint.gameId, ownerId, checkpoint.requestId);
     if (ownerId !== currentOwnerId()) return;
     if (appState.analysisUnsavedCheckpoint === checkpoint) appState.analysisUnsavedCheckpoint = null;
     if (appState.analysisRetryCheckpoint === checkpoint) appState.analysisRetryCheckpoint = null;
