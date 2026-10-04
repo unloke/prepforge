@@ -132,4 +132,4 @@ export function evalMapFrom(checkpoint) {
     if (Array.isArray(entry) && entry.length === 2) map.set(entry[0], entry[1]);
   }
   return map;
-}
+}

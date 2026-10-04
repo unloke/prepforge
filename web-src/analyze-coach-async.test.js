@@ -228,3 +228,21 @@ describe("PositionCoach async continuation ownership", () => {
   expect(vi.getTimerCount()).toBe(0);
   expect(h.store.acquire).not.toHaveBeenCalled();
  });
+
+ it("only shows instant prose when a verdict needs computation", () => {
+  const appState = {};
+  const instant = vi.fn();
+  const phase = vi.fn();
+  const maia = vi.fn();
+  const positionCoach = { update: vi.fn(() => true) };
+  const start = source.indexOf("function refreshAnalysisExplain(");
+  const end = source.indexOf("\n// Instant, engine-free", start);
+  const run = new Function("appState", "positionCoach", "renderInstantCoach", "paintPhaseFromFen", "paintMaiaCoachLine", "updateBookline",
+    `${source.slice(start, end)}; return refreshAnalysisExplain;`)(appState, positionCoach, instant, phase, maia, async () => {});
+  run({ fen: "after", prevFen: "before" });
+  expect(instant).not.toHaveBeenCalled();
+  expect(phase).toHaveBeenCalledWith("before");
+  positionCoach.update.mockReturnValue(false);
+  run({ fen: "uncached" });
+  expect(instant).toHaveBeenCalledOnce();
+ });
