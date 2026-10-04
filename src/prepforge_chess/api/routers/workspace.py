@@ -186,10 +186,9 @@ def dashboard(
         ).one()
     # Today promises work the Smart queue can actually schedule. Reuse the
     # Library's effective-enabled, own-move and weak-before-due rules.
-    due_counts = repo.due_counts_by_repertoire(owner, now=now)
-    soon_counts = repo.due_counts_by_repertoire(owner, now=now + timedelta(hours=24))
-    due_reviews = sum(due_counts.get(rid, 0) for rid in active_ids)
-    due_soon = sum(soon_counts.get(rid, 0) for rid in active_ids) - due_reviews
+    due_counts = repo.due_windows_by_repertoire(owner, now=now, until=now + timedelta(hours=24))
+    due_reviews = sum(due_counts.get(rid, {}).get("due", 0) for rid in active_ids)
+    due_soon = sum(due_counts.get(rid, {}).get("due_until", 0) for rid in active_ids) - due_reviews
     replaced = repo.get_user_setting(owner, PLAYED_SESSIONS_KEY)
     if isinstance(replaced, int) and replaced > 0:
         sessions += replaced

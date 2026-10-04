@@ -1166,3 +1166,29 @@ def test_sync_old_generation_cannot_mutate_rebuilt_session():
             card_index=999, queue=[], session_generation=old.created_at.isoformat(), owner_user_id="t-owner")
     assert repo.get_attempt_receipt(old.id, "late") is None
     assert repo.load_training_session(old.id) == rebuilt
+
+def test_due_windows_equal_two_mastery_queries_in_one_statement():
+    from sqlalchemy import event
+    repository = _repository()
+    repertoire, ids = _build(repository)
+    repository.save_repertoire(repertoire, owner_user_id="t-owner")
+    rows = [_due(ids[key]) for key in ["e4", "nf3", "bb5", "d4", "c4"]]
+    rows[1].due_at = NOW + timedelta(hours=12)
+    rows[2].due_at = NOW + timedelta(hours=30)
+    rows[3].correct_attempts = 0  # weak takes priority over due
+    rows[3].spaced_repetition_score = 0
+    _seed_progress(repository, repertoire.id, rows)
+    repository.update_opening_nodes(repertoire.id, [{"id": ids["d5"], "is_enabled": False}])
+    expected_now = repository.due_counts_by_repertoire("t-owner", now=NOW)
+    until = NOW + timedelta(hours=24)
+    expected_until = repository.due_counts_by_repertoire("t-owner", now=until)
+    statements = []
+    def collect(_conn, _cursor, statement, _parameters, _context, _executemany):
+        statements.append(statement)
+    event.listen(repository.engine, "before_cursor_execute", collect)
+    try:
+        actual = repository.due_windows_by_repertoire("t-owner", now=NOW, until=until)
+    finally:
+        event.remove(repository.engine, "before_cursor_execute", collect)
+    assert actual == {rid: {"due": count, "due_until": expected_until[rid]} for rid, count in expected_now.items()}
+    assert len(statements) == 1

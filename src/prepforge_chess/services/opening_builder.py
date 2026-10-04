@@ -1155,17 +1155,8 @@ class OpeningBuilderService:
         node_id: str,
         arrows: List[str],
         circles: List[str],
-    ) -> OpeningNode:
-        repertoire = self._load_repertoire_or_raise(repertoire_id)
-        node = self._find_node_or_raise(repertoire.root_node, node_id)
-        node.arrows = list(arrows or [])
-        node.circles = list(circles or [])
-        self.repository.update_opening_nodes(repertoire_id, [{
-            "id": node.id,
-            "arrows_json": json.dumps(node.arrows) if node.arrows else None,
-            "circles_json": json.dumps(node.circles) if node.circles else None,
-        }])
-        return node
+    ) -> None:
+        self.repository.set_node_annotations(repertoire_id, node_id, list(arrows), list(circles))
 
     def delete_node(self, repertoire_id: str, node_id: str) -> Optional[str]:
         repertoire = self._load_repertoire_or_raise(repertoire_id)
