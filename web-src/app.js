@@ -5117,6 +5117,7 @@ async function loadAnalysisHistory() {
 let analysisRecallSeq = 0;
 
 function invalidateAnalysisSource() {
+  appState.analysisFileSeq = null;
   clearTimeout(analyzePgnInputTimer);
   return ++analysisRecallSeq;
 }
@@ -6757,6 +6758,7 @@ function renderImportPicker(summary, mode) {
 
 // F-03: "Retry save" affordance for a finished-but-unsaved analysis.
 function showAnalysisRetrySave(checkpoint, message) {
+  appState.analysisRetryCheckpoint = checkpoint;
   const bar = document.getElementById("analysis-retry-save");
   if (!bar) return;
   const text = document.getElementById("analysis-retry-save-text");
@@ -6776,16 +6778,31 @@ function hideAnalysisRetrySave() {
   if (bar) bar.hidden = true;
 }
 
+function discardAnalyzeCheckpoint() {
+  if (appState.analysisSaveInFlight) return;
+  const checkpoint = appState.analysisRetryCheckpoint;
+  if (!checkpoint || checkpoint.ownerId !== currentOwnerId()) return;
+  if (!checkpoint.inMemoryOnly) clearCheckpoint(checkpoint.gameId, checkpoint.ownerId);
+  if (appState.analysisUnsavedCheckpoint === checkpoint) appState.analysisUnsavedCheckpoint = null;
+  appState.analysisRetryCheckpoint = null;
+  hideAnalysisRetrySave();
+  setStatus("Discarded unsaved analysis");
+}
+
 // Re-post classify-save from the checkpoint — engine/model work is NOT redone.
 async function retryAnalyzeSave() {
+  if (appState.analysisSaveInFlight) return;
   // Owner-scoped: this only ever retries work saved under the CURRENT account.
   const ownerId = currentOwnerId();
-  const checkpoint = [appState.analysisUnsavedCheckpoint, loadCheckpoint(null, ownerId)]
+  const checkpoint = [appState.analysisRetryCheckpoint, appState.analysisUnsavedCheckpoint, loadCheckpoint(null, ownerId)]
     .find((candidate) => candidate?.ownerId === ownerId);
   if (!checkpoint || !checkpoint.gameId) {
     hideAnalysisRetrySave();
     return;
   }
+  appState.analysisSaveInFlight = true;
+  const retryButton = document.getElementById("analysis-retry-save-btn");
+  if (retryButton) retryButton.disabled = true;
   const seq = invalidateAnalysisSource();
   const runButton = document.getElementById("run-analysis");
   if (runButton) runButton.disabled = true;
@@ -6811,7 +6828,8 @@ async function retryAnalyzeSave() {
     });
     clearCheckpoint(checkpoint.gameId, ownerId);
     if (ownerId !== currentOwnerId()) return;
-    appState.analysisUnsavedCheckpoint = null;
+    if (appState.analysisUnsavedCheckpoint === checkpoint) appState.analysisUnsavedCheckpoint = null;
+    if (appState.analysisRetryCheckpoint === checkpoint) appState.analysisRetryCheckpoint = null;
     hideAnalysisRetrySave();
     refreshAnalysisHistoryIfOpen();
     if (seq !== analysisRecallSeq || ownerId !== currentOwnerId()) return;
@@ -6833,6 +6851,8 @@ async function retryAnalyzeSave() {
     }
     showAnalysisRetrySave(checkpoint, error.message);
   } finally {
+    appState.analysisSaveInFlight = false;
+    if (retryButton) retryButton.disabled = false;
     if (runButton) runButton.disabled = false;
   }
 }
@@ -8429,32 +8449,41 @@ function renderBuildBranchBar() {
 }
 
 async function saveBuildAnnotations(arrows, circles) {
-  if (activeViewName() !== "build") return;
-  if (isBuildReadOnly()) return;
+  if (activeViewName() !== "build" || isBuildReadOnly()) return;
   if (!appState.build || !appState.buildCurrentNodeId) return;
-  // The annotation POST keys off a real node id — drain any pending local moves so
-  // a freshly-played (tmp) node has been reconciled first.
+  const ownerId = currentOwnerId();
+  const repertoireId = appState.build.repertoire_id;
+  const selectedId = appState.buildCurrentNodeId;
+  arrows = arrows.slice();
+  circles = circles.slice();
+  let node, previous;
   try {
     await hardFlushBuild();
-  } catch (error) {
-    setStatusError(error.message);
-    return;
-  }
-  const nodeId = resolveBuildId(appState.buildCurrentNodeId);
-  const node = appState.buildNodeById.get(nodeId);
-  if (node) {
-    node.arrows = arrows.slice();
-    node.circles = circles.slice();
-  }
-  try {
+    if (ownerId !== currentOwnerId()) return;
+    const nodeId = resolveBuildId(selectedId);
+    // A switched repertoire must never contribute its nodes or revision.
+    const current = appState.build?.repertoire_id === repertoireId;
+    node = current ? appState.buildNodeById.get(nodeId) : null;
+    if (node) {
+      previous = { arrows: node.arrows || [], circles: node.circles || [] };
+      node.arrows = arrows;
+      node.circles = circles;
+    }
     await postJson("/api/build/annotations", {
-      repertoire_id: appState.build.repertoire_id,
-      node_id: nodeId,
-      arrows,
-      circles,
+      repertoire_id: repertoireId, node_id: nodeId, arrows, circles,
+      base_revision: current ? appState.build.revision : undefined,
     });
   } catch (error) {
-    setStatusError(error.message);
+    if (ownerId !== currentOwnerId()) return;
+    // Restore only this operation's optimistic change, never a newer drawing.
+    if (node && previous && node.arrows === arrows && node.circles === circles) {
+      Object.assign(node, previous);
+      if (appState.build?.repertoire_id === repertoireId &&
+          resolveBuildId(appState.buildCurrentNodeId) === resolveBuildId(selectedId)) {
+        boards.build.setAnnotations(node.arrows, node.circles);
+      }
+    }
+    setStatusError(`Annotations not saved: ${error.message}`);
   }
 }
 
@@ -9236,15 +9265,19 @@ async function hardFlushBuild() {
   // deletes (or the undone restore) before any operation depends on it.
   commitPendingUndos();
   if (!appState.build) return;
+  const repId = appState.build.repertoire_id;
+  const ownerId = currentOwnerId();
   if (appState.buildFlushing) await appState.buildFlushing.catch(() => {});
   // R-02: drain THIS repertoire's ops. Ops queued for another tree are not
   // part of this request (and must not spin the loop) — they stay on the
   // device until their own repertoire is open.
-  const repId = appState.build.repertoire_id;
   const hasWorkForThisRep = () =>
     appState.buildPending.some((m) => buildOpMatchesRepertoire(m, repId)) ||
     appState.buildPendingDeletes.some((entry) => buildOpMatchesRepertoire(entry, repId));
   while (hasWorkForThisRep()) {
+    if (ownerId !== currentOwnerId() || appState.build?.repertoire_id !== repId) {
+      throw new Error("Repertoire changed before sync completed ? reopen it and try again");
+    }
     const ok = await flushBuildMoves();
     if (appState.buildFlushing) await appState.buildFlushing.catch(() => {});
     if (!ok) {
@@ -9479,16 +9512,22 @@ function bindDropZone(element, onFile) {
 
 // Drop a PGN file onto the Analyze textarea to load its text (ready to Analyze).
 async function fillPgnInputFromFile(file) {
+  const sourceSeq = invalidateAnalysisSource();
+  const ownerId = currentOwnerId();
+  appState.analysisFileSeq = sourceSeq;
+  const isCurrent = () => appState.analysisFileSeq === sourceSeq && ownerId === currentOwnerId();
   try {
     const text = await file.text();
+    if (!isCurrent()) return;
     document.getElementById("pgn-input").value = text;
     const drawer = document.querySelector("#view-analyze .drawer");
     if (drawer) drawer.open = true;
-    void loadPgnIntoAnalyze(text, { goToEnd: false, quiet: true }).catch(() => {});
+    const loaded = await loadPgnIntoAnalyze(text, { goToEnd: false, sourceSeq });
+    if (!isCurrent() || !loaded) return;
     orientAnalysisFromPgn(text);
-    setStatus(`Loaded ${file.name} · press Analyze`);
-  } catch (_) {
-    setStatus("Could not read file", { severity: "error" });
+    setStatus(`Loaded ${file.name}`);
+  } catch (error) {
+    if (isCurrent()) setStatusError(`Could not load file: ${error.message}`);
   }
 }
 
@@ -10114,6 +10153,8 @@ async function exportBuild(format, nodeId = null) {
     setStatus("Open a repertoire first");
     return;
   }
+  const repertoireId = appState.build.repertoire_id;
+  const ownerId = currentOwnerId();
   // Export reads server-side tree state (and may scope to a node id) — sync first.
   try {
     await hardFlushBuild();
@@ -10121,21 +10162,24 @@ async function exportBuild(format, nodeId = null) {
     setStatusError(error.message);
     return;
   }
+  if (ownerId !== currentOwnerId()) return;
   if (nodeId) nodeId = resolveBuildId(nodeId);
   // Full tree-with-variations PGN for top-level "Export PGN" calls
   if (format === "pgn" && !nodeId) {
     const payload = await api(
-      `/api/repertoires/export-pgn?repertoire_id=${encodeURIComponent(appState.build.repertoire_id)}`
+      `/api/repertoires/export-pgn?repertoire_id=${encodeURIComponent(repertoireId)}`
     );
+    if (ownerId !== currentOwnerId()) return;
     downloadText(payload.filename, payload.mime, payload.content);
     setStatus(`Downloaded ${payload.filename}`);
     return;
   }
   const payload = await postJson("/api/build/export", {
-    repertoire_id: appState.build.repertoire_id,
+    repertoire_id: repertoireId,
     format,
     node_id: nodeId,
   });
+  if (ownerId !== currentOwnerId()) return;
   downloadText(payload.filename, payload.mime, payload.content);
   setStatus(`Downloaded ${payload.filename}`);
 }
@@ -14159,12 +14203,7 @@ function bindEvents() {
   document.getElementById("analysis-retry-save-btn")?.addEventListener("click", () => {
     void retryAnalyzeSave();
   });
-  document.getElementById("analysis-retry-save-discard")?.addEventListener("click", () => {
-    const checkpoint = loadCheckpoint(null, currentOwnerId());
-    if (checkpoint && checkpoint.gameId) clearCheckpoint(checkpoint.gameId, currentOwnerId());
-    hideAnalysisRetrySave();
-    setStatus("Discarded the unsaved analysis on this device");
-  });
+  document.getElementById("analysis-retry-save-discard")?.addEventListener("click", discardAnalyzeCheckpoint);
   const createRepFromGame = document.getElementById("create-repertoire-from-game");
   if (createRepFromGame) {
     createRepFromGame.addEventListener("click", () => {
@@ -14447,12 +14486,7 @@ function bindEvents() {
     pgnFileInput.addEventListener("change", async () => {
       const file = pgnFileInput.files && pgnFileInput.files[0];
       if (!file) return;
-      try {
-        document.getElementById("pgn-input").value = await file.text();
-        setStatus(`Loaded ${file.name}`);
-      } catch (_) {
-        setStatus("Could not read file");
-      }
+      await fillPgnInputFromFile(file);
     });
   }
 
