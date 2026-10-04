@@ -637,7 +637,7 @@ const BROWSER_ENGINE_UNAVAILABLE =
 // modal enforces these; GEN_PLAN_CHANGES_SOFT_CAP mirrors the server MAX_PLAN_CHANGES
 // so we fail with an actionable message instead of a raw 400 after the work is done.
 const GEN_MAX_PLY_DEPTH = 12;
-const GEN_MAX_BRANCHES = 3;
+const GEN_MAX_REPLIES = 6;
 const GEN_PLAN_CHANGES_SOFT_CAP = 2000;
 
 const boards = {};
@@ -5815,7 +5815,7 @@ function escapeHtml(text) {
   }[ch]));
 }
 
-// `advanced: true` fields fold into a closed "Advanced" section; `onInput`
+// `hint` is an on-demand tooltip on a number/text field's label; `onInput`
 // (values, overlay) runs on open and on every change — e.g. to repaint a live
 // note (a `note` field is addressable as [data-note="<name>"]).
 function showInputModal({ title, fields, okLabel = "OK", onInput = null, cancel = true }) {
@@ -5859,20 +5859,15 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, cancel 
           field.type === "number"
             ? ` min="${field.min ?? ""}" max="${field.max ?? ""}" step="${field.step ?? 1}"`
             : "";
+        const hint = field.hint ? ` title="${escapeHtml(field.hint)}"` : "";
         return `
-          <label class="modal-field">
+          <label class="modal-field"${hint}>
             <span>${safeLabel}</span>
             <input name="${safeName}" type="${inputType}" value="${safeValue}"${numericAttrs} data-field />
           </label>
         `;
     };
-    const basic = fields.filter((field) => !field.advanced).map(fieldHtml).join("");
-    const advanced = fields.filter((field) => field.advanced).map(fieldHtml).join("");
-    const inputsHtml =
-      basic +
-      (advanced
-        ? `<details class="modal-advanced"><summary>Advanced</summary>${advanced}</details>`
-        : "");
+    const inputsHtml = fields.map(fieldHtml).join("");
     overlay.innerHTML = `
       <div class="modal" role="dialog" aria-modal="true">
         <div class="modal-title">${escapeHtml(title)}</div>
@@ -9692,151 +9687,118 @@ async function fillPgnInputFromFile(file) {
   }
 }
 
-// Rough up-front size of a Build → Generate run, used only to give the progress bar a
-// believable ceiling. The tree is EXPONENTIAL: user turn branches b times, opponent turn
-// merges Stockfish mainline + Maia predictions above threshold (~2.5 moves on average).
-// Simple mode only recurses the opponent's mainline but still creates ~2 Maia leaf nodes
-// per opponent position. A 20% over-estimate buffer ensures the bar finishes a touch early.
-function estimateBuildGenerateTotal({ plyDepth, ownSideCandidateCount, detailMode }) {
+// Rough up-front size of a Build → Generate run, for the dialog's estimate and the
+// progress bar's ceiling. Your side always gets one move (the engine's best); each
+// opponent position keeps the replies humans play at least `replyThreshold` of the
+// time, up to `maxReplies` (the engine mainline counts as one). The reply count per
+// position is a heuristic over typical Maia distributions (~3 at 10%, ~2 at 20%).
+// A 20% buffer lets the bar finish a touch early.
+function estimateBuildGenerateTotal({ plyDepth, replyThreshold, maxReplies, userToMove = true }) {
   const depth = Math.max(1, Number(plyDepth) || 1);
-  const b = Math.max(1, Number(ownSideCandidateCount) || 1);
-  const mode = String(detailMode || "balanced").toLowerCase();
-
-  // Opponent branches that get recursed per position: Stockfish mainline + Maia above
-  // threshold (10% on mainline path, 30% off it) → real-world average ~2.5.
-  // Simple mode only recurses the mainline so effective recursion factor = 1.
-  const oppRecurse = mode === "simple" ? 1.0 : 2.5;
-
-  // Accumulate nodes at each ply by alternating user-turn (×b) and opponent-turn (×oppRecurse).
-  // Assumes user moves first from the anchor (common case; opponent-first anchors run ~25%
-  // smaller — the slight over-estimate is acceptable).
+  const share = Math.max(0.01, Number(replyThreshold) || 0.1);
+  const cap = Math.max(1, Number(maxReplies) || GEN_DEFAULT_MAX_REPLIES);
+  const oppRecurse = Math.min(cap, 1 + 0.2 / share);
   let nodesAtPly = 1; // anchor
   let total = 0;
-  let oppNodes = 0; // opponent positions, for simple-mode leaf accounting
   for (let ply = 1; ply <= depth; ply++) {
-    nodesAtPly *= ply % 2 === 1 ? b : oppRecurse;
+    const userPly = userToMove ? ply % 2 === 1 : ply % 2 === 0;
+    nodesAtPly *= userPly ? 1 : oppRecurse;
     total += nodesAtPly;
-    if (ply % 2 === 0) oppNodes += nodesAtPly;
   }
-
-  // Simple mode: Maia branches are CREATED (≈2 extra per opp position) but not recursed.
-  if (mode === "simple") total += oppNodes * 2;
-
-  // 20% over-estimate so the bar finishes a touch early rather than pegging at the ceiling.
-  total *= 1.2;
-  return Math.max(12, Math.ceil(total));
+  return Math.max(4, Math.ceil(total * 1.2));
 }
 
-// Generate dialog in plain words: a Depth preset up front, the engine knobs
-// folded under "Advanced", and a live estimate of how much will be added.
-// Kept conservative on purpose: the recursion runs locally (deep × branches
-// is slow on the user's machine) and a huge tree risks exceeding the server
-// apply-plan caps. See GEN_MAX_* / GEN_PLAN_CHANGES_SOFT_CAP.
-const GEN_DEPTH_PRESETS = {
-  shallow: { plies: 4, label: "Shallow — about 2 moves each side" },
-  medium: { plies: 6, label: "Medium — about 3 moves each side" },
-  deep: { plies: 8, label: "Deep — about 4 moves each side" },
-};
+// Generate dialog: every knob in plain view, no presets. Depth is counted in YOUR
+// moves (the tree always ends on your answer); the opponent side is the coverage
+// rule. Kept conservative: the recursion runs locally and a huge tree risks the
+// server apply-plan caps. See GEN_MAX_* / GEN_PLAN_CHANGES_SOFT_CAP.
+const GEN_MAX_OWN_MOVES = GEN_MAX_PLY_DEPTH / 2;
+const GEN_DEFAULT_OWN_MOVES = 3;
+const GEN_DEFAULT_REPLY_PCT = 10;
+const GEN_DEFAULT_MAX_REPLIES = 3;
 
-function generateDialogFields({ repColor }) {
+function generateDialogFields() {
   return [
     {
-      name: "depth_preset",
-      label: "Depth",
-      type: "select",
-      default: "medium",
-      options: Object.entries(GEN_DEPTH_PRESETS).map(([value, p]) => ({ value, label: p.label })),
-    },
-    { name: "estimate", label: "", type: "note" },
-    {
-      name: "own_color",
-      label: "Build moves for",
-      type: "select",
-      default: repColor,
-      advanced: true,
-      options: [
-        { value: "white", label: "White" + (repColor === "white" ? " (your side)" : " (explore the opponent)") },
-        { value: "black", label: "Black" + (repColor === "black" ? " (your side)" : " (explore the opponent)") },
-      ],
-    },
-    {
-      name: "ply_depth",
-      label: `Exact depth in half-moves (1-${GEN_MAX_PLY_DEPTH}; blank = use the preset)`,
+      name: "own_moves",
+      label: `Your moves deep (1-${GEN_MAX_OWN_MOVES})`,
       type: "number",
-      default: "",
+      default: GEN_DEFAULT_OWN_MOVES,
       min: 1,
-      max: GEN_MAX_PLY_DEPTH,
-      advanced: true,
+      max: GEN_MAX_OWN_MOVES,
     },
     {
-      name: "own_side_candidate_count",
-      label: `Your alternatives per position (1-${GEN_MAX_BRANCHES})`,
+      name: "reply_pct",
+      label: "Cover replies played at least (%)",
+      hint: "Opponent moves below this share of human games are left out.",
       type: "number",
-      default: 1,
+      default: GEN_DEFAULT_REPLY_PCT,
       min: 1,
-      max: GEN_MAX_BRANCHES,
-      advanced: true,
+      max: 50,
     },
     {
-      name: "detail_mode",
-      label: "Opponent replies to cover",
-      type: "select",
-      default: "balanced",
-      advanced: true,
-      options: [
-        { value: "simple", label: "Their main reply, plus the first alternatives" },
-        { value: "balanced", label: "Every reply humans play often (recommended)" },
-        { value: "deep", label: "Every common reply — best with a shallow depth" },
-      ],
+      name: "max_replies",
+      label: `Replies per position, at most (1-${GEN_MAX_REPLIES})`,
+      hint: "The engine's best reply always counts as one.",
+      type: "number",
+      default: GEN_DEFAULT_MAX_REPLIES,
+      min: 1,
+      max: GEN_MAX_REPLIES,
     },
     // Defaults to the player's own strength (Settings → Playing strength), so the
-    // generated tree leans toward replies THEIR opponents actually play.
+    // tree leans toward replies THEIR opponents actually play.
     {
       name: "maia_rating",
-      label: "Opponent strength (rating, 600-2600)",
+      label: "Opponent rating (600-2600)",
       type: "number",
       default: effectiveMaiaRating(),
       min: 600,
       max: 2600,
-      advanced: true,
+      step: 50,
     },
-    // Depth (above) = how far the tree grows; Stockfish depth (here) = how deep
-    // each our-turn search runs. The latter comes from Settings to avoid a second
-    // depth knob that could fight it; shown read-only so the distinction is clear.
+    // Per-position Stockfish search depth for this run; Settings holds the default.
     {
-      name: "stockfish_depth_note",
-      label: `Engine search depth: ${effectiveStockfishDepth()} (change in Settings)`,
-      type: "note",
-      advanced: true,
+      name: "engine_depth",
+      label: `Engine depth (${STOCKFISH_MIN_DEPTH}-${STOCKFISH_MAX_DEPTH})`,
+      type: "number",
+      default: effectiveStockfishDepth(),
+      min: STOCKFISH_MIN_DEPTH,
+      max: STOCKFISH_MAX_DEPTH,
     },
+    { name: "estimate", label: "", type: "note" },
   ];
 }
 
-function readGenerateOptions(values) {
-  const preset = GEN_DEPTH_PRESETS[values.depth_preset] || GEN_DEPTH_PRESETS.medium;
-  const exact = String(values.ply_depth ?? "").trim();
-  const plyDepth = Math.max(1, Math.min(GEN_MAX_PLY_DEPTH, Number(exact) || preset.plies));
-  const ownSideCandidateCount = Math.max(
-    1,
-    Math.min(GEN_MAX_BRANCHES, Number(values.own_side_candidate_count) || 1),
-  );
-  const detailMode = ["simple", "balanced", "deep"].includes(values.detail_mode)
-    ? values.detail_mode
-    : "balanced";
+function clampGenerateInt(raw, min, max, fallback) {
+  const n = Math.round(Number(String(raw ?? "").trim() || NaN));
+  return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback;
+}
+
+// `userToMove`: whose turn it is at the anchor. Your first move starts the tree
+// there, so N moves of yours take 2N-1 plies; otherwise the opponent's reply
+// comes first and they take 2N. Either way the tree ends on your answer.
+function readGenerateOptions(values, { userToMove = true } = {}) {
+  const ownMoves = clampGenerateInt(values.own_moves, 1, GEN_MAX_OWN_MOVES, GEN_DEFAULT_OWN_MOVES);
+  const plyDepth = Math.min(GEN_MAX_PLY_DEPTH, userToMove ? 2 * ownMoves - 1 : 2 * ownMoves);
   return {
-    ownColor: values.own_color === "black" ? "black" : "white",
     plyDepth,
-    ownSideCandidateCount,
-    detailMode,
-    maiaRating: Math.max(600, Math.min(2600, Number(values.maia_rating) || effectiveMaiaRating())),
+    userToMove,
+    replyThreshold: clampGenerateInt(values.reply_pct, 1, 50, GEN_DEFAULT_REPLY_PCT) / 100,
+    maxReplies: clampGenerateInt(values.max_replies, 1, GEN_MAX_REPLIES, GEN_DEFAULT_MAX_REPLIES),
+    maiaRating: clampGenerateInt(values.maia_rating, 600, 2600, effectiveMaiaRating()),
+    engineDepth: clampGenerateInt(
+      values.engine_depth,
+      STOCKFISH_MIN_DEPTH,
+      STOCKFISH_MAX_DEPTH,
+      effectiveStockfishDepth(),
+    ),
   };
 }
 
-// Rough range from depth × branching (the same model that sizes the progress
-// bar). Moves already in the repertoire are reused, so the real number is
-// often lower — the copy says so.
-function generateEstimateRange({ plyDepth, ownSideCandidateCount, detailMode }) {
-  const ceiling = estimateBuildGenerateTotal({ plyDepth, ownSideCandidateCount, detailMode });
+// Rough range from the same model that sizes the progress bar. Moves already in the
+// repertoire are reused, so the real number is often lower (said in the tooltip).
+function generateEstimateRange(options) {
+  const ceiling = estimateBuildGenerateTotal(options);
   const nice = (n) => (n >= 50 ? Math.round(n / 10) * 10 : n >= 20 ? Math.round(n / 5) * 5 : Math.round(n));
   const low = Math.max(1, nice(ceiling * 0.4));
   const high = Math.max(low + 1, nice(ceiling));
@@ -9845,7 +9807,7 @@ function generateEstimateRange({ plyDepth, ownSideCandidateCount, detailMode }) 
 
 function generateEstimateText(options) {
   const { low, high } = generateEstimateRange(options);
-  return `Estimate: roughly ${low}–${high} new moves (fewer where your repertoire already has them).`;
+  return `About ${low}–${high} new moves`;
 }
 
 function captureBuildContext() {
@@ -9892,19 +9854,23 @@ async function generateFromCurrentNode() {
     return;
   }
   nodeId = resolveBuildId(nodeId);
-  const repColor = appState.build.color === "black" ? "black" : "white";
+  const ownColor = appState.build.color === "black" ? "black" : "white";
+  const anchorFen = appState.buildNodeById.get(nodeId)?.fen || "";
+  const userToMove = (anchorFen.split(" ")[1] === "b" ? "black" : "white") === ownColor;
   const values = await showInputModal({
     title: "Generate moves from this position",
     okLabel: "Generate",
-    fields: generateDialogFields({ repColor }),
+    fields: generateDialogFields(),
     onInput: (current, overlay) => {
       const note = overlay.querySelector('[data-note="estimate"]');
-      if (note) note.textContent = generateEstimateText(readGenerateOptions(current));
+      if (!note) return;
+      note.textContent = generateEstimateText(readGenerateOptions(current, { userToMove }));
+      note.title = "Fewer where your repertoire already has the moves";
     },
   });
   if (!values || !isCurrent()) return;
-  const { ownColor, plyDepth, ownSideCandidateCount, detailMode, maiaRating } =
-    readGenerateOptions(values);
+  const generateOptions = readGenerateOptions(values, { userToMove });
+  const { plyDepth, replyThreshold, maxReplies, maiaRating, engineDepth } = generateOptions;
 
   const jobId = `browser-generate-${Date.now()}`;
   const generatedRepertoireId = appState.build.repertoire_id;
@@ -9922,7 +9888,7 @@ async function generateFromCurrentNode() {
   // so it can't fake completion. `lastInitAt` lets the Maia cold-download own the toast.
   const progress = {
     done: 0,
-    total: estimateBuildGenerateTotal({ plyDepth, ownSideCandidateCount, detailMode }),
+    total: estimateBuildGenerateTotal(generateOptions),
     plannedMoves: 0,
   };
   let lastInitAt = 0;
@@ -9957,7 +9923,11 @@ async function generateFromCurrentNode() {
     // start in the same tick and proceed in parallel; the pipeline awaits the
     // same shared ready promise only when it reaches the first Maia inference,
     // so one Generate never spawns a second worker/session or re-downloads.
-    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    // The timeout keeps a hidden tab (no animation frames) from stalling the run.
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => resolve());
+      setTimeout(resolve, 100);
+    });
     engineLifecycleMark("build-feedback-paint", tGenerate);
     const maiaReady = getSharedMaia3Provider().warmup();
     engineLifecycleMark("build-maia-init-start", tGenerate);
@@ -9978,11 +9948,11 @@ async function generateFromCurrentNode() {
       rootNodeId: nodeId,
       ownColor,
       plyDepth,
-      detailMode,
       maiaRating,
-      ownSideCandidateCount,
-      // Per-position Stockfish search depth from Settings (NOT the tree's ply depth).
-      depth: effectiveStockfishDepth(),
+      replyThreshold,
+      maxReplies,
+      // Per-position Stockfish search depth (NOT the tree's ply depth).
+      depth: engineDepth,
       signal: controller.signal,
       // Reuse ONE warm Maia worker/session across Generate runs (Stage 4b) — the first run
       // downloads + caches the ~46 MB model, later runs skip both the fetch and the session

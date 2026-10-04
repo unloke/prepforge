@@ -133,6 +133,12 @@ export async function generateBuildPlan({
   detailMode = "balanced",
   maiaRating,
   ownSideCandidateCount = 1,
+  // Optional coverage knobs from the Generate dialog. replyThreshold (0..1) replaces the
+  // 10%/30% split with one minimum human-reply share everywhere; maxReplies caps the
+  // opponent's children per position (the engine mainline counts as one). Both null =
+  // the server _expand rules unchanged.
+  replyThreshold = null,
+  maxReplies = null,
   preserveManualPreparedMoves = true,
   engine,
   maia,
@@ -155,6 +161,14 @@ export async function generateBuildPlan({
   const branchLimit = Math.max(1, Math.floor(Number(ownSideCandidateCount) || 1));
   const rating = clampRating(maiaRating);
   const mode = String(detailMode || "balanced").toLowerCase();
+  const fixedThreshold =
+    Number.isFinite(Number(replyThreshold)) && replyThreshold !== null && Number(replyThreshold) > 0
+      ? Math.min(1, Number(replyThreshold))
+      : null;
+  const replyCap =
+    Number.isFinite(Number(maxReplies)) && maxReplies !== null && Number(maxReplies) >= 1
+      ? Math.floor(Number(maxReplies))
+      : Infinity;
 
   // Anchor = root of the recursion. Use the supplied subtree when present (so existing
   // children merge), else synthesize a childless anchor from rootFen.
@@ -310,7 +324,7 @@ export async function generateBuildPlan({
     // BRANCHES. Threshold is 10% on the mainline path else 30% (unchanged). The two sources
     // are MERGED so a move that is both Stockfish's best AND a likely human reply lands as a
     // single child (Stockfish source/eval, Maia probability supplemented) — never twice.
-    const threshold = onMainlinePath ? MAINLINE_THRESHOLD : BRANCH_THRESHOLD;
+    const threshold = fixedThreshold ?? (onMainlinePath ? MAINLINE_THRESHOLD : BRANCH_THRESHOLD);
     checkAbort();
     // Stockfish (the mainline best move) and Maia (the human branches) are INDEPENDENT
     // reads of the same FEN backed by SEPARATE providers, so run them concurrently rather
@@ -372,8 +386,11 @@ export async function generateBuildPlan({
     let kept = predictions.filter((p) => p.probability >= threshold);
     if (kept.length === 0 && predictions.length > 0) kept = [predictions[0]];
 
+    let replies = 1; // the mainline
     for (const branchPred of kept) {
       if (branchPred.move_uci === mainlineUci) continue; // already the mainline child
+      if (replies >= replyCap) break; // predictions are sorted: the likeliest stay
+      replies += 1;
       const branchChild = upsertChild(
         node,
         branchPred.move_uci,

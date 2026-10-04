@@ -843,3 +843,28 @@ describe("opponent turn — Stockfish and Maia run concurrently (deterministic)"
     expect(JSON.stringify(planA.changes)).toBe(JSON.stringify(planB.changes));
   });
 });
+
+describe("opponent coverage knobs (Generate dialog)", () => {
+  const engine = { candidates: async () => [cand("e7e5")] };
+  const maia = {
+    predictions: async () => [pred("e7e5", 0.4), pred("c7c5", 0.25), pred("e7e6", 0.15), pred("d7d6", 0.06)],
+  };
+  const rootReplies = (plan) => plannedAdds(plan).filter((c) => c.parentRef === "anchor").map((c) => c.moveUci);
+
+  it("defaults to the 10% mainline-path threshold", async () => {
+    const plan = await run({ rootFen: B_ROOT, maia, engine });
+    expect(rootReplies(plan)).toEqual(["e7e5", "c7c5", "e7e6"]);
+  });
+
+  it("replyThreshold sets one minimum share for every position", async () => {
+    const plan = await run({ rootFen: B_ROOT, maia, engine, replyThreshold: 0.05 });
+    expect(rootReplies(plan)).toEqual(["e7e5", "c7c5", "e7e6", "d7d6"]);
+    const strict = await run({ rootFen: B_ROOT, maia, engine, replyThreshold: 0.2 });
+    expect(rootReplies(strict)).toEqual(["e7e5", "c7c5"]);
+  });
+
+  it("maxReplies keeps the engine mainline plus the likeliest replies", async () => {
+    const plan = await run({ rootFen: B_ROOT, maia, engine, replyThreshold: 0.05, maxReplies: 2 });
+    expect(rootReplies(plan)).toEqual(["e7e5", "c7c5"]);
+  });
+});

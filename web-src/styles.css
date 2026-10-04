@@ -4038,21 +4038,6 @@ body.is-guest .replay-results:empty::before {
   min-width: 0;
 }
 
-.modal-advanced {
-  margin-top: 4px;
-  border-top: 1px solid var(--line);
-  padding-top: 8px;
-}
-.modal-advanced > summary {
-  cursor: pointer;
-  font-size: var(--fs-s);
-  font-weight: 600;
-  color: var(--label);
-  margin-bottom: 8px;
-}
-.modal-advanced > .modal-field,
-.modal-advanced > .modal-note { margin-bottom: 10px; }
-
 .modal-note {
   margin: 0;
   font-size: 12px;

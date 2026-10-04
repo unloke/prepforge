@@ -96,7 +96,7 @@
 
 /* Expected (good) vs played (bad) arrows over the derived position. */
 .replay-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.replay-arrows polygon { opacity: 0.82; stroke: rgba(0, 0, 0, 0.35); stroke-width: 0.35; stroke-linejoin: round; }
+.replay-arrows path { opacity: 0.8; filter: drop-shadow(0 0.3px 0.6px rgba(0, 0, 0, 0.22)); }
 .replay-arrows .t-good { fill: var(--good); }
 .replay-arrows .t-bad { fill: var(--danger); }
 

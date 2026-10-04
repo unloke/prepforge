@@ -61,53 +61,61 @@ describe("Explorer bars", () => {
   });
 });
 
-describe("Generate dialog (P2-7)", () => {
+describe("Generate dialog", () => {
   const helpers = compile(
     [
-      "function estimateBuildGenerateTotal({ plyDepth, ownSideCandidateCount, detailMode }) {",
-      "function readGenerateOptions(values) {",
-      "function generateEstimateRange({ plyDepth, ownSideCandidateCount, detailMode }) {",
+      "function estimateBuildGenerateTotal({ plyDepth, replyThreshold, maxReplies, userToMove = true }) {",
+      "function clampGenerateInt(raw, min, max, fallback) {",
+      "function readGenerateOptions(values, { userToMove = true } = {}) {",
+      "function generateEstimateRange(options) {",
       "function generateEstimateText(options) {",
     ],
     {
-      GEN_DEPTH_PRESETS: {
-        shallow: { plies: 4 },
-        medium: { plies: 6 },
-        deep: { plies: 8 },
-      },
       GEN_MAX_PLY_DEPTH: 12,
-      GEN_MAX_BRANCHES: 3,
+      GEN_MAX_OWN_MOVES: 6,
+      GEN_MAX_REPLIES: 6,
+      GEN_DEFAULT_OWN_MOVES: 3,
+      GEN_DEFAULT_REPLY_PCT: 10,
+      GEN_DEFAULT_MAX_REPLIES: 3,
+      STOCKFISH_MIN_DEPTH: 1,
+      STOCKFISH_MAX_DEPTH: 30,
       effectiveMaiaRating: () => 1500,
+      effectiveStockfishDepth: () => 16,
     },
   );
 
-  it("maps Shallow / Medium / Deep presets to depths, with an advanced override", () => {
-    expect(helpers.readGenerateOptions({ depth_preset: "shallow" }).plyDepth).toBe(4);
-    expect(helpers.readGenerateOptions({ depth_preset: "medium" }).plyDepth).toBe(6);
-    expect(helpers.readGenerateOptions({ depth_preset: "deep" }).plyDepth).toBe(8);
-    expect(helpers.readGenerateOptions({ depth_preset: "deep", ply_depth: "3" }).plyDepth).toBe(3);
-    expect(helpers.readGenerateOptions({ depth_preset: "deep", ply_depth: "99" }).plyDepth).toBe(12);
-    expect(helpers.readGenerateOptions({}).maiaRating).toBe(1500);
+  it("counts depth in your moves and always ends the tree on your answer", () => {
+    expect(helpers.readGenerateOptions({ own_moves: "3" }, { userToMove: true }).plyDepth).toBe(5);
+    expect(helpers.readGenerateOptions({ own_moves: "3" }, { userToMove: false }).plyDepth).toBe(6);
+    expect(helpers.readGenerateOptions({ own_moves: "99" }, { userToMove: false }).plyDepth).toBe(12);
+    expect(helpers.readGenerateOptions({}).plyDepth).toBe(5);
   });
 
-  it("shows a growing estimate range labelled as an estimate", () => {
-    const shallow = helpers.generateEstimateRange({ plyDepth: 4, ownSideCandidateCount: 1, detailMode: "balanced" });
-    const deep = helpers.generateEstimateRange({ plyDepth: 8, ownSideCandidateCount: 1, detailMode: "balanced" });
-    expect(shallow.low).toBeLessThan(shallow.high);
-    expect(deep.high).toBeGreaterThan(shallow.high);
-    expect(helpers.generateEstimateText({ plyDepth: 6, ownSideCandidateCount: 1, detailMode: "balanced" })).toMatch(
-      /^Estimate: roughly \d+–\d+ new moves/,
-    );
+  it("reads every coverage knob, clamped, with defaults for blanks", () => {
+    const opts = helpers.readGenerateOptions({ reply_pct: "5", max_replies: "9", maia_rating: "", engine_depth: "20" });
+    expect(opts.replyThreshold).toBeCloseTo(0.05);
+    expect(opts.maxReplies).toBe(6);
+    expect(opts.maiaRating).toBe(1500);
+    expect(opts.engineDepth).toBe(20);
+    expect(helpers.readGenerateOptions({}).replyThreshold).toBeCloseTo(0.1);
   });
 
-  it("drops the jargon labels and folds the knobs into Advanced", () => {
-    expect(app).not.toContain("Ply depth (1-");
-    expect(app).not.toContain("Your-move branches per node");
-    expect(app).not.toContain("10% / 30% thresholds");
-    const fields = extractByMarker("function generateDialogFields({ repColor }) {");
-    expect(fields).toContain('label: "Depth"');
-    expect(fields.match(/advanced: true/g).length).toBeGreaterThanOrEqual(4);
-    expect(app).toContain('<details class="modal-advanced"><summary>Advanced</summary>');
+  it("estimates more moves for deeper or broader coverage", () => {
+    const base = { plyDepth: 5, replyThreshold: 0.1, maxReplies: 3 };
+    const range = helpers.generateEstimateRange(base);
+    expect(range.low).toBeLessThan(range.high);
+    expect(helpers.generateEstimateRange({ ...base, plyDepth: 9 }).high).toBeGreaterThan(range.high);
+    expect(helpers.generateEstimateRange({ ...base, maxReplies: 1 }).high).toBeLessThan(range.high);
+    expect(helpers.generateEstimateText(base)).toMatch(/^About \d+–\d+ new moves$/);
+  });
+
+  it("has no presets, no own-side alternatives and nothing folded away", () => {
+    const fields = extractByMarker("function generateDialogFields() {");
+    expect(fields).not.toContain("advanced: true");
+    expect(fields).not.toContain("own_side_candidate_count");
+    expect(fields).not.toContain("depth_preset");
+    expect(fields).not.toContain("own_color");
+    expect(app).not.toContain("GEN_DEPTH_PRESETS");
   });
 });
 

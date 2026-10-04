@@ -252,6 +252,7 @@ describe("eval chart current-ply indicator", () => {
     expect(cursor.getAttribute("x1")).toBe(String(x));
     expect(cursor.getAttribute("x2")).toBe(String(x));
     expect(cursor.getAttribute("stroke-dasharray")).toBe("3 3"); // pattern cue
+    expect(cursor.getAttribute("visibility")).toBe("visible");
 
     const ring = doc(chart).getElementById("eval-chart-cursor-dot");
     expect(ring.getAttribute("visibility")).toBe("visible");
@@ -267,6 +268,8 @@ describe("eval chart current-ply indicator", () => {
     const cursor = doc(chart).getElementById("eval-chart-cursor");
     const ring = doc(chart).getElementById("eval-chart-cursor-dot");
     expect(cursor.getAttribute("x1")).toBe("-10");
+    // The SVG overflows its frame, so the parked line must be hidden too.
+    expect(cursor.getAttribute("visibility")).toBe("hidden");
     expect(ring.getAttribute("visibility")).toBe("hidden");
   });
 });

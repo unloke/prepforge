@@ -140,6 +140,9 @@ describe("replay focus internals", () => {
     expect(html).toContain('class="replay-arrows"');
     expect(html).toContain('class="t-good"');
     expect(html).toContain('class="t-bad"');
+    // Shared board geometry, layered inside the mini board's square grid.
+    expect(html).toMatch(/<path class="t-good" d="M[^"]+ Z"/);
+    expect(html).toMatch(/<div class="scout-miniboard"[^>]*>.*<svg class="replay-arrows"[^]*<\/svg><\/div><\/div>/);
     // Move details name both moves; no standing colour legend.
     expect(html).not.toContain('class="legend"');
   });

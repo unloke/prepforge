@@ -535,6 +535,9 @@ export function createAnalyzeView({
     const x = hidden ? -10 : evalChartXOf(idx, points.length);
     marker.setAttribute("x1", String(x));
     marker.setAttribute("x2", String(x));
+    // The chart overflows its frame (edge plies' markers overhang), so a parked
+    // line at x=-10 would show beside it: the start position has no point.
+    marker.setAttribute("visibility", hidden ? "hidden" : "visible");
     updateChartCaption(hidden ? null : points[idx]);
     if (!dot) return;
     // Ring on the curve at the current ply: a SHAPE cue on top of the dashed
@@ -781,6 +784,7 @@ export function createAnalyzeView({
     marker.setAttribute("stroke-dasharray", "3 3");
     marker.setAttribute("x1", "-10");
     marker.setAttribute("x2", "-10");
+    marker.setAttribute("visibility", "hidden");
     marker.setAttribute("vector-effect", "non-scaling-stroke");
     chart.appendChild(marker);
 
