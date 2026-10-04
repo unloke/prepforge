@@ -53,6 +53,16 @@ function writeIndex(ownerId, entries) {
     kept[gameId] = savedAt;
   }
   localStorage.setItem(indexKey(ownerId), JSON.stringify(kept));
+  // Also reclaim payloads orphaned by older versions of the index cap.
+  const prefix = `${KEY_PREFIX}${ownerSegment(ownerId)}.`;
+  for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+    const key = localStorage.key(i);
+    if (!key?.startsWith(prefix)) continue;
+    const payload = readJson(localStorage.getItem(key));
+    if (payload?.ownerId === (ownerId || null) &&
+        key === checkpointKey(payload.gameId, ownerId) &&
+        !Object.hasOwn(kept, payload.gameId)) localStorage.removeItem(key);
+  }
 }
 
 /**
@@ -122,4 +132,4 @@ export function evalMapFrom(checkpoint) {
     if (Array.isArray(entry) && entry.length === 2) map.set(entry[0], entry[1]);
   }
   return map;
-}
+}
