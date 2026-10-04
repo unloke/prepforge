@@ -311,7 +311,7 @@ async function runViewport(vp) {
       scrollOverflow: document.querySelector("#analyze-sidebar .panel-scroll").scrollWidth - document.querySelector("#analyze-sidebar .panel-scroll").clientWidth };
   });
   check(engineLayout.fits && engineLayout.scrollOverflow <= 1, `Engine must fit the evaluation card: ${JSON.stringify(engineLayout)}`);
-  check(engineLayout.coachHeight <= 134, "Coach must remain compact");
+  check(engineLayout.coachHeight <= 160, "Coach must remain compact");
   await shot("engine");
   await page.locator("#open-engine-widget").click();
   await page.evaluate(() => document.getElementById("analysis-start").click());

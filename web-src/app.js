@@ -6057,12 +6057,14 @@ async function trainRepertoire(repertoireId) {
 }
 
 let repertoireMenuOpener = null;
+let repertoireMenuOpenerId = null;
 
 function openRepertoireContextMenu(event, repertoireId, isActive) {
   event.preventDefault();
   const menu = document.getElementById("repertoire-context-menu");
   closeRepertoireContextMenu(false);
   repertoireMenuOpener = event.currentTarget || document.activeElement;
+  repertoireMenuOpenerId = repertoireId;
   repertoireMenuOpener?.setAttribute("aria-expanded", "true");
   const safeId = escapeHtml(repertoireId);
   const items = [
@@ -6120,8 +6122,17 @@ function closeRepertoireContextMenu(restoreFocus = true) {
   if (!menu || menu.hidden) return;
   menu.hidden = true;
   repertoireMenuOpener?.setAttribute("aria-expanded", "false");
-  if (restoreFocus && repertoireMenuOpener?.isConnected) repertoireMenuOpener.focus();
+  if (restoreFocus) {
+    // A list re-render replaces the ⋯ button: find its successor by repertoire id.
+    const target = repertoireMenuOpener?.isConnected
+      ? repertoireMenuOpener
+      : repertoireMenuOpenerId
+        ? [...document.querySelectorAll("[data-row-menu]")].find((el) => el.dataset.rowMenu === repertoireMenuOpenerId)
+        : null;
+    target?.focus();
+  }
   repertoireMenuOpener = null;
+  repertoireMenuOpenerId = null;
 }
 
 async function fetchRepertoireMeta(repertoireId) {
