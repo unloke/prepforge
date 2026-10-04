@@ -1983,12 +1983,15 @@ class PositionCoach {
     const hasMove = !!(this.ctx.prevFen && this.ctx.lastUci);
     if (!hasMove) return; // nothing played in → leave the instant read
     if (!isBrowserEngineAvailable()) return; // no engine → leave the instant read
-    window.clearTimeout(this.timer);
-    // Keep the instant describeMove line visible; a spinner on the phase chip
-    // is enough. Replacing the prose with "Let me look at that…" felt laggy
-    // and wiped the only useful sentence on screen.
-    const target = fen;
-    this.timer = window.setTimeout(() => this._run(target), 280);
+    this._ensureEngine();
+    const cached = (position) => this.evalCache.get(`${this.engineDepth}|${position}`) ||
+      savedPositionEvalRead(position, this.engineDepth);
+    if (cached(this.ctx.prevFen) && (localGameOver(fen) || cached(fen))) {
+      void this._run(fen);
+      return true; // cached verdict lands before the next browser paint
+    }
+    this.timer = window.setTimeout(() => this._run(fen), 280);
+    return false;
   }
 
   async _run(fen) {
@@ -2072,7 +2075,7 @@ class PositionCoach {
       }
     } catch (err) {
       console.warn("Coach: failed to build move commentary", err);
-      /* leave the instant read on screen */
+      if (token === this.token && fen === this.fen && activeViewName() === "analyze") renderInstantCoach();
     }
   }
 
@@ -2384,8 +2387,10 @@ async function playHumanPick(uci) {
 
 function paintPhaseFromFen(fen) {
   if (!fen) return;
+  const ctx = appState.explainContext;
   loadPhaseCoach()
     .then((m) => {
+      if (appState.explainContext !== ctx || activeViewName() !== "analyze") return;
       const model = m.buildPhaseCoach({ fen, predictions: [] });
       paintPhaseChip(model.phase, model.title);
     })
@@ -2432,8 +2437,11 @@ async function maiaPhaseCoach({ fen, expectedUci, expectedSan, playedUci }) {
 // immediately, then let the engine replace it with a graded verdict.
 function refreshAnalysisExplain(ctx) {
   appState.explainContext = ctx || {};
-  renderInstantCoach();
-  positionCoach.update(ctx ? ctx.fen : null, ctx || {});
+  const cached = positionCoach.update(ctx ? ctx.fen : null, ctx || {});
+  if (cached) {
+    paintPhaseFromFen(ctx.prevFen);
+    paintMaiaCoachLine(null);
+  } else renderInstantCoach();
   updateBookline().catch(() => { /* book read is best-effort */ });
 }
 

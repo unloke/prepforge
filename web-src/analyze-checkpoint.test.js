@@ -88,6 +88,27 @@ describe("analyze checkpoint store", () => {
     expect(loadCheckpoint("g43")).not.toBeNull();
   });
 
+  it("evicts payloads with index entries and keeps other owners intact", () => {
+    saveCheckpoint({ ...sample, ownerId: "b" });
+    for (let i = 1; i <= 51; i++) {
+      expect(saveCheckpoint({ ...sample, gameId: `g${i}`, ownerId: "a", savedAt: i })).toBe(true);
+    }
+    expect(listCheckpointGames("a")).toHaveLength(50);
+    expect(loadCheckpoint("g1", "a")).toBeNull();
+    for (const { gameId } of listCheckpointGames("a")) clearCheckpoint(gameId, "a");
+    expect(localStorage.length).toBe(3); // two owner indexes and B's payload
+    expect(loadCheckpoint("g42", "b")).not.toBeNull();
+  });
+
+  it("reclaims legacy orphans when writing the owner's index", () => {
+    localStorage.setItem(checkpointKey("orphan", "a"), JSON.stringify({ ...sample, gameId: "orphan", ownerId: "a" }));
+    saveCheckpoint({ ...sample, ownerId: "b" });
+    expect(loadCheckpoint("orphan", "a")).not.toBeNull();
+    saveCheckpoint({ ...sample, ownerId: "a" });
+    expect(loadCheckpoint("orphan", "a")).toBeNull();
+    expect(loadCheckpoint("g42", "b")).not.toBeNull();
+  });
+
   it("keeps a caller-provided savedAt", () => {
     saveCheckpoint({ ...sample, savedAt: 123 });
     expect(loadCheckpoint("g42").savedAt).toBe(123);

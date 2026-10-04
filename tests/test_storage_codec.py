@@ -226,3 +226,22 @@ def test_transposition_keeps_clocks_in_identity():
     # Same path replayed twice is identical, including clocks.
     again = codec.rebuild_moves(STARTING_FEN, ["e2e4", "e7e5", "g1f3", "b8c6"])
     assert codec.position_key(a[-1].fen_after) == codec.position_key(again[-1].fen_after)
+
+
+def test_export_pgn_discards_tree_for_a_different_mainline():
+    import io
+    import chess.pgn
+
+    game = ChessCore().import_single_pgn('1. e4 $1 (1. d4) e5 *')
+    game.moves = codec.rebuild_moves(STARTING_FEN, ["d2d4", "d7d5"])
+    tree = chess.pgn.read_game(io.StringIO(codec.export_pgn(game)))
+    assert [move.uci() for move in tree.mainline_moves()] == ["d2d4", "d7d5"]
+    assert not tree.variations[0].nags
+    assert len(tree.variations) == 1
+
+
+def test_export_pgn_without_original_still_rebuilds_legacy_games():
+    game = ChessCore().import_single_pgn('1. e4 {Original} e5 *')
+    game.pgn = None
+    assert "Original" in codec.export_pgn(game)
+    assert "e4" in codec.export_pgn(game)

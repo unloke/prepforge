@@ -13,6 +13,7 @@ readable dicts; raw DB rows are not required to be pretty.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 from dataclasses import asdict
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
@@ -347,9 +348,13 @@ def move_needs_row(move: MoveRecord) -> bool:
 
 
 def export_pgn(game: Game) -> str:
-    """Rebuild a PGN from authoritative headers + UCI sequence."""
+    """Keep the imported tree, overlaying authoritative mainline annotations."""
     board = chess.Board(game.initial_fen)
-    pgn_game = chess.pgn.Game()
+    pgn_game = chess.pgn.read_game(io.StringIO(game.pgn)) if game.pgn else None
+    if (pgn_game is None or pgn_game.board().fen() != board.fen() or
+            [move.uci() for move in pgn_game.mainline_moves()] !=
+            [record.uci for record in game.moves]):
+        pgn_game = chess.pgn.Game()
     if game.initial_fen != STARTING_FEN:
         pgn_game.setup(board)
     headers = dict(game.tags or {})
@@ -372,16 +377,15 @@ def export_pgn(game: Game) -> str:
     replay = chess.Board(game.initial_fen)
     for record in game.moves:
         move = chess.Move.from_uci(record.uci)
-        node = node.add_variation(move)
+        node = node.variations[0] if node.variations else node.add_variation(move)
         # Export original + current generated explanation (display merge), so a
         # PGN always carries what the UI shows.
         display = "\n".join(
             part for part in (record.comment, record.generated_comment) if part
         )
-        if display:
-            node.comment = display
+        node.comment = display
         replay.push(move)
-    return pgn_game.accept(chess.pgn.StringExporter(headers=True, variations=False, comments=True))
+    return pgn_game.accept(chess.pgn.StringExporter(headers=True, variations=True, comments=True))
 
 
 def eval_to_debug_dict(evaluation: EngineEvaluation) -> Dict[str, Any]:

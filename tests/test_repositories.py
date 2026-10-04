@@ -342,7 +342,7 @@ def test_attempt_receipt_round_trip():
     }
 
 
-def test_game_persist_does_not_store_fen_or_pgn_copies():
+def test_game_persist_keeps_compact_moves_and_imported_pgn():
     core = ChessCore()
     repo = _repository()
     game = core.import_single_pgn(
@@ -358,12 +358,12 @@ def test_game_persist_does_not_store_fen_or_pgn_copies():
     repo.save_game(game)
     with repo.engine.connect() as conn:
         row = conn.execute(
-            text("SELECT uci_blob FROM games WHERE id = :id"),
+            text("SELECT uci_blob, pgn FROM games WHERE id = :id"),
             {"id": game.id},
         ).mappings().one()
         cols = conn.execute(text("PRAGMA table_info(games)")).fetchall()
     names = {c[1] for c in cols}
-    assert "pgn" not in names
+    assert row["pgn"] == game.pgn
     assert "uci_blob" in names
     assert row["uci_blob"] == "e2e4 e7e5 g1f3 b8c6"
     loaded = repo.load_game(game.id)

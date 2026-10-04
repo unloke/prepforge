@@ -192,3 +192,57 @@ describe("PositionCoach async continuation ownership", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 });
+
+ it("does not restore a phase chip after returning to the root or leaving Analyze", async () => {
+  const gate = deferred();
+  const paint = vi.fn();
+  const ctx = { fen: "after", prevFen: "before", lastUci: "e2e4" };
+  const appState = { explainContext: ctx };
+  let view = "analyze";
+  const start = source.indexOf("function paintPhaseFromFen(");
+  const end = source.indexOf("\nfunction paintMaiaCoachFromRead", start);
+  const run = new Function("loadPhaseCoach", "paintPhaseChip", "appState", "activeViewName",
+    `${source.slice(start, end)}; return paintPhaseFromFen;`)(() => gate.promise, paint, appState, () => view);
+  run("before");
+  appState.explainContext = { fen: "root" };
+  gate.resolve({ buildPhaseCoach: () => ({ phase: "middlegame", title: "Middlegame" }) });
+  await gate.promise;
+  await Promise.resolve();
+  expect(paint).not.toHaveBeenCalled();
+  appState.explainContext = ctx;
+  run("before");
+  view = "build";
+  await Promise.resolve();
+  expect(paint).not.toHaveBeenCalled();
+ });
+
+ it("uses cached before/after reads without the navigation debounce", async () => {
+  vi.useFakeTimers();
+  const h = harness();
+  h.moduleGate.resolve(h.mod);
+  h.coach._ensureEngine();
+  h.coach._remember(h.coach.ctx.prevFen, read(h.coach.ctx.prevFen), 0);
+  h.coach._remember(h.coach.fen, read(h.coach.fen), 0);
+  expect(h.coach.update(h.coach.fen, h.coach.ctx)).toBe(true);
+  await vi.waitFor(() => expect(h.render).toHaveBeenCalledOnce());
+  expect(vi.getTimerCount()).toBe(0);
+  expect(h.store.acquire).not.toHaveBeenCalled();
+ });
+
+ it("only shows instant prose when a verdict needs computation", () => {
+  const appState = {};
+  const instant = vi.fn();
+  const phase = vi.fn();
+  const maia = vi.fn();
+  const positionCoach = { update: vi.fn(() => true) };
+  const start = source.indexOf("function refreshAnalysisExplain(");
+  const end = source.indexOf("\n// Instant, engine-free", start);
+  const run = new Function("appState", "positionCoach", "renderInstantCoach", "paintPhaseFromFen", "paintMaiaCoachLine", "updateBookline",
+    `${source.slice(start, end)}; return refreshAnalysisExplain;`)(appState, positionCoach, instant, phase, maia, async () => {});
+  run({ fen: "after", prevFen: "before" });
+  expect(instant).not.toHaveBeenCalled();
+  expect(phase).toHaveBeenCalledWith("before");
+  positionCoach.update.mockReturnValue(false);
+  run({ fen: "uncached" });
+  expect(instant).toHaveBeenCalledOnce();
+ });

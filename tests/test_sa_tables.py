@@ -140,4 +140,4 @@ def test_sa_games_round_trip():
     assert row["owner_user_id"] == "u1"
     assert row["source"] == "manual"
     assert row["uci_blob"] == "e2e4 e7e5"
-    assert "pgn" not in row
+    assert row["pgn"] is None
