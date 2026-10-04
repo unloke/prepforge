@@ -272,7 +272,7 @@ describe("outbox settling", () => {
       });
     }
     const rejected = loadOutbox("owner").build.rejected;
-    expect(rejected).toHaveLength(100);
+    expect(rejected).toHaveLength(140);
     // The newest rejections survive — those are the ones being worked on.
     expect(rejected[rejected.length - 1].tempId).toBe("bad-139");
   });  it("falls back to a stable identity for entries without one", () => {

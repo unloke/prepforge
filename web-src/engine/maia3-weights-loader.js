@@ -36,29 +36,42 @@ export async function fetchWeightsWithProgress(url, expectedBytes, onProgress, {
     );
   }
   const headerTotal = Number(resp.headers.get("content-length")) || 0;
-  const total = headerTotal || expectedBytes || 0;
+  const total = expectedBytes || headerTotal || 0;
   if (!resp.body || typeof resp.body.getReader !== "function") {
     const buf = await resp.arrayBuffer();
+    if (expectedBytes && buf.byteLength !== expectedBytes) throw new Error("weight size mismatch");
     onProgress(buf.byteLength, total || buf.byteLength);
     return buf;
   }
   const reader = resp.body.getReader();
-  const chunks = [];
+  const out = expectedBytes ? new Uint8Array(expectedBytes) : null;
+  const chunks = out ? null : [];
   let loaded = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    loaded += value.byteLength;
-    onProgress(loaded, total || loaded);
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (out && loaded + value.byteLength > out.byteLength) {
+        await reader.cancel?.();
+        throw new Error("weight size mismatch: download exceeds manifest");
+      }
+      if (out) out.set(value, loaded);
+      else chunks.push(value);
+      loaded += value.byteLength;
+      onProgress(loaded, total || loaded);
+    }
+  } finally { reader.releaseLock?.(); }
+  if (out) {
+    if (loaded !== expectedBytes) throw new Error("weight size mismatch: download truncated");
+    return out.buffer;
   }
-  const out = new Uint8Array(loaded);
+  const assembled = new Uint8Array(loaded);
   let offset = 0;
   for (const chunk of chunks) {
-    out.set(chunk, offset);
+    assembled.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return out.buffer;
+  return assembled.buffer;
 }
 
 // Resolve verified weight bytes for `entry.file`:
@@ -111,6 +124,7 @@ export async function loadVerifiedWeights({
   report("verify", 0, entry.bytes);
   const bad = await verify(fetched);
   if (bad) throw new Error(bad); // a bad network response is a real error, not a fallback
-  await cache.put(file, fetched); // persist verified bytes (best-effort)
-  return { buf: fetched, fromCache: false };
+  // Cache writes may outlive init; terminating the worker only loses this cache.
+  const cacheWrite = Promise.resolve().then(() => cache.put(file, fetched)).catch(() => false);
+  return { buf: fetched, fromCache: false, cacheWrite };
 }

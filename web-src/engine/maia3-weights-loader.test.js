@@ -155,10 +155,10 @@ describe("fetchWeightsWithProgress total (P3)", () => {
     ]);
   });
 
-  it("prefers a present Content-Length over the manifest size", async () => {
+  it("uses the manifest size even when Content-Length disagrees", async () => {
     const { impl } = fakeFetch(ab([1, 2, 3, 4]), { contentLength: "4", chunks: 2 });
     const events = [];
-    await fetchWeightsWithProgress("http://w/x.onnx", 999, (loaded, total) => events.push({ loaded, total }), {
+    await fetchWeightsWithProgress("http://w/x.onnx", 4, (loaded, total) => events.push({ loaded, total }), {
       fetchImpl: impl,
     });
     expect(events).toEqual([
@@ -183,4 +183,29 @@ describe("fetchWeightsWithProgress total (P3)", () => {
       /weight fetch 404/,
     );
   });
+});
+it("verified bytes are usable before the cache write completes", async () => {
+  let finish;
+  const write = new Promise(resolve => { finish = resolve; });
+  const { impl } = fakeFetch(ab([1, 2, 3, 4]));
+  const result = await loadVerifiedWeights({ entry: goodEntry, url: "x", fetchImpl: impl, sha256: fakeSha,
+    cache: { get: async () => null, put: () => write } });
+  expect(bytesOf(result.buf)).toEqual([1, 2, 3, 4]);
+  finish(true);
+  expect(await result.cacheWrite).toBe(true);
+});
+it("oversized streams stop at the manifest bound", async () => {
+  let reads = 0, cancelled = false, released = false;
+  const fetchImpl = async () => ({ ok: true, headers: { get: () => null }, body: { getReader: () => ({
+    read: async () => { reads++; return { done: false, value: new Uint8Array(3) }; },
+    cancel: async () => { cancelled = true; }, releaseLock: () => { released = true; },
+  }) } });
+  await expect(fetchWeightsWithProgress("x", 4, () => {}, { fetchImpl })).rejects.toThrow(/exceeds manifest/);
+  expect(reads).toBe(2); expect(cancelled).toBe(true); expect(released).toBe(true);
+});
+it("a failed cache write does not fail verified model initialization", async () => {
+  const { impl } = fakeFetch(ab([1, 2, 3, 4]));
+  const result = await loadVerifiedWeights({ entry: goodEntry, url: "x", fetchImpl: impl, sha256: fakeSha,
+    cache: { get: async () => null, put: async () => { throw Error("quota"); } } });
+  expect(await result.cacheWrite).toBe(false);
 });
