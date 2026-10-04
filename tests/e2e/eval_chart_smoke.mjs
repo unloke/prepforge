@@ -90,6 +90,13 @@ async function main() {
     const chartBox = await page.locator("#eval-chart").boundingBox();
     if (!chartBox) fail("eval chart has no bounding box");
     const xForRatio = (ratio) => chartBox.x + chartBox.width * ratio;
+    // Plotted x (user units) of a point at `ratio` along the plies: the chart
+    // insets its plot by 9 screen px, so the inset in user units tracks the width.
+    const CHART_W = 640;
+    const plotX = (ratio) => {
+      const pad = (9 * CHART_W) / chartBox.width;
+      return pad + ratio * (CHART_W - 2 * pad);
+    };
 
     // --- 1. Mouse hover: text tooltip (SAN, eval, classification). ---
     await page.mouse.move(xForRatio(0.75), chartBox.y + chartBox.height / 2); // ply 4
@@ -125,7 +132,7 @@ async function main() {
       ring: document.getElementById("eval-chart-cursor-dot").getAttribute("visibility"),
       dash: document.getElementById("eval-chart-cursor").getAttribute("stroke-dasharray"),
     }));
-    check(cursor.x1 === "480", `cursor sits on ply 4's x (got ${cursor.x1})`);
+    check(Math.abs(Number(cursor.x1) - plotX(0.75)) < 0.5, `cursor sits on ply 4's x (got ${cursor.x1})`);
     check(cursor.ring === "visible", "current-ply ring marker is visible");
     check(cursor.dash === "3 3", "cursor line carries a dashed (non-colour) cue");
 
@@ -146,7 +153,7 @@ async function main() {
       "click on another point switches to that ply",
     );
     const afterClick = await page.evaluate(() => document.getElementById("eval-chart-cursor").getAttribute("x1"));
-    check(afterClick === "320", `cursor follows the new selection (got ${afterClick})`);
+    check(Math.abs(Number(afterClick) - plotX(0.5)) < 0.5, `cursor follows the new selection (got ${afterClick})`);
 
     // --- 4. Dark theme: chart colours resolve from tokens and flip. ---
     const readColors = () =>

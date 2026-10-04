@@ -51,6 +51,8 @@
 // The 2026-10-02 Analyze round (engine-line board preview with step/exit,
 // typed-square board keyboard input) grows the entry 326,398 → 330,835 B raw
 // and 101,991 → 103,208 B gzip; allow 332/104 KB.
+// The 2026-10-04 Analyze round (board arrows, move grades, brilliant assessment,
+// inset eval-chart plot) grows the entry 330,835 → 333,0xx B raw; allow 335/106 KB.
 import { readdirSync, statSync, readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { fileURLToPath, URL } from "node:url";
@@ -65,8 +67,8 @@ const LIMITS = [
   {
     prefix: "index-",
     suffix: ".js",
-    maxBytes: 332_000, // reviewed walkthrough fixes (see measured deltas above)
-    maxGzipBytes: 104_000,
+    maxBytes: 335_000, // reviewed walkthrough fixes (see measured deltas above)
+    maxGzipBytes: 106_000,
     label: "main app chunk",
   },
   { prefix: "maia3-worker-", suffix: ".js", maxBytes: 220_000, label: "maia3 worker chunk" },
