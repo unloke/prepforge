@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 
-from sqlalchemy import or_, and_, case, delete, func, literal, not_, select, union, update
+from sqlalchemy import or_, and_, case, delete, func, literal, select, union, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import Connection, Engine
@@ -1053,9 +1053,7 @@ class PrepForgeRepository:
     def list_owner_repertoire_listings(
         self, owner_user_id: str
     ) -> List[Dict[str, Any]]:
-        """Lightweight owner listing rows for the dashboard — metadata only, no
-        opening-tree load and no training-progress scan. Health is computed on
-        drill-in (``/api/build/load``) instead of here."""
+        """Owner listing metadata with grouped live mastery counts, no tree hydration."""
         stmt = (
             select(
                 t.repertoires.c.id,
@@ -1075,15 +1073,17 @@ class PrepForgeRepository:
         )
         with self.engine.connect() as conn:
             rows = conn.execute(stmt).mappings().all()
-        # D-01: due counts are time-dependent — recompute live in one grouped
-        # query. Static coverage (trainable/mastered/…) stays cached.
-        due_counts = self.due_counts_by_repertoire(owner_user_id)
+        # Every mastery category can change at a due-time boundary.
+        mastery_counts = self.mastery_counts_by_repertoire(owner_user_id)
         out = []
         for row in rows:
             health = _json_load(row["health_json"], None)
             if health is not None:
                 health = dict(health)
-                health["due"] = due_counts.get(row["id"], 0)
+                health.update(mastery_counts.get(row["id"], {
+                    "trainable": 0, "mastered": 0, "learning": 0, "due": 0,
+                    "weak": 0, "untrained": 0, "mastery_pct": 0,
+                }))
             out.append(
                 {
                     "id": row["id"],
@@ -1096,7 +1096,7 @@ class PrepForgeRepository:
                     "team_id": row["team_id"],
                     "visibility": row["visibility"] or "private",
                     # Cached coverage summary (NULL until the rep is first
-                    # opened/trained) with the live due overlay.
+                    # opened/trained) with live mastery counts.
                     "health": health,
                     "revision": int(row["revision"] or 0),
                 }
@@ -1233,36 +1233,25 @@ class PrepForgeRepository:
     def due_counts_by_repertoire(
         self, owner_user_id: str, *, now: Optional[datetime] = None
     ) -> Dict[str, int]:
-        """D-01/D-02: live due-review counts per repertoire.
+        return {rep_id: counts["due"] for rep_id, counts in
+                self.mastery_counts_by_repertoire(owner_user_id, now=now).items()}
 
-        Time-dependent numbers are never served from the cached health JSON —
-        one grouped statement per listing (no N+1) — but the count must mean
-        the SAME thing ``compute_health().due`` means, or the Library badge and
-        the Smart queue disagree (the library could promise reviews nothing can
-        be scheduled for). So this counts a node as due only when:
+    def mastery_counts_by_repertoire(
+        self, owner_user_id: str, *, now: Optional[datetime] = None,
+        conn: Optional[Connection] = None,
+    ) -> Dict[str, Dict[str, int]]:
+        """All exclusive mastery buckets in one owner-scoped statement/snapshot.
 
-        - it is REACHABLE: every ancestor is enabled (the effective-enabled
-          rule — a disabled node makes its whole subtree untrainable), and
-        - it is TRAINABLE: an enabled own-side move (``is_user_prepared_move``
-          is the server-recomputed "parent's side to move is the repertoire
-          colour" flag, i.e. exactly ``_is_trainable``'s move-side test), and
-        - its mastery is ``due``: attempts > 0, not ``weak``, and
-          ``due_at <= now`` — weak is checked BEFORE due in
-          ``services.progress.node_mastery``, so a weak-and-due node counts as
-          weak, here as everywhere else.
-
-        "due" therefore means "scheduled for review now", not merely "has a
-        due_at timestamp in the past".
+        Match node_mastery precedence over reachable own-side nodes. Only static
+        tree coverage (shallow_lines) remains cached in the listing.
         """
-        # Imported here, not at module scope: services/__init__ imports the
-        # repository, so a top-level import would be circular.
-        from prepforge_chess.services.progress import WEAK_SCORE_BELOW
+        from prepforge_chess.services.progress import MASTERED_SCORE_AT, WEAK_SCORE_BELOW
 
         tp = t.training_progress
         nodes = t.opening_nodes
         now_text = _dt_to_text(now or datetime.now(timezone.utc))
         # The walk is scoped to THIS owner's repertoires. The outer query already
-        # filters on tp.owner_user_id and node ids are globally unique, so the
+        # scopes progress to owner_user_id and node ids are globally unique, so the
         # scope cannot change the counts — it only keeps the recursion off
         # every other tenant's trees (the Library listing runs this per owner).
         owner_reps = select(t.repertoires.c.id).where(
@@ -1296,27 +1285,38 @@ class PrepForgeRepository:
             tp.c.correct_attempts * 2 < tp.c.attempts,
             tp.c.spaced_repetition_score < WEAK_SCORE_BELOW,
         )
+        state = case(
+            (or_(tp.c.attempts.is_(None), tp.c.attempts <= 0), "untrained"),
+            (is_weak, "weak"),
+            (tp.c.due_at <= now_text, "due"),
+            (or_(tp.c.is_mastered == 1, tp.c.spaced_repetition_score >= MASTERED_SCORE_AT), "mastered"),
+            else_="learning",
+        )
+        states = ("mastered", "learning", "due", "weak", "untrained")
         stmt = (
-            select(tp.c.repertoire_id, func.count())
-            .select_from(
-                tp.join(blocked, blocked.c.id == tp.c.node_id).join(
-                    nodes, nodes.c.id == tp.c.node_id
-                )
-            )
-            .where(tp.c.owner_user_id == owner_user_id)
-            .where(tp.c.due_at.is_not(None))
-            .where(tp.c.due_at <= now_text)
+            select(nodes.c.repertoire_id, *[
+                func.sum(case((state == name, 1), else_=0)).label(name) for name in states
+            ])
+            .select_from(nodes.join(blocked, blocked.c.id == nodes.c.id).outerjoin(
+                tp, and_(tp.c.node_id == nodes.c.id, tp.c.repertoire_id == nodes.c.repertoire_id,
+                         tp.c.owner_user_id == owner_user_id)
+            ))
             .where(blocked.c.blocked == 0)
             .where(nodes.c.is_enabled == 1)
             .where(nodes.c.is_user_prepared_move == 1)
             .where(nodes.c.uci.is_not(None))
-            .where(tp.c.attempts > 0)
-            .where(not_(is_weak))
-            .group_by(tp.c.repertoire_id)
+            .group_by(nodes.c.repertoire_id)
         )
-        with self.engine.connect() as conn:
-            rows = conn.execute(stmt).all()
-        return {row[0]: int(row[1]) for row in rows}
+        with nullcontext(conn) if conn is not None else self.engine.connect() as conn:
+            rows = conn.execute(stmt).mappings().all()
+        out = {}
+        for row in rows:
+            counts = {name: int(row[name]) for name in states}
+            counts["trainable"] = sum(counts.values())
+            counts["mastery_pct"] = (round(counts["mastered"] / counts["trainable"] * 100)
+                                     if counts["trainable"] else 0)
+            out[row["repertoire_id"]] = counts
+        return out
 
     def set_repertoire_sharing(
         self, repertoire_id: str, team_id: Optional[str], visibility: str
