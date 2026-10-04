@@ -18,8 +18,8 @@ describe("Recent analyses refresh ordering", () => {
   it.each(["success", "failure"])("an older %s cannot overwrite the post-save list", async (outcome) => {
     const old = deferred();
     const fresh = deferred();
-    const host = { innerHTML: "", querySelectorAll: () => [] };
-    const deps = { document: { getElementById: () => host }, escapeHtml: String, localDayOf: (iso) => String(iso || "").slice(0, 10),
+    const host = { innerHTML: "", querySelectorAll: () => [], querySelector: () => null };
+    const deps = { appState: {}, currentOwnerId: () => "owner", document: { getElementById: () => host }, escapeHtml: String, localDayOf: (iso) => String(iso || "").slice(0, 10),
       api: vi.fn().mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise) };
     const load = compile("async function loadAnalysisHistory(", deps, "let analysisHistorySeq = 0;");
     const first = load();

@@ -4639,6 +4639,22 @@ function initAccountController() {
       void openSettingsSection("set-account");
     },
     beforeSignOut: flushAllPendingForSignOut,
+    onOwnerChanged: () => {
+      analysisHistorySeq++;
+      sharedRepertoiresSeq++;
+      appState.teamsRequestSeq = (appState.teamsRequestSeq || 0) + 1;
+      appState.teams = [];
+      appState.teamsCache = null;
+      appState.analysisRetryCheckpoint = null;
+      appState.analysisUnsavedCheckpoint = null;
+      hideAnalysisRetrySave();
+      for (const id of ["analysis-history", "teams-list", "teams-shared"]) {
+        const host = document.getElementById(id);
+        if (host) host.innerHTML = "";
+      }
+      hideTeamDetail();
+      dashboardView?.renderSignedOut();
+    },
   });
 }
 
@@ -5078,36 +5094,50 @@ function refreshAnalysisHistoryIfOpen() {
 let analysisHistorySeq = 0;
 async function loadAnalysisHistory() {
   const seq = ++analysisHistorySeq;
+  const owner = currentOwnerId();
+  const generation = appState.ownerGeneration;
+  const isCurrent = () => seq === analysisHistorySeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
   const host = document.getElementById("analysis-history");
   if (!host) return;
   host.innerHTML = '<div class="muted hint">Loading...</div>';
-  let payload;
-  try {
-    payload = await api("/api/analyses");
-  } catch (error) {
-    if (seq !== analysisHistorySeq) return;
-    host.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
-    return;
-  }
-  if (seq !== analysisHistorySeq) return;
-  if (!payload.analyses || !payload.analyses.length) {
-    host.innerHTML = '<div class="muted hint">No saved analyses yet.</div>';
-    return;
-  }
-  host.innerHTML = payload.analyses
-    .map((a) => {
-      const when = localDayOf(a.analyzed_at);
-      return (
+  const rows = new Map();
+  let cursor = null, loading = false;
+  async function loadPage() {
+    if (loading || !isCurrent()) return;
+    loading = true;
+    const button = host.querySelector("[data-history-more]");
+    if (button) button.disabled = true;
+    try {
+      const payload = await api(`/api/analyses${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`);
+      if (!isCurrent()) return;
+      for (const row of payload.analyses || []) rows.set(row.game_id, row);
+      cursor = payload.next_cursor || null;
+      const scroll = host.scrollTop;
+      host.innerHTML = [...rows.values()].map((a) =>
         `<button class="history-item" data-game-id="${escapeHtml(a.game_id)}">` +
         `<span class="hi-players">${escapeHtml(a.white || "?")} vs ${escapeHtml(a.black || "?")}</span>` +
-        `<span class="hi-meta">${escapeHtml(a.result || "")} · ${escapeHtml(when)}</span>` +
-        `</button>`
-      );
-    })
-    .join("");
-  host.querySelectorAll(".history-item").forEach((btn, i) => {
-    btn.addEventListener("click", () => recallAnalysis(btn.dataset.gameId, payload.analyses[i]));
-  });
+        `<span class="hi-meta">${escapeHtml(a.result || "")} ? ${escapeHtml(localDayOf(a.analyzed_at))}</span></button>`
+      ).join("") || '<div class="muted hint">No saved analyses yet.</div>';
+      if (cursor) host.innerHTML += '<button class="btn sm" data-history-more>Load more</button>';
+      host.scrollTop = scroll;
+      host.querySelectorAll(".history-item").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          if (isCurrent()) recallAnalysis(btn.dataset.gameId, rows.get(btn.dataset.gameId));
+        });
+      });
+      host.querySelector("[data-history-more]")?.addEventListener("click", loadPage);
+    } catch (error) {
+      if (!isCurrent()) return;
+      if (rows.size) {
+        if (button) button.textContent = "Retry load more";
+        setStatusError(error.message);
+      } else host.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+    } finally {
+      loading = false;
+      if (button && isCurrent()) button.disabled = false;
+    }
+  }
+  await loadPage();
 }
 
 // All Analyze sources share an order: a recall, paste or new review must not
@@ -5234,6 +5264,18 @@ async function openTeamDetail(teamId) {
   const isCurrent = () => seq === teamDetailSeq && appState.selectedTeamId === teamId && owner === currentOwnerId();
   appState.selectedTeamId = teamId;
   renderTeamsList(); // reflect the selected row
+  for (const id of ["team-add-member", "team-detail-invite", "team-share-rep", "team-detail-rename", "team-detail-delete"]) {
+    const button = document.getElementById(id);
+    if (button) { button.hidden = true; button.onclick = null; }
+  }
+  const name = document.getElementById("team-detail-name");
+  if (name) name.textContent = "Loading?";
+  const role = document.getElementById("team-detail-role");
+  if (role) role.textContent = "";
+  const shares = document.getElementById("team-shared-repertoires");
+  if (shares) shares.innerHTML = "";
+  teamsView?.renderTeamTabCounts({ members: 0, repertoires: 0 });
+  teamsView?.renderTeamInviteFooter(null);
   const card = document.getElementById("team-detail-card");
   const membersEl = document.getElementById("team-members");
   if (!card || !membersEl) return;
@@ -5601,11 +5643,17 @@ async function copySharedRepertoire(repertoireId) {
   }
 }
 
+let sharedRepertoiresSeq = 0;
 async function loadSharedRepertoires() {
+  const seq = ++sharedRepertoiresSeq;
+  const owner = currentOwnerId();
+  const generation = appState.ownerGeneration;
+  const isCurrent = () => seq === sharedRepertoiresSeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
   const container = document.getElementById("teams-shared");
   if (!container) return;
   try {
     const payload = await api("/api/repertoires");
+    if (!isCurrent()) return;
     const shared = payload.shared || [];
     if (!shared.length) {
       container.innerHTML =
@@ -5654,6 +5702,7 @@ async function loadSharedRepertoires() {
       });
     });
   } catch (error) {
+    if (!isCurrent()) return;
     container.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
   }
 }

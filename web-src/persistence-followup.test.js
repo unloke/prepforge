@@ -45,3 +45,43 @@ it.each([false,true])('Settings reads wait for pending write (failure=%s)', asyn
   expect(depthChanged).toHaveBeenCalledTimes(failure?0:1);
   expect(renderSettings).toHaveBeenCalledWith({stockfish_depth:failure?12:20});
 });
+it.each(['success','failure'])('History ignores old owner %s responses',async(outcome)=>{
+  const response=deferred(),appState={ownerGeneration:1};let owner='A';
+  const host={innerHTML:'',querySelector:()=>null,querySelectorAll:()=>[]};
+  const load=compile('async function loadAnalysisHistory(',{appState,currentOwnerId:()=>owner,document:{getElementById:()=>host},api:()=>response.promise,escapeHtml:String,localDayOf:String},'let analysisHistorySeq=0;');
+  const pending=load();owner='B';appState.ownerGeneration++;host.innerHTML='';
+  if(outcome==='success') response.resolve({analyses:[{game_id:'A',white:'Private'}]});else response.reject(Error('A error'));
+  await pending;expect(host.innerHTML).toBe('');
+});
+it('History follows cursors, deduplicates games and retains scroll',async()=>{
+  let click;const button={addEventListener:(_t,fn)=>{click=fn;}};
+  const host={innerHTML:'',scrollTop:77,querySelector:()=>button,querySelectorAll:()=>[]};
+  const api=vi.fn().mockResolvedValueOnce({analyses:[{game_id:'one'}],next_cursor:'next'}).mockResolvedValueOnce({analyses:[{game_id:'one'},{game_id:'two'}]});
+  const load=compile('async function loadAnalysisHistory(',{appState:{},currentOwnerId:()=> 'A',document:{getElementById:()=>host},api,escapeHtml:String,localDayOf:String},'let analysisHistorySeq=0;');
+  await load();expect(host.innerHTML).toContain('Load more');await click();
+  expect(api).toHaveBeenLastCalledWith('/api/analyses?cursor=next');
+  expect(host.innerHTML.match(/data-game-id="one"/g)).toHaveLength(1);
+  expect(host.innerHTML).toContain('data-game-id="two"');expect(host.scrollTop).toBe(77);
+});
+it('switching Teams removes old action handlers even when the new detail fails',async()=>{
+  const elements=new Map();const el=id=>{if(!elements.has(id))elements.set(id,{innerHTML:'',querySelectorAll:()=>[]});return elements.get(id);};
+  el('team-detail-delete').onclick=vi.fn();const response=deferred();
+  const open=compile('async function openTeamDetail(',{appState:{},currentOwnerId:()=> 'owner',document:{getElementById:el},renderTeamsList:noop,api:()=>response.promise,escapeHtml:String,teamsView:null},'let teamDetailSeq=0;');
+  const pending=open('B');expect(el('team-detail-delete').onclick).toBeNull();expect(el('team-detail-delete').hidden).toBe(true);
+  response.reject(Error('offline'));await pending;expect(el('team-detail-delete').onclick).toBeNull();
+});
+import { loadTeamDirectory } from './team-directory.js';
+it('team directory caches empty results and rejects old refreshes and owners',async()=>{
+  const first=deferred(),second=deferred();
+  const appState={accountUserId:'A',ownerGeneration:1,teams:[]};
+  const api=vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise).mockResolvedValue({teams:[]});
+  const old=loadTeamDirectory(appState,api);const fresh=loadTeamDirectory(appState,api,{refresh:true});
+  second.resolve({teams:[]});await fresh;first.resolve({teams:[{id:'stale'}]});expect(await old).toBeNull();
+  await loadTeamDirectory(appState,api);expect(api).toHaveBeenCalledTimes(2);expect(appState.teams).toEqual([]);
+  appState.accountUserId='B';appState.ownerGeneration++;await loadTeamDirectory(appState,api);expect(api).toHaveBeenCalledTimes(3);
+});
+it('shared repertoire refresh ignores an older response',async()=>{
+  const first=deferred(),second=deferred();const host={innerHTML:'',querySelectorAll:()=>[]};
+  const appState={};const load=compile('async function loadSharedRepertoires(',{appState,currentOwnerId:()=> 'owner',document:{getElementById:()=>host},api:vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),escapeHtml:String,teamById:()=>null},'let sharedRepertoiresSeq=0;');
+  const a=load(),b=load();second.resolve({shared:[]});await b;first.resolve({shared:[{id:'stale'}]});await a;expect(host.innerHTML).not.toContain('stale');
+});
