@@ -2308,7 +2308,16 @@ function previousAnalysisMove() {
 function renderCoachProse(c) {
   if (!c) return;
   // A saved verdict outranks the live read's grade, so the rule matches the move list.
-  setCoachProse(c.prose, c.tone, "engine", savedCoachQuality(positionCoach.ctx) || c.quality);
+  const saved = savedCoachQuality(positionCoach.ctx);
+  setCoachProse(c.prose, c.tone, "engine", saved || c.quality);
+  // A move with no saved grade (a variation, an unanalysed game) takes the live grade's
+  // badge, as long as the board still shows that move.
+  const ctx = positionCoach.ctx || {};
+  const board = boards.analysis;
+  const glyph = saved ? "" : classBadgeSymbol(c.quality);
+  if (glyph && ctx.lastUci && board && board.fen === ctx.fen && board.lastMove === ctx.lastUci) {
+    board.setMoveBadge(ctx.lastUci.slice(2, 4), c.quality, glyph);
+  }
 }
 
 let _phaseCoachMod = null;
@@ -2519,6 +2528,7 @@ class BoardController {
     this.arrows = [];
     this.squares = new Map();
     this._badgeEl = null;       // tracks the one square holding a .square-badge
+    this._badgeKey = "";        // what that badge shows, so an unchanged one is left alone
     this._lastMoveSqs = null;   // tracks the [from, to] squares of the current last-move
     this.orientation = "white";
     this._rovingSquare = null; // tabbable-square cursor for the roving tabindex
@@ -3027,8 +3037,9 @@ class BoardController {
       this.selected = null;
       this.dragFrom = null;
     }
+    // A same-position refresh keeps the badge, so it doesn't pop in again.
+    if (fenChanged || this.lastMove !== lastMove) this.moveBadge = null;
     this.lastMove = lastMove;
-    this.moveBadge = null;
     this.annotationStart = null;
     if (fenChanged) {
       this._renderPieces();
@@ -3166,6 +3177,15 @@ class BoardController {
   }
 
   _syncMoveBadge() {
+    // Selecting a piece re-syncs classes: an unchanged badge stays put rather than being
+    // re-inserted, which would replay its entrance animation.
+    const key = this.moveBadge ? `${this.moveBadge.square}|${this.moveBadge.classification}|${this.moveBadge.label}` : "";
+    if (
+      key && key === this._badgeKey &&
+      this._badgeEl === this.squares.get(this.moveBadge.square) &&
+      this._badgeEl.querySelector(".square-badge")
+    ) return;
+    this._badgeKey = key;
     // Clear previous badge from exactly the one tracked square (not a 64-square scan).
     if (this._badgeEl) {
       const existing = this._badgeEl.querySelector(".square-badge");

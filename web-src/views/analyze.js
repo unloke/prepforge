@@ -39,34 +39,32 @@ export function createAnalyzeView({
   // Checkmate-on-board sentinel (game-analyzer terminalEval / engine.py mate_score).
   const CHECKMATE_CP = 10000;
 
-  // Plot insets, in screen pixels: the first/last ply's ring and markers sit wholly
-  // inside the frame instead of being pushed off their point. The SVG stretches, so the
-  // insets become user units per measured size (fallbacks for a hidden chart).
+  // Plot inset, in screen pixels, top and bottom only: a marker at either extreme
+  // stays wholly inside the frame. The plies run edge to edge, so the first/last
+  // ply's ring and markers overhang the side borders (the SVG is overflow: visible).
+  // The SVG stretches, so the inset becomes user units per measured height
+  // (fallback for a hidden chart).
   const EVAL_CHART_INSET_PX = 9;
-  let plotPadX = EVAL_CHART_INSET_PX;
   let plotPadY = (EVAL_CHART_INSET_PX * EVAL_CHART_H) / 64;
 
   function measurePlotPads(svg) {
     const rect = svg && svg.getBoundingClientRect ? svg.getBoundingClientRect() : null;
-    const padX = rect && rect.width > 0 ? (EVAL_CHART_INSET_PX * EVAL_CHART_W) / rect.width : plotPadX;
     const padY = rect && rect.height > 0 ? (EVAL_CHART_INSET_PX * EVAL_CHART_H) / rect.height : plotPadY;
-    const changed = Math.abs(padX - plotPadX) > 0.5 || Math.abs(padY - plotPadY) > 0.5;
-    plotPadX = Math.min(padX, EVAL_CHART_W / 4);
+    const changed = Math.abs(padY - plotPadY) > 0.5;
     plotPadY = Math.min(padY, EVAL_CHART_H / 4);
     return changed;
   }
 
   function evalChartXOf(idx, count) {
     if (count <= 1) return EVAL_CHART_W / 2;
-    return plotPadX + (idx / (count - 1)) * (EVAL_CHART_W - 2 * plotPadX);
+    return (idx / (count - 1)) * EVAL_CHART_W;
   }
 
   // The pointer's position as a 0..1 ratio along the plotted plies.
   function evalChartRatioAt(chart, clientX) {
     const rect = chart.getBoundingClientRect();
     if (!(rect.width > 0)) return 0;
-    const x = ((clientX - rect.left) / rect.width) * EVAL_CHART_W;
-    return (x - plotPadX) / (EVAL_CHART_W - 2 * plotPadX);
+    return (clientX - rect.left) / rect.width;
   }
 
   function evalChartYOf(winPct) {

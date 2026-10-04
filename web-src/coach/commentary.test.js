@@ -271,7 +271,7 @@ describe("the opponent's move, read for the user", () => {
   it("says what a sound move asks of you, and your best reply", () => {
     const f = scenario({ fen: afterNf3, san: "Nf6", best: "Nf6", before: 30, after: 30, playedLine: ["Nxe5"] });
     const read = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(read.prose).toMatch(/^[A-Z][^:.]*: 2\.\.\.Nf6 develops the knight and attacks your pawn on e4\. Answer with 3\.Nxe5 and it's level\.$/);
+    expect(read.prose).toMatch(/^[A-Z][^:.]*\. 2\.\.\.Nf6 develops the knight and attacks your pawn on e4\. Answer with 3\.Nxe5 and it's level\.$/);
     expect(read.prose).not.toMatch(/engine|White|Black|Best reply/);
     expect(read.tone).toBe("warn");
   });
@@ -295,7 +295,21 @@ describe("the opponent's move, read for the user", () => {
   it("points out a positional slip with their better move and where your reply leaves you", () => {
     const f = scenario({ fen: afterNf3, san: "a6", best: "Nc6", before: 30, after: 160, playedLine: ["Nxe5"] });
     const read = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(read.prose).toMatch(/^2\.\.\.a6 is (a little loose; Nc6 was better|a mistake; Nc6 was the right move for them|a blunder; they had to play Nc6)\. Punish it with 3\.Nxe5 and you're (slightly|clearly) better\.$/);
+    expect(read.prose).toMatch(/^2\.\.\.a6 is (a little loose\. Nc6 was better for them|a mistake\. They should have played Nc6|a blunder\. They had to play Nc6)\. Punish it with 3\.Nxe5 and you're (slightly|clearly) better\.$/);
+  });
+
+  it("prices a slip by what its own line loses, not by what their best move would have grabbed", () => {
+    // 19...Qc7?: 19...Na3 wins the c2 bishop for the knight and two pawns besides, while
+    // after Qc7 only a pawn changes hands (20.Nxc4 dxc4 21.Qg3 b4 22.cxb4).
+    const fen = "r2qr1k1/3bbp1p/p3p1pB/1p1pP3/P1nP1P2/2PQ4/2BN2PP/RR4K1 b - - 0 19";
+    const f = scenario({
+      fen, san: "Qc7", best: "Na3", ply: 38, before: -98, after: 42,
+      bestLine: ["Na3", "Rc1", "Nxc2", "Rxc2", "bxa4", "h4", "Bxh4", "g4"],
+      playedLine: ["Nxc4", "dxc4", "Qg3", "b4", "cxb4", "Qb6", "Rd1"],
+    });
+    const { prose } = buildOpponentCommentary(f, { selfSide: "white" });
+    expect(prose).not.toMatch(/bishop|three pawns/);
+    expect(prose).toMatch(/^19\.\.\.Qc7 gives you a pawn\. Pick it up with 20\.Nxc4 dxc4 21\.Qg3 b4 22\.cxb4\.$/);
   });
 
   it("calls out a move that walks into mate", () => {
@@ -323,6 +337,8 @@ describe("the opponent's move, read for the user", () => {
       const { prose } = buildOpponentCommentary(buildMoveFeatures(input), { selfSide: self });
       expect(prose.length).toBeLessThanOrEqual(240);
       expect(prose).not.toMatch(/\{|\}|undefined|null|NaN| {2}|(^|[^.])\.\.(?!\.)|—/);
+      // Spoken sentences, not "Label: fact".
+      expect(prose).not.toMatch(/[:;]/);
       expect(prose.split(/(?<=[.!])\s/).length).toBeLessThanOrEqual(3);
     }
   });
@@ -357,7 +373,7 @@ describe("the opponent's move, read for the user", () => {
     const f = scenario({ fen: "r3k3/7p/8/3N4/8/8/8/4K3 b - - 0 1", san: "h6", best: "Kd7",
       before: 0, after: 500, playedLine: ["Nc7+", "Kd7", "Nxa8", "Kc6"] });
     const read = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(read.prose).toBe("1...h6 is a blunder: 2.Nc7+ forks the king and the rook on a8.");
+    expect(read.prose).toBe("1...h6 is a blunder. Now 2.Nc7+ forks the king and the rook on a8.");
     expect(read.tone).toBe("good");
   });
 
@@ -365,7 +381,7 @@ describe("the opponent's move, read for the user", () => {
     const f = scenario({ fen: "4k3/7p/8/8/1n6/8/8/R3K3 b - - 0 1", san: "h6", best: "Nc2+",
       bestLine: ["Nc2+", "Kd2", "Nxa1", "Kc1"], before: -500, after: 0, playedLine: ["Kd2"] });
     const { prose } = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(prose).toMatch(/^Lucky for you: they missed Nc2\+, which forks your king and your rook on a1\./);
+    expect(prose).toMatch(/^Lucky for you, they missed Nc2\+, which forks your king and your rook on a1\./);
     expect(prose).not.toMatch(/is an? (inaccuracy|mistake|blunder);/);
   });
 
@@ -373,7 +389,7 @@ describe("the opponent's move, read for the user", () => {
     const f = scenario({ fen: "4k3/1n6/8/8/8/8/8/1R2K3 w - - 0 1", san: "Rxb7", best: "Rxb7",
       before: 500, after: 500, playedLine: ["Kd8"] });
     const read = buildOpponentCommentary(f, { selfSide: "black" });
-    expect(read.prose).toMatch(/^[A-Z][^:.]*: 1\.Rxb7 wins a knight\./);
+    expect(read.prose).toMatch(/^[A-Z][^:.]*\. 1\.Rxb7 wins a knight\./);
     expect(read.tone).toBe("warn");
   });
 

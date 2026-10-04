@@ -167,9 +167,9 @@ function allElements(chart) {
   return out;
 }
 
-// The plot is inset 9 screen px on each side (9 units in a 640px-wide chart).
+// The plies run edge to edge across the 640-unit chart.
 function xOfIdx(idx, n) {
-  return n === 1 ? 320 : 9 + (idx / (n - 1)) * (640 - 18);
+  return n === 1 ? 320 : (idx / (n - 1)) * 640;
 }
 
 afterEach(() => {
@@ -230,7 +230,7 @@ describe("eval chart theme colours", () => {
 // ---- Current-ply position state --------------------------------------------
 
 describe("eval chart current-ply indicator", () => {
-  it("centres the ring on the last ply, inside the frame", () => {
+  it("centres the ring on the last ply, on the right edge", () => {
     const { chart, appState, view } = setup();
     view.renderEvalChart(POINTS);
     appState.analysisPly = POINTS[POINTS.length - 1].ply;
@@ -238,7 +238,7 @@ describe("eval chart current-ply indicator", () => {
     const ring = doc(chart).getElementById("eval-chart-cursor-dot");
     const cursor = doc(chart).getElementById("eval-chart-cursor");
     expect(ring.getAttribute("cx")).toBe(cursor.getAttribute("x1"));
-    expect(Number(ring.getAttribute("cx"))).toBeCloseTo(640 - 9, 6);
+    expect(Number(ring.getAttribute("cx"))).toBeCloseTo(640, 6);
   });
 
   it("marks the current ply with a dashed line and a ring (shape, not colour)", () => {
