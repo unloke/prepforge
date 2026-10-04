@@ -614,11 +614,12 @@ class PrepForgeRepository:
                     "summary_json": _json_dump(result.summary),
                     "critical_ply": ",".join(str(p) for p in result.critical_ply),
                     "quality_json": _json_dump(result.quality) if result.quality else None,
+                    "move_results_json": codec.encode_analysis_moves(result.move_results),
                 },
                 conflict=[t.analysis_results.c.id],
                 update_cols=(
                     "analyzed_at", "engine", "depth", "summary_json", "critical_ply",
-                    "quality_json",
+                    "quality_json", "move_results_json",
                 ),
             )
 
@@ -2036,11 +2037,12 @@ class PrepForgeRepository:
                     "summary_json": _json_dump(result.summary),
                     "critical_ply": ",".join(str(p) for p in result.critical_ply),
                     "quality_json": _json_dump(result.quality) if result.quality else None,
+                    "move_results_json": codec.encode_analysis_moves(result.move_results),
                 },
                 conflict=[t.analysis_results.c.id],
                 update_cols=(
                     "analyzed_at", "engine", "depth", "summary_json", "critical_ply",
-                    "quality_json",
+                    "quality_json", "move_results_json",
                 ),
             )
 
@@ -2139,19 +2141,18 @@ class PrepForgeRepository:
             row = conn.execute(
                 select(t.analysis_results)
                 .where(t.analysis_results.c.game_id == game_id)
-                .order_by(t.analysis_results.c.analyzed_at.desc())
+                .order_by(t.analysis_results.c.analyzed_at.desc(), t.analysis_results.c.id.desc())
                 .limit(1)
             ).mappings().first()
         if row is None:
             return None
 
-        game = self.load_game(game_id)
         return AnalysisResult(
             game_id=row["game_id"],
             analyzed_at=_dt_from_text(row["analyzed_at"]) or datetime.now(timezone.utc),
             engine=row["engine"],
             depth=row["depth"],
-            move_results=game.moves if game is not None else [],
+            move_results=codec.decode_analysis_moves(row["move_results_json"]),
             summary=_json_load(row["summary_json"], {}),
             critical_ply=_parse_critical_ply(row["critical_ply"]),
             quality=_json_load(row["quality_json"], None),

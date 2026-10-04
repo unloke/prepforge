@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import asdict
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import chess
@@ -290,6 +291,28 @@ def rebuild_moves(
 
 def game_uci_blob(game: Game) -> str:
     return encode_uci_sequence(move.uci for move in game.moves)
+
+
+def encode_analysis_moves(moves: Sequence[MoveRecord]) -> str:
+    """Self-contained run snapshot; never references mutable game annotations."""
+    return json.dumps([asdict(move) for move in moves], separators=(",", ":"))
+
+
+def decode_analysis_moves(payload: Optional[str]) -> List[MoveRecord]:
+    # Older analyses have no trustworthy per-run moves. Do not attach today's
+    # shared annotations to a historical summary; reanalysis creates a snapshot.
+    if payload is None:
+        return []
+    moves = []
+    for row in json.loads(payload):
+        row["side_to_move"] = Color(row["side_to_move"])
+        row["source"] = MoveSource(row["source"])
+        row["classification"] = MoveClassification(row["classification"])
+        for key in ("engine_eval_before", "engine_eval_after", "best_move_eval"):
+            if row.get(key) is not None:
+                row[key] = EngineEvaluation(**row[key])
+        moves.append(MoveRecord(**row))
+    return moves
 
 
 def move_signature(initial_fen: Optional[str], moves: Iterable[str]) -> str:
