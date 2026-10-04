@@ -1,4 +1,4 @@
-﻿import { readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { expect, it, vi } from 'vitest';
 import { createSettingsActions } from './settings-actions.js';
 import { withBuildRevision, advanceBuildRevision } from './build-revision.js';
@@ -19,7 +19,7 @@ it('production annotation wrapper adopts revisions and rebases newly queued move
     appState.buildPending.push({repertoire_id:'r',base_revision:revision});
     return {revision:++revision};
   });
-  const postJson = compile('async function postJson(', {appState,api,withBuildRevision,advanceBuildRevision});
+  const postJson = compile('async function postJson(', {appState,api,withBuildRevision,advanceBuildRevision,currentOwnerId:()=> "owner"});
   const save = compile('async function saveBuildAnnotations(', {appState,postJson,currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,
     hardFlushBuild:async()=>{},resolveBuildId:id=>id,boards:{build:{setAnnotations:noop}},setStatusError:vi.fn()});
   await save(['Ga1a2'],[]); await save(['Ga1a3'],[]);
@@ -111,4 +111,32 @@ it('workspace restores local work before remote settings or dashboard resolve',a
     getStoredLichessUsername:()=>null,refreshLichessStatus:async()=>{},syncTrainPickerVisibility:noop,syncReplayControls:noop,renderBuilderTree:noop,restoreOutbox,refreshAnalyzeRecovery:recovery});
   const pending=run();expect(restoreOutbox).toHaveBeenCalledOnce();expect(recovery).toHaveBeenCalledOnce();
   settings.resolve();dashboard.resolve();await pending;
+});
+it('annotations send in-flight plus latest snapshot and never replay earlier drawings',async()=>{
+  const first=deferred(),last=deferred(),node={arrows:[],circles:[]},board={setAnnotations:vi.fn()};
+  const appState={build:{repertoire_id:'r',revision:1},buildCurrentNodeId:'n',buildNodeById:new Map([['n',node]])};
+  const postJson=vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(last.promise);
+  const save=compile('async function saveBuildAnnotations(',{appState,currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,hardFlushBuild:async()=>{},resolveBuildId:id=>id,postJson,boards:{build:board},setStatusError:noop});
+  const a=save(['Ga1a2'],[]);await vi.waitFor(()=>expect(postJson).toHaveBeenCalledTimes(1));
+  const b=save(['Ga1a3'],[]),c=save(['Ga1a4'],[]);expect(node.arrows).toEqual(['Ga1a4']);
+  first.resolve({revision:2});await vi.waitFor(()=>expect(postJson).toHaveBeenCalledTimes(2));
+  expect(postJson.mock.calls[1][1]).toMatchObject({arrows:['Ga1a4'],base_revision:2});
+  expect(board.setAnnotations).not.toHaveBeenCalledWith(['Ga1a2'],[]);
+  last.reject(Error('offline'));await Promise.all([a,b,c]);
+  expect(node.arrows).toEqual(['Ga1a2']);expect(board.setAnnotations).toHaveBeenLastCalledWith(['Ga1a2'],[]);
+});
+it('Build writes serialize and rebase only their own acknowledged revision',async()=>{
+  const first=deferred(),appState={build:{repertoire_id:'r',revision:4},buildPending:[],buildPendingDeletes:[]};
+  const api=vi.fn().mockReturnValueOnce(first.promise).mockResolvedValueOnce({revision:6});
+  const post=compile('async function postJson(',{appState,currentOwnerId:()=> 'owner',api,withBuildRevision,advanceBuildRevision});
+  const a=post('/api/build/annotations',{repertoire_id:'r',base_revision:4}),b=post('/api/build/add-moves',{repertoire_id:'r',base_revision:4});
+  expect(api).toHaveBeenCalledTimes(1);first.resolve({revision:5});await Promise.all([a,b]);
+  expect(JSON.parse(api.mock.calls[1][1].body).base_revision).toBe(5);
+  await post('/api/build/annotations',{repertoire_id:'r',base_revision:3});
+  expect(JSON.parse(api.mock.calls[2][1].body).base_revision).toBe(3);
+});
+it('download responses become Blob directly without text parsing',async()=>{
+  const blob=new Blob(['{"large":true}']),text=vi.fn();
+  const api=compile('async function api(',{withRequestDeadline:async fn=>fn(new AbortController().signal),headersWithCsrf:async()=>({}),getCsrfToken:noop,fetch:async()=>({ok:true,blob:async()=>blob,text})});
+  expect(await api('/api/account/export',{responseType:'blob',timeoutMs:300000})).toBe(blob);expect(text).not.toHaveBeenCalled();
 });

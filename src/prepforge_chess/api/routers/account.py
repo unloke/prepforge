@@ -117,7 +117,10 @@ def export_account(
             yield "]"
         yield "}"
 
-    return StreamingResponse(stream(), media_type="application/json")
+    filename = "prepforge-export-{0}.json".format(datetime.now(timezone.utc).date().isoformat())
+    return StreamingResponse(stream(), media_type="application/json", headers={
+        "Content-Disposition": f'attachment; filename="{filename}"',
+    })
 
 
 class DeleteAccountBody(BaseModel):

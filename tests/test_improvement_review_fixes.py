@@ -669,6 +669,7 @@ def test_account_export_scope_matches_deletion(client):
     assert _classify_save(client, prepared).status_code == 200
 
     export = client.get("/api/account/export")
+    assert "attachment; filename=" in export.headers["Content-Disposition"]
     assert export.status_code == 200, export.text
     bundle = export.json()
     assert bundle["account"]["email"] == "f5@example.com"

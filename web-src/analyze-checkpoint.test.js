@@ -1,6 +1,6 @@
 ﻿import { beforeEach, afterEach, expect, it, vi } from "vitest";
-import { IDBFactory, IDBObjectStore, IDBKeyRange } from "fake-indexeddb";
-import { clearCheckpoint, evalMapFrom, listCheckpointGames, loadCheckpoint, saveCheckpoint } from "./analyze-checkpoint.js";
+import { IDBFactory, IDBObjectStore, IDBKeyRange, IDBDatabase } from "fake-indexeddb";
+import { clearCheckpoint, evalMapFrom, listCheckpointGames, loadCheckpoint, markCheckpointSaved, saveCheckpoint } from "./analyze-checkpoint.js";
 const sample = {requestId:"sample",gameId:"g",ownerId:"a",pgn:"1. e4",positions:["fen"],evals:[["fen",{score_cp:12}]],savedAt:1};
 beforeEach(()=>{vi.stubGlobal("indexedDB",new IDBFactory());vi.stubGlobal("IDBKeyRange",IDBKeyRange);});
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
@@ -52,4 +52,23 @@ it('latest lookup uses one transaction and no metadata getAll even on timestamp 
   await saveCheckpoint({...sample,gameId:'a'});await saveCheckpoint({...sample,gameId:'z'});
   const getAll=vi.spyOn(IDBObjectStore.prototype,'getAll');
   expect((await loadCheckpoint(null,'a')).gameId).toBe('z');expect(getAll).not.toHaveBeenCalled();
+});
+
+it("receipt marking preserves newer computation and persists confirmed cleanup state", async () => {
+  await saveCheckpoint(sample);
+  await saveCheckpoint({...sample, requestId:"new"});
+  await markCheckpointSaved("g", "a", "sample");
+  expect((await loadCheckpoint("g", "a")).serverSaved).toBeUndefined();
+  await markCheckpointSaved("g", "a", "new");
+  expect((await loadCheckpoint("g", "a")).serverSaved).toBe(true);
+});
+it("latest metadata and payload use the same transaction during concurrent deletion", async () => {
+  await saveCheckpoint({...sample, gameId:"older"});
+  await saveCheckpoint({...sample, gameId:"newer", savedAt:2, requestId:"newer"});
+  const transactions = vi.spyOn(IDBDatabase.prototype,"transaction");
+  const loaded = await loadCheckpoint(null,"a");
+  expect(loaded.gameId).toBe("newer");
+  expect(transactions).toHaveBeenCalledTimes(1);
+  const [result] = await Promise.all([loadCheckpoint(null,"a"),clearCheckpoint("newer","a","newer")]);
+  expect(["newer","older"]).toContain(result.gameId);
 });

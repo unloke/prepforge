@@ -117,6 +117,19 @@ describe("Library error state", () => {
 
   }
 
+  it("usable rows do not wait for statistics or team names", async () => {
+    let finishStats, finishTeams;
+    const statistics = new Promise((resolve) => { finishStats = resolve; });
+    const teams = new Promise((resolve) => { finishTeams = resolve; });
+    build((url) => String(url).startsWith("/api/dashboard") ? statistics : url === "/api/teams" ? teams : Promise.resolve(REPS));
+    const pending = view.loadDashboard();
+    await vi.waitFor(() => expect(container.innerHTML).toContain('data-repertoire-id="rep-1"'));
+    finishStats(DASHBOARD); await pending;
+    finishTeams({teams: []});
+    await view.loadDashboardRepertoires();
+    expect(api.mock.calls.filter(([url]) => url === "/api/teams")).toHaveLength(1);
+  });
+
   it("/api/dashboard failure renders the error card and never reports Ready", async () => {
     build(async (url) => {
       if (String(url).startsWith("/api/dashboard")) throw new Error("dashboard 500");

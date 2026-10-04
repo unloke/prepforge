@@ -69,6 +69,7 @@ import {
   saveOutbox,
   trainAttemptId,
 } from "./sync-outbox.js";
+import { loadTeamDirectory } from "./team-directory.js";
 import { clearCheckpoint, evalMapFrom, loadCheckpoint, markCheckpointSaved, saveCheckpoint } from "./analyze-checkpoint.js";
 import {
   loadReturnState,
@@ -3395,7 +3396,7 @@ const getCsrfToken = createCsrfTokenSource();
 
 async function api(path, options = {}) {
   const method = (options.method || "GET").toUpperCase();
-  const { timeoutMs = method === "GET" ? 30_000 : 90_000, signal: callerSignal, ...fetchOptions } = options;
+  const { timeoutMs = method === "GET" ? 30_000 : 90_000, signal: callerSignal, responseType = "json", ...fetchOptions } = options;
   return withRequestDeadline(async (signal) => {
   // Merge caller headers over the JSON default, then attach the CSRF token on
   // unsafe methods (bootstrapping /api/csrf if the cookie isn't set yet). The
@@ -3412,6 +3413,7 @@ async function api(path, options = {}) {
     signal,
     headers,
   });
+  if (response.ok && responseType === "blob") return response.blob();
   // Read as text first so a non-JSON body (a 500 "Internal Server Error", a 502
   // from the proxy, an HTML error page) surfaces a clear message instead of a raw
   // "Unexpected token 'I' ... is not valid JSON" from response.json().
@@ -3562,19 +3564,30 @@ async function flushAllPendingForSignOut() {
 }
 
 async function postJson(path, body, options = {}) {
-  // `options` (e.g. an AbortSignal) is forwarded to fetch via api(); it spreads
-  // last so a caller can pass `signal` for a cancellable request.
   const build = appState.build;
+  const owner = currentOwnerId();
+  const generation = appState.ownerGeneration;
   const requestBody = withBuildRevision(path, body, build);
-  const payload = await api(path, {
-    method: "POST",
-    body: JSON.stringify(requestBody || {}),
-    ...options,
-  });
-  if (requestBody?.base_revision !== undefined && appState.build === build) {
-    advanceBuildRevision(build, payload, [...appState.buildPending, ...appState.buildPendingDeletes]);
-  }
-  return payload;
+  const before = build?.revision;
+  const mutation = requestBody?.base_revision !== undefined;
+  const previous = mutation ? appState.buildMutationSaving : null;
+  const task = (async () => {
+    if (previous) await previous.catch(() => {});
+    if (owner !== currentOwnerId() || generation !== appState.ownerGeneration) throw new Error("Account changed");
+    // A queued request may follow our own acknowledged write. Preserve older
+    // conflict bases; rebase only the revision current when this call was made.
+    if (mutation && build === appState.build && requestBody.repertoire_id === build?.repertoire_id && requestBody.base_revision === before) {
+      requestBody.base_revision = build.revision;
+    }
+    const payload = await api(path, { method: "POST", body: JSON.stringify(requestBody || {}), ...options });
+    if (mutation && requestBody.repertoire_id === build?.repertoire_id && appState.build === build && owner === currentOwnerId() && generation === appState.ownerGeneration) {
+      advanceBuildRevision(build, payload, [...appState.buildPending, ...appState.buildPendingDeletes]);
+    }
+    return payload;
+  })();
+  if (mutation) appState.buildMutationSaving = task;
+  try { return await task; }
+  finally { if (appState.buildMutationSaving === task) appState.buildMutationSaving = null; }
 }
 
 function downloadText(filename, mime, content) {
@@ -4069,6 +4082,11 @@ function countBuildMovesToTrain(build) {
 function switchView(name, { fromUrl = false } = {}) {
   workspaceNavigationSeq += 1;
   if (!fromUrl && !workspaceUrlReady) navigatedDuringBoot = true;
+  if (appState.currentView === "teams" && name !== "teams") {
+    teamsView?.invalidateRequests();
+    sharedRepertoiresSeq++;
+    teamDetailSeq++;
+  }
   if (appState.currentView !== name) clearStaleStatusOnNavigate();
   if (name !== "analyze") positionCoach.cancel();
   if (appState.currentView !== name && engineWidget) engineWidget.exitPreview();
@@ -4640,6 +4658,10 @@ function initAccountController() {
     },
     beforeSignOut: flushAllPendingForSignOut,
     onOwnerChanged: () => {
+      appState.settingsRequestSeq = (appState.settingsRequestSeq || 0) + 1;
+      appState.settingsReadSeq = (appState.settingsReadSeq || 0) + 1;
+      appState.settingsSaving = null;
+      appState.buildMutationSaving = null;
       analysisHistorySeq++;
       sharedRepertoiresSeq++;
       appState.teamsRequestSeq = (appState.teamsRequestSeq || 0) + 1;
@@ -5261,7 +5283,8 @@ let teamDetailSeq = 0;
 async function openTeamDetail(teamId) {
   const seq = ++teamDetailSeq;
   const owner = currentOwnerId();
-  const isCurrent = () => seq === teamDetailSeq && appState.selectedTeamId === teamId && owner === currentOwnerId();
+  const generation = appState.ownerGeneration;
+  const isCurrent = () => seq === teamDetailSeq && appState.selectedTeamId === teamId && owner === currentOwnerId() && generation === appState.ownerGeneration;
   appState.selectedTeamId = teamId;
   renderTeamsList(); // reflect the selected row
   for (const id of ["team-add-member", "team-detail-invite", "team-share-rep", "team-detail-rename", "team-detail-delete"]) {
@@ -6759,6 +6782,7 @@ async function runAnalysis(options = {}) {
     // F-03: if the compute finished but the SAVE didn't, offer "Retry save" —
     // the checkpoint holds the evals, so a retry never re-runs the engine.
     const checkpoint = current && (inMemoryCheckpoint || completedCheckpoint);
+    if (checkpoint?.serverSaved) { await refreshAnalyzeRecovery(); return; }
     if (checkpoint && checkpoint.gameId && seq === analysisRecallSeq && analysisOwnerId === currentOwnerId()) {
       // Keep the in-memory-only variant reachable for Retry save — the device
       // copy doesn't exist in that case.
@@ -6955,6 +6979,7 @@ async function retryAnalyzeSave() {
     await updateAnalysisHandoff();
   } catch (error) {
     if (ownerId !== currentOwnerId()) return;
+    if (checkpoint.serverSaved) { setStatusError(error.message); return; }
     if (isAuthError(error)) {
       accountService().handleAuthRequired("Sign in to save — the analysis stays on this device until you do");
     }
@@ -8561,52 +8586,66 @@ async function saveBuildAnnotations(arrows, circles) {
   if (activeViewName() !== "build" || isBuildReadOnly()) return;
   if (!appState.build || !appState.buildCurrentNodeId) return;
   const ownerId = currentOwnerId();
+  const generation = appState.ownerGeneration;
+  const isOwner = () => ownerId === currentOwnerId() && generation === appState.ownerGeneration;
   const build = appState.build;
   const repertoireId = build.repertoire_id;
   const selectedId = appState.buildCurrentNodeId;
   const idMap = appState.buildIdMap;
   const resolvedId = () => idMap?.[selectedId] || selectedId;
-  arrows = arrows.slice();
-  circles = circles.slice();
+  const slots = appState.buildAnnotationSlots ||= new Map();
+  const key = JSON.stringify([ownerId, generation, repertoireId, resolvedId()]);
+  let slot = slots.get(key);
+  const node = appState.buildNodeById.get(resolvedId());
+  if (!slot) {
+    slot = { confirmed: { arrows: (node?.arrows || []).slice(), circles: (node?.circles || []).slice() }, latest: null, task: null };
+    slots.set(key, slot);
+  }
+  slot.latest = { arrows: arrows.slice(), circles: circles.slice() };
+  if (node) Object.assign(node, slot.latest);
+  if (slot.task) return slot.task;
   const previousSave = appState.buildAnnotationsSaving;
   const task = (async () => {
     if (previousSave) await previousSave;
-    if (ownerId !== currentOwnerId()) return;
-    let node, previous;
-    try {
-      await hardFlushBuild();
-      if (ownerId !== currentOwnerId()) return;
-      const nodeId = resolvedId();
-      const current = appState.build?.repertoire_id === repertoireId;
-      node = current ? appState.buildNodeById.get(nodeId) : null;
-      if (node) {
-        previous = { arrows: node.arrows || [], circles: node.circles || [] };
-        node.arrows = arrows;
-        node.circles = circles;
+    while (slot.latest && isOwner()) {
+      let snapshot;
+      try {
+        await hardFlushBuild();
+        if (!isOwner()) return;
+        snapshot = slot.latest;
+        slot.latest = null;
+        const current = appState.build?.repertoire_id === repertoireId;
+        const nodeId = resolvedId();
+        const payload = await postJson("/api/build/annotations", {
+          repertoire_id: repertoireId, node_id: nodeId, ...snapshot,
+          base_revision: current ? appState.build.revision : build.revision,
+        });
+        if (Number.isInteger(payload?.revision)) build.revision = Math.max(build.revision || 0, payload.revision);
+        slot.confirmed = snapshot;
+      } catch (error) {
+        if (!isOwner()) return;
+        setStatusError(`Annotations not saved: ${error.message}`);
+        // A failed prerequisite flush has not consumed latest yet.
+        if (!snapshot) slot.latest = null;
       }
-      await postJson("/api/build/annotations", {
-        repertoire_id: repertoireId, node_id: nodeId, arrows, circles,
-        base_revision: current ? appState.build.revision : build.revision,
-      });
-      if (current && appState.build?.repertoire_id === repertoireId &&
-          appState.buildCurrentNodeId === nodeId && ownerId === currentOwnerId()) {
-        boards.build.setAnnotations(arrows, circles);
+      if (!isOwner()) return;
+      // Only the newest visible draft can repaint this position. An earlier
+      // success advances confirmation/revision without replaying an old drawing.
+      if (appState.build?.repertoire_id === repertoireId) {
+        const visible = slot.latest || slot.confirmed;
+        const currentNode = appState.buildNodeById.get(resolvedId());
+        if (currentNode) Object.assign(currentNode, visible);
+        if (resolveBuildId(appState.buildCurrentNodeId) === resolvedId()) boards.build.setAnnotations(visible.arrows, visible.circles);
       }
-    } catch (error) {
-      if (ownerId !== currentOwnerId()) return;
-      if (node && previous) Object.assign(node, previous);
-      // A failed prerequisite flush must restore the drawing too.
-      if (appState.build?.repertoire_id === repertoireId &&
-          resolveBuildId(appState.buildCurrentNodeId) === resolvedId()) {
-        const confirmed = appState.buildNodeById.get(resolvedId());
-        if (confirmed) boards.build.setAnnotations(confirmed.arrows || [], confirmed.circles || []);
-      }
-      setStatusError(`Annotations not saved: ${error.message}`);
     }
   })();
+  slot.task = task;
   appState.buildAnnotationsSaving = task;
   try { await task; }
-  finally { if (appState.buildAnnotationsSaving === task) appState.buildAnnotationsSaving = null; }
+  finally {
+    slots.delete(key);
+    if (appState.buildAnnotationsSaving === task) appState.buildAnnotationsSaving = null;
+  }
 }
 
 // ===== Local-first Build sync ================================================

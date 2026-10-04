@@ -70,8 +70,9 @@ it('annotation saves serialize so a failed first drawing cannot poison a later r
   const postJson=vi.fn().mockReturnValueOnce(first.promise).mockResolvedValueOnce({});
   const run=compile('async function saveBuildAnnotations(',{appState,currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,
     hardFlushBuild:async()=>{},resolveBuildId:id=>id,postJson,setStatusError:vi.fn(),boards:{build:{setAnnotations:vi.fn()}}});
-  const a=run(['Ge2e4'],[]),b=run(['Gd2d4'],[]);
+  const a=run(['Ge2e4'],[]);
   await vi.waitFor(()=>expect(postJson).toHaveBeenCalledTimes(1));
+  const b=run(['Gd2d4'],[]);
   first.reject(Error('offline'));await Promise.all([a,b]);
   expect(postJson).toHaveBeenCalledTimes(2);expect(node.arrows).toEqual(['Gd2d4']);
 });

@@ -548,12 +548,7 @@ export function createDashboardView({
     if (onLibraryStateChange) onLibraryStateChange();
   }
 
-  // One error card for either failing endpoint: no stale rows, no filter
-  // chips / columns / hint, no preview, and a Retry that reruns the full load.
-
-  // Background-refresh failure: the error is scoped to the list card. The
-  // page composition (Today strip, Get started steps) is left untouched and
-  // Retry reloads only the listing.
+  // First listing failure offers a scoped Retry; refresh keeps usable rows.
   function renderLibraryListError(message) {
     const container = document.getElementById("dashboard-repertoires");
     if (!container) return;

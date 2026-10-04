@@ -297,6 +297,7 @@ export function createTeamsView({
   }
 
   return {
+    invalidateRequests: () => { loadSeq++; },
     loadTeams,
     renderTeamsList,
     renderTeamSharedRepertoires,

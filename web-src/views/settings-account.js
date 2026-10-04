@@ -23,7 +23,7 @@ export function createAccountSection({
   openAuthModal = () => {},
   refreshAuthStatus = async () => {},
   onReload = () => window.location.reload(),
-  download = downloadJson,
+  download = downloadBlob,
   navigate = (url) => window.location.assign(url),
 }) {
   let billing = null; // { plan, billing_enabled, price_configured } once fetched
@@ -187,8 +187,11 @@ export function createAccountSection({
   }
 
   async function exportData() {
+    const owner = appState.accountUserId;
+    const generation = appState.ownerGeneration;
     setStatus("Preparing your export…");
-    const bundle = await api("/api/account/export");
+    const bundle = await api("/api/account/export", { responseType: "blob", timeoutMs: 300_000 });
+    if (owner !== appState.accountUserId || generation !== appState.ownerGeneration) return;
     const stamp = new Date().toISOString().slice(0, 10);
     download(bundle, `prepforge-export-${stamp}.json`);
     setStatus("Export downloaded");
@@ -337,8 +340,7 @@ export function createAccountSection({
   return { bind, render, refresh, actions: ACTIONS };
 }
 
-function downloadJson(data, filename) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;

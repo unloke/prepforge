@@ -7,8 +7,9 @@ export function createSettingsActions({
 async function loadSettingsOnce({ render = true } = {}) {
   const seq = appState.settingsReadSeq = (appState.settingsReadSeq || 0) + 1;
   const owner = currentOwnerId();
+  const generation = appState.ownerGeneration;
   let writeSeq = appState.settingsRequestSeq;
-  const isCurrent = () => seq === appState.settingsReadSeq && owner === currentOwnerId() && writeSeq === appState.settingsRequestSeq;
+  const isCurrent = () => seq === appState.settingsReadSeq && owner === currentOwnerId() && generation === appState.ownerGeneration && writeSeq === appState.settingsRequestSeq;
   let view = null;
   try {
     view = render ? await ensureSettingsView() : null;
@@ -27,7 +28,7 @@ async function loadSettingsOnce({ render = true } = {}) {
   try {
     while (appState.settingsSaving) {
       await appState.settingsSaving;
-      if (seq !== appState.settingsReadSeq || owner !== currentOwnerId()) return;
+      if (seq !== appState.settingsReadSeq || owner !== currentOwnerId() || generation !== appState.ownerGeneration) return;
     }
     writeSeq = appState.settingsRequestSeq;
     const payload = await api("/api/settings");
@@ -49,14 +50,15 @@ async function loadSettingsOnce({ render = true } = {}) {
 async function saveSettings(patch) {
   const seq = appState.settingsRequestSeq = (appState.settingsRequestSeq || 0) + 1;
   const owner = currentOwnerId();
-  const isCurrent = () => seq === appState.settingsRequestSeq && owner === currentOwnerId();
+  const generation = appState.ownerGeneration;
+  const isCurrent = () => seq === appState.settingsRequestSeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
   const previous = appState.settingsSaving;
   let release;
   const saving = new Promise((resolve) => { release = resolve; });
   appState.settingsSaving = saving;
   try {
     await previous;
-    if (owner !== currentOwnerId()) return;
+    if (owner !== currentOwnerId() || generation !== appState.ownerGeneration) return;
     const payload = await api("/api/settings", { method: "POST", body: JSON.stringify(patch) });
     if (!isCurrent()) return;
     const previousSettings = appState.settings;

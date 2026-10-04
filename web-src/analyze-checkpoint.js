@@ -1,4 +1,4 @@
-﻿// Finished analysis is user work, not an evictable cache. Payload and metadata
+// Finished analysis is user work, not an evictable cache. Payload and metadata
 // commit in one IndexedDB transaction; quota failure keeps the caller's memory copy.
 const DATABASE = "prepforge-analysis-checkpoints";
 const PAYLOADS = "payloads";
@@ -99,13 +99,14 @@ export async function markCheckpointSaved(gameId, ownerId, requestId) {
   } catch (_) { return false; }
 }
 
-export async function clearCheckpoint(gameId, ownerId, version = null) {
+export async function clearCheckpoint(gameId, ownerId, version) {
+  if (!version) return false;
   try {
     await transaction("readwrite", (payloads, metadata) => {
       const key = checkpointKey(gameId, ownerId);
       const request = metadata.get(key);
       request.onsuccess = () => {
-        if (version !== null && request.result?.version !== version) return;
+        if (request.result?.version !== version) return;
         payloads.delete(key);
         metadata.delete(key);
       };
