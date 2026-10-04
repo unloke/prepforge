@@ -90,13 +90,10 @@ async function main() {
     const chartBox = await page.locator("#eval-chart").boundingBox();
     if (!chartBox) fail("eval chart has no bounding box");
     const xForRatio = (ratio) => chartBox.x + chartBox.width * ratio;
-    // Plotted x (user units) of a point at `ratio` along the plies: the chart
-    // insets its plot by 9 screen px, so the inset in user units tracks the width.
+    // Plotted x (user units) of a point at `ratio` along the plies: the plies
+    // run edge to edge.
     const CHART_W = 640;
-    const plotX = (ratio) => {
-      const pad = (9 * CHART_W) / chartBox.width;
-      return pad + ratio * (CHART_W - 2 * pad);
-    };
+    const plotX = (ratio) => ratio * CHART_W;
 
     // --- 1. Mouse hover: text tooltip (SAN, eval, classification). ---
     await page.mouse.move(xForRatio(0.75), chartBox.y + chartBox.height / 2); // ply 4

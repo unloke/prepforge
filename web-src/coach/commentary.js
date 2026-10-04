@@ -154,7 +154,11 @@ function readFacts(f) {
   const restores = prevTook && nowTook ? PIECE_VALUE[nowTook] <= PIECE_VALUE[prevTook] : true;
   const recapture = prevWasCapture && !!prevDest && /x/.test(f.san || "") && f.uci?.slice(2, 4) === prevDest && restores;
   const bestTakesBack = prevWasCapture && !!prevDest && f.bestUci?.slice(2, 4) === prevDest && /x/.test(f.bestSan || "");
-  return { m, opp, played, own, best, playedNet, bestNet, rel, relValue, prevWasCapture, recapture, bestTakesBack };
+  // What an error drops. Against the best line when that line only takes back (the
+  // recapture the move skipped); otherwise what changes hands in the played line itself,
+  // so material the best line would grab elsewhere never reads as dropped.
+  const lost = bestTakesBack ? rel : played && played.quiet ? negate(netFor(played, m)) : null;
+  return { m, opp, played, own, best, playedNet, bestNet, rel, relValue, lost, prevWasCapture, recapture, bestTakesBack };
 }
 
 // --- Good moves --------------------------------------------------------------
@@ -311,12 +315,12 @@ function errorConsequence(f, x, v) {
   }
   if (x.rel && x.relValue >= 1) {
     const lossText = () => {
-      const lost = gainPhrase(x.rel);
+      const lost = x.lost ? gainPhrase(x.lost) : "";
       if (!lost) return null;
       // Name the tactic the reply executes: a piece left hanging, or a fork / pin / skewer.
       const reply = f.replySan ? numberLine(f.fenAfter, [f.replySan]) : "";
       const hung = reply ? hangingCapture(f.fenAfter, f.replyUci) : null;
-      if (hung && (x.rel[hung.type] || 0) >= 1) {
+      if (hung && (x.lost[hung.type] || 0) >= 1) {
         const what = hung.square === f.uci?.slice(2, 4) ? `the ${PIECE_NAME[hung.type]}` : `the ${PIECE_NAME[hung.type]} on ${hung.square}`;
         return { text: `${f.san} hangs ${what} to ${reply}.` };
       }
@@ -466,7 +470,7 @@ function answerSentence(f, afterSlip) {
     if (u > 0 && u > u0) return `Punish it with ${r} and ${standingClause(u)}.`;
     if (u > 0) return `Your best reply is ${r} and you're still ${EDGE[u]}.`;
     if (u === 0 && u0 < 0) return `With ${rEnd} you're back to level.`;
-    if (u === 0) return `Your best reply is ${rEnd}; it's level.`;
+    if (u === 0) return `Your best reply is ${rEnd}, and it's level.`;
     if (u > u0) return `Your best reply is ${rEnd}. You're still worse, but it's closer now.`;
     return `Your best reply is ${rEnd}, but ${standingClause(u)}.`;
   }
@@ -487,11 +491,11 @@ function opponentSlip(f, x, san) {
     return { text: `${san} walks into ${mateCount(f.mateAfter)}. ${finish}`, named: true };
   }
   if (f.missedMate && f.bestSan) return { text: `They had mate with ${f.bestSan} and missed it.`, named: false };
-  const lost = x.rel && x.relValue >= 1 && x.playedNet !== null && x.playedNet < 0 ? gainPhrase(x.rel) : "";
+  const lost = x.rel && x.relValue >= 1 && x.playedNet !== null && x.playedNet < 0 && x.lost ? gainPhrase(x.lost) : "";
   // Taking back on the square the slip captured on is a trade, not a hanging piece.
   const recapture = /x/.test(f.san || "") && f.replyUci?.slice(2, 4) === f.uci?.slice(2, 4);
   const hung = reply && !recapture ? hangingCapture(f.fenAfter, f.replyUci) : null;
-  if (hung && (!x.rel || (x.rel[hung.type] || 0) >= 1)) {
+  if (hung && (!x.lost || (x.lost[hung.type] || 0) >= 1)) {
     return { text: `${san} leaves their ${PIECE_NAME[hung.type]} on ${hung.square} hanging. Take it with ${reply}.`, named: true };
   }
   if (lost) {
@@ -501,11 +505,11 @@ function opponentSlip(f, x, san) {
     if (motif) {
       // "forks the king and the rook on a8" already says what goes; only add the price when it doesn't.
       const said = motif.includes(lost.replace(/^an? /, ""));
-      return { text: `${san} is ${word}: ${reply} ${motif}${said ? "" : ` and wins ${lost}`}.`, named: true };
+      return { text: `${san} is ${word}. Now ${reply} ${motif}${said ? "" : ` and wins ${lost}`}.`, named: true };
     }
     const line = trimmedLine(f.fenAfter, x.played, x.opp, 6);
-    if (line) return { text: `${san} drops ${lost}. Win it with ${line}.`, named: true };
-    return { text: `${san} drops ${lost}.`, named: false };
+    if (line) return { text: `${san} gives you ${lost}. Pick it up with ${line}.`, named: true };
+    return { text: `${san} gives you ${lost}.`, named: false };
   }
   // A chance they missed: their best move won material and the one played doesn't.
   if (f.bestSan && !f.isBest && x.rel && x.relValue >= 1 && x.bestNet !== null && x.bestNet >= 1) {
@@ -514,15 +518,15 @@ function opponentSlip(f, x, san) {
     if (gain) {
       const said = motif && motif.includes(gain.replace(/^an? /, ""));
       const how = motif ? `${yours(motif)}${said ? "" : ` and wins ${gain}`}` : `wins ${gain}`;
-      return { text: `Lucky for you: they missed ${f.bestSan}, which ${how}.`, named: false };
+      return { text: `Lucky for you, they missed ${f.bestSan}, which ${how}.`, named: false };
     }
   }
   // Positional: nothing changes hands yet, so name the move they should have played.
   if (!f.bestSan || f.isBest) return { text: `${san} is ${word} from them.`, named: false };
   const fix = {
-    inaccuracy: `${san} is a little loose; ${f.bestSan} was better.`,
-    mistake: `${san} is a mistake; ${f.bestSan} was the right move for them.`,
-    blunder: `${san} is a blunder; they had to play ${f.bestSan}.`,
+    inaccuracy: `${san} is a little loose. ${f.bestSan} was better for them.`,
+    mistake: `${san} is a mistake. They should have played ${f.bestSan}.`,
+    blunder: `${san} is a blunder. They had to play ${f.bestSan}.`,
   }[f.classification.code];
   return { text: fix, named: false };
 }
@@ -539,14 +543,14 @@ function opponentPoint(f, x) {
 // One sentence on a sound move: what it does, with how good it was folded in.
 function soundLead(f, san, point) {
   const code = f.classification.code;
-  if (code === "brilliant") return point ? `Brilliant from them: ${san} ${point}.` : `${san} is a brilliant find by them.`;
+  if (code === "brilliant") return point ? `That's a brilliant one from them. ${san} ${point}.` : `${san} is a brilliant find by them.`;
   if (code === "great") {
-    if (f.onlyMove) return point ? `They found the only move: ${san} ${point}.` : `${san} was the only move, and they found it.`;
-    return point ? `Strong move: ${san} ${point}.` : `${san} is a strong find by them.`;
+    if (f.onlyMove) return point ? `They found the only move. ${san} ${point}.` : `${san} was the only move, and they found it.`;
+    return point ? `Strong move by them. ${san} ${point}.` : `${san} is a strong find by them.`;
   }
   if (code === "best") {
     return point
-      ? pick(f, "opp-best", [`Good move by them: ${san} ${point}.`, `Well played by them: ${san} ${point}.`, `Accurate: ${san} ${point}.`])
+      ? pick(f, "opp-best", [`Good move by them. ${san} ${point}.`, `Well played by them. ${san} ${point}.`, `Nice one from them. ${san} ${point}.`])
       : pick(f, "opp-best-bare", [`${san} is accurate.`, `${san} is the best move here.`, `${san} is a good move by them.`]);
   }
   if (code === "good") return point ? `${san} ${point}.` : `${san} is a reasonable move.`;
