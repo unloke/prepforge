@@ -320,6 +320,7 @@ class PrepForgeRepository:
                     "source": game.source.value,
                     "initial_fen": game.initial_fen,
                     "uci_blob": codec.game_uci_blob(game),
+                    "pgn": game.pgn,
                     "white": game.white,
                     "black": game.black,
                     "result": game.result.value,
@@ -334,7 +335,7 @@ class PrepForgeRepository:
                 },
                 conflict=[t.games.c.id],
                 update_cols=(
-                    "source", "initial_fen", "uci_blob", "white", "black", "result",
+                    "source", "initial_fen", "uci_blob", "pgn", "white", "black", "result",
                     "event", "site", "played_at", "lichess_id", "tags_json", "updated_at",
                 ),
                 # Never let a re-save reassign an existing owner; only fill a gap.
@@ -648,6 +649,7 @@ class PrepForgeRepository:
                     "source": game.source.value,
                     "initial_fen": game.initial_fen,
                     "uci_blob": codec.game_uci_blob(game),
+                    "pgn": game.pgn,
                     "white": game.white,
                     "black": game.black,
                     "result": game.result.value,
@@ -662,7 +664,7 @@ class PrepForgeRepository:
                 },
                 conflict=[t.games.c.id],
                 update_cols=(
-                    "source", "initial_fen", "uci_blob", "white", "black", "result",
+                    "source", "initial_fen", "uci_blob", "pgn", "white", "black", "result",
                     "event", "site", "played_at", "lichess_id", "tags_json", "updated_at",
                 ),
                 coalesce_cols=("owner_user_id",),
@@ -727,7 +729,7 @@ class PrepForgeRepository:
             event=row["event"],
             site=row["site"],
             played_at=_dt_from_text(row["played_at"]),
-            pgn=None,
+            pgn=row["pgn"],
             lichess_id=row["lichess_id"],
             tags=_json_load(row["tags_json"], {}),
         )

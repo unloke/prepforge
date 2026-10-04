@@ -144,3 +144,31 @@ def test_reload_from_new_process_twice(tmp_path):
     assert results[0]["score"] == 28
     assert results[0]["critical"] == [3]
     assert results[0]["pgn_has_e4"] is True
+
+
+def test_reload_preserves_pgn_tree_and_current_annotations(tmp_path):
+    import io
+    import chess.pgn
+
+    engine = initialize_database(tmp_path / "pgn.sqlite")
+    repo = PrepForgeRepository(engine)
+    game = ChessCore().import_single_pgn(
+        '[Result "*"]\n\n{Before the game} 1. e4 $1 {Original} '
+        '(1. d4 {Branch} d5 (1... Nf6 $2)) e5 *'
+    )
+    for save in (repo.save_game, repo.save_game_batched):
+        save(game)
+        loaded = repo.load_game(game.id)
+        tree = chess.pgn.read_game(io.StringIO(loaded.pgn))
+        assert tree.comment == "Before the game"
+        assert tree.variations[0].nags == {1}
+        assert tree.variations[1].comment == "Branch"
+        assert tree.variations[1].variations[1].nags == {2}
+        loaded.moves[0].generated_comment = "Engine explanation"
+        save(loaded)
+        loaded = repo.load_game(game.id)
+        tree = chess.pgn.read_game(io.StringIO(loaded.pgn))
+        assert tree.variations[0].comment == "Original\nEngine explanation"
+        assert len(tree.variations) == 2
+        game = loaded
+    engine.dispose()

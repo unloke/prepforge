@@ -43,6 +43,7 @@ games = Table(
     Column("source", Text, nullable=False),
     Column("initial_fen", Text, nullable=False),
     Column("uci_blob", Text, nullable=False),
+    Column("pgn", Text),
     Column("white", Text),
     Column("black", Text),
     Column("result", Text, nullable=False),
