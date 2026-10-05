@@ -1,6 +1,7 @@
 // Replay tab rendering (lazy-loaded from app.js).
 
 import { Chess } from "chess.js";
+import { buildArrowPath } from "../board-arrows.js";
 import "./replay.css";
 
 const REPLAY_KINDS = {
@@ -122,43 +123,20 @@ function replayFocusBoardHtml(game, renderers) {
     const rank = Number(square[1]);
     const x = (pos.orientation === "black" ? 7 - fileIndex : fileIndex) * 12.5 + 6.25;
     const y = (pos.orientation === "black" ? rank - 1 : 8 - rank) * 12.5 + 6.25;
-    return [x, y];
+    return { x, y };
   };
-  // Each arrow is ONE closed outline (shaft + head), so a translucent fill
-  // never double-darkens where a separate line and head overlap, and the
-  // head is clearly wider than the shaft. The played move is drawn first so
-  // the expected move stays readable when both leave the same square.
+  // The main board's arrow geometry (one closed outline, tail clear of the moving
+  // piece). The played move is drawn first so the expected move stays readable
+  // when both leave the same square.
   const arrows = replayArrowsFor(pos)
     .reverse()
-    .map((a) => {
-      const [x1, y1] = coord(a.from);
-      const [x2, y2] = coord(a.to);
-      const len = Math.hypot(x2 - x1, y2 - y1);
-      if (!len) return "";
-      const ux = (x2 - x1) / len;
-      const uy = (y2 - y1) / len;
-      const shaft = 1.4; // half-width, board = 100 units
-      const headHalf = 3.6;
-      const headLen = Math.min(5.5, len * 0.6);
-      const bx = x2 - ux * headLen;
-      const by = y2 - uy * headLen;
-      const pt = (x, y) => `${x.toFixed(2)},${y.toFixed(2)}`;
-      const points = [
-        pt(x1 - uy * shaft, y1 + ux * shaft),
-        pt(bx - uy * shaft, by + ux * shaft),
-        pt(bx - uy * headHalf, by + ux * headHalf),
-        pt(x2, y2),
-        pt(bx + uy * headHalf, by - ux * headHalf),
-        pt(bx + uy * shaft, by - ux * shaft),
-        pt(x1 + uy * shaft, y1 - ux * shaft),
-      ].join(" ");
-      return `<polygon class="t-${a.tone}" points="${points}" />`;
-    })
+    .map((a) => (a.from === a.to ? "" : `<path class="t-${a.tone}" d="${buildArrowPath(coord(a.from), coord(a.to))}" />`))
     .join("");
+  // Inside the mini board, so the overlay shares the squares' box (not its border).
   const svg = arrows
     ? `<svg class="replay-arrows" viewBox="0 0 100 100" aria-hidden="true">${arrows}</svg>`
     : "";
-  return `<div class="focus-board" data-testid="replay-focus-board"><div class="scout-miniboard" aria-hidden="true">${squares}</div>${svg}</div>`;
+  return `<div class="focus-board" data-testid="replay-focus-board"><div class="scout-miniboard" aria-hidden="true">${squares}${svg}</div></div>`;
 }
 
 // Display-only result text: "1/2-1/2" wraps onto two lines in the narrow

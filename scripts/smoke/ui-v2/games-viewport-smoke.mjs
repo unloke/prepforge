@@ -160,8 +160,8 @@ async function runViewport(vp) {
   // Focus detail: derived board + expected/played arrows for the user-error game.
   const board = await page.locator('[data-testid="replay-focus-board"] .scout-minisquare').count();
   check(board === 64, `focus board should render 64 squares, got ${board}`);
-  const arrowGood = await page.locator("#replay-results .replay-arrows polygon.t-good").count();
-  const arrowBad = await page.locator("#replay-results .replay-arrows polygon.t-bad").count();
+  const arrowGood = await page.locator("#replay-results .replay-arrows path.t-good").count();
+  const arrowBad = await page.locator("#replay-results .replay-arrows path.t-bad").count();
   check(arrowGood === 1 && arrowBad === 1, `user-error focus should draw expected(good)+played(bad), got ${arrowGood}/${arrowBad}`);
   const focusText = await page.locator("#replay-results .focus").textContent().catch(() => "");
   check(/expected/.test(focusText || "") && /e6/.test(focusText || "") && /d5/.test(focusText || ""), "focus detail should name the expected and actual moves");
