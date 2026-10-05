@@ -464,10 +464,19 @@ export function createDashboardView({
             : "");
         const health = item.health;
         const pct = health ? health.mastery_pct || 0 : null;
-        const tier = pct == null ? "" : pct >= 80 ? "high" : pct >= 40 ? "mid" : "low";
-        const mastery = pct == null
-          ? '<span class="lib-mastery lib-mastery-none">no moves trained yet</span>'
-          : `<span class="lib-mastery"><span class="lib-mbar" role="img" aria-label="${pct}% mastered"><i class="tier-${tier}" style="width:${pct}%"></i></span><b>${pct}%</b></span>`;
+        // Two layers from the left: mastered moves on top, every move trained at least
+        // once behind it, so practice shows before mastery catches up.
+        let mastery = '<span class="lib-mastery lib-mastery-none">no moves trained yet</span>';
+        if (pct != null) {
+          const count = (k) => Number(health[k]) || 0;
+          const started = count("mastered") + count("learning") + count("due") + count("weak");
+          const total = count("trainable") || started + count("untrained");
+          const startedPct = total ? Math.max(pct, Math.round((started / total) * 100)) : pct;
+          const label = `${count("mastered")} mastered · ${started - count("mastered")} learning · ${count("untrained")} new`;
+          mastery =
+            `<span class="lib-mastery" title="${label}"><span class="lib-mbar" role="img" aria-label="${pct}% mastered, ${startedPct}% trained">` +
+            `<i class="is-started" style="width:${startedPct}%"></i><i class="is-mastered" style="width:${pct}%"></i></span><b>${pct}%</b></span>`;
+        }
         const queue = [];
         if (health && health.weak) {
           queue.push(`<span class="kchip k-weak" title="Missed more than answered">${health.weak} weak</span>`);

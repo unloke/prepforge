@@ -295,7 +295,10 @@ function applyPref(name) {
     Object.values(boards).forEach((b) => b && b.applyCoordinates && b.applyCoordinates());
   }
   if (name === "bestArrow" && !pref("bestArrow")) {
-    Object.values(boards).forEach((b) => b && b.setEngineArrow && b.setEngineArrow(null));
+    Object.values(boards).forEach((b) => {
+      if (b && b.setEngineArrow) b.setEngineArrow(null);
+      if (b && b.setBetterArrow) b.setBetterArrow(null);
+    });
   }
   if (name === "maiaAnalysis" && buildDockTab === "coverage") {
     // Re-gate Coverage's Scan button and its Maia card.
@@ -1945,6 +1948,7 @@ class PositionCoach {
       else {
         this.cancel();
         renderInstantCoach();
+        setAnalysisBetterArrow(null);
       }
     });
   }
@@ -1973,6 +1977,8 @@ class PositionCoach {
     this.fen = fen;
     this.ctx = ctx || {};
     setEngineBestArrow(null); // review mode: the board shows your move, not a hint
+    // A saved grade draws its better move at once; the live read fills in the rest.
+    setAnalysisBetterArrow(this.enabled && fen ? savedBetterMove(this.ctx) : null);
     if (!fen) return;
     if (!this.enabled) return; // engine off → leave the instant read
     if (activeViewName() !== "analyze") return;
@@ -2048,6 +2054,7 @@ class PositionCoach {
         features.classification = { code: "best", label: "Best move", glyph: "✓", tone: "good" };
       }
       renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
+      if (!opponentRead) offerLiveBetterArrow(features, saved, fen);
       // Read the position's "texture" from Maia's human-move distribution (one obvious
       // move vs. a rich spread) and fold it into the commentary — best-effort and async,
       // reusing the same Maia worker the brilliant check uses.
@@ -2274,6 +2281,39 @@ const COACH_QUALITY_GROUP = {
   missed_win: "missed",
   missed_tactic: "missed",
 };
+
+// Grades whose better move is drawn on the Analyze board.
+const BETTER_ARROW_GRADES = new Set(["inaccuracy", "mistake", "blunder", "missed_win", "missed_tactic"]);
+
+// The better move a saved analysis already names for an error the user made, so the
+// arrow lands with the badge instead of waiting for the engine.
+function savedBetterMove(ctx) {
+  if (!ctx || !ctx.prevFen || !ctx.lastUci || !ctx.fen) return null;
+  const mover = ctx.fen.split(" ")[1] === "b" ? "white" : "black";
+  if (!isReviewedMove({ mover, selfSide: analysisSelfSide(), mainline: Number.isInteger(ctx.ply) })) return null;
+  const saved = savedMainlineMove(ctx.ply, ctx.prevFen, ctx.lastUci, ctx.fen);
+  if (!saved || !BETTER_ARROW_GRADES.has(String(saved.classification || "").toLowerCase())) return null;
+  const ev = appState.analysis && appState.analysis.position_evals && appState.analysis.position_evals[ctx.prevFen];
+  const best = ev && (ev.best_move_uci || (Array.isArray(ev.pv) ? ev.pv[0] : null));
+  return best && best !== ctx.lastUci ? best : null;
+}
+
+// Draw (or clear) the better-move arrow on the Analyze board; with ``fen``, only while
+// the board still shows that position.
+function setAnalysisBetterArrow(uci, fen = null) {
+  const board = boards.analysis;
+  if (!board || !board.setBetterArrow) return;
+  if (uci && fen && board.fen !== fen) return;
+  board.setBetterArrow(uci && pref("bestArrow") ? uci : null);
+}
+
+// The live read's better move, when no saved one is drawn yet and the move (by its saved
+// grade first) is an error.
+function offerLiveBetterArrow(features, saved, fen) {
+  if (boards.analysis?.betterArrow || !features.bestUci || features.isBest) return;
+  const grade = (saved && saved.classification) || features.classification?.code;
+  if (BETTER_ARROW_GRADES.has(String(grade || "").toLowerCase())) setAnalysisBetterArrow(features.bestUci, fen);
+}
 
 // The saved whole-game verdict on the move the coach is reading, when it has one.
 function savedCoachQuality(ctx) {
@@ -2523,6 +2563,7 @@ class BoardController {
     this.dragFrom = null;
     this.ghost = null;
     this.engineArrow = null;
+    this.betterArrow = null;
     this.branchArrows = [];
     this.branchPick = null;
     this.moveBadge = null;
@@ -2572,7 +2613,8 @@ class BoardController {
       this.orientation,
       this.engineArrow,
       this.branchArrows,
-      this.branchPick
+      this.branchPick,
+      this.betterArrow
     );
   }
 
@@ -2594,6 +2636,7 @@ class BoardController {
         lastMove: this.lastMove,
         moveBadge: this.moveBadge,
         engineArrow: this.engineArrow,
+        betterArrow: this.betterArrow,
         branchArrows: this.branchArrows,
         branchPick: this.branchPick,
       };
@@ -2613,6 +2656,7 @@ class BoardController {
     this.moveBadge = null;
     this._syncMoveBadge();
     this.engineArrow = null;
+    this.betterArrow = null;
     this.branchArrows = [];
     this.branchPick = null;
     this._renderArrows();
@@ -2630,6 +2674,7 @@ class BoardController {
       this.moveBadge = saved.moveBadge;
       this._syncMoveBadge();
       this.engineArrow = saved.engineArrow;
+      this.betterArrow = saved.betterArrow;
       this.branchArrows = saved.branchArrows;
       this.branchPick = saved.branchPick;
       this._renderArrows();
@@ -2645,6 +2690,19 @@ class BoardController {
     }
     if (this.engineArrow === next) return;
     this.engineArrow = next;
+    this._renderArrows();
+  }
+
+  // The move the side that just moved should have played instead (Analyze, on a graded
+  // error), drawn in its own colour so it never reads as the engine's next move.
+  setBetterArrow(uci) {
+    const next = typeof uci === "string" && uci.length >= 4 ? uci : null;
+    if (this._preview) {
+      this._preview.betterArrow = next;
+      return;
+    }
+    if (this.betterArrow === next) return;
+    this.betterArrow = next;
     this._renderArrows();
   }
 
@@ -4419,30 +4477,46 @@ function renderAnnotations(
   orientation = "white",
   engineArrow = null,
   branchArrows = [],
-  branchPick = null
+  branchPick = null,
+  betterArrow = null
 ) {
   overlay.setAttribute("viewBox", "0 0 100 100");
   overlay.innerHTML = "";
+  const NS = "http://www.w3.org/2000/svg";
+  const valid = (uci) => typeof uci === "string" && uci.length >= 4 && uci.slice(0, 2) !== uci.slice(2, 4);
   // Colours and stroke come from CSS tokens (.annot-arrow rules) so board
   // arrows stay in step with the rest of the theme.
-  const drawArrow = (arrow, kind) => {
+  const drawArrow = (parent, arrow, kind, opts) => {
     const from = squareCenter(arrow.slice(0, 2), orientation);
     const to = squareCenter(arrow.slice(2, 4), orientation);
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", buildArrowPath(from, to));
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", buildArrowPath(from, to, opts));
     path.setAttribute("class", `annot-arrow annot-${kind}`);
-    overlay.appendChild(path);
+    parent.appendChild(path);
   };
-  // Branch hints sit under the user/engine arrows so an explicit annotation always
-  // wins; the picked fork option is drawn stronger than its siblings.
-  (branchArrows || []).forEach(
-    (arrow) =>
-      arrow &&
-      arrow.length >= 4 &&
-      drawArrow(arrow, arrow === branchPick ? "branch is-pick" : "branch")
-  );
-  arrows.forEach((arrow) => drawArrow(arrow, "user"));
-  if (engineArrow && engineArrow.length >= 4) drawArrow(engineArrow, "engine");
+  // Paint order is importance order, so a stronger mark is never buried under a weaker
+  // one: idle fork options → the picked option → the engine-also-likes-this option →
+  // the better move → your own arrows → the engine's move.
+  const engine = valid(engineArrow) ? engineArrow : null;
+  const branches = [...new Set((branchArrows || []).filter(valid))];
+  const pick = branches.includes(branchPick) ? branchPick : null;
+  // Idle options share one translucent group, so where two cross the overlap does not
+  // darken into a third, stronger-looking arrow; they are also drawn slimmer.
+  const idle = branches.filter((u) => u !== pick && u !== engine);
+  if (idle.length) {
+    const group = document.createElementNS(NS, "g");
+    group.setAttribute("class", "annot-branches");
+    idle.forEach((u) => drawArrow(group, u, "branch", { scale: 0.78 }));
+    overlay.appendChild(group);
+  }
+  if (pick && pick !== engine) drawArrow(overlay, pick, "branch is-pick");
+  // The engine's move is one of the fork options: one arrow in the option's colour with
+  // an engine-green rim, instead of a green arrow hiding the option underneath.
+  const engineIsBranch = !!engine && branches.includes(engine);
+  if (engineIsBranch) drawArrow(overlay, engine, `branch is-engine${engine === pick ? " is-pick" : ""}`);
+  if (valid(betterArrow) && betterArrow !== engine) drawArrow(overlay, betterArrow, "better");
+  arrows.forEach((arrow) => drawArrow(overlay, arrow, "user"));
+  if (engine && !engineIsBranch) drawArrow(overlay, engine, "engine");
 }
 
 function squareCenter(square, orientation = "white") {
