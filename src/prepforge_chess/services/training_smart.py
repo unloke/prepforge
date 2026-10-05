@@ -175,6 +175,7 @@ class SmartTrainingService:
         session_size: Optional[int] = None,
         new_cap: Optional[int] = None,
         seed: Optional[int] = None,
+        target_node_ids: Optional[List[str]] = None,
     ) -> TrainingSession:
         """Resume an unfinished, still-intact smart session, else build a new
         queue from current mastery. ``fresh`` forces a rebuild (the explicit
@@ -184,7 +185,7 @@ class SmartTrainingService:
         existing = self.repository.load_latest_training_session(
             repertoire_id, TrainingMode.SMART
         )
-        if existing is not None and not fresh and self._resumable(existing, repertoire):
+        if existing is not None and not fresh and not target_node_ids and self._resumable(existing, repertoire):
             self.resumed = True
             return existing
 
@@ -201,7 +202,8 @@ class SmartTrainingService:
         if new_cap is not None:
             kwargs["new_cap"] = new_cap
         plan: SessionPlan = build_session_plan(
-            repertoire.root_node, repertoire.color, progress_by_id, **kwargs
+            repertoire.root_node, repertoire.color, progress_by_id,
+            target_node_ids=target_node_ids, **kwargs
         )
         if not plan.cards:
             raise ValueError("repertoire has no trainable moves yet")

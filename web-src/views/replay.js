@@ -201,6 +201,7 @@ export function createReplayView({
   onTrainMiss,
   onBuildReply,
   onAnalyze,
+  onError = (error) => console.error(error),
 }) {
   // The focus board renders through app.js's FEN/piece-SVG helpers so it keeps
   // the product's active piece style; without them the card falls back to
@@ -264,6 +265,7 @@ export function createReplayView({
         if (ply <= matched) classes.push("inprep");
         // Departure tone mirrors its outcome (✗ left prep, ⚡ novelty).
         if (ply === departPly) classes.push("dep", `t-${tone}`);
+        if (ply === game.reentry_ply) classes.push("inprep");
         return `<span class="mvw">${num}<span class="${classes.join(" ")}">${escapeHtml(san)}</span></span>`;
       })
       .join(" ");
@@ -305,6 +307,7 @@ export function createReplayView({
     } else if (game.departure_reason === "no_repertoire_for_color") {
       lines.push("No active repertoire defined for the colour you played.");
     }
+    if (game.reentry_ply) lines.push(`Back in prep: ${escapeHtml(plyMoveLabel(game.reentry_ply, game.move_san_history))}`);
     return lines.map((line) => `<li>${line}</li>`).join("");
   }
 
@@ -435,9 +438,8 @@ export function createReplayView({
         // Hand the destination the decision position too (F-06): the app-side
         // handoff stores it as the anchor FEN.
         const focus = replayFocusPosition(game);
-        if (act === "train") onTrainMiss(game, focus);
-        else if (act === "build") onBuildReply(game, focus);
-        else if (act === "analyze") onAnalyze(game, focus);
+        const action = act === "train" ? onTrainMiss : act === "build" ? onBuildReply : onAnalyze;
+        void Promise.resolve().then(() => action(game, focus)).catch(onError);
       });
     });
   }

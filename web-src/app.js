@@ -60,15 +60,19 @@ import {
   acquireFlushLock,
   buildAddId,
   buildDeleteId,
-  clearOutbox,
-  loadOutbox,
   outboxHasRejected,
   outboxHasWork,
   outboxIsQuiescent,
   releaseFlushLock,
-  saveOutbox,
   trainAttemptId,
 } from "./sync-outbox.js";
+const outboxDatabase = () => import("./outbox-db.js");
+const loadDurableOutbox = async (owner) => (await outboxDatabase()).loadDurableOutbox(owner);
+const saveDurableOutbox = async (owner, state, settled) => {
+  const snapshot = structuredClone(state), done = structuredClone(settled);
+  return (await outboxDatabase()).saveDurableOutbox(owner, snapshot, done);
+};
+const clearDurableOutbox = async (owner) => (await outboxDatabase()).clearDurableOutbox(owner);
 import { loadTeamDirectory } from "./team-directory.js";
 import { clearCheckpoint, evalMapFrom, loadCheckpoint, markCheckpointSaved, saveCheckpoint } from "./analyze-checkpoint.js";
 import {
@@ -76,7 +80,10 @@ import {
   pendingHandoffs,
   rememberHandoff,
   saveReturnState,
+  setHandoffOwner,
   takeHandoff,
+  transitionHandoff,
+  trackPreparationPractice,
 } from "./handoff-context.js";
 import { describeMove } from "./explain.js";
 import {
@@ -301,7 +308,7 @@ function applyPref(name) {
     });
   }
   if (name === "maiaAnalysis" && buildDockTab === "coverage") {
-    // Re-gate Coverage's Scan button and its Maia card.
+    // Repaint the inspector; Coverage scans only on an explicit click.
     setBuildInspector("coverage");
   }
 }
@@ -3540,8 +3547,13 @@ function outboxSnapshot() {
 // operation, so a second tab holding an older view can no longer overwrite
 // ops it never saw. `settled` tombstones the operations the server just
 // confirmed, so a stale snapshot can't resurrect already-saved work either.
-function persistOutbox(settled = null) {
-  const ok = saveOutbox(currentOwnerId(), outboxSnapshot(), settled);
+async function persistOutbox(settled = null) {
+  const owner = currentOwnerId();
+  const generation = appState.ownerGeneration;
+  let ok = false;
+  try { await saveDurableOutbox(owner, outboxSnapshot(), settled); ok = true; }
+  catch (error) { console.warn("Outbox persistence failed", error); }
+  if (owner !== currentOwnerId() || generation !== appState.ownerGeneration) return ok;
   // A refused write means the queue lives only in this tab: the UI must not
   // promise device recovery it cannot deliver.
   appState.outboxPersisted = ok;
@@ -3558,19 +3570,22 @@ function persistOutbox(settled = null) {
 // R-01: a feature finishing its own queue must never wipe the OTHER feature's
 // unsynced work (nor the rejected ops kept for review). Only a state with
 // nothing left for anyone may drop the owner's key.
-function clearOutboxWhenQuiescent() {
-  if (!outboxIsQuiescent(loadOutbox(currentOwnerId()))) {
-    persistOutbox();
+async function clearOutboxWhenQuiescent() {
+  const owner = currentOwnerId();
+  if (!outboxIsQuiescent(await loadDurableOutbox(owner))) {
+    await persistOutbox();
     return false;
   }
-  clearOutbox(currentOwnerId());
-  return true;
+  await clearDurableOutbox(owner);
+  return owner === currentOwnerId();
 }
 
 // Re-hydrate THIS owner's queued edits after a reload. Owner-scoped on
 // purpose: signing in as someone else never replays another account's ops.
-function restoreOutbox() {
-  const outbox = loadOutbox(currentOwnerId());
+async function restoreOutbox() {
+  const owner = currentOwnerId(), generation = appState.ownerGeneration;
+  const outbox = await loadDurableOutbox(owner);
+  if (owner !== currentOwnerId() || generation !== appState.ownerGeneration) return null;
   const rejectedCount =
     (outbox.build.rejected || []).length + (outbox.train.rejected || []).length;
   if (!outboxHasWork(outbox) && !rejectedCount) return null;
@@ -3602,7 +3617,7 @@ function restoreOutbox() {
 // stay in this owner's outbox and replay after the next sign-in, never to
 // another account.
 async function flushAllPendingForSignOut() {
-  persistOutbox();
+  await persistOutbox();
   clearTimeout(appState.buildFlushTimer);
   appState.buildFlushTimer = null;
   clearTimeout(appState.trainSync.timer);
@@ -3611,7 +3626,7 @@ async function flushAllPendingForSignOut() {
     flushBuildMoves().catch(() => false),
     flushTrainSync().catch(() => false),
   ]);
-  persistOutbox();
+  await persistOutbox();
   return {
     pending:
       appState.buildPending.length +
@@ -4731,6 +4746,8 @@ function initAccountController() {
     },
     beforeSignOut: flushAllPendingForSignOut,
     onOwnerChanged: () => {
+      setHandoffOwner(currentOwnerId());
+      coverageView?.clear();
       appState.settingsRequestSeq = (appState.settingsRequestSeq || 0) + 1;
       appState.settingsReadSeq = (appState.settingsReadSeq || 0) + 1;
       appState.settingsSaving = null;
@@ -6171,45 +6188,10 @@ function removeReadOnlyBanner() {
 }
 
 function syncCoverageReadOnlyState() {
-  const button = document.getElementById("coverage-run");
-  const gapsEl = document.getElementById("coverage-gaps");
-  const scoreEl = document.getElementById("coverage-score");
-  const readOnly = isBuildReadOnly();
-  if (button) {
-    button.disabled = readOnly;
-    button.title = readOnly ? "Read-only — copy to your account first" : "";
-  }
-  if (readOnly) {
-    if (coverageController) {
-      coverageController.abort();
-      coverageController = null;
-      jobToast.cancelJob("Scan stopped");
-    }
-    if (gapsEl) gapsEl.innerHTML = COVERAGE_IDLE_HINT;
-    if (scoreEl) {
-      delete scoreEl.dataset.ready;
-      scoreEl.hidden = true;
-    }
-    coverageGaps = [];
-    paintCoverageCount();
-  }
+  coverageView?.sync();
 }
 
-const COVERAGE_IDLE_HINT =
-  '<div class="muted hint">Scan to find the human moves this repertoire doesn\'t answer yet.</div>';
-
-function paintCoverageCount() {
-  const badge = document.getElementById("build-coverage-count");
-  if (!badge) return;
-  badge.hidden = !coverageGaps.length;
-  badge.textContent = String(coverageGaps.length);
-}
-
-function coverageScanStillValid(scanRepId) {
-  return !isBuildReadOnly() && appState.build && appState.build.repertoire_id === scanRepId;
-}
-
-async function trainRepertoire(repertoireId) {
+async function trainRepertoire(repertoireId, options = {}) {
   // Training reads the server's repertoire tree — make sure any pending Build edits
   // are persisted before we leave the builder.
   try {
@@ -6220,7 +6202,9 @@ async function trainRepertoire(repertoireId) {
   }
   appState.trainingRepertoireId = repertoireId;
   switchView("train");
-  await startTraining();
+  await startTraining(options.targetNodeIds?.length ? "smart" : undefined, {
+    ...options, repertoireId,
+  });
 }
 
 let repertoireMenuOpener = null;
@@ -6664,7 +6648,7 @@ async function runAnalysis(options = {}) {
       engineLifecycleMark("analyze-maia-phase-start", tAnalyze);
       try {
         const provider = getSharedMaia3Provider();
-        provider.setInitProgressHandler(({ phase, loaded, total }) => {
+        const unsubscribeProgress = provider.subscribeInitProgress(({ phase, loaded, total }) => {
           if (phase === "download") {
             const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
             job({
@@ -6697,7 +6681,7 @@ async function runAnalysis(options = {}) {
           if (!ready) throw new Error("Coach bundle unavailable");
           maiaAssessments = await timed("maia-inference", () => ready.finish(evals));
         } finally {
-          provider.setInitProgressHandler(null);
+          unsubscribeProgress();
         }
       } catch (brilliantErr) {
         if (brilliantErr && brilliantErr.cancelled) throw brilliantErr;
@@ -7556,7 +7540,8 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   }
   appState.build = payload;
   appState.buildNodeById = new Map(payload.nodes.map((node) => [node.id, node]));
-  // Any (re)hydrate means the repertoire may have changed — drop Analyze's book copy.
+  // Derived analysis must match this exact local tree, including optimistic edits.
+  coverageView?.sync();
   invalidateBook();
   // Orient only when a repertoire opens — a reconcile re-hydrate after an
   // autosave must not undo the user's manual flip (or rebuild the grid mid-drag).
@@ -8053,7 +8038,7 @@ class ExplorerEvalEngine {
     const depth = effectiveStockfishDepth();
     if (this.engine && this.engineDepth === depth) return;
     this.stop();
-    this.engine = createEngineProvider({ maxDepth: depth, maxMultipv: EXPLORER_EVAL_MAX_LINES });
+    this.engine = createEngineProvider({ maxDepth: depth, maxMultipv: EXPLORER_EVAL_MAX_LINES, priority: "interactive" });
     this.engineDepth = depth;
   }
 
@@ -8256,34 +8241,23 @@ function setBuildInspector(tool) {
   const dbs = document.getElementById("inspector-dbs");
   const opening = document.getElementById("explorer-opening");
   const engineSwitch = document.getElementById("explorer-engine-switch");
-  const scan = document.getElementById("coverage-run");
-  const score = document.getElementById("coverage-score");
   if (dbs) dbs.hidden = tab !== "explorer";
   if (opening) opening.hidden = tab !== "explorer";
   if (engineSwitch) engineSwitch.hidden = tab !== "explorer";
-  if (score) score.hidden = tab !== "coverage" || !score.dataset.ready;
-  if (scan) {
-    const readOnly = typeof isBuildReadOnly === "function" && isBuildReadOnly();
-    scan.hidden = tab !== "coverage";
-    const maiaOff = !maiaAnalysisEnabled();
-    // Coverage is Maia-only: with Maia off the button would do nothing, so say why.
-    scan.disabled = readOnly || maiaOff;
-    scan.title = readOnly
-      ? "Read-only — copy to your account first"
-      : maiaOff
-        ? "Turn on Maia in Settings to scan"
-        : "Scan coverage with Maia3";
+  for (const id of ["coverage-scope", "coverage-depth", "coverage-run"]) {
+    const el = document.getElementById(id);
+    if (el) el.hidden = tab !== "coverage";
   }
   paintInspectorScope();
   if (tab === "explorer") refreshExplorerPanel();
-  if (tab === "coverage") syncCoverageMaiaGate();
+  if (tab === "coverage") void ensureCoverageView().then((view) => { view.sync(); view.paint(); }).catch((error) => setStatusError(error.message));
   void explorerEvalEngine.sync();
 }
 
 // Compact scope line for the ⓘ popover: what the panel shows, nothing more.
 function inspectorScopeText() {
   if (buildDockTab === "coverage") {
-    return "Share of real human play at your strength that this repertoire answers.";
+    return "Share of human play at your rating that reaches a move your prepared mainline does not answer, within the horizon. Pruned or unmodelled lines count as unchecked.";
   }
   if (explorerDb !== "lichess") return "Master games.";
   const rating = effectiveMaiaRating();
@@ -8556,6 +8530,7 @@ function renderBuilderTreeEmptyState() {
 }
 
 function renderBuilderTree() {
+  coverageView?.sync();
   if (!appState.build) {
     renderBuilderTreeEmptyState();
     return;
@@ -8928,7 +8903,7 @@ async function renderSmartSummary(smart, stats, after) {
 
 // ----- Debounce + flush -------------------------------------------------------
 function scheduleBuildFlush() {
-  persistOutbox(); // R-03: queued edits hit localStorage before any timer/network
+  void persistOutbox(); // The flush awaits its durable checkpoint before sending.
   clearTimeout(appState.buildFlushTimer);
   appState.buildFlushTimer = setTimeout(() => {
     appState.buildFlushTimer = null;
@@ -8961,6 +8936,7 @@ function flushBuildMoves() {
   clearTimeout(appState.buildFlushTimer);
   appState.buildFlushTimer = null;
 
+  const durableCheckpoint = persistOutbox();
   // Snapshot the in-flight batches; moves made DURING the round-trip accumulate
   // in fresh queues and must survive the reconcile (§1.4 — the load-bearing bit).
   // R-02: only THIS repertoire's ops may ride the flush — entries restored from
@@ -8997,6 +8973,8 @@ function flushBuildMoves() {
   appState.buildFlushing = (async () => {
     let acknowledged = false;
     try {
+      await durableCheckpoint;
+      if (!isCurrent()) return false;
       // Deletes go FIRST: replaying a just-deleted move must create a fresh
       // node, not dedupe against the dying server one. A still-tmp id means the
       // node never reached the server (its pending add was cancelled) — drop it.
@@ -9013,7 +8991,7 @@ function flushBuildMoves() {
         });
         if (owner !== currentOwnerId()) return false;
         rebaseQueuedBuildRevision(batch, repertoireId, beforeRevision, payload.revision);
-        persistOutbox({ deletes: deleteBatch.map(buildDeleteId) });
+        await persistOutbox({ deletes: deleteBatch.map(buildDeleteId) });
         deleteBatch.length = 0;
       }
       if (batch.length) {
@@ -9030,12 +9008,12 @@ function flushBuildMoves() {
         appState.buildSyncRetry = 0;
         // Those tmp-only deletes are resolved either way — tombstone them so a
         // second tab can't put them back in the durable queue.
-        persistOutbox({ deletes: deleteBatch.map(buildDeleteId) });
+        await persistOutbox({ deletes: deleteBatch.map(buildDeleteId) });
         if (hasPendingBuildOpsFor(repertoireId)) {
           setBuildSync("dirty");
           scheduleBuildFlush();
         } else {
-          clearOutboxWhenQuiescent();
+          await clearOutboxWhenQuiescent();
           setBuildSync("saved");
         }
         return true;
@@ -9050,7 +9028,7 @@ function flushBuildMoves() {
         build: batch.map(buildAddId),
         deletes: deleteIds,
       };
-      persistOutbox(settled);
+      await persistOutbox(settled);
 
       // Translate the current selection + branch pick through tmp -> real.
       const prevSelection = appState.buildCurrentNodeId;
@@ -9105,7 +9083,8 @@ function flushBuildMoves() {
       } else {
         // R-01: only drop the owner's durable copy when Train's queue (and
         // anything kept for review) is empty too.
-        clearOutboxWhenQuiescent();
+        await clearOutboxWhenQuiescent();
+        if (!isCurrent()) return false;
         setBuildSync("saved");
       }
       return true;
@@ -9156,7 +9135,7 @@ function flushBuildMoves() {
             reapplyPendingBuildDeletes();
           }
         }
-        persistOutbox(settled);
+        await persistOutbox(settled);
         setStatusError(
           rejected.length
             ? `${rejected.length} edit${rejected.length === 1 ? "" : "s"} could not be saved and are kept for review. The rest saved.`
@@ -9168,7 +9147,7 @@ function flushBuildMoves() {
         } else if (appState.buildRejected.length) {
           setBuildSync("rejected");
         } else {
-          clearOutboxWhenQuiescent();
+          await clearOutboxWhenQuiescent();
           setBuildSync("saved");
         }
         return false;
@@ -9522,7 +9501,7 @@ function beaconFlushBuild() {
   // Close undo windows so their deletes ride this last-ditch flush (the rep
   // delete commit is itself keepalive-safe).
   commitPendingUndos();
-  persistOutbox(); // R-03: the durable copy lands even if the keepalive drops
+  void persistOutbox(); // Best effort only at unload; normal flush checkpoints first.
   if (!appState.build) return;
   const repId = appState.build.repertoire_id;
   // R-02: only this repertoire's ops — a queued op for another tree must not
@@ -12072,7 +12051,7 @@ async function startSmartTraining(options = {}) {
   setTrainBanner(
     "runin",
     fresh ? "Building a new queue…" : "Building your queue…",
-    "Weak spots and due reviews first",
+    "",
   );
   // Train must see the latest tree: drain unsynced Build edits (adds + deletes)
   // before the server builds the queue, else a just-added line wouldn't be in
@@ -12100,9 +12079,11 @@ async function startSmartTraining(options = {}) {
     // for line rehearsal). fresh: always rebuild the queue from the current
     // tree + SR state — a resumed stale queue is exactly the desync this avoids.
     trainResume = await loadTrainResume();
+    const targets = options.targetNodeIds || [];
     payload = await postJson("/api/train/smart/start", {
-      mixed: true,
-      fresh,
+      mixed: !targets.length,
+      fresh: fresh || !!targets.length,
+      ...(targets.length ? { repertoire_id: options.repertoireId, target_node_ids: targets } : {}),
     });
   } catch (error) {
     if (!isCurrent()) return;
@@ -12172,7 +12153,10 @@ async function startSmartTraining(options = {}) {
   // F-06: this session is the first practice for every queued "train this
   // mistake" handoff — stamp takenAt so the mistake→practice time is measurable.
   for (const handoff of pendingHandoffs({ reason: "practice-missed-move" })) {
-    takeHandoff({ key: handoff.key });
+    const scheduled = queue.some((card) =>
+      (!handoff.repertoireId || String(card.repertoire_id || payload.repertoire_id) === String(handoff.repertoireId)) &&
+      card.targets?.some((target) => target.fen_before === handoff.anchorFen));
+    if (scheduled && ["pending", "prepared"].includes(handoff.status)) transitionHandoff(handoff.key, "queued");
   }
   setBlitzBarVisible(appState.smart.blitz);
   const preview = document.getElementById("train-session-preview");
@@ -12326,6 +12310,8 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
     if (smart.blitz && smart.attempt === 1) startBlitzTimer(smart, prompt);
     else clearBlitzTimer();
   }
+  trackPreparationPractice({ repertoireId: cardMeta?.repertoire_id || smart.repertoireId,
+    nodeId: prompt.expected_node_id, fen: prompt.fen_before });
   prefetchTrainCoach(prompt);
   syncTrainSessionControls();
 }
@@ -12348,35 +12334,10 @@ function smartPromptCueSan(smart, prompt) {
 }
 
 function prefetchTrainCoach(prompt) {
-  if (!prompt || !prompt.fen_before) return;
-  maiaPhaseCoach({
-    fen: prompt.fen_before,
-    expectedUci: prompt.expected_uci,
-    expectedSan: prompt.expected_san,
-  })
-    .then((model) => {
-      const live = appState.smart && appState.smart.prompt === prompt;
-      if (!live || !model) return;
-      prompt.phaseCoach = model;
-      const banner = document.getElementById("train-banner");
-      const state = banner && banner.dataset.state;
-      const titleEl = document.getElementById("train-banner-title");
-      const stillTeaching =
-        prompt.kind === "new" &&
-        state === "teach" &&
-        titleEl &&
-        /New move/.test(titleEl.textContent || "");
-      if (stillTeaching) {
-        // What THIS move does, plus the human-play note only when it is specific —
-        // never the canned "Develop your pieces..." on every card (UX P1-6).
-        setTrainBanner(
-          "teach",
-          `New move: ${prompt.expected_san}`,
-          trainTeachLine(prompt, model) || "Watch the arrow, then play the move.",
-        );
-      }
-    })
-    .catch(() => {});
+  void import("./controllers/train-coach.js").then((mod) => {
+    if (appState.smart?.prompt !== prompt) return;
+    return mod.prefetchTrainCoach(prompt, { appState, maiaPhaseCoach, setTrainBanner, trainTeachLine });
+  }).catch((error) => { if (appState.smart?.prompt === prompt) console.warn("Train coach unavailable", error); });
 }
 
 // Mirror of services/training_smart.REQUEUE_GAP — keep in sync.
@@ -12408,6 +12369,10 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   // the server in the next debounced /smart/sync batch, not per move.
   const correct = playedUci === prompt.expected_uci;
   if (attempt === 1) queueTrainAttempt(smart, prompt.expected_node_id, correct);
+  if (correct) trackPreparationPractice({
+    repertoireId: smart.queue[smart.cardIndex]?.repertoire_id || smart.repertoireId,
+    nodeId: prompt.expected_node_id, fen: prompt.fen_before, completed: true,
+  });
   const stats = appState.trainStats || (trainStatsReset(), appState.trainStats);
 
   if (!correct) {
@@ -12709,7 +12674,7 @@ function markTrainPositionDirty() {
 
 function scheduleTrainSync() {
   const sync = appState.trainSync;
-  persistOutbox(); // R-03: the queue is durable from the moment it exists
+  void persistOutbox(); // Async commit status is surfaced by persistOutbox.
   clearTimeout(sync.timer);
   sync.timer = setTimeout(() => {
     sync.timer = null;
@@ -12730,6 +12695,7 @@ function flushTrainSync() {
   clearTimeout(sync.timer);
   sync.timer = null;
 
+  const durableCheckpoint = persistOutbox();
   const batch = sync.pending;
   sync.pending = [];
   sync.dirty = false;
@@ -12745,6 +12711,8 @@ function flushTrainSync() {
   setTrainSyncState("syncing");
 
   sync.flushing = (async () => {
+    await durableCheckpoint;
+    if (!isCurrent()) { sync.flushing = null; return false; }
     let outcome;
     let lastError = null;
     try {
@@ -12794,7 +12762,8 @@ function flushTrainSync() {
     if (rejectedCount) {
       appState.trainRejected = (appState.trainRejected || []).concat(outcome.rejectedGroups);
     }
-    if (settledAttempts.length) persistOutbox({ train: settledAttempts });
+    if (settledAttempts.length) await persistOutbox({ train: settledAttempts });
+    if (!isCurrent()) return false;
     const info = lastError ? classifySyncError(lastError) : null;
     const failedCount = outcome.failedGroups
       ? outcome.failedGroups.reduce((n, [, attempts]) => n + attempts.length, 0)
@@ -12817,7 +12786,8 @@ function flushTrainSync() {
       } else {
         // R-01: Train finishing its queue says nothing about Build's — only a
         // fully quiescent owner copy may be dropped.
-        clearOutboxWhenQuiescent();
+        await clearOutboxWhenQuiescent();
+        if (!isCurrent()) return false;
         setTrainSyncState("saved");
       }
       return rejectedCount === 0;
@@ -12864,7 +12834,7 @@ function flushTrainSync() {
 // mechanics as beaconFlushBuild; sendBeacon can't carry the CSRF header).
 function beaconFlushTrain() {
   const sync = appState.trainSync;
-  persistOutbox(); // R-03: attempts survive the tab even if the beacon drops
+  void persistOutbox(); // Unload cannot guarantee completion of an IDB transaction.
   if (!sync.pending.length && !sync.dirty) return;
   const token = readCsrfCookie();
   const smart = appState.smart;
@@ -13447,7 +13417,7 @@ async function ensureReplayView() {
   const mod = await preloadReplayView();
   if (!replayView) {
     replayView = mod.createReplayView({
-      escapeHtml,
+      escapeHtml, onError: setStatusError,
       // Focus-board renderers: the production FEN decoder + active piece-SVG
       // set, shared with the Library preview (piece style follows Settings).
       boardRenderers: { parseFenBoard, pieceSvg },
@@ -13464,26 +13434,25 @@ async function ensureReplayView() {
         saveReturnState("replay", { filter: appState.replayFilter, openIndex: index });
         void renderReplayResults(appState.replayResults).catch(() => {});
       },
-      onTrainMiss: (game, focus) => {
-        rememberHandoff(gameHandoff(game, focus, "practice-missed-move"));
-        goToSmartTraining("Your missed move is due now — press Start");
+      onTrainMiss: async (game, focus) => {
+        const task = rememberHandoff(gameHandoff(game, focus, "practice-missed-move"));
+        if (task.persisted === false) setStatus("Task kept in this tab only; browser storage is unavailable", { severity: "warning" });
+        if (!game.expected_node_id || !game.repertoire_id) throw new Error("Prepared move unavailable; reopen the repertoire");
+        await trainRepertoire(game.repertoire_id, { targetNodeIds: [game.expected_node_id], fresh: true });
       },
       onBuildReply: async (game, focus) => {
         rememberHandoff(gameHandoff(game, focus, "build-reply"));
-        await editRepertoire(game.repertoire_id, game.last_matched_node_id || null);
-        // Land on the position that needs the reply: play the opponent's new move
-        // from the last prepared position, so the next move on the board is yours.
-        const uci = game.departure_move_uci;
-        const node = appState.build && appState.buildNodeById.get(appState.buildCurrentNodeId);
-        if (!uci || !node || node.id !== game.last_matched_node_id || isBuildReadOnly()) return;
-        const toMove = String(node.fen || "").split(" ")[1] === "b" ? "black" : "white";
-        if (game.user_color && toMove === game.user_color) return; // the user's own move: nothing to add
-        if (!localBoardInfo(node.fen).legal_moves.includes(uci)) return;
-        await onBuildBoardMove(uci);
+        const owner = currentOwnerId(), generation = appState.ownerGeneration;
+        const isCurrent = () => owner === currentOwnerId() && generation === appState.ownerGeneration;
+        const mod = await import("./controllers/replay-actions.js");
+        if (!isCurrent()) return;
+        await mod.buildReply(game, { editRepertoire,
+          getNode: () => appState.buildNodeById.get(appState.buildCurrentNodeId),
+          isBuildReadOnly, localBoardInfo, onBuildBoardMove, isCurrent });
       },
       onAnalyze: (game, focus) => {
         rememberHandoff(gameHandoff(game, focus, "review-in-analyze"));
-        replayToAnalyze(game);
+        return replayToAnalyze(game);
       },
     });
   }
@@ -13510,52 +13479,20 @@ function gameHandoff(game, focus, reason) {
     anchorFen: (focus && focus.fen) || null,
     side: game.user_color === "black" ? "black" : "white",
     repertoireId: game.repertoire_id ?? null,
+    targetNodeIds: [game.expected_node_id].filter(Boolean),
   };
 }
 
 // "Review in Analyze": rebuild the game's PGN from the fetched move list and
 // hand it to the Analyze tab — same flow as "My last game" (press Analyze for
 // the full engine review; the book banner tracks your prep as you step through).
-function replayToAnalyze(game) {
-  const history = game.move_san_history || [];
-  if (!history.length) return;
-  const safe = (s) => String(s || "?").replace(/"/g, "'");
-  const headers = [
-    `[Event "Lichess game"]`,
-    `[Site "https://lichess.org/${safe(game.lichess_id || "")}"]`,
-    `[White "${safe(game.white)}"]`,
-    `[Black "${safe(game.black)}"]`,
-    `[Result "${safe(game.result || "*")}"]`,
-  ].join("\n");
-  const movetext = history
-    .map((san, i) => (i % 2 === 0 ? `${i / 2 + 1}. ${san}` : san))
-    .join(" ");
-  const input = document.getElementById("pgn-input");
-  if (input) input.value = `${headers}\n\n${movetext} ${game.result || "*"}`;
-  const drawer = document.getElementById("pgn-drawer");
-  if (drawer) drawer.open = true;
-  switchView("analyze");
-  orientAnalysisForSelf(game.white, game.black);
-  // Populate the move list immediately so the game is steppable before Analyze.
-  if (input) {
-    void loadPgnIntoAnalyze(input.value, { goToEnd: false, quiet: true })
-      .then(() => {
-        // F-06: land on the decision position (the ply before the divergence)
-        // instead of move 1 — the handoff carries the anchor so the user never
-        // has to re-find the moment in the game.
-        const handoff = takeHandoff({
-          reason: "review-in-analyze",
-          gameId: game.lichess_id || undefined,
-        });
-        const departPly =
-          (handoff && handoff.ply != null ? handoff.ply : Number(game.departure_ply)) || 1;
-        return showAnalysisPly(Math.max(0, departPly - 1));
-      })
-      .catch(() => {});
-  }
-  setStatus(
-    `Loaded ${game.white || "?"} vs ${game.black || "?"} — press Analyze game`
-  );
+async function replayToAnalyze(game) {
+  const owner = currentOwnerId(), generation = appState.ownerGeneration;
+  const isCurrent = () => owner === currentOwnerId() && generation === appState.ownerGeneration;
+  const mod = await import("./controllers/replay-actions.js");
+  if (!isCurrent()) return;
+  return mod.replayToAnalyze(game, { switchView, orientAnalysisForSelf,
+    loadPgnIntoAnalyze, showAnalysisPly, takeHandoff, setStatus, isCurrent });
 }
 
 // ----- Shared repertoire viewer (read-only Build) -------------------------------
@@ -13695,303 +13632,44 @@ async function forkReadableRepertoire() {
   }
 }
 
-// ----- Coverage scan (Build sidebar) -------------------------------------------
-// Maia3 walks my repertoire and measures how much of real human play (at the
-// player's strength) my prepared replies answer — reach-weighted, so a hole on
-// their main line outweighs one in a rare sideline. All compute runs on the
-// user's device via the shared Maia worker; the module is lazily imported.
+// ----- Coverage workbench (Build inspector) ------------------------------------
+let coverageView = null;
+let coverageViewReady = null;
 
-let coverageModule = null;
-let coverageController = null;
-let coverageGaps = []; // last scan's gaps, mapped by checkbox data-index for batch complete
+function ensureCoverageView() {
+  if (!coverageViewReady) {
+    coverageViewReady = import("./controllers/coverage.js").then(({ createCoverageController }) => {
+      coverageView = createCoverageController({
+        getContext: () => ({ build: appState.build, ownerId: currentOwnerId(),
+          ownerGeneration: appState.ownerGeneration, rating: effectiveMaiaRating(),
+          selectedNodeId: appState.buildCurrentNodeId, readOnly: isBuildReadOnly() }),
+        getProvider: () => getSharedMaia3Provider(), escapeHtml,
+        selectNode: selectBuildNode, getBoard: () => boards.build,
+        previewReplies: previewCoverageReplies, getJob: () => jobToast,
+        onError: (error) => setStatusError(error.message),
+      });
+      return coverageView;
+    }).catch((error) => { coverageViewReady = null; throw error; });
+  }
+  return coverageViewReady;
+}
 
 async function runCoverageScanUI() {
-  if (isBuildReadOnly()) {
-    setStatus("Read-only — copy to your account first");
-    return;
-  }
-  if (!appState.build || !appState.build.nodes || appState.build.nodes.length < 2) {
-    setStatus("Open a repertoire with some moves first");
-    return;
-  }
-  // No Stockfish gate here: the scan is Maia-only. Gating it on cross-origin
-  // isolation (a Stockfish requirement) wrongly blocked a Maia-only feature; if the
-  // Maia worker itself can't start, the provider surfaces that error below instead.
-  // Coverage explicitly requires Maia (human-likeness is the whole question), so
-  // when analysis-layer Maia is OFF the scan states its requirement instead of
-  // silently producing a different (Stockfish-only) answer.
-  if (!maiaAnalysisEnabled()) {
-    // Inline, with a one-click fix — not a truncated, vanishing toast.
-    if (buildDockTab !== "coverage") setBuildInspector("coverage");
-    renderCoverageMaiaGate();
-    return;
-  }
-  const button = document.getElementById("coverage-run");
-  if (button) button.disabled = true;
-  const scanRepId = appState.build.repertoire_id;
-  const rating = effectiveMaiaRating();
-  coverageController = new AbortController();
-  const jobId = `coverage-${Date.now()}`;
-  jobToast.startJob({
-    id: jobId,
-    title: "Scanning coverage",
-    tab: "build",
-    dock: document.getElementById("coverage-job-dock"),
-    total: 0,
-    onCancel: () => coverageController.abort(),
-  });
-  try {
-    if (!coverageModule) coverageModule = await import("./coverage.js");
-    const result = await coverageModule.runCoverageScan({
-      nodes: appState.build.nodes,
-      myColor: appState.build.color,
-      rating,
-      provider: getSharedMaia3Provider(),
-      signal: coverageController.signal,
-      onProgress: ({ scanned }) =>
-        jobToast.updateJob({ current: scanned, total: 0, message: `Maia read · ${scanned} positions` }),
-    });
-    if (!coverageScanStillValid(scanRepId)) {
-      jobToast.cancelJob("Scan discarded");
-      return;
-    }
-    renderCoverageResult(result, rating);
-    jobToast.completeJob({
-      message: `${Math.round(result.coverage * 100)}% of human play covered`,
-    });
-  } catch (error) {
-    if (error && error.name === "AbortError") jobToast.cancelJob("Scan stopped");
-    else jobToast.failJob(error.message);
-  } finally {
-    if (button && !isBuildReadOnly()) button.disabled = false;
-    coverageController = null;
-  }
+  try { await (await ensureCoverageView()).scan(); }
+  catch (error) { setStatusError(error.message); }
 }
 
-// Coverage's Maia requirement and the action that unblocks it.
-// Settings' "Maia3 · Ready" means the model is cached; the analysis switch is
-// what lets features use it — this card is where those two meet.
-const COVERAGE_MAIA_GATE =
-  '<div class="coverage-gate" data-testid="coverage-maia-gate">' +
-  "<p><b>Coverage needs Maia analysis.</b> Turn it on to scan.</p>" +
-  '<div class="row">' +
-  '<button type="button" class="btn sm primary" data-coverage-enable-maia>Turn on Maia analysis &amp; scan</button>' +
-  '<button type="button" class="btn sm ghost" data-coverage-open-settings>Open Settings</button>' +
-  "</div></div>";
-
-function renderCoverageMaiaGate() {
-  const gapsEl = document.getElementById("coverage-gaps");
-  if (!gapsEl) return;
-  gapsEl.innerHTML = COVERAGE_MAIA_GATE;
-  gapsEl.querySelector("[data-coverage-enable-maia]")?.addEventListener("click", () => {
-    setPref("maiaAnalysis", true);
-    gapsEl.innerHTML = COVERAGE_IDLE_HINT;
-    void runCoverageScanUI();
+async function previewCoverageReplies(gaps, options) {
+  const owner = currentOwnerId(), generation = appState.ownerGeneration;
+  const mod = await import("./controllers/coverage-replies.js");
+  if (owner !== currentOwnerId() || generation !== appState.ownerGeneration || !options.isValid()) return;
+  return mod.previewCoverageReplies(gaps, options, {
+    isBuildReadOnly, isBrowserEngineAvailable, unavailableMessage: BROWSER_ENGINE_UNAVAILABLE,
+    jobToast, hardFlushBuild, captureBuildContext, getBuild: () => appState.build,
+    effectiveMaiaRating, effectiveStockfishDepth, getGenerator: () => _buildGenReady || preloadBuildGen(),
+    getProvider: getSharedMaia3Provider, showConfirmModal, postJson, classifySyncError,
+    hydrateBuild, trainRepertoire,
   });
-  gapsEl.querySelector("[data-coverage-open-settings]")?.addEventListener("click", () => {
-    switchView("settings");
-    window.setTimeout(() => {
-      const toggle = document.getElementById("settings-maia-analysis");
-      if (!toggle) return;
-      toggle.scrollIntoView({ block: "center", behavior: "smooth" });
-      toggle.focus({ preventScroll: true });
-    }, 60);
-  });
-}
-
-// Coverage tab opened with Maia off and nothing scanned yet: say so up front
-// instead of waiting for a Scan click to fail.
-function syncCoverageMaiaGate() {
-  const gapsEl = document.getElementById("coverage-gaps");
-  if (!gapsEl || isBuildReadOnly()) return;
-  const gateShown = !!gapsEl.querySelector("[data-coverage-enable-maia]");
-  const idle = !coverageGaps.length && !document.getElementById("coverage-score")?.dataset.ready;
-  if (!maiaAnalysisEnabled() && idle && !gateShown) renderCoverageMaiaGate();
-  else if (maiaAnalysisEnabled() && gateShown) gapsEl.innerHTML = COVERAGE_IDLE_HINT;
-}
-
-function renderCoverageResult(result, rating) {
-  const score = document.getElementById("coverage-score");
-  if (score) {
-    score.dataset.ready = "1";
-    score.hidden = buildDockTab !== "coverage";
-    score.textContent = `${Math.round(result.coverage * 100)}% covered at ~${rating}${result.truncated ? " (partial scan)" : ""}`;
-  }
-  const gapsEl = document.getElementById("coverage-gaps");
-  if (!gapsEl) return;
-  if (!result.gaps.length) {
-    coverageGaps = [];
-    paintCoverageCount();
-    gapsEl.innerHTML = '<div class="muted hint">No notable holes found - the likely human moves all have an answer.</div>';
-    return;
-  }
-  // Keep the gaps so the batch-complete handler can map checkboxes back to {nodeId, moveUci}.
-  coverageGaps = result.gaps.slice();
-  paintCoverageCount();
-  // Gmail-style multi-select: every gap starts checked, the user unchecks any line they
-  // don't want, then "Complete" auto-builds a real reply (≥2 of my own moves deep) for the rest.
-  const rows = coverageGaps
-    .map(
-      (gap, i) => `
-    <div class="coverage-gap" data-index="${i}" data-node="${escapeHtml(gap.nodeId)}">
-      <input type="checkbox" class="coverage-gap-check" data-index="${i}" checked
-             aria-label="Complete ${escapeHtml(gap.moveSan)}" />
-      <span class="coverage-gap-body" role="button" tabindex="0" title="Jump to this position">
-        <span class="coverage-gap-move">${escapeHtml(gap.moveSan)}</span>
-        <span class="coverage-gap-meta">${Math.round(gap.prob * 100)}% play it here · hits ${(gap.impact * 100).toFixed(1)}% of games</span>
-      </span>
-    </div>`,
-    )
-    .join("");
-  gapsEl.innerHTML = `
-    <div class="coverage-complete-bar">
-      <label class="coverage-selall"><input type="checkbox" id="coverage-selectall" checked /> Select all</label>
-      <button class="btn primary" id="coverage-complete" data-testid="coverage-complete">Complete ${coverageGaps.length} lines</button>
-    </div>
-    ${rows}`;
-
-  const checks = () => Array.from(gapsEl.querySelectorAll(".coverage-gap-check"));
-  const selectAll = gapsEl.querySelector("#coverage-selectall");
-  const completeBtn = gapsEl.querySelector("#coverage-complete");
-  const syncCompleteBtn = () => {
-    const n = checks().filter((c) => c.checked).length;
-    completeBtn.textContent = n ? `Complete ${n} line${n === 1 ? "" : "s"}` : "Complete";
-    completeBtn.disabled = n === 0;
-    const all = checks();
-    selectAll.checked = n > 0 && n === all.length;
-    selectAll.indeterminate = n > 0 && n < all.length;
-  };
-  selectAll.addEventListener("change", () => {
-    checks().forEach((c) => (c.checked = selectAll.checked));
-    syncCompleteBtn();
-  });
-  checks().forEach((c) => c.addEventListener("change", syncCompleteBtn));
-  completeBtn.addEventListener("click", () => {
-    const chosen = checks()
-      .filter((c) => c.checked)
-      .map((c) => coverageGaps[Number(c.dataset.index)])
-      .filter(Boolean);
-    completeSelectedGaps(chosen);
-  });
-  // Clicking the move text (not the checkbox) jumps to the position to prep manually.
-  gapsEl.querySelectorAll(".coverage-gap-body").forEach((body) => {
-    const node = body.closest(".coverage-gap").dataset.node;
-    body.addEventListener("click", () => selectBuildNode(node));
-    body.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        selectBuildNode(node);
-      }
-    });
-  });
-  syncCompleteBtn();
-}
-
-// Auto-complete the chosen coverage gaps: for each, add the unanswered human move and
-// generate a real reply (Stockfish ours / Maia theirs) deep enough to clear the "shallow
-// line" bar (≥2 of my own moves). Sequential so the local-first add + apply-plan for each
-// line settles before the next; one job toast tracks the batch and Stop aborts cleanly.
-async function completeSelectedGaps(gaps) {
-  if (isBuildReadOnly()) {
-    setStatus("Read-only — copy to your account to edit");
-    return;
-  }
-  if (!isBrowserEngineAvailable()) {
-    setStatusError(BROWSER_ENGINE_UNAVAILABLE);
-    return;
-  }
-  if (!gaps || !gaps.length) return;
-  if (jobToast.isBusy()) {
-    setStatus("Another job is already running");
-    return;
-  }
-  const isCurrent = captureBuildContext();
-  const controller = new AbortController();
-  jobToast.startJob({
-    id: `coverage-complete-${Date.now()}`,
-    title: "Completing lines",
-    tab: "build",
-    dock: document.getElementById("coverage-job-dock"),
-    total: gaps.length,
-    onCancel: () => controller.abort(),
-  });
-  let done = 0;
-  let added = 0;
-  let failed = 0;
-  try {
-    for (const gap of gaps) {
-      if (controller.signal.aborted || !isCurrent()) break;
-      jobToast.updateJob({ current: done, total: gaps.length, message: `${gap.moveSan} · ${done + 1}/${gaps.length}` });
-      try {
-        added += await completeOneGap(gap, controller.signal);
-      } catch (error) {
-        if (error && error.name === "AbortError") break;
-        failed += 1; // a single line failing must not abort the whole batch
-      }
-      done += 1;
-    }
-    jobToast.completeJob({
-      title: "Lines completed",
-      message: `+${added} moves across ${done - failed} line${done - failed === 1 ? "" : "s"}${failed ? ` · ${failed} failed` : ""}`,
-      onClick: () => switchView("build"),
-    });
-    setStatus(`Coverage: completed ${done - failed}/${gaps.length} lines (+${added} moves)`);
-  } catch (error) {
-    jobToast.failJob(error.message);
-  }
-}
-
-async function completeOneGap(gap, signal) {
-  // Add the opponent's unanswered human move, landing on the resulting (my-turn) node.
-  const isCurrent = captureBuildContext();
-  await selectBuildNode(gap.nodeId);
-  if (!isCurrent()) throw new Error("Repertoire changed");
-  const before = appState.buildCurrentNodeId;
-  await onBuildBoardMove(gap.moveUci);
-  // onBuildBoardMove bails (without moving) on an illegal/blocked move — guard so we never
-  // generate from the gap node itself (which would build the opponent's tree, not a reply).
-  if (appState.buildCurrentNodeId === before) {
-    throw new Error(`could not play ${gap.moveSan}`);
-  }
-  // apply-plan anchors on a REAL node id, so drain pending local adds and re-resolve.
-  await hardFlushBuild();
-  if (!isCurrent()) throw new Error("Repertoire changed");
-  const nodeId = resolveBuildId(appState.buildCurrentNodeId);
-  const repertoireId = appState.build.repertoire_id;
-  const baseRevision = appState.build.revision;
-  const generationBuild = appState.build;
-  const { runBrowserBuildGenerate } = await (_buildGenReady || preloadBuildGen());
-  const plan = await runBrowserBuildGenerate({
-    build: generationBuild,
-    rootNodeId: nodeId,
-    ownColor: generationBuild.color,
-    plyDepth: 3, // my move → their reply → my move ⇒ 2 own moves on the line ("deep enough")
-    detailMode: "simple", // keep the per-line tree small for a batch run on the user's device
-    ownSideCandidateCount: 1,
-    maiaRating: effectiveMaiaRating(),
-    // Per-position Stockfish search depth from Settings (NOT the tree's ply depth).
-    depth: effectiveStockfishDepth(),
-    // Gap completion reuses the Generate runner, which is Maia-by-design
-    // (human-like replies) and independent of the Analyze-layer switch.
-    maiaProvider: getSharedMaia3Provider(),
-    signal,
-  });
-  if (signal && signal.aborted) {
-    const err = new Error("Completion stopped");
-    err.name = "AbortError";
-    throw err;
-  }
-  // Committing to the save now. Generation above is cancellable, but aborting the
-  // apply-plan fetch can't un-persist an atomic server apply — so the save does NOT
-  // take the abort signal. A Stop click during the POST still ends the batch (the
-  // outer loop re-checks signal.aborted before the next line), but THIS line finishes
-  // and hydrateBuild runs, so the client never drifts from server truth.
-  const payload = await postJson(
-    "/api/build/generate/apply-plan",
-    { repertoire_id: repertoireId, base_revision: baseRevision, root_node_id: nodeId, plan },
-  );
-  if (isCurrent()) await hydrateBuild(payload, nodeId);
-  return (payload.summary && payload.summary.added_nodes) || 0;
 }
 
 // ----- Opponent scouting (Replay tab) — lazy view chunk -----------------------
@@ -14424,8 +14102,22 @@ function bindEvents() {
     });
   }
   // Coverage scan: explicit button — never runs implicitly (it's a Maia batch).
+  // Scope and horizon live in these header controls, so a change made before
+  // the lazy controller loads is still the one it scans with.
   const coverageRun = document.getElementById("coverage-run");
   if (coverageRun) coverageRun.addEventListener("click", runCoverageScanUI);
+  const invalidateCoverage = () => { coverageView?.invalidate(); };
+  document.querySelectorAll("#coverage-scope [data-scope]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.classList.contains("is-active")) return;
+      document.querySelectorAll("#coverage-scope [data-scope]").forEach((b) => {
+        b.classList.toggle("is-active", b === btn);
+        b.setAttribute("aria-pressed", String(b === btn));
+      });
+      invalidateCoverage();
+    });
+  });
+  document.getElementById("coverage-depth")?.addEventListener("change", invalidateCoverage);
 
   // Explorer and Coverage share one compact header row: title + segmented
   // control + info popover + scan action. Selecting another tool replaces the
@@ -14517,7 +14209,10 @@ function bindEvents() {
     void analysisTreeNav("end").catch(() => {});
   }));
   for (const id of ["analysis-pv-exit", "build-pv-exit"]) {
-    document.getElementById(id)?.addEventListener("click", () => engineWidget?.exitPreview());
+    document.getElementById(id)?.addEventListener("click", () => {
+      engineWidget?.exitPreview();
+      if (id === "build-pv-exit") boards.build?.endPreview();
+    });
   }
 
   document.getElementById("build-root").addEventListener("click", navOrPreview("start", buildGoRoot));
@@ -14866,6 +14561,7 @@ async function init() {
   // spam the console. Gate that whole workspace load behind a real session.
   await refreshAuthProviders();
   await refreshAuthStatus();
+  setHandoffOwner(currentOwnerId());
   if (appState.signedIn) {
     await loadSignedInWorkspace();
   } else {
@@ -15076,7 +14772,8 @@ async function loadSignedInWorkspace() {
   // R-03/R-04: this OWNER's durable outbox comes back after a reload or an
   // earlier sign-out, and any flush paused waiting for sign-in re-arms.
   appState.syncPausedForAuth = false;
-  const restored = restoreOutbox();
+  const restored = await restoreOutbox();
+  if (!isCurrent()) return;
   if (appState.buildPending.length || appState.buildPendingDeletes.length) {
     setBuildSync("dirty");
     scheduleBuildFlush();

@@ -25,6 +25,7 @@ from sqlalchemy import (
     Enum as SAEnum,
     ForeignKey,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -197,7 +198,7 @@ class UserSetting(Base):
     # application code (current_owner gates every endpoint).
     user_id: Mapped[str] = mapped_column(String(32), primary_key=True, index=True)
     key: Mapped[str] = mapped_column(String(120), primary_key=True)
-    value_json: Mapped[str] = mapped_column(String(4000), nullable=False, default="null")
+    value_json: Mapped[str] = mapped_column(Text, nullable=False, default="null")
     updated_at: Mapped[str] = mapped_column(String(64), nullable=False, default=_now_text)
 
 

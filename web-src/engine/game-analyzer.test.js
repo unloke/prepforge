@@ -5,6 +5,7 @@ import {
   terminalEval,
   analyzeGamePositions,
   AnalysisCancelled,
+  resolveConcurrency,
 } from "./game-analyzer.js";
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -95,6 +96,16 @@ function makeFakeProviderFactory({ order, delays = {}, onCreate, opensThrow } = 
   };
 }
 
+describe("analysis worker budget", () => {
+  it("caps explicit requests as well as automatic requests", () => {
+    expect(resolveConcurrency(64)).toBe(4);
+    expect(resolveConcurrency(1)).toBe(1);
+    expect(resolveConcurrency(2.5)).toBe(2);
+    expect(resolveConcurrency(Infinity)).toBeGreaterThanOrEqual(1);
+    expect(resolveConcurrency(Infinity)).toBeLessThanOrEqual(4);
+  });
+});
+
 describe("analyzeGamePositions (worker pool)", () => {
   it("returns an empty map for no positions without creating a provider", async () => {
     let created = 0;
@@ -175,6 +186,35 @@ describe("analyzeGamePositions (worker pool)", () => {
       }),
     ).rejects.toBeInstanceOf(AnalysisCancelled);
     expect(seen).toEqual([]);
+  });
+
+  it("cancels even while a provider is queued for allocation", async () => {
+    vi.useFakeTimers();
+    try {
+      let cancelled = false;
+      const close = vi.fn(async () => {});
+      const result = analyzeGamePositions({ positions: [START_FEN], depth: 12, concurrency: 1,
+        shouldCancel: () => cancelled,
+        createProvider: () => ({ open: () => new Promise(() => {}), close }),
+      }).catch((error) => error);
+      cancelled = true;
+      await vi.advanceTimersByTimeAsync(100);
+      expect(await result).toBeInstanceOf(AnalysisCancelled);
+      expect(close).toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("bounds allocation and handshake waits by the per-position deadline", async () => {
+    vi.useFakeTimers();
+    try {
+      const close = vi.fn(async () => {});
+      const result = analyzeGamePositions({ positions: [START_FEN], depth: 12, concurrency: 1,
+        createProvider: () => ({ open: () => new Promise(() => {}), close }),
+      }).catch((error) => error);
+      await vi.advanceTimersByTimeAsync(30000);
+      expect((await result).message).toMatch(/startup timed out/);
+      expect(close).toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
   });
 
   it("propagates a provider failure to the caller", async () => {

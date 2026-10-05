@@ -68,6 +68,101 @@ def test_analysis_late_old_save_keeps_latest_summary_and_moves_together(repo, ba
     assert loaded.move_results[0].classification is MoveClassification.BEST
 
 
+def test_health_cache_rejects_stale_revision_and_older_computation(repo):
+    rep, _ = _build(repo)
+    current = repo.repertoire_revision(rep.id)
+    latest = {"revision": current, "computed_at": "2026-10-04T12:00:00+00:00", "trainable": 5}
+    repo.set_repertoire_health(rep.id, latest)
+    repo.set_repertoire_health(rep.id, {**latest, "revision": current - 1, "trainable": 1})
+    repo.set_repertoire_health(rep.id, {**latest, "computed_at": "2026-10-04T11:00:00+00:00", "trainable": 2})
+    with repo.engine.connect() as conn:
+        import json
+        stored = conn.scalar(t.repertoires.select().with_only_columns(
+            t.repertoires.c.health_json).where(t.repertoires.c.id == rep.id))
+        assert json.loads(stored) == latest
+
+
+def test_maximum_batch_receipt_round_trips_beyond_4000_characters(repo):
+    mapping = {"tmp-" + str(i) + "-" + "a" * 32: uuid.uuid4().hex for i in range(500)}
+    value = {"id_map": mapping}
+    repo.set_user_setting("owner", "build-receipt:boundary", value)
+    assert repo.get_user_setting("owner", "build-receipt:boundary") == value
+
+
+def test_real_maximum_move_batch_commits_full_receipt(repo):
+    import json
+    from collections import deque
+    from prepforge_chess.services.opening_builder import OpeningBuilderService
+    from prepforge_chess.api.routers.workspace import MAX_BULK_MOVES
+
+    rep, _ = _build(repo)
+    core = ChessCore()
+    parents = deque([(rep.root_node.id, rep.root_fen)])
+    changes = []
+    while len(changes) < MAX_BULK_MOVES:
+        parent, fen = parents.popleft()
+        for uci in core.legal_moves(fen):
+            temp = "tmp-batch-" + str(len(changes)) + "-" + "a" * 32
+            move = core.apply_uci(fen, uci)
+            changes.append({"tempId": temp, "parentRef": parent, "uci": uci})
+            parents.append((temp, move.fen_after))
+            if len(changes) == MAX_BULK_MOVES:
+                break
+    key = "build-receipt:max-batch-real"
+    _, _, mapping = OpeningBuilderService(repo).add_moves_batch(
+        rep.id, changes, receipt_target=("owner", key))
+    assert len(mapping) == MAX_BULK_MOVES
+    receipt = repo.get_user_setting("owner", key)
+    assert len(json.dumps(receipt)) > 4000
+    assert receipt["id_map"] == mapping
+    loaded = repo.load_repertoire(rep.id)
+    assert loaded is not None
+    with repo.engine.connect() as conn:
+        stored_ids = set(conn.scalars(sa_select_node_ids(rep.id)))
+    assert set(mapping.values()).issubset(stored_ids)
+
+
+def sa_select_node_ids(rep_id):
+    from sqlalchemy import select
+    return select(t.opening_nodes.c.id).where(t.opening_nodes.c.repertoire_id == rep_id)
+
+
+def test_concurrent_primary_changes_keep_one_account(repo):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+    from prepforge_chess.api.models import Base, LinkedAccount, User
+    from prepforge_chess.api.routers.lichess import SetPrimaryBody, set_primary
+
+    Base.metadata.create_all(repo.engine)
+    owner = uuid.uuid4().hex
+    account_ids = [uuid.uuid4().hex for _ in range(2)]
+    with Session(repo.engine) as db:
+        db.add(User(id=owner, email=owner + "@example.test"))
+        db.flush()
+        for i, account_id in enumerate(account_ids):
+            db.add(LinkedAccount(id=account_id, user_id=owner, provider="lichess",
+                                 provider_user_id=owner + str(i), is_primary=i == 0))
+        db.commit()
+    barrier = Barrier(2)
+
+    def change(account_id):
+        with Session(repo.engine) as db:
+            user = db.get(User, owner)
+            barrier.wait(timeout=10)
+            set_primary(SetPrimaryBody(account_id=account_id), user, db)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(change, account_id) for account_id in account_ids]
+        for future in futures:
+            future.result(timeout=30)
+    with Session(repo.engine) as db:
+        links = list(db.scalars(select(LinkedAccount).where(LinkedAccount.user_id == owner)))
+        assert len(links) == 2
+        assert sum(link.is_primary for link in links) == 1
+
+
 def test_sync_replayed_old_state_does_not_regress_position_or_queue(repo):
     rep, ids = _build(repo)
     service = SmartTrainingService(repo, "t-owner")

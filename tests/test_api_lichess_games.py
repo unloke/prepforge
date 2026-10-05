@@ -203,6 +203,32 @@ def test_compare_matches_against_owner_repertoire(client, monkeypatch):
     assert g["repertoire_name"] == "King's Pawn"
 
 
+def test_compare_reports_transposition_without_erasing_departure(client, monkeypatch):
+    _register(client, "reentry@example.com")
+    _link(client)
+    created = client.post("/api/repertoires/create",
+                          json={"name": "Transposition", "color": "white"},
+                          headers=csrf_headers(client)).json()
+    parent = created["selected_node_id"]
+    for uci in ["g1f3", "g8f6", "d2d4", "d7d5"]:
+        response = client.post("/api/build/add-move", json={
+            "repertoire_id": created["repertoire_id"], "parent_node_id": parent,
+            "move_uci": uci,
+        }, headers=csrf_headers(client))
+        assert response.status_code == 200
+        parent = response.json()["selected_node_id"]
+    game = _game()
+    game.pgn = _PGN.replace("1. e4 e5 2. Nf3 Nc6", "1. d4 d5 2. Nf3 Nf6")
+    _mock_fetch(monkeypatch, games=[game])
+    response = client.get("/api/lichess/compare")
+    assert response.status_code == 200
+    summary = response.json()["games"][0]
+    assert summary["departure_ply"] == 1
+    assert summary["departure_reason"] == "user_left_preparation"
+    assert summary["reentry_ply"] == 4
+    assert summary["reentry_node_ids"] == [parent]
+
+
 def test_compare_maps_upstream_failure_to_502(client, monkeypatch):
     _register(client, "a@example.com")
     _link(client)

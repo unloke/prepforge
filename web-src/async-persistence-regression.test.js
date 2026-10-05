@@ -23,7 +23,7 @@ it("opening a repertoire retains and reapplies its durable pending deletes", asy
     expect(appState.buildPendingDeletes).toEqual([deletion]);
   });
   const run = compile("async function hydrateBuild(", {
-    appState, clearTimeout: vi.fn(), boards: {}, invalidateBook: vi.fn(), renderBuildRepHeader: vi.fn(),
+    appState, coverageView: { sync: vi.fn() }, clearTimeout: vi.fn(), boards: {}, invalidateBook: vi.fn(), renderBuildRepHeader: vi.fn(),
     selectBuildNode: vi.fn(), reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes,
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id,
     renderBuildSync: vi.fn(), syncWorkspaceUrl: vi.fn(), hasPendingBuildOpsFor: () => true, setBuildSync: vi.fn(), scheduleBuildFlush: vi.fn(),
@@ -188,6 +188,7 @@ function trainFlushHarness() {
 it("a late Smart sync failure keeps the old generation and cannot dirty its rebuilt session", async () => {
   const h = trainFlushHarness();
   const pending = h.run();
+  await Promise.resolve();
   expect(h.deps.postJson.mock.calls[0][1]).toMatchObject({ session_generation: "old", card_index: 1, queue: ["old-card"] });
   h.appState.smart = { sessionId: "s", generation: "new", queue: [], cardIndex: 0 };
   h.response.reject(Object.assign(new Error("offline"), { status: 503 }));
@@ -199,6 +200,7 @@ it("a late Smart sync failure keeps the old generation and cannot dirty its rebu
 it("Smart sync sends the captured version and advances it only after accepting state", async () => {
   const h = trainFlushHarness();
   const pending = h.run();
+  await Promise.resolve();
   expect(h.deps.postJson.mock.calls[0][1].state_version).toBe(3);
   h.response.resolve({ state_applied: true, state_version: 5 });
   await pending;
@@ -215,9 +217,26 @@ it("Smart sync settles attempts but does not adopt a conflicting state's version
   expect(h.deps.setStatus).toHaveBeenCalledWith(expect.stringContaining("Resume"), { severity: "error" });
 });
 
+it("changing owners during the durable checkpoint releases the old flush without sending", async () => {
+  const h = trainFlushHarness();
+  const checkpoint = deferred();
+  h.deps.persistOutbox.mockImplementationOnce(() => checkpoint.promise);
+  const pending = h.run();
+  const old = h.appState.trainSync;
+  h.setOwner("bob");
+  h.appState.trainSync = { pending: [], dirty: false };
+  checkpoint.resolve(true);
+  expect(await pending).toBe(false);
+  expect(old.flushing).toBeNull();
+  expect(h.deps.postJson).not.toHaveBeenCalled();
+});
+
 it("a Train sync response after changing owners cannot settle the new owner's outbox or streak", async () => {
   const h = trainFlushHarness();
   const pending = h.run();
+  await Promise.resolve();
+  expect(h.deps.persistOutbox).toHaveBeenCalledTimes(1);
+  h.deps.persistOutbox.mockClear();
   h.setOwner("bob");
   const bob = { pending: [{ attempt_uuid: "bob" }], dirty: true };
   h.appState.trainSync = bob;

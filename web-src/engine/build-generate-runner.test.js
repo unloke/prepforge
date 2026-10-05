@@ -238,8 +238,9 @@ describe("orchestrator runBrowserBuildGenerate", () => {
     const sharedMaia = {
       ...fakeMaiaProvider({}),
       handlers: handlerLog,
-      setInitProgressHandler(fn) {
-        handlerLog.push(fn === null ? "cleared" : "set");
+      subscribeInitProgress() {
+        handlerLog.push("set");
+        return () => handlerLog.push("cleared");
       },
     };
     let factoryCalled = false;

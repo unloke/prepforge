@@ -990,6 +990,7 @@ class ApplyPlanBody(BaseModel):
     root_node_id: str
     plan: dict[str, Any] | None = None
     base_revision: int | None = None
+    operation_id: uuid.UUID | None = None
 
 
 @router.post("/build/generate/apply-plan")
@@ -1008,14 +1009,31 @@ def build_apply_plan(
     if not isinstance(body.plan, dict):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="plan must be an object")
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    receipt_target = None
+    if body.operation_id is not None:
+        key = "build-receipt:plan:" + str(body.operation_id)
+        digest = hashlib.sha256(json.dumps(
+            body.model_dump(mode="json"), sort_keys=True
+        ).encode()).hexdigest()
+        receipt = repo.get_user_setting(owner, key)
+        if receipt is not None:
+            if receipt.get("digest") != digest:
+                raise HTTPException(status_code=409, detail="operation_id reused with a different plan")
+            payload = build_workspace_payload(
+                repo, body.repertoire_id, owner_user_id=owner, summary=receipt["summary"]
+            )
+            payload["id_map"] = receipt.get("id_map", {})
+            return payload
+        receipt_target = (owner, key, digest)
     _check_base_revision(meta, body.base_revision, repo)
     try:
-        repertoire, summary = OpeningBuilderService(repo).apply_generation_plan(
-            body.repertoire_id, body.root_node_id, body.plan
+        builder = OpeningBuilderService(repo)
+        repertoire, summary = builder.apply_generation_plan(
+            body.repertoire_id, body.root_node_id, body.plan, receipt_target=receipt_target
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return build_workspace_payload(
+    payload = build_workspace_payload(
         repo,
         body.repertoire_id,
         selected_node_id=body.root_node_id,
@@ -1027,6 +1045,8 @@ def build_apply_plan(
             "high_probability_unprepared": summary.high_probability_unprepared,
         },
     )
+    payload["id_map"] = builder.applied_plan_id_map
+    return payload
 
 
 # ---- Build node actions / annotations / export (2b-2e) ----------------------

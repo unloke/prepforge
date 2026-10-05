@@ -600,8 +600,10 @@ describe("workspace chrome layout", () => {
     expect(app.slice(app.indexOf("async function fetchPlayMaia"), app.indexOf("async function fetchPlayMaia") + 300)).not.toMatch(/maiaAnalysisEnabled\(\)/);
     const genIdx = app.indexOf("runBrowserBuildGenerate({");
     expect(app.slice(genIdx, genIdx + 1200)).not.toMatch(/maiaAnalysisEnabled\(\)/);
-    // Coverage and Scout state their Maia requirement instead of silently changing shape.
-    expect(app).toMatch(/Coverage needs Maia analysis/);
+    // Coverage is an explicitly requested Maia operation, independent of Analyze's preference.
+    const coverageScan = app.slice(app.indexOf("async function runCoverageScanUI()"), app.indexOf("async function previewCoverageReplies"));
+    expect(coverageScan).toContain("ensureCoverageView()");
+    expect(coverageScan).not.toContain("maiaAnalysisEnabled");
     expect(scoutView).toContain("MAIA_ENRICH_OFF");
     expect(scoutView).toContain("maiaAnalysisEnabled");
     // Settings status peeks instead of constructing the worker.

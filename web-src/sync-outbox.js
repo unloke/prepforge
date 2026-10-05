@@ -1,8 +1,7 @@
 // Durable outbox for local-first edits (R-03).
 //
-// The Build/Train queues used to live only in appState memory: a refresh, a
-// crashed tab, or a sign-out could drop unconfirmed edits. This module gives
-// them a recoverable home in localStorage:
+// Pure merge/identity rules for the Build/Train queues; outbox-db.js stores
+// the merged state per owner in IndexedDB:
 //
 // - owner-scoped keys, so signing in as B never replays A's queued edits;
 // - operation identity survives the round-trip (Build temp ids, Train attempt
@@ -20,17 +19,11 @@
 //
 // Everything here is pure storage plumbing: no DOM, no network.
 
-const KEY_PREFIX = "prepforge.outbox.v1.";
 const LOCK_KEY = "prepforge.outbox.lock.v1";
 const LOCK_STALE_MS = 30_000;
 // A suspended tab can retain a stale snapshot indefinitely. Do not evict
 // tombstones until an enforced replay horizon exists.
 // Rejected operations remain available until the user resolves them.
-
-/** Outbox storage key for one owner ("" = not signed in yet). */
-export function outboxKey(ownerId) {
-  return KEY_PREFIX + (ownerId || "anon");
-}
 
 const EMPTY = {
   build: { pending: [], pendingDeletes: [], idMap: {}, rejected: [] },
@@ -48,45 +41,6 @@ function emptyOutbox() {
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
-}
-
-function safeParse(raw) {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return null;
-    return {
-      build: {
-        pending: asArray(parsed.build?.pending),
-        pendingDeletes: asArray(parsed.build?.pendingDeletes),
-        idMap:
-          parsed.build?.idMap && typeof parsed.build.idMap === "object" ? parsed.build.idMap : {},
-        // Permanently-rejected ops are KEPT for inspection/export — never
-        // silently dropped (R-01/R-02).
-        rejected: asArray(parsed.build?.rejected),
-      },
-      train: {
-        pending: asArray(parsed.train?.pending),
-        rejected: asArray(parsed.train?.rejected),
-      },
-      settled: {
-        build: asArray(parsed.settled?.build),
-        deletes: asArray(parsed.settled?.deletes),
-        train: asArray(parsed.settled?.train),
-      },
-    };
-  } catch (_) {
-    return null;
-  }
-}
-
-/** Load the owner's outbox (shape-normalized), or an empty one. */
-export function loadOutbox(ownerId) {
-  try {
-    return safeParse(localStorage.getItem(outboxKey(ownerId))) || emptyOutbox();
-  } catch (_) {
-    return emptyOutbox();
-  }
 }
 
 // ----- operation identity ----------------------------------------------------
@@ -154,7 +108,7 @@ function mergeById(base, incoming, idOf) {
  * `settled` is dropped from BOTH sides — those ops are confirmed on the
  * server, so a stale tab must not resurrect them.
  *
- * @param {ReturnType<typeof loadOutbox>} stored
+ * @param {object|null} stored
  * @param {object} incoming the caller's current in-memory state
  * @param {{build?: string[], deletes?: string[], train?: string[]}} [settled]
  *   identities confirmed since the last write
@@ -206,40 +160,6 @@ export function mergeOutboxState(stored, incoming, settled = null) {
       train: [...done.train],
     },
   };
-}
-
-/**
- * Persist the owner's outbox, merged with whatever is already stored.
- *
- * `settled` lists operations this tab just got confirmed for; they are
- * tombstoned so neither this tab nor a concurrent one re-queues them.
- * Returns false when storage refused the write (quota / blocked) so callers
- * can tell "kept in memory" from "recoverable from this device".
- */
-export function saveOutbox(ownerId, state, settled = null) {
-  try {
-    const merged = mergeOutboxState(loadOutbox(ownerId), state, settled);
-    localStorage.setItem(outboxKey(ownerId), JSON.stringify(merged));
-    return true;
-  } catch (_) {
-    return false; // storage blocked: behaviour degrades to the old in-memory queue
-  }
-}
-
-/**
- * Retain the owner's settlement history once everything is confirmed saved.
- * Only act when NOTHING is left for anyone (one feature must never erase
- * the other feature's unsynced work, nor the rejected ops kept for review).
- */
-export function clearOutbox(ownerId) {
-  try {
-    const stored = loadOutbox(ownerId);
-    if (!outboxIsQuiescent(stored)) return;
-    // Keep tombstones and id mappings: a suspended tab may still hold these ops.
-    localStorage.setItem(outboxKey(ownerId), JSON.stringify(stored));
-  } catch (_) {
-    /* ignore */
-  }
 }
 
 /** True when the outbox holds anything that still needs to reach the server. */
@@ -306,4 +226,4 @@ export function releaseFlushLock(tabId) {
   } catch (_) {
     /* ignore */
   }
-}
+}

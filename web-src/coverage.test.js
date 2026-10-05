@@ -1,106 +1,182 @@
 import { describe, expect, it } from "vitest";
+import { Chess } from "chess.js";
+import { buildWalk, coverageTreeKey, runCoverageScan } from "./coverage.js";
 
-import { buildWalk, runCoverageScan } from "./coverage.js";
-
-const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
-const AFTER_E4E5 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2";
-const AFTER_E4C5 = "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2";
-
-// My white repertoire: 1.e4 with e5 AND c5 prepared, one reply deep each.
-const NODES = [
-  { id: "root", depth: 0, parent_id: null, uci: null, fen: START },
-  { id: "e4", depth: 1, parent_id: "root", uci: "e2e4", fen: AFTER_E4 },
-  { id: "e5", depth: 2, parent_id: "e4", uci: "e7e5", fen: AFTER_E4E5 },
-  { id: "c5", depth: 2, parent_id: "e4", uci: "c7c5", fen: AFTER_E4C5 },
-];
-
-// Maia stub: after 1.e4 humans play e5 45%, c5 30%, e6 20% (e6 unprepared).
-function stubProvider(calls = []) {
-  return {
-    async predictions({ fen }) {
-      calls.push(fen);
-      if (fen === AFTER_E4) {
-        return [
-          { move_uci: "e7e5", probability: 0.45 },
-          { move_uci: "c7c5", probability: 0.3 },
-          { move_uci: "e7e6", probability: 0.2 },
-        ];
+function tree(lines) {
+  const start = new Chess();
+  const nodes = [{ id: "root", depth: 0, parent_id: null, fen: start.fen(), is_enabled: true }];
+  for (const line of lines) {
+    const chess = new Chess();
+    let parent = nodes[0];
+    for (const san of line) {
+      const own = chess.turn() === "w";
+      const move = chess.move(san);
+      const uci = move.from + move.to + (move.promotion || "");
+      let node = nodes.find((n) => n.parent_id === parent.id && n.uci === uci);
+      if (!node) {
+        node = { id: `n${nodes.length}`, parent_id: parent.id, depth: parent.depth + 1,
+          uci, san, fen: chess.fen(), is_prepared: own, is_enabled: true,
+          is_mainline: !nodes.some((n) => n.parent_id === parent.id) };
+        nodes.push(node);
       }
-      return [];
-    },
-  };
+      parent = node;
+    }
+  }
+  return nodes;
+}
+const provider = (predictions) => ({ predictions: async ({ fen }) => predictions(new Chess(fen)) });
+const scan = (nodes, options = {}) => runCoverageScan({ nodes, myColor: "white", rating: 1700,
+  maxDepth: 3, provider: provider(() => [{ move_uci: "e7e5", probability: 0.75 },
+    { move_uci: "e7e6", probability: 0.25 }]), ...options });
+function mass(result) {
+  expect(result.coveredMass + result.gapMass + result.unknownMass).toBeCloseTo(1, 10);
 }
 
-describe("buildWalk", () => {
-  it("indexes enabled nodes and children", () => {
-    const walk = buildWalk(NODES);
-    expect(walk.rootId).toBe("root");
-    expect(walk.children.get("e4").map((n) => n.id)).toEqual(["e5", "c5"]);
+describe("coverage walk and snapshot identity", () => {
+  it("indexes enabled nodes and leaves disabled descendants unreachable", () => {
+    const nodes = tree([["e4", "e5", "Nf3"]]);
+    nodes[1].is_enabled = false;
+    const walk = buildWalk(nodes);
+    expect(walk.byId.has(nodes[1].id)).toBe(false);
+    expect(walk.byId.has(nodes[2].id)).toBe(true);
+    expect(walk.children.get("root")).toBeUndefined();
   });
-  it("ignores disabled nodes", () => {
-    const walk = buildWalk([...NODES.slice(0, 3), { ...NODES[3], is_enabled: false }]);
-    expect(walk.children.get("e4").map((n) => n.id)).toEqual(["e5"]);
+  it("includes optimistic changes and preparation flags, excludes mastery and annotations", () => {
+    const nodes = tree([["e4"]]);
+    const key = coverageTreeKey(nodes);
+    expect(coverageTreeKey(nodes.map((n) => ({ ...n, mastery: "due", arrows: ["a1a2"] })))).toBe(key);
+    expect(coverageTreeKey([...nodes, ...tree([["d4"]]).slice(1)])).not.toBe(key);
+    expect(coverageTreeKey(nodes.map((n) => ({ ...n, is_prepared: false })))).not.toBe(key);
   });
 });
 
-describe("runCoverageScan", () => {
-  it("scores covered probability mass and names the biggest gap", async () => {
-    const calls = [];
-    const result = await runCoverageScan({
-      nodes: NODES,
-      myColor: "white",
-      rating: 1700,
-      provider: stubProvider(calls),
-    });
-    // One opponent node scanned (after 1.e4); root is my move, leaves end the walk.
-    expect(calls).toEqual([AFTER_E4]);
+describe("first-gap coverage", () => {
+  it("only credits a branch with an enabled prepared own answer", async () => {
+    const result = await scan(tree([["e4", "e5", "Nf3"]]));
+    expect(result.coverage).toBe(0.75);
+    expect(result.gapMass).toBe(0.25);
+    expect(result.gaps[0]).toMatchObject({ moveSan: "e6", kind: "missing_branch", pathSans: ["e4"] });
+    expect(result.status).toBe("complete");
+    mass(result);
+  });
+  it("detects a stored opponent move without an own reply", async () => {
+    const result = await scan(tree([["e4", "e5"]]));
+    expect(result.coverage).toBe(0);
+    expect(result.gaps.find((g) => g.moveSan === "e5").kind).toBe("missing_reply");
+    expect(result.gapMass).toBe(1);
+    mass(result);
+  });
+  it("scans opponent leaves instead of declaring no holes", async () => {
+    const result = await scan(tree([["e4"]]));
     expect(result.scannedNodes).toBe(1);
-    expect(result.coverage).toBeCloseTo(0.75); // e5 + c5 covered
-    expect(result.gaps).toHaveLength(1);
-    expect(result.gaps[0]).toMatchObject({ nodeId: "e4", moveUci: "e7e6", moveSan: "e6" });
-    expect(result.gaps[0].impact).toBeCloseTo(0.2);
-    expect(result.truncated).toBe(false);
+    expect(result.totalGapCount).toBe(2);
+    expect(result.coverage).toBe(0);
+    mass(result);
+  });
+  it("does not silently turn a missing own policy into coverage", async () => {
+    const result = await scan(tree([]));
+    expect(result.scannedNodes).toBe(0);
+    expect(result.unknownMass).toBe(1);
+    expect(result.stopReasons).toContain("no-own-policy");
+  });
+  it("treats unprepared or disabled own replies as missing", async () => {
+    for (const patch of [{ is_prepared: false }, { is_enabled: false }]) {
+      const nodes = tree([["e4", "e5", "Nf3"]]);
+      Object.assign(nodes[3], patch);
+      const result = await scan(nodes);
+      expect(result.coverage).toBe(0);
+      expect(result.gaps.some((g) => g.kind === "missing_reply")).toBe(true);
+    }
+  });
+  it("rejects illegal stored replies and legal moves paired with the wrong position", async () => {
+    for (const patch of [{ uci: "e2e5" }, { fen: new Chess().fen() }]) {
+      const nodes = tree([["e4", "e5", "Nf3"]]);
+      Object.assign(nodes[3], patch);
+      await expect(scan(nodes)).rejects.toThrow(/illegal move|position disagree/);
+    }
+    const nodes = tree([["e4", "e5", "Nf3"]]);
+    nodes[2].fen = new Chess().fen();
+    await expect(scan(nodes)).rejects.toThrow(/position disagree/);
   });
 
-  it("aborts cleanly via an AbortSignal", async () => {
+  it("follows one own policy, never sums mutually exclusive openings", async () => {
+    let calls = 0;
+    const result = await scan(tree([["e4", "e5", "Nf3"], ["d4", "d5", "c4"]]), {
+      provider: provider((chess) => { calls++; expect(chess.get("e4")?.type).toBe("p");
+        return [{ move_uci: "e7e5", probability: 1 }]; }),
+    });
+    expect(calls).toBe(1);
+    expect(result.coverage).toBe(1);
+    mass(result);
+  });
+  it("multiplies reach over decisions instead of averaging local coverage", async () => {
+    const nodes = tree([["e4", "e5", "Nf3", "Nc6", "Bc4"]]);
+    const result = await scan(nodes, { maxDepth: 5,
+      provider: provider((c) => c.get("f3") ? [{ move_uci: "b8c6", probability: 0.8 },
+        { move_uci: "g8f6", probability: 0.2 }] : [{ move_uci: "e7e5", probability: 0.8 },
+        { move_uci: "e7e6", probability: 0.2 }]) });
+    expect(result.coverage).toBeCloseTo(0.64);
+    expect(result.gapMass).toBeCloseTo(0.36);
+    mass(result);
+  });
+  it("retains small gaps and counts gaps omitted by display limit", async () => {
+    const nodes = tree([["e4"]]);
+    const result = await scan(nodes, { maxGaps: 1,
+      provider: provider(() => [{ move_uci: "e7e5", probability: 0.95 }, { move_uci: "e7e6", probability: 0.05 }]) });
+    expect(result.totalGapCount).toBe(2);
+    expect(result.omittedGapCount).toBe(1);
+    expect(result.gapMass).toBe(1);
+    mass(result);
+  });
+  it("keeps incomplete model probability mass unknown", async () => {
+    const result = await scan(tree([["e4", "e5", "Nf3"]]), {
+      provider: provider(() => [{ move_uci: "e7e5", probability: 0.6 }]),
+    });
+    expect(result.coverage).toBe(0.6);
+    expect(result.unknownMass).toBe(0.4);
+    expect(result.stopReasons).toContain("model-mass");
+    mass(result);
+  });
+  it("reports node and reach pruning as unknown", async () => {
+    const nodes = tree([["e4", "e5", "Nf3", "Nc6", "Bc4"]]);
+    for (const opts of [{ maxNodes: 1 }, { minReach: 0.9 }]) {
+      const result = await scan(nodes, { maxDepth: 5, ...opts });
+      expect(result.coverage).toBe(0);
+      expect(result.unknownMass).toBe(0.75);
+      expect(result.status).toBe("partial");
+      mass(result);
+    }
+  });
+  it("uses relative depth for a reachable branch scope", async () => {
+    const nodes = tree([["e4", "e5", "Nf3", "Nc6", "Bc4"]]);
+    const result = await scan(nodes, { rootNodeId: nodes[3].id, maxDepth: 2,
+      provider: provider(() => [{ move_uci: "b8c6", probability: 1 }]) });
+    expect(result.coverage).toBe(1);
+    expect(result.rootNodeId).toBe(nodes[3].id);
+    nodes[1].is_enabled = false;
+    await expect(scan(nodes, { rootNodeId: nodes[3].id })).rejects.toThrow(/disabled/);
+  });
+  it("credits a terminal position without model inference", async () => {
+    const nodes = tree([["f3", "e5", "g4", "Qh4#"]]);
+    const result = await scan(nodes, { rootNodeId: nodes[4].id,
+      provider: { predictions: () => { throw new Error("should not run"); } } });
+    expect(result.coverage).toBe(1);
+    expect(result.scannedNodes).toBe(0);
+  });
+  it("rejects illegal, duplicate, nonfinite and overfull distributions", async () => {
+    for (const predictions of [
+      [{ move_uci: "e2e4", probability: 1 }],
+      [{ move_uci: "e7e5", probability: NaN }],
+      [{ move_uci: "e7e5", probability: -0.1 }],
+      [{ move_uci: "e7e5", probability: 0.6 }, { move_uci: "e7e6", probability: 0.6 }],
+      [{ move_uci: "e7e5", probability: 0.3 }, { move_uci: "e7e5", probability: 0.3 }],
+    ]) await expect(scan(tree([["e4"]]), { provider: provider(() => predictions) })).rejects.toThrow(/probabilit/);
+  });
+  it("cancels immediately even when shared inference has not answered", async () => {
     const controller = new AbortController();
+    const result = scan(tree([["e4"]]), { signal: controller.signal,
+      provider: { predictions: () => new Promise(() => {}) } });
     controller.abort();
-    await expect(
-      runCoverageScan({
-        nodes: NODES,
-        myColor: "white",
-        rating: 1700,
-        provider: stubProvider(),
-        signal: controller.signal,
-      }),
-    ).rejects.toMatchObject({ name: "AbortError" });
-  });
-
-  it("respects the maxNodes cap and reports truncation", async () => {
-    // Two parallel opponent nodes: 1.e4 e5 and 1.e4 c5 each have a prepared reply,
-    // making the *next* opponent positions scannable; cap at 1 keeps it to one.
-    const deeper = [
-      ...NODES,
-      { id: "nf3", depth: 3, parent_id: "e5", uci: "g1f3",
-        fen: "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2" },
-      { id: "nc6", depth: 4, parent_id: "nf3", uci: "b8c6",
-        fen: "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3" },
-    ];
-    const provider = {
-      async predictions({ fen }) {
-        if (fen === AFTER_E4) return [{ move_uci: "e7e5", probability: 0.9 }];
-        return [{ move_uci: "b8c6", probability: 0.8 }];
-      },
-    };
-    const result = await runCoverageScan({
-      nodes: deeper,
-      myColor: "white",
-      rating: 1700,
-      provider,
-      maxNodes: 1,
-    });
-    expect(result.scannedNodes).toBe(1);
-    expect(result.truncated).toBe(true);
+    await expect(result).rejects.toMatchObject({ name: "AbortError" });
   });
 });

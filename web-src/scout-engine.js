@@ -2,9 +2,10 @@
 // cache per game, and aggregate recurring mistake patterns by trie path.
 
 import { Chess } from "chess.js";
-import { createEngineProvider } from "./engine/stockfish-provider.js";
+import { createEngineProvider, ANALYSIS_MAX_NODES } from "./engine/stockfish-provider.js";
+import stockfishManifest from "../src/prepforge_chess/web/static/engine/stockfish.manifest.json";
 import { analyzeGamePositions, isTerminalPosition } from "./engine/game-analyzer.js";
-import { classifyMove, cpToWin } from "./explain.js";
+import { classifyMove, evaluationToWin } from "./explain.js";
 import { confidence } from "./scout-stats.js";
 import { ANALYZE_PLIES, MAX_PLIES, triePathKey } from "./scout.js";
 
@@ -15,10 +16,25 @@ export const SCOUT_ENGINE_MIN_RECURRENCE = 2;
 export const SCOUT_ENGINE_DEFAULT_GAMES = 60;
 export const ENGINE_AGG_MIN_ANALYZED_GAMES = 3;
 export const ENGINE_AGG_MIN_COVERAGE_PCT = 60;
-export const ENGINE_CACHE_SCHEMA = 3;
-const CACHE_PREFIX = "prepforge.scout.engine.v3";
+export const ENGINE_CACHE_SCHEMA = 5;
+export const ENGINE_CACHE_MAX_ENTRIES = 120;
+export const ENGINE_CACHE_MAX_BYTES = 4 * 1024 * 1024;
+export const ENGINE_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const CACHE_PREFIX = "prepforge.scout.engine.v5";
+
+export function scoutCacheProvenance(game, oppColor) {
+  return JSON.stringify({
+    engine: stockfishManifest.files.wasm.sha256,
+    script: stockfishManifest.files.script.sha256,
+    classifier: "shared-win-mate-v1",
+    maxNodes: ANALYSIS_MAX_NODES,
+    opponent: oppColor,
+    ucis: game.ucis,
+    sans: game.sans,
+  });
+}
 const LEGACY_CACHE_PREFIX = "prepforge.scout.engine.v1";
-const STALE_CACHE_PREFIXES = [LEGACY_CACHE_PREFIX, "prepforge.scout.engine.v2"];
+const STALE_CACHE_PREFIXES = [LEGACY_CACHE_PREFIX, "prepforge.scout.engine.v2", "prepforge.scout.engine.v3", "prepforge.scout.engine.v4"];
 
 class ScanCancelled extends Error {
   constructor(message = "Deep scan stopped") {
@@ -54,7 +70,7 @@ export function isCompleteScanCacheEntry(cached) {
     return false;
   }
   if (!Array.isArray(rec.moves) || !Array.isArray(rec.mistakes)) return false;
-  if (rec.complete !== true) return false;
+  if (rec.complete !== true || rec.analyzedOpponentPlies !== rec.eligibleOpponentPlies) return false;
   if (rec.analyzedOpponentPlies > 0 && rec.moves.length !== rec.analyzedOpponentPlies) {
     return false;
   }
@@ -71,7 +87,7 @@ function purgeStaleCacheKeys(store, gameId, depth, plies) {
   }
 }
 
-export function readGameCache(store, gameId, depth, plies) {
+export function readGameCache(store, gameId, depth, plies, provenance) {
   if (!gameId) return null;
   try {
     purgeStaleCacheKeys(store, gameId, depth, plies);
@@ -79,7 +95,9 @@ export function readGameCache(store, gameId, depth, plies) {
     const raw = store.getItem(key);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (isCompleteScanCacheEntry(parsed)) return parsed;
+      const age = Date.now() - parsed.at;
+      if (provenance && parsed.provenance === provenance && Number.isFinite(age) &&
+          age >= 0 && age <= ENGINE_CACHE_TTL_MS && isCompleteScanCacheEntry(parsed)) return parsed;
       store.removeItem(key);
     }
   } catch (_) {
@@ -88,13 +106,34 @@ export function readGameCache(store, gameId, depth, plies) {
   return null;
 }
 
-function writeGameCache(store, gameId, depth, plies, payload) {
+export function writeGameCache(store, gameId, depth, plies, payload) {
   if (!gameId) return;
   try {
-    store.setItem(
-      cacheKey(gameId, depth, plies),
-      JSON.stringify({ ...payload, schemaVersion: ENGINE_CACHE_SCHEMA }),
-    );
+    const value = JSON.stringify({ ...payload, schemaVersion: ENGINE_CACHE_SCHEMA });
+    if (!payload.provenance || !isCompleteScanCacheEntry({ ...payload, schemaVersion: ENGINE_CACHE_SCHEMA })) return;
+    // Count UTF-16 storage bytes conservatively. Evict only this derived cache;
+    // user data and sync receipts are never part of this retention policy.
+    if (value.length * 2 > ENGINE_CACHE_MAX_BYTES) return;
+    const entries = [];
+    let bytes = value.length * 2;
+    const target = cacheKey(gameId, depth, plies);
+    for (let i = 0; i < store.length; i++) {
+      const key = store.key(i);
+      if (!key?.startsWith(`${CACHE_PREFIX}:`) || key === target) continue;
+      const raw = store.getItem(key);
+      let at = 0;
+      try { at = JSON.parse(raw).at || 0; } catch (_) { /* malformed cache is evicted first */ }
+      entries.push({ key, bytes: (raw?.length || 0) * 2, at });
+      bytes += (raw?.length || 0) * 2;
+    }
+    entries.sort((a, b) => a.at - b.at);
+    while (entries.length && (entries.length >= ENGINE_CACHE_MAX_ENTRIES || bytes > ENGINE_CACHE_MAX_BYTES ||
+        Date.now() - entries[0].at > ENGINE_CACHE_TTL_MS)) {
+      const oldest = entries.shift();
+      store.removeItem(oldest.key);
+      bytes -= oldest.bytes;
+    }
+    store.setItem(target, value);
   } catch (_) {
     /* best-effort */
   }
@@ -111,16 +150,17 @@ export function cpLossFromEvals(beforeCp, afterCp, mover) {
   return Math.max(0, beforeMover - afterMover);
 }
 
-export function classifyOpponentMove({ fenBefore, playedUci, bestUci, beforeCp, afterCp }) {
+export function classifyOpponentMove({ fenBefore, playedUci, bestUci, beforeCp, afterCp, beforeMate = null, afterMate = null }) {
   const mover = moverFromFen(fenBefore);
   // classifyMove expects White-POV win % and applies mover flip internally.
   const classification = classifyMove({
-    winBefore: cpToWin(beforeCp),
-    winAfter: cpToWin(afterCp),
+    winBefore: evaluationToWin({ cp: beforeCp, mate: beforeMate }),
+    winAfter: evaluationToWin({ cp: afterCp, mate: afterMate }),
     mover,
     isBest: playedUci && bestUci && playedUci === bestUci,
   });
-  const cpLoss = cpLossFromEvals(beforeCp, afterCp, mover);
+  const effectiveCp = (cp, mate) => mate > 0 ? 1000 : mate < 0 ? -1000 : cp ?? 0;
+  const cpLoss = cpLossFromEvals(effectiveCp(beforeCp, beforeMate), effectiveCp(afterCp, afterMate), mover);
   return { cpLoss, classification, mover };
 }
 
@@ -185,6 +225,8 @@ function buildAnalyzedMoveResults(positions, evalMap) {
       bestUci: beforeEval.best_move_uci,
       beforeCp,
       afterCp,
+      beforeMate: beforeEval.mate_in,
+      afterMate: afterEval.mate_in,
     });
     const label = classification?.label || null;
     const isInaccuracy =
@@ -226,7 +268,8 @@ function buildGameScanRecord(game, positions, analyzedMoves) {
 }
 
 async function analyzeGameForScan(game, oppColor, { depth, storage, shouldCancel, createProvider }) {
-  const cached = readGameCache(storage, game.gameId, depth, ANALYZE_PLIES);
+  const provenance = scoutCacheProvenance(game, oppColor);
+  const cached = readGameCache(storage, game.gameId, depth, ANALYZE_PLIES, provenance);
   if (cached?.record) {
     return {
       mistakes: cached.record.mistakes || buildMistakeMoves(cached.record.moves || []),
@@ -262,6 +305,7 @@ async function analyzeGameForScan(game, oppColor, { depth, storage, shouldCancel
     record,
     moves: record.mistakes,
     at: Date.now(),
+    provenance,
   });
   return { mistakes: record.mistakes, record };
 }

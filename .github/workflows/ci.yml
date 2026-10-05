@@ -88,6 +88,7 @@ jobs:
           uv run pytest -q
           tests/test_migration_lichess_primary.py
           tests/test_migration_eval_fingerprint.py
+          tests/test_migration_receipts.py
           tests/test_api_lichess.py
           tests/test_api_lichess_games.py
           tests/test_lichess_departure_misses.py
