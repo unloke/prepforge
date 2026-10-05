@@ -64,19 +64,18 @@ describe("Explorer bars", () => {
 describe("Generate dialog", () => {
   const helpers = compile(
     [
-      "function estimateBuildGenerateTotal({ plyDepth, replyThreshold, maxReplies, userToMove = true }) {",
+      "function estimateBuildGenerateTotal({ plyDepth, mainThreshold, branchThreshold, userToMove = true }) {",
       "function clampGenerateInt(raw, min, max, fallback) {",
       "function readGenerateOptions(values, { userToMove = true } = {}) {",
       "function generateEstimateRange(options) {",
       "function generateEstimateText(options) {",
     ],
     {
-      GEN_MAX_PLY_DEPTH: 12,
-      GEN_MAX_OWN_MOVES: 6,
-      GEN_MAX_REPLIES: 6,
-      GEN_DEFAULT_OWN_MOVES: 3,
-      GEN_DEFAULT_REPLY_PCT: 10,
-      GEN_DEFAULT_MAX_REPLIES: 3,
+      GEN_MAX_PLY_DEPTH: 20,
+      GEN_MAX_OWN_MOVES: 10,
+      GEN_DEFAULT_OWN_MOVES: 6,
+      GEN_DEFAULT_MAIN_PCT: 10,
+      GEN_DEFAULT_BRANCH_PCT: 30,
       STOCKFISH_MIN_DEPTH: 1,
       STOCKFISH_MAX_DEPTH: 30,
       effectiveMaiaRating: () => 1500,
@@ -84,28 +83,31 @@ describe("Generate dialog", () => {
     },
   );
 
-  it("counts depth in your moves and always ends the tree on your answer", () => {
+  it("counts depth in full moves and always ends the tree on your answer", () => {
     expect(helpers.readGenerateOptions({ own_moves: "3" }, { userToMove: true }).plyDepth).toBe(5);
     expect(helpers.readGenerateOptions({ own_moves: "3" }, { userToMove: false }).plyDepth).toBe(6);
-    expect(helpers.readGenerateOptions({ own_moves: "99" }, { userToMove: false }).plyDepth).toBe(12);
-    expect(helpers.readGenerateOptions({}).plyDepth).toBe(5);
+    expect(helpers.readGenerateOptions({ own_moves: "99" }, { userToMove: false }).plyDepth).toBe(20);
+    expect(helpers.readGenerateOptions({}).plyDepth).toBe(11);
   });
 
   it("reads every coverage knob, clamped, with defaults for blanks", () => {
-    const opts = helpers.readGenerateOptions({ reply_pct: "5", max_replies: "9", maia_rating: "", engine_depth: "20" });
-    expect(opts.replyThreshold).toBeCloseTo(0.05);
-    expect(opts.maxReplies).toBe(6);
+    const opts = helpers.readGenerateOptions({ main_pct: "5", branch_pct: "99", maia_rating: "", engine_depth: "20" });
+    expect(opts.mainThreshold).toBeCloseTo(0.05);
+    expect(opts.branchThreshold).toBeCloseTo(0.5);
     expect(opts.maiaRating).toBe(1500);
     expect(opts.engineDepth).toBe(20);
-    expect(helpers.readGenerateOptions({}).replyThreshold).toBeCloseTo(0.1);
+    expect(helpers.readGenerateOptions({}).mainThreshold).toBeCloseTo(0.1);
+    expect(helpers.readGenerateOptions({}).branchThreshold).toBeCloseTo(0.3);
   });
 
   it("estimates more moves for deeper or broader coverage", () => {
-    const base = { plyDepth: 5, replyThreshold: 0.1, maxReplies: 3 };
+    const base = { plyDepth: 5, mainThreshold: 0.1, branchThreshold: 0.3 };
     const range = helpers.generateEstimateRange(base);
     expect(range.low).toBeLessThan(range.high);
     expect(helpers.generateEstimateRange({ ...base, plyDepth: 9 }).high).toBeGreaterThan(range.high);
-    expect(helpers.generateEstimateRange({ ...base, maxReplies: 1 }).high).toBeLessThan(range.high);
+    expect(helpers.generateEstimateRange({ ...base, mainThreshold: 0.05 }).high).toBeGreaterThan(range.high);
+    const deep = helpers.generateEstimateRange({ ...base, plyDepth: 11 }).high;
+    expect(helpers.generateEstimateRange({ ...base, plyDepth: 11, branchThreshold: 0.5 }).high).toBeLessThan(deep);
     expect(helpers.generateEstimateText(base)).toMatch(/^About \d+–\d+ new moves$/);
   });
 

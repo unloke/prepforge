@@ -636,8 +636,7 @@ const BROWSER_ENGINE_UNAVAILABLE =
 // risks exceeding the server apply-plan caps (≤2000 changes / depth ≤64). The
 // modal enforces these; GEN_PLAN_CHANGES_SOFT_CAP mirrors the server MAX_PLAN_CHANGES
 // so we fail with an actionable message instead of a raw 400 after the work is done.
-const GEN_MAX_PLY_DEPTH = 12;
-const GEN_MAX_REPLIES = 6;
+const GEN_MAX_PLY_DEPTH = 20;
 const GEN_PLAN_CHANGES_SOFT_CAP = 2000;
 
 const boards = {};
@@ -9689,61 +9688,62 @@ async function fillPgnInputFromFile(file) {
 
 // Rough up-front size of a Build → Generate run, for the dialog's estimate and the
 // progress bar's ceiling. Your side always gets one move (the engine's best); each
-// opponent position keeps the replies humans play at least `replyThreshold` of the
-// time, up to `maxReplies` (the engine mainline counts as one). The reply count per
-// position is a heuristic over typical Maia distributions (~3 at 10%, ~2 at 20%).
+// opponent position keeps the replies humans play at least `mainThreshold` of the time
+// on the mainline path and `branchThreshold` inside side branches. The reply count per
+// position is a heuristic over typical Maia distributions (~3 at 10%, ~1.7 at 30%).
 // A 20% buffer lets the bar finish a touch early.
-function estimateBuildGenerateTotal({ plyDepth, replyThreshold, maxReplies, userToMove = true }) {
+function estimateBuildGenerateTotal({ plyDepth, mainThreshold, branchThreshold, userToMove = true }) {
   const depth = Math.max(1, Number(plyDepth) || 1);
-  const share = Math.max(0.01, Number(replyThreshold) || 0.1);
-  const cap = Math.max(1, Number(maxReplies) || GEN_DEFAULT_MAX_REPLIES);
-  const oppRecurse = Math.min(cap, 1 + 0.2 / share);
-  let nodesAtPly = 1; // anchor
+  const repliesAt = (share) => Math.min(6, 1 + 0.2 / Math.max(0.01, Number(share) || 0.1));
+  const mainReplies = repliesAt(mainThreshold ?? GEN_DEFAULT_MAIN_PCT / 100);
+  const branchReplies = repliesAt(branchThreshold ?? GEN_DEFAULT_BRANCH_PCT / 100);
+  let branchNodes = 0; // nodes off the mainline path at the current ply
   let total = 0;
   for (let ply = 1; ply <= depth; ply++) {
     const userPly = userToMove ? ply % 2 === 1 : ply % 2 === 0;
-    nodesAtPly *= userPly ? 1 : oppRecurse;
-    total += nodesAtPly;
+    if (!userPly) branchNodes = branchNodes * branchReplies + (mainReplies - 1);
+    total += 1 + branchNodes; // the mainline node plus everything branched off it
   }
   return Math.max(4, Math.ceil(total * 1.2));
 }
 
-// Generate dialog: every knob in plain view, no presets. Depth is counted in YOUR
-// moves (the tree always ends on your answer); the opponent side is the coverage
-// rule. Kept conservative: the recursion runs locally and a huge tree risks the
+// Generate dialog: every knob in plain view, no presets. Depth is counted in full
+// moves (one of yours plus their reply); the tree always ends on your answer.
+// Opponent coverage has two cut-offs: on the mainline path and inside side branches. Kept conservative: the recursion runs locally and a huge tree risks the
 // server apply-plan caps. See GEN_MAX_* / GEN_PLAN_CHANGES_SOFT_CAP.
 const GEN_MAX_OWN_MOVES = GEN_MAX_PLY_DEPTH / 2;
-const GEN_DEFAULT_OWN_MOVES = 3;
-const GEN_DEFAULT_REPLY_PCT = 10;
-const GEN_DEFAULT_MAX_REPLIES = 3;
+const GEN_DEFAULT_OWN_MOVES = 6;
+const GEN_DEFAULT_MAIN_PCT = 10;
+const GEN_DEFAULT_BRANCH_PCT = 30;
 
 function generateDialogFields() {
   return [
     {
       name: "own_moves",
-      label: `Your moves deep (1-${GEN_MAX_OWN_MOVES})`,
+      label: `Full moves deep (1-${GEN_MAX_OWN_MOVES})`,
+      hint: "A full move is one of yours plus their reply.",
       type: "number",
       default: GEN_DEFAULT_OWN_MOVES,
       min: 1,
       max: GEN_MAX_OWN_MOVES,
     },
     {
-      name: "reply_pct",
-      label: "Cover replies played at least (%)",
+      name: "main_pct",
+      label: "Cover mainline replies played at least (%)",
       hint: "Opponent moves below this share of human games are left out.",
       type: "number",
-      default: GEN_DEFAULT_REPLY_PCT,
+      default: GEN_DEFAULT_MAIN_PCT,
       min: 1,
       max: 50,
     },
     {
-      name: "max_replies",
-      label: `Replies per position, at most (1-${GEN_MAX_REPLIES})`,
-      hint: "The engine's best reply always counts as one.",
+      name: "branch_pct",
+      label: "Cover branch replies played at least (%)",
+      hint: "Same cut-off, applied inside side branches.",
       type: "number",
-      default: GEN_DEFAULT_MAX_REPLIES,
+      default: GEN_DEFAULT_BRANCH_PCT,
       min: 1,
-      max: GEN_MAX_REPLIES,
+      max: 50,
     },
     // Defaults to the player's own strength (Settings → Playing strength), so the
     // tree leans toward replies THEIR opponents actually play.
@@ -9783,8 +9783,8 @@ function readGenerateOptions(values, { userToMove = true } = {}) {
   return {
     plyDepth,
     userToMove,
-    replyThreshold: clampGenerateInt(values.reply_pct, 1, 50, GEN_DEFAULT_REPLY_PCT) / 100,
-    maxReplies: clampGenerateInt(values.max_replies, 1, GEN_MAX_REPLIES, GEN_DEFAULT_MAX_REPLIES),
+    mainThreshold: clampGenerateInt(values.main_pct, 1, 50, GEN_DEFAULT_MAIN_PCT) / 100,
+    branchThreshold: clampGenerateInt(values.branch_pct, 1, 50, GEN_DEFAULT_BRANCH_PCT) / 100,
     maiaRating: clampGenerateInt(values.maia_rating, 600, 2600, effectiveMaiaRating()),
     engineDepth: clampGenerateInt(
       values.engine_depth,
@@ -9870,7 +9870,7 @@ async function generateFromCurrentNode() {
   });
   if (!values || !isCurrent()) return;
   const generateOptions = readGenerateOptions(values, { userToMove });
-  const { plyDepth, replyThreshold, maxReplies, maiaRating, engineDepth } = generateOptions;
+  const { plyDepth, mainThreshold, branchThreshold, maiaRating, engineDepth } = generateOptions;
 
   const jobId = `browser-generate-${Date.now()}`;
   const generatedRepertoireId = appState.build.repertoire_id;
@@ -9949,8 +9949,8 @@ async function generateFromCurrentNode() {
       ownColor,
       plyDepth,
       maiaRating,
-      replyThreshold,
-      maxReplies,
+      mainThreshold,
+      branchThreshold,
       // Per-position Stockfish search depth (NOT the tree's ply depth).
       depth: engineDepth,
       signal: controller.signal,

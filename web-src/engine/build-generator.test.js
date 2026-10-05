@@ -856,15 +856,10 @@ describe("opponent coverage knobs (Generate dialog)", () => {
     expect(rootReplies(plan)).toEqual(["e7e5", "c7c5", "e7e6"]);
   });
 
-  it("replyThreshold sets one minimum share for every position", async () => {
-    const plan = await run({ rootFen: B_ROOT, maia, engine, replyThreshold: 0.05 });
+  it("mainThreshold sets the minimum share on the mainline path", async () => {
+    const plan = await run({ rootFen: B_ROOT, maia, engine, mainThreshold: 0.05 });
     expect(rootReplies(plan)).toEqual(["e7e5", "c7c5", "e7e6", "d7d6"]);
-    const strict = await run({ rootFen: B_ROOT, maia, engine, replyThreshold: 0.2 });
+    const strict = await run({ rootFen: B_ROOT, maia, engine, mainThreshold: 0.2 });
     expect(rootReplies(strict)).toEqual(["e7e5", "c7c5"]);
-  });
-
-  it("maxReplies keeps the engine mainline plus the likeliest replies", async () => {
-    const plan = await run({ rootFen: B_ROOT, maia, engine, replyThreshold: 0.05, maxReplies: 2 });
-    expect(rootReplies(plan)).toEqual(["e7e5", "c7c5"]);
   });
 });
