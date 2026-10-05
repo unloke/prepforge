@@ -99,6 +99,7 @@
      best-move arrow keeps the calm "good" green (colour means chess). */
   --arrow-user: rgba(47, 91, 211, 0.78);
   --arrow-engine: rgba(29, 138, 79, 0.8);
+  --arrow-better: rgba(176, 62, 196, 0.8);
   /* Board coordinate labels. */
   --coord-on-light: #354655;
   --coord-on-dark: #172a38;
@@ -206,6 +207,7 @@
   --mark-missed: rgba(160, 135, 230, 0.48);
   --arrow-user: rgba(120, 152, 245, 0.82);
   --arrow-engine: rgba(80, 196, 132, 0.82);
+  --arrow-better: rgba(222, 132, 240, 0.85);
   --coord-on-light: #354655;
   --coord-on-dark: #07121a;
   --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -1601,7 +1603,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .lib-cell-queue { flex-wrap: wrap; }
 .lib-mastery { display: flex; align-items: center; gap: 8px; width: 100%; }
-.lib-mastery b { font-size: var(--fs-s); font-variant-numeric: tabular-nums; }
+.lib-mastery b { min-width: 4ch; text-align: right; font-size: var(--fs-s); font-variant-numeric: tabular-nums; }
 /* Mastery bar: a visible track (so 0% still reads as an empty bar, not a
    missing one) and enough height to compare rows at a glance. */
 .lib-mbar {
@@ -1612,10 +1614,16 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   background: var(--surface-3);
   box-shadow: inset 0 0 0 1px var(--line);
   overflow: hidden;
+  position: relative;
 }
-.lib-mbar i { display: block; height: 100%; border-radius: inherit; background: var(--k-mastered); }
-.lib-mbar i.tier-mid { background: var(--k-due); }
-.lib-mbar i.tier-low { background: var(--k-weak); }
+.lib-mbar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  transition: width 0.4s ease;
+}
+.lib-mbar i.is-started { background: color-mix(in srgb, var(--k-learning) 55%, var(--surface-3)); }
+.lib-mbar i.is-mastered { background: var(--k-mastered); box-shadow: 1px 0 0 var(--surface-3); }
 .lib-mastery-none {
   width: auto;
   padding: 1px 6px;
@@ -2017,15 +2025,39 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   fill: var(--arrow-engine);
 }
 
-/* Fork-option hints: faint, under explicit arrows; the picked option is stronger. */
+/* The move that should have been played (Analyze, on an error): its own hue, so it
+   never reads as the engine's next move or as one of yours. */
+.annot-better {
+  fill: var(--arrow-better);
+}
+
+/* Fork-option hints, under explicit arrows. Idle options share one translucent group
+   (overlaps don't darken); the picked option is drawn stronger on top. */
+.annot-branches {
+  opacity: 0.42;
+}
+
 .annot-branch {
   fill: var(--accent);
-  opacity: 0.3;
   filter: none;
 }
 
 .annot-branch.is-pick {
-  opacity: 0.7;
+  opacity: 0.72;
+}
+
+/* The engine's move is also a fork option: the option's fill with an engine-green rim. */
+.annot-branch.is-engine {
+  opacity: 1;
+  fill-opacity: 0.4;
+  stroke: var(--good);
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0.3px 0.6px rgba(0, 0, 0, 0.22));
+}
+
+.annot-branch.is-engine.is-pick {
+  fill-opacity: 0.72;
 }
 
 .square {

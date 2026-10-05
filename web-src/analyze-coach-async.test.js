@@ -35,7 +35,8 @@ function harness({ reviewed = true } = {}) {
   const store = fakeStore();
   const deps = {
     window: globalThis, effectiveStockfishDepth: () => 16, analysisStore: async () => store,
-    setEngineBestArrow: vi.fn(), activeViewName: () => view, isBrowserEngineAvailable: () => true,
+    setEngineBestArrow: vi.fn(), setAnalysisBetterArrow: vi.fn(), savedBetterMove: () => null,
+    offerLiveBetterArrow: vi.fn(), activeViewName: () => view, isBrowserEngineAvailable: () => true,
     isReviewedMove: () => reviewed, analysisSelfSide: () => (reviewed ? null : "black"),
     _coachReady: moduleGate.promise, preloadCoach: () => moduleGate.promise,
     savedPositionEvalRead: () => null, savedMainlineMove: () => ({ classification: "good" }),

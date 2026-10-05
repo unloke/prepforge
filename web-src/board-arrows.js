@@ -28,7 +28,7 @@ export function isKnightHop(from, to) {
 }
 
 // The arrow's centre line: [tail, (corner), neck] plus the tip it points at.
-function spine(from, to) {
+function spine(from, to, headLength = HEAD_LENGTH) {
   const knight = isKnightHop(from, to);
   const corner = knight
     ? Math.abs(to.x - from.x) > Math.abs(to.y - from.y)
@@ -41,12 +41,16 @@ function spine(from, to) {
   const lastFrom = corner || from;
   const u1 = unit(lastFrom.x, lastFrom.y, to.x, to.y);
   const tip = { x: to.x - u1.x * TIP_INSET, y: to.y - u1.y * TIP_INSET };
-  const neck = { x: tip.x - u1.x * HEAD_LENGTH, y: tip.y - u1.y * HEAD_LENGTH };
+  const neck = { x: tip.x - u1.x * headLength, y: tip.y - u1.y * headLength };
   return { points: corner ? [tail, corner, neck] : [tail, neck], tip, dir: u1 };
 }
 
-export function buildArrowPath(from, to) {
-  const { points, tip, dir } = spine(from, to);
+// ``scale`` thins the shaft and head (same tip and tail), for arrows that should
+// read as secondary next to a full-weight one.
+export function buildArrowPath(from, to, { scale = 1 } = {}) {
+  const halfShaft = HALF_SHAFT * scale;
+  const halfHead = HALF_HEAD * scale;
+  const { points, tip, dir } = spine(from, to, HEAD_LENGTH * Math.sqrt(scale));
   const left = [];
   const right = [];
   for (let i = 0; i < points.length; i++) {
@@ -63,7 +67,7 @@ export function buildArrowPath(from, to) {
     nx /= nlen;
     ny /= nlen;
     const cos = nx * -inDir.y + ny * inDir.x;
-    const k = HALF_SHAFT / (Math.abs(cos) > 0.2 ? cos : 1);
+    const k = halfShaft / (Math.abs(cos) > 0.2 ? cos : 1);
     left.push({ x: p.x + nx * k, y: p.y + ny * k });
     right.push({ x: p.x - nx * k, y: p.y - ny * k });
   }
@@ -72,9 +76,9 @@ export function buildArrowPath(from, to) {
   const py = dir.x;
   const outline = [
     ...left,
-    { x: neck.x + px * HALF_HEAD, y: neck.y + py * HALF_HEAD },
+    { x: neck.x + px * halfHead, y: neck.y + py * halfHead },
     tip,
-    { x: neck.x - px * HALF_HEAD, y: neck.y - py * HALF_HEAD },
+    { x: neck.x - px * halfHead, y: neck.y - py * halfHead },
     ...right.reverse(),
   ];
   return outline.map((p, i) => `${i ? "L" : "M"}${fmt(p.x)},${fmt(p.y)}`).join(" ") + " Z";
