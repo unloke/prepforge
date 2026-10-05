@@ -189,7 +189,7 @@ async function runViewport(vp) {
   }
 
   // Mastery bar carries the health pct.
-  const barWidth = await page.locator("#dashboard-repertoires .lib-row:first-child .lib-mbar i").getAttribute("style");
+  const barWidth = await page.locator("#dashboard-repertoires .lib-row:first-child .lib-mbar i.is-mastered").getAttribute("style");
   check(/width:\s*50%/.test(barWidth || ""), `first row mastery bar should be 50%, got "${barWidth}"`);
 
   const row2 = page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]');
