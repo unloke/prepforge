@@ -34,23 +34,6 @@ export default [
     rules: commonRules,
   },
   {
-    // These authored Scout studies are exercised as Node-oriented research
-    // entry points. Keep them in the lint set while declaring their host APIs;
-    // this is intentionally different from excluding them as generated code.
-    files: [
-      "web-src/scout-ref-df-census.js",
-      "web-src/scout-v15-*.js",
-      "web-src/scout-shadow-prep-*.js",
-      "web-src/scout-route-audit.js",
-      "web-src/scout-maia-harness.js",
-      "web-src/scout-stockfish-uci.js",
-    ],
-    languageOptions: {
-      globals: { ...globals.browser, ...globals.es2021, ...globals.node },
-    },
-    rules: commonRules,
-  },
-  {
     files: ["scripts/**/*.mjs"],
     languageOptions: {
       ecmaVersion: "latest",

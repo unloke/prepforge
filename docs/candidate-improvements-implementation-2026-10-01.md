@@ -40,6 +40,6 @@
 
 部署時執行 `alembic upgrade head`，新增 revision 為 `a91d4c2e7b60_account_lifecycle_indexes`。既有已升級資料庫只需新 index migration；尚未經過 f3 fingerprint backfill 的大型 PostgreSQL 資料庫仍需安排 migration window，chunking 不會解除同一 transaction 的 DDL locks。
 
-Lifecycle CLI 使用與 server 相同的 DATABASE_URL，不自動建立 schema。先執行 `python -m prepforge_chess lifecycle` 查看 dry run，再依 [部署說明](DEPLOYMENT.md#data-lifecycle-operations) 執行或安排 `--apply`。未替使用者啟用外部排程或執行 production data cleanup。Referenced immutable evaluations 不直接按時間刪除，analysis history trimming 是明確 opt-in。
+Lifecycle CLI 使用與 server 相同的 DATABASE_URL，不自動建立 schema。先執行 `python -m prepforge_chess.services.data_lifecycle` 查看 dry run，再依 [部署說明](DEPLOYMENT.md#data-lifecycle-operations) 執行或安排 `--apply`。未替使用者啟用外部排程或執行 production data cleanup。Referenced immutable evaluations 不直接按時間刪除，analysis history trimming 是明確 opt-in。
 
 下一批需要設計或環境證據的工作是：server 可驗證的 offline replay horizon/epoch、跨 process Lichess 資源保護量測、大型 PostgreSQL migration / query-plan 實測、其他 runtime UI states 覆蓋，以及依實際 chunk/coupling 決定 Scout/app.js 邊界整理。這些尚未完成，不以本次 correctness 修正取代驗證。

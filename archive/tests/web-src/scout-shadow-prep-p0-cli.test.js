@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { epdOf } from "../../../web-src/scout-graph.js";
+import { epdOf } from "../../../research/lib/scout-graph.js";
 import {
   attachSharedYToPackages,
   buildPinnedSharedEngineIdentity,
@@ -13,7 +13,7 @@ import {
   scoreToWhiteCp,
   validateSharedYReceipt,
   verifyShadowPrepBuildArtifacts,
-} from "../../../web-src/scout-shadow-prep-p0.js";
+} from "../../../research/lib/scout-shadow-prep-p0.js";
 import {
   packagesWithSharedY,
   sharedYAttachmentIntegrityIssues,

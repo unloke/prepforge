@@ -83,24 +83,6 @@ class ChessCore:
             legal_move_count=board.legal_moves.count(),
         )
 
-    def is_legal_uci(self, fen: str, move_uci: str) -> bool:
-        board = self.board(fen)
-        try:
-            move = chess.Move.from_uci(move_uci)
-        except ValueError:
-            return False
-        return move in board.legal_moves
-
-    def san_to_uci(self, fen: str, san: str) -> str:
-        board = self.board(fen)
-        move = board.parse_san(san)
-        return move.uci()
-
-    def uci_to_san(self, fen: str, move_uci: str) -> str:
-        board = self.board(fen)
-        move = self._parse_legal_uci(board, move_uci)
-        return board.san(move)
-
     def apply_uci(
         self,
         fen: str,
@@ -121,18 +103,6 @@ class ChessCore:
             comment=comment,
             tags=tags,
         )
-
-    def apply_san(
-        self,
-        fen: str,
-        san: str,
-        *,
-        source: MoveSource = MoveSource.MANUAL,
-        ply: Optional[int] = None,
-    ) -> MoveRecord:
-        board = self.board(fen)
-        move = board.parse_san(san)
-        return self._record_and_push(board=board, move=move, source=source, ply=ply)
 
     def apply_uci_sequence(
         self,

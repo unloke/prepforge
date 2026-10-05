@@ -1297,9 +1297,6 @@ export function buildScoutSectionReport(
     prefilterEnrichState = "idle",
     prefilteredLines = null,
     trie: prebuiltTrie = null,
-    // v12 mode: the standalone audit viewer replaces this section's weakness list and
-    // coverage bar; keep the heading, intel summary, first-move distribution and charts.
-    v3Mode = false,
   },
 ) {
   // The streaming view keeps a persistent per-colour trie (inserted once per game) and
@@ -1449,18 +1446,16 @@ export function buildScoutSectionReport(
     ? renderScoutRefutationGapActions(refutationGaps, escapeHtml)
     : "";
 
-  const prepRows = v3Mode
-    ? ""
-    : prepTargets
-        .map((t, i) => scoutWeaknessRowHtml(t, i, oppColor, baseline, escapeHtml))
-        .join("");
+  const prepRows = prepTargets
+    .map((t, i) => scoutWeaknessRowHtml(t, i, oppColor, baseline, escapeHtml))
+    .join("");
   const rankedNote = scoutMaiaRankedNote(prepTargets, maiaEnrichState, {
     prefilterState: prefilterEnrichState,
   });
   const who = escapeHtml(username || "Opponent");
   const yourSide = oppColor === "white" ? "Black" : "White";
   const planHead = `<div class="scout-game-plan-head plan-head">
-            <b class="scout-col-label">${v3Mode ? "First moves" : `Your game plan as ${yourSide}`}</b>
+            <b class="scout-col-label">Your game plan as ${yourSide}</b>
           </div>`;
   const firstMovesHtml = `<div class="scout-first-moves">
             <span class="scout-sub-label">${who}'s first moves</span>
@@ -1480,7 +1475,7 @@ export function buildScoutSectionReport(
           ${planHead}
           ${firstMovesHtml}
           ${gapActionsHtml}
-          ${v3Mode ? "" : '<div class="muted hint">No reachable weak spots in these games</div>'}
+          <div class="muted hint">No reachable weak spots in these games</div>
         </div>`;
 
   const heading = oppColor === "white" ? "With White" : "With Black";

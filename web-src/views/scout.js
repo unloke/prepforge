@@ -29,8 +29,6 @@ import {
 } from "../scout-report.js";
 import { createScoutInitGuard, scoutStateCarryover } from "../scout-init-guard.js";
 import { sameFetchSources } from "./shared/source-composer.js";
-let v13ReportModule = null;
-let v13ReportPromise = null;
 
 const SCOUT_E2E_BUILD_ENABLED = import.meta.env.VITE_ENABLE_SCOUT_E2E === "1";
 import { colorRecommendation } from "../scout-stats.js";
@@ -335,9 +333,6 @@ export function createScoutView(deps) {
     updateScoutControls();
     updateLiveCounter();
 
-    // v13 experimental panel paints standalone — no classic report required.
-    if (isV13Mode()) paintV13Panel();
-
     const results = getResultsEl();
     const profile = getProfileEl();
     if (scoutState) {
@@ -451,7 +446,6 @@ export function createScoutView(deps) {
     };
     const speedOpts = {
       speedFilter: scoutState.activeSpeed,
-      v3Mode: isV13Mode(),
       escapeHtml,
       enginePatterns: engineScanPatterns(scoutState.engineByColor?.white),
       explorerReads: scoutState.explorerByColor?.white || null,
@@ -507,216 +501,8 @@ export function createScoutView(deps) {
     }
     if (force) updateLiveCounter();
     patchEngineProgressUI();
-    // v13 is a standalone panel — classic prefilter/Maia enrichment stays v2-only.
-    if (!isV13Mode() && !isStreaming() && !isEnrichmentInFlight()) {
+    if (!isStreaming() && !isEnrichmentInFlight()) {
       schedulePrefilterEnrich();
-    }
-  }
-
-  // ---- Scout UI modes -------------------------------------------------------------------------
-  // "v2"  (default)      — the classic full report: stats, intel, prefilter/Maia weakness list.
-  // "v13" (?scoutV13=1)  — stream-native prep packages from the live game trie.
-
-  function isV13Mode() {
-    try {
-      return new URLSearchParams(window.location.search).has("scoutV13");
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function getV12PanelEl() {
-    return document.getElementById("scout-v3-results");
-  }
-
-  let v13Result = null;
-  let v13Running = false;
-  let v13CancelRequested = false;
-  let v13Progress = { stage: "", done: 0, total: 0 };
-
-  function v13MiniBoard(fen, orientation) {
-    return renderScoutMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg });
-  }
-
-  // v13 is per subject colour (design §4: 每色 3–4 包); "both" mode runs each colour
-  // that actually has trie data instead of collapsing to one.
-  function v13SubjectColors() {
-    const sel = scoutState?.color;
-    const wanted = sel === "white" || sel === "black" ? [sel] : ["black", "white"];
-    return wanted.filter((c) => liveTrieForColor(c)?.children?.size);
-  }
-
-  function v13TrieReady() {
-    return v13SubjectColors().length > 0;
-  }
-
-  function v13ProgressLabel() {
-    const p = v13Progress;
-    const colorNote = p.colorLabel ? `(顏色 ${p.colorLabel})` : "";
-    if (p.stage === "funnel") return `備戰套件篩選中${colorNote}…`;
-    if (p.stage === "candidate" && p.total) {
-      return `分析候選路線 ${p.done + 1}/${p.total}${colorNote}…`;
-    }
-    return "產生備戰套件中…";
-  }
-
-  function paintV13Panel() {
-    const el = getV12PanelEl();
-    if (!el) return;
-    if (!v13ReportModule) {
-      v13ReportPromise ||= import("../scout-v13-report.js").then((module) => {
-        v13ReportModule = module;
-        paintV13Panel();
-      }).catch((error) => {
-        v13ReportPromise = null;
-        setStatus(error.message);
-      });
-      return;
-    }
-    const { renderV13PanelShell, renderV13Report } = v13ReportModule;
-    el.hidden = false;
-    const reportHtml = (v13Result || [])
-      .map(({ color, result }) => {
-        const heading = color === "white" ? "他執白時" : "他執黑時";
-        return `<h4 class="scout-v13-color-head">${escapeHtml(heading)}</h4>${renderV13Report(
-          result,
-          { escapeHtml, renderMiniBoard: v13MiniBoard },
-        )}`;
-      })
-      .join("");
-    el.innerHTML = renderV13PanelShell({
-      escapeHtml,
-      playerName: scoutState?.username || "—",
-      reportHtml,
-      canGenerate: v13TrieReady(),
-      running: v13Running,
-      progressDone: v13Progress.done,
-      progressTotal: v13Progress.total,
-      progressLabel: v13ProgressLabel(),
-    });
-  }
-
-  async function runV13PrepPackages() {
-    if (v13Running || !scoutModule) return;
-    const colors = v13SubjectColors();
-    if (!colors.length) {
-      setStatus("Need opponent games in the stream before generating prep packages");
-      return;
-    }
-
-    v13Running = true;
-    v13CancelRequested = false;
-    v13Progress = { stage: "candidate", done: 0, total: 0 };
-    paintV13Panel();
-
-    // Stale-run guard: a new scout session (different player / reset) cancels this
-    // run and its result must never land on the repainted panel.
-    const runUsername = scoutState?.username;
-    const isStale = () => v13CancelRequested || scoutState?.username !== runUsername;
-
-    let provider = null;
-    try {
-      const { runStreamV13 } = await import("../scout-v13-stream.js");
-      const sfDepth = effectiveStockfishDepth();
-      const extDepth = Math.max(12, sfDepth - 4);
-      const opponentRating =
-        colors.length > 1
-          ? Math.round(
-              (medianOpponentRating(scoutState.games, "white") +
-                medianOpponentRating(scoutState.games, "black")) / 2,
-            )
-          : medianOpponentRating(scoutState.games, colors[0]);
-      const speed =
-        scoutState.activeSpeed && scoutState.activeSpeed !== "all"
-          ? scoutState.activeSpeed
-          : "blitz";
-
-      let explorerClient = scoutExplorerClient;
-      let explorerAvailable = Boolean(getLichessUsername());
-      if (!explorerClient) {
-        try {
-          const explorerMod = await import("../explorer.js");
-          explorerClient = explorerMod.createExplorerClient({});
-          scoutExplorerClient = explorerClient;
-        } catch (_) {
-          explorerAvailable = false;
-        }
-      }
-
-      const engineMod = await import("../engine/stockfish-provider.js");
-      const runnerMod = await import("../engine/build-generate-runner.js");
-      provider = engineMod.createEngineProvider({ maxDepth: sfDepth, maxMultipv: 3 });
-      const engineCandidates = runnerMod.createEngineCandidateAdapter(provider, {
-        maxMultipv: 3,
-        signal: {
-          get aborted() {
-            return isStale();
-          },
-        },
-      });
-
-      const explorerFetch = async (epd) => {
-        if (!explorerAvailable || !explorerClient) return null;
-        try {
-          return await explorerClient.fetchStats("lichess", epd, { rating: opponentRating });
-        } catch (_) {
-          explorerAvailable = false;
-          return null;
-        }
-      };
-
-      const results = [];
-      for (let ci = 0; ci < colors.length; ci += 1) {
-        const subjectColor = colors[ci];
-        const trie = liveTrieForColor(subjectColor);
-        if (!trie?.children?.size) continue;
-        const games = (scoutState?.games || []).filter((g) => g.color === subjectColor);
-        const result = await runStreamV13({
-          trie,
-          subjectColor,
-          opponentRating,
-          games,
-          deps: {
-            engineCandidates: (fen, count) => engineCandidates.candidates(fen, count),
-            explorerFetch,
-            sfDepth,
-            extDepth,
-            speeds: speed,
-            explorerAvailable,
-          },
-          shouldCancel: isStale,
-          onProgress: (stage, done, total) => {
-            v13Progress = {
-              stage: `${stage}`,
-              done,
-              total,
-              colorLabel: colors.length > 1 ? `${ci + 1}/${colors.length}` : "",
-            };
-            paintV13Panel();
-          },
-        });
-        results.push({ color: subjectColor, result });
-      }
-
-      if (!isStale()) {
-        v13Result = results;
-        const totalPkgs = results.reduce((n, r) => n + r.result.report.packages.length, 0);
-        setStatus(`Prep packages ready: ${totalPkgs} package(s)`);
-      }
-    } catch (err) {
-      if (err?.name === "CancelledError" || isStale()) {
-        setStatus("Prep package generation cancelled");
-      } else {
-        setStatus(`Prep package generation failed: ${err.message || err}`);
-      }
-    } finally {
-      try {
-        await provider?.close?.();
-      } catch (_) {
-        /* best-effort */
-      }
-      v13Running = false;
-      paintV13Panel();
     }
   }
 
@@ -762,7 +548,6 @@ export function createScoutView(deps) {
     scoutState.explorerByColor = {};
     scoutState.engineAggByColor = {};
     renderScoutReport();
-    if (isV13Mode()) paintV13Panel();
     if (!isStreaming()) {
       scheduleExplorerEnrich();
       scheduleEngineAggregation();
@@ -1834,19 +1619,6 @@ export function createScoutView(deps) {
       scoutBoundEventTargets.add(side);
       side.addEventListener("click", (e) => handleScoutResultsClick(e, scoutClickCtx()));
     }
-
-    const v12Panel = getV12PanelEl();
-    if (v12Panel && !scoutBoundEventTargets.has(v12Panel)) {
-      scoutBoundEventTargets.add(v12Panel);
-      v12Panel.addEventListener("click", (e) => {
-        if (!isV13Mode()) return;
-        if (e.target?.id === "scout-v13-generate-btn") {
-          void runV13PrepPackages();
-        } else if (e.target?.id === "scout-v13-cancel-btn") {
-          v13CancelRequested = true;
-        }
-      });
-    }
   }
 
   async function initScoutState(usernames, color, initToken) {
@@ -2207,28 +1979,18 @@ export function createScoutView(deps) {
     clearTimeout(engineAggTimer);
     engineAggTimer = null;
     engineAggSeq += 1;
-    // A session reset invalidates any in-flight v13 package run and its result.
-    v13CancelRequested = true;
-    v13Running = false;
-    v13Result = null;
-    v13Progress = { stage: "", done: 0, total: 0 };
     scoutState = null;
     scoutSession = null;
     scoutSourceNames = null;
     document.getElementById("scout-source-warnings")?.remove();
     const results = getResultsEl();
     const profile = getProfileEl();
-    const experimental = getV12PanelEl();
     if (results) {
       results.innerHTML = "";
       results.classList.remove("is-streaming");
     }
     if (profile) profile.hidden = true;
     clearScoutSide();
-    if (experimental) {
-      experimental.innerHTML = "";
-      experimental.hidden = true;
-    }
     updateLiveCounter();
     updateScoutControls();
     setStatus("");
@@ -2271,14 +2033,6 @@ export function createScoutView(deps) {
       prev.controller.abort();
     }
     cancelEnrichmentQueues();
-    v13CancelRequested = true;
-    v13Running = false;
-    v13Result = null;
-    const experimental = getV12PanelEl();
-    if (experimental && !isV13Mode()) {
-      experimental.innerHTML = "";
-      experimental.hidden = true;
-    }
 
     updateScoutControls();
 

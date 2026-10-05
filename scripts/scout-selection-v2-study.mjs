@@ -7,7 +7,7 @@ import { buildOpeningTrie, rankedOpeningBranches, fenAfterLine, rankGamePlan, op
 import { rankPrefilterCandidates } from '../web-src/scout-prefilter.js';
 import { preparationValue as oldValue, selectPreparationRoutes as oldSelect } from '../research/scout-selection-v8.js';
 import { preparationValue, preparationDecisionWeights, routeKey } from '../web-src/scout-preparation-value.js';
-import { parseFinalDepthScore, parseBestMove } from '../web-src/scout-stockfish-uci.js';
+import { parseFinalDepthScore, parseBestMove } from '../research/lib/scout-stockfish-uci.js';
 
 const fixture = 'tests/fixtures/scout/ericrosen-selection.json';
 const cacheFile = 'tests/fixtures/scout/selection-stockfish.json';

@@ -19,7 +19,7 @@ import {
   extractEligibleAtomsFromGames,
   projectBuildGame,
   sha256ShadowPrepProtocol,
-} from "../web-src/scout-shadow-prep-p0.js";
+} from "../research/lib/scout-shadow-prep-p0.js";
 import {
   EXACT_SOLVER_STATUSES,
   SHADOW_PREP_SOLVER_DEV_REPORT_KIND,
@@ -28,8 +28,8 @@ import {
   sha256SolverDevProtocol,
   solveExactCandidatePackage,
   validateSolverDevProtocol,
-} from "../web-src/scout-shadow-prep-exact-solver.js";
-import { sha256Buffer, sha256Hex } from "../web-src/scout-v15-study.js";
+} from "../research/lib/scout-shadow-prep-exact-solver.js";
+import { sha256Buffer, sha256Hex } from "../research/lib/scout-v15-study.js";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_PROTOCOL = resolve(

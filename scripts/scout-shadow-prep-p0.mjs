@@ -25,7 +25,7 @@ import {
   configureOrtWasm,
   createMaiaSession,
   maiaFeeds,
-} from "../web-src/scout-maia-harness.js";
+} from "../research/lib/scout-maia-harness.js";
 import {
   SCOUT_GAME_PLAN_LIMIT,
   SCOUT_MAIA_LIMIT,
@@ -50,7 +50,7 @@ import {
 import {
   sha256RefDfProtocol,
   validateRefDfProtocol,
-} from "../web-src/scout-ref-df-census.js";
+} from "../research/lib/scout-ref-df-census.js";
 import {
   SHADOW_PREP_COLORS,
   SHADOW_PREP_FINAL_REPORT_NAME,
@@ -84,21 +84,21 @@ import {
   verifyShadowPrepBuildArtifacts,
   verifyShadowPrepPinnedSources,
   verifyShadowPrepProtocolIdentity,
-} from "../web-src/scout-shadow-prep-p0.js";
-import { engineIdentityKey } from "../web-src/scout-v15-engine-cache.js";
+} from "../research/lib/scout-shadow-prep-p0.js";
+import { engineIdentityKey } from "../research/lib/scout-v15-engine-cache.js";
 import { lineLastSeen } from "../web-src/scout-stats.js";
 import {
   parseBestMove,
   parseFinalDepthScore,
   parseMultipvAtDepth,
   StockfishPool,
-} from "../web-src/scout-stockfish-uci.js";
+} from "../research/lib/scout-stockfish-uci.js";
 import {
   assertProtocolSha256,
   sha256Buffer,
   sha256Hex,
   sortGamesByCreatedAt,
-} from "../web-src/scout-v15-study.js";
+} from "../research/lib/scout-v15-study.js";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_PROTOCOL = resolve(

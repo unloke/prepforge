@@ -82,17 +82,3 @@ def test_import_single_pgn_normalizes_moves():
     ]
     assert game.moves[0].fen_before == STARTING_FEN
     assert game.moves[-1].source is MoveSource.IMPORTED_PGN
-
-
-def test_board_state_legal_targets_contract():
-    from prepforge_chess.ui.board_contract import BoardMode, BoardState
-
-    core = ChessCore()
-    state = BoardState(
-        fen=STARTING_FEN,
-        mode=BoardMode.ANALYZE,
-        legal_moves=core.legal_moves(STARTING_FEN),
-        selected_square="e2",
-    )
-
-    assert sorted(state.legal_targets_from("e2")) == ["e3", "e4"]

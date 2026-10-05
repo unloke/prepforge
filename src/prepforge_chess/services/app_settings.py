@@ -1,17 +1,11 @@
 """Tiny key/value settings service backed by the `app_settings` table."""
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.engine import Engine
 
-from prepforge_chess.storage import sa_tables as t
 
 
 STOCKFISH_DEPTH_KEY = "stockfish.depth"
@@ -72,45 +66,6 @@ class StockfishStatus:
     version: Optional[str]
     error: Optional[str] = None
 
-
-class AppSettingsService:
-    def __init__(self, engine: Engine):
-        self.engine = engine
-
-    def get(self, key: str, default: Any = None) -> Any:
-        with self.engine.connect() as conn:
-            row = conn.execute(
-                select(t.app_settings.c.value_json).where(t.app_settings.c.key == key)
-            ).mappings().first()
-        if row is None:
-            return default
-        try:
-            return json.loads(row["value_json"])
-        except (json.JSONDecodeError, TypeError):
-            return default
-
-    def set(self, key: str, value: Any) -> None:
-        encoded = json.dumps(value)
-        insert = pg_insert if self.engine.dialect.name == "postgresql" else sqlite_insert
-        stmt = insert(t.app_settings).values(key=key, value_json=encoded, updated_at=_now())
-        stmt = stmt.on_conflict_do_update(
-            index_elements=[t.app_settings.c.key],
-            set_={"value_json": stmt.excluded.value_json, "updated_at": stmt.excluded.updated_at},
-        )
-        with self.engine.begin() as conn:
-            conn.execute(stmt)
-
-    def get_stockfish_depth(self) -> int:
-        return clamp_stockfish_depth(self.get(STOCKFISH_DEPTH_KEY, STOCKFISH_DEPTH_DEFAULT))
-
-    def set_stockfish_depth(self, depth: int) -> int:
-        try:
-            value = int(depth)
-        except (TypeError, ValueError):
-            raise ValueError("depth must be an integer")
-        clamped = clamp_stockfish_depth(value)
-        self.set(STOCKFISH_DEPTH_KEY, clamped)
-        return clamped
 
 
 def detect_stockfish_version(path: Optional[str], *, timeout: float = 3.0) -> Optional[str]:

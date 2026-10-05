@@ -1240,10 +1240,6 @@ class OpeningBuilderService:
         self.repository.update_repertoire_fields(repertoire_id, is_active=int(bool(active)))
         return repertoire
 
-    def remove_repertoire(self, repertoire_id: str) -> None:
-        self._load_repertoire_or_raise(repertoire_id)
-        self.repository.delete_repertoire(repertoire_id)
-
     def tree_report(
         self,
         repertoire_id: str,
@@ -1290,12 +1286,6 @@ class OpeningBuilderService:
                 )
             )
         return candidates
-
-    def _has_manual_prepared_child(self, node: OpeningNode) -> bool:
-        return any(
-            child.is_user_prepared_move and child.source is MoveSource.MANUAL
-            for child in node.children
-        )
 
     def _manual_prepared_child_ucis(self, node: OpeningNode) -> Set[str]:
         return {

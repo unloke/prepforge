@@ -2,7 +2,7 @@ import json
 
 from sqlalchemy import event, insert, select, update
 
-from prepforge_chess.cli import main
+from prepforge_chess.services.data_lifecycle import main
 from prepforge_chess.services.data_lifecycle import reclaim_orphans
 from prepforge_chess.services.training_smart import SmartTrainingService
 from prepforge_chess.storage import sa_tables as t
@@ -35,11 +35,11 @@ def test_operational_cli_defaults_to_dry_run(monkeypatch, capsys):
     monkeypatch.setattr("prepforge_chess.api.db.make_engine", lambda: repo.engine)
     # The in-memory engine must remain alive for the two invocations.
     monkeypatch.setattr(repo.engine, "dispose", lambda: None)
-    assert main(["lifecycle"]) == 0
+    assert main([]) == 0
     dry = json.loads(capsys.readouterr().out)
     assert dry["dry_run"] is True
     assert dry["after"]["orphan_positions"] == 1
-    assert main(["lifecycle", "--apply"]) == 0
+    assert main(["--apply"]) == 0
     applied = json.loads(capsys.readouterr().out)
     assert applied["deleted"]["positions"] == 1
     assert applied["after"]["orphan_positions"] == 0

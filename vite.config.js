@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import { fileURLToPath, URL } from "node:url";
-import { readdirSync, rmSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, rmSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 function installedStockfishVersion() {
@@ -8,40 +8,6 @@ function installedStockfishVersion() {
     new URL("./node_modules/stockfish/package.json", import.meta.url),
   );
   return JSON.parse(readFileSync(packageJson, "utf8")).version;
-}
-
-// Dev-only save endpoint for the coach-review harness: it POSTs its ratings here and we
-// write them straight to coach-review-ratings.json at the repo root, so the rate→tweak
-// loop doesn't go through a browser download. The path is deliberately NOT under /api (so
-// the proxy to the Python server never claims it) and the whole thing is serve-only, so it
-// never exists in a built/deployed image.
-function coachReviewSavePlugin() {
-  const out = fileURLToPath(new URL("./coach-review-ratings.json", import.meta.url));
-  return {
-    name: "coach-review-save",
-    apply: "serve",
-    configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        if (req.method !== "POST" || (req.url || "").split("?")[0] !== "/__save-coach-review") {
-          return next();
-        }
-        let body = "";
-        req.on("data", (chunk) => (body += chunk));
-        req.on("end", () => {
-          try {
-            const parsed = JSON.parse(body || "[]");
-            writeFileSync(out, JSON.stringify(parsed, null, 2), "utf-8");
-            res.statusCode = 200;
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify({ ok: true, count: Array.isArray(parsed) ? parsed.length : 0 }));
-          } catch (err) {
-            res.statusCode = 400;
-            res.end(JSON.stringify({ ok: false, error: String(err) }));
-          }
-        });
-      });
-    },
-  };
 }
 
 // ORT's threaded WASM runtime does import('/engine/ort/ort-wasm-simd-threaded.asyncify.mjs')
@@ -163,7 +129,7 @@ export default defineConfig({
   define: {
     "globalThis.__STOCKFISH_PACKAGE_VERSION__": JSON.stringify(installedStockfishVersion()),
   },
-  plugins: [publicMjsPlugin(), coachReviewSavePlugin(), trimDeployAssets()],
+  plugins: [publicMjsPlugin(), trimDeployAssets()],
   build: {
     outDir: fileURLToPath(
       new URL("./src/prepforge_chess/web/static", import.meta.url),
@@ -204,7 +170,7 @@ export default defineConfig({
     // (api/static.py already serves COOP: same-origin + COEP: require-corp). The browser
     // engines (Stockfish / onnxruntime threaded WASM) need crossOriginIsolated, which
     // requires these on the document — without them `npm run dev` runs engines OFF and
-    // the Analyze coach / coach-review harness can't evaluate. Safe by construction: any
+    // the Analyze coach can't evaluate. Safe by construction: any
     // resource the app loads already works under require-corp in prod, so matching it in
     // dev cannot break anything prod doesn't.
     headers: {
