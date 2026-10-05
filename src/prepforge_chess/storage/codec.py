@@ -395,19 +395,6 @@ def export_pgn(game: Game) -> str:
     return pgn_game.accept(chess.pgn.StringExporter(headers=True, variations=True, comments=True))
 
 
-def eval_to_debug_dict(evaluation: EngineEvaluation) -> Dict[str, Any]:
-    return {
-        "engine": evaluation.engine,
-        "depth": evaluation.depth,
-        "nodes": evaluation.nodes,
-        "time_ms": evaluation.time_ms,
-        "score_cp": evaluation.score_cp,
-        "mate_in": evaluation.mate_in,
-        "best_move_uci": evaluation.best_move_uci,
-        "pv": list(evaluation.pv),
-        "wdl": dict(evaluation.wdl) if evaluation.wdl else None,
-    }
-
 
 def hydrate_opening_tree(
     root_fen: str,

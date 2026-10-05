@@ -105,7 +105,7 @@ runtime <= 125% and p95 <= 150% of OLD. Results on one
 in-sample corpus do not establish predictive quality; chronological held-out
 validation is required before making that claim.
 
-`?scoutV13=1` remains a separate experimental runtime, unrelated to scoring
+The former `?scoutV13=1` experimental runtime was retired; its code lives under `research/lib/`, unrelated to scoring
 version 10. Its existing shared research dependencies and legacy v12 vocabulary
 module retain their previous status. Historical `archive/` material does not
 constrain current production ranking.

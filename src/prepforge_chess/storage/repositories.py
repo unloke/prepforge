@@ -1539,15 +1539,6 @@ class PrepForgeRepository:
                 ).scalar_one()
             )
 
-    def delete_receipts_before(self, cutoff_text: str) -> int:
-        with self.engine.begin() as conn:
-            result = conn.execute(
-                delete(t.train_attempt_receipts).where(
-                    t.train_attempt_receipts.c.created_at < cutoff_text
-                )
-            )
-            return int(result.rowcount or 0)
-
     def count_analysis_snapshots(self) -> int:
         with self.engine.connect() as conn:
             return int(

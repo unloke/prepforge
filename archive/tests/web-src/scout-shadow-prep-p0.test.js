@@ -51,7 +51,7 @@ import {
   verifyShadowPrepBuildArtifacts,
   verifyShadowPrepPinnedSources,
   verifyShadowPrepProtocolIdentity,
-} from "../../../web-src/scout-shadow-prep-p0.js";
+} from "../../../research/lib/scout-shadow-prep-p0.js";
 
 const protocolPath = fileURLToPath(new URL(
   "../../../research/scout-shadow-prep/ericrosen-shadow-prep-p0.protocol.json",

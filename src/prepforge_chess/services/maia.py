@@ -2,12 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 import importlib.util
-import shutil
-import subprocess
-import sys
 import threading
-import time
-from typing import Dict, List, Optional, Protocol, Tuple
+from typing import List, Optional, Protocol, Tuple
 
 import chess
 
@@ -233,75 +229,6 @@ class Maia3Adapter:
 
 MAIA3_PACKAGE_SOURCE = "git+https://github.com/CSSLab/maia3.git"
 
-
-def ensure_maia3() -> Dict[str, object]:
-    """Install the Maia3 package when missing, or simulate an update if present.
-
-    The official package is not on PyPI — it installs from the CSSLab GitHub
-    repo (see README). When already installed we just report success after a
-    brief pause (there is no separate update channel).
-    """
-    if Maia3Adapter.is_available():
-        time.sleep(1.0)  # let the UI show its working state
-        return {
-            "action": "update",
-            "already_present": True,
-            "package_installed": True,
-            "message": "Maia3 already installed — checked for updates.",
-        }
-
-    # The package requires Python 3.10+. Fail fast with an actionable message
-    # rather than letting pip emit a cryptic resolver error.
-    if sys.version_info < (3, 10):
-        running = "{0}.{1}.{2}".format(*sys.version_info[:3])
-        raise RuntimeError(
-            "Maia3 needs Python 3.10+ but PrepForge is running on Python {0}. "
-            "Run the app with a newer Python (3.10–3.12) to install it.".format(running)
-        )
-
-    try:
-        proc = subprocess.run(
-            [sys.executable, "-m", "pip", "install", MAIA3_PACKAGE_SOURCE],
-            capture_output=True,
-            text=True,
-            timeout=1800,
-        )
-    except FileNotFoundError as exc:
-        raise RuntimeError(
-            "Could not run pip. Install Maia3 manually: pip install {0}".format(MAIA3_PACKAGE_SOURCE)
-        ) from exc
-    except Exception as exc:  # noqa: BLE001
-        raise RuntimeError("Maia3 install could not start: {0}".format(exc)) from exc
-
-    importlib.invalidate_caches()
-    installed = importlib.util.find_spec("maia3") is not None
-    if proc.returncode != 0 or not installed:
-        tail = (proc.stderr or proc.stdout or "").strip().splitlines()
-        hint = " / ".join(tail[-4:]) if tail else "unknown error"
-        if "git" in hint.lower() and ("not found" in hint.lower() or "not recognized" in hint.lower()):
-            hint = "git is required to install Maia3 from GitHub — install Git and retry."
-        raise RuntimeError("Maia3 install failed: {0}".format(hint))
-
-    # Best-effort: warm the default checkpoint so the first prediction isn't slow.
-    # Non-fatal — the model also downloads lazily on first use.
-    cache_exe = shutil.which("maia3-cache")
-    if cache_exe:
-        try:
-            subprocess.run(
-                [cache_exe, "--model", MAIA3_DEFAULT_MODEL],
-                capture_output=True,
-                text=True,
-                timeout=1800,
-            )
-        except Exception:
-            pass
-
-    return {
-        "action": "install",
-        "already_present": False,
-        "package_installed": True,
-        "message": "Maia3 installed successfully.",
-    }
 
 
 def create_maia3_adapter(

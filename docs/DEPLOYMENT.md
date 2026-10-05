@@ -244,10 +244,10 @@ server, after applying Alembic migrations. It uses the production engine and
 does not create or modify the schema.
 
 ```powershell
-uv run python -m prepforge_chess lifecycle
-uv run python -m prepforge_chess lifecycle --apply
+uv run python -m prepforge_chess.services.data_lifecycle
+uv run python -m prepforge_chess.services.data_lifecycle --apply
 # Explicitly opt in to keeping the newest 10 analysis snapshots per game:
-uv run python -m prepforge_chess lifecycle --apply --trim-analyses
+uv run python -m prepforge_chess.services.data_lifecycle --apply --trim-analyses
 ```
 
 The first command is a dry run. `--apply` removes unreferenced evaluation

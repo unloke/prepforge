@@ -15,7 +15,7 @@ import {
 import {
   sha256Buffer,
   sha256Hex,
-} from "../../../web-src/scout-v15-study.js";
+} from "../../../research/lib/scout-v15-study.js";
 import { lineLastSeen } from "../../../web-src/scout-stats.js";
 import {
   SCOUT_BRANCH_SCORE_CAP,

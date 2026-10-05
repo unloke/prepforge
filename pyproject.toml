@@ -39,9 +39,6 @@ server = [
     "stripe>=9",
 ]
 
-[project.scripts]
-prepforge-chess = "prepforge_chess.cli:main"
-
 [tool.setuptools.packages.find]
 where = ["src"]
 

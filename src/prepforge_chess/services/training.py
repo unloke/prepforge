@@ -87,23 +87,6 @@ def create_training_session(
     )
 
 
-def resume_or_create_session(
-    *,
-    existing: Optional[TrainingSession],
-    repertoire_id: str,
-    line_ids: Iterable[str],
-    mode: TrainingMode,
-    seed: Optional[int] = None,
-) -> TrainingSession:
-    if existing is not None:
-        return existing
-    return create_training_session(
-        repertoire_id=repertoire_id,
-        line_ids=line_ids,
-        mode=mode,
-        seed=seed,
-    )
-
 
 class TrainingService:
     def __init__(self, repository: PrepForgeRepository, owner_user_id: str | None = None):

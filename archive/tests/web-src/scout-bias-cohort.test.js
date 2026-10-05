@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { FEATURE_IDS } from "../../../web-src/scout-bias-features.js";
+import { FEATURE_IDS } from "../../../research/lib/scout-bias-features.js";
 import {
   benjaminiHochberg,
   cohortStats,
   leaveOneOutZ,
   subjectZ,
   twoSidedPFromZ,
-} from "../../../web-src/scout-bias-cohort.js";
+} from "../../../research/lib/scout-bias-cohort.js";
 
 const N = FEATURE_IDS.length;
 

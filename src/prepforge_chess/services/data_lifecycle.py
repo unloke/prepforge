@@ -104,3 +104,28 @@ def reclaim_orphans(
         deleted["receipts"] = 0
     report["after"] = lifecycle_report(repository, now=now)
     return report
+
+
+def main(argv: list[str] | None = None) -> int:
+    """``python -m prepforge_chess.services.data_lifecycle [--apply] [--trim-analyses]``."""
+    import argparse
+    import json
+
+    from prepforge_chess.api.db import make_engine
+    parser = argparse.ArgumentParser(description="Inventory or reclaim unreferenced production data.")
+    parser.add_argument("--apply", action="store_true", help="Apply cleanup; default is dry-run.")
+    parser.add_argument("--trim-analyses", action="store_true", help="Keep the newest 10 analyses per game.")
+    args = parser.parse_args(argv)
+    engine = make_engine()
+    try:
+        report = reclaim_orphans(
+            PrepForgeRepository(engine), dry_run=not args.apply, trim_analyses=args.trim_analyses
+        )
+        print(json.dumps(report, sort_keys=True))
+    finally:
+        engine.dispose()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

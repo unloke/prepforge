@@ -5,7 +5,6 @@ from prepforge_chess.services.engine import MockEngine
 from prepforge_chess.services.pgn_import import PgnImportService
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories import PrepForgeRepository
-from prepforge_chess.ui.analysis_terminal import TerminalAnalysisRenderer
 
 
 def _analysis_result():
@@ -39,20 +38,6 @@ def test_analysis_report_builds_eval_graph_and_jump_targets():
     assert report.eval_graph[0].ply == 1
     assert report.critical_moments[0].ply == 5
     assert report.jump_plies == [5]
-
-
-def test_terminal_analysis_renderer_outputs_report_sections():
-    result = _analysis_result()
-    result.move_results[4].classification = MoveClassification.INACCURACY
-
-    report = AnalysisReportBuilder().build(result)
-    rendered = TerminalAnalysisRenderer().render(report)
-
-    assert "Analysis Report" in rendered
-    assert "Engine: mockfish" in rendered
-    assert "Eval:" in rendered
-    assert "Jump: 5" in rendered
-    assert "Key Moments:" in rendered
 
 
 def test_analysis_payload_eval_graph_carries_mate_distance():

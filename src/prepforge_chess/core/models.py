@@ -192,15 +192,6 @@ class OpeningNode:
     source: MoveSource = MoveSource.MANUAL
 
 
-@dataclass
-class OpeningLine:
-    id: str
-    repertoire_id: str
-    node_ids: List[str]
-    name: Optional[str] = None
-    priority: float = 0.0
-    tags: List[str] = field(default_factory=list)
-
 
 @dataclass
 class Repertoire:
@@ -248,20 +239,3 @@ class TrainingSession:
     state_version: int = 0
 
 
-@dataclass
-class UserProfile:
-    id: str
-    display_name: str
-    lichess_username: Optional[str] = None
-    preferred_engine: str = "stockfish"
-    default_analysis_depth: int = 16
-    settings: Dict[str, str] = field(default_factory=dict)
-
-
-@dataclass
-class LichessGameImportResult:
-    username: str
-    requested_count: int
-    imported_game_ids: List[str]
-    skipped_game_ids: List[str]
-    errors: List[str] = field(default_factory=list)

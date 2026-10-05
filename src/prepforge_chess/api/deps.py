@@ -52,14 +52,6 @@ def current_user(user: User | None = Depends(current_user_optional)) -> User:
     return user
 
 
-def require_pro(user: User = Depends(current_user)) -> User:
-    """Gate Pro-only features (e.g. creating teams/classrooms)."""
-    from prepforge_chess.api.models import Plan
-
-    if user.plan != Plan.pro:
-        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Pro plan required")
-    return user
-
 
 def get_repository() -> PrepForgeRepository:
     """The legacy domain repository, bound to the app's shared SQLAlchemy engine.
