@@ -281,9 +281,10 @@ async function runViewport(vp) {
   const bannerCount = await sharedPage.locator("#shared-banner").count();
   sharedCheck(bannerCount === 1, `expected exactly 1 shared banner, got ${bannerCount}`);
 
-  // Read-only semantics still enforced (Scan disabled) — unchanged by the host swap.
-  const scanDisabled = await sharedPage.locator("#coverage-run").isDisabled().catch(() => false);
-  sharedCheck(scanDisabled, "Coverage Scan should stay disabled for a read-only repertoire");
+  // Coverage is analysis, so a read-only repertoire can still be scanned; its
+  // gaps render without the edit controls (covered by coverage-workbench-smoke).
+  const scanEnabled = await sharedPage.locator("#coverage-run").isEnabled().catch(() => false);
+  sharedCheck(scanEnabled, "Coverage Scan should be available for a read-only repertoire");
 
   // Toggling back to writable hides the host rather than removing it.
   const hostStillThere = await sharedPage.locator('[data-testid="shared-banner"]').count();
