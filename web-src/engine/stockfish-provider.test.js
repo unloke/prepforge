@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 
 import { createStockfishWasmProvider } from "./stockfish-provider.js";
+import { createComputeBudget } from "./compute-budget.js";
 
 const FEN_A = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const FEN_B = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
@@ -45,6 +46,61 @@ function makeProvider() {
 // Let queued microtasks/timers drain so the provider's internal `await readyPromise` hop and
 // the `stop` it posts settle before we assert on them.
 const tick = () => new Promise((r) => setTimeout(r, 0));
+
+describe("provider compute allocation lifecycle", () => {
+  it("closing a queued provider settles its open without creating a worker", async () => {
+    const budget = createComputeBudget({ limit: 1, backgroundLimit: 1 });
+    const release = await budget.acquire();
+    const factory = vi.fn(() => new FakeWorker());
+    const provider = createStockfishWasmProvider({ createWorker: factory, computeBudget: budget });
+    const pending = provider.open({ fen: FEN_A }).catch((error) => error);
+    await tick();
+    expect(budget.snapshot().queued).toBe(1);
+    await provider.close();
+    expect(await pending).toMatchObject({ name: "AbortError" });
+    expect(factory).not.toHaveBeenCalled();
+    expect(budget.snapshot().queued).toBe(0);
+    release();
+    await provider.open({ fen: FEN_A });
+    expect(factory).toHaveBeenCalledTimes(1);
+    await provider.close();
+    expect(budget.snapshot().used).toBe(0);
+  });
+
+  it("factory failures and worker crashes free their lifetime leases", async () => {
+    const budget = createComputeBudget({ limit: 1, backgroundLimit: 1 });
+    const fake = new FakeWorker();
+    const factory = vi.fn().mockImplementationOnce(() => { throw new Error("startup failure"); })
+      .mockImplementation(() => fake);
+    const provider = createStockfishWasmProvider({ createWorker: factory, computeBudget: budget });
+    await expect(provider.open({ fen: FEN_A })).rejects.toThrow("startup failure");
+    expect(budget.snapshot().used).toBe(0);
+    await provider.open({ fen: FEN_A });
+    expect(budget.snapshot().used).toBe(1);
+    fake.onerror({ message: "crashed" });
+    expect(fake.terminated).toBe(true);
+    expect(budget.snapshot().used).toBe(0);
+    await provider.close();
+    expect(budget.snapshot().used).toBe(0);
+  });
+
+  it("unrelated providers share a four-worker ceiling with an interactive reserve", async () => {
+    const budget = createComputeBudget();
+    const providers = Array.from({ length: 5 }, (_, i) => createStockfishWasmProvider({
+      createWorker: () => new FakeWorker(), computeBudget: budget,
+      priority: i === 4 ? "interactive" : "background",
+    }));
+    await Promise.all(providers.slice(0, 3).map((provider) => provider.open({ fen: FEN_A })));
+    const waiting = providers[3].open({ fen: FEN_A });
+    await providers[4].open({ fen: FEN_A });
+    expect(budget.snapshot()).toMatchObject({ used: 4, background: 3, queued: 1 });
+    await providers[0].close();
+    await waiting;
+    expect(budget.snapshot().used).toBe(4);
+    await Promise.all(providers.map((provider) => provider.close()));
+    expect(budget.snapshot()).toMatchObject({ used: 0, queued: 0 });
+  });
+});
 
 describe("createStockfishWasmProvider — search lifecycle", () => {
   it("parses an info line into a White-POV pv", async () => {

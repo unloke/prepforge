@@ -175,6 +175,7 @@ class SmartStartBody(BaseModel):
     session_size: int | None = None
     new_cap: int | None = None
     seed: int | None = None  # deterministic queues for tests
+    target_node_ids: list[str] = Field(default_factory=list, max_length=200)
 
 
 class SmartMoveBody(BaseModel):
@@ -262,6 +263,8 @@ def smart_start(
     service = SmartTrainingService(repo, owner)
     try:
         if body.mixed:
+            if body.target_node_ids:
+                raise ValueError("practice targets require a single repertoire")
             session = service.start_or_resume_mixed(
                 owner,
                 fresh=body.fresh,
@@ -278,6 +281,7 @@ def smart_start(
             _owned_repertoire(repo, body.repertoire_id, owner)
             session = service.start_or_resume(
                 body.repertoire_id,
+                target_node_ids=body.target_node_ids,
                 fresh=body.fresh,
                 session_size=_clamp(body.session_size, 4, 30),
                 new_cap=_clamp(body.new_cap, 0, 10),

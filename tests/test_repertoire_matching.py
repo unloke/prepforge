@@ -57,6 +57,72 @@ def _rep(rep_id: str, name: str, moves: List[str]) -> Repertoire:
     )
 
 
+def _legal_rep_and_moves(prepared, played, root_fen=None):
+    from prepforge_chess.core.chess_core import STARTING_FEN, ChessCore
+
+    core = ChessCore()
+    fen = root_fen or STARTING_FEN
+    root = OpeningNode(id="legal-root", repertoire_id="legal", fen=fen,
+                       side_to_move=core.side_to_move(fen))
+    parent = root
+    for index, move in enumerate(core.apply_uci_sequence(fen, prepared), start=1):
+        child = OpeningNode(id=f"legal-{index}", repertoire_id="legal", fen=move.fen_after,
+                            side_to_move=move.side_to_move.opponent, move=move, parent_id=parent.id)
+        parent.children.append(child)
+        parent = child
+    rep = Repertoire(id="legal", name="Transposition", color=Color.WHITE,
+                     root_fen=fen, root_node=root)
+    return rep, core.apply_uci_sequence(fen, played)
+
+
+def test_position_reentry_preserves_the_first_path_departure():
+    rep, moves = _legal_rep_and_moves(
+        ["g1f3", "g8f6", "d2d4", "d7d5"],
+        ["d2d4", "d7d5", "g1f3", "g8f6"],
+    )
+    result = match_game_to_repertoire(moves, rep, Color.WHITE)
+    assert result.departure_ply == 1
+    assert result.departure_reason == "user_left_preparation"
+    assert result.matched_plies == 0
+    assert result.expected_node_id == "legal-1"
+    assert result.reentry_ply == 4
+    assert result.reentry_node_ids == ("legal-4",)
+
+    # Multiple prepared paths can reach one position; do not arbitrarily pick one.
+    from copy import deepcopy
+
+    duplicate = deepcopy(rep.root_node.children[0])
+    pending = [duplicate]
+    while pending:
+        node = pending.pop()
+        node.id += "-alternate"
+        pending.extend(node.children)
+    rep.root_node.children.append(duplicate)
+    ambiguous = match_game_to_repertoire(moves, rep, Color.WHITE)
+    assert ambiguous.reentry_node_ids == ("legal-4", "legal-4-alternate")
+    rep.root_node.children.pop()
+
+    # Move clocks do not prevent a transposition, but disabled branches do.
+    rep.root_node.children[0].is_enabled = False
+    disabled = match_game_to_repertoire(moves, rep, Color.WHITE)
+    assert disabled.reentry_ply is None
+    assert disabled.reentry_node_ids == ()
+
+
+def test_reentry_supports_custom_roots_without_matching_castling_rights_away():
+    root = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 8 12"
+    rep, moves = _legal_rep_and_moves(
+        ["g1f3", "g8f6", "d2d4", "d7d5"],
+        ["d2d4", "d7d5", "g1f3", "g8f6"], root,
+    )
+    result = match_game_to_repertoire(moves, rep, Color.WHITE)
+    assert result.reentry_ply == 4
+    assert result.reentry_node_ids == ("legal-4",)
+    leaf = rep.root_node.children[0].children[0].children[0].children[0]
+    leaf.fen = leaf.fen.replace(" w - -", " w KQkq -")
+    assert match_game_to_repertoire(moves, rep, Color.WHITE).reentry_ply is None
+
+
 def test_matching_selects_deepest_repertoire():
     game = [
         _move("e2e4", 1, Color.WHITE),

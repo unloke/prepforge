@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { expect, it, vi } from "vitest";
+import { expect, it } from "vitest";
 import { advanceBuildRevision, queuedBuildRevision, withBuildRevision } from "./build-revision.js";
 
 it("every Build mutation sends the loaded revision and preserves an old queue's revision", () => {
@@ -21,23 +21,16 @@ it("only edits based on our acknowledged version advance after our own save", ()
   expect(build.revision).toBe(9);
 });
 
-it("gap completion saves against the repertoire and revision used for computation", async () => {
+it("reply preview binds saving to the approved snapshot, never optimistic gap writes", () => {
   const source = readFileSync(new URL("./app.js", import.meta.url), "utf8");
-  const code = source.slice(source.indexOf("async function completeOneGap("), source.indexOf("// ----- Opponent scouting", source.indexOf("async function completeOneGap(")));
-  const appState = { build: { repertoire_id: "r", revision: 4, color: "white" }, buildCurrentNodeId: "root" };
-  const deps = {
-    appState, captureBuildContext: () => { const id = appState.build.repertoire_id; return () => appState.build.repertoire_id === id; }, selectBuildNode: async () => {},
-    onBuildBoardMove: async () => { appState.buildCurrentNodeId = "anchor"; },
-    hardFlushBuild: async () => {}, resolveBuildId: (id) => id,
-    _buildGenReady: Promise.resolve({ runBrowserBuildGenerate: async () => {
-      appState.build = { repertoire_id: "other", revision: 12 };
-      return { changes: [] };
-    } }), effectiveMaiaRating: () => 1500, effectiveStockfishDepth: () => 12,
-    getSharedMaia3Provider: () => ({}), postJson: vi.fn(async () => ({ summary: { added_nodes: 1 } })),
-    hydrateBuild: vi.fn(),
-  };
-  const run = new Function(...Object.keys(deps), `${code}\nreturn completeOneGap;`)(...Object.values(deps));
-  await run({ nodeId: "root", moveUci: "e7e5" });
-  expect(deps.postJson).toHaveBeenCalledWith("/api/build/generate/apply-plan", expect.objectContaining({ repertoire_id: "r", base_revision: 4 }));
-  expect(deps.hydrateBuild).not.toHaveBeenCalled();
+  expect(source).toContain('import("./controllers/coverage-replies.js")');
+  expect(source).toContain("getBuild: () => appState.build");
+  const code = readFileSync(new URL("./controllers/coverage-replies.js", import.meta.url), "utf8");
+  expect(code).toContain("const snapshot = getBuild()");
+  expect(code).toContain("base_revision: snapshot.revision");
+  expect(code).toContain("repertoire_id: snapshot.repertoire_id");
+  expect(code).toContain("if (!isCurrent() || !isValid() || isBuildReadOnly()) throw");
+  expect(code).toContain("if (isCurrent())");
+  expect(code).not.toContain("onBuildBoardMove");
+  expect(code).toContain("if (!approved) return");
 });

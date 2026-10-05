@@ -173,6 +173,8 @@ class GameMatchSummary:
     # The deepest repertoire node the game still matched — the Build deep-link
     # target for backlogging an opponent novelty right where it appeared.
     last_matched_node_id: Optional[str] = None
+    reentry_ply: Optional[int] = None
+    reentry_node_ids: tuple[str, ...] = ()
     # True once this game's departure has been recorded as a training miss.
     training_recorded: bool = False
     # Identity whose perspective was compared; never inferred from batch membership.
@@ -752,4 +754,6 @@ def _build_summary(
         expected_move_san=match.expected_move_san,
         expected_node_id=match.expected_node_id,
         last_matched_node_id=match.last_matched_node_id,
+        reentry_ply=match.reentry_ply,
+        reentry_node_ids=match.reentry_node_ids,
     )

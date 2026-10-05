@@ -11,7 +11,10 @@ import {
   pendingHandoffs,
   rememberHandoff,
   saveReturnState,
+  setHandoffOwner,
   takeHandoff,
+  transitionHandoff,
+  trackPreparationPractice,
 } from "./handoff-context.js";
 
 // F-06 handoff plumbing: a handoff records the source game/line, the ply and
@@ -60,6 +63,7 @@ describe("handoff identity (handoffKey / createHandoff)", () => {
       { ...base, lineUcis: ["e2e4", "e7e5", "b1c3"] },
       { ...base, reason: "build-reply" },
       { ...base, gameId: "g2" },
+      { ...base, repertoireId: 8 },
     ];
     for (const variant of variants) {
       expect(handoffKey(variant)).not.toBe(key);
@@ -100,6 +104,14 @@ describe("rememberHandoff / takeHandoff", () => {
     expect(second).toBe(first);
     expect(pendingHandoffs()).toHaveLength(1);
     expect(first.clicks).toBe(2);
+  });
+
+  it("keeps different destination repertoires separate and matches the target", () => {
+    rememberHandoff(base);
+    rememberHandoff({ ...base, repertoireId: 8 });
+    expect(pendingHandoffs()).toHaveLength(2);
+    expect(takeHandoff({ repertoireId: 8 }).repertoireId).toBe(8);
+    expect(pendingHandoffs()[0].repertoireId).toBe(7);
   });
 
   it("keeps white/black, transpositions and different roots apart", () => {
@@ -151,6 +163,86 @@ describe("rememberHandoff / takeHandoff", () => {
     expect(handoffJourney()).toHaveLength(1);
     clearHandoffJourney();
     expect(handoffJourney()).toHaveLength(0);
+  });
+});
+
+describe("durable owner-scoped preparation tasks", () => {
+  beforeEach(() => {
+    vi.stubGlobal("localStorage", fakeStorage());
+    vi.stubGlobal("sessionStorage", fakeStorage());
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("recovers tasks and their journey after reload without mixing owners", async () => {
+    setHandoffOwner("owner-a");
+    const first = rememberHandoff(base);
+    expect(first.persisted).toBe(true);
+    saveReturnState("replay", { openIndex: 2 });
+    setHandoffOwner("owner-b");
+    expect(pendingHandoffs()).toEqual([]);
+    expect(loadReturnState("replay")).toBeNull();
+    setHandoffOwner("owner-a");
+    expect(pendingHandoffs()[0].key).toBe(first.key);
+    takeHandoff({ key: first.key });
+    const reloaded = await import(`./handoff-context.js?durability-test`);
+    reloaded.setHandoffOwner("owner-a");
+    expect(reloaded.pendingHandoffs()).toEqual([]);
+    expect(reloaded.handoffJourney()[0].takenAt).toBeGreaterThan(0);
+    expect(reloaded.loadReturnState("replay")).toEqual({ openIndex: 2 });
+  });
+
+  it("tracks queue, actual practice and completion separately across reload", () => {
+    setHandoffOwner("lifecycle-owner");
+    const task = rememberHandoff({ ...base, targetNodeIds: ["reply"] });
+    transitionHandoff(task.key, "queued");
+    expect(task.firstPracticeAt).toBeNull();
+    setHandoffOwner("lifecycle-owner");
+    expect(pendingHandoffs()[0].status).toBe("queued");
+    trackPreparationPractice({ repertoireId: 8, nodeId: "reply", fen: base.anchorFen });
+    expect(pendingHandoffs()[0].firstPracticeAt).toBeNull();
+    trackPreparationPractice({ repertoireId: 7, nodeId: "other", fen: base.anchorFen });
+    expect(pendingHandoffs()[0].firstPracticeAt).toBeNull();
+    trackPreparationPractice({ repertoireId: 7, nodeId: "reply", fen: base.anchorFen });
+    const started = pendingHandoffs()[0].firstPracticeAt;
+    expect(started).toBeGreaterThan(0);
+    trackPreparationPractice({ repertoireId: 7, nodeId: "reply", completed: true });
+    expect(pendingHandoffs()).toEqual([]);
+    setHandoffOwner("lifecycle-owner");
+    expect(handoffJourney()[0]).toMatchObject({ status: "completed", firstPracticeAt: started });
+  });
+
+  it("rejects premature completion and supports durable cancellation", () => {
+    setHandoffOwner("cancel-owner");
+    const task = rememberHandoff(base);
+    expect(() => transitionHandoff(task.key, "completed")).toThrow(/transition/);
+    transitionHandoff(task.key, "prepared", { targetNodeIds: ["saved-reply"] });
+    expect(task.preparedAt).toBeGreaterThan(0);
+    transitionHandoff(task.key, "cancelled");
+    setHandoffOwner("cancel-owner");
+    expect(pendingHandoffs()).toEqual([]);
+    expect(handoffJourney()[0].status).toBe("cancelled");
+  });
+
+  it("merges another tab's tasks without resurrecting its completed work", async () => {
+    setHandoffOwner("tabs-owner");
+    const first = rememberHandoff(base);
+    const tab = await import("./handoff-context.js?lifecycle-tab");
+    tab.setHandoffOwner("tabs-owner");
+    const other = tab.rememberHandoff({ ...base, gameId: "other-game" });
+    transitionHandoff(first.key, "practicing");
+    transitionHandoff(first.key, "completed");
+    tab.transitionHandoff(other.key, "queued");
+    expect(tab.pendingHandoffs().map((task) => task.key)).toEqual([other.key]);
+    setHandoffOwner("tabs-owner");
+    expect(pendingHandoffs().map((task) => task.key)).toEqual([other.key]);
+    expect(handoffJourney()[0].status).toBe("completed");
+  });
+
+  it("reports non-durable work when persistence is blocked", () => {
+    vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => { throw Error("quota"); } });
+    setHandoffOwner("quota-owner");
+    expect(rememberHandoff(base).persisted).toBe(false);
+    expect(pendingHandoffs()).toHaveLength(1);
   });
 });
 

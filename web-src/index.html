@@ -303,7 +303,16 @@
                     <button type="button" class="seg-btn explorer-db" data-db="lichess" aria-pressed="false">Players</button>
                   </div>
                   <span class="explorer-opening" id="explorer-opening"></span>
-                  <span class="score-chip" id="coverage-score" hidden></span>
+                  <div class="seg" id="coverage-scope" role="group" aria-label="Coverage scope" hidden>
+                    <button type="button" class="seg-btn is-active" data-scope="repertoire" aria-pressed="true">Mainline</button>
+                    <button type="button" class="seg-btn" data-scope="branch" aria-pressed="false">Branch</button>
+                  </div>
+                  <select class="dock-select" id="coverage-depth" aria-label="Horizon" title="Horizon" hidden>
+                    <option value="4">2 moves</option>
+                    <option value="8">4 moves</option>
+                    <option value="16" selected>8 moves</option>
+                    <option value="24">12 moves</option>
+                  </select>
                   <button type="button" class="ib inspector-info" id="inspector-info" aria-label="About this panel">ⓘ</button>
                   <span class="spacer"></span>
                   <span class="dock-engine-switch" id="explorer-engine-switch" title="Stockfish's eval beside every move">
@@ -318,7 +327,7 @@
                 </div>
                 <div class="inspector-panel" id="coverage-drawer" data-testid="coverage-drawer" role="tabpanel" aria-labelledby="build-tool-coverage" hidden>
                   <div class="job-dock" id="coverage-job-dock" data-testid="coverage-job-dock"></div>
-                  <div class="coverage-gaps" id="coverage-gaps"><div class="muted hint">Scan to find the human moves this repertoire doesn't answer yet.</div></div>
+                  <div class="coverage-gaps" id="coverage-gaps"></div>
                 </div>
               </div>
             </section>

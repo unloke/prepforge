@@ -88,6 +88,47 @@ function makeProvider(behavior, opts = {}) {
   return { provider, workers: f.workers };
 }
 
+describe("shared initialization progress", () => {
+  it("keeps independent subscribers attached when one job leaves", async () => {
+    const { provider, workers } = makeProvider(() => {});
+    const first = [], second = [];
+    const leave = provider.subscribeInitProgress((p) => first.push(p.phase));
+    provider.subscribeInitProgress((p) => second.push(p.phase));
+    const ready = provider.warmup();
+    await tick();
+    const worker = workers[0], id = worker.idsOf("init")[0];
+    worker.progress(id, { phase: "download" });
+    leave();
+    worker.progress(id, { phase: "session" });
+    worker.reply(id, {});
+    await ready;
+    expect(first).toEqual(["download"]);
+    expect(second).toEqual(["download", "session"]);
+    provider.terminate();
+  });
+});
+
+describe("individual inference deadline", () => {
+  it("rejects a wedged request without terminating unrelated shared work", async () => {
+    const { provider, workers } = makeProvider(ackInitElsePend, { requestTimeoutMs: 15 });
+    const timed = provider.predictions({ fen: "wedged" }).then(() => null, (error) => error);
+    const healthy = provider.predictions({ fen: "healthy" });
+    await tick();
+    const worker = workers[0];
+    const healthyId = worker.posted.find((m) => m.fen === "healthy").id;
+    worker.reply(healthyId, [{ move_uci: "e2e4", probability: 1 }]);
+    expect(await healthy).toHaveLength(1);
+    expect((await timed).message).toMatch(/timed out/);
+    expect(worker.terminated).toBe(false);
+    expect(provider.busy).toBe(false);
+    const retry = provider.predictions({ fen: "wedged" });
+    await tick();
+    worker.reply(worker.idsOf("predictions").at(-1), []);
+    expect(await retry).toEqual([]);
+    provider.terminate();
+  });
+});
+
 describe("init", () => {
   it("becomes available and passes assetBase + manifest to the worker", async () => {
     const { provider, workers } = makeProvider(ackInitElsePend);
@@ -416,15 +457,15 @@ describe("init progress routing (Stage 4b)", () => {
     void p;
   });
 
-  it("setInitProgressHandler(null) detaches the handler", async () => {
+  it("an unsubscribed observer receives no progress", async () => {
     const events = [];
     const behavior = (msg, worker) => {
       if (msg.type !== "init") return;
       worker.progress(msg.id, { phase: "download", loaded: 1, total: 2 });
       worker.reply(msg.id, { backend: "wasm" });
     };
-    const { provider } = makeProvider(behavior, { onInitProgress: (e) => events.push(e) });
-    provider.setInitProgressHandler(null);
+    const { provider } = makeProvider(behavior);
+    provider.subscribeInitProgress((e) => events.push(e))();
     const p = provider.predictions({ fen: "f" });
     await tick();
     expect(events).toEqual([]); // handler detached before init ran

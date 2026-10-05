@@ -1121,12 +1121,42 @@ class PrepForgeRepository:
         return out
 
     def set_repertoire_health(
-        self, repertoire_id: str, health: Optional[Dict[str, Any]]
+        self, repertoire_id: str, health: Optional[Dict[str, Any]],
+        *, expected_cache: Optional[Dict[str, Any]] = None, cache_snapshot: bool = False,
     ) -> None:
         """Persist the denormalized health summary for the dashboard list. Called
         from the spots that already compute health off a loaded tree (Build payload,
         train summary), so it adds a single cheap UPDATE and no extra tree walk."""
+        if cache_snapshot:
+            # The loaded cache value is an optimistic fence: a later cache
+            # writer or tree mutation makes this update a no-op, in one SQL.
+            with self.engine.begin() as conn:
+                conn.execute(update(t.repertoires).where(
+                    t.repertoires.c.id == repertoire_id,
+                    t.repertoires.c.revision == health["revision"],
+                    t.repertoires.c.health_json.is_not_distinct_from(
+                        _json_dump(expected_cache) if expected_cache is not None else None
+                    ),
+                ).values(health_json=_json_dump(health)))
+            return
         with self.engine.begin() as conn:
+            # Serialize cache writers on the same repertoire row. SQLite's no-op
+            # UPDATE takes its write lock; PostgreSQL locks this row until commit.
+            conn.execute(update(t.repertoires).where(
+                t.repertoires.c.id == repertoire_id
+            ).values(health_json=t.repertoires.c.health_json))
+            row = conn.execute(select(
+                t.repertoires.c.revision, t.repertoires.c.health_json
+            ).where(t.repertoires.c.id == repertoire_id)).first()
+            if row is None:
+                return
+            if health is not None and health.get("revision") is not None:
+                if health["revision"] != row[0]:
+                    return
+                previous = _json_load(row[1], {}) or {}
+                if (previous.get("revision") == health["revision"]
+                        and previous.get("computed_at", "") > health.get("computed_at", "")):
+                    return
             conn.execute(
                 update(t.repertoires)
                 .where(t.repertoires.c.id == repertoire_id)

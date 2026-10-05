@@ -206,12 +206,13 @@ export async function runBrowserBuildGenerate({
   // Acquired inside the try so an engine teardown still runs if anything below throws.
   let maiaProvider = null;
   const ownsMaia = !borrowedMaia;
+  let unsubscribeProgress = null;
   try {
     maiaProvider = borrowedMaia || createMaia({});
     // Route the worker's cold-init download/verify/session progress to the caller for the
     // duration of this run (cleared in finally so a shared provider doesn't hold a stale cb).
-    if (onMaiaInitProgress && typeof maiaProvider.setInitProgressHandler === "function") {
-      maiaProvider.setInitProgressHandler(onMaiaInitProgress);
+    if (onMaiaInitProgress && typeof maiaProvider.subscribeInitProgress === "function") {
+      unsubscribeProgress = maiaProvider.subscribeInitProgress(onMaiaInitProgress);
     }
     return await generateBuildPlan({
       existingSubtree,
@@ -241,9 +242,7 @@ export async function runBrowserBuildGenerate({
     // Detach our progress handler so a borrowed/shared provider doesn't keep calling a
     // stale callback after this run ends.
     try {
-      if (maiaProvider && typeof maiaProvider.setInitProgressHandler === "function") {
-        maiaProvider.setInitProgressHandler(null);
-      }
+      unsubscribeProgress?.();
     } catch (_) {
       /* ignore */
     }

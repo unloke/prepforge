@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Chess } from "chess.js";
 
 import { mergeEngineIntoTargets, triePathKey } from "./scout.js";
 import {
@@ -12,6 +13,11 @@ import {
   engineScanPatterns,
   isCompleteScanCacheEntry,
   readGameCache,
+  writeGameCache,
+  scoutCacheProvenance,
+  ENGINE_CACHE_MAX_ENTRIES,
+  ENGINE_CACHE_MAX_BYTES,
+  ENGINE_CACHE_TTL_MS,
   SCOUT_ENGINE_MIN_RECURRENCE,
   selectEngineScope,
 } from "./scout-engine.js";
@@ -31,6 +37,19 @@ function makeAnalyzedScanRecord(gameId) {
 }
 
 describe("scout-engine helpers", () => {
+  it("does not convert a mate-only evaluation into a draw", () => {
+    const result = classifyOpponentMove({ fenBefore: new Chess().fen(),
+      playedUci: "e2e3", bestUci: "e2e4", beforeCp: null, beforeMate: 3,
+      afterCp: 0, afterMate: null });
+    expect(result.classification.label).toBe("Blunder");
+    expect(result.cpLoss).toBe(1000);
+  });
+
+  it("preserves mate(0)'s signed cp from the shared classifier contract", () => {
+    const result = classifyOpponentMove({ fenBefore: new Chess().fen(),
+      playedUci: "e2e3", bestUci: "e2e4", beforeCp: 0, afterCp: -100000, afterMate: 0 });
+    expect(result.classification.label).toBe("Blunder");
+  });
   it("computes centipawn loss from mover perspective", () => {
     expect(cpLossFromEvals(50, 20, "white")).toBe(30);
     expect(cpLossFromEvals(50, 80, "black")).toBe(30);
@@ -258,7 +277,7 @@ describe("scout-engine helpers", () => {
     expect(store.getItem(`prepforge.scout.engine.v3:g1:d${depth}:p${plies}`)).toBeNull();
   });
 
-  it("accepts v3 cache entries with explicit reply fields", () => {
+  it("accepts current caches only for the same input, engine and retention window", () => {
     const store = {
       data: {},
       getItem(key) {
@@ -273,9 +292,13 @@ describe("scout-engine helpers", () => {
     };
     const depth = 12;
     const plies = 24;
-    const v3Key = `prepforge.scout.engine.v3:g1:d${depth}:p${plies}`;
+    const key = `prepforge.scout.engine.v5:g1:d${depth}:p${plies}`;
+    const game = { ucis: ["e2e4"], sans: ["e4"] };
+    const provenance = scoutCacheProvenance(game, "white");
     const payload = {
       schemaVersion: ENGINE_CACHE_SCHEMA,
+      at: Date.now(),
+      provenance,
       record: {
         moves: [
           {
@@ -294,10 +317,40 @@ describe("scout-engine helpers", () => {
         complete: true,
       },
     };
-    store.setItem(v3Key, JSON.stringify(payload));
+    store.setItem(key, JSON.stringify(payload));
+    expect(readGameCache(store, "g1", depth, plies, provenance)).toEqual(payload);
+    expect(readGameCache(store, "g1", depth, plies, scoutCacheProvenance(game, "black"))).toBeNull();
+    expect(store.getItem(key)).toBeNull();
+    expect(scoutCacheProvenance({ ...game, ucis: ["d2d4"] }, "white")).not.toBe(provenance);
+    expect(scoutCacheProvenance({ ...game, sans: ["d4"] }, "white")).not.toBe(provenance);
+    for (const at of [Date.now() - ENGINE_CACHE_TTL_MS - 1, Date.now() + 10000, undefined]) {
+      store.setItem(key, JSON.stringify({ ...payload, at }));
+      expect(readGameCache(store, "g1", depth, plies, provenance)).toBeNull();
+    }
+    store.setItem(key, JSON.stringify({ ...payload, record: { ...payload.record, eligibleOpponentPlies: 2 } }));
+    expect(readGameCache(store, "g1", depth, plies, provenance)).toBeNull();
+    expect(ENGINE_CACHE_SCHEMA).toBe(5);
+  });
 
-    expect(readGameCache(store, "g1", depth, plies)).toEqual(payload);
-    expect(ENGINE_CACHE_SCHEMA).toBe(3);
+  it("bounds derived cache entries and bytes without pruning user data", () => {
+    const data = new Map([["prepforge.sync.receipts", "keep"]]);
+    const store = { get length() { return data.size; }, key: (i) => [...data.keys()][i],
+      getItem: (key) => data.get(key) ?? null, setItem: (key, value) => data.set(key, value),
+      removeItem: (key) => data.delete(key) };
+    const payload = { provenance: "test-engine/input", at: Date.now(), record: {
+      moves: [], mistakes: [], eligibleOpponentPlies: 0, analyzedOpponentPlies: 0, complete: true,
+    } };
+    for (let i = 0; i < ENGINE_CACHE_MAX_ENTRIES + 5; i++) writeGameCache(store, `g${i}`, 12, 24, payload);
+    expect(data.size).toBe(ENGINE_CACHE_MAX_ENTRIES + 1);
+    expect(data.get("prepforge.sync.receipts")).toBe("keep");
+    expect(readGameCache(store, "g0", 12, 24, payload.provenance)).toBeNull();
+    for (let i = 0; i < 30; i++) writeGameCache(store, `large${i}`, 12, 24, { ...payload, padding: "x".repeat(100000) });
+    const cacheBytes = [...data].filter(([key]) => key.startsWith("prepforge.scout.engine.v5:"))
+      .reduce((sum, [, value]) => sum + value.length * 2, 0);
+    expect(cacheBytes).toBeLessThanOrEqual(ENGINE_CACHE_MAX_BYTES);
+    writeGameCache(store, "oversize", 12, 24, { ...payload, padding: "x".repeat(ENGINE_CACHE_MAX_BYTES) });
+    expect(readGameCache(store, "oversize", 12, 24, payload.provenance)).toBeNull();
+    expect(data.get("prepforge.sync.receipts")).toBe("keep");
   });
 
   it("selectEngineScope caps games to maxGames for color and speed", () => {

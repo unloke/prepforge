@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Iterable, List, Optional
+
+import chess
 
 from prepforge_chess.core.models import Color, MoveRecord, OpeningNode, Repertoire
 
@@ -20,6 +22,10 @@ class RepertoireMatchResult:
     # The repertoire node holding the move the user SHOULD have played (the expected
     # child). Lets a departure feed straight back into training as a recall miss.
     expected_node_id: Optional[str] = None
+    # Position membership is independent of the first path departure. Multiple
+    # nodes may share a transposition; report all, never choose an arbitrary path.
+    reentry_ply: Optional[int] = None
+    reentry_node_ids: tuple[str, ...] = ()
 
 
 def _find_child(node: OpeningNode, move_uci: str) -> Optional[OpeningNode]:
@@ -62,7 +68,7 @@ def _departure_result(
     )
 
 
-def match_game_to_repertoire(
+def _match_game_path(
     moves: List[MoveRecord],
     repertoire: Repertoire,
     user_color: Color,
@@ -112,6 +118,45 @@ def match_game_to_repertoire(
         None,
         "game_stayed_in_preparation",
     )
+
+
+def _position_key(fen: str) -> Optional[str]:
+    try:
+        board = chess.Board(fen)
+    except ValueError:
+        return None
+    if not board.is_valid():
+        return None
+    # Ignore move clocks but retain side, castling and legal en-passant rights.
+    return " ".join(board.fen().split()[:4])
+
+
+def match_game_to_repertoire(
+    moves: List[MoveRecord], repertoire: Repertoire, user_color: Color
+) -> RepertoireMatchResult:
+    result = _match_game_path(moves, repertoire, user_color)
+    if result.departure_ply is None:
+        return result
+    positions: dict[str, list[str]] = {}
+    pending = [repertoire.root_node]
+    seen: set[str] = set()
+    while pending:
+        node = pending.pop()
+        if node.id in seen or not node.is_enabled:
+            continue
+        seen.add(node.id)
+        key = _position_key(node.fen)
+        if key is not None:
+            positions.setdefault(key, []).append(node.id)
+        pending.extend(node.children)
+    for move in moves:
+        if move.ply < result.departure_ply:
+            continue
+        key = _position_key(move.fen_after)
+        if key in positions:
+            return replace(result, reentry_ply=move.ply,
+                           reentry_node_ids=tuple(sorted(positions[key])))
+    return result
 
 
 def _pick_expected_child(node: OpeningNode) -> Optional[OpeningNode]:

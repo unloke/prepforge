@@ -109,7 +109,7 @@ it('workspace restores local work before remote settings or dashboard resolve',a
   const restoreOutbox=vi.fn();const recovery=vi.fn(async()=>{});
   const run=compile('async function loadSignedInWorkspace(',{appState,currentOwnerId:()=> 'owner',loadSettingsActions:async()=>({loadSettingsOnce:()=>settings.promise}),loadDashboard:()=>dashboard.promise,
     getStoredLichessUsername:()=>null,refreshLichessStatus:async()=>{},syncTrainPickerVisibility:noop,syncReplayControls:noop,renderBuilderTree:noop,restoreOutbox,refreshAnalyzeRecovery:recovery});
-  const pending=run();expect(restoreOutbox).toHaveBeenCalledOnce();expect(recovery).toHaveBeenCalledOnce();
+  const pending=run();expect(restoreOutbox).toHaveBeenCalledOnce();await Promise.resolve();expect(recovery).toHaveBeenCalledOnce();
   settings.resolve();dashboard.resolve();await pending;
 });
 it('annotations send in-flight plus latest snapshot and never replay earlier drawings',async()=>{

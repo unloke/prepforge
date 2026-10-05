@@ -368,6 +368,7 @@ class OpeningBuilderService:
         repertoire_id: str,
         root_node_id: str,
         plan: dict,
+        *, receipt_target: Optional[tuple] = None,
     ) -> Tuple[Repertoire, GenerationSummary]:
         """Apply a browser-produced Build-Generate plan (Phase 3c, no compute).
 
@@ -443,7 +444,17 @@ class OpeningBuilderService:
             else:
                 raise ValueError("unknown plan change action: {0!r}".format(action))
 
-        self.repository.save_changed_nodes(repertoire_id, self._changed_nodes(repertoire, before))
+        self.applied_plan_id_map = {ref: node.id for ref, node in temp_to_node.items()}
+        receipt = None
+        if receipt_target:
+            owner, key, digest = receipt_target
+            receipt = (owner, key, {"digest": digest, "id_map": self.applied_plan_id_map, "summary": {
+                "added_nodes": summary.added_nodes, "updated_nodes": summary.updated_nodes,
+                "high_probability_unprepared": summary.high_probability_unprepared,
+            }})
+        self.repository.save_changed_nodes(
+            repertoire_id, self._changed_nodes(repertoire, before), receipt=receipt
+        )
         return repertoire, summary
 
     def add_moves_batch(

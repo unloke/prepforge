@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { coachTipMayReplace, wrongMoveTip } from "./train-hint.js";
+import { prefetchTrainCoach } from "./controllers/train-coach.js";
 
 const source = readFileSync(new URL("./app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
 function compile(marker, deps) {
@@ -40,12 +41,15 @@ function harness() {
 describe("Smart coach response ownership", () => {
   it("keeps a hint requested while the initial coach inference is pending", async () => {
     const h = harness();
-    compile("function prefetchTrainCoach(", h.deps)(h.prompt);
+    const document = globalThis.document;
+    globalThis.document = h.deps.document;
+    const pending = prefetchTrainCoach(h.prompt, h.deps);
     h.appState.trainHintLevel = 2;
     h.banner.title = "Hint 2 · Piece";
     h.banner.sub = "Move the pawn";
     h.coach.resolve({ promptTip: "Generic idea" });
-    await Promise.resolve();
+    await pending;
+    globalThis.document = document;
     expect(h.banner.title).toBe("Hint 2 · Piece");
     expect(h.banner.sub).toBe("Move the pawn");
     expect(h.prompt.phaseCoach).toEqual({ promptTip: "Generic idea" });

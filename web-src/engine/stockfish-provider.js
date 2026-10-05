@@ -1,4 +1,5 @@
 import { Chess } from "chess.js";
+import { stockfishBudget } from "./compute-budget.js";
 
 // Browser Stockfish (nmrugg stockfish.js, lite multi-threaded build) running in
 // a Web Worker over UCI. Implements the EngineProvider interface
@@ -63,18 +64,30 @@ function uciToSan(fen, uciMoves) {
   return san;
 }
 
+const defaultCreateWorker = () => new Worker(ENGINE_SCRIPT_URL);
+
 export function createStockfishWasmProvider({
   maxDepth = DEFAULT_MAX_DEPTH,
   maxMultipv = DEFAULT_MAX_MULTIPV,
   // Optional per-search node budget, sent alongside the depth limit. Whole-game analysis
   // uses it so one explosive tactical position cannot dominate the run.
   maxNodes = null,
+  priority = "background",
   // Injectable for tests; the live flow always constructs the real Web Worker. A factory
   // (not a worker instance) so the provider still owns the worker lifecycle and can rebuild
   // it after a fatal error exactly as before.
-  createWorker = () => new Worker(ENGINE_SCRIPT_URL),
+  createWorker = defaultCreateWorker,
+  computeBudget = createWorker === defaultCreateWorker ? stockfishBudget : null,
 } = {}) {
   let worker = null;
+  let allocation = null;
+  let releaseAllocation = null;
+  function freeAllocation() {
+    allocation?.abort();
+    allocation = null;
+    releaseAllocation?.();
+    releaseAllocation = null;
+  }
   let readyPromise = null;
   let readyResolve = null;
   let readyReject = null;
@@ -157,6 +170,7 @@ export function createStockfishWasmProvider({
       readyResolve = null;
       reject(new Error(message));
     }
+    freeAllocation();
     notifySearchWaiters();
   }
 
@@ -204,6 +218,7 @@ export function createStockfishWasmProvider({
       }
       worker = null;
     }
+    freeAllocation();
     readyPromise = null;
     readyResolve = null;
     readyReject = null;
@@ -300,11 +315,24 @@ export function createStockfishWasmProvider({
     notifySearchWaiters();
   }
 
-  function ensureWorker() {
+  async function ensureWorker() {
     if (worker) return readyPromise;
+    if (computeBudget) {
+      const waiting = new AbortController();
+      allocation = waiting;
+      const release = await computeBudget.acquire({
+        interactive: priority === "interactive", signal: waiting.signal,
+      });
+      if (waiting.signal.aborted) {
+        release();
+        throw new Error("Browser engine closed");
+      }
+      releaseAllocation = release;
+    }
     try {
       worker = createWorker();
     } catch (err) {
+      freeAllocation();
       readyPromise = Promise.reject(
         new Error("Browser engine could not start: " + (err && err.message)),
       );
@@ -599,6 +627,7 @@ export function createStockfishWasmProvider({
         worker.terminate();
         worker = null;
       }
+      freeAllocation();
       readyPromise = null;
       readyResolve = null;
       readyReject = null;

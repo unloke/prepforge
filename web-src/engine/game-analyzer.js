@@ -1,6 +1,7 @@
 import { Chess } from "chess.js";
 import { ANALYSIS_MAX_NODES, createEngineProvider } from "./stockfish-provider.js";
 import { waitForEngineSearch } from "./engine-search-wait.js";
+import { stockfishBudget } from "./compute-budget.js";
 
 // Whole-game analysis in the browser (Phase 2). Drives the browser Stockfish
 // provider over every position of a game, each to a target depth, and returns
@@ -36,18 +37,24 @@ function takeIdleEngine(maxNodes) {
   if (k < 0) return null;
   const [entry] = idleEngines.splice(k, 1);
   clearTimeout(entry.timer);
+  entry.unregisterIdle?.();
   return entry.provider;
 }
 
 function parkIdleEngine(provider, maxNodes) {
   if (idleEngines.length >= MAX_CONCURRENCY) return false;
-  const entry = { provider, maxNodes, timer: null };
-  entry.timer = setTimeout(() => {
+  const entry = { provider, maxNodes, timer: null, unregisterIdle: null };
+  const reclaim = () => {
     const k = idleEngines.indexOf(entry);
-    if (k >= 0) idleEngines.splice(k, 1);
+    if (k < 0) return;
+    idleEngines.splice(k, 1);
+    clearTimeout(entry.timer);
+    entry.unregisterIdle?.();
     Promise.resolve(provider.close()).catch(() => {});
-  }, POOL_IDLE_MS);
+  };
+  entry.timer = setTimeout(reclaim, POOL_IDLE_MS);
   idleEngines.push(entry);
+  entry.unregisterIdle = stockfishBudget.registerIdle(reclaim);
   return true;
 }
 
@@ -55,7 +62,7 @@ function parkIdleEngine(provider, maxNodes) {
 // for the UI, Maia and the live engine), clamped to [1, MAX_CONCURRENCY]. Exported so the
 // heuristic itself is unit-testable without spinning up real engines.
 export function resolveConcurrency(requested) {
-  if (Number.isFinite(requested) && requested >= 1) return Math.floor(requested);
+  if (Number.isFinite(requested) && requested >= 1) return Math.min(MAX_CONCURRENCY, Math.floor(requested));
   const hw =
     (typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 4;
   return Math.max(1, Math.min(MAX_CONCURRENCY, Math.floor(hw / 2)));
@@ -254,6 +261,22 @@ export async function analyzeGamePositions({
     const provider = warm || createProvider({ maxDepth: targetDepth, maxNodes });
     let opened = !!warm;
     let clean = false;
+    // Allocation/handshake waits happen before search polling. Keep cancellation
+    // and the deadline active there too, so queued jobs cannot hang indefinitely.
+    async function startRead(read) {
+      let timer;
+      try {
+        return await Promise.race([read(), new Promise((_, reject) => {
+          const started = Date.now();
+          timer = setInterval(() => {
+            const stopped = cancelled();
+            if (!stopped && Date.now() - started < PER_POSITION_TIMEOUT_MS) return;
+            reject(stopped ? new AnalysisCancelled() : new Error("Browser engine startup timed out"));
+            Promise.resolve(provider.close()).catch(() => {});
+          }, 100);
+        })]);
+      } finally { clearInterval(timer); }
+    }
     try {
       while (!cancelled()) {
         const fen = takeNextFen();
@@ -270,10 +293,10 @@ export async function analyzeGamePositions({
         // Reuse this worker's session across its positions: open the first,
         // update the rest.
         if (!opened) {
-          await provider.open({ fen, multipv, depth: targetDepth });
+          await startRead(() => provider.open({ fen, multipv, depth: targetDepth }));
           opened = true;
         } else {
-          await provider.update({ fen, multipv, depth: targetDepth });
+          await startRead(() => provider.update({ fen, multipv, depth: targetDepth }));
         }
 
         record(fen, await waitForEval(provider, fen, targetDepth, cancelled));

@@ -148,6 +148,32 @@ def _kinds(plan):
     return [card.kind for card in plan.cards]
 
 
+def test_targeted_practice_reserves_review_capacity():
+    rep, ids = _build_wide_tree()
+    progress = {node_id: _progress(node_id, **DUE) for node_id in ids.values()}
+    targets = [ids["ba4"], ids["a4"], ids["qd2"]]
+    for node_id in targets:
+        progress.pop(node_id)
+    plan = build_session_plan(rep.root_node, rep.color, progress,
+                              target_node_ids=targets, session_size=4, new_cap=0, now=NOW)
+    assert plan.counts["targets"] == 4
+    assert plan.counts[CARD_NEW] == 2
+    assert plan.counts[CARD_DUE] >= 1
+    assert {card.first_target_id for card in plan.cards if card.kind == CARD_NEW} <= set(targets)
+
+
+def test_targeted_practice_rejects_opponent_and_disabled_nodes():
+    import pytest
+
+    rep, ids = _build_tree()
+    for target in (ids["e5"], "other-repertoire-node"):
+        with pytest.raises(ValueError, match="enabled own moves"):
+            build_session_plan(rep.root_node, rep.color, {}, target_node_ids=[target])
+    rep.root_node.children[0].is_enabled = False
+    with pytest.raises(ValueError, match="enabled own moves"):
+        build_session_plan(rep.root_node, rep.color, {}, target_node_ids=[ids["nf3"]])
+
+
 # ---- codec ------------------------------------------------------------------
 
 

@@ -167,16 +167,18 @@ describe("Repertoire ⋯ menu matches the Library menu (P2-14)", () => {
   });
 });
 
-describe("Coverage states its Maia requirement inline (P1-5)", () => {
-  it("renders an in-panel card with a one-click enable instead of a toast", () => {
+describe("Coverage uses explicit operation consent", () => {
+  it("delegates to its controller without changing global Analyze preferences", () => {
     const scan = extractByMarker("async function runCoverageScanUI() {");
-    expect(scan).toContain("renderCoverageMaiaGate()");
-    expect(scan).not.toMatch(/setStatus\("Coverage needs Maia/);
-    const gate = extractByMarker("function renderCoverageMaiaGate() {");
-    expect(gate).toContain('setPref("maiaAnalysis", true)');
-    expect(gate).toContain("runCoverageScanUI()");
-    expect(gate).toContain('getElementById("settings-maia-analysis")');
-    expect(app).toContain("Coverage needs Maia analysis.");
+    expect(scan).toContain("ensureCoverageView()");
+    expect(scan).toContain(".scan()");
+    expect(scan).not.toContain("setPref(");
+    const controller = readFileSync(join(root, "controllers", "coverage.js"), "utf8");
+    expect(html).toContain('id="coverage-scope"');
+    expect(html).toContain('id="coverage-depth"');
+    expect(controller).toContain("getProvider()");
+    expect(controller).not.toContain("maiaAnalysis");
+    expect(controller).toContain("runCoverageScan(");
   });
 });
 

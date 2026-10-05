@@ -19,7 +19,7 @@ from collections import OrderedDict
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from prepforge_chess.api.config import Settings, get_settings
@@ -96,6 +96,16 @@ def _accounts_out(links: list[LinkedAccount]) -> list[LinkedAccountOut]:
     ]
 
 
+def _lock_linked_accounts(db: Session, user_id: str) -> None:
+    """Serialize primary/link/unlink mutations on their common owner row.
+
+    A no-op UPDATE takes a SQLite write lock and a PostgreSQL row lock.
+    Queries after it must reload objects possibly cached before waiting.
+    """
+    db.execute(update(User).where(User.id == user_id).values(id=User.id))
+    db.expire_all()
+
+
 def _demote_others(db: Session, user_id: str, keep_id: str) -> None:
     for link in _links_for(db, user_id):
         if link.id != keep_id and link.is_primary:
@@ -123,6 +133,7 @@ def set_primary(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> LinkStatus:
+    _lock_linked_accounts(db, user.id)
     link = db.scalar(
         select(LinkedAccount).where(
             LinkedAccount.id == body.account_id,
@@ -202,6 +213,8 @@ def callback(
     except LichessOAuthError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
+    # External requests finish before taking the database mutation lock.
+    _lock_linked_accounts(db, user.id)
     # Refuse to attach a Lichess identity already linked to a different user.
     existing = db.scalar(
         select(LinkedAccount).where(
@@ -250,6 +263,7 @@ def callback(
 def unlink_one(
     account_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)
 ) -> Response:
+    _lock_linked_accounts(db, user.id)
     link = db.scalar(
         select(LinkedAccount).where(
             LinkedAccount.id == account_id,
@@ -272,6 +286,7 @@ def unlink_one(
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
 def unlink(user: User = Depends(current_user), db: Session = Depends(get_db)) -> Response:
+    _lock_linked_accounts(db, user.id)
     link = _link_for(db, user.id)
     if link is not None:
         db.delete(link)
@@ -536,6 +551,8 @@ def _run_compare(
                 "expected_move_san": s.expected_move_san,
                 "expected_node_id": s.expected_node_id,
                 "last_matched_node_id": s.last_matched_node_id,
+                "reentry_ply": s.reentry_ply,
+                "reentry_node_ids": list(s.reentry_node_ids),
                 "training_recorded": s.training_recorded,
                 "source_account": source,
                 "finished_at": s.finished_at,

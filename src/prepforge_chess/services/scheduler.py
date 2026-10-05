@@ -253,9 +253,14 @@ def build_session_plan(
     new_cap: int = DEFAULT_NEW_CAP,
     max_targets_per_card: int = DEFAULT_MAX_TARGETS_PER_CARD,
     now: Optional[datetime] = None,
+    target_node_ids: Optional[Sequence[str]] = None,
 ) -> SessionPlan:
     rng = random.Random(seed)
     candidates = _collect_candidates(root, color)
+    requested = set(target_node_ids or [])
+    candidate_ids = {c.node.id for c in candidates}
+    if requested - candidate_ids:
+        raise ValueError("practice targets must be enabled own moves in this repertoire")
     if not candidates:
         return SessionPlan(cards=[], counts=card_counts([]))
     # Classify mastery only for the candidates we actually schedule. The old
@@ -327,10 +332,17 @@ def build_session_plan(
     # (<= new_cap) → polish, and only when those pools run dry do the leftover weak
     # targets top the session off — weak material is still the best available thing
     # to drill, it just doesn't get to monopolise the queue.
-    weak_share = max(1, int(session_size * WEAK_SHARE))
+    # Explicit practice reserves at most half the queue, keeping room for
+    # ordinary weak/due review. Reuse mastery kinds so grading stays unchanged.
+    target_budget = max(1, session_size // 2)
+    for pool, kind in ((weak, CARD_WEAK), (due, CARD_DUE), (new, CARD_NEW), (polish, CARD_POLISH)):
+        take([c for c in pool if c.node.id in requested], kind,
+             limit=max(0, target_budget - len(selected_kind)))
+    targeted_new = sum(kind == CARD_NEW for kind in selected_kind.values())
+    weak_share = max(1, int((session_size - len(selected_kind)) * WEAK_SHARE))
     take(weak, CARD_WEAK, limit=weak_share)
     take(due, CARD_DUE)
-    take(new, CARD_NEW, limit=new_cap)
+    take(new, CARD_NEW, limit=max(0, new_cap - targeted_new))
     take(polish, CARD_POLISH)
     take(weak, CARD_WEAK)  # top off with leftover weak when nothing else remains
 

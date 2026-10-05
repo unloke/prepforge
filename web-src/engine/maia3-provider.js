@@ -137,6 +137,7 @@ class Maia3Provider {
     manifestUrl = MANIFEST_URL,
     defaultRating = DEFAULT_RATING,
     initTimeoutMs = DEFAULT_INIT_TIMEOUT_MS,
+    requestTimeoutMs = 120000,
     onInitProgress = null,
     numThreads = null,
     readCacheCap = DEFAULT_READ_CACHE_CAP,
@@ -148,7 +149,9 @@ class Maia3Provider {
     this._manifestUrl = manifestUrl;
     this._defaultRating = defaultRating;
     this._initTimeoutMs = initTimeoutMs;
-    this._onInitProgress = typeof onInitProgress === "function" ? onInitProgress : null;
+    this._requestTimeoutMs = requestTimeoutMs;
+    this._initProgressSubscribers = new Set();
+    if (typeof onInitProgress === "function") this._initProgressSubscribers.add(onInitProgress);
     // Explicit ORT WASM thread override (null → auto from page capabilities at init).
     this._numThreadsOption = Number.isInteger(numThreads) && numThreads >= 1 ? numThreads : null;
     // Shared, bounded cache of in-flight/settled read promises keyed by (method|rating|fen[|move]).
@@ -172,12 +175,13 @@ class Maia3Provider {
     this._lastError = null;
   }
 
-  // Set (or clear with null) the init-progress handler. Called with
-  // { phase: "cache"|"download"|"verify"|"session", loaded, total } during a cold init;
-  // a warm (already-ready) provider emits nothing. Settable so a long-lived/shared provider
-  // can route progress to whichever caller is currently waiting on it.
-  setInitProgressHandler(fn) {
-    this._onInitProgress = typeof fn === "function" ? fn : null;
+  // Observe cold-init progress ({ phase: "cache"|"download"|"verify"|"session", loaded,
+  // total }); a warm provider emits nothing. Returns the unsubscribe function, so a
+  // shared provider routes progress to every caller currently waiting on it.
+  subscribeInitProgress(fn) {
+    if (typeof fn !== "function") throw new TypeError("Progress subscriber must be a function");
+    this._initProgressSubscribers.add(fn);
+    return () => this._initProgressSubscribers.delete(fn);
   }
 
   get state() {
@@ -430,10 +434,15 @@ class Maia3Provider {
         return;
       }
       const id = this._nextId++;
-      this._pending.set(id, { resolve, reject });
+      const timer = type !== "init" && this._requestTimeoutMs > 0 ? setTimeout(() => {
+        this._pending.delete(id);
+        reject(new Error(`Maia3 ${type} timed out after ${this._requestTimeoutMs}ms`));
+      }, this._requestTimeoutMs) : null;
+      this._pending.set(id, { resolve, reject, timer });
       try {
         this._worker.postMessage({ id, type, ...payload });
       } catch (err) {
+        clearTimeout(timer);
         this._pending.delete(id);
         reject(err);
       }
@@ -447,14 +456,18 @@ class Maia3Provider {
     // them while that id is still pending, so a late progress message after teardown/timeout
     // can't fire the handler.
     if (msg.progress) {
-      if (this._onInitProgress && this._pending.has(msg.id)) {
-        this._onInitProgress({ phase: msg.phase, loaded: msg.loaded, total: msg.total });
+      if (this._pending.has(msg.id)) {
+        const progress = { phase: msg.phase, loaded: msg.loaded, total: msg.total };
+        for (const listener of [...this._initProgressSubscribers]) {
+          try { listener(progress); } catch (_) { /* an observer cannot break shared initialization */ }
+        }
       }
       return;
     }
     const entry = this._pending.get(msg.id);
     if (!entry) return; // unknown / already-settled id
     this._pending.delete(msg.id);
+    clearTimeout(entry.timer);
     if (msg.ok) entry.resolve(msg.result);
     else entry.reject(new Error(msg.error || "Maia3 worker request failed"));
   }
@@ -493,7 +506,10 @@ class Maia3Provider {
   }
 
   _failAllPending(err) {
-    for (const { reject } of this._pending.values()) reject(err);
+    for (const { reject, timer } of this._pending.values()) {
+      clearTimeout(timer);
+      reject(err);
+    }
     this._pending.clear();
   }
 }

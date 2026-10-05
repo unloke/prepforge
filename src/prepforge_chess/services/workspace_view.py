@@ -121,7 +121,10 @@ def build_workspace_payload(
         health_data = dict(health.to_dict())
         health_data["computed_at"] = datetime.now(timezone.utc).isoformat()
         health_data["revision"] = revision
-        repository.set_repertoire_health(repertoire.id, health_data)
+        repository.set_repertoire_health(
+            repertoire.id, health_data,
+            expected_cache=getattr(repertoire, "_cached_health", None), cache_snapshot=True,
+        )
         repertoire._cached_health = health_data
     health_data = getattr(repertoire, "_cached_health", None) or dict(health.to_dict())
     return {
