@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { buildArrowPath } from "./board-arrows.js";
+import { buildArrowHeadPath, buildArrowPath, endsUnder } from "./board-arrows.js";
 
 const source = readFileSync(new URL("./app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
 
@@ -19,9 +19,9 @@ function render(...args) {
   const sqStart = end + 1;
   const sqEnd = source.indexOf("\n}\n", sqStart) + 3;
   const document = { createElementNS: (_ns, tag) => fakeNode(tag) };
-  const fn = new Function("document", "buildArrowPath", "files",
+  const fn = new Function("document", "buildArrowPath", "buildArrowHeadPath", "endsUnder", "files",
     `${source.slice(start, end)}\n${source.slice(sqStart, sqEnd)}\nreturn renderAnnotations;`,
-  )(document, buildArrowPath, ["a", "b", "c", "d", "e", "f", "g", "h"]);
+  )(document, buildArrowPath, buildArrowHeadPath, endsUnder, ["a", "b", "c", "d", "e", "f", "g", "h"]);
   const overlay = fakeNode("svg");
   fn(overlay, ...args);
   // Flatten to paint order: [class, inGroup].
@@ -64,6 +64,19 @@ describe("board annotation layering", () => {
     expect(render([], "white", "b1c3", ["g1f3", "b1c3"], "g1f3")).toEqual([
       "annot-arrow annot-branch is-pick",
       "annot-arrow annot-branch is-engine",
+    ]);
+  });
+  it("redraws the head of a move that ends under a longer arrow from the same square", () => {
+    // 6. Bd3 (idle) and 6. Bc4 (picked, the engine's move): one diagonal from f1.
+    expect(render([], "white", "f1c4", ["f1c4", "f1d3"], "f1c4")).toEqual([
+      "annot-branches > annot-arrow annot-branch",
+      "annot-arrow annot-branch is-engine is-pick",
+      "annot-arrow annot-branch annot-stop is-idle",
+    ]);
+    // The shorter arrow drawn last needs nothing extra.
+    expect(render([], "white", null, ["f1c4", "f1d3"], "f1d3")).toEqual([
+      "annot-branches > annot-arrow annot-branch",
+      "annot-arrow annot-branch is-pick",
     ]);
   });
 });

@@ -776,8 +776,63 @@
 /* ---- Responsive ------------------------------------------------------- */
 
 @media (max-width: 760px) {
-  .moves-grid { max-height: 240px; }
-  .coach-card { height: 160px; }
+  /* Phone: under the pinned board the panel reads top-down as one compact header
+     row, a sticky one-line move strip (the current move centred), the coach on it,
+     the eval graph, then the per-side bars and the drawers. */
+  #analyze-sidebar .panel-head { flex-wrap: nowrap; min-height: 0; padding: 6px 8px 6px 12px; }
+  #analyze-sidebar .game-id { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  #analyze-sidebar .game-id .faint { display: none; }
+  #analyze-actions { flex-wrap: nowrap; gap: 6px; }
+  #analyze-actions .btn { min-height: 36px; height: 36px; padding: 0 10px; }
+  #analyze-sidebar .panel-scroll { padding-top: 0; }
+  #analysis-results:not([hidden]) { display: contents; }
+  .analyze-main { gap: 10px; }
+  .analyze-main > #analysis-explain { order: 1; }
+  .analyze-main > #analysis-eval-card { order: 2; }
+  .analyze-main > * { order: 3; }
+  .analyze-main > #analysis-results > .moves-grid { order: 0; }
+  #analysis-results > :not(.moves-grid) { order: 3; }
+  .moves-grid {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    max-height: none;
+    margin: 0 -12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-width: 0 0 1px;
+    border-radius: 0;
+    background: var(--panel);
+    scrollbar-width: none;
+  }
+  .moves-grid::-webkit-scrollbar { display: none; }
+  .moves-grid .mtree-line.is-main {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    width: max-content;
+    padding: 0 8px;
+  }
+  .moves-grid .mtree-line.is-main > .mtree-num {
+    padding: 0 2px 0 8px;
+    background: none;
+  }
+  .moves-grid .mtree-line.is-main > .mtree-move {
+    gap: 2px;
+    min-height: 44px;
+    padding: 0 7px;
+    border-radius: 8px;
+    white-space: nowrap;
+  }
+  .moves-grid .mtree-var {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    margin: 0 6px;
+    white-space: nowrap;
+  }
+  .moves-grid .mtree-var .mtree-move { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; }
+  .coach-card { height: auto; min-height: 86px; }
   .explain-review { margin-left: auto; }
   .drawer summary { min-height: 44px; }
 }

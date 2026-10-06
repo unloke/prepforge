@@ -102,6 +102,7 @@
   --arrow-better: rgba(176, 62, 196, 0.8);
   /* Repertoire line options: neutral slate, drawn as a dashed outline. */
   --arrow-line: rgba(52, 64, 78, 0.9);
+  --arrow-rim: rgba(255, 255, 255, 0.9);
   /* Board coordinate labels. */
   --coord-on-light: #354655;
   --coord-on-dark: #172a38;
@@ -211,6 +212,7 @@
   --arrow-engine: rgba(80, 196, 132, 0.82);
   --arrow-better: rgba(222, 132, 240, 0.85);
   --arrow-line: rgba(206, 214, 224, 0.9);
+  --arrow-rim: rgba(14, 17, 22, 0.85);
   --coord-on-light: #354655;
   --coord-on-dark: #07121a;
   --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -2072,6 +2074,21 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 .annot-branch.is-engine.is-pick {
   fill-opacity: 0.8;
+}
+
+/* The head of a move whose arrow a longer one from the same square covers (Bd3 under
+   Bc4): solid, with a light rim, so it reads as a second stop on the shaft. */
+.annot-stop {
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 0.5;
+  stroke-dasharray: none;
+  stroke-linejoin: round;
+}
+.annot-branch.annot-stop {
+  fill-opacity: 0.85;
+}
+.annot-stop.is-idle {
+  opacity: 0.8;
 }
 
 .square {
@@ -5561,12 +5578,8 @@ body.is-guest .replay-results:empty::before {
 .panel:has(> .build-empty:not([hidden])) #build-generate-node { display: none; }
 
 @media (max-width: 760px) {
-  .topbar-status-slot { left: 12px; right: 12px; bottom: calc(70px + env(safe-area-inset-bottom)); border-radius: var(--radius); }
   .lib-actions { width: 100%; }
   .lib-actions .btn { flex: 1; }
-  #view-analyze .panel-head { flex-wrap: wrap; }
-  #view-analyze .panel-actions { margin-left: 0; width: 100%; }
-  #view-analyze .panel-actions .btn { flex: 1; min-height: 44px; }
 }
 
 /* Rail density: brand + 8 destinations + 4 foot controls must fit a ~740px
@@ -5608,4 +5621,142 @@ body.is-guest .replay-results:empty::before {
 
 .pgn-file-row {
   margin-top: 6px;
+}
+
+/* ===========================================================================
+   Phone study layout (≤760px): Analyze, Repertoire and Train own the screen.
+   The board is pinned edge to edge at the top, the panel scrolls in the space
+   between, and the board bar sits in the thumb zone just above the tab bar,
+   with wide back / forward buttons. Nothing ends up behind the tab bar.
+   =========================================================================== */
+@media (max-width: 760px) {
+  :root {
+    --phone-tabbar-h: calc(58px + env(safe-area-inset-bottom));
+    --phone-bar-h: 56px;
+    --phone-panel-min: 200px;
+  }
+  .workspace:has(> .view.is-active:is(#view-analyze, #view-build, #view-train)) {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: var(--phone-tabbar-h);
+    left: 0;
+    max-width: none;
+    padding: 0;
+    overflow: hidden;
+  }
+  #view-analyze .study,
+  #view-build .study,
+  #view-train .study {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    height: 100%;
+  }
+  .study > .board-area { display: contents; }
+  .study .board-stack {
+    order: 0;
+    flex: none;
+    width: min(100vw, calc(100dvh - var(--phone-tabbar-h) - var(--phone-bar-h) - var(--phone-panel-min)));
+    max-width: none;
+    margin: 0 auto;
+    border-width: 0 0 1px;
+    border-radius: 0;
+  }
+  .study > .sidebar,
+  #view-build .study > .sidebar,
+  #view-train .study > .train-sidebar,
+  #analyze-sidebar {
+    order: 1;
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
+    max-height: none;
+    border-width: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: hidden;
+  }
+  .study .panel-scroll,
+  #view-train .panel-scroll,
+  #analyze-sidebar .panel-scroll {
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  /* Board bar: flip and the position label on the left, the move buttons on the
+     right under the thumb; back / forward are the widest targets. */
+  .study .board-bar {
+    order: 2;
+    flex: none;
+    height: var(--phone-bar-h);
+    gap: 2px;
+    padding: 4px 6px;
+    border-top: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .study .board-bar .bb-right { order: 0; }
+  .study .board-bar .board-label { order: 1; text-align: left; padding-left: 4px; font-size: 13px; }
+  .study .board-bar .pv-exit { order: 1; }
+  .study .board-bar .bb-nav { order: 2; gap: 2px; }
+  .study .board-bar .ib,
+  #view-train .board-bar .ib {
+    width: auto;
+    min-width: 46px;
+    height: 48px;
+    min-height: 48px;
+    padding: 0;
+    font-size: 17px;
+    border-radius: 10px;
+  }
+  :is(#analysis-prev, #analysis-next, #build-parent, #build-next) {
+    min-width: 64px !important;
+    background: var(--panel-soft) !important;
+    font-size: 20px !important;
+  }
+  .study .board-bar .build-sync { max-width: 34vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media (max-width: 760px) {
+  /* Repertoire: the panel is one scroller (head, trail, fork picker, tree, then the
+     explorer), instead of four slivers squeezed into the space under the board. */
+  #view-build .study > .sidebar { overflow-y: auto; overscroll-behavior: contain; }
+  #view-build .study > .sidebar > * { flex: none !important; }
+  #view-build .tree-wrap { max-height: none; overflow: visible; }
+  #view-build .panel-head { position: sticky; top: 0; z-index: 4; background: var(--panel); }
+  #build-rep-header .rep-name { flex: 1 1 auto; }
+  #build-rep-header .rep-stats { display: none; }
+  #build-generate-node { min-height: 36px; height: 36px; }
+
+  /* The saved state shrinks to a tick; saving and errors keep their words. */
+  .study .board-bar .build-sync.is-saved { font-size: 0; gap: 0; padding: 2px 7px; }
+  .study .board-bar .build-sync.is-saved::before { content: "✓"; font-size: 13px; }
+
+  /* Status pill: a small notice at the top edge, clear of the thumb bar and the
+     panel's last row. */
+  .topbar-status-slot,
+  .topbar-status-slot:has(.status:empty),
+  .topbar-status-slot:has(.status:not(.is-fresh)) {
+    top: calc(6px + env(safe-area-inset-top));
+    bottom: auto;
+    left: 50%;
+    right: auto;
+    width: max-content;
+    max-width: calc(100vw - 24px);
+    padding: 5px 10px;
+    border-radius: 999px;
+    transform: translateX(-50%);
+  }
+  .topbar-status-slot:has(.status:empty),
+  .topbar-status-slot:has(.status:not(.is-fresh)) { transform: translate(-50%, -6px); }
+  .topbar-status-slot .status-close { width: 32px; height: 32px; }
+}
+@media (max-width: 760px) {
+  /* Train: the prompt and the mode switch stay one compact block above the cards. */
+  #view-train .train-coach { height: auto; min-height: 64px; padding: 8px 12px; gap: 10px; }
+  #view-train .train-coach-icon { width: 36px; height: 36px; flex: none; }
+  #view-train .panel-head { min-height: 0; padding: 6px 8px; }
+  #view-train .seg-btn { min-height: 36px; height: 36px; font-size: 13px; }
 }

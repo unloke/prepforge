@@ -1,5 +1,5 @@
 import "./styles.css";
-import { buildArrowPath } from "./board-arrows.js";
+import { buildArrowHeadPath, buildArrowPath, endsUnder } from "./board-arrows.js";
 import { classBadgeSymbol } from "./move-grades.js";
 import { countOf } from "./plural.js";
 // One per-position analysis store (engine/position-analysis-store.js) behind the
@@ -4507,6 +4507,7 @@ function renderAnnotations(
   const valid = (uci) => typeof uci === "string" && uci.length >= 4 && uci.slice(0, 2) !== uci.slice(2, 4);
   // Colours and stroke come from CSS tokens (.annot-arrow rules) so board
   // arrows stay in step with the rest of the theme.
+  const drawn = [];
   const drawArrow = (parent, arrow, kind, opts) => {
     const from = squareCenter(arrow.slice(0, 2), orientation);
     const to = squareCenter(arrow.slice(2, 4), orientation);
@@ -4514,6 +4515,7 @@ function renderAnnotations(
     path.setAttribute("d", buildArrowPath(from, to, opts));
     path.setAttribute("class", `annot-arrow annot-${kind}`);
     parent.appendChild(path);
+    drawn.push({ from, to, kind, opts, idle: parent !== overlay });
   };
   // Paint order is importance order, so a stronger mark is never buried under a weaker
   // one: idle fork options → the picked option → the engine-also-likes-this option →
@@ -4542,6 +4544,16 @@ function renderAnnotations(
   branches.filter((u) => u !== engine && arrows.includes(u)).forEach((u) => drawArrow(overlay, u, "branch is-echo"));
   // Slimmer than a user arrow, so one you drew on the same move still shows around it.
   if (engine && !engineIsBranch) drawArrow(overlay, engine, "engine", { scale: 0.7 });
+  // Two moves along one line from the same square (Bd3 and Bc4): the longer arrow's shaft
+  // covers the shorter one, so the shorter one's head is drawn again on top — one shaft,
+  // a head at each stop.
+  drawn.forEach((a, i) => {
+    if (!drawn.slice(i + 1).some((b) => endsUnder(a, b))) return;
+    const head = document.createElementNS(NS, "path");
+    head.setAttribute("d", buildArrowHeadPath(a.from, a.to, a.opts));
+    head.setAttribute("class", `annot-arrow annot-${a.kind} annot-stop${a.idle ? " is-idle" : ""}`);
+    overlay.appendChild(head);
+  });
 }
 
 function squareCenter(square, orientation = "white") {
