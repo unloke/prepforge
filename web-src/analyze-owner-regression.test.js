@@ -101,7 +101,8 @@ it("switching accounts during classify-save releases the analysis job without re
   };
   const start = source.indexOf("async function runAnalysis(");
   const runCode = source.slice(start, source.indexOf("function renderImportPicker(", start))
-    .replace('import("./engine/game-analyzer.js")', "Promise.resolve(engineModule)");
+    .replace('import("./engine/game-analyzer.js")', "Promise.resolve(engineModule)")
+    .replace('await import("./engine/tiered-analysis.js")', "({ analyzeTiered })");
   attachFinish(deps);
   const run = new Function(...Object.keys(deps), `${runCode}\nreturn runAnalysis;`)(...Object.values(deps));
   await run();

@@ -67,7 +67,10 @@ const LIMITS = [
   {
     prefix: "index-",
     suffix: ".js",
-    maxBytes: 342_000, // follow-up: receipt recovery, pagination and ordered/coalesced Build saves
+    // 2026-10-06 Analyze round: coach sanity gates + only-move Great route, line-arrow echo,
+    // screen_depth on saves. The two-tier pass itself is a lazy chunk; the eager glue lands
+    // the entry at ~342,380 B raw.
+    maxBytes: 343_000,
     maxGzipBytes: 109_000,
     label: "main app chunk",
   },

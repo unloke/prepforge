@@ -1,6 +1,5 @@
 import "./styles.css";
 import { buildArrowPath } from "./board-arrows.js";
-import { analyzeTiered } from "./engine/tiered-analysis.js";
 import { classBadgeSymbol } from "./move-grades.js";
 import { countOf } from "./plural.js";
 // One per-position analysis store (engine/position-analysis-store.js) behind the
@@ -6619,8 +6618,9 @@ async function runAnalysis(options = {}) {
     // Two tiers (engine/tiered-analysis.js): every position at a screen depth, then the full
     // depth only where a grade could hinge on it. The Maia pass streams the reads that will
     // be saved.
+    const tiered = await import("./engine/tiered-analysis.js");
     const { evals, screenDepth } = await timed("stockfish", () =>
-      analyzeTiered({
+      tiered.analyzeTiered({
         analyze: (o) => store.analyzeGame(o),
         positions,
         moves: prep.moves,
