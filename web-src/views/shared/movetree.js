@@ -73,15 +73,29 @@ export function createMoveTreeRenderer({ escapeHtml }) {
     return `<div class="mtree"><div class="mtree-line is-main">${body}</div></div>`;
   }
 
+  // Brings el into view inside the nearest box that scrolls: the container itself, or
+  // (when the container grows with its content, as the phone layout lets it) the panel
+  // around it. A one-line strip (the phone's sticky move strip) only centres el.
   function scrollIntoViewWithin(container, el) {
     if (!container || !el) return;
-    const cRect = container.getBoundingClientRect();
+    if (container.scrollWidth > container.clientWidth + 1) {
+      const cRect = container.getBoundingClientRect();
+      const eRect = el.getBoundingClientRect();
+      container.scrollLeft += eRect.left + eRect.width / 2 - (cRect.left + cRect.width / 2);
+      return;
+    }
+    const scrolls = (b) =>
+      b.scrollHeight > b.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(b).overflowY);
+    let box = container;
+    while (box && !scrolls(box)) box = box.parentElement;
+    if (!box || box === document.body || box === document.documentElement) return;
+    const cRect = box.getBoundingClientRect();
     const eRect = el.getBoundingClientRect();
     const overTop = eRect.top - cRect.top;
     const overBottom = eRect.bottom - cRect.bottom;
     if (overTop >= 0 && overBottom <= 0) return;
     if (overTop < 0 && overBottom > 0) return;
-    container.scrollTop += overTop < 0 ? overTop : overBottom;
+    box.scrollTop += overTop < 0 ? overTop : overBottom;
   }
 
   function bindMoveTreeClicks(container, onSelect, onContext) {
