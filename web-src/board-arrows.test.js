@@ -44,3 +44,23 @@ describe("move grades", () => {
     expect(classBadgeSymbol("nonsense")).toBe("");
   });
 });
+
+describe("collinear arrows", () => {
+  it("finds an arrow that ends on a longer arrow's path from the same square", async () => {
+    const { endsUnder, buildArrowHeadPath } = await import("./board-arrows.js");
+    const f1 = centre(5, 0);
+    const d3 = { from: f1, to: centre(3, 2) };
+    const c4 = { from: f1, to: centre(2, 3) };
+    const e2 = { from: f1, to: centre(4, 1) };
+    const g2 = { from: f1, to: centre(6, 1) };
+    expect(endsUnder(d3, c4)).toBe(true);
+    expect(endsUnder(e2, c4)).toBe(true);
+    expect(endsUnder(c4, d3)).toBe(false); // the longer one is not hidden
+    expect(endsUnder(g2, c4)).toBe(false); // other diagonal
+    expect(endsUnder({ from: centre(6, 0), to: centre(5, 2) }, { from: centre(6, 0), to: centre(4, 4) })).toBe(false); // knight hop
+    const head = points(buildArrowHeadPath(d3.from, d3.to));
+    expect(head).toHaveLength(3);
+    const full = points(buildArrowPath(d3.from, d3.to));
+    expect(head[1]).toEqual(full[3]); // same tip as the full arrow
+  });
+});

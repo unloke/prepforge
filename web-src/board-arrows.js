@@ -83,3 +83,28 @@ export function buildArrowPath(from, to, { scale = 1 } = {}) {
   ];
   return outline.map((p, i) => `${i ? "L" : "M"}${fmt(p.x)},${fmt(p.y)}`).join(" ") + " Z";
 }
+
+// Just the head of the arrow buildArrowPath(from, to, opts) draws, as its own polygon.
+export function buildArrowHeadPath(from, to, { scale = 1 } = {}) {
+  const halfHead = HALF_HEAD * scale;
+  const { points, tip, dir } = spine(from, to, HEAD_LENGTH * Math.sqrt(scale));
+  const neck = points[points.length - 1];
+  const px = -dir.y;
+  const py = dir.x;
+  const outline = [
+    { x: neck.x + px * halfHead, y: neck.y + py * halfHead },
+    tip,
+    { x: neck.x - px * halfHead, y: neck.y - py * halfHead },
+  ];
+  return outline.map((p, i) => `${i ? "L" : "M"}${fmt(p.x)},${fmt(p.y)}`).join(" ") + " Z";
+}
+
+// True when the straight arrow a ends on the path of the longer straight arrow b from the
+// same square (f1-d3 under f1-c4): b's shaft would hide all of a but its head.
+export function endsUnder(a, b) {
+  if (a.from.x !== b.from.x || a.from.y !== b.from.y) return false;
+  if (isKnightHop(a.from, a.to) || isKnightHop(b.from, b.to)) return false;
+  const ua = unit(a.from.x, a.from.y, a.to.x, a.to.y);
+  const ub = unit(b.from.x, b.from.y, b.to.x, b.to.y);
+  return Math.abs(ua.x - ub.x) < 1e-6 && Math.abs(ua.y - ub.y) < 1e-6 && ub.len > ua.len + 1e-6;
+}

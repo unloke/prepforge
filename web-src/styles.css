@@ -102,6 +102,7 @@
   --arrow-better: rgba(176, 62, 196, 0.8);
   /* Repertoire line options: neutral slate, drawn as a dashed outline. */
   --arrow-line: rgba(52, 64, 78, 0.9);
+  --arrow-rim: rgba(255, 255, 255, 0.9);
   /* Board coordinate labels. */
   --coord-on-light: #354655;
   --coord-on-dark: #172a38;
@@ -211,6 +212,7 @@
   --arrow-engine: rgba(80, 196, 132, 0.82);
   --arrow-better: rgba(222, 132, 240, 0.85);
   --arrow-line: rgba(206, 214, 224, 0.9);
+  --arrow-rim: rgba(14, 17, 22, 0.85);
   --coord-on-light: #354655;
   --coord-on-dark: #07121a;
   --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -2072,6 +2074,21 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 .annot-branch.is-engine.is-pick {
   fill-opacity: 0.8;
+}
+
+/* The head of a move whose arrow a longer one from the same square covers (Bd3 under
+   Bc4): solid, with a light rim, so it reads as a second stop on the shaft. */
+.annot-stop {
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 0.5;
+  stroke-dasharray: none;
+  stroke-linejoin: round;
+}
+.annot-branch.annot-stop {
+  fill-opacity: 0.85;
+}
+.annot-stop.is-idle {
+  opacity: 0.8;
 }
 
 .square {
