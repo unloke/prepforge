@@ -4531,13 +4531,17 @@ function renderAnnotations(
     overlay.appendChild(group);
   }
   if (pick && pick !== engine) drawArrow(overlay, pick, "branch is-pick");
-  // The engine's move is one of the fork options: one arrow in the option's colour with
-  // an engine-green rim, instead of a green arrow hiding the option underneath.
+  // The engine's move is one of the fork options: one arrow, the engine's fill inside the
+  // option's outline, instead of a green arrow hiding the option underneath.
   const engineIsBranch = !!engine && branches.includes(engine);
   if (engineIsBranch) drawArrow(overlay, engine, `branch is-engine${engine === pick ? " is-pick" : ""}`);
   if (valid(betterArrow) && betterArrow !== engine) drawArrow(overlay, betterArrow, "better");
   arrows.forEach((arrow) => drawArrow(overlay, arrow, "user"));
-  if (engine && !engineIsBranch) drawArrow(overlay, engine, "engine");
+  // A line option you also drew yourself: its dashed outline on top, so the option
+  // doesn't vanish under your arrow.
+  branches.filter((u) => u !== engine && arrows.includes(u)).forEach((u) => drawArrow(overlay, u, "branch is-echo"));
+  // Slimmer than a user arrow, so one you drew on the same move still shows around it.
+  if (engine && !engineIsBranch) drawArrow(overlay, engine, "engine", { scale: 0.7 });
 }
 
 function squareCenter(square, orientation = "white") {
