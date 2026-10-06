@@ -1,12 +1,13 @@
 """Build the Kaggle kernel for the Analyze speed study from the committed tree (no local compute).
 
-python research/analyze-speed/package.py <kernel-dir> [--slug vexylon/analyze-speed-20261006] [--games 48]
+python research/analyze-speed/package.py <kernel-dir> [--slug vexylon/analyze-speed-20261006] [--games 48] [--budget minutes]
 """
 import base64, hashlib, io, json, pathlib, subprocess, sys, zipfile
 
 out = pathlib.Path(sys.argv[1]); out.mkdir(parents=True, exist_ok=True)
 slug = sys.argv[sys.argv.index('--slug') + 1] if '--slug' in sys.argv else 'vexylon/analyze-speed-20261006'
 games = int(sys.argv[sys.argv.index('--games') + 1]) if '--games' in sys.argv else 48
+budget = int(sys.argv[sys.argv.index('--budget') + 1]) if '--budget' in sys.argv else 0
 repo = pathlib.Path(subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], text=True).strip())
 commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repo, text=True).strip()
 files = subprocess.check_output(['git', 'ls-files', 'research/analyze-speed', 'package.json', 'package-lock.json'],
@@ -30,7 +31,7 @@ for name,sha in {{'stockfish-19-lite-single.js':'d3344124ab067fb0b90ee77873bb8e9
 print('cpus',os.cpu_count(),flush=True)
 subprocess.run(['node','research/analyze-speed/bench.mjs',str(csv[0]),str(out/'smoke'),'1'],cwd=root,check=True)
 subprocess.run(['node','research/analyze-speed/summarize.mjs',str(out/'smoke')],cwd=root,check=True)
-subprocess.run(['node','research/analyze-speed/bench.mjs',str(csv[0]),str(out),'{games}'],cwd=root,check=True)
+subprocess.run(['node','research/analyze-speed/bench.mjs',str(csv[0]),str(out),'{games}','{budget}'],cwd=root,check=True)
 subprocess.run(['node','research/analyze-speed/summarize.mjs',str(out)],cwd=root,check=True)
 (out/'SOURCE-MANIFEST.json').write_text(json.dumps(dict(commit='{commit}',files=manifest,cpus=os.cpu_count()),indent=1))
 print('ANALYZE SPEED STUDY COMPLETE',flush=True)

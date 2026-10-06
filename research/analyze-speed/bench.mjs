@@ -2,7 +2,7 @@
 // shallow-then-deep pass make the main Stockfish pass cheaper, and what does it cost in
 // move-grade accuracy? Runs on Kaggle (see package.py), never locally.
 //
-//   node research/analyze-speed/bench.mjs <games.csv> <out-dir> [games=48]
+//   node research/analyze-speed/bench.mjs <games.csv> <out-dir> [games=48] [budget-minutes]
 //
 // Every arm analyses the same games with the production engine (Stockfish 19 lite, single
 // thread, one process per worker, 4 workers like the browser pool) and the production limits
@@ -237,7 +237,9 @@ async function runArm(arm, engines, game) {
 }
 
 async function main() {
-  const [csvPath, outDir, countArg] = process.argv.slice(2);
+  const [csvPath, outDir, countArg, budgetArg] = process.argv.slice(2);
+  // No new game starts once the budget is spent; the games already run are kept.
+  const deadline = Date.now() + (Number(budgetArg) || Infinity) * 60000;
   const games = sampleGames(readFileSync(csvPath, "utf8"), Number(countArg) || 48);
   mkdirSync(outDir, { recursive: true });
   const engines = {};
@@ -248,6 +250,7 @@ async function main() {
   const names = Object.keys(ARMS);
   const rows = [];
   for (const [g, game] of games.entries()) {
+    if (Date.now() > deadline) break;
     // Rotate the arm order per game so machine drift doesn't favour one arm.
     const order = names.map((_, k) => names[(k + g) % names.length]);
     const byArm = {};
