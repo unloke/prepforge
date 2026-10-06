@@ -6,8 +6,12 @@ import { preparationValue, routeKey, canonicalPosition } from "../../web-src/sco
 export const PATH_FLOOR_CP = -75;
 export const MAX_ANCHOR_REJECTIONS = 4;
 export const MAX_CONTINUATION_TRIES = 3;
-// Extra Stockfish nodes allowed per colour, as a share of that colour's v10 leaf nodes.
+// Extra Stockfish nodes allowed per colour: 30% of v10's full leaf queue (300 depth-8
+// reads at ~5,000 nodes each), so no scan exceeds ~1.3x the v10 worst case.
+export const V10_QUEUE_READS = 300;
+export const NODES_PER_GATE_READ = 5000;
 export const AUDIT_NODE_SHARE = 0.3;
+export const AUDIT_NODE_BUDGET = AUDIT_NODE_SHARE * V10_QUEUE_READS * NODES_PER_GATE_READ;
 // Cheap first read; only positions near the floor are confirmed at the gate depth.
 export const SCREEN_DEPTH = 6;
 export const GATE_DEPTH = 8;
@@ -187,6 +191,22 @@ export async function selectPreparationRoutesV11(routes, { limit = 12, baseline 
   };
   for (const row of rows) if (full(row)) await fill(row);
   for (const row of rows) await fill(row);
+  // Never fewer weak rows than v10: put back a v10 weak row in place of a replacement fill.
+  if (guard) {
+    const uncommit = route => {
+      picked.splice(picked.indexOf(route), 1); keys.delete(routeKey(route));
+      positions.delete(canonicalPosition(route.terminalFen) ?? routeKey(route));
+    };
+    for (const lost of control.filter(r => r.preparationEvidence.value > 0 && !keys.has(routeKey(r)))) {
+      if (weakPicked() >= weakTarget) break;
+      const row = rows.find(r => routeKey(r.route) === routeKey(lost));
+      for (const out of [...picked].reverse().filter(r => !(r.preparationEvidence.value > 0) && !v10Keys.has(routeKey(r)))) {
+        uncommit(out);
+        if (row && free(row) && distinct(row)) { commit(row, "risk"); log.push({ restoredWeak: routeKey(lost), removed: routeKey(out) }); break; }
+        commit(rows.find(r => routeKey(r.route) === routeKey(out)), out.pathStatus);
+      }
+    }
+  }
   // Never fewer rows than v10: v10's own rows first, marked.
   if (guard) {
     const byKey = new Map(rows.map(r => [routeKey(r.route), r]));

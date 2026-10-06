@@ -96,3 +96,24 @@ Run-02 changes. Each one targets one of these failure mechanisms; no thresholds 
    The diagnostic reports the screen's recall against both depth8 and native16.
 
 The criteria and kill rules are unchanged.
+
+## Run-02 result and run-03 amendment (user decision 2026-10-05)
+
+Run-02: FAIL. Masks fell from 142 to 107 (-24.6%), median worst CP went from -141 to -107,
+and utility did not drop. The uncapped arm reached -45.8% at +38.6% aggregate nodes.
+53 of the remaining 107 masked rows were never audited. The per-session cap starved the
+low-cost third of sessions (median 85 leaf reads; masks 45 to 44). The depth-6 screen
+saved only about 20% of the cost.
+
+User decision: the 40% production limit is measured against v10's full budget, not
+against each run's actual reads. Run-03 therefore uses a fixed allowance per colour of
+`AUDIT_NODE_BUDGET` = 30% x 300 depth-8 reads x 5,000 nodes = 450,000 nodes.
+5,000 is the median nodes per leaf read measured in run-02. With this allowance, no scan
+exceeds about 1.3x v10's worst case.
+
+The criterion `extraNodesUnder40` is now: audit nodes < 40% of v10's full queue
+(300 x 5,000) in every session. The ratio against the actual v10 reads is still reported.
+
+Weak count: run-02 still lost one weak row in one session. Run-03 puts back a v10 weak
+row, marked `risk`, in place of a replacement fill whenever the final weak count falls
+below v10's. The other criteria and the kill rules are unchanged.

@@ -19,7 +19,7 @@ function aggregate(all) {
       riskFlags: sum(a, x => x.flags.risk), unverifiedFlags: sum(a, x => x.flags.unverified), flaggedMasks: sum(a, x => x.flaggedMasks),
       changedRows: sum(a, x => x.changedRows), sessionsChanged: a.filter(x => x.changedRows > 0).length,
       medianNodeRatio: median(a.map(x => x.nodeRatio).filter(Number.isFinite)), maxNodeRatio: Math.max(0, ...a.map(x => x.nodeRatio ?? 0)),
-      medianAuditReads: median(a.map(x => x.auditReads ?? 0)), budgetExhausted: a.filter(x => x.budgetExhausted).length,
+      medianCapacityRatio: median(a.map(x => x.capacityRatio).filter(Number.isFinite)), maxCapacityRatio: Math.max(0, ...a.map(x => x.capacityRatio ?? 0)), aggregateNodeRatio: sum(a, x => x.auditNodes ?? 0) / sum(valid, s => s.v10LeafNodes), medianAuditReads: median(a.map(x => x.auditReads ?? 0)), budgetExhausted: a.filter(x => x.budgetExhausted).length,
       sumValue: sum(a, x => x.sumValue), sumSoftValue: sum(a, x => x.sumSoftValue),
       meanReach: sum(a, x => x.meanReach ?? 0) / a.length, minReach: Math.min(...a.map(x => x.minReach)), minSupport: Math.min(...a.map(x => x.minSupport)),
       medianWorstCp: median(a.map(x => x.worstCp).filter(Number.isFinite)) };
@@ -44,7 +44,7 @@ function aggregate(all) {
     noSessionMoreMasks: perSession.every(s => s.v11 <= s.v10),
     sameRowCount: perSession.every(s => s.rows[1] === s.rows[0]),
     weakCountKept: perSession.every(s => s.weak[1] >= s.weak[0]),
-    extraNodesUnder40: arms.v11.maxNodeRatio < 0.4,
+    extraNodesUnder40: arms.v11.maxCapacityRatio < 0.4,
   };
   const kill = { depth8RecallBelow60: recall.recall !== null && recall.recall < 0.6, maskReductionBelow20: reduction === null || reduction < 0.2 };
   return { sessions: all.length, valid: valid.length, replayMismatches: all.length - valid.length, reduction,
@@ -62,7 +62,7 @@ const section = (title, s) => [`## ${title}`, "",
   "| Arm | masks | full-path fails | rows | weak | risk/unverified | changed rows (sessions) | extra nodes median / max | Σutility | mean reach | median worst CP |",
   "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
   line("v10", s.arms.v10), line("v11 (30% cap)", s.arms.v11), line("v11 uncapped (diagnostic)", s.arms["v11-uncapped"]), "",
-  `Mask reduction：v11 ${pct(s.reduction)}，uncapped ${pct(s.uncappedReduction)}。`,
+  `Mask reduction：v11 ${pct(s.reduction)}，uncapped ${pct(s.uncappedReduction)}。v11 extra nodes vs v10 full queue (300 reads)：median ${pct(s.arms.v11.medianCapacityRatio)}，max ${pct(s.arms.v11.maxCapacityRatio)}；aggregate vs actual v10 ${pct(s.arms.v11.aggregateNodeRatio)}。`,
   `Depth8 detector recall on native16 own-decision failures：${pct(s.recall.recall)}（${s.recall.depth8Hits}/${s.recall.nativeOwnUnsafe}），mask recall ${pct(s.recall.maskRecall)}，false alarms ${s.recall.falseAlarms}/${s.recall.rows}；full audit of all v10 rows costs median ${pct(s.recall.fullAuditMedianNodeRatio)} of leaf nodes；depth6 screen + depth8 confirm：recall ${pct(s.recall.screenRecall)}，agrees with depth8 on ${pct(s.recall.screenVsDepth8)} of depth8 hits，full audit median ${pct(s.recall.screenFullAuditMedianNodeRatio)}。`, "",
   `Criteria：${JSON.stringify(s.criteria)}`, `Kill：${JSON.stringify(s.kill)}`, ""];
 const report = ["# Scout v11 path guard vs v10", "",

@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import * as scout from "../../web-src/scout.js";
 import { rankPrefilterCandidates, collectPrefilterFens } from "../../web-src/scout-prefilter.js";
 import { routeKey, canonicalPosition } from "../../web-src/scout-preparation-value.js";
-import { selectPreparationRoutesV11, createPathGuard, ownDecisionPlies, unsafeRead, AUDIT_NODE_SHARE, SCREEN_DEPTH, GATE_DEPTH, SCREEN_MARGIN_CP } from "./path-guard.mjs";
+import { selectPreparationRoutesV11, createPathGuard, ownDecisionPlies, unsafeRead, AUDIT_NODE_BUDGET, V10_QUEUE_READS, NODES_PER_GATE_READ, SCREEN_DEPTH, GATE_DEPTH, SCREEN_MARGIN_CP } from "./path-guard.mjs";
 import { createEngine, parseNodes } from "./engine.mjs";
 import { diagnosePath } from "./path-diagnostics.mjs";
 
@@ -121,11 +121,11 @@ try {
       const auditFile = resolve(auditDir, `${p.id}.${color}.json`);
       const auditSelected = existsSync(auditFile) ? read(auditFile).selected : null;
       const arms = {};
-      for (const [arm, budgetNodes] of [["v11", AUDIT_NODE_SHARE * v10LeafNodes], ["v11-uncapped", Infinity]]) {
+      for (const [arm, budgetNodes] of [["v11", AUDIT_NODE_BUDGET], ["v11-uncapped", Infinity]]) {
         const guard = createPathGuard({ engine, fensFor, oppColor: color, budgetNodes, leafMeanNodes: v10LeafNodes / Math.max(1, leafNodes.size) });
         const r = await selectPreparationRoutesV11(eligible, { baseline, limit: 12, guard });
         arms[arm] = { ...armMetrics(r.picked, color, v10Keys), auditNodes: guard.spentNodes, auditReads: guard.reads,
-          budgetNodes: Number.isFinite(budgetNodes) ? budgetNodes : null, nodeRatio: v10LeafNodes ? guard.spentNodes / v10LeafNodes : null,
+          budgetNodes: Number.isFinite(budgetNodes) ? budgetNodes : null, nodeRatio: v10LeafNodes ? guard.spentNodes / v10LeafNodes : null, capacityRatio: guard.spentNodes / (V10_QUEUE_READS * NODES_PER_GATE_READ),
           budgetExhausted: guard.exhausted, screens: guard.screens, confirms: guard.confirms, anchorRejections: r.anchorRejections, log: r.log };
       }
       // Detector recall: every v10 row read in full at depth8 (diagnostic, not a runtime cost).
