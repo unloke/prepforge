@@ -105,6 +105,26 @@ runtime <= 125% and p95 <= 150% of OLD. Results on one
 in-sample corpus do not establish predictive quality; chronological held-out
 validation is required before making that claim.
 
+## Path guard prototype (on by default for testing; `?scoutPathGuard=0` shows v10)
+
+v10 gates only the leaf. The prototype (`web-src/scout-path-guard.js`, from
+`research/scout-v11`) also checks every position after a preparing-side move in a
+shown line, with the same rule (CP < -75 or an adverse mate). Each line is read deepest
+first with one `ucinewgame`: a depth-6 screen, confirmed at depth 8 when it is within
+50cp of the floor. Unsafe after the anchor: the next most common continuation (<= 3).
+Unsafe at or before it: the anchor is dropped (<= 4 per colour) while enough weak
+anchors remain. Extra nodes are capped at 450,000 per colour (30% of 300 x 5,000).
+When the budget runs out, v10's own rows stay and are marked `unverified`; a confirmed
+unsafe row with no replacement stays and is marked `risk` (shown as `!`). Row count and
+weak count are never below v10's.
+
+Each colour's pass runs right after its Stockfish prefilter and before its lines are
+published, on the input a render would select from. The first engine-ranked plan shown
+is therefore the guarded one. Rows new to a re-ranked plan fade in.
+Each render replays the recorded verdict trace without engine reads. If the input
+changes, the replay falls back to cached position verdicts and the pass runs again (at most three times).
+The research verdict was FAIL (-34.5% masked rows, against a 40% target); this default is for testing, not a release decision.
+
 The former `?scoutV13=1` experimental runtime was retired; its code lives under `research/lib/`, unrelated to scoring
 version 10. Its existing shared research dependencies and legacy v12 vocabulary
 module retain their previous status. Historical `archive/` material does not

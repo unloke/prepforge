@@ -58,15 +58,22 @@ import {
   buildFallbackPrefilterData,
   computePrefilterScopeKey,
   mergeGlobalPrefilterRanked,
+  prefilterCacheKey,
   runStockfishPrefilter,
 } from "../scout-prefilter.js";
 import {
   SCOUT_ERR_NETWORK,
   SCOUT_ERR_NO_GAMES,
+  SCOUT_GAME_PLAN_LIMIT,
+  fensAlongLine,
+  gamePlanCandidates,
   opponentColorBaseline,
   scoutFetchErrorMessage,
   trimRankedBranches,
 } from "../scout.js";
+import { NODES_PER_GATE_READ, createPathGuard, selectGuardedRoutes } from "../scout-path-guard.js";
+import { routeKey } from "../scout-preparation-value.js";
+import { createPathGuardEngine } from "../scout-path-guard-engine.js";
 
 const RENDER_DEBOUNCE_MS = 400;
 // Games per account per fetch; "Load older" pulls the next batch.
@@ -94,6 +101,14 @@ export function scoutRenderDebounceMs(gameCount) {
 const EXPLORER_ENRICH_DEBOUNCE_MS = 800;
 const ENGINE_AGG_DEBOUNCE_MS = 400;
 const MAIA_ENRICH_DEBOUNCE_MS = 600;
+const PATH_GUARD_DEBOUNCE_MS = 300;
+// A replay that no longer matches its recorded run re-runs the guard at most this often per scope.
+const PATH_GUARD_MAX_RERUNS = 3;
+
+/** Path guard prototype (research/scout-v11): on by default for testing; ?scoutPathGuard=0 shows v10. */
+export function scoutPathGuardEnabled(search = typeof location === "undefined" ? "" : location.search) {
+  return new URLSearchParams(search).get("scoutPathGuard") !== "0";
+}
 
 function scoutErrorHtml(message, escapeHtml) {
   return `<div class="scout-error" role="alert">${escapeHtml(message)}</div>`;
@@ -159,6 +174,8 @@ export function createScoutView(deps) {
   let prefilterEnrichSeq = 0;
   let prefilterEnrichInFlight = false;
   let prefilterEnrichActiveGen = 0;
+  let pathGuardTimer = null;
+  let pathGuardSeq = 0;
   // Memo for maiaCandidateLines, keyed by trie identity (fresh per report rebuild).
   const maiaCandidateCache = new WeakMap();
   const prefilterCandidateCache = new WeakMap();
@@ -227,6 +244,7 @@ export function createScoutView(deps) {
   }
 
   function engineProgressLabel(p) {
+    if (p?.phase === "path") return "Checking lines…";
     if (p?.phase === "maia") {
       return p.total > 0
         ? `Maia ${p.done}/${p.total}`
@@ -401,6 +419,50 @@ export function createScoutView(deps) {
     scoutState.liveTrieCount = scoutState.games.length;
   }
 
+  // Plan rows by colour and line, so a re-render can tell which rows are new.
+  function planRowKeys(root) {
+    return new Set([...root.querySelectorAll(".scout-weakness-row")].map((row) => `${row.dataset.color}|${row.dataset.lineKey}`));
+  }
+
+  // When the plan changes under the user (engine ranking, path guard), only rows that were
+  // not shown before fade in, one after another; rows that stay do not move or flash.
+  function markEnteringPlanRows(root, before) {
+    if (!before.size) return;
+    let n = 0;
+    for (const row of root.querySelectorAll(".scout-weakness-row")) {
+      if (before.has(`${row.dataset.color}|${row.dataset.lineKey}`)) continue;
+      row.classList.add("is-entering");
+      row.style.setProperty("--enter-index", String(n++));
+    }
+  }
+
+  // One colour's report from the current state; `overrides` lets the path guard build the
+  // selector input a render would use without drawing it.
+  function buildSectionReport(oppColor, overrides = {}) {
+    return buildScoutSectionReport(
+      scoutModule,
+      scoutState,
+      oppColor,
+      scoutState.lookups[oppColor === "white" ? "black" : "white"],
+      {
+        speedFilter: scoutState.activeSpeed,
+        escapeHtml,
+        enginePatterns: engineScanPatterns(scoutState.engineByColor?.[oppColor]),
+        explorerReads: scoutState.explorerByColor?.[oppColor] || null,
+        engineAgg: engineAggForColor(oppColor),
+        engineScan: engineScanForColor(oppColor),
+        maiaResults: scoutState.maiaResults,
+        maiaRatings: scoutState.maiaRatings,
+        maiaEnrichState: scoutState.maiaEnrichState || "idle",
+        prefilterEnrichState: scoutState.prefilterEnrichState || "idle",
+        prefilteredLines: scoutState.prefilteredLines?.[oppColor],
+        pathGuard: pathGuardOption(oppColor),
+        trie: liveTrieForColor(oppColor),
+        ...overrides,
+      },
+    );
+  }
+
   function renderScoutReport({ force = false } = {}) {
     if (!scoutState) return;
     const profileEl = getProfileEl();
@@ -437,45 +499,9 @@ export function createScoutView(deps) {
         black: medianOpponentRating(scoutState.games, "black"),
       };
     }
-    const maiaOpts = {
-      maiaResults: scoutState.maiaResults,
-      maiaRatings: scoutState.maiaRatings,
-      maiaEnrichState: scoutState.maiaEnrichState || "idle",
-      prefilterEnrichState: scoutState.prefilterEnrichState || "idle",
-      prefilteredLines: scoutState.prefilteredLines?.white,
-    };
-    const speedOpts = {
-      speedFilter: scoutState.activeSpeed,
-      escapeHtml,
-      enginePatterns: engineScanPatterns(scoutState.engineByColor?.white),
-      explorerReads: scoutState.explorerByColor?.white || null,
-      engineAgg: engineAggForColor("white"),
-      engineScan: engineScanForColor("white"),
-      ...maiaOpts,
-    };
-    const whiteReport = buildScoutSectionReport(
-      scoutModule,
-      scoutState,
-      "white",
-      scoutState.lookups.black,
-      { ...speedOpts, trie: liveTrieForColor("white") },
-    );
+    const whiteReport = buildSectionReport("white");
     if (whiteReport.sectionData) scoutState.sections.white = whiteReport.sectionData;
-    const blackReport = buildScoutSectionReport(
-      scoutModule,
-      scoutState,
-      "black",
-      scoutState.lookups.white,
-      {
-        ...speedOpts,
-        enginePatterns: engineScanPatterns(scoutState.engineByColor?.black),
-        explorerReads: scoutState.explorerByColor?.black || null,
-        engineAgg: engineAggForColor("black"),
-        engineScan: engineScanForColor("black"),
-        prefilteredLines: scoutState.prefilteredLines?.black,
-        trie: liveTrieForColor("black"),
-      },
-    );
+    const blackReport = buildSectionReport("black");
     if (blackReport.sectionData) scoutState.sections.black = blackReport.sectionData;
     if (scoutState.engineByColor && Object.keys(scoutState.engineByColor).length) {
       mergeEnginePatternsIntoSections(scoutState.sections, scoutState.engineByColor, {
@@ -486,10 +512,12 @@ export function createScoutView(deps) {
     const progressHtml = document.getElementById("scout-engine-progress")?.outerHTML ||
       '<div id="scout-engine-progress" class="scout-engine-progress" hidden></div>';
     if (results) {
+      const shownBefore = planRowKeys(results);
       results.innerHTML = sections.length
         ? progressHtml + tabsHtml + sections.join("")
         : progressHtml + '<div class="empty-state">Not enough opening data in these games.</div>';
       if (sections.length) applyScoutColorTabs(results);
+      markEnteringPlanRows(results, shownBefore);
       if (captured) {
         restoreScoutExpanded(results, scoutState.sections, captured, scoutSelectionCtx());
       }
@@ -568,6 +596,9 @@ export function createScoutView(deps) {
     clearTimeout(maiaEnrichTimer);
     maiaEnrichTimer = null;
     maiaEnrichSeq += 1;
+    clearTimeout(pathGuardTimer);
+    pathGuardTimer = null;
+    pathGuardSeq += 1;
   }
 
   function schedulePrefilterEnrich() {
@@ -577,6 +608,106 @@ export function createScoutView(deps) {
       prefilterEnrichTimer = null;
       enrichPrefilterReads(gen);
     }, PREFILTER_ENRICH_DEBOUNCE_MS);
+  }
+
+  // Re-runs the guard after the selector input changed (for example once Maia lands).
+  function schedulePathGuard() {
+    if (!scoutPathGuardEnabled()) return;
+    clearTimeout(pathGuardTimer);
+    const gen = ++pathGuardSeq;
+    pathGuardTimer = setTimeout(() => {
+      pathGuardTimer = null;
+      rerunPathGuard(gen);
+    }, PATH_GUARD_DEBOUNCE_MS);
+  }
+
+  // The recorded guard run for one colour, replayed by the report without engine reads.
+  function pathGuardOption(oppColor) {
+    if (!scoutPathGuardEnabled()) return null;
+    const rec = scoutState?.pathGuard?.[oppColor];
+    if (!rec) return null;
+    return {
+      trace: rec.trace,
+      verdicts: rec.verdicts,
+      onReplay: (replay) => {
+        if (!replay.diverged || rec.diverged) return;
+        rec.diverged = true;
+        console.debug("[scout-path-guard] input changed; re-running", oppColor);
+        if (rec.reruns < PATH_GUARD_MAX_RERUNS) schedulePathGuard();
+      },
+    };
+  }
+
+  // Mean nodes of this colour's depth-8 leaf reads: the guard's cost estimate before its own reads.
+  function meanLeafNodes(candidates) {
+    let sum = 0;
+    let n = 0;
+    for (const line of candidates) {
+      const nodes = scoutState.prefilterCache?.get(prefilterCacheKey(line.terminalFen))?.nodes;
+      if (Number.isFinite(nodes) && nodes > 0) { sum += nodes; n += 1; }
+    }
+    return n ? sum / n : NODES_PER_GATE_READ;
+  }
+
+  /**
+   * Runs the guarded selection for one colour on the exact input a render would select
+   * from (`overrides` stand in for state not yet published) and records it. Returns false
+   * when superseded. Engine failure leaves no record, so the v10 rows show.
+   */
+  async function runPathGuardForColor(oppColor, engine, isCurrent, overrides = {}) {
+    const section = buildSectionReport(oppColor, { ...overrides, pathGuard: null }).sectionData;
+    if (!section?.gamePlanSource?.length) return true;
+    scoutState.pathGuard = scoutState.pathGuard || { white: null, black: null };
+    scoutState.pathGuardVerdicts = scoutState.pathGuardVerdicts || { white: new Map(), black: new Map() };
+    const prev = scoutState.pathGuard[oppColor];
+    const baseline = section.baselineScorePct;
+    const candidates = gamePlanCandidates(section.gamePlanSource, baseline, { oppColor });
+    const verdicts = scoutState.pathGuardVerdicts[oppColor];
+    const guard = createPathGuard({ engine, fensFor: fensAlongLine, oppColor, leafMeanNodes: meanLeafNodes(candidates), verdicts });
+    const started = Date.now();
+    let result;
+    try {
+      result = await selectGuardedRoutes(candidates, { baseline, limit: SCOUT_GAME_PLAN_LIMIT }, guard);
+    } catch (err) {
+      if (!isCurrent()) return false;
+      console.warn("[scout-path-guard] skipped:", err?.message || err);
+      scoutState.pathGuard[oppColor] = null;
+      return true;
+    }
+    if (!isCurrent()) return false;
+    const flags = { safe: 0, unverified: 0, risk: 0 };
+    for (const row of result.picked) flags[row.pathStatus] = (flags[row.pathStatus] || 0) + 1;
+    const v10Keys = new Set(result.control.map(routeKey));
+    const stats = {
+      ...result.stats, ms: Date.now() - started, anchorRejections: result.anchorRejections, flags,
+      changedRows: result.picked.filter((row) => !v10Keys.has(routeKey(row))).length,
+      v10: result.control.map(routeKey), shown: result.picked.map((row) => [routeKey(row), row.pathStatus]),
+    };
+    scoutState.pathGuard[oppColor] = {
+      trace: guard.trace, verdicts, stats, diverged: false,
+      reruns: prev?.diverged ? prev.reruns + 1 : 0,
+    };
+    console.debug("[scout-path-guard]", oppColor, stats);
+    return true;
+  }
+
+  async function rerunPathGuard(gen) {
+    if (!scoutPathGuardEnabled() || !scoutState?.games?.length || !scoutModule) return;
+    if (gen !== pathGuardSeq || scoutState.prefilterEnrichState !== PREFILTER_READY) return;
+    const isCurrent = () => gen === pathGuardSeq && Boolean(scoutState);
+    const engine = createPathGuardEngine({ shouldCancel: () => !isCurrent() });
+    let changed = false;
+    try {
+      for (const oppColor of ["white", "black"]) {
+        const rec = scoutState.pathGuard?.[oppColor];
+        if (!rec?.diverged || rec.reruns >= PATH_GUARD_MAX_RERUNS) continue;
+        if (!(await runPathGuardForColor(oppColor, engine, isCurrent))) return;
+        changed = true;
+      }
+    } finally {
+      await engine.close();
+      if (changed && isCurrent()) renderScoutReport();
+    }
   }
 
   function scheduleMaiaEnrich() {
@@ -645,6 +776,7 @@ export function createScoutView(deps) {
     scoutState.prefilteredLines = { white: [], black: [] };
     scoutState.stockfishDisplayLines = { white: [], black: [] };
     scoutState.ancestorFreq = { white: new Map(), black: new Map() };
+    scoutState.pathGuard = { white: null, black: null };
   }
 
   function syncMaiaScope() {
@@ -781,6 +913,10 @@ export function createScoutView(deps) {
     // the white→black passes instead of snapping back to 0% when black starts.
     let sfBaseDone = 0;
     let sfBaseTotal = 0;
+    // The path guard reads each colour's lines before they are published, so the first
+    // engine-ranked plan on screen is already the guarded one.
+    const guardCurrent = () => gen === prefilterEnrichSeq && Boolean(scoutState);
+    const guardEngine = scoutPathGuardEnabled() ? createPathGuardEngine({ shouldCancel: () => !guardCurrent() }) : null;
     try {
       for (const oppColor of ["white", "black"]) {
         if (gen !== prefilterEnrichSeq) return;
@@ -814,10 +950,16 @@ export function createScoutView(deps) {
           result.funnel.scoreDrops?.noEval === result.funnel.totalLines)) {
           applyPrefilterFallbackForColor(section, oppColor);
         } else {
+          const rankedLines = result.ranked.map(entry => entry.line);
+          if (guardEngine) {
+            setEngineProgress({ phase: "path", done: 0, total: 0 });
+            const done = await runPathGuardForColor(oppColor, guardEngine, guardCurrent,
+              { prefilteredLines: rankedLines, prefilterEnrichState: PREFILTER_READY });
+            if (!done) return;
+          }
           scoutState.prefilterPools[oppColor] = result.pool;
           scoutState.prefilterRanked[oppColor] = result.ranked;
-          scoutState.prefilteredLines[oppColor] =
-            result.ranked.map(entry => entry.line);
+          scoutState.prefilteredLines[oppColor] = rankedLines;
           snapshotStockfishDisplayLine(oppColor, scoutState.prefilteredLines[oppColor]);
           if (section?.trie) prefilterCandidateCache.delete(section.trie);
         }
@@ -856,6 +998,7 @@ export function createScoutView(deps) {
         scoutState.prefilterScopeKey = scopeKey;
       }
     } finally {
+      if (guardEngine) await guardEngine.close();
       if (gen === prefilterEnrichActiveGen) {
         prefilterEnrichInFlight = false;
       }

@@ -8,6 +8,7 @@ Use these documents to navigate the current implementation:
 - [Browser engines](browser-engine-migration.md): current engine lifecycle and assets.
 - [Local editing and sync snapshot](archive/history/2026-09-29/local-first-sync-plan.md): historical persistence plan.
 - [Scout ranking](scout-production-ranking.md): the current production selector and experimental runtime boundaries.
+- [v10 leaf nondeterminism](scout-v10-leaf-nondeterminism.md): open finding; plans differ between sessions on the same games.
 - [Compare identity boundary](compare-identity-boundary.md): ownership of personal training evidence.
 - [Persistence review](async-persistence-review.md): current async action fixes, recovery storage and measured costs.
 - [Persistence follow-up](async-persistence-followup-results.md): validated follow-up fixes; IndexedDB-only recovery.
