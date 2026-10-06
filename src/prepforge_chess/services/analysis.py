@@ -392,7 +392,10 @@ class AnalysisService:
         config: AnalysisConfig,
         eval_cache: Optional["_PositionEvalCache"] = None,
     ):
-        del previous_move  # Brilliant detection no longer needs prior context.
+        # The previous move only feeds the Brilliant/Great recapture gate, and only when it
+        # actually leads into this one.
+        if previous_move is not None and previous_move.fen_after != move.fen_before:
+            previous_move = None
 
         # Route engine work through the per-run cache when present so overlapping /
         # repeated positions are searched once; fall back to direct calls otherwise.
@@ -441,6 +444,8 @@ class AnalysisService:
                 stockfish_eval_before=position_analysis.evaluation,
                 stockfish_eval_after=played_eval_after,
                 config=config.brilliant,
+                previous_fen_before=previous_move.fen_before if previous_move else None,
+                previous_move_uci=previous_move.uci if previous_move else None,
             )
             comment = apply_brilliant_result(move, brilliant_result, comment)
 

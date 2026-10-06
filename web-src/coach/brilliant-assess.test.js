@@ -212,6 +212,32 @@ describe("computeBrilliantAssessments (first + second pass together)", () => {
     expect(trapProgress).toEqual([[1, 1]]); // one distinct natural-move position, evaluated once
   });
 
+  it("never sends a recapture of the previous move to Maia (shared sanity gate)", async () => {
+    const P0 = "rnbqkbnr/ppp2ppp/8/3pp3/4P3/2N5/PPPP1PPP/R1BQKBNR w KQkq - 0 3";
+    const P1 = "rnbqkbnr/ppp2ppp/8/3Np3/4P3/8/PPPP1PPP/R1BQKBNR b KQkq - 0 3";
+    const P2 = "rnb1kbnr/ppp2ppp/8/3qp3/4P3/8/PPPP1PPP/R1BQKBNR w KQkq - 0 4";
+    const seen = [];
+    const provider = {
+      batch: async (_kind, { items }) => {
+        seen.push(...items.map((it) => it.moveUci));
+        return items.map(() => ({ humanProbability: 0.5, winChanceAfter: 0.5, naturalUci: null }));
+      },
+    };
+    await computeBrilliantAssessments({
+      moves: [
+        { fen_before: P0, uci: "c3d5", fen_after: P1, side: "white" },
+        { fen_before: P1, uci: "d8d5", fen_after: P2, side: "black" },
+      ],
+      evals: new Map([[P0, { score_cp: 0, mate_in: null, best_move_uci: "c3d5" }], [P1, { score_cp: 0, mate_in: null, best_move_uci: "d8d5" }], [P2, { score_cp: 0, mate_in: null }]]),
+      depth: 12,
+      rating: 1500,
+      provider,
+      analyzeFn: fakeAnalyzeFn({}),
+      shouldCancel: () => false,
+    });
+    expect(seen).toEqual(["c3d5"]);
+  });
+
   it("does NOT attach a trap_gap to an intuitive move (never a candidate, so no extra engine work)", async () => {
     const out = await computeBrilliantAssessments({
       moves,

@@ -4,6 +4,7 @@ import {
   buildMoveFeatures,
   isBrilliantByMaia,
   gradeByMaia,
+  onlyMoveGaps,
   markBrilliant,
   markGreat,
   GREAT_MIN_TWO_MOVE_GAP,
@@ -140,9 +141,10 @@ describe("forced moves (only one legal move)", () => {
     expect(c.prose).not.toMatch(/%/);
   });
 
-  it("a genuine only-move with real alternatives is still a Great find, not forced", () => {
+  it("a genuine only-move with real alternatives is Best until Maia confirms it is Great", () => {
     // Plenty of legal moves, but only Be2 holds (the alternative hangs the bishop) — a
-    // real choice the player had to get right. This stays Great, distinct from forced.
+    // real choice the player had to get right. Not forced; Great once Maia says it was
+    // moderately unexpected and the natural move was something else.
     const f = buildMoveFeatures({
       mover: "white",
       uci: "f1e2",
@@ -159,7 +161,39 @@ describe("forced moves (only one legal move)", () => {
     });
     expect(f.forced).toBe(false);
     expect(f.onlyMove).toBe(true);
-    expect(f.classification.code).toBe("great");
+    expect(f.classification.code).toBe("best");
+    const gaps = onlyMoveGaps(f, "f1b5");
+    expect(gaps.trapGap).toBeGreaterThan(0.1);
+    expect(gradeByMaia(f, { maiaHumanProb: 0.25, maiaWinAfter: 0.5, ...gaps })).toBe("great");
+    // Obvious (most humans play it) or the natural move itself: no find.
+    expect(gradeByMaia(f, { maiaHumanProb: 0.6, maiaWinAfter: 0.5, ...gaps })).toBe(null);
+    expect(gradeByMaia(f, { maiaHumanProb: 0.25, maiaWinAfter: 0.5, ...onlyMoveGaps(f, "f1e2") })).toBe(null);
+  });
+
+  it("never grades a recapture of the previous move, even when it is the only move", () => {
+    // 1.e4 d5 2.Nc3 e5 3.Nxd5 Qxd5: taking back is the only move that keeps material level.
+    const f = buildMoveFeatures({
+      mover: "black",
+      uci: "d8d5",
+      san: "Qxd5",
+      prevUci: "c3d5",
+      prevSan: "Nxd5",
+      prevFenBefore: "rnbqkbnr/ppp2ppp/8/3pp3/4P3/2N5/PPPP1PPP/R1BQKBNR w KQkq - 0 3",
+      fenBefore: "rnbqkbnr/ppp2ppp/8/3Np3/4P3/8/PPPP1PPP/R1BQKBNR b KQkq - 0 3",
+      fenAfter: "rnb1kbnr/ppp2ppp/8/3qp3/4P3/8/PPPP1PPP/R1BQKBNR w KQkq - 0 4",
+      beforeEval: {
+        lines: [
+          { uci: "d8d5", san: "Qxd5", cp: 0, mate: null, pvUci: ["d8d5"] },
+          { uci: "g8f6", san: "Nf6", cp: 300, mate: null, pvUci: ["g8f6"] },
+        ],
+      },
+      afterEval: { cp: 0, mate: null, pvUci: [] },
+    });
+    expect(f.onlyMove).toBe(true);
+    expect(f.sanityExcluded).toBe("recapture");
+    expect(f.brilliantCandidate).toBe(false);
+    expect(f.classification.code).toBe("best");
+    expect(gradeByMaia(f, { maiaHumanProb: 0.2, maiaWinAfter: 0.5, ...onlyMoveGaps(f, "g8f6") })).toBe(null);
   });
 });
 

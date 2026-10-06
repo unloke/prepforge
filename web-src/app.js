@@ -2107,11 +2107,16 @@ class PositionCoach {
       // ones gate the costly trap_gap (a Maia policy read + a Stockfish eval of the natural
       // move), so we never pay for it on a move a free check already ruled out:
       //   • Unintuitive — a human rarely finds it.
-      if (!(a.humanProbability <= c.BRILLIANT_MAX_HUMAN_PROB)) return;
       //   • Reveal — Stockfish's truth sits far above Maia's first-glance read. (Free: both
       //     numbers are already in hand.)
-      if (features.winAfterMover - a.winChanceAfter * 100 < c.BRILLIANT_MIN_WIN_GAP) return;
-      const trapGap = await this._trapGap(features, prevFen, uci, fen, token, rating);
+      const hardFind =
+        a.humanProbability <= c.BRILLIANT_MAX_HUMAN_PROB &&
+        features.winAfterMover - a.winChanceAfter * 100 >= c.BRILLIANT_MIN_WIN_GAP;
+      // Great's critical find, the server's second route: an only move bounds its gaps
+      // (free), so it needs no search either — just a moderately unexpected move.
+      const only = c.onlyMoveGaps(features, a.naturalUci);
+      if (!hardFind && !(only && a.humanProbability <= c.GREAT_MAX_HUMAN_PROB)) return;
+      const trapGap = hardFind ? await this._trapGap(features, prevFen, uci, fen, token, rating) : only.trapGap;
       if (token !== this.token || fen !== this.fen) return;
       //   • Trap, then Decisive — a hard find that is also the only move (or a sacrifice) is
       //     Brilliant; one that another quiet move would match is Great.
@@ -2119,6 +2124,7 @@ class PositionCoach {
         maiaHumanProb: a.humanProbability,
         maiaWinAfter: a.winChanceAfter,
         trapGap,
+        twoMoveGap: only ? only.twoMoveGap : null,
       });
       const maia = { humanProb: a.humanProbability, winChanceAfter: a.winChanceAfter };
       if (grade === "brilliant") c.markBrilliant(features, maia);

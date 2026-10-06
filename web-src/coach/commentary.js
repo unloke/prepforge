@@ -218,6 +218,11 @@ function goodPoint(f, x) {
 
 function bestProse(f, x) {
   const point = goodPoint(f, x);
+  // An only move without the Maia read that would make it Great: say it was necessary.
+  if (f.onlyMove) {
+    if (/^(takes back|recaptures|trades|gives an? )/.test(point)) return `${f.san} ${point}; anything else loses ground.`;
+    return `${f.san} is the only move that holds${point ? `: it ${point}` : ""}.`;
+  }
   if (point) return `${pick(f, "best", ["Best move.", "Accurate.", "Exactly right.", "Good move."])} ${f.san} ${point}.`;
   return `${f.san} ${pick(f, "best-bare", ["is the best move here", "is spot on", "is exactly right", "is accurate", "is the right move"])}.`;
 }

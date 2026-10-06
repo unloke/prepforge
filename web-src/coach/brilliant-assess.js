@@ -2,6 +2,7 @@ import { localBoardAfterMove } from "../chess-local.js";
 import {
   moverWinChanceAfter,
   materialInvested,
+  sanityExclusion,
   BRILLIANT_MAX_HUMAN_PROB,
   BRILLIANT_MIN_WIN_GAP,
   BRILLIANT_MIN_TRAP_GAP,
@@ -165,6 +166,20 @@ export function createBrilliantAssessor({ moves, depth, rating, onProgress, onTr
     progress();
   }
 
+  // The shared sanity gates (forced, a recapture of the previous move): the server never
+  // grades such a move, so it never costs a Maia forward either.
+  function excluded(i) {
+    const m = moves[i];
+    const prev = i > 0 ? moves[i - 1] : null;
+    const linked = prev && prev.fen_after === m.fen_before;
+    return !!sanityExclusion({
+      fenBefore: m.fen_before,
+      uci: m.uci,
+      prevFenBefore: linked ? prev.fen_before : null,
+      prevUci: linked ? prev.uci : null,
+    });
+  }
+
   // Decide a move once both of its positions are evaluated: ineligible ones are settled for
   // free, eligible ones join the Maia queue.
   function consider(i) {
@@ -181,7 +196,7 @@ export function createBrilliantAssessor({ moves, depth, rating, onProgress, onTr
       settle(i);
       return;
     }
-    if (!brilliantEligible(evalMap, m)) {
+    if (!brilliantEligible(evalMap, m) || excluded(i)) {
       skippedIneligible += 1;
       settle(i);
       return;

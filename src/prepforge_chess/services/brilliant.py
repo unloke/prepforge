@@ -144,6 +144,43 @@ def material_invested(fen_before: str, played_move_uci: str, reply_uci: Optional
     return max(0, before - _material_for(board, mover))
 
 
+def sanity_exclusion(
+    fen_before: str,
+    played_move_uci: str,
+    previous_fen_before: Optional[str] = None,
+    previous_move_uci: Optional[str] = None,
+) -> Optional[str]:
+    """Why a move can never be Brilliant or Great, whatever the models say, or None.
+
+    * ``"forced"`` — the only legal move: there was no decision to make.
+    * ``"recapture"`` — a capture on the square the opponent just captured on.
+      Taking back is the obvious reply, so when it is also the only move that
+      holds, that is necessary, not a find.
+
+    Shared by every route to either grade (and mirrored by ``sanityExclusion`` in
+    web-src/coach/features.js; tests/fixtures/sanity_gates_golden.json pins both).
+    An unparseable move or position excludes nothing here: the later layers fail
+    closed on their own.
+    """
+    try:
+        board = chess.Board(fen_before)
+        move = chess.Move.from_uci(played_move_uci)
+    except Exception:
+        return None
+    if board.legal_moves.count() == 1:
+        return "forced"
+    if not (previous_fen_before and previous_move_uci) or not board.is_capture(move):
+        return None
+    try:
+        prev_board = chess.Board(previous_fen_before)
+        prev_move = chess.Move.from_uci(previous_move_uci)
+    except Exception:
+        return None
+    if prev_board.is_capture(prev_move) and prev_move.to_square == move.to_square:
+        return "recapture"
+    return None
+
+
 def _signed(value: Optional[float]) -> str:
     return "{0:+.2f}".format(value) if value is not None else "n/a"
 
@@ -218,12 +255,16 @@ class BrilliantAnalyzer:
         stockfish_eval_before: Optional[EngineEvaluation],
         stockfish_eval_after: Optional[EngineEvaluation],
         config: Optional[BrilliantConfig] = None,
+        previous_fen_before: Optional[str] = None,
+        previous_move_uci: Optional[str] = None,
     ) -> Optional[BrilliantResult]:
         """Return a BrilliantResult or None when ineligible / disabled.
 
         Returns None if Maia3 is not configured, brilliant detection is
-        disabled, the classification is not Best/Excellent, the objective
-        after-eval is missing, or Maia3 could not assess the move.
+        disabled, the classification is not Best/Excellent, the move fails a
+        sanity gate (``sanity_exclusion``: forced, or a recapture of the
+        previous move), the objective after-eval is missing, or Maia3 could
+        not assess the move.
         """
 
         effective = config or self.config
@@ -232,6 +273,8 @@ class BrilliantAnalyzer:
         if classification not in BRILLIANT_ELIGIBLE_CLASSIFICATIONS:
             return None
         if stockfish_eval_after is None:
+            return None
+        if sanity_exclusion(fen_before, played_move_uci, previous_fen_before, previous_move_uci):
             return None
 
         try:

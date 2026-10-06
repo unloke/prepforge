@@ -174,7 +174,10 @@ def _apply_brilliant(
     eval_after: EngineEvaluation,
     comment: str,
     config: Optional[BrilliantConfig] = None,
+    previous_move=None,
 ):
+    if previous_move is not None and previous_move.fen_after != move.fen_before:
+        previous_move = None
     if (
         analyzer is None
         or move.classification not in BRILLIANT_ELIGIBLE_CLASSIFICATIONS
@@ -188,6 +191,8 @@ def _apply_brilliant(
         stockfish_eval_before=eval_before,
         stockfish_eval_after=eval_after,
         config=config,
+        previous_fen_before=previous_move.fen_before if previous_move else None,
+        previous_move_uci=previous_move.uci if previous_move else None,
     )
     return apply_brilliant_result(move, brilliant_result, comment)
 
@@ -244,6 +249,7 @@ def classify_precomputed_game(
             raise ReplayEngineError("no client evaluation for position: {0}".format(fen))
         return data
 
+    previous_move = None
     for move in game.moves:
         before = _lookup(move.fen_before)
         after = _lookup(move.fen_after)
@@ -276,7 +282,9 @@ def classify_precomputed_game(
             eval_after=eval_after,
             comment=comment,
             config=brilliant_config,
+            previous_move=previous_move,
         )
+        previous_move = move
         # A-04: the explanation is GENERATED content owned by this run. It is
         # stored apart from the original/user comment and REPLACED (never
         # appended) on re-analysis, so re-running can't accumulate duplicates.

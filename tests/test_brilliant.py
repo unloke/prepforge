@@ -489,3 +489,22 @@ def test_engine_path_measures_two_move_gap():
     result = _quiet_evaluate(analyzer)
     assert result.two_move_gap is not None and result.two_move_gap > 0.3
     assert result.is_great
+
+
+def test_recapture_of_the_previous_move_is_never_graded():
+    # Every layer would pass, but the move takes back on the square the opponent just
+    # captured on: an obvious reply, not a find.
+    analyzer = _analyzer(human_probability=0.0, glance_wc=0.05)
+    fen_prev = "rnbqkbnr/ppp2ppp/8/3pp3/4P3/2N5/PPPP1PPP/R1BQKBNR w KQkq - 0 3"
+    board_fen = "rnbqkbnr/ppp2ppp/8/3Np3/4P3/8/PPPP1PPP/R1BQKBNR b KQkq - 0 3"
+    common = dict(
+        classification=MoveClassification.BEST,
+        fen_before=board_fen,
+        played_move_uci="d8d5",
+        side_to_move=Color.BLACK,
+        stockfish_eval_before=_sf(-600),
+        stockfish_eval_after=_sf(-600),
+    )
+    assert analyzer.evaluate(**common, previous_fen_before=fen_prev, previous_move_uci="c3d5") is None
+    # Without the previous move (or after a non-capture) the gate stays open.
+    assert analyzer.evaluate(**common) is not None
