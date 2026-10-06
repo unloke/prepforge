@@ -491,6 +491,33 @@ def test_engine_path_measures_two_move_gap():
     assert result.is_great
 
 
+def test_engine_path_confirms_deeper_and_drops_an_unconfirmed_move():
+    seen = {}
+
+    class _Recording(_MultiPvEngine):
+        def analyze_position(self, fen, config=None):
+            seen["depth"] = config.depth
+            return super().analyze_position(fen, config)
+
+    from prepforge_chess.services.engine import EngineAnalysisConfig
+
+    def analyzer(lines):
+        return BrilliantAnalyzer(
+            maia=_FakeMaia(human_probability=0.25, glance_wc=0.80, top_move="e1f1"),
+            engine=_Recording(white_cp_after_human=-600, lines=lines),
+            engine_config=EngineAnalysisConfig(depth=16, multipv=1),
+        )
+
+    assert _quiet_evaluate(analyzer([("e1e8", -5), ("e1e7", -20), ("e1f1", -600)])).is_great
+    assert seen["depth"] == 18
+    # The played move drops out of the top three at depth: no grade.
+    gone = _quiet_evaluate(analyzer([("e1e7", 50), ("e1f1", 40), ("g1g2", 30)]))
+    assert not gone.is_great and not gone.is_brilliant and gone.trap_gap is None
+    # Its own score drifts far from the analysis read (-0.05 → -6.00): no grade.
+    drift = _quiet_evaluate(analyzer([("e1e7", -500), ("e1e8", -600), ("e1f1", -700)]))
+    assert not drift.is_great and drift.trap_gap is None
+
+
 def test_recapture_of_the_previous_move_is_never_graded():
     # Every layer would pass, but the move takes back on the square the opponent just
     # captured on: an obvious reply, not a find.

@@ -1,12 +1,10 @@
 import { localBoardAfterMove } from "../chess-local.js";
 import {
   moverWinChanceAfter,
-  materialInvested,
   sanityExclusion,
   BRILLIANT_MAX_HUMAN_PROB,
   BRILLIANT_MIN_WIN_GAP,
   BRILLIANT_MIN_TRAP_GAP,
-  BRILLIANT_MIN_SACRIFICE,
   BRILLIANT_MAX_CANDIDATE_WIN_DELTA,
   GREAT_MAX_HUMAN_PROB,
   GREAT_MIN_TRAP_GAP,
@@ -21,11 +19,13 @@ import {
 // trimming that peak — capped here (game-analyzer still clamps to the position count).
 const TRAP_STOCKFISH_CONCURRENCY = 2;
 
-// The critical-find (Great) gap only has to tell "at most one other move comes close"
-// apart at a 10-point margin, which holds below the analysis depth, so it searches
-// shallower than the brilliancy candidates do.
-const CRITICAL_DEPTH_DROP = 4;
-const CRITICAL_MIN_DEPTH = 10;
+// Deep confirmation. Every move that could still earn Brilliant or Great gets one MultiPV-3
+// search of its position this much deeper than the analysis; its gaps are read from that
+// search, and a move that falls out of the top three there, or whose own score moves more
+// than CONFIRM_MAX_DRIFT (win chance, 0..1) from the analysis read, loses its trap_gap so
+// the server can't grade it (fail closed): a grade must not rest on a depth fluctuation.
+const CONFIRM_DEPTH_GAIN = 2;
+const CONFIRM_MAX_DRIFT = 0.1;
 
 // Mover-POV win chance (0..1) from an analysis eval-map entry ({score_cp, mate_in},
 // White-POV), or null when that position wasn't evaluated.
@@ -117,7 +117,7 @@ const ASSESS_CHUNK = 16;
 
 // The Great screen: a single-line eval of the natural move this far below the analysis depth.
 // It only has to tell a natural move that loses 10+ points from one that doesn't; the few that
-// pass are then searched properly (MultiPV-3, CRITICAL_DEPTH_DROP below the analysis depth).
+// pass are searched again at the analysis depth, then confirmed (see CONFIRM_DEPTH_GAIN).
 const SCREEN_DEPTH_DROP = 6;
 const SCREEN_MIN_DEPTH = 8;
 
@@ -423,70 +423,71 @@ export async function attachClientTrapGaps({ candidates, screens = [], evals, de
   };
   await run(deepFens, depth);
   await run(screenFens, Math.max(SCREEN_MIN_DEPTH, (Number(depth) || SCREEN_MIN_DEPTH) - SCREEN_DEPTH_DROP));
-  emit("maia-traps-stockfish-done", { positions: deepFens.size + screenFens.size });
-
-  for (const p of plan) {
-    const playedEval = evals.get(p.cand.playedAfterFen);
-    const humanEval = p.known || searched.get(p.humanFen) || evals.get(p.humanFen);
-    if (!playedEval || !humanEval) continue; // a missing eval → trap layer un-evaluable
-    const playedWc = moverWinChanceAfter({ cp: playedEval.score_cp ?? null, mate: playedEval.mate_in ?? null }, p.cand.side);
-    const humanWc = moverWinChanceAfter({ cp: humanEval.score_cp ?? null, mate: humanEval.mate_in ?? null }, p.cand.side);
-    p.cand.item.trap_gap = playedWc - humanWc;
+  const apply = () => {
+    for (const p of plan) {
+      const playedEval = evals.get(p.cand.playedAfterFen);
+      const humanEval = p.known || searched.get(p.humanFen) || evals.get(p.humanFen);
+      if (!playedEval || !humanEval) continue; // a missing eval → trap layer un-evaluable
+      const playedWc = moverWinChanceAfter({ cp: playedEval.score_cp ?? null, mate: playedEval.mate_in ?? null }, p.cand.side);
+      const humanWc = moverWinChanceAfter({ cp: humanEval.score_cp ?? null, mate: humanEval.mate_in ?? null }, p.cand.side);
+      p.cand.item.trap_gap = playedWc - humanWc;
+    }
+  };
+  apply();
+  // A natural move the shallow screen says fails is read again at the analysis depth, so the
+  // trap compares two reads of the same depth.
+  const recheck = new Set(
+    plan.filter((p) => p.humanFen && screenFens.has(p.humanFen) && p.cand.item.trap_gap >= GREAT_MIN_TRAP_GAP).map((p) => p.humanFen),
+  );
+  if (recheck.size) {
+    await run(recheck, depth);
+    apply();
   }
+  emit("maia-traps-stockfish-done", { positions: deepFens.size + screenFens.size + recheck.size });
 }
 
 // only_move_gap / two_move_gap = sf_truth(played) − sf_truth(the best / second-best OTHER
-// move), mover POV (0..1), from MultiPV-3 reads of the position before the move.
-//   • Brilliant layer 4 (candidates the trap layer kept) needs only_move_gap. A move that
-//     isn't Stockfish's first choice is measured against that first choice for free; a
-//     sacrifice passes layer 4 on its own. The rest are searched at the analysis depth.
-//   • Great's critical find (critical: moves whose natural alternative already failed the
-//     screen) needs two_move_gap, searched CRITICAL_DEPTH_DROP shallower in its own batch.
-// Every position is searched once; a gap that can't be read is left absent (fail closed).
+// move), mover POV (0..1), from one MultiPV-3 read of the position before the move, searched
+// CONFIRM_DEPTH_GAIN deeper than the analysis. Every move that can still be graded is read:
+// a hard find (a Brilliant candidate whose trap held: at least Great) and a critical find
+// (natural move failed the trap). The same read confirms the move (see CONFIRM_MAX_DRIFT):
+// one that doesn't hold up loses its trap_gap. Every position is searched once.
 export async function attachAlternativeGaps({ candidates, critical = [], evals, depth, analyzeFn, shouldCancel, cancelledError, onPhase }) {
   const wc = (ev, side) => moverWinChanceAfter({ cp: ev.score_cp ?? null, mate: ev.mate_in ?? null }, side);
-  const deep = new Map(); // fen → [cand]
-  const shallow = new Map();
-  const queue = (map, cand) => map.set(cand.item.fen, [...(map.get(cand.item.fen) || []), cand]);
-  for (const cand of candidates) {
-    const { item, side, playedAfterFen } = cand;
-    if (!(item.trap_gap >= BRILLIANT_MIN_TRAP_GAP)) continue;
-    const before = evals.get(item.fen);
-    const played = evals.get(playedAfterFen);
-    if (!before || !played) continue;
-    if (materialInvested(item.fen, item.uci, (played.pv || [])[0]) >= BRILLIANT_MIN_SACRIFICE) continue;
-    if (before.best_move_uci && before.best_move_uci !== item.uci) {
-      item.only_move_gap = wc(played, side) - wc(before, side);
-      continue;
-    }
-    queue(deep, cand);
-  }
-  for (const cand of critical) {
-    if (!(cand.item.trap_gap >= GREAT_MIN_TRAP_GAP) || !evals.get(cand.playedAfterFen)) continue;
-    if (deep.has(cand.item.fen)) queue(deep, cand);
-    else queue(shallow, cand);
-  }
-  const apply = (reads, groups) => {
-    for (const [fen, cands] of groups) {
-      const read = reads.get(fen);
-      if (!read || !read.second) continue;
-      const lines = [{ move_uci: read.best_move_uci, score_cp: read.score_cp, mate_in: read.mate_in }, read.second, read.third].filter(Boolean);
-      for (const { item, side, playedAfterFen } of cands) {
-        const mine = lines.find((l) => l.move_uci === item.uci);
-        const others = lines.filter((l) => l.move_uci !== item.uci);
-        const playedWc = mine ? wc(mine, side) : wc(evals.get(playedAfterFen), side);
-        if (others[0]) item.only_move_gap = playedWc - wc(others[0], side);
-        if (others[1]) item.two_move_gap = playedWc - wc(others[1], side);
+  const groups = new Map(); // fen → [cand]
+  const seen = new Set();
+  const queue = (cand) => {
+    if (seen.has(cand.item) || !evals.get(cand.playedAfterFen)) return;
+    seen.add(cand.item);
+    groups.set(cand.item.fen, [...(groups.get(cand.item.fen) || []), cand]);
+  };
+  for (const cand of candidates) if (cand.item.trap_gap >= BRILLIANT_MIN_TRAP_GAP) queue(cand);
+  for (const cand of critical) if (cand.item.trap_gap >= GREAT_MIN_TRAP_GAP) queue(cand);
+  if (!groups.size) return;
+  if (shouldCancel && shouldCancel()) throw cancelledError();
+  if (typeof onPhase === "function") onPhase({ phase: "maia-confirm-start", detail: { positions: groups.size } });
+  const reads = await analyzeFn({
+    positions: [...groups.keys()],
+    depth: (Number(depth) || 0) + CONFIRM_DEPTH_GAIN,
+    multipv: 3,
+    concurrency: TRAP_STOCKFISH_CONCURRENCY,
+    shouldCancel,
+  });
+  for (const [fen, cands] of groups) {
+    const read = reads.get(fen);
+    const lines = read && (read.score_cp != null || read.mate_in != null)
+      ? [{ move_uci: read.best_move_uci, score_cp: read.score_cp, mate_in: read.mate_in }, read.second, read.third].filter(Boolean)
+      : [];
+    for (const { item, side, playedAfterFen } of cands) {
+      const mine = lines.find((l) => l.move_uci === item.uci);
+      const playedWc = mine ? wc(mine, side) : null;
+      if (playedWc === null || Math.abs(playedWc - wc(evals.get(playedAfterFen), side)) > CONFIRM_MAX_DRIFT) {
+        delete item.trap_gap; // not confirmed at depth: the server can't grade it
+        continue;
       }
+      const others = lines.filter((l) => l.move_uci !== item.uci);
+      if (others[0]) item.only_move_gap = playedWc - wc(others[0], side);
+      if (others[1]) item.two_move_gap = playedWc - wc(others[1], side);
     }
-  };
-  const run = async (groups, searchDepth, phase) => {
-    if (!groups.size) return;
-    if (shouldCancel && shouldCancel()) throw cancelledError();
-    if (typeof onPhase === "function") onPhase({ phase, detail: { positions: groups.size } });
-    const reads = await analyzeFn({ positions: [...groups.keys()], depth: searchDepth, multipv: 3, concurrency: TRAP_STOCKFISH_CONCURRENCY, shouldCancel });
-    apply(reads, groups);
-  };
-  await run(deep, depth, "maia-only-move-start");
-  await run(shallow, Math.max(CRITICAL_MIN_DEPTH, (Number(depth) || CRITICAL_MIN_DEPTH) - CRITICAL_DEPTH_DROP), "maia-critical-start");
+  }
 }

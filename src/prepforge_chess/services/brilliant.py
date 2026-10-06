@@ -94,6 +94,13 @@ class BrilliantConfig:
     great_max_win_before: float = 0.97
 
 
+# Deep confirmation (mirrors web-src/coach/brilliant-assess.js): the MultiPV-3 read that
+# measures the alternative gaps searches this much deeper than the analysis, and a move
+# whose own win chance there drifts more than CONFIRM_MAX_DRIFT is not graded.
+CONFIRM_DEPTH_GAIN = 2
+CONFIRM_MAX_DRIFT = 0.10
+
+
 @dataclass(frozen=True)
 class BrilliantResult:
     is_brilliant: bool
@@ -334,11 +341,17 @@ class BrilliantAnalyzer:
             and trap_gap >= effective.great_min_trap_gap
         )
         if (only_move_gap is None or two_move_gap is None) and (hard_find or natural_fails):
-            engine_only, engine_two = self._alternative_gaps(
+            engine_only, engine_two, confirmed = self._alternative_gaps(
                 fen_before=fen_before,
                 played_move_uci=played_move_uci,
                 side_to_move=side_to_move,
+                sf_truth_wc=sf_truth_wc,
             )
+            if confirmed is False:
+                # The deeper search doesn't back the move up: no grade (fail closed),
+                # exactly as the browser drops an unconfirmed trap_gap.
+                trap_gap = None
+                hard_find = natural_fails = False
             only_move_gap = engine_only if only_move_gap is None else only_move_gap
             two_move_gap = engine_two if two_move_gap is None else two_move_gap
         reply = stockfish_eval_after.pv[0] if stockfish_eval_after.pv else None
@@ -388,15 +401,20 @@ class BrilliantAnalyzer:
         fen_before: str,
         played_move_uci: str,
         side_to_move: Color,
-    ) -> Tuple[Optional[float], Optional[float]]:
-        """(only_move_gap, two_move_gap) from one MultiPV-3 search of the position
-        before the move: sf_truth(played) minus the best, and the second-best, OTHER
-        move. A gap is None without an engine, or when there are too few legal moves
-        to have that many alternatives."""
+        sf_truth_wc: float,
+    ) -> Tuple[Optional[float], Optional[float], Optional[bool]]:
+        """(only_move_gap, two_move_gap, confirmed) from one MultiPV-3 search of the
+        position before the move, ``CONFIRM_DEPTH_GAIN`` deeper than the analysis:
+        sf_truth(played) minus the best, and the second-best, OTHER move. ``confirmed``
+        is False when the played move falls out of the top three there or its score
+        drifts more than ``CONFIRM_MAX_DRIFT`` from the analysis read (the browser's
+        attachAlternativeGaps applies the same rule); None without an engine. A gap is
+        None when there are too few legal moves to have that many alternatives."""
         if self.engine is None:
-            return None, None
+            return None, None, None
+        depth = self.engine_config.depth
         config = EngineAnalysisConfig(
-            depth=self.engine_config.depth,
+            depth=depth + CONFIRM_DEPTH_GAIN if depth else depth,
             nodes=self.engine_config.nodes,
             time_ms=self.engine_config.time_ms,
             multipv=3,
@@ -405,15 +423,21 @@ class BrilliantAnalyzer:
             with self._lock:
                 analysis = self.engine.analyze_position(fen_before, config)
         except Exception:
-            return None, None
+            return None, None, None
         candidates = list(analysis.candidates or [])
         played = next((c for c in candidates if c.move_uci == played_move_uci), None)
-        others = [c for c in candidates if c.move_uci != played_move_uci]
-        if played is None or not others:
-            return None, None
+        if played is None:
+            return None, None, False
         mine = win_chance_for_side(played.evaluation_after, side_to_move)
+        if abs(mine - sf_truth_wc) > CONFIRM_MAX_DRIFT:
+            return None, None, False
+        others = [c for c in candidates if c.move_uci != played_move_uci]
         gaps = [mine - win_chance_for_side(c.evaluation_after, side_to_move) for c in others[:2]]
-        return gaps[0], (gaps[1] if len(gaps) > 1 else None)
+        return (
+            gaps[0] if gaps else None,
+            gaps[1] if len(gaps) > 1 else None,
+            True,
+        )
 
     def _precomputed_trap_gap(
         self, fen_before: str, played_move_uci: str
