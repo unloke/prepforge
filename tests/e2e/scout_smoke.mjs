@@ -337,6 +337,35 @@ async function main() {
     if (/no answer in your prep/i.test(prepText)) {
       fail(`row flagged "no answer in your prep" without a repertoire (got: ${prepText.trim().slice(0, 120)})`);
     }
+    // Path guard (default on): once the engine pass settles every plan row carries its
+    // verdict; only `risk` rows show a marker, and its explanation is the tooltip.
+    // Polled: the app's CSP forbids the string eval behind page.waitForFunction.
+    const statusDeadline = Date.now() + TIMEOUT_MS;
+    for (;;) {
+      const settled = await page.$$eval(".scout-weakness-row", (rows) =>
+        rows.length > 0 && rows.every((row) => row.dataset.pathStatus));
+      if (settled) break;
+      if (Date.now() > statusDeadline) fail("plan rows never received a path-guard status");
+      await sleep(500);
+    }
+    const pathRows = await page.$$eval(".scout-weakness-row", (rows) => rows.map((row) => {
+      const marker = row.querySelector(".path-risk");
+      return {
+        status: row.dataset.pathStatus,
+        marker: marker ? { title: marker.getAttribute("title"), text: marker.textContent } : null,
+        animation: row.classList.contains("is-entering") ? getComputedStyle(row).animationName : null,
+      };
+    }));
+    for (const row of pathRows) {
+      if (!["safe", "unverified", "risk"].includes(row.status)) fail(`unknown path status ${row.status}`);
+      if ((row.status === "risk") !== Boolean(row.marker)) fail(`path marker mismatch on a ${row.status} row`);
+      if (row.marker && (row.marker.text !== "!" || !/earlier move/.test(row.marker.title || ""))) {
+        fail(`risk marker without its tooltip: ${JSON.stringify(row.marker)}`);
+      }
+      if (row.animation !== null && row.animation !== "scout-row-enter") fail(`entering row not animated (${row.animation})`);
+    }
+    console.log(`[scout-smoke] path guard: ${pathRows.map((row) => row.status).join(", ")}`);
+
     await firstLine.click();
     // ui-v2 dropped the .scout-line-detail wrapper: the opened line's detail is
     // rendered into the #scout-side aside (aria-label="Line detail"), which is

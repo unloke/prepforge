@@ -11,6 +11,7 @@
 
 import { Chess } from "chess.js";
 import { preparationValue, routeKey, selectPreparationRoutes, opponentOnlyReach } from "./scout-preparation-value.js";
+import { replayGuardedRoutes } from "./scout-path-guard.js";
 
 import { gamePhase } from "./coach/material.js";
 
@@ -1256,20 +1257,9 @@ export function rankedOpeningLines(
   return [];
 }
 
-// One final budgeted set selection, shared by live and fallback reports.
-export function rankGamePlan(
-  lines,
-  baselineScorePct,
-  {
-    minGames = GAME_PLAN_MIN_GAMES,
-    oppColor = null,
-    limit = SCOUT_GAME_PLAN_LIMIT,
-    games = null,
-    speedFilter = "all",
-    lineLastSeen = null,
-  } = {},
-) {
-  const eligible = lines
+/** The selector's input: supported, opponent-terminal, reachable lines with terminal FENs. */
+export function gamePlanCandidates(lines, baselineScorePct, { minGames = GAME_PLAN_MIN_GAMES, oppColor = null } = {}) {
+  return lines
     .filter((g) => (g.routeSupportGames ?? g.games) >= minGames)
     .map((g) => {
       if (!oppColor) return enrichPrepTarget(g, baselineScorePct);
@@ -1290,8 +1280,50 @@ export function rankGamePlan(
       );
       return enriched;
     })
-    .filter((line) => line && (line.routeReach == null || line.routeReach >= SCOUT_MIN_ROUTE_REACH));
-  const selected = selectPreparationRoutes(eligible.map(line => ({ ...line, terminalFen: line.terminalFen ?? fenAfterLine(line.ucis) })), { baseline: baselineScorePct, limit, oppColor: oppColor ?? eligible[0]?.oppColor ?? "white" });
+    .filter((line) => line && (line.routeReach == null || line.routeReach >= SCOUT_MIN_ROUTE_REACH))
+    .map((line) => ({ ...line, terminalFen: line.terminalFen ?? fenAfterLine(line.ucis) }));
+}
+
+/** Position after each ply of a line (index 0 = start). */
+export function fensAlongLine(ucis) {
+  const chess = new Chess();
+  const fens = [chess.fen()];
+  for (const uci of ucis || []) {
+    try {
+      chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
+    } catch {
+      break;
+    }
+    fens.push(chess.fen());
+  }
+  return fens;
+}
+
+// One final budgeted set selection, shared by live and fallback reports. With a recorded
+// path-guard run (`pathGuard`, feature-flagged) the guarded selection is replayed instead.
+export function rankGamePlan(
+  lines,
+  baselineScorePct,
+  {
+    minGames = GAME_PLAN_MIN_GAMES,
+    oppColor = null,
+    limit = SCOUT_GAME_PLAN_LIMIT,
+    games = null,
+    speedFilter = "all",
+    lineLastSeen = null,
+    pathGuard = null,
+  } = {},
+) {
+  const eligible = gamePlanCandidates(lines, baselineScorePct, { minGames, oppColor });
+  let selected;
+  if (pathGuard && oppColor) {
+    const replay = replayGuardedRoutes(eligible, { baseline: baselineScorePct, limit },
+      { ...pathGuard, fensFor: fensAlongLine, oppColor });
+    selected = replay.picked;
+    pathGuard.onReplay?.(replay);
+  } else {
+    selected = selectPreparationRoutes(eligible, { baseline: baselineScorePct, limit });
+  }
   // The weak-spot label is exactly the selection's weak-spot test; a Maia estimate
   // changes the shown score, never the category.
   for (const route of selected) if (route.prepCategory === "attack" && !(route.preparationEvidence.value > 0)) {

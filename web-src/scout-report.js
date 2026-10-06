@@ -1193,6 +1193,11 @@ function scoutLineRowHtml(
   const engineFlag = line.hasEngineMistake || line.refutation
     ? '<i class="scout-err-marker eng" title="Engine-backed refutation available">⚠</i>'
     : "";
+  // Path guard (flagged prototype): a kept line whose earlier position fails the leaf gate.
+  const pathFlag = line.pathStatus === "risk"
+    ? '<i class="scout-err-marker path-risk" title="Your side is worse than −0.75 at an earlier move of this line (depth 8)">!</i>'
+    : "";
+  const pathAttr = line.pathStatus ? ` data-path-status="${escapeHtml(line.pathStatus)}"` : "";
   const lineKey = scoutLineKey(line.ucis);
   const rowTitle = status.text ? ` title="${escapeHtml(status.text)}"` : "";
   const lastSeenBadge = line.lastSeen
@@ -1221,7 +1226,7 @@ function scoutLineRowHtml(
       : scoutScoreCell(displayScore, rawCount, { baseline, showGap: line.belowBaseline > 0, maiaEstimate, showN: rawCount > 1 });
     const wdlHtml = oneGame ? "" : scoutWdlBar(wdl.w, wdl.d, wdl.l, { maiaEstimate, counts: false });
     return `
-      <div class="scout-line scout-line-row line-row ${status.cls} scout-weakness-row scout-ranked-row" data-line-key="${escapeHtml(lineKey)}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
+      <div class="scout-line scout-line-row line-row ${status.cls} scout-weakness-row scout-ranked-row" data-line-key="${escapeHtml(lineKey)}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}"${pathAttr} role="button" tabindex="0" aria-expanded="false"${rowTitle}>
         <div class="scout-lr-main lr-main">
           <span class="scout-line-eco"></span>
           <span class="scout-line-moves">${framing}</span>
@@ -1230,7 +1235,7 @@ function scoutLineRowHtml(
         <span class="lr-meta">${categoryBadge}${lastSeenBadge}</span>
         <span class="scout-lr-score lr-score">${scoreHtml}</span>
         <span class="scout-lr-wdl lr-wdl">${wdlHtml}</span>
-        <span class="scout-lr-action lr-flags">${engineFlag}${addBtn}</span>
+        <span class="scout-lr-action lr-flags">${pathFlag}${engineFlag}${addBtn}</span>
       </div>`;
   }
   const countCell = `<span class="scout-lr-count" title="${rawCount} of their games">&times;${rawCount}</span>`;
@@ -1296,6 +1301,7 @@ export function buildScoutSectionReport(
     maiaEnrichState = "idle",
     prefilterEnrichState = "idle",
     prefilteredLines = null,
+    pathGuard = null,
     trie: prebuiltTrie = null,
   },
 ) {
@@ -1359,6 +1365,7 @@ export function buildScoutSectionReport(
     speedFilter,
     lineLastSeen,
     ancestorFreq,
+    pathGuard,
   });
   if (enginePatterns instanceof Map) {
     weaknessTargets = mergeEngineIntoTargets(weaknessTargets, enginePatterns);
@@ -1408,6 +1415,8 @@ export function buildScoutSectionReport(
 
   const sectionData = {
     moduleB: PRODUCTION_MODULE_B_ID,
+    // The selector's input, kept so the flagged path guard can run on exactly these lines.
+    gamePlanSource,
     gradedLines: graded,
     weaknessTargets: prepTargets,
     prepTargets,

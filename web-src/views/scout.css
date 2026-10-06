@@ -363,6 +363,7 @@
 }
 .lr-flags { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
 .lr-flags .eng { display: grid; place-items: center; width: 20px; height: 20px; color: var(--warn-text); font-style: normal; }
+.lr-flags .path-risk { display: grid; place-items: center; width: 20px; height: 20px; color: var(--danger); font-style: normal; font-weight: 700; }
 .scout-add-icon {
   display: grid;
   place-items: center;
@@ -567,3 +568,16 @@
   .scout-source-warnings .btn { margin-left: 0; min-height: 44px; width: 100%; }
 }
 .cov[hidden] { display: none; }
+
+/* Plan rows that newly enter after a re-rank fade in one after another. */
+@keyframes scout-row-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.scout-weakness-row.is-entering {
+  animation: scout-row-enter 260ms ease-out both;
+  animation-delay: calc(min(var(--enter-index, 0), 11) * 35ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .scout-weakness-row.is-entering { animation: none; }
+}
