@@ -824,7 +824,14 @@
     border-radius: 8px;
     white-space: nowrap;
   }
-  .moves-grid .mtree-line.is-main > .mtree-var { white-space: nowrap; margin: 0 6px; }
+  .moves-grid .mtree-var {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    margin: 0 6px;
+    white-space: nowrap;
+  }
+  .moves-grid .mtree-var .mtree-move { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; }
   .coach-card { height: auto; min-height: 86px; }
   .explain-review { margin-left: auto; }
   .drawer summary { min-height: 44px; }

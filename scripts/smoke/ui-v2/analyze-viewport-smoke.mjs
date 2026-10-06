@@ -356,10 +356,25 @@ async function runViewport(vp) {
     const grid = document.querySelector("#analysis-moves .mtree-line.is-main").getBoundingClientRect();
     const v = document.querySelector("#analysis-moves .mtree-var").getBoundingClientRect();
     const blacks = [...document.querySelectorAll("#analysis-moves .mtree-line.is-main > .mtree-move.is-black")].map((el) => el.getBoundingClientRect().left);
-    return { fullWidth: v.width > grid.width * 0.8, blackAligned: blacks.every((l) => Math.abs(l - blacks[0]) < 2) };
+    const box = document.querySelector("#analysis-moves").getBoundingClientRect();
+    const tops = [...document.querySelectorAll("#analysis-moves .mtree-move")].map((el) => el.getBoundingClientRect().top);
+    const cur = document.querySelector("#analysis-moves .mtree-move.is-current")?.getBoundingClientRect();
+    return {
+      strip: window.innerWidth <= 760,
+      oneLine: tops.every((t) => Math.abs(t - tops[0]) < 2),
+      currentInView: !!cur && cur.left >= box.left - 1 && cur.right <= box.right + 1,
+      fullWidth: v.width > grid.width * 0.8,
+      blackAligned: blacks.every((l) => Math.abs(l - blacks[0]) < 2),
+    };
   });
-  check(variation.fullWidth, "a variation should span the full grid width");
-  check(variation.blackAligned, "Black moves should stay in one column around a variation");
+  if (variation.strip) {
+    // Phones: one sticky strip; the variation stays on its line and the current move is in view.
+    check(variation.oneLine, "the phone move strip should stay on one line around a variation");
+    check(variation.currentInView, "the phone move strip should keep the current move in view");
+  } else {
+    check(variation.fullWidth, "a variation should span the full grid width");
+    check(variation.blackAligned, "Black moves should stay in one column around a variation");
+  }
   await page.evaluate(() => document.getElementById("analysis-start").click());
   await page.waitForTimeout(200);
 
