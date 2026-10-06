@@ -34,6 +34,9 @@ function aggregate(all) {
     recall: positives.length ? positives.filter(r => r.depth8Unsafe).length / positives.length : null,
     maskRecall: maskPositives.length ? maskPositives.filter(r => r.depth8Unsafe).length / maskPositives.length : null,
     falseAlarms: rec.filter(r => !r.native.ownUnsafe && r.depth8Unsafe).length,
+    screenRecall: positives.length ? positives.filter(r => r.screenUnsafe).length / positives.length : null,
+    screenVsDepth8: rec.filter(r => r.depth8Unsafe).length ? rec.filter(r => r.depth8Unsafe && r.screenUnsafe).length / rec.filter(r => r.depth8Unsafe).length : null,
+    screenFullAuditMedianNodeRatio: median(valid.map(s => s.v10LeafNodes ? sum(s.recall, r => r.screenNodes ?? 0) / s.v10LeafNodes : null).filter(Number.isFinite)),
     fullAuditMedianNodeRatio: median(valid.map(s => s.v10LeafNodes ? sum(s.recall, r => r.nodes) / s.v10LeafNodes : null).filter(Number.isFinite)) };
   const reduction = arms.v10.masks ? 1 - arms.v11.masks / arms.v10.masks : null;
   const criteria = {
@@ -60,7 +63,7 @@ const section = (title, s) => [`## ${title}`, "",
   "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
   line("v10", s.arms.v10), line("v11 (30% cap)", s.arms.v11), line("v11 uncapped (diagnostic)", s.arms["v11-uncapped"]), "",
   `Mask reduction：v11 ${pct(s.reduction)}，uncapped ${pct(s.uncappedReduction)}。`,
-  `Depth8 detector recall on native16 own-decision failures：${pct(s.recall.recall)}（${s.recall.depth8Hits}/${s.recall.nativeOwnUnsafe}），mask recall ${pct(s.recall.maskRecall)}，false alarms ${s.recall.falseAlarms}/${s.recall.rows}；full audit of all v10 rows costs median ${pct(s.recall.fullAuditMedianNodeRatio)} of leaf nodes。`, "",
+  `Depth8 detector recall on native16 own-decision failures：${pct(s.recall.recall)}（${s.recall.depth8Hits}/${s.recall.nativeOwnUnsafe}），mask recall ${pct(s.recall.maskRecall)}，false alarms ${s.recall.falseAlarms}/${s.recall.rows}；full audit of all v10 rows costs median ${pct(s.recall.fullAuditMedianNodeRatio)} of leaf nodes；depth6 screen + depth8 confirm：recall ${pct(s.recall.screenRecall)}，agrees with depth8 on ${pct(s.recall.screenVsDepth8)} of depth8 hits，full audit median ${pct(s.recall.screenFullAuditMedianNodeRatio)}。`, "",
   `Criteria：${JSON.stringify(s.criteria)}`, `Kill：${JSON.stringify(s.kill)}`, ""];
 const report = ["# Scout v11 path guard vs v10", "",
   "Native16 只作 evaluator；v11 決策只用 production depth8（Stockfish 19 lite-single, Hash 16）。成本以 Stockfish nodes 計，相對同 session v10 leaf nodes。", "",

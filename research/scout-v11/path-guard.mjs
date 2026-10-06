@@ -8,6 +8,10 @@ export const MAX_ANCHOR_REJECTIONS = 4;
 export const MAX_CONTINUATION_TRIES = 3;
 // Extra Stockfish nodes allowed per colour, as a share of that colour's v10 leaf nodes.
 export const AUDIT_NODE_SHARE = 0.3;
+// Cheap first read; only positions near the floor are confirmed at the gate depth.
+export const SCREEN_DEPTH = 6;
+export const GATE_DEPTH = 8;
+export const SCREEN_MARGIN_CP = 50;
 const MIN_ROW_PLIES = 8;
 
 const moverOf = ply => (ply % 2 ? "white" : "black");
@@ -19,23 +23,32 @@ export function ownDecisionPlies(length, oppColor) {
   return out;
 }
 
-/** Preparing-side verdict for one engine read ({whiteCp, whiteMate, winner}). */
-export function unsafeRead(read, oppColor) {
+/** Preparing-side verdict for one engine read ({whiteCp, whiteMate, winner}); margin widens the CP floor. */
+export function unsafeRead(read, oppColor, margin = 0) {
   const prep = oppColor === "white" ? "black" : "white", sign = prep === "white" ? 1 : -1;
   if (read.winner) return read.winner !== prep;
   if (Number.isFinite(read.whiteMate) && read.whiteMate !== 0) return sign * read.whiteMate < 0;
-  return Number.isFinite(read.whiteCp) && sign * read.whiteCp < PATH_FLOOR_CP;
+  return Number.isFinite(read.whiteCp) && sign * read.whiteCp < PATH_FLOOR_CP + margin;
 }
 
 /**
  * Reads a line backwards from its deepest preparing-side position (fishnet-style: one
- * new game per line, hash kept between consecutive positions). Stops at the first
- * unsafe position or when the node budget is spent. Verdicts are shared by position.
- * engine: { newLine(), read(fen) -> {whiteCp, whiteMate, winner, nodes} }
+ * new game per line, hash kept between consecutive positions). Each position gets a
+ * depth-6 screen; only screens within 50cp of the floor (or any adverse mate) are
+ * confirmed at depth 8, and the depth-8 verdict decides. Stops at the first unsafe
+ * position. A read starts only if its predicted nodes fit the remaining budget.
+ * engine: { newLine(), read(fen, depth) -> {whiteCp, whiteMate, winner, nodes} }
  */
-export function createPathGuard({ engine, fensFor, oppColor, budgetNodes = Infinity }) {
-  const verdicts = new Map();
-  const guard = { spentNodes: 0, reads: 0, budgetNodes, exhausted: false, checks: 0 };
+export function createPathGuard({ engine, fensFor, oppColor, budgetNodes = Infinity, leafMeanNodes = 0, screen = true }) {
+  const verdicts = new Map(), seen = { [SCREEN_DEPTH]: 0, [GATE_DEPTH]: 0 };
+  const guard = { spentNodes: 0, reads: 0, screens: 0, confirms: 0, budgetNodes, exhausted: false, checks: 0 };
+  const estimate = depth => Math.max(seen[depth], depth === GATE_DEPTH ? leafMeanNodes : leafMeanNodes / 4);
+  const fits = depth => guard.spentNodes < guard.budgetNodes && guard.spentNodes + estimate(depth) <= guard.budgetNodes;
+  const read = async (fen, depth) => {
+    const r = await engine.read(fen, depth);
+    guard.spentNodes += r.nodes; guard.reads++; seen[depth] = Math.max(seen[depth], r.nodes);
+    return r;
+  };
   guard.check = async (route) => {
     guard.checks++;
     const fens = fensFor(route.ucis), plies = ownDecisionPlies(route.ucis.length, oppColor);
@@ -45,11 +58,18 @@ export function createPathGuard({ engine, fensFor, oppColor, budgetNodes = Infin
     for (const ply of plies) {
       const key = canonicalPosition(fens[ply]);
       if (verdicts.has(key)) continue;
-      if (guard.spentNodes >= guard.budgetNodes) { guard.exhausted = true; return { status: "unverified" }; }
+      if (!fits(screen ? SCREEN_DEPTH : GATE_DEPTH)) { guard.exhausted = true; return { status: "unverified" }; }
       if (!started) { await engine.newLine(); started = true; }
-      const read = await engine.read(fens[ply]);
-      guard.spentNodes += read.nodes; guard.reads++;
-      const unsafe = unsafeRead(read, oppColor);
+      let unsafe;
+      if (screen) {
+        guard.screens++;
+        const first = await read(fens[ply], SCREEN_DEPTH);
+        if (unsafeRead(first, oppColor, SCREEN_MARGIN_CP)) {
+          if (!fits(GATE_DEPTH)) { guard.exhausted = true; return { status: "unverified" }; }
+          guard.confirms++;
+          unsafe = unsafeRead(await read(fens[ply], GATE_DEPTH), oppColor);
+        } else unsafe = false;
+      } else unsafe = unsafeRead(await read(fens[ply], GATE_DEPTH), oppColor);
       verdicts.set(key, unsafe);
       if (unsafe) return { status: "unsafe", failPly: ply };
     }
@@ -62,14 +82,18 @@ export function createPathGuard({ engine, fensFor, oppColor, budgetNodes = Infin
  * v10 `selectPreparationRoutes` with an optional path guard. With guard null it must
  * return exactly the v10 rows (asserted on real data by the replay).
  * Unsafe after the anchor: try the next most common continuation (<= 3 per anchor).
- * Unsafe at or before the anchor: drop the anchor (<= 4 per colour; a weak anchor only
- * while another weak anchor remains). Past a cap, the v10 row stays, marked pathRisk.
- * Budget spent: rows commit exactly as v10 picks them, marked pathUnverified.
+ * Unsafe at or before the anchor, or no safe continuation: drop the anchor (<= 4 per
+ * colour). A weak anchor is dropped only while enough other weak anchors remain to keep
+ * v10's weak count. A row v10 would not show needs a safe verdict; v10's own rows commit
+ * unverified when the budget is spent. Past a cap the v10 row stays, marked `risk`.
  */
 export async function selectPreparationRoutesV11(routes, { limit = 12, baseline = 50, guard = null } = {}) {
   const budget = Math.min(12, Math.max(0, Math.floor(limit)));
   const log = [];
   if (!budget) return { picked: [], log };
+  const control = guard ? (await selectPreparationRoutesV11(routes, { limit, baseline })).picked : null;
+  const v10Keys = new Set(control?.map(routeKey));
+  const weakTarget = control?.filter(r => r.preparationEvidence.value > 0).length ?? 0;
   const rows = [];
   for (const route of routes || []) {
     if (!route.ucis?.length) continue;
@@ -109,10 +133,15 @@ export async function selectPreparationRoutesV11(routes, { limit = 12, baseline 
       (row.anchor === anchorRow.anchor || (weak ? row.evidence.value > 0 : true)) &&
       anchorRow.anchorUcis.every((move, i) => row.route.ucis[i] === move)).sort(typical(anchorRow.anchorUcis.length));
   };
-  // Another weak anchor that could still take a slot (no reads; geometry only).
-  const spareWeak = (current) => [...anchorRows.values()].some(a => a !== current && a.evidence.value > 0 &&
-    !rejectedAnchors.has(a.anchor) && !covered(a) && !picked.some(r => routeKey(r) === routeKey(a.route)) &&
-    throughLines(a).length > 0);
+  const weakPicked = () => picked.filter(r => r.preparationEvidence.value > 0).length;
+  // Weak anchors after `current` that could still take a slot (geometry only, no reads).
+  const spareWeak = (current) => {
+    const all = [...anchorRows.values()];
+    return all.slice(all.indexOf(current) + 1).filter(a => a.evidence.value > 0 && !rejectedAnchors.has(a.anchor) &&
+      !covered(a) && throughLines(a).length > 0).length;
+  };
+  // Lines v10 would not show must be verified safe; v10's own lines may stand unverified.
+  const accept = (row, v) => v.status === "safe" || (v.status === "unverified" && v10Keys.has(routeKey(row.route)));
 
   // Pass 1: one line per anchor, best anchor first.
   for (const anchorRow of anchorRows.values()) {
@@ -121,19 +150,27 @@ export async function selectPreparationRoutesV11(routes, { limit = 12, baseline 
     const through = throughLines(anchorRow);
     if (!through.length) continue;
     if (!guard) { commit(through[0]); continue; }
-    let done = false, tries = 0;
+    const weak = anchorRow.evidence.value > 0;
+    let done = false, tries = 0, unverified = false;
     for (const line of through) {
       if (tries >= MAX_CONTINUATION_TRIES) break;
-      if (!open(line)) continue;
+      // A weak anchor keeps a weak line, so a continuation swap never costs a weak row.
+      if (!open(line) || (weak && line !== through[0] && !(line.evidence.value > 0))) continue;
       tries++;
       const v = await guard.check(line.route);
-      if (v.status === "safe" || v.status === "unverified") { commit(line, v.status === "safe" ? "safe" : "unverified"); done = true; break; }
+      if (accept(line, v)) { commit(line, v.status); done = true; break; }
+      if (v.status === "unverified") { unverified = true; break; }
       log.push({ pass: 1, key: routeKey(line.route), anchor: anchorRow.anchor, failPly: v.failPly, anchorPlies: anchorRow.anchorUcis.length, cached: !!v.cached });
       if (v.failPly <= anchorRow.anchorUcis.length) break;
     }
     if (done) continue;
-    const weak = anchorRow.evidence.value > 0;
-    if (anchorRejections < MAX_ANCHOR_REJECTIONS && (!weak || spareWeak(anchorRow))) {
+    if (unverified) {
+      // Budget spent on a line v10 would not show: keep v10's choice for this anchor if it has one.
+      const own = through.find(line => v10Keys.has(routeKey(line.route)) && open(line));
+      if (own) commit(own, "unverified");
+      continue;
+    }
+    if (anchorRejections < MAX_ANCHOR_REJECTIONS && (!weak || spareWeak(anchorRow) >= weakTarget - weakPicked())) {
       anchorRejections++; rejectedAnchors.add(anchorRow.anchor);
       log.push({ pass: 1, rejectedAnchor: anchorRow.anchor, weak });
       continue;
@@ -145,15 +182,16 @@ export async function selectPreparationRoutesV11(routes, { limit = 12, baseline 
     if (!open(row) || rejectedAnchors.has(row.anchor)) return;
     if (!guard) return commit(row);
     const v = await guard.check(row.route);
-    if (v.status === "unsafe") { log.push({ pass: 2, key: routeKey(row.route), failPly: v.failPly, cached: !!v.cached }); return; }
-    commit(row, v.status === "safe" ? "safe" : "unverified");
+    if (accept(row, v)) return commit(row, v.status);
+    if (v.status === "unsafe") log.push({ pass: 2, key: routeKey(row.route), failPly: v.failPly, cached: !!v.cached });
   };
   for (const row of rows) if (full(row)) await fill(row);
   for (const row of rows) await fill(row);
-  // Never fewer rows than v10 would return: fall back to the skipped rows, marked.
+  // Never fewer rows than v10: v10's own rows first, marked.
   if (guard) {
-    const target = (await selectPreparationRoutesV11(routes, { limit, baseline })).picked.length;
-    for (const row of rows) if (picked.length < target && open(row)) commit(row, "risk");
+    const byKey = new Map(rows.map(r => [routeKey(r.route), r]));
+    const fallback = [...control.map(r => byKey.get(routeKey(r))).filter(Boolean), ...rows];
+    for (const row of fallback) if (picked.length < control.length && open(row)) commit(row, "risk");
   }
   return { picked, log, anchorRejections };
 }

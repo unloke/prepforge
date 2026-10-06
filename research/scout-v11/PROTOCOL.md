@@ -66,3 +66,33 @@ KILL (stop this direction) if either holds:
 - the v11 mask reduction is < 20%.
 
 FAIL without kill: inspect which criterion failed, then decide once. No threshold sweep.
+
+## Run-01 result (Kaggle version 1) and run-02 amendment
+
+Run-01: FAIL, not KILL. Masks fell from 142 to 107 (-24.6%). The uncapped diagnostic reached
+74 (-47.9%) at a median of +55% nodes. Depth8 recall was 72.0% (113/157). With the 30%
+cap, 394 of 713 rows were never audited. Weak count fell in 8 sessions, and 1 session gained a mask.
+
+There were two implementation defects:
+- The spare-weak check counted the same spare anchor for every rejection
+  (calmzone-white went from 10 to 6 weak rows).
+- When the budget ran out, rejected rows were replaced by unaudited rows. Some of those
+  were masked, and this caused the session that gained a mask.
+
+There was also one overshoot: on a tiny session (pingancheng2014-white), a single search
+exceeded the cap.
+
+Run-02 changes. Each one targets one of these failure mechanisms; no thresholds are swept.
+1. A weak anchor is dropped only if the weak anchors after it can still fill v10's weak count.
+   A continuation swap from v10's weak line must stay weak.
+2. A row v10 would not show needs a safe verdict. v10's own rows may stand `unverified`.
+   The final fill prefers v10's rows.
+3. A read starts only if its predicted nodes fit the remaining budget. The prediction is
+   the maximum seen at that depth; before any reads it is the session's mean leaf nodes
+   (a quarter of that at depth 6).
+4. Cost (the measured binding constraint): each position is screened at depth 6 and
+   confirmed at depth 8 only when the screen is within 50cp of the floor or shows an
+   adverse mate. The depth-8 verdict decides. This is a single fixed margin.
+   The diagnostic reports the screen's recall against both depth8 and native16.
+
+The criteria and kill rules are unchanged.

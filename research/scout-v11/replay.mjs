@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import * as scout from "../../web-src/scout.js";
 import { rankPrefilterCandidates, collectPrefilterFens } from "../../web-src/scout-prefilter.js";
 import { routeKey, canonicalPosition } from "../../web-src/scout-preparation-value.js";
-import { selectPreparationRoutesV11, createPathGuard, ownDecisionPlies, unsafeRead, AUDIT_NODE_SHARE } from "./path-guard.mjs";
+import { selectPreparationRoutesV11, createPathGuard, ownDecisionPlies, unsafeRead, AUDIT_NODE_SHARE, SCREEN_DEPTH, GATE_DEPTH, SCREEN_MARGIN_CP } from "./path-guard.mjs";
 import { createEngine, parseNodes } from "./engine.mjs";
 import { diagnosePath } from "./path-diagnostics.mjs";
 
@@ -122,20 +122,28 @@ try {
       const auditSelected = existsSync(auditFile) ? read(auditFile).selected : null;
       const arms = {};
       for (const [arm, budgetNodes] of [["v11", AUDIT_NODE_SHARE * v10LeafNodes], ["v11-uncapped", Infinity]]) {
-        const guard = createPathGuard({ engine, fensFor, oppColor: color, budgetNodes });
+        const guard = createPathGuard({ engine, fensFor, oppColor: color, budgetNodes, leafMeanNodes: v10LeafNodes / Math.max(1, leafNodes.size) });
         const r = await selectPreparationRoutesV11(eligible, { baseline, limit: 12, guard });
         arms[arm] = { ...armMetrics(r.picked, color, v10Keys), auditNodes: guard.spentNodes, auditReads: guard.reads,
           budgetNodes: Number.isFinite(budgetNodes) ? budgetNodes : null, nodeRatio: v10LeafNodes ? guard.spentNodes / v10LeafNodes : null,
-          budgetExhausted: guard.exhausted, anchorRejections: r.anchorRejections, log: r.log };
+          budgetExhausted: guard.exhausted, screens: guard.screens, confirms: guard.confirms, anchorRejections: r.anchorRejections, log: r.log };
       }
       // Detector recall: every v10 row read in full at depth8 (diagnostic, not a runtime cost).
       const recall = [];
       for (const route of v10) {
         const fs = fensFor(route.ucis), plies = ownDecisionPlies(route.ucis.length, color);
         await engine.newLine();
-        let unsafe = false, nodes = 0;
-        for (const ply of plies) { const x = await engine.read(fs[ply]); nodes += x.nodes; if (unsafeRead(x, color)) unsafe = true; }
-        recall.push({ key: routeKey(route), depth8Unsafe: unsafe, nodes, native: native(route, color) });
+        let unsafe = false, nodes = 0, screenUnsafe = false, screenNodes = 0;
+        for (const ply of plies) { const x = await engine.read(fs[ply], GATE_DEPTH); nodes += x.nodes; if (unsafeRead(x, color)) unsafe = true; }
+        // The guard's screen policy over the same row, from a fresh hash.
+        await engine.newLine();
+        for (const ply of plies) {
+          const x = await engine.read(fs[ply], SCREEN_DEPTH); screenNodes += x.nodes;
+          if (!unsafeRead(x, color, SCREEN_MARGIN_CP)) continue;
+          const y = await engine.read(fs[ply], GATE_DEPTH); screenNodes += y.nodes;
+          if (unsafeRead(y, color)) screenUnsafe = true;
+        }
+        recall.push({ key: routeKey(route), depth8Unsafe: unsafe, nodes, screenUnsafe, screenNodes, native: native(route, color) });
       }
       const record = { id: `${p.id}-${color}`, player: p.id, split: p.split, color, baseline,
         v10ReplayMatchesAudit: auditSelected ? JSON.stringify(auditSelected) === JSON.stringify(v10.map(routeKey)) : null,

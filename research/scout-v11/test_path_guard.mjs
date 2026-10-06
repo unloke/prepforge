@@ -18,10 +18,10 @@ function fakeEngine(unsafeFens = []) {
   engine.read = async fen => { engine.reads.push(fen); return { whiteCp: bad.has(fen) ? -200 : 0, whiteMate: null, winner: null, nodes: 10 }; };
   return engine;
 }
-const A = ["a1", "x2", "a3", "x4"], B = ["b1", "x2", "b3", "x4"], C = ["c1", "x2", "c3", "x4"], D = ["d1", "x2", "d3", "x4"], E = ["e1", "x2", "e3", "x4"];
+const A = ["a1", "x2", "a3", "x4"], B = ["b1", "x2", "b3", "x4"], C = ["c1", "x2", "c3", "x4"], D = ["d1", "x2", "d3", "x4"], E = ["e1", "x2", "e3", "x4"], F = ["f1", "x2", "f3", "x4"];
 const tail = t => [`${t}5`, `${t}6`, `${t}7`, `${t}8`];
 const L1 = mk(A, tail("p"), { typical: 8 }), L2 = mk(A, tail("q"), { typical: 3 });
-const routes = [L1, L2, mk(B, tail("r")), mk(C, tail("s"), { games: 9 }), mk(D, tail("u"), { weak: false }), mk(E, tail("v"), { weak: false, games: 4 })];
+const routes = [L1, L2, mk(B, tail("r")), mk(C, tail("s"), { games: 9 }), mk(D, tail("u"), { weak: false }), mk(E, tail("v"), { games: 4 }), mk(F, tail("w"), { games: 4 })];
 const keys = r => r.picked.map(routeKey);
 
 // Own-decision plies and verdicts.

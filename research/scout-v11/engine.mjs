@@ -44,11 +44,11 @@ export async function createEngine(enginePath, { hashMiB = 16 } = {}) {
   const engine = {
     searches: 0,
     newLine: () => command("ucinewgame\nisready", s => s.includes("readyok")),
-    async read(fen) {
-      if (new Chess(fen).isGameOver()) return interpret(fen, "");
-      const uci = await command(`position fen ${fen}\ngo depth ${DEPTH}`, s => /(^|\n)bestmove /.test(s));
+    async read(fen, depth = DEPTH) {
+      if (new Chess(fen).isGameOver()) return interpret(fen, "", depth);
+      const uci = await command(`position fen ${fen}\ngo depth ${depth}`, s => /(^|\n)bestmove /.test(s));
       engine.searches++;
-      return { ...interpret(fen, uci), uci };
+      return { ...interpret(fen, uci, depth), uci };
     },
     // v10 leaf semantics: a fresh game for every read.
     async fresh(fen) { await engine.newLine(); return engine.read(fen); },
