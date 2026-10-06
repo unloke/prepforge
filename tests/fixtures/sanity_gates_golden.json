@@ -1,0 +1,95 @@
+{
+  "_comment": "Shared Brilliant/Great sanity gates: services/brilliant.py sanity_exclusion <-> web-src/coach/features.js sanityExclusion.",
+  "cases": [
+    {
+      "id": "recapture-pawn",
+      "note": "Ruy Lopez exchange: dxc6 takes back on c6",
+      "previous_fen_before": "r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4",
+      "previous_uci": "b5c6",
+      "fen_before": "r1bqkbnr/1ppp1ppp/p1B5/4p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 4",
+      "uci": "d7c6",
+      "expected": "recapture"
+    },
+    {
+      "id": "recapture-other-pawn",
+      "note": "bxc6 is a recapture too",
+      "previous_fen_before": "r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4",
+      "previous_uci": "b5c6",
+      "fen_before": "r1bqkbnr/1ppp1ppp/p1B5/4p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 4",
+      "uci": "b7c6",
+      "expected": "recapture"
+    },
+    {
+      "id": "quiet-after-capture",
+      "note": "a quiet move after a capture",
+      "previous_fen_before": "r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4",
+      "previous_uci": "b5c6",
+      "fen_before": "r1bqkbnr/1ppp1ppp/p1B5/4p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 4",
+      "uci": "g8f6",
+      "expected": null
+    },
+    {
+      "id": "capture-on-another-square",
+      "note": "a check after a capture, not a capture back",
+      "previous_fen_before": "rnbqkb1r/pp2pppp/2p2n2/1B1P4/8/8/PPPP1PPP/RNBQK1NR w KQkq - 0 4",
+      "previous_uci": "d5c6",
+      "fen_before": "rnbqkb1r/pp2pppp/2P2n2/1B6/8/8/PPPP1PPP/RNBQK1NR b KQkq - 0 4",
+      "uci": "d8a5",
+      "expected": null
+    },
+    {
+      "id": "recapture-after-check-sequence",
+      "note": "bxc6 takes back on c6",
+      "previous_fen_before": "rnbqkb1r/pp2pppp/2p2n2/1B1P4/8/8/PPPP1PPP/RNBQK1NR w KQkq - 0 4",
+      "previous_uci": "d5c6",
+      "fen_before": "rnbqkb1r/pp2pppp/2P2n2/1B6/8/8/PPPP1PPP/RNBQK1NR b KQkq - 0 4",
+      "uci": "b7c6",
+      "expected": "recapture"
+    },
+    {
+      "id": "capture-not-after-capture",
+      "note": "Nxe4 grabs a pawn; the previous move captured nothing",
+      "previous_fen_before": "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+      "previous_uci": "f3g5",
+      "fen_before": "r1bqkb1r/pppp1ppp/2n2n2/4p1N1/2B1P3/8/PPPP1PPP/RNBQK2R b KQkq - 5 4",
+      "uci": "f6e4",
+      "expected": null
+    },
+    {
+      "id": "capture-same-square-no-prev-capture",
+      "note": "Qxd5 lands where Nd5 went, but Nd5 captured nothing",
+      "previous_fen_before": "rnbqkbnr/ppp1pppp/8/8/3pP3/2N5/PPPP1PPP/R1BQKBNR w KQkq - 0 3",
+      "previous_uci": "c3d5",
+      "fen_before": "rnbqkbnr/ppp1pppp/8/3N4/3pP3/8/PPPP1PPP/R1BQKBNR b KQkq - 1 3",
+      "uci": "d8d5",
+      "expected": null
+    },
+    {
+      "id": "recapture-after-en-passant",
+      "note": "exf6 takes back after en passant exf6",
+      "previous_fen_before": "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
+      "previous_uci": "e5f6",
+      "fen_before": "rnbqkbnr/ppp1p1pp/5P2/3p4/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 3",
+      "uci": "e7f6",
+      "expected": "recapture"
+    },
+    {
+      "id": "no-previous",
+      "note": "without the previous move nothing is excluded",
+      "previous_fen_before": null,
+      "previous_uci": null,
+      "fen_before": "r1bqkbnr/1ppp1ppp/p1B5/4p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 4",
+      "uci": "d7c6",
+      "expected": null
+    },
+    {
+      "id": "forced",
+      "note": "the only legal move",
+      "previous_fen_before": null,
+      "previous_uci": null,
+      "fen_before": "7k/8/5Q2/8/8/8/8/K6R b - - 0 1",
+      "uci": "h8g8",
+      "expected": "forced"
+    }
+  ]
+}

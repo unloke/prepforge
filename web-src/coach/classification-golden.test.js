@@ -124,10 +124,11 @@ describe("classification golden contract (browser side)", () => {
     expect(losses).toContain(0);
   });
 
-  it("keeps forced and great as browser presentation tiers", () => {
+  it("keeps forced as a browser presentation tier; an only move alone is Best", () => {
     const base = { winDelta: 0, winAfterMover: 50, isBest: true, onlyMove: true };
     expect(classifyMoveRich({ ...base, forced: true }).code).toBe("forced");
-    expect(classifyMoveRich({ ...base, forced: false }).code).toBe("great");
+    // Great needs the Maia read (gradeByMaia), as on the server.
+    expect(classifyMoveRich({ ...base, forced: false }).code).toBe("best");
     expect(classifyMoveRich({ ...base, forced: false, winAfterMover: 24 }).code).toBe("best");
   });
 });

@@ -100,6 +100,8 @@
   --arrow-user: rgba(47, 91, 211, 0.78);
   --arrow-engine: rgba(29, 138, 79, 0.8);
   --arrow-better: rgba(176, 62, 196, 0.8);
+  /* Repertoire line options: neutral slate, drawn as a dashed outline. */
+  --arrow-line: rgba(52, 64, 78, 0.9);
   /* Board coordinate labels. */
   --coord-on-light: #354655;
   --coord-on-dark: #172a38;
@@ -208,6 +210,7 @@
   --arrow-user: rgba(120, 152, 245, 0.82);
   --arrow-engine: rgba(80, 196, 132, 0.82);
   --arrow-better: rgba(222, 132, 240, 0.85);
+  --arrow-line: rgba(206, 214, 224, 0.9);
   --coord-on-light: #354655;
   --coord-on-dark: #07121a;
   --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -2031,33 +2034,44 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   fill: var(--arrow-better);
 }
 
-/* Fork-option hints, under explicit arrows. Idle options share one translucent group
-   (overlaps don't darken); the picked option is drawn stronger on top. */
+/* Repertoire line options, under explicit arrows. A different shape from the solid
+   user and engine arrows (a dashed outline with a faint fill), so the three sources
+   stay apart even where they overlap. Idle options share one group (overlaps don't
+   darken); the picked option is drawn stronger on top. */
 .annot-branches {
-  opacity: 0.42;
+  opacity: 0.6;
 }
 
 .annot-branch {
-  fill: var(--accent);
+  fill: var(--arrow-line);
+  fill-opacity: 0.12;
+  stroke: var(--arrow-line);
+  stroke-width: 0.55;
+  stroke-dasharray: 1.4 1;
+  stroke-linejoin: round;
   filter: none;
 }
 
 .annot-branch.is-pick {
-  opacity: 0.72;
+  fill-opacity: 0.28;
+  stroke-width: 0.75;
 }
 
-/* The engine's move is also a fork option: the option's fill with an engine-green rim. */
+.annot-branch.is-echo {
+  fill: none;
+  stroke-width: 0.7;
+}
+
+/* The engine's move is also a line option: the engine's green fill inside the
+   option's dashed outline. */
 .annot-branch.is-engine {
-  opacity: 1;
-  fill-opacity: 0.4;
-  stroke: var(--good);
-  stroke-width: 0.9;
-  stroke-linejoin: round;
+  fill: var(--arrow-engine);
+  fill-opacity: 0.55;
   filter: drop-shadow(0 0.3px 0.6px rgba(0, 0, 0, 0.22));
 }
 
 .annot-branch.is-engine.is-pick {
-  fill-opacity: 0.72;
+  fill-opacity: 0.8;
 }
 
 .square {

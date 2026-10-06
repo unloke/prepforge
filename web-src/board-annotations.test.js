@@ -46,6 +46,16 @@ describe("board annotation layering", () => {
     ]);
   });
 
+  it("outlines a fork option on top of the user arrow drawn on the same move", () => {
+    expect(render(["g1f3", "a2a4"], "white", null, ["g1f3", "b1c3"], null)).toEqual([
+      "annot-branches > annot-arrow annot-branch",
+      "annot-branches > annot-arrow annot-branch",
+      "annot-arrow annot-user",
+      "annot-arrow annot-user",
+      "annot-arrow annot-branch is-echo",
+    ]);
+  });
+
   it("merges the engine's move into the fork option it matches instead of stacking two arrows", () => {
     expect(render([], "white", "g1f3", ["g1f3", "b1c3"], "g1f3")).toEqual([
       "annot-branches > annot-arrow annot-branch",

@@ -182,6 +182,17 @@ def test_quality_metadata_labels_run_completeness(client):
     assert quality2["shallow_positions"] > 0
     assert "partial-shallow" in quality2["completeness"]
 
+    # A two-tier run screened at 12 on purpose: depth-12 reads are not "shallow".
+    r3 = client.post(
+        "/api/analyze/classify-save",
+        json={"game_id": prepared["game_id"], "depth": 16, "screen_depth": 12, "positions": shallow},
+        headers=csrf_headers(client),
+    )
+    quality3 = r3.json()["quality"]
+    assert quality3["screen_depth"] == 12
+    assert quality3["search"] == "full"
+    assert quality3["shallow_positions"] == 0
+
 
 # ---- A-01 + A-02: mastery + effective traversal (pure functions) -----------
 

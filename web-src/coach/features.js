@@ -90,6 +90,36 @@ export function materialInvested(fenBefore, uci, replyUci) {
   return Math.max(0, before - materialBalance(board) * sign);
 }
 
+function playUci(board, uci) {
+  try {
+    return board.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || undefined });
+  } catch (_) {
+    return null;
+  }
+}
+
+// Why a move can never be Brilliant or Great, whatever the models say, or null:
+//   "forced"    — the only legal move: there was no decision to make.
+//   "recapture" — a capture on the square the opponent just captured on. Taking back is
+//                 the obvious reply; when it is also the only move that holds, that is
+//                 necessary, not a find.
+// Mirrors the server's sanity_exclusion (services/brilliant.py); the shared fixture
+// tests/fixtures/sanity_gates_golden.json pins both. The previous move only counts when
+// it leads into fenBefore.
+export function sanityExclusion({ fenBefore, uci, prevFenBefore = null, prevUci = null }) {
+  const board = safeChess(fenBefore);
+  if (!board || !uci) return null;
+  if (board.moves().length === 1) return "forced";
+  if (!prevFenBefore || !prevUci) return null;
+  const move = playUci(board, uci);
+  if (!move || !move.captured) return null;
+  const prevBoard = safeChess(prevFenBefore);
+  const prev = prevBoard && playUci(prevBoard, prevUci);
+  if (!prev || !prev.captured || prev.to !== move.to) return null;
+  const key = (fen) => String(fen).split(" ").slice(0, 4).join(" ");
+  return key(prevBoard.fen()) === key(fenBefore) ? "recapture" : null;
+}
+
 // input: {
 //   ply, moveNumber, mover ('white'|'black'), uci, san, fenBefore, fenAfter,
 //   beforeEval: { lines: [{ uci, san, cp, mate, pvUci, pvSan }, ...] },  // MultiPV >= 1
@@ -217,7 +247,10 @@ export function buildMoveFeatures(input) {
   // for the mover (the human read can't dip below 0), NOT that the mover is winning — so a
   // brilliant resource in a worse-but-defensible position still qualifies. The trap_gap,
   // not a win floor, is what keeps the false positives out.)
-  const brilliantCandidate = isBest || winDelta <= BRILLIANT_MAX_CANDIDATE_WIN_DELTA;
+  // A move the shared sanity gates exclude (forced, or a recapture) is never Brilliant or
+  // Great, so it never earns the Maia check either.
+  const sanityExcluded = sanityExclusion({ fenBefore, uci, prevFenBefore: input.prevFenBefore, prevUci: input.prevUci });
+  const brilliantCandidate = !sanityExcluded && (isBest || winDelta <= BRILLIANT_MAX_CANDIDATE_WIN_DELTA);
   // Layer 4 inputs (see isBrilliantByMaia): how far the move stands above the best OTHER
   // move (win% points, mover POV), and the material it gives up after the reply. A move
   // that isn't the engine's first choice is measured against that first choice.
@@ -284,6 +317,7 @@ export function buildMoveFeatures(input) {
     replySan,
     replyUci,
 
+    sanityExcluded,
     brilliantCandidate,
     onlyMoveGap,
     sacrifice,
@@ -399,6 +433,17 @@ export function isCriticalFind(features, { maiaHumanProb, trapGap, twoMoveGap })
   );
 }
 
+// The live coach reads only two engine lines, so it can't search two_move_gap. An only move
+// bounds both critical-find gaps from below instead: every other move, the natural one
+// included, is at most as good as the second line. Null when the move isn't an only move.
+export function onlyMoveGaps(features, naturalUci) {
+  if (!features || !features.onlyMove || !Number.isFinite(features.onlyMoveGap)) return null;
+  const natural = typeof naturalUci === "string" ? naturalUci.toLowerCase() : null;
+  if (!natural) return { trapGap: null, twoMoveGap: features.onlyMoveGap };
+  const isPlayed = natural === String(features.uci || "").toLowerCase();
+  return { trapGap: isPlayed ? 0 : features.onlyMoveGap / 100, twoMoveGap: features.onlyMoveGap };
+}
+
 // "brilliant" | "great" | null for a move, from the Maia read and the gaps in hand.
 export function gradeByMaia(features, maia) {
   if (isBrilliantByMaia(features, maia)) return "brilliant";
@@ -431,13 +476,9 @@ export function classifyMoveRich({ winDelta, winAfterMover, isBest, onlyMove, fo
   if (forced) {
     return { code: "forced", label: "Forced", glyph: "□", tone: "info" };
   }
-  // Great: the only move that holds the position together — finding it mattered.
-  // The winAfterMover >= 25 floor keeps "Great" for moves that actually rescue the
-  // position (or better); below that the mover is still losing even after finding the
-  // only try, which reads as "Best" (still correct, just not a save worth celebrating).
-  if (isBest && onlyMove && winAfterMover >= 25) {
-    return { ...GREAT_CLASSIFICATION };
-  }
+  // An only move alone is not Great: like the server, Great needs the Maia read (a hard or
+  // critical find, see gradeByMaia) and the shared sanity gates, so an obvious recapture
+  // that happens to be the only move stays Best.
   if (isBest || winDelta <= 2) {
     return { code: "best", label: "Best move", glyph: "✓", tone: "good" };
   }

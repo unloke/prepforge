@@ -194,7 +194,7 @@ async function wdlRead({ fen, rating }) {
   return { wdl: wdlCurrent(out.logits_value.data) };
 }
 
-// moveAssessment(): { humanProbability, winChanceAfter } or null when the FEN is
+// moveAssessment(): { humanProbability, winChanceAfter, naturalUci } or null when the FEN is
 // malformed or the move is unparseable/illegal (no forward pass in that case).
 async function moveAssessment({ fen, moveUci, rating }) {
   if (!isValidFen(fen)) return null;
@@ -209,7 +209,11 @@ async function moveAssessment({ fen, moveUci, rating }) {
   // Win chance: forward on the AFTER-MOVE position with self/oppo Elo SWAPPED (the
   // resulting position is the opponent's to move), then invert WDL back to the mover.
   const outValue = await session.run(feeds(afterTokens, 1, [elo], [elo]));
-  return { humanProbability: humanProb, winChanceAfter: winChanceAfter(outValue.logits_value.data) };
+  return {
+    humanProbability: humanProb,
+    winChanceAfter: winChanceAfter(outValue.logits_value.data),
+    naturalUci: buildPredictions(outPolicy.logits_move.data, fen, { topN: 1 })[0]?.move_uci ?? null,
+  };
 }
 
 // moveAssessmentBatch(): one shared policy forward + ONE padded value forward over all

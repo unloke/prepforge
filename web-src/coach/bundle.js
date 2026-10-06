@@ -4,6 +4,7 @@ export {
   buildMoveFeatures,
   isBrilliantByMaia,
   gradeByMaia,
+  onlyMoveGaps,
   markBrilliant,
   markGreat,
   moverWinChanceAfter,
@@ -11,6 +12,7 @@ export {
   BRILLIANT_MIN_WIN_GAP,
   BRILLIANT_MIN_ONLY_MOVE_GAP,
   BRILLIANT_MIN_SACRIFICE,
+  GREAT_MAX_HUMAN_PROB,
 } from "./features.js";
 export { attachIntuition } from "./intuition.js";
 export { buildCommentary } from "./commentary.js";

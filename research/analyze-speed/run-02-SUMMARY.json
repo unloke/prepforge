@@ -1,0 +1,198 @@
+{
+ "games": 14,
+ "positions": 924,
+ "arms": {
+  "baseline": {
+   "wallSec": 206.7,
+   "wallVsBaseline": 1,
+   "medianGameWallRatio": 1,
+   "nodesVsBaseline": 1,
+   "meanDepth": 15.86,
+   "deepShare": 0,
+   "vsReference20": {
+    "moves": 910,
+    "exactPct": 72.64,
+    "errorFlagAgreePct": 95.38,
+    "majorPct": 0.66,
+    "eligibleAgreePct": 90.44,
+    "meanAbsLoss": 1.471
+   },
+   "vsBaseline": {
+    "moves": 910,
+    "exactPct": 100,
+    "errorFlagAgreePct": 100,
+    "majorPct": 0,
+    "eligibleAgreePct": 100,
+    "meanAbsLoss": 0
+   }
+  },
+  "baselineRepeat": {
+   "wallSec": 203,
+   "wallVsBaseline": 0.982,
+   "medianGameWallRatio": 0.97,
+   "nodesVsBaseline": 0.994,
+   "meanDepth": 15.86,
+   "deepShare": 0,
+   "vsReference20": {
+    "moves": 910,
+    "exactPct": 70.44,
+    "errorFlagAgreePct": 95.6,
+    "majorPct": 0.77,
+    "eligibleAgreePct": 89.78,
+    "meanAbsLoss": 1.417
+   },
+   "vsBaseline": {
+    "moves": 910,
+    "exactPct": 86.04,
+    "errorFlagAgreePct": 97.8,
+    "majorPct": 0.22,
+    "eligibleAgreePct": 95.16,
+    "meanAbsLoss": 0.765
+   }
+  },
+  "backChunks": {
+   "wallSec": 205.4,
+   "wallVsBaseline": 0.994,
+   "medianGameWallRatio": 0.957,
+   "nodesVsBaseline": 0.992,
+   "meanDepth": 15.85,
+   "deepShare": 0,
+   "vsReference20": {
+    "moves": 910,
+    "exactPct": 73.96,
+    "errorFlagAgreePct": 94.51,
+    "majorPct": 0.99,
+    "eligibleAgreePct": 90.55,
+    "meanAbsLoss": 1.304
+   },
+   "vsBaseline": {
+    "moves": 910,
+    "exactPct": 73.41,
+    "errorFlagAgreePct": 95.38,
+    "majorPct": 0.55,
+    "eligibleAgreePct": 92.2,
+    "meanAbsLoss": 1.354
+   }
+  },
+  "backQuarters": {
+   "wallSec": 235.7,
+   "wallVsBaseline": 1.14,
+   "medianGameWallRatio": 1.047,
+   "nodesVsBaseline": 0.989,
+   "meanDepth": 15.86,
+   "deepShare": 0,
+   "vsReference20": {
+    "moves": 910,
+    "exactPct": 75.27,
+    "errorFlagAgreePct": 94.07,
+    "majorPct": 1.1,
+    "eligibleAgreePct": 91.1,
+    "meanAbsLoss": 1.224
+   },
+   "vsBaseline": {
+    "moves": 910,
+    "exactPct": 73.96,
+    "errorFlagAgreePct": 95.38,
+    "majorPct": 0.55,
+    "eligibleAgreePct": 91.87,
+    "meanAbsLoss": 1.364
+   }
+  },
+  "backChunksHash64": {
+   "wallSec": 209.1,
+   "wallVsBaseline": 1.012,
+   "medianGameWallRatio": 1.012,
+   "nodesVsBaseline": 0.967,
+   "meanDepth": 15.85,
+   "deepShare": 0,
+   "vsReference20": {
+    "moves": 910,
+    "exactPct": 74.62,
+    "errorFlagAgreePct": 95.38,
+    "majorPct": 0.66,
+    "eligibleAgreePct": 90.99,
+    "meanAbsLoss": 1.247
+   },
+   "vsBaseline": {
+    "moves": 910,
+    "exactPct": 74.84,
+    "errorFlagAgreePct": 95.38,
+    "majorPct": 0.33,
+    "eligibleAgreePct": 91.98,
+    "meanAbsLoss": 1.276
+   }
+  },
+  "tiered1": {
+   "wallSec": 162,
+   "wallVsBaseline": 0.784,
+   "medianGameWallRatio": 0.816,
+   "nodesVsBaseline": 0.714,
+   "meanDepth": 14.6,
+   "deepShare": 0.677,
+   "vsReference20": {
+    "moves": 910,
+    "exactPct": 73.85,
+    "errorFlagAgreePct": 95.05,
+    "majorPct": 0.88,
+    "eligibleAgreePct": 91.65,
+    "meanAbsLoss": 1.493
+   },
+   "vsBaseline": {
+    "moves": 910,
+    "exactPct": 74.84,
+    "errorFlagAgreePct": 96.59,
+    "majorPct": 0.44,
+    "eligibleAgreePct": 91.76,
+    "meanAbsLoss": 1.555
+   }
+  },
+  "tiered3": {
+   "wallSec": 112.4,
+   "wallVsBaseline": 0.544,
+   "medianGameWallRatio": 0.541,
+   "nodesVsBaseline": 0.496,
+   "meanDepth": 13.81,
+   "deepShare": 0.466,
+   "vsReference20": {
+    "moves": 910,
+    "exactPct": 70.99,
+    "errorFlagAgreePct": 94.4,
+    "majorPct": 2.31,
+    "eligibleAgreePct": 89.01,
+    "meanAbsLoss": 1.599
+   },
+   "vsBaseline": {
+    "moves": 910,
+    "exactPct": 72.64,
+    "errorFlagAgreePct": 94.4,
+    "majorPct": 1.54,
+    "eligibleAgreePct": 90,
+    "meanAbsLoss": 1.606
+   }
+  },
+  "reference20": {
+   "wallSec": 1276.9,
+   "wallVsBaseline": 6.177,
+   "medianGameWallRatio": 6.799,
+   "nodesVsBaseline": 5.519,
+   "meanDepth": 19.81,
+   "deepShare": 0,
+   "vsReference20": {
+    "moves": 910,
+    "exactPct": 100,
+    "errorFlagAgreePct": 100,
+    "majorPct": 0,
+    "eligibleAgreePct": 100,
+    "meanAbsLoss": 0
+   },
+   "vsBaseline": {
+    "moves": 910,
+    "exactPct": 72.64,
+    "errorFlagAgreePct": 95.38,
+    "majorPct": 0.66,
+    "eligibleAgreePct": 90.44,
+    "meanAbsLoss": 1.471
+   }
+  }
+ }
+}

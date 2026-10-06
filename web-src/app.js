@@ -2107,11 +2107,16 @@ class PositionCoach {
       // ones gate the costly trap_gap (a Maia policy read + a Stockfish eval of the natural
       // move), so we never pay for it on a move a free check already ruled out:
       //   • Unintuitive — a human rarely finds it.
-      if (!(a.humanProbability <= c.BRILLIANT_MAX_HUMAN_PROB)) return;
       //   • Reveal — Stockfish's truth sits far above Maia's first-glance read. (Free: both
       //     numbers are already in hand.)
-      if (features.winAfterMover - a.winChanceAfter * 100 < c.BRILLIANT_MIN_WIN_GAP) return;
-      const trapGap = await this._trapGap(features, prevFen, uci, fen, token, rating);
+      const hardFind =
+        a.humanProbability <= c.BRILLIANT_MAX_HUMAN_PROB &&
+        features.winAfterMover - a.winChanceAfter * 100 >= c.BRILLIANT_MIN_WIN_GAP;
+      // Great's critical find, the server's second route: an only move bounds its gaps
+      // (free), so it needs no search either — just a moderately unexpected move.
+      const only = c.onlyMoveGaps(features, a.naturalUci);
+      if (!hardFind && !(only && a.humanProbability <= c.GREAT_MAX_HUMAN_PROB)) return;
+      const trapGap = hardFind ? await this._trapGap(features, prevFen, uci, fen, token, rating) : only.trapGap;
       if (token !== this.token || fen !== this.fen) return;
       //   • Trap, then Decisive — a hard find that is also the only move (or a sacrifice) is
       //     Brilliant; one that another quiet move would match is Great.
@@ -2119,6 +2124,7 @@ class PositionCoach {
         maiaHumanProb: a.humanProbability,
         maiaWinAfter: a.winChanceAfter,
         trapGap,
+        twoMoveGap: only ? only.twoMoveGap : null,
       });
       const maia = { humanProb: a.humanProbability, winChanceAfter: a.winChanceAfter };
       if (grade === "brilliant") c.markBrilliant(features, maia);
@@ -4525,13 +4531,17 @@ function renderAnnotations(
     overlay.appendChild(group);
   }
   if (pick && pick !== engine) drawArrow(overlay, pick, "branch is-pick");
-  // The engine's move is one of the fork options: one arrow in the option's colour with
-  // an engine-green rim, instead of a green arrow hiding the option underneath.
+  // The engine's move is one of the fork options: one arrow, the engine's fill inside the
+  // option's outline, instead of a green arrow hiding the option underneath.
   const engineIsBranch = !!engine && branches.includes(engine);
   if (engineIsBranch) drawArrow(overlay, engine, `branch is-engine${engine === pick ? " is-pick" : ""}`);
   if (valid(betterArrow) && betterArrow !== engine) drawArrow(overlay, betterArrow, "better");
   arrows.forEach((arrow) => drawArrow(overlay, arrow, "user"));
-  if (engine && !engineIsBranch) drawArrow(overlay, engine, "engine");
+  // A line option you also drew yourself: its dashed outline on top, so the option
+  // doesn't vanish under your arrow.
+  branches.filter((u) => u !== engine && arrows.includes(u)).forEach((u) => drawArrow(overlay, u, "branch is-echo"));
+  // Slimmer than a user arrow, so one you drew on the same move still shows around it.
+  if (engine && !engineIsBranch) drawArrow(overlay, engine, "engine", { scale: 0.7 });
 }
 
 function squareCenter(square, orientation = "white") {
@@ -6605,21 +6615,27 @@ async function runAnalysis(options = {}) {
           })
           .catch(() => null)
       : null;
-    const evals = await timed("stockfish", () =>
-      store.analyzeGame({
+    // Two tiers (engine/tiered-analysis.js): every position at a screen depth, then the full
+    // depth only where a grade could hinge on it. The Maia pass streams the reads that will
+    // be saved.
+    const tiered = await import("./engine/tiered-analysis.js");
+    const { evals, screenDepth } = await timed("stockfish", () =>
+      tiered.analyzeTiered({
+        analyze: (o) => store.analyzeGame(o),
         positions,
+        moves: prep.moves,
         depth: prep.depth,
-        onResult: (fen, ev) => {
-          live(fen, ev);
+        onResult: (fen, ev) => live(fen, ev),
+        onFinal: (fen, ev) => {
           if (assessor) assessor.push(fen, ev);
           else if (wantsMaia) pendingEvals.push([fen, ev]);
         },
-        onProgress: (done, total) => {
+        onProgress: (done, total, stage) => {
           job({
             current: done,
             total,
             phase: "stockfish",
-            message: `Stockfish ${done}/${total} positions`,
+            message: stage === "screen" ? `Stockfish ${done}/${total} positions` : `Stockfish depth ${prep.depth} · ${done}/${total}`,
           });
         },
         shouldCancel,
@@ -6720,6 +6736,7 @@ async function runAnalysis(options = {}) {
       ownerId: analysisOwnerId,
       engine: prep.engine || "stockfish (browser)",
       depth: prep.depth,
+      screenDepth,
       positions,
       evals: [...evals.entries()],
       maiaAssessments,
@@ -6741,6 +6758,7 @@ async function runAnalysis(options = {}) {
         request_id: checkpoint.requestId,
         engine: prep.engine || "stockfish (browser)",
         depth: prep.depth,
+        screen_depth: screenDepth,
         positions: positions.map((fen) => {
           const ev = evals.get(fen) || {};
           return {
@@ -7000,6 +7018,7 @@ async function retryAnalyzeSave() {
       request_id: checkpoint.requestId,
       engine: checkpoint.engine || "stockfish (browser)",
       depth: checkpoint.depth,
+      screen_depth: checkpoint.screenDepth ?? null,
       positions: (checkpoint.positions || []).map((fen) => {
         const ev = evals.get(fen) || {};
         return {
