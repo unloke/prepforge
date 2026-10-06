@@ -1,4 +1,5 @@
 import { expect, it, vi } from "vitest";
+import { analyzeTiered } from "./engine/tiered-analysis.js";
 import { readFileSync } from "node:fs";
 
 const source = readFileSync(new URL("./app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
@@ -86,6 +87,7 @@ it("switching accounts during classify-save releases the analysis job without re
     hideAnalysisHandoff: vi.fn(), loadPgnIntoAnalyze: async () => true,
     engineLifecycleMark: vi.fn(), renderImportPicker: vi.fn(), maiaAnalysisEnabled: () => false,
     analysisStore: async () => ({ analyzeGame: async () => new Map([["fen", { score_cp: 0 }]]) }),
+    analyzeTiered,
     ensureAnalyzeView: async () => ({ liveEvalChart: () => () => {} }),
     engineModule: { analyzeGamePositions: async () => new Map([["fen", { score_cp: 0 }]]) },
     postJson: vi.fn(async (path) => {

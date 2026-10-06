@@ -1,5 +1,6 @@
 import "./styles.css";
 import { buildArrowPath } from "./board-arrows.js";
+import { analyzeTiered } from "./engine/tiered-analysis.js";
 import { classBadgeSymbol } from "./move-grades.js";
 import { countOf } from "./plural.js";
 // One per-position analysis store (engine/position-analysis-store.js) behind the
@@ -6615,21 +6616,26 @@ async function runAnalysis(options = {}) {
           })
           .catch(() => null)
       : null;
-    const evals = await timed("stockfish", () =>
-      store.analyzeGame({
+    // Two tiers (engine/tiered-analysis.js): every position at a screen depth, then the full
+    // depth only where a grade could hinge on it. The Maia pass streams the reads that will
+    // be saved.
+    const { evals, screenDepth } = await timed("stockfish", () =>
+      analyzeTiered({
+        analyze: (o) => store.analyzeGame(o),
         positions,
+        moves: prep.moves,
         depth: prep.depth,
-        onResult: (fen, ev) => {
-          live(fen, ev);
+        onResult: (fen, ev) => live(fen, ev),
+        onFinal: (fen, ev) => {
           if (assessor) assessor.push(fen, ev);
           else if (wantsMaia) pendingEvals.push([fen, ev]);
         },
-        onProgress: (done, total) => {
+        onProgress: (done, total, stage) => {
           job({
             current: done,
             total,
             phase: "stockfish",
-            message: `Stockfish ${done}/${total} positions`,
+            message: stage === "screen" ? `Stockfish ${done}/${total} positions` : `Stockfish depth ${prep.depth} · ${done}/${total}`,
           });
         },
         shouldCancel,
@@ -6730,6 +6736,7 @@ async function runAnalysis(options = {}) {
       ownerId: analysisOwnerId,
       engine: prep.engine || "stockfish (browser)",
       depth: prep.depth,
+      screenDepth,
       positions,
       evals: [...evals.entries()],
       maiaAssessments,
@@ -6751,6 +6758,7 @@ async function runAnalysis(options = {}) {
         request_id: checkpoint.requestId,
         engine: prep.engine || "stockfish (browser)",
         depth: prep.depth,
+        screen_depth: screenDepth,
         positions: positions.map((fen) => {
           const ev = evals.get(fen) || {};
           return {
@@ -7010,6 +7018,7 @@ async function retryAnalyzeSave() {
       request_id: checkpoint.requestId,
       engine: checkpoint.engine || "stockfish (browser)",
       depth: checkpoint.depth,
+      screen_depth: checkpoint.screenDepth ?? null,
       positions: (checkpoint.positions || []).map((fen) => {
         const ev = evals.get(fen) || {};
         return {

@@ -1,6 +1,12 @@
 # Analyze speed study: results
 
-**Verdict: no arm passes the frozen criteria (PROTOCOL.md). Production keeps its current order.**
+**Verdict: no arm passes the frozen criteria (PROTOCOL.md).**
+
+**Decision (2026-10-06): the user chose to ship `tiered1` anyway.** It runs 0.78× the wall time of the full-depth pass. Its misses against the criteria are narrow (0.034 on wall time, about two moves on major disagreements), and both sit inside baseline's own run-to-run spread.
+- **Implementation:** `web-src/engine/tiered-analysis.js`.
+- **Depths:** the screen depth is the Settings depth − 4, with a minimum of 8. A Settings depth below 12 runs a single full-depth pass.
+- **Order:** the production order is kept, since the backward-ordering arms showed no gain.
+- **Saved analyses:** they carry `screen_depth`, so screened positions are not reported as `partial-shallow`.
 
 ## Run
 
@@ -33,5 +39,5 @@ Accuracy columns compare each arm with depth 20 (`reference20`).
   - wall time 0.784 × baseline, against a limit of 0.75;
   - major disagreements 0.88%, against a limit of 0.86%. That is about two moves out of 924, inside the baseline's own repeat spread.
 
-  It is the only candidate for a later, larger study. It is not shipped.
+  It is the only candidate for a later, larger study. (Shipped anyway: see the decision above.)
 - **tiered3** halves the cost but clearly loses accuracy (major disagreements 2.31%).

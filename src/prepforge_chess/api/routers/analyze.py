@@ -279,6 +279,9 @@ class ClassifySavePayload(BaseModel):
     request_id: UUID = Field(default_factory=uuid4)
     engine: str = "stockfish (browser)"
     depth: int | None = None
+    # Two-tier analysis: every position searched to this depth, the moves a grade could
+    # hinge on to ``depth``. None for a single-depth run.
+    screen_depth: int | None = None
     positions: list[dict[str, Any]] | None = Field(default=None, max_length=MAX_ANALYSIS_POSITIONS)
     maia_assessments: list[dict[str, Any]] | None = Field(
         default=None, max_length=MAX_ANALYSIS_POSITIONS
@@ -371,6 +374,11 @@ def analyze_classify_save(
             depth=resolved_depth,
             brilliant_analyzer=brilliant_analyzer,
             maia_rating=owner_maia_rating(repo, owner),
+            screen_depth=(
+                max(1, min(int(body.screen_depth), resolved_depth))
+                if body.screen_depth is not None
+                else None
+            ),
         )
     except ReplayEngineError as exc:
         # Incomplete client payload (a position was never evaluated).
