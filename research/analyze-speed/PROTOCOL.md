@@ -55,4 +55,4 @@ node savings carry across machines better than wall time does.
 ## Run log
 
 - **run-01:** 48 games, no time budget. About 4.3 min per game across all arms, so the full run would take about 3.5 h. Stopped by a new version push; Kaggle returns no partial output.
-- **run-02:** same sample and arms, with a 40-minute budget (about 9 games). The decision rules above are unchanged.
+- **run-02:** same sample and arms, with a 40-minute budget; 14 games completed. The decision rules above are unchanged. No arm passed: see RESULTS.md.
