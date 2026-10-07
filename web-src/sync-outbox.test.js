@@ -10,7 +10,7 @@ import {
   outboxIsQuiescent,
   releaseFlushLock,
   trainAttemptId,
-} from "./sync-outbox.js";
+} from "./sync-queue.js";
 
 // Outbox merge rules (R-03/R-04): rejected ops are kept for inspection (never
 // silently dropped), settled ops never return, and a cross-tab lock stops two
@@ -235,9 +235,9 @@ describe("outbox settling", () => {
     expect(rejected[rejected.length - 1].tempId).toBe("bad-139");
   });
 
-  it("falls back to a stable identity for entries without one", () => {
+  it("requires attempt UUIDs rather than deriving identities from grades", () => {
     expect(buildAddId({ uci: "e2e4" })).toBe("");
-    expect(trainAttemptId({ session_id: "s", node_id: "n", correct: true })).toBe("s:n:true");
+    expect(trainAttemptId({ session_id: "s", node_id: "n", correct: true })).toBe("");
   });
 
   // R-04: two tabs share ONE owner record, so identity must be unique per

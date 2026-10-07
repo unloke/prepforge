@@ -10,6 +10,7 @@ const FILES = [
   "./board/board-controller.js",
   "./engine-eval.js",
   "./controllers/train-session.js",
+  "./controllers/sync.js",
   "./controllers/build-session.js",
   "./controllers/analyze-session.js",
 ];

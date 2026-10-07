@@ -1,3 +1,4 @@
+import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
 import { createToastStack } from "./controllers/toast-stack.js";
 import { buildArrowHeadPath, buildArrowPath, endsUnder } from "./board-arrows.js";
@@ -46,32 +47,14 @@ import { parsePgn } from "./analyze-pgn.js";
 import { createBoardController } from "./board/board-controller.js";
 import { isReviewedMove, pgnPlayers, selfSide } from "./analyze-orient.js";
 import { buildGameSummary, hasClassifiedMoves } from "./coach/game-summary.js";
-import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
-import { classifySyncError, describeSyncError } from "./sync-errors.js";
+import { classifySyncError } from "./sync-errors.js";
 import { apiErrorMessage } from "./api-errors.js";
-import { withRequestDeadline } from "./request-deadline.js";
-import { orderPendingBuildAdds } from "./build-queue.js";
+import { withRequestDeadline } from "./sync-queue.js";
 import { normalizeRepertoireColor, repertoireColorField } from "./repertoire-color.js";
 import { trainStartDisabled } from "./train-start.js";
 import { coachTipMayReplace, wrongMoveTip } from "./train-hint.js";
 import { syncChipVariant } from "./sync-chip.js";
 import { nodeMenuHeading } from "./node-menu.js";
-import {
-  acquireFlushLock,
-  buildAddId,
-  buildDeleteId,
-  outboxHasWork,
-  outboxIsQuiescent,
-  releaseFlushLock,
-  trainAttemptId,
-} from "./sync-outbox.js";
-const outboxDatabase = () => import("./outbox-db.js");
-const loadDurableOutbox = async (owner) => (await outboxDatabase()).loadDurableOutbox(owner);
-const saveDurableOutbox = async (owner, state, settled) => {
-  const snapshot = structuredClone(state), done = structuredClone(settled);
-  return (await outboxDatabase()).saveDurableOutbox(owner, snapshot, done);
-};
-const clearDurableOutbox = async (owner) => (await outboxDatabase()).clearDurableOutbox(owner);
 import { clearCheckpoint, evalMapFrom, loadCheckpoint, markCheckpointSaved, saveCheckpoint } from "./analyze-checkpoint.js";
 import {
   loadReturnState,
@@ -1125,7 +1108,7 @@ async function api(path, options = {}) {
 }
 
 // ----- Durable outbox (R-03) -----------------------------------------------
-// Queued Build/Train edits persist to localStorage per OWNER, so a refresh,
+// Build and Train share an owner-scoped IndexedDB outbox.
 // crash, or sign-out can't silently drop work the user already did. Operation
 // identity survives (Build temp ids, Train attempt UUIDs) — replays after a
 // lost response are recognized server-side instead of double-counted.
@@ -1135,112 +1118,17 @@ function currentOwnerId() {
   return appState.accountUserId || null;
 }
 
-function outboxSnapshot() {
-  return {
-    build: {
-      pending: appState.buildPending,
-      pendingDeletes: appState.buildPendingDeletes,
-      idMap: appState.buildIdMap,
-      rejected: appState.buildRejected || [],
-    },
-    train: {
-      pending: appState.trainSync.pending,
-      rejected: appState.trainRejected || [],
-    },
-  };
-}
-
-// R-03/R-04: the durable copy MERGES with whatever is already stored per
-// operation, so a second tab holding an older view can no longer overwrite
-// ops it never saw. `settled` tombstones the operations the server just
-// confirmed, so a stale snapshot can't resurrect already-saved work either.
-async function persistOutbox(settled = null) {
-  const owner = currentOwnerId();
-  const generation = appState.ownerGeneration;
-  let ok = false;
-  try { await saveDurableOutbox(owner, outboxSnapshot(), settled); ok = true; }
-  catch (error) { console.warn("Outbox persistence failed", error); }
-  if (owner !== currentOwnerId() || generation !== appState.ownerGeneration) return ok;
-  // A refused write means the queue lives only in this tab: the UI must not
-  // promise device recovery it cannot deliver.
-  appState.outboxPersisted = ok;
-  if (!ok && !appState.outboxStorageWarned) {
-    appState.outboxStorageWarned = true;
-    setStatus(
-      "This browser is not letting us store your unsynced edits — they stay in this tab only. Don't close it.",
-      { severity: "warning" },
-    );
-  }
-  return ok;
-}
-
-// R-01: a feature finishing its own queue must never wipe the OTHER feature's
-// unsynced work (nor the rejected ops kept for review). Only a state with
-// nothing left for anyone may drop the owner's key.
-async function clearOutboxWhenQuiescent() {
-  const owner = currentOwnerId();
-  if (!outboxIsQuiescent(await loadDurableOutbox(owner))) {
-    await persistOutbox();
-    return false;
-  }
-  await clearDurableOutbox(owner);
-  return owner === currentOwnerId();
-}
-
-// Re-hydrate THIS owner's queued edits after a reload. Owner-scoped on
-// purpose: signing in as someone else never replays another account's ops.
-async function restoreOutbox() {
-  const owner = currentOwnerId(), generation = appState.ownerGeneration;
-  const outbox = await loadDurableOutbox(owner);
-  if (owner !== currentOwnerId() || generation !== appState.ownerGeneration) return null;
-  const rejectedCount =
-    (outbox.build.rejected || []).length + (outbox.train.rejected || []).length;
-  if (!outboxHasWork(outbox) && !rejectedCount) return null;
-  appState.buildPending = outbox.build.pending.concat(appState.buildPending);
-  appState.buildPendingDeletes = outbox.build.pendingDeletes.concat(
-    appState.buildPendingDeletes,
-  );
-  Object.assign(appState.buildIdMap, outbox.build.idMap);
-  // R-03: rejected ops are user work too — without this they silently vanish
-  // on reload (the sync chip would read "saved" with nothing left to review).
-  appState.buildRejected = (outbox.build.rejected || []).concat(appState.buildRejected || []);
-  appState.trainRejected = (outbox.train.rejected || []).concat(appState.trainRejected || []);
-  appState.trainSync.pending = outbox.train.pending.concat(appState.trainSync.pending);
-  if (appState.trainSync.pending.length) {
-    appState.trainSync.dirty = true;
-    setTrainSyncState("dirty");
-    scheduleTrainSync();
-  }
-  return {
-    build: appState.buildPending.length + appState.buildPendingDeletes.length,
-    train: appState.trainSync.pending.length,
-    rejected: rejectedCount,
-  };
-}
-
-// R-03: sign-out coordination. Persist the durable outbox FIRST (it survives
-// even if the flush can't run), then flush both queues while the session can
-// still authenticate. Reports how much work could not be saved — those drafts
-// stay in this owner's outbox and replay after the next sign-in, never to
-// another account.
-async function flushAllPendingForSignOut() {
-  await persistOutbox();
-  clearTimeout(appState.buildFlushTimer);
-  appState.buildFlushTimer = null;
-  clearTimeout(appState.trainSync.timer);
-  appState.trainSync.timer = null;
-  await Promise.all([
-    flushBuildMoves().catch(() => false),
-    flushTrainSync().catch(() => false),
-  ]);
-  await persistOutbox();
-  return {
-    pending:
-      appState.buildPending.length +
-      appState.buildPendingDeletes.length +
-      appState.trainSync.pending.length,
-  };
-}
+const syncController = createSyncController({
+  appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, queuedBuildRevision,
+  rebaseQueuedBuildRevision, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes,
+  reapplyPendingBuildDeletes, selectBuildNode, setStatusError, setStatus, commitPendingUndos, readCsrfCookie,
+  CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID,
+});
+const {
+  scheduleBuildFlush, settleBuildOutbox, hardFlushBuild, beaconFlushBuild, queueTrainAttempt,
+  markTrainPositionDirty, scheduleTrainSync, beaconFlushTrain, flushBuildMoves, flushTrainSync,
+  persistOutbox, restoreOutbox, flushAllPendingForSignOut,
+} = syncController;
 
 async function postJson(path, body, options = {}) {
   const build = appState.build;
@@ -4729,7 +4617,6 @@ function setBuildInspector(tool) {
   void explorerEvalEngine.sync();
 }
 
-
 function renderBuilderTreeEmptyState() {
   const container = document.getElementById("builder-tree");
   const branchBar = document.getElementById("build-branchbar");
@@ -4762,9 +4649,6 @@ function renderBuilderTree() {
 // which owns id assignment + flag recomputation. The client never waits on the
 // network to render a move (降延遲) and writes are batched (降消耗).
 
-const BUILD_FLUSH_IDLE_MS = 2000;
-const BUILD_FLUSH_MAX_BACKOFF_MS = 30000;
-
 // R-04: the temp id is the outbox's operation identity — mergeById dedupes adds
 // and tombstones settle by it. A bare per-tab counter would restart at 1 in
 // EVERY tab, so two tabs of the same account mint the same "tmp-1" for different
@@ -4785,8 +4669,6 @@ function someEnabledChildOf(parentId) {
 }
 
 // Resolve a possibly-stale `tmp-` id to its real id once a flush has reconciled
-// it. Used by hard-flush call sites that captured a tmp node id before sync.
-// Resolve a possibly-stale `tmp-` id to its real id once a flush has reconciled
 // the tree. Queued deletes are `{ id, repertoire_id }` entries (see
 // queueBuildDelete) so they carry their target too; plain ids still work.
 function resolveBuildId(ref) {
@@ -4797,13 +4679,8 @@ function resolveBuildId(ref) {
 // R-02: every queued op records WHICH repertoire it belongs to. A flush may
 // only send ops for the repertoire it is flushing; anything else stays queued
 // for its own tree, so restored work can never land in the wrong opening.
-function buildOpTarget(entry) {
-  return (entry && entry.repertoire_id) || null;
-}
-
 function buildOpMatchesRepertoire(entry, repertoireId) {
-  const target = buildOpTarget(entry);
-  return !target || String(target) === String(repertoireId);
+  return String(entry.repertoire_id) === String(repertoireId);
 }
 
 function queueBuildDelete(nodeId) {
@@ -4935,382 +4812,6 @@ async function renderTrainSync() {
 
 async function renderTrainStats() {
   return (await ensureTrainView()).renderTrainStats();
-}
-
-// ----- Debounce + flush -------------------------------------------------------
-function scheduleBuildFlush() {
-  void persistOutbox(); // The flush awaits its durable checkpoint before sending.
-  clearTimeout(appState.buildFlushTimer);
-  appState.buildFlushTimer = setTimeout(() => {
-    appState.buildFlushTimer = null;
-    flushBuildMoves();
-  }, BUILD_FLUSH_IDLE_MS);
-}
-
-// Flush the pending batches (deletes first, then adds). Resolves to true on
-// success, false on failure (the batches are requeued + a backoff retry is
-// armed). If a flush is already in flight the same promise is returned, so
-// hard-flush callers can simply await it.
-function flushBuildMoves() {
-  if (appState.buildFlushing) return appState.buildFlushing;
-  const owner = currentOwnerId();
-  const isCurrent = captureBuildContext();
-  if (!appState.build || (!appState.buildPending.length && !appState.buildPendingDeletes.length))
-    return Promise.resolve(true);
-  // R-03/R-04: one flusher per owner at a time — a second tab holding the lock
-  // means its flush is already carrying these ops (server receipts are the
-  // hard guarantee; this avoids duplicate traffic and double toasts). A failed
-  // acquire must NOT strand the queue as "dirty" with no timer, so a retry is
-  // always armed before returning.
-  if (!acquireFlushLock(currentOwnerId(), OUTBOX_TAB_ID)) {
-    appState.buildFlushTimer = setTimeout(() => {
-      appState.buildFlushTimer = null;
-      flushBuildMoves();
-    }, BUILD_FLUSH_IDLE_MS);
-    return Promise.resolve(false);
-  }
-  clearTimeout(appState.buildFlushTimer);
-  appState.buildFlushTimer = null;
-
-  const durableCheckpoint = persistOutbox();
-  // Snapshot the in-flight batches; moves made DURING the round-trip accumulate
-  // in fresh queues and must survive the reconcile (§1.4 — the load-bearing bit).
-  // R-02: only THIS repertoire's ops may ride the flush — entries restored from
-  // another tree stay queued for their own repertoire.
-  const repertoireId = appState.build.repertoire_id;
-  const batch = appState.buildPending.filter((m) => buildOpMatchesRepertoire(m, repertoireId));
-  appState.buildPending = appState.buildPending.filter(
-    (m) => !buildOpMatchesRepertoire(m, repertoireId),
-  );
-  const deleteBatch = appState.buildPendingDeletes.filter((entry) =>
-    buildOpMatchesRepertoire(entry, repertoireId),
-  );
-  appState.buildPendingDeletes = appState.buildPendingDeletes.filter(
-    (entry) => !buildOpMatchesRepertoire(entry, repertoireId),
-  );
-  // A delete of an in-flight add needs that add's acknowledged real ID.
-  // Recover the add first; leaving the delete queued prevents tmp-only pruning
-  // from silently settling a deletion whose server commit is still uncertain.
-  const inFlightAdds = new Set(batch.map((op) => op.tempId));
-  for (let i = deleteBatch.length - 1; i >= 0; i--) {
-    if (inFlightAdds.has(resolveBuildId(deleteBatch[i]))) {
-      appState.buildPendingDeletes.push(...deleteBatch.splice(i, 1));
-    }
-  }
-  const deferredCount = [...appState.buildPending, ...appState.buildPendingDeletes]
-    .filter((op) => !buildOpMatchesRepertoire(op, repertoireId)).length;
-  if (deferredCount) {
-    setStatus(
-      `${deferredCount} edit${deferredCount === 1 ? "" : "s"} for another repertoire kept on this device — open that repertoire to save ${deferredCount === 1 ? "it" : "them"}.`,
-    );
-  }
-  setBuildSync("syncing");
-
-  appState.buildFlushing = (async () => {
-    let acknowledged = false;
-    try {
-      await durableCheckpoint;
-      if (!isCurrent()) return false;
-      // Deletes go FIRST: replaying a just-deleted move must create a fresh
-      // node, not dedupe against the dying server one. A still-tmp id means the
-      // node never reached the server (its pending add was cancelled) — drop it.
-      const deleteIds = [
-        ...new Set(deleteBatch.map(resolveBuildId).filter((id) => !String(id).startsWith("tmp-"))),
-      ];
-      let payload = null;
-      if (deleteIds.length) {
-        const beforeRevision = queuedBuildRevision([...deleteBatch, ...batch], appState.build);
-        payload = await postJson("/api/build/delete-nodes", {
-          repertoire_id: repertoireId,
-          base_revision: beforeRevision,
-          node_ids: deleteIds,
-        });
-        if (owner !== currentOwnerId()) return false;
-        rebaseQueuedBuildRevision(batch, repertoireId, beforeRevision, payload.revision);
-        await persistOutbox({ deletes: deleteBatch.map(buildDeleteId) });
-        deleteBatch.length = 0;
-      }
-      if (batch.length) {
-        // The add response supersedes the delete payload (it's newer truth).
-        payload = await postJson("/api/build/add-moves", {
-          repertoire_id: repertoireId,
-          base_revision: queuedBuildRevision(batch, appState.build),
-          moves: batch.map((m) => ({ tempId: m.tempId, parentRef: m.parentRef, uci: m.uci })),
-        });
-      }
-      // Both batches can drain to nothing (e.g. deletes of never-flushed tmp
-      // nodes): nothing reached the server, so there's nothing to reconcile.
-      if (!payload) {
-        appState.buildSyncRetry = 0;
-        // Those tmp-only deletes are resolved either way — tombstone them so a
-        // second tab can't put them back in the durable queue.
-        await persistOutbox({ deletes: deleteBatch.map(buildDeleteId) });
-        if (hasPendingBuildOpsFor(repertoireId)) {
-          setBuildSync("dirty");
-          scheduleBuildFlush();
-        } else {
-          await clearOutboxWhenQuiescent();
-          setBuildSync("saved");
-        }
-        return true;
-      }
-      if (owner !== currentOwnerId()) return false;
-      acknowledged = true;
-      const idMap = payload.id_map || {};
-      Object.assign(appState.buildIdMap, idMap);
-      // The server confirmed this batch: tombstone it so neither this tab nor
-      // a concurrent one replays it.
-      const settled = {
-        build: batch.map(buildAddId),
-        deletes: deleteIds,
-      };
-      await persistOutbox(settled);
-
-      // Translate the current selection + branch pick through tmp -> real.
-      const prevSelection = appState.buildCurrentNodeId;
-      const translatedSelection = idMap[prevSelection] || prevSelection;
-      const branchPick = appState.buildBranchChoiceId
-        ? idMap[appState.buildBranchChoiceId] || appState.buildBranchChoiceId
-        : null;
-
-      // Re-point still-pending nodes whose parentRef was a tmp from THIS batch.
-      // Only THIS repertoire's entries: a queued op for another tree must not
-      // be re-inserted into this one (R-02).
-      const stillPending = appState.buildPending.filter((m) =>
-        buildOpMatchesRepertoire(m, repertoireId),
-      );
-      for (const m of stillPending) {
-        if (idMap[m.parentRef]) {
-          m.parentRef = idMap[m.parentRef];
-          m.node.parent_id = m.parentRef;
-        }
-      }
-
-      // hydrate needs a selection that exists in the authoritative payload; if the
-      // user is sitting on a still-pending tmp node, pick a safe anchor now and
-      // restore the tmp selection after we re-insert it below.
-      const payloadHasSelection = payload.nodes.some((n) => n.id === translatedSelection);
-      if (!isCurrent()) return true;
-      await hydrateBuild(payload, payloadHasSelection ? translatedSelection : null);
-      if (branchPick) appState.buildBranchChoiceId = branchPick;
-
-      reapplyPendingBuildNodes(stillPending, idMap);
-      // Subtrees deleted DURING the round-trip were resurrected by the hydrate
-      // (the server still had them) — prune them again; their delete ops are
-      // queued and flush next cycle.
-      reapplyPendingBuildDeletes();
-
-      // Restore the user's selection if it was a still-pending tmp node (now back
-      // in the tree after reapply) and hydrate couldn't land on it.
-      if (
-        !payloadHasSelection &&
-        appState.buildNodeById.has(prevSelection) &&
-        prevSelection !== appState.buildCurrentNodeId
-      ) {
-        await selectBuildNode(prevSelection);
-      }
-      appState.buildSyncRetry = 0;
-      persistOutbox();
-      // R-02: ops queued for ANOTHER repertoire stay put; re-arming on them
-      // would spin a timer that can never drain them.
-      if (hasPendingBuildOpsFor(repertoireId)) {
-        setBuildSync("dirty");
-        scheduleBuildFlush();
-      } else {
-        // R-01: only drop the owner's durable copy when Train's queue (and
-        // anything kept for review) is empty too.
-        await clearOutboxWhenQuiescent();
-        if (!isCurrent()) return false;
-        setBuildSync("saved");
-      }
-      return true;
-    } catch (error) {
-      if (owner !== currentOwnerId()) return false;
-      if (acknowledged) {
-        // Rendering failed after the server confirmed persistence. Never replay
-        // confirmed operations or misreport this as a failed network commit.
-        persistOutbox();
-        setStatusError(`Edits saved. Reload the repertoire to refresh it: ${error.message}`);
-        if (hasPendingBuildOpsFor(repertoireId)) {
-          setBuildSync("dirty");
-          scheduleBuildFlush();
-        } else {
-          setBuildSync("saved");
-        }
-        return true;
-      }
-      // R-01/R-04: every failure class gets its own outcome. NOTHING
-      // unconfirmed is ever dropped or claimed as Saved — 401/403/409/429
-      // used to lose the whole batch here.
-      const info = classifySyncError(error);
-      const inFlightCount = batch.length + deleteBatch.length;
-      if (info.kind === "validation") {
-        // A genuinely invalid payload must not take legitimate edits down
-        // with it: isolate by replaying the ops one at a time — whatever
-        // lands is saved, whatever fails is kept, marked, and reportable.
-        const { rejected, settled, idMap, payload } = await isolateRejectedBuildOps(
-          batch,
-          deleteBatch,
-          repertoireId,
-        );
-        appState.buildRejected = (appState.buildRejected || []).concat(rejected);
-        if (idMap && Object.keys(idMap).length) {
-          // Ops that landed mid-isolation have real ids now; the local tree and
-          // any queued children must be reconciled against them (R-05).
-          Object.assign(appState.buildIdMap, idMap);
-          const stillPending = appState.buildPending;
-          for (const m of stillPending) {
-            if (idMap[m.parentRef]) {
-              m.parentRef = idMap[m.parentRef];
-              m.node.parent_id = m.parentRef;
-            }
-          }
-          if (payload) {
-            await hydrateBuild(payload, null);
-            reapplyPendingBuildNodes(stillPending, idMap);
-            reapplyPendingBuildDeletes();
-          }
-        }
-        await persistOutbox(settled);
-        setStatusError(
-          rejected.length
-            ? `${rejected.length} edit${rejected.length === 1 ? "" : "s"} could not be saved and are kept for review. The rest saved.`
-            : error.message,
-        );
-        if (hasPendingBuildOpsFor(repertoireId)) {
-          setBuildSync("dirty");
-          scheduleBuildFlush();
-        } else if (appState.buildRejected.length) {
-          setBuildSync("rejected");
-        } else {
-          await clearOutboxWhenQuiescent();
-          setBuildSync("saved");
-        }
-        return false;
-      }
-      // auth / csrf / conflict / rate-limit / network / server: the batch was
-      // never acknowledged — requeue it ahead of newer ops (op identity is
-      // stable, so a later replay is safe even if this one actually landed).
-      appState.buildPending = batch.concat(appState.buildPending);
-      appState.buildPendingDeletes = deleteBatch.concat(appState.buildPendingDeletes);
-      persistOutbox();
-      setStatus(describeSyncError(info, { count: inFlightCount }), info.kind === "conflict" ? "warning" : "info");
-      if (info.pauseForAuth) {
-        // R-04: 401 needs a sign-in, not a backoff timer. Stop sending until
-        // loadSignedInWorkspace re-arms the flush after sign-in.
-        appState.syncPausedForAuth = true;
-        setBuildSync("blocked");
-        return false;
-      }
-      if (info.kind === "conflict") {
-        // D-02: base revision was stale — the draft stays queued; the user
-        // reconciles (reload the tree) and the queue replays after it.
-        setBuildSync("conflict");
-        return false;
-      }
-      appState.buildSyncRetry = Math.min(appState.buildSyncRetry + 1, 6);
-      setBuildSync("error");
-      const delay =
-        info.retryAfterMs != null
-          ? info.retryAfterMs
-          : Math.min(
-              BUILD_FLUSH_MAX_BACKOFF_MS,
-              1000 * 2 ** (appState.buildSyncRetry - 1)
-            );
-
-      appState.buildFlushTimer = setTimeout(() => {
-        appState.buildFlushTimer = null;
-        flushBuildMoves();
-      }, delay);
-      return false;
-    } finally {
-      if (owner === currentOwnerId()) appState.buildFlushing = null;
-      releaseFlushLock(OUTBOX_TAB_ID);
-    }
-  })();
-  return appState.buildFlushing;
-}
-
-// R-05: isolate a permanently-rejected batch. Deletes first (per id), then
-// adds one by one: each success is a save, each failure becomes a kept,
-// reportable rejection instead of a silent drop of the whole batch.
-//
-// Three things this must get right:
-//  - parents land before their children (orderPendingBuildAdds), and each
-//    successful op's `id_map` feeds the NEXT ops, so a legal chain survives
-//    next to one invalid sibling;
-//  - a retriable failure mid-isolation (network, 401, 429) is not a rejection:
-//    it and every later op go back on the queue untouched;
-//  - everything resolved — saved OR rejected — is reported as settled so the
-//    durable copy drops it instead of replaying it.
-async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId) {
-  const rejected = [];
-  const settled = { build: [], deletes: [], train: [] };
-  const idMap = {};
-  let lastPayload = null;
-
-  for (let i = 0; i < deleteBatch.length; i += 1) {
-    const entry = deleteBatch[i];
-    const id = resolveBuildId(entry);
-    if (String(id).startsWith("tmp-")) {
-      settled.deletes.push(buildDeleteId(entry)); // never reached the server
-      continue;
-    }
-    try {
-      const beforeRevision = queuedBuildRevision([...deleteBatch.slice(i), ...batch], appState.build);
-      const payload = await postJson("/api/build/delete-nodes", {
-        repertoire_id: repertoireId,
-        base_revision: beforeRevision,
-        node_ids: [id],
-      });
-      rebaseQueuedBuildRevision([...deleteBatch.slice(i + 1), ...batch], repertoireId, beforeRevision, payload.revision);
-      settled.deletes.push(buildDeleteId(entry));
-    } catch (err) {
-      const info = classifySyncError(err);
-      if (info.retriable) {
-        // Sign-out/network blip mid-isolation: stop here and keep this delete
-        // plus every later one queued for the next flush.
-        appState.buildPendingDeletes = deleteBatch.slice(i).concat(appState.buildPendingDeletes);
-        break;
-      }
-      settled.deletes.push(buildDeleteId(entry));
-      rejected.push({ kind: "delete", id, message: err.message, status: err.status ?? null });
-    }
-  }
-
-  const ordered = orderPendingBuildAdds(batch);
-  for (let i = 0; i < ordered.length; i += 1) {
-    const m = ordered[i];
-    // A parent from this same isolation round now has a real id.
-    const parentRef = idMap[m.parentRef] || resolveBuildId(m.parentRef);
-    try {
-      const beforeRevision = queuedBuildRevision(ordered.slice(i), appState.build);
-      const payload = await postJson("/api/build/add-moves", {
-        repertoire_id: repertoireId,
-        base_revision: beforeRevision,
-        moves: [{ tempId: m.tempId, parentRef, uci: m.uci }],
-      });
-      rebaseQueuedBuildRevision(ordered.slice(i + 1), repertoireId, beforeRevision, payload.revision);
-      if (payload && payload.id_map) Object.assign(idMap, payload.id_map);
-      if (payload && payload.nodes) lastPayload = payload;
-      settled.build.push(buildAddId(m));
-    } catch (err) {
-      const info = classifySyncError(err);
-      if (info.retriable) {
-        appState.buildPending = ordered.slice(i).concat(appState.buildPending);
-        break;
-      }
-      settled.build.push(buildAddId(m));
-      rejected.push({
-        kind: "add",
-        tempId: m.tempId,
-        uci: m.uci,
-        message: err.message,
-        status: err.status ?? null,
-      });
-    }
-  }
-  return { rejected, settled, idMap, payload: lastPayload };
 }
 
 // Re-insert still-pending provisional nodes onto the freshly hydrated tree (which
@@ -5487,109 +4988,11 @@ async function deleteBuildNodeLocal(nodeId) {
 
 // Soft drain for read-only refreshes (Library counts): sends whatever is queued
 // without closing undo windows, and never throws.
-async function settleBuildOutbox() {
-  if (!appState.build) return;
-  try {
-    if (appState.buildFlushing) await appState.buildFlushing;
-    if (appState.buildPending.length || appState.buildPendingDeletes.length) {
-      clearTimeout(appState.buildFlushTimer);
-      appState.buildFlushTimer = null;
-      await flushBuildMoves();
-    }
-  } catch (_) {
-    // the outbox retries on its own; the Library just shows server truth
-  }
-}
 
 // Drain every pending move before an operation that needs server truth or a real
 // node id (Generate anchor, export, node actions, repertoire switch). Throws if a
 // move can't be synced so the caller can abort rather than 400 on a tmp id.
-async function hardFlushBuild() {
-  // Open undo windows must close first: server truth has to include those
-  // deletes (or the undone restore) before any operation depends on it.
-  commitPendingUndos();
-  if (!appState.build) return;
-  const repId = appState.build.repertoire_id;
-  const ownerId = currentOwnerId();
-  if (appState.buildFlushing) await appState.buildFlushing.catch(() => {});
-  // R-02: drain THIS repertoire's ops. Ops queued for another tree are not
-  // part of this request (and must not spin the loop) — they stay on the
-  // device until their own repertoire is open.
-  const hasWorkForThisRep = () =>
-    appState.buildPending.some((m) => buildOpMatchesRepertoire(m, repId)) ||
-    appState.buildPendingDeletes.some((entry) => buildOpMatchesRepertoire(entry, repId));
-  while (hasWorkForThisRep()) {
-    if (ownerId !== currentOwnerId() || appState.build?.repertoire_id !== repId) {
-      throw new Error("Repertoire changed before sync completed ? reopen it and try again");
-    }
-    const ok = await flushBuildMoves();
-    if (appState.buildFlushing) await appState.buildFlushing.catch(() => {});
-    if (!ok) {
-      throw new Error("Couldn't sync your latest moves — check your connection and try again");
-    }
-  }
-}
 
-// Last-ditch flush on page unload. navigator.sendBeacon can't set the CSRF header
-// the API requires, so a keepalive fetch (which can) is used instead — fire and
-// forget; the next load re-hydrates from server truth regardless.
-function beaconFlushBuild() {
-  // Close undo windows so their deletes ride this last-ditch flush (the rep
-  // delete commit is itself keepalive-safe).
-  commitPendingUndos();
-  void persistOutbox(); // Best effort only at unload; normal flush checkpoints first.
-  if (!appState.build) return;
-  const repId = appState.build.repertoire_id;
-  // R-02: only this repertoire's ops — a queued op for another tree must not
-  // ride this keepalive into the open tree.
-  const pending = appState.buildPending.filter((m) => buildOpMatchesRepertoire(m, repId));
-  const pendingDeletes = appState.buildPendingDeletes.filter((entry) =>
-    buildOpMatchesRepertoire(entry, repId),
-  );
-  if (!pending.length && !pendingDeletes.length) return;
-  const token = readCsrfCookie();
-  const send = (path, payload) => {
-    try {
-      fetch(path, {
-        method: "POST",
-        credentials: "same-origin",
-        keepalive: true,
-        headers: { "Content-Type": "application/json", ...(token ? { [CSRF_HEADER]: token } : {}) },
-        body: JSON.stringify(payload),
-      }).catch(() => {});
-    } catch (_) {
-      /* best-effort */
-    }
-  };
-  // Same order as the real flush: deletes before adds. Both fire-and-forget;
-  // the next page load re-hydrates from server truth regardless.
-  const deleteIds = [
-    ...new Set(
-      pendingDeletes.map(resolveBuildId).filter((id) => !String(id).startsWith("tmp-"))
-    ),
-  ];
-  if (deleteIds.length) {
-    send("/api/build/delete-nodes", {
-      repertoire_id: repId,
-      base_revision: queuedBuildRevision([...pendingDeletes, ...pending], appState.build),
-      node_ids: deleteIds,
-    });
-  }
-  if (pending.length) {
-    send("/api/build/add-moves", {
-      repertoire_id: repId,
-      base_revision: queuedBuildRevision(pending, appState.build),
-      moves: pending.map((m) => ({
-        tempId: m.tempId,
-        parentRef: m.parentRef,
-        uci: m.uci,
-      })),
-    });
-  }
-}
-
-// Make an element accept dropped files. `onFile` receives the first file; the
-// element gets a .drag-over class while a drag hovers for visual feedback.
 function bindDropZone(element, onFile) {
   if (!element) return;
   const stop = (event) => {
@@ -5751,223 +5154,6 @@ function setBlitzEnabled(on) {
   } catch (_) { /* private mode: the toggle just won't persist */ }
 }
 
-// ----- Local-first Train sync (plan §2) ---------------------------------------
-// The smart session runs locally; graded first attempts + the session position
-// flush in debounced batches. One request per quiet stretch instead of one per
-// move — sync speed is deliberately traded for fewer round-trips.
-
-const TRAIN_SYNC_IDLE_MS = 4000;
-const TRAIN_SYNC_MAX_BACKOFF_MS = 30000;
-
-function queueTrainAttempt(smart, nodeId, correct) {
-  appState.trainSync.pending.push({
-    session_id: smart.sessionId,
-    session_generation: smart.generation,
-    node_id: nodeId,
-    correct,
-    attempt_uuid: crypto.randomUUID(),
-  });
-  setTrainSyncState("dirty");
-  scheduleTrainSync();
-}
-
-// The card_index/queue moved without a graded attempt (skip, requeue, card
-// advance) — make sure the next flush carries the new position.
-function markTrainPositionDirty() {
-  appState.trainSync.dirty = true;
-  setTrainSyncState("dirty");
-  scheduleTrainSync();
-}
-
-function scheduleTrainSync() {
-  const sync = appState.trainSync;
-  void persistOutbox(); // Async commit status is surfaced by persistOutbox.
-  clearTimeout(sync.timer);
-  sync.timer = setTimeout(() => {
-    sync.timer = null;
-    flushTrainSync();
-  }, TRAIN_SYNC_IDLE_MS);
-}
-
-// Flush pending graded attempts + the session position. Serialized like the
-// Build flush: an in-flight flush is awaited by returning its promise. On
-// failure the batch is requeued and a backoff retry armed — training never
-// blocks on the network.
-function flushTrainSync() {
-  const sync = appState.trainSync;
-  const owner = currentOwnerId();
-  const isCurrent = () => owner === currentOwnerId() && sync === appState.trainSync;
-  if (sync.flushing) return sync.flushing;
-  if (!sync.pending.length && !sync.dirty) return Promise.resolve(true);
-  clearTimeout(sync.timer);
-  sync.timer = null;
-
-  const durableCheckpoint = persistOutbox();
-  const batch = sync.pending;
-  sync.pending = [];
-  sync.dirty = false;
-  // Group by session: leftovers from an abandoned session flush to THEIR
-  // session, not the current one. Play order is preserved within each group.
-  // Grouping/partial-failure semantics live in train-sync.js (tested): retry
-  // Each attempt keeps its UUID through requeue, so an uncertain response is
-  // safe to retry. Only a permanently rejected group drops (and is reported);
-  // auth/CSRF/conflict/rate-limit errors keep their attempts queued.
-  const smart = appState.smart;
-  const position = smart ? { card_index: smart.cardIndex, queue: smart.queue.map((c) => c.encoded), state_version: smart.stateVersion } : null;
-  const groups = groupAttempts(batch, smart ? smart.sessionId : null, smart?.generation);
-  setTrainSyncState("syncing");
-
-  sync.flushing = (async () => {
-    await durableCheckpoint;
-    if (!isCurrent()) { sync.flushing = null; return false; }
-    let outcome;
-    let lastError = null;
-    try {
-      outcome = await flushGroups(groups, async (sessionId, attempts) => {
-        if (!isCurrent()) throw new Error("Workspace changed");
-        const generation = attempts.length ? attempts[0].session_generation : (smart?.sessionId === sessionId ? smart.generation : undefined);
-        const body = { session_id: sessionId, session_generation: generation, attempts, local_date: localDateString() };
-        if (smart && sessionId === smart.sessionId && generation === smart.generation) {
-          Object.assign(body, position);
-        }
-        try {
-          const result = await postJson("/api/train/smart/sync", body);
-          if (isCurrent() && appState.smart === smart && body.state_version != null) {
-            if (result.state_applied) smart.stateVersion = result.state_version;
-            else if (result.state_applied === false) {
-              setStatus("Training session changed elsewhere. Resume it to sync your position.", { severity: "error" });
-            }
-          }
-          if (isCurrent() && result.day_streak) appState.dayStreak = result.day_streak;
-        } catch (error) {
-          lastError = error;
-          throw error;
-        }
-      });
-    } finally {
-      sync.flushing = null;
-    }
-    if (!isCurrent()) return false;
-    // R-02: permanently rejected attempts are reported on EVERY round — a
-    // mixed failure (one rejected group + one retriable) used to hide the
-    // rejection behind the retry, so attempts vanished without a word. The
-    // rejected groups are kept (outbox) for review/export, never dropped.
-    const rejectedCount = (outcome.rejectedGroups || []).reduce(
-      (n, group) => n + (group.attempts ? group.attempts.length : 0),
-      0,
-    );
-    // Everything the server answered for is settled: saved attempts and rejected
-    // ones both LEFT the queue, so both are tombstoned. A stale tab holding
-    // them would otherwise replay confirmed attempts (harmless — the receipt
-    // dedupes) or re-report rejected ones forever.
-    const unsettled = new Set([
-      ...ungroupAttempts(outcome.failedGroups || []),
-    ].map((attempt) => trainAttemptId(attempt)));
-    const settledAttempts = batch
-      .map((attempt) => trainAttemptId(attempt))
-      .filter((id) => !unsettled.has(id));
-    if (rejectedCount) {
-      appState.trainRejected = (appState.trainRejected || []).concat(outcome.rejectedGroups);
-    }
-    if (settledAttempts.length) await persistOutbox({ train: settledAttempts });
-    if (!isCurrent()) return false;
-    const info = lastError ? classifySyncError(lastError) : null;
-    const failedCount = outcome.failedGroups
-      ? outcome.failedGroups.reduce((n, [, attempts]) => n + attempts.length, 0)
-      : 0;
-    if (!outcome.retriable) {
-      sync.retry = 0;
-      if (rejectedCount) {
-        setStatus(
-          `${rejectedCount} training attempt${rejectedCount === 1 ? "" : "s"} could not be saved${
-            failedCount ? `; ${failedCount} kept for retry` : ""
-          }`,
-          { severity: "error" },
-        );
-      }
-      if (sync.pending.length || sync.dirty) {
-        setTrainSyncState("dirty");
-        scheduleTrainSync();
-      } else if (rejectedCount) {
-        setTrainSyncState("rejected");
-      } else {
-        // R-01: Train finishing its queue says nothing about Build's — only a
-        // fully quiescent owner copy may be dropped.
-        await clearOutboxWhenQuiescent();
-        if (!isCurrent()) return false;
-        setTrainSyncState("saved");
-      }
-      return rejectedCount === 0;
-    }
-    // R-02 (mixed failure): even while some groups retry, the permanently
-    // rejected ones get their own message — "1 kept for review, 2 will retry".
-    if (rejectedCount) {
-      setStatus(
-        `${rejectedCount} training attempt${rejectedCount === 1 ? "" : "s"} kept for review; ` +
-          `${failedCount} will retry`,
-        { severity: "error" },
-      );
-    }
-    setTrainSyncState(info && info.pauseForAuth ? "blocked" : "error");
-    // Requeue failed groups ahead of newer attempts and back off. SR deltas
-    // are precious but small; they also flush on hide/unload and session end.
-    sync.pending = ungroupAttempts(outcome.failedGroups).concat(sync.pending);
-    persistOutbox();
-    // Only re-mark the position dirty if the current session's group is the
-    // one that failed — other sessions carry no position payload.
-    if (smart && smart === appState.smart && outcome.failedGroups.some(([sessionId]) => sessionId === smart.sessionId)) {
-      sync.dirty = true;
-    }
-    if (info && info.pauseForAuth) {
-      // R-04: 401 waits for a sign-in — a backoff timer can't fix it. The
-      // flush re-arms from loadSignedInWorkspace after sign-in.
-      return false;
-    }
-    sync.retry = Math.min(sync.retry + 1, 6);
-    const delay =
-      info && info.retryAfterMs != null
-        ? info.retryAfterMs
-        : Math.min(TRAIN_SYNC_MAX_BACKOFF_MS, 1000 * 2 ** (sync.retry - 1));
-    sync.timer = setTimeout(() => {
-      sync.timer = null;
-      flushTrainSync();
-    }, delay);
-    return false;
-  })();
-  return sync.flushing;
-}
-
-// Last-ditch flush on page unload — keepalive fetch, fire-and-forget (same
-// mechanics as beaconFlushBuild; sendBeacon can't carry the CSRF header).
-function beaconFlushTrain() {
-  const sync = appState.trainSync;
-  void persistOutbox(); // Unload cannot guarantee completion of an IDB transaction.
-  if (!sync.pending.length && !sync.dirty) return;
-  const token = readCsrfCookie();
-  const smart = appState.smart;
-  const groups = groupAttempts(sync.pending, smart ? smart.sessionId : null, smart?.generation);
-  for (const [sessionId, attempts] of groups) {
-    const generation = attempts.length ? attempts[0].session_generation : (smart?.sessionId === sessionId ? smart.generation : undefined);
-    const body = { session_id: sessionId, session_generation: generation, attempts, local_date: localDateString() };
-    if (smart && sessionId === smart.sessionId && generation === smart.generation) {
-      body.card_index = smart.cardIndex;
-      body.state_version = smart.stateVersion;
-      body.queue = smart.queue.map((c) => c.encoded);
-    }
-    try {
-      fetch("/api/train/smart/sync", {
-        method: "POST",
-        credentials: "same-origin",
-        keepalive: true,
-        headers: { "Content-Type": "application/json", ...(token ? { [CSRF_HEADER]: token } : {}) },
-        body: JSON.stringify(body),
-      }).catch(() => {});
-    } catch (_) {
-      /* best-effort */
-    }
-  }
-}
-
 // ----- Settings tab — lazy view chunk -----------------------------------------
 let settingsModulePromise = null;
 let settingsView = null;
@@ -6115,8 +5301,6 @@ function applyServerEngineGating() {
   );
   paintEngineBanners();
 }
-
-
 
 // NOTE: server-side engine install (Stockfish/Maia3) and the first-run install
 // prompt were removed — the public flow runs Stockfish in the browser and never
@@ -7181,8 +6365,6 @@ function bindEvents() {
     beaconFlushBuild();
     beaconFlushTrain();
   });
-
-
 
   // Account chip (folds in the old standalone Sign out button as a menu action)
   document.getElementById("account-chip").addEventListener("click", () => onAccountChipClick());
