@@ -27,6 +27,7 @@ import {
 import { motifPhrase, participle, hangingCapture } from "./motifs.js";
 import { Chess } from "chess.js";
 import { PIECE_VALUE, PIECE_NAME } from "./material.js";
+import { soundReason, replyReason, betterReason, reasonPhrase, reasonParticiple } from "./reasons.js";
 
 const TYPES = ["q", "r", "b", "n", "p"];
 
@@ -174,8 +175,9 @@ function withThreat(f, phrase) {
 }
 
 // The one point worth making about a sound move, as a verb phrase ("wins a pawn",
-// "trades rooks", "develops the knight"), or "".
-function goodPoint(f, x) {
+// "trades rooks", "develops the knight", "defends the pawn on b7"), or "". `words` names
+// whose pieces a proven reason talks about (see reasonPhrase).
+function goodPoint(f, x, words) {
   if (f.hasMateAfter && Number.isFinite(f.mateAfter)) return `forces ${mateCount(f.mateAfter)}`;
   const capture = /x/.test(f.san || "");
   if (capture && x.recapture) {
@@ -213,7 +215,7 @@ function goodPoint(f, x) {
       return `wins ${gainPhrase(net)}${line ? ` (${line})` : ""}`;
     }
   }
-  return describeMove(f.fenBefore, f.uci, f.san);
+  return describeMove(f.fenBefore, f.uci, f.san) || reasonPhrase(soundReason(f), words);
 }
 
 function bestProse(f, x) {
@@ -280,6 +282,8 @@ function betterSentence(f, x, v) {
     return `${f.bestSan} was the move, ${motif ? `${participle(motif)} and ` : ""}winning ${gainPhrase(netFor(x.best, x.m))}.`;
   }
   if (x.relValue >= 1) return `${f.bestSan} was the move, keeping the material.`;
+  const why = reasonPhrase(betterReason(f));
+  if (why) return `${f.bestSan} was the move, ${reasonParticiple(why)}.`;
   const b0 = bucket(f.winBeforeMover);
   if (b0 !== bucket(f.winAfterMover)) return `${f.bestSan} was the move, ${v.keeping(b0)}.`;
   return `${f.bestSan} was the move.`;
@@ -356,7 +360,15 @@ function errorConsequence(f, x, v) {
     const did = trade ? "" : describeMove(f.fenAfter, f.replyUci, f.replySan);
     if (trade) text = `${f.san} allows ${reply} and ${trade}.`;
     else if (did && !/^takes the/.test(did)) text = `${f.san} allows ${reply}, which ${did}.`;
-    else text = `${f.san} allows ${reply}.`;
+    else {
+      const why = reasonPhrase(replyReason(f));
+      if (why) {
+        const change = changeSentence(f, v);
+        const said = `${f.san} allows ${reply}, which ${why}.`;
+        return { text: change ? `${said} ${change}` : said, reason: why, reply };
+      }
+      text = `${f.san} allows ${reply}.`;
+    }
   } else {
     text = `${f.san} isn't the right idea here.`;
   }
@@ -366,14 +378,17 @@ function errorConsequence(f, x, v) {
 
 function errorProse(f, x, v) {
   const code = f.classification.code;
-  const { text, namedBest } = errorConsequence(f, x, v);
+  const { text, namedBest, reason, reply } = errorConsequence(f, x, v);
   const better = namedBest ? "" : betterSentence(f, x, v);
   if (code === "inaccuracy") {
-    // Gentler: a small slip only needs the fix and, if it tipped the balance, that.
+    // Gentler: a small slip only needs the fix and, if it tipped the balance, that. One
+    // reason at most: what the reply it allows does, else what the better move does.
     if (/ (loses|hangs|allows mate|misses)/.test(text)) return `${text}${better ? ` ${better}` : ""}`;
     const change = changeSentence(f, v);
-    const fix = f.bestSan && !f.isBest ? ` ${f.bestSan} was better.` : "";
-    return `${f.san} is slightly inaccurate.${fix}${change ? ` ${change}` : ""}`;
+    const head = reason ? `${f.san} is slightly inaccurate: it allows ${reply}, which ${reason}.` : `${f.san} is slightly inaccurate.`;
+    const why = reason ? "" : reasonPhrase(betterReason(f));
+    const fix = f.bestSan && !f.isBest ? ` ${f.bestSan} was better${why ? `: it ${why}` : ""}.` : "";
+    return `${head}${fix}${change ? ` ${change}` : ""}`;
   }
   const lead = code === "blunder" ? "Blunder." : "Mistake.";
   return `${lead} ${text}${better ? ` ${better}` : ""}`;
@@ -474,7 +489,7 @@ function answerSentence(f, afterSlip) {
   if (afterSlip) {
     if (u > 0 && u > u0) return `Punish it with ${r} and ${standingClause(u)}.`;
     if (u > 0) return `Your best reply is ${r} and you're still ${EDGE[u]}.`;
-    if (u === 0 && u0 < 0) return `With ${rEnd} you're back to level.`;
+    if (u === 0 && u0 < 0) return `With ${r} you're back to level.`;
     if (u === 0) return `Your best reply is ${rEnd}, and it's level.`;
     if (u > u0) return `Your best reply is ${rEnd}. You're still worse, but it's closer now.`;
     return `Your best reply is ${rEnd}, but ${standingClause(u)}.`;
@@ -528,10 +543,13 @@ function opponentSlip(f, x, san) {
   }
   // Positional: nothing changes hands yet, so name the move they should have played.
   if (!f.bestSan || f.isBest) return { text: `${san} is ${word} from them.`, named: false };
+  // What their better move would have done; your reply already says what the slip allows.
+  const why = reasonPhrase(betterReason(f), { mine: "their", theirs: "your" });
+  const tail = why ? `, ${reasonParticiple(why)}` : "";
   const fix = {
-    inaccuracy: `${san} is a little loose. ${f.bestSan} was better for them.`,
-    mistake: `${san} is a mistake. They should have played ${f.bestSan}.`,
-    blunder: `${san} is a blunder. They had to play ${f.bestSan}.`,
+    inaccuracy: `${san} is a little loose. ${f.bestSan} was better for them${tail}.`,
+    mistake: `${san} is a mistake. They should have played ${f.bestSan}${tail}.`,
+    blunder: `${san} is a blunder. They had to play ${f.bestSan}${tail}.`,
   }[f.classification.code];
   return { text: fix, named: false };
 }
@@ -540,7 +558,7 @@ function opponentSlip(f, x, san) {
 // own read would make (material won, a forced mate, a take-back, a trade, the threat),
 // with the user's pieces called "your".
 function opponentPoint(f, x) {
-  const point = withCheck(goodPoint(f, x));
+  const point = withCheck(goodPoint(f, x, { mine: "their", theirs: "your" }));
   // "takes back the bishop" / "trades rooks" name the piece that changed hands, not whose.
   return /^(takes back|recaptures|trades|gives)/.test(point) ? point : yours(point);
 }
