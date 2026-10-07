@@ -7,6 +7,17 @@
 - Revalidate dated reports against current code. Do not resume a completed migration or apply an old research freeze to new product work.
 - Keep regression tests for present behavior. Research-only historical tests have separate opt-in discovery; old expected values are not permanent product requirements.
 
+## Design Principles
+
+- No legacy support. There are no users yet, so there is no old data, old client, old
+  token or old payload to stay compatible with. Change the format and delete the old path:
+  no fallbacks, no dual-read/dual-write periods, no "accepts both", no deprecated modes,
+  no compatibility shims. Schema changes are one forward migration with no backfill
+  scaffolding. Do not propose legacy support in reports or plans.
+- Keep code small. Prefer deleting to adding; one implementation per concept.
+- Efficiency matters. Measure the real cost before adding caches, caps or indexes, and
+  pick the fastest design that stays simple.
+
 ## File Encoding On Windows
 
 - This repository contains UTF-8 Markdown files without a BOM, including Chinese text.
