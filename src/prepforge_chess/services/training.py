@@ -6,6 +6,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from typing import Iterable, List, Optional, Tuple
 
+from prepforge_chess.core.sr_config import SR_CONFIG
 from prepforge_chess.core.models import (
     MoveRecord,
     OpeningNode,
@@ -465,12 +466,12 @@ def update_spaced_repetition(
     correct_attempts = progress.correct_attempts + (1 if correct else 0)
 
     if correct:
-        score = min(10.0, progress.spaced_repetition_score + 1.0)
+        score = min(SR_CONFIG.score_cap, progress.spaced_repetition_score + SR_CONFIG.correct_increment)
         interval_days = max(1, int(round(score)))
         due_at = timestamp + timedelta(days=interval_days)
     else:
-        score = max(0.0, progress.spaced_repetition_score * 0.5)
-        due_at = timestamp + timedelta(minutes=10)
+        score = max(0.0, progress.spaced_repetition_score * SR_CONFIG.wrong_multiplier)
+        due_at = timestamp + timedelta(minutes=SR_CONFIG.retry_minutes)
 
     return replace(
         progress,
@@ -479,5 +480,5 @@ def update_spaced_repetition(
         last_reviewed_at=timestamp,
         spaced_repetition_score=score,
         due_at=due_at,
-        is_mastered=score >= 7.0 and correct_attempts >= 3,
+        is_mastered=score >= SR_CONFIG.mastered_score_at and correct_attempts >= SR_CONFIG.mastered_correct_attempts,
     )

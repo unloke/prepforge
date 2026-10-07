@@ -23,8 +23,6 @@ export function createTrainView({
   renderSyncChip,
   setTrainBanner,
   updateTrainTurnBadge,
-  smartKindLabels,
-  smartKindTitles,
   onStreakRendered,
 }) {
   function renderTrainSync() {
@@ -105,7 +103,7 @@ export function createTrainView({
     const wrap = document.getElementById("train-queue");
     if (!wrap) return;
     const counts = smart && smart.counts;
-    const kinds = ["weak", "due", "new", "polish"].filter((k) => counts && counts[k] > 0);
+    const kinds = Object.keys(smart?.cardKinds || {}).filter((k) => counts && counts[k] > 0);
     if (!kinds.length) {
       wrap.hidden = true;
       return;
@@ -128,7 +126,7 @@ export function createTrainView({
       html`${kinds
         .map(
           (k) =>
-            html`<span class="kchip k-${k}" title="${smartKindTitles[k] || ""}">${counts[k]} ${k}</span>`
+            html`<span class="kchip k-${k}" title="${smart.cardKinds[k].title || ""}">${counts[k]} ${k}</span>`
         )}${phaseChip}`;
   }
 
@@ -159,7 +157,7 @@ export function createTrainView({
     host.innerHTML =
       html`<small class="faint">Up next</small>${upcoming
         .map((card) => {
-          const kind = smartKindLabels[card.kind] || card.kind || "";
+          const kind = smart.cardKinds[card.kind]?.label || card.kind || "";
           const rep = card.repertoire_name || smart.repertoireName || "";
           const dot = card.color === "black" ? "black" : "white";
           // Only a new move is shown before it is asked (the card demonstrates
@@ -179,7 +177,7 @@ export function createTrainView({
     if (!chip) return;
     chip.hidden = !kind;
     chip.className = kind ? `kchip k-${kind}` : "kchip";
-    chip.textContent = kind ? smartKindLabels[kind] || kind : "";
+    chip.textContent = kind ? appState.smart.cardKinds[kind]?.label || kind : "";
   }
 
   function renderSmartProgress(prompt) {

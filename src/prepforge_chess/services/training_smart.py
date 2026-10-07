@@ -28,6 +28,10 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
+from prepforge_chess.core.limits import (
+    MAX_SYNC_ATTEMPTS,
+    MAX_SYNC_QUEUE,
+)
 from prepforge_chess.core.models import (
     OpeningNode,
     Repertoire,
@@ -56,16 +60,8 @@ from prepforge_chess.storage.repositories import PrepForgeRepository
 
 # A re-queued card comes back after this many other cards — soon enough that
 # the position is still warm, far enough that it's recall rather than echo.
-# The client-side scheduler (app.js submitSmartMove) mirrors this constant.
+# Sent in the smart-session payload for local requeues.
 REQUEUE_GAP = 3
-
-# Caps for the local-first sync flush (/api/train/smart/sync): an untrusted,
-# no-compute write, fenced like opening_builder.MAX_ADD_MOVES_BATCH. A session
-# queue caps at ~30 cards × ~3 targets, and requeues only ever re-insert
-# existing cards, so legitimate batches sit far below these.
-MAX_SYNC_ATTEMPTS = 500
-MAX_SYNC_QUEUE = 500
-
 
 @dataclass(frozen=True)
 class SmartPrompt:

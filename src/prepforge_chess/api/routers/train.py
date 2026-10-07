@@ -25,6 +25,8 @@ from prepforge_chess.core.models import (
 from prepforge_chess.services import streak
 from prepforge_chess.services.progress import compute_health, due_forecast
 from prepforge_chess.services.training import TrainingService, update_spaced_repetition
+from prepforge_chess.services.scheduler import CARD_KINDS
+from prepforge_chess.services.training_smart import REQUEUE_GAP
 from prepforge_chess.services.training_smart import SmartTrainingService
 from prepforge_chess.services.training_view import (
     heuristic_strategy,
@@ -322,6 +324,8 @@ def smart_start(
         "card_index": session.current_index,
         "resumed": service.resumed,
         "counts": service.counts(session),
+        "requeue_gap": REQUEUE_GAP,
+        "card_kinds": CARD_KINDS,
         "prompt": smart_prompt_to_json(prompt, _CHESS),
         # The full queue, expanded per target (expected move, run-in, hint,
         # reply): the client runs the whole session locally off this bundle and

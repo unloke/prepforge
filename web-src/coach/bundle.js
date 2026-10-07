@@ -8,12 +8,14 @@ export {
   markBrilliant,
   markGreat,
   moverWinChanceAfter,
+} from "./features.js";
+export {
   BRILLIANT_MAX_HUMAN_PROB,
   BRILLIANT_MIN_WIN_GAP,
   BRILLIANT_MIN_ONLY_MOVE_GAP,
   BRILLIANT_MIN_SACRIFICE,
   GREAT_MAX_HUMAN_PROB,
-} from "./features.js";
+} from "../generated/shared-constants.js";
 export { attachIntuition } from "./intuition.js";
 export { buildCommentary } from "./commentary.js";
 export {

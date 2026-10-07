@@ -12,6 +12,11 @@ from collections import OrderedDict
 from threading import BoundedSemaphore, RLock
 from typing import List, Optional
 
+from prepforge_chess.core.limits import (
+    MAX_FETCH,
+    MAX_IDENTITIES,
+    MAX_REQUEST_GAMES,
+)
 from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import Color, MoveSource, Game
 from prepforge_chess.services.repertoire_matching import (
@@ -25,9 +30,6 @@ from prepforge_chess.storage.repositories import PrepForgeRepository
 LICHESS_USER_PGN_URL = "https://lichess.org/api/games/user/{username}"
 EXPLORER_BASE_URL = "https://explorer.lichess.ovh"
 DEFAULT_TIMEOUT_SECONDS = 15
-MAX_FETCH = 50
-MAX_IDENTITIES = 8
-MAX_REQUEST_GAMES = 200
 
 
 def validate_fetch_budget(usernames: list, count: int) -> None:

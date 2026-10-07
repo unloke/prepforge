@@ -7,6 +7,20 @@
 // piece was on the table and missed, whether the move hangs something, the game phase,
 // and so on. No DOM, no engine calls here — just chess.js + arithmetic — so it tests
 // headlessly and the orchestration (which owns the worker) stays thin.
+import {
+  BRILLIANT_MAX_HUMAN_PROB,
+  BRILLIANT_MIN_WIN_GAP,
+  BRILLIANT_MIN_TRAP_GAP,
+  BRILLIANT_MIN_ONLY_MOVE_GAP,
+  BRILLIANT_MIN_SACRIFICE,
+  BRILLIANT_MAX_CANDIDATE_WIN_DELTA,
+  GREAT_MAX_HUMAN_PROB,
+  GREAT_MIN_TRAP_GAP,
+  GREAT_MIN_TWO_MOVE_GAP,
+  GREAT_MIN_WIN,
+  GREAT_MAX_WIN_BEFORE,
+  EXCELLENT_MAX_LOSS, GOOD_MAX_LOSS, INACCURACY_MAX_LOSS, MISTAKE_MAX_LOSS,
+} from "../generated/shared-constants.js";
 import { Chess } from "chess.js";
 import { evaluationToWin as winWhite, moveAccuracy } from "../explain.js";
 import {
@@ -354,31 +368,7 @@ export function buildMoveFeatures(input) {
 //   maiaHumanProb — Maia's probability a human plays this move (0..1)
 //   maiaWinAfter  — Maia's win chance for the mover after the move (0..1)
 //   trapGap       — win chance the natural human move throws away vs the played one (0..1)
-export const BRILLIANT_MAX_HUMAN_PROB = 0.1; // (1) humans rarely find it
-export const BRILLIANT_MIN_WIN_GAP = 30; // (2) engine win% over Maia win%, in points
-export const BRILLIANT_MIN_TRAP_GAP = 0.05; // (3) win chance the natural move throws away
-export const BRILLIANT_MIN_ONLY_MOVE_GAP = 5; // (4) win% points over the best other move
-export const BRILLIANT_MIN_SACRIFICE = 2; // (4) …or pawns given up after the reply
-// Brilliant is only considered for a move the SERVER classifies BEST or EXCELLENT: either
-// the played move is Stockfish's first choice (classify_move returns BEST before looking at
-// any loss), or the win-chance loss is at most this many points (winDelta <= 2 ⇔ the
-// server's excellent_loss = 0.02 on the 0..1 scale — see services/classification.py
-// ClassificationConfig.excellent_loss), which classify_move labels EXCELLENT. (The
-// frontend's own display label for the same band is "Best move" — classifyMoveRich maps
-// winDelta <= 2 to code "best" — that's a UI label, not the server classification.) Keep
-// this in lockstep with excellent_loss: the browser gates which moves earn a Maia
-// assessment, and the server's classifier gates which assessments it consults — a drift
-// here means the server sees Excellent moves the browser never assessed (no brilliant
-// stars) or the browser wastes Maia forwards on moves the server would never consult. This
-// is the cheapest layer of all — it's pure arithmetic over evals already in hand — so the
-// full-game path checks it BEFORE spending a Maia forward on the move (see brilliant-assess).
-// Cross-end contract: tests/fixtures/classification_golden.json pins this file
-// and the server classifier (services/classification.py) to the same golden
-// semantics (boundary tiers, mate/extreme evals, this 2% Brilliant edge).
-// Run by tests/test_classification_golden.py and
-// web-src/coach/classification-golden.test.js — extend the fixture whenever a
-// threshold or conversion here changes.
-export const BRILLIANT_MAX_CANDIDATE_WIN_DELTA = 2;
+// Candidate eligibility comes from ClassificationConfig.excellent_loss.
 // Layers 1–3: unintuitive, looks bad but is good, and the natural move fails.
 export function isHardFindByMaia(features, { maiaHumanProb, maiaWinAfter, trapGap }) {
   if (!features || !features.brilliantCandidate) return false;
@@ -413,11 +403,6 @@ export function isBrilliantByMaia(features, maia) {
 // throws at least GREAT_MIN_TRAP_GAP away, and at most one other move comes close
 // (twoMoveGap = played − the second-best OTHER move, win% points) — with the mover still
 // alive after it and the game not already decided.
-export const GREAT_MAX_HUMAN_PROB = 0.35;
-export const GREAT_MIN_TRAP_GAP = 0.1; // win chance the natural move throws away (0..1)
-export const GREAT_MIN_TWO_MOVE_GAP = 10; // win% points
-export const GREAT_MIN_WIN = 25; // win% after the move, mover POV
-export const GREAT_MAX_WIN_BEFORE = 97; // win% before the move, mover POV
 
 export function isCriticalFind(features, { maiaHumanProb, trapGap, twoMoveGap }) {
   if (!features || !features.brilliantCandidate) return false;
@@ -479,17 +464,17 @@ export function classifyMoveRich({ winDelta, winAfterMover, isBest, onlyMove, fo
   // An only move alone is not Great: like the server, Great needs the Maia read (a hard or
   // critical find, see gradeByMaia) and the shared sanity gates, so an obvious recapture
   // that happens to be the only move stays Best.
-  if (isBest || winDelta <= 2) {
+  if (isBest || winDelta <= EXCELLENT_MAX_LOSS) {
     return { code: "best", label: "Best move", glyph: "✓", tone: "good" };
   }
-  if (winDelta <= 5) return { code: "good", label: "Good move", glyph: "✓", tone: "good" };
+  if (winDelta <= GOOD_MAX_LOSS) return { code: "good", label: "Good move", glyph: "✓", tone: "good" };
   // Error tiers mirror Lichess's judgment cutoffs so the Coach flags real errors as
   // firmly as the tool users compare against, and so this and the server classifier
   // (services/classification.py, on the 0..1 scale) agree on the same move. Lichess
   // judges on winningChances (range -1..1) at {inaccuracy .1, mistake .2, blunder .3};
   // win% = 50 + 50·winningChances, so those are win% losses of 5 / 10 / 15. (Mistake was
   // ≤20 and blunder >20 here — laxer than Lichess, so ~15-pt slips read as mere mistakes.)
-  if (winDelta <= 10) return { code: "inaccuracy", label: "Inaccuracy", glyph: "?!", tone: "warn" };
-  if (winDelta <= 15) return { code: "mistake", label: "Mistake", glyph: "?", tone: "warn" };
+  if (winDelta <= INACCURACY_MAX_LOSS) return { code: "inaccuracy", label: "Inaccuracy", glyph: "?!", tone: "warn" };
+  if (winDelta <= MISTAKE_MAX_LOSS) return { code: "mistake", label: "Mistake", glyph: "?", tone: "warn" };
   return { code: "blunder", label: "Blunder", glyph: "??", tone: "danger" };
 }

@@ -18,6 +18,13 @@ from collections import Counter
 from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
+from prepforge_chess.core.limits import (
+    MAX_EVAL_PV_LENGTH,
+    MAX_EVAL_MATE_IN,
+    MAX_EVAL_DEPTH,
+    MAX_EVAL_NODES,
+    MAX_EVAL_SCORE_CP,
+)
 from prepforge_chess.core.models import (
     AnalysisResult,
     EngineEvaluation,
@@ -42,11 +49,6 @@ from prepforge_chess.services.analysis_metadata import (
 
 # Bounded shapes for the untrusted per-position payload (D-03).
 _UCI_RE = re.compile(r"^[a-h][1-8][a-h][1-8][qrbn]?$")
-_MAX_PV_LEN = 64
-_MAX_MATE_IN = 200
-_MAX_DEPTH = 64
-_MAX_NODES = 10**12
-_MAX_SCORE_CP = 10**7
 
 
 class MissingEvaluationError(ValueError):
@@ -112,22 +114,22 @@ def validate_position_item(item: Any, index: int) -> Dict[str, Any]:
         raise PositionPayloadError("{0}.fen must be a non-empty string".format(field))
     score_cp = item.get("score_cp")
     if score_cp is not None:
-        _validate_int(score_cp, "{0}.score_cp".format(field), lo=-_MAX_SCORE_CP, hi=_MAX_SCORE_CP)
+        _validate_int(score_cp, "{0}.score_cp".format(field), lo=-MAX_EVAL_SCORE_CP, hi=MAX_EVAL_SCORE_CP)
     mate_in = item.get("mate_in")
     if mate_in is not None:
-        _validate_int(mate_in, "{0}.mate_in".format(field), lo=-_MAX_MATE_IN, hi=_MAX_MATE_IN)
+        _validate_int(mate_in, "{0}.mate_in".format(field), lo=-MAX_EVAL_MATE_IN, hi=MAX_EVAL_MATE_IN)
     # depth 0 is legitimate: a terminal position needs no search.
-    _validate_int(item.get("depth"), "{0}.depth".format(field), lo=0, hi=_MAX_DEPTH, required=True)
-    _validate_int(item.get("nodes"), "{0}.nodes".format(field), lo=0, hi=_MAX_NODES)
+    _validate_int(item.get("depth"), "{0}.depth".format(field), lo=0, hi=MAX_EVAL_DEPTH, required=True)
+    _validate_int(item.get("nodes"), "{0}.nodes".format(field), lo=0, hi=MAX_EVAL_NODES)
     _validate_int(item.get("time_ms"), "{0}.time_ms".format(field), lo=0, hi=10**10)
     _validate_uci(item.get("best_move_uci"), "{0}.best_move_uci".format(field))
     pv = item.get("pv")
     if pv is not None:
         if not isinstance(pv, list):
             raise PositionPayloadError("{0}.pv must be a list of UCI moves".format(field))
-        if len(pv) > _MAX_PV_LEN:
+        if len(pv) > MAX_EVAL_PV_LENGTH:
             raise PositionPayloadError(
-                "{0}.pv must have at most {1} moves".format(field, _MAX_PV_LEN)
+                "{0}.pv must have at most {1} moves".format(field, MAX_EVAL_PV_LENGTH)
             )
         for i, ply in enumerate(pv):
             _validate_uci(ply, "{0}.pv[{1}]".format(field, i))

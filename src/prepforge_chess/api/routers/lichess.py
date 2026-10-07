@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from prepforge_chess.core.limits import MAX_FETCH, MAX_IDENTITIES
 from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_owner, current_user, get_repository
@@ -47,9 +48,6 @@ router = APIRouter(prefix="/api/lichess", tags=["lichess"])
 
 PROVIDER = "lichess"
 _FLOW_COOKIE = "pf_lichess_oauth"
-# Frontend clamps the compare count to 1..50; mirror that server-side so the POST
-# shim can't be coaxed into a huge fetch.
-_COMPARE_COUNT_MAX = 50
 
 
 class LinkedAccountOut(BaseModel):
@@ -466,8 +464,8 @@ def _run_compare(
     may additionally name arbitrary public Lichess users — e.g. external
     opponents added on Games or Scout — fetched the same way, owner-scoped to
     the caller's repertoires for comparison."""
-    count = max(1, min(_COMPARE_COUNT_MAX, count))
-    if len(account_ids or []) > lichess_fetch.MAX_IDENTITIES or len(usernames or []) > lichess_fetch.MAX_IDENTITIES:
+    count = max(1, min(MAX_FETCH, count))
+    if len(account_ids or []) > MAX_IDENTITIES or len(usernames or []) > MAX_IDENTITIES:
         raise HTTPException(status_code=422, detail="select at most 8 Lichess accounts")
     if account_ids is not None:
         # An explicit list — including EMPTY — is authoritative: the Source
@@ -583,8 +581,8 @@ def compare(
 class CompareBody(BaseModel):
     count: int = 10
     account_id: str | None = None
-    account_ids: list[str] | None = Field(default=None, max_length=lichess_fetch.MAX_IDENTITIES)
-    usernames: list[str] | None = Field(default=None, max_length=lichess_fetch.MAX_IDENTITIES)
+    account_ids: list[str] | None = Field(default=None, max_length=MAX_IDENTITIES)
+    usernames: list[str] | None = Field(default=None, max_length=MAX_IDENTITIES)
 
 
 @router.post("/compare")

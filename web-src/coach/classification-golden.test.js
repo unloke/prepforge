@@ -14,10 +14,12 @@ import { describe, expect, it } from "vitest";
 import { classifyMove, evaluationToWin } from "../explain.js";
 
 import {
-  BRILLIANT_MAX_CANDIDATE_WIN_DELTA,
   buildMoveFeatures,
   classifyMoveRich,
 } from "./features.js";
+import {
+  BRILLIANT_MAX_CANDIDATE_WIN_DELTA,
+} from "../generated/shared-constants.js";
 
 const GOLDEN = JSON.parse(
   readFileSync(

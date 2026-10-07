@@ -2,6 +2,8 @@ import { localBoardAfterMove } from "../chess-local.js";
 import {
   moverWinChanceAfter,
   sanityExclusion,
+} from "./features.js";
+import {
   BRILLIANT_MAX_HUMAN_PROB,
   BRILLIANT_MIN_WIN_GAP,
   BRILLIANT_MIN_TRAP_GAP,
@@ -10,7 +12,7 @@ import {
   GREAT_MIN_TRAP_GAP,
   GREAT_MIN_WIN,
   GREAT_MAX_WIN_BEFORE,
-} from "./features.js";
+} from "../generated/shared-constants.js";
 
 // Stockfish concurrency for the trap-line batch. This pass runs WHILE the ~1 GB Maia session is
 // still resident (it needs Maia's policy to pick each human-natural move), so an extra 6-worker

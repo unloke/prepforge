@@ -190,6 +190,14 @@ def test_smart_start_returns_queue_and_prompt(client):
     assert body["resumed"] is False
     assert body["total_cards"] == 1
     assert body["counts"]["new"] == 1  # untrained repertoire -> a new card
+    from prepforge_chess.services.training_smart import REQUEUE_GAP
+    assert body["requeue_gap"] == REQUEUE_GAP
+    assert body["card_kinds"] == [
+        {"key": "weak", "label": "Weak spot", "title": "Missed more than answered"},
+        {"key": "due", "label": "Due review", "title": "Spaced repetition says now"},
+        {"key": "new", "label": "New move", "title": "Shown once, then tested"},
+        {"key": "polish", "label": "Polish", "title": "Kept warm with an occasional rep"},
+    ]
     prompt = body["prompt"]
     assert prompt["kind"] == "new"
     assert prompt["expected_uci"] == "e2e4"

@@ -1,4 +1,6 @@
 import { html, raw } from "./html.js";
+import { MAX_FETCH } from "./generated/shared-constants.js";
+
 import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
 import { createToastStack } from "./controllers/toast-stack.js";
@@ -4244,7 +4246,7 @@ function loadTrainSession() {
     loadPhaseCoach, loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
     openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView,
     queueTrainAttempt, refreshAuthStatus, renderTrainStats, requireSignIn, setStatus,
-    setStatusError, setTrainBanner, setTrainSyncState, sleep, SMART_KIND_LABELS, START_FEN,
+    setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
     switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
   })).catch((error) => {
     trainSessionLoading = null;
@@ -4740,8 +4742,6 @@ async function ensureTrainView() {
       renderSyncChip,
       setTrainBanner,
       updateTrainTurnBadge,
-      smartKindLabels: SMART_KIND_LABELS,
-      smartKindTitles: SMART_KIND_TITLES,
       onStreakRendered: (streak) => {
         const s = appState.trainStats;
         if (s) s.lastStreak = streak;
@@ -5072,22 +5072,6 @@ function updateTrainTurnBadge(side) {
 // Only attempt 1 is graded, so the accuracy chips match the server's
 // spaced-repetition writes.
 
-const SMART_KIND_LABELS = {
-  weak: "Weak spot",
-  due: "Due review",
-  new: "New move",
-  polish: "Polish",
-};
-
-// Hover definitions for the queue-composition chips ("3 weak · 4 due · ...").
-// Same meanings as the Train help drawer and services/progress.py.
-const SMART_KIND_TITLES = {
-  weak: "Missed more than answered",
-  due: "Spaced repetition says now",
-  new: "Shown once, then tested",
-  polish: "Kept warm with an occasional rep",
-};
-
 // ----- Blitz mode: an answer clock per card (smart queue only) ---------------
 //
 // Entirely client-side. A timeout submits the null move "0000" as attempt 1, so
@@ -5288,7 +5272,7 @@ async function runLichessCompare() {
   const linkedIds = gamesSourceAccountIds();
   const hasExternal = normalizeSelection(selection).external.length > 0;
   const countInput = document.getElementById("replay-count");
-  const count = Math.max(1, Math.min(50, Number(countInput.value) || 10));
+  const count = Math.max(1, Math.min(MAX_FETCH, Number(countInput.value) || 10));
   const button = document.getElementById("lichess-compare-btn");
   button.disabled = true;
   setStatus("Fetching games from Lichess");

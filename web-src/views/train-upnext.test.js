@@ -26,14 +26,16 @@ function makeView(appState, elements) {
     querySelector: () => null,
     querySelectorAll: () => [],
   };
+  if (appState.smart) appState.smart.cardKinds = Object.fromEntries(
+    Object.entries({ weak: "Weak spot", due: "Due review", new: "New move", polish: "Polish" })
+      .map(([key, label]) => [key, { key, label, title: "" }]),
+  );
   return createTrainView({
     appState,
     boards: {},
     renderSyncChip: () => {},
     setTrainBanner: () => {},
     updateTrainTurnBadge: () => {},
-    smartKindLabels: { weak: "Weak spot", due: "Due review", new: "New move", polish: "Polish" },
-    smartKindTitles: {},
     onStreakRendered: () => {},
   });
 }
@@ -80,11 +82,12 @@ describe("train up-next preview", () => {
       },
     };
     const view = makeView(appState, elements);
+    appState.smart.cardKinds.weak.label = "Server label";
     view.renderSmartProgress({ total_cards: 4, card_index: 0, kind: "due", targets_total: 1, target_index: 0 });
     const host = elements["train-upnext"];
     expect(host.hidden).toBe(false);
     expect((host.innerHTML.match(/un-row/g) || []).length).toBe(3);
-    expect(String(host.innerHTML)).toContain("Weak spot");
+    expect(String(host.innerHTML)).toContain("Server label");
     expect(String(host.innerHTML)).toContain("London System");
     expect(String(host.innerHTML)).toContain("Najdorf");
     expect(String(host.innerHTML)).toContain("color-dot black");

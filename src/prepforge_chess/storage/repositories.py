@@ -1285,7 +1285,7 @@ class PrepForgeRepository:
         Match node_mastery precedence over reachable own-side nodes. Only static
         tree coverage (shallow_lines) remains cached in the listing.
         """
-        from prepforge_chess.services.progress import MASTERED_SCORE_AT, WEAK_SCORE_BELOW
+        from prepforge_chess.core.sr_config import SR_CONFIG
 
         tp = t.training_progress
         nodes = t.opening_nodes
@@ -1323,14 +1323,14 @@ class PrepForgeRepository:
         is_weak = and_(
             tp.c.attempts >= 2,
             tp.c.correct_attempts * 2 < tp.c.attempts,
-            tp.c.spaced_repetition_score < WEAK_SCORE_BELOW,
+            tp.c.spaced_repetition_score < SR_CONFIG.weak_score_below,
         )
         def state_at(deadline):
             return case(
                 (or_(tp.c.attempts.is_(None), tp.c.attempts <= 0), "untrained"),
                 (is_weak, "weak"),
                 (tp.c.due_at <= deadline, "due"),
-                (or_(tp.c.is_mastered == 1, tp.c.spaced_repetition_score >= MASTERED_SCORE_AT), "mastered"),
+                (or_(tp.c.is_mastered == 1, tp.c.spaced_repetition_score >= SR_CONFIG.mastered_score_at), "mastered"),
                 else_="learning",
             )
 

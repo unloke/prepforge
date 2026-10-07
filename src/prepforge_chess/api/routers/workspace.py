@@ -15,6 +15,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
+from prepforge_chess.core.limits import (
+    MAX_REPERTOIRE_PACKAGE_CHARS,
+    MAX_ANNOTATIONS_PER_KIND,
+    MAX_ADD_MOVES_BATCH,
+    MAX_DELETE_NODES_BATCH,
+    PGN_LIMITS,
+)
 from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_owner, current_user, get_repository
@@ -43,11 +50,6 @@ from prepforge_chess.storage.repositories import (
 
 router = APIRouter(prefix="/api", tags=["workspace"])
 
-MAX_REPERTOIRE_PACKAGE_CHARS = 5_000_000
-MAX_REPERTOIRE_PGN_CHARS = 1_000_000
-MAX_BULK_MOVES = 500
-MAX_BULK_DELETE_NODES = 200
-MAX_ANNOTATIONS_PER_KIND = 64
 
 
 def _enforce_repertoire_quota(
@@ -864,7 +866,7 @@ def _build_batch_receipt(repo, owner, kind, body):
 
 class AddMovesBody(BaseModel):
     repertoire_id: str
-    moves: list[AddMovesItem] = Field(default_factory=list, max_length=MAX_BULK_MOVES)
+    moves: list[AddMovesItem] = Field(default_factory=list, max_length=MAX_ADD_MOVES_BATCH)
     base_revision: int | None = None
 
 
@@ -914,7 +916,7 @@ def build_add_moves(
 
 class DeleteNodesBody(BaseModel):
     repertoire_id: str
-    node_ids: list[str] = Field(default_factory=list, max_length=MAX_BULK_DELETE_NODES)
+    node_ids: list[str] = Field(default_factory=list, max_length=MAX_DELETE_NODES_BATCH)
     base_revision: int | None = None
 
 
@@ -1229,7 +1231,7 @@ def import_repertoire(
 
 
 class ImportPgnBody(BaseModel):
-    pgn: str = Field(default="", max_length=MAX_REPERTOIRE_PGN_CHARS)
+    pgn: str = Field(default="", max_length=PGN_LIMITS.max_chars)
     name: str = Field(default="Imported", max_length=200)
     color: Literal["white", "black"] = "white"
 

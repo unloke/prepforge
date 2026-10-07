@@ -1,3 +1,8 @@
+import {
+  CP_CLAMP, WC_SIGMOID_SCALE,
+  EXCELLENT_MAX_LOSS, GOOD_MAX_LOSS, INACCURACY_MAX_LOSS, MISTAKE_MAX_LOSS,
+} from "./generated/shared-constants.js";
+
 // Plain-language position coach — the "explanatory" layer for Analyze.
 //
 // The goal is to sound like a patient human coach, not a robot reading a number.
@@ -56,13 +61,13 @@ function other(turn) {
 
 // Centipawns (White POV) -> White win expectancy 0..100. Lichess's logistic fit.
 export function cpToWin(cp) {
-  const c = Math.max(-1000, Math.min(1000, Math.trunc(cp ?? 0)));
-  return 100 / (1 + Math.exp(-0.00368208 * c));
+  const c = Math.max(-CP_CLAMP, Math.min(CP_CLAMP, Math.trunc(cp ?? 0)));
+  return 100 / (1 + Math.exp(-WC_SIGMOID_SCALE * c));
 }
 
 // Match services/classification.py, including the signed cp retained for mate(0).
 export function evaluationToWin({ cp, mate } = {}) {
-  return cpToWin(mate > 0 ? 1000 : mate < 0 ? -1000 : cp);
+  return cpToWin(mate > 0 ? CP_CLAMP : mate < 0 ? -CP_CLAMP : cp);
 }
 
 // Lichess's single-move accuracy: how faithful a move was to the best, from the
@@ -271,15 +276,15 @@ export function classifyMove({ winBefore, winAfter, mover, isBest }) {
   const afterMover = mover === "white" ? winAfter : 100 - winAfter;
   const drop = beforeMover - afterMover; // positive = position got worse
 
-  if (isBest || drop <= 2) {
+  if (isBest || drop <= EXCELLENT_MAX_LOSS) {
     return { label: "Best move", glyph: "✓", tone: "good" };
   }
-  if (drop <= 5) return { label: "Good move", glyph: "✓", tone: "good" };
+  if (drop <= GOOD_MAX_LOSS) return { label: "Good move", glyph: "✓", tone: "good" };
   // Error tiers match Lichess's judgment cutoffs (5 / 10 / 15 win% lost) and the Coach's
   // classifyMoveRich so the three surfaces agree. Blunder was >20 here — laxer than
   // Lichess, so a ~15-pt slip read as a mere mistake.
-  if (drop <= 10) return { label: "Inaccuracy", glyph: "?!", tone: "warn" };
-  if (drop <= 15) return { label: "Mistake", glyph: "?", tone: "warn" };
+  if (drop <= INACCURACY_MAX_LOSS) return { label: "Inaccuracy", glyph: "?!", tone: "warn" };
+  if (drop <= MISTAKE_MAX_LOSS) return { label: "Mistake", glyph: "?", tone: "warn" };
   return { label: "Blunder", glyph: "??", tone: "danger" };
 }
 

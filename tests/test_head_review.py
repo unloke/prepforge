@@ -1,6 +1,7 @@
 from prepforge_chess.core.models import EngineEvaluation
 from prepforge_chess.services.classification import evaluation_to_white_win_chance
-from prepforge_chess.services.training_smart import MAX_SYNC_QUEUE, SmartTrainingService
+from prepforge_chess.core.limits import MAX_SYNC_QUEUE
+from prepforge_chess.services.training_smart import SmartTrainingService
 from prepforge_chess.services.scheduler import decode_card, own_move_nodes_on, path_to_node
 from test_training_smart import _build, _claim, _due, _repository, _seed_progress
 from test_api_analyze import _register, _prepare, _classify_save

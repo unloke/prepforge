@@ -1,4 +1,5 @@
 import { expect, it, vi } from "vitest";
+import { MAX_FETCH } from "./generated/shared-constants.js";
 import { countOf } from "./plural.js";
 import { appSource } from "./test-app-source.js";
 
@@ -9,7 +10,7 @@ function harness() {
   const requests = [];
   const button = { disabled: false };
   const deps = {
-    appState, countOf, requireSignIn: () => true,
+    appState, countOf, MAX_FETCH, requireSignIn: () => true,
     gamesSourceSelection: () => selection, lichessAccounts: () => [],
     resolveFetchUsernames: ({ selection }) => selection.external,
     gamesSourceAccountIds: () => [], normalizeSelection: (s) => s,

@@ -5,11 +5,13 @@ from prepforge_chess.core.models import (
     Color,
     MoveSource,
 )
-from prepforge_chess.services.opening_builder import (
+from prepforge_chess.core.limits import (
     MAX_ADD_MOVES_BATCH,
     MAX_PLAN_CHANGES,
     MAX_PLAN_DEPTH,
     MAX_PLAN_PV_LENGTH,
+)
+from prepforge_chess.services.opening_builder import (
     CreateRepertoireRequest,
     OpeningBuilderService,
 )
