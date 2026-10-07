@@ -5,13 +5,13 @@ from prepforge_chess.services.repertoire_export import (
     RepertoireExportService,
 )
 from prepforge_chess.storage.database import apply_schema, connect_database
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 
 def _sample_repertoire():
     connection = connect_database()
     apply_schema(connection)
-    repository = PrepForgeRepository(connection)
+    repository = WorkspaceRepository(connection)
     builder = OpeningBuilderService(repository)
     repertoire = builder.create_repertoire(
         CreateRepertoireRequest(

@@ -4,6 +4,7 @@ Run with PYTHONPATH=src. Setup/reset work is excluded; measured API calls includ
 authentication, CSRF validation, SQL, mutations, and JSON serialization.
 """
 from __future__ import annotations
+from prepforge_chess.storage import sa_tables
 
 import argparse
 import cProfile
@@ -28,7 +29,7 @@ from prepforge_chess.services.lichess_fetch import GameMatchSummary, record_depa
 from prepforge_chess.services.repertoire_matching import match_game_to_repertoire
 from prepforge_chess.services.workspace_view import build_workspace_payload
 from prepforge_chess.storage.codec import rebuild_moves
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 
 def seed(repo, owner, size):
@@ -112,9 +113,9 @@ def run(args, directory):
     db._engine = db._SessionLocal = None
     limiter.enabled = False
     # Identical schema setup to tests/conftest.py, isolated from configured DBs.
-    db.Base.metadata.create_all(db.make_engine())
+    sa_tables.metadata.create_all(db.make_engine())
     engine = db.get_engine()
-    repo = PrepForgeRepository(engine)
+    repo = WorkspaceRepository(engine)
     rows = []
     try:
         with TestClient(main.app) as client:

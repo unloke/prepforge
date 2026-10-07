@@ -1,12 +1,12 @@
 from prepforge_chess.services.pgn_import import PgnImportService
 from prepforge_chess.storage.database import apply_schema, connect_database
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 
 def _service() -> PgnImportService:
     connection = connect_database()
     apply_schema(connection)
-    return PgnImportService(PrepForgeRepository(connection))
+    return PgnImportService(WorkspaceRepository(connection))
 
 
 def test_import_service_persists_multiple_pgn_games():

@@ -7,16 +7,16 @@ metadata that defines it: no second production schema lifecycle (no runtime
 paths and non-API unit tests.
 """
 from __future__ import annotations
+from datetime import datetime, timezone
 
 from sqlalchemy import create_engine, inspect
 
-from prepforge_chess.api import models  # noqa: F401  (registers ORM tables)
 from prepforge_chess.storage import sa_tables
 
 
 def _expected_tables() -> set[str]:
     return {
-        # ORM identity/session/settings/receipts.
+        # Core identity/session/settings/receipts.
         "users",
         "auth_sessions",
         "linked_accounts",
@@ -127,8 +127,8 @@ def test_sa_games_round_trip():
                 "result": "*",
                 "tags_json": "{}",
                 "owner_user_id": "u1",
-                "created_at": "2026-01-01T00:00:00+00:00",
-                "updated_at": "2026-01-01T00:00:00+00:00",
+                "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+                "updated_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
             },
         )
     with engine.connect() as conn:

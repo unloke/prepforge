@@ -247,16 +247,16 @@ def test_smart_start_loads_each_tree_once(client, monkeypatch):
     _register(client, "a@example.com")
     rep = _white_repertoire_with_e4(client)
 
-    from prepforge_chess.storage.repositories import PrepForgeRepository
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
     calls: list[str] = []
-    original = PrepForgeRepository.load_repertoire
+    original = WorkspaceRepository.load_repertoire
 
     def counting(self, repertoire_id, *args, **kwargs):
         calls.append(repertoire_id)
         return original(self, repertoire_id, *args, **kwargs)
 
-    monkeypatch.setattr(PrepForgeRepository, "load_repertoire", counting)
+    monkeypatch.setattr(WorkspaceRepository, "load_repertoire", counting)
 
     r = _smart_start(client, rep, seed=5)
     assert r.status_code == 200, r.text
@@ -372,8 +372,8 @@ def test_smart_skip_advances_past_the_card(client):
 
 def _smart_sync(client: TestClient, session_id: str, **extra):
     from prepforge_chess.api import db
-    from prepforge_chess.storage.repositories import PrepForgeRepository
-    session = PrepForgeRepository(db.get_engine()).load_training_session(session_id)
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
+    session = WorkspaceRepository(db.get_engine()).load_training_session(session_id)
     generation = session.created_at.isoformat() if session else "unknown"
     return client.post(
         "/api/train/smart/sync",
@@ -751,12 +751,12 @@ def test_logout_requires_csrf(client):
 def test_analyze_train_it_merges_a_competing_progress_update(client, monkeypatch):
     from dataclasses import replace
     from prepforge_chess.core.models import TrainingProgress
-    from prepforge_chess.storage.repositories import PrepForgeRepository
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
     _register(client, "miss-race@example.com")
     rep = _white_repertoire_with_e4(client)
     node = next(n["id"] for n in client.get(f"/api/build/load?repertoire_id={rep}").json()["nodes"] if n.get("uci") == "e2e4")
-    read = PrepForgeRepository.load_training_progress
-    lock = PrepForgeRepository.lock_training_progress
+    read = WorkspaceRepository.load_training_progress
+    lock = WorkspaceRepository.lock_training_progress
     raced = False
     def competitor(repo, owner):
         nonlocal raced
@@ -771,13 +771,13 @@ def test_analyze_train_it_merges_a_competing_progress_update(client, monkeypatch
     def locked_read(repo, conn, *, repertoire_id, node_id, owner_user_id):
         competitor(repo, owner_user_id)
         return lock(repo, conn, repertoire_id=repertoire_id, node_id=node_id, owner_user_id=owner_user_id)
-    monkeypatch.setattr(PrepForgeRepository, "load_training_progress", stale_read)
-    monkeypatch.setattr(PrepForgeRepository, "lock_training_progress", locked_read)
+    monkeypatch.setattr(WorkspaceRepository, "load_training_progress", stale_read)
+    monkeypatch.setattr(WorkspaceRepository, "lock_training_progress", locked_read)
     response = client.post("/api/train/record-miss", json={"repertoire_id": rep, "node_id": node}, headers=csrf_headers(client))
     assert response.status_code == 200, response.text
     assert raced
     from prepforge_chess.api import db
-    repo = PrepForgeRepository(db.get_engine())
+    repo = WorkspaceRepository(db.get_engine())
     owner = client.get("/api/auth/me").json()["id"]
     assert read(repo, rep, node, owner_user_id=owner).attempts == 2
 

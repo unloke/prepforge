@@ -23,7 +23,8 @@ from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_user
 from prepforge_chess.api.middleware import CSRF_COOKIE
-from prepforge_chess.api.models import AuthSession, PasswordResetToken, Plan, User
+from prepforge_chess.api.models import AuthSession, PasswordResetToken, User
+from prepforge_chess.storage.types import Plan
 from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.api.security import (
     hash_password,
@@ -340,9 +341,6 @@ def _deliver_mail(user: User, subject: str, body: str, settings: Settings) -> No
         logging.getLogger(__name__).error("Password recovery mail delivery failed")
 
 
-def _aware(value: datetime) -> datetime:
-    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
-
 
 @router.post("/password/forgot")
 @limiter.limit("5/hour")
@@ -421,7 +419,7 @@ def reset_password(
             PasswordResetToken.token_hash == hash_session_token(body.token)
         )
     )
-    if row is None or row.used_at is not None or _aware(row.expires_at) <= now:
+    if row is None or row.used_at is not None or row.expires_at <= now:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="this reset link is invalid or has expired",

@@ -27,7 +27,8 @@ from sqlalchemy.orm import Session
 from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_user
-from prepforge_chess.api.models import Plan, StripeEvent, User
+from prepforge_chess.api.models import StripeEvent, User
+from prepforge_chess.storage.types import Plan
 
 router = APIRouter(tags=["billing"])
 logger = logging.getLogger(__name__)

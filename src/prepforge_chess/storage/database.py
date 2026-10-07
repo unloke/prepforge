@@ -51,7 +51,7 @@ def make_sqlite_engine(url: str, *, pool_pre_ping: bool = False) -> Engine:
 
 
 def apply_schema(engine: Engine) -> None:
-    """Create the domain tables (idempotent) for an ephemeral SQLite engine.
+    """Create all tables from the canonical metadata (idempotent) for an ephemeral SQLite engine.
 
     FK enforcement is disabled on these throwaway engines (``PRAGMA
     foreign_keys=OFF``): unit tests use synthetic owner ids with no ``users``
@@ -60,7 +60,7 @@ def apply_schema(engine: Engine) -> None:
     """
     with engine.begin() as conn:
         conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
-    sa_tables.metadata.create_all(engine, tables=list(sa_tables.DOMAIN_TABLES))
+    sa_tables.metadata.create_all(engine)
 
 
 def initialize_database(path: PathLike) -> Engine:

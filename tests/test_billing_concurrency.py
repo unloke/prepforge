@@ -14,8 +14,10 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 from prepforge_chess.api.config import Settings
-from prepforge_chess.api.db import Base, get_db
-from prepforge_chess.api.models import Plan, StripeEvent, User
+from prepforge_chess.api.db import get_db
+from prepforge_chess.storage.sa_tables import metadata
+from prepforge_chess.api.models import StripeEvent, User
+from prepforge_chess.storage.types import Plan
 from prepforge_chess.api.routers import billing
 
 
@@ -34,7 +36,7 @@ def webhook(tmp_path, monkeypatch, request):
         engine = create_engine(url, connect_args={"options": f"-csearch_path={schema}"})
     else:
         engine = create_engine(f"sqlite:///{(tmp_path / 'webhook.sqlite').as_posix()}")
-    Base.metadata.create_all(engine)
+    metadata.create_all(engine)
     class RacingSession(Session):
         initial_checks = None
 

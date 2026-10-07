@@ -53,12 +53,6 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _as_utc(value: datetime) -> datetime:
-    """Coerce a possibly-naive datetime to aware UTC for safe comparison."""
-    if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
-
 
 def node_mastery(progress: Optional[TrainingProgress], *, now: Optional[datetime] = None) -> str:
     """Classify a single trainable node's mastery from its progress row.
@@ -77,7 +71,7 @@ def node_mastery(progress: Optional[TrainingProgress], *, now: Optional[datetime
     # reviews) leaves weak even if its lifetime ratio is still under 50%.
     if progress.attempts >= 2 and ratio < 0.5 and score < SR_CONFIG.weak_score_below:
         return MASTERY_WEAK
-    if progress.due_at is not None and _as_utc(progress.due_at) <= now:
+    if progress.due_at is not None and progress.due_at <= now:
         return MASTERY_DUE
     if progress.is_mastered or score >= SR_CONFIG.mastered_score_at:
         return MASTERY_MASTERED
@@ -144,7 +138,7 @@ def due_node_ids(
     now = now or _now()
     due: Set[str] = set()
     for entry in progress:
-        if entry.due_at is not None and _as_utc(entry.due_at) <= now:
+        if entry.due_at is not None and entry.due_at <= now:
             due.add(entry.node_id)
     return due
 
@@ -167,7 +161,7 @@ def due_forecast(
         progress = progress_by_id.get(node.id)
         if progress is None or progress.due_at is None:
             continue
-        due_at = _as_utc(progress.due_at)
+        due_at = progress.due_at
         if now < due_at and (due_at - now).total_seconds() <= horizon_hours * 3600:
             count += 1
     return count

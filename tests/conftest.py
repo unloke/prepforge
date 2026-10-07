@@ -5,6 +5,7 @@ is disabled by default (so functional tests aren't throttled) and re-enabled onl
 by the dedicated rate-limit test.
 """
 from __future__ import annotations
+from prepforge_chess.storage import sa_tables
 
 import pytest
 from fastapi.testclient import TestClient
@@ -28,6 +29,6 @@ def client(tmp_path, monkeypatch):
     if hasattr(limiter, "reset"):
         limiter.reset()
 
-    # models are registered on db.Base.metadata via the main import chain.
-    db.Base.metadata.create_all(db.make_engine())
+    # All throwaway tables come from the canonical Core metadata.
+    sa_tables.metadata.create_all(db.make_engine())
     return TestClient(main.app)

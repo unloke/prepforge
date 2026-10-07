@@ -24,17 +24,132 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 
-from prepforge_chess.api.db import Base
+from datetime import datetime, timezone
+import uuid
+from sqlalchemy import Boolean, String, Enum as SAEnum, MetaData
+from prepforge_chess.storage.types import Plan, TeamRole
+from prepforge_chess.storage.datetime_type import UTCDateTime
 
-# Canonical per-user settings + train receipts are ORM-defined in api.models
-# (single definition of truth on this same metadata); alias them here so
-# repository code keeps one import surface.
-from prepforge_chess.api import models as _orm_models  # noqa: F401
+metadata = MetaData()
 
-metadata = Base.metadata
 
-user_settings = metadata.tables["user_settings"]
-train_attempt_receipts = metadata.tables["train_attempt_receipts"]
+def _uuid():
+    return uuid.uuid4().hex
+
+
+def _now():
+    return datetime.now(timezone.utc)
+
+
+users = Table(
+    'users', metadata,
+    Column('id', String(length=32), primary_key=True, default=_uuid),
+    Column('email', String(length=320), nullable=False),
+    Column('password_hash', String(length=255)),
+    Column('plan', SAEnum(Plan, native_enum=False, length=16), nullable=False, default=Plan.free),
+    Column('display_name', String(length=120)),
+    Column('stripe_customer_id', String(length=64)),
+    Column('created_at', UTCDateTime(), nullable=False, default=_now),
+    Column('updated_at', UTCDateTime(), nullable=False, default=_now, onupdate=_now),
+    Index('ix_users_email', 'email', unique=True),
+    Index('ix_users_stripe_customer_id', 'stripe_customer_id'),
+)
+
+linked_accounts = Table(
+    'linked_accounts', metadata,
+    Column('id', String(length=32), primary_key=True, default=_uuid),
+    Column('user_id', String(length=32), ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+    Column('provider', String(length=32), nullable=False),
+    Column('provider_user_id', String(length=120), nullable=False),
+    Column('encrypted_token', String(length=2048)),
+    Column('is_primary', Boolean(), nullable=False, default=True),
+    Column('created_at', UTCDateTime(), nullable=False, default=_now),
+    UniqueConstraint('provider', 'provider_user_id', name='uq_provider_identity'),
+    UniqueConstraint('user_id', 'provider', 'provider_user_id', name='uq_user_provider_identity'),
+    Index('ix_linked_accounts_user_id', 'user_id'),
+)
+
+teams = Table(
+    'teams', metadata,
+    Column('id', String(length=32), primary_key=True, default=_uuid),
+    Column('name', String(length=120), nullable=False),
+    Column('owner_user_id', String(length=32), ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+    Column('kind', String(length=16), nullable=False, default='team'),
+    Column('created_at', UTCDateTime(), nullable=False, default=_now),
+    Index('ix_teams_owner_user_id', 'owner_user_id'),
+)
+
+team_members = Table(
+    'team_members', metadata,
+    Column('id', String(length=32), primary_key=True, default=_uuid),
+    Column('team_id', String(length=32), ForeignKey('teams.id', ondelete='CASCADE'), nullable=False),
+    Column('user_id', String(length=32), ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+    Column('role', SAEnum(TeamRole, native_enum=False, length=16), nullable=False, default=TeamRole.member),
+    Column('created_at', UTCDateTime(), nullable=False, default=_now),
+    UniqueConstraint('team_id', 'user_id', name='uq_team_member'),
+    Index('ix_team_members_team_id', 'team_id'),
+    Index('ix_team_members_user_id', 'user_id'),
+)
+
+team_invites = Table(
+    'team_invites', metadata,
+    Column('id', String(length=32), primary_key=True, default=_uuid),
+    Column('team_id', String(length=32), ForeignKey('teams.id', ondelete='CASCADE'), nullable=False),
+    Column('code_hash', String(length=64), nullable=False),
+    Column('created_by_user_id', String(length=32), ForeignKey('users.id', ondelete='SET NULL')),
+    Column('expires_at', UTCDateTime()),
+    Column('created_at', UTCDateTime(), nullable=False, default=_now),
+    Index('ix_team_invites_code_hash', 'code_hash', unique=True),
+    Index('ix_team_invites_team_id', 'team_id', unique=True),
+)
+
+user_settings = Table(
+    'user_settings', metadata,
+    Column('user_id', String(length=32), primary_key=True),
+    Column('key', String(length=120), primary_key=True),
+    Column('value_json', Text(), nullable=False, default='null'),
+    Column('updated_at', UTCDateTime(), nullable=False, default=_now),
+    Index('ix_user_settings_user_id', 'user_id'),
+)
+
+train_attempt_receipts = Table(
+    'train_attempt_receipts', metadata,
+    Column('session_id', String(length=64), primary_key=True),
+    Column('attempt_uuid', String(length=64), primary_key=True),
+    Column('node_id', String(length=64), nullable=False),
+    Column('correct', Boolean(), nullable=False),
+    Column('created_at', UTCDateTime(), nullable=False, default=_now),
+    Index('ix_train_attempt_receipts_created_at', 'created_at'),
+    Index('ix_train_attempt_receipts_session_id', 'session_id'),
+)
+
+password_reset_tokens = Table(
+    'password_reset_tokens', metadata,
+    Column('id', String(length=32), primary_key=True, default=_uuid),
+    Column('user_id', String(length=32), ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+    Column('token_hash', String(length=64), nullable=False),
+    Column('created_at', UTCDateTime(), nullable=False, default=_now),
+    Column('expires_at', UTCDateTime(), nullable=False),
+    Column('used_at', UTCDateTime()),
+    Index('ix_password_reset_tokens_token_hash', 'token_hash', unique=True),
+    Index('ix_password_reset_tokens_user_id', 'user_id'),
+)
+
+stripe_events = Table(
+    'stripe_events', metadata,
+    Column('id', String(length=64), primary_key=True),
+    Column('type', String(length=120), nullable=False),
+    Column('processed_at', UTCDateTime(), nullable=False, default=_now),
+)
+
+auth_sessions = Table(
+    'auth_sessions', metadata,
+    Column('token_hash', String(length=64), primary_key=True),
+    Column('user_id', String(length=32), ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
+    Column('created_at', UTCDateTime(), nullable=False, default=_now),
+    Column('last_seen_at', UTCDateTime(), nullable=False, default=_now),
+    Index('ix_auth_sessions_user_id', 'user_id'),
+)
 
 games = Table(
     "games",
@@ -49,12 +164,12 @@ games = Table(
     Column("result", Text, nullable=False),
     Column("event", Text),
     Column("site", Text),
-    Column("played_at", Text),
+    Column("played_at", UTCDateTime()),
     Column("lichess_id", Text),
     Column("tags_json", Text, nullable=False),
     Column("owner_user_id", Text),
-    Column("created_at", Text, nullable=False),
-    Column("updated_at", Text, nullable=False),
+    Column("created_at", UTCDateTime(), nullable=False),
+    Column("updated_at", UTCDateTime(), nullable=False),
     Index("idx_games_owner", "owner_user_id"),
     Index("idx_games_owner_created", "owner_user_id", "created_at", "id"),
     Index("idx_games_owner_lichess", "owner_user_id", "lichess_id", unique=True),
@@ -128,7 +243,7 @@ analysis_results = Table(
         ForeignKey("games.id", ondelete="CASCADE"),
         nullable=False,
     ),
-    Column("analyzed_at", Text, nullable=False),
+    Column("analyzed_at", UTCDateTime(), nullable=False),
     Column("engine", Text, nullable=False),
     Column("depth", Integer),
     Column("summary_json", Text, nullable=False),
@@ -153,8 +268,8 @@ repertoires = Table(
     Column("notes", Text),
     Column("tags_json", Text, nullable=False),
     Column("is_active", Integer, nullable=False),
-    Column("created_at", Text, nullable=False),
-    Column("updated_at", Text, nullable=False),
+    Column("created_at", UTCDateTime(), nullable=False),
+    Column("updated_at", UTCDateTime(), nullable=False),
     Column("team_id", Text),
     Column("visibility", Text),
     Column("health_json", Text),
@@ -166,7 +281,7 @@ repertoires = Table(
     # link; ``share_enabled`` is the independent on/off switch.
     Column("share_rev", Integer, nullable=False, server_default="0"),
     Column("share_enabled", Integer, nullable=False, server_default="1"),
-    Column("share_expires_at", Text),
+    Column("share_expires_at", UTCDateTime()),
     Index("idx_repertoires_owner", "owner_user_id"),
     Index("idx_repertoires_team", "team_id"),
 )
@@ -197,8 +312,8 @@ opening_nodes = Table(
     Column("strategic_idea", Text),
     Column("typical_plan", Text),
     Column("source", Text, nullable=False),
-    Column("created_at", Text, nullable=False),
-    Column("updated_at", Text, nullable=False),
+    Column("created_at", UTCDateTime(), nullable=False),
+    Column("updated_at", UTCDateTime(), nullable=False),
     Index("idx_opening_nodes_repertoire_parent", "repertoire_id", "parent_id"),
 )
 
@@ -220,8 +335,8 @@ training_sessions = Table(
     Column("mastered_nodes_json", Text, nullable=False),
     Column("seed", Integer),
     Column("state_version", Integer, nullable=False, server_default="0"),
-    Column("created_at", Text, nullable=False),
-    Column("updated_at", Text, nullable=False),
+    Column("created_at", UTCDateTime(), nullable=False),
+    Column("updated_at", UTCDateTime(), nullable=False),
     Index(
         "idx_training_sessions_rep_mode_updated",
         "repertoire_id",
@@ -249,29 +364,14 @@ training_progress = Table(
     ),
     Column("attempts", Integer, nullable=False),
     Column("correct_attempts", Integer, nullable=False),
-    Column("last_reviewed_at", Text),
+    Column("last_reviewed_at", UTCDateTime()),
     Column("spaced_repetition_score", Float, nullable=False),
-    Column("due_at", Text),
+    Column("due_at", UTCDateTime()),
     Column("is_mastered", Integer, nullable=False),
-    Column("created_at", Text, nullable=False),
-    Column("updated_at", Text, nullable=False),
+    Column("created_at", UTCDateTime(), nullable=False),
+    Column("updated_at", UTCDateTime(), nullable=False),
     UniqueConstraint("owner_user_id", "repertoire_id", "node_id", name="uq_training_progress_owner"),
     Index("idx_training_progress_rep_user", "repertoire_id", "owner_user_id"),
-    # Dashboard due-review filter + scheduler sort: ``due_at`` is ISO-8601 UTC
-    # text, so lexical range scans are correct and this index gives them a home.
+    # Dashboard due-review range scan and scheduler sort.
     Index("idx_training_progress_due", "due_at"),
-)
-
-DOMAIN_TABLES = (
-    user_settings,
-    train_attempt_receipts,
-    games,
-    positions,
-    engine_evaluations,
-    moves,
-    analysis_results,
-    repertoires,
-    opening_nodes,
-    training_sessions,
-    training_progress,
 )

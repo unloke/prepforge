@@ -10,7 +10,7 @@ from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db, get_engine
 from prepforge_chess.api.models import AuthSession, User
 from prepforge_chess.api.security import hash_session_token
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 # Only refresh a session's last_seen_at at most this often. Without it, every
 # authenticated request issues a write transaction (a real Postgres bottleneck
@@ -31,11 +31,6 @@ def current_user_optional(
         return None
     now = datetime.now(timezone.utc)
     last_seen = session.last_seen_at
-    # SQLite stores no tz and hands back naive datetimes; subtracting an aware
-    # `now` would raise TypeError. (Postgres TIMESTAMPTZ returns aware values, so
-    # this only fires on SQLite.) Treat the naive value as UTC for the comparison.
-    if last_seen is not None and last_seen.tzinfo is None:
-        last_seen = last_seen.replace(tzinfo=timezone.utc)
     if last_seen is None or now - last_seen >= timedelta(days=settings.session_ttl_days):
         db.delete(session)
         db.commit()
@@ -52,9 +47,9 @@ def current_user(user: User | None = Depends(current_user_optional)) -> User:
     return user
 
 
-def get_repository() -> PrepForgeRepository:
+def get_repository() -> WorkspaceRepository:
     """Domain repository bound to the app's shared SQLAlchemy engine."""
-    return PrepForgeRepository(get_engine())
+    return WorkspaceRepository(get_engine())
 
 
 def current_owner(user: User = Depends(current_user)) -> str:

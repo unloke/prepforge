@@ -25,7 +25,8 @@ from prepforge_chess.core.limits import (
 from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_owner, current_user, get_repository
-from prepforge_chess.api.models import Plan, User
+from prepforge_chess.api.models import User
+from prepforge_chess.storage.types import Plan
 from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.api.routers.teams import user_team_ids
 from prepforge_chess.core.models import Color, MoveSource, OpeningNode
@@ -41,12 +42,8 @@ from prepforge_chess.services.dashboard_recommendations import (
 from prepforge_chess.services.repertoire_export import RepertoireExportService
 from prepforge_chess.services.workspace_view import build_workspace_payload
 from prepforge_chess.storage import sa_tables as t
-from prepforge_chess.storage.repositories import (
-    PLAYED_SESSIONS_KEY,
-    REVIEW_ARCHIVE_KEY,
-    PrepForgeRepository,
-    prune_review_archive,
-)
+from prepforge_chess.storage.repositories.settings import PLAYED_SESSIONS_KEY, REVIEW_ARCHIVE_KEY, prune_review_archive
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 router = APIRouter(prefix="/api", tags=["workspace"])
 
@@ -55,7 +52,7 @@ router = APIRouter(prefix="/api", tags=["workspace"])
 def _enforce_repertoire_quota(
     user: User,
     owner: str,
-    repo: PrepForgeRepository,
+    repo: WorkspaceRepository,
     settings: Settings,
 ) -> None:
     """Apply the same Free-plan creation cap to every repertoire-producing route."""
@@ -72,7 +69,7 @@ def _enforce_repertoire_quota(
         )
 
 
-def _owned_repertoire(repo: PrepForgeRepository, repertoire_id: str, owner: str) -> dict[str, Any]:
+def _owned_repertoire(repo: WorkspaceRepository, repertoire_id: str, owner: str) -> dict[str, Any]:
     """Owner gate for repertoire mutations. Returns the repertoire's lightweight meta,
     or raises 404 if it is missing or owned by a different user."""
     meta = repo.repertoire_meta(repertoire_id)
@@ -82,7 +79,7 @@ def _owned_repertoire(repo: PrepForgeRepository, repertoire_id: str, owner: str)
 
 
 def _check_base_revision(
-    meta: dict[str, Any], base_revision: int | None, repo: PrepForgeRepository
+    meta: dict[str, Any], base_revision: int | None, repo: WorkspaceRepository
 ) -> None:
     """D-02 conflict contract: a mutation may name the revision it was built on.
     If the repertoire moved on since then, 409 (with the fresh revision) so the
@@ -106,7 +103,7 @@ def _check_base_revision(
 
 
 def _readable_repertoire(
-    repo: PrepForgeRepository, repertoire_id: str, owner: str, team_ids: set[str]
+    repo: WorkspaceRepository, repertoire_id: str, owner: str, team_ids: set[str]
 ) -> dict[str, Any]:
     """Read gate: the owner, OR a member of the team a ``visibility='team'``
     repertoire is shared with. 404 otherwise. Widens reads only — mutations keep using
@@ -141,7 +138,7 @@ def _strip_readonly_build_payload(payload: dict[str, Any]) -> None:
 def dashboard(
     local_date: str | None = None,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Owner-scoped counters for the home screen. Training counters reach the owner
     through repertoire ownership (``training_sessions`` has no owner column).
@@ -180,7 +177,7 @@ def dashboard(
             select(
                 tally(tp.c.attempts > tp.c.correct_attempts),
                 tally(tp.c.last_reviewed_at.is_not(None)
-                      & (tp.c.last_reviewed_at >= week_ago_iso)),
+                      & (tp.c.last_reviewed_at >= now - timedelta(days=7))),
                 tally(tp.c.is_mastered == 1),
                 tally((tp.c.attempts >= 2)
                       & (tp.c.correct_attempts * 2 < tp.c.attempts)),
@@ -235,7 +232,7 @@ _RECAP_SNAPSHOT_KEY = "recap.weekly_snapshot"
 
 
 def _weekly_recap(
-    repo: PrepForgeRepository,
+    repo: WorkspaceRepository,
     owner: str,
     local_day,
     *,
@@ -281,7 +278,7 @@ def _weekly_recap(
 def list_repertoires(
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """The caller's own repertoires (metadata + a cached ``health`` badge — no tree
@@ -330,7 +327,7 @@ def build_load(
     repertoire_id: str,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """The Build-view payload for a repertoire the caller can read. The owner always
@@ -358,7 +355,7 @@ def share_repertoire(
     body: ShareRepertoireBody,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Share (or unshare) one of the caller's OWN repertoires with a team. Only the
@@ -388,7 +385,7 @@ class DeleteRepertoireRequest(BaseModel):
 def delete_repertoire(
     body: DeleteRepertoireRequest,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Delete one of this owner's repertoires (cascades to its nodes/training)."""
     _owned_repertoire(repo, body.repertoire_id, owner)
@@ -405,7 +402,7 @@ class SetActiveRequest(BaseModel):
 def set_repertoire_active(
     body: SetActiveRequest,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Toggle a repertoire's active flag (drives trainer eligibility in the SPA)."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
@@ -437,7 +434,7 @@ def _walk_nodes(root: OpeningNode):
 
 
 def _load_node_or_400(
-    repo: PrepForgeRepository, repertoire_id: str, node_id: str
+    repo: WorkspaceRepository, repertoire_id: str, node_id: str
 ) -> OpeningNode:
     """Load a repertoire and locate a node, raising 400 if either is missing — used by
     the toggle actions that need the node's current state. (Ownership is already
@@ -486,7 +483,7 @@ def create_repertoire(
     body: CreateRepertoireBody,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Create a new repertoire owned by the caller and return its Build payload.
@@ -563,21 +560,14 @@ def _share_link_live(meta: dict[str, Any], token_rev: int, now: datetime) -> boo
     if not meta.get("share_enabled"):
         return False
     expires_at = meta.get("share_expires_at")
-    if expires_at:
-        try:
-            expires = datetime.fromisoformat(str(expires_at))
-        except ValueError:
-            return False
-        if expires.tzinfo is None:
-            expires = expires.replace(tzinfo=timezone.utc)
-        if expires <= now:
-            return False
+    if expires_at is not None and expires_at <= now:
+        return False
     current_rev = int(meta.get("share_rev") or 0)
     return token_rev == current_rev
 
 
 def _resolve_share_link(
-    repo: PrepForgeRepository, token: str, secret: str
+    repo: WorkspaceRepository, token: str, secret: str
 ) -> str | None:
     """The repertoire id a token currently grants read for, else None. Revoked,
     rotated, and expired links all resolve to None (→ 404, F-01)."""
@@ -599,19 +589,19 @@ class ShareLinkBody(BaseModel):
     expires_in_days: int | None = Field(default=None, ge=1, le=365)
 
 
-def _share_expiry(expires_in_days: int | None) -> str | None:
+def _share_expiry(expires_in_days: int | None) -> datetime | None:
     if expires_in_days is None:
         return None
     return (
         datetime.now(timezone.utc) + timedelta(days=expires_in_days)
-    ).isoformat()
+    )
 
 
 @router.get("/repertoires/share-link")
 def share_link_status(
     repertoire_id: str,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Public-link state for one of the caller's OWN repertoires (F-01), so the
     share panel can show team sharing and "anyone with the link" separately —
@@ -624,7 +614,7 @@ def share_link_status(
 def create_share_link(
     body: ShareLinkBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Enable the public read-only link for one of the caller's OWN repertoires.
@@ -652,7 +642,7 @@ def create_share_link(
 def rotate_share_link(
     body: ShareLinkBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Regenerate the public link: bumps the share revision so every previously
@@ -670,7 +660,7 @@ def rotate_share_link(
 def revoke_share_link(
     body: ShareLinkBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Turn the public link OFF. Team sharing is untouched — the two are
     independent controls (F-01)."""
@@ -682,7 +672,7 @@ def revoke_share_link(
 @router.get("/shared/{token}")
 def shared_repertoire(
     token: str,
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Public (unauthenticated) read of a shared repertoire's tree.
@@ -714,7 +704,7 @@ def fork_shared_repertoire(
     token: str,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Copy a shared repertoire into the caller's account (fresh ids, caller-owned).
@@ -742,7 +732,7 @@ def fork_repertoire(
     body: ForkRepertoireBody,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
@@ -778,7 +768,7 @@ class RenameRepertoireBody(BaseModel):
 def build_rename(
     body: RenameRepertoireBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Rename one of the caller's repertoires and return its refreshed Build payload."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
@@ -801,7 +791,7 @@ class AddMoveBody(BaseModel):
 def build_add_move(
     body: AddMoveBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Append a manual move under a parent node and return the refreshed Build payload.
     Classifies ownership: a move played on the owner's turn is flagged
@@ -876,7 +866,7 @@ def build_add_moves(
     request: Request,
     body: AddMovesBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Apply a batch of manual moves (local-first Build flush) and return the
     refreshed Build payload plus an ``id_map`` of ``tempId -> real node id``.
@@ -926,7 +916,7 @@ def build_delete_nodes(
     request: Request,
     body: DeleteNodesBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Delete a batch of subtrees (local-first Build flush) and return the
     refreshed Build payload.
@@ -979,7 +969,7 @@ def build_apply_plan(
     request: Request,
     body: ApplyPlanBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Apply a browser-built Build-Generate plan and return the refreshed payload.
 
@@ -1056,7 +1046,7 @@ class NodeActionBody(BaseModel):
 def build_action(
     body: NodeActionBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Apply a node action (set-mainline / toggle-prepared / toggle-branch / delete /
     comment / tag / queue / critical) and return the refreshed Build payload."""
@@ -1116,7 +1106,7 @@ def build_annotations(
     request: Request,
     body: AnnotationsBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Persist a node's arrows/circles and echo them back (the SPA ignores the rest of
     a Build payload here, so no full reserialization)."""
@@ -1146,7 +1136,7 @@ class ExportBody(BaseModel):
 def build_export(
     body: ExportBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Serialize a repertoire to a downloadable blob: ``json`` (full package) or
     ``pgn`` (mainline, or the path to ``node_id`` when given). Pure serialization."""
@@ -1175,7 +1165,7 @@ def build_export(
 def export_tree_pgn(
     repertoire_id: str,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Full tree-with-variations PGN for the top-level "Export PGN" action (the SPA's
     per-line export goes through ``/build/export``). Pure serialization, owner-gated."""
@@ -1207,7 +1197,7 @@ def import_repertoire(
     body: ImportPackageBody,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Import a repertoire from a saved ``.prepforge.json`` package, owned by the caller."""
@@ -1246,7 +1236,7 @@ def import_repertoire_pgn(
     body: ImportPgnBody,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Import a repertoire from a tree PGN (variations become branches), owned by the caller."""

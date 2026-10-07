@@ -1,5 +1,6 @@
 """SQL counts across auth, ownership, mutation, and Build response serialization."""
 from __future__ import annotations
+from prepforge_chess.storage import sa_tables
 
 import os
 import uuid
@@ -14,7 +15,7 @@ from prepforge_chess.api import config, db, main
 from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import MoveSource, OpeningNode
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 
 def _measured(engine, request):
@@ -37,7 +38,7 @@ def _measured(engine, request):
 
 
 def _seed_tree(engine, repertoire_id, size=100):
-    repo = PrepForgeRepository(engine)
+    repo = WorkspaceRepository(engine)
     repertoire = repo.load_repertoire(repertoire_id)
     core = ChessCore()
     queue = [repertoire.root_node]
@@ -138,7 +139,7 @@ def test_build_route_sql_counts_postgres(monkeypatch):
     db._engine = None
     db._SessionLocal = None
     limiter.enabled = False
-    db.Base.metadata.create_all(db.make_engine())
+    sa_tables.metadata.create_all(db.make_engine())
     with TestClient(main.app) as client:
         counts = _exercise_routes(client)
     if os.getenv("BUILD_SQL_BENCHMARK"):

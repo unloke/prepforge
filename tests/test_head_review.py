@@ -183,21 +183,21 @@ def test_unconfigured_production_recovery_fails_uniformly(client, monkeypatch):
 def test_build_reply_does_not_stamp_a_stale_tree_with_a_later_writer_revision(client, monkeypatch):
     from api_helpers import csrf_headers
     from prepforge_chess.api.db import get_engine
-    from prepforge_chess.storage.repositories import PrepForgeRepository
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
     _register(client, "reply-race@example.com")
     headers = csrf_headers(client)
     created = client.post("/api/repertoires/create", headers=headers,
                           json={"name": "Before", "color": "white"}).json()
-    save = PrepForgeRepository.save_changed_nodes
+    save = WorkspaceRepository.save_changed_nodes
     def writer_interleaves(repo, rep_id, nodes):
         save(repo, rep_id, nodes)
-        PrepForgeRepository(get_engine()).update_opening_nodes(rep_id, [{"id": nodes[0].id, "comment": "Other tab"}])
-    monkeypatch.setattr(PrepForgeRepository, "save_changed_nodes", writer_interleaves)
+        WorkspaceRepository(get_engine()).update_opening_nodes(rep_id, [{"id": nodes[0].id, "comment": "Other tab"}])
+    monkeypatch.setattr(WorkspaceRepository, "save_changed_nodes", writer_interleaves)
     response = client.post("/api/build/add-move", headers=headers, json={
         "repertoire_id": created["repertoire_id"], "parent_node_id": created["selected_node_id"],
         "move_uci": "e2e4", "base_revision": created["revision"],
     })
     assert response.status_code == 200
     assert response.json()["revision"] == created["revision"] + 1
-    assert PrepForgeRepository(get_engine()).repertoire_revision(created["repertoire_id"]) == created["revision"] + 2
+    assert WorkspaceRepository(get_engine()).repertoire_revision(created["repertoire_id"]) == created["revision"] + 2

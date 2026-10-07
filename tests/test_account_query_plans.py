@@ -5,7 +5,7 @@ from prepforge_chess.storage.database import apply_schema, connect_database
 
 def test_mastery_recursion_uses_repertoire_and_parent_index_columns():
     from sqlalchemy import event
-    from prepforge_chess.storage.repositories import PrepForgeRepository
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
     engine = connect_database()
     apply_schema(engine)
@@ -14,7 +14,7 @@ def test_mastery_recursion_uses_repertoire_and_parent_index_columns():
         statements.append((sql, params))
     event.listen(engine, "before_cursor_execute", collect)
     try:
-        PrepForgeRepository(engine).due_counts_by_repertoire("owner")
+        WorkspaceRepository(engine).due_counts_by_repertoire("owner")
     finally:
         event.remove(engine, "before_cursor_execute", collect)
     assert len(statements) == 1

@@ -16,13 +16,13 @@ from prepforge_chess.services.opening_builder import (
     OpeningBuilderService,
 )
 from prepforge_chess.storage.database import apply_schema, connect_database
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 
 def _builder():
     connection = connect_database()
     apply_schema(connection)
-    repository = PrepForgeRepository(connection)
+    repository = WorkspaceRepository(connection)
     return repository, OpeningBuilderService(repository)
 
 

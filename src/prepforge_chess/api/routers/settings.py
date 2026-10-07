@@ -27,7 +27,7 @@ from prepforge_chess.services.app_settings import (
     owner_maia_rating,
     owner_stockfish_depth,
 )
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.settings import SettingsRepository
 
 router = APIRouter(prefix="/api", tags=["settings"])
 
@@ -40,7 +40,7 @@ _DEPTH_RANGE = {
 _MAIA_RATING_RANGE = {"min": MAIA_RATING_MIN, "max": MAIA_RATING_MAX}
 
 
-def _settings_payload(repo: PrepForgeRepository, owner: str) -> dict[str, Any]:
+def _settings_payload(repo: SettingsRepository, owner: str) -> dict[str, Any]:
     return {
         "stockfish_depth": owner_stockfish_depth(repo, owner),
         "stockfish_depth_range": dict(_DEPTH_RANGE),
@@ -57,7 +57,7 @@ def _settings_payload(repo: PrepForgeRepository, owner: str) -> dict[str, Any]:
 @router.get("/settings")
 def get_settings(
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: SettingsRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """This owner's analysis preferences (read-only)."""
     return _settings_payload(repo, owner)
@@ -77,7 +77,7 @@ class UpdateSettingsBody(BaseModel):
 def update_settings(
     body: UpdateSettingsBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: SettingsRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Persist this owner's analysis preferences and return the refreshed payload."""
     if body.stockfish_depth is not None:

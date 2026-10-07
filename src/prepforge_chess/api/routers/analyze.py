@@ -15,6 +15,7 @@ status for a FEN).
 """
 from __future__ import annotations
 
+from datetime import datetime
 import math
 import time
 from uuid import UUID, uuid4
@@ -42,7 +43,7 @@ from prepforge_chess.services.browser_compute import (
 from prepforge_chess.services.pgn_import import PgnImportOptions, PgnImportService
 from prepforge_chess.services.browser_compute import MissingEvaluationError
 from prepforge_chess.services.replay_maia import ReplayMaia
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.games import GameRepository
 
 router = APIRouter(prefix="/api", tags=["analyze"])
 
@@ -54,7 +55,7 @@ _CHESS = ChessCore()
 
 
 def _import_pgn_for_analysis(
-    repo: PrepForgeRepository,
+    repo: GameRepository,
     pgn_text: str,
     owner: str,
     *,
@@ -208,7 +209,7 @@ def analyze_prepare(
     request: Request,
     body: PreparePayload,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: GameRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Import a PGN and return the positions the browser must evaluate.
 
@@ -294,7 +295,7 @@ def analyze_classify_save(
     request: Request,
     body: ClassifySavePayload,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: GameRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Classify + persist a game from browser-computed per-position evals.
 
@@ -408,7 +409,7 @@ def analyze_classify_save(
 # ---- History reads ---------------------------------------------------------
 
 
-def _parse_cursor(cursor: str | None) -> tuple[str, str] | None:
+def _parse_cursor(cursor: str | None) -> tuple[datetime, str] | None:
     if not cursor:
         return None
     analyzed_at, sep, game_id = cursor.partition("|")
@@ -416,13 +417,19 @@ def _parse_cursor(cursor: str | None) -> tuple[str, str] | None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="invalid cursor"
         )
-    return analyzed_at, game_id
+    try:
+        instant = datetime.fromisoformat(analyzed_at.replace("Z", "+00:00"))
+        if instant.tzinfo is None or instant.utcoffset() is None:
+            raise ValueError("cursor timestamp must be timezone-aware")
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid cursor")
+    return instant, game_id
 
 
 @router.get("/analyses")
 def list_analyses(
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: GameRepository = Depends(get_repository),
     limit: int = 50,
     cursor: str | None = None,
 ) -> dict[str, Any]:
@@ -437,7 +444,7 @@ def list_analyses(
     return {
         "analyses": analyses,
         "next_cursor": (
-            "{0}|{1}".format(*next_cursor) if next_cursor is not None else None
+            "{0}|{1}".format(next_cursor[0].isoformat().replace("+00:00", "Z"), next_cursor[1]) if next_cursor is not None else None
         ),
     }
 
@@ -447,7 +454,7 @@ def analysis_save_status(
     game_id: str,
     request_id: UUID,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: GameRepository = Depends(get_repository),
 ) -> dict[str, bool]:
     return {"saved": repo.has_analysis_save(game_id, str(request_id), owner)}
 
@@ -456,7 +463,7 @@ def analysis_save_status(
 def recall_analysis(
     game_id: str,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: GameRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Recall the latest saved analysis for one of this owner's games. A foreign or
     unanalyzed game is 404 (the owner-scoped load returns None either way)."""

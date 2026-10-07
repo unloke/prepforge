@@ -600,19 +600,19 @@ def test_build_different_stale_batch_remains_a_conflict(client):
 
 def test_build_receipt_failure_rolls_back_the_tree_and_revision(client, monkeypatch):
     import pytest
-    from prepforge_chess.storage.repositories import PrepForgeRepository
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
     _register(client, "atomic-receipt@example.com")
     rep, root, e4 = _create_with_move(client)
     before = client.get(f"/api/build/load?repertoire_id={rep}").json()
     body = {"repertoire_id": rep, "base_revision": before["revision"],
             "moves": [{"tempId": "tmp-atomic", "parentRef": e4, "uci": "e7e5"}]}
-    write = PrepForgeRepository.write_user_setting
+    write = WorkspaceRepository.write_user_setting
     def fail_receipt(repo, conn, owner, key, value):
         if key.startswith("build-receipt:"):
             raise RuntimeError("receipt failed")
         return write(repo, conn, owner, key, value)
     with monkeypatch.context() as patch:
-        patch.setattr(PrepForgeRepository, "write_user_setting", fail_receipt)
+        patch.setattr(WorkspaceRepository, "write_user_setting", fail_receipt)
         with pytest.raises(RuntimeError, match="receipt failed"):
             client.post("/api/build/add-moves", json=body, headers=csrf_headers(client))
     after = client.get(f"/api/build/load?repertoire_id={rep}").json()

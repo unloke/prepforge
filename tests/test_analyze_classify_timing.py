@@ -31,7 +31,7 @@ from prepforge_chess.core.models import Color, EngineEvaluation, MoveSource
 from prepforge_chess.services.browser_compute import classify_precomputed_game
 from prepforge_chess.services.replay_maia import ReplayMaia
 from prepforge_chess.storage.database import initialize_database
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 
 def _eval(cp: int) -> EngineEvaluation:
@@ -165,7 +165,7 @@ class _StatementCounter:
 
 def _repo_with_counter(tmp_path, name="timing.sqlite3"):
     engine = initialize_database(tmp_path / name)
-    repo = PrepForgeRepository(engine)
+    repo = WorkspaceRepository(engine)
     counter = _StatementCounter(engine)
     return repo, counter
 

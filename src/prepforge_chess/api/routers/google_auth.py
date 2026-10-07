@@ -17,7 +17,8 @@ from sqlalchemy.orm import Session
 
 from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db
-from prepforge_chess.api.models import Plan, User
+from prepforge_chess.api.models import User
+from prepforge_chess.storage.types import Plan
 from prepforge_chess.api.routers.auth import _open_session
 from prepforge_chess.api.security import decrypt_token, encrypt_token
 from prepforge_chess.services.google_oauth import (

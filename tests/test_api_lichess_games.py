@@ -1077,7 +1077,7 @@ def test_seen_marker_is_per_owner(client, monkeypatch):
 @pytest.mark.parametrize("linked", [False, True])
 def test_external_departure_never_writes_training(client, monkeypatch, method, linked):
     from unittest.mock import patch
-    from prepforge_chess.storage.repositories import PrepForgeRepository
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
     _register(client, "external-evidence@example.com")
     if linked:
@@ -1087,8 +1087,8 @@ def test_external_departure_never_writes_training(client, monkeypatch, method, l
     before = client.get("/api/train/smart/summary", params={
         "repertoire_id": rep["repertoire_id"],
     }).json()
-    with patch.object(PrepForgeRepository, "lock_user_setting") as ledger, patch.object(
-        PrepForgeRepository, "write_training_progress"
+    with patch.object(WorkspaceRepository, "lock_user_setting") as ledger, patch.object(
+        WorkspaceRepository, "write_training_progress"
     ) as progress:
         if method == "GET":
             response = client.get("/api/lichess/compare", params={
@@ -1128,12 +1128,12 @@ def _evidence_repo():
     from sqlalchemy import select
     from prepforge_chess.api.db import get_engine
     from prepforge_chess.api.models import User
-    from prepforge_chess.storage.repositories import PrepForgeRepository
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
     engine = get_engine()
     with engine.connect() as conn:
         owner = conn.execute(select(User.id)).scalar_one()
-    return PrepForgeRepository(engine), owner
+    return WorkspaceRepository(engine), owner
 
 
 @pytest.mark.parametrize("method", ["GET", "POST"])

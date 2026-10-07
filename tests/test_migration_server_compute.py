@@ -4,7 +4,7 @@ from sqlalchemy import create_engine, inspect, text
 
 from prepforge_chess.api.config import get_settings
 from prepforge_chess.core.chess_core import STARTING_FEN
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 
 def test_remove_compute_settings_preserves_repertoire_tree(tmp_path, monkeypatch):
@@ -45,7 +45,7 @@ def test_remove_compute_settings_preserves_repertoire_tree(tmp_path, monkeypatch
         command.upgrade(cfg, "head")
         tables = set(inspect(engine).get_table_names())
         assert "engine_settings" not in tables and "app_settings" not in tables
-        repertoire = PrepForgeRepository(engine).load_repertoire("rep")
+        repertoire = WorkspaceRepository(engine).load_repertoire("rep")
         assert repertoire.name == "Keep this tree" and repertoire.notes == "My notes"
         assert repertoire.root_node.children[0].move.uci == "e2e4"
         assert repertoire.root_node.children[0].is_user_prepared_move

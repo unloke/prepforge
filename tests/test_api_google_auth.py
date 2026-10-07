@@ -1,5 +1,6 @@
 """Google OAuth sign-in flow (network calls mocked)."""
 from __future__ import annotations
+from prepforge_chess.storage import sa_tables
 
 from urllib.parse import parse_qs, urlparse
 
@@ -25,7 +26,7 @@ def google_client(tmp_path, monkeypatch):
     db._engine = None
     db._SessionLocal = None
     limiter.enabled = False
-    db.Base.metadata.create_all(db.make_engine())
+    sa_tables.metadata.create_all(db.make_engine())
     return TestClient(main.app)
 
 
