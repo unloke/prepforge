@@ -105,14 +105,14 @@ async function main() {
     // defaults to it.
     await page.click('[data-testid="nav-train"]');
     await page.locator("#view-train.is-active").waitFor({ timeout: 10_000 });
-    await page.waitForFunction(
-      () => {
-        const select = document.getElementById("train-repertoire-select");
-        return select && select.options.length > 0 && select.value !== "";
-      },
-      null,
-      { timeout: 15_000 },
-    ).catch(() => fail("train repertoire select never populated"));
+    // Locator waits, not waitForFunction: the app's CSP has no 'unsafe-eval', and
+    // Playwright's polling predicate needs eval once the first check comes back false.
+    // The picker sets its value in the same tick it renders the options.
+    await page
+      .locator('#train-repertoire-select option:not([value=""])')
+      .first()
+      .waitFor({ state: "attached", timeout: 15_000 })
+      .catch(() => fail("train repertoire select never populated"));
 
     await page.click('[data-testid="start-train"]');
     // Smart prompt lands on the teach banner for the single prepared move.
@@ -149,10 +149,11 @@ async function main() {
       .waitFor({ timeout: TIMEOUT_MS });
 
     // Selection state cleared on every square after the move.
-    await page.waitForFunction(() => {
-      const pressed = document.querySelectorAll('#train-board button.square[aria-pressed="true"]');
-      return pressed.length === 0;
-    }, { timeout: 10_000 }).catch(() => fail("some square keeps aria-pressed=true after the move"));
+    await page
+      .locator('#train-board button.square[aria-pressed="true"]')
+      .first()
+      .waitFor({ state: "detached", timeout: 10_000 })
+      .catch(() => fail("some square keeps aria-pressed=true after the move"));
 
     const statsCorrect = ((await page.locator('#train-stat-correct').textContent()) || "").trim();
     if (statsCorrect !== "1") {
