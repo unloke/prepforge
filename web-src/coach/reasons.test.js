@@ -20,6 +20,9 @@ describe("proven reasons on real positions", () => {
     ["AgjLtJi2/65", betterReason, { kind: "defend", type: "p", square: "a4" }],
     ["AgjLtJi2/45", betterReason, { kind: "escape", type: "b", square: "h5", from: "f7" }],
     ["9oLH8Czy/18", betterReason, { kind: "attack", type: "b", square: "b5" }],
+    ["iIbxaesL/6", replyReason, { kind: "attack", type: "n", square: "f6", reply: "e5" }],
+    ["iIbxaesL/94", betterReason, { kind: "stops", reply: "48.h5" }],
+    ["Qgb5C4uK/54", betterReason, { kind: "stops", reply: "28.f5" }],
   ])("%s", (id, detect, expected) => {
     expect(detect(move(id))).toEqual(expected);
   });
@@ -55,6 +58,7 @@ describe("wording", () => {
     expect(reasonPhrase({ kind: "escape", type: "b", square: "h5" })).toBe("moves the bishop out of attack");
     expect(reasonParticiple("moves the bishop out of attack")).toBe("moving the bishop out of attack");
     expect(reasonParticiple("defends their pawn on e5")).toBe("defending their pawn on e5");
+    expect(reasonParticiple(reasonPhrase({ kind: "stops", reply: "28.f5" }))).toBe("stopping 28.f5");
   });
 
   it("reads in the coach, in the user's voice and for the opponent's move", () => {
@@ -68,6 +72,8 @@ describe("wording", () => {
     expect(read("ehz1gRmt/75")).toContain("38.Ke1 blocks your passed pawn on e2.");
     expect(read("iIbxaesL/70")).toMatch(/^Nxe5 is slightly inaccurate: it allows 36\.fxe5, which attacks the knight on d6\. Nf6 was better\./);
     expect(read("AgjLtJi2/45")).toMatch(/Bh5 was the move, moving the bishop out of attack\.$/);
+    expect(read("iIbxaesL/94")).toMatch(/h5 was the move, stopping 48\.h5\.$/);
+    expect(read("Qgb5C4uK/54")).toBe("27...Qc7 is a mistake. They should have played f5, stopping 28.f5. Punish it with 28.f5 and you're slightly better.");
     expect(read("AgjLtJi2/65")).toBe("Rxe7 is slightly inaccurate. Kb3 was better: it defends the pawn on a4.");
   });
 });

@@ -3,14 +3,16 @@
 // Each detector states one board fact and only when a concrete check proves it: a legal
 // capture, a static exchange on one square, and the engine line keeping the pieces where
 // the claim puts them. When no check passes the detector returns null and the coach keeps
-// its plain verdict. Research and audit: research/coach-precision/REPORT.md.
+// its plain verdict. Research and audit: research/coach-precision/REPORT.md, REPORT-r2.md.
 //
 // A reason is { kind, type, square, reply? } and is worded by the caller, which knows
 // whose pieces they are:
 //   defend  - the move adds a defender to a piece that was en prise ("defends the pawn on b7")
 //   escape  - the move takes an attacked, undefended piece to a square nothing attacks
 //   block   - the move stops an enemy passed pawn on the square in front of it
-//   attack  - a move newly attacks a piece it can win (best-move and reply reasons)
+//   attack  - a move newly attacks a piece it can win, or a pawn that drives a piece back
+//             (best-move and reply reasons)
+//   stops   - the better move makes the opponent's reply illegal ("stops 28.f5")
 import { Chess } from "chess.js";
 import { playUci, winnableTargets } from "./move-facts.js";
 import { seeCapture, PIECE_NAME, PIECE_VALUE } from "./material.js";
@@ -158,7 +160,30 @@ export function replyReason(f) {
     if (alt && winnableTargets(alt.board.fen(), alt.move.to, alt.move.color).some((x) => x.square === t.square)) continue;
     return { kind: "attack", type: t.type, square: t.square, reply: f.replySan };
   }
-  return null;
+  return pawnChase(f, played, best, reply);
+}
+
+// The reply is a pawn that attacks a piece, and the piece retreats next in the engine
+// line. The piece may be defended (no material at stake): the pawn still drives it back.
+// The same pawn move after the better move must not hit the same piece.
+function pawnChase(f, played, best, reply) {
+  const c = played.move.color;
+  if (reply.move.piece !== "p" || (seeCapture(reply.board, reply.move.to, c) || 0) > 0) return null;
+  const back = after(reply.board.fen(), (f.playedPvUci || [])[2]);
+  if (!back || back.move.piece === "p" || back.move.piece === "k" || back.move.captured) return null;
+  const sq = back.move.from;
+  const piece = played.board.get(sq);
+  if (!piece || piece.color !== c || !legalHit(reply.board, reply.move.to, sq, reply.move.color)) return null;
+  if (played.board.attackers(sq, reply.move.color).includes(reply.move.from)) return null; // already attacked
+  if (reply.board.attackers(back.move.to, reply.move.color).includes(reply.move.to)) return null; // not clear of it
+  // Where the same piece stands after the better move.
+  const origin = sq === played.move.to ? played.move.from : sq;
+  const there = best.move.from === origin ? best.move.to : origin;
+  const same = best.board.get(there);
+  if (!same || same.type !== piece.type || same.color !== c) return null;
+  const alt = after(best.board.fen(), f.replyUci);
+  if (alt && legalHit(alt.board, alt.move.to, there, alt.move.color)) return null;
+  return { kind: "attack", type: piece.type, square: sq, reply: f.replySan };
 }
 
 // The attack is what the line is about: the opponent's reply moves the attacked piece, or
@@ -198,15 +223,32 @@ export function betterReason(f) {
     }
   }
   const guard = guardReason(f.fenBefore, f.bestUci, f.bestPvUci || []);
-  if (!guard) return null;
+  if (!guard) return stopsReason(f, best);
   const own = guardReason(f.fenBefore, f.uci, f.playedPvUci || []);
   if (own && own.kind === guard.kind && own.type === guard.type) return null;
   // The played line's reply takes the piece the better move would have looked after.
   const target = guard.kind === "escape" ? guard.from : guard.square;
   const played = after(f.fenBefore, f.uci);
   const reply = played && f.replyUci ? after(played.board.fen(), f.replyUci) : null;
-  if (!reply || reply.move.to !== target || !reply.move.captured) return null;
+  if (!reply || reply.move.to !== target || !reply.move.captured) return stopsReason(f, best);
   return guard;
+}
+
+// The better move makes the engine's reply to the error illegal: a quiet reply to a square
+// that was empty, by the same piece, and not merely postponed by a check.
+function stopsReason(f, best) {
+  if (!f.replyUci || best.board.isCheck()) return null;
+  const played = after(f.fenBefore, f.uci);
+  const reply = played && after(played.board.fen(), f.replyUci);
+  if (!reply || reply.move.captured || reply.move.promotion) return null;
+  const before = board(f.fenBefore);
+  if (before.get(reply.move.to)) return null;
+  const p = before.get(reply.move.from);
+  const q = best.board.get(reply.move.from);
+  if (!p || !q || p.type !== q.type || p.color !== q.color || p.color === played.move.color) return null;
+  if (after(best.board.fen(), f.replyUci)) return null;
+  const [, turn, , , , n] = played.board.fen().split(" ");
+  return { kind: "stops", reply: `${n}${turn === "w" ? "." : "..."}${reply.move.san}` };
 }
 
 // The reason as a verb phrase. `owner` words the pieces: "the" on the user's own read,
@@ -222,10 +264,11 @@ export function reasonPhrase(r, { mine = "the", theirs = "the" } = {}) {
   if (r.kind === "defend") return `defends ${mine} ${name} on ${r.square}`;
   if (r.kind === "block") return `blocks ${theirs} passed pawn on ${r.square}`;
   if (r.kind === "attack") return `attacks ${theirs} ${name} on ${r.square}`;
+  if (r.kind === "stops") return `stops ${r.reply}`;
   return "";
 }
 
 // "attacks ..." -> "attacking ...", for "Bh5 was the move, attacking ...".
 export function reasonParticiple(phrase) {
-  return String(phrase || "").replace(/^(moves|defends|blocks|attacks) /, (_, v) => `${v === "moves" ? "moving" : `${v.slice(0, -1)}ing`} `);
+  return String(phrase || "").replace(/^(moves|defends|blocks|attacks|stops) /, (_, v) => `${{ moves: "moving", stops: "stopping" }[v] || `${v.slice(0, -1)}ing`} `);
 }
