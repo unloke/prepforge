@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import chess
+import gc
+import weakref
 
 from prepforge_chess.core.chess_core import STARTING_FEN, ChessCore
 from prepforge_chess.core.models import (
@@ -12,6 +14,25 @@ from prepforge_chess.core.models import (
     OpeningNode,
 )
 from prepforge_chess.storage import codec
+
+
+def test_hydration_does_not_retain_the_tree_in_its_recursive_closure():
+    enabled = gc.isenabled()
+    gc.disable()
+    try:
+        tree = codec.hydrate_opening_tree(
+            STARTING_FEN,
+            {"root": OpeningNode(id="root", repertoire_id="rep", fen=STARTING_FEN,
+                                 side_to_move=Color.WHITE)},
+            {"root": None},
+        )
+        reference = weakref.ref(tree)
+        del tree
+        assert reference() is None
+    finally:
+        if enabled:
+            gc.enable()
+        gc.collect()
 
 
 def test_long_game_round_trip():

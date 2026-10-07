@@ -964,6 +964,8 @@ class OpeningBuilderService:
         items: List[OpeningTreeItem],
         filter_mode: str,
     ) -> Set[str]:
+        if filter_mode == "all":
+            return {item.node_id for item in items}
         by_id = {item.node_id: item for item in items}
         included = set()
         for item in items:

@@ -943,13 +943,16 @@ def build_delete_nodes(
         payload.update(receipt)
         return payload
     _check_base_revision(meta, body.base_revision, repo)
+    service = OpeningBuilderService(repo)
     try:
-        removed = OpeningBuilderService(repo).delete_nodes_batch(
+        removed = service.delete_nodes_batch(
             body.repertoire_id, list(body.node_ids), receipt_target=(owner, key)
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    payload = build_workspace_payload(repo, body.repertoire_id, owner_user_id=owner)
+    payload = build_workspace_payload(
+        repo, body.repertoire_id, owner_user_id=owner, repertoire=service.loaded_repertoire
+    )
     payload["removed_node_ids"] = removed
     return payload
 

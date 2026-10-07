@@ -229,13 +229,14 @@ def _replay_on_board(
         raise ValueError("illegal move {0} for FEN {1}".format(uci, board.fen()))
     if fen_before is None:
         fen_before = board.fen()
-    san = board.san(move)
     side = _color_from_board(board)
     move_number = board.fullmove_number
     record_ply = ply if ply is not None else (board.fullmove_number - 1) * 2 + (
         1 if board.turn == chess.WHITE else 2
     )
-    board.push(move)
+    # SAN generation already pushes to detect check/mate; keep that push rather
+    # than popping it and replaying the same move a second time.
+    san = board.san_and_push(move)
     return MoveRecord(
         uci=move.uci(),
         san=san,
@@ -477,4 +478,7 @@ def hydrate_opening_tree(
 
     root.children = []
     walk(root, root.fen)
+    # The recursive closure captures every node via ``children``. Break its
+    # self-reference so released trees do not wait for cyclic GC to be freed.
+    del walk
     return root

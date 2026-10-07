@@ -101,6 +101,15 @@ def _exercise_routes(client):
         assert reads == 1, (count, reads)
     assert prepared[2]["nodes"][0]["is_prepared"]
     assert not branch[2]["nodes"][0]["is_enabled"]
+    child_id = next(n["id"] for n in load[2]["nodes"] if n["parent_id"] == node_id)
+    deleted = _measured(engine, lambda: client.post(
+        "/api/build/delete-nodes",
+        json={"repertoire_id": rep_id, "node_ids": [child_id]},
+        headers=csrf_headers(client),
+    ))
+    assert deleted[1] == 1, deleted[:2]
+    assert child_id in deleted[2]["removed_node_ids"]
+    assert all(n["id"] != child_id for n in deleted[2]["nodes"])
     return {"load": load[0], "mark_prepared": prepared[0],
             "annotations": annotations[0], "disable_branch": branch[0]}
 

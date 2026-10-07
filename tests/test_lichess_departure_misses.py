@@ -107,6 +107,31 @@ def test_record_departure_misses_counts_each_game_exactly_once():
     )
 
 
+def test_batch_writes_each_target_once_and_deduplicates_games():
+    from sqlalchemy import event
+
+    repository = _repository()
+    repertoire, first = _repertoire_with_target(repository)
+    second = OpeningBuilderService(repository).add_move(
+        repertoire.id, repertoire.root_node.id, "d2d4", is_user_prepared_move=True
+    ).id
+    summaries = [_summary("a", repertoire.id, first), _summary("b", repertoire.id, second),
+                 _summary("c", repertoire.id, first), _summary("a", repertoire.id, first)]
+    writes = []
+    def collect(_conn, _cursor, statement, _params, _context, _many):
+        if statement.startswith("INSERT INTO training_progress") and "DO UPDATE" in statement:
+            writes.append(statement)
+    event.listen(repository.engine, "before_cursor_execute", collect)
+    try:
+        assert record_departure_misses(repository, summaries, owner_user_id="batch-owner",
+                                      verified_usernames=frozenset({"Alice"})) == 3
+    finally:
+        event.remove(repository.engine, "before_cursor_execute", collect)
+    assert len(writes) == 2
+    assert repository.load_training_progress(repertoire.id, first, owner_user_id="batch-owner").attempts == 2
+    assert repository.load_training_progress(repertoire.id, second, owner_user_id="batch-owner").attempts == 1
+
+
 def test_record_departure_misses_failure_rolls_back_and_retry_counts_once():
     """The regression: a crash between the progress write and the ledger write
     must leave NOTHING committed. The retry then applies each game exactly once

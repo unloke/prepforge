@@ -108,7 +108,7 @@ def build_workspace_payload(
         else {}
     )
     mastery = mastery_map(repertoire.root_node, repertoire.color, progress_by_id)
-    health = compute_health(repertoire.root_node, repertoire.color, progress_by_id)
+    health = compute_health(repertoire.root_node, repertoire.color, progress_by_id, states=mastery)
     # Refresh the dashboard's cached badge off this already-computed walk. Every Build
     # mutation funnels back through here, so the cache stays current with no extra cost.
     # D-01: the cache records computed_at + tree revision so readers can tell how

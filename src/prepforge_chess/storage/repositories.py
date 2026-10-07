@@ -1300,7 +1300,7 @@ class PrepForgeRepository:
         # blocked = 1 once a DISABLED ancestor is on the path (the node's own
         # disabled flag is checked separately below, matching _is_trainable).
         blocked = (
-            select(nodes.c.id.label("id"), literal(0).label("blocked"))
+            select(nodes.c.id.label("id"), nodes.c.repertoire_id, literal(0).label("blocked"))
             .where(nodes.c.parent_id.is_(None))
             .where(nodes.c.repertoire_id.in_(owner_reps))
             .cte("effective_nodes", recursive=True)
@@ -1308,6 +1308,7 @@ class PrepForgeRepository:
         blocked = blocked.union_all(
             select(
                 nodes.c.id,
+                nodes.c.repertoire_id,
                 case(
                     (blocked.c.blocked > 0, literal(1)),
                     (nodes.c.is_enabled == 0, literal(1)),
@@ -1315,7 +1316,10 @@ class PrepForgeRepository:
                 ),
             )
             .where(nodes.c.parent_id == blocked.c.id)
-            .where(nodes.c.repertoire_id.in_(owner_reps))
+            # Carry ownership down the tree and use both columns of the existing
+            # (repertoire_id, parent_id) index instead of scanning a repertoire
+            # for each parent in the recursive step.
+            .where(nodes.c.repertoire_id == blocked.c.repertoire_id)
         )
         # weak, in SQL: attempts >= 2 and lifetime accuracy below half and the
         # recent-form score still low. correct*2 < attempts avoids the
