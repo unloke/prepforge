@@ -480,5 +480,5 @@ def hydrate_opening_tree(
     walk(root, root.fen)
     # The recursive closure captures every node via ``children``. Break its
     # self-reference so released trees do not wait for cyclic GC to be freed.
-    del walk
+    walk = None
     return root
