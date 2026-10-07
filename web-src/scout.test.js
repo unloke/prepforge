@@ -5,7 +5,6 @@ import {
   ANALYZE_PLIES,
   MAX_PLIES,
   SCOUT_BRANCH_SCORE_CAP,
-  SCOUT_RECENCY_HALF_LIFE_DAYS,
   aggregateOpeningBranches,
   branchPathKey,
   buildOpeningTrie,

@@ -63,6 +63,12 @@ export function localBoardAfterMove(fen, moveUci) {
   };
 }
 
+// True for the standard start position with White to move (castling and clocks ignored).
+export function isStartFen(fen) {
+  const parts = String(fen || "").trim().split(/\s+/);
+  return parts[0] === "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR" && parts[1] === "w";
+}
+
 // SAN for a UCI line from fen, played on one board. Stops at the first move that
 // is illegal (or a malformed FEN) and returns what it has.
 export function localSanLine(fen, uciLine) {

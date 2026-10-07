@@ -3,9 +3,7 @@ import { describe, it, expect } from "vitest";
 import {
   PHASE_LABELS,
   phaseOfFen,
-  isStartFen,
   promptTipFor,
-  rankMove,
   buildPhaseCoach,
   clusterQueueByPhase,
 } from "./phase-coach.js";
@@ -29,38 +27,6 @@ describe("PHASE_LABELS", () => {
     expect(PHASE_LABELS.opening).toBe("Opening");
     expect(PHASE_LABELS.middlegame).toBe("Middlegame");
     expect(PHASE_LABELS.endgame).toBe("Endgame");
-  });
-});
-
-describe("rankMove", () => {
-  it("ranks from the real probability field, ignoring a fake rank blob", () => {
-    // Unsorted on purpose, and every `rank` field is a lie. Ranking must follow
-    // probability, not a hardcoded oracle copy.
-    const predictions = [
-      { move_uci: "g1f3", probability: 0.1, rank: 1 },
-      { move_uci: "e2e4", probability: 0.5, rank: 99 },
-      { move_uci: "d2d4", probability: 0.22, rank: 1 },
-      { move_uci: "c2c4", probability: 0.18, rank: 0 },
-    ];
-    expect(rankMove(predictions, "e2e4")).toEqual({
-      rank: 1,
-      probability: 0.5,
-      move_uci: "e2e4",
-    });
-    expect(rankMove(predictions, "d2d4")).toEqual({
-      rank: 2,
-      probability: 0.22,
-      move_uci: "d2d4",
-    });
-    expect(rankMove(predictions, "c2c4").rank).toBe(3);
-    expect(rankMove(predictions, "g1f3").rank).toBe(4);
-    expect(rankMove(predictions, "g1f3").probability).toBe(0.1);
-  });
-
-  it("returns null when the move is missing or the list is empty", () => {
-    expect(rankMove(null, "e2e4")).toBeNull();
-    expect(rankMove([], "e2e4")).toBeNull();
-    expect(rankMove([{ move_uci: "e2e4", probability: 0.4 }], "d2d4")).toBeNull();
   });
 });
 

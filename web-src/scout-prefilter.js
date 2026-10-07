@@ -298,14 +298,6 @@ export function evalMapFromCache(fens, cache, depth = SCOUT_PREFILTER_DEPTH) {
   return map;
 }
 
-/** Store eval results into the session cache. */
-export function rememberPrefilterEvals(cache, evalMap, depth = SCOUT_PREFILTER_DEPTH) {
-  if (!cache || !evalMap) return;
-  for (const [fen, evalResult] of evalMap) {
-    cache.set(prefilterCacheKey(fen, depth), evalResult);
-  }
-}
-
 /**
  * Shallow Stockfish pass over all candidate lines. Returns ranked entries and the
  * top pool for Maia (limit + backup headroom). Never writes UI-facing data.

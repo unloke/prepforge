@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { localBoardInfo, localBoardAfterMove, localGameOver, localSanLine } from "./chess-local.js";
+import { localBoardInfo, localBoardAfterMove, localGameOver, localSanLine, isStartFen } from "./chess-local.js";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -83,5 +83,13 @@ describe("localSanLine", () => {
   it("stops at the first illegal move and survives a bad FEN", () => {
     expect(localSanLine(START, ["e2e4", "e2e4", "g1f3"])).toEqual(["e4"]);
     expect(localSanLine("not a fen", ["e2e4"])).toEqual([]);
+  });
+});
+
+describe("isStartFen", () => {
+  it("is true only for the start position with White to move", () => {
+    expect(isStartFen(START)).toBe(true);
+    expect(isStartFen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1")).toBe(false);
+    expect(isStartFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1")).toBe(false);
   });
 });

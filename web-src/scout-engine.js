@@ -7,7 +7,7 @@ import stockfishManifest from "../src/prepforge_chess/web/static/engine/stockfis
 import { analyzeGamePositions, isTerminalPosition } from "./engine/game-analyzer.js";
 import { classifyMove, evaluationToWin } from "./explain.js";
 import { confidence } from "./scout-stats.js";
-import { ANALYZE_PLIES, MAX_PLIES, triePathKey } from "./scout.js";
+import { ANALYZE_PLIES, triePathKey } from "./scout.js";
 
 export { triePathKey };
 

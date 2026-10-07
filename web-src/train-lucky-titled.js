@@ -48,15 +48,6 @@ export const TITLED_PLAYERS = [
   "penguingim1",
 ];
 
-// Small emergency/test references only. Production never enables this layer:
-// it is retained so offline fixtures and a manually requested verification can
-// still exercise the single-game export without creating a maintained pool.
-export const CURATED_GAMES = [
-  { id: "kAdOQKeh", white: "respects_55", black: "DrNykterstein" },
-  { id: "xKWdG1d1", white: "DrNykterstein", black: "opponent" },
-  { id: "SnXhGC57", white: "opponent", black: "DrNykterstein" },
-];
-
 export const TITLED_GAMES_PER_PLAYER = 5;
 export const TITLED_MAX_REQUESTS = 3;
 export const TITLED_MAX_PLAYERS_PER_CLICK = 2;

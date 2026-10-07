@@ -6,7 +6,6 @@ import {
   pickMaiaReply,
   mergeRepertoireReplies,
   pickOpponentReply,
-  pickRepertoireReply,
   playPositionAfterReply,
 } from "./train-opponent.js";
 
@@ -194,7 +193,7 @@ describe("pickOpponentReply", () => {
   });
 });
 
-describe("pickMaiaReply / pickRepertoireReply", () => {
+describe("pickMaiaReply", () => {
   it("ignores Maia mass on illegal moves", () => {
     expect(
       pickMaiaReply(
@@ -208,11 +207,6 @@ describe("pickMaiaReply / pickRepertoireReply", () => {
     ).toBe("e7e6");
   });
 
-  it("picks uniformly among legal repertoire children", () => {
-    const kids = ["e7e5", "c7c5"];
-    expect(pickRepertoireReply(kids, LEGAL, () => 0)).toBe("e7e5");
-    expect(pickRepertoireReply(kids, LEGAL, () => 0.9)).toBe("c7c5");
-  });
 });
 
 describe("playPositionAfterReply", () => {

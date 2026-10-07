@@ -242,8 +242,6 @@ export function buildE2ePrepSection(scenarioId, escapeHtml) {
   });
 }
 
-export const SCOUT_E2E_PREP_SCENARIO_IDS = ["enginePrepCard", "deepScanGap", "engineNoOAuth"];
-
 /** Alias legacy scenario ids to the real report fixtures. */
 export function normalizeE2ePrepScenarioId(scenarioId) {
   if (scenarioId === "confirmedHit" || scenarioId === "oauthGap") return "enginePrepCard";

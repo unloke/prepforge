@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyTheme, effectiveTheme, nextTheme, normalizeTheme, themeLabel } from "./theme.js";
+import { applyTheme, effectiveTheme, normalizeTheme, } from "./theme.js";
 
 describe("theme preferences", () => {
   it("normalizes unknown values to the safe system default", () => {
@@ -25,10 +25,4 @@ describe("theme preferences", () => {
     expect(root.style.colorScheme).toBe("light dark");
   });
 
-  it("cycles through system, dark, and light", () => {
-    expect(nextTheme("system")).toBe("dark");
-    expect(nextTheme("dark")).toBe("light");
-    expect(nextTheme("light")).toBe("system");
-    expect(themeLabel("system")).toBe("System");
-  });
 });

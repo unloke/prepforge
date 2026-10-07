@@ -38,7 +38,7 @@ import {
   peekSharedMaia3Provider,
 } from "./engine/maia3-provider.js";
 import { createCsrfTokenSource, headersWithCsrf, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
-import { localBoardInfo, localBoardAfterMove, localGameOver, localSanLine } from "./chess-local.js";
+import { localBoardInfo, localBoardAfterMove, localGameOver, localSanLine, isStartFen } from "./chess-local.js";
 import { buildPvPreview, clampPly, previewPosition, previewLabel, stepPreview } from "./pv-preview.js";
 import { applyTheme } from "./theme.js";
 import { bindRailCollapseOnNavigate } from "./rail-nav.js";
@@ -60,7 +60,6 @@ import {
   acquireFlushLock,
   buildAddId,
   buildDeleteId,
-  outboxHasRejected,
   outboxHasWork,
   outboxIsQuiescent,
   releaseFlushLock,
@@ -73,7 +72,6 @@ const saveDurableOutbox = async (owner, state, settled) => {
   return (await outboxDatabase()).saveDurableOutbox(owner, snapshot, done);
 };
 const clearDurableOutbox = async (owner) => (await outboxDatabase()).clearDurableOutbox(owner);
-import { loadTeamDirectory } from "./team-directory.js";
 import { clearCheckpoint, evalMapFrom, loadCheckpoint, markCheckpointSaved, saveCheckpoint } from "./analyze-checkpoint.js";
 import {
   loadReturnState,
@@ -98,7 +96,6 @@ import {
   replyReasonNote,
   unavailableExplorer,
 } from "./train-opponent.js";
-import { isStartFen } from "./train-lucky.js";
 import {
   resolvePlayColor,
   formatPlayTrail,
@@ -13215,14 +13212,6 @@ function gamesSourceAccountIds() {
     lichessAccounts().some((a) => a.id === id)
   );
   return valid.length ? valid : [];
-}
-
-function gamesPickedUsernames() {
-  return resolveFetchUsernames({
-    selection: gamesSourceSelection(),
-    linkedAccounts: lichessAccounts(),
-    includeExternal: true,
-  });
 }
 
 function openGamesComposer(anchor) {

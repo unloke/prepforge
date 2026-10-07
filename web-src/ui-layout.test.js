@@ -442,7 +442,6 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("selectionFromStorage");
     expect(app).toContain("selectionToStorage");
     // Games and Scout resolve through the same fetch path (linked + external).
-    expect(app).toContain("gamesPickedUsernames");
     expect(app).toContain("openGamesComposer");
     expect(app).toContain("writeGamesSelection");
     expect(app).toContain("gamesSourceAccountIds");

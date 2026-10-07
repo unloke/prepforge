@@ -11,7 +11,7 @@ export const MAIA_ENRICH_FAILED = "failed";
 // the feature needs Maia instead of looking like a failure or a partial read.
 export const MAIA_ENRICH_OFF = "maia-off";
 
-import { SCOUT_PREFILTER_LIMIT, SCOUT_PREFILTER_POOL_SIZE } from "./scout-prefilter.js";
+import { SCOUT_PREFILTER_POOL_SIZE } from "./scout-prefilter.js";
 
 export const SCOUT_MAIA_TARGET_COUNT = 12;
 /**
@@ -103,20 +103,6 @@ export function rememberMaiaFailure(maiaResults, fen, rating) {
   maiaResults.set(maiaResultKey(fen, rating), { failed: true, method: "wdlRead" });
 }
 
-export function countMaiaOutcomes(lines, { maiaResults, rating, fenAfterLine }) {
-  let resolved = 0;
-  let failed = 0;
-  let missing = 0;
-  for (const line of lines || []) {
-    const fen = fenAfterLine(line.ucis);
-    const entry = getMaiaResultEntry(maiaResults, fen, rating);
-    if (entry?.failed) failed += 1;
-    else if (entry?.maiaWdl && entry.maiaScorePct != null) resolved += 1;
-    else missing += 1;
-  }
-  return { resolved, failed, missing, expected: lines?.length || 0 };
-}
-
 export function classifyMaiaEnrichState({ resolved, failed, expected }) {
   const attempted = resolved + failed;
   if (!expected) return MAIA_ENRICH_IDLE;
@@ -124,13 +110,6 @@ export function classifyMaiaEnrichState({ resolved, failed, expected }) {
   if (resolved === expected) return MAIA_ENRICH_READY;
   if (resolved === 0) return MAIA_ENRICH_FAILED;
   return MAIA_ENRICH_PARTIAL;
-}
-
-export function openingLinesNeedMaia(lines, { maiaResults, rating, fenAfterLine }) {
-  if (!lines?.length) return false;
-  return lines.some(
-    (line) => !isMaiaAttempted(maiaResults, fenAfterLine(line.ucis), rating),
-  );
 }
 
 /** Scope key — failures retry only when speed, game count, or median rating changes. */
@@ -270,103 +249,6 @@ export async function readLineMaiaWdl(
   const result = { maiaWdl, maiaScorePct };
   rememberMaiaResult(maiaResults, fen, r, result);
   return result;
-}
-
-/**
- * Fetch missing Maia reads for opening lines, store in maiaResults, return enriched lines.
- * Caller should re-run rankGamePlan on the returned lines for Maia-based ordering.
- */
-export async function enrichOpeningLinesWithMaia(
-  lines,
-  {
-    provider,
-    rating,
-    oppColor,
-    baselineScorePct,
-    fenAfterLine,
-    enrichPrepTarget: enrich = enrichPrepTarget,
-    cache = new Map(),
-    maiaResults = null,
-    shouldCancel = () => false,
-  },
-) {
-  if (!lines?.length) return lines;
-  const out = [...lines];
-  for (let i = 0; i < out.length; i += 1) {
-    if (shouldCancel()) return out;
-    const line = out[i];
-    const fen = fenAfterLine(line.ucis);
-    if (isMaiaAttempted(maiaResults, fen, rating)) {
-      const cached = getCachedMaiaResult(maiaResults, fen, rating);
-      if (cached) out[i] = applyMaiaToLine(line, cached, baselineScorePct, enrich);
-      continue;
-    }
-    const maia = await readLineMaiaWdl(line, {
-      provider,
-      rating,
-      oppColor,
-      fenAfterLine,
-      cache,
-      maiaResults,
-    });
-    if (!maia || shouldCancel()) continue;
-    out[i] = applyMaiaToLine(line, maia, baselineScorePct, enrich);
-  }
-  return out;
-}
-
-/**
- * Run Maia on a ranked pool until `successTarget` lines succeed. Failed reads
- * pull the next Stockfish-ranked backup without surfacing engine data in the UI.
- */
-export async function enrichMaiaUntilFull(
-  rankedPool,
-  {
-    successTarget = SCOUT_MAIA_TARGET_COUNT,
-    maxAttempts = SCOUT_MAIA_MAX_ATTEMPTS,
-    provider,
-    rating,
-    oppColor,
-    baselineScorePct,
-    fenAfterLine,
-    enrichPrepTarget: enrich = enrichPrepTarget,
-    cache = new Map(),
-    maiaResults = null,
-    shouldCancel = () => false,
-  } = {},
-) {
-  const successes = [];
-  const seenKeys = new Set();
-  let attempts = 0;
-
-  for (const line of rankedPool || []) {
-    if (shouldCancel()) break;
-    if (successes.length >= successTarget) break;
-    if (attempts >= maxAttempts) break;
-    const key = branchPathKey(line.ucis);
-    if (seenKeys.has(key)) continue;
-    seenKeys.add(key);
-
-    const fen = fenAfterLine(line.ucis);
-    let maia = null;
-    if (isMaiaAttempted(maiaResults, fen, rating)) {
-      maia = getCachedMaiaResult(maiaResults, fen, rating);
-    } else {
-      attempts += 1;
-      maia = await readLineMaiaWdl(line, {
-        provider,
-        rating,
-        oppColor,
-        fenAfterLine,
-        cache,
-        maiaResults,
-      });
-    }
-    if (!maia || shouldCancel()) continue;
-    successes.push(applyMaiaToLine(line, maia, baselineScorePct, enrich));
-  }
-
-  return successes;
 }
 
 /** Per-colour success targets: min(successTarget, pool entries of that colour). */
