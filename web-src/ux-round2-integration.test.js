@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { selectionChips } from "./views/shared/source-composer.js";
+import { appSource } from "./test-app-source.js";
 
-const source = readFileSync(new URL("./app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+const source = appSource();
 function compile(marker, deps, prelude = "") {
   const start = source.indexOf(marker);
   const end = source.indexOf("\n}\n", start) + 2;

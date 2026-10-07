@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { readFileSync } from "node:fs";
+import { appSource } from "./test-app-source.js";
 
-const source = readFileSync(new URL("./app.js", import.meta.url), "utf8");
+const source = appSource();
 const toastSource = source.slice(source.indexOf("class Toast {"), source.indexOf("class ToastStack {"));
 const Toast = new Function("requestAnimationFrame", `${toastSource}\nreturn Toast;`)((fn) => fn());
 

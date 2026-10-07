@@ -1,8 +1,8 @@
 import { expect, it, vi } from "vitest";
 import { analyzeTiered } from "./engine/tiered-analysis.js";
-import { readFileSync } from "node:fs";
+import { appSource } from "./test-app-source.js";
 
-const source = readFileSync(new URL("./app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+const source = appSource();
 
 it("the live chart enters Maia loading while warmup is still pending", async () => {
   let resolve;

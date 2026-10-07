@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { appSource } from "./test-app-source.js";
 
 import {
   activateWorkspaceTab,
@@ -228,7 +229,7 @@ describe("games/scout deep links", () => {
     const { fileURLToPath } = await import("node:url");
     const { dirname, join } = await import("node:path");
     const root = dirname(fileURLToPath(import.meta.url));
-    const app = readFileSync(join(root, "app.js"), "utf8");
+    const app = appSource();
     expect(app).toContain("appState.replaySection = loc.replaySection");
     expect(app).toContain("setReplaySection(appState.replaySection, { syncUrl: false })");
     expect(app).toContain('button.dataset.replaySection === (appState.replaySection || "games")');

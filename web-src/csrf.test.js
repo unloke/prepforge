@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { appSource } from "./test-app-source.js";
 
 import {
   readCsrfCookie,
@@ -72,7 +73,7 @@ describe("headersWithCsrf", () => {
     const { fileURLToPath } = await import("node:url");
     const { dirname, join } = await import("node:path");
     const root = dirname(fileURLToPath(import.meta.url));
-    const app = readFileSync(join(root, "app.js"), "utf8");
+    const app = appSource();
     expect(app).toContain('import { createCsrfTokenSource, headersWithCsrf, readCsrfCookie, CSRF_HEADER } from "./csrf.js"');
     for (const site of ["beaconFlushBuild", "beaconFlushTrain"]) {
       expect(app).toContain(`function ${site}(`);

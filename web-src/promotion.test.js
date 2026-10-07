@@ -4,9 +4,10 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { localBoardInfo, localBoardAfterMove } from "./chess-local.js";
+import { appSource } from "./test-app-source.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
-const app = readFileSync(join(root, "app.js"), "utf8");
+const app = appSource();
 const chessLocal = readFileSync(join(root, "chess-local.js"), "utf8");
 const css = readFileSync(join(root, "styles.css"), "utf8");
 const html = readFileSync(join(root, "index.html"), "utf8");

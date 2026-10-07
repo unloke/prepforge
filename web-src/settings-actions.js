@@ -1,7 +1,7 @@
 // Reads wait for queued writes; a read cannot invalidate a committed write.
 export function createSettingsActions({
   appState, currentOwnerId, ensureSettingsView, api, applySettingsPayload,
-  applyServerEngineGating, setStatusError, positionCoach, engineWidget,
+  applyServerEngineGating, setStatusError, getPositionCoach, engineWidget,
   activeViewName, explorerEvalEngine, explorerDrawerOpen, refreshExplorerPanel,
 }) {
 async function loadSettingsOnce({ render = true } = {}) {
@@ -68,9 +68,10 @@ async function saveSettings(patch) {
     // open Engine widget needs an explicit nudge to rebuild + re-analyze right now.
     if (patch && (Object.prototype.hasOwnProperty.call(patch, "stockfish_depth") ||
         (Number.isFinite(payload.stockfish_depth) && payload.stockfish_depth !== previousSettings?.stockfish_depth))) {
-      positionCoach.cancel();
+      const positionCoach = getPositionCoach(); // null until Analyze has loaded
+      positionCoach?.cancel();
       engineWidget.onDepthSettingChanged().catch(() => { /* best-effort */ });
-      if (activeViewName() === "analyze") positionCoach.update(positionCoach.fen, positionCoach.ctx);
+      if (positionCoach && activeViewName() === "analyze") positionCoach.update(positionCoach.fen, positionCoach.ctx);
       void explorerEvalEngine.sync();
     }
     // A Maia-rating change moves the Explorer Players pool (and its scope readout), which

@@ -6,13 +6,13 @@
 // dependencies injected. If a refactor drops the add path's single-flight
 // guard, or a click stops adding, these fail.
 import { describe, expect, it, vi } from "vitest";
-import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { localBoardAfterMove, localBoardInfo } from "./chess-local.js";
+import { appSource } from "./test-app-source.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
-const app = readFileSync(join(root, "app.js"), "utf8");
+const app = appSource();
 
 const CLICK_START = "async function onExplorerRowClick(rows, uci) {";
 const ADD_START = "async function onExplorerRowAdd(rows, uci) {";

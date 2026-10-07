@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildArrowHeadPath, buildArrowPath, endsUnder } from "./board-arrows.js";
+import { appSource } from "./test-app-source.js";
 
-const source = readFileSync(new URL("./app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+const source = appSource();
 
 // A minimal SVG DOM: enough for renderAnnotations to build its paths and groups.
 function fakeNode(tag) {
