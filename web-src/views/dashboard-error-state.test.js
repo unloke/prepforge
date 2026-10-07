@@ -20,7 +20,7 @@ function classList() {
 function makeEl(extra = {}) {
   return {
     hidden: false,
-    innerHTML: "",
+    get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     textContent: "",
     querySelectorAll: vi.fn(() => []),
     querySelector: vi.fn(() => null),
@@ -61,7 +61,6 @@ describe("Library error state", () => {
       appState: { signedIn: true, teams: [{ id: "t" }], pendingRepDeletes: new Set() },
       api,
       postJson: vi.fn(),
-      escapeHtml: (s) => s,
       setStatus: (m) => statuses.push(["status", m]),
       setStatusError: (m) => statuses.push(["error", m]),
       localDateString: () => "2026-09-29",
@@ -81,8 +80,8 @@ describe("Library error state", () => {
     container = makeEl({ closest: () => null });
     refreshStatus = makeEl({ hidden: true });
     card = makeEl({ classList: classList() });
-    today = makeEl({ hidden: false, innerHTML: "<b>stale</b>" });
-    steps = makeEl({ hidden: false, innerHTML: "<b>stale</b>" });
+    today = makeEl({ hidden: false, get innerHTML() { return this._html ?? "<b>stale</b>"; }, set innerHTML(value) { this._html = String(value); } });
+    steps = makeEl({ hidden: false, get innerHTML() { return this._html ?? "<b>stale</b>"; }, set innerHTML(value) { this._html = String(value); } });
     cols = makeEl({ hidden: false });
     count = makeEl({ hidden: false, textContent: "3" });
     const els = new Map([
@@ -105,11 +104,11 @@ describe("Library error state", () => {
   });
 
   function expectErrorComposition(message) {
-    expect(container.innerHTML).toContain('data-testid="library-list-error"');
-    expect(container.innerHTML).toContain('role="alert"');
-    expect(container.innerHTML).toContain(message);
-    expect(container.innerHTML).toContain('data-lib-action="retry-list"');
-    expect(container.innerHTML).not.toContain("lib-row");
+    expect(String(container.innerHTML)).toContain('data-testid="library-list-error"');
+    expect(String(container.innerHTML)).toContain('role="alert"');
+    expect(String(container.innerHTML)).toContain(message);
+    expect(String(container.innerHTML)).toContain('data-lib-action="retry-list"');
+    expect(String(container.innerHTML)).not.toContain("lib-row");
     expect(card.classList.contains("is-empty")).toBe(true);
     expect(card.classList.contains("is-error")).toBe(true);
     expect(cols.hidden).toBe(true);
@@ -123,7 +122,7 @@ describe("Library error state", () => {
     const teams = new Promise((resolve) => { finishTeams = resolve; });
     build((url) => String(url).startsWith("/api/dashboard") ? statistics : url === "/api/teams" ? teams : Promise.resolve(REPS));
     const pending = view.loadDashboard();
-    await vi.waitFor(() => expect(container.innerHTML).toContain('data-repertoire-id="rep-1"'));
+    await vi.waitFor(() => expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-1"'));
     finishStats(DASHBOARD); await pending;
     finishTeams({teams: []});
     await view.loadDashboardRepertoires();
@@ -136,8 +135,8 @@ describe("Library error state", () => {
       return REPS;
     });
     await expect(view.loadDashboard()).rejects.toThrow("dashboard 500");
-    expect(container.innerHTML).toContain('data-repertoire-id="rep-1"');
-    expect(today.innerHTML).toContain("dashboard 500");
+    expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-1"');
+    expect(String(today.innerHTML)).toContain("dashboard 500");
     expect(api).toHaveBeenCalledWith("/api/repertoires");
     expect(statuses).not.toContainEqual(["status", "Ready"]);
   });
@@ -180,7 +179,7 @@ describe("Library error state", () => {
     await view.loadDashboard();
     expect(card.classList.contains("is-error")).toBe(false);
     expect(card.classList.contains("is-empty")).toBe(false);
-    expect(container.innerHTML).toContain('data-repertoire-id="rep-1"');
+    expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-1"');
     expect(statuses.at(-1)).toEqual(["status", "Ready"]);
   });
 
@@ -205,23 +204,23 @@ describe("Library error state", () => {
         return REPS;
       });
       await view.loadDashboard();
-      const todayHtml = today.innerHTML;
-      const stepsHtml = steps.innerHTML;
+      const todayHtml = String(today.innerHTML);
+      const stepsHtml = String(steps.innerHTML);
       expect(steps.hidden).toBe(false);
-      expect(stepsHtml).not.toBe("");
+      expect(String(stepsHtml)).not.toBe("");
 
       failList = true;
       await expect(view.loadDashboardRepertoires()).resolves.toBe(false);
-      expect(container.innerHTML).toContain('data-repertoire-id="rep-1"');
+      expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-1"');
       expect(refreshStatus.hidden).toBe(false);
-      expect(refreshStatus.innerHTML).toContain("refresh 503");
-      expect(refreshStatus.innerHTML).toContain("Retry");
+      expect(String(refreshStatus.innerHTML)).toContain("refresh 503");
+      expect(String(refreshStatus.innerHTML)).toContain("Retry");
       expect(card.classList.contains("is-error")).toBe(false);
       expect(cols.hidden).toBe(false);
       expect(today.hidden).toBe(false);
-      expect(today.innerHTML).toBe(todayHtml);
+      expect(String(today.innerHTML)).toBe(todayHtml);
       expect(steps.hidden).toBe(false);
-      expect(steps.innerHTML).toBe(stepsHtml);
+      expect(String(steps.innerHTML)).toBe(stepsHtml);
       expect(statuses.at(-1)).toEqual(["error", "refresh 503"]);
     });
 
@@ -233,19 +232,19 @@ describe("Library error state", () => {
         return REPS;
       });
       await view.loadDashboard();
-      const stepsHtml = steps.innerHTML;
+      const stepsHtml = String(steps.innerHTML);
       failList = true;
       await view.loadDashboardRepertoires();
       failList = false;
       await expect(view.loadDashboardRepertoires()).resolves.toBe(true);
-      expect(container.innerHTML).toContain('data-repertoire-id="rep-1"');
-      expect(container.innerHTML).not.toContain("library-list-error");
+      expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-1"');
+      expect(String(container.innerHTML)).not.toContain("library-list-error");
       expect(card.classList.contains("is-error")).toBe(false);
       expect(card.classList.contains("is-empty")).toBe(false);
       expect(cols.hidden).toBe(false);
       expect(today.hidden).toBe(false);
       expect(steps.hidden).toBe(false);
-      expect(steps.innerHTML).toBe(stepsHtml);
+      expect(String(steps.innerHTML)).toBe(stepsHtml);
     });
 
     it("the scoped Retry reloads only the listing and reports Ready on success", async () => {
@@ -262,7 +261,7 @@ describe("Library error state", () => {
       const retryBtn = { dataset: { libAction: "retry-list" } };
       onClick({ target: { closest: () => retryBtn } });
       await vi.waitFor(() => expect(statuses.at(-1)).toEqual(["status", "Ready"]));
-      expect(container.innerHTML).toContain('data-repertoire-id="rep-1"');
+      expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-1"');
       expect(api.mock.calls.some(([u]) => String(u).startsWith("/api/dashboard"))).toBe(false);
       expect(today.hidden).toBe(false);
     });

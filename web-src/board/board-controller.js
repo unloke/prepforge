@@ -1,12 +1,13 @@
+import { html } from "../html.js";
 import { typedSquare } from "../board-navigation.js";
 
 let pref, renderAnnotations, files, isPromotionMove, resolveBoardMove, legalMoveFor,
-  pieceSvg, parseFenBoard, playSound, pieceLabel, legalTargetsFrom, escapeHtml;
+  pieceSvg, parseFenBoard, playSound, pieceLabel, legalTargetsFrom;
 
 export function createBoardController(deps) {
   ({
     pref, renderAnnotations, files, isPromotionMove, resolveBoardMove, legalMoveFor,
-    pieceSvg, parseFenBoard, playSound, pieceLabel, legalTargetsFrom, escapeHtml,
+    pieceSvg, parseFenBoard, playSound, pieceLabel, legalTargetsFrom,
   } = deps);
   return BoardController;
 }
@@ -210,10 +211,10 @@ class BoardController {
         square.setAttribute("aria-pressed", "false");
         square.tabIndex = -1; // roving: exactly one square is tabbable; see _applyRovingTabindex
         if (rank === bottomRank) {
-          square.insertAdjacentHTML("beforeend", `<span class="coord coord-file">${files[fileIndex]}</span>`);
+          square.insertAdjacentHTML("beforeend", html`<span class="coord coord-file">${files[fileIndex]}</span>`);
         }
         if (fileIndex === leftFile) {
-          square.insertAdjacentHTML("beforeend", `<span class="coord coord-rank">${rank}</span>`);
+          square.insertAdjacentHTML("beforeend", html`<span class="coord coord-rank">${rank}</span>`);
         }
         this.board.appendChild(square);
         this.squares.set(squareName, square);
@@ -713,10 +714,10 @@ class BoardController {
     this._badgeEl = square;
     const cls = this.moveBadge.classification.replace(/[^a-z0-9_-]/g, "");
     if (this.board) this.board.dataset.moveClass = cls;
-    const label = escapeHtml(this.moveBadge.label);
+    const label = this.moveBadge.label;
     square.insertAdjacentHTML(
       "beforeend",
-      `<span class="square-badge class-${cls}">${label}</span>`
+      html`<span class="square-badge class-${cls}">${label}</span>`
     );
   }
 

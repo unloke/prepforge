@@ -1,3 +1,4 @@
+import { html } from "../html.js";
 // Replay tab rendering (lazy-loaded from app.js).
 
 import { Chess } from "chess.js";
@@ -109,13 +110,13 @@ function replayFocusBoardHtml(game, renderers) {
   const pieces = renderers.parseFenBoard(pos.fen);
   const ranks = pos.orientation === "black" ? [1, 2, 3, 4, 5, 6, 7, 8] : [8, 7, 6, 5, 4, 3, 2, 1];
   const files = pos.orientation === "black" ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7];
-  let squares = "";
+  const squares = [];
   for (const rank of ranks) {
     for (const fi of files) {
       const sq = `${MINI_FILES[fi]}${rank}`;
       const dark = (rank + fi) % 2 === 1;
       const p = pieces[sq];
-      squares += `<div class="scout-minisquare ${dark ? "dark" : "light"}" data-square="${sq}">${p ? renderers.pieceSvg(p) : ""}</div>`;
+      squares.push(html`<div class="scout-minisquare ${dark ? "dark" : "light"}" data-square="${sq}">${p ? renderers.pieceSvg(p) : ""}</div>`);
     }
   }
   const coord = (square) => {
@@ -130,13 +131,13 @@ function replayFocusBoardHtml(game, renderers) {
   // when both leave the same square.
   const arrows = replayArrowsFor(pos)
     .reverse()
-    .map((a) => (a.from === a.to ? "" : `<path class="t-${a.tone}" d="${buildArrowPath(coord(a.from), coord(a.to))}" />`))
-    .join("");
+    .filter((a) => a.from !== a.to)
+    .map((a) => html`<path class="t-${a.tone}" d="${buildArrowPath(coord(a.from), coord(a.to))}" />`);
   // Inside the mini board, so the overlay shares the squares' box (not its border).
-  const svg = arrows
-    ? `<svg class="replay-arrows" viewBox="0 0 100 100" aria-hidden="true">${arrows}</svg>`
+  const svg = arrows.length
+    ? html`<svg class="replay-arrows" viewBox="0 0 100 100" aria-hidden="true">${arrows}</svg>`
     : "";
-  return `<div class="focus-board" data-testid="replay-focus-board"><div class="scout-miniboard" aria-hidden="true">${squares}${svg}</div></div>`;
+  return html`<div class="focus-board" data-testid="replay-focus-board"><div class="scout-miniboard" aria-hidden="true">${squares}${svg}</div></div>`;
 }
 
 // Display-only result text: "1/2-1/2" wraps onto two lines in the narrow
@@ -192,7 +193,6 @@ export function revealIfOffscreen(el, win = globalThis.window) {
 }
 
 export function createReplayView({
-  escapeHtml,
   boardRenderers = null,
   getReplayFilter,
   isGameOpen,
@@ -226,15 +226,13 @@ export function createReplayView({
       .filter(([kind]) => counts[kind] > 0)
       .map(
         ([kind, meta]) =>
-          `<button type="button" class="sum-chip t-${meta.tone}${
-            activeFilter === kind ? " is-on" : ""
-          }" data-filter="${kind}" aria-pressed="${activeFilter === kind}">${meta.icon} ${counts[kind]} ${meta.label}</button>`
+          html`<button type="button" class="sum-chip t-${meta.tone}${activeFilter === kind ? " is-on" : ""}" data-filter="${kind}" aria-pressed="${activeFilter === kind}">${meta.icon} ${counts[kind]} ${meta.label}</button>`
       );
     const queued = Number(payload.misses_recorded) || 0;
     const queuedHtml = queued
-      ? `<span class="queued" title="Recorded as recall misses">+${queued} queued for training</span>`
+      ? html`<span class="queued" title="Recorded as recall misses">+${queued} queued for training</span>`
       : "";
-    el.innerHTML = chips.join("") + queuedHtml;
+    el.innerHTML = html`${chips}${queuedHtml}`;
     el.hidden = false;
     el.querySelectorAll("[data-filter]").forEach((btn) => {
       btn.addEventListener("click", () => onToggleFilter(btn.dataset.filter));
@@ -249,71 +247,69 @@ export function createReplayView({
 
   function renderReplayMoveLine(game) {
     const history = game.move_san_history || [];
-    if (!history.length) return '<span class="muted">No moves recorded.</span>';
+    if (!history.length) return html`<span class="muted">No moves recorded.</span>`;
     const departPly = game.departure_ply;
     const matched = Number(game.matched_plies) || 0;
     const tone = REPLAY_KINDS[replayGameKind(game)].tone;
-    return history
+    return html`${history
       .map((san, index) => {
         const ply = index + 1;
         const moveNumber = Math.ceil(ply / 2);
         const isWhite = ply % 2 === 1;
         let num = "";
-        if (isWhite) num = `<span class="mn">${moveNumber}.</span>`;
-        else if (ply === 1 || ply === matched + 1) num = `<span class="mn">${moveNumber}…</span>`;
+        if (isWhite) num = html`<span class="mn">${moveNumber}.</span>`;
+        else if (ply === 1 || ply === matched + 1) num = html`<span class="mn">${moveNumber}…</span>`;
         const classes = [];
         if (ply <= matched) classes.push("inprep");
         // Departure tone mirrors its outcome (✗ left prep, ⚡ novelty).
         if (ply === departPly) classes.push("dep", `t-${tone}`);
         if (ply === game.reentry_ply) classes.push("inprep");
-        return `<span class="mvw">${num}<span class="${classes.join(" ")}">${escapeHtml(san)}</span></span>`;
+        return html`${index ? " " : ""}<span class="mvw">${num}<span class="${classes.join(" ")}">${san}</span></span>`;
       })
-      .join(" ");
+      }`;
   }
 
   function renderReplayDetail(game) {
     const lines = [];
     if (game.repertoire_name) {
       lines.push(
-        `Repertoire: <strong>${escapeHtml(game.repertoire_name)}</strong> · ${
-          Number(game.matched_plies) > 0
-            ? `in prep through ${escapeHtml(plyMoveLabel(game.matched_plies, game.move_san_history))}`
-            : "left prep on the first move"
-        }`
+        html`Repertoire: <strong>${game.repertoire_name}</strong> · ${Number(game.matched_plies) > 0
+            ? `in prep through ${plyMoveLabel(game.matched_plies, game.move_san_history)}`
+            : "left prep on the first move"}`
       );
     } else {
-      lines.push(`Played as ${escapeHtml(game.user_color)}, but no active repertoire matched.`);
+      lines.push(html`Played as ${game.user_color}, but no active repertoire matched.`);
     }
     if (game.departure_reason === "user_left_preparation") {
-      const expected = game.expected_move_san ? ` (expected <strong>${escapeHtml(game.expected_move_san)}</strong>)` : "";
+      const expected = game.expected_move_san ? html` (expected <strong>${game.expected_move_san}</strong>)` : "";
       const playedSan = replayDepartureSan(game);
-      const played = playedSan ? ` <strong>${escapeHtml(playedSan)}</strong>` : "";
+      const played = playedSan ? html` <strong>${playedSan}</strong>` : "";
       const queued = game.training_recorded
         ? " Added to your training queue."
         : " Already in your training queue.";
-      lines.push(`You diverged at ${moveNumberLabel(game.departure_ply)}${played}${expected}.${queued}`);
+      lines.push(html`You diverged at ${moveNumberLabel(game.departure_ply)}${played}${expected}.${queued}`);
     } else if (game.departure_reason === "opponent_unprepared_branch") {
       const playedSan = replayDepartureSan(game);
-      const played = playedSan ? ` <strong>${escapeHtml(playedSan)}</strong>` : "";
+      const played = playedSan ? html` <strong>${playedSan}</strong>` : "";
       if (isDifferentOpening(game)) {
         lines.push(
-          `Opponent chose a different opening at ${moveNumberLabel(game.departure_ply)}${played}, before your repertoire got going. Add a reply to cover it.`
+          html`Opponent chose a different opening at ${moveNumberLabel(game.departure_ply)}${played}, before your repertoire got going. Add a reply to cover it.`
         );
       } else {
-        lines.push(`Opponent took an unprepared branch at ${moveNumberLabel(game.departure_ply)}${played}.`);
+        lines.push(html`Opponent took an unprepared branch at ${moveNumberLabel(game.departure_ply)}${played}.`);
       }
     } else if (game.departure_reason === "game_stayed_in_preparation") {
       lines.push("Game stayed entirely within preparation. Nice.");
     } else if (game.departure_reason === "no_repertoire_for_color") {
       lines.push("No active repertoire defined for the colour you played.");
     }
-    if (game.reentry_ply) lines.push(`Back in prep: ${escapeHtml(plyMoveLabel(game.reentry_ply, game.move_san_history))}`);
-    return lines.map((line) => `<li>${line}</li>`).join("");
+    if (game.reentry_ply) lines.push(html`Back in prep: ${plyMoveLabel(game.reentry_ply, game.move_san_history)}`);
+    return html`${lines.map((line) => html`<li>${line}</li>`)}`;
   }
 
   // "You" is resolved against the payload's own user_color, never guessed.
   function playerName(game, side) {
-    return game.user_color === side ? "You" : escapeHtml(game[side] || "?");
+    return game.user_color === side ? "You" : game[side] || "?";
   }
 
   function renderReplayRow(game, index, selectedIndex, { showAccount = true } = {}) {
@@ -325,23 +321,17 @@ export function createReplayView({
     // the ledger header names it once instead).
     const date = formatReplayDate(game.finished_at);
     const subParts = [];
-    if (date) subParts.push(`<time class="lr-date" datetime="${escapeHtml(game.finished_at)}">${escapeHtml(date)}</time>`);
+    if (date) subParts.push(html`<time class="lr-date" datetime="${game.finished_at}">${date}</time>`);
     if (showAccount && game.source_account) {
-      subParts.push(`<i class="acct" title="Fetched from this linked account">${escapeHtml(game.source_account)}</i>`);
+      subParts.push(html`<i class="acct" title="Fetched from this linked account">${game.source_account}</i>`);
     }
-    const source = subParts.length ? `<small>${subParts.join(" · ")}</small>` : "";
+    const source = subParts.length ? html`<small>${subParts.map((part, i) => html`${i ? " · " : ""}${part}`)}</small>` : "";
     const preview = (game.move_san_history || []).slice(0, 6).join(" ");
     const departure = game.departure_ply
       ? plyMoveLabel(game.departure_ply, game.move_san_history)
       : meta.departure || "—";
     return (
-      `<button type="button" class="lr${open ? " is-open" : ""}" data-index="${index}" aria-pressed="${open}">` +
-      `<span><i class="kind-badge t-${meta.tone}">${escapeHtml(replayBadge(game, meta))}</i></span>` +
-      `<span class="players"><span class="pl"><b>${playerName(game, "white")}</b> vs <b>${playerName(game, "black")}</b></span>${source}</span>` +
-      `<span class="res ${replayResultClass(game)}">${escapeHtml(displayReplayResult(game.result))}</span>` +
-      `<span class="open-prev">${escapeHtml(preview)}${preview ? "…" : ""}</span>` +
-      `<span class="num">${escapeHtml(departure)}</span>` +
-      "</button>"
+      html`<button type="button" class="lr${open ? " is-open" : ""}" data-index="${index}" aria-pressed="${open}"><span><i class="kind-badge t-${meta.tone}">${replayBadge(game, meta)}</i></span><span class="players"><span class="pl"><b>${playerName(game, "white")}</b> vs <b>${playerName(game, "black")}</b></span>${source}</span><span class="res ${replayResultClass(game)}">${displayReplayResult(game.result)}</span><span class="open-prev">${preview}${preview ? "…" : ""}</span><span class="num">${departure}</span></button>`
     );
   }
 
@@ -350,28 +340,20 @@ export function createReplayView({
     const meta = REPLAY_KINDS[kind];
     const boardHtml = replayFocusBoardHtml(game, renderers);
     const lichessLink = game.lichess_id
-      ? `<a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://lichess.org/${escapeHtml(game.lichess_id)}" title="Open on Lichess">lichess ↗</a>`
+      ? html`<a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://lichess.org/${game.lichess_id}" title="Open on Lichess">lichess ↗</a>`
       : "";
     const actions = [];
     if (kind === "user-error") {
-      actions.push(`<button class="btn primary" data-act="train" data-index="${index}">Train</button>`);
+      actions.push(html`<button class="btn primary" data-act="train" data-index="${index}">Train</button>`);
     }
     if (kind === "left-prep" && game.repertoire_id) {
-      actions.push(`<button class="btn primary" data-act="build" data-index="${index}">Add reply</button>`);
+      actions.push(html`<button class="btn primary" data-act="build" data-index="${index}">Add reply</button>`);
     }
     if ((game.move_san_history || []).length) {
-      actions.push(`<button class="btn" data-act="analyze" data-index="${index}">Analyze</button>`);
+      actions.push(html`<button class="btn" data-act="analyze" data-index="${index}">Analyze</button>`);
     }
     return (
-      `<section class="focus card" aria-label="Preparation detail">` +
-      `<div class="focus-top${boardHtml ? "" : " no-board"}">${boardHtml}` +
-      `<div class="focus-info"><div class="eyebrow">Preparation detail · ${escapeHtml(displayReplayResult(game.result))}</div>` +
-      `<h2>${escapeHtml(game.white || "?")} vs ${escapeHtml(game.black || "?")}</h2>` +
-      `<i class="kind-badge t-${meta.tone}">${escapeHtml(replayBadge(game, meta))}</i>` +
-      `<ul class="reasons">${renderReplayDetail(game)}</ul>` +
-      `<div class="actions">${actions.join("")}${lichessLink}</div></div></div>` +
-      `<div class="moveline">${renderReplayMoveLine(game)}</div>` +
-      `</section>`
+      html`<section class="focus card" aria-label="Preparation detail"><div class="focus-top${boardHtml ? "" : " no-board"}">${boardHtml}<div class="focus-info"><div class="eyebrow">Preparation detail · ${displayReplayResult(game.result)}</div><h2>${game.white || "?"} vs ${game.black || "?"}</h2><i class="kind-badge t-${meta.tone}">${replayBadge(game, meta)}</i><ul class="reasons">${renderReplayDetail(game)}</ul><div class="actions">${actions}${lichessLink}</div></div></div><div class="moveline">${renderReplayMoveLine(game)}</div></section>`
     );
   }
 
@@ -379,11 +361,10 @@ export function createReplayView({
     const container = document.getElementById("replay-results");
     renderReplaySummary(payload);
     const sourceErrors = (payload?.source_errors || []).map((error) =>
-      `${escapeHtml(error.username)}: ${escapeHtml(error.message)}`).join(" ? ");
-    const warning = sourceErrors ? `<div class="empty-state" role="alert">${sourceErrors} ? Retry Check</div>` : "";
+      `${error.username}: ${error.message}`).join(" ? ");
+    const warning = sourceErrors ? html`<div class="empty-state" role="alert">${sourceErrors} ? Retry Check</div>` : "";
     if (!payload || !payload.games || !payload.games.length) {
-      container.innerHTML = warning +
-        '<div class="empty-state big"><div class="es-mark">♙</div><h3>No recent games found</h3></div>';
+      container.innerHTML = html`${warning}<div class="empty-state big"><div class="es-mark">♙</div><h3>No recent games found</h3></div>`;
       return;
     }
     const filter = getReplayFilter();
@@ -391,8 +372,7 @@ export function createReplayView({
       .map((game, index) => ({ game, index }))
       .filter(({ game }) => !filter || replayGameKind(game) === filter);
     if (!rows.length) {
-      container.innerHTML = warning +
-        '<div class="empty-state big"><div class="es-mark">♙</div><h3>No games in this bucket</h3></div>';
+      container.innerHTML = html`${warning}<div class="empty-state big"><div class="es-mark">♙</div><h3>No games in this bucket</h3></div>`;
       return;
     }
     const selectedIndex = rows.find(({ index }) => isGameOpen(index))?.index ?? rows[0].index;
@@ -404,19 +384,14 @@ export function createReplayView({
     const showAccount = accounts.size > 1 || sourceCount > 1;
     const singleAccount = !showAccount && accounts.size === 1 ? [...accounts][0] : "";
     const accountNote = singleAccount
-      ? ` · <i class="acct" title="Fetched from this linked account">${escapeHtml(singleAccount)}</i>`
+      ? html` · <i class="acct" title="Fetched from this linked account">${singleAccount}</i>`
       : "";
     // A row click re-renders the list: keep the ledger's scroll position and
     // the keyboard focus on the clicked row, then reveal the detail card.
     const revealIndex = pendingRevealIndex;
     pendingRevealIndex = null;
     const ledgerScroll = revealIndex != null ? container.querySelector?.(".ledger-table")?.scrollTop || 0 : 0;
-    container.innerHTML = warning +
-      `<div class="triage"><section class="ledger card" aria-label="Games to review">` +
-      `<header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} shown${accountNote}</span></header>` +
-      `<div class="ledger-table"><div class="lr head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>` +
-      rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount })).join("") +
-      `</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
+    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} shown${accountNote}</span></header><div class="ledger-table"><div class="lr head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
     container.querySelectorAll(".lr[data-index]").forEach((row) => {
       row.addEventListener("click", () => {
         pendingRevealIndex = Number(row.dataset.index);

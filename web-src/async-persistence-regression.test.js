@@ -1,3 +1,4 @@
+import { html } from "./html.js";
 import { readFileSync } from "node:fs";
 import { createSyncQueue } from "./sync-queue.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./sync-queue.js";
@@ -8,6 +9,7 @@ import { expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
 const source = appSource();
 function compile(marker, deps, prelude = "", code = source) {
+  deps = { html, ...deps };
   const start = code.indexOf(marker);
   const end = code.indexOf("\n}\n", start) + 2;
   return new Function(...Object.keys(deps), `${prelude}; return (${code.slice(start, end)});`)(...Object.values(deps));
@@ -83,7 +85,7 @@ it("team detail B stays visible after slow A responds", async () => {
   const appState = { accountUserId: "owner" };
   const deps = { appState, document, currentOwnerId: () => "owner", renderTeamsList: vi.fn(),
     api: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),
-    escapeHtml: (s) => s, teamRoleLabel: (r) => r, teamsView: null,
+    teamRoleLabel: (r) => r, teamsView: null,
     renderTeamSharedRepertoires: vi.fn() };
   const open = compile("async function openTeamDetail(", deps, "let teamDetailSeq = 0");
   const a = open("A"), b = open("B");

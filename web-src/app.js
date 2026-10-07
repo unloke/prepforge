@@ -1,3 +1,4 @@
+import { html, raw } from "./html.js";
 import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
 import { createToastStack } from "./controllers/toast-stack.js";
@@ -185,20 +186,20 @@ const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
 // minimalist set, kept as an alternative.
 const PIECE_SETS = {
   berlin: {
-    p: `<circle cx="22.5" cy="13.5" r="4.5"></circle><path d="M19 20.2h7l1.4 8.2h-9.8z"></path><path d="M15.5 31.5h14c1.8 1.4 3 3.4 3.4 6H12.1c.4-2.6 1.6-4.6 3.4-6z"></path><path d="M10.5 38h24v3H10.5z"></path>`,
-    n: `<path d="M13 38h23v3H11z"></path><path d="M15.5 34c1.1-6.8 4.9-9.4 8.2-13.1-3 .4-6.5-.5-8.9-2.4 1-6.4 6.6-10.4 13-9 5.7 1.3 9 6.1 8.4 12.4L34 34z"></path><path d="M18.1 15.6l3.9-5.3 1.2 5.5z" class="piece-cut"></path><circle cx="28.2" cy="15.1" r="1.25" class="piece-cut"></circle><path d="M22.4 20.5c2.4 1.1 5.1 1 7.5-.2" class="piece-line"></path>`,
-    b: `<circle cx="22.5" cy="8.7" r="2.5"></circle><path d="M22.5 12c-4 3.7-7.1 8.8-7.1 14.1 0 3.8 3 6.2 7.1 6.2s7.1-2.4 7.1-6.2c0-5.3-3.1-10.4-7.1-14.1z"></path><path d="M26.7 16.2l-8.4 9.4" class="piece-line"></path><path d="M14 34h17c1.1 1 1.8 2.1 2 3.6H12c.2-1.5.9-2.6 2-3.6z"></path><path d="M10.8 38.2h23.4v2.8H10.8z"></path>`,
-    r: `<path d="M12.5 9.5h5v3.6h3.4V9.5h3.2v3.6h3.4V9.5h5v8.6H29v11.3l3.2 3.3v3H12.8v-3l3.2-3.3V18.1h-3.5z"></path><path d="M16.5 21h12M16.3 31h12.4" class="piece-line"></path><path d="M10.5 38h24v3H10.5z"></path>`,
-    q: `<circle cx="9.5" cy="13.2" r="2.2"></circle><circle cx="16.8" cy="9.5" r="2.2"></circle><circle cx="22.5" cy="8" r="2.4"></circle><circle cx="28.2" cy="9.5" r="2.2"></circle><circle cx="35.5" cy="13.2" r="2.2"></circle><path d="M10.2 16.2l4.3 15.5h16l4.3-15.5-6.6 8-2.8-11.2-2.9 12.2-2.9-12.2-2.8 11.2z"></path><path d="M13.5 32.2h18c.9.8 1.4 1.8 1.5 3H12c.1-1.2.6-2.2 1.5-3z"></path><path d="M10.5 38h24v3H10.5z"></path>`,
-    k: `<path d="M22.5 5.5v7M19.2 8.8h6.6" class="piece-line"></path><path d="M17.8 14.5h9.4l1.4 6.7c2.2 1.7 3.6 4.2 3.6 7.1 0 2.3-1 4.1-2.8 5.2H15.6c-1.8-1.1-2.8-2.9-2.8-5.2 0-2.9 1.4-5.4 3.6-7.1z"></path><path d="M17.3 20.8h10.4M16.2 33.8h12.6" class="piece-line"></path><path d="M10.5 38h24v3H10.5z"></path>`,
+    p: html`<circle cx="22.5" cy="13.5" r="4.5"></circle><path d="M19 20.2h7l1.4 8.2h-9.8z"></path><path d="M15.5 31.5h14c1.8 1.4 3 3.4 3.4 6H12.1c.4-2.6 1.6-4.6 3.4-6z"></path><path d="M10.5 38h24v3H10.5z"></path>`,
+    n: html`<path d="M13 38h23v3H11z"></path><path d="M15.5 34c1.1-6.8 4.9-9.4 8.2-13.1-3 .4-6.5-.5-8.9-2.4 1-6.4 6.6-10.4 13-9 5.7 1.3 9 6.1 8.4 12.4L34 34z"></path><path d="M18.1 15.6l3.9-5.3 1.2 5.5z" class="piece-cut"></path><circle cx="28.2" cy="15.1" r="1.25" class="piece-cut"></circle><path d="M22.4 20.5c2.4 1.1 5.1 1 7.5-.2" class="piece-line"></path>`,
+    b: html`<circle cx="22.5" cy="8.7" r="2.5"></circle><path d="M22.5 12c-4 3.7-7.1 8.8-7.1 14.1 0 3.8 3 6.2 7.1 6.2s7.1-2.4 7.1-6.2c0-5.3-3.1-10.4-7.1-14.1z"></path><path d="M26.7 16.2l-8.4 9.4" class="piece-line"></path><path d="M14 34h17c1.1 1 1.8 2.1 2 3.6H12c.2-1.5.9-2.6 2-3.6z"></path><path d="M10.8 38.2h23.4v2.8H10.8z"></path>`,
+    r: html`<path d="M12.5 9.5h5v3.6h3.4V9.5h3.2v3.6h3.4V9.5h5v8.6H29v11.3l3.2 3.3v3H12.8v-3l3.2-3.3V18.1h-3.5z"></path><path d="M16.5 21h12M16.3 31h12.4" class="piece-line"></path><path d="M10.5 38h24v3H10.5z"></path>`,
+    q: html`<circle cx="9.5" cy="13.2" r="2.2"></circle><circle cx="16.8" cy="9.5" r="2.2"></circle><circle cx="22.5" cy="8" r="2.4"></circle><circle cx="28.2" cy="9.5" r="2.2"></circle><circle cx="35.5" cy="13.2" r="2.2"></circle><path d="M10.2 16.2l4.3 15.5h16l4.3-15.5-6.6 8-2.8-11.2-2.9 12.2-2.9-12.2-2.8 11.2z"></path><path d="M13.5 32.2h18c.9.8 1.4 1.8 1.5 3H12c.1-1.2.6-2.2 1.5-3z"></path><path d="M10.5 38h24v3H10.5z"></path>`,
+    k: html`<path d="M22.5 5.5v7M19.2 8.8h6.6" class="piece-line"></path><path d="M17.8 14.5h9.4l1.4 6.7c2.2 1.7 3.6 4.2 3.6 7.1 0 2.3-1 4.1-2.8 5.2H15.6c-1.8-1.1-2.8-2.9-2.8-5.2 0-2.9 1.4-5.4 3.6-7.1z"></path><path d="M17.3 20.8h10.4M16.2 33.8h12.6" class="piece-line"></path><path d="M10.5 38h24v3H10.5z"></path>`,
   },
   classic: {
-    p: `<circle cx="22.5" cy="13" r="6"></circle><path d="M16 22h13l3 11H13z"></path><path d="M12 36h21v4H12z"></path>`,
-    n: `<path d="M14 36h22v4H11z"></path><path d="M16 34c1-10 8-11 7-19-3 1-6 1-9-1 3-6 9-8 15-5 5 3 7 8 6 14l-2 11z"></path><circle cx="29" cy="14" r="1.4" class="piece-cut"></circle>`,
-    b: `<circle cx="22.5" cy="10" r="4.5"></circle><path d="M15 31c0-7 5-12 7.5-18C25 19 30 24 30 31z"></path><path d="M13 35h19v5H13z"></path><path d="M19 20l7-7" class="piece-line"></path>`,
-    r: `<path d="M12 9h6v4h4V9h6v4h5v8H12z"></path><path d="M15 21h15v14H15z"></path><path d="M11 35h23v5H11z"></path>`,
-    q: `<circle cx="12" cy="12" r="3.5"></circle><circle cx="22.5" cy="9" r="3.5"></circle><circle cx="33" cy="12" r="3.5"></circle><path d="M12 17l5 16h11l5-16-8 7-2.5-9-2.5 9z"></path><path d="M13 35h19v5H13z"></path>`,
-    k: `<path d="M21 7h3v7h6v3h-6v6h-3v-6h-6v-3h6z"></path><path d="M15 31c1-8 5-12 7.5-14C25 19 29 23 30 31z"></path><path d="M13 35h19v5H13z"></path>`,
+    p: html`<circle cx="22.5" cy="13" r="6"></circle><path d="M16 22h13l3 11H13z"></path><path d="M12 36h21v4H12z"></path>`,
+    n: html`<path d="M14 36h22v4H11z"></path><path d="M16 34c1-10 8-11 7-19-3 1-6 1-9-1 3-6 9-8 15-5 5 3 7 8 6 14l-2 11z"></path><circle cx="29" cy="14" r="1.4" class="piece-cut"></circle>`,
+    b: html`<circle cx="22.5" cy="10" r="4.5"></circle><path d="M15 31c0-7 5-12 7.5-18C25 19 30 24 30 31z"></path><path d="M13 35h19v5H13z"></path><path d="M19 20l7-7" class="piece-line"></path>`,
+    r: html`<path d="M12 9h6v4h4V9h6v4h5v8H12z"></path><path d="M15 21h15v14H15z"></path><path d="M11 35h23v5H11z"></path>`,
+    q: html`<circle cx="12" cy="12" r="3.5"></circle><circle cx="22.5" cy="9" r="3.5"></circle><circle cx="33" cy="12" r="3.5"></circle><path d="M12 17l5 16h11l5-16-8 7-2.5-9-2.5 9z"></path><path d="M13 35h19v5H13z"></path>`,
+    k: html`<path d="M21 7h3v7h6v3h-6v6h-3v-6h-6v-3h6z"></path><path d="M15 31c1-8 5-12 7.5-14C25 19 29 23 30 31z"></path><path d="M13 35h19v5H13z"></path>`,
   },
 };
 
@@ -633,7 +634,7 @@ const BROWSER_ENGINE_UNAVAILABLE =
 
 const boards = {};
 
-const jobToast = createToastStack({ escapeHtml });
+const jobToast = createToastStack();
 
 // ===== Undo notifications =====================================================
 // Destructive actions apply to the UI instantly but only reach the server once
@@ -721,8 +722,7 @@ function showInlineUndo(host, { title, message, onUndo, onCommit }) {
   pendingUndoCommits.add(commit);
   host._undoCommit = commit;
   host.innerHTML =
-    `<span class="inline-undo-text"><b>${escapeHtml(title)}</b> ${escapeHtml(message || "")}</span>` +
-    '<button type="button" class="btn sm" data-inline-undo>Undo</button>';
+    html`<span class="inline-undo-text"><b>${title}</b> ${message || ""}</span><button type="button" class="btn sm" data-inline-undo>Undo</button>`;
   host.hidden = false;
   host.onpointerenter = () => {
     if (settled) return;
@@ -761,7 +761,7 @@ function loadEngineWidget() {
   engineWidgetLoading ||= import("./controllers/engine-widget.js").then((mod) => {
     loadedEngineWidget = mod.createEngineWidget({
       effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
-      boards, START_FEN, setEngineBestArrow, setStatusError, escapeHtml, setEngineOn,
+      boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
       activeBoardController, explorerEvalEngine, getAnalyzeSession: () => analyzeSession,
     });
     return loadedEngineWidget;
@@ -871,7 +871,7 @@ let bookActionsPromise = null;
 function loadBookActions() {
   bookActionsPromise ||= import("./analyze-book.js").then(({ createBookActions }) => createBookActions({
     bookState, appState, currentOwnerId, api, loadCoach: () => (_coachReady || preloadCoach()),
-    escapeHtml, rememberHandoff, postJson, setStatus, setStatusError, editRepertoire,
+    rememberHandoff, postJson, setStatus, setStatusError, editRepertoire,
   })).catch((error) => { bookActionsPromise = null; throw error; });
   return bookActionsPromise;
 }
@@ -886,7 +886,7 @@ async function updateBookline() {
 
 const BoardController = createBoardController({
   pref, renderAnnotations, files, isPromotionMove, resolveBoardMove, legalMoveFor,
-  pieceSvg, parseFenBoard, playSound, pieceLabel, legalTargetsFrom, escapeHtml,
+  pieceSvg, parseFenBoard, playSound, pieceLabel, legalTargetsFrom,
 });
 
 // Engine-loading lifecycle marks (dev/E2E timing only): records monotonic
@@ -1264,12 +1264,12 @@ function paintEngineBanners() {
     available: isBrowserEngineAvailable(),
     isolated: !!self.crossOriginIsolated,
   });
-  const html = engineBannerHtml(model, { escapeHtml });
+  const markup = engineBannerHtml(model, {  });
   for (const id of ["analyze-engine-banner", "build-engine-banner"]) {
     const el = document.getElementById(id);
     if (!el) continue;
     el.hidden = !model.visible;
-    el.innerHTML = html;
+    el.innerHTML = markup;
   }
 }
 
@@ -1763,7 +1763,8 @@ function pieceLabel(piece) {
 
 function pieceSvg(piece) {
   const colorClass = piece === piece.toUpperCase() ? "piece-white" : "piece-black";
-  return `<svg class="piece ${colorClass}" viewBox="0 0 45 45" aria-hidden="true"><g>${activePieceSet()[piece.toLowerCase()]}</g></svg>`;
+  // eslint-disable-next-line local/trusted-raw -- SVG paths come from the authored piece sets above.
+  return html`<svg class="piece ${colorClass}" viewBox="0 0 45 45" aria-hidden="true"><g>${raw(activePieceSet()[piece.toLowerCase()])}</g></svg>`;
 }
 
 function setPieceStyle(style) {
@@ -1784,23 +1785,20 @@ function renderPieceStylePicker() {
   // A tiny sample of each set on board squares, so the choice is visible
   // before (and after) picking — the label alone didn't say what you'd get.
   const sample = ["K", "Q", "N", "p"];
-  host.innerHTML = Object.keys(PIECE_SETS)
+  host.innerHTML = html`${Object.keys(PIECE_SETS)
     .map((style) => {
       const active = style === appState.pieceStyle;
       const set = PIECE_SETS[style];
       const previews = sample
         .map((pc) => {
           const colorClass = pc === pc.toUpperCase() ? "piece-white" : "piece-black";
-          return `<svg class="piece ${colorClass}" viewBox="0 0 45 45" aria-hidden="true"><g>${set[pc.toLowerCase()]}</g></svg>`;
-        })
-        .join("");
+          // eslint-disable-next-line local/trusted-raw -- Preview paths come from the same authored SVG piece sets.
+          return html`<svg class="piece ${colorClass}" viewBox="0 0 45 45" aria-hidden="true"><g>${raw(set[pc.toLowerCase()])}</g></svg>`;
+        });
       return (
-        `<button type="button" class="seg-btn piece-style-option${active ? " is-active" : ""}" data-style="${escapeHtml(style)}" aria-pressed="${active}">` +
-        `<span class="piece-style-preview" aria-hidden="true">${previews}</span>` +
-        `<span class="piece-style-name">${escapeHtml(PIECE_STYLE_LABELS[style] || style)}</span></button>`
+        html`<button type="button" class="seg-btn piece-style-option${active ? " is-active" : ""}" data-style="${style}" aria-pressed="${active}"><span class="piece-style-preview" aria-hidden="true">${previews}</span><span class="piece-style-name">${PIECE_STYLE_LABELS[style] || style}</span></button>`
       );
-    })
-    .join("");
+    })}`;
   host.querySelectorAll(".piece-style-option").forEach((btn) => {
     btn.addEventListener("click", () => setPieceStyle(btn.dataset.style));
   });
@@ -1809,19 +1807,14 @@ function renderPieceStylePicker() {
 function renderPrefsToggles() {
   const host = document.getElementById("board-prefs");
   if (!host) return;
-  host.innerHTML = Object.keys(PREF_LABELS)
+  host.innerHTML = html`${Object.keys(PREF_LABELS)
     .map((key) => {
       const on = pref(key) ? " is-on" : "";
-      const label = escapeHtml(PREF_LABELS[key] || key);
+      const label = PREF_LABELS[key] || key;
       return (
-        `<div class="pf-row">` +
-        `<span class="pf-row-text"><span class="pf-row-label">${label}</span></span>` +
-        `<button type="button" class="pf-switch${on}" data-pref="${escapeHtml(key)}" role="switch" aria-checked="${pref(key)}" aria-label="${label}">` +
-        `<span class="pf-knob"></span>` +
-        `</button></div>`
+        html`<div class="pf-row"><span class="pf-row-text"><span class="pf-row-label">${label}</span></span><button type="button" class="pf-switch${on}" data-pref="${key}" role="switch" aria-checked="${pref(key)}" aria-label="${label}"><span class="pf-knob"></span></button></div>`
       );
-    })
-    .join("");
+    })}`;
   host.querySelectorAll(".pf-switch").forEach((btn) => {
     btn.addEventListener("click", () => {
       const key = btn.dataset.pref;
@@ -1903,18 +1896,17 @@ export function showPromotionPicker({ from, to, moves, anchorBoard, color }) {
     const overlay = document.createElement("div");
     overlay.className = "promotion-picker-overlay";
     const side = color === "black" ? "black" : "white";
-    overlay.innerHTML = `
+    overlay.innerHTML = html`
       <div class="promotion-picker" role="dialog" aria-modal="true" aria-label="Choose promotion piece">
         ${options
           .map(
-            (uci) => `
+            (uci) => html`
           <button type="button" class="promotion-option" data-uci="${uci}"
             aria-label="Promote to ${PROMOTION_LABELS[uci[4]] || uci[4]}">
             ${pieceSvg(side === "white" ? uci[4].toUpperCase() : uci[4])}
             <span class="promotion-name">${PROMOTION_LABELS[uci[4]] || uci[4]}</span>
           </button>`
-          )
-          .join("")}
+          )}
       </div>
     `;
     const buttons = [...overlay.querySelectorAll(".promotion-option")];
@@ -2107,7 +2099,6 @@ async function ensureDashboardView() {
       appState,
       api,
       postJson,
-      escapeHtml,
       setStatus,
       setStatusError,
       localDateString,
@@ -2147,8 +2138,7 @@ async function loadDashboard() {
       }
       const host = document.getElementById("dashboard-repertoires");
       if (host) {
-        host.innerHTML = `<div class="empty-state" role="alert"><h3>Could not load your library.</h3>` +
-          `<p>${escapeHtml(error.message)}</p><button type="button" class="btn" data-library-retry>Try again</button></div>`;
+        host.innerHTML = html`<div class="empty-state" role="alert"><h3>Could not load your library.</h3><p>${error.message}</p><button type="button" class="btn" data-library-retry>Try again</button></div>`;
         host.querySelector("[data-library-retry]")?.addEventListener("click", loadDashboard);
       }
     }
@@ -2220,7 +2210,6 @@ function initAccountController() {
     api,
     postJson,
     setStatus,
-    escapeHtml,
     showConfirmModal,
     refreshAutoMaiaRating,
     onLichessConnected: startLichessGameWatch,
@@ -2555,15 +2544,14 @@ function chooseLichessAccount(actionLabel) {
     overlay.className = "modal-overlay";
     const rows = accounts
       .map(
-        (account) => `
-      <button type="button" class="btn ghost account-choice${account.is_primary ? " is-primary" : ""}" data-account-id="${escapeHtml(account.id)}">
-        ${escapeHtml(account.username)}${account.is_primary ? " — Primary" : ""}
+        (account) => html`
+      <button type="button" class="btn ghost account-choice${account.is_primary ? " is-primary" : ""}" data-account-id="${account.id}">
+        ${account.username}${account.is_primary ? " — Primary" : ""}
       </button>`,
-      )
-      .join("");
-    overlay.innerHTML = `
-      <div class="modal account-chooser" role="dialog" aria-modal="true" aria-label="${escapeHtml(actionLabel)}">
-        <div class="modal-title">${escapeHtml(actionLabel)}</div>
+      );
+    overlay.innerHTML = html`
+      <div class="modal account-chooser" role="dialog" aria-modal="true" aria-label="${actionLabel}">
+        <div class="modal-title">${actionLabel}</div>
         <div class="modal-body">
           <p class="modal-copy">Which Lichess account should this use? Primary is preselected.</p>
           <div class="account-chooser-list">${rows}</div>
@@ -2708,7 +2696,7 @@ async function loadAnalysisHistory() {
   const isCurrent = () => seq === analysisHistorySeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
   const host = document.getElementById("analysis-history");
   if (!host) return;
-  host.innerHTML = '<div class="muted hint">Loading...</div>';
+  host.innerHTML = html`<div class="muted hint">Loading...</div>`;
   const rows = new Map();
   let cursor = null, loading = false;
   async function loadPage() {
@@ -2722,12 +2710,10 @@ async function loadAnalysisHistory() {
       for (const row of payload.analyses || []) rows.set(row.game_id, row);
       cursor = payload.next_cursor || null;
       const scroll = host.scrollTop;
-      host.innerHTML = [...rows.values()].map((a) =>
-        `<button class="history-item" data-game-id="${escapeHtml(a.game_id)}">` +
-        `<span class="hi-players">${escapeHtml(a.white || "?")} vs ${escapeHtml(a.black || "?")}</span>` +
-        `<span class="hi-meta">${escapeHtml(a.result || "")} ? ${escapeHtml(localDayOf(a.analyzed_at))}</span></button>`
-      ).join("") || '<div class="muted hint">No saved analyses yet.</div>';
-      if (cursor) host.innerHTML += '<button class="btn sm" data-history-more>Load more</button>';
+      host.innerHTML = html`${[...rows.values()].map((a) =>
+        html`<button class="history-item" data-game-id="${a.game_id}"><span class="hi-players">${a.white || "?"} vs ${a.black || "?"}</span><span class="hi-meta">${a.result || ""} ? ${localDayOf(a.analyzed_at)}</span></button>`
+      )}` || html`<div class="muted hint">No saved analyses yet.</div>`;
+      if (cursor) host.innerHTML += html`<button class="btn sm" data-history-more>Load more</button>`;
       host.scrollTop = scroll;
       host.querySelectorAll(".history-item").forEach((btn) => {
         btn.addEventListener("click", () => {
@@ -2740,7 +2726,7 @@ async function loadAnalysisHistory() {
       if (rows.size) {
         if (button) button.textContent = "Retry load more";
         setStatusError(error.message);
-      } else host.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+      } else host.innerHTML = html`<div class="empty-state">${error.message}</div>`;
     } finally {
       loading = false;
       if (button && isCurrent()) button.disabled = false;
@@ -2831,7 +2817,6 @@ async function ensureTeamsView() {
     teamsView = mod.createTeamsView({
       appState,
       api,
-      escapeHtml,
       hideTeamDetail,
       openTeamDetail,
       loadSharedRepertoires,
@@ -2890,13 +2875,13 @@ async function openTeamDetail(teamId) {
   const membersEl = document.getElementById("team-members");
   if (!card || !membersEl) return;
   card.hidden = false;
-  membersEl.innerHTML = '<div class="empty-state">Loading…</div>';
+  membersEl.innerHTML = html`<div class="empty-state">Loading…</div>`;
   let detail;
   try {
     detail = await api(`/api/teams/${encodeURIComponent(teamId)}`);
   } catch (error) {
     if (!isCurrent()) return;
-    membersEl.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+    membersEl.innerHTML = html`<div class="empty-state">${error.message}</div>`;
     return;
   }
   if (!isCurrent()) return;
@@ -2941,45 +2926,43 @@ async function openTeamDetail(teamId) {
     teamsView.renderTeamTabCounts({ members: members.length });
     teamsView.renderTeamInviteFooter(detail);
   }
-  membersEl.innerHTML = members
+  membersEl.innerHTML = html`${members
     .map((m) => {
-      const name = escapeHtml(m.display_name || m.lichess_username || "Member");
-      const sub = m.lichess_username ? `<span class="sub">· ${escapeHtml(m.lichess_username)}</span>` : "";
-      const initial = escapeHtml(Array.from(m.display_name || m.lichess_username || "M")[0].toUpperCase());
+      const name = m.display_name || m.lichess_username || "Member";
+      const sub = m.lichess_username ? html`<span class="sub">· ${m.lichess_username}</span>` : "";
+      const initial = Array.from(m.display_name || m.lichess_username || "M")[0].toUpperCase();
       const isMe = m.user_id === appState.accountUserId;
       const isOwner = m.role === "owner";
-      const uid = escapeHtml(m.user_id);
-      const uname = escapeHtml(m.display_name || m.lichess_username || "Member");
+      const uid = m.user_id;
+      const uname = m.display_name || m.lichess_username || "Member";
       // Owner row is fixed. Managers get an inline role control on every other row
       // (incl. their own, so an admin can step down) plus remove; a plain member only
       // sees a read-only badge and a Leave button on their own row. The server
       // enforces all of this too.
       let tail;
       if (isOwner) {
-        tail = `<span class="team-role-badge r-owner">${escapeHtml(teamRoleLabel("owner"))}</span>`;
+        tail = html`<span class="team-role-badge r-owner">${teamRoleLabel("owner")}</span>`;
       } else if (canManage) {
         const opts = ["member", "admin"]
           .map(
             (r) =>
-              `<option value="${r}"${m.role === r ? " selected" : ""}>${escapeHtml(teamRoleLabel(r))}</option>`
-          )
-          .join("");
-        const removeBtn = `<button type="button" class="ib team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="${isMe ? "1" : "0"}"${isMe ? "" : " title=\"Remove member\""}>${isMe ? "Leave" : "×"}</button>`;
-        tail = `<select class="team-role-select" data-user-id="${uid}" aria-label="Role for ${uname}">${opts}</select>${removeBtn}`;
+              html`<option value="${r}"${m.role === r ? " selected" : ""}>${teamRoleLabel(r)}</option>`
+          );
+        const removeBtn = html`<button type="button" class="ib team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="${isMe ? "1" : "0"}"${isMe ? "" : html` title="Remove member"`}>${isMe ? "Leave" : "×"}</button>`;
+        tail = html`<select class="team-role-select" data-user-id="${uid}" aria-label="Role for ${uname}">${opts}</select>${removeBtn}`;
       } else {
         const leaveBtn = isMe
-          ? `<button type="button" class="ib team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="1">Leave</button>`
+          ? html`<button type="button" class="ib team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="1">Leave</button>`
           : "";
-        tail = `<span class="team-role-badge r-${escapeHtml(m.role)}">${escapeHtml(teamRoleLabel(m.role))}</span>${leaveBtn}`;
+        tail = html`<span class="team-role-badge r-${m.role}">${teamRoleLabel(m.role)}</span>${leaveBtn}`;
       }
-      return `
+      return html`
         <div class="mem-row team-member-row">
           <span class="avatar sm" aria-hidden="true">${initial}</span>
-          <span class="mem-id"><span class="name">${name}${isMe ? ' <span class="sub">(you)</span>' : ""}</span>${sub}</span>
+          <span class="mem-id"><span class="name">${name}${isMe ? html` <span class="sub">(you)</span>` : ""}</span>${sub}</span>
           <span class="team-member-tail">${tail}</span>
         </div>`;
-    })
-    .join("");
+    })}`;
   membersEl.querySelectorAll(".team-role-select").forEach((sel) => {
     sel.addEventListener("change", () =>
       updateMemberRole(teamId, sel.dataset.userId, sel.value)
@@ -3267,17 +3250,17 @@ async function loadSharedRepertoires() {
     const shared = payload.shared || [];
     if (!shared.length) {
       container.innerHTML =
-        '<div class="empty-state">Nothing shared with you yet.</div>';
+        html`<div class="empty-state">Nothing shared with you yet.</div>`;
       return;
     }
-    container.innerHTML = shared
+    container.innerHTML = html`${shared
       .map((item) => {
-        const id = escapeHtml(item.id);
-        const name = escapeHtml(item.name);
-        const color = escapeHtml(item.color || "white");
+        const id = item.id;
+        const name = item.name;
+        const color = item.color || "white";
         const team = teamById(item.team_id);
-        const via = `via ${escapeHtml(team ? team.name : "a team")}`;
-        return `
+        const via = `via ${team ? team.name : "a team"}`;
+        return html`
           <div class="mem-row shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}">
             <span class="color-dot ${color}"></span>
             <span class="mem-id">
@@ -3289,8 +3272,7 @@ async function loadSharedRepertoires() {
               <button type="button" class="btn sm team-copy" data-rep-id="${id}">Copy</button>
             </span>
           </div>`;
-      })
-      .join("");
+      })}`;
     container.querySelectorAll(".shared-rep-row").forEach((row) => {
       const open = () => openSharedRepertoire(row.dataset.repertoireId);
       row.addEventListener("click", (event) => {
@@ -3313,7 +3295,7 @@ async function loadSharedRepertoires() {
     });
   } catch (error) {
     if (!isCurrent()) return;
-    container.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+    container.innerHTML = html`<div class="empty-state">${error.message}</div>`;
   }
 }
 
@@ -3392,15 +3374,7 @@ async function shareRepertoireWithTeam(repertoireId) {
   }
 }
 
-function escapeHtml(text) {
-  return String(text).replace(/[&<>"']/g, (ch) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-  }[ch]));
-}
+
 
 // `hint` is an on-demand tooltip on a number/text field's label; `onInput`
 // (values, overlay) runs on open and on every change — e.g. to repaint a live
@@ -3410,15 +3384,15 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, cancel 
     const overlay = document.createElement("div");
     overlay.className = "modal-overlay";
     const fieldHtml = (field) => {
-        const safeName = escapeHtml(field.name);
-        const safeLabel = escapeHtml(field.label || field.name);
-        const safeValue = escapeHtml(field.default == null ? "" : String(field.default));
+        const safeName = field.name;
+        const safeLabel = field.label || field.name;
+        const safeValue = field.default == null ? "" : String(field.default);
         if (field.type === "note") {
           // Read-only informational line (no input, never collected).
-          return `<p class="modal-note muted" data-note="${safeName}">${safeLabel}</p>`;
+          return html`<p class="modal-note muted" data-note="${safeName}">${safeLabel}</p>`;
         }
         if (field.type === "textarea") {
-          return `
+          return html`
             <label class="modal-field">
               <span>${safeLabel}</span>
               <textarea name="${safeName}" data-field>${safeValue}</textarea>
@@ -3431,10 +3405,9 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, cancel 
               const value = typeof opt === "string" ? opt : opt.value;
               const label = typeof opt === "string" ? opt : (opt.label || opt.value);
               const selected = String(field.default || "") === String(value) ? " selected" : "";
-              return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(label)}</option>`;
-            })
-            .join("");
-          return `
+              return html`<option value="${value}"${selected}>${label}</option>`;
+            });
+          return html`
             <label class="modal-field">
               <span>${safeLabel}</span>
               <select name="${safeName}" data-field>${options}</select>
@@ -3444,24 +3417,24 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, cancel 
         const inputType = field.type === "number" ? "number" : "text";
         const numericAttrs =
           field.type === "number"
-            ? ` min="${field.min ?? ""}" max="${field.max ?? ""}" step="${field.step ?? 1}"`
+            ? html` min="${field.min ?? ""}" max="${field.max ?? ""}" step="${field.step ?? 1}"`
             : "";
-        const hint = field.hint ? ` title="${escapeHtml(field.hint)}"` : "";
-        return `
+        const hint = field.hint ? html` title="${field.hint}"` : "";
+        return html`
           <label class="modal-field"${hint}>
             <span>${safeLabel}</span>
             <input name="${safeName}" type="${inputType}" value="${safeValue}"${numericAttrs} data-field />
           </label>
         `;
     };
-    const inputsHtml = fields.map(fieldHtml).join("");
-    overlay.innerHTML = `
+    const inputsHtml = fields.map(fieldHtml);
+    overlay.innerHTML = html`
       <div class="modal" role="dialog" aria-modal="true">
-        <div class="modal-title">${escapeHtml(title)}</div>
+        <div class="modal-title">${title}</div>
         <div class="modal-body">${inputsHtml}</div>
         <div class="modal-footer">
-          ${cancel ? '<button class="btn ghost" data-action="cancel" type="button">Cancel</button>' : ""}
-          <button class="btn primary" data-action="ok" type="button">${escapeHtml(okLabel)}</button>
+          ${cancel ? html`<button class="btn ghost" data-action="cancel" type="button">Cancel</button>` : ""}
+          <button class="btn primary" data-action="ok" type="button">${okLabel}</button>
         </div>
       </div>
     `;
@@ -3529,15 +3502,15 @@ function showConfirmModal({
     const overlay = document.createElement("div");
     overlay.className = "modal-overlay";
     const okClass = tone === "danger" ? "danger" : "primary";
-    overlay.innerHTML = `
+    overlay.innerHTML = html`
       <div class="modal" role="dialog" aria-modal="true">
-        <div class="modal-title">${escapeHtml(title)}</div>
+        <div class="modal-title">${title}</div>
         <div class="modal-body">
-          <p class="modal-copy">${escapeHtml(body)}</p>
+          <p class="modal-copy">${body}</p>
         </div>
         <div class="modal-footer">
-          <button class="btn ghost" data-action="cancel" type="button">${escapeHtml(cancelLabel)}</button>
-          <button class="btn ${okClass}" data-action="ok" type="button">${escapeHtml(okLabel)}</button>
+          <button class="btn ghost" data-action="cancel" type="button">${cancelLabel}</button>
+          <button class="btn ${okClass}" data-action="ok" type="button">${okLabel}</button>
         </div>
       </div>
     `;
@@ -3651,7 +3624,7 @@ function setBuildLoading(on, { restore = true } = {}) {
   const empty = document.getElementById("build-empty");
   if (empty) empty.hidden = true;
   const nameEl = document.getElementById("build-rep-name");
-  if (nameEl) nameEl.innerHTML = '<span class="skeleton-text">Loading repertoire…</span>';
+  if (nameEl) nameEl.innerHTML = html`<span class="skeleton-text">Loading repertoire…</span>`;
   const stats = document.getElementById("build-rep-stats");
   if (stats) stats.hidden = true;
   const meta = document.getElementById("build-tree-meta");
@@ -3659,9 +3632,7 @@ function setBuildLoading(on, { restore = true } = {}) {
   const tree = document.getElementById("builder-tree");
   if (tree) {
     tree.innerHTML =
-      '<div class="tree-skeleton" role="status" aria-label="Loading repertoire">' +
-      [72, 56, 84, 48, 64, 40].map((w) => `<span style="width:${w}%"></span>`).join("") +
-      "</div>";
+      html`<div class="tree-skeleton" role="status" aria-label="Loading repertoire">${[72, 56, 84, 48, 64, 40].map((w) => html`<span style="width:${w}%"></span>`)}</div>`;
   }
 }
 
@@ -3714,7 +3685,7 @@ function openRepertoireContextMenu(event, repertoireId, isActive) {
   repertoireMenuOpener = event.currentTarget || document.activeElement;
   repertoireMenuOpenerId = repertoireId;
   repertoireMenuOpener?.setAttribute("aria-expanded", "true");
-  const safeId = escapeHtml(repertoireId);
+  const safeId = repertoireId;
   const items = [
     ["train", "Start training"],
     ["edit", "Open in Repertoire"],
@@ -3724,12 +3695,11 @@ function openRepertoireContextMenu(event, repertoireId, isActive) {
     ["toggle-active", isActive ? "Disable" : "Enable"],
     ["delete", "Delete..."],
   ];
-  menu.innerHTML = items
+  menu.innerHTML = html`${items
     .map(
       ([action, label]) =>
-        `<button type="button" role="menuitem" tabindex="-1" data-action="${escapeHtml(action)}" data-repertoire-id="${safeId}">${escapeHtml(label)}</button>`
-    )
-    .join("");
+        html`<button type="button" role="menuitem" tabindex="-1" data-action="${action}" data-repertoire-id="${safeId}">${label}</button>`
+    )}`;
   menu.hidden = false;
   const rect = menu.getBoundingClientRect();
   // From the ⋯ button: drop down under it, right edges aligned, so the menu stays
@@ -4009,7 +3979,7 @@ function loadAnalyzeSession() {
       accountService, activeViewName, analysisSelfSide, analysisStore, api, appState,
       boardAfterMove, boardInfo, boards, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId,
       defaultRepertoireNameFromPgn, effectiveMaiaRating, effectiveStockfishDepth,
-      engineLifecycleMark, engineWidget, ensureAnalyzeView, escapeHtml, hideAnalysisRetrySave,
+      engineLifecycleMark, engineWidget, ensureAnalyzeView, hideAnalysisRetrySave,
       importRepertoireFromPgnText, invalidateAnalysisSource, jobToast, loadPhaseCoach,
       maiaAnalysisEnabled, postJson, pref, preloadCoach, refreshAnalysisHistoryIfOpen,
       refreshAnalyzeRecovery, renderAnalysisTree, renderAnalysisTreeEmptyState, requireSignIn,
@@ -4066,7 +4036,6 @@ async function ensureAnalyzeView() {
   if (!analyzeView) {
     analyzeView = mod.createAnalyzeView({
       appState,
-      escapeHtml,
       START_FEN,
       showAnalysisPly,
       selectAnalysisNode,
@@ -4090,7 +4059,7 @@ function preloadMoveTreeRenderer() {
 async function ensureMoveTreeRenderer() {
   const mod = await preloadMoveTreeRenderer();
   if (!moveTreeRenderer) {
-    moveTreeRenderer = mod.createMoveTreeRenderer({ escapeHtml });
+    moveTreeRenderer = mod.createMoveTreeRenderer();
   }
   return moveTreeRenderer;
 }
@@ -4106,7 +4075,7 @@ function renderAnalysisTreeEmptyState() {
   if (!container) return;
   appState.analysisTree = null;
   container.innerHTML =
-    '<div class="empty-state">Play on the board, or analyze a PGN.</div>';
+    html`<div class="empty-state">Play on the board, or analyze a PGN.</div>`;
 }
 
 function renderAnalysisTree(movesArg) {
@@ -4183,8 +4152,7 @@ function loadBuildSession() {
       BROWSER_ENGINE_UNAVAILABLE, buildDockFolded, buildOpMatchesRepertoire,
       buildProvisionalNode, captureBuildContext, closeRepertoireContextMenu, currentOwnerId,
       deleteBuildNodeLocal, downloadText, effectiveMaiaRating, effectiveStockfishDepth,
-      engineLifecycleMark, engineWidget, ensureBuildView, ensureExplorerClient, escapeHtml,
-      EXPLORER_EVAL_MAX_LINES, explorerDrawerOpen, explorerEvalEngine,
+      engineLifecycleMark, engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES, explorerDrawerOpen, explorerEvalEngine,
       handleRepertoireContextAction, hardFlushBuild, hasPendingBuildOpsFor, invalidateBook,
       isBuildReadOnly, jobToast, normalizeUci, openSettingsSection, optimisticBoardMove,
       postJson, preloadBuildGen, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
@@ -4244,7 +4212,6 @@ async function ensureBuildView() {
   if (!buildView) {
     buildView = mod.createBuildView({
       appState,
-      escapeHtml,
       boards,
       getMoveTreeRenderer: () => moveTreeRenderer,
       ensureMoveTreeRenderer,
@@ -4280,7 +4247,7 @@ function loadTrainSession() {
   trainSessionLoading ||= import("./controllers/train-session.js").then((mod) => mod.createTrainSession({
     accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo,
     boards, currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView,
-    escapeHtml, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
+    flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
     loadPhaseCoach, loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
     openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView,
     queueTrainAttempt, refreshAuthStatus, renderTrainStats, requireSignIn, setStatus,
@@ -4627,7 +4594,7 @@ function renderBuilderTreeEmptyState() {
     meta.innerHTML = "";
   }
   container.innerHTML =
-    '<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>';
+    html`<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>`;
   if (branchBar) branchBar.hidden = true;
   if (boards.build) boards.build.setBranchArrows([]);
   syncViewHeads();
@@ -4777,7 +4744,6 @@ async function ensureTrainView() {
     trainView = mod.createTrainView({
       appState,
       boards,
-      escapeHtml,
       renderSyncChip,
       setTrainBanner,
       updateTrainTurnBadge,
@@ -5199,7 +5165,7 @@ async function ensureSettingsView() {
   return settingsView;
 }
 
-// Every in-flight loadSettings() (a tab click can start two). settingsSettled()
+// Every in-flight loadSettings() (a tab click can start two). whenSettingsReady()
 // waits until none remain, i.e. the Settings view is bound and fully rendered.
 const settingsLoads = new Set();
 
@@ -5209,8 +5175,10 @@ function loadSettings() {
   return load;
 }
 
-async function settingsSettled() {
+async function whenSettingsReady() {
+  const view = await ensureSettingsView();
   while (settingsLoads.size) await Promise.allSettled([...settingsLoads]);
+  return view;
 }
 
 // Open Settings through its tab (same path as a rail click) and jump to a
@@ -5219,7 +5187,7 @@ async function openSettingsSection(sectionId) {
   const tab = document.querySelector('.tab[data-view="settings"]');
   if (tab) tab.click();
   else switchView("settings");
-  await settingsSettled();
+  await whenSettingsReady();
   const link = document.querySelector(`.settings-nav-link[href="#${sectionId}"]`);
   if (link) {
     link.click();
@@ -5467,7 +5435,6 @@ function openGamesComposer(anchor) {
     allowExternal: true,
     title: "Games sources",
     externalPlaceholder: "Add Lichess username…",
-    escapeHtml,
     onChange: (sel) => {
       writeGamesSelection(sel);
       paintGamesSource();
@@ -5486,7 +5453,7 @@ function paintGamesSource() {
   if (!appState.signedIn) {
     tray.hidden = false;
     tray.innerHTML =
-      '<button type="button" class="src-chip src-chip-signin" data-games-signin>Sign in to use your games</button>';
+      html`<button type="button" class="src-chip src-chip-signin" data-games-signin>Sign in to use your games</button>`;
     return;
   }
   const selection = gamesSourceSelection();
@@ -5499,24 +5466,20 @@ function paintGamesSource() {
   // named an empty set and Check stayed disabled without saying why.
   if (n === 0 && !selection.external.length && selection.linkedMode === "all") {
     tray.innerHTML =
-      '<button type="button" class="src-chip src-chip-signin" data-games-link>Link Lichess to use your games</button>';
+      html`<button type="button" class="src-chip src-chip-signin" data-games-link>Link Lichess to use your games</button>`;
     return;
   }
-  tray.innerHTML = visible
+  tray.innerHTML = html`${visible
     .map((c) =>
       c.kind === "self"
-        ? `<span class="src-chip is-self" data-games-chip-self>${escapeHtml(label)}</span>`
+        ? html`<span class="src-chip is-self" data-games-chip-self>${label}</span>`
         : c.kind === "external"
-          ? `<span class="src-chip" data-games-chip="${escapeHtml(c.id)}">${escapeHtml(c.label)}` +
-            `<button type="button" class="src-chip-x" data-games-unpick-external="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Games sources">×</button></span>`
-          : `<span class="src-chip" data-games-chip="${escapeHtml(c.id)}">${escapeHtml(c.label)}` +
-            (c.primary ? ' <span class="conn-primary">Primary</span>' : "") +
-            `<button type="button" class="src-chip-x" data-games-unpick="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Games sources">×</button></span>`
-    )
-    .join("");
+          ? html`<span class="src-chip" data-games-chip="${c.id}">${c.label}<button type="button" class="src-chip-x" data-games-unpick-external="${c.id}" aria-label="Remove ${c.label} from Games sources">×</button></span>`
+          : html`<span class="src-chip" data-games-chip="${c.id}">${c.label}${c.primary ? html` <span class="conn-primary">Primary</span>` : ""}<button type="button" class="src-chip-x" data-games-unpick="${c.id}" aria-label="Remove ${c.label} from Games sources">×</button></span>`
+    )}`;
   if ((selfState === "none" || (!chips.length && selection.linkedMode !== "all")) && !selection.external.length) {
     tray.innerHTML =
-      '<span class="src-empty">No sources — open Add and pick one</span>';
+      html`<span class="src-empty">No sources — open Add and pick one</span>`;
     return;
   }
 }
@@ -5594,7 +5557,6 @@ function openScoutComposer(anchor) {
     allowExternal: true,
     title: "Scout sources",
     externalPlaceholder: "Add Lichess username…",
-    escapeHtml,
     onChange: (sel) => {
       writeScoutSelection(sel);
       paintScoutSource();
@@ -5624,19 +5586,15 @@ function paintScoutSource() {
       : [];
   tray.hidden = false;
   tray.innerHTML = visible.length
-    ? visible
+    ? html`${visible
         .map((c) =>
           c.kind === "external"
-            ? `<span class="src-chip" data-scout-chip="${escapeHtml(c.id)}">${escapeHtml(c.label)}` +
-              `<button type="button" class="src-chip-x" data-scout-unpick-external="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Scout sources">×</button></span>`
+            ? html`<span class="src-chip" data-scout-chip="${c.id}">${c.label}<button type="button" class="src-chip-x" data-scout-unpick-external="${c.id}" aria-label="Remove ${c.label} from Scout sources">×</button></span>`
             : c.kind === "self"
-              ? `<span class="src-chip is-self" data-scout-chip-self>Self · ${c.count}</span>`
-              : `<span class="src-chip" data-scout-chip="${escapeHtml(c.id)}">${escapeHtml(c.label)}` +
-                (c.primary ? ' <span class="conn-primary">Primary</span>' : "") +
-                `<button type="button" class="src-chip-x" data-scout-unpick="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.label)} from Scout sources">×</button></span>`
-        )
-        .join("")
-    : '<span class="src-empty">No sources — open Add and pick one</span>';
+              ? html`<span class="src-chip is-self" data-scout-chip-self>Self · ${c.count}</span>`
+              : html`<span class="src-chip" data-scout-chip="${c.id}">${c.label}${c.primary ? html` <span class="conn-primary">Primary</span>` : ""}<button type="button" class="src-chip-x" data-scout-unpick="${c.id}" aria-label="Remove ${c.label} from Scout sources">×</button></span>`
+        )}`
+    : html`<span class="src-empty">No sources — open Add and pick one</span>`;
   // The empty state names the next step for where the user actually is.
   const hint = document.getElementById("scout-empty-hint");
   if (hint) {
@@ -5700,7 +5658,7 @@ async function ensureReplayView() {
   const mod = await preloadReplayView();
   if (!replayView) {
     replayView = mod.createReplayView({
-      escapeHtml, onError: setStatusError,
+      onError: setStatusError,
       // Focus-board renderers: the production FEN decoder + active piece-SVG
       // set, shared with the Library preview (piece style follows Settings).
       boardRenderers: { parseFenBoard, pieceSvg },
@@ -5926,8 +5884,7 @@ function ensureCoverageView() {
         getContext: () => ({ build: appState.build, ownerId: currentOwnerId(),
           ownerGeneration: appState.ownerGeneration, rating: effectiveMaiaRating(),
           selectedNodeId: appState.buildCurrentNodeId, readOnly: isBuildReadOnly() }),
-        getProvider: () => getSharedMaia3Provider(), escapeHtml,
-        selectNode: selectBuildNode, getBoard: () => boards.build,
+        getProvider: () => getSharedMaia3Provider(), selectNode: selectBuildNode, getBoard: () => boards.build,
         previewReplies: previewCoverageReplies, getJob: () => jobToast,
         onError: (error) => setStatusError(error.message),
       });
@@ -5973,7 +5930,6 @@ async function ensureScoutView() {
   const mod = await preloadScoutView();
   if (!scoutView) {
     scoutView = mod.createScoutView({
-      escapeHtml,
       setStatus,
       switchView,
       api,
@@ -6055,13 +6011,13 @@ function installScoutE2eHook() {
 function installPolishE2eHook() {
   if (window.__prepforgePolishE2e) return;
   window.__prepforgePolishE2e = {
+    whenSettingsReady,
     async setLichessAccounts(accounts) {
       appState.lichessAccounts = accounts;
       const primary = accounts.find((a) => a.is_primary) || accounts[0] || null;
       appState.lichessUsername = primary ? primary.username : null;
       try {
-        const view = await ensureSettingsView().catch(() => null);
-        view?.ensureBound?.();
+        const view = await whenSettingsReady().catch(() => null);
         // Seed the connections list directly: the acceptance static server has
         // no /api/lichess backend, so refreshConnections() would keep the last
         // state instead of showing the seeded identities.

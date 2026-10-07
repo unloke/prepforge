@@ -1,3 +1,4 @@
+import { html } from "../html.js";
 // Train tab rendering (lazy-loaded from app.js).
 
 // Mirrors services/scheduler.py DEFAULT_NEW_CAP.
@@ -19,7 +20,6 @@ export function sessionPreviewText(health) {
 export function createTrainView({
   appState,
   boards,
-  escapeHtml,
   renderSyncChip,
   setTrainBanner,
   updateTrainTurnBadge,
@@ -37,7 +37,7 @@ export function createTrainView({
     const s = appState.trainStats || { correct: 0, mistakes: 0, streak: 0, history: [], lastStreak: 0 };
     const streakEl = document.getElementById("train-stat-streak");
     const flame = "";
-    streakEl.innerHTML = `${s.streak}${flame}`;
+    streakEl.innerHTML = html`${s.streak}${flame}`;
     const chip = streakEl.closest(".stat");
     if (chip) {
       chip.classList.toggle(
@@ -62,12 +62,11 @@ export function createTrainView({
       : "";
     const trail = document.getElementById("train-line-trail");
     if (!s.history.length) {
-      trail.innerHTML = '<span class="trail-empty">No moves yet</span>';
+      trail.innerHTML = html`<span class="trail-empty">No moves yet</span>`;
     } else {
-      trail.innerHTML = s.history
+      trail.innerHTML = html`${s.history
         .slice(-26)
-        .map((ok) => `<i class="${ok ? "ok" : "no"}"></i>`)
-        .join("");
+        .map((ok) => html`<i class="${ok ? "ok" : "no"}"></i>`)}`;
     }
   }
 
@@ -123,15 +122,14 @@ export function createTrainView({
     const cluster = smart.phaseCluster;
     const phaseChip =
       cluster && cluster.total
-        ? `<span class="kchip phase" title="Most cards sit in ${escapeHtml(cluster.majorityLabel.toLowerCase())}">${escapeHtml(cluster.majorityLabel)} coach · ${cluster.counts[cluster.majority]}/${cluster.total}</span>`
+        ? html`<span class="kchip phase" title="Most cards sit in ${cluster.majorityLabel.toLowerCase()}">${cluster.majorityLabel} coach · ${cluster.counts[cluster.majority]}/${cluster.total}</span>`
         : "";
     document.getElementById("train-queue-legend").innerHTML =
-      kinds
+      html`${kinds
         .map(
           (k) =>
-            `<span class="kchip k-${k}" title="${escapeHtml(smartKindTitles[k] || "")}">${counts[k]} ${k}</span>`
-        )
-        .join("") + phaseChip;
+            html`<span class="kchip k-${k}" title="${smartKindTitles[k] || ""}">${counts[k]} ${k}</span>`
+        )}${phaseChip}`;
   }
 
   // "Up next" preview: the next few cards in the real queue, so a mixed session
@@ -159,8 +157,7 @@ export function createTrainView({
     }
     host.hidden = false;
     host.innerHTML =
-      '<small class="faint">Up next</small>' +
-      upcoming
+      html`<small class="faint">Up next</small>${upcoming
         .map((card) => {
           const kind = smartKindLabels[card.kind] || card.kind || "";
           const rep = card.repertoire_name || smart.repertoireName || "";
@@ -169,16 +166,11 @@ export function createTrainView({
           // it anyway). Weak/due/polish cards test recall, so printing their
           // answer here would give it away (UX walkthrough 2026-10-01 P1-2).
           const target = card.kind === "new" && card.targets && card.targets[0];
-          const lineTail = target && target.san ? escapeHtml(target.san) : "";
+          const lineTail = target && target.san ? target.san : "";
           return (
-            `<div class="un-row">` +
-            `<span class="kchip k-${escapeHtml(card.kind || "polish")}">${escapeHtml(kind)}</span>` +
-            `<span class="un-rep"><span class="color-dot ${dot}"></span>${escapeHtml(rep)}</span>` +
-            `<span class="un-line">${lineTail}</span>` +
-            "</div>"
+            html`<div class="un-row"><span class="kchip k-${card.kind || "polish"}">${kind}</span><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span><span class="un-line">${lineTail}</span></div>`
           );
-        })
-        .join("");
+        })}`;
   }
 
   // Card kind chip beside the counter (smart queue only; rehearsal has none).
@@ -207,11 +199,10 @@ export function createTrainView({
     if (dots) {
       dots.innerHTML =
         prompt.targets_total > 1
-          ? Array.from({ length: prompt.targets_total }, (_, i) => {
+          ? html`${Array.from({ length: prompt.targets_total }, (_, i) => {
               const cls = i < prompt.target_index ? "done" : i === prompt.target_index ? "cur" : "";
-              return `<i class="${cls}"></i>`;
-            }).join("") +
-            `<span class="faint">move ${prompt.target_index + 1} of ${prompt.targets_total} in this card</span>`
+              return html`<i class="${cls}"></i>`;
+            })}<span class="faint">move ${prompt.target_index + 1} of ${prompt.targets_total} in this card</span>`
           : "";
     }
   }
@@ -230,17 +221,16 @@ export function createTrainView({
     ];
     const day = dayStreak;
     if (day && day.current > 0) statCells.push([`\u{1F525}${day.current}`, "day streak"]);
-    document.getElementById("train-summary-stats").innerHTML = statCells
+    document.getElementById("train-summary-stats").innerHTML = html`${statCells
       .map(
         ([value, label]) =>
-          `<div><b>${value}</b><span>${label}</span></div>`
-      )
-      .join("");
+          html`<div><b>${value}</b><span>${label}</span></div>`
+      )}`;
     const deltaEl = document.getElementById("train-summary-delta");
     const footEl = document.getElementById("train-summary-foot");
     const before = smart.healthBefore;
     if (before && after && after.health) {
-      deltaEl.innerHTML = [
+      deltaEl.innerHTML = html`${[
         ["mastered", "Mastered", "mastered", 1],
         ["learning", "Learning", "learning", 0],
         ["due", "Due", "due", -1],
@@ -253,11 +243,9 @@ export function createTrainView({
           const tone = diff * goodDir > 0 ? "up" : diff * goodDir < 0 ? "down" : "";
           const delta = diff === 0 ? "" : `${diff > 0 ? "+" : "−"}${Math.abs(diff)}`;
           return (
-            `<div class="tsum-row"><span><i class="k-${kind}"></i>${label}</span>` +
-            `<span class="num">${now}</span><span class="num ${tone}">${delta}</span></div>`
+            html`<div class="tsum-row"><span><i class="k-${kind}"></i>${label}</span><span class="num">${now}</span><span class="num ${tone}">${delta}</span></div>`
           );
-        })
-        .join("");
+        })}`;
       footEl.textContent =
         after.due_tomorrow > 0
           ? `${after.due_tomorrow} review${after.due_tomorrow === 1 ? "" : "s"} due tomorrow - come back!`

@@ -23,7 +23,7 @@ function harness(realBoard = false) {
     renderClassificationBars: vi.fn(), buildAnalysisTree: () => ({ root: parsePgn("1. e4").root }) };
   const input = { value: "1. d4", addEventListener: vi.fn() };
   const appState = { analysis: null, analysisVarNodes: new Map() };
-  const realView = createAnalyzeView({ appState, START_FEN, escapeHtml: String });
+  const realView = createAnalyzeView({ appState, START_FEN });
   view.serializeAnalysisPgn = realView.serializeAnalysisPgn;
   view.adaptParsedTree = realView.adaptParsedTree;
   const doc = { getElementById: () => input, activeElement: null };

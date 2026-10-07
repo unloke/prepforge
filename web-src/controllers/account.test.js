@@ -15,7 +15,6 @@ function makeController({ api = vi.fn(), postJson = vi.fn(), onOpenSettings = vi
     api,
     postJson,
     setStatus,
-    escapeHtml: (value) => String(value),
     showConfirmModal: vi.fn(),
     refreshAutoMaiaRating: vi.fn(),
     onOpenSettings,
@@ -145,7 +144,7 @@ describe("sign-in gate", () => {
         const overlay = {
           className: "",
           dataset: {},
-          innerHTML: "",
+          get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
           removed: false,
           listeners,
           addEventListener: (name, fn) => {
@@ -233,7 +232,7 @@ describe("sign-in gate", () => {
     resolve({ dev_reset_token: "old-token" });
     await Promise.resolve();
     expect(overlays[0].dataset.mode).toBe("login");
-    expect(overlays[0].innerHTML).not.toContain("old-token");
+    expect(String(overlays[0].innerHTML)).not.toContain("old-token");
   });
 
   it("does not reload or change a replacement modal when old sign-in completes", async () => {
@@ -257,12 +256,12 @@ describe("sign-in gate", () => {
     const { controller, setStatus } = makeController();
     expect(controller.requireSignIn("Sign in to create a repertoire", "new-repertoire")).toBe(false);
     const html = overlays[0].innerHTML;
-    expect(html).toContain("Sign in to create a repertoire");
-    expect(html).toContain('data-action="close"');
-    expect(html).toContain('for="auth-email"');
-    expect(html).toContain('id="auth-email"');
-    expect(html).toContain('for="auth-password"');
-    expect(html).toContain("auth-switch");
+    expect(String(html)).toContain("Sign in to create a repertoire");
+    expect(String(html)).toContain('data-action="close"');
+    expect(String(html)).toContain('for="auth-email"');
+    expect(String(html)).toContain('id="auth-email"');
+    expect(String(html)).toContain('for="auth-password"');
+    expect(String(html)).toContain("auth-switch");
     // The reason lives in the modal, not a toast hidden behind the backdrop.
     expect(setStatus).not.toHaveBeenCalled();
     expect(JSON.parse(session.get("prepforge.pending_action"))).toMatchObject({
@@ -309,7 +308,7 @@ describe("sign-in gate", () => {
     const { controller } = makeController();
     expect(controller.startLichessOAuth()).toBe(false);
     expect(window.open).not.toHaveBeenCalled();
-    expect(overlays[0].innerHTML).toContain("Sign in to link your Lichess account");
+    expect(String(overlays[0].innerHTML)).toContain("Sign in to link your Lichess account");
   });
 
   it("turns a 401 into the sign-in modal, but backs off right after a dismissal", () => {
@@ -334,7 +333,7 @@ describe("account menu focus", () => {
     return {
       id,
       hidden: false,
-      innerHTML: "",
+      get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
       textContent: "",
       title: "",
       style: {},
@@ -468,7 +467,7 @@ describe("account menu follows the rail", () => {
     menu = {
       id: "account-menu",
       hidden: true,
-      innerHTML: "",
+      get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
       style: {},
       getBoundingClientRect: () => ({ width: 200, height: 160 }),
       querySelector: () => firstItem,

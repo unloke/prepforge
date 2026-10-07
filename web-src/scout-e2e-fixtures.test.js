@@ -7,13 +7,7 @@ import {
 } from "./scout-e2e-fixtures.js";
 import { collectActionableRefutationGapActions } from "./scout-refutation.js";
 
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+
 
 describe("scout-e2e-fixtures", () => {
   it("confirmedHit always produces a refutation with Play suggestion", () => {
@@ -46,16 +40,16 @@ describe("scout-e2e-fixtures", () => {
   });
 
   it("buildE2ePrepSection renders inline refutation card without OAuth", () => {
-    const { html, sectionData } = buildE2ePrepSection("enginePrepCard", escapeHtml);
-    expect(html).toContain("Your game plan");
-    expect(html).toContain("scout-refutation-card");
-    expect(html).toContain("You answer");
+    const { html, sectionData } = buildE2ePrepSection("enginePrepCard");
+    expect(String(html)).toContain("Your game plan");
+    expect(String(html)).toContain("scout-refutation-card");
+    expect(String(html)).toContain("You answer");
     expect(sectionData.prepTargets?.some((t) => t.refutation)).toBe(true);
   });
 
   it("buildE2ePrepSection deepScanGap surfaces deep-scan CTA in prep column", () => {
-    const { html } = buildE2ePrepSection("deepScanGap", escapeHtml);
-    expect(html).toContain("scout-refutation-gap-deep-scan");
-    expect(html).not.toContain("scout-refutation-card");
+    const { html } = buildE2ePrepSection("deepScanGap");
+    expect(String(html)).toContain("scout-refutation-gap-deep-scan");
+    expect(String(html)).not.toContain("scout-refutation-card");
   });
 });

@@ -19,7 +19,7 @@ function harness() {
     importWidget: vi.fn(() => pending), activeViewName: () => view, engineWantedIn: () => wanted,
     effectiveStockfishDepth: vi.fn(), createSharedEvaluationProvider: vi.fn(), appState: {},
     boards: {}, START_FEN: "start", setEngineBestArrow: vi.fn(), setStatusError: vi.fn(),
-    escapeHtml: vi.fn(), setEngineOn: vi.fn(), activeBoardController: vi.fn(), explorerEvalEngine: {},
+    setEngineOn: vi.fn(), activeBoardController: vi.fn(), explorerEvalEngine: {},
     analyzeSession: null,
   };
   const facade = new Function(...Object.keys(deps), `${facadeSource}

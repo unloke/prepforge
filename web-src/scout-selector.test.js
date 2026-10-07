@@ -222,7 +222,7 @@ describe("production Module B contract (Scout v2)", () => {
       { games, profile: opponentProfile(games), username: "acceptance" },
       "white",
       [],
-      { username: "acceptance", escapeHtml: (s) => String(s) },
+      { username: "acceptance" },
     );
     expect(sectionData.prepTargets.some((t) => t.preparationEvidence?.coverage > 0)).toBe(true);
   });
@@ -234,10 +234,10 @@ describe("production Module B contract (Scout v2)", () => {
       { games, profile: opponentProfile(games), username: "acceptance" },
       "white",
       [],
-      { username: "acceptance", escapeHtml: (s) => String(s) },
+      { username: "acceptance" },
     );
-    expect(html).toContain("scout-section");
-    expect(html).toContain(`data-module-b="${PRODUCTION_MODULE_B_ID}"`);
+    expect(String(html)).toContain("scout-section");
+    expect(String(html)).toContain(`data-module-b="${PRODUCTION_MODULE_B_ID}"`);
     expect(sectionData.moduleB).toBe(PRODUCTION_MODULE_B_ID);
     expect(sectionData.prepTargets.length).toBeGreaterThan(0);
     expect(sectionData.prepTargets.length).toBeLessThanOrEqual(PRODUCTION_ROUTE_BUDGET);

@@ -1,15 +1,16 @@
+import { html } from "../html.js";
 import { localGameOver } from "../chess-local.js";
 import { buildPvPreview, clampPly, previewPosition, previewLabel, stepPreview } from "../pv-preview.js";
 import { formatEngineEval } from "../engine-eval.js";
 
 let effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
-  boards, START_FEN, setEngineBestArrow, setStatusError, escapeHtml, setEngineOn,
+  boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
   activeBoardController, explorerEvalEngine, getAnalyzeSession;
 
 export function createEngineWidget(deps) {
   ({
     effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
-    boards, START_FEN, setEngineBestArrow, setStatusError, escapeHtml, setEngineOn,
+    boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
     activeBoardController, explorerEvalEngine, getAnalyzeSession,
   } = deps);
   const widget = new EngineWidget();
@@ -232,9 +233,7 @@ class EngineWidget {
     setEngineBestArrow(null);
     setStatusError(message);
     if (this.pvsEl) {
-      this.pvsEl.innerHTML = `<div class="empty-state">${escapeHtml(
-        message || "Engine error"
-      )}</div>`;
+      this.pvsEl.innerHTML = html`<div class="empty-state">${message || "Engine error"}</div>`;
     }
   }
 
@@ -258,15 +257,11 @@ class EngineWidget {
   // Placeholder rows so the panel keeps the same height while a search warms up:
   // one row per requested line, identical in size to a real line.
   _pendingRows(from) {
-    let html = "";
+    const markup = [];
     for (let i = from; i < this.multipv; i += 1) {
-      html +=
-        '<div class="engine-pv is-pending" aria-hidden="true">' +
-        '<span class="engine-pv-eval">…</span>' +
-        `<span class="engine-pv-line">${i === 0 ? "Calculating…" : ""}</span>` +
-        "</div>";
+      markup.push(html`<div class="engine-pv is-pending" aria-hidden="true"><span class="engine-pv-eval">…</span><span class="engine-pv-line">${i === 0 ? "Calculating…" : ""}</span></div>`);
     }
-    return html;
+    return html`${markup}`;
   }
 
   // Checkmate / stalemate / draw on the board: there is no line to search, so
@@ -283,10 +278,7 @@ class EngineWidget {
           : "Draw";
     if (this.pvsEl) {
       this.pvsEl.innerHTML =
-        '<div class="engine-pv is-top is-final">' +
-        `<span class="engine-pv-eval">${escapeHtml(over.result)}</span>` +
-        `<span class="engine-pv-line">${escapeHtml(text)}</span>` +
-        "</div>";
+        html`<div class="engine-pv is-top is-final"><span class="engine-pv-eval">${over.result}</span><span class="engine-pv-line">${text}</span></div>`;
     }
     if (this.depthReadout) this.depthReadout.textContent = "—";
     if (this.evalBarWhite) {
@@ -453,9 +445,7 @@ class EngineWidget {
     const fullmoveNumber = this._fullmoveFromFen(snapshot.fen) || 1;
     const shown = pvs.slice(0, this.multipv);
     this.pvsEl.innerHTML =
-      shown
-        .map((pv, index) => this._renderPv(pv, index, sideToMove, fullmoveNumber))
-        .join("") + this._pendingRows(shown.length);
+      html`${shown.map((pv, index) => this._renderPv(pv, index, sideToMove, fullmoveNumber))}${this._pendingRows(shown.length)}`;
     if (pvs.length) {
       this._renderEvalBar(pvs[0]);
       const best = (pvs[0].pv_uci || [])[0] || null;
@@ -489,11 +479,7 @@ class EngineWidget {
     if (previewing) cls += " is-previewing";
     const title = previewing ? "Back to game" : "Show on board";
     return (
-      `<div class="${cls}" data-line="${index}" role="button" tabindex="0"` +
-      ` aria-pressed="${!!previewing}" title="${title}">` +
-      `<span class="engine-pv-eval">${escapeHtml(evalText)}</span>` +
-      `<span class="engine-pv-line">${moves || "..."}</span>` +
-      `</div>`
+      html`<div class="${cls}" data-line="${index}" role="button" tabindex="0" aria-pressed="${!!previewing}" title="${title}"><span class="engine-pv-eval">${evalText}</span><span class="engine-pv-line">${moves || "..."}</span></div>`
     );
   }
 
@@ -503,20 +489,14 @@ class EngineWidget {
     let move = fullmoveNumber;
     let whiteToMove = sideToMove === "white";
     for (let i = 0; i < moves.length; i += 1) {
-      const san = `<span class="pv-move${i === currentPly ? " is-current" : ""}" data-ply="${i}">${escapeHtml(moves[i])}</span>`;
-      if (whiteToMove) {
-        out.push(`<span class="pv-move-num">${move}.</span>${san}`);
-      } else {
-        if (i === 0) {
-          out.push(`<span class="pv-move-num">${move}...</span>${san}`);
-        } else {
-          out.push(san);
-        }
-        move += 1;
-      }
+      if (i) out.push(" ");
+      out.push(whiteToMove || i === 0
+        ? html`<span class="pv-move-num">${move}${whiteToMove ? "." : "..."}</span><span class="pv-move${i === currentPly ? " is-current" : ""}" data-ply="${i}">${moves[i]}</span>`
+        : html`<span class="pv-move${i === currentPly ? " is-current" : ""}" data-ply="${i}">${moves[i]}</span>`);
+      if (!whiteToMove) move += 1;
       whiteToMove = !whiteToMove;
     }
-    return out.join(" ");
+    return html`${out}`;
   }
 
   _fullmoveFromFen(fen) {

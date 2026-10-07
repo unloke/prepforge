@@ -44,7 +44,7 @@ import { createScoutView } from "./scout.js";
 
 function makeEl(id, props = {}) {
   return {
-    id, value: "", textContent: "0", disabled: false, hidden: false, innerHTML: "",
+    id, value: "", textContent: "0", disabled: false, hidden: false, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     dataset: {}, classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() },
     focus: vi.fn(), addEventListener: vi.fn(), ...props,
   };
@@ -107,7 +107,7 @@ describe("scout maia enrichment orchestration", () => {
     elements.set("scout-profile", makeEl("scout-profile", { hidden: true }));
 
     view = createScoutView({
-      escapeHtml: (s) => s, setStatus: vi.fn(), switchView: vi.fn(),
+      setStatus: vi.fn(), switchView: vi.fn(),
       api: vi.fn(async (url) => (url === "/api/repertoires" ? { repertoires: [] } : { nodes: [{ id: "root", depth: 0, parent_id: null, uci: null }] })),
       showInputModal: vi.fn(), createRepertoirePrompt: vi.fn(), editRepertoire: vi.fn(),
       boardAfterMove: vi.fn(), buildProvisionalNode: vi.fn(), hardFlushBuild: vi.fn(),
@@ -148,7 +148,7 @@ describe("scout maia enrichment orchestration", () => {
     await flushDeferredTimers();
 
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
-    expect(elements.get("scout-results").innerHTML).toContain("scout-maia-estimate");
+    expect(String(elements.get("scout-results").innerHTML)).toContain("scout-maia-estimate");
   });
 
   it("completes Stockfish prefilter on the success path without falling into failed fallback", async () => {
@@ -205,8 +205,8 @@ describe("scout maia enrichment orchestration", () => {
 
     const results = elements.get("scout-results");
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
-    expect(results.innerHTML).toContain("scout-maia-estimate");
-    expect(results.innerHTML).not.toContain("scout-ranked-note");
+    expect(String(results.innerHTML)).toContain("scout-maia-estimate");
+    expect(String(results.innerHTML)).not.toContain("scout-ranked-note");
   });
 
   // Regression: a Lichess NDJSON stream that drops mid-fetch (non-abort) AFTER games
@@ -250,7 +250,7 @@ describe("scout maia enrichment orchestration", () => {
     await view.runScout();
     await flushDeferredTimers();
     expect(wdlReadMock).not.toHaveBeenCalled();
-    expect(elements.get("scout-results").innerHTML).toContain("No reachable weak spots in these games");
+    expect(String(elements.get("scout-results").innerHTML)).toContain("No reachable weak spots in these games");
   });
 
   it("still enriches with Maia when Stockfish provides no evaluation evidence", async () => {
@@ -269,7 +269,7 @@ describe("scout maia enrichment orchestration", () => {
     await flushDeferredTimers();
 
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
-    expect(elements.get("scout-results").innerHTML).toContain("scout-maia-estimate");
+    expect(String(elements.get("scout-results").innerHTML)).toContain("scout-maia-estimate");
   });
 
   it("still enriches with Maia when Stockfish prefilter fails", async () => {
@@ -283,7 +283,7 @@ describe("scout maia enrichment orchestration", () => {
     await flushDeferredTimers();
 
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
-    expect(elements.get("scout-results").innerHTML).toContain("scout-maia-estimate");
+    expect(String(elements.get("scout-results").innerHTML)).toContain("scout-maia-estimate");
   });
 
   it("still enriches with Maia when the stream errors after games arrive", async () => {
@@ -306,8 +306,8 @@ describe("scout maia enrichment orchestration", () => {
     await runPromise;
     await flushDeferredTimers();
 
-    const html = elements.get("scout-results").innerHTML;
+    const html = String(elements.get("scout-results").innerHTML);
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
-    expect(html).toContain("scout-maia-estimate");
+    expect(String(html)).toContain("scout-maia-estimate");
   });
 });

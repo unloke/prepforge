@@ -337,28 +337,26 @@ describe("resetMaiaScopeCache", () => {
 
 describe("scoutMaiaRankedNote", () => {
   it("leaves loading feedback to the shared inline state", () => {
-    expect(scoutMaiaRankedNote([{ scorePct: 50 }], "loading")).toBe("");
-    expect(scoutMaiaRankedNote([{ scorePct: 50 }], "idle", { prefilterState: "loading" })).toBe("");
-    expect(scoutMaiaRankedNote([{ scorePct: 50 }], "maia-off")).toBe("");
-    expect(scoutMaiaRankedNote([{ scorePct: 50 }], "loading")).not.toContain(
+    expect(String(scoutMaiaRankedNote([{ scorePct: 50 }], "loading"))).toBe("");
+    expect(String(scoutMaiaRankedNote([{ scorePct: 50 }], "idle", { prefilterState: "loading" }))).toBe("");
+    expect(String(scoutMaiaRankedNote([{ scorePct: 50 }], "maia-off"))).toBe("");
+    expect(String(scoutMaiaRankedNote([{ scorePct: 50 }], "loading"))).not.toContain(
       "score/WDL are Maia estimates",
     );
   });
 
   // Settled states carry no standing explanation of how the list is ranked.
   it("keeps failures actionable and omits ranking explanations once reads settle", () => {
-    expect(scoutMaiaRankedNote([{ scorePct: 50 }], MAIA_ENRICH_FAILED)).toContain("Maia unavailable on 1/1 lines. Retry in Settings");
+    expect(String(scoutMaiaRankedNote([{ scorePct: 50 }], MAIA_ENRICH_FAILED))).toContain("Maia unavailable on 1/1 lines. Retry in Settings");
     expect(
-      scoutMaiaRankedNote([{ maiaScorePct: 40, scorePct: 40 }, { scorePct: 55 }], MAIA_ENRICH_PARTIAL),
+      String(scoutMaiaRankedNote([{ maiaScorePct: 40, scorePct: 40 }, { scorePct: 55 }], MAIA_ENRICH_PARTIAL)),
     ).toContain("Maia unavailable on 1/2 lines.");
-    expect(scoutMaiaRankedNote([{ maiaScorePct: 40, scorePct: 40 }], "done")).toBe("");
+    expect(String(scoutMaiaRankedNote([{ maiaScorePct: 40, scorePct: 40 }], "done"))).toBe("");
   });
 });
 
 describe("Maia failure UI", () => {
-  function escapeHtml(value) {
-    return String(value);
-  }
+
 
   const PLAN_GAMES = [
     {
@@ -387,14 +385,13 @@ describe("Maia failure UI", () => {
       [],
       {
         speedFilter: "all",
-        escapeHtml,
         maiaResults,
         maiaRatings: { white: 1800, black: 1800 },
         maiaEnrichState: MAIA_ENRICH_FAILED,
       },
     );
-    expect(html).not.toContain("scout-maia-estimate");
-    expect(html).toContain("No reachable weak spots in these games");
-    expect(html).not.toContain("Evaluating");
+    expect(String(html)).not.toContain("scout-maia-estimate");
+    expect(String(html)).toContain("No reachable weak spots in these games");
+    expect(String(html)).not.toContain("Evaluating");
   });
 });

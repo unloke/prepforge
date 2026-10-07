@@ -73,7 +73,7 @@ function makeEl(id, props = {}) {
     textContent: "0",
     disabled: false,
     hidden: true,
-    innerHTML: "",
+    get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     dataset: {},
     classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() },
     focus: vi.fn(),
@@ -127,12 +127,11 @@ describe("scout deep scan session binding", () => {
     elements.set("scout-live-count", makeEl("scout-live-count"));
     elements.set(
       "scout-results",
-      makeEl("scout-results", { querySelectorAll: () => [], scrollTop: 0, innerHTML: "" }),
+      makeEl("scout-results", { querySelectorAll: () => [], scrollTop: 0, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } }),
     );
     elements.set("scout-profile", makeEl("scout-profile", { hidden: true }));
 
     view = createScoutView({
-      escapeHtml: (s) => s,
       setStatus: vi.fn(),
       switchView: vi.fn(),
       api: vi.fn(async (url) => {
@@ -207,8 +206,8 @@ describe("scout deep scan session binding", () => {
     await vi.advanceTimersByTimeAsync(ENGINE_AGG_DEBOUNCE_MS);
     await vi.runOnlyPendingTimersAsync();
 
-    expect(elements.get("scout-results").innerHTML).not.toContain("99 cp");
-    expect(elements.get("scout-results").innerHTML).not.toContain("stale-game");
+    expect(String(elements.get("scout-results").innerHTML)).not.toContain("99 cp");
+    expect(String(elements.get("scout-results").innerHTML)).not.toContain("stale-game");
   });
 
   it("downgrades engine aggregate after a new streamed game arrives", async () => {
@@ -244,8 +243,8 @@ describe("scout deep scan session binding", () => {
     await vi.runOnlyPendingTimersAsync();
 
     const html = elements.get("scout-results").innerHTML;
-    expect(html).toContain("coverage insufficient");
-    expect(html).toContain("new games arrived");
-    expect(html).not.toContain("Highest ACPL");
+    expect(String(html)).toContain("coverage insufficient");
+    expect(String(html)).toContain("new games arrived");
+    expect(String(html)).not.toContain("Highest ACPL");
   });
 });

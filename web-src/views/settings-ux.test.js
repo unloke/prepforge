@@ -11,7 +11,7 @@ import { createSettingsView } from "./settings.js";
 function el(extra = {}) {
   return {
     textContent: "",
-    innerHTML: "",
+    get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     hidden: false,
     disabled: false,
     title: "",
@@ -111,11 +111,11 @@ describe("settings chess accounts loading state", () => {
       api,
     });
     const pending = view.renderConnections();
-    expect(elements["settings-lichess-accounts"].innerHTML).toContain("Checking linked accounts");
+    expect(String(elements["settings-lichess-accounts"].innerHTML)).toContain("Checking linked accounts");
     expect(elements["settings-link-lichess"].hidden).toBe(true);
     resolve({ linked: true, accounts: [{ id: "a", username: "me_on_lichess", is_primary: true }] });
     await pending;
-    expect(elements["settings-lichess-accounts"].innerHTML).toContain("me_on_lichess");
+    expect(String(elements["settings-lichess-accounts"].innerHTML)).toContain("me_on_lichess");
     expect(elements["settings-link-lichess"].hidden).toBe(false);
   });
 
@@ -127,7 +127,7 @@ describe("settings chess accounts loading state", () => {
     });
     await view.renderConnections();
     expect(api).not.toHaveBeenCalled();
-    expect(elements["settings-lichess-accounts"].innerHTML).toContain("No Lichess account linked yet");
+    expect(String(elements["settings-lichess-accounts"].innerHTML)).toContain("No Lichess account linked yet");
   });
 });
 

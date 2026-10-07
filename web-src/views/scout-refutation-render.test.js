@@ -58,7 +58,7 @@ function makeEl(id, props = {}) {
     textContent: "0",
     disabled: false,
     hidden: true,
-    innerHTML: "",
+    get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     dataset: {},
     classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() },
     focus: vi.fn(),
@@ -117,12 +117,11 @@ describe("scout refutation render sync", () => {
     elements.set("scout-live-count", makeEl("scout-live-count"));
     elements.set(
       "scout-results",
-      makeEl("scout-results", { querySelectorAll: () => [], scrollTop: 0, innerHTML: "" }),
+      makeEl("scout-results", { querySelectorAll: () => [], scrollTop: 0, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } }),
     );
     elements.set("scout-profile", makeEl("scout-profile", { hidden: true }));
 
     view = createScoutView({
-      escapeHtml: (s) => s,
       setStatus: vi.fn(),
       switchView: vi.fn(),
       api: vi.fn(async (url) => {
@@ -190,7 +189,7 @@ describe("scout refutation render sync", () => {
     await freshRun;
 
     const html = elements.get("scout-results").innerHTML;
-    expect(html).not.toContain("Connect Lichess account");
+    expect(String(html)).not.toContain("Connect Lichess account");
   });
 
   it("renders refutation panel without false-positive hits when engine scan is absent", async () => {
@@ -199,8 +198,8 @@ describe("scout refutation render sync", () => {
     await vi.runOnlyPendingTimersAsync();
 
     const html = elements.get("scout-results").innerHTML;
-    expect(html).toContain("Not scanned yet");
-    expect(html).not.toContain("scout-refutation-hit");
-    expect(html).not.toContain("STALE_REFUTE_GAP");
+    expect(String(html)).toContain("Not scanned yet");
+    expect(String(html)).not.toContain("scout-refutation-hit");
+    expect(String(html)).not.toContain("STALE_REFUTE_GAP");
   });
 });

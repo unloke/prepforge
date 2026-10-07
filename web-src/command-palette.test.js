@@ -46,7 +46,7 @@ describe("command palette filter", () => {
   it("lists views in the same order as the rail", async () => {
     const { readFileSync } = await import("node:fs");
     const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
-    const rail = html.slice(html.indexOf('<nav class="rail"'), html.indexOf("</nav>"));
+    const rail = String(html).slice(String(html).indexOf('<nav class="rail"'), String(html).indexOf("</nav>"));
     const railOrder = [...rail.matchAll(/class="tab nav-item[^"]*" data-view="([^"]+)"(?: data-replay-section="([^"]+)")?/g)]
       .map((m) => (m[2] ? `${m[1]}:${m[2]}` : m[1]));
     const paletteOrder = PALETTE_VIEWS.map((v) => (v.section ? `${v.id}:${v.section}` : v.id));
@@ -108,9 +108,9 @@ describe("command palette filter", () => {
 
   it("renders listbox options with one selected active descendant target", () => {
     const rendered = renderPaletteItems(items.slice(0, 2), 1);
-    expect(rendered).toContain('role="option"');
-    expect(rendered).toContain('id="palette-option-1"');
-    expect(rendered).toContain('aria-selected="true"');
-    expect(rendered.match(/aria-selected="true"/g)).toHaveLength(1);
+    expect(String(rendered)).toContain('role="option"');
+    expect(String(rendered)).toContain('id="palette-option-1"');
+    expect(String(rendered)).toContain('aria-selected="true"');
+    expect(String(rendered).match(/aria-selected="true"/g)).toHaveLength(1);
   });
 });

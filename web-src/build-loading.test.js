@@ -1,9 +1,11 @@
+import { html } from "./html.js";
 import { describe, expect, it, vi } from "vitest";
 import { localBoardInfo } from "./chess-local.js";
 import { appSource } from "./test-app-source.js";
 
 const source = appSource();
 function compile(marker, deps) {
+  deps = { html, ...deps };
   const start = source.indexOf(marker);
   const end = source.indexOf("\n}\n", start) + 2;
   return new Function(...Object.keys(deps), `return (${source.slice(start, end)});`)(...Object.values(deps));

@@ -19,7 +19,7 @@ function makeEl(id, props = {}) {
     textContent: "0",
     disabled: false,
     hidden: false,
-    innerHTML: "",
+    get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     dataset: {},
     classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() },
     focus: vi.fn(),
@@ -80,7 +80,6 @@ describe("scout view initialization reentrancy", () => {
       pickedUsernames = names;
     };
     view = createScoutView({
-      escapeHtml: (s) => s,
       setStatus,
       switchView: vi.fn(),
       api,
@@ -152,8 +151,8 @@ describe("scout view initialization reentrancy", () => {
     });
 
     await expect(view.runScout()).resolves.toBeUndefined();
-    expect(elements.get("scout-results").innerHTML).toContain("scout-error");
-    expect(elements.get("scout-results").innerHTML).toContain("repertoire service down");
+    expect(String(elements.get("scout-results").innerHTML)).toContain("scout-error");
+    expect(String(elements.get("scout-results").innerHTML)).toContain("repertoire service down");
     expect(elements.get("scout-profile").hidden).toBe(true);
     expect(elements.get("scout-btn").disabled).toBe(false);
     expect(setStatus).toHaveBeenCalledWith("repertoire service down");
@@ -163,25 +162,25 @@ describe("scout view initialization reentrancy", () => {
   it("repaints the existing report when Replay is shown after the results DOM was emptied", async () => {
     await view.runScout();
     const results = elements.get("scout-results");
-    expect(results.innerHTML).toContain("scout-section");
+    expect(String(results.innerHTML)).toContain("scout-section");
 
     results.innerHTML = "";
     view.onShow();
 
-    expect(results.innerHTML).toContain("scout-section");
+    expect(String(results.innerHTML)).toContain("scout-section");
     expect(elements.get("scout-live-count").textContent).toBe("1");
   });
 
   it("discards the report when its sources change (UX 2026-10-01 P2-11)", async () => {
     await view.runScout();
     const results = elements.get("scout-results");
-    expect(results.innerHTML).toContain("scout-section");
+    expect(String(results.innerHTML)).toContain("scout-section");
 
     view.discardReport();
-    expect(results.innerHTML).toBe("");
+    expect(String(results.innerHTML)).toBe("");
     // Showing the page again must not repaint the old sources' report.
     view.onShow();
-    expect(results.innerHTML).not.toContain("scout-section");
+    expect(String(results.innerHTML)).not.toContain("scout-section");
     expect(elements.get("scout-btn").disabled).toBe(false);
   });
 
@@ -204,7 +203,7 @@ describe("scout view initialization reentrancy", () => {
   it("discards the old report's source warnings and retry action", async () => {
     await view.runScout();
     const warning = makeEl("scout-source-warnings", {
-      innerHTML: "Old rival failed · Retry failed sources",
+      get innerHTML() { return this._html ?? "Old rival failed · Retry failed sources"; }, set innerHTML(value) { this._html = String(value); },
       remove: () => elements.delete("scout-source-warnings"),
     });
     elements.set(warning.id, warning);
@@ -219,7 +218,7 @@ describe("scout view initialization reentrancy", () => {
     await view.runScout();
     view.__setPickedUsernames(["rival", "newly-linked"]);
     view.onShow();
-    expect(elements.get("scout-results").innerHTML).not.toContain("scout-section");
+    expect(String(elements.get("scout-results").innerHTML)).not.toContain("scout-section");
     expect(elements.get("scout-live-count").textContent).toBe("0");
     expect(elements.get("scout-btn").dataset.scoutAction).toBe("start");
   });
@@ -234,7 +233,7 @@ describe("scout view initialization reentrancy", () => {
     resolve({ repertoires: [] });
     await load;
     expect(streamGames).not.toHaveBeenCalled();
-    expect(elements.get("scout-results").innerHTML).toBe("");
+    expect(String(elements.get("scout-results").innerHTML)).toBe("");
     expect(elements.get("scout-btn").disabled).toBe(false);
   });
 

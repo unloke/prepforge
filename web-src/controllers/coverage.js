@@ -1,3 +1,4 @@
+import { html } from "../html.js";
 import { coverageTreeKey, runCoverageScan } from "../coverage.js";
 import { localBoardAfterMove } from "../chess-local.js";
 
@@ -5,7 +6,7 @@ import { localBoardAfterMove } from "../chess-local.js";
 // database switch; app.js wires them); the panel body only shows the scan
 // state and its gaps. The controls are the source of truth for scope/horizon.
 export function createCoverageController({
-  getContext, getProvider, escapeHtml, selectNode, getBoard,
+  getContext, getProvider, selectNode, getBoard,
   previewReplies, getJob, onError,
 }) {
   let result = null;
@@ -66,22 +67,22 @@ export function createCoverageController({
   }
   function summary() {
     const status = result.scannedNodes ? `${result.scannedNodes} positions` : "No opponent positions";
-    return `<div class="coverage-summary" aria-live="polite"><div><b>${pct(result.coveredMass)} prepared</b><span>${escapeHtml(status)}</span></div>
+    return html`<div class="coverage-summary" aria-live="polite"><div><b>${pct(result.coveredMass)} prepared</b><span>${status}</span></div>
       <div class="coverage-mass" role="img" aria-label="${pct(result.coveredMass)} prepared, ${pct(result.gapMass)} missing, ${pct(result.unknownMass)} unchecked">
         <i class="is-covered" style="width:${result.coveredMass * 100}%"></i><i class="is-gap" style="width:${result.gapMass * 100}%"></i><i class="is-unknown" style="width:${result.unknownMass * 100}%"></i></div>
       <div class="coverage-totals"><span>${pct(result.gapMass)} missing</span><span>${pct(result.unknownMass)} unchecked${result.status === "partial" ? " · partial" : ""}</span></div></div>`;
   }
   function gapRows(readOnly) {
-    let html = readOnly ? "" : `<div class="coverage-complete-bar"><label class="coverage-selall"><input type="checkbox" id="coverage-selectall" />Select all</label><button type="button" class="btn primary" id="coverage-complete" data-testid="coverage-complete" disabled>Preview replies</button></div>`;
-    html += result.gaps.map((gap, i) => {
+    let markup = readOnly ? "" : html`<div class="coverage-complete-bar"><label class="coverage-selall"><input type="checkbox" id="coverage-selectall" />Select all</label><button type="button" class="btn primary" id="coverage-complete" data-testid="coverage-complete" disabled>Preview replies</button></div>`;
+    markup = html`${markup}${result.gaps.map((gap, i) => {
       const path = gap.pathSans.join(" ") || "Start";
       const state = gap.kind === "missing_reply" ? "No reply" : "Missing branch";
-      const check = readOnly ? "" : `<label class="coverage-gap-select"><input type="checkbox" class="coverage-gap-check" data-index="${i}" aria-label="Select ${escapeHtml(path + " " + gap.moveSan)}" /></label>`;
-      return `<div class="coverage-gap${readOnly ? " is-readonly" : ""}" data-index="${i}">${check}
-        <button type="button" class="coverage-gap-body" data-gap="${i}" title="Preview this opponent move"><span class="coverage-gap-path">${escapeHtml(path)}</span><span class="coverage-gap-line"><b class="coverage-gap-move">${escapeHtml(gap.moveSan)}</b><span class="coverage-gap-meta">${state}</span><b class="coverage-gap-impact">${pct(gap.impact)}</b></span><span class="coverage-gap-track"><i style="width:${gap.impact * 100}%"></i></span></button></div>`;
-    }).join("");
-    if (result.omittedGapCount) html += `<div class="coverage-live">${result.omittedGapCount} more gaps</div>`;
-    return html;
+      const check = readOnly ? "" : html`<label class="coverage-gap-select"><input type="checkbox" class="coverage-gap-check" data-index="${i}" aria-label="Select ${path + " " + gap.moveSan}" /></label>`;
+      return html`<div class="coverage-gap${readOnly ? " is-readonly" : ""}" data-index="${i}">${check}
+        <button type="button" class="coverage-gap-body" data-gap="${i}" title="Preview this opponent move"><span class="coverage-gap-path">${path}</span><span class="coverage-gap-line"><b class="coverage-gap-move">${gap.moveSan}</b><span class="coverage-gap-meta">${state}</span><b class="coverage-gap-impact">${pct(gap.impact)}</b></span><span class="coverage-gap-track"><i style="width:${gap.impact * 100}%"></i></span></button></div>`;
+    })}`;
+    if (result.omittedGapCount) markup = html`${markup}<div class="coverage-live">${result.omittedGapCount} more gaps</div>`;
+    return markup;
   }
   function paint() {
     const el = host();
@@ -91,13 +92,13 @@ export function createCoverageController({
     const c = getContext();
     let body = "";
     if (!c.build) body = "";
-    else if (active) body = `<div class="coverage-live" role="status">Scanning · ${active.scanned} positions</div>`;
-    else if (stale) body = '<div class="coverage-stale" role="status">Preparation changed — scan again</div>';
+    else if (active) body = html`<div class="coverage-live" role="status">Scanning · ${active.scanned} positions</div>`;
+    else if (stale) body = html`<div class="coverage-stale" role="status">Preparation changed — scan again</div>`;
     else if (result) {
       body = summary();
       if (!result.gaps.length) {
-        body += `<div class="coverage-live" role="status">${result.unknownMass > 0 ? "No gaps in checked positions" : "No gaps"}</div>`;
-      } else body += gapRows(c.readOnly);
+        body = html`${body}<div class="coverage-live" role="status">${result.unknownMass > 0 ? "No gaps in checked positions" : "No gaps"}</div>`;
+      } else body = html`${body}${gapRows(c.readOnly)}`;
     }
     el.innerHTML = body;
     const checks = () => [...el.querySelectorAll(".coverage-gap-check")];

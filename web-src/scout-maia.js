@@ -1,3 +1,4 @@
+import { html } from "./html.js";
 // Maia3 reads for Scout game-plan rows: leaf-FEN WDL from the opponent's perspective.
 
 import { branchPathKey, enrichPrepTarget, terminalMoveIsOpponent, hashGameIdsForScope, SCOUT_SCORING_VERSION } from "./scout.js";
@@ -195,7 +196,7 @@ export function scoutMaiaRankedNote(
   // Settled states carry no standing note: how the list is ranked is not repeated
   // on every report. Keep errors and the action that fixes a blocked state.
   if (withMaia < total && (state === MAIA_ENRICH_FAILED || state === MAIA_ENRICH_PARTIAL)) {
-    return `<div class="scout-ranked-note muted hint">Maia unavailable on ${total - withMaia}/${total} lines. Retry in Settings → Maia3.</div>`;
+    return html`<div class="scout-ranked-note muted hint">Maia unavailable on ${total - withMaia}/${total} lines. Retry in Settings → Maia3.</div>`;
   }
 
   return "";

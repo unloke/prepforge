@@ -11,7 +11,7 @@ describe("engineUnavailableBanner", () => {
     const model = engineUnavailableBanner({ available: true, isolated: true });
     expect(model.visible).toBe(false);
     expect(model.title).toBe("");
-    expect(engineBannerHtml(model)).toBe("");
+    expect(String(engineBannerHtml(model))).toBe("");
   });
 
   it("shows why + what to do when the page is not cross-origin isolated", () => {
@@ -23,9 +23,9 @@ describe("engineUnavailableBanner", () => {
     expect(model.action).toMatch(/Chrome or Edge/);
     expect(model.action).toMatch(/no server fallback/);
     const html = engineBannerHtml(model);
-    expect(html).toContain(ENGINE_BANNER_TITLE);
-    expect(html).toContain("engine-banner-why");
-    expect(html).toContain("engine-banner-action");
+    expect(String(html)).toContain(ENGINE_BANNER_TITLE);
+    expect(String(html)).toContain("engine-banner-why");
+    expect(String(html)).toContain("engine-banner-action");
   });
 
   it("uses a start-failed why when isolated but still unavailable", () => {
@@ -42,5 +42,12 @@ describe("engineUnavailableBanner", () => {
       reason: "wasm blocked by CSP",
     });
     expect(model.why).toBe("wasm blocked by CSP");
+  });
+
+  it("escapes provider text when rendering without an injected escaper", () => {
+    const reason = '<img src=x onerror="alert(1)">';
+    const markup = engineBannerHtml(engineUnavailableBanner({ available: false, reason }));
+    expect(String(markup)).toContain("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
+    expect(String(markup)).not.toContain(reason);
   });
 });

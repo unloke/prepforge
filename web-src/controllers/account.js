@@ -1,3 +1,4 @@
+import { html } from "../html.js";
 import {
   AUTH_REQUIRED_MESSAGE,
   clearPendingAction,
@@ -65,7 +66,6 @@ export function createAccountController({
   api,
   postJson,
   setStatus,
-  escapeHtml,
   showConfirmModal,
   refreshAutoMaiaRating,
   onLichessConnected = () => {},
@@ -257,22 +257,22 @@ export function createAccountController({
       const signing = currentMode === "login" || currentMode === "register";
       const googleBlock =
         providers.google && signing
-          ? `<button class="btn primary auth-google" data-action="google" type="button">Continue with Google</button>
+          ? html`<button class="btn primary auth-google" data-action="google" type="button">Continue with Google</button>
          <div class="auth-divider"><span>or use email</span></div>`
           : "";
       let fields = "";
       if (currentMode === "reset") {
-        fields = `
+        fields = html`
           <label class="modal-field" for="auth-password"><span>New password (8+ characters)</span>
             <input id="auth-password" type="password" data-auth="password" autocomplete="new-password" maxlength="${PASSWORD_MAX}" /></label>
           <label class="modal-field" for="auth-confirm"><span>Repeat new password</span>
             <input id="auth-confirm" type="password" data-auth="confirm" autocomplete="new-password" maxlength="${PASSWORD_MAX}" /></label>`;
       } else {
-        fields = `
+        fields = html`
           <label class="modal-field" for="auth-email"><span>Email</span>
-            <input id="auth-email" type="email" data-auth="email" autocomplete="email" value="${escapeHtml(email)}" /></label>`;
+            <input id="auth-email" type="email" data-auth="email" autocomplete="email" value="${email}" /></label>`;
         if (currentMode !== "forgot") {
-          fields += `
+          fields = html`${fields}
           <label class="modal-field" for="auth-password"><span>Password</span>
             <input id="auth-password" type="password" data-auth="password"
               autocomplete="${currentMode === "register" ? "new-password" : "current-password"}" /></label>`;
@@ -280,11 +280,11 @@ export function createAccountController({
       }
       const intro =
         currentMode === "forgot"
-          ? '<p class="modal-copy">Enter the email you signed up with. If it has an account, a single-use reset link is sent there.</p>'
+          ? html`<p class="modal-copy">Enter the email you signed up with. If it has an account, a single-use reset link is sent there.</p>`
           : "";
       const forgotLink =
         currentMode === "login"
-          ? '<button class="auth-link" data-action="forgot" type="button">Forgot password?</button>'
+          ? html`<button class="auth-link" data-action="forgot" type="button">Forgot password?</button>`
           : "";
       const secondary =
         currentMode === "login"
@@ -294,9 +294,9 @@ export function createAccountController({
             : "Back to sign in";
       const reasonBlock =
         reason && signing
-          ? `<p class="auth-reason" data-auth="reason">${escapeHtml(authReasonFor(currentMode, reason))}</p>`
+          ? html`<p class="auth-reason" data-auth="reason">${authReasonFor(currentMode, reason)}</p>`
           : "";
-      overlay.innerHTML = `
+      overlay.innerHTML = html`
       <div class="modal auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
         <div class="modal-title auth-modal-title">
           <span id="auth-modal-title">${spec.title}</span>
@@ -308,7 +308,7 @@ export function createAccountController({
           ${intro}
           ${fields}
           ${forgotLink}
-          <p class="auth-notice" data-auth="notice" role="status"${message ? "" : " hidden"}>${escapeHtml(message)}</p>
+          <p class="auth-notice" data-auth="notice" role="status"${message ? "" : " hidden"}>${message}</p>
           <p class="auth-error" data-auth="error" role="alert"></p>
         </div>
         <div class="modal-footer auth-footer">
@@ -552,17 +552,17 @@ export function createAccountController({
     if (!chip || !menu) return;
     const name = appState.accountUsername || appState.lichessUsername || "your account";
     const lichessItem = appState.lichessUsername
-      ? `<div class="context-section">Lichess: ${escapeHtml(appState.lichessUsername)}</div>`
-      : `<button type="button" role="menuitem" data-action="connect-lichess">Connect Lichess</button>`;
+      ? html`<div class="context-section">Lichess: ${appState.lichessUsername}</div>`
+      : html`<button type="button" role="menuitem" data-action="connect-lichess">Connect Lichess</button>`;
     const items = [
-      `<div class="context-section">Signed in as ${escapeHtml(name)}</div>`,
+      html`<div class="context-section">Signed in as ${name}</div>`,
       lichessItem,
       // One entry: "Account" and "Settings" used to open the same page (the
       // Account card is the top of Settings), which read as a duplicate.
-      `<button type="button" role="menuitem" data-action="settings">Account &amp; settings</button>`,
-      `<button type="button" role="menuitem" data-action="signout">Sign out</button>`,
+      html`<button type="button" role="menuitem" data-action="settings">Account &amp; settings</button>`,
+      html`<button type="button" role="menuitem" data-action="signout">Sign out</button>`,
     ];
-    menu.innerHTML = items.join("");
+    menu.innerHTML = html`${items}`;
     menu.hidden = false;
     if (menuTrigger && menuTrigger !== (trigger || chip)) {
       menuTrigger.setAttribute("aria-expanded", "false");

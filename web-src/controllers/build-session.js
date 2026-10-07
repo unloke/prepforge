@@ -1,3 +1,4 @@
+import { html } from "../html.js";
 import { formatEngineEval } from "../engine-eval.js";
 // Repertoire editor: the tree and board, the Explorer panel, the inspector dock, node
 // menus and Generate. Lazy-loaded by app.js with the Build view. Saving edits (the Build
@@ -18,7 +19,7 @@ let activeViewName, api, appState, boardAfterMove, boardInfo, boards, BROWSER_EN
   buildDockFolded, buildOpMatchesRepertoire, buildProvisionalNode, captureBuildContext,
   closeRepertoireContextMenu, currentOwnerId, deleteBuildNodeLocal, downloadText,
   effectiveMaiaRating, effectiveStockfishDepth, engineLifecycleMark, engineWidget,
-  ensureBuildView, ensureExplorerClient, escapeHtml, EXPLORER_EVAL_MAX_LINES,
+  ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
   explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
   hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, jobToast, normalizeUci,
   openSettingsSection, optimisticBoardMove, postJson, preloadBuildGen,
@@ -33,7 +34,7 @@ export function createBuildSession(deps) {
     BROWSER_ENGINE_UNAVAILABLE, buildDockFolded, buildOpMatchesRepertoire, buildProvisionalNode,
     captureBuildContext, closeRepertoireContextMenu, currentOwnerId, deleteBuildNodeLocal,
     downloadText, effectiveMaiaRating, effectiveStockfishDepth, engineLifecycleMark,
-    engineWidget, ensureBuildView, ensureExplorerClient, escapeHtml, EXPLORER_EVAL_MAX_LINES,
+    engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
     explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
     hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, jobToast, normalizeUci,
     openSettingsSection, optimisticBoardMove, postJson, preloadBuildGen,
@@ -146,12 +147,11 @@ function openBuildMenu(event) {
     : null;
   const isActive = !meta || meta.is_active !== false;
   const items = buildMenuItems({ hasRep, isActive });
-  menu.innerHTML = items
+  menu.innerHTML = html`${items
     .map(
       ([action, label]) =>
-        `<button type="button" data-action="${escapeHtml(action)}"${action === "build-new-rep" && hasRep ? ' class="menu-sep-before"' : ""}>${escapeHtml(label)}</button>`
-    )
-    .join("");
+        html`<button type="button" data-action="${action}"${action === "build-new-rep" && hasRep ? html` class="menu-sep-before"` : ""}>${label}</button>`
+    )}`;
   menu.hidden = false;
   const anchor = event.currentTarget.getBoundingClientRect();
   const rect = menu.getBoundingClientRect();
@@ -495,7 +495,7 @@ async function refreshExplorerPanel() {
     appState.buildCurrentNodeId && appState.buildNodeById.get(appState.buildCurrentNodeId);
   const fen = node ? node.fen : null;
   if (!fen) {
-    rows.innerHTML = '<div class="muted hint">Open a repertoire to see real-game stats.</div>';
+    rows.innerHTML = html`<div class="muted hint">Open a repertoire to see real-game stats.</div>`;
     // No rows can belong to a position now, so park the search instead of
     // leaving the old one burning a core at full depth.
     void explorerEvalEngine.sync();
@@ -523,11 +523,11 @@ async function refreshExplorerPanel() {
   } else {
     if (openingEl) openingEl.textContent = "";
     rows.classList.remove("is-stale");
-    rows.innerHTML = `<div class="muted hint">Loading ${db === "lichess" ? "Players" : "Masters"}…</div>`;
+    rows.innerHTML = html`<div class="muted hint">Loading ${db === "lichess" ? "Players" : "Masters"}…</div>`;
   }
   try {
     if (!explorerModule) {
-      rows.innerHTML = '<div class="muted hint">Loading explorer…</div>';
+      rows.innerHTML = html`<div class="muted hint">Loading explorer…</div>`;
       await ensureExplorerClient();
       renderExplorerScope(); // now that ratingBucketsFor is available, show the pool
     }
@@ -544,19 +544,17 @@ async function refreshExplorerPanel() {
     const label = db === "lichess" ? "Players" : "Masters";
     if (explorerModule && error instanceof explorerModule.ExplorerRateLimited) {
       const secs = Math.max(1, Math.ceil(error.retryInMs / 1000));
-      rows.innerHTML = `<div class="muted hint">Lichess asks for a short pause - try again in ~${secs}s.</div>`;
+      rows.innerHTML = html`<div class="muted hint">Lichess asks for a short pause - try again in ~${secs}s.</div>`;
     } else if (/link your lichess account/i.test(error.message || "")) {
       // Retrying cannot help until an account is linked: offer the link.
       rows.innerHTML =
-        `<div class="muted hint">The ${label} explorer reads Lichess with your linked account. ` +
-        `<button type="button" class="btn sm" data-explorer-link>Link Lichess</button></div>`;
+        html`<div class="muted hint">The ${label} explorer reads Lichess with your linked account. <button type="button" class="btn sm" data-explorer-link>Link Lichess</button></div>`;
       rows.querySelector("[data-explorer-link]")?.addEventListener("click", () => {
         openSettingsSection("set-connections").catch(() => {});
       });
     } else {
       rows.innerHTML =
-        `<div class="muted hint">${label} explorer unavailable: ${escapeHtml(error.message)} ` +
-        `<button type="button" class="btn sm ghost" data-explorer-retry>Retry</button></div>`;
+        html`<div class="muted hint">${label} explorer unavailable: ${error.message} <button type="button" class="btn sm ghost" data-explorer-retry>Retry</button></div>`;
       rows.querySelector("[data-explorer-retry]")?.addEventListener("click", () => refreshExplorerPanel());
     }
   }
@@ -577,7 +575,7 @@ function renderExplorerRows(stats, fen) {
   rows.classList.remove("is-stale");
   rows.removeAttribute("aria-busy");
   if (!stats.moves.length) {
-    rows.innerHTML = '<div class="muted hint">No games reached this position - true novelty territory.</div>';
+    rows.innerHTML = html`<div class="muted hint">No games reached this position - true novelty territory.</div>`;
     void explorerEvalEngine.sync();
     return;
   }
@@ -592,26 +590,24 @@ function renderExplorerRows(stats, fen) {
   const inRepNorm = new Set([...inRep].map(normalizeUci));
   const canAdd = !isBuildReadOnly();
   rows.innerHTML =
-    '<div class="explorer-head" aria-hidden="true"><span>Move</span><span class="explorer-eval">Eval</span><span>Games</span><span>White / Draw / Black</span></div>' +
-    stats.moves
+    html`<div class="explorer-head" aria-hidden="true"><span>Move</span><span class="explorer-eval">Eval</span><span>Games</span><span>White / Draw / Black</span></div>${stats.moves
       .map((m) => {
         const has = inRep.has(m.uci) || inRepNorm.has(normalizeUci(m.uci));
         const games = explorerModule.formatGames(m.total);
         const thin = explorerThinSample(m);
         const action = has ? `Go to ${m.san}` : canAdd ? `Add ${m.san} to repertoire` : m.san;
         const seg = (cls, label, value) =>
-          `<span class="${cls}" style="width:${value}%" title="${label} ${value}%">${explorerSegLabel(value)}</span>`;
-        return `
-    <div class="explorer-row${thin ? " is-thin" : ""}${has ? " is-in" : ""}" data-uci="${escapeHtml(m.uci)}">
-      <button type="button" class="explorer-pick" data-explorer-pick aria-label="${escapeHtml(action)} (${countOf(games, "game")}, White ${m.whitePct}%, draw ${m.drawPct}%, Black ${m.blackPct}%)">
-        <span class="explorer-san">${escapeHtml(m.san)}${has ? '<span class="explorer-inrep" title="In your repertoire">&#9679;</span>' : ""}</span>
+          html`<span class="${cls}" style="width:${value}%" title="${label} ${value}%">${explorerSegLabel(value)}</span>`;
+        return html`
+    <div class="explorer-row${thin ? " is-thin" : ""}${has ? " is-in" : ""}" data-uci="${m.uci}">
+      <button type="button" class="explorer-pick" data-explorer-pick aria-label="${action} (${countOf(games, "game")}, White ${m.whitePct}%, draw ${m.drawPct}%, Black ${m.blackPct}%)">
+        <span class="explorer-san">${m.san}${has ? html`<span class="explorer-inrep" title="In your repertoire">&#9679;</span>` : ""}</span>
       </button>
       <span class="explorer-eval">&hellip;</span>
       <span class="explorer-games">${games}</span>
       <span class="explorer-bar" aria-hidden="true">${seg("explorer-bar-w", "White wins", m.whitePct)}${seg("explorer-bar-d", "Draws", m.drawPct)}${seg("explorer-bar-b", "Black wins", m.blackPct)}</span>
     </div>`;
-      })
-      .join("");
+      })}`;
   rows.querySelectorAll(".explorer-row").forEach((row) => {
     const uci = row.dataset.uci;
     // The whole row is the action; the Move button inside is the focusable
@@ -1426,23 +1422,18 @@ function openNodeContextMenu(event, nodeId) {
       items: [["delete", "Delete this move"]],
     },
   ];
-  const safeId = escapeHtml(nodeId);
+  const safeId = nodeId;
   menu.innerHTML =
-    `<div class="context-target" data-testid="context-target">${escapeHtml(nodeMenuHeading(node))}</div>` +
-    sections
+    html`<div class="context-target" data-testid="context-target">${nodeMenuHeading(node)}</div>${sections
     .map(
       (section) =>
-        `<div class="context-section">${escapeHtml(section.title)}</div>` +
-        section.items
+        html`<div class="context-section">${section.title}</div>${section.items
           .map(
             ([action, label]) =>
-              `<button type="button" data-action="${escapeHtml(
-                action
-              )}" data-node-id="${safeId}">${escapeHtml(label)}</button>`
+              html`<button type="button" data-action="${action}" data-node-id="${safeId}">${label}</button>`
           )
-          .join("")
-    )
-    .join("");
+          }`
+    )}`;
   menu.hidden = false;
   markNodeMenuTarget(nodeId);
   const rect = menu.getBoundingClientRect();

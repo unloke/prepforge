@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { html as safeHtml } from "../html.js";
 
 import {
   createReplayView,
@@ -34,7 +35,7 @@ const RENDERERS = {
     });
     return squares;
   },
-  pieceSvg: (piece) => `<svg data-piece="${piece}"></svg>`,
+  pieceSvg: (piece) => safeHtml`<svg data-piece="${piece}"></svg>`,
 };
 
 function makeElements() {
@@ -42,8 +43,8 @@ function makeElements() {
   // accept the queries (no real DOM, nothing to wire).
   const noElements = () => [];
   return {
-    "replay-summary": { hidden: true, innerHTML: "", querySelectorAll: noElements },
-    "replay-results": { innerHTML: "", querySelectorAll: noElements },
+    "replay-summary": { hidden: true, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); }, querySelectorAll: noElements },
+    "replay-results": { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); }, querySelectorAll: noElements },
   };
 }
 
@@ -54,7 +55,6 @@ function makeView(elements, { renderers = RENDERERS } = {}) {
     querySelectorAll: () => [],
   };
   return createReplayView({
-    escapeHtml: (s) => String(s),
     boardRenderers: renderers,
     getReplayFilter: () => null,
     isGameOpen: () => false,
@@ -114,6 +114,20 @@ const stayedGame = {
 };
 
 describe("replay focus internals", () => {
+  it("escapes API text and attributes while preserving generated detail markup", () => {
+    const elements = makeElements();
+    const attack = '<img src=x onerror=alert(1)>';
+    makeView(elements).renderReplayResults({ games: [{
+      ...userErrorGame, white: attack, repertoire_name: attack,
+      expected_move_san: attack, source_account: attack,
+      finished_at: '2026-09-28T00:00:00Z" onmouseover="alert(1)',
+    }] });
+    const markup = String(elements["replay-results"].innerHTML);
+    expect(String(markup)).not.toContain(attack);
+    expect(String(markup)).toContain('&lt;img src=x onerror=alert(1)&gt;');
+    expect(String(markup)).toContain('<strong>&lt;img src=x onerror=alert(1)&gt;</strong>');
+    expect(String(markup)).toContain('<svg data-piece="p">');
+  });
   let elements;
   beforeEach(() => {
     elements = makeElements();
@@ -124,38 +138,38 @@ describe("replay focus internals", () => {
 
   it("renders a focus board derived from the real move history", () => {
     makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
-    const html = elements["replay-results"].innerHTML;
-    expect(html).toContain('data-testid="replay-focus-board"');
+    const html = String(elements["replay-results"].innerHTML);
+    expect(String(html)).toContain('data-testid="replay-focus-board"');
     // Decision-point position after 1. e4 c6 2. Nf3: the c6 pawn (repertoire
     // move) and the Nf3 knight must both be on their real squares.
-    expect(html).toContain('data-square="c6"');
-    expect(html).toContain('data-square="f3"');
+    expect(String(html)).toContain('data-square="c6"');
+    expect(String(html)).toContain('data-square="f3"');
     // Pieces render through the production SVG helpers.
-    expect(html).toMatch(/data-piece="p"/);
+    expect(String(html)).toMatch(/data-piece="p"/);
   });
 
   it("draws expected (good) vs played (bad) arrows from the payload UCIs", () => {
     makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
-    const html = elements["replay-results"].innerHTML;
-    expect(html).toContain('class="replay-arrows"');
-    expect(html).toContain('class="t-good"');
-    expect(html).toContain('class="t-bad"');
+    const html = String(elements["replay-results"].innerHTML);
+    expect(String(html)).toContain('class="replay-arrows"');
+    expect(String(html)).toContain('class="t-good"');
+    expect(String(html)).toContain('class="t-bad"');
     // Shared board geometry, layered inside the mini board's square grid.
-    expect(html).toMatch(/<path class="t-good" d="M[^"]+ Z"/);
-    expect(html).toMatch(/<div class="scout-miniboard"[^>]*>.*<svg class="replay-arrows"[^]*<\/svg><\/div><\/div>/);
+    expect(String(html)).toMatch(/<path class="t-good" d="M[^"]+ Z"/);
+    expect(String(html)).toMatch(/<div class="scout-miniboard"[^>]*>.*<svg class="replay-arrows"[^]*<\/svg><\/div><\/div>/);
     // Move details name both moves; no standing colour legend.
-    expect(html).not.toContain('class="legend"');
+    expect(String(html)).not.toContain('class="legend"');
   });
 
   it("tints ledger results by outcome and omits arrow legend for stayed games", () => {
     makeView(elements).renderReplayResults({ games: [stayedGame], misses_recorded: 0 });
-    const html = elements["replay-results"].innerHTML;
+    const html = String(elements["replay-results"].innerHTML);
     // 1-0 with user_color white is a real win.
-    expect(html).toContain("r-win");
+    expect(String(html)).toContain("r-win");
     // No departure → no departure legend entry, no arrow legend.
-    expect(html).not.toContain("k-dep");
-    expect(html).not.toContain("k-arrow-good");
-    expect(html).not.toContain('class="replay-arrows"');
+    expect(String(html)).not.toContain("k-dep");
+    expect(String(html)).not.toContain("k-arrow-good");
+    expect(String(html)).not.toContain('class="replay-arrows"');
   });
 
   it("falls back to the text-only detail card without board renderers", () => {
@@ -163,38 +177,38 @@ describe("replay focus internals", () => {
       games: [userErrorGame],
       misses_recorded: 0,
     });
-    const html = elements["replay-results"].innerHTML;
-    expect(html).not.toContain('data-testid="replay-focus-board"');
+    const html = String(elements["replay-results"].innerHTML);
+    expect(String(html)).not.toContain('data-testid="replay-focus-board"');
     // The production detail text survives the fallback.
-    expect(html).toContain("You diverged at 2…");
+    expect(String(html)).toContain("You diverged at 2…");
   });
 
   it("keeps draws on one line and names a single source account once", () => {
     const draw = { ...stayedGame, result: "1/2-1/2", finished_at: "2026-09-28T12:00:00Z" };
     makeView(elements).renderReplayResults({ games: [draw, userErrorGame], misses_recorded: 0 });
-    const html = elements["replay-results"].innerHTML;
-    expect(html).toContain(">½–½</span>");
-    expect(html).not.toContain("1/2-1/2");
+    const html = String(elements["replay-results"].innerHTML);
+    expect(String(html)).toContain(">½–½</span>");
+    expect(String(html)).not.toContain("1/2-1/2");
     // Both games come from "self": the account sits in the header, not per row.
-    expect(html.match(/class="acct"/g)).toHaveLength(1);
-    expect(html).toMatch(/shown · <i class="acct"[^>]*>self<\/i>/);
+    expect(String(html).match(/class="acct"/g)).toHaveLength(1);
+    expect(String(html)).toMatch(/shown · <i class="acct"[^>]*>self<\/i>/);
     // The finish date is shown on the row.
-    expect(html).toContain('<time class="lr-date" datetime="2026-09-28T12:00:00Z">');
+    expect(String(html)).toContain('<time class="lr-date" datetime="2026-09-28T12:00:00Z">');
   });
 
   it("labels rows with their account when several accounts are mixed", () => {
     const other = { ...stayedGame, source_account: "alt_account" };
     makeView(elements).renderReplayResults({ games: [userErrorGame, other], misses_recorded: 0 });
-    const html = elements["replay-results"].innerHTML;
-    expect(html.match(/class="acct"/g)).toHaveLength(2);
-    expect(html).not.toMatch(/shown · <i class="acct"/);
+    const html = String(elements["replay-results"].innerHTML);
+    expect(String(html).match(/class="acct"/g)).toHaveLength(2);
+    expect(String(html)).not.toMatch(/shown · <i class="acct"/);
   });
 
   it("names the account per row when two accounts were selected but one supplied every game", () => {
     makeView(elements).renderReplayResults({ games: [stayedGame, userErrorGame], misses_recorded: 0, requested_sources: 2 });
-    const html = elements["replay-results"].innerHTML;
-    expect(html).not.toMatch(/shown · <i class="acct"/);
-    expect(html.match(/class="acct"/g)).toHaveLength(2);
+    const html = String(elements["replay-results"].innerHTML);
+    expect(String(html)).not.toMatch(/shown · <i class="acct"/);
+    expect(String(html).match(/class="acct"/g)).toHaveLength(2);
   });
 
   it("reveals the detail card after a row click when it is off screen", () => {
@@ -209,7 +223,7 @@ describe("replay focus internals", () => {
       focus: () => listeners.push(["focus"]),
     };
     elements["replay-results"] = {
-      innerHTML: "",
+      get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
       querySelectorAll: (sel) => (sel === ".lr[data-index]" ? [row] : []),
       querySelector: (sel) => (sel === ".focus" ? focusCard : sel.startsWith(".lr[") ? row : null),
     };
@@ -217,7 +231,6 @@ describe("replay focus internals", () => {
     let open = 0;
     globalThis.document = { getElementById: (id) => elements[id] || null };
     const view = createReplayView({
-      escapeHtml: (s) => String(s),
       boardRenderers: RENDERERS,
       getReplayFilter: () => null,
       isGameOpen: (index) => index === open,
@@ -270,10 +283,10 @@ describe("replay focus internals", () => {
     // decision-point position, so the good arrow must be dropped entirely.
     const stale = { ...userErrorGame, expected_move_uci: "e1e2" };
     makeView(elements).renderReplayResults({ games: [stale], misses_recorded: 0 });
-    const html = elements["replay-results"].innerHTML;
-    expect(html).toContain('class="replay-arrows"');
-    expect(html).not.toContain('class="t-good"');
-    expect(html).toContain('class="t-bad"');
+    const html = String(elements["replay-results"].innerHTML);
+    expect(String(html)).toContain('class="replay-arrows"');
+    expect(String(html)).not.toContain('class="t-good"');
+    expect(String(html)).toContain('class="t-bad"');
   });
   it("names departures by move number, not ply (UX 2026-10-01 P2-9)", () => {
     expect(moveNumberLabel(1)).toBe("1.");
@@ -282,11 +295,11 @@ describe("replay focus internals", () => {
     expect(moveNumberLabel(0)).toBe("");
     expect(plyMoveLabel(2, ["e4", "c5"])).toBe("1… c5");
     makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
-    const html = elements["replay-results"].innerHTML;
-    expect(html).not.toMatch(/Ply \d/);
-    expect(html).not.toMatch(/plies/);
-    expect(html).toContain("2… d5");
-    expect(html).toContain("in prep through 2. Nf3");
+    const html = String(elements["replay-results"].innerHTML);
+    expect(String(html)).not.toMatch(/Ply \d/);
+    expect(String(html)).not.toMatch(/plies/);
+    expect(String(html)).toContain("2… d5");
+    expect(String(html)).toContain("in prep through 2. Nf3");
   });
 });
 
@@ -296,11 +309,11 @@ it("keeps partial-source failures visible with results and empty results", () =>
   const view = makeView(elements);
   for (const games of [[userErrorGame], []]) {
     view.renderReplayResults({ games, source_errors: [{ username: "Unavailable", message: "429 rate limited" }] });
-    expect(elements["replay-results"].innerHTML).toContain('role="alert"');
-    expect(elements["replay-results"].innerHTML).toContain("Unavailable: 429 rate limited");
-    expect(elements["replay-results"].innerHTML).toContain("Retry Check");
+    expect(String(elements["replay-results"].innerHTML)).toContain('role="alert"');
+    expect(String(elements["replay-results"].innerHTML)).toContain("Unavailable: 429 rate limited");
+    expect(String(elements["replay-results"].innerHTML)).toContain("Retry Check");
   }
   view.renderReplayResults({ games: [] });
-  expect(elements["replay-results"].innerHTML).not.toContain('role="alert"');
+  expect(String(elements["replay-results"].innerHTML)).not.toContain('role="alert"');
   delete globalThis.document;
 });

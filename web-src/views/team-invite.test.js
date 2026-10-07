@@ -155,9 +155,9 @@ describe("team invite dialog", () => {
     const primary = model.actions.filter((a) => a.kind === "primary");
     expect(primary.map((a) => a.id)).toEqual(["copy"]);
     expect(model.actions.find((a) => a.id === "revoke").kind).toBe("danger-quiet");
-    const html = inviteDialogBodyHtml(model, (s) => String(s));
-    expect(html).toContain('class="btn primary" data-action="copy"');
-    expect(html).toContain('class="btn danger-quiet" data-action="revoke"');
-    expect(html).not.toContain("replaces any previous link");
+    const html = inviteDialogBodyHtml(model);
+    expect(String(html)).toContain('class="btn primary" data-action="copy"');
+    expect(String(html)).toContain('class="btn danger-quiet" data-action="revoke"');
+    expect(String(html)).not.toContain("replaces any previous link");
   });
 });

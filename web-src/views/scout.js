@@ -1,3 +1,4 @@
+import { html } from "../html.js";
 // Scout UI (Replay tab card) — lazy-loaded from app.js.
 // Pure fetch/parse logic stays in ../scout.js; rendering helpers in ../scout-report.js.
 
@@ -109,8 +110,8 @@ export function scoutPathGuardEnabled(search = typeof location === "undefined" ?
   return new URLSearchParams(search).get("scoutPathGuard") !== "0";
 }
 
-function scoutErrorHtml(message, escapeHtml) {
-  return `<div class="scout-error" role="alert">${escapeHtml(message)}</div>`;
+function scoutErrorHtml(message) {
+  return html`<div class="scout-error" role="alert">${message}</div>`;
 }
 
 // Multi-identity label: "self (2 accounts)" keeps time/sample stats honest
@@ -123,7 +124,6 @@ function scoutLabel(usernames) {
 
 export function createScoutView(deps) {
   const {
-    escapeHtml,
     setStatus,
     switchView,
     api,
@@ -220,7 +220,6 @@ export function createScoutView(deps) {
   function scoutSelectionCtx() {
     return {
       scoutModule,
-      escapeHtml,
       sideEl: getSideEl(),
       ecoCache: scoutState?.ecoCache,
       createElement: (tag) => document.createElement(tag),
@@ -286,8 +285,8 @@ export function createScoutView(deps) {
     } else {
       el.setAttribute("aria-valuenow", String(pct));
     }
-    el.innerHTML = `<span class="scout-progress-label">${escapeHtml(engineProgressLabel(p))}</span>
-      <progress max="100"${indeterminate ? "" : ` value="${pct}"`} aria-label="Scout evaluation"></progress>`;
+    el.innerHTML = html`<span class="scout-progress-label">${engineProgressLabel(p)}</span>
+      <progress max="100"${indeterminate ? "" : html` value="${pct}"`} aria-label="Scout evaluation"></progress>`;
   }
 
   function setEngineProgress(progress) {
@@ -440,7 +439,6 @@ export function createScoutView(deps) {
       scoutState.lookups[oppColor === "white" ? "black" : "white"],
       {
         speedFilter: scoutState.activeSpeed,
-        escapeHtml,
         enginePatterns: engineScanPatterns(scoutState.engineByColor?.[oppColor]),
         explorerReads: scoutState.explorerByColor?.[oppColor] || null,
         engineAgg: engineAggForColor(oppColor),
@@ -464,7 +462,7 @@ export function createScoutView(deps) {
     const captured = results ? captureScoutExpanded(results) : null;
     // Prototype "With White / With Black" tabs: real per-colour game counts
     // from the opponent profile; hidden while streaming (both sections build live).
-    const tabsHtml = renderScoutColorTabsHtml(scoutState.profile, escapeHtml, {
+    const tabsHtml = renderScoutColorTabsHtml(scoutState.profile, {
       hidden: isStreaming(),
       username: scoutState.username,
     });
@@ -474,11 +472,9 @@ export function createScoutView(deps) {
         scoutState.profile,
         scoutState.username,
         scoutState.activeSpeed,
-        escapeHtml,
         {
           colorRecHtml: buildColorRecommendationBanner(
             colorRecommendation(scoutState.games),
-            escapeHtml,
             { username: scoutState.username },
           ),
         },
@@ -504,12 +500,12 @@ export function createScoutView(deps) {
     }
     const sections = [whiteReport.html, blackReport.html].filter(Boolean);
     const progressHtml = document.getElementById("scout-engine-progress")?.outerHTML ||
-      '<div id="scout-engine-progress" class="scout-engine-progress" hidden></div>';
+      html`<div id="scout-engine-progress" class="scout-engine-progress" hidden></div>`;
     if (results) {
       const shownBefore = planRowKeys(results);
       results.innerHTML = sections.length
-        ? progressHtml + tabsHtml + sections.join("")
-        : progressHtml + '<div class="empty-state">Not enough opening data in these games.</div>';
+        ? html`${progressHtml}${tabsHtml}${sections}`
+        : html`${progressHtml}<div class="empty-state">Not enough opening data in these games.</div>`;
       if (sections.length) applyScoutColorTabs(results);
       markEnteringPlanRows(results, shownBefore);
       if (captured) {
@@ -1193,7 +1189,6 @@ export function createScoutView(deps) {
       fenAfterLine: (ucis) => scoutModule.fenAfterLine(ucis),
       renderBoard: (fen, orientation, lastUci) =>
         renderScoutMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg }, lastUci),
-      escapeHtml,
       baseline: scoutState?.sections?.[oppColor]?.baselineScorePct ?? null,
     });
   }
@@ -1539,13 +1534,13 @@ export function createScoutView(deps) {
 
     const subDist = scoutDisplayDistribution(childNode, scoutModule.moveDistribution, { limit: 6 });
     const parentSan = distRowEl.querySelector(".scout-dist-san")?.textContent || uci;
-    const rows = subDist.map((m) => scoutDistRowHtml(m, escapeHtml, { clickable: false })).join("");
+    const rows = subDist.map((m) => scoutDistRowHtml(m, { clickable: false }));
 
     // The replies to their first move are their OPPONENTS' moves; the score is
     // still theirs.
-    distCol.innerHTML = `
-    <div class="scout-dist-drill-head muted" title="Opponent replies and player score">1.${escapeHtml(parentSan)}</div>
-    ${rows}
+    distCol.innerHTML = html`
+    <div class="scout-dist-drill-head muted" title="Opponent replies and player score">1.${parentSan}</div>
+    ${rows}</div>
     <button type="button" class="scout-btn btn ghost scout-dist-back">Back ↑</button>`;
     distCol.dataset.drillUci = uci;
   }
@@ -1556,7 +1551,7 @@ export function createScoutView(deps) {
     const dist = scoutDisplayDistribution(sectionData.trie, scoutModule.moveDistribution);
     const distCol = sectionEl.querySelector("[data-dist-root]");
     if (!distCol) return;
-    distCol.innerHTML = dist.map((m) => scoutDistRowHtml(m, escapeHtml)).join("");
+    distCol.innerHTML = html`${dist.map((m) => scoutDistRowHtml(m))}`;
     delete distCol.dataset.drillUci;
   }
 
@@ -1611,8 +1606,8 @@ export function createScoutView(deps) {
       "../scout-e2e-fixtures.js"
     );
     const normalizedId = normalizeE2ePrepScenarioId(scenarioId);
-    const { html, sectionData } = buildE2ePrepSection(normalizedId, escapeHtml);
-    results.innerHTML = html;
+    const { html: markup, sectionData } = buildE2ePrepSection(normalizedId);
+    results.innerHTML = markup;
     scoutState.sections = { black: sectionData };
     const root = results.querySelector(".scout-section[data-scout-color='black']");
     if (root) root.dataset.e2eRefutation = scenarioId;
@@ -1650,7 +1645,6 @@ export function createScoutView(deps) {
     const scoutClickCtx = () => ({
       getState: () => scoutState,
       scoutModule,
-      escapeHtml,
       callbacks: {
         restoreDistRoot,
         renderDistDrilldown,
@@ -1845,7 +1839,7 @@ export function createScoutView(deps) {
     if (!scoutState?.games?.length && session.state === "done") {
       const results = getResultsEl();
       const message = SCOUT_ERR_NO_GAMES;
-      if (results) results.innerHTML = scoutErrorHtml(message, escapeHtml);
+      if (results) results.innerHTML = scoutErrorHtml(message);
       const profile = getProfileEl();
       if (profile) profile.hidden = true;
       setStatus(message);
@@ -1899,15 +1893,11 @@ export function createScoutView(deps) {
             : s.status === "failed"
               ? `failed${s.error && anyOk ? ` · ${s.error}` : ""}`
               : "no games";
-        return `<span class="source-chip is-${escapeHtml(s.status)}"><b>${escapeHtml(user)}</b> ${escapeHtml(label)}</span>`;
-      })
-      .join("");
+        return html`<span class="source-chip is-${s.status}"><b>${user}</b> ${label}</span>`;
+      });
     const failedCount = statuses.length;
     bar.innerHTML =
-      `<div class="source-warn-text" title="The report covers only the sources that returned games">` +
-      `⚠ ${failedCount} source${failedCount === 1 ? "" : "s"} incomplete</div>` +
-      `<div class="source-chips">${chips}</div>` +
-      `<button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>`;
+      html`<div class="source-warn-text" title="The report covers only the sources that returned games">⚠ ${failedCount} source${failedCount === 1 ? "" : "s"} incomplete</div><div class="source-chips">${chips}</div><button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>`;
     bar.querySelector("#scout-retry-failed")?.addEventListener("click", () => {
       bar.remove();
       const failedUsers = Object.entries(session.sourceStatus || {})
@@ -2026,7 +2016,7 @@ export function createScoutView(deps) {
         flushRender();
       } else {
         const results = getResultsEl();
-        if (results) results.innerHTML = scoutErrorHtml(message, escapeHtml);
+        if (results) results.innerHTML = scoutErrorHtml(message);
         const profile = getProfileEl();
         if (profile) profile.hidden = true;
       }
@@ -2137,7 +2127,7 @@ export function createScoutView(deps) {
       const message = scoutFetchErrorMessage(error) || error.message || "Scout failed";
       scoutState = null;
       scoutSession = null;
-      if (results) results.innerHTML = scoutErrorHtml(message, escapeHtml);
+      if (results) results.innerHTML = scoutErrorHtml(message);
       if (profile) profile.hidden = true;
       setStatus(message);
     } finally {

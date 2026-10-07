@@ -5,12 +5,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createAnalyzeView } from "./analyze.js";
 
 function render(quality) {
-  const host = { innerHTML: "", querySelectorAll: () => [] };
+  const host = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); }, querySelectorAll: () => [] };
   globalThis.document = { getElementById: (id) => (id === "analysis-summary" ? host : null) };
   const appState = { analysis: { quality }, analysisVarNodes: new Map() };
   const view = createAnalyzeView({
     appState,
-    escapeHtml: (s) => String(s),
     START_FEN: "",
     showAnalysisPly: () => {},
     selectAnalysisNode: () => {},
@@ -43,8 +42,8 @@ describe("analysis quality summary", () => {
       { ...BASE, search: "partial-shallow", shallow_positions: 2, completeness: "partial-shallow,no-maia" },
     ]) {
       const html = render(quality);
-      expect(html).toMatch(/class-bars/);
-      expect(html).not.toMatch(/quality-note|below depth|partial-shallow|no-maia/);
+      expect(String(html)).toMatch(/class-bars/);
+      expect(String(html)).not.toMatch(/quality-note|below depth|partial-shallow|no-maia/);
     }
   });
 });

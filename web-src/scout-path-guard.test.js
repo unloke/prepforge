@@ -208,9 +208,9 @@ describe("report rows", () => {
   ];
   const state = { games, profile: scout.opponentProfile(games), username: "rows" };
   const build = (pathGuard = null) => buildScoutSectionReport(scoutModule, state, "white", [],
-    { username: "rows", escapeHtml: (s) => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;"), pathGuard });
+    { username: "rows", pathGuard });
   // Every plan row as rendered: its status attribute and the path marker inside it.
-  const rows = (html) => html.split('<div class="scout-line scout-line-row').slice(1)
+  const rows = (html) => String(html).split('<div class="scout-line scout-line-row').slice(1)
     .filter((chunk) => chunk.includes("scout-weakness-row"))
     .map((row) => ({
       key: row.match(/data-line-key="([^"]*)"/)?.[1],
@@ -259,7 +259,7 @@ describe("report rows", () => {
     expect(shown.every((r) => r.status === "risk")).toBe(true);
     for (const r of shown) expect(r.marker).toBe("Your side is worse than −0.75 at an earlier move of this line (depth 8)");
     // The explanation lives only in the tooltip, never as standing copy.
-    expect(html.replace(/title="[^"]*"/g, "")).not.toContain("worse than");
+    expect(String(html).replace(/title="[^"]*"/g, "")).not.toContain("worse than");
   });
 
   it("the section keeps the selector input for the guard pass", () => {
