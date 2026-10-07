@@ -6,7 +6,7 @@ const prefix = (a, b) => a === b || b.startsWith(`${a}>`);
 export const nestedRoutes = (a, b) => prefix(routeKey(a), routeKey(b)) || prefix(routeKey(b), routeKey(a));
 
 /** Observed decisions under the user's chosen moves; not a calibrated forecast.
- * Legacy raw decision coverage is diagnostic only in v10. Neither user-move
+ * Raw decision coverage is diagnostic only in v10. Neither user-move
  * frequency nor unobserved plies earn value.
  */
 export function preparationDecisionWeights(route) {

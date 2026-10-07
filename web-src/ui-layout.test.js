@@ -440,8 +440,8 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("openSourceComposer");
     expect(composer).toContain("export function positionPopover");
     expect(app).toContain("selectionChips");
-    expect(app).toContain("selectionFromStorage");
-    expect(app).toContain("selectionToStorage");
+    expect(app).toContain("readSourceStore");
+    expect(app).toContain("writeSourceStore");
     // Games and Scout resolve through the same fetch path (linked + external).
     expect(app).toContain("openGamesComposer");
     expect(app).toContain("writeGamesSelection");

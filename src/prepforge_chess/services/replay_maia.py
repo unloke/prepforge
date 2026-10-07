@@ -7,7 +7,7 @@ compute in the public flow, so the browser computes each played move's
 up; this adapter replays those numbers into the existing, validated
 :class:`~prepforge_chess.services.brilliant.BrilliantAnalyzer` so the
 unintuitive/reveal/sound threshold logic — and its win-chance math — stay in Python
-as the single source of truth (mirroring :class:`ReplayEngine` for Stockfish).
+as the single source of truth.
 
 A move with no client-supplied assessment returns ``None``, which the analyzer
 treats as "can't judge" → that move simply isn't flagged Brilliant (the correct
@@ -106,7 +106,7 @@ class ReplayMaia:
         top-policy move)`` locally — it has both Maia3 and Stockfish — and ships it
         in the assessment, because the public server runs no engine and so cannot
         evaluate the hypothetical natural-move position itself. ``BrilliantAnalyzer``
-        consults this instead of its engine path when present (mirroring how
+        reads this supplied value (alongside how
         :meth:`move_assessment` is replayed). None → the trap layer is un-evaluable
         for this move → it is not flagged Brilliant.
         """

@@ -439,7 +439,7 @@ def test_engine_eval_dedup_and_position_uniqueness():
 
 
 def test_default_config_eval_null_limits_are_distinct_snapshots():
-    """Default EngineAnalysisConfig uses nodes=None, time_ms=None.
+    """Optional evaluation limits use nodes=None, time_ms=None.
 
     SQL UNIQUE treats those NULLs as distinct, so the writer persists a
     NULL-safe identity. Two saves of the same FEN/engine/depth with the SAME
@@ -593,8 +593,6 @@ def _same_repertoire(a, b) -> bool:
         and a.notes == b.notes
         and a.tags == b.tags
         and a.is_active == b.is_active
-        and a.main_engine == b.main_engine
-        and a.branch_depth == b.branch_depth
         and a._cached_health == b._cached_health
         and _tree_signature(a.root_node) == _tree_signature(b.root_node)
     )

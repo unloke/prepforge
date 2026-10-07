@@ -7,7 +7,6 @@ name = "prepforge-chess"
 version = "0.1.0"
 description = "A local chess analysis, opening preparation, and repertoire training suite."
 readme = "README.md"
-# Maia3 needs Python 3.10+; running under 3.8/3.9 silently falls back to MockMaia.
 requires-python = ">=3.10"
 license = { text = "AGPL-3.0-or-later" }
 authors = [{ name = "PrepForge" }]
@@ -21,10 +20,7 @@ dev = [
     "ruff>=0.4,<1",
     "httpx>=0.27",          # FastAPI TestClient transport
 ]
-# Production SaaS server (FastAPI + SQLAlchemy). The legacy stdlib server
-# (prepforge_chess.web.server) has no extra deps; this group powers the new
-# multi-tenant API under prepforge_chess.api. SQLite works out of the box for
-# local dev/tests; psycopg is only exercised when DATABASE_URL points at Postgres.
+# Production API; psycopg is used when DATABASE_URL points at Postgres.
 server = [
     "fastapi>=0.115,<1",
     "uvicorn[standard]>=0.30",
@@ -79,9 +75,9 @@ markers = [
 addopts = "-m 'not e2e'"
 # "src" puts the package on the path; the tests/ dir is auto-prepended by pytest
 # (default prepend import mode, no tests/__init__.py) so sibling helper modules
-# like stub_maia and api_helpers import top-level. Do NOT add tests/ as a package
+# like api_helpers import top-level. Do NOT add tests/ as a package
 # (an __init__.py here) — it switches pytest to import tests.* and breaks the
-# legacy `from stub_maia import ...` suite.
+# test helper imports.
 pythonpath = ["src"]
 testpaths = ["tests"]
 

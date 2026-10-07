@@ -63,8 +63,8 @@ def test_sync_oversized_queue_is_rejected_before_any_attempt_is_written():
 def test_duplicate_fen_with_conflicting_scores_is_rejected(client):
     _register(client, "duplicate@example.com")
     prepared = _prepare(client)
-    positions = [{"fen": f, "score_cp": 20} for f in prepared["positions"]]
-    positions.append({"fen": prepared["positions"][0], "score_cp": -900})
+    positions = [{"depth": 10, "fen": f, "score_cp": 20} for f in prepared["positions"]]
+    positions.append({"depth": 10, "fen": prepared["positions"][0], "score_cp": -900})
     response = _classify_save(client, prepared, positions=positions)
     assert response.status_code == 400, response.text
     assert client.get("/api/analyses").json()["analyses"] == []
@@ -73,10 +73,10 @@ def test_duplicate_fen_with_conflicting_scores_is_rejected(client):
 def test_equivalent_fen_spellings_with_identical_scores_are_accepted(client):
     _register(client, "alias@example.com")
     prepared = _prepare(client)
-    positions = [{"fen": f, "score_cp": 20} for f in prepared["positions"]]
+    positions = [{"depth": 10, "fen": f, "score_cp": 20} for f in prepared["positions"]]
     fields = prepared["positions"][1].split()
     fields[3] = "e3"
-    positions.append({"fen": " ".join(fields), "score_cp": 20})
+    positions.append({"depth": 10, "fen": " ".join(fields), "score_cp": 20})
     response = _classify_save(client, prepared, positions=positions)
     assert response.status_code == 200, response.text
 

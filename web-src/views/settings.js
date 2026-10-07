@@ -184,9 +184,6 @@ export function createSettingsView({
   function connectionAccounts() {
     const accounts = appState.lichessAccounts;
     if (Array.isArray(accounts)) return accounts;
-    if (appState.lichessUsername) {
-      return [{ id: "legacy", username: appState.lichessUsername, is_primary: true }];
-    }
     return [];
   }
 

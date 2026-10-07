@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from threading import Lock
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from prepforge_chess.api.config import Settings, get_settings
@@ -23,30 +23,15 @@ def make_engine(settings: Settings | None = None):
     settings = settings or get_settings()
     url = settings.database_url
     if settings.is_sqlite:
-        # check_same_thread=False: FastAPI serves requests across a thread pool.
-        # We still hand each request its own Session, so this is safe.
-        engine = create_engine(
-            url,
-            connect_args={"check_same_thread": False},
-            pool_pre_ping=True,
-        )
+        from prepforge_chess.storage.database import make_sqlite_engine
 
-        # SQLite scopes ``foreign_keys`` PER CONNECTION and resets it to OFF on every
-        # new one, so a one-shot PRAGMA only covers the first pooled connection -- the
-        # rest would silently skip FK enforcement (broken cascade deletes / orphan
-        # rows). Re-assert it on every DBAPI connect, mirroring
-        # ``storage.database.make_sqlite_engine``.
-        @event.listens_for(engine, "connect")
-        def _enable_foreign_keys(dbapi_connection, _record):  # noqa: ANN001
-            cursor = dbapi_connection.cursor()
-            cursor.execute("PRAGMA foreign_keys=ON")
-            cursor.close()
+        engine = make_sqlite_engine(url, pool_pre_ping=True)
 
         # WAL (readers run concurrently with a writer) is a PERSISTENT, file-level
         # setting stored in the DB header -- unlike foreign_keys it survives across
         # connections, so set it once at engine build rather than on every connect
         # (avoids redundant journal-mode churn / startup cost on each pooled connection).
-        # The listener above is registered first, so this build-time connection still
+        # The factory registers the listener, so this build-time connection still
         # gets foreign_keys=ON like any other.
         with engine.begin() as conn:
             conn.exec_driver_sql("PRAGMA journal_mode=WAL")

@@ -1,16 +1,4 @@
-"""Lichess OAuth2 (PKCE) for a local, no-secret desktop client.
-
-Lichess lets a public client use Authorization Code + PKCE with no registered
-secret, so the whole flow runs against the local web server:
-
-  1. /oauth/login   — make a verifier/challenge, redirect to Lichess.
-  2. user approves on lichess.org.
-  3. /oauth/callback — exchange the code (+ verifier) for a token, read the
-     account username, and store both in app_settings.
-
-Only `urllib` is used so there are no new dependencies, and the network calls
-are small wrappers that tests can monkeypatch.
-"""
+"""Lichess OAuth2 PKCE helpers for the API's linked-account flow."""
 from __future__ import annotations
 
 import base64

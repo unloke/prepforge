@@ -30,13 +30,10 @@ from pathlib import Path
 
 import chess
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from prepforge_chess.services.maia import Maia3Adapter, Maia3Config  # noqa: E402
-from prepforge_chess.services.opening_generation import (  # noqa: E402
-    BRANCH_THRESHOLD,
-    MAINLINE_THRESHOLD,
-)
+from maia3_reference import Maia3Reference  # noqa: E402
+MAINLINE_THRESHOLD = 0.10
+BRANCH_THRESHOLD = 0.30
 
 OUT_DIR = Path(__file__).resolve().parents[1] / "web-src" / "public" / "maia3"
 FIXTURE = Path(__file__).resolve().parents[1] / "web-src" / "engine" / "maia3-smoke-fixture.json"
@@ -106,7 +103,7 @@ def _legal_masked_probs(logits_row, legal_indices):
 
     Softmax over only the legal logit indices is mathematically identical to
     softmaxing the full vector with the illegal entries set to -inf (the path in
-    Maia3Adapter.move_assessment / score_moves), but lets us keep the fixture
+    Maia3Reference.move_assessment / score_moves), but lets us keep the fixture
     tokenizer-free: the browser need only know WHICH indices are legal, not how to
     derive them. Returns probs aligned to `legal_indices`.
     """
@@ -165,7 +162,7 @@ def main() -> int:
         )
         return 1
 
-    adapter = Maia3Adapter(Maia3Config(device="cpu"))
+    adapter = Maia3Reference()
     engine = adapter._ensure_engine()
 
     # Shared, model-independent inputs (tokens + legal-move indices come from the
@@ -253,7 +250,7 @@ def main() -> int:
         "logits_move_dim": manifest["io"]["logits_move_dim"],
         "logits_value_dim": manifest["io"]["logits_value_dim"],
         "topk": TOPK,
-        # Build Generate's branch thresholds (single source of truth: opening_generation).
+        # Build Generate's branch thresholds (mirrors the browser generator).
         # The browser applies the SAME cuts to its legal-masked softmax and compares the
         # kept-move SETS, so it validates the exact policy behavior the build depends on.
         "thresholds": {"mainline": MAINLINE_THRESHOLD, "branch": BRANCH_THRESHOLD},

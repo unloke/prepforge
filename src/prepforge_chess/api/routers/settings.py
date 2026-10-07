@@ -66,7 +66,7 @@ def get_settings(
 class UpdateSettingsBody(BaseModel):
     # StrictInt so a JSON bool/float/string is a 422 request error rather than being
     # silently coerced (``true`` -> depth 1, ``16.5`` -> 16). An out-of-range *integer*
-    # is clamped (not rejected), matching the legacy ``set_stockfish_depth``.
+    # is clamped (not rejected).
     stockfish_depth: StrictInt | None = None
     # An integer pins Maia3 to that rating (clamped to the model's range); the literal
     # ``"auto"`` clears the pin back to match-the-player. ``None`` = field omitted.

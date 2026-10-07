@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import threading
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional
 
 import chess
 
 from prepforge_chess.core.models import Color, EngineEvaluation, MoveClassification
 from prepforge_chess.services.classification import win_chance_for_side
-from prepforge_chess.services.engine import EngineAdapter, EngineAnalysisConfig
-from prepforge_chess.services.maia import MaiaAdapter
+from prepforge_chess.services.replay_maia import ReplayMaia
 
 
 @dataclass(frozen=True)
@@ -41,13 +39,7 @@ class BrilliantConfig:
     ``scripts/brilliant_probe2_corr.py`` for the per-feature AUC (sound's
     sub-conditions sat at AUC≈0.5 on the labeled set; trap_gap at ~0.97).
 
-    Computing ``trap_gap`` needs Maia's policy (which move humans would play)
-    plus one Stockfish eval of the position *after* that move. Either the
-    analyzer does this itself (a Maia adapter + an engine — the local/script
-    path), or it accepts a value the caller already computed: the public browser
-    flow runs both models client-side and supplies ``trap_gap`` via
-    ``ReplayMaia.precomputed_trap_gap``. When neither is available (no engine and
-    no client value) the trap layer can't be evaluated and the move is not flagged.
+    The browser supplies ``trap_gap`` and alternative gaps with its assessments.
 
     4. **Decisive** — the move is the *only* one that holds, or it gives up
        material. ``only_move_gap = sf_truth(played) − sf_truth(the best other
@@ -92,13 +84,6 @@ class BrilliantConfig:
     great_min_two_move_gap: float = 0.10
     great_min_win: float = 0.25
     great_max_win_before: float = 0.97
-
-
-# Deep confirmation (mirrors web-src/coach/brilliant-assess.js): the MultiPV-3 read that
-# measures the alternative gaps searches this much deeper than the analysis, and a move
-# whose own win chance there drifts more than CONFIRM_MAX_DRIFT is not graded.
-CONFIRM_DEPTH_GAIN = 2
-CONFIRM_MAX_DRIFT = 0.10
 
 
 @dataclass(frozen=True)
@@ -226,31 +211,18 @@ BRILLIANT_ELIGIBLE_CLASSIFICATIONS = frozenset(
 class BrilliantAnalyzer:
     """Decide whether a Best or Excellent move is also Brilliant.
 
-    Only moves already classified Best or Excellent by the Stockfish classifier
-    are eligible. The human model is Maia3 (``maia``): its move probability says
-    how unintuitive the move is, its value of the resulting position is the
-    human "first glance", and its top-policy move is the one a human would
-    naturally play (used for ``trap_gap``). The objective truth is the
-    Stockfish evaluation that the analysis pipeline already produced, passed in
-    here; the optional ``engine`` is used only for the single extra eval the
-    trap layer needs (the position after the human's natural move) — unless the
-    Maia adapter already exposes a precomputed ``trap_gap`` (the browser flow),
-    in which case that value is used and no engine is required.
+    Browser Maia assessments and Stockfish evaluations supply all scores.
+    This class applies the grading thresholds and checks move/material sanity.
     """
 
     def __init__(
         self,
         *,
-        maia: Optional[MaiaAdapter] = None,
-        engine: Optional[EngineAdapter] = None,
-        engine_config: Optional[EngineAnalysisConfig] = None,
+        maia: Optional[ReplayMaia] = None,
         config: BrilliantConfig = BrilliantConfig(),
     ):
         self.maia = maia
-        self.engine = engine
-        self.engine_config = engine_config or EngineAnalysisConfig(multipv=1)
         self.config = config
-        self._lock = threading.Lock()
 
     def evaluate(
         self,
@@ -285,12 +257,11 @@ class BrilliantAnalyzer:
             return None
 
         try:
-            with self._lock:
-                assessment = self.maia.move_assessment(
-                    fen_before, played_move_uci, rating=effective.rating
-                )
+            assessment = self.maia.move_assessment(
+                fen_before, played_move_uci, rating=effective.rating
+            )
         except Exception:
-            # A failed Maia3 inference must not abort the whole game analysis.
+            # An unavailable client assessment must not abort game analysis.
             return None
         if assessment is None:
             return None
@@ -307,25 +278,14 @@ class BrilliantAnalyzer:
         unintuitive = human_probability <= effective.max_human_probability
         revealed = reveal_score >= effective.min_reveal_score
         # Great's second route ("critical find") needs a moderately unintuitive move in a
-        # live position; the searches below only run for moves that can still earn a grade.
+        # live position.
         great_candidate = (
             human_probability <= effective.great_max_human_probability
             and sf_truth_wc >= effective.great_min_win
             and sf_before_wc <= effective.great_max_win_before
         )
 
-        # Prefer a client-precomputed trap_gap: the public browser flow runs no server
-        # engine, so it computes trap_gap locally and supplies it via ReplayMaia. Fall
-        # back to computing it here when an engine is wired (the local/script path).
-        trap_gap = self._precomputed_trap_gap(fen_before, played_move_uci)
-        if trap_gap is None and ((unintuitive and revealed) or great_candidate):
-            trap_gap = self._trap_gap(
-                fen_before=fen_before,
-                played_move_uci=played_move_uci,
-                side_to_move=side_to_move,
-                sf_truth_wc=sf_truth_wc,
-                effective=effective,
-            )
+        trap_gap = self._precomputed_gap("precomputed_trap_gap", fen_before, played_move_uci)
         hard_find = (
             unintuitive
             and revealed
@@ -340,20 +300,6 @@ class BrilliantAnalyzer:
             and trap_gap is not None
             and trap_gap >= effective.great_min_trap_gap
         )
-        if (only_move_gap is None or two_move_gap is None) and (hard_find or natural_fails):
-            engine_only, engine_two, confirmed = self._alternative_gaps(
-                fen_before=fen_before,
-                played_move_uci=played_move_uci,
-                side_to_move=side_to_move,
-                sf_truth_wc=sf_truth_wc,
-            )
-            if confirmed is False:
-                # The deeper search doesn't back the move up: no grade (fail closed),
-                # exactly as the browser drops an unconfirmed trap_gap.
-                trap_gap = None
-                hard_find = natural_fails = False
-            only_move_gap = engine_only if only_move_gap is None else only_move_gap
-            two_move_gap = engine_two if two_move_gap is None else two_move_gap
         reply = stockfish_eval_after.pv[0] if stockfish_eval_after.pv else None
         sacrifice = material_invested(fen_before, played_move_uci, reply)
         decisive = sacrifice >= effective.min_sacrifice or (
@@ -394,115 +340,3 @@ class BrilliantAnalyzer:
             return None if value is None else float(value)
         except Exception:
             return None
-
-    def _alternative_gaps(
-        self,
-        *,
-        fen_before: str,
-        played_move_uci: str,
-        side_to_move: Color,
-        sf_truth_wc: float,
-    ) -> Tuple[Optional[float], Optional[float], Optional[bool]]:
-        """(only_move_gap, two_move_gap, confirmed) from one MultiPV-3 search of the
-        position before the move, ``CONFIRM_DEPTH_GAIN`` deeper than the analysis:
-        sf_truth(played) minus the best, and the second-best, OTHER move. ``confirmed``
-        is False when the played move falls out of the top three there or its score
-        drifts more than ``CONFIRM_MAX_DRIFT`` from the analysis read (the browser's
-        attachAlternativeGaps applies the same rule); None without an engine. A gap is
-        None when there are too few legal moves to have that many alternatives."""
-        if self.engine is None:
-            return None, None, None
-        depth = self.engine_config.depth
-        config = EngineAnalysisConfig(
-            depth=depth + CONFIRM_DEPTH_GAIN if depth else depth,
-            nodes=self.engine_config.nodes,
-            time_ms=self.engine_config.time_ms,
-            multipv=3,
-        )
-        try:
-            with self._lock:
-                analysis = self.engine.analyze_position(fen_before, config)
-        except Exception:
-            return None, None, None
-        candidates = list(analysis.candidates or [])
-        played = next((c for c in candidates if c.move_uci == played_move_uci), None)
-        if played is None:
-            return None, None, False
-        mine = win_chance_for_side(played.evaluation_after, side_to_move)
-        if abs(mine - sf_truth_wc) > CONFIRM_MAX_DRIFT:
-            return None, None, False
-        others = [c for c in candidates if c.move_uci != played_move_uci]
-        gaps = [mine - win_chance_for_side(c.evaluation_after, side_to_move) for c in others[:2]]
-        return (
-            gaps[0] if gaps else None,
-            gaps[1] if len(gaps) > 1 else None,
-            True,
-        )
-
-    def _precomputed_trap_gap(
-        self, fen_before: str, played_move_uci: str
-    ) -> Optional[float]:
-        """A trap_gap the Maia adapter already knows (the browser-supplied value), or None.
-
-        ReplayMaia exposes ``precomputed_trap_gap`` so the analyzer can use the client's
-        number directly — the public server has no engine to compute it. A real
-        MaiaAdapter has no such method, so this returns None there and the engine path
-        runs instead. Any lookup failure also degrades to None (trap layer un-evaluable →
-        move not flagged), never aborting analysis.
-        """
-        lookup = getattr(self.maia, "precomputed_trap_gap", None)
-        if not callable(lookup):
-            return None
-        try:
-            value = lookup(fen_before, played_move_uci)
-        except Exception:
-            return None
-        if value is None:
-            return None
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return None
-
-    def _trap_gap(
-        self,
-        *,
-        fen_before: str,
-        played_move_uci: str,
-        side_to_move: Color,
-        sf_truth_wc: float,
-        effective: BrilliantConfig,
-    ) -> Optional[float]:
-        """sf_truth(played) − sf_truth(the move Maia thinks a human would play).
-
-        Needs Maia's policy (top move) and one engine eval of the position that
-        natural move leads to. Returns None when either is unavailable, so the
-        caller can treat the trap layer as un-evaluable rather than passed.
-        """
-        if self.engine is None:
-            return None
-        try:
-            with self._lock:
-                predictions = self.maia.predictions(
-                    fen_before, rating=effective.rating
-                )
-        except Exception:
-            return None
-        if not predictions:
-            return None
-
-        human_uci = predictions[0].move_uci
-        if human_uci == played_move_uci:
-            # The move a human would naturally play *is* this move — no trap.
-            return 0.0
-
-        try:
-            board = chess.Board(fen_before)
-            board.push(chess.Move.from_uci(human_uci))
-            with self._lock:
-                human_eval = self.engine.evaluate_position(
-                    board.fen(), self.engine_config
-                )
-        except Exception:
-            return None
-        return sf_truth_wc - win_chance_for_side(human_eval, side_to_move)

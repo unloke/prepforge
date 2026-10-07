@@ -2,8 +2,7 @@
 //
 // The API issues a non-HttpOnly `pf_csrf` cookie on safe requests and requires
 // unsafe methods to echo it in the `X-CSRF-Token` header (see
-// api/middleware.py::CSRFMiddleware). The legacy stdlib server had no CSRF, so
-// the SPA never sent the header — every POST against FastAPI 403s until this
+// api/middleware.py::CSRFMiddleware).
 // wires the token in.
 //
 // Deps are injected (fetch, cookie getter) so the token source is unit-testable

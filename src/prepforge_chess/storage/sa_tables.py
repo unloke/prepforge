@@ -1,6 +1,6 @@
 """Domain schema as SQLAlchemy Core tables.
 
-Compact persistent representation (no legacy dual-format):
+Compact persistent representation:
 * games store ``initial_fen`` + ``uci_blob``; PGN/SAN/FEN sequences are derived;
 * moves hold only per-ply annotations that cannot be rebuilt from the UCI blob;
 * positions is a full-FEN catalog (6 fields, unique); never a short hash;
@@ -150,13 +150,6 @@ repertoires = Table(
     Column("color", Text, nullable=False),
     Column("root_fen", Text, nullable=False),
     Column("root_node_id", Text),
-    Column("main_engine", Text, nullable=False),
-    Column("human_model", Text, nullable=False),
-    Column("branch_depth", Integer, nullable=False),
-    Column("opponent_branch_threshold", Float, nullable=False),
-    Column("sub_branch_threshold", Float, nullable=False),
-    Column("max_total_nodes", Integer, nullable=False),
-    Column("max_line_length", Integer, nullable=False),
     Column("notes", Text),
     Column("tags_json", Text, nullable=False),
     Column("is_active", Integer, nullable=False),
@@ -170,8 +163,7 @@ repertoires = Table(
     Column("revision", Integer, nullable=False, server_default="0"),
     # Public share-link governance (F-01). ``share_rev`` is mixed into the
     # token signature: rotating bumps it and kills every previously minted
-    # link; ``share_enabled`` is the independent on/off switch (legacy links
-    # ship rev=0 / enabled=1 so pre-existing links keep working until revoked).
+    # link; ``share_enabled`` is the independent on/off switch.
     Column("share_rev", Integer, nullable=False, server_default="0"),
     Column("share_enabled", Integer, nullable=False, server_default="1"),
     Column("share_expires_at", Text),
@@ -270,28 +262,6 @@ training_progress = Table(
     Index("idx_training_progress_due", "due_at"),
 )
 
-engine_settings = Table(
-    "engine_settings",
-    metadata,
-    Column("id", Text, primary_key=True),
-    Column("engine_name", Text, nullable=False),
-    Column("executable_path", Text),
-    Column("default_depth", Integer),
-    Column("default_nodes", Integer),
-    Column("default_time_ms", Integer),
-    Column("options_json", Text, nullable=False),
-    Column("created_at", Text, nullable=False),
-    Column("updated_at", Text, nullable=False),
-)
-
-app_settings = Table(
-    "app_settings",
-    metadata,
-    Column("key", Text, primary_key=True),
-    Column("value_json", Text, nullable=False),
-    Column("updated_at", Text, nullable=False),
-)
-
 DOMAIN_TABLES = (
     user_settings,
     train_attempt_receipts,
@@ -304,8 +274,4 @@ DOMAIN_TABLES = (
     opening_nodes,
     training_sessions,
     training_progress,
-    engine_settings,
-    app_settings,
 )
-
-

@@ -9,7 +9,7 @@ from __future__ import annotations
 import functools
 from pathlib import Path
 
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -31,13 +31,10 @@ class Settings(BaseSettings):
     env: str = Field(default="development")
 
     # SQLAlchemy URL. SQLite for dev/test, postgresql+psycopg://... in prod.
-    # Read from DATABASE_URL (no prefix) to match the Render/Heroku convention, with
-    # the prefixed PREPFORGE_DATABASE_URL as an explicit override. A bare
-    # validation_alias replaces (not augments) the env_prefix, so both names must be
-    # listed explicitly -- otherwise only DATABASE_URL would be read.
+    # Database uses the deploy platform's DATABASE_URL; all other settings use PREPFORGE_.
     database_url: str = Field(
         default=f"sqlite:///{_DEFAULT_SQLITE}",
-        validation_alias=AliasChoices("DATABASE_URL", "PREPFORGE_DATABASE_URL"),
+        validation_alias="DATABASE_URL",
     )
 
     @field_validator("database_url")
@@ -68,10 +65,9 @@ class Settings(BaseSettings):
     # short-lived OAuth flow cookies. Independent from ``secret_key`` (which
     # signs share links and seeds CSRF) so rotating one never re-keys the
     # other. Fernet ciphertexts carry an explicit version prefix (see
-    # api/security.py); there is no legacy format and no fallback.
+    # api/security.py).
     token_key: str = Field(
         default="dev-insecure-change-me",
-        validation_alias="PREPFORGE_TOKEN_KEY",
     )
 
     # Session cookie.
@@ -95,15 +91,12 @@ class Settings(BaseSettings):
     allowed_origins: str = Field(default="http://localhost:5173,http://localhost:8765")
 
     # Google OAuth (primary sign-in). Empty until configured; the Google login
-    # routes 503 when unset. Read with the env_prefix (PREPFORGE_GOOGLE_CLIENT_ID)
-    # OR the bare GOOGLE_CLIENT_ID, matching how most Google libs document it.
+    # routes return 503 when unset.
     google_client_id: str = Field(
         default="",
-        validation_alias=AliasChoices("GOOGLE_CLIENT_ID", "PREPFORGE_GOOGLE_CLIENT_ID"),
     )
     google_client_secret: str = Field(
         default="",
-        validation_alias=AliasChoices("GOOGLE_CLIENT_SECRET", "PREPFORGE_GOOGLE_CLIENT_SECRET"),
     )
 
     # Stripe (billing phase). Empty until configured; billing routes guard on this.

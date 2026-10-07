@@ -12,7 +12,6 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from prepforge_chess.core.models import Color, TrainingProgress
-from prepforge_chess.services.engine import MockEngine
 from prepforge_chess.services.opening_builder import CreateRepertoireRequest, OpeningBuilderService
 from prepforge_chess.services.scheduler import (
     CARD_DUE,
@@ -29,7 +28,6 @@ from prepforge_chess.services.scheduler import (
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
-from stub_maia import StubMaia
 
 NOW = datetime(2026, 6, 11, 12, 0, 0, tzinfo=timezone.utc)
 PAST = NOW - timedelta(hours=2)
@@ -45,7 +43,7 @@ def _repository():
 def _build_tree():
     """Returns (repertoire, ids) where ids maps san-ish names to node ids."""
     repository = _repository()
-    builder = OpeningBuilderService(repository, engine=MockEngine(), maia=StubMaia())
+    builder = OpeningBuilderService(repository)
     repertoire = builder.create_repertoire(
         CreateRepertoireRequest(name="Scheduler", color=Color.WHITE)
     )
@@ -77,7 +75,7 @@ def _build_wide_tree():
     Every key the tests index is listed in ``ids``.
     """
     repository = _repository()
-    builder = OpeningBuilderService(repository, engine=MockEngine(), maia=StubMaia())
+    builder = OpeningBuilderService(repository)
     repertoire = builder.create_repertoire(
         CreateRepertoireRequest(name="Scheduler Wide", color=Color.WHITE)
     )
@@ -178,13 +176,14 @@ def test_targeted_practice_rejects_opponent_and_disabled_nodes():
 
 
 def test_card_codec_round_trips():
-    card = TrainingCard(kind=CARD_DUE, first_target_id="a-1", last_target_id="b-2")
+    card = TrainingCard(kind=CARD_DUE, first_target_id="a-1", last_target_id="b-2", repertoire_id="rep")
     assert decode_card(encode_card(card)) == card
 
 
 def test_decode_rejects_garbage():
     assert decode_card("not-a-card") is None
     assert decode_card("badkind:a:b") is None
+    assert decode_card("due:a:b") is None
     assert decode_card("due:a") is None
     assert decode_card(None) is None
     assert decode_card("due::b") is None
@@ -406,7 +405,7 @@ def test_each_node_targeted_at_most_once():
 
 def test_empty_tree_yields_empty_plan():
     repository = _repository()
-    builder = OpeningBuilderService(repository, engine=MockEngine(), maia=StubMaia())
+    builder = OpeningBuilderService(repository)
     repertoire = builder.create_repertoire(
         CreateRepertoireRequest(name="Empty", color=Color.WHITE)
     )
@@ -500,7 +499,7 @@ def test_branch_off_a_merging_path_splits_cards_at_the_fork():
     are the preorder-contiguous spans of one path.
     """
     repository = _repository()
-    builder = OpeningBuilderService(repository, engine=MockEngine(), maia=StubMaia())
+    builder = OpeningBuilderService(repository)
     repertoire = builder.create_repertoire(
         CreateRepertoireRequest(name="Fork", color=Color.WHITE)
     )

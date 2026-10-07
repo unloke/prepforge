@@ -30,7 +30,13 @@ def connect_database(path: PathLike = ":memory:") -> Engine:
     """
     is_memory = str(path) == ":memory:"
     url = "sqlite://" if is_memory else "sqlite:///{0}".format(path)
-    kwargs = {"future": True, "connect_args": {"check_same_thread": False}}
+    return make_sqlite_engine(url)
+
+
+def make_sqlite_engine(url: str, *, pool_pre_ping: bool = False) -> Engine:
+    """Build a SQLite engine with per-connection foreign key enforcement."""
+    is_memory = url in {"sqlite://", "sqlite:///:memory:"}
+    kwargs = {"connect_args": {"check_same_thread": False}, "pool_pre_ping": pool_pre_ping}
     if is_memory:
         kwargs["poolclass"] = StaticPool
     engine = create_engine(url, **kwargs)

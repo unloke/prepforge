@@ -19,14 +19,8 @@ Like ``services/progress.py`` this module is pure (no DB, no engine): tree +
 stored ``TrainingProgress`` in, a ``SessionPlan`` out. Sessions are small
 (~12 targets) so training has a beginning and an end, not an endless grind.
 
-Cards are encoded as compact ``kind:first:last`` strings and stored in the
-existing ``TrainingSession.line_order`` JSON column — no schema change. The
-path root→``last_target`` is unique in a tree, so those two node ids fully
-determine the run-in, the prompts in between, and the opponent replies.
-
-Mixed sessions (one queue over ALL active repertoires) extend the encoding to
-``kind:repertoire_id:first:last`` — ``decode_card`` accepts both, so legacy
-single-repertoire sessions keep working. ``mix_plans`` interleaves per-
+Cards use ``kind:repertoire_id:first:last`` strings in
+``TrainingSession.line_order``. ``mix_plans`` interleaves per-
 repertoire plans in small same-repertoire chunks: positions from one opening
 stay together (switching openings every card is exhausting), but no single
 repertoire monopolises a stretch of the queue.
@@ -77,9 +71,7 @@ class TrainingCard:
     kind: str
     first_target_id: str
     last_target_id: str
-    # Which repertoire the targets live in. ``None`` = the session's own
-    # repertoire (legacy single-repertoire sessions); set for mixed sessions.
-    repertoire_id: Optional[str] = None
+    repertoire_id: str
 
 
 @dataclass(frozen=True)
@@ -91,30 +83,18 @@ class SessionPlan:
 
 
 def encode_card(card: TrainingCard) -> str:
-    if card.repertoire_id:
-        return "{0}:{1}:{2}:{3}".format(
-            card.kind, card.repertoire_id, card.first_target_id, card.last_target_id
-        )
-    return "{0}:{1}:{2}".format(card.kind, card.first_target_id, card.last_target_id)
+    return "{0}:{1}:{2}:{3}".format(
+        card.kind, card.repertoire_id, card.first_target_id, card.last_target_id
+    )
 
 
 def decode_card(raw: object) -> Optional[TrainingCard]:
-    """Parse an encoded card (3-part legacy or 4-part mixed); ``None`` for
-    anything malformed (a legacy line id that leaked into a smart session, a
-    kind we no longer know, ...)."""
+    """Parse a four-part card; return None for malformed values."""
     if not isinstance(raw, str):
         return None
     parts = raw.split(":")
-    if parts and parts[0] in _KIND_PRIORITY and all(parts):
-        if len(parts) == 3:
-            return TrainingCard(kind=parts[0], first_target_id=parts[1], last_target_id=parts[2])
-        if len(parts) == 4:
-            return TrainingCard(
-                kind=parts[0],
-                repertoire_id=parts[1],
-                first_target_id=parts[2],
-                last_target_id=parts[3],
-            )
+    if len(parts) == 4 and parts[0] in _KIND_PRIORITY and all(parts):
+        return TrainingCard(parts[0], parts[2], parts[3], parts[1])
     return None
 
 
@@ -346,7 +326,7 @@ def build_session_plan(
     take(polish, CARD_POLISH)
     take(weak, CARD_WEAK)  # top off with leftover weak when nothing else remains
 
-    cards = _merge_into_cards(candidates, selected_kind, max_targets_per_card)
+    cards = _merge_into_cards(candidates, selected_kind, max_targets_per_card, root.repertoire_id)
     ordered = _order_cards(cards, {c.node.id: c for c in candidates}, rng)
     counts = card_counts(ordered)
     counts["targets"] = len(selected_kind)
@@ -365,6 +345,7 @@ def _merge_into_cards(
     candidates: List[_Candidate],
     selected_kind: Dict[str, str],
     max_targets_per_card: int,
+    repertoire_id: str,
 ) -> List[TrainingCard]:
     """Fold consecutive selected own moves on one path into multi-target cards.
 
@@ -403,7 +384,8 @@ def _merge_into_cards(
             draft_by_tail[cand.node.id] = draft
     return [
         TrainingCard(
-            kind=d.kind, first_target_id=d.first_target_id, last_target_id=d.last_target_id
+            kind=d.kind, first_target_id=d.first_target_id, last_target_id=d.last_target_id,
+            repertoire_id=repertoire_id
         )
         for d in drafts
     ]

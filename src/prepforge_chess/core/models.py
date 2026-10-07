@@ -50,10 +50,6 @@ class GameResult(str, Enum):
 
 class TrainingMode(str, Enum):
     ALL_LINES = "all_lines"
-    MISTAKES_ONLY = "mistakes_only"
-    HIGH_PRIORITY = "high_priority"
-    RECENT_PRACTICAL = "recent_practical"
-    OPENING_ONLY = "opening_only"
     # Card-based smart queue (Train v2): line_order holds encoded cards
     # (see services/scheduler.py), not leaf-line node ids.
     SMART = "smart"
@@ -80,17 +76,6 @@ class EngineEvaluation:
     best_move_uci: Optional[str] = None
     pv: List[str] = field(default_factory=list)
     wdl: Optional[Dict[str, float]] = None
-
-
-@dataclass
-class MaiaMovePrediction:
-    fen: str
-    move_uci: str
-    probability: float
-    model: str = "maia3"
-    rating_bucket: Optional[str] = None
-    rank: Optional[int] = None
-    sample_size: Optional[int] = None
 
 
 @dataclass
@@ -192,7 +177,6 @@ class OpeningNode:
     source: MoveSource = MoveSource.MANUAL
 
 
-
 @dataclass
 class Repertoire:
     id: str
@@ -200,13 +184,6 @@ class Repertoire:
     color: Color
     root_fen: str
     root_node: OpeningNode
-    main_engine: str = "stockfish"
-    human_model: str = "maia3"
-    branch_depth: int = 12
-    opponent_branch_threshold: float = 0.10
-    sub_branch_threshold: float = 0.30
-    max_total_nodes: int = 1000
-    max_line_length: int = 24
     notes: Optional[str] = None
     tags: List[str] = field(default_factory=list)
     is_active: bool = True
@@ -237,5 +214,3 @@ class TrainingSession:
     updated_at: datetime = field(default_factory=utc_now)
     seed: Optional[int] = None
     state_version: int = 0
-
-

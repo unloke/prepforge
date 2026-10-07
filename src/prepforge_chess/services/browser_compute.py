@@ -7,17 +7,8 @@ server's remaining work is pure application of those precomputed numbers:
     validate payload → apply precomputed evals to moves → classify moves
     → build summary → persist efficiently → return payload
 
-``classify_move`` and ``BrilliantAnalyzer`` stay the single source of truth —
-this helper calls the same functions as the engine-driven ``AnalysisService``
-path, so classifications, comments, summaries, and critical plies are
-identical. What it skips is the engine-oriented orchestration (ReplayEngine
-lookups per position, per-move cache plumbing, progress emission) that only
-exists to *obtain* evals the browser already supplied.
-
-Persistence goes through ``repository.save_game_batched`` (bulk
-position/eval/move writes in one transaction) instead of the legacy
-per-move ``save_game`` loop, so SQL round-trips stay near-constant in game
-length on both SQLite and PostgreSQL.
+Classification and Brilliant detection read browser evaluations directly.
+Persistence batches position/eval/move writes in one transaction.
 """
 from __future__ import annotations
 
@@ -41,11 +32,7 @@ from prepforge_chess.services.brilliant import (
     BrilliantConfig,
 )
 from prepforge_chess.services.classification import classify_move
-from prepforge_chess.services.replay_engine import (
-    ReplayEngine,
-    client_search_depth,
-    client_search_nodes,
-)
+from prepforge_chess.core.chess_core import ChessCore
 
 
 from prepforge_chess.services.analysis_metadata import (
@@ -60,6 +47,20 @@ _MAX_MATE_IN = 200
 _MAX_DEPTH = 64
 _MAX_NODES = 10**12
 _MAX_SCORE_CP = 10**7
+
+
+class MissingEvaluationError(ValueError):
+    """The browser did not supply a required position evaluation."""
+
+
+_core = ChessCore()
+
+
+def position_key(fen: str) -> str:
+    try:
+        return _core.normalize_fen(fen)
+    except ValueError:
+        return fen.strip()
 
 
 class PositionPayloadError(ValueError):
@@ -116,7 +117,7 @@ def validate_position_item(item: Any, index: int) -> Dict[str, Any]:
     if mate_in is not None:
         _validate_int(mate_in, "{0}.mate_in".format(field), lo=-_MAX_MATE_IN, hi=_MAX_MATE_IN)
     # depth 0 is legitimate: a terminal position needs no search.
-    _validate_int(item.get("depth"), "{0}.depth".format(field), lo=0, hi=_MAX_DEPTH)
+    _validate_int(item.get("depth"), "{0}.depth".format(field), lo=0, hi=_MAX_DEPTH, required=True)
     _validate_int(item.get("nodes"), "{0}.nodes".format(field), lo=0, hi=_MAX_NODES)
     _validate_int(item.get("time_ms"), "{0}.time_ms".format(field), lo=0, hi=10**10)
     _validate_uci(item.get("best_move_uci"), "{0}.best_move_uci".format(field))
@@ -141,7 +142,7 @@ def validate_position_payload(positions: Any) -> List[Dict[str, Any]]:
 
 
 def _evaluation_from_client(
-    data: Dict[str, Any], *, engine_name: str, depth: int
+    data: Dict[str, Any], *, engine_name: str
 ) -> EngineEvaluation:
     score_cp = data.get("score_cp")
     mate_in = data.get("mate_in")
@@ -154,11 +155,8 @@ def _evaluation_from_client(
         raise PositionPayloadError("score_cp/mate_in must be numbers") from exc
     return EngineEvaluation(
         engine=engine_name,
-        # The actual depth the browser search reached (0 = terminal position,
-        # no search); `depth` is only the requested fallback for legacy
-        # payloads, so a shallow timed-out result is never mislabelled.
-        depth=client_search_depth(data, depth),
-        nodes=client_search_nodes(data),
+        depth=int(data["depth"]),
+        nodes=int(data["nodes"]) if data.get("nodes") is not None else None,
         score_cp=score_cp,
         mate_in=mate_in,
         best_move_uci=data.get("best_move_uci") or None,
@@ -213,22 +211,10 @@ def classify_precomputed_game(
 
     ``position_map`` maps FEN → ``{score_cp, mate_in, best_move_uci, pv, depth}``
     as produced by the browser Stockfish provider (``depth`` = actual search
-    depth reached). A missing FEN raises the same
-    ``ReplayEngineError`` the legacy path raises (incomplete browser payload →
-    400), so error semantics are unchanged. ``game.moves`` is classified
-    in place (same as ``AnalysisService``) and also returned via the result.
-
-    FEN normalization (python-chess Board construction) happens once per
-    distinct position up front — the legacy path re-normalizes the same FEN
-    on every move's before/after lookup.
+    depth reached). Missing evaluations are rejected. FEN normalization
+    happens once per distinct position.
     """
-    replay = ReplayEngine(position_map, name=engine_name)
-    normalized: Dict[str, str] = {}
-    for fen in position_map:
-        try:
-            normalized[fen] = replay._key(fen)
-        except Exception:  # noqa: BLE001 - fall back to the raw key
-            normalized[fen] = fen
+    normalized = {fen: position_key(fen) for fen in position_map}
     by_normalized: Dict[str, Dict[str, Any]] = {}
     for fen, data in position_map.items():
         key = normalized[fen]
@@ -245,20 +231,18 @@ def classify_precomputed_game(
     def _lookup(fen: str) -> Dict[str, Any]:
         data = by_normalized.get(normalized.get(fen, fen))
         if data is None:
-            from prepforge_chess.services.replay_engine import ReplayEngineError
-
-            raise ReplayEngineError("no client evaluation for position: {0}".format(fen))
+            raise MissingEvaluationError("no client evaluation for position: {0}".format(fen))
         return data
 
     previous_move = None
     for move in game.moves:
         before = _lookup(move.fen_before)
         after = _lookup(move.fen_after)
-        eval_before = _evaluation_from_client(before, engine_name=engine_name, depth=depth)
+        eval_before = _evaluation_from_client(before, engine_name=engine_name)
         # At multipv 1 the position eval under best play equals the eval after
-        # the best move (negamax) — the same identity ReplayEngine encodes, so
+        # the best move (negamax) —;
         # best_move_eval reuses eval_before instead of a second lookup.
-        eval_after = _evaluation_from_client(after, engine_name=engine_name, depth=depth)
+        eval_after = _evaluation_from_client(after, engine_name=engine_name)
         best_move_uci = before.get("best_move_uci") or None
         best_eval_after = eval_before
 

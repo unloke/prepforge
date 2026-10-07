@@ -11,31 +11,24 @@ attribution, no wall-clock thresholds.
 Contract pinned here (all deterministic, no ms gates):
 
 * classify_move exactly once per ply; no extra Stockfish/Maia inference.
-* Browser-compute fast path (classify_precomputed_game) classifies identically
-  to the legacy AnalysisService + ReplayEngine path: classifications, comments,
-  summary, critical ply, stored evals all equal on the same fixture.
 * Persistence is batched: save_game_batched issues a near-constant small
   statement count independent of ply count (vs the legacy per-move loop whose
   round-trips scale ~7× ply), with identical reloaded state on SQLite.
 * Re-analysis replaces annotations deterministically (no stale rows, no dupes);
   ownership/analysis-history semantics unchanged.
 
-Uses deterministic fixtures (no network, no engine): ReplayEngine + ReplayMaia
+Uses deterministic fixtures (no network, no engine): Browser payloads + ReplayMaia
 replay fixed payloads, so timings are call-counts and statement-counts.
 """
 from __future__ import annotations
 
 from copy import deepcopy
-import pytest
 
 from sqlalchemy import event
 
 from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import Color, EngineEvaluation, MoveSource
-from prepforge_chess.services.analysis import AnalysisConfig, AnalysisService
 from prepforge_chess.services.browser_compute import classify_precomputed_game
-from prepforge_chess.services.engine import EngineAnalysisConfig
-from prepforge_chess.services.replay_engine import ReplayEngine
 from prepforge_chess.services.replay_maia import ReplayMaia
 from prepforge_chess.storage.database import initialize_database
 from prepforge_chess.storage.repositories import PrepForgeRepository
@@ -50,113 +43,6 @@ def _game_two_moves(core: ChessCore):
         '[White "a"]\n[Black "b"]\n\n1. e4 e5 *\n', source=MoveSource.IMPORTED_PGN
     )
     return game
-
-
-def test_replay_engine_single_lookup_per_position_per_move():
-    """classify-save must not re-run classification or double-process evals.
-
-    The shared fen_after(N) == fen_before(N+1) positions are analyzed ONCE via
-    the per-run eval cache (3 distinct FENs for 2 moves → 3 analyze calls, 0
-    separate evaluates at multipv 1), with no repeats and no second pass."""
-    core = ChessCore()
-    game = _game_two_moves(core)
-    fens = []
-    for move in game.moves:
-        fens.append(move.fen_before)
-    fens.append(game.moves[-1].fen_after)
-
-    calls: list[tuple[str, str]] = []
-
-    positions = {
-        fen: {"score_cp": 20, "mate_in": None, "best_move_uci": None, "pv": []} for fen in fens
-    }
-
-    engine = ReplayEngine(positions, chess_core=core)
-    orig_analyze = engine.analyze_position
-    orig_evaluate = engine.evaluate_position
-
-    def counting_analyze(fen, config=None):
-        calls.append(("analyze", fen))
-        return orig_analyze(fen, config or EngineAnalysisConfig())
-
-    def counting_evaluate(fen, config=None):
-        calls.append(("evaluate", fen))
-        return orig_evaluate(fen, config or EngineAnalysisConfig())
-
-    engine.analyze_position = counting_analyze  # type: ignore[method-assign]
-    engine.evaluate_position = counting_evaluate  # type: ignore[method-assign]
-
-    from prepforge_chess.storage.repositories import PrepForgeRepository  # noqa: F401
-
-    class _Repo:
-        def save_game(self, game, owner_user_id=None):
-            pass
-
-        def save_analysis_result(self, result):
-            pass
-
-    service = AnalysisService(_Repo(), engine=engine, engine_name="t")  # type: ignore[arg-type]
-    result = service.analyze_game(
-        game, config=AnalysisConfig(engine=EngineAnalysisConfig(depth=10), persist=False)
-    )
-    assert len(result.move_results) == 2
-    # 3 distinct FENs, each analyzed exactly once; shared fen_after(N) ==
-    # fen_before(N+1) positions are cache hits (no separate evaluate at
-    # multipv 1), and no FEN is ever searched twice.
-    assert len(calls) == 3
-    assert all(kind == "analyze" for kind, _ in calls)
-    assert len({fen for _, fen in calls}) == 3
-
-
-def test_classify_move_called_once_per_move(monkeypatch):
-    """The classifier runs exactly once per move (no duplicate classification)."""
-    import prepforge_chess.services.analysis as analysis_mod
-
-    core = ChessCore()
-    game = _game_two_moves(core)
-    fens = [m.fen_before for m in game.moves] + [game.moves[-1].fen_after]
-    positions = {
-        fen: {"score_cp": 20, "mate_in": None, "best_move_uci": None, "pv": []} for fen in fens
-    }
-    engine = ReplayEngine(positions, chess_core=core)
-
-    count = {"n": 0}
-    orig = analysis_mod.classify_move
-
-    def counting(**kwargs):
-        count["n"] += 1
-        return orig(**kwargs)
-
-    monkeypatch.setattr(analysis_mod, "classify_move", counting)
-
-    class _Repo:
-        def save_game(self, game, owner_user_id=None):
-            pass
-
-        def save_analysis_result(self, result):
-            pass
-
-    service = AnalysisService(_Repo(), engine=engine, engine_name="t")  # type: ignore[arg-type]
-    service.analyze_game(
-        game, config=AnalysisConfig(engine=EngineAnalysisConfig(depth=10), persist=False)
-    )
-    assert count["n"] == len(game.moves) == 2
-
-
-def test_replay_maia_never_runs_inference_for_classify():
-    """ReplayMaia replays browser numbers; predictions() (move generation) is
-    never consulted on the classify path — no second Maia processing."""
-    maia = ReplayMaia(
-        [{"fen": "f", "uci": "e2e4", "human_probability": 0.1, "win_chance_after": 0.5}]
-    )
-    assert maia.move_assessment("f", "e2e4") == (0.1, 0.5)
-    assert maia.precomputed_trap_gap("f", "e2e4") is None
-    try:
-        maia.predictions()
-    except NotImplementedError:
-        pass
-    else:  # pragma: no cover - contract guard
-        raise AssertionError("ReplayMaia.predictions must stay unimplemented on classify path")
 
 
 def test_trap_gap_replay_avoids_engine_recompute():
@@ -181,7 +67,7 @@ def test_trap_gap_replay_avoids_engine_recompute():
         def __getattr__(self, name):
             raise AssertionError(f"engine must not be consulted (got {name})")
 
-    analyzer = BrilliantAnalyzer(maia=maia, engine=_NoEngine())
+    analyzer = BrilliantAnalyzer(maia=maia)
     result = analyzer.evaluate(
         classification=MoveClassification.BEST,
         fen_before="f",
@@ -222,7 +108,7 @@ def _classified_game(core):
         best = move.uci if i % 3 == 0 else "a2a3"
         for fen in (move.fen_before, move.fen_after):
             fens.setdefault(
-                fen, {"score_cp": cp, "mate_in": None, "best_move_uci": best, "pv": []}
+                fen, {"depth": 10, "score_cp": cp, "mate_in": None, "best_move_uci": best, "pv": []}
             )
     return game, fens
 
@@ -260,53 +146,6 @@ def _snapshot(moves):
         )
         for m in moves
     ]
-
-
-@pytest.mark.parametrize("depth", [10, None])
-def test_fast_path_matches_legacy_path_fixture(depth):
-    """Same fixture, same evals: fast path == legacy AnalysisService path on
-    classifications, comments, summary, critical ply, and stored evals.
-
-    Uses the legal 20-ply game only (the 80-annotation repetitions are a
-    persistence-shape fixture, not a classifiable game)."""
-
-    core = ChessCore()
-    game, fens = _classified_game(core)
-    legal = deepcopy(game)
-    legal.moves = legal.moves[:20]
-    legal_fens = {
-        fen: data
-        for fen, data in fens.items()
-        if any(fen in (m.fen_before, m.fen_after) for m in legal.moves)
-    }
-    legacy_game = deepcopy(legal)
-
-    legacy_engine = ReplayEngine(dict(legal_fens), chess_core=core)
-
-    class _Repo:
-        def save_game(self, game, owner_user_id=None):
-            pass
-
-        def save_analysis_result(self, result):
-            pass
-
-    legacy_service = AnalysisService(_Repo(), engine=legacy_engine, engine_name="t")  # type: ignore[arg-type]
-    legacy_result = legacy_service.analyze_game(
-        deepcopy(legacy_game),
-        config=AnalysisConfig(engine=EngineAnalysisConfig(depth=depth), persist=False),
-    )
-
-    fast_result = classify_precomputed_game(
-        deepcopy(legal), dict(legal_fens), engine_name="t", depth=depth
-    )
-    assert _snapshot(fast_result.move_results) == _snapshot(legacy_result.move_results)
-    assert fast_result.summary == legacy_result.summary
-    assert fast_result.critical_ply == legacy_result.critical_ply
-    assert fast_result.quality == legacy_result.quality
-    for fast_move, legacy_move in zip(fast_result.move_results, legacy_result.move_results):
-        assert {key: value for key, value in fast_move.generated_meta.items() if key != "analyzed_at"} == {
-            key: value for key, value in legacy_move.generated_meta.items() if key != "analyzed_at"
-        }
 
 
 class _StatementCounter:
@@ -423,7 +262,7 @@ def test_reanalysis_replaces_annotations_without_dupes(tmp_path):
         best = move.uci if i % 3 == 0 else "a2a3"
         for fen in (move.fen_before, move.fen_after):
             legal_fens.setdefault(
-                fen, {"score_cp": cp, "mate_in": None, "best_move_uci": best, "pv": []}
+                fen, {"depth": 10, "score_cp": cp, "mate_in": None, "best_move_uci": best, "pv": []}
             )
     repo, _ = _repo_with_counter(tmp_path, "reanalysis.sqlite3")
 
@@ -438,7 +277,7 @@ def test_reanalysis_replaces_annotations_without_dupes(tmp_path):
 
     altered_fens = dict(legal_fens)
     some_fen = legal.moves[10].fen_after
-    altered_fens[some_fen] = {
+    altered_fens[some_fen] = {"depth": 10,
         "score_cp": -600,
         "mate_in": None,
         "best_move_uci": legal.moves[10].uci,
@@ -498,3 +337,18 @@ def test_benchmark_80ply_statement_counts_observed(tmp_path, capsys):
     print(f"[persistence-benchmark] 80-annotation batched statements: {wide_n}")
     assert batched_n < legacy_n
     assert wide_n <= batched_n + 4
+
+
+def test_browser_classifier_runs_once_per_ply(monkeypatch):
+    import prepforge_chess.services.browser_compute as module
+    game = _game_two_moves(ChessCore())
+    positions = {fen: {"depth": 10, "score_cp": 20} for move in game.moves
+                 for fen in (move.fen_before, move.fen_after)}
+    calls = []
+    original = module.classify_move
+    def classify(**kwargs):
+        calls.append(kwargs)
+        return original(**kwargs)
+    monkeypatch.setattr(module, "classify_move", classify)
+    classify_precomputed_game(game, positions, engine_name="test", depth=10)
+    assert len(calls) == len(game.moves)

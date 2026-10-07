@@ -17,7 +17,7 @@ from prepforge_chess.core.models import (
 
 
 PACKAGE_KIND = "prepforge_repertoire_package"
-PACKAGE_SCHEMA_VERSION = 1
+PACKAGE_SCHEMA_VERSION = 2
 
 _ID_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,80}$")
 _TAG_PATTERN = re.compile(r"^[A-Za-z0-9 _\-]{1,40}$")
@@ -98,13 +98,6 @@ class RepertoireExportService:
                 "color": repertoire.color.value,
                 "root_fen": repertoire.root_fen,
                 "root_node_id": repertoire.root_node.id,
-                "main_engine": repertoire.main_engine,
-                "human_model": repertoire.human_model,
-                "branch_depth": repertoire.branch_depth,
-                "opponent_branch_threshold": repertoire.opponent_branch_threshold,
-                "sub_branch_threshold": repertoire.sub_branch_threshold,
-                "max_total_nodes": repertoire.max_total_nodes,
-                "max_line_length": repertoire.max_line_length,
                 "notes": repertoire.notes,
                 "tags": list(repertoire.tags),
             },
@@ -162,13 +155,6 @@ class RepertoireExportService:
             color=Color(repertoire_payload["color"]),
             root_fen=repertoire_payload["root_fen"],
             root_node=root_node,
-            main_engine=repertoire_payload.get("main_engine", "stockfish"),
-            human_model=repertoire_payload.get("human_model", "maia3"),
-            branch_depth=repertoire_payload.get("branch_depth", 12),
-            opponent_branch_threshold=repertoire_payload.get("opponent_branch_threshold", 0.10),
-            sub_branch_threshold=repertoire_payload.get("sub_branch_threshold", 0.30),
-            max_total_nodes=repertoire_payload.get("max_total_nodes", 1000),
-            max_line_length=repertoire_payload.get("max_line_length", 24),
             notes=_validate_text(repertoire_payload.get("notes"), "notes", _COMMENT_MAX) or None,
             tags=_validate_tags(repertoire_payload.get("tags")),
         )

@@ -1,7 +1,6 @@
 from prepforge_chess.core.models import (
     Color,
     EngineEvaluation,
-    MaiaMovePrediction,
     MoveClassification,
 )
 from prepforge_chess.services.brilliant import (
@@ -10,7 +9,6 @@ from prepforge_chess.services.brilliant import (
     BrilliantConfig,
     material_invested,
 )
-from prepforge_chess.services.engine import EngineCandidate, PositionAnalysis
 
 # Arbitrary legal position/move — the analyzer never re-derives the played move's
 # legality; it just asks the (fake) Maia adapter for the move's policy + value
@@ -23,43 +21,6 @@ _HUMAN_MOVE = "a7a6"  # the move Maia thinks a human would naturally play instea
 _REPLY = "h2g3"
 
 
-class _FakeMaia:
-    """Returns a fixed (human_probability, win_chance_after) glance, and a fixed
-    top-policy move so the analyzer can compute trap_gap."""
-
-    name = "fake-maia"
-
-    def __init__(self, *, human_probability: float, glance_wc: float,
-                 top_move: str = _HUMAN_MOVE):
-        self._p = human_probability
-        self._g = glance_wc
-        self._top_move = top_move
-
-    def predictions(self, fen, *, rating=None):
-        return [
-            MaiaMovePrediction(fen=fen, move_uci=self._top_move, probability=0.5, rank=1)
-        ]
-
-    def move_assessment(self, fen, move_uci, *, rating=None):
-        return (self._p, self._g)
-
-
-class _FakeEngine:
-    """Inert engine: every position evaluates to a fixed White-cp score, so the
-    trap layer's eval of Maia's natural move is whatever the test dictates."""
-
-    name = "fake-engine"
-
-    def __init__(self, *, white_cp_after_human: int):
-        self._cp = white_cp_after_human
-
-    def evaluate_position(self, fen, config=None):
-        return EngineEvaluation(engine=self.name, score_cp=self._cp)
-
-    def analyze_position(self, fen, config=None):  # pragma: no cover - unused here
-        raise NotImplementedError
-
-
 def _sf(white_cp: int, pv=None) -> EngineEvaluation:
     return EngineEvaluation(engine="stockfish", score_cp=white_cp, pv=list(pv or []))
 
@@ -69,10 +30,12 @@ def _analyzer(*, human_probability, glance_wc, top_move=_HUMAN_MOVE,
     """Build an analyzer with a fake Maia and (by default) a fake engine whose
     eval of the human's natural move is bad for the mover (White +600 → Black,
     the mover, ~0.1), giving a large trap_gap unless a test says otherwise."""
-    engine = _FakeEngine(white_cp_after_human=engine_white_cp_after_human) if with_engine else None
+    from prepforge_chess.services.classification import win_chance_for_side
+    trap = None if not with_engine else (0.0 if top_move == _MOVE else
+        win_chance_for_side(_sf(-600), Color.BLACK) -
+        win_chance_for_side(_sf(engine_white_cp_after_human), Color.BLACK))
     return BrilliantAnalyzer(
-        maia=_FakeMaia(human_probability=human_probability, glance_wc=glance_wc, top_move=top_move),
-        engine=engine,
+        maia=_ClientMaia(human_probability=human_probability, glance_wc=glance_wc, trap_gap=trap),
         **kwargs,
     )
 
@@ -183,7 +146,6 @@ def test_client_precomputed_trap_gap_used_without_engine():
     # The analyzer must use that value (not the engine path) and flag the move.
     analyzer = BrilliantAnalyzer(
         maia=_ClientMaia(human_probability=0.0, glance_wc=0.05, trap_gap=0.20),
-        engine=None,
     )
     result = _evaluate(analyzer)
     assert result is not None
@@ -196,25 +158,10 @@ def test_client_precomputed_trap_gap_below_threshold_not_brilliant():
     # the move is unintuitive and revealing.
     analyzer = BrilliantAnalyzer(
         maia=_ClientMaia(human_probability=0.0, glance_wc=0.05, trap_gap=0.01),
-        engine=None,
     )
     result = _evaluate(analyzer)
     assert result is not None
     assert result.trap_gap == 0.01
-    assert not result.is_brilliant
-
-
-def test_client_trap_gap_takes_precedence_over_engine():
-    # When BOTH a precomputed trap_gap and an engine are present, the client value
-    # wins (the browser is the source of truth) — here it flips a would-be-brilliant
-    # engine result to not-brilliant by supplying a sub-threshold trap_gap.
-    analyzer = BrilliantAnalyzer(
-        maia=_ClientMaia(human_probability=0.0, glance_wc=0.05, trap_gap=0.0),
-        engine=_FakeEngine(white_cp_after_human=600),
-    )
-    result = _evaluate(analyzer)
-    assert result is not None
-    assert result.trap_gap == 0.0
     assert not result.is_brilliant
 
 
@@ -260,7 +207,7 @@ def test_returns_none_when_maia_cannot_assess():
 
 def test_returns_none_when_disabled():
     analyzer = BrilliantAnalyzer(
-        maia=_FakeMaia(human_probability=0.0, glance_wc=0.05),
+        maia=_ClientMaia(human_probability=0.0, glance_wc=0.05, trap_gap=0.2),
         config=BrilliantConfig(enabled=False),
     )
     assert _evaluate(analyzer) is None
@@ -378,40 +325,6 @@ def test_sacrifice_passes_without_only_move_gap():
     assert not no_reply.is_brilliant
 
 
-class _MultiPvEngine(_FakeEngine):
-    """Answers the MultiPV-3 search of the position before the move."""
-
-    def __init__(self, *, white_cp_after_human, lines):
-        super().__init__(white_cp_after_human=white_cp_after_human)
-        self._lines = lines
-
-    def analyze_position(self, fen, config=None):
-        assert config.multipv == 3
-        candidates = [
-            EngineCandidate(move_uci=uci, evaluation_after=_sf(cp), rank=i + 1)
-            for i, (uci, cp) in enumerate(self._lines)
-        ]
-        return PositionAnalysis(fen=fen, evaluation=candidates[0].evaluation_after, candidates=candidates)
-
-
-def test_engine_path_measures_only_move_gap():
-    unique = BrilliantAnalyzer(
-        maia=_FakeMaia(human_probability=0.0, glance_wc=0.05, top_move="e1f1"),
-        engine=_MultiPvEngine(white_cp_after_human=-600, lines=[("e1e8", -5), ("e1e7", -600)]),
-    )
-    result = _quiet_evaluate(unique)
-    assert result.only_move_gap is not None and result.only_move_gap > 0.3
-    assert result.is_brilliant
-
-    shared = BrilliantAnalyzer(
-        maia=_FakeMaia(human_probability=0.0, glance_wc=0.05, top_move="e1f1"),
-        engine=_MultiPvEngine(white_cp_after_human=-600, lines=[("e1e7", 0), ("e1e8", -5)]),
-    )
-    result = _quiet_evaluate(shared)
-    assert result.only_move_gap is not None and result.only_move_gap < 0.05
-    assert not result.is_brilliant
-
-
 def test_config_layer_four_defaults():
     config = BrilliantConfig()
     assert config.min_only_move_gap == 0.05
@@ -479,43 +392,6 @@ def test_apply_brilliant_result_sets_great_with_evidence():
     plain = _Move()
     assert apply_brilliant_result(plain, None, "Best move") == "Best move"
     assert plain.classification is MoveClassification.BEST
-
-
-def test_engine_path_measures_two_move_gap():
-    analyzer = BrilliantAnalyzer(
-        maia=_FakeMaia(human_probability=0.25, glance_wc=0.80, top_move="e1f1"),
-        engine=_MultiPvEngine(white_cp_after_human=-600, lines=[("e1e8", -5), ("e1e7", -20), ("e1f1", -600)]),
-    )
-    result = _quiet_evaluate(analyzer)
-    assert result.two_move_gap is not None and result.two_move_gap > 0.3
-    assert result.is_great
-
-
-def test_engine_path_confirms_deeper_and_drops_an_unconfirmed_move():
-    seen = {}
-
-    class _Recording(_MultiPvEngine):
-        def analyze_position(self, fen, config=None):
-            seen["depth"] = config.depth
-            return super().analyze_position(fen, config)
-
-    from prepforge_chess.services.engine import EngineAnalysisConfig
-
-    def analyzer(lines):
-        return BrilliantAnalyzer(
-            maia=_FakeMaia(human_probability=0.25, glance_wc=0.80, top_move="e1f1"),
-            engine=_Recording(white_cp_after_human=-600, lines=lines),
-            engine_config=EngineAnalysisConfig(depth=16, multipv=1),
-        )
-
-    assert _quiet_evaluate(analyzer([("e1e8", -5), ("e1e7", -20), ("e1f1", -600)])).is_great
-    assert seen["depth"] == 18
-    # The played move drops out of the top three at depth: no grade.
-    gone = _quiet_evaluate(analyzer([("e1e7", 50), ("e1f1", 40), ("g1g2", 30)]))
-    assert not gone.is_great and not gone.is_brilliant and gone.trap_gap is None
-    # Its own score drifts far from the analysis read (-0.05 → -6.00): no grade.
-    drift = _quiet_evaluate(analyzer([("e1e7", -500), ("e1e8", -600), ("e1f1", -700)]))
-    assert not drift.is_great and drift.trap_gap is None
 
 
 def test_recapture_of_the_previous_move_is_never_graded():

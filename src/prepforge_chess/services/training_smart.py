@@ -2,7 +2,7 @@
 
 Orchestrates ``TrainingMode.SMART`` sessions over the card queues built by
 ``services/scheduler.py``. Kept separate from ``TrainingService`` on purpose:
-the legacy line-walking modes stay untouched while this grows.
+line rehearsal uses its own service.
 
 Session state reuses the existing ``TrainingSession`` row unchanged:
 - ``line_order``       — encoded cards (``kind:first:last``), not leaf ids,
@@ -12,9 +12,9 @@ Session state reuses the existing ``TrainingSession`` row unchanged:
 Grading contract: the client reports an ``attempt`` number per prompt and the
 server writes spaced-repetition progress **only for attempt 1** — retries and
 the play-after-reveal move advance the session but never inflate accuracy
-(the legacy trainer counted copying the revealed answer as a correct attempt).
+
 A second wrong attempt re-queues the card a few positions later in the same
-session, which replaces the legacy end-of-session recovery round.
+session.
 
 Prompts deliberately include the expected move and hint texts: this is the
 player's own repertoire, not a quiz with secrets, and shipping them lets the
@@ -360,7 +360,7 @@ class SmartTrainingService:
             card = decode_card(raw)
             # A 3-part card means this is a plain single-repertoire session
             # parked on the anchor — never resume it as a mixed one.
-            if card is None or not card.repertoire_id:
+            if card is None:
                 return False
             node_ids = index_by_rep.get(card.repertoire_id)
             if (
@@ -382,7 +382,7 @@ class SmartTrainingService:
         cards (mixed sessions) are honoured only when that repertoire belongs
         to the SAME owner as the session's anchor — a tampered synced queue
         must never read or write another user's data."""
-        rep_id = card.repertoire_id or session.repertoire_id
+        rep_id = card.repertoire_id
         if rep_id in cache:
             return cache[rep_id]
         rep: Optional[Repertoire] = None
@@ -701,7 +701,7 @@ class SmartTrainingService:
         _index(repertoire)
         for raw in session.line_order:
             card = decode_card(raw)
-            if card is None or not card.repertoire_id or card.repertoire_id in cache:
+            if card is None or card.repertoire_id in cache:
                 continue
             card_rep = self._card_repertoire(session, card, cache)
             if card_rep is not None:

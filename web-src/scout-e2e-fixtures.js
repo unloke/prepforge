@@ -240,9 +240,3 @@ export function buildE2ePrepSection(scenarioId) {
     engineScan: e2eEngineScan(),
   });
 }
-
-/** Alias legacy scenario ids to the real report fixtures. */
-export function normalizeE2ePrepScenarioId(scenarioId) {
-  if (scenarioId === "confirmedHit" || scenarioId === "oauthGap") return "enginePrepCard";
-  return scenarioId;
-}

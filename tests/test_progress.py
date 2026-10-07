@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from prepforge_chess.core.models import Color, MoveSource, TrainingMode, TrainingProgress
-from prepforge_chess.services.engine import MockEngine
+from prepforge_chess.core.models import Color, MoveSource, TrainingProgress
 from prepforge_chess.services.opening_builder import CreateRepertoireRequest, OpeningBuilderService
 from prepforge_chess.services.progress import (
     MASTERY_DUE,
@@ -12,11 +11,8 @@ from prepforge_chess.services.progress import (
     due_node_ids,
     node_mastery,
 )
-from prepforge_chess.services.training import TrainingService
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories import PrepForgeRepository
-
-from stub_maia import StubMaia
 
 
 def _repo():
@@ -26,7 +22,7 @@ def _repo():
 
 
 def _repertoire_with_ids(repository):
-    builder = OpeningBuilderService(repository, engine=MockEngine(), maia=StubMaia())
+    builder = OpeningBuilderService(repository)
     repertoire = builder.create_repertoire(
         CreateRepertoireRequest(name="Health Demo", color=Color.WHITE)
     )
@@ -111,19 +107,3 @@ def test_due_node_ids_only_picks_due():
         TrainingProgress(node_id="never", due_at=None),
     ]
     assert due_node_ids(progress, now=now) == {"past"}
-
-
-def test_due_review_mode_selects_lines_with_due_nodes():
-    repository = _repo()
-    repertoire, ids = _repertoire_with_ids(repository)
-    past = datetime.now(timezone.utc) - timedelta(days=1)
-    repository.save_training_progress(repertoire.id, TrainingProgress(
-        node_id=ids["nf3"], attempts=2, correct_attempts=1, due_at=past,
-    ), owner_user_id="t-owner")
-
-    service = TrainingService(repository, "t-owner")
-    lines = service.training_lines(repertoire, TrainingMode.MISTAKES_ONLY)
-
-    # Only the e4-e5-Nf3 line passes through the due node.
-    assert len(lines) == 1
-    assert ids["nf3"] in lines[0].node_ids

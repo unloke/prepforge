@@ -14,7 +14,6 @@ from prepforge_chess.core.models import (
     TrainingProgress,
     TrainingSession,
 )
-from prepforge_chess.services.progress import due_node_ids
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
 
@@ -87,7 +86,6 @@ def create_training_session(
     )
 
 
-
 class TrainingService:
     def __init__(self, repository: PrepForgeRepository, owner_user_id: str | None = None):
         self.repository = repository
@@ -150,34 +148,6 @@ class TrainingService:
             for path in self._leaf_paths(repertoire.root_node)
             if self._own_move_nodes(path, repertoire)
         ]
-        if mode is TrainingMode.HIGH_PRIORITY:
-            filtered = [
-                line
-                for line in all_lines
-                if self._path_has_priority(self._path_to_node(repertoire.root_node, line.line_node_id))
-            ]
-            return filtered or all_lines
-        if mode is TrainingMode.MISTAKES_ONLY:
-            # "Due review" = spaced-repetition due nodes ∪ the latest session's
-            # open mistakes. Select whole leaf lines that pass through any such
-            # node so the user replays them in context, not as isolated moves.
-            target_ids = due_node_ids(
-                self.repository.list_training_progress(
-                    repertoire.id, owner_user_id=self._owner_or_raise()
-                )
-            )
-            existing = self.repository.load_latest_training_session(repertoire.id)
-            if existing is not None and existing.mistakes:
-                target_ids |= set(existing.mistakes)
-            if target_ids:
-                due_lines = [
-                    self._line_from_path(path)
-                    for path in self._leaf_paths(repertoire.root_node)
-                    if self._own_move_nodes(path, repertoire)
-                    and any(node.id in target_ids for node in path)
-                ]
-                if due_lines:
-                    return due_lines
         return all_lines
 
     def current_prompt(self, session_id: str) -> Optional[TrainingPrompt]:
@@ -400,14 +370,6 @@ class TrainingService:
             and node.is_enabled
         ]
 
-    def _path_has_priority(self, path: List[OpeningNode]) -> bool:
-        return any(
-            node.priority > 0
-            or "critical" in node.tags
-            or "high-priority" in node.tags
-            or "tactical-warning" in node.tags
-            for node in path
-        )
 
     def _path_to_node(self, root: OpeningNode, node_id: str) -> List[OpeningNode]:
         path: List[OpeningNode] = []

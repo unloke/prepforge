@@ -12,14 +12,12 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from prepforge_chess.core.models import Color, TrainingMode, TrainingProgress
-from prepforge_chess.services.engine import MockEngine
 from prepforge_chess.services.opening_builder import CreateRepertoireRequest, OpeningBuilderService
 from prepforge_chess.services.scheduler import CARD_DUE, decode_card
 from prepforge_chess.services.training_smart import REQUEUE_GAP, SmartTrainingService
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
-from stub_maia import StubMaia
 
 # start_or_resume schedules against the real clock, so due/mastered fixtures
 # must be relative to it — a hardcoded date silently flips category.
@@ -35,7 +33,7 @@ def _repository():
 
 def _build(repository):
     """White repertoire: e4 e5 Nf3 Nc6 Bb5 main line plus a d4 d5 c4 sideline."""
-    builder = OpeningBuilderService(repository, engine=MockEngine(), maia=StubMaia())
+    builder = OpeningBuilderService(repository)
     repertoire = builder.create_repertoire(
         CreateRepertoireRequest(name="Smart", color=Color.WHITE)
     )
@@ -204,7 +202,7 @@ def test_dashboard_due_and_soon_partition_valid_review_times():
 
 def test_start_raises_when_nothing_trainable():
     repository = _repository()
-    builder = OpeningBuilderService(repository, engine=MockEngine(), maia=StubMaia())
+    builder = OpeningBuilderService(repository)
     repertoire = builder.create_repertoire(
         CreateRepertoireRequest(name="Empty", color=Color.WHITE)
     )
@@ -448,7 +446,7 @@ def test_session_completes_after_last_card():
 
 def _build_black(repository, owner=None):
     """Black repertoire: 1.e4 e5 2.Nf3 Nc6 (own moves e5, Nc6)."""
-    builder = OpeningBuilderService(repository, engine=MockEngine(), maia=StubMaia())
+    builder = OpeningBuilderService(repository)
     repertoire = builder.create_repertoire(
         CreateRepertoireRequest(name="SmartBlack", color=Color.BLACK)
     )
@@ -522,7 +520,7 @@ def test_mixed_single_active_repertoire_delegates_to_plain_start():
     session = service.start_or_resume_mixed(owner, seed=5)
     assert session.repertoire_id == white.id
     cards = [decode_card(raw) for raw in session.line_order]
-    assert all(card is not None and card.repertoire_id is None for card in cards)
+    assert all(card is not None and card.repertoire_id == white.id for card in cards)
 
 
 def test_mixed_sync_routes_progress_to_each_repertoire():

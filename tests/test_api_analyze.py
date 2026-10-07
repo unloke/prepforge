@@ -64,8 +64,8 @@ def _prepare(client: TestClient, pgn: str = _PGN) -> dict:
 
 def _classify_save(client: TestClient, prepared: dict, **overrides) -> "object":
     """Submit one trivial eval per prepared position (a slight White edge), so the
-    ReplayEngine has a complete payload to classify."""
-    positions = [{"fen": f, "score_cp": 20} for f in prepared["positions"]]
+    browser classifier has a complete payload."""
+    positions = [{"depth": 10, "fen": f, "score_cp": 20} for f in prepared["positions"]]
     body = {"game_id": prepared["game_id"], "positions": positions}
     body.update(overrides)
     return client.post("/api/analyze/classify-save", json=body, headers=csrf_headers(client))
@@ -159,7 +159,7 @@ def test_classify_save_incomplete_payload_is_400(client):
     _register(client, "a@example.com")
     prepared = _prepare(client)
     # Drop the positions the classifier needs for the last move -> ReplayEngineError -> 400.
-    positions = [{"fen": f, "score_cp": 20} for f in prepared["positions"][:-2]]
+    positions = [{"depth": 10, "fen": f, "score_cp": 20} for f in prepared["positions"][:-2]]
     r = client.post(
         "/api/analyze/classify-save",
         json={"game_id": prepared["game_id"], "positions": positions},
@@ -217,7 +217,7 @@ def test_classify_save_is_owner_gated(client):
 
     other = _client()
     _register(other, "b@example.com", display_name="B")
-    positions = [{"fen": f, "score_cp": 20} for f in prepared["positions"]]
+    positions = [{"depth": 10, "fen": f, "score_cp": 20} for f in prepared["positions"]]
     r = other.post(
         "/api/analyze/classify-save",
         json={"game_id": prepared["game_id"], "positions": positions},
@@ -319,3 +319,12 @@ def test_analysis_save_status_is_receipt_and_owner_scoped(client):
     client.post("/api/auth/logout")
     _register(client, "other-status@example.com")
     assert client.get(path).json() == {"saved": False}
+
+
+def test_classify_requires_actual_depth_for_each_position(client):
+    _register(client, "actual-depth@example.com")
+    prepared = _prepare(client)
+    positions = [{"fen": fen, "score_cp": 20} for fen in prepared["positions"]]
+    response = _classify_save(client, prepared, depth=16, positions=positions)
+    assert response.status_code == 400
+    assert "depth is required" in response.json()["detail"]

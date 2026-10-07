@@ -56,7 +56,7 @@ def _prepare(client: TestClient, pgn: str, **body) -> dict:
 
 
 def _classify_save(client: TestClient, prepared: dict, **overrides):
-    positions = [{"fen": f, "score_cp": 20} for f in prepared["positions"]]
+    positions = [{"depth": 10, "fen": f, "score_cp": 20} for f in prepared["positions"]]
     body = {"game_id": prepared["game_id"], "positions": positions}
     body.update(overrides)
     return client.post("/api/analyze/classify-save", json=body, headers=csrf_headers(client))
@@ -68,7 +68,7 @@ def _classify_save(client: TestClient, prepared: dict, **overrides):
 def test_classify_save_bad_score_is_400_not_500(client):
     _register(client, "d3@example.com")
     prepared = _prepare(client, _PGN_ONE).json()
-    r = _classify_save(client, prepared, positions=[{"fen": prepared["positions"][0], "score_cp": "bad-value"}])
+    r = _classify_save(client, prepared, positions=[{"depth": 10, "fen": prepared["positions"][0], "score_cp": "bad-value"}])
     assert r.status_code == 400, r.text
     assert "score_cp" in str(r.json()["detail"])
 
@@ -95,7 +95,7 @@ def test_classify_save_missing_position_is_400_and_writes_nothing(client):
     _register(client, "d3c@example.com")
     prepared = _prepare(client, _PGN_ONE).json()
     # Only half the positions: the classifier refuses BEFORE any write.
-    positions = [{"fen": f, "score_cp": 20} for f in prepared["positions"][:-2]]
+    positions = [{"depth": 10, "fen": f, "score_cp": 20} for f in prepared["positions"][:-2]]
     r = client.post(
         "/api/analyze/classify-save",
         json={"game_id": prepared["game_id"], "positions": positions},

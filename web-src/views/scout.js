@@ -1602,10 +1602,10 @@ export function createScoutView(deps) {
       throw new Error("scout-results element missing");
     }
 
-    const { buildE2ePrepSection, normalizeE2ePrepScenarioId } = await import(
+    const { buildE2ePrepSection } = await import(
       "../scout-e2e-fixtures.js"
     );
-    const normalizedId = normalizeE2ePrepScenarioId(scenarioId);
+    const normalizedId = scenarioId;
     const { html: markup, sectionData } = buildE2ePrepSection(normalizedId);
     results.innerHTML = markup;
     scoutState.sections = { black: sectionData };
