@@ -18,3 +18,5 @@ export const GREAT_MIN_WIN = 25.0;
 export const GREAT_MAX_WIN_BEFORE = 97.0;
 export const MAX_PLAN_CHANGES = 2000;
 export const MAX_FETCH = 50;
+export const MAINLINE_THRESHOLD = 0.1;
+export const SMART_NEW_CAP = 4;

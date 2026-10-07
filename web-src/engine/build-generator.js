@@ -21,6 +21,8 @@
 // The plan proposes INTENT only; the server recomputes the final `is_mainline` /
 // `is_user_prepared_move`. The browser never decides persisted flags.
 
+import { MAINLINE_THRESHOLD } from "../generated/shared-constants.js";
+
 // MoveSource string values mirror core/models.py MoveSource.
 export const SOURCE = Object.freeze({
   MANUAL: "manual",
@@ -29,8 +31,8 @@ export const SOURCE = Object.freeze({
   GENERATED_MAIA3: "generated_maia3",
 });
 
-// _expand thresholds (opening_builder.py imports these from opening_generation).
-const MAINLINE_THRESHOLD = 0.1;
+// Maia share a human branch needs: MAINLINE_THRESHOLD (server-owned) on the mainline
+// path, BRANCH_THRESHOLD off it.
 const BRANCH_THRESHOLD = 0.3;
 
 // Sources a generation pass must never overwrite (user-authored), mirroring

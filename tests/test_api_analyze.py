@@ -2,7 +2,7 @@
 
 The Analyze view computes evals in the browser; these endpoints only orchestrate
 (``prepare``), persist replayed evals (``classify-save``), and read history back
-(``/api/analyses``). ``/api/board`` is a pure FEN utility. Same strangler wiring as
+(``/api/analyses``). Same strangler wiring as
 the workspace tests: FastAPI user -> ``current_owner`` bridge -> SQLAlchemy repo.
 """
 from __future__ import annotations
@@ -261,30 +261,6 @@ def test_recall_legacy_snapshot_requests_reanalysis(client):
     assert _classify_save(client, prepared).status_code == 200
     assert client.get(f"/api/analyses/{prepared['game_id']}").status_code == 200
 
-
-# ---- board utility ---------------------------------------------------------
-
-_START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-
-
-def test_board_requires_auth(client):
-    assert client.get(f"/api/board?fen={_START_FEN}").status_code == 401
-
-
-def test_board_returns_legal_moves(client):
-    _register(client, "a@example.com")
-    r = client.get("/api/board", params={"fen": _START_FEN})
-    assert r.status_code == 200, r.text
-    body = r.json()
-    assert body["side_to_move"] == "white"
-    assert "e2e4" in body["legal_moves"]
-    assert body["status"]["is_check"] is False
-
-
-def test_board_rejects_bad_fen(client):
-    _register(client, "a@example.com")
-    r = client.get("/api/board", params={"fen": "not-a-fen"})
-    assert r.status_code == 400
 
 def test_classify_save_retry_reuses_the_same_snapshot(client):
     from uuid import uuid4

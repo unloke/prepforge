@@ -28,6 +28,7 @@ from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_user
 from prepforge_chess.api.models import StripeEvent, User
+from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.storage.types import Plan
 
 router = APIRouter(tags=["billing"])
@@ -87,6 +88,7 @@ def billing_status(
 
 
 @router.post("/api/billing/checkout")
+@limiter.limit("20/hour")
 def create_checkout(
     request: Request,
     user: User = Depends(current_user),
@@ -117,6 +119,7 @@ def create_checkout(
 
 
 @router.post("/api/billing/portal")
+@limiter.limit("20/hour")
 def create_portal(
     request: Request,
     user: User = Depends(current_user),

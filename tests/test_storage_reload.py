@@ -156,7 +156,7 @@ def test_reload_preserves_pgn_tree_and_current_annotations(tmp_path):
         '[Result "*"]\n\n{Before the game} 1. e4 $1 {Original} '
         '(1. d4 {Branch} d5 (1... Nf6 $2)) e5 *'
     )
-    for save in (repo.save_game, repo.save_game_batched):
+    for save in (repo.save_game, repo.save_game):
         save(game)
         loaded = repo.load_game(game.id, render_pgn=True)
         tree = chess.pgn.read_game(io.StringIO(loaded.pgn))

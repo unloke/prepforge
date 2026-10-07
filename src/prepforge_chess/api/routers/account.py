@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session
 
 from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db
-from prepforge_chess.api.deps import current_owner, current_user, get_repository
+from prepforge_chess.api.deps import current_user, get_repository
 from prepforge_chess.api.models import (
     AuthSession,
     LinkedAccount,
@@ -48,7 +48,6 @@ router = APIRouter(prefix="/api/account", tags=["account"])
 def export_account(
     request: Request,
     user: User = Depends(current_user),
-    owner: str = Depends(current_owner),
     repo: WorkspaceRepository = Depends(get_repository),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
@@ -56,7 +55,6 @@ def export_account(
 
     The scope is exactly the deletion scope below — what you can take with you
     is what leaving removes (minus shared engine snapshots)."""
-    del owner  # == user.id; the ORM row is the richer read
     exporter = RepertoireExportService()
     linked = db.scalars(
         select(LinkedAccount).where(LinkedAccount.user_id == user.id)

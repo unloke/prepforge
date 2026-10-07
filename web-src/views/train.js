@@ -1,8 +1,6 @@
 import { html } from "../html.js";
+import { SMART_NEW_CAP } from "../generated/shared-constants.js";
 // Train tab rendering (lazy-loaded from app.js).
-
-// Mirrors services/scheduler.py DEFAULT_NEW_CAP.
-export const SMART_NEW_CAP = 4;
 
 // Health counts moves, not cards. The scheduler merges consecutive review
 // moves into cards and may add polish, so only name the available moves here.

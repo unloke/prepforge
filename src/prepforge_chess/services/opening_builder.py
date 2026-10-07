@@ -951,7 +951,7 @@ class OpeningBuilderService:
             return item.is_prepared or item.depth == 0
         if filter_mode == "human-likely":
             return item.depth == 0 or (
-                item.maia_probability is not None and item.maia_probability >= 0.10
+                item.maia_probability is not None and item.maia_probability >= MAINLINE_THRESHOLD
             )
         if filter_mode == "engine":
             return item.depth == 0 or item.source is MoveSource.GENERATED_STOCKFISH
