@@ -215,8 +215,10 @@ def compute_health(
     progress_by_id: Dict[str, TrainingProgress],
     *,
     now: Optional[datetime] = None,
+    states: Optional[Dict[str, str]] = None,
 ) -> RepertoireHealth:
-    states = mastery_map(root, color, progress_by_id, now=now)
+    if states is None:
+        states = mastery_map(root, color, progress_by_id, now=now)
     counts = {state: 0 for state in MASTERY_STATES}
     for state in states.values():
         counts[state] += 1

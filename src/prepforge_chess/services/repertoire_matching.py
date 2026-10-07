@@ -137,6 +137,13 @@ def match_game_to_repertoire(
     result = _match_game_path(moves, repertoire, user_color)
     if result.departure_ply is None:
         return result
+    game_positions = [
+        (move.ply, _position_key(move.fen_after))
+        for move in moves if move.ply >= result.departure_ply
+    ]
+    # Hydrated FENs have canonical piece placement. A different placement cannot
+    # reenter: avoid parsing, validating and serializing every unrelated node.
+    placements = {key.split(" ", 1)[0] for _, key in game_positions if key is not None}
     positions: dict[str, list[str]] = {}
     pending = [repertoire.root_node]
     seen: set[str] = set()
@@ -145,16 +152,14 @@ def match_game_to_repertoire(
         if node.id in seen or not node.is_enabled:
             continue
         seen.add(node.id)
-        key = _position_key(node.fen)
-        if key is not None:
-            positions.setdefault(key, []).append(node.id)
+        if node.fen.split(" ", 1)[0] in placements:
+            key = _position_key(node.fen)
+            if key is not None:
+                positions.setdefault(key, []).append(node.id)
         pending.extend(node.children)
-    for move in moves:
-        if move.ply < result.departure_ply:
-            continue
-        key = _position_key(move.fen_after)
+    for ply, key in game_positions:
         if key in positions:
-            return replace(result, reentry_ply=move.ply,
+            return replace(result, reentry_ply=ply,
                            reentry_node_ids=tuple(sorted(positions[key])))
     return result
 

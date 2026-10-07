@@ -109,6 +109,35 @@ def test_position_reentry_preserves_the_first_path_departure():
     assert disabled.reentry_node_ids == ()
 
 
+def test_reentry_normalizes_only_positions_with_game_piece_placement(monkeypatch):
+    from prepforge_chess.services import repertoire_matching as matching
+
+    rep, moves = _legal_rep_and_moves(
+        ["g1f3", "g8f6", "d2d4", "d7d5"],
+        ["d2d4", "d7d5", "g1f3", "g8f6"],
+    )
+    calls = []
+    original = matching._position_key
+    def counted(fen):
+        calls.append(fen)
+        return original(fen)
+    monkeypatch.setattr(matching, "_position_key", counted)
+    result = matching.match_game_to_repertoire(moves, rep, Color.WHITE)
+    assert result.reentry_node_ids == ("legal-4",)
+    # Four game positions and only the one tree position that could reenter.
+    assert len(calls) == 5
+
+
+def test_reentry_still_validates_candidate_positions_and_en_passant():
+    rep, moves = _legal_rep_and_moves(["e2e4"], ["b2b4"])
+    candidate = rep.root_node.children[0]
+    candidate.fen = moves[0].fen_after.replace(" b KQkq", " x KQkq")
+    assert match_game_to_repertoire(moves, rep, Color.WHITE).reentry_ply is None
+    # An uncapturable EP square canonicalizes away, as in python-chess FEN.
+    candidate.fen = moves[0].fen_after.replace(" - 0 1", " b3 0 1")
+    assert match_game_to_repertoire(moves, rep, Color.WHITE).reentry_node_ids == (candidate.id,)
+
+
 def test_reentry_supports_custom_roots_without_matching_castling_rights_away():
     root = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 8 12"
     rep, moves = _legal_rep_and_moves(

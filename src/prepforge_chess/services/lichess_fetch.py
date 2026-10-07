@@ -675,6 +675,7 @@ def record_departure_misses(
         )
         ingested = [str(item) for item in stored] if isinstance(stored, list) else []
         seen = set(ingested)
+        updates = {}
         for summary in summaries:
             if summary.departure_reason != "user_left_preparation":
                 continue
@@ -682,26 +683,30 @@ def record_departure_misses(
                 continue
             if summary.lichess_id in seen:
                 continue
-            progress = repository.lock_training_progress(
-                conn,
-                repertoire_id=summary.repertoire_id,
-                node_id=summary.expected_node_id,
-                owner_user_id=owner_user_id,
-            )
+            target = (summary.repertoire_id, summary.expected_node_id)
+            if target not in updates:
+                updates[target] = repository.lock_training_progress(
+                    conn,
+                    repertoire_id=summary.repertoire_id,
+                    node_id=summary.expected_node_id,
+                    owner_user_id=owner_user_id,
+                )
+            progress = updates[target]
             updated = update_spaced_repetition(progress, correct=False)
             # An in-session miss retries after 10 minutes; a miss from a REAL game should
             # land in the very next session, so it is due immediately.
             updated = replace(updated, due_at=updated.last_reviewed_at)
-            repository.write_training_progress(
-                conn,
-                repertoire_id=summary.repertoire_id,
-                progress=updated,
-                owner_user_id=owner_user_id,
-            )
+            updates[target] = updated
             seen.add(summary.lichess_id)
             ingested.append(summary.lichess_id)
             summary.training_recorded = True
             recorded += 1
+        # The locked ledger serializes this owner's ingest. Repeated misses on
+        # one target need one locked read and one final write, not SQL per game.
+        for (repertoire_id, _), progress in updates.items():
+            repository.write_training_progress(
+                conn, repertoire_id=repertoire_id, progress=progress, owner_user_id=owner_user_id
+            )
         if recorded:
             repository.write_user_setting(
                 conn,
