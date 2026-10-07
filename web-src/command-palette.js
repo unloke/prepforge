@@ -96,7 +96,7 @@ export function renderPaletteItems(items, activeIndex = 0) {
   return html`${items
     .map((item, index) => {
       const active = index === activeIndex ? " is-active" : "";
-      const hint = item.kind === "repertoire" ? "Open in Repertoire" : item.group;
+      const hint = item.kind === "repertoire" ? "Repertoire" : item.group;
       return (
         html`<button type="button" role="option" id="palette-option-${index}" aria-selected="${index === activeIndex}" class="palette-item${active}" data-palette-id="${item.id}" data-index="${index}"><span class="palette-item-label">${item.label}</span><span class="palette-item-hint">${hint}</span></button>`
       );

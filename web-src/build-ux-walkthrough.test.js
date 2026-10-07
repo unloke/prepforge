@@ -206,6 +206,6 @@ describe("Repertoire opens immediately with a loading state (P2-5)", () => {
 
 describe("Selected tree move keeps contrast (P3-10)", () => {
   it("overrides the opponent-move grey on the selected pill", () => {
-    expect(css).toMatch(/\.mtree-move\.is-current\.is-opp,[\s\S]{0,80}\{\s*color: var\(--on-accent\)/);
+    expect(css).toMatch(/\.mtree-move\.is-current\.is-opp,[\s\S]{0,80}\{\s*color: var\(--accent-ink\)/);
   });
 });

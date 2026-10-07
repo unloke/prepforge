@@ -48,7 +48,7 @@
   font-weight: 600;
   cursor: default;
 }
-.lr:not(.head):hover { background: var(--surface-2); }
+.lr:not(.head):hover { background: var(--panel-soft); }
 .lr.is-open { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
 .lr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .players { display: flex; flex-direction: column; min-width: 0; }
@@ -71,7 +71,7 @@
   white-space: nowrap;
 }
 .kind-badge.t-good { background: var(--good-soft); color: var(--good-text); }
-.kind-badge.t-bad { background: var(--bad-soft); color: var(--danger); }
+.kind-badge.t-bad { background: var(--danger-soft); color: var(--danger); }
 .kind-badge.t-warn { background: var(--warn-soft); color: var(--warn-text); }
 .kind-badge.t-none { background: var(--none-soft); color: var(--none); }
 
@@ -89,7 +89,7 @@
 .mvw { white-space: nowrap; }
 .mn { color: var(--label); }
 .moveline .inprep { padding: 0 2px; border-radius: 3px; background: var(--good-soft); color: var(--good-text); }
-.moveline .dep { padding: 0 3px; border-radius: 3px; color: #fff; font-weight: 700; }
+.moveline .dep { padding: 0 3px; border-radius: 3px; color: var(--accent-ink); font-weight: 700; }
 .moveline .dep.t-bad { background: var(--danger); }
 .moveline .dep.t-warn { background: var(--warn); }
 /* Same tokens as `.moveline .inprep` above, so the key matches the moves it explains. */

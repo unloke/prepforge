@@ -19,7 +19,6 @@ const REQUIRED_TOKENS = [
   "--text",
   "--muted",
   "--label",
-  "--surface-hover",
   "--accent",
   "--accent-soft",
   "--accent-line",
@@ -30,7 +29,7 @@ const REQUIRED_TOKENS = [
   "--radius",
   "--radius-card",
   "--control-h",
-  "--hover",
+  "--surface-3",
   "--btn-hover",
   "--on-accent",
   "--board-frame",
@@ -315,6 +314,12 @@ describe("semantic text colors meet WCAG AA", () => {
   const TEXT_TOKENS = ["--label", "--warn-text", "--good-text", "--brilliant-text", "--accent-text"];
 
   for (const [themeName, tokens] of [["light", light], ["dark", dark]]) {
+    it(`${themeName} explorer labels meet small-text contrast`, () => {
+      for (const side of ["white", "draw", "black"]) {
+        const ink = side === "black" ? "--on-accent" : `--explorer-${side}-ink`;
+        expect(contrast(tokens[ink], tokens[`--explorer-${side}`])).toBeGreaterThanOrEqual(4.5);
+      }
+    });
     it(`${themeName} board coordinates meet small-text contrast`, () => {
       for (const square of ["light", "dark"]) {
         expect(contrast(tokens[`--coord-on-${square}`], tokens[`--square-${square}`])).toBeGreaterThanOrEqual(4.5);

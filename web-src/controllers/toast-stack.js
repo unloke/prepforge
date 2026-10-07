@@ -93,7 +93,7 @@ class Toast {
         html`<div class="job-toast-head"><span class="job-toast-title">${title}</span><span class="job-toast-message">Queued</span>${stopBtn}</div><div class="job-toast-track"><div class="job-toast-fill"></div></div>`;
     } else {
       el.innerHTML =
-        html`<div class="job-toast-head"><span class="job-toast-icon" aria-hidden="true"></span><span class="job-toast-title">${title}</span><button class="job-toast-collapse" type="button" title="Minimize" aria-label="Minimize">_</button></div><div class="job-toast-body"><div class="job-toast-message">${message || ""}</div><div class="job-toast-actions"></div></div>`;
+        html`<div class="job-toast-head"><span class="job-toast-icon" aria-hidden="true"></span><span class="job-toast-title">${title}</span><button class="job-toast-collapse" type="button" title="Minimize" aria-label="Minimize notification"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10" fill="none" stroke="currentColor" stroke-width="2"/></svg></button></div><div class="job-toast-body"><div class="job-toast-message">${message || ""}</div><div class="job-toast-actions"></div></div>`;
     }
     this.titleEl = el.querySelector(".job-toast-title");
     this.messageEl = el.querySelector(".job-toast-message");

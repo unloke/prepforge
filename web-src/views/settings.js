@@ -14,7 +14,6 @@ export function createSettingsView({
   pref,
   setPref,
   effectiveMaiaRating,
-  maiaFallbackRating,
   getSharedMaia3Provider,
   disposeSharedMaia3Provider,
   showConfirmModal,
@@ -72,7 +71,6 @@ export function createSettingsView({
     const depthEl = document.getElementById("settings-depth");
     const depthOut = document.getElementById("settings-depth-readout");
     const autoEl = document.getElementById("settings-maia-auto");
-    const autoLabel = document.getElementById("settings-maia-auto-label");
     const ratingEl = document.getElementById("settings-maia-rating");
     const ratingOut = document.getElementById("settings-maia-rating-readout");
     if (!depthEl || !autoEl || !ratingEl) return;
@@ -83,20 +81,11 @@ export function createSettingsView({
     if (depthOut) depthOut.textContent = depthEl.value;
     const auto = !Number.isFinite(appState.maiaRatingPinned);
     paintSwitch(autoEl, auto);
-    ratingEl.disabled = auto;
     const effective = effectiveMaiaRating();
     ratingEl.value = String(effective);
     // The range snaps to its 50-point step (2377 -> 2400); while Auto drives the
     // rating, the readout shows the real value Maia uses, not the snapped thumb.
     if (ratingOut) ratingOut.textContent = auto ? String(effective) : ratingEl.value;
-    ratingEl.title = auto ? "Auto is on — turn it off to set the strength by hand" : "";
-    if (autoLabel) {
-      autoLabel.textContent = appState.lichessUsername
-        ? Number.isFinite(appState.maiaAutoRating)
-          ? `Auto — match my Lichess rating (~${appState.maiaAutoRating})`
-          : "Auto — match my Lichess rating"
-        : `Auto — link Lichess to match your rating (using ${maiaFallbackRating} for now)`;
-    }
   }
 
   function renderThemeControl() {
@@ -602,15 +591,19 @@ export function createSettingsView({
     const maiaAuto = document.getElementById("settings-maia-auto");
     const maiaSlider = document.getElementById("settings-maia-rating");
     if (maiaAuto && maiaSlider) {
-      bindSwitch(maiaAuto, !Number.isFinite(appState.maiaRatingPinned), (next) =>
-        saveSettings({ maia_rating: next ? "auto" : Number(maiaSlider.value) }).catch(() => {}),
-      );
+      bindSwitch(maiaAuto, !Number.isFinite(appState.maiaRatingPinned), (next) => {
+        appState.maiaRatingPinned = next ? null : Number(maiaSlider.value);
+        renderStrengthControls();
+        saveSettings({ maia_rating: next ? "auto" : appState.maiaRatingPinned }).catch(() => {});
+      });
       maiaSlider.addEventListener("input", () => {
+        appState.maiaRatingPinned = Number(maiaSlider.value);
+        paintSwitch(maiaAuto, false);
         const out = document.getElementById("settings-maia-rating-readout");
         if (out) out.textContent = maiaSlider.value;
       });
       maiaSlider.addEventListener("change", () => {
-        if (!readSwitch(maiaAuto)) saveSettings({ maia_rating: Number(maiaSlider.value) }).catch(() => {});
+        saveSettings({ maia_rating: Number(maiaSlider.value) }).catch(() => {});
       });
     }
 

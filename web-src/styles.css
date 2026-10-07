@@ -8,12 +8,13 @@
   --bg: #f3f3f1;
   --panel: #ffffff;
   --panel-soft: #f8f8f6;
-  --surface-2: #f8f8f6;
   --surface-3: #efefec;
   --explorer-white: #f2f2ef;
   --explorer-draw: #9a9fa6;
   --explorer-black: #2e3136;
   --explorer-track: #e6e6e2;
+  --explorer-white-ink: #1b1c1e;
+  --explorer-draw-ink: #1b1c1e;
   --line: #e2e1dc;
   --line-soft: #eeeeec;
   --line-strong: #cfcdc6;
@@ -21,8 +22,6 @@
   --muted: #55585e;
   /* Small-caps labels are text-only, so the token itself carries the AA value. */
   --label: #67696e;
-  --surface-hover: #efefec;
-  --hover: #efefec;
   --btn-hover: #f8f8f6;
   --btn-active: #efefec;
   --btn-border-hover: #8a8d93;
@@ -56,9 +55,6 @@
   /* Semantic status family (fills, badges, banners) and its text-safe shades. */
   --good-soft: #e3f4ea;
   --warn-soft: #fbf0dc;
-  --bad-soft: #fbe7e4;
-  --info: #2f5bd3;
-  --info-soft: #e8eefc;
   --none: #7b7f86;
   --none-soft: #eeeeec;
   /* Mastery / queue kinds — colour means chess: the same hue in every view. */
@@ -139,7 +135,6 @@
   --bg: #111315;
   --panel: #191c1f;
   --panel-soft: #1e2226;
-  --surface-2: #1e2226;
   --surface-3: #262a2f;
   --line: #2b3035;
   --line-soft: #25292d;
@@ -147,8 +142,6 @@
   --text: #e8eaec;
   --muted: #a9aeb4;
   --label: #a9aeb4;
-  --surface-hover: #262a2f;
-  --hover: #262a2f;
   --btn-hover: #262a2f;
   --btn-active: #2b3035;
   --btn-border-hover: #5c646c;
@@ -178,9 +171,6 @@
   --great-text: #8db0da;
   --good-soft: #17301f;
   --warn-soft: #33270f;
-  --bad-soft: #3a1c18;
-  --info: #6d8ff0;
-  --info-soft: #1f2a48;
   --none: #8d939a;
   --none-soft: #25292d;
   --k-mastered: #45b97a;
@@ -215,6 +205,7 @@
   --arrow-rim: rgba(14, 17, 22, 0.85);
   --coord-on-light: #354655;
   --coord-on-dark: #07121a;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.5);
   /* Explorer W/D/B bar: the draw grey sits between the two ends and the
      Black end is lifted off the panel so it never melts into the background. */
@@ -222,6 +213,8 @@
   --explorer-draw: #7c838c;
   --explorer-black: #45494f;
   --explorer-track: #2b3035;
+  --explorer-white-ink: #1b1c1e;
+  --explorer-draw-ink: #111315;
 }
 
 * {
@@ -462,13 +455,6 @@ h2 {
   stroke-linejoin: round;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .rail,
-  .rail * {
-    transition: none !important;
-  }
-}
-
 /* Status overlays the free space before Ctrl K and has no layout width. */
 .topbar-status-slot {
   position: absolute;
@@ -529,7 +515,7 @@ h2 {
 }
 
 .tab:hover {
-  background: var(--hover);
+  background: var(--surface-3);
   color: var(--text);
 }
 
@@ -631,7 +617,6 @@ h2 {
   cursor: pointer;
 }
 
-
 .status {
   font-size: 12px;
   color: var(--muted);
@@ -663,7 +648,7 @@ h2 {
 }
 
 .status[data-severity="warning"] {
-  color: var(--warn, #9a6500);
+  color: var(--warn-text);
   font-weight: 650;
 }
 
@@ -704,8 +689,8 @@ h2 {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #3d4652;
-  color: #ffffff;
+  background: var(--accent-soft);
+  color: var(--accent-text);
   font-size: 12px;
   font-weight: 700;
 }
@@ -727,7 +712,7 @@ h2 {
   cursor: pointer;
   white-space: nowrap;
 }
-.account-btn:hover { background: var(--hover); }
+.account-btn:hover { background: var(--surface-3); }
 .account-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
 .account-text b { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; }
 .account-text small { color: var(--label); font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
@@ -819,7 +804,7 @@ h2 {
 
 .src-chip-x:hover {
   color: var(--text);
-  background: var(--surface-hover);
+  background: var(--surface-3);
 }
 
 .src-chip-x:focus-visible {
@@ -877,7 +862,7 @@ h2 {
 }
 
 .src-row:hover {
-  background: var(--surface-hover);
+  background: var(--surface-3);
 }
 
 .src-row input {
@@ -1037,7 +1022,7 @@ h2 {
 
 .pf-switch:hover {
   border-color: var(--btn-border-hover);
-  background: var(--surface-hover);
+  background: var(--surface-3);
 }
 
 .pf-switch:focus-visible {
@@ -1104,7 +1089,7 @@ h2 {
 }
 
 .seg-btn:hover {
-  background: var(--surface-hover);
+  background: var(--surface-3);
 }
 
 .seg-btn:focus-visible {
@@ -1142,7 +1127,7 @@ h2 {
 
 .pf-info:hover {
   color: var(--text);
-  background: var(--surface-hover);
+  background: var(--surface-3);
 }
 
 .pf-info:focus-visible {
@@ -1569,7 +1554,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   white-space: nowrap;
 }
 .lib-chip.is-shared {
-  background: var(--info-soft);
+  background: var(--accent-soft);
   color: var(--accent-text);
   font-size: 10px;
   font-weight: 700;
@@ -1679,8 +1664,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border-radius: 50%;
 }
 .color-dot.white { background: var(--dot-white); }
-.color-dot.black { background: #222; border-color: #222; }
-:root[data-theme="dark"] .color-dot.black { border-color: #777; }
+.color-dot.black { background: var(--explorer-black); border-color: var(--muted); }
 
 /* Next steps */
 .step {
@@ -1710,7 +1694,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .setup-count { color: var(--muted); font-size: var(--fs-xs); font-weight: 650; font-variant-numeric: tabular-nums; }
 .steps .card-head h2 { margin-right: auto; }
 .setup-dismiss { align-self: center; min-width: 24px; height: 24px; padding: 0; border-color: transparent; background: none; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
-.setup-dismiss:hover { color: var(--text); background: var(--surface-hover); }
+.setup-dismiss:hover { color: var(--text); background: var(--surface-3); }
 /* The later generic .ib rule re-adds a border (a heavy boxed × on mobile, where
    .ib grows to a 44px tap target). Keep the target, drop the box. */
 .ib.setup-dismiss:not(:hover) { border-color: transparent; background: none; }
@@ -2187,7 +2171,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   place-items: center;
   border-radius: 50%;
   background: var(--badge);
-  color: #ffffff;
+  color: var(--accent-ink);
   font-family: var(--font);
   font-size: clamp(8px, calc(100cqw / 8 * 0.19), 15px);
   font-weight: 800;
@@ -2224,10 +2208,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 @keyframes badgeIn {
   from { transform: scale(0.4); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .square-badge { animation: none; }
 }
 
 .chessboard.show-coords .coord {
@@ -2273,7 +2253,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .chessboard.is-flipping {
   animation: boardFlip 400ms ease;
 }
-
 
 /* Coach header review switch: compact shared primitive, not a native checkbox. */
 .explain-review {
@@ -2471,7 +2450,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 .board-bar .ib:hover {
-  background: var(--surface-hover);
+  background: var(--surface-3);
 }
 
 .ib {
@@ -2524,7 +2503,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   font-weight: 650;
   cursor: pointer;
 }
-.pv-exit:hover { background: var(--accent); color: #fff; }
+.pv-exit:hover { background: var(--accent); color: var(--accent-ink); }
 .pv-exit[hidden] { display: none; }
 
 .board-label {
@@ -2574,11 +2553,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   color: var(--warn-text);
   border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
   background: color-mix(in srgb, var(--warn) 8%, var(--panel-soft));
-}
-@media (prefers-reduced-motion: reduce) {
-  .build-sync {
-    transition: none;
-  }
 }
 
 /* ===========================================================================
@@ -2654,7 +2628,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border-radius: 4px;
   cursor: pointer;
 }
-.mtree-crumb:hover { background: var(--surface-hover); }
+.mtree-crumb:hover { background: var(--surface-3); }
 .mtree-crumb.is-current { color: var(--text); font-weight: 650; }
 .crumbs .mtree-num { padding: 0; margin: 0; font-size: inherit; }
 .crumb-sep { color: var(--label); font-size: 10px; padding: 0 1px; }
@@ -2663,7 +2637,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .forkbar {
   padding: 8px 12px;
   border-bottom: 1px solid var(--line);
-  background: var(--surface-2);
+  background: var(--panel-soft);
 }
 .fork-head {
   display: flex;
@@ -2718,7 +2692,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   gap: 2px;
   padding: 0 8px;
   border-bottom: 1px solid var(--line);
-  background: var(--surface-2);
+  background: var(--panel-soft);
 }
 .dock-tabs button {
   display: inline-flex;
@@ -2839,7 +2813,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .inspector-panel { min-width: 0; }
 .inspector-panel[hidden] { display: none; }
 
-
 /* Stacked (≤860): the page is the scroll owner. The move tree keeps a cap but
    hands the wheel back to the page at its ends instead of trapping it. */
 @media (max-width: 860px) {
@@ -2909,7 +2882,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   gap: 12px;
   padding: 14px;
   border-bottom: 1px solid var(--line);
-  background: var(--surface-2);
+  background: var(--panel-soft);
 }
 #train-banner[data-state="move"] { --cb: var(--accent); --g: "♟"; }
 #train-banner[data-state="teach"] { --cb: var(--k-new); --g: "✦"; background: color-mix(in srgb, var(--k-new) 8%, var(--panel)); }
@@ -3015,11 +2988,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   padding: 7px 9px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--surface-2);
+  background: var(--panel-soft);
   color: var(--muted);
   font-size: var(--fs-s);
 }
-.train-play-trail { min-height: 30px; padding: 6px 8px; border-radius: 6px; background: var(--surface-2); font-size: var(--fs-s); }
+.train-play-trail { min-height: 30px; padding: 6px 8px; border-radius: 6px; background: var(--panel-soft); font-size: var(--fs-s); }
 .train-play-chip {
   align-self: flex-start;
   margin: 0;
@@ -3111,7 +3084,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* Session summary */
 .summary { padding: 0; }
 .sum-cells { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.sum-cells div { display: flex; flex-direction: column; padding: 8px; border-radius: 8px; background: var(--surface-2); }
+.sum-cells div { display: flex; flex-direction: column; padding: 8px; border-radius: 8px; background: var(--panel-soft); }
 .sum-cells b { font-size: 18px; font-variant-numeric: tabular-nums; }
 .sum-cells span { color: var(--label); font-size: var(--fs-xs); }
 .delta { display: flex; flex-direction: column; }
@@ -3277,7 +3250,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
 .replay-results:empty::before {
   content: "Choose your games and run a check to see your preparation review here.";
   padding: 48px 24px;
@@ -3368,8 +3341,8 @@ body.is-guest .replay-results:empty::before {
 .scout-minisquare {
   display: flex; align-items: center; justify-content: center;
 }
-.scout-minisquare.light { background: var(--square-light, #f0d9b5); }
-.scout-minisquare.dark  { background: var(--square-dark,  #b58863); }
+.scout-minisquare.light { background: var(--square-light); }
+.scout-minisquare.dark  { background: var(--square-dark); }
 .scout-minisquare.last { background-image: linear-gradient(var(--last-move), var(--last-move)); }
 .scout-minisquare svg, .scout-minisquare .piece { width: 80%; height: 80%; }
 
@@ -3382,7 +3355,7 @@ body.is-guest .replay-results:empty::before {
   gap: 8px 12px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--line);
-  background: var(--info-soft);
+  background: var(--accent-soft);
   flex-wrap: wrap;
 }
 
@@ -3400,7 +3373,7 @@ body.is-guest .replay-results:empty::before {
 }
 
 .ib.danger {
-  color: var(--danger, #c44);
+  color: var(--danger);
 }
 
 .shared-banner-actions {
@@ -3566,7 +3539,7 @@ body.is-guest .replay-results:empty::before {
 }
 
 .explorer-row:hover {
-  background: var(--surface-hover);
+  background: var(--surface-3);
 }
 
 /* One click anywhere on the row adds the move (or goes to it when it is already
@@ -3614,7 +3587,7 @@ body.is-guest .replay-results:empty::before {
   display: block;
   height: 12px;
   border-radius: 4px;
-  background: linear-gradient(90deg, var(--surface-3) 0%, var(--surface-2, var(--surface-3)) 50%, var(--surface-3) 100%);
+  background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%);
   background-size: 200% 100%;
   animation: tree-skeleton-pulse 1.2s ease-in-out infinite;
 }
@@ -3623,9 +3596,7 @@ body.is-guest .replay-results:empty::before {
   0% { background-position: 100% 0; }
   100% { background-position: -100% 0; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .tree-skeleton span { animation: none; }
-}
+
 .inline-undo-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 
 /* A row was just played: these rows describe the previous position until the
@@ -3681,7 +3652,7 @@ body.is-guest .replay-results:empty::before {
   font-weight: 650;
 }
 
-.explorer-bar-w { background: var(--explorer-white); color: #333; }
+.explorer-bar-w { background: var(--explorer-white); color: var(--explorer-white-ink); }
 /* Engine on: an Eval column between Move and Games. Off: the cell is gone and
    the three-column layout above is untouched. */
 .explorer-eval { display: none; }
@@ -3709,8 +3680,8 @@ body.is-guest .replay-results:empty::before {
 .dock-engine-switch[hidden] { display: none; }
 .dock-engine-switch .pf-row-label { font-size: var(--fs-s); color: var(--label); font-weight: 600; }
 
-.explorer-bar-d { background: var(--explorer-draw); color: #fff; }
-.explorer-bar-b { background: var(--explorer-black); color: #fff; }
+.explorer-bar-d { background: var(--explorer-draw); color: var(--explorer-draw-ink); }
+.explorer-bar-b { background: var(--explorer-black); color: var(--on-accent); }
 
 /* Analyze panel styles (coach, chart, move grid, class bars, drawers) live in
    views/analyze-chart.css, lazy-loaded with the Analyze view. */
@@ -3778,14 +3749,14 @@ body.is-guest .replay-results:empty::before {
 }
 
 .mtree-move:hover {
-  background: var(--surface-hover);
+  background: var(--surface-3);
 }
 
 /* The single selected move — the only strong highlight in the tree. */
 .mtree-move.is-current {
   background: var(--accent);
-  color: #fff;
-  box-shadow: 0 1px 3px rgba(185, 114, 42, 0.35);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-1);
 }
 
 /* A faint trail marking the line that leads to the current move. */
@@ -3840,15 +3811,10 @@ body.is-guest .replay-results:empty::before {
 .mtree-move.is-current.is-opp,
 .mtree-move.is-current.is-prep,
 .mtree-move.is-current {
-  color: var(--on-accent);
+  color: var(--accent-ink);
   text-decoration-color: currentColor;
 }
 .mtree-move.is-current.is-disabled { opacity: 0.8; }
-:root[data-theme="dark"] .mtree-move.is-current,
-:root[data-theme="dark"] .mtree-move.is-current.is-opp,
-:root[data-theme="dark"] .mtree-move.is-current.is-prep {
-  color: #0f1a3a;
-}
 
 /* Per-variation collapse toggle. */
 .mtree-collapse {
@@ -3940,14 +3906,14 @@ body.is-guest .replay-results:empty::before {
 }
 
 .context-menu button:hover {
-  background: var(--surface-hover);
+  background: var(--surface-3);
   color: var(--text);
 }
 
 .context-menu button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
-  background: var(--surface-hover);
+  background: var(--surface-3);
   color: var(--text);
 }
 
@@ -4101,7 +4067,6 @@ body.is-guest .replay-results:empty::before {
   display: none;
 }
 
-
 .auth-modal-title {
   display: flex;
   align-items: center;
@@ -4191,7 +4156,7 @@ body.is-guest .replay-results:empty::before {
 .modal-field textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(209, 139, 63, 0.18);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .modal-footer {
@@ -4504,7 +4469,7 @@ body.is-guest .replay-results:empty::before {
 
 .job-toast.state-running .job-toast-icon {
   background: linear-gradient(45deg, var(--accent), var(--accent-strong));
-  animation: jobToastPulse 1.4s ease-in-out infinite;
+  animation: jobToastPulse 1.4s ease-in-out;
 }
 
 .job-toast.state-done .job-toast-icon {
@@ -4518,7 +4483,7 @@ body.is-guest .replay-results:empty::before {
   top: 50%;
   width: 4px;
   height: 8px;
-  border: solid #fff;
+  border: solid var(--accent-ink);
   border-width: 0 2px 2px 0;
   transform: translate(-50%, -60%) rotate(45deg);
   transform-origin: center;
@@ -4707,7 +4672,7 @@ body.is-guest .replay-results:empty::before {
 .job-toast-stop:hover {
   background: var(--danger);
   border-color: var(--danger);
-  color: #fff;
+  color: var(--accent-ink);
 }
 
 .job-toast-stop:disabled {
@@ -4917,7 +4882,7 @@ body.is-guest .replay-results:empty::before {
   font-variant-numeric: tabular-nums;
   color: var(--text);
   background: var(--accent-soft);
-  border: 1px solid rgba(209, 139, 63, 0.3);
+  border: 1px solid var(--accent-line);
   border-radius: 999px;
   padding: 1px 8px;
   min-width: 52px;
@@ -5045,8 +5010,8 @@ body.is-guest .replay-results:empty::before {
 
 /* Eval chip: a two-tone pill that says whose advantage it is by shape of
    fill, not by an accent colour that reads the same for both sides. */
-.engine-head-eval[data-side="white"] { background: #f4f1e8; color: #1a1a1a; border-color: #cfc9b8; }
-.engine-head-eval[data-side="black"] { background: #1f1f1f; color: #f4f1e8; border-color: #1f1f1f; }
+.engine-head-eval[data-side="white"] { background: var(--explorer-white); color: var(--explorer-white-ink); border-color: var(--line-strong); }
+.engine-head-eval[data-side="black"] { background: var(--explorer-black); color: var(--on-accent); border-color: var(--muted); }
 
 .engine-bar-text {
   position: absolute;
@@ -5105,7 +5070,7 @@ body.is-guest .replay-results:empty::before {
 
 .engine-pv.is-top .engine-pv-eval {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
   border-color: var(--accent-strong);
 }
 
@@ -5128,10 +5093,10 @@ body.is-guest .replay-results:empty::before {
   border-radius: 3px;
   padding: 0 1px;
 }
-.engine-pv[data-line] .pv-move:hover { background: var(--surface-hover); }
+.engine-pv[data-line] .pv-move:hover { background: var(--surface-3); }
 .engine-pv-line .pv-move.is-current {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
 }
 
 .engine-window-resize {
@@ -5212,14 +5177,14 @@ body.is-guest .replay-results:empty::before {
 }
 
 .promotion-option:hover {
-  background: var(--surface-hover);
+  background: var(--surface-3);
   border-color: var(--line-soft);
 }
 
 .promotion-option:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
-  background: var(--surface-hover);
+  background: var(--surface-3);
 }
 
 .promotion-option .piece {
@@ -5491,6 +5456,7 @@ body.is-guest .replay-results:empty::before {
 .panel:has(> .build-empty:not([hidden])) #build-generate-node { display: none; }
 
 @media (max-width: 760px) {
+  .job-toast button { min-width: 44px; min-height: 44px; }
   .lib-actions { width: 100%; }
   .lib-actions .btn { flex: 1; }
 }
@@ -5643,7 +5609,7 @@ body.is-guest .replay-results:empty::before {
      looked held. Show the press while it lasts instead. */
   .study .board-bar .ib:not([aria-expanded="true"]):hover { background: transparent; border-color: transparent; }
   :is(#analysis-prev, #analysis-next, #build-parent, #build-next):hover { background: var(--panel-soft) !important; }
-  .study .board-bar .ib:active { background: var(--surface-hover) !important; }
+  .study .board-bar .ib:active { background: var(--surface-3) !important; }
   .study .board-bar .build-sync { max-width: 30vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* The tab bar waits under the board bar; the views button raises it. */

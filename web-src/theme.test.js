@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { applyTheme, effectiveTheme, normalizeTheme, } from "./theme.js";
 
 describe("theme preferences", () => {
@@ -25,4 +25,25 @@ describe("theme preferences", () => {
     expect(root.style.colorScheme).toBe("light dark");
   });
 
+  it("follows OS changes with one listener and detaches when an explicit theme is selected", () => {
+    const root = { dataset: {}, style: {} };
+    const listeners = new Set();
+    const media = { matches: false,
+      addEventListener: vi.fn((_, fn) => listeners.add(fn)),
+      removeEventListener: vi.fn((_, fn) => listeners.delete(fn)),
+    };
+    const matchMedia = () => media;
+    applyTheme("system", { root, matchMedia });
+    applyTheme("system", { root, matchMedia });
+    expect(listeners.size).toBe(1);
+    for (const fn of listeners) fn({ matches: true });
+    expect(root.dataset.theme).toBe("dark");
+    for (const fn of listeners) fn({ matches: false });
+    expect(root.dataset.theme).toBe("light");
+    expect(root.dataset).not.toHaveProperty("themePreference");
+    applyTheme("dark", { root, matchMedia });
+    expect(listeners.size).toBe(0);
+    applyTheme("system", { root, matchMedia });
+    expect(listeners.size).toBe(1);
+  });
 });
