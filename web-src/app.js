@@ -5125,7 +5125,6 @@ async function ensureSettingsView() {
       pref,
       setPref,
       effectiveMaiaRating,
-      maiaFallbackRating: MAIA_FALLBACK_RATING,
       getSharedMaia3Provider,
       disposeSharedMaia3Provider,
       showConfirmModal,

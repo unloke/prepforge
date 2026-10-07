@@ -1,13 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createSettingsView } from "./settings.js";
 
-// UX walkthrough 2026-09-30, P2-12:
-//  - with Auto on, the Maia3 strength slider is disabled and its readout shows
-//    the real auto rating (2377), not the 50-step snapped thumb (2400);
-//  - the chess-accounts block shows a loading line (no "Link a Lichess
-//    account" button) until the linked-account state is known;
-//  - the Maia analysis switch explains that Maia3 "Ready" only means downloaded.
-
 function el(extra = {}) {
   return {
     textContent: "",
@@ -44,7 +37,7 @@ function setup({ appState = {}, api, pref = () => false, effective = 2377 } = {}
     "settings-depth": el({ value: "16" }),
     "settings-depth-readout": el(),
     "settings-maia-auto": el(),
-    "settings-maia-auto-label": el(),
+    "settings-maia-auto-label": el({ textContent: "Auto" }),
     "settings-maia-rating": rangeEl(),
     "settings-maia-rating-readout": el(),
     "settings-lichess-accounts": el(),
@@ -59,10 +52,12 @@ function setup({ appState = {}, api, pref = () => false, effective = 2377 } = {}
     querySelectorAll: () => [],
     addEventListener: vi.fn(),
   };
+  const state = { lichessUsername: "me", maiaAutoRating: 2377, maiaRatingPinned: null, ...appState };
+  const saveSettings = vi.fn(async () => {});
   const view = createSettingsView({
-    appState: { lichessUsername: "me", maiaAutoRating: 2377, maiaRatingPinned: null, ...appState },
+    appState: state,
     setStatus: vi.fn(),
-    saveSettings: vi.fn(),
+    saveSettings,
     loadSettings: vi.fn(),
     pref,
     setPref: vi.fn(),
@@ -77,7 +72,7 @@ function setup({ appState = {}, api, pref = () => false, effective = 2377 } = {}
     startLichessOAuth: vi.fn(),
     onAccountsChanged: vi.fn(),
   });
-  return { view, elements };
+  return { view, elements, state, saveSettings };
 }
 
 afterEach(() => {
@@ -85,13 +80,13 @@ afterEach(() => {
 });
 
 describe("settings strength controls", () => {
-  it("Auto on: slider disabled and the readout shows the real auto rating", () => {
+  it("Auto on: slider usable and the readout shows the real auto rating", () => {
     const { view, elements } = setup();
     view.renderStrengthControls();
-    expect(elements["settings-maia-rating"].disabled).toBe(true);
+    expect(elements["settings-maia-rating"].disabled).toBe(false);
     expect(elements["settings-maia-rating"].value).toBe("2400"); // thumb snaps…
     expect(elements["settings-maia-rating-readout"].textContent).toBe("2377"); // …readout doesn't
-    expect(elements["settings-maia-auto-label"].textContent).toContain("~2377");
+    expect(elements["settings-maia-auto-label"].textContent).toBe("Auto");
   });
 
   it("Auto off: slider enabled and the readout follows the slider", () => {
@@ -100,6 +95,20 @@ describe("settings strength controls", () => {
     expect(elements["settings-maia-rating"].disabled).toBe(false);
     expect(elements["settings-maia-rating-readout"].textContent).toBe("1800");
   });
+  it("moving the slider selects manual strength and saves it", () => {
+    const { view, elements, state, saveSettings } = setup();
+    view.bind();
+    const slider = elements["settings-maia-rating"];
+    slider.value = "1850";
+    const handler = (type) => slider.addEventListener.mock.calls.find(([name]) => name === type)[1];
+    handler("input")();
+    expect(state.maiaRatingPinned).toBe(1850);
+    expect(elements["settings-maia-auto"].setAttribute).toHaveBeenLastCalledWith("aria-checked", "false");
+    expect(elements["settings-maia-rating-readout"].textContent).toBe("1850");
+    handler("change")();
+    expect(saveSettings).toHaveBeenCalledWith({ maia_rating: 1850 });
+  });
+
 });
 
 describe("settings chess accounts loading state", () => {

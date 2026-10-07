@@ -135,8 +135,8 @@ async function runViewport(vp) {
   check(systemActive === "true", "System theme should start active");
   await page.locator('#settings-theme-seg .seg-btn[data-theme-value="dark"]').click();
   await page.waitForTimeout(300);
-  const themeAttr = await page.evaluate(() => document.documentElement.dataset.themePreference);
-  check(themeAttr === "dark", `clicking Dark should set the real theme preference, got "${themeAttr}"`);
+  const themeAttr = await page.evaluate(() => document.documentElement.dataset.theme);
+  check(themeAttr === "dark", `clicking Dark should apply the dark theme, got "${themeAttr}"`);
   const darkPressed = await page.locator('#settings-theme-seg .seg-btn[data-theme-value="dark"]').getAttribute("aria-pressed");
   check(darkPressed === "true", "Dark seg button should be pressed after the click");
   // Back to system so later viewports start clean (localStorage persists).

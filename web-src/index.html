@@ -707,15 +707,11 @@
                   <b class="strength-readout" id="settings-depth-readout">16</b>
                 </div>
               </div>
-              <div class="pf-row">
-                <span class="pf-row-text">
-                  <span class="pf-row-label" id="settings-maia-auto-label">Auto — match my Lichess rating</span>
-                </span>
-                <button type="button" class="pf-switch" id="settings-maia-auto" role="switch" aria-checked="true" aria-labelledby="settings-maia-auto-label"><span class="pf-knob"></span></button>
-              </div>
               <div class="set-row">
-                <span id="settings-maia-rating-label">Maia3 strength (human model)</span>
+                <span id="settings-maia-rating-label">Maia3 strength</span>
                 <div class="slider">
+                  <span id="settings-maia-auto-label">Auto</span>
+                  <button type="button" class="pf-switch" id="settings-maia-auto" role="switch" aria-checked="true" aria-labelledby="settings-maia-auto-label" title="Match my Lichess rating"><span class="pf-knob"></span></button>
                   <input type="range" id="settings-maia-rating" min="600" max="2600" step="50" value="1500" aria-labelledby="settings-maia-rating-label" />
                   <b class="strength-readout" id="settings-maia-rating-readout">1500</b>
                 </div>

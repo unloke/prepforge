@@ -32,7 +32,7 @@
   gap: 8px;
   height: 140px;
   padding: 10px 12px;
-  background: var(--surface-2);
+  background: var(--panel-soft);
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
@@ -183,9 +183,7 @@
   opacity: 1;
   transform: translateY(0);
 }
-@media (prefers-reduced-motion: reduce) {
-  .res-stack { transition: none; }
-}
+
 .res-block {
   display: flex;
   flex-direction: column;
@@ -319,7 +317,7 @@
   color: var(--muted);
   border: 1px solid var(--line);
 }
-#analysis-engine-slot .engine-step:hover { color: var(--text); background: var(--surface-2); transform: none; }
+#analysis-engine-slot .engine-step:hover { color: var(--text); background: var(--panel-soft); transform: none; }
 #analysis-engine-slot .engine-step:disabled { background: none; opacity: 0.4; }
 .ev-engine {
   display: inline-flex;
@@ -365,7 +363,7 @@
   border-radius: 4px;
   background: none;
 }
-#analysis-engine-slot .engine-pv:hover { background: var(--surface-2); }
+#analysis-engine-slot .engine-pv:hover { background: var(--panel-soft); }
 #analysis-engine-slot .engine-pv.is-expanded { height: auto; }
 #analysis-engine-slot .engine-pv-eval,
 #analysis-engine-slot .engine-pv.is-top .engine-pv-eval {
@@ -387,30 +385,7 @@
 .eval-live { display: none; position: relative; overflow: hidden; border-radius: 6px; }
 #analysis-eval-card:has(.job-toast[data-state="running"]) .eval-live { display: block; }
 #analysis-eval-card:has(.job-toast[data-state="running"]) #analysis-eval-graph { display: none; }
-.eval-live::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 16%, transparent), transparent);
-  transform: translateX(-100%);
-  animation: eval-scan 1.6s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes eval-scan { to { transform: translateX(100%); } }
-@media (prefers-reduced-motion: reduce) {
-  .eval-live::after { display: none; animation: none; }
-}
 .eval-chart .eval-front { stroke: var(--accent); stroke-opacity: 0.55; }
-/* Maia's passes on the finished curve: while the model loads the curve
-   breathes; while it reads the game a glowing sweep recolours the curve up to
-   its front, move by move. The count and Stop stay in the dock below. */
-.eval-live { color: var(--brilliant); }
-.eval-live[data-phase="maia"]::after,
-.eval-live[data-phase="maia-load"]::after,
-.eval-live[data-phase="saving"]::after {
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--brilliant) 20%, transparent), transparent);
-}
-.eval-live[data-phase="maia-load"] .eval-line { animation: eval-breathe 1.4s ease-in-out infinite; }
 .eval-chart .eval-maia-line {
   fill: none;
   stroke: var(--brilliant);
@@ -420,10 +395,7 @@
 }
 .eval-chart .eval-maia-band { fill: url(#eval-maia-glow); }
 .eval-chart .eval-maia-front { stroke: var(--brilliant); stroke-width: 2; }
-@keyframes eval-breathe { 50% { stroke-opacity: 0.3; } }
-@media (prefers-reduced-motion: reduce) {
-  .eval-live[data-phase="maia-load"] .eval-line { animation: none; }
-}
+
 .analysis-job-dock:empty { display: none; }
 .analysis-job-dock .job-toast.is-docked {
   padding: 0;
@@ -473,9 +445,9 @@
   overflow: visible;
   /* Mid-grey field in both themes, so the light (White) and dark (Black)
      areas each stand out from it instead of melting into the page. */
-  background: color-mix(in srgb, #7c8088 45%, var(--surface-2));
+  background: color-mix(in srgb, var(--muted) 45%, var(--panel-soft));
 }
-.eval-chart .eval-axis { stroke: rgba(0, 0, 0, 0.28); }
+.eval-chart .eval-axis { stroke: var(--line-strong); }
 .eval-chart .eval-area-white { fill: #f4f3ef; stroke: none; }
 .eval-chart .eval-area-black { fill: #25282d; stroke: none; }
 .eval-chart .eval-line {
@@ -548,7 +520,7 @@
   grid-column: 1;
   margin: 0;
   padding: 3px 6px;
-  background: var(--surface-2);
+  background: var(--panel-soft);
   color: var(--label);
   font-size: var(--fs-s);
   text-align: right;
@@ -619,7 +591,7 @@
   min-width: 20px;
   padding: 0;
   border: 0;
-  color: #fff;
+  color: var(--accent-ink);
   font-size: 10px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -645,9 +617,6 @@
 .seg-mistake { background: var(--warn); }
 .seg-blunder { background: var(--danger); }
 .seg-missed { background: var(--missed); }
-@media (prefers-reduced-motion: reduce) {
-  .cbar-seg { transition: none; }
-}
 
 .analysis-handoff {
   display: flex;
@@ -657,7 +626,7 @@
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--surface-2);
+  background: var(--panel-soft);
 }
 .analysis-handoff[hidden] {
   display: none;
@@ -673,7 +642,7 @@
   padding: 8px 12px;
   border: 1px solid var(--warn-border, var(--line));
   border-radius: 8px;
-  background: var(--surface-2);
+  background: var(--panel-soft);
 }
 .analysis-retry-save[hidden],
 .analysis-import-picker[hidden] {
@@ -716,7 +685,7 @@
   padding: 8px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: var(--surface-2);
+  background: var(--panel-soft);
   color: var(--text);
   font: 13px/1.45 var(--mono);
   resize: vertical;
@@ -744,7 +713,7 @@
   border-bottom: 0;
 }
 .history-item:hover {
-  background: var(--surface-2);
+  background: var(--panel-soft);
 }
 .hi-players {
   min-width: 0;

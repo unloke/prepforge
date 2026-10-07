@@ -643,7 +643,7 @@ describe("workspace chrome layout", () => {
     expect(menu).not.toMatch(/#ffffff|#1c1c1c/);
     expect(menuBtn).toMatch(/color:\s*var\(--text\)/);
     expect(menuBtn).not.toMatch(/#1c1c1c/);
-    expect(menuBtnHover).toMatch(/background:\s*var\(--surface-hover\)/);
+    expect(menuBtnHover).toMatch(/background:\s*var\(--surface-3\)/);
     expect(menuBtnHover).toMatch(/color:\s*var\(--text\)/);
     expect(modal).toMatch(/background:\s*var\(--panel\)/);
     expect(modal).toMatch(/color:\s*var\(--text\)/);
