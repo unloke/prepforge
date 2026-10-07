@@ -63,6 +63,30 @@ export function localBoardAfterMove(fen, moveUci) {
   };
 }
 
+// SAN for a UCI line from fen, played on one board. Stops at the first move that
+// is illegal (or a malformed FEN) and returns what it has.
+export function localSanLine(fen, uciLine) {
+  const san = [];
+  let chess;
+  try {
+    chess = new Chess(fen);
+  } catch (_) {
+    return san;
+  }
+  for (const uci of uciLine || []) {
+    try {
+      san.push(chess.move({
+        from: uci.slice(0, 2),
+        to: uci.slice(2, 4),
+        promotion: uci.length > 4 ? uci.slice(4) : undefined,
+      }).san);
+    } catch (_) {
+      break;
+    }
+  }
+  return san;
+}
+
 // Game-over state for a FEN, or null while play continues. The engine has no
 // line to show in these positions (Stockfish answers `bestmove (none)`), so the
 // UI reports the result instead of waiting on a search that never produces one.

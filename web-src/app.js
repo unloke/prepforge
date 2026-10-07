@@ -38,7 +38,7 @@ import {
   peekSharedMaia3Provider,
 } from "./engine/maia3-provider.js";
 import { createCsrfTokenSource, headersWithCsrf, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
-import { localBoardInfo, localBoardAfterMove, localGameOver } from "./chess-local.js";
+import { localBoardInfo, localBoardAfterMove, localGameOver, localSanLine } from "./chess-local.js";
 import { buildPvPreview, clampPly, previewPosition, previewLabel, stepPreview } from "./pv-preview.js";
 import { applyTheme } from "./theme.js";
 import { bindRailCollapseOnNavigate } from "./rail-nav.js";
@@ -347,21 +347,31 @@ function setEngineBestArrow(uci) {
 // reads as two pieces colliding.
 let _audioCtx = null;
 
-// One wooden knock = noise burst through a bandpass (the contact click) +
-// a fast pitch-dropping sine (the low body). Returns nothing; best-effort.
-function _woodKnock(ctx, when, opts) {
-  const { dur, noiseFreq, noiseQ, noiseGain, bodyFreq, bodyGain } = opts;
-
+// The noise burst for a knock of this length, made once: filling it sample by
+// sample on every move cost more than the rest of the sound.
+const _knockNoiseBuffers = new Map();
+function _knockNoise(ctx, dur) {
+  let buffer = _knockNoiseBuffers.get(dur);
+  if (buffer) return buffer;
   const frames = Math.max(1, Math.floor(ctx.sampleRate * dur));
-  const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
+  buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
   const data = buffer.getChannelData(0);
   for (let i = 0; i < frames; i++) {
     const t = i / frames;
     // Sharp attack, quick exponential-ish decay so it sounds like a tap.
     data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 3);
   }
+  _knockNoiseBuffers.set(dur, buffer);
+  return buffer;
+}
+
+// One wooden knock = noise burst through a bandpass (the contact click) +
+// a fast pitch-dropping sine (the low body). Returns nothing; best-effort.
+function _woodKnock(ctx, when, opts) {
+  const { dur, noiseFreq, noiseQ, noiseGain, bodyFreq, bodyGain } = opts;
+
   const noise = ctx.createBufferSource();
-  noise.buffer = buffer;
+  noise.buffer = _knockNoise(ctx, dur);
   const bp = ctx.createBiquadFilter();
   bp.type = "bandpass";
   bp.frequency.value = noiseFreq;
@@ -1871,19 +1881,12 @@ function savedMainlineMove(ply, prevFen, uci, fen) {
 }
 
 function sanLineFromUci(fen, pvUci) {
-  const san = [];
-  let curFen = fen;
-  for (const uci of pvUci || []) {
-    try {
-      const result = localBoardAfterMove(curFen, uci);
-      san.push(result.move.san || uci);
-      curFen = result.move.fen_after;
-    } catch (_) {
-      break;
-    }
-  }
-  return san;
+  return localSanLine(fen, pvUci);
 }
+
+// A saved eval's PV in SAN, worked out once per saved entry: stepping through a
+// game reads the same entries again and again.
+const savedPvSan = new WeakMap();
 
 function savedPositionEvalRead(fen, depth) {
   const positionEvals = appState.analysis && appState.analysis.position_evals;
@@ -1892,7 +1895,11 @@ function savedPositionEvalRead(fen, depth) {
   const pvUci = Array.isArray(ev.pv) ? ev.pv.slice() : [];
   const firstUci = ev.best_move_uci || pvUci[0] || null;
   if (!firstUci && ev.score_cp == null && ev.mate_in == null) return null;
-  const pvSan = sanLineFromUci(fen, pvUci);
+  let pvSan = savedPvSan.get(ev);
+  if (!pvSan) {
+    pvSan = sanLineFromUci(fen, pvUci);
+    savedPvSan.set(ev, pvSan);
+  }
   return {
     fen,
     depth: ev.depth ?? depth ?? 0,
@@ -1903,17 +1910,23 @@ function savedPositionEvalRead(fen, depth) {
         cp: ev.score_cp ?? null,
         mate: ev.mate_in ?? null,
         pvUci,
-        pvSan,
+        pvSan: pvSan.slice(),
       },
     ],
   };
 }
+
+// Steps closer together than this count as one held key or a fast run of clicks;
+// the coach then reads only once they have paused this long.
+const COACH_RAPID_STEP_MS = 120;
+const COACH_RAPID_SETTLE_MS = 160;
 
 // Shallowest interrupted/borrowed search the coach reuses as a position read.
 const COACH_MIN_REUSE_DEPTH = 10;
 
 class PositionCoach {
   constructor() {
+    this.lastUpdateAt = -Infinity;
     this.engineDepth = null;
     // Store leases this coach holds; cancel() releases them so a newer move frees the lanes.
     this.leases = new Set();
@@ -1993,13 +2006,18 @@ class PositionCoach {
     if (!hasMove) return; // nothing played in → leave the instant read
     if (!isBrowserEngineAvailable()) return; // no engine → leave the instant read
     this._ensureEngine();
+    // Holding → steps faster than the coach can read: each move keeps the instant
+    // line, and the full read waits until the stepping pauses.
+    const now = performance.now();
+    const rapid = now - this.lastUpdateAt < COACH_RAPID_STEP_MS;
+    this.lastUpdateAt = now;
     const cached = (position) => this.evalCache.get(`${this.engineDepth}|${position}`) ||
       savedPositionEvalRead(position, this.engineDepth);
-    if (cached(this.ctx.prevFen) && (localGameOver(fen) || cached(fen))) {
+    if (!rapid && cached(this.ctx.prevFen) && (localGameOver(fen) || cached(fen))) {
       void this._run(fen);
       return true; // cached verdict lands before the next browser paint
     }
-    this.timer = window.setTimeout(() => this._run(fen), 280);
+    this.timer = window.setTimeout(() => this._run(fen), rapid ? COACH_RAPID_SETTLE_MS : 280);
     return false;
   }
 

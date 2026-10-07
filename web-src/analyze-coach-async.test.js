@@ -44,6 +44,7 @@ function harness({ reviewed = true } = {}) {
     localGameOver: () => gameOver,
     renderCoachProse: render, maiaAnalysisEnabled: () => false,
     COACH_MIN_REUSE_DEPTH: 10,
+    COACH_RAPID_STEP_MS: 120, COACH_RAPID_SETTLE_MS: 160,
   };
   const start = source.indexOf("class PositionCoach {");
   const end = source.indexOf("\nconst positionCoach =", start);
@@ -227,6 +228,26 @@ describe("PositionCoach async continuation ownership", () => {
   expect(h.coach.update(h.coach.fen, h.coach.ctx)).toBe(true);
   await vi.waitFor(() => expect(h.render).toHaveBeenCalledOnce());
   expect(vi.getTimerCount()).toBe(0);
+  expect(h.store.acquire).not.toHaveBeenCalled();
+ });
+
+ it("holds the cached read back while steps arrive faster than the coach reads", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+  const h = harness();
+  h.moduleGate.resolve(h.mod);
+  h.coach._ensureEngine();
+  h.coach._remember(h.coach.ctx.prevFen, read(h.coach.ctx.prevFen), 0);
+  h.coach._remember(h.coach.fen, read(h.coach.fen), 0);
+  expect(h.coach.update(h.coach.fen, h.coach.ctx)).toBe(true);
+  await vi.advanceTimersByTimeAsync(0); // waitFor would advance the faked clock past the window
+  expect(h.render).toHaveBeenCalledOnce();
+  // A held key: the next step 33ms later keeps the instant line instead.
+  vi.advanceTimersByTime(33);
+  expect(h.coach.update(h.coach.fen, h.coach.ctx)).toBe(false);
+  expect(h.render).toHaveBeenCalledOnce();
+  // Once the stepping pauses, the full read lands without touching the engine.
+  await vi.advanceTimersByTimeAsync(160);
+  await vi.waitFor(() => expect(h.render).toHaveBeenCalledTimes(2));
   expect(h.store.acquire).not.toHaveBeenCalled();
  });
 
