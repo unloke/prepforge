@@ -130,11 +130,6 @@ function pickRepertoireReplyDetail(children, legalUcis, rng = Math.random) {
   return merged[index] || merged[0];
 }
 
-export function pickRepertoireReply(children, legalUcis, rng = Math.random) {
-  const picked = pickRepertoireReplyDetail(children, legalUcis, rng);
-  return picked ? picked.uci : null;
-}
-
 /**
  * Choose the opponent's next move.
  * book: "repertoire" | "explorer" | "maia"

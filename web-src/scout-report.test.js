@@ -27,9 +27,7 @@ import {
   scoutDisplayDistribution,
   scoutWdlBar,
   scoutLineWdlCounts,
-  patchScoutLineMaiaCells,
   buildScoutIntelligenceA11ySummary,
-  renderScoutColorTabsHtml,
 } from "./scout-report.js";
 import {
   MAIA_ENRICH_LOADING,
@@ -1056,49 +1054,6 @@ describe("Maia estimate rendering", () => {
     expect(scoutWdlBar(300, 200, 500, { maiaEstimate: true })).toContain("Maia W/D/L estimate");
   });
 
-  it("patchScoutLineMaiaCells updates score and WDL cells in place", () => {
-    const scoreEl = createStubElement("span");
-    scoreEl.classList.add("scout-lr-score");
-    scoreEl.innerHTML = '<span class="scout-score-pct">70%</span>';
-    const wdlEl = createStubElement("span");
-    wdlEl.classList.add("scout-lr-wdl");
-    wdlEl.innerHTML = '<span class="scout-wdlbar"></span>';
-    const movesEl = createStubElement("span");
-    movesEl.classList.add("scout-line-moves");
-    movesEl.innerHTML =
-      '<span class="scout-prep-chip scout-prep-chip-attack">attack</span>';
-    const row = createStubElement("div");
-    row.querySelector = (sel) => {
-      if (sel === ".scout-lr-score") return scoreEl;
-      if (sel === ".scout-lr-wdl") return wdlEl;
-      if (sel === ".scout-line-moves") return movesEl;
-      return null;
-    };
-    const chipStub = createStubElement("span");
-    chipStub.remove = () => {
-      movesEl.innerHTML = "";
-    };
-    movesEl.querySelectorAll = (sel) => {
-      if (sel === ".scout-prep-chip" && movesEl.innerHTML.includes("scout-prep-chip")) {
-        return [chipStub];
-      }
-      return [];
-    };
-    movesEl.insertAdjacentHTML = (_pos, html) => {
-      movesEl.innerHTML += html;
-    };
-    patchScoutLineMaiaCells(row, {
-      maiaScorePct: 38,
-      maiaWdl: { win: 200, draw: 300, loss: 500 },
-      games: 4,
-      belowBaseline: 12,
-      prepCategory: "attack",
-    }, 50);
-    expect(scoreEl.innerHTML).toContain("38%");
-    expect(scoreEl.innerHTML).toContain("scout-maia-estimate");
-    expect(wdlEl.innerHTML).toContain("scout-maia-estimate");
-    expect(movesEl.innerHTML).toContain("scout-prep-chip-attack");
-  });
 });
 
 describe("scout intelligence panel", () => {

@@ -35,11 +35,6 @@ export const MAIN_PATH_MIN_GAMES = 5;
 export const COLOR_MIN_GAP_PCT = 4;
 export const SYSTEM_TAG_MIN_GAMES = 3;
 export const SYSTEM_TAG_MIN_SHARE = 0.3;
-export const STRONGER_DEFAULT_THRESHOLD = 100;
-export const SPEED_BUCKET_MIN_GAMES = 3;
-
-const SPEED_BUCKETS = ["bullet", "blitz", "rapid", "classical"];
-
 export function confidence(n) {
   if (!n || n <= 0) return { level: "none", label: "no data", n: 0 };
   if (n < 5) return { level: "low", label: "low confidence", n };
@@ -266,42 +261,6 @@ export function scoreByFamily(games, color, { speedFilter = "all", recentWindow 
     baseline: scorePct(filtered),
     games: total,
     confidence: confidence(total),
-  };
-}
-
-// Rolling score sparkline for recent form (chronological left → right).
-export function formTrend(games, window = 10, { color = null, speedFilter = "all" } = {}) {
-  const filtered = filterGames(games, { color, speedFilter });
-  const points = rollingScoreSeries(filtered, window);
-  return {
-    points,
-    window: Math.max(1, window),
-    games: filtered.length,
-    confidence: confidence(filtered.length),
-    trend: trendDirection(points),
-  };
-}
-
-export function ratingTrajectory(games, { color = null, speedFilter = "all" } = {}) {
-  const filtered = filterGames(games, { color, speedFilter }).filter((g) => g.rating > 0);
-  const ordered = chronological(filtered);
-  const points = ordered.map((g) => ({ datestamp: g.datestamp, rating: g.rating }));
-  const ratings = points.map((p) => p.rating);
-  const min = ratings.length ? Math.min(...ratings) : null;
-  const max = ratings.length ? Math.max(...ratings) : null;
-  let trend = "flat";
-  if (ratings.length >= 2) {
-    const delta = ratings[ratings.length - 1] - ratings[0];
-    if (delta <= -20) trend = "down";
-    else if (delta >= 20) trend = "up";
-  }
-  return {
-    points,
-    games: points.length,
-    min,
-    max,
-    trend,
-    confidence: confidence(points.length),
   };
 }
 
@@ -1052,72 +1011,6 @@ export function personaTags(games, color, { speedFilter = "all" } = {}) {
     },
     games: filtered.length,
     confidence: confidence(filtered.length),
-  };
-}
-
-function bucketScore(games) {
-  return {
-    games: games.length,
-    scorePct: scorePct(games),
-    confidence: confidence(games.length),
-  };
-}
-
-export function scoreVsStronger(
-  games,
-  { color = null, speedFilter = "all", threshold = STRONGER_DEFAULT_THRESHOLD } = {},
-) {
-  const filtered = filterGames(games, { color, speedFilter });
-  const stronger = [];
-  const equalOrLower = [];
-  let excluded = 0;
-
-  for (const game of filtered) {
-    if (!game.rating || !game.opponentRating) {
-      excluded += 1;
-      continue;
-    }
-    const gap = game.opponentRating - game.rating;
-    if (gap >= threshold) stronger.push(game);
-    else if (gap <= 0) equalOrLower.push(game);
-    else excluded += 1;
-  }
-
-  const ratedGames = stronger.length + equalOrLower.length;
-  return {
-    threshold,
-    stronger: bucketScore(stronger),
-    equalOrLower: bucketScore(equalOrLower),
-    excluded,
-    games: filtered.length,
-    confidence: confidence(ratedGames),
-  };
-}
-
-export function scoreBySpeed(games, { color = null, speedFilter = "all", minGames = SPEED_BUCKET_MIN_GAMES } = {}) {
-  const filtered = filterGames(games, { color, speedFilter });
-  const buckets = {};
-  for (const speed of SPEED_BUCKETS) {
-    const slice = filtered.filter((g) => g.speed === speed);
-    buckets[speed] = {
-      speed,
-      ...bucketScore(slice),
-    };
-  }
-
-  const eligible = SPEED_BUCKETS.map((speed) => buckets[speed]).filter((b) => b.games >= minGames);
-  const weakest =
-    eligible.length > 0
-      ? eligible.reduce((a, b) => (a.scorePct <= b.scorePct ? a : b))
-      : null;
-
-  return {
-    buckets,
-    weakest: weakest
-      ? { speed: weakest.speed, games: weakest.games, scorePct: weakest.scorePct }
-      : null,
-    minGames,
-    games: filtered.length,
   };
 }
 

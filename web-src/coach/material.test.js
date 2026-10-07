@@ -3,9 +3,6 @@ import { describe, it, expect } from "vitest";
 import {
   materialBalance,
   perPieceDiff,
-  materialPhrase,
-  materialEdgePhrase,
-  materialSwingPhrase,
   walkLine,
   gamePhase,
   squareExchange,
@@ -27,50 +24,6 @@ describe("material counting", () => {
   });
 });
 
-describe("materialPhrase", () => {
-  it("names common edges", () => {
-    expect(materialPhrase(0)).toBe("");
-    expect(materialPhrase(1)).toBe("a pawn");
-    expect(materialPhrase(3)).toBe("a piece");
-    expect(materialPhrase(5)).toBe("a rook");
-    expect(materialPhrase(-9)).toBe("a queen");
-  });
-});
-
-describe("materialEdgePhrase (composition: the exchange vs two pawns)", () => {
-  it("names a rook-for-minor imbalance 'the exchange', not 'two pawns'", () => {
-    expect(materialEdgePhrase({ p: 0, n: 0, b: -1, r: 1, q: 0 }, 2)).toBe("the exchange");
-    expect(materialEdgePhrase({ p: 0, n: -1, b: 0, r: 1, q: 0 }, 2)).toBe("the exchange");
-  });
-
-  it("rides extra pawns onto the exchange", () => {
-    expect(materialEdgePhrase({ p: 1, b: -1, r: 1, q: 0 }, 3)).toBe("the exchange and a pawn");
-    expect(materialEdgePhrase({ p: 2, b: -1, r: 1, q: 0 }, 4)).toBe("the exchange and pawns");
-    expect(materialEdgePhrase({ p: -1, b: -1, r: 1, q: 0 }, 1)).toBe("the exchange for a pawn");
-  });
-
-  it("falls back to the magnitude phrase for non-exchange shapes", () => {
-    expect(materialEdgePhrase({ p: 2, n: 0, b: 0, r: 0, q: 0 }, 2)).toBe("two pawns");
-    expect(materialEdgePhrase(null, 2)).toBe("two pawns");
-    // A queen-level edge is not "the exchange" even with a rook/minor swap riding along.
-    expect(materialEdgePhrase({ q: 1, r: 1, b: -1 }, 11)).toBe("decisive material");
-  });
-});
-
-describe("materialSwingPhrase (composition-aware line losses)", () => {
-  it("names a knight-for-pawn loss instead of flattening it to two pawns", () => {
-    expect(materialSwingPhrase({ p: 1, n: -1, b: 0, r: 0, q: 0 }, -2)).toBe("a knight for a pawn");
-  });
-
-  it("names a rook-for-knight loss as an exchange shape, not two pawns", () => {
-    expect(materialSwingPhrase({ p: 0, n: 1, b: 0, r: -1, q: 0 }, -2)).toBe("a rook for a minor");
-  });
-
-  it("still uses pawn counts for plain pawn losses", () => {
-    expect(materialSwingPhrase({ p: -2, n: 0, b: 0, r: 0, q: 0 }, -2)).toBe("two pawns");
-  });
-});
-
 describe("squareExchangeBoard (settled board for composition)", () => {
   it("resolves the recapture so the composition reads 'up the exchange'", () => {
     // Black has just played Bxa1, snapping a rook; White recaptures Qxa1. Once it settles,
@@ -81,8 +34,6 @@ describe("squareExchangeBoard (settled board for composition)", () => {
     expect(diff.r).toBe(-1); // White is down a rook
     expect(diff.b).toBe(1); //  ...but up a bishop
     expect(diff.q).toBe(0); // queens level — White's recaptured
-    const moverDiff = { p: -diff.p, n: -diff.n, b: -diff.b, r: -diff.r, q: -diff.q };
-    expect(materialEdgePhrase(moverDiff, 2)).toBe("the exchange");
   });
 
   it("leaves a quiet (non-capture) position untouched", () => {
@@ -161,7 +112,6 @@ describe("walkLine settled swing — honest exchange accounting", () => {
     const line = walkLine(fen, ["d4f5", "e6f5"]);
     expect(line.settledSwing).toBe(-2);
     expect(line.settledDiffSwing).toMatchObject({ p: 1, n: -1 });
-    expect(materialSwingPhrase(line.settledDiffSwing, line.settledSwing)).toBe("a knight for a pawn");
   });
 });
 

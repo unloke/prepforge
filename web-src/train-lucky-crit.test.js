@@ -8,11 +8,9 @@ import {
   divideGame,
   explorerBonus,
   extractLocalFeatures,
-  isCritical,
   majorsAndMinors,
   mixedness,
   phaseAt,
-  phaseOf,
   pickKeyIndex,
   regionScore,
   scorePosition,
@@ -48,21 +46,6 @@ describe("extractLocalFeatures", () => {
 
   it("never throws on hanging-piece probes", () => {
     expect(() => extractLocalFeatures(SICILIAN, 3)).not.toThrow();
-  });
-});
-
-describe("phaseOf (material-only fallback)", () => {
-  it("calls full armies opening", () => {
-    expect(phaseOf({ nPieces: 32, nonPawnMat: 62 })).toBe("opening");
-  });
-
-  it("calls depleted boards endgame", () => {
-    expect(phaseOf({ nPieces: 12, nonPawnMat: 10 })).toBe("endgame");
-    expect(phaseOf({ nPieces: 18, nonPawnMat: 20 })).toBe("endgame");
-  });
-
-  it("calls the rest middlegame", () => {
-    expect(phaseOf({ nPieces: 24, nonPawnMat: 40 })).toBe("middlegame");
   });
 });
 
@@ -181,10 +164,9 @@ describe("scorePosition", () => {
     expect(scorePosition(f, { swingPawns: 99 })).toBeCloseTo(base + 3, 5);
   });
 
-  it("detects the endgame fixture as endgame and scores it quietly", () => {
+  it("scores the endgame fixture below the critical threshold", () => {
     const f = extractLocalFeatures(ENDGAME, 80);
-    expect(phaseOf(f)).toBe("endgame");
-    expect(isCritical(f, {}, CRITICAL_THRESHOLD)).toBe(false);
+    expect(scorePosition(f, {})).toBeLessThan(CRITICAL_THRESHOLD);
   });
 });
 

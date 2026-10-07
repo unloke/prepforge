@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { localBoardInfo, localBoardAfterMove, localGameOver } from "./chess-local.js";
+import { localBoardInfo, localBoardAfterMove, localGameOver, localSanLine, isStartFen } from "./chess-local.js";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -71,5 +71,25 @@ describe("localGameOver", () => {
 
   it("is null for an unparseable FEN", () => {
     expect(localGameOver("not a fen")).toBeNull();
+  });
+});
+
+describe("localSanLine", () => {
+  it("plays a UCI line from the FEN in SAN, promotions included", () => {
+    expect(localSanLine(START, ["e2e4", "e7e5", "g1f3", "b8c6"])).toEqual(["e4", "e5", "Nf3", "Nc6"]);
+    expect(localSanLine("8/P7/8/8/8/8/8/k6K w - - 0 1", ["a7a8q"])).toEqual(["a8=Q+"]);
+  });
+
+  it("stops at the first illegal move and survives a bad FEN", () => {
+    expect(localSanLine(START, ["e2e4", "e2e4", "g1f3"])).toEqual(["e4"]);
+    expect(localSanLine("not a fen", ["e2e4"])).toEqual([]);
+  });
+});
+
+describe("isStartFen", () => {
+  it("is true only for the start position with White to move", () => {
+    expect(isStartFen(START)).toBe(true);
+    expect(isStartFen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1")).toBe(false);
+    expect(isStartFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1")).toBe(false);
   });
 });

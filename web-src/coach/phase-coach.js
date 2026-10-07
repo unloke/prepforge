@@ -54,17 +54,6 @@ function findPred(sorted, moveUci) {
   return { index: idx, pred: sorted[idx] };
 }
 
-export function rankMove(predictions, moveUci) {
-  const sorted = sortedPreds(predictions);
-  const hit = findPred(sorted, moveUci);
-  if (!hit) return null;
-  return {
-    rank: hit.index + 1,
-    probability: hit.pred.probability,
-    move_uci: hit.pred.move_uci,
-  };
-}
-
 function toPct(probability) {
   if (!Number.isFinite(probability)) return null;
   return Math.round(probability * 100);

@@ -38,7 +38,7 @@ import {
   peekSharedMaia3Provider,
 } from "./engine/maia3-provider.js";
 import { createCsrfTokenSource, headersWithCsrf, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
-import { localBoardInfo, localBoardAfterMove, localGameOver } from "./chess-local.js";
+import { localBoardInfo, localBoardAfterMove, localGameOver, localSanLine, isStartFen } from "./chess-local.js";
 import { buildPvPreview, clampPly, previewPosition, previewLabel, stepPreview } from "./pv-preview.js";
 import { applyTheme } from "./theme.js";
 import { bindRailCollapseOnNavigate } from "./rail-nav.js";
@@ -60,7 +60,6 @@ import {
   acquireFlushLock,
   buildAddId,
   buildDeleteId,
-  outboxHasRejected,
   outboxHasWork,
   outboxIsQuiescent,
   releaseFlushLock,
@@ -73,7 +72,6 @@ const saveDurableOutbox = async (owner, state, settled) => {
   return (await outboxDatabase()).saveDurableOutbox(owner, snapshot, done);
 };
 const clearDurableOutbox = async (owner) => (await outboxDatabase()).clearDurableOutbox(owner);
-import { loadTeamDirectory } from "./team-directory.js";
 import { clearCheckpoint, evalMapFrom, loadCheckpoint, markCheckpointSaved, saveCheckpoint } from "./analyze-checkpoint.js";
 import {
   loadReturnState,
@@ -98,7 +96,6 @@ import {
   replyReasonNote,
   unavailableExplorer,
 } from "./train-opponent.js";
-import { isStartFen } from "./train-lucky.js";
 import {
   resolvePlayColor,
   formatPlayTrail,
@@ -347,21 +344,31 @@ function setEngineBestArrow(uci) {
 // reads as two pieces colliding.
 let _audioCtx = null;
 
-// One wooden knock = noise burst through a bandpass (the contact click) +
-// a fast pitch-dropping sine (the low body). Returns nothing; best-effort.
-function _woodKnock(ctx, when, opts) {
-  const { dur, noiseFreq, noiseQ, noiseGain, bodyFreq, bodyGain } = opts;
-
+// The noise burst for a knock of this length, made once: filling it sample by
+// sample on every move cost more than the rest of the sound.
+const _knockNoiseBuffers = new Map();
+function _knockNoise(ctx, dur) {
+  let buffer = _knockNoiseBuffers.get(dur);
+  if (buffer) return buffer;
   const frames = Math.max(1, Math.floor(ctx.sampleRate * dur));
-  const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
+  buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
   const data = buffer.getChannelData(0);
   for (let i = 0; i < frames; i++) {
     const t = i / frames;
     // Sharp attack, quick exponential-ish decay so it sounds like a tap.
     data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 3);
   }
+  _knockNoiseBuffers.set(dur, buffer);
+  return buffer;
+}
+
+// One wooden knock = noise burst through a bandpass (the contact click) +
+// a fast pitch-dropping sine (the low body). Returns nothing; best-effort.
+function _woodKnock(ctx, when, opts) {
+  const { dur, noiseFreq, noiseQ, noiseGain, bodyFreq, bodyGain } = opts;
+
   const noise = ctx.createBufferSource();
-  noise.buffer = buffer;
+  noise.buffer = _knockNoise(ctx, dur);
   const bp = ctx.createBiquadFilter();
   bp.type = "bandpass";
   bp.frequency.value = noiseFreq;
@@ -1871,19 +1878,12 @@ function savedMainlineMove(ply, prevFen, uci, fen) {
 }
 
 function sanLineFromUci(fen, pvUci) {
-  const san = [];
-  let curFen = fen;
-  for (const uci of pvUci || []) {
-    try {
-      const result = localBoardAfterMove(curFen, uci);
-      san.push(result.move.san || uci);
-      curFen = result.move.fen_after;
-    } catch (_) {
-      break;
-    }
-  }
-  return san;
+  return localSanLine(fen, pvUci);
 }
+
+// A saved eval's PV in SAN, worked out once per saved entry: stepping through a
+// game reads the same entries again and again.
+const savedPvSan = new WeakMap();
 
 function savedPositionEvalRead(fen, depth) {
   const positionEvals = appState.analysis && appState.analysis.position_evals;
@@ -1892,7 +1892,11 @@ function savedPositionEvalRead(fen, depth) {
   const pvUci = Array.isArray(ev.pv) ? ev.pv.slice() : [];
   const firstUci = ev.best_move_uci || pvUci[0] || null;
   if (!firstUci && ev.score_cp == null && ev.mate_in == null) return null;
-  const pvSan = sanLineFromUci(fen, pvUci);
+  let pvSan = savedPvSan.get(ev);
+  if (!pvSan) {
+    pvSan = sanLineFromUci(fen, pvUci);
+    savedPvSan.set(ev, pvSan);
+  }
   return {
     fen,
     depth: ev.depth ?? depth ?? 0,
@@ -1903,17 +1907,23 @@ function savedPositionEvalRead(fen, depth) {
         cp: ev.score_cp ?? null,
         mate: ev.mate_in ?? null,
         pvUci,
-        pvSan,
+        pvSan: pvSan.slice(),
       },
     ],
   };
 }
+
+// Steps closer together than this count as one held key or a fast run of clicks;
+// the coach then reads only once they have paused this long.
+const COACH_RAPID_STEP_MS = 120;
+const COACH_RAPID_SETTLE_MS = 160;
 
 // Shallowest interrupted/borrowed search the coach reuses as a position read.
 const COACH_MIN_REUSE_DEPTH = 10;
 
 class PositionCoach {
   constructor() {
+    this.lastUpdateAt = -Infinity;
     this.engineDepth = null;
     // Store leases this coach holds; cancel() releases them so a newer move frees the lanes.
     this.leases = new Set();
@@ -1993,13 +2003,18 @@ class PositionCoach {
     if (!hasMove) return; // nothing played in → leave the instant read
     if (!isBrowserEngineAvailable()) return; // no engine → leave the instant read
     this._ensureEngine();
+    // Holding → steps faster than the coach can read: each move keeps the instant
+    // line, and the full read waits until the stepping pauses.
+    const now = performance.now();
+    const rapid = now - this.lastUpdateAt < COACH_RAPID_STEP_MS;
+    this.lastUpdateAt = now;
     const cached = (position) => this.evalCache.get(`${this.engineDepth}|${position}`) ||
       savedPositionEvalRead(position, this.engineDepth);
-    if (cached(this.ctx.prevFen) && (localGameOver(fen) || cached(fen))) {
+    if (!rapid && cached(this.ctx.prevFen) && (localGameOver(fen) || cached(fen))) {
       void this._run(fen);
       return true; // cached verdict lands before the next browser paint
     }
-    this.timer = window.setTimeout(() => this._run(fen), 280);
+    this.timer = window.setTimeout(() => this._run(fen), rapid ? COACH_RAPID_SETTLE_MS : 280);
     return false;
   }
 
@@ -3678,20 +3693,6 @@ function downloadText(filename, mime, content) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
-}
-
-function readSelectedFile(input) {
-  return new Promise((resolve, reject) => {
-    const file = input.files && input.files[0];
-    if (!file) {
-      reject(new Error("Choose a repertoire package first"));
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Could not read file"));
-    reader.readAsText(file);
-  });
 }
 
 function activeViewName() {
@@ -10399,18 +10400,6 @@ async function exportBuild(format, nodeId = null) {
   setStatus(`Downloaded ${payload.filename}`);
 }
 
-async function importRepertoireFromInput(inputId) {
-  try {
-    const packageJson = await readSelectedFile(document.getElementById(inputId));
-    const payload = await postJson("/api/repertoires/import", { package_json: packageJson });
-    await hydrateBuild(payload, payload.selected_node_id);
-    appState.trainingRepertoireId = payload.repertoire_id;
-    setStatus(`Imported ${payload.name}`, { severity: "success" });
-  } catch (error) {
-    setStatusError(error.message);
-  }
-}
-
 async function loadTrainRepertoireOptions() {
   const select = document.getElementById("train-repertoire-select");
   if (!select && !document.getElementById("train-play-repertoire-picker")) return;
@@ -13199,14 +13188,6 @@ function gamesSourceAccountIds() {
   return valid.length ? valid : [];
 }
 
-function gamesPickedUsernames() {
-  return resolveFetchUsernames({
-    selection: gamesSourceSelection(),
-    linkedAccounts: lichessAccounts(),
-    includeExternal: true,
-  });
-}
-
 function openGamesComposer(anchor) {
   const composer = openSourceComposer({
     anchor,
@@ -14280,9 +14261,6 @@ function bindEvents() {
   document.getElementById("build-empty-create").addEventListener("click", () => createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" }));
   document.getElementById("build-empty-import").addEventListener("click", () => document.getElementById("dashboard-import-input").click());
   document.getElementById("build-empty-open").addEventListener("click", () => switchView("dashboard"));
-  document
-    .getElementById("import-train-json")
-    .addEventListener("click", () => importRepertoireFromInput("train-import-input"));
 
   document.getElementById("start-train").addEventListener("click", () => startTraining());
   document.getElementById("train-summary-new").addEventListener("click", () => startTraining(undefined, { fresh: true }));

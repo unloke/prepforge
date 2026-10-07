@@ -15,7 +15,6 @@ import {
   handleScoutColorTabKeydown,
   handleScoutProfileClick,
   handleScoutResultsClick,
-  renderScoutRefutationPanel,
   mergeEnginePatternsIntoSections,
   renderMiniBoardHtml as renderScoutMiniBoardHtml,
   renderScoutColorTabsHtml,
@@ -62,7 +61,6 @@ import {
   runStockfishPrefilter,
 } from "../scout-prefilter.js";
 import {
-  SCOUT_ERR_NETWORK,
   SCOUT_ERR_NO_GAMES,
   SCOUT_GAME_PLAN_LIMIT,
   fensAlongLine,

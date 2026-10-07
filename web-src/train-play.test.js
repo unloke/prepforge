@@ -3,7 +3,6 @@ import { describe, it, expect } from "vitest";
 import {
   START_FEN,
   resolvePlayColor,
-  playPoolLabel,
   formatPlayTrail,
   takebackToUserMove,
   playSessionPgn,
@@ -63,13 +62,6 @@ describe("resolvePlayColor", () => {
         luckyFen: AFTER_E4,
       }),
     ).toBe("black");
-  });
-});
-
-describe("playPoolLabel", () => {
-  it("names the explorer rating span", () => {
-    expect(playPoolLabel(1740)).toBe("1600–1800");
-    expect(playPoolLabel(900)).toBe("1000");
   });
 });
 

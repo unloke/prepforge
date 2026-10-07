@@ -14,7 +14,6 @@ import {
   rememberLuckyGame,
   rememberLuckyPhase,
   sansFromPgn,
-  sansFromTopGameMoves,
   scoreGamePositions,
   swingFromSnapshot,
   uciFen,
@@ -77,22 +76,6 @@ describe("sansFromPgn", () => {
 
   it("returns [] for empty input", () => {
     expect(sansFromPgn("")).toEqual([]);
-  });
-});
-
-describe("sansFromTopGameMoves", () => {
-  it("converts explorer UCI movetext to SAN", () => {
-    expect(sansFromTopGameMoves("", "e2e4 e7e5 g1f3 b8c6")).toEqual([
-      "e4",
-      "e5",
-      "Nf3",
-      "Nc6",
-    ]);
-  });
-
-  it("falls back to the PGN when the explorer list is unusable", () => {
-    expect(sansFromTopGameMoves(PGN_40, "zzz e2e4").slice(0, 2)).toEqual(["e4", "e5"]);
-    expect(sansFromTopGameMoves(PGN_40, "").slice(0, 2)).toEqual(["e4", "e5"]);
   });
 });
 

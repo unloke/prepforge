@@ -15,18 +15,12 @@ import {
   openingBranches,
   confidence,
   FRESHNESS_MIN_RECENT,
-  formTrend,
   personaTags,
   petLineConcentration,
   predictability,
-  ratingTrajectory,
   repertoireBreadth,
   repertoireFreshness,
   scoreByFamily,
-  scoreBySpeed,
-  scoreVsStronger,
-  SPEED_BUCKET_MIN_GAMES,
-  STRONGER_DEFAULT_THRESHOLD,
   SYSTEM_TAG_MIN_GAMES,
   SYSTEM_TAG_MIN_SHARE,
 } from "./scout-stats.js";
@@ -122,79 +116,6 @@ describe("scoreByFamily", () => {
     expect(black.games).toBe(3);
     expect(white.families[0].scorePct).toBe(100);
     expect(black.families[0].scorePct).toBe(0);
-  });
-});
-
-describe("formTrend", () => {
-  it("returns empty points for empty sample", () => {
-    const out = formTrend([], 5);
-    expect(out.points).toEqual([]);
-    expect(out.confidence.level).toBe("none");
-  });
-
-  it("handles small sample", () => {
-    const out = formTrend([game({ score: 1 }), game({ score: 0 })], 2);
-    expect(out.points).toHaveLength(2);
-    expect(out.points[1]).toBe(50);
-    expect(out.confidence.level).toBe("low");
-  });
-
-  it("orders chronologically (oldest left, newest right)", () => {
-    const games = [
-      game({ score: 0, datestamp: 3000, gameId: "n" }),
-      game({ score: 1, datestamp: 1000, gameId: "o" }),
-      game({ score: 1, datestamp: 2000, gameId: "m" }),
-    ];
-    const out = formTrend(games, 1);
-    expect(out.points[0]).toBe(100);
-    expect(out.points[1]).toBe(100);
-    expect(out.points[2]).toBe(0);
-  });
-
-  it("filters by White/Black", () => {
-    const games = [
-      game({ color: "white", score: 1 }),
-      game({ color: "black", score: 0 }),
-      game({ color: "white", score: 0 }),
-    ];
-    const white = formTrend(games, 2, { color: "white" });
-    expect(white.games).toBe(2);
-    expect(white.points[1]).toBe(50);
-  });
-});
-
-describe("ratingTrajectory", () => {
-  it("returns empty points for empty sample", () => {
-    const out = ratingTrajectory([]);
-    expect(out.points).toEqual([]);
-    expect(out.confidence.level).toBe("none");
-  });
-
-  it("handles small sample", () => {
-    const out = ratingTrajectory([game({ rating: 1500 }), game({ rating: 1600 })]);
-    expect(out.points).toHaveLength(2);
-    expect(out.confidence.level).toBe("low");
-  });
-
-  it("orders chronologically", () => {
-    const games = [
-      game({ rating: 1700, datestamp: 3000, gameId: "c" }),
-      game({ rating: 1500, datestamp: 1000, gameId: "a" }),
-      game({ rating: 1600, datestamp: 2000, gameId: "b" }),
-    ];
-    const out = ratingTrajectory(games);
-    expect(out.points.map((p) => p.rating)).toEqual([1500, 1600, 1700]);
-    expect(out.trend).toBe("up");
-  });
-
-  it("filters by White/Black", () => {
-    const games = [
-      game({ color: "white", rating: 1800 }),
-      game({ color: "black", rating: 1200 }),
-    ];
-    const white = ratingTrajectory(games, { color: "white" });
-    expect(white.games).toBe(1);
-    expect(white.points[0].rating).toBe(1800);
   });
 });
 
@@ -732,94 +653,6 @@ describe("personaTags", () => {
     ];
     expect(personaTags(games, "white").systemSetup.detected).toBe(false);
     expect(personaTags(games, "black").systemSetup.detected).toBe(false);
-  });
-});
-
-describe("scoreVsStronger", () => {
-  it("returns empty buckets for empty sample", () => {
-    const out = scoreVsStronger([], { color: "white" });
-    expect(out.stronger.games).toBe(0);
-    expect(out.equalOrLower.games).toBe(0);
-    expect(out.excluded).toBe(0);
-    expect(out.confidence.level).toBe("none");
-  });
-
-  it("excludes games missing either rating", () => {
-    const games = [
-      game({ rating: 1800, opponentRating: 0, gameId: "a" }),
-      game({ rating: 0, opponentRating: 1900, gameId: "b" }),
-      game({ rating: 1800, opponentRating: 1700, score: 1, gameId: "c" }),
-    ];
-    const out = scoreVsStronger(games, { color: "white" });
-    expect(out.excluded).toBe(2);
-    expect(out.equalOrLower.games).toBe(1);
-    expect(out.equalOrLower.scorePct).toBe(100);
-  });
-
-  it("splits at the rating gap threshold", () => {
-    const games = [
-      game({ rating: 1800, opponentRating: 1950, score: 0, gameId: "strong" }),
-      game({ rating: 1800, opponentRating: 1880, score: 1, gameId: "mid" }),
-      game({ rating: 1800, opponentRating: 1750, score: 1, gameId: "weak" }),
-    ];
-    const out = scoreVsStronger(games, { color: "white", threshold: 100 });
-    expect(out.stronger.games).toBe(1);
-    expect(out.stronger.scorePct).toBe(0);
-    expect(out.equalOrLower.games).toBe(1);
-    expect(out.excluded).toBe(1);
-  });
-
-  it("filters by White/Black and speed", () => {
-    const games = [
-      game({ color: "white", rating: 1800, opponentRating: 2000, speed: "blitz" }),
-      game({ color: "black", rating: 1800, opponentRating: 2000, speed: "rapid", gameId: "b" }),
-    ];
-    const white = scoreVsStronger(games, { color: "white", speedFilter: "blitz" });
-    expect(white.stronger.games).toBe(1);
-    const black = scoreVsStronger(games, { color: "black" });
-    expect(black.stronger.games).toBe(1);
-  });
-});
-
-describe("scoreBySpeed", () => {
-  it("returns empty buckets for empty sample", () => {
-    const out = scoreBySpeed([], { color: "white" });
-    expect(out.games).toBe(0);
-    expect(out.weakest).toBeNull();
-    expect(out.buckets.blitz.games).toBe(0);
-  });
-
-  it("groups score by speed bucket on small sample", () => {
-    const games = [
-      game({ speed: "blitz", score: 1, gameId: "b1" }),
-      game({ speed: "blitz", score: 0, gameId: "b2" }),
-      game({ speed: "rapid", score: 0, gameId: "r1" }),
-    ];
-    const out = scoreBySpeed(games, { color: "white" });
-    expect(out.buckets.blitz.games).toBe(2);
-    expect(out.buckets.blitz.scorePct).toBe(50);
-    expect(out.buckets.rapid.games).toBe(1);
-    expect(out.weakest).toBeNull();
-  });
-
-  it("picks weakest speed only when a bucket clears minGames", () => {
-    const games = [
-      ...Array.from({ length: 3 }, (_, i) => game({ speed: "blitz", score: 1, gameId: `b${i}` })),
-      ...Array.from({ length: 3 }, (_, i) => game({ speed: "rapid", score: 0, gameId: `r${i}` })),
-    ];
-    const out = scoreBySpeed(games, { color: "white", minGames: SPEED_BUCKET_MIN_GAMES });
-    expect(out.weakest?.speed).toBe("rapid");
-    expect(out.weakest?.scorePct).toBe(0);
-    expect(out.weakest?.games).toBe(3);
-  });
-
-  it("filters by White/Black", () => {
-    const games = [
-      game({ color: "white", speed: "bullet" }),
-      game({ color: "black", speed: "blitz", gameId: "b" }),
-    ];
-    expect(scoreBySpeed(games, { color: "white" }).buckets.bullet.games).toBe(1);
-    expect(scoreBySpeed(games, { color: "black" }).buckets.blitz.games).toBe(1);
   });
 });
 

@@ -178,12 +178,6 @@ export function numberLine(fen, sans) {
   return out.join(" ");
 }
 
-// Trim a numbered line to the plies that matter (up to the last capture), max `cap` plies.
-export function shortLine(fen, outcome, cap = 4) {
-  if (!outcome) return "";
-  return numberLine(fen, outcome.sans.slice(0, Math.min(outcome.plies, cap)));
-}
-
 // Only opposite-coloured bishops (plus pawns) left: the classic drawing endgame.
 export function oppositeBishopsOnly(fen) {
   const chess = safeChess(fen);

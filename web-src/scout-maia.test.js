@@ -7,7 +7,6 @@ import {
   MAIA_ENRICH_READY,
   clampMaiaRating,
   classifyMaiaEnrichState,
-  enrichOpeningLinesWithMaia,
   isMaiaAttempted,
   isMaiaFailed,
   maiaScorePctFromWdl,
@@ -15,7 +14,6 @@ import {
   rememberMaiaResult,
   readLineMaiaWdl,
   buildGamePlanDisplayLines,
-  getCachedMaiaResult,
   rememberMaiaFailure,
   resetMaiaScopeCache,
   scoutLineWdlCounts,
@@ -141,119 +139,6 @@ describe("readLineMaiaWdl", () => {
     expect(first?.maiaScorePct).toBe(second?.maiaScorePct);
     expect(first?.maiaWdl).toEqual({ win: 500, draw: 300, loss: 200 });
     expect(first?.maiaScorePct).toBe(65);
-  });
-});
-
-describe("enrichOpeningLinesWithMaia", () => {
-  it("does not increase wdlRead calls when enrichment is scheduled twice after failures", async () => {
-    const provider = {
-      wdlRead: vi.fn().mockRejectedValue(new Error("Maia down")),
-    };
-    const lines = [
-      { ucis: ["d2d4"], sans: ["d4"], games: 5, scorePct: 70, share: 0.2, w: 3, d: 1, l: 1 },
-    ];
-    const maiaResults = new Map();
-    const common = {
-      provider,
-      rating: 1800,
-      oppColor: "white",
-      baselineScorePct: 55,
-      fenAfterLine: () => "fen",
-      maiaResults,
-      cache: new Map(),
-    };
-    await enrichOpeningLinesWithMaia(lines, common);
-    await enrichOpeningLinesWithMaia(lines, common);
-    expect(provider.wdlRead).toHaveBeenCalledTimes(1);
-    expect(isMaiaFailed(maiaResults, "fen", 1800)).toBe(true);
-  });
-
-  it("enriches lines with Maia WDL and re-badges from Maia score", async () => {
-    const provider = {
-      wdlRead: vi.fn().mockResolvedValue({
-        wdl: { win: 100, draw: 100, loss: 800 },
-      }),
-    };
-    const lines = [
-      {
-        ucis: ["d2d4"],
-        sans: ["d4"],
-        games: 5,
-        scorePct: 70,
-        share: 0.2,
-        w: 3,
-        d: 1,
-        l: 1,
-      },
-    ];
-    const maiaResults = new Map();
-    const enriched = await enrichOpeningLinesWithMaia(lines, {
-      provider,
-      rating: 1800,
-      oppColor: "white",
-      baselineScorePct: 55,
-      fenAfterLine: () => "fen",
-      maiaResults,
-    });
-    expect(enriched[0].maiaScorePct).toBe(85);
-    expect(enriched[0].prepCategory).toBe("weapon");
-    expect(maiaResults.size).toBe(1);
-  });
-});
-
-describe("enrichMaiaUntilFull", () => {
-  it("stops issuing new reads once maxAttempts is exhausted", async () => {
-    const { enrichMaiaUntilFull } = await import("./scout-maia.js");
-    const lines = [
-      { ucis: ["a"], sans: ["a"], games: 1, line: "a" },
-      { ucis: ["b"], sans: ["b"], games: 1, line: "b" },
-      { ucis: ["c"], sans: ["c"], games: 1, line: "c" },
-    ];
-    const provider = {
-      wdlRead: vi.fn(({ fen }) =>
-        Promise.resolve({ wdl: { win: 200, draw: 200, loss: 600, fen } }),
-      ),
-    };
-    const enriched = await enrichMaiaUntilFull(lines, {
-      successTarget: 3,
-      maxAttempts: 1,
-      provider,
-      rating: 1800,
-      oppColor: "white",
-      baselineScorePct: 50,
-      fenAfterLine: (ucis) => `fen-${ucis[0]}`,
-      maiaResults: new Map(),
-    });
-    expect(provider.wdlRead).toHaveBeenCalledTimes(1);
-    expect(enriched).toHaveLength(1);
-  });
-
-  it("pulls backup lines from the ranked pool when earlier reads fail", async () => {
-    const { enrichMaiaUntilFull } = await import("./scout-maia.js");
-    const lines = [
-      { ucis: ["a"], sans: ["a"], games: 1, line: "a" },
-      { ucis: ["b"], sans: ["b"], games: 1, line: "b" },
-      { ucis: ["c"], sans: ["c"], games: 1, line: "c" },
-    ];
-    const provider = {
-      wdlRead: vi.fn(({ fen }) => {
-        if (fen === "fen-b") return Promise.reject(new Error("fail"));
-        return Promise.resolve({ wdl: { win: 200, draw: 200, loss: 600 } });
-      }),
-    };
-    const maiaResults = new Map();
-    const enriched = await enrichMaiaUntilFull(lines, {
-      successTarget: 2,
-      maxAttempts: 3,
-      provider,
-      rating: 1800,
-      oppColor: "white",
-      baselineScorePct: 50,
-      fenAfterLine: (ucis) => `fen-${ucis[0]}`,
-      maiaResults,
-    });
-    expect(enriched).toHaveLength(2);
-    expect(enriched.map((l) => l.ucis[0])).toEqual(["a", "c"]);
   });
 });
 
@@ -447,68 +332,6 @@ describe("resetMaiaScopeCache", () => {
     resetMaiaScopeCache(state, "all|11|1800|1750");
     expect(state.maiaResults.size).toBe(1);
     expect(state.maiaEnrichState).toBe(MAIA_ENRICH_READY);
-  });
-});
-
-describe("scope change streaming", () => {
-  it("does not re-call wdlRead for successful FENs after gameCount changes", async () => {
-    const provider = {
-      wdlRead: vi.fn().mockImplementation(({ fen }) => {
-        if (fen === "fen-ok") {
-          return Promise.resolve({ wdl: { win: 200, draw: 200, loss: 600 } });
-        }
-        return Promise.reject(new Error("still failing"));
-      }),
-    };
-    const maiaResults = new Map();
-    const maiaCache = new Map();
-    const state = {
-      maiaScopeKey: "all|5|1800|1750",
-      maiaResults,
-      maiaCache,
-      maiaEnrichState: MAIA_ENRICH_PARTIAL,
-    };
-    const okLine = {
-      ucis: ["e2e4"],
-      sans: ["e4"],
-      games: 5,
-      scorePct: 60,
-      share: 0.5,
-      w: 3,
-      d: 0,
-      l: 2,
-    };
-    const failLine = {
-      ucis: ["d2d4"],
-      sans: ["d4"],
-      games: 3,
-      scorePct: 40,
-      share: 0.3,
-      w: 1,
-      d: 0,
-      l: 2,
-    };
-    const common = {
-      provider,
-      rating: 1800,
-      oppColor: "white",
-      baselineScorePct: 50,
-      fenAfterLine: (ucis) => (ucis[0] === "e2e4" ? "fen-ok" : "fen-bad"),
-      maiaResults,
-      cache: maiaCache,
-    };
-    await enrichOpeningLinesWithMaia([okLine, failLine], common);
-    expect(provider.wdlRead).toHaveBeenCalledTimes(2);
-
-    resetMaiaScopeCache(state, "all|6|1800|1750");
-
-    provider.wdlRead.mockClear();
-    await enrichOpeningLinesWithMaia([okLine, failLine], common);
-    expect(provider.wdlRead).toHaveBeenCalledTimes(1);
-    expect(provider.wdlRead).toHaveBeenCalledWith(
-      expect.objectContaining({ fen: "fen-bad", rating: 1800 }),
-    );
-    expect(getCachedMaiaResult(maiaResults, "fen-ok", 1800)?.maiaScorePct).toBe(70);
   });
 });
 

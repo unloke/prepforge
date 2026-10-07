@@ -25,12 +25,3 @@ export function applyTheme(value, { root = document.documentElement, matchMedia 
   return theme;
 }
 
-export function nextTheme(value) {
-  const theme = normalizeTheme(value);
-  return theme === "system" ? "dark" : theme === "dark" ? "light" : "system";
-}
-
-export function themeLabel(value) {
-  const theme = normalizeTheme(value);
-  return theme[0].toUpperCase() + theme.slice(1);
-}

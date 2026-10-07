@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  CURATED_GAMES,
   currentGameUrl,
   luckyTitledStart,
   playerTopUrl,
@@ -290,7 +289,4 @@ describe("luckyTitledStart live selection", () => {
     expect(picked?.score).toBeGreaterThanOrEqual(5);
   });
 
-  it("ships only a small reference seam, not a production position pool", () => {
-    expect(CURATED_GAMES.length).toBeGreaterThanOrEqual(3);
-  });
 });

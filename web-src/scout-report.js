@@ -864,19 +864,6 @@ export function renderScoutIntelChartsStrip(
       </div>`;
 }
 
-export function renderScoutIntelligencePanel(
-  stats,
-  summary,
-  escapeHtml,
-  { explorerReads = null, engineAgg = null, refutations = null } = {},
-) {
-  return `
-    <div class="scout-intel intel">
-      ${renderScoutIntelSummary(stats, summary, escapeHtml, { explorerReads })}
-      ${renderScoutIntelChartsStrip(stats, escapeHtml, { engineAgg, explorerReads, refutations })}
-    </div>`;
-}
-
 // Stacked score cell: the opponent's score% on top, the sample size below, plus
 // (for game-plan rows) their usual score to compare against. Fixed width, no wrap.
 export function scoutScoreCell(scorePct, games, { baseline, showGap = false, maiaEstimate = false, showN = true } = {}) {
@@ -895,30 +882,6 @@ export function scoutScoreCell(scorePct, games, { baseline, showGap = false, mai
 
 /** Patch score/WDL cells on a rendered game-plan row after Maia results arrive. */
 export { scoutLineWdlCounts };
-
-export function patchScoutLineMaiaCells(rowEl, line, baseline) {
-  if (!rowEl || line?.maiaScorePct == null || !line?.maiaWdl) return;
-  const scoreEl = rowEl.querySelector(".scout-lr-score");
-  const wdlEl = rowEl.querySelector(".scout-lr-wdl");
-  if (scoreEl) {
-    scoreEl.innerHTML = scoutScoreCell(line.maiaScorePct, line.routeSupportGames ?? line.games, {
-      baseline,
-      showGap: line.belowBaseline > 0,
-      maiaEstimate: true,
-    });
-  }
-  if (wdlEl) {
-    wdlEl.innerHTML = scoutWdlBar(line.maiaWdl.win, line.maiaWdl.draw, line.maiaWdl.loss, {
-      maiaEstimate: true,
-    });
-  }
-  const movesEl = rowEl.querySelector(".scout-line-moves");
-  if (movesEl) {
-    for (const chip of movesEl.querySelectorAll(".scout-prep-chip")) chip.remove();
-    const badge = scoutPrepCategoryBadge(line);
-    if (badge) movesEl.insertAdjacentHTML("beforeend", ` ${badge}`);
-  }
-}
 
 export function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg }, lastUci = null) {
   const pieces = parseFenBoard(fen);
@@ -970,12 +933,6 @@ export function renderScoutProfile(profile, username, activeSpeed, escapeHtml, {
       <button type="button" class="btn sm" id="scout-deep-scan-btn" title="Stockfish scan of their opening mistakes">Deep scan ▾</button>
     </div>
     ${colorRecHtml}`;
-}
-
-// Compact per-row affordance: a single "+" icon. The full labelled button lives in
-// the expanded detail panel (scoutLineDetailHtml), so the row itself stays narrow.
-function scoutAddPrepBtn(rowKind, idx, oppColor) {
-  return `<button type="button" class="scout-add-icon scout-action-add-prep" title="Add this line to a repertoire" aria-label="Add to prep" data-row-kind="${rowKind}" data-row-idx="${idx}" data-color="${oppColor}">+</button>`;
 }
 
 function scoutPrepStatus(line) {

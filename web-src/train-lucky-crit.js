@@ -5,8 +5,6 @@
 import { Chess } from "chess.js";
 
 export const CRITICAL_THRESHOLD = 5.0;
-export const SHARP_THRESHOLD = 7.0;
-
 const PIECE_VALUES = { p: 1, n: 3, b: 3, r: 5, q: 9 };
 
 export function extractLocalFeatures(fen, ply = 0) {
@@ -246,19 +244,6 @@ export function phaseAt(ply, division) {
   return "middlegame";
 }
 
-// Back-compat single-position helper kept for the scorer tests: classifies by
-// the position's own material only, WITHOUT queensOff/ply shortcuts. Prefer
-// divideGame + phaseAt for real games (per-position votes misclassify, e.g. an
-// early queen trade is not an endgame).
-export function phaseOf({ nPieces = 32, nonPawnMat = 62 } = {}) {
-  const pieces = Math.max(0, Math.min(32, Number(nPieces) || 0));
-  const firepower = Math.max(0, Math.min(62, Number(nonPawnMat) || 0));
-  if (pieces <= 14 || firepower <= 14) return "endgame";
-  if (pieces <= 20 && firepower <= 24) return "endgame";
-  if (pieces >= 28 && firepower >= 46) return "opening";
-  return "middlegame";
-}
-
 export function explorerBonus({ totalGames = 0, moves = [] } = {}) {
   const list = Array.isArray(moves) ? moves : [];
   const total = Number(totalGames) || 0;
@@ -299,10 +284,6 @@ export function scorePosition(features = {}, evidence = {}) {
   const swing = Number(evidence.swingPawns);
   if (Number.isFinite(swing) && swing > 0) score += Math.min(3, swing * 1.2);
   return score;
-}
-
-export function isCritical(features, evidence, threshold = CRITICAL_THRESHOLD) {
-  return scorePosition(features, evidence) >= threshold;
 }
 
 export function pickKeyIndex(scores, { rng = Math.random, exclude = new Set() } = {}) {

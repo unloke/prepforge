@@ -1,7 +1,5 @@
 // Practice game session helpers. Pure: history + color + PGN, no DOM.
 
-import { ratingBucketsFor } from "./explorer.js";
-
 export const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 export function sideToMove(fen) {
@@ -28,13 +26,6 @@ export function resolvePlayColor({
     return pickerColor === "black" ? "black" : "white";
   }
   return pickerColor === "black" ? "black" : "white";
-}
-
-export function playPoolLabel(rating, buckets = ratingBucketsFor(rating)) {
-  const list = Array.isArray(buckets) ? buckets.filter((n) => Number.isFinite(n)) : [];
-  if (list.length >= 2) return `${list[0]}–${list[list.length - 1]}`;
-  if (list.length === 1) return String(list[0]);
-  return "your rating";
 }
 
 export function formatPlayTrail(history, startFen = START_FEN) {

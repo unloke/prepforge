@@ -559,50 +559,6 @@ function toLuckyPick(candidate) {
   };
 }
 
-/** Convert one UCI movetext line (from-start) to SAN. Kept for tests. */
-export function sansFromTopGameMoves(pgn, explorerMoves) {
-  const raw = String(explorerMoves || "").trim();
-  if (raw) {
-    const sans = [];
-    const chess = new Chess(START_FEN);
-    let ok = true;
-    for (const token of raw.split(/\s+/)) {
-      const clean = token.trim();
-      if (!clean) continue;
-      if (/^[a-h][1-8][a-h][1-8][qrbn]?$/i.test(clean)) {
-        let move = null;
-        try {
-          move = chess.move(clean.toLowerCase());
-        } catch (_) {
-          move = null;
-        }
-        if (!move) {
-          ok = false;
-          break;
-        }
-        sans.push(move.san);
-      } else if (/^[KQRBNPa-hO0-]/i.test(clean)) {
-        let move = null;
-        try {
-          move = chess.move(clean.replace(/[!?+#]+$/, ""));
-        } catch (_) {
-          move = null;
-        }
-        if (!move) {
-          ok = false;
-          break;
-        }
-        sans.push(move.san);
-      } else {
-        ok = false;
-        break;
-      }
-    }
-    if (ok && sans.length) return sans;
-  }
-  return sansFromPgn(pgn);
-}
-
 export function sansFromPgn(pgn) {
   const text = String(pgn || "");
   const body = text
@@ -649,24 +605,6 @@ export function sansFromPgn(pgn) {
     sans.push(move.san);
   }
   return sans;
-}
-
-/**
- * Legacy site-game export (lichess.org game ids only). Masters top-game ids
- * are OTB keys, not site ids, so the sampler no longer calls this — it walks
- * the explorer instead (see buildMasterLine). Kept exported for tests.
- */
-export async function defaultFetchGamePgn(gameId) {
-  const id = encodeURIComponent(String(gameId || ""));
-  const resp = await fetch(`https://lichess.org/game/export/${id}`, {
-    headers: { Accept: "application/x-chess-pgn" },
-  });
-  if (!resp.ok) {
-    const error = new Error(`Lichess game export responded ${resp.status}`);
-    error.status = resp.status;
-    throw error;
-  }
-  return resp.text();
 }
 
 function sleep(ms) {
