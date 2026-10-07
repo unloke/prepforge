@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db
 from prepforge_chess.api.models import User
+from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.storage.types import Plan
 from prepforge_chess.api.routers.auth import _open_session
 from prepforge_chess.api.security import decrypt_token, encrypt_token
@@ -42,6 +43,7 @@ def _redirect_uri(request: Request) -> str:
 
 
 @router.get("/login", name="google_login")
+@limiter.limit("20/minute")
 def login(
     request: Request,
     settings: Settings = Depends(get_settings),
@@ -71,6 +73,7 @@ def login(
 
 
 @router.get("/callback", name="google_callback")
+@limiter.limit("20/minute")
 def callback(
     request: Request,
     code: str = "",

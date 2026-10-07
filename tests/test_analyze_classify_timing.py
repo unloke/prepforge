@@ -11,9 +11,8 @@ attribution, no wall-clock thresholds.
 Contract pinned here (all deterministic, no ms gates):
 
 * classify_move exactly once per ply; no extra Stockfish/Maia inference.
-* Persistence is batched: save_game_batched issues a near-constant small
-  statement count independent of ply count (vs the legacy per-move loop whose
-  round-trips scale ~7× ply), with identical reloaded state on SQLite.
+* Persistence is batched: save_game issues a near-constant small
+  statement count independent of ply count, with identical reloaded state.
 * Re-analysis replaces annotations deterministically (no stale rows, no dupes);
   ownership/analysis-history semantics unchanged.
 
@@ -170,75 +169,37 @@ def _repo_with_counter(tmp_path, name="timing.sqlite3"):
     return repo, counter
 
 
-def test_batched_persistence_statement_count_near_constant(tmp_path):
-    """Legal 20-ply fixture: legacy save_game scales ~7 statements/ply while
-    the batched path stays a small constant (game + positions + evals + moves
-    + analysis), and both reload to identical state.
-
-    The contrast is already decisive at 20 plies (~140 vs ~10 statements);
-    the benchmark test below shows the 80-annotation shape for humans."""
+def test_save_game_statement_count_near_constant(tmp_path):
+    """save_game issues a small constant number of statements (game + positions
+    + evals + moves + analysis), not a per-ply loop, and an 80-annotation save
+    costs at most one extra move chunk. The saved game reloads intact."""
     core = ChessCore()
     game, fens = _classified_game(core)
     result = classify_precomputed_game(
         deepcopy(game), dict(fens), engine_name="t", depth=10
     )
     assert len(result.move_results) == 20
-    annotated = list(result.move_results)
 
-    legacy_repo, legacy_counter = _repo_with_counter(tmp_path, "legacy.sqlite3")
-    legacy_counter.reset()
+    repo, counter = _repo_with_counter(tmp_path, "batched.sqlite3")
+    counter.reset()
     classified = deepcopy(game)
-    classified.moves = deepcopy(annotated)
-    legacy_repo.save_game(classified)
-    legacy_statements = legacy_counter.count
+    classified.moves = deepcopy(list(result.move_results))
+    repo.save_game(classified, result)
+    statements = counter.count
+    assert statements <= 16, statements
 
-    batched_repo, batched_counter = _repo_with_counter(tmp_path, "batched.sqlite3")
-    batched_counter.reset()
-    batched_classified = deepcopy(game)
-    batched_classified.moves = deepcopy(annotated)
-    batched_repo.save_game_batched(batched_classified, result)
-    batched_statements = batched_counter.count
+    loaded = repo.load_game(game.id)
+    assert loaded is not None
+    assert _snapshot(loaded.moves) == _snapshot(result.move_results)
+    assert repo.load_latest_analysis_result(game.id) is not None
 
-    assert legacy_statements > 60, legacy_statements
-    assert batched_statements <= 16, batched_statements
-    assert batched_statements * 4 < legacy_statements
-
-    from sqlalchemy import select as _select
-
-    from prepforge_chess.storage import sa_tables as _t
-
-    with legacy_repo.engine.connect() as conn:
-        legacy_rows = conn.execute(
-            _select(_t.moves).where(_t.moves.c.game_id == game.id).order_by(_t.moves.c.ply)
-        ).mappings().all()
-    with batched_repo.engine.connect() as conn:
-        batched_rows = conn.execute(
-            _select(_t.moves).where(_t.moves.c.game_id == game.id).order_by(_t.moves.c.ply)
-        ).mappings().all()
-
-    def _fields(rows):
-        return [
-            (
-                r["ply"],
-                r["uci"],
-                r["classification"],
-                r["comment"],
-                r["best_move_uci"],
-                r["engine_eval_before_id"] is not None,
-                r["engine_eval_after_id"] is not None,
-                r["best_move_eval_id"] is not None,
-            )
-            for r in rows
-        ]
-
-    assert len(legacy_rows) == 20
-    assert len(batched_rows) == 20
-    assert _fields(legacy_rows) == _fields(batched_rows)
-    assert batched_repo.load_latest_analysis_result(game.id) is not None
-    legacy_game = legacy_repo.load_game(game.id)
-    batched_game = batched_repo.load_game(game.id)
-    assert legacy_game is not None and batched_game is not None
-    assert _snapshot(legacy_game.moves) == _snapshot(batched_game.moves)
+    # The 80-set reuses the 20-ply FEN chain for annotations (statement shape
+    # only; it is not loaded back through the board).
+    wide_game = deepcopy(game)
+    wide_game.moves = deepcopy(_annotated_80(game, result))
+    counter.reset()
+    repo.save_game(wide_game, result)
+    assert counter.count <= statements + 4, counter.count
 
 
 def test_reanalysis_replaces_annotations_without_dupes(tmp_path):
@@ -269,7 +230,7 @@ def test_reanalysis_replaces_annotations_without_dupes(tmp_path):
     first = classify_precomputed_game(deepcopy(legal), dict(legal_fens), engine_name="t", depth=10)
     first_game = deepcopy(legal)
     first_game.moves = list(first.move_results)
-    repo.save_game_batched(first_game, first)
+    repo.save_game(first_game, first)
     loaded = repo.load_game(legal.id)
     assert loaded is not None
     before = _snapshot(loaded.moves)
@@ -286,7 +247,7 @@ def test_reanalysis_replaces_annotations_without_dupes(tmp_path):
     second = classify_precomputed_game(deepcopy(legal), altered_fens, engine_name="t", depth=10)
     second_game = deepcopy(loaded)
     second_game.moves = list(second.move_results)
-    repo.save_game_batched(second_game, second)
+    repo.save_game(second_game, second)
 
     after_game = repo.load_game(legal.id)
     assert after_game is not None
@@ -294,49 +255,6 @@ def test_reanalysis_replaces_annotations_without_dupes(tmp_path):
     assert [m.ply for m in after_game.moves] == list(range(1, 21))
     assert _snapshot(after_game.moves) != before
     assert _snapshot(after_game.moves) == _snapshot(second.move_results)
-
-
-def test_benchmark_80ply_statement_counts_observed(tmp_path, capsys):
-    """Observability only: print representative statement counts so a human
-    can see the batch win at 20 plies and the near-constant scaling to 80
-    annotations. No assertions on wall-clock time."""
-    core = ChessCore()
-    game, fens = _classified_game(core)
-    result = classify_precomputed_game(
-        deepcopy(game), dict(fens), engine_name="t", depth=10
-    )
-    assert len(result.move_results) == 20
-
-    legacy_repo, legacy_counter = _repo_with_counter(tmp_path, "bench-legacy.sqlite3")
-    legacy_counter.reset()
-    bench_classified = deepcopy(game)
-    bench_classified.moves = list(result.move_results)
-    legacy_repo.save_game(bench_classified)
-    legacy_n = legacy_counter.count
-
-    batched_repo, batched_counter = _repo_with_counter(tmp_path, "bench-batched.sqlite3")
-    batched_counter.reset()
-    bench_batched = deepcopy(game)
-    bench_batched.moves = list(result.move_results)
-    batched_repo.save_game_batched(bench_batched, result)
-    batched_n = batched_counter.count
-
-    # Near-constant scaling: the SAME game saved at 80-annotation width costs
-    # the batched path one extra move chunk, not 60 extra per-ply loops. The
-    # 80-set reuses the 20-ply FEN chain for annotations (statement shape
-    # only — it is not loaded back through the board).
-    wide = _annotated_80(game, result)
-    wide_game = deepcopy(game)
-    wide_game.moves = deepcopy(wide)
-    batched_counter.reset()
-    batched_repo.save_game_batched(wide_game, result)
-    wide_n = batched_counter.count
-
-    print(f"[persistence-benchmark] 20-ply legacy statements: {legacy_n}")
-    print(f"[persistence-benchmark] 20-ply batched statements: {batched_n}")
-    print(f"[persistence-benchmark] 80-annotation batched statements: {wide_n}")
-    assert batched_n < legacy_n
-    assert wide_n <= batched_n + 4
 
 
 def test_browser_classifier_runs_once_per_ply(monkeypatch):

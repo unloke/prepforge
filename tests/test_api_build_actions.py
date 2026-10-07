@@ -1,9 +1,8 @@
 """Phase 2b-2e: the last SPA Build/import/board endpoints ported off web/server.py.
 
 Covers ``POST /api/build/{action,annotations,export}``,
-``POST /api/repertoires/{import,import-pgn}`` and the ``POST /api/board/move``
-chess utility. All are pure data/utility ops (no server-side engine), owner-gated
-where they touch stored repertoires.
+and ``POST /api/repertoires/{import,import-pgn}``. All are pure data ops (no
+server-side engine), owner-gated where they touch stored repertoires.
 """
 from __future__ import annotations
 
@@ -43,56 +42,6 @@ def _create_with_move(client: TestClient, name: str = "White e4") -> tuple[str, 
         headers=csrf_headers(client),
     ).json()
     return rep_id, root_id, moved["selected_node_id"]
-
-
-# ---- board/move utility -----------------------------------------------------
-
-START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-
-
-def test_board_move_requires_auth(client):
-    r = client.post(
-        "/api/board/move",
-        json={"fen": START_FEN, "move_uci": "e2e4"},
-        headers=csrf_headers(client),
-    )
-    assert r.status_code == 401
-
-
-def test_board_move_applies_move(client):
-    _register(client, "a@example.com")
-    r = client.post(
-        "/api/board/move",
-        json={"fen": START_FEN, "move_uci": "e2e4"},
-        headers=csrf_headers(client),
-    )
-    assert r.status_code == 200, r.text
-    body = r.json()
-    assert body["move"]["uci"] == "e2e4"
-    assert body["move"]["san"] == "e4"
-    assert body["move"]["fen_before"] == START_FEN
-    assert body["board"]["side_to_move"] == "black"
-    assert "e7e5" in body["board"]["legal_moves"]
-
-
-def test_board_move_rejects_illegal_move(client):
-    _register(client, "a@example.com")
-    r = client.post(
-        "/api/board/move",
-        json={"fen": START_FEN, "move_uci": "e2e5"},
-        headers=csrf_headers(client),
-    )
-    assert r.status_code == 400
-
-
-def test_board_move_rejects_bad_fen(client):
-    _register(client, "a@example.com")
-    r = client.post(
-        "/api/board/move",
-        json={"fen": "not a fen", "move_uci": "e2e4"},
-        headers=csrf_headers(client),
-    )
-    assert r.status_code == 400
 
 
 # ---- build/action -----------------------------------------------------------

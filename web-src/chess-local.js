@@ -1,15 +1,7 @@
-// Client-side chess utility — the browser-native replacement for the server's
-// /api/board and /api/board/move helpers. The Analyze/Build/Train boards used to
-// round-trip every legal-move query and every applied move to the Python server,
-// which (a) 401'd for signed-out visitors — so their boards rendered empty — and
-// (b) added a network hop to every "next"/move click, which read as lag. chess.js
-// is already bundled (engine workers import it), so the same logic runs locally
-// with zero latency and no auth requirement.
-//
-// The two exports mirror the exact JSON shapes the old endpoints returned, so the
-// app.js callers are a drop-in swap:
-//   localBoardInfo(fen)        ≅ GET  /api/board
-//   localBoardAfterMove(fen,…) ≅ POST /api/board/move
+// Client-side board utility: legal moves, status and applied moves via chess.js,
+// so boards work signed out and every move click stays local.
+//   localBoardInfo(fen)        → { fen, side_to_move, legal_moves, status }
+//   localBoardAfterMove(fen,…) → { move, board }
 import { Chess } from "chess.js";
 
 function uciOf(move) {

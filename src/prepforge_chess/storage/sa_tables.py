@@ -315,6 +315,7 @@ opening_nodes = Table(
     Column("created_at", UTCDateTime(), nullable=False),
     Column("updated_at", UTCDateTime(), nullable=False),
     Index("idx_opening_nodes_repertoire_parent", "repertoire_id", "parent_id"),
+    Index("idx_opening_nodes_parent", "parent_id"),
 )
 
 training_sessions = Table(
@@ -343,6 +344,7 @@ training_sessions = Table(
         "mode",
         "updated_at",
     ),
+    Index("idx_training_sessions_current_node", "current_node_id"),
 )
 
 training_progress = Table(
@@ -374,4 +376,5 @@ training_progress = Table(
     Index("idx_training_progress_rep_user", "repertoire_id", "owner_user_id"),
     # Dashboard due-review range scan and scheduler sort.
     Index("idx_training_progress_due", "due_at"),
+    Index("idx_training_progress_node", "node_id"),
 )

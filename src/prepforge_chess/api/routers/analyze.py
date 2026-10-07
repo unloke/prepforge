@@ -10,8 +10,7 @@ only orchestrates and persists, never computing chess. Two POSTs carry the flow:
   the classified game.
 
 Two GETs read it back: ``/api/analyses`` (history list) and ``/api/analyses/{id}``
-(recall the latest saved analysis). ``/api/board`` is a pure utility (legal moves +
-status for a FEN).
+(recall the latest saved analysis).
 """
 from __future__ import annotations
 
@@ -28,10 +27,8 @@ from prepforge_chess.core.limits import (
     MAX_ANALYSIS_POSITIONS,
     PGN_LIMITS,
 )
-from prepforge_chess.api.deps import current_owner, current_user, get_repository
+from prepforge_chess.api.deps import current_owner, get_repository
 from prepforge_chess.api.ratelimit import limiter
-from prepforge_chess.core.chess_core import ChessCore
-from prepforge_chess.core.models import MoveSource
 from prepforge_chess.services.analysis_view import analysis_result_to_payload
 from prepforge_chess.services.app_settings import owner_maia_rating, owner_stockfish_depth
 from prepforge_chess.services.brilliant import BrilliantAnalyzer, BrilliantConfig
@@ -46,10 +43,6 @@ from prepforge_chess.services.replay_maia import ReplayMaia
 from prepforge_chess.storage.repositories.games import GameRepository
 
 router = APIRouter(prefix="/api", tags=["analyze"])
-
-# ChessCore wraps python-chess and holds no per-request state, so one shared
-# instance serves the stateless /api/board utility.
-_CHESS = ChessCore()
 
 
 
@@ -392,11 +385,11 @@ def analyze_classify_save(
 
     mark = time.perf_counter()
     result.save_id = str(body.request_id)
-    repo.save_game_batched(game, result, owner_user_id=owner)
+    repo.save_game(game, result, owner_user_id=owner)
     timings_ms["save_game_ms"] = int((time.perf_counter() - mark) * 1000)
 
     mark = time.perf_counter()
-    # save_game_batched already stores the analysis in the same transaction.
+    # save_game already stores the analysis in the same transaction.
     timings_ms["save_analysis_ms"] = int((time.perf_counter() - mark) * 1000)
 
     mark = time.perf_counter()
@@ -476,68 +469,3 @@ def recall_analysis(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                             detail="Saved analysis has no move snapshot. Analyze this game again.")
     return analysis_result_to_payload(result)
-
-
-# ---- Board utility ---------------------------------------------------------
-
-
-def _board_payload(fen: str) -> dict[str, Any]:
-    """Legal moves + check/mate/stalemate status for a FEN. Raises ``ValueError`` /
-    ``KeyError`` on a malformed FEN (callers translate to 400)."""
-    position = _CHESS.position_from_fen(fen)
-    st = _CHESS.status(fen)
-    return {
-        "fen": position.fen,
-        "side_to_move": position.side_to_move.value,
-        "legal_moves": position.legal_moves,
-        "status": {
-            "is_check": st.is_check,
-            "is_checkmate": st.is_checkmate,
-            "is_stalemate": st.is_stalemate,
-        },
-    }
-
-
-@router.get("/board")
-def board(
-    fen: str,
-    _user: Any = Depends(current_user),
-) -> dict[str, Any]:
-    """Legal moves + check/mate/stalemate status for a FEN. Pure chess utility (no
-    owned data); auth-gated only because the whole app is behind login."""
-    try:
-        return _board_payload(fen)
-    except (ValueError, KeyError) as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-
-
-class BoardMoveBody(BaseModel):
-    fen: str
-    move_uci: str
-
-
-@router.post("/board/move")
-def board_move(
-    body: BoardMoveBody,
-    _user: Any = Depends(current_user),
-) -> dict[str, Any]:
-    """Apply one UCI move to a FEN and return the resulting move + board. Pure chess
-    utility (the browser drives the board; this echoes python-chess's legality + SAN).
-    No owned data, so it's auth-gated only. A malformed FEN or illegal move → 400."""
-    try:
-        move = _CHESS.apply_uci(body.fen, body.move_uci, source=MoveSource.MANUAL)
-        board_after = _board_payload(move.fen_after)
-    except (ValueError, KeyError) as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return {
-        "move": {
-            "uci": move.uci,
-            "san": move.san,
-            "fen_before": move.fen_before,
-            "fen_after": move.fen_after,
-            "move_number": move.move_number,
-            "ply": move.ply,
-            "side_to_move": move.side_to_move.value,
-        },
-        "board": board_after,
-    }

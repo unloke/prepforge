@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from typing import Dict, Optional
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, select
 from sqlalchemy.engine import Connection
 from prepforge_chess.storage import sa_tables as t
 from prepforge_chess.storage.repositories.base import Repository
@@ -32,103 +32,25 @@ class LifecycleRepository(Repository):
             return self._delete_owner_data(owned, owner_user_id)
 
     def _delete_owner_data(self, conn: Connection, owner_user_id: str) -> Dict[str, int]:
-        """Conn-scoped body of :meth:`delete_owner_data` (see there for the contract)."""
-        counts: Dict[str, int] = {}
-        game_ids = [
-            row[0]
-            for row in conn.execute(
-                select(t.games.c.id).where(t.games.c.owner_user_id == owner_user_id)
-            ).all()
-        ]
-        rep_ids = [
-            row[0]
-            for row in conn.execute(
-                select(t.repertoires.c.id).where(
-                    t.repertoires.c.owner_user_id == owner_user_id
-                )
-            ).all()
-        ]
-        # Receipts hang off training sessions of the owner's repertoires.
-        session_ids = [
-            row[0]
-            for row in conn.execute(
-                select(t.training_sessions.c.id).where(
-                    t.training_sessions.c.repertoire_id.in_(rep_ids)
-                )
-            ).all()
-        ] if rep_ids else []
+        """Conn-scoped body of :meth:`delete_owner_data` (see there for the contract).
 
-        def _count(table, where) -> int:
-            return int(
-                conn.execute(select(func.count()).select_from(table).where(where)).scalar_one()
-            )
-
-        if session_ids:
-            counts["train_attempt_receipts"] = _count(
-                t.train_attempt_receipts,
-                t.train_attempt_receipts.c.session_id.in_(session_ids),
-            )
-            conn.execute(
-                delete(t.train_attempt_receipts).where(
-                    t.train_attempt_receipts.c.session_id.in_(session_ids)
-                )
-            )
-        else:
-            counts["train_attempt_receipts"] = 0
-        counts["training_progress"] = _count(
-            t.training_progress, t.training_progress.c.owner_user_id == owner_user_id
+        Children go before parents, scoped by subqueries rather than id lists so
+        an owner with any number of rows stays under the bind-parameter caps."""
+        games = select(t.games.c.id).where(t.games.c.owner_user_id == owner_user_id)
+        reps = select(t.repertoires.c.id).where(t.repertoires.c.owner_user_id == owner_user_id)
+        sessions = select(t.training_sessions.c.id).where(t.training_sessions.c.repertoire_id.in_(reps))
+        steps = (
+            ("train_attempt_receipts", t.train_attempt_receipts.c.session_id.in_(sessions)),
+            ("training_progress", t.training_progress.c.owner_user_id == owner_user_id),
+            ("training_sessions", t.training_sessions.c.repertoire_id.in_(reps)),
+            ("analysis_results", t.analysis_results.c.game_id.in_(games)),
+            ("moves", t.moves.c.game_id.in_(games)),
+            ("games", t.games.c.owner_user_id == owner_user_id),
+            ("opening_nodes", t.opening_nodes.c.repertoire_id.in_(reps)),
+            ("repertoires", t.repertoires.c.owner_user_id == owner_user_id),
+            ("user_settings", t.user_settings.c.user_id == owner_user_id),
         )
-        conn.execute(
-            delete(t.training_progress).where(
-                t.training_progress.c.owner_user_id == owner_user_id
-            )
-        )
-        counts["training_sessions"] = len(session_ids)
-        if session_ids:
-            conn.execute(
-                delete(t.training_sessions).where(
-                    t.training_sessions.c.id.in_(session_ids)
-                )
-            )
-        counts["analysis_results"] = (
-            _count(t.analysis_results, t.analysis_results.c.game_id.in_(game_ids))
-            if game_ids
-            else 0
-        )
-        if game_ids:
-            conn.execute(
-                delete(t.analysis_results).where(
-                    t.analysis_results.c.game_id.in_(game_ids)
-                )
-            )
-        counts["moves"] = (
-            _count(t.moves, t.moves.c.game_id.in_(game_ids)) if game_ids else 0
-        )
-        if game_ids:
-            conn.execute(delete(t.moves).where(t.moves.c.game_id.in_(game_ids)))
-        counts["games"] = len(game_ids)
-        if game_ids:
-            conn.execute(delete(t.games).where(t.games.c.id.in_(game_ids)))
-        counts["opening_nodes"] = (
-            _count(t.opening_nodes, t.opening_nodes.c.repertoire_id.in_(rep_ids))
-            if rep_ids
-            else 0
-        )
-        if rep_ids:
-            conn.execute(
-                delete(t.opening_nodes).where(
-                    t.opening_nodes.c.repertoire_id.in_(rep_ids)
-                )
-            )
-        counts["repertoires"] = len(rep_ids)
-        if rep_ids:
-            conn.execute(
-                delete(t.repertoires).where(t.repertoires.c.id.in_(rep_ids))
-            )
-        counts["user_settings"] = _count(
-            t.user_settings, t.user_settings.c.user_id == owner_user_id
-        )
-        conn.execute(
-            delete(t.user_settings).where(t.user_settings.c.user_id == owner_user_id)
-        )
-        return counts
+        return {
+            name: int(conn.execute(delete(getattr(t, name)).where(where)).rowcount)
+            for name, where in steps
+        }

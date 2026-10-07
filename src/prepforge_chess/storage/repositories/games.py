@@ -14,62 +14,26 @@ from prepforge_chess.storage.repositories.evaluations import EvaluationRepositor
 
 
 class GameRepository(EvaluationRepository):
-    def save_game(self, game: Game, owner_user_id: Optional[str] = None) -> None:
-        now = datetime.now(timezone.utc)
-        with self.engine.begin() as conn:
-            _upsert(
-                conn,
-                t.games,
-                {
-                    "id": game.id,
-                    "source": game.source.value,
-                    "initial_fen": game.initial_fen,
-                    "uci_blob": codec.game_uci_blob(game),
-                    "pgn": game.pgn,
-                    "white": game.white,
-                    "black": game.black,
-                    "result": game.result.value,
-                    "event": game.event,
-                    "site": game.site,
-                    "played_at": game.played_at,
-                    "lichess_id": game.lichess_id,
-                    "tags_json": _json_dump(game.tags),
-                    "owner_user_id": owner_user_id,
-                    "created_at": now,
-                    "updated_at": now,
-                },
-                conflict=[t.games.c.id],
-                update_cols=(
-                    "source", "initial_fen", "uci_blob", "pgn", "white", "black", "result",
-                    "event", "site", "played_at", "lichess_id", "tags_json", "updated_at",
-                ),
-                # Never let a re-save reassign an existing owner; only fill a gap.
-                coalesce_cols=("owner_user_id",),
-            )
-
-            conn.execute(delete(t.moves).where(t.moves.c.game_id == game.id))
-            pos_cache: Dict[str, int] = {}
-            for move in game.moves:
-                if not codec.move_needs_row(move):
-                    continue
-                self._save_move_annotation(conn, game_id=game.id, move=move, pos_cache=pos_cache)
-
     def _save_moves_batched(self, conn: Connection, game: Game, result) -> None:
-        """Bulk portion of ``save_game_batched`` (moves, positions, evals,
+        """Bulk portion of ``save_game`` (moves, positions, evals,
         analysis row). Runs inside the caller's transaction; the game-metadata
-        upsert already happened in ``save_game_batched``."""
-        from prepforge_chess.core.models import MoveRecord as _MoveRecord
-
-        annotated: List[_MoveRecord] = [
+        upsert already happened in ``save_game``."""
+        annotated: List[MoveRecord] = [
             move for move in game.moves if codec.move_needs_row(move)
         ]
 
-        # 1. Collect every unique position key once (chunked for the
-        # SQLite 999-variable cap and the Postgres 65535-parameter cap).
+        # 1. Collect the unique position key of every evaluation once (chunked
+        # for the SQLite 999-variable cap and the Postgres 65535-parameter cap).
         fen_keys: List[str] = []
         seen_fens: set = set()
         for move in annotated:
-            for fen in (move.fen_before, move.fen_after):
+            for evaluation, fen in (
+                (move.engine_eval_before, move.fen_before),
+                (move.engine_eval_after, move.fen_after),
+                (move.best_move_eval, move.fen_before),
+            ):
+                if evaluation is None:
+                    continue
                 key = codec.position_key(fen)
                 if key not in seen_fens:
                     seen_fens.add(key)
@@ -330,19 +294,18 @@ class GameRepository(EvaluationRepository):
                 ),
             )
 
-    def save_game_batched(
+    def save_game(
         self,
         game: Game,
         result: Optional[AnalysisResult] = None,
         owner_user_id: Optional[str] = None,
     ) -> None:
-        """Persist a classified game with batched writes (one transaction).
+        """Persist a game (+ the analysis result when given) in one transaction.
 
-        Same rows as ``save_game`` (+ the analysis result when given), but the
-        statement count stays near-constant in game length instead of scaling
-        per ply (see ``_save_moves_batched``). SQLite and PostgreSQL share this
-        path (``_insert`` picks the dialect). Ownership, dedup, and
-        analysis-history semantics are unchanged.
+        The statement count stays near-constant in game length instead of
+        scaling per ply (see ``_save_moves_batched``). SQLite and PostgreSQL
+        share this path (``_insert`` picks the dialect). A re-save never
+        reassigns an existing owner.
         """
         now = datetime.now(timezone.utc)
         with self.engine.begin() as conn:
@@ -691,43 +654,6 @@ class GameRepository(EvaluationRepository):
             summary=_json_load(row["summary_json"], {}),
             critical_ply=_parse_critical_ply(row["critical_ply"]),
             quality=quality,
-        )
-
-    def _save_move_annotation(
-        self,
-        conn: Connection,
-        *,
-        game_id: str,
-        move: MoveRecord,
-        pos_cache: Dict[str, int],
-    ) -> None:
-        engine_eval_before_id = self._save_engine_evaluation(
-            conn, move.engine_eval_before, move.fen_before, pos_cache
-        )
-        engine_eval_after_id = self._save_engine_evaluation(
-            conn, move.engine_eval_after, move.fen_after, pos_cache
-        )
-        best_move_eval_id = self._save_engine_evaluation(
-            conn, move.best_move_eval, move.fen_before, pos_cache
-        )
-        conn.execute(
-            t.moves.insert().values(
-                game_id=game_id,
-                ply=move.ply,
-                uci=move.uci,
-                engine_eval_before_id=engine_eval_before_id,
-                engine_eval_after_id=engine_eval_after_id,
-                best_move_uci=move.best_move_uci,
-                best_move_eval_id=best_move_eval_id,
-                classification=move.classification.value,
-                comment=move.comment,
-                generated_comment=move.generated_comment,
-                generated_meta_json=(
-                    _json_dump(move.generated_meta) if move.generated_meta else None
-                ),
-                tags_json=_json_dump(move.tags) if move.tags else None,
-                source=move.source.value,
-            )
         )
 
     def _analysis_result_id(self, result: AnalysisResult) -> str:

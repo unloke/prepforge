@@ -448,7 +448,6 @@ def _linked_username_or_400(
 def _run_compare(
     count: int,
     user: User,
-    owner: str,
     db: Session,
     repo: WorkspaceRepository,
     account_id: str | None = None,
@@ -464,6 +463,7 @@ def _run_compare(
     may additionally name arbitrary public Lichess users — e.g. external
     opponents added on Games or Scout — fetched the same way, owner-scoped to
     the caller's repertoires for comparison."""
+    owner = user.id
     count = max(1, min(MAX_FETCH, count))
     if len(account_ids or []) > MAX_IDENTITIES or len(usernames or []) > MAX_IDENTITIES:
         raise HTTPException(status_code=422, detail="select at most 8 Lichess accounts")
@@ -569,13 +569,12 @@ def compare(
     account_ids: str | None = None,
     usernames: str | None = None,
     user: User = Depends(current_user),
-    owner: str = Depends(current_owner),
     db: Session = Depends(get_db),
     repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict:
     ids = [a for a in (account_ids or "").split(",") if a] or None
     names = [u for u in (usernames or "").split(",") if u.strip()] or None
-    return _run_compare(count, user, owner, db, repo, account_id, ids, names)
+    return _run_compare(count, user, db, repo, account_id, ids, names)
 
 
 class CompareBody(BaseModel):
@@ -591,14 +590,13 @@ def compare_post(
     request: Request,
     body: CompareBody,
     user: User = Depends(current_user),
-    owner: str = Depends(current_owner),
     db: Session = Depends(get_db),
     repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict:
     """Shared Source Composer fetch: resolved linked ids + arbitrary external
     Lichess usernames, compared owner-scoped against the caller's repertoires."""
     return _run_compare(
-        body.count, user, owner, db, repo, body.account_id, body.account_ids, body.usernames
+        body.count, user, db, repo, body.account_id, body.account_ids, body.usernames
     )
 
 
@@ -610,7 +608,6 @@ def latest(
     light: bool = False,
     account_id: str | None = None,
     user: User = Depends(current_user),
-    owner: str = Depends(current_owner),
     db: Session = Depends(get_db),
     repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict:
@@ -662,7 +659,7 @@ def latest(
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     if game is None:
         return {"has_game": False}
-    last_seen = repo.get_user_setting(owner, _LAST_SEEN_KEY)
+    last_seen = repo.get_user_setting(user.id, _LAST_SEEN_KEY)
     payload = {
         "has_game": True,
         "lichess_id": game.lichess_id,

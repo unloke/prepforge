@@ -59,7 +59,7 @@ def test_analysis_late_old_save_keeps_latest_summary_and_moves_together(repo, ba
                              old.moves, {"blunder": 1})
     for saved_game, result in [(game, latest), (old, earlier)]:
         if batched:
-            repo.save_game_batched(saved_game, result, owner_user_id="owner")
+            repo.save_game(saved_game, result, owner_user_id="owner")
         else:
             repo.save_game(saved_game, owner_user_id="owner")
             repo.save_analysis_result(result)
@@ -315,7 +315,7 @@ def test_legacy_analysis_does_not_borrow_shared_annotations(repo):
     game.moves[0].classification = MoveClassification.BLUNDER
     result = AnalysisResult(game.id, datetime.now(timezone.utc), "engine", 12,
                             game.moves, {"best": 1})
-    repo.save_game_batched(game, result)
+    repo.save_game(game, result)
     with repo.engine.begin() as conn:
         conn.execute(update(t.analysis_results).values(move_results_json=None))
     loaded = repo.load_latest_analysis_result(game.id)
