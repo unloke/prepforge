@@ -923,22 +923,6 @@ export function createScoutView(deps) {
         }
       }
       if (gen !== prefilterEnrich.generation) return;
-      if (typeof console !== "undefined" && console.table) {
-        const rows = {};
-        for (const c of ["white", "black"]) {
-          const f = scoutState.funnel?.[c];
-          if (!f) continue;
-          rows[c] = {
-            totalLines: f.totalLines,
-            scored: f.scored,
-            noOpportunity: f.gateDrops?.noOpportunity,
-            survived: f.survived,
-            pool: f.poolSize,
-            maiaCandidates: f.maiaCandidates,
-          };
-        }
-        console.table(rows);
-      }
       scoutState.prefilterEnrichState = PREFILTER_READY;
       scoutState.prefilterScopeKey = scopeKey;
     } catch (_) {
