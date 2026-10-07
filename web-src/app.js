@@ -3695,20 +3695,6 @@ function downloadText(filename, mime, content) {
   URL.revokeObjectURL(url);
 }
 
-function readSelectedFile(input) {
-  return new Promise((resolve, reject) => {
-    const file = input.files && input.files[0];
-    if (!file) {
-      reject(new Error("Choose a repertoire package first"));
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Could not read file"));
-    reader.readAsText(file);
-  });
-}
-
 function activeViewName() {
   const el = document.querySelector(".view.is-active");
   return el ? el.id.replace("view-", "") : "analyze";
@@ -10414,18 +10400,6 @@ async function exportBuild(format, nodeId = null) {
   setStatus(`Downloaded ${payload.filename}`);
 }
 
-async function importRepertoireFromInput(inputId) {
-  try {
-    const packageJson = await readSelectedFile(document.getElementById(inputId));
-    const payload = await postJson("/api/repertoires/import", { package_json: packageJson });
-    await hydrateBuild(payload, payload.selected_node_id);
-    appState.trainingRepertoireId = payload.repertoire_id;
-    setStatus(`Imported ${payload.name}`, { severity: "success" });
-  } catch (error) {
-    setStatusError(error.message);
-  }
-}
-
 async function loadTrainRepertoireOptions() {
   const select = document.getElementById("train-repertoire-select");
   if (!select && !document.getElementById("train-play-repertoire-picker")) return;
@@ -14287,9 +14261,6 @@ function bindEvents() {
   document.getElementById("build-empty-create").addEventListener("click", () => createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" }));
   document.getElementById("build-empty-import").addEventListener("click", () => document.getElementById("dashboard-import-input").click());
   document.getElementById("build-empty-open").addEventListener("click", () => switchView("dashboard"));
-  document
-    .getElementById("import-train-json")
-    .addEventListener("click", () => importRepertoireFromInput("train-import-input"));
 
   document.getElementById("start-train").addEventListener("click", () => startTraining());
   document.getElementById("train-summary-new").addEventListener("click", () => startTraining(undefined, { fresh: true }));
