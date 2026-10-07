@@ -399,7 +399,10 @@ describe("workspace chrome layout", () => {
     expect(app).toMatch(/runLichessCompare[\s\S]*?gamesSourceAccountIds/);
     expect(app).toMatch(/runLichessCompare[\s\S]*?account_ids/);
     // Explorer keeps using a valid linked token internally — never a chooser.
-    expect(app).not.toMatch(/refreshExplorerPanel[\s\S]*?chooseLichessAccount/);
+    const explorerAt = app.indexOf("async function refreshExplorerPanel(");
+    expect(explorerAt).toBeGreaterThan(-1);
+    const explorerRefresh = app.slice(explorerAt);
+    expect(explorerRefresh.slice(0, explorerRefresh.search(/\n(?:async )?function /))).not.toContain("chooseLichessAccount");
     expect(css).toContain(".account-chooser-list");
     expect(css).toContain(".account-choice.is-primary");
     // The polish E2E hook is gated like the Scout hook (build flag + query
