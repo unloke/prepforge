@@ -1,5 +1,5 @@
 // Analyze viewport smoke — fixture-backed (same stack as games/scout smokes).
-// Checks at 1440x900 / 1180x900 / 982x614 / 390x844:
+// Checks at 1440x900 / 1180x900 / 982x614 / 390x844 / 390x660:
 //   - no horizontal overflow, no console errors
 //   - COOP/COEP headers → the real browser Stockfish is available
 //   - demo PGN runs through the REAL pipeline: server stubs provide prepare
@@ -121,7 +121,12 @@ async function runViewport(vp) {
         bounds: rect.toJSON() };
       });
       return { buttons, head: bounds.toJSON(),
-        bodyBelow: document.querySelector("#analyze-sidebar > .panel-scroll").getBoundingClientRect().top >= bounds.bottom - 1 };
+        // Phones: the head leads until a game is on the board, then follows the coach.
+        bodyBelow: window.innerWidth <= 760
+          ? (document.getElementById("analysis-results").hidden
+            ? document.getElementById("analysis-explain").getBoundingClientRect().top >= bounds.bottom - 1
+            : document.getElementById("analysis-explain").getBoundingClientRect().bottom <= bounds.top + 1)
+          : document.querySelector("#analyze-sidebar > .panel-scroll").getBoundingClientRect().top >= bounds.bottom - 1 };
     });
     check(layout.buttons.every((b) => b.inHead) && layout.bodyBelow,
       `${state}: My last game / Analyze must fit inside the panel head: ${JSON.stringify(layout)}`);
@@ -441,10 +446,35 @@ async function runViewport(vp) {
   // A real recalled title wraps the actions at narrow widths. The header must
   // keep its full content height while the result body owns scrolling.
   const recalledHead = await checkPanelHead("long recalled title");
-  await page.locator("#analyze-sidebar > .panel-scroll").evaluate((el) => { el.scrollTop = el.scrollHeight; });
-  const scrolledHead = await checkPanelHead("scrolled recalled report");
-  check(Math.abs(recalledHead.top - scrolledHead.top) < 1 && Math.abs(recalledHead.height - scrolledHead.height) < 1,
-    "scrolling the report must keep the panel head in place");
+  if (vp.width > 760) {
+    await page.locator("#analyze-sidebar > .panel-scroll").evaluate((el) => { el.scrollTop = el.scrollHeight; });
+    const scrolledHead = await checkPanelHead("scrolled recalled report");
+    check(Math.abs(recalledHead.top - scrolledHead.top) < 1 && Math.abs(recalledHead.height - scrolledHead.height) < 1,
+      "scrolling the report must keep the panel head in place");
+  } else {
+    // Phones: one bottom bar. The tab bar waits under it until the views button raises it.
+    const bars = await page.evaluate(() => {
+      const tabbar = document.getElementById("app-tabbar");
+      const bar = document.querySelector("#view-analyze .board-bar").getBoundingClientRect();
+      const board = document.getElementById("analysis-board").getBoundingClientRect();
+      return { tabbarHidden: getComputedStyle(tabbar).visibility === "hidden",
+        barAtBottom: Math.abs(bar.bottom - window.innerHeight) < 2,
+        boardFullWidth: board.width >= window.innerWidth - 1 || board.height >= window.innerHeight * 0.5 };
+    });
+    check(bars.tabbarHidden && bars.barAtBottom, `the board bar should be the only bottom bar: ${JSON.stringify(bars)}`);
+    check(bars.boardFullWidth, `the phone board should take the width: ${JSON.stringify(bars)}`);
+    await page.locator("#view-analyze [data-phone-nav]").click();
+    await page.waitForTimeout(300);
+    const raised = await page.evaluate(() => {
+      const tabbar = document.getElementById("app-tabbar").getBoundingClientRect();
+      const bar = document.querySelector("#view-analyze .board-bar").getBoundingClientRect();
+      return getComputedStyle(document.getElementById("app-tabbar")).visibility === "visible" && Math.abs(tabbar.bottom - bar.top) < 2;
+    });
+    check(raised, "the views button should raise the tab bar right above the board bar");
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
+    check(!(await page.evaluate(() => document.body.classList.contains("phone-nav-open"))), "Escape should put the tab bar away");
+  }
   await shot("recalled");
 
   if (vp.width === 1440) {
@@ -482,6 +512,8 @@ try {
     { name: "laptop-1280", width: 1280, height: 609 },
     { name: "tablet-860", width: 860, height: 900 },
     { name: "mobile-390", width: 390, height: 844 },
+    // A phone browser's address and tool bars leave about this much.
+    { name: "mobile-390-chrome", width: 390, height: 660 },
   ]) await runViewport(vp);
 } finally {
   await browser.close();
@@ -492,4 +524,4 @@ if (failures.length) {
   for (const f of failures) console.error(`  - ${f}`);
   process.exit(1);
 }
-console.log("[analyze-smoke] ok — all six viewports render Analyze (coach, chart, move grid, class bars, eval readout) through the real browser-engine pipeline with no overflow and no console errors.");
+console.log("[analyze-smoke] ok — all seven viewports render Analyze (coach, chart, move grid, class bars, eval readout) through the real browser-engine pipeline with no overflow and no console errors.");

@@ -5625,22 +5625,20 @@ body.is-guest .replay-results:empty::before {
 
 /* ===========================================================================
    Phone study layout (≤760px): Analyze, Repertoire and Train own the screen.
-   The board is pinned edge to edge at the top, the panel scrolls in the space
-   between, and the board bar sits in the thumb zone just above the tab bar,
-   with wide back / forward buttons. Nothing ends up behind the tab bar.
+   Browser chrome already takes a slice of the height, so these views keep one
+   bottom bar: the board bar, in the thumb zone. The tab bar slides up over it
+   from the views button. The board is pinned edge to edge at the top and the
+   panel scrolls in the space between.
    =========================================================================== */
+.bb-views { display: none; }
 @media (max-width: 760px) {
   :root {
-    --phone-tabbar-h: calc(58px + env(safe-area-inset-bottom));
-    --phone-bar-h: 56px;
-    --phone-panel-min: 200px;
+    --phone-bar-h: 54px;
+    --phone-panel-min: 176px;
   }
   .workspace:has(> .view.is-active:is(#view-analyze, #view-build, #view-train)) {
     position: fixed;
-    top: 0;
-    right: 0;
-    bottom: var(--phone-tabbar-h);
-    left: 0;
+    inset: 0;
     max-width: none;
     padding: 0;
     overflow: hidden;
@@ -5658,7 +5656,7 @@ body.is-guest .replay-results:empty::before {
   .study .board-stack {
     order: 0;
     flex: none;
-    width: min(100vw, calc(100dvh - var(--phone-tabbar-h) - var(--phone-bar-h) - var(--phone-panel-min)));
+    width: min(100vw, calc(100dvh - var(--phone-bar-h) - env(safe-area-inset-bottom) - var(--phone-panel-min)));
     max-width: none;
     margin: 0 auto;
     border-width: 0 0 1px;
@@ -5678,46 +5676,78 @@ body.is-guest .replay-results:empty::before {
     box-shadow: none;
     overflow: hidden;
   }
-  .study .panel-scroll,
-  #view-train .panel-scroll,
-  #analyze-sidebar .panel-scroll {
+  .study .panel-scroll {
     overflow: auto;
     overscroll-behavior: contain;
     padding: 10px 12px;
     gap: 10px;
   }
 
-  /* Board bar: flip and the position label on the left, the move buttons on the
-     right under the thumb; back / forward are the widest targets. */
+  /* Board bar: views and flip on the left, the position label, then the move
+     buttons under the thumb. Start / end are dropped: the move list jumps. */
   .study .board-bar {
     order: 2;
     flex: none;
-    height: var(--phone-bar-h);
+    height: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
     gap: 2px;
-    padding: 4px 6px;
+    padding: 3px 6px calc(3px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--line);
     background: var(--panel);
   }
-  .study .board-bar .bb-right { order: 0; }
-  .study .board-bar .board-label { order: 1; text-align: left; padding-left: 4px; font-size: 13px; }
+  .study .board-bar .bb-right { order: 0; gap: 2px; }
+  .study .board-bar .board-label {
+    order: 1;
+    min-width: 0;
+    overflow: hidden;
+    padding-left: 4px;
+    font-size: 13px;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .study .board-bar .pv-exit { order: 1; }
-  .study .board-bar .bb-nav { order: 2; gap: 2px; }
+  .study .board-bar .bb-nav { order: 2; gap: 4px; }
   .study .board-bar .ib,
   #view-train .board-bar .ib {
     width: auto;
-    min-width: 46px;
-    height: 48px;
-    min-height: 48px;
+    min-width: 44px;
+    height: 46px;
+    min-height: 46px;
     padding: 0;
     font-size: 17px;
     border-radius: 10px;
   }
+  .study .board-bar .bb-views { display: inline-flex; align-items: center; justify-content: center; }
+  .bb-views svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+  .bb-views[aria-expanded="true"] { background: var(--panel-soft); color: var(--accent-strong); }
+  :is(#analysis-start, #analysis-end, #build-root, #build-end) { display: none !important; }
   :is(#analysis-prev, #analysis-next, #build-parent, #build-next) {
-    min-width: 64px !important;
+    min-width: 68px !important;
     background: var(--panel-soft) !important;
     font-size: 20px !important;
   }
-  .study .board-bar .build-sync { max-width: 34vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .study .board-bar .build-sync { max-width: 30vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* The tab bar waits under the board bar; the views button raises it. */
+  body:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .tabbar {
+    bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
+    height: 60px;
+    padding-bottom: 0;
+    border: 1px solid var(--line);
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.28);
+    transform: translateY(calc(100% + var(--phone-bar-h) + 40px));
+    visibility: hidden;
+    transition: transform 180ms ease, visibility 0s linear 180ms;
+  }
+  body.phone-nav-open:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .tabbar {
+    transform: none;
+    visibility: visible;
+    transition: transform 180ms ease;
+  }
+  body:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .toast-stack {
+    bottom: calc(var(--phone-bar-h) + 10px + env(safe-area-inset-bottom));
+  }
 }
 @media (max-width: 760px) {
   /* Repertoire: the panel is one scroller (head, trail, fork picker, tree, then the
@@ -5725,10 +5755,11 @@ body.is-guest .replay-results:empty::before {
   #view-build .study > .sidebar { overflow-y: auto; overscroll-behavior: contain; }
   #view-build .study > .sidebar > * { flex: none !important; }
   #view-build .tree-wrap { max-height: none; overflow: visible; }
-  #view-build .panel-head { position: sticky; top: 0; z-index: 4; background: var(--panel); }
-  #build-rep-header .rep-name { flex: 1 1 auto; }
+  #view-build .panel-head { position: sticky; top: 0; z-index: 4; min-height: 0; padding: 6px 8px 6px 12px; background: var(--panel); }
+  #build-rep-header .rep-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #build-rep-header .rep-stats { display: none; }
   #build-generate-node { min-height: 36px; height: 36px; }
+  #view-build .dock-resizer { display: none; }
 
   /* The saved state shrinks to a tick; saving and errors keep their words. */
   .study .board-bar .build-sync.is-saved { font-size: 0; gap: 0; padding: 2px 7px; }
@@ -5754,9 +5785,38 @@ body.is-guest .replay-results:empty::before {
   .topbar-status-slot .status-close { width: 32px; height: 32px; }
 }
 @media (max-width: 760px) {
-  /* Train: the prompt and the mode switch stay one compact block above the cards. */
-  #view-train .train-coach { height: auto; min-height: 64px; padding: 8px 12px; gap: 10px; }
-  #view-train .train-coach-icon { width: 36px; height: 36px; flex: none; }
-  #view-train .panel-head { min-height: 0; padding: 6px 8px; }
+  /* Train: one scroller. The prompt stays pinned at its top; during a session
+     the mode switch moves below the cards, since it is for between sessions. */
+  #view-train .study > .train-sidebar {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  #view-train .train-sidebar > .panel-scroll { display: contents; }
+  #view-train .train-sidebar > * { flex: none; }
+  #view-train .train-sidebar .tcard { margin: 10px 12px 0; }
+  #view-train .train-coach {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    order: 0;
+    height: auto;
+    min-height: 60px;
+    padding: 8px 12px;
+    gap: 10px;
+  }
+  #view-train .train-coach-icon { width: 34px; height: 34px; flex: none; }
+  #view-train .train-coach-title { font-size: 16px; }
+  #view-train .train-sidebar > .panel-head { order: -1; min-height: 0; padding: 6px 8px; border-top: 0; }
+  #view-train .train-sidebar:not([data-session-state="setup"]) > .panel-head {
+    order: 9;
+    margin-top: 12px;
+    border-top: 1px solid var(--line);
+    border-bottom: 0;
+  }
+  #view-train .train-sidebar > .panel-scroll > * { order: 1; }
+  #view-train .train-sidebar::after { content: ""; flex: none; order: 10; height: 12px; }
   #view-train .seg-btn { min-height: 36px; height: 36px; font-size: 13px; }
+  #view-train .train-progress-panel { gap: 8px; }
 }
