@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { formatEngineEval } from "./engine-eval.js";
+import { readFileSync } from "node:fs";
 import { appSource } from "./test-app-source.js";
 
 const source = appSource();
@@ -7,9 +9,10 @@ function widgetHarness() {
   const deps = {
     setEngineBestArrow: vi.fn(), localGameOver: () => null,
     activeViewName: () => "analyze",
-    explorerEvalEngine: { repaint: vi.fn() }, analyzeSession: null,
+    explorerEvalEngine: { repaint: vi.fn() }, getAnalyzeSession: () => null, formatEngineEval,
   };
-  const code = source.slice(source.indexOf("class EngineWidget {"), source.indexOf("const engineWidget ="));
+  const widgetSource = readFileSync(new URL("./controllers/engine-widget.js", import.meta.url), "utf8");
+  const code = widgetSource.slice(widgetSource.indexOf("class EngineWidget {"));
   const Widget = new Function(...Object.keys(deps), `return (${code.trim()});`)(...Object.values(deps));
   const widget = new Widget();
   widget.open = true;

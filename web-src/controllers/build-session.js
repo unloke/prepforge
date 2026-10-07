@@ -1,3 +1,4 @@
+import { formatEngineEval } from "../engine-eval.js";
 // Repertoire editor: the tree and board, the Explorer panel, the inspector dock, node
 // menus and Generate. Lazy-loaded by app.js with the Build view. Saving edits (the Build
 // outbox and its flushes) stays in app.js so it can run before this loads and on unload.
@@ -422,7 +423,7 @@ function paintExplorerEvals(snapshot, mainSnapshot = null) {
           : "Calculating…";
       return;
     }
-    cell.textContent = engineWidget._formatEval(pv.score_cp, pv.mate_in);
+    cell.textContent = formatEngineEval(pv.score_cp, pv.mate_in);
     const drop = best - engineScoreCp(pv) * sign;
     cell.classList.add(drop <= 20 ? "is-best" : drop <= 80 ? "is-ok" : "is-weak");
     cell.title = `Stockfish, depth ${pv.depth || snapshot.current_depth || 0}`;

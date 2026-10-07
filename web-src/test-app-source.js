@@ -5,6 +5,10 @@ import { readFileSync } from "node:fs";
 
 const FILES = [
   "./app.js",
+  "./controllers/engine-widget.js",
+  "./controllers/toast-stack.js",
+  "./board/board-controller.js",
+  "./engine-eval.js",
   "./controllers/train-session.js",
   "./controllers/build-session.js",
   "./controllers/analyze-session.js",

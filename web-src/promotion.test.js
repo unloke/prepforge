@@ -8,6 +8,7 @@ import { appSource } from "./test-app-source.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const app = appSource();
+const board = readFileSync(join(root, "board/board-controller.js"), "utf8");
 const chessLocal = readFileSync(join(root, "chess-local.js"), "utf8");
 const css = readFileSync(join(root, "styles.css"), "utf8");
 const html = readFileSync(join(root, "index.html"), "utf8");
@@ -72,7 +73,7 @@ describe("shared promotion picker wiring", () => {
   });
 
   it("routes click, keyboard-square, and drag paths through the picker", () => {
-    const hits = app.match(/resolveBoardMove\(\{/g) || [];
+    const hits = board.match(/resolveBoardMove\(\{/g) || [];
     expect(hits.length).toBeGreaterThanOrEqual(3);
   });
 
