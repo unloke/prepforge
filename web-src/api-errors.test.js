@@ -1,4 +1,4 @@
-import { withRequestDeadline } from "./request-deadline.js";
+import { withRequestDeadline } from "./sync-queue.js";
 import { describe, expect, it } from "vitest";
 import { apiErrorMessage } from "./api-errors.js";
 import { AUTH_REQUIRED_MESSAGE, isSessionAuthFailure } from "./auth-gate.js";

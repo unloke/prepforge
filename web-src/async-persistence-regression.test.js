@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
+import { createSyncQueue } from "./sync-queue.js";
+import { flushGroups, groupAttempts, ungroupAttempts } from "./sync-queue.js";
 import { createBookActions } from "./analyze-book.js";
 import { createSettingsActions } from "./settings-actions.js";
 import { classifySyncError } from "./sync-errors.js";
@@ -11,6 +12,24 @@ function compile(marker, deps, prelude = "", code = source) {
   const end = code.indexOf("\n}\n", start) + 2;
   return new Function(...Object.keys(deps), `${prelude}; return (${code.slice(start, end)});`)(...Object.values(deps));
 }
+function queueFlush(marker, deps) {
+  const train = marker.includes("Train"), app = deps.appState;
+  const buildState = {
+    get timer() { return app.buildFlushTimer; }, set timer(v) { app.buildFlushTimer = v; },
+    get flushing() { return app.buildFlushing; }, set flushing(v) { app.buildFlushing = v; },
+    get retry() { return app.buildSyncRetry; }, set retry(v) { app.buildSyncRetry = v; },
+  };
+  const queue = createSyncQueue({ key: train ? "train" : "build", tabId: "test",
+    state: () => train ? app.trainSync : buildState, owner: deps.currentOwnerId,
+    generation: () => app.ownerGeneration, idleMs: train ? 4000 : 2000,
+    hasWork: () => train ? app.trainSync.pending.length || app.trainSync.dirty
+      : app.build && (app.buildPending.length || app.buildPendingDeletes.length),
+    persist: () => deps.persistOutbox(), flush: (checkpoint, isCurrent) => compile(marker, deps)(checkpoint, isCurrent),
+  });
+  deps[train ? "trainQueue" : "buildQueue"] = queue;
+  return queue.flush;
+}
+
 function deferred() {
   let resolve, reject;
   const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
@@ -148,7 +167,7 @@ it("the application wires Scout's handoff recorder", async () => {
 function buildFlushHarness() {
   const op = { tempId: "tmp-a", parentRef: "root", uci: "e2e4", repertoire_id: "r" };
   const appState = { build: { repertoire_id: "r", revision: 1 }, buildPending: [op], buildPendingDeletes: [],
-    buildIdMap: {}, buildNodeById: new Map([["tmp-a", {}]]), buildCurrentNodeId: "tmp-a" };
+    buildSyncRetry: 0, buildIdMap: {}, buildNodeById: new Map([["tmp-a", {}]]), buildCurrentNodeId: "tmp-a" };
   const deps = { appState, currentOwnerId: () => "owner", captureBuildContext: () => () => true,
     resolveBuildId: (id) => id, acquireFlushLock: () => true, OUTBOX_TAB_ID: "tab", clearTimeout: vi.fn(), setBuildSync: vi.fn(),
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id, setStatus: vi.fn(),
@@ -160,7 +179,7 @@ function buildFlushHarness() {
     setTimeout: vi.fn(), BUILD_FLUSH_MAX_BACKOFF_MS: 30000, scheduleBuildFlush: vi.fn(),
     reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes: vi.fn(),
   };
-  return { op, appState, deps, run: compile("function flushBuildMoves(", deps) };
+  return { op, appState, deps, run: queueFlush("function flushBuildMoves(", deps) };
 }
 
 it("Build render failure after commit does not requeue confirmed adds", async () => {
@@ -183,7 +202,7 @@ function trainFlushHarness() {
     localDateString: () => "2026-10-02", persistOutbox: vi.fn(), trainAttemptId: (a) => a.attempt_uuid,
     classifySyncError, setStatus: vi.fn(), setTimeout: vi.fn(), TRAIN_SYNC_MAX_BACKOFF_MS: 30000,
     clearOutboxWhenQuiescent: vi.fn(), scheduleTrainSync: vi.fn() };
-  return { run: compile("function flushTrainSync(", deps), appState, deps, response, setOwner: (next) => { owner = next; } };
+  return { run: queueFlush("function flushTrainSync(", deps), appState, deps, response, setOwner: (next) => { owner = next; } };
 }
 
 it("a late Smart sync failure keeps the old generation and cannot dirty its rebuilt session", async () => {
@@ -284,7 +303,7 @@ it("a lost Build response retains deleted in-flight adds until their IDs can be 
     const id = entry?.id || entry;
     return h.appState.buildIdMap[id] || id;
   };
-  const retry = compile("function flushBuildMoves(", h.deps);
+  const retry = queueFlush("function flushBuildMoves(", h.deps);
   expect(await retry()).toBe(true);
   expect(h.deps.postJson.mock.calls[1][0]).toBe("/api/build/add-moves");
   expect(h.deps.postJson.mock.calls[1][1].moves[0].tempId).toBe("tmp-a");

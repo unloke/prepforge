@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { IDBFactory, IDBObjectStore } from "fake-indexeddb";
 import { clearDurableOutbox, loadDurableOutbox, saveDurableOutbox } from "./outbox-db.js";
-import { flushGroups, groupAttempts, ungroupAttempts } from "./train-sync.js";
+import { flushGroups, groupAttempts, ungroupAttempts } from "./sync-queue.js";
 
 beforeEach(() => { vi.stubGlobal("indexedDB", new IDBFactory()); });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

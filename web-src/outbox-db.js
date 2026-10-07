@@ -1,4 +1,4 @@
-import { mergeOutboxState } from "./sync-outbox.js";
+import { mergeOutboxState } from "./sync-queue.js";
 
 export const OUTBOX_DATABASE = "prepforge-sync-outbox";
 const STORE = "owners";

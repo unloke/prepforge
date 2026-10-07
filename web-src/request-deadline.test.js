@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { withRequestDeadline } from "./request-deadline.js";
+import { withRequestDeadline } from "./sync-queue.js";
 afterEach(() => vi.useRealTimers());
 it("bounds a stalled write and marks its result unconfirmed", async () => {
   vi.useFakeTimers();
