@@ -100,12 +100,12 @@ async function runViewport(vp) {
   page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
   const check = (ok, label) => { if (!ok) failures.push(`${vp.name}: ${label}`); };
 
-  // Scout source: external-only selection ("__none__" linked marker + the
-  // external username), matching the prototype's "Add a Lichess username" flow.
+  // Scout source: external-only selection, matching the "Add a Lichess username" flow.
   await page.addInitScript(() => {
     try {
-      localStorage.setItem("prepforge.scout_source", JSON.stringify(["__none__"]));
-      localStorage.setItem("prepforge.scout_external", JSON.stringify(["scouttarget"]));
+      localStorage.setItem("prepforge.scout_source", JSON.stringify({
+        linkedMode: "none", accountIds: [], external: ["scouttarget"],
+      }));
     } catch { /* private mode */ }
   });
   // Lichess PGN stream (production scout endpoint shape) + explorer pool.
