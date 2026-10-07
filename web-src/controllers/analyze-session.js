@@ -1432,6 +1432,9 @@ async function analysisTreeNav(kind) {
   else if (kind === "end") {
     while (node.children && node.children[0]) node = node.children[0];
   }
+  // Boundary navigation must not redraw the board or rerun the coach, which
+  // clears the engine arrow even though the widget's FEN has not changed.
+  if (node.id === appState.analysisCurrentNodeId) return;
   await selectAnalysisNode(node.id);
 }
 

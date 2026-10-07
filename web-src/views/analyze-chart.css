@@ -265,6 +265,8 @@
   letter-spacing: -0.01em;
 }
 .eval-now:empty { display: none; }
+/* The previous position's number, held while the engine warms up on this one. */
+.eval-now[data-pending="true"] { opacity: 0.5; }
 .eval-now::before {
   content: "";
   flex: none;
@@ -777,8 +779,9 @@
 
 @media (max-width: 760px) {
   /* Phone: under the pinned board the panel is one scroller. With a game on the
-     board it reads: the move strip (sticky, the current move centred), the coach
-     on that move, the eval graph and the per-side bars; the game title and its
+     board it reads: the evaluation (sticky: eval, graph and engine line keep
+     their place while the coach's text grows and shrinks under them), the coach
+     on that move, the move strip and the per-side bars; the game title and its
      actions, then the drawers, come last. With no game yet the title and actions
      lead. */
   #analyze-sidebar {
@@ -815,18 +818,27 @@
   #analyze-actions { flex: 1 1 100%; flex-wrap: nowrap; gap: 8px; }
   #analyze-actions .btn { flex: 1; min-height: 40px; }
   #analyze-sidebar .drawer { order: 5; }
+  .analyze-main > #analysis-eval-card { order: 0; }
   .analyze-main > #analysis-explain { order: 1; }
-  .analyze-main > #analysis-eval-card { order: 2; }
-  #analysis-results > .moves-grid { order: 0; }
-  .moves-grid {
+  #analysis-results > .moves-grid { order: 2; }
+  #analyze-sidebar:has(#analysis-results:not([hidden])) #analysis-eval-card {
     position: sticky;
     top: 0;
     z-index: 3;
+    margin: 0 -12px;
+    padding: 6px 12px 8px;
+    row-gap: 6px;
+    border-width: 0 0 1px;
+    border-radius: 0;
+    box-shadow: 0 6px 10px -8px rgba(0, 0, 0, 0.5);
+  }
+  #analysis-eval-card .eval-chart { height: 44px; }
+  .moves-grid {
     max-height: none;
     margin: 0 -12px;
     overflow-x: auto;
     overflow-y: hidden;
-    border-width: 0 0 1px;
+    border-width: 1px 0;
     border-radius: 0;
     background: var(--panel);
     scrollbar-width: none;
@@ -858,7 +870,9 @@
     white-space: nowrap;
   }
   .moves-grid .mtree-var .mtree-move { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; }
-  .coach-card { height: auto; min-height: 0; padding: 10px 12px; }
+  /* Room for the head, two lines of prose and the Humans row, so stepping
+     through quiet moves doesn't make the panel jump. */
+  .coach-card { height: auto; min-height: 112px; padding: 10px 12px; }
   .coach-card .cc-head { min-height: 0; }
   .explain-review { margin-left: auto; }
   .drawer summary { min-height: 44px; }

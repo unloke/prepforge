@@ -1500,8 +1500,12 @@ class EngineWidget {
     if (this.depthReadout) this.depthReadout.textContent = "0 / ?";
     if (this.evalBarText) this.evalBarText.textContent = "...";
     if (this.evalHead) {
-      this.evalHead.textContent = "...";
-      delete this.evalHead.dataset.side;
+      // Analyze keeps the last live number while the next position warms up.
+      if (activeViewName() !== "analyze") {
+        this.evalHead.textContent = "...";
+        delete this.evalHead.dataset.side;
+      }
+      this.evalHead.dataset.pending = "true";
     }
   }
 
@@ -1547,6 +1551,7 @@ class EngineWidget {
     if (this.evalHead) {
       this.evalHead.textContent = over.result;
       this.evalHead.dataset.side = over.winner || "even";
+      delete this.evalHead.dataset.pending;
     }
     return true;
   }
@@ -1786,6 +1791,8 @@ class EngineWidget {
   }
 
   _renderEvalBar(topPv) {
+    // A scoreless MultiPV placeholder is still warming up.
+    if (activeViewName() === "analyze" && topPv.score_cp == null && topPv.mate_in == null) return;
     // White-perspective win chance from cp / mate.
     let wc;
     if (topPv.mate_in !== null && topPv.mate_in !== undefined) {
@@ -1810,6 +1817,7 @@ class EngineWidget {
     if (this.evalHead) {
       this.evalHead.textContent = evalStr;
       this.evalHead.dataset.side = wc > 0.52 ? "white" : wc < 0.48 ? "black" : "even";
+      delete this.evalHead.dataset.pending;
     }
   }
 
