@@ -145,6 +145,13 @@ async function runViewport(vp) {
       session_id: "s1", mode: "smart", mixed: true, fresh: true, resumed: false,
       repertoire_id: "rep-1", repertoire_name: "Caro-Kann: Advance", color: "black",
       card_index: 0, total_cards: 4,
+      requeue_gap: 3,
+      card_kinds: [
+        { key: "weak", label: "Weak spot", title: "Missed more than answered" },
+        { key: "due", label: "Due review", title: "Spaced repetition says now" },
+        { key: "new", label: "New move", title: "Shown once, then tested" },
+        { key: "polish", label: "Polish", title: "Kept warm with an occasional rep" },
+      ],
       counts: { weak: 1, due: 1, new: 1, polish: 1 },
       health: { trainable: 4, mastered: 0, weak: 1, due: 1, learning: 0, untrained: 2, mastery_pct: 0 },
       cards: CARDS,
