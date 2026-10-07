@@ -452,26 +452,6 @@ h2 {
   stroke-linejoin: round;
 }
 
-.nav-badge {
-  position: absolute;
-  top: 3px;
-  left: 25px;
-  padding: 0 4px;
-  line-height: 14px;
-  font-size: 9.5px;
-  font-weight: 700;
-  border-radius: 9px;
-}
-
-.rail:not(.is-nav-collapsed):hover .nav-badge,
-.rail:has(:focus-visible) .nav-badge {
-  position: static;
-  margin-left: auto;
-  padding: 0 6px;
-  line-height: 17px;
-  font-size: 10.5px;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .rail,
   .rail * {
@@ -766,19 +746,6 @@ h2 {
   margin: 4px 0 8px;
   font-size: 12px;
   color: var(--muted);
-}
-
-/* Replay tab: the Games review (see "Games — Opus prototype composition")
-   and the Scout workspace share this view. */
-
-.list-view,
-.replay-layout,
-.replay-stack {
-  max-width: 920px;
-  margin: 0 auto;
-  display: grid;
-  gap: 16px;
-  align-items: start;
 }
 
 .src-chip.is-self { padding-right: 9px; }
@@ -1705,60 +1672,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .color-dot.black { background: #222; border-color: #222; }
 :root[data-theme="dark"] .color-dot.black { border-color: #777; }
 
-/* Preview pane */
-.lib .lib-preview {
-  position: sticky;
-  top: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-}
-.lib .lib-preview[hidden] { display: none; }
-.pv-head { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
-.pv-head .color-dot { margin-top: 4px; }
-.pv-title { min-width: 0; }
-.pv-title h2 {
-  overflow: hidden;
-  font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pv-sub { color: var(--label); font-size: var(--fs-s); }
-.pv-board { aspect-ratio: 1; width: 100%; }
-.pv-board .scout-miniboard { height: 100%; }
-.pv-board-empty {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1;
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius);
-  font-size: var(--fs-s);
-}
-.pv-mix {
-  display: flex;
-  gap: 1px;
-  height: 8px;
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--line-soft);
-}
-.pv-mix i { display: block; min-width: 2px; }
-.pv-mix-empty { align-self: center; font-size: var(--fs-xs); }
-.pv-mix i.k-mastered { background: var(--k-mastered); }
-.pv-mix i.k-learning { background: var(--k-learning); }
-.pv-mix i.k-due { background: var(--k-due); }
-.pv-mix i.k-weak { background: var(--k-weak); }
-.pv-mix i.k-new { background: var(--k-new); }
-/* The preview column is a fixed track (340px, 290px at ≤1279px) and the
-   action labels never wrap, so the row itself wraps when the labels are wider
-   than the track (e.g. wider fallback fonts): the primary action keeps the
-   first line and the secondary actions move under it. */
-.pv-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-.pv-actions .btn { padding: 0 10px; white-space: nowrap; }
-.pv-actions .btn.primary { flex: 1; }
-.btn.icon-only { min-width: var(--control-h); padding: 0 8px; font-size: 16px; line-height: 1; }
-
 /* Next steps */
 .step {
   display: grid;
@@ -1843,7 +1756,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .today > .btn { grid-column: 1 / -1; height: 44px; }
   .today-streak { padding-right: 0; border-right: 0; }
   .today-body { grid-column: 1 / -1; }
-  .lib .lib-preview { display: none; }
   .search-field { width: 100%; margin-left: 0; }
   .lib .card-head .seg { max-width: 100%; overflow-x: auto; }
   .lib-cols { display: none; }
@@ -1869,11 +1781,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   gap: 10px;
   margin-bottom: 10px;
   color: var(--text);
-}
-
-.list-stack {
-  display: grid;
-  gap: 6px;
 }
 
 .empty-state {
@@ -4816,10 +4723,6 @@ body.is-guest .replay-results:empty::before {
 
 .job-toast.state-cancelled .job-toast-fill {
   background: var(--muted);
-}
-
-.job-toast.state-cancelled .job-toast-controls {
-  display: none;
 }
 
 /* ---- Info variant: a notification card with action buttons ------------ */

@@ -101,52 +101,6 @@
 }
 .scout-engine-progress progress { width: 72px; height: 4px; accent-color: var(--accent); }
 .scout-engine-progress[hidden] { display: none; }
-.scout-progress-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 4px;
-  font-size: var(--fs-s);
-}
-.scout-progress-count { font-variant-numeric: tabular-nums; }
-.scout-progress-track { height: 5px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
-.scout-progress-fill {
-  position: relative;
-  height: 100%;
-  border-radius: 3px;
-  background: var(--accent);
-  transition: width 0.3s ease;
-  overflow: hidden;
-}
-/* A travelling highlight so a stalled % still reads as "working", not "frozen". */
-.scout-progress-fill::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-  transform: translateX(-100%);
-  animation: scout-progress-shimmer 2s ease-in-out infinite;
-}
-/* Indeterminate (total unknown): a fixed 40% bar that sweeps the track. */
-.scout-engine-progress.is-indeterminate .scout-progress-fill {
-  transition: none;
-  animation: scout-progress-sweep 1.4s ease-in-out infinite;
-}
-@keyframes scout-progress-shimmer { to { transform: translateX(100%); } }
-@keyframes scout-progress-sweep {
-  0% { margin-left: -40%; }
-  100% { margin-left: 100%; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .scout-progress-fill { transition: none; }
-  .scout-progress-fill::after { animation: none; }
-  .scout-engine-progress.is-indeterminate .scout-progress-fill {
-    animation: none;
-    width: 100% !important;
-    margin-left: 0;
-  }
-}
 
 /* ---- Colour tabs ---- */
 .scout-color-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
@@ -475,12 +429,8 @@
 .scout-columns { display: flex; align-items: flex-end; gap: 2px; width: 100%; height: 100%; padding: 0 2px; }
 .scout-columns i { flex: 1; min-width: 0; border-radius: 2px 2px 0 0; background: var(--muted); opacity: 0.8; }
 .scout-engine-panel { width: 100%; }
-.scout-spark-row { display: flex; flex-direction: column; gap: 2px; width: 100%; }
-.scout-spark-label { color: var(--label); font-size: 10.5px; }
-.scout-spark-box { display: flex; width: 100%; }
 .scout-sparkline { display: block; width: 100%; height: 26px; color: var(--accent); }
 .scout-sparkline polyline { vector-effect: non-scaling-stroke; }
-.scout-activity-spark { color: var(--muted); }
 
 /* ---- Line-detail card (side) ---- */
 .scout-side .eyebrow { color: var(--label); font-size: var(--fs-xs); font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; }
