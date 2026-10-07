@@ -156,17 +156,17 @@ describe("I'm Feeling Lucky entry", () => {
 
   it("wires the app entry to the dynamic selector and Explorer fallback", async () => {
     const fs = await import("node:fs");
-    const app = fs.readFileSync(new URL("./app.js", import.meta.url), "utf8");
+    const app = fs.readFileSync(new URL("./controllers/train-session.js", import.meta.url), "utf8");
     const entry = app.slice(app.indexOf("async function onFeelingLucky"));
     expect(entry).toMatch(/preferDynamic:\s*true/);
     expect(entry).not.toMatch(/preferCurated:\s*true/);
-    expect(entry).toMatch(/ensureExplorer:\s*ensurePlayExplorer/);
+    expect(entry).toMatch(/ensureExplorer:\s*ensureExplorerClient/);
     expect(entry).toMatch(/luckyBusy/);
   });
 
   it("gates the app entry on sign-in before sampling", async () => {
     const fs = await import("node:fs");
-    const app = fs.readFileSync(new URL("./app.js", import.meta.url), "utf8");
+    const app = fs.readFileSync(new URL("./controllers/train-session.js", import.meta.url), "utf8");
     const entry = app.slice(app.indexOf("async function onFeelingLucky"));
     expect(entry).toMatch(/accountUsername/);
     expect(entry).toMatch(/openAuthModal/);
