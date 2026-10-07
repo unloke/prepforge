@@ -3,13 +3,13 @@ from prepforge_chess.services.browser_compute import classify_precomputed_game
 from prepforge_chess.services.analysis_report import AnalysisReportBuilder
 from prepforge_chess.services.pgn_import import PgnImportService
 from prepforge_chess.storage.database import apply_schema, connect_database
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 
 def _analysis_result():
     connection = connect_database()
     apply_schema(connection)
-    repository = PrepForgeRepository(connection)
+    repository = WorkspaceRepository(connection)
     import_result = PgnImportService(repository).import_text(
         """
 [Event "Report"]

@@ -39,7 +39,7 @@ from prepforge_chess.services.lichess_oauth import (
     generate_code_verifier,
     generate_state,
 )
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 # Per-owner key for the "you just finished a game" watcher's de-dup marker.
 _LAST_SEEN_KEY = "lichess.last_seen_game_id"
@@ -450,7 +450,7 @@ def _run_compare(
     user: User,
     owner: str,
     db: Session,
-    repo: PrepForgeRepository,
+    repo: WorkspaceRepository,
     account_id: str | None = None,
     account_ids: list[str] | None = None,
     usernames: list[str] | None = None,
@@ -571,7 +571,7 @@ def compare(
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
     db: Session = Depends(get_db),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict:
     ids = [a for a in (account_ids or "").split(",") if a] or None
     names = [u for u in (usernames or "").split(",") if u.strip()] or None
@@ -593,7 +593,7 @@ def compare_post(
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
     db: Session = Depends(get_db),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict:
     """Shared Source Composer fetch: resolved linked ids + arbitrary external
     Lichess usernames, compared owner-scoped against the caller's repertoires."""
@@ -612,7 +612,7 @@ def latest(
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
     db: Session = Depends(get_db),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict:
     """The newest game across the caller's linked Lichess identities.
 
@@ -686,7 +686,7 @@ class MarkSeenBody(BaseModel):
 def mark_seen(
     body: MarkSeenBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict:
     """Record the latest game this owner has acknowledged, so the watcher stops
     re-surfacing it as new."""

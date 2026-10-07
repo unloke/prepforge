@@ -10,7 +10,7 @@ from prepforge_chess.services.opening_builder import CreateRepertoireRequest, Op
 from prepforge_chess.services.workspace_view import build_workspace_payload
 from prepforge_chess.storage import sa_tables
 from prepforge_chess.storage.database import apply_schema, connect_database
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 
 def count_statements(engine, operation):
@@ -30,7 +30,7 @@ def count_statements(engine, operation):
 def test_build_mutations_have_constant_statement_counts():
     engine = connect_database()
     apply_schema(engine)
-    repo = PrepForgeRepository(engine)
+    repo = WorkspaceRepository(engine)
     builder = OpeningBuilderService(repo)
     rep = builder.create_repertoire(CreateRepertoireRequest("SQL counts", Color.WHITE))
     root = rep.root_node
@@ -94,7 +94,7 @@ def test_list_repertoires_statement_count_is_constant():
     statements regardless of repertoire count), same assertions."""
     engine = connect_database()
     apply_schema(engine)
-    repo = PrepForgeRepository(engine)
+    repo = WorkspaceRepository(engine)
     builder = OpeningBuilderService(repo)
 
     count_one, count_many, listed_one, listed_many = _list_statement_profile(
@@ -127,8 +127,8 @@ def test_list_repertoires_statement_count_postgres():
     if not url:
         pytest.skip("TEST_POSTGRES_URL is not configured")
     engine = create_engine(_psycopg3_url(url), future=True)
-    sa_tables.metadata.create_all(engine, tables=list(sa_tables.DOMAIN_TABLES))
-    repo = PrepForgeRepository(engine)
+    sa_tables.metadata.create_all(engine)
+    repo = WorkspaceRepository(engine)
     builder = OpeningBuilderService(repo)
 
     count_one, count_many, listed_one, listed_many = _list_statement_profile(

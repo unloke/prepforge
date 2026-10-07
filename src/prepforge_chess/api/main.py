@@ -38,7 +38,7 @@ from prepforge_chess.api.routers import (
 )
 from prepforge_chess.api.routers import settings as settings_router
 from prepforge_chess.api.static import register_static
-from prepforge_chess.storage.repositories import RevisionConflict
+from prepforge_chess.storage.repositories.repertoires import RevisionConflict
 
 
 @asynccontextmanager

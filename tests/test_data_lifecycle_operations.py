@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 
 from sqlalchemy import event, insert, select, update
 
@@ -19,7 +20,7 @@ def test_cleanup_retains_old_receipts_and_replays_stay_exactly_once():
     attempt = {"node_id": node, "correct": True, "attempt_uuid": "old-replay"}
     assert service.sync_progress(session.id, [attempt], owner_user_id="owner") == 1
     with repo.engine.begin() as conn:
-        conn.execute(update(t.train_attempt_receipts).values(created_at="2025-01-01T00:00:00+00:00"))
+        conn.execute(update(t.train_attempt_receipts).values(created_at=datetime(2025, 1, 1, tzinfo=timezone.utc)))
     report = reclaim_orphans(repo, dry_run=False)
     assert report["before"]["expired_receipts"] == 1
     assert report["before"]["retention"]["receipt_cleanup_enabled"] is False
@@ -50,7 +51,7 @@ def test_cleanup_deletes_are_set_based_and_keep_latest_ties():
     with repo.engine.begin() as conn:
         conn.execute(insert(t.positions), [{"fen": f"unused-{i}"} for i in range(2000)])
         conn.execute(insert(t.analysis_results), [
-            {"id": f"analysis-{i:04}", "game_id": "game", "analyzed_at": "2026-01-01",
+            {"id": f"analysis-{i:04}", "game_id": "game", "analyzed_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
              "engine": "mock", "summary_json": "{}", "critical_ply": ""} for i in range(20)
         ])
     statements = []

@@ -1,5 +1,6 @@
 """Security baseline: headers, CSRF double-submit, rate limiting."""
 from __future__ import annotations
+from prepforge_chess.storage import sa_tables
 
 from fastapi.testclient import TestClient
 
@@ -33,7 +34,7 @@ def test_hsts_in_production(tmp_path, monkeypatch):
     config.get_settings.cache_clear()
     db._engine = None
     db._SessionLocal = None
-    db.Base.metadata.create_all(db.make_engine())
+    sa_tables.metadata.create_all(db.make_engine())
 
     prod_app = main.create_app()
     r = TestClient(prod_app).get("/healthz")

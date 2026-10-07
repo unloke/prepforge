@@ -35,7 +35,7 @@ from prepforge_chess.services.training_view import (
     training_line_to_json,
     walk_opening_nodes,
 )
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 router = APIRouter(prefix="/api/train", tags=["train"])
 
@@ -54,7 +54,7 @@ def _mode_or_400(raw: str | None) -> TrainingMode:
 
 
 def _owned_session(
-    repo: PrepForgeRepository, session_id: str, owner: str
+    repo: WorkspaceRepository, session_id: str, owner: str
 ) -> TrainingSession:
     """Owner gate for session-keyed endpoints. Resolves the session to its repertoire
     and 404s when that repertoire belongs to a different user."""
@@ -82,7 +82,7 @@ class StartBody(BaseModel):
 def start(
     body: StartBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Begin (or resume) a trainer session over the owner's repertoire and return the
     first prompt plus the shuffled line plan."""
@@ -131,7 +131,7 @@ class RecordMissBody(BaseModel):
 def record_miss(
     body: RecordMissBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Record a single recall miss on a repertoire node — the Analyze board's
     "you left your prep here" action: one spaced-repetition miss, due
@@ -195,7 +195,7 @@ def _clamp(value: int | None, low: int, high: int) -> int | None:
 
 
 def _touch_streak(
-    repo: PrepForgeRepository, owner: str, local_date: str | None
+    repo: WorkspaceRepository, owner: str, local_date: str | None
 ) -> dict[str, Any]:
     """Mark "trained today" on the owner's daily streak and return the view the
     client renders. Called from the graded move endpoints — submitting any move
@@ -213,7 +213,7 @@ def _touch_streak(
 
 
 def _smart_summary_payload(
-    repo: PrepForgeRepository, repertoire: Repertoire, owner: str
+    repo: WorkspaceRepository, repertoire: Repertoire, owner: str
 ) -> dict[str, Any]:
     """Repertoire health + tomorrow's due forecast — the smart session's
     bookends. Shipped with ``/smart/start`` (the before snapshot) and from
@@ -235,7 +235,7 @@ def _smart_summary_payload(
 
 
 def _mixed_summary_payload(
-    repo: PrepForgeRepository, reps: list[Repertoire], owner: str
+    repo: WorkspaceRepository, reps: list[Repertoire], owner: str
 ) -> dict[str, Any]:
     """The mixed-session bookend: per-repertoire health summed into one view
     (mastery_pct recomputed over the combined trainable count)."""
@@ -257,7 +257,7 @@ def _mixed_summary_payload(
 def smart_start(
     body: SmartStartBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Begin (or resume) a card-queue session and return the queue composition
     plus the first card prompt. ``mixed=True`` builds one interleaved queue
@@ -343,7 +343,7 @@ def smart_summary(
     mixed: bool = False,
     local_date: str | None = None,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Fresh health + tomorrow's due forecast for the end-of-session screen.
     ``mixed=true`` aggregates over all the caller's active repertoires.
@@ -378,7 +378,7 @@ def smart_summary(
 def smart_move(
     body: SmartMoveBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Grade the player's move against the current card. Only ``attempt`` 1
     writes spaced-repetition progress; a second wrong attempt re-queues the
@@ -446,7 +446,7 @@ class SmartSyncBody(BaseModel):
 def smart_sync(
     body: SmartSyncBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Persist a batch of locally graded attempts plus the session position —
     the local-first Train flush (replaces per-move ``/smart/move`` calls).
@@ -485,7 +485,7 @@ def smart_sync(
 def smart_skip(
     body: SessionBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Skip the current card; return the next prompt (or ``None`` at the end)."""
     _owned_session(repo, body.session_id, owner)
@@ -497,7 +497,7 @@ def smart_skip(
 def skip(
     body: SessionBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Skip the current line; return the next prompt (or ``None`` at the end)."""
     _owned_session(repo, body.session_id, owner)
@@ -509,7 +509,7 @@ def skip(
 def hint(
     body: SessionBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Reveal the expected move for the current prompt, plus a short strategic nudge
     (the node's stored idea/plan/comment, else a piece-type heuristic)."""
@@ -566,7 +566,7 @@ class MoveBody(BaseModel):
 def move(
     body: MoveBody,
     owner: str = Depends(current_owner),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Submit the player's move; grade it against the repertoire, persist progress, and
     return the result with the opponent's reply so the UI can animate both plies."""

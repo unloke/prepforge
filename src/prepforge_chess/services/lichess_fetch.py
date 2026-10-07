@@ -24,7 +24,7 @@ from prepforge_chess.services.repertoire_matching import (
     match_game_against_repertoires,
 )
 from prepforge_chess.services.training import update_spaced_repetition
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
 
 
 LICHESS_USER_PGN_URL = "https://lichess.org/api/games/user/{username}"
@@ -493,7 +493,7 @@ def determine_user_color(white: Optional[str], black: Optional[str], username: s
 
 
 def compare_recent_games(
-    repository: PrepForgeRepository,
+    repository: RepertoireRepository,
     username: str,
     count: int,
     *,
@@ -539,7 +539,7 @@ def _summarize_fetched(entry, username, core, active_repertoires):
 
 
 def compare_many_identities(
-    repository: PrepForgeRepository,
+    repository: RepertoireRepository,
     usernames: list,
     count: int,
     *,
@@ -631,7 +631,7 @@ _DEPARTURE_INGESTED_CAP = 300
 
 
 def record_departure_misses(
-    repository: PrepForgeRepository,
+    repository: RepertoireRepository,
     summaries: List[GameMatchSummary],
     *,
     owner_user_id: Optional[str] = None,

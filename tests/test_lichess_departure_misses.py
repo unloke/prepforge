@@ -22,13 +22,13 @@ from prepforge_chess.services.opening_builder import (
     OpeningBuilderService,
 )
 from prepforge_chess.storage.database import apply_schema, connect_database
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 
 def _repository():
     connection = connect_database()
     apply_schema(connection)
-    return PrepForgeRepository(connection)
+    return WorkspaceRepository(connection)
 
 
 def _repertoire_with_target(repository):
@@ -144,7 +144,7 @@ def test_record_departure_misses_failure_rolls_back_and_retry_counts_once():
         raise RuntimeError("simulated crash before the ledger write")
 
     with pytest.raises(RuntimeError, match="simulated crash"):
-        with unittest.mock.patch.object(PrepForgeRepository, "write_user_setting", boom):
+        with unittest.mock.patch.object(WorkspaceRepository, "write_user_setting", boom):
             record_departure_misses(
                 repository,
                 [_summary("gameC", repertoire.id, node_id)],
@@ -226,18 +226,18 @@ def test_interleaved_compare_batches_never_double_count(tmp_path):
     snapshot-then-write flow deducted them a second time."""
     engine = connect_database(tmp_path / "interleave.sqlite3")
     apply_schema(engine)
-    repository = PrepForgeRepository(engine)
+    repository = WorkspaceRepository(engine)
     repertoire, node_id = _repertoire_with_target(repository)
     owner = "miss-interleave-owner"
 
     raced = {"done": False}
-    original_get = PrepForgeRepository.get_user_setting
-    original_lock = PrepForgeRepository.lock_user_setting
+    original_get = WorkspaceRepository.get_user_setting
+    original_lock = WorkspaceRepository.lock_user_setting
 
     def racing_batch():
         raced["done"] = True
         return record_departure_misses(
-            PrepForgeRepository(engine),
+            WorkspaceRepository(engine),
             [
                 _summary("int1", repertoire.id, node_id),
                 _summary("int2", repertoire.id, node_id),
@@ -264,9 +264,9 @@ def test_interleaved_compare_batches_never_double_count(tmp_path):
     import unittest.mock
 
     with unittest.mock.patch.object(
-        PrepForgeRepository, "get_user_setting", snapshot_then_race
+        WorkspaceRepository, "get_user_setting", snapshot_then_race
     ), unittest.mock.patch.object(
-        PrepForgeRepository, "lock_user_setting", race_then_lock
+        WorkspaceRepository, "lock_user_setting", race_then_lock
     ):
         main_recorded = record_departure_misses(
             repository,
@@ -318,7 +318,7 @@ def test_postgres_concurrent_record_departure_misses_count_once():
     engine = sa.create_engine(url, connect_args={"options": "-c search_path=" + schema})
     try:
         sa_tables.metadata.create_all(engine)
-        repo = PrepForgeRepository(engine)
+        repo = WorkspaceRepository(engine)
         repertoire, node_id = _repertoire_with_target(repo)
         owner = "postgres-miss-owner"
         racers = 8
@@ -327,7 +327,7 @@ def test_postgres_concurrent_record_departure_misses_count_once():
         def run():
             barrier.wait(timeout=10)
             return record_departure_misses(
-                PrepForgeRepository(engine),
+                WorkspaceRepository(engine),
                 [
                     _summary("pgA", repertoire.id, node_id),
                     _summary("pgB", repertoire.id, node_id),
@@ -366,7 +366,7 @@ def test_unverified_or_wrong_perspective_fails_before_any_db_write(source, verif
     summary = _summary("external", "rep", "node")
     summary.source_account = source
     summary.user_color = color
-    repository = unittest.mock.Mock(spec=PrepForgeRepository)
+    repository = unittest.mock.Mock(spec=WorkspaceRepository)
     assert record_departure_misses(
         repository, [summary], owner_user_id="owner", verified_usernames=verified,
     ) == 0
@@ -384,7 +384,7 @@ def test_mixed_failure_retry_only_ingests_verified_game():
     external.user_color = "black"
     kwargs = {"owner_user_id": owner, "verified_usernames": frozenset({"Alice"})}
     with unittest.mock.patch.object(
-        PrepForgeRepository, "write_user_setting", side_effect=RuntimeError("ledger failed")
+        WorkspaceRepository, "write_user_setting", side_effect=RuntimeError("ledger failed")
     ), pytest.raises(RuntimeError, match="ledger failed"):
         record_departure_misses(repository, [external, own], **kwargs)
     assert repository.load_training_progress(repertoire.id, node_id, owner_user_id=owner) is None

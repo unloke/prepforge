@@ -22,7 +22,7 @@ from prepforge_chess.core.models import (
     OpeningNode,
     Repertoire,
 )
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
 
 
 MAINLINE_THRESHOLD = 0.10
@@ -183,7 +183,7 @@ def _validate_plan_source(value) -> MoveSource:
 class OpeningBuilderService:
     def __init__(
         self,
-        repository: PrepForgeRepository,
+        repository: RepertoireRepository,
         chess_core: Optional[ChessCore] = None,
     ):
         self.repository = repository

@@ -1,0 +1,200 @@
+[
+  {
+    "operation": "load_repertoire",
+    "size": 50,
+    "ms": 2.4,
+    "queries": 2
+  },
+  {
+    "operation": "workspace_after_move",
+    "size": 50,
+    "ms": 1.02,
+    "queries": 3
+  },
+  {
+    "operation": "list_health_due",
+    "size": 50,
+    "ms": 2.4,
+    "queries": 3
+  },
+  {
+    "operation": "dashboard_api",
+    "size": 50,
+    "ms": 4.95,
+    "queries": 12
+  },
+  {
+    "operation": "build_add_moves_api",
+    "size": 50,
+    "ms": 9.26,
+    "queries": 11
+  },
+  {
+    "operation": "build_delete_nodes_api",
+    "size": 50,
+    "ms": 8.4,
+    "queries": 13
+  },
+  {
+    "operation": "smart_start_api",
+    "size": 50,
+    "ms": 9.14,
+    "queries": 15
+  },
+  {
+    "operation": "smart_move_api",
+    "size": 50,
+    "ms": 7.98,
+    "queries": 13
+  },
+  {
+    "operation": "match_one_game",
+    "size": 50,
+    "ms": 1.86,
+    "queries": 0
+  },
+  {
+    "operation": "match_game_batch",
+    "size": 50,
+    "ms": 180.15,
+    "queries": 0
+  },
+  {
+    "operation": "departure_ingest_batch",
+    "size": 50,
+    "ms": 2.01,
+    "queries": 6
+  },
+  {
+    "operation": "load_repertoire",
+    "size": 500,
+    "ms": 22.31,
+    "queries": 2
+  },
+  {
+    "operation": "workspace_after_move",
+    "size": 500,
+    "ms": 3.39,
+    "queries": 3
+  },
+  {
+    "operation": "list_health_due",
+    "size": 500,
+    "ms": 4.44,
+    "queries": 3
+  },
+  {
+    "operation": "dashboard_api",
+    "size": 500,
+    "ms": 5.97,
+    "queries": 12
+  },
+  {
+    "operation": "build_add_moves_api",
+    "size": 500,
+    "ms": 37.94,
+    "queries": 11
+  },
+  {
+    "operation": "build_delete_nodes_api",
+    "size": 500,
+    "ms": 37.54,
+    "queries": 13
+  },
+  {
+    "operation": "smart_start_api",
+    "size": 500,
+    "ms": 32.69,
+    "queries": 15
+  },
+  {
+    "operation": "smart_move_api",
+    "size": 500,
+    "ms": 28.87,
+    "queries": 13
+  },
+  {
+    "operation": "match_one_game",
+    "size": 500,
+    "ms": 1.95,
+    "queries": 0
+  },
+  {
+    "operation": "match_game_batch",
+    "size": 500,
+    "ms": 189.99,
+    "queries": 0
+  },
+  {
+    "operation": "departure_ingest_batch",
+    "size": 500,
+    "ms": 2.2,
+    "queries": 6
+  },
+  {
+    "operation": "load_repertoire",
+    "size": 2000,
+    "ms": 88.92,
+    "queries": 2
+  },
+  {
+    "operation": "workspace_after_move",
+    "size": 2000,
+    "ms": 11.8,
+    "queries": 3
+  },
+  {
+    "operation": "list_health_due",
+    "size": 2000,
+    "ms": 12.87,
+    "queries": 3
+  },
+  {
+    "operation": "dashboard_api",
+    "size": 2000,
+    "ms": 10.87,
+    "queries": 12
+  },
+  {
+    "operation": "build_add_moves_api",
+    "size": 2000,
+    "ms": 140.71,
+    "queries": 11
+  },
+  {
+    "operation": "build_delete_nodes_api",
+    "size": 2000,
+    "ms": 143.41,
+    "queries": 13
+  },
+  {
+    "operation": "smart_start_api",
+    "size": 2000,
+    "ms": 107.99,
+    "queries": 15
+  },
+  {
+    "operation": "smart_move_api",
+    "size": 2000,
+    "ms": 98.71,
+    "queries": 13
+  },
+  {
+    "operation": "match_one_game",
+    "size": 2000,
+    "ms": 2.27,
+    "queries": 0
+  },
+  {
+    "operation": "match_game_batch",
+    "size": 2000,
+    "ms": 225.23,
+    "queries": 0
+  },
+  {
+    "operation": "departure_ingest_batch",
+    "size": 2000,
+    "ms": 2.01,
+    "queries": 6
+  }
+]

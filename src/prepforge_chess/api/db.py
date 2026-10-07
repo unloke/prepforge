@@ -1,6 +1,6 @@
 """SQLAlchemy engine/session wiring.
 
-One declarative ``Base`` for identity and domain tables. The engine is built
+One Core metadata for identity and domain tables. The engine is built
 from ``Settings.database_url`` so dev/test use SQLite and production uses
 Postgres with a connection pool.
 """
@@ -10,13 +10,10 @@ from collections.abc import Iterator
 from threading import Lock
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from prepforge_chess.api.config import Settings, get_settings
 
-
-class Base(DeclarativeBase):
-    """Declarative base for all ORM models in this package."""
 
 
 def make_engine(settings: Settings | None = None):

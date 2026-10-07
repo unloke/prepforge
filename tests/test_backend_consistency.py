@@ -13,7 +13,7 @@ from prepforge_chess.services.progress import compute_health
 from prepforge_chess.services.training import TrainingService
 from prepforge_chess.services.training_smart import SmartTrainingService
 from prepforge_chess.storage.database import apply_schema, connect_database
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 from prepforge_chess.storage import sa_tables as t
 from test_training_smart import _build, _mastered, _seed_progress
 
@@ -24,7 +24,7 @@ def repo(request, tmp_path):
         engine = connect_database(tmp_path / "regression.sqlite3")
         apply_schema(engine)
         try:
-            yield PrepForgeRepository(engine)
+            yield WorkspaceRepository(engine)
         finally:
             engine.dispose()
         return
@@ -39,7 +39,7 @@ def repo(request, tmp_path):
     engine = create_engine(url, connect_args={"options": "-c search_path=" + schema})
     try:
         t.metadata.create_all(engine)
-        yield PrepForgeRepository(engine)
+        yield WorkspaceRepository(engine)
     finally:
         engine.dispose()
         with admin.connect() as conn:
@@ -132,10 +132,11 @@ def test_concurrent_primary_changes_keep_one_account(repo):
     from threading import Barrier
     from sqlalchemy import select
     from sqlalchemy.orm import Session
-    from prepforge_chess.api.models import Base, LinkedAccount, User
+    from prepforge_chess.api.models import LinkedAccount, User
+    from prepforge_chess.storage.sa_tables import metadata
     from prepforge_chess.api.routers.lichess import SetPrimaryBody, set_primary
 
-    Base.metadata.create_all(repo.engine)
+    metadata.create_all(repo.engine)
     owner = uuid.uuid4().hex
     account_ids = [uuid.uuid4().hex for _ in range(2)]
     with Session(repo.engine) as db:
@@ -269,7 +270,7 @@ def test_concurrent_move_attempts_keep_every_score(repo, smart):
 
     def submit():
         barrier.wait(timeout=10)
-        cls(PrepForgeRepository(repo.engine), "t-owner").submit_move(session.id, "a1a2")
+        cls(WorkspaceRepository(repo.engine), "t-owner").submit_move(session.id, "a1a2")
 
     with ThreadPoolExecutor(max_workers=4) as pool:
         futures = [pool.submit(submit) for _ in range(4)]
@@ -291,7 +292,7 @@ def test_concurrent_sync_accepts_only_one_state_version(repo):
     barrier = Barrier(2)
 
     def sync(index):
-        local = SmartTrainingService(PrepForgeRepository(repo.engine), "t-owner")
+        local = SmartTrainingService(WorkspaceRepository(repo.engine), "t-owner")
         barrier.wait(timeout=10)
         written = local.sync_progress(session.id, [{"node_id": ids["e4"], "correct": True,
                                                   "attempt_uuid": f"racer-{index}"}],

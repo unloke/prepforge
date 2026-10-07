@@ -1,3 +1,4 @@
+from prepforge_chess.storage import sa_tables
 
 import json
 from prepforge_chess.api.ratelimit import limiter
@@ -71,7 +72,7 @@ lichess_fetch.fetch_explorer_json = fake_fetch
 
 from fastapi.testclient import TestClient
 from prepforge_chess.api import main
-db.Base.metadata.create_all(db.make_engine())
+sa_tables.metadata.create_all(db.make_engine())
 c = TestClient(main.app)
 c.get("/api/csrf")
 h = {"X-CSRF-Token": c.cookies["pf_csrf"]}

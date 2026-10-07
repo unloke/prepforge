@@ -13,7 +13,7 @@ from typing import Any, Dict, Iterator, Optional
 from prepforge_chess.core.models import EngineEvaluation, OpeningNode, Repertoire
 from prepforge_chess.services.opening_builder import OpeningBuilderService, OpeningTreeItem
 from prepforge_chess.services.progress import compute_health, mastery_map
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
 
 _EMPTY_SUMMARY = {"added_nodes": 0, "updated_nodes": 0, "high_probability_unprepared": 0}
 
@@ -73,7 +73,7 @@ def opening_item_to_json(
 
 
 def build_workspace_payload(
-    repository: PrepForgeRepository,
+    repository: RepertoireRepository,
     repertoire_id: str,
     *,
     selected_node_id: Optional[str] = None,

@@ -22,7 +22,7 @@ Everything is report-first: ``lifecycle_report`` counts only,
 ``reclaim_orphans(dry_run=True)`` reports what WOULD go, and only
 ``dry_run=False`` deletes. Deleting a user's own content (games, repertoires,
 progress) is a different cascade from reclaiming shared engine data — account
-deletion calls :func:`prepforge_chess.storage.repositories.PrepForgeRepository.delete_owner_data`
+deletion calls :func:`prepforge_chess.storage.repositories.workspace.WorkspaceRepository.delete_owner_data`
 and leaves shared snapshots for this module.
 """
 from __future__ import annotations
@@ -30,7 +30,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 # Proposed windows, not currently enforced by the server or SPA. Do not enable
 # receipt pruning until an authenticated replay epoch/horizon fences old clients.
@@ -43,13 +43,13 @@ assert RECEIPT_RETENTION_DAYS > OFFLINE_RETRY_DAYS  # noqa: S101 - contract guar
 
 
 def lifecycle_report(
-    repository: PrepForgeRepository,
+    repository: WorkspaceRepository,
     *,
     now: Optional[datetime] = None,
 ) -> Dict[str, Any]:
     """Count reclaimable rows without touching anything (the dry-run view)."""
     now = now or datetime.now(timezone.utc)
-    receipt_cutoff = (now - timedelta(days=RECEIPT_RETENTION_DAYS)).isoformat()
+    receipt_cutoff = now - timedelta(days=RECEIPT_RETENTION_DAYS)
     return {
         "orphan_evaluations": repository.count_orphan_evaluations(),
         "orphan_positions": repository.count_orphan_positions(),
@@ -66,7 +66,7 @@ def lifecycle_report(
 
 
 def reclaim_orphans(
-    repository: PrepForgeRepository,
+    repository: WorkspaceRepository,
     *,
     dry_run: bool = True,
     trim_analyses: bool = False,
@@ -119,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
     engine = make_engine()
     try:
         report = reclaim_orphans(
-            PrepForgeRepository(engine), dry_run=not args.apply, trim_analyses=args.trim_analyses
+            WorkspaceRepository(engine), dry_run=not args.apply, trim_analyses=args.trim_analyses
         )
         print(json.dumps(report, sort_keys=True))
     finally:

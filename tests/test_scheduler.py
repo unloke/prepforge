@@ -26,7 +26,7 @@ from prepforge_chess.services.scheduler import (
     encode_card,
 )
 from prepforge_chess.storage.database import apply_schema, connect_database
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 
 NOW = datetime(2026, 6, 11, 12, 0, 0, tzinfo=timezone.utc)
@@ -37,7 +37,7 @@ FUTURE = NOW + timedelta(days=5)
 def _repository():
     connection = connect_database()
     apply_schema(connection)
-    return PrepForgeRepository(connection)
+    return WorkspaceRepository(connection)
 
 
 def _build_tree():

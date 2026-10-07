@@ -15,15 +15,15 @@ from prepforge_chess.core.models import (
     utc_now,
 )
 from prepforge_chess.storage.database import connect_database, initialize_database
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 _LOADER = r"""
 import json, sys
 from prepforge_chess.storage.database import connect_database
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 db, game_id = sys.argv[1], sys.argv[2]
 engine = connect_database(db)
-repo = PrepForgeRepository(engine)
+repo = WorkspaceRepository(engine)
 game = repo.load_game(game_id)
 analysis = repo.load_latest_analysis_result(game_id)
 assert game is not None
@@ -72,7 +72,7 @@ def _build_game():
 def test_reload_from_fresh_engine(tmp_path):
     db = tmp_path / "reload.sqlite"
     engine = initialize_database(db)
-    repo = PrepForgeRepository(engine)
+    repo = WorkspaceRepository(engine)
     game = _build_game()
     repo.save_game(game)
     repo.save_analysis_result(
@@ -89,7 +89,7 @@ def test_reload_from_fresh_engine(tmp_path):
     engine.dispose()
 
     engine2 = connect_database(db)
-    repo2 = PrepForgeRepository(engine2)
+    repo2 = WorkspaceRepository(engine2)
     loaded = repo2.load_game(game.id)
     analysis = repo2.load_latest_analysis_result(game.id)
     assert loaded is not None
@@ -106,7 +106,7 @@ def test_reload_from_fresh_engine(tmp_path):
 def test_reload_from_new_process_twice(tmp_path):
     db = tmp_path / "reload-proc.sqlite"
     engine = initialize_database(db)
-    repo = PrepForgeRepository(engine)
+    repo = WorkspaceRepository(engine)
     game = _build_game()
     repo.save_game(game)
     repo.save_analysis_result(
@@ -151,7 +151,7 @@ def test_reload_preserves_pgn_tree_and_current_annotations(tmp_path):
     import chess.pgn
 
     engine = initialize_database(tmp_path / "pgn.sqlite")
-    repo = PrepForgeRepository(engine)
+    repo = WorkspaceRepository(engine)
     game = ChessCore().import_single_pgn(
         '[Result "*"]\n\n{Before the game} 1. e4 $1 {Original} '
         '(1. d4 {Branch} d5 (1... Nf6 $2)) e5 *'

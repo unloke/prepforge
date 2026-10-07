@@ -56,7 +56,7 @@ from prepforge_chess.services.scheduler import (
 )
 from prepforge_chess.services.training import record_attempt
 from prepforge_chess.services.training_view import heuristic_strategy, piece_name_at
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 # A re-queued card comes back after this many other cards — soon enough that
 # the position is still warm, far enough that it's recall rather than echo.
@@ -125,7 +125,7 @@ def _utc_now() -> datetime:
 
 
 class SmartTrainingService:
-    def __init__(self, repository: PrepForgeRepository, owner_user_id: str | None = None):
+    def __init__(self, repository: WorkspaceRepository, owner_user_id: str | None = None):
         self.repository = repository
         self.owner_user_id = owner_user_id
         self.resumed = False
@@ -704,18 +704,6 @@ class SmartTrainingService:
                 _index(card_rep)
 
         from prepforge_chess.storage import sa_tables as _t
-        from prepforge_chess.storage.repositories import (
-            _bool_to_int as _b2i,
-        )
-        from prepforge_chess.storage.repositories import (
-            _dt_to_text as _dt2t,
-        )
-        from prepforge_chess.storage.repositories import (
-            _now_text as _nowt,
-        )
-        from prepforge_chess.storage.repositories import (
-            _upsert as _upsert_rows,
-        )
         from sqlalchemy import select as _select
 
         with self.repository.engine.begin() as conn:
@@ -733,7 +721,6 @@ class SmartTrainingService:
                 rep_id = rep_of_node.get(node_id)
                 if rep_id is None:
                     continue
-                progress_id = self.repository._training_progress_id(session_owner, rep_id, node_id)
                 stored_row = conn.execute(
                     _select(
                         _t.train_attempt_receipts.c.node_id,
@@ -795,28 +782,8 @@ class SmartTrainingService:
                     node_id=node_id,
                     correct=correct,
                 )
-                _upsert_rows(
-                    conn,
-                    _t.training_progress,
-                    {
-                        "id": progress_id,
-                        "owner_user_id": session_owner,
-                        "repertoire_id": rep_id,
-                        "node_id": progress.node_id,
-                        "attempts": progress.attempts,
-                        "correct_attempts": progress.correct_attempts,
-                        "last_reviewed_at": _dt2t(progress.last_reviewed_at),
-                        "spaced_repetition_score": progress.spaced_repetition_score,
-                        "due_at": _dt2t(progress.due_at),
-                        "is_mastered": _b2i(progress.is_mastered),
-                        "created_at": _nowt(),
-                        "updated_at": _nowt(),
-                    },
-                    conflict=[_t.training_progress.c.id],
-                    update_cols=(
-                        "attempts", "correct_attempts", "last_reviewed_at",
-                        "spaced_repetition_score", "due_at", "is_mastered", "updated_at",
-                    ),
+                self.repository.write_training_progress(
+                    conn, repertoire_id=rep_id, progress=progress, owner_user_id=session_owner,
                 )
                 self.repository.write_training_session(conn, next_session)
                 session = next_session

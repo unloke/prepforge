@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Iterable, List, Optional
 
 import chess
@@ -249,7 +249,7 @@ class ChessCore:
             return None
         for fmt in ("%Y.%m.%d", "%Y-%m-%d"):
             try:
-                return datetime.strptime(value, fmt)
+                return datetime.strptime(value, fmt).replace(tzinfo=timezone.utc)
             except ValueError:
                 continue
         return None

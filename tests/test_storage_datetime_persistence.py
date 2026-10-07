@@ -1,64 +1,21 @@
-"""Characterization: canonical datetime persistence in the domain (Core) tables.
-
-Domain tables store datetimes as ISO-8601 TEXT (see storage/sa_tables.py). The
-dashboard's due-review queries compare those strings LEXICALLY
-(``due_at <= now_iso``), so the canonical on-disk format is load-bearing:
-
-* every persisted datetime must be timezone-aware UTC,
-* the text must round-trip through ``_dt_to_text`` / ``_dt_from_text`` unchanged,
-* a datetime written via a repo save must read back equal after the naive ->
-  aware coercion the loaders apply (SQLite hands back what we wrote),
-* strings written at different times must order correctly under lexical
-  comparison (that is what ``due_at <= now_iso`` relies on).
-
-These tests pin the current behavior; they are not a redesign.
-"""
-from __future__ import annotations
-
+"""UTC DateTime persistence and indexed range scans."""
 from datetime import datetime, timedelta, timezone
 
-from prepforge_chess.core.models import Color, TrainingProgress, utc_now
-from prepforge_chess.storage.database import initialize_database
-from prepforge_chess.storage.repositories import (
-    PrepForgeRepository,
-    _dt_from_text,
-    _dt_to_text,
-    _now_text,
-)
+import pytest
+from sqlalchemy import Column, MetaData, Table, select
+from sqlalchemy.exc import StatementError
+
+from prepforge_chess.core.models import Color, TrainingProgress
+from prepforge_chess.storage.database import initialize_database, connect_database
+from prepforge_chess.storage.datetime_type import UTCDateTime
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 
-def test_now_text_is_canonical_utc_iso():
-    """_now_text (created_at/updated_at) is timezone-aware UTC ISO-8601."""
-    text = _now_text()
-    parsed = datetime.fromisoformat(text)
-    assert parsed.tzinfo is not None
-    assert parsed.utcoffset() == timedelta(0)
-    # +00:00 suffix (isoformat of an aware UTC datetime), not a bare naive stamp.
-    assert text.endswith("+00:00")
-
-
-def test_dt_text_round_trip_preserves_instant():
-    naive = datetime(2026, 6, 11, 12, 0, 0)
-    aware = naive.replace(tzinfo=timezone.utc)
-    text = _dt_to_text(aware)
-    assert text == "2026-06-11T12:00:00+00:00"
-    back = _dt_from_text(text)
-    assert back == aware
-    assert back.tzinfo is not None
-
-
-def test_dt_to_text_none_stays_none():
-    assert _dt_to_text(None) is None
-    assert _dt_from_text(None) is None
-    assert _dt_from_text("") is None
-
-
-def test_training_progress_round_trips_canonical_text():
-    """last_reviewed_at / due_at survive a repo save + load as the same aware
-    UTC instants, and the stored TEXT is the canonical +00:00 ISO form."""
+def test_training_progress_round_trips_aware_datetimes():
+    """Progress saves and typed Core reads return aware UTC instants."""
     engine = initialize_database(":memory:")
-    repo = PrepForgeRepository(engine)
-    builder_repo = PrepForgeRepository(engine)
+    repo = WorkspaceRepository(engine)
+    builder_repo = WorkspaceRepository(engine)
     from prepforge_chess.core.models import OpeningNode, Repertoire
     from prepforge_chess.core.chess_core import STARTING_FEN
     import uuid
@@ -98,35 +55,46 @@ def test_training_progress_round_trips_canonical_text():
     assert loaded.last_reviewed_at.tzinfo is not None
     assert loaded.due_at == due
 
-    # The stored text is canonical: a raw read shows the +00:00 suffix, which is
-    # what makes the dashboard's lexical `due_at <= now_iso` comparisons valid.
     from prepforge_chess.storage import sa_tables as t
     from sqlalchemy import select
-
     with engine.connect() as conn:
-        row = conn.execute(
-            select(t.training_progress).where(
-                t.training_progress.c.node_id == "node-dt"
-            )
-        ).mappings().first()
-    assert row["due_at"].endswith("+00:00")
-    assert row["last_reviewed_at"].endswith("+00:00")
+        row = conn.execute(select(t.training_progress)).mappings().one()
+    assert row["due_at"] == due
+    assert row["last_reviewed_at"] == reviewed
+    assert row["updated_at"].utcoffset() == timedelta(0)
     engine.dispose()
 
 
-def test_lexical_ordering_matches_chronological_ordering():
-    """ISO-8601 UTC stamps from different days/hours compare identically as text
-    and as datetimes — the property the dashboard SQL depends on."""
-    stamps = [
-        datetime(2026, 6, 9, 23, 59, 59, tzinfo=timezone.utc),
-        datetime(2026, 6, 10, 0, 0, 0, tzinfo=timezone.utc),
-        datetime(2026, 6, 11, 12, 30, 0, tzinfo=timezone.utc),
-        utc_now(),
-    ]
-    texts = [_dt_to_text(s) for s in stamps]
-    assert texts == sorted(texts)
-    assert stamps == sorted(stamps)
-    # And the dashboard's predicate shape works on the text directly:
-    cutoff = _now_text()
-    past = [s for s, t in zip(stamps, texts) if t <= cutoff]
-    assert past == [s for s in stamps if s <= datetime.fromisoformat(cutoff)]
+def test_type_normalizes_offsets_preserves_microseconds_and_orders_ranges():
+    engine = connect_database()
+    table = Table("instants", MetaData(), Column("instant", UTCDateTime(), primary_key=True))
+    table.metadata.create_all(engine)
+    stamp = datetime(2026, 1, 2, 1, 0, 0, 123456, tzinfo=timezone(timedelta(hours=5)))
+    utc = stamp.astimezone(timezone.utc)
+    with engine.begin() as conn:
+        conn.execute(table.insert(), [{"instant": stamp}, {"instant": utc + timedelta(seconds=1)}])
+        assert conn.scalars(select(table.c.instant).where(table.c.instant <= utc)).all() == [utc]
+        loaded = conn.scalars(select(table.c.instant).order_by(table.c.instant)).all()
+    assert all(value.utcoffset() == timedelta(0) for value in loaded)
+    engine.dispose()
+
+
+@pytest.mark.parametrize("value", [datetime(2026, 1, 1), "2026-01-01T00:00:00Z"])
+def test_type_rejects_non_aware_inputs(value):
+    engine = connect_database()
+    table = Table("instants", MetaData(), Column("instant", UTCDateTime()))
+    table.metadata.create_all(engine)
+    with engine.begin() as conn, pytest.raises(StatementError):
+        conn.execute(table.insert().values(instant=value))
+    engine.dispose()
+
+
+def test_due_range_uses_due_index():
+    from prepforge_chess.storage import sa_tables as t
+    engine = initialize_database(":memory:")
+    query = select(t.training_progress.c.id).where(t.training_progress.c.due_at <= datetime.now(timezone.utc))
+    sql = str(query.compile(engine, compile_kwargs={"literal_binds": True}))
+    with engine.connect() as conn:
+        plan = " ".join(str(row) for row in conn.exec_driver_sql("EXPLAIN QUERY PLAN " + sql))
+    assert "SEARCH training_progress USING INDEX idx_training_progress_due (due_at<?)" in plan
+    engine.dispose()

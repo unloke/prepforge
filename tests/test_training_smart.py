@@ -16,7 +16,7 @@ from prepforge_chess.services.opening_builder import CreateRepertoireRequest, Op
 from prepforge_chess.services.scheduler import CARD_DUE, decode_card
 from prepforge_chess.services.training_smart import REQUEUE_GAP, SmartTrainingService
 from prepforge_chess.storage.database import apply_schema, connect_database
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 
 # start_or_resume schedules against the real clock, so due/mastered fixtures
@@ -28,7 +28,7 @@ PAST = NOW - timedelta(hours=2)
 def _repository():
     connection = connect_database()
     apply_schema(connection)
-    return PrepForgeRepository(connection)
+    return WorkspaceRepository(connection)
 
 
 def _build(repository):
@@ -669,7 +669,7 @@ def test_postgres_concurrent_attempt_receipt():
     engine = sa.create_engine(url, connect_args={"options": "-c search_path=" + schema})
     try:
         sa_tables.metadata.create_all(engine)
-        repo = PrepForgeRepository(engine)
+        repo = WorkspaceRepository(engine)
         repertoire, node_ids = _build(repo)
         owner = "postgres-concurrent-owner"
         _claim(repo, owner, repertoire)
@@ -681,7 +681,7 @@ def test_postgres_concurrent_attempt_receipt():
 
         def submit(payload):
             barrier.wait(timeout=10)
-            return SmartTrainingService(PrepForgeRepository(engine), owner).sync_progress(
+            return SmartTrainingService(WorkspaceRepository(engine), owner).sync_progress(
                 session.id, [payload], owner_user_id=owner
             )
 
@@ -732,7 +732,7 @@ def test_sync_read_modify_write_happens_inside_the_transaction(monkeypatch):
             "sync must not snapshot training progress outside its transaction"
         )
 
-    original_lock = PrepForgeRepository.lock_training_progress
+    original_lock = WorkspaceRepository.lock_training_progress
     locked = {"inside": False}
 
     def tracking_lock(self, conn, **kwargs):
@@ -740,8 +740,8 @@ def test_sync_read_modify_write_happens_inside_the_transaction(monkeypatch):
         locked["inside"] = True
         return original_lock(self, conn, **kwargs)
 
-    monkeypatch.setattr(PrepForgeRepository, "load_training_progress", fail_snapshot)
-    monkeypatch.setattr(PrepForgeRepository, "lock_training_progress", tracking_lock)
+    monkeypatch.setattr(WorkspaceRepository, "load_training_progress", fail_snapshot)
+    monkeypatch.setattr(WorkspaceRepository, "lock_training_progress", tracking_lock)
     written = service.sync_progress(
         session.id,
         [{"node_id": node_id, "correct": True, "attempt_uuid": "slow-uuid"}],
@@ -787,7 +787,7 @@ def test_postgres_interleaved_attempts_never_lose_an_update():
     engine = sa.create_engine(url, connect_args={"options": "-c search_path=" + schema})
     try:
         sa_tables.metadata.create_all(engine)
-        repo = PrepForgeRepository(engine)
+        repo = WorkspaceRepository(engine)
         repertoire, node_ids = _build(repo)
         owner = "postgres-interleave-owner"
         _claim(repo, owner, repertoire)
@@ -796,12 +796,12 @@ def test_postgres_interleaved_attempts_never_lose_an_update():
         node_id = node_ids["e4"]
 
         raced = {"done": False}
-        original_load = PrepForgeRepository.load_training_progress
-        original_lock = PrepForgeRepository.lock_training_session
+        original_load = WorkspaceRepository.load_training_progress
+        original_lock = WorkspaceRepository.lock_training_session
 
         def racing_attempts():
             raced["done"] = True
-            return SmartTrainingService(PrepForgeRepository(engine), owner).sync_progress(
+            return SmartTrainingService(WorkspaceRepository(engine), owner).sync_progress(
                 session.id,
                 [
                     {"node_id": node_id, "correct": True, "attempt_uuid": "racer-pg-1"},
@@ -831,9 +831,9 @@ def test_postgres_interleaved_attempts_never_lose_an_update():
         monkeypatch = pytest.MonkeyPatch()
         try:
             monkeypatch.setattr(
-                PrepForgeRepository, "load_training_progress", snapshot_then_race
+                WorkspaceRepository, "load_training_progress", snapshot_then_race
             )
-            monkeypatch.setattr(PrepForgeRepository, "lock_training_session", race_then_lock)
+            monkeypatch.setattr(WorkspaceRepository, "lock_training_session", race_then_lock)
             written = service.sync_progress(
                 session.id,
                 [{"node_id": node_id, "correct": True, "attempt_uuid": "slow-pg"}],
@@ -883,7 +883,7 @@ def test_postgres_concurrent_sync_different_uuids_do_not_lose_updates():
     engine = sa.create_engine(url, connect_args={"options": "-c search_path=" + schema})
     try:
         sa_tables.metadata.create_all(engine)
-        repo = PrepForgeRepository(engine)
+        repo = WorkspaceRepository(engine)
         repertoire, node_ids = _build(repo)
         owner = "postgres-lost-update-owner"
         _claim(repo, owner, repertoire)
@@ -903,7 +903,7 @@ def test_postgres_concurrent_sync_different_uuids_do_not_lose_updates():
 
         def submit(payload):
             barrier.wait(timeout=10)
-            return SmartTrainingService(PrepForgeRepository(engine), owner).sync_progress(
+            return SmartTrainingService(WorkspaceRepository(engine), owner).sync_progress(
                 session.id, [payload], owner_user_id=owner
             )
 
@@ -950,7 +950,7 @@ def test_sync_persists_the_session_without_a_blind_row_save(monkeypatch):
             "sync must not save the session outside its own transactions"
         )
 
-    monkeypatch.setattr(PrepForgeRepository, "save_training_session", fail_blind_save)
+    monkeypatch.setattr(WorkspaceRepository, "save_training_session", fail_blind_save)
     written = service.sync_progress(
         session.id,
         [{"node_id": node_id, "correct": False, "attempt_uuid": "sess-1"}],
@@ -1003,7 +1003,7 @@ def test_postgres_interleaved_session_updates_never_lose_one():
     engine = sa.create_engine(url, connect_args={"options": "-c search_path=" + schema})
     try:
         sa_tables.metadata.create_all(engine)
-        repo = PrepForgeRepository(engine)
+        repo = WorkspaceRepository(engine)
         repertoire, node_ids = _build(repo)
         owner = "postgres-session-interleave-owner"
         _claim(repo, owner, repertoire)
@@ -1013,11 +1013,11 @@ def test_postgres_interleaved_session_updates_never_lose_one():
         node_y = node_ids["d4"]
 
         raced = {"done": False}
-        original_lock = PrepForgeRepository.lock_training_session
+        original_lock = WorkspaceRepository.lock_training_session
 
         def racing_sync():
             raced["done"] = True
-            return SmartTrainingService(PrepForgeRepository(engine), owner).sync_progress(
+            return SmartTrainingService(WorkspaceRepository(engine), owner).sync_progress(
                 session.id,
                 [
                     {"node_id": node_x, "correct": True, "attempt_uuid": "racer-sess-1"},
@@ -1035,7 +1035,7 @@ def test_postgres_interleaved_session_updates_never_lose_one():
 
         monkeypatch = pytest.MonkeyPatch()
         try:
-            monkeypatch.setattr(PrepForgeRepository, "lock_training_session", race_then_lock)
+            monkeypatch.setattr(WorkspaceRepository, "lock_training_session", race_then_lock)
             written = service.sync_progress(
                 session.id,
                 [{"node_id": node_x, "correct": False, "attempt_uuid": "slow-sess"}],
@@ -1096,7 +1096,7 @@ def test_postgres_concurrent_sync_session_state_keeps_every_update():
     engine = sa.create_engine(url, connect_args={"options": "-c search_path=" + schema})
     try:
         sa_tables.metadata.create_all(engine)
-        repo = PrepForgeRepository(engine)
+        repo = WorkspaceRepository(engine)
         repertoire, node_ids = _build(repo)
         owner = "postgres-session-race-owner"
         _claim(repo, owner, repertoire)
@@ -1112,7 +1112,7 @@ def test_postgres_concurrent_sync_session_state_keeps_every_update():
 
         def submit(payload):
             barrier.wait(timeout=10)
-            return SmartTrainingService(PrepForgeRepository(engine), owner).sync_progress(
+            return SmartTrainingService(WorkspaceRepository(engine), owner).sync_progress(
                 session.id, [payload], owner_user_id=owner
             )
 

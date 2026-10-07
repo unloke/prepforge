@@ -8,13 +8,13 @@ from prepforge_chess.services.training import (
     record_attempt,
 )
 from prepforge_chess.storage.database import apply_schema, connect_database
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 
 def _training_repository():
     connection = connect_database()
     apply_schema(connection)
-    return PrepForgeRepository(connection)
+    return WorkspaceRepository(connection)
 
 
 def _training_repertoire(repository):

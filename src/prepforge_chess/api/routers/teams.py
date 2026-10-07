@@ -30,16 +30,10 @@ from sqlalchemy.orm import Session
 
 from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_user, get_repository
-from prepforge_chess.api.models import (
-    LinkedAccount,
-    Team,
-    TeamInvite,
-    TeamMember,
-    TeamRole,
-    User,
-)
+from prepforge_chess.api.models import LinkedAccount, Team, TeamInvite, TeamMember, User
+from prepforge_chess.storage.types import TeamRole
 from prepforge_chess.api.ratelimit import limiter
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
 
 router = APIRouter(prefix="/api/teams", tags=["teams"])
 
@@ -244,7 +238,7 @@ def team_detail(
     team_id: str,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: RepertoireRepository = Depends(get_repository),
 ) -> dict[str, object]:
     """Team + its members + repertoires shared to it (caller must be a member).
     Managers additionally see whether an invite link exists (never the code)."""
@@ -543,7 +537,7 @@ def delete_team(
     team_id: str,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
-    repo: PrepForgeRepository = Depends(get_repository),
+    repo: RepertoireRepository = Depends(get_repository),
 ) -> dict[str, bool]:
     """Delete a team and unshare its repertoires. Team owner only. The team's invite
     row cascades away with it (FK ON DELETE CASCADE)."""

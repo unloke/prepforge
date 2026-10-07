@@ -281,8 +281,6 @@ def build_session_plan(
     def due_key(cand: _Candidate) -> Tuple[datetime, int]:
         progress = progress_by_id.get(cand.node.id)
         due_at = progress.due_at if progress is not None and progress.due_at else _FAR_FUTURE
-        if due_at.tzinfo is None:
-            due_at = due_at.replace(tzinfo=timezone.utc)
         return (due_at, cand.order)
 
     weak.sort(

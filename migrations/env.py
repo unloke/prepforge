@@ -1,8 +1,7 @@
 """Alembic environment.
 
 Wired to the app's Settings (so DATABASE_URL drives both the app and migrations)
-and to the SaaS ORM metadata for autogenerate. Importing the models module
-registers every table on Base.metadata.
+and to the canonical Core metadata for autogenerate.
 """
 from logging.config import fileConfig
 
@@ -10,10 +9,8 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-from prepforge_chess.api import models  # noqa: F401  (registers tables on Base.metadata)
 from prepforge_chess.api.config import get_settings
-from prepforge_chess.api.db import Base
-from prepforge_chess.storage import sa_tables  # noqa: F401  (registers domain tables on Base.metadata)
+from prepforge_chess.storage import sa_tables
 
 config = context.config
 
@@ -26,8 +23,8 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # Alembic is the SOLE production schema authority: every table and index in
-# Base.metadata (ORM models + Core domain tables) is created/migrated here.
-target_metadata = Base.metadata
+# the Core metadata is created/migrated here.
+target_metadata = sa_tables.metadata
 
 
 def include_object(object, name, type_, reflected, compare_to):

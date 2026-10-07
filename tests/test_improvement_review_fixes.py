@@ -316,12 +316,12 @@ def test_listing_due_counts_track_the_clock_not_the_cache(client):
                 node_id=node_id,
                 attempts=1,
                 correct_attempts=1,
-                last_reviewed_at=now.isoformat(),
+                last_reviewed_at=now,
                 spaced_repetition_score=1.0,
-                due_at=(now + timedelta(hours=6)).isoformat(),
+                due_at=now + timedelta(hours=6),
                 is_mastered=0,
-                created_at=now.isoformat(),
-                updated_at=now.isoformat(),
+                created_at=now,
+                updated_at=now,
             )
         )
     listing = client.get("/api/repertoires").json()["repertoires"]
@@ -334,7 +334,7 @@ def test_listing_due_counts_track_the_clock_not_the_cache(client):
         conn.execute(
             update(t.training_progress).where(
                 t.training_progress.c.node_id == node_id
-            ).values(due_at=(datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat())
+            ).values(due_at=datetime.now(timezone.utc) - timedelta(minutes=1))
         )
     listing2 = client.get("/api/repertoires").json()["repertoires"]
     row2 = next(r for r in listing2 if r["id"] == rep_id)
@@ -423,11 +423,11 @@ def test_reclaim_is_dry_run_first_and_receipts_outlive_offline_retry():
     assert data_lifecycle.RECEIPT_RETENTION_DAYS > data_lifecycle.OFFLINE_RETRY_DAYS
 
     from prepforge_chess.storage.database import apply_schema, connect_database
-    from prepforge_chess.storage.repositories import PrepForgeRepository
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
     engine = connect_database()
     apply_schema(engine)
-    repo = PrepForgeRepository(engine)
+    repo = WorkspaceRepository(engine)
     report = data_lifecycle.reclaim_orphans(repo)  # dry-run default
     assert report["dry_run"] is True
     assert report["deleted"] == {
@@ -517,7 +517,7 @@ def test_share_link_expiry_is_enforced(client):
         conn.execute(
             update(t.repertoires)
             .where(t.repertoires.c.id == rep_id)
-            .values(share_expires_at=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat())
+            .values(share_expires_at=datetime.now(timezone.utc) - timedelta(days=1))
         )
     assert anon.get("/api/shared/{0}".format(token)).status_code == 404
 
@@ -710,15 +710,15 @@ def test_account_export_scope_matches_deletion(client):
 
 
 def test_account_export_streams_without_full_content_lists(client, monkeypatch):
-    from prepforge_chess.storage.repositories import PrepForgeRepository
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
     _register(client, "stream@example.com")
 
     def forbidden(*args, **kwargs):
         raise AssertionError("export must not materialize a full content list")
 
-    for method in ["list_games", "list_repertoires", "list_owner_training_progress", "list_owner_training_sessions"]:
-        monkeypatch.setattr(PrepForgeRepository, method, forbidden)
+    for method in ["list_games", "list_repertoires"]:
+        monkeypatch.setattr(WorkspaceRepository, method, forbidden)
     response = client.get("/api/account/export")
     assert response.status_code == 200
     assert "content-length" not in response.headers
@@ -749,12 +749,12 @@ def _insert_progress(rep_id: str, owner: str, node_id: str, **overrides) -> None
         "node_id": node_id,
         "attempts": 1,
         "correct_attempts": 1,
-        "last_reviewed_at": now.isoformat(),
+        "last_reviewed_at": now,
         "spaced_repetition_score": 1.0,
-        "due_at": (now - timedelta(minutes=1)).isoformat(),
+        "due_at": (now - timedelta(minutes=1)),
         "is_mastered": 0,
-        "created_at": now.isoformat(),
-        "updated_at": now.isoformat(),
+        "created_at": now,
+        "updated_at": now,
     }
     values.update(overrides)
     with db.make_engine().begin() as conn:

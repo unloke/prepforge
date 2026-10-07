@@ -15,7 +15,7 @@ from prepforge_chess.core.models import (
     TrainingProgress,
     TrainingSession,
 )
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
 
 
 @dataclass(frozen=True)
@@ -88,7 +88,7 @@ def create_training_session(
 
 
 class TrainingService:
-    def __init__(self, repository: PrepForgeRepository, owner_user_id: str | None = None):
+    def __init__(self, repository: RepertoireRepository, owner_user_id: str | None = None):
         self.repository = repository
         self.owner_user_id = owner_user_id
 

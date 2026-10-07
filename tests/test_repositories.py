@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import uuid
 
@@ -20,13 +21,13 @@ from prepforge_chess.core.models import (
 )
 from prepforge_chess.storage import sa_tables
 from prepforge_chess.storage.database import apply_schema, connect_database
-from prepforge_chess.storage.repositories import PrepForgeRepository
+from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 
-def _repository() -> PrepForgeRepository:
+def _repository() -> WorkspaceRepository:
     connection = connect_database()
     apply_schema(connection)
-    return PrepForgeRepository(connection)
+    return WorkspaceRepository(connection)
 
 
 def test_game_round_trip_persists_full_move_identity():
@@ -664,7 +665,7 @@ def _exercise_list_repertoires(repo, owner: str) -> None:
             conn.execute(
                 update(sa_tables.repertoires)
                 .where(sa_tables.repertoires.c.id == rep_id)
-                .values(updated_at=iso)
+                .values(updated_at=datetime.fromisoformat(iso))
             )
     ordered = repo.list_repertoires(owner_user_id=owner)
     assert [rep.id for rep in ordered] == ["rep-c", "rep-b", "rep-a"]
@@ -703,8 +704,8 @@ def test_list_repertoires_postgres(monkeypatch):
     if not url:
         pytest.skip("TEST_POSTGRES_URL is not configured")
     engine = create_engine(_psycopg3_url(url), future=True)
-    sa_tables.metadata.create_all(engine, tables=list(sa_tables.DOMAIN_TABLES))
-    repo = PrepForgeRepository(engine)
+    sa_tables.metadata.create_all(engine)
+    repo = WorkspaceRepository(engine)
     _exercise_list_repertoires(repo, owner="u-list-" + uuid.uuid4().hex[:8])
 
 def test_load_game_renders_pgn_only_when_requested(monkeypatch):

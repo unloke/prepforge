@@ -35,7 +35,7 @@ def _seed_repertoire(owner_user_id: str, name: str) -> str:
 
     from prepforge_chess.api.db import get_engine
     from prepforge_chess.core.models import Color, OpeningNode, Repertoire
-    from prepforge_chess.storage.repositories import PrepForgeRepository
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
     rep_id = uuid.uuid4().hex
     start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
@@ -52,7 +52,7 @@ def _seed_repertoire(owner_user_id: str, name: str) -> str:
             is_mainline=True,
         ),
     )
-    repo = PrepForgeRepository(get_engine())
+    repo = WorkspaceRepository(get_engine())
     repo.save_repertoire(rep, owner_user_id=owner_user_id)
     return rep.id
 
@@ -257,13 +257,13 @@ def test_weekly_recap_reseeds_baseline_on_week_roll(client):
     and reports deltas against the fresh zero point, not the stale snapshot."""
     from prepforge_chess.api.db import get_engine
     from prepforge_chess.api.routers.workspace import _RECAP_SNAPSHOT_KEY
-    from prepforge_chess.storage.repositories import PrepForgeRepository
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
     owner = _register(client, "recap-roll@example.com")
     first = client.get("/api/dashboard").json()["recap"]
     assert first["week_start"]
 
-    repo = PrepForgeRepository(get_engine())
+    repo = WorkspaceRepository(get_engine())
     # Simulate a snapshot left over from a past week with a wild baseline.
     repo.mutate_user_setting(
         owner,
