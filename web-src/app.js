@@ -1113,6 +1113,32 @@ function currentOwnerId() {
   return appState.accountUserId || null;
 }
 
+// Build-session wrappers resolve the lazy module on call, so they can exist before it loads
+// (the sync controller below takes some of them).
+const viaBuildSession = (name) => (...args) => (buildSession
+  ? buildSession[name](...args)
+  : loadBuildSession().then((loaded) => loaded[name](...args)));
+const buildBranchContext = viaBuildSession("buildBranchContext");
+const buildBranchKey = viaBuildSession("buildBranchKey");
+const buildGoBack = viaBuildSession("buildGoBack");
+const buildGoForward = viaBuildSession("buildGoForward");
+const buildGoRoot = viaBuildSession("buildGoRoot");
+const buildGoToEnd = viaBuildSession("buildGoToEnd");
+const createRepertoirePrompt = viaBuildSession("createRepertoirePrompt");
+const generateFromCurrentNode = viaBuildSession("generateFromCurrentNode");
+const hydrateBuild = viaBuildSession("hydrateBuild");
+const onBuildBoardMove = viaBuildSession("onBuildBoardMove");
+const onInspectorInfo = viaBuildSession("onInspectorInfo");
+const openBuildMenu = viaBuildSession("openBuildMenu");
+const openNodeContextMenu = viaBuildSession("openNodeContextMenu");
+const paintExplorerEvals = viaBuildSession("paintExplorerEvals");
+const paintInspectorScope = viaBuildSession("paintInspectorScope");
+const refreshExplorerPanel = viaBuildSession("refreshExplorerPanel");
+const saveBuildAnnotations = viaBuildSession("saveBuildAnnotations");
+const scheduleExplorerRefresh = viaBuildSession("scheduleExplorerRefresh");
+const selectBuildNode = viaBuildSession("selectBuildNode");
+const setBuildDockFolded = viaBuildSession("setBuildDockFolded");
+
 const syncController = createSyncController({
   appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, queuedBuildRevision,
   rebaseQueuedBuildRevision, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes,
@@ -4163,29 +4189,6 @@ function loadBuildSession() {
   });
   return buildSessionLoading;
 }
-const viaBuildSession = (name) => (...args) => (buildSession
-  ? buildSession[name](...args)
-  : loadBuildSession().then((loaded) => loaded[name](...args)));
-const buildBranchContext = viaBuildSession("buildBranchContext");
-const buildBranchKey = viaBuildSession("buildBranchKey");
-const buildGoBack = viaBuildSession("buildGoBack");
-const buildGoForward = viaBuildSession("buildGoForward");
-const buildGoRoot = viaBuildSession("buildGoRoot");
-const buildGoToEnd = viaBuildSession("buildGoToEnd");
-const createRepertoirePrompt = viaBuildSession("createRepertoirePrompt");
-const generateFromCurrentNode = viaBuildSession("generateFromCurrentNode");
-const hydrateBuild = viaBuildSession("hydrateBuild");
-const onBuildBoardMove = viaBuildSession("onBuildBoardMove");
-const onInspectorInfo = viaBuildSession("onInspectorInfo");
-const openBuildMenu = viaBuildSession("openBuildMenu");
-const openNodeContextMenu = viaBuildSession("openNodeContextMenu");
-const paintExplorerEvals = viaBuildSession("paintExplorerEvals");
-const paintInspectorScope = viaBuildSession("paintInspectorScope");
-const refreshExplorerPanel = viaBuildSession("refreshExplorerPanel");
-const saveBuildAnnotations = viaBuildSession("saveBuildAnnotations");
-const scheduleExplorerRefresh = viaBuildSession("scheduleExplorerRefresh");
-const selectBuildNode = viaBuildSession("selectBuildNode");
-const setBuildDockFolded = viaBuildSession("setBuildDockFolded");
 
 let buildModule = null;
 let buildView = null;
