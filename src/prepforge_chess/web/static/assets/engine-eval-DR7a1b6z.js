@@ -1,0 +1,1 @@
+function e(e,t){if(t!=null)return t>0?`#${t}`:t<0?`#-${Math.abs(t)}`:`#0`;if(e==null)return`...`;let n=e/100;return(n>=0?`+`:``)+n.toFixed(2)}export{e as t};

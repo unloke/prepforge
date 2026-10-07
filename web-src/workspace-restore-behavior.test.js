@@ -1,9 +1,9 @@
 import { expect, it, vi } from "vitest";
-import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { parseWorkspaceLocation } from "./workspace-url.js";
+import { appSource } from "./test-app-source.js";
 
-const source = readFileSync(new URL("./app.js", import.meta.url), "utf8");
+const source = appSource();
 const restore = source.slice(source.indexOf("async function restoreWorkspaceLocation()"), source.indexOf("\nfunction setReplaySection("));
 
 function runtime(extra = {}) {

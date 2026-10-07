@@ -285,6 +285,16 @@ button {
   touch-action: manipulation;
 }
 
+/* Controls are tapped, not read: a long press must not select their label, and
+   touch browsers must not flash their own highlight over ours. */
+button,
+[role="button"],
+.mtree-move {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Unified keyboard focus ring — visible only for keyboard users, never on
    mouse click. Applies to every interactive control for consistency. */
 :focus-visible {
@@ -5629,6 +5639,11 @@ body.is-guest .replay-results:empty::before {
     background: var(--panel-soft) !important;
     font-size: 20px !important;
   }
+  /* A tap leaves :hover behind on touch screens, so the last button pressed
+     looked held. Show the press while it lasts instead. */
+  .study .board-bar .ib:not([aria-expanded="true"]):hover { background: transparent; border-color: transparent; }
+  :is(#analysis-prev, #analysis-next, #build-parent, #build-next):hover { background: var(--panel-soft) !important; }
+  .study .board-bar .ib:active { background: var(--surface-hover) !important; }
   .study .board-bar .build-sync { max-width: 30vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* The tab bar waits under the board bar; the views button raises it. */

@@ -71,14 +71,14 @@ describe("Evaluation head", () => {
     expect(fill.style.width).toBe("50%");
   });
 
-  it("follows the live engine while it is on, and falls back to the game eval while it starts", () => {
+  it("never substitutes a saved score while the live engine starts", () => {
     const { view, ids, fill, appState } = setup();
-    appState.evalChartPoints = [{ ply: 1, score_cp: 250 }];
+    appState.evalChartPoints = [{ ply: 1, score_cp: -1259 }];
     appState.analysisPly = 1;
     ids["analysis-eval-card"].classList.toggle("is-engine", true);
     ids["engine-head-eval"].textContent = "...";
     view.updateEvalChartCursor();
-    expect(ids["analysis-chart-caption"].textContent).toBe("+2.50");
+    expect(ids["analysis-chart-caption"].textContent).toBe("");
     ids["engine-head-eval"].textContent = "−0.40";
     ids["engine-head-eval"].dataset.side = "black";
     ids["engine-eval-bar-white"].style.height = "46%";
@@ -86,6 +86,16 @@ describe("Evaluation head", () => {
     expect(ids["analysis-chart-caption"].textContent).toBe("−0.40");
     expect(ids["analysis-chart-caption"].dataset.side).toBe("black");
     expect(fill.style.width).toBe("46%");
+    ids["engine-head-eval"].dataset.pending = "true";
+    appState.analysisPly = 2;
+    appState.evalChartPoints = [{ ply: 2, score_cp: -1259 }];
+    view.updateEvalChartCursor();
+    expect(ids["analysis-chart-caption"].textContent).toBe("−0.40");
+    expect(fill.style.width).toBe("46%");
+    expect(ids["analysis-chart-caption"].dataset.pending).toBe("true");
+    ids["analysis-eval-card"].classList.toggle("is-engine", false);
+    view.paintEvalHead();
+    expect(ids["analysis-chart-caption"].textContent).toBe("−12.59");
   });
 });
 

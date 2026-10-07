@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
 import { expect, it, vi } from 'vitest';
-const source = readFileSync(new URL('./app.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+import { appSource } from "./test-app-source.js";
+const source = appSource();
 function compile(marker, deps) {
   const start = source.indexOf(marker), end = source.indexOf('\n}\n', start) + 2;
   return new Function(...Object.keys(deps), `return (${source.slice(start, end)});`)(...Object.values(deps));

@@ -1,5 +1,5 @@
 // Lazy-load chunk smoke: static asset checks + headless browser network capture.
-// Run after `npm run build`. Serves the committed static/ tree on localhost.
+// Run after `npm run build`. Serves static/ or LAZY_SMOKE_STATIC_DIR on localhost.
 //
 //   node scripts/lazy-chunk-smoke.mjs
 //
@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const STATIC_DIR = join(ROOT, "src", "prepforge_chess", "web", "static");
+const STATIC_DIR = process.env.LAZY_SMOKE_STATIC_DIR || join(ROOT, "src", "prepforge_chess", "web", "static");
 const ASSETS_DIR = join(STATIC_DIR, "assets");
 const PORT = Number(process.env.LAZY_SMOKE_PORT || 8791);
 
@@ -24,6 +24,7 @@ const MIME = {
 
 function chunkKind(url) {
   const name = url.split("/").pop() || "";
+  if (/^engine-widget-/.test(name)) return "engine-widget";
   if (/^analyze-/.test(name)) return "analyze";
   if (/^train-/.test(name)) return "train";
   if (/^replay-/.test(name)) return "replay";
@@ -71,6 +72,8 @@ async function staticChecks() {
   assert(/settings-/.test(index.text), "index chunk should lazy-map settings");
   assert(/dashboard-/.test(index.text), "index chunk should lazy-map dashboard");
 
+  await readAsset(/^engine-widget-/);
+  assert(/engine-widget-/.test(index.text), "index chunk should lazy-map engine-widget");
   await readAsset(/^settings-/);
   const dashboard = await readAsset(/^dashboard-/);
   assert(!/maia3-weight-cache/.test(index.text), "index chunk must not static-import maia3-weight-cache");
@@ -152,6 +155,7 @@ async function browserChecks() {
     await page.waitForTimeout(800);
 
     const afterInitialLoad = new Set(loaded);
+    assert(!afterInitialLoad.has("engine-widget"), "initial dashboard load fetched engine widget chunk");
     assert(!afterInitialLoad.has("analyze"), "initial dashboard load fetched analyze chunk");
     assert(!afterInitialLoad.has("train"), "initial dashboard load fetched train chunk");
     assert(!afterInitialLoad.has("replay"), "initial dashboard load fetched replay chunk");
@@ -178,12 +182,18 @@ async function browserChecks() {
     assert(!afterBuild.has("analyze"), "build tab fetched analyze chunk");
     assert(!afterBuild.has("movetree"), "build tab (empty rep) fetched movetree chunk");
     assert(afterBuild.has("build-view"), "build tab should preload build view chunk");
+    assert(!afterBuild.has("engine-widget"), "Build with engine off fetched engine widget chunk");
 
     await page.click('[data-testid="nav-analyze"]');
     await page.waitForTimeout(1200);
     const afterAnalyze = new Set(loaded);
     assert(afterAnalyze.has("analyze"), "analyze tab should fetch analyze chunk");
     assert(afterAnalyze.has("movetree"), "analyze tab should fetch movetree chunk");
+    await page.click("#open-engine-widget");
+    await page.waitForSelector("#engine-window.is-visible");
+    assert(loaded.has("engine-widget"), "opening the engine should fetch engine widget chunk");
+    await page.click("#open-engine-widget");
+    await page.waitForSelector("#engine-window.is-visible", { state: "hidden" });
 
     await page.click('[data-testid="nav-train"]');
     await page.waitForTimeout(1200);

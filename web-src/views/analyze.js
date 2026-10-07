@@ -400,7 +400,8 @@ export function createAnalyzeView({
     let text = "";
     let side = "even";
     let pct = NaN;
-    if (document.getElementById("analysis-eval-card")?.classList.contains("is-engine")) {
+    const engineOn = document.getElementById("analysis-eval-card")?.classList.contains("is-engine");
+    if (engineOn) {
       const head = document.getElementById("engine-head-eval");
       const live = (head?.textContent || "").trim();
       if (/\d|#|M/.test(live)) {
@@ -409,13 +410,14 @@ export function createAnalyzeView({
         pct = parseFloat(document.getElementById("engine-eval-bar-white")?.style.height);
       }
     }
-    if (!text && chartPoint) {
+    if (!engineOn && chartPoint) {
       text = formatPointEval(chartPoint);
       pct = pointWinPct(chartPoint);
       side = pct > 52 ? "white" : pct < 48 ? "black" : "even";
     }
     chip.textContent = text;
     chip.dataset.side = side;
+    chip.dataset.pending = String(!!engineOn && document.getElementById("engine-head-eval")?.dataset.pending === "true");
     chip.parentElement?.classList.toggle("has-eval", !!text);
     const fill = document.querySelector("#analysis-eval-meter > i");
     if (fill) fill.style.width = `${Number.isFinite(pct) ? Math.round(pct) : 50}%`;
@@ -532,13 +534,16 @@ export function createAnalyzeView({
     const ply = appState.analysisPly;
     const idx = points.findIndex((p) => p.ply === ply);
     const hidden = !points.length || idx < 0;
+    // While a run is in progress the stored points are the previous game's (the
+    // CSS hides that graph too), so they are not this position's eval.
+    const running = !!document.querySelector('#analysis-eval-card .job-toast[data-state="running"]');
     const x = hidden ? -10 : evalChartXOf(idx, points.length);
     marker.setAttribute("x1", String(x));
     marker.setAttribute("x2", String(x));
     // The chart overflows its frame (edge plies' markers overhang), so a parked
     // line at x=-10 would show beside it: the start position has no point.
     marker.setAttribute("visibility", hidden ? "hidden" : "visible");
-    updateChartCaption(hidden ? null : points[idx]);
+    updateChartCaption(hidden || running ? null : points[idx]);
     if (!dot) return;
     // Ring on the curve at the current ply: a SHAPE cue on top of the dashed
     // line (and the tooltip's "current" text), so the position indicator never

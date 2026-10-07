@@ -1,8 +1,7 @@
-import { readFileSync } from 'node:fs';
 import { expect, it, vi } from 'vitest';
 import { createSettingsActions } from './settings-actions.js';
 import { withBuildRevision, advanceBuildRevision } from './build-revision.js';
-const source = readFileSync(new URL('./app.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const source = appSource();
 function compile(marker, deps, prelude = '') {
   const start = source.indexOf(marker), end = source.indexOf('\n}\n', start) + 2;
   return new Function(...Object.keys(deps), `${prelude}; return (${source.slice(start, end)});`)(...Object.values(deps));
@@ -33,7 +32,7 @@ it.each([false,true])('Settings reads wait for pending write (failure=%s)', asyn
   const renderSettings = vi.fn();
   const actions = createSettingsActions({appState,currentOwnerId:()=> 'owner',api,ensureSettingsView:async()=>({renderSettings}),
     applySettingsPayload:p=>{appState.settings=p;},applyServerEngineGating:noop,setStatusError:noop,
-    positionCoach:{cancel:noop},engineWidget:{onDepthSettingChanged:depthChanged},activeViewName:()=> 'settings',
+    getPositionCoach:()=>({cancel:noop}),engineWidget:{onDepthSettingChanged:depthChanged},activeViewName:()=> 'settings',
     explorerEvalEngine:{sync:async()=>{}},explorerDrawerOpen:()=>false});
   const saving = actions.saveSettings({stockfish_depth:20});
   await vi.waitFor(()=>expect(api).toHaveBeenCalledTimes(1));
@@ -71,6 +70,7 @@ it('switching Teams removes old action handlers even when the new detail fails',
   response.reject(Error('offline'));await pending;expect(el('team-detail-delete').onclick).toBeNull();
 });
 import { loadTeamDirectory } from './team-directory.js';
+import { appSource } from "./test-app-source.js";
 it('team directory caches empty results and rejects old refreshes and owners',async()=>{
   const first=deferred(),second=deferred();
   const appState={accountUserId:'A',ownerGeneration:1,teams:[]};

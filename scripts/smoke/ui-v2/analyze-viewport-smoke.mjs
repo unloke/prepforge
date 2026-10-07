@@ -459,7 +459,9 @@ async function runViewport(vp) {
       const board = document.getElementById("analysis-board").getBoundingClientRect();
       return { tabbarHidden: getComputedStyle(tabbar).visibility === "hidden",
         barAtBottom: Math.abs(bar.bottom - window.innerHeight) < 2,
-        boardFullWidth: board.width >= window.innerWidth - 1 || board.height >= window.innerHeight * 0.5 };
+        boardFullWidth: board.width >= window.innerWidth - 1 || board.height >= window.innerHeight * 0.5,
+        board: [Math.round(board.width), Math.round(board.height)], viewport: [window.innerWidth, window.innerHeight],
+        page: [document.documentElement.clientWidth, document.documentElement.scrollWidth, document.documentElement.scrollHeight] };
     });
     check(bars.tabbarHidden && bars.barAtBottom, `the board bar should be the only bottom bar: ${JSON.stringify(bars)}`);
     check(bars.boardFullWidth, `the phone board should take the width: ${JSON.stringify(bars)}`);

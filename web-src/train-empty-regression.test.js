@@ -1,11 +1,8 @@
 import { expect, it, vi } from "vitest";
-import { readFileSync } from "node:fs";
+import { appSource } from "./test-app-source.js";
 
 it("an account with no active repertoire gets an actionable empty state", async () => {
-  // Train sessions moved out of app.js into a lazy module; read both.
-  const source = ["./app.js", "./controllers/train-session.js"]
-    .map((path) => readFileSync(new URL(path, import.meta.url), "utf8"))
-    .join("\n");
+  const source = appSource();
   const start = source.indexOf("async function startSmartTraining(");
   const end = source.indexOf("\nasync function ", start + 10);
   const code = source.slice(start, end);

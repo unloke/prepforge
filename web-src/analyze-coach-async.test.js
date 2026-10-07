@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-const source = readFileSync(new URL("./app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+const source = appSource();
 import * as phaseCoach from "./coach/phase-coach.js";
+import { appSource } from "./test-app-source.js";
 function deferred() { let resolve; const promise = new Promise((yes) => { resolve = yes; }); return { promise, resolve }; }
 
 // A fake position store: each acquire returns a lease whose until() resolves when the
@@ -47,7 +47,7 @@ function harness({ reviewed = true } = {}) {
     COACH_RAPID_STEP_MS: 120, COACH_RAPID_SETTLE_MS: 160,
   };
   const start = source.indexOf("class PositionCoach {");
-  const end = source.indexOf("\nconst positionCoach =", start);
+  const end = source.indexOf("\n// Created by createAnalyzeSession", start);
   const Coach = new Function(...Object.keys(deps), `return (${source.slice(start, end)});`)(...Object.values(deps));
   const coach = new Coach();
   coach.fen = "after b - - 0 1";
