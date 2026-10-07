@@ -1,13 +1,10 @@
-import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mapTrainUiSession, shouldResetTrainStats } from "./train-resume.js";
 import { clearSessionMemo, loadSessionMemo, saveSessionMemo } from "./train-session-memo.js";
 import * as trainSessionMemo from "./train-session-memo.js";
+import { appSource } from "./test-app-source.js";
 
-// Train sessions moved out of app.js into a lazy module; read both.
-const source = ["./app.js", "./controllers/train-session.js"]
-  .map((path) => readFileSync(new URL(path, import.meta.url), "utf8").replace(/\r\n/g, "\n"))
-  .join("\n");
+const source = appSource();
 function compile(marker, deps) {
   const start = source.indexOf(marker);
   const end = source.indexOf("\n}\n", start) + 2;

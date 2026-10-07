@@ -14,9 +14,10 @@ import { authInputError, authReasonFor, isOpeningKeystroke } from "./controllers
 import { coachTipMayReplace, wrongMoveTip } from "./train-hint.js";
 import { syncChipVariant } from "./sync-chip.js";
 import { nodeMenuHeading } from "./node-menu.js";
+import { appSource } from "./test-app-source.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
-const app = readFileSync(join(root, "app.js"), "utf8");
+const app = appSource();
 
 describe("repertoire color is a two-way choice (P0-4)", () => {
   it("offers exactly White and Black as a select", () => {

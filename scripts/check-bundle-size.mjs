@@ -73,8 +73,11 @@ const LIMITS = [
     // arrow ends under a longer one lands it at 343,170 B raw.
     // 2026-10-06 Train split: sessions, practice games and Feeling Lucky move to the lazy
     // train-session chunk; the entry drops to ~293,000 B raw / ~92,300 B gzip.
-    maxBytes: 300_000,
-    maxGzipBytes: 95_000,
+    // Build and Analyze split: the repertoire editor and the Analyze runs/coach move to
+    // lazy build-session / analyze-session chunks; the entry drops to ~243,800 B raw /
+    // ~77,000 B gzip.
+    maxBytes: 250_000,
+    maxGzipBytes: 80_000,
     label: "main app chunk",
   },
   { prefix: "maia3-worker-", suffix: ".js", maxBytes: 220_000, label: "maia3 worker chunk" },

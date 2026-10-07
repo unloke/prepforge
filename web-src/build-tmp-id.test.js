@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { appSource } from "./test-app-source.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
-const app = readFileSync(join(root, "app.js"), "utf8");
+const app = appSource();
 
 // The function body contains a template literal, so match up to the closing
 // brace at the start of a line rather than the first "}" character.

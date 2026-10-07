@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { savePendingAction, takePendingAction, isPendingActionId } from "./auth-gate.js";
+import { appSource } from "./test-app-source.js";
 
-const source = readFileSync(new URL("./app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+const source = appSource();
 function harness() {
   const input = { value: "demo PGN" }, drawer = { open: false };
   const runAnalysis = vi.fn(() => Promise.resolve());

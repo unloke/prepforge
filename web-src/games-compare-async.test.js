@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
 import { expect, it, vi } from "vitest";
 import { countOf } from "./plural.js";
+import { appSource } from "./test-app-source.js";
 
-const source = readFileSync(new URL("./app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+const source = appSource();
 function harness() {
   const appState = { signedIn: true, accountUserId: "owner" };
   let selection = { linkedMode: "none", external: ["first"], accountIds: [] };

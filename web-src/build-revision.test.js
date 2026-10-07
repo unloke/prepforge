@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { advanceBuildRevision, queuedBuildRevision, withBuildRevision } from "./build-revision.js";
+import { appSource } from "./test-app-source.js";
 
 it("every Build mutation sends the loaded revision and preserves an old queue's revision", () => {
   const build = { repertoire_id: "r", revision: 8 };
@@ -22,7 +23,7 @@ it("only edits based on our acknowledged version advance after our own save", ()
 });
 
 it("reply preview binds saving to the approved snapshot, never optimistic gap writes", () => {
-  const source = readFileSync(new URL("./app.js", import.meta.url), "utf8");
+  const source = appSource();
   expect(source).toContain('import("./controllers/coverage-replies.js")');
   expect(source).toContain("getBuild: () => appState.build");
   const code = readFileSync(new URL("./controllers/coverage-replies.js", import.meta.url), "utf8");
