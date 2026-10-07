@@ -776,22 +776,48 @@
 /* ---- Responsive ------------------------------------------------------- */
 
 @media (max-width: 760px) {
-  /* Phone: under the pinned board the panel reads top-down as one compact header
-     row, a sticky one-line move strip (the current move centred), the coach on it,
-     the eval graph, then the per-side bars and the drawers. */
-  #analyze-sidebar .panel-head { flex-wrap: nowrap; min-height: 0; padding: 6px 8px 6px 12px; }
-  #analyze-sidebar .game-id { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  #analyze-sidebar .game-id .faint { display: none; }
-  #analyze-actions { flex-wrap: nowrap; gap: 6px; }
-  #analyze-actions .btn { min-height: 36px; height: 36px; padding: 0 10px; }
-  #analyze-sidebar .panel-scroll { padding-top: 0; }
+  /* Phone: under the pinned board the panel is one scroller. With a game on the
+     board it reads: the move strip (sticky, the current move centred), the coach
+     on that move, the eval graph and the per-side bars; the game title and its
+     actions, then the drawers, come last. With no game yet the title and actions
+     lead. */
+  #analyze-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 12px 12px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  #analyze-sidebar > .panel-scroll,
+  #analyze-sidebar .analyze-main,
   #analysis-results:not([hidden]) { display: contents; }
-  .analyze-main { gap: 10px; }
+  #analyze-sidebar > *,
+  #analyze-sidebar .panel-scroll > *,
+  .analyze-main > *,
+  #analysis-results > * { flex: none; order: 3; }
+  #analyze-sidebar > .engine-banner { order: -2; margin: 0 -12px; }
+  #analyze-sidebar > .panel-head {
+    order: -1;
+    flex-wrap: wrap;
+    min-height: 0;
+    margin: 0 -12px;
+    padding: 8px 12px;
+  }
+  #analyze-sidebar:has(#analysis-results:not([hidden])) > .panel-head {
+    order: 4;
+    margin: 4px 0 0;
+    padding: 10px 0 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 0;
+  }
+  #analyze-sidebar .game-id { flex: 1 1 100%; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  #analyze-actions { flex: 1 1 100%; flex-wrap: nowrap; gap: 8px; }
+  #analyze-actions .btn { flex: 1; min-height: 40px; }
+  #analyze-sidebar .drawer { order: 5; }
   .analyze-main > #analysis-explain { order: 1; }
   .analyze-main > #analysis-eval-card { order: 2; }
-  .analyze-main > * { order: 3; }
-  .analyze-main > #analysis-results > .moves-grid { order: 0; }
-  #analysis-results > :not(.moves-grid) { order: 3; }
+  #analysis-results > .moves-grid { order: 0; }
   .moves-grid {
     position: sticky;
     top: 0;
@@ -832,7 +858,8 @@
     white-space: nowrap;
   }
   .moves-grid .mtree-var .mtree-move { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; }
-  .coach-card { height: auto; min-height: 86px; }
+  .coach-card { height: auto; min-height: 0; padding: 10px 12px; }
+  .coach-card .cc-head { min-height: 0; }
   .explain-review { margin-left: auto; }
   .drawer summary { min-height: 44px; }
 }

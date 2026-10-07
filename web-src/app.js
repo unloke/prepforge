@@ -14038,6 +14038,31 @@ function wireMobileNav() {
     // sheet closes first (the global handler), the sheet on the next Escape.
     if (event.key === "Escape" && !sheet.hidden && !isAccountMenuOpen()) closeSheet();
   });
+  wirePhoneStudyNav();
+}
+
+// Phone study views (Analyze, Repertoire, Train) hide the tab bar so the board
+// and panel get the height; the views button in the board bar slides it up over
+// the bar. Picking a destination, tapping elsewhere or Escape puts it away.
+function wirePhoneStudyNav() {
+  const tabbar = document.getElementById("app-tabbar");
+  const toggles = [...document.querySelectorAll("[data-phone-nav]")];
+  if (!tabbar || !toggles.length) return;
+  const isOpen = () => document.body.classList.contains("phone-nav-open");
+  const setOpen = (open) => {
+    document.body.classList.toggle("phone-nav-open", open);
+    toggles.forEach((button) => button.setAttribute("aria-expanded", String(open)));
+  };
+  toggles.forEach((button) => button.addEventListener("click", () => setOpen(!isOpen())));
+  tabbar.addEventListener("click", (event) => {
+    if (event.target.closest(".tabbar-item")) setOpen(false);
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (isOpen() && !event.target.closest?.("#app-tabbar, [data-phone-nav]")) setOpen(false);
+  }, true);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && isOpen()) setOpen(false);
+  });
 }
 
 function bindEvents() {
