@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import { coachTipMayReplace, wrongMoveTip } from "./train-hint.js";
 import { prefetchTrainCoach } from "./controllers/train-coach.js";
 
-const source = readFileSync(new URL("./app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+// Train sessions moved out of app.js into a lazy module; read both.
+const source = ["./app.js", "./controllers/train-session.js"]
+  .map((path) => readFileSync(new URL(path, import.meta.url), "utf8").replace(/\r\n/g, "\n"))
+  .join("\n");
 function compile(marker, deps) {
   const start = source.indexOf(marker);
   const end = source.indexOf("\n}\n", start) + 2;

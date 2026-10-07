@@ -4,7 +4,10 @@ import { createBookActions } from "./analyze-book.js";
 import { createSettingsActions } from "./settings-actions.js";
 import { classifySyncError } from "./sync-errors.js";
 import { expect, it, vi } from "vitest";
-const source = readFileSync(new URL("./app.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+// Train sessions moved out of app.js into a lazy module; read both.
+const source = ["./app.js", "./controllers/train-session.js"]
+  .map((path) => readFileSync(new URL(path, import.meta.url), "utf8").replace(/\r\n/g, "\n"))
+  .join("\n");
 function compile(marker, deps, prelude = "", code = source) {
   const start = code.indexOf(marker);
   const end = code.indexOf("\n}\n", start) + 2;
