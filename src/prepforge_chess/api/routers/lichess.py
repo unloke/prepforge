@@ -3,7 +3,7 @@
 Lichess is NOT a login here -- an authenticated (email) user links their Lichess
 account so we can import their games. The OAuth2 PKCE flow reuses the existing
 ``services.lichess_oauth`` helpers; the resulting token is stored **encrypted at
-rest** in ``linked_accounts`` (the legacy server kept it as plaintext JSON).
+rest** in ``linked_accounts``.
 
 The short-lived PKCE state/verifier is carried across the redirect in an
 encrypted, HttpOnly cookie (``pf_lichess_oauth``) rather than server-side state,
@@ -344,7 +344,7 @@ def _any_linked_token(db: Session, user_id: str) -> str | None:
     """The first usable OAuth token across ALL linked identities, primary first.
 
     The explorer only needs *a* token, so one account whose token can no longer
-    be decrypted (key rotation, legacy row) must not disable the explorer while
+    be decrypted (key rotation) must not disable the explorer while
     another linked account still has a working one."""
     links = _links_for(db, user_id)
     links = [link for link in links if link.is_primary] + [

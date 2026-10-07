@@ -71,7 +71,7 @@ def _owned_session(
 
 class StartBody(BaseModel):
     repertoire_id: str
-    mode: Literal["all_lines", "high_priority", "mistakes_only", "smart"] | None = None
+    mode: Literal["all_lines", "smart"] | None = None
     seed: int = 13
     fresh: bool = False
 
@@ -518,7 +518,7 @@ def hint(
     san = prompt.expected_move_san
     piece_name: str | None = None
     try:
-        board = chess.Board(prompt.fen_before)
+        board = _CHESS.board(prompt.fen_before)
         piece = board.piece_at(chess.parse_square(uci[:2]))
         if piece is not None:
             piece_name = chess.piece_name(piece.piece_type)

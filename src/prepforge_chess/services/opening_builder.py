@@ -5,7 +5,7 @@ import json
 import re
 import uuid
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple
 
 from prepforge_chess.core.chess_core import STARTING_FEN, ChessCore
 from prepforge_chess.core.models import (
@@ -15,17 +15,21 @@ from prepforge_chess.core.models import (
     OpeningNode,
     Repertoire,
 )
-from prepforge_chess.services.engine import EngineAdapter, EngineAnalysisConfig, MockEngine
-from prepforge_chess.services.maia import MaiaAdapter
-from prepforge_chess.services.opening_generation import (
-    BRANCH_THRESHOLD,
-    GenerateConfig,
-    GeneratedNodeChange,
-    GenerationSummary,
-    MAINLINE_THRESHOLD,
-    child_by_uci,
-)
 from prepforge_chess.storage.repositories import PrepForgeRepository
+
+
+MAINLINE_THRESHOLD = 0.10
+
+
+@dataclass
+class PlanSummary:
+    added_nodes: int = 0
+    updated_nodes: int = 0
+    high_probability_unprepared: int = 0
+
+
+def child_by_uci(node: OpeningNode, move_uci: str) -> Optional[OpeningNode]:
+    return next((child for child in node.children if child.move and child.move.uci == move_uci), None)
 
 
 @dataclass(frozen=True)
@@ -35,13 +39,6 @@ class CreateRepertoireRequest:
     root_fen: str = STARTING_FEN
     notes: Optional[str] = None
     tags: List[str] = field(default_factory=list)
-
-
-@dataclass(frozen=True)
-class EngineMoveCandidate:
-    move_uci: str
-    evaluation: EngineEvaluation
-    rank: int
 
 
 @dataclass(frozen=True)
@@ -109,7 +106,7 @@ def _engine_eval_from_payload(data) -> Optional[EngineEvaluation]:
 
     The browser computed the Stockfish eval; the server runs NO engine, it only
     stores what the client sent (mirrors Phase 2 classify-save trusting browser
-    evals). Reverse of ``web.server._engine_eval_to_json``. A malformed shape
+    evals). A malformed shape
     raises ValueError (→ 400); a missing eval is simply None (eval is optional
     metadata, not a hard requirement of a generated node). Validation is shape
     only — bounded ``pv`` of UCI-ish strings, finite numeric ``wdl`` — to keep
@@ -201,31 +198,10 @@ class OpeningBuilderService:
         self,
         repository: PrepForgeRepository,
         chess_core: Optional[ChessCore] = None,
-        engine: Optional[EngineAdapter] = None,
-        engine_config: Optional[EngineAnalysisConfig] = None,
-        maia: Optional[MaiaAdapter] = None,
     ):
         self.repository = repository
         self.chess_core = chess_core or ChessCore()
-        self.engine = engine or MockEngine(self.chess_core)
-        self.engine_config = engine_config or EngineAnalysisConfig(depth=8)
-        # Maia is optional at construction. Pure data operations — create/rename/delete
-        # and `tree_report` serialization — never touch the human model, so the
-        # "server stores data, never computes chess" path (the FastAPI port) can build a
-        # service without one. The no-silent-fake guarantee is preserved, just deferred:
-        # the loud failure now fires on `self.maia` access (the `maia` property), which
-        # only the move-generation path reaches, instead of at construction.
-        self._maia = maia
 
-    @property
-    def maia(self) -> MaiaAdapter:
-        if self._maia is None:
-            raise ValueError(
-                "OpeningBuilderService requires a Maia adapter for move generation. "
-                "Pass create_maia3_adapter(...) in production, or an explicit stub in "
-                "tests. (Pure data/serialization operations do not need one.)"
-            )
-        return self._maia
 
     def create_repertoire(self, request: CreateRepertoireRequest) -> Repertoire:
         repertoire_id = str(uuid.uuid4())
@@ -243,10 +219,6 @@ class OpeningBuilderService:
             color=request.color,
             root_fen=root.fen,
             root_node=root,
-            main_engine=self.engine.name,
-            # Label only (the human model this repertoire will be generated with);
-            # fall back to the default when no Maia is wired (data-only construction).
-            human_model=self._maia.name if self._maia is not None else "maia3",
             notes=request.notes,
             tags=list(request.tags),
         )
@@ -300,68 +272,6 @@ class OpeningBuilderService:
         self.repository.save_changed_nodes(repertoire_id, [child])
         return child
 
-    def generate_from_node(
-        self,
-        repertoire_id: str,
-        node_id: str,
-        config: GenerateConfig,
-        progress_callback: Optional[
-            Callable[..., None]
-        ] = None,
-    ) -> Tuple[Repertoire, GenerationSummary]:
-        repertoire = self._load_repertoire_or_raise(repertoire_id)
-        root = self._find_node_or_raise(repertoire.root_node, node_id)
-        summary = GenerationSummary()
-
-        detail_mode = (config.detail_mode or "balanced").lower()
-        if detail_mode not in {"simple", "balanced", "deep"}:
-            raise ValueError("detail_mode must be one of simple, balanced, deep")
-        ply_depth = max(1, int(config.effective_ply_depth))
-        maia_rating = self._clamp_rating(config.maia_rating)
-
-        # Rough pessimistic estimate used only as a starting hint for any
-        # caller that wants to drive a progress bar; the caller can refine it.
-        per_ply = {"simple": 3, "balanced": 8, "deep": 12}.get(detail_mode, 6)
-        total_hint = max(8, ply_depth * per_ply)
-
-        self._progress_callback = progress_callback
-        self._progress_total_hint = total_hint
-        if progress_callback is not None:
-            progress_callback("started", added=0, total_hint=total_hint)
-
-        try:
-            self._expand(
-                node=root,
-                repertoire=repertoire,
-                relative_ply=0,
-                ply_depth=ply_depth,
-                detail_mode=detail_mode,
-                on_mainline_path=True,
-                maia_rating=maia_rating,
-                summary=summary,
-                config=config,
-            )
-
-            self.repository.save_repertoire(repertoire)
-            if progress_callback is not None:
-                progress_callback(
-                    "completed",
-                    added=summary.added_nodes,
-                    total_hint=max(summary.added_nodes, total_hint),
-                )
-        finally:
-            self._progress_callback = None
-            self._progress_total_hint = 0
-
-        return repertoire, summary
-
-    @staticmethod
-    def _clamp_rating(rating: int) -> int:
-        try:
-            value = int(rating)
-        except (TypeError, ValueError):
-            value = 2200
-        return max(600, min(2600, value))
 
     def apply_generation_plan(
         self,
@@ -369,7 +279,7 @@ class OpeningBuilderService:
         root_node_id: str,
         plan: dict,
         *, receipt_target: Optional[tuple] = None,
-    ) -> Tuple[Repertoire, GenerationSummary]:
+    ) -> Tuple[Repertoire, PlanSummary]:
         """Apply a browser-produced Build-Generate plan (Phase 3c, no compute).
 
         The browser ran the whole generation recursion locally (Stockfish +
@@ -377,7 +287,7 @@ class OpeningBuilderService:
         runs NO engine. It RE-VALIDATES every move's legality and parentage,
         RECOMPUTES the persisted flags (``is_mainline`` /
         ``is_user_prepared_move``) itself rather than trusting the client, and
-        persists. Parity with ``_upsert_child`` / ``_expand``.
+        persists.
 
         All-or-nothing: the repertoire is saved once at the very end, so a
         malformed change (illegal move, unknown parent, bad source) raises before
@@ -388,7 +298,7 @@ class OpeningBuilderService:
         # A stale or wrong-anchor plan must NOT be applied to a different anchor:
         # the planner returns the root it was built from, so a mismatch means the
         # plan and the request disagree about where it lands — reject, never guess.
-        plan_root = plan.get("rootNodeId") or plan.get("root_node_id")
+        plan_root = plan.get("rootNodeId")
         if plan_root and plan_root != root_node_id:
             raise ValueError("plan.rootNodeId does not match root_node_id")
         changes = plan.get("changes")
@@ -420,7 +330,7 @@ class OpeningBuilderService:
         temp_to_node: dict = {}
         seen_temp_ids: set = set()
 
-        summary = GenerationSummary()
+        summary = PlanSummary()
         for change in changes:
             if not isinstance(change, dict):
                 raise ValueError("each plan change must be an object")
@@ -462,7 +372,7 @@ class OpeningBuilderService:
         repertoire_id: str,
         moves: list,
         *, receipt_target: Optional[tuple] = None,
-    ) -> Tuple[Repertoire, GenerationSummary, dict]:
+    ) -> Tuple[Repertoire, PlanSummary, dict]:
         """Append a batch of MANUAL moves in one all-or-nothing persist.
 
         The manual sibling of ``apply_generation_plan``: the browser plays moves
@@ -507,7 +417,7 @@ class OpeningBuilderService:
         # 500-link chain still can't overrun the recursion limit on the next walk.
         temp_depth: dict = {}
 
-        summary = GenerationSummary()
+        summary = PlanSummary()
         id_map: dict = {}
         for move in moves:
             if not isinstance(move, dict):
@@ -572,9 +482,6 @@ class OpeningBuilderService:
             temp_depth[temp_id] = child_depth
             id_map[temp_id] = child.id
             summary.added_nodes += 1
-            summary.changes.append(
-                GeneratedNodeChange(child.id, move_uci, "added", MoveSource.MANUAL)
-            )
 
         receipt = (*receipt_target, {"id_map": id_map}) if receipt_target else None
         self.repository.save_changed_nodes(repertoire_id, self._changed_nodes(repertoire, before), receipt=receipt)
@@ -661,7 +568,7 @@ class OpeningBuilderService:
         depth_by_id: dict,
         temp_to_node: dict,
         seen_temp_ids: set,
-        summary: GenerationSummary,
+        summary: PlanSummary,
     ) -> None:
         move_uci = change.get("moveUci")
         if not move_uci or not isinstance(move_uci, str):
@@ -721,12 +628,11 @@ class OpeningBuilderService:
         depth_by_id[child.id] = child_depth
         temp_to_node[temp_id] = child
         summary.added_nodes += 1
-        summary.changes.append(GeneratedNodeChange(child.id, move_uci, "added", source))
         if probability is not None and probability >= MAINLINE_THRESHOLD:
             summary.high_probability_unprepared += 1
 
     def _apply_plan_update(
-        self, change: dict, nodes_by_id: dict, summary: GenerationSummary
+        self, change: dict, nodes_by_id: dict, summary: PlanSummary
     ) -> None:
         node_id = change.get("nodeId")
         if not node_id or not isinstance(node_id, str):
@@ -749,7 +655,7 @@ class OpeningBuilderService:
         change: dict,
         nodes_by_id: dict,
         temp_to_node: dict,
-        summary: GenerationSummary,
+        summary: PlanSummary,
     ) -> None:
         # Promote a node to the mainline among its siblings (the browser emits this when the
         # opponent's Stockfish best should take over from a generated mainline). Re-validated
@@ -783,14 +689,6 @@ class OpeningBuilderService:
                 changed = True
         if changed:
             summary.updated_nodes += 1
-            summary.changes.append(
-                GeneratedNodeChange(
-                    node.id,
-                    node.move.uci if node.move else "",
-                    "mainline",
-                    node.source,
-                )
-            )
 
     def _merge_plan_fields(
         self,
@@ -798,10 +696,10 @@ class OpeningBuilderService:
         evaluation: Optional[EngineEvaluation],
         probability: Optional[float],
         source: Optional[MoveSource],
-        summary: GenerationSummary,
+        summary: PlanSummary,
     ) -> None:
         # Fill-only-when-null + protected-source guard — identical to the
-        # existing-child branch of _upsert_child (never overwrite a value the
+        # stored child (never overwrite a value the
         # node already has, never relabel a user-authored move).
         changed = False
         if evaluation is not None and node.engine_evaluation is None:
@@ -819,258 +717,7 @@ class OpeningBuilderService:
             changed = True
         if changed:
             summary.updated_nodes += 1
-            summary.changes.append(
-                GeneratedNodeChange(
-                    node.id,
-                    node.move.uci if node.move else "",
-                    "updated",
-                    node.source,
-                )
-            )
 
-    def _expand(
-        self,
-        *,
-        node: OpeningNode,
-        repertoire: Repertoire,
-        relative_ply: int,
-        ply_depth: int,
-        detail_mode: str,
-        on_mainline_path: bool,
-        maia_rating: int,
-        summary: GenerationSummary,
-        config: GenerateConfig,
-    ) -> None:
-        if relative_ply >= ply_depth:
-            return
-
-        own_color = config.own_color or repertoire.color
-        user_turn = node.side_to_move is own_color
-        if user_turn:
-            manual_prepared_moves = (
-                self._manual_prepared_child_ucis(node)
-                if config.preserve_manual_prepared_moves
-                else set()
-            )
-            branch_limit = max(1, int(getattr(config, "own_side_candidate_count", 1) or 1))
-            candidate_count = branch_limit + len(manual_prepared_moves)
-            candidates = self._engine_candidates(node.fen, candidate_count)
-            if not candidates:
-                return
-            generated_branches = 0
-            for candidate in candidates:
-                if candidate.move_uci in manual_prepared_moves:
-                    continue
-                child = self._upsert_child(
-                    parent=node,
-                    repertoire=repertoire,
-                    move_uci=candidate.move_uci,
-                    source=MoveSource.GENERATED_STOCKFISH,
-                    evaluation=candidate.evaluation,
-                    probability=None,
-                    intended_mainline=not manual_prepared_moves,
-                    summary=summary,
-                )
-                if child is None:
-                    continue
-                self._expand(
-                    node=child,
-                    repertoire=repertoire,
-                    relative_ply=relative_ply + 1,
-                    ply_depth=ply_depth,
-                    detail_mode=detail_mode,
-                    on_mainline_path=on_mainline_path and not manual_prepared_moves,
-                    maia_rating=maia_rating,
-                    summary=summary,
-                    config=config,
-                )
-                generated_branches += 1
-                if generated_branches >= branch_limit:
-                    break
-            return
-
-        # Opponent's turn → the engine's best move is the MAINLINE; Maia supplies the human
-        # BRANCHES. Threshold is 10% on the mainline path else 30%. The two sources are
-        # MERGED so a move that is both Stockfish's best AND a likely human reply lands as a
-        # single child (Stockfish source/eval, Maia probability supplemented) — never twice.
-        threshold = MAINLINE_THRESHOLD if on_mainline_path else BRANCH_THRESHOLD
-        sf_candidates = self._engine_candidates(node.fen, 1)
-        predictions = sorted(
-            self.maia.predictions(node.fen, rating=maia_rating),
-            key=lambda item: item.probability,
-            reverse=True,
-        )
-        if not sf_candidates and not predictions:
-            return
-
-        prob_by_uci = {p.move_uci: p.probability for p in predictions}
-
-        # Mainline: Stockfish's best when the engine offers one (carrying its eval, plus the
-        # Maia probability when that move is also a human reply); only when Stockfish offers
-        # nothing do we fall back to the most human-likely move as the mainline.
-        if sf_candidates:
-            sf_top = sf_candidates[0]
-            mainline_uci = sf_top.move_uci
-            main_child = self._upsert_child(
-                parent=node,
-                repertoire=repertoire,
-                move_uci=sf_top.move_uci,
-                source=MoveSource.GENERATED_STOCKFISH,
-                evaluation=sf_top.evaluation,
-                probability=prob_by_uci.get(sf_top.move_uci),
-                intended_mainline=True,
-                summary=summary,
-            )
-        else:
-            top = predictions[0]
-            mainline_uci = top.move_uci
-            main_child = self._upsert_child(
-                parent=node,
-                repertoire=repertoire,
-                move_uci=top.move_uci,
-                source=MoveSource.GENERATED_MAIA3,
-                evaluation=None,
-                probability=top.probability,
-                intended_mainline=True,
-                summary=summary,
-            )
-        if main_child is not None:
-            self._promote_opponent_mainline(node, main_child)
-            self._expand(
-                node=main_child,
-                repertoire=repertoire,
-                relative_ply=relative_ply + 1,
-                ply_depth=ply_depth,
-                detail_mode=detail_mode,
-                on_mainline_path=on_mainline_path,
-                maia_rating=maia_rating,
-                summary=summary,
-                config=config,
-            )
-
-        # Maia branches: every human reply over threshold EXCEPT the mainline move (no
-        # duplicate child). If nothing clears the threshold, keep the single top move as a
-        # fallback branch — unless it's already the Stockfish mainline.
-        kept = [p for p in predictions if p.probability >= threshold]
-        if not kept and predictions:
-            kept = [predictions[0]]
-
-        for branch_pred in kept:
-            if branch_pred.move_uci == mainline_uci:
-                continue  # already the mainline child
-            branch_child = self._upsert_child(
-                parent=node,
-                repertoire=repertoire,
-                move_uci=branch_pred.move_uci,
-                source=MoveSource.GENERATED_MAIA3,
-                evaluation=None,
-                probability=branch_pred.probability,
-                intended_mainline=False,
-                summary=summary,
-            )
-            if branch_child is None:
-                continue
-            if detail_mode == "simple":
-                # Create the branch node, but do not recurse into it.
-                continue
-            # balanced / deep: recurse, but now we are off the mainline path.
-            self._expand(
-                node=branch_child,
-                repertoire=repertoire,
-                relative_ply=relative_ply + 1,
-                ply_depth=ply_depth,
-                detail_mode=detail_mode,
-                on_mainline_path=False,
-                maia_rating=maia_rating,
-                summary=summary,
-                config=config,
-            )
-
-    def _upsert_child(
-        self,
-        *,
-        parent: OpeningNode,
-        repertoire: Repertoire,
-        move_uci: str,
-        source: MoveSource,
-        evaluation,
-        probability,
-        intended_mainline: bool,
-        summary: GenerationSummary,
-    ) -> Optional[OpeningNode]:
-        existing = child_by_uci(parent, move_uci)
-        if existing is not None:
-            # Update analysis fields without touching manual flags / comments / tags.
-            changed = False
-            if evaluation is not None and existing.engine_evaluation is None:
-                existing.engine_evaluation = evaluation
-                changed = True
-            if probability is not None and existing.maia_probability is None:
-                existing.maia_probability = probability
-                changed = True
-            # Only upgrade `source` if it's a generic/unknown one and the
-            # existing node wasn't user-authored.
-            if existing.source not in {MoveSource.MANUAL, MoveSource.IMPORTED_PGN}:
-                if existing.source != source:
-                    existing.source = source
-                    changed = True
-            if changed:
-                summary.updated_nodes += 1
-                summary.changes.append(
-                    GeneratedNodeChange(existing.id, move_uci, "updated", source)
-                )
-            return existing
-
-        # New child.
-        move = self.chess_core.apply_uci(parent.fen, move_uci, source=source)
-        is_mainline = bool(intended_mainline) and not any(
-            child.is_mainline for child in parent.children
-        )
-        child = OpeningNode(
-            id=str(uuid.uuid4()),
-            repertoire_id=repertoire.id,
-            parent_id=parent.id,
-            move=move,
-            fen=move.fen_after,
-            side_to_move=self.chess_core.side_to_move(move.fen_after),
-            engine_evaluation=evaluation,
-            maia_probability=probability,
-            is_mainline=is_mainline,
-            is_user_prepared_move=parent.side_to_move is repertoire.color,
-            source=source,
-        )
-        parent.children.append(child)
-        summary.added_nodes += 1
-        summary.changes.append(
-            GeneratedNodeChange(child.id, move_uci, "added", source)
-        )
-        if probability is not None and probability >= MAINLINE_THRESHOLD:
-            summary.high_probability_unprepared += 1
-        callback = getattr(self, "_progress_callback", None)
-        if callback is not None:
-            callback(
-                "node_added",
-                added=summary.added_nodes,
-                total_hint=max(getattr(self, "_progress_total_hint", 0), summary.added_nodes),
-            )
-        return child
-
-    def _promote_opponent_mainline(
-        self, parent: OpeningNode, child: OpeningNode
-    ) -> None:
-        """Make ``child`` the mainline among its siblings when a *generated* sibling
-        currently holds it (e.g. the previous run's Maia mainline, or an old mainline
-        blocking a freshly-chosen Stockfish best). A user-authored (MANUAL / IMPORTED_PGN)
-        mainline is never demoted. Mirrors the browser's ``set_mainline`` plan change."""
-        if child.is_mainline:
-            return
-        blocking = [c for c in parent.children if c is not child and c.is_mainline]
-        if not blocking:
-            return
-        if any(c.source in {MoveSource.MANUAL, MoveSource.IMPORTED_PGN} for c in blocking):
-            return
-        for sibling in parent.children:
-            sibling.is_mainline = sibling is child
 
     def set_as_mainline(self, repertoire_id: str, node_id: str) -> OpeningNode:
         repertoire = self._load_repertoire_or_raise(repertoire_id)
@@ -1276,36 +923,6 @@ class OpeningBuilderService:
             visible_nodes=visible,
         )
 
-    def _engine_candidates(self, fen: str, count: int) -> List[EngineMoveCandidate]:
-        engine_config = EngineAnalysisConfig(
-            depth=self.engine_config.depth,
-            nodes=self.engine_config.nodes,
-            time_ms=self.engine_config.time_ms,
-            multipv=max(1, count),
-        )
-        analysis = self.engine.analyze_position(
-            fen,
-            engine_config,
-        )
-        candidates = []
-        for candidate in analysis.candidates[:count]:
-            candidates.append(
-                EngineMoveCandidate(
-                    move_uci=candidate.move_uci,
-                    evaluation=candidate.evaluation_after,
-                    rank=candidate.rank,
-                )
-            )
-        return candidates
-
-    def _manual_prepared_child_ucis(self, node: OpeningNode) -> Set[str]:
-        return {
-            child.move.uci
-            for child in node.children
-            if child.move
-            and child.is_user_prepared_move
-            and child.source is MoveSource.MANUAL
-        }
 
     def _set_branch_enabled(self, node: OpeningNode, enabled: bool) -> None:
         node.is_enabled = enabled

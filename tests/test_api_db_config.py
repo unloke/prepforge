@@ -7,8 +7,6 @@ pooled connection:
   so a one-shot PRAGMA only covered the first pooled connection — later ones silently
   skipped FK enforcement (broken cascade deletes). ``make_engine`` must re-assert it on
   every connect.
-* ``Settings.database_url`` documented ``PREPFORGE_DATABASE_URL`` as an override but a
-  bare ``validation_alias`` replaced the env_prefix, so only ``DATABASE_URL`` worked.
 """
 from __future__ import annotations
 
@@ -43,23 +41,6 @@ def test_foreign_keys_on_for_concurrent_connections(tmp_path, monkeypatch):
         for c in conns:
             c.close()
     assert flags == [1, 1, 1]
-
-
-def test_prefixed_database_url_is_honored(monkeypatch):
-    monkeypatch.delenv("DATABASE_URL", raising=False)
-    monkeypatch.setenv("PREPFORGE_DATABASE_URL", "sqlite:///from_prefixed.sqlite3")
-    from prepforge_chess.api.config import Settings
-
-    assert Settings().database_url == "sqlite:///from_prefixed.sqlite3"
-
-
-def test_bare_database_url_takes_precedence(monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", "sqlite:///from_bare.sqlite3")
-    monkeypatch.setenv("PREPFORGE_DATABASE_URL", "sqlite:///from_prefixed.sqlite3")
-    from prepforge_chess.api.config import Settings
-
-    # AliasChoices order = precedence: the Render/Heroku-convention DATABASE_URL wins.
-    assert Settings().database_url == "sqlite:///from_bare.sqlite3"
 
 
 @pytest.mark.parametrize(

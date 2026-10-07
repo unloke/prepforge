@@ -284,3 +284,5 @@ GitHub Pages can host a marketing/demo or redirect page, but it cannot run this 
 `/api/...` endpoints — accounts, repertoires, Stockfish/Maia3 asset hosting, OAuth, and
 billing all depend on the FastAPI server. A Pages-only deployment isn't possible
 without removing those features.
+
+Configuration names: `DATABASE_URL` for the database; `PREPFORGE_<SETTING>` for every other API setting.

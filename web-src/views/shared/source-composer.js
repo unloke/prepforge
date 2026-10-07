@@ -4,7 +4,7 @@ import { html } from "../../html.js";
 // page difference is what happens AFTER picking: Games fetches recent games
 // for prep review, Scout streams opponent games. The picker itself — model,
 // popover, chips, rows, Add flow, keyboard/ARIA, positioning, persistence —
-// is one shared implementation; `allowExternal` exists only as a legacy flag
+// is one shared implementation; `allowExternal` controls external account entry
 // and is now always honored (both pages accept arbitrary Lichess usernames).
 //
 // Explicit linked-source state (no implicit inference):
@@ -20,9 +20,6 @@ import { html } from "../../html.js";
 // Expressible states: Self only · Self + external · external only (none +
 // names) · partial linked + external · partial linked only · no sources.
 //
-// Legacy storage (prepforge.games_source / prepforge.scout_source ids,
-// prepforge.scout_external names, prepforge.scout_self on/off, "__none__"
-// marker) is migrated on read so reload keeps the same selection.
 
 export function normalizeUsername(name) {
   return String(name || "").trim();
@@ -192,7 +189,7 @@ export function selectionChips(selection, linkedAccounts) {
 // rendered with the same row/chip language as a linked account, and the
 // collapsed toolbar shows it as a compact chip. Games and Scout share this
 // exact component, spacing, positioning, and selection rendering —
-// `allowExternal` is a legacy flag, always honored.
+// `allowExternal` controls external account entry.
 //
 // Positioning: viewport-based (the overlay is position: fixed), recomputed
 // after EVERY render via one positionPopover() so selection changes never move
@@ -519,88 +516,16 @@ export function openSourceComposer({
   return { close, getSelection: () => ({ ...sel }) };
 }
 
-// ---- Persistence bridge (shared by Games + Scout) --------------------------
-// New storage shape per key: { linkedMode, accountIds, external } — ids holds
-// null (Self default), ["__none__"] (no linked sources), [] (every linked
-// account explicitly unpicked — external-only), or the explicit subset list;
-// external names always persist alongside in the companion key.
-// Legacy shapes migrate on read (reload keeps the same selection):
-//   null/absent            -> { linkedMode: "all", ... } (Self default)
-//   ["__none__"]            -> { linkedMode: "none", ... } (no sources)
-//   []                      -> { linkedMode: "subset", accountIds: [], ... }
-//   ["id", ...]             -> { linkedMode: "subset", accountIds: [...] }
-//   scout_self=off + empty  -> { linkedMode: "none", ... }
-// External names always merge from the companion external key. An EMPTY id
-// list is distinct from an ABSENT one: "[]" is the persisted form of
-// subset + [] (Self fully unpicked), which must never resurrect Self on
-// reload the way the legacy absent-key Self default does.
-
-export function selectionFromStorage({ ids = null, external = null, selfOff = false } = {}) {
-  const externals = uniqueStrings(
-    (Array.isArray(external) ? external : []).map(normalizeUsername).filter(Boolean)
-  );
-  if (Array.isArray(ids) && ids.includes("__none__")) {
-    return { linkedMode: "none", accountIds: [], external: externals };
-  }
-  if (!Array.isArray(ids)) {
-    // Absent key = legacy Self default; legacy scout_self=off overrides it.
-    if (selfOff) return { linkedMode: "none", accountIds: [], external: externals };
-    return { linkedMode: "all", accountIds: [], external: externals };
-  }
-  if (!ids.length) {
-    // Explicit empty list = every linked account was unpicked (external-only
-    // or no sources). Never widen back to Self on reload.
-    if (selfOff) return { linkedMode: "none", accountIds: [], external: externals };
-    return { linkedMode: "subset", accountIds: [], external: externals };
-  }
-  return {
-    linkedMode: "subset",
-    accountIds: uniqueStrings(ids.map((id) => String(id)).filter((id) => id && id !== "__none__")),
-    external: externals,
-  };
-}
-
-export function selectionToStorage(selection) {
-  const sel = normalizeSelection(selection);
-  let ids;
-  if (sel.linkedMode === "all") ids = null;
-  else if (sel.linkedMode === "none") ids = ["__none__"];
-  else ids = [...sel.accountIds];
-  return {
-    ids,
-    external: [...sel.external],
-  };
-}
-
-// Back-compat bridge: the legacy Games/Scout persistence stores only linked
-// account ids (null = Self default). An empty selection means Self.
-
-export function legacyIdsToSelection(ids) {
-  if (!Array.isArray(ids) || !ids.length) return selectionFromStorage({ ids: null });
-  return selectionFromStorage({ ids });
-}
-
-export function selectionToLegacyIds(selection, linkedAccounts) {
-  const sel = normalizeSelection(selection);
-  void linkedAccounts;
-  if (sel.linkedMode === "all") return null;
-  // "none" and subset + [] both persist as the __none__ marker so an
-  // external-only selection never round-trips back to the Self default.
-  if (sel.linkedMode === "none") return ["__none__"];
-  return sel.accountIds.length ? [...sel.accountIds] : ["__none__"];
-}
-
 // Resolve the usernames a page should actually fetch. Linked state is explicit:
 // "all" contributes every linked username; "subset" contributes exactly the
 // listed ids; "none" contributes none. External names always union in. Both
 // Games and Scout resolve through this one path (Games no longer ignores
 // external — arbitrary Lichess usernames fetch the same way everywhere).
-export function resolveFetchUsernames({ selection, linkedAccounts, external = [], includeExternal = true }) {
+export function resolveFetchUsernames({ selection, linkedAccounts, includeExternal = true }) {
   const sel = normalizeSelection(selection);
   const linked = Array.isArray(linkedAccounts) ? linkedAccounts : [];
   const idToName = new Map(linked.map((a) => [a.id, a.username]));
-  const legacyExtra = (Array.isArray(external) ? external : []).map(normalizeUsername).filter(Boolean);
-  const externals = includeExternal ? uniqueStrings([...sel.external, ...legacyExtra]) : [];
+  const externals = includeExternal ? sel.external : [];
   let linkedNames = [];
   if (sel.linkedMode === "all") {
     linkedNames = linked.map((a) => a.username).filter(Boolean);

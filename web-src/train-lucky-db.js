@@ -294,11 +294,6 @@ export async function buildMasterLine({
   return { sans, over, startFen };
 }
 
-/** Back-compat alias: single-position UCI → SAN without game-over info. */
-export function uciToSan(fen, uci) {
-  const moved = uciFen(fen, uci);
-  return moved ? moved.san : null;
-}
 
 /**
  * Database round for Feeling Lucky.

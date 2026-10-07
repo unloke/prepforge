@@ -15,10 +15,7 @@ import { luckyTitledStart } from "./train-lucky-titled.js";
 export async function runFeelingLucky({
   luckyDbStartFn = luckyDbStart,
   luckyTitledStartFn = luckyTitledStart,
-  // Dynamic Lichess game feeds are the production path. Setting this false
-  // keeps the old Masters-first seam available for focused sampler tests;
-  // `allowReferences` is an explicit emergency/test-only opt-in.
-  preferDynamic = true,
+  // Reference feeds are an explicit emergency/test-only opt-in.
   allowReferences = false,
   ensureExplorer = null,
   storage = null,
@@ -31,9 +28,7 @@ export async function runFeelingLucky({
   setBanner(
     "runin",
     "Finding a position…",
-    preferDynamic
-      ? "Discovering a fresh titled player on Lichess"
-      : "Following the Lichess masters database",
+    "Discovering a fresh titled player on Lichess",
   );
   let dbError = null;
   let sessionFailed = null;
@@ -96,7 +91,7 @@ export async function runFeelingLucky({
       onStatus: (msg) => setBanner("runin", "Finding a position…", msg),
     });
 
-  if (preferDynamic) {
+
     // Fast production path: live leaderboard discovery followed by one
     // recent-games feed. A healthy click therefore uses two small requests;
     // no fixed game ID is consulted. `allowReferences` is retained only as
@@ -143,56 +138,13 @@ export async function runFeelingLucky({
         }
       }
     }
-  } else {
-    // Back-compat/investigation seam: callers that explicitly opt out of the
-    // live path keep the previous Masters-first ordering.
-    let fetchStats = null;
-    try {
-      if (typeof ensureExplorer === "function") {
-        const client = await ensureExplorer();
-        fetchStats = (db, fen, opts) => client.fetchStats(db, fen, opts);
-      }
-      const picked = await runDb(fetchStats);
-      if (picked) {
-        if (await beginSession(picked)) return picked;
-        return null;
-      }
-    } catch (error) {
-      dbError = error;
-      const msg = (error && error.message) || String(error);
-      if (!isNoQuality(msg) && !/link your lichess|cooling down/i.test(msg)) {
-        onStatus(msg);
-        setBanner("idle", "Database unavailable", "Try again — the masters database may be rate-limited right now.");
-        return null;
-      }
-    }
-    try {
-      const picked = await luckyTitledStartFn({
-        storage,
-        exclude,
-        onStatus: (msg) => setBanner("runin", "Finding a position…", msg),
-      });
-      if (picked) {
-        if (await beginSession(picked)) return picked;
-        return null;
-      }
-    } catch (error) {
-      const msg = (error && error.message) || String(error);
-      if (isTransport(msg)) {
-        onStatus(msg);
-        setBanner("idle", "Database unavailable", "Try again — Lichess game export is unavailable or rate-limited.");
-        return null;
-      }
-    }
-  }
+
   if (dbError) onStatus(dbError.message || String(dbError));
   else onStatus("No sharp database game found — try again.");
   setBanner(
     "idle",
     "Nothing sharp this time",
-    preferDynamic
-      ? "Try again — Lucky queries fresh Lichess games on each click."
-      : "Try again — Lucky draws a fresh master game each click.",
+    "Try again — Lucky queries fresh Lichess games on each click.",
   );
   return null;
 }

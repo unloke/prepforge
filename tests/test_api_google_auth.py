@@ -15,8 +15,8 @@ def google_client(tmp_path, monkeypatch):
     monkeypatch.setenv("PREPFORGE_SECRET_KEY", "test-secret-not-for-prod")
     monkeypatch.setenv("PREPFORGE_TOKEN_KEY", "test-token-key-not-for-prod")
     monkeypatch.setenv("PREPFORGE_ENV", "development")
-    monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-google-client")
-    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "test-google-secret")
+    monkeypatch.setenv("PREPFORGE_GOOGLE_CLIENT_ID", "test-google-client")
+    monkeypatch.setenv("PREPFORGE_GOOGLE_CLIENT_SECRET", "test-google-secret")
 
     from prepforge_chess.api import config, db, main
     from prepforge_chess.api.ratelimit import limiter

@@ -9,7 +9,6 @@ Three concerns, deliberately small and dependency-light:
   is persisted. A DB leak therefore never yields live session cookies.
 * Linked-account OAuth tokens -> Fernet (AES-128-CBC + HMAC) keyed off the
   dedicated ``PREPFORGE_TOKEN_KEY``, with an explicit ``v1:`` version prefix.
-  There is no legacy format and no fallback.
 """
 from __future__ import annotations
 

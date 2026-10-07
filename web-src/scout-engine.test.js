@@ -242,40 +242,6 @@ describe("scout-engine helpers", () => {
     expect(isCompleteScanCacheEntry(v2Record)).toBe(false);
   });
 
-  it("purges v2 cache entries so deep scan can rescan reply fields", () => {
-    const store = {
-      data: {},
-      getItem(key) {
-        return this.data[key] ?? null;
-      },
-      setItem(key, value) {
-        this.data[key] = value;
-      },
-      removeItem(key) {
-        delete this.data[key];
-      },
-    };
-    const depth = 12;
-    const plies = 24;
-    const v2Key = `prepforge.scout.engine.v2:g1:d${depth}:p${plies}`;
-    store.setItem(
-      v2Key,
-      JSON.stringify({
-        schemaVersion: 2,
-        record: {
-          moves: [{ ply: 0, cpLoss: 5, isInaccuracy: false, bestUci: "e2e4" }],
-          mistakes: [],
-          eligibleOpponentPlies: 1,
-          analyzedOpponentPlies: 1,
-          complete: true,
-        },
-      }),
-    );
-
-    expect(readGameCache(store, "g1", depth, plies)).toBeNull();
-    expect(store.getItem(v2Key)).toBeNull();
-    expect(store.getItem(`prepforge.scout.engine.v3:g1:d${depth}:p${plies}`)).toBeNull();
-  });
 
   it("accepts current caches only for the same input, engine and retention window", () => {
     const store = {

@@ -260,7 +260,7 @@ function renderPlayRepertoirePicker(active = null) {
 }
 
 // The smart queue trains ALL active repertoires in one mixed session, so its
-// setup needs no repertoire picker; line rehearsal (legacy) keeps it.
+// setup needs no repertoire picker; line rehearsal keeps it.
 function syncTrainPickerVisibility() {
   const mode = appState.trainMode || "smart";
   const smart = mode === "smart";
@@ -481,7 +481,7 @@ async function startTraining(mode, options = {}) {
     await startSmartTraining(options);
     return;
   }
-  // ----- legacy line rehearsal (all_lines) below -----
+  // ----- line rehearsal (all_lines) below -----
   const seq = ++smartStartSeq;
   const owner = currentOwnerId();
   const isCurrent = () => seq === smartStartSeq && owner === currentOwnerId() && appState.trainMode === mode;
@@ -723,19 +723,12 @@ function playCursorSnapshot(play) {
 function playCursorsAtFen(repertoires, fen) {
   const key = (value) => String(value || "").trim().split(/\s+/).slice(0, 4).join(" ");
   const target = key(fen);
-  const startKey = START_FEN.split(" ").slice(0, 4).join(" ");
   const out = {};
   for (const rep of repertoires || []) {
     const matching = (rep.nodes || [])
       .filter((node) => node && key(node.fen) === target && node.is_enabled !== false)
       .map((node) => node.id);
-    // A non-start Lucky FEN is deliberately outside the local trees. Falling
-    // back to a repertoire root here would make an unrelated opening reply
-    // appear to be in-book. Roots are only a safe fallback for the actual
-    // starting position when a legacy payload omitted its FEN.
-    const root = (rep.nodes || []).find((node) => node && node.id === rep.rootId);
-    const rootMatches = root && (!root.fen ? target === startKey : key(root.fen) === target);
-    out[rep.id] = matching.length ? matching : rootMatches && rep.rootId ? [rep.rootId] : [];
+    out[rep.id] = matching;
   }
   return out;
 }
@@ -1200,7 +1193,6 @@ async function runFeelingLuckyClick() {
       storage: typeof localStorage === "undefined" ? null : localStorage,
       exclude: [appState.lastLuckyFen, appState.play && appState.play.startFen].filter(Boolean),
       rating: effectiveMaiaRating(),
-      preferDynamic: true,
       ensureExplorer: ensureExplorerClient,
       onStatus: setStatus,
       setBanner: (state, title, sub) => setTrainBanner(state, title, sub),
@@ -1729,7 +1721,7 @@ async function startSmartTraining(options = {}) {
   const mapped = trainResume.mapTrainUiSession(payload, { fresh });
   // A resumed session without a memo must not inherit unrelated counters.
   trainStatsReset();
-  appState.training = null; // leave legacy mode if it was active
+  appState.training = null; // leave line rehearsal if it was active
   // A restart can interrupt an in-flight run-in; its early-return leaves the
   // busy flag set, so clear it before the new session takes the board.
   appState.trainBusy = false;

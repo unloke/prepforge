@@ -1,7 +1,7 @@
 """Export the Maia3-23M checkpoint to ONNX artifacts for the browser.
 
 Phase 3a of docs/browser-engine-migration.md. Produces the browser artifact plus
-a manifest, with BEHAVIORAL parity verified against the live Maia3Adapter
+a manifest, with BEHAVIORAL parity verified against the live Maia3Reference
 (legal-masked policy, top-1 move, Build-Generate 10%/30% threshold sets, and the
 move_assessment after-move value path) — not just raw graph numerics:
 
@@ -44,14 +44,12 @@ import torch
 
 # Repo + scripts import path (script lives in scripts/).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from gc_maia3_artifacts import publish_lock  # noqa: E402  (stdlib-only; no torch)
-from prepforge_chess.services.maia import (  # noqa: E402
+from maia3_reference import (  # noqa: E402
     MAIA3_DEFAULT_MODEL,
     MAIA3_DEFAULT_REPO,
-    Maia3Adapter,
-    Maia3Config,
+    Maia3Reference,
 )
 
 # Behavioral parity probes. Each covers a distinct part of the move vocabulary /
@@ -84,7 +82,7 @@ PARITY_PROBES = [
 ]
 
 # Build Generate keeps opponent moves with policy >= these thresholds
-# (opening_generation.MAINLINE_THRESHOLD / BRANCH_THRESHOLD). Parity must hold
+# (browser generator: mainline 10% / branch 30%). Parity must hold
 # the kept-move SET at both, or branching changes.
 BUILD_THRESHOLDS = (0.10, 0.30)
 
@@ -243,7 +241,7 @@ def _onnx_run(sess, t, s, o):
 
 
 def onnx_predictions(sess, engine, fen: str, elo: int):
-    """Reproduce Maia3Adapter.predictions() from an ONNX session.
+    """Reproduce Maia3Reference.predictions() from an ONNX session.
 
     Mirrors maia.py: legal-move mask -> softmax over legal moves -> map indices
     back through the side-to-move (mirrored) frame via engine._move_from_index.
@@ -269,7 +267,7 @@ def onnx_predictions(sess, engine, fen: str, elo: int):
 
 
 def onnx_move_assessment(sess, engine, fen: str, move_uci: str, elo: int):
-    """Reproduce Maia3Adapter.move_assessment() from an ONNX session.
+    """Reproduce Maia3Reference.move_assessment() from an ONNX session.
 
     Two forwards: policy on the current position (human probability of the move)
     and value on the after-move tokens with self/oppo Elo swapped, WDL inverted
@@ -498,7 +496,7 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"[1/6] Loading {MAIA3_DEFAULT_MODEL} ({MAIA3_DEFAULT_REPO}) on CPU ...")
-    adapter = Maia3Adapter(Maia3Config(device="cpu"))
+    adapter = Maia3Reference()
     engine = adapter._ensure_engine()
     model = engine.model.eval()
 
@@ -603,7 +601,7 @@ def main() -> int:
         # int8 is experimental and never gates the build (not threshold-safe).
         non_gating = {"int8"}
 
-        print(f"[6/7] Curated-probe parity vs live Maia3Adapter (tol={args.tol}) ...")
+        print(f"[6/7] Curated-probe parity vs live Maia3Reference (tol={args.tol}) ...")
         # Reference = the real adapter (torch model + legal mask + mirror-frame
         # mapping + after-move value path), exactly what Build Generate and
         # Brilliancy consume — NOT the raw torch wrapper.

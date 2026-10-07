@@ -923,22 +923,6 @@ export function createScoutView(deps) {
         }
       }
       if (gen !== prefilterEnrich.generation) return;
-      if (typeof console !== "undefined" && console.table) {
-        const rows = {};
-        for (const c of ["white", "black"]) {
-          const f = scoutState.funnel?.[c];
-          if (!f) continue;
-          rows[c] = {
-            totalLines: f.totalLines,
-            scored: f.scored,
-            noOpportunity: f.gateDrops?.noOpportunity,
-            survived: f.survived,
-            pool: f.poolSize,
-            maiaCandidates: f.maiaCandidates,
-          };
-        }
-        console.table(rows);
-      }
       scoutState.prefilterEnrichState = PREFILTER_READY;
       scoutState.prefilterScopeKey = scopeKey;
     } catch (_) {
@@ -1602,10 +1586,10 @@ export function createScoutView(deps) {
       throw new Error("scout-results element missing");
     }
 
-    const { buildE2ePrepSection, normalizeE2ePrepScenarioId } = await import(
+    const { buildE2ePrepSection } = await import(
       "../scout-e2e-fixtures.js"
     );
-    const normalizedId = normalizeE2ePrepScenarioId(scenarioId);
+    const normalizedId = scenarioId;
     const { html: markup, sectionData } = buildE2ePrepSection(normalizedId);
     results.innerHTML = markup;
     scoutState.sections = { black: sectionData };

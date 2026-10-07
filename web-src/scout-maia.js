@@ -71,17 +71,13 @@ export function getMaiaResultEntry(maiaResults, fen, rating) {
 
 export function isMaiaFailed(maiaResults, fen, rating) {
   const entry = getMaiaResultEntry(maiaResults, fen, rating);
-  // Only block retry when the failure is explicitly from wdlRead. Legacy entries written by
-  // the old positionRead path have no method tag — they get a free retry via wdlRead so that
-  // a deploy that switches methods doesn't permanently strand positions that only failed because
-  // buildPredictions/legalMoveIndices threw after the forward itself succeeded.
-  return entry?.failed === true && entry.method === "wdlRead";
+  return entry?.failed === true;
 }
 
 export function isMaiaAttempted(maiaResults, fen, rating) {
   const entry = getMaiaResultEntry(maiaResults, fen, rating);
   if (!entry) return false;
-  if (entry.failed) return entry.method === "wdlRead";
+  if (entry.failed) return true;
   return entry.maiaScorePct != null && !!entry.maiaWdl;
 }
 

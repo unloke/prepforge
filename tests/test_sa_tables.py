@@ -37,8 +37,6 @@ def _expected_tables() -> set[str]:
         "opening_nodes",
         "training_sessions",
         "training_progress",
-        "engine_settings",
-        "app_settings",
         "alembic_version",
     }
 

@@ -33,8 +33,6 @@ export function scoutCacheProvenance(game, oppColor) {
     sans: game.sans,
   });
 }
-const LEGACY_CACHE_PREFIX = "prepforge.scout.engine.v1";
-const STALE_CACHE_PREFIXES = [LEGACY_CACHE_PREFIX, "prepforge.scout.engine.v2", "prepforge.scout.engine.v3", "prepforge.scout.engine.v4"];
 
 class ScanCancelled extends Error {
   constructor(message = "Deep scan stopped") {
@@ -47,15 +45,11 @@ function cacheKey(gameId, depth, plies) {
   return `${CACHE_PREFIX}:${gameId}:d${depth}:p${plies}`;
 }
 
-function staleCacheKey(prefix, gameId, depth, plies) {
-  return `${prefix}:${gameId}:d${depth}:p${plies}`;
-}
 
 function moveHasReplyFields(move) {
   if (!move || typeof move !== "object") return false;
   const hasOpponentAlt =
-    Object.prototype.hasOwnProperty.call(move, "opponentBestAlternativeUci") ||
-    Object.prototype.hasOwnProperty.call(move, "bestUci");
+    Object.prototype.hasOwnProperty.call(move, "opponentBestAlternativeUci");
   return (
     hasOpponentAlt &&
     Object.prototype.hasOwnProperty.call(move, "ourReplyUci") &&
@@ -80,17 +74,10 @@ export function isCompleteScanCacheEntry(cached) {
   return true;
 }
 
-function purgeStaleCacheKeys(store, gameId, depth, plies) {
-  for (const prefix of STALE_CACHE_PREFIXES) {
-    const key = staleCacheKey(prefix, gameId, depth, plies);
-    if (store.getItem(key)) store.removeItem(key);
-  }
-}
 
 export function readGameCache(store, gameId, depth, plies, provenance) {
   if (!gameId) return null;
   try {
-    purgeStaleCacheKeys(store, gameId, depth, plies);
     const key = cacheKey(gameId, depth, plies);
     const raw = store.getItem(key);
     if (raw) {

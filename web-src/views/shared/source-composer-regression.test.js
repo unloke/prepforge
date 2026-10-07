@@ -2,8 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   normalizeSelection,
   selectionChips,
-  selectionFromStorage,
-  selectionToStorage,
   selfGroupState,
   resolveFetchUsernames,
 } from "./source-composer.js";
@@ -23,40 +21,14 @@ function makeStorage(seed = {}) {
   };
 }
 
-function readStore(storage, sourceKey, externalKey, selfKey) {
-  let rawIds = null;
-  try {
-    const raw = storage.getItem(sourceKey);
-    if (raw) rawIds = JSON.parse(raw);
-  } catch (_) {
-    rawIds = null;
-  }
-  let rawExternal = null;
-  try {
-    const raw = storage.getItem(externalKey);
-    if (raw) rawExternal = JSON.parse(raw);
-  } catch (_) {
-    rawExternal = null;
-  }
-  let selfOff = false;
-  if (selfKey) selfOff = storage.getItem(selfKey) === "off";
-  return selectionFromStorage({ ids: rawIds, external: rawExternal, selfOff });
-}
 
-function writeStore(storage, sourceKey, externalKey, selfKey, selection) {
-  const stored = selectionToStorage(selection);
-  // Mirror of app.js writeSourceStore: an explicit [] (every linked account
-  // unpicked) persists as "[]" — only a null (Self default) clears the key.
-  if (!stored.ids) storage.removeItem(sourceKey);
-  else storage.setItem(sourceKey, JSON.stringify(stored.ids));
-  if (stored.external.length) storage.setItem(externalKey, JSON.stringify(stored.external));
-  else storage.removeItem(externalKey);
-  if (selfKey) {
-    const sel = normalizeSelection(selection);
-    storage.setItem(selfKey, sel.linkedMode === "none" && !sel.external.length ? "off" : "on");
-  }
+function readStore(storage, sourceKey) {
+  try { return normalizeSelection(JSON.parse(storage.getItem(sourceKey))); }
+  catch (_) { return normalizeSelection(null); }
 }
-
+function writeStore(storage, sourceKey, _externalKey, _selfKey, selection) {
+  storage.setItem(sourceKey, JSON.stringify(normalizeSelection(selection)));
+}
 const pages = [
   { name: "games", source: "prepforge.games_source", external: "prepforge.games_external", self: null },
   { name: "scout", source: "prepforge.scout_source", external: "prepforge.scout_external", self: "prepforge.scout_self" },
@@ -152,29 +124,6 @@ describe.each(pages.map((p) => [p.name, p]))("source composer parity: %s selecti
     expect(pickedUsernames(storage, page, linked)).toEqual(["account_a", "account_b"]);
   });
 
-  it("reload persistence: explicit picks and externals survive a round-trip", () => {
-    writeStore(storage, page.source, page.external, page.self, {
-      linkedMode: "subset",
-      accountIds: ["acc-b"],
-      external: ["Hikaru"],
-    }, linked);
-    const reloaded = makeStorage(storage._dump());
-    const sel = readStore(reloaded, page.source, page.external, page.self);
-    expect(sel).toEqual({
-      linkedMode: "subset",
-      accountIds: ["acc-b"],
-      external: ["Hikaru"],
-    });
-    expect(pickedUsernames(reloaded, page, linked)).toEqual(["account_b", "Hikaru"]);
-    const legacy = makeStorage({ [page.source]: JSON.stringify(["acc-b"]) });
-    expect(readStore(legacy, page.source, page.external, page.self)).toEqual({
-      linkedMode: "subset",
-      accountIds: ["acc-b"],
-      external: [],
-    });
-    const legacyNone = makeStorage({ [page.source]: JSON.stringify(["__none__"]) });
-    expect(readStore(legacyNone, page.source, page.external, page.self).linkedMode).toBe("none");
-  });
 
   it("external-only pick survives reload without resurrecting Self", () => {
     // Uncheck every linked account one by one (all -> subset -> subset + []),

@@ -1,5 +1,4 @@
 from prepforge_chess.core.models import Color, MoveSource
-from prepforge_chess.services.engine import MockEngine
 from prepforge_chess.services.opening_builder import CreateRepertoireRequest, OpeningBuilderService
 from prepforge_chess.services.repertoire_export import (
     PACKAGE_SCHEMA_VERSION,
@@ -8,14 +7,12 @@ from prepforge_chess.services.repertoire_export import (
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
-from stub_maia import StubMaia
-
 
 def _sample_repertoire():
     connection = connect_database()
     apply_schema(connection)
     repository = PrepForgeRepository(connection)
-    builder = OpeningBuilderService(repository, engine=MockEngine(), maia=StubMaia())
+    builder = OpeningBuilderService(repository)
     repertoire = builder.create_repertoire(
         CreateRepertoireRequest(
             name="Export Demo",

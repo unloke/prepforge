@@ -12,7 +12,6 @@ import unittest.mock
 import pytest
 
 from prepforge_chess.core.models import Color
-from prepforge_chess.services.engine import MockEngine
 from prepforge_chess.services.lichess_fetch import (
     DEPARTURE_INGESTED_KEY,
     GameMatchSummary,
@@ -25,8 +24,6 @@ from prepforge_chess.services.opening_builder import (
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
-from stub_maia import StubMaia
-
 
 def _repository():
     connection = connect_database()
@@ -35,7 +32,7 @@ def _repository():
 
 
 def _repertoire_with_target(repository):
-    builder = OpeningBuilderService(repository, engine=MockEngine(), maia=StubMaia())
+    builder = OpeningBuilderService(repository)
     repertoire = builder.create_repertoire(
         CreateRepertoireRequest(name="Prep", color=Color.WHITE)
     )

@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from prepforge_chess.core.models import Color, MoveSource, TrainingMode, TrainingProgress
-from prepforge_chess.services.engine import MockEngine
 from prepforge_chess.services.opening_builder import CreateRepertoireRequest, OpeningBuilderService
 from prepforge_chess.services.training import (
     TrainingService,
@@ -11,8 +10,6 @@ from prepforge_chess.services.training import (
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
-from stub_maia import StubMaia
-
 
 def _training_repository():
     connection = connect_database()
@@ -21,7 +18,7 @@ def _training_repository():
 
 
 def _training_repertoire(repository):
-    builder = OpeningBuilderService(repository, engine=MockEngine(), maia=StubMaia())
+    builder = OpeningBuilderService(repository)
     repertoire = builder.create_repertoire(
         CreateRepertoireRequest(name="Trainer Demo", color=Color.WHITE)
     )

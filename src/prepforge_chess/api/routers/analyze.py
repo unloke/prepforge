@@ -6,8 +6,7 @@ only orchestrates and persists, never computing chess. Two POSTs carry the flow:
 * ``/api/analyze/prepare`` imports a PGN (owner-scoped) and returns every position
   the browser must evaluate, plus a move skeleton.
 * ``/api/analyze/classify-save`` takes the browser's per-position evals (and optional
-  Maia move assessments for Brilliant detection), replays them through the unchanged
-  ``AnalysisService`` (via :class:`ReplayEngine` / :class:`ReplayMaia`), and persists
+  Maia move assessments for Brilliant detection), classifies them directly, and persists
   the classified game.
 
 Two GETs read it back: ``/api/analyses`` (history list) and ``/api/analyses/{id}``
@@ -37,7 +36,7 @@ from prepforge_chess.services.browser_compute import (
     validate_position_payload,
 )
 from prepforge_chess.services.pgn_import import PgnImportOptions, PgnImportService
-from prepforge_chess.services.replay_engine import ReplayEngineError
+from prepforge_chess.services.browser_compute import MissingEvaluationError
 from prepforge_chess.services.replay_maia import ReplayMaia
 from prepforge_chess.storage.repositories import PrepForgeRepository
 
@@ -380,7 +379,7 @@ def analyze_classify_save(
                 else None
             ),
         )
-    except ReplayEngineError as exc:
+    except MissingEvaluationError as exc:
         # Incomplete client payload (a position was never evaluated).
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except PositionPayloadError as exc:

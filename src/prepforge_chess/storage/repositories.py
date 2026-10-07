@@ -743,7 +743,7 @@ class PrepForgeRepository:
         """Dedup lookup for a Lichess game. Owner-scoped: when an owner is supplied
         only that owner's own copy counts, so two users importing the same game each
         keep their own row instead of colliding on a shared one. Unscoped (None)
-        keeps the legacy global behaviour for CLI/internal callers."""
+        searches all stored games for internal import tools."""
         stmt = select(t.games.c.id).where(t.games.c.lichess_id == lichess_id)
         if owner_user_id is not None:
             stmt = stmt.where(t.games.c.owner_user_id == owner_user_id)
@@ -836,13 +836,6 @@ class PrepForgeRepository:
                     "color": repertoire.color.value,
                     "root_fen": repertoire.root_fen,
                     "root_node_id": repertoire.root_node.id,
-                    "main_engine": repertoire.main_engine,
-                    "human_model": repertoire.human_model,
-                    "branch_depth": repertoire.branch_depth,
-                    "opponent_branch_threshold": repertoire.opponent_branch_threshold,
-                    "sub_branch_threshold": repertoire.sub_branch_threshold,
-                    "max_total_nodes": repertoire.max_total_nodes,
-                    "max_line_length": repertoire.max_line_length,
                     "notes": repertoire.notes,
                     "tags_json": _json_dump(repertoire.tags),
                     "is_active": 1 if getattr(repertoire, "is_active", True) else 0,
@@ -851,9 +844,7 @@ class PrepForgeRepository:
                 },
                 conflict=[t.repertoires.c.id],
                 update_cols=(
-                    "name", "color", "root_fen", "root_node_id", "main_engine",
-                    "human_model", "branch_depth", "opponent_branch_threshold",
-                    "sub_branch_threshold", "max_total_nodes", "max_line_length",
+                    "name", "color", "root_fen", "root_node_id",
                     "notes", "tags_json", "is_active", "updated_at",
                 ),
                 # Never let a re-save reassign an existing owner; only fill a gap.
@@ -989,13 +980,6 @@ class PrepForgeRepository:
             color=Color(rep_row["color"]),
             root_fen=rep_row["root_fen"],
             root_node=root_node,
-            main_engine=rep_row["main_engine"],
-            human_model=rep_row["human_model"],
-            branch_depth=rep_row["branch_depth"],
-            opponent_branch_threshold=rep_row["opponent_branch_threshold"],
-            sub_branch_threshold=rep_row["sub_branch_threshold"],
-            max_total_nodes=rep_row["max_total_nodes"],
-            max_line_length=rep_row["max_line_length"],
             notes=rep_row["notes"],
             tags=_json_load(rep_row["tags_json"], []),
             is_active=_int_to_bool(rep_row["is_active"]),

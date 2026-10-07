@@ -52,13 +52,8 @@ def current_user(user: User | None = Depends(current_user_optional)) -> User:
     return user
 
 
-
 def get_repository() -> PrepForgeRepository:
-    """The legacy domain repository, bound to the app's shared SQLAlchemy engine.
-
-    Both run on one DB/connection pool, so the ported ``/api/*`` data endpoints no
-    longer need the old server's single shared connection + global ``request_lock``.
-    """
+    """Domain repository bound to the app's shared SQLAlchemy engine."""
     return PrepForgeRepository(get_engine())
 
 

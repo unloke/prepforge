@@ -28,13 +28,13 @@ export function scoutFetchErrorMessage(error) {
   if (/rate limit/i.test(msg)) return SCOUT_ERR_RATE_LIMIT;
   return null;
 }
-export const MAX_PLIES = 16; // default depth for compact display/legacy trie callers
+export const MAX_PLIES = 16; // default depth for compact display
 export const ANALYZE_PLIES = 24; // deeper capture for weakness / engine scan
 /** Minimum raw full-prefix support for historical weakness. */
 export const GAME_PLAN_MIN_GAMES = 3;
 /** Max game-plan rows per colour; fewer supported targets are allowed. */
 export const SCOUT_GAME_PLAN_LIMIT = 12;
-/** Legacy floor kept for recommendTargets / refutation repertoire gates. */
+/** Floor for recommendTargets / refutation repertoire gates. */
 export const WEAKNESS_MIN_GAMES = 7;
 export const SLIP_MIN_GAMES = 3;
 
@@ -1244,18 +1244,6 @@ export function rankedOpeningBranches(
   return { branches: ranked, ancestorFreq };
 }
 
-/** @deprecated Trie bridge removed — use rankedOpeningBranches(games, color). */
-export function rankedOpeningLines(
-  gamesOrTrie,
-  { color, speedFilter = "all", oppColor = null, limit = SCOUT_BRANCH_SCORE_CAP } = {},
-) {
-  if (Array.isArray(gamesOrTrie)) {
-    const c = color ?? oppColor;
-    if (!c) return [];
-    return rankedOpeningBranches(gamesOrTrie, c, { speedFilter, limit }).branches;
-  }
-  return [];
-}
 
 /** The selector's input: supported, opponent-terminal, reachable lines with terminal FENs. */
 export function gamePlanCandidates(lines, baselineScorePct, { minGames = GAME_PLAN_MIN_GAMES, oppColor = null } = {}) {

@@ -92,25 +92,6 @@ describe("readLineMaiaWdl", () => {
     expect(result?.maiaScorePct).toBeDefined();
   });
 
-  it("retries a legacy positionRead failure (no method tag) via wdlRead", async () => {
-    const provider = {
-      wdlRead: vi.fn().mockResolvedValue({ wdl: { win: 200, draw: 300, loss: 500 } }),
-    };
-    const maiaResults = new Map([["1800|fen-after-d4", { failed: true }]]);
-    const line = { ucis: ["d2d4"] };
-    const result = await readLineMaiaWdl(line, {
-      provider,
-      rating: 1800,
-      oppColor: "white",
-      fenAfterLine: () => "fen-after-d4",
-      cache: new Map(),
-      maiaResults,
-    });
-    expect(provider.wdlRead).toHaveBeenCalledTimes(1);
-    expect(result?.maiaScorePct).toBeDefined();
-    expect(isMaiaFailed(maiaResults, "fen-after-d4", 1800)).toBe(false);
-    expect(isMaiaAttempted(maiaResults, "fen-after-d4", 1800)).toBe(true);
-  });
 
   it("memoizes provider reads per fen and rating", async () => {
     const provider = {

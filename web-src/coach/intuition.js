@@ -118,11 +118,11 @@ export function computeIntuition({ predictions, fenBefore, playedUci, bestUci, w
 
 // Attach the intuition read to a feature vector in place (mirrors markBrilliant's shape):
 // the orchestration fetches the Maia read async and folds it in, then re-renders. `read`
-// may be the worker's { predictions, wdl } object, or (legacy) a bare predictions array.
+// is the worker's { predictions, wdl } object.
 export function attachIntuition(features, read) {
   if (!features) return features;
-  const predictions = Array.isArray(read) ? read : (read && read.predictions) || [];
-  const wdl = Array.isArray(read) ? null : (read && read.wdl) || null;
+  const predictions = read?.predictions || [];
+  const wdl = read?.wdl || null;
   features.intuition = computeIntuition({
     predictions,
     fenBefore: features.fenBefore,

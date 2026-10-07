@@ -3,9 +3,7 @@
 Mirrors ``workspace_view.py`` / ``analysis_view.py``: pure data shaping for the
 trainer's JSON payloads, with no engine dependency. ``TrainingService`` itself only
 walks the stored repertoire tree (python-chess move legality, no Stockfish/Maia), so
-the whole Train surface already fits the "server never computes chess" model. The
-legacy ``_prompt_to_json`` / ``_training_line_to_json`` / ``_heuristic_strategy`` live
-on here and are deleted with ``web/server.py``.
+the whole Train surface already fits the "server never computes chess" model.
 """
 from __future__ import annotations
 
@@ -62,7 +60,7 @@ def piece_name_at(fen: str, uci: str) -> Optional[str]:
 def smart_prompt_to_json(
     prompt: Optional["SmartPrompt"], chess_core: ChessCore
 ) -> Optional[dict[str, Any]]:
-    """Smart-trainer card prompt. Unlike the legacy prompt this ships the
+    """Smart-trainer card prompt. Ships the
     expected move and hint texts: it's the player's own repertoire, and the
     client runs the teach/retry flows locally without extra round-trips."""
     if prompt is None:

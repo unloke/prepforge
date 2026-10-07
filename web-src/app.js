@@ -110,8 +110,6 @@ import {
   openSourceComposer,
   normalizeSelection,
   selectionChips,
-  selectionFromStorage,
-  selectionToStorage,
   resolveFetchUsernames,
   sameFetchSources,
 } from "./views/shared/source-composer.js";
@@ -493,14 +491,14 @@ const appState = {
   // Repertoire ids hidden from lists while their delete-undo window is open.
   pendingRepDeletes: new Set(),
   trainingRepertoireId: null,
-  // Practice game keeps its own multi-select independent of the legacy
+  // Practice game keeps its own multi-select independent of the
   // line-rehearsal picker. `null` means the list has not been hydrated yet;
   // the first active-list load then selects every active repertoire by default.
   playRepertoireIds: null,
   playRepertoirePreferenceKey: null,
   training: null,
   // Which trainer the Start button launches: "smart" (card queue, default) or
-  // "all_lines" (legacy whole-line rehearsal, kept for pre-game prep).
+  // "all_lines" (whole-line rehearsal for pre-game prep).
   trainMode: "smart",
   play: null,
   // One on-demand Lucky round at a time. This protects Lichess's one-request
@@ -557,11 +555,6 @@ const appState = {
   // rating from the linked Lichess account's public profile (null until fetched).
   maiaRatingPinned: null,
   maiaAutoRating: null,
-  // Whether the server exposes engine/Maia compute (admin builds only). The
-  // public/default flow runs compute in the browser (Analyze + Build → Generate
-  // via runBrowserBuildGenerate); this flag gates legacy server-engine UI paths
-  // rather than letting the user click through to a raw 403. See applyServerEngineGating.
-  serverEngineEnabled: false,
 };
 
 // ---- Maia3 strength resolution ---------------------------------------------------
@@ -5219,7 +5212,6 @@ async function loadSettingsOnce() {
 // and the pinned Maia rating (null = AUTO). Shared by init, loadSettings and saves.
 function applySettingsPayload(payload) {
   appState.settings = payload;
-  appState.serverEngineEnabled = !!payload.server_engine_enabled;
   appState.maiaRatingPinned = Number.isFinite(payload.maia_rating) ? payload.maia_rating : null;
   settingsView?.renderStrengthControls();
 }
@@ -5341,81 +5333,32 @@ async function runLichessCompare() {
 // "all" = Self (every linked identity, the default); "subset" = exactly the
 // listed linked ids; "none" = no linked accounts. External Lichess usernames
 // ride alongside on both pages (Games fetches them too). Persisted per
-// browser; legacy id-list storage migrates on read so reload keeps selection.
-const GAMES_SOURCE_KEY = "prepforge.games_source";
-const GAMES_EXTERNAL_KEY = "prepforge.games_external";
-function readSourceStore(sourceKey, externalKey, selfKey) {
-  const rawIds = readLegacySourceIds(sourceKey);
-  let rawExternal = null;
+// browser as one explicit selection object.
+function readSourceStore(key) {
   try {
-    const raw = localStorage.getItem(externalKey);
-    if (raw) rawExternal = JSON.parse(raw);
+    return normalizeSelection(JSON.parse(localStorage.getItem(key)));
   } catch (_) {
-    rawExternal = null;
+    return normalizeSelection(null);
   }
-  let selfOff = false;
-  if (selfKey) {
-    try {
-      selfOff = localStorage.getItem(selfKey) === "off";
-    } catch (_) {
-      selfOff = false;
-    }
-  }
-  return selectionFromStorage({ ids: rawIds, external: rawExternal, selfOff });
 }
 
-function writeSourceStore(sourceKey, externalKey, selfKey, selection) {
-  const stored = selectionToStorage(selection);
-  writeLegacySourceIds(sourceKey, stored.ids);
+function writeSourceStore(key, selection) {
   try {
-    if (stored.external.length) {
-      localStorage.setItem(externalKey, JSON.stringify(stored.external));
-    } else {
-      localStorage.removeItem(externalKey);
-    }
-  } catch (_) {
-    /* ignore storage errors */
-  }
-  if (selfKey) {
-    try {
-      const sel = normalizeSelection(selection);
-      const off = sel.linkedMode === "none" && !sel.external.length;
-      localStorage.setItem(selfKey, off ? "off" : "on");
-    } catch (_) {
-      /* ignore storage errors */
-    }
-  }
+    localStorage.setItem(key, JSON.stringify(normalizeSelection(selection)));
+  } catch (_) { /* storage unavailable */ }
 }
+
+const GAMES_SOURCE_KEY = "prepforge.games_source";
+
 
 function gamesSourceSelection() {
-  return readSourceStore(GAMES_SOURCE_KEY, GAMES_EXTERNAL_KEY, null);
+  return readSourceStore(GAMES_SOURCE_KEY);
 }
 
 function writeGamesSelection(selection) {
-  writeSourceStore(GAMES_SOURCE_KEY, GAMES_EXTERNAL_KEY, null, selection);
+  writeSourceStore(GAMES_SOURCE_KEY, selection);
 }
 
-function readLegacySourceIds(key) {
-  let picked = null;
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) picked = JSON.parse(raw);
-  } catch (_) {
-    picked = null;
-  }
-  return picked;
-}
-
-function writeLegacySourceIds(key, ids) {
-  try {
-    // "[]" is meaningful: it persists subset + [] (every linked account
-    // unpicked) and must survive a reload — only a null (Self default) clears.
-    if (!ids) localStorage.removeItem(key);
-    else localStorage.setItem(key, JSON.stringify(ids));
-  } catch (_) {
-    /* ignore storage errors */
-  }
-}
 
 function gamesSourceAccountIds() {
   const sel = gamesSourceSelection();
@@ -5533,17 +5476,15 @@ function bindGamesSource() {
 // ids; "none" = no linked accounts. External Lichess usernames ride alongside
 // on both pages. Page difference lives only in the analysis workflow after
 // picking, never in the picker.
-const SCOUT_SELF_KEY = "prepforge.scout_self";
 const SCOUT_SOURCE_KEY = "prepforge.scout_source";
-const SCOUT_EXTERNAL_KEY = "prepforge.scout_external";
 
 function scoutSelection() {
-  return readSourceStore(SCOUT_SOURCE_KEY, SCOUT_EXTERNAL_KEY, SCOUT_SELF_KEY);
+  return readSourceStore(SCOUT_SOURCE_KEY);
 }
 
 function writeScoutSelection(selection) {
   const before = scoutPickedUsernames();
-  writeSourceStore(SCOUT_SOURCE_KEY, SCOUT_EXTERNAL_KEY, SCOUT_SELF_KEY, selection);
+  writeSourceStore(SCOUT_SOURCE_KEY, selection);
   // A report scouted from other accounts would sit under chips that no longer
   // describe it; drop it so the next Start reflects the picked sources.
   if (scoutView && !sameFetchSources(before, scoutPickedUsernames())) scoutView.discardReport();

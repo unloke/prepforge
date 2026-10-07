@@ -18,7 +18,7 @@
 //   filter so coming back restores where you were.
 //
 // No DOM or network. Once configured, pending tasks and the journey persist
-// under an owner-scoped key. Legacy unscoped return state is never adopted.
+// under an owner-scoped key.
 
 const RETURN_PREFIX = "prepforge.return_state.v1.";
 const HANDOFF_LOG_CAP = 50;

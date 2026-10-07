@@ -1,7 +1,7 @@
 """Security middleware: response headers + CSRF double-submit.
 
 * SecurityHeadersMiddleware adds the baseline headers a public site needs and the
-  legacy stdlib server never sent: CSP, HSTS (prod only), nosniff, frame-deny,
+  headers: CSP, HSTS (prod only), nosniff, frame-deny,
   referrer policy. The CSP is strict but allows the WASM the in-browser engines
   need ('wasm-unsafe-eval') and blob workers (Stockfish + onnxruntime spin up Web
   Workers from blob URLs).

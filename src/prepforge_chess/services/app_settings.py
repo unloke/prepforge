@@ -1,11 +1,7 @@
-"""Tiny key/value settings service backed by the `app_settings` table."""
+"""Per-owner browser analysis preferences."""
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 from typing import Any, Optional
-
-
 
 
 STOCKFISH_DEPTH_KEY = "stockfish.depth"
@@ -23,9 +19,7 @@ MAIA_RATING_MAX = 2600
 
 
 def clamp_stockfish_depth(value: Any, default: int = STOCKFISH_DEPTH_DEFAULT) -> int:
-    """Coerce + clamp a depth into the supported range. Shared by the global
-    ``AppSettingsService`` and the per-owner settings in the SaaS API, so both
-    honour the same bounds. A non-integer falls back to ``default``."""
+    """Coerce and clamp a browser search depth."""
     try:
         depth = int(value)
     except (TypeError, ValueError):
@@ -54,62 +48,3 @@ def owner_stockfish_depth(repo: Any, owner_user_id: str) -> int:
     """One owner's configured analysis depth (clamped; default when unset)."""
     stored = repo.get_user_setting(owner_user_id, STOCKFISH_DEPTH_KEY, STOCKFISH_DEPTH_DEFAULT)
     return clamp_stockfish_depth(stored)
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-
-
-@dataclass
-class StockfishStatus:
-    path: Optional[str]
-    version: Optional[str]
-    error: Optional[str] = None
-
-
-
-def detect_stockfish_version(path: Optional[str], *, timeout: float = 3.0) -> Optional[str]:
-    """Best-effort: ask the binary for its UCI `id name` and return the value."""
-    if not path:
-        return None
-    import subprocess
-
-    try:
-        proc = subprocess.Popen(
-            [path],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            bufsize=1,
-        )
-    except (OSError, FileNotFoundError):
-        return None
-
-    try:
-        proc.stdin.write("uci\nquit\n")
-        proc.stdin.flush()
-        try:
-            stdout, _ = proc.communicate(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            return None
-    finally:
-        try:
-            proc.stdin.close()
-        except Exception:
-            pass
-
-    if not stdout:
-        return None
-    for line in stdout.splitlines():
-        if line.startswith("id name"):
-            return line[len("id name"):].strip()
-    return None
-
-
-def stockfish_status(path: Optional[str]) -> StockfishStatus:
-    if not path:
-        return StockfishStatus(path=None, version=None, error=None)
-    version = detect_stockfish_version(path)
-    return StockfishStatus(path=path, version=version, error=None if version else "binary did not respond to UCI handshake")

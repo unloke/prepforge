@@ -1,7 +1,6 @@
 from prepforge_chess.core.models import MoveClassification
-from prepforge_chess.services.analysis import AnalysisConfig, AnalysisService
+from prepforge_chess.services.browser_compute import classify_precomputed_game
 from prepforge_chess.services.analysis_report import AnalysisReportBuilder
-from prepforge_chess.services.engine import MockEngine
 from prepforge_chess.services.pgn_import import PgnImportService
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories import PrepForgeRepository
@@ -23,8 +22,10 @@ def _analysis_result():
 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 1-0
 """
     )
-    service = AnalysisService(repository, engine=MockEngine())
-    return service.analyze_game_id(import_result.imported_game_ids[0], config=AnalysisConfig(persist=False))
+    game = repository.load_game(import_result.imported_game_ids[0])
+    positions = {fen: {"depth": 10, "score_cp": 20} for move in game.moves
+                 for fen in (move.fen_before, move.fen_after)}
+    return classify_precomputed_game(game, positions, engine_name="test", depth=10)
 
 
 def test_analysis_report_builds_eval_graph_and_jump_targets():

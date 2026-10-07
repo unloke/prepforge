@@ -123,25 +123,6 @@ describe("I'm Feeling Lucky entry", () => {
     expect(h.calls.banner.at(-1).join(" ")).toMatch(/fresh Lichess games/);
   });
 
-  it("keeps the old Masters-first seam available only when explicitly requested", async () => {
-    const h = harness();
-    const picked = await runFeelingLucky({ ...h.deps, preferDynamic: false });
-    expect(h.luckyDbStartFn).toHaveBeenCalledTimes(1);
-    const args = h.luckyDbStartFn.mock.calls[0][0];
-    expect(args.engine).toBeNull();
-    expect(args.maia).toBeNull();
-    expect(picked).toEqual(PICKED);
-    expect(h.luckyTitledStartFn).not.toHaveBeenCalled();
-  });
-
-  it("falls back from an explicit legacy Masters no-quality result to live games", async () => {
-    const live = { ...PICKED, reason: "titled-game", source: "lichess-user-feed", gameId: "live1" };
-    const h = harness({ picked: null, titledPicked: live });
-    const picked = await runFeelingLucky({ ...h.deps, preferDynamic: false });
-    expect(picked).toEqual(live);
-    expect(h.luckyDbStartFn).toHaveBeenCalledTimes(1);
-    expect(h.luckyTitledStartFn).toHaveBeenCalledTimes(1);
-  });
 
   it("surfaces a Play-session start failure without relabeling it as data failure", async () => {
     const startSession = vi.fn(async () => false);
@@ -158,7 +139,6 @@ describe("I'm Feeling Lucky entry", () => {
     const fs = await import("node:fs");
     const app = fs.readFileSync(new URL("./controllers/train-session.js", import.meta.url), "utf8");
     const entry = app.slice(app.indexOf("async function onFeelingLucky"));
-    expect(entry).toMatch(/preferDynamic:\s*true/);
     expect(entry).not.toMatch(/preferCurated:\s*true/);
     expect(entry).toMatch(/ensureExplorer:\s*ensureExplorerClient/);
     expect(entry).toMatch(/luckyBusy/);

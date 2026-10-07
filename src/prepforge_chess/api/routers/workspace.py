@@ -468,7 +468,7 @@ def _reassign_ids(repertoire) -> None:
 
 
 def _safe_filename(name: str) -> str:
-    """Slugify a repertoire name into a download-safe filename stem (mirrors legacy)."""
+    """Slugify a repertoire name into a download-safe filename stem."""
     return "".join(
         char if char.isalnum() or char in {"-", "_"} else "-" for char in name.lower()
     ).strip("-") or "repertoire"
@@ -515,8 +515,6 @@ def create_repertoire(
 # - ``share_enabled`` off kills the link (without touching team sharing);
 # - ``share_rev`` rotation re-signs, so every previously minted link dies;
 # - ``share_expires_at`` is an optional deadline.
-# Legacy tokens (no rev, signed over the id only) stay valid only while
-# share_rev == 0 — the first revoke/rotate retires them for good.
 
 
 def _share_signature(repertoire_id: str, secret: str, rev: int) -> str:
@@ -528,44 +526,25 @@ def _share_signature(repertoire_id: str, secret: str, rev: int) -> str:
     return digest[:32]
 
 
-def _legacy_share_signature(repertoire_id: str, secret: str) -> str:
-    digest = hmac.new(
-        secret.encode("utf-8"),
-        "share:{0}".format(repertoire_id).encode("utf-8"),
-        hashlib.sha256,
-    ).hexdigest()
-    return digest[:32]
-
-
 def mint_share_token(repertoire_id: str, secret: str, rev: int) -> str:
     rid = base64.urlsafe_b64encode(repertoire_id.encode("utf-8")).decode("ascii").rstrip("=")
     return "{0}.{1}.{2}".format(rid, rev, _share_signature(repertoire_id, secret, rev))
 
 
-def parse_share_token(token: str, secret: str) -> tuple[str, int | None] | None:
-    """``(repertoire_id, rev)`` for a valid token, else None. ``rev is None``
-    marks a legacy token (pre-revision). Constant-time compares."""
+def parse_share_token(token: str, secret: str) -> tuple[str, int] | None:
+    """Return the repertoire id and revision for a valid signed token."""
     try:
-        rid, rest = token.split(".", 1)
-        padded = rid + "=" * (-len(rid) % 4)
-        repertoire_id = base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
-    except (ValueError, UnicodeDecodeError):
+        rid, rev_text, signature = token.split(".")
+        repertoire_id = base64.urlsafe_b64decode(
+            (rid + "=" * (-len(rid) % 4)).encode("ascii")
+        ).decode("utf-8")
+        rev = int(rev_text)
+    except (ValueError, UnicodeError):
         return None
-    if not repertoire_id:
-        return None
-    if "." in rest:
-        rev_text, signature = rest.split(".", 1)
-        try:
-            rev = int(rev_text)
-        except ValueError:
-            return None
-        if hmac.compare_digest(
-            signature, _share_signature(repertoire_id, secret, rev)
-        ):
-            return repertoire_id, rev
-        return None
-    if hmac.compare_digest(rest, _legacy_share_signature(repertoire_id, secret)):
-        return repertoire_id, None
+    if repertoire_id and rev >= 0 and hmac.compare_digest(
+        signature, _share_signature(repertoire_id, secret, rev)
+    ):
+        return repertoire_id, rev
     return None
 
 
@@ -577,7 +556,7 @@ def _share_state(meta: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _share_link_live(meta: dict[str, Any], token_rev: int | None, now: datetime) -> bool:
+def _share_link_live(meta: dict[str, Any], token_rev: int, now: datetime) -> bool:
     """Does this token still grant read under the repertoire's share state?"""
     if not meta.get("share_enabled"):
         return False
@@ -592,8 +571,6 @@ def _share_link_live(meta: dict[str, Any], token_rev: int | None, now: datetime)
         if expires <= now:
             return False
     current_rev = int(meta.get("share_rev") or 0)
-    if token_rev is None:  # legacy token: only pre-rotation links
-        return current_rev == 0
     return token_rev == current_rev
 
 
@@ -677,7 +654,7 @@ def rotate_share_link(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Regenerate the public link: bumps the share revision so every previously
-    minted link (including legacy ones) stops working immediately."""
+    minted link stops working immediately."""
     _owned_repertoire(repo, body.repertoire_id, owner)
     expires_at = _share_expiry(body.expires_in_days)
     state = repo.set_share_state(
@@ -825,7 +802,7 @@ def build_add_move(
     repo: PrepForgeRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Append a manual move under a parent node and return the refreshed Build payload.
-    Mirrors the legacy classification: a move played on the owner's turn is flagged
+    Classifies ownership: a move played on the owner's turn is flagged
     ``prepared``; the first enabled child of a parent becomes the mainline."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
     _check_base_revision(meta, body.base_revision, repo)
@@ -979,9 +956,7 @@ def build_delete_nodes(
 # The browser ran the whole generation recursion locally (Stockfish + Maia3 in
 # WebAssembly) and submits a tree-mutation plan; the server runs NO engine. It
 # re-validates every move's legality + parentage, RECOMPUTES the persisted flags
-# itself (never trusting the client), and persists all-or-nothing. The legacy
-# *server-engine* variants (`/api/build/generate`, `/start`, `/cancel`, `/status`)
-# are deliberately dropped — they require a server-side Stockfish/Maia the SaaS
+# itself (never trusting the client), and persists all-or-nothing.
 # deploy doesn't run ("the server stores data, never computes chess").
 
 

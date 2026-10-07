@@ -9,10 +9,6 @@ import {
   addExternal,
   removeExternal,
   selectionChips,
-  selectionFromStorage,
-  selectionToStorage,
-  legacyIdsToSelection,
-  selectionToLegacyIds,
   resolveFetchUsernames,
   positionPopover,
   sameFetchSources,
@@ -89,79 +85,6 @@ describe("source composer selection model", () => {
     expect(mixed.chips[0]).toMatchObject({ label: "accountA", primary: true });
   });
 
-  it("migrates legacy storage shapes to the explicit model", () => {
-    expect(selectionFromStorage({ ids: null })).toEqual({
-      linkedMode: "all",
-      accountIds: [],
-      external: [],
-    });
-    expect(selectionFromStorage({ ids: ["__none__"] })).toEqual({
-      linkedMode: "none",
-      accountIds: [],
-      external: [],
-    });
-    expect(selectionFromStorage({ ids: ["a"], external: ["Hikaru"] })).toEqual({
-      linkedMode: "subset",
-      accountIds: ["a"],
-      external: ["Hikaru"],
-    });
-    expect(selectionFromStorage({ ids: null, selfOff: true })).toEqual({
-      linkedMode: "none",
-      accountIds: [],
-      external: [],
-    });
-    expect(selectionFromStorage({ ids: null, external: ["Hikaru"], selfOff: true })).toEqual({
-      linkedMode: "none",
-      accountIds: [],
-      external: ["Hikaru"],
-    });
-    expect(legacyIdsToSelection(null)).toEqual({ linkedMode: "all", accountIds: [], external: [] });
-    expect(legacyIdsToSelection(["a"])).toEqual({
-      linkedMode: "subset",
-      accountIds: ["a"],
-      external: [],
-    });
-  });
-
-  it("round-trips storage without losing the selection", () => {
-    for (const sel of [
-      { linkedMode: "all", external: [] },
-      { linkedMode: "all", external: ["Hikaru"] },
-      { linkedMode: "subset", accountIds: ["b"], external: ["Hikaru"] },
-      { linkedMode: "subset", accountIds: [], external: ["Hikaru"] },
-      { linkedMode: "subset", accountIds: [], external: [] },
-      { linkedMode: "none", external: ["Hikaru"] },
-      { linkedMode: "none", external: [] },
-    ]) {
-      const stored = selectionToStorage(sel);
-      const back = selectionFromStorage({ ids: stored.ids, external: stored.external });
-      expect(back).toEqual(normalizeSelection(sel));
-    }
-    expect(selectionToLegacyIds(null, linked)).toBe(null);
-    expect(selectionToLegacyIds(selectSelf(null, linked), linked)).toBe(null);
-    expect(selectionToLegacyIds({ linkedMode: "subset", accountIds: ["b"] }, linked)).toEqual(["b"]);
-  });
-
-  it("keeps an external-only pick (subset + []) through storage, never Self", () => {
-    // Every linked account unpicked, external usernames kept: the persisted
-    // empty id list must not resurrect the Self default on reload.
-    const externalOnly = { linkedMode: "subset", accountIds: [], external: ["Hikaru"] };
-    const stored = selectionToStorage(externalOnly);
-    expect(stored.ids).toEqual([]);
-    expect(selectionFromStorage({ ids: stored.ids, external: stored.external })).toEqual(externalOnly);
-    // Absent ids (legacy Self default) stays distinct from the explicit empty pick.
-    expect(selectionFromStorage({ ids: null, external: ["Hikaru"] })).toEqual({
-      linkedMode: "all",
-      accountIds: [],
-      external: ["Hikaru"],
-    });
-    // The legacy id bridge encodes "no linked accounts" as __none__ so even a
-    // legacy-shaped store cannot widen an external-only selection back to Self.
-    expect(selectionToLegacyIds(externalOnly, linked)).toEqual(["__none__"]);
-    expect(selectionToLegacyIds({ linkedMode: "none", external: ["Hikaru"] }, linked)).toEqual([
-      "__none__",
-    ]);
-  });
 
   it("resolves fetch usernames identically for Games and Scout", () => {
     const cases = [

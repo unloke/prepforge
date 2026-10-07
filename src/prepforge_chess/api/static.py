@@ -1,10 +1,5 @@
 """Serve the built single-page app (SPA) and its engine assets from FastAPI.
 
-The legacy stdlib ``web/server.py`` served ``/`` (the app shell) and ``/static/*``
-(the Vite bundle + the in-browser engine artifacts). The SaaS API has to do the
-same so the *same* ``web-src/app.js`` runs against it — this is the last piece the
-real-browser cutover needs before ``web/server.py`` can be deleted.
-
 Three things make this more than a bare ``StaticFiles`` mount:
 
 * **Cross-origin isolation.** The in-browser engines (multi-threaded Stockfish

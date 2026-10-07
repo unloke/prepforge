@@ -2,7 +2,7 @@
 
 Turns a completed analysis (classified moves + summary) into the JSON payload the
 SPA's Analyze view consumes. It computes **no chess**: classification/eval already
-happened (server-side ReplayEngine over browser-supplied evals), so this only walks
+happened (classification of browser-supplied evals), so this only walks
 the result and the derived report for the FastAPI analyze endpoints.
 """
 from __future__ import annotations

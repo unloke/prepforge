@@ -116,10 +116,5 @@ describe("attachIntuition", () => {
     expect(features.intuition.sharpness).toBeTruthy();
   });
 
-  it("still accepts a bare predictions array (legacy, no WDL)", () => {
-    const features = { fenBefore: FEN, uci: "e2e4", bestUci: "e2e4", phase: "opening" };
-    attachIntuition(features, [{ move_uci: "e2e4", probability: 0.9 }]);
-    expect(features.intuition.texture).toBe("obvious");
-    expect(features.intuition.sharpness).toBeNull();
-  });
+
 });
