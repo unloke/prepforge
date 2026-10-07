@@ -7,6 +7,13 @@ import uuid
 from dataclasses import dataclass, field
 from typing import List, Optional, Set, Tuple
 
+from prepforge_chess.core.limits import (
+    MAX_PLAN_CHANGES,
+    MAX_PLAN_DEPTH,
+    MAX_PLAN_PV_LENGTH,
+    MAX_ADD_MOVES_BATCH,
+    MAX_DELETE_NODES_BATCH,
+)
 from prepforge_chess.core.chess_core import STARTING_FEN, ChessCore
 from prepforge_chess.core.models import (
     Color,
@@ -72,26 +79,6 @@ class OpeningTreeReport:
 _PLAN_GENERATED_SOURCES = frozenset(
     {MoveSource.GENERATED_STOCKFISH, MoveSource.GENERATED_MAIA3}
 )
-
-# apply-plan is an UNTRUSTED, public, no-compute endpoint, so a single submitted
-# plan must not be able to force the server into unbounded apply/tree-walk/save
-# work (or a too-deep tree that overruns Python's recursion limit). These caps
-# sit far above any legitimate UI configuration (ply depth caps at 20, branch
-# count is small) — they only fence off hostile/buggy payloads.
-MAX_PLAN_CHANGES = 2000
-MAX_PLAN_DEPTH = 64  # planned-node depth measured from the anchor
-MAX_PLAN_PV_LENGTH = 64
-
-# A local-first Build flush (add_moves_batch) is also an untrusted, no-compute
-# write. Same intent as MAX_PLAN_CHANGES: fence off a hostile/buggy batch from
-# forcing unbounded apply + tree-walk work. Sits far above any realistic burst of
-# hand-played moves a user could queue between debounced flushes.
-MAX_ADD_MOVES_BATCH = 500
-
-# A local-first delete flush removes whole subtrees by their root ids; the cap
-# bounds the per-request tree walks, not the subtree sizes (deleting a node
-# always removes every descendant, exactly like the single delete_node).
-MAX_DELETE_NODES_BATCH = 200
 
 # A coordinate UCI move: from-square, to-square, optional promotion piece.
 _UCI_RE = re.compile(r"^[a-h][1-8][a-h][1-8][qrbnQRBN]?$")

@@ -15,6 +15,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Dict, Iterable, List, Optional, Set
 
+from prepforge_chess.core.sr_config import SR_CONFIG
 from prepforge_chess.core.models import Color, OpeningNode, TrainingProgress
 
 
@@ -39,15 +40,13 @@ MASTERY_STATES = (
 #
 # The spaced-repetition score is the recent-form signal ( +1 on a hit, halved
 # on a miss, capped at 10), so recent recovery can override a bad start:
-# ``WEAK_SCORE_BELOW`` consecutive-hit-worth of recent form lifts a node out of
-# weak, and ``MASTERED_SCORE_AT`` mirrors ``TrainingProgress.is_mastered``.
+# ``SR_CONFIG.weak_score_below`` consecutive-hit-worth of recent form lifts a node out of
+# weak, and ``SR_CONFIG.mastered_score_at`` mirrors ``TrainingProgress.is_mastered``.
 # Lifetime accuracy stays as history only — early failures must not mask
 # recent progress forever. This is derived state (no new columns), so old
 # progress rows convert by simply being read; the version stamp documents
 # which rules produced a shown state.
 MASTERY_ALGORITHM_VERSION = "mastery-v2"
-WEAK_SCORE_BELOW = 5.0
-MASTERED_SCORE_AT = 7.0
 
 
 def _now() -> datetime:
@@ -74,13 +73,13 @@ def node_mastery(progress: Optional[TrainingProgress], *, now: Optional[datetime
     ratio = progress.correct_attempts / progress.attempts if progress.attempts else 0.0
     # Weak = CURRENTLY failing: lifetime evidence of trouble AND no recent
     # recovery. A node that used to be wrong but has since built up recent form
-    # (score >= WEAK_SCORE_BELOW, roughly that many consecutive correct
+    # (score >= SR_CONFIG.weak_score_below, roughly that many consecutive correct
     # reviews) leaves weak even if its lifetime ratio is still under 50%.
-    if progress.attempts >= 2 and ratio < 0.5 and score < WEAK_SCORE_BELOW:
+    if progress.attempts >= 2 and ratio < 0.5 and score < SR_CONFIG.weak_score_below:
         return MASTERY_WEAK
     if progress.due_at is not None and _as_utc(progress.due_at) <= now:
         return MASTERY_DUE
-    if progress.is_mastered or score >= MASTERED_SCORE_AT:
+    if progress.is_mastered or score >= SR_CONFIG.mastered_score_at:
         return MASTERY_MASTERED
     return MASTERY_LEARNING
 

@@ -45,9 +45,15 @@ CARD_WEAK = "weak"
 CARD_DUE = "due"
 CARD_NEW = "new"
 CARD_POLISH = "polish"
+CARD_KINDS = (
+    {"key": CARD_WEAK, "label": "Weak spot", "title": "Missed more than answered"},
+    {"key": CARD_DUE, "label": "Due review", "title": "Spaced repetition says now"},
+    {"key": CARD_NEW, "label": "New move", "title": "Shown once, then tested"},
+    {"key": CARD_POLISH, "label": "Polish", "title": "Kept warm with an occasional rep"},
+)
 
 # Lower number = more urgent; a merged card takes the most urgent kind.
-_KIND_PRIORITY = {CARD_WEAK: 0, CARD_DUE: 1, CARD_NEW: 2, CARD_POLISH: 3}
+_KIND_PRIORITY = {kind["key"]: index for index, kind in enumerate(CARD_KINDS)}
 
 DEFAULT_SESSION_SIZE = 12
 DEFAULT_NEW_CAP = 4

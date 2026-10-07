@@ -26,6 +26,7 @@ function harness(overrides = {}) {
     setItem: (k, v) => data.set(k, v), removeItem: (k) => data.delete(k) };
   const appState = { accountUserId: "alice", trainStats: { ...stats }, trainMode: "smart" };
   const payload = { mode: "smart", session_id: "session", seed: 7, session_generation: "start-1", card_index: 1, resumed: true, cards: queue,
+    requeue_gap: 4, card_kinds: [{ key: "due", label: "Server label", title: "Server title" }],
     health: { new: 18 }, ...overrides };
   const present = vi.fn(async () => {});
   const phase = deferred();
@@ -56,6 +57,8 @@ describe("Smart memo integration at Start", () => {
     await h.start();
     expect(h.appState.trainStats.correct).toBe(0);
     expect(h.appState.trainStats.history).toEqual([]);
+    expect(h.appState.smart.requeueGap).toBe(4);
+    expect(h.appState.smart.cardKinds.due).toEqual(h.payload.card_kinds[0]);
   });
   it("restores the current target and retry with the saved counts and starting health", async () => {
     const h = harness();

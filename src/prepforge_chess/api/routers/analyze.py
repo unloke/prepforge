@@ -23,6 +23,10 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
+from prepforge_chess.core.limits import (
+    MAX_ANALYSIS_POSITIONS,
+    PGN_LIMITS,
+)
 from prepforge_chess.api.deps import current_owner, current_user, get_repository
 from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.core.chess_core import ChessCore
@@ -45,11 +49,8 @@ router = APIRouter(prefix="/api", tags=["analyze"])
 # ChessCore wraps python-chess and holds no per-request state, so one shared
 # instance serves the stateless /api/board utility.
 _CHESS = ChessCore()
-MAX_ANALYSIS_PGN_CHARS = 1_000_000
-MAX_ANALYSIS_POSITIONS = 1_000
 
 
-MAX_ANALYSIS_IMPORT_GAMES = 20
 
 
 def _import_pgn_for_analysis(
@@ -75,10 +76,10 @@ def _import_pgn_for_analysis(
     total = len(parsed)
     if total == 0:
         raise ValueError("No PGN games found.")
-    if total > MAX_ANALYSIS_IMPORT_GAMES:
+    if total > PGN_LIMITS.max_analysis_games:
         raise ValueError(
             "Too many games in one paste ({0}; max {1}).".format(
-                total, MAX_ANALYSIS_IMPORT_GAMES
+                total, PGN_LIMITS.max_analysis_games
             )
         )
     if mode == "single" and total != 1:
@@ -193,12 +194,12 @@ def _brilliant_analyzer_from_client(
 
 
 class PreparePayload(BaseModel):
-    pgn: str = Field(default="", max_length=MAX_ANALYSIS_PGN_CHARS)
+    pgn: str = Field(default="", max_length=PGN_LIMITS.max_chars)
     # F-04: "single" (default) rejects multi-game pastes BEFORE storing any of
     # them; "multi" imports every game with per-game status and analyzes the
     # one named by ``select_index``.
     mode: Literal["single", "multi"] = "single"
-    select_index: int = Field(default=0, ge=0, le=MAX_ANALYSIS_IMPORT_GAMES)
+    select_index: int = Field(default=0, ge=0, le=PGN_LIMITS.max_analysis_games)
 
 
 @router.post("/analyze/prepare")

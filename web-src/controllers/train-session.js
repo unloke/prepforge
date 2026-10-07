@@ -19,7 +19,7 @@ let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, 
   loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty, openAuthModal,
   optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView, queueTrainAttempt,
   refreshAuthStatus, renderTrainStats, requireSignIn, setStatus, setStatusError, setTrainBanner,
-  setTrainSyncState, sleep, SMART_KIND_LABELS, START_FEN, switchView, syncViewHeads,
+  setTrainSyncState, sleep, START_FEN, switchView, syncViewHeads,
   syncWorkspaceUrl, updateTrainTurnBadge;
 
 export function createTrainSession(deps) {
@@ -30,7 +30,7 @@ export function createTrainSession(deps) {
     loadPhaseCoach, loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
     openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView,
     queueTrainAttempt, refreshAuthStatus, renderTrainStats, requireSignIn, setStatus,
-    setStatusError, setTrainBanner, setTrainSyncState, sleep, SMART_KIND_LABELS, START_FEN,
+    setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
     switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
   } = deps);
   initTrainControls();
@@ -1743,6 +1743,8 @@ async function startSmartTraining(options = {}) {
     color: mapped.color,
     mixed: mapped.mixed,
     queue,
+    requeueGap: payload.requeue_gap,
+    cardKinds: Object.fromEntries(payload.card_kinds.map((kind) => [kind.key, kind])),
     cardIndex: mapped.cardIndex,
     targetIndex: mapped.targetIndex,
     totalCards: mapped.totalCards,
@@ -1916,7 +1918,7 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
     setTrainBanner(
       "move",
       "Your move",
-      `${SMART_KIND_LABELS[prompt.kind] || "Review"} · ${cueSan ? `answer ${cueSan}` : "play your prep"}`,
+      `${appState.smart.cardKinds[prompt.kind]?.label || "Review"} · ${cueSan ? `answer ${cueSan}` : "play your prep"}`,
     );
     if (smart.blitz && smart.attempt === 1) startBlitzTimer(smart, prompt);
     else clearBlitzTimer();
@@ -1951,9 +1953,6 @@ function prefetchTrainCoach(prompt) {
   }).catch((error) => { if (appState.smart?.prompt === prompt) console.warn("Train coach unavailable", error); });
 }
 
-// Mirror of services/training_smart.REQUEUE_GAP — keep in sync.
-const SMART_REQUEUE_GAP = 3;
-
 // After a second wrong attempt the card returns a few positions later — unless
 // an identical copy is already pending, so a stubborn miss queues one retry at
 // a time. Parity with SmartTrainingService._requeue_card.
@@ -1962,7 +1961,7 @@ function requeueSmartCard(smart) {
   if (!card) return false;
   const pendingAhead = smart.queue.slice(smart.cardIndex + 1);
   if (pendingAhead.some((c) => c.encoded === card.encoded)) return false;
-  const insertAt = Math.min(smart.cardIndex + SMART_REQUEUE_GAP, smart.queue.length);
+  const insertAt = Math.min(smart.cardIndex + smart.requeueGap, smart.queue.length);
   smart.queue.splice(insertAt, 0, card);
   return true;
 }

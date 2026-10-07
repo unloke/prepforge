@@ -7,6 +7,9 @@ import {
   onlyMoveGaps,
   markBrilliant,
   markGreat,
+  materialInvested,
+} from "./features.js";
+import {
   GREAT_MIN_TWO_MOVE_GAP,
   GREAT_MIN_TRAP_GAP,
   BRILLIANT_MAX_HUMAN_PROB,
@@ -14,8 +17,7 @@ import {
   BRILLIANT_MIN_TRAP_GAP,
   BRILLIANT_MIN_ONLY_MOVE_GAP,
   BRILLIANT_MIN_SACRIFICE,
-  materialInvested,
-} from "./features.js";
+} from "../generated/shared-constants.js";
 
 // A passing trap_gap (well over the 0.05 bar) for the brilliant tests that isolate the
 // other layers — the natural human move throws away ~half a win chance.

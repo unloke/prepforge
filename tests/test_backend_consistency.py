@@ -93,25 +93,25 @@ def test_real_maximum_move_batch_commits_full_receipt(repo):
     import json
     from collections import deque
     from prepforge_chess.services.opening_builder import OpeningBuilderService
-    from prepforge_chess.api.routers.workspace import MAX_BULK_MOVES
+    from prepforge_chess.core.limits import MAX_ADD_MOVES_BATCH
 
     rep, _ = _build(repo)
     core = ChessCore()
     parents = deque([(rep.root_node.id, rep.root_fen)])
     changes = []
-    while len(changes) < MAX_BULK_MOVES:
+    while len(changes) < MAX_ADD_MOVES_BATCH:
         parent, fen = parents.popleft()
         for uci in core.legal_moves(fen):
             temp = "tmp-batch-" + str(len(changes)) + "-" + "a" * 32
             move = core.apply_uci(fen, uci)
             changes.append({"tempId": temp, "parentRef": parent, "uci": uci})
             parents.append((temp, move.fen_after))
-            if len(changes) == MAX_BULK_MOVES:
+            if len(changes) == MAX_ADD_MOVES_BATCH:
                 break
     key = "build-receipt:max-batch-real"
     _, _, mapping = OpeningBuilderService(repo).add_moves_batch(
         rep.id, changes, receipt_target=("owner", key))
-    assert len(mapping) == MAX_BULK_MOVES
+    assert len(mapping) == MAX_ADD_MOVES_BATCH
     receipt = repo.get_user_setting("owner", key)
     assert len(json.dumps(receipt)) > 4000
     assert receipt["id_map"] == mapping

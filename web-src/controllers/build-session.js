@@ -1,4 +1,6 @@
 import { html } from "../html.js";
+import { MAX_PLAN_CHANGES } from "../generated/shared-constants.js";
+
 import { formatEngineEval } from "../engine-eval.js";
 // Repertoire editor: the tree and board, the Explorer panel, the inspector dock, node
 // menus and Generate. Lazy-loaded by app.js with the Build view. Saving edits (the Build
@@ -58,10 +60,9 @@ export function createBuildSession(deps) {
 // Browser Build → Generate (Phase 3c) ceilings. Deliberately conservative: the
 // recursion runs on the USER's machine (deep × branches is slow) and a large tree
 // risks exceeding the server apply-plan caps (≤2000 changes / depth ≤64). The
-// modal enforces these; GEN_PLAN_CHANGES_SOFT_CAP mirrors the server MAX_PLAN_CHANGES
+// modal enforces these; MAX_PLAN_CHANGES comes from the server limits
 // so we fail with an actionable message instead of a raw 400 after the work is done.
 const GEN_MAX_PLY_DEPTH = 20;
-const GEN_PLAN_CHANGES_SOFT_CAP = 2000;
 
 async function hydrateBuild(payload, selectedNodeId = null) {
   // Opening/switching to a DIFFERENT repertoire must not throw away local-first
@@ -997,7 +998,7 @@ function estimateBuildGenerateTotal({ plyDepth, mainThreshold, branchThreshold, 
 // Generate dialog: every knob in plain view, no presets. Depth is counted in full
 // moves (one of yours plus their reply); the tree always ends on your answer.
 // Opponent coverage has two cut-offs: on the mainline path and inside side branches. Kept conservative: the recursion runs locally and a huge tree risks the
-// server apply-plan caps. See GEN_MAX_* / GEN_PLAN_CHANGES_SOFT_CAP.
+// server apply-plan caps. See GEN_MAX_* / MAX_PLAN_CHANGES.
 const GEN_MAX_OWN_MOVES = GEN_MAX_PLY_DEPTH / 2;
 const GEN_DEFAULT_OWN_MOVES = 6;
 const GEN_DEFAULT_MAIN_PCT = 10;
@@ -1328,12 +1329,12 @@ async function generateFromCurrentNode() {
     }
 
     const changeCount = (plan.changes && plan.changes.length) || 0;
-    if (changeCount > GEN_PLAN_CHANGES_SOFT_CAP) {
+    if (changeCount > MAX_PLAN_CHANGES) {
       // The server would reject this with a 400; fail with an actionable message
       // before wasting the round trip.
       throw new Error(
         `That produced ${changeCount} changes, more than the server accepts ` +
-          `(${GEN_PLAN_CHANGES_SOFT_CAP}). Lower the ply depth or branch count and try again.`,
+          `(${MAX_PLAN_CHANGES}). Lower the ply depth or branch count and try again.`,
       );
     }
 

@@ -332,3 +332,12 @@ it("an older Settings GET cannot repaint state after a newer save", async () => 
   expect(appState.settings.maia_rating).toBe(2000);
   expect(view.renderSettings).not.toHaveBeenCalled();
 });
+
+it("smart requeues use the session gap and keep one pending retry", () => {
+  const requeue = compile("function requeueSmartCard(", {});
+  const cards = ["a", "b", "c", "d", "e"].map((encoded) => ({ encoded }));
+  const smart = { queue: [...cards], cardIndex: 0, requeueGap: 4 };
+  expect(requeue(smart)).toBe(true);
+  expect(smart.queue.map((card) => card.encoded)).toEqual(["a", "b", "c", "d", "a", "e"]);
+  expect(requeue(smart)).toBe(false);
+});
